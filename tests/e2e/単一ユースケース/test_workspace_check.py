@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
@@ -51,4 +53,41 @@ def test_normal_when_problems_found(
         ("orphan_body", "docs/X-1.md", None, None),
     }
     assert "D-9" in problems[("broken_ref", "decisions.yaml", "D-1", "depends_on")]["detail"]
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_unknown_phase(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """項目の phase と goal.phase が設定の phases に無ければ、設定に無いフェーズとして全て出す（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "phases": ["目的", "要件"],
+        "goal": {"phase": "結論", "summary": "まとめる", "deliverables": []},
+    }
+    root = make_workspace(make_item("D-1", phase="発散"), settings=settings)
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    # ツールのエラーにせず、ok が偽の結果を返す
+    assert result.is_error is False
+    payload = result.data
+    assert payload["ok"] is False
+    # D-1 の phase の発散と、goal.phase の結論が、設定の phases に無い旨を出す
+    unknown = {
+        (row["file"], row["id"], row["key"], row["detail"])
+        for row in payload["problems"]
+        if row["kind"] == "unknown_phase"
+    }
+    assert unknown == {
+        ("decisions.yaml", "D-1", "items[0].phase", "発散"),
+        ("mindmap.yaml", None, "goal.phase", "結論"),
+    }
+    # ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     assert snapshot_tree(root) == before

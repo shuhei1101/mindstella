@@ -7,8 +7,8 @@ scenarios:
       - name: ワークスペースの場所
         description: テストごとの一時フォルダの下の、まだ無いフォルダ
       - name: 設定
-        description: 分野・最上位の軸の呼び名・フェーズの並び・対象・カテゴリー・ゴール
-        notes: 分野 `システム開発`、最上位の軸の呼び名 `システム`、フェーズ `目的` → `要件` → `構成`
+        description: プレイブック・最上位の軸の呼び名・フェーズの並び・対象・カテゴリー・ゴール
+        notes: プレイブック `[システム開発]`、最上位の軸の呼び名 `機能`、フェーズ `目的` → `要件` → `構成`
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -22,7 +22,7 @@ scenarios:
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
-      - ワークスペースに `mindmap.yaml` があり、渡した分野・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを持つ
+      - ワークスペースに `mindmap.yaml` があり、渡したプレイブック・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを持つ
       - ワークスペースに `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` があり、どれも項目を持たない
       - ワークスペースに `docs/` と `release/` のフォルダがある
       - ワークスペースに `mindstella-version.ini` があり、1 行目がプラグインの版である
@@ -50,13 +50,38 @@ scenarios:
       - エラーの本文に、既にワークスペースがある旨とフォルダのパスがある
       - ワークスペースの全てのファイルの中身が、作成を呼ぶ前と同じである
     test: test_error_when_workspace_exists
+  - name: 正常シナリオ（ゴールを決めずに作る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: ワークスペースの場所
+        description: テストごとの一時フォルダの下の、まだ無いフォルダ
+      - name: 設定
+        description: ゴールを持たず、プレイブックを 2 つ並べた設定
+        notes: プレイブック `[壁打ち, 調査]`、`goal` のキーを渡さない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: フォルダと、ゴールを持たない設定を渡してワークスペースを作る
+        SV->>SV: 設定をスキーマと突き合わせる
+        SV->>WS: 設定・空の YAML・docs/・release/・版のファイルを書く
+        SV-->>CC: 作ったワークスペースのパス
+      ```
+    expected:
+      - '`mindmap.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_without_goal
 lead: スキルが、1 つの話し合いのフォルダ（ワークスペース）を新しく作る単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:
   - name: 利用者
     interest: 話し合いの記録を始められる。既にある話し合いの記録を上書きされない
-trigger: 利用者が新しい話し合いを始め、スキルがセットアップのステップで分野・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを決め終える
+trigger: 利用者が新しい話し合いを始め、スキルがセットアップのステップで題名・プレイブック・最上位の軸の呼び名・フェーズ・対象・カテゴリーと、持つときはゴールを決め終える
 preconditions:
   - プラグイン mindstella がインストールされている
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える

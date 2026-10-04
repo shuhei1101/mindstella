@@ -21,6 +21,7 @@ TOOL_NAMES = [
     "init",
     "add",
     "update",
+    "update_settings",
     "adopt",
     "status",
     "next",

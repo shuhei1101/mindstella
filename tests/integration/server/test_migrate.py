@@ -18,7 +18,13 @@ from .fixture_types import (
 )
 
 # プラグインの版（plugins/mindstella/version.ini の 1 行目）
-PLUGIN_VERSION = "v0.3.0"
+PLUGIN_VERSION = "v0.5.0"
+
+# 版を記録する前の形式から並ぶ手順の版（v0.3.0 の手順の次に v0.5.0 の手順が並ぶ）
+STEP_VERSIONS = {"v0.3.0", "v0.5.0"}
+
+# 手順 3（set_default）が失敗する、題名を足す手順の版
+SUMMARY_STEP_VERSION = "v0.3.0"
 
 # ワークスペースの版を持つファイルの名前
 VERSION_FILE = "mindstella-version.ini"
@@ -83,7 +89,7 @@ def test_normal_when_plan(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """版を記録する前の形式に v0.3.0 の手順と値が要るキーを並べる（正常系）。"""
+    """版を記録する前の形式に v0.3.0・v0.5.0 の手順と値が要るキーを並べる（正常系）。"""
     # 準備
     root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
     before = snapshot_tree(root)
@@ -97,7 +103,7 @@ def test_normal_when_plan(
     assert payload["plugin_version"] == PLUGIN_VERSION
     assert payload["relation"] == "older"
     assert payload["steps"] != []
-    assert all(step["version"] == PLUGIN_VERSION for step in payload["steps"])
+    assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
     assert all(step["destructive"] is False for step in payload["steps"])
     assert {"file": "mindmap.yaml", "key": "summary"} in [
         {"file": value["file"], "key": value["key"]} for value in payload["needs_values"]
@@ -242,6 +248,31 @@ def test_normal_when_backup_ignored(
     assert _git(tmp_path, "rev-list", "--all", "--count").strip() == "0"
 
 
+def test_normal_when_field_to_playbooks(
+    make_workspace: MakeWorkspace, call_tool: CallTool, valid_settings: dict[str, Any]
+) -> None:
+    """v0.5.0 の手順で mindmap.yaml の field を playbooks の 1 件の配列へ移す（正常系）。"""
+    # 準備
+    # 前の版の形式: field を持ち playbooks を持たない設定（キーの並びは playbooks の位置に field を置く）
+    settings = {
+        ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
+        for key, value in {**valid_settings, "target_label": "システム"}.items()
+    }
+    root = make_workspace(settings=settings)
+    (root / VERSION_FILE).write_text("v0.4.0\n", encoding="utf-8")
+    # 実行
+    result = call_tool("migrate", workspace=str(root), to_version="v0.5.0")
+    # 検証
+    assert result.is_error is False
+    steps = result.data["steps"]
+    assert [(step["version"], step["op"]) for step in steps] == [("v0.5.0", "call")]
+    moved = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    assert "field" not in moved
+    assert moved["playbooks"] == ["システム開発"]
+    assert moved["target_label"] == "システム"
+    assert (root / VERSION_FILE).read_text(encoding="utf-8") == "v0.4.0\n"
+
+
 def test_normal_when_already_current(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -298,7 +329,7 @@ def test_error_when_step_fails(
     result = call_tool("migrate", workspace=str(root))
     # 検証
     assert result.is_error is True
-    assert result.text.startswith(f"エラー: {PLUGIN_VERSION} の手順 3（set_default）: ")
+    assert result.text.startswith(f"エラー: {SUMMARY_STEP_VERSION} の手順 3（set_default）: ")
     assert "mindmap.yaml" in result.text
     assert "Traceback" not in result.text
     # 手順 1・2 が書き換えた docs.yaml も含めて、全てのファイルが呼ぶ前と同じ

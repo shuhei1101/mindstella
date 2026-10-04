@@ -9,6 +9,7 @@ from .skill_files import (
     SERVER_TOOL_NAMES,
     SKILLS_DIR,
     allowed_mcp_tools,
+    edits_settings_directly,
     mentions_old_mode,
     missing_plugin_paths,
     playbook_names,
@@ -33,6 +34,7 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
     for name in (
         "add",
         "update",
+        "update_settings",
         "adopt",
         "status",
         "next",
@@ -62,6 +64,7 @@ SESSION_STEP_FILES = [
     "リサーチ.md",
     "取り込み.md",
     "方針転換.md",
+    "範囲の見直し.md",
 ]
 
 
@@ -76,7 +79,7 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert front_matter["name"] == "session"
     assert front_matter["allowed-tools"] == SESSION_ALLOWED_TOOLS
     assert front_matter["description"]
-    # steps/ に 6 つのステップのファイルがあり、SKILL.md のステップの表がその全てを指す
+    # steps/ に 7 つのステップのファイルがあり、SKILL.md のステップの表がその全てを指す
     assert step_files_in("session") == SESSION_STEP_FILES
     assert steps_referenced_by(body) == SESSION_STEP_FILES
     # SKILL.md と steps/ の本文の ${CLAUDE_PLUGIN_ROOT}/ で始まるパスが全てリポジトリの中にある
@@ -88,6 +91,8 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert set(allowed_mcp_tools(front_matter)) <= set(SERVER_TOOL_NAMES)
     # 本文が mindmap.py・build・preview.html を指さない
     assert mentions_old_mode(texts) == []
+    # 本文が mindmap.yaml を Edit ツールで直す手順を持たない
+    assert edits_settings_directly(texts) == []
     # 本文が migrate を plan: true で呼び、その後に submissions を呼ぶ
     preparation = next(line for line in body.splitlines() if line.startswith("| 準備 |"))
     assert "`migrate`" in preparation
@@ -99,6 +104,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/プレビュー.md が preview_url を呼ぶ
     preview_step = (SKILLS_DIR / "session" / "steps" / "プレビュー.md").read_text(encoding="utf-8")
     assert "`preview_url`" in preview_step
+    # steps/範囲の見直し.md が update_settings を呼ぶ
+    scope_step = (SKILLS_DIR / "session" / "steps" / "範囲の見直し.md").read_text(encoding="utf-8")
+    assert "`update_settings`" in scope_step
     # skills/mindmap/ に SKILL.md が無く、references/・playbooks/ がある
     assert not (SKILLS_DIR / "mindmap" / "SKILL.md").exists()
     assert (SKILLS_DIR / "mindmap" / "references").is_dir()

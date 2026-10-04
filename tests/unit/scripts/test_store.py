@@ -27,6 +27,7 @@ from errors import (
     WriteFailedError,
 )
 from fixture_types import FailingUnlink, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import write_yaml
 
 # 壊れた YAML（閉じていないフローの配列）
 BROKEN_YAML = "items: [unclosed"
@@ -204,13 +205,32 @@ def test_validate_workspace_when_top_level_invalid(make_workspace, text: str) ->
     assert problems[0].key == "(全体)"
 
 
+# 前の版の形式の設定（題名の無い設定。`field` を持ち、`playbooks` を持たない）
+LEGACY_SETTINGS: dict[str, Any] = {
+    "field": "システム開発",
+    "target_label": "システム",
+    "phases": ["目的", "要件", "構成"],
+    "targets": [{"name": "mindmap", "summary": "話し合いを記録するスキル"}],
+    "categories": [{"name": "データ構造", "target": "mindmap", "summary": "YAML の種類とキー"}],
+    "goal": {"phase": "構成", "summary": "作り始められる", "deliverables": []},
+}
+
+
 @pytest.mark.parametrize(
-    ("file_name", "item_id", "kind", "expected"),
+    ("file_name", "item_id", "kind", "settings", "expected"),
     [
-        pytest.param("mindmap.yaml", None, "schema", True, id="settings"),
-        pytest.param("docs.yaml", "A-1", "schema", True, id="legacy_doc"),
-        pytest.param("decisions.yaml", "D-1", "schema", False, id="decision"),
-        pytest.param("docs.yaml", "A-1", "broken_ref", False, id="broken_ref"),
+        pytest.param("mindmap.yaml", None, "schema", LEGACY_SETTINGS, True, id="settings"),
+        pytest.param("docs.yaml", "A-1", "schema", LEGACY_SETTINGS, True, id="legacy_doc"),
+        pytest.param("decisions.yaml", "D-1", "schema", LEGACY_SETTINGS, False, id="decision"),
+        pytest.param("docs.yaml", "A-1", "broken_ref", LEGACY_SETTINGS, False, id="broken_ref"),
+        pytest.param(
+            "mindmap.yaml",
+            None,
+            "schema",
+            {"summary": "要件出しのスキルを設計する", **LEGACY_SETTINGS},
+            True,
+            id="settings_with_field",
+        ),
     ],
 )
 def test_is_legacy_problem(
@@ -219,13 +239,13 @@ def test_is_legacy_problem(
     file_name: str,
     item_id: str | None,
     kind: str,
+    settings: dict[str, Any],
     expected: bool,
 ) -> None:
     """前の版の形式の問題を見分ける（正常系）。"""
     # 準備
-    root = make_legacy_workspace(
-        make_item("D-1", status="完了"), legacy_docs={"A-1": True}, without_summary=True
-    )
+    root = make_legacy_workspace(make_item("D-1", status="完了"), legacy_docs={"A-1": True})
+    write_yaml(root / "mindmap.yaml", settings)
     workspace = store.load_workspace(root)
     problems = store.validate_workspace(workspace)
     problem = next(p for p in problems if p.file == file_name and p.id == item_id)

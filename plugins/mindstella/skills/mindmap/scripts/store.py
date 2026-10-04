@@ -70,7 +70,9 @@ type NowFn = Callable[[], str]
 class Problem:
     """スキーマ違反・参照切れなど 1 件の問題。"""
 
-    kind: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body"]
+    kind: Literal[
+        "schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase"
+    ]
     # ワークスペースからの相対パス
     file: str
     # 問題のある項目の ID
@@ -286,14 +288,17 @@ def build_mismatch_error(
 
 
 def is_legacy_problem(problem: Problem, workspace: Workspace) -> bool:
-    """問題が、前の版の形式（資料の `done`・題名の無い設定）から来ているかを返す。"""
+    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）から来ているかを返す。"""
     # スキーマ違反以外（参照切れなど）は前の版の形式のせいではない
     if problem.kind != "schema":
         return False
-    # 設定: 題名（summary）が無い
+    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たない
     if problem.file == SETTINGS_FILE:
         raw_settings = workspace.raw.get(SETTINGS_FILE)
-        return isinstance(raw_settings, dict) and "summary" not in raw_settings
+        return isinstance(raw_settings, dict) and (
+            "summary" not in raw_settings
+            or ("field" in raw_settings and "playbooks" not in raw_settings)
+        )
     # 資料: done を持ち、status を持たない
     if problem.file == KINDS["doc"].file and problem.id is not None:
         docs = _extract_items(workspace.raw.get(problem.file))
@@ -510,6 +515,11 @@ def remove_files(paths: list[Path]) -> None:
 def write_temp(target: Path, text: str) -> Path:
     """置き換え先と同じフォルダに一時ファイルを書き、そのパスを返す（置き換えは呼ぶ側が行う）。"""
     return _write_temp(target, text)
+
+
+def loses_content_on_rewrite(workspace: Workspace, kind: Kind) -> bool:
+    """その種類のファイルが、項目の並びで書き戻すと中身を失う形かを返す。"""
+    return _loses_content_on_rewrite(workspace, kind)
 
 
 def _write_temp(target: Path, text: str) -> Path:

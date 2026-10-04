@@ -98,6 +98,31 @@ flows:
       - ステータスが 422、`Content-Type` が `application/problem+json`
       - '`detail` に `decisions.yaml: items[0].status:` で始まる行がある'
     test: test_error_when_schema_mismatch
+  - name: 正常系（ゴールが無い）
+    summary: ゴールが無いときは derived.goal が全フェーズの進捗を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`phases` が 目的 → 要件で、ゴールを持たないワークスペース'
+        notes: D-1 `目的`・`決定済み`／D-2 `要件`・`未決定`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/records
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF-->>クライアント: 200、JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`derived.goal.has_goal` が偽、`derived.goal.reached` が `null`'
+      - '`derived.goal.phase_progress` が 目的 1/1・要件 0/1'
+      - '`derived.goal` が `goal` の結果と同じキーで同じ値を持つ'
+    test: test_normal_when_no_goal
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -128,7 +153,7 @@ response:
     description: 次に検討する項目。『次の候補』（`next`、上限なし）と同じ並びと中身。画面の「着手可否」が「着手可能」になるのはここにある ID
   - name: derived.goal
     type: dict
-    description: 『ゴール判定』（`goal`）の結果と同じキーに、判定に入れたフェーズごとの決着した数と全体の数 `phase_progress[]`（`{phase, settled, total}`）を足したもの
+    description: 『ゴール判定』（`goal`）の結果と同じキーに、判定に入れたフェーズごとの決着した数と全体の数 `phase_progress[]`（`{phase, settled, total}`）を足したもの。ゴールが無いときは `has_goal` が偽で、`phase_progress` は全フェーズ
   - name: derived.progress[]
     type: 'list[{category, cells: list[{phase, settled, total}], settled, total}]'
     description: カテゴリー別の進捗。`settings.categories` の順、セルは `settings.phases` の順。決着は『次の候補』『ゴール判定』と同じ（検討事項の決定済み・対象外・取り下げ）

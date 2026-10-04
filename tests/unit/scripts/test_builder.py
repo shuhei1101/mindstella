@@ -264,6 +264,59 @@ def test_derive_preview_values(
     ]
 
 
+def test_derive_preview_values_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールが無ければ全フェーズの進捗を返し、届いたかは判定しない（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+        "categories": [
+            {"name": "A", "target": "mindmap", "summary": "カテゴリー A"},
+            {"name": "B", "target": "mindmap", "summary": "カテゴリー B"},
+        ],
+    }
+    root = make_workspace(
+        make_item("D-1", category="A", phase="目的", status="決定済み"),
+        make_item("D-2", category="A", phase="要件", status="未決定", depends_on=["D-1"]),
+        make_item("D-3", category="B", phase="要件", status="対象外"),
+        settings=settings,
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    derived = builder.derive_preview_values(workspace)
+    # 検証
+    assert derived["goal"]["has_goal"] is False
+    assert derived["goal"]["reached"] is None
+    assert derived["goal"]["phase_progress"] == [
+        {"phase": "目的", "settled": 1, "total": 1},
+        {"phase": "要件", "settled": 1, "total": 2},
+    ]
+    assert derived["goal"]["remaining_deliverables"] == []
+    assert [candidate["id"] for candidate in derived["next"]] == ["D-2"]
+    assert derived["progress"] == [
+        {
+            "category": "A",
+            "cells": [
+                {"phase": "目的", "settled": 1, "total": 1},
+                {"phase": "要件", "settled": 0, "total": 1},
+            ],
+            "settled": 1,
+            "total": 2,
+        },
+        {
+            "category": "B",
+            "cells": [
+                {"phase": "目的", "settled": 0, "total": 0},
+                {"phase": "要件", "settled": 1, "total": 1},
+            ],
+            "settled": 1,
+            "total": 1,
+        },
+    ]
+
+
 # 配る書き出しのテストが雛形に置く外の読み込み（実物の VENDOR_LIBRARIES にあるパッケージ）
 MARKED_SCRIPTS: list[Script] = [("marked", b"/* marked */")]
 

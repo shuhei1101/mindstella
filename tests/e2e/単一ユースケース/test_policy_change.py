@@ -1,6 +1,6 @@
 """方針転換（採用する案を切り替え、影響を要見直しにし、納品物を資料へ格下げする）の E2E テスト。
 
-モデルを呼ばず、スキルの手順が連ねるコマンドと mindmap.yaml の書き換えを決めた引数で順に再生して、ワークスペースの状態を確かめる。
+モデルを呼ばず、スキルの手順が連ねるコマンドと設定の更新を決めた引数で順に再生して、ワークスペースの状態を確かめる。
 """
 
 from __future__ import annotations
@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
@@ -108,12 +107,9 @@ def test_normal_when_deliverable_no_longer_needed(
     ws = {"workspace": str(root)}
     # 実行
     replay("update", **ws, id="A-1", item={"deliverable": False})
-    # mindmap.yaml のゴールの deliverables から A-1 を外す（スキルが Edit で直す）
-    current = read_yaml(root, "mindmap.yaml")
-    current["goal"]["deliverables"] = []
-    (root / "mindmap.yaml").write_text(
-        yaml.safe_dump(current, allow_unicode=True, sort_keys=False), encoding="utf-8"
-    )
+    # 設定の更新で、ゴールの deliverables から A-1 を外す（ゴールは丸ごと置き換わる）
+    goal = {**read_yaml(root, "mindmap.yaml")["goal"], "deliverables": []}
+    replay("update_settings", **ws, settings={"goal": goal})
     checked = call_tool("check", **ws)
     replay(
         "add",
