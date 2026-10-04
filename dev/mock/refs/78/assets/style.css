@@ -68,7 +68,7 @@ body:not(.panel-open) .send.send-left { display: none; }
 .cm-head .count, .cm-h .count { font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 400; color: var(--text-3); }
 /* 一覧の中身: 読みやすい幅に収める */
 .cm-wrap { display: grid; gap: 12px; max-width: 880px; }
-/* まとめて送る帯: すべて選ぶ・選んだ件数・結果・送るボタンを 1 行に並べ、画面を送っても見える位置に留める */
+/* まとめて送る帯: すべて選ぶ・選んだ件数・送るボタンを 1 行に並べ、画面を送っても見える位置に留める */
 .cm-bar { position: sticky; top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 /* 帯の空き */
 .cm-bar .spacer { flex: 1; }
@@ -78,8 +78,8 @@ body:not(.panel-open) .send.send-left { display: none; }
 .cm-all input, .cm-check { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 /* 選んだ件数 */
 .cm-sel { font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
-/* まとめて送った結果・押せない理由: 帯の 2 行目に幅いっぱいで出し、送るボタンの位置を動かさない */
-.cm-msg { order: 5; flex-basis: 100%; display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--fs-small); color: var(--text-2); }
+/* まとめて送った結果・押せない理由: 留める帯の直下の流れに出し、画面を送ったら一覧と一緒に流れる */
+.cm-msg { display: flex; align-items: flex-start; gap: 6px; margin: -4px 0 0; padding: 0 12px; font-size: var(--fs-small); color: var(--text-2); }
 /* 結果も理由も無いとき: 2 行目を空けない */
 .cm-msg:empty { display: none; }
 /* 結果の印 */

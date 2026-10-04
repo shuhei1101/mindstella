@@ -1147,8 +1147,8 @@
   const LIST_MSG = {
     sending: () => `<span class="spinner" aria-hidden="true"></span><span>送っています</span>`,
     sent: (r) => `${icon("check")}<span>${r.n} 件を送りました（${timeOf(r.at)}）。次の話し合いの最初に取り込みます。</span>`,
-    failed: () => `${icon("alert")}<span>送れませんでした。サーバーが止まっています。どのコメントも送っていません。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから送ってください。</span>`,
-    stale: (r) => `${icon("alert")}<span>送れませんでした。箇所が本文に合わないコメントが ${r.n} 件あります。どのコメントも送っていません。箇所を外すか削除してから送ってください。</span>`,
+    failed: () => `${icon("alert")}<span>送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。</span>`,
+    stale: (r) => `${icon("alert")}<span>送れませんでした。箇所が合わないコメントが ${r.n} 件あります。</span>`,
     none: () => `<span>送るコメントにチェックを付けてください。</span>`,
   };
   const rowHtml = (c) => {
@@ -1177,10 +1177,11 @@
     const msg = listResult || (live.length && !checked.length ? { kind: "none" } : null);
     const all = live.length ? `<label class="cm-all" title="すべて選ぶ"><input type="checkbox" data-act="cmall" aria-label="すべて選ぶ" ${checked.length === live.length ? "checked" : ""}></label>` : "";
     const msgHtml = `<p class="cm-msg${msg ? " " + msg.kind : ""}" id="cm-msg" role="status">${msg ? LIST_MSG[msg.kind](msg) : ""}</p>`;
-    // 送り終えて 0 件になったら、送るボタンを外して結果だけを残す
-    const bar = live.length ? `<div class="cm-bar">${all}<span class="cm-sel">${checked.length} / ${live.length} 件を選択</span><span class="spacer"></span>${msgHtml}
-        <button class="btn primary" type="button" data-act="cmsend" aria-describedby="cm-msg" ${checked.length && !busy ? "" : "disabled"}>${icon("send")}まとめて送る（${checked.length} 件）</button></div>`
-      : listResult ? `<div class="cm-bar">${msgHtml}</div>` : "";
+    // 留める帯は選んだ件数と送るボタンだけにし、結果は帯の直下の流れに出す（狭い幅で一覧を隠さない）
+    // 送り終えて 0 件になったら、帯を外して結果だけを残す
+    const bar = (live.length ? `<div class="cm-bar">${all}<span class="cm-sel">${checked.length} / ${live.length} 件を選択</span><span class="spacer"></span>
+        <button class="btn primary" type="button" data-act="cmsend" aria-describedby="cm-msg" ${checked.length && !busy ? "" : "disabled"}>${icon("send")}まとめて送る（${checked.length} 件）</button></div>` : "")
+      + (live.length || listResult ? msgHtml : "");
     const list = rows.length ? `<ol class="cm-list">${rows.map(rowHtml).join("")}</ol>` : `<div class="cm-empty">${icon("comment")}<p>${w().state}のコメントはありません。</p></div>`;
     const head = inDrawer
       ? `<div class="panel-head cdrawer-head"><h2 class="cm-h">${w().state}のコメント<span class="count">${live.length}</span></h2><span class="spacer"></span><button class="icon-btn" type="button" data-act="drawer" aria-label="コメントの一覧を閉じる">${icon("x")}</button></div>`
