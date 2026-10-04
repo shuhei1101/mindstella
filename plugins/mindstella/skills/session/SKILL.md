@@ -1,8 +1,8 @@
 ---
 name: session
-description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
+description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__adopt, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__submissions, mcp__mindstella__take_submission
+allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__update_settings, mcp__mindstella__adopt, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__submissions, mcp__mindstella__take_submission
 ---
 
 # session
@@ -21,11 +21,12 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 | ステップ | 手順 | 実行する場面 |
 | --- | --- | --- |
-| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`field` と同じ名前の進め方ガイド（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{field}.md`）を Read で読み、続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`）を示し、送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。0 件なら取り込みを飛ばす | 話し合いの最初の 1 回 |
+| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`）を示し、送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。0 件なら取り込みを飛ばす | 話し合いの最初の 1 回 |
 | 取り込み | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/取り込み.md` | 利用者が発言した（決め事・問い・やること・保留・中止・図や文書・脱線した質問） |
 | ヒアリング | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ヒアリング.md` | 取り込みの後に前提が揃った未決定がある、または利用者が次に決めることを求めた |
 | リサーチ | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/リサーチ.md` | 外部ライブラリ・外部 API を決める検討事項が積まれた、進め方ガイドの「必ず調べるもの」に当たった、または利用者が調べるよう頼んだ |
 | 方針転換 | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/方針転換.md` | 利用者が決定済みの検討事項の案を変える、またはスコープが変わって納品物が要らなくなった |
+| 範囲の見直し | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/範囲の見直し.md` | 話の範囲が広がった、利用者が題名・話し合いの概要・ゴール・進め方ガイド・最上位の軸の呼び名を変えたいと言った、話の中身と呼び名が合わなくなった、またはゴール判定でゴールが無く利用者が決めると言った |
 | プレビュー | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/プレビュー.md` | 利用者が記録を見たいと言った、または人に渡したいと言った |
 | ゴール判定 | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ゴール判定.md` | 利用者がゴールに届いたかを尋ねた、または `next` の候補が無くなった |
 
@@ -39,6 +40,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | --- | --- |
 | `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`body` は渡さない。本文は `body_markdown`） |
 | `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
+| `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal` だけ。`description`・`goal` は `null` で消す）・`phase_map`（任意。`phases` を変えるときだけ、古いフェーズ → 新しいフェーズの対応） |
 | `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号） |
 | `next` | `workspace`・`limit`（任意） |
 | `impact` | `workspace`・`id` |

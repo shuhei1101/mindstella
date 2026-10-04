@@ -57,6 +57,41 @@ def test_normal(
     assert "phase_progress" in goal
 
 
+def test_normal_when_no_goal(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    serve_preview: Callable[[Path], str],
+    valid_settings: dict[str, Any],
+) -> None:
+    """ゴールが無いときは has_goal が偽で、phase_progress が全フェーズになる（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+    }
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-2", phase="要件", status="未決定"),
+        settings=settings,
+    )
+    url = serve_preview(root)
+    # 実行
+    result = http_request(url, "/api/records")
+    # 検証
+    assert result.status == 200
+    goal = result.json()["derived"]["goal"]
+    assert goal["has_goal"] is False
+    assert goal["reached"] is None
+    assert goal["phase_progress"] == [
+        {"phase": "目的", "settled": 1, "total": 1},
+        {"phase": "要件", "settled": 0, "total": 1},
+    ]
+    goal_result = call_tool("goal", workspace=str(root))
+    assert goal_result.data is not None
+    assert {key: goal[key] for key in goal_result.data} == goal_result.data
+
+
 def test_normal_when_rewritten(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,

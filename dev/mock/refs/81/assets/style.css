@@ -1,0 +1,13 @@
+/* 71 のスタイルの上に重ね、題名の上の話し合いの概要と、ゴールが無いときの概要の出し方を足す分 */
+
+/* ゴールのタイルを出さないとき: 次に検討する項目を全幅にし、隣のタイルで高さを決めずに中身の高さで伸ばす */
+.bento.no-goal .t-next { grid-column: 1 / -1; contain: none; }
+
+/* 題名の上の話し合いの概要: 数行の文を読める幅で折り返す */
+.hero-desc { max-width: 46em; margin-bottom: 8px; line-height: 1.7; }
+
+/* モック専用の操作列の切り替えのまとまり: まとまりの間を空ける */
+.mock-group + .mock-group { margin-left: 14px; }
+
+/* ゴールが無いことの 1 行: 見出しの下に、本文の 2 番目の濃さで出す */
+.t-goal .goal-none { margin: 10px 0 0; color: var(--text-2); }

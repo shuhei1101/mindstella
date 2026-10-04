@@ -17,11 +17,11 @@ flows:
         クライアント->>IF: 初期化
         IF-->>クライアント: サーバーの名前 mindstella
         クライアント->>IF: ツールの一覧
-        IF-->>クライアント: 18 個のツール
+        IF-->>クライアント: 19 個のツール
       ```
     expected:
       - サーバーの名前が `mindstella`
-      - ツールの一覧の名前が、レスポンスのツールの 18 個と一致する
+      - ツールの一覧の名前が、レスポンスのツールの 19 個と一致する
       - どのツールも `workspace` を要る引数に持つ
     test: test_normal
   - name: 正常系（ツールのエラー）
@@ -40,7 +40,7 @@ flows:
         クライアント->>IF: status（workspace は空のフォルダ）
         IF-->>クライアント: ツールのエラー
         クライアント->>IF: ツールの一覧
-        IF-->>クライアント: 18 個のツール
+        IF-->>クライアント: 19 個のツール
       ```
     expected:
       - '`status` の結果の `isError` が真で、本文が `エラー: ` で始まり、フォルダのパスを含み、トレースバックを含まない'
@@ -123,7 +123,7 @@ response:
     description: '`mindstella`。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる'
   - name: ツール
     type: list[str]
-    description: '`init`・`add`・`update`・`adopt`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission` の 18 個'
+    description: '`init`・`add`・`update`・`update_settings`・`adopt`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission` の 19 個'
   - name: 結果
     type: CallToolResult
     description: ツールの結果。構造化の結果（`structuredContent`）に JSON のオブジェクトを 1 個入れ、同じ JSON を文字列の本文（`content` の text）にも入れる
@@ -141,7 +141,7 @@ constraints:
   - item: 立てる Python
     constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。起動スクリプトが MCP の設定の `command` に書く
   - item: ツールの引数
-    constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`init`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
+    constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`init`・`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
   - item: ワークスペース
     constraint: 全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスはサーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む
   - item: 同時の呼び出し

@@ -88,6 +88,38 @@ def test_normal_when_not_reached(
     ]
 
 
+def test_normal_when_no_goal(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+) -> None:
+    """ゴールが無いときは判定せず、全フェーズの決着していない検討事項を返す（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件", "構成"],
+    }
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-2", phase="構成", status="未決定"),
+        settings=settings,
+    )
+    # 実行
+    result = call_tool("goal", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    payload = result.data
+    assert payload["has_goal"] is False
+    assert payload["reached"] is None
+    assert payload["goal_phase"] is None
+    assert payload["phases"] == ["目的", "要件", "構成"]
+    assert payload["remaining_decisions"] == [
+        {"id": "D-2", "title": "D-2の題", "phase": "構成", "status": "未決定"}
+    ]
+    assert payload["remaining_deliverables"] == []
+
+
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """mindmap.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備

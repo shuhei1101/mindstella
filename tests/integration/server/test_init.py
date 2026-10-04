@@ -65,6 +65,29 @@ def test_normal(tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, A
     }
 
 
+def test_normal_when_no_goal(
+    tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールと概要を持たず、プレイブックを 2 つ並べた設定で作る（正常系）。"""
+    # 準備
+    root = tmp_path / "new-workspace"
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key not in ("goal", "description")},
+        "playbooks": ["壁打ち", "調査"],
+    }
+    # 実行
+    result = call_tool("init", workspace=str(root), settings=settings)
+    # 検証
+    assert result.is_error is False
+    created = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    assert "goal" not in created
+    assert "description" not in created
+    assert created["playbooks"] == ["壁打ち", "調査"]
+    checked = call_tool("check", workspace=str(root))
+    assert checked.data is not None
+    assert checked.data["problems"] == []
+
+
 def test_error_when_workspace_exists(
     make_workspace: MakeWorkspace,
     call_tool: CallTool,

@@ -173,3 +173,58 @@ def test_normal_when_off_topic_question(
     assert note["tags"] == ["脱線"]
     # タスクが 0 件のままである
     assert replay("find", **ws, kind="task")["items"] == []
+
+
+def test_normal_when_deliverable_doc_created(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """納品物の資料を作ったら、同じタイトルのゴールの納品物からその資料を指す（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "goal": {
+            "phase": "要件",
+            "summary": "要件が決まる",
+            "deliverables": [{"title": "要件定義書"}],
+        },
+    }
+    root = make_workspace(settings=settings)
+    ws = {"workspace": str(root)}
+    # 実行
+    # 資料の本文は add の body_markdown で docs/ に書く
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "要件定義書",
+            "kind": "文書",
+            "deliverable": True,
+            "status": "下書き",
+            "body_markdown": "# 要件定義書\n\n支出を記録する。",
+            **PLACE,
+        },
+    )
+    # 同じタイトルの納品物があるので、行は足さず、その doc から資料 A-1 を指す（ゴールは丸ごと置き換わる）
+    goal = read_yaml(root, "mindmap.yaml")["goal"]
+    deliverables = [{"title": "要件定義書", "doc": "A-1"}]
+    replay("update_settings", **ws, settings={"goal": {**goal, "deliverables": deliverables}})
+    replay(
+        "add",
+        **ws,
+        kind="log",
+        item={"title": "要件定義書をまとめた", "date": TODAY, "related": ["A-1"]},
+    )
+    checked = replay("check", **ws)
+    # 検証
+    # goal.deliverables が「要件定義書」の 1 件だけで、その doc が A-1 である
+    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == [
+        {"title": "要件定義書", "doc": "A-1"}
+    ]
+    # 資料 A-1 が deliverable: true を持つ
+    assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is True
+    # check が問題を 0 件で返す
+    assert checked == {"ok": True, "problems": []}

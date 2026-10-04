@@ -135,7 +135,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
     usecase: 概要を見る
     kind: 画面
-    summary: 画面設計『概要』のタイルを描く。次の候補・ゴールまでの進捗・カテゴリー別の進捗は埋め込みのデータの `derived` をそのまま並べる（画面で計算しない）
+    summary: 画面設計『概要』のタイルを描く。次の候補・ゴールまでの進捗・カテゴリー別の進捗は埋め込みのデータの `derived` をそのまま並べる（画面で計算しない）。題名の上には `settings.description` があるときだけその 1 行を出す。`derived.goal.has_goal` が偽のときは、ゴールまでの進捗のタイルの見出しを「フェーズ別の進捗」にして「ゴールは決まっていません」と `phase_progress` だけを出し、納品物は出さない（`settings.goal` を読まない）
     props:
       - name: index
         type: RecordIndex

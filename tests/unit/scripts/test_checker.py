@@ -93,6 +93,65 @@ def test_check_refs_when_missing(
     }
 
 
+def test_check_refs_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールを持たない設定は納品物の参照を見ない（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "goal"}
+    root = make_workspace(make_item("D-1", depends_on=["D-9"]), settings=settings)
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_refs(workspace)
+    # 検証
+    assert _keys(problems) == {("broken_ref", "decisions.yaml", "D-1", "depends_on")}
+    assert "D-9" in problems[0].detail
+
+
+def test_check_phases(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """設定の phases に無い項目の phase と goal.phase を拾う（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "phases": ["目的", "要件"],
+        "goal": {"phase": "結論", "summary": "まとめる", "deliverables": []},
+    }
+    root = make_workspace(
+        make_item("D-1", phase="発散"),
+        make_item("D-2", phase="要件"),
+        make_item("T-1"),
+        settings=settings,
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_phases(workspace)
+    # 検証
+    assert _keys(problems) == {
+        ("unknown_phase", "mindmap.yaml", None, "goal.phase"),
+        ("unknown_phase", "decisions.yaml", "D-1", "items[0].phase"),
+    }
+    assert {problem.detail for problem in problems} == {"結論", "発散"}
+
+
+def test_check_phases_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールを持たない設定は goal.phase を見ない（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+    }
+    root = make_workspace(make_item("D-1", phase="目的"), settings=settings)
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_phases(workspace)
+    # 検証
+    assert problems == []
+
+
 def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """決めた種類でない ID を指す参照を拾う（正常系）。"""
     # 準備

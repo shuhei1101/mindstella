@@ -322,6 +322,8 @@ dialog.search::backdrop { background: var(--scrim); }
 .hero { padding: 12px 0 28px; }
 .hero h1 { margin: 6px 0 0; font-size: 40px; line-height: 1.15; letter-spacing: -.025em; font-weight: 700; }
 .hero-sub { margin: 0; color: var(--text-2); font-size: 15px; }
+/* 題名の上の話し合いの概要: 数行の文を読める幅で折り返す */
+.hero-desc { max-width: 46em; margin-bottom: 8px; line-height: 1.7; }
 .bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .tile { background: var(--surface); border-radius: var(--radius); padding: 24px 26px; min-width: 0; }
 :root[data-theme="dark"] .tile { border: 1px solid var(--border-soft); }
@@ -344,6 +346,8 @@ dialog.search::backdrop { background: var(--scrim); }
 .t-goal .big { margin: 14px 0 0; font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .t-goal .big small { font-size: 26px; color: var(--text-3); font-weight: 500; letter-spacing: 0; }
 .t-goal .big-sub { margin: 6px 0 22px; color: var(--text-2); }
+/* ゴールが無いことの 1 行: 見出しの下に、本文の 2 番目の濃さで出す */
+.t-goal .goal-none { margin: 10px 0 0; color: var(--text-2); }
 .stage-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .stage-rows li { display: grid; grid-template-columns: 8.5em 1fr 3.2em; align-items: center; gap: 10px; font-size: var(--fs-small); }
 .stage-rows li i { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }

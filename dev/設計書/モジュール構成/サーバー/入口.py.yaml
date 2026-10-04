@@ -22,6 +22,7 @@ diagrams:
         class 点検
         class ビルド
         class 移行
+        class 設定の更新
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
@@ -33,6 +34,7 @@ diagrams:
         ツールの処理 --> 点検
         ツールの処理 --> ビルド
         ツールの処理 --> 移行
+        ツールの処理 --> 設定の更新 : update_settings
         配信 --> ビルド : 雛形と記録
         配信 --> 送信 : POST /api/submissions
       ```
@@ -60,7 +62,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "adopt", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+    value: ("init", "add", "update", "update_settings", "adopt", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -804,12 +806,12 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`adopt`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
         case: 正常
-        summary: 18 個のツールを workspace つきで登録する
+        summary: 19 個のツールを workspace つきで登録する
         condition: 空の `PreviewRegistry` と `tmp_path`。作ったサーバーの `list_tools()` を呼ぶ
         mock: なし
         expected: ツールの名前が `TOOL_NAMES` と一致し、どれも入力のスキーマの `required` に `workspace` を持つ
@@ -1075,6 +1077,33 @@ functions:
         condition: 取り込んでいない S-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`
         mock: '`now`'
         expected: '`{id: S-1, taken: 2026-10-04T03:00:00+00:00, already: false}`'
+  - name: run_update_settings
+    title: update_settings の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 設定の更新
+    scope: public
+    summary: 設定の更新（モジュール構成『設定の更新』の `update_settings`）に引数を渡す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`settings`'
+      - name: phase_map
+        type: dict[str, str] | None
+        required: true
+        passing: positional
+        description: '`phase_map`'
+    returns:
+      type: dict[str, Any]
+      description: '`{changed, remapped, files}`'
+    process: 1. `update_settings` を呼び、その結果を返す（単体テストは `update_settings` が持つ）
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from playwright.sync_api import Page
 from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
 from workspace_fixtures import MakeItem
@@ -104,6 +106,69 @@ def test_goal_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenP
     page.click("#tile-goal .checklist button")
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "A-1の題\n納品物"
+
+
+def test_goal_tile_when_no_goal(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """ゴールが無いときは、見出しを「フェーズ別の進捗」にし、ゴールが無いことと全フェーズの棒だけを出す（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+    }
+    url = write_preview(
+        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-2", phase="要件", status="未決定"),
+        settings=settings,
+    )
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.inner_text("#tile-goal h2") == "フェーズ別の進捗"
+    assert page.inner_text("#tile-goal .goal-none") == "ゴールは決まっていません"
+    assert page.inner_text("#tile-goal .big").replace("\n", "").replace(" ", "") == "1/2"
+    stages = page.eval_on_selector_all(
+        "#tile-goal .stage-rows li", "rows => rows.map(r => r.textContent)"
+    )
+    assert stages == ["目的1/1", "要件0/1"]
+    # 納品物は出さない
+    assert page.locator("#tile-goal .deliv").count() == 0
+
+
+def test_description(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """設定の話し合いの概要を題名の上に出し、プレイブックの名前は出さない（正常系）。"""
+    # 準備
+    description = "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
+    url = write_preview(make_item("D-1"), settings={**valid_settings, "description": description})
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.inner_text("#overview-description") == description
+    rows = page.eval_on_selector_all("main .hero > *", "els => els.map(e => e.textContent)")
+    assert rows == [description, "要件出しのスキル mindmap を設計する"]
+    assert "システム開発" not in page.inner_text("main .hero")
+
+
+def test_description_when_missing(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """話し合いの概要が無い設定では、行を出さず題名がそのまま上に来る（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.locator("#overview-description").count() == 0
+    assert page.inner_text("main .hero") == "要件出しのスキル mindmap を設計する"
 
 
 def test_small_tiles(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:

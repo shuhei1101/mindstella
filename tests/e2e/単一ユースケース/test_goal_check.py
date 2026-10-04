@@ -109,3 +109,30 @@ def test_normal_when_not_reached(
     assert goal["remaining_deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
     # release/ に何も書かれていない
     assert list((root / "release").iterdir()) == []
+
+
+def test_normal_when_no_goal(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+) -> None:
+    """ゴールが無ければ、判定せずに全フェーズの決着していない検討事項を示し、release/ には何も書かない（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "goal"}
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="未決定"),
+        make_item("D-2", phase="要件", status="決定済み"),
+        settings=settings,
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    goal = replay("goal", **ws)
+    # 検証
+    # goal の出力が、ゴールが無いことを示し、届いたとも届いていないとも返さない
+    assert goal["has_goal"] is False
+    assert goal["reached"] is None
+    # 出力の決着していない検討事項に D-1 があり、D-2 が無い
+    assert [decision["id"] for decision in goal["remaining_decisions"]] == ["D-1"]
+    # release/ に何も書かれていない
+    assert list((root / "release").iterdir()) == []

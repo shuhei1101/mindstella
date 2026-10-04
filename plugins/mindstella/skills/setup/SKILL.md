@@ -31,6 +31,6 @@ allowed-tools: Read, mcp__mindstella__init, mcp__mindstella__status, mcp__mindst
 
 | ツール | 使う引数 |
 | --- | --- |
-| `init` | `workspace`・`settings`（設定のオブジェクト。`summary`・`field`・`target_label`・`phases`・`targets`・`categories`・`goal`・`links`） |
+| `init` | `workspace`・`settings`（設定のオブジェクト。`summary`・`description`・`playbooks`・`target_label`・`phases`・`targets`・`categories`・`goal`・`links`。`description`・`goal`・`links` は任意） |
 | `migrate` | `workspace`・`plan: true` |
 | `status` | `workspace` |

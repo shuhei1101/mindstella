@@ -26,8 +26,20 @@ class SchemaMismatchError(MindmapError):
     def __init__(self, lines: list[str], *, legacy: bool = False) -> None:
         """合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` の行と、前の版の形式の問題があるかを持つ。"""
         super().__init__("スキーマに合いません", lines)
-        # 問題に前の版の形式（資料の `done`・題名の無い設定）のものがあるか
+        # 問題に前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）のものがあるか
         self.legacy = legacy
+
+
+class UnmappedPhaseError(MindmapError):
+    """新しい `phases` に対応の無いフェーズを持つ項目か `goal.phase` が残る。`lines` に残るものごとの `{ID か goal}: {フェーズ}` を持つ。"""
+
+    def __init__(self, unmapped: list[tuple[str, str]]) -> None:
+        """残るもの（ID か `goal`、フェーズ）を持ち、その並びを `lines` の行にする。"""
+        super().__init__(
+            "新しいフェーズに対応の無いフェーズが残ります",
+            [f"{owner}: {phase}" for owner, phase in unmapped],
+        )
+        self.unmapped = unmapped
 
 
 class ItemNotFoundError(MindmapError):
