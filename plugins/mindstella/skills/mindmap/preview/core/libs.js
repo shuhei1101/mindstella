@@ -75,7 +75,14 @@ var MindmapPreview;
         renderer.heading = (token) => withLine(base.heading(token), lineOf(token));
         renderer.paragraph = (token) => withLine(base.paragraph(token), lineOf(token));
         // mermaid の図は印を付けない（図の中の選択を本文の外として扱う）
-        renderer.code = (token) => (token.lang === "mermaid" ? base.code(token) : withLine(base.code(token), lineOf(token)));
+        // フェンスで囲んだコードは、中身がフェンスの次の行から始まる
+        renderer.code = (token) => {
+            if (token.lang === "mermaid")
+                return base.code(token);
+            const line = lineOf(token);
+            const fence = token.codeBlockStyle === "indented" ? 0 : 1;
+            return withLine(base.code(token), line === undefined ? undefined : line + fence);
+        };
         // 段落を持つ項目は中の段落が印を持つので、段落を持たない項目だけ li に付ける
         renderer.listitem = (item) => (item.loose ? base.listitem(item) : withLine(base.listitem(item), lineOf(item)));
         // 表は行ごとに 1 行。見出しの行の次に区切りの行がある

@@ -95,12 +95,22 @@ SELECT_JS = """
 }
 """
 
+# 要素の中身を全て選び、selectionLines の結果を返す
+SELECT_ALL_JS = """
+(root) => {
+  const range = document.createRange();
+  range.selectNodeContents(document.querySelector(root));
+  const result = MindmapPreview.selectionLines(range);
+  return result === null ? null : [result.start, result.end];
+}
+"""
+
 # 本文の行の印を持つべき要素のうち、印を持たないものの数（図の入れ物と原文は除く）
 UNMARKED_JS = """
 (root) => [...document.querySelectorAll(
   root + " .md p, " + root + " .md h4, " + root + " .md h5, " + root + " .md h6, "
   + root + " .md tr, " + root + " .md pre:not(.dg-raw), " + root + " .md ol > li"
-)].filter(e => !e.hasAttribute("data-line-start")).map(e => e.tagName + ":" + e.textContent.slice(0, 10))
+)].filter(e => !e.closest(".diagram") && !e.hasAttribute("data-line-start")).map(e => e.tagName + ":" + e.textContent.slice(0, 10))
 """
 
 # 印を足した描き方と、今の描き方の HTML を比べる（印の属性を除く）
@@ -123,9 +133,13 @@ TIMING_JS = """
   };
   const lines = source.split("\\n").length;
   const big = Array(Math.ceil(1000 / lines)).fill(source).join("\\n");
+  const heap = () => performance.memory.usedJSHeapSize / 1024 / 1024;
+  const heapStart = heap();
   const before = median(() => DOMPurify.sanitize(marked.parse(big, { async: false })));
+  const heapBefore = heap();
   const after = median(() => DOMPurify.sanitize(MindmapPreview.renderWithLines(big)));
-  return { lines: big.split("\\n").length, before, after, increase: after - before };
+  const heapAfter = heap();
+  return { lines: big.split("\\n").length, before, after, increase: after - before, heapStart, heapBefore, heapAfter };
 }
 """
 
@@ -235,20 +249,20 @@ def test_doc_lines(
 
 
 @pytest.mark.parametrize(
-    ("root", "text"),
+    "root",
     [
-        pytest.param(f"{PANEL} .d-title", "D-1の題", id="title"),
-        pytest.param(f"{PANEL} .d-sec", "D-2", id="related_items"),
-        pytest.param(f"{PANEL} .dg-raw", "flowchart", id="diagram_raw"),
-        pytest.param(f"{PANEL} .mermaid svg", "A", id="diagram_svg"),
+        pytest.param(f"{PANEL} .d-title", id="title"),
+        pytest.param(f"{PANEL} button.idlink", id="related_items"),
+        pytest.param(f"{PANEL} .dg-raw", id="diagram_raw"),
+        pytest.param(f"{PANEL} .mermaid svg", id="diagram_svg"),
     ],
 )
-def test_outside_body(body_url: str, open_preview: OpenPreview, root: str, text: str) -> None:
+def test_outside_body(body_url: str, open_preview: OpenPreview, root: str) -> None:
     """本文の外の選択では行の範囲を返さない（異常系）。"""
     # 準備
     page = _open_panel(open_preview, body_url, "#tab=decisions&view=table&id=D-1")
     # 実行
-    result = page.evaluate(SELECT_JS, [root, text, 0, text, 0])
+    result = page.evaluate(SELECT_ALL_JS, root)
     # 検証
     assert result is None
 
