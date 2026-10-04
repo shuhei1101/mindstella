@@ -306,3 +306,5 @@ functions:
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`submissions.yaml` が呼ぶ前と同じ'
         exception: 置き換えで OSError
+test_files:
+  - tests/unit/scripts/test_submissions.py

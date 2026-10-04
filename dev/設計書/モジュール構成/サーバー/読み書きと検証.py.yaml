@@ -1099,3 +1099,6 @@ functions:
         condition: '`tmp_path / "ws"`（無い）'
         mock: なし
         expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'
+test_files:
+  - tests/unit/scripts/test_kinds.py
+  - tests/unit/scripts/test_store.py

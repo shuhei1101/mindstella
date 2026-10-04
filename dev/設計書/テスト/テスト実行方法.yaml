@@ -5,10 +5,10 @@ layers:
       ```bash
       pytest tests/unit
       ```
-    description: pytest で、スクリプトの関数を `tests/unit/scripts/` から直接呼んで確かめる。`conftest.py` が `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足すので、各モジュールを `import store` のように同じ名前で読む。ファイルの読み書きは `tmp_path` の一時フォルダで行い、利用者の環境は触らない。
+    description: pytest で、サーバーの関数を `tests/unit/scripts/` から直接呼んで確かめる。`conftest.py` が `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足すので、各モジュールを `import store` のように同じ名前で読む。ファイルの読み書きは `tmp_path` の一時フォルダで行い、利用者の環境は触れない。MCP のツールは SDK の `MCPServer` を同じプロセスの中で呼び、配信は `127.0.0.1` の空きポートで本物の待ち受けを立てて止める。
     prerequisites:
       - Python 3.12 以上と pytest
-      - PyYAML 5.1 以上と jsonschema 4.18.0 以上が、テストを動かす Python に入っている
+      - PyYAML 5.1 以上・jsonschema 4.18.0 以上・mcp 2.3.0 以上が、テストを動かす Python に入っている
       - 実行はリポジトリの直下で行う
       - 開発側の点検（`tests/unit/scripts/test_migration_coverage.py`）は `v*` のタグを読む。タグを取っていない clone では `git fetch --tags` を先に流す（タグが 1 つも無ければ skip する）
       - git の写しのテスト（`tests/unit/scripts/test_backup.py`）は git を使う。テストの中で一時フォルダに `git init` し、作者の名前とメールはそのリポジトリの設定に置く

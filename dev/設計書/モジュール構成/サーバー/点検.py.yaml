@@ -191,3 +191,5 @@ functions:
         condition: '`submissions.yaml` が無いワークスペース'
         mock: なし
         expected: 空の並び
+test_files:
+  - tests/unit/scripts/test_checker.py

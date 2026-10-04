@@ -897,3 +897,9 @@ functions:
         condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
         mock: '`EventSourceCtor`'
         expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
+test_files:
+  - tests/unit/preview/test_records.py
+  - tests/unit/preview/test_libs.py
+  - tests/unit/preview/test_router.py
+  - tests/unit/preview/test_dom.py
+  - tests/unit/preview/test_api.py

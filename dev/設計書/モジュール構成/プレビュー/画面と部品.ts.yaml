@@ -611,3 +611,10 @@ functions:
         condition: '`parametrize`: `2026-10-04T02:23:00+00:00` / `2026-10-04T16:05:00+00:00`'
         mock: なし
         expected: '`10/04 11:23` / `10/05 01:05`'
+test_files:
+  - tests/unit/preview/test_table.py
+  - tests/unit/preview/test_tasks.py
+  - tests/unit/preview/test_docs.py
+  - tests/unit/preview/test_decisions.py
+  - tests/unit/preview/test_graph.py
+  - tests/unit/preview/test_send_form.py

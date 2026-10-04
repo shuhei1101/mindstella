@@ -581,3 +581,5 @@ functions:
         condition: '`parametrize`: `text/plain` / `Origin: https://attacker.example` / 本文 `[1]` / `body` が空白 / `target` が `D-99` / `add` が `WriteFailedError` を送る'
         mock: '`add`（最後の場合だけ）'
         expected: 415 / 403 / 400 / 400 / 404 / 500。`submissions.yaml` が無い
+test_files:
+  - tests/unit/scripts/test_serve.py

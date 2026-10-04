@@ -570,3 +570,6 @@ diagrams:
         起動スクリプト --> 依存の確認 : システムの python3 で起動
         起動スクリプト --> 起動の手助け : 仮想環境の Python で起動
       ```
+test_files:
+  - tests/unit/scripts/test_check_env.py
+  - tests/unit/scripts/test_launch.py

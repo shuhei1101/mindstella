@@ -243,3 +243,5 @@ functions:
         condition: "`parametrize`: `案 A` を残す / `案 A` を残した後に `''` を残す / `setItem` が例外を送る保存領域"
         mock: 保存領域（引数で渡す）
         expected: "`loadDraft` で `案 A` / キーが無く `''` / 例外を送らない"
+test_files:
+  - tests/unit/preview/test_app.py

@@ -753,3 +753,5 @@ function_types:
     returns:
       type: bytes
       description: 本文
+test_files:
+  - tests/unit/scripts/test_builder.py
