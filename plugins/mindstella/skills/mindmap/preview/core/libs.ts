@@ -32,6 +32,113 @@ namespace MindmapPreview {
     });
   }
 
+  // ─── 本文の行の印 ───
+
+  /** 本文のブロックの要素が持つ、元の Markdown の先頭の行（1 始まり）の属性 */
+  export const LINE_ATTR = "data-line-start";
+
+  /** marked の token に、元の Markdown の先頭の行（0 始まり）を持たせた形 */
+  type LinedToken = { raw: string; type: string; tokens?: LinedToken[]; items?: LinedToken[]; line?: number };
+
+  /** 改行の数を返す */
+  function countNewlines(text: string): number {
+    return text.split("\n").length - 1;
+  }
+
+  /** token の並びに、先頭の行から raw の改行を足し進めた行を持たせる（リストの項目・引用の中も同じ） */
+  function assignLines({ tokens, start }: { tokens: LinedToken[]; start: number }): void {
+    let line = start;
+    for (const token of tokens) {
+      token.line = line;
+      if (token.type === "list" && token.items) {
+        assignLines({ tokens: token.items, start: line });
+      } else if ((token.type === "list_item" || token.type === "blockquote") && token.tokens) {
+        // 項目の中の token は字下げを外した raw を持つが、改行の数は元と同じ
+        assignLines({ tokens: token.tokens, start: line });
+      }
+      line += countNewlines(token.raw);
+    }
+  }
+
+  /** token が持つ行を返す */
+  function lineOf(token: object): number | undefined {
+    return (token as LinedToken).line;
+  }
+
+  /** 描いた HTML の最初の開きタグに、行の印を足す */
+  function withLine(html: string, line: number | undefined): string {
+    if (line === undefined) return html;
+    return html.replace(/^<(\w+)/, `<$1 ${LINE_ATTR}="${line + 1}"`);
+  }
+
+  /** 本文の Markdown を、空行を持たないブロックごとに行の印を付けて HTML に描く */
+  export function renderWithLines(source: string): string {
+    const tokens = marked.lexer(source);
+    assignLines({ tokens: tokens as unknown as LinedToken[], start: 0 });
+    const renderer = new marked.Renderer();
+    const base = {
+      heading: renderer.heading.bind(renderer),
+      paragraph: renderer.paragraph.bind(renderer),
+      code: renderer.code.bind(renderer),
+      listitem: renderer.listitem.bind(renderer),
+      table: renderer.table.bind(renderer),
+    };
+    renderer.heading = (token) => withLine(base.heading(token), lineOf(token));
+    renderer.paragraph = (token) => withLine(base.paragraph(token), lineOf(token));
+    // mermaid の図は印を付けない（図の中の選択を本文の外として扱う）
+    renderer.code = (token) => (token.lang === "mermaid" ? base.code(token) : withLine(base.code(token), lineOf(token)));
+    // 段落を持つ項目は中の段落が印を持つので、段落を持たない項目だけ li に付ける
+    renderer.listitem = (item) => (item.loose ? base.listitem(item) : withLine(base.listitem(item), lineOf(item)));
+    // 表は行ごとに 1 行。見出しの行の次に区切りの行がある
+    renderer.table = (token) => {
+      const start = lineOf(token);
+      if (start === undefined) return base.table(token);
+      let row = 0;
+      return base.table(token).replace(/<tr>/g, () => {
+        const line = row === 0 ? start : start + 1 + row;
+        row += 1;
+        return `<tr ${LINE_ATTR}="${line + 1}">`;
+      });
+    };
+    return marked.parser(tokens, { renderer });
+  }
+
+  /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */
+  function linesBefore({ block, node, offset }: { block: Element; node: Node; offset: number }): number {
+    // 表の行は 1 行で、セルの間の空白の改行は数えない
+    if (block.tagName === "TR") return 0;
+    const range = document.createRange();
+    range.setStart(block, 0);
+    range.setEnd(node, offset);
+    const fragment = range.cloneContents();
+    return countNewlines(fragment.textContent ?? "") + fragment.querySelectorAll("br").length;
+  }
+
+  /** 選択の端から、本文の中で印を持つ最も近いブロックを返す（本文の外なら null） */
+  function lineBlock(node: Node): Element | null {
+    const element = node instanceof Element ? node : node.parentElement;
+    const block = element?.closest(`[${LINE_ATTR}]`) ?? null;
+    return block?.closest(".md") ? block : null;
+  }
+
+  /** 選んだ範囲の、元の Markdown の行の範囲（1 始まり）と選んだ文 */
+  export type SelectedLines = { start: number; end: number; text: string };
+
+  /** 選んだ範囲を元の Markdown の行の範囲へ対応づける。本文の外か空の選択なら null */
+  export function selectionLines(range: Range): SelectedLines | null {
+    if (range.collapsed) return null;
+    const startBlock = lineBlock(range.startContainer);
+    const endBlock = lineBlock(range.endContainer);
+    if (!startBlock || !endBlock) return null;
+    const first = Number(startBlock.getAttribute(LINE_ATTR));
+    const last = Number(endBlock.getAttribute(LINE_ATTR));
+    return {
+      start: first + linesBefore({ block: startBlock, node: range.startContainer, offset: range.startOffset }),
+      end: last + linesBefore({ block: endBlock, node: range.endContainer, offset: range.endOffset }),
+      text: range.toString(),
+    };
+  }
+
   /** 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える */
   export function renderMarkdown(source: string): HTMLElement {
     const root = h({ tag: "div", attrs: { class: "md" } });
@@ -48,7 +155,7 @@ namespace MindmapPreview {
       return root;
     }
     // 描いた HTML は無害化してから差し込む（記録は利用者のもの）
-    root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false }));
+    root.innerHTML = DOMPurify.sanitize(renderWithLines(source));
     // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える
     for (const code of root.querySelectorAll("code.language-mermaid")) {
       const original = code.textContent ?? "";

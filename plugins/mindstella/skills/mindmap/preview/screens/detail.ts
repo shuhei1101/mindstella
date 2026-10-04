@@ -371,6 +371,8 @@ namespace MindmapPreview {
         tag: `h${lowered}` as "h4" | "h5" | "h6",
         attrs: {
           "data-md-level": level,
+          // 元の Markdown の行の印を引き継ぐ
+          [LINE_ATTR]: heading.getAttribute(LINE_ATTR),
           // h6 を超える段は、読み上げの段で伝える
           "aria-level": level + BODY_HEADING_OFFSET > LOWEST_HEADING_LEVEL ? level + BODY_HEADING_OFFSET : null,
         },
