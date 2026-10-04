@@ -227,5 +227,5 @@ constraints:
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
 refs:
   - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/回答・意見を送る#
+  - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
 test_file: tests/integration/server/test_submit.py
