@@ -154,9 +154,14 @@ body:not(.panel-open) .send.send-left { display: none; }
 /* 狭い幅（720px 以下）: 見出しと行の余白を詰め、箇所の名前と選んだ文を縦に積む */
 @media (max-width: 720px) {
   .cm-head h1 { font-size: 26px; }
-  .cm-row { padding: 10px; gap: 4px 8px; }
+  .cm-row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
+  /* 直す・削除を右上に重ね、中身を行の幅いっぱいに使う */
+  .cm-tools { position: absolute; top: 10px; right: 10px; }
+  .cm-target { max-width: calc(100% - 2 * var(--control-h) - 8px); }
+  .cm-row.cm-removed { grid-template-columns: minmax(0, 1fr) auto; }
   .cm-loc, .send-quote { flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
   .cm-loc q, .send-quote q { flex-basis: 100%; order: 3; }
+  .send-quote .sq-x { margin-left: auto; }
 }
 
 /* ===== 一覧から開いた箇所の印 ===== */

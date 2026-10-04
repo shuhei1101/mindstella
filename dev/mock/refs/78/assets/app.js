@@ -1176,9 +1176,11 @@
     const busy = listResult?.kind === "sending";
     const msg = listResult || (live.length && !checked.length ? { kind: "none" } : null);
     const all = live.length ? `<label class="cm-all" title="すべて選ぶ"><input type="checkbox" data-act="cmall" aria-label="すべて選ぶ" ${checked.length === live.length ? "checked" : ""}></label>` : "";
-    const bar = live.length || listResult ? `<div class="cm-bar">${all}<span class="cm-sel">${checked.length} / ${live.length} 件を選択</span><span class="spacer"></span>
-        <p class="cm-msg${msg ? " " + msg.kind : ""}" id="cm-msg" role="status">${msg ? LIST_MSG[msg.kind](msg) : ""}</p>
-        <button class="btn primary" type="button" data-act="cmsend" aria-describedby="cm-msg" ${checked.length && !busy ? "" : "disabled"}>${icon("send")}まとめて送る（${checked.length} 件）</button></div>` : "";
+    const msgHtml = `<p class="cm-msg${msg ? " " + msg.kind : ""}" id="cm-msg" role="status">${msg ? LIST_MSG[msg.kind](msg) : ""}</p>`;
+    // 送り終えて 0 件になったら、送るボタンを外して結果だけを残す
+    const bar = live.length ? `<div class="cm-bar">${all}<span class="cm-sel">${checked.length} / ${live.length} 件を選択</span><span class="spacer"></span>${msgHtml}
+        <button class="btn primary" type="button" data-act="cmsend" aria-describedby="cm-msg" ${checked.length && !busy ? "" : "disabled"}>${icon("send")}まとめて送る（${checked.length} 件）</button></div>`
+      : listResult ? `<div class="cm-bar">${msgHtml}</div>` : "";
     const list = rows.length ? `<ol class="cm-list">${rows.map(rowHtml).join("")}</ol>` : `<div class="cm-empty">${icon("comment")}<p>${w().state}のコメントはありません。</p></div>`;
     const head = inDrawer
       ? `<div class="panel-head cdrawer-head"><h2 class="cm-h">${w().state}のコメント<span class="count">${live.length}</span></h2><span class="spacer"></span><button class="icon-btn" type="button" data-act="drawer" aria-label="コメントの一覧を閉じる">${icon("x")}</button></div>`
@@ -1300,13 +1302,19 @@
     return `<button class="sp-btn" type="button" data-act="selcomment"${text === SHAPE_LABEL ? "" : ` aria-label="${SHAPE_LABEL}"`} title="${SHAPE_LABEL}">${icon("comment")}${text ? `<span>${text}</span>` : ""}</button>`;
   };
   const SEL_GAP = 8, SEL_MARGIN = 8;
+  // 入口を置く塊: 選んだ範囲の終わりを含む、本文と値の段落・項目・表など
+  const SEL_BLOCKS = "p, li, dd, h1, h2, h3, h4, h5, h6, blockquote, table, pre, .o-head, .d-answer";
   // 選んだ範囲の終わりの下に置き、下に収まらないときは始まりの上に置く
   const placeSelPop = (range) => {
     const rects = [...range.getClientRects()].filter((x) => x.width || x.height);
     if (!rects.length) return;
+    // 本文を送って選んだ範囲が本文の見えている範囲の外に出たら、入口を閉じる
+    const view = (state.full ? fullDlg : document.getElementById("panel")).querySelector(".panel-body").getBoundingClientRect();
+    if (rects[rects.length - 1].top > view.bottom || rects[0].bottom < view.top) { if (selPop.dataset.mode === "entry") hideSelPop(); return; }
     const first = rects[0], last = rects[rects.length - 1];
     const w0 = selPop.offsetWidth, h0 = selPop.offsetHeight;
-    const below = last.bottom + SEL_GAP + h0 + SEL_MARGIN <= innerHeight;
+    // 下端の入力やパネルの外に重ねないよう、本文の見えている範囲の下端で比べる
+    const below = last.bottom + SEL_GAP + h0 + SEL_MARGIN <= Math.min(innerHeight, view.bottom);
     const anchor = below ? last : first;
     const x = Math.max(SEL_MARGIN, Math.min(anchor.right - w0 / 2, innerWidth - w0 - SEL_MARGIN));
     selPop.style.left = x + "px";
@@ -1325,9 +1333,12 @@
     const info = locOfSelection();
     if (!info) { hideSelPop(); return; }
     selInfo = { target: state.panel, loc: info.loc, range: info.range.cloneRange() };
-    // Tab で届くよう、開いている詳細の中（本文の次）に置く
-    const host = state.full ? fullDlg : document.getElementById("panel");
-    if (selPop.parentElement !== host) { if (selPop.matches(":popover-open")) selPop.hidePopover(); host.querySelector(".panel-body").after(selPop); }
+    // Tab で選んだ範囲の次に届くよう、選んだ範囲の終わりを含む塊の直後に置く
+    const end = hostOf(info.range.endContainer), block = end.closest(SEL_BLOCKS) || end.closest("[data-key]");
+    if (block.nextElementSibling !== selPop) {
+      if (selPop.matches(":popover-open")) selPop.hidePopover();
+      block.after(selPop);
+    }
     selPop.dataset.shape = state.opt.shape;
     selPop.dataset.mode = "entry";
     selPop.innerHTML = entryHtml();
@@ -1783,6 +1794,8 @@
   });
   // 入口を押しても選択が外れないようにする
   selPop.addEventListener("pointerdown", (e) => { if (selPop.dataset.mode === "entry") e.preventDefault(); });
+  // 本文を送ったら、入口を選んだ範囲に付いて動かす
+  document.addEventListener("scroll", (e) => { if (selInfo && e.target.classList?.contains("panel-body")) placeSelPop(selInfo.range); }, true);
   // その場の入力は、外側を押したら閉じる（書きかけはサーバーに残る）
   document.addEventListener("pointerdown", (e) => { if (selPop.dataset.mode === "form" && !e.target.closest("#selpop")) hideSelPop(); });
   addEventListener("resize", applyPins);
