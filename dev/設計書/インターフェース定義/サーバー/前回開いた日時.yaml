@@ -93,6 +93,10 @@ constraints:
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
   - item: 本文の形
     constraint: '`application/json; charset=utf-8`。`Cache-Control: no-store`'
+  - item: 版の管理
+    constraint: 開くたびに書き換わるため、ワークスペースを git などで管理するときは版の管理から外す（リファレンス『ワークスペースの書式』で `.gitignore` に入れるよう案内する）。サーバーは `.gitignore` を書かない
+  - item: 共有の範囲
+    constraint: ワークスペースごとに 1 つ。同じワークスペースを開いた全てのブラウザで共有し、Claude Code を立て直しても残る
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
   - dev/設計書/ER図/ワークスペース#

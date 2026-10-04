@@ -1,4 +1,4 @@
-title: ""
+title: "書き換えのまとまり"
 entry:
   kind: mcp_tool
   value: '`commit`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__commit`）。結果とエラーの返し方は『MCP サーバーの起動』'
