@@ -1546,13 +1546,14 @@
       // 今いる履歴にも先の項目を持たせ、戻った後に「→」で進めるようにする
       history.replaceState({ trail, pos: nav.pos }, "", location.hash);
       history.pushState({ trail, pos: trail.length - 1 }, "", hashOf());
-    } else if (narrow || state.tab === "comments") history.pushState({ trail: [id], pos: 0 }, "", hashOf());  // 狭い幅とコメントの一覧からは、戻る操作で元の画面へ戻れるよう積む
+    } else if (narrow || state.tab === "comments") history.pushState({ trail: [id], pos: 0, pushed: true }, "", hashOf());  // 狭い幅とコメントの一覧からは、戻る操作で元の画面へ戻れるよう積む
     else history.replaceState({ trail: [id], pos: 0 }, "", hashOf());
     render();
     document.querySelector(`tr[data-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
   };
   const closePanel = () => {
-    if (matchMedia("(max-width: 900px)").matches && history.length > 1 && state.panel) { history.back(); return; }
+    // 詳細を別画面として積んだときだけ戻る操作で閉じ、開いた直後の画面（積んでいない）はその場で閉じる
+    if (matchMedia("(max-width: 900px)").matches && history.state?.pushed && state.panel) { history.back(); return; }
     state.panel = null; render();
   };
 
