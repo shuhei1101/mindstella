@@ -154,6 +154,10 @@ data_models:
         type: BodyWrite | None
         default: None
         description: 一緒に書く本文
+      - name: changes
+        type: Changes | None
+        default: None
+        description: 一緒に書く `changes.yaml` の新しい中身（モジュール構成『変更履歴』）。変えないときは `None`
 enums:
   - name: Kind
     title: 種類
@@ -677,8 +681,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: 1 種類の項目の並びと本文を、検証してから両方とも書き換えるか、どちらも書き換えない
-    side_effects: 種類の YAML と `docs/{ID}.md` を置き換える
+    summary: 1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
+    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換える
     args:
       - name: workspace
         type: Workspace
@@ -696,17 +700,18 @@ functions:
          - 項目の中の値だけが合わない問題はここでは止めない（変更で直せるため。残っていれば 2. で止まる）
       2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
-      3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）
+      3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → YAML の順に `os.replace` で置き換える
+      4. 本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
          - 本文の置き換えで `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
          - YAML の置き換えで `OSError` が起きた場合、本文を控えに戻し（控えが `None` なら本文を消し）、残った一時ファイルを消して `WriteFailedError` を送る
+         - `changes.yaml` の置き換えで `OSError` が起きた場合、YAML を控えに戻し、本文も YAML のときと同じく戻し、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または変更を当てた後のワークスペースに問題がある
         message: スキーマに合いません（`lines` に問題ごとの行）
       - name: WriteFailedError
-        condition: 一時ファイルの書き込みか本文の置き換えで `OSError` が起きた（一時ファイルを消した後）
+        condition: 一時ファイルの書き込みか、本文・YAML・`changes.yaml` の置き換えで `OSError` が起きた（置き換えたものを戻し、一時ファイルを消した後）
         message: '書き込めませんでした: {パス}（{理由}）'
       - name: WriteFailedError
         condition: YAML の置き換えで `OSError` が起きた（本文を戻した後）
@@ -759,6 +764,13 @@ functions:
         condition: '`status: 完了` の D-1 を持つ `decisions.yaml` を読み、`status: 未決定` に直した並びの変更を渡す'
         mock: なし
         expected: 例外にならず、`decisions.yaml` を読むと D-1 の `status` が `未決定`
+      - name: test_save_change_when_changes_replace_fails
+        case: 異常
+        summary: まとまりの置き換えに失敗したら項目と本文を戻す
+        condition: D-1 の本文を書き換え、`changes` を渡す変更。`os.replace` を、置き換え先が `changes.yaml` のときだけ `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`（メッセージに `changes.yaml`）。`decisions.yaml`・`docs/D-1.md`・`changes.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        exception: changes.yaml の置き換えで OSError
   - name: create_workspace
     title: ワークスペースの作成
     kind: 関数

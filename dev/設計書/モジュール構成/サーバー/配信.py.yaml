@@ -166,13 +166,15 @@ classes:
       - name: do_POST
         title: POST の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/submissions` を受け付けの関数へ渡す'
+        summary: '`Host` を確かめ、`/api/submissions` を受け付けの関数へ、`/api/opened` を前回開いた日時の関数へ渡す'
         returns:
           type: None
           description: '-'
         process: |-
           1. `Host` が合わなければ 403 を返す
-          2. パスが `/api/submissions` でなければ 404 を返す
+          2. パスで分ける
+             - `/api/opened` の場合、本文を読まずに前回開いた日時を返す（`opened_response`）
+             - `/api/submissions` でなければ 404 を返す
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
           4. 本文を読み、受け付ける（`submission_response`）
       - name: log_message
@@ -450,7 +452,7 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`docs/` の直下の `*.md` を名前の順に並べる
+      1. `mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md` を名前の順に並べる（`.mindstella-opened` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
@@ -459,6 +461,12 @@ functions:
         condition: '作成済みのワークスペース。`parametrize`: `decisions.yaml` を書き換える / `docs/D-1.md` を足す / `submissions.yaml` を足す / `.mindstella.lock` を足す'
         mock: なし
         expected: 前の 3 つは印が変わり、`.mindstella.lock` だけは変わらない
+      - name: test_workspace_signature_with_changes
+        case: 正常
+        summary: まとまりは見て、前回開いた日時は見ない
+        condition: '`parametrize`: `changes.yaml` を足す / `.mindstella-opened` を足す'
+        mock: なし
+        expected: '`changes.yaml` では印が変わり、`.mindstella-opened` では変わらない'
   - name: stream_events
     title: 書き換えの知らせ
     kind: 関数
@@ -581,5 +589,45 @@ functions:
         condition: '`parametrize`: `text/plain` / `Origin: https://attacker.example` / 本文 `[1]` / `body` が空白 / `target` が `D-99` / `add` が `WriteFailedError` を送る'
         mock: '`add`（最後の場合だけ）'
         expected: 415 / 403 / 400 / 400 / 404 / 500。`submissions.yaml` が無い
+  - name: opened_response
+    title: 前回開いた日時の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 前回開いた日時を返し、今の日時に書き換える（インターフェース定義『前回開いた日時』）
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配っているワークスペース
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: Response
+      description: 200 と `{previous, opened}`、書けなければ 500 の problem+json
+    process: |-
+      1. 前回開いた日時を書き換える（`touch_opened`。記録のロックは取らない）
+         - `WriteFailedError` の場合、500 を返す（`problem_response`、`detail` に理由）
+      2. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{previous, opened}` を返す
+    unit_tests:
+      - name: test_opened_response
+        case: 正常
+        summary: 2 回目は 1 回目の日時を返す
+        condition: '`.mindstella-opened` を持たないワークスペースで 2 回呼ぶ。`now` は 1 回目と 2 回目で違う日時'
+        mock: '`now`'
+        expected: 1 回目の `previous` が `null`、2 回目の `previous` が 1 回目の `opened`
+      - name: test_opened_response_when_write_fails
+        case: 異常
+        summary: 書けなければ 500
+        condition: '`touch_opened` を `WriteFailedError` を送る関数に差し替える'
+        mock: '`touch_opened`（`serve` モジュールの参照を monkeypatch）'
+        expected: ステータスが 500、`Content-Type` が `application/problem+json`
+        exception: 書き込めない
 test_files:
   - tests/unit/scripts/test_serve.py

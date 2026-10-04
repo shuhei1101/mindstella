@@ -6,6 +6,8 @@ directory: |-
     components/
       view-switch.ts      表示形式の切り替え（部品設計『表示形式の切り替え』）
       topbar.ts           トップバー（部品設計『トップバー』）
+      diff-mark.ts        差分の印（部品設計『差分の印』）
+      history-dialog.ts   変更履歴（部品設計『変更履歴』）
       table.ts            表と、並べ替え・絞り込みの計算（部品設計『表』）
       send-form.ts        回答・意見の送信（部品設計『回答・意見の送信』）
     screens/
@@ -54,7 +56,7 @@ components:
         required: true
         description: 題名
       - name: tabs
-        type: '{key, label, icon, count?}[]'
+        type: '''{key, label, icon, count?, marked?}[]'''
         required: true
         description: タブ
       - name: current
@@ -87,6 +89,21 @@ components:
         required: false
         default: 'null'
         description: 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える（`formatJst`）
+      - name: diffPoint
+        type: '{name, sub} | null'
+        required: false
+        default: 'null'
+        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ねる
+      - name: onHistory
+        type: () => void
+        required: false
+        default: なし（「変更履歴」を出さない）
+        description: 変更履歴を開く
+      - name: onDiffOff
+        type: () => void
+        required: false
+        default: なし
+        description: 札の × で差分の表示をやめる
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -130,6 +147,11 @@ components:
         type: '{sort, filter, pin, columns, reset, open}'
         required: true
         description: 部品設計のイベントごとのコールバック
+      - name: marks
+        type: Record<string, 'new' | 'changed'>
+        required: false
+        default: '{}'
+        description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
   - name: overviewScreen
     title: 概要
     container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
@@ -261,6 +283,11 @@ components:
         type: SendFormProps | null
         required: true
         description: 下端に置く回答・意見の送信の引数。配る書き出しでは `null`（置かない）
+      - name: diff
+        type: DiffPoint | null
+        required: false
+        default: 'null'
+        description: 選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagram`）・Raw の差分と、組み立てられない旨を描く。本文の差分を打ち切ったら「本文の差分を出せない旨」、図を打ち切ったらその図だけ枠に色を付ける
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -291,6 +318,11 @@ components:
         type: '{close}'
         required: true
         description: 閉じる
+      - name: diff
+        type: '{beforeSource: string} | null'
+        required: false
+        default: 'null'
+        description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分を出す
   - name: graphScreen
     title: つながり
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
@@ -375,6 +407,45 @@ components:
         condition: '`parametrize`: `idle` で Ctrl+Enter / `sending` で Ctrl+Enter'
         mock: '`onSend`'
         expected: '`onSend` が入力欄の中身で 1 回 / 呼ばれない'
+  - name: diffMark
+    title: 差分の印
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『差分の印』の引数を受け、新規（+）か変更（●）の印を返す。表・ボード・カード・マップ・概要のタイル・詳細パネルが使う
+    props:
+      - name: kind
+        type: "'new' | 'changed'"
+        required: true
+        description: 新規か変更か
+      - name: labeled
+        type: boolean
+        required: false
+        default: 'false'
+        description: 文言つきの札にするか
+  - name: historyDialog
+    title: 変更履歴
+    container: plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『変更履歴』の引数を受け、`dialog` を `showModal()` で開く。行を押すと選んだ `sel` を知らせて閉じる。閉じたら「変更履歴」のボタンにフォーカスを戻す。並べる時点は入口が記録の `changes` と「前回開いてから」の始まりから作る（画面設計『変更履歴』の時点の一覧）
+    props:
+      - name: points
+        type: '{sel, name, sub, count?}[]'
+        required: true
+        description: 並べる時点
+      - name: current
+        type: string
+        required: true
+        description: 今選んでいる時点の `sel`（差分を出さないときは空文字列）
+      - name: onPick
+        type: '(sel: string) => void'
+        required: true
+        description: 時点を選ぶ（空文字列は差分の表示をやめる）
+      - name: onClose
+        type: () => void
+        required: true
+        description: 閉じる
 functions:
   - name: filterRows
     title: 行の絞り込み

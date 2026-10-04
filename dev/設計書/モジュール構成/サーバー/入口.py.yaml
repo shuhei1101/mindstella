@@ -62,7 +62,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "update_settings", "adopt", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+    value: ("init", "add", "update", "update_settings", "adopt", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -261,10 +261,11 @@ functions:
       type: dict[str, Any]
       description: '`{id, file, body}`'
     process: |-
-      1. ワークスペースを読み、渡せないキーを確かめる（`load_workspace`、`validate_input_keys`）
+      1. ワークスペースとまとまりを読み、渡せないキーを確かめる（`load_workspace`、`load_changes`、`validate_input_keys`）
       2. ID を振り、`id` を先頭に、`created`・`updated` を末尾に置いた項目を作る（`next_id`）
          - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを作る
-      3. 末尾に足した並びを書き込む（変更の書き込み。`save_change`）
+      3. まだまとめていない変更の `added` に ID を足す（`note_pending`）
+      4. 末尾に足した並びとまとまりを書き込む（変更の書き込み。`save_change`。`Change.changes` に新しい記録）
     unit_tests:
       - name: test_run_add
         case: 正常
@@ -311,11 +312,13 @@ functions:
       type: dict[str, Any]
       description: '`{id, file, changed}`'
     process: |-
-      1. ワークスペースを読み、項目を引く（`load_workspace`、`find_item`）
+      1. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
       2. 渡せないキーを確かめる（`validate_input_keys`）
       3. 変更を当てはめ、`updated` を今の日時にする（`merge_changes`）
          - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（`changed` に `body` を含めるのは値が変わったときだけ）
-      4. その位置を差し替えた並びを書き込む（`save_change`）
+      4. 書き換える前の本文を読み（`read_body`。無ければ `None`）、変更履歴の 1 回分を作って積む（`make_entry`、`history_limit`、`stack_history`。`seq` は `last_seq` + 1、`at` は `updated`）
+         - 積んだ場合（`make_entry` が `None` でなく、保持する回数が 0 より大きい）、まだまとめていない変更の `changed` に ID を足す（`note_pending`、`stacked=True`）
+      5. その位置を差し替えた並びと、まとまりが変わったときは新しい記録を書き込む（`save_change`）
     unit_tests:
       - name: test_run_update
         case: 正常
@@ -323,6 +326,12 @@ functions:
         condition: 'D-1（`created`・`updated` が `2026-10-01T00:00:00+00:00`）に `{"answer": "a", "weight": null}`。`now` は `2026-10-02T08:00:00+00:00`'
         mock: '`now`'
         expected: '`changed` が `[answer, weight]`、D-1 の `updated` が `now` の値で `created` はそのまま'
+      - name: test_run_update_stacks_history
+        case: 正常
+        summary: 変わったキーを変更履歴に積み、まだまとめていない変更に足す
+        condition: '`commit` 済みの D-1（`status: 未決定`）に `{"status": "決定済み"}`。保持する回数は既定'
+        mock: '`now`'
+        expected: 'D-1 の `history[0].before` が `{status: 未決定}`、`changes.yaml` の `pending.changed` が `[D-1]` で `last_seq` が `history[0].seq`'
   - name: run_adopt
     title: adopt の処理
     kind: 関数
@@ -356,10 +365,11 @@ functions:
       type: dict[str, Any]
       description: '`{id, adopted, previous}`'
     process: |-
-      1. ワークスペースを読み、項目を引く（`load_workspace`、`find_item`）
+      1. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
          - 種類が `decision` でない場合、`ItemNotFoundError` を送る
       2. 採用を切り替え、`updated` を今の日時にする（`switch_adopted`）
-      3. 差し替えた並びを書き込む（`save_change`）
+      3. 変更履歴を `run_update` の 4. と同じく積む（本文は変えないので `before_body` と `after_body` は同じ）
+      4. 差し替えた並びと、まとまりが変わったときは新しい記録を書き込む（`save_change`）
     exceptions:
       - name: ItemNotFoundError
         condition: ID が検討事項でない
@@ -1104,6 +1114,89 @@ functions:
       type: dict[str, Any]
       description: '`{changed, remapped, files}`'
     process: 1. `update_settings` を呼び、その結果を返す（単体テストは `update_settings` が持つ）
+  - name: run_commit
+    title: commit の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: まだまとめていない変更を説明つきのまとまりにして書き込む
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: summary
+        type: str
+        required: true
+        passing: positional
+        description: '`summary`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, at, summary, added, changed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed` が空）'
+    process: |-
+      1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送る
+      2. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る。まとまりを読む（`load_changes`）
+      3. まとめる（`commit_pending`）
+         - まとまりが `None` の場合、何も書かずに空の結果を返す
+      4. 新しい記録を `changes.yaml` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを消して `WriteFailedError`）
+    exceptions:
+      - name: ArgumentError
+        condition: '`summary` が空白だけか 200 文字を超える'
+        message: '引数の誤り: summary: {理由}'
+      - name: WorkspaceNotFoundError
+        condition: '`mindmap.yaml` が無い'
+        message: 'ワークスペースがありません: {パス}'
+      - name: WriteFailedError
+        condition: '`changes.yaml` を書けない'
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_run_commit
+        case: 正常
+        summary: まだまとめていない変更をまとめる
+        condition: D-1 を足した直後。`summary` 「  足す 」
+        mock: '`now`'
+        expected: '`id` が `C-1`・`summary` が「足す」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
+      - name: test_run_commit_when_summary_blank
+        case: 異常
+        summary: 空白だけの説明は引数の誤り
+        condition: '`summary` 「   」'
+        mock: なし
+        expected: '`ArgumentError`（引数の名前 `summary`）'
+        exception: 空白だけ
+  - name: run_pending
+    title: pending の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: まだまとめていない変更を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{added: [{id, title}], changed: [{id, title, keys}]}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 並べる（`pending_view`）
+    unit_tests:
+      - name: test_run_pending_when_empty
+        case: 正常
+        summary: まとまりのファイルが無ければ空
+        condition: 作成だけ済ませたワークスペース
+        mock: なし
+        expected: '`added`・`changed` が空で、`changes.yaml` が作られていない'
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

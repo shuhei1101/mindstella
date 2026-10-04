@@ -134,6 +134,8 @@ constants:
         value: ELK
       - key: mermaid
         value: mermaid
+      - key: jsdiff
+        value: Diff
   - name: API_PATHS
     title: 配信のパス
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -146,6 +148,8 @@ constants:
         value: '"api/events"'
       - key: submissions
         value: '"api/submissions"'
+      - key: opened
+        value: '"api/opened"'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -897,6 +901,28 @@ functions:
         condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
         mock: '`EventSourceCtor`'
         expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
+  - name: postOpened
+    title: 前回開いた日時を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: '`POST /api/opened` を呼び、前回開いた日時を返す'
+    args: []
+    returns:
+      type: Promise<string | null>
+      description: '`previous`。届かない・200 でない・読めないときも `null`'
+    process: |-
+      1. `fetch(API_PATHS.opened, {method: "POST"})` を呼ぶ
+      2. 200 なら JSON の `previous` を返し、それ以外と例外は `null` を返す
+    unit_tests:
+      - name: test_post_opened
+        case: 正常
+        summary: 前回の日時を返し、失敗は null
+        condition: '`parametrize`: 200 で `{previous: "2026-10-04T13:05:00+00:00"}` / 500 / 届かない'
+        mock: '`page.route`'
+        expected: '`2026-10-04T13:05:00+00:00` / `null` / `null`'
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
