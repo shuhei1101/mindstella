@@ -1,11 +1,13 @@
-// サーバーの配信とのやり取り。記録の取得・回答・意見の送信・書き換えの知らせの購読。
+// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・書き換えの知らせの購読。
 
 namespace MindmapPreview {
   /** 配信のパス（画面が開いた URL からの相対パス） */
   export const API_PATHS = {
     records: "api/records",
     events: "api/events",
-    submissions: "api/submissions",
+    comments: "api/comments",
+    send: "api/comments/send",
+    drafts: "api/drafts",
   } as const;
 
   /** 記録の取得の結果。読めなかったときは、届かなかったか、サーバーが 422 を返したかを分ける */
@@ -13,8 +15,39 @@ namespace MindmapPreview {
     | { ok: true; data: MindmapData }
     | { ok: false; reason: "unreachable" | "invalid"; detail: string | null };
 
-  /** 送信の結果。届かなかったときの `detail` は null */
-  export type SendResult = { ok: true; id: string; sent: string } | { ok: false; detail: string | null };
+  /** コメント・書きかけの API を呼んだ結果。届かなかったとき `status`・`detail` は null */
+  export type ApiResult<T> =
+    | { ok: true; data: T | null }
+    | { ok: false; status: number | null; detail: string | null; stale: { id: string; reason: string }[] };
+
+  /** コメント・書きかけが持つ箇所（本文の行の範囲か、項目の値のキーと、選んだ文） */
+  export type Location = {
+    kind: "body" | "value";
+    /** `body` のときの始めの行（1 始まり） */
+    start?: number;
+    /** `body` のときの終わりの行 */
+    end?: number;
+    /** `value` のときの項目のキーのパス */
+    key?: string;
+    /** 選んだ文 */
+    text: string;
+  };
+
+  /** 『レビュー中のコメントの読み取り』の本文 */
+  export type ReviewState = {
+    items: {
+      id: string;
+      target: string | null;
+      target_title: string | null;
+      loc: Location | null;
+      body: string;
+      created: string;
+    }[];
+    drafts: { target: string | null; loc: Location | null; body: string }[];
+  };
+
+  /** HTTP のメソッド */
+  type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
   /** 要求を送る関数（テストでは偽の関数を渡す） */
   export type FetchFn = typeof fetch;
@@ -45,28 +78,74 @@ namespace MindmapPreview {
     return { ok: true, data: (await response.json()) as MindmapData };
   }
 
-  /** 項目の ID と本文を送る。届かないときと、断られたときを分ける */
-  export async function postSubmission(
-    target: string,
-    body: string,
+  /** コメント・書きかけの API を 1 回呼ぶ。届かないときと、断られたときを分ける */
+  export async function callApi<T = unknown>(
+    method: Method,
+    path: string,
+    body: object | null = null,
     fetchFn: FetchFn = window.fetch.bind(window),
-  ): Promise<SendResult> {
+  ): Promise<ApiResult<T>> {
     let response: Response;
     try {
-      response = await fetchFn(API_PATHS.submissions, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target, body }),
-      });
+      response = await fetchFn(
+        path,
+        body === null
+          ? { method, cache: "no-store" }
+          : { method, cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      );
     } catch {
-      return { ok: false, detail: null };
+      return { ok: false, status: null, detail: null, stale: [] };
     }
-    if (response.status === 201) {
-      const accepted = (await response.json()) as { id: string; sent: string };
-      return { ok: true, id: accepted.id, sent: accepted.sent };
+    if (response.ok) {
+      // 204 は本文を持たない
+      return { ok: true, data: response.status === 204 ? null : ((await response.json()) as T) };
     }
     // 断られた: 理由が読めなければ、ステータスの文言を使う
-    return { ok: false, detail: (await detailOf(response)) ?? (response.statusText || String(response.status)) };
+    let stale: { id: string; reason: string }[] = [];
+    let detail: string | null = null;
+    try {
+      const problem = (await response.json()) as { detail?: unknown; stale?: { id: string; reason: string }[] };
+      detail = typeof problem.detail === "string" ? problem.detail : null;
+      stale = Array.isArray(problem.stale) ? problem.stale : [];
+    } catch {
+      // 本文が JSON でない
+    }
+    return {
+      ok: false,
+      status: response.status,
+      detail: detail ?? (response.statusText || String(response.status)),
+      stale,
+    };
+  }
+
+  /** コメント・書きかけの 6 つの呼び出しを束ねて返す */
+  export function commentApi(fetchFn: FetchFn = window.fetch.bind(window)) {
+    return {
+      read: () => callApi<ReviewState>("GET", API_PATHS.comments, null, fetchFn),
+      add: (input: object) => callApi<{ id: string; created: string; count: number }>("POST", API_PATHS.comments, input, fetchFn),
+      update: (id: string, patch: object) =>
+        callApi<{ id: string; body: string; loc: Location | null }>(
+          "PATCH",
+          `${API_PATHS.comments}/${encodeURIComponent(id)}`,
+          patch,
+          fetchFn,
+        ),
+      remove: (id: string) =>
+        callApi<ReviewState["items"][number] & { count: number }>(
+          "DELETE",
+          `${API_PATHS.comments}/${encodeURIComponent(id)}`,
+          null,
+          fetchFn,
+        ),
+      saveDraft: (draft: object) => callApi<null>("PUT", API_PATHS.drafts, draft, fetchFn),
+      send: (ids: string[]) =>
+        callApi<{ sent: string; items: { comment: string; submission: string }[] }>(
+          "POST",
+          API_PATHS.send,
+          { ids },
+          fetchFn,
+        ),
+    };
   }
 
   /** 書き換えの知らせにつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる。返す関数でつながりを閉じる */
