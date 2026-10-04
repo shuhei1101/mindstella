@@ -307,5 +307,5 @@ functions:
         condition: 'フェーズ 問い・発散。`settings` `{"goal": {"phase": "結論", "summary": "まとめる", "deliverables": []}}`、`phase_map` は `None`'
         mock: なし
         expected: '`UnmappedPhaseError`（`lines` に `goal: 結論`）。ワークスペースの全てのファイルが呼ぶ前と同じ'
-notes:
-  対応テストファイル: '`tests/unit/scripts/test_settings_update.py`。単体テスト作成でファイルを作ったときに `test_files` へ移す'
+test_files:
+  - tests/unit/scripts/test_settings_update.py

@@ -77,6 +77,12 @@ functions:
         condition: '`phases` 目的・要件、`goal.phase` `実装`、D-1 `要件`・`未決定`'
         mock: なし
         expected: '`phases` が `[目的, 要件]`、`remaining_decisions` に D-1'
+      - name: test_judge_goal_when_no_goal
+        case: 正常
+        summary: ゴールが無ければ判定せず、全フェーズの決着していない検討事項を返す
+        condition: '`phases` 目的・要件でゴールを持たず、D-1 `目的`・`決定済み`／D-2 `要件`・`未決定`'
+        mock: なし
+        expected: '`has_goal` 偽、`reached` と `goal_phase` が `None`、`phases` が `[目的, 要件]`、`remaining_decisions` が D-2 だけ、`remaining_deliverables` が空'
   - name: run_goal
     title: goal の処理
     kind: 関数
@@ -106,9 +112,6 @@ functions:
         condition: 未決定の D-1 だけを持つワークスペース
         mock: なし
         expected: '`reached` が偽で、`goal_phase`・`phases`・`remaining_decisions`・`remaining_deliverables` のキーがある'
-notes:
-  対応テストファイル: '`judge_goal` は `tests/unit/scripts/test_graph.py`、`run_goal` は `tests/unit/scripts/test_commands.py` に置く（単体テスト作成で置き、`test_files` に書く）'
-  この PR で足す単体テスト: '`test_judge_goal_when_no_goal`（`judge_goal`、正常）: `phases` 目的・要件でゴールを持たず、D-1 `目的`・`決定済み`／D-2 `要件`・`未決定` → `has_goal` 偽、`reached` と `goal_phase` が `None`、`phases` が `[目的, 要件]`、`remaining_decisions` が D-2 だけ、`remaining_deliverables` が空。単体テスト作成でテスト関数を作ったときに `judge_goal` の `unit_tests` へ移し、この節を消す'
 test_files:
   - tests/unit/scripts/test_graph.py
   - tests/unit/scripts/test_commands.py

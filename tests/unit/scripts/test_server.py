@@ -23,6 +23,7 @@ EXPECTED_TOOL_NAMES = (
     "init",
     "add",
     "update",
+    "update_settings",
     "adopt",
     "status",
     "next",
@@ -140,7 +141,7 @@ def test_main_when_server_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_build_server(tmp_path: Path) -> None:
-    """18 個のツールを workspace つきで登録する（正常系）。"""
+    """19 個のツールを workspace つきで登録する（正常系）。"""
     # 準備
     previews = serve.PreviewRegistry(threading.Lock())
     mcp_server = server.build_server(previews=previews, write_lock=threading.Lock(), cwd=tmp_path)

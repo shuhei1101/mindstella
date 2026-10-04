@@ -127,6 +127,12 @@ functions:
         condition: 'D-1 `related: [T-1, G-1]`（どちらもある）'
         mock: なし
         expected: 空の並び
+      - name: test_check_refs_when_no_goal
+        case: 正常
+        summary: ゴールを持たない設定は納品物の参照を見ない
+        condition: '`goal` を持たない設定と D-1 `depends_on: [D-9]`'
+        mock: なし
+        expected: '`broken_ref`（D-1・`depends_on`・`detail` に `D-9`）の 1 件だけ'
   - name: _check_bodies
     title: 本文のずれの点検
     kind: 関数
@@ -211,7 +217,18 @@ functions:
     process: |-
       1. 設定が `goal` を持ち、`goal.phase` が `phases` に無い場合、`unknown_phase`（`file: mindmap.yaml`・`id: None`・`key: goal.phase`）にする
       2. 種類の順（`KINDS`）に項目を見て、`phase` を持ち `phases` に無い項目を `unknown_phase`（その種類の YAML・`key: items[n].phase`）にする
+    unit_tests:
+      - name: test_check_phases
+        case: 正常
+        summary: 設定の phases に無い項目の phase と goal.phase を拾う
+        condition: '`phases` 目的・要件、`goal.phase` 結論。D-1（発散）・D-2（要件）・T-1（`phase` 無し）'
+        mock: なし
+        expected: '`unknown_phase`（`mindmap.yaml`・`goal.phase`・`detail` が `結論`）と `unknown_phase`（`decisions.yaml`・D-1・`items[0].phase`・`detail` が `発散`）の 2 件'
+      - name: test_check_phases_when_no_goal
+        case: 正常
+        summary: ゴールを持たない設定は goal.phase を見ない
+        condition: '`phases` 目的・要件で `goal` を持たない設定と D-1（目的）'
+        mock: なし
+        expected: 空の並び
 test_files:
   - tests/unit/scripts/test_checker.py
-notes:
-  この PR で足す単体テスト: '`test_check_phases`（`_check_phases`、正常）: `phases` 目的・要件、`goal.phase` 結論。D-1（発散）・D-2（要件）・T-1（`phase` 無し）→ `unknown_phase`（`mindmap.yaml`・`goal.phase`・`detail` が `結論`）と `unknown_phase`（`decisions.yaml`・D-1・`items[0].phase`・`detail` が `発散`）の 2 件。`test_check_phases_when_no_goal`（`_check_phases`、正常）: `phases` 目的・要件で `goal` を持たない設定と D-1（目的）→ 空の並び。`test_check_refs_when_no_goal`（`_check_refs`、正常）: `goal` を持たない設定と D-1 `depends_on: [D-9]` → `broken_ref`（D-1・`depends_on`・`detail` に `D-9`）の 1 件だけ。単体テスト作成でテスト関数を作ったときに各関数の `unit_tests` へ移し、この節を消す'
