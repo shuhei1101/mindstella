@@ -1,0 +1,33 @@
+# 単体テスト（バック）: この PR で足した Red のテストを除く、既存のテストの実行（commit 8c0d789）
+# 除いたもの: 新しい test_settings_update.py・test_field_to_playbooks.py と、足した・直したテスト（-k で外した 7 件）
+$ python3 -m pytest tests/unit/scripts -p no:cacheprovider --ignore=tests/unit/scripts/test_settings_update.py --ignore=tests/unit/scripts/test_field_to_playbooks.py -k "not test_derive_preview_values_when_no_goal and not test_check_phases and not test_judge_goal_when_no_goal and not test_load_steps_when_v0_5_0 and not (test_build_server and not when_relative_workspace) and not settings_with_field"
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-workspace-change-settings-midway
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 352 items / 7 deselected / 345 selected
+
+tests/unit/scripts/test_backup.py ......                                 [  1%]
+tests/unit/scripts/test_builder.py ..................................... [ 12%]
+...                                                                      [ 13%]
+tests/unit/scripts/test_check_env.py ........................            [ 20%]
+tests/unit/scripts/test_checker.py ...........                           [ 23%]
+tests/unit/scripts/test_commands.py .................................... [ 33%]
+....                                                                     [ 35%]
+tests/unit/scripts/test_graph.py ................                        [ 39%]
+tests/unit/scripts/test_kinds.py ......                                  [ 41%]
+tests/unit/scripts/test_launch.py .........                              [ 44%]
+tests/unit/scripts/test_migration_coverage.py ..                         [ 44%]
+tests/unit/scripts/test_migration_ops.py ................                [ 49%]
+tests/unit/scripts/test_migrator.py ................                     [ 53%]
+tests/unit/scripts/test_query.py ....................                    [ 59%]
+tests/unit/scripts/test_serve.py .................................       [ 69%]
+tests/unit/scripts/test_server.py .............                          [ 73%]
+tests/unit/scripts/test_store.py ....................................... [ 84%]
+....................                                                     [ 90%]
+tests/unit/scripts/test_submissions.py ...................               [ 95%]
+tests/unit/scripts/test_versions.py ...............                      [100%]
+
+====================== 345 passed, 7 deselected in 16.86s ======================
