@@ -155,83 +155,38 @@ def test_save_prefs(
 
 
 @pytest.mark.parametrize(
-    ("mode", "expected"),
+    ("first", "second", "expected_same"),
     [
-        pytest.param("stored", "案 A", id="stored"),
-        pytest.param("empty", "", id="nothing_stored"),
-        pytest.param("throws", "", id="getitem_throws"),
+        pytest.param(["D-1", None], ["D-1", None], True, id="same_target"),
+        pytest.param(
+            ["D-1", None],
+            ["D-1", {"kind": "body", "start": 2, "end": 2, "text": "文"}],
+            False,
+            id="location_differs",
+        ),
+        pytest.param(
+            ["D-1", {"kind": "body", "start": 2, "end": 2, "text": "文"}],
+            ["D-1", {"text": "文", "end": 2, "start": 2, "kind": "body"}],
+            True,
+            id="key_order_differs",
+        ),
+        pytest.param([None, None], ["D-1", None], False, id="no_target"),
     ],
 )
-def test_load_draft(
+def test_form_key(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    mode: str,
-    expected: str,
+    first: list[Any],
+    second: list[Any],
+    expected_same: bool,
 ) -> None:
-    """残した書きかけを戻し、読めなければ空（正常系）。"""
+    """同じ向けた先は同じキー、箇所が違えば別のキー（正常系）。"""
     # 準備
     load_preview_scripts(include_app=True)
     # 実行
-    draft = preview_page.evaluate(
-        """(mode) => {
-            const values = new Map();
-            if (mode === "stored") values.set("mindmap-draft:D-1", "案 A");
-            const storage = {
-                getItem: (key) => {
-                    if (mode === "throws") throw new Error("保存領域が使えません");
-                    return values.get(key) ?? null;
-                },
-            };
-            return MindmapPreview.loadDraft(storage, "D-1");
-        }""",
-        mode,
+    same = preview_page.evaluate(
+        "([a, b]) => MindmapPreview.formKey(...a) === MindmapPreview.formKey(...b)",
+        [first, second],
     )
     # 検証
-    assert draft == expected
-
-
-@pytest.mark.parametrize(
-    ("mode", "expected_loaded", "expected_has_key"),
-    [
-        pytest.param("save", "案 A", True, id="saved"),
-        pytest.param("clear", "", False, id="cleared_by_empty"),
-        pytest.param("throws", None, None, id="setitem_throws"),
-    ],
-)
-def test_save_draft(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    mode: str,
-    expected_loaded: str | None,
-    expected_has_key: bool | None,
-) -> None:
-    """残した書きかけを読め、空なら消す。保存領域が例外を送っても例外を送らない（正常系）。"""
-    # 準備
-    load_preview_scripts(include_app=True)
-    # 実行（saveDraft が例外を送ると evaluate が失敗する）
-    result = preview_page.evaluate(
-        """(mode) => {
-            const values = new Map();
-            const storage = {
-                getItem: (key) => values.get(key) ?? null,
-                setItem: (key, value) => {
-                    if (mode === "throws") throw new Error("保存領域が使えません");
-                    values.set(key, value);
-                },
-                removeItem: (key) => {
-                    values.delete(key);
-                },
-            };
-            MindmapPreview.saveDraft(storage, "D-1", "案 A");
-            if (mode === "clear") MindmapPreview.saveDraft(storage, "D-1", "");
-            return {
-                loaded: MindmapPreview.loadDraft(storage, "D-1"),
-                hasKey: values.has("mindmap-draft:D-1"),
-            };
-        }""",
-        mode,
-    )
-    # 検証
-    # 例外を送る保存領域では、読み戻した値は確かめない（例外を送らないことだけを確かめる）
-    assert expected_loaded is None or result["loaded"] == expected_loaded
-    assert expected_has_key is None or result["hasKey"] is expected_has_key
+    assert same is expected_same

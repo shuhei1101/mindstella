@@ -635,3 +635,5 @@ functions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
         message: '書き込めませんでした: {パス}（{理由}）'
+test_files:
+  - tests/unit/scripts/test_comments.py

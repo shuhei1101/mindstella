@@ -1,4 +1,4 @@
-"""serve.py（プレビューの配信の台帳・待ち受け・応答・書き換えの知らせ・送信の受け付け）の単体テスト。"""
+"""serve.py（プレビューの配信の台帳・待ち受け・応答・書き換えの知らせ・コメントの受け付け）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -16,9 +16,19 @@ import yaml
 
 import builder
 import serve
-from errors import SchemaMismatchError, ServeFailedError, WorkspaceNotFoundError, WriteFailedError
+from errors import (
+    CommentConflictError,
+    CommentInvalidError,
+    CommentNotFoundError,
+    ItemNotFoundError,
+    MindmapError,
+    SchemaMismatchError,
+    ServeFailedError,
+    WorkspaceNotFoundError,
+    WriteFailedError,
+)
 from export_helpers import write_preview_dir
-from fixture_types import MakeItem, MakeWorkspace
+from fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
 SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
@@ -245,6 +255,8 @@ def test_records_response_when_workspace_removed(tmp_path: Path) -> None:
         pytest.param("decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
         pytest.param("docs/D-1.md", "本文\n", True, id="add_body"),
         pytest.param("submissions.yaml", "items: []\n", True, id="add_submissions"),
+        pytest.param("comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
+        pytest.param("drafts.yaml", "items: []\n", False, id="add_drafts"),
         pytest.param(".mindstella.lock", "", False, id="add_lock_file"),
     ],
 )
@@ -346,83 +358,198 @@ def _post_body(**fields: Any) -> bytes:
     return json.dumps(fields, ensure_ascii=False).encode("utf-8")
 
 
-def test_submission_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """送信を足して 201（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行
-    response = serve.submission_response(
-        _context(root),
-        content_type="application/json",
-        origin=None,
-        body=_post_body(target="D-1", body="案 A にする"),
-    )
-    # 検証
-    assert response.status == 201
-    assert json.loads(response.body)["id"] == "S-1"
-    saved = yaml.safe_load((root / "submissions.yaml").read_text(encoding="utf-8"))["items"]
-    assert [item["id"] for item in saved] == ["S-1"]
-
-
-def _failing_add(*args: Any, **kwargs: Any) -> Any:
-    """書き込めないことにして WriteFailedError を送る、送信を足す代わりの関数。"""
-    raise WriteFailedError("書き込めませんでした: submissions.yaml（権限がありません）")
+# レビュー中のコメントと書きかけの YAML（comments_response の入力）
+COMMENTS_TEXT = (
+    "seq: 1\nitems:\n  - id: C-1\n    target: D-1\n    body: 案 A にする\n"
+    "    created: 2026-10-01T00:00:00+00:00\n"
+)
+DRAFTS_TEXT = (
+    "items:\n  - target: D-1\n    body: 案 B も見たい\n    updated: 2026-10-01T00:00:00+00:00\n"
+)
 
 
 @pytest.mark.parametrize(
-    ("content_type", "origin", "body", "add", "expected_status"),
+    ("raw_files", "expected_titles", "expected_draft_count"),
     [
         pytest.param(
-            "text/plain", None, _post_body(target="D-1", body="本文"), None, 415, id="content_type"
+            {"comments.yaml": COMMENTS_TEXT, "drafts.yaml": DRAFTS_TEXT},
+            ["問い"],
+            1,
+            id="comments_and_drafts",
         ),
-        pytest.param(
-            "application/json",
-            "https://attacker.example",
-            _post_body(target="D-1", body="本文"),
-            None,
-            403,
-            id="origin",
-        ),
-        pytest.param("application/json", None, b"[1]", None, 400, id="not_object"),
-        pytest.param(
-            "application/json", None, _post_body(target="D-1", body="  "), None, 400, id="blank"
-        ),
-        pytest.param(
-            "application/json",
-            None,
-            _post_body(target="D-99", body="本文"),
-            None,
-            404,
-            id="target_missing",
-        ),
-        pytest.param(
-            "application/json",
-            None,
-            _post_body(target="D-1", body="本文"),
-            _failing_add,
-            500,
-            id="write_fails",
-        ),
+        pytest.param({}, [], 0, id="no_files"),
     ],
 )
-def test_submission_response_when_rejected(
+def test_comments_response(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    content_type: str,
-    origin: str | None,
-    body: bytes,
-    add: Callable[..., Any] | None,
-    expected_status: int,
+    raw_files: dict[str, str],
+    expected_titles: list[str],
+    expected_draft_count: int,
 ) -> None:
-    """形・送り元・中身の誤りは書かずに問題の応答（正常系）。"""
+    """レビュー中と書きかけを返す。無ければ空（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"))
-    extra: dict[str, Any] = {} if add is None else {"add": add}
+    root = make_workspace(make_item("D-1", title="問い"), raw_files=raw_files)
     # 実行
-    response = serve.submission_response(
-        _context(root), content_type=content_type, origin=origin, body=body, **extra
+    response = serve.comments_response(root)
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/json; charset=utf-8"
+    payload = json.loads(response.body)
+    assert [item["target_title"] for item in payload["items"]] == expected_titles
+    assert len(payload["drafts"]) == expected_draft_count
+
+
+def test_comments_response_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """崩れたファイルは 422（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"comments.yaml": "items: [\n"})
+    # 実行
+    response = serve.comments_response(root)
+    # 検証
+    assert response.status == 422
+
+
+@pytest.mark.parametrize(
+    ("status", "handled", "expected_body"),
+    [
+        pytest.param(201, {"ok": True}, b'{"ok": true}', id="created"),
+        pytest.param(204, None, b"", id="no_content"),
+    ],
+)
+def test_write_response(
+    tmp_path: Path, status: int, handled: dict[str, Any] | None, expected_body: bytes
+) -> None:
+    """処理の結果を指定のステータスで返す（正常系）。"""
+    # 準備
+    calls: list[tuple[Path, dict[str, Any]]] = []
+
+    def _handle(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
+        """呼ばれた引数を控えて、決めた結果を返す。"""
+        calls.append((root, data))
+        return handled
+
+    # 実行
+    response = serve.write_response(
+        _context(tmp_path),
+        content_type="application/json",
+        origin=None,
+        body=_post_body(a=1),
+        handle=_handle,
+        status=status,
+    )
+    # 検証
+    assert response.status == status
+    assert response.body == expected_body
+    assert calls == [(tmp_path, {"a": 1})]
+
+
+@pytest.mark.parametrize(
+    ("content_type", "origin", "body", "expected_status"),
+    [
+        pytest.param("text/plain", None, _post_body(a=1), 415, id="content_type"),
+        pytest.param(
+            "application/json", "https://attacker.example", _post_body(a=1), 403, id="origin"
+        ),
+        pytest.param("application/json", None, b"[1]", 400, id="not_object"),
+        pytest.param("application/json", None, b"{", 400, id="not_json"),
+    ],
+)
+def test_write_response_when_rejected(
+    tmp_path: Path, content_type: str, origin: str | None, body: bytes, expected_status: int
+) -> None:
+    """形・送り元の誤りは処理を呼ばずに問題の応答（正常系）。"""
+    # 準備
+    calls: list[tuple[Path, dict[str, Any]]] = []
+
+    def _handle(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
+        """呼ばれたら控える（呼ばれないはず）。"""
+        calls.append((root, data))
+        return None
+
+    # 実行
+    response = serve.write_response(
+        _context(tmp_path),
+        content_type=content_type,
+        origin=origin,
+        body=body,
+        handle=_handle,
+        status=201,
     )
     # 検証
     assert response.status == expected_status
     assert response.content_type == "application/problem+json; charset=utf-8"
-    assert not (root / "submissions.yaml").exists()
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("origin", "comment_id", "expected_status", "expected_remaining", "expected_deleted"),
+    [
+        pytest.param(None, "C-2", 200, ["C-1"], ("C-2", 1), id="deleted"),
+        pytest.param(
+            "https://attacker.example", "C-2", 403, ["C-1", "C-2"], (None, None), id="origin"
+        ),
+        pytest.param(None, "C-9", 404, ["C-1", "C-2"], (None, None), id="not_found"),
+    ],
+)
+def test_delete_response(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    origin: str | None,
+    comment_id: str,
+    expected_status: int,
+    expected_remaining: list[str],
+    expected_deleted: tuple[str | None, int | None],
+) -> None:
+    """消して中身を返し、送り元が違えば消さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, make_comment("C-1"), make_comment("C-2"))
+    # 実行
+    response = serve.delete_response(_context(root), origin=origin, comment_id=comment_id)
+    # 検証
+    assert response.status == expected_status
+    payload = json.loads(response.body)
+    assert (payload.get("id"), payload.get("count")) == expected_deleted
+    saved = yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert [item["id"] for item in saved] == expected_remaining
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status", "expected_stale"),
+    [
+        pytest.param(CommentInvalidError("body: 空です"), 400, None, id="invalid"),
+        pytest.param(ItemNotFoundError("項目がありません: D-99"), 404, None, id="item_not_found"),
+        pytest.param(
+            CommentNotFoundError("コメントがありません: C-9"), 404, None, id="comment_not_found"
+        ),
+        pytest.param(
+            CommentConflictError("箇所が合わないコメントがあります", stale=[("C-2", "理由")]),
+            409,
+            [{"id": "C-2", "reason": "理由"}],
+            id="conflict",
+        ),
+        pytest.param(
+            SchemaMismatchError(["comments.yaml: items[0]: body がありません"]),
+            422,
+            None,
+            id="schema_mismatch",
+        ),
+        pytest.param(
+            WriteFailedError("書き込めませんでした: comments.yaml"), 500, None, id="write"
+        ),
+    ],
+)
+def test_error_response(
+    error: MindmapError, expected_status: int, expected_stale: list[dict[str, str]] | None
+) -> None:
+    """種類ごとのステータスコード（正常系）。"""
+    # 実行
+    response = serve.error_response(error)
+    # 検証
+    payload = json.loads(response.body)
+    assert response.status == expected_status
+    assert error.args[0] in payload["detail"]
+    assert payload.get("stale") == expected_stale

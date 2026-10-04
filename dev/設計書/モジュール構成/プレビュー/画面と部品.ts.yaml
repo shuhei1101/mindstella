@@ -736,3 +736,5 @@ test_files:
   - tests/unit/preview/test_decisions.py
   - tests/unit/preview/test_graph.py
   - tests/unit/preview/test_send_form.py
+  - tests/unit/preview/test_selection_comment.py
+  - tests/unit/preview/test_comments_panel.py

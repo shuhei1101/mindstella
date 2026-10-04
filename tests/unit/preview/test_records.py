@@ -1,6 +1,8 @@
-"""core/records.ts（記録の索引・関係する項目・検索）の単体テスト。"""
+"""core/records.ts（記録の索引・関係する項目・検索・箇所の名前）の単体テスト。"""
 
 from __future__ import annotations
+
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page
@@ -107,3 +109,29 @@ def test_search_items(
     )
     # 検証
     assert found == expected_ids
+
+
+@pytest.mark.parametrize(
+    ("loc", "expected"),
+    [
+        pytest.param({"kind": "body", "start": 3, "end": 3}, "本文 3 行目", id="body_one_line"),
+        pytest.param({"kind": "body", "start": 2, "end": 4}, "本文 2〜4 行目", id="body_range"),
+        pytest.param(
+            {"kind": "value", "key": "options[C].cons"}, "案 C のデメリット", id="option_value"
+        ),
+        pytest.param({"kind": "value", "key": "unknown_key"}, "unknown_key", id="unknown_key"),
+    ],
+)
+def test_location_label(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    loc: dict[str, Any],
+    expected: str,
+) -> None:
+    """箇所の名前（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    label = preview_page.evaluate("(loc) => MindmapPreview.locationLabel(loc)", loc)
+    # 検証
+    assert label == expected

@@ -239,3 +239,5 @@ functions:
         condition: '`parametrize`: `1. 項目` / `| --- | --- |` / … ```` ```mermaid ```` / `![図](a.png)` / `[資料](https://x)` / `A &amp; B`'
         mock: なし
         expected: '`項目` / 空 / 空 / 空 / `資料` / `A&B`'
+test_files:
+  - tests/unit/scripts/test_locations.py
