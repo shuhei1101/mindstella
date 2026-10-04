@@ -280,7 +280,7 @@ def test_check_submissions_when_missing(make_workspace: MakeWorkspace, make_item
             {
                 "comments.yaml": (
                     "seq: 1\nitems:\n  - id: C-1\n    target: D-9\n    body: 本文\n"
-                    "    created: 2026-10-01T00:00:00+00:00\n"
+                    "    created: '2026-10-01T00:00:00+00:00'\n"
                 )
             },
             set(),

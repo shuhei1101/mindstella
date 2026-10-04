@@ -361,10 +361,10 @@ def _post_body(**fields: Any) -> bytes:
 # レビュー中のコメントと書きかけの YAML（comments_response の入力）
 COMMENTS_TEXT = (
     "seq: 1\nitems:\n  - id: C-1\n    target: D-1\n    body: 案 A にする\n"
-    "    created: 2026-10-01T00:00:00+00:00\n"
+    "    created: '2026-10-01T00:00:00+00:00'\n"
 )
 DRAFTS_TEXT = (
-    "items:\n  - target: D-1\n    body: 案 B も見たい\n    updated: 2026-10-01T00:00:00+00:00\n"
+    "items:\n  - target: D-1\n    body: 案 B も見たい\n    updated: '2026-10-01T00:00:00+00:00'\n"
 )
 
 
@@ -418,10 +418,15 @@ def test_comments_response_when_invalid(make_workspace: MakeWorkspace, make_item
     ],
 )
 def test_write_response(
-    tmp_path: Path, status: int, handled: dict[str, Any] | None, expected_body: bytes
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    status: int,
+    handled: dict[str, Any] | None,
+    expected_body: bytes,
 ) -> None:
     """処理の結果を指定のステータスで返す（正常系）。"""
     # 準備
+    root = make_workspace(make_item("D-1"))
     calls: list[tuple[Path, dict[str, Any]]] = []
 
     def _handle(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
@@ -431,7 +436,7 @@ def test_write_response(
 
     # 実行
     response = serve.write_response(
-        _context(tmp_path),
+        _context(root),
         content_type="application/json",
         origin=None,
         body=_post_body(a=1),
@@ -441,7 +446,7 @@ def test_write_response(
     # 検証
     assert response.status == status
     assert response.body == expected_body
-    assert calls == [(tmp_path, {"a": 1})]
+    assert calls == [(root, {"a": 1})]
 
 
 @pytest.mark.parametrize(
