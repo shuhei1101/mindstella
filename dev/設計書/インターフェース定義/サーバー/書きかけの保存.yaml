@@ -1,0 +1,180 @@
+title: "書きかけの保存"
+entry:
+  kind: endpoint
+  value: PUT /api/drafts
+flows:
+  - name: 正常系
+    summary: 向けた先ごとに書きかけを保ち、同じ向けた先は上書きする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`drafts.yaml` を持たないワークスペース
+        notes: D-1 へ `案 B` を送った後、同じ D-1 へ `案 B も見たい` を送る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/drafts
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT {target: D-1, body: 案 B}
+        IF->>WS: drafts.yaml に足す
+        クライアント->>IF: PUT {target: D-1, body: 案 B も見たい}
+        IF->>WS: 同じ向けた先を上書きする
+        IF-->>クライアント: 204
+      ```
+    expected:
+      - どちらのステータスも 204
+      - '`drafts.yaml` に D-1 への書きかけが 1 件だけあり、本文が `案 B も見たい`'
+      - '`レビュー中のコメントの読み取り` の `drafts` に同じ本文がある'
+    test: test_normal
+  - name: 正常系（空で消す）
+    summary: 入力欄を空にしたら書きかけを消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、D-1 への書きかけを持つワークスペース
+        notes: '`{target: D-1, body: ""}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/drafts
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT {target: D-1, body: 空}
+        IF->>WS: drafts.yaml から消す
+        IF-->>クライアント: 204
+      ```
+    expected:
+      - ステータスが 204
+      - '`drafts.yaml` に D-1 への書きかけが無い'
+    test: test_normal_when_empty_body
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからは保たない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/drafts
+
+        クライアント->>IF: PUT（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`drafts.yaml` が無い'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（項目が無い・404）
+    summary: ワークスペースに無い ID への書きかけは保たない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 だけを持つワークスペース
+        notes: '`{target: D-99, body: x}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/drafts
+
+        クライアント->>IF: PUT {target: D-99}
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に `D-99` がある
+      - '`drafts.yaml` が無い'
+    test: test_error_when_target_not_found
+lead: コメントの入力欄の書きかけを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその書きかけを消す。パネルを閉じても・再読み込みしても・起動スクリプトで立ち上げ直しても、『レビュー中のコメントの読み取り』で戻せる。
+idempotent: true
+side_effects: '`drafts.yaml` のその向けた先の 1 件を書き換えるか消す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば `http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`
+  - name: target
+    type: str
+    required: false
+    default: なし（項目に紐づかないコメントの入力欄）
+    location: body
+    description: 入力欄が向ける項目の ID
+    constraints: 配信しているワークスペースにある項目の ID
+    example: D-1
+  - name: loc
+    type: dict
+    required: false
+    default: なし（箇所を添えていない入力欄）
+    location: body
+    description: 入力欄に添えた箇所。形は『レビュー中のコメントの追加』の `loc` と同じ
+    constraints: 渡すときは `target` も渡す。箇所が今の項目に合うかは確かめない
+  - name: body
+    type: str
+    required: true
+    location: body
+    description: 書きかけの本文。空文字ならその向けた先の書きかけを消す
+    constraints: 10000 文字以下
+    example: 案 B も見たい
+status_codes:
+  - code: '204'
+    condition: 保ったか、消した
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`body` が無いか 10000 文字を超える・`loc` だけで `target` が無い・リクエストの本文が 128KiB を超える
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が配信の URL と違う'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`target` の項目がワークスペースに無い'
+    notes: 何も書かない。消す（`body` が空）ときは項目が無くても 204 で消す
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: '`drafts.yaml` がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった'
+    notes: 何も書かない
+  - code: '500'
+    condition: '`drafts.yaml` を書けない'
+    notes: '`detail` に書けなかったパスと理由。`drafts.yaml` は前のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 呼ぶ間隔
+    constraint: 画面は入力が止まってから待って 1 回呼ぶ（待ちの長さはモジュール構成で決める）。パネルを閉じるときは待たずに呼ぶ
+  - item: 向けた先の同じさ
+    constraint: '`target` と `loc`（`kind`・`start`・`end`・`key`・`text` の全て）が同じものを同じ向けた先として上書きする'
+  - item: 本文の上限
+    constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+  - item: 送り元の確かめ
+    constraint: 『コメントをまとめて送る』と同じ
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#

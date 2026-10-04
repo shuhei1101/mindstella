@@ -12,6 +12,8 @@ er:
     - name: 会話ログ
     - name: 本文
     - name: 送信
+    - name: レビュー中のコメント
+    - name: 書きかけ
   relations:
     - from: 設定
       to: 検討事項
@@ -47,8 +49,20 @@ er:
       label: body
     - from: 送信
       to: 検討事項
-      cardinality: '}o--||'
-      label: target（どの種類の項目も指す）
+      cardinality: '}o--o|'
+      label: target（どの種類の項目も指す。無ければ項目に紐づかない）
+    - from: レビュー中のコメント
+      to: 検討事項
+      cardinality: '}o--o|'
+      label: target（送信と同じ）
+    - from: 書きかけ
+      to: 検討事項
+      cardinality: '}o--o|'
+      label: target（送信と同じ）
+    - from: レビュー中のコメント
+      to: 送信
+      cardinality: '||--o|'
+      label: まとめて送ると移る
 tables:
   - name: mindmap.yaml
     title: 設定
@@ -398,13 +412,13 @@ tables:
   - name: submissions.yaml
     title: 送信
     datastore: YAML
-    summary: プレビューの詳細パネルから送られた、項目ごとの回答・意見
+    summary: プレビューのコメントの一覧からまとめて送られた、項目・箇所へのコメントと項目に紐づかないコメント
     primary_key: id
     scale: ~1000
-    growth: 画面から送るたびに 1 件足す
+    growth: コメントの一覧からまとめて送るたびに、送った件数を足す
     deletion: 消さず、取り込んだら `taken` に日時を書く
     access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 件の送信。初めて送ったときにサーバーが作り、無ければ送信 0 件として扱う。書くのはサーバーの送信（`POST /api/submissions`）と `take_submission` だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない'
+    description: '`items:` の配列を持ち、1 要素 = 1 件の送信。初めて送ったときにサーバーが作り、無ければ送信 0 件として扱う。書くのはサーバーのまとめて送る（`POST /api/comments/send`）と `take_submission` だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。`target` と `loc` を持たない前の版の送信もそのまま読める（移し替えの手順は要らない）'
     columns:
       - name: id
         title: ID
@@ -417,14 +431,14 @@ tables:
       - name: target
         title: 向けた項目
         type: string
-        not_null: true
-        description: 回答・意見を向けた項目の ID（どの種類でもよい）。送ったときにワークスペースにあった項目
+        not_null: false
+        description: コメントを向けた項目の ID（どの種類でもよい）。送ったときにワークスペースにあった項目。項目に紐づかないコメントはキーを持たない
         example: D-22
       - name: body
         title: 本文
         type: string
         not_null: true
-        description: 回答・意見の本文。前後の空白を除いて 1〜10000 文字
+        description: コメントの本文。前後の空白を除いて 1〜10000 文字
         example: 案 A にする
       - name: sent
         title: 送った日時
@@ -438,6 +452,11 @@ tables:
         type: string
         not_null: false
         description: 取り込んだ日時（UTC のタイムゾーン付き ISO 8601）。取り込んでいなければ `null`
+      - name: loc
+        title: 箇所
+        type: object
+        not_null: false
+        description: 選んだ箇所。`kind`・`start`・`end`・`key`・`text` の形はレビュー中のコメント（`comments.yaml`）の `loc` と同じ。箇所を持たないコメントはキーを持たない。`target` を持つときだけ持つ
   - name: .mindstella.lock
     title: 書き換えのロック
     datastore: テキスト
@@ -445,9 +464,117 @@ tables:
     scale: 1 件
     deletion: 消さない
     access: '`fcntl.flock` の排他ロックだけを取り、中身は読み書きしない'
-    description: 書き換えるツールと送信の受け付けが初めてロックを取るときに作る。点検・書き換えの知らせ・移し替えの対象にしない
+    description: 書き換えるツールと、送信・レビュー中のコメント・書きかけの受け付けが初めてロックを取るときに作る。点検・書き換えの知らせ・移し替えの対象にしない
     columns:
       - name: (中身)
         title: 中身
         type: string
         description: 空。ロックの対象としてだけ使う
+  - name: comments.yaml
+    title: レビュー中のコメント
+    datastore: YAML
+    summary: プレビューで書いて溜め、まだ送っていないコメント
+    primary_key: id
+    scale: ~100
+    growth: 詳細パネル・詳細の全画面・コメントの一覧で溜めるたびに 1 件足す
+    deletion: 削除と、まとめて送ったときに物理削除する（送ったものは `submissions.yaml` へ移る）
+    access: 全件
+    description: 最上位に `seq`（最後に振った連番。振った番号を使い回さないために持つ）と `items:` の配列を持ち、1 要素 = 1 件のコメント。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのコメントの受け付け（`/api/comments`）だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。チェックの状態は画面だけが持ち、ここには書かない
+    columns:
+      - name: id
+        title: ID
+        type: string
+        not_null: true
+        primary_key: true
+        auto: 採番
+        description: '`C-` + 連番。連番は `seq` + 1。削除したコメントを元に戻すときだけ、同じ ID で戻す'
+        example: C-3
+      - name: target
+        title: 向けた項目
+        type: string
+        not_null: false
+        description: コメントを向けた項目の ID（どの種類でもよい）。項目に紐づかないコメントはキーを持たない
+        example: D-22
+      - name: loc
+        title: 箇所
+        type: object
+        not_null: false
+        description: 選んだ箇所。箇所を持たないコメントはキーを持たない。`target` を持つときだけ持つ
+      - name: loc.kind
+        title: 箇所の種類
+        type: string
+        not_null: true
+        description: '`body`（本文の文を選んだ）か `value`（項目の値を選んだ）'
+        example: body
+      - name: loc.start
+        title: 始めの行
+        type: number
+        not_null: false
+        description: '`body` のとき。本文の Markdown の行（1 始まり）'
+        example: '2'
+      - name: loc.end
+        title: 終わりの行
+        type: number
+        not_null: false
+        description: '`body` のとき。本文の Markdown の行（1 始まり）。`start` 以上'
+        example: '2'
+      - name: loc.key
+        title: 値のキー
+        type: string
+        not_null: false
+        description: '`value` のとき。項目のキーのパス。案の中は `options[{案の key}].{キー}`'
+        example: options[B].cons
+      - name: loc.text
+        title: 選んだ文
+        type: string
+        not_null: true
+        description: 画面で選んだ文（描いた文のまま）。前後の空白を除いて 1〜10000 文字
+        example: 言い換えたい文
+      - name: body
+        title: 本文
+        type: string
+        not_null: true
+        description: コメントの本文。前後の空白を除いて 1〜10000 文字
+        example: ここは言い換える
+      - name: created
+        title: 溜めた日時
+        type: string
+        not_null: true
+        auto: 作成日時
+        description: UTC のタイムゾーン付き ISO 8601。元に戻したときは元の日時
+        example: '2026-10-05T03:00:00+00:00'
+  - name: drafts.yaml
+    title: 書きかけ
+    datastore: YAML
+    summary: コメントの入力欄に書いて、まだ溜めていない本文
+    primary_key: (target, loc)
+    scale: ~100
+    growth: 入力欄に書くたびに、向けた先ごとに 1 件を書き換える
+    deletion: 溜めたとき・入力欄を空にしたときに物理削除する
+    access: 全件
+    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の書きかけ。向けた先（`target` と `loc` の組）ごとに 1 件。初めて書きかけを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの書きかけの保存（`PUT /api/drafts`）とコメントの追加だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない'
+    columns:
+      - name: target
+        title: 向けた項目
+        type: string
+        not_null: false
+        description: 入力欄が向ける項目の ID。項目に紐づかないコメントの入力欄はキーを持たない
+        example: D-22
+      - name: loc
+        title: 箇所
+        type: object
+        not_null: false
+        description: 入力欄に添えた箇所。形は `comments.yaml` の `loc` と同じ
+      - name: body
+        title: 本文
+        type: string
+        not_null: true
+        description: 書きかけの本文。1〜10000 文字（空白だけも保つ）
+        example: 案 B も見たい
+      - name: updated
+        title: 書いた日時
+        type: string
+        not_null: true
+        auto: 更新日時
+        description: UTC のタイムゾーン付き ISO 8601
+        example: '2026-10-05T03:00:00+00:00'
