@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, kind_of_id
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
@@ -33,6 +34,7 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_refs(workspace),
         *_check_bodies(workspace),
         *_check_submissions(workspace),
+        *_check_comments(workspace),
         *_check_phases(workspace),
     ]
     # ファイル名の順に並べる（sorted は安定なので、同じファイルの中は拾った順を保つ）
@@ -150,6 +152,27 @@ def _ref_error(ref: str, allowed: frozenset[str], existing: dict[str, set[Any]])
     return None
 
 
+def _check_comments(workspace: Workspace) -> list[Problem]:
+    """`comments.yaml`・`drafts.yaml` のスキーマ違反を `schema` にする（向けた項目は確かめない）。"""
+    problems: list[Problem] = []
+    for file, load in ((COMMENTS_FILE, load_comments), (DRAFTS_FILE, load_drafts)):
+        try:
+            load(workspace.root)
+        except SchemaMismatchError as error:
+            # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にする
+            problems.extend(
+                Problem(
+                    kind="schema",
+                    file=file,
+                    id=None,
+                    key=line.split(": ", 2)[1],
+                    detail=line.split(": ", 2)[2],
+                )
+                for line in error.lines
+            )
+    return problems
+
+
 def _check_phases(workspace: Workspace) -> list[Problem]:
     """項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする。"""
     settings = workspace.settings
@@ -212,6 +235,9 @@ def _check_submissions(workspace: Workspace) -> list[Problem]:
         ]
     problems: list[Problem] = []
     for submission in submissions:
+        # 項目に紐づかない送信は確かめるものが無い
+        if submission.target is None:
+            continue
         try:
             find_item(workspace, submission.target)
         except ItemNotFoundError:

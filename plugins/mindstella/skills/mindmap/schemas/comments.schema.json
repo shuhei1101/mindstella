@@ -1,13 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "送信",
-  "description": "submissions.yaml。プレビューのコメントの一覧からまとめて送られた、項目・箇所へのコメントと項目に紐づかないコメント。",
+  "title": "レビュー中のコメント",
+  "description": "comments.yaml。プレビューで書いて溜め、まだ送っていないコメント。",
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "seq",
     "items"
   ],
   "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
     "items": {
       "type": "array",
       "items": {
@@ -16,32 +21,16 @@
         "required": [
           "id",
           "body",
-          "sent",
-          "taken"
+          "created"
         ],
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^S-[0-9]+$"
+            "pattern": "^C-[0-9]+$"
           },
           "target": {
             "type": "string",
             "minLength": 1
-          },
-          "body": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 10000
-          },
-          "sent": {
-            "type": "string",
-            "minLength": 1
-          },
-          "taken": {
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "loc": {
             "type": "object",
@@ -107,9 +96,14 @@
               }
             ]
           },
-          "comment": {
+          "body": {
             "type": "string",
-            "pattern": "^C-[0-9]+$"
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "created": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }
