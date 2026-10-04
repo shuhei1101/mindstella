@@ -1,0 +1,200 @@
+{
+ "accuracy": [
+  {
+   "type": "flowchart",
+   "ok": true,
+   "got": {
+    "added": [
+     "知らせる",
+     "通知",
+     "飛ばす"
+    ],
+    "changed": [
+     "処理する"
+    ],
+    "removedNodes": [
+     "終了"
+    ],
+    "removedEdges": [
+     "C>D#0"
+    ]
+   },
+   "expected": {
+    "added": [
+     "知らせる",
+     "通知",
+     "飛ばす"
+    ],
+    "changed": [
+     "処理する"
+    ],
+    "removedNodes": [
+     "終了"
+    ]
+   }
+  },
+  {
+   "type": "sequenceDiagram",
+   "ok": true,
+   "got": {
+    "added": [
+     "知らせる",
+     "通知"
+    ],
+    "changed": [
+     "配信サーバー"
+    ],
+    "removedNodes": [
+     "保存先"
+    ],
+    "removedEdges": [
+     "S>D:書く"
+    ]
+   },
+   "expected": {
+    "added": [
+     "知らせる",
+     "通知"
+    ],
+    "changed": [
+     "配信サーバー"
+    ],
+    "removedNodes": [
+     "保存先"
+    ]
+   }
+  },
+  {
+   "type": "classDiagram",
+   "ok": true,
+   "got": {
+    "added": [
+     "Tag",
+     "付ける"
+    ],
+    "changed": [
+     "Item+title"
+    ],
+    "removedNodes": [
+     "Log"
+    ],
+    "removedEdges": [
+     "Store>Log#0"
+    ]
+   },
+   "expected": {
+    "added": [
+     "Tag",
+     "付ける"
+    ],
+    "changed": [
+     "Item+title"
+    ],
+    "removedNodes": [
+     "Log"
+    ]
+   }
+  },
+  {
+   "type": "erDiagram",
+   "ok": true,
+   "got": {
+    "added": [
+     "PRODUCT",
+     "refers"
+    ],
+    "changed": [
+     "USERstringidstringname"
+    ],
+    "removedNodes": [
+     "LINE"
+    ],
+    "removedEdges": [
+     "entity-ORDER>entity-LINE#0"
+    ]
+   },
+   "expected": {
+    "added": [
+     "PRODUCT",
+     "refers"
+    ],
+    "changed": [
+     "USERstringidstringname"
+    ],
+    "removedNodes": [
+     "LINE"
+    ]
+   }
+  },
+  {
+   "type": "stateDiagram-v2",
+   "ok": true,
+   "got": {
+    "added": [
+     "やめる",
+     "中止"
+    ],
+    "changed": [
+     "作業している"
+    ],
+    "removedNodes": [
+     "保留"
+    ],
+    "removedEdges": [
+     "state-進行中>state-保留#0"
+    ]
+   },
+   "expected": {
+    "added": [
+     "やめる",
+     "中止"
+    ],
+    "changed": [
+     "作業している"
+    ],
+    "removedNodes": [
+     "保留"
+    ]
+   }
+  }
+ ],
+ "scale": [
+  {
+   "nodes": 10,
+   "edges": 11,
+   "body_lines": 100,
+   "render_only_ms": 31.5,
+   "toggle_A_ms": 64.7,
+   "toggle_reuse_ms": 37.5,
+   "parse_B_old_ms": 2.6,
+   "body_diff_ms": 0.8,
+   "heap_growth_mb": 2.1,
+   "heap_after_mb": 18.7
+  },
+  {
+   "nodes": 50,
+   "edges": 59,
+   "body_lines": 1000,
+   "render_only_ms": 107.5,
+   "toggle_A_ms": 204.8,
+   "toggle_reuse_ms": 116.8,
+   "parse_B_old_ms": 8.9,
+   "body_diff_ms": 3,
+   "heap_growth_mb": 1.4,
+   "heap_after_mb": 20.1
+  },
+  {
+   "nodes": 100,
+   "edges": 119,
+   "body_lines": 5000,
+   "render_only_ms": 170.9,
+   "toggle_A_ms": 374.8,
+   "toggle_reuse_ms": 198.1,
+   "parse_B_old_ms": 14.6,
+   "body_diff_ms": 11.7,
+   "heap_growth_mb": 1.5,
+   "heap_after_mb": 21.5
+  }
+ ],
+ "browser": "151.0.7922.34"
+}

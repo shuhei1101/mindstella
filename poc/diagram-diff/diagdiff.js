@@ -132,12 +132,19 @@
   }
 
   // 前後の記法から、色の class を付けた今の SVG と結果を返す。対象の種類でなければ null（枠の色付けへ落とす）
-  async function diagramDiff(oldSrc, newSrc, mountTo) {
+  // reuse が真なら、mountTo に描いてある今の版の SVG をそのまま使い、前の版だけを描く
+  async function diagramDiff(oldSrc, newSrc, mountTo, { reuse = false } = {}) {
     const type = typeOf(newSrc);
     const o = await renderSvg(oldSrc);
-    const n = await renderSvg(newSrc);
-    // 文字の大きさを測るため、描いた SVG を一度ページへ置く
-    mountTo.replaceChildren(n.root);
+    let n;
+    if (reuse) {
+      const root = mountTo.firstElementChild;
+      n = { root, prefix: root.id };
+    } else {
+      n = await renderSvg(newSrc);
+      // 文字の大きさを測るため、描いた SVG を一度ページへ置く
+      mountTo.replaceChildren(n.root);
+    }
     const scratch = document.createElement("div");
     scratch.style.cssText = "position:absolute;left:-99999px;top:0";
     scratch.append(o.root);

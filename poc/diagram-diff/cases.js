@@ -28,6 +28,6 @@ window.CASES = [
     name: "stateDiagram-v2",
     before: "stateDiagram-v2\n  [*] --> 未着手 : 作る\n  未着手 --> 進行中 : 着手\n  進行中 --> 保留 : 止める\n  進行中 --> [*] : 終える",
     after: "stateDiagram-v2\n  [*] --> 未着手 : 作る\n  未着手 --> 進行中 : 着手\n  進行中 : 作業している\n  未着手 --> 中止 : やめる\n  進行中 --> [*] : 終える",
-    expected: { added: ["中止", "やめる"], changed: ["進行中作業している"], removedNodes: ["保留"] },
+    expected: { added: ["中止", "やめる"], changed: ["作業している"], removedNodes: ["保留"] },
   },
 ];

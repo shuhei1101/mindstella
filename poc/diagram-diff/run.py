@@ -79,12 +79,21 @@ def body(lines: int, *, changed: bool) -> str:
     return "\n".join(out)
 
 
+def heap(cdp) -> float:
+    """ページの JavaScript のヒープの使用量（バイト）。"""
+    cdp.send("HeapProfiler.collectGarbage")
+    metrics = {m["name"]: m["value"] for m in cdp.send("Performance.getMetrics")["metrics"]}
+    return metrics["JSHeapUsedSize"]
+
+
 def main() -> int:
     build()
     report = {"accuracy": [], "scale": []}
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        cdp = page.context.new_cdp_session(page)
+        cdp.send("Performance.enable")
         page.goto(BUILT.as_uri())
         page.wait_for_function("window.mermaid && window.marked && window.DOMPurify && window.Diff && window.CASES")
         page.evaluate("mermaid.initialize({startOnLoad:false})")
@@ -109,8 +118,8 @@ def main() -> int:
         for nodes, lines in ((10, 100), (50, 1000), (100, 5000)):
             old_d, new_d = chain(nodes, changed=False), chain(nodes, changed=True)
             old_b, new_b = body(lines, changed=False), body(lines, changed=True)
-            runs = {"render_only": [], "toggle_A": [], "parse_B_old": [], "body_diff": []}
-            heap_before = page.evaluate("performance.memory.usedJSHeapSize")
+            runs = {"render_only": [], "toggle_A": [], "toggle_reuse": [], "parse_B_old": [], "body_diff": []}
+            heap_before = heap(cdp)
             for _ in range(5):
                 t = page.evaluate(
                     """async ([od, nd, ob, nb, bodyDiff]) => {
@@ -125,16 +134,22 @@ def main() -> int:
                       f(ob, nb);
                       const bodyDiffMs = performance.now() - b0;
                       const toggle = performance.now() - t0;
+                      // 差分の表示を切りで描いてある状態から入れる（今の版の SVG を使い回す）
+                      out.replaceChildren((await DiagramDiff.renderSvg(nd)).root);
+                      t0 = performance.now();
+                      await DiagramDiff.diagramDiff(od, nd, out, { reuse: true });
+                      f(ob, nb);
+                      const toggleReuse = performance.now() - t0;
                       t0 = performance.now();
                       await mermaid.mermaidAPI.getDiagramFromText(od);
                       const parseB = performance.now() - t0;
-                      return [renderOnly, toggle, parseB, bodyDiffMs];
+                      return [renderOnly, toggle, toggleReuse, parseB, bodyDiffMs];
                     }""",
                     [old_d, new_d, old_b, new_b, BODY_DIFF_JS],
                 )
                 for k, v in zip(runs, t):
                     runs[k].append(v)
-            heap_after = page.evaluate("performance.memory.usedJSHeapSize")
+            heap_after = heap(cdp)
             report["scale"].append({
                 "nodes": nodes, "edges": new_d.count("-->"), "body_lines": lines,
                 **{k + "_ms": round(statistics.median(v), 1) for k, v in runs.items()},
