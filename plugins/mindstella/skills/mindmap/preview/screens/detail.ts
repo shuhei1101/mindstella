@@ -22,6 +22,8 @@ namespace MindmapPreview {
       /** 図を拡大して見る */
       diagram: (svg: SVGElement) => void;
     };
+    /** 下端に置く回答・意見の送信の引数。配る書き出しでは null（置かない） */
+    send: SendFormProps | null;
   };
 
   /** 項目の ID を、押すと開くボタンにする */
@@ -380,18 +382,20 @@ namespace MindmapPreview {
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
   export function detailPanel(props: DetailProps): HTMLElement {
-    const { id, index, full, on } = props;
+    const { id, index, full, on, send } = props;
     const kind = index.byId.get(id)?.kind;
     const body = h({ tag: "div", attrs: { class: "panel-body" }, children: [detailBody(props)] });
     const head = detailHead(props);
+    // 見出しと下端の入力の間の本文だけをスクロールする
+    const footer = send === null ? null : sendForm(send);
     if (!full) {
       return h({
         tag: "aside",
         attrs: { class: `panel${kind === "docs" ? " wide" : ""}`, "aria-label": "詳細" },
-        children: [head, body],
+        children: [head, body, footer],
       });
     }
-    const dialog = h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body] });
+    const dialog = h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body, footer] });
     // Esc は閉じずに元の大きさ（詳細パネル）に戻す。外側（後ろの幕）を押したときも同じ
     dialog.addEventListener("cancel", (event) => {
       event.preventDefault();

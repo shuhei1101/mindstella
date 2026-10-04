@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "送信",
+  "description": "submissions.yaml。プレビューの詳細パネルから送られた、項目ごとの回答・意見。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "target", "body", "sent", "taken"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^S-[0-9]+$"},
+          "target": {"type": "string", "minLength": 1},
+          "body": {"type": "string", "minLength": 1, "maxLength": 10000},
+          "sent": {"type": "string", "minLength": 1},
+          "taken": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

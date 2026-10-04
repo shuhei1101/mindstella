@@ -1,10 +1,13 @@
-"""スキル専用の仮想環境の Python の版と、PyYAML・jsonschema の版を確かめる。
+"""スキル専用の仮想環境の Python の版と、PyYAML・jsonschema・mcp の版を確かめる。
 
-PyYAML・jsonschema を読まずに動かすため、Python 3.8 で読める構文だけで書く。
+依存が揃う前のシステムの `python3` で起動するため、Python 3.8 で読める構文だけで書く。
+使い方（起動スクリプトが呼ぶ）:
+  python3 check_env.py [--venv {仮想環境のフォルダ}]
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -18,7 +21,7 @@ from typing import Any
 MIN_PYTHON = (3, 12)
 
 # 配布名 → 版の下限
-REQUIREMENTS = {"PyYAML": "5.1", "jsonschema": "4.18.0"}
+REQUIREMENTS = {"PyYAML": "5.1", "jsonschema": "4.18.0", "mcp": "2.3.0"}
 
 # 仮想環境の Python に版を尋ねるときに待つ秒数の上限
 PROBE_TIMEOUT_SEC = 30
@@ -46,7 +49,7 @@ PROBE_SCRIPT = "\n".join(
 
 
 class _CheckEnvError(Exception):
-    """依存の確認の結果を持つ例外の親。入口がその結果を標準出力に出して終了コード 1 にする。"""
+    """依存の確認の結果を持つ例外の親。`main` がその結果を標準出力に出して終了コード 1 にする。"""
 
     def __init__(self, report: dict[str, Any]) -> None:
         """メッセージと、依存の確認の結果を持つ。"""
@@ -216,3 +219,24 @@ def _package_rows(installed: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def main(argv: list[str] | None = None) -> int:
+    """`--venv` を解釈して依存を確かめ、結果を標準出力に出して終了コードを返す。"""
+    parser = argparse.ArgumentParser(description="スキル専用の仮想環境の依存を確かめる")
+    parser.add_argument(
+        "--venv", type=Path, default=default_venv_dir(), help="確かめる仮想環境のフォルダ"
+    )
+    args = parser.parse_args(argv)
+    try:
+        report = run_check_env(args.venv)
+    except (VenvNotFoundError, PythonVersionError, DependencyMissingError) as error:
+        # 足りない: 結果（足りないものと入れるコマンド）を同じ形で出して 1
+        print(json.dumps(error.report, ensure_ascii=False))
+        return 1
+    print(json.dumps(report, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

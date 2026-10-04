@@ -1,13 +1,13 @@
-"""コマンドが終了コード 1 にする例外。"""
+"""ツールのエラーにする例外。"""
 
 from __future__ import annotations
 
 
 class MindmapError(Exception):
-    """入口が捕まえて終了コード 1 と標準エラーにする例外の親。"""
+    """入口（`call_tool`）が捕まえてツールのエラーにする例外の親。配信は子の種類でステータスコードを決める。"""
 
     def __init__(self, message: str, lines: list[str] | None = None) -> None:
-        """メッセージと、`エラー: {内容}` の後に続けて出す行を持つ。"""
+        """メッセージと、`エラー: {内容}` の後に続けて本文に出す行を持つ。"""
         super().__init__(message)
         self.lines: list[str] = lines if lines is not None else []
 
@@ -21,7 +21,7 @@ class WorkspaceExistsError(MindmapError):
 
 
 class SchemaMismatchError(MindmapError):
-    """書き込もうとした・書き出そうとしたワークスペースがスキーマに合わない。"""
+    """書き込もうとした・書き出そうとした・読もうとしたワークスペースがスキーマに合わない。"""
 
     def __init__(self, lines: list[str], *, legacy: bool = False) -> None:
         """合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` の行と、前の版の形式の問題があるかを持つ。"""
@@ -42,8 +42,13 @@ class WriteFailedError(MindmapError):
     """ファイルの書き込み・置き換えで OSError が起きた。"""
 
 
-class OutPathError(MindmapError):
-    """`export` の `--out` が `.html` で終わらないか、ワークスペースの `preview.html` を指す（入口は終了コード 2）。"""
+class ArgumentError(MindmapError):
+    """ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない）。"""
+
+    def __init__(self, argument: str, reason: str) -> None:
+        """誤った引数の名前と理由を持ち、メッセージを `引数の誤り: {引数の名前}: {理由}` にする。"""
+        super().__init__(f"引数の誤り: {argument}: {reason}")
+        self.argument = argument
 
 
 class DownloadFailedError(MindmapError):
@@ -60,3 +65,15 @@ class StepFailedError(MindmapError):
 
 class StepsInvalidError(MindmapError):
     """プラグインの `steps.yaml` が読めないか、手順の形のスキーマに合わない。`lines` は合わない箇所。"""
+
+
+class SubmissionNotFoundError(MindmapError):
+    """渡した ID の送信が無い。"""
+
+
+class SubmissionInvalidError(MindmapError):
+    """送信の `target`・`body` が無い・文字列でない、または `body` が空白だけか上限を超える。"""
+
+
+class ServeFailedError(MindmapError):
+    """プレビューの配信の待ち受けを立てられない（`OSError`）。"""
