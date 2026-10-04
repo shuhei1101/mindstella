@@ -187,10 +187,34 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+  - name: 異常系（引数の誤り）
+    summary: 新しい phases にもあるフェーズを phase_map のキーに渡すと、何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: フェーズ 問い → 発散、検討事項 D-1（問い）・D-2（発散）を持つワークスペース
+      - name: settings と phase_map
+        description: '`phases` を 目的 → 発散 → 要件 にし、`phase_map` に `{"問い": "目的", "発散": "要件"}` を渡す'
+        notes: '`発散` は新しい `phases` にもある'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+
+        クライアント->>IF: update_settings workspace（settings・phase_map）
+        IF->>IF: phase_map の発散が新しい phases にもある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `発散` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
 lead: '`settings` で渡した設定のキーを置き換える。フェーズを変えるときは、`phase_map` の対応で項目の `phase` と `goal.phase` も同じ書き込みで付け替える。'
 idempotent: false
 side_effects: '`mindmap.yaml` を書き換える。フェーズを付け替えた項目があれば、その種類の YAML も書き換える。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
-exclusivity: 同じプロセスの中では、書き換えの鍵（『MCP サーバーの起動』）で書き換えるツールを 1 つずつ動かす。別のプロセスとは排他しない（スキルが 1 つずつ呼ぶ前提）
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
     type: str
@@ -210,7 +234,7 @@ request:
     default: なし（対応を渡さない）
     location: argument
     description: 古いフェーズの名前 → 新しいフェーズの名前。`settings.phases` を渡したとき、新しい `phases` に無いフェーズを持つ項目と `goal.phase` をこの対応で付け替える。新しい `phases` に同じ名前があるフェーズは、対応を渡さなくてもそのまま残る
-    constraints: 値は新しい `phases` のどれか。`settings.phases` を渡さないときは渡さない
+    constraints: キーは今の `phases` にあり、新しい `phases` に無いフェーズだけ。値は新しい `phases` のどれか。`settings.phases` を渡さないときは渡さない（どれも合わなければ引数の誤り）
     example: '{"問い": "目的", "結論": "要件"}'
 request_example: |-
   ```json
@@ -257,6 +281,9 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻し、どのファイルも書き換えない
+  - name: 引数の誤り
+    condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した'
+    notes: ツールのエラー。エラーの本文に合わない `phase_map` のキー。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。対応の無いフェーズが残るときは、残るものごとに `{ID か goal}: {フェーズ}` の行を続ける。'
 constraints:
   - item: 結果の形

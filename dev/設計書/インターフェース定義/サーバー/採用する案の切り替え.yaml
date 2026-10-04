@@ -208,5 +208,5 @@ constraints:
     constraint: 切り替えた後、`adopted` が真の案はちょうど 1 つ
   - item: 影響の洗い出し
     constraint: しない（影響は `impact`、要見直しにするかはスキルの手順が決める）
-exclusivity: 同じプロセスの中では、書き換えの鍵（『MCP サーバーの起動』）で書き換えるツールを 1 つずつ動かす。別のプロセスとは排他しない（スキルが 1 つずつ呼ぶ前提）
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_adopt.py
