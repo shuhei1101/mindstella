@@ -61,7 +61,7 @@ elements:
       - name: target
         value: プレビューを開く.id
       - name: body
-        value: その項目で書きかけた本文（描き直しと項目の移動をまたいで、開いている間だけ項目の ID ごとに保つ）
+        value: その項目で書きかけた本文（描き直しと項目の移動をまたいで、開いている間だけ項目の ID ごとに保つ。再読み込みしても戻るよう sessionStorage にも残す）
       - name: status
         value: 回答・意見の送信（POST /api/submissions）の結果
       - name: sent_at
