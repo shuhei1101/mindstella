@@ -1,5 +1,5 @@
 // mindmap のプレビューのモック: window.MINDMAP（YAML を JSON にしたもの）を、画面ごとの HTML に描く
-// 71 のスクリプトの概要に、並べたプレイブックの名前と、ゴールが無いときのゴールまでの進捗のタイルの出し方を足したもの
+// 71 のスクリプトの概要に、題名の上の話し合いの概要と、ゴールが無いときのゴールまでの進捗のタイルの出し方を足したもの
 (() => {
   const M = window.MINDMAP;
   const W = M.workspace;
@@ -241,7 +241,8 @@
   // モック専用の操作列で切り替える状態
   const SIMS = [["", "通常"], ["offline", "サーバーにつながらない"], ["export", "配る書き出し"], ["nolib", "描画のライブラリが読めない"]];
   const GOALS = [["", "ゴールあり"], ["none", "ゴールなし"]];
-  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", goal: "", mapQ: "", tables: {}, mapShow: new Set(["要見直し", "未決定", "未整理", "保留"]), deps: true };
+  const DESCS = [["", "概要あり"], ["none", "概要なし"]];
+  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", goal: "", desc: "", mapQ: "", tables: {}, mapShow: new Set(["要見直し", "未決定", "未整理", "保留"]), deps: true };
   for (const k of Object.keys(COLUMNS)) state.tables[k] = { q: "", filters: {}, sort: null, showClosed: k !== "decisions" };
   const colPrefs = (kind) => (prefs.cols[kind] ??= { hidden: COLUMNS[kind].filter((c) => c.hidden).map((c) => c.key), pin: 0 });
 
@@ -257,6 +258,7 @@
     state.full = !!state.panel && p.get("full") === "1";
     state.sim = SIMS.some(([v]) => v && v === p.get("sim")) ? p.get("sim") : "";
     state.goal = p.get("goal") === "none" ? "none" : "";
+    state.desc = p.get("desc") === "none" ? "none" : "";
     if (first) {
       const t = state.tables[state.tab];
       for (const [k, v] of p) if (k.startsWith("f.") && t) t.filters[k.slice(2)] = new Set(v.split("|"));
@@ -272,6 +274,7 @@
     if (state.full) p.set("full", "1");
     if (state.sim) p.set("sim", state.sim);
     if (state.goal) p.set("goal", state.goal);
+    if (state.desc) p.set("desc", state.desc);
     const h = p.toString();
     return h ? "#" + h : location.pathname;
   };
@@ -379,11 +382,11 @@
           <ul class="stage-rows">${stageRows}</ul>
         </section>`
         : "";
-    // 見出しの上の行: 並べたプレイブックの名前を「・」で並べ、ゴールがあるときだけゴールのフェーズを続ける
-    const sub = W.playbooks.map(esc).join("・") + (goal ? ` · ゴールは${esc(goal.stage)}のフェーズまで` : "");
+    // 題名の上の行: 設定の話し合いの概要。概要が無いときは行を出さない
+    const desc = state.desc === "none" ? "" : W.description;
     return `
       <header class="hero">
-        <p class="hero-sub">${sub}</p>
+        ${desc ? `<p class="hero-sub hero-desc">${esc(desc)}</p>` : ""}
         <h1>${esc(W.summary)}</h1>
       </header>
       <div class="bento${goalTile ? "" : " no-goal"}">
@@ -1211,7 +1214,8 @@
   };
   const renderMockbar = () => {
     const bar = document.getElementById("mock-states");
-    bar.innerHTML = GOALS.map(([v, l]) => `<button type="button" data-act="goal" data-goal="${v}" aria-pressed="${state.goal === v}">${l}</button>`).join("");
+    bar.innerHTML = GOALS.map(([v, l]) => `<button type="button" data-act="goal" data-goal="${v}" aria-pressed="${state.goal === v}">${l}</button>`).join("")
+      + DESCS.map(([v, l]) => `<button type="button" data-act="desc" data-desc="${v}" aria-pressed="${state.desc === v}">${l}</button>`).join("");
   };
   // 見てきた項目の並び（trail）と今の位置（pos）を履歴の状態に持つ
   const trailOf = () => (history.state && history.state.trail ? history.state : { trail: state.panel ? [state.panel] : [], pos: 0 });
@@ -1327,6 +1331,7 @@
       case "full": state.full = !state.full; render(); break;
       case "vclose": closeFullViewer(); break;
       case "goal": state.goal = el.dataset.goal; history.replaceState(null, "", hashOf()); render(); break;
+      case "desc": state.desc = el.dataset.desc; history.replaceState(null, "", hashOf()); render(); break;
       case "sim": state.sim = el.dataset.sim; layoutCache.clear(); lastScreen = ""; history.replaceState(null, "", hashOf()); render(); break;
       case "dgraw": { const f = el.closest(".diagram"), on = el.getAttribute("aria-pressed") !== "true"; el.setAttribute("aria-pressed", on); f.querySelector(".mermaid").hidden = on; f.querySelector(".dg-raw").hidden = !on; break; }
       case "sendcopy": {
