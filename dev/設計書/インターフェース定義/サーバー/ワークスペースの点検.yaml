@@ -79,6 +79,29 @@ flows:
       - '`problems` に `kind: unknown_phase`・`file: mindmap.yaml`・`key: goal.phase`・`detail` に `結論` がある'
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じ
     test: test_normal_when_unknown_phase
+  - name: 正常系（変更履歴が本文とずれている）
+    summary: 手で書き換えた本文に当たらない変更履歴を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 本文を持つ検討事項 D-1 の本文を `update` で直した後、`docs/D-1.md` の全ての行を手で書き換えたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF-->>クライアント: JSON（ok: false・problems）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`ok` が偽'
+      - '`problems` に `stale_history`（D-1・`history[0].body_diff`）がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
     setup:
@@ -116,8 +139,8 @@ response:
     type: bool
     description: 問題が 1 つも無いか
   - name: problems[].kind
-    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "unknown_phase"'
-    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・設定の `phases` に無いフェーズ）
+    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "unknown_phase" | "stale_history"'
+    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・設定の `phases` に無いフェーズ・変更履歴から前の本文を組み立てられない）
   - name: problems[].file
     type: str
     description: 問題のあるファイル（ワークスペースからの相対パス）
@@ -156,6 +179,8 @@ constraints:
     constraint: ファイル名の順、同じファイルの中は項目の並びの順
   - item: フェーズを確かめるキー
     constraint: '種類ごとの YAML の項目の `phase` と設定の `goal.phase` が、設定の `phases` のどれかでないものを `unknown_phase` にする（`goal.phase` は `file: mindmap.yaml`・`id: null`・`key: goal.phase`）。`detail` にそのフェーズの名前'
+  - item: 変更履歴のずれ
+    constraint: 本文を持つ項目の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
 refs:
   - dev/設計書/ER図/ワークスペース#
 test_file: tests/integration/server/test_check.py
