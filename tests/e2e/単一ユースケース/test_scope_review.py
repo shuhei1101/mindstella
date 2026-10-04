@@ -34,6 +34,9 @@ NEW_GOAL = {
 # 会話の日付
 TODAY = "2026-10-02"
 
+# 納品物の資料の本文（概要・背景・最終的な構成の見出しを先に置く）
+DELIVERABLE_BODY = "# 要件定義書\n\n## 概要\n\n家計簿アプリの要件。\n\n## 背景\n\n## 構成\n\n- 画面\n- データ\n"
+
 
 def test_normal(
     make_workspace: MakeWorkspace,
@@ -42,7 +45,7 @@ def test_normal(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """プレイブックを足し、フェーズの対応を確かめて付け替え、題名・最上位の軸の呼び名・ゴールを書き換える（正常系）。"""
+    """プレイブックを足し、フェーズの対応を確かめて付け替え、題名・最上位の軸の呼び名・ゴールを書き換えて、足した納品物の資料を作る（正常系）。"""
     # 準備
     # ゴールを持たない壁打ちのワークスペースに、問いと発散の検討事項を足しておく
     settings = {
@@ -69,6 +72,25 @@ def test_normal(
         },
         phase_map=PHASE_MAP,
     )
+    # 書き換えた設定で足した納品物の資料を作り、納品物の doc から指す
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "要件定義書",
+            "kind": "文書",
+            "deliverable": True,
+            "status": "下書き",
+            "body_markdown": DELIVERABLE_BODY,
+        },
+    )
+    goal = read_yaml(root, "mindmap.yaml")["goal"]
+    replay(
+        "update_settings",
+        **ws,
+        settings={"goal": {**goal, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}},
+    )
     replay(
         "add",
         **ws,
@@ -82,13 +104,18 @@ def test_normal(
     )
     checked = replay("check", **ws)
     # 検証
-    # playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・phases・goal が確定した値である
+    # playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・phases が確定した値である
     updated = read_yaml(root, "mindmap.yaml")
     assert updated["playbooks"] == ["壁打ち", "システム開発"]
     assert updated["summary"] == "家計簿アプリの要件を決める"
     assert updated["target_label"] == "機能"
     assert updated["phases"] == NEW_PHASES
-    assert updated["goal"] == NEW_GOAL
+    # goal が確定したたたき台の値で、納品物 要件定義書 の doc が A-1 である
+    assert updated["goal"] == {**NEW_GOAL, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}
+    # 資料 A-1 が deliverable: true を持ち、docs/ の本文が概要・背景・構成の見出しを持つ
+    assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is True
+    body = (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
     # D-1 の phase が目的、D-2 の phase が発散である
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["phase"] == "目的"
