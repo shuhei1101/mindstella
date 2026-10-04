@@ -27,6 +27,7 @@ scenarios:
       - URL が `127.0.0.1` を指す
       - 開いた画面に D-1 がある
       - ワークスペースに `preview.html` が無い
+    test: test_normal
   - name: 正常シナリオ（記録を書き換える）
     setup:
       - name: Mock
@@ -53,6 +54,7 @@ scenarios:
     expected:
       - 再読み込みの操作をせずに、検討事項の表に D-2 が出る
       - 描き直した後も、開いていた画面と URL のハッシュが変わらない
+    test: test_normal_when_rewritten
 lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。'
 issue: 4
 primary_actor: 利用者
@@ -67,3 +69,4 @@ notes:
   E2E の範囲: 書き換えから画面への反映までの時間は非機能要件のテストが確かめる。URL の示し方はモデルの応答で、確かめない
   開き方: スキルはブラウザを起動するコマンドを持たず、URL を示して利用者が開く。OS ごとの起動コマンドを `allowed-tools` に足さずに済み、Claude Code が動く端末とブラウザの端末が違うとき（WSL・リモート）にも崩れない
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_preview_open.py

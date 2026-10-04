@@ -31,6 +31,7 @@ scenarios:
       - その送信が送った時刻を持つ
       - 画面に送った旨が出て、入力欄が空になる
       - 検討事項の YAML の中身が、送る前と同じである
+    test: test_normal
   - name: 異常シナリオ（本文が空）
     setup:
       - name: Mock
@@ -53,6 +54,7 @@ scenarios:
     expected:
       - ワークスペースに送信が 1 件もない
       - 画面に、本文が要る旨が出る
+    test: test_error_when_body_empty
   - name: 異常シナリオ（サーバーにつながらない）
     setup:
       - name: Mock
@@ -77,6 +79,7 @@ scenarios:
       - 画面に、送れなかった旨が出る
       - 入力欄に「案 A にする」が残っている
       - ワークスペースに送信が 1 件もない
+    test: test_error_when_server_unreachable
 lead: 利用者が、サーバーが配るプレビューの詳細パネルから、項目の ID ごとに回答・意見を送る単一ユースケース。
 issue: 67
 primary_actor: 利用者
@@ -94,3 +97,4 @@ notes:
   入力の置き場所: 詳細パネルのどこに入力と送るボタンを置くかはモック作成で決め、画面設計に書く
   配る書き出し: 配る書き出しは送信の入口を持たない（単一ユースケース『プレビューを配る』が確かめる）
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_submission_send.py

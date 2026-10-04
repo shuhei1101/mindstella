@@ -85,13 +85,14 @@ layers:
       ```bash
       pytest tests/e2e
       ```
-    description: pytest で、シナリオ設計書の利用者の操作を通しで確かめる。プラグインは実際の Claude Code の CLI（`claude plugin ...`）を使い、スクリプトはスキルがコマンドを連ねて呼ぶ流れを実際の `mindmap.py` を子プロセスで起動して確かめる。プレビューのシナリオは、`build` で書き出した `preview.html` を pytest-playwright で開いて確かめる。Mock は使わない（描画のライブラリの配信元を失敗させる異常シナリオは、ブラウザの通信の差し替え）。
+    description: pytest で、シナリオ設計書の利用者の操作を通しで確かめる。プラグインは実際の Claude Code の CLI（`claude plugin ...`）を使う。スキルがツールを連ねて呼ぶ流れは、実際の MCP サーバー（`server.py`）を子プロセスとして立て、MCP のクライアントでツールを順に呼んで確かめる。起動スクリプトのシナリオは、実際の `bin/mindstella` を、偋の `claude` と専用のソケット（`-L`）の `tmux` で動かす。プレビューのシナリオは、MCP サーバーが配る URL（`preview_url`）を pytest-playwright で開いて確かめる。配る書き出しは `export` で書き出した HTML を file:// で開く。本物の Claude Code を立ち上げるモデルの呼び出しはしない。描画のライブラリの配信元を失敗させる異常シナリオは、ブラウザの通信の差し替え
     prerequisites:
       - Python 3.12 以上と pytest
-      - 'プラグインのシナリオ: Claude Code 2.1.287 以上（`claude` が PATH にある）。スクリプトのシナリオは `claude` を使わない'
-      - 'スクリプトのシナリオ: PyYAML 5.1 以上と jsonschema 4.18.0 以上が、テストを動かす Python に入っている。仮想環境はテストごとの一時フォルダに `--without-pip` で作り、ライブラリはテストを動かす Python のものを見せる（通信しない）'
+      - 'プラグインのシナリオ: Claude Code 2.1.287 以上（`claude` が PATH にある）。サーバーのシナリオは実際の `claude` を使わない'
+      - 'サーバーのシナリオ: PyYAML 5.1 以上・jsonschema 4.18.0 以上・mcp 2.3.0 以上が、テストを動かす Python に入っている（`requirements-dev.txt`）。仮想環境はテストごとの一時フォルダに `--without-pip` で作り、ライブラリはテストを動かす Python のものを見せる（通信しない）'
+      - '起動スクリプトのシナリオ（`tests/e2e/単一ユースケース/test_launch_script.py`）: tmux が PATH にある。tmux は専用のソケットと一時フォルダで動かし、利用者の tmux のセッションに触れない（テストの後に、その専用のソケットのサーバーだけを `kill-server` で止める）'
       - 実行はリポジトリの直下で行う。マーケットプレイスにはこの作業ツリーの直下を渡す。設定のフォルダは conftest が `CLAUDE_CONFIG_DIR` にテストごとの空の一時フォルダを渡して差し替えるため、利用者の環境を汚さない
-      - 'プレビューのシナリオ: 単体テスト（フロント）の前提と、jsDelivr と Google Fonts へ HTTPS で届くこと'
+      - 'プレビューのシナリオ: 単体テスト（フロント）の前提と、jsDelivr と Google Fonts へ HTTPS で届くこと。画面はフォントの読み込みで行の高さが変わるため、テストは開いた直後に `document.fonts.ready` を待つ'
     run_one:
       label: シナリオ
       command: |-

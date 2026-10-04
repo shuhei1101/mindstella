@@ -39,6 +39,7 @@ scenarios:
       - Claude Code に MCP の設定が渡り、mindstella の起動コマンドが `installPath` の版のフォルダのサーバーを指す
       - その設定どおりに MCP サーバーを立てると、mindstella のツールの一覧が返る
       - Claude Code に設定のフォルダの `CLAUDE_CONFIG_DIR` が渡る
+    test: test_normal
   - name: 正常シナリオ（プラグインを上げた後）
     setup:
       - name: Mock
@@ -64,6 +65,7 @@ scenarios:
       ```
     expected:
       - MCP の設定の mindstella の起動コマンドが、新しい版のフォルダのサーバーを指す
+    test: test_normal_when_plugin_upgraded
   - name: 異常シナリオ（依存が足りない）
     setup:
       - name: Mock
@@ -87,6 +89,7 @@ scenarios:
       - 出力に、足りないライブラリの名前と、そろえるコマンドがある
       - tmux にセッションが立っていない
       - Claude Code が立ち上がっていない
+    test: test_error_when_dependency_missing
   - name: 異常シナリオ（tmux が無い）
     setup:
       - name: Mock
@@ -109,6 +112,7 @@ scenarios:
       - 起動スクリプトが 0 以外の終了コードで終わる
       - 出力に、tmux が無い旨がある
       - Claude Code が立ち上がっていない
+    test: test_error_when_tmux_missing
 lead: 利用者が起動スクリプトにワークスペースのフォルダを渡し、依存を確かめてから、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を立ち上げる単一ユースケース。
 issue: 67
 primary_actor: 利用者
@@ -125,3 +129,4 @@ priority: 高
 notes:
   E2E の範囲: 本物の Claude Code は立ち上げず、偽のコマンドが受け取った MCP の設定と環境変数を確かめる。起動スクリプトで立ち上げたときだけツールが載り、スキルの `allowed-tools` で許可が通ることは PoC（#73）で本物の Claude Code で確かめた
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_launch_script.py
