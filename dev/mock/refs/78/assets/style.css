@@ -78,8 +78,10 @@ body:not(.panel-open) .send.send-left { display: none; }
 .cm-all input, .cm-check { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 /* 選んだ件数 */
 .cm-sel { font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
-/* まとめて送った結果: 送るボタンの左に出す */
-.cm-msg { display: flex; align-items: flex-start; gap: 6px; margin: 0; max-width: 520px; font-size: var(--fs-small); color: var(--text-2); }
+/* まとめて送った結果・押せない理由: 帯の 2 行目に幅いっぱいで出し、送るボタンの位置を動かさない */
+.cm-msg { order: 5; flex-basis: 100%; display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--fs-small); color: var(--text-2); }
+/* 結果も理由も無いとき: 2 行目を空けない */
+.cm-msg:empty { display: none; }
 /* 結果の印 */
 .cm-msg svg.icon { flex: none; width: 14px; height: 14px; margin-top: 2px; }
 /* 送った: 印の色 */
@@ -149,11 +151,9 @@ body:not(.panel-open) .send.send-left { display: none; }
 .cm-empty svg.icon { width: 20px; height: 20px; color: var(--text-3); }
 /* 項目を指さないコメントの入力: 行と同じ面の箱にする */
 .send.send-free { padding: 12px 16px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
-/* 狭い幅（720px 以下）: 帯の結果を下の行に回し、送るボタンを右に残す */
+/* 狭い幅（720px 以下）: 見出しと行の余白を詰め、箇所の名前と選んだ文を縦に積む */
 @media (max-width: 720px) {
   .cm-head h1 { font-size: 26px; }
-  .cm-bar { top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); }
-  .cm-msg { order: 5; flex-basis: 100%; max-width: none; }
   .cm-row { padding: 10px; gap: 4px 8px; }
   .cm-loc, .send-quote { flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
   .cm-loc q, .send-quote q { flex-basis: 100%; order: 3; }

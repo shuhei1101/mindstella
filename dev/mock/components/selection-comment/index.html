@@ -27,17 +27,19 @@
     .stage { width: 640px; max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
     /* 狭い幅の見本 */
     .stage.narrow { width: 390px; }
+    /* 入口の見本の台: 入口の影を切らない */
+    .stage { overflow: visible; }
     /* 台の中の入口: 位置をスクリプトで決めず、見本の場所に置く */
     .selpop.static { position: static; display: inline-block; }
     /* 選んだ範囲の見本: ブラウザの選択の色 */
     .sel-mock { background: Highlight; color: HighlightText; }
     /* 見本の入口の置き場所: 選んだ範囲の終わりの下・始まりの上 */
     .sel-demo { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 16px; }
-    .sel-at { position: absolute; left: 200px; }
+    .sel-at { position: absolute; left: clamp(8px, 30%, 200px); }
     .sel-at.below { top: 40px; }
     .sel-at.above { top: 8px; }
     /* その場の入力の見本: 入口を広げた箱 */
-    .selpop.static[data-mode="form"] { display: block; }
+    .selpop.static[data-mode="form"] { display: block; max-width: 100%; }
     /* ホバーの見本 */
     .is-hover { background: var(--hover) !important; }
     /* キーボードのフォーカスの見本 */

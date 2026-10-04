@@ -1082,7 +1082,9 @@
     const f = forms.get(fkey) || { result: null };
     forms.set(fkey, { ...f, target, loc });
     const fid = `send-${fkey}`;
-    return `<form class="send send-${place}" data-fkey="${fkey}" novalidate>
+    // 本文の外に浮かせる入力は、読み上げで行き先が分かるよう名前を付けたフォームにする
+    const named = place === "left" ? ` aria-label="${esc(String(target))} へのコメント"` : "";
+    return `<form class="send send-${place}" data-fkey="${fkey}"${named} novalidate>
       <label class="send-label" for="${fid}">${label}</label>${quoteHtml(loc, place !== "pop")}
       <textarea id="${fid}" name="body" rows="2" aria-describedby="${fid}-msg" aria-keyshortcuts="Control+Enter">${esc(server.drafts[draftKey(target, loc)] || "")}</textarea>
       <div class="send-row"><p class="send-msg" id="${fid}-msg" role="status"></p>${place === "pop" ? `<button class="btn ghost" type="button" data-act="selcancel">やめる</button>` : ""}<button class="btn primary" type="submit" title="${w().add}（Ctrl+Enter）">${icon("plus")}${w().add}</button></div>
@@ -1795,7 +1797,12 @@
   });
   document.addEventListener("pointerup", () => { drag?.wrap.classList.remove("dragging"); drag = null; });
   // モックの状態が変わったときは、その状態の保存先から読み直す
-  const onNav = () => { const sim = state.sim; readHash(false); if (sim !== state.sim) loadServer(); render(); };
+  const onNav = () => {
+    const sim = state.sim;
+    readHash(false);
+    if (sim !== state.sim) { loadServer(); removed.clear(); listResult = null; forms.clear(); pendingLoc.clear(); editing = null; }
+    render();
+  };
   addEventListener("hashchange", onNav);
   addEventListener("popstate", onNav);
 
