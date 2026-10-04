@@ -15,7 +15,7 @@
 /* ===== トップバーの変更履歴と選んだ時点の札 ===== */
 
 /* 変更履歴のボタン: 印と短い文言。検索の入口と同じ高さと枠 */
-.hist-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
+.hist-btn { display: inline-flex; flex: none; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
 .hist-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
 /* 抜ける操作の案 B で差分の表示の間: 帯の地と文字を入れ替え、押した見た目にする */
 .hist-btn[aria-pressed="true"] { background: var(--topbar-fg); border-color: var(--topbar-fg); color: var(--topbar-bg); }
