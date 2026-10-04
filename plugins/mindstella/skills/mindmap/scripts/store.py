@@ -168,11 +168,17 @@ def load_workspace(root: Path) -> Workspace:
 
 
 @contextlib.contextmanager
-def workspace_lock(root: Path, process_lock: threading.Lock) -> Iterator[None]:
+def workspace_lock(
+    root: Path, process_lock: threading.Lock, *, create: bool = False
+) -> Iterator[None]:
     """プロセスの中の鍵とワークスペースの排他ロックをこの順に取り、抜けるときに放す。"""
     with process_lock:
-        # まだ無いフォルダへ書く `init` のために、フォルダごと作る
-        root.mkdir(parents=True, exist_ok=True)
+        if create:
+            # まだ無いフォルダへ書く `init` のために、フォルダごと作る
+            root.mkdir(parents=True, exist_ok=True)
+        elif not (root / SETTINGS_FILE).is_file():
+            # ワークスペースでないフォルダには何も作らず止める
+            raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
         with (root / LOCK_FILE).open("a") as stream:
             # 別のプロセスが持っている間は、取れるまで待つ
             fcntl.flock(stream, fcntl.LOCK_EX)

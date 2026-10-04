@@ -701,6 +701,7 @@ def _try_lock_in_child(lock_file: Path) -> str:
 def test_workspace_lock(tmp_path: Path) -> None:
     """鍵とロックを持ち、抜けたら放す（正常系）。"""
     # 準備
+    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
     process_lock = threading.Lock()
     lock_file = tmp_path / ".mindstella.lock"
     # 実行
@@ -717,6 +718,7 @@ def test_workspace_lock(tmp_path: Path) -> None:
 def test_workspace_lock_when_raises(tmp_path: Path) -> None:
     """中の処理が例外でも放す（正常系）。"""
     # 準備
+    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
     process_lock = threading.Lock()
     # 実行・検証
     with pytest.raises(ValueError, match="中で失敗"), store.workspace_lock(tmp_path, process_lock):
@@ -730,7 +732,29 @@ def test_workspace_lock_when_folder_missing(tmp_path: Path) -> None:
     # 準備
     root = tmp_path / "ws"
     # 実行
-    with store.workspace_lock(root, threading.Lock()):
+    with store.workspace_lock(root, threading.Lock(), create=True):
         pass
     # 検証
     assert (root / ".mindstella.lock").exists()
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        pytest.param(Path(), id="empty_folder"),
+        pytest.param(Path("typo") / "ws", id="missing_folder"),
+    ],
+)
+def test_workspace_lock_when_not_workspace(tmp_path: Path, relative: Path) -> None:
+    """ワークスペースでないフォルダでは何も作らずに止める（異常系）。"""
+    # 準備
+    root = tmp_path / relative
+    process_lock = threading.Lock()
+    # 実行・検証
+    with (
+        pytest.raises(WorkspaceNotFoundError, match="ワークスペースがありません"),
+        store.workspace_lock(root, process_lock),
+    ):
+        pass
+    assert process_lock.locked() is False
+    assert list(tmp_path.iterdir()) == []

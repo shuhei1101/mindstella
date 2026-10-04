@@ -210,6 +210,7 @@ def test_call_tool_when_unexpected_error() -> None:
 def test_call_tool_when_lock_root(tmp_path: Path) -> None:
     """書き換えるツールは鍵を取って呼ぶ（正常系）。"""
     # 準備
+    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
     write_lock = threading.Lock()
     locked_in_handler: list[bool] = []
 
