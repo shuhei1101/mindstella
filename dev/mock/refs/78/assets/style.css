@@ -102,8 +102,8 @@ body:not(.panel-open) .send.send-left { display: none; }
 .cm-row.selected { background: var(--row-selected); border-color: var(--accent-line); }
 /* 箇所が合わない行: 枠の全体を状態の色にする（文言と印でも示す） */
 .cm-row.is-stale { border-color: var(--st-review); }
-/* 行の中身: 向けた項目・箇所・本文を縦に積む */
-.cm-main { display: grid; gap: 6px; min-width: 0; }
+/* 行の中身: 向けた項目・箇所・本文を縦に積む。列を中身の幅で広げず、長い項目名は操作の列の手前で省く */
+.cm-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
 /* 向けた項目: 押すと詳細パネルを開く */
 .cm-target { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: var(--control-h); padding: 0 6px; margin-left: -6px; border: 0; border-radius: var(--radius); background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .cm-target:hover { background: var(--hover); }
