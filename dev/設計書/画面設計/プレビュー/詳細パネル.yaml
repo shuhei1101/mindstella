@@ -109,9 +109,9 @@ elements:
     visible_when: 差分の表示の間で、本文のその図の記法が選んだ時点で変わったとき
   - name: 図の Raw の差分
     kind: label
-    description: 図の Raw で、記法の行ごとに足した行（+）と消した行（−）を印つきで出す
+    description: 図の Raw で、記法の行ごとに足した行（+）と消した行（−）を印つきで出す。記法の行の差分を打ち切ったときは、今の記法を差分なしで出す
     io: 表示
-    visible_when: 差分の表示の間で、図の Raw を押していて、その図の記法が変わったとき
+    visible_when: 差分の表示の間で、jsdiff を読めていて、図の Raw を押していて、その図の記法が変わったとき
   - name: 前後を組み立てられない旨
     kind: label
     description: 選んだまとまりの変更履歴が保持する回数を超えて消えているとき、本文の頭に出し、今の内容を差分なしで描く
@@ -129,7 +129,13 @@ elements:
     description: 本文の行の差分を打ち切ったとき、本文の頭に出し、今の本文を差分なしで描く。キーの差分は出す
     label: 本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。今の本文を出しています。
     io: 表示
-    visible_when: 差分の表示の間で、本文の行の差分を打ち切ったとき（モジュール構成『差分』の `diffLineParts` が `null`）
+    visible_when: 差分の表示の間で、jsdiff を読めていて、本文の行の差分を打ち切ったとき（モジュール構成『差分』の `diffLineParts` が `null`）
+  - name: 差分のライブラリを読めない旨
+    kind: label
+    description: jsdiff を読めなかったとき、本文の頭に出し、本文・図・図の Raw を今の版で差分なしで描く。キーの差分は出す
+    label: '本文と図の差分を表示できません。読み込めなかったライブラリ: jsdiff 通信を確認して、ページを再読み込みしてください。'
+    io: 表示
+    visible_when: 差分の表示の間で、開いた項目が選んだ時点で変わっていて、jsdiff を読めなかったとき（モジュール構成『基盤』の `missingLibraries`）
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/71/a-footer/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
