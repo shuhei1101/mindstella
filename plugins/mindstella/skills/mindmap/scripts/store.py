@@ -13,13 +13,9 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import IO, Any, Literal
 
 import yaml
-from jsonschema import Draft202012Validator
-from referencing import Registry
-from referencing.jsonschema import DRAFT202012
-
 from errors import (
     ItemNotFoundError,
     SchemaMismatchError,
@@ -27,6 +23,7 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
+from jsonschema import Draft202012Validator
 from kinds import (
     BODY_DIR,
     KINDS,
@@ -35,6 +32,8 @@ from kinds import (
     Kind,
     kind_of_id,
 )
+from referencing import Registry
+from referencing.jsonschema import DRAFT202012
 
 # このファイルから見た `skills/mindmap/schemas/`
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
@@ -167,25 +166,43 @@ def load_workspace(root: Path) -> Workspace:
     )
 
 
+def _open_lock_file(root: Path) -> IO[str]:
+    """ロックのファイルを追記で開く。開けなければ書き込めなかったエラーにする。"""
+    lock_path = root / LOCK_FILE
+    try:
+        return lock_path.open("a")
+    except OSError as error:
+        raise write_failed(lock_path, error) from error
+
+
 @contextlib.contextmanager
 def workspace_lock(
     root: Path, process_lock: threading.Lock, *, create: bool = False
 ) -> Iterator[None]:
     """プロセスの中の鍵とワークスペースの排他ロックをこの順に取り、抜けるときに放す。"""
     with process_lock:
+        created = False
         if create:
             # まだ無いフォルダへ書く `init` のために、フォルダごと作る
+            created = not root.exists()
             root.mkdir(parents=True, exist_ok=True)
         elif not (root / SETTINGS_FILE).is_file():
             # ワークスペースでないフォルダには何も作らず止める
             raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
-        with (root / LOCK_FILE).open("a") as stream:
-            # 別のプロセスが持っている間は、取れるまで待つ
-            fcntl.flock(stream, fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(stream, fcntl.LOCK_UN)
+        try:
+            with _open_lock_file(root) as stream:
+                # 別のプロセスが持っている間は、取れるまで待つ
+                fcntl.flock(stream, fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(stream, fcntl.LOCK_UN)
+        except BaseException:
+            # この鍵で作ったフォルダに、ロックのファイルしか無いまま失敗したときは、何も作らなかった形に戻す
+            if created and [path.name for path in root.iterdir()] == [LOCK_FILE]:
+                (root / LOCK_FILE).unlink()
+                root.rmdir()
+            raise
 
 
 def validate_workspace(workspace: Workspace) -> list[Problem]:
