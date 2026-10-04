@@ -40,10 +40,10 @@ DRAFT_WAIT_MS = 1_200
 COMMENTS_BUTTON = "header.topbar button.comments-btn"
 COMMENTS_PANEL = "aside.comments-panel"
 
-# 詳細パネル（全画面も含む）の下端のコメントの入力とその入力欄・結果
-DETAIL_FORM = "aside.panel form.send, dialog.full form.send"
-DETAIL_TEXTAREA = "aside.panel form.send textarea, dialog.full form.send textarea"
-DETAIL_MESSAGE = "aside.panel form.send .send-msg, dialog.full form.send .send-msg"
+# 詳細パネルの下端のコメントの入力とその入力欄・結果
+DETAIL_FORM = "aside.panel form.send"
+DETAIL_TEXTAREA = "aside.panel form.send textarea"
+DETAIL_MESSAGE = "aside.panel form.send .send-msg"
 
 # コメントの一覧の下端の、項目を指さないコメントの入力とその入力欄
 FREE_FORM = f"{COMMENTS_PANEL} .comments-free form.send"

@@ -19,6 +19,20 @@ BACKGROUND_SCRIPT = "e => getComputedStyle(e).backgroundColor"
 # 検索の入口が中央に寄っているとみなす左右の余白の差（ピクセル）
 CENTER_TOLERANCE_PX = 2
 
+# コメントのボタン・テーマの切り替え・検索の入口・題名の左右の位置を同じ瞬間に読む
+TOPBAR_BOXES_SCRIPT = """() => {
+  const box = (selector) => {
+    const r = document.querySelector(selector).getBoundingClientRect();
+    return { left: r.left, right: r.right };
+  };
+  return {
+    comments: box('.comments-btn'),
+    theme: box('.top-btn'),
+    search: box('.search-trigger'),
+    brand: box('.brand-sub'),
+  };
+}"""
+
 # 開いている画面のタブ・入口の key を読む
 CURRENT_SCRIPT = """() => [...document.querySelectorAll('nav.tabbar a[aria-current="page"]')].map(a => a.dataset.tab)"""
 
@@ -129,19 +143,12 @@ def test_comments(open_story: OpenStory) -> None:
     assert button.locator(".label").inner_text() == "コメント"
     assert button.locator(".count").inner_text() == "3"
     assert page.eval_on_selector(".comments-btn .count", BACKGROUND_SCRIPT) != TRANSPARENT
-    # コメントのボタンが右端、その左にテーマの切り替え
-    comments_box = page.locator(".comments-btn").bounding_box()
-    theme_box = page.locator(".top-btn").bounding_box()
-    search_box = page.locator(".search-trigger").bounding_box()
-    brand_box = page.locator(".brand-sub").bounding_box()
-    assert comments_box is not None
-    assert theme_box is not None
-    assert search_box is not None
-    assert brand_box is not None
-    assert theme_box["x"] + theme_box["width"] <= comments_box["x"]
+    # コメントのボタンが右端、その左にテーマの切り替え（位置は同じ瞬間にまとめて読む）
+    boxes = page.evaluate(TOPBAR_BOXES_SCRIPT)
+    assert boxes["theme"]["right"] <= boxes["comments"]["left"]
     # 検索の入口は、題名の右端とテーマの切り替えの左端の中央に寄る
-    gap_before = search_box["x"] - (brand_box["x"] + brand_box["width"])
-    gap_after = theme_box["x"] - (search_box["x"] + search_box["width"])
+    gap_before = boxes["search"]["left"] - boxes["brand"]["right"]
+    gap_after = boxes["theme"]["left"] - boxes["search"]["right"]
     assert abs(gap_before - gap_after) <= CENTER_TOLERANCE_PX
 
 
