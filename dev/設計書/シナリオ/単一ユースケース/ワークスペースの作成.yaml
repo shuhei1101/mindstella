@@ -74,8 +74,8 @@ scenarios:
     expected:
       - '`mindmap.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
       - ワークスペースの全ての YAML がスキーマに合う
-    notes:
-      対応テスト: '`test_normal_when_without_goal`。E2E テスト作成で関数を作ったときに `test` へ移す'
+    notes: {}
+    test: test_normal_when_without_goal
 lead: スキルが、1 つの話し合いのフォルダ（ワークスペース）を新しく作る単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

@@ -42,6 +42,18 @@ def _read_docs(root: Path) -> list[dict[str, Any]]:
     return yaml.safe_load((root / "docs.yaml").read_text(encoding="utf-8"))["items"]
 
 
+def _to_field_settings(root: Path) -> None:
+    """前の版の形式にするため、mindmap.yaml の playbooks を、同じ位置の field（分野の名前）に置き換える。"""
+    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    legacy = {
+        ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
+        for key, value in settings.items()
+    }
+    (root / "mindmap.yaml").write_text(
+        yaml.safe_dump(legacy, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+
+
 def _mtimes(root: Path) -> dict[str, int]:
     """フォルダの下の全てのファイルの更新日時（ナノ秒）を、相対パス → 更新日時で返す。"""
     return {
@@ -69,6 +81,7 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     """版が古いワークスペースを、手順の一覧・写し・当てる・題名の入力・版の書き換えの順で今の版へ移し替える（正常系）。"""
     # 準備
     root = make_legacy_workspace(legacy_docs={"A-1": True, "A-2": False}, without_summary=True)
+    _to_field_settings(root)
     updated_before = {item["id"]: item["updated"] for item in _read_docs(root)}
     ws = {"workspace": str(root)}
     # 実行
@@ -105,6 +118,10 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     # mindmap.yaml の summary が答えた題名である
     settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == SUMMARY
+    # mindmap.yaml が field を持たず、playbooks が [システム開発] で、target_label が移し替えの前と同じである
+    assert "field" not in settings
+    assert settings["playbooks"] == ["システム開発"]
+    assert settings["target_label"] == "システム"
     # check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}

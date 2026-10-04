@@ -28,6 +28,7 @@ scenarios:
       - '`goal.deliverables` が `要件定義書` と `構成図` の 2 件である'
       - '`playbooks`・`phases`・`targets`・`categories` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal
   - name: 正常シナリオ（プレイブックを付け替える）
     setup:
       - name: Mock
@@ -55,6 +56,7 @@ scenarios:
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散` である
       - '`goal.phase` が `要件` である'
       - 点検が問題を 0 件で返す
+    test: test_normal_when_playbooks_replaced
   - name: 正常シナリオ（ゴールを外す）
     setup:
       - name: Mock
@@ -76,6 +78,7 @@ scenarios:
     expected:
       - '`mindmap.yaml` が `goal` のキーを持たない'
       - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_goal_removed
   - name: 異常シナリオ（対応の無いフェーズが残る）
     setup:
       - name: Mock
@@ -101,6 +104,7 @@ scenarios:
       - 設定を書き換えるツールがエラーを返す
       - エラーの本文に、D-2 とフェーズ `発散` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_unmapped_phase
   - name: 異常シナリオ（スキーマに合わない）
     setup:
       - name: Mock
@@ -125,6 +129,7 @@ scenarios:
       - 設定を書き換えるツールがエラーを返す
       - エラーの本文に、合わないキー `playbooks` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_schema_mismatch
 lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール）を書き換え、フェーズが変わるときは古いフェーズから新しいフェーズへの対応で項目のフェーズも付け替える単一ユースケース。
 issue: 44
 primary_actor: スキルの手順を実行する Claude Code
@@ -141,5 +146,5 @@ frequency: 話し合いの途中で、範囲が広がったとき・納品物が
 priority: 高
 notes:
   E2E の範囲: MCP サーバーを立て、MCP のクライアントで設定を書き換えるツールを呼んでワークスペースの状態を確かめる。ツールの名前と引数はインターフェース定義設計で決める
-  対応テストファイル: '`tests/e2e/単一ユースケース/test_settings_update.py`。E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` へ移す'
   フェーズの対応: 新しい `phases` に同じ名前があるフェーズは、対応を渡さなくてもそのまま残る。対応は、新しい `phases` に無いフェーズにだけ渡す
+test_file: tests/e2e/単一ユースケース/test_settings_update.py

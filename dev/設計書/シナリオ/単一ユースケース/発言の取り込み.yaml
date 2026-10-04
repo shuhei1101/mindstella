@@ -141,8 +141,8 @@ scenarios:
       - '`goal.deliverables` が「要件定義書」の 1 件だけで、その `doc` が A-1 である'
       - '資料 A-1 が `deliverable: true` を持つ'
       - '`check` が問題を 0 件で返す'
-    notes:
-      対応テスト: '`test_normal_when_deliverable_doc_created`。E2E テスト作成で関数を作ったときに `test` へ移す'
+    notes: {}
+    test: test_normal_when_deliverable_doc_created
 lead: 話し合いを進めるスキル `session` が、利用者の発言を対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む単一ユースケース。
 issue: 4
 primary_actor: 利用者

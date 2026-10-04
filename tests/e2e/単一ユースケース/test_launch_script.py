@@ -13,7 +13,7 @@ from launch_fixtures import PLUGIN_DIR, LaunchSandbox, copy_plugin, read_mcp_con
 from workspace_fixtures import MakeVenv, McpServer
 
 # MCP サーバーが返す mindstella のツールの数
-TOOL_COUNT = 18
+TOOL_COUNT = 19
 
 
 def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:

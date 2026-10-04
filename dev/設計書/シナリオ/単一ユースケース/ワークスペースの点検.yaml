@@ -80,8 +80,8 @@ scenarios:
       - 出力に、D-1 の `phase` の `発散` が設定の `phases` に無い旨がある
       - 出力に、`goal.phase` の `結論` が設定の `phases` に無い旨がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
-    notes:
-      対応テスト: '`test_normal_when_unknown_phase`。E2E テスト作成で関数を作ったときに `test` へ移す'
+    notes: {}
+    test: test_normal_when_unknown_phase
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズを洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
