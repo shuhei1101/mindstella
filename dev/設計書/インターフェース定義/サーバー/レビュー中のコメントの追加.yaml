@@ -393,3 +393,4 @@ refs:
   - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
   - dev/設計書/シナリオ/単一ユースケース/選んだ箇所へコメントする#
   - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+test_file: tests/integration/server/test_comment_add.py

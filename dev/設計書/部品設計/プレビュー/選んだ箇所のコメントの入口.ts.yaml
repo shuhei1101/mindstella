@@ -41,3 +41,4 @@ accessibility:
   - Tab で、開いている詳細の本文の次に届く。Esc で閉じる
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
   - 押せる的は高さ 32px 以上にする
+test_file: tests/integration/storybook/test_selection_comment_stories.py

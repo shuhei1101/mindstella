@@ -260,3 +260,4 @@ constraints:
 refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+test_file: tests/integration/server/test_comments_send.py

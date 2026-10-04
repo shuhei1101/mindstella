@@ -129,3 +129,4 @@ elements:
 lead: レビュー中のコメントを並べ、チェックしたものだけをまとめて送る。トップバーのコメントのボタンで開き、見ている画面に重ねて左から出すパネル。行を押すと右に詳細パネルを開く。幅 900px 以下は画面の幅いっぱいに出し、行から開いた詳細パネルを閉じると一覧へ戻る。配る書き出しには無い。
 mock: dev/mock/pages/comments/78/b-left-panel/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+test_file: tests/integration/preview/test_comments_screen.py

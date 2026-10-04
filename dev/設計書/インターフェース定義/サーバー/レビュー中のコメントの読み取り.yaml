@@ -131,3 +131,4 @@ refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
   - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
+test_file: tests/integration/server/test_comments_read.py
