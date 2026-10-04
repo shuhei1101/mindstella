@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+from collections.abc import Coroutine
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,27 @@ def _text_of(result: CallToolResult) -> str:
     return content.text
 
 
+def _run_async[T](coroutine: Coroutine[Any, Any, T]) -> T:
+    """動いているイベントループがあっても呼べるよう、新しいスレッドで `asyncio.run` を呼んで結果を返す。"""
+    outcome: list[T] = []
+    errors: list[BaseException] = []
+
+    def _target() -> None:
+        """コルーチンを動かし、結果か例外を控える。"""
+        try:
+            outcome.append(asyncio.run(coroutine))
+        except BaseException as error:  # noqa: BLE001
+            # スレッドの外へ送り直すため、広く捕まえて控える
+            errors.append(error)
+
+    thread = threading.Thread(target=_target)
+    thread.start()
+    thread.join()
+    if errors:
+        raise errors[0]
+    return outcome[0]
+
+
 def _spy_stop_all(monkeypatch: pytest.MonkeyPatch) -> list[serve.PreviewRegistry]:
     """PreviewRegistry.stop_all を、呼ばれた台帳を控える関数に差し替え、控える入れ物を返す。"""
     stopped: list[serve.PreviewRegistry] = []
@@ -123,7 +145,7 @@ def test_build_server(tmp_path: Path) -> None:
     previews = serve.PreviewRegistry(threading.Lock())
     mcp_server = server.build_server(previews=previews, write_lock=threading.Lock(), cwd=tmp_path)
     # 実行
-    tools = asyncio.run(mcp_server.list_tools())
+    tools = _run_async(mcp_server.list_tools())
     # 検証
     assert tuple(tool.name for tool in tools) == EXPECTED_TOOL_NAMES
     assert server.TOOL_NAMES == EXPECTED_TOOL_NAMES
@@ -139,7 +161,7 @@ def test_build_server_when_relative_workspace(
     previews = serve.PreviewRegistry(threading.Lock())
     mcp_server = server.build_server(previews=previews, write_lock=threading.Lock(), cwd=tmp_path)
     # 実行
-    result = asyncio.run(mcp_server.call_tool("attrs", {"workspace": "ws"}))
+    result = _run_async(mcp_server.call_tool("attrs", {"workspace": "ws"}))
     # 検証
     assert isinstance(result, CallToolResult)
     assert result.is_error is False
