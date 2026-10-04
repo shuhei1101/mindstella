@@ -174,9 +174,10 @@ def test_normal_when_no_goal(
     # 実行
     open_preview(url)
     # 検証
-    # 題名の上の行に話し合いの概要があり、プレイブックの名前が無い
+    # 題名の上の行に話し合いの概要があり、見出しの行は [概要, 題名] の 2 つだけでプレイブックの名前の行が無い
     assert page.inner_text("#overview-description") == description
-    assert "壁打ち" not in page.inner_text("main .hero")
+    rows = page.eval_on_selector_all("main .hero > *", "els => els.map(e => e.textContent)")
+    assert rows == [description, "要件出しのスキル mindmap を設計する"]
     # 進捗のタイルの見出しが「フェーズ別の進捗」で、ゴールが無いことと全フェーズの決着の数（1 / 2）があり、納品物のチェックリストが無い
     assert page.inner_text("#h-goal") == "フェーズ別の進捗"
     assert page.inner_text("#tile-goal .goal-none") == "ゴールは決まっていません"

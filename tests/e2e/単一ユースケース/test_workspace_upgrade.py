@@ -27,6 +27,9 @@ SUMMARY = "要件出しのスキルを設計する"
 # 版が新しいワークスペースに書く版
 NEWER_VERSION = "v99.0.0"
 
+# 版のファイルが無いワークスペースで、先に当たる手順（題名を足す手順）の版
+FIRST_STEP_VERSION = "v0.3.0"
+
 # 手順が読めない docs.yaml（閉じていないフローの配列）
 BROKEN_DOCS = "items: [\n"
 
@@ -166,7 +169,7 @@ def test_error_when_step_fails(
     assert plan.is_error is False
     # 手順を当てるコマンドが終了コード 1 で終わり、出力に失敗した版・手順・docs.yaml を読めない理由がある
     assert applied.is_error is True
-    assert applied.text.startswith(f"エラー: {_plugin_version()} の手順 ")
+    assert applied.text.startswith(f"エラー: {FIRST_STEP_VERSION} の手順 ")
     assert "docs.yaml" in applied.text
     assert "Traceback" not in applied.text
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
