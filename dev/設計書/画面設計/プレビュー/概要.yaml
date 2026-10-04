@@ -16,6 +16,12 @@ elements:
         value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: read_at
         value: 記録の取得.built_at（最後に読めた記録）
+      - name: comments
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: comment_count
+        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
+      - name: comments_open
+        value: コメントの一覧を開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目
