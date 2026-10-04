@@ -12,6 +12,10 @@ elements:
         value: graph
       - name: theme
         value: 概要と同じ
+      - name: connection
+        value: 概要と同じ
+      - name: read_at
+        value: 概要と同じ
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 項目の種類

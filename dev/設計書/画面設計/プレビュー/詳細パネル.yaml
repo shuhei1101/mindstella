@@ -54,6 +54,25 @@ elements:
     io: 表示
     source: プレビューを開く.mindmap-data（`depends_on`・`for`・`related`・`sources` とその逆向き）
     visible_when: その種類の項目が 1 件以上
+  - name: 回答・意見の送信
+    kind: form
+    component: dev/設計書/部品設計/プレビュー/回答・意見の送信.ts#
+    args:
+      - name: target
+        value: プレビューを開く.id
+      - name: body
+        value: その項目で書きかけた本文（描き直しと項目の移動をまたいで、開いている間だけ項目の ID ごとに保つ）
+      - name: status
+        value: 回答・意見の送信（POST /api/submissions）の結果
+      - name: sent_at
+        value: 回答・意見の送信.sent
+      - name: detail
+        value: 回答・意見の送信のエラーの detail（届かなかったときはなし）
+    position: 下端
+    description: 開いている項目へ回答・意見を送る。パネルの下端に留め、本文と線で区切る。見出しとこの部品の間の案・本文・関係する項目だけをスクロールする
+    io: 入力
+    visible_when: サーバーの配信で開いたとき（配る書き出しでは出さず、パネルは関係する項目で終わる）
+    status: planned
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
-mock: dev/mock/pages/detail-panel/60/standard/index.html
+mock: dev/mock/pages/detail-panel/71/a-footer/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
