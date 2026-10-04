@@ -31,6 +31,8 @@ scenarios:
       - 更新の後、その項目の答えと状態が直した値になっている
       - その項目の作成日が追加のときの値のまま、更新日が記録されている
       - ワークスペースの全ての YAML がスキーマに合う
+      - 足しただけの時点では、その項目は変更履歴を持たない
+      - 更新の後、その項目が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
     test: test_normal
   - name: 異常シナリオ（スキーマに合わない）
     setup:
@@ -79,6 +81,53 @@ scenarios:
       - エラーの本文に、渡した ID がある
       - ワークスペースの全てのファイルの中身が、更新を呼ぶ前と同じである
     test: test_error_when_id_not_found
+  - name: 正常シナリオ（保持する回数を超えて直す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、本文を持つ検討事項 D-1 を 1 件足したワークスペース（保持する回数は既定の 1）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の答えを直す
+        SV->>WS: 変更履歴を 1 回分積んで書く
+        CC->>SV: D-1 の本文を直す
+        SV->>SV: 変更履歴を積み、保持する回数を超えた古い履歴を消す
+        SV->>WS: 書く
+        CC->>SV: D-1 の本文を同じ中身で直す
+        SV->>SV: 変わったキーが無く、変更履歴を積まない
+      ```
+    expected:
+      - D-1 の変更履歴が 1 回分だけで、本文を直した回のものである
+      - その変更履歴から、本文を直す前の本文を組み立てられる
+      - 答えを直した回の変更履歴は残っていない
+      - 同じ中身で直した後も、変更履歴はその前と同じ
+      - 変更履歴に本文の全文は入っていない
+  - name: 正常シナリオ（保持する回数が 0）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 保持する回数を 0 にし、検討事項 D-1 を 1 件足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の答えを直す
+        SV->>SV: 保持する回数が 0 のため、変更履歴を積まない
+        SV->>WS: decisions.yaml に書く
+      ```
+    expected:
+      - D-1 の答えが直した値になっている
+      - D-1 が変更履歴を持たない
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
