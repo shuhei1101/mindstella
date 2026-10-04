@@ -240,3 +240,41 @@ dialog.confirm h2 { margin: 0 0 8px; font-size: var(--fs-h2); }
 
 /* モーダルにしない全画面: モーダルと同じ位置に重ね、周りを薄い幕の色で覆う */
 dialog.full[open]:not(:modal) { position: fixed; inset: 0; z-index: 40; margin: auto; box-shadow: var(--shadow-pop), 0 0 0 100vmax var(--scrim-soft); }
+
+/* ===== 項目を指さないコメントの入力: 一覧の下端に固定する ===== */
+
+/* 一覧が長くても、画面（左右のパネルでは一覧の枠）の下端に留めていつでも書けるようにする */
+.cm-wrap .send.send-free { position: sticky; bottom: 12px; z-index: 5; box-shadow: var(--shadow-pop); }
+/* 左右のパネルの中: 枠の下端に付ける */
+.cdrawer .cm-wrap .send.send-free { bottom: -12px; }
+
+/* ===== 詳細の一番下の、その項目へのレビュー中のコメント ===== */
+
+/* 見出しの件数 */
+.d-reviews h3 .count { margin-left: 8px; font-family: var(--font-mono); font-weight: 400; color: var(--text-3); }
+/* 溜めた順の並び: 行どうしを細い線で区切る */
+.dr-list { list-style: none; margin: 0; padding: 0; }
+/* 1 件: 箇所と本文を縦に積む */
+.dr-row { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+/* 最後の行: 下の線を引かない */
+.dr-row:last-child { border-bottom: 0; }
+
+/* ===== コメントの一覧を右から出し、詳細パネルを左に出す案 ===== */
+
+/* 右のパネル: 左のパネルと同じ形を右端に置く */
+.cdrawer.right { left: auto; right: 0; border-right: 0; border-left: 1px solid var(--border); box-shadow: -14px 0 32px var(--shadow-color); transform: translateX(102%); }
+/* 開いた右のパネル */
+.cdrawer.right.open { transform: none; }
+/* 左に出す詳細パネル: 左端に置き、左からすべり込む */
+body.panel-left .panel { left: 0; right: auto; border-left: 0; border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); }
+/* 開いた左の詳細パネル */
+body.panel-left .panel.open { transform: none; }
+/* 左の詳細パネルを本文に並べる幅: 本文を右へ寄せる */
+@media (min-width: 1100px) {
+  body.panel-left.panel-open .content, body.panel-left.panel-open .crumbs-bar { margin-right: auto; margin-left: var(--panel-w); }
+  body.panel-left.panel-open:has(.panel.wide) .content, body.panel-left.panel-open:has(.panel.wide) .crumbs-bar { margin-right: auto; margin-left: min(760px, 100%); }
+}
+/* マップを並べる幅（901px 以上）: 同じく本文を右へ寄せる */
+@media (min-width: 901px) { body.panel-left.panel-open .content.map-view { margin-right: auto; margin-left: var(--panel-w); } }
+/* 本文の寄せは左の余白で動かす */
+body.panel-left .content { transition: margin-left .45s cubic-bezier(.22, .8, .24, 1); }

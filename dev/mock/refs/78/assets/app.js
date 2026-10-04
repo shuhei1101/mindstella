@@ -264,7 +264,7 @@
     state.sim = SIMS.some(([v]) => v && v === p.get("sim")) ? p.get("sim") : "";
     for (const [k, o] of Object.entries(OPTS)) state.opt[k] = o.choices.some(([v]) => v === p.get(k)) ? p.get(k) : o.def;
     // 配る書き出しと、一覧を左のパネルにする置き方は、コメントの一覧の画面を持たない
-    if (state.tab === "comments" && (state.sim === "export" || LIST_PLACE === "drawer")) state.tab = FIRST_TAB === "comments" ? "overview" : FIRST_TAB;
+    if (state.tab === "comments" && (state.sim === "export" || AS_PANEL)) state.tab = FIRST_TAB === "comments" ? "overview" : FIRST_TAB;
     const t = state.tables[state.tab];
     if (t && [...p.keys()].some((k) => k.startsWith("f."))) {
       t.filters = {};
@@ -1003,6 +1003,7 @@
     if (it.related?.length) h += sec(kind === "logs" ? "更新した項目" : "関連", list(it.related));
     const back = referrers(id).filter((x) => !(it.related || []).includes(x) && !(dependents.get(id) || []).includes(x));
     if (back.length) h += sec("参照元", list(back));
+    h += reviewsHtml(id);
     return `${it.status ? `<span data-key="status" data-klabel="状態">${status(it.status)}</span>` : ""}<h2 class="d-title">${val("title", "タイトル", it.title)}${it.deliverable ? `<span class="deliv-badge">${icon("box")}納品物</span>` : ""}</h2><dl class="d-meta">${meta}</dl>${h}`;
   };
   // ===== コメント: 送らずにレビュー中に溜め、コメントの一覧でチェックしたものだけをまとめて送る =====
@@ -1019,7 +1020,11 @@
   // comments: screen = 本文の場所に出す画面 / drawer = 左から出すパネル
   const INPUT_PLACE = document.body.dataset.input || "footer";
   const QUOTE_PLACE = document.body.dataset.quote || "footer";
+  // comments: screen = 本文の場所に出す画面 / drawer = 左から出すパネル / right = 右から出すパネル（詳細パネルは左に出す）
   const LIST_PLACE = document.body.dataset.comments || "screen";
+  const AS_PANEL = LIST_PLACE !== "screen";
+  document.body.classList.toggle("panel-left", LIST_PLACE === "right");
+  document.getElementById("cdrawer")?.classList.toggle("right", LIST_PLACE === "right");
   // モックで溜めている途中・送っている途中を見せる時間
   const WAIT_MS = 900;
   const timeOf = (d) => new Intl.DateTimeFormat("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d);
@@ -1133,10 +1138,25 @@
       // 入口から溜めたときは、詳細パネルの下端の入力に溜めたことを出す
       const shown = fkey === "pop" ? "panel" : fkey;
       if (fkey === "free") { listResult = null; render(); }
-      else if (state.panel) { renderSend(state.full ? fullDlg : document.getElementById("panel")); renderTabs(); if (LIST_PLACE === "drawer" && drawerOpen) renderDrawer(); }
+      else if (state.panel) { renderSend(state.full ? fullDlg : document.getElementById("panel")); renderReviews(); renderTabs(); if (AS_PANEL && drawerOpen) renderDrawer(); }
       setForm(shown, { kind: "added" });
       formOf(shown)?.querySelector("textarea").focus();
     }, WAIT_MS);
+  };
+
+  // ===== 項目へのレビュー中のコメント: 詳細の一番下に、その項目へのものを溜めた順に並べる（直す・消す・チェックはコメントの一覧で行う） =====
+  const reviewsHtml = (id) => {
+    if (state.sim === "export") return "";
+    const mine = server.comments.filter((c) => c.target === id);
+    const rows = mine.length
+      ? `<ol class="dr-list">${mine.map((c) => `<li class="dr-row">${c.loc ? `<p class="cm-loc"><span class="sq-loc">${esc(locLabel(c.loc))}</span><q>${esc(c.loc.text)}</q></p>` : ""}<p class="cm-body">${esc(c.body)}</p></li>`).join("")}</ol>`
+      : `<p class="empty">${w().state}のコメントはありません。</p>`;
+    return `<section class="d-sec d-reviews" aria-labelledby="dr-h"><h3 id="dr-h">${w().state}のコメント<span class="count">${mine.length}</span></h3>${rows}</section>`;
+  };
+  // 溜めた直後に、開いている詳細の一番下の一覧だけを描き直す
+  const renderReviews = () => {
+    const sec = (state.full ? fullDlg : document.getElementById("panel")).querySelector(".d-reviews");
+    if (sec && state.panel) sec.outerHTML = reviewsHtml(state.panel);
   };
 
   // ===== コメントの一覧 =====
@@ -1208,7 +1228,7 @@
     const box = document.querySelector("[data-act=cmall]");
     if (box) box.indeterminate = !box.checked && server.comments.some((c) => c.checked);
   };
-  const rerenderList = () => refocus(() => { if (LIST_PLACE === "drawer") renderDrawer(); else render(); renderTabs(); });
+  const rerenderList = () => refocus(() => { if (AS_PANEL) { renderDrawer(); renderReviews(); } else render(); renderTabs(); });
   const findComment = (cid) => server.comments.find((c) => c.cid === cid);
   const sendChecked = () => {
     const sel = server.comments.filter((c) => c.checked);
@@ -1506,7 +1526,7 @@
     const allChk = main.querySelector("[data-all-of]");
     if (allChk) allChk.indeterminate = !allChk.checked && [...main.querySelectorAll(`[data-act="${allChk.dataset.allOf}"]`)].some((x) => x.checked);
     if (k === "comments") { setForm("free", forms.get("free").result); markAll(); }
-    if (LIST_PLACE === "drawer") renderDrawer();
+    if (AS_PANEL) renderDrawer();
     renderPanel();
     applyPins();
     if (k === "graph") drawGraph3();
@@ -1666,7 +1686,7 @@
         openPanel(c.target);
         break;
       }
-      case "cmedit": { editing = el.dataset.cid; refocus(() => (LIST_PLACE === "drawer" ? renderDrawer() : render())); document.getElementById(`cme-${editing}`)?.focus(); break; }
+      case "cmedit": { editing = el.dataset.cid; refocus(() => (AS_PANEL ? renderDrawer() : render())); document.getElementById(`cme-${editing}`)?.focus(); break; }
       case "cmeditcancel": { const cid = editing; const c = findComment(cid); if (c) delete c.editDraft; editing = null; rerenderList(); document.querySelector(`[data-act="cmedit"][data-cid="${cid}"]`)?.focus(); break; }
       case "cmdel": if (state.opt.del === "confirm") askRemove(el.dataset.cid); else removeComment(el.dataset.cid); break;
       case "cmundo": {
@@ -1782,7 +1802,7 @@
     if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-act]")) { e.preventDefault(); e.target.click(); }
     if (e.key === "Enter" && e.target === sq) document.querySelector("#search-results .sr-item")?.click();
     if (e.key === "Escape" && selPop.matches(":popover-open")) { e.preventDefault(); const back = selPop.dataset.mode === "form"; hideSelPop(); if (back) formOf("panel")?.querySelector("textarea").focus(); return; }
-    if (e.key === "Escape" && LIST_PLACE === "drawer" && drawerOpen && !state.panel) { drawerOpen = false; renderDrawer(); renderTabs(); document.querySelector("[data-act=drawer]")?.focus(); return; }
+    if (e.key === "Escape" && AS_PANEL && drawerOpen && !state.panel) { drawerOpen = false; renderDrawer(); renderTabs(); document.querySelector("[data-act=drawer]")?.focus(); return; }
     if (e.key === "Escape" && state.panel && !state.full && !dlg.open && !viewerDlg.open && !pop.matches(":popover-open")) closePanel();
   });
   // 選び終えたら入口を出し、選択を外したら閉じる（その場の入力を開いているときは閉じない）

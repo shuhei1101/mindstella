@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
   <meta name="color-scheme" content="light dark">
-  <title>詳細パネル | mindstella プレビューのモック</title>
+  <title>コメントの一覧 | mindstella プレビューのモック</title>
   <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,11 +27,11 @@
   <script src="../../../../refs/78/assets/app.js" defer></script>
 </head>
 <!-- data-screen: ハッシュに画面が無いときに描く画面。data-initial: ハッシュが無いときに開く状態。data-comments: コメントの一覧の置き方（screen・drawer・right）。data-input: 詳細パネルの入力の置き場所。data-quote: 選んだ箇所の入口を押した後の入力の置き場所 -->
-<body data-screen="docs" data-initial="tab=docs&id=A-005" data-comments="screen" data-input="footer" data-quote="popup">
+<body data-screen="decisions" data-initial="tab=decisions&view=table" data-comments="right" data-input="footer" data-quote="footer">
   <!-- モック専用の操作列: 同じ階層の案と、サーバーにつながらない・配る書き出し・描画のライブラリが読めない状態に切り替える -->
   <div class="mockbar" role="group" aria-label="モックの状態">
     <span>案</span>
-    <span><a href="../a-footer-quote/index.html">A 下端に箇所を添える</a><a href="../b-popup-input/index.html" aria-current="page">B 入口の中で書く</a><a href="../c-left-space/index.html">C 左の空きに入力</a></span>
+    <span><a href="../a-screen/index.html">A 本文の画面</a><a href="../b-left-panel/index.html">B 左のパネル</a><a href="../c-right-panel/index.html" aria-current="page">C 右のパネル</a></span>
     <span>モック</span>
     <span id="mock-states"></span>
   </div>
@@ -57,7 +57,10 @@
   <nav class="tabbar" id="tabs" aria-label="項目の種類"></nav>
 
   <!-- パンくず -->
-  <nav class="crumbs crumbs-bar" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">detail-panel</a> / <a href="../index.md">78</a> / b-popup-input</nav>
+  <nav class="crumbs crumbs-bar" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">comments</a> / <a href="../index.md">78</a> / c-right-panel</nav>
+
+  <!-- コメントの一覧（左右のパネルの案）: コメントのボタンで開閉する -->
+  <aside class="cdrawer" id="cdrawer" aria-label="コメントの一覧"></aside>
 
   <!-- 本文 -->
   <main class="content" id="main"></main>

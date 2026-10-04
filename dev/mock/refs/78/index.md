@@ -9,7 +9,7 @@
 
 | 画面 | 中身 |
 | --- | --- |
-| [comments](../../pages/comments/78/index.md) | コメントの一覧。置き方を 2 案（本文の画面・左のパネル） |
+| [comments](../../pages/comments/78/index.md) | コメントの一覧。置き方を 3 案（本文の画面・左のパネル・右のパネル） |
 | [detail-panel](../../pages/detail-panel/78/index.md) | 詳細パネル。入力と、選んだ箇所の入口を押した後の置き場所を 3 案 |
 | [detail-full](../../pages/detail-full/78/index.md) | 詳細の全画面。選んだ箇所の入口を押した後の置き場所を 2 案 |
 
