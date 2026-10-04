@@ -104,7 +104,7 @@ tables:
         title: 話し合いの概要
         type: string
         not_null: false
-        length: 60 字以内
+        length: 1 字以上 60 字以内
         description: 任意。何についての話し合いかを 1 文の短い文で。AI がセットアップと範囲の見直しで書き、利用者は `mindmap.yaml` を直して書き換える。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの
         example: スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
