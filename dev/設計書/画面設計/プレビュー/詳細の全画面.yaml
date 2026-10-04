@@ -21,8 +21,6 @@ elements:
         value: プレビューを開く.id
       - name: loc
         value: 詳細パネルと同じ
-      - name: loc_label
-        value: 詳細パネルと同じ
       - name: body
         value: 詳細パネルと同じ（パネルと全画面を行き来しても書きかけと添えた箇所を保つ）
       - name: status

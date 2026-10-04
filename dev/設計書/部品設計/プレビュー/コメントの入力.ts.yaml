@@ -21,8 +21,6 @@ states:
         value: A-005
       - name: loc
         value: '{kind: body, start: 3, end: 3, text: 受け取る人へ渡す形}'
-      - name: loc_label
-        value: 本文 3 行目
   - name: WithValueLocation
     description: 値の箇所を添えた。箇所の名前にキーの名前を出し、選んだ文は 3 行までにして末尾を省く
     args:
@@ -30,8 +28,6 @@ states:
         value: D-022
       - name: loc
         value: '{kind: value, key: options[C].cons, text: 表の密度が下がる。表の列を詰めて並べるため、1 行に出せる項目の数が減り、ID と状態の列が画面の外へ押し出される。狭い幅では横に送らないと読めない列が増え、比べるのに手間がかかる}'
-      - name: loc_label
-        value: 案 C のデメリット
       - name: body
         value: ここは別の言い方にしたい
   - name: Saving
@@ -104,8 +100,6 @@ states:
         value: A-005
       - name: loc
         value: '{kind: body, start: 3, end: 3, text: 受け取る人へ渡す形}'
-      - name: loc_label
-        value: 本文 3 行目
       - name: body
         value: 案 A にする
       - name: status
@@ -142,12 +136,7 @@ args:
     required: false
     default: なし（箇所を添えない）
     enabled_when: '`target` があるとき'
-    description: 添えた箇所（『レビュー中のコメントの追加』の `loc`）。入力欄の上に箇所の名前と選んだ文を 3 行まで出し（超えたら末尾を省く）、外す × を添える
-  - name: loc_label
-    type: 文字列
-    required: false
-    enabled_when: '`loc` があるとき'
-    description: 箇所の名前。本文は「本文 {行} 行目」（行の範囲は「本文 {始め}〜{終わり} 行目」）、値はキーの名前（例 「案 C のデメリット」）。使う側が `loc` から作って渡す
+    description: 添えた箇所（『レビュー中のコメントの追加』の `loc`）。入力欄の上に箇所の名前（本文は「本文 {行} 行目」、行の範囲は「本文 {始め}〜{終わり} 行目」、値はキーの名前（例 「案 C のデメリット」）。部品が `loc` から作る）と選んだ文を 3 行まで出し（超えたら末尾を省く）、外す × を添える
   - name: body
     type: 文字列
     required: false

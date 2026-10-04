@@ -4,9 +4,6 @@ story: "Preview/SelectionComment"
 states:
   - name: Below
     description: 選んだ範囲の終わりの下に出す。角を丸め切った横長の形（ピル）に、印と「コメント」
-    args:
-      - name: placement
-        value: below
   - name: Hover
     description: ホバー。面の色だけを変える
     notes:
@@ -17,9 +14,6 @@ states:
       見せ方: ストーリーの play で入口へ Tab で届かせる
   - name: Above
     description: 下に収まらない。選んだ範囲の始まりの上に出す
-    args:
-      - name: placement
-        value: above
   - name: Narrow
     description: 幅 390px で選んだ範囲が画面の端に寄る。入口を画面の端から 8px の内側に収める
     notes:
@@ -31,12 +25,10 @@ args:
     type: オブジェクト
     required: true
     description: 選んだ範囲の端の画面上の位置（`Range.getClientRects()` の最後と最初の矩形）。入口をこの近くに出す
-  - name: placement
-    type: 列挙
-    required: false
-    default: なし（入口が自分で決める）
-    choices: below・above
-    description: 出す向き。渡さなければ、選んだ範囲の終わりの下に出し、下に収まらなければ始まりの上に出す。左右は画面の端から 8px の内側に収める
+  - name: viewport
+    type: オブジェクト
+    required: true
+    description: 画面の大きさ（`{width, height}`）。選んだ範囲の終わりの下に出し、下に収まらなければ始まりの上に出す。左右は画面の端から 8px の内側に収める
 events:
   - name: 押す
     when: 入口を押したときと、フォーカスして Enter・Space を押したとき

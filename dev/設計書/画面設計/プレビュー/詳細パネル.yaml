@@ -62,8 +62,6 @@ elements:
         value: プレビューを開く.id
       - name: loc
         value: 選んだ箇所のコメントの入口を押して添えた箇所（添えていなければなし）
-      - name: loc_label
-        value: 添えた箇所から作る名前（本文は「本文 {行} 行目」、値は詳細パネルに出しているキーの見出し）
       - name: body
         value: レビュー中のコメントの読み取り.drafts のうち、同じ target と loc の書きかけ（入力中は画面が持ち、項目の移動・描き直し・パネルと全画面の行き来をまたいで保つ）
       - name: status
