@@ -74,7 +74,6 @@ scenarios:
     expected:
       - '`mindmap.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
       - ワークスペースの全ての YAML がスキーマに合う
-    notes: {}
     test: test_normal_when_without_goal
 lead: スキルが、1 つの話し合いのフォルダ（ワークスペース）を新しく作る単一ユースケース。
 issue: 3
