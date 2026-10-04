@@ -83,3 +83,37 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
     # 検証
     assert result.is_error is True
     assert str(root) in result.text
+
+
+def test_normal_when_unknown_phase(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """項目の phase と goal.phase が設定の phases に無ければ unknown_phase を返す（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "phases": ["目的", "要件"],
+        "goal": {"phase": "結論", "summary": "まとめる", "deliverables": []},
+    }
+    root = make_workspace(make_item("D-1", phase="発散"), settings=settings)
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    payload = result.data
+    assert payload["ok"] is False
+    unknown = {
+        (row["file"], row["id"], row["key"], row["detail"])
+        for row in payload["problems"]
+        if row["kind"] == "unknown_phase"
+    }
+    assert unknown == {
+        ("decisions.yaml", "D-1", "items[0].phase", "発散"),
+        ("mindmap.yaml", None, "goal.phase", "結論"),
+    }
+    assert snapshot_tree(root) == before

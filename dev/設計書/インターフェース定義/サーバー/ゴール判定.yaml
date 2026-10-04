@@ -80,6 +80,7 @@ flows:
       - '`has_goal` が偽、`reached` と `goal_phase` が `null`'
       - '`phases` が `目的`・`要件`・`構成`'
       - '`remaining_decisions` が D-2 だけ、`remaining_deliverables` が空'
+    test: test_normal_when_no_goal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
     setup:

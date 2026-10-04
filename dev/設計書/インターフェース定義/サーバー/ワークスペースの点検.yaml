@@ -78,6 +78,7 @@ flows:
       - '`problems` に `kind: unknown_phase`・`file: decisions.yaml`・`id: D-1`・`key: phase`・`detail` に `発散` がある'
       - '`problems` に `kind: unknown_phase`・`file: mindmap.yaml`・`key: goal.phase`・`detail` に `結論` がある'
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じ
+    test: test_normal_when_unknown_phase
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
     setup:

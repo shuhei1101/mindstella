@@ -31,6 +31,7 @@ flows:
       - '`mindmap.yaml` の `summary`・`description`・`target_label`・`goal` が渡した値で、`playbooks`・`phases`・`targets`・`categories`・`links` が呼ぶ前と同じ'
       - '`changed` が `summary`・`description`・`target_label`・`goal`、`remapped` が空、`files` が `mindmap.yaml` だけ'
       - 種類ごとの YAML の中身が呼ぶ前と同じ
+    test: test_normal
   - name: 正常系（フェーズを付け替える）
     summary: フェーズを置き換え、対応で項目の phase と goal.phase を付け替える
     setup:
@@ -63,6 +64,7 @@ flows:
       - D-1 と T-1 の `updated` が書き換えた日時で、D-2 の `updated` が呼ぶ前と同じ
       - '`remapped` が D-1（問い → 目的）・T-1（整理 → 要件）の 2 件、`changed` が `playbooks`・`phases`・`goal`'
       - '`check` が問題を 0 件で返す'
+    test: test_normal_when_phases_remapped
   - name: 正常系（ゴールと概要を外す）
     summary: 値が null のキーを消す
     setup:
@@ -89,6 +91,7 @@ flows:
       - ツールのエラーにならない
       - '`mindmap.yaml` が `goal` と `description` のキーを持たない'
       - '`changed` が `goal`・`description`'
+    test: test_normal_when_goal_removed
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
@@ -110,6 +113,7 @@ flows:
     expected:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
   - name: 異常系（対応の無いフェーズが残る・UnmappedPhaseError）
     summary: 新しい phases に無いフェーズを持つ項目が残ると、何も書かずに残る項目を返す
     setup:
@@ -136,6 +140,7 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文に `D-2: 発散` の行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_unmapped_phase
   - name: 異常系（スキーマに合わない・SchemaMismatchError）
     summary: 空のプレイブックや書き換えられないキーを渡すと、何も書かない
     setup:
@@ -160,6 +165,7 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文に `mindmap.yaml: playbooks` で始まる行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_schema_mismatch
   - name: 異常系（書き込めない・WriteFailedError）
     summary: 書き込めないワークスペースでは、どのファイルも書き換えずにエラーの行を返す
     setup:
@@ -187,6 +193,7 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_write_fails
   - name: 異常系（引数の誤り）
     summary: 新しい phases にもあるフェーズを phase_map のキーに渡すと、何も書かない
     setup:
@@ -211,6 +218,7 @@ flows:
       - ツールのエラーになる
       - エラーの本文に `発散` がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_bad_argument
 lead: '`settings` で渡した設定のキーを置き換える。フェーズを変えるときは、`phase_map` の対応で項目の `phase` と `goal.phase` も同じ書き込みで付け替える。'
 idempotent: false
 side_effects: '`mindmap.yaml` を書き換える。フェーズを付け替えた項目があれば、その種類の YAML も書き換える。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
@@ -302,3 +310,4 @@ constraints:
     constraint: 起こさない。書き換える全てのファイルの一時ファイルを書き終えてから置き換え、途中で失敗したら置き換えたファイルを前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
   - item: 書き換えの知らせ
     constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの知らせ』）
+test_file: tests/integration/server/test_update_settings.py

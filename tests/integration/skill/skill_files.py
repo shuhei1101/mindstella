@@ -45,6 +45,7 @@ SERVER_TOOL_NAMES = [
     "init",
     "add",
     "update",
+    "update_settings",
     "adopt",
     "status",
     "next",
@@ -67,6 +68,9 @@ MCP_TOOL_PREFIX = "mcp__mindstella__"
 
 # 本文のツールの表の行（行の頭の `ツール名` を取る）
 TOOL_ROW_PATTERN = re.compile(r"^\| `([a-z_]+)`", re.MULTILINE)
+
+# 設定（mindmap.yaml）を Edit ツールで直す手順を指す書き方（同じ行に mindmap.yaml と Edit が並ぶ）
+EDIT_SETTINGS_PATTERN = re.compile(r"mindmap\.yaml[^\n]*\bEdit\b|\bEdit\b[^\n]*mindmap\.yaml")
 
 # 前の版の起動・書き出しを指す言葉
 OLD_MODE_PATTERN = re.compile(r"mindmap\.py|check-env|preview\.html|\bbuild\b")
@@ -140,6 +144,11 @@ def allowed_mcp_tools(front_matter: dict[str, Any]) -> list[str]:
 def mentions_old_mode(texts: list[str]) -> list[str]:
     """前の版のスクリプトの起動・書き出しを指す箇所を含む本文の書き出しを返す。"""
     return [text[:LEAD_CHARS] for text in texts if OLD_MODE_PATTERN.search(text)]
+
+
+def edits_settings_directly(texts: list[str]) -> list[str]:
+    """mindmap.yaml を Edit ツールで直す手順を含む本文の書き出しを返す。"""
+    return [text[:LEAD_CHARS] for text in texts if EDIT_SETTINGS_PATTERN.search(text)]
 
 
 def playbook_names() -> list[str]:

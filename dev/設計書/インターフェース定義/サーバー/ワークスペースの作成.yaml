@@ -57,6 +57,7 @@ flows:
       - ツールのエラーにならない
       - '`mindmap.yaml` が `goal` と `description` のキーを持たず、`playbooks` が `[壁打ち, 調査]`'
       - '`check` が問題を 0 件で返す'
+    test: test_normal_when_no_goal
   - name: 異常系（既にワークスペースがある・WorkspaceExistsError）
     summary: mindmap.yaml があるフォルダには作らず、何も書き換えない
     setup:

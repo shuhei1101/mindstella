@@ -255,6 +255,7 @@ flows:
       - '`steps` が `version: v0.5.0`・`op: call` の 1 件'
       - '`mindmap.yaml` が `field` を持たず、`playbooks` が `[システム開発]`、`target_label` が `システム` のまま'
       - '`mindstella-version.ini` が `v0.4.0` のまま'
+    test: test_normal_when_field_to_playbooks
   - name: 異常系（版が新しい・WorkspaceNewerError）
     summary: 版が新しいワークスペースには手順を当てない
     setup:
