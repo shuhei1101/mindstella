@@ -82,6 +82,10 @@ def test_with_body_location(open_story: OpenStory) -> None:
     assert page.inner_text(".send-loc-name") == "本文 3 行目"
     assert page.inner_text(".send-quote") == "受け取る人へ渡す形"
     assert page.get_by_role("button", name="箇所を外す").count() == 1
+    # 添えた箇所は入力欄の説明として、結果の前に指す
+    assert page.get_attribute("textarea", "aria-describedby") == (
+        f"{page.get_attribute('.send-loc', 'id')} {page.get_attribute('.send-msg', 'id')}"
+    )
     # 箇所は入力欄より上に出る
     loc_box = page.locator(".send-loc").bounding_box()
     field_box = page.locator("textarea").bounding_box()

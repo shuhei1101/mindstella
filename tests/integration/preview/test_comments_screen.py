@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -22,10 +21,6 @@ from preview_comment_helpers import (
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from workspace_fixtures import CallTool, MakeComment, MakeDraft, MakeItem
-
-# 項目へのコメントの行の「直す」「削除」のボタンの読み上げの名前（先頭の ID を除く）
-EDIT_NAME = re.compile(r" へのコメントを直す$")
-REMOVE_NAME = re.compile(r" へのコメントを削除$")
 
 # 一覧の送る帯の要素
 CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
@@ -380,10 +375,10 @@ def test_row_check(served_review: tuple[str, Path], open_preview: OpenPreview) -
     # 検証
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} input.row-check",
-        "cs => cs.map(c => [c.getAttribute('aria-label').replace(/^\\S+ へ/, 'ID へ'), c.checked])",
+        "cs => cs.map(c => [c.getAttribute('aria-label'), c.checked])",
     ) == [
-        ["ID へのコメントを送る", True],
-        ["ID へのコメントを送る", True],
+        ["D-1 へのコメントを送る", True],
+        ["A-1 へのコメントを送る", True],
         ["項目を指さないコメントを送る", True],
         ["項目を指さないコメントを送る", True],
     ]
@@ -484,7 +479,7 @@ def test_edit(served_review: tuple[str, Path], open_preview: OpenPreview) -> Non
     url, root = served_review
     page = open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name=EDIT_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
     field = f"{_row('C-1')} form.row-edit textarea"
     assert page.input_value(field) == "案 A にする"
     page.fill(field, "案 B にする")
@@ -513,7 +508,7 @@ def test_edit_when_body_empty(
     )
     open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name=EDIT_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "   ")
     # 実行
     page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
@@ -539,7 +534,7 @@ def test_edit_when_server_refuses(
     )
     open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name=EDIT_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 B にする")
     # 実行
     page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
@@ -557,13 +552,13 @@ def test_edit_when_cancelled(
     url, root = served_review
     page = open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name=EDIT_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
     # 実行・検証（やめる）
     page.get_by_role("button", name="やめる").click()
     assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
     # Esc
-    page.locator(_row("C-1")).get_by_role("button", name=EDIT_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
     page.press(f"{_row('C-1')} form.row-edit textarea", "Escape")
     assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
@@ -581,7 +576,7 @@ def test_remove_and_restore(
     _open_list(page)
     created = read_workspace_yaml(root, "comments.yaml")["items"][0]["created"]
     # 実行（削除）
-    page.locator(_row("C-1")).get_by_role("button", name=REMOVE_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを削除").click()
     page.wait_for_selector(f"{_row('C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
     # 検証（削除）
     assert page.locator("dialog[open]").count() == 0
@@ -610,7 +605,7 @@ def test_restore_when_list_closed(
     url, _ = served_review
     page = open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name=REMOVE_NAME).click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを削除").click()
     page.wait_for_selector(f"{_row('C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
     # 実行
     page.get_by_role("button", name="コメントの一覧を閉じる").click()

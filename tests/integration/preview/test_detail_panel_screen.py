@@ -661,6 +661,7 @@ def test_selection_entry_when_closed_by_escape(
     # 検証
     assert page.locator(PILL).count() == 0
     assert page.evaluate("getSelection().toString()") == "言い換えたい文"
+    assert page.locator("aside.panel.open").count() == 1
 
 
 def test_highlight_location(

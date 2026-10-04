@@ -307,6 +307,7 @@ def test_normal_when_sent(
     page.focus(PILL)
     page.keyboard.press("Escape")
     assert page.locator(PILL).count() == 0
+    assert page.locator("aside.panel.open").count() == 1
 
 
 def test_error_when_body_empty(
