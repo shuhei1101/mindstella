@@ -968,8 +968,8 @@
   }).join("");
   const renderPanelBody = (id) => {
     const { kind, it } = byId.get(id);
-    const meta = [[TARGET, it.target], ["カテゴリー", it.category], ["フェーズ", it.stage], ["影響度", it.weight], ["種類", it.kind], ["確度", it.confidence], ["日付", it.date], ["更新日", it.updated]]
-      .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("") + (it.tags?.length ? `<dt>タグ</dt><dd>${tags(it.tags)}</dd>` : "");
+    const meta = [[TARGET, "target", it.target], ["カテゴリー", "category", it.category], ["フェーズ", "stage", it.stage], ["影響度", "weight", it.weight], ["種類", "kind", it.kind], ["確度", "confidence", it.confidence], ["日付", "date", it.date], ["更新日", "updated", it.updated]]
+      .filter(([, , v]) => v).map(([k, f, v]) => `<dt>${k}</dt>${val(f, k, v, "dd")}`).join("") + (it.tags?.length ? `<dt>タグ</dt><dd>${tags(it.tags)}</dd>` : "");
     let h = "";
     if (kind === "decisions") {
       h += it.lead ? `<p class="d-lead">${val("lead", "リード", it.lead)}</p>` : "";
@@ -1003,7 +1003,7 @@
     if (it.related?.length) h += sec(kind === "logs" ? "更新した項目" : "関連", list(it.related));
     const back = referrers(id).filter((x) => !(it.related || []).includes(x) && !(dependents.get(id) || []).includes(x));
     if (back.length) h += sec("参照元", list(back));
-    return `${status(it.status)}<h2 class="d-title">${val("title", "タイトル", it.title)}${it.deliverable ? `<span class="deliv-badge">${icon("box")}納品物</span>` : ""}</h2><dl class="d-meta">${meta}</dl>${h}`;
+    return `${it.status ? `<span data-key="status" data-klabel="状態">${status(it.status)}</span>` : ""}<h2 class="d-title">${val("title", "タイトル", it.title)}${it.deliverable ? `<span class="deliv-badge">${icon("box")}納品物</span>` : ""}</h2><dl class="d-meta">${meta}</dl>${h}`;
   };
   // ===== コメント: 送らずにレビュー中に溜め、コメントの一覧でチェックしたものだけをまとめて送る =====
   // 画面に出る語彙の案（モック専用の操作列の「文言」で切り替える）
@@ -1771,10 +1771,16 @@
     if (e.key === "Escape" && state.panel && !state.full && !dlg.open && !viewerDlg.open && !pop.matches(":popover-open")) closePanel();
   });
   // 選び終えたら入口を出し、選択を外したら閉じる（その場の入力を開いているときは閉じない）
-  const afterSelect = () => setTimeout(showSelPop, 0);
-  document.addEventListener("pointerup", (e) => { if (!e.target.closest("#selpop")) afterSelect(); });
-  document.addEventListener("keyup", (e) => { if (e.shiftKey || e.key === "Shift") afterSelect(); });
-  document.addEventListener("selectionchange", () => { if (selPop.dataset.mode === "entry" && getSelection().isCollapsed) hideSelPop(); });
+  // ポインターで選んでいる間は出さず、離したとき・キーボードで選んで止まったときに出す
+  const SELECT_SETTLE_MS = 200;
+  let pointerDown = false, selTimer;
+  document.addEventListener("pointerdown", () => { pointerDown = true; }, true);
+  document.addEventListener("pointerup", (e) => { pointerDown = false; if (!e.target.closest("#selpop")) setTimeout(showSelPop, 0); }, true);
+  document.addEventListener("selectionchange", () => {
+    if (getSelection().isCollapsed) { if (selPop.dataset.mode === "entry") hideSelPop(); return; }
+    clearTimeout(selTimer);
+    selTimer = setTimeout(() => { if (!pointerDown) showSelPop(); }, SELECT_SETTLE_MS);
+  });
   // 入口を押しても選択が外れないようにする
   selPop.addEventListener("pointerdown", (e) => { if (selPop.dataset.mode === "entry") e.preventDefault(); });
   // その場の入力は、外側を押したら閉じる（書きかけはサーバーに残る）
