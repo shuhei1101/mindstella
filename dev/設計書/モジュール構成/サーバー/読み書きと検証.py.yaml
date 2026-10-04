@@ -1084,9 +1084,9 @@ functions:
     process: |-
       1. `process_lock` を取る
       2. `create` が真なら `root` を作る（`exist_ok`）。偽なら、`root/mindmap.yaml` が無ければ何も作らずに `WorkspaceNotFoundError` を送る（`process_lock` は放す）
-      3. `LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ
+      3. `LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。開けない（`OSError`）ときは `WriteFailedError` を送る
       4. 呼び出し元の処理を動かす
-      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す
+      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 で `root` を作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と `root` を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
     unit_tests:
       - name: test_workspace_lock
         case: 正常
@@ -1116,6 +1116,9 @@ functions:
       - name: WorkspaceNotFoundError
         condition: '`create` が偽で、`root` に `mindmap.yaml` が無い'
         message: 'ワークスペースがありません: {root}'
+      - name: WriteFailedError
+        condition: '`LOCK_FILE` を開けない（書き込みの権限が無い等）'
+        message: '書き込めませんでした: {パス}（{理由}）'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py
