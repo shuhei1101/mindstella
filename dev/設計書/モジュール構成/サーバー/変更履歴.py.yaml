@@ -211,7 +211,7 @@ functions:
       description: 行の位置の小さい順。同じ本文なら空
     process: |-
       1. 両方を `splitlines()` で行に分ける
-      2. `difflib.SequenceMatcher(None, after_lines, before_lines, autojunk=False).get_opcodes()` の `equal` 以外を、`{line: i1 + 1, now: after_lines[i1:i2], before: before_lines[j1:j2]}` にする
+      2. `difflib.SequenceMatcher(None, after_lines, before_lines).get_opcodes()` の `equal` 以外を、`{line: i1 + 1, now: after_lines[i1:i2], before: before_lines[j1:j2]}` にする（`autojunk` は既定の真のまま。空行のように何度も現れる行を突き合わせの目印に使わず、空行の多い本文を大きく書き換えても書き込みのロックを長く握らない。置き換えの塊が粗くなっても、当てれば前の本文に戻る）
     unit_tests:
       - name: test_diff_body
         case: 正常
@@ -219,6 +219,12 @@ functions:
         condition: 3 行の本文の 2 行目を書き換え、4 行目を足した後の本文
         mock: なし
         expected: 1 行目・3 行目を含まず、`apply_body_diff(after, 戻り値)` が前の本文の行と等しい
+      - name: test_diff_body_when_large_rewrite
+        case: 正常
+        summary: 空行を挟む大きな本文を丸ごと書き換えても速く、戻せる
+        condition: 3 行に 1 行が空行の 5000 行の Markdown の、空行でない行を全て書き換えた前後（空行の並びは同じ）
+        mock: なし
+        expected: 1 秒以内に戻り、`apply_body_diff(after, 戻り値)` が前の本文と等しい
   - name: apply_body_diff
     title: 本文の差分を当てる
     kind: 関数
