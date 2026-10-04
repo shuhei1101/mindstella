@@ -52,7 +52,7 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で受け取る（`PreviewRegistry(write_lock)`）
     kind: クラス
     properties:
       - name: _servers
@@ -510,7 +510,7 @@ functions:
       - name: test_stream_events
         case: 正常
         summary: 印が変わったときだけ changed を書く
-        condition: '`signature` が `a` → `a` → `b` → `b` を返し、4 回目の `write` が `BrokenPipeError` を送る。`sleep` は待たない。`clock` は 0.25 ずつ進む'
+        condition: '`signature` が `a` → `a` → `b` → `b` → `c` を返し、2 回目の `write`（`c` への `changed`）が `BrokenPipeError` を送る。`sleep` は待たない。`clock` は 0.25 ずつ進む'
         mock: '`signature`・`sleep`・`clock`・`write`'
         expected: '書いたものが `event: changed\ndata: b\n\n` の 1 つだけで、戻る'
       - name: test_stream_events_when_idle
