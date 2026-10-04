@@ -78,3 +78,32 @@ def test_narrow(open_story: OpenStory) -> None:
         "(() => { const t = document.querySelector('nav.tabbar'); return [t.scrollWidth > t.clientWidth, document.documentElement.scrollWidth <= innerWidth]; })()"
     )
     assert overflow == [True, True]
+
+
+def test_offline(open_story: OpenStory) -> None:
+    """サーバーにつながらない。検索の入口の左に、読んだ日時つきの接続の状態を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--offline")
+    # 検証
+    status = page.locator(".conn")
+    assert status.get_attribute("role") == "status"
+    assert status.inner_text() == "サーバーにつながりません（10/04 11:21 に読んだ記録）"
+    assert status.locator("svg.icon").count() == 1
+    assert page.evaluate("document.querySelector('.conn').tagName") != "BUTTON"
+    status_box = status.bounding_box()
+    search_box = page.locator(".search-trigger").bounding_box()
+    assert status_box is not None
+    assert search_box is not None
+    assert status_box["x"] + status_box["width"] <= search_box["x"]
+
+
+def test_offline_narrow(open_story: OpenStory) -> None:
+    """幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を title に持つ（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--offline-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    status = page.locator(".conn")
+    assert status.get_attribute("title") == "10/04 11:21 に読んだ記録を出しています"
+    assert status.inner_text() == "つながりません"

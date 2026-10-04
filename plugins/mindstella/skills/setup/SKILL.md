@@ -1,13 +1,13 @@
 ---
 name: setup
-description: 話し合いを始める・再開するときに、依存を確かめ、新しいワークスペースを作るか既存のワークスペースの状況を示して、話し合いを進めるスキル session へ渡す
+description: 話し合いを始める・再開するときに、新しいワークスペースを作るか既存のワークスペースの状況を示して、話し合いを進めるスキル session へ渡す
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py:*)
+allowed-tools: Read, mcp__mindstella__init, mcp__mindstella__status, mcp__mindstella__migrate
 ---
 
 # setup
 
-依存を確かめ、新しいワークスペースを作るか、既存のワークスペースの状況を示して、`/mindstella:session` へ渡す。
+新しいワークスペースを作るか、既存のワークスペースの状況を示して、`/mindstella:session` へ渡す。
 
 ## 入力
 
@@ -20,20 +20,17 @@ allowed-tools: Read, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/m
 
 | ステップ | 手順 | 実行する条件 |
 | --- | --- | --- |
-| 依存の確認 | `check-env` を実行する。終了コードが 1 なら、足りないものと出力の `install` のコマンドを示して止まる（以降は実行しない）。`install` が `null` なら、Python 3.12 以上を入れるよう伝えて止まる | 毎回最初 |
+| ツールの確認 | mindstella の MCP のツール（`mcp__mindstella__init`・`status`・`migrate`）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる（以降は実行しない）。依存は起動スクリプトが確かめる | 毎回最初 |
 | 新しいワークスペース | `${CLAUDE_PLUGIN_ROOT}/skills/setup/steps/新しいワークスペース.md` | `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読めない |
 | 既存のワークスペース | `${CLAUDE_PLUGIN_ROOT}/skills/setup/steps/既存のワークスペース.md` | `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読める |
 
-## コマンド
+## ツール
 
-どれも `python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py` の後ろに続けて呼ぶ。
-中身の JSON は `--json '{JSON}'` の引数で渡す。値の中に `'` が要るときは `'\''` と書く。
+どれも mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
+スクリプトを Bash で起動しない。
 
-| コマンド | 呼び方 | 使う引数 |
-| --- | --- | --- |
-| `check-env` | `check-env` | なし |
-| `init` | `init --workspace {フォルダ} --json '{JSON}'` | `--json` に設定の JSON（`summary`・`field`・`target_label`・`phases`・`targets`・`categories`・`goal`・`links`） |
-| `migrate` | `migrate --workspace {フォルダ} --plan` | `--workspace`・`--plan` |
-| `status` | `status --workspace {フォルダ}` | `--workspace` |
-| `find` | `find --workspace {フォルダ} --text {文字}` | `--text` |
-| `build` | `build --workspace {フォルダ}` | `--workspace` |
+| ツール | 使う引数 |
+| --- | --- |
+| `init` | `workspace`・`settings`（設定のオブジェクト。`summary`・`field`・`target_label`・`phases`・`targets`・`categories`・`goal`・`links`） |
+| `migrate` | `workspace`・`plan: true` |
+| `status` | `workspace` |

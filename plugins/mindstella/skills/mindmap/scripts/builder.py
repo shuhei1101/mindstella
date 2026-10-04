@@ -1,4 +1,4 @@
-"""ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に埋め込んで書き出す。"""
+"""ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に差し込み、配る書き出しを書く。"""
 
 from __future__ import annotations
 
@@ -17,10 +17,10 @@ from pathlib import Path
 from typing import Any
 
 import store
-from errors import DownloadFailedError, OutPathError
+from errors import ArgumentError, DownloadFailedError
 from graph import is_settled, judge_goal, list_next_candidates
 from kinds import KINDS
-from store import Workspace
+from store import NowFn, Workspace, now_utc
 
 # このファイルから見た `skills/mindmap/preview/`
 PREVIEW_DIR = Path(__file__).resolve().parent.parent / "preview"
@@ -31,9 +31,6 @@ TEMPLATE_FILE = "template.html"
 # 雛形がちょうど 1 つ持つ、中身が空の埋め込み先の要素
 DATA_ELEMENT = '<script type="application/json" id="mindmap-data"></script>'
 
-# ワークスペースに書き出すファイル名
-PREVIEW_FILE = "preview.html"
-
 # 差し込む CSS（雛形のフォルダからの相対パス。並びの順につなぐ）
 STYLE_FILES = ("tokens.css", "style.css")
 
@@ -43,9 +40,11 @@ SCRIPT_FILES = (
     "core/records.js",
     "core/libs.js",
     "core/router.js",
+    "core/api.js",
     "components/view-switch.js",
     "components/topbar.js",
     "components/table.js",
+    "components/send-form.js",
     "screens/overview.js",
     "screens/decisions.js",
     "screens/tasks.js",
@@ -184,21 +183,6 @@ VENDOR_LIBRARIES = (
 type FetchFn = Callable[[str], bytes]
 
 
-def build_preview(workspace: Workspace, *, built_at: str, preview_dir: Path = PREVIEW_DIR) -> Path:
-    """検証してからデータを雛形に埋め込み、`preview.html` を置き換える。"""
-    # 問題があるときは書かない（前の preview.html を残す）
-    problems = store.validate_workspace(workspace)
-    if problems:
-        raise store.build_mismatch_error(problems, workspace)
-
-    data = collect_preview_data(workspace, built_at=built_at)
-    html = embed_data(assemble_template(preview_dir=preview_dir), data)
-
-    path = workspace.root / PREVIEW_FILE
-    replace_file(path, html)
-    return path
-
-
 def replace_file(path: Path, text: str) -> None:
     """同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（途中で止まっても前のファイルを壊さない）。"""
     temp: Path | None = None
@@ -213,7 +197,7 @@ def replace_file(path: Path, text: str) -> None:
 
 
 def collect_preview_data(workspace: Workspace, *, built_at: str) -> dict[str, Any]:
-    """設定・7 種類・本文・画面に出す値・書き出した日時を 1 つの辞書にまとめる。"""
+    """設定・7 種類・本文・画面に出す値・読んだ日時を 1 つの辞書にまとめる（送信は含めない）。"""
     data: dict[str, Any] = {"settings": workspace.settings}
     # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで入れる
     for kind, spec in KINDS.items():
@@ -232,6 +216,16 @@ def collect_preview_data(workspace: Workspace, *, built_at: str) -> dict[str, An
     data["derived"] = derive_preview_values(workspace)
     data["built_at"] = built_at
     return data
+
+
+def read_records(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
+    """ワークスペースをその場で読んで検証し、記録の取得の辞書にして返す。"""
+    workspace = store.load_workspace(root)
+    # 問題があるときは返さない
+    problems = store.validate_workspace(workspace)
+    if problems:
+        raise store.build_mismatch_error(problems, workspace)
+    return collect_preview_data(workspace, built_at=now())
 
 
 def escape_for_script(json_text: str) -> str:
@@ -312,16 +306,12 @@ def _count_decisions(
     return {"phase": phase, "settled": settled, "total": len(rows)}
 
 
-def validate_export_out(out: Path, *, root: Path) -> Path:
-    """`--out` が `.html` で終わり、ワークスペースの `preview.html` を指さないことを確かめ、絶対パスにして返す。"""
+def validate_export_out(out: Path) -> Path:
+    """`out` が `.html` で終わることを確かめ、`resolve()` した絶対パスにして返す。"""
     # 拡張子は大文字・小文字を区別しない
     if out.suffix.lower() != ".html":
-        raise OutPathError(f"--out は .html のファイルを指してください: {out}")
-    resolved = out.resolve()
-    # `build` が書き出す preview.html を指すと、配る書き出しで置き換えてしまう
-    if resolved == (root / PREVIEW_FILE).resolve():
-        raise OutPathError(f"--out にワークスペースの {PREVIEW_FILE} は指せません: {out}")
-    return resolved
+        raise ArgumentError("out", f".html のファイルを指してください: {out}")
+    return out.resolve()
 
 
 def fetch_url(url: str, timeout: float = FETCH_TIMEOUT_SEC) -> bytes:

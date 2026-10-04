@@ -5,13 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .skill_files import (
-    BASH_RULE,
+    SERVER_TOOL_NAMES,
     SKILLS_DIR,
-    launches_not_in_form,
+    allowed_mcp_tools,
+    mentions_old_mode,
     missing_plugin_paths,
     read_skill,
     skill_markdown_texts,
     texts_with_forbidden_name,
+    tools_listed_in,
 )
 
 if TYPE_CHECKING:
@@ -19,15 +21,11 @@ if TYPE_CHECKING:
 
     from conftest import RunClaude
 
-# 本文のコマンドの一覧に並ぶコマンド
-UPGRADE_COMMANDS = [
-    "migrate --plan",
-    "migrate",
-    "migrate --set",
-    "migrate --record",
-    "check",
-    "build",
-]
+# front matter の allowed-tools の値
+UPGRADE_ALLOWED_TOOLS = "Read, mcp__mindstella__migrate, mcp__mindstella__check"
+
+# 本文のツールの表に並ぶ migrate の呼び方（版を比べる・手順を当てる・値を入れる・版を書き換える）
+MIGRATE_CALLS = ["plan: true", "values", "record: true"]
 
 
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
@@ -39,16 +37,23 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 検証
     # front matter の name が upgrade、allowed-tools が制約の値と一致する
     assert front_matter["name"] == "upgrade"
-    assert front_matter["allowed-tools"] == f"Read, {BASH_RULE}"
+    assert front_matter["allowed-tools"] == UPGRADE_ALLOWED_TOOLS
     assert front_matter["description"]
     # ファイルは SKILL.md だけ
     assert [path.name for path in (SKILLS_DIR / "upgrade").iterdir()] == ["SKILL.md"]
     # 本文の ${CLAUDE_PLUGIN_ROOT}/ で始まるパスが全てリポジトリの中にある
     assert missing_plugin_paths(texts) == []
-    # 本文のスクリプトの起動が全て python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py で始まる
-    assert launches_not_in_form(texts) == []
-    # 本文のコマンドの一覧に migrate --plan・migrate・migrate --set・migrate --record・check・build がある
-    assert [command for command in UPGRADE_COMMANDS if f"| `{command}` |" not in body] == []
+    # 本文が呼ぶツールが全て allowed-tools にあり、サーバーのツールの一覧にある
+    assert tools_listed_in(texts) == ["migrate", "check"]
+    assert set(allowed_mcp_tools(front_matter)) <= set(SERVER_TOOL_NAMES)
+    # 本文のツールの一覧に migrate（plan・手順を当てる・values・record）と check がある
+    assert [call for call in MIGRATE_CALLS if f"`{call}`" not in body] == []
+    assert "| `migrate`（手順を当てる） | `workspace` |" in body
+    # 本文が mindmap.py・build・check-env を指さない
+    assert mentions_old_mode(texts) == []
+    # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
+    assert "bin/mindstella" in body
+    assert "止まる" in body
     # スキルの Markdown に特定の開発基盤の名前が無い
     assert texts_with_forbidden_name() == []
     # claude plugin validate が終了コード 0（失敗すれば run_claude が例外にする）

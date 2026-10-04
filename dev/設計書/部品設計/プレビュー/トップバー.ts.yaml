@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・全体の検索の入口・ライト / ダークの切り替えと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替えと、画面を移るタブの帯（右端につながりの入口）を出す。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -41,6 +41,19 @@ args:
     required: true
     choices: light・dark
     description: 今のライト / ダーク
+  - name: connection
+    type: 列挙
+    required: false
+    default: online
+    choices: online・offline
+    description: サーバーにつながっているか。offline のときだけ、検索の入口の左に押せない接続の状態を出す。配る書き出しは常に online
+    status: planned
+  - name: read_at
+    type: 文字列
+    required: false
+    enabled_when: '`connection` が `offline` のとき'
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1100px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
+    status: planned
 events:
   - name: 画面を移る
     when: タブかつながりの入口を押したとき
@@ -78,7 +91,24 @@ states:
     description: 幅 390px。検索の入口を虫眼鏡だけにし、題名を隠す。タブは帯の中で横に送る
     notes:
       見せ方: Storybook の画面幅を 390px にして確かめる
+  - name: Offline
+    description: サーバーにつながらない。検索の入口の左に、印と「サーバーにつながりません（{日時} に読んだ記録）」を出す。印を `--red-300`、文言をトップバーの文字色（`--topbar-fg`）で出す
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+  - name: OfflineNarrow
+    description: 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を `title` に持つ
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
+  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない

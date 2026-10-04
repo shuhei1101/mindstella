@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 PLUGIN_ID = "mindstella@mindstella"
 
 # 取り込まれたプラグインのフォルダに無いこと（リポジトリの開発用のファイル）
-OUTSIDE_PLUGIN_NAMES = ["dev", "docs", "tests", ".storybook", "package.json"]
+OUTSIDE_PLUGIN_NAMES = ["dev", "docs", "tests", ".storybook", "package.json", ".mcp.json"]
 
 
 def _find_installed_plugin(list_json: str) -> dict[str, object]:
@@ -30,7 +31,7 @@ def _count_hooks(details: str) -> int:
 
 
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
-    """プラグイン mindstella が 2 つのスキルと共通の置き場所と LICENSE を持ち、プラグインの外のフォルダを持たず、hooks を持たずに読み込まれる（正常系）。"""
+    """プラグイン mindstella が 2 つのスキルと共通の置き場所と起動スクリプトと LICENSE を持ち、プラグインの外のフォルダを持たず、hooks を持たずに読み込まれる（正常系）。"""
     # 準備
     run_claude("plugin", "marketplace", "add", str(repo_root))
 
@@ -52,11 +53,20 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert (shared / "playbooks").is_dir()
     assert (shared / "schemas").is_dir()
     assert (shared / "scripts").is_dir()
+    # 取り込まれたプラグインのフォルダに、実行の権限を持つ bin/mindstella がある
+    assert os.access(install_path / "bin" / "mindstella", os.X_OK)
     # 取り込まれたプラグインのフォルダの直下に LICENSE があり、本文がリポジトリの直下の LICENSE と一致する
     assert (install_path / "LICENSE").is_file()
     assert (install_path / "LICENSE").read_bytes() == (repo_root / "LICENSE").read_bytes()
     # 取り込まれたプラグインのフォルダに .claude-plugin/plugin.json があり、リポジトリの開発用のファイルが無い
     assert (install_path / ".claude-plugin" / "plugin.json").is_file()
     assert [name for name in OUTSIDE_PLUGIN_NAMES if (install_path / name).exists()] == []
+    # plugin.json が mcpServers を持たない
+    manifest = json.loads(
+        (install_path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )
+    assert "mcpServers" not in manifest
     # claude plugin details で hooks が 0 件である
     assert _count_hooks(details.stdout) == 0
+    # その設定のフォルダで claude mcp list に mindstella が無い
+    assert "mindstella" not in run_claude("mcp", "list").stdout

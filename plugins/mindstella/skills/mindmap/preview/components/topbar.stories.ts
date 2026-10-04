@@ -60,3 +60,19 @@ export const Narrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す */
+export const Offline: Story = {
+  args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+};
+
+/** 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を title に持つ */
+export const OfflineNarrow: Story = {
+  args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};

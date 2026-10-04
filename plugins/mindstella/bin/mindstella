@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# mindstella の MCP サーバーを渡した Claude Code を、tmux のセッションの中で立ち上げてつなぐ。
+# 使い方:
+#   {プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}
+# 環境変数:
+#   MINDSTELLA_VENV    MCP サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
+#   CLAUDE_CONFIG_DIR  あれば、Claude Code の設定のフォルダとして tmux のセッションへ渡す
+# 終了コード: 0 正常 / 1 実行時のエラー / 2 引数の誤り
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="$SCRIPT_DIR/../skills/mindmap/scripts"
+
+# 標準エラーに出すエラーの行の頭
+ERROR_PREFIX="[mindstella] エラー:"
+
+# エラーを標準エラーに出して、終了コード 1 で終わる（2 つ目の引数があれば次の行に添える）
+fail() {
+  echo "$ERROR_PREFIX $1" >&2
+  if [ "$#" -ge 2 ] && [ -n "$2" ]; then
+    echo "$2" >&2
+  fi
+  exit 1
+}
+
+# 依存の確認の結果（JSON）から、値を取り出す。標準ライブラリだけで読み、jq に頼らない
+#   python_path: MCP サーバーを動かす Python / install: そろえるコマンド / summary: 足りないものの説明
+read_report() {
+  python3 -c '
+import json, sys
+
+report = json.load(sys.stdin)
+item = sys.argv[1]
+if item == "python_path":
+    print(report.get("python_path", ""))
+elif item == "install":
+    print(report.get("install") or "")
+else:
+    lines = []
+    if not report.get("venv_ok"):
+        lines.append("仮想環境がありません: " + report.get("venv", ""))
+    elif not report.get("python_ok"):
+        lines.append("仮想環境の Python が下限より古いか、版を引けません: " + report.get("venv", ""))
+    for package in report.get("packages", []):
+        if not package.get("ok"):
+            lines.append("ライブラリが足りません: %s（%s 以上）" % (package["name"], package["required"]))
+    if not report.get("install"):
+        lines.append("そろえるコマンドを作れません。Python 3.12 以上を入れてください")
+    print("\n".join(lines))
+' "$1"
+}
+
+# 1. 引数: ワークスペースのフォルダを 1 つ受け取る
+if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+  echo "使い方: $0 {ワークスペースのフォルダ}" >&2
+  exit 2
+fi
+FOLDER="$1"
+
+# 2. 依存: システムの python3 で依存の確認を起動する
+command -v python3 >/dev/null 2>&1 || fail "python3 が見つかりません。Python 3.12 以上を入れてください"
+VENV_ARGS=()
+if [ -n "${MINDSTELLA_VENV:-}" ]; then
+  VENV_ARGS=(--venv "$MINDSTELLA_VENV")
+fi
+set +e
+REPORT="$(python3 "$SCRIPTS_DIR/check_env.py" ${VENV_ARGS[@]+"${VENV_ARGS[@]}"} 2>/dev/null)"
+CHECK_STATUS=$?
+set -e
+# 結果を JSON として読めない: 依存の確認そのものが動かなかった
+if [ -z "$REPORT" ]; then
+  fail "依存を確かめられませんでした。python3 は 3.8 以上が要ります"
+fi
+if [ "$CHECK_STATUS" -ne 0 ]; then
+  DETAIL="$(read_report summary <<<"$REPORT")"
+  INSTALL_COMMAND="$(read_report install <<<"$REPORT")"
+  # そろえるコマンドがあれば、説明の次の行に添える
+  if [ -n "$INSTALL_COMMAND" ]; then
+    DETAIL="$DETAIL"$'\n'"$INSTALL_COMMAND"
+  fi
+  fail "依存が足りません" "$DETAIL"
+fi
+PYTHON_PATH="$(read_report python_path <<<"$REPORT")"
+
+# 3. tmux と Claude Code
+command -v tmux >/dev/null 2>&1 || fail "tmux が見つかりません。tmux を入れてください"
+command -v claude >/dev/null 2>&1 || fail "claude が見つかりません。Claude Code を入れてください"
+
+# 4. プラグインのフォルダ・セッションの名前・MCP の設定（標準出力の 3 行を 1 行ずつ受ける）
+LISTING="$(claude plugin list --json)" || fail "claude plugin list --json を実行できません"
+LAUNCHED="$("$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --python "$PYTHON_PATH" --folder "$FOLDER" --format lines <<<"$LISTING")" || exit 1
+{
+  IFS= read -r PLUGIN_DIR
+  IFS= read -r SESSION
+  IFS= read -r MCP_CONFIG
+} <<<"$LAUNCHED"
+echo "[mindstella] プラグイン: $PLUGIN_DIR" >&2
+echo "[mindstella] セッション: $SESSION" >&2
+
+# 5. セッション: 同じ名前（同じフォルダ）のセッションが既にあれば立てず、そのセッションへつなぐ
+if tmux has-session -t "=$SESSION" 2>/dev/null; then
+  echo "[mindstella] 既にあるセッションへつなぎます: $SESSION" >&2
+else
+  mkdir -p "$FOLDER"
+  WORK_DIR="$(cd "$FOLDER" && pwd -P)"
+  ENV_ARGS=()
+  if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    # tmux のサーバーが先に立っていると呼び出し元の環境変数は渡らないので、セッションへ渡す
+    ENV_ARGS=(-e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR")
+  fi
+  tmux new-session -d -s "$SESSION" -c "$WORK_DIR" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} -- claude --mcp-config "$MCP_CONFIG"
+fi
+
+# 6. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければつなぐコマンドを出して終わる
+if [ -t 1 ]; then
+  if [ -n "${TMUX:-}" ]; then
+    exec tmux switch-client -t "=$SESSION"
+  fi
+  exec tmux attach-session -t "=$SESSION"
+fi
+if [ -n "${TMUX:-}" ]; then
+  echo "tmux switch-client -t =$SESSION"
+else
+  echo "tmux attach-session -t =$SESSION"
+fi

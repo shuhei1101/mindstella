@@ -9,16 +9,23 @@ from pathlib import Path
 
 import pytest
 
+# 起動スクリプトを隔離して動かす fixture
+from launch_fixtures import ready_venv, sandbox  # noqa: F401
+
 # 単体・結合・E2E が共有する fixture（pytest は conftest の名前空間にある fixture を登録する）
 from workspace_fixtures import (  # noqa: F401
+    call_tool,
     make_item,
     make_legacy_item,
     make_legacy_workspace,
+    make_submission,
     make_venv,
     make_workspace,
-    run_mindmap,
+    mcp_server,
     snapshot_tree,
+    start_server,
     valid_settings,
+    write_submissions,
 )
 
 type RunClaude = Callable[..., subprocess.CompletedProcess[str]]

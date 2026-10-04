@@ -2,7 +2,7 @@
 name: upgrade
 description: プラグインを上げた後、ワークスペースの版が古いと案内されたときに、ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替えるスキル
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py:*)
+allowed-tools: Read, mcp__mindstella__migrate, mcp__mindstella__check
 ---
 
 # upgrade
@@ -22,24 +22,23 @@ allowed-tools: Read, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/m
 
 | ステップ | 手順 |
 | --- | --- |
-| 依存の確認 | `check-env` を実行する。終了コードが 1 なら、足りないものと出力の `install` のコマンドを示して止まる（以降は実行しない）。`install` が `null` なら、Python 3.12 以上を入れるよう伝えて止まる |
-| 版の比較 | `migrate --plan` を呼び、出力の `relation` を読む。`same` なら移し替えるものが無いと示して終える。`newer` ならプラグインを更新するよう案内して止まる（以降は実行しない） |
-| 手順の一覧 | 出力の `steps` を版の順に、`version` と `summary` で示す。`destructive` が `true` の手順があるときだけ、当ててよいかを利用者に確かめる（利用者が断ったら止まる） |
-| 手順を当てる | `migrate`（`--plan` なし）を呼ぶ。終了コードが 1 なら、標準エラーの失敗した版・手順・理由を示して止まる（`migrate` が写しから戻している）。出力の `backup` が写しの場所になる |
-| 点検 | `check` を呼ぶ。`migrate` の出力の `needs_values` のキーだけを、`description` を添えて利用者に聞き、答えを `migrate --set` で入れる。`needs_values` のキー以外の問題が出たときは、示して止まる |
-| 版の書き換え | `migrate --record` を呼ぶ。終了コードが 1 なら、標準エラーの合わない箇所を示して止まる |
-| 仕上げ | `build` を呼ぶ。出力の `recorded` の版と、`backup` の写しの場所を示し、`/mindstella:session {ワークスペースのフォルダ}` で続けるよう案内する |
+| ツールの確認 | mindstella の MCP のツール（`mcp__mindstella__migrate`・`check`）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる（以降は実行しない）。依存は起動スクリプトが確かめる |
+| 版の比較 | `migrate` を `plan: true` で呼び、結果の `relation` を読む。`same` なら移し替えるものが無いと示して終える。`newer` ならプラグインを更新するよう案内して止まる（以降は実行しない） |
+| 手順の一覧 | 結果の `steps` を版の順に、`version` と `summary` で示す。`destructive` が `true` の手順があるときだけ、当ててよいかを利用者に確かめる（利用者が断ったら止まる） |
+| 手順を当てる | `migrate`（`plan` なし）を呼ぶ。ツールのエラーが返ったら、本文の失敗した版・手順・理由を示して止まる（`migrate` が写しから戻している）。結果の `backup` が写しの場所になる |
+| 点検 | `check` を呼ぶ。`migrate` の結果の `needs_values` のキーだけを、`description` を添えて利用者に聞き、答えを `migrate` の `values` で入れる。`needs_values` のキー以外の問題が出たときは、示して止まる |
+| 版の書き換え | `migrate` を `record: true` で呼ぶ。ツールのエラーが返ったら、本文の合わない箇所を示して止まる |
+| 仕上げ | 結果の `recorded` の版と、`backup` の写しの場所を示し、`/mindstella:session {ワークスペースのフォルダ}` で続けるよう案内する |
 
-## コマンド
+## ツール
 
-どれも `python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py` の後ろに続けて呼ぶ。
+どれも mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
+スクリプトを Bash で起動しない。
 
-| コマンド | 呼び方 | 使う引数 |
-| --- | --- | --- |
-| `check-env` | `check-env` | なし |
-| `migrate --plan` | `migrate --workspace {フォルダ} --plan` | `--workspace` |
-| `migrate` | `migrate --workspace {フォルダ}` | `--workspace` |
-| `migrate --set` | `migrate --workspace {フォルダ} --set {ファイル}:{キーのパス}={値}` | `--set`（値が要るキーごとに繰り返す。値の中に空白があるときは引用符で囲む） |
-| `migrate --record` | `migrate --workspace {フォルダ} --record` | `--workspace` |
-| `check` | `check --workspace {フォルダ}` | `--workspace` |
-| `build` | `build --workspace {フォルダ}` | `--workspace` |
+| ツール | 使う引数 |
+| --- | --- |
+| `migrate`（版を比べる） | `workspace`・`plan: true` |
+| `migrate`（手順を当てる） | `workspace` |
+| `migrate`（値を入れる） | `workspace`・`values`（値が要るキーごとに `file`・`key`・`value` を持つオブジェクトの配列） |
+| `migrate`（版を書き換える） | `workspace`・`record: true` |
+| `check` | `workspace` |

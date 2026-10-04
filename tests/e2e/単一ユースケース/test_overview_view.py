@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_helpers import BuildPreview, OpenPreview, row_ids
+from preview_helpers import OpenPreview, ServePreview, row_ids
 from workspace_fixtures import MakeItem
 
 # ゴールまでのタイルが、納品物を全て出す上限の件数
@@ -36,14 +36,14 @@ def _chips(page: Page) -> list[str]:
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """タイルで次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスクを読み、要見直しの一覧を開く（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         make_item("D-2"),
         make_item("D-6", depends_on=["D-2"]),
         make_item("D-3", status="要見直し"),
@@ -56,7 +56,7 @@ def test_normal(
         bodies={"A-1.md": "完成した資料\n", "A-2.md": "確認中の資料\n"},
     )
     # 実行
-    page = open_preview(path)
+    page = open_preview(url)
     # 検証
     next_ids = page.eval_on_selector_all(
         "#tile-next button[data-id]", "buttons => buttons.map(b => b.dataset.id)"
@@ -95,17 +95,17 @@ def test_normal(
 
 
 def test_normal_when_show_all_holds(
-    build_preview: BuildPreview, open_preview: OpenPreview, make_item: MakeItem
+    serve_preview: ServePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
     """保留のタイルのすべて表示で、保留の検討事項だけを表に出す（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         make_item("D-4", status="保留"),
         make_item("D-7", status="保留"),
         make_item("T-3", status="保留"),
     )
     # 実行
-    page = open_preview(path)
+    page = open_preview(url)
     # 検証
     assert page.locator("#tile-hold .t-link").count() == 1
     assert page.inner_text("#tile-hold .t-link") == f"すべて表示（{HOLD_COUNT} 件）"
@@ -117,7 +117,7 @@ def test_normal_when_show_all_holds(
 
 
 def test_normal_when_many_deliverables(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
@@ -126,14 +126,14 @@ def test_normal_when_many_deliverables(
     # 準備
     deliverable_ids = [f"A-{number}" for number in range(1, MANY_DELIVERABLES + 1)]
     other_id = f"A-{MANY_DELIVERABLES + 1}"
-    path = build_preview(
+    url = serve_preview(
         *[make_item(doc_id, deliverable=True, status="完成") for doc_id in deliverable_ids],
         make_item(other_id, deliverable=False),
         settings=_goal_settings(valid_settings, deliverable_ids),
         bodies={f"{doc_id}.md": "本文\n" for doc_id in [*deliverable_ids, other_id]},
     )
     # 実行
-    page = open_preview(path)
+    page = open_preview(url)
     # 検証
     assert page.locator("#tile-goal .checklist li").count() == DELIVERABLE_LIMIT
     show_all = page.locator("#tile-goal .t-link")

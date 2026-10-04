@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_helpers import BuildPreview, OpenPreview, click_item_ball
-from workspace_fixtures import MakeItem, SnapshotTree
+from preview_helpers import OpenPreview, click_item_ball
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # 本文に mermaid の図を持つ Markdown
 BODY_WITH_DIAGRAM = """# 納品物の本文
@@ -59,7 +59,8 @@ def _records(make_item: MakeItem) -> list[dict[str, Any]]:
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
@@ -68,15 +69,17 @@ def test_normal(
 ) -> None:
     """概要の要見直しから D-3 の詳細を開き、つながりで D-3 を押して、終えた URL を開き直す（正常系）。"""
     # 準備
-    path = build_preview(
+    root = make_workspace(
         *_records(make_item),
         settings=_settings(valid_settings),
         bodies={"A-1.md": BODY_WITH_DIAGRAM},
     )
-    root = path.parent
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    url = served.data["url"]
     before = snapshot_tree(root)
     # 実行（概要の要見直しのタイルで D-3 を押す）
-    open_preview(path)
+    open_preview(url)
     page.click('#tile-review button[data-id="D-3"]')
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
@@ -97,5 +100,5 @@ def test_normal(
     assert reopened.get_attribute('nav.tabbar a[data-tab="graph"]', "aria-current") == "page"
     assert reopened.inner_text("aside.panel .d-title") == "D-3の題"
     assert reopened.locator("#graph-canvas").count() == 1
-    # 検証（ワークスペースの YAML と preview.html の中身が、開く前と同じ）
+    # 検証（ワークスペースの YAML の中身が、開く前と同じ）
     assert snapshot_tree(root) == before

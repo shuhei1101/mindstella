@@ -1,0 +1,310 @@
+title: "サーバー / 送信"
+lead: プレビューから送られた回答・意見を `submissions.yaml` に足し、取り込んでいない送信を返し、取り込み済みにする。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・配信）が取る。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    schemas/submissions.schema.json  submissions.yaml の形（ER 図『ワークスペース』の送信）
+    scripts/submissions.py           送信の読み書き
+  ```
+data_models:
+  - name: Submission
+    title: 送信
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 送信の取り込み
+    role: DTO
+    summary: '`submissions.yaml` の 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: id
+        type: str
+        description: '`S-{連番}`'
+      - name: target
+        type: str
+        description: 向けた項目の ID
+      - name: body
+        type: str
+        description: 本文（前後の空白を除いたもの）
+      - name: sent
+        type: str
+        description: 送った日時
+      - name: taken
+        type: str | None
+        description: 取り込んだ日時。取り込んでいなければ `None`
+  - name: PendingSubmission
+    title: 取り込んでいない送信
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 送信の取り込み
+    role: DTO
+    summary: '`submissions` の出力の `items[]` の 1 行。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: id
+        type: str
+        description: 送信の ID
+      - name: target
+        type: str
+        description: 向けた項目の ID
+      - name: target_title
+        type: str | None
+        description: その項目のタイトル。項目が消えていれば `None`
+      - name: body
+        type: str
+        description: 本文
+      - name: sent
+        type: str
+        description: 送った日時
+constants:
+  - name: SUBMISSIONS_FILE
+    title: 送信のファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 共通
+    summary: ワークスペースの送信のファイル名（無ければ送信 0 件）
+    value: '"submissions.yaml"'
+  - name: SUBMISSIONS_SCHEMA
+    title: 送信のスキーマ
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 共通
+    summary: '`SCHEMA_DIR` の下の送信のスキーマのファイル名'
+    value: '"submissions.schema.json"'
+  - name: MAX_BODY_CHARS
+    title: 本文の上限
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 回答・意見を送る
+    summary: 非機能要件の「送信の本文の長さ」（前後の空白を除いた文字数）
+    value: '10000'
+  - name: ID_PREFIX
+    title: 送信の ID の頭
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 回答・意見を送る
+    summary: 送信の ID の頭の文字（項目の種類の頭の文字と重ならない）
+    value: '"S"'
+functions:
+  - name: load_submissions
+    title: 送信の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 共通
+    scope: public
+    summary: '`submissions.yaml` を読み、スキーマと突き合わせて送信の並びにする'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Submission]
+      description: ファイルの並びの順の送信。ファイルが無ければ空
+    process: |-
+      1. ファイルが無ければ空を返す
+      2. `yaml.safe_load` で読み、`SUBMISSIONS_SCHEMA` と突き合わせる
+         - 読めないか合わない場合、合わない箇所ごとの `submissions.yaml: {キーのパス}: {理由}` を持った `SchemaMismatchError` を送る
+      3. `items` の要素を `Submission` にして返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`submissions.yaml` が YAML として読めないか、スキーマに合わない'
+    unit_tests:
+      - name: test_load_submissions
+        case: 正常
+        summary: 並びの順に読む
+        condition: S-1・S-2 を持つ `submissions.yaml`
+        mock: なし
+        expected: '`[S-1, S-2]` の `Submission`'
+      - name: test_load_submissions_when_missing
+        case: 正常
+        summary: ファイルが無ければ空
+        condition: '`submissions.yaml` が無いワークスペース'
+        mock: なし
+        expected: '`[]`'
+      - name: test_load_submissions_when_invalid
+        case: 異常
+        summary: 読めない・合わないファイルは読まない
+        condition: '`parametrize`: `items: [` / S-1 から `body` を消したもの'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` が `submissions.yaml: ` で始まる。後者は `items[0]`）'
+        exception: 読めないかスキーマに合わない
+  - name: add_submission
+    title: 送信の追加
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 回答・意見を送る
+    scope: public
+    summary: 本文と向けた項目を確かめ、取り込んでいない送信として 1 件足す（鍵は呼ぶ側が取る）
+    side_effects: '`submissions.yaml` を一時ファイルから置き換える（無ければ作る）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文のオブジェクト（`target`・`body`）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: Submission
+      description: 足した送信
+    process: |-
+      1. `target`・`body` が文字列かを確かめ、`body` の前後の空白を除く
+         - 無い・文字列でない、空白だけ、`MAX_BODY_CHARS` を超える場合、そのキーと理由を持った `SubmissionInvalidError` を送る
+      2. ワークスペースを読み（`load_workspace`）、`target` の項目があるか確かめる（`find_item`）
+      3. 送信を読み（`load_submissions`）、連番の最大 + 1 の ID で `taken: null` の 1 件を末尾に足す
+      4. `{"items": [...]}` を一時ファイルに書いて置き換える（`dump_yaml`、`_write_temp`、`os.replace`）
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る（前の `submissions.yaml` は残る）
+    exceptions:
+      - name: SubmissionInvalidError
+        condition: '`target`・`body` が無いか文字列でない、または `body` が空白だけか `MAX_BODY_CHARS` を超える'
+        message: '{キー}: {理由}'
+      - name: ItemNotFoundError
+        condition: '`target` の項目がワークスペースに無い'
+        message: '項目がありません: {target}'
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルを消した後）
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_add_submission
+        case: 正常
+        summary: 連番を振って末尾に足す
+        condition: 'D-1 と S-1・S-3 を持つワークスペース、`{"target": "D-1", "body": "  案 A にする "}`。`now` は `2026-10-04T03:00:00+00:00`'
+        mock: '`now`'
+        expected: '`Submission(id=S-4, target=D-1, body=案 A にする, sent=now の値, taken=None)`。`submissions.yaml` の末尾がその 1 件'
+      - name: test_add_submission_when_first
+        case: 正常
+        summary: ファイルが無ければ作って S-1
+        condition: D-1 だけを持ち `submissions.yaml` が無いワークスペース
+        mock: '`now`'
+        expected: '`id` が `S-1` で、`submissions.yaml` ができている'
+      - name: test_add_submission_when_invalid
+        case: 異常
+        summary: 本文・形の誤りは足さない
+        condition: '`parametrize`: `body` が `"  "` / 10001 文字 / `target` が無い / `body` が `1`'
+        mock: なし
+        expected: '`SubmissionInvalidError`（メッセージに `body` / `body` / `target` / `body`）。`submissions.yaml` が無い'
+        exception: 本文・形の誤り
+      - name: test_add_submission_when_boundary
+        case: 正常
+        summary: ちょうど上限の本文は足す
+        condition: 前後に空白を付けた 10000 文字の本文
+        mock: '`now`'
+        expected: 足した送信の `body` が 10000 文字
+      - name: test_add_submission_when_target_missing
+        case: 異常
+        summary: 無い項目へは足さない
+        condition: D-1 だけを持つワークスペースで `target` が `D-99`
+        mock: なし
+        expected: '`ItemNotFoundError`（メッセージに `D-99`）'
+        exception: target の項目が無い
+      - name: test_add_submission_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら前の送信を残す
+        condition: S-1 を持つワークスペース。`os.replace` を `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`submissions` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`submissions.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        exception: 置き換えで OSError
+  - name: list_pending_submissions
+    title: 取り込んでいない送信
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: '`taken` が `null` の送信を連番の小さい順に、向けた項目のタイトルを付けて返す'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（項目のタイトルを引く）
+    returns:
+      type: list[PendingSubmission]
+      description: 取り込んでいない送信
+    process: |-
+      1. 送信を読む（`load_submissions`）
+      2. `taken` が `None` のものを連番の順に並べ、`target` の項目の `title`（無ければ `None`）を付ける（`find_item` の `ItemNotFoundError` は `None` にする）
+    unit_tests:
+      - name: test_list_pending_submissions
+        case: 正常
+        summary: 取り込んでいないものだけを送った順に
+        condition: D-1 と、S-1（取り込み済み）・S-3（D-1）・S-2（D-1）をこの順に持つ `submissions.yaml`
+        mock: なし
+        expected: '`[S-2, S-3]` で、どちらも `target_title` が D-1 のタイトル'
+      - name: test_list_pending_submissions_when_target_removed
+        case: 正常
+        summary: 消えた項目への送信はタイトルを None にする
+        condition: D-9 への取り込んでいない S-1（D-9 は無い）
+        mock: なし
+        expected: '`target_title` が `None` の S-1'
+  - name: take_submission
+    title: 取り込み済みにする
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: 送信 1 件の `taken` に日時を書く。既に取り込み済みなら書き換えずに前の日時を返す（鍵は呼ぶ側が取る）
+    side_effects: '`submissions.yaml` を一時ファイルから置き換える（取り込み済みのときは書かない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: submission_id
+        type: str
+        required: true
+        passing: positional
+        description: 送信の ID
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[str, bool]
+      description: 取り込んだ日時と、呼ぶ前から取り込み済みだったか
+    process: |-
+      1. 送信を読み（`load_submissions`）、ID で引く
+         - 無い場合、`SubmissionNotFoundError` を送る
+      2. 既に `taken` があれば `(taken, True)` を返す
+      3. その送信の `taken` を今の日時にした並びを一時ファイルに書いて置き換え、`(日時, False)` を返す
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る
+    exceptions:
+      - name: SubmissionNotFoundError
+        condition: その ID の送信が無い
+        message: '送信がありません: {ID}'
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_take_submission
+        case: 正常
+        summary: 取り込んでいない送信に日時を付ける
+        condition: S-1（取り込み済み）・S-2（取り込んでいない）で `S-2`。`now` は `2026-10-04T03:00:00+00:00`
+        mock: '`now`'
+        expected: '`(now の値, False)`。S-2 の `taken` がその日時で、S-1 は呼ぶ前と同じ'
+      - name: test_take_submission_when_already_taken
+        case: 正常
+        summary: 取り込み済みなら前の日時を返して書かない
+        condition: 'S-1（`taken: 2026-10-03T00:00:00+00:00`）で `S-1`'
+        mock: '`now`（呼ばれないことを確かめる）'
+        expected: '`(2026-10-03T00:00:00+00:00, True)`。`submissions.yaml` の更新日時が呼ぶ前と同じ'
+      - name: test_take_submission_when_not_found
+        case: 異常
+        summary: 無い ID は取り込み済みにしない
+        condition: S-1 だけで `S-9`
+        mock: なし
+        expected: '`SubmissionNotFoundError`（メッセージに `S-9`）'
+        exception: その ID の送信が無い
+      - name: test_take_submission_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら前の送信を残す
+        condition: S-1（取り込んでいない）。`os.replace` を `OSError` を送る関数に差し替える
+        mock: '`os.replace`'
+        expected: '`WriteFailedError`。`submissions.yaml` が呼ぶ前と同じ'
+        exception: 置き換えで OSError
+test_files:
+  - tests/unit/scripts/test_submissions.py

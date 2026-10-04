@@ -1,0 +1,117 @@
+title: "回答・意見の送信"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/send-form.ts#MindmapPreview.sendForm"
+story: "Preview/SendForm"
+states:
+  - name: Idle
+    description: 入力欄が空。本文と線で区切って下端に置き、ラベルで送る先の ID を示す
+  - name: Typing
+    description: 入力中。入力欄に印の色の輪
+    args:
+      - name: body
+        value: 案 A にする
+  - name: Sending
+    description: 送っている。送るボタンを押せず、入力欄を書き換えられない。1 秒を超えたら回る印と「送っています」を出す
+    args:
+      - name: body
+        value: 案 A にする
+      - name: status
+        value: sending
+  - name: Sent
+    description: 送った。入力欄を空にし、「送りました（{日時}）。次の話し合いの最初に取り込みます。」を出す
+    args:
+      - name: status
+        value: sent
+      - name: sent_at
+        value: '2026-10-04T02:23:00+00:00'
+  - name: Empty
+    description: 本文が空で送った。入力欄の枠と印を要見直しの赤（`--st-review`）、「回答・意見を入れてから送ってください。」を本文の文字色で出す。送るボタンは押せるまま
+    args:
+      - name: status
+        value: empty
+  - name: FailedUnreachable
+    description: サーバーに届かなかった。本文を残し、立ち上げ直して新しい URL で開くよう出して「本文を写す」を添える
+    args:
+      - name: body
+        value: 案 A にする
+      - name: status
+        value: failed
+  - name: FailedDetail
+    description: サーバーが送らなかった理由を返した。本文を残し、理由を出す（「本文を写す」は出さない）
+    args:
+      - name: body
+        value: 案 A にする
+      - name: status
+        value: failed
+      - name: detail
+        value: 項目 D-022 がワークスペースにありません
+  - name: Long
+    description: 長文。8 行を超えたら入力欄の中を送る
+    args:
+      - name: body
+        value: |-
+          案 A にする。
+          理由: 読み返す画面なので、表と数値を長く読んでも疲れない無彩色の骨格がよい。
+          印の色は 1 色に絞る。
+          状態の色は状態の表示だけに使う。
+          B のカード中心は一覧が長くなると縦に伸びる。
+          C のダークは明暗の切り替えで足りる。
+          トップバーは暗い帯にしておきたい。
+          ID の等幅は残す。
+          以上。
+  - name: Narrow
+    description: 幅 390px。左右の余白を 16px にする。入力の幅が 360px 以下では、送るボタンを右に置いたまま、結果（文言と「本文を写す」）を下の行に幅いっぱいで出す。条件は画面の幅ではなく部品の幅（コンテナクエリ）で持ち、詳細の全画面でも同じにする
+    args:
+      - name: body
+        value: 案 A にする
+      - name: status
+        value: failed
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+lead: 詳細パネルと詳細の全画面の下端に留める、開いている項目へ回答・意見を送る入力欄と送るボタン。送った結果を入力の近くに出す。
+args:
+  - name: target
+    type: 文字列
+    required: true
+    description: 送る先の項目の ID。ラベル「{ID} への回答・意見」に等幅で出す
+  - name: body
+    type: 文字列
+    required: false
+    default: '""'
+    description: 入力欄の中身。2 行から始まり、中身に合わせて 8 行まで伸び、それより長いと入力欄の中を送る
+  - name: status
+    type: 列挙
+    required: false
+    default: idle
+    choices: idle・sending・sent・empty・failed
+    description: 送信の状態。idle は結果を出さない。sending は送るボタンを押せなくし入力欄を書き換えられなくする。empty・failed は入力欄の中身を残す
+  - name: sent_at
+    type: 文字列
+    required: false
+    enabled_when: '`status` が `sent` のとき'
+    description: 受けた日時（サーバーが返した `sent`）。JST の `MM/DD HH:mm` で出す
+  - name: detail
+    type: 文字列
+    required: false
+    default: なし（サーバーに届かなかった）
+    enabled_when: '`status` が `failed` のとき'
+    description: サーバーが返した送れなかった理由（『回答・意見の送信』の `detail`）。無ければ、サーバーが止まっているので起動スクリプトで立ち上げ直して新しい URL で開くよう出し、本文を写すボタンを添える
+events:
+  - name: 送る
+    when: 送るボタンを押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `sending` の間は発火しない
+    value: target・body（入力欄の中身そのまま）
+    description: 使う側が、空白だけなら `empty` にして入力欄へフォーカスを戻し、そうでなければ `sending` にして `POST /api/submissions` へ送り、結果で `sent`・`failed` にする
+  - name: 入力
+    when: 入力欄の中身が変わったとき
+    value: body
+    description: 使う側が書きかけを保ち、`sent`・`empty` の結果を消して `idle` に戻す（`failed` は次に送るまで残す）
+  - name: 本文を写す
+    when: '`failed` で `detail` が無いときに出る「本文を写す」を押したとき'
+    value: body
+    description: 使う側が入力欄の中身をクリップボードへ写す（立ち上げ直した新しい URL の画面には書きかけが引き継がれないため）
+accessibility:
+  - 入力欄にラベル「{ID} への回答・意見」を常に見せ、入力欄の中の例示文をラベルの代わりにしない
+  - 結果の文言は `role="status"` で読み上げに伝え、入力欄の `aria-describedby` から指す。本文が空のときは入力欄に `aria-invalid="true"`
+  - 入力欄・送るボタン・本文を写すに Tab で届き、印の色の輪でフォーカスを見せる
+  - 失敗と本文が空は、赤の色だけでなく印のアイコンと文言でも伝える
+status: planned
+test_file: tests/integration/storybook/test_send_form_stories.py

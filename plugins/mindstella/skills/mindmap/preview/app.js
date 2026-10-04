@@ -1,11 +1,13 @@
 "use strict";
-// 起動。埋め込みの記録を読み、URL のハッシュが指す画面を描き、操作を画面の移動と端末の保存領域につなぐ。
+// 起動。記録を読み（配る書き出しは埋め込みから、サーバーの配信は記録の取得から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・回答・意見の送信・端末の保存領域につなぐ。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 埋め込みのデータの要素の ID */
     const DATA_ELEMENT_ID = "mindmap-data";
     /** 端末の保存領域のキー */
     MindmapPreview.PREFS_KEY = "mindmap-preview";
+    /** 書きかけの本文を残す sessionStorage のキーの頭（`{頭}{項目の ID}`）。ポートを含むオリジンごとに分かれ、配信はワークスペースごとに別のポートなので、ワークスペースを含めなくても混ざらない */
+    MindmapPreview.DRAFT_KEY_PREFIX = "mindmap-draft:";
     /** 狭い幅（詳細パネルを別画面として積む幅） */
     const NARROW_QUERY = "(max-width: 900px)";
     /** タブのアイコン */
@@ -27,14 +29,20 @@ var MindmapPreview;
     function screenName(tab) {
         return tab === "graph" ? "つながり" : tabLabel(tab);
     }
-    /** `mindmap-data` の要素の中身を `JSON.parse` して返す */
+    /** `mindmap-data` の要素の中身を `JSON.parse` して返す。中身が空なら（サーバーの配信）null */
     function readEmbeddedData(doc) {
+        const text = doc.getElementById(DATA_ELEMENT_ID)?.textContent;
+        // 要素が無い（同梱の雛形か書き出しの誤り）
+        if (text === undefined || text === null)
+            throw new Error("記録を読み込めませんでした。");
+        // 中身が空: サーバーの配信なので、記録は取得で読む
+        if (text.trim() === "")
+            return null;
         try {
-            const element = doc.getElementById(DATA_ELEMENT_ID);
-            return JSON.parse(element?.textContent ?? "");
+            return JSON.parse(text);
         }
         catch {
-            throw new Error("記録を読み込めませんでした。preview.html をもう一度書き出してください。");
+            throw new Error("記録を読み込めませんでした。");
         }
     }
     MindmapPreview.readEmbeddedData = readEmbeddedData;
@@ -66,10 +74,33 @@ var MindmapPreview;
         }
     }
     MindmapPreview.savePrefs = savePrefs;
-    /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
-    function openStorage() {
+    /** その項目の書きかけを sessionStorage から読む。無いか保存領域が例外を送るときは空を返す */
+    function loadDraft(storage, id) {
         try {
-            return window.localStorage;
+            return storage.getItem(`${MindmapPreview.DRAFT_KEY_PREFIX}${id}`) ?? "";
+        }
+        catch {
+            return "";
+        }
+    }
+    MindmapPreview.loadDraft = loadDraft;
+    /** その項目の書きかけを sessionStorage に残す。空なら消す。保存領域が例外を送るときは何もしない */
+    function saveDraft(storage, id, body) {
+        try {
+            if (body === "")
+                storage.removeItem(`${MindmapPreview.DRAFT_KEY_PREFIX}${id}`);
+            else
+                storage.setItem(`${MindmapPreview.DRAFT_KEY_PREFIX}${id}`, body);
+        }
+        catch {
+            // 保存できない環境では、開いている間のメモリの状態だけで保つ
+        }
+    }
+    MindmapPreview.saveDraft = saveDraft;
+    /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
+    function openStorage(kind) {
+        try {
+            return window[kind];
         }
         catch {
             return {
@@ -84,16 +115,60 @@ var MindmapPreview;
     }
     /** 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
     function start() {
-        let data;
+        let embedded;
         try {
-            data = readEmbeddedData(document);
+            embedded = readEmbeddedData(document);
         }
         catch (error) {
             document.body.prepend(MindmapPreview.h({ tag: "p", attrs: { class: "md-error" }, children: [error.message] }));
             return;
         }
-        const index = MindmapPreview.buildIndex(data);
-        const storage = openStorage();
+        void run(embedded);
+    }
+    MindmapPreview.start = start;
+    /** サーバーが記録を読めるまで待つ。読めない間は、接続の状態と理由だけを出し、書き換えの知らせか接続が戻ったときに読み直す */
+    function waitForRecords(theme) {
+        const holder = MindmapPreview.h({ tag: "div", attrs: { id: "unavailable" } });
+        document.body.prepend(holder);
+        return new Promise((resolve) => {
+            const attempt = async () => {
+                const result = await MindmapPreview.fetchRecords();
+                if (result.ok) {
+                    stop();
+                    holder.remove();
+                    resolve(result.data);
+                    return;
+                }
+                const message = result.reason === "invalid" && result.detail !== null
+                    ? result.detail
+                    : "サーバーにつながりません。起動スクリプトで立ち上げ直し、示された新しい URL で開いてください。";
+                holder.replaceChildren(MindmapPreview.topbar({
+                    title: "mindstella",
+                    tabs: [],
+                    current: "overview",
+                    theme,
+                    onNavigate: () => undefined,
+                    onSearch: () => undefined,
+                    onTheme: () => undefined,
+                    connection: "offline",
+                }), MindmapPreview.h({ tag: "p", attrs: { class: "md-error" }, children: [message] }));
+            };
+            const stop = MindmapPreview.subscribeEvents({
+                onChanged: () => void attempt(),
+                onConnection: (connected) => {
+                    if (connected)
+                        void attempt();
+                },
+            });
+            void attempt();
+        });
+    }
+    /** 記録を用意し（サーバーの配信では取得して）、画面を描いて操作とつなぐ */
+    async function run(embedded) {
+        /** サーバーの配信か（配る書き出しは記録を埋め込みから読み、送信も書き換えの知らせも持たない） */
+        const serverMode = embedded === null;
+        const storage = openStorage("localStorage");
+        const draftStorage = openStorage("sessionStorage");
         const prefs = loadPrefs(storage);
         const persist = () => savePrefs({ storage, prefs });
         MindmapPreview.restoreTablePrefs(prefs.columns, (kind, tablePrefs) => {
@@ -103,10 +178,14 @@ var MindmapPreview;
                 prefs.columns[kind] = tablePrefs;
             persist();
         });
-        document.title = `${data.settings.summary} | mindstella`;
         // ===== テーマ =====
         let theme = prefs.theme ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
         document.documentElement.dataset["theme"] = theme;
+        // ===== 記録 =====
+        let data = embedded ?? (await waitForRecords(theme));
+        let index = MindmapPreview.buildIndex(data);
+        document.title = `${data.settings.summary} | mindstella`;
+        let connection = "online";
         // ===== 画面の土台 =====
         const top = MindmapPreview.h({ tag: "div", attrs: { id: "top" } });
         const main = MindmapPreview.h({ tag: "main", attrs: { class: "content", id: "main" } });
@@ -173,6 +252,8 @@ var MindmapPreview;
                 })),
                 current: route.tab,
                 theme,
+                connection,
+                readAt: serverMode ? data.built_at : null,
                 onNavigate: (tab) => go({ ...route, tab, view: MindmapPreview.defaultView(tab), filters: {} }, true),
                 onSearch: openSearch,
                 onTheme: (next) => {
@@ -245,6 +326,7 @@ var MindmapPreview;
                     forward: () => history.forward(),
                     diagram: showDiagram,
                 },
+                send: serverMode ? sendFormProps(route.id) : null,
             });
             if (route.full) {
                 existing?.classList.remove("open");
@@ -329,6 +411,120 @@ var MindmapPreview;
             document.body.append(dialog);
             dialog.showModal();
         };
+        // ===== 回答・意見の送信 =====
+        /** 項目ごとの送信の状態（描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ） */
+        const sendStates = new Map();
+        /** 項目の送信の状態。無ければ、sessionStorage の書きかけから作る */
+        const sendStateOf = (id) => {
+            let state = sendStates.get(id);
+            if (state === undefined) {
+                state = { body: loadDraft(draftStorage, id), status: "idle", sentAt: null, detail: null };
+                sendStates.set(id, state);
+            }
+            return state;
+        };
+        /** 開いている送信の部品の結果を消す。入力中の欄を作り直さない（変換の途中を壊さないため） */
+        const clearSendResult = () => {
+            const form = document.querySelector("form.send");
+            const message = form?.querySelector(".send-msg");
+            if (message !== null && message !== undefined) {
+                message.className = "send-msg";
+                message.replaceChildren();
+            }
+            form?.querySelector("textarea")?.removeAttribute("aria-invalid");
+        };
+        /** 開いている項目の送信の部品を、今の状態で差し替え、入力欄へフォーカスを戻す */
+        const redrawSend = (id) => {
+            const current = document.querySelector("form.send");
+            // 別の項目へ移っていたら、状態だけ持っておく
+            if (current === null || route.id !== id)
+                return;
+            const next = MindmapPreview.sendForm(sendFormProps(id));
+            current.replaceWith(next);
+            const field = next.querySelector("textarea");
+            field?.focus();
+            field?.setSelectionRange(field.value.length, field.value.length);
+        };
+        /** 本文を送り、結果を状態に残して部品を描き直す */
+        const submit = async (id, body) => {
+            const state = sendStateOf(id);
+            state.body = body;
+            // 空白だけ: 送らず、入力欄へフォーカスを戻す
+            if (body.trim() === "") {
+                Object.assign(state, { status: "empty", detail: null });
+                redrawSend(id);
+                return;
+            }
+            Object.assign(state, { status: "sending", detail: null });
+            redrawSend(id);
+            const result = await MindmapPreview.postSubmission(id, body);
+            if (result.ok) {
+                // 送れた: 書きかけを空にする
+                Object.assign(state, { body: "", status: "sent", sentAt: result.sent, detail: null });
+                saveDraft(draftStorage, id, "");
+            }
+            else {
+                // 断られた・届かない: 本文を残す
+                Object.assign(state, { status: "failed", detail: result.detail });
+            }
+            redrawSend(id);
+        };
+        /** 項目の送信の部品の引数 */
+        const sendFormProps = (id) => {
+            const state = sendStateOf(id);
+            return {
+                target: id,
+                body: state.body,
+                status: state.status,
+                sentAt: state.sentAt,
+                detail: state.detail,
+                onInput: (body) => {
+                    state.body = body;
+                    saveDraft(draftStorage, id, body);
+                    // 送った・本文が空の結果は、入力を始めたら消す（送れなかった結果は次に送るまで残す）
+                    if (state.status === "sent" || state.status === "empty") {
+                        state.status = "idle";
+                        clearSendResult();
+                    }
+                },
+                onSend: (body) => void submit(id, body),
+                onCopy: (body) => void navigator.clipboard?.writeText(body),
+            };
+        };
+        // ===== 書き換えの知らせ =====
+        /** 入力中の欄の選択とスクロールの位置を保って、画面を描き直す */
+        const redrawKeepingState = () => {
+            const field = document.activeElement;
+            const typing = field instanceof HTMLTextAreaElement && field.closest("form.send") !== null;
+            const selection = typing ? { start: field.selectionStart, end: field.selectionEnd } : null;
+            const panelScroll = document.querySelector(".panel-body")?.scrollTop ?? 0;
+            const pageScroll = window.scrollY;
+            render({ screen: true });
+            const panelBody = document.querySelector(".panel-body");
+            if (panelBody !== null)
+                panelBody.scrollTop = panelScroll;
+            window.scrollTo(0, pageScroll);
+            if (selection !== null) {
+                const restored = document.querySelector("form.send textarea");
+                restored?.focus();
+                restored?.setSelectionRange(selection.start, selection.end);
+            }
+        };
+        /** 記録を読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
+        const reload = async () => {
+            const result = await MindmapPreview.fetchRecords();
+            if (!result.ok)
+                return;
+            data = result.data;
+            index = MindmapPreview.buildIndex(data);
+            document.title = `${data.settings.summary} | mindstella`;
+            // 開いていた項目が消えた: 詳細パネルを閉じる
+            if (route.id !== null && !index.byId.has(route.id)) {
+                route = { ...route, id: null, full: false, filters: {} };
+                MindmapPreview.navigate({ route, push: false });
+            }
+            redrawKeepingState();
+        };
         // ===== 操作と履歴 =====
         document.addEventListener("keydown", (event) => {
             const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? "");
@@ -364,8 +560,27 @@ var MindmapPreview;
         render({ screen: true });
         // 絞り込みは画面に渡した後、ハッシュから消す
         MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
+        // ===== 書き換えの知らせにつなぐ（サーバーの配信だけ） =====
+        if (serverMode) {
+            MindmapPreview.subscribeEvents({
+                onChanged: () => void reload(),
+                onConnection: (connected) => {
+                    // 切れた: 接続の状態を出し、最後に読めた記録で描き続ける
+                    if (!connected) {
+                        connection = "offline";
+                        renderTop();
+                        return;
+                    }
+                    // つながり直した: 切れていた間の書き換えを読み直す（最初の接続は切れていないので何もしない）
+                    if (connection === "offline") {
+                        connection = "online";
+                        renderTop();
+                        void reload();
+                    }
+                },
+            });
+        }
     }
-    MindmapPreview.start = start;
     // 文書が読み込まれたら起動する（記録の要素が無い文書では、読んだだけでは何もしない）
     if (document.getElementById(DATA_ELEMENT_ID) !== null) {
         if (document.readyState === "loading")

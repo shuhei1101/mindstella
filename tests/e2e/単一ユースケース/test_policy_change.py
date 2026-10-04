@@ -5,12 +5,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,27 +42,31 @@ def test_normal(
         make_item("D-2", status="決定済み", depends_on=["D-1"]),
         make_item("D-3", status="決定済み", depends_on=["D-2"]),
     )
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
-    replay("adopt", "D-1", "B", *ws)
-    affected = replay("impact", "D-1", *ws)["affected"]
-    replay("update", "D-2", *ws, data={"status": "要見直し", "reason": "保存先が変わった"})
-    replay("update", "D-3", *ws, data={"status": "要見直し", "reason": "保存先が変わった"})
+    replay("adopt", **ws, id="D-1", key="B")
+    affected = replay("impact", **ws, id="D-1")["affected"]
+    replay("update", **ws, id="D-2", item={"status": "要見直し", "reason": "保存先が変わった"})
+    replay("update", **ws, id="D-3", item={"status": "要見直し", "reason": "保存先が変わった"})
     replay(
         "add",
-        "task",
-        *ws,
-        data={"title": "D-2 を見直す", "kind": "作業", "status": "未着手", "for": ["D-2"]},
+        **ws,
+        kind="task",
+        item={"title": "D-2 を見直す", "kind": "作業", "status": "未着手", "for": ["D-2"]},
     )
     replay(
         "add",
-        "task",
-        *ws,
-        data={"title": "D-3 を見直す", "kind": "作業", "status": "未着手", "for": ["D-3"]},
+        **ws,
+        kind="task",
+        item={"title": "D-3 を見直す", "kind": "作業", "status": "未着手", "for": ["D-3"]},
     )
-    replay("update", "D-1", *ws, data={"answer": NEW_CONTENT})
-    replay("add", "log", *ws, data={"title": "方針転換", "date": "2026-10-02", "related": ["D-1"]})
-    replay("build", *ws)
+    replay("update", **ws, id="D-1", item={"answer": NEW_CONTENT})
+    replay(
+        "add",
+        **ws,
+        kind="log",
+        item={"title": "方針転換", "date": "2026-10-02", "related": ["D-1"]},
+    )
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = {item["id"]: item for item in read_yaml(root, "tasks.yaml")["items"]}
@@ -84,7 +87,7 @@ def test_normal_when_deliverable_no_longer_needed(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     replay: Replay,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """納品物が要らなくなったら、資料へ格下げしてゴールの納品物から外す（正常系）。"""
@@ -102,20 +105,22 @@ def test_normal_when_deliverable_no_longer_needed(
         settings=settings,
         bodies={"A-1.md": "構成図の本文"},
     )
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
-    replay("update", "A-1", *ws, data={"deliverable": False})
+    replay("update", **ws, id="A-1", item={"deliverable": False})
     # mindmap.yaml のゴールの deliverables から A-1 を外す（スキルが Edit で直す）
     current = read_yaml(root, "mindmap.yaml")
     current["goal"]["deliverables"] = []
     (root / "mindmap.yaml").write_text(
         yaml.safe_dump(current, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
-    checked = run_mindmap("check", *ws)
+    checked = call_tool("check", **ws)
     replay(
-        "add", "log", *ws, data={"title": "スコープ変更", "date": "2026-10-02", "related": ["A-1"]}
+        "add",
+        **ws,
+        kind="log",
+        item={"title": "スコープ変更", "date": "2026-10-02", "related": ["A-1"]},
     )
-    replay("build", *ws)
     # 検証
     # A-1 が deliverable: false で、資料として残っている
     doc = read_yaml(root, "docs.yaml")["items"][0]
@@ -124,5 +129,5 @@ def test_normal_when_deliverable_no_longer_needed(
     # ゴールの deliverables に A-1 が無い
     assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == []
     # check が参照切れを 0 件で返す
-    assert checked.returncode == 0
-    assert json.loads(checked.stdout)["problems"] == []
+    assert checked.is_error is False
+    assert checked.data["problems"] == []

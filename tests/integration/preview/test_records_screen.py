@@ -17,10 +17,18 @@ from workspace_fixtures import MakeItem
     ("tab", "name", "row_id", "headers"),
     [
         pytest.param(
-            "research", "調査", "R-1", ["ID", "タイトル", "問い", "結論", "確度", "タグ"], id="research"
+            "research",
+            "調査",
+            "R-1",
+            ["ID", "タイトル", "問い", "結論", "確度", "タグ"],
+            id="research",
         ),
         pytest.param(
-            "terms", "用語集", "G-1", ["ID", "用語", "意味", "別名", "使わない表記", "タグ"], id="terms"
+            "terms",
+            "用語集",
+            "G-1",
+            ["ID", "用語", "意味", "別名", "使わない表記", "タグ"],
+            id="terms",
         ),
         pytest.param(
             "notes", "メモ", "N-1", ["ID", "タイトル", "内容", "タグ", "関連"], id="notes"
@@ -40,16 +48,19 @@ def test_table(
 ) -> None:
     """種類ごとの列を持つ表だけを出し（表示形式の切り替えは出さない）、行を押すと詳細を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
+    url = write_sample_preview()
     # 実行
-    page = open_preview(path, f"#tab={tab}")
+    page = open_preview(url, f"#tab={tab}")
     # 検証
     assert page.inner_text("main h1") == name
     assert page.locator(".segment").count() == 0
     assert page.get_attribute(".table-block", "data-kind") == tab
-    assert page.eval_on_selector_all(
-        "table.grid thead .th-sort", "buttons => buttons.map(b => b.textContent)"
-    ) == headers
+    assert (
+        page.eval_on_selector_all(
+            "table.grid thead .th-sort", "buttons => buttons.map(b => b.textContent)"
+        )
+        == headers
+    )
     page.click(f'table.grid tr[data-id="{row_id}"] button.row-open')
     page.wait_for_selector("aside.panel.open")
     assert row_id in page.inner_text("aside.panel .panel-kind")
@@ -60,11 +71,11 @@ def test_notes_id_button_size(
 ) -> None:
     """メモの表の「関連」の列の ID のボタンは、見えている枠が縦横 24px 以上である（正常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("D-1", status="決定済み"),
         make_item("N-1", related=["D-1"]),
     )
-    page = open_preview(path, "#tab=notes")
+    page = open_preview(url, "#tab=notes")
     # 実行
     sizes = page.eval_on_selector_all("table.grid td button.idlink", ID_BUTTON_SIZE_JS)
     # 検証

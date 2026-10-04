@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
-
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
 def test_normal_when_resume(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """要見直し・進行中・再開可能・決定待ち・次の候補を読む（正常系）。"""
@@ -25,10 +23,10 @@ def test_normal_when_resume(
     )
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("status", "--workspace", str(root))
+    result = call_tool("status", workspace=str(root))
     # 検証
-    assert result.returncode == 0
-    payload = json.loads(result.stdout)
+    assert result.is_error is False
+    payload = result.data
     assert payload["needs_review"] == [{"id": "D-1", "title": "見直しの問い"}]
     assert payload["in_progress"] == [{"id": "T-1", "title": "進めている作業"}]
     assert payload["resumable"] == [{"id": "D-2", "title": "再開できる保留"}]
@@ -42,7 +40,7 @@ def test_normal_when_resume(
 def test_normal_when_next(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """前提が揃った未決定を、フェーズ・影響度・後続の件数の順に読む（正常系）。"""
@@ -58,10 +56,10 @@ def test_normal_when_next(
     )
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("next", "--workspace", str(root))
+    result = call_tool("next", workspace=str(root))
     # 検証
-    assert result.returncode == 0
-    candidates = json.loads(result.stdout)["candidates"]
+    assert result.is_error is False
+    candidates = result.data["candidates"]
     assert [row["id"] for row in candidates] == ["D-2", "D-4", "D-3", "D-1"]
     assert [(row["phase"], row["weight"], row["followers"]) for row in candidates] == [
         ("目的", "小", 0),

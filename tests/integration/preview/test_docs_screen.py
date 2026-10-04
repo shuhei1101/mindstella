@@ -28,16 +28,14 @@ def _card_ids(page) -> list[str]:
 def test_cards(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """納品物を先頭に印付きで並べ、資料の状態を出し、押すと詳細を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
     # 実行
     ids = _card_ids(page)
     badge_cards = page.eval_on_selector_all(
         ".doc-card:has(.deliv-badge)", "cards => cards.map(c => c.dataset.id)"
     )
-    statuses = page.eval_on_selector_all(
-        ".doc-card .st", "marks => marks.map(m => m.dataset.st)"
-    )
+    statuses = page.eval_on_selector_all(".doc-card .st", "marks => marks.map(m => m.dataset.st)")
     page.click('.doc-card[data-id="A-2"]')
     # 検証
     assert ids == ["A-1", "A-2"]
@@ -50,8 +48,8 @@ def test_cards(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
 def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """表示形式の切り替えは カード・ボード・表 の 3 つで、既定はカード。表に切り替えると行を並べる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
     views = page.eval_on_selector_all(
         ".segment button", "b => b.map(x => [x.dataset.view, x.getAttribute('aria-pressed')])"
     )
@@ -68,8 +66,8 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
 def test_card_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """カードの絞り込みのポップオーバーで値を選ぶと、条件のチップが出て、個別とすべてを外せる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
     # 実行
     page.click('button[aria-label="絞り込み"]')
     page.click('.pop label:has-text("納品物以外")')
@@ -90,8 +88,8 @@ def test_card_filter_clear_all(
 ) -> None:
     """条件が 2 つ以上あるとき、すべて解除で全ての条件を解除する（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&f.deliverable=納品物&f.status=完成")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&f.deliverable=納品物&f.status=完成")
     assert _card_ids(page) == ["A-1"]
     # 実行
     page.click(".chips >> text=すべて解除")
@@ -117,8 +115,8 @@ def test_view_switch_to_board(
 ) -> None:
     """ボードに切り替えると状態の列を並べ、押されている形式がボードになる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
     # 実行
     page.click('.segment button[data-view="board"]')
     page.wait_for_selector(".board")
@@ -133,8 +131,8 @@ def test_view_switch_to_board(
 def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """下書き・確認中・完成の 3 列に資料を並べ、0 件の列も出し、カードに状態の印を出さない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
     # 実行
     columns = _board_columns(page)
     marks = page.locator(".board .doc-card .st").count()
@@ -143,7 +141,9 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     )
     # 検証
     assert columns == [["下書き", "1", ["A-2"]], ["確認中", "0", []], ["完成", "1", ["A-1"]]]
-    assert page.locator(".board section.board-col").nth(1).inner_text().endswith("資料はありません。")
+    assert (
+        page.locator(".board section.board-col").nth(1).inner_text().endswith("資料はありません。")
+    )
     assert marks == 0
     assert badge_cards == ["A-1"]
 
@@ -156,7 +156,7 @@ def test_board_order(
 ) -> None:
     """列の中は納品物を先頭に連番の順に並べる（正常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("A-1", deliverable=False, status="完成", kind="文書"),
         make_item("A-2", deliverable=False, status="完成", kind="文書"),
         make_item("A-3", deliverable=True, status="完成", kind="文書"),
@@ -164,7 +164,7 @@ def test_board_order(
         make_item("A-5", deliverable=False, status="下書き", kind="文書"),
         settings=sample_settings,
     )
-    page = open_preview(path, "#tab=docs&view=board")
+    page = open_preview(url, "#tab=docs&view=board")
     # 実行
     columns = _board_columns(page)
     # 検証
@@ -180,8 +180,8 @@ def test_board_open_detail(
 ) -> None:
     """カードを押すと詳細を開き、開いているカードに selected が付く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
     # 実行
     page.click('.board .doc-card[data-id="A-2"]')
     # 検証
@@ -196,8 +196,8 @@ def test_board_open_detail(
 def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """ボードでも絞り込みのポップオーバーで値を選ぶと、条件のチップが出て、列のカードが絞られ、解除すると戻る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
     # 実行
     page.click('button[aria-label="絞り込み"]')
     page.click('.pop label:has-text("納品物以外")')
@@ -226,8 +226,8 @@ def test_board_filter_from_url(
 ) -> None:
     """URL の条件でボードを開くと、カードと同じ条件で絞られ、チップが出る（正常系）。"""
     # 準備・実行
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board&f.status=完成")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board&f.status=完成")
     # 検証
     assert _board_columns(page) == [
         ["下書き", "0", []],
@@ -244,8 +244,8 @@ def test_board_edge_gap(
 ) -> None:
     """資料のボードは、カードの左端をボードの左端から余白を空けて置き、ツールバーの左端に揃える（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
     # 実行
     edges = board_edges(page)
     # 検証
@@ -258,8 +258,8 @@ def test_board_columns_when_narrow(
 ) -> None:
     """資料のボードは、幅 390px で列を縦に 1 列に積み、列の右端を画面の幅に収め、背景をつかめることを示さない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
     page.set_viewport_size(PHONE_VIEWPORT)
     # 実行
     layout = board_layout(page)
@@ -276,8 +276,8 @@ def test_board_columns_when_wide(
 ) -> None:
     """資料のボードは、幅 1280px で 290px の列を横に並べ、背景をつかめることを示す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
     page.set_viewport_size(DESKTOP_VIEWPORT)
     # 実行
     layout = board_layout(page)
@@ -294,8 +294,8 @@ def test_table_cell_surface(
 ) -> None:
     """資料の表のセルは静止時に面の色を持たず、面の色は表の枠と固定した列が持つ（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=docs&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=table")
     pin_id_column(page)
     # 実行
     backgrounds = table_cell_backgrounds(page)

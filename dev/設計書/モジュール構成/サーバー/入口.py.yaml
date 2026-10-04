@@ -1,0 +1,1083 @@
+title: "サーバー / 入口"
+lead: MCP サーバー `mindstella` にツールを登録し、ツールの引数を各機能へ渡して、結果を構造化の結果・エラーをツールのエラーにする。プレビューの配信も同じプロセスに立てる。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    server.py     入口（MCP サーバーの組み立て・ツールの登録・結果とエラー・書き換えの鍵）
+    commands.py   ツールごとの処理（引数 → 各機能 → 結果の辞書）
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class 入口
+        class ツールの処理
+        class 配信
+        class 送信
+        class 読み書きと検証
+        class 検索
+        class 依存と影響
+        class 点検
+        class ビルド
+        class 移行
+        入口 --> ツールの処理 : ツールごとに呼ぶ
+        入口 --> 読み書きと検証 : 書き換えの鍵
+        入口 --> 配信 : 終わるときに止める
+        ツールの処理 --> 配信 : preview_url
+        ツールの処理 --> 送信
+        ツールの処理 --> 読み書きと検証
+        ツールの処理 --> 検索
+        ツールの処理 --> 依存と影響
+        ツールの処理 --> 点検
+        ツールの処理 --> ビルド
+        ツールの処理 --> 移行
+        配信 --> ビルド : 雛形と記録
+        配信 --> 送信 : POST /api/submissions
+      ```
+constants:
+  - name: RESERVED_KEYS
+    title: スクリプトが付けるキー
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    summary: '`item` で渡させないキー'
+    value: ("id", "created", "updated", "body")
+  - name: BODY_INPUT_KEY
+    title: 本文を渡すキー
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    summary: '`item` で本文の Markdown を渡すキー（YAML には残さない）'
+    value: '"body_markdown"'
+  - name: SERVER_NAME
+    title: サーバーの名前
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    summary: MCP サーバーの名前。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる
+    value: '"mindstella"'
+  - name: TOOL_NAMES
+    title: ツールの名前
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
+    value: ("init", "add", "update", "adopt", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+  - name: UNEXPECTED_ERROR
+    title: 予期しないエラーの文言
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    summary: '`MindmapError` でない例外をツールのエラーにするときの文言（`{type}` は例外のクラス名）'
+    value: '"予期しないエラー（{type}）: {message}"'
+functions:
+  - name: validate_input_keys
+    title: 渡せないキーの確認
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: ツールが付けるキーと、本文を持てない種類への `body_markdown` を弾く
+    args:
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: 種類
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: ツールの `item`
+    process: |-
+      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送る
+      2. `body_markdown` があり、`KINDS[kind].has_body` が偽なら `SchemaMismatchError` を送る
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`id`・`created`・`updated`・`body` のどれかを持つ'
+      - name: SchemaMismatchError
+        condition: 本文を持てない種類に `body_markdown` を持つ
+    unit_tests:
+      - name: test_validate_input_keys
+        case: 正常
+        summary: 渡せるキーだけなら何もしない
+        condition: '`decision` に `{"title": "t", "body_markdown": "b"}`'
+        mock: なし
+        expected: 例外を送らない
+      - name: test_validate_input_keys_when_reserved
+        case: 異常
+        summary: スクリプトが付けるキーを弾く
+        condition: '`parametrize`: `id` / `created` / `updated` / `body`'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` にそのキー）'
+        exception: スクリプトが付けるキーを持つ
+      - name: test_validate_input_keys_when_body_not_allowed
+        case: 異常
+        summary: 本文を持てない種類への body_markdown を弾く
+        condition: '`task` に `{"body_markdown": "b"}`'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `body_markdown`）'
+        exception: 本文を持てない種類に body_markdown を持つ
+  - name: merge_changes
+    title: 変更の当てはめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 渡したキーを値ごと置き換え、`null` のキーを消した新しい項目を返す
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 元の項目（書き換えない）
+      - name: changes
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 置き換えるキーと値（`body_markdown` を除いたもの）
+    returns:
+      type: tuple[dict[str, Any], list[str]]
+      description: 新しい項目と、値が変わった・消えたキー（渡した順）
+    process: |-
+      1. 元の項目を写し、渡したキーごとに当てはめる
+         - 値が `None` の場合、キーがあれば消して変わったキーに加える
+         - それ以外で元の値と違う場合、置き換えて変わったキーに加える（新しいキーは末尾に足す）
+    unit_tests:
+      - name: test_merge_changes
+        case: 正常
+        summary: 置き換え・消す・同じ値を見分ける
+        condition: '元 `{"id": "D-1", "status": "未決定", "weight": "大", "lead": "l"}` に `{"status": "決定済み", "weight": null, "lead": "l", "answer": "a"}`'
+        mock: なし
+        expected: '`{"id": "D-1", "status": "決定済み", "lead": "l", "answer": "a"}` と `[status, weight, answer]`。元の項目は変わらない'
+  - name: switch_adopted
+    title: 採用する案の切り替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 採用する案の切り替え
+    scope: public
+    summary: 指定した記号の案だけを採用にした新しい項目を返す
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 検討事項（書き換えない）
+      - name: key
+        type: str
+        required: true
+        passing: positional
+        description: 採用する案の記号
+    returns:
+      type: tuple[dict[str, Any], str | None]
+      description: 新しい項目と、それまで採用していた案の記号（無ければ `None`）
+    process: |-
+      1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送る
+      2. それまで `adopted` が真だった最初の案の記号を控える
+      3. 指定した案の `adopted` を真、ほかを偽にした新しい項目を返す
+    exceptions:
+      - name: OptionNotFoundError
+        condition: 検討事項がその記号の案を持たない（`options` が無いときも含む）
+        message: '案がありません: {key}（持っている案: {記号の一覧}）'
+    unit_tests:
+      - name: test_switch_adopted
+        case: 正常
+        summary: 採用を切り替え、前の記号を返す
+        condition: 案 A（採用）・案 B を持つ項目と `B`
+        mock: なし
+        expected: '案 A `adopted: false`・案 B `adopted: true` の項目と `A`'
+      - name: test_switch_adopted_when_none_adopted
+        case: 正常
+        summary: 採用が無ければ前の記号は None
+        condition: どの案も採用していない項目と `A`
+        mock: なし
+        expected: '案 A だけ `adopted: true` の項目と `None`'
+      - name: test_switch_adopted_when_option_missing
+        case: 異常
+        summary: 無い記号は切り替えない
+        condition: 案 A・B を持つ項目と `Z`
+        mock: なし
+        expected: '`OptionNotFoundError`（メッセージに `Z`・`A`・`B`）'
+        exception: その記号の案を持たない
+  - name: run_init
+    title: init の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: ワークスペースの作成
+    scope: public
+    summary: ツールの `settings` でワークスペースを作る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`settings`'
+    returns:
+      type: dict[str, Any]
+      description: '`{workspace, files}`'
+    process: |-
+      1. プラグインの版を読み（`read_plugin_version`）、ワークスペースを作る（ワークスペースの作成。`create_workspace(version=str(版))`）
+    unit_tests:
+      - name: test_run_init
+        case: 正常
+        summary: 作ったワークスペースとファイルを返す
+        condition: まだ無い `tmp_path / "ws"` と正しい設定の辞書
+        mock: なし
+        expected: '`workspace` が絶対パス、`files` が 11 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じ版'
+  - name: run_add
+    title: add の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: ID・日時・本文を付けて 1 項目を足す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: '`kind`'
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`item`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, file, body}`'
+    process: |-
+      1. ワークスペースを読み、渡せないキーを確かめる（`load_workspace`、`validate_input_keys`）
+      2. ID を振り、`id` を先頭に、`created`・`updated` を末尾に置いた項目を作る（`next_id`）
+         - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを作る
+      3. 末尾に足した並びを書き込む（変更の書き込み。`save_change`）
+    unit_tests:
+      - name: test_run_add
+        case: 正常
+        summary: 本文つきの検討事項を足す
+        condition: D-1 を持つワークスペース、`body_markdown` つきの検討事項。`now` は `2026-10-02T08:00:00+00:00` を返す
+        mock: '`now`'
+        expected: '`{id: D-2, file: decisions.yaml, body: docs/D-2.md}`。D-2 の `created`・`updated` がその日時で `body` が `D-2.md`'
+      - name: test_run_add_when_no_body
+        case: 正常
+        summary: 本文が無ければ body を付けない
+        condition: 空のワークスペースにタスク
+        mock: '`now`'
+        expected: '`{id: T-1, file: tasks.yaml, body: null}`。T-1 に `body` のキーが無い'
+  - name: run_update
+    title: update の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 1 項目のキーを置き換え、更新日時を変える
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`item`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, file, changed}`'
+    process: |-
+      1. ワークスペースを読み、項目を引く（`load_workspace`、`find_item`）
+      2. 渡せないキーを確かめる（`validate_input_keys`）
+      3. 変更を当てはめ、`updated` を今の日時にする（`merge_changes`）
+         - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（`changed` に `body` を含めるのは値が変わったときだけ）
+      4. その位置を差し替えた並びを書き込む（`save_change`）
+    unit_tests:
+      - name: test_run_update
+        case: 正常
+        summary: キーを置き換えて更新日時を変える
+        condition: 'D-1（`created`・`updated` が `2026-10-01T00:00:00+00:00`）に `{"answer": "a", "weight": null}`。`now` は `2026-10-02T08:00:00+00:00`'
+        mock: '`now`'
+        expected: '`changed` が `[answer, weight]`、D-1 の `updated` が `now` の値で `created` はそのまま'
+  - name: run_adopt
+    title: adopt の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 採用する案の切り替え
+    scope: public
+    summary: 検討事項の採用する案を切り替えて書き込む
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: 検討事項の ID
+      - name: key
+        type: str
+        required: true
+        passing: positional
+        description: 案の記号
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, adopted, previous}`'
+    process: |-
+      1. ワークスペースを読み、項目を引く（`load_workspace`、`find_item`）
+         - 種類が `decision` でない場合、`ItemNotFoundError` を送る
+      2. 採用を切り替え、`updated` を今の日時にする（`switch_adopted`）
+      3. 差し替えた並びを書き込む（`save_change`）
+    exceptions:
+      - name: ItemNotFoundError
+        condition: ID が検討事項でない
+        message: '検討事項がありません: {item_id}'
+    unit_tests:
+      - name: test_run_adopt
+        case: 正常
+        summary: 切り替えて書き込む
+        condition: 案 A（採用）・B を持つ D-1 と `B`
+        mock: '`now`'
+        expected: '`{id: D-1, adopted: B, previous: A}`。`decisions.yaml` の D-1 の案 B が採用'
+      - name: test_run_adopt_when_not_decision
+        case: 異常
+        summary: 検討事項でない ID は切り替えない
+        condition: T-1 を持つワークスペースで `T-1`
+        mock: なし
+        expected: '`ItemNotFoundError`（メッセージに `T-1`）'
+        exception: ID が検討事項でない
+  - name: run_check
+    title: check の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: ワークスペースの点検
+    scope: public
+    summary: 点検して、問題の有無と問題の並びを返す（問題があってもツールのエラーにしない）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{ok, problems}`'
+    process: |-
+      1. ワークスペースを読み、点検する（`load_workspace`、`check_workspace`）
+      2. 前の版の形式の問題（`is_legacy_problem`）は、`detail` に続けて `（/mindstella:upgrade で今の形式に移せます）` を足す
+      3. 問題が無ければ `ok: true`、あれば `ok: false` を返す
+    unit_tests:
+      - name: test_run_check
+        case: 正常
+        summary: 問題が無ければ ok
+        condition: 整った D-1
+        mock: なし
+        expected: '`{ok: true, problems: []}`'
+      - name: test_run_check_when_problems
+        case: 正常
+        summary: 問題があれば ok が偽
+        condition: 'D-1 `depends_on: [D-9]`'
+        mock: なし
+        expected: '`ok: false`・`problems` が 1 件（例外を送らない）'
+      - name: test_run_check_when_legacy_format
+        case: 正常
+        summary: 前の版の形式の問題に /mindstella:upgrade を案内する
+        condition: 'A-1（`done: true`）を YAML で直接書いたワークスペース'
+        mock: なし
+        expected: '`ok: false`。A-1 の問題の `detail` が `（/mindstella:upgrade で今の形式に移せます）` で終わる'
+  - name: run_impact
+    title: impact の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 採用する案の切り替え
+    scope: public
+    summary: 影響を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: 起点の ID
+    returns:
+      type: dict[str, Any]
+      description: '`{id, affected}`'
+    process: |-
+      1. ワークスペースを読み、影響を洗い出す（`load_workspace`、`trace_impact`）
+      2. `affected` を `asdict` して返す
+    unit_tests:
+      - name: test_run_impact
+        case: 正常
+        summary: 影響を出力の形にする
+        condition: 'D-2 `depends_on: [D-1]` で `D-1`'
+        mock: なし
+        expected: '`{id: D-1, affected: [{id: D-2, title, status, via: [], key: depends_on}]}`'
+  - name: run_next
+    title: next の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 状況の確認
+    scope: public
+    summary: 次の候補を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: limit
+        type: int | None
+        required: true
+        passing: positional
+        description: '`limit`'
+    returns:
+      type: dict[str, Any]
+      description: '`{candidates}`'
+    process: |-
+      1. `limit` が 1 未満なら `ArgumentError`（`limit`・`1 以上を渡してください`）を送る
+      2. ワークスペースを読み、候補を並べる（`load_workspace`、`list_next_candidates`）
+      3. `asdict` して返す
+    unit_tests:
+      - name: test_run_next
+        case: 正常
+        summary: 候補を出力の形にする
+        condition: 未決定の D-1 だけで `limit=None`
+        mock: なし
+        expected: '`{candidates: [{id: D-1, title, phase, weight, followers: 0}]}`'
+      - name: test_run_next_when_limit_invalid
+        case: 異常
+        summary: 1 未満の limit は引数の誤り
+        condition: '`limit=0`'
+        mock: なし
+        expected: '`ArgumentError`（メッセージに `limit`）'
+        exception: limit が 1 未満
+  - name: run_status
+    title: status の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 状況の確認
+    scope: public
+    summary: 再開時の状況を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`StatusSummary` を `asdict` した辞書'
+    process: |-
+      1. ワークスペースを読み、まとめる（`load_workspace`、`summarize_status`）
+      2. `asdict` して返す
+    unit_tests:
+      - name: test_run_status
+        case: 正常
+        summary: 状況を出力の形にする
+        condition: 要見直しの D-1 だけ
+        mock: なし
+        expected: '`needs_review` が `[{id: D-1, title}]` で、`in_progress`・`resumable`・`waiting`・`on_hold`・`next` のキーがある'
+  - name: run_find
+    title: find の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の検索
+    scope: public
+    summary: 引数から条件を作り、検索結果を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: search_filter
+        type: SearchFilter
+        required: true
+        passing: positional
+        description: ツールの引数から作った条件（`attr` の要素は `parse_attr` で分ける）
+    returns:
+      type: dict[str, Any]
+      description: '`{items}`'
+    process: 1. ワークスペースを読み、探す（`load_workspace`、`search_items`）
+    unit_tests:
+      - name: test_run_find
+        case: 正常
+        summary: 検索結果を出力の形にする
+        condition: D-1 だけで条件なし
+        mock: なし
+        expected: '`{items: [{id: D-1, kind: decision, title, status}]}`'
+  - name: run_show
+    title: show の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の検索
+    scope: public
+    summary: 1 項目の表示を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: ID
+    returns:
+      type: dict[str, Any]
+      description: '`{item, kind, body_markdown, referenced_by}`'
+    process: 1. ワークスペースを読み、まとめる（`load_workspace`、`show_item`）
+    unit_tests:
+      - name: test_run_show
+        case: 正常
+        summary: 1 件を出力の形にする
+        condition: D-1 で `D-1`
+        mock: なし
+        expected: '`item`・`kind`・`body_markdown`・`referenced_by` のキーを持つ'
+  - name: run_attrs
+    title: attrs の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の検索
+    scope: public
+    summary: 属性名の一覧を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{attrs}`'
+    process: 1. ワークスペースを読み、数える（`load_workspace`、`list_attrs`）
+    unit_tests:
+      - name: test_run_attrs
+        case: 正常
+        summary: 属性名を出力の形にする
+        condition: 属性 `担当` の D-1
+        mock: なし
+        expected: '`{attrs: [{name: 担当, count: 1, kinds: [decision]}]}`'
+  - name: run_migrate
+    title: migrate の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`plan`・`values`・`record` で分けて移し替えの処理を呼び、結果を出力の形にする'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: plan
+        type: bool
+        required: true
+        passing: keyword
+        description: '`plan`'
+      - name: record
+        type: bool
+        required: true
+        passing: keyword
+        description: '`record`'
+      - name: values
+        type: list[dict[str, Any]] | None
+        required: true
+        passing: keyword
+        description: '`values`（`{file, key, value}` の並び）'
+      - name: from_version
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`from_version`'
+      - name: to_version
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`to_version`'
+    returns:
+      type: dict[str, Any]
+      description: インターフェース定義『記録の形式の移行』のレスポンス
+    process: |-
+      1. 引数を確かめる。合わなければ、その引数の名前を持った `ArgumentError` を送る
+         - `plan`・`record`・`values` の 2 つ以上を渡した場合
+         - `from_version`・`to_version` が版の形でない場合（`parse_release_version` が送る `ValueError`）、または `to_version` が `from_version` より前の場合
+         - `values` の要素が `file`・`key`・`value` を文字列で持たない場合
+      2. `plan` なら手順を並べる（`plan_migration`）、`values` があれば `(file, key, value)` の組にして値を入れてから並べ直し（`set_values`・`plan_migration`。`steps` は空にする）、`record` なら版を書いてから並べ直す（`record_version`・`plan_migration`。`steps` は空にし `recorded` を添える）。どれでもなければ手順を当てる（`apply_migration`）
+      3. `MigrationReport` を出力の辞書にする（版は `str()`、手順は `{version, index, op, destructive: op が DESTRUCTIVE_OPS にあるか, summary: describe_step}`、`needs_values`・`backup` は `asdict`）
+    unit_tests:
+      - name: test_run_migrate
+        case: 正常
+        summary: 手順を並べて出力の形にする
+        condition: '版のファイルと `summary` を持たず A-1（`done: true`）を持つワークスペース、`plan=True`'
+        mock: '`read_plugin_version`（`v0.3.0`）'
+        expected: '`workspace_version` が `null`、`plugin_version` が `"v0.3.0"`、`relation` が `older`、`steps` の先頭が `{version: "v0.3.0", index: 1, op: rename_key, destructive: false, summary: ...}`、`needs_values` に `summary`、`backup` が `null`'
+      - name: test_run_migrate_when_values
+        case: 正常
+        summary: values の値を入れて並べ直す
+        condition: '手順を当てた後の `summary` を持たないワークスペース、`values=[{file: mindmap.yaml, key: summary, value: 題名}]`'
+        mock: '`read_plugin_version`（`v0.3.0`）'
+        expected: '`steps` と `needs_values` が空で、`mindmap.yaml` の `summary` が `題名`'
+      - name: test_run_migrate_when_argument_invalid
+        case: 異常
+        summary: 一緒に使わない引数・版の形の誤り・形の違う values
+        condition: '`parametrize`: `plan=True, record=True` / `to_version="0.3"` / `from_version="v0.3.0", to_version="v0.2.0"` / `values=[{file: mindmap.yaml}]`'
+        mock: なし
+        expected: '`ArgumentError`（メッセージに `plan` / `to_version` / `to_version` / `values`）。ワークスペースを書き換えていない'
+        exception: 引数の誤り
+    exceptions:
+      - name: ArgumentError
+        condition: 一緒に使わない引数を渡した・版の形が違う・`to_version` が `from_version` より前・`values` の形が違う
+        message: '引数の誤り: {引数の名前}: {理由}'
+  - name: run_clear_release
+    title: clear-release の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: リリースの片付け
+    scope: public
+    summary: '`release/` の中身を消し、消したものを返す'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{removed}`'
+    process: 1. `release/` を片付ける（リリースの片付け。`clear_release`）
+    unit_tests:
+      - name: test_run_clear_release
+        case: 正常
+        summary: release/ の中を消し、消したものを返す
+        condition: 作成済みのワークスペースの `release/` に `古い資料.md`
+        mock: なし
+        expected: '`{"removed": ["古い資料.md"]}`'
+  - name: run_export
+    title: export の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 配る書き出し
+    scope: public
+    summary: 書き出す先を確かめて配る書き出しを書き、そのパスを返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: out
+        type: Path
+        required: true
+        passing: positional
+        description: '`out`（絶対パス）'
+      - name: now
+        type: NowFn
+        required: false
+        default: now_utc
+        passing: positional
+        description: 書き出した日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{path}`'
+    process: |-
+      1. 書き出す先を確かめる（書き出す先の確かめ。`validate_export_out`）。ワークスペースを読む前に行い、`ArgumentError` では何も書かない
+      2. ワークスペースを読んで配る書き出しを書く（`load_workspace`、配る書き出し。`export_preview`）
+    exceptions:
+      - name: ArgumentError
+        condition: '`out` が `.html` で終わらない'
+    unit_tests:
+      - name: test_run_export
+        case: 正常
+        summary: 配る書き出しを書いてそのパスを返す
+        condition: 作成済みのワークスペースと、ワークスペースの外の `tmp_path / "配る.html"`
+        mock: '`export_preview`（本物を、小さな雛形のフォルダと取る中身を返す `fetch` を渡して呼ぶものに差し替える。通信しない）'
+        expected: '`{"path": "{配る.html の絶対パス}"}`。`配る.html` がある'
+      - name: test_run_export_when_out_invalid
+        case: 異常
+        summary: .html で終わらない out はワークスペースを読む前に弾く
+        condition: '`mindmap.yaml` の無いフォルダで `out` が `{フォルダ}/配る.txt`'
+        mock: なし
+        expected: '`ArgumentError`（`WorkspaceNotFoundError` ではない。メッセージに `out`）'
+        exception: .html で終わらない
+  - name: main
+    title: 入口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    scope: public
+    summary: MCP サーバーを組み立てて stdio で動かし、標準入力が閉じたら配信を止めて終える
+    description: 末尾で `sys.exit(main())`。
+    side_effects: 標準入力・標準出力で MCP をやり取りし、記録を標準エラーに書く
+    args:
+      - name: build
+        type: Callable[..., MCPServer]
+        required: false
+        default: build_server
+        passing: injected
+        description: MCP サーバーを組み立てる関数
+    returns:
+      type: int
+      description: 終了コード（標準入力が閉じて終えたら 0）
+    process: |-
+      1. `logging` の出力先を標準エラーにする
+      2. プロセスの中の書き換えの鍵（`threading.Lock()`）と配信の台帳（`PreviewRegistry`）を作る
+      3. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
+      4. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`）
+      5. 0 を返す
+    unit_tests:
+      - name: test_main
+        case: 正常
+        summary: サーバーが戻ったら配信を止めて 0
+        condition: '`build` を、`run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
+        mock: '`build`'
+        expected: 0 を返し、`run` が `"stdio"` で 1 回呼ばれ、控えた `previews.stop_all` が呼ばれている
+      - name: test_main_when_server_raises
+        case: 正常
+        summary: サーバーが例外で戻っても配信を止める
+        condition: '`run` が `RuntimeError` を送る偽のサーバー'
+        mock: '`build`'
+        expected: '`RuntimeError` が伝わり、`previews.stop_all` が呼ばれている'
+  - name: build_server
+    title: サーバーの組み立て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    scope: public
+    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る'
+    args:
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: keyword
+        description: 配信の台帳（`preview_url` が使う）
+      - name: write_lock
+        type: threading.Lock
+        required: true
+        passing: keyword
+        description: プロセスの中の書き換えの鍵（配信の送信の受け付けと同じもの）
+      - name: cwd
+        type: Path
+        required: true
+        passing: keyword
+        description: 相対パスの `workspace`・`out` を読む基準（サーバーの作業フォルダ）
+    returns:
+      type: MCPServer
+      description: 名前が `SERVER_NAME` で、ツールを `TOOL_NAMES` の順に持つサーバー
+    process: |-
+      1. `MCPServer(SERVER_NAME)` を作る
+      2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
+         - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`adopt`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
+      3. サーバーを返す
+    unit_tests:
+      - name: test_build_server
+        case: 正常
+        summary: 18 個のツールを workspace つきで登録する
+        condition: 空の `PreviewRegistry` と `tmp_path`。作ったサーバーの `list_tools()` を呼ぶ
+        mock: なし
+        expected: ツールの名前が `TOOL_NAMES` と一致し、どれも入力のスキーマの `required` に `workspace` を持つ
+      - name: test_build_server_when_relative_workspace
+        case: 正常
+        summary: 相対パスの workspace を作業フォルダから読む
+        condition: '`cwd=tmp_path`、`tmp_path / "ws"` に作成済みのワークスペース。`call_tool("attrs", {"workspace": "ws"})`'
+        mock: なし
+        expected: '結果の `is_error` が偽で、`structured_content` が `{"attrs": []}`'
+  - name: call_tool
+    title: ツールの呼び出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    scope: public
+    summary: ツールの処理を呼び、結果を構造化の結果に、エラーをツールのエラーにする
+    description: 例外を送って SDK に任せると本文の頭に `Error executing tool` が付くため、ここで全ての例外を `CallToolResult` にする（インターフェース定義『MCP サーバーの起動』の結果の組み立て）。
+    args:
+      - name: handler
+        type: Callable[[], dict[str, Any]]
+        required: true
+        passing: positional
+        description: 引数を渡し終えたツールの処理
+      - name: write_lock
+        type: threading.Lock
+        required: true
+        passing: keyword
+        description: プロセスの中の書き換えの鍵
+      - name: lock_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 書き換えるワークスペース。渡したときだけ鍵とロックを取る
+      - name: lock_create
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: 鍵を取るとき、まだ無いワークスペースのフォルダを作るか（`init` だけ真。`workspace_lock` の `create`）
+    returns:
+      type: CallToolResult
+      description: 成功は `ok_result`、エラーは `error_result` の結果
+    process: |-
+      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
+      2. 結果を分ける
+         - 辞書が返った場合、それを結果にする（`ok_result`）
+         - `MindmapError` を捕まえた場合、ツールのエラーにする（`error_result`）
+         - それ以外の例外を捕まえた場合、トレースバックを記録し、`UNEXPECTED_ERROR` の文言の `MindmapError` としてツールのエラーにする
+           - `[ERROR]` ツールの予期しないエラー（例外のトレースバック）
+    unit_tests:
+      - name: test_call_tool
+        case: 正常
+        summary: 辞書を結果にする
+        condition: '`handler` が `{"id": "D-1"}` を返す'
+        mock: なし
+        expected: '`is_error` が偽、`structured_content` が `{"id": "D-1"}`'
+      - name: test_call_tool_when_mindmap_error
+        case: 正常
+        summary: MindmapError はツールのエラー
+        condition: '`handler` が `WorkspaceNotFoundError` を送る'
+        mock: なし
+        expected: '`is_error` が真で、本文が `エラー: ` で始まる'
+      - name: test_call_tool_when_unexpected_error
+        case: 正常
+        summary: 予期しない例外もトレースバックを出さずツールのエラー
+        condition: '`handler` が `KeyError("x")` を送る'
+        mock: なし
+        expected: '`is_error` が真で、本文が `エラー: 予期しないエラー（KeyError）` で始まり `Traceback` を含まない'
+      - name: test_call_tool_when_lock_root
+        case: 正常
+        summary: 書き換えるツールは鍵を取って呼ぶ
+        condition: '`mindmap.yaml` を置いた `tmp_path` を `lock_root` に渡す。`handler` は呼ばれたときに `write_lock.locked()` を控える'
+        mock: なし
+        expected: 控えた値が真で、呼んだ後は鍵が外れている。`tmp_path / ".mindstella.lock"` がある
+  - name: ok_result
+    title: 成功の結果
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    scope: public
+    summary: 辞書を、構造化の結果と同じ JSON の本文を持つ `CallToolResult` にする
+    args:
+      - name: payload
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: ツールの処理が返した辞書
+    returns:
+      type: CallToolResult
+      description: '`structured_content` が `payload`、`content` が `json.dumps(payload, ensure_ascii=False)` の文字列 1 つ'
+    process: 1. `payload` を `ensure_ascii=False` で JSON の文字列にし、`TextContent` と `structured_content` に入れた結果を返す
+    unit_tests:
+      - name: test_ok_result
+        case: 正常
+        summary: 日本語をエスケープしない本文と構造化の結果
+        condition: '`{"title": "問い"}`'
+        mock: なし
+        expected: '`structured_content` がその辞書、本文が `{"title": "問い"}`'
+  - name: error_result
+    title: エラーの結果
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    scope: public
+    summary: '`MindmapError` を、`エラー: {内容}` で始まる本文のツールのエラーにする'
+    args:
+      - name: error
+        type: MindmapError
+        required: true
+        passing: positional
+        description: 送られた例外
+    returns:
+      type: CallToolResult
+      description: '`is_error` が真で、本文がエラーの行を改行でつないだ文字列 1 つ'
+    process: |-
+      1. 1 行目を `エラー: {メッセージ}` にし、`lines` を持つ例外はその行を続ける
+         - `SchemaMismatchError` で `legacy` が真の場合、最後に `LEGACY_HINT` の 1 行を続ける
+      2. `is_error=True` の結果を返す
+    unit_tests:
+      - name: test_error_result
+        case: 正常
+        summary: 合わない箇所の行を続ける
+        condition: '`SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])`'
+        mock: なし
+        expected: '`is_error` が真で、本文の 1 行目が `エラー: ` で始まり 2 行目がその行'
+      - name: test_error_result_when_legacy_format
+        case: 正常
+        summary: 前の版の形式には /mindstella:upgrade を案内する
+        condition: '`legacy=True` の `SchemaMismatchError`'
+        mock: なし
+        expected: 本文の最後の行が `LEGACY_HINT`
+  - name: resolve_workspace
+    title: ワークスペースのパス
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    scope: public
+    summary: ツールに渡されたパスを、作業フォルダを基準にした絶対パスにする（`workspace`・`out` が使う）
+    args:
+      - name: path
+        type: str
+        required: true
+        passing: positional
+        description: 渡されたパス（`~` を含んでよい）
+      - name: cwd
+        type: Path
+        required: true
+        passing: positional
+        description: サーバーの作業フォルダ
+    returns:
+      type: Path
+      description: 絶対パス
+    process: 1. `~` を展開し、相対パスなら `cwd` とつないで返す
+    unit_tests:
+      - name: test_resolve_workspace
+        case: 正常
+        summary: 相対パスと ~ を絶対パスにする
+        condition: '`parametrize`: `ws` / `~/ws` / `/abs/ws`。`cwd=/c`'
+        mock: '`Path.home`（`/h`）'
+        expected: '`/c/ws` / `/h/ws` / `/abs/ws`'
+  - name: run_preview_url
+    title: preview_url の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: プレビューを開く
+    scope: public
+    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: injected
+        description: 配信の台帳
+    returns:
+      type: dict[str, Any]
+      description: '`{url, workspace, started}`'
+    process: |-
+      1. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
+      2. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`）
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`mindmap.yaml` が無い'
+    unit_tests:
+      - name: test_run_preview_url
+        case: 正常
+        summary: 台帳の結果を返す
+        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/", True)` を返す偽の台帳
+        mock: '`previews`'
+        expected: '`{url: http://127.0.0.1:1/, workspace: {絶対パス}, started: true}`'
+      - name: test_run_preview_url_when_not_workspace
+        case: 異常
+        summary: ワークスペースでなければ配信を立てない
+        condition: 空の `tmp_path`
+        mock: '`previews`'
+        expected: '`WorkspaceNotFoundError`。`start` が呼ばれない'
+        exception: mindmap.yaml が無い
+  - name: run_submissions
+    title: submissions の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: 取り込んでいない送信を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{items}`'
+    process: |-
+      1. ワークスペースを読み、取り込んでいない送信を並べる（`load_workspace`、`list_pending_submissions`）
+      2. `asdict` して返す
+    unit_tests:
+      - name: test_run_submissions
+        case: 正常
+        summary: 取り込んでいない送信を返す
+        condition: D-1 と、取り込んだ S-1・取り込んでいない S-2（D-1）を持つワークスペース
+        mock: なし
+        expected: '`{items: [{id: S-2, target: D-1, target_title: {D-1 のタイトル}, body, sent}]}`'
+  - name: run_take_submission
+    title: take_submission の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: 送信 1 件を取り込み済みにし、出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: submission_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, taken, already}`'
+    process: |-
+      1. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
+      2. 取り込み済みにする（`take_submission`）
+    unit_tests:
+      - name: test_run_take_submission
+        case: 正常
+        summary: 取り込んだ日時を返す
+        condition: 取り込んでいない S-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`
+        mock: '`now`'
+        expected: '`{id: S-1, taken: 2026-10-04T03:00:00+00:00, already: false}`'
+notes:
+  モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
+  標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く
+test_files:
+  - tests/unit/scripts/test_server.py
+  - tests/unit/scripts/test_commands.py

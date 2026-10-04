@@ -25,8 +25,8 @@ from preview_style_checks import (
 def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """状態ごとの列にカードを並べ、進める検討事項を出し、押すと詳細を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
     # 実行
     columns = page.eval_on_selector_all(
         ".board section.board-col",
@@ -44,7 +44,10 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     ]
     assert "D-2の題" in running_for
     # 0 件の列には、種類の名前で空の旨を出す
-    assert page.inner_text('.board section.board-col[aria-label="保留"] .empty') == "タスクはありません。"
+    assert (
+        page.inner_text('.board section.board-col[aria-label="保留"] .empty')
+        == "タスクはありません。"
+    )
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "T-1の題"
 
@@ -52,9 +55,11 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
 def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """表示形式の切り替えは ボード・表 の 2 つで、既定はボード。表に切り替えると行を並べる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks")
-    views = page.eval_on_selector_all(".segment button", "b => b.map(x => [x.dataset.view, x.getAttribute('aria-pressed')])")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
+    views = page.eval_on_selector_all(
+        ".segment button", "b => b.map(x => [x.dataset.view, x.getAttribute('aria-pressed')])"
+    )
     # 実行
     page.click('.segment button[data-view="table"]')
     page.wait_for_selector("table.grid")
@@ -68,8 +73,8 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
 def test_table(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """表の「進める検討事項」の列から、その検討事項の詳細を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
     # 実行
     page.click('table.grid tr[data-id="T-1"] button.idlink')
     # 検証
@@ -82,8 +87,8 @@ def test_board_edge_gap(
 ) -> None:
     """タスクのボードは、カードの左端をボードの左端から余白を空けて置き、ツールバーの左端に揃える（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
     # 実行
     edges = board_edges(page)
     # 検証
@@ -96,8 +101,8 @@ def test_board_columns_when_narrow(
 ) -> None:
     """タスクのボードは、幅 390px で列を縦に 1 列に積み、列の右端を画面の幅に収め、背景をつかめることを示さない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
     page.set_viewport_size(PHONE_VIEWPORT)
     # 実行
     layout = board_layout(page)
@@ -114,8 +119,8 @@ def test_board_columns_when_wide(
 ) -> None:
     """タスクのボードは、幅 1280px で 290px の列を横に並べ、背景をつかめることを示す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
     page.set_viewport_size(DESKTOP_VIEWPORT)
     # 実行
     layout = board_layout(page)
@@ -132,8 +137,8 @@ def test_table_cell_surface(
 ) -> None:
     """タスクの表のセルは静止時に面の色を持たず、面の色は表の枠と固定した列が持つ（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
     pin_id_column(page)
     # 実行
     backgrounds = table_cell_backgrounds(page)
@@ -149,8 +154,8 @@ def test_table_id_button_size(
 ) -> None:
     """表の「進める検討事項」の列の ID のボタンは、見えている枠が縦横 24px 以上である（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=tasks&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
     # 実行
     sizes = page.eval_on_selector_all("table.grid td button.idlink", ID_BUTTON_SIZE_JS)
     # 検証

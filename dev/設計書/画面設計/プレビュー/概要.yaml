@@ -12,6 +12,10 @@ elements:
         value: overview
       - name: theme
         value: 端末の保存領域の値（無ければ OS の設定）
+      - name: connection
+        value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
+      - name: read_at
+        value: 記録の取得.built_at（最後に読めた記録）
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目

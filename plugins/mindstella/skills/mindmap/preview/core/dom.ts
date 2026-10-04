@@ -88,6 +88,8 @@ namespace MindmapPreview {
     term: '<path d="M4 5h11a3 3 0 0 1 3 3v12H7a3 3 0 0 1-3-3Z"/><path d="M4 17a3 3 0 0 1 3-3h11"/>',
     note: '<path d="M5 4h14v12l-4 4H5Z"/><path d="M15 20v-4h4"/>',
     log: '<path d="M4 6h16v10H9l-5 4Z"/>',
+    send: '<path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/>',
+    offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/>',
   } as const;
 
   /** アイコンの名前 */
