@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
-
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
 def test_normal_when_clean(
-    make_workspace: MakeWorkspace, make_item: MakeItem, run_mindmap: RunMindmap
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
     """整った記録は、問題が無いと返る（正常系）。"""
     # 準備
@@ -18,16 +16,16 @@ def test_normal_when_clean(
         bodies={"D-1.md": "本文\n"},
     )
     # 実行
-    result = run_mindmap("check", "--workspace", str(root))
+    result = call_tool("check", workspace=str(root))
     # 検証
-    assert result.returncode == 0
-    assert json.loads(result.stdout) == {"ok": True, "problems": []}
+    assert result.is_error is False
+    assert result.data == {"ok": True, "problems": []}
 
 
 def test_normal_when_problems_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """参照切れ・本文の無い項目・項目の無い本文を、全て出す（正常系）。"""
@@ -39,10 +37,10 @@ def test_normal_when_problems_found(
     )
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("check", "--workspace", str(root))
+    result = call_tool("check", workspace=str(root))
     # 検証
-    assert result.returncode != 0
-    payload = json.loads(result.stdout)
+    assert result.is_error is False
+    payload = result.data
     assert payload["ok"] is False
     problems = {
         (row["kind"], row["file"], row["id"], row["key"]): row for row in payload["problems"]

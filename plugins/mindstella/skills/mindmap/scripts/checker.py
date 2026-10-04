@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from errors import ItemNotFoundError, SchemaMismatchError
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, kind_of_id
-from store import Problem, Workspace, as_ids, read_body, validate_workspace
+from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
+from submissions import SUBMISSIONS_FILE, load_submissions
 
 # 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
 SETTINGS_KIND = "settings"
@@ -30,6 +32,7 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_duplicate_ids(workspace),
         *_check_refs(workspace),
         *_check_bodies(workspace),
+        *_check_submissions(workspace),
     ]
     # ファイル名の順に並べる（sorted は安定なので、同じファイルの中は拾った順を保つ）
     return sorted(problems, key=lambda problem: problem.file)
@@ -153,3 +156,37 @@ def _deliverables(settings: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(deliverables, list):
         return []
     return [deliverable for deliverable in deliverables if isinstance(deliverable, dict)]
+
+
+def _check_submissions(workspace: Workspace) -> list[Problem]:
+    """`submissions.yaml` のスキーマ違反を `schema`、無い項目への `target` を `broken_ref` にする。"""
+    try:
+        submissions = load_submissions(workspace.root)
+    except SchemaMismatchError as error:
+        # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にする
+        return [
+            Problem(
+                kind="schema",
+                file=SUBMISSIONS_FILE,
+                id=None,
+                key=line.split(": ", 2)[1],
+                detail=line.split(": ", 2)[2],
+            )
+            for line in error.lines
+        ]
+    problems: list[Problem] = []
+    for submission in submissions:
+        try:
+            find_item(workspace, submission.target)
+        except ItemNotFoundError:
+            # 向けた項目が無い: 参照切れにする
+            problems.append(
+                Problem(
+                    kind="broken_ref",
+                    file=SUBMISSIONS_FILE,
+                    id=submission.id,
+                    key="target",
+                    detail=f"存在しない ID: {submission.target}",
+                )
+            )
+    return problems

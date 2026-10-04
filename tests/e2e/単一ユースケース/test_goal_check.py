@@ -54,19 +54,23 @@ def test_normal_when_reached(
     )
     # 前回のゴール判定で書き出した資料
     (root / "release" / "古い資料.md").write_text("前回の資料\n", encoding="utf-8")
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
-    goal = replay("goal", *ws)
-    deliverable = replay("show", "A-1", *ws)
+    goal = replay("goal", **ws)
+    deliverable = replay("show", **ws, id="A-1")
     # 利用者の確定の後に、スキルが release/ を片付けてから Markdown を書く
-    replay("clear-release", *ws)
+    replay("clear_release", **ws)
     (root / "release" / "決定事項.md").write_text(
         "# 決定事項\n\n- D-1: 記録する\n- D-2: YAML に残す\n- D-4: コマンドで書く\n",
         encoding="utf-8",
     )
     (root / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
-    replay("add", "log", *ws, data={"title": "リリース", "date": "2026-10-02", "related": ["A-1"]})
-    replay("build", *ws)
+    replay(
+        "add",
+        **ws,
+        kind="log",
+        item={"title": "リリース", "date": "2026-10-02", "related": ["A-1"]},
+    )
     # 検証
     # goal の出力が「届いた」で、残りの検討事項と納品物が 0 件である（ゴールより後ろの D-9 を含まない）
     assert goal["reached"] is True
@@ -95,9 +99,9 @@ def test_normal_when_not_reached(
         settings=_goal_settings(valid_settings),
         bodies={"A-1.md": "要件定義書の下書き"},
     )
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
-    goal = replay("goal", *ws)
+    goal = replay("goal", **ws)
     # 検証
     # goal の出力が「届いていない」で、残りに D-1 と A-1 がある
     assert goal["reached"] is False

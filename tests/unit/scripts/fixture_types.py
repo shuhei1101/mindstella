@@ -9,8 +9,10 @@ from workspace_fixtures import (
     MakeItem,
     MakeLegacyItem,
     MakeLegacyWorkspace,
+    MakeSubmission,
     MakeWorkspace,
     SnapshotTree,
+    WriteSubmissions,
 )
 
 __all__ = [
@@ -20,9 +22,11 @@ __all__ = [
     "MakeItem",
     "MakeLegacyItem",
     "MakeLegacyWorkspace",
+    "MakeSubmission",
     "MakeWorkspace",
     "PatchPluginVersion",
     "SnapshotTree",
+    "WriteSubmissions",
 ]
 
 type PatchPluginVersion = Callable[[str], None]

@@ -21,12 +21,13 @@ TAB_KEYS = [
 def test_tabs(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """題名と、種類ごとの件数つきのタブを出す。タブを押すと画面を移って履歴に積む（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     history_length = page.evaluate("history.length")
     # 実行
     tabs = page.eval_on_selector_all(
-        "nav.tabbar a", "links => links.map(a => [a.dataset.tab, a.querySelector('.count')?.textContent ?? null])"
+        "nav.tabbar a",
+        "links => links.map(a => [a.dataset.tab, a.querySelector('.count')?.textContent ?? null])",
     )
     page.click('nav.tabbar a[data-tab="tasks"]')
     page.wait_for_selector(".screen.tasks")
@@ -57,8 +58,8 @@ def test_tab_keeps_detail_panel(
 ) -> None:
     """タブを押しても、開いている詳細パネルは閉じない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     # 実行
     page.click('nav.tabbar a[data-tab="tasks"]')
     page.wait_for_selector(".screen.tasks")
@@ -69,8 +70,8 @@ def test_tab_keeps_detail_panel(
 def test_theme_is_kept(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """ライト / ダークを切り替え、端末の保存領域に残して開き直しても保つ（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     page.emulate_media(color_scheme="light")
     page.reload()
     page.wait_for_selector("main#main > *")

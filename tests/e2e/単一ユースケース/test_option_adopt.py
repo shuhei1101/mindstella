@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import pytest
 import yaml
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
 @pytest.fixture
@@ -22,7 +21,7 @@ def two_options() -> list[dict[str, Any]]:
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     two_options: list[dict[str, Any]],
 ) -> None:
     """D-1 の採用する案を B に切り替え、影響を受ける項目を洗い出す（正常系）。"""
@@ -35,16 +34,16 @@ def test_normal(
         make_item("D-4", status="決定済み"),
     )
     # 実行
-    switched = run_mindmap("adopt", "D-1", "B", "--workspace", str(root))
-    affected = run_mindmap("impact", "D-1", "--workspace", str(root))
+    switched = call_tool("adopt", workspace=str(root), id="D-1", key="B")
+    affected = call_tool("impact", workspace=str(root), id="D-1")
     # 検証
-    assert switched.returncode == 0
+    assert switched.is_error is False
     decisions = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"]
     options = decisions[0]["options"]
     assert options[0]["adopted"] is False
     assert options[1]["adopted"] is True
-    assert affected.returncode == 0
-    rows = json.loads(affected.stdout)["affected"]
+    assert affected.is_error is False
+    rows = affected.data["affected"]
     assert [row["id"] for row in rows] == ["D-2", "D-3", "T-1"]
     assert [row["via"] for row in rows] == [[], ["D-2"], ["D-2", "D-3"]]
 
@@ -52,7 +51,7 @@ def test_normal(
 def test_error_when_option_not_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     two_options: list[dict[str, Any]],
 ) -> None:
@@ -61,10 +60,10 @@ def test_error_when_option_not_found(
     root = make_workspace(make_item("D-1", options=two_options))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("adopt", "D-1", "Z", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="Z")
     # 検証
-    assert result.returncode != 0
-    assert "Z" in result.stderr
-    assert "A" in result.stderr
-    assert "B" in result.stderr
+    assert result.is_error is True
+    assert "Z" in result.text
+    assert "A" in result.text
+    assert "B" in result.text
     assert snapshot_tree(root) == before

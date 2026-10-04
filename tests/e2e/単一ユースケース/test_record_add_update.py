@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # スキルが足す検討事項の中身
 NEW_DECISION: dict[str, Any] = {
@@ -31,24 +31,23 @@ def _stdin(data: dict[str, Any]) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
-def test_normal(make_workspace: MakeWorkspace, run_mindmap: RunMindmap) -> None:
+def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     """検討事項を足し、その答えと状態を直す（正常系）。"""
     # 準備
     root = make_workspace()
     # 実行
-    added = run_mindmap("add", "decision", "--workspace", str(root), stdin=_stdin(NEW_DECISION))
-    item_id = json.loads(added.stdout)["id"]
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    item_id = added.data["id"]
     after_add = _read_decisions(root)[0]
-    updated = run_mindmap(
+    updated = call_tool(
         "update",
-        item_id,
-        "--workspace",
-        str(root),
-        stdin=_stdin({"answer": "種類ごとに分ける", "status": "決定済み"}),
+        workspace=str(root),
+        id=item_id,
+        item={"answer": "種類ごとに分ける", "status": "決定済み"},
     )
-    checked = run_mindmap("check", "--workspace", str(root))
+    checked = call_tool("check", workspace=str(root))
     # 検証
-    assert added.returncode == 0
+    assert added.is_error is False
     assert item_id.startswith("D-")
     assert len(_read_decisions(root)) == 1
     assert after_add["title"] == "YAML のキーをどう分けるか"
@@ -57,20 +56,20 @@ def test_normal(make_workspace: MakeWorkspace, run_mindmap: RunMindmap) -> None:
     assert after_add["phase"] == "要件"
     assert after_add["lead"] == "種類ごとにキーを分けるかを決める。"
     assert after_add["weight"] == "大"
-    assert updated.returncode == 0
+    assert updated.is_error is False
     after_update = _read_decisions(root)[0]
     assert after_update["answer"] == "種類ごとに分ける"
     assert after_update["status"] == "決定済み"
     assert after_update["created"] == after_add["created"]
     assert after_update["updated"] >= after_add["updated"]
     # ワークスペースの全ての YAML がスキーマに合う
-    assert checked.returncode == 0
+    assert checked.is_error is False
 
 
 def test_error_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """状態に決めた名前に無い値を入れた検討事項は足さず、合わない箇所を示すエラーになる（異常系）。"""
@@ -78,24 +77,20 @@ def test_error_when_schema_mismatch(
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap(
-        "add",
-        "decision",
-        "--workspace",
-        str(root),
-        stdin=_stdin({**NEW_DECISION, "status": "完了"}),
+    result = call_tool(
+        "add", workspace=str(root), kind="decision", item={**NEW_DECISION, "status": "完了"}
     )
     # 検証
-    assert result.returncode != 0
-    assert "status" in result.stderr
-    assert "完了" in result.stderr
+    assert result.is_error is True
+    assert "status" in result.text
+    assert "完了" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_id_not_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """存在しない ID の答えは直せず、ID が無いエラーになる（異常系）。"""
@@ -103,10 +98,8 @@ def test_error_when_id_not_found(
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap(
-        "update", "D-9", "--workspace", str(root), stdin=_stdin({"answer": "決めた答え"})
-    )
+    result = call_tool("update", workspace=str(root), id="D-9", item={"answer": "決めた答え"})
     # 検証
-    assert result.returncode != 0
-    assert "D-9" in result.stderr
+    assert result.is_error is True
+    assert "D-9" in result.text
     assert snapshot_tree(root) == before

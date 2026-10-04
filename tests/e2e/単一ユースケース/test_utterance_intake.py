@@ -5,12 +5,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from preview_helpers import preview_reflects_yaml
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,13 +30,13 @@ def test_normal(
     """決め事・派生の検討事項・未整理・タスク・会話ログを積み、プレビューを書き出し直す（正常系）。"""
     # 準備
     root = make_workspace()
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
     replay(
         "add",
-        "decision",
-        *ws,
-        data={
+        **ws,
+        kind="decision",
+        item={
             "title": "保存先",
             "status": "決定済み",
             "answer": "YAML",
@@ -48,16 +46,18 @@ def test_normal(
     )
     replay(
         "add",
-        "decision",
-        *ws,
-        data={"title": "ファイルの分け方", "status": "未決定", "parent": "D-1", **PLACE},
+        **ws,
+        kind="decision",
+        item={"title": "ファイルの分け方", "status": "未決定", "parent": "D-1", **PLACE},
     )
-    replay("add", "decision", *ws, data={"title": "いつか使うかも", "status": "未整理", **PLACE})
+    replay(
+        "add", **ws, kind="decision", item={"title": "いつか使うかも", "status": "未整理", **PLACE}
+    )
     replay(
         "add",
-        "task",
-        *ws,
-        data={
+        **ws,
+        kind="task",
+        item={
             "title": "分け方の案を出す",
             "kind": "作業",
             "status": "未着手",
@@ -65,8 +65,9 @@ def test_normal(
             **PLACE,
         },
     )
-    replay("add", "log", *ws, data={"title": "発言", "date": TODAY, "related": ["D-1"], **PLACE})
-    replay("build", *ws)
+    replay(
+        "add", **ws, kind="log", item={"title": "発言", "date": TODAY, "related": ["D-1"], **PLACE}
+    )
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = read_yaml(root, "tasks.yaml")["items"]
@@ -99,27 +100,25 @@ def test_normal(
         "データ構造",
         "要件",
     ]
-    # preview.html が最後の書き込みより後に書き出されている（埋め込んだ記録が今の YAML と同じ）
-    assert preview_reflects_yaml(root)
 
 
 def test_normal_when_diagram_kept_as_doc(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     replay: Replay,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """会話で出した図を、本文を持つ資料に残す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
     replay(
         "add",
-        "doc",
-        *ws,
-        data={
+        **ws,
+        kind="doc",
+        item={
             "title": "保存の流れ",
             "kind": "図",
             "deliverable": False,
@@ -128,9 +127,8 @@ def test_normal_when_diagram_kept_as_doc(
             "body_markdown": "```mermaid\nflowchart TD\n  A --> B\n```\n",
         },
     )
-    replay("add", "log", *ws, data={"title": "図を出した", "date": TODAY, "related": ["A-1"]})
-    replay("build", *ws)
-    checked = run_mindmap("check", *ws)
+    replay("add", **ws, kind="log", item={"title": "図を出した", "date": TODAY, "related": ["A-1"]})
+    checked = call_tool("check", **ws)
     # 検証
     doc = read_yaml(root, "docs.yaml")["items"][0]
     # 資料 A-1 が kind: 図 と related: [D-1] を持つ
@@ -140,8 +138,8 @@ def test_normal_when_diagram_kept_as_doc(
     # docs/ に A-1 の本文の Markdown がある
     assert "flowchart TD" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
     # check が YAML と Markdown のずれを 0 件で返す
-    assert checked.returncode == 0
-    assert json.loads(checked.stdout)["problems"] == []
+    assert checked.is_error is False
+    assert checked.data["problems"] == []
 
 
 def test_normal_when_off_topic_question(
@@ -152,17 +150,18 @@ def test_normal_when_off_topic_question(
     """脱線した質問を、言葉は用語集に・それ以外はメモに残し、タスクにはしない（正常系）。"""
     # 準備
     root = make_workspace()
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
-    replay("add", "term", *ws, data={"title": "検討事項", "meaning": "問いと答えの 1 件"})
+    replay("add", **ws, kind="term", item={"title": "検討事項", "meaning": "問いと答えの 1 件"})
     replay(
         "add",
-        "note",
-        *ws,
-        data={"title": "他社の例", "content": "他社は DB を使う", "tags": ["脱線"]},
+        **ws,
+        kind="note",
+        item={"title": "他社の例", "content": "他社は DB を使う", "tags": ["脱線"]},
     )
-    replay("add", "log", *ws, data={"title": "脱線", "date": TODAY, "related": ["G-1", "N-1"]})
-    replay("build", *ws)
+    replay(
+        "add", **ws, kind="log", item={"title": "脱線", "date": TODAY, "related": ["G-1", "N-1"]}
+    )
     # 検証
     # 用語集 G-1 が meaning を持つ
     term = read_yaml(root, "terms.yaml")["items"][0]
@@ -173,4 +172,4 @@ def test_normal_when_off_topic_question(
     assert note["id"] == "N-1"
     assert note["tags"] == ["脱線"]
     # タスクが 0 件のままである
-    assert replay("find", *ws, "--kind", "task")["items"] == []
+    assert replay("find", **ws, kind="task")["items"] == []

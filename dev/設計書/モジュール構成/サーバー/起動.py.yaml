@@ -1,0 +1,575 @@
+title: "サーバー / 起動"
+lead: 起動スクリプト（`bin/mindstella`）が呼ぶ Python の部分。仮想環境の依存を確かめ、インストールしたプラグインのフォルダ・セッションの名前・この起動だけの MCP の設定を作る。tmux と Claude Code の起動は起動スクリプト（bash）が持つ。
+directory: |-
+  ```
+  plugins/mindstella/
+    bin/mindstella          起動スクリプト（bash。引数・tmux・claude の確かめと tmux のセッション。形はインターフェース定義『起動スクリプト』）
+    skills/mindmap/scripts/
+      check_env.py          依存の確認（システムの python3 で起動。Python 3.8 で読める構文）
+      launch.py             起動の手助け（仮想環境の Python で起動。プラグインのフォルダ・セッションの名前・MCP の設定）
+  ```
+notes:
+  起動スクリプトの流れ: '`bin/mindstella` は (1) 引数を確かめ、(2) システムの `python3` で `check_env.py` を起動して `python_path` を受け取り、(3) `tmux`・`claude` を `command -v` で確かめ、(4) `claude plugin list --json` の出力を `python_path` で起動した `launch.py` の標準入力へ渡して `{plugin_dir, session, config}` を受け取り、(5) `tmux has-session -t ={session}` が無ければ `tmux new-session -d -s {session} -c {フォルダ} [-e CLAUDE_CONFIG_DIR=...] -- claude --mcp-config {config}` で立て、(6) つなぐ。JSON の読み書きは bash でせず、`launch.py` の出力は 1 行に 1 つの値を出す形（`--format lines`）で受け取る'
+  構文: '`check_env.py` は先頭に `from __future__ import annotations` を置き、Python 3.8 で読める構文だけで書く（依存が揃う前のシステムの `python3` で起動するため）。`launch.py` は確かめた仮想環境の Python で起動するので 3.12 の書き方を使ってよい'
+classes:
+  - name: PythonVersionError
+    title: Python が古い
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: 仮想環境の Python の版が下限より古いか、版を引けない。依存の確認の結果を持ち、`main` がそれを標準出力に出して終了コード 1 にする
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: report
+        type: dict
+        description: 依存の確認の結果
+  - name: DependencyMissingError
+    title: 依存が足りない
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: ライブラリが無いか下限より古い。依存の確認の結果を持つ
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: report
+        type: dict
+        description: 依存の確認の結果
+  - name: VenvNotFoundError
+    title: 仮想環境が無い
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: 仮想環境の Python が無い。依存の確認の結果を持つ
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: report
+        type: dict
+        description: 依存の確認の結果
+  - name: PluginNotInstalledError
+    title: プラグインが無い
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: '`claude plugin list --json` に `PLUGIN_ID` が無い。`main` が標準エラーにインストールの案内を出して終了コード 1 にする'
+    kind: クラス
+    inherits: Exception
+constants:
+  - name: MIN_PYTHON
+    title: Python の版の下限
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: 非機能要件の「Python の版」
+    value: (3, 12)
+  - name: REQUIREMENTS
+    title: ライブラリの版の下限
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: 配布名 → 版の下限（外部ライブラリの設計書の版）
+    entries:
+      - key: PyYAML
+        value: '5.1'
+      - key: jsonschema
+        value: 4.18.0
+      - key: mcp
+        value: 2.3.0
+  - name: PROBE_SCRIPT
+    title: 仮想環境への問い合わせ
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: 仮想環境の Python に `-c` で渡すコード。版と `REQUIREMENTS` の配布名ごとの版（`importlib.metadata.version`。無ければ `null`）を JSON で標準出力に出す。`importlib.metadata` を読めない版では全て `null`
+    value: str
+  - name: PLUGIN_ID
+    title: プラグインの識別子
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: '`claude plugin list --json` の要素の `id` で引く値'
+    value: '"mindstella@mindstella"'
+  - name: SERVER_SCRIPT
+    title: MCP サーバーのファイル
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: プラグインのフォルダからの MCP サーバーの入口の相対パス
+    value: '"skills/mindmap/scripts/server.py"'
+  - name: SESSION_PREFIX
+    title: セッションの名前の頭
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: tmux のセッションの名前の頭
+    value: '"mindstella-"'
+  - name: PATH_HASH_DIGITS
+    title: パスのハッシュの桁数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    summary: セッションの名前に付ける、絶対パスの SHA-256 の 16 進の先頭の桁数（インターフェース定義『起動スクリプト』）
+    value: '6'
+functions:
+  - name: main
+    title: 依存の確認の入口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: '`--venv` を解釈して依存を確かめ、結果を標準出力に出して終了コードを返す'
+    description: 末尾で `sys.exit(main())`。Python 3.8 で読める構文だけで書く。
+    side_effects: 標準出力に書く
+    args:
+      - name: argv
+        type: list[str] | None
+        required: false
+        default: None
+        passing: positional
+        description: 引数（`None` なら `sys.argv[1:]`）
+    returns:
+      type: int
+      description: 終了コード（0 そろっている / 1 足りない / 2 引数の誤りは argparse が終える）
+    process: |-
+      1. `--venv`（省略時 `default_venv_dir()`）を解釈する
+      2. 依存を確かめる（`run_check_env`）
+         - `VenvNotFoundError`・`PythonVersionError`・`DependencyMissingError` を捕まえた場合、`report` を `json.dumps(ensure_ascii=False)` で標準出力に出して 1 を返す
+      3. 結果を標準出力に出して 0 を返す
+    unit_tests:
+      - name: test_main
+        case: 正常
+        summary: そろっていれば結果を出して 0
+        condition: '`run_check_env` を、そろっている結果を返す関数に差し替える'
+        mock: '`run_check_env`'
+        expected: 0 を返し、標準出力がその結果の JSON
+      - name: test_main_when_dependency_missing
+        case: 正常
+        summary: 足りなければ結果を出して 1
+        condition: '`run_check_env` を `DependencyMissingError(report)` を送る関数に差し替える'
+        mock: '`run_check_env`'
+        expected: 1 を返し、標準出力が `report` の JSON
+  - name: run_check_env
+    title: 依存の確認
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: 仮想環境の Python の版とライブラリの版を確かめ、足りなければ結果を持った例外を送る
+    description: ファイルの先頭に `from __future__ import annotations` を置き、Python 3.8 で読める構文だけで書く。
+    args:
+      - name: venv_dir
+        type: Path
+        required: true
+        passing: positional
+        description: 確かめる仮想環境のフォルダ（`--venv`）
+      - name: probe
+        type: Callable[[Path], dict | None]
+        required: false
+        default: probe_venv
+        passing: injected
+        description: 仮想環境の Python に版とライブラリの版を尋ねる関数
+      - name: base_python
+        type: str
+        required: false
+        default: sys.executable
+        passing: keyword
+        description: 仮想環境を作る Python（`check_env.py` を動かしている Python）
+      - name: base_version
+        type: tuple[int, ...]
+        required: false
+        default: sys.version_info
+        passing: keyword
+        description: 仮想環境を作る Python の版
+    returns:
+      type: dict
+      description: 依存の確認の結果（インターフェース定義『依存の確認』のレスポンスの形。`python_path` を含む）
+    process: |-
+      1. `base_version` が `MIN_PYTHON` 以上かを `base_python_ok` にし、`base_python`・`base_python_version` と一緒に結果へ載せる
+      2. 仮想環境の Python の場所を引き、`python_path` に載せる（`venv_python_path`）
+      3. その Python が無い場合、`venv_ok: false`・`python: null`・全ての `installed: null` と、作って入れるコマンド（`build_install_command` の `create`。`base_python_ok` が偽なら `null`）を持った `VenvNotFoundError(report)` を送る
+      4. `probe` で版とライブラリの版を尋ねる
+         - `None` が返った場合、版を引けないものとして `python: null`・`python_ok: false` にする
+         - それ以外は、版が `MIN_PYTHON` 以上かを `python_ok` にする（`parse_version`）
+      5. `REQUIREMENTS` の配布名ごとに入っている版と下限を比べる（`parse_version`。`null` なら `ok: false`）
+      6. 結果を判定する
+         - `python_ok` が偽の場合、作り直して入れるコマンド（`recreate`。`base_python_ok` が偽なら `null`）を持った `PythonVersionError(report)` を送る
+         - 足りないライブラリがある場合、足りないものを入れるコマンド（`install`）を持った `DependencyMissingError(report)` を送る
+         - それ以外は `install: null` の結果を返す
+    exceptions:
+      - name: VenvNotFoundError
+        condition: 仮想環境の Python が無い
+      - name: PythonVersionError
+        condition: 仮想環境の Python の版が `MIN_PYTHON` より古いか、版を引けない
+      - name: DependencyMissingError
+        condition: 仮想環境の Python の版は足りていて、どれかのライブラリが無いか下限より古い
+    unit_tests:
+      - name: test_run_check_env
+        case: 正常
+        summary: そろっていれば結果を返す
+        condition: '`tmp_path` に仮想環境の Python の場所だけファイルを置き、`probe` は `python: 3.12.3`・PyYAML `6.0.3`・jsonschema `4.26.0`・mcp `2.3.0` を返す'
+        mock: '`probe`'
+        expected: '`venv_ok: true`・`python_ok: true`、3 つとも `ok: true`、`python_path` がその Python、`install: null`'
+      - name: test_run_check_env_when_venv_missing
+        case: 異常
+        summary: 仮想環境が無ければ VenvNotFoundError
+        condition: '`tmp_path` の下のまだ無いフォルダ'
+        mock: '`probe`（呼ばれないことを確かめる）'
+        expected: '`VenvNotFoundError`（`report` の `venv_ok: false`・`python: null`・全ての `installed: null`、`install` に `-m venv`）。`probe` が呼ばれない'
+        exception: 仮想環境が無い
+      - name: test_run_check_env_when_python_old
+        case: 異常
+        summary: 仮想環境の Python が古いか版を引けなければ PythonVersionError
+        condition: '`parametrize`: `probe` が `python: 3.9.6` を返す / `None` を返す'
+        mock: '`probe`'
+        expected: '`PythonVersionError`（`report` の `python_ok: false`、`python` が `3.9.6` / `null`、`install` に `--clear`）'
+        exception: Python の版が古い・引けない
+      - name: test_run_check_env_when_package_missing
+        case: 異常
+        summary: 無い・古いライブラリがあれば DependencyMissingError
+        condition: '`probe` は `python: 3.12.3`、PyYAML `null`、jsonschema `4.17.3`、mcp `null` を返す'
+        mock: '`probe`'
+        expected: '`DependencyMissingError`（`report` の PyYAML・mcp `installed: null`・`ok: false`、jsonschema `ok: false`、`install` に `PyYAML>=5.1`・`jsonschema>=4.18.0`・`mcp>=2.3.0` があり `-m venv` が無い）'
+        exception: ライブラリが無いか古い
+      - name: test_run_check_env_when_old_syntax
+        case: 正常
+        summary: 依存の確認のファイルが Python 3.8 の構文で読め、型注釈を実行時に評価しない
+        condition: '`check_env.py` を `ast.parse(..., feature_version=(3, 8))` で読み、先頭の文を見る'
+        mock: なし
+        expected: '`SyntaxError` にならず、docstring の次の文が `from __future__ import annotations`'
+      - name: test_run_check_env_when_base_python_old
+        case: 異常
+        summary: 仮想環境を作る Python が古ければ、作る・作り直すコマンドを返さない
+        condition: '`base_version=(3, 9, 6)`。`parametrize`: 仮想環境が無い / `probe` が `python: 3.9.6` を返す'
+        mock: '`probe`'
+        expected: '`VenvNotFoundError` / `PythonVersionError` で、`report` の `base_python_ok: false`・`base_python_version: 3.9.6`・`install: null`'
+        exception: 仮想環境を作る Python が古い
+  - name: parse_version
+    title: 版の解釈
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: 版の文字列を比べられる整数の組にする
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 版（例 `6.0.3`・`4.18.0rc1`）
+    returns:
+      type: tuple[int, ...]
+      description: '`.` で区切った各部分の先頭の数字（数字が無い部分で打ち切る）'
+    process: 1. `.` で分け、各部分の先頭の数字を整数にする。先頭が数字でない部分が出たらそこで打ち切る
+    unit_tests:
+      - name: test_parse_version
+        case: 正常
+        summary: 数字の組にする
+        condition: '`parametrize`: `6.0.3` / `4.18.0rc1` / `5.1`'
+        mock: なし
+        expected: '`(6, 0, 3)` / `(4, 18, 0)` / `(5, 1)`'
+  - name: build_install_command
+    title: そろえるコマンド
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: 仮想環境とライブラリをそろえる 1 行のコマンドを作る
+    args:
+      - name: mode
+        type: '"create" | "recreate" | "install"'
+        required: true
+        passing: positional
+        description: 仮想環境を作る / 作り直す / ライブラリだけ入れる
+      - name: missing
+        type: list[str]
+        required: true
+        passing: positional
+        description: 入れる配布名（`REQUIREMENTS` の順）
+      - name: venv_dir
+        type: Path
+        required: true
+        passing: keyword
+        description: 仮想環境のフォルダ
+      - name: base_python
+        type: str
+        required: true
+        passing: keyword
+        description: 仮想環境を作る Python
+      - name: os_name
+        type: str
+        required: false
+        default: os.name
+        passing: keyword
+        description: '`venv_python_path` へ渡す OS の名前'
+    returns:
+      type: str | None
+      description: パスと `{名前}>={下限}` を二重引用符で囲み、`&&` でつないだコマンド。入れるものが無ければ `None`
+    process: |-
+      1. `install` で `missing` が空なら `None` を返す
+      2. `create` は `"{base_python}" -m venv "{venv_dir}"`、`recreate` は `"{base_python}" -m venv --clear "{venv_dir}"` を先頭に置き、`&&` でつなぐ
+      3. 仮想環境の Python（`venv_python_path`）で `-m pip install` し、`missing` の配布名ごとに `"{名前}>={下限}"` を並べる
+    unit_tests:
+      - name: test_build_install_command
+        case: 正常
+        summary: 作る・作り直す・入れるだけを分ける
+        condition: '`parametrize`: `create` と `["PyYAML", "jsonschema", "mcp"]` / `recreate` と同じ / `install` と `["mcp"]`。`venv_dir=/v`・`base_python=/usr/bin/python3`・`os_name="posix"`'
+        mock: なし
+        expected: '`"/usr/bin/python3" -m venv "/v" && "/v/bin/python" -m pip install "PyYAML>=5.1" "jsonschema>=4.18.0" "mcp>=2.3.0"` / `-m venv --clear "/v"` で始まる同じ形 / `"/v/bin/python" -m pip install "mcp>=2.3.0"`'
+      - name: test_build_install_command_when_none_missing
+        case: 正常
+        summary: 入れるものが無ければ None
+        condition: '`install` と `[]`'
+        mock: なし
+        expected: '`None`'
+  - name: default_venv_dir
+    title: 仮想環境の既定の場所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: スキル専用の仮想環境のフォルダ（`~/.mindmap/venv`）を返す
+    returns:
+      type: Path
+      description: '`Path.home() / ".mindmap" / "venv"`'
+    process: 1. ホームの下の `.mindmap/venv` を返す
+    unit_tests:
+      - name: test_default_venv_dir
+        case: 正常
+        summary: ホームの下の .mindmap/venv
+        condition: '`Path.home` を `tmp_path` を返す関数に差し替える'
+        mock: '`Path.home`'
+        expected: '`tmp_path / ".mindmap" / "venv"`'
+  - name: venv_python_path
+    title: 仮想環境の Python の場所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: 仮想環境のフォルダから、その Python の場所を返す
+    args:
+      - name: venv_dir
+        type: Path
+        required: true
+        passing: positional
+        description: 仮想環境のフォルダ
+      - name: os_name
+        type: str
+        required: false
+        default: os.name
+        passing: keyword
+        description: OS の名前
+    returns:
+      type: Path
+      description: '`nt` なら `Scripts/python.exe`、それ以外は `bin/python`'
+    process: 1. `os_name` で分けて返す
+    unit_tests:
+      - name: test_venv_python_path
+        case: 正常
+        summary: OS で場所を分ける
+        condition: '`parametrize`: `os_name="posix"` / `"nt"`'
+        mock: なし
+        expected: '`{venv_dir}/bin/python` / `{venv_dir}/Scripts/python.exe`'
+  - name: probe_venv
+    title: 仮想環境への問い合わせ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: 仮想環境の Python を子プロセスで起動し、版とライブラリの版を受け取る
+    side_effects: 子プロセスを起動する
+    args:
+      - name: python_path
+        type: Path
+        required: true
+        passing: positional
+        description: 仮想環境の Python
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: 子プロセスを起動する関数
+    returns:
+      type: dict | None
+      description: '`{python: 版, packages: {配布名: 版 | None}}`。起動できないか、終了コードが 0 でないか、出力を JSON として読めなければ `None`'
+    process: |-
+      1. `[str(python_path), "-c", PROBE_SCRIPT]` を配列のまま渡して起動する（シェルを通さない。標準出力を受け取る）
+      2. 終了コードが 0 なら標準出力を JSON として読んで返し、それ以外（`OSError` を含む）は `None` を返す
+    unit_tests:
+      - name: test_probe_venv
+        case: 正常
+        summary: テストを動かす Python に尋ねる
+        condition: '`sys.executable` を渡す'
+        mock: なし
+        expected: '`python` が `platform.python_version()` と同じで、`packages` に PyYAML・jsonschema・mcp のキーがある'
+      - name: test_probe_venv_when_failed
+        case: 異常
+        summary: 起動できないか出力が読めなければ None
+        condition: '`parametrize`: `run` が `OSError` を送る / 終了コード 1 を返す / 標準出力 `x` を返す'
+        mock: '`run`'
+        expected: '`None`'
+  - name: find_plugin_dir
+    title: プラグインのフォルダの引き当て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: '`claude plugin list --json` の一覧から、インストールした mindstella の今の版のフォルダを引く'
+    args:
+      - name: listing
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: '`claude plugin list --json` の出力を読んだ配列'
+    returns:
+      type: Path
+      description: '`id` が `PLUGIN_ID` の要素の `installPath`'
+    process: |-
+      1. `id` が `PLUGIN_ID` の最初の要素を探し、その `installPath` を返す
+         - 無い場合、`PluginNotInstalledError` を送る
+    exceptions:
+      - name: PluginNotInstalledError
+        condition: '`id` が `PLUGIN_ID` の要素が無い'
+        message: プラグイン mindstella@mindstella がインストールされていません
+    unit_tests:
+      - name: test_find_plugin_dir
+        case: 正常
+        summary: mindstella の installPath を返す
+        condition: 'ほかのプラグインと `{id: mindstella@mindstella, installPath: /p/0.0.2}` を持つ配列'
+        mock: なし
+        expected: '`Path("/p/0.0.2")`'
+      - name: test_find_plugin_dir_when_missing
+        case: 異常
+        summary: mindstella が無ければ PluginNotInstalledError
+        condition: 空の配列
+        mock: なし
+        expected: '`PluginNotInstalledError`'
+        exception: PLUGIN_ID の要素が無い
+  - name: session_name
+    title: セッションの名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: ワークスペースのフォルダから tmux のセッションの名前を作る
+    args:
+      - name: folder
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: str
+      description: '`{SESSION_PREFIX}{フォルダ名}-{ハッシュ}`'
+    process: |-
+      1. フォルダを `resolve()` してシンボリックリンクを解いた絶対パスにする
+      2. その文字列を UTF-8 で SHA-256 にかけ、 16 進の先頭 `PATH_HASH_DIGITS` 桁を取る
+      3. フォルダ名の `.`・`:` を `-` に置き換え、`SESSION_PREFIX` とハッシュをつなぐ
+    unit_tests:
+      - name: test_session_name
+        case: 正常
+        summary: フォルダ名とパスのハッシュをつなぐ
+        condition: '`tmp_path / "家計簿.v2:アプリ"`'
+        mock: なし
+        expected: '`mindstella-家計簿-v2-アプリ-` に続けて、その絶対パスの SHA-256 の先頭 6 桁'
+      - name: test_session_name_when_same_name_elsewhere
+        case: 正常
+        summary: 同じ名前でも場所が違えば別の名前
+        condition: '`tmp_path / "仕事" / "家計簿アプリ"` と `tmp_path / "個人" / "家計簿アプリ"`'
+        mock: なし
+        expected: 2 つの名前が違う。同じフォルダを相対パスで渡しても同じ名前
+  - name: write_mcp_config
+    title: MCP の設定の書き出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: この起動だけの MCP の設定を一時フォルダに書き、そのパスを返す
+    side_effects: 一時フォルダの下に `mindstella-{ランダム}/mcp.json` を書く
+    args:
+      - name: python_path
+        type: Path
+        required: true
+        passing: positional
+        description: MCP サーバーを動かす仮想環境の Python
+      - name: plugin_dir
+        type: Path
+        required: true
+        passing: positional
+        description: インストールしたプラグインのフォルダ
+      - name: temp_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 一時フォルダを作る場所（`None` なら OS の既定。テストで `tmp_path` を渡す）
+    returns:
+      type: Path
+      description: 書いた `mcp.json` の絶対パス
+    process: |-
+      1. `tempfile.mkdtemp(prefix="mindstella-", dir=temp_root)` でフォルダを作る
+      2. `{"mcpServers": {"mindstella": {"command": str(python_path), "args": [str(plugin_dir / SERVER_SCRIPT)]}}}` を `mcp.json` に書く
+    unit_tests:
+      - name: test_write_mcp_config
+        case: 正常
+        summary: 今の版のサーバーを指す設定を書く
+        condition: '`python_path=/v/bin/python`・`plugin_dir=/p/0.0.2`・`temp_root=tmp_path`'
+        mock: なし
+        expected: '`tmp_path` の下の `mindstella-*/mcp.json`。中身の `mcpServers.mindstella` が `command: /v/bin/python`・`args: [/p/0.0.2/skills/mindmap/scripts/server.py]`'
+  - name: run_launch
+    title: 起動の手助けの入口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 起動スクリプトで立ち上げる
+    scope: public
+    summary: 標準入力のプラグインの一覧から、プラグインのフォルダ・セッションの名前・MCP の設定を作って標準出力に出す
+    description: 末尾で `sys.exit(run_launch())`。起動スクリプトが `{python_path} launch.py --python {python_path} --folder {フォルダ}` で起動し、`claude plugin list --json` の出力を標準入力へ渡す。
+    side_effects: MCP の設定を書き（`write_mcp_config`）、標準出力・標準エラーに書く
+    args:
+      - name: argv
+        type: list[str] | None
+        required: false
+        default: None
+        passing: positional
+        description: 引数（`None` なら `sys.argv[1:]`。`--python`・`--folder` は必須）
+      - name: stdin
+        type: TextIO
+        required: false
+        default: sys.stdin
+        passing: keyword
+        description: プラグインの一覧の JSON を読む先
+    returns:
+      type: int
+      description: 終了コード（0 正常 / 1 プラグインが無い・一覧を読めない / 2 引数の誤りは argparse が終える）
+    process: |-
+      1. 引数を解釈し、標準入力を JSON の配列として読む
+         - 読めないか配列でない場合、標準エラーに `[mindstella] エラー: claude plugin list --json の出力を読めません` を出して 1 を返す
+      2. プラグインのフォルダを引く（`find_plugin_dir`）
+         - `PluginNotInstalledError` を捕まえた場合、標準エラーに `[mindstella] エラー: {メッセージ}` とインストールの手順を案内する行を出して 1 を返す
+      3. セッションの名前を作り（`session_name`）、MCP の設定を書く（`write_mcp_config`）
+      4. 標準出力に、プラグインのフォルダ・セッションの名前・MCP の設定のパスを 1 行ずつこの順で出し、 0 を返す（起動スクリプトが `read` で 1 行ずつ受ける）
+    unit_tests:
+      - name: test_run_launch
+        case: 正常
+        summary: 3 つの値を 1 行ずつ出す
+        condition: '`--python /v/bin/python --folder {tmp_path}/家計簿アプリ`、標準入力は mindstella の `installPath` を持つ配列。`write_mcp_config` の `temp_root` は `tmp_path`'
+        mock: '`write_mcp_config`（`temp_root` を `tmp_path` にした本物）'
+        expected: 0 を返し、標準出力の 3 行が `installPath`・`mindstella-家計簿アプリ-{6 桁}`・書いた `mcp.json` のパス
+      - name: test_run_launch_when_plugin_missing
+        case: 正常
+        summary: プラグインが無ければ案内して 1
+        condition: 標準入力が `[]`
+        mock: なし
+        expected: 1 を返し、標準エラーに `mindstella@mindstella`。標準出力が空で、`mcp.json` を書いていない
+      - name: test_run_launch_when_listing_invalid
+        case: 正常
+        summary: 一覧を読めなければ 1
+        condition: '`parametrize`: 標準入力が `{` / `{}`'
+        mock: なし
+        expected: '1 を返し、標準エラーが `[mindstella] エラー: ` で始まる'
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class 起動スクリプト
+        class 依存の確認
+        class 起動の手助け
+        起動スクリプト --> 依存の確認 : システムの python3 で起動
+        起動スクリプト --> 起動の手助け : 仮想環境の Python で起動
+      ```
+test_files:
+  - tests/unit/scripts/test_check_env.py
+  - tests/unit/scripts/test_launch.py

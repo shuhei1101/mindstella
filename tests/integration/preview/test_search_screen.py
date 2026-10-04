@@ -11,9 +11,7 @@ DIALOG = "dialog.search"
 
 def _result_ids(page: Page) -> list[str]:
     """当たった項目の ID を並びのまま返す。"""
-    return page.eval_on_selector_all(
-        f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)"
-    )
+    return page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
 
 
 def test_open_by_slash_and_trigger(
@@ -21,8 +19,8 @@ def test_open_by_slash_and_trigger(
 ) -> None:
     """`/` キーとトップバーの入口で開き、検索の言葉の欄に入力できる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     # 実行・検証
     page.keyboard.press("/")
     page.wait_for_selector(f"{DIALOG}[open]")
@@ -38,8 +36,8 @@ def test_search_by_id_title_and_body(
 ) -> None:
     """空白で区切った語を全て含む項目を、ID・タイトル・本文から探す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     page.keyboard.press("/")
     page.wait_for_selector(f"{DIALOG}[open]")
     # 実行・検証（ID）
@@ -59,8 +57,8 @@ def test_search_by_id_title_and_body(
 def test_open_result(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """結果を押すと、その項目のタブと詳細パネルを開いて検索を閉じる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     page.keyboard.press("/")
     page.wait_for_selector(f"{DIALOG}[open]")
     page.fill(f"{DIALOG} input", "T-1")
@@ -79,8 +77,8 @@ def test_open_result_by_keyboard(
 ) -> None:
     """下の矢印で結果へ移り、上下の矢印で選んで Enter で、その項目を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     page.keyboard.press("/")
     page.wait_for_selector(f"{DIALOG}[open]")
     page.fill(f"{DIALOG} input", "の題")
@@ -98,8 +96,8 @@ def test_open_result_by_keyboard(
 def test_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """閉じるボタン・Esc・外側の押下で閉じる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path)
+    url = write_sample_preview()
+    page = open_preview(url)
     # 実行・検証
     page.keyboard.press("/")
     page.wait_for_selector(f"{DIALOG}[open]")

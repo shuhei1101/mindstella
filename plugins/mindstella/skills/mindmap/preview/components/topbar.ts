@@ -29,6 +29,10 @@ namespace MindmapPreview {
     onSearch: () => void;
     /** ライト / ダークのボタンを押したとき（切り替え先を渡す） */
     onTheme: (theme: Theme) => void;
+    /** サーバーにつながっているか。`offline` のとき接続の状態を出す（配る書き出しでは出さない） */
+    connection?: "online" | "offline";
+    /** 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える */
+    readAt?: string | null;
   };
 
   /** ブランドのマーク（木の形の線画） */
@@ -66,6 +70,32 @@ namespace MindmapPreview {
     });
   }
 
+  /** サーバーにつながらないときの表示。広い幅は読んだ日時つきの文言、狭い幅は短い文言で、日時は `title` に持つ */
+  function connectionNotice(readAt: string | null): HTMLElement {
+    const readAtText = readAt === null ? null : formatJst(readAt);
+    return h({
+      tag: "span",
+      attrs: {
+        class: "conn",
+        role: "status",
+        title: readAtText === null ? "サーバーにつながりません" : `${readAtText} に読んだ記録を出しています`,
+      },
+      children: [
+        icon("offline"),
+        h({
+          tag: "span",
+          attrs: { class: "conn-long" },
+          children: [
+            readAtText === null
+              ? "サーバーにつながりません"
+              : `サーバーにつながりません（${readAtText} に読んだ記録）`,
+          ],
+        }),
+        h({ tag: "span", attrs: { class: "conn-short" }, children: ["つながりません"] }),
+      ],
+    });
+  }
+
   /** トップバーとタブの帯を返す */
   export function topbar({
     title,
@@ -75,6 +105,8 @@ namespace MindmapPreview {
     onNavigate,
     onSearch,
     onTheme,
+    connection = "online",
+    readAt = null,
   }: TopbarProps): HTMLElement {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     const bar = h({
@@ -91,6 +123,7 @@ namespace MindmapPreview {
         }),
         h({ tag: "span", attrs: { class: "brand-sub", title }, children: [title] }),
         h({ tag: "span", attrs: { class: "spacer" } }),
+        connection === "offline" ? connectionNotice(readAt) : null,
         h({
           tag: "button",
           attrs: {

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 import builder
 import errors
@@ -26,7 +27,7 @@ from export_helpers import (
     make_library,
     make_responses,
 )
-from fixture_types import FailingReplace, MakeItem, MakeWorkspace, SnapshotTree
+from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
 
 # 埋め込み先の要素の開きタグ（DATA_ELEMENT から閉じタグを除いたもの）
 DATA_ELEMENT_OPEN = builder.DATA_ELEMENT.removesuffix("</script>")
@@ -60,66 +61,35 @@ def preview_dir(tmp_path: Path) -> Path:
     return folder
 
 
-def test_build_preview(
-    make_workspace: MakeWorkspace, make_item: MakeItem, preview_dir: Path
-) -> None:
-    """データを埋め込んだ preview.html を書く（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1"),
-        make_item("A-1"),
-        bodies={"A-1.md": "本文 </script>\n"},
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    path = builder.build_preview(workspace, built_at=BUILT_AT, preview_dir=preview_dir)
-    # 検証
-    assert path == root / "preview.html"
-    data = _read_embedded(path.read_text(encoding="utf-8"))
-    assert data["decisions"] == [make_item("D-1")]
-    assert data["bodies"] == {"A-1.md": "本文 </script>\n"}
-    assert data["built_at"] == BUILT_AT
-
-
-def test_build_preview_when_schema_mismatch(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    snapshot_tree: SnapshotTree,
-    preview_dir: Path,
-) -> None:
-    """問題があれば前の preview.html を残す（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", status="完了"))
-    (root / "preview.html").write_text("前の preview\n", encoding="utf-8")
-    workspace = store.load_workspace(root)
-    before = snapshot_tree(root)
-    # 実行・検証
-    with pytest.raises(SchemaMismatchError):
-        builder.build_preview(workspace, built_at=BUILT_AT, preview_dir=preview_dir)
-    assert snapshot_tree(root) == before
-
-
-def test_build_preview_when_replace_fails(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    snapshot_tree: SnapshotTree,
-    failing_replace: FailingReplace,
-    preview_dir: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """置き換えに失敗したら前の preview.html を残す（異常系）。"""
+def test_read_records(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """その場で読んだ記録を返す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    (root / "preview.html").write_text("前の preview\n", encoding="utf-8")
-    workspace = store.load_workspace(root)
-    before = snapshot_tree(root)
-    # builder モジュールの参照を、preview.html への置き換えが失敗するものに差し替える
-    monkeypatch.setattr(builder.os, "replace", failing_replace("preview.html"))
+    # 実行
+    first = builder.read_records(root, now=lambda: BUILT_AT)
+    (root / "decisions.yaml").write_text(
+        yaml.safe_dump(
+            {"items": [make_item("D-1"), make_item("D-2")]}, allow_unicode=True, sort_keys=False
+        ),
+        encoding="utf-8",
+    )
+    second = builder.read_records(root, now=lambda: BUILT_AT)
+    # 検証
+    assert [item["id"] for item in first["decisions"]] == ["D-1"]
+    assert [item["id"] for item in second["decisions"]] == ["D-1", "D-2"]
+    assert second["built_at"] == BUILT_AT
+
+
+def test_read_records_when_schema_mismatch(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """スキーマに合わなければ返さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="完了"))
     # 実行・検証
-    with pytest.raises(WriteFailedError):
-        builder.build_preview(workspace, built_at=BUILT_AT, preview_dir=preview_dir)
-    assert snapshot_tree(root) == before
-    assert list(root.rglob("*.tmp")) == []
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        builder.read_records(root, now=lambda: BUILT_AT)
+    assert exc_info.value.lines[0].startswith("decisions.yaml: items[0].status:")
 
 
 def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -405,14 +375,13 @@ def test_export_preview(
     marked_preview_dir: Path,
     tmp_path: Path,
 ) -> None:
-    """記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、preview.html は触らない（正常系）。"""
+    """記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1"),
         make_item("A-1"),
         bodies={"A-1.md": "本文 </script>\n"},
     )
-    (root / "preview.html").write_text("前の preview\n", encoding="utf-8")
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
     out = tmp_path / "配る.html"
@@ -499,28 +468,19 @@ def test_export_preview_when_out_dir_missing(
     assert not (tmp_path / "無い").exists()
 
 
-def test_validate_export_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """相対パスを起動した場所から読んで絶対パスにする（正常系）。"""
-    # 準備
-    monkeypatch.chdir(tmp_path)
+def test_validate_export_out(tmp_path: Path) -> None:
+    """大文字の拡張子も受け、絶対パスにする（正常系）。"""
     # 実行
-    result = builder.validate_export_out(Path("配る.HTML"), root=tmp_path / "ws")
+    result = builder.validate_export_out(tmp_path / "sub" / ".." / "配る.HTML")
     # 検証
     assert result == tmp_path / "配る.HTML"
 
 
-@pytest.mark.parametrize(
-    ("relative_out", "message"),
-    [
-        pytest.param("配る.txt", "は .html のファイルを指してください", id="not_html"),
-        pytest.param("ws/sub/../preview.html", "preview.html は指せません", id="preview_html"),
-    ],
-)
-def test_validate_export_out_when_invalid(tmp_path: Path, relative_out: str, message: str) -> None:
-    """html でないか preview.html を指す out を弾く（異常系）。"""
+def test_validate_export_out_when_invalid(tmp_path: Path) -> None:
+    """html でない out を弾く（異常系）。"""
     # 実行・検証
-    with pytest.raises(errors.OutPathError, match=message):
-        builder.validate_export_out(tmp_path / relative_out, root=tmp_path / "ws")
+    with pytest.raises(errors.ArgumentError, match=r"out.*\.html"):
+        builder.validate_export_out(tmp_path / "配る.txt")
 
 
 def test_list_external_scripts() -> None:

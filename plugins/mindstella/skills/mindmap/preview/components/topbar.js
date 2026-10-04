@@ -30,8 +30,33 @@ var MindmapPreview;
             ],
         });
     }
+    /** サーバーにつながらないときの表示。広い幅は読んだ日時つきの文言、狭い幅は短い文言で、日時は `title` に持つ */
+    function connectionNotice(readAt) {
+        const readAtText = readAt === null ? null : MindmapPreview.formatJst(readAt);
+        return MindmapPreview.h({
+            tag: "span",
+            attrs: {
+                class: "conn",
+                role: "status",
+                title: readAtText === null ? "サーバーにつながりません" : `${readAtText} に読んだ記録を出しています`,
+            },
+            children: [
+                MindmapPreview.icon("offline"),
+                MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: "conn-long" },
+                    children: [
+                        readAtText === null
+                            ? "サーバーにつながりません"
+                            : `サーバーにつながりません（${readAtText} に読んだ記録）`,
+                    ],
+                }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "conn-short" }, children: ["つながりません"] }),
+            ],
+        });
+    }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -47,6 +72,7 @@ var MindmapPreview;
                 }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "brand-sub", title }, children: [title] }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
+                connection === "offline" ? connectionNotice(readAt) : null,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {

@@ -1,5 +1,5 @@
 title: "プレビュー / 入口"
-lead: '`preview.html` を開いたときに記録を読み、URL のハッシュが指す画面を描き、操作を画面の移動と端末の保存領域につなぐ。'
+lead: 'プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・回答・意見の送信・端末の保存領域につなぐ。'
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/preview/
@@ -23,6 +23,24 @@ data_models:
       - name: columns
         type: 'Record<string, {hidden: string[], pinTo: string | null}>'
         description: 種類ごとの表示する列とピン留め
+  - name: SendStates
+    title: 項目ごとの送信の状態
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 回答・意見を送る
+    summary: 開いている間だけ持つ、項目の ID → 書きかけの本文と送信の状態（`Map<string, {body, status, sentAt, detail}>`）。描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ。`body` は書き換えるたびに sessionStorage にも残し（`saveDraft`）、開き直したときに戻す（`loadDraft`）。`status`・`sentAt`・`detail` はメモリだけに持つ
+    properties:
+      - name: body
+        type: string
+        description: 入力欄の書きかけ
+      - name: status
+        type: "'idle' | 'sending' | 'sent' | 'empty' | 'failed'"
+        description: 部品設計『回答・意見の送信』の `status`
+      - name: sentAt
+        type: string | null
+        description: 送った日時
+      - name: detail
+        type: string | null
+        description: サーバーが返した送れなかった理由
 constants:
   - name: PREFS_KEY
     title: 端末の保存領域のキー
@@ -30,6 +48,12 @@ constants:
     usecase: 共通
     summary: '`Prefs` を残す `localStorage` のキー'
     value: '"mindmap-preview"'
+  - name: DRAFT_KEY_PREFIX
+    title: 書きかけのキーの頭
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 回答・意見を送る
+    summary: 書きかけの本文を残す sessionStorage のキーの頭（`{頭}{項目の ID}`）。sessionStorage はオリジン（ポートを含む）ごとに分かれ、配信はワークスペースごとに別のポートなので、キーにワークスペースを含めなくても混ざらない
+    value: '"mindmap-draft:"'
 functions:
   - name: readEmbeddedData
     title: 埋め込みのデータを読む
@@ -37,7 +61,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`mindmap-data` の要素の中身を `JSON.parse` して返す'
+    summary: '`mindmap-data` の要素の中身を `JSON.parse` して返す。中身が空なら（サーバーの配信）`null` を返す'
     args:
       - name: doc
         type: Document
@@ -45,12 +69,12 @@ functions:
         passing: positional
         description: 文書
     returns:
-      type: object
-      description: 埋め込みのデータ
+      type: object | null
+      description: 埋め込みのデータ。中身が空白だけなら `null`
     exceptions:
       - name: Error
-        condition: 要素が無いか JSON として読めない（同梱の雛形か書き出しの誤り）
-        message: 記録を読み込めませんでした。preview.html をもう一度書き出してください。
+        condition: 要素が無いか、中身を JSON として読めない（同梱の雛形か書き出しの誤り）
+        message: 記録を読み込めませんでした。
     unit_tests:
       - name: test_read_embedded_data
         case: 正常
@@ -58,12 +82,18 @@ functions:
         condition: '`</script>` を `</script>` で持つ JSON を入れた要素'
         mock: なし
         expected: 元の文字（`</script>`）に戻った値
+      - name: test_read_embedded_data_when_empty
+        case: 正常
+        summary: 中身が空なら null
+        condition: 中身が空の `mindmap-data`（サーバーの配信の画面）
+        mock: なし
+        expected: '`null`'
       - name: test_read_embedded_data_when_missing
         case: 異常
         summary: 要素が無ければ送る
         condition: '`mindmap-data` を持たない文書'
         mock: なし
-        expected: '`Error`（書き出し直すよう促す文）'
+        expected: '`Error`'
         exception: 要素が無いか読めない
   - name: loadPrefs
     title: 端末の設定を読む
@@ -125,20 +155,93 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`/` で検索・Esc）を受ける'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`/` で検索・Esc）を受ける。サーバーの配信では `GET /api/records` を読み、`GET /api/events` につなぎ、`POST /api/submissions` へ送る'
     args: []
     returns:
       type: void
       description: '-'
     process: |-
-      1. 埋め込みのデータを読み、索引を作る（`readEmbeddedData`、`buildIndex`）
+      1. 埋め込みのデータを読む（`readEmbeddedData`）
          - 読めない場合、本文にそのメッセージを出して終える
-      2. 端末の設定を読み、テーマを当てる（`loadPrefs`）。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
-      3. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）
-      4. トップバーと画面を描き、`id` があれば詳細パネルを開く。絞り込みは画面に渡した後、ハッシュから消す（`navigate`、`push: false`）
-      5. 画面・部品のコールバックを、`navigate` と描き直し、`savePrefs` につなぐ
-      6. `hashchange`・`popstate` で 3・4 を繰り返す
+         - データがある場合、配る書き出しとしてそれを記録にし、送信の部品と接続の状態を出さない（以降の 2・7・8 をしない）
+         - `null` の場合、サーバーの配信として 2 へ進む
+      2. 記録を読む（`fetchRecords`）
+         - 届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（7 へ）
+      3. 索引を作る（`buildIndex`）。端末の設定を読み、テーマを当てる（`loadPrefs`）。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
+      4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。絞り込みは画面に渡した後、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では詳細パネルにその項目の `SendStates` を渡した送信の部品を置く（`SendStates` にその項目が無ければ、`body` を sessionStorage から戻して `idle` で作る。`loadDraft`）
+      6. 画面・部品のコールバックを、`navigate` と描き直し、`savePrefs` につなぐ。送信の部品は次で扱う
+         - 「入力」では `SendStates` の `body` を書き換え、sessionStorage にも残す（`saveDraft`）
+         - 「送る」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `sending` にして送り（`postSubmission`）、送ったら書きかけを空にして（`saveDraft` に `''`）`sent`、断られた・届かないなら本文を残して `failed` にする
+         - 「本文を写す」では `navigator.clipboard.writeText` で写す
+      7. 書き換えの知らせにつなぐ（`subscribeEvents`）
+         - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の絞り込みと並べ替え・`SendStates` を保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
+         - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを描き直す
+         - つながり直した場合、記録を読み直して接続の状態を `online` に戻す
+      8. `hashchange`・`popstate` で 4・5 を繰り返す
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
+  - name: loadDraft
+    title: 書きかけを読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 回答・意見を送る
+    scope: public
+    summary: その項目の書きかけを sessionStorage から読む。無いか保存領域が例外を送るときは空を返す
+    args:
+      - name: storage
+        type: Storage
+        required: true
+        passing: positional
+        description: '`sessionStorage`'
+      - name: id
+        type: string
+        required: true
+        passing: positional
+        description: 項目の ID
+    returns:
+      type: string
+      description: 書きかけの本文（無ければ `''`）
+    unit_tests:
+      - name: test_load_draft
+        case: 正常
+        summary: 残した書きかけを戻し、読めなければ空
+        condition: '`parametrize`: `mindmap-draft:D-1` に `案 A` を残した / 何も残していない / `getItem` が例外を送る保存領域'
+        mock: 保存領域（引数で渡す）
+        expected: "`案 A` / `''` / `''`"
+  - name: saveDraft
+    title: 書きかけを残す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 回答・意見を送る
+    scope: public
+    summary: その項目の書きかけを sessionStorage に残す。空なら消す。保存領域が例外を送るときは何もしない（メモリの `SendStates` だけで保つ）
+    side_effects: '`sessionStorage` の `{DRAFT_KEY_PREFIX}{id}` を書き換えるか消す'
+    args:
+      - name: storage
+        type: Storage
+        required: true
+        passing: positional
+        description: '`sessionStorage`'
+      - name: id
+        type: string
+        required: true
+        passing: positional
+        description: 項目の ID
+      - name: body
+        type: string
+        required: true
+        passing: positional
+        description: 書きかけの本文（送った後は `''`）
+    returns:
+      type: void
+      description: '-'
+    unit_tests:
+      - name: test_save_draft
+        case: 正常
+        summary: 残した書きかけを読め、空なら消す
+        condition: "`parametrize`: `案 A` を残す / `案 A` を残した後に `''` を残す / `setItem` が例外を送る保存領域"
+        mock: 保存領域（引数で渡す）
+        expected: "`loadDraft` で `案 A` / キーが無く `''` / 例外を送らない"
 test_files:
   - tests/unit/preview/test_app.py

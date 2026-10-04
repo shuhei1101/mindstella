@@ -3,25 +3,24 @@
 from __future__ import annotations
 
 import json
+import urllib.request
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
-import yaml
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 __all__ = [
-    "BuildPreview",
     "OpenPreview",
+    "ServePreview",
     "click_item_ball",
     "count_balls",
-    "preview_reflects_yaml",
+    "fetch_records",
     "row_ids",
     "shown_ball_item_ids",
 ]
 
-type BuildPreview = Callable[..., Path]
+type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
 
 # つながりのキャンバスの上を調べる間隔（px）。玉の当たりの半径（12px 前後）より細かくして、玉を取りこぼさない
@@ -66,31 +65,10 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
 }"""
 
 
-# 埋め込みのデータの開きタグ
-DATA_ELEMENT_OPEN = '<script type="application/json" id="mindmap-data">'
-
-# 7 種類の YAML のファイル名（キーの名前はファイル名から .yaml を落としたもの）
-KIND_KEYS = ("decisions", "tasks", "research", "docs", "terms", "notes", "logs")
-
-
-def _yaml_items(root: Path, key: str) -> list[Any]:
-    """ワークスペースの種類ごとの YAML の項目を返す（ファイルが無い種類は項目なし）。"""
-    path = root / f"{key}.yaml"
-    if not path.exists():
-        return []
-    return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
-
-
-def preview_reflects_yaml(root: Path) -> bool:
-    """preview.html に埋め込んだ記録が、今のワークスペースの YAML と同じか（最後の編集の後に書き出されたか）を返す。
-
-    ファイルの更新時刻の比べ方は、実行環境の時計が戻ると崩れるので、書き出された中身で確かめる。
-    """
-    html = (root / "preview.html").read_text(encoding="utf-8")
-    embedded: dict[str, Any] = json.loads(
-        html.split(DATA_ELEMENT_OPEN, 1)[1].split("</script>", 1)[0]
-    )
-    return all(embedded[key] == _yaml_items(root, key) for key in KIND_KEYS)
+def fetch_records(url: str) -> dict[str, Any]:
+    """配信の URL から記録（`/api/records`）を読み、JSON のオブジェクトにして返す。"""
+    with urllib.request.urlopen(f"{url}api/records", timeout=10) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 def row_ids(page: Page) -> list[str]:
@@ -206,7 +184,9 @@ def shown_ball_item_ids(page: Page) -> set[str]:
         page.mouse.down()
         page.mouse.up()
         try:
-            page.wait_for_selector("aside.panel.open .panel-kind .mono", timeout=BALL_OPEN_TIMEOUT_MS)
+            page.wait_for_selector(
+                "aside.panel.open .panel-kind .mono", timeout=BALL_OPEN_TIMEOUT_MS
+            )
         except PlaywrightTimeoutError:
             # 玉に当たらなかった: 次の玉へ
             continue

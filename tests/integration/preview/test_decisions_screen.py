@@ -70,8 +70,8 @@ def _map_item_ids(page: Page) -> list[str]:
 def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """表示形式の切り替えで、マップ・ボード・表を行き来し、ハッシュの view を置き換える（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions")
     history_length = page.evaluate("history.length")
     assert _view_pressed(page, "map") == "true"
     # 実行・検証
@@ -90,8 +90,8 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
 def test_map(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """対象 → カテゴリー → フェーズ → 検討事項の木をマップに描き、項目を押すと詳細パネルを開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     # 実行・検証（既定は決定済みを隠した状態）
     kinds = page.eval_on_selector_all(
@@ -111,11 +111,12 @@ def test_map_status_legend(
 ) -> None:
     """状態の印を押すと、その状態の項目をマップに出し・隠す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     initial = page.eval_on_selector_all(
-        ".legend label:not(.legend-all-check) input", "inputs => inputs.map(i => [i.value, i.checked])"
+        ".legend label:not(.legend-all-check) input",
+        "inputs => inputs.map(i => [i.value, i.checked])",
     )
     # 実行
     page.click('.legend label:has(input[value="決定済み"])')
@@ -132,8 +133,8 @@ def test_map_status_legend(
 def test_map_keyword(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """キーワードを名前に含む項目を強調する（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     # 実行
     page.fill("input.map-q", "D-2")
@@ -150,8 +151,8 @@ def test_map_keyword(write_sample_preview: WriteSamplePreview, open_preview: Ope
 def test_map_zoom(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """拡大・縮小で倍率を変え、全体を表示で全体が収まる倍率に戻す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     fit = page.locator(".zoom button", has_text="全体を表示")
     assert fit.get_attribute("aria-pressed") == "true"
@@ -166,11 +167,13 @@ def test_map_zoom(write_sample_preview: WriteSamplePreview, open_preview: OpenPr
     )
 
 
-def test_map_when_narrow(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+def test_map_when_narrow(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
     """幅が狭いと、マップを字下げの一覧に切り替え、押すと詳細を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
     # 実行
     page.wait_for_selector("nav.map-outline", state="visible")
@@ -185,8 +188,8 @@ def test_map_when_narrow(write_sample_preview: WriteSamplePreview, open_preview:
 def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """状態ごとの列にカードを並べ、カードを押すと詳細を開く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=board")
     # 実行
     columns = page.eval_on_selector_all(
         ".board section.board-col",
@@ -204,7 +207,10 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
         ["取り下げ", []],
     ]
     # 0 件の列には、種類の名前で空の旨を出す
-    assert page.inner_text('.board section.board-col[aria-label="未整理"] .empty') == "検討事項はありません。"
+    assert (
+        page.inner_text('.board section.board-col[aria-label="未整理"] .empty')
+        == "検討事項はありません。"
+    )
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-5の題"
 
@@ -214,11 +220,11 @@ def test_table_ready_column_when_waiting(
 ) -> None:
     """前提が決着していない未決定は、着手可否を「前提待ち」にする（正常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("D-1", status="未決定"),
         make_item("D-2", status="未決定", depends_on=["D-1"]),
     )
-    page = open_preview(path, "#tab=decisions&view=table")
+    page = open_preview(url, "#tab=decisions&view=table")
     # 実行
     ready = page.eval_on_selector_all(
         "table.grid tbody tr",
@@ -233,8 +239,8 @@ def test_table_ready_column(
 ) -> None:
     """表の「着手可否」は、build が埋め込んだ次の候補にある未決定を「着手可能」、未決定以外を「なし」にする（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
     # 実行
     ready = page.eval_on_selector_all(
         "table.grid tbody tr",
@@ -285,8 +291,8 @@ def test_map_toggle_all_box(
 ) -> None:
     """状態の印の右端の箱を押すと、全ての状態を出し・隠し、各状態の印のチェックをそろえる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     initial = _toggle_all_box(page)
     initial_checks = _status_checks(page)
@@ -320,7 +326,10 @@ def test_map_toggle_all_box(
     assert all_shown_checks == [True, True, True, True]
     assert (after_all_hidden["checked"], after_all_hidden["indeterminate"]) == (False, False)
     assert all_hidden_checks == [False, False, False, False]
-    assert (after_all_shown_again["checked"], after_all_shown_again["indeterminate"]) == (True, False)
+    assert (after_all_shown_again["checked"], after_all_shown_again["indeterminate"]) == (
+        True,
+        False,
+    )
     assert (after_one_hidden["checked"], after_one_hidden["indeterminate"]) == (False, True)
 
 
@@ -329,8 +338,8 @@ def test_map_no_shown_status_note(
 ) -> None:
     """全ての状態を隠すと、幅 901px 以上はマップの枠の中央、900px 以下は字下げの一覧に空の旨を出す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     shown_before = page.is_visible("p.map-empty")
     # 実行（全ての状態を隠す。横棒 → 全て表示 → 全て隠す）
@@ -360,8 +369,8 @@ def test_map_status_chip_border(
 ) -> None:
     """非表示の状態の印は枠を点線にして、表示中と見分ける。まとめて切り替える箱の枠は点線にしない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     # 実行
     shown_style = _border_style(page, '.legend label:has(input[value="未決定"])')
@@ -378,8 +387,8 @@ def test_map_toggle_all_box_appearance(
 ) -> None:
     """箱は背景を透過にして枠と記号だけで描き、枠は印の枠と同じ色、横棒も枠線で描き、チェックは箱の中心に置く（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     # 実行（初期は横棒）
     box = page.evaluate(
@@ -433,8 +442,8 @@ def test_map_item_id_size(
 ) -> None:
     """マップの項目の 2 行目の ID は、計算後の文字の大きさが 11px 以上である（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=map")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     # 実行
     size = map_item_id_font_size(page)
@@ -447,8 +456,8 @@ def test_board_edge_gap(
 ) -> None:
     """検討事項のボードは、カードの左端をボードの左端から余白を空けて置き、ツールバーの左端に揃える（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=board")
     # 実行
     edges = board_edges(page)
     # 検証
@@ -461,8 +470,8 @@ def test_board_columns_when_narrow(
 ) -> None:
     """検討事項のボードは、幅 390px で列を縦に 1 列に積み、列の右端を画面の幅に収め、背景をつかめることを示さない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=board")
     page.set_viewport_size(PHONE_VIEWPORT)
     # 実行
     layout = board_layout(page)
@@ -479,8 +488,8 @@ def test_board_columns_when_wide(
 ) -> None:
     """検討事項のボードは、幅 1280px で 290px の列を横に並べ、背景をつかめることを示す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=board")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=board")
     page.set_viewport_size(DESKTOP_VIEWPORT)
     # 実行
     layout = board_layout(page)
@@ -497,8 +506,8 @@ def test_table_cell_surface(
 ) -> None:
     """検討事項の表のセルは静止時に面の色を持たず、面の色は表の枠と固定した列が持つ（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
     pin_id_column(page)
     # 実行
     backgrounds = table_cell_backgrounds(page)
@@ -514,8 +523,8 @@ def test_table_id_button_size(
 ) -> None:
     """表の「前提」の列の ID のボタンは、見えている枠が縦横 24px 以上である（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
     # 実行
     sizes = page.eval_on_selector_all("table.grid td button.idlink", ID_BUTTON_SIZE_JS)
     # 検証

@@ -52,11 +52,7 @@ STEPS_SCHEMA = SCHEMA_DIR / "migration-steps.schema.json"
 # 写しから戻せなかったときに、`StepFailedError` の `lines` へ足す 1 行
 RESTORE_FAILED_LINE = "写しから戻せませんでした。写しは {ref} にあります"
 
-# `--set` の `{ファイル}:{キーのパス}={値}` の区切り
-FILE_SEPARATOR = ":"
-VALUE_SEPARATOR = "="
-
-# `--set` のキーのパスの区切り
+# `values` のキーのパスの区切り
 KEY_PATH_SEPARATOR = "."
 
 
@@ -201,16 +197,6 @@ def apply_migration(
         needs_values=_collect_needed_values(root, plan.steps),
         backup=backup,
     )
-
-
-def parse_assignment(text: str) -> tuple[str, str, str]:
-    """`--set` の `{ファイル}:{キーのパス}={値}` を、ファイル・キーのパス・値に分ける。"""
-    file_name, found_file, rest = text.partition(FILE_SEPARATOR)
-    key_path, found_value, value = rest.partition(VALUE_SEPARATOR)
-    # 区切りが無いか、ファイル・キーのパスが空
-    if not found_file or not found_value or not file_name or not key_path:
-        raise ValueError(f"--set の形が違います: {text}（{{ファイル}}:{{キーのパス}}={{値}}）")
-    return file_name, key_path, value
 
 
 def set_values(root: Path, assignments: list[tuple[str, str, str]]) -> None:

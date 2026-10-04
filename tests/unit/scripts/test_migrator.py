@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
@@ -268,29 +267,6 @@ def test_apply_migration_when_restore_fails(
         migrator.apply_migration(root)
     backup_dir = root.parent / "workspace.before-v0.3.0"
     assert f"写しから戻せませんでした。写しは {backup_dir} にあります" in exc_info.value.lines
-
-
-def test_parse_assignment() -> None:
-    """値の中の : と = は値に残す（正常系）。"""
-    # 実行
-    result = migrator.parse_assignment("mindmap.yaml:summary=a:b=c")
-    # 検証
-    assert result == ("mindmap.yaml", "summary", "a:b=c")
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        pytest.param("summary=x", id="no_file"),
-        pytest.param("mindmap.yaml:summary", id="no_value"),
-        pytest.param(":summary=x", id="empty_file"),
-    ],
-)
-def test_parse_assignment_when_invalid(text: str) -> None:
-    """形が違えば送る（異常系）。"""
-    # 実行・検証
-    with pytest.raises(ValueError, match=re.escape("--set")):
-        migrator.parse_assignment(text)
 
 
 def test_set_values(

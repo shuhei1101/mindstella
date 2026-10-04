@@ -12,7 +12,8 @@ Claude Code と話し合いながら、検討事項・そこから派生する�
 - 記録は 対象 > カテゴリー > フェーズ > 検討事項 の 4 段で整理する。細かいものは派生・依存・タグで表す
 - 分野ごとの進め方ガイドが、フェーズの並び・観点・必ず調べるもの・ゴール・リリースの形を決める
 - 話し合いは、取り込み・ヒアリング・リサーチ・方針転換・プレビュー・ゴール判定のステップで進む
-- ワークスペースへの書き込みは、全てスクリプトのコマンドを通す。書き込む前にスキーマと突き合わせ、合わなければ何も書き換えない
+- ワークスペースへの書き込みは、全て MCP のツールを通す。書き込む前にスキーマと突き合わせ、合わなければ何も書き換えない
+- MCP のツールは、起動スクリプトで立ち上げた Claude Code にだけ載る。サーバーがプレビューも配り、詳細パネルから項目ごとに回答・意見を送れる
 
 詳しくは [話し合いの進め方](https://shuhei1101.github.io/mindstella/はじめに/コアコンセプト/話し合いの進め方.html) を読む。
 
@@ -27,7 +28,7 @@ Claude Code と話し合いながら、検討事項・そこから派生する�
 
 ## 依存とインストール
 
-Claude Code 2.1.287 以上と、Python 3.12 以上（`venv` を含む）が要る。
+Claude Code 2.1.287 以上と、Python 3.12 以上（`venv` を含む）と、tmux が要る。
 マーケットプレイスを登録して、プラグインをインストールする。
 
 ```bash
@@ -36,9 +37,19 @@ claude plugin install mindstella@mindstella
 ```
 
 起動中の Claude Code では `/reload-plugins` を実行する。
-スクリプトの依存（PyYAML・jsonschema）は、`/mindstella:setup` が確かめ、足りなければそろえるコマンドを示す。
+サーバーの依存（PyYAML・jsonschema・mcp）は、起動スクリプトが確かめ、足りなければそろえるコマンドを示して止まる。
 
 ## 使い方
+
+スキルを呼ぶ前に、起動スクリプトで Claude Code を立ち上げる。
+起動スクリプトは、依存を確かめ、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を起動して、そのセッションへつなぐ。
+
+```bash
+{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}
+```
+
+`{プラグインのフォルダ}` は、`claude plugin list --json` の `mindstella@mindstella` の `installPath`。
+起動スクリプト以外で立ち上げた Claude Code には、MCP のツールが載らない。
 
 | やりたいこと | 呼び方 |
 | --- | --- |
@@ -50,5 +61,6 @@ claude plugin install mindstella@mindstella
 `/mindstella:setup` は、フォルダに `mindmap.yaml` が無ければ新しいワークスペースを作り、あれば状況を示して続きを推奨する。
 最後に `/mindstella:session` で続けるよう案内する。
 ワークスペースの版がプラグインより古ければ、`/mindstella:setup`・`/mindstella:session` は `/mindstella:upgrade` を案内して止まる。
+MCP のツールが載っていない会話では、スキルは何も書き込まずに、起動スクリプトでの立ち上げを案内して止まる。
 
-操作の手順は [話し合い](https://shuhei1101.github.io/mindstella/使い方/話し合い/)、スキルとコマンドの一覧は [スキル](https://shuhei1101.github.io/mindstella/リファレンス/スキル.html)・[コマンド](https://shuhei1101.github.io/mindstella/リファレンス/コマンド.html) にある。
+操作の手順は [話し合い](https://shuhei1101.github.io/mindstella/使い方/話し合い/)、スキルと MCP のツールの一覧は [スキル](https://shuhei1101.github.io/mindstella/リファレンス/スキル.html)・[コマンド](https://shuhei1101.github.io/mindstella/リファレンス/コマンド.html) にある。

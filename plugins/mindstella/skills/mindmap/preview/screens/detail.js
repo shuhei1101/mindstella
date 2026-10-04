@@ -348,18 +348,20 @@ var MindmapPreview;
     }
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
-        const { id, index, full, on } = props;
+        const { id, index, full, on, send } = props;
         const kind = index.byId.get(id)?.kind;
         const body = MindmapPreview.h({ tag: "div", attrs: { class: "panel-body" }, children: [detailBody(props)] });
         const head = detailHead(props);
+        // 見出しと下端の入力の間の本文だけをスクロールする
+        const footer = send === null ? null : MindmapPreview.sendForm(send);
         if (!full) {
             return MindmapPreview.h({
                 tag: "aside",
                 attrs: { class: `panel${kind === "docs" ? " wide" : ""}`, "aria-label": "詳細" },
-                children: [head, body],
+                children: [head, body, footer],
             });
         }
-        const dialog = MindmapPreview.h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body] });
+        const dialog = MindmapPreview.h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body, footer] });
         // Esc は閉じずに元の大きさ（詳細パネル）に戻す。外側（後ろの幕）を押したときも同じ
         dialog.addEventListener("cancel", (event) => {
             event.preventDefault();

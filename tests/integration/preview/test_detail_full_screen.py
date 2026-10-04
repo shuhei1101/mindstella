@@ -28,8 +28,8 @@ def test_open_and_restore(
 ) -> None:
     """全画面に切り替えても履歴に積まず、元の大きさに戻すとパネルへ戻る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     history_length = page.evaluate("history.length")
     panel_button = 'aside.panel button[data-act="full"]'
     assert page.get_attribute(panel_button, "aria-label") == "全画面表示"
@@ -57,8 +57,8 @@ def test_restore_by_escape(
 ) -> None:
     """Esc で元の大きさ（詳細パネル）に戻る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2&full=1")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
     page.wait_for_selector("dialog.full[open]")
     # 実行
     page.keyboard.press("Escape")
@@ -73,8 +73,8 @@ def test_restore_by_backdrop(
 ) -> None:
     """後ろの幕（外側）を押すと、元の大きさに戻る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2&full=1")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
     page.wait_for_selector("dialog.full[open]")
     # 実行
     page.mouse.click(*BACKDROP_POINT)
@@ -88,17 +88,21 @@ def test_navigate_inside(
 ) -> None:
     """全画面の中で項目を移ると履歴に積み、戻る・進むで行き来できる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2&full=1")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
     page.wait_for_selector("dialog.full[open]")
     history_length = page.evaluate("history.length")
     # 実行
     page.click("dialog.full .d-sec:has(h3:text-is('前提')) button.idlink")
-    page.wait_for_function("document.querySelector('dialog.full .d-title')?.textContent === 'D-1の題'")
+    page.wait_for_function(
+        "document.querySelector('dialog.full .d-title')?.textContent === 'D-1の題'"
+    )
     # 検証
     assert page.evaluate("history.length") == history_length + 1
     page.click('dialog.full button[data-act="back"]')
-    page.wait_for_function("document.querySelector('dialog.full .d-title')?.textContent === 'D-2の題'")
+    page.wait_for_function(
+        "document.querySelector('dialog.full .d-title')?.textContent === 'D-2の題'"
+    )
 
 
 def test_diagram_zoom_switches_content(
@@ -106,8 +110,8 @@ def test_diagram_zoom_switches_content(
 ) -> None:
     """全画面の中で図を拡大すると、モーダルを重ねずに中身を図の拡大へ切り替え、閉じると本文へ戻る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-3&full=1")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3&full=1")
     page.wait_for_selector("dialog.full .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 実行
     page.click('dialog.full button[data-act="diagram-zoom"]')
@@ -125,11 +129,30 @@ def test_id_button_size(
 ) -> None:
     """関係する項目（前提・後続の項目・関連タスク）の ID のボタンは、見えている枠が縦横 24px 以上である（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2&full=1")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
     page.wait_for_selector("dialog.full[open]")
     # 実行
     sizes = page.eval_on_selector_all("dialog.full .d-sec button.idlink", ID_BUTTON_SIZE_JS)
     # 検証
     assert sizes["count"] > 0
     assert sizes["smallest"] >= ID_BUTTON_MIN_SIZE_PX
+
+
+def test_send_form(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """サーバーの配信で開くと、回答・意見の送信を全画面の下端に出す。パネルと行き来しても書きかけを保つ（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.fill("aside.panel form.send textarea", "書きかけ")
+    # 実行
+    _open_full(page)
+    # 検証
+    assert page.get_attribute("dialog.full form.send", "data-id") == "D-2"
+    assert page.inner_text("dialog.full form.send label.send-label") == "D-2 への回答・意見"
+    assert page.input_value("dialog.full form.send textarea") == "書きかけ"
+    dialog_box = page.locator("dialog.full").bounding_box()
+    form_box = page.locator("dialog.full form.send").bounding_box()
+    assert dialog_box is not None
+    assert form_box is not None
+    assert abs((dialog_box["y"] + dialog_box["height"]) - (form_box["y"] + form_box["height"])) <= 2

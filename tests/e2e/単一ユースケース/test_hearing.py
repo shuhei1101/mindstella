@@ -29,19 +29,18 @@ def test_normal(
         make_item("D-2"),
         make_item("D-3", depends_on=["D-1"]),
     )
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
-    before = replay("next", *ws)["candidates"]
-    replay("update", "D-1", *ws, data={"status": "決定済み", "answer": "YAML"})
-    replay("update", "D-2", *ws, data={"status": "決定済み", "answer": "種類ごとに分ける"})
+    before = replay("next", **ws)["candidates"]
+    replay("update", **ws, id="D-1", item={"status": "決定済み", "answer": "YAML"})
+    replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "種類ごとに分ける"})
     replay(
         "add",
-        "log",
-        *ws,
-        data={"title": "ヒアリング", "date": "2026-10-02", "related": ["D-1", "D-2"]},
+        **ws,
+        kind="log",
+        item={"title": "ヒアリング", "date": "2026-10-02", "related": ["D-1", "D-2"]},
     )
-    replay("build", *ws)
-    after = replay("next", *ws)["candidates"]
+    after = replay("next", **ws)["candidates"]
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     # next の候補に D-1・D-2 があり、D-3 が無い

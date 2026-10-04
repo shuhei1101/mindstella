@@ -7,13 +7,14 @@ directory: |-
     core/
       globals.d.ts   描画のライブラリ（marked・DOMPurify・ELK・mermaid）のグローバルに npm の型を割り当てる（出力しない）
       dom.ts         要素の組み立て（`h`）・アイコン・状態の印など、画面が共通で使う DOM の部品
-      records.ts     記録の索引・関係する項目・検索（次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使う）
+      records.ts     記録の索引・関係する項目・検索（次の候補・ゴールまでの進捗・カテゴリー別の進捗はサーバーが計算した `derived` を使う）
       libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）
       router.ts      URL のハッシュの読み書きと履歴
+      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・回答・意見の送信）
   ```
 
   全ての `.ts` は import / export を持たない script で、`namespace MindmapPreview` の下に関数を置く。読んだだけでは DOM に触らない。
-  `tsc -p .` が `.ts` と同じ階層に即時実行関数の形の `.js` を出し、その `.js` を commit する。各 `.js` が名前空間を無ければ作り、あれば足すので、名前空間を作るだけのファイルは要らない。build はこの `.js` をつないで雛形に差し込む（モジュール構成『ビルド』の `SCRIPT_FILES`）。
+  `tsc -p .` が `.ts` と同じ階層に即時実行関数の形の `.js` を出し、その `.js` を commit する。各 `.js` が名前空間を無ければ作り、あれば足すので、名前空間を作るだけのファイルは要らない。サーバーはこの `.js` をつないで雛形に差し込む（モジュール構成『ビルド』の `SCRIPT_FILES`）。
 data_models:
   - name: RecordIndex
     title: 記録の索引
@@ -54,6 +55,42 @@ data_models:
       - name: filters
         type: Record<string, string[]>
         description: 開いたときの `f.{列}`（書き戻さない）
+  - name: FetchResult
+    title: 記録の取得の結果
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    summary: "`fetchRecords` の結果（`{ok: true, data} | {ok: false, reason: 'unreachable' | 'invalid', detail}`）"
+    properties:
+      - name: ok
+        type: boolean
+        description: 記録を読めたか
+      - name: data
+        type: object
+        description: '`ok` のとき、インターフェース定義『記録の取得』のレスポンス'
+      - name: reason
+        type: "'unreachable' | 'invalid'"
+        description: 読めなかったとき、届かなかったかサーバーが 422 を返したか
+      - name: detail
+        type: string | null
+        description: 422 の `detail`
+  - name: SendResult
+    title: 送信の結果
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 回答・意見を送る
+    summary: '`postSubmission` の結果（`{ok: true, id, sent} | {ok: false, detail}`。届かなければ `detail` は `null`）'
+    properties:
+      - name: ok
+        type: boolean
+        description: 201 が返ったか
+      - name: id
+        type: string
+        description: '`ok` のとき、振られた送信の ID'
+      - name: sent
+        type: string
+        description: '`ok` のとき、受けた日時'
+      - name: detail
+        type: string | null
+        description: 断られたときの `detail`。届かなかったときは `null`
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -97,6 +134,18 @@ constants:
         value: ELK
       - key: mermaid
         value: mermaid
+  - name: API_PATHS
+    title: 配信のパス
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    summary: 画面が開いた URL からの相対パス
+    entries:
+      - key: records
+        value: '"api/records"'
+      - key: events
+        value: '"api/events"'
+      - key: submissions
+        value: '"api/submissions"'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -730,8 +779,127 @@ functions:
         condition: '`parametrize`: all = a・b・c で shown = a・b・c / a / 空。作った箱の checkbox を 1 回押す'
         mock: '`onChange` を記録する関数'
         expected: checked・indeterminate が 真・偽 / 偽・真 / 偽・偽、`aria-label` が `label`。押した後の `onChange` の引数が 空 / a・b・c / a・b・c
+  - name: fetchRecords
+    title: 記録の取得
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    scope: public
+    is_async: true
+    summary: '`GET /api/records` を読んで結果にする'
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<FetchResult>
+      description: 記録か、読めなかった理由
+    process: |-
+      1. `cache: 'no-store'` で `API_PATHS.records` を読む
+         - 例外を送った場合（届かない）、`{ok: false, reason: 'unreachable', detail: null}` を返す
+         - 200 でない場合、本文の `detail` を持った `{ok: false, reason: 'invalid'}` を返す
+      2. 本文の JSON を `data` にして返す
+    unit_tests:
+      - name: test_fetch_records
+        case: 正常
+        summary: 200 の本文を返す
+        condition: '`fetchFn` が 200・`{"decisions": []}` を返す'
+        mock: '`fetchFn`'
+        expected: "`{ok: true, data: {decisions: []}}`。`fetchFn` に `cache: 'no-store'`"
+      - name: test_fetch_records_when_failed
+        case: 正常
+        summary: 届かない・422 を分ける
+        condition: '`parametrize`: `fetchFn` が `TypeError` を送る / 422・`{"detail": "理由"}` を返す'
+        mock: '`fetchFn`'
+        expected: "`{ok: false, reason: 'unreachable', detail: null}` / `{ok: false, reason: 'invalid', detail: '理由'}`"
+  - name: postSubmission
+    title: 回答・意見の送信
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 回答・意見を送る
+    scope: public
+    is_async: true
+    summary: '`POST /api/submissions` へ項目の ID と本文を送り、結果にする'
+    args:
+      - name: target
+        type: string
+        required: true
+        passing: positional
+        description: 項目の ID
+      - name: body
+        type: string
+        required: true
+        passing: positional
+        description: 本文（入力欄の中身そのまま。前後の空白はサーバーが除く）
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<SendResult>
+      description: 送信の結果
+    process: |-
+      1. `Content-Type: application/json` で `{target, body}` を `API_PATHS.submissions` へ送る
+         - 例外を送った場合（届かない）、`{ok: false, detail: null}` を返す
+      2. 201 なら本文の `id`・`sent` を、それ以外は本文の `detail`（読めなければステータスの文言）を返す
+    unit_tests:
+      - name: test_post_submission
+        case: 正常
+        summary: 201 の本文を返す
+        condition: '`fetchFn` が 201・`{"id": "S-1", "sent": "2026-10-04T02:23:00+00:00"}` を返す'
+        mock: '`fetchFn`'
+        expected: "`{ok: true, id: 'S-1', sent: ...}`。`fetchFn` に渡った本文が `{\"target\":\"D-1\",\"body\":\"案 A にする\"}` で `Content-Type` が `application/json`"
+      - name: test_post_submission_when_failed
+        case: 正常
+        summary: 断られた・届かないを分ける
+        condition: '`parametrize`: 404・`{"detail": "項目がありません: D-99"}` / `fetchFn` が `TypeError` を送る'
+        mock: '`fetchFn`'
+        expected: "`{ok: false, detail: '項目がありません: D-99'}` / `{ok: false, detail: null}`"
+  - name: subscribeEvents
+    title: 書き換えの知らせの購読
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    scope: public
+    summary: '`GET /api/events` に `EventSource` でつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる'
+    args:
+      - name: onChanged
+        type: () => void
+        required: true
+        passing: keyword
+        description: '`changed` を受けたとき'
+      - name: onConnection
+        type: '(connected: boolean) => void'
+        required: true
+        passing: keyword
+        description: つながった（`open`）・切れた（`error`）とき
+      - name: EventSourceCtor
+        type: typeof EventSource
+        required: false
+        default: window.EventSource
+        passing: injected
+        description: '`EventSource` のコンストラクタ'
+    returns:
+      type: () => void
+      description: つながりを閉じる関数
+    process: |-
+      1. `API_PATHS.events` へ `EventSource` を開く
+      2. `changed` で `onChanged`、`open` で `onConnection(true)`、`error` で `onConnection(false)` を呼ぶ（同じ状態が続くときは呼ばない）
+    unit_tests:
+      - name: test_subscribe_events
+        case: 正常
+        summary: changed と接続の変化だけを知らせる
+        condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
+        mock: '`EventSourceCtor`'
+        expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
   - tests/unit/preview/test_router.py
   - tests/unit/preview/test_dom.py
+  - tests/unit/preview/test_api.py

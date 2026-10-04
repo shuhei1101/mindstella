@@ -3,21 +3,19 @@
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import json
 import os
 import shutil
 import tempfile
-from collections.abc import Iterable
+import threading
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import IO, Any, Literal
 
 import yaml
-from jsonschema import Draft202012Validator
-from referencing import Registry
-from referencing.jsonschema import DRAFT202012
-
 from errors import (
     ItemNotFoundError,
     SchemaMismatchError,
@@ -25,6 +23,7 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
+from jsonschema import Draft202012Validator
 from kinds import (
     BODY_DIR,
     KINDS,
@@ -33,6 +32,8 @@ from kinds import (
     Kind,
     kind_of_id,
 )
+from referencing import Registry
+from referencing.jsonschema import DRAFT202012
 
 # このファイルから見た `skills/mindmap/schemas/`
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
@@ -57,6 +58,12 @@ LEGACY_HINT = "ヒント: 前の版の形式の記録は /mindstella:upgrade で
 
 # ワークスペースを最後に整えたときのプラグインの版を持つファイルの名前
 VERSION_FILE = "mindstella-version.ini"
+
+# プロセスをまたいだ書き換えの排他に使う空のファイルの名前
+LOCK_FILE = ".mindstella.lock"
+
+# 今の日時（UTC のタイムゾーン付き ISO 8601）を返す関数。テストで決めた日時を注入する
+type NowFn = Callable[[], str]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -157,6 +164,45 @@ def load_workspace(root: Path) -> Workspace:
         items={kind: _extract_items(raw.get(spec.file)) for kind, spec in KINDS.items()},
         load_problems=load_problems,
     )
+
+
+def _open_lock_file(root: Path) -> IO[str]:
+    """ロックのファイルを追記で開く。開けなければ書き込めなかったエラーにする。"""
+    lock_path = root / LOCK_FILE
+    try:
+        return lock_path.open("a")
+    except OSError as error:
+        raise write_failed(lock_path, error) from error
+
+
+@contextlib.contextmanager
+def workspace_lock(
+    root: Path, process_lock: threading.Lock, *, create: bool = False
+) -> Iterator[None]:
+    """プロセスの中の鍵とワークスペースの排他ロックをこの順に取り、抜けるときに放す。"""
+    with process_lock:
+        created = False
+        if create:
+            # まだ無いフォルダへ書く `init` のために、フォルダごと作る
+            created = not root.exists()
+            root.mkdir(parents=True, exist_ok=True)
+        elif not (root / SETTINGS_FILE).is_file():
+            # ワークスペースでないフォルダには何も作らず止める
+            raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+        try:
+            with _open_lock_file(root) as stream:
+                # 別のプロセスが持っている間は、取れるまで待つ
+                fcntl.flock(stream, fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(stream, fcntl.LOCK_UN)
+        except BaseException:
+            # この鍵で作ったフォルダに、ロックのファイルしか無いまま失敗したときは、何も作らなかった形に戻す
+            if created and [path.name for path in root.iterdir()] == [LOCK_FILE]:
+                (root / LOCK_FILE).unlink()
+                root.rmdir()
+            raise
 
 
 def validate_workspace(workspace: Workspace) -> list[Problem]:
@@ -449,6 +495,16 @@ def _format_path(path: Iterable[str | int]) -> str:
         else:
             text += f".{part}" if text else part
     return text or WHOLE_PATH
+
+
+def format_path(path: Iterable[str | int]) -> str:
+    """`absolute_path` を `items[0].status` の形の文字列にする。"""
+    return _format_path(path)
+
+
+def remove_files(paths: list[Path]) -> None:
+    """後始末として一時ファイルを消す（元の失敗を優先するので消せなくても続ける）。"""
+    _remove_files(paths)
 
 
 def write_temp(target: Path, text: str) -> Path:

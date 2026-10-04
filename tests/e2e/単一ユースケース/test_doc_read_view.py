@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from preview_helpers import BuildPreview, OpenPreview
+from preview_helpers import OpenPreview, ServePreview
 from workspace_fixtures import MakeItem
 
 # 見出しと表を持つ資料の本文
@@ -17,21 +17,21 @@ SPEC_BODY = """## 仕様の見出し
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """納品物を先頭にカードを並べ、ボードで状態の列に分けて本文を読み、カードに戻して種類で絞り込み、本文を見出しと表で読む（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         make_item("A-1", deliverable=False, kind="メモ書き", status="下書き"),
         make_item("A-2", deliverable=True, kind="仕様書", status="完成"),
         settings=valid_settings,
         bodies={"A-1.md": "メモ書きの本文\n", "A-2.md": SPEC_BODY},
     )
     # 実行
-    page = open_preview(path, "#tab=docs")
+    page = open_preview(url, "#tab=docs")
     # 検証（カードの並びと状態）
     cards = page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)")
     assert cards == ["A-2", "A-1"]
@@ -70,7 +70,9 @@ def test_normal(
     page.click('button[aria-label="絞り込み"]')
     page.click('.pop label:has-text("仕様書")')
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
-    assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == ["A-2"]
+    assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == [
+        "A-2"
+    ]
     chips = page.eval_on_selector_all(".chips .chip", "chips => chips.map(c => c.textContent)")
     assert chips == ["種類: 仕様書"]
     # カードを押すと、詳細パネルに本文が見出しと表で描かれる

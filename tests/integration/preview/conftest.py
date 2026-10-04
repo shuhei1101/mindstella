@@ -1,12 +1,11 @@
 """プレビューの結合テストの共通 fixture。
 
-`build` で書き出した `preview.html` を file:// で開き、ハッシュで画面を指す。
+MCP サーバーが `preview_url` で配る URL を開き、ハッシュで画面を指す。
 描画のライブラリと文字は、配信元（jsDelivr・Google Fonts）から読む。
 """
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -18,26 +17,27 @@ from preview_fixture_types import (
     WritePreview,
     WriteSamplePreview,
 )
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 # 画面が描き終わるまで待つ上限ミリ秒
 RENDER_TIMEOUT_MS = 15_000
 
 
 @pytest.fixture
-def write_preview(make_workspace: MakeWorkspace, run_mindmap: RunMindmap) -> WritePreview:
-    """項目と設定を渡して `build` し、書き出した `preview.html` のパスを返す関数を返す。"""
+def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePreview:
+    """項目と設定を渡してワークスペースを作り、`preview_url` が返した配信の URL を返す関数を返す。"""
 
     def _write(
         *items: dict[str, Any],
         settings: dict[str, Any] | None = None,
         bodies: dict[str, str] | None = None,
-    ) -> Path:
-        """ワークスペースを作って書き出す。`build` が失敗したらテストを止める。"""
+    ) -> str:
+        """ワークスペースを作って配信を立てる。`preview_url` が失敗したらテストを止める。"""
         root = make_workspace(*items, settings=settings, bodies=bodies)
-        result = run_mindmap("build", "--workspace", str(root))
-        assert result.returncode == 0, result.stderr
-        return root / "preview.html"
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"])
 
     return _write
 
@@ -124,10 +124,10 @@ def write_sample_preview(
     sample_settings: dict[str, Any],
     sample_bodies: dict[str, str],
 ) -> WriteSamplePreview:
-    """サンプルの記録を書き出した `preview.html` のパスを返す関数を返す。"""
+    """サンプルの記録を配る URL を返す関数を返す。"""
 
-    def _write() -> Path:
-        """サンプルの項目・設定・本文で書き出す。"""
+    def _write() -> str:
+        """サンプルの項目・設定・本文のワークスペースを作って配信を立てる。"""
         return write_preview(*sample_items, settings=sample_settings, bodies=sample_bodies)
 
     return _write
@@ -135,11 +135,11 @@ def write_sample_preview(
 
 @pytest.fixture
 def open_preview(page: Page) -> OpenPreview:
-    """`preview.html` をハッシュ付きで開き、画面が描き終わるまで待つ関数を返す。"""
+    """配信の URL をハッシュ付きで開き、画面が描き終わるまで待つ関数を返す。"""
 
-    def _open(path: Path, hash_text: str = "") -> Page:
-        """file:// の URL にハッシュを付けて開き、本文の領域に中身が入るのを待つ。"""
-        page.goto(f"{path.as_uri()}{hash_text}")
+    def _open(url: str, hash_text: str = "") -> Page:
+        """配信の URL にハッシュを付けて開き、本文の領域に中身が入るのを待つ。"""
+        page.goto(f"{url}{hash_text}")
         page.wait_for_selector(f"{MAIN_SELECTOR} > *", state="attached", timeout=RENDER_TIMEOUT_MS)
         return page
 

@@ -1,14 +1,16 @@
-"""単体・結合・E2E のテストが共有する、ワークスペースと mindmap.py の起動の fixture。
+"""単体・結合・E2E のテストが共有する、ワークスペースと MCP サーバーの起動の fixture。
 
 fixture は `tests/conftest.py` が読み込み、`tests/` の下の全てのテストが使える。
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -19,13 +21,22 @@ import yaml
 REPO_ROOT_PARENT_DEPTH = 1
 REPO_ROOT = Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
 
-# 起動するスクリプトの入口
-MINDMAP_SCRIPT = (
-    REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "mindmap.py"
+# MCP サーバーの入口（起動スクリプトが MCP の設定に書くスクリプト）
+SERVER_SCRIPT = (
+    REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "server.py"
 )
 
 # 子プロセス 1 回を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 120
+
+# MCP のクライアントが名乗る版（サーバーが受け入れる通信の版）
+MCP_PROTOCOL_VERSION = "2025-06-18"
+
+# サーバーが標準入力を閉じられてから終わるまで待つ上限秒数
+SERVER_EXIT_TIMEOUT_SEC = 5
+
+# 書き換えるツールが置く排他ロックのファイル（中身は空）。書き込みの前後の比べからは外す
+LOCK_FILE_NAME = ".mindstella.lock"
 
 # 項目に入れる既定の日時（UTC のタイムゾーン付き ISO 8601）
 DEFAULT_TIMESTAMP = "2026-10-01T00:00:00+00:00"
@@ -52,8 +63,11 @@ KIND_DEFAULTS: dict[str, dict[str, Any]] = {
     "L": {"date": "2026-10-01"},
 }
 
-type RunMindmap = Callable[..., subprocess.CompletedProcess[str]]
+type StartServer = Callable[..., McpServer]
+type CallTool = Callable[..., ToolResult]
 type MakeItem = Callable[..., dict[str, Any]]
+type MakeSubmission = Callable[..., dict[str, Any]]
+type WriteSubmissions = Callable[..., None]
 type MakeWorkspace = Callable[..., Path]
 type MakeLegacyItem = Callable[[str, bool], dict[str, Any]]
 type MakeLegacyWorkspace = Callable[..., Path]
@@ -61,31 +75,143 @@ type SnapshotTree = Callable[[Path], dict[str, bytes]]
 type MakeVenv = Callable[..., Path]
 
 
-@pytest.fixture
-def run_mindmap() -> RunMindmap:
-    """mindmap.py を子プロセスで起動し、結果を返す関数を返す。"""
-    # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    env = {**os.environ, "PYTHONUTF8": "1"}
+@dataclass(frozen=True)
+class ToolResult:
+    """MCP のツールの結果。`data` は構造化の結果（JSON のオブジェクト）で、エラーのときは None。"""
 
-    def _run(
-        *args: str,
-        stdin: str | None = None,
-        python: str = sys.executable,
-        extra_env: dict[str, str] | None = None,
-    ) -> subprocess.CompletedProcess[str]:
-        """引数と標準入力を渡して実行し、終了コードが 0 以外でも例外にせず返す。extra_env は環境変数に足す。"""
-        return subprocess.run(
-            [python, str(MINDMAP_SCRIPT), *args],
-            input=stdin,
-            env={**env, **(extra_env or {})},
-            capture_output=True,
+    is_error: bool
+    text: str
+    data: dict[str, Any] | None
+
+
+class McpServer:
+    """MCP サーバーを子プロセスとして立て、標準入出力の JSON-RPC でツールを呼ぶ同期のクライアント。"""
+
+    def __init__(
+        self, *, python: str, env: dict[str, str], cwd: Path | None, script: Path = SERVER_SCRIPT
+    ) -> None:
+        """サーバーを立てて初期化を済ませ、サーバーの名前を控える。"""
+        self._next_id = 0
+        self.process = subprocess.Popen(
+            [python, str(script)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
-            timeout=COMMAND_TIMEOUT_SEC,
-            check=False,
+            env=env,
+            cwd=cwd,
+        )
+        initialized = self._request(
+            "initialize",
+            {
+                "protocolVersion": MCP_PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": "integration-test", "version": "0"},
+            },
+        )
+        self.server_name: str = initialized["serverInfo"]["name"]
+        self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+    def _send(self, message: dict[str, Any]) -> None:
+        """JSON-RPC の 1 通を、標準入力へ 1 行で書く。"""
+        assert self.process.stdin is not None
+        self.process.stdin.write(json.dumps(message, ensure_ascii=False) + "\n")
+        self.process.stdin.flush()
+
+    def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        """リクエストを送り、同じ id の応答の `result` を返す。"""
+        assert self.process.stdout is not None
+        self._next_id += 1
+        self._send({"jsonrpc": "2.0", "id": self._next_id, "method": method, "params": params})
+        line = self.process.stdout.readline()
+        assert line, (
+            f"サーバーが応答せずに終わりました: {self.process.stderr.read() if self.process.stderr else ''}"
+        )
+        response = json.loads(line)
+        assert response["id"] == self._next_id
+        return response["result"]
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        """ツールの一覧（名前・入力のスキーマ）を返す。"""
+        return self._request("tools/list", {})["tools"]
+
+    def call(self, name: str, **arguments: Any) -> ToolResult:
+        """ツールを呼び、結果の本文・エラーかどうか・構造化の結果を返す。"""
+        result = self._request("tools/call", {"name": name, "arguments": arguments})
+        text = "".join(part["text"] for part in result["content"] if part["type"] == "text")
+        return ToolResult(
+            is_error=bool(result.get("isError")),
+            text=text,
+            data=result.get("structuredContent"),
         )
 
-    return _run
+    def close_stdin(self) -> None:
+        """標準入力を閉じる（Claude Code を閉じたのと同じ）。"""
+        assert self.process.stdin is not None
+        self.process.stdin.close()
+
+    def wait_exit(self, timeout: float = SERVER_EXIT_TIMEOUT_SEC) -> int:
+        """プロセスが終わるのを待ち、終了コードを返す。"""
+        return self.process.wait(timeout=timeout)
+
+    def stop(self) -> None:
+        """まだ動いていれば標準入力を閉じて終わらせ、動いたままなら止める。"""
+        if self.process.poll() is None:
+            if self.process.stdin is not None and not self.process.stdin.closed:
+                self.process.stdin.close()
+            try:
+                self.process.wait(timeout=SERVER_EXIT_TIMEOUT_SEC)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+        for stream in (self.process.stdout, self.process.stderr):
+            if stream is not None:
+                stream.close()
+
+
+@pytest.fixture
+def start_server(tmp_path: Path) -> Iterator[StartServer]:
+    """MCP サーバーを子プロセスとして立てる関数を返し、テストの後で全て止める。"""
+    # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
+    base_env = {**os.environ, "PYTHONUTF8": "1"}
+    started: list[McpServer] = []
+
+    def _start(
+        *,
+        python: str = sys.executable,
+        extra_env: dict[str, str] | None = None,
+        cwd: Path | None = None,
+        script: Path = SERVER_SCRIPT,
+    ) -> McpServer:
+        """サーバーを立てて初期化を済ませる。cwd が相対パスの workspace の基準になる。"""
+        server = McpServer(
+            python=python, env={**base_env, **(extra_env or {})}, cwd=cwd or tmp_path, script=script
+        )
+        started.append(server)
+        return server
+
+    yield _start
+    for server in started:
+        server.stop()
+
+
+@pytest.fixture(scope="session")
+def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
+    """テスト全体で共有する MCP サーバーを 1 つ立てて返す（立ち上げに数秒かかるため）。"""
+    server = McpServer(
+        python=sys.executable,
+        env={**os.environ, "PYTHONUTF8": "1"},
+        cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
+    )
+    yield server
+    server.stop()
+
+
+@pytest.fixture
+def call_tool(mcp_server: McpServer) -> CallTool:
+    """立てた MCP サーバーでツールを呼ぶ関数を返す。"""
+    return mcp_server.call
 
 
 @pytest.fixture
@@ -124,6 +250,36 @@ def make_item() -> MakeItem:
         return item
 
     return _make
+
+
+@pytest.fixture
+def make_submission() -> MakeSubmission:
+    """送信（submissions.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(submission_id: str, **overrides: Any) -> dict[str, Any]:
+        """ID・向けた項目・本文・送った日時・取り込んだ日時（未取り込み）に、渡したキーを重ねた送信を返す。"""
+        submission: dict[str, Any] = {
+            "id": submission_id,
+            "target": "D-1",
+            "body": f"{submission_id}の本文",
+            "sent": DEFAULT_TIMESTAMP,
+            "taken": None,
+        }
+        submission.update(overrides)
+        return submission
+
+    return _make
+
+
+@pytest.fixture
+def write_submissions() -> WriteSubmissions:
+    """ワークスペースに submissions.yaml を書く関数を返す。"""
+
+    def _write(root: Path, *submissions: dict[str, Any]) -> None:
+        """渡した送信を並びのまま items に入れて、root の submissions.yaml に書く。"""
+        write_yaml(root / "submissions.yaml", {"items": list(submissions)})
+
+    return _write
 
 
 @pytest.fixture
@@ -214,11 +370,11 @@ def snapshot_tree() -> SnapshotTree:
     """フォルダの下の全てのファイルを、相対パス → 中身にして返す関数を返す。"""
 
     def _snapshot(root: Path) -> dict[str, bytes]:
-        """書き込みの前後で何も変わっていないことを比べるための写しを作る。"""
+        """書き込みの前後で何も変わっていないことを比べるための写しを作る（排他ロックのファイルは除く）。"""
         return {
             path.relative_to(root).as_posix(): path.read_bytes()
             for path in sorted(root.rglob("*"))
-            if path.is_file()
+            if path.is_file() and path.name != LOCK_FILE_NAME
         }
 
     return _snapshot
