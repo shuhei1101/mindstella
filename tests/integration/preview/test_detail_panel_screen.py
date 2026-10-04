@@ -17,6 +17,7 @@ from preview_comment_helpers import (
     UPDATE_TIMEOUT_MS,
     read_workspace_yaml,
     select_text,
+    select_text_for_pill,
 )
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
@@ -521,7 +522,7 @@ def test_comment_input_draft_when_saved_with_location(
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md")
-    select_text(page, "aside.panel .md", "言い換えたい文")
+    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
     page.click(PILL)
     page.fill(DETAIL_TEXTAREA, "ここは言い換える")
     # 実行
@@ -604,8 +605,7 @@ def test_selection_entry_when_body(
     page.wait_for_selector("aside.panel .md")
     history_length = page.evaluate("history.length")
     # 実行
-    select_text(page, "aside.panel .md", "言い換えたい文")
-    page.wait_for_selector(PILL)
+    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
     page.get_by_role("button", name="選んだ箇所にコメント").click()
     # 検証
     assert page.locator(PILL).count() == 0
@@ -624,8 +624,7 @@ def test_selection_entry_when_value(
     page = open_preview(url, "#tab=decisions&view=table&id=D-3")
     page.wait_for_selector("aside.panel .opt")
     # 実行
-    select_text(page, 'aside.panel dd[data-key="options[A].pros"]', "並べやすい")
-    page.wait_for_selector(PILL)
+    select_text_for_pill(page, 'aside.panel dd[data-key="options[A].pros"]', "並べやすい")
     page.click(PILL)
     # 検証
     assert page.inner_text("aside.panel .send-loc-name") == "案 A のメリット"
@@ -655,8 +654,7 @@ def test_selection_entry_when_closed_by_escape(
     url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .md")
-    select_text(page, "aside.panel .md", "言い換えたい文")
-    page.wait_for_selector(PILL)
+    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
     page.focus(PILL)
     # 実行
     page.keyboard.press("Escape")

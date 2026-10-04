@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 __all__ = [
     "COMMENTS_BUTTON",
@@ -20,8 +21,10 @@ __all__ = [
     "PILL",
     "THREE_LINE_BODY",
     "UPDATE_TIMEOUT_MS",
+    "free_comment",
     "read_workspace_yaml",
     "select_text",
+    "select_text_for_pill",
 ]
 
 # 3 行の段落を持つ資料の本文（2 行目が選ぶ文）
@@ -48,6 +51,10 @@ FREE_TEXTAREA = f"{FREE_FORM} textarea"
 
 # 選んだ箇所のコメントの入口
 PILL = "button.selection-comment"
+
+# 選んだ後に入口が出るまで待つ 1 回のミリ秒と、選び直す回数の上限（描き直しで選択が外れても選び直す）
+PILL_WAIT_MS = 2_000
+PILL_SELECT_ATTEMPTS = 5
 
 # 要素の中の文を、始まりから終わりまで選ぶ
 SELECT_TEXT_SCRIPT = """([selector, text]) => {
@@ -77,6 +84,23 @@ def select_text(page: Page, selector: str, text: str) -> None:
         raise AssertionError(f"{selector} の中に選ぶ文がありません: {text}")
 
 
+def select_text_for_pill(page: Page, selector: str, text: str) -> None:
+    """要素の中の文を選び、選んだ箇所のコメントの入口が出るまで待つ。画面の描き直しで選択が外れたときは選び直す。"""
+    for _ in range(PILL_SELECT_ATTEMPTS):
+        select_text(page, selector, text)
+        try:
+            page.wait_for_selector(PILL, timeout=PILL_WAIT_MS)
+        except PlaywrightTimeoutError:
+            continue
+        return
+    raise AssertionError(f"選んだ後に入口が出ませんでした: {selector} / {text}")
+
+
 def read_workspace_yaml(root: Path, name: str) -> dict[str, Any]:
     """ワークスペースの YAML を読む。"""
     return yaml.safe_load((root / name).read_text(encoding="utf-8"))
+
+
+def free_comment(comment: dict[str, Any]) -> dict[str, Any]:
+    """向けた項目のキーを持たない（項目を指さない）コメントにする。"""
+    return {key: value for key, value in comment.items() if key != "target"}
