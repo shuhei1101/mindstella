@@ -7,7 +7,7 @@ var MindmapPreview;
         records: "api/records",
         events: "api/events",
         comments: "api/comments",
-        send: "api/comments/send",
+        commentsSend: "api/comments/send",
         drafts: "api/drafts",
     };
     /** 応答の本文から、日本語の理由（`detail`）を取り出す。読めなければ null */
@@ -77,7 +77,7 @@ var MindmapPreview;
             update: (id, patch) => callApi("PATCH", `${MindmapPreview.API_PATHS.comments}/${encodeURIComponent(id)}`, patch, fetchFn),
             remove: (id) => callApi("DELETE", `${MindmapPreview.API_PATHS.comments}/${encodeURIComponent(id)}`, null, fetchFn),
             saveDraft: (draft) => callApi("PUT", MindmapPreview.API_PATHS.drafts, draft, fetchFn),
-            send: (ids) => callApi("POST", MindmapPreview.API_PATHS.send, { ids }, fetchFn),
+            send: (ids) => callApi("POST", MindmapPreview.API_PATHS.commentsSend, { ids }, fetchFn),
         };
     }
     MindmapPreview.commentApi = commentApi;

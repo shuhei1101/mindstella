@@ -612,6 +612,7 @@ namespace MindmapPreview {
       return {
         target,
         loc,
+        locLabel: loc === null ? null : locationLabel(loc),
         body: state.body,
         status: state.status,
         count: state.count,
@@ -900,7 +901,6 @@ namespace MindmapPreview {
       const id = route.id;
       pill = selectionComment({
         anchor: { first, last },
-        viewport: { width: innerWidth, height: innerHeight },
         on: {
           press: () => {
             closePill();

@@ -546,6 +546,7 @@ var MindmapPreview;
             return {
                 target,
                 loc,
+                locLabel: loc === null ? null : MindmapPreview.locationLabel(loc),
                 body: state.body,
                 status: state.status,
                 count: state.count,
@@ -839,7 +840,6 @@ var MindmapPreview;
             const id = route.id;
             pill = MindmapPreview.selectionComment({
                 anchor: { first, last },
-                viewport: { width: innerWidth, height: innerHeight },
                 on: {
                     press: () => {
                         closePill();

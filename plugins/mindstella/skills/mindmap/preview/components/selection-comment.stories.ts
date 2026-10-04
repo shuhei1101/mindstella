@@ -9,17 +9,13 @@ const middle = new DOMRect(120, 160, 220, 22);
 const meta = {
   title: "Preview/SelectionComment",
   render: (args) => {
-    const pill = MindmapPreview.selectionComment({
-      ...args,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-    });
+    const pill = MindmapPreview.selectionComment(args);
     const stage = document.createElement("div");
     stage.append(pill);
     return stage;
   },
   args: {
     anchor: { first: middle, last: middle },
-    viewport: { width: 1000, height: 800 },
     on: { press: fn(), close: fn() },
   },
 } satisfies Meta<MindmapPreview.SelectionCommentProps>;
@@ -29,7 +25,7 @@ export default meta;
 type Story = StoryObj<MindmapPreview.SelectionCommentProps>;
 
 /** 選んだ範囲の終わりの下に出す。角を丸め切った横長の形（ピル）に、印と「コメント」 */
-export const Below: Story = {};
+export const Below: Story = { args: { placement: "below" } };
 
 /** ホバー。面の色だけを変える（入口へマウスを乗せて見る） */
 export const Hover: Story = {};
@@ -48,6 +44,7 @@ export const Above: Story = {
       first: new DOMRect(120, window.innerHeight - 70, 220, 22),
       last: new DOMRect(120, window.innerHeight - 24, 160, 22),
     },
+    placement: "above",
   },
 };
 

@@ -6,7 +6,7 @@ namespace MindmapPreview {
     records: "api/records",
     events: "api/events",
     comments: "api/comments",
-    send: "api/comments/send",
+    commentsSend: "api/comments/send",
     drafts: "api/drafts",
   } as const;
 
@@ -141,7 +141,7 @@ namespace MindmapPreview {
       send: (ids: string[]) =>
         callApi<{ sent: string; items: { comment: string; submission: string }[] }>(
           "POST",
-          API_PATHS.send,
+          API_PATHS.commentsSend,
           { ids },
           fetchFn,
         ),
