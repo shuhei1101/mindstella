@@ -55,7 +55,34 @@ scenarios:
       - 出力に、どの項目からも指されていない `docs/` の Markdown のファイル名がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_problems_found
-lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれを洗い出す単一ユースケース。
+  - name: 正常シナリオ（設定に無いフェーズがある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: フェーズ 目的 → 要件 で作成を済ませたワークスペース
+      - name: 設定に無いフェーズ
+        description: '`phase` が `発散` の検討事項 D-1 と、`goal.phase` が `結論` の設定'
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: mindmap.yaml と全ての YAML を読む
+        SV-->>CC: 設定に無いフェーズの一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、D-1 の `phase` の `発散` が設定の `phases` に無い旨がある
+      - 出力に、`goal.phase` の `結論` が設定の `phases` に無い旨がある
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    notes:
+      対応テスト: '`test_normal_when_unknown_phase`。E2E テスト作成で関数を作ったときに `test` へ移す'
+lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズを洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:

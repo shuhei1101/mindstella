@@ -5,7 +5,7 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。手順が連ねる `add` を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
-        description: 分野がシステム開発で、検討事項を持たないワークスペース
+        description: プレイブックがシステム開発で、検討事項を持たないワークスペース
       - name: 再生する書き込み
         description: 決め事を持つ検討事項 D-1（決定済み）、D-1 を `parent` に持つ派生の検討事項 D-2（未決定）、問いの形にならない D-3（未整理）、D-2 を進めるタスク T-1、会話ログ L-1
         notes: どの項目も `target`・`category`・`phase` を持つ
@@ -18,7 +18,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: 発言（決め事を含む）
-        CC->>CC: 対象・カテゴリー・フェーズに振り分け、進め方ガイドの観点と照らす
+        CC->>CC: 対象・カテゴリー・フェーズに振り分け、並べた進め方ガイドの観点と照らす
         CC->>SV: add（検討事項・派生の検討事項・未整理・タスク）
         SV->>WS: スキーマと突き合わせて書く
         CC->>SV: add（会話ログ）
@@ -114,6 +114,35 @@ scenarios:
       - メモ N-1 がタグ `脱線` を持つ
       - タスクが 0 件のままである
     test: test_normal_when_off_topic_question
+  - name: 正常シナリオ（納品物の資料を作る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる `docs/` への本文の書き出し・`add`・設定の更新を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: ゴールの納品物に `要件定義書`（`doc` 無し）を持つ
+      - name: 再生する書き込み
+        description: '本文を `docs/` に書いた納品物の資料 A-1（タイトル `要件定義書`、`deliverable: true`）を足し、設定の更新で同じタイトルの納品物の `doc` から A-1 を指す'
+        notes: 同じタイトルの納品物があるので、行は足さない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（要件定義書をまとめて）
+        CC->>WS: docs/ に資料の本文を書く
+        CC->>SV: add（資料 A-1、deliverable: true）
+        CC->>SV: 設定の更新（同じタイトルの納品物の doc から A-1 を指す）
+        CC->>SV: add（会話ログ）
+      ```
+    expected:
+      - '`goal.deliverables` が「要件定義書」の 1 件だけで、その `doc` が A-1 である'
+      - '資料 A-1 が `deliverable: true` を持つ'
+      - '`check` が問題を 0 件で返す'
+    notes:
+      対応テスト: '`test_normal_when_deliverable_doc_created`。E2E テスト作成で関数を作ったときに `test` へ移す'
 lead: 話し合いを進めるスキル `session` が、利用者の発言を対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む単一ユースケース。
 issue: 4
 primary_actor: 利用者

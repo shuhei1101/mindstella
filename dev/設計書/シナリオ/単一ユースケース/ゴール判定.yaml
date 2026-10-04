@@ -58,6 +58,29 @@ scenarios:
       - '`goal` の出力が「届いていない」で、残りに D-1 と A-1 がある'
       - '`release/` に何も書かれていない'
     test: test_normal_when_not_reached
+  - name: 正常シナリオ（ゴールが無い）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる `goal` を再生する
+      - name: 作成済みのワークスペース
+        description: ゴールを持たず、未決定の検討事項 D-1 と決定済みの D-2 を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+
+        CC->>SV: goal
+        SV-->>CC: ゴールが無い（決着していない検討事項 D-1）
+        CC-->>U: ゴールが無いことと、決着していない D-1 を示し、ゴールを決めるかを尋ねる
+      ```
+    expected:
+      - '`goal` の出力が、ゴールが無いことを示し、届いたとも届いていないとも返さない'
+      - 出力の決着していない検討事項に D-1 があり、D-2 が無い
+      - '`release/` に何も書かれていない'
+    notes:
+      対応テスト: '`test_normal_when_no_goal`。E2E テスト作成で関数を作ったときに `test` へ移す'
 lead: '`session` が、ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って `release/` にリリースの資料を書き出す単一ユースケース。'
 issue: 4
 primary_actor: 利用者
@@ -75,5 +98,5 @@ frequency: 話し合いの終わりに 1〜数回
 priority: 高
 notes:
   リリースの形: '`release/` に書き出す資料の形は進め方ガイドの「リリースの形」が決める。書き出しはスキルが Markdown を書く。書き出す前に `clear-release` で `release/` の中身を消し、最新の確定版の一式だけを置く（版はフォルダで切らない）'
-  ゴールに届いたかの判定: 'MCP のツール `goal` が判定する。ゴールのフェーズまでの検討事項が全て決定済みか対象外・取り下げで、ゴールの `deliverables` の資料が全て `status: 完成` のときに届いたとする。引数と出力の形はインターフェース定義設計で決める'
+  ゴールに届いたかの判定: 'MCP のツール `goal` が判定する。ゴールのフェーズまでの検討事項が全て決定済みか対象外・取り下げで、ゴールの `deliverables` の資料が全て `status: 完成` のときに届いたとする。ゴールが無いときは判定せず、全フェーズの決着していない検討事項を返す。引数と出力の形はインターフェース定義設計で決める'
 test_file: tests/e2e/単一ユースケース/test_goal_check.py
