@@ -60,6 +60,12 @@ args:
     required: false
     default: '`columns[].hidden` が真の列'
     description: 隠している列の `key`
+  - name: marks
+    type: オブジェクト
+    required: false
+    default: なし（印を出さない）
+    description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、当たる行のタイトルの右に部品『差分の印』を文言なしで置く
+    status: planned
 events:
   - name: 並べ替え
     when: 見出しの文字を押したとき
@@ -120,6 +126,11 @@ states:
     description: 表示する列のポップオーバーを開いている。タイトルの列は外せない
     notes:
       見せ方: "`play` で表示する列のボタンを押して開く"
+  - name: Marked
+    description: 差分の表示の間。変えた行のタイトルの右に ●、足した行に + を置き、印の無い行は変わらない
+    args:
+      - name: marks
+        value: '{"D-5": "changed", "D-37": "new"}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - 絞り込み・ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列} で絞り込み`・`{列}まで固定` の読み上げ名を付ける
