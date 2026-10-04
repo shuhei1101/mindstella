@@ -100,6 +100,12 @@ tables:
         not_null: true
         description: 話し合いの題名（何についての話し合いかを 1 文で）。プレビューのトップバーに出す
         example: 要件出しのスキル mindmap を設計する
+      - name: history_limit
+        title: 保持する回数
+        type: number
+        default: '1'
+        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 1 として扱う
+        example: '3'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
@@ -160,6 +166,10 @@ tables:
         not_null: true
         auto: 更新日時
         description: UTC のタイムゾーン付き ISO 8601
+      - name: history
+        title: 変更履歴
+        type: array
+        description: '`update`・`adopt` が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`history`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
   - name: decisions.yaml
     title: 検討事項
     datastore: YAML
@@ -444,3 +454,42 @@ tables:
         title: 中身
         type: string
         description: 空。ロックの対象としてだけ使う
+  - name: changes.yaml
+    title: 書き換えのまとまり
+    datastore: YAML
+    summary: '`commit` でまとめた書き換えのまとまりと、まだまとめていない変更'
+    scale: ~1000
+    growth: ステップごとに `commit` で 1 件足す
+    deletion: 消さない
+    access: 全件
+    description: '`add`・`update`・`adopt` が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`add`・`update` の対象にしない'
+    columns:
+      - name: last_seq
+        title: 最後の通し番号
+        type: number
+        not_null: true
+        description: 最後に積んだ変更履歴の `seq`。積むたびに 1 足す
+      - name: sets
+        title: まとまり
+        type: array
+        not_null: true
+        description: 新しい順。要素は `id`（`C-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）
+      - name: pending
+        title: まだまとめていない変更
+        type: object
+        not_null: true
+        description: '`added`・`changed`（書き換えた順の ID）。保持する回数が 0 の書き換えは `changed` に入れない'
+  - name: .mindstella-opened
+    title: 前回開いた日時
+    datastore: テキスト
+    summary: プレビューを最後に開いた日時
+    scale: 1 行
+    access: 全件
+    description: プレビューのタブが開いたときにサーバーが書き換える（『前回開いた日時』）。書き換えの知らせ・点検・移し替えの対象にしない
+    columns:
+      - name: (1 行目)
+        title: 日時
+        type: string
+        not_null: true
+        description: UTC のタイムゾーン付き ISO 8601
+        example: '2026-10-04T13:05:00+00:00'

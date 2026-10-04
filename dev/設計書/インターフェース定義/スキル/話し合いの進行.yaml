@@ -35,6 +35,7 @@ flows:
       - '`playbooks/` に システム開発・調査・資料作り・壁打ち の 4 つのガイドがあり、どれも制約の 6 つの節をその並びで持ち、`## ゴールの候補` に `（既定）` の行が 1 つだけある'
       - スキルの全ての Markdown に特定の開発基盤の名前が無い
       - '`claude plugin validate` が終了コード 0'
+      - '`steps/取り込み.md`・`ヒアリング.md`・`リサーチ.md`・`方針転換.md` が `commit` を呼ぶ'
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
@@ -61,7 +62,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`adopt`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`adopt`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で書く。`release/` の Markdown の書き出しと、納品物を外すときの `mindmap.yaml` の `goal.deliverables` の書き換えは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -91,6 +92,9 @@ constraints:
   - item: プレビュー
     constraint: プレビューのステップで `preview_url` を呼び、返った `url` を示す。開く画面と項目が決まっていれば URL のハッシュ（インターフェース定義『プレビューを開く』）を付けて示す。ブラウザは開かない
     notes: インターフェース定義『プレビューの URL』
+  - item: 書き換えのまとまり
+    constraint: 取り込み・ヒアリング・リサーチ・方針転換の各ステップで記録を書き換え終えたら、そのステップで何をしたかを一言の説明にして `commit` を呼ぶ。書き換えが無いステップでは呼ばない。準備のステップで `pending` が空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する
+    notes: インターフェース定義『書き換えのまとまり』『まだまとめていない変更』
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

@@ -53,28 +53,6 @@ flows:
       - '`problems` に `missing_body`（R-1）と `orphan_body`（`docs/X-1.md`）がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_problems_found
-  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as check（MCP のツール）
-        participant WS as フォルダ
-
-        クライアント->>IF: check workspace
-        IF-->>WS: mindmap.yaml が無い
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - ツールのエラーになる
-      - エラーの本文にフォルダのパスがある
-    test: test_error_when_workspace_not_found
   - name: 正常系（変更履歴が本文とずれている）
     summary: 手で書き換えた本文に当たらない変更履歴を返す
     setup:
@@ -98,6 +76,28 @@ flows:
       - '`ok` が偽'
       - '`problems` に `stale_history`（D-1・`history[0].body_diff`）がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: check workspace
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の Markdown のずれを全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）

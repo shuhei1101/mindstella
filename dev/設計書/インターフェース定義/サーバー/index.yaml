@@ -76,3 +76,12 @@ items:
   - page: 送信を取り込み済みにする.yaml
     summary: 'take_submission: 取り込んだ送信 1 件を取り込み済みにする'
     group: 送信
+  - page: 書き換えのまとまり.yaml
+    summary: 'commit: まだまとめていない書き換えを説明つきのまとまりにする'
+    group: 書く
+  - page: まだまとめていない変更.yaml
+    summary: 'pending: 最後のまとまりより後に足した・変えた項目を返す'
+    group: 読む
+  - page: 前回開いた日時.yaml
+    summary: 'POST /api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える'
+    group: 配信

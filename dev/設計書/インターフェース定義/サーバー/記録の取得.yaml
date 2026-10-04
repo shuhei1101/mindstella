@@ -52,29 +52,6 @@ flows:
       - 2 回目の `decisions` に D-2 がある
       - 2 回目の `built_at` が 1 回目以降の日時
     test: test_normal_when_rewritten
-  - name: 異常系（YAML がスキーマに合わない・422）
-    summary: 手で崩した YAML があると、合わない箇所を返す
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
-      - name: make_workspace
-        description: '`decisions.yaml` の D-1 の `status` を `完了` に直接書き換えたワークスペース'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as GET /api/records
-        participant WS as ワークスペース
-
-        クライアント->>IF: GET /api/records
-        IF-->>WS: 全ての YAML を読む
-        IF->>IF: スキーマと突き合わせて合わない
-        IF-->>クライアント: 422
-      ```
-    expected:
-      - ステータスが 422、`Content-Type` が `application/problem+json`
-      - '`detail` に `decisions.yaml: items[0].status:` で始まる行がある'
-    test: test_error_when_schema_mismatch
   - name: 正常系（変更履歴がある）
     summary: 項目の変更履歴と、書き換えのまとまりを返す
     setup:
@@ -98,6 +75,29 @@ flows:
       - '`decisions` の D-1 が `history` を 1 回分持ち、YAML と同じ'
       - '`changes.sets` が「足す」の 1 つで、`added` が `[D-1]`'
       - '`changes.pending.changed` が `[D-1]`'
+  - name: 異常系（YAML がスキーマに合わない・422）
+    summary: 手で崩した YAML があると、合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`decisions.yaml` の D-1 の `status` を `完了` に直接書き換えたワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/records
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - ステータスが 422、`Content-Type` が `application/problem+json`
+      - '`detail` に `decisions.yaml: items[0].status:` で始まる行がある'
+    test: test_error_when_schema_mismatch
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
