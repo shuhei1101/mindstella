@@ -3,5 +3,5 @@
   const W = window.MINDMAP.workspace;
   W.playbooks = ["壁打ち", "システム開発"];
   delete W.field;
-  W.description = "話し合いを記録しながら要件・調査・資料作りを進める Claude Code のスキル mindmap の設計について話している。ワークスペースの YAML の形・スクリプトのコマンド・進め方ガイドの中身と、記録を読み返すプレビューの画面を決め、作り始められるところまで進める。";
+  W.description = "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。";
 })();
