@@ -16,6 +16,8 @@ elements:
         value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: read_at
         value: 記録の取得.built_at（最後に読めた記録）
+      - name: diffPoint
+        value: 変更履歴で選んだ時点の名前と日時（プレビューを開く.変更履歴で選んだ時点。選んでいなければ渡さない）。`tabs[].marked` はその時点で印の付く項目を持つ種類
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目
@@ -80,6 +82,15 @@ elements:
     source: プレビューを開く.mindmap-data.derived.progress
     visible_when: 常時（そのカテゴリーとフェーズに項目が無いセルは「—」で押せない）
     label: カテゴリー別の進捗
+  - name: タイルの項目の差分の印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    args:
+      - name: kind
+        value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
+    description: 次に検討する項目・要見直し・保留・進行中のタスクのタイルの各行で、項目のタイトルの横に文言なしで置く
+    io: 表示
+    visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 lead: プレビューを開いたときの既定の画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。
 mock: dev/mock/pages/overview/21/standard/index.html
 test_file: tests/integration/preview/test_overview_screen.py

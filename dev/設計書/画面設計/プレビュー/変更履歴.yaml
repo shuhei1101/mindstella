@@ -1,0 +1,28 @@
+title: "変更履歴"
+elements:
+  - name: 時点の一覧
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/変更履歴.ts#
+    args:
+      - name: points
+        value: 「差分を出さない（今の内容）」・「まだまとめていない変更」（記録の取得.changes.pending が空でないとき）・「前回開いてから」・記録の取得.changes.sets の並び
+      - name: points[].sel
+        value: 空文字列・pending・since・sets[].id
+      - name: points[].name
+        value: 差分を出さない（今の内容）・まだまとめていない変更・前回開いてから・sets[].summary
+      - name: points[].sub
+        value: 印と差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・{前回開いた日時} より後・sets[].at（JST の MM/DD HH:mm）
+      - name: points[].count
+        value: その時点の added と changed の数（差分を出さない行は渡さない）
+      - name: current
+        value: プレビューを開く.変更履歴で選んだ時点（無ければ空文字列）
+    description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で描き直す。「差分を出さない（今の内容）」は差分の表示をやめる
+    io: 入力
+    source: 記録の取得.changes、前回開いた日時.previous
+    visible_when: 常時
+  - name: 閉じる
+    kind: button
+    description: モーダルを閉じる。Esc と外側の押下でも閉じる。選んだ時点は変えない
+    visible_when: 常時
+lead: 差分の表示で比べる時点を選ぶモーダル。トップバーの「変更履歴」で開く。
+mock: dev/mock/pages/decisions/79/standard/index.html

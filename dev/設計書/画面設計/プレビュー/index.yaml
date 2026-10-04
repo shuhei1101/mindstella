@@ -31,3 +31,5 @@ items:
   - page: 図の拡大.yaml
     summary: 本文の図を大きく見る
     group: 重ねる画面
+  - page: 変更履歴.yaml
+    summary: 差分の表示で比べる時点を選ぶモーダル
