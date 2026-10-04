@@ -592,6 +592,9 @@ var MindmapPreview;
                 redrawForm({ target: state.target, focus: true });
                 return;
             }
+            // 溜める前に、この向けた先の書きかけを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた書きかけを書き戻さないため）
+            window.clearTimeout(draftTimers.get(formKey(state.target, state.loc)));
+            draftTimers.delete(formKey(state.target, state.loc));
             Object.assign(state, { status: "saving", detail: null });
             redrawForm({ target: state.target, focus: true });
             const result = await api.add({
@@ -602,19 +605,22 @@ var MindmapPreview;
             if (!result.ok || result.data === null) {
                 // 断られた・届かない: 本文を残す
                 Object.assign(state, { status: "failed", detail: result.ok ? null : result.detail });
+                // 止めた待ちを戻す（本文を残したまま閉じても、書きかけは保つ）
+                scheduleDraft(state);
                 redrawForm({ target: state.target, focus: true });
                 return;
             }
             // 溜めた: 入力欄と添えた箇所を空にし、結果は箇所を持たない入力に出す
             const added = result.data;
-            window.clearTimeout(draftTimers.get(formKey(state.target, state.loc)));
-            draftTimers.delete(formKey(state.target, state.loc));
             if (state.loc !== null && state.target !== null) {
                 comment.forms.delete(formKey(state.target, state.loc));
                 comment.pendingLoc.delete(state.target);
             }
             const shown = formStateOf(state.target, null);
-            Object.assign(shown, { body: "", status: "saved", count: added.count, detail: null });
+            Object.assign(shown, { status: "saved", count: added.count, detail: null });
+            // 箇所を持たない入力を溜めたときだけ本文を空にする（箇所を持つ入力を溜めたときは、別の向けた先の書きかけを残す）
+            if (state.loc === null)
+                shown.body = "";
             knownIds.add(added.id);
             comment.checked.add(added.id);
             await loadReview();
