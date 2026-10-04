@@ -9,13 +9,10 @@ var MindmapPreview;
     const PILL_GAP = 6;
     const SCREEN_EDGE = 8;
     /** 入口を返す。選んだ範囲の終わりの下に出し、下に収まらなければ始まりの上に出す。左右は画面の端から内側に収める */
-    function selectionComment({ anchor, placement, on }) {
-        // 画面の大きさは、いま開いている画面から引く
-        const viewport = { width: window.innerWidth, height: window.innerHeight };
+    function selectionComment({ anchor, viewport, on }) {
         const below = anchor.last.bottom + PILL_GAP;
-        // 向きを渡されなければ下に出し、下に収まらないときは選んだ範囲の始まりの上に出す
-        const above = placement === undefined ? below + PILL_HEIGHT > viewport.height - SCREEN_EDGE : placement === "above";
-        const top = above ? anchor.first.top - PILL_GAP - PILL_HEIGHT : below;
+        // 下に収まらない: 選んだ範囲の始まりの上に出す
+        const top = below + PILL_HEIGHT > viewport.height - SCREEN_EDGE ? anchor.first.top - PILL_GAP - PILL_HEIGHT : below;
         const left = Math.max(SCREEN_EDGE, Math.min(anchor.last.left, viewport.width - SCREEN_EDGE - PILL_WIDTH));
         return MindmapPreview.h({
             tag: "button",

@@ -29,11 +29,7 @@ export const Typing: Story = {
 
 /** 本文の箇所を添えた。入力欄の上に「本文 3 行目」と選んだ文を出し、× で外せる */
 export const WithBodyLocation: Story = {
-  args: {
-    target: "A-005",
-    loc: { kind: "body", start: 3, end: 3, text: "受け取る人へ渡す形" },
-    locLabel: "本文 3 行目",
-  },
+  args: { target: "A-005", loc: { kind: "body", start: 3, end: 3, text: "受け取る人へ渡す形" } },
 };
 
 /** 値の箇所を添えた。箇所の名前にキーの名前を出し、選んだ文は 3 行までにして末尾を省く */
@@ -44,7 +40,6 @@ export const WithValueLocation: Story = {
       key: "options[C].cons",
       text: "表の密度が下がる。表の列を詰めて並べるため、1 行に出せる項目の数が減り、ID と状態の列が画面の外へ押し出される。狭い幅では横に送らないと読めない列が増え、比べるのに手間がかかる",
     },
-    locLabel: "案 C のデメリット",
     body: "ここは別の言い方にしたい",
   },
 };
@@ -96,7 +91,6 @@ export const Narrow: Story = {
   args: {
     target: "A-005",
     loc: { kind: "body", start: 3, end: 3, text: "受け取る人へ渡す形" },
-    locLabel: "本文 3 行目",
     body: "案 A にする",
     status: "failed",
   },

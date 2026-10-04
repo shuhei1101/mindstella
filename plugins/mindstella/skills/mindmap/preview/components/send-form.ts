@@ -10,8 +10,6 @@ namespace MindmapPreview {
     target: string | null;
     /** 添えた箇所。入力欄の上に箇所の名前と選んだ文（3 行まで）と × を出す */
     loc?: Location | null;
-    /** 添えた箇所の名前（`loc` があるとき。使う側が `loc` から作って渡す。本文は「本文 {行} 行目」、値はキーの名前）。渡さなければ `loc` から作る */
-    locLabel?: string | null;
     /** 入力欄の中身 */
     body?: string;
     status?: SendStatus;
@@ -105,7 +103,7 @@ namespace MindmapPreview {
   }
 
   /** 添えた箇所（名前・選んだ文・外す ×）の要素 */
-  function locationChip({ loc, label, onUnquote }: { loc: Location; label: string; onUnquote: () => void }): HTMLElement {
+  function locationChip({ loc, onUnquote }: { loc: Location; onUnquote: () => void }): HTMLElement {
     return h({
       tag: "div",
       attrs: { class: "send-loc" },
@@ -114,7 +112,7 @@ namespace MindmapPreview {
           tag: "div",
           attrs: { class: "send-loc-head" },
           children: [
-            h({ tag: "span", attrs: { class: "send-loc-name" }, children: [label] }),
+            h({ tag: "span", attrs: { class: "send-loc-name" }, children: [locationLabel(loc)] }),
             h({
               tag: "button",
               attrs: { class: "icon-btn send-unquote", type: "button", "aria-label": "箇所を外す", title: "箇所を外す", onclick: onUnquote },
@@ -131,7 +129,6 @@ namespace MindmapPreview {
   export function sendForm({
     target,
     loc = null,
-    locLabel = null,
     body = "",
     status = "idle",
     count = null,
@@ -217,7 +214,7 @@ namespace MindmapPreview {
             attrs: { class: "send-label", for: fieldId },
             children: [h({ tag: "span", attrs: { class: "mono" }, children: [target] }), " へのコメント"],
           }),
-        target !== null && loc !== null ? locationChip({ loc, label: locLabel ?? locationLabel(loc), onUnquote: on.unquote }) : null,
+        target !== null && loc !== null ? locationChip({ loc, onUnquote: on.unquote }) : null,
         textarea,
         folded
           ? null

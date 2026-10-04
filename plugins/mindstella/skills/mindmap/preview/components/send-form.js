@@ -60,7 +60,7 @@ var MindmapPreview;
         return [];
     }
     /** 添えた箇所（名前・選んだ文・外す ×）の要素 */
-    function locationChip({ loc, label, onUnquote }) {
+    function locationChip({ loc, onUnquote }) {
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "send-loc" },
@@ -69,7 +69,7 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "send-loc-head" },
                     children: [
-                        MindmapPreview.h({ tag: "span", attrs: { class: "send-loc-name" }, children: [label] }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "send-loc-name" }, children: [MindmapPreview.locationLabel(loc)] }),
                         MindmapPreview.h({
                             tag: "button",
                             attrs: { class: "icon-btn send-unquote", type: "button", "aria-label": "箇所を外す", title: "箇所を外す", onclick: onUnquote },
@@ -82,7 +82,7 @@ var MindmapPreview;
         });
     }
     /** 項目へのコメントをレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-    function sendForm({ target, loc = null, locLabel = null, body = "", status = "idle", count = null, detail = null, collapsed = false, on, }) {
+    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, on, }) {
         sendFormSequence += 1;
         const fieldId = `send-${sendFormSequence}`;
         const messageId = `${fieldId}-msg`;
@@ -156,7 +156,7 @@ var MindmapPreview;
                         attrs: { class: "send-label", for: fieldId },
                         children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] }), " へのコメント"],
                     }),
-                target !== null && loc !== null ? locationChip({ loc, label: locLabel ?? MindmapPreview.locationLabel(loc), onUnquote: on.unquote }) : null,
+                target !== null && loc !== null ? locationChip({ loc, onUnquote: on.unquote }) : null,
                 textarea,
                 folded
                     ? null
