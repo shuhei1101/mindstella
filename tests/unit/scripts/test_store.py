@@ -7,7 +7,9 @@ import os
 import re
 import shutil
 import stat
+import subprocess
 import sys
+import threading
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -674,3 +676,61 @@ def test_write_temp_when_mode(
     temp = store._write_temp(target, "新しい中身\n")
     # 検証
     assert stat.S_IMODE(temp.stat().st_mode) == expected_mode
+
+
+def _try_lock_in_child(lock_file: Path) -> str:
+    """別のプロセスで lock_file に flock(LOCK_EX | LOCK_NB) を試し、取れたら acquired、取れなければ blocked を返す。"""
+    code = (
+        "import fcntl, sys\n"
+        "stream = open(sys.argv[1], 'a')\n"
+        "try:\n"
+        "    fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+        "    print('acquired')\n"
+        "except BlockingIOError:\n"
+        "    print('blocked')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(lock_file)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def test_workspace_lock(tmp_path: Path) -> None:
+    """鍵とロックを持ち、抜けたら放す（正常系）。"""
+    # 準備
+    process_lock = threading.Lock()
+    lock_file = tmp_path / ".mindstella.lock"
+    # 実行
+    with store.workspace_lock(tmp_path, process_lock):
+        inside_child = _try_lock_in_child(lock_file)
+        inside_locked = process_lock.locked()
+    # 検証
+    assert inside_child == "blocked"
+    assert inside_locked is True
+    assert _try_lock_in_child(lock_file) == "acquired"
+    assert process_lock.locked() is False
+
+
+def test_workspace_lock_when_raises(tmp_path: Path) -> None:
+    """中の処理が例外でも放す（正常系）。"""
+    # 準備
+    process_lock = threading.Lock()
+    # 実行・検証
+    with pytest.raises(ValueError, match="中で失敗"), store.workspace_lock(tmp_path, process_lock):
+        raise ValueError("中で失敗")
+    assert process_lock.locked() is False
+    assert _try_lock_in_child(tmp_path / ".mindstella.lock") == "acquired"
+
+
+def test_workspace_lock_when_folder_missing(tmp_path: Path) -> None:
+    """まだ無いフォルダも作って取る（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    # 実行
+    with store.workspace_lock(root, threading.Lock()):
+        pass
+    # 検証
+    assert (root / ".mindstella.lock").exists()

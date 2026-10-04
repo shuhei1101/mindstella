@@ -6,7 +6,7 @@ from typing import Any
 
 import checker
 import store
-from fixture_types import MakeItem, MakeWorkspace
+from fixture_types import MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
 
 
 def _keys(
@@ -141,3 +141,56 @@ def test_check_bodies(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
         ("missing_body", "research.yaml", "R-1", "items[0].body"),
         ("orphan_body", "docs/X-1.md", None, None),
     }
+
+
+def test_check_submissions(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """無い項目への送信を拾う（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_submissions(
+        root, make_submission("S-1", target="D-8"), make_submission("S-2", target="D-1")
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_submissions(workspace)
+    # 検証
+    assert _keys(problems) == {("broken_ref", "submissions.yaml", "S-1", "target")}
+    assert "D-8" in problems[0].detail
+
+
+def test_check_submissions_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """崩れた送信のファイルは schema にする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={
+            "submissions.yaml": (
+                "items:\n  - id: S-1\n    target: D-1\n"
+                "    sent: 2026-10-01T00:00:00+00:00\n    taken: null\n"
+            )
+        },
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_submissions(workspace)
+    # 検証
+    assert problems != []
+    assert all(
+        problem.kind == "schema" and problem.file == "submissions.yaml" for problem in problems
+    )
+
+
+def test_check_submissions_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """送信のファイルが無ければ問題 0 件（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_submissions(workspace)
+    # 検証
+    assert problems == []

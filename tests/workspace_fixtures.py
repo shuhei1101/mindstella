@@ -54,6 +54,8 @@ KIND_DEFAULTS: dict[str, dict[str, Any]] = {
 
 type RunMindmap = Callable[..., subprocess.CompletedProcess[str]]
 type MakeItem = Callable[..., dict[str, Any]]
+type MakeSubmission = Callable[..., dict[str, Any]]
+type WriteSubmissions = Callable[..., None]
 type MakeWorkspace = Callable[..., Path]
 type MakeLegacyItem = Callable[[str, bool], dict[str, Any]]
 type MakeLegacyWorkspace = Callable[..., Path]
@@ -124,6 +126,36 @@ def make_item() -> MakeItem:
         return item
 
     return _make
+
+
+@pytest.fixture
+def make_submission() -> MakeSubmission:
+    """送信（submissions.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(submission_id: str, **overrides: Any) -> dict[str, Any]:
+        """ID・向けた項目・本文・送った日時・取り込んだ日時（未取り込み）に、渡したキーを重ねた送信を返す。"""
+        submission: dict[str, Any] = {
+            "id": submission_id,
+            "target": "D-1",
+            "body": f"{submission_id}の本文",
+            "sent": DEFAULT_TIMESTAMP,
+            "taken": None,
+        }
+        submission.update(overrides)
+        return submission
+
+    return _make
+
+
+@pytest.fixture
+def write_submissions() -> WriteSubmissions:
+    """ワークスペースに submissions.yaml を書く関数を返す。"""
+
+    def _write(root: Path, *submissions: dict[str, Any]) -> None:
+        """渡した送信を並びのまま items に入れて、root の submissions.yaml に書く。"""
+        write_yaml(root / "submissions.yaml", {"items": list(submissions)})
+
+    return _write
 
 
 @pytest.fixture

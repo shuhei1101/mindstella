@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import platform
 import subprocess
 import sys
@@ -17,13 +18,13 @@ import check_env
 # 仮想環境の Python が返す、揃っているときの版の一覧
 GOOD_PROBE_RESULT: dict[str, Any] = {
     "python": "3.12.3",
-    "packages": {"PyYAML": "6.0.3", "jsonschema": "4.26.0"},
+    "packages": {"PyYAML": "6.0.3", "jsonschema": "4.26.0", "mcp": "2.3.0"},
 }
 
 # 仮想環境の Python が古いときの版の一覧
 OLD_PYTHON_PROBE_RESULT: dict[str, Any] = {
     "python": "3.9.6",
-    "packages": {"PyYAML": "6.0.3", "jsonschema": "4.26.0"},
+    "packages": {"PyYAML": "6.0.3", "jsonschema": "4.26.0", "mcp": "2.3.0"},
 }
 
 
@@ -85,6 +86,7 @@ def test_run_check_env(fake_venv: dict[str, Path]) -> None:
     assert report["python"] == "3.12.3"
     assert packages["PyYAML"]["ok"] is True
     assert packages["jsonschema"]["ok"] is True
+    assert packages["mcp"]["ok"] is True
     assert str(report["python_path"]) == str(python_path)
     assert report["install"] is None
     assert calls == [python_path]
@@ -103,6 +105,7 @@ def test_run_check_env_when_venv_missing(fake_venv: dict[str, Path]) -> None:
     assert report["python"] is None
     assert packages["PyYAML"]["installed"] is None
     assert packages["jsonschema"]["installed"] is None
+    assert packages["mcp"]["installed"] is None
     assert "-m venv" in report["install"]
     assert calls == []
 
@@ -135,7 +138,7 @@ def test_run_check_env_when_package_missing(fake_venv: dict[str, Path]) -> None:
     """無い・古いライブラリがあれば DependencyMissingError を送る（異常系）。"""
     # 準備
     probe, _ = _make_probe(
-        {"python": "3.12.3", "packages": {"PyYAML": None, "jsonschema": "4.17.3"}}
+        {"python": "3.12.3", "packages": {"PyYAML": None, "jsonschema": "4.17.3", "mcp": None}}
     )
     # 実行・検証
     with pytest.raises(check_env.DependencyMissingError) as exc_info:
@@ -144,17 +147,19 @@ def test_run_check_env_when_package_missing(fake_venv: dict[str, Path]) -> None:
     packages = _packages_by_name(report)
     assert packages["PyYAML"]["installed"] is None
     assert packages["PyYAML"]["ok"] is False
+    assert packages["mcp"]["installed"] is None
+    assert packages["mcp"]["ok"] is False
     assert packages["jsonschema"]["ok"] is False
     assert "PyYAML>=5.1" in report["install"]
     assert "jsonschema>=4.18.0" in report["install"]
+    assert "mcp>=2.3.0" in report["install"]
     assert "-m venv" not in report["install"]
 
 
-@pytest.mark.parametrize("file_name", ["mindmap.py", "check_env.py"])
-def test_run_check_env_when_old_syntax(scripts_dir: Path, file_name: str) -> None:
-    """入口と依存の確認のファイルが Python 3.8 の構文で読め、型注釈を実行時に評価しない（正常系）。"""
+def test_run_check_env_when_old_syntax(scripts_dir: Path) -> None:
+    """依存の確認のファイルが Python 3.8 の構文で読め、型注釈を実行時に評価しない（正常系）。"""
     # 準備
-    source = (scripts_dir / file_name).read_text(encoding="utf-8")
+    source = (scripts_dir / "check_env.py").read_text(encoding="utf-8")
     # 実行
     tree = ast.parse(source, feature_version=(3, 8))
     # 検証
@@ -217,22 +222,22 @@ def test_parse_version(text: str, expected: tuple[int, ...]) -> None:
     [
         pytest.param(
             "create",
-            ["PyYAML", "jsonschema"],
+            ["PyYAML", "jsonschema", "mcp"],
             '"/usr/bin/python3" -m venv "/v" && "/v/bin/python" -m pip install '
-            '"PyYAML>=5.1" "jsonschema>=4.18.0"',
+            '"PyYAML>=5.1" "jsonschema>=4.18.0" "mcp>=2.3.0"',
             id="create",
         ),
         pytest.param(
             "recreate",
-            ["PyYAML", "jsonschema"],
+            ["PyYAML", "jsonschema", "mcp"],
             '"/usr/bin/python3" -m venv --clear "/v" && "/v/bin/python" -m pip install '
-            '"PyYAML>=5.1" "jsonschema>=4.18.0"',
+            '"PyYAML>=5.1" "jsonschema>=4.18.0" "mcp>=2.3.0"',
             id="recreate",
         ),
         pytest.param(
             "install",
-            ["jsonschema"],
-            '"/v/bin/python" -m pip install "jsonschema>=4.18.0"',
+            ["mcp"],
+            '"/v/bin/python" -m pip install "mcp>=2.3.0"',
             id="install_only",
         ),
     ],
@@ -299,6 +304,7 @@ def test_probe_venv() -> None:
     assert result["python"] == platform.python_version()
     assert "PyYAML" in result["packages"]
     assert "jsonschema" in result["packages"]
+    assert "mcp" in result["packages"]
 
 
 @pytest.mark.parametrize(
@@ -317,3 +323,47 @@ def test_probe_venv_when_failed(
     result = check_env.probe_venv(Path("/v/bin/python"), run=run)
     # 検証
     assert result is None
+
+
+def _raising_run_check_env(error: Exception) -> Callable[..., dict[str, Any]]:
+    """決めた例外を送る run_check_env の代わりを作る。"""
+
+    def _run(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        """依存の確認をせずに、決めた例外を送る。"""
+        raise error
+
+    return _run
+
+
+def test_main(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """そろっていれば結果を出して 0（正常系）。"""
+    # 準備
+    report = {"venv_ok": True, "python_ok": True, "install": None}
+    monkeypatch.setattr(check_env, "run_check_env", lambda *args, **kwargs: report)
+    # 実行
+    exit_code = check_env.main(["--venv", "/v"])
+    # 検証
+    assert exit_code == 0
+    assert json.loads(capsys.readouterr().out) == report
+
+
+def test_main_when_dependency_missing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """足りなければ結果を出して 1（正常系）。"""
+    # 準備
+    report = {
+        "venv_ok": True,
+        "python_ok": True,
+        "install": '"/v/bin/python" -m pip install "mcp>=2.3.0"',
+    }
+    monkeypatch.setattr(
+        check_env,
+        "run_check_env",
+        _raising_run_check_env(check_env.DependencyMissingError(report)),
+    )
+    # 実行
+    exit_code = check_env.main(["--venv", "/v"])
+    # 検証
+    assert exit_code == 1
+    assert json.loads(capsys.readouterr().out) == report

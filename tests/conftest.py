@@ -14,11 +14,13 @@ from workspace_fixtures import (  # noqa: F401
     make_item,
     make_legacy_item,
     make_legacy_workspace,
+    make_submission,
     make_venv,
     make_workspace,
     run_mindmap,
     snapshot_tree,
     valid_settings,
+    write_submissions,
 )
 
 type RunClaude = Callable[..., subprocess.CompletedProcess[str]]
