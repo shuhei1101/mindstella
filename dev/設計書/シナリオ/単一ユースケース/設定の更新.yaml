@@ -1,0 +1,150 @@
+title: "設定の更新"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、ゴールに納品物 `要件定義書`（`doc` 無し）を持つワークスペース
+        notes: プレイブック `システム開発`、最上位の軸の呼び名 `システム`
+      - name: 書き換える設定
+        description: 題名・話し合いの概要・最上位の軸の呼び名・ゴールの概要を置き換え、納品物に `構成図` を足す
+        notes: 最上位の軸の呼び名を `機能` にする。プレイブックとフェーズは渡さない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 書き換える設定のキーを渡す
+        SV->>WS: mindmap.yaml を読む
+        SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
+        SV->>WS: mindmap.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`mindmap.yaml` の `summary`・話し合いの概要・`target_label`・`goal.summary` が渡した値である'
+      - '`goal.deliverables` が `要件定義書` と `構成図` の 2 件である'
+      - '`playbooks`・`phases`・`targets`・`categories` が呼ぶ前と同じである'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal
+  - name: 正常シナリオ（プレイブックを付け替える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: プレイブック `壁打ち`、フェーズ 問い → 発散 → 整理 → 絞り込み → 結論、ゴールのフェーズ `結論` で作成し、検討事項 D-1（問い）・D-2（発散）を足したワークスペース
+      - name: 書き換える設定
+        description: プレイブックに `システム開発` を足し、フェーズを新しい並びに置き換え、古いフェーズから新しいフェーズへの対応を渡す
+        notes: 新しい並びは 目的 → 発散 → 要件 → 構成 → インターフェース → コンテンツ。対応は 問い → 目的、整理・絞り込み・結論 → 要件。発散は新しい並びにもあるので対応を渡さない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: プレイブック・フェーズ・古いフェーズから新しいフェーズへの対応を渡す
+        SV->>WS: mindmap.yaml と全ての種類の YAML を読む
+        SV->>SV: 設定を置き換え、項目の phase を対応で付け替え、スキーマと突き合わせる
+        SV->>WS: mindmap.yaml と付け替えた種類の YAML を書く
+        SV-->>CC: 書き換えた後の設定と、付け替えた項目
+      ```
+    expected:
+      - '`mindmap.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`phases` が渡した並びである'
+      - D-1 の `phase` が `目的`、D-2 の `phase` が `発散` である
+      - '`goal.phase` が `要件` である'
+      - 点検が問題を 0 件で返す
+    test: test_normal_when_playbooks_replaced
+  - name: 正常シナリオ（ゴールを外す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、ゴールを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ゴールを空にして渡す
+        SV->>SV: ゴールのキーを消し、スキーマと突き合わせる
+        SV->>WS: mindmap.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`mindmap.yaml` が `goal` のキーを持たない'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_goal_removed
+  - name: 異常シナリオ（対応の無いフェーズが残る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: フェーズ 問い → 発散 で作成し、検討事項 D-1（問い）・D-2（発散）を足したワークスペース
+      - name: 書き換える設定
+        description: フェーズを 目的 → 要件 に置き換え、対応は 問い → 目的 だけを渡す
+        notes: 発散の対応が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 発散の対応を欠いたフェーズと対応を渡す
+        SV->>WS: 全ての種類の YAML を読む
+        SV->>SV: 新しいフェーズに無いフェーズを持つ項目が残る
+        SV-->>CC: 残る項目とフェーズを示すエラー
+      ```
+    expected:
+      - 設定を書き換えるツールがエラーを返す
+      - エラーの本文に、D-2 とフェーズ `発散` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_unmapped_phase
+  - name: 異常シナリオ（スキーマに合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 書き換える設定
+        description: プレイブックを空の配列にして渡す
+        notes: '`playbooks: []`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 空のプレイブックを渡す
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>CC: 合わない箇所を示すエラー
+      ```
+    expected:
+      - 設定を書き換えるツールがエラーを返す
+      - エラーの本文に、合わないキー `playbooks` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_schema_mismatch
+lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール）を書き換え、フェーズが変わるときは古いフェーズから新しいフェーズへの対応で項目のフェーズも付け替える単一ユースケース。
+issue: 44
+primary_actor: スキルの手順を実行する Claude Code
+stakeholders:
+  - name: 利用者
+    interest: 範囲が広がっても同じワークスペースで続けられる。付け替えの途中で止まっても、設定と項目のフェーズがずれない
+trigger: スキルが範囲の見直し・取り込み・方針転換のステップで、設定の書き換えを利用者と確かめ終える
+preconditions:
+  - ワークスペースが作成済みである
+  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
+success_guarantee: 渡したキーだけが置き換わり、渡さなかったキーは元のまま残る。フェーズを変えたときは、全ての項目の `phase` と `goal.phase` が新しい `phases` のどれかになっている。ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す。
+minimal_guarantee: スキーマに合わない設定・新しいフェーズに無いフェーズを持つ項目が残る書き換えでは、どのファイルも書き換えない。
+frequency: 話し合いの途中で、範囲が広がったとき・納品物が増減したときに数回
+priority: 高
+notes:
+  E2E の範囲: MCP サーバーを立て、MCP のクライアントで設定を書き換えるツールを呼んでワークスペースの状態を確かめる。ツールの名前と引数はインターフェース定義設計で決める
+  フェーズの対応: 新しい `phases` に同じ名前があるフェーズは、対応を渡さなくてもそのまま残る。対応は、新しい `phases` に無いフェーズにだけ渡す
+test_file: tests/e2e/単一ユースケース/test_settings_update.py

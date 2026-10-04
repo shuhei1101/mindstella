@@ -76,3 +76,6 @@ items:
   - page: 送信を取り込み済みにする.yaml
     summary: 'take_submission: 取り込んだ送信 1 件を取り込み済みにする'
     group: 送信
+  - page: 設定の更新.yaml
+    summary: 'update_settings: 設定のキーを置き換え、フェーズの対応で項目のフェーズを付け替える'
+    group: 書く

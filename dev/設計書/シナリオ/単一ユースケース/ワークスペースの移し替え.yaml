@@ -7,7 +7,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 版を記録する前の形式のワークスペース
-        description: '版のファイルを持たず、`mindmap.yaml` が `summary` を持たず、資料 A-1（`done: true`）・A-2（`done: false`）を持つワークスペース'
+        description: '版のファイルを持たず、`mindmap.yaml` が `summary` を持たず `field: システム開発` と `target_label: システム` を持ち、資料 A-1（`done: true`）・A-2（`done: false`）を持つワークスペース'
         notes: YAML を直接書いて作る。聞かれる題名には `要件出しのスキルを設計する` と答える
     flow: |-
       ```mermaid
@@ -40,6 +40,7 @@ scenarios:
       - '`mindstella-version.ini` の 1 行目がプラグインの版である'
       - '`docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たず、`updated` が呼ぶ前と同じである'
       - '`mindmap.yaml` の `summary` が答えた題名である'
+      - '`mindmap.yaml` が `field` を持たず、`playbooks` が `[システム開発]` で、`target_label` が `システム` のままである'
       - '`check` が問題を 0 件で返す'
     test: test_normal
   - name: 正常シナリオ（版が同じ）

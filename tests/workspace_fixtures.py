@@ -219,7 +219,7 @@ def valid_settings() -> dict[str, Any]:
     """設定のスキーマに合う設定（mindmap.yaml の中身）を返す。"""
     return {
         "summary": "要件出しのスキル mindmap を設計する",
-        "field": "システム開発",
+        "playbooks": ["システム開発"],
         "target_label": "システム",
         "phases": ["目的", "要件", "構成"],
         "targets": [{"name": "mindmap", "summary": "話し合いを記録するスキル"}],

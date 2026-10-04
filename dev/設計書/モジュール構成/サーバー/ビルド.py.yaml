@@ -252,7 +252,7 @@ functions:
       description: '`next`（`Candidate` を `asdict` した並び）・`goal`（`GoalReport` を `asdict` し、`phase_progress` を足した辞書）・`progress`（カテゴリーごとのセル）'
     process: |-
       1. 次の候補を全件並べる（`list_next_candidates`、`limit=None`）
-      2. ゴールを判定し（`judge_goal`）、判定に入れたフェーズごとに、そのフェーズの検討事項の決着した数と全体の数を `phase_progress`（`{phase, settled, total}` の並び）にする（`is_settled`）
+      2. ゴールを判定し（`judge_goal`。ゴールが無いときは判定に入れたフェーズが `phases` の全て）、判定に入れたフェーズごとに、そのフェーズの検討事項の決着した数と全体の数を `phase_progress`（`{phase, settled, total}` の並び）にする（`is_settled`）
       3. `settings.categories` の順に、`settings.phases` の順のセルごとの決着した数と全体の数を `progress`（`{category, cells: [{phase, settled, total}], settled, total}` の並び）にする（`is_settled`）
     unit_tests:
       - name: test_derive_preview_values
@@ -261,6 +261,12 @@ functions:
         condition: '`phases` 目的・要件、`goal.phase` 要件、カテゴリー A・B。D-1（A・目的・決定済み）・D-2（A・要件・未決定・`depends_on: [D-1]`）・D-3（B・要件・対象外）'
         mock: なし
         expected: '`next` が `list_next_candidates` と同じ（D-2 だけ）。`goal.phase_progress` が 目的 1/1・要件 1/2。`progress` の A が 目的 1/1・要件 0/1、B が 目的 0/0・要件 1/1'
+      - name: test_derive_preview_values_when_no_goal
+        case: 正常
+        summary: ゴールが無ければ全フェーズの進捗を返し、届いたかは判定しない
+        condition: '`test_derive_preview_values` と同じ項目で、設定が `goal` を持たない'
+        mock: なし
+        expected: '`goal.has_goal` が偽、`goal.reached` が `None`、`goal.phase_progress` が 目的 1/1・要件 1/2、`goal.remaining_deliverables` が空。`next` と `progress` は `test_derive_preview_values` と同じ'
   - name: replace_file
     title: ファイルの置き換え
     kind: 関数

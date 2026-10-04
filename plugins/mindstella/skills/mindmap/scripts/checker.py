@@ -1,4 +1,4 @@
-"""スキーマ違反・ID の重複・参照切れ・本文のずれの点検（読むだけで、ファイルを書かない）。"""
+"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズの点検（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_refs(workspace),
         *_check_bodies(workspace),
         *_check_submissions(workspace),
+        *_check_phases(workspace),
     ]
     # ファイル名の順に並べる（sorted は安定なので、同じファイルの中は拾った順を保つ）
     return sorted(problems, key=lambda problem: problem.file)
@@ -147,6 +148,41 @@ def _ref_error(ref: str, allowed: frozenset[str], existing: dict[str, set[Any]])
     if ref not in existing[ref_kind]:
         return f"存在しない ID: {ref}"
     return None
+
+
+def _check_phases(workspace: Workspace) -> list[Problem]:
+    """項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする。"""
+    settings = workspace.settings
+    phases = settings.get("phases")
+    known = set(phases) if isinstance(phases, list) else set()
+    problems: list[Problem] = []
+    goal = settings.get("goal")
+    # ゴールのフェーズが phases に無い
+    if isinstance(goal, dict) and goal.get("phase") not in known:
+        problems.append(
+            Problem(
+                kind="unknown_phase",
+                file=SETTINGS_FILE,
+                id=None,
+                key="goal.phase",
+                detail=str(goal.get("phase")),
+            )
+        )
+    for kind, spec in KINDS.items():
+        for index, item in enumerate(workspace.items[kind]):
+            phase = item.get("phase")
+            # フェーズを持ち、phases に無い
+            if phase is not None and phase not in known:
+                problems.append(
+                    Problem(
+                        kind="unknown_phase",
+                        file=spec.file,
+                        id=item.get("id") if isinstance(item.get("id"), str) else None,
+                        key=f"items[{index}].phase",
+                        detail=str(phase),
+                    )
+                )
+    return problems
 
 
 def _deliverables(settings: dict[str, Any]) -> list[dict[str, Any]]:

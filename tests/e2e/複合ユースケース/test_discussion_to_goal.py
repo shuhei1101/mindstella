@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import yaml
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, fetch_records
 from workspace_fixtures import (
@@ -48,10 +49,10 @@ SEND_TIMEOUT_MS = 10_000
 # 移し替えの点検で聞かれる題名に利用者が答える内容
 SUMMARY_ANSWER = "要件出しのスキルを設計する"
 
-# 新しい話し合いで /mindstella:setup が決める設定（分野: システム開発、ゴール: インターフェースまで）
+# 新しい話し合いで /mindstella:setup が決める設定（プレイブック: システム開発、ゴール: インターフェースまで）
 SETTINGS: dict[str, Any] = {
     "summary": "家計簿アプリの要件を決める",
-    "field": "システム開発",
+    "playbooks": ["システム開発"],
     "target_label": "システム",
     "phases": ["目的", "要件", "構成", "インターフェース", "コンテンツ"],
     "targets": [{"name": TARGET, "summary": "支出を記録する"}],
@@ -69,6 +70,18 @@ def _plugin_version() -> str:
     """プラグインの版（plugins/mindstella/version.ini の 1 行目）を返す。"""
     version_file = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
     return version_file.read_text(encoding="utf-8").splitlines()[0]
+
+
+def _to_field_settings(root: Path) -> None:
+    """前の版の形式にするため、mindmap.yaml の playbooks を、同じ位置の field（分野の名前）に置き換える。"""
+    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    legacy = {
+        ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
+        for key, value in settings.items()
+    }
+    (root / "mindmap.yaml").write_text(
+        yaml.safe_dump(legacy, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
 
 
 def _placed(title: str, phase: str, **keys: Any) -> dict[str, Any]:
@@ -216,9 +229,9 @@ def test_normal_when_new_discussion(
     checked = call_tool("check", **ws)
 
     # 検証
-    # mindmap.yaml に、分野・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
+    # mindmap.yaml に、プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
     settings = read_yaml(root, "mindmap.yaml")
-    assert settings["field"] == "システム開発"
+    assert settings["playbooks"] == ["システム開発"]
     assert settings["target_label"] == "システム"
     assert settings["phases"] == SETTINGS["phases"]
     assert settings["categories"][0]["name"] == CATEGORY
@@ -301,6 +314,7 @@ def test_normal_when_resume_older_version(
     """古い版のワークスペースを移し替えてから、状況を読み、続きの番号で項目を足す（正常系）。"""
     # 準備
     root = make_legacy_workspace(make_item("D-1"), legacy_docs={"A-1": True}, without_summary=True)
+    _to_field_settings(root)
     before = snapshot_tree(root)
     ws = {"workspace": str(root)}
     # 実行
@@ -341,7 +355,12 @@ def test_normal_when_resume_older_version(
     doc = read_yaml(root, "docs.yaml")["items"][0]
     assert doc["status"] == "完成"
     assert "done" not in doc
-    assert read_yaml(root, "mindmap.yaml")["summary"] == SUMMARY_ANSWER
+    settings = read_yaml(root, "mindmap.yaml")
+    assert settings["summary"] == SUMMARY_ANSWER
+    # mindmap.yaml が field を持たず、playbooks に元の分野のシステム開発の 1 件を持ち、target_label が移し替えの前と同じである
+    assert "field" not in settings
+    assert settings["playbooks"] == ["システム開発"]
+    assert settings["target_label"] == "システム"
     # 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
     assert second_plan["relation"] == "same"
     assert status["next"][0]["id"] == "D-1"
@@ -349,6 +368,116 @@ def test_normal_when_resume_older_version(
     assert added["id"] == "D-2"
     ids = [item["id"] for item in read_yaml(root, "decisions.yaml")["items"]]
     assert ids == ["D-1", "D-2"]
+    # check が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data["problems"] == []
+
+
+def test_normal_when_scope_widened(
+    tmp_path: Path,
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """ゴールを決めずに始め、範囲を広げて題名・ゴール・プレイブックを書き換え、書き換えたゴールまで進める（正常系）。"""
+    # 準備
+    root = tmp_path / "workspace"
+    ws = {"workspace": str(root)}
+    new_phases = ["目的", "発散", "要件", "構成", "インターフェース", "コンテンツ"]
+    new_goal = {
+        "phase": "要件",
+        "summary": "要件が決まる",
+        "deliverables": [{"title": "要件定義書"}],
+    }
+
+    # 実行
+    # セットアップ: 壁打ちのプレイブックを選び、ゴールを決めずに作る
+    replay(
+        "init",
+        **ws,
+        settings={
+            "summary": "家計簿アプリについて壁打ちする",
+            "description": "家計簿アプリで何を作るかを壁打ちして整理する話し合い。",
+            "playbooks": ["壁打ち"],
+            "target_label": "テーマ",
+            "phases": ["問い", "発散", "整理", "絞り込み", "結論"],
+            "targets": [{"name": TARGET, "summary": "支出を記録する"}],
+            "categories": [{"name": CATEGORY, "target": TARGET, "summary": "利用者ができること"}],
+            "links": [],
+        },
+    )
+    # 取り込み: 問いと発散の検討事項を積む
+    replay("add", **ws, kind="decision", item=_placed("何を作るか", "問い", status="未決定"))
+    replay("add", **ws, kind="decision", item=_placed("使う場面の案", "発散", status="未決定"))
+    # ゴール判定: ゴールが無いことを示す
+    first_goal = replay("goal", **ws)
+    # 範囲の見直し: システム開発を足し、フェーズの対応を確かめて付け替え、題名・最上位の軸の呼び名・ゴールを書き換える
+    replay(
+        "update_settings",
+        **ws,
+        settings={
+            "summary": "家計簿アプリの要件を決める",
+            "playbooks": ["壁打ち", "システム開発"],
+            "phases": new_phases,
+            "target_label": "機能",
+            "goal": new_goal,
+        },
+        phase_map={"問い": "目的", "整理": "要件", "絞り込み": "要件", "結論": "要件"},
+    )
+    replay("add", **ws, kind="log", item=_log("範囲の見直し", ["D-1", "D-2"], "要件まで決める"))
+    # 取り込み: 納品物の資料を作って、同じタイトルのゴールの納品物から指す
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item=_placed(
+            "要件定義書",
+            "要件",
+            kind="文書",
+            deliverable=True,
+            status="下書き",
+            body_markdown="# 要件定義書\n\n支出を記録する。",
+        ),
+    )
+    replay(
+        "update_settings",
+        **ws,
+        settings={"goal": {**new_goal, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}},
+    )
+    # 取り込み: ゴールのフェーズまでの検討事項を決定済みにし、納品物の資料を完成にする
+    replay("update", **ws, id="D-1", item={"status": "決定済み", "answer": "支出を記録する"})
+    replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "買い物の後に使う"})
+    replay("update", **ws, id="A-1", item={"status": "完成"})
+    # ゴール判定: 届いたかを確かめ、確定の後に release/ へ書き出す
+    second_goal = replay("goal", **ws)
+    deliverable = replay("show", **ws, id="A-1")
+    replay("clear_release", **ws)
+    (root / "release" / "決定事項.md").write_text(
+        "# 決定事項\n\n- D-1: 支出を記録する\n- D-2: 買い物の後に使う\n", encoding="utf-8"
+    )
+    (root / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    checked = call_tool("check", **ws)
+
+    # 検証
+    # 最初の goal の出力が、ゴールが無いことを示す
+    assert first_goal["has_goal"] is False
+    assert first_goal["reached"] is None
+    # mindmap.yaml の playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・goal が書き換えた値である
+    settings = read_yaml(root, "mindmap.yaml")
+    assert settings["playbooks"] == ["壁打ち", "システム開発"]
+    assert settings["summary"] == "家計簿アプリの要件を決める"
+    assert settings["target_label"] == "機能"
+    assert settings["goal"]["phase"] == "要件"
+    # 付け替えの前に足した D-1・D-2 のフェーズが、どちらも書き換えた後の phases のどれかである
+    decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
+    assert {decisions["D-1"]["phase"], decisions["D-2"]["phase"]} <= set(settings["phases"])
+    # goal.deliverables の納品物が、取り込みで作った資料を doc で指している
+    assert settings["goal"]["deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
+    # 2 回目の goal の出力が「届いた」である
+    assert second_goal["reached"] is True
+    # release/ に、確定した検討事項と納品物の資料が書き出されている
+    assert "D-2" in (root / "release" / "決定事項.md").read_text(encoding="utf-8")
+    assert "支出を記録する" in (root / "release" / "要件定義書.md").read_text(encoding="utf-8")
     # check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []

@@ -11,7 +11,7 @@ from workspace_fixtures import REPO_ROOT, CallTool, SnapshotTree
 # スキルがセットアップのステップで決める設定
 SETTINGS: dict[str, Any] = {
     "summary": "要件出しのスキル mindmap を設計する",
-    "field": "システム開発",
+    "playbooks": ["システム開発"],
     "target_label": "システム",
     "phases": ["目的", "要件", "構成"],
     "targets": [{"name": "mindmap", "summary": "話し合いを記録するスキル"}],
@@ -96,3 +96,24 @@ def test_error_when_workspace_exists(
     assert "既にワークスペースがあります" in result.text
     assert str(root) in result.text
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_without_goal(tmp_path: Path, call_tool: CallTool) -> None:
+    """ゴールを持たず、プレイブックを 2 つ並べた設定でワークスペースを作る（正常系）。"""
+    # 準備
+    root = tmp_path / "new-workspace"
+    settings = {
+        **{key: value for key, value in SETTINGS.items() if key != "goal"},
+        "playbooks": ["壁打ち", "調査"],
+    }
+    # 実行
+    created = call_tool("init", workspace=str(root), settings=settings)
+    checked = call_tool("check", workspace=str(root))
+    # 検証
+    assert created.is_error is False
+    created_settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    assert "goal" not in created_settings
+    assert created_settings["playbooks"] == ["壁打ち", "調査"]
+    # 全ての YAML がスキーマに合う（点検がスキーマ違反を出さない）
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}

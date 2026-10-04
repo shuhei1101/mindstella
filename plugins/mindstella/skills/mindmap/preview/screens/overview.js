@@ -128,12 +128,39 @@ var MindmapPreview;
         new ResizeObserver(fit).observe(tile);
         return tile;
     }
-    /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト） */
+    /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト）。ゴールが無いときはフェーズ別の進捗だけ */
     function goalTile({ index, on }) {
         const { goal } = index.data.derived;
         const settled = goal.phase_progress.reduce((sum, cell) => sum + cell.settled, 0);
         const total = goal.phase_progress.reduce((sum, cell) => sum + cell.total, 0);
-        const { deliverables } = index.data.settings.goal;
+        const stageRows = goal.phase_progress.map((cell) => MindmapPreview.h({
+            tag: "li",
+            children: [
+                MindmapPreview.h({ tag: "span", children: [cell.phase] }),
+                bar(cell.settled, cell.total),
+                MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [`${cell.settled}/${cell.total}`] }),
+            ],
+        }));
+        // ゴールが無い: 見出しを替え、ゴールが無いことと全フェーズの決着の数だけを出す（納品物は出さない）
+        if (!goal.has_goal) {
+            return MindmapPreview.h({
+                tag: "section",
+                attrs: { id: "tile-goal", class: "tile t-goal", "aria-labelledby": "h-goal" },
+                children: [
+                    MindmapPreview.h({ tag: "h2", attrs: { id: "h-goal" }, children: [MindmapPreview.icon("flag"), "フェーズ別の進捗"] }),
+                    MindmapPreview.h({ tag: "p", attrs: { class: "goal-none" }, children: ["ゴールは決まっていません"] }),
+                    MindmapPreview.h({
+                        tag: "p",
+                        attrs: { class: "big" },
+                        children: [settled, MindmapPreview.h({ tag: "small", children: [` / ${total}`] })],
+                    }),
+                    MindmapPreview.h({ tag: "p", attrs: { class: "big-sub" }, children: ["決定済み"] }),
+                    MindmapPreview.h({ tag: "ul", attrs: { class: "stage-rows" }, children: [...stageRows] }),
+                ],
+            });
+        }
+        // ゴールがあるとき、設定のゴールは必ずある
+        const deliverables = index.data.settings.goal?.deliverables ?? [];
         const remaining = new Set(goal.remaining_deliverables.map((entry) => entry.title));
         const doneCount = deliverables.filter((entry) => !remaining.has(entry.title)).length;
         const checklist = deliverables.slice(0, DELIVERABLE_LIMIT).map((entry) => {
@@ -165,16 +192,7 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "ul",
                     attrs: { class: "stage-rows" },
-                    children: [
-                        ...goal.phase_progress.map((cell) => MindmapPreview.h({
-                            tag: "li",
-                            children: [
-                                MindmapPreview.h({ tag: "span", children: [cell.phase] }),
-                                bar(cell.settled, cell.total),
-                                MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [`${cell.settled}/${cell.total}`] }),
-                            ],
-                        })),
-                    ],
+                    children: [...stageRows],
                 }),
                 MindmapPreview.h({
                     tag: "div",
@@ -333,11 +351,14 @@ var MindmapPreview;
                     tag: "header",
                     attrs: { class: "hero" },
                     children: [
-                        MindmapPreview.h({
-                            tag: "p",
-                            attrs: { class: "hero-sub" },
-                            children: [`${settings.field} · ゴールは${settings.goal.phase}のフェーズまで`],
-                        }),
+                        // 話し合いの概要があるときだけ、題名の上に出す
+                        settings.description !== undefined
+                            ? MindmapPreview.h({
+                                tag: "p",
+                                attrs: { id: "overview-description", class: "hero-sub hero-desc" },
+                                children: [settings.description],
+                            })
+                            : null,
                         MindmapPreview.h({ tag: "h1", children: [settings.summary] }),
                     ],
                 }),

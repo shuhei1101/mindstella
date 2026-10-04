@@ -1,0 +1,313 @@
+title: "設定の更新"
+entry:
+  kind: mcp_tool
+  value: '`update_settings`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__update_settings`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 題名・話し合いの概要・最上位の軸の呼び名・ゴールを置き換え、渡さないキーを残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: プレイブック `[システム開発]`、最上位の軸の呼び名 `システム`、ゴールの納品物 `要件定義書` を持つワークスペース
+      - name: settings
+        description: '`summary`・`description`・`target_label`・`goal` を渡す'
+        notes: '`target_label: 機能`。`goal.deliverables` は `要件定義書`・`構成図`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（`settings` に置き換えるキー）
+        IF-->>WS: mindmap.yaml と全ての YAML を読む
+        IF->>IF: キーを置き換え、スキーマと突き合わせる
+        IF->>WS: mindmap.yaml を書く
+        IF-->>クライアント: JSON（changed・remapped・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`mindmap.yaml` の `summary`・`description`・`target_label`・`goal` が渡した値で、`playbooks`・`phases`・`targets`・`categories`・`links` が呼ぶ前と同じ'
+      - '`changed` が `summary`・`description`・`target_label`・`goal`、`remapped` が空、`files` が `mindmap.yaml` だけ'
+      - 種類ごとの YAML の中身が呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（フェーズを付け替える）
+    summary: フェーズを置き換え、対応で項目の phase と goal.phase を付け替える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: プレイブック `[壁打ち]`、フェーズ 問い → 発散 → 整理 → 絞り込み → 結論、`goal.phase` が `結論` のワークスペース。検討事項 D-1（問い）・D-2（発散）と、タスク T-1（整理）を持つ
+      - name: settings
+        description: '`playbooks` に `システム開発` を足し、`phases` を 目的 → 発散 → 要件 → 構成 → インターフェース → コンテンツ にする'
+      - name: phase_map
+        description: 新しい `phases` に無い古いフェーズだけの対応
+        notes: '`{"問い": "目的", "整理": "要件", "絞り込み": "要件", "結論": "要件"}`。`発散` は新しい `phases` にもあるので渡さない'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（settings・phase_map）
+        IF-->>WS: mindmap.yaml と全ての YAML を読む
+        IF->>IF: 設定を置き換え、項目の phase と goal.phase を対応で付け替えてスキーマと突き合わせる
+        IF->>WS: decisions.yaml・tasks.yaml・mindmap.yaml を書く
+        IF-->>クライアント: JSON（changed・remapped・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 の `phase` が `目的`、D-2 の `phase` が `発散`、T-1 の `phase` が `要件`
+      - '`goal.phase` が `要件`'
+      - D-1 と T-1 の `updated` が書き換えた日時で、D-2 の `updated` が呼ぶ前と同じ
+      - '`remapped` が D-1（問い → 目的）・T-1（整理 → 要件）の 2 件、`changed` が `playbooks`・`phases`・`goal`'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_phases_remapped
+  - name: 正常系（ゴールと概要を外す）
+    summary: 値が null のキーを消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: ゴールと話し合いの概要を持つワークスペース
+      - name: settings
+        description: '`goal` と `description` を `null` で渡す'
+        notes: '`{"goal": null, "description": null}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（goal と description を null）
+        IF->>IF: キーを消し、スキーマと突き合わせる
+        IF->>WS: mindmap.yaml を書く
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`mindmap.yaml` が `goal` と `description` のキーを持たない'
+      - '`changed` が `goal`・`description`'
+    test: test_normal_when_goal_removed
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: update_settings workspace
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（対応の無いフェーズが残る・UnmappedPhaseError）
+    summary: 新しい phases に無いフェーズを持つ項目が残ると、何も書かずに残る項目を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: フェーズ 問い → 発散、検討事項 D-1（問い）・D-2（発散）を持つワークスペース
+      - name: settings と phase_map
+        description: '`phases` を 目的 → 要件 にし、`phase_map` は `{"問い": "目的"}` だけを渡す'
+        notes: '`発散` の対応が無い'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（settings・phase_map）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: D-2 の 発散 の対応が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `D-2: 発散` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_unmapped_phase
+  - name: 異常系（スキーマに合わない・SchemaMismatchError）
+    summary: 空のプレイブックや書き換えられないキーを渡すと、何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: settings
+        description: '`playbooks` を空の配列にして渡す'
+        notes: '`{"playbooks": []}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+
+        クライアント->>IF: update_settings workspace（playbooks が空）
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `mindmap.yaml: playbooks` で始まる行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_schema_mismatch
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは、どのファイルも書き換えずにエラーの行を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: フェーズ 問い → 発散、検討事項 D-1（問い）を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+      - name: settings と phase_map
+        description: '`phases` を 目的 → 発散 にし、`phase_map` に `{"問い": "目的"}` を渡す'
+        notes: '`mindmap.yaml` と `decisions.yaml` の 2 つを書く場合'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（settings・phase_map）
+        IF-->>WS: 全ての YAML を読む
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_write_fails
+  - name: 異常系（引数の誤り）
+    summary: 新しい phases にもあるフェーズを phase_map のキーに渡すと、何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: フェーズ 問い → 発散、検討事項 D-1（問い）・D-2（発散）を持つワークスペース
+      - name: settings と phase_map
+        description: '`phases` を 目的 → 発散 → 要件 にし、`phase_map` に `{"問い": "目的", "発散": "要件"}` を渡す'
+        notes: '`発散` は新しい `phases` にもある'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+
+        クライアント->>IF: update_settings workspace（settings・phase_map）
+        IF->>IF: phase_map の発散が新しい phases にもある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `発散` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_bad_argument
+lead: '`settings` で渡した設定のキーを置き換える。フェーズを変えるときは、`phase_map` の対応で項目の `phase` と `goal.phase` も同じ書き込みで付け替える。'
+idempotent: false
+side_effects: '`mindmap.yaml` を書き換える。フェーズを付け替えた項目があれば、その種類の YAML も書き換える。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`mindmap.yaml` があるフォルダ'
+  - name: settings
+    type: dict
+    required: true
+    location: argument
+    description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal` だけ。`null` で消せるのは任意の `description`・`goal` だけ。1 つ以上のキーを持つ
+  - name: phase_map
+    type: dict[str, str]
+    required: false
+    default: なし（対応を渡さない）
+    location: argument
+    description: 古いフェーズの名前 → 新しいフェーズの名前。`settings.phases` を渡したとき、新しい `phases` に無いフェーズを持つ項目と `goal.phase` をこの対応で付け替える。新しい `phases` に同じ名前があるフェーズは、対応を渡さなくてもそのまま残る
+    constraints: キーは今の `phases` にあり、新しい `phases` に無いフェーズだけ。値は新しい `phases` のどれか。`settings.phases` を渡さないときは渡さない（どれも合わなければ引数の誤り）
+    example: '{"問い": "目的", "結論": "要件"}'
+request_example: |-
+  ```json
+  {
+    "workspace": "~/discussions/要件出し",
+    "settings": {
+      "summary": "要件出しのスキル mindmap を設計する",
+      "description": "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。",
+      "playbooks": ["壁打ち", "システム開発"],
+      "phases": ["目的", "発散", "要件", "構成"],
+      "target_label": "機能",
+      "goal": {
+        "phase": "要件",
+        "summary": "要件が決まる",
+        "deliverables": [{"title": "要件定義書"}]
+      }
+    },
+    "phase_map": {"問い": "目的", "整理": "要件", "絞り込み": "要件", "結論": "要件"}
+  }
+  ```
+response:
+  - name: changed
+    type: list[str]
+    description: 値が変わった・消えた設定のキーの名前。対応で `goal.phase` だけが変わったときも `goal` を含める
+  - name: remapped[]
+    type: list[{id, from, to}]
+    description: フェーズを付け替えた項目の ID・前のフェーズ・後のフェーズ。種類の順（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）、同じ種類の中は項目の並びの順
+  - name: files
+    type: list[str]
+    description: 書き換えた YAML（ワークスペースからの相対パス）
+exceptions:
+  - name: なし（正常終了）
+    condition: 書き換えられた
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: UnmappedPhaseError
+    condition: 書き換えた後に、新しい `phases` に無いフェーズを持つ項目か `goal.phase` が残る。`phase_map` の値が新しい `phases` に無いときも含む
+    notes: ツールのエラー。エラーの本文に残る項目とフェーズ。何も書き込まない
+  - name: SchemaMismatchError
+    condition: 書き換えた後のワークスペースのどれかの YAML がスキーマに合わない。`settings` に書き換えられないキー・必須のキーの `null` を渡したときも含む
+    notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻し、どのファイルも書き換えない
+  - name: 引数の誤り
+    condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した'
+    notes: ツールのエラー。エラーの本文に合わない `phase_map` のキー。何も書き込まない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。対応の無いフェーズが残るときは、残るものごとに `{ID か goal}: {フェーズ}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 書き換えられるキー
+    constraint: '`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`。対象・カテゴリー・関連する場所はこのツールでは書き換えない'
+  - item: フェーズの付け替え
+    constraint: 新しい `phases` に無いフェーズを持つ全ての種類の項目と `goal.phase`（`settings.goal` を渡したときは渡した値）を `phase_map` で付け替える。付け替えた項目だけ `updated` を変える。`phase` を持たない項目は触らない
+  - item: 検証の範囲
+    constraint: 書き換えた後のワークスペースの全ての YAML をスキーマと突き合わせ、全ての項目の `phase` と `goal.phase` が `phases` にあることを確かめる。参照先の ID があるかは確かめない（点検が持つ）
+  - item: YAML の書き方
+    constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。キーの並びは今の `mindmap.yaml` の並びを保ち、新しいキーは末尾に足す'
+  - item: 部分成功
+    constraint: 起こさない。書き換える全てのファイルの一時ファイルを書き終えてから置き換え、途中で失敗したら置き換えたファイルを前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
+  - item: 書き換えの知らせ
+    constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの知らせ』）
+test_file: tests/integration/server/test_update_settings.py

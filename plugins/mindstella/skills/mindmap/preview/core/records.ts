@@ -105,12 +105,15 @@ namespace MindmapPreview {
   /** 設定（`mindmap.yaml`） */
   export type Settings = {
     summary: string;
-    field: string;
+    /** 話し合いの概要（1 文の短い文）。無い設定もある */
+    description?: string;
+    playbooks: string[];
     target_label: string;
     phases: string[];
     targets: { name: string; summary: string }[];
     categories: { name: string; target: string; summary: string }[];
-    goal: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
+    /** ゴール。ゴールを決めていない話し合いは持たない */
+    goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
   };
 
   /** フェーズごと・カテゴリーごとの、決着した数と全体の数 */
@@ -120,8 +123,10 @@ namespace MindmapPreview {
   export type Derived = {
     next: { id: string; title: string; phase: string | null; weight: string | null; followers: number }[];
     goal: {
-      reached: boolean;
-      goal_phase: string;
+      has_goal: boolean;
+      /** ゴールが無いときは判定せず `null` */
+      reached: boolean | null;
+      goal_phase: string | null;
       phases: string[];
       remaining_decisions: { id: string; title: string; phase: string; status: string }[];
       remaining_deliverables: { title: string; doc: string | null }[];

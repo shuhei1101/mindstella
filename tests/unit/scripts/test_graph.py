@@ -295,3 +295,31 @@ def test_judge_goal_when_goal_phase_unknown(
     # 検証
     assert report.phases == ["目的", "要件"]
     assert [decision["id"] for decision in report.remaining_decisions] == ["D-1"]
+
+
+def test_judge_goal_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールが無ければ判定せず、全フェーズの決着していない検討事項を返す（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+    }
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-2", phase="要件", status="未決定"),
+        settings=settings,
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    report = graph.judge_goal(workspace)
+    # 検証
+    assert report.has_goal is False
+    assert report.reached is None
+    assert report.goal_phase is None
+    assert report.phases == ["目的", "要件"]
+    assert report.remaining_decisions == [
+        {"id": "D-2", "title": "D-2の題", "phase": "要件", "status": "未決定"}
+    ]
+    assert report.remaining_deliverables == []

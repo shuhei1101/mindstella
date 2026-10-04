@@ -36,6 +36,9 @@ VERSION_FILE = "mindstella-version.ini"
 # v0.3.0 の手順の版
 V030 = Version(0, 3, 0)
 
+# v0.5.0 の手順の版（設定の分野をプレイブックの配列へ移す）
+V050 = Version(0, 5, 0)
+
 # 手順を当てる前に値が要るキー（v0.3.0 の set_default の ask）
 SUMMARY_NEEDED = NeededValue(file="mindmap.yaml", key="summary", description="話し合いの題名")
 
@@ -104,6 +107,16 @@ def test_load_steps() -> None:
                 "ask": "話し合いの題名",
             },
         ),
+    ]
+
+
+def test_load_steps_when_v0_5_0() -> None:
+    """v0.5.0 の手順は field_to_playbooks を呼ぶ 1 つだけを読む（正常系）。"""
+    # 実行
+    steps = migrator.load_steps(V050)
+    # 検証
+    assert [(step.version, step.index, step.op, step.args) for step in steps] == [
+        (V050, 1, "call", {"script": "field_to_playbooks"})
     ]
 
 

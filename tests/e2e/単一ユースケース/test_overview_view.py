@@ -144,3 +144,44 @@ def test_normal_when_many_deliverables(
     cards = page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)")
     assert sorted(cards) == deliverable_ids
     assert other_id not in cards
+
+
+def test_normal_when_no_goal(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """ゴールが無いときは、題名の上に話し合いの概要を出し、タイルの見出しを「フェーズ別の進捗」にする（正常系）。"""
+    # 準備
+    description = "要件出しのスキルの作りを壁打ちし、要件まで固める"
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "playbooks": ["壁打ち", "システム開発"],
+        "description": description,
+        "phases": ["目的", "要件"],
+    }
+    url = serve_preview(
+        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-2", phase="要件", status="未決定"),
+        settings=settings,
+    )
+    # 開く前から、ブラウザのコンソールのエラーを集める
+    console_errors: list[str] = []
+    page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
+    page.on("pageerror", lambda error: console_errors.append(str(error)))
+    # 実行
+    open_preview(url)
+    # 検証
+    # 題名の上の行に話し合いの概要があり、見出しの行は [概要, 題名] の 2 つだけでプレイブックの名前の行が無い
+    assert page.inner_text("#overview-description") == description
+    rows = page.eval_on_selector_all("main .hero > *", "els => els.map(e => e.textContent)")
+    assert rows == [description, "要件出しのスキル mindmap を設計する"]
+    # 進捗のタイルの見出しが「フェーズ別の進捗」で、ゴールが無いことと全フェーズの決着の数（1 / 2）があり、納品物のチェックリストが無い
+    assert page.inner_text("#h-goal") == "フェーズ別の進捗"
+    assert page.inner_text("#tile-goal .goal-none") == "ゴールは決まっていません"
+    assert page.inner_text("#tile-goal .big").replace("\n", "").replace(" ", "") == "1/2"
+    assert page.locator("#tile-goal .checklist").count() == 0
+    # ブラウザのコンソールにエラーが出ていない
+    assert console_errors == []
