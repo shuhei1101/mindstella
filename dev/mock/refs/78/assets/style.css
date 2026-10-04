@@ -235,3 +235,8 @@ dialog.confirm h2 { margin: 0 0 8px; font-size: var(--fs-h2); }
 .selpop[data-mode="form"] { width: min(380px, calc(100vw - 16px)); }
 /* その場の入力の箱 */
 .selpop[data-mode="form"] .send { padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-bubble); box-shadow: var(--shadow-pop); }
+
+/* ===== 撮影のときだけの全画面（ハッシュに shot=1） ===== */
+
+/* モーダルにしない全画面: モーダルと同じ位置に重ね、周りを薄い幕の色で覆う */
+dialog.full[open]:not(:modal) { position: fixed; inset: 0; z-index: 40; margin: auto; box-shadow: var(--shadow-pop), 0 0 0 100vmax var(--scrim-soft); }

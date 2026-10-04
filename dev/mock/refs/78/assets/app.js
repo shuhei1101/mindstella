@@ -1366,6 +1366,8 @@
   };
 
   const fullDlg = document.getElementById("full");
+  // 撮影のときだけ（ハッシュに shot=1）: 全画面をモーダルにせず同じ位置へ重ね、撮影の赤枠が全画面の上に描けるようにする
+  const SHOT = new URLSearchParams(location.hash.slice(1)).get("shot") === "1";
   const renderPanel = () => {
     const panel = document.getElementById("panel");
     document.body.classList.toggle("panel-open", !!state.panel && !state.full);
@@ -1375,7 +1377,7 @@
     // 全画面のときはパネルを隠し、同じ中身をモーダルに描く
     const host = state.full ? fullDlg : panel;
     panel.classList.toggle("open", !state.full);
-    if (state.full && !fullDlg.open) fullDlg.showModal();
+    if (state.full && !fullDlg.open) { if (SHOT) fullDlg.show(); else fullDlg.showModal(); }
     if (!state.full && fullDlg.open) fullDlg.close();
     const nav = trailOf();
     for (const b of document.querySelectorAll("[data-act=pback]")) b.disabled = nav.pos <= 0;
