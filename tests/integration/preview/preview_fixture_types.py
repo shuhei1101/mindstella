@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
 
 from playwright.sync_api import Page
 
@@ -17,8 +16,8 @@ __all__ = [
     "WriteSamplePreview",
 ]
 
-type WritePreview = Callable[..., Path]
-type WriteSamplePreview = Callable[[], Path]
+type WritePreview = Callable[..., str]
+type WriteSamplePreview = Callable[[], str]
 type OpenPreview = Callable[..., Page]
 
 # 本文に見出しと mermaid の図を持つ本文

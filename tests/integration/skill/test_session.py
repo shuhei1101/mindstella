@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .skill_files import (
-    BASH_RULE,
     PLAYBOOK_NAMES,
+    SERVER_TOOL_NAMES,
     SKILLS_DIR,
-    launches_not_in_form,
+    allowed_mcp_tools,
+    mentions_old_mode,
     missing_plugin_paths,
     playbook_names,
     playbooks_with_wrong_sections,
@@ -18,6 +19,7 @@ from .skill_files import (
     step_files_in,
     steps_referenced_by,
     texts_with_forbidden_name,
+    tools_listed_in,
 )
 
 if TYPE_CHECKING:
@@ -25,8 +27,32 @@ if TYPE_CHECKING:
 
     from conftest import RunClaude
 
-# 版を比べるコマンド
-PLAN_COMMAND = "migrate --workspace {フォルダ} --plan"
+# front matter の allowed-tools の値（`init` を除く mindstella の MCP のツールを並べる）
+SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
+    f"mcp__mindstella__{name}"
+    for name in (
+        "add",
+        "update",
+        "adopt",
+        "status",
+        "next",
+        "impact",
+        "find",
+        "show",
+        "attrs",
+        "check",
+        "goal",
+        "migrate",
+        "clear_release",
+        "export",
+        "preview_url",
+        "submissions",
+        "take_submission",
+    )
+)
+
+# 版を比べる呼び方
+PLAN_CALL = "`plan: true`"
 
 # スキル session の steps/ のファイル
 SESSION_STEP_FILES = [
@@ -48,17 +74,31 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 検証
     # front matter の name が session、allowed-tools が制約の値と一致する
     assert front_matter["name"] == "session"
-    assert front_matter["allowed-tools"] == f"Read, Agent, WebSearch, WebFetch, {BASH_RULE}"
+    assert front_matter["allowed-tools"] == SESSION_ALLOWED_TOOLS
     assert front_matter["description"]
     # steps/ に 6 つのステップのファイルがあり、SKILL.md のステップの表がその全てを指す
     assert step_files_in("session") == SESSION_STEP_FILES
     assert steps_referenced_by(body) == SESSION_STEP_FILES
     # SKILL.md と steps/ の本文の ${CLAUDE_PLUGIN_ROOT}/ で始まるパスが全てリポジトリの中にある
     assert missing_plugin_paths(texts) == []
-    # 本文のスクリプトの起動が全て python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py で始まる
-    assert launches_not_in_form(texts) == []
-    # 本文が migrate --plan を呼んで版を比べる
-    assert any(PLAN_COMMAND in text for text in texts)
+    # 本文が呼ぶツールが全て allowed-tools にあり、サーバーのツールの一覧にある
+    called = tools_listed_in(texts)
+    assert called != []
+    assert set(called) <= set(allowed_mcp_tools(front_matter))
+    assert set(allowed_mcp_tools(front_matter)) <= set(SERVER_TOOL_NAMES)
+    # 本文が mindmap.py・build・preview.html を指さない
+    assert mentions_old_mode(texts) == []
+    # 本文が migrate を plan: true で呼び、その後に submissions を呼ぶ
+    preparation = next(line for line in body.splitlines() if line.startswith("| 準備 |"))
+    assert "`migrate`" in preparation
+    assert PLAN_CALL in preparation
+    assert preparation.index("`migrate`") < preparation.index("`submissions`")
+    # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
+    assert "bin/mindstella" in preparation
+    assert "止まる" in preparation
+    # steps/プレビュー.md が preview_url を呼ぶ
+    preview_step = (SKILLS_DIR / "session" / "steps" / "プレビュー.md").read_text(encoding="utf-8")
+    assert "`preview_url`" in preview_step
     # skills/mindmap/ に SKILL.md が無く、references/・playbooks/ がある
     assert not (SKILLS_DIR / "mindmap" / "SKILL.md").exists()
     assert (SKILLS_DIR / "mindmap" / "references").is_dir()

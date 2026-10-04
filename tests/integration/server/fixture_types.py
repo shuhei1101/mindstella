@@ -5,23 +5,33 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from workspace_fixtures import (
+    CallTool,
     MakeItem,
     MakeLegacyWorkspace,
+    MakeSubmission,
     MakeVenv,
     MakeWorkspace,
-    RunMindmap,
+    McpServer,
     SnapshotTree,
+    StartServer,
+    ToolResult,
+    WriteSubmissions,
 )
 
 __all__ = [
+    "CallTool",
     "FindOldPython",
     "LockDirs",
     "MakeItem",
     "MakeLegacyWorkspace",
+    "MakeSubmission",
     "MakeVenv",
     "MakeWorkspace",
-    "RunMindmap",
+    "McpServer",
     "SnapshotTree",
+    "StartServer",
+    "ToolResult",
+    "WriteSubmissions",
 ]
 
 type LockDirs = Callable[..., None]

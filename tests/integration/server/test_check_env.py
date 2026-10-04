@@ -1,4 +1,4 @@
-"""check-env（依存の確認）の結合テスト。"""
+"""check_env.py（依存の確認）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -6,12 +6,22 @@ import json
 import shlex
 import socket
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+from workspace_fixtures import REPO_ROOT
 
-from .fixture_types import FindOldPython, MakeVenv, MakeWorkspace, RunMindmap
+from .fixture_types import FindOldPython, MakeVenv
+
+# 依存の確認のスクリプト（起動スクリプトがシステムの python3 で起動する）
+CHECK_ENV_SCRIPT = (
+    REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "check_env.py"
+)
+
+# 子プロセス 1 回を待つ上限秒数
+COMMAND_TIMEOUT_SEC = 120
 
 # 通信できるかを確かめる先と待つ秒数
 PYPI_HOST = "pypi.org"
@@ -36,22 +46,29 @@ def _run_install_command(command: str) -> None:
         subprocess.run(shlex.split(step), check=True, timeout=INSTALL_TIMEOUT_SEC)
 
 
+def _run_check_env(*args: str, python: str = sys.executable) -> subprocess.CompletedProcess[str]:
+    """依存の確認を子プロセスで起動し、終了コードが 0 以外でも例外にせず返す。"""
+    return subprocess.run(
+        [python, str(CHECK_ENV_SCRIPT), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=COMMAND_TIMEOUT_SEC,
+        check=False,
+    )
+
+
 def _packages_by_name(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """出力のライブラリの一覧を、名前から引ける辞書にする。"""
     return {package["name"]: package for package in payload["packages"]}
 
 
-def test_normal(
-    make_workspace: MakeWorkspace,
-    make_venv: MakeVenv,
-    run_mindmap: RunMindmap,
-) -> None:
+def test_normal(make_venv: MakeVenv) -> None:
     """仮想環境に依存がそろっていて、起動する Python を返す（正常系）。"""
     # 準備
     venv_dir = make_venv("venv")
-    root = make_workspace()
     # 実行
-    result = run_mindmap("check-env", "--venv", str(venv_dir))
+    result = _run_check_env("--venv", str(venv_dir))
     # 検証
     assert result.returncode == 0
     payload = json.loads(result.stdout)
@@ -61,19 +78,24 @@ def test_normal(
     assert payload["python_ok"] is True
     assert packages["PyYAML"]["ok"] is True
     assert packages["jsonschema"]["ok"] is True
+    assert packages["mcp"]["ok"] is True
     assert payload["install"] is None
-    # 返された python_path で、ほかのコマンドを起動できる
-    started = run_mindmap("attrs", "--workspace", str(root), python=payload["python_path"])
-    assert started.returncode == 0
-    assert json.loads(started.stdout) == {"attrs": []}
+    # 返された python_path で、3 つのライブラリを読み込める
+    imported = subprocess.run(
+        [payload["python_path"], "-c", "import yaml, jsonschema, mcp"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert imported.returncode == 0, imported.stderr
 
 
-def test_error_when_venv_missing(tmp_path: Path, run_mindmap: RunMindmap) -> None:
+def test_error_when_venv_missing(tmp_path: Path) -> None:
     """仮想環境が無ければ、作って入れる 1 行のコマンドを返す（異常系）。"""
     # 準備
     venv_dir = tmp_path / "new-venv"
     # 実行
-    result = run_mindmap("check-env", "--venv", str(venv_dir))
+    result = _run_check_env("--venv", str(venv_dir))
     # 検証
     assert result.returncode == 1
     payload = json.loads(result.stdout)
@@ -82,26 +104,26 @@ def test_error_when_venv_missing(tmp_path: Path, run_mindmap: RunMindmap) -> Non
     assert payload["python"] is None
     assert packages["PyYAML"]["installed"] is None
     assert packages["jsonschema"]["installed"] is None
+    assert packages["mcp"]["installed"] is None
     assert "-m venv" in payload["install"]
     assert str(venv_dir) in payload["install"]
     assert "PyYAML>=5.1" in payload["install"]
     assert "jsonschema>=4.18.0" in payload["install"]
+    assert "mcp>=2.3.0" in payload["install"]
     # そろえるコマンドをそのまま流すと仮想環境ができ、もう一度確かめると全てそろっている
     _skip_without_network()
     _run_install_command(payload["install"])
-    again = run_mindmap("check-env", "--venv", str(venv_dir))
+    again = _run_check_env("--venv", str(venv_dir))
     assert again.returncode == 0
 
 
-def test_error_when_python_too_old(
-    make_venv: MakeVenv, find_old_python: FindOldPython, run_mindmap: RunMindmap
-) -> None:
+def test_error_when_python_too_old(make_venv: MakeVenv, find_old_python: FindOldPython) -> None:
     """仮想環境の Python が下限より古ければ、構文エラーで落ちずに python_ok: false を返す（異常系）。"""
     # 準備
     old_python = find_old_python()
     venv_dir = make_venv("old-venv", python=old_python, with_libraries=False)
     # 実行
-    result = run_mindmap("check-env", "--venv", str(venv_dir))
+    result = _run_check_env("--venv", str(venv_dir))
     # 検証
     assert result.returncode == 1
     assert "SyntaxError" not in result.stderr
@@ -111,12 +133,12 @@ def test_error_when_python_too_old(
     assert "--clear" in payload["install"]
 
 
-def test_error_when_dependency_missing(make_venv: MakeVenv, run_mindmap: RunMindmap) -> None:
+def test_error_when_dependency_missing(make_venv: MakeVenv) -> None:
     """ライブラリを入れていない仮想環境で、足りないものと入れるコマンドを返す（異常系）。"""
     # 準備
     venv_dir = make_venv("bare-venv", with_libraries=False)
     # 実行
-    result = run_mindmap("check-env", "--venv", str(venv_dir))
+    result = _run_check_env("--venv", str(venv_dir))
     # 検証
     assert result.returncode == 1
     payload = json.loads(result.stdout)
@@ -125,15 +147,16 @@ def test_error_when_dependency_missing(make_venv: MakeVenv, run_mindmap: RunMind
     assert packages["PyYAML"]["ok"] is False
     assert packages["jsonschema"]["installed"] is None
     assert packages["jsonschema"]["ok"] is False
+    assert packages["mcp"]["installed"] is None
+    assert packages["mcp"]["ok"] is False
     assert f'"{payload["python_path"]}" -m pip install' in payload["install"]
     assert "PyYAML>=5.1" in payload["install"]
     assert "jsonschema>=4.18.0" in payload["install"]
+    assert "mcp>=2.3.0" in payload["install"]
     assert "-m venv" not in payload["install"]
 
 
-def test_error_when_base_python_too_old(
-    tmp_path: Path, find_old_python: FindOldPython, run_mindmap: RunMindmap
-) -> None:
+def test_error_when_base_python_too_old(tmp_path: Path, find_old_python: FindOldPython) -> None:
     """仮想環境が無く、check-env を動かす Python も下限より古ければ、流しても直らないコマンドを返さない（異常系）。"""
     # 準備
     old_python = find_old_python()
@@ -145,7 +168,7 @@ def test_error_when_base_python_too_old(
         check=True,
     ).stdout.strip()
     # 実行
-    result = run_mindmap("check-env", "--venv", str(venv_dir), python=old_python)
+    result = _run_check_env("--venv", str(venv_dir), python=old_python)
     # 検証
     assert result.returncode == 1
     payload = json.loads(result.stdout)

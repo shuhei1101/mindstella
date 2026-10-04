@@ -1,4 +1,4 @@
-"""スクリプトの結合テストの共通 fixture（ワークスペースと mindmap.py の起動は tests/workspace_fixtures.py）。"""
+"""サーバーの結合テストの共通 fixture（ワークスペースと MCP サーバーの起動は tests/workspace_fixtures.py）。"""
 
 from __future__ import annotations
 
@@ -6,12 +6,13 @@ import os
 import shutil
 import stat
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
 
-from .fixture_types import FindOldPython, LockDirs
+from .fixture_types import CallTool, FindOldPython, LockDirs
+from .http_helpers import EventStream
 
 # 下限より古い Python を探す候補（下限は 3.12）
 OLD_PYTHON_NAMES = ("python3.8", "python3.9", "python3.10", "python3.11")
@@ -53,3 +54,33 @@ def find_old_python() -> FindOldPython:
         pytest.skip("手元に 3.8〜3.11 の Python が無い")
 
     return _find
+
+
+@pytest.fixture
+def serve_preview(call_tool: CallTool) -> Callable[[Path], str]:
+    """ワークスペースの配信を立てて（立っていればそのまま）、URL を返す関数を返す。"""
+
+    def _serve(root: Path) -> str:
+        """`preview_url` を呼び、配信の URL を返す。エラーならテストを止める。"""
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"])
+
+    return _serve
+
+
+@pytest.fixture
+def open_events() -> Iterator[Callable[[str], EventStream]]:
+    """書き換えの知らせにつなぐ関数を返し、テストの後でつないだものを全て閉じる。"""
+    opened: list[EventStream] = []
+
+    def _open(base_url: str) -> EventStream:
+        """配信の `/api/events` につなぐ。"""
+        stream = EventStream(base_url)
+        opened.append(stream)
+        return stream
+
+    yield _open
+    for stream in opened:
+        stream.close()

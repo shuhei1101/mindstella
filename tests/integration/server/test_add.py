@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from .fixture_types import LockDirs, MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 
 # リクエスト例の検討事項
 NEW_DECISION: dict[str, Any] = {
@@ -24,22 +23,15 @@ NEW_DECISION: dict[str, Any] = {
 }
 
 
-def _stdin(data: dict[str, Any]) -> str:
-    """項目の中身を標準入力に渡す JSON の文字列にする。"""
-    return json.dumps(data, ensure_ascii=False)
-
-
-def test_normal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, run_mindmap: RunMindmap
-) -> None:
+def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
     """本文つきの検討事項を足す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     # 実行
-    result = run_mindmap("add", "decision", "--workspace", str(root), stdin=_stdin(NEW_DECISION))
+    result = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
     # 検証
-    assert result.returncode == 0
-    assert json.loads(result.stdout) == {
+    assert result.is_error is False
+    assert result.data == {
         "id": "D-2",
         "file": "decisions.yaml",
         "body": "docs/D-2.md",
@@ -63,43 +55,43 @@ def test_normal(
     assert (root / "docs" / "D-2.md").read_text(encoding="utf-8") == NEW_DECISION["body_markdown"]
 
 
-def test_error_when_workspace_not_found(tmp_path: Path, run_mindmap: RunMindmap) -> None:
+def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
     # 実行
-    result = run_mindmap("add", "decision", "--workspace", str(root), stdin=_stdin(NEW_DECISION))
+    result = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
     # 検証
-    assert result.returncode == 1
-    assert str(root) in result.stderr
+    assert result.is_error is True
+    assert str(root) in result.text
     assert list(root.iterdir()) == []
 
 
 def test_error_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """状態の値が決めた名前に無い検討事項は足さず、合わない箇所を返す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
-    stdin = _stdin({**NEW_DECISION, "status": "完了"})
+    item = {**NEW_DECISION, "status": "完了"}
     # 実行
-    result = run_mindmap("add", "decision", "--workspace", str(root), stdin=stdin)
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
     # 検証
-    assert result.returncode == 1
-    assert "decisions.yaml: items[1].status:" in result.stderr
-    assert "完了" in result.stderr
+    assert result.is_error is True
+    assert "decisions.yaml: items[1].status:" in result.text
+    assert "完了" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_write_fails(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     lock_dirs: LockDirs,
 ) -> None:
@@ -109,18 +101,18 @@ def test_error_when_write_fails(
     before = snapshot_tree(root)
     lock_dirs(root, root / "docs")
     # 実行
-    result = run_mindmap("add", "decision", "--workspace", str(root), stdin=_stdin(NEW_DECISION))
+    result = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
     # 検証
-    assert result.returncode == 1
-    assert result.stderr.startswith("エラー: ")
-    assert "Traceback" not in result.stderr
+    assert result.is_error is True
+    assert result.text.startswith("エラー: ")
+    assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_file_shape_broken(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """書き戻すと既存の項目を失うファイルには足さず、そのファイルの問題を返す（異常系）。"""
@@ -132,8 +124,8 @@ def test_error_when_file_shape_broken(
     )
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("add", "decision", "--workspace", str(root), stdin=_stdin(NEW_DECISION))
+    result = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
     # 検証
-    assert result.returncode == 1
-    assert "decisions.yaml: " in result.stderr
+    assert result.is_error is True
+    assert "decisions.yaml: " in result.text
     assert snapshot_tree(root) == before

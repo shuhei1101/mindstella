@@ -1,4 +1,4 @@
-"""プレビューを開く（`build` が書き出した `preview.html` と、`export` が書き出した配る書き出しを開く）の結合テスト。"""
+"""プレビューを開く（サーバーが配る URL と、`export` が書き出した配る書き出しを開く）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -6,13 +6,25 @@ from pathlib import Path
 from typing import Any
 
 from preview_fixture_types import BODY_WITH_DIAGRAM, OpenPreview, WritePreview
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
 
 # 描画のライブラリの配信元への要求（全て失敗させるときの URL の形）
 LIBRARY_HOST_PATTERN = "https://cdn.jsdelivr.net/**"
 
 # 描画のライブラリを描いた後の図（SVG）が出るまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
+
+# 書き換えや接続の切れが画面に出るまで待つ上限ミリ秒
+UPDATE_TIMEOUT_MS = 10_000
+
+# 送信の入力欄・結果・送るボタン・接続の状態
+SEND_TEXTAREA = "aside.panel form.send textarea"
+SEND_MESSAGE = "aside.panel form.send .send-msg"
+SEND_BUTTON = "aside.panel form.send button[type=submit]"
+CONNECTION = "header.topbar .conn"
+
+# 送信を受け付けるパス
+SUBMISSIONS_PATH = "/api/submissions"
 
 
 # `file:` 以外の URL への要求（外への要求）を全て拾う条件
@@ -31,14 +43,14 @@ def test_normal(
 ) -> None:
     """ハッシュが指す画面・表示形式・項目を開く（正常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("D-1"),
         make_item("D-3", status="要見直し", body="D-3.md"),
         bodies={"D-3.md": BODY_WITH_DIAGRAM},
     )
     hash_text = "#tab=decisions&view=table&id=D-3"
     # 実行
-    page = open_preview(path, hash_text)
+    page = open_preview(url, hash_text)
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
@@ -60,9 +72,9 @@ def test_normal_when_no_hash(
 ) -> None:
     """ハッシュが無いと概要を開く（正常系）。"""
     # 準備
-    path = write_preview(make_item("D-1"))
+    url = write_preview(make_item("D-1"))
     # 実行
-    page = open_preview(path)
+    page = open_preview(url)
     # 検証
     assert page.get_attribute('nav.tabbar a[data-tab="overview"]', "aria-current") == "page"
     assert page.locator("aside.panel").count() == 0
@@ -74,13 +86,13 @@ def test_normal_when_filter_in_hash(
 ) -> None:
     """ハッシュの f.{列} で絞った表を、条件のチップ付きで開く（正常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("D-1", status="未決定"),
         make_item("D-3", status="要見直し"),
         make_item("D-4", status="保留"),
     )
     # 実行
-    page = open_preview(path, "#tab=decisions&view=table&f.status=要見直し|保留")
+    page = open_preview(url, "#tab=decisions&view=table&f.status=要見直し|保留")
     # 検証
     chips = page.eval_on_selector_all(".chips .chip", "chips => chips.map(c => c.textContent)")
     assert chips == ["状態: 要見直し", "状態: 保留"]
@@ -99,9 +111,9 @@ def test_normal_when_item_not_found(
 ) -> None:
     """記録に無い ID を指すハッシュでは、画面だけを開く（正常系）。"""
     # 準備
-    path = write_preview(make_item("D-1"))
+    url = write_preview(make_item("D-1"))
     # 実行
-    page = open_preview(path, "#tab=decisions&id=D-99")
+    page = open_preview(url, "#tab=decisions&id=D-99")
     # 検証
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
     assert page.get_attribute('.segment button[data-view="map"]', "aria-pressed") == "true"
@@ -112,7 +124,7 @@ def test_normal_when_item_not_found(
 def test_normal_when_exported_offline(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     open_preview: OpenPreview,
     page: Any,
     tmp_path: Path,
@@ -123,8 +135,8 @@ def test_normal_when_exported_offline(
         make_item("D-3", status="要見直し", body="D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
     )
     out = tmp_path / "配る.html"
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
-    assert result.returncode == 0, result.stderr
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
     # `file:` 以外への要求を全て失敗させ、数える
     blocked: list[str] = []
 
@@ -135,7 +147,7 @@ def test_normal_when_exported_offline(
 
     page.route(_is_not_file_url, _block)
     # 実行
-    open_preview(out, "#tab=decisions&id=D-3")
+    open_preview(out.as_uri(), "#tab=decisions&id=D-3")
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     assert blocked == []
@@ -144,6 +156,11 @@ def test_normal_when_exported_offline(
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     assert page.locator("aside.panel .md h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
+    # 詳細パネルに回答・意見の入力と送るボタンが無く、接続の状態も出ていない
+    assert page.locator("aside.panel form.send").count() == 0
+    assert page.locator(SEND_TEXTAREA).count() == 0
+    assert page.locator(SEND_BUTTON).count() == 0
+    assert page.locator(CONNECTION).count() == 0
 
 
 def test_error_when_library_unavailable(
@@ -154,12 +171,12 @@ def test_error_when_library_unavailable(
 ) -> None:
     """描画のライブラリの配信元に届かないと、使う箇所に読み込めなかったライブラリの名前を出す（異常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("D-3", status="要見直し", body="D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
-    open_preview(path, "#tab=decisions&id=D-3")
+    open_preview(url, "#tab=decisions&id=D-3")
     page.wait_for_selector("aside.panel.open .md .lib-error")
     # 検証
     map_notice = page.inner_text("main .lib-error[role=alert]")
@@ -176,3 +193,140 @@ def test_error_when_library_unavailable(
     page.click('.segment button[data-view="table"]')
     page.wait_for_selector("table.grid tbody tr")
     assert _row_ids(page) == ["D-3"]
+
+
+def test_normal_when_rewritten(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Any,
+) -> None:
+    """ツールで書き換えると、開いている画面と項目を保ったまま描き直す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-3", status="要見直し"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.fill(SEND_TEXTAREA, "書きかけ")
+    opened_url = page.url
+    history_length = page.evaluate("history.length")
+    new_decision = {
+        "title": "新しい問い",
+        "target": "mindmap",
+        "category": "データ構造",
+        "phase": "要件",
+        "status": "未決定",
+    }
+    # 実行
+    added = call_tool("add", workspace=str(root), kind="decision", item=new_decision)
+    # 検証
+    assert added.is_error is False, added.text
+    page.wait_for_function(
+        "document.querySelectorAll('table.grid tbody tr').length === 3", timeout=UPDATE_TIMEOUT_MS
+    )
+    assert _row_ids(page) == ["D-1", "D-3", "D-4"]
+    assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
+    assert page.get_attribute('.segment button[data-view="table"]', "aria-pressed") == "true"
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert page.input_value(SEND_TEXTAREA) == "書きかけ"
+    assert page.url == opened_url
+    assert page.evaluate("history.length") == history_length
+
+
+def test_normal_when_sent(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Any,
+) -> None:
+    """詳細パネルから送ると、入力欄を空にして送った旨を出す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], "#tab=decisions&id=D-1")
+    page.wait_for_selector(SEND_TEXTAREA)
+    page.fill(SEND_TEXTAREA, "案 A にする")
+    # 入力欄から Tab キーで送るボタンに届く
+    page.focus(SEND_TEXTAREA)
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement.matches('form.send button[type=submit]')") is True
+    # 実行（送るボタンを Enter で押す）
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{SEND_MESSAGE}.sent", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.get_attribute(SEND_MESSAGE, "role") == "status"
+    assert "送りました" in page.inner_text(SEND_MESSAGE)
+    assert page.input_value(SEND_TEXTAREA) == ""
+    pending = call_tool("submissions", workspace=str(root))
+    assert pending.data is not None
+    assert [(item["target"], item["body"]) for item in pending.data["items"]] == [
+        ("D-1", "案 A にする")
+    ]
+
+
+def test_error_when_body_empty(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Any,
+) -> None:
+    """空白だけの本文は送らずに、理由を出す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    posts: list[str] = []
+    page.on(
+        "request",
+        lambda request: (
+            posts.append(request.url)
+            if request.method == "POST" and request.url.endswith(SUBMISSIONS_PATH)
+            else None
+        ),
+    )
+    open_preview(served.data["url"], "#tab=decisions&id=D-1")
+    page.wait_for_selector(SEND_TEXTAREA)
+    page.fill(SEND_TEXTAREA, "   ")
+    # 実行
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.empty", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert posts == []
+    assert "回答・意見を入れてから送ってください。" in page.inner_text(SEND_MESSAGE)
+
+
+def test_error_when_server_unreachable(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    open_preview: OpenPreview,
+    page: Any,
+) -> None:
+    """サーバーが止まると接続の状態を出し、前に読んだ記録で描き続け、送れなかった本文を残す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-3", status="要見直し"))
+    server = start_server()
+    served = server.call("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 実行（サーバーの標準入力を閉じて止める）
+    server.close_stdin()
+    server.wait_exit()
+    page.wait_for_selector(CONNECTION, timeout=UPDATE_TIMEOUT_MS)
+    page.fill(SEND_TEXTAREA, "案 A にする")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.failed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    connection = page.inner_text(CONNECTION)
+    assert "サーバーにつながりません" in connection
+    assert "に読んだ記録" in connection
+    assert _row_ids(page) == ["D-1", "D-3"]
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+    assert "送れませんでした" in page.inner_text(SEND_MESSAGE)
+    assert page.input_value(SEND_TEXTAREA) == "案 A にする"

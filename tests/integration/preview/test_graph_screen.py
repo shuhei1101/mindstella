@@ -34,9 +34,9 @@ HAS_DRAWING_SCRIPT = """() => {
 def test_canvas(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """3D のキャンバスに全種類の項目と関連を描く（正常系）。"""
     # 準備
-    path = write_sample_preview()
+    url = write_sample_preview()
     # 実行
-    page = open_preview(path, "#tab=graph")
+    page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     # 検証
     assert page.get_attribute("#graph-canvas", "role") == "img"
@@ -47,11 +47,12 @@ def test_canvas(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
 def test_kind_toggles(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """種類ごとに表示 / 非表示を切り替え、件数を出す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=graph")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     toggles = page.eval_on_selector_all(
-        ".legend label:not(.legend-all-check)", "labels => labels.map(l => [l.querySelector('input').value, l.querySelector('.n').textContent, l.querySelector('input').checked])"
+        ".legend label:not(.legend-all-check)",
+        "labels => labels.map(l => [l.querySelector('input').value, l.querySelector('.n').textContent, l.querySelector('input').checked])",
     )
     # 実行
     page.click('.legend label:has(input[value="logs"])')
@@ -68,9 +69,12 @@ def test_kind_toggles(write_sample_preview: WriteSamplePreview, open_preview: Op
     assert [row[0] for row in toggles] == KIND_VALUES
     assert page.is_checked('.legend input[value="logs"]') is False
     # 非表示の種類は、見た目も変わる（種類の色の点が薄くなる）
-    assert page.evaluate(
-        "getComputedStyle(document.querySelector('.legend label:has(input[value=\"logs\"]) .kdot')).opacity"
-    ) == "0.35"
+    assert (
+        page.evaluate(
+            "getComputedStyle(document.querySelector('.legend label:has(input[value=\"logs\"]) .kdot')).opacity"
+        )
+        == "0.35"
+    )
     assert page.is_checked('.legend input[value="decisions"]') is True
 
 
@@ -79,9 +83,9 @@ def test_open_item_from_hash(
 ) -> None:
     """ハッシュの id で項目を選ぶと、詳細パネルを開いたままキャンバスを保つ（正常系）。"""
     # 準備
-    path = write_sample_preview()
+    url = write_sample_preview()
     # 実行
-    page = open_preview(path, "#tab=graph&id=D-2")
+    page = open_preview(url, "#tab=graph&id=D-2")
     page.wait_for_selector("aside.panel.open")
     # 検証
     assert page.inner_text("aside.panel .d-title") == "D-2の題"
@@ -111,8 +115,8 @@ def test_kind_toggle_all_box(
 ) -> None:
     """項目の種類の右端の箱を押すと、全ての種類を出し・隠し、各種類のチェックをそろえる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=graph")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     initial = _toggle_all_box(page)
     # 実行・検証（チェックのとき: 全て隠す）
@@ -152,8 +156,8 @@ def test_no_shown_kind_note(
 ) -> None:
     """全ての種類を隠すと、どの幅でも枠の中央に空の旨を出す。1 つでも出すと消す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=graph")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     shown_before = page.is_visible("p.map-empty")
     # 実行（全て隠す）
@@ -179,8 +183,8 @@ def test_kind_chip_style(
 ) -> None:
     """項目の種類のチップは、枠と表示中・非表示の見た目を状態の印にそろえ、非表示は点線の枠にして打ち消し線は付けない（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=graph")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     page.click('.legend label:has(input[value="logs"])')
     # 実行

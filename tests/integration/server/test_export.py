@@ -13,9 +13,9 @@ from typing import Any
 
 import yaml
 
-from .fixture_types import MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
 
-# このファイルから見たリポジトリの直下（tests/integration/scripts の 3 つ上）
+# このファイルから見たリポジトリの直下（tests/integration/server の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
 TEMPLATE_PATH = (
     Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
@@ -81,12 +81,12 @@ def _template_versions() -> dict[str, str]:
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     tmp_path: Path,
     valid_settings: dict[str, Any],
 ) -> None:
-    """記録・画面・描画のライブラリ・ライセンスの表示を中に持つ 1 枚の HTML を --out へ書き出す（正常系）。"""
+    """記録・画面・描画のライブラリ・ライセンスの表示を中に持つ 1 枚の HTML を `out` へ書き出す（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1"),
@@ -98,14 +98,13 @@ def test_normal(
         make_item("L-1"),
         bodies={"A-1.md": BODY_WITH_SCRIPT_TAG},
     )
-    assert run_mindmap("build", "--workspace", str(root)).returncode == 0
     before = snapshot_tree(root)
     out = tmp_path / "配る.html"
     # 実行
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout) == {"path": str(out)}
+    assert result.is_error is False, result.text
+    assert result.data == {"path": str(out)}
     html = out.read_text(encoding="utf-8")
     data = json.loads(_read_element(html, DATA_ELEMENT_OPEN))
     assert data["settings"] == valid_settings
@@ -133,30 +132,32 @@ def test_normal(
         assert f"License: {license_name}" in licenses
     # elkjs は、ソースコードの入手先（リポジトリと版のタグの URL）を持つ
     assert f"{ELKJS_REPOSITORY}/tree/{versions['elkjs']}" in licenses
-    # build の preview.html は書き換えない
+    # ワークスペースは書き換えない
     assert snapshot_tree(root) == before
 
 
-def test_error_when_out_is_preview(
+def test_error_when_out_not_html(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
+    tmp_path: Path,
 ) -> None:
-    """ワークスペースの preview.html を書き出す先にすると、何も書かずに終わる（異常系）。"""
+    """書き出す先が .html で終わらないと、何も書かずに終わる（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    assert run_mindmap("build", "--workspace", str(root)).returncode == 0
     before = snapshot_tree(root)
+    out = tmp_path / "配る.txt"
     # 実行
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(root / "preview.html"))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode == 2
-    assert "--out" in result.stderr
+    assert result.is_error is True
+    assert "out" in result.text
+    assert not out.exists()
     assert snapshot_tree(root) == before
 
 
-def test_error_when_workspace_not_found(tmp_path: Path, run_mindmap: RunMindmap) -> None:
+def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """mindmap.yaml が無いフォルダを指すと何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
@@ -165,81 +166,77 @@ def test_error_when_workspace_not_found(tmp_path: Path, run_mindmap: RunMindmap)
     out_dir.mkdir()
     out = out_dir / "配る.html"
     # 実行
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode == 1
-    assert str(root) in result.stderr
+    assert result.is_error is True
+    assert str(root) in result.text
     assert not out.exists()
 
 
 def test_error_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     tmp_path: Path,
 ) -> None:
-    """手で崩した YAML があると、前に書き出した --out のファイルを残して終わる（異常系）。"""
+    """手で崩した YAML があると、前に書き出した `out` のファイルを残して終わる（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     out = tmp_path / "配る.html"
-    assert run_mindmap("export", "--workspace", str(root), "--out", str(out)).returncode == 0
+    assert call_tool("export", workspace=str(root), out=str(out)).is_error is False
     before = out.read_bytes()
     (root / "decisions.yaml").write_text(
         yaml.safe_dump({"items": [make_item("D-1", status="完了")]}, allow_unicode=True),
         encoding="utf-8",
     )
     # 実行
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode == 1
-    assert "decisions.yaml: items[0].status:" in result.stderr
+    assert result.is_error is True
+    assert "decisions.yaml: items[0].status:" in result.text
     assert out.read_bytes() == before
 
 
 def test_error_when_out_dir_missing(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     tmp_path: Path,
 ) -> None:
-    """--out の親のフォルダが無いと、フォルダを作らずに終わる（異常系）。"""
+    """`out` の親のフォルダが無いと、フォルダを作らずに終わる（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     out = tmp_path / "無い" / "配る.html"
     # 実行
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode == 1
-    assert result.stderr.startswith("エラー: ")
-    assert str(out) in result.stderr
-    assert "Traceback" not in result.stderr
+    assert result.is_error is True
+    assert result.text.startswith("エラー: ")
+    assert str(out) in result.text
+    assert "Traceback" not in result.text
     assert not (tmp_path / "無い").exists()
 
 
 def test_error_when_download_fails(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
+    start_server: StartServer,
     tmp_path: Path,
 ) -> None:
     """jsDelivr に届かないと、何も書かずに終わる（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     out = tmp_path / "配る.html"
-    assert run_mindmap("export", "--workspace", str(root), "--out", str(out)).returncode == 0
+    assert call_tool("export", workspace=str(root), out=str(out)).is_error is False
     before = out.read_bytes()
+    # 届かない宛先のプロキシを通すため、環境変数を足したサーバーを立てる
+    offline_server = start_server(extra_env=UNREACHABLE_PROXY_ENV)
     # 実行
-    result = run_mindmap(
-        "export",
-        "--workspace",
-        str(root),
-        "--out",
-        str(out),
-        extra_env=UNREACHABLE_PROXY_ENV,
-    )
+    result = offline_server.call("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode == 1
-    assert result.stderr.startswith("エラー: ")
-    assert "https://cdn.jsdelivr.net/" in result.stderr
-    assert "Traceback" not in result.stderr
+    assert result.is_error is True
+    assert result.text.startswith("エラー: ")
+    assert "https://cdn.jsdelivr.net/" in result.text
+    assert "Traceback" not in result.text
     assert out.read_bytes() == before

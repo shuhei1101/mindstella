@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from .fixture_types import MakeItem, MakeWorkspace, RunMindmap
+from .fixture_types import CallTool, MakeItem, MakeWorkspace
 
 
-def test_normal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, run_mindmap: RunMindmap
-) -> None:
+def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
     """要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補を分けて返す（正常系）。"""
     # 準備
     root = make_workspace(
@@ -23,10 +20,10 @@ def test_normal(
         make_item("D-6", title="予算待ち", status="保留", reason="予算が決まったら"),
     )
     # 実行
-    result = run_mindmap("status", "--workspace", str(root))
+    result = call_tool("status", workspace=str(root))
     # 検証
-    assert result.returncode == 0
-    payload = json.loads(result.stdout)
+    assert result.is_error is False
+    payload = result.data
     assert payload["needs_review"] == [{"id": "D-1", "title": "見直しの問い"}]
     assert payload["in_progress"] == [{"id": "T-1", "title": "進めている作業"}]
     assert payload["resumable"] == [{"id": "D-2", "title": "再開できる保留"}]
@@ -40,13 +37,13 @@ def test_normal(
     assert payload["next"][0]["id"] == "D-5"
 
 
-def test_error_when_workspace_not_found(tmp_path: Path, run_mindmap: RunMindmap) -> None:
+def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """mindmap.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
     # 実行
-    result = run_mindmap("status", "--workspace", str(root))
+    result = call_tool("status", workspace=str(root))
     # 検証
-    assert result.returncode == 1
-    assert str(root) in result.stderr
+    assert result.is_error is True
+    assert str(root) in result.text

@@ -32,9 +32,9 @@ def _panel_title(page: Page) -> str:
 def test_content(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """項目の種類・ID・状態・タイトル・案・本文（見出しと図）を出す（正常系）。"""
     # 準備
-    path = write_sample_preview()
+    url = write_sample_preview()
     # 実行
-    page = open_preview(path, "#tab=decisions&view=table&id=D-3")
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     assert page.inner_text("aside.panel .panel-kind") == "検討事項 D-3"
@@ -53,19 +53,19 @@ def test_content(write_sample_preview: WriteSamplePreview, open_preview: OpenPre
     assert page.locator("aside.panel .mermaid svg").count() == 1
 
 
-def test_related_items(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
+def test_related_items(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """前提・後続の項目・関連タスクを出し、押すとその項目へ移る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     # 実行
     sections = page.eval_on_selector_all(
         "aside.panel .d-sec h3", "hs => hs.map(h => h.textContent)"
     )
     page.click("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink")
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'"
+    )
     # 検証
     assert sections == ["前提", "後続の項目", "関連タスク"]
     assert "id=D-1" in page.evaluate("location.hash")
@@ -76,17 +76,19 @@ def test_referenced_by(
 ) -> None:
     """関連で指している項目から、参照元の節で指されている項目を開ける（正常系）。"""
     # 準備
-    path = write_preview(
+    url = write_preview(
         make_item("D-1", status="決定済み"),
         make_item("D-2", status="決定済み", related=["D-1"]),
     )
-    page = open_preview(path, "#tab=decisions&view=table&id=D-1")
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     # 実行
     sections = page.eval_on_selector_all(
         "aside.panel .d-sec h3", "hs => hs.map(h => h.textContent)"
     )
     page.click("aside.panel .d-sec:has(h3:text-is('参照元')) button.idlink")
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'"
+    )
     # 検証
     assert "参照元" in sections
     assert "id=D-2" in page.evaluate("location.hash")
@@ -97,8 +99,8 @@ def test_back_and_forward(
 ) -> None:
     """パネルの中で移った項目を、戻る・進むで行き来する（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     back = 'aside.panel button[data-act="back"]'
     forward = 'aside.panel button[data-act="forward"]'
     assert page.is_disabled(back)
@@ -106,23 +108,27 @@ def test_back_and_forward(
     assert page.get_attribute(back, "aria-label") == "前の項目へ戻る"
     assert page.get_attribute(forward, "aria-label") == "次の項目へ進む"
     page.click("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink")
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'"
+    )
     # 実行・検証
     assert page.is_enabled(back)
     page.click(back)
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'"
+    )
     assert page.is_enabled(forward)
     page.click(forward)
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'"
+    )
 
 
-def test_selected_row(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
+def test_selected_row(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """開いている項目の行に「選択中」の印を付け、閉じると外す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     # 実行・検証
     selected = page.eval_on_selector_all(
         "main tr[data-id].selected", "rows => rows.map(r => r.dataset.id)"
@@ -135,8 +141,8 @@ def test_selected_row(
 def test_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """閉じるボタンと Esc でパネルを閉じ、ハッシュから id を外す（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     # 実行・検証
     page.click('aside.panel button[data-act="close"]')
     page.wait_for_function("!document.querySelector('aside.panel.open')")
@@ -153,8 +159,8 @@ def test_side_by_side_when_wide(
 ) -> None:
     """幅が広いと本文を寄せて並べる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
     before = page.evaluate("document.querySelector('main#main').getBoundingClientRect().width")
     # 実行
     page.click('table.grid button.row-open[data-id="D-1"]')
@@ -170,8 +176,8 @@ def test_overlay_when_narrow(
 ) -> None:
     """幅が狭いと、パネルを別画面として積み、一覧へ戻る操作で戻る（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
     page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
     history_length = page.evaluate("history.length")
     # 実行
@@ -179,7 +185,9 @@ def test_overlay_when_narrow(
     page.wait_for_selector("aside.panel.open")
     # 検証
     assert page.evaluate("history.length") == history_length + 1
-    panel_width = page.evaluate("document.querySelector('aside.panel').getBoundingClientRect().width")
+    panel_width = page.evaluate(
+        "document.querySelector('aside.panel').getBoundingClientRect().width"
+    )
     assert panel_width == pytest.approx(NARROW_WIDTH, abs=1)
     page.click("aside.panel button.panel-back")
     page.wait_for_function("!document.querySelector('aside.panel.open')")
@@ -189,13 +197,15 @@ def test_overlay_when_narrow(
 def test_diagram_raw(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """図の Raw で、図と mermaid の原文を切り替える（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-3")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
     page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 実行
     page.click('aside.panel button[data-act="diagram-raw"]')
     # 検証
-    assert page.get_attribute('aside.panel button[data-act="diagram-raw"]', "aria-pressed") == "true"
+    assert (
+        page.get_attribute('aside.panel button[data-act="diagram-raw"]', "aria-pressed") == "true"
+    )
     assert page.is_visible("aside.panel pre.dg-raw")
     assert not page.is_visible("aside.panel .mermaid")
     assert "flowchart LR" in page.inner_text("aside.panel pre.dg-raw")
@@ -208,8 +218,8 @@ def test_content_transition(
 ) -> None:
     """本文の寄せは動かさず、パネルだけが transform ですべり込む（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector("aside.panel.open")
     # 実行
     content = animated_properties(page, "main#main")
@@ -224,8 +234,8 @@ def test_selected_row_hover(
 ) -> None:
     """表で選んだ行は、ホバー中も選んだ行の色のままで、ほかの行はホバーで色が変わる（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector("aside.panel.open")
     pin_id_column(page)
     selected_row = 'table.grid tbody tr[data-id="D-2"]'
@@ -252,10 +262,28 @@ def test_id_button_size(
 ) -> None:
     """関係する項目（前提・後続の項目・関連タスク）の ID のボタンは、見えている枠が縦横 24px 以上である（正常系）。"""
     # 準備
-    path = write_sample_preview()
-    page = open_preview(path, "#tab=decisions&view=table&id=D-2")
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     # 実行
     sizes = page.eval_on_selector_all("aside.panel .d-sec button.idlink", ID_BUTTON_SIZE_JS)
     # 検証
     assert sizes["count"] > 0
     assert sizes["smallest"] >= ID_BUTTON_MIN_SIZE_PX
+
+
+def test_send_form(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """サーバーの配信で開くと、回答・意見の送信をパネルの下端に出し、その上の本文だけをスクロールする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel.open form.send")
+    # 検証
+    assert page.get_attribute("aside.panel form.send", "data-id") == "D-3"
+    assert page.inner_text("aside.panel form.send label.send-label") == "D-3 への回答・意見"
+    panel_box = page.locator("aside.panel").bounding_box()
+    form_box = page.locator("aside.panel form.send").bounding_box()
+    assert panel_box is not None
+    assert form_box is not None
+    # 送信の入力は、パネルの下端に留まる
+    assert abs((panel_box["y"] + panel_box["height"]) - (form_box["y"] + form_box["height"])) <= 2

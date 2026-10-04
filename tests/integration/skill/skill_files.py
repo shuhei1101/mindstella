@@ -40,14 +40,40 @@ PLAYBOOK_NAMES = ["システム開発.md", "壁打ち.md", "調査.md", "資料�
 # ゴールの候補の既定の行に付く印
 DEFAULT_MARK = "（既定）"
 
-# スクリプトの起動の形（この形のまま起動したときだけ allowed-tools に当たる）
-LAUNCH_PREFIX = "python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py"
+# MCP サーバーのツールの名前（インターフェース定義『MCP サーバーの起動』）
+SERVER_TOOL_NAMES = [
+    "init",
+    "add",
+    "update",
+    "adopt",
+    "status",
+    "next",
+    "impact",
+    "find",
+    "show",
+    "attrs",
+    "check",
+    "goal",
+    "migrate",
+    "clear_release",
+    "export",
+    "preview_url",
+    "submissions",
+    "take_submission",
+]
+
+# Claude Code の中のツールの名前の頭（`mcp__{サーバーの名前}__{ツール}`）
+MCP_TOOL_PREFIX = "mcp__mindstella__"
+
+# 本文のツールの表の行（行の頭の `ツール名` を取る）
+TOOL_ROW_PATTERN = re.compile(r"^\| `([a-z_]+)`", re.MULTILINE)
+
+# 前の版の起動・書き出しを指す言葉
+OLD_MODE_PATTERN = re.compile(r"mindmap\.py|check-env|preview\.html|\bbuild\b")
+
 
 # 合わない本文を示すときに出す書き出しの文字数
 LEAD_CHARS = 40
-
-# 全てのスキルの allowed-tools に入れる、スクリプトの起動だけの Bash の規則
-BASH_RULE = f"Bash({LAUNCH_PREFIX}:*)"
 
 # 本文のプラグインの中のパス
 PLUGIN_PATH_PATTERN = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s`）)、。:]+)")
@@ -91,11 +117,29 @@ def missing_plugin_paths(texts: list[str]) -> list[str]:
     return sorted(path for path in paths if "{" not in path and not (PLUGIN_DIR / path).exists())
 
 
-def launches_not_in_form(texts: list[str]) -> list[str]:
-    """mindmap.py を指す箇所が、決まった起動の形の数と合わない本文の書き出しを返す。"""
+def tools_listed_in(texts: list[str]) -> list[str]:
+    """本文のツールの表の行の頭にあるツールの名前を、重ならないように並びのまま返す。"""
+    found: list[str] = []
+    for text in texts:
+        for name in TOOL_ROW_PATTERN.findall(text):
+            if name not in found:
+                found.append(name)
+    return found
+
+
+def allowed_mcp_tools(front_matter: dict[str, Any]) -> list[str]:
+    """front matter の allowed-tools にある mindstella のツールを、頭を落とした名前で並びのまま返す。"""
+    entries = [entry.strip() for entry in str(front_matter["allowed-tools"]).split(",")]
     return [
-        text[:LEAD_CHARS] for text in texts if text.count("mindmap.py") != text.count(LAUNCH_PREFIX)
+        entry.removeprefix(MCP_TOOL_PREFIX)
+        for entry in entries
+        if entry.startswith(MCP_TOOL_PREFIX)
     ]
+
+
+def mentions_old_mode(texts: list[str]) -> list[str]:
+    """前の版のスクリプトの起動・書き出しを指す箇所を含む本文の書き出しを返す。"""
+    return [text[:LEAD_CHARS] for text in texts if OLD_MODE_PATTERN.search(text)]
 
 
 def playbook_names() -> list[str]:

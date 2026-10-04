@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 from workspace_fixtures import REPO_ROOT
 
-from .fixture_types import LockDirs, MakeWorkspace, RunMindmap, SnapshotTree
+from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
 
 # 作られる 7 種類の YAML のファイル名
 KIND_YAML_FILES = (
@@ -31,19 +29,14 @@ def _read_kind_yamls(root: Path) -> dict[str, Any]:
     }
 
 
-def _stdin(settings: dict[str, Any]) -> str:
-    """設定を標準入力に渡す JSON の文字列にする。"""
-    return json.dumps(settings, ensure_ascii=False)
-
-
-def test_normal(tmp_path: Path, run_mindmap: RunMindmap, valid_settings: dict[str, Any]) -> None:
+def test_normal(tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, Any]) -> None:
     """設定を渡して空のワークスペースを作る（正常系）。"""
     # 準備
     root = tmp_path / "new-workspace"
     # 実行
-    result = run_mindmap("init", "--workspace", str(root), stdin=_stdin(valid_settings))
+    result = call_tool("init", workspace=str(root), settings=valid_settings)
     # 検証
-    assert result.returncode == 0
+    assert result.is_error is False
     assert yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8")) == valid_settings
     assert _read_kind_yamls(root) == {
         "decisions.yaml": {"items": []},
@@ -61,7 +54,7 @@ def test_normal(tmp_path: Path, run_mindmap: RunMindmap, valid_settings: dict[st
     assert version_file.splitlines()[0] == plugin_version.splitlines()[0]
     assert (root / "docs").is_dir()
     assert (root / "release").is_dir()
-    payload = json.loads(result.stdout)
+    payload = result.data
     assert payload["workspace"] == str(root)
     assert set(payload["files"]) == {
         "mindmap.yaml",
@@ -74,7 +67,7 @@ def test_normal(tmp_path: Path, run_mindmap: RunMindmap, valid_settings: dict[st
 
 def test_error_when_workspace_exists(
     make_workspace: MakeWorkspace,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     valid_settings: dict[str, Any],
 ) -> None:
@@ -83,32 +76,32 @@ def test_error_when_workspace_exists(
     root = make_workspace()
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("init", "--workspace", str(root), stdin=_stdin(valid_settings))
+    result = call_tool("init", workspace=str(root), settings=valid_settings)
     # 検証
-    assert result.returncode == 1
-    assert str(root) in result.stderr
+    assert result.is_error is True
+    assert str(root) in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_settings_mismatch(
-    tmp_path: Path, run_mindmap: RunMindmap, valid_settings: dict[str, Any]
+    tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, Any]
 ) -> None:
     """フェーズが無い設定では作らず、フォルダも作らない（異常系）。"""
     # 準備
     root = tmp_path / "new-workspace"
     del valid_settings["phases"]
     # 実行
-    result = run_mindmap("init", "--workspace", str(root), stdin=_stdin(valid_settings))
+    result = call_tool("init", workspace=str(root), settings=valid_settings)
     # 検証
-    assert result.returncode == 1
-    assert "mindmap.yaml" in result.stderr
-    assert "phases" in result.stderr
+    assert result.is_error is True
+    assert "mindmap.yaml" in result.text
+    assert "phases" in result.text
     assert not root.exists()
 
 
 def test_error_when_write_fails(
     tmp_path: Path,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     lock_dirs: LockDirs,
     valid_settings: dict[str, Any],
 ) -> None:
@@ -119,9 +112,9 @@ def test_error_when_write_fails(
     lock_dirs(locked)
     root = locked / "new-workspace"
     # 実行
-    result = run_mindmap("init", "--workspace", str(root), stdin=_stdin(valid_settings))
+    result = call_tool("init", workspace=str(root), settings=valid_settings)
     # 検証
-    assert result.returncode == 1
-    assert result.stderr.startswith("エラー: ")
-    assert "Traceback" not in result.stderr
+    assert result.is_error is True
+    assert result.text.startswith("エラー: ")
+    assert "Traceback" not in result.text
     assert not root.exists()

@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from .fixture_types import (
+    CallTool,
     LockDirs,
     MakeItem,
     MakeLegacyWorkspace,
     MakeWorkspace,
-    RunMindmap,
     SnapshotTree,
 )
 
@@ -23,20 +22,16 @@ def _read_decisions(root: Path) -> list[dict[str, Any]]:
     return yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"]
 
 
-def test_normal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, run_mindmap: RunMindmap
-) -> None:
+def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
     """検討事項の答えと状態を直し、不要になったキーを消す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", lead="キーを種類ごとに分けるか", weight="大"))
-    stdin = json.dumps(
-        {"answer": "種類ごとに分ける", "status": "決定済み", "weight": None}, ensure_ascii=False
-    )
+    item = {"answer": "種類ごとに分ける", "status": "決定済み", "weight": None}
     # 実行
-    result = run_mindmap("update", "D-1", "--workspace", str(root), stdin=stdin)
+    result = call_tool("update", workspace=str(root), id="D-1", item=item)
     # 検証
-    assert result.returncode == 0
-    payload = json.loads(result.stdout)
+    assert result.is_error is False
+    payload = result.data
     assert payload["id"] == "D-1"
     assert payload["file"] == "decisions.yaml"
     assert payload["changed"] == ["answer", "status", "weight"]
@@ -53,22 +48,22 @@ def test_normal(
     }
 
 
-def test_error_when_workspace_not_found(tmp_path: Path, run_mindmap: RunMindmap) -> None:
+def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
     # 実行
-    result = run_mindmap("update", "D-1", "--workspace", str(root), stdin='{"answer": "a"}')
+    result = call_tool("update", workspace=str(root), id="D-1", item={"answer": "a"})
     # 検証
-    assert result.returncode == 1
-    assert str(root) in result.stderr
+    assert result.is_error is True
+    assert str(root) in result.text
 
 
 def test_error_when_id_not_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """存在しない ID は直さず、渡した ID を返す（異常系）。"""
@@ -76,36 +71,36 @@ def test_error_when_id_not_found(
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("update", "D-9", "--workspace", str(root), stdin='{"answer": "a"}')
+    result = call_tool("update", workspace=str(root), id="D-9", item={"answer": "a"})
     # 検証
-    assert result.returncode == 1
-    assert "D-9" in result.stderr
+    assert result.is_error is True
+    assert "D-9" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """スクリプトが付けるキー created を渡すと直さない（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
-    stdin = '{"created": "2000-01-01T00:00:00+00:00"}'
+    item = {"created": "2000-01-01T00:00:00+00:00"}
     # 実行
-    result = run_mindmap("update", "D-1", "--workspace", str(root), stdin=stdin)
+    result = call_tool("update", workspace=str(root), id="D-1", item=item)
     # 検証
-    assert result.returncode == 1
-    assert "created" in result.stderr
+    assert result.is_error is True
+    assert "created" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_write_fails(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     lock_dirs: LockDirs,
 ) -> None:
@@ -115,18 +110,18 @@ def test_error_when_write_fails(
     before = snapshot_tree(root)
     lock_dirs(root)
     # 実行
-    result = run_mindmap("update", "D-1", "--workspace", str(root), stdin='{"answer": "a"}')
+    result = call_tool("update", workspace=str(root), id="D-1", item={"answer": "a"})
     # 検証
-    assert result.returncode == 1
-    assert result.stderr.startswith("エラー: ")
-    assert "Traceback" not in result.stderr
+    assert result.is_error is True
+    assert result.text.startswith("エラー: ")
+    assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_legacy_format(
     make_item: MakeItem,
     make_legacy_workspace: MakeLegacyWorkspace,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """資料の done が残るワークスペースでは何も書かず、/mindstella:upgrade を案内して終わる（異常系）。"""
@@ -134,12 +129,10 @@ def test_error_when_legacy_format(
     root = make_legacy_workspace(make_item("D-1"), legacy_docs={"A-1": True})
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap(
-        "update", "D-1", "--workspace", str(root), stdin='{"answer": "種類ごとに分ける"}'
-    )
+    result = call_tool("update", workspace=str(root), id="D-1", item={"answer": "種類ごとに分ける"})
     # 検証
-    assert result.returncode == 1
-    lines = result.stderr.splitlines()
+    assert result.is_error is True
+    lines = result.text.splitlines()
     assert any(line.startswith("docs.yaml: items[0]") for line in lines)
     assert lines[-1] == "ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"
     assert snapshot_tree(root) == before

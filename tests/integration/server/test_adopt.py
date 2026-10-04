@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 
-from .fixture_types import LockDirs, MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 
 
 @pytest.fixture
@@ -24,7 +23,7 @@ def two_options() -> list[dict[str, Any]]:
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     two_options: list[dict[str, Any]],
 ) -> None:
     """案 A から案 B へ採用を切り替える（正常系）。"""
@@ -33,10 +32,10 @@ def test_normal(
         make_item("D-1", status="決定済み", answer="案 A に決めた", options=two_options)
     )
     # 実行
-    result = run_mindmap("adopt", "D-1", "B", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証
-    assert result.returncode == 0
-    assert json.loads(result.stdout) == {"id": "D-1", "adopted": "B", "previous": "A"}
+    assert result.is_error is False
+    assert result.data == {"id": "D-1", "adopted": "B", "previous": "A"}
     adopted = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"][0]
     assert adopted["options"] == [
         {"key": "A", "content": "種類ごとに分ける", "adopted": False},
@@ -46,22 +45,22 @@ def test_normal(
     assert adopted["answer"] == "案 A に決めた"
 
 
-def test_error_when_workspace_not_found(tmp_path: Path, run_mindmap: RunMindmap) -> None:
+def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
     # 実行
-    result = run_mindmap("adopt", "D-1", "B", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証
-    assert result.returncode == 1
-    assert str(root) in result.stderr
+    assert result.is_error is True
+    assert str(root) in result.text
 
 
 def test_error_when_id_not_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """存在しない検討事項は切り替えない（異常系）。"""
@@ -69,17 +68,17 @@ def test_error_when_id_not_found(
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("adopt", "D-9", "A", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-9", key="A")
     # 検証
-    assert result.returncode == 1
-    assert "D-9" in result.stderr
+    assert result.is_error is True
+    assert "D-9" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_option_not_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     two_options: list[dict[str, Any]],
 ) -> None:
@@ -88,19 +87,19 @@ def test_error_when_option_not_found(
     root = make_workspace(make_item("D-1", options=two_options))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("adopt", "D-1", "Z", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="Z")
     # 検証
-    assert result.returncode == 1
-    assert "Z" in result.stderr
-    assert "A" in result.stderr
-    assert "B" in result.stderr
+    assert result.is_error is True
+    assert "Z" in result.text
+    assert "A" in result.text
+    assert "B" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     two_options: list[dict[str, Any]],
 ) -> None:
@@ -109,17 +108,17 @@ def test_error_when_schema_mismatch(
     root = make_workspace(make_item("D-1", options=two_options), make_item("D-2", status="完了"))
     before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("adopt", "D-1", "B", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証
-    assert result.returncode == 1
-    assert "decisions.yaml: items[1].status:" in result.stderr
+    assert result.is_error is True
+    assert "decisions.yaml: items[1].status:" in result.text
     assert snapshot_tree(root) == before
 
 
 def test_error_when_write_fails(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     lock_dirs: LockDirs,
     two_options: list[dict[str, Any]],
@@ -130,9 +129,9 @@ def test_error_when_write_fails(
     before = snapshot_tree(root)
     lock_dirs(root)
     # 実行
-    result = run_mindmap("adopt", "D-1", "B", "--workspace", str(root))
+    result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証
-    assert result.returncode == 1
-    assert result.stderr.startswith("エラー: ")
-    assert "Traceback" not in result.stderr
+    assert result.is_error is True
+    assert result.text.startswith("エラー: ")
+    assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
