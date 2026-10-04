@@ -205,6 +205,9 @@ status_codes:
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
     notes: 何も書かない
+  - code: '422'
+    condition: ワークスペースの YAML（`submissions.yaml` を含む）がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
   - code: '500'
     condition: '`submissions.yaml` を書けない（権限が無い など）'
     notes: '`detail` に書けなかったパスと理由。`submissions.yaml` は前のまま'

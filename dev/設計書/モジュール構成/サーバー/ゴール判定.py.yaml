@@ -1,5 +1,5 @@
-title: "スクリプト / ゴール判定"
-lead: ゴールのフェーズまでの検討事項とゴールの納品物から、ゴールに届いたかを判定する `goal` の処理。判定は依存と影響（`graph.py`）、出力の形はコマンドの処理（`commands.py`）に置く。
+title: "サーバー / ゴール判定"
+lead: ゴールのフェーズまでの検討事項とゴールの納品物から、ゴールに届いたかを判定する `goal` の処理。判定は依存と影響（`graph.py`）、出力の形はツールの処理（`commands.py`）に置く。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
@@ -85,10 +85,10 @@ functions:
         type: Path
         required: true
         passing: positional
-        description: '`--workspace`'
+        description: '`workspace`（絶対パス）'
     returns:
-      type: tuple[dict[str, Any], int]
-      description: '`GoalReport` を `asdict` した辞書と 0（届いたかどうかによらず 0）'
+      type: dict[str, Any]
+      description: '`GoalReport` を `asdict` した辞書（届いたかどうかによらずツールのエラーにしない）'
     process: |-
       1. ワークスペースを読み、判定する（`load_workspace`、`judge_goal`）
       2. `asdict` して返す
@@ -101,7 +101,7 @@ functions:
         summary: 判定を出力の形にする
         condition: 未決定の D-1 だけを持つワークスペース
         mock: なし
-        expected: 0 を返し、`reached` が偽で、`goal_phase`・`phases`・`remaining_decisions`・`remaining_deliverables` のキーがある
+        expected: '`reached` が偽で、`goal_phase`・`phases`・`remaining_decisions`・`remaining_deliverables` のキーがある'
 notes:
   対応テストファイル: '`judge_goal` は `tests/unit/scripts/test_graph.py`、`run_goal` は `tests/unit/scripts/test_commands.py` に置く（単体テスト作成で置き、`test_files` に書く）'
 test_files:

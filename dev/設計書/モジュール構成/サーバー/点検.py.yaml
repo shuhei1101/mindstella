@@ -1,4 +1,4 @@
-title: "スクリプト / 点検"
+title: "サーバー / 点検"
 lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれを洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
 directory: |-
   ```
@@ -48,7 +48,8 @@ functions:
       2. ID の重複を拾う（`_check_duplicate_ids`）
       3. 参照切れを拾う（`_check_refs`）
       4. 本文のずれを拾う（`_check_bodies`）
-      5. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      5. 送信のスキーマ違反と参照切れを拾う（`_check_submissions`）
+      6. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -151,5 +152,42 @@ functions:
         condition: 'R-1 `body: R-1.md`（ファイル無し）・D-1 `body: D-1.md`（ファイルあり）・`docs/X-1.md`'
         mock: なし
         expected: '`missing_body`（R-1）と `orphan_body`（`docs/X-1.md`）の 2 件'
-test_files:
-  - tests/unit/scripts/test_checker.py
+  - name: _check_submissions
+    title: 送信の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: '`submissions.yaml` のスキーマ違反を `schema`、無い項目への `target` を `broken_ref` にする'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（ファイルが無ければ空）
+    process: |-
+      1. 送信を読む（送信の読み込み。`load_submissions`）
+         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `submissions.yaml`、`id` は `null`）にして返す
+      2. 送信ごとに `target` の項目が無ければ `broken_ref`（`id` は送信の ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
+    unit_tests:
+      - name: test_check_submissions
+        case: 正常
+        summary: 無い項目への送信を拾う
+        condition: D-1 と、S-1（D-8）・S-2（D-1）
+        mock: なし
+        expected: '`broken_ref`（`submissions.yaml`・S-1・`target`・`detail` に `D-8`）の 1 件だけ'
+      - name: test_check_submissions_when_invalid
+        case: 正常
+        summary: 崩れた送信のファイルは schema にする
+        condition: S-1 から `body` を消した `submissions.yaml`
+        mock: なし
+        expected: '`schema`（`file` が `submissions.yaml`）の問題が 1 件以上'
+      - name: test_check_submissions_when_missing
+        case: 正常
+        summary: 送信のファイルが無ければ問題 0 件
+        condition: '`submissions.yaml` が無いワークスペース'
+        mock: なし
+        expected: 空の並び

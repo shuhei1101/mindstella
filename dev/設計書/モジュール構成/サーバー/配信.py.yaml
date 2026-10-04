@@ -1,0 +1,583 @@
+title: "サーバー / 配信"
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・書き換えの知らせを返し、回答・意見の送信を受け付ける。ビルド（雛形と記録）と送信と読み書きと検証に依存する。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・送信の受け付け
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class 配信の台帳
+        class 配信
+        class 要求の受け口
+        class ビルド
+        class 送信
+        配信の台帳 --> 配信 : ワークスペースごとに 1 つ
+        配信 --> 要求の受け口
+        要求の受け口 --> ビルド : 雛形・記録
+        要求の受け口 --> 送信 : POST /api/submissions
+      ```
+constants:
+  - name: LISTEN_HOST
+    title: 待ち受けのアドレス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    summary: 非機能要件の「待ち受けの範囲」。ポートは 0 で OS に選ばせる
+    value: '"127.0.0.1"'
+  - name: POLL_INTERVAL_SEC
+    title: 書き換えを見る間隔
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    summary: 書き換えの印を作り直す間隔（非機能要件の「画面への反映の時間」の内訳）
+    value: '0.25'
+  - name: KEEPALIVE_SEC
+    title: 保つための行の間隔
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    summary: '知らせが無いままこの秒数が過ぎたら `: keepalive` を送る（インターフェース定義『書き換えの知らせ』）'
+    value: '15'
+  - name: MAX_REQUEST_BYTES
+    title: 要求の本文の上限
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 回答・意見を送る
+    summary: 送信の要求の本文を読む上限。`Content-Length` がこれを超えたら読まずに 400（非機能要件の「送信の本文の長さ」の根拠）
+    value: '65536'
+classes:
+  - name: PreviewRegistry
+    title: 配信の台帳
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    role: 長期保持のランタイム状態
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める
+    kind: クラス
+    properties:
+      - name: _servers
+        type: dict[Path, PreviewServer]
+        access: 内部 (_)
+        description: ワークスペース → 立てた配信
+      - name: _write_lock
+        type: threading.Lock
+        access: 内部 (_)
+        description: ツールと共有するプロセスの中の書き換えの鍵（送信の受け付けが取る）
+      - name: _guard
+        type: threading.Lock
+        access: 内部 (_)
+        description: '`_servers` を触る間だけ取る鍵'
+    methods:
+      - name: start
+        title: 配信を立てる
+        kind: メソッド
+        summary: そのワークスペースの配信を立て、URL と今立てたかを返す。立っていればその URL を返す
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+        returns:
+          type: tuple[str, bool]
+          description: 配信の URL（`http://127.0.0.1:{ポート}/`）と、この呼び出しで立てたか
+        process: |-
+          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す
+          2. 無ければ配信を立てて（`start_preview_server`）`_servers` に入れ、URL と `True` を返す
+             - `[INFO]` 配信を立てた（ワークスペース、URL）
+        unit_tests:
+          - name: test_start
+            case: 正常
+            summary: 同じワークスペースは同じ URL、別なら別の URL
+            condition: 作成済みのワークスペース 2 つ。一つ目を 2 回、二つ目を 1 回 `start` する
+            mock: なし（本物の待ち受け。後で `stop_all`）
+            expected: 1 回目 `(url1, True)`、2 回目 `(url1, False)`、二つ目 `(url2, True)` で url1 と url2 のポートが違う。どちらも `http://127.0.0.1:` で始まる
+      - name: stop_all
+        title: 全ての配信を止める
+        kind: メソッド
+        summary: 立てた配信を全て止め、台帳を空にする
+        returns:
+          type: None
+          description: '-'
+        process: 1. `_guard` を取り、台帳の配信ごとに `PreviewServer.stop` を呼んで空にする
+        unit_tests:
+          - name: test_stop_all
+            case: 正常
+            summary: 止めた配信にはつながらない
+            condition: 1 つ立ててから `stop_all`
+            mock: なし
+            expected: その URL への `GET /` が `ConnectionRefusedError`
+  - name: PreviewServer
+    title: 配信
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    role: 長期保持のランタイム状態
+    summary: 1 つのワークスペースの待ち受けと、それを動かすスレッド。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    kind: クラス
+    properties:
+      - name: root
+        type: Path
+        description: 配っているワークスペース
+      - name: url
+        type: str
+        description: '`http://127.0.0.1:{ポート}/`'
+      - name: httpd
+        type: ThreadingHTTPServer
+        description: 待ち受け（`daemon_threads=True`）
+      - name: thread
+        type: threading.Thread
+        description: '`serve_forever` を動かすデーモンのスレッド'
+    methods:
+      - name: stop
+        title: 配信を止める
+        kind: メソッド
+        summary: 待ち受けを止めて閉じる
+        returns:
+          type: None
+          description: '-'
+        process: 1. `httpd.shutdown()` と `httpd.server_close()` を呼ぶ（つながっている書き換えの知らせは、書き込みが失敗して終わる）
+  - name: PreviewHandler
+    title: 要求の受け口
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    role: ライブラリが要求するクラス
+    summary: '`BaseHTTPRequestHandler` を継いで、パスごとに処理の関数へ振り分け、返ったステータスコード・ヘッダー・本文を書く。振り分けた先の処理は関数で書き、このクラスは要求と応答の読み書きだけを持つ'
+    kind: クラス
+    inherits: BaseHTTPRequestHandler
+    properties:
+      - name: context
+        type: ServeContext
+        description: ワークスペース・ポート・書き換えの鍵（`start_preview_server` が待ち受けに持たせ、`self.server.context` で引く）
+    methods:
+      - name: do_GET
+        title: GET の振り分け
+        kind: メソッド
+        summary: '`Host` を確かめ、`/`・`/api/records`・`/api/events` を処理の関数へ振り分ける'
+        returns:
+          type: None
+          description: '-'
+        process: |-
+          1. `Host` が合わなければ 403 を返す（`check_host`、`problem_response`）
+          2. パスで分ける（クエリとハッシュは見ない）
+             - `/` の場合、画面を返す（`index_response`）
+             - `/api/records` の場合、記録を返す（`records_response`）
+             - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
+             - それ以外は 404 を返す
+      - name: do_POST
+        title: POST の振り分け
+        kind: メソッド
+        summary: '`Host` を確かめ、`/api/submissions` を受け付けの関数へ渡す'
+        returns:
+          type: None
+          description: '-'
+        process: |-
+          1. `Host` が合わなければ 403 を返す
+          2. パスが `/api/submissions` でなければ 404 を返す
+          3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
+          4. 本文を読み、受け付ける（`submission_response`）
+      - name: log_message
+        title: 要求の記録
+        kind: メソッド
+        summary: 標準の要求の記録を `logging` の `DEBUG` に回す（標準エラーへの直接の書き込みをやめる）
+        returns:
+          type: None
+          description: '-'
+        process: 1. `[DEBUG]` 受けた要求（メソッド・パス・ステータス）
+data_models:
+  - name: ServeContext
+    title: 配信の文脈
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    role: DTO
+    summary: 要求の受け口が使う、配っているワークスペースと待ち受けの値。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: root
+        type: Path
+        description: 配っているワークスペース
+      - name: port
+        type: int
+        description: 待ち受けのポート
+      - name: write_lock
+        type: threading.Lock
+        description: プロセスの中の書き換えの鍵
+      - name: preview_dir
+        type: Path
+        default: PREVIEW_DIR
+        description: 雛形のフォルダ
+  - name: Response
+    title: 応答
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    role: DTO
+    summary: 処理の関数が返す、書く前の応答。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: status
+        type: int
+        description: ステータスコード
+      - name: content_type
+        type: str
+        description: '`Content-Type`'
+      - name: body
+        type: bytes
+        description: 本文
+functions:
+  - name: start_preview_server
+    title: 待ち受けの立ち上げ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: '`LISTEN_HOST` の空きポートで待ち受け、デーモンのスレッドで動かし始める'
+    side_effects: ソケットを開き、スレッドを立てる
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 配るワークスペース
+      - name: write_lock
+        type: threading.Lock
+        required: true
+        passing: keyword
+        description: プロセスの中の書き換えの鍵
+    returns:
+      type: PreviewServer
+      description: 立てた配信
+    process: |-
+      1. `ThreadingHTTPServer((LISTEN_HOST, 0), PreviewHandler)` を作り、`daemon_threads` を真にする
+         - `OSError` が起きた場合、`ServeFailedError` を送る
+      2. 割り当てられたポートで `ServeContext` を作り、待ち受けの `context` に持たせる
+      3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}/` の `PreviewServer` を返す
+    exceptions:
+      - name: ServeFailedError
+        condition: 待ち受けを立てられない（`OSError`）
+        message: 'プレビューの配信を立てられません: {理由}'
+    unit_tests:
+      - name: test_start_preview_server
+        case: 正常
+        summary: 127.0.0.1 だけで待ち受ける
+        condition: 作成済みのワークスペース
+        mock: なし（後で `stop`）
+        expected: '`httpd.server_address[0]` が `127.0.0.1`、ポートが 0 でない。`url` への `GET /` が 200'
+      - name: test_start_preview_server_when_bind_fails
+        case: 異常
+        summary: 待ち受けを立てられなければ ServeFailedError
+        condition: '`ThreadingHTTPServer` を `OSError` を送る関数に差し替える'
+        mock: '`ThreadingHTTPServer`（`serve` モジュールの参照を monkeypatch）'
+        expected: '`ServeFailedError`'
+        exception: 待ち受けを立てられない
+  - name: check_host
+    title: 接続先の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: '`Host` が `127.0.0.1:{ポート}` か `localhost:{ポート}` かを返す（別のサイトの名前をこの端末に向ける DNS の付け替えを防ぐ）'
+    args:
+      - name: host
+        type: str | None
+        required: true
+        passing: positional
+        description: '`Host` の値'
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 待ち受けのポート
+    returns:
+      type: bool
+      description: 合うか
+    process: 1. `host` が `127.0.0.1:{port}`・`localhost:{port}` のどちらかと等しいかを返す（英字の大小を区別しない。`None` は偽）
+    unit_tests:
+      - name: test_check_host
+        case: 正常
+        summary: 端末の中の名前と同じポートだけ通す
+        condition: '`parametrize`: `127.0.0.1:5000` / `LOCALHOST:5000` / `127.0.0.1:5001` / `attacker.example:5000` / `None`。`port=5000`'
+        mock: なし
+        expected: 真 / 真 / 偽 / 偽 / 偽
+  - name: check_origin
+    title: 送り元の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 回答・意見を送る
+    scope: public
+    summary: '`Origin` が無いか、配信の URL（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`）と同じかを返す'
+    args:
+      - name: origin
+        type: str | None
+        required: true
+        passing: positional
+        description: '`Origin` の値'
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 待ち受けのポート
+    returns:
+      type: bool
+      description: 合うか（無いときは真）
+    process: 1. `None` なら真、それ以外は 2 つの URL のどちらかと等しいかを返す
+    unit_tests:
+      - name: test_check_origin
+        case: 正常
+        summary: 無いか配信と同じ送り元だけ通す
+        condition: '`parametrize`: `None` / `http://127.0.0.1:5000` / `http://localhost:5000` / `https://attacker.example` / `http://127.0.0.1:5001`。`port=5000`'
+        mock: なし
+        expected: 真 / 真 / 真 / 偽 / 偽
+  - name: problem_response
+    title: 問題の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: RFC 9457 の `application/problem+json` の応答を作る
+    args:
+      - name: status
+        type: int
+        required: true
+        passing: positional
+        description: ステータスコード
+      - name: detail
+        type: str
+        required: true
+        passing: positional
+        description: 日本語の中身
+    returns:
+      type: Response
+      description: '本文が `{type: about:blank, title: {標準の理由の文言}, status, detail}`（`ensure_ascii=False`）の応答'
+    process: 1. `http.HTTPStatus(status).phrase` を `title` にして本文を作る
+    unit_tests:
+      - name: test_problem_response
+        case: 正常
+        summary: 問題の JSON を作る
+        condition: '`404` と `項目がありません: D-99`'
+        mock: なし
+        expected: '`content_type` が `application/problem+json; charset=utf-8`、本文の `status` が 404・`title` が `Not Found`・`detail` が渡した文字列'
+  - name: index_response
+    title: 画面の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: 雛形に CSS と JavaScript を差し込んだ画面を返す（記録は埋め込まない）
+    args:
+      - name: preview_dir
+        type: Path
+        required: true
+        passing: positional
+        description: 雛形のフォルダ
+    returns:
+      type: Response
+      description: 200・`text/html; charset=utf-8` の応答。雛形の誤りは 500
+    process: |-
+      1. 雛形を組み立てる（雛形の組み立て。`assemble_template`）
+         - `ValueError` の場合、500 を返す（`problem_response`）
+           - `[ERROR]` 同梱の雛形の誤り（例外のメッセージ）
+      2. 組み立てた HTML を UTF-8 にして返す（要求ごとに読み直し、控えない。プラグインを上げた後に古い画面を返さない）
+    unit_tests:
+      - name: test_index_response
+        case: 正常
+        summary: 差し込んだ雛形を返し、記録は空のまま
+        condition: 差し込み口と `DATA_ELEMENT` を持つ小さな雛形のフォルダ
+        mock: なし
+        expected: 200 で、本文に `DATA_ELEMENT` がそのままあり、`STYLE_FILES` の中身が入っている
+      - name: test_index_response_when_template_invalid
+        case: 正常
+        summary: 雛形の誤りは 500
+        condition: JavaScript に `</script>` を含む雛形のフォルダ
+        mock: なし
+        expected: 500 の問題の応答
+  - name: records_response
+    title: 記録の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: ワークスペースをその場で読んだ記録の JSON を返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 配っているワークスペース
+      - name: read
+        type: Callable[[Path], dict[str, Any]]
+        required: false
+        default: read_records
+        passing: injected
+        description: 記録を読む関数
+    returns:
+      type: Response
+      description: 200・`application/json; charset=utf-8` の応答。読めなければ 422
+    process: |-
+      1. 記録を読む（記録の読み出し。`read_records`）
+         - `SchemaMismatchError` の場合、`lines` を改行でつないだ `detail` の 422 を返す
+         - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
+      2. `ensure_ascii=False` の JSON を返す
+    unit_tests:
+      - name: test_records_response
+        case: 正常
+        summary: 記録を JSON で返す
+        condition: D-1 を持つワークスペース
+        mock: なし
+        expected: 200、本文を `json.loads` すると `decisions` に D-1
+      - name: test_records_response_when_schema_mismatch
+        case: 正常
+        summary: スキーマに合わなければ 422
+        condition: '`read` が `SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])` を送る'
+        mock: '`read`'
+        expected: 422、`detail` がその行
+      - name: test_records_response_when_workspace_removed
+        case: 正常
+        summary: mindmap.yaml が無くなったら 422
+        condition: '`read` が `WorkspaceNotFoundError` を送る'
+        mock: '`read`'
+        expected: '422'
+  - name: workspace_signature
+    title: 書き換えの印
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: 見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ文字列を返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 配っているワークスペース
+    returns:
+      type: str
+      description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
+    process: |-
+      1. `mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`docs/` の直下の `*.md` を名前の順に並べる
+      2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
+    unit_tests:
+      - name: test_workspace_signature
+        case: 正常
+        summary: 書き換え・足す・消すで印が変わる
+        condition: '作成済みのワークスペース。`parametrize`: `decisions.yaml` を書き換える / `docs/D-1.md` を足す / `submissions.yaml` を足す / `.mindstella.lock` を足す'
+        mock: なし
+        expected: 前の 3 つは印が変わり、`.mindstella.lock` だけは変わらない
+  - name: stream_events
+    title: 書き換えの知らせ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    scope: public
+    summary: 書き換えの印を `POLL_INTERVAL_SEC` ごとに作り直し、変わったら `changed` を、知らせが無いまま `KEEPALIVE_SEC` が過ぎたら保つための行を書き続ける
+    side_effects: '`write` で書き続ける'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 配っているワークスペース
+      - name: write
+        type: Callable[[bytes], None]
+        required: true
+        passing: positional
+        description: 書いて送り出す関数（`wfile.write` と `flush`）
+      - name: sleep
+        type: Callable[[float], None]
+        required: false
+        default: time.sleep
+        passing: injected
+        description: 待つ関数
+      - name: clock
+        type: Callable[[], float]
+        required: false
+        default: time.monotonic
+        passing: injected
+        description: 単調な時計
+      - name: signature
+        type: Callable[[Path], str]
+        required: false
+        default: workspace_signature
+        passing: injected
+        description: 書き換えの印を作る関数
+    returns:
+      type: None
+      description: '`write` が `BrokenPipeError`・`ConnectionResetError` を送ったら戻る'
+    process: |-
+      1. 今の印を控え、最後に書いた時刻を今にする
+      2. つながっている間、繰り返す
+         - `POLL_INTERVAL_SEC` 待ち、印を作り直す
+         - 印が前と違う場合、`event: changed` と `data: {印}` の知らせを書き、控えと時刻を更める
+         - そうでなく、最後に書いてから `KEEPALIVE_SEC` 以上経った場合、`: keepalive` を書く
+      3. `write` が `BrokenPipeError`・`ConnectionResetError` を送ったら戻る（画面が閉じた）
+    unit_tests:
+      - name: test_stream_events
+        case: 正常
+        summary: 印が変わったときだけ changed を書く
+        condition: '`signature` が `a` → `a` → `b` → `b` を返し、4 回目の `write` が `BrokenPipeError` を送る。`sleep` は待たない。`clock` は 0.25 ずつ進む'
+        mock: '`signature`・`sleep`・`clock`・`write`'
+        expected: '書いたものが `event: changed\ndata: b\n\n` の 1 つだけで、戻る'
+      - name: test_stream_events_when_idle
+        case: 正常
+        summary: 変わらないまま 15 秒経つと保つための行を書く
+        condition: '`signature` は常に `a`。`clock` は 1 回ごとに 5 秒進む。2 回目の `write` が `ConnectionResetError` を送る'
+        mock: '`signature`・`sleep`・`clock`・`write`'
+        expected: '1 回目に書いたものが `: keepalive\n\n` で、戻る'
+  - name: submission_response
+    title: 送信の受け付け
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 回答・意見を送る
+    scope: public
+    summary: 送り元と本文の形を確かめ、書き換えの鍵を取って送信を足し、結果の応答を返す
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: content_type
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Content-Type`'
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+      - name: body
+        type: bytes
+        required: true
+        passing: keyword
+        description: 要求の本文（`MAX_REQUEST_BYTES` 以下）
+      - name: add
+        type: Callable[..., Submission]
+        required: false
+        default: add_submission
+        passing: injected
+        description: 送信を足す関数
+    returns:
+      type: Response
+      description: 201 の `{id, sent}`、または問題の応答
+    process: |-
+      1. `Content-Type` のメディアタイプが `application/json` でなければ 415 を返す
+      2. `Origin` が合わなければ 403 を返す（`check_origin`）
+      3. 本文を UTF-8 の JSON として読む
+         - 読めないかオブジェクトでなければ 400 を返す
+      4. 書き換えの鍵を取って（`workspace_lock`）送信を足す（`add_submission`）
+         - `SubmissionInvalidError` の場合、400
+         - `ItemNotFoundError` の場合、404
+         - `WorkspaceNotFoundError`・`SchemaMismatchError` の場合、422
+         - `WriteFailedError` の場合、500（`detail` はそのメッセージ）
+      5. 201 で `{id, sent}` を返す
+         - `[INFO]` 送信を受けた（送信の ID、向けた項目）
+    unit_tests:
+      - name: test_submission_response
+        case: 正常
+        summary: 送信を足して 201
+        condition: 'D-1 を持つワークスペース、`application/json`、`Origin` 無し、`{"target": "D-1", "body": "案 A にする"}`'
+        mock: なし
+        expected: 201、本文の `id` が `S-1`。`submissions.yaml` に S-1
+      - name: test_submission_response_when_rejected
+        case: 正常
+        summary: 形・送り元・中身の誤りは書かずに問題の応答
+        condition: '`parametrize`: `text/plain` / `Origin: https://attacker.example` / 本文 `[1]` / `body` が空白 / `target` が `D-99` / `add` が `WriteFailedError` を送る'
+        mock: '`add`（最後の場合だけ）'
+        expected: 415 / 403 / 400 / 400 / 404 / 500。`submissions.yaml` が無い

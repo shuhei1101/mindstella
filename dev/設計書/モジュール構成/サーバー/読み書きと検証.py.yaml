@@ -1,16 +1,17 @@
-title: "スクリプト / 読み書きと検証"
+title: "サーバー / 読み書きと検証"
 lead: ワークスペースの YAML と本文を読み書きし、JSON Schema と突き合わせる。ほかの全てのモジュールがここに依存し、ここはほかに依存しない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/
     schemas/
-      common.schema.json     共通のキー（$defs）
-      settings.schema.json   mindmap.yaml
-      decisions.schema.json  ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
+      common.schema.json       共通のキー（$defs）
+      settings.schema.json     mindmap.yaml
+      decisions.schema.json    ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
+      submissions.schema.json  submissions.yaml（『送信』が使う）
     scripts/
-      kinds.py               種類の定義と状態の分類（定数）
-      errors.py              コマンドが終了コード 1 にする例外
-      store.py               読み込み・検証・採番・書き込み
+      kinds.py                 種類の定義と状態の分類（定数）
+      errors.py                ツールのエラーにする例外
+      store.py                 読み込み・検証・採番・書き込み・書き換えの鍵
   ```
 diagrams:
   - name: 全体
@@ -183,16 +184,16 @@ enums:
         description: logs.yaml・L
 classes:
   - name: MindmapError
-    title: コマンドのエラー
+    title: ツールのエラー
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: 入口が捕まえて終了コード 1 と標準エラーにする例外の親
+    summary: 入口（`call_tool`）が捕まえてツールのエラーにする例外の親。配信は子の種類でステータスコードを決める
     kind: クラス
     inherits: Exception
     properties:
       - name: lines
         type: list[str]
-        description: '`エラー: {内容}` の後に続けて標準エラーに出す行'
+        description: '`エラー: {内容}` の後に続けて本文に出す行'
   - name: WorkspaceNotFoundError
     title: ワークスペースが無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -211,7 +212,7 @@ classes:
     title: スキーマに合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: '書き込もうとした・書き出そうとしたワークスペースがスキーマに合わない。`lines` は問題ごとの `{ファイル名}: {キーのパス}: {理由}`。`legacy`（既定 `False`）は、問題に前の版の形式のものがあるか（ワークスペースを検証して送る側が `is_legacy_problem` で決める。`save_change`・`build_preview` が当たる）'
+    summary: '書き込もうとした・書き出そうとした・読もうとしたワークスペースがスキーマに合わない。`lines` は問題ごとの `{ファイル名}: {キーのパス}: {理由}`。`legacy`（既定 `False`）は、問題に前の版の形式のものがあるか（ワークスペースを検証して送る側が `is_legacy_problem` で決める。`save_change`・`export_preview`・`read_records` が当たる）'
     kind: クラス
     inherits: MindmapError
   - name: ItemNotFoundError
@@ -233,13 +234,6 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
     summary: ファイルの書き込み・置き換えで `OSError` が起きた。後始末をした後に送る。メッセージに置き換え先のパスと `OSError` の理由（`raise ... from` で元の例外をつなぐ）
-    kind: クラス
-    inherits: MindmapError
-  - name: OutPathError
-    title: 書き出す先の誤り
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 配る書き出し
-    summary: '`export` の `--out` が `.html` で終わらないか、ワークスペースの `preview.html` を指す。入口は終了コード 2（引数の誤り）にする'
     kind: クラス
     inherits: MindmapError
   - name: DownloadFailedError
@@ -268,6 +262,38 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の形式の移行
     summary: プラグインの `steps.yaml` が読めないか、手順の形のスキーマに合わない。`lines` は合わない箇所
+    kind: クラス
+    inherits: MindmapError
+  - name: ArgumentError
+    title: 引数の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない）。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: argument
+        type: str
+        description: 誤った引数の名前
+  - name: SubmissionNotFoundError
+    title: 送信が無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 送信の取り込み
+    summary: 渡した ID の送信が無い。メッセージに ID
+    kind: クラス
+    inherits: MindmapError
+  - name: SubmissionInvalidError
+    title: 送信の中身の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 回答・意見を送る
+    summary: 送信の `target`・`body` が無い・文字列でない、または `body` が空白だけか上限を超える。配信は 400 にする。メッセージにキーの名前と理由
+    kind: クラス
+    inherits: MindmapError
+  - name: ServeFailedError
+    title: 配信を立てられない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: プレビューを開く
+    summary: プレビューの配信の待ち受けを立てられない（`OSError`）。メッセージに理由（`raise ... from` で元の例外をつなぐ）
     kind: クラス
     inherits: MindmapError
 constants:
@@ -352,6 +378,12 @@ constants:
     usecase: 共通
     summary: ワークスペースの版を持つファイルの名前
     value: '"mindstella-version.ini"'
+  - name: LOCK_FILE
+    title: 書き換えのロックのファイル
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    summary: プロセスをまたいだ書き換えの排他に使う空のファイルの名前（ER 図『ワークスペース』）
+    value: '".mindstella.lock"'
 functions:
   - name: kind_of_id
     title: ID の種類
@@ -1020,6 +1052,50 @@ functions:
         mock: '`Path.unlink`（monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `二.md` のパス）。`二.md` が残り、`一.md` は無い'
         exception: 消す途中で OSError
-test_files:
-  - tests/unit/scripts/test_kinds.py
-  - tests/unit/scripts/test_store.py
+  - name: workspace_lock
+    title: 書き換えの鍵
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: public
+    summary: プロセスの中の鍵と、ワークスペースの `LOCK_FILE` の排他ロックをこの順に取る、`with` で使う文脈
+    description: '`@contextlib.contextmanager` で書く。ワークスペースを書き換えるツール（`call_tool`）と送信の受け付け（配信）が、読む前から書き終えるまでの間だけ持つ。'
+    side_effects: '`LOCK_FILE` が無ければ作る（フォルダが無ければ作る。`init` がまだ無いフォルダへ書くため）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: process_lock
+        type: threading.Lock
+        required: true
+        passing: positional
+        description: プロセスの中の書き換えの鍵
+    returns:
+      type: Iterator[None]
+      description: 鍵とロックを持っている間だけ返す
+    process: |-
+      1. `process_lock` を取る
+      2. `root` を作り（`exist_ok`）、`LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ
+      3. 呼び出し元の処理を動かす
+      4. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す
+    unit_tests:
+      - name: test_workspace_lock
+        case: 正常
+        summary: 鍵とロックを持ち、抜けたら放す
+        condition: '`tmp_path` と `threading.Lock()`。`with` の中で別の子プロセスが同じ `LOCK_FILE` に `flock(LOCK_EX | LOCK_NB)` を試す'
+        mock: なし
+        expected: '`with` の中では子プロセスが `BlockingIOError` で取れず、`process_lock.locked()` が真。抜けた後は子プロセスが取れ、`process_lock` が外れている'
+      - name: test_workspace_lock_when_raises
+        case: 正常
+        summary: 中の処理が例外でも放す
+        condition: '`with` の中で `ValueError` を送る'
+        mock: なし
+        expected: '`ValueError` が伝わり、`process_lock` が外れ、子プロセスがロックを取れる'
+      - name: test_workspace_lock_when_folder_missing
+        case: 正常
+        summary: まだ無いフォルダも作って取る
+        condition: '`tmp_path / "ws"`（無い）'
+        mock: なし
+        expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'

@@ -1,4 +1,4 @@
-title: "スクリプト / 移行"
+title: "サーバー / 移行"
 lead: ワークスペースの版とプラグインの版を比べ、版ごとの移し替えの手順（`migrations/{版}/steps.yaml`）を並べる・写しを取って当てる・値を入れる・版を書き換える。読み書きと検証だけに依存する。
 directory: |-
   ```
@@ -415,19 +415,19 @@ functions:
         type: Path
         required: true
         passing: positional
-        description: '`--workspace`'
+        description: 'ワークスペース（`workspace`）'
       - name: from_version
         type: Version | None
         required: false
         default: None
         passing: keyword
-        description: '`--from`（`None` ならワークスペースの版）'
+        description: '`from_version`（`None` ならワークスペースの版）'
       - name: to_version
         type: Version | None
         required: false
         default: None
         passing: keyword
-        description: '`--to`（`None` ならプラグインの版）'
+        description: '`to_version`（`None` ならプラグインの版）'
       - name: migrations_dir
         type: Path
         required: false
@@ -485,19 +485,19 @@ functions:
         type: Path
         required: true
         passing: positional
-        description: '`--workspace`'
+        description: 'ワークスペース（`workspace`）'
       - name: from_version
         type: Version | None
         required: false
         default: None
         passing: keyword
-        description: '`--from`'
+        description: '`from_version`'
       - name: to_version
         type: Version | None
         required: false
         default: None
         passing: keyword
-        description: '`--to`'
+        description: '`to_version`'
       - name: migrations_dir
         type: Path
         required: false
@@ -558,43 +558,6 @@ functions:
         mock: '`read_plugin_version`（`v0.3.0`）・`restore_backup`（`migrator` モジュールの参照を monkeypatch）'
         expected: '`StepFailedError` の `lines` に写しのフォルダの絶対パスがある'
         exception: 手順も戻しも失敗した
-  - name: parse_assignment
-    title: 入れる値の解釈
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/migrator.py
-    usecase: 記録の形式の移行
-    scope: public
-    summary: '`--set` の `{ファイル}:{キーのパス}={値}` を 3 つに分ける（argparse の `type` に渡す）'
-    args:
-      - name: text
-        type: str
-        required: true
-        passing: positional
-        description: '`--set` の 1 つ'
-    returns:
-      type: tuple[str, str, str]
-      description: ファイル・キーのパス・値
-    process: |-
-      1. 最初の `:` でファイルを、その後の最初の `=` でキーのパスと値を分ける
-         - どちらかが無いか、ファイル・キーのパスが空の場合、`ValueError` を送る（argparse が終了コード 2 にする）
-    exceptions:
-      - name: ValueError
-        condition: 形が違う
-        message: '--set の形が違います: {text}（{ファイル}:{キーのパス}={値}）'
-    unit_tests:
-      - name: test_parse_assignment
-        case: 正常
-        summary: '値の中の : と = は値に残す'
-        condition: '`mindmap.yaml:summary=a:b=c`'
-        mock: なし
-        expected: '`("mindmap.yaml", "summary", "a:b=c")`'
-      - name: test_parse_assignment_when_invalid
-        case: 異常
-        summary: 形が違えば送る
-        condition: '`parametrize`: `summary=x` / `mindmap.yaml:summary` / `:summary=x`'
-        mock: なし
-        expected: '`ValueError`（`match` に `--set`）'
-        exception: 形が違う
   - name: set_values
     title: 値を入れる
     kind: 関数
@@ -608,12 +571,12 @@ functions:
         type: Path
         required: true
         passing: positional
-        description: '`--workspace`'
+        description: ワークスペース
       - name: assignments
         type: list[tuple[str, str, str]]
         required: true
         passing: positional
-        description: '`--set` を解釈した並び'
+        description: '`values` を `(file, key, value)` にした並び'
     returns:
       type: None
       description: なし
@@ -654,13 +617,13 @@ functions:
         type: Path
         required: true
         passing: positional
-        description: '`--workspace`'
+        description: 'ワークスペース（`workspace`）'
       - name: to_version
         type: Version | None
         required: false
         default: None
         passing: keyword
-        description: '`--to`（`None` ならプラグインの版）'
+        description: '`to_version`（`None` ならプラグインの版）'
     returns:
       type: Version
       description: 書いた版
@@ -857,7 +820,7 @@ functions:
         type: Version
         required: true
         passing: positional
-        description: 移し替える先の版（`--to`）
+        description: 移し替える先の版（`to_version`）
     returns:
       type: Backup
       description: 取った写し

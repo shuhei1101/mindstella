@@ -7,6 +7,7 @@ directory: |-
       view-switch.ts      表示形式の切り替え（部品設計『表示形式の切り替え』）
       topbar.ts           トップバー（部品設計『トップバー』）
       table.ts            表と、並べ替え・絞り込みの計算（部品設計『表』）
+      send-form.ts        回答・意見の送信（部品設計『回答・意見の送信』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（マップ・ボード・表）
@@ -76,6 +77,16 @@ components:
         type: (theme) => void
         required: true
         description: テーマの切り替え
+      - name: connection
+        type: "'online' | 'offline'"
+        required: false
+        default: "'online'"
+        description: サーバーにつながっているか。`offline` のとき接続の状態を出す
+      - name: readAt
+        type: string | null
+        required: false
+        default: 'null'
+        description: 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える（`formatJst`）
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -228,7 +239,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`、関係する項目は `relatedItems`。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える
+    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`、関係する項目は `relatedItems`。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`send` があれば下端に `sendForm` を留め、見出しと下端の間だけをスクロールする
     props:
       - name: id
         type: string
@@ -246,6 +257,10 @@ components:
         type: '{open, close, full, back, forward, diagram}'
         required: true
         description: 項目へ移る・閉じる・全画面の切り替え・戻る進む・図を拡大する
+      - name: send
+        type: SendFormProps | null
+        required: true
+        description: 下端に置く回答・意見の送信の引数。配る書き出しでは `null`（置かない）
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -304,6 +319,62 @@ components:
         type: Map<string, HTMLCanvasElement>
         initial: 空
         description: 玉・太さ・色ごとに描いた文字の画像
+  - name: sendForm
+    title: 回答・意見の送信
+    container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
+    usecase: 回答・意見を送る
+    kind: コンポーネント
+    summary: 部品設計『回答・意見の送信』の引数を受け、入力・送る・本文を写すをコールバックで知らせる。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
+    props:
+      - name: target
+        type: string
+        required: true
+        description: 送る先の項目の ID
+      - name: body
+        type: string
+        required: false
+        default: "''"
+        description: 入力欄の中身
+      - name: status
+        type: "'idle' | 'sending' | 'sent' | 'empty' | 'failed'"
+        required: false
+        default: "'idle'"
+        description: 送信の状態
+      - name: sentAt
+        type: string | null
+        required: false
+        default: 'null'
+        description: 受けた日時。`sent` のとき JST で出す（`formatJst`）
+      - name: detail
+        type: string | null
+        required: false
+        default: 'null'
+        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち上げ直しの案内と「本文を写す」を出す
+      - name: onInput
+        type: '(body: string) => void'
+        required: true
+        description: 入力欄の中身が変わった
+      - name: onSend
+        type: '(body: string) => void'
+        required: true
+        description: 送るボタンか Ctrl+Enter（macOS は Cmd+Enter）。`sending` の間は呼ばない
+      - name: onCopy
+        type: '(body: string) => void'
+        required: true
+        description: 「本文を写す」
+    unit_tests:
+      - name: test_send_form
+        case: 正常
+        summary: 状態ごとの入力欄と結果
+        condition: '`parametrize`: `sending` / `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
+        mock: なし（DOM を作って見る）
+        expected: '`sending` は送るボタンが `disabled` で入力欄が `readonly` / `empty` は入力欄が `aria-invalid="true"` / 「本文を写す」がある / 理由が出て「本文を写す」が無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指す'
+      - name: test_send_form_when_ctrl_enter
+        case: 正常
+        summary: Ctrl+Enter で送り、送っている間は送らない
+        condition: '`parametrize`: `idle` で Ctrl+Enter / `sending` で Ctrl+Enter'
+        mock: '`onSend`'
+        expected: '`onSend` が入力欄の中身で 1 回 / 呼ばれない'
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -516,9 +587,27 @@ functions:
         condition: 'D-2（`depends_on: [D-1]`、`sources: [R-1]`）・T-1（`for: [D-1]`）・N-1（`related: [D-1]`）。表示する種類からメモを外す'
         mock: なし
         expected: 線が `depends`（D-2→D-1）・`source`（D-2→R-1）・`for`（T-1→D-1）の 3 本で、N-1 とその線が無い
-test_files:
-  - tests/unit/preview/test_table.py
-  - tests/unit/preview/test_tasks.py
-  - tests/unit/preview/test_docs.py
-  - tests/unit/preview/test_decisions.py
-  - tests/unit/preview/test_graph.py
+  - name: formatJst
+    title: 日時の表示
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
+    usecase: 回答・意見を送る
+    scope: public
+    summary: UTC のタイムゾーン付き ISO 8601 を JST の `MM/DD HH:mm` にする（送信の結果と接続の状態が使う）
+    args:
+      - name: iso
+        type: string
+        required: true
+        passing: positional
+        description: 日時
+    returns:
+      type: string
+      description: JST の `MM/DD HH:mm`
+    process: "1. `Intl.DateTimeFormat` に `timeZone: 'Asia/Tokyo'` を渡して月・日・時・分を 2 桁で並べる"
+    unit_tests:
+      - name: test_format_jst
+        case: 正常
+        summary: UTC を JST にする
+        condition: '`parametrize`: `2026-10-04T02:23:00+00:00` / `2026-10-04T16:05:00+00:00`'
+        mock: なし
+        expected: '`10/04 11:23` / `10/05 01:05`'

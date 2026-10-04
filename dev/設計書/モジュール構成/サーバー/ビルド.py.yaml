@@ -1,5 +1,5 @@
-title: "スクリプト / ビルド"
-lead: ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に埋め込んで `preview.html` を書き出す。配る書き出しは、同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示を入れて書き出す。読み書きと検証と、依存と影響・ゴール判定（画面に出す値の計算）に依存する。
+title: "サーバー / ビルド"
+lead: ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に CSS と JavaScript を差し込む。配信はその雛形と記録をその場で返し、配る書き出しは同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示と記録を入れて書き出す。読み書きと検証と、依存と影響・ゴール判定（画面に出す値の計算）に依存する。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/
@@ -10,49 +10,43 @@ directory: |-
         README.md  mermaid-bundled.txt を集め直す手順（使うコマンドと写すもの）
         mermaid-bundled.txt  mermaid.min.js が中に束ねた依存（mermaid の本番の依存を node_modules から辿った全てのパッケージ）ごとの、名前・版と LICENSE の写。mermaid の版を上げたら集め直す
     scripts/
-      builder.py      雛形の組み立て・データの収集・埋め込み・書き出しと、配る書き出し
+      builder.py      雛形の組み立て・記録の収集・埋め込みと、配る書き出し
   ```
 constants:
   - name: DATA_ELEMENT
     title: 埋め込み先の要素
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
-    summary: 雛形がちょうど 1 つ持つ、中身が空の要素
+    usecase: プレビューを開く
+    summary: 雛形がちょうど 1 つ持つ、中身が空の要素。配る書き出しだけが記録を入れ、配信は空のまま返す
     value: "'<script type=\"application/json\" id=\"mindmap-data\"></script>'"
-  - name: PREVIEW_FILE
-    title: プレビューのファイル名
-    container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
-    summary: ワークスペースに書き出すファイル名
-    value: '"preview.html"'
   - name: PREVIEW_DIR
     title: 雛形のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     summary: このファイルから見た `plugins/mindstella/skills/mindmap/preview/`
     value: Path(__file__).resolve().parent.parent / "preview"
   - name: STYLE_FILES
     title: 差し込む CSS
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     summary: 雛形のフォルダからの相対パス。並びの順につなぐ
     value: ("tokens.css", "style.css")
   - name: SCRIPT_FILES
     title: 差し込む JavaScript
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     summary: 雛形のフォルダからの相対パス。tsc が `.ts` から生成した `.js` を並びの順につなぐ（起動する `app.js` が最後）。中身はモジュール構成『プレビュー』のディレクトリ構成
-    value: ("core/dom.js", "core/records.js", "core/libs.js", "core/router.js", "components/view-switch.js", "components/topbar.js", "components/table.js", "screens/overview.js", "screens/decisions.js", "screens/tasks.js", "screens/docs.js", "screens/records.js", "screens/detail.js", "screens/search.js", "screens/diagram-viewer.js", "graph/graph.js", "app.js")
+    value: ("core/dom.js", "core/records.js", "core/libs.js", "core/router.js", "core/api.js", "components/view-switch.js", "components/topbar.js", "components/table.js", "components/send-form.js", "screens/overview.js", "screens/decisions.js", "screens/tasks.js", "screens/docs.js", "screens/records.js", "screens/detail.js", "screens/search.js", "screens/diagram-viewer.js", "graph/graph.js", "app.js")
   - name: STYLE_SLOT
     title: CSS の差し込み口
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     summary: '`template.html` がちょうど 1 つ持つ、CSS を入れる空の要素'
     value: "'<style id=\"mindmap-style\"></style>'"
   - name: SCRIPT_SLOT
     title: JavaScript の差し込み口
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     summary: '`template.html` がちょうど 1 つ持つ、JavaScript を入れる空の要素（`DATA_ELEMENT` より後ろ）'
     value: "'<script id=\"mindmap-app\"></script>'"
   - name: VENDOR_LIBRARIES
@@ -92,74 +86,13 @@ constants:
     summary: 配る書き出しに置く、ライセンスの表示を中身に持つ要素の開きタグ（閉じタグは `</script>`）。画面には出ない
     value: "'<script type=\"text/plain\" id=\"mindmap-licenses\">'"
 functions:
-  - name: build_preview
-    title: プレビューの書き出し
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
-    scope: public
-    summary: 検証してからデータを雛形に埋め込み、`preview.html` を置き換える
-    side_effects: ワークスペースの `preview.html` を置き換える
-    args:
-      - name: workspace
-        type: Workspace
-        required: true
-        passing: positional
-        description: ワークスペース
-      - name: built_at
-        type: str
-        required: true
-        passing: keyword
-        description: 書き出した日時（`now_utc` の文字列）
-      - name: preview_dir
-        type: Path
-        required: false
-        default: PREVIEW_DIR
-        passing: keyword
-        description: 雛形のフォルダ
-    returns:
-      type: Path
-      description: 書き出した `preview.html` の絶対パス
-    process: |-
-      1. ワークスペースを検証する（ワークスペースの検証。`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（書かない）
-      2. 雛形を組み立て、データを集めて埋め込む（`assemble_template`、`collect_preview_data`、`embed_data`）
-      3. 一時ファイルに書いて `os.replace` で `preview.html` を置き換える（`replace_file`）
-         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る（前の `preview.html` は残る）
-    exceptions:
-      - name: SchemaMismatchError
-        condition: ワークスペースに問題がある
-      - name: WriteFailedError
-        condition: '`preview.html` の書き込み・置き換えで `OSError` が起きた（一時ファイルを消した後）'
-        message: '書き込めませんでした: {パス}（{理由}）'
-    unit_tests:
-      - name: test_build_preview
-        case: 正常
-        summary: データを埋め込んだ preview.html を書く
-        condition: D-1 と資料 A-1（`docs/A-1.md` あり）を持つワークスペースと、差し込み口と `DATA_ELEMENT` を持つ `template.html` と空の CSS・JavaScript を置いた雛形のフォルダ
-        mock: なし
-        expected: 戻り値が `preview.html`。中の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.md`、`built_at` が渡した日時
-      - name: test_build_preview_when_schema_mismatch
-        case: 異常
-        summary: 問題があれば前の preview.html を残す
-        condition: 前の `preview.html` を置き、D-1 の `status` を `完了` にする
-        mock: なし
-        expected: '`SchemaMismatchError`。`preview.html` が呼ぶ前と同じ'
-        exception: ワークスペースに問題がある
-      - name: test_build_preview_when_replace_fails
-        case: 異常
-        summary: 置き換えに失敗したら前の preview.html を残す
-        condition: 前の `preview.html` を置き、`os.replace` を `OSError` を送る関数に差し替える
-        mock: '`os.replace`（`builder` モジュールの参照を monkeypatch）'
-        expected: '`WriteFailedError`。`preview.html` が呼ぶ前と同じで、`.tmp` のファイルが無い'
-        exception: 置き換えで OSError
   - name: collect_preview_data
     title: プレビューのデータの収集
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     scope: public
-    summary: 設定・7 種類・本文・書き出した日時を 1 つの辞書にまとめる
+    summary: 設定・7 種類・本文・読んだ日時を 1 つの辞書にまとめる（インターフェース定義『記録の取得』のレスポンスの形。送信は含めない）
     args:
       - name: workspace
         type: Workspace
@@ -170,7 +103,7 @@ functions:
         type: str
         required: true
         passing: keyword
-        description: 書き出した日時
+        description: 読んだ日時（配信は読んだとき、配る書き出しは書き出したときの `now_utc`）
     returns:
       type: dict[str, Any]
       description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`derived`・`built_at`'
@@ -189,7 +122,7 @@ functions:
     title: 埋め込みのエスケープ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: 配る書き出し
     scope: public
     summary: JSON の文字列の `<`・`>`・`&` を、JSON の Unicode エスケープ（バックスラッシュに続けて `u003c`・`u003e`・`u0026`）に置き換える
     args:
@@ -213,7 +146,7 @@ functions:
     title: 雛形への埋め込み
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: 配る書き出し
     scope: public
     summary: 雛形の `DATA_ELEMENT` の中身にデータの JSON を入れた HTML を返す
     args:
@@ -256,7 +189,7 @@ functions:
     title: 雛形の組み立て
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     scope: public
     summary: '`template.html` に CSS・JavaScript を差し込んだ HTML を返す'
     args:
@@ -305,7 +238,7 @@ functions:
     title: プレビューに出す値の計算
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: プレビューの書き出し
+    usecase: プレビューを開く
     scope: public
     summary: 概要と表に出す次の候補・ゴールまで・カテゴリー別の進み具合を、コマンドと同じ関数で計算して返す
     args:
@@ -334,7 +267,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 共通
     scope: public
-    summary: 同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。`build_preview` と `export_preview` が使う
+    summary: 同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。`export_preview` が使う
     side_effects: '`path` を置き換える'
     args:
       - name: path
@@ -428,10 +361,10 @@ functions:
     unit_tests:
       - name: test_export_preview
         case: 正常
-        summary: 記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、preview.html は触らない
-        condition: D-1 と資料 A-1（`docs/A-1.md` あり）と前の `preview.html` を持つワークスペースと、外の読み込みの印の間に 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
+        summary: 記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない
+        condition: D-1 と資料 A-1（`docs/A-1.md` あり）を持つワークスペースと、外の読み込みの印の間に 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
         mock: '`fetch`（URL ごとに決めた中身を返す関数。配布ファイルの中身は `integrity` と合うもの）'
-        expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースの `preview.html` が呼ぶ前と同じ
+        expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースのファイルが呼ぶ前と同じ
       - name: test_export_preview_when_schema_mismatch
         case: 異常
         summary: 問題があれば取らずに前の out を残す
@@ -459,45 +392,38 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
     scope: public
-    summary: '`--out` が `.html` で終わり、ワークスペースの `preview.html` を指さないことを確かめ、絶対パスにして返す'
+    summary: '`out` が `.html` で終わることを確かめ、`resolve()` した絶対パスにして返す'
     args:
       - name: out
         type: Path
         required: true
         passing: positional
-        description: '`--out` の値（相対パスは起動した場所から）'
-      - name: root
-        type: Path
-        required: true
-        passing: keyword
-        description: ワークスペースのフォルダ
+        description: '`out` の値（入口が作業フォルダから絶対パスにしたもの）'
     returns:
       type: Path
       description: '`out` を `resolve()` した絶対パス'
     process: |-
       1. `out` の拡張子を確かめる（大文字・小文字を区別しない）
-         - `.html` でない場合、`OutPathError` を送る
-      2. `out` と `root / PREVIEW_FILE` を `resolve()` して比べる
-         - 同じ場合、`OutPathError` を送る
-      3. `resolve()` した `out` を返す
+         - `.html` でない場合、`ArgumentError`（`out`・`.html のファイルを指してください: {パス}`）を送る
+      2. `resolve()` した `out` を返す
     exceptions:
-      - name: OutPathError
-        condition: '`out` が `.html` で終わらないか、ワークスペースの `preview.html` を指す'
-        message: '--out は .html のファイルを指してください: {パス} / --out にワークスペースの preview.html は指せません: {パス}'
+      - name: ArgumentError
+        condition: '`out` が `.html` で終わらない'
+        message: '引数の誤り: out: .html のファイルを指してください: {パス}'
     unit_tests:
       - name: test_validate_export_out
         case: 正常
-        summary: 相対パスを起動した場所から読んで絶対パスにする
-        condition: '`monkeypatch.chdir(tmp_path)` で `Path("配る.HTML")`（大文字の拡張子）、`root` は `tmp_path / "ws"`'
+        summary: 大文字の拡張子も受け、絶対パスにする
+        condition: '`tmp_path / "sub" / ".." / "配る.HTML"`'
         mock: なし
         expected: '`tmp_path / "配る.HTML"` を返す'
       - name: test_validate_export_out_when_invalid
         case: 異常
-        summary: html でないか preview.html を指す out を弾く
-        condition: '`parametrize`: `tmp_path / "配る.txt"` / `root / "sub" / ".." / "preview.html"`'
+        summary: html でない out を弾く
+        condition: '`tmp_path / "配る.txt"`'
         mock: なし
-        expected: '`OutPathError`（`match` に `.html` / `preview.html`）'
-        exception: html で終わらないか preview.html を指す
+        expected: '`ArgumentError`（`match` に `out` と `.html`）'
+        exception: html で終わらない
   - name: list_external_scripts
     title: 外の読み込みの一覧
     kind: 関数
@@ -689,8 +615,50 @@ functions:
         condition: '2 つの `LicenseBlock`（`license_text` は `本文 A`・`本文 B`。2 つ目だけ `bundled_text` が `束ねた本文`。1 つ目の `tag` は `v{version}`・版 `1.2.3`）'
         mock: なし
         expected: '1 つ目の名前と版・`notice`・`License:`・`Source: {repository}/tree/v1.2.3`・`本文 A` がこの順にあり、その後に 2 つ目の塊が空行を挟んで続き、2 つ目の `本文 B` の後に見出しの行と `束ねた本文` がある。1 つ目の塊には見出しの行が無い'
-test_files:
-  - tests/unit/scripts/test_builder.py
+  - name: read_records
+    title: 記録の読み出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: プレビューを開く
+    scope: public
+    summary: ワークスペースをその場で読んで検証し、記録の取得の JSON にする辞書を返す（`GET /api/records` が使う）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 配信しているワークスペースのフォルダ
+      - name: now
+        type: NowFn
+        required: false
+        default: now_utc
+        passing: injected
+        description: 読んだ日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`collect_preview_data` の辞書'
+    process: |-
+      1. ワークスペースを読み、検証する（`load_workspace`、`validate_workspace`）
+         - `mindmap.yaml` が無い場合、`WorkspaceNotFoundError` がそのまま上がる
+         - 問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送る（`legacy` は `is_legacy_problem`）
+      2. 読んだ日時を付けてまとめる（`collect_preview_data`）
+    exceptions:
+      - name: SchemaMismatchError
+        condition: ワークスペースのどれかの YAML がスキーマに合わないか、YAML として読めない
+    unit_tests:
+      - name: test_read_records
+        case: 正常
+        summary: その場で読んだ記録を返す
+        condition: D-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`。一度読んだ後に D-2 を足してもう一度読む
+        mock: '`now`'
+        expected: 1 回目の `decisions` が D-1 だけ、2 回目が D-1・D-2。`built_at` が `now` の値
+      - name: test_read_records_when_schema_mismatch
+        case: 異常
+        summary: スキーマに合わなければ返さない
+        condition: D-1 の `status` が `完了`
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `decisions.yaml: items[0].status:` で始まる行）'
+        exception: スキーマに合わない
 data_models:
   - name: VendorLibrary
     title: 配る書き出しに入れるライブラリ
