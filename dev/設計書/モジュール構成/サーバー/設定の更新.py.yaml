@@ -147,7 +147,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: '`merge_settings` で置き換えた設定（新しい `phases` を持つ）'
+        description: '`merge_settings` で置き換えた設定（`phases` を渡していなければ今の `phases` を持つ）'
       - name: phase_map
         type: dict[str, str]
         required: true
@@ -281,7 +281,7 @@ functions:
       1. ワークスペースを読む（`load_workspace`）
       2. 引数を確かめる（`validate_settings_input`。今の `phases` を渡す）
       3. 設定を置き換える（`merge_settings`）
-      4. `settings` が `phases` を持つ場合、フェーズを付け替える（`remap_phases`。`phase_map` が `None` なら空）。`goal` が変わったら変わったキーに `goal` を足す
+      4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
       5. まとめて書く（`save_settings`）
     exceptions:
       - name: WorkspaceNotFoundError
@@ -301,5 +301,11 @@ functions:
         condition: 'フェーズ 問い・発散、D-1（問い）、`goal.phase` 問い。`settings` `{"phases": ["目的", "発散"]}`、`phase_map` `{"問い": "目的"}`。`now` は固定の日時'
         mock: '`now`'
         expected: '`changed` が `[phases, goal]`、`remapped` が `[{id: D-1, from: 問い, to: 目的}]`、`files` が `[mindmap.yaml, decisions.yaml]`。`mindmap.yaml` の `goal.phase` が目的'
+      - name: test_update_settings_when_goal_phase_unknown
+        case: 異常
+        summary: phases を渡さず、phases に無い goal.phase のゴールだけを渡すと何も書かない
+        condition: 'フェーズ 問い・発散。`settings` `{"goal": {"phase": "結論", "summary": "まとめる", "deliverables": []}}`、`phase_map` は `None`'
+        mock: なし
+        expected: '`UnmappedPhaseError`（`lines` に `goal: 結論`）。ワークスペースの全てのファイルが呼ぶ前と同じ'
 notes:
   対応テストファイル: '`tests/unit/scripts/test_settings_update.py`。単体テスト作成でファイルを作ったときに `test_files` へ移す'
