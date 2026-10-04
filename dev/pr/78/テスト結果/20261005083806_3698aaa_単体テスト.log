@@ -1,5 +1,5 @@
 $ pytest tests/unit -v
-（実行した commit: 21fc7a7）
+（実行した commit: 3698aaa）
 （環境: スクラッチの仮想環境に `requirements-dev.txt` を入れた Python）
 
 ============================= test session starts ==============================
@@ -619,4 +619,4 @@ tests/unit/scripts/test_versions.py::test_read_plugin_version PASSED     [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version PASSED [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails PASSED [100%]
 
-======================== 609 passed in 63.85s (0:01:03) ========================
+======================== 609 passed in 65.09s (0:01:05) ========================

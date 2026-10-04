@@ -1,5 +1,5 @@
 $ pytest tests/integration -v
-（実行した commit: 21fc7a7）
+（実行した commit: 3698aaa）
 （環境: スクラッチの仮想環境に `requirements-dev.txt` を入れた Python）
 
 ============================= test session starts ==============================
@@ -377,4 +377,4 @@ tests/integration/skill/test_session.py::test_normal PASSED              [ 99%]
 tests/integration/skill/test_setup.py::test_normal PASSED                [ 99%]
 tests/integration/skill/test_upgrade.py::test_normal PASSED              [100%]
 
-================== 365 passed, 2 skipped in 235.82s (0:03:55) ==================
+================== 365 passed, 2 skipped in 243.45s (0:04:03) ==================
