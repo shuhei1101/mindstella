@@ -59,16 +59,14 @@ def _schema_names_at(tag: Version) -> set[str]:
 
 
 def _schemas_changed_since(tag: Version) -> bool:
-    """タグの時点から、スキーマのファイルが増減したか中身が変わったかを返す。"""
+    """タグの時点にあったスキーマのファイルが消えたか中身が変わったかを返す（足したファイルは比べない）。"""
     current_dir = REPO_ROOT / SCHEMA_RELATIVE_DIR
-    current_names = {
-        path.name for path in current_dir.glob("*.json") if path.name != STEPS_SCHEMA_NAME
-    }
-    # ファイルの増減
-    if current_names != _schema_names_at(tag):
+    tagged_names = sorted(_schema_names_at(tag))
+    # タグの時点にあったファイルが消えた
+    if any(not (current_dir / name).exists() for name in tagged_names):
         return True
-    # 中身の違い
-    for name in sorted(current_names):
+    # タグの時点にあったファイルの中身の違い
+    for name in tagged_names:
         shown = _git("show", f"{tag}:{SCHEMA_RELATIVE_DIR}/{name}")
         if shown.stdout != (current_dir / name).read_text(encoding="utf-8"):
             return True
