@@ -23,7 +23,7 @@
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
     /* 部品を置く台 */
-    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: auto; }
     /* 台の中では帯を流れに置く */
     .stage .topbar, .stage .tabbar { position: static; }
     /* 詳細パネルの中身を置く台: パネルと同じ幅と面 */
@@ -69,12 +69,12 @@
     <section class="cat-sec">
       <h2>タブの印（差分の表示の間）</h2>
       <p>件数は残し、新規・変更の項目を持つタブの印の右上に点を重ねる。タブの幅は変えない。</p>
-      <div class="stage"><nav class="tabbar" aria-label="項目の種類"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>概要</a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg>検討事項<span class="count">37</span><span class="df-dot" title="新規・変更の項目があります"><span class="sr-only">新規・変更の項目があります</span></span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>タスク<span class="count">8</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>資料<span class="count">5</span><span class="df-dot" title="新規・変更の項目があります"><span class="sr-only">新規・変更の項目があります</span></span></a></nav></div>
+      <div class="stage"><nav class="tabbar" aria-label="項目の種類（差分の表示の間）"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>概要</a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg>検討事項<span class="count">37</span><span class="df-dot" title="新規・変更の項目があります"><span class="sr-only">新規・変更の項目があります</span></span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>タスク<span class="count">8</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>資料<span class="count">5</span><span class="df-dot" title="新規・変更の項目があります"><span class="sr-only">新規・変更の項目があります</span></span></a></nav></div>
     </section>
     <section class="cat-sec">
       <h2>タブの印（差分の表示が切り）</h2>
       <p>印を出さず、件数だけにする。</p>
-      <div class="stage"><nav class="tabbar" aria-label="項目の種類"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>概要</a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg>検討事項<span class="count">37</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>タスク<span class="count">8</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>資料<span class="count">5</span></a></nav></div>
+      <div class="stage"><nav class="tabbar" aria-label="項目の種類（差分の表示が切り）"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>概要</a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m9 12 2 2 4-4"/></svg>検討事項<span class="count">37</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>タスク<span class="count">8</span></a><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>資料<span class="count">5</span></a></nav></div>
     </section>
 
     <!-- 新規・変更の印 -->
