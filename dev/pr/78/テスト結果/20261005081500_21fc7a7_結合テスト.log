@@ -1,12 +1,12 @@
 $ pytest tests/integration -v
-（実行した commit: 1f1dd12）
+（実行した commit: 21fc7a7）
+（環境: スクラッチの仮想環境に `requirements-dev.txt` を入れた Python）
 
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/087252fd-4582-4123-8fbc-36bb01b36b28/scratchpad/venv/bin/python
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review
 configfile: pytest.ini
-plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
-asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
 collecting ... collected 367 items
 
 tests/integration/plugin/test_marketplace_registration.py::test_normal PASSED [  0%]
@@ -31,15 +31,15 @@ tests/integration/preview/test_comments_screen.py::test_row_location[chromium] P
 tests/integration/preview/test_comments_screen.py::test_row_body[chromium] PASSED [  5%]
 tests/integration/preview/test_comments_screen.py::test_edit[chromium] PASSED [  5%]
 tests/integration/preview/test_comments_screen.py::test_edit_when_body_empty[chromium] PASSED [  5%]
-tests/integration/preview/test_comments_screen.py::test_edit_when_server_refuses[chromium] FAILED [  6%]
+tests/integration/preview/test_comments_screen.py::test_edit_when_server_refuses[chromium] PASSED [  6%]
 tests/integration/preview/test_comments_screen.py::test_edit_when_cancelled[chromium] PASSED [  6%]
 tests/integration/preview/test_comments_screen.py::test_remove_and_restore[chromium] PASSED [  6%]
-tests/integration/preview/test_comments_screen.py::test_restore_when_list_closed[chromium] FAILED [  7%]
+tests/integration/preview/test_comments_screen.py::test_restore_when_list_closed[chromium] PASSED [  7%]
 tests/integration/preview/test_comments_screen.py::test_stale_reason_and_detach[chromium] PASSED [  7%]
 tests/integration/preview/test_comments_screen.py::test_stale_reason_when_target_gone[chromium] PASSED [  7%]
 tests/integration/preview/test_comments_screen.py::test_empty[chromium] PASSED [  7%]
 tests/integration/preview/test_comments_screen.py::test_free_input[chromium] PASSED [  8%]
-tests/integration/preview/test_comments_screen.py::test_free_input_when_narrow[chromium] FAILED [  8%]
+tests/integration/preview/test_comments_screen.py::test_free_input_when_narrow[chromium] PASSED [  8%]
 tests/integration/preview/test_comments_screen.py::test_free_input_when_draft_exists[chromium] PASSED [  8%]
 tests/integration/preview/test_comments_screen.py::test_narrow_width[chromium] PASSED [  8%]
 tests/integration/preview/test_comments_screen.py::test_detail_input_message_is_separate[chromium] PASSED [  9%]
@@ -238,7 +238,7 @@ tests/integration/server/test_check.py::test_normal_when_clean PASSED    [ 61%]
 tests/integration/server/test_check.py::test_normal_when_problems_found PASSED [ 61%]
 tests/integration/server/test_check.py::test_error_when_workspace_not_found PASSED [ 62%]
 tests/integration/server/test_check.py::test_normal_when_unknown_phase PASSED [ 62%]
-tests/integration/server/test_check_env.py::test_normal FAILED           [ 62%]
+tests/integration/server/test_check_env.py::test_normal PASSED           [ 62%]
 tests/integration/server/test_check_env.py::test_error_when_venv_missing PASSED [ 62%]
 tests/integration/server/test_check_env.py::test_error_when_python_too_old SKIPPED [ 63%]
 tests/integration/server/test_check_env.py::test_error_when_dependency_missing PASSED [ 63%]
@@ -303,15 +303,15 @@ tests/integration/server/test_init.py::test_normal_when_no_goal PASSED   [ 79%]
 tests/integration/server/test_init.py::test_error_when_workspace_exists PASSED [ 79%]
 tests/integration/server/test_init.py::test_error_when_settings_mismatch PASSED [ 79%]
 tests/integration/server/test_init.py::test_error_when_write_fails PASSED [ 80%]
-tests/integration/server/test_launch.py::test_normal FAILED              [ 80%]
-tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded FAILED [ 80%]
-tests/integration/server/test_launch.py::test_normal_when_session_exists FAILED [ 80%]
+tests/integration/server/test_launch.py::test_normal PASSED              [ 80%]
+tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded PASSED [ 80%]
+tests/integration/server/test_launch.py::test_normal_when_session_exists PASSED [ 80%]
 tests/integration/server/test_launch.py::test_error_when_dependency_missing PASSED [ 81%]
 tests/integration/server/test_launch.py::test_error_when_tmux_missing PASSED [ 81%]
 tests/integration/server/test_launch.py::test_error_when_claude_missing PASSED [ 81%]
-tests/integration/server/test_launch.py::test_error_when_plugin_not_installed FAILED [ 82%]
+tests/integration/server/test_launch.py::test_error_when_plugin_not_installed PASSED [ 82%]
 tests/integration/server/test_launch.py::test_error_when_folder_missing PASSED [ 82%]
-tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere FAILED [ 82%]
+tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere PASSED [ 82%]
 tests/integration/server/test_mcp_server.py::test_normal PASSED          [ 82%]
 tests/integration/server/test_mcp_server.py::test_normal_when_tool_fails PASSED [ 83%]
 tests/integration/server/test_mcp_server.py::test_normal_when_argument_missing PASSED [ 83%]
@@ -377,258 +377,4 @@ tests/integration/skill/test_session.py::test_normal PASSED              [ 99%]
 tests/integration/skill/test_setup.py::test_normal PASSED                [ 99%]
 tests/integration/skill/test_upgrade.py::test_normal PASSED              [100%]
 
-=================================== FAILURES ===================================
-___________________ test_edit_when_server_refuses[chromium] ____________________
-
-served_review = ('http://127.0.0.1:56973/', PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_edit_when_server_refuses_0/workspace'))
-open_preview = <function open_preview.<locals>._open at 0x737dd8850720>
-page = <Page url='http://127.0.0.1:56973/'>
-
-    def test_edit_when_server_refuses(
-        served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
-    ) -> None:
-        """サーバーが断ったときは、入力を残して理由を出す（異常系）。"""
-        # 準備
-        url, _ = served_review
-        page.route(
-            "**/api/comments/C-1",
-            lambda route: (
-                _fulfill_problem(route, 500, "comments.yaml を書けません")
-                if route.request.method == "PATCH"
-                else route.continue_()
-            ),
-        )
-        open_preview(url)
-        _open_list(page)
-        page.locator(_row("C-1")).get_by_role("button", name=EDIT_NAME).click()
-        page.fill(f"{_row('C-1')} form.row-edit textarea", "案 B にする")
-        # 実行
-        page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
-        page.wait_for_selector(f"{_row('C-1')} form.row-edit .send-msg svg.icon", timeout=UPDATE_TIMEOUT_MS)
-        # 検証
-        assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "comments.yaml を書けません"
->       assert page.input_value(f"{_row('C-1')} form.row-edit textarea") == "案 B にする"
-E       AssertionError: assert '案 A にする' == '案 B にする'
-E         
-E         - 案 B にする
-E         ?   ^
-E         + 案 A にする
-E         ?   ^
-
-tests/integration/preview/test_comments_screen.py:549: AssertionError
-___________________ test_restore_when_list_closed[chromium] ____________________
-
-served_review = ('http://127.0.0.1:56213/', PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_restore_when_list_closed_0/workspace'))
-open_preview = <function open_preview.<locals>._open at 0x737dd8539300>
-
-    def test_restore_when_list_closed(
-        served_review: tuple[str, Path], open_preview: OpenPreview
-    ) -> None:
-        """一覧を閉じると、削除した行の「元に戻す」は出さなくなる（正常系）。"""
-        # 準備
-        url, _ = served_review
-        page = open_preview(url)
-        _open_list(page)
-        page.locator(_row("C-1")).get_by_role("button", name=REMOVE_NAME).click()
-        page.wait_for_selector(f"{_row('C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
-        # 実行
-        page.get_by_role("button", name="コメントの一覧を閉じる").click()
-        page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
-        _open_list(page)
-        # 検証
->       assert page.get_by_role("button", name="元に戻す").count() == 0
-E       assert 1 == 0
-E        +  where 1 = count()
-E        +    where count = <Locator frame=<Frame name= url='http://127.0.0.1:56213/'> selector='internal:role=button[name="元に戻す"i]'>.count
-E        +      where <Locator frame=<Frame name= url='http://127.0.0.1:56213/'> selector='internal:role=button[name="元に戻す"i]'> = get_by_role('button', name='元に戻す')
-E        +        where get_by_role = <Page url='http://127.0.0.1:56213/'>.get_by_role
-
-tests/integration/preview/test_comments_screen.py:620: AssertionError
-____________________ test_free_input_when_narrow[chromium] _____________________
-
-served_review = ('http://127.0.0.1:56177/', PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_free_input_when_narrow_ch0/workspace'))
-open_preview = <function open_preview.<locals>._open at 0x737dd859b6a0>
-page = <Page url='http://127.0.0.1:56177/'>
-
-    def test_free_input_when_narrow(
-        served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
-    ) -> None:
-        """画面の幅 720px 以下では、項目を指さない入力を 1 行に畳み、フォーカスしたときに広げ、空のまま外へ出たら畳む（正常系）。"""
-        # 準備
-        url, _ = served_review
-        page.set_viewport_size({"width": COMPACT_WIDTH, "height": VIEWPORT_HEIGHT})
-        open_preview(url)
-        _open_list(page)
-        # 検証（畳んだ形）
-        assert page.locator(f"{FREE_FORM}.collapsed").count() == 1
-        assert page.locator(f"{FREE_FORM} button[type=submit]").count() == 0
-        # 実行（フォーカスして広げる）
-        page.focus(FREE_TEXTAREA)
->       page.wait_for_selector(f"{FREE_FORM}:not(.collapsed)")
-
-tests/integration/preview/test_comments_screen.py:742: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9033: in wait_for_selector
-    self._sync(
-../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:427: in wait_for_selector
-    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:394: in wait_for_selector
-    await self._channel.send(
-../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
-    return await self._connection.wrap_api_call(
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-self = <playwright._impl._connection.Connection object at 0x737dd88deb10>
-cb = <function Channel.send.<locals>.<lambda> at 0x737dd859b920>
-is_internal = False, title = None
-
-    async def wrap_api_call(
-        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
-    ) -> Any:
-        if self._api_zone.get():
-            return await cb()
-        task = asyncio.current_task(self._loop)
-        parsed_st = _attach_api_call_information(
-            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
-            is_internal,
-            title,
-        )
-        self._api_zone.set(parsed_st)
-        try:
-            return await cb()
-        except Exception as error:
->           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-E           playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 30000ms exceeded.
-E           Call log:
-E             - waiting for locator("aside.comments-panel .comments-free form.send:not(.collapsed)") to be visible
-
-../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
-_________________________________ test_normal __________________________________
-
-make_venv = <function make_venv.<locals>._make at 0x737dd829d8a0>
-
-    def test_normal(make_venv: MakeVenv) -> None:
-        """仮想環境に依存がそろっていて、起動する Python を返す（正常系）。"""
-        # 準備
-        venv_dir = make_venv("venv")
-        # 実行
-        result = _run_check_env("--venv", str(venv_dir))
-        # 検証
->       assert result.returncode == 0
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3', '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review/plugins/mindstella/skills/mindmap/scripts/check_env.py', '--venv', '/tmp/pytest-of-shuhei2441/pytest-5915/test_normal5/venv'], returncode=1, stdout='{"base_python": "/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3", "base_python_version": "3.12.3", "base_python_ok": true, "venv": "/tmp/pytest-of-shuhei2441/pytest-5915/test_normal5/venv", "python_path": "/tmp/pytest-of-shuhei2441/pytest-5915/test_normal5/venv/bin/python", "venv_ok": true, "python": "3.12.3", "python_ok": true, "packages": [{"name": "PyYAML", "required": "5.1", "installed": "6.0.3", "ok": true}, {"name": "jsonschema", "required": "4.18.0", "installed": "4.26.0", "ok": true}, {"name": "mcp", "required": "2.3.0", "installed": "2.0.0", "ok": false}], "install": "\\"/tmp/pytest-of-shuhei2441/pytest-5915/test_normal5/venv/bin/python\\" -m pip install \\"mcp>=2.3.0\\""}\n', stderr='').returncode
-
-tests/integration/server/test_check_env.py:73: AssertionError
-_________________________________ test_normal __________________________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal18'), tools_dir=PosixPath('/tmp/pytest-...'), socket='mindstella-test-2714937-mst2civeaur', tmux_tmpdir=PosixPath('/tmp/mst2civeaur'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal18/venv')
-
-    def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """依存がそろっていれば、今の版のサーバーを渡した Claude Code を tmux のセッションで立てる（正常系）。"""
-        # 準備
-        folder = sandbox.root / "家計簿アプリ"
-        # 実行
-        result = sandbox.launch("家計簿アプリ", venv=ready_venv)
-        # 検証
->       assert result.returncode == 0, result.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-5915/test_normal18/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_normal18/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:25: AssertionError
-_______________________ test_normal_when_plugin_upgraded _______________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_plugin_upgrad0'), tools_dir=Posix...'), socket='mindstella-test-2714937-mstk1uo06s7', tmux_tmpdir=PosixPath('/tmp/mstk1uo06s7'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_plugin_upgrad0/venv')
-tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_plugin_upgrad0')
-
-    def test_normal_when_plugin_upgraded(
-        sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
-    ) -> None:
-        """古い版のフォルダのスクリプトを叩いても、新しい版のサーバーを指す（正常系）。"""
-        # 準備
-        old_dir = copy_plugin(tmp_path / "plugin-old")
-        new_dir = copy_plugin(tmp_path / "plugin-new")
-        sandbox.write_claude([{"id": "mindstella@mindstella", "installPath": str(new_dir)}])
-        # 実行
-        result = sandbox.launch("家計簿アプリ", venv=ready_venv, script=old_dir / "bin" / "mindstella")
-        # 検証
->       assert result.returncode == 0, result.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_plugin_upgrad0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_plugin_upgrad0/plugin-old/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_plugin_upgrad0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:62: AssertionError
-_______________________ test_normal_when_session_exists ________________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_session_exist0'), tools_dir=Posix...'), socket='mindstella-test-2714937-mstv4f1f2yr', tmux_tmpdir=PosixPath('/tmp/mstv4f1f2yr'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_session_exist0/venv')
-
-    def test_normal_when_session_exists(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """既にあるセッションには新しく立てず、つなぐコマンドを返す（正常系）。"""
-        # 準備
-        first = sandbox.launch("家計簿アプリ", venv=ready_venv)
->       assert first.returncode == 0, first.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_session_exist0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_session_exist0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:75: AssertionError
-_____________________ test_error_when_plugin_not_installed _____________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_error_when_plugin_not_ins0'), tools_dir=Posix...'), socket='mindstella-test-2714937-mst68sywxnp', tmux_tmpdir=PosixPath('/tmp/mst68sywxnp'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_error_when_plugin_not_ins0/venv')
-
-    def test_error_when_plugin_not_installed(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """プラグインの一覧に mindstella が無ければ、インストールを案内して止まる（異常系）。"""
-        # 準備
-        sandbox.write_claude([])
-        # 実行
-        result = sandbox.launch("家計簿アプリ", venv=ready_venv)
-        # 検証
-        assert result.returncode == 1
->       assert "mindstella@mindstella" in result.stderr
-E       assert 'mindstella@mindstella' in '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n'
-E        +  where '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n' = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').stderr
-
-tests/integration/server/test_launch.py:135: AssertionError
-_________________ test_normal_when_same_folder_name_elsewhere __________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_same_folder_n0'), tools_dir=Posix...'), socket='mindstella-test-2714937-mstxs6vs2yd', tmux_tmpdir=PosixPath('/tmp/mstxs6vs2yd'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_same_folder_n0/venv')
-
-    def test_normal_when_same_folder_name_elsewhere(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """名前が同じでも場所が違うフォルダは、別のセッションを立てる（正常系）。"""
-        # 準備
-        first = sandbox.launch("仕事/家計簿アプリ", venv=ready_venv)
->       assert first.returncode == 0, first.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_same_folder_n0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review/plugins/mindstella/bin/mindstella', '仕事/家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-5915/test_normal_when_same_folder_n0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:154: AssertionError
-=========================== short test summary info ============================
-FAILED tests/integration/preview/test_comments_screen.py::test_edit_when_server_refuses[chromium]
-FAILED tests/integration/preview/test_comments_screen.py::test_restore_when_list_closed[chromium]
-FAILED tests/integration/preview/test_comments_screen.py::test_free_input_when_narrow[chromium]
-FAILED tests/integration/server/test_check_env.py::test_normal - assert 1 == 0
-FAILED tests/integration/server/test_launch.py::test_normal - AssertionError:...
-FAILED tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded
-FAILED tests/integration/server/test_launch.py::test_normal_when_session_exists
-FAILED tests/integration/server/test_launch.py::test_error_when_plugin_not_installed
-FAILED tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere
-============= 9 failed, 356 passed, 2 skipped in 322.97s (0:05:22) =============
+================== 365 passed, 2 skipped in 235.82s (0:03:55) ==================

@@ -1,12 +1,12 @@
 $ pytest tests/unit -v
-（実行した commit: 1f1dd12）
+（実行した commit: 21fc7a7）
+（環境: スクラッチの仮想環境に `requirements-dev.txt` を入れた Python）
 
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/087252fd-4582-4123-8fbc-36bb01b36b28/scratchpad/venv/bin/python
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-review
 configfile: pytest.ini
-plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
-asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
 collecting ... collected 609 items
 
 tests/unit/preview/test_api.py::test_fetch_records[chromium] PASSED      [  0%]
@@ -619,4 +619,4 @@ tests/unit/scripts/test_versions.py::test_read_plugin_version PASSED     [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version PASSED [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails PASSED [100%]
 
-======================== 609 passed in 95.58s (0:01:35) ========================
+======================== 609 passed in 63.85s (0:01:03) ========================
