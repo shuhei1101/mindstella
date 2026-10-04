@@ -21,6 +21,7 @@ from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
 from query import SearchFilter, list_attrs, search_items, show_item
 from serve import PreviewRegistry
+from settings_update import update_settings
 from store import (
     BodyWrite,
     Change,
@@ -145,6 +146,13 @@ def run_update(
     items[ref.index] = merged
     save_change(workspace, Change(kind=ref.kind, items=items, body=body))
     return {"id": item_id, "file": KINDS[ref.kind].file, "changed": changed}
+
+
+def run_update_settings(
+    root: Path, settings: dict[str, Any], phase_map: dict[str, str] | None
+) -> dict[str, Any]:
+    """設定のキーを置き換え、フェーズを変えるときは項目のフェーズも付け替える。"""
+    return update_settings(root, settings, phase_map)
 
 
 def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[str, Any]:

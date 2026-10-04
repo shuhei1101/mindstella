@@ -31,6 +31,7 @@ TOOL_NAMES = (
     "init",
     "add",
     "update",
+    "update_settings",
     "adopt",
     "status",
     "next",
@@ -114,6 +115,24 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         item: Annotated[dict[str, Any], Field(description="置き換えるキーと値。null で消す")],
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_update(root, id, item))
+
+    @server.tool(
+        name="update_settings",
+        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール）を書き換える。フェーズを変えるときは項目のフェーズも付け替える",
+    )
+    def update_settings(
+        workspace: WorkspaceArg,
+        settings: Annotated[
+            dict[str, Any], Field(description="置き換える設定のキーと値。description と goal は null で消す")
+        ],
+        phase_map: Annotated[
+            dict[str, str] | None,
+            Field(description="古いフェーズ → 新しいフェーズの対応。phases を変えるときだけ渡す"),
+        ] = None,
+    ) -> CallToolResult:
+        return write(
+            workspace, lambda root: commands.run_update_settings(root, settings, phase_map)
+        )
 
     @server.tool(name="adopt", description="検討事項の採用する案を 1 つに切り替える")
     def adopt(
