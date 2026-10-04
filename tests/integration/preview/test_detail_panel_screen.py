@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import APIResponse, Page, Route
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -33,6 +33,9 @@ from workspace_fixtures import MakeComment, MakeDraft, MakeItem
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
 
+# 溜める POST の応答を止めるミリ秒（書きかけを保つ待ち `DRAFT_SAVE_DELAY_MS` の 500 より長く）
+POST_HOLD_MS = 1_000
+
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
 
@@ -44,6 +47,14 @@ NARROW_HEIGHT = 700
 
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
+
+
+def _hold_post_response(route: Route, held: list[tuple[Route, APIResponse]]) -> None:
+    """溜める POST はサーバーへ流して応答を控え（画面へは返さない）、GET はそのまま流す。"""
+    if route.request.method == "POST":
+        held.append((route, route.fetch()))
+    else:
+        route.continue_()
 
 
 def _panel_title(page: Page) -> str:
@@ -488,14 +499,19 @@ def test_comment_input_draft_when_saved_at_once(
     write_review_preview: WriteReviewPreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
+    page: Page,
 ) -> None:
-    """入力の直後（書きかけを保つ待ちより前）に溜めても、drafts.yaml に書きかけが残らない（正常系）。"""
-    # 準備
+    """入力の直後（書きかけを保つ待ちより前）に溜め、溜める応答が待ちより遅れても、drafts.yaml に書きかけが残らない（正常系）。"""
+    # 準備（溜める POST はサーバーへ流して処理させ、その応答を書きかけを保つ待ちより長く画面へ止める。GET はそのまま流す）
     url, root = write_review_preview(make_item("D-1"))
-    page = open_preview(url, "#tab=decisions&id=D-1")
+    held: list[tuple[Route, APIResponse]] = []
+    page.route("**/api/comments", lambda route: _hold_post_response(route, held))
+    open_preview(url, "#tab=decisions&id=D-1")
     page.fill(DETAIL_TEXTAREA, "すぐ溜める")
     # 実行
     page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_timeout(POST_HOLD_MS)
+    held[0][0].fulfill(response=held[0][1])
     page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
     page.wait_for_timeout(DRAFT_WAIT_MS)
     # 検証
