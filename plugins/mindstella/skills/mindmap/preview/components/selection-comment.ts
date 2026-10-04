@@ -36,7 +36,12 @@ namespace MindmapPreview {
         onpointerdown: (event) => event.preventDefault(),
         onclick: () => on.press(),
         onkeydown: (event) => {
-          if ((event as KeyboardEvent).key === "Escape") on.close();
+          if ((event as KeyboardEvent).key === "Escape") {
+            // 入口だけを閉じる。詳細パネルを閉じる Esc・モーダルを閉じる動きとして受けさせない
+            event.stopPropagation();
+            event.preventDefault();
+            on.close();
+          }
         },
       },
       children: [icon("comment"), h({ tag: "span", children: ["コメント"] })],

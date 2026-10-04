@@ -489,7 +489,10 @@ namespace MindmapPreview {
     let outcome: SendOutcome | null = null;
     let editing: string | null = null;
     let editError: string | null = null;
+    let editBody: string | null = null;
     let freeFocused = false;
+    /** 入力欄を差し替えている間か（外した入力欄の blur を受けないため） */
+    let formRedrawing = false;
     /** チェックした状態で入れるのは、初めて読んだコメントだけ */
     const knownIds = new Set<string>();
     /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
@@ -581,7 +584,10 @@ namespace MindmapPreview {
           : document.querySelector<HTMLFormElement>("aside.panel form.send, dialog.full form.send");
       if (current === null || (target !== null && route.id !== target)) return;
       const next = sendForm(formProps(target));
+      // 外した入力欄の blur は、利用者が外へ出たのではないので受けない
+      formRedrawing = true;
       current.replaceWith(next);
+      formRedrawing = false;
       if (!focus) return;
       const field = next.querySelector("textarea");
       field?.focus();
@@ -637,7 +643,7 @@ namespace MindmapPreview {
             if (isCompact() && state.body === "") redrawForm({ target: null, focus: true });
           },
           blur: () => {
-            if (target !== null || !freeFocused) return;
+            if (formRedrawing || target !== null || !freeFocused) return;
             freeFocused = false;
             // 本文が空のまま外へ出たら畳む
             if (isCompact() && state.body === "") redrawForm({ target: null, focus: false });
@@ -709,6 +715,7 @@ namespace MindmapPreview {
         checked: comment.checked,
         editing,
         editError,
+        editBody,
         stale: comment.stale,
         result: outcome,
         selected: comment.opened,
@@ -730,12 +737,14 @@ namespace MindmapPreview {
           edit: (id) => {
             editing = id;
             editError = null;
+            editBody = null;
             renderComments();
           },
           saveEdit: (id, body) => void saveEdit(id, body),
           cancelEdit: () => {
             editing = null;
             editError = null;
+            editBody = null;
             renderComments();
           },
           remove: (id) => void removeComment(id),
@@ -783,6 +792,7 @@ namespace MindmapPreview {
       flushDrafts();
       comment.listOpen = false;
       comment.opened = null;
+      comment.removed = [];
       renderTop();
       renderComments();
       renderDetail();
@@ -813,11 +823,13 @@ namespace MindmapPreview {
       if (!result.ok) {
         // 断られた・届かない: 入力を残して理由を出す
         editError = result.detail ?? "サーバーが止まっています。立ち上げ直してから直してください。";
+        editBody = body;
         renderComments();
         return;
       }
       editing = null;
       editError = null;
+      editBody = null;
       await reloadAndRefresh();
     };
 

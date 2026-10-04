@@ -60,10 +60,10 @@ var MindmapPreview;
         return [];
     }
     /** 添えた箇所（名前・選んだ文・外す ×）の要素 */
-    function locationChip({ loc, onUnquote }) {
+    function locationChip({ loc, id, onUnquote }) {
         return MindmapPreview.h({
             tag: "div",
-            attrs: { class: "send-loc" },
+            attrs: { class: "send-loc", id },
             children: [
                 MindmapPreview.h({
                     tag: "div",
@@ -86,6 +86,7 @@ var MindmapPreview;
         sendFormSequence += 1;
         const fieldId = `send-${sendFormSequence}`;
         const messageId = `${fieldId}-msg`;
+        const locId = `${fieldId}-loc`;
         /** 畳むのは、項目を指さない入力だけ */
         const folded = collapsed && target === null;
         /** 溜めている間は溜めない。それ以外は入力欄の中身そのままを渡す */
@@ -101,7 +102,7 @@ var MindmapPreview;
                 name: "body",
                 rows: folded ? 1 : 2,
                 "aria-label": target === null ? NO_TARGET_LABEL : null,
-                "aria-describedby": folded ? null : messageId,
+                "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
                 "aria-keyshortcuts": "Control+Enter",
                 // 溜めている間は書き換えられない
                 readonly: status === "saving",
@@ -156,7 +157,7 @@ var MindmapPreview;
                         attrs: { class: "send-label", for: fieldId },
                         children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] }), " へのコメント"],
                     }),
-                target !== null && loc !== null ? locationChip({ loc, onUnquote: on.unquote }) : null,
+                target !== null && loc !== null ? locationChip({ loc, id: locId, onUnquote: on.unquote }) : null,
                 textarea,
                 folded
                     ? null

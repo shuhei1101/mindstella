@@ -27,6 +27,8 @@ namespace MindmapPreview {
     editing: string | null;
     /** 本文を直せなかった理由 */
     editError?: string | null;
+    /** 本文を直せなかったとき、入力欄に残す直していた中身（無ければ元の本文） */
+    editBody?: string | null;
     /** 箇所が合わないコメントの ID → 理由 */
     stale: Map<string, string>;
     result: SendOutcome | null;
@@ -119,7 +121,7 @@ namespace MindmapPreview {
           }
         },
       },
-      children: [item.body],
+      children: [props.editBody ?? item.body],
     });
     const message = h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: props.editError ? [icon("alert"), props.editError] : [] });
     return h({
@@ -156,7 +158,7 @@ namespace MindmapPreview {
   /** コメントの行 */
   function commentRow(item: ReviewItem, props: CommentsPanelProps): HTMLElement {
     const reason = props.stale.get(item.id);
-    const label = item.target === null ? "項目を指さないコメント" : `${item.id} へのコメント`;
+    const label = item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
     return h({
       tag: "li",
       attrs: {
@@ -220,7 +222,7 @@ namespace MindmapPreview {
               attrs: {
                 class: "icon-btn",
                 type: "button",
-                "aria-label": `${item.id} へのコメントを直す`,
+                "aria-label": `${label}を直す`,
                 title: "直す",
                 "data-focus": `edit-open:${item.id}`,
                 onclick: () => props.on.edit(item.id),
@@ -232,7 +234,7 @@ namespace MindmapPreview {
               attrs: {
                 class: "icon-btn",
                 type: "button",
-                "aria-label": `${item.id} へのコメントを削除`,
+                "aria-label": `${label}を削除`,
                 title: "削除",
                 "data-focus": `remove:${item.id}`,
                 onclick: () => props.on.remove(item.id),

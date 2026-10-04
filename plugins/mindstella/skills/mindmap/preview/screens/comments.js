@@ -67,7 +67,7 @@ var MindmapPreview;
                     }
                 },
             },
-            children: [item.body],
+            children: [props.editBody ?? item.body],
         });
         const message = MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: props.editError ? [MindmapPreview.icon("alert"), props.editError] : [] });
         return MindmapPreview.h({
@@ -103,7 +103,7 @@ var MindmapPreview;
     /** コメントの行 */
     function commentRow(item, props) {
         const reason = props.stale.get(item.id);
-        const label = item.target === null ? "項目を指さないコメント" : `${item.id} へのコメント`;
+        const label = item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
         return MindmapPreview.h({
             tag: "li",
             attrs: {
@@ -167,7 +167,7 @@ var MindmapPreview;
                             attrs: {
                                 class: "icon-btn",
                                 type: "button",
-                                "aria-label": `${item.id} へのコメントを直す`,
+                                "aria-label": `${label}を直す`,
                                 title: "直す",
                                 "data-focus": `edit-open:${item.id}`,
                                 onclick: () => props.on.edit(item.id),
@@ -179,7 +179,7 @@ var MindmapPreview;
                             attrs: {
                                 class: "icon-btn",
                                 type: "button",
-                                "aria-label": `${item.id} へのコメントを削除`,
+                                "aria-label": `${label}を削除`,
                                 title: "削除",
                                 "data-focus": `remove:${item.id}`,
                                 onclick: () => props.on.remove(item.id),

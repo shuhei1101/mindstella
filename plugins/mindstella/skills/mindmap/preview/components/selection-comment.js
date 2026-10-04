@@ -25,8 +25,12 @@ var MindmapPreview;
                 onpointerdown: (event) => event.preventDefault(),
                 onclick: () => on.press(),
                 onkeydown: (event) => {
-                    if (event.key === "Escape")
+                    if (event.key === "Escape") {
+                        // 入口だけを閉じる。詳細パネルを閉じる Esc・モーダルを閉じる動きとして受けさせない
+                        event.stopPropagation();
+                        event.preventDefault();
                         on.close();
+                    }
                 },
             },
             children: [MindmapPreview.icon("comment"), MindmapPreview.h({ tag: "span", children: ["コメント"] })],
