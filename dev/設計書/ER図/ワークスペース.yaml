@@ -457,6 +457,12 @@ tables:
         type: object
         not_null: false
         description: 選んだ箇所。`kind`・`start`・`end`・`key`・`text` の形はレビュー中のコメント（`comments.yaml`）の `loc` と同じ。箇所を持たないコメントはキーを持たない。`target` を持つときだけ持つ
+      - name: comment
+        title: 元のコメント
+        type: string
+        not_null: false
+        description: 送ったレビュー中のコメントの ID。まとめて送る途中で落ち、同じコメントがレビュー中に残ったとき、次に送ったときに二重に足さないために持つ。前の版の送信はキーを持たない
+        example: C-1
   - name: .mindstella.lock
     title: 書き換えのロック
     datastore: テキスト

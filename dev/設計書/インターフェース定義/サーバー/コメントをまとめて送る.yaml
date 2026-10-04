@@ -240,7 +240,7 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `stale` を足す
 constraints:
   - item: 書く中身
-    constraint: '送るコメント 1 件ごとに、`id`（`S-{連番}`。連番の最大 + 1 から順に）・`target`（あれば）・`loc`（あれば）・`body`・`sent`・`taken: null`。ER 図『ワークスペース』の `submissions.yaml`'
+    constraint: '送るコメント 1 件ごとに、`id`（`S-{連番}`。連番の最大 + 1 から順に）・`target`（あれば）・`loc`（あれば）・`body`・`sent`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `submissions.yaml`'
   - item: 全てか何もなしか
     constraint: 全ての ID・向けた項目・箇所を確かめてから書く。1 件でも 404・409 に当たれば、どのコメントも送らずレビュー中に残す（単一ユースケース『コメントを選んで送る』の補足）
   - item: 箇所の確かめ
@@ -255,6 +255,8 @@ constraints:
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+  - item: 二重に送らない
+    constraint: 同じ `comment` の送信が既にあるコメントは足さず、その送信の ID を `items[].submission` に返してレビュー中から外す（`submissions.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
 refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#

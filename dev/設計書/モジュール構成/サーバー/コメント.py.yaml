@@ -1,0 +1,637 @@
+title: "サーバー / コメント"
+lead: レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントを送信へ移す。箇所・送信・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    schemas/comments.schema.json  comments.yaml の形（ER 図『ワークスペース』のレビュー中のコメント）
+    schemas/drafts.schema.json    drafts.yaml の形（同じく書きかけ）
+    scripts/comments.py           レビュー中のコメントと書きかけの読み書き・まとめて送る
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class コメント
+        class 箇所
+        class 送信
+        class 読み書きと検証
+        コメント --> 箇所 : 形と合うかの確かめ
+        コメント --> 送信 : まとめて送る
+        コメント --> 読み書きと検証
+      ```
+constants:
+  - name: COMMENTS_FILE
+    title: レビュー中のコメントのファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    summary: 無ければ 0 件
+    value: '"comments.yaml"'
+  - name: DRAFTS_FILE
+    title: 書きかけのファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    summary: 無ければ 0 件
+    value: '"drafts.yaml"'
+  - name: COMMENTS_SCHEMA
+    title: レビュー中のコメントのスキーマ
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    summary: '`SCHEMA_DIR` の下のファイル名'
+    value: '"comments.schema.json"'
+  - name: DRAFTS_SCHEMA
+    title: 書きかけのスキーマ
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    summary: '`SCHEMA_DIR` の下のファイル名'
+    value: '"drafts.schema.json"'
+  - name: COMMENT_ID_PREFIX
+    title: コメントの ID の頭
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    summary: コメントの ID の頭の文字（項目の種類と送信の頭の文字と重ならない）
+    value: '"C"'
+data_models:
+  - name: ReviewComment
+    title: レビュー中のコメント
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    role: DTO
+    summary: '`comments.yaml` の 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: id
+        type: str
+        description: '`C-{連番}`'
+      - name: target
+        type: str | None
+        description: 向けた項目の ID。項目に紐づかないコメントは `None`
+      - name: loc
+        type: Location | None
+        description: 選んだ箇所
+      - name: body
+        type: str
+        description: 本文（前後の空白を除いたもの）
+      - name: created
+        type: str
+        description: 溜めた日時
+  - name: CommentFile
+    title: レビュー中のコメントのファイル
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    role: DTO
+    summary: '`comments.yaml` の中身。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: seq
+        type: int
+        description: 最後に振った連番（無ければ 0）
+      - name: items
+        type: list[ReviewComment]
+        description: 連番の小さい順のコメント
+  - name: Draft
+    title: 書きかけ
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    role: DTO
+    summary: '`drafts.yaml` の 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: target
+        type: str | None
+        description: 入力欄が向ける項目の ID
+      - name: loc
+        type: Location | None
+        description: 入力欄に添えた箇所
+      - name: body
+        type: str
+        description: 書きかけの本文
+      - name: updated
+        type: str
+        description: 書いた日時
+  - name: ReviewCommentView
+    title: 読み取りのコメント
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送る
+    role: DTO
+    summary: 『レビュー中のコメントの読み取り』の `items[]` の 1 行。`ReviewComment` に `target_title` を足したもの。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: id
+        type: str
+        description: コメントの ID
+      - name: target
+        type: str | None
+        description: 向けた項目の ID
+      - name: target_title
+        type: str | None
+        description: 向けた項目のタイトル。紐づかないか消えていれば `None`
+      - name: loc
+        type: dict[str, Any] | None
+        description: 箇所（`location_to_dict`）
+      - name: body
+        type: str
+        description: 本文
+      - name: created
+        type: str
+        description: 溜めた日時
+  - name: SentComment
+    title: 送ったコメント
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送る
+    role: DTO
+    summary: 『コメントをまとめて送る』の `items[]` の 1 行。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: comment
+        type: str
+        description: 送ったコメントの ID
+      - name: submission
+        type: str
+        description: 振った送信の ID
+functions:
+  - name: load_comments
+    title: レビュー中のコメントの読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    scope: public
+    summary: '`comments.yaml` を読み、スキーマと突き合わせて `CommentFile` にする'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: CommentFile
+      description: 'ファイルが無ければ `seq: 0`・空の `items`'
+    process: |-
+      1. ファイルが無ければ空を返す
+      2. `yaml.safe_load` で読み、`COMMENTS_SCHEMA` と突き合わせる
+         - 読めないか合わない場合、`comments.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
+      3. `items` を連番の小さい順の `ReviewComment` にして返す（`loc` は `parse_location`）
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`comments.yaml` が YAML として読めないか、スキーマに合わない'
+    unit_tests:
+      - name: test_load_comments
+        case: 正常
+        summary: 連番の順に読む
+        condition: '`seq: 3` と C-3・C-1 をこの順に持つ `comments.yaml`'
+        mock: なし
+        expected: '`seq` が 3、`items` が C-1・C-3 の順'
+      - name: test_load_comments_when_missing
+        case: 正常
+        summary: ファイルが無ければ空
+        condition: '`comments.yaml` が無いワークスペース'
+        mock: なし
+        expected: '`CommentFile(seq=0, items=[])`'
+      - name: test_load_comments_when_invalid
+        case: 異常
+        summary: 読めない・合わないファイルは読まない
+        condition: '`parametrize`: `items: [` / C-1 から `body` を消したもの'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` が `comments.yaml: ` で始まる）'
+        exception: 読めないかスキーマに合わない
+  - name: load_drafts
+    title: 書きかけの読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    scope: public
+    summary: '`drafts.yaml` を読み、スキーマと突き合わせて書きかけの並びにする'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Draft]
+      description: ファイルの並びの順。無ければ空
+    process: |-
+      1. ファイルが無ければ空を返す
+      2. `yaml.safe_load` で読み、`DRAFTS_SCHEMA` と突き合わせる
+         - 読めないか合わない場合、`drafts.yaml: {キーのパス}: {理由}` の `SchemaMismatchError` を送る
+      3. `items` を `Draft` にして返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`drafts.yaml` が YAML として読めないか、スキーマに合わない'
+    unit_tests:
+      - name: test_load_drafts
+        case: 正常
+        summary: 書きかけを読む。無ければ空
+        condition: '`parametrize`: D-1 への書きかけと項目を指さない書きかけ / `drafts.yaml` が無い'
+        mock: なし
+        expected: 2 件（後者の `target` が `None`） / `[]`
+  - name: list_review
+    title: レビュー中の読み取り
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中のコメントに向けた項目のタイトルを付け、書きかけと合わせて『レビュー中のコメントの読み取り』の形にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（項目のタイトルを引く）
+    returns:
+      type: dict[str, Any]
+      description: '`{items: [ReviewCommentView の asdict], drafts: [{target, loc, body}]}`'
+    process: |-
+      1. コメントと書きかけを読む（`load_comments`、`load_drafts`）
+      2. コメントごとに `target` の項目の `title`（紐づかないか無ければ `None`）を付ける（`find_item` の `ItemNotFoundError` は `None` にする）
+    unit_tests:
+      - name: test_list_review
+        case: 正常
+        summary: タイトルを付けて書きかけと返す
+        condition: D-1 と、C-1（D-1）・C-2（消えた D-9）・C-3（項目を指さない）、D-1 への書きかけ
+        mock: なし
+        expected: C-1 の `target_title` が D-1 のタイトル、C-2・C-3 は `None`。`drafts` が 1 件
+  - name: add_comment
+    title: コメントを溜める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    scope: public
+    summary: 向けた先と本文を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す（鍵は呼ぶ側が取る）
+    side_effects: '`comments.yaml` を一時ファイルから置き換える。新しく溜めたときは同じ向けた先の書きかけを `drafts.yaml` から消す'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文のオブジェクト（`target`・`loc`・`body`・`id`・`created`）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[ReviewComment, int]
+      description: 溜めたコメントと、溜めた後の件数
+    process: |-
+      1. 入力を確かめる（`_parse_comment_input`）
+      2. ワークスペースを読み（`load_workspace`）、`target` があれば項目を引く（`find_item`）
+      3. `loc` があれば今の項目に合うかを確かめる（`check_location`）
+         - 合わなければ、その理由の `CommentConflictError` を送る
+      4. コメントを読む（`load_comments`）
+         - `id` がある場合、その ID が今の `items` にあるか連番が `seq` を超えれば `CommentConflictError` を送る。渡された ID と `created` で戻し、`seq` は変えない
+         - `id` が無ければ `C-{seq + 1}` と今の日時で足し、`seq` を 1 上げる
+      5. 連番の小さい順に並べた `{seq, items}` を書く（`_write_yaml`）
+      6. 新しく溜めたとき、同じ `target` と `loc` の書きかけがあれば消して書く
+         - `WriteFailedError` の場合、`[WARNING]` 書きかけを消せなかった（パス・理由）を出して溜めたまま返す
+    exceptions:
+      - name: CommentInvalidError
+        condition: '`_parse_comment_input` が送るもの'
+      - name: ItemNotFoundError
+        condition: '`target` の項目がワークスペースに無い'
+        message: '項目がありません: {target}'
+      - name: CommentConflictError
+        condition: 箇所が今の項目に合わない、または戻す `id` が今のレビュー中にあるか `seq` を超える
+        message: '{理由}'
+      - name: WriteFailedError
+        condition: '`comments.yaml` の一時ファイルの書き込みか置き換えで `OSError` が起きた'
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_add_comment
+        case: 正常
+        summary: 連番を振って溜め、書きかけを消す
+        condition: 'D-1、`seq: 2` と C-2、D-1 への書きかけ。`{target: D-1, body: "  案 A にする "}`。`now` は `2026-10-05T03:00:00+00:00`'
+        mock: '`now`'
+        expected: '`(C-3・D-1・案 A にする・now の値, 2)`。`comments.yaml` の `seq` が 3、`drafts.yaml` に D-1 への書きかけが無い'
+      - name: test_add_comment_when_location_and_no_target
+        case: 正常
+        summary: 箇所を持つコメントと項目を指さないコメントを溜める
+        condition: '`parametrize`: A-1 の本文の 2 行目の `loc` / `body` だけ'
+        mock: '`now`'
+        expected: 前者は渡した `loc` を持ち、後者は `target`・`loc` を持たない（ファイルにもキーが無い）
+      - name: test_add_comment_when_restore
+        case: 正常
+        summary: 消したコメントを同じ ID と日時で元の並びに戻す
+        condition: '`seq: 3` と C-1・C-3。`{id: C-2, created: 2026-10-05T01:00:00+00:00, target: D-1, body}`'
+        mock: '`now`（呼ばれないことを確かめる）'
+        expected: '`items` が C-1・C-2・C-3 の順で `seq` が 3。C-2 の `created` が渡した日時'
+      - name: test_add_comment_when_rejected
+        case: 異常
+        summary: 無い項目・合わない箇所・使えない ID は溜めない
+        condition: '`parametrize`: `target: D-99` / 本文に無い文の `loc` / `id: C-1`（今ある）/ `id: C-9`（`seq` が 3）'
+        mock: なし
+        expected: '`ItemNotFoundError` / `CommentConflictError` / `CommentConflictError` / `CommentConflictError`。`comments.yaml` が呼ぶ前と同じ'
+        exception: 項目が無い・箇所が合わない・戻せない ID
+      - name: test_add_comment_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら前のコメントを残す
+        condition: C-1 を持つワークスペース。`os.replace` を `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`comments` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`comments.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        exception: 置き換えで OSError
+  - name: update_comment
+    title: コメントを直す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す（鍵は呼ぶ側が取る）
+    side_effects: '`comments.yaml` を一時ファイルから置き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: comment_id
+        type: str
+        required: true
+        passing: positional
+        description: コメントの ID
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文のオブジェクト（`body`・`loc`）
+    returns:
+      type: ReviewComment
+      description: 書き換えた後のコメント
+    process: |-
+      1. `body` も `loc` も無ければ `CommentInvalidError`。`body` は文字列で前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字、`loc` は `None` だけを受ける（それ以外は `loc: null だけを受けます` の `CommentInvalidError`）
+      2. コメントを読み、ID で引く（無ければ `CommentNotFoundError`）
+      3. `body` を置き換えるか `loc` を `None` にし、並びと `seq` を変えずに書く（`_write_yaml`）
+    exceptions:
+      - name: CommentInvalidError
+        condition: '`body` も `loc` も無い、`body` が空白だけか上限を超える、`loc` が `null` 以外'
+      - name: CommentNotFoundError
+        condition: その ID のコメントがレビュー中に無い
+        message: 'コメントがありません: {ID}'
+      - name: WriteFailedError
+        condition: '`comments.yaml` を書けない'
+    unit_tests:
+      - name: test_update_comment
+        case: 正常
+        summary: 本文を直す・箇所を外す
+        condition: '`parametrize`: C-1 に `{body: " 案 A に決める "}` / 箇所を持つ C-2 に `{loc: null}`'
+        mock: なし
+        expected: C-1 の `body` が `案 A に決める` / C-2 の `loc` が `None`。どちらも `id`・`target`・`created`・並び・`seq` が呼ぶ前と同じ
+      - name: test_update_comment_when_rejected
+        case: 異常
+        summary: 形の誤りと無い ID は直さない
+        condition: '`parametrize`: `{}` / `{body: "  "}` / `{loc: {kind: body}}` / `C-9` に `{body: x}`'
+        mock: なし
+        expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentInvalidError` / `CommentNotFoundError`。`comments.yaml` が呼ぶ前と同じ'
+        exception: 形の誤り・無い ID
+  - name: delete_comment
+    title: コメントを消す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中のコメント 1 件を消し、消した中身を返す（`seq` は変えない。鍵は呼ぶ側が取る）
+    side_effects: '`comments.yaml` を一時ファイルから置き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: comment_id
+        type: str
+        required: true
+        passing: positional
+        description: コメントの ID
+    returns:
+      type: tuple[ReviewComment, int]
+      description: 消したコメントと、消した後の件数
+    process: |-
+      1. コメントを読み、ID で引く（無ければ `CommentNotFoundError`）
+      2. その 1 件を除いた `{seq, items}` を書く（`_write_yaml`）
+    exceptions:
+      - name: CommentNotFoundError
+        condition: その ID のコメントがレビュー中に無い（既に消した・送ったものを含む）
+      - name: WriteFailedError
+        condition: '`comments.yaml` を書けない'
+    unit_tests:
+      - name: test_delete_comment
+        case: 正常
+        summary: 消して中身と件数を返す
+        condition: '`seq: 3` と C-1・C-2・C-3 で `C-2`'
+        mock: なし
+        expected: '`(C-2, 2)`。`comments.yaml` が C-1・C-3 で `seq` が 3'
+      - name: test_delete_comment_when_not_found
+        case: 異常
+        summary: 無い ID は消さない
+        condition: C-1 だけで `C-9`
+        mock: なし
+        expected: '`CommentNotFoundError`（メッセージに `C-9`）'
+        exception: その ID のコメントが無い
+  - name: save_draft
+    title: 書きかけを保つ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    scope: public
+    summary: 向けた先（`target` と `loc` の組）の書きかけを上書きする。空の本文なら消す（鍵は呼ぶ側が取る）
+    side_effects: '`drafts.yaml` を一時ファイルから置き換える（無ければ作る）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文のオブジェクト（`target`・`loc`・`body`）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. `body` が文字列で `MAX_BODY_CHARS` 以下か、`target` が文字列か無いか、`loc` を渡すときは `target` もあるかを確かめる（`loc` は `parse_location`。今の項目に合うかは確かめない）
+      2. `body` が空でなければ、`target` の項目があるかを確かめる（`find_item`）
+      3. 書きかけを読み、同じ向けた先の 1 件を除き、`body` が空でなければ今の日時で末尾に足して書く（`_write_yaml`）
+    exceptions:
+      - name: CommentInvalidError
+        condition: '`body` が無いか文字列でないか上限を超える、`loc` だけで `target` が無い、`loc` の形が崩れている'
+      - name: ItemNotFoundError
+        condition: 空でない本文で、`target` の項目が無い
+      - name: WriteFailedError
+        condition: '`drafts.yaml` を書けない'
+    unit_tests:
+      - name: test_save_draft
+        case: 正常
+        summary: 向けた先ごとに上書きする
+        condition: 'D-1 への書きかけ「案 A に」と、D-1 の本文の 2 行目への書きかけ。`{target: D-1, body: 案 B も見たい}`'
+        mock: '`now`'
+        expected: '`drafts.yaml` が 2 件で、箇所を持たない D-1 の本文が `案 B も見たい`、箇所を持つ方は呼ぶ前と同じ'
+      - name: test_save_draft_when_empty
+        case: 正常
+        summary: 空の本文はその向けた先を消す。項目が無くても消せる
+        condition: '消えた D-9 への書きかけ。`{target: D-9, body: ""}`'
+        mock: なし
+        expected: 例外にならず、`drafts.yaml` に D-9 への書きかけが無い
+      - name: test_save_draft_when_rejected
+        case: 異常
+        summary: 形の誤りと無い項目への書きかけは保たない
+        condition: '`parametrize`: `body` が無い / `body` が 10001 文字 / `loc` だけ / `{target: D-99, body: x}`'
+        mock: なし
+        expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentInvalidError` / `ItemNotFoundError`。`drafts.yaml` が無い'
+        exception: 形の誤り・無い項目
+  - name: send_comments
+    title: まとめて送る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: 渡した ID のコメントを全て確かめてから送信へ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない（鍵は呼ぶ側が取る）
+    side_effects: '`submissions.yaml` を先に、`comments.yaml` を後に一時ファイルから置き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文のオブジェクト（`ids`）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[str, list[SentComment]]
+      description: 送った日時と、溜めた順の送ったコメントと送信の ID
+    process: |-
+      1. `ids` が 1 件以上の文字列の配列で重なりが無いかを確かめる（合わなければ `ids: {理由}` の `CommentInvalidError`）
+      2. コメントを読み、無い ID があればその全てを持った `CommentNotFoundError` を送る
+      3. ワークスペースを読み、渡したコメントを溜めた順に確かめる
+         - 向けた項目が無ければ `{target} がありません`、箇所が合わなければ `check_location` の理由を控える
+         - 控えが 1 件でもあれば、全てを `stale` に持った `CommentConflictError` を送る
+      4. 前の `submissions.yaml` の中身（無ければ無いこと）を控え、送信へ足す（`append_submissions`）
+      5. 送ったコメントを除いた `{seq, items}` を書く（`_write_yaml`）
+         - `WriteFailedError` の場合、控えた `submissions.yaml` を書き戻し（無かったときは消す）、同じ例外を送る
+      6. 送信の `sent` と、コメントと送信の ID の組を返す
+         - `[INFO]` コメントを送った（件数・送信の ID）
+    exceptions:
+      - name: CommentInvalidError
+        condition: '`ids` が無い・空・文字列の配列でない・重なりがある'
+        message: 'ids: {理由}'
+      - name: CommentNotFoundError
+        condition: '`ids` のどれかがレビュー中に無い'
+        message: 'コメントがありません: {ID、ID}'
+      - name: CommentConflictError
+        condition: 向けた項目が消えたコメントか、箇所が今の項目に合わないコメントがある
+        message: 箇所が合わないコメントが {件数} 件あります
+      - name: WriteFailedError
+        condition: '`submissions.yaml` か `comments.yaml` を書けない（どちらも前のままに戻した後）'
+    unit_tests:
+      - name: test_send_comments
+        case: 正常
+        summary: チェックしたものだけを溜めた順に送る
+        condition: 'D-1・A-1、C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）。`{ids: [C-2, C-1]}`'
+        mock: '`now`'
+        expected: '`items` が C-1 → S-1、C-2 → S-2。`submissions.yaml` が S-1・S-2（`comment` を持つ）、`comments.yaml` が C-3 だけ'
+      - name: test_send_comments_when_rejected
+        case: 異常
+        summary: 形の誤り・無い ID は何も送らない
+        condition: '`parametrize`: `{ids: []}` / `{ids: [C-1, C-1]}` / `{ids: [C-1, C-9]}`'
+        mock: なし
+        expected: '`CommentInvalidError` / `CommentInvalidError` / `CommentNotFoundError`（メッセージに `C-9`）。`submissions.yaml` が無く、`comments.yaml` が呼ぶ前と同じ'
+        exception: 形の誤り・無い ID
+      - name: test_send_comments_when_stale
+        case: 異常
+        summary: 合わないコメントを全て返し、何も送らない
+        condition: 'C-1（D-1）・C-2（3 行の本文の 5 行目）・C-3（消えた D-9）で `{ids: [C-1, C-2, C-3]}`'
+        mock: なし
+        expected: '`CommentConflictError` の `stale` が C-2・C-3 の順で理由が空でない。`submissions.yaml` が無く、`comments.yaml` が呼ぶ前と同じ'
+        exception: 箇所が合わない
+      - name: test_send_comments_when_comments_write_fails
+        case: 異常
+        summary: レビュー中を書けなければ送信を書き戻す
+        condition: S-1 と C-1 を持つワークスペース。`comments.yaml` への `os.replace` だけ `OSError` を送るように差し替える
+        mock: '`os.replace`'
+        expected: '`WriteFailedError`。`submissions.yaml`・`comments.yaml` が呼ぶ前と同じ'
+        exception: 置き換えで OSError
+  - name: _parse_comment_input
+    title: コメントの入力の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 項目へコメントする
+    scope: internal
+    summary: 溜める要求の `target`・`loc`・`body`・`id`・`created` の形を確かめる
+    args:
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文のオブジェクト
+    returns:
+      type: tuple[str | None, Location | None, str, str | None, str | None]
+      description: '`target`・箇所・前後の空白を除いた `body`・`id`・`created`'
+    process: |-
+      1. `body` を確かめる（文字列で、前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字）
+      2. `target` があれば文字列かを確かめる
+      3. `loc` があれば `target` もあるかを確かめ、`parse_location` を当てる
+      4. `id` があれば `C-{数字}` の形で `created` もあるかを、`created` があれば `id` もあるかを確かめる
+         - 合わない場合、`{キー}: {理由}` の `CommentInvalidError` を送る
+    exceptions:
+      - name: CommentInvalidError
+        condition: '`body` が無い・文字列でない・空白だけ・上限を超える、`target` が文字列でない、`loc` だけで `target` が無い、`loc` の形が崩れている、`id` と `created` の組みが合わない'
+        message: '{キー}: {理由}'
+    unit_tests:
+      - name: test_parse_comment_input_when_invalid
+        case: 異常
+        summary: 形の誤りを拾う
+        condition: '`parametrize`: `body` が無い / `body` が `"  "` / `body` が 10001 文字 / `body` が `1` / `target` が `1` / `loc` だけ / `id` だけ / `id: X-1`'
+        mock: なし
+        expected: '`CommentInvalidError`（メッセージに順に `body`・`body`・`body`・`body`・`target`・`target`・`created`・`id`）'
+        exception: 形の誤り
+      - name: test_parse_comment_input_when_boundary
+        case: 正常
+        summary: ちょうど上限の本文を受ける
+        condition: 前後に空白を付けた 10000 文字の `body`
+        mock: なし
+        expected: 返した `body` が 10000 文字
+  - name: _write_yaml
+    title: YAML の書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/comments.py
+    usecase: 共通
+    scope: internal
+    summary: ワークスペースの 1 ファイルを一時ファイルから置き換える
+    side_effects: ファイルを置き換える
+    args:
+      - name: path
+        type: Path
+        required: true
+        passing: positional
+        description: 書くファイル
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 書く中身（`None` のキーは呼ぶ側が落とす）
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. `dump_yaml` した文を一時ファイルに書いて（`write_temp`）`os.replace` で置き換える
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る（`write_failed`）
+    exceptions:
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
+        message: '書き込めませんでした: {パス}（{理由}）'
