@@ -1060,7 +1060,7 @@ functions:
     scope: public
     summary: プロセスの中の鍵と、ワークスペースの `LOCK_FILE` の排他ロックをこの順に取る、`with` で使う文脈
     description: '`@contextlib.contextmanager` で書く。ワークスペースを書き換えるツール（`call_tool`）と送信の受け付け（配信）が、読む前から書き終えるまでの間だけ持つ。'
-    side_effects: '`LOCK_FILE` が無ければ作る（フォルダが無ければ作る。`init` がまだ無いフォルダへ書くため）'
+    side_effects: '`LOCK_FILE` が無ければ作る。`create` が真のときだけ、フォルダが無ければ作る（`init` がまだ無いフォルダへ書くため）'
     args:
       - name: root
         type: Path
@@ -1072,33 +1072,44 @@ functions:
         required: true
         passing: positional
         description: プロセスの中の書き換えの鍵
+      - name: create
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: まだ無いワークスペースを作るか（`init` だけ真）
     returns:
       type: Iterator[None]
       description: 鍵とロックを持っている間だけ返す
     process: |-
       1. `process_lock` を取る
-      2. `root` を作り（`exist_ok`）、`LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ
-      3. 呼び出し元の処理を動かす
-      4. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す
+      2. `create` が真なら `root` を作る（`exist_ok`）。偽なら、`root/mindmap.yaml` が無ければ何も作らずに `WorkspaceNotFoundError` を送る（`process_lock` は放す）
+      3. `LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ
+      4. 呼び出し元の処理を動かす
+      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す
     unit_tests:
       - name: test_workspace_lock
         case: 正常
         summary: 鍵とロックを持ち、抜けたら放す
-        condition: '`tmp_path` と `threading.Lock()`。`with` の中で別の子プロセスが同じ `LOCK_FILE` に `flock(LOCK_EX | LOCK_NB)` を試す'
+        condition: '`mindmap.yaml` を置いた `tmp_path` と `threading.Lock()`。`with` の中で別の子プロセスが同じ `LOCK_FILE` に `flock(LOCK_EX | LOCK_NB)` を試す'
         mock: なし
         expected: '`with` の中では子プロセスが `BlockingIOError` で取れず、`process_lock.locked()` が真。抜けた後は子プロセスが取れ、`process_lock` が外れている'
       - name: test_workspace_lock_when_raises
         case: 正常
         summary: 中の処理が例外でも放す
-        condition: '`with` の中で `ValueError` を送る'
+        condition: '`mindmap.yaml` を置いた `tmp_path`。`with` の中で `ValueError` を送る'
         mock: なし
         expected: '`ValueError` が伝わり、`process_lock` が外れ、子プロセスがロックを取れる'
       - name: test_workspace_lock_when_folder_missing
         case: 正常
         summary: まだ無いフォルダも作って取る
-        condition: '`tmp_path / "ws"`（無い）'
+        condition: '`tmp_path / "ws"`（無い）と `create=True`'
         mock: なし
         expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`create` が偽で、`root` に `mindmap.yaml` が無い'
+        message: 'ワークスペースがありません: {root}'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

@@ -804,7 +804,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`adopt`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`adopt`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -844,11 +844,17 @@ functions:
         default: None
         passing: keyword
         description: 書き換えるワークスペース。渡したときだけ鍵とロックを取る
+      - name: lock_create
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: 鍵を取るとき、まだ無いワークスペースのフォルダを作るか（`init` だけ真。`workspace_lock` の `create`）
     returns:
       type: CallToolResult
       description: 成功は `ok_result`、エラーは `error_result` の結果
     process: |-
-      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`）、無い場合はそのまま `handler()` を呼ぶ
+      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
       2. 結果を分ける
          - 辞書が返った場合、それを結果にする（`ok_result`）
          - `MindmapError` を捕まえた場合、ツールのエラーにする（`error_result`）
@@ -876,7 +882,7 @@ functions:
       - name: test_call_tool_when_lock_root
         case: 正常
         summary: 書き換えるツールは鍵を取って呼ぶ
-        condition: '`lock_root=tmp_path`。`handler` は呼ばれたときに `write_lock.locked()` を控える'
+        condition: '`mindmap.yaml` を置いた `tmp_path` を `lock_root` に渡す。`handler` は呼ばれたときに `write_lock.locked()` を控える'
         mock: なし
         expected: 控えた値が真で、呼んだ後は鍵が外れている。`tmp_path / ".mindstella.lock"` がある
   - name: ok_result
