@@ -1,0 +1,177 @@
+/* 71 のスタイルの上に重ね、前回からの差分の表示を足す分 */
+
+/* ===== 差分の色 ===== */
+
+/* 足した・消した・変わったの色と薄い面: 状態の色（決定済み・要見直し・保留）から作り、明暗は元の色と面に従う */
+:root {
+  --df-add: var(--st-done);
+  --df-del: var(--st-review);
+  --df-chg: var(--st-hold);
+  --df-add-bg: color-mix(in oklab, var(--st-done) 14%, var(--surface));
+  --df-del-bg: color-mix(in oklab, var(--st-review) 12%, var(--surface));
+  --df-chg-bg: color-mix(in oklab, var(--st-hold) 16%, var(--surface));
+}
+
+/* ===== トップバーの差分の表示の切り替え ===== */
+
+/* 切り替えのボタン: 印と短い文言。検索の入口と同じ高さと枠 */
+.diff-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
+.diff-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
+/* 入れている間: 帯の地と文字を入れ替え、押した見た目にする */
+.diff-btn[aria-pressed="true"] { background: var(--topbar-fg); border-color: var(--topbar-fg); color: var(--topbar-bg); }
+.diff-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 狭い幅（900px 以下）: 検索の入口と同じく印だけにする */
+@media (max-width: 900px) { .diff-btn { width: 32px; padding: 0; justify-content: center; } .diff-btn .label { display: none; } }
+
+/* ===== タブの印 ===== */
+
+/* タブ: 印を重ねる基準にする */
+.tab { position: relative; }
+/* タブの印: 種類の印の右上に重ねる点。タブの幅を変えず、件数はそのまま残す */
+.tab .df-dot { position: absolute; top: 11px; left: 22px; width: 8px; height: 8px; border-radius: 50%; background: var(--df-chg); box-shadow: 0 0 0 2px var(--surface); }
+
+/* ===== 新規・変更の印 ===== */
+
+/* 項目の印: 記号と文言で示し、色だけに頼らない */
+.df-badge { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 20px; padding: 0 6px; border: 1px solid; border-radius: var(--radius); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; color: var(--text); text-decoration: none; }
+/* 印の記号 */
+.df-badge svg.icon { width: 12px; height: 12px; stroke-width: 2.6; }
+/* 新規の印: 足した色の枠と面 */
+.df-badge.df-new { border-color: var(--df-add); background: var(--df-add-bg); }
+/* 新規の印の記号（＋） */
+.df-badge.df-new svg.icon { color: var(--df-add); }
+/* 変更の印: 変わった色の枠と面 */
+.df-badge.df-chg { border-color: var(--df-chg); background: var(--df-chg-bg); }
+/* 変更の印の記号（塗った丸） */
+.df-badge.df-chg svg.icon { color: var(--df-chg); fill: currentColor; }
+/* 表の行の印: タイトルの右に置く */
+.row-open + .df-badge { margin-left: 8px; vertical-align: 1px; }
+/* マップの節の印: 2 行目の頭に小さく置く */
+.n-item .r2 .df-badge { height: 16px; padding: 0 4px; }
+/* 狭い幅のマップの一覧の印 */
+.map-outline button .df-badge { margin-left: 2px; }
+
+/* ===== 詳細パネルの差分 ===== */
+
+/* 冒頭の帯: 比べた書き換えの日時と、比べる回の選択 */
+.df-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 14px; padding: 8px 12px; border-radius: var(--radius); background: var(--df-chg-bg); font-size: var(--fs-small); }
+/* 冒頭の帯の見出し */
+.df-head-t { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+/* 冒頭の帯の印 */
+.df-head-t svg.icon { width: 16px; height: 16px; color: var(--df-chg); }
+/* 比べた書き換えの日時 */
+.df-when { color: var(--text-2); font-family: var(--font-mono); }
+/* 比べる回の選択: ラベルを常に見せる */
+.df-round { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); }
+/* 比べる回の選択欄 */
+.df-round select { color: var(--text); font: inherit; }
+/* キーの前の値と今の値 */
+.df-kv { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+/* 前の値: 取り消し線と消した色の面 */
+.df-was { padding: 0 4px; border-radius: 3px; background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+/* 今の値: 下線と足した色の面 */
+.df-now { padding: 0 4px; border-radius: 3px; background: var(--df-add-bg); color: var(--text); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+/* 前の値・今の値の中の状態とタグ: 線は内側の箱に届かないので、箱にも付ける */
+.df-was .st, .df-was .tag { text-decoration: inherit; }
+/* 前の値と今の値をつなぐ矢印 */
+.df-arrow { color: var(--text-3); }
+/* 値が変わったキーの名前 */
+.d-meta dt.df-key { color: var(--text); font-weight: 600; }
+/* 本文の前の版を組み立てられない旨: 本文の節の頭に置く */
+.df-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--df-chg); border-radius: var(--radius); background: var(--surface); font-size: var(--fs-small); }
+/* 組み立てられない旨の印 */
+.df-note svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--df-chg); }
+
+/* ===== 本文（Markdown）の差分 ===== */
+
+/* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
+.md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
+/* 塊の中の段落・見出し・箇条書き: 塊の余白に寄せる */
+.md .df-blk > :is(p, ul, ol, h1, h2, h3, h4, table, pre) { margin: 4px 0; }
+/* 足した塊 */
+.md ins.df-blk { background: var(--df-add-bg); }
+/* 消した塊: 取り消し線を引き、文字を控えめにする */
+.md del.df-blk { background: var(--df-del-bg); color: var(--text-2); }
+/* 消した塊の中身 */
+.md del.df-blk > :not(.df-sign) { text-decoration: line-through; }
+/* 塊の記号 */
+.md .df-blk > .df-sign { position: absolute; top: 4px; left: 9px; font-family: var(--font-mono); font-weight: 700; }
+/* 足した塊の記号 */
+.md ins.df-blk > .df-sign { color: var(--df-add); }
+/* 消した塊の記号 */
+.md del.df-blk > .df-sign { color: var(--df-del); }
+/* 表の足した行 */
+.md tr.df-add td { background: var(--df-add-bg); }
+/* 表の消した行 */
+.md tr.df-del td { background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; }
+/* 表の行の記号: 先頭のセルの頭に置く */
+.md tr.df-row .df-sign { display: inline-block; margin-right: 6px; font-family: var(--font-mono); font-weight: 700; text-decoration: none; }
+/* 表の足した行の記号 */
+.md tr.df-add .df-sign { color: var(--df-add); }
+/* 表の消した行の記号 */
+.md tr.df-del .df-sign { color: var(--df-del); }
+
+/* ===== 図の差分 ===== */
+
+/* 変わった図: 枠を変わった色にする */
+.diagram.df-changed { border-color: var(--df-chg); }
+/* 色を付けない種類の変わった図: 枠を太い破線にし、図ごと変わったことを示す */
+.diagram.df-frame { border: 2px dashed var(--df-chg); }
+/* 足したノード: 足した色の薄い面と太い実線（mermaid が図の中に書く色より先に効かせる） */
+.df-n-add :is(rect, polygon, circle, ellipse, path) { fill: var(--df-add-bg) !important; stroke: var(--df-add) !important; stroke-width: 2.5px !important; }
+/* 変わったノード: 変わった色の薄い面と太い破線 */
+.df-n-chg :is(rect, polygon, circle, ellipse, path) { fill: var(--df-chg-bg) !important; stroke: var(--df-chg) !important; stroke-width: 2.5px !important; stroke-dasharray: 5 3 !important; }
+/* 足した辺 */
+.df-e-add { stroke: var(--df-add) !important; stroke-width: 2.5px !important; }
+/* 変わった辺（sequenceDiagram のメッセージの線） */
+.df-e-chg { stroke: var(--df-chg) !important; stroke-width: 2.5px !important; stroke-dasharray: 5 3 !important; }
+/* 変わったメッセージの文字: 太字にする */
+text.df-t-chg { font-weight: 700 !important; }
+/* 図の下の凡例と消したものの一覧 */
+.df-notes { display: grid; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: var(--fs-xs); color: var(--text-2); }
+/* 凡例の並び */
+.df-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+/* 凡例の 1 つ */
+.df-lg { display: inline-flex; align-items: center; gap: 6px; }
+/* 凡例の見本の箱 */
+.df-lg i { width: 16px; height: 11px; border-radius: 2px; }
+/* 足したの見本: 太い実線 */
+.df-lg-add i { background: var(--df-add-bg); border: 2px solid var(--df-add); }
+/* 変わったの見本: 破線 */
+.df-lg-chg i { background: var(--df-chg-bg); border: 2px dashed var(--df-chg); }
+/* 消したものの一覧 */
+.df-removed { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+/* 消したものの一覧の見出し */
+.df-removed-t { font-weight: 600; color: var(--text); }
+/* 消したものの並び */
+.df-removed ul { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 0; list-style: none; }
+/* 消したもの: 取り消し線と消した色の面 */
+.df-removed li { padding: 1px 6px; border-radius: 3px; background: var(--df-del-bg); color: var(--text); text-decoration: line-through; }
+/* 消したものの記号 */
+.df-removed .df-sign { display: inline-block; margin-right: 4px; color: var(--df-del); font-weight: 700; text-decoration: none; }
+
+/* ===== Raw の差分 ===== */
+
+/* 行ごとの差分の Raw: 行の面を端まで塗るため、左右の余白を行に持たせる */
+.dg-raw.df-raw { padding: 6px 0; }
+/* 記法の 1 行 */
+.df-raw .df-line { display: block; padding-right: 12px; white-space: pre; }
+/* 行の頭の記号 */
+.df-raw .df-line .df-sign { display: inline-block; width: 2em; text-align: center; color: var(--text-3); text-decoration: none; }
+/* 足した行 */
+.df-raw .df-line.df-add { background: var(--df-add-bg); }
+/* 足した行の記号 */
+.df-raw .df-line.df-add .df-sign { color: var(--df-add); font-weight: 700; }
+/* 消した行: 取り消し線 */
+.df-raw .df-line.df-del { background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; }
+/* 消した行の記号 */
+.df-raw .df-line.df-del .df-sign { color: var(--df-del); font-weight: 700; }
+
+/* ===== 図の拡大の差分と Raw ===== */
+
+/* 図の拡大の Raw: 図の代わりに窓いっぱいに出す */
+.v-raw { flex: 1; margin: 0; border-radius: 0; overflow: auto; }
+/* 図の拡大の凡例と消したものの一覧: 窓の下端に置く */
+.v-notes { margin: 0; padding: 8px 12px; }
+/* 色を付けない種類の変わった図の拡大: 描く面の内側に破線の枠を引く */
+:is(dialog.viewer, .full-viewer).df-frame .v-canvas { outline: 2px dashed var(--df-chg); outline-offset: -6px; }
