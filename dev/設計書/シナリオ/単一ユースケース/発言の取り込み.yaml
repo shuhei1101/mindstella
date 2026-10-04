@@ -23,6 +23,8 @@ scenarios:
         SV->>WS: スキーマと突き合わせて書く
         CC->>SV: add（会話ログ）
         SV->>WS: 書く
+        CC->>SV: commit（取り込んだ内容の一言の説明）
+        SV->>WS: まとまりを書く
         CC-->>U: 記録した項目と、積んだ問いを短く示す
       ```
     expected:
@@ -32,6 +34,7 @@ scenarios:
       - 'T-1 が `for: [D-2]` を持つ'
       - 会話ログ L-1 がある
       - 足した全ての項目が `target`・`category`・`phase` を持つ
+      - 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。`pending` が空を返す
     test: test_normal
   - name: 正常シナリオ（保留・解除・中止）
     setup:
