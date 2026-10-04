@@ -91,7 +91,7 @@ data_models:
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。点検の出力の `problems[]` と同じキーを持ち、`dataclasses.asdict` で JSON にする。'
     properties:
       - name: kind
-        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body"]
+        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase"]
         description: 問題の種類
       - name: file
         type: str
@@ -296,6 +296,17 @@ classes:
     summary: プレビューの配信の待ち受けを立てられない（`OSError`）。メッセージに理由（`raise ... from` で元の例外をつなぐ）
     kind: クラス
     inherits: MindmapError
+  - name: UnmappedPhaseError
+    title: 対応の無いフェーズ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 設定の更新
+    summary: '新しい `phases` に対応の無いフェーズを持つ項目か `goal.phase` が残る。メッセージは `新しいフェーズに対応の無いフェーズが残ります`、`lines` に残るものごとの `{ID か goal}: {フェーズ}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: unmapped
+        type: list[tuple[str, str]]
+        description: 残るもの（ID か `goal`、フェーズ）
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -969,7 +980,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -986,16 +997,16 @@ functions:
       description: 前の版の形式から来ていれば真
     process: |-
       1. `kind` が `schema` でない場合、偽を返す
-      2. `file` が `mindmap.yaml` の場合、`raw` の設定が辞書で `summary` を持たなければ真
+      2. `file` が `mindmap.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
       3. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
       4. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
         summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `mindmap.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題'
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `mindmap.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `mindmap.yaml` の問題'
         mock: なし
-        expected: 真 / 真 / 偽 / 偽
+        expected: 真 / 真 / 偽 / 偽 / 真
   - name: clear_release
     title: リリースの片付け
     kind: 関数

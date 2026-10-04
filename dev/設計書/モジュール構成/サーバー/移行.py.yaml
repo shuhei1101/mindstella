@@ -8,6 +8,10 @@ directory: |-
       migrations/
         v0.3.0/
           steps.yaml                   版を記録する前の形式 → v0.3.0 の手順
+        v0.5.0/
+          steps.yaml                   v0.4.0 の形式 → v0.5.0 の手順
+          scripts/
+            field_to_playbooks.py      設定の `field` を `playbooks` の 1 件の配列へ移す変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -899,6 +903,36 @@ functions:
         condition: git の写しを取った後に `docs.yaml` を書き換え、`new.yaml` を足したワークスペース
         mock: なし
         expected: '`docs.yaml` がコミットの中身で、`new.yaml` が無い'
+  - name: migrate
+    title: 分野のプレイブックの配列への移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.5.0 の `call`（`field_to_playbooks`）が呼ぶ変換。`mindmap.yaml` の `field` を同じ位置の `playbooks` の 1 件の配列へ移す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `mindmap.yaml` を `yaml.safe_load` で読む
+      2. 設定が `field` を持たない場合、何も書かず空を返す
+      3. `field` と `playbooks` を両方持つ場合、`ValueError`（`field と playbooks を両方持ちます`）を送る（`call` が手順の失敗にする）
+      4. キーの並びを保ったまま、`field` の位置に `playbooks: [{field の値}]` を置いた新しい辞書を作る（`target_label` など他のキーは変えない）
+      5. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
+      6. `[mindmap.yaml]` を返す
+    exceptions:
+      - name: ValueError
+        condition: '`field` と `playbooks` を両方持つ'
+        message: field と playbooks を両方持ちます
+      - name: OSError
+        condition: 読めない・書けない
 diagrams:
   - name: 全体
     diagram: |-
@@ -936,6 +970,8 @@ notes:
     `scripts/` は使わないので置かない。
   手順の形のスキーマ: '`schemas/migration-steps.schema.json` は `steps` の各要素を `op` で分け（`oneOf`）、インターフェース定義『記録の形式の移行』の制約「操作と引数」の引数だけを許す（`additionalProperties: false`）。`set_default` は `value` か `ask` のどちらか 1 つを持つ。'
   開発側の点検: '`tests/unit/scripts/test_migration_coverage.py` に置く。`v*` のタグを版の順に並べた先頭（最新のタグ）の `plugins/mindstella/skills/mindmap/schemas/` と今の `schemas/` を比べ（`git show {タグ}:{パス}`。`migration-steps.schema.json` は比べない）、タグの時点にあったスキーマのファイルが消えたか中身が変わったのに `list_versions` に「最新のタグより新しく、プラグインの版以下」の版が無ければ落とす（`test_schema_changes_have_migration`）。足したスキーマのファイルは、無ければ空として読むため比べない（`submissions.schema.json`。確認ログ『送信とロックファイルの置き場所』）。タグが 1 つも無い clone では skip する。あわせて、プラグインの版がリポジトリの直下の `version.ini` の版より前でないことを確かめる（`test_plugin_version_not_behind_release_version`）。hotfix のタグは直下の `version.ini` もプラグインの版も動かさないため、最新のタグとは比べない'
+  v0.5.0 の手順: '`migrations/v0.5.0/steps.yaml` は `call`（`script: field_to_playbooks`）の 1 つだけを並べる。`scripts/field_to_playbooks.py` が `migrate(root)` を持つ。設定のスキーマを変えるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.5.0` にする（開発側の点検が、最新のタグより新しくプラグインの版以下の手順を求める）。'
+  この PR で足す単体テスト: '`tests/unit/scripts/test_field_to_playbooks.py` に置き、`test_files` へ足す。`test_migrate`（`migrate`、正常）: `summary`・`field: システム開発`・`target_label: システム`・`phases` の順の `mindmap.yaml` → 戻り値が `[mindmap.yaml]`、キーが `summary`・`playbooks`・`target_label`・`phases` の順で `playbooks` が `[システム開発]`、`target_label` が `システム` のまま、`.tmp` のファイルが無い。`test_migrate_when_no_field`（正常）: `playbooks` を持ち `field` を持たない `mindmap.yaml` → 戻り値が空、中身と更新日時が呼ぶ前と同じ。`test_migrate_when_both`（異常）: `field` と `playbooks` を両方持つ → `ValueError`、中身が呼ぶ前と同じ。`test_load_steps_when_v0_5_0`（`load_steps`、正常）: リポジトリの `migrations/v0.5.0/steps.yaml` → `call`（`script: field_to_playbooks`）が `index` 1 で 1 つだけ。単体テスト作成でテスト関数を作ったときに各関数の `unit_tests` へ移し、この節を消す'
 test_files:
   - tests/unit/scripts/test_versions.py
   - tests/unit/scripts/test_migrator.py

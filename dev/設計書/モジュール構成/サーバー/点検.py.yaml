@@ -1,9 +1,9 @@
 title: "サーバー / 点検"
-lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれを洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
+lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ
+    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ
   ```
 constants:
   - name: REF_RULES
@@ -49,7 +49,8 @@ functions:
       3. 参照切れを拾う（`_check_refs`）
       4. 本文のずれを拾う（`_check_bodies`）
       5. 送信のスキーマ違反と参照切れを拾う（`_check_submissions`）
-      6. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      6. 設定に無いフェーズを拾う（`_check_phases`）
+      7. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -104,7 +105,7 @@ functions:
       type: list[Problem]
       description: 問題の並び（`detail` に指した ID と理由）
     process: |-
-      1. 全ての項目と設定の `goal.deliverables[].doc` について、`REF_RULES` のキーの値の ID を見る
+      1. 全ての項目と設定の `goal.deliverables[].doc` について、`REF_RULES` のキーの値の ID を見る（設定が `goal` を持たなければ設定は見ない）
          - 種類が合わない場合、`broken_ref`（`指してはいけない種類: {ID}`）
          - その種類に ID が無い場合、`broken_ref`（`存在しない ID: {ID}`）
     unit_tests:
@@ -191,5 +192,26 @@ functions:
         condition: '`submissions.yaml` が無いワークスペース'
         mock: なし
         expected: 空の並び
+  - name: _check_phases
+    title: フェーズの点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（`detail` にそのフェーズの名前）
+    process: |-
+      1. 設定が `goal` を持ち、`goal.phase` が `phases` に無い場合、`unknown_phase`（`file: mindmap.yaml`・`id: None`・`key: goal.phase`）にする
+      2. 種類の順（`KINDS`）に項目を見て、`phase` を持ち `phases` に無い項目を `unknown_phase`（その種類の YAML・`key: items[n].phase`）にする
 test_files:
   - tests/unit/scripts/test_checker.py
+notes:
+  この PR で足す単体テスト: '`test_check_phases`（`_check_phases`、正常）: `phases` 目的・要件、`goal.phase` 結論。D-1（発散）・D-2（要件）・T-1（`phase` 無し）→ `unknown_phase`（`mindmap.yaml`・`goal.phase`・`detail` が `結論`）と `unknown_phase`（`decisions.yaml`・D-1・`items[0].phase`・`detail` が `発散`）の 2 件。`test_check_phases_when_no_goal`（`_check_phases`、正常）: `phases` 目的・要件で `goal` を持たない設定と D-1（目的）→ 空の並び。`test_check_refs_when_no_goal`（`_check_refs`、正常）: `goal` を持たない設定と D-1 `depends_on: [D-9]` → `broken_ref`（D-1・`depends_on`・`detail` に `D-9`）の 1 件だけ。単体テスト作成でテスト関数を作ったときに各関数の `unit_tests` へ移し、この節を消す'

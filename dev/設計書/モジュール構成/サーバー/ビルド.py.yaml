@@ -252,7 +252,7 @@ functions:
       description: '`next`（`Candidate` を `asdict` した並び）・`goal`（`GoalReport` を `asdict` し、`phase_progress` を足した辞書）・`progress`（カテゴリーごとのセル）'
     process: |-
       1. 次の候補を全件並べる（`list_next_candidates`、`limit=None`）
-      2. ゴールを判定し（`judge_goal`）、判定に入れたフェーズごとに、そのフェーズの検討事項の決着した数と全体の数を `phase_progress`（`{phase, settled, total}` の並び）にする（`is_settled`）
+      2. ゴールを判定し（`judge_goal`。ゴールが無いときは判定に入れたフェーズが `phases` の全て）、判定に入れたフェーズごとに、そのフェーズの検討事項の決着した数と全体の数を `phase_progress`（`{phase, settled, total}` の並び）にする（`is_settled`）
       3. `settings.categories` の順に、`settings.phases` の順のセルごとの決着した数と全体の数を `progress`（`{category, cells: [{phase, settled, total}], settled, total}` の並び）にする（`is_settled`）
     unit_tests:
       - name: test_derive_preview_values
@@ -755,3 +755,5 @@ function_types:
       description: 本文
 test_files:
   - tests/unit/scripts/test_builder.py
+notes:
+  この PR で足す単体テスト: '`test_derive_preview_values_when_no_goal`（`derive_preview_values`、正常）: `test_derive_preview_values` と同じ項目で、設定が `goal` を持たない → `goal.has_goal` が偽、`goal.reached` が `None`、`goal.phase_progress` が 目的 1/1・要件 1/2、`goal.remaining_deliverables` が空。`next` と `progress` は `test_derive_preview_values` と同じ。単体テスト作成でテスト関数を作ったときに `derive_preview_values` の `unit_tests` へ移し、この節を消す'

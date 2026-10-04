@@ -15,21 +15,24 @@ data_models:
     summary: ゴールに届いたかと、残りの検討事項・納品物
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。インターフェース定義『ゴール判定』のレスポンスの形。'
     properties:
-      - name: reached
+      - name: has_goal
         type: bool
-        description: 届いたか（残りがどちらも空のときだけ真）
+        description: 設定がゴールを持つか
+      - name: reached
+        type: bool | None
+        description: 届いたか（残りがどちらも空のときだけ真）。ゴールが無いときは `None`
       - name: goal_phase
-        type: str
-        description: '`goal.phase`'
+        type: str | None
+        description: '`goal.phase`。ゴールが無いときは `None`'
       - name: phases
         type: list[str]
-        description: 判定に入れたフェーズ
+        description: 判定に入れたフェーズ（ゴールが無いときは `phases` の全て）
       - name: remaining_decisions
         type: list[dict[str, str]]
         description: 決着していない検討事項（`id`・`title`・`phase`・`status`）
       - name: remaining_deliverables
         type: list[dict[str, str | None]]
-        description: 揃っていない納品物（`title`・`doc`）
+        description: 揃っていない納品物（`title`・`doc`）。ゴールが無いときは空
 functions:
   - name: judge_goal
     title: ゴールの判定
@@ -48,12 +51,13 @@ functions:
       type: GoalReport
       description: 判定の結果
     process: |-
-      1. 設定の `phases` と `goal.phase` から、判定に入れるフェーズを決める
+      1. 設定が `goal` を持たない場合、判定に入れるフェーズを `phases` の全てにし、`has_goal` を偽、`reached` と `goal_phase` を `None`、`remaining_deliverables` を空にして、決着していない検討事項だけを 2. と同じ並びで集めて返す
+      2. 設定の `phases` と `goal.phase` から、判定に入れるフェーズを決める
          - `goal.phase` が `phases` にある場合、先頭から `goal.phase` まで
          - 無い場合、`phases` の全て（厳しい側に倒す）
-      2. 検討事項のうち `phase` が判定に入るフェーズにあり、決着していないものを、フェーズの順 → 連番の小さい順に集める（`is_settled`）
-      3. `goal.deliverables` を並びのまま見て、`doc` が無いか、`doc` の資料が無いか `status` が `完成` でないものを集める
-      4. 残りがどちらも空なら `reached` を真にする
+      3. 検討事項のうち `phase` が判定に入るフェーズにあり、決着していないものを、フェーズの順 → 連番の小さい順に集める（`is_settled`）
+      4. `goal.deliverables` を並びのまま見て、`doc` が無いか、`doc` の資料が無いか `status` が `完成` でないものを集める
+      5. `has_goal` を真にし、残りがどちらも空なら `reached` を真にする
     unit_tests:
       - name: test_judge_goal
         case: 正常
@@ -104,6 +108,7 @@ functions:
         expected: '`reached` が偽で、`goal_phase`・`phases`・`remaining_decisions`・`remaining_deliverables` のキーがある'
 notes:
   対応テストファイル: '`judge_goal` は `tests/unit/scripts/test_graph.py`、`run_goal` は `tests/unit/scripts/test_commands.py` に置く（単体テスト作成で置き、`test_files` に書く）'
+  この PR で足す単体テスト: '`test_judge_goal_when_no_goal`（`judge_goal`、正常）: `phases` 目的・要件でゴールを持たず、D-1 `目的`・`決定済み`／D-2 `要件`・`未決定` → `has_goal` 偽、`reached` と `goal_phase` が `None`、`phases` が `[目的, 要件]`、`remaining_decisions` が D-2 だけ、`remaining_deliverables` が空。単体テスト作成でテスト関数を作ったときに `judge_goal` の `unit_tests` へ移し、この節を消す'
 test_files:
   - tests/unit/scripts/test_graph.py
   - tests/unit/scripts/test_commands.py
