@@ -112,6 +112,22 @@ states:
         value: failed
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる。320px でも結果の文言は折り返し、ボタンの幅は保つ
+  - name: NoTargetCollapsed
+    description: 項目を指さないコメントを畳んだ形。読み上げのラベルと 1 行の入力欄だけを出す
+    args:
+      - name: collapsed
+        value: 'true'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+  - name: NoTargetExpanded
+    description: 項目を指さないコメントを狭い幅で広げた形。入力欄と「レビューに追加」を出す
+    args:
+      - name: collapsed
+        value: 'false'
+      - name: body
+        value: 全体に目を通した
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
 lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の下端に留める、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook/test_send_form_stories.py
 status: planned
@@ -155,6 +171,12 @@ args:
     default: なし（サーバーに届かなかった）
     enabled_when: '`status` が `failed` のとき'
     description: サーバーが返した溜められなかった理由（`detail`）。無ければ、サーバーが止まっているので起動スクリプトで立ち上げ直して新しい URL で開くよう出し、本文を写すボタンを添える
+  - name: collapsed
+    type: 真偽値
+    required: false
+    default: 'false'
+    enabled_when: '`target` が無いとき'
+    description: 畳んだ形にするか。畳むと余白を詰め、読み上げのラベルと 1 行の入力欄だけを出す（入力欄は伸ばさず、結果と「レビューに追加」を出さない）。畳むかは使う側が決める
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない
@@ -171,6 +193,13 @@ events:
     when: '`failed` で `detail` が無いときに出る「本文を写す」を押したとき'
     value: body
     description: 使う側が入力欄の中身をクリップボードへ写す（サーバーが止まっている間は書きかけを保てないため）
+  - name: 入力欄に入る
+    when: 入力欄にフォーカスしたとき
+    description: 使う側が `collapsed` を false にして広げる
+  - name: 入力から出る
+    when: フォーカスが部品の外へ出たとき
+    value: body
+    description: 使う側が、畳む幅で入力欄が空白だけなら `collapsed` を true に戻す
 accessibility:
   - 入力欄にラベル「{ID} へのコメント」を常に見せ、入力欄の中の例示文をラベルの代わりにしない。`target` が無いときは `aria-label`「項目を指さないコメント」
   - 添えた箇所は入力欄の `aria-describedby` から指し、× のボタンに読み上げの名前「箇所を外す」を付ける
