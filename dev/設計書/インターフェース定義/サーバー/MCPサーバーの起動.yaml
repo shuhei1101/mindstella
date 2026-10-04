@@ -123,7 +123,7 @@ response:
     description: '`mindstella`。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる'
   - name: ツール
     type: list[str]
-    description: '`init`・`add`・`update`・`adopt`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission` の 18 個'
+    description: '`init`・`add`・`update`・`adopt`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission` の 20 個'
   - name: 結果
     type: CallToolResult
     description: ツールの結果。構造化の結果（`structuredContent`）に JSON のオブジェクトを 1 個入れ、同じ JSON を文字列の本文（`content` の text）にも入れる

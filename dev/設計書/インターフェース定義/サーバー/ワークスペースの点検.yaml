@@ -75,6 +75,29 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
+  - name: 正常系（変更履歴が本文とずれている）
+    summary: 手で書き換えた本文に当たらない変更履歴を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 本文を持つ検討事項 D-1 の本文を `update` で直した後、`docs/D-1.md` の全ての行を手で書き換えたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF-->>クライアント: JSON（ok: false・problems）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`ok` が偽'
+      - '`problems` に `stale_history`（D-1・`history[0].body_diff`）がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の Markdown のずれを全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）
@@ -90,8 +113,8 @@ response:
     type: bool
     description: 問題が 1 つも無いか
   - name: problems[].kind
-    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body"'
-    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文）
+    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "stale_history"'
+    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・変更履歴から前の本文を組み立てられない）
   - name: problems[].file
     type: str
     description: 問題のあるファイル（ワークスペースからの相対パス）
@@ -121,13 +144,15 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 点検するファイル
-    constraint: '`mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`（無ければ送信 0 件として扱う）・`docs/`'
+    constraint: '`mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`（無ければ送信 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`docs/`'
   - item: 参照切れを確かめるキー
-    constraint: '`depends_on`・`parent`・`for`・`related`・`sources` と設定の `goal.deliverables[].doc`、送信の `target`。存在しない ID と、キーが決めた種類でない ID（`parent` が `D-` 以外など）を `broken_ref` にする'
+    constraint: '`depends_on`・`parent`・`for`・`related`・`sources` と設定の `goal.deliverables[].doc`、送信の `target`、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、キーが決めた種類でない ID（`parent` が `D-` 以外など）を `broken_ref` にする'
   - item: 本文のずれ
     constraint: '`body` が指す `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md` を `orphan_body` にする'
   - item: 問題の並び
     constraint: ファイル名の順、同じファイルの中は項目の並びの順
+  - item: 変更履歴のずれ
+    constraint: 本文を持つ項目の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
 refs:
   - dev/設計書/ER図/ワークスペース#
 test_file: tests/integration/server/test_check.py

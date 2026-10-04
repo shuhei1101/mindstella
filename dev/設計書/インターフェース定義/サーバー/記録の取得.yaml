@@ -75,6 +75,29 @@ flows:
       - ステータスが 422、`Content-Type` が `application/problem+json`
       - '`detail` に `decisions.yaml: items[0].status:` で始まる行がある'
     test: test_error_when_schema_mismatch
+  - name: 正常系（変更履歴がある）
+    summary: 項目の変更履歴と、書き換えのまとまりを返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit`（説明「足す」）し、D-1 の `answer` を `update` で直したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/records
+        IF-->>WS: 全ての YAML と changes.yaml と docs/ を読む
+        IF-->>クライアント: 200、JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`decisions` の D-1 が `history` を 1 回分持ち、YAML と同じ'
+      - '`changes.sets` が「足す」の 1 つで、`added` が `[D-1]`'
+      - '`changes.pending.changed` が `[D-1]`'
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -109,6 +132,9 @@ response:
   - name: derived.progress[]
     type: 'list[{category, cells: list[{phase, settled, total}], settled, total}]'
     description: カテゴリー別の進捗。`settings.categories` の順、セルは `settings.phases` の順。決着は『次の候補』『ゴール判定』と同じ（検討事項の決定済み・対象外・取り下げ）
+  - name: changes
+    type: dict
+    description: '`changes.yaml` の中身（`last_seq`・`sets`・`pending`）。無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`。画面の変更履歴の一覧と、新規・変更の印はここから取る。種類ごとの項目は `history` を持ったまま返し、画面はそこから前の版を組み立てる'
 response_notes: |-
   > [!NOTE]
   > 配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。送信（`submissions.yaml`）は返さない。
