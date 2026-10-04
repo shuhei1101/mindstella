@@ -53,16 +53,16 @@ tables:
   - name: mindmap.yaml
     title: 設定
     datastore: YAML
-    summary: 分野・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所
+    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所
     scale: 1 件
     access: 全件
     columns:
-      - name: field
-        title: 分野
-        type: string
+      - name: playbooks
+        title: プレイブック
+        type: array
         not_null: true
-        description: 進め方ガイドの分野
-        example: システム開発
+        description: 並べて使う進め方ガイドの名前。1 件以上・重複なし。AI は並べたガイドをすべて読む
+        example: '[壁打ち, システム開発]'
       - name: target_label
         title: 最上位の軸の呼び名
         type: string
@@ -73,7 +73,7 @@ tables:
         title: フェーズ
         type: array
         not_null: true
-        description: フェーズの名前を浅い順に並べる。`next` の並べ替えはこの順を使う
+        description: フェーズの名前を浅い順に並べる。`next` の並べ替えはこの順を使う。プレイブックを複数並べても 1 本の並びで持つ。項目の `phase` と `goal.phase` はこのどれか（点検が確かめる）
         example: '[目的, 要件, 構成]'
       - name: targets
         title: 対象
@@ -88,8 +88,8 @@ tables:
       - name: goal
         title: ゴール
         type: object
-        not_null: true
-        description: '`phase`（どのフェーズまでやるか）・`summary`・`deliverables[]`（`title` と、できた資料の `doc`（`A-` の ID。任意））'
+        not_null: false
+        description: 任意。`phase`（どのフェーズまでやるか）・`summary`・`deliverables[]`（`title` と、できた資料の `doc`（`A-` の ID。任意））。無いときはゴールを決めていない話し合い
       - name: links
         title: 関連する場所
         type: array
@@ -100,6 +100,13 @@ tables:
         not_null: true
         description: 話し合いの題名（何についての話し合いかを 1 文で）。プレビューのトップバーに出す
         example: 要件出しのスキル mindmap を設計する
+      - name: description
+        title: 話し合いの概要
+        type: string
+        not_null: false
+        length: 60 字以内
+        description: 任意。何についての話し合いかを 1 文の短い文で。AI がセットアップと範囲の見直しで書き、利用者は `mindmap.yaml` を直して書き換える。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの
+        example: スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
