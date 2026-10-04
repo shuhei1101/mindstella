@@ -16,6 +16,9 @@ def migrate(root: Path) -> list[str]:
     """`field` を `playbooks` の 1 件の配列へ移し、変えたファイルの名前を返す（変えなければ空）。"""
     path = root / SETTINGS_FILE
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
+    # 設定が辞書でない: field を探せないので、理由の分かる失敗にする
+    if not isinstance(settings, dict):
+        raise ValueError(f"{SETTINGS_FILE} の中身が辞書ではありません")
     # field が無い: 移すものが無いので何も書かない
     if "field" not in settings:
         return []

@@ -162,7 +162,8 @@
     "description": {
       "type": "string",
       "description": "話し合いの概要（何についての話し合いかを 1 文の短い文で）。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの",
-      "maxLength": 60
+      "maxLength": 60,
+      "minLength": 1
     }
   }
 }
