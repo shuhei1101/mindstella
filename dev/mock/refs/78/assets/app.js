@@ -1090,10 +1090,11 @@
     forms.set(fkey, { ...f, target, loc });
     const fid = `send-${fkey}`;
     const open = place === "free" && (freeOpen || !!server.drafts[draftKey(target, loc)]) ? " expanded" : "";
+    // 項目を指さないコメントの入力は見出しを出さず、名前を読み上げにだけ持つ
     // 本文の外に浮かせる入力は、読み上げで行き先が分かるよう名前を付けたフォームにする
     const named = place === "left" ? ` aria-label="${esc(String(target))} へのコメント"` : "";
     return `<form class="send send-${place}${open}" data-fkey="${fkey}"${named} novalidate>
-      <label class="send-label" for="${fid}">${label}</label>${quoteHtml(loc, place !== "pop")}
+      <label class="send-label${place === "free" ? " sr-only" : ""}" for="${fid}">${label}</label>${quoteHtml(loc, place !== "pop")}
       <textarea id="${fid}" name="body" rows="2" aria-describedby="${fid}-msg" aria-keyshortcuts="Control+Enter">${esc(server.drafts[draftKey(target, loc)] || "")}</textarea>
       <div class="send-row"><p class="send-msg" id="${fid}-msg" role="status"></p>${place === "pop" ? `<button class="btn ghost" type="button" data-act="selcancel">やめる</button>` : ""}<button class="btn primary" type="submit" title="${w().add}（Ctrl+Enter）">${icon("plus")}${w().add}</button></div>
     </form>`;
@@ -1169,7 +1170,7 @@
   let opened = null;  // 一覧から開いたコメント
   const LIST_MSG = {
     sending: () => `<span class="spinner" aria-hidden="true"></span><span>送っています</span>`,
-    sent: (r) => `${icon("check")}<span>${r.n} 件を送りました（${timeOf(r.at)}）。次の話し合いの最初に取り込みます。</span>`,
+    sent: (r) => `${icon("check")}<span>${r.n} 件を送りました（${timeOf(r.at)}）。</span>`,
     failed: () => `${icon("alert")}<span>送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。</span>`,
     stale: (r) => `${icon("alert")}<span>送れませんでした。箇所が合わないコメントが ${r.n} 件あります。</span>`,
     none: () => `<span>送るコメントにチェックを付けてください。</span>`,
