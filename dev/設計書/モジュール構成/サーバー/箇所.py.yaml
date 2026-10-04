@@ -42,8 +42,8 @@ constants:
     title: 行ごとに外す書式
     container: plugins/mindstella/skills/mindmap/scripts/locations.py
     usecase: 選んだ箇所へコメントする
-    summary: 本文の元の文から、記号を外す前に行ごとに外す正規表現の並び（行頭のリストの記号 `-`・`+`・`数字.`・`数字)`、表の区切りの行、コードブロックのフェンスの行、画像の `!`、リンクの URL）
-    value: (re.compile(r"^\s*(?:[-+]|\d+[.)])\s+"), re.compile(r"^\s*\|?\s*:?-{3,}.*$"), re.compile(r"^\s*(?:`{3,}|~{3,}).*$"), re.compile(r"!(?=\[)"), re.compile(r"\]\([^)]*\)"))
+    summary: 本文の元の文から、記号を外す前に行ごとに並びの順に置き換える正規表現と置き換え先の組（行頭のリストの記号 `-`・`+`・`数字.`・`数字)` を外す、表の区切りの行とコードブロックのフェンスの行を外す、画像 `![代わりの文](URL)` を丸ごと外す、リンク `[文](URL)` を `文` にする。描いた文では画像の `alt` が `Range.toString()` に入らず、リンクの括弧も出ないため。画像はリンクより先に当てる）
+    value: ((re.compile(r"^\s*(?:[-+]|\d+[.)])\s+"), ""), (re.compile(r"^\s*\|?\s*:?-{3,}.*$"), ""), (re.compile(r"^\s*(?:`{3,}|~{3,}).*$"), ""), (re.compile(r"!\[[^\]]*\]\([^)]*\)"), ""), (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"))
 functions:
   - name: parse_location
     title: 箇所の読み取り
@@ -147,7 +147,7 @@ functions:
       - name: test_check_location
         case: 正常
         summary: 書式の記号を外して合う箇所を通す
-        condition: '`parametrize`: 本文の 2 行目 `- **言い換えたい**文` で「言い換えたい文」 / 2〜3 行目のソフト改行をまたぐ文 / 表の行 `| A | 内容 |` で「A 内容」 / リンク `[資料](https://x)` で「資料」 / `&amp;` を含む行で `&` / 値 `options[B].cons` の文 / 値 `title` の文'
+        condition: '`parametrize`: 本文の 2 行目 `- **言い換えたい**文` で「言い換えたい文」 / 2〜3 行目のソフト改行をまたぐ文 / 表の行 `| A | 内容 |` で「A 内容」 / リンク `[資料](https://x)` で「資料」 / `詳しくは [規約](https://e.x) を読む。` でリンクの前後をまたぐ「詳しくは規約を読む」 / `図は ![構成](a.png) のとおり。` で画像をまたぐ「図は のとおり」 / `&amp;` を含む行で `&` / 値 `options[B].cons` の文 / 値 `title` の文'
         mock: なし
         expected: どれも `None`
       - name: test_check_location_when_stale
@@ -229,13 +229,13 @@ functions:
       type: str
       description: 比べるための文
     process: |-
-      1. 行ごとに `LINE_MARKUP_PATTERNS` を当てる（リストの記号・画像の `!` は外し、リンクの URL は `]` だけを残し、表の区切りの行とフェンスの行は行ごと外す）
+      1. 行ごとに `LINE_MARKUP_PATTERNS` を並びの順に当てる（リストの記号を外し、表の区切りの行とフェンスの行は行ごと外し、画像は丸ごと外し、リンクは中の文だけを残す）
       2. `html.unescape` で文字参照を文字に戻す
       3. `normalize_selected` を当てて返す
     unit_tests:
       - name: test_normalize_source
         case: 正常
-        summary: 行頭の記号・区切りの行・フェンス・URL・文字参照を外す
+        summary: 行頭の記号・区切りの行・フェンス・画像・リンクの括弧と URL・文字参照を外す
         condition: '`parametrize`: `1. 項目` / `| --- | --- |` / … ```` ```mermaid ```` / `![図](a.png)` / `[資料](https://x)` / `A &amp; B`'
         mock: なし
-        expected: '`項目` / 空 / 空 / `[図]` / `[資料]` / `A&B`'
+        expected: '`項目` / 空 / 空 / 空 / `資料` / `A&B`'
