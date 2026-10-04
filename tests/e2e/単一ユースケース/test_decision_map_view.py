@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_helpers import BuildPreview, OpenPreview, row_ids
+from preview_helpers import OpenPreview, ServePreview, row_ids
 from workspace_fixtures import MakeItem
 
 # マップを広い幅で出す画面の幅（px）
@@ -101,16 +101,16 @@ def _opacity(page: Page, selector: str) -> float:
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """マップで状態を絞り、項目を押して枝と依存を辿り、ボード・表に切り替える（正常系）。"""
     # 準備
-    path = build_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
     # 実行・検証（マップ）
-    page = open_preview(path, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
     assert _map_item_ids(page) == ["D-3", "D-5"]
     page.click('.legend label:has(input[value="決定済み"])')
@@ -163,7 +163,7 @@ def test_normal(
 
 
 def test_normal_when_keyword(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
@@ -171,13 +171,13 @@ def test_normal_when_keyword(
     """キーワードをタイトルに含む項目を強調し、状態の印に一致した件数のバッジを付ける（正常系）。"""
     # 準備
     common: dict[str, Any] = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
-    path = build_preview(
+    url = serve_preview(
         make_item("D-2", status="未決定", title="保存形式を決める", **common),
         make_item("D-3", status="要見直し", title="保存先を決める", **common),
         make_item("D-5", status="未決定", title="一覧の並びを決める", **common),
         settings=valid_settings,
     )
-    page = open_preview(path, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
     # 実行
     page.fill("input.map-q", "保存")
@@ -193,28 +193,30 @@ def test_normal_when_keyword(
 
 
 def test_normal_when_narrow(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """狭い幅では、マップの代わりに字下げした縦の一覧を出し、横スクロールが出ない（正常系）。"""
     # 準備
-    path = build_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
     # 実行
-    page = open_preview(path, "#tab=decisions&view=map", width=NARROW_WIDTH, height=844)
+    page = open_preview(url, "#tab=decisions&view=map", width=NARROW_WIDTH, height=844)
     page.wait_for_selector("nav.map-outline", state="visible")
     # 検証
     assert not page.is_visible("#decision-map")
     outline = page.inner_text("nav.map-outline")
     # 対象 → カテゴリー → フェーズ → 検討事項の順に字下げして並ぶ
-    positions = [outline.index(word) for word in ("mindmap", "画面", "要件", "D-3の題", "構成", "D-5の題")]
+    positions = [
+        outline.index(word) for word in ("mindmap", "画面", "要件", "D-3の題", "構成", "D-5の題")
+    ]
     assert positions == sorted(positions)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
 def test_error_when_layout_library_unavailable(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
@@ -222,13 +224,13 @@ def test_error_when_layout_library_unavailable(
 ) -> None:
     """配置のライブラリ（elkjs）が読めないと、マップの場所に名前を出し、表では項目を読める（異常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         make_item("D-5", status="未決定", target="mindmap", category="データ構造", phase="構成"),
         settings=valid_settings,
     )
     page.route(re.compile(r"/npm/elkjs@"), lambda route: route.abort())
     # 実行
-    open_preview(path, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("main .lib-error[role=alert]")
     # 検証
     assert "elkjs" in page.inner_text("main .lib-error[role=alert]")
@@ -255,16 +257,16 @@ def _status_checks(page: Page) -> list[bool]:
 
 
 def test_normal_when_toggle_all_statuses(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """まとめて切り替える箱で全ての状態を出し・隠し、箱と状態の印をそろえ、空の旨の文を出す（正常系）。"""
     # 準備
-    path = build_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
     # 実行・検証（開く: 決定済みを隠した木と、横棒の箱）
-    page = open_preview(path, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
     assert _map_item_ids(page) == ["D-3", "D-5"]
     assert _toggle_all_box(page) == {"checked": False, "indeterminate": True, "last": True}

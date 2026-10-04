@@ -9,6 +9,9 @@ from pathlib import Path
 
 import pytest
 
+# 起動スクリプトを隔離して動かす fixture
+from launch_fixtures import ready_venv, sandbox  # noqa: F401
+
 # 単体・結合・E2E が共有する fixture（pytest は conftest の名前空間にある fixture を登録する）
 from workspace_fixtures import (  # noqa: F401
     call_tool,
@@ -19,7 +22,6 @@ from workspace_fixtures import (  # noqa: F401
     make_venv,
     make_workspace,
     mcp_server,
-    run_mindmap,
     snapshot_tree,
     start_server,
     valid_settings,

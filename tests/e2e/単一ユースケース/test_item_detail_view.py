@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_helpers import BuildPreview, OpenPreview
+from preview_helpers import OpenPreview, ServePreview
 from workspace_fixtures import MakeItem
 
 # 本文に mermaid の図を 1 つ持つ Markdown
@@ -59,7 +59,12 @@ def _decision_records(make_item: MakeItem) -> list[dict[str, Any]]:
             body="D-3.md",
             options=[
                 {"key": "A", "content": "表で見せる", "adopted": True, "reason": "並べやすい"},
-                {"key": "B", "content": "カードで見せる", "adopted": False, "reason": "数が多いと長い"},
+                {
+                    "key": "B",
+                    "content": "カードで見せる",
+                    "adopted": False,
+                    "reason": "数が多いと長い",
+                },
             ],
         ),
         make_item("D-5", status="未決定", depends_on=["D-3"]),
@@ -70,19 +75,19 @@ def _decision_records(make_item: MakeItem) -> list[dict[str, Any]]:
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """案・関係・本文と図を読み、全画面と図の拡大で読み、関係する項目へ移って戻る（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         *_decision_records(make_item),
         settings=valid_settings,
         bodies={"D-3.md": BODY_WITH_DIAGRAM},
     )
-    page = open_preview(path, "#tab=decisions&view=table", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    page = open_preview(url, "#tab=decisions&view=table", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
     box_script = "(() => { const r = document.querySelector('main#main').getBoundingClientRect(); return [r.left, r.right]; })()"
     left_before = page.evaluate(box_script)[0]
     # 実行
@@ -134,27 +139,29 @@ def test_normal(
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     # D-1 を押すと詳細パネルに D-1 が開き、URL のハッシュが D-1 を指す
     page.click("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink")
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'"
+    )
     assert "id=D-1" in page.evaluate("location.hash")
     # 戻る操作で D-3 の詳細パネルに戻り、URL のハッシュが D-3 を指す
     page.go_back()
-    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-3の題'")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === 'D-3の題'"
+    )
     assert "id=D-3" in page.evaluate("location.hash")
 
 
 def test_error_when_body_has_script(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """本文の script と onerror 属性は実行せず、詳細パネルの中にも残さない（異常系）。"""
     # 準備
-    path = build_preview(
-        make_item("A-1"), settings=valid_settings, bodies={"A-1.md": SCRIPT_BODY}
-    )
+    url = serve_preview(make_item("A-1"), settings=valid_settings, bodies={"A-1.md": SCRIPT_BODY})
     # 実行
-    page = open_preview(path, "#tab=docs&id=A-1")
+    page = open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .md")
     page.wait_for_timeout(1_000)
     # 検証
@@ -165,7 +172,7 @@ def test_error_when_body_has_script(
 
 
 def test_error_when_render_library_unavailable(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
@@ -173,12 +180,12 @@ def test_error_when_render_library_unavailable(
 ) -> None:
     """本文の描画のライブラリ（marked・mermaid）が読めないと、名前を出し、本文を文字のまま読める（異常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         make_item("A-1"), settings=valid_settings, bodies={"A-1.md": BODY_WITH_DIAGRAM}
     )
     page.route(re.compile(r"/npm/(marked|mermaid)@"), lambda route: route.abort())
     # 実行
-    open_preview(path, "#tab=docs&id=A-1")
+    open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .md .lib-error[role=alert]")
     # 検証
     notice = page.inner_text("aside.panel .md .lib-error[role=alert]")

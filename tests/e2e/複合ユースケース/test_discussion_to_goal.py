@@ -5,18 +5,19 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from preview_helpers import preview_reflects_yaml
+from playwright.sync_api import Page
+from preview_helpers import OpenPreview, fetch_records
 from workspace_fixtures import (
     REPO_ROOT,
+    CallTool,
     MakeItem,
     MakeLegacyWorkspace,
     MakeWorkspace,
-    RunMindmap,
     SnapshotTree,
+    StartServer,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +31,19 @@ CATEGORY = "機能"
 
 # 会話の日付
 TODAY = "2026-10-02"
+
+# 画面から送る回答の本文と、送る先の検討事項の案
+SUBMISSION_BODY = "案 A にする"
+SUBMISSION_OPTIONS = [
+    {"key": "A", "content": "表で見せる"},
+    {"key": "B", "content": "カードで見せる"},
+]
+
+# 詳細パネルの送信の入力欄・結果・送るボタンと、送信の結果を待つ上限ミリ秒
+SEND_TEXTAREA = "aside.panel form.send textarea"
+SEND_MESSAGE = "aside.panel form.send .send-msg"
+SEND_BUTTON = "aside.panel form.send button[type=submit]"
+SEND_TIMEOUT_MS = 10_000
 
 # 移し替えの点検で聞かれる題名に利用者が答える内容
 SUMMARY_ANSWER = "要件出しのスキルを設計する"
@@ -51,6 +65,12 @@ SETTINGS: dict[str, Any] = {
 }
 
 
+def _plugin_version() -> str:
+    """プラグインの版（plugins/mindstella/version.ini の 1 行目）を返す。"""
+    version_file = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
+    return version_file.read_text(encoding="utf-8").splitlines()[0]
+
+
 def _placed(title: str, phase: str, **keys: Any) -> dict[str, Any]:
     """対象・カテゴリー・フェーズを付けた項目の中身を作る。"""
     return {"title": title, "target": TARGET, "category": CATEGORY, "phase": phase, **keys}
@@ -64,24 +84,23 @@ def _log(title: str, related: list[str], summary: str) -> dict[str, Any]:
 def test_normal_when_new_discussion(
     tmp_path: Path,
     replay: Replay,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """セットアップから、取り込み・ヒアリング・リサーチ・方針転換・ゴール判定を通してゴールまで進める（正常系）。"""
     # 準備
     root = tmp_path / "workspace"
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
 
     # 実行
     # セットアップ: 新しいワークスペースを作る
-    replay("init", *ws, data=SETTINGS)
-    replay("build", *ws)
+    replay("init", **ws, settings=SETTINGS)
     # 取り込み: 決め事・派生の検討事項・タスク・会話ログを積む
     replay(
         "add",
-        "decision",
-        *ws,
-        data=_placed(
+        **ws,
+        kind="decision",
+        item=_placed(
             "保存先を決める",
             "構成",
             status="決定済み",
@@ -95,9 +114,9 @@ def test_normal_when_new_discussion(
     )
     replay(
         "add",
-        "decision",
-        *ws,
-        data=_placed(
+        **ws,
+        kind="decision",
+        item=_placed(
             "保存先のファイル分け",
             "インターフェース",
             status="未決定",
@@ -107,25 +126,25 @@ def test_normal_when_new_discussion(
     )
     replay(
         "add",
-        "task",
-        *ws,
-        data=_placed(
+        **ws,
+        kind="task",
+        item=_placed(
             "保存先の候補を調べる", "構成", kind="調査", status="未着手", **{"for": ["D-1"]}
         ),
     )
-    replay("add", "log", *ws, data=_log("1 回目の会話", ["D-1", "D-2", "T-1"], "保存先を決めた"))
-    replay("build", *ws)
+    replay(
+        "add", **ws, kind="log", item=_log("1 回目の会話", ["D-1", "D-2", "T-1"], "保存先を決めた")
+    )
     # ヒアリング: 前提が揃った未決定を聞いて、答えを記録する
-    candidates = replay("next", *ws)["candidates"]
-    replay("update", "D-2", *ws, data={"status": "決定済み", "answer": "種類ごとに分ける"})
-    replay("add", "log", *ws, data=_log("ヒアリング", ["D-2"], "ファイル分けを決めた"))
-    replay("build", *ws)
+    candidates = replay("next", **ws)["candidates"]
+    replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "種類ごとに分ける"})
+    replay("add", **ws, kind="log", item=_log("ヒアリング", ["D-2"], "ファイル分けを決めた"))
     # リサーチ: 調査を検討事項に繋ぎ、タスクを完了にする
     replay(
         "add",
-        "research",
-        *ws,
-        data=_placed(
+        **ws,
+        kind="research",
+        item=_placed(
             "保存先の候補の比較",
             "構成",
             question="YAML と DB のどちらが手で直しやすいか",
@@ -135,19 +154,20 @@ def test_normal_when_new_discussion(
             related=["D-1"],
         ),
     )
-    replay("update", "T-1", *ws, data={"status": "完了", "result": "比較を調査 R-1 に書いた"})
-    replay("add", "log", *ws, data=_log("リサーチ", ["R-1", "T-1"], "候補を比べた"))
-    replay("build", *ws)
+    replay("update", **ws, id="T-1", item={"status": "完了", "result": "比較を調査 R-1 に書いた"})
+    replay("add", **ws, kind="log", item=_log("リサーチ", ["R-1", "T-1"], "候補を比べた"))
     # 方針転換: 採用する案を切り替え、影響を要見直しにして見直しのタスクを積む
-    replay("adopt", "D-1", "B", *ws)
-    affected = replay("impact", "D-1", *ws)["affected"]
-    replay("update", "D-1", *ws, data={"answer": "DB に保存する", "reason": "検索しやすい"})
-    replay("update", "D-2", *ws, data={"status": "要見直し", "reason": "保存先が DB に変わった"})
+    replay("adopt", **ws, id="D-1", key="B")
+    affected = replay("impact", **ws, id="D-1")["affected"]
+    replay("update", **ws, id="D-1", item={"answer": "DB に保存する", "reason": "検索しやすい"})
+    replay(
+        "update", **ws, id="D-2", item={"status": "要見直し", "reason": "保存先が DB に変わった"}
+    )
     replay(
         "add",
-        "task",
-        *ws,
-        data=_placed(
+        **ws,
+        kind="task",
+        item=_placed(
             "ファイル分けを見直す",
             "インターフェース",
             kind="作業",
@@ -155,19 +175,23 @@ def test_normal_when_new_discussion(
             **{"for": ["D-2"]},
         ),
     )
-    replay("add", "log", *ws, data=_log("方針転換", ["D-1", "D-2", "T-2"], "保存先を DB にした"))
-    replay("build", *ws)
+    replay(
+        "add", **ws, kind="log", item=_log("方針転換", ["D-1", "D-2", "T-2"], "保存先を DB にした")
+    )
     # 取り込み: 要見直しを決め直し、見直しのタスクを完了する
     replay(
-        "update", "D-2", *ws, data={"status": "決定済み", "answer": "テーブルを種類ごとに分ける"}
+        "update",
+        **ws,
+        id="D-2",
+        item={"status": "決定済み", "answer": "テーブルを種類ごとに分ける"},
     )
-    replay("update", "T-2", *ws, data={"status": "完了", "result": "テーブルの分け方を決めた"})
+    replay("update", **ws, id="T-2", item={"status": "完了", "result": "テーブルの分け方を決めた"})
     # 納品物の資料を作る
     replay(
         "add",
-        "doc",
-        *ws,
-        data=_placed(
+        **ws,
+        kind="doc",
+        item=_placed(
             "要件定義書",
             "要件",
             kind="文書",
@@ -176,19 +200,20 @@ def test_normal_when_new_discussion(
             body_markdown="# 要件定義書\n\n支出を DB に記録する。",
         ),
     )
-    # プレビュー: 記録を書き出す
-    replay("build", *ws)
+    # プレビュー: 配信の URL を示す
+    preview_url = replay("preview_url", **ws)["url"]
     # ゴール判定: 届いたかを確かめ、確定の後に release/ へ書き出す
-    goal = replay("goal", *ws)
-    deliverable = replay("show", "A-1", *ws)
-    replay("clear-release", *ws)
+    goal = replay("goal", **ws)
+    deliverable = replay("show", **ws, id="A-1")
+    replay("clear_release", **ws)
     (root / "release" / "決定事項.md").write_text(
         "# 決定事項\n\n- D-1: DB に保存する\n- D-2: テーブルを種類ごとに分ける\n", encoding="utf-8"
     )
     (root / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
-    replay("add", "log", *ws, data=_log("ゴール判定", ["A-1"], "ゴールに届いたのでリリースした"))
-    replay("build", *ws)
-    checked = run_mindmap("check", *ws)
+    replay(
+        "add", **ws, kind="log", item=_log("ゴール判定", ["A-1"], "ゴールに届いたのでリリースした")
+    )
+    checked = call_tool("check", **ws)
 
     # 検証
     # mindmap.yaml に、分野・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
@@ -224,10 +249,13 @@ def test_normal_when_new_discussion(
         encoding="utf-8"
     )
     # check が参照切れと、YAML と Markdown のずれを 0 件で返す
-    assert checked.returncode == 0
-    assert json.loads(checked.stdout)["problems"] == []
-    # preview.html が最後の編集より後に書き出されている（埋め込んだ記録が今の YAML と同じ）
-    assert preview_reflects_yaml(root)
+    assert checked.is_error is False
+    assert checked.data["problems"] == []
+    # サーバーが配るプレビューの記録が、最後の編集を含んでいる。ワークスペースに preview.html は書き出されていない
+    records = fetch_records(preview_url)
+    assert records["decisions"] == read_yaml(root, "decisions.yaml")["items"]
+    assert records["logs"] == read_yaml(root, "logs.yaml")["items"]
+    assert not (root / "preview.html").exists()
 
 
 def test_normal_when_resume(
@@ -243,12 +271,14 @@ def test_normal_when_resume(
         make_item("T-1", title="進めている作業", status="進行中"),
         make_item("D-2", title="次に決める問い"),
     )
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
     # セットアップ: 既存のワークスペースの状況を読む
-    status = replay("status", *ws)
+    status = replay("status", **ws)
     # 取り込み: 続きの番号で検討事項を足す
-    added = replay("add", "decision", *ws, data={"title": "続きで出た問い", "status": "未決定"})
+    added = replay(
+        "add", **ws, kind="decision", item={"title": "続きで出た問い", "status": "未決定"}
+    )
     # 検証
     # status の出力に、要見直しの D-1・進行中の T-1・次の候補の D-2 がある
     assert status["needs_review"] == [{"id": "D-1", "title": "見直しの問い"}]
@@ -263,8 +293,7 @@ def test_normal_when_resume(
 def test_normal_when_resume_older_version(
     make_legacy_workspace: MakeLegacyWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
-    python_path: str,
+    call_tool: CallTool,
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
     snapshot_tree: SnapshotTree,
@@ -273,31 +302,35 @@ def test_normal_when_resume_older_version(
     # 準備
     root = make_legacy_workspace(make_item("D-1"), legacy_docs={"A-1": True}, without_summary=True)
     before = snapshot_tree(root)
-    ws = ["--workspace", str(root)]
+    ws = {"workspace": str(root)}
     # 実行
     # セットアップ: 版を比べて古いと分かり、どのファイルも書き換えずに移し替えのスキルを案内して止まる
-    first_plan = run_mindmap("migrate", *ws, "--plan", python=python_path)
+    first_plan = call_tool("migrate", **ws, plan=True)
     unchanged_after_setup = snapshot_tree(root)
     # 移し替え: 手順を当て、点検で聞かれる題名を入れ、版を書き換える
-    applied = run_mindmap("migrate", *ws, python=python_path)
-    checked_before_set = run_mindmap("check", *ws, python=python_path)
-    run_mindmap(
-        "migrate", *ws, "--set", f"mindmap.yaml:summary={SUMMARY_ANSWER}", python=python_path
+    applied = call_tool("migrate", **ws)
+    checked_before_set = call_tool("check", **ws)
+    call_tool(
+        "migrate",
+        **ws,
+        values=[{"file": "mindmap.yaml", "key": "summary", "value": SUMMARY_ANSWER}],
     )
-    recorded = run_mindmap("migrate", *ws, "--record", python=python_path)
+    recorded = call_tool("migrate", **ws, record=True)
     # セットアップ（2 回目）: 版の案内を出さず、状況を読む
-    second_plan = replay("migrate", *ws, "--plan")
-    status = replay("status", *ws)
+    second_plan = replay("migrate", **ws, plan=True)
+    status = replay("status", **ws)
     # 取り込み: 続きの番号で検討事項を足す
-    added = replay("add", "decision", *ws, data={"title": "続きで出た問い", "status": "未決定"})
-    checked = run_mindmap("check", *ws, python=python_path)
+    added = replay(
+        "add", **ws, kind="decision", item={"title": "続きで出た問い", "status": "未決定"}
+    )
+    checked = call_tool("check", **ws)
     # 検証
     # 最初のセットアップが、どのファイルも書き換えずに移し替えのスキルを案内する
-    assert json.loads(first_plan.stdout)["relation"] == "older"
+    assert first_plan.data["relation"] == "older"
     assert unchanged_after_setup == before
-    assert applied.returncode == 0
-    assert checked_before_set.returncode == 1
-    assert recorded.returncode == 0
+    assert applied.is_error is False
+    assert checked_before_set.data["ok"] is False
+    assert recorded.is_error is False
     # 移し替えの後、mindstella-version.ini の 1 行目がプラグインの版である
     plugin_version = (REPO_ROOT / "plugins" / "mindstella" / "version.ini").read_text(
         encoding="utf-8"
@@ -317,5 +350,82 @@ def test_normal_when_resume_older_version(
     ids = [item["id"] for item in read_yaml(root, "decisions.yaml")["items"]]
     assert ids == ["D-1", "D-2"]
     # check が問題を 0 件で返す
-    assert checked.returncode == 0
-    assert json.loads(checked.stdout)["problems"] == []
+    assert checked.is_error is False
+    assert checked.data["problems"] == []
+
+
+def test_normal_when_submission_from_preview(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    open_preview: OpenPreview,
+    page: Page,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """プレビューの詳細パネルから送った回答を、Claude Code を立ち上げ直した後の話し合いの最初に取り込む（正常系）。"""
+    # 準備
+    # 案 A・B を持つ未決定の検討事項 D-1 を持つワークスペース（版のファイルはプラグインと同じ版）
+    root = make_workspace(
+        make_item("D-1", title="見せ方", options=SUBMISSION_OPTIONS),
+        raw_files={"mindstella-version.ini": f"{_plugin_version()}\n"},
+    )
+    ws = {"workspace": str(root)}
+    first_server = start_server()
+    # 実行
+    # 1 回目の立ち上げ: セットアップが既存のワークスペースの状況を読み、プレビューの URL を示す
+    first_status = first_server.call("status", **ws)
+    served = first_server.call("preview_url", **ws)
+    assert served.data is not None
+    # 示された URL をブラウザで開き、D-1 の詳細パネルから回答を送る
+    open_preview(served.data["url"], "#tab=decisions&id=D-1")
+    page.wait_for_selector(SEND_TEXTAREA)
+    page.fill(SEND_TEXTAREA, SUBMISSION_BODY)
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.sent", timeout=SEND_TIMEOUT_MS)
+    # Claude Code を閉じる（MCP サーバーが止まる）
+    first_server.close_stdin()
+    first_server.wait_exit()
+    # 立ち上げ直し: 同じワークスペースを渡した新しい MCP サーバーで、セットアップの後に取り込みを再生する
+    second_server = start_server()
+    second_status = second_server.call("status", **ws)
+    pending = second_server.call("submissions", **ws)
+    assert pending.data is not None
+    # 取り込みのステップ: 本文から D-1 の採用する案を A にして決定済みにし、会話ログに本文を残す
+    adopted = second_server.call("adopt", **ws, id="D-1", key="A")
+    updated = second_server.call(
+        "update", **ws, id="D-1", item={"status": "決定済み", "answer": "表で見せる"}
+    )
+    logged = second_server.call(
+        "add",
+        **ws,
+        kind="log",
+        item={
+            "title": "画面から届いた回答",
+            "date": TODAY,
+            "related": ["D-1"],
+            "body_markdown": SUBMISSION_BODY,
+        },
+    )
+    # 記録した後に、その送信を取り込み済みにする
+    taken = second_server.call("take_submission", **ws, id=pending.data["items"][0]["id"])
+    again = second_server.call("submissions", **ws)
+    checked = second_server.call("check", **ws)
+    # 検証
+    assert first_status.is_error is False
+    assert second_status.is_error is False
+    assert [item["target"] for item in pending.data["items"]] == ["D-1"]
+    assert [item["body"] for item in pending.data["items"]] == [SUBMISSION_BODY]
+    for result in (adopted, updated, logged, taken):
+        assert result.is_error is False, result.text
+    # D-1 の採用する案が A で、決定済みである
+    decision = read_yaml(root, "decisions.yaml")["items"][0]
+    assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["A"]
+    assert decision["status"] == "決定済み"
+    # 会話ログに送信の本文が残っている
+    assert SUBMISSION_BODY in (root / "docs" / "L-1.md").read_text(encoding="utf-8")
+    # 送信が取り込み済みで、取り込みのツールをもう一度呼ぶと 0 件を返す
+    assert read_yaml(root, "submissions.yaml")["items"][0]["taken"] is not None
+    assert again.data == {"items": []}
+    # check が問題を 0 件で返す
+    assert checked.data is not None
+    assert checked.data["problems"] == []

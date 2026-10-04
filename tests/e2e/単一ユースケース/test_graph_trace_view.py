@@ -6,8 +6,8 @@ from typing import Any
 
 from playwright.sync_api import Page
 from preview_helpers import (
-    BuildPreview,
     OpenPreview,
+    ServePreview,
     click_item_ball,
     count_balls,
     shown_ball_item_ids,
@@ -51,23 +51,21 @@ def _records(make_item: MakeItem) -> list[dict[str, Any]]:
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """種類ごとの色で出し、D-3 の玉を押して詳細を開き、会話ログを非表示にする（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         *_records(make_item), settings=valid_settings, bodies={"A-1.md": "資料の本文\n"}
     )
-    page = open_preview(path)
+    page = open_preview(url)
     # 実行・検証（開く）
     page.click('nav.tabbar a[data-tab="graph"]')
     page.wait_for_selector("#graph-canvas")
-    kinds = page.eval_on_selector_all(
-        KIND_INPUTS, "inputs => inputs.map(i => i.value)"
-    )
+    kinds = page.eval_on_selector_all(KIND_INPUTS, "inputs => inputs.map(i => i.value)")
     assert kinds == KIND_VALUES
     counts = page.eval_on_selector_all(
         ".legend label .n", "counts => counts.map(c => Number(c.textContent))"
@@ -116,18 +114,18 @@ def _click_ball_of_each_kind(page: Page) -> None:
 
 
 def test_normal_when_toggle_all_kinds(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """まとめて切り替える箱で全ての種類を隠し・出し、箱と種類のチェックをそろえる（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         *_records(make_item), settings=valid_settings, bodies={"A-1.md": "資料の本文\n"}
     )
     # 実行・検証（開く: 全種類の玉と線と、チェックの入った箱）
-    page = open_preview(path, "#tab=graph")
+    page = open_preview(url, "#tab=graph")
     page.wait_for_selector("#graph-canvas")
     assert _toggle_all_box(page) == {"checked": True, "indeterminate": False, "last": True}
     _click_ball_of_each_kind(page)

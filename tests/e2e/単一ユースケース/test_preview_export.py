@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -14,7 +13,7 @@ from typing import Any
 import yaml
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, click_item_ball
-from workspace_fixtures import MakeItem, MakeWorkspace, RunMindmap, SnapshotTree
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # このファイルから見たリポジトリの直下（tests/e2e/単一ユースケース の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -119,7 +118,7 @@ def _records(make_item: MakeItem, valid_settings: dict[str, Any]) -> list[dict[s
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     open_preview: OpenPreview,
     snapshot_tree: SnapshotTree,
     page: Page,
@@ -129,14 +128,13 @@ def test_normal(
     """記録を人に渡すために書き出し、通信を止めたブラウザで開いて本文・図・マップ・つながりを読む（正常系）。"""
     # 準備
     root = make_workspace(*_records(make_item, valid_settings), bodies={"A-1.md": DOC_BODY})
-    assert run_mindmap("build", "--workspace", str(root)).returncode == 0
     before = snapshot_tree(root)
     out = tmp_path / "配る.html"
     # 実行（書き出す）
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証（書き出し）
-    assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout) == {"path": str(out)}
+    assert result.is_error is False, result.text
+    assert result.data == {"path": str(out)}
     html = out.read_text(encoding="utf-8")
     references = _ExternalReferences()
     references.feed(html)
@@ -159,7 +157,7 @@ def test_normal(
 
     page.route(_is_not_file_url, _block)
     button_labels: list[str] = []
-    open_preview(out)
+    open_preview(out.as_uri())
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
     assert page.locator(ALERT_SELECTOR).count() == 0
     # 検討事項のマップに D-1 と D-2 が描かれる
@@ -197,16 +195,15 @@ def test_normal(
 def test_error_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    run_mindmap: RunMindmap,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
     tmp_path: Path,
 ) -> None:
     """手で崩した YAML があると、書き出す先のファイルを書き換えずに終わる（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    assert run_mindmap("build", "--workspace", str(root)).returncode == 0
     out = tmp_path / "配る.html"
-    assert run_mindmap("export", "--workspace", str(root), "--out", str(out)).returncode == 0
+    assert call_tool("export", workspace=str(root), out=str(out)).is_error is False
     (root / "decisions.yaml").write_text(
         yaml.safe_dump({"items": [make_item("D-1", status="完了")]}, allow_unicode=True),
         encoding="utf-8",
@@ -214,10 +211,10 @@ def test_error_when_schema_mismatch(
     out_before = out.read_bytes()
     workspace_before = snapshot_tree(root)
     # 実行
-    result = run_mindmap("export", "--workspace", str(root), "--out", str(out))
+    result = call_tool("export", workspace=str(root), out=str(out))
     # 検証
-    assert result.returncode != 0
-    assert "decisions.yaml" in result.stderr
-    assert "status" in result.stderr
+    assert result.is_error is True
+    assert "decisions.yaml" in result.text
+    assert "status" in result.text
     assert out.read_bytes() == out_before
     assert snapshot_tree(root) == workspace_before

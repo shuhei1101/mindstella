@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from preview_helpers import BuildPreview, OpenPreview, row_ids
+from preview_helpers import OpenPreview, ServePreview, row_ids
 from workspace_fixtures import MakeItem
 
 # ボードの列の並び（タスクの状態の順）
@@ -12,14 +12,14 @@ TASK_COLUMNS = ["未着手", "進行中", "保留", "完了", "中止"]
 
 
 def test_normal(
-    build_preview: BuildPreview,
+    serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
     """状態ごとの 5 列にタスクを並べ、カードから進める検討事項を読み、表に切り替える（正常系）。"""
     # 準備
-    path = build_preview(
+    url = serve_preview(
         make_item("D-3", status="要見直し"),
         make_item("T-1", status="未着手"),
         make_item("T-2", status="進行中", **{"for": ["D-3"]}),
@@ -29,7 +29,7 @@ def test_normal(
         settings=valid_settings,
     )
     # 実行
-    page = open_preview(path, "#tab=tasks")
+    page = open_preview(url, "#tab=tasks")
     columns = page.eval_on_selector_all(
         ".board section.board-col",
         "cols => cols.map(c => [c.getAttribute('aria-label'), [...c.querySelectorAll('.card')].map(k => k.dataset.id)])",

@@ -1,4 +1,4 @@
-"""単体・結合・E2E のテストが共有する、ワークスペースと mindmap.py の起動の fixture。
+"""単体・結合・E2E のテストが共有する、ワークスペースと MCP サーバーの起動の fixture。
 
 fixture は `tests/conftest.py` が読み込み、`tests/` の下の全てのテストが使える。
 """
@@ -20,11 +20,6 @@ import yaml
 # このファイルから見たリポジトリの直下（tests の 1 つ上）
 REPO_ROOT_PARENT_DEPTH = 1
 REPO_ROOT = Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
-
-# 起動するスクリプトの入口
-MINDMAP_SCRIPT = (
-    REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "mindmap.py"
-)
 
 # MCP サーバーの入口（起動スクリプトが MCP の設定に書くスクリプト）
 SERVER_SCRIPT = (
@@ -68,7 +63,6 @@ KIND_DEFAULTS: dict[str, dict[str, Any]] = {
     "L": {"date": "2026-10-01"},
 }
 
-type RunMindmap = Callable[..., subprocess.CompletedProcess[str]]
 type StartServer = Callable[..., McpServer]
 type CallTool = Callable[..., ToolResult]
 type MakeItem = Callable[..., dict[str, Any]]
@@ -218,33 +212,6 @@ def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
 def call_tool(mcp_server: McpServer) -> CallTool:
     """立てた MCP サーバーでツールを呼ぶ関数を返す。"""
     return mcp_server.call
-
-
-@pytest.fixture
-def run_mindmap() -> RunMindmap:
-    """mindmap.py を子プロセスで起動し、結果を返す関数を返す。"""
-    # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    env = {**os.environ, "PYTHONUTF8": "1"}
-
-    def _run(
-        *args: str,
-        stdin: str | None = None,
-        python: str = sys.executable,
-        extra_env: dict[str, str] | None = None,
-    ) -> subprocess.CompletedProcess[str]:
-        """引数と標準入力を渡して実行し、終了コードが 0 以外でも例外にせず返す。extra_env は環境変数に足す。"""
-        return subprocess.run(
-            [python, str(MINDMAP_SCRIPT), *args],
-            input=stdin,
-            env={**env, **(extra_env or {})},
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=COMMAND_TIMEOUT_SEC,
-            check=False,
-        )
-
-    return _run
 
 
 @pytest.fixture

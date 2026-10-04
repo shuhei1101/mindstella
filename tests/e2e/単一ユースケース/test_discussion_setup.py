@@ -5,9 +5,7 @@
 
 from __future__ import annotations
 
-import json
-
-from workspace_fixtures import MakeLegacyWorkspace, MakeWorkspace, RunMindmap, SnapshotTree
+from workspace_fixtures import CallTool, MakeLegacyWorkspace, MakeWorkspace, SnapshotTree
 
 # ワークスペースの版を持つファイルの名前
 VERSION_FILE = "mindstella-version.ini"
@@ -18,8 +16,7 @@ NEWER_VERSION = "v99.0.0"
 
 def test_normal_when_older_version(
     make_legacy_workspace: MakeLegacyWorkspace,
-    run_mindmap: RunMindmap,
-    python_path: str,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """版が古いワークスペースでは、状況を示さず、移し替えのスキルを案内して止まる（正常系）。"""
@@ -28,11 +25,11 @@ def test_normal_when_older_version(
     before = snapshot_tree(root)
     # 実行
     # 手順が連ねるのは版の比較までで、status は呼ばない
-    plan = run_mindmap("migrate", "--workspace", str(root), "--plan", python=python_path)
+    plan = call_tool("migrate", workspace=str(root), plan=True)
     # 検証
     # 版の比較が、ワークスペースの版を「版を記録する前の形式」、プラグインより古いと返す
-    assert plan.returncode == 0
-    payload = json.loads(plan.stdout)
+    assert plan.is_error is False
+    payload = plan.data
     assert payload["workspace_version"] is None
     assert payload["relation"] == "older"
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
@@ -41,8 +38,7 @@ def test_normal_when_older_version(
 
 def test_error_when_newer_version(
     make_workspace: MakeWorkspace,
-    run_mindmap: RunMindmap,
-    python_path: str,
+    call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """版が新しいワークスペースでは、状況を示さず、プラグインを更新するよう案内して止まる（異常系）。"""
@@ -51,10 +47,10 @@ def test_error_when_newer_version(
     before = snapshot_tree(root)
     # 実行
     # 手順が連ねるのは版の比較までで、status は呼ばない
-    plan = run_mindmap("migrate", "--workspace", str(root), "--plan", python=python_path)
+    plan = call_tool("migrate", workspace=str(root), plan=True)
     # 検証
     # 版の比較が、ワークスペースの版がプラグインより新しいと返す
-    assert plan.returncode == 0
-    assert json.loads(plan.stdout)["relation"] == "newer"
+    assert plan.is_error is False
+    assert plan.data["relation"] == "newer"
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
