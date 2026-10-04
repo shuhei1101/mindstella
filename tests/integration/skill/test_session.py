@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from .skill_files import (
     PLAYBOOK_NAMES,
+    SECTION_PATTERN,
     SERVER_TOOL_NAMES,
     SKILLS_DIR,
     allowed_mcp_tools,
@@ -56,6 +57,9 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
 # 版を比べる呼び方
 PLAN_CALL = "`plan: true`"
 
+# SKILL.md が持つ、記録の書き方の節の見出し（`## ` を除く）
+RECORD_SECTION = "記録の書き方"
+
 # スキル session の steps/ のファイル
 SESSION_STEP_FILES = [
     "ゴール判定.md",
@@ -82,6 +86,8 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/ に 7 つのステップのファイルがあり、SKILL.md のステップの表がその全てを指す
     assert step_files_in("session") == SESSION_STEP_FILES
     assert steps_referenced_by(body) == SESSION_STEP_FILES
+    # SKILL.md が `## 記録の書き方` の節を持つ
+    assert RECORD_SECTION in SECTION_PATTERN.findall(body)
     # SKILL.md と steps/ の本文の ${CLAUDE_PLUGIN_ROOT}/ で始まるパスが全てリポジトリの中にある
     assert missing_plugin_paths(texts) == []
     # 本文が呼ぶツールが全て allowed-tools にあり、サーバーのツールの一覧にある
