@@ -2,7 +2,7 @@
 name: session
 description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Agent, WebSearch, WebFetch, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py:*)
+allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__adopt, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__submissions, mcp__mindstella__take_submission
 ---
 
 # session
@@ -18,11 +18,10 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, Bash(python3 ${CLAUDE_PLUGIN_RO
 ## ステップ
 
 発言のたびに、場面に合うステップを選ぶ。
-ワークスペースを編集したステップは、最後に `build` を流す。
 
 | ステップ | 手順 | 実行する場面 |
 | --- | --- | --- |
-| 準備 | `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読み、`migrate --workspace {フォルダ} --plan` を呼ぶ。出力の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`field` と同じ名前の進め方ガイド（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{field}.md`）を Read で読む | 話し合いの最初の 1 回 |
+| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`field` と同じ名前の進め方ガイド（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{field}.md`）を Read で読み、続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`）を示し、送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。0 件なら取り込みを飛ばす | 話し合いの最初の 1 回 |
 | 取り込み | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/取り込み.md` | 利用者が発言した（決め事・問い・やること・保留・中止・図や文書・脱線した質問） |
 | ヒアリング | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ヒアリング.md` | 取り込みの後に前提が揃った未決定がある、または利用者が次に決めることを求めた |
 | リサーチ | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/リサーチ.md` | 外部ライブラリ・外部 API を決める検討事項が積まれた、進め方ガイドの「必ず調べるもの」に当たった、または利用者が調べるよう頼んだ |
@@ -30,24 +29,28 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, Bash(python3 ${CLAUDE_PLUGIN_RO
 | プレビュー | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/プレビュー.md` | 利用者が記録を見たいと言った、または人に渡したいと言った |
 | ゴール判定 | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ゴール判定.md` | 利用者がゴールに届いたかを尋ねた、または `next` の候補が無くなった |
 
-## コマンド
+## ツール
 
-どれも `python3 ${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/mindmap.py` の後ろに続けて呼ぶ。
-中身の JSON は `--json '{JSON}'` の引数で渡す。値の中に `'` が要るときは `'\''` と書く。
+どれも mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
+スクリプトを Bash で起動しない。
+ツールが書き換えた記録は、サーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない。
 
-| コマンド | 呼び方 | 使う引数 |
-| --- | --- | --- |
-| `add` | `add {種類} --workspace {フォルダ} --json '{JSON}'` | `種類`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）。`--json` に項目の JSON（`id`・`created`・`updated`・`body` は渡さない。本文は `body_markdown`） |
-| `update` | `update {ID} --workspace {フォルダ} --json '{JSON}'` | `ID`。`--json` に置き換えるキーの JSON（消すキーは `null`） |
-| `adopt` | `adopt {ID} {記号} --workspace {フォルダ}` | `ID`（検討事項）・`記号`（採用する案） |
-| `next` | `next --workspace {フォルダ} [--limit {件数}]` | `--limit` |
-| `impact` | `impact {ID} --workspace {フォルダ}` | `ID` |
-| `find` | `find --workspace {フォルダ} [--text {文字}] [--kind {種類}] [--status {状態}] [--tag {タグ}] [--target {対象}] [--category {カテゴリー}] [--phase {フェーズ}] [--attr {名前=値}]` | 条件は全て任意 |
-| `show` | `show {ID} --workspace {フォルダ}` | `ID` |
-| `migrate` | `migrate --workspace {フォルダ} --plan` | `--workspace`・`--plan` |
-| `status` | `status --workspace {フォルダ}` | `--workspace` |
-| `check` | `check --workspace {フォルダ}` | `--workspace` |
-| `build` | `build --workspace {フォルダ}` | `--workspace` |
-| `export` | `export --workspace {フォルダ} --out {パス}` | `--workspace`・`--out` |
-| `goal` | `goal --workspace {フォルダ}` | `--workspace` |
-| `clear-release` | `clear-release --workspace {フォルダ}` | `--workspace` |
+| ツール | 使う引数 |
+| --- | --- |
+| `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`body` は渡さない。本文は `body_markdown`） |
+| `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
+| `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号） |
+| `next` | `workspace`・`limit`（任意） |
+| `impact` | `workspace`・`id` |
+| `find` | `workspace`・`text`・`kind`・`status`・`tag`・`target`・`category`・`phase`・`attr`（`名前=値` の配列）。条件は全て任意 |
+| `show` | `workspace`・`id` |
+| `attrs` | `workspace` |
+| `migrate` | `workspace`・`plan: true` |
+| `status` | `workspace` |
+| `check` | `workspace` |
+| `export` | `workspace`・`out` |
+| `goal` | `workspace` |
+| `clear_release` | `workspace` |
+| `preview_url` | `workspace` |
+| `submissions` | `workspace` |
+| `take_submission` | `workspace`・`id`（送信の ID） |
