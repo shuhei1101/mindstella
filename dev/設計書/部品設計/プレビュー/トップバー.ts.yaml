@@ -92,7 +92,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にして確かめる
   - name: Offline
-    description: サーバーにつながらない。検索の入口の左に、印と「サーバーにつながりません（{日時} に読んだ記録）」を要見直しの赤で出す
+    description: サーバーにつながらない。検索の入口の左に、印と「サーバーにつながりません（{日時} に読んだ記録）」を出す。印を `--red-300`、文言をトップバーの文字色（`--topbar-fg`）で出す
     args:
       - name: connection
         value: offline
