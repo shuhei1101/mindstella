@@ -122,3 +122,4 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 参照元にするキー
     constraint: '`depends_on`・`parent`・`for`・`related`・`sources`（設定の `goal.deliverables[].doc` は含めない）'
+test_file: tests/integration/server/test_show.py

@@ -209,3 +209,4 @@ constraints:
   - item: 影響の洗い出し
     constraint: しない（影響は `impact`、要見直しにするかはスキルの手順が決める）
 exclusivity: 同じプロセスの中では、書き換えの鍵（『MCP サーバーの起動』）で書き換えるツールを 1 つずつ動かす。別のプロセスとは排他しない（スキルが 1 つずつ呼ぶ前提）
+test_file: tests/integration/server/test_adopt.py

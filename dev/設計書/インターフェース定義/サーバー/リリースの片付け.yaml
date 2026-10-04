@@ -138,3 +138,4 @@ constraints:
     constraint: '`{ワークスペースのフォルダ}/release/` の中だけ。`release/` 自体と、前の版の `handoff/` は消さない'
 notes:
   サーバーに置く理由: '`session` はファイルを消すツールを持たず、Write はファイルを消せない。古いファイルを残さず最新の確定版の一式だけを置くため、消す処理をサーバーのツールにする'
+test_file: tests/integration/server/test_clear_release.py

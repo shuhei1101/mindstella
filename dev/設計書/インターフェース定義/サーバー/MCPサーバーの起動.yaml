@@ -157,3 +157,4 @@ notes:
   1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、Claude Code を閉じたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
 callers:
   - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+test_file: tests/integration/server/test_mcp_server.py

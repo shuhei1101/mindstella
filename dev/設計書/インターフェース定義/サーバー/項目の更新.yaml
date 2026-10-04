@@ -227,3 +227,4 @@ constraints:
   - item: 部分成功
     constraint: 起こさない。本文を置き換える前に前の本文を控え、YAML の置き換えに失敗したら本文を控えに戻して（前に本文が無ければ消して）からツールのエラーで終わる（残った一時ファイルも消す）
 exclusivity: 同じプロセスの中では、書き換えの鍵（『MCP サーバーの起動』）で書き換えるツールを 1 つずつ動かす。別のプロセスとは排他しない（スキルが 1 つずつ呼ぶ前提）
+test_file: tests/integration/server/test_update.py

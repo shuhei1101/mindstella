@@ -473,3 +473,4 @@ constraints:
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]
+test_file: tests/integration/server/test_migrate.py

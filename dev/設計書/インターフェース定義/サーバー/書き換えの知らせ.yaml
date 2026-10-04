@@ -113,3 +113,4 @@ constraints:
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
 refs:
   - dev/設計書/インターフェース定義/サーバー/記録の取得#
+test_file: tests/integration/server/test_events.py

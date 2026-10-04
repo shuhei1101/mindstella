@@ -131,3 +131,4 @@ constraints:
 refs:
   - dev/設計書/インターフェース定義/サーバー/次の候補#
   - dev/設計書/インターフェース定義/サーバー/ゴール判定#
+test_file: tests/integration/server/test_records.py

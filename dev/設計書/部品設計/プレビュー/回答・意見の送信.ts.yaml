@@ -114,3 +114,4 @@ accessibility:
   - 入力欄・送るボタン・本文を写すに Tab で届き、印の色の輪でフォーカスを見せる
   - 失敗と本文が空は、赤の色だけでなく印のアイコンと文言でも伝える
 status: planned
+test_file: tests/integration/storybook/test_send_form_stories.py

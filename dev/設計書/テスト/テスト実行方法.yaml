@@ -40,15 +40,16 @@ layers:
       ```bash
       pytest tests/integration
       ```
-    description: pytest で、インターフェース定義の流れを確かめる。プラグインは実際の Claude Code の CLI（`claude plugin ...`）を呼び、スクリプトは実際の `mindmap.py` を子プロセスで起動して、引数・標準入力・標準出力の JSON・標準エラー・終了コードとワークスペースのファイルを確かめる。Mock は使わない。
+    description: pytest で、インターフェース定義の流れを確かめる。プラグインは実際の Claude Code の CLI（`claude plugin ...`）を呼ぶ。サーバーの MCP のツールは、実際の `server.py` を子プロセスとして立て、標準入出力の JSON-RPC（MCP のクライアント）でツールを呼んで、結果・エラーの本文とワークスペースのファイルを確かめる。配信は `preview_url` が返した URL へ HTTP でつなぐ。起動スクリプトは実際の `bin/mindstella` を動かし、`claude` は偽物を、`tmux` は専用のソケット（`-L`）を使うラッパーを `PATH` に置く。依存の確認（`check_env.py`）は子プロセスで起動する。
     prerequisites:
       - Python 3.12 以上と pytest
-      - 'プラグインのテスト（`tests/integration/plugin/`）: Claude Code 2.1.287 以上（`claude` が PATH にある）。スクリプトのテスト（`tests/integration/scripts/`）は `claude` を使わない'
-      - 'スクリプトのテスト: PyYAML 5.1 以上と jsonschema 4.18.0 以上が、テストを動かす Python に入っている。仮想環境はテストごとの一時フォルダに `--without-pip` で作り、ライブラリはテストを動かす Python のものを見せる（通信しない）'
-      - '`export` のテスト（`tests/integration/scripts/test_export.py`）: jsDelivr へ HTTPS で届く（書き出すときに配布ファイルとライセンスの本文を取る）。`test_error_when_download_fails` は `HTTPS_PROXY` に届かない宛先を入れて起動し、待ちの上限（30 秒）まで待つため約 30 秒かかる'
-      - 'スクリプトのテストで、条件が揃わなければ skip する流れ: 手元に Python 3.8〜3.11 が無い（`check-env` の古い Python の 2 流れ）/ PyPI へ通信できない（`check-env` が返すそろえるコマンドを流す部分）/ root か Windows で書き込みの権限を外せない（各コマンドの書き込めない流れ）'
+      - 'プラグインのテスト（`tests/integration/plugin/`・`tests/integration/skill/`）: Claude Code 2.1.287 以上（`claude` が PATH にある）。サーバーのテスト（`tests/integration/server/`）は実際の `claude` を使わない'
+      - 'サーバーのテスト: PyYAML 5.1 以上・jsonschema 4.18.0 以上・mcp 2.3.0 以上が、テストを動かす Python に入っている（`requirements-dev.txt`）。仮想環境はテストごとの一時フォルダに `--without-pip` で作り、ライブラリはテストを動かす Python のものを見せる（通信しない）'
+      - '起動スクリプトのテスト（`tests/integration/server/test_launch.py`）: tmux が PATH にある。tmux は専用のソケットと一時フォルダで動かし、利用者の tmux のセッションに触れない（テストの後に、その専用のソケットのサーバーだけを `kill-server` で止める）'
+      - '`export` のテスト（`tests/integration/server/test_export.py`）: jsDelivr へ HTTPS で届く（書き出すときに配布ファイルとライセンスの本文を取る）。`test_error_when_download_fails` は `HTTPS_PROXY` に届かない宛先を入れて起動し、待ちの上限（30 秒）まで待つため約 30 秒かかる'
+      - 'サーバーのテストで、条件が揃わなければ skip する流れ: 手元に Python 3.8〜3.11 が無い（依存の確認の古い Python の 2 流れ）/ PyPI へ通信できない（依存の確認が返すそろえるコマンドを流す部分）/ root か Windows で書き込みの権限を外せない（各ツールの書き込めない流れ）'
       - 実行はリポジトリの直下で行う。設定のフォルダは conftest が `CLAUDE_CONFIG_DIR` にテストごとの空の一時フォルダを渡して差し替えるため、利用者の環境を汚さない
-      - '`pytest tests/unit tests/integration` を 1 回で流せる。`tests/integration/scripts/` は単体テストと同じ名前のファイル（`test_check_env.py`）を持つため、`__init__.py` を置いて名前が衝突しないようにしている'
+      - '`pytest tests/unit tests/integration` を 1 回で流せる。`tests/integration/` と `tests/integration/server/` と `tests/integration/skill/` は `__init__.py` を置いてパッケージにし、`server.py` など単体テストが読むモジュールの名前と、同じ名前のテストファイル（`test_check_env.py`）が衝突しないようにしている'
     run_one:
       label: ファイル
       command: |-
@@ -56,7 +57,7 @@ layers:
         pytest {テストファイルパス}
         ```
   - name: 結合テスト（フロント）
-    description: pytest-playwright で 2 つを確かめる。インターフェース定義『プレビューを開く』は、`make_workspace` と `run_mindmap("build", ...)` で書き出した `preview.html` を file:// と URL のハッシュで開き、描画のライブラリの配信元を失敗させるときは `page.route` で要求を abort する。部品設計の状態は、`storybook build` の出力を一時の HTTP サーバーで配る fixture から `iframe.html?id={story}--{state}` を開いて確かめる
+    description: pytest-playwright で 2 つを確かめる。インターフェース定義『プレビューを開く』と画面設計は、`make_workspace` で作ったワークスペースを MCP サーバー（`preview_url`）が配る URL を URL のハッシュ付きで開く。配る書き出しは `export` で書き出した HTML を file:// で開き、描画のライブラリの配信元を失敗させるときは `page.route` で要求を abort する。部品設計の状態は、`storybook build` の出力を一時の HTTP サーバーで配る fixture から `iframe.html?id={story}--{state}` を開いて確かめる
     prerequisites:
       - 単体テスト（フロント）の前提
       - jsDelivr と Google Fonts へ HTTPS で届く（『プレビューを開く』の正常系は描画のライブラリを配信元から読む）
@@ -72,12 +73,13 @@ layers:
         pytest {テストファイルパス}
         ```
     notes:
-      画面の起動: |
-        1. `make_workspace` で記録を置いたワークスペースを作り、`run_mindmap("build", "--workspace", {フォルダ})` で `{フォルダ}/preview.html` を書き出す（手で確かめるときは `python3 plugins/mindstella/skills/mindmap/scripts/mindmap.py build --workspace {フォルダ}`）。
-        2. `file://{フォルダ}/preview.html` に URL のハッシュを付けて開く。ハッシュで画面・表示形式・項目を指す（例 `#tab=decisions&view=table&id=D-3`。形はインターフェース定義『プレビューを開く』）。
+      画面の起動: |-
+        1. `make_workspace` で記録を置いたワークスペースを作り、MCP サーバーの `preview_url`（fixture `call_tool`）で配信を立てて URL を得る（手で確かめるときは `{プラグインのフォルダ}/bin/mindstella {フォルダ}` で立ち上げた Claude Code から `preview_url` を呼ぶ）。
+        2. その URL に URL のハッシュを付けて開く。ハッシュで画面・表示形式・項目を指す（例 `#tab=decisions&view=table&id=D-3`。形はインターフェース定義『プレビューを開く』）。配る書き出しは `export` で書き出した HTML を `file://` で開く。
         3. 本文の領域 `main#main` に子が入るまで待つ。本文の図は描画のライブラリが読み終わった後に SVG になるので、図を確かめるときは `.mermaid svg` が出るまで待つ。
         4. 要素は画面設計の項目 ID（`#tile-next`・`#decision-map`・`#graph-canvas` ほか）で引く。項目 ID を持たない要素は、画面設計の名前に当たる見出し・ボタンの読み上げ名で引く。
         5. 幅の違いを確かめるときは、開いた後に `set_viewport_size` で幅を変える。
+        6. ツールの書き換えへの追従と、サーバーが止まったときの接続の状態は、同じワークスペースを開いたまま `call_tool` の `add` を呼ぶ、またはサーバーの標準入力を閉じて確かめる。
   - name: E2E テスト
     run_all: |-
       ```bash

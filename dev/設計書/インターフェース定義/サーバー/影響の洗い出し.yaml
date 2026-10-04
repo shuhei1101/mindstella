@@ -129,3 +129,4 @@ constraints:
     constraint: 一度出た項目はもうたどらない（起点も含めて結果に 2 度出ない）
   - item: 状態による絞り込み
     constraint: しない（決定済み・完了も含めて出す）
+test_file: tests/integration/server/test_impact.py

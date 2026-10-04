@@ -138,3 +138,4 @@ constraints:
     constraint: プロセスが終わるとき（『MCP サーバーの起動』の終わり方）。途中で止めるツールは持たない
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
+test_file: tests/integration/server/test_preview_url.py

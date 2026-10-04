@@ -130,3 +130,4 @@ constraints:
     constraint: ファイル名の順、同じファイルの中は項目の並びの順
 refs:
   - dev/設計書/ER図/ワークスペース#
+test_file: tests/integration/server/test_check.py

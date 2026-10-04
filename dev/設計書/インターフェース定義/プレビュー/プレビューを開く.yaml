@@ -174,6 +174,7 @@ flows:
       - タブの帯で検討事項が選ばれ、表示形式は表のまま
       - 詳細パネルに D-3 が開いたままで、入力欄に「書きかけ」が残っている
       - URL が開いたときと同じで、履歴の数が増えていない
+    test: test_normal_when_rewritten
   - name: 正常系（回答・意見を送る）
     summary: 詳細パネルから送ると、入力欄を空にして送った旨を出す
     setup:
@@ -199,6 +200,7 @@ flows:
       - 入力欄が空
       - 取り込んでいない送信（`submissions`）が D-1 への「案 A にする」の 1 件を返す
       - 入力欄と送るボタンに Tab キーで届き、送るボタンを Enter で押せる
+    test: test_normal_when_sent
   - name: 異常系（本文が空）
     summary: 空白だけの本文は送らずに理由を出す
     setup:
@@ -219,6 +221,7 @@ flows:
     expected:
       - '`POST /api/submissions` が送られていない'
       - 送信の結果に本文が空である旨が出る
+    test: test_error_when_body_empty
   - name: 異常系（サーバーにつながらない）
     summary: サーバーが止まると接続の状態を出し、前に読んだ記録で描き続け、送れなかった本文を残す
     setup:
@@ -248,6 +251,7 @@ flows:
       - 接続の状態に、つながらない旨と記録を読んだ日時が出る
       - 表に D-1・D-3 の行が残り、詳細パネルに D-1 が開いたまま
       - 送信の結果に送れなかった旨が出て、入力欄に「案 A にする」が残っている
+    test: test_error_when_server_unreachable
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: 回答・意見を送ると、サーバーがワークスペースの `submissions.yaml` に 1 件足す（『回答・意見の送信』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）にライト / ダークと表の表示する列・ピン留めを書く

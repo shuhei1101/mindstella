@@ -212,3 +212,4 @@ constraints:
     constraint: しない（そろえるコマンドを返すだけで、仮想環境を作らずライブラリも入れない。流すかは利用者が決める）
 callers:
   - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+test_file: tests/integration/server/test_check_env.py

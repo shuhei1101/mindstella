@@ -122,3 +122,4 @@ constraints:
     constraint: '`phase` が `phases` の先頭から `goal.phase` までのどれか。それより後ろのフェーズと、`phases` に無いフェーズの項目は入れない'
   - item: 各一覧の並び
     constraint: '`remaining_decisions` はフェーズの順、同じフェーズの中は連番の小さい順。`remaining_deliverables` は `goal.deliverables` の並び'
+test_file: tests/integration/server/test_goal.py

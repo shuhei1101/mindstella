@@ -160,3 +160,4 @@ constraints:
     constraint: 渡した条件の全てに合う項目。条件を 1 つも渡さなければ全ての項目
   - item: 件数
     constraint: 制限なし
+test_file: tests/integration/server/test_find.py

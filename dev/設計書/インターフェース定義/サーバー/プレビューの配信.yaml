@@ -108,3 +108,4 @@ constraints:
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+test_file: tests/integration/server/test_preview_serve.py

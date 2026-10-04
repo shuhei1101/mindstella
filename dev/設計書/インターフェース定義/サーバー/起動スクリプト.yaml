@@ -332,3 +332,4 @@ refs:
   - dev/設計書/外部ライブラリ/claude-code#
 notes:
   置き場所: 'プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）。シェルの alias への登録は #10 に残したスコープ'
+test_file: tests/integration/server/test_launch.py

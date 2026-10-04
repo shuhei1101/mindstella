@@ -106,3 +106,4 @@ constraints:
     constraint: 3 件（定数。全件は次の候補のツールで引く）
   - item: 各一覧の並び
     constraint: ID の種類（D → T）、連番の小さい順（次の候補を除く）
+test_file: tests/integration/server/test_status.py
