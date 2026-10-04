@@ -1106,6 +1106,12 @@ functions:
         condition: '`tmp_path / "ws"`（無い）と `create=True`'
         mock: なし
         expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'
+      - name: test_workspace_lock_when_not_workspace
+        case: 異常
+        summary: ワークスペースでないフォルダには何も作らない
+        condition: '`parametrize`: 空の `tmp_path` / `tmp_path / "typo" / "ws"`（無い）。`create` は既定（偽）'
+        mock: なし
+        expected: '`WorkspaceNotFoundError` が伝わり、`process_lock` が外れている。`tmp_path` の中は空のまま（`typo` も作られない）'
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`create` が偽で、`root` に `mindmap.yaml` が無い'
