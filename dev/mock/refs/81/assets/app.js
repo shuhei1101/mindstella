@@ -1214,8 +1214,9 @@
   };
   const renderMockbar = () => {
     const bar = document.getElementById("mock-states");
-    bar.innerHTML = GOALS.map(([v, l]) => `<button type="button" data-act="goal" data-goal="${v}" aria-pressed="${state.goal === v}">${l}</button>`).join("")
-      + DESCS.map(([v, l]) => `<button type="button" data-act="desc" data-desc="${v}" aria-pressed="${state.desc === v}">${l}</button>`).join("");
+    // ゴールと話し合いの概要の切り替えを、それぞれ 1 つのまとまりにして並べる
+    bar.innerHTML = `<span class="mock-group">${GOALS.map(([v, l]) => `<button type="button" data-act="goal" data-goal="${v}" aria-pressed="${state.goal === v}">${l}</button>`).join("")}</span>`
+      + `<span class="mock-group">${DESCS.map(([v, l]) => `<button type="button" data-act="desc" data-desc="${v}" aria-pressed="${state.desc === v}">${l}</button>`).join("")}</span>`;
   };
   // 見てきた項目の並び（trail）と今の位置（pos）を履歴の状態に持つ
   const trailOf = () => (history.state && history.state.trail ? history.state : { trail: state.panel ? [state.panel] : [], pos: 0 });
