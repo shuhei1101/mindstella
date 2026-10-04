@@ -28,9 +28,9 @@
   <!-- 71 のスクリプトに、前回からの差分の表示を足したもの -->
   <script src="../../../../refs/79/assets/app.js" defer></script>
 </head>
-<!-- data-screen: 描く画面。data-pages: pages/ への相対パス。data-initial: ハッシュが無いときに開く状態（mockdiff=1 は差分の表示を入れて開く）。data-send: 回答・意見の入力の置き方 -->
+<!-- data-screen: 描く画面。data-pages: pages/ への相対パス。data-initial: ハッシュが無いときに開く状態（mockdiff は選んだ時点で開く。1 は「前回開いてから」）。data-send: 回答・意見の入力の置き方 -->
 <body data-screen="decisions" data-pages="../../../" data-toggle-all="check" data-initial="view=table&id=D-005&viewer=1&mockdiff=1" data-send="footer">
-  <!-- モック専用の操作列: 端末で初めて開く・保持する回数が 0・サーバーにつながらない・配る書き出し・描画のライブラリが読めない状態と、開いたまま届く書き換え -->
+  <!-- モック専用の操作列: 状態（端末で初めて開く・保持する回数が 0 ほか）・シナリオの場面・開いたまま届く書き換え・抜ける操作の案を切り替える -->
   <div class="mockbar" role="group" aria-label="モックの状態">
     <span>モック</span>
     <span id="mock-states"></span>
@@ -47,8 +47,10 @@
     <!-- 接続の状態: サーバーにつながらないときだけ app.js が中身を描いて出す -->
     <span class="conn" id="conn" role="status" hidden></span>
     <button class="search-trigger" type="button" data-act="search" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="label">すべての項目を検索</span><kbd>/</kbd></button>
-    <!-- 差分の表示の切り替え: 入り切りは端末に残り、どの画面でも同じ状態で効く -->
-    <button class="diff-btn" id="diff-btn" type="button" data-act="diff" aria-pressed="false" aria-label="前回からの差分を表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg><span class="label">差分</span></button>
+    <!-- 変更履歴: 押すとまとまりの一覧のモーダルを開く。選んだ時点は端末に残り、どの画面でも同じ時点で効く -->
+    <button class="hist-btn" id="hist-btn" type="button" data-act="hist" aria-pressed="false" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button>
+    <!-- 選んだ時点の札と外すボタン（抜ける操作の案 A）: 差分の表示の間だけ app.js が描いて出す -->
+    <span class="df-chip" id="diff-chip" hidden></span>
     <button class="top-btn" id="theme-btn" type="button" data-act="theme"></button>
   </header>
 
@@ -111,6 +113,15 @@
     <pre class="dg-raw v-raw" hidden></pre>
     <!-- 差分の表示の凡例と消したものの一覧 -->
     <div class="df-notes v-notes" hidden></div>
+  </dialog>
+
+  <!-- 変更履歴: トップバーの「変更履歴」で開くモーダル。外側の押下と Esc で閉じる。1 つ選ぶと閉じて、画面全体がその時点の差分の表示になる -->
+  <dialog class="hist" id="hist" closedby="any" aria-labelledby="hist-title">
+    <div class="hist-head">
+      <h2 id="hist-title">変更履歴</h2>
+      <form method="dialog"><button class="icon-btn" aria-label="変更履歴を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></form>
+    </div>
+    <ul class="hist-list"></ul>
   </dialog>
 
   <!-- 列の絞り込み・表示する列・カードの絞り込みで使い回すポップオーバー -->

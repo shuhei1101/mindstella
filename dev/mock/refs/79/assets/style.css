@@ -12,16 +12,64 @@
   --df-chg-bg: color-mix(in oklab, var(--st-hold) 16%, var(--surface));
 }
 
-/* ===== トップバーの差分の表示の切り替え ===== */
+/* ===== トップバーの変更履歴と選んだ時点の札 ===== */
 
-/* 切り替えのボタン: 印と短い文言。検索の入口と同じ高さと枠 */
-.diff-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
-.diff-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
-/* 入れている間: 帯の地と文字を入れ替え、押した見た目にする */
-.diff-btn[aria-pressed="true"] { background: var(--topbar-fg); border-color: var(--topbar-fg); color: var(--topbar-bg); }
-.diff-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* 狭い幅（900px 以下）: 検索の入口と同じく印だけにする */
-@media (max-width: 900px) { .diff-btn { width: 32px; padding: 0; justify-content: center; } .diff-btn .label { display: none; } }
+/* 変更履歴のボタン: 印と短い文言。検索の入口と同じ高さと枠 */
+.hist-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
+.hist-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
+/* 抜ける操作の案 B で差分の表示の間: 帯の地と文字を入れ替え、押した見た目にする */
+.hist-btn[aria-pressed="true"] { background: var(--topbar-fg); border-color: var(--topbar-fg); color: var(--topbar-bg); }
+.hist-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 選んだ時点の札: 時点の名前と、札を外すボタン */
+.df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 16em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
+/* 差分の表示が切りのときの札: 出さない */
+.df-chip[hidden] { display: none; }
+/* 札の時点の名前: 長いときは末尾を省略する */
+.df-chip-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 札を外すボタン */
+.df-chip button { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius); background: none; color: inherit; }
+.df-chip button:hover { background: color-mix(in oklab, var(--topbar-bg) 12%, var(--topbar-fg)); }
+.df-chip button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 札を外すボタンの印 */
+.df-chip button svg.icon { width: 16px; height: 16px; }
+/* 狭い幅（900px 以下）: 検索の入口と同じく変更履歴は印だけにし、札は短くする */
+@media (max-width: 900px) { .hist-btn { width: 32px; padding: 0; justify-content: center; } .hist-btn .label { display: none; } .df-chip { max-width: 7.5em; } }
+
+/* ===== 変更履歴のモーダル ===== */
+
+/* モーダルの枠: 本文に重ねる面 */
+dialog.hist { width: min(520px, calc(100vw - 32px)); max-height: min(640px, calc(100dvh - 32px)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); }
+/* 開いたモーダル: 見出しの下で一覧を送る */
+dialog.hist[open] { display: flex; flex-direction: column; }
+/* モーダルの後ろの幕 */
+dialog.hist::backdrop { background: var(--scrim); }
+/* モーダルの見出しの行 */
+.hist-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 20px; border-bottom: 1px solid var(--border-soft); }
+/* モーダルの見出し */
+.hist-head h2 { margin: 0; font-size: var(--fs-h2); }
+/* まとまりの一覧 */
+.hist-list { margin: 0; padding: 6px; list-style: none; overflow-y: auto; }
+/* まとまり 1 つ: 選んだ印・名前と日時・変わった項目の数 */
+.hist-item { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--radius); background: none; color: var(--text); text-align: left; }
+.hist-item:hover { background: var(--hover); }
+.hist-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 選んでいるまとまり: 印の色の薄い面と細い枠 */
+.hist-item[aria-current="true"] { background: var(--row-selected); box-shadow: inset 0 0 0 1px var(--accent-line); }
+/* 選んだ印 */
+.hist-check svg.icon { width: 16px; height: 16px; color: var(--accent); }
+/* まとまりの名前と日時 */
+.hist-main { display: grid; gap: 2px; min-width: 0; }
+/* まとまりの名前（commit の説明） */
+.hist-name { font-weight: 600; overflow-wrap: anywhere; }
+/* まとまりの日時・範囲 */
+.hist-sub { color: var(--text-2); font-size: var(--fs-xs); }
+/* 変わった項目の数 */
+.hist-n { color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
+
+/* ===== モック専用の操作列の区切り ===== */
+
+/* 操作のまとまりの見出し */
+.mockbar .mock-sep { margin-left: 10px; font-weight: 700; }
 
 /* ===== タブの印 ===== */
 
@@ -44,29 +92,33 @@
 .df-badge.df-chg { border-color: var(--df-chg); background: var(--df-chg-bg); }
 /* 変更の印の記号（塗った丸） */
 .df-badge.df-chg svg.icon { color: var(--df-chg); fill: currentColor; }
+/* 一覧の印: 文言を付けず印だけにする（変更は塗った丸、新規は +）。名前は読み上げに残す */
+.df-mark { display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; vertical-align: -3px; }
+/* 一覧の印の記号 */
+.df-mark svg.icon { width: 16px; height: 16px; stroke-width: 3; }
+/* 一覧の新規の印（+） */
+.df-mark.df-new { color: var(--df-add); }
+/* 一覧の変更の印（●） */
+.df-mark.df-chg { color: var(--df-chg); }
+/* 一覧の変更の印の記号: 塗った丸 */
+.df-mark.df-chg svg.icon { fill: currentColor; }
 /* 表の行の印: タイトルの右に置く */
-.row-open + .df-badge { margin-left: 8px; vertical-align: 1px; }
+.row-open + .df-mark { margin-left: 8px; }
 /* マップの節の印: 2 行目の頭に小さく置く */
-.n-item .r2 .df-badge { height: 16px; padding: 0 4px; }
-/* 狭い幅のマップの一覧の印 */
-.map-outline button .df-badge { margin-left: 2px; }
+.n-item .r2 .df-mark { width: 14px; height: 14px; }
+/* マップの節の印の記号 */
+.n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
 
 /* ===== 詳細パネルの差分 ===== */
 
-/* 冒頭の帯: 比べた書き換えの日時と、比べる回の選択 */
+/* 冒頭の帯: 選んだ時点の名前と日時 */
 .df-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 14px; padding: 8px 12px; border-radius: var(--radius); background: var(--df-chg-bg); font-size: var(--fs-small); }
 /* 冒頭の帯の見出し */
 .df-head-t { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 /* 冒頭の帯の印 */
 .df-head-t svg.icon { width: 16px; height: 16px; color: var(--df-chg); }
-/* 比べた書き換えの日時 */
+/* 選んだ時点の日時・範囲 */
 .df-when { color: var(--text-2); font-family: var(--font-mono); }
-/* 比べる回の選択: ラベルを常に見せる */
-.df-round { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--text-2); }
-/* 比べる回のラベル: 1 語のまま折り返さない */
-.df-round > span { white-space: nowrap; }
-/* 比べる回の選択欄 */
-.df-round select { max-width: 100%; color: var(--text); font: inherit; }
 /* キーの前の値と今の値 */
 .df-kv { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 /* 前の値: 取り消し線と消した色の面 */
@@ -75,6 +127,8 @@
 .df-now { padding: 0 4px; border-radius: 3px; background: var(--df-add-bg); color: var(--text); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 /* 前の値・今の値の中の状態とタグ: 線は内側の箱に届かないので、箱にも付ける */
 .df-was .st, .df-was .tag { text-decoration: inherit; }
+/* 状態のキーの前後: 面を塗らず、取り消し線・下線と矢印だけで示す */
+.df-kv.df-plain :is(.df-was, .df-now) { padding: 0; background: none; }
 /* 前の値と今の値をつなぐ矢印 */
 .df-arrow { color: var(--text-3); }
 /* 値が変わったキーの名前 */

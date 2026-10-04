@@ -43,6 +43,7 @@
     const p = new URLSearchParams(params);
     if (SCREEN_OF[tab] === "records") p.set("kind", tab);
     if (state.sim) p.set("sim", state.sim);
+    if (state.exit === "b") p.set("exit", "b");
     const h = p.toString();
     return `${PAGES}${SCREEN_OF[tab]}/${MOCK_NUMBER(tab)}/${MOCK_VARIANT}/index.html${h ? "#" + h : ""}`;
   };
@@ -129,9 +130,9 @@
     log: '<path d="M4 6h16v10H9l-5 4Z"/>',
     send: '<path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/>',
     offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/>',
-    diff: '<path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/>',
+    history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
-    changed: '<circle cx="12" cy="12" r="4"/>',
+    changed: '<circle cx="12" cy="12" r="5"/>',
   };
   const TAB_ICON = { overview: "home", decisions: "decision", tasks: "task", research: "research", docs: "doc", terms: "term", notes: "note", logs: "log" };
   const icon = (n) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -244,8 +245,8 @@
   // ===== 画面の状態 =====
   // モック専用の操作列で切り替える状態
   const SIMS = [["", "通常"], ["first", "端末で初めて開く"], ["nohist", "保持する回数が 0"], ["offline", "サーバーにつながらない"], ["export", "配る書き出し"], ["nolib", "描画のライブラリが読めない"]];
-  // diffRound: 詳細パネルで項目ごとに選んだ比べる回（0 = 前回）
-  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", mapQ: "", tables: {}, mapShow: new Set(["要見直し", "未決定", "未整理", "保留"]), deps: true, diffRound: new Map() };
+  // exit: 差分の表示から抜ける操作の案（a = トップバーの札と外すボタン、b = 「変更履歴」の押し直し）
+  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", exit: "a", mapQ: "", tables: {}, mapShow: new Set(["要見直し", "未決定", "未整理", "保留"]), deps: true };
   for (const k of Object.keys(COLUMNS)) state.tables[k] = { q: "", filters: {}, sort: null, showClosed: k !== "decisions" };
   const colPrefs = (kind) => (prefs.cols[kind] ??= { hidden: COLUMNS[kind].filter((c) => c.hidden).map((c) => c.key), pin: 0 });
 
@@ -260,52 +261,77 @@
     state.panel = id && byId.has(id) ? id : null;
     state.full = !!state.panel && p.get("full") === "1";
     state.sim = SIMS.some(([v]) => v && v === p.get("sim")) ? p.get("sim") : "";
+    state.exit = p.get("exit") === "b" ? "b" : "a";
     if (first) {
       const t = state.tables[state.tab];
       for (const [k, v] of p) if (k.startsWith("f.") && t) t.filters[k.slice(2)] = new Set(v.split("|"));
       state.initSearch = p.get("search");
       state.initViewer = p.get("viewer") === "1";
-      // モックだけの指定: 差分の表示を入れた状態で開く（端末に残る入り切りを書き換える）
-      if (p.get("mockdiff") === "1") { prefs.diff = true; savePrefs(); }
+      // モックだけの指定: 選んだ時点の差分の表示で開く（端末に残る選択を書き換える。1 は「前回開いてから」）
+      const md = p.get("mockdiff");
+      if (md) { prefs.diffSel = md === "1" ? "since" : md; savePrefs(); }
     }
   };
 
-  // ===== 前回からの差分 =====
-  // 差分の表示の入り切りは端末に残し、全ての画面で同じ状態を使う。既定は切り
-  prefs.diff ??= false;
-  const diffOn = () => prefs.diff === true;
-  // タブを開いた日時。前回開いた日時が端末に無いときは、これを印の基準にする
+  // ===== 変更履歴と差分の表示 =====
+  // 選んだ時点は端末に残し、全ての画面で同じ時点を使う。既定は差分を出さない（null）
+  // 値は "since"（前回開いてから）・"pending"（まだまとめていない変更）・まとまりの ID
+  prefs.diffSel ??= null;
+  // タブを開いた日時。前回開いた日時が端末に無いときは、これを「前回開いてから」の始まりにする
   const TAB_OPENED = new Date();
   const baseTime = () => (state.sim === "first" ? TAB_OPENED : new Date(H.lastOpened));
-  // 保持する回数が 0 のワークスペースは変更履歴を持たない
-  const historyOf = (id) => (state.sim === "nohist" ? null : H.items[id] || null);
-  // 新規・変更の印: 差分の表示の間だけ、基準より後に足された・変わった項目に付ける
-  const diffMarkOf = (id) => {
-    if (!diffOn()) return null;
-    const base = baseTime();
-    if (H.added[id] && new Date(H.added[id]) > base) return "new";
-    const h = historyOf(id);
-    return h && new Date(h.rounds[0].at) > base ? "chg" : null;
+  // 新しい順のまとまり。まだまとめていない書き換えがあれば先頭に置く
+  const allSets = () => (Object.keys(H.pending.changes).length ? [H.pending, ...H.sets] : H.sets);
+  const setById = (sid) => allSets().find((x) => x.id === sid);
+  const diffOn = () => prefs.diffSel === "since" || !!setById(prefs.diffSel);
+  // 選んだ時点に入るまとまりの位置（allSets の添字）。「前回開いてから」は範囲の始まりより後の全て
+  const rangeOf = (sel) => {
+    const sets = allSets();
+    if (sel === "since") return sets.map((x, i) => (new Date(x.at) > baseTime() ? i : -1)).filter((i) => i >= 0);
+    const i = sets.findIndex((x) => x.id === sel);
+    return i < 0 ? [] : [i];
   };
-  const DIFF_LABEL = { new: "新規", chg: "変更" };
-  const diffBadge = (id) => {
-    const m = diffMarkOf(id);
-    return m ? `<span class="df-badge df-${m}">${icon(m === "new" ? "plus" : "changed")}${DIFF_LABEL[m]}</span>` : "";
-  };
-  // タブの印: 印の付いた項目を持つ種類
-  const kindHasMark = (kind) => (M[kind] || []).some((r) => diffMarkOf(r.id));
-  const fmtTime = (iso) => new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
-  // 比べる回の前の版: 今の値に、新しい回から選んだ回まで、各回の書き換えの前の値を順に当てる
-  const previousOf = (id, round) => {
-    const { it } = byId.get(id), h = historyOf(id);
+  const countOf = (sel) => new Set(rangeOf(sel).flatMap((i) => Object.keys(allSets()[i].changes))).size;
+  // 今の値に、新しいまとまりから upto 番目まで、各まとまりの書き換えの前の値を順に当てた版
+  const versionAt = (id, upto) => {
+    const { it } = byId.get(id);
     const keys = {};
     let body = it.body ? M.bodies[it.body] : null;
-    for (const r of h.rounds.slice(0, round + 1)) {
-      Object.assign(keys, r.keys);
-      if ("body" in r) body = r.body;
-    }
+    allSets().slice(0, upto + 1).forEach((x) => {
+      const c = x.changes[id];
+      if (!c) return;
+      Object.assign(keys, c.keys);
+      if ("body" in c) body = c.body;
+    });
     return { keys, body };
   };
+  // 選んだ時点での項目の変化。前後の版・新規か・前後を組み立てられないか・図の差分
+  const changeOf = (id) => {
+    if (!diffOn()) return null;
+    const range = rangeOf(prefs.diffSel), entries = range.map((i) => allSets()[i].changes[id]).filter(Boolean);
+    if (!entries.length) return null;
+    if (entries.some((c) => c.added)) return { mark: "new" };
+    // 保持する回数が 0 のワークスペースは変更履歴を持たず、変わった項目を見分けられない
+    if (state.sim === "nohist") return null;
+    if (entries.some((c) => c.trimmed)) return { mark: "chg", trimmed: true };
+    const after = versionAt(id, range[0] - 1);
+    const before = versionAt(id, range[range.length - 1]);
+    return { mark: "chg", before, after, bodyUnavailable: entries.some((c) => c.bodyUnavailable), diagram: entries.find((c) => c.diagram)?.diagram };
+  };
+  const DIFF_LABEL = { new: "新規", chg: "変更" };
+  // 一覧の印: 文言を付けず印だけにする（変更は ●、新規は +）。名前は読み上げに残す
+  const diffBadge = (id) => {
+    const m = changeOf(id)?.mark;
+    return m ? `<span class="df-mark df-${m}" title="${DIFF_LABEL[m]}">${icon(m === "new" ? "plus" : "changed")}<span class="sr-only">${DIFF_LABEL[m]}</span></span>` : "";
+  };
+  // 詳細パネルの題の横の新規の印: 文言つきの札
+  const diffTag = (id) => (changeOf(id)?.mark === "new" ? `<span class="df-badge df-new">${icon("plus")}新規</span>` : "");
+  // タブの印: 印の付いた項目を持つ種類
+  const kindHasMark = (kind) => (M[kind] || []).some((r) => changeOf(r.id));
+  const fmtTime = (iso) => new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  // 選んだ時点の名前と補足（トップバーの札・詳細パネルの冒頭・一覧で使う）
+  const selName = (sel) => (sel === "since" ? "前回開いてから" : sel === "pending" ? "まだまとめていない変更" : setById(sel).desc);
+  const selSub = (sel) => (sel === "since" ? `${fmtTime(baseTime())} より後` : sel === "pending" ? "commit 前の書き換え" : fmtTime(setById(sel).at));
 
   // 行ごとの差分（最長共通部分列）。結果は { op: "same" | "add" | "del", v } の並び
   const diffSeq = (a, b) => {
@@ -423,6 +449,7 @@
     if (state.panel) p.set("id", state.panel);
     if (state.full) p.set("full", "1");
     if (state.sim) p.set("sim", state.sim);
+    if (state.exit === "b") p.set("exit", "b");
     const h = p.toString();
     return h ? "#" + h : location.pathname;
   };
@@ -1107,31 +1134,30 @@
   }).join("");
   // キーの前の値と今の値: 前の値に取り消し線、今の値に下線を付け、矢印でつなぐ
   const NONE = "（なし）";
-  const keyDiff = (oldV, newV, fmt) => `<span class="df-kv"><del class="df-was"><span class="sr-only">前の値: </span>${oldV ? fmt(oldV) : NONE}</del><span class="df-arrow" aria-hidden="true">→</span><ins class="df-now"><span class="sr-only">今の値: </span>${newV ? fmt(newV) : NONE}</ins></span>`;
-  // 詳細パネルの冒頭: 比べた書き換えの日時。2 回分以上あれば比べる回を選べる
-  const diffHead = (id, h, round) => {
-    const when = h.rounds.length > 1
-      ? `<label class="df-round"><span>比べる回</span><select class="input" data-act="round" data-id="${esc(id)}">${h.rounds.map((r, i) => `<option value="${i}"${i === round ? " selected" : ""}>${i === 0 ? "前回" : `${i + 1} 回前`}（${fmtTime(r.at)}）</option>`).join("")}</select></label>`
-      : `<span class="df-when">${fmtTime(h.rounds[0].at)} の書き換え</span>`;
-    return `<div class="df-head"><span class="df-head-t">${icon("diff")}前回からの変更</span>${when}</div>`;
-  };
-  const BODY_UNAVAILABLE = `<p class="df-note" role="note">${icon("alert")}<span>本文の前回からの差分を出せません。前回の書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。</span></p>`;
+  // plain: 状態のキーは面を塗らず、取り消し線・下線と矢印だけで示す
+  const keyDiff = (oldV, newV, fmt, plain = false) => `<span class="df-kv${plain ? " df-plain" : ""}"><del class="df-was"><span class="sr-only">前の値: </span>${oldV ? fmt(oldV) : NONE}</del><span class="df-arrow" aria-hidden="true">→</span><ins class="df-now"><span class="sr-only">今の値: </span>${newV ? fmt(newV) : NONE}</ins></span>`;
+  // 詳細パネルの冒頭: 選んだ時点の名前と日時（時点は変更履歴のモーダルで画面全体に選ぶ）
+  const diffHead = () => `<div class="df-head"><span class="df-head-t">${icon("history")}${esc(selName(prefs.diffSel))}</span><span class="df-when">${esc(selSub(prefs.diffSel))}</span></div>`;
+  const BODY_UNAVAILABLE = `<p class="df-note" role="note">${icon("alert")}<span>本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。</span></p>`;
+  const TRIMMED = `<p class="df-note" role="note">${icon("alert")}<span>このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。</span></p>`;
   const renderPanelBody = (id) => {
     const { kind, it } = byId.get(id);
-    // 差分の表示の間、変更履歴を持つ項目は比べる回の前の版と比べる
-    const hist = diffOn() ? historyOf(id) : null;
-    const round = hist ? Math.min(state.diffRound.get(id) ?? 0, hist.rounds.length - 1) : 0;
-    const prev = hist ? previousOf(id, round) : null;
-    const changed = (key) => !!prev && key in prev.keys && prev.keys[key] !== it[key];
-    const kv = (key, fmt = esc) => (changed(key) ? keyDiff(prev.keys[key], it[key], fmt) : fmt(it[key]));
+    // 差分の表示の間、選んだ時点で変わった項目は、そのまとまりの前後の版を比べる
+    const ch = changeOf(id);
+    const prev = ch?.before ? ch.before : null;
+    // 後の版の値: 後のまとまりで書き換えた値があればそれ、無ければ今の値
+    const afterOf = (key) => (ch?.after && key in ch.after.keys ? ch.after.keys[key] : it[key]);
+    const changed = (key) => !!prev && key in prev.keys && prev.keys[key] !== afterOf(key);
+    const kv = (key, fmt = esc) => (changed(key) ? keyDiff(prev.keys[key], afterOf(key), fmt) : fmt(it[key]));
     // 本文: 前の版と比べて足した・消した印を付ける。前の版を組み立てられないときは今の本文と、その旨を出す
     panelDiff = null;
     const bodyOf = (src) => {
       if (!prev) return renderMd(src);
-      if (hist.bodyUnavailable) return BODY_UNAVAILABLE + renderMd(src);
-      if (prev.body == null || prev.body === src || !libOk("marked") || !libOk("DOMPurify")) return renderMd(src);
-      panelDiff = { oldMermaid: mermaidSources(prev.body), diagram: hist.diagram };
-      return `<div class="md">${window.DOMPurify.sanitize(renderMdDiff(prev.body, src))}</div>`;
+      if (ch.bodyUnavailable) return BODY_UNAVAILABLE + renderMd(src);
+      const after = ch.after.body ?? src;
+      if (prev.body == null || prev.body === after || !libOk("marked") || !libOk("DOMPurify")) return renderMd(after);
+      panelDiff = { oldMermaid: mermaidSources(prev.body), diagram: ch.diagram };
+      return `<div class="md">${window.DOMPurify.sanitize(renderMdDiff(prev.body, after))}</div>`;
     };
     const meta = [[TARGET, "target"], ["カテゴリー", "category"], ["フェーズ", "stage"], ["影響度", "weight"], ["種類", "kind"], ["確度", "confidence"], ["日付", "date"], ["更新日", "updated"]]
       .filter(([, k]) => it[k] || changed(k)).map(([l, k]) => `<dt${changed(k) ? ' class="df-key"' : ""}>${l}</dt><dd${changed(k) ? ' class="df-key"' : ""}>${kv(k)}</dd>`).join("") + (it.tags?.length ? `<dt>タグ</dt><dd>${tags(it.tags)}</dd>` : "");
@@ -1168,9 +1194,9 @@
     if (it.related?.length) h += sec(kind === "logs" ? "更新した項目" : "関連", list(it.related));
     const back = referrers(id).filter((x) => !(it.related || []).includes(x) && !(dependents.get(id) || []).includes(x));
     if (back.length) h += sec("参照元", list(back));
-    const head = hist ? diffHead(id, hist, round) : "";
-    const st = changed("status") ? keyDiff(prev.keys.status, it.status, status) : status(it.status);
-    const isNew = diffMarkOf(id) === "new" ? diffBadge(id) : "";
+    const head = ch ? diffHead() + (ch.trimmed ? TRIMMED : "") : "";
+    const st = changed("status") ? keyDiff(prev.keys.status, afterOf("status"), status, true) : status(it.status);
+    const isNew = diffTag(id);
     return `${head}${st}<h2 class="d-title">${esc(it.title)}${it.deliverable ? `<span class="deliv-badge">${icon("box")}納品物</span>` : ""}${isNew}</h2><dl class="d-meta">${meta}</dl>${h}`;
   };
   // ===== 回答・意見の送信 =====
@@ -1353,7 +1379,7 @@
     const keep = same && wrap ? { l: wrap.scrollLeft, t: wrap.scrollTop, y: scrollY } : same ? { y: scrollY } : null;
     renderTabs();
     renderConn();
-    renderDiffBtn();
+    renderHistBtn();
     const main = document.getElementById("main");
     const k = state.tab;
     if (same && k === "graph" && G && document.getElementById("fg3")) {
@@ -1398,14 +1424,37 @@
   const renderMockbar = () => {
     const bar = document.getElementById("mock-states");
     bar.innerHTML = SIMS.map(([v, l]) => `<button type="button" data-act="sim" data-sim="${v}" aria-pressed="${state.sim === v}">${l}</button>`).join("")
-      + `<button type="button" data-act="mocklive">書き換えを受け取る</button>`;
+      + `<span class="mock-sep">場面</span>${MOCK_SCENES.map(([v, l]) => `<button type="button" data-act="scene" data-scene="${v}">${l}</button>`).join("")}<button type="button" data-act="mocklive">書き換えを受け取る</button>`
+      + `<span class="mock-sep">抜ける操作</span>${[["a", "A 札と外すボタン"], ["b", "B 押し直し"]].map(([v, l]) => `<button type="button" data-act="exit" data-exit="${v}" aria-pressed="${state.exit === v}">${l}</button>`).join("")}`;
   };
-  // トップバーの差分の表示の切り替え: 押した見た目で入り切りを示す
-  const renderDiffBtn = () => {
-    const b = document.getElementById("diff-btn");
-    b.setAttribute("aria-pressed", diffOn());
-    b.title = `${state.sim === "first" ? "このタブを開いた" : "前回開いた"} ${fmtTime(baseTime())} より後の変更に印を付けます`;
+  // モック専用の操作列の場面: 選ぶ時点と、開く項目
+  const MOCK_SCENES = [["since", "前回開いてから"], ["cs3", "古いまとまりを選ぶ"], ["pending", "まだまとめていない変更"], ["cs1", "前後を組み立てられない古いまとまり"]];
+  const SCENE_OPEN = { since: "D-005", cs3: "A-005", pending: "A-004", cs1: "D-005" };
+  // トップバーの「変更履歴」と、選んだ時点の札（案 A）
+  const renderHistBtn = () => {
+    const b = document.getElementById("hist-btn"), chip = document.getElementById("diff-chip");
+    // 案 B では、差分の表示の間「変更履歴」を押した見た目にし、押し直しで抜ける
+    b.setAttribute("aria-pressed", state.exit === "b" && diffOn());
+    chip.hidden = state.exit !== "a" || !diffOn();
+    chip.innerHTML = chip.hidden ? "" : `<span class="df-chip-t" title="${esc(selName(prefs.diffSel))}（${esc(selSub(prefs.diffSel))}）"><span class="sr-only">差分の時点: </span>${esc(selName(prefs.diffSel))}</span><button type="button" data-act="diffoff" aria-label="差分の表示をやめる" title="差分の表示をやめる">${icon("x")}</button>`;
   };
+  // 変更履歴のモーダル: 先頭に「差分を出さない」、次にまだまとめていない変更・前回開いてから・まとまりを新しい順に並べる
+  const histDlg = document.getElementById("hist");
+  const renderHist = () => {
+    const opt = (sel, name, sub, n) => {
+      const cur = (prefs.diffSel ?? "") === sel || (!diffOn() && sel === "");
+      return `<li><button type="button" class="hist-item" data-act="pick" data-sel="${esc(sel)}" aria-current="${cur}"><span class="hist-check" aria-hidden="true">${cur ? icon("check") : ""}</span><span class="hist-main"><span class="hist-name">${esc(name)}</span><span class="hist-sub">${esc(sub)}</span></span>${n === null ? "" : `<span class="hist-n mono">${n} 件</span>`}</button></li>`;
+    };
+    const rows = [];
+    if (state.exit === "a") rows.push(opt("", "差分を出さない（今の内容）", "印と差分を出さずに今の内容だけを読む", null));
+    if (Object.keys(H.pending.changes).length) rows.push(opt("pending", "まだまとめていない変更", "commit 前の書き換え", countOf("pending")));
+    rows.push(opt("since", "前回開いてから", `${fmtTime(baseTime())} より後`, countOf("since")));
+    for (const x of H.sets) rows.push(opt(x.id, x.desc, fmtTime(x.at), Object.keys(x.changes).length));
+    histDlg.querySelector(".hist-list").innerHTML = rows.join("");
+  };
+  const openHist = () => { renderHist(); histDlg.showModal(); histDlg.querySelector('[aria-current="true"]')?.focus(); };
+  // 時点を選ぶ・やめる: 端末に残し、どの画面も同じ時点で描き直す
+  const pickSel = (sel) => { prefs.diffSel = sel || null; savePrefs(); lastScreen = ""; render(); };
   // 見てきた項目の並び（trail）と今の位置（pos）を履歴の状態に持つ
   const trailOf = () => (history.state && history.state.trail ? history.state : { trail: state.panel ? [state.panel] : [], pos: 0 });
   const openPanel = (id, inPanel = false) => {
@@ -1530,11 +1579,23 @@
       case "dgzoom": openViewer(el.closest(".diagram").querySelector(".mermaid svg")); break;
       case "vzoom": viewerZoom(el.dataset.z); break;
       case "vraw": { const on = el.getAttribute("aria-pressed") !== "true"; el.setAttribute("aria-pressed", on); viewer.querySelector(".v-canvas").hidden = on; viewer.querySelector(".v-raw").hidden = !on; break; }
-      case "diff": prefs.diff = !diffOn(); savePrefs(); lastScreen = ""; render(); break;
+      case "hist": if (state.exit === "b" && diffOn()) pickSel(null); else openHist(); break;
+      case "pick": histDlg.close(); pickSel(el.dataset.sel); break;
+      case "diffoff": pickSel(null); document.getElementById("hist-btn").focus(); break;
+      case "exit": state.exit = el.dataset.exit; history.replaceState(history.state, "", hashOf()); render(); break;
+      case "scene": {
+        // シナリオの場面: その時点を選び、差分を読む項目を開く（別の画面の項目はその画面へ移る）
+        prefs.diffSel = el.dataset.scene; savePrefs();
+        const oid = SCENE_OPEN[el.dataset.scene], kk = byId.get(oid).kind;
+        if (SCREEN_OF[kk] !== SCREEN) { location.href = pageUrl(kk, { id: oid }); break; }
+        lastScreen = ""; openPanel(oid);
+        break;
+      }
       case "mocklive": {
-        // 開いたまま書き換えが届いた状態: 記録を書き換えて、差分の表示のまま描き直す
+        // 開いたまま書き換えが届いた状態: 記録を書き換えてまだまとめていない変更に積み、同じ時点の差分の表示のまま描き直す
         const L = H.live, it = byId.get(L.id).it;
-        H.items[L.id] = { rounds: [{ at: new Date().toISOString(), keys: L.keys }] };
+        H.pending.changes[L.id] = { keys: L.keys };
+        H.pending.at = new Date().toISOString();
         Object.assign(it, L.apply);
         lastScreen = ""; render();
         break;
@@ -1554,7 +1615,6 @@
   document.addEventListener("change", (e) => {
     const el = e.target, a = el.dataset.act;
     if (a === "closed") { state.tables[state.tab].showClosed = el.checked; render(); }
-    if (a === "round") { state.diffRound.set(el.dataset.id, Number(el.value)); renderPanel(); document.querySelector(`[data-act="round"][data-id="${CSS.escape(el.dataset.id)}"]`)?.focus(); }
     if (a === "gkind") { el.checked ? state.graphKinds.add(el.value) : state.graphKinds.delete(el.value); lastScreen = ""; render(); }
     if (a === "mapst") { el.checked ? state.mapShow.add(el.value) : state.mapShow.delete(el.value); lastScreen = ""; render(); }
     // 横棒（一部）から押すと、ブラウザがチェックを入れるので全部表示になる
@@ -1626,7 +1686,7 @@
     if (e.key === "/" && !typing && !dlg.open) { e.preventDefault(); openSearch(); }
     if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-act]")) { e.preventDefault(); e.target.click(); }
     if (e.key === "Enter" && e.target === sq) document.querySelector("#search-results .sr-item")?.click();
-    if (e.key === "Escape" && state.panel && !state.full && !dlg.open && !viewerDlg.open && !pop.matches(":popover-open")) closePanel();
+    if (e.key === "Escape" && state.panel && !state.full && !dlg.open && !viewerDlg.open && !histDlg.open && !pop.matches(":popover-open")) closePanel();
   });
   addEventListener("resize", applyPins);
   addEventListener("resize", fitNext);

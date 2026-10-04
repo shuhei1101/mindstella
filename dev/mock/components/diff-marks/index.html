@@ -32,13 +32,16 @@
     .stage.narrow { width: 390px; max-width: 100%; }
     /* 狭い幅の見本: 画面幅 900px 以下のときと同じ置き方にする */
     .stage.narrow .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; }
-    .stage.narrow .search-trigger .label, .stage.narrow .search-trigger kbd, .stage.narrow .brand-sub, .stage.narrow .diff-btn .label { display: none; }
-    .stage.narrow .diff-btn { width: 32px; padding: 0; justify-content: center; }
+    .stage.narrow .search-trigger .label, .stage.narrow .search-trigger kbd, .stage.narrow .brand-sub, .stage.narrow .hist-btn .label { display: none; }
+    .stage.narrow .hist-btn { width: 32px; padding: 0; justify-content: center; }
+    .stage.narrow .df-chip { max-width: 7.5em; }
     /* 部品を横に並べる列 */
     .row-items { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
     /* 状態を見せるための見本のクラス */
     .is-hover { background: var(--topbar-hover) !important; color: var(--topbar-fg) !important; }
     .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* 一覧の行のホバーの見本: 面の色だけを変える */
+    .hist-item.is-hover { background: var(--hover) !important; color: var(--text) !important; }
   </style>
 </head>
 <body>
@@ -47,22 +50,46 @@
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / diff-marks</nav>
     <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">差分の表示の部品</h1>
 
-    <!-- 差分の表示の切り替え -->
+    <!-- 変更履歴のボタンと選んだ時点の札 -->
     <section class="cat-sec">
-      <h2>差分の表示の切り替え（切・入・ホバー・フォーカス）</h2>
-      <p>トップバーの検索の入口とテーマの切り替えの間に置く。入れている間は帯の地と文字を入れ替える。</p>
+      <h2>変更履歴のボタン（差分を出さない・ホバー・フォーカス）</h2>
+      <p>トップバーの検索の入口とテーマの切り替えの間に置く。押すと変更履歴のモーダルを開く。</p>
       <div class="stage"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
-        <div class="row-items">
-          <button class="diff-btn" type="button" aria-pressed="false" aria-label="前回からの差分を表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg><span class="label">差分</span></button>
-          <button class="diff-btn" type="button" aria-pressed="true" aria-label="前回からの差分を表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg><span class="label">差分</span></button>
-          <button class="diff-btn is-hover" type="button" aria-pressed="false" aria-label="前回からの差分を表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg><span class="label">差分</span></button>
-          <button class="diff-btn is-focus" type="button" aria-pressed="false" aria-label="前回からの差分を表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg><span class="label">差分</span></button>
-        </div></header></div>
+        <div class="row-items"><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><button class="hist-btn is-hover" type="button" aria-pressed="false" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><button class="hist-btn is-focus" type="button" aria-pressed="false" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button></div></header></div>
     </section>
     <section class="cat-sec">
-      <h2>狭い幅（390px）・差分の表示を入れている</h2>
-      <p>検索の入口と同じく印だけにする。名前は読み上げに残す。</p>
-      <div class="stage narrow"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span><button class="search-trigger" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="label">すべての項目を検索</span></button><button class="diff-btn" type="button" aria-pressed="true" aria-label="前回からの差分を表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg><span class="label">差分</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header></div>
+      <h2>差分の表示の間（抜ける操作の案 A）</h2>
+      <p>選んだ時点の札と、札を外すボタンを変更履歴の右に出す。長い説明は末尾を省略する。</p>
+      <div class="stage"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
+        <div class="row-items"><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>前回開いてから</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div></header></div>
+      <div class="stage" style="margin-top: 8px;"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
+        <div class="row-items"><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>steps の一覧と取り込みの流れを直す</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div></header></div>
+    </section>
+    <section class="cat-sec">
+      <h2>差分の表示の間（抜ける操作の案 B）</h2>
+      <p>札を出さず、変更履歴を押した見た目にする。押し直すと抜ける。どの時点かはトップバーからは読めない。</p>
+      <div class="stage"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span>
+        <div class="row-items"><button class="hist-btn" type="button" aria-pressed="true" aria-haspopup="dialog"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button></div></header></div>
+    </section>
+    <section class="cat-sec">
+      <h2>狭い幅（390px）・差分の表示の間（案 A）</h2>
+      <p>変更履歴は印だけにし、札は短く省略する。名前は読み上げに残す。</p>
+      <div class="stage narrow"><header class="topbar"><span class="brand-name">mindmap</span><span class="spacer"></span><button class="search-trigger" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="label">すべての項目を検索</span></button><button class="hist-btn" type="button" aria-pressed="false" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg><span class="label">変更履歴</span></button><span class="df-chip"><span class="df-chip-t"><span class="sr-only">差分の時点: </span>前回開いてから</span><button type="button" aria-label="差分の表示をやめる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></header></div>
+    </section>
+
+    <!-- 変更履歴のモーダル -->
+    <section class="cat-sec">
+      <h2>変更履歴のモーダル（案 A・前回開いてからを選んでいる）</h2>
+      <p>先頭に「差分を出さない（今の内容）」、次にまだまとめていない変更、前回開いてから、commit したまとまりを新しい順に並べる。案 B では先頭の行を出さない。</p>
+      <div class="stage"><div style="position: static; display: flex; flex-direction: column; width: min(520px, 100%); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-pop);">
+        <div class="hist-head"><h3 style="margin: 0; font-size: var(--fs-h2);">変更履歴</h3><button class="icon-btn" type="button" aria-label="変更履歴を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <ul class="hist-list">
+          <li><button type="button" class="hist-item" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">差分を出さない（今の内容）</span><span class="hist-sub">印と差分を出さずに今の内容だけを読む</span></span></button></li>
+          <li><button type="button" class="hist-item" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">まだまとめていない変更</span><span class="hist-sub">commit 前の書き換え</span></span><span class="hist-n mono">1 件</span></button></li>
+          <li><button type="button" class="hist-item" aria-current="true"><span class="hist-check" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="hist-main"><span class="hist-name">前回開いてから</span><span class="hist-sub">10/04 13:05 より後</span></span><span class="hist-n mono">7 件</span></button></li>
+          <li><button type="button" class="hist-item is-hover" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">フェーズの切り方を見直しに戻す</span><span class="hist-sub">10/04 14:45</span></span><span class="hist-n mono">2 件</span></button></li>
+          <li><button type="button" class="hist-item is-focus" aria-current="false"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">とても長い説明のまとまりは、名前を折り返して日時と件数の列を押し出さない</span><span class="hist-sub">10/04 14:40</span></span><span class="hist-n mono">12 件</span></button></li>
+        </ul></div></div>
     </section>
 
     <!-- タブの印 -->
@@ -79,33 +106,38 @@
 
     <!-- 新規・変更の印 -->
     <section class="cat-sec">
-      <h2>新規・変更の印</h2>
-      <p>記号と文言で示し、色だけに頼らない。表の行・カード・ボード・マップの節・概要のタイルで同じ印を使う。</p>
+      <h2>新規・変更の印（一覧）</h2>
+      <p>表・ボード・カード・マップ・概要のタイルでは文言を付けず印だけにする（変更は ●、新規は +）。名前は読み上げに残す。</p>
       <div class="stage"><div class="row-items">
-        <span class="df-badge df-new"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新規</span>
-        <span class="df-badge df-chg"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/></svg>変更</span>
-        <span><button class="row-open" type="button">システム開発のフェーズの切り方</button><span class="df-badge df-chg"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/></svg>変更</span></span>
+        <span class="df-mark df-new" title="新規"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="sr-only">新規</span></span>
+        <span class="df-mark df-chg" title="変更"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg><span class="sr-only">変更</span></span>
+        <span><button class="row-open" type="button">システム開発のフェーズの切り方</button><span class="df-mark df-chg" title="変更"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg><span class="sr-only">変更</span></span></span>
+        <span><button class="row-open" type="button">差分の時点の選び方</button><span class="df-mark df-new" title="新規"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="sr-only">新規</span></span></span>
       </div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>新規の印（詳細パネルの題の横）</h2>
+      <p>詳細パネルでは文言つきの札のまま置く。</p>
+      <div class="stage panelish"><h2 class="d-title" style="margin: 0;">差分の時点の選び方<span class="df-badge df-new"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>新規</span></h2></div>
     </section>
 
     <!-- 詳細パネルの冒頭 -->
     <section class="cat-sec">
-      <h2>詳細パネルの冒頭（変更履歴が 1 回分）</h2>
-      <p>比べた書き換えの日時を出す。</p>
-      <div class="stage panelish"><div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg>前回からの変更</span><span class="df-when">10/04 14:40 の書き換え</span></div></div>
-    </section>
-    <section class="cat-sec">
-      <h2>詳細パネルの冒頭（変更履歴が 2 回分以上）</h2>
-      <p>比べる回を選べる。既定は前回。選んだ回より後の書き換えをまとめて差分にする。</p>
-      <div class="stage panelish"><div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M9 11h6M12 8v6M9 17h6"/></svg>前回からの変更</span><label class="df-round"><span>比べる回</span><select class="input"><option>前回（10/04 14:20）</option><option>2 回前（10/03 18:02）</option></select></label></div></div>
+      <h2>詳細パネルの冒頭（前回開いてから・まとまり・まだまとめていない変更）</h2>
+      <p>選んだ時点の名前と日時を出す。時点は変更履歴のモーダルで画面全体に選ぶので、項目ごとの選ぶ欄は持たない。</p>
+      <div class="stage panelish">
+        <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>前回開いてから</span><span class="df-when">10/04 13:05 より後</span></div>
+        <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>仕様書の段取りを直す</span><span class="df-when">10/04 14:40</span></div>
+        <div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>まだまとめていない変更</span><span class="df-when">commit 前の書き換え</span></div>
+      </div>
     </section>
 
     <!-- キーの差分 -->
     <section class="cat-sec">
       <h2>キーの差分（状態・値・前の値が無い）</h2>
-      <p>前の値に取り消し線、今の値に下線を付けて矢印でつなぐ。値が変わったキーの名前を太くする。</p>
+      <p>前の値に取り消し線、今の値に下線を付けて矢印でつなぐ。状態のキーだけは面を塗らない。値が変わったキーの名前を太くする。</p>
       <div class="stage panelish">
-        <span class="df-kv"><del class="df-was"><span class="sr-only">前の値: </span><span class="st" data-st="決定済み"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4.5" fill="var(--st-done)"/></svg>決定済み</span></del><span class="df-arrow" aria-hidden="true">→</span><ins class="df-now"><span class="sr-only">今の値: </span><span class="st" data-st="要見直し"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .3 9.7 5 5 9.7.3 5Z" fill="var(--st-review)"/></svg>要見直し</span></ins></span>
+        <span class="df-kv df-plain"><del class="df-was"><span class="sr-only">前の値: </span><span class="st" data-st="決定済み"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4.5" fill="var(--st-done)"/></svg>決定済み</span></del><span class="df-arrow" aria-hidden="true">→</span><ins class="df-now"><span class="sr-only">今の値: </span><span class="st" data-st="要見直し"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 .3 9.7 5 5 9.7.3 5Z" fill="var(--st-review)"/></svg>要見直し</span></ins></span>
         <dl class="d-meta" style="margin-top: 16px;"><dt>フェーズ</dt><dd>構成</dd><dt class="df-key">影響度</dt><dd class="df-key"><span class="df-kv"><del class="df-was"><span class="sr-only">前の値: </span>中</del><span class="df-arrow" aria-hidden="true">→</span><ins class="df-now"><span class="sr-only">今の値: </span>大</ins></span></dd></dl>
         <div class="d-answer df-key"><b>決定内容</b><span class="df-kv"><del class="df-was"><span class="sr-only">前の値: </span>（なし）</del><span class="df-arrow" aria-hidden="true">→</span><ins class="df-now"><span class="sr-only">今の値: </span>開発者ツール × スイス</ins></span></div>
       </div>
@@ -150,7 +182,12 @@
     <section class="cat-sec">
       <h2>本文の前の版を組み立てられない</h2>
       <p>本文の節の頭に出し、今の本文をそのまま描く。キーの差分は本文と関係なく出す。</p>
-      <div class="stage panelish"><p class="df-note" role="note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>本文の前回からの差分を出せません。前回の書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。</span></p></div>
+      <div class="stage panelish"><p class="df-note" role="note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。</span></p></div>
+    </section>
+    <section class="cat-sec">
+      <h2>前後を組み立てられない古いまとまり</h2>
+      <p>保持する回数を超えて変更履歴が消えた項目は、一覧に印だけ付け、詳細パネルの冒頭にその旨を出して今の内容を描く。</p>
+      <div class="stage panelish"><div class="df-head"><span class="df-head-t"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>フェーズの切り方を決める</span><span class="df-when">10/03 18:02</span></div><p class="df-note" role="note"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。</span></p></div>
     </section>
   </main>
 </body>
