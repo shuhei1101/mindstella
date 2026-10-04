@@ -124,6 +124,12 @@ elements:
     label: 本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。
     io: 表示
     visible_when: 差分の表示の間で、body_diff の now が今の本文に当たらないとき
+  - name: 本文の差分を計算しきれない旨
+    kind: label
+    description: 本文の行の差分を打ち切ったとき、本文の頭に出し、今の本文を差分なしで描く。キーの差分は出す
+    label: 本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。今の本文を出しています。
+    io: 表示
+    visible_when: 差分の表示の間で、本文の行の差分を打ち切ったとき（モジュール構成『差分』の `diffLineParts` が `null`）
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/71/a-footer/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
