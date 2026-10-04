@@ -1083,13 +1083,16 @@
     failed: () => `${icon("alert")}<span class="send-msg-body"><span>${w().add}できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから${w().verb}してください。</span><button class="btn ghost send-copy" type="button" data-act="sendcopy">${icon("copy")}本文を写す</button></span>`,
   };
   const quoteHtml = (loc, removable = true) => loc ? `<div class="send-quote"><span class="sq-loc">${esc(locLabel(loc))}</span><q>${esc(loc.text)}</q>${removable ? `<button class="icon-btn sq-x" type="button" data-act="unquote" aria-label="添えた箇所を外す" title="添えた箇所を外す">${icon("x")}</button>` : ""}</div>` : "";
+  // 狭い幅の項目を指さないコメントの入力: 押す（フォーカスする）か書きかけがあるときだけ広げる
+  let freeOpen = false;
   const formHtml = (fkey, { target, loc, place, label }) => {
     const f = forms.get(fkey) || { result: null };
     forms.set(fkey, { ...f, target, loc });
     const fid = `send-${fkey}`;
+    const open = place === "free" && (freeOpen || !!server.drafts[draftKey(target, loc)]) ? " expanded" : "";
     // 本文の外に浮かせる入力は、読み上げで行き先が分かるよう名前を付けたフォームにする
     const named = place === "left" ? ` aria-label="${esc(String(target))} へのコメント"` : "";
-    return `<form class="send send-${place}" data-fkey="${fkey}"${named} novalidate>
+    return `<form class="send send-${place}${open}" data-fkey="${fkey}"${named} novalidate>
       <label class="send-label" for="${fid}">${label}</label>${quoteHtml(loc, place !== "pop")}
       <textarea id="${fid}" name="body" rows="2" aria-describedby="${fid}-msg" aria-keyshortcuts="Control+Enter">${esc(server.drafts[draftKey(target, loc)] || "")}</textarea>
       <div class="send-row"><p class="send-msg" id="${fid}-msg" role="status"></p>${place === "pop" ? `<button class="btn ghost" type="button" data-act="selcancel">やめる</button>` : ""}<button class="btn primary" type="submit" title="${w().add}（Ctrl+Enter）">${icon("plus")}${w().add}</button></div>
@@ -1199,7 +1202,7 @@
     const msgHtml = `<p class="cm-msg${msg ? " " + msg.kind : ""}" id="cm-msg" role="status">${msg ? LIST_MSG[msg.kind](msg) : ""}</p>`;
     // 留める帯は選んだ件数と送るボタンだけにし、結果は帯の直下の流れに出す（狭い幅で一覧を隠さない）
     // 送り終えて 0 件になったら、帯を外して結果だけを残す
-    const bar = (live.length ? `<div class="cm-bar">${all}<span class="cm-sel">${checked.length} / ${live.length} 件を選択</span><span class="spacer"></span>
+    const bar = (live.length ? `<div class="cm-bar">${all}<span class="cm-sel">${checked.length} / ${live.length} 件<span class="sr-only">を選択</span></span><span class="spacer"></span>
         <button class="btn primary" type="button" data-act="cmsend" aria-describedby="cm-msg" ${checked.length && !busy ? "" : "disabled"}>${icon("send")}まとめて送る（${checked.length} 件）</button></div>` : "")
       + (live.length || listResult ? msgHtml : "");
     const list = rows.length ? `<ol class="cm-list">${rows.map(rowHtml).join("")}</ol>` : `<div class="cm-empty">${icon("comment")}<p>${w().state}のコメントはありません。</p></div>`;
@@ -1818,6 +1821,13 @@
   });
   // 入口を押しても選択が外れないようにする
   selPop.addEventListener("pointerdown", (e) => { if (selPop.dataset.mode === "entry") e.preventDefault(); });
+  // 項目を指さないコメントの入力: フォーカスで広げ、空のまま外へ出たら畳む
+  document.addEventListener("focusin", (e) => { const f = e.target.closest?.(".send-free"); if (f) { freeOpen = true; f.classList.add("expanded"); } });
+  document.addEventListener("focusout", (e) => {
+    const f = e.target.closest?.(".send-free");
+    if (!f || f.contains(e.relatedTarget) || f.querySelector("textarea").value.trim()) return;
+    freeOpen = false; f.classList.remove("expanded");
+  });
   // 本文を送ったら、入口を選んだ範囲に付いて動かす
   document.addEventListener("scroll", (e) => { if (selInfo && e.target.classList?.contains("panel-body")) placeSelPop(selInfo.range); }, true);
   // その場の入力は、外側を押したら閉じる（書きかけはサーバーに残る）

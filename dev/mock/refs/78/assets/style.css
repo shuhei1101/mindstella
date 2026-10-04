@@ -278,3 +278,13 @@ body.panel-left .panel.open { transform: none; }
 @media (min-width: 901px) { body.panel-left.panel-open .content.map-view { margin-right: auto; margin-left: var(--panel-w); } }
 /* 本文の寄せは左の余白で動かす */
 body.panel-left .content { transition: margin-left .45s cubic-bezier(.22, .8, .24, 1); }
+
+/* 狭い幅（720px 以下）: 項目を指さないコメントの入力を 1 行に畳み、押すと広げる（下端に留めた入力が一覧を狭めないように） */
+@media (max-width: 720px) {
+  /* 畳んだ入力: 余白を詰め、ラベルと 1 行の入力欄だけを出す */
+  .send.send-free:not(.expanded) { gap: 4px; padding: 8px 12px; }
+  /* 畳んだ入力欄: 1 行の高さにし、伸ばさない */
+  .send.send-free:not(.expanded) textarea { min-block-size: 0; block-size: var(--control-h); field-sizing: fixed; resize: none; overflow: hidden; padding-block: 5px; }
+  /* 畳んだ入力: 結果と追加のボタンは広げてから出す */
+  .send.send-free:not(.expanded) .send-row { display: none; }
+}
