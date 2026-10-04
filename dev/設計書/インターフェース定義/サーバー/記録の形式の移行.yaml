@@ -4,7 +4,7 @@ entry:
   value: '`migrate`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__migrate`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系（手順を並べる）
-    summary: 版を記録する前の形式のワークスペースで、v0.3.0 の手順と値が要るキーを返す
+    summary: 版を記録する前の形式のワークスペースで、v0.3.0・v0.5.0 の手順と値が要るキーを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -25,13 +25,13 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`workspace_version` が `null`、`plugin_version` が `v0.3.0`、`relation` が `older`'
-      - '`steps` が全て `version: v0.3.0` で、`destructive` が全て `false`'
+      - '`workspace_version` が `null`、`plugin_version` が `v0.5.0`、`relation` が `older`'
+      - '`steps` の版が `v0.3.0` と `v0.5.0` で、`destructive` が全て `false`'
       - '`needs_values` に `mindmap.yaml` の `summary` がある'
       - ワークスペースの全てのファイルの中身と更新日時が呼ぶ前と同じ
     test: test_normal_when_plan
   - name: 正常系（手順を当てる）
-    summary: 写しを取って v0.3.0 の手順を当て、版のファイルは書かない
+    summary: 写しを取って v0.3.0・v0.5.0 の手順を当て、版のファイルは書かない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -46,7 +46,7 @@ flows:
 
         クライアント->>IF: migrate workspace
         IF->>WS: 隣のフォルダへ複製する
-        IF->>WS: v0.3.0 の手順を並びの順に当てる
+        IF->>WS: v0.3.0・v0.5.0 の手順を並びの順に当てる
         IF-->>クライアント: JSON（steps・needs_values・backup）
       ```
     expected:
@@ -127,8 +127,8 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`recorded` が `v0.3.0`'
-      - '`mindstella-version.ini` の 1 行目が `v0.3.0`'
+      - '`recorded` が `v0.5.0`'
+      - '`mindstella-version.ini` の 1 行目が `v0.5.0`'
     test: test_normal_when_record
   - name: 正常系（版が同じ）
     summary: 今の版のワークスペースでは並べる手順が無い
@@ -276,7 +276,7 @@ flows:
       ```
     expected:
       - ツールのエラーになる
-      - エラーの本文に `v99.0.0` と `v0.3.0` がある
+      - エラーの本文に `v99.0.0` と `v0.5.0` がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、写しのフォルダが作られていない
     test: test_error_when_newer
   - name: 異常系（手順が失敗する・StepFailedError）

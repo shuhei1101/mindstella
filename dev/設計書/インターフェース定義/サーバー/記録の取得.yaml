@@ -75,6 +75,31 @@ flows:
       - ステータスが 422、`Content-Type` が `application/problem+json`
       - '`detail` に `decisions.yaml: items[0].status:` で始まる行がある'
     test: test_error_when_schema_mismatch
+  - name: 正常系（ゴールが無い）
+    summary: ゴールが無いときは derived.goal が全フェーズの進捗を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`phases` が 目的 → 要件で、ゴールを持たないワークスペース'
+        notes: D-1 `目的`・`決定済み`／D-2 `要件`・`未決定`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/records
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF-->>クライアント: 200、JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`derived.goal.has_goal` が偽、`derived.goal.reached` が `null`'
+      - '`derived.goal.phase_progress` が 目的 1/1・要件 0/1'
+      - '`derived.goal` が `goal` の結果と同じキーで同じ値を持つ'
+    test: test_normal_when_no_goal
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）

@@ -75,7 +75,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならず、`ok` が偽
-      - '`problems` に `kind: unknown_phase`・`file: decisions.yaml`・`id: D-1`・`key: phase`・`detail` に `発散` がある'
+      - '`problems` に `kind: unknown_phase`・`file: decisions.yaml`・`id: D-1`・`key: items[0].phase`・`detail` に `発散` がある'
       - '`problems` に `kind: unknown_phase`・`file: mindmap.yaml`・`key: goal.phase`・`detail` に `結論` がある'
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じ
     test: test_normal_when_unknown_phase
