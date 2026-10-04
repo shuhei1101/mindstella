@@ -10,7 +10,7 @@ scenarios:
         description: 話が作るシステムの要件へ広がり、示したたたき台（プレイブックにシステム開発を足す・フェーズの並びと対応・題名・最上位の軸の呼び名・ゴール）を確定する
         notes: 新しい並びは 目的 → 発散 → 要件 → 構成 → インターフェース → コンテンツ。対応は 問い → 目的、整理・絞り込み・結論 → 要件。最上位の軸の呼び名は `機能`、ゴールはシステム開発の要件まで（納品物 `要件定義書`）
       - name: 再生する書き込み
-        description: '設定を書き換えた後に、概要・背景・構成を先に置いた納品物の資料 A-1（タイトル `要件定義書`、`deliverable: true`）を足し、設定の更新で納品物の `doc` から A-1 を指す'
+        description: '設定を書き換えた後に、概要・背景・構成を先に置いた本文を `body_markdown` で渡した納品物の資料 A-1（タイトル `要件定義書`、`deliverable: true`、`status: 下書き`）を足し、設定の更新で納品物の `doc` から A-1 を指す'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -25,8 +25,8 @@ scenarios:
         U->>CC: 確定する
         CC->>SV: 設定の更新（たたき台の設定と、フェーズの対応）
         SV->>WS: mindmap.yaml と、項目の phase を書く
-        CC->>WS: docs/ に概要・背景・構成を先に置いた納品物の本文を書く
-        CC->>SV: add（資料 A-1、deliverable: true）
+        CC->>SV: add（資料 A-1、deliverable: true、本文は概要・背景・構成を先に置いた body_markdown）
+        SV->>WS: docs.yaml と docs/ の本文を書く
         CC->>SV: 設定の更新（納品物の doc から A-1 を指す）
         CC->>SV: add（会話ログ）
         CC-->>U: 書き換えた設定と、フェーズを付け替えた項目と、作った納品物の資料を示す
