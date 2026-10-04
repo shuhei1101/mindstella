@@ -62,9 +62,11 @@
 /* 比べた書き換えの日時 */
 .df-when { color: var(--text-2); font-family: var(--font-mono); }
 /* 比べる回の選択: ラベルを常に見せる */
-.df-round { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); }
+.df-round { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--text-2); }
+/* 比べる回のラベル: 1 語のまま折り返さない */
+.df-round > span { white-space: nowrap; }
 /* 比べる回の選択欄 */
-.df-round select { color: var(--text); font: inherit; }
+.df-round select { max-width: 100%; color: var(--text); font: inherit; }
 /* キーの前の値と今の値 */
 .df-kv { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 /* 前の値: 取り消し線と消した色の面 */
