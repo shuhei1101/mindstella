@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗 -->
+  <meta name="color-scheme" content="light dark">
+  <title>選んだ箇所のコメントの入口 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/65/assets/style.css">
+  <link rel="stylesheet" href="../../refs/71/assets/style.css">
+  <link rel="stylesheet" href="../../refs/78/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { width: 640px; max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; }
+    /* 台の中の入口: 位置をスクリプトで決めず、見本の場所に置く */
+    .selpop.static { position: static; display: inline-block; }
+    /* 選んだ範囲の見本: ブラウザの選択の色 */
+    .sel-mock { background: Highlight; color: HighlightText; }
+    /* 見本の入口の置き場所: 選んだ範囲の終わりの下・始まりの上 */
+    .sel-demo { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 16px; }
+    .sel-at { position: absolute; left: 200px; }
+    .sel-at.below { top: 40px; }
+    .sel-at.above { top: 8px; }
+    /* その場の入力の見本: 入口を広げた箱 */
+    .selpop.static[data-mode="form"] { display: block; }
+    /* ホバーの見本 */
+    .is-hover { background: var(--hover) !important; }
+    /* キーボードのフォーカスの見本 */
+    .is-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / selection-comment</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">選んだ箇所のコメントの入口</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出す角の丸い入口。本文と値の外を選んだとき（見出しの帯・関係する項目・図）と、配る書き出しでは出さない。</p>
+    <section class="cat-sec">
+      <h2>案 A ピル（通常）</h2>
+      <p>角を丸め切った横長の形に、印と「コメント」。読み上げの名前は「選んだ箇所にコメント」。選んだ範囲の終わりの下に出す。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 A ピル（ホバー）</h2>
+      <p>面の色だけを変える。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn is-hover" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 A ピル（キーボードのフォーカス）</h2>
+      <p>印の色の輪。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn is-focus" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 A ピル（下に収まらない）</h2>
+      <p>選んだ範囲の始まりの上に出す。吹き出しの尾は下へ向ける。</p>
+      <div class="stage"><div class="sel-demo above-demo"><div class="sel-at above"><div class="selpop static" data-shape="pill" data-side="above" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div><div class="md" style="padding: 56px 4px 8px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B 丸（通常）</h2>
+      <p>印だけの円（押せる的は 32px）。本文を隠す面が最も小さい。名前は title と読み上げにだけ持つ。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="round" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B 丸（ホバー）</h2>
+      <p>面の色だけを変える。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="round" data-side="below" style="--tail-x:52px"><button class="sp-btn is-hover" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B 丸（キーボードのフォーカス）</h2>
+      <p>印の色の輪。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="round" data-side="below" style="--tail-x:52px"><button class="sp-btn is-focus" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B 丸（下に収まらない）</h2>
+      <p>選んだ範囲の始まりの上に出す。吹き出しの尾は下へ向ける。</p>
+      <div class="stage"><div class="sel-demo above-demo"><div class="sel-at above"><div class="selpop static" data-shape="round" data-side="above" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div><div class="md" style="padding: 56px 4px 8px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 C 吹き出し（通常）</h2>
+      <p>角の丸い箱から、選んだ範囲の端へ尾を伸ばす。何をするかを文字で出す。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="bubble" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 C 吹き出し（ホバー）</h2>
+      <p>面の色だけを変える。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="bubble" data-side="below" style="--tail-x:52px"><button class="sp-btn is-hover" type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 C 吹き出し（キーボードのフォーカス）</h2>
+      <p>印の色の輪。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
+      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="bubble" data-side="below" style="--tail-x:52px"><button class="sp-btn is-focus" type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 C 吹き出し（下に収まらない）</h2>
+      <p>選んだ範囲の始まりの上に出す。吹き出しの尾は下へ向ける。</p>
+      <div class="stage"><div class="sel-demo above-demo"><div class="sel-at above"><div class="selpop static" data-shape="bubble" data-side="above" style="--tail-x:52px"><button class="sp-btn " type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div><div class="md" style="padding: 56px 4px 8px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>入口を押した後（入力の置き場所の案 B: 入口の中で書く）</h2>
+      <p>入口を広げ、選んだ範囲のすぐ近くに入力を出す。外側を押すか Esc で閉じ、書きかけは残す。案 A（推奨）は入口を閉じ、詳細の下端の入力に箇所を添える（send-form の「箇所を添えた」）。</p>
+      <div class="stage"><div class="selpop static" data-mode="form"><form class="send send-pop" novalidate onsubmit="return false">
+      <label class="send-label" for="sp-1"><span class="mono">A-005</span> へのコメント</label><div class="send-quote"><span class="sq-loc">本文 3 行目</span><q>受け取る人へ渡す形</q></div>
+      <textarea id="sp-1" rows="2" class="is-focus"></textarea>
+      <div class="send-row"><p class="send-msg" role="status"></p><button class="btn ghost" type="button">やめる</button><button class="btn primary" type="submit"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div></form></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>狭い幅（390px）・案 A</h2>
+      <p>画面の端に寄るときは、端から 8px の内側に収める。</p>
+      <div class="stage narrow"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形にまとめる</mark>にまとめる。</p></div><div class="sel-at below" style="left:auto; right:8px"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+    </section>
+  </main>
+</body>
+</html>
