@@ -13,7 +13,9 @@ from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, Snapshot
 from .history_helpers import add_item, commit, read_changes
 
 # 話し合いの概要（ゴールと一緒に外すテストで使う）
-DESCRIPTION = "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
+DESCRIPTION = (
+    "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
+)
 
 # 壁打ちのフェーズ
 WALL_PHASES = ["問い", "発散", "整理", "絞り込み", "結論"]
@@ -62,7 +64,7 @@ def test_normal(
         },
     )
     before = snapshot_tree(root)
-    settings_before = _read_yaml(root, "mindmap.yaml")
+    settings_before = _read_yaml(root, "config.yaml")
     new_goal = {
         "phase": "要件",
         "summary": "要件が決まる",
@@ -84,9 +86,9 @@ def test_normal(
     assert result.data == {
         "changed": ["summary", "description", "target_label", "goal"],
         "remapped": [],
-        "files": ["mindmap.yaml"],
+        "files": ["config.yaml"],
     }
-    settings = _read_yaml(root, "mindmap.yaml")
+    settings = _read_yaml(root, "config.yaml")
     assert settings["summary"] == "要件出しのスキル mindmap を設計し直す"
     assert settings["description"] == DESCRIPTION
     assert settings["target_label"] == "機能"
@@ -95,8 +97,8 @@ def test_normal(
         assert settings[key] == settings_before[key]
     # 設定以外のファイルの中身が、呼ぶ前と同じ
     after = snapshot_tree(root)
-    assert {name: text for name, text in after.items() if name != "mindmap.yaml"} == {
-        name: text for name, text in before.items() if name != "mindmap.yaml"
+    assert {name: text for name, text in after.items() if name != "config.yaml"} == {
+        name: text for name, text in before.items() if name != "config.yaml"
     }
 
 
@@ -132,14 +134,14 @@ def test_normal_when_phases_remapped(
             {"id": "D-1", "key": "phase", "from": "問い", "to": "目的"},
             {"id": "T-1", "key": "phase", "from": "整理", "to": "要件"},
         ],
-        "files": ["mindmap.yaml", "decisions.yaml", "tasks.yaml"],
+        "files": ["config.yaml", "decisions.yaml", "tasks.yaml"],
     }
     decisions = {item["id"]: item for item in _read_yaml(root, "decisions.yaml")["items"]}
     tasks = {item["id"]: item for item in _read_yaml(root, "tasks.yaml")["items"]}
     assert decisions["D-1"]["phase"] == "目的"
     assert decisions["D-2"]["phase"] == "発散"
     assert tasks["T-1"]["phase"] == "要件"
-    assert _read_yaml(root, "mindmap.yaml")["goal"]["phase"] == "要件"
+    assert _read_yaml(root, "config.yaml")["goal"]["phase"] == "要件"
     # 付け替えた項目だけ updated が書き換えた日時になる
     assert decisions["D-2"]["updated"] == DEFAULT_TIMESTAMP
     for remapped in (decisions["D-1"], tasks["T-1"]):
@@ -165,13 +167,13 @@ def test_normal_when_goal_removed(
     assert result.is_error is False
     assert result.data is not None
     assert result.data["changed"] == ["goal", "description"]
-    settings = _read_yaml(root, "mindmap.yaml")
+    settings = _read_yaml(root, "config.yaml")
     assert "goal" not in settings
     assert "description" not in settings
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -221,7 +223,7 @@ def test_error_when_schema_mismatch(
     result = call_tool("update_settings", workspace=str(root), settings={"playbooks": []})
     # 検証
     assert result.is_error is True
-    assert any(line.startswith("mindmap.yaml: playbooks") for line in result.text.splitlines())
+    assert any(line.startswith("config.yaml: playbooks") for line in result.text.splitlines())
     assert snapshot_tree(root) == before
 
 
@@ -346,7 +348,7 @@ def test_normal_when_targets_remapped(
             {"id": "D-1", "key": "target", "from": "本体", "to": "アプリ"},
             {"id": "D-2", "key": "category", "from": "設定", "to": "運用"},
         ],
-        "files": ["mindmap.yaml", "decisions.yaml"],
+        "files": ["config.yaml", "decisions.yaml"],
     }
     decisions = {item["id"]: item for item in _read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["target"] == "アプリ"
@@ -354,7 +356,7 @@ def test_normal_when_targets_remapped(
     # 付け替えは変更履歴に入れない
     assert "history" not in decisions["D-1"]
     assert "history" not in decisions["D-2"]
-    categories = {entry["name"]: entry for entry in _read_yaml(root, "mindmap.yaml")["categories"]}
+    categories = {entry["name"]: entry for entry in _read_yaml(root, "config.yaml")["categories"]}
     assert categories["画面"]["target"] == "アプリ"
     assert categories["API"]["target"] == "アプリ"
     # まとめていない変更にも、通し番号にも入れない
@@ -370,7 +372,7 @@ def test_normal_when_links_and_history_limit(
     # 準備
     settings = {key: value for key, value in valid_settings.items() if key != "links"}
     root = make_workspace(settings=settings)
-    settings_before = _read_yaml(root, "mindmap.yaml")
+    settings_before = _read_yaml(root, "config.yaml")
     links = [{"title": "仕様", "url": "https://example.com/spec"}]
     # 実行
     result = call_tool(
@@ -382,7 +384,7 @@ def test_normal_when_links_and_history_limit(
     assert result.is_error is False
     assert result.data is not None
     assert result.data["changed"] == ["links", "history_limit"]
-    settings_after = _read_yaml(root, "mindmap.yaml")
+    settings_after = _read_yaml(root, "config.yaml")
     assert settings_after["links"] == links
     assert settings_after["history_limit"] == 3
     for key, value in settings_before.items():
@@ -419,3 +421,26 @@ def test_error_when_unmapped_category(
     assert result.is_error is True
     assert "D-2: category: 設定" in result.text.splitlines()
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_display(
+    make_workspace: MakeWorkspace, call_tool: CallTool, valid_settings: dict[str, Any]
+) -> None:
+    """見た目の既定と表示する種類の既定を書き換え、ほかのキーを変えない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    before = _read_yaml(root, "config.yaml")
+    display = {
+        "network_look": "starlight",
+        "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"],
+    }
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), settings={"display": display})
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["display"]
+    after = _read_yaml(root, "config.yaml")
+    assert after["display"] == display
+    assert {key: value for key, value in after.items() if key != "display"} == before
+    assert before == valid_settings

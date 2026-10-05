@@ -13,6 +13,9 @@ VERSION_FILE = "mindstella-version.ini"
 # 版が新しいワークスペースに書く版
 NEWER_VERSION = "v99.0.0"
 
+# 前の版（v0.6.0 より前）の設定ファイルの名前
+LEGACY_SETTINGS = "mindmap.yaml"
+
 
 def test_normal_when_older_version(
     make_legacy_workspace: MakeLegacyWorkspace,
@@ -21,7 +24,7 @@ def test_normal_when_older_version(
 ) -> None:
     """版が古いワークスペースでは、状況を示さず、移し替えのスキルを案内して止まる（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True})
+    root = make_legacy_workspace(legacy_docs={"A-1": True}, settings_file=LEGACY_SETTINGS)
     before = snapshot_tree(root)
     # 実行
     # 手順が連ねるのは版の比較までで、status は呼ばない
@@ -32,6 +35,9 @@ def test_normal_when_older_version(
     payload = plan.data
     assert payload["workspace_version"] is None
     assert payload["relation"] == "older"
+    # 設定は config.yaml でなく mindmap.yaml だけを持つ
+    assert not (root / "config.yaml").exists()
+    assert (root / LEGACY_SETTINGS).exists()
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
 

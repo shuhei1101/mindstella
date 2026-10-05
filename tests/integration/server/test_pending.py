@@ -49,7 +49,7 @@ def test_normal_when_empty(make_workspace: MakeWorkspace, call_tool: CallTool) -
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()

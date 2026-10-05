@@ -7,11 +7,11 @@ args:
   - name: title
     type: 文字列
     required: true
-    description: 話し合いの題名（`mindmap.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる
+    description: 話し合いの題名（`config.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる
   - name: tabs
     type: オブジェクトの配列
     required: true
-    description: タブの帯に並べる画面（概要・検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。つながりは含めない
+    description: タブの帯に並べる画面（概要と、表示する種類の検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。表示しない種類は使う側が外して渡す。概要は常に含める。つながりは含めない（入口は常に出す）
   - name: tabs[].key
     type: 列挙
     required: true
@@ -87,6 +87,11 @@ args:
     enabled_when: '`comments` が `true` のとき'
     description: コメントの一覧を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
     status: planned
+  - name: settings_open
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 表示の設定のパネルを開いているか。開いているときは表示の設定のボタンを枠と面で選んだ見た目にする。表示の設定のボタンはサーバーの配信でも配る書き出しでも出し、絞り込みのボタンがあればその左、無ければコメントのボタンの左に置く
   - name: filter
     type: 真偽値
     default: 'false'
@@ -126,9 +131,12 @@ events:
   - name: コメントを開く
     when: コメントのボタンを押したとき（0 件でも押せる）
     description: 使う側がコメントの一覧を開く。開いているときは閉じる。どちらも履歴に積まない
+  - name: 表示の設定を開く
+    when: 表示の設定のボタンを押したとき
+    description: 使う側が表示の設定のパネル（部品設計『表示の設定』）を開き、コメントの一覧か絞り込みのドロワーを開いていれば閉じる。開いているときは閉じる。どちらも履歴に積まない
   - name: 絞り込みを開く
     when: 絞り込みのボタンを押したとき
-    description: 使う側が絞り込みのドロワーを開く。開いているときは閉じる。コメントの一覧を開いていれば閉じてから開く。どちらも履歴に積まない
+    description: 使う側が絞り込みのドロワーを開く。開いているときは閉じる。コメントの一覧か表示の設定のパネルを開いていれば閉じてから開く。どちらも履歴に積まない
 states:
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
@@ -227,6 +235,29 @@ states:
         value: '3'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: SettingsOpen
+    description: 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: settings_open
+        value: 'true'
+  - name: KindsHidden
+    description: 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す
+    args:
+      - name: tabs
+        value: タスク・資料を除いた並び
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+  - name: Export
+    description: 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない
+    args:
+      - name: comments
+        value: 'false'
   - name: Filter
     description: 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない
     args:
@@ -278,4 +309,5 @@ accessibility:
   - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
   - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す
+  - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す

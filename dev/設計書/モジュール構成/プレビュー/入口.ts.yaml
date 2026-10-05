@@ -15,17 +15,23 @@ data_models:
     title: 端末に残す設定
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
-    summary: '`localStorage` の 1 つのキーに JSON で残す値'
+    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列は個人の上書きで、無い（`null`・種類のキーが無い）項目はワークスペースの既定に従う（`resolveDisplay`）'
     properties:
       - name: theme
         type: "'light' | 'dark' | null"
         description: ライト / ダーク。`null` は OS の設定に従う
       - name: columns
         type: 'Record<string, {hidden: string[], pinTo: string | null}>'
-        description: 種類ごとの表示する列とピン留め
+        description: 種類ごとの表示する列とピン留め。種類のキーが無ければ既定の列
+      - name: look
+        type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust' | null"
+        description: つながりの見た目。`null` はワークスペースの既定
+      - name: kinds
+        type: string[] | null
+        description: 表示する種類（`decisions` など）。`null` はワークスペースの既定
       - name: diffSel
         type: string | null
-        description: 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。`null` は差分を出さない
+        description: 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。`null` は差分を出さない。個人の上書きではなく、「既定に戻す」でも消さない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -56,6 +62,27 @@ data_models:
       - name: opened
         type: string | null
         description: 一覧の行から開いたコメントの ID
+  - name: DisplayState
+    title: 表示の設定の画面の状態
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 表示の設定を変える
+    summary: 開いている間だけ持つ、表示の設定のパネル・確かめ・知らせの状態。描き直し・書き換えの知らせでも保つ
+    properties:
+      - name: open
+        type: boolean
+        description: 表示の設定のパネルを開いているか（コメントの一覧の `CommentState.listOpen`・絞り込みの `FilterState.drawerOpen` とは 1 つだけが真）
+      - name: confirm
+        type: '{busy: boolean, error: string | null} | null'
+        description: 既定の保存の確かめを開いている間の状態。閉じていれば `null`
+      - name: message
+        type: "{kind: 'ok' | 'info', text: string} | null"
+        description: パネルに残す最後の知らせ（既定にした・既定が変わった。時刻つき）
+      - name: savedDisplay
+        type: '{network_look, visible_kinds} | null'
+        description: 自分が既定にした直後の値。次に読んだ記録の `settings.display` がこれと等しければ、画面の下の知らせを出さずに `null` に戻す
+      - name: storageOk
+        type: boolean
+        description: 端末の保存領域に書けたか（`savePrefs` の結果）
   - name: FilterState
     title: 絞り込みの状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -67,7 +94,7 @@ data_models:
         description: 画面（記録の表は種類）ごとの絞り込み。初めて開いた画面は `initialFilters` で入れる
       - name: drawerOpen
         type: boolean
-        description: 絞り込みのドロワーを開いているか。コメントの一覧（`CommentState.listOpen`）と同時に真にしない
+        description: 絞り込みのドロワーを開いているか。コメントの一覧（`CommentState.listOpen`）・表示の設定のパネル（`DisplayState.open`）と同時に真にしない
 constants:
   - name: PREFS_KEY
     title: 端末の保存領域のキー
@@ -87,6 +114,12 @@ constants:
     usecase: 前回からの差分を見る
     summary: そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた日時を `Prefs` と同じ `localStorage` のキーの `opened` に持つ
     value: '"mindmap-since"'
+  - name: NOTICE_MS
+    title: 既定が変わった知らせを出す長さ
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: ワークスペースの既定を変える
+    summary: 画面の下に「ワークスペースの既定が変わりました。」を出すミリ秒（画面設計『表示の設定』と確認ログの決定）
+    value: '6000'
 functions:
   - name: readEmbeddedData
     title: 埋め込みのデータを読む
@@ -134,7 +167,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`）を返す'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`）を返し、選べない値の `look`・`kinds` はその項目だけ `null` にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -149,16 +182,16 @@ functions:
       - name: test_load_prefs
         case: 正常
         summary: 残した設定を読み、読めなければ既定
-        condition: '`parametrize`: `theme: dark` を残した / 値が壊れた JSON / `getItem` が例外を送る保存領域'
+        condition: '`parametrize`: `theme: dark` を残した / 値が壊れた JSON / `getItem` が例外を送る保存領域 / `look: rainbow` と `kinds: [decisions, graph]` を残した / `look: dust` と `kinds: [tasks]` を残した（前の版が残した `theme`・`columns` だけの値もそのまま読める）'
         mock: 保存領域（引数で渡す）
-        expected: '`dark` / 既定 / 既定'
+        expected: '`dark` / 既定 / 既定 / `look` と `kinds` が `null` / `look` が `dust`、`kinds` が `[tasks]`'
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`Prefs` を `localStorage` に残す。保存領域が例外を送るときは何もしない'
+    summary: '`Prefs` を `localStorage` に残し、書けたかを返す。保存領域が例外を送るときは偽を返す（表示の設定の「この端末に保存できません」に使う）'
     side_effects: '`localStorage` の `PREFS_KEY` を書き換える'
     args:
       - name: storage
@@ -172,15 +205,15 @@ functions:
         passing: keyword
         description: 設定
     returns:
-      type: void
-      description: '-'
+      type: boolean
+      description: 書けたか
     unit_tests:
       - name: test_save_prefs
         case: 正常
         summary: 残した設定を読める
         condition: '`parametrize`: 使える保存領域 / `setItem` が例外を送る保存領域'
         mock: 保存領域（引数で渡す）
-        expected: '`loadPrefs` で同じ値が読める / 例外を送らない'
+        expected: '真を返し `loadPrefs` で同じ値が読める / 偽を返し例外を送らない'
   - name: start
     title: 起動
     kind: 関数
@@ -188,7 +221,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`/` で検索・Esc）・`selectionchange`・`pointerup` を受ける。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけの API へ送る'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`/` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書きを残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
     args: []
     returns:
       type: void
@@ -196,17 +229,17 @@ functions:
     process: |-
       1. 埋め込みのデータを読む（`readEmbeddedData`）
          - 読めない場合、本文にそのメッセージを出して終える
-         - データがある場合、配る書き出しとしてそれを記録にし、コメントのボタン・一覧・入力・選んだ箇所の入口と接続の状態を出さない（以降の 2・6・7・8 をしない）
+         - データがある場合、配る書き出しとしてそれを記録にし、コメントのボタン・一覧・入力・選んだ箇所の入口と接続の状態を出さない（以降の 2・6・7・8 をしない）。表示の設定は出し、「ワークスペースの既定にする」を出さない（`can_save: false`）
          - `null` の場合、サーバーの配信として 2 へ進む
       2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）
-         - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（11 へ）
-      3. 索引を作る（`buildIndex`）。端末の設定を読み、テーマを当てる（`loadPrefs`）。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
+         - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（12 へ）
+      3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
          - 「前回開いてから」の始まりを決める。`SINCE_KEY` が sessionStorage にあればそれを使う。無ければ、サーバーの配信では `postOpened`、配る書き出しでは `localStorage` の `opened` を読んで今の日時に書き換え、`null` ならタブを開いた日時にして `SINCE_KEY` に残す
          - 選んだ時点を引く（`resolveDiffPoint`。`Prefs.diffSel` と始まり）
-      4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）
-      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を重ねる
+      4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、つながりに見た目を渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
-         - 絞り込みのドロワーかコメントの一覧を開いているときは、描いた後に前の `inertBehind` が返した解除を呼んでから、開いているパネルで `inertBehind` を呼び直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）
+         - 絞り込みのドロワー・コメントの一覧・表示の設定のパネルのどれかを開いているときは、描いた後に前の `inertBehind` が返した解除を呼んでから、開いているパネルで `inertBehind` を呼び直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）
       6. コメントの入力のコールバックを次で扱う
          - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って書きかけを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
          - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を読み直して溜めた ID を `checked` に足し、トップバー・詳細の一番下・一覧を描き直す。断られた・届かないなら本文を残して `failed`
@@ -217,24 +250,34 @@ functions:
          - `pointerup` と、ポインターを押していない間の `selectionchange` で、詳細パネル・全画面の中の選択から箇所を求め（`selectionLocation`）、あれば入口を出し、無ければ閉じる（図の拡大を開いている間は出さない）
          - 「押す」では入口を閉じ、`pendingLoc` に入れて下端の入力を描き直し、入力欄へフォーカスを移す。「閉じる」では入口を閉じて本文へフォーカスを戻す
       8. コメントの一覧のコールバックを次で扱う（どれも履歴に積まない）
+         - トップバーのコメントのボタンで一覧を開くときは、表示の設定を閉じる（`DisplayState.open` を偽）
          - 「行の項目を開く」では一覧を開いたまま詳細パネルを開き、`highlight` にその箇所を渡す
          - 「直しを送る」「箇所を外す」では `update`、「削除」では `remove` して消した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を読み直して描き直す
          - 「まとめて送る」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして「{件数} 件を送りました（{HH:mm}）。」、409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を読み直す
          - Esc は、詳細パネルを開いていれば詳細パネルを、無ければ一覧を閉じる
-         - 一覧を開くときは、絞り込みのドロワーを閉じる（`drawerOpen` を偽）
+         - 一覧を開くときは、絞り込みのドロワーと表示の設定のパネルを閉じる（`drawerOpen`・`DisplayState.open` を偽）
       9. 絞り込みのコールバックを次で扱う（どれも履歴に積まない）
-         - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧を閉じる
+         - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧と表示の設定のパネルを閉じる
          - 画面の「条件を変える」では `FilterState.byTab` のその画面の分を置き換え、トップバーと画面を描き直す（ドロワーは開いたまま）
          - 画面の「ドロワーを閉じる」では `drawerOpen` を偽にして描き直し、トップバーの絞り込みのボタンへフォーカスを戻す
          - 概要へ移ったときは `drawerOpen` を偽にする
       10. 変更履歴のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
          - 「変更履歴を開く」では変更履歴のモーダルを開く（`historyDialog`）
          - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の引き直しと 5 をやり直す
-      11. 書き換えの知らせにつなぐ（`subscribeEvents`）
-         - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の並べ替え・`FilterState`・`CommentState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
+      11. 表示の設定のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
+         - トップバーの表示の設定のボタンで `DisplayState.open` を入れ替える。開くときはコメントの一覧と絞り込みのドロワーを閉じ（`listOpen`・`drawerOpen` を偽）、詳細パネルは開いたままにする。閉じる（×・Esc。詳細パネルを開いていれば Esc は詳細パネルを先に閉じる）ときはトップバーのボタンにフォーカスを戻す
+         - 「見た目を選ぶ」「表示する種類を変える」では `Prefs.look`・`Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 をやり直す。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
+         - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、3 と 5 をやり直す。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
+         - 「ワークスペースの既定にする」では `DisplayState.confirm` を `{busy: false, error: null}` にして確かめを開く（`settingsConfirm`。`from` は既定、`to` は今当てている値）
+         - 確かめの「保存する」では `busy` にして送る（`putDisplay`）。200 なら確かめを閉じ、返った `display` を記録の `settings.display` と `savedDisplay` に入れ、`message` を「ワークスペースの既定にしました（{MM/DD HH:mm}）。」にして 3 と 5 をやり直す（個人の上書きはそのまま残す）。断られたら `error` に「保存できませんでした。{detail}」、届かないなら立ち上げ直しの案内を入れて確かめを描き直す（画面設計『既定の保存の確かめ』の文言）
+         - 確かめの「取り消す」と Esc（`busy` の間は受けない）では確かめを閉じ、「ワークスペースの既定にする」にフォーカスを戻す
+         - トップバーのライト / ダークと表の「表示する列」「初期設定に戻す」も `Prefs` の上書きとして残し、開いていれば表示の設定を描き直す（「この端末で変えている項目」を合わせる）
+      12. 書き換えの知らせにつなぐ（`subscribeEvents`）
+         - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の並べ替え・`FilterState`・`CommentState`・`DisplayState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
+         - 読み直した `settings.display` が前と違う場合、`savedDisplay` と等しければ `savedDisplay` を `null` に戻すだけにする。そうでなければ、画面の下に「ワークスペースの既定が変わりました。」を `NOTICE_MS` の間出し、`message` を「ワークスペースの既定が変わりました（{MM/DD HH:mm}）。」にする（上書きを持たない項目だけが、読み分けで新しい既定になる）
          - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを描き直す
          - つながり直した場合、記録とレビュー中を読み直して接続の状態を `online` に戻す
-      12. `hashchange`・`popstate` で 4・5 を繰り返す
+      13. `hashchange`・`popstate` で 4・5 を繰り返す
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
   - name: formKey
@@ -266,5 +309,61 @@ functions:
         condition: '`parametrize`: `(D-1, null)` と `(D-1, null)` / `(D-1, null)` と `(D-1, 本文の 2 行目)` / キーの並びが違う同じ `loc` / `(null, null)` と `(D-1, null)`'
         mock: なし
         expected: 同じ / 違う / 同じ / 違う
+  - name: resolveDisplay
+    title: 表示の読み分け
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 表示の設定を変える
+    scope: public
+    summary: 項目ごとに、個人の上書きがあればそれを、無ければワークスペースの既定を、それも無ければ組み込みの既定を使って、今当てる見た目・表示する種類と、既定と上書きを持つ項目を返す
+    args:
+      - name: prefs
+        type: Prefs
+        required: true
+        passing: positional
+        description: 端末の設定
+      - name: display
+        type: '{network_look?, visible_kinds?} | undefined'
+        required: true
+        passing: positional
+        description: 記録の `settings.display`（配る書き出しは埋め込みの値）
+    returns:
+      type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[]}'
+      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「つながりの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」の順）
+    process: |-
+      1. 既定を決める（`display.network_look` が無ければ `deep`、`display.visible_kinds` が無ければ 7 つの種類全て）
+      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる
+      3. `prefs.look`・`prefs.kinds`・`prefs.theme` が `null` でない項目と、`prefs.columns` の種類ごとに「表の列（{種類の名前}）」を `overrides` に並べる
+    unit_tests:
+      - name: test_resolve_display
+        case: 正常
+        summary: 上書き → ワークスペースの既定 → 組み込みの既定の順に項目ごとに読み分ける
+        condition: '`parametrize`: 上書きも既定も無い / 既定が `starlight`・メモを除く 6 種類で上書きが無い / 同じ既定で `look: dust`・`theme: dark`・`columns.research` の上書き'
+        mock: なし
+        expected: '`deep`・7 種類・`overrides` が空 / `starlight`・6 種類・`overrides` が空 / `look` が `dust`、`kinds` が 6 種類、`defaultLook` が `starlight`、`overrides` が「つながりの見た目」・「ライト / ダーク」・「表の列（調査）」'
+  - name: clearOverrides
+    title: 個人の上書きを外す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 表示の設定を変える
+    scope: public
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列を外した `Prefs` を返す（`diffSel` は残す）
+    args:
+      - name: prefs
+        type: Prefs
+        required: true
+        passing: positional
+        description: 今の端末の設定
+    returns:
+      type: Prefs
+      description: '`theme`・`look`・`kinds` を `null`、`columns` を空にした写し'
+    process: 1. `prefs` を写し、上の 4 項目を外して返す（渡した `prefs` は変えない）
+    unit_tests:
+      - name: test_clear_overrides
+        case: 正常
+        summary: 上書きだけを外し、差分の時点は残す
+        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`diffSel: since` の `Prefs`'
+        mock: なし
+        expected: '`theme`・`look`・`kinds` が `null`、`columns` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
 test_files:
   - tests/unit/preview/test_app.py

@@ -18,7 +18,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: clear_release workspace
-        IF-->>WS: mindmap.yaml があるか確かめる
+        IF-->>WS: config.yaml があるか確かめる
         IF->>WS: release/ の中のファイルとフォルダを消す
         IF-->>クライアント: JSON（removed）
       ```
@@ -43,7 +43,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: clear_release workspace
-        IF-->>WS: mindmap.yaml があるか確かめる
+        IF-->>WS: config.yaml があるか確かめる
         IF->>WS: 空の release/ を作る
         IF-->>クライアント: JSON（removed は空）
       ```
@@ -54,12 +54,12 @@ flows:
       - '`handoff/` とその中の `資料.md` が、呼ぶ前と同じ'
     test: test_normal_when_release_dir_missing
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと何も消さずにエラーで終わる
+    summary: config.yaml が無いフォルダを指すと何も消さずにエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無く、`release/` に `資料.md` がある）
+        description: テストごとの一時フォルダ（`config.yaml` が無く、`release/` に `資料.md` がある）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -68,7 +68,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: clear_release workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -92,7 +92,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: clear_release workspace
-        IF-->>WS: mindmap.yaml があるか確かめる
+        IF-->>WS: config.yaml があるか確かめる
         IF->>WS: 一.md を消す
         IF->>WS: 二.md を消せない
         IF-->>クライアント: ツールのエラー
@@ -113,7 +113,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
 response:
   - name: removed[]
     type: list[str]
@@ -123,7 +123,7 @@ exceptions:
     condition: 消すものが無かったときを含む
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も消さない
   - name: WriteFailedError
     condition: '`release/` の中のものを消せない、または `release/` を作れない（権限が無い・他のプログラムが開いている）'

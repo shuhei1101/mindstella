@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・絞り込みとコメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -25,9 +25,9 @@ namespace MindmapPreview {
 
   /** トップバーの引数 */
   export type TopbarProps = {
-    /** 話し合いの題名（`mindmap.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる */
+    /** 話し合いの題名（`config.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる */
     title: string;
-    /** タブの帯に並べる画面（つながりは含めない） */
+    /** タブの帯に並べる画面（概要と、表示する種類。つながりは含めない） */
     tabs: TopbarTab[];
     /** 開いている画面 */
     current: Tab;
@@ -57,6 +57,10 @@ namespace MindmapPreview {
     onHistory?: () => void;
     /** 札の × を押したとき（差分の表示をやめる） */
     onDiffOff?: () => void;
+    /** 表示の設定のパネルを開いているか。開いているとき、ボタンを枠と面で選んだ見た目にする */
+    settingsOpen?: boolean;
+    /** 表示の設定のボタンを押したとき（パネルを開く・閉じる）。渡さないと表示の設定のボタンを出さない。サーバーの配信でも配る書き出しでも渡し、絞り込みのボタンがあればその左、無ければコメントのボタンの左に置く */
+    onSettings?: () => void;
     /** 絞り込みのボタンを出すか。項目を並べる画面では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときは右端）に置く */
     filter?: boolean;
     /** 値を 1 つ以上選んでいる条件の数。1 以上のときだけ、印の色のバッジで「絞り込み」の右に出す */
@@ -205,6 +209,22 @@ namespace MindmapPreview {
     });
   }
 
+  /** 表示の設定のボタン（印と「表示の設定」）。押すと表示の設定のパネルを開く・閉じる */
+  function settingsButton({ open, onToggle }: { open: boolean; onToggle: () => void }): HTMLElement {
+    return h({
+      tag: "button",
+      attrs: {
+        class: `settings-btn${open ? " open" : ""}`,
+        type: "button",
+        "data-act": "settings",
+        "aria-label": "表示の設定",
+        "aria-expanded": String(open),
+        onclick: () => onToggle(),
+      },
+      children: [icon("sliders"), h({ tag: "span", attrs: { class: "label" }, children: ["表示の設定"] })],
+    });
+  }
+
   /** 絞り込みのボタン（印と「絞り込み」と、値を選んでいる条件の数のバッジ）。押すと絞り込みのドロワーを開く・閉じる */
   function filterButton({ count, open, onClick }: { count: number; open: boolean; onClick?: () => void }): HTMLElement {
     return h({
@@ -245,6 +265,8 @@ namespace MindmapPreview {
     diffPoint = null,
     onHistory,
     onDiffOff,
+    settingsOpen = false,
+    onSettings,
     filter = false,
     filterCount = 0,
     filterOpen = false,
@@ -297,6 +319,7 @@ namespace MindmapPreview {
           },
           children: [icon(theme === "dark" ? "sun" : "moon")],
         }),
+        onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
         filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
         comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
       ],

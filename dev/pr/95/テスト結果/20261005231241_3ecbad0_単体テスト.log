@@ -1,0 +1,378 @@
+# 単体テスト（実装前の Red を除く全 pass）
+# commit: 3ecbad0
+# 実行日時: 2026-10-05 23:12:41 JST
+# Red の単体テスト 268 件（実装の無いことで落ちるもの）は、node id の一覧（末尾）を収集の後に外して実行する
+$ RED_IDS_FILE=red-ids.txt PYTHONPATH=. pytest tests/unit -p deselect_red
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-settings-config-and-personal-override
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 762 items / 268 deselected / 494 selected
+
+tests/unit/preview/test_api.py .......                                   [  1%]
+tests/unit/preview/test_app.py ....                                      [  2%]
+tests/unit/preview/test_comments_panel.py ...                            [  2%]
+tests/unit/preview/test_decisions.py .                                   [  3%]
+tests/unit/preview/test_detail.py ..                                     [  3%]
+tests/unit/preview/test_diff.py ...........                              [  5%]
+tests/unit/preview/test_docs.py .                                        [  5%]
+tests/unit/preview/test_dom.py ..............                            [  8%]
+tests/unit/preview/test_graph.py .                                       [  8%]
+tests/unit/preview/test_libs.py ........                                 [ 10%]
+tests/unit/preview/test_overview.py .                                    [ 10%]
+tests/unit/preview/test_records.py ....                                  [ 11%]
+tests/unit/preview/test_router.py ...                                    [ 12%]
+tests/unit/preview/test_selection_comment.py ..                          [ 12%]
+tests/unit/preview/test_send_form.py ....                                [ 13%]
+tests/unit/preview/test_table.py ...                                     [ 13%]
+tests/unit/preview/test_tasks.py .                                       [ 14%]
+tests/unit/preview/test_api.py .....                                     [ 15%]
+tests/unit/preview/test_app.py .                                         [ 15%]
+tests/unit/preview/test_comments_panel.py .                              [ 15%]
+tests/unit/preview/test_diff.py ....                                     [ 16%]
+tests/unit/preview/test_dom.py .........                                 [ 18%]
+tests/unit/preview/test_libs.py ..                                       [ 18%]
+tests/unit/preview/test_records.py ..                                    [ 19%]
+tests/unit/preview/test_router.py ...                                    [ 19%]
+tests/unit/preview/test_selection_comment.py .                           [ 19%]
+tests/unit/preview/test_send_form.py ....                                [ 20%]
+tests/unit/preview/test_table.py ..                                      [ 21%]
+tests/unit/preview/test_api.py ....                                      [ 21%]
+tests/unit/preview/test_app.py .                                         [ 22%]
+tests/unit/preview/test_diff.py .                                        [ 22%]
+tests/unit/preview/test_dom.py .....                                     [ 23%]
+tests/unit/preview/test_libs.py ..                                       [ 23%]
+tests/unit/preview/test_records.py ..                                    [ 24%]
+tests/unit/preview/test_router.py .                                      [ 24%]
+tests/unit/preview/test_selection_comment.py .                           [ 24%]
+tests/unit/preview/test_send_form.py ..                                  [ 24%]
+tests/unit/preview/test_table.py ..                                      [ 25%]
+tests/unit/preview/test_api.py .                                         [ 25%]
+tests/unit/preview/test_app.py .                                         [ 25%]
+tests/unit/preview/test_diff.py .                                        [ 25%]
+tests/unit/preview/test_dom.py ....                                      [ 26%]
+tests/unit/preview/test_libs.py ..                                       [ 27%]
+tests/unit/preview/test_records.py ..                                    [ 27%]
+tests/unit/preview/test_router.py .                                      [ 27%]
+tests/unit/preview/test_send_form.py .                                   [ 27%]
+tests/unit/preview/test_table.py .                                       [ 28%]
+tests/unit/preview/test_api.py .                                         [ 28%]
+tests/unit/preview/test_diff.py .                                        [ 28%]
+tests/unit/preview/test_dom.py ...                                       [ 29%]
+tests/unit/preview/test_libs.py ..                                       [ 29%]
+tests/unit/preview/test_router.py .                                      [ 29%]
+tests/unit/preview/test_send_form.py .                                   [ 29%]
+tests/unit/preview/test_api.py .                                         [ 30%]
+tests/unit/preview/test_dom.py .                                         [ 30%]
+tests/unit/preview/test_libs.py ..                                       [ 30%]
+tests/unit/preview/test_router.py .                                      [ 30%]
+tests/unit/preview/test_libs.py .................                        [ 34%]
+tests/unit/scripts/test_backup.py ......                                 [ 35%]
+tests/unit/scripts/test_builder.py ................................      [ 42%]
+tests/unit/scripts/test_check_env.py ........................            [ 46%]
+tests/unit/scripts/test_commands.py ...............................      [ 53%]
+tests/unit/scripts/test_comments.py ..............................       [ 59%]
+tests/unit/scripts/test_field_to_playbooks.py ...                        [ 59%]
+tests/unit/scripts/test_graph.py .....                                   [ 60%]
+tests/unit/scripts/test_history.py ......................                [ 65%]
+tests/unit/scripts/test_kinds.py ......                                  [ 66%]
+tests/unit/scripts/test_launch.py .........                              [ 68%]
+tests/unit/scripts/test_locations.py ......................              [ 72%]
+tests/unit/scripts/test_migration_coverage.py ..                         [ 73%]
+tests/unit/scripts/test_migration_ops.py ................                [ 76%]
+tests/unit/scripts/test_migrator.py .......                              [ 77%]
+tests/unit/scripts/test_query.py ......                                  [ 79%]
+tests/unit/scripts/test_serve.py ...............................         [ 85%]
+tests/unit/scripts/test_server.py ............                           [ 87%]
+tests/unit/scripts/test_settings_update.py ............                  [ 90%]
+tests/unit/scripts/test_store.py ....................                    [ 94%]
+tests/unit/scripts/test_submissions.py .............                     [ 96%]
+tests/unit/scripts/test_versions.py ...............                      [100%]
+
+=============== 494 passed, 268 deselected in 115.46s (0:01:55) ================
+
+# 外した Red のテスト（node id）
+tests/unit/preview/test_api.py::test_put_display[chromium-saved]
+tests/unit/preview/test_api.py::test_put_display[chromium-write_failed]
+tests/unit/preview/test_app.py::test_clear_overrides[chromium]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-broken_json]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-dark]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-look_and_kinds]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-storage_throws]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-unknown_look_and_kinds]
+tests/unit/preview/test_app.py::test_resolve_display[chromium-no_override_no_default]
+tests/unit/preview/test_app.py::test_resolve_display[chromium-override_look_theme_columns]
+tests/unit/preview/test_app.py::test_resolve_display[chromium-workspace_default]
+tests/unit/preview/test_app.py::test_save_prefs[chromium-setitem_throws]
+tests/unit/preview/test_app.py::test_save_prefs[chromium-working_storage]
+tests/unit/preview/test_overview.py::test_overview_screen_when_kinds_hidden[chromium-kinds_hidden]
+tests/unit/preview/test_settings.py::test_settings_drawer[chromium]
+tests/unit/preview/test_settings_confirm.py::test_settings_confirm[chromium-busy]
+tests/unit/preview/test_settings_confirm.py::test_settings_confirm[chromium-error]
+tests/unit/preview/test_settings_confirm.py::test_settings_confirm[chromium-look_changed]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-export_cannot_save]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-no_override_same_as_default]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-overridden]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-override_same_as_default]
+tests/unit/preview/test_settings_panel.py::test_settings_panel_when_kinds_changed[chromium]
+tests/unit/scripts/test_builder.py::test_collect_preview_data
+tests/unit/scripts/test_builder.py::test_collect_preview_data_with_changes
+tests/unit/scripts/test_builder.py::test_derive_preview_values
+tests/unit/scripts/test_builder.py::test_derive_preview_values_when_no_goal
+tests/unit/scripts/test_builder.py::test_export_preview
+tests/unit/scripts/test_builder.py::test_export_preview_when_download_fails
+tests/unit/scripts/test_builder.py::test_export_preview_when_out_dir_missing
+tests/unit/scripts/test_builder.py::test_export_preview_when_schema_mismatch
+tests/unit/scripts/test_builder.py::test_read_records
+tests/unit/scripts/test_builder.py::test_read_records_when_schema_mismatch
+tests/unit/scripts/test_builder.py::test_read_records_when_settings_invalid[with_last_settings]
+tests/unit/scripts/test_builder.py::test_read_records_when_settings_invalid[without_last_settings]
+tests/unit/scripts/test_checker.py::test_check_bodies
+tests/unit/scripts/test_checker.py::test_check_comments[comments_body_removed]
+tests/unit/scripts/test_checker.py::test_check_comments[drafts_unreadable]
+tests/unit/scripts/test_checker.py::test_check_comments[no_files]
+tests/unit/scripts/test_checker.py::test_check_comments[target_removed]
+tests/unit/scripts/test_checker.py::test_check_duplicate_ids
+tests/unit/scripts/test_checker.py::test_check_history_when_body_rewritten
+tests/unit/scripts/test_checker.py::test_check_history_when_broken_ref
+tests/unit/scripts/test_checker.py::test_check_phases
+tests/unit/scripts/test_checker.py::test_check_phases_when_no_goal
+tests/unit/scripts/test_checker.py::test_check_refs_when_missing
+tests/unit/scripts/test_checker.py::test_check_refs_when_no_goal
+tests/unit/scripts/test_checker.py::test_check_refs_when_related_any_kind
+tests/unit/scripts/test_checker.py::test_check_refs_when_wrong_kind
+tests/unit/scripts/test_checker.py::test_check_submissions
+tests/unit/scripts/test_checker.py::test_check_submissions_when_invalid
+tests/unit/scripts/test_checker.py::test_check_submissions_when_missing
+tests/unit/scripts/test_checker.py::test_check_workspace
+tests/unit/scripts/test_checker.py::test_check_workspace_when_problems
+tests/unit/scripts/test_commands.py::test_run_add
+tests/unit/scripts/test_commands.py::test_run_add_when_no_body
+tests/unit/scripts/test_commands.py::test_run_adopt
+tests/unit/scripts/test_commands.py::test_run_adopt_when_not_decision
+tests/unit/scripts/test_commands.py::test_run_attrs
+tests/unit/scripts/test_commands.py::test_run_batch
+tests/unit/scripts/test_commands.py::test_run_batch_when_operation_fails
+tests/unit/scripts/test_commands.py::test_run_changes_since_read
+tests/unit/scripts/test_commands.py::test_run_changes_since_read_when_schema_mismatch
+tests/unit/scripts/test_commands.py::test_run_check
+tests/unit/scripts/test_commands.py::test_run_check_when_legacy_format
+tests/unit/scripts/test_commands.py::test_run_check_when_problems
+tests/unit/scripts/test_commands.py::test_run_clear_release
+tests/unit/scripts/test_commands.py::test_run_commit
+tests/unit/scripts/test_commands.py::test_run_edit_option
+tests/unit/scripts/test_commands.py::test_run_export
+tests/unit/scripts/test_commands.py::test_run_find
+tests/unit/scripts/test_commands.py::test_run_goal
+tests/unit/scripts/test_commands.py::test_run_impact
+tests/unit/scripts/test_commands.py::test_run_migrate_when_values
+tests/unit/scripts/test_commands.py::test_run_next
+tests/unit/scripts/test_commands.py::test_run_pending_when_empty
+tests/unit/scripts/test_commands.py::test_run_preview_url
+tests/unit/scripts/test_commands.py::test_run_preview_url_when_not_workspace[legacy_settings_only]
+tests/unit/scripts/test_commands.py::test_run_show
+tests/unit/scripts/test_commands.py::test_run_status
+tests/unit/scripts/test_commands.py::test_run_submissions
+tests/unit/scripts/test_commands.py::test_run_take_submission
+tests/unit/scripts/test_commands.py::test_run_update
+tests/unit/scripts/test_commands.py::test_run_update_stacks_history
+tests/unit/scripts/test_commands.py::test_stage_add
+tests/unit/scripts/test_commands.py::test_stage_update_when_limit_zero
+tests/unit/scripts/test_commands.py::test_stage_update_when_nothing_changed
+tests/unit/scripts/test_comments.py::test_add_comment
+tests/unit/scripts/test_comments.py::test_add_comment_when_location_and_no_target[location]
+tests/unit/scripts/test_comments.py::test_add_comment_when_location_and_no_target[no_target]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[location_stale]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[restore_beyond_seq]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[restore_existing_id]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[target_missing]
+tests/unit/scripts/test_comments.py::test_add_comment_when_restore
+tests/unit/scripts/test_comments.py::test_add_comment_when_write_fails
+tests/unit/scripts/test_comments.py::test_list_review
+tests/unit/scripts/test_comments.py::test_save_draft
+tests/unit/scripts/test_comments.py::test_save_draft_when_rejected[target_missing]
+tests/unit/scripts/test_comments.py::test_send_comments
+tests/unit/scripts/test_comments.py::test_send_comments_when_comments_write_fails
+tests/unit/scripts/test_comments.py::test_send_comments_when_stale
+tests/unit/scripts/test_field_to_playbooks.py::test_migrate_when_settings_renamed
+tests/unit/scripts/test_graph.py::test_build_reverse_edges
+tests/unit/scripts/test_graph.py::test_count_followers
+tests/unit/scripts/test_graph.py::test_judge_goal
+tests/unit/scripts/test_graph.py::test_judge_goal_when_goal_phase_unknown
+tests/unit/scripts/test_graph.py::test_judge_goal_when_no_goal
+tests/unit/scripts/test_graph.py::test_judge_goal_when_remaining
+tests/unit/scripts/test_graph.py::test_list_next_candidates
+tests/unit/scripts/test_graph.py::test_list_next_candidates_when_limited
+tests/unit/scripts/test_graph.py::test_list_next_candidates_when_phase_unknown
+tests/unit/scripts/test_graph.py::test_summarize_status
+tests/unit/scripts/test_graph.py::test_trace_impact
+tests/unit/scripts/test_graph.py::test_trace_impact_when_cycle
+tests/unit/scripts/test_history.py::test_changes_since
+tests/unit/scripts/test_history.py::test_changes_since_when_limit_zero
+tests/unit/scripts/test_history.py::test_changes_since_when_no_read_point
+tests/unit/scripts/test_history.py::test_pending_view
+tests/unit/scripts/test_locations.py::test_check_location[character_reference]
+tests/unit/scripts/test_locations.py::test_check_location[image_in_sentence]
+tests/unit/scripts/test_locations.py::test_check_location[link]
+tests/unit/scripts/test_locations.py::test_check_location[link_in_sentence]
+tests/unit/scripts/test_locations.py::test_check_location[list_and_bold]
+tests/unit/scripts/test_locations.py::test_check_location[option_value]
+tests/unit/scripts/test_locations.py::test_check_location[soft_break]
+tests/unit/scripts/test_locations.py::test_check_location[table_row]
+tests/unit/scripts/test_locations.py::test_check_location[title_value]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[key_missing]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[no_body]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[past_last_line]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[text_missing]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[map_values]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[rename_key]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[set_default]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_already_current
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_config_current
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_newer
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_restore_fails
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_settings_renamed
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_step_fails
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_newer
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_same
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_settings_renamed
+tests/unit/scripts/test_migrator.py::test_record_version
+tests/unit/scripts/test_migrator.py::test_record_version_when_schema_mismatch
+tests/unit/scripts/test_migrator.py::test_renamed_file[no_later_steps]
+tests/unit/scripts/test_migrator.py::test_renamed_file[other_file]
+tests/unit/scripts/test_migrator.py::test_renamed_file[renamed_later]
+tests/unit/scripts/test_migrator.py::test_require_migratable[config_yaml_only]
+tests/unit/scripts/test_migrator.py::test_require_migratable[legacy_mindmap_yaml_only]
+tests/unit/scripts/test_migrator.py::test_require_migratable[neither]
+tests/unit/scripts/test_migrator.py::test_set_values
+tests/unit/scripts/test_migrator.py::test_set_values_when_write_fails
+tests/unit/scripts/test_query.py::test_list_attrs
+tests/unit/scripts/test_query.py::test_list_attrs_when_none
+tests/unit/scripts/test_query.py::test_list_referrers
+tests/unit/scripts/test_query.py::test_search_items_when_fields[category]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[kind]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[phase]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[status]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[tag]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[target]
+tests/unit/scripts/test_query.py::test_search_items_when_nested_text
+tests/unit/scripts/test_query.py::test_search_items_when_no_filter
+tests/unit/scripts/test_query.py::test_search_items_when_text_and_attr
+tests/unit/scripts/test_query.py::test_show_item
+tests/unit/scripts/test_query.py::test_show_item_when_body_missing
+tests/unit/scripts/test_serve.py::test_comments_response[comments_and_drafts]
+tests/unit/scripts/test_serve.py::test_comments_response[no_files]
+tests/unit/scripts/test_serve.py::test_delete_response[deleted]
+tests/unit/scripts/test_serve.py::test_delete_response[not_found]
+tests/unit/scripts/test_serve.py::test_delete_response[origin]
+tests/unit/scripts/test_serve.py::test_error_response[settings_invalid]
+tests/unit/scripts/test_serve.py::test_opened_response
+tests/unit/scripts/test_serve.py::test_opened_response_when_write_fails
+tests/unit/scripts/test_serve.py::test_records_response
+tests/unit/scripts/test_serve.py::test_records_response_when_schema_mismatch
+tests/unit/scripts/test_serve.py::test_records_response_when_settings_changed
+tests/unit/scripts/test_serve.py::test_records_response_when_workspace_removed
+tests/unit/scripts/test_serve.py::test_reload_response[other_origin]
+tests/unit/scripts/test_serve.py::test_reload_response[passes]
+tests/unit/scripts/test_serve.py::test_reload_response[schema_mismatch]
+tests/unit/scripts/test_serve.py::test_settings_holder
+tests/unit/scripts/test_serve.py::test_start
+tests/unit/scripts/test_serve.py::test_start_preview_server
+tests/unit/scripts/test_serve.py::test_start_preview_server_when_bind_fails
+tests/unit/scripts/test_serve.py::test_start_when_settings_invalid
+tests/unit/scripts/test_serve.py::test_write_response[created]
+tests/unit/scripts/test_serve.py::test_write_response[no_content]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[content_type]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[not_json]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[not_object]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[origin]
+tests/unit/scripts/test_server.py::test_build_server_when_relative_workspace
+tests/unit/scripts/test_server.py::test_call_tool_when_lock_root
+tests/unit/scripts/test_settings_update.py::test_remap_names
+tests/unit/scripts/test_settings_update.py::test_remap_names_when_unmapped
+tests/unit/scripts/test_settings_update.py::test_remap_phases
+tests/unit/scripts/test_settings_update.py::test_remap_phases_when_unmapped
+tests/unit/scripts/test_settings_update.py::test_save_settings
+tests/unit/scripts/test_settings_update.py::test_save_settings_when_replace_fails
+tests/unit/scripts/test_settings_update.py::test_save_settings_when_schema_mismatch
+tests/unit/scripts/test_settings_update.py::test_update_display
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[duplicate_kinds]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[kinds_string]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[no_look]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[unknown_kind]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[unknown_look]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_settings_broken
+tests/unit/scripts/test_settings_update.py::test_update_settings
+tests/unit/scripts/test_settings_update.py::test_update_settings_when_display
+tests/unit/scripts/test_settings_update.py::test_update_settings_when_goal_phase_unknown
+tests/unit/scripts/test_store.py::test_check_settings
+tests/unit/scripts/test_store.py::test_check_settings_when_invalid[broken_yaml]
+tests/unit/scripts/test_store.py::test_check_settings_when_invalid[duplicate_kinds]
+tests/unit/scripts/test_store.py::test_check_settings_when_invalid[unknown_look]
+tests/unit/scripts/test_store.py::test_clear_release
+tests/unit/scripts/test_store.py::test_clear_release_when_release_dir_missing
+tests/unit/scripts/test_store.py::test_clear_release_when_remove_fails
+tests/unit/scripts/test_store.py::test_create_workspace
+tests/unit/scripts/test_store.py::test_create_workspace_when_exists[config_yaml]
+tests/unit/scripts/test_store.py::test_create_workspace_when_settings_invalid
+tests/unit/scripts/test_store.py::test_find_item
+tests/unit/scripts/test_store.py::test_find_item_when_id_missing
+tests/unit/scripts/test_store.py::test_find_item_when_unknown_prefix
+tests/unit/scripts/test_store.py::test_is_legacy_problem[broken_ref]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[legacy_doc]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[settings]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[settings_with_field]
+tests/unit/scripts/test_store.py::test_load_workspace
+tests/unit/scripts/test_store.py::test_load_workspace_when_settings_broken
+tests/unit/scripts/test_store.py::test_load_workspace_when_top_level_list
+tests/unit/scripts/test_store.py::test_load_workspace_when_yaml_broken
+tests/unit/scripts/test_store.py::test_next_id
+tests/unit/scripts/test_store.py::test_next_id_when_empty
+tests/unit/scripts/test_store.py::test_read_body
+tests/unit/scripts/test_store.py::test_read_body_when_missing
+tests/unit/scripts/test_store.py::test_read_body_when_outside
+tests/unit/scripts/test_store.py::test_require_workspace
+tests/unit/scripts/test_store.py::test_require_workspace_when_missing[empty_folder]
+tests/unit/scripts/test_store.py::test_require_workspace_when_missing[legacy_settings_only]
+tests/unit/scripts/test_store.py::test_save_batch
+tests/unit/scripts/test_store.py::test_save_batch_when_replace_fails
+tests/unit/scripts/test_store.py::test_save_batch_when_schema_mismatch
+tests/unit/scripts/test_store.py::test_save_change
+tests/unit/scripts/test_store.py::test_save_change_when_changes_replace_fails
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[extra_key]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[string_element]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[top_level_list]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[yaml_unreadable]
+tests/unit/scripts/test_store.py::test_save_change_when_item_value_fixed
+tests/unit/scripts/test_store.py::test_save_change_when_schema_mismatch
+tests/unit/scripts/test_store.py::test_save_change_when_temp_write_fails
+tests/unit/scripts/test_store.py::test_save_change_when_yaml_replace_fails_with_previous_body
+tests/unit/scripts/test_store.py::test_save_change_when_yaml_replace_fails_without_previous_body
+tests/unit/scripts/test_store.py::test_validate_workspace
+tests/unit/scripts/test_store.py::test_validate_workspace_when_common_key_invalid
+tests/unit/scripts/test_store.py::test_validate_workspace_when_load_problem
+tests/unit/scripts/test_store.py::test_validate_workspace_when_status_invalid
+tests/unit/scripts/test_store.py::test_validate_workspace_when_top_level_invalid[extra_key]
+tests/unit/scripts/test_store.py::test_validate_workspace_when_top_level_invalid[top_level_list]
+tests/unit/scripts/test_store.py::test_workspace_lock
+tests/unit/scripts/test_store.py::test_workspace_lock_when_raises
+tests/unit/scripts/test_submissions.py::test_list_pending_submissions
+tests/unit/scripts/test_submissions.py::test_list_pending_submissions_when_location_and_no_target
+tests/unit/scripts/test_submissions.py::test_list_pending_submissions_when_target_removed
+
+# 外すプラグイン（deselect_red.py）
+"""Red の単体テストの node id（ファイル RED_IDS_FILE に 1 行 1 件）を、収集の後に外す pytest プラグイン。"""
+
+import os
+from pathlib import Path
+
+
+def pytest_collection_modifyitems(config, items):
+    """node id が一覧にあるテストを、実行する対象から外す。"""
+    red = set(Path(os.environ["RED_IDS_FILE"]).read_text(encoding="utf-8").split("\n"))
+    kept = [item for item in items if item.nodeid not in red]
+    config.hook.pytest_deselected(items=[item for item in items if item.nodeid in red])
+    items[:] = kept

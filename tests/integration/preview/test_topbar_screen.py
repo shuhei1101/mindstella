@@ -290,3 +290,33 @@ def test_drawer_closes_when_overview_opened_by_history(
     after_forward = page.locator(DRAWER_OPEN).count()
     # 検証
     assert (after_back, after_forward) == (0, 0)
+
+
+def test_settings_button(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """表示の設定のボタンを、ライト / ダークの右・絞り込みの左に置く。押すとパネルを開閉し、開いている間は選んだ見た目にする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    button = page.get_by_role("button", name="表示の設定", exact=True)
+    # 実行
+    order = page.eval_on_selector_all(
+        "header.topbar > button",
+        "buttons => buttons.map((b) => b.dataset.act ?? b.className)",
+    )
+    closed = (
+        button.get_attribute("aria-expanded"),
+        "open" in (button.get_attribute("class") or ""),
+    )
+    button.click()
+    page.wait_for_selector("aside.settings-drawer.open")
+    opened = (
+        button.get_attribute("aria-expanded"),
+        "open" in (button.get_attribute("class") or ""),
+    )
+    # 検証
+    assert order[-4:] == ["top-btn", "settings", "filter", "comments"]
+    assert page.inner_text("header.topbar button.settings-btn .label") == "表示の設定"
+    assert closed == ("false", False)
+    assert opened == ("true", True)

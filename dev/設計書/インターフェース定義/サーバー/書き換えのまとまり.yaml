@@ -75,12 +75,12 @@ flows:
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_summary_empty
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -89,7 +89,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: commit workspace summary「a」
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -156,7 +156,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: summary
     type: str
     required: true
@@ -189,7 +189,7 @@ exceptions:
     condition: '`summary` が空白だけか、200 文字を超える'
     notes: ツールのエラー。何も書き込まない
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: SchemaMismatchError
     condition: '`changes.yaml` がスキーマに合わないか、YAML として読めない'

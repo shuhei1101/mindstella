@@ -148,7 +148,7 @@ namespace MindmapPreview {
     history_dropped_seq?: number;
   };
 
-  /** 設定（`mindmap.yaml`） */
+  /** 設定（`config.yaml`） */
   export type Settings = {
     summary: string;
     /** 話し合いの概要（1 文の短い文）。無い設定もある */
@@ -162,6 +162,19 @@ namespace MindmapPreview {
     goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
     /** 項目ごとに変更履歴を何回分持つか */
     history_limit?: number;
+    /** ワークスペースの表示の既定。個人の上書きが無い項目に使う */
+    display?: DisplayDefaults;
+  };
+
+  /** つながりの見た目の値 */
+  export type NetworkLook = "glow" | "starlight" | "constellation" | "deep" | "dust";
+
+  /** ワークスペースの表示の既定（`config.yaml` の `display`） */
+  export type DisplayDefaults = {
+    /** つながりの見た目。無ければ `deep` */
+    network_look?: NetworkLook;
+    /** 表示する種類。無ければ全ての種類 */
+    visible_kinds?: Kind[];
   };
 
   /** フェーズごと・カテゴリーごとの、決着した数と全体の数 */
@@ -191,6 +204,8 @@ namespace MindmapPreview {
     changes: Changes;
     derived: Derived;
     built_at: string;
+    /** `config.yaml` がスキーマに合わないときの、合わない箇所の行。合うとき・配る書き出しは null */
+    settings_problem?: string[] | null;
   };
 
   /** 記録の索引 */

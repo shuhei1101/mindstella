@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from storybook_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -196,6 +197,26 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
+@pytest.mark.parametrize(
+    "story_id",
+    [
+        pytest.param("preview-topbar--filter-on", id="filter_on"),
+        pytest.param("preview-topbar--filter-open", id="filter_open"),
+        pytest.param("preview-topbar--settings-open", id="settings_open"),
+        pytest.param("preview-topbar--comments-narrow", id="comments_narrow"),
+        pytest.param("preview-topbar--diff-on-narrow", id="diff_on_narrow"),
+    ],
+)
+def test_no_overflow_when_narrow(open_story: OpenStory, story_id: str) -> None:
+    """幅 390px で、ボタンが並ぶ状態でも横に溢れない（正常系）。"""
+    # 準備
+    page = open_story(story_id)
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
 # 絞り込みのボタン
 FILTER_BUTTON = "[data-act='filter']"
 
@@ -329,3 +350,43 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
         page.evaluate("getComputedStyle(document.querySelector('.df-chip-t')).textOverflow")
         == "ellipsis"
     )
+
+
+def test_settings_open(open_story: OpenStory) -> None:
+    """表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--settings-open")
+    # 検証
+    button = page.get_by_role("button", name="表示の設定", exact=True)
+    assert button.count() == 1
+    assert button.get_attribute("aria-expanded") == "true"
+    assert "open" in (button.get_attribute("class") or "")
+    comments = page.get_by_role("button", name="コメント（レビュー中 3 件）")
+    assert "open" not in (comments.get_attribute("class") or "")
+    # 表示の設定のボタンは、コメントのボタンの左に置く
+    boxes = page.evaluate(
+        "() => ({s: document.querySelector('.settings-btn').getBoundingClientRect().right,"
+        " c: document.querySelector('.comments-btn').getBoundingClientRect().left})"
+    )
+    assert boxes["s"] <= boxes["c"]
+    # 文書に無い要素を指す `aria-controls` を付けない
+    assert button.get_attribute("aria-controls") is None
+
+
+def test_kinds_hidden(open_story: OpenStory) -> None:
+    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--kinds-hidden")
+    # 検証
+    tabs = page.eval_on_selector_all("nav.tabbar a", "links => links.map(a => a.dataset.tab)")
+    assert tabs == ["overview", "decisions", "research", "terms", "notes", "logs", "graph"]
+
+
+def test_export(open_story: OpenStory) -> None:
+    """配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--export")
+    # 検証
+    assert page.get_by_role("button", name="表示の設定", exact=True).count() == 1
+    assert page.locator(".comments-btn").count() == 0
+    assert page.get_attribute(".settings-btn", "aria-expanded") == "false"

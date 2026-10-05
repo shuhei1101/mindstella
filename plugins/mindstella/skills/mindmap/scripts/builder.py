@@ -10,17 +10,17 @@ import os
 import re
 import urllib.request
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from html.parser import HTMLParser
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import store
 from errors import ArgumentError, DownloadFailedError
 from graph import is_settled, judge_goal, list_next_candidates
 from history import load_changes
-from kinds import KINDS
+from kinds import KINDS, SETTINGS_FILE
 from store import NowFn, Workspace, now_utc
 
 # このファイルから見た `skills/mindmap/preview/`
@@ -51,6 +51,8 @@ SCRIPT_FILES = (
     "components/filter-drawer.js",
     "components/send-form.js",
     "components/selection-comment.js",
+    "components/settings-panel.js",
+    "components/settings-confirm.js",
     "screens/overview.js",
     "screens/decisions.js",
     "screens/tasks.js",
@@ -58,6 +60,7 @@ SCRIPT_FILES = (
     "screens/records.js",
     "screens/detail.js",
     "screens/comments.js",
+    "screens/settings.js",
     "screens/search.js",
     "screens/diagram-viewer.js",
     "graph/graph.js",
@@ -213,8 +216,10 @@ def replace_file(path: Path, text: str) -> None:
         raise store.write_failed(path, error) from error
 
 
-def collect_preview_data(workspace: Workspace, *, built_at: str) -> dict[str, Any]:
-    """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時を 1 つの辞書にまとめる（送信は含めない）。"""
+def collect_preview_data(
+    workspace: Workspace, *, built_at: str, settings_problem: list[str] | None = None
+) -> dict[str, Any]:
+    """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時・設定の問題を 1 つの辞書にまとめる（送信は含めない）。"""
     data: dict[str, Any] = {"settings": workspace.settings}
     # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで入れる
     for kind, spec in KINDS.items():
@@ -234,16 +239,37 @@ def collect_preview_data(workspace: Workspace, *, built_at: str) -> dict[str, An
     data["changes"] = load_changes(workspace.root)
     data["derived"] = derive_preview_values(workspace)
     data["built_at"] = built_at
+    # config.yaml がスキーマに合わないときの、合わない箇所の行（合うときと配る書き出しは null）
+    data["settings_problem"] = settings_problem
     return data
 
 
-def read_records(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
-    """ワークスペースをその場で読んで検証し、記録の取得の辞書にして返す。"""
+def read_records(
+    root: Path, *, last_settings: dict[str, Any] | None = None, now: NowFn = now_utc
+) -> dict[str, Any]:
+    """ワークスペースをその場で読んで検証し、記録の取得の辞書にして返す。config.yaml だけが合わないときは last_settings で返す。"""
     workspace = store.load_workspace(root)
-    # 問題があるときは返さない
     problems = store.validate_workspace(workspace)
-    if problems:
-        raise store.build_mismatch_error(problems, workspace)
+    # config.yaml の問題とそれ以外に分ける
+    settings_problems = [problem for problem in problems if problem.file == SETTINGS_FILE]
+    other_problems = [problem for problem in problems if problem.file != SETTINGS_FILE]
+    # config.yaml 以外に問題があるときは返さない
+    if other_problems:
+        raise store.build_mismatch_error(other_problems, workspace)
+    # config.yaml が合わないが、最後に検査に通った設定が無いときも返さない
+    if settings_problems and last_settings is None:
+        raise store.build_mismatch_error(settings_problems, workspace)
+    # config.yaml だけが合わない: 最後に検査に通った設定に差し替え、合わない箇所を添える
+    if settings_problems:
+        lines = [
+            f"{problem.file}: {problem.key or store.WHOLE_PATH}: {problem.detail}"
+            for problem in settings_problems
+        ]
+        return collect_preview_data(
+            replace(workspace, settings=cast("dict[str, Any]", last_settings)),
+            built_at=now(),
+            settings_problem=lines,
+        )
     return collect_preview_data(workspace, built_at=now())
 
 

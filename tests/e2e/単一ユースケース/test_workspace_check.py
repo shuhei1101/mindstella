@@ -87,7 +87,7 @@ def test_normal_when_unknown_phase(
     }
     assert unknown == {
         ("decisions.yaml", "D-1", "items[0].phase", "発散"),
-        ("mindmap.yaml", None, "goal.phase", "結論"),
+        ("config.yaml", None, "goal.phase", "結論"),
     }
     # ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     assert snapshot_tree(root) == before

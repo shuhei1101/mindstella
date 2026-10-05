@@ -27,6 +27,7 @@ from jsonschema import Draft202012Validator
 from kinds import (
     BODY_DIR,
     KINDS,
+    LEGACY_SETTINGS_FILE,
     RELEASE_DIR,
     SETTINGS_FILE,
     Kind,
@@ -41,7 +42,7 @@ SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 # Registry に登録し、各種類のスキーマが `$ref` で指す共通のスキーマの名前
 COMMON_SCHEMA = "common.schema.json"
 
-# `mindmap.yaml` を検証するスキーマ
+# `config.yaml` を検証するスキーマ
 SETTINGS_SCHEMA = "settings.schema.json"
 
 # 置き換える前に書く一時ファイルの拡張子（置き換えるファイルと同じフォルダに作る）
@@ -55,6 +56,12 @@ WHOLE_PATH = "(全体)"
 
 # 前の版の形式でスキーマに合わないときに、エラーの最後に続ける 1 行
 LEGACY_HINT = "ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"
+
+# `mindmap.yaml` だけがあるフォルダの WorkspaceNotFoundError に続ける 1 行（`{root}` はフォルダの絶対パス）
+UPGRADE_HINT = (
+    "ヒント: 前の版の設定ファイル mindmap.yaml があります。"
+    "/mindstella:upgrade {root} で今の版へ移し替えてください"
+)
 
 # ワークスペースを最後に整えたときのプラグインの版を持つファイルの名前
 VERSION_FILE = "mindstella-version.ini"
@@ -100,7 +107,7 @@ class Workspace:
     root: Path
     # ファイル名 → 読んだ値そのまま。YAML として読めないファイルは含めない
     raw: dict[str, Any]
-    # `mindmap.yaml` の値。辞書でない・読めないときは空
+    # `config.yaml` の値。辞書でない・読めないときは空
     settings: dict[str, Any]
     # 種類ごとの `items`（ファイルの並びのまま）。形が合わないときは空
     items: dict[Kind, list[dict[str, Any]]]
@@ -155,9 +162,8 @@ class BatchChange:
 def load_workspace(root: Path) -> Workspace:
     """設定と 7 種類の YAML を読む。読めないファイルは問題に記録して空として扱う。"""
     root = root.resolve()
-    # mindmap.yaml が無いフォルダはワークスペースではない
-    if not (root / SETTINGS_FILE).is_file():
-        raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+    # config.yaml が無いフォルダはワークスペースではない
+    require_workspace(root)
 
     raw: dict[str, Any] = {}
     load_problems: list[Problem] = []
@@ -191,6 +197,55 @@ def load_workspace(root: Path) -> Workspace:
     )
 
 
+def require_workspace(root: Path) -> None:
+    """`config.yaml` があるかを確かめ、無ければ送る。`mindmap.yaml` だけなら移し替えを案内する。"""
+    # config.yaml がある: ワークスペース
+    if (root / SETTINGS_FILE).is_file():
+        return
+    # 前の版の設定ファイルだけがある: 移し替えの案内を添える
+    if (root / LEGACY_SETTINGS_FILE).is_file():
+        raise WorkspaceNotFoundError(
+            f"ワークスペースがありません: {root}",
+            [UPGRADE_HINT.replace("{root}", str(root))],
+        )
+    # どちらも無い
+    raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+
+
+def check_settings(root: Path) -> tuple[dict[str, Any], list[Problem]]:
+    """`config.yaml` だけを読んで設定のスキーマと突き合わせ、読んだ設定と問題を返す。"""
+    root = root.resolve()
+    require_workspace(root)
+    try:
+        value = _read_yaml(root / SETTINGS_FILE)
+    except yaml.YAMLError as error:
+        # YAML として読めない: 空の設定と、全体の問題 1 件を返す
+        problem = Problem(
+            kind="schema",
+            file=SETTINGS_FILE,
+            id=None,
+            key=WHOLE_PATH,
+            detail=f"YAML として読めません: {' '.join(str(error).split())}",
+        )
+        return {}, [problem]
+    # スキーマと突き合わせ、キーのパスの順に問題を並べる
+    validator = load_validators()[SETTINGS_SCHEMA]
+    found = sorted(
+        validator.iter_errors(value), key=lambda error: _path_order(list(error.absolute_path))
+    )
+    problems = [
+        Problem(
+            kind="schema",
+            file=SETTINGS_FILE,
+            id=None,
+            key=_format_path(list(error.absolute_path)),
+            detail=error.message,
+        )
+        for error in found
+    ]
+    return (value if isinstance(value, dict) else {}), problems
+
+
 def _open_lock_file(root: Path) -> IO[str]:
     """ロックのファイルを追記で開く。開けなければ書き込めなかったエラーにする。"""
     lock_path = root / LOCK_FILE
@@ -202,7 +257,11 @@ def _open_lock_file(root: Path) -> IO[str]:
 
 @contextlib.contextmanager
 def workspace_lock(
-    root: Path, process_lock: threading.Lock, *, create: bool = False
+    root: Path,
+    process_lock: threading.Lock,
+    *,
+    create: bool = False,
+    require: Callable[[Path], None] = require_workspace,
 ) -> Iterator[None]:
     """プロセスの中の鍵とワークスペースの排他ロックをこの順に取り、抜けるときに放す。"""
     with process_lock:
@@ -211,9 +270,9 @@ def workspace_lock(
             # まだ無いフォルダへ書く `init` のために、フォルダごと作る
             created = not root.exists()
             root.mkdir(parents=True, exist_ok=True)
-        elif not (root / SETTINGS_FILE).is_file():
+        else:
             # ワークスペースでないフォルダには何も作らず止める
-            raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+            require(root)
         try:
             with _open_lock_file(root) as stream:
                 # 別のプロセスが持っている間は、取れるまで待つ
@@ -258,11 +317,21 @@ def validate_workspace(workspace: Workspace) -> list[Problem]:
     return [problem for _, _, problem in entries]
 
 
+def _load_registry() -> Registry:
+    """共通のスキーマを登録した Registry を返す（各種類のスキーマが `common.schema.json#/$defs/...` で指せるように）。"""
+    common = json.loads((SCHEMA_DIR / COMMON_SCHEMA).read_text(encoding="utf-8"))
+    return Registry().with_resources([(COMMON_SCHEMA, DRAFT202012.create_resource(common))])
+
+
+def load_display_validator() -> Draft202012Validator:
+    """設定のスキーマの `display` の部分だけを検証する検証器を作る（選べる見た目と種類の名前はスキーマだけが持つ）。"""
+    schema = json.loads((SCHEMA_DIR / SETTINGS_SCHEMA).read_text(encoding="utf-8"))
+    return Draft202012Validator(schema["properties"]["display"], registry=_load_registry())
+
+
 def load_validators() -> dict[str, Draft202012Validator]:
     """共通のスキーマを Registry に登録し、設定と 7 種類の検証器を作る。"""
-    common = json.loads((SCHEMA_DIR / COMMON_SCHEMA).read_text(encoding="utf-8"))
-    # 各種類のスキーマが `common.schema.json#/$defs/...` で指せるように登録する
-    registry = Registry().with_resources([(COMMON_SCHEMA, DRAFT202012.create_resource(common))])
+    registry = _load_registry()
     schema_names = [SETTINGS_SCHEMA, *(spec.schema for spec in KINDS.values())]
     validators: dict[str, Draft202012Validator] = {}
     for schema_name in schema_names:
@@ -458,7 +527,8 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
     """設定を検証してから、設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る。"""
     root = root.resolve()
-    if (root / SETTINGS_FILE).exists():
+    # 前の版の設定（mindmap.yaml）しか無いフォルダも、記録を空の YAML で上書きしないために作らない
+    if (root / SETTINGS_FILE).exists() or (root / LEGACY_SETTINGS_FILE).exists():
         raise WorkspaceExistsError(f"既にワークスペースがあります: {root}")
 
     # 設定と空の 7 種類で検証する（問題があればフォルダも作らない）
@@ -493,7 +563,7 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
         (root / VERSION_FILE).write_text(f"{version}\n", encoding="utf-8")
         created.append(root / VERSION_FILE)
         files.append(VERSION_FILE)
-        # mindmap.yaml は最後に書く（途中で止まってもワークスペースとして扱われない）
+        # config.yaml は最後に書く（途中で止まってもワークスペースとして扱われない）
         (root / SETTINGS_FILE).write_text(dump_yaml(settings), encoding="utf-8")
         files.append(SETTINGS_FILE)
     except OSError as error:
@@ -505,9 +575,8 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
 def clear_release(root: Path) -> list[str]:
     """`release/` の中のファイルとフォルダを消す（`release/` が無ければ作る）。"""
     root = root.resolve()
-    # mindmap.yaml が無いフォルダはワークスペースではない（何も消さない）
-    if not (root / SETTINGS_FILE).is_file():
-        raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+    # config.yaml が無いフォルダはワークスペースではない（何も消さない）
+    require_workspace(root)
 
     release_dir = root / RELEASE_DIR
     removed: list[str] = []

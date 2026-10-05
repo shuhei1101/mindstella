@@ -24,7 +24,7 @@ scenarios:
         CC-->>U: たたき台と、古いフェーズ・対象・カテゴリーから新しいものへの対応の表を示して確認を取る
         U->>CC: 確定する
         CC->>SV: 設定の更新（たたき台の設定と、フェーズ・対象・カテゴリーの対応）
-        SV->>WS: mindmap.yaml と、項目の phase・target・category を書く
+        SV->>WS: config.yaml と、項目の phase・target・category を書く
         CC->>SV: add（資料 A-1、deliverable: true、本文は概要・背景・構成を先に置いた body_markdown）
         SV->>WS: docs.yaml と docs/ の本文を書く
         CC->>SV: 設定の更新（納品物の doc から A-1 を指す）
@@ -32,7 +32,7 @@ scenarios:
         CC-->>U: 書き換えた設定と、付け替えた項目と、作った納品物の資料を示す
       ```
     expected:
-      - '`mindmap.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`summary`・`target_label`・`phases`・`targets`・`categories` が確定したたたき台の値である'
+      - '`config.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`summary`・`target_label`・`phases`・`targets`・`categories` が確定したたたき台の値である'
       - '`goal` が確定したたたき台の値で、納品物 `要件定義書` の `doc` が A-1 である'
       - '資料 A-1 が `deliverable: true` を持ち、`docs/` の本文が概要・背景・構成の見出しを持つ'
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散` である
@@ -63,7 +63,7 @@ scenarios:
         CC-->>U: 書き換えた設定を示す
       ```
     expected:
-      - '`mindmap.yaml` の `summary` と `target_label` が確定した値で、`playbooks`・`phases`・`goal` が呼ぶ前と同じである'
+      - '`config.yaml` の `summary` と `target_label` が確定した値で、`playbooks`・`phases`・`goal` が呼ぶ前と同じである'
       - どの項目の `phase` も呼ぶ前と同じである
 lead: '`session` が、話し合いの範囲が広がった・利用者が題名やゴールやプレイブックを変えたいと言った・話の中身と最上位の軸の呼び名が合わなくなったときに、題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリーの書き換えのたたき台と、古いフェーズ・対象・カテゴリーから新しいものへの対応を示して確かめ、設定を書き換える単一ユースケース。'
 issue: 44

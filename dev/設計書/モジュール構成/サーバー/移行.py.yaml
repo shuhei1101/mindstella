@@ -12,6 +12,8 @@ directory: |-
           steps.yaml                   v0.4.0 の形式 → v0.5.0 の手順
           scripts/
             field_to_playbooks.py      設定の `field` を `playbooks` の 1 件の配列へ移す変換
+        v0.6.0/
+          steps.yaml                   v0.5.0 の形式 → v0.6.0 の手順（設定ファイルの名前を改める）
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -448,14 +450,14 @@ functions:
       type: MigrationReport
       description: '`workspace_version`・`plugin_version`・`relation`・`steps`・`needs_values`'
     process: |-
-      1. `root / mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
+      1. 移し替えられるワークスペースかを確かめる（`require_migratable`）
       2. ワークスペースの版とプラグインの版を読み（`read_workspace_version`・`read_plugin_version`）、比べる（`compare_versions`）
       3. `from_version`・`to_version` を省いた分を 2 の版で埋める
       4. `list_versions` のうち `from` より後（`from` が `None` なら全て）で `to` 以下の版の手順を、版の順に読む（`load_steps`）
-      5. 各手順の値が要るキーを集め（`list_needed_values`。同じ `file`・`key` は 1 つ）、`MigrationReport` を返す
+      5. 各手順の値が要るキーを集め（`list_needed_values`。同じ `file`・`key` は 1 つ）、`file` をその手順より後の `rename_file` で改めた先の名前にする（`renamed_file`）。`MigrationReport` を返す
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`mindmap.yaml` が無い'
+        condition: '`config.yaml` も `mindmap.yaml` も無い'
     unit_tests:
       - name: test_plan_migration
         case: 正常
@@ -478,10 +480,16 @@ functions:
       - name: test_plan_migration_when_workspace_missing
         case: 異常
         summary: ワークスペースが無ければ送る
-        condition: '`mindmap.yaml` が無い `tmp_path`'
+        condition: '`config.yaml` も `mindmap.yaml` も無い `tmp_path`'
         mock: なし
         expected: '`WorkspaceNotFoundError`'
-        exception: mindmap.yaml が無い
+        exception: config.yaml も mindmap.yaml も無い
+      - name: test_plan_migration_when_settings_renamed
+        case: 正常
+        summary: 後の手順で名前を改めるファイルの値が要るキーは、改めた先の名前で返す
+        condition: 版のファイルと `summary` を持たない `mindmap.yaml` のワークスペース。プラグインの版を `v0.6.0` にする
+        mock: '`read_plugin_version`（`v0.6.0` を返す関数に差し替える）'
+        expected: '`steps` の末尾が v0.6.0 の `rename_file`（`destructive: true`）、`needs_values` が `config.yaml`・`summary` の 1 件。ワークスペースに `mindmap.yaml` が残り `config.yaml` が無い'
   - name: apply_migration
     title: 手順を当てる
     kind: 関数
@@ -525,7 +533,7 @@ functions:
       3. 手順を並びの順に当てる（`apply_step`）
          - `StepError` が起きた場合、写しから戻し（`restore_backup`）、`StepFailedError`（`{版} の手順 {番号}（{操作}）: {理由}`）を送る
          - 戻すことにも失敗した場合（`OSError`・git の終了コードが 0 でない）、`StepFailedError` の `lines` に `写しから戻せませんでした。写しは {backup.ref} にあります` を続ける
-      4. 当てた後の値が要るキーを集め直し、手順と写しを添えて返す
+      4. 当てた後のワークスペースで、各 `set_default` の `file` をその手順より後の `rename_file` で改めた先の名前に読み替えて（`renamed_file`）値が要るキーを集め直し、手順と写しを添えて返す
     exceptions:
       - name: WorkspaceNewerError
         condition: ワークスペースの版がプラグインの版より新しい
@@ -568,6 +576,18 @@ functions:
         mock: '`read_plugin_version`（`v0.3.0`）・`restore_backup`（`migrator` モジュールの参照を monkeypatch）'
         expected: '`StepFailedError` の `lines` に写しのフォルダの絶対パスがある'
         exception: 手順も戻しも失敗した
+      - name: test_apply_migration_when_settings_renamed
+        case: 正常
+        summary: 前の版の手順を当ててから設定ファイルの名前を改め、値が要るキーを改めた先で返す
+        condition: '版のファイルと `summary` を持たず、`field: システム開発` を持つ `mindmap.yaml` と A-1（`done: true`）のワークスペース'
+        mock: '`read_plugin_version`（`v0.6.0`）'
+        expected: '`mindmap.yaml` が無く、`config.yaml` が `playbooks: [システム開発]` を持ち `field` を持たない。A-1 が `status: 完成`。`needs_values` が `config.yaml`・`summary` の 1 件。`backup.ref` のフォルダに `mindmap.yaml` がある'
+      - name: test_apply_migration_when_config_current
+        case: 正常
+        summary: 版のファイルを持たない今の形（config.yaml）にも全ての手順を当てて何も変えない
+        condition: '版のファイルを持たず、`summary` と `playbooks` を持つ `config.yaml`（`mindmap.yaml` は無い）と A-1（`status: 完成`）のワークスペース'
+        mock: '`read_plugin_version`（`v0.6.0`）'
+        expected: 例外にならず `needs_values` が空。`config.yaml`・`docs.yaml` の中身と更新日時が呼ぶ前と同じで、`mindmap.yaml` が作られていない
   - name: set_values
     title: 値を入れる
     kind: 関数
@@ -591,28 +611,28 @@ functions:
       type: None
       description: なし
     process: |-
-      1. `root / mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
+      1. 移し替えられるワークスペースかを確かめる（`require_migratable`）
       2. ファイルごとに YAML を読み、キーのパスを `.` で辿って値を置く（途中の辞書が無ければ作る）
       3. 書き換えたファイルを一時ファイルに書いてから置き換える（`dump_yaml`・`write_temp`・`os.replace`）
          - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`mindmap.yaml` が無い'
+        condition: '`config.yaml` も `mindmap.yaml` も無い'
       - name: WriteFailedError
         condition: 書き込みか置き換えで `OSError` が起きた
     unit_tests:
       - name: test_set_values
         case: 正常
         summary: 題名を入れ、ほかのキーと並びを変えない
-        condition: '`summary` を持たない `mindmap.yaml` と `[("mindmap.yaml", "summary", "題名")]`'
+        condition: '`summary` を持たない `config.yaml` と `[("config.yaml", "summary", "題名")]`'
         mock: なし
-        expected: '`mindmap.yaml` の `summary` が `題名`、ほかのキーが元の順で同じ。`mindstella-version.ini` が無い'
+        expected: '`config.yaml` の `summary` が `題名`、ほかのキーが元の順で同じ。`mindstella-version.ini` が無い'
       - name: test_set_values_when_write_fails
         case: 異常
         summary: 置き換えられなければ送る
         condition: '`os.replace` を `OSError` を送る関数に差し替える'
         mock: '`os.replace`（`migrator` モジュールの参照を monkeypatch）'
-        expected: '`WriteFailedError`。`mindmap.yaml` が呼ぶ前と同じで `.tmp` のファイルが無い'
+        expected: '`WriteFailedError`。`config.yaml` が呼ぶ前と同じで `.tmp` のファイルが無い'
         exception: 置き換えで OSError
   - name: record_version
     title: 版を書く
@@ -657,9 +677,9 @@ functions:
       - name: test_record_version_when_schema_mismatch
         case: 異常
         summary: 題名が無ければ書かない
-        condition: '`summary` を持たない `mindmap.yaml` のワークスペース'
+        condition: '`summary` を持たない `config.yaml` のワークスペース'
         mock: なし
-        expected: '`SchemaMismatchError`（`lines` に `mindmap.yaml: ` と `summary`）。`mindstella-version.ini` が無い'
+        expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `summary`）。`mindstella-version.ini` が無い'
         exception: スキーマに合わない
   - name: apply_step
     title: 手順を 1 つ当てる
@@ -687,7 +707,7 @@ functions:
       1. `op` で分ける。対象が無い・既にあるときの振る舞いはインターフェース定義『記録の形式の移行』の制約「対象が無い・既にあるとき」のとおり
          - `rename_file`・`move_dir`: `from` が無ければ飛ばす。`to` があれば `StepError`。あれば動かす
          - `delete`: `path` が無ければ飛ばす。あればファイルかフォルダを消す
-         - `rename_key`・`set_default`・`map_values`: `file` を読む（読めなければ `StepError`。`{file} を読めません: {理由}`）。`each_item` なら `items[]` の各項目に、そうでなければ最上位の辞書に当てる。キーの位置を保ったまま書き換える
+         - `rename_key`・`set_default`・`map_values`: `file` が無ければ飛ばす（後の版で名前を改めたファイルを指す前の版の手順を、今の形のワークスペースに当てたとき）。あれば読む（読めなければ `StepError`。`{file} を読めません: {理由}`）。`each_item` なら `items[]` の各項目に、そうでなければ最上位の辞書に当てる。キーの位置を保ったまま書き換える
          - `call`: `{folder}/scripts/{script}.py` を読み込んで `migrate(root)` を呼び、返した相対パスの並びを変えたものにする（例外は `StepError`）
       2. YAML の操作は、中身が変わったときだけ一時ファイルに書いてから置き換える（`dump_yaml`・`write_temp`・`os.replace`。`OSError` は `StepError`）
     exceptions:
@@ -757,6 +777,12 @@ functions:
         mock: なし
         expected: '`StepError`（メッセージが `docs.yaml を読めません` で始まる）'
         exception: 読めない
+      - name: test_apply_step_when_file_missing
+        case: 正常
+        summary: 対象のファイルが無ければ飛ばし、ファイルを作らない
+        condition: '`mindmap.yaml` が無いワークスペースに `parametrize`: `set_default`（`file: mindmap.yaml`・`summary`・`ask`）/ `rename_key`（`file: mindmap.yaml`・`field` → `playbooks`）/ `map_values`（`file: mindmap.yaml`）'
+        mock: なし
+        expected: どれも戻り値が空で `mindmap.yaml` が作られていない
   - name: describe_step
     title: 手順の 1 行の説明
     kind: 関数
@@ -926,13 +952,14 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. `mindmap.yaml` を `yaml.safe_load` で読む
-      2. 設定が `field` を持たない場合、何も書かず空を返す
-      3. `field` と `playbooks` を両方持つ場合、`ValueError`（`field と playbooks を両方持ちます`）を送る（`call` が手順の失敗にする）
-      4. キーの並びを保ったまま、`field` の位置に `playbooks: [{field の値}]` を置いた新しい辞書を作る（`target_label` など他のキーは変えない）
-      5. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+      1. `mindmap.yaml` が無い場合、何も書かず空を返す（既に `config.yaml` に改めた今の形のワークスペース）
+      2. `mindmap.yaml` を `yaml.safe_load` で読む
+      3. 設定が `field` を持たない場合、何も書かず空を返す
+      4. `field` と `playbooks` を両方持つ場合、`ValueError`（`field と playbooks を両方持ちます`）を送る（`call` が手順の失敗にする）
+      5. キーの並びを保ったまま、`field` の位置に `playbooks: [{field の値}]` を置いた新しい辞書を作る（`target_label` など他のキーは変えない）
+      6. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
          - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
-      6. `[mindmap.yaml]` を返す
+      7. `[mindmap.yaml]` を返す
     exceptions:
       - name: ValueError
         condition: '`field` と `playbooks` を両方持つ'
@@ -958,6 +985,73 @@ functions:
         condition: '`field` と `playbooks` を両方持つ `mindmap.yaml`'
         mock: なし
         expected: '`ValueError`、中身が呼ぶ前と同じ'
+      - name: test_migrate_when_settings_renamed
+        case: 正常
+        summary: mindmap.yaml が無ければ何も書かない
+        condition: '`config.yaml` だけを持つワークスペース'
+        mock: なし
+        expected: 戻り値が空。`config.yaml` の中身と更新日時が呼ぶ前と同じで、`mindmap.yaml` が作られていない
+  - name: require_migratable
+    title: 移し替えられるワークスペースの確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/migrator.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`config.yaml` か `mindmap.yaml`（`LEGACY_SETTINGS_FILE`）のどちらかがあるかを確かめ、どちらも無ければ送る（このツールだけのワークスペースの見分け）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: None
+      description: あれば何も返さない
+    process: |-
+      1. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら戻る
+      2. どちらも無ければ `WorkspaceNotFoundError` を送る
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` も `mindmap.yaml` も無い'
+        message: 'ワークスペースがありません: {root}'
+    unit_tests:
+      - name: test_require_migratable
+        case: 正常
+        summary: どちらかの設定ファイルがあれば通し、無ければ送る
+        condition: '`parametrize`: `config.yaml` だけ / `mindmap.yaml` だけ / どちらも無い'
+        mock: なし
+        expected: 例外にならない / 例外にならない / `WorkspaceNotFoundError`
+  - name: renamed_file
+    title: 改めた先のファイル名
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/migrator.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: ファイル名を、その後に並ぶ `rename_file` を順に辿った先の名前にする（値が要るキーを、全ての手順を当てた後の名前で返すため）
+    args:
+      - name: file
+        type: str
+        required: true
+        passing: positional
+        description: 手順が指すファイル（ワークスペースからの相対パス）
+      - name: later_steps
+        type: list[MigrationStep]
+        required: true
+        passing: positional
+        description: その手順より後に当てる手順（並びの順）
+    returns:
+      type: str
+      description: 改めた先の名前（改めなければ `file` のまま）
+    process: |-
+      1. `later_steps` を順に見て、`op` が `rename_file` で `from` が今の名前と等しければ、今の名前を `to` にする
+      2. 今の名前を返す
+    unit_tests:
+      - name: test_renamed_file
+        case: 正常
+        summary: 後の rename_file だけを辿る
+        condition: '`parametrize`: `mindmap.yaml` と v0.6.0 の `rename_file` を含む並び / `mindmap.yaml` と空の並び / `docs.yaml` と v0.6.0 の `rename_file` を含む並び'
+        mock: なし
+        expected: '`config.yaml` / `mindmap.yaml` / `docs.yaml`'
 diagrams:
   - name: 全体
     diagram: |-
@@ -996,6 +1090,7 @@ notes:
   手順の形のスキーマ: '`schemas/migration-steps.schema.json` は `steps` の各要素を `op` で分け（`oneOf`）、インターフェース定義『記録の形式の移行』の制約「操作と引数」の引数だけを許す（`additionalProperties: false`）。`set_default` は `value` か `ask` のどちらか 1 つを持つ。'
   開発側の点検: '`tests/unit/scripts/test_migration_coverage.py` に置く。`v*` のタグを版の順に並べた先頭（最新のタグ）の `plugins/mindstella/skills/mindmap/schemas/` と今の `schemas/` を比べ（`git show {タグ}:{パス}`。`migration-steps.schema.json` は比べない）、タグの時点にあったスキーマのファイルが消えたか中身が変わったのに `list_versions` に「最新のタグより新しく、プラグインの版以下」の版が無ければ落とす（`test_schema_changes_have_migration`）。足したスキーマのファイルは、無ければ空として読むため比べない（`submissions.schema.json`。確認ログ『送信とロックファイルの置き場所』）。タグが 1 つも無い clone では skip する。あわせて、プラグインの版がリポジトリの直下の `version.ini` の版より前でないことを確かめる（`test_plugin_version_not_behind_release_version`）。hotfix のタグは直下の `version.ini` もプラグインの版も動かさないため、最新のタグとは比べない'
   分野をプレイブックの配列へ移す手順: '`migrations/v0.5.0/steps.yaml` は `call`（`script: field_to_playbooks`）の 1 つだけを並べる。`scripts/field_to_playbooks.py` が `migrate(root)` を持つ。設定のスキーマを変えるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.5.0` にする（開発側の点検が、最新のタグより新しくプラグインの版以下の手順を求める）。'
+  設定ファイルの名前を改める手順: '`migrations/v0.6.0/steps.yaml` は `rename_file`（`from: mindmap.yaml`・`to: config.yaml`）の 1 つだけを並べる（`destructive: true`）。`scripts/` は使わないので置かない。設定のスキーマを変え、設定ファイルの名前も変わるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.6.0` にする。v0.3.0・v0.5.0 の手順と `field_to_playbooks.py` は改める前に当たるため `mindmap.yaml` を指したままにし、今の形（`config.yaml`）のワークスペースに当てたときは対象が無いため飛ばす（`apply_step`・`migrate`）'
 test_files:
   - tests/unit/scripts/test_versions.py
   - tests/unit/scripts/test_migrator.py

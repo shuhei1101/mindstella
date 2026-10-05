@@ -157,7 +157,7 @@ status_codes:
     condition: '`Content-Type` が `application/json` でない'
     notes: 何も書かない
   - code: '422'
-    condition: '`drafts.yaml` がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった'
+    condition: '`drafts.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
     notes: 何も書かない
   - code: '500'
     condition: '`drafts.yaml` を書けない'

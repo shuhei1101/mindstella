@@ -12,6 +12,8 @@ namespace MindmapPreview {
     };
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
+    /** 表示する種類。表示しない種類へ移る「すべて表示」を出さず、検討事項を表示しないときはカテゴリー別の進捗のセルと行の見出しを押せなくする（タイルと中の項目は残す） */
+    visibleKinds?: Set<string>;
   };
 
   /** 縦に積む幅で出す、次に検討する項目の件数 */
@@ -25,6 +27,11 @@ namespace MindmapPreview {
 
   /** 次に検討する項目をタイルに横に並べる幅 */
   const WIDE_QUERY = "(min-width: 1101px)";
+
+  /** 種類を表示するか（`visibleKinds` を渡さないときは全ての種類を表示する） */
+  function isShown(props: OverviewProps, kind: Kind): boolean {
+    return props.visibleKinds === undefined || props.visibleKinds.has(kind);
+  }
 
   /** 絞った表へ移る `Route`（画面の既定の表示形式で開く） */
   function tableRoute(tab: Tab, filters: Record<string, string[]>, view: View = "table"): Route {
@@ -89,7 +96,8 @@ namespace MindmapPreview {
   }
 
   /** 次に検討する項目のタイル */
-  function nextTile({ index, on, marks }: OverviewProps): HTMLElement {
+  function nextTile(props: OverviewProps): HTMLElement {
+    const { index, on, marks } = props;
     const candidates = index.data.derived.next;
     const list = h({
       tag: "ol",
@@ -135,7 +143,7 @@ namespace MindmapPreview {
           "h-next",
           "next",
           "次に検討する項目",
-          candidates.length > 0
+          candidates.length > 0 && isShown(props, "decisions")
             ? showAll(candidates.length, () =>
                 on.navigate(tableRoute("decisions", { status: ["未決定"], ready: ["着手可能"] })),
               )
@@ -163,7 +171,8 @@ namespace MindmapPreview {
   }
 
   /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト）。ゴールが無いときはフェーズ別の進捗だけ */
-  function goalTile({ index, on }: OverviewProps): HTMLElement {
+  function goalTile(props: OverviewProps): HTMLElement {
+    const { index, on } = props;
     const { goal } = index.data.derived;
     const settled = goal.phase_progress.reduce((sum, cell) => sum + cell.settled, 0);
     const total = goal.phase_progress.reduce((sum, cell) => sum + cell.total, 0);
@@ -242,7 +251,7 @@ namespace MindmapPreview {
                 icon("box"),
                 "納品物",
                 h({ tag: "span", attrs: { class: "mono" }, children: [`${doneCount}/${deliverables.length}`] }),
-                deliverables.length > DELIVERABLE_LIMIT
+                deliverables.length > DELIVERABLE_LIMIT && isShown(props, "docs")
                   ? showAll(deliverables.length, () =>
                       on.navigate(tableRoute("docs", { deliverable: ["納品物"] }, "cards")),
                     )
@@ -267,6 +276,7 @@ namespace MindmapPreview {
     link,
     open,
     marks,
+    linked,
   }: {
     /** タイルの項目 ID（画面設計） */
     tileId: string;
@@ -281,12 +291,14 @@ namespace MindmapPreview {
     open: (id: string) => void;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks | undefined;
+    /** 「すべて表示」を出すか（その種類の画面を表示しないときは出さない） */
+    linked: boolean;
   }): HTMLElement {
     return h({
       tag: "section",
       attrs: { id: tileId, class: "tile t-small", "aria-labelledby": id },
       children: [
-        tileHead(id, iconName, title, items.length > 0 ? showAll(items.length, link) : null),
+        tileHead(id, iconName, title, items.length > 0 && linked ? showAll(items.length, link) : null),
         h({ tag: "p", attrs: { class: "num" }, children: [items.length] }),
         miniList(items, emptyText, open, marks),
       ],
@@ -294,8 +306,11 @@ namespace MindmapPreview {
   }
 
   /** カテゴリー別の進捗の表（カテゴリーを行、フェーズを列にする） */
-  function progressTile({ index, on }: OverviewProps): HTMLElement {
+  function progressTile(props: OverviewProps): HTMLElement {
+    const { index, on } = props;
     const { settings, derived } = index.data;
+    // 検討事項を表示しないときは、セルと行の見出しを押せなくする（数と棒は残す）
+    const linked = isShown(props, "decisions");
     const rowOf = (entry: Derived["progress"][number]): HTMLElement =>
       h({
         tag: "tr",
@@ -304,15 +319,17 @@ namespace MindmapPreview {
             tag: "th",
             attrs: { scope: "row" },
             children: [
-              h({
-                tag: "button",
-                attrs: {
-                  class: "cat-link",
-                  type: "button",
-                  onclick: () => on.navigate(tableRoute("decisions", { category: [entry.category] })),
-                },
-                children: [entry.category],
-              }),
+              linked
+                ? h({
+                  tag: "button",
+                  attrs: {
+                    class: "cat-link",
+                    type: "button",
+                    onclick: () => on.navigate(tableRoute("decisions", { category: [entry.category] })),
+                  },
+                  children: [entry.category],
+                })
+                : h({ tag: "span", attrs: { class: "cat-link" }, children: [entry.category] }),
             ],
           }),
           ...entry.cells.map((cell) =>
@@ -322,18 +339,20 @@ namespace MindmapPreview {
                 tag: "td",
                 children: [
                   h({
-                    tag: "button",
+                    tag: linked ? "button" : "span",
                     attrs: {
                       class: "cell",
-                      type: "button",
+                      type: linked ? "button" : null,
                       "aria-label": `${entry.category} の ${cell.phase}: ${cell.settled}/${cell.total} 件決定済み`,
-                      onclick: () =>
-                        on.navigate(
-                          tableRoute("decisions", {
-                            category: [entry.category],
-                            phase: [cell.phase],
-                          }),
-                        ),
+                      onclick: linked
+                        ? () =>
+                          on.navigate(
+                            tableRoute("decisions", {
+                              category: [entry.category],
+                              phase: [cell.phase],
+                            }),
+                          )
+                        : null,
                     },
                     children: [
                       bar(cell.settled, cell.total),
@@ -455,6 +474,7 @@ namespace MindmapPreview {
               link: () => on.navigate(tableRoute("decisions", { status: ["要見直し"] })),
               open: on.open,
               marks: props.marks,
+              linked: isShown(props, "decisions"),
             }),
             smallTile({
               tileId: "tile-hold",
@@ -466,6 +486,7 @@ namespace MindmapPreview {
               link: () => on.navigate(tableRoute("decisions", { status: ["保留"] })),
               open: on.open,
               marks: props.marks,
+              linked: isShown(props, "decisions"),
             }),
             smallTile({
               tileId: "tile-running",
@@ -477,6 +498,7 @@ namespace MindmapPreview {
               link: () => on.navigate(tableRoute("tasks", { status: ["進行中"] })),
               open: on.open,
               marks: props.marks,
+              linked: isShown(props, "tasks"),
             }),
             progressTile(props),
           ],

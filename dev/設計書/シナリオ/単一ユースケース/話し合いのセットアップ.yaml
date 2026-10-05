@@ -7,7 +7,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 空のワークスペースのフォルダ
-        description: まだ `mindmap.yaml` を持たないフォルダ
+        description: まだ `config.yaml` も `mindmap.yaml` も持たないフォルダ
         notes: 引数に渡す
       - name: 選んだプレイブック
         description: 利用者がプレイブックをシステム開発だけと答え、進め方ガイドの既定のゴール（インターフェースまで）を選ぶ
@@ -20,17 +20,17 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: mindmap.yaml の有無を見る
+        CC->>WS: config.yaml か mindmap.yaml の有無を見る
         CC->>CC: 選んだ進め方ガイドから題名・プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールのたたき台を作る
         CC-->>U: たたき台を示して確認を取る
         U->>CC: 確定する
         CC->>SV: init（決めた設定）
-        SV->>WS: mindmap.yaml と空の YAML を作る
+        SV->>WS: config.yaml と空の YAML を作る
         CC-->>U: /mindstella:session で話し合いを続けるよう案内する
       ```
     expected:
-      - '`mindmap.yaml` のプレイブックが `[システム開発]`、最上位の軸の呼び名が機能、フェーズが 目的 → 要件 → 構成 → インターフェース → コンテンツ、ゴールがインターフェースまでになっている'
-      - '`mindmap.yaml` が、確定した話し合いの概要を持つ'
+      - '`config.yaml` のプレイブックが `[システム開発]`、最上位の軸の呼び名が機能、フェーズが 目的 → 要件 → 構成 → インターフェース → コンテンツ、ゴールがインターフェースまでになっている'
+      - '`config.yaml` が、確定した話し合いの概要を持つ'
       - 検討事項・タスク・調査・資料・用語集・メモ・会話ログの YAML が空で作られている
     notes:
       E2E: 既存の『ワークスペースの作成』の『正常シナリオ』が確かめる
@@ -51,7 +51,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: mindmap.yaml の有無を見る
+        CC->>WS: config.yaml か mindmap.yaml の有無を見る
         CC->>SV: 版を比べる
         SV-->>CC: ワークスペースの版とプラグインの版が同じ
         CC->>SV: status
@@ -80,7 +80,7 @@ scenarios:
         CC-->>U: ワークスペースのフォルダの指定を求める
       ```
     expected:
-      - '`init` が呼ばれず、どのフォルダにも `mindmap.yaml` が作られていない'
+      - '`init` が呼ばれず、どのフォルダにも `config.yaml` が作られていない'
     notes:
       E2E: 持たない。フォルダの指定を求めるのはモデルの応答で、ツールの呼び出しの再生では作られない
   - name: 異常シナリオ（MCP のツールが使えない）
@@ -90,7 +90,7 @@ scenarios:
       - name: 起動スクリプトを通さずに立ち上げた Claude Code
         description: mindstella の MCP のツールを持たない
       - name: 空のワークスペースのフォルダ
-        description: まだ `mindmap.yaml` を持たないフォルダ
+        description: まだ `config.yaml` も `mindmap.yaml` も持たないフォルダ
         notes: 引数に渡す
     flow: |-
       ```mermaid
@@ -113,7 +113,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 版を記録する前の形式のワークスペース
-        description: '版のファイルを持たず、資料 A-1 が `done: true` のワークスペース'
+        description: '版のファイルと `config.yaml` を持たず `mindmap.yaml` だけを持ち、資料 A-1 が `done: true` のワークスペース'
         notes: YAML を直接書いて作る
     flow: |-
       ```mermaid
@@ -124,7 +124,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: mindmap.yaml の有無を見る
+        CC->>WS: config.yaml か mindmap.yaml の有無を見る
         CC->>SV: 版を比べる
         SV->>WS: 版のファイルを読む（無い）
         SV-->>CC: ワークスペースの版が古い・当てる手順
@@ -153,7 +153,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: mindmap.yaml の有無を見る
+        CC->>WS: config.yaml か mindmap.yaml の有無を見る
         CC->>SV: 版を比べる
         SV->>WS: 版のファイルを読む
         SV-->>CC: ワークスペースの版が新しい
@@ -171,7 +171,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 空のワークスペースのフォルダ
-        description: まだ `mindmap.yaml` を持たないフォルダ
+        description: まだ `config.yaml` も `mindmap.yaml` も持たないフォルダ
         notes: 引数に渡す
       - name: 選んだプレイブック
         description: 利用者が壁打ちと調査を選び、ゴールの候補から「決めずに始める」を選ぶ
@@ -189,11 +189,11 @@ scenarios:
         CC-->>U: たたき台とゴールの候補（決めずに始めるを含む）を示して確認を取る
         U->>CC: ゴールを決めずに確定する
         CC->>SV: init（ゴールを持たない設定）
-        SV->>WS: mindmap.yaml と空の YAML を作る
+        SV->>WS: config.yaml と空の YAML を作る
         CC-->>U: /mindstella:session で話し合いを続けるよう案内する
       ```
     expected:
-      - '`mindmap.yaml` の `playbooks` が `壁打ち`・`調査` の 2 件で、`goal` のキーを持たない'
+      - '`config.yaml` の `playbooks` が `壁打ち`・`調査` の 2 件で、`goal` のキーを持たない'
       - 検討事項・タスク・調査・資料・用語集・メモ・会話ログの YAML が空で作られている
     notes:
       E2E: 既存の『ワークスペースの作成』の『正常シナリオ（ゴールを決めずに作る）』が確かめる
@@ -206,7 +206,7 @@ stakeholders:
 trigger: 利用者が `/mindstella:setup` を呼ぶ（引数にワークスペースのフォルダを渡すか、何も渡さない）
 preconditions:
   - プラグイン mindstella がインストールされている
-success_guarantee: 新しいワークスペースは、選んだ進め方ガイドに沿った題名・プレイブック・最上位の軸の呼び名・フェーズ・カテゴリーと、決めたときはゴールを持つ `mindmap.yaml` を持つ。既存のワークスペースは、どのファイルも書き換えずに状況と続きの推奨が示される。どちらも最後に `/mindstella:session` で話し合いを続けるよう案内する。版がプラグインより古いワークスペースは `/mindstella:upgrade` を、新しいワークスペースはプラグインの更新を案内する。
+success_guarantee: 新しいワークスペースは、選んだ進め方ガイドに沿った題名・プレイブック・最上位の軸の呼び名・フェーズ・カテゴリーと、決めたときはゴールを持つ `config.yaml` を持つ。既存のワークスペースは、どのファイルも書き換えずに状況と続きの推奨が示される。どちらも最後に `/mindstella:session` で話し合いを続けるよう案内する。版がプラグインより古いワークスペースは `/mindstella:upgrade` を、新しいワークスペースはプラグインの更新を案内する。
 minimal_guarantee: mindstella の MCP のツールが使えないとき（起動スクリプトで立ち上げていない）、ワークスペースのフォルダが決まらないとき、ワークスペースの版がプラグインと違うときは、ワークスペースに何も書かずに止まる。
 frequency: 話し合いを始めるとき・再開するときに 1 回
 priority: 高

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -20,7 +20,7 @@ from errors import (
     WorkspaceNewerError,
     WorkspaceNotFoundError,
 )
-from kinds import SETTINGS_FILE
+from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE
 from migration_ops import StepError, apply_step, list_needed_values
 from store import (
     SCHEMA_DIR,
@@ -141,7 +141,7 @@ def plan_migration(
     migrations_dir: Path = MIGRATIONS_DIR,
 ) -> MigrationReport:
     """版を比べ、`from` より後で `to` 以下の版の手順と値が要るキーを返す。何も書かない。"""
-    _require_workspace(root)
+    require_migratable(root)
     workspace_version = read_workspace_version(root)
     plugin_version = read_plugin_version()
     relation = compare_versions(workspace_version, plugin_version)
@@ -158,7 +158,7 @@ def plan_migration(
         plugin_version=plugin_version,
         relation=relation,
         steps=steps,
-        needs_values=_collect_needed_values(root, steps),
+        needs_values=_collect_needed_values(root, steps, applied=False),
     )
 
 
@@ -194,14 +194,14 @@ def apply_migration(
         plugin_version=plan.plugin_version,
         relation=plan.relation,
         steps=plan.steps,
-        needs_values=_collect_needed_values(root, plan.steps),
+        needs_values=_collect_needed_values(root, plan.steps, applied=True),
         backup=backup,
     )
 
 
 def set_values(root: Path, assignments: list[tuple[str, str, str]]) -> None:
     """値が要るキーに値を入れる。版のファイルは書かない。"""
-    _require_workspace(root)
+    require_migratable(root)
     # ファイルごとに、入れる値を渡した順にまとめる
     by_file: dict[str, list[tuple[str, str]]] = {}
     for file_name, key_path, value in assignments:
@@ -245,12 +245,23 @@ def _validate_steps(data: Any) -> list[str]:
     return lines
 
 
-def _collect_needed_values(root: Path, steps: list[MigrationStep]) -> list[NeededValue]:
-    """各手順の値が要るキーを集める。同じファイル・キーは 1 つにする。"""
+def _collect_needed_values(
+    root: Path, steps: list[MigrationStep], *, applied: bool
+) -> list[NeededValue]:
+    """各手順の値が要るキーを集める。同じファイル・キーは 1 つにし、ファイル名は全ての手順を当てた後の名前にする。"""
     needed: dict[tuple[str, str], NeededValue] = {}
-    for step in steps:
-        for value in list_needed_values(root, step):
-            needed.setdefault((value.file, value.key), value)
+    for position, step in enumerate(steps):
+        later_steps = steps[position + 1 :]
+        # 手順を当てた後は、後の手順で改めた先のファイルを読む。当てる前は、今のファイルを読む
+        target = (
+            replace(step, args={**step.args, "file": renamed_file(step.args["file"], later_steps)})
+            if applied and "file" in step.args
+            else step
+        )
+        for value in list_needed_values(root, target):
+            # 値が要るキーは、改めた先の名前で返す
+            file_name = renamed_file(value.file, later_steps)
+            needed.setdefault((file_name, value.key), replace(value, file=file_name))
     return list(needed.values())
 
 
@@ -267,10 +278,21 @@ def _step_failed(
     return StepFailedError(f"{step.version} の手順 {step.index}（{step.op}）: {error}", lines)
 
 
-def _require_workspace(root: Path) -> None:
-    """`mindmap.yaml` が無ければ送る。"""
-    if not (root / SETTINGS_FILE).exists():
-        raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+def require_migratable(root: Path) -> None:
+    """`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）のどちらかがあるかを確かめ、どちらも無ければ送る。"""
+    if (root / SETTINGS_FILE).is_file() or (root / LEGACY_SETTINGS_FILE).is_file():
+        return
+    raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
+
+
+def renamed_file(file: str, later_steps: list[MigrationStep]) -> str:
+    """ファイル名を、その後に並ぶ `rename_file` を順に辿った先の名前にする。"""
+    current = file
+    for step in later_steps:
+        # 今の名前を動かす手順: 動かした先の名前にする
+        if step.op == "rename_file" and step.args["from"] == current:
+            current = step.args["to"]
+    return current
 
 
 def _inside(root: Path, file_name: str) -> Path:

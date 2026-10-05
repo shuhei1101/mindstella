@@ -18,13 +18,13 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: 書き換える設定のキーを渡す
-        SV->>WS: mindmap.yaml を読む
+        SV->>WS: config.yaml を読む
         SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
-        SV->>WS: mindmap.yaml を書く
+        SV->>WS: config.yaml を書く
         SV-->>CC: 書き換えた後の設定
       ```
     expected:
-      - '`mindmap.yaml` の `summary`・話し合いの概要・`target_label`・`goal.summary` が渡した値である'
+      - '`config.yaml` の `summary`・話し合いの概要・`target_label`・`goal.summary` が渡した値である'
       - '`goal.deliverables` が `要件定義書` と `構成図` の 2 件である'
       - '`playbooks`・`phases`・`targets`・`categories` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う
@@ -46,13 +46,13 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: プレイブック・フェーズ・古いフェーズから新しいフェーズへの対応を渡す
-        SV->>WS: mindmap.yaml と全ての種類の YAML を読む
+        SV->>WS: config.yaml と全ての種類の YAML を読む
         SV->>SV: 設定を置き換え、項目の phase を対応で付け替え、スキーマと突き合わせる
-        SV->>WS: mindmap.yaml と付け替えた種類の YAML を書く
+        SV->>WS: config.yaml と付け替えた種類の YAML を書く
         SV-->>CC: 書き換えた後の設定と、付け替えた項目
       ```
     expected:
-      - '`mindmap.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`phases` が渡した並びである'
+      - '`config.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`phases` が渡した並びである'
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散` である
       - '`goal.phase` が `要件` である'
       - 点検が問題を 0 件で返す
@@ -72,11 +72,11 @@ scenarios:
 
         CC->>SV: ゴールを空にして渡す
         SV->>SV: ゴールのキーを消し、スキーマと突き合わせる
-        SV->>WS: mindmap.yaml を書く
+        SV->>WS: config.yaml を書く
         SV-->>CC: 書き換えた後の設定
       ```
     expected:
-      - '`mindmap.yaml` が `goal` のキーを持たない'
+      - '`config.yaml` が `goal` のキーを持たない'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_goal_removed
   - name: 異常シナリオ（対応の無いフェーズが残る）
@@ -130,6 +130,32 @@ scenarios:
       - エラーの本文に、合わないキー `playbooks` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_schema_mismatch
+  - name: 正常シナリオ（表示の既定を書き換える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+      - name: 書き換える設定
+        description: ネットワークの見た目の既定を `starlight` にし、表示する種類の既定から会話ログを外す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 見た目の既定と表示する種類の既定を渡す
+        SV->>WS: config.yaml を読む
+        SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
+        SV->>WS: config.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`config.yaml` の見た目の既定が `starlight` で、表示する種類の既定が会話ログを除いた種類である'
+      - '`summary`・`playbooks`・`phases`・`goal`・`history_limit` が呼ぶ前と同じである'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_display_defaults_changed
   - name: 正常シナリオ（対象とカテゴリーを付け替える）
     setup:
       - name: Mock
@@ -147,13 +173,13 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: 対象・カテゴリーと、古い名前から新しい名前への対応を渡す
-        SV->>WS: mindmap.yaml と全ての種類の YAML を読む
+        SV->>WS: config.yaml と全ての種類の YAML を読む
         SV->>SV: 設定を置き換え、項目の target・category を対応で付け替え（変更履歴は積まない）、スキーマと突き合わせる
-        SV->>WS: mindmap.yaml と付け替えた種類の YAML を書く
+        SV->>WS: config.yaml と付け替えた種類の YAML を書く
         SV-->>CC: 書き換えた後の設定と、付け替えた項目
       ```
     expected:
-      - '`mindmap.yaml` の `targets`・`categories` が渡した値である'
+      - '`config.yaml` の `targets`・`categories` が渡した値である'
       - D-1 の `target` が `アプリ`、`category` が `画面` である
       - D-2 の `target` が `管理画面`、`category` が `運用` である
       - D-1・D-2 が変更履歴を持たず、`pending` が空を返す（フェーズの付け替えと同じく、付け替えは変更履歴にも書き換えのまとまりにも入れない）
@@ -175,13 +201,13 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: 関連する場所と保持する回数を渡す
-        SV->>WS: mindmap.yaml を読む
+        SV->>WS: config.yaml を読む
         SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
-        SV->>WS: mindmap.yaml を書く
+        SV->>WS: config.yaml を書く
         SV-->>CC: 書き換えた後の設定
       ```
     expected:
-      - '`mindmap.yaml` の `links` が渡した 1 件で、`history_limit` が 3 である'
+      - '`config.yaml` の `links` が渡した 1 件で、`history_limit` が 3 である'
       - 題名・プレイブック・フェーズ・対象・カテゴリー・ゴールが呼ぶ前と同じである
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_links_and_history_limit
@@ -211,7 +237,7 @@ scenarios:
       - エラーの本文に、D-2 とカテゴリー `設定` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_unmapped_category
-lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換え、フェーズ・対象・カテゴリーが変わるときは古い名前から新しい名前への対応で項目のフェーズ・対象・カテゴリーも付け替える単一ユースケース。
+lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数・表示の既定）を書き換え、フェーズ・対象・カテゴリーが変わるときは古い名前から新しい名前への対応で項目のフェーズ・対象・カテゴリーも付け替える単一ユースケース。
 issue: 44
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:

@@ -42,7 +42,7 @@ request:
     required: false
     default: なし（ワークスペースのフォルダの指定を求める）
     location: argument
-    description: ワークスペースのフォルダのパス。`mindmap.yaml` があれば既存、無ければ新しいワークスペースとして扱う
+    description: ワークスペースのフォルダのパス。`config.yaml` か `mindmap.yaml` があれば既存（`mindmap.yaml` だけなら版が古いワークスペースとして移し替えを案内する）、どちらも無ければ新しいワークスペースとして扱う
     example: ~/discussions/家計簿アプリ
 exceptions:
   - name: なし（正常終了）

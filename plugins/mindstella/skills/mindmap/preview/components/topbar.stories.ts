@@ -27,6 +27,7 @@ const meta = {
     onNavigate: fn(),
     onSearch: fn(),
     onTheme: fn(),
+    onSettings: fn(),
   },
 } satisfies Meta<MindmapPreview.TopbarProps>;
 
@@ -135,6 +136,28 @@ export const CommentsNarrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
+export const SettingsOpen: Story = { args: { comments: true, commentCount: 3, settingsOpen: true } };
+
+/** 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す */
+export const KindsHidden: Story = {
+  args: {
+    comments: true,
+    commentCount: 3,
+    tabs: [
+      { key: "overview", label: "概要", icon: "home" },
+      { key: "decisions", label: "検討事項", icon: "decision", count: 12 },
+      { key: "research", label: "調査", icon: "research", count: 3 },
+      { key: "terms", label: "用語集", icon: "term", count: 9 },
+      { key: "notes", label: "メモ", icon: "note", count: 4 },
+      { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+    ],
+  },
+};
+
+/** 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない */
+export const Export: Story = { args: { comments: false } };
 
 /** 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない */
 export const Filter: Story = { args: { filter: true, onFilter: fn(), comments: true, commentCount: 3 } };

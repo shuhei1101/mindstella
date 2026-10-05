@@ -29,12 +29,12 @@ flows:
       - '`referenced_by` が D-2（`depends_on`）・D-2（`related`）・T-1（`for`）の 3 行'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    summary: config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -43,7 +43,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: show workspace id D-1
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -81,7 +81,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -109,7 +109,7 @@ exceptions:
     condition: 表示できた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー
   - name: ItemNotFoundError
     condition: 渡した ID の項目が無い

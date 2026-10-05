@@ -37,6 +37,10 @@ if TYPE_CHECKING:
 
     from conftest import Replay
 
+# 前の版（v0.6.0 より前）の設定ファイルの名前と、今の設定ファイルの名前
+LEGACY_SETTINGS_FILE = "mindmap.yaml"
+SETTINGS_FILE = "config.yaml"
+
 # 話し合いの対象・カテゴリー
 TARGET = "家計簿アプリ"
 CATEGORY = "機能"
@@ -94,12 +98,12 @@ def _plugin_version() -> str:
 
 def _to_field_settings(root: Path) -> None:
     """前の版の形式にするため、mindmap.yaml の playbooks を、同じ位置の field（分野の名前）に置き換える。"""
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    settings = yaml.safe_load((root / LEGACY_SETTINGS_FILE).read_text(encoding="utf-8"))
     legacy = {
         ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
         for key, value in settings.items()
     }
-    (root / "mindmap.yaml").write_text(
+    (root / LEGACY_SETTINGS_FILE).write_text(
         yaml.safe_dump(legacy, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
 
@@ -260,8 +264,8 @@ def test_normal_when_new_discussion(
     checked = call_tool("check", **ws)
 
     # 検証
-    # mindmap.yaml に、プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
-    settings = read_yaml(root, "mindmap.yaml")
+    # config.yaml に、プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
+    settings = read_yaml(root, "config.yaml")
     assert settings["playbooks"] == ["システム開発"]
     assert settings["target_label"] == "システム"
     assert settings["phases"] == SETTINGS["phases"]
@@ -380,7 +384,12 @@ def test_normal_when_resume_older_version(
 ) -> None:
     """古い版のワークスペースを移し替えてから、状況を読み、続きの番号で項目を足す（正常系）。"""
     # 準備
-    root = make_legacy_workspace(make_item("D-1"), legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        make_item("D-1"),
+        legacy_docs={"A-1": True},
+        without_summary=True,
+        settings_file=LEGACY_SETTINGS_FILE,
+    )
     _to_field_settings(root)
     before = snapshot_tree(root)
     ws = {"workspace": str(root)}
@@ -394,7 +403,7 @@ def test_normal_when_resume_older_version(
     call_tool(
         "migrate",
         **ws,
-        values=[{"file": "mindmap.yaml", "key": "summary", "value": SUMMARY_ANSWER}],
+        values=[{"file": SETTINGS_FILE, "key": "summary", "value": SUMMARY_ANSWER}],
     )
     recorded = call_tool("migrate", **ws, record=True)
     # セットアップ（2 回目）: 版の案内を出さず、状況を読む
@@ -418,16 +427,18 @@ def test_normal_when_resume_older_version(
     )
     first_line = (root / "mindstella-version.ini").read_text(encoding="utf-8").splitlines()[0]
     assert first_line == plugin_version.splitlines()[0]
-    # 資料 A-1 が status: 完成で done を持たず、mindmap.yaml の summary が答えた題名である
+    # 資料 A-1 が status: 完成で done を持たず、config.yaml の summary が答えた題名である
     doc = read_yaml(root, "docs.yaml")["items"][0]
     assert doc["status"] == "完成"
     assert "done" not in doc
-    settings = read_yaml(root, "mindmap.yaml")
+    settings = read_yaml(root, SETTINGS_FILE)
     assert settings["summary"] == SUMMARY_ANSWER
-    # mindmap.yaml が field を持たず、playbooks に元の分野のシステム開発の 1 件を持ち、target_label が移し替えの前と同じである
+    # config.yaml が field を持たず、playbooks に元の分野のシステム開発の 1 件を持ち、target_label が移し替えの前と同じである
     assert "field" not in settings
     assert settings["playbooks"] == ["システム開発"]
     assert settings["target_label"] == "システム"
+    # ワークスペースに mindmap.yaml が残っていない
+    assert not (root / LEGACY_SETTINGS_FILE).exists()
     # 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
     assert second_plan["relation"] == "same"
     assert status["next"][0]["id"] == "D-1"
@@ -544,8 +555,8 @@ def test_normal_when_scope_widened(
     # 最初の goal の出力が、ゴールが無いことを示す
     assert first_goal["has_goal"] is False
     assert first_goal["reached"] is None
-    # mindmap.yaml の playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・goal が書き換えた値である
-    settings = read_yaml(root, "mindmap.yaml")
+    # config.yaml の playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・goal が書き換えた値である
+    settings = read_yaml(root, "config.yaml")
     assert settings["playbooks"] == ["壁打ち", "システム開発"]
     assert settings["summary"] == "家計簿アプリの要件を決める"
     assert settings["target_label"] == "機能"

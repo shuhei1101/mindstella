@@ -671,13 +671,13 @@ functions:
       - name: test_run_migrate_when_values
         case: 正常
         summary: values の値を入れて並べ直す
-        condition: '手順を当てた後の `summary` を持たないワークスペース、`values=[{file: mindmap.yaml, key: summary, value: 題名}]`'
+        condition: '手順を当てた後の `summary` を持たないワークスペース、`values=[{file: config.yaml, key: summary, value: 題名}]`'
         mock: '`read_plugin_version`（`v0.3.0`）'
-        expected: '`steps` と `needs_values` が空で、`mindmap.yaml` の `summary` が `題名`'
+        expected: '`steps` と `needs_values` が空で、`config.yaml` の `summary` が `題名`'
       - name: test_run_migrate_when_argument_invalid
         case: 異常
         summary: 一緒に使わない引数・版の形の誤り・形の違う values
-        condition: '`parametrize`: `plan=True, record=True` / `to_version="0.3"` / `from_version="v0.3.0", to_version="v0.2.0"` / `values=[{file: mindmap.yaml}]`'
+        condition: '`parametrize`: `plan=True, record=True` / `to_version="0.3"` / `from_version="v0.3.0", to_version="v0.2.0"` / `values=[{file: config.yaml}]`'
         mock: なし
         expected: '`ArgumentError`（メッセージに `plan` / `to_version` / `to_version` / `values`）。ワークスペースを書き換えていない'
         exception: 引数の誤り
@@ -752,7 +752,7 @@ functions:
       - name: test_run_export_when_out_invalid
         case: 異常
         summary: .html で終わらない out はワークスペースを読む前に弾く
-        condition: '`mindmap.yaml` の無いフォルダで `out` が `{フォルダ}/配る.txt`'
+        condition: '`config.yaml` の無いフォルダで `out` が `{フォルダ}/配る.txt`'
         mock: なし
         expected: '`ArgumentError`（`WorkspaceNotFoundError` ではない。メッセージに `out`）'
         exception: .html で終わらない
@@ -824,7 +824,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -870,11 +870,17 @@ functions:
         default: 'False'
         passing: keyword
         description: 鍵を取るとき、まだ無いワークスペースのフォルダを作るか（`init` だけ真。`workspace_lock` の `create`）
+      - name: lock_require
+        type: Callable[[Path], None]
+        required: false
+        default: require_workspace
+        passing: keyword
+        description: 鍵を取る前にワークスペースを確かめる関数（`workspace_lock` の `require`。`plan` でない `migrate` だけ `require_migratable`）
     returns:
       type: CallToolResult
       description: 成功は `ok_result`、エラーは `error_result` の結果
     process: |-
-      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
+      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`、`require=lock_require`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
       2. 結果を分ける
          - 辞書が返った場合、それを結果にする（`ok_result`）
          - `MindmapError` を捕まえた場合、ツールのエラーにする（`error_result`）
@@ -902,9 +908,15 @@ functions:
       - name: test_call_tool_when_lock_root
         case: 正常
         summary: 書き換えるツールは鍵を取って呼ぶ
-        condition: '`mindmap.yaml` を置いた `tmp_path` を `lock_root` に渡す。`handler` は呼ばれたときに `write_lock.locked()` を控える'
+        condition: '`config.yaml` を置いた `tmp_path` を `lock_root` に渡す。`handler` は呼ばれたときに `write_lock.locked()` を控える'
         mock: なし
         expected: 控えた値が真で、呼んだ後は鍵が外れている。`tmp_path / ".mindstella.lock"` がある
+      - name: test_call_tool_when_lock_require
+        case: 正常
+        summary: 渡した確かめの関数で、前の版の設定ファイルだけのフォルダにも鍵を取る
+        condition: '`mindmap.yaml` だけを置いた `tmp_path` を `lock_root` に、`require_migratable` を `lock_require` に渡す。`handler` は `{}` を返す'
+        mock: なし
+        expected: '`is_error` が偽で、`tmp_path / ".mindstella.lock"` がある'
   - name: ok_result
     title: 成功の結果
     kind: 関数
@@ -997,7 +1009,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: プレビューを開く
     scope: public
-    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す
+    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、画面の URL を返す。初めて立てるときは `config.yaml` を検査する
     args:
       - name: root
         type: Path
@@ -1013,25 +1025,27 @@ functions:
       type: dict[str, Any]
       description: '`{url, workspace, started}`'
     process: |-
-      1. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
-      2. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`）
+      1. ワークスペースを確かめる（`require_workspace`）
+      2. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`mindmap.yaml` が無い'
+        condition: '`config.yaml` が無い（`mindmap.yaml` だけなら移し替えの案内を持つ）'
+      - name: SchemaMismatchError
+        condition: まだ配っていないワークスペースの `config.yaml` がスキーマに合わない（`PreviewRegistry.start` から伝わる）
     unit_tests:
       - name: test_run_preview_url
         case: 正常
         summary: 台帳の結果を返す
-        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/", True)` を返す偽の台帳
+        condition: 作成済みのワークスペース。`previews` は `start` が `("http://127.0.0.1:1/mindstella.html", True)` を返す偽の台帳
         mock: '`previews`'
-        expected: '`{url: http://127.0.0.1:1/, workspace: {絶対パス}, started: true}`'
+        expected: '`{url: http://127.0.0.1:1/mindstella.html, workspace: {絶対パス}, started: true}`'
       - name: test_run_preview_url_when_not_workspace
         case: 異常
         summary: ワークスペースでなければ配信を立てない
-        condition: 空の `tmp_path`
+        condition: '`parametrize`: 空の `tmp_path` / `mindmap.yaml` だけを置いた `tmp_path`'
         mock: '`previews`'
-        expected: '`WorkspaceNotFoundError`。`start` が呼ばれない'
-        exception: mindmap.yaml が無い
+        expected: '`WorkspaceNotFoundError`（後者は `lines` に `/mindstella:upgrade`）。`start` が呼ばれない'
+        exception: config.yaml が無い
   - name: run_submissions
     title: submissions の処理
     kind: 関数
@@ -1086,7 +1100,7 @@ functions:
       type: dict[str, Any]
       description: '`{id, taken, already}`'
     process: |-
-      1. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
+      1. ワークスペースを確かめる（`require_workspace`）
       2. 取り込み済みにする（`take_submission`）
     unit_tests:
       - name: test_run_take_submission
@@ -1161,7 +1175,7 @@ functions:
       description: '`{id, at, summary, added, changed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed` が空）'
     process: |-
       1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送る
-      2. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る。まとまりを読む（`load_changes`）
+      2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
       3. まとめる（`commit_pending`）
          - まとまりが `None` の場合、何も書かずに空の結果を返す
       4. 新しい記録を `changes.yaml` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを消して `WriteFailedError`）
@@ -1170,7 +1184,7 @@ functions:
         condition: '`summary` が空白だけか 200 文字を超える'
         message: '引数の誤り: summary: {理由}'
       - name: WorkspaceNotFoundError
-        condition: '`mindmap.yaml` が無い'
+        condition: '`config.yaml` が無い'
         message: 'ワークスペースがありません: {パス}'
       - name: WriteFailedError
         condition: '`changes.yaml` を書けない'

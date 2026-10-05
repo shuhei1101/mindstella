@@ -72,7 +72,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: ワークスペースを点検する
-        SV->>WS: mindmap.yaml と全ての YAML を読む
+        SV->>WS: config.yaml と全ての YAML を読む
         SV-->>CC: 設定に無いフェーズの一覧
       ```
     expected:

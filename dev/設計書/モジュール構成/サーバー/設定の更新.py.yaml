@@ -32,13 +32,13 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: '`update_settings` の `settings` に渡せるキー'
-    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit")
+    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit", "display")
   - name: REMOVABLE_KEYS
     title: null で消せる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: 値が `null` のときに消してよい任意のキー
-    value: ("description", "goal", "links", "history_limit")
+    value: ("description", "goal", "links", "history_limit", "display")
 functions:
   - name: validate_settings_input
     title: 設定の更新の引数の確かめ
@@ -82,7 +82,7 @@ functions:
       type: None
       description: 問題が無ければ何も返さない
     process: |-
-      1. `settings` が空か、`EDITABLE_KEYS` に無いキーを持つか、`REMOVABLE_KEYS` に無いキーの値が `None` なら `SchemaMismatchError`（行は `mindmap.yaml: {キー}: {理由}`）
+      1. `settings` が空か、`EDITABLE_KEYS` に無いキーを持つか、`REMOVABLE_KEYS` に無いキーの値が `None` なら `SchemaMismatchError`（行は `config.yaml: {キー}: {理由}`）
       2. `phase_map` がある場合
          - `settings` が `phases` を持たなければ `ArgumentError`（`phase_map`）
          - キーが `current_phases` に無いか、新しい `phases` にもあるなら `ArgumentError`（理由にそのキー）
@@ -138,7 +138,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: 今の `mindmap.yaml` の中身
+        description: 今の `config.yaml` の中身
       - name: settings
         type: dict[str, Any]
         required: true
@@ -230,7 +230,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: 書き換えた後の `mindmap.yaml` の中身
+        description: 書き換えた後の `config.yaml` の中身
       - name: changes
         type: list[Change]
         required: true
@@ -238,14 +238,14 @@ functions:
         description: 一緒に書く種類ごとの変更（本文は持たない。空なら設定だけ）
     returns:
       type: list[str]
-      description: 書き換えた YAML（ワークスペースからの相対パス。`mindmap.yaml` が先、続けて `changes` の並び）
+      description: 書き換えた YAML（ワークスペースからの相対パス。`config.yaml` が先、続けて `changes` の並び）
     process: |-
       1. `changes` の種類のファイルが、書き戻しても中身を失わない形かを確かめる（読み書きと検証の `save_change` の 1. と同じ）
       2. `raw` の設定と `changes` の種類のファイルを差し替えたワークスペースを作り、検証する（`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
       3. 書く全てのファイルの一時ファイルを書き（`dump_yaml`、`write_temp`）、置き換える前の中身を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. `changes` の種類 → `mindmap.yaml` の順に `os.replace` で置き換える
+      4. `changes` の種類 → `config.yaml` の順に `os.replace` で置き換える
          - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
@@ -260,19 +260,19 @@ functions:
         summary: 設定と付け替えた種類を書き、一時ファイルを残さない
         condition: '`phases` を変えた設定と、D-1 の `phase` を変えた検討事項の変更'
         mock: なし
-        expected: 戻り値が `[mindmap.yaml, decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
+        expected: 戻り値が `[config.yaml, decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
       - name: test_save_settings_when_schema_mismatch
         case: 異常
         summary: スキーマに合わない設定は書かない
         condition: '`playbooks: []` の設定'
         mock: なし
-        expected: '`SchemaMismatchError`（`lines` に `mindmap.yaml: playbooks` で始まる行）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+        expected: '`SchemaMismatchError`（`lines` に `config.yaml: playbooks` で始まる行）。ワークスペースの全てのファイルが呼ぶ前と同じ'
       - name: test_save_settings_when_replace_fails
         case: 異常
         summary: 途中の置き換えに失敗したら、置き換えたファイルを戻す
-        condition: 設定と検討事項の変更。`os.replace` を、置き換え先が `mindmap.yaml` のときだけ `OSError` を送る関数に差し替える
+        condition: 設定と検討事項の変更。`os.replace` を、置き換え先が `config.yaml` のときだけ `OSError` を送る関数に差し替える
         mock: '`os.replace`（`settings_update` モジュールの参照を monkeypatch）'
-        expected: '`WriteFailedError`（メッセージに `mindmap.yaml`）。`decisions.yaml` と `mindmap.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        expected: '`WriteFailedError`（メッセージに `config.yaml`）。`decisions.yaml` と `config.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
   - name: update_settings
     title: 設定の更新
     kind: 関数
@@ -326,7 +326,7 @@ functions:
       6. 4.・5. で付け替えた項目がある種類を `Change` にして、まとめて書く（`save_settings`）
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`mindmap.yaml` が無い（`load_workspace` から伝わる）'
+        condition: '`config.yaml` が無い（`load_workspace` から伝わる）'
       - name: SchemaMismatchError
         condition: '`validate_settings_input`・`save_settings` から伝わる'
       - name: ArgumentError
@@ -343,13 +343,19 @@ functions:
         summary: フェーズを付け替えて設定と種類の YAML を書き、結果を出力の形にする
         condition: 'フェーズ 問い・発散、D-1（問い）、`goal.phase` 問い。`settings` `{"phases": ["目的", "発散"]}`、`phase_map` `{"問い": "目的"}`。`now` は固定の日時'
         mock: '`now`'
-        expected: '`changed` が `[phases, goal]`、`remapped` が `[{id: D-1, from: 問い, to: 目的}]`、`files` が `[mindmap.yaml, decisions.yaml]`。`mindmap.yaml` の `goal.phase` が目的'
+        expected: '`changed` が `[phases, goal]`、`remapped` が `[{id: D-1, from: 問い, to: 目的}]`、`files` が `[config.yaml, decisions.yaml]`。`config.yaml` の `goal.phase` が目的'
       - name: test_update_settings_when_goal_phase_unknown
         case: 異常
         summary: phases を渡さず、phases に無い goal.phase のゴールだけを渡すと何も書かない
         condition: 'フェーズ 問い・発散。`settings` `{"goal": {"phase": "結論", "summary": "まとめる", "deliverables": []}}`、`phase_map` は `None`'
         mock: なし
         expected: '`UnmappedPhaseError`（`lines` に `goal: 結論`）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+      - name: test_update_settings_when_display
+        case: 正常
+        summary: 表示の既定を丸ごと置き換え、ほかのキーと項目を変えない
+        condition: '`display` を持たない設定のワークスペースに `{"display": {"network_look": "starlight", "visible_kinds": [会話ログを除く 6 種類]}}`。続けて `{"display": {"network_look": "glow"}}` を渡す'
+        mock: なし
+        expected: '1 回目の `changed` が `[display]`、`files` が `[config.yaml]`、`config.yaml` の `display` が渡した値で `summary`・`phases`・`history_limit` が呼ぶ前と同じ。2 回目の後は `display` が `{network_look: glow}` だけ（`visible_kinds` を持たない）'
   - name: remap_names
     title: 対象とカテゴリーの付け替え
     kind: 関数
@@ -408,5 +414,67 @@ functions:
         condition: D-1（画面）・D-2（設定）、新しい `categories` 画面だけ、`category_map` 空
         mock: なし
         expected: '`UnmappedTargetError`（`lines` に `D-2: category: 設定`）'
+  - name: update_display
+    title: 表示の既定の書き換え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: ワークスペースの既定を変える
+    scope: public
+    summary: 要求の本文の `network_look`・`visible_kinds` で `config.yaml` の `display` だけを丸ごと置き換える（`PUT /api/config/display` の受け付け。配信の `write_response` が書き換えの鍵を取った中で呼ぶ）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 配っているワークスペース
+      - name: body
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文（JSON のオブジェクト）
+    returns:
+      type: dict[str, Any]
+      description: '`{display}`（書いた後の `config.yaml` の `display`）'
+    process: |-
+      1. 本文を確かめる
+         - `network_look`・`visible_kinds` のどちらかが無い場合、`SettingsInvalidError`（`{キー}: 渡してください`）
+         - 2 つのキーだけにした値を、設定のスキーマの `display` の部分（`properties.display`。共通のスキーマを登録した検証器で）と突き合わせ、合わない場合は問題ごとの `{キーのパス}: {理由}`（列挙の誤りは選べる値を含む）をメッセージにした `SettingsInvalidError` を送る（選べる見た目と種類の名前はスキーマだけが持つ）
+      2. `config.yaml` を検査する（`check_settings`）
+         - 問題がある場合、`SchemaMismatchError` を送る（崩れた設定の上に書き足さない。配信は 422）
+      3. 読んだ設定の `display` を `{network_look, visible_kinds}` に置き換える（キーの並びは保ち、`display` が無ければ末尾に足す）
+      4. 置き換えた設定を書く（設定の書き込み。`save_settings` を `changes` なしで呼ぶ。ワークスペース全体を検証してから一時ファイルと `os.replace` で置き換える）
+         - 書けない場合、`WriteFailedError` がそのまま上がる（配信は 500）
+      5. `{display}` を返す（変更履歴にも書き換えのまとまりにも入れない。書き換えの知らせは `config.yaml` の更新日時で配信が見つける）
+    exceptions:
+      - name: SettingsInvalidError
+        condition: 本文の `network_look`・`visible_kinds` が無いか値が合わない
+        message: '{キー}: {理由}'
+      - name: SchemaMismatchError
+        condition: 今の `config.yaml` がスキーマに合わない、または置き換えた後のワークスペースに問題がある
+        message: スキーマに合いません（`lines` に問題ごとの行）
+      - name: WriteFailedError
+        condition: '`config.yaml` を書けない'
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_update_display
+        case: 正常
+        summary: display だけを置き換え、ほかのキーと並びを保つ
+        condition: '`display` を持たない設定のワークスペースに `{network_look: glow, visible_kinds: [用語集を除く 6 種類]}`'
+        mock: なし
+        expected: 戻り値の `display` が渡した値。`config.yaml` のキーが前と同じ並びで末尾に `display`、ほかの値が呼ぶ前と同じ。`changes.yaml` を書いていない
+      - name: test_update_display_when_body_invalid
+        case: 異常
+        summary: 合わない本文は書かない
+        condition: '`parametrize`: `network_look` が `rainbow` / `network_look` が無い / `visible_kinds` が `[decisions, decisions]` / `visible_kinds` が `[graph]` / `visible_kinds` が文字列'
+        mock: なし
+        expected: どれも `SettingsInvalidError`。メッセージは、`rainbow` では `network_look` と選べる値（`glow` を含む）、`network_look` が無いときは `network_look`、後の 3 つは `visible_kinds` を含む。`config.yaml` が呼ぶ前と同じ
+        exception: 本文の値が合わない
+      - name: test_update_display_when_settings_broken
+        case: 異常
+        summary: 崩れた config.yaml には書き足さない
+        condition: '`phases` を消した `config.yaml` のワークスペースに正しい本文'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `phases`）。`config.yaml` が呼ぶ前と同じ'
+        exception: 今の config.yaml が合わない
 test_files:
   - tests/unit/scripts/test_settings_update.py

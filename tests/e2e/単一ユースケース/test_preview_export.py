@@ -11,6 +11,14 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from display_settings_helpers import (
+    KINDS_WITHOUT_TERMS,
+    SAVE_DEFAULT_BUTTON,
+    SETTINGS_PANEL_OPEN,
+    graph_look,
+    open_settings,
+    tab_keys,
+)
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, click_item_ball
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
@@ -66,6 +74,9 @@ BUTTON_LABELS_SCRIPT = """() => [...document.querySelectorAll('button, [role="bu
 
 # 読めなかったライブラリの知らせ（role="alert"）を数える
 ALERT_SELECTOR = '[role="alert"]'
+
+# ワークスペースの既定の見た目
+DEFAULT_LOOK = "starlight"
 
 # 描画のライブラリを描いた後の図（SVG）が出るまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
@@ -128,7 +139,14 @@ def test_normal(
 ) -> None:
     """記録を人に渡すために書き出し、通信を止めたブラウザで開いて本文・図・マップ・つながりを読む（正常系）。"""
     # 準備
-    root = make_workspace(*_records(make_item, valid_settings), bodies={"A-1.md": DOC_BODY})
+    # ワークスペースの既定は、見た目が starlight で、表示する種類から用語集を外す
+    settings = {
+        **valid_settings,
+        "display": {"network_look": DEFAULT_LOOK, "visible_kinds": KINDS_WITHOUT_TERMS},
+    }
+    root = make_workspace(
+        *_records(make_item, valid_settings), settings=settings, bodies={"A-1.md": DOC_BODY}
+    )
     before = snapshot_tree(root)
     out = tmp_path / "配る.html"
     # 実行（書き出す）
@@ -183,6 +201,15 @@ def test_normal(
     page.wait_for_selector("#graph-canvas")
     click_item_ball(page, "D-1")
     assert page.inner_text("aside.panel .d-title") == "D-1の題"
+    button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
+    assert page.locator(ALERT_SELECTOR).count() == 0
+    # トップバーに用語集のタブが無く、つながりに渡る見た目が starlight である
+    assert "terms" not in tab_keys(page)
+    assert graph_look(page) == DEFAULT_LOOK
+    # トップバーの表示の設定でパネルが開き、「ワークスペースの既定にする」が無い
+    open_settings(page)
+    assert page.locator(SETTINGS_PANEL_OPEN).count() == 1
+    assert page.locator(SAVE_DEFAULT_BUTTON).count() == 0
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
     assert page.locator(ALERT_SELECTOR).count() == 0
     # 検証（ブラウザ）

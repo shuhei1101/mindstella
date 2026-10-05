@@ -268,13 +268,14 @@ namespace MindmapPreview {
     live?.select(id);
   }
 
-  /** つながりの画面を返す。`selected` は最初に選んでおく項目 */
+  /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
   export function graphScreen({
     index,
     on,
     filters,
     drawerOpen,
     selected = null,
+    look = BUILTIN_LOOK,
   }: {
     index: RecordIndex;
     on: {
@@ -289,6 +290,7 @@ namespace MindmapPreview {
     /** 絞り込みのドロワーを開いているか */
     drawerOpen: boolean;
     selected?: string | null;
+    look?: NetworkLook;
   }): HTMLElement {
     // ===== 絞り込み: 条件に合う項目の ID =====
     const conditions = graphConditions();
@@ -309,7 +311,7 @@ namespace MindmapPreview {
         : null;
     const root = h({
       tag: "div",
-      attrs: { class: "screen graph" },
+      attrs: { class: "screen graph", "data-look": look },
       children: [
         chips,
         h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),

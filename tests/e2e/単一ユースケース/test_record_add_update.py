@@ -115,8 +115,8 @@ def test_error_when_id_not_found(
 
 
 def _set_history_limit(root: Path, limit: int) -> None:
-    """`mindmap.yaml` に保持する回数を書く。"""
-    path = root / "mindmap.yaml"
+    """`config.yaml` に保持する回数を書く。"""
+    path = root / "config.yaml"
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
     settings["history_limit"] = limit
     path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")

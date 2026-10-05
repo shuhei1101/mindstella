@@ -49,12 +49,12 @@ flows:
       - '`submissions.yaml` の中身が呼ぶ前と同じ'
     test: test_normal_when_already_taken
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    summary: config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -63,7 +63,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: take_submission workspace id S-1
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -126,7 +126,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -148,7 +148,7 @@ exceptions:
     condition: 取り込み済みにした（既に取り込み済みのときも含む）
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: SubmissionNotFoundError
     condition: '`id` の送信が無い'

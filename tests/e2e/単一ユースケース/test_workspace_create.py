@@ -52,7 +52,7 @@ def test_normal(tmp_path: Path, call_tool: CallTool) -> None:
     checked = call_tool("check", workspace=str(root))
     # 検証
     assert created.is_error is False
-    assert yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8")) == SETTINGS
+    assert yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8")) == SETTINGS
     assert _read_kind_yamls(root) == {
         "decisions.yaml": {"items": []},
         "tasks.yaml": {"items": []},
@@ -111,7 +111,7 @@ def test_normal_when_without_goal(tmp_path: Path, call_tool: CallTool) -> None:
     checked = call_tool("check", workspace=str(root))
     # 検証
     assert created.is_error is False
-    created_settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    created_settings = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
     assert "goal" not in created_settings
     assert created_settings["playbooks"] == ["壁打ち", "調査"]
     # 全ての YAML がスキーマに合う（点検がスキーマ違反を出さない）

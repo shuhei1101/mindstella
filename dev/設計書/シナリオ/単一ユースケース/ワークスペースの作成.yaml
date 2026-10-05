@@ -22,7 +22,7 @@ scenarios:
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
-      - ワークスペースに `mindmap.yaml` があり、渡したプレイブック・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを持つ
+      - ワークスペースに `config.yaml` があり、渡したプレイブック・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを持つ
       - ワークスペースに `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` があり、どれも項目を持たない
       - ワークスペースに `docs/` と `release/` のフォルダがある
       - ワークスペースに `mindstella-version.ini` があり、1 行目がプラグインの版である
@@ -42,7 +42,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: 既存のワークスペースのフォルダを渡して作る
-        SV->>WS: mindmap.yaml があることを確かめる
+        SV->>WS: config.yaml があることを確かめる
         SV-->>CC: 既にワークスペースがあるエラー
       ```
     expected:
@@ -72,7 +72,7 @@ scenarios:
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
-      - '`mindmap.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
+      - '`config.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_without_goal
 lead: スキルが、1 つの話し合いのフォルダ（ワークスペース）を新しく作る単一ユースケース。
@@ -85,6 +85,6 @@ trigger: 利用者が新しい話し合いを始め、スキルがセットア�
 preconditions:
   - プラグイン mindstella がインストールされている
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: 指定したフォルダに、決めた設定を持つ `mindmap.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` があり、全ての YAML がスキーマに合う。
+success_guarantee: 指定したフォルダに、決めた設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` があり、全ての YAML がスキーマに合う。
 minimal_guarantee: 既にワークスペースがあるときは、フォルダの中身を書き換えない。
 test_file: tests/e2e/単一ユースケース/test_workspace_create.py

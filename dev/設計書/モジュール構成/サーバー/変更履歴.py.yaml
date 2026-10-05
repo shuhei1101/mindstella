@@ -115,7 +115,7 @@ constants:
     title: 保持する回数の既定
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
-    summary: '`mindmap.yaml` に `history_limit` が無いときの回数'
+    summary: '`config.yaml` に `history_limit` が無いときの回数'
     value: '5'
   - name: SET_ID_PREFIX
     title: まとまりの ID の頭
@@ -180,7 +180,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: '`mindmap.yaml` の中身'
+        description: '`config.yaml` の中身'
     returns:
       type: int
       description: 0 以上の回数（値の範囲はスキーマが確かめる）

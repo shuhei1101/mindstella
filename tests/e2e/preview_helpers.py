@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import json
 import urllib.request
+import urllib.error
 from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 __all__ = [
+    "HttpResult",
     "COMMENTS_BUTTON",
     "COMMENTS_PANEL",
     "DETAIL_FORM",
@@ -28,6 +33,7 @@ __all__ = [
     "PILL",
     "OpenPreview",
     "ServePreview",
+    "ServeWorkspace",
     "badge_text",
     "checked_values",
     "clear_condition",
@@ -36,6 +42,7 @@ __all__ = [
     "count_balls",
     "drawer_counts",
     "fetch_records",
+    "http_call",
     "open_drawer",
     "pick_history_point",
     "row_ids",
@@ -49,6 +56,7 @@ __all__ = [
 
 type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
+type ServeWorkspace = Callable[..., tuple[str, Path]]
 
 # トップバーのコメントのボタンと、コメントの一覧のパネル
 COMMENTS_BUTTON = "header.topbar button.comments-btn"
@@ -182,8 +190,52 @@ def visit_and_close(page: Page, url: str) -> None:
 
 def fetch_records(url: str) -> dict[str, Any]:
     """配信の URL から記録（`/api/records`）を読み、JSON のオブジェクトにして返す。"""
-    with urllib.request.urlopen(f"{url}api/records", timeout=10) as response:
+    with urllib.request.urlopen(urljoin(url, "/api/records"), timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+# 1 回の HTTP を待つ上限秒数
+HTTP_TIMEOUT_SEC = 10
+
+
+@dataclass(frozen=True)
+class HttpResult:
+    """HTTP の応答（ステータス・ヘッダー名を小文字にしたヘッダー・本文）。"""
+
+    status: int
+    headers: dict[str, str]
+    text: str
+
+    def json(self) -> dict[str, Any]:
+        """本文を JSON のオブジェクトとして読む。"""
+        return json.loads(self.text)
+
+
+def http_call(
+    url: str, path: str, *, method: str = "GET", payload: dict[str, Any] | None = None
+) -> HttpResult:
+    """配信の URL のページの路に依らず、パスを足して 1 回つなぐ。ステータスが 4xx・5xx でも例外にせず、応答を返す。"""
+    request = urllib.request.Request(  # noqa: S310
+        urljoin(url, path),
+        method=method,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None,
+        headers={"Content-Type": "application/json"} if payload is not None else {},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:  # noqa: S310
+            return HttpResult(
+                response.status,
+                {name.lower(): value for name, value in response.getheaders()},
+                response.read().decode("utf-8"),
+            )
+    except urllib.error.HTTPError as error:
+        # 4xx・5xx: 応答の本文とヘッダーを読んで返す
+        with error:
+            return HttpResult(
+                error.code,
+                {name.lower(): value for name, value in error.headers.items()},
+                error.read().decode("utf-8"),
+            )
 
 
 def select_text(page: Page, selector: str, text: str) -> None:

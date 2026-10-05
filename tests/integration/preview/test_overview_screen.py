@@ -274,3 +274,61 @@ def test_diff_marks(
     assert running_mark.get_attribute("title") == "変更"
     assert page.locator("#tile-next .df-badge, #tile-running .df-badge").count() == 0
     assert_topbar_history(page)
+
+
+
+# 検討事項・タスク・資料を表示しない種類の既定
+KINDS_WITHOUT_DECISIONS_TASKS_DOCS = ["research", "terms", "notes", "logs"]
+
+
+def test_hidden_kinds_keep_tiles(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    sample_items: list[dict[str, Any]],
+    sample_settings: dict[str, Any],
+    sample_bodies: dict[str, str],
+) -> None:
+    """表示しない種類のタイルは残し、その種類の画面へ移る「すべて表示」と進捗のセルのリンクだけを外す（正常系）。"""
+    # 準備
+    settings = {
+        **sample_settings,
+        "display": {"visible_kinds": KINDS_WITHOUT_DECISIONS_TASKS_DOCS},
+    }
+    url = write_preview(*sample_items, settings=settings, bodies=sample_bodies)
+    # 実行
+    page = open_preview(url)
+    # 検証
+    # タイルと中の項目は残る
+    assert page.inner_text("#tile-review .num") == "1"
+    assert page.locator('#tile-review button[data-id="D-3"]').count() == 1
+    assert page.locator('#tile-running button[data-id="T-1"]').count() == 1
+    assert page.locator("#tile-goal .checklist li").count() == 1
+    # その種類の画面へ移るリンクだけが無い
+    for tile_id in ("tile-next", "tile-review", "tile-hold", "tile-running"):
+        assert page.locator(f"#{tile_id} .t-link").count() == 0
+    assert page.locator("#tile-progress button").count() == 0
+    # 進捗の数と棒は残る
+    assert page.eval_on_selector_all(
+        "#tile-progress td.tot", "cells => cells.map(c => c.textContent)"
+    ) == ["1/2", "0/3"]
+    assert page.locator("#tile-progress .cell").count() > 0
+    # タブの帯にもその種類が無い
+    assert page.locator('nav.tabbar a[data-tab="decisions"]').count() == 0
+
+
+def test_visible_kinds_keep_links(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    sample_items: list[dict[str, Any]],
+    sample_settings: dict[str, Any],
+    sample_bodies: dict[str, str],
+) -> None:
+    """表示する種類の既定が全ての種類のときは、「すべて表示」と進捗のセルのリンクを出す（正常系）。"""
+    # 準備
+    settings = {**sample_settings, "display": {"network_look": "deep"}}
+    url = write_preview(*sample_items, settings=settings, bodies=sample_bodies)
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.locator("#tile-review .t-link").count() == 1
+    assert page.locator("#tile-progress button.cell").count() > 0

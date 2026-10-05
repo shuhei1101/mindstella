@@ -35,12 +35,12 @@ flows:
       - '`changes.yaml` の `pending.added` が `[D-2, T-1]`、`pending.changed` が `[D-1]`'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -49,7 +49,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: batch workspace（add 1 件）
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -167,7 +167,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: operations
     type: list[dict]
     required: true
@@ -228,7 +228,7 @@ exceptions:
     condition: 全ての操作を当てられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: ItemNotFoundError
     condition: '`update`・`show` の ID の項目が無い'

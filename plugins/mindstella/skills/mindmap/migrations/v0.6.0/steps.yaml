@@ -1,0 +1,4 @@
+steps:
+  - op: rename_file
+    from: mindmap.yaml
+    to: config.yaml

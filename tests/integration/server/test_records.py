@@ -6,6 +6,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from workspace_fixtures import write_yaml
+
 from .fixture_types import CallTool, MakeItem, MakeWorkspace
 from .history_helpers import DECISION_ITEM, add_item, commit, read_items, update_item
 from .http_helpers import http_request
@@ -158,3 +160,27 @@ def test_error_when_schema_mismatch(
     assert result.headers["content-type"].startswith("application/problem+json")
     detail_lines = result.json()["detail"].splitlines()
     assert any(line.startswith("decisions.yaml: items[0].status:") for line in detail_lines)
+
+
+def test_normal_when_config_invalid(
+    make_workspace: MakeWorkspace,
+    serve_preview: Callable[[Path], str],
+    valid_settings: dict[str, Any],
+) -> None:
+    """配信中に config.yaml を崩しても、最後に検査に通った設定で記録を返し、合わない箇所を添える（正常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "display": {"network_look": "starlight"}})
+    url = serve_preview(root)
+    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "rainbow"}})
+    before = (root / "config.yaml").read_bytes()
+    # 実行
+    result = http_request(url, "/api/records")
+    # 検証
+    assert result.status == 200
+    records = result.json()
+    assert records["settings"]["display"]["network_look"] == "starlight"
+    assert any(
+        line.startswith("config.yaml: display.network_look: ")
+        for line in records["settings_problem"]
+    )
+    assert (root / "config.yaml").read_bytes() == before

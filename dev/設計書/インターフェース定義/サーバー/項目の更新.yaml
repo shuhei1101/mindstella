@@ -40,7 +40,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '`mindmap.yaml` の `history_limit` を 1 にし、本文（3 行）を持つ検討事項 D-1 を足して `commit` し、`answer` を `update` で直したワークスペース'
+        description: '`config.yaml` の `history_limit` を 1 にし、本文（3 行）を持つ検討事項 D-1 を足して `commit` し、`answer` を `update` で直したワークスペース'
       - name: item
         description: 本文の 2 行目を書き換える
         notes: '`{"body_markdown": "{1 行目}\n{書き換えた 2 行目}\n{3 行目}\n"}`'
@@ -100,7 +100,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、`answer` を直して変更履歴を 1 回分持たせて `commit` した後、`mindmap.yaml` の `history_limit` を 0 にしたワークスペース
+        description: 検討事項 D-1 を足して `commit` し、`answer` を直して変更履歴を 1 回分持たせて `commit` した後、`config.yaml` の `history_limit` を 0 にしたワークスペース
       - name: item
         description: '`status` を変える'
         notes: '`{"status": "決定済み"}`'
@@ -123,12 +123,12 @@ flows:
       - '`changes.yaml` の `pending.changed` が空'
     test: test_normal_when_limit_zero
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -137,7 +137,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: update workspace id D-1
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -256,7 +256,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -291,7 +291,7 @@ exceptions:
     condition: 直せた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: ItemNotFoundError
     condition: 渡した ID の項目が無い（頭の文字がどの種類にも当たらないときも含む）
@@ -302,7 +302,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。本文は前の中身に戻し、どのファイルも書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`mindmap.yaml` の `summary` が無い・`mindmap.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -321,7 +321,7 @@ constraints:
   - item: 変更履歴の 1 回分
     constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（`updated` と同じ日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前の本文の行へ戻す差分）を、`history` の先頭に置く。本文の全文は持たない。形は ER 図『ワークスペース』の共通のキー `history`'
   - item: 保持する回数
-    constraint: '`mindmap.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
+    constraint: '`config.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
   - item: まだまとめていない変更
     constraint: 積んだとき、`changes.yaml` の `pending.changed` に ID を足す。既に `pending.added`・`pending.changed` にある ID は足さない。`changes.yaml` が無ければ作る
   - item: 通し番号

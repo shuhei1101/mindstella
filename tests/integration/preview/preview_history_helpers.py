@@ -118,9 +118,9 @@ def build_history_workspace(
     """実際のツールで、まとまり 2 つ（V-1 で足し、V-2 で直す）と、まとめていない変更を持つワークスペースを作る。"""
     root: Path = make_workspace()
     if history_limit is not None:
-        settings = read_yaml(root / "mindmap.yaml")
+        settings = read_yaml(root / "config.yaml")
         settings["history_limit"] = history_limit
-        (root / "mindmap.yaml").write_text(
+        (root / "config.yaml").write_text(
             yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8"
         )
     workspace = str(root)

@@ -213,8 +213,8 @@ var MindmapPreview;
         live?.select(id);
     }
     MindmapPreview.selectGraphItem = selectGraphItem;
-    /** つながりの画面を返す。`selected` は最初に選んでおく項目 */
-    function graphScreen({ index, on, filters, drawerOpen, selected = null, }) {
+    /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
+    function graphScreen({ index, on, filters, drawerOpen, selected = null, look = MindmapPreview.BUILTIN_LOOK, }) {
         // ===== 絞り込み: 条件に合う項目の ID =====
         const conditions = graphConditions();
         const rows = [...index.byId].map(([id, entry]) => ({ id, ...entry }));
@@ -233,7 +233,7 @@ var MindmapPreview;
             : null;
         const root = MindmapPreview.h({
             tag: "div",
-            attrs: { class: "screen graph" },
+            attrs: { class: "screen graph", "data-look": look },
             children: [
                 chips,
                 MindmapPreview.h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),

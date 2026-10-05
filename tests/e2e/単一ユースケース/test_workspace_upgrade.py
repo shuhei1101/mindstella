@@ -30,6 +30,13 @@ NEWER_VERSION = "v99.0.0"
 # 版のファイルが無いワークスペースで、先に当たる手順（題名を足す手順）の版
 FIRST_STEP_VERSION = "v0.3.0"
 
+# 設定ファイルの名前を改める手順の版
+RENAME_STEP_VERSION = "v0.6.0"
+
+# 前の版（v0.6.0 より前）の設定ファイルの名前と、今の設定ファイルの名前
+LEGACY_SETTINGS = "mindmap.yaml"
+SETTINGS = "config.yaml"
+
 # 手順が読めない docs.yaml（閉じていないフローの配列）
 BROKEN_DOCS = "items: [\n"
 
@@ -83,7 +90,9 @@ def current_workspace(tmp_path: Path, call_tool: CallTool, valid_settings: dict[
 def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool) -> None:
     """版が古いワークスペースを、手順の一覧・写し・当てる・題名の入力・版の書き換えの順で今の版へ移し替える（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True, "A-2": False}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True, "A-2": False}, without_summary=True, settings_file=LEGACY_SETTINGS
+    )
     _to_field_settings(root)
     updated_before = {item["id"]: item["updated"] for item in _read_docs(root)}
     ws = {"workspace": str(root)}
@@ -95,7 +104,7 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     # 点検し、値が要るキー（題名）だけを利用者に聞いて入れる
     checked_before_set = call_tool("check", **ws)
     set_summary = call_tool(
-        "migrate", **ws, values=[{"file": "mindmap.yaml", "key": "summary", "value": SUMMARY}]
+        "migrate", **ws, values=[{"file": SETTINGS, "key": "summary", "value": SUMMARY}]
     )
     # 版を書き換える
     recorded = call_tool("migrate", **ws, record=True)
@@ -103,6 +112,12 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     # 検証
     assert plan.is_error is False
     assert plan.data["relation"] == "older"
+    # 並べた手順に、mindmap.yaml を config.yaml へ改める rename_file が破壊的な操作の印つきである
+    assert {
+        (step["version"], step["op"], step["destructive"])
+        for step in plan.data["steps"]
+        if step["op"] == "rename_file"
+    } == {(RENAME_STEP_VERSION, "rename_file", True)}
     assert applied.is_error is False
     assert applied.data["backup"]["kind"] == "copy"
     assert checked_before_set.data["ok"] is False
@@ -118,10 +133,13 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     assert "done" not in docs["A-1"]
     assert "done" not in docs["A-2"]
     assert {doc_id: doc["updated"] for doc_id, doc in docs.items()} == updated_before
-    # mindmap.yaml の summary が答えた題名である
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    # config.yaml の summary が答えた題名である
+    settings = yaml.safe_load((root / SETTINGS).read_text(encoding="utf-8"))
     assert settings["summary"] == SUMMARY
-    # mindmap.yaml が field を持たず、playbooks が [システム開発] で、target_label が移し替えの前と同じである
+    # ワークスペースに mindmap.yaml が無く、config.yaml がある
+    assert not (root / LEGACY_SETTINGS).exists()
+    assert (root / SETTINGS).exists()
+    # config.yaml が field を持たず、playbooks が [システム開発] で、target_label が移し替えの前と同じである
     assert "field" not in settings
     assert settings["playbooks"] == ["システム開発"]
     assert settings["target_label"] == "システム"
@@ -206,7 +224,7 @@ def test_error_when_session_on_older_workspace(
 ) -> None:
     """話し合いを進めるスキルを版が古いワークスペースへ呼ぶと、移し替えるよう案内される（異常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True})
+    root = make_legacy_workspace(legacy_docs={"A-1": True}, settings_file=LEGACY_SETTINGS)
     before = snapshot_tree(root)
     # 実行
     plan = call_tool("migrate", workspace=str(root), plan=True)

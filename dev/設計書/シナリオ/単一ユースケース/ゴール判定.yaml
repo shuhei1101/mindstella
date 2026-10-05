@@ -20,7 +20,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: goal
-        SV->>WS: mindmap.yaml のフェーズ・ゴールと全ての YAML を読む
+        SV->>WS: config.yaml のフェーズ・ゴールと全ての YAML を読む
         SV-->>CC: 届いた（残り 0 件）
         CC-->>U: 決まった検討事項と納品物を示して確定を求める
         U->>CC: 確定する

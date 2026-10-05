@@ -51,8 +51,8 @@ def read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
 
 
 def write_settings(root: Path, **overrides: Any) -> None:
-    """`mindmap.yaml` に渡したキーを書き足す（保持する回数を変えるなど）。"""
-    path = root / "mindmap.yaml"
+    """`config.yaml` に渡したキーを書き足す（保持する回数を変えるなど）。"""
+    path = root / "config.yaml"
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
     settings.update(overrides)
     path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")

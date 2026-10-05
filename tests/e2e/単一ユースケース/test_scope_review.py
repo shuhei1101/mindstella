@@ -107,7 +107,7 @@ def test_normal(
             "body_markdown": DELIVERABLE_BODY,
         },
     )
-    goal = read_yaml(root, "mindmap.yaml")["goal"]
+    goal = read_yaml(root, "config.yaml")["goal"]
     replay(
         "update_settings",
         **ws,
@@ -127,7 +127,7 @@ def test_normal(
     checked = replay("check", **ws)
     # 検証
     # playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・phases が確定した値である
-    updated = read_yaml(root, "mindmap.yaml")
+    updated = read_yaml(root, "config.yaml")
     assert updated["playbooks"] == ["壁打ち", "システム開発"]
     assert updated["summary"] == "家計簿アプリの要件を決める"
     assert updated["target_label"] == "機能"

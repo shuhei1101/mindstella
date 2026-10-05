@@ -190,6 +190,8 @@ constants:
         value: '"api/drafts"'
       - key: opened
         value: '"api/opened"'
+      - key: configDisplay
+        value: '"api/config/display"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
@@ -1008,13 +1010,44 @@ functions:
         condition: '`parametrize`: `{kind: body, start: 3, end: 3}` / `{kind: body, start: 2, end: 4}` / `{kind: value, key: options[C].cons}` / `{kind: value, key: unknown_key}`'
         mock: なし
         expected: '`本文 3 行目` / `本文 2〜4 行目` / `案 C のデメリット` / `unknown_key`'
+  - name: putDisplay
+    title: ワークスペースの既定を保存する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: ワークスペースの既定を変える
+    scope: public
+    is_async: true
+    summary: '`PUT /api/config/display` に見た目と表示する種類を送り、`ApiResult` にする'
+    args:
+      - name: display
+        type: '{network_look: string, visible_kinds: string[]}'
+        required: true
+        passing: positional
+        description: 保存する値
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<ApiResult>
+      description: 200 なら `data` が `{display}`。断られた・届かないときは `callApi` と同じ形
+    process: 1. `callApi('PUT', API_PATHS.configDisplay, display, fetchFn)` を返す
+    unit_tests:
+      - name: test_put_display
+        case: 正常
+        summary: PUT api/config/display に JSON で送る
+        condition: '`{network_look: glow, visible_kinds: [decisions]}`。`parametrize`: `fetchFn` が 200・`{display: 同じ値}` / 500・`{detail: 書き込めませんでした}` を返す'
+        mock: '`fetchFn`'
+        expected: '`PUT api/config/display` に本文が JSON。`{ok: true, data: {display}}` / `{ok: false, status: 500, detail: 書き込めませんでした}`'
   - name: inertBehind
     title: パネルの下を止める
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: 左から重ねるパネル（絞り込みのドロワー・コメントの一覧）が覆った本文の部品に `inert` を付け、外す関数を返す
+    summary: 左から重ねるパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品に `inert` を付け、外す関数を返す
     side_effects: '`main` の中の要素の `inert` 属性を書き換える'
     args:
       - name: panel

@@ -9,7 +9,10 @@ from urllib.parse import urlsplit
 from .fixture_types import MakeItem, MakeWorkspace
 from .http_helpers import http_request
 
-# 画面の本文に出てはいけない `mindmap.yaml` の中身の目印（設定の題名）
+# 画面のパス
+PAGE_PATH = "/mindstella.html"
+
+# 画面の本文に出てはいけない `config.yaml` の中身の目印（設定の題名）
 SETTINGS_MARK = "要件出しのスキル mindmap を設計する"
 
 
@@ -27,7 +30,7 @@ def test_normal(
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
     # 実行
-    result = http_request(url, "/", headers={"Host": f"127.0.0.1:{_port(url)}"})
+    result = http_request(url, PAGE_PATH, headers={"Host": f"127.0.0.1:{_port(url)}"})
     # 検証
     assert result.status == 200
     assert result.headers["content-type"] == "text/html; charset=utf-8"
@@ -40,6 +43,20 @@ def test_normal(
     assert '<script type="application/json" id="mindmap-data"></script>' in result.text
 
 
+def test_normal_when_root(
+    make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
+) -> None:
+    """`/` は画面のパスへ送り直す（正常系）。"""
+    # 準備
+    url = serve_preview(make_workspace(make_item("D-1")))
+    # 実行（送り直しは辿らずに、1 回だけ GET する）
+    result = http_request(url, "/")
+    # 検証
+    assert result.status == 302
+    assert result.headers["location"] == PAGE_PATH
+    assert result.text == ""
+
+
 def test_error_when_host_mismatch(
     make_workspace: MakeWorkspace, make_item: MakeItem, serve_preview: Callable[[Path], str]
 ) -> None:
@@ -47,7 +64,7 @@ def test_error_when_host_mismatch(
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
     # 実行
-    result = http_request(url, "/", headers={"Host": f"attacker.example:{_port(url)}"})
+    result = http_request(url, PAGE_PATH, headers={"Host": f"attacker.example:{_port(url)}"})
     # 検証
     assert result.status == 403
     assert "<html" not in result.text.lower()
@@ -60,7 +77,7 @@ def test_error_when_path_unknown(
     # 準備
     url = serve_preview(make_workspace(make_item("D-1")))
     # 実行
-    result = http_request(url, "/mindmap.yaml")
+    result = http_request(url, "/config.yaml")
     # 検証
     assert result.status == 404
     assert SETTINGS_MARK not in result.text

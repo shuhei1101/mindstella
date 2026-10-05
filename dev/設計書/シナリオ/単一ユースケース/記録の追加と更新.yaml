@@ -86,7 +86,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にして、本文を持つ検討事項 D-1 を 1 件足したワークスペース
+        description: 作成を済ませ、`config.yaml` の `history_limit` を 1 にして、本文を持つ検討事項 D-1 を 1 件足したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram

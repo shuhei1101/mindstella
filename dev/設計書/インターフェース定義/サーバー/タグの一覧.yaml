@@ -49,12 +49,12 @@ flows:
       - '`tags` が空の配列'
     test: test_normal_when_no_tags
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    summary: config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -63,7 +63,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: tags workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -79,7 +79,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
 response:
   - name: tags[].name
     type: str
@@ -95,7 +95,7 @@ exceptions:
     condition: 一覧を作れた（タグが 0 件のときも含む）
     notes: 結果を返す。タグが 0 件なら `tags` は空の配列
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:

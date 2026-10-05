@@ -64,10 +64,10 @@ er:
       cardinality: '||--o|'
       label: まとめて送ると移る
 tables:
-  - name: mindmap.yaml
+  - name: config.yaml
     title: 設定
     datastore: YAML
-    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所
+    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定
     scale: 1 件
     access: 全件
     columns:
@@ -119,7 +119,7 @@ tables:
         type: string
         not_null: false
         length: 1 字以上 60 字以内
-        description: 任意。何についての話し合いかを 1 文の短い文で。AI がセットアップと範囲の見直しで書き、利用者は `mindmap.yaml` を直して書き換える。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの
+        description: 任意。何についての話し合いかを 1 文の短い文で。AI がセットアップと範囲の見直しで書き、利用者は `config.yaml` を直して書き換える。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの
         example: スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。
       - name: history_limit
         title: 保持する回数
@@ -127,6 +127,11 @@ tables:
         default: '5'
         description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5 として扱う。AI がまだ読んでいない回（`changes.yaml` の `read_seq` より後の回）は、この回数を超えても消さない
         example: '3'
+      - name: display
+        title: 表示の既定
+        type: object
+        description: 任意。プレビューのワークスペースの既定。`network_look`（つながりの見た目。`glow`・`starlight`・`constellation`・`deep`・`dust` のどれか。無ければ `deep`）と `visible_kinds`（表示する種類。`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の重複しない配列。無ければ全ての種類）を持つ。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と画面の『設定の既定の書き換え』が書く
+        example: '{network_look: deep, visible_kinds: [decisions, tasks, research, docs, terms, notes, logs]}'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON

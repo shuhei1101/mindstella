@@ -62,7 +62,7 @@ CHANGES_SCHEMA = "changes.schema.json"
 # プレビューを最後に開いた日時を持つファイルの名前
 OPENED_FILE = ".mindstella-opened"
 
-# `mindmap.yaml` に `history_limit` が無いときの回数
+# `config.yaml` に `history_limit` が無いときの回数
 DEFAULT_HISTORY_LIMIT = 5
 
 # まとまりの ID の頭の文字

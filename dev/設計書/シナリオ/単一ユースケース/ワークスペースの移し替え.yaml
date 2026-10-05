@@ -20,27 +20,30 @@ scenarios:
         U->>CC: /mindstella:upgrade {フォルダ}
         CC->>SV: 版を比べ、当てる手順を並べる
         SV->>WS: 版のファイルを読む（無い）
-        SV-->>CC: 版を記録する前の形式 → プラグインの版の手順（破壊的な操作なし）
-        CC-->>U: 当てる手順の一覧を示す
+        SV-->>CC: 版を記録する前の形式 → プラグインの版の手順（mindmap.yaml を config.yaml へ改める破壊的な操作を含む）
+        CC-->>U: 当てる手順の一覧を示し、破壊的な操作を当ててよいか確かめる
+        U->>CC: 当ててよい
         CC->>SV: 写しを取って手順を当てる
         SV->>WS: 写しを取る
         SV->>WS: 版の順に手順を当てる
         SV-->>CC: 当てた手順
         CC->>SV: check
-        SV-->>CC: mindmap.yaml に summary が無い
+        SV-->>CC: config.yaml に summary が無い
         CC-->>U: 題名を聞く
         U->>CC: 題名
         CC->>SV: 題名を入れる
-        SV->>WS: mindmap.yaml を書く
+        SV->>WS: config.yaml を書く
         CC->>SV: 版を書き換える
         SV->>WS: mindstella-version.ini を書く
         CC-->>U: 移し替えた版を示し、/mindstella:session で続けるよう案内する
       ```
     expected:
       - '`mindstella-version.ini` の 1 行目がプラグインの版である'
+      - 並べた手順に、`mindmap.yaml` を `config.yaml` へ改める `rename_file` が破壊的な操作の印つきである
       - '`docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たず、`updated` が呼ぶ前と同じである'
-      - '`mindmap.yaml` の `summary` が答えた題名である'
-      - '`mindmap.yaml` が `field` を持たず、`playbooks` が `[システム開発]` で、`target_label` が `システム` のままである'
+      - '`config.yaml` の `summary` が答えた題名である'
+      - ワークスペースに `mindmap.yaml` が無く、`config.yaml` がある
+      - '`config.yaml` が `field` を持たず、`playbooks` が `[システム開発]` で、`target_label` が `システム` のままである'
       - '`check` が問題を 0 件で返す'
     test: test_normal
   - name: 正常シナリオ（版が同じ）
@@ -144,7 +147,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:session {フォルダ}
-        CC->>WS: mindmap.yaml を読む
+        CC->>WS: config.yaml か mindmap.yaml を読む
         CC->>SV: 版を比べる
         SV-->>CC: ワークスペースの版が古い
         CC-->>U: /mindstella:upgrade で移し替えるよう案内して止まる
@@ -170,7 +173,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:session {フォルダ}
-        CC->>WS: mindmap.yaml を読む
+        CC->>WS: config.yaml か mindmap.yaml を読む
         CC->>SV: 版を比べる
         SV-->>CC: ワークスペースの版が新しい
         CC-->>U: プラグインを更新するよう案内して止まる
@@ -193,7 +196,7 @@ minimal_guarantee: 手順の途中で失敗したときは、ワークスペー�
 frequency: ワークスペースの形を変えた版へプラグインを上げた後、ワークスペースごとに 1 回
 priority: 高
 notes:
-  E2E の範囲: E2E はモデルを呼ばず、スキルの手順が連ねるツールの呼び出しの並びを再生してワークスペースの状態を確かめる。手順の一覧の示し方・破壊的な操作を当てる前の確認・案内の文面はモデルの応答で、確かめない。`v0.3.0` の手順は破壊的な操作を持たないため、破壊的な操作の印はインターフェース定義の結合テストが試しの手順で確かめる
+  E2E の範囲: E2E はモデルを呼ばず、スキルの手順が連ねるツールの呼び出しの並びを再生してワークスペースの状態を確かめる。手順の一覧の示し方・破壊的な操作を当てる前の確認・案内の文面はモデルの応答で、確かめない。破壊的な操作の印は、`mindmap.yaml` を `config.yaml` へ改める手順で確かめる
   スキルの呼び名: 移し替えのスキルは `upgrade`（`/mindstella:upgrade`）
   対応テストファイル: '`tests/e2e/単一ユースケース/test_workspace_upgrade.py`。E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` へ移す'
 test_file: tests/e2e/単一ユースケース/test_workspace_upgrade.py
