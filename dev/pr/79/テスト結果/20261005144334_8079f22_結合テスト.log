@@ -1,5 +1,5 @@
 # 結合テスト（バック・フロントの全件）。環境: requirements-dev.txt の版（mcp 2.3.0・pytest 9.1.0・playwright 1.63.0 ほか）と pytest-asyncio を uv で入れて流した
-# テストを実行した commit: a8652d1
+# テストを実行した commit: 8079f22
 
 $ uv run --no-project --with-requirements requirements-dev.txt --with pytest-asyncio pytest tests/integration
 ============================= test session starts ==============================
@@ -87,4 +87,4 @@ tests/integration/skill/test_session.py .                                [ 99%]
 tests/integration/skill/test_setup.py .                                  [ 99%]
 tests/integration/skill/test_upgrade.py .                                [100%]
 
-================== 454 passed, 2 skipped in 365.75s (0:06:05) ==================
+================== 454 passed, 2 skipped in 318.48s (0:05:18) ==================
