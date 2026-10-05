@@ -28,8 +28,8 @@ TASK: dict[str, Any] = {"title": "調べる", "kind": "調査", "status": "未�
 
 
 def _set_history_limit(root: Path, limit: int) -> None:
-    """`mindmap.yaml` に保持する回数を書く。"""
-    path = root / "mindmap.yaml"
+    """`config.yaml` に保持する回数を書く。"""
+    path = root / "config.yaml"
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
     settings["history_limit"] = limit
     path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")

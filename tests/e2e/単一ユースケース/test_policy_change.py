@@ -108,7 +108,7 @@ def test_normal_when_deliverable_no_longer_needed(
     # 実行
     replay("update", **ws, id="A-1", item={"deliverable": False})
     # 設定の更新で、ゴールの deliverables から A-1 を外す（ゴールは丸ごと置き換わる）
-    goal = {**read_yaml(root, "mindmap.yaml")["goal"], "deliverables": []}
+    goal = {**read_yaml(root, "config.yaml")["goal"], "deliverables": []}
     replay("update_settings", **ws, settings={"goal": goal})
     checked = call_tool("check", **ws)
     replay(
@@ -123,7 +123,7 @@ def test_normal_when_deliverable_no_longer_needed(
     assert doc["id"] == "A-1"
     assert doc["deliverable"] is False
     # ゴールの deliverables に A-1 が無い
-    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == []
+    assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == []
     # check が参照切れを 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []

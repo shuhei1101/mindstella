@@ -294,7 +294,7 @@ def test_normal_when_deliverable_doc_created(
         },
     )
     # 同じタイトルの納品物があるので、行は足さず、その doc から資料 A-1 を指す（ゴールは丸ごと置き換わる）
-    goal = read_yaml(root, "mindmap.yaml")["goal"]
+    goal = read_yaml(root, "config.yaml")["goal"]
     deliverables = [{"title": "要件定義書", "doc": "A-1"}]
     replay("update_settings", **ws, settings={"goal": {**goal, "deliverables": deliverables}})
     replay(
@@ -306,7 +306,7 @@ def test_normal_when_deliverable_doc_created(
     checked = replay("check", **ws)
     # 検証
     # goal.deliverables が「要件定義書」の 1 件だけで、その doc が A-1 である
-    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == [
+    assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == [
         {"title": "要件定義書", "doc": "A-1"}
     ]
     # 資料 A-1 が deliverable: true と status: 下書き を持つ
@@ -343,7 +343,7 @@ def test_normal_when_task_output_kept_as_doc(
         settings=settings,
     )
     ws = {"workspace": str(root)}
-    goal_before = read_yaml(root, "mindmap.yaml")["goal"]
+    goal_before = read_yaml(root, "config.yaml")["goal"]
     # 実行
     # 成果の資料（ゴールの納品物に当たらないので deliverable: false）を足し、成果と資料が 1 対 1 で揃ったタスクを資料に結んで完了にし、会話ログを足す。3 つを 1 回のまとめての書き込みで渡す
     replay(
@@ -383,6 +383,6 @@ def test_normal_when_task_output_kept_as_doc(
     assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is False
     assert "画面の一覧" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
     # goal.deliverables が呼ぶ前と同じである
-    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
+    assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
     # check が問題を 0 件で返す
     assert checked == {"ok": True, "problems": []}

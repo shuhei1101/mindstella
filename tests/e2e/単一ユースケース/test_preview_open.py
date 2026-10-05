@@ -5,12 +5,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, row_ids
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # 書き換えが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
+
+# 配信のページの路（`preview_url` が返す URL の終わり）
+PAGE_PATH = "/mindstella.html"
 
 # 足す検討事項
 NEW_DECISION = {
@@ -40,6 +45,7 @@ def test_normal(
     page.wait_for_selector("table.grid tbody tr")
     # 検証
     assert url.startswith("http://127.0.0.1:")
+    assert url.endswith(PAGE_PATH)
     assert row_ids(page) == ["D-1"]
     assert not (root / "preview.html").exists()
 
@@ -69,3 +75,31 @@ def test_normal_when_rewritten(
     assert row_ids(page) == ["D-1", "D-2"]
     assert page.url == opened_url
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
+
+
+def test_error_when_config_invalid(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """config.yaml がスキーマに合わないと、違う箇所を示すエラーが返り、配信は立たない（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "display": {"network_look": "rainbow"}})
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("preview_url", workspace=str(root))
+    again = call_tool("preview_url", workspace=str(root))
+    # 検証
+    # プレビューの URL の取得がエラーを返し、本文に見た目の既定のキーと、選べる値が示される
+    assert result.is_error is True
+    assert any(
+        line.startswith("config.yaml: display.network_look: ")
+        and all(look in line for look in ("glow", "starlight", "constellation", "deep", "dust"))
+        for line in result.text.splitlines()
+    )
+    # 配信が立っていないので、呼び直しても URL を返さず同じエラーになる
+    assert again.is_error is True
+    assert "config.yaml: display.network_look: " in again.text
+    # config.yaml の中身が、呼ぶ前と同じである
+    assert snapshot_tree(root) == before
