@@ -1,22 +1,25 @@
 /* 71 のスタイルの上に重ね、絞り込みのボタン・件数のバッジ・絞り込みのドロワー・案 B の凡例を足す分 */
 
-/* 絞り込みのボタン: 部品の高さに揃え、バッジは文字の後ろに置く */
-.filter-btn { gap: 6px; }
-
-/* ドロワーを開いている間のボタン: 押された見た目にし、もう一度押すと閉じることを示す */
-.filter-btn[aria-expanded="true"] { border-color: var(--accent-line); background: var(--accent-weak); }
+/* 左から重ねるパネル（絞り込みのドロワー・コメントの一覧）の幅: どちらも同じ幅にする */
+body { --lpanel-w: 420px; }
 
 /* 件数のバッジ: 絞り込み中という状態を示すため印の色で塗る。数は等幅で桁を揃える */
 .fbadge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 600 11px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 
-/* 絞り込みのドロワー: 左端から出す。重ねる案（B と狭い幅）は全高のモーダルにし、後ろの本文が透けて見える薄い幕で選ぶたびに変わる結果を見せる */
-dialog.drawer { position: fixed; inset: 0 auto 0 0; width: min(360px, calc(100vw - 48px)); max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; border-right: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: 14px 0 32px var(--shadow-color); }
+/* 絞り込みのドロワー: コメントの一覧と同じく、幕を付けずにタブの帯の下から左に重ねる非モーダルのパネル。右側の結果は見えたまま操作できる */
+dialog.drawer { position: fixed; z-index: 22; inset: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px) auto 0 0; width: min(var(--lpanel-w), 100%); max-width: none; height: auto; max-height: none; margin: 0; padding: 0; border: 0; border-right: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: 14px 0 32px var(--shadow-color); }
 
 /* 開いているときだけ縦に並べる（閉じているときは dialog の既定の非表示に任せる） */
 dialog.drawer[open] { display: flex; flex-direction: column; }
 
-/* ドロワーの幕 */
-dialog.drawer::backdrop { background: var(--scrim-soft); }
+/* 狭い幅: コメントの一覧と同じく、トップバーの下から全幅で重ねる */
+@media (max-width: 900px) {
+  /* ドロワーの位置 */
+  dialog.drawer { top: calc(var(--mock-h, 0px) + var(--topbar-h)); width: 100%; z-index: 34; border-right: 0; }
+}
+
+/* ドロワーを開いている間は、全ての条件の解除をドロワーの下端の 1 つにし、見えたままのチップの行の「すべて解除」を出さない */
+body.drawer-open .chips [data-act="clearall"] { display: none; }
 
 /* ドロワーの見出しの行: 題・件数・閉じるボタン */
 .fd-top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
@@ -114,23 +117,28 @@ dialog.drawer .btn[hidden] { display: none; }
   .map-view .zoom { display: none; }
 }
 
-/* コメントのボタン（#78 の見本）: トップバーの右端に、検索の入口と同じ高さと枠で置く */
-.comment-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font-size: var(--fs-small); white-space: nowrap; }
+/* トップバーの開閉のボタン（絞り込み・コメント）: トップバーの右端に、検索の入口と同じ高さと枠で並べる。パネルに覆われない */
+.topbar-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font-size: var(--fs-small); white-space: nowrap; }
 
-/* コメントのボタンのホバーと、一覧を開いている間 */
-.comment-btn:hover, .comment-btn[aria-expanded="true"] { background: var(--topbar-hover); }
+/* 開閉のボタンのホバーと、パネルを開いている間（押された見た目） */
+.topbar-toggle:hover, .topbar-toggle[aria-expanded="true"] { background: var(--topbar-hover); border-color: var(--topbar-fg-2); }
+
+/* キーボードのフォーカス */
+.topbar-toggle:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
 
 /* コメントの件数 */
-.comment-btn .count { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--topbar-fg-2); }
+.topbar-toggle .count { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--topbar-fg-2); }
 
-/* 狭い幅ではコメントのボタンの文字を隠す */
+/* 狭い幅では開閉のボタンの文字を隠す（名前は読み上げで渡す） */
 @media (max-width: 900px) {
   /* ボタンの文字 */
-  .comment-btn .cb-label { display: none; }
+  .topbar-toggle .cb-label { display: none; }
+  /* ボタンの余白 */
+  .topbar-toggle { padding: 0 8px; }
 }
 
 /* コメントの一覧（#78 の見本）: タブの帯の下に左から重ねるパネル。開いていないときは出さない */
-.cdrawer { position: fixed; z-index: 22; top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: min(420px, 100%); display: none; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); }
+.cdrawer { position: fixed; z-index: 22; top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: min(var(--lpanel-w), 100%); display: none; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); }
 
 /* 開いているコメントの一覧 */
 .cdrawer.open { display: flex; }
@@ -171,4 +179,10 @@ dialog.drawer .btn[hidden] { display: none; }
   .toolbar .segment { flex: 1 1 0; min-width: 0; }
   /* 切り替えの各ボタン: 同じ幅で並べる */
   .toolbar .segment button { flex: 1 1 0; min-width: 0; justify-content: center; }
+}
+
+/* 狭い幅のコメントの一覧（#78 と同じ）: トップバーの下から全幅で重ねる */
+@media (max-width: 900px) {
+  /* 一覧の位置 */
+  .cdrawer { top: calc(var(--mock-h, 0px) + var(--topbar-h)); width: 100%; z-index: 34; border-right: 0; }
 }

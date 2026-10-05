@@ -49,7 +49,8 @@
     <!-- 接続の状態: サーバーにつながらないときだけ app.js が中身を描いて出す -->
     <span class="conn" id="conn" role="status" hidden></span>
     <button class="search-trigger" type="button" data-act="search" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="label">すべての項目を検索</span><kbd>/</kbd></button>
-    <!-- コメントのボタン（#78）: 中身は app.js が描く -->
+    <!-- 絞り込みのボタンとコメントのボタン（#78）: どちらも左から重ねるパネルを開閉する。中身は app.js が描く（概要には絞り込みのボタンを出さない） -->
+    <span id="filter-btn-slot"></span>
     <span id="comment-btn-slot"></span>
     <button class="top-btn" id="theme-btn" type="button" data-act="theme"></button>
   </header>
@@ -114,8 +115,8 @@
   </dialog>
 
 
-  <!-- 絞り込みのドロワー: 絞り込みのボタンで開く、左から出すモーダル。外側の押下と Esc で閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。中身は app.js が描く -->
-  <dialog class="drawer" id="drawer" closedby="any" aria-labelledby="drawer-title">
+  <!-- 絞り込みのドロワー: 絞り込みのボタンで開く、タブの帯の下から左に重ねる非モーダルのパネル（コメントの一覧と同じ出し方）。閉じるボタン・Esc・絞り込みのボタンで閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。中身は app.js が描く -->
+  <dialog class="drawer" id="drawer" closedby="none" aria-labelledby="drawer-title">
     <div class="fd-top">
       <p class="fd-title" id="drawer-title">絞り込み</p>
       <span class="fd-count" aria-live="polite"></span>

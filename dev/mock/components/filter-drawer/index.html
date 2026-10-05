@@ -35,11 +35,13 @@
     /* 狭い幅の見本: 画面幅 720px 以下のときと同じ置き方にする（ボタンの文字を隠し、ドロワーは画面の幅から 48px 引く） */
     .stage.narrow { width: 390px; max-width: 100%; box-sizing: border-box; }
     /* 狭い幅の見本のボタン */
-    .stage.narrow .toolbar .btn .lbl { display: none; }
+    .stage.narrow .topbar-toggle .cb-label { display: none; }
+    /* 台の中のトップバー: 流れに置く */
+    .stage .topbar { position: static; padding: 0 12px; }
     /* 狭い幅の見本のドロワー */
     .stage.narrow dialog.drawer { width: 342px; max-width: 100%; }
     /* 状態を見せるための見本のクラス */
-    .is-hover { background: var(--hover) !important; }
+    .is-hover { background: var(--topbar-hover) !important; }
     /* キーボードのフォーカスの見本 */
     .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
@@ -53,7 +55,7 @@
     <!-- ボタン: 絞っていない・絞り込み中・開いている・ホバー・フォーカス -->
     <section class="cat-sec">
       <h2>絞り込みのボタン</h2>
-      <p>どの画面も表示形式の切り替えの直後（切り替えの無い画面は左端）に 1 つだけ置き、キーワードはその右に続ける。絞っていないときはバッジを出さず、絞り込み中だけ印の色のバッジを付ける。ドロワーを開いている間は押された見た目にし、もう一度押すと閉じる。</p>
+      <p>トップバーの右端に、コメントのボタンと並べて 1 つだけ置く（どちらも左から重ねるパネルを開閉し、パネルに覆われない）。概要には出さない。絞っていないときはバッジを出さず、絞り込み中だけ印の色のバッジを付ける。ドロワーを開いている間は押された見た目にし、もう一度押すと閉じる。</p>
       <div class="stages" id="buttons"></div>
     </section>
 
@@ -74,7 +76,7 @@
     <!-- 狭い幅 -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>ボタンは文字を隠してアイコンとバッジだけにし、名前は読み上げで渡す。ドロワーは画面の幅から 48px を引いた幅で、右に後ろの画面を残す。</p>
+      <p>ボタンは文字を隠してアイコンとバッジだけにし、名前は読み上げで渡す。ドロワーはコメントの一覧と同じく、トップバーの下から全幅で重ねる。</p>
       <div class="stages" id="narrow"></div>
     </section>
 
@@ -107,7 +109,8 @@
       };
       const mark = (s) => (MARK[s] ? `<svg class="mark" viewBox="0 0 10 10" aria-hidden="true">${MARK[s]}</svg>` : "");
       // ボタン: badge は { n, say }、open はドロワーを開いているか、cls は見本の状態のクラス
-      const button = (badge, cls = "", open = false) => `<div class="toolbar"><button class="btn filter-btn ${cls}" type="button" aria-haspopup="dialog" aria-expanded="${open}" aria-label="絞り込み${badge ? `（${badge.say}）` : ""}">${icon(FILTER)}<span class="lbl">絞り込み</span>${badge ? `<span class="fbadge" aria-hidden="true">${badge.n}</span>` : ""}</button><input class="input grow" type="search" placeholder="キーワード" aria-label="キーワードで絞り込み"></div>`;
+      const LOG = '<path d="M4 6h16v10H9l-5 4Z"/>';
+      const button = (badge, cls = "", open = false) => `<header class="topbar"><span class="spacer"></span><button class="topbar-toggle filter-btn ${cls}" type="button" aria-expanded="${open}" aria-label="絞り込み${badge ? `（${badge.say}）` : ""}">${icon(FILTER)}<span class="cb-label">絞り込み</span>${badge ? `<span class="fbadge" aria-hidden="true">${badge.n}</span>` : ""}</button><button class="topbar-toggle" type="button" aria-expanded="false" aria-label="レビュー中のコメント 2 件">${icon(LOG)}<span class="cb-label">コメント</span><span class="count">2</span></button></header>`;
       const stage = (name, html, cls = "") => `<div class="stage ${cls}"><p class="stage-name">${name}</p>${html}</div>`;
       // ドロワー: groups は [条件名, [[値, 件数, 選択, キーワードの一致]]]。foot は下端のボタンの文言
       const drawer = (count, groups, foot) => {

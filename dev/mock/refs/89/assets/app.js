@@ -456,12 +456,15 @@
     if (state.badge === "B") { const n = shownCount(scope); return { n, say: `${n} 件に絞り込み中` }; }
     return { n: conds.length, say: `${conds.length} つの条件で絞り込み中` };
   };
-  const filterButton = (scope) => {
-    const b = badgeOf(scope);
-    return `<button class="btn filter-btn" type="button" id="filter-btn" data-act="drawer" aria-haspopup="dialog" aria-controls="drawer" aria-expanded="${drawerDlg.open}" aria-label="絞り込み${b ? `（${b.say}）` : ""}">${icon("filter")}<span class="lbl">絞り込み</span>${b ? `<span class="fbadge" aria-hidden="true">${b.n}</span>` : ""}</button>`;
+  // 絞り込みのボタン: コメントのボタンと並べてトップバーに置く。どちらも左から重ねるパネルを開閉し、パネルに覆われない。概要には出さない
+  const renderFilterBtn = () => {
+    const slot = document.getElementById("filter-btn-slot");
+    if (SCREEN === "overview") { slot.innerHTML = ""; return; }
+    const b = badgeOf(state.tab);
+    slot.innerHTML = `<button class="topbar-toggle filter-btn" type="button" id="filter-btn" data-act="drawer" aria-controls="drawer" aria-expanded="${drawerDlg.open}" aria-label="絞り込み${b ? `（${b.say}）` : ""}">${icon("filter")}<span class="cb-label">絞り込み</span>${b ? `<span class="fbadge" aria-hidden="true">${b.n}</span>` : ""}</button>`;
   };
-  // 絞り込みのボタンは表示形式の切り替えの直後に置き、どの表示形式でも同じ位置に出す
-  const renderToolbar = (kind) => `<div class="toolbar">${segment(kind)}${filterButton(kind)}<span class="tb-break"></span>
+  // 表示形式の切り替えがある画面は、狭い幅で切り替えを 1 行目、キーワードを 2 行目に置く
+  const renderToolbar = (kind) => `<div class="toolbar">${segment(kind)}${segment(kind) ? `<span class="tb-break"></span>` : ""}
       <label class="sr-only" for="q-${kind}">キーワードで絞り込み</label>
       <input class="input grow" id="q-${kind}" data-act="q" type="search" placeholder="キーワード" value="${esc(state.tables[kind].q)}">
       <span class="spacer"></span>
@@ -677,7 +680,7 @@
     const items = mapItems();
     const legend = staticLegend("描いている検討事項の状態", STATUS_ORDER.map((s) => [mark(s), s, items.filter((d) => d.status === s).length]).filter(([, , n]) => n));
     const toggle = `<button class="btn" data-act="deps" aria-pressed="${state.deps}" title="依存関係の線を表示">${icon("deps")}<span class="lbl">依存関係</span></button>`;
-    return `<div class="toolbar">${segment("decisions")}${filterButton("decisions")}<span class="tb-break"></span><label class="sr-only" for="map-q">タイトルで強調するキーワード</label><input class="input map-q" id="map-q" data-act="mapq" type="search" placeholder="タイトルで強調" value="${esc(state.mapQ)}"><span class="spacer"></span>${toggle}</div>
+    return `<div class="toolbar">${segment("decisions")}<span class="tb-break"></span><label class="sr-only" for="map-q">タイトルで強調するキーワード</label><input class="input map-q" id="map-q" data-act="mapq" type="search" placeholder="タイトルで強調" value="${esc(state.mapQ)}"><span class="spacer"></span>${toggle}</div>
       ${renderChips("decisions")}${legend ? `<div class="map-tools">${legend}</div>` : ""}`;
   };
   const renderMapShell = () => {
@@ -968,7 +971,7 @@
   const renderGraphTab = () => {
     const shown = graphRows().filter((r) => passes("graph", r));
     const legend = staticLegend("描いている項目の種類", Object.keys(KIND_VAR).map((k) => [kdot(k), KINDS.find((x) => x.key === k).label, shown.filter((r) => r.kind === k).length]).filter(([, , n]) => n));
-    return `<div class="toolbar">${filterButton("graph")}</div>${renderChips("graph")}${legend ? `<div class="map-tools">${legend}</div>` : ""}
+    return `${renderChips("graph")}${legend ? `<div class="map-tools">${legend}</div>` : ""}
       <div class="map-frame space" data-bg="nebula">${shown.length ? "" : `<p class="empty map-empty">表示する項目はありません。</p>`}<canvas class="g3-wrap" id="fg3" role="img" aria-label="すべての項目のつながり"></canvas></div>`;
   };
 
@@ -1179,6 +1182,7 @@
     const keep = same && wrap ? { l: wrap.scrollLeft, t: wrap.scrollTop, y: scrollY } : same ? { y: scrollY } : null;
     renderTabs();
     renderConn();
+    renderFilterBtn();
     const main = document.getElementById("main");
     const k = state.tab;
     if (same && k === "graph" && G && document.getElementById("fg3")) {
@@ -1321,37 +1325,30 @@
     drawerDlg.querySelector(".fd-body").innerHTML = groups;
     drawerDlg.querySelector(".fd-foot").innerHTML = `<button class="btn ghost" type="button" data-act="dclearall"${any ? "" : " hidden"}>すべて解除</button><span class="spacer"></span><button class="btn primary" type="button" data-act="dclose">${shown} 件を表示</button>`;
   };
-  // ドロワーはどの幅でも見ている画面に重ね、外側の押下と Esc で閉じる。同じ左から出るコメントの一覧とは同時に開かず、後から開いた方に切り替える
+  // ドロワーはコメントの一覧と同じく、幕を付けずにタブの帯の下から左に重ねる非モーダルのパネル。閉じるボタン・Esc・絞り込みのボタンで閉じ、外側を押しても閉じない
+  // 同じ左から出るコメントの一覧とは同時に開かず、後から開いた方に切り替える
   const openDrawer = () => {
     if (state.comments) setComments(false);
-    drawerDlg.showModal();
+    drawerDlg.show();
+    document.body.classList.add("drawer-open");
     renderDrawer();
     document.getElementById("filter-btn")?.setAttribute("aria-expanded", "true");
     // 開いたら最初の選択肢へフォーカスを移す
     drawerDlg.querySelector(".fd-body input")?.focus();
   };
   drawerDlg.addEventListener("close", () => {
+    document.body.classList.remove("drawer-open");
     const b = document.getElementById("filter-btn");
     b?.setAttribute("aria-expanded", "false");
     // コメントの一覧に切り替えたときは、フォーカスを一覧に残す
     if (!state.comments) b?.focus();
-  });
-  // 外側（幕）の押下で閉じる（closedby に対応していないブラウザの分も）。幕越しにコメントのボタンを押したときは、閉じてコメントの一覧に切り替える
-  drawerDlg.addEventListener("click", (e) => {
-    if (e.target !== drawerDlg) return;
-    const r = drawerDlg.getBoundingClientRect();
-    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
-    const cb = document.getElementById("comment-btn")?.getBoundingClientRect();
-    const onComments = cb && e.clientX >= cb.left && e.clientX <= cb.right && e.clientY >= cb.top && e.clientY <= cb.bottom;
-    if (drawerDlg.open) drawerDlg.close();
-    if (onComments) { setComments(true); cdrawer.querySelector(".icon-btn")?.focus(); }
   });
   // ===== コメントの一覧（#78 の左から重ねるパネル）: 絞り込みのドロワーと同時に開かないことを見せるための見本 =====
   const cdrawer = document.getElementById("cdrawer");
   const SAMPLE_COMMENTS = [["D-022", "見本は 3 案で足りるか、ユーザーに聞きたい"], ["T-002", "モダンの案は余白を詰めた版も見たい"]];
   const renderCommentBtn = () => {
     const n = SAMPLE_COMMENTS.length;
-    document.getElementById("comment-btn-slot").innerHTML = `<button class="comment-btn" id="comment-btn" type="button" data-act="comments" aria-expanded="${state.comments}" aria-controls="cdrawer" aria-label="レビュー中のコメント ${n} 件">${icon("log")}<span class="cb-label">コメント</span><span class="count">${n}</span></button>`;
+    document.getElementById("comment-btn-slot").innerHTML = `<button class="topbar-toggle" id="comment-btn" type="button" data-act="comments" aria-expanded="${state.comments}" aria-controls="cdrawer" aria-label="レビュー中のコメント ${n} 件">${icon("log")}<span class="cb-label">コメント</span><span class="count">${n}</span></button>`;
   };
   const setComments = (open) => {
     state.comments = open;
@@ -1522,6 +1519,8 @@
     }, 150);
   });
   document.addEventListener("keydown", (e) => {
+    // 絞り込みのドロワーは、フォーカスがどこにあっても Esc で閉じる（閉じたら絞り込みのボタンへフォーカスを戻す）
+    if (e.key === "Escape" && drawerDlg.open && !dlg.open && !viewerDlg.open && !fullDlg.open) { e.preventDefault(); drawerDlg.close(); return; }
     // コメントの一覧は Esc で閉じ、コメントのボタンへフォーカスを戻す
     if (e.key === "Escape" && state.comments && !drawerDlg.open && !dlg.open && !viewerDlg.open && !fullDlg.open) { e.preventDefault(); setComments(false); document.getElementById("comment-btn")?.focus(); return; }
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.closest(".send")) { e.preventDefault(); e.target.closest(".send").requestSubmit(); return; }
