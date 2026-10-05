@@ -36,7 +36,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     summary: 雛形のフォルダからの相対パス。tsc が `.ts` から生成した `.js` を並びの順につなぐ（起動する `app.js` が最後）。中身はモジュール構成『プレビュー』のディレクトリ構成
-    value: ("core/dom.js", "core/records.js", "core/libs.js", "core/diff.js", "core/router.js", "core/api.js", "components/view-switch.js", "components/topbar.js", "components/diff-mark.js", "components/history-dialog.js", "components/table.js", "components/send-form.js", "screens/overview.js", "screens/decisions.js", "screens/tasks.js", "screens/docs.js", "screens/records.js", "screens/detail.js", "screens/search.js", "screens/diagram-viewer.js", "graph/graph.js", "app.js")
+    value: ("core/dom.js", "core/records.js", "core/libs.js", "core/diff.js", "core/router.js", "core/api.js", "components/view-switch.js", "components/topbar.js", "components/diff-mark.js", "components/history-dialog.js", "components/table.js", "components/send-form.js", "components/selection-comment.js", "components/settings-panel.js", "components/settings-confirm.js", "screens/overview.js", "screens/decisions.js", "screens/tasks.js", "screens/docs.js", "screens/records.js", "screens/detail.js", "screens/comments.js", "screens/settings.js", "screens/search.js", "screens/diagram-viewer.js", "graph/graph.js", "app.js")
   - name: STYLE_SLOT
     title: CSS の差し込み口
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
@@ -104,21 +104,28 @@ functions:
         required: true
         passing: keyword
         description: 読んだ日時（配信は読んだとき、配る書き出しは書き出したときの `now_utc`）
+      - name: settings_problem
+        type: list[str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`config.yaml` がスキーマに合わないときの合わない箇所の行（`read_records` だけが渡す）'
     returns:
       type: dict[str, Any]
-      description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`derived`・`built_at`'
+      description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`changes`・`derived`・`built_at`・`settings_problem`'
     process: |-
       1. 種類ごとの `items` をファイル名から `.yaml` を落としたキーで入れる（項目の `history` もそのまま入る）
       2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）
       3. まとまりを読んで `changes` に入れる（`load_changes`）
       4. 画面に出す値を計算して `derived` に入れる（`derive_preview_values`）
+      5. `settings_problem` を入れる（渡されなければ `null`。配る書き出しも同じキーを持つ）
     unit_tests:
       - name: test_collect_preview_data
         case: 正常
         summary: 種類ごとのキーと、指された本文だけを集める
         condition: 'A-1（`body: A-1.md`、ファイルあり）・R-1（`body: R-1.md`、ファイル無し）・`docs/X-1.md`（指されない）'
         mock: なし
-        expected: キーが `settings`・`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`・`bodies`・`changes`・`derived`・`built_at`。`bodies` のキーが `A-1.md` だけ
+        expected: キーが `settings`・`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`・`bodies`・`changes`・`derived`・`built_at`・`settings_problem`。`bodies` のキーが `A-1.md` だけ。`settings_problem` が `None`
       - name: test_collect_preview_data_with_changes
         case: 正常
         summary: まとまりと変更履歴を含める
@@ -634,13 +641,19 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     scope: public
-    summary: ワークスペースをその場で読んで検証し、記録の取得の JSON にする辞書を返す（`GET /api/records` が使う）
+    summary: ワークスペースをその場で読んで検証し、記録の取得の JSON にする辞書を返す（`GET /api/records` が使う）。`config.yaml` だけが合わないときは、渡された最後に検査に通った設定で返す
     args:
       - name: root
         type: Path
         required: true
         passing: positional
         description: 配信しているワークスペースのフォルダ
+      - name: last_settings
+        type: dict[str, Any] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 配信が持つ最後に検査に通った設定（`SettingsHolder.current`）。`None` なら `config.yaml` の問題もほかと同じく送る
       - name: now
         type: NowFn
         required: false
@@ -649,15 +662,18 @@ functions:
         description: 読んだ日時を返す関数
     returns:
       type: dict[str, Any]
-      description: '`collect_preview_data` の辞書'
+      description: '`collect_preview_data` の辞書。`config.yaml` が合わないときは `settings` が `last_settings` で、`settings_problem` に合わない箇所の行'
     process: |-
       1. ワークスペースを読み、検証する（`load_workspace`、`validate_workspace`）
-         - `mindmap.yaml` が無い場合、`WorkspaceNotFoundError` がそのまま上がる
-         - 問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送る（`legacy` は `is_legacy_problem`）
-      2. 読んだ日時を付けてまとめる（`collect_preview_data`）
+         - `config.yaml` が無い場合、`WorkspaceNotFoundError` がそのまま上がる
+      2. 問題を `file` が `config.yaml` のものとそれ以外に分ける
+         - それ以外の問題がある場合、問題ごとの行を持った `SchemaMismatchError` を送る（`legacy` は `is_legacy_problem`）
+         - `config.yaml` の問題があり、`last_settings` が `None` の場合、同じく `SchemaMismatchError` を送る
+         - `config.yaml` の問題があり、`last_settings` がある場合、ワークスペースの `settings` を `last_settings` に差し替え（`dataclasses.replace`）、問題ごとの行を `settings_problem` にする
+      3. 読んだ日時と `settings_problem` を付けてまとめる（`collect_preview_data`）
     exceptions:
       - name: SchemaMismatchError
-        condition: ワークスペースのどれかの YAML がスキーマに合わないか、YAML として読めない
+        condition: '`config.yaml` 以外のどれかの YAML がスキーマに合わないか YAML として読めない、または `last_settings` を渡さずに `config.yaml` が合わない'
     unit_tests:
       - name: test_read_records
         case: 正常
@@ -672,6 +688,12 @@ functions:
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `decisions.yaml: items[0].status:` で始まる行）'
         exception: スキーマに合わない
+      - name: test_read_records_when_settings_invalid
+        case: 正常
+        summary: config.yaml だけが合わなければ最後に通った設定で返す
+        condition: '`config.yaml` の `display.network_look` を `rainbow` にしたワークスペース。`parametrize`: `last_settings` に `display.network_look: starlight` の設定 / `last_settings` を渡さない'
+        mock: なし
+        expected: '`settings.display.network_look` が `starlight` で、`settings_problem` に `config.yaml: display.network_look: ` で始まる行 / `SchemaMismatchError`（`lines` に同じ行）'
 data_models:
   - name: VendorLibrary
     title: 配る書き出しに入れるライブラリ

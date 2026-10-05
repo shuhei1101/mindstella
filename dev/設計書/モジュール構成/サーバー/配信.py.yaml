@@ -1,9 +1,9 @@
 title: "サーバー / 配信"
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送るを受け付ける。ビルド（雛形と記録）とコメントと読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。ビルド（雛形と記録）とコメントと設定の更新と読み書きと検証に依存する。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・コメントの受け付け
+    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・コメントの受け付け・最後に検査に通った設定と再読み込み
   ```
 diagrams:
   - name: 全体
@@ -46,6 +46,12 @@ constants:
     usecase: 共通
     summary: 書き込む要求の本文を読む上限。`Content-Length` がこれを超えたら読まずに 400（非機能要件の「送信の本文の長さ」の根拠）
     value: '131072'
+  - name: PAGE_PATH
+    title: 画面のパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを開く
+    summary: 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
+    value: '"/mindstella.html"'
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
@@ -80,10 +86,12 @@ classes:
             description: ワークスペースの絶対パス
         returns:
           type: tuple[str, bool]
-          description: 配信の URL（`http://127.0.0.1:{ポート}/`）と、この呼び出しで立てたか
+          description: 配信の画面の URL（`http://127.0.0.1:{ポート}/mindstella.html`）と、この呼び出しで立てたか
         process: |-
-          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す
-          2. 無ければ配信を立てて（`start_preview_server`）`_servers` に入れ、URL と `True` を返す
+          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない）
+          2. `config.yaml` を検査する（設定の検査。`check_settings`）
+             - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
+          3. 読んだ設定を初めの値にして配信を立て（`start_preview_server`）`_servers` に入れ、URL と `True` を返す
              - `[INFO]` 配信を立てた（ワークスペース、URL）
         unit_tests:
           - name: test_start
@@ -91,7 +99,13 @@ classes:
             summary: 同じワークスペースは同じ URL、別なら別の URL
             condition: 作成済みのワークスペース 2 つ。一つ目を 2 回、二つ目を 1 回 `start` する
             mock: なし（本物の待ち受け。後で `stop_all`）
-            expected: 1 回目 `(url1, True)`、2 回目 `(url1, False)`、二つ目 `(url2, True)` で url1 と url2 のポートが違う。どちらも `http://127.0.0.1:` で始まる
+            expected: 1 回目 `(url1, True)`、2 回目 `(url1, False)`、二つ目 `(url2, True)` で url1 と url2 のポートが違う。どちらも `http://127.0.0.1:` で始まり `/mindstella.html` で終わる
+          - name: test_start_when_settings_invalid
+            case: 異常
+            summary: config.yaml が合わなければ配信を立てず、直せば立てる
+            condition: '`display.network_look` を `rainbow` にしたワークスペースで 2 回 `start` し、`deep` に直してもう 1 回 `start` する'
+            mock: なし（本物の待ち受け。後で `stop_all`）
+            expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.network_look: ` で始まる行）で台帳が空。3 回目は `(url, True)`'
       - name: stop_all
         title: 全ての配信を止める
         kind: メソッド
@@ -120,7 +134,7 @@ classes:
         description: 配っているワークスペース
       - name: url
         type: str
-        description: '`http://127.0.0.1:{ポート}/`'
+        description: '`http://127.0.0.1:{ポート}/mindstella.html`'
       - name: httpd
         type: ThreadingHTTPServer
         description: 待ち受け（`daemon_threads=True`）
@@ -152,22 +166,23 @@ classes:
       - name: do_GET
         title: GET の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける'
+        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける'
         returns:
           type: None
           description: '-'
         process: |-
           1. `Host` が合わなければ 403 を返す（`check_host`、`problem_response`）
           2. パスで分ける（クエリとハッシュは見ない）
-             - `/` の場合、画面を返す（`index_response`）
-             - `/api/records` の場合、記録を返す（`records_response`）
-             - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
+             - `/` の場合、`302`・`Location: /mindstella.html`・本文なしで送り直す（`PAGE_PATH`）
+             - `/mindstella.html` の場合、画面を返す（`index_response`）
+             - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
+             - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えの印は `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
              - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
              - それ以外は 404 を返す
       - name: do_POST
         title: POST の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/comments` と `/api/comments/send` を受け付けの関数へ、`/api/opened` を前回開いた日時の関数へ渡す'
+        summary: '`Host` を確かめ、`/api/comments` と `/api/comments/send` を受け付けの関数へ、`/api/opened` を前回開いた日時の関数へ、`/api/config/reload` を設定の再読み込みの関数へ渡す'
         returns:
           type: None
           description: '-'
@@ -175,6 +190,7 @@ classes:
           1. `Host` が合わなければ 403 を返す
           2. パスで分ける
              - `/api/opened` の場合、本文を読まずに前回開いた日時を返す（`opened_response`）
+             - `/api/config/reload` の場合、本文を読まずに設定を読み直す（`reload_response`）
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
           4. 本文を読み、受け付ける（`write_response`。成功は 201）
@@ -200,14 +216,17 @@ classes:
       - name: do_PUT
         title: PUT の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/drafts` を書きかけを保つ受け付けへ渡す'
+        summary: '`Host` を確かめ、`/api/drafts` を書きかけを保つ受け付けへ、`/api/config/display` を設定の既定の書き換えへ渡す'
         returns:
           type: None
           description: '-'
         process: |-
           1. `Host` が合わなければ 403 を返す
-          2. パスが `/api/drafts` でなければ 404 を返す
-          3. `do_POST` と同じく本文の大きさを確かめて読み、`save_draft` を受け付ける（`write_response`。成功は本文を持たない 204）
+          2. パスで分ける
+             - `/api/drafts` なら `save_draft`（成功は本文を持たない 204）
+             - `/api/config/display` なら `update_display`（モジュール構成『設定の更新』。成功は `{display}` の 200）
+             - それ以外は 404 を返す
+          3. `do_POST` と同じく本文の大きさを確かめて読み、受け付ける（`write_response`）
       - name: do_DELETE
         title: DELETE の振り分け
         kind: メソッド
@@ -219,6 +238,78 @@ classes:
           1. `Host` が合わなければ 403 を返す
           2. パスが `/api/comments/{id}` でなければ 404 を返す
           3. 本文を読まずに受け付ける（`delete_response`）
+  - name: SettingsHolder
+    title: 最後に検査に通った設定
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 設定の再読み込み
+    role: 長期保持のランタイム状態
+    summary: 1 つの配信が持つ、最後に検査に通った `config.yaml` の中身と、再読み込みの回数。要求ごとのスレッドから読み書きするため、触る間だけ鍵を取る。作るときに初めの設定を位置引数で受け取る（`SettingsHolder(settings)`）
+    kind: クラス
+    properties:
+      - name: _settings
+        type: dict[str, Any]
+        access: 内部 (_)
+        description: 最後に検査に通った設定
+      - name: _revision
+        type: int
+        access: 内部 (_)
+        description: 再読み込みで差し替えた回数（0 から）。書き換えの印に混ぜて、ファイルが変わらない再読み込みでも知らせる
+      - name: _guard
+        type: threading.Lock
+        access: 内部 (_)
+        description: 触る間だけ取る鍵
+    methods:
+      - name: current
+        title: 今の設定
+        summary: 最後に検査に通った設定を返す
+        kind: メソッド
+        returns:
+          type: dict[str, Any]
+          description: 設定
+        process: 1. `_guard` を取り、`_settings` を返す
+      - name: accept
+        title: 通った設定を控える
+        summary: 記録の取得が検査に通した設定に差し替える（回数は進めない）
+        kind: メソッド
+        args:
+          - name: settings
+            type: dict[str, Any]
+            required: true
+            passing: positional
+            description: 検査に通った設定
+        returns:
+          type: None
+          description: '-'
+        process: 1. `_guard` を取り、`_settings` を差し替える
+      - name: reload
+        title: 再読み込みで差し替える
+        summary: 設定を差し替え、`_revision` を 1 進める
+        kind: メソッド
+        args:
+          - name: settings
+            type: dict[str, Any]
+            required: true
+            passing: positional
+            description: 検査に通った設定
+        returns:
+          type: None
+          description: '-'
+        process: 1. `_guard` を取り、`_settings` を差し替えて `_revision` を 1 進める
+        unit_tests:
+          - name: test_settings_holder
+            case: 正常
+            summary: accept は回数を変えず、reload だけが進める
+            condition: '`{summary: a}` で作り、`accept({summary: b})`、`reload({summary: c})` の順に呼ぶ'
+            mock: なし
+            expected: '`current()` が `a` → `b` → `c`、`revision()` が `0` → `0` → `1`'
+      - name: revision
+        title: 再読み込みの回数
+        summary: '`_revision` を返す'
+        kind: メソッド
+        returns:
+          type: int
+          description: 回数
+        process: 1. `_guard` を取り、`_revision` を返す
 data_models:
   - name: ServeContext
     title: 配信の文脈
@@ -236,6 +327,9 @@ data_models:
       - name: write_lock
         type: threading.Lock
         description: プロセスの中の書き換えの鍵
+      - name: settings
+        type: SettingsHolder
+        description: 最後に検査に通った設定
       - name: preview_dir
         type: Path
         default: PREVIEW_DIR
@@ -276,14 +370,19 @@ functions:
         required: true
         passing: keyword
         description: プロセスの中の書き換えの鍵
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: keyword
+        description: 立てる前に検査に通った設定（`SettingsHolder` の初めの値）
     returns:
       type: PreviewServer
       description: 立てた配信
     process: |-
       1. `ThreadingHTTPServer((LISTEN_HOST, 0), PreviewHandler)` を作り、`daemon_threads` を真にする
          - `OSError` が起きた場合、`ServeFailedError` を送る
-      2. 割り当てられたポートで `ServeContext` を作り、待ち受けの `context` に持たせる
-      3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}/` の `PreviewServer` を返す
+      2. 割り当てられたポートと `SettingsHolder(settings)` で `ServeContext` を作り、待ち受けの `context` に持たせる
+      3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` の `PreviewServer` を返す
     exceptions:
       - name: ServeFailedError
         condition: 待ち受けを立てられない（`OSError`）
@@ -294,7 +393,7 @@ functions:
         summary: 127.0.0.1 だけで待ち受ける
         condition: 作成済みのワークスペース
         mock: なし（後で `stop`）
-        expected: '`httpd.server_address[0]` が `127.0.0.1`、ポートが 0 でない。`url` への `GET /` が 200'
+        expected: '`httpd.server_address[0]` が `127.0.0.1`、ポートが 0 でない。`url` が `/mindstella.html` で終わり、`url` への GET が 200、`/` への GET（送り直しを辿らない）が 302 で `Location` が `/mindstella.html`'
       - name: test_start_preview_server_when_bind_fails
         case: 異常
         summary: 待ち受けを立てられなければ ServeFailedError
@@ -429,15 +528,15 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     scope: public
-    summary: ワークスペースをその場で読んだ記録の JSON を返す
+    summary: ワークスペースをその場で読んだ記録の JSON を返す。`config.yaml` が検査に通れば最後に通った設定を差し替え、通らなければ最後に通った設定で返す
     args:
-      - name: root
-        type: Path
+      - name: context
+        type: ServeContext
         required: true
         passing: positional
-        description: 配っているワークスペース
+        description: 配信の文脈（ワークスペースと最後に検査に通った設定）
       - name: read
-        type: Callable[[Path], dict[str, Any]]
+        type: Callable[..., dict[str, Any]]
         required: false
         default: read_records
         passing: injected
@@ -446,10 +545,11 @@ functions:
       type: Response
       description: 200・`application/json; charset=utf-8` の応答。読めなければ 422
     process: |-
-      1. 記録を読む（記録の読み出し。`read_records`）
+      1. 記録を読む（記録の読み出し。`read_records`、`last_settings` に `SettingsHolder.current`）
          - `SchemaMismatchError` の場合、`lines` を改行でつないだ `detail` の 422 を返す
          - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
-      2. `ensure_ascii=False` の JSON を返す
+      2. `settings_problem` が `None` なら、読んだ `settings` を最後に検査に通った設定にする（`SettingsHolder.accept`）
+      3. `ensure_ascii=False` の JSON を返す
     unit_tests:
       - name: test_records_response
         case: 正常
@@ -465,10 +565,16 @@ functions:
         expected: 422、`detail` がその行
       - name: test_records_response_when_workspace_removed
         case: 正常
-        summary: mindmap.yaml が無くなったら 422
+        summary: config.yaml が無くなったら 422
         condition: '`read` が `WorkspaceNotFoundError` を送る'
         mock: '`read`'
         expected: '422'
+      - name: test_records_response_when_settings_changed
+        case: 正常
+        summary: 通った設定は控え、崩れた設定では控えた設定で返す
+        condition: '`display.network_look: starlight` の設定で作った文脈。`config.yaml` を `dust` にして 1 回、`rainbow` にして 1 回呼ぶ'
+        mock: なし
+        expected: '1 回目は 200 で `settings.display.network_look` が `dust`、`settings_problem` が `null`。控えが `dust` になる。2 回目は 200 で `dust` のまま、`settings_problem` に `config.yaml: display.network_look: ` で始まる行'
   - name: workspace_signature
     title: 書き換えの印
     kind: 関数
@@ -486,7 +592,7 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md` を名前の順に並べる（`.mindstella-opened` は見ない）
+      1. `config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md` を名前の順に並べる（`.mindstella-opened` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
@@ -712,7 +818,7 @@ functions:
       description: 問題の応答
     process: |-
       1. 種類で分ける
-         - `CommentInvalidError` は 400
+         - `CommentInvalidError`・`SettingsInvalidError` は 400
          - `ItemNotFoundError`・`CommentNotFoundError` は 404
          - `CommentConflictError` は 409（`stale` があれば本文に `stale: [{id, reason}]` を足す）
          - `WorkspaceNotFoundError`・`SchemaMismatchError` は 422（`detail` はメッセージに `lines` を改行でつないだもの）
@@ -724,9 +830,9 @@ functions:
       - name: test_error_response
         case: 正常
         summary: 種類ごとのステータスコード
-        condition: '`parametrize`: `CommentInvalidError` / `ItemNotFoundError` / `CommentNotFoundError` / `CommentConflictError(stale=[(C-2, 理由)])` / `SchemaMismatchError(lines=[行])` / `WriteFailedError`'
+        condition: '`parametrize`: `CommentInvalidError` / `SettingsInvalidError` / `ItemNotFoundError` / `CommentNotFoundError` / `CommentConflictError(stale=[(C-2, 理由)])` / `SchemaMismatchError(lines=[行])` / `WriteFailedError`'
         mock: なし
-        expected: '400 / 404 / 404 / 409（本文の `stale` が `[{id: C-2, reason: 理由}]`）/ 422（`detail` にその行）/ 500'
+        expected: '400 / 400 / 404 / 404 / 409（本文の `stale` が `[{id: C-2, reason: 理由}]`）/ 422（`detail` にその行）/ 500'
   - name: opened_response
     title: 前回開いた日時の応答
     kind: 関数
@@ -767,5 +873,39 @@ functions:
         mock: '`touch_opened`（`serve` モジュールの参照を monkeypatch）'
         expected: ステータスが 500、`Content-Type` が `application/problem+json`
         exception: 書き込めない
+  - name: reload_response
+    title: 設定の再読み込みの応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 設定の再読み込み
+    scope: public
+    summary: '`config.yaml` を検査し、通れば最後に検査に通った設定を差し替えて知らせ、通らなければ違う箇所を返す（インターフェース定義『設定の再読み込み』）'
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+    returns:
+      type: Response
+      description: 200 と `{settings}`、または問題の応答
+    process: |-
+      1. `Origin` が合わなければ 403 を返す（`check_origin`）
+      2. `config.yaml` を検査する（`check_settings`。書き換えの鍵は取らない）
+         - `WorkspaceNotFoundError` の場合、422 を返す（`error_response`）
+         - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を改行でつないだ `detail` の 422 を返す（最後に通った設定はそのまま）
+      3. 読んだ設定に差し替えて回数を進め（`SettingsHolder.reload`。書き換えの印が変わり、書き換えの知らせが届く）、200 で `{settings}` を返す
+    unit_tests:
+      - name: test_reload_response
+        case: 正常
+        summary: 通れば差し替え、通らなければ前の設定のまま違う箇所を返す
+        condition: '`display.network_look: starlight` の設定で作った文脈。`parametrize`: `config.yaml` を `dust` にして `Origin` 無し / `rainbow` にして `Origin` 無し / `dust` にして `Origin: https://attacker.example`'
+        mock: なし
+        expected: '200 で `settings.display.network_look` が `dust`、控えが `dust` で `revision` が 1 / 422 で `detail` に `config.yaml: display.network_look: `、控えが `starlight` で `revision` が 0 / 403 で控えが `starlight`。どれも `config.yaml` を書き換えていない'
 test_files:
   - tests/unit/scripts/test_serve.py

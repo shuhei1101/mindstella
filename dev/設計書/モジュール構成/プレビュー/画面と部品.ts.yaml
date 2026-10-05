@@ -11,6 +11,8 @@ directory: |-
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
       send-form.ts          コメントの入力（部品設計『コメントの入力』）
       selection-comment.ts  選んだ箇所のコメントの入口（部品設計『選んだ箇所のコメントの入口』）
+      settings-panel.ts     表示の設定の中身（部品設計『表示の設定』）
+      settings-confirm.ts   既定の保存の確かめ（部品設計『既定の保存の確かめ』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（マップ・ボード・表）
@@ -19,13 +21,12 @@ directory: |-
       records.ts          調査・用語集・メモ・会話ログ（表）
       detail.ts           詳細パネルと詳細の全画面
       comments.ts         コメントの一覧（左から出すパネル）
+      settings.ts         表示の設定（左から出すパネル）と既定の保存の確かめ・既定が変わった知らせ
       search.ts           全体の検索
       diagram-viewer.ts   図の拡大
     graph/
       graph.ts            つながり（3D）。見本の作りを関数に分けて整える
   ```
-
-  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え
@@ -111,6 +112,11 @@ components:
         required: false
         default: 'null'
         description: コメントのボタンの件数・一覧を開いているか・押したとき。`null`（配る書き出し）ならボタンを置かず、検索の入口も今の位置のまま。件数は 99 を超えたら `99+`、読み上げの名前には実際の件数
+      - name: settings
+        type: '{open: boolean, onToggle: () => void}'
+        required: false
+        default: 'null'
+        description: 表示の設定のボタンのパネルを開いているか・押したとき（部品設計『トップバー』の `settings_open`）。コメントのボタンがあればその左に置く。配る書き出しでも渡す。`tabs` には使う側が表示する種類だけを渡す
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -174,6 +180,17 @@ components:
         type: '{open, navigate}'
         required: true
         description: 項目を開く・絞った表へ移る（`Route`）
+      - name: visibleKinds
+        type: Set<string>
+        required: true
+        description: 表示する種類（`resolveDisplay`）。表示しない種類へ移る「すべて表示」を出さず、検討事項を表示しないときはカテゴリー別の進捗のセルと行の見出しを押せなくする（タイルと中の項目は残す。画面設計『概要』）
+    unit_tests:
+      - name: test_overview_screen_when_kinds_hidden
+        case: 正常
+        summary: 表示しない種類へのリンクだけを外し、タイルは残す
+        condition: '要見直しの D-1・進行中の T-1・納品物 6 件を持つ索引。`parametrize`: `visibleKinds` が 7 種類 / 検討事項・タスク・資料を除く 4 種類'
+        mock: なし（DOM を作って見る）
+        expected: どちらも要見直し・進行中のタスク・納品物のタイルと D-1・T-1 の行がある。前者は「すべて表示」と押せるカテゴリー別の進捗のセルがあり、後者は「すべて表示」が無くセルが押せない（数と棒はある）
   - name: decisionsScreen
     title: 検討事項
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
@@ -363,6 +380,10 @@ components:
         type: '{open}'
         required: true
         description: 玉を押して項目を開く
+      - name: look
+        type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
+        required: true
+        description: 'つながりの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れる。値ごとの描き分けは #28 が作る'
     state:
       - name: shownKinds
         type: Set<string>
@@ -577,6 +598,133 @@ components:
         type: () => void
         required: true
         description: 閉じる
+  - name: settingsPanel
+    title: 表示の設定
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
+    usecase: 表示の設定を変える
+    summary: 部品設計『表示の設定』の引数を受け、見た目を選ぶ・表示する種類を変える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目の名前と短い説明は部品の中の定数に持つ。「すべて」は `toggleAllBox` と同じく途中の印を持つ。描き直しても操作していた部品にフォーカスを戻す
+    props:
+      - name: look
+        type: string
+        required: true
+        description: 当てている見た目
+      - name: defaultLook
+        type: string
+        required: true
+        description: ワークスペースの既定の見た目（「既定」の札）
+      - name: kinds
+        type: Set<string>
+        required: true
+        description: 当てている表示する種類
+      - name: defaultKinds
+        type: Set<string>
+        required: true
+        description: ワークスペースの既定の表示する種類
+      - name: counts
+        type: Record<string, number>
+        required: true
+        description: 種類 → 件数
+      - name: overrides
+        type: string[]
+        required: true
+        description: この端末で変えている項目の名前
+      - name: canSave
+        type: boolean
+        required: true
+        description: 「ワークスペースの既定にする」を置くか（配る書き出しは偽）
+      - name: message
+        type: "{kind: 'ok' | 'info', text: string} | null"
+        required: false
+        default: 'null'
+        description: 下端に残す知らせ（`role="status"`）
+      - name: storageOk
+        type: boolean
+        required: false
+        default: 'true'
+        description: 偽のとき先頭に「この端末に保存できません。…」（`role="alert"`）
+      - name: on
+        type: '{look, kinds, reset, save, close}'
+        required: true
+        description: 見た目を選ぶ（値）・表示する種類を変える（変えた後の並び）・既定に戻す・ワークスペースの既定にする・閉じる
+    unit_tests:
+      - name: test_settings_panel
+        case: 正常
+        summary: 上書きの有無と既定との違いで、既定に戻すと保存のボタンを出し分ける
+        condition: '`parametrize`: `overrides` が空で既定と同じ / `look: dust`・`defaultLook: starlight`・`overrides` 2 件 / 同じで `canSave: false` / `look`・`kinds` が既定と同じで `overrides` が「ライト / ダーク」'
+        mock: なし（DOM を作って見る）
+        expected: 「ワークスペースの既定のまま表示しています。」と「今の選びはワークスペースの既定と同じです。」でボタンが無い / 「既定に戻す」と「ワークスペースの既定にする」があり、星の光の行に「既定」の札 / 「既定に戻す」だけがある / 「既定に戻す」があり、保存のボタンの代わりに「今の選びは…同じです。」
+      - name: test_settings_panel_when_kinds_changed
+        case: 正常
+        summary: 種類のチェックと「すべて」で変えた後の並びを知らせる
+        condition: 用語集と会話ログを除く 5 種類。タスクのチェックを外し、次に「すべて」を押す
+        mock: '`on.kinds`'
+        expected: 「すべて」が `indeterminate` で `5/7`。`on.kinds` がタスクを除いた 4 種類、続けて 7 種類で呼ばれる。概要とつながりの行はチェックボックスを持たない
+  - name: settingsConfirm
+    title: 既定の保存の確かめ
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts
+    usecase: ワークスペースの既定を変える
+    summary: 部品設計『既定の保存の確かめ』の引数を受け、`dialog` を `showModal()` で開く。最初のフォーカスは取り消す。`busy` の間は 2 つのボタンを押せなくし、Esc（`cancel` のイベント）を止める。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
+    props:
+      - name: from
+        type: '{look: string, kinds: Set<string>}'
+        required: true
+        description: 今の既定
+      - name: to
+        type: '{look: string, kinds: Set<string>}'
+        required: true
+        description: 保存する値
+      - name: busy
+        type: boolean
+        required: false
+        default: 'false'
+        description: 保存している途中か
+      - name: error
+        type: string | null
+        required: false
+        default: 'null'
+        description: 保存できなかった理由（`role="alert"`）
+      - name: on
+        type: '{save, cancel}'
+        required: true
+        description: 保存する・取り消す（Esc を含む）
+    unit_tests:
+      - name: test_settings_confirm
+        case: 正常
+        summary: 変える項目と変えない項目、保存している間と失敗を描き分ける
+        condition: '`parametrize`: `from` が `deep`・7 種類、`to` が `glow`・7 種類 / 同じで `busy: true` / 同じで `error` あり'
+        mock: '`on.cancel`'
+        expected: 見た目の行に「深宇宙」と「グロウ」、種類の行に「すべて表示」と「変えない」。フォーカスが取り消す / 2 つのボタンが `disabled` で「保存しています」。Esc で `on.cancel` が呼ばれない / `role="alert"` の理由があり、「保存する」が押せる
+  - name: settingsDrawer
+    title: 表示の設定のパネル
+    kind: 画面
+    container: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
+    usecase: 表示の設定を変える
+    summary: 画面設計『表示の設定』を、コメントの一覧と同じ左から出すパネル（見出しの帯と ×。幅 900px 以下は画面の幅いっぱい）に `settingsPanel` を入れて描く。画面の下の知らせ（`settingsNotice`）もここに置く
+    props:
+      - name: panel
+        type: SettingsPanelProps
+        required: true
+        description: '`settingsPanel` の引数（`on.close` を見出しの × にもつなぐ）'
+    unit_tests:
+      - name: test_settings_drawer
+        case: 正常
+        summary: 見出しと閉じるボタンを持つ左のパネルに中身を入れる
+        condition: 上書きを持たない引数。× を押す
+        mock: '`panel.on.close`'
+        expected: 見出し「表示の設定」と読み上げの名前「表示の設定を閉じる」の × があり、× で `on.close` が 1 回呼ばれる
+  - name: settingsNotice
+    title: 既定が変わった知らせ
+    kind: 画面
+    container: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
+    usecase: ワークスペースの既定を変える
+    summary: 画面の下に「ワークスペースの既定が変わりました。」を `role="status"` で出し、`NOTICE_MS` 経ったら自分を消す。続けて呼ばれたら前の知らせを消して出し直す
+    props:
+      - name: durationMs
+        type: number
+        required: true
+        description: 出しておく長さ（`NOTICE_MS`）
 functions:
   - name: filterRows
     title: 行の絞り込み

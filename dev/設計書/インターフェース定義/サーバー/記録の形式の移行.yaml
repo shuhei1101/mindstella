@@ -526,9 +526,9 @@ constraints:
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。手順が触らない項目の `updated` は変えない'
   - item: 対象が無い・既にあるとき
-    constraint: どの操作も、同じ手順を 2 度当てても結果が変わらないように振る舞う。`rename_key` は `from` が無い項目を飛ばし、`from` と `to` が両方ある項目は StepFailedError。`map_values` は `key` が無い項目と `map` に無い値を変えない。`set_default` は `key` を既に持つ項目を変えず、`ask` でも `needs_values` に返さない。`rename_file`・`move_dir` は `from` が無ければ飛ばし、`to` が既にあれば StepFailedError。`delete` は `path` が無ければ飛ばす。`call` の変換も同じ振る舞いで書く。手順が何も変えなかったファイルは書かない
+    constraint: どの操作も、同じ手順を 2 度当てても結果が変わらないように振る舞う。`rename_key`・`set_default`・`map_values` は `file` が無ければ飛ばす。`rename_key` は `from` が無い項目を飛ばし、`from` と `to` が両方ある項目は StepFailedError。`map_values` は `key` が無い項目と `map` に無い値を変えない。`set_default` は `key` を既に持つ項目を変えず、`ask` でも `needs_values` に返さない。`rename_file`・`move_dir` は `from` が無ければ飛ばし、`to` が既にあれば StepFailedError。`delete` は `path` が無ければ飛ばす。`call` の変換も同じ振る舞いで書く。手順が何も変えなかったファイルは書かない
   - item: v0.5.0 の手順
-    constraint: '`call`（`field_to_playbooks`）の 1 手順。`mindmap.yaml` の `field` を `playbooks` の 1 件の配列へ移し、`field` を消す。`field` が無ければ飛ばし、`field` と `playbooks` を両方持つときは StepFailedError。`target_label` とキーの並びは変えない（`playbooks` は `field` の位置に置く）'
+    constraint: '`call`（`field_to_playbooks`）の 1 手順。`mindmap.yaml` の `field` を `playbooks` の 1 件の配列へ移し、`field` を消す。`mindmap.yaml` か `field` が無ければ飛ばし、`field` と `playbooks` を両方持つときは StepFailedError。`target_label` とキーの並びは変えない（`playbooks` は `field` の位置に置く）'
   - item: v0.6.0 の手順
     constraint: '`rename_file`（`from: mindmap.yaml`・`to: config.yaml`）の 1 手順。破壊的な操作。`mindmap.yaml` が無ければ飛ばし、両方あれば StepFailedError（『対象が無い・既にあるとき』）。v0.3.0・v0.5.0 の手順は改める前に当たるため、`mindmap.yaml` を指したまま残す'
   - item: ワークスペースの見分け
