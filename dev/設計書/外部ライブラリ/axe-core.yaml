@@ -1,0 +1,40 @@
+title: "axe-core"
+kind: "ライブラリ"
+version:
+  current: 4.13.0
+  latest: 4.13.0
+  checked_on: '2026-10-05'
+  source: package.json
+  pinning: '`axe-core` を `--save-exact` で完全一致に固定する'
+catalogs:
+  - name: API
+    version: 4.13.0
+    entries:
+      - name: axe.run
+        kind: 関数
+        purpose: 範囲（`include`）と規則（`runOnly`）を絞って規則を当て、違反（`violations`）と通過（`passes`）を返す
+      - name: scrollable-region-focusable
+        kind: 規則
+        purpose: スクロールする領域に、キーボードで届く手段（領域のフォーカス・中のフォーカスできる要素）があるかを確かめる
+lead: 画面の DOM にアクセシビリティの規則（WCAG）を当てて、違反と通過した要素を返す JavaScript のライブラリ。
+purl: pkg:npm/axe-core
+supplier: Deque Systems
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+  - tests/integration/preview/preview_a11y_checks.py
+upstream: dequelabs/axe-core
+verification:
+  state: 済
+  date: '2026-10-05'
+  detail: 'axe-core 4.13.0 を `npm install --save-dev --save-exact` で入れ、`node_modules/axe-core/axe.min.js` を pytest-playwright の `add_script_tag` で読み、`axe.run({ include: [[selector]] }, { runOnly: { type: "rule", values: ["scrollable-region-focusable"] } })` を詳細パネルと詳細の全画面の `.panel-body` に当てた。本文にフォーカスできる要素が無い項目で、`tabindex` を持たない版は違反に出て、持つ版は通過に出ることを確かめた'
+license: MPL-2.0（開発用だけで配る物に入らない）
+official_url: https://www.deque.com/axe/
+docs_url: https://github.com/dequelabs/axe-core/blob/develop/doc/API.md
+selection:
+  candidates: axe-core を直接使う方法・axe-playwright-python（axe-core を包む Python のライブラリ）を比べた
+  decision: axe-core を直接使う。実装の照合で使った axe と同じ規則を、依存を 1 つだけ増やして npm の配布ファイルから読める。包む Python のライブラリは axe-core を同梱するため、版の追従が二重になる
+install: |-
+  ```bash
+  npm ci
+  ```

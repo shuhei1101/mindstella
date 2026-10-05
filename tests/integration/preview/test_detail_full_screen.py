@@ -3,21 +3,33 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
-from preview_comment_helpers import PILL, THREE_LINE_BODY, select_text_for_pill
+from preview_a11y_checks import axe_rule_results
+from preview_body_scroll_helpers import (
+    LONG_BODY,
+    NEW_DECISION,
+    SCROLLABLE_REGION_RULE,
+    SETTLED_SCROLL_TOP_JS,
+)
+from preview_comment_helpers import PILL, THREE_LINE_BODY, UPDATE_TIMEOUT_MS, select_text_for_pill
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
     OpenPreview,
+    WritePreview,
     WriteReviewPreview,
     WriteSamplePreview,
 )
-from workspace_fixtures import MakeComment, MakeItem
+from workspace_fixtures import CallTool, MakeComment, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
 
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
+
+# 全画面の本文のスクロール領域と、Tab で本文の前に来る見出しの最後のボタン
+FULL_BODY = "dialog.full .panel-body"
+FULL_HEAD_LAST_BUTTON = "dialog.full .panel-head button:not([disabled])"
 
 # 全画面のモーダルの外側（後ろの幕）を押す位置（画面の左上の隅）
 BACKDROP_POINT = (4, 4)
@@ -240,3 +252,121 @@ def test_selection_entry_when_diagram_zoomed(
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     # 検証
     assert page.locator(PILL).count() == 0
+
+
+def _open_long_body_full(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """フォーカスできる要素を持たない、縦にあふれる本文の項目を全画面で開く。"""
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector(f"{FULL_BODY} .md")
+    # 前提: 本文の中にフォーカスできる要素は無く、縦にあふれている
+    assert page.locator(f"{FULL_BODY} :is(a[href], button, input, textarea, select, [tabindex])").count() == 0
+    assert page.eval_on_selector(FULL_BODY, "e => e.scrollHeight > e.clientHeight")
+    return page
+
+
+def test_body_scroll_region_attributes(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面の本文のスクロール領域は、フォーカスでき、読み上げの名前「詳細の本文」の領域になる（正常系）。"""
+    # 準備・実行
+    page = _open_long_body_full(write_preview, open_preview, make_item)
+    # 検証
+    assert page.get_attribute(FULL_BODY, "tabindex") == "0"
+    assert page.get_attribute(FULL_BODY, "role") == "region"
+    assert page.get_attribute(FULL_BODY, "aria-label") == "詳細の本文"
+
+
+def test_body_scroll_by_keyboard(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、見出しのボタンの後の Tab で本文のスクロール領域にフォーカスが移り、PageDown で本文が送れる（正常系）。"""
+    # 準備
+    page = _open_long_body_full(write_preview, open_preview, make_item)
+    page.locator(FULL_HEAD_LAST_BUTTON).last.focus()
+    # 実行
+    page.keyboard.press("Tab")
+    page.keyboard.press("PageDown")
+    # 検証
+    assert page.evaluate("document.activeElement?.matches('dialog.full .panel-body')")
+    page.wait_for_function("document.querySelector('dialog.full .panel-body').scrollTop > 0")
+
+
+def test_body_scroll_region_when_axe(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、axe の `scrollable-region-focusable` に本文のスクロール領域が当たらない（正常系）。"""
+    # 準備
+    page = _open_long_body_full(write_preview, open_preview, make_item)
+    # 実行
+    result = axe_rule_results(page, FULL_BODY, SCROLLABLE_REGION_RULE)
+    # 検証（規則が本文のスクロール領域に当たったうえで、通る）
+    assert result["violations"] == []
+    assert result["passes"] == [".panel-body"]
+
+
+def test_body_focus_outline_inside(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、本文のスクロール領域にフォーカスしたとき、輪郭は領域の内側に描く（正常系）。"""
+    # 準備
+    page = _open_long_body_full(write_preview, open_preview, make_item)
+    page.locator(FULL_HEAD_LAST_BUTTON).last.focus()
+    # 実行
+    page.keyboard.press("Tab")
+    # 検証
+    outline = page.eval_on_selector(
+        FULL_BODY, "e => { const s = getComputedStyle(e); return [s.outlineOffset, s.outlineStyle]; }"
+    )
+    assert outline == ["-2px", "solid"]
+
+
+def test_body_focus_when_redrawn(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+) -> None:
+    """詳細パネルから全画面へ移った後、本文のスクロール領域にフォーカスして送り、書き換えの知らせで描き直しても、フォーカスとスクロールの位置が残る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    page = open_preview(str(served.data["url"]), "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .panel-body .md")
+    _open_full(page)
+    page.locator(FULL_HEAD_LAST_BUTTON).last.focus()
+    page.keyboard.press("Tab")
+    page.keyboard.press("PageDown")
+    page.wait_for_function("document.querySelector('dialog.full .panel-body').scrollTop > 0")
+    scrolled = page.evaluate(SETTLED_SCROLL_TOP_JS, FULL_BODY)
+    page.evaluate("document.querySelector('dialog.full .panel-body').dataset.drawn = 'before'")
+    # 実行（項目を足して、書き換えの知らせで描き直させる）
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    assert added.is_error is False, added.text
+    page.wait_for_function(
+        "document.querySelector('dialog.full .panel-body')?.dataset.drawn !== 'before'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.evaluate("document.activeElement?.matches('dialog.full .panel-body')")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, FULL_BODY) == scrolled
+
+
+def test_body_escape_returns_to_panel(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文のスクロール領域にフォーカスがあっても、Esc で詳細パネルに戻る（正常系）。"""
+    # 準備
+    page = _open_long_body_full(write_preview, open_preview, make_item)
+    page.locator(FULL_HEAD_LAST_BUTTON).last.focus()
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement?.matches('dialog.full .panel-body')")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_selector("aside.panel.open")
+    assert page.locator("dialog.full").count() == 0
+    assert "id=A-1" in page.evaluate("location.hash")

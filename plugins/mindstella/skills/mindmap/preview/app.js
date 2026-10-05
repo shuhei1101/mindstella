@@ -891,12 +891,17 @@ var MindmapPreview;
             const form = field instanceof HTMLTextAreaElement ? field.closest("form.send") : null;
             const inList = form !== null && form.closest(".comments-panel") !== null;
             const selection = field instanceof HTMLTextAreaElement && form !== null ? { start: field.selectionStart, end: field.selectionEnd } : null;
-            const panelScroll = document.querySelector(".panel-body")?.scrollTop ?? 0;
+            const bodyFocused = field instanceof HTMLElement && field.matches(".panel-body");
+            // 全画面のときは詳細パネルも文書に残るので、今の画面の本文を引く
+            const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+            const panelScroll = document.querySelector(bodySelector)?.scrollTop ?? 0;
             const pageScroll = window.scrollY;
             draw();
-            const panelBody = document.querySelector(".panel-body");
+            const panelBody = document.querySelector(bodySelector);
             if (panelBody !== null)
                 panelBody.scrollTop = panelScroll;
+            if (bodyFocused)
+                panelBody?.focus({ preventScroll: true });
             window.scrollTo(0, pageScroll);
             if (selection !== null) {
                 const restored = document.querySelector(inList ? ".comments-panel form.send textarea" : "aside.panel form.send textarea, dialog.full form.send textarea");

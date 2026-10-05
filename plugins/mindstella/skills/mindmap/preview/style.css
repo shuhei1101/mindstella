@@ -43,6 +43,7 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .panel-kind { font-size: var(--fs-small); color: var(--text-2); }
 .panel-head .spacer { flex: 1; }
 .panel-body { overflow-y: auto; padding: 22px 24px 56px; }
+.panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
 /* 幅 1100px 以上（マップは 901px 以上）は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる） */

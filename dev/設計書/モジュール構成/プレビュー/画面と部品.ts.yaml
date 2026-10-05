@@ -246,7 +246,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）、関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。`highlight` があればその箇所の要素までスクロールして印の色の地で示す
+    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）、関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す
     props:
       - name: id
         type: string
