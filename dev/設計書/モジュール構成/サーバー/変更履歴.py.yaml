@@ -506,3 +506,5 @@ functions:
         condition: 無い状態で 1 回、別の日時でもう 1 回呼ぶ
         mock: なし
         expected: 1 回目が `None`、2 回目が 1 回目の `now`。ファイルの 1 行目が 2 回目の `now`
+test_files:
+  - tests/unit/scripts/test_history.py

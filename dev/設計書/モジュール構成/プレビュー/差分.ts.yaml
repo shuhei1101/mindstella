@@ -278,3 +278,5 @@ functions:
         condition: gantt の前後
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`null`'
+test_files:
+  - tests/unit/preview/test_diff.py

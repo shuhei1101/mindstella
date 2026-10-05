@@ -118,7 +118,7 @@ functions:
         summary: 種類ごとのキーと、指された本文だけを集める
         condition: 'A-1（`body: A-1.md`、ファイルあり）・R-1（`body: R-1.md`、ファイル無し）・`docs/X-1.md`（指されない）'
         mock: なし
-        expected: キーが `settings`・`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`・`bodies`・`derived`・`built_at`。`bodies` のキーが `A-1.md` だけ
+        expected: キーが `settings`・`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`・`bodies`・`changes`・`derived`・`built_at`。`bodies` のキーが `A-1.md` だけ
       - name: test_collect_preview_data_with_changes
         case: 正常
         summary: まとまりと変更履歴を含める
