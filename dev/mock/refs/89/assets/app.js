@@ -1179,6 +1179,7 @@
     const main = document.getElementById("main");
     const k = state.tab;
     if (same && k === "graph" && G && document.getElementById("fg3")) {
+      if (drawerDlg.open) renderDrawer();
       renderPanel(); graphSelect(); lastScreen = screen;
       if (location.hash !== hashOf()) history.replaceState(history.state, "", hashOf());
       return;
@@ -1325,6 +1326,7 @@
     document.body.classList.toggle("drawer-open", !modal);
     // 横に並べると本文の幅が変わるので、マップの大きさや固定した列の位置を描き直す
     render();
+    document.getElementById("filter-btn")?.setAttribute("aria-expanded", "true");
     // 開いたら最初の選択肢へフォーカスを移す
     drawerDlg.querySelector(".fd-body input")?.focus();
   };
