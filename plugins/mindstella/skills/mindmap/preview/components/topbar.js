@@ -138,7 +138,6 @@ var MindmapPreview;
                 "data-act": "settings",
                 "aria-label": "表示の設定",
                 "aria-expanded": String(open),
-                "aria-controls": "sdrawer",
                 onclick: () => onToggle(),
             },
             children: [MindmapPreview.icon("sliders"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["表示の設定"] })],
