@@ -170,6 +170,9 @@ def run_update(
         changed.append("body")
     # 書き換える前の本文（本文を変えないときは、後の本文も同じ）
     previous_body = _read_item_body(workspace, ref.item)
+    # 本文の中身が変わったときは、`body_markdown` も changed に入れる
+    if body is not None and body.text != previous_body:
+        changed.append(BODY_INPUT_KEY)
     merged, noted = _stack_changes(
         workspace,
         record,
