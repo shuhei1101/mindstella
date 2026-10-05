@@ -824,7 +824,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -870,11 +870,17 @@ functions:
         default: 'False'
         passing: keyword
         description: 鍵を取るとき、まだ無いワークスペースのフォルダを作るか（`init` だけ真。`workspace_lock` の `create`）
+      - name: lock_require
+        type: Callable[[Path], None]
+        required: false
+        default: require_workspace
+        passing: keyword
+        description: 鍵を取る前にワークスペースを確かめる関数（`workspace_lock` の `require`。`plan` でない `migrate` だけ `require_migratable`）
     returns:
       type: CallToolResult
       description: 成功は `ok_result`、エラーは `error_result` の結果
     process: |-
-      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
+      1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`、`require=lock_require`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
       2. 結果を分ける
          - 辞書が返った場合、それを結果にする（`ok_result`）
          - `MindmapError` を捕まえた場合、ツールのエラーにする（`error_result`）
@@ -905,6 +911,12 @@ functions:
         condition: '`config.yaml` を置いた `tmp_path` を `lock_root` に渡す。`handler` は呼ばれたときに `write_lock.locked()` を控える'
         mock: なし
         expected: 控えた値が真で、呼んだ後は鍵が外れている。`tmp_path / ".mindstella.lock"` がある
+      - name: test_call_tool_when_lock_require
+        case: 正常
+        summary: 渡した確かめの関数で、前の版の設定ファイルだけのフォルダにも鍵を取る
+        condition: '`mindmap.yaml` だけを置いた `tmp_path` を `lock_root` に、`require_migratable` を `lock_require` に渡す。`handler` は `{}` を返す'
+        mock: なし
+        expected: '`is_error` が偽で、`tmp_path / ".mindstella.lock"` がある'
   - name: ok_result
     title: 成功の結果
     kind: 関数

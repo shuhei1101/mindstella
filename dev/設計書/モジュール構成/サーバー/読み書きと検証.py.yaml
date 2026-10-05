@@ -1183,12 +1183,18 @@ functions:
         default: 'False'
         passing: keyword
         description: まだ無いワークスペースを作るか（`init` だけ真）
+      - name: require
+        type: Callable[[Path], None]
+        required: false
+        default: require_workspace
+        passing: keyword
+        description: '`create` が偽のときにワークスペースを確かめる関数。`plan` でない `migrate` だけが、前の版の `mindmap.yaml` だけのフォルダも通す `require_migratable`（モジュール構成『移行』）を渡す'
     returns:
       type: Iterator[None]
       description: 鍵とロックを持っている間だけ返す
     process: |-
       1. `process_lock` を取る
-      2. `create` が真なら `root` を作る（`exist_ok`）。偽なら、ワークスペースを確かめ（`require_workspace`）、送られたら何も作らずに伝える（`process_lock` は放す）
+      2. `create` が真なら `root` を作る（`exist_ok`）。偽なら、ワークスペースを確かめ（`require(root)`）、送られたら何も作らずに伝える（`process_lock` は放す）
       3. `LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。開けない（`OSError`）ときは `WriteFailedError` を送る
       4. 呼び出し元の処理を動かす
       5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 で `root` を作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と `root` を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
@@ -1217,9 +1223,15 @@ functions:
         condition: '`parametrize`: 空の `tmp_path` / `tmp_path / "typo" / "ws"`（無い）。`create` は既定（偽）'
         mock: なし
         expected: '`WorkspaceNotFoundError` が伝わり、`process_lock` が外れている。`tmp_path` の中は空のまま（`typo` も作られない）'
+      - name: test_workspace_lock_when_require_given
+        case: 正常
+        summary: 渡した確かめの関数でワークスペースを確かめる
+        condition: '`mindmap.yaml` だけを置いた `tmp_path`。`parametrize`: `require` が `require_migratable` / 既定'
+        mock: なし
+        expected: '`require_migratable` では `with` の中に入り、`tmp_path / ".mindstella.lock"` がある。既定では `WorkspaceNotFoundError`（`lines` に移し替えの案内）が伝わり、`.mindstella.lock` は作られない'
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`create` が偽で、`root` に `config.yaml` が無い（`require_workspace`）'
+        condition: '`create` が偽で、`require` が送った（既定の `require_workspace` では `root` に `config.yaml` が無い）'
         message: 'ワークスペースがありません: {root}'
       - name: WriteFailedError
         condition: '`LOCK_FILE` を開けない（書き込みの権限が無い等）'
@@ -1298,7 +1310,7 @@ functions:
       2. `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
       3. どちらも無ければ `WorkspaceNotFoundError` を送る
 
-      `load_workspace`・`clear_release`・`workspace_lock`（`create` が偽のとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは `mindmap.yaml` も通すため呼ばない
+      `load_workspace`・`clear_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは `mindmap.yaml` も通すため呼ばない
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`root` に `config.yaml` が無い'
