@@ -22,5 +22,6 @@
 | [mcp](./mcp.yaml) | MCP のサーバーを立て、スキルが呼ぶツールを載せる（Python の公式の SDK） |
 | [tmux](./tmux.yaml) | 起動スクリプトが、MCP サーバーを渡した Claude Code を動かすセッションを立てる |
 | [jsdiff](./jsdiff.yaml) | プレビューで本文と図の記法の前後を行ごとに比べる |
+| [axe-core](./axe-core.yaml) | プレビューのテストでアクセシビリティの規則（WCAG）を画面に当てる（開発用） |
 
 <!-- /table -->

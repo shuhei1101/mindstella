@@ -217,26 +217,37 @@ namespace MindmapPreview {
     return h({ tag: "p", attrs: { class: "empty" }, children: [text] });
   }
 
-  /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする */
-  export function enableDragScroll(scroller: HTMLElement): void {
-    let drag: { x: number; y: number; left: number; top: number } | null = null;
+  /** 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす */
+  const PRESS_SLOP_PX = 5;
+
+  /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする。`onPress` は、背景を押して離したとき（ドラッグでないとき）に呼ぶ */
+  export function enableDragScroll(scroller: HTMLElement, onPress?: () => void): void {
+    let drag: { x: number; y: number; left: number; top: number; moved: boolean } | null = null;
     scroller.addEventListener("pointerdown", (event) => {
       // 左ボタンで、押せるものの上でないとき
       if (event.button !== 0 || (event.target as Element).closest("button, a, input, label")) return;
-      drag = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop };
+      drag = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop, moved: false };
       scroller.classList.add("dragging");
       scroller.setPointerCapture(event.pointerId);
     });
     scroller.addEventListener("pointermove", (event) => {
       if (drag === null) return;
-      scroller.scrollLeft = drag.left - (event.clientX - drag.x);
-      scroller.scrollTop = drag.top - (event.clientY - drag.y);
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      // 一度でも上限を超えて動いたら、離した位置が近くてもドラッグとして扱う
+      if (Math.abs(dx) > PRESS_SLOP_PX || Math.abs(dy) > PRESS_SLOP_PX) drag.moved = true;
+      scroller.scrollLeft = drag.left - dx;
+      scroller.scrollTop = drag.top - dy;
     });
     const release = (): void => {
       drag = null;
       scroller.classList.remove("dragging");
     };
-    scroller.addEventListener("pointerup", release);
+    scroller.addEventListener("pointerup", () => {
+      const pressed = drag !== null && !drag.moved;
+      release();
+      if (pressed) onPress?.();
+    });
     scroller.addEventListener("pointercancel", release);
   }
 

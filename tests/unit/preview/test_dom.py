@@ -26,8 +26,13 @@ DRAG_UP = 30
 # ドラッグを始める前のスクロール位置
 START_SCROLL = 100
 
-# スクロールする要素を置き、中にボタンを持たせる（ボタンは枠の左上から 50px の所に見える）
-SCROLLER_SCRIPT = """() => {
+# 押したとみなす移動の上限（縦・横とも。`PRESS_SLOP_PX`）と、それを超える移動
+PRESS_SLOP = 5
+PRESS_OVER_SLOP = PRESS_SLOP + 1
+
+# スクロールする要素を置き、中にボタンを持たせる（ボタンは枠の左上から 50px の所に見える）。
+# 続けて `enableDragScroll` を付ける式を足して使う
+SCROLLER_SETUP = """
     const scroller = document.createElement("div");
     scroller.id = "scroller";
     scroller.style.cssText = "position:fixed;left:0;top:0;width:200px;height:200px;overflow:auto";
@@ -40,8 +45,18 @@ SCROLLER_SCRIPT = """() => {
     document.body.append(scroller);
     scroller.scrollLeft = 100;
     scroller.scrollTop = 100;
-    MindmapPreview.enableDragScroll(scroller);
-}"""
+"""
+
+# `onPress` を渡さずに付ける
+SCROLLER_SCRIPT = "() => {" + SCROLLER_SETUP + "    MindmapPreview.enableDragScroll(scroller);\n}"
+
+# `onPress` に呼ばれた回数を `window.pressCount` へ数える関数を渡して付ける
+SCROLLER_WITH_PRESS_SCRIPT = (
+    "() => {"
+    + SCROLLER_SETUP
+    + "    window.pressCount = 0;\n"
+    + "    MindmapPreview.enableDragScroll(scroller, () => { window.pressCount += 1; });\n}"
+)
 
 
 def test_h(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
@@ -343,6 +358,37 @@ def test_enable_drag_scroll(
         }"""
     )
     assert result == {**expected_scroll, "dragging": False}
+
+
+@pytest.mark.parametrize(
+    ("start", "move", "expected_count"),
+    [
+        pytest.param(BACKGROUND_POINT, (0, 0), 1, id="background_still"),
+        pytest.param(BACKGROUND_POINT, (PRESS_SLOP, PRESS_SLOP), 1, id="background_within_slop"),
+        pytest.param(BACKGROUND_POINT, (PRESS_OVER_SLOP, 0), 0, id="background_over_slop"),
+        pytest.param(BUTTON_POINT, (0, 0), 0, id="button_still"),
+    ],
+)
+def test_enable_drag_scroll_when_pressed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    start: tuple[int, int],
+    move: tuple[int, int],
+    expected_count: int,
+) -> None:
+    """背景を押したときだけ onPress を呼び、ドラッグとボタンの上では呼ばない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    preview_page.evaluate(SCROLLER_WITH_PRESS_SCRIPT)
+    start_x, start_y = start
+    move_x, move_y = move
+    # 実行
+    preview_page.mouse.move(start_x, start_y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(start_x + move_x, start_y + move_y, steps=5)
+    preview_page.mouse.up()
+    # 検証
+    assert preview_page.evaluate("() => window.pressCount") == expected_count
 
 
 @pytest.mark.parametrize(

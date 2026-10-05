@@ -975,9 +975,10 @@ var MindmapPreview;
     function detailPanel(props) {
         const { id, index, full, on, comment, highlight = null, diff = null } = props;
         const kind = index.byId.get(id)?.kind;
+        // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
         const body = MindmapPreview.h({
             tag: "div",
-            attrs: { class: "panel-body" },
+            attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
             children: [detailBody({ id, index, on, reviews: comment === null ? null : comment.reviews, view: resolveDiffView({ id, index, diff }) })],
         });
         const head = detailHead(props);

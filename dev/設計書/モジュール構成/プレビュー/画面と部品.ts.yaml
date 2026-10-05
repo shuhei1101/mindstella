@@ -179,7 +179,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: 画面設計『検討事項』を描く。マップは `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。elkjs が読めないときは `libraryNotice`。状態の印の右端に `toggleAllBox` を置き、`shownStatuses` をまとめて入れ替えて描き直す。表示する状態の検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す
+    summary: 画面設計『検討事項』を描く。マップは `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。elkjs が読めないときは `libraryNotice`。状態の印の右端に `toggleAllBox` を置き、`shownStatuses` をまとめて入れ替えて描き直す。表示する状態の検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
     props:
       - name: index
         type: RecordIndex
@@ -190,9 +190,9 @@ components:
         required: true
         description: 表示形式と絞り込み
       - name: on
-        type: '{open, view}'
+        type: '{open, view, clear}'
         required: true
-        description: 項目を開く・表示形式を切り替える
+        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）
     state:
       - name: shownStatuses
         type: Set<string>
@@ -268,7 +268,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）、関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。`highlight` があればその箇所の要素までスクロールして印の色の地で示す
+    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）、関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す
     props:
       - name: id
         type: string

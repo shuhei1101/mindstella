@@ -28,3 +28,5 @@ items:
     summary: 起動スクリプトが、MCP サーバーを渡した Claude Code を動かすセッションを立てる
   - page: jsdiff.yaml
     summary: プレビューで本文と図の記法の前後を行ごとに比べる
+  - page: axe-core.yaml
+    summary: プレビューのテストでアクセシビリティの規則（WCAG）を画面に当てる（開発用）
