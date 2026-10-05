@@ -331,6 +331,8 @@ def test_normal_when_resume(
     # 準備: 前回読んだ時点からの変更を読む
     read = replay("changes_since_read", **ws)
     read_again = replay("changes_since_read", **ws)
+    # 読んだ直後の changes.yaml を控える（取り込みの書き込みで last_seq が進む前の状態）
+    changes_after_read = read_yaml(root, "changes.yaml")
     # 取り込み: 続きの番号で、1 つの発言から出た検討事項とタスクを 1 回で足す
     batched = replay(
         "batch",
@@ -359,8 +361,7 @@ def test_normal_when_resume(
     assert read["changed"][0]["before"] == {"title": "見直しの問い"}
     assert read["changed"][0]["body_diff"] is not None
     # 読んだ後、AI が最後に読んだ時点が最後の書き換えの通し番号になっており、続けてもう一度読むと変更が 0 件である
-    changes = read_yaml(root, "changes.yaml")
-    assert changes["read_seq"] == changes["last_seq"]
+    assert changes_after_read["read_seq"] == changes_after_read["last_seq"]
     assert read_again["added"] == []
     assert read_again["changed"] == []
     # 既存の項目の ID が変わらず、取り込みの 1 回の呼び出しで足した検討事項が D-3、タスクが T-2 になっている
