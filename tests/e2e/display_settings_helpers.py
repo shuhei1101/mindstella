@@ -96,8 +96,8 @@ def toggle_kind(page: Page, label: str) -> None:
 
 
 def checked_kind_count(page: Page) -> int:
-    """表示の設定のパネルで、印が付いている表示する種類の数を返す。"""
-    return page.locator(f"{SETTINGS_PANEL} .st-kinds input:checked").count()
+    """表示の設定のパネルで、印が付いている表示する種類の数を返す（「すべて」の行は数えない）。"""
+    return page.locator(f"{SETTINGS_PANEL} .st-kinds li:not(.st-all) input:checked").count()
 
 
 def read_prefs(page: Page) -> dict[str, Any] | None:
