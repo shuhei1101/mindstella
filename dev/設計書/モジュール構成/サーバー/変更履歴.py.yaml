@@ -317,7 +317,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     scope: public
-    summary: 項目の `history` の先頭に 1 回分を足し、保持する回数を超えた古いものを消した新しい項目を返す
+    summary: 項目の `history` の先頭に 1 回分を足し、保持する回数を超えた古いものを消して、消した回の最大の `seq` を `history_dropped_seq` に残した新しい項目を返す
     args:
       - name: item
         type: dict[str, Any]
@@ -338,22 +338,29 @@ functions:
       type: dict[str, Any]
       description: 新しい項目。`limit` が 0 なら `history` のキーを持たない
     process: |-
-      1. `limit` が 0 の場合、`history` を除いた項目を返す
+      1. `limit` が 0 の場合、`history`・`history_dropped_seq` を除いた項目を返す
       2. `entry` が `None` の場合、項目をそのまま返す
       3. `[entry] + 今の history` の先頭 `limit` 個を `history` にする
+      4. 残り（消した要素）があれば、その最大の `seq` と今の `history_dropped_seq` の大きい方を `history_dropped_seq` にする
     unit_tests:
       - name: test_stack_history
         case: 正常
-        summary: 保持する回数を超えた古いものを消す
-        condition: '`history` を 1 回分持つ項目に新しい 1 回分、`limit` 1'
+        summary: 保持する回数を超えた古いものを消し、消した回の seq を残す
+        condition: '`history` を seq 5 の 1 回分持ち `history_dropped_seq` が 3 の項目に、seq 9 の新しい 1 回分、`limit` 1'
         mock: なし
-        expected: '`history` が新しい 1 回分だけ'
+        expected: '`history` が seq 9 の 1 回分だけで、`history_dropped_seq` が 5'
+      - name: test_stack_history_when_not_dropped
+        case: 正常
+        summary: 消さなければ消した回の seq を付けない
+        condition: '`history` を持たない項目に新しい 1 回分、`limit` 1'
+        mock: なし
+        expected: '`history` が新しい 1 回分で、`history_dropped_seq` のキーが無い'
       - name: test_stack_history_when_limit_zero
         case: 正常
         summary: 回数が 0 なら変更履歴を消す
-        condition: '`history` を持つ項目、`limit` 0'
+        condition: '`history` と `history_dropped_seq` を持つ項目、`limit` 0'
         mock: なし
-        expected: 戻り値が `history` のキーを持たない
+        expected: 戻り値が `history`・`history_dropped_seq` のキーを持たない
   - name: note_pending
     title: まだまとめていない変更に足す
     kind: 関数

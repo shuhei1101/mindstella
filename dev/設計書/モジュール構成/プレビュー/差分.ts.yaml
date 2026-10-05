@@ -175,7 +175,9 @@ functions:
     process: |-
       1. `history` を `seq` の大きい順に当てる。`seq` が `untilSeq` を超えるものを当てた形を後の版、`fromSeq` を超えるものまで当てた形を前の版にする（キーは `before` で置き換え、`null` はキーを消す。本文は `body_diff` を行の位置の大きい順に当てる）
          - `body_diff` の `now` が当てる先の行と合わなければ、本文はそこで止めて `bodyUnavailable` を真にし、`beforeBody` を `null` にする（キーは当て続ける）
-      2. `fromSeq` より大きく `untilSeq` 以下の `seq` を持つ要素が 1 つも無い場合、`trimmed` を真にし `before`・`beforeBody` を `null` にする（保持する回数を超えて消えた）
+      2. 次のどちらかの場合、`trimmed` を真にし `before`・`beforeBody` を `null` にする（保持する回数を超えて消えた）
+         - `fromSeq` より大きく `untilSeq` 以下の `seq` を持つ要素が 1 つも無い
+         - 項目の `history_dropped_seq` が `fromSeq` より大きい（選んだ時点の範囲の中の回が消えている）
       3. `before.body` が `null` の要素を当てた場合、`beforeBody` を空文字列にする（本文を初めて足した回）
     unit_tests:
       - name: test_build_versions
@@ -196,6 +198,12 @@ functions:
         condition: '`history` の `body_diff` の `now` が今の本文と合わない。`before` に `status`'
         mock: なし
         expected: '`bodyUnavailable` が真で `beforeBody` が `null`、`before.status` は戻っている'
+      - name: test_build_versions_when_dropped_in_range
+        case: 正常
+        summary: 範囲の中の古い回が消えていれば組み立てられない。範囲より前の回が消えただけなら組み立てる
+        condition: '`history` が seq 9 だけの項目。`parametrize`: `history_dropped_seq` 7、`fromSeq` 5、`untilSeq` `null` / `history_dropped_seq` 5、`fromSeq` 5、`untilSeq` `null`'
+        mock: なし
+        expected: '`trimmed` が真で `before`・`beforeBody` が `null` / `trimmed` が偽で `before` が seq 9 を戻した形'
   - name: diffLineParts
     title: 行の差分
     kind: 関数

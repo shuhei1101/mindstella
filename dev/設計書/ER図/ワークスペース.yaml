@@ -190,7 +190,13 @@ tables:
       - name: history
         title: 変更履歴
         type: array
-        description: '`update`・`adopt` が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`history`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
+        description: '`update`・`adopt` が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`history`・`history_dropped_seq`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
+      - name: history_dropped_seq
+        title: 消した変更履歴の通し番号
+        type: number
+        not_null: false
+        description: 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換える。差分の表示で、選んだ時点の範囲の中の回が消えたかを見分けるのに使う。一度も消していなければキーを持たない。ツールが付け、`add`・`update` の `item` では渡せない
+        example: '5'
   - name: decisions.yaml
     title: 検討事項
     datastore: YAML
