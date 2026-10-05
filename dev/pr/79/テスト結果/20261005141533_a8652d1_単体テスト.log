@@ -1,12 +1,12 @@
-# 結合テストを足した後の単体テスト（バック・フロントの全件）
-# テストを実行した commit: 86d20af
+# 単体テスト（バック・フロントの全件）。環境: requirements-dev.txt の版と pytest-asyncio を uv で入れて流した
+# テストを実行した commit: a8652d1
 
-$ pytest tests/unit
+$ uv run --no-project --with-requirements requirements-dev.txt --with pytest-asyncio pytest tests/unit
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+platform linux -- Python 3.13.12, pytest-9.1.0, pluggy-1.6.0
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-item-history-diff
 configfile: pytest.ini
-plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+plugins: anyio-4.15.1, base-url-2.1.0, asyncio-1.4.0, playwright-0.9.0
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
 collected 671 items
 
@@ -96,4 +96,4 @@ tests/unit/scripts/test_store.py ....................................... [ 92%]
 tests/unit/scripts/test_submissions.py ................                  [ 97%]
 tests/unit/scripts/test_versions.py ...............                      [100%]
 
-======================= 671 passed in 126.45s (0:02:06) ========================
+======================== 671 passed in 80.45s (0:01:20) ========================
