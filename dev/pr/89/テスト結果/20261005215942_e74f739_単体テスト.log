@@ -1,6 +1,6 @@
 # 実行したコマンド
 pytest tests/unit -v
-# コミット: 2dd58f3bfded5a075752ea01363830550c43c2bd
+# コミット: e74f739eaafabaaf3600a5d05f288fd825e34c8b
 
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
@@ -725,4 +725,4 @@ tests/unit/scripts/test_versions.py::test_read_plugin_version PASSED     [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version PASSED [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails PASSED [100%]
 
-======================= 714 passed in 125.60s (0:02:05) ========================
+======================= 714 passed in 144.59s (0:02:24) ========================
