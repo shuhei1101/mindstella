@@ -250,8 +250,8 @@ classes:
   - name: OptionNotFoundError
     title: 案が無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 採用する案の切り替え
-    summary: 検討事項が渡した記号の案を持たない。メッセージに渡した記号と持っている記号の一覧
+    usecase: 共通
+    summary: '検討事項が渡した記号の案を持たない。メッセージは送る側が決める（採用する案の切り替えの `switch_adopted` は渡した記号と持っている記号の一覧、案の書き換えの `apply_option_edit` は `{ID} の案 {記号}: その記号の案がありません`）'
     kind: クラス
     inherits: MindmapError
   - name: WriteFailedError
