@@ -1221,7 +1221,8 @@ namespace MindmapPreview {
     /** ハッシュが変わったとき（戻る・進む・手で書き換えた）、その画面を描く */
     const onLocationChange = (): void => {
       const next = parseHash({ hash: location.hash, index });
-      if (toHash(next) === toHash(route)) return;
+      // 画面・表示形式・項目が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
+      if (toHash(next) === toHash(route) && Object.keys(next.filters).length === 0) return;
       const screen =
         next.tab !== route.tab ||
         next.view !== route.view ||
@@ -1229,6 +1230,8 @@ namespace MindmapPreview {
         (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
       route = next;
       render({ screen });
+      // 絞り込みは画面に渡した後、ハッシュから消す（残すと、次のハッシュの変化で使い回される）
+      if (Object.keys(next.filters).length > 0) navigate({ route: { ...route, filters: {} }, push: false });
     };
     addEventListener("popstate", onLocationChange);
     addEventListener("hashchange", onLocationChange);
