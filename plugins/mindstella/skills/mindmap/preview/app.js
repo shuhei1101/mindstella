@@ -892,10 +892,12 @@ var MindmapPreview;
             const inList = form !== null && form.closest(".comments-panel") !== null;
             const selection = field instanceof HTMLTextAreaElement && form !== null ? { start: field.selectionStart, end: field.selectionEnd } : null;
             const bodyFocused = field instanceof HTMLElement && field.matches(".panel-body");
-            const panelScroll = document.querySelector(".panel-body")?.scrollTop ?? 0;
+            // 全画面のときは詳細パネルも文書に残るので、今の画面の本文を引く
+            const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+            const panelScroll = document.querySelector(bodySelector)?.scrollTop ?? 0;
             const pageScroll = window.scrollY;
             draw();
-            const panelBody = document.querySelector(".panel-body");
+            const panelBody = document.querySelector(bodySelector);
             if (panelBody !== null)
                 panelBody.scrollTop = panelScroll;
             if (bodyFocused)
