@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 
 from playwright.sync_api import Page
-from preview_fixture_types import OpenPreview, WriteSamplePreview
+from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import preselect_diff
 
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
@@ -95,3 +96,113 @@ def test_text_selectable(
         "getComputedStyle(document.querySelector('dialog.viewer .v-stage svg text, dialog.viewer .v-stage svg .nodeLabel')).userSelect"
     )
     assert select == "text"
+
+
+# ─── 差分の表示 ───
+
+
+
+def _open_diff_viewer(
+    write_history_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    hash_text: str,
+    selector: str,
+) -> Page:
+    """差分の表示（まとまり V-2）で詳細パネルの図を色付けし終えるのを待って、図の拡大を開く。"""
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, hash_text)
+    page.wait_for_selector(selector, timeout=DIAGRAM_TIMEOUT_MS)
+    page.click('aside.panel button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.viewer[open] .v-stage svg")
+    return page
+
+
+def test_raw(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """Raw を押すと図の代わりに記法を出し、押した状態を aria-pressed で伝える。差分の表示でなければ今の記法のまま出す（正常系）。"""
+    # 準備
+    page = _open_viewer(write_sample_preview, open_preview)
+    button = page.locator('dialog.viewer button[data-act="viewer-raw"]')
+    assert button.get_attribute("aria-pressed") == "false"
+    # 実行
+    button.click()
+    # 検証
+    assert button.get_attribute("aria-pressed") == "true"
+    assert not page.is_visible("dialog.viewer .v-canvas")
+    raw = page.locator("dialog.viewer .v-raw")
+    assert raw.is_visible()
+    assert "flowchart LR" in raw.inner_text()
+    assert raw.locator(".df-line").count() == 0
+    # もう一度押すと図へ戻る
+    button.click()
+    assert button.get_attribute("aria-pressed") == "false"
+    assert page.is_visible("dialog.viewer .v-canvas")
+
+
+def test_diff(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間は、詳細パネルと同じ色を付け、窓の下端に凡例と「消したもの」を並べる（正常系）。"""
+    # 準備・実行
+    _open_diff_viewer(
+        write_history_preview,
+        open_preview,
+        page,
+        "#tab=decisions&view=table&id=D-1",
+        "aside.panel figure.diagram.df-colored",
+    )
+    # 検証
+    assert page.locator("dialog.viewer .v-stage g.df-n-add").count() == 1
+    assert page.locator("dialog.viewer .v-stage g.df-n-chg").count() == 1
+    notes = page.locator("dialog.viewer .v-notes")
+    assert notes.locator(".df-lg-add").count() == 1
+    assert notes.locator(".df-lg-chg").count() == 1
+    assert any("終了" in text for text in notes.locator(".df-removed li").all_inner_texts())
+    # 凡例は窓の下端（図を置く窓より下）に置く
+    notes_box = notes.bounding_box()
+    canvas_box = page.locator("dialog.viewer .v-canvas").bounding_box()
+    assert notes_box is not None
+    assert canvas_box is not None
+    assert notes_box["y"] >= canvas_box["y"] + canvas_box["height"] - 1
+
+
+def test_diff_when_frame(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """色を付けない種類の変わった図は、窓の内側に破線の枠を引き、Raw で見るよう案内する（正常系）。"""
+    # 準備・実行
+    _open_diff_viewer(
+        write_history_preview,
+        open_preview,
+        page,
+        "#tab=docs&view=table&id=A-1",
+        "aside.panel figure.diagram.df-frame",
+    )
+    # 検証
+    assert "図の中の変更は Raw で見られます" in page.inner_text("dialog.viewer .v-notes")
+    assert page.eval_on_selector(
+        "dialog.viewer .v-canvas", "e => getComputedStyle(e).outlineStyle"
+    ) == "dashed"
+
+
+def test_diff_raw(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間の Raw は、記法の行ごとに足した行（+）と消した行（−）を印つきで出す（正常系）。"""
+    # 準備
+    _open_diff_viewer(
+        write_history_preview,
+        open_preview,
+        page,
+        "#tab=decisions&view=table&id=D-1",
+        "aside.panel figure.diagram.df-colored",
+    )
+    # 実行
+    page.click('dialog.viewer button[data-act="viewer-raw"]')
+    # 検証
+    raw = page.locator("dialog.viewer .v-raw.df-raw")
+    assert raw.is_visible()
+    assert any("処理を変えた" in text for text in raw.locator(".df-line.df-add").all_inner_texts())
+    assert any("終了" in text for text in raw.locator(".df-line.df-del").all_inner_texts())
+    assert page.get_attribute('dialog.viewer button[data-act="viewer-raw"]', "aria-pressed") == "true"

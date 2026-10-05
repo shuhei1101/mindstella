@@ -34,6 +34,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import preselect_diff
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from workspace_fixtures import CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
@@ -402,7 +403,11 @@ def test_comment_input_when_body_empty(
     posts: list[str] = []
     page.on(
         "request",
-        lambda request: posts.append(request.url) if request.method == "POST" else None,
+        lambda request: (
+            posts.append(request.url)
+            if request.method == "POST" and not request.url.endswith("/api/opened")
+            else None
+        ),
     )
     open_preview(url, "#tab=decisions&id=D-1")
     page.fill(DETAIL_TEXTAREA, "   ")
@@ -909,3 +914,300 @@ def test_body_escape_closes_panel(
     # 検証
     page.wait_for_selector("aside.panel.open", state="detached")
     assert "id=" not in page.evaluate("location.hash")
+
+
+# ─── 差分の表示 ───
+
+# 差分の表示で詳細パネルを開く URL のハッシュ
+DIFF_D1_HASH = "#tab=decisions&view=table&id=D-1"
+
+# 図の差分の色付けが終わるまで待つ上限ミリ秒
+DIFF_DIAGRAM_TIMEOUT_MS = 20_000
+
+# 差分を出せない旨・出せない理由の文言
+NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。"
+NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。"
+NOTE_BODY_TOO_LARGE = "本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。今の本文を出しています。"
+
+# 全ての行が違う本文の行数（差分の計算を打ち切らせる大きさ）
+LARGE_LINE_COUNT = 5000
+
+# 差分のライブラリ jsdiff を配る URL（これだけ止める）
+JSDIFF_URL_PATTERN = "https://cdn.jsdelivr.net/npm/diff@*/**"
+
+
+def _open_diff_panel(
+    page: Page, open_preview: OpenPreview, url: str, sel: str, hash_text: str = DIFF_D1_HASH
+) -> Page:
+    """選んだ時点を入れてから開き、詳細パネルが開くのを待つ。"""
+    preselect_diff(page, sel)
+    open_preview(url, hash_text)
+    page.wait_for_selector("aside.panel.open .d-title")
+    return page
+
+
+def test_diff_head(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間、本文の冒頭に選んだ時点の名前と日時を出す。変わっていない項目には出さない（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2")
+    # 検証（変わった項目）
+    assert page.inner_text("aside.panel .df-head-t") == "決める"
+    assert page.inner_text("aside.panel .df-when") == "10/02 09:00"
+    # 「前回開いてから」は範囲の始まりを添える
+    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'since'}))")
+    page.reload()
+    page.wait_for_selector("aside.panel .df-head")
+    assert page.inner_text("aside.panel .df-head-t") == "前回開いてから"
+    assert page.inner_text("aside.panel .df-when") == "10/01 21:00 より後"
+    # 変わっていない項目（V-2 で足した・変えたものに入らない T-1）には出さない
+    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
+    page.goto(f"{url}#tab=tasks&view=table&id=T-1")
+    page.reload()
+    page.wait_for_selector("aside.panel.open .d-title")
+    assert page.locator("aside.panel .df-head").count() == 0
+    assert page.locator("aside.panel .df-kv").count() == 0
+
+
+def test_diff_new_badge(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """その時点で足された項目は、タイトルの横に「新規」の札を置き、前後の差分は出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-1")
+    # 検証
+    badge = page.locator("aside.panel .d-title .df-badge.df-new")
+    assert badge.inner_text() == "新規"
+    assert page.locator("aside.panel .df-kv").count() == 0
+    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    # 変えただけの項目（V-2 の D-1）には札を置かない
+    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
+    page.reload()
+    page.wait_for_selector("aside.panel .df-head")
+    assert page.locator("aside.panel .d-title .df-badge").count() == 0
+
+
+def test_diff_keys(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """変わったキーの前の値と今の値を並べる。状態だけは面を塗らず、変わっていないキーは今の値のまま出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2")
+    # 検証
+    status = page.locator('aside.panel [data-key="status"] .df-kv')
+    assert status.get_attribute("class") == "df-kv df-plain"
+    assert status.locator("del.df-was").inner_text().endswith("未決定")
+    assert status.locator("ins.df-now").inner_text().endswith("決定済み")
+    answer = page.locator('aside.panel [data-key="answer"] .df-kv')
+    assert answer.locator("del.df-was").inner_text().endswith("旧い答え")
+    assert answer.locator("ins.df-now").inner_text().endswith("新しい答え")
+    # 前の値は取り消し線、今の値は下線
+    assert page.eval_on_selector(
+        'aside.panel [data-key="answer"] del.df-was', "e => getComputedStyle(e).textDecorationLine"
+    ) == "line-through"
+    assert page.eval_on_selector(
+        'aside.panel [data-key="answer"] ins.df-now', "e => getComputedStyle(e).textDecorationLine"
+    ) == "underline"
+    # 変わっていない影響度は今の値のまま
+    assert page.locator("aside.panel .d-meta .df-key").count() == 0 or "影響度" not in page.inner_text(
+        "aside.panel .d-meta dt.df-key"
+    )
+    assert "大" in page.inner_text("aside.panel .d-meta")
+
+
+def test_diff_body(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """本文を描いたまま、足した部分と消した部分に印を付けて元の位置へ出す。変えていない部分には付けない（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel .md ins.df-blk")
+    # 検証
+    added = page.inner_text("aside.panel .md ins.df-blk")
+    removed = page.inner_text("aside.panel .md del.df-blk")
+    assert "新しい段落を足しました。" in added
+    assert "次の段落を消します。" in removed
+    # 足した塊・消した塊の頭に記号と、読み上げの名前がある
+    assert page.inner_text("aside.panel .md ins.df-blk > .df-sign") == "+"
+    assert page.inner_text("aside.panel .md del.df-blk > .df-sign") == "−"
+    # 表は行ごとに印を付ける
+    assert "7" in page.inner_text("aside.panel .md tr.df-add")
+    assert "3" in page.inner_text("aside.panel .md tr.df-del")
+    assert page.locator("aside.panel .md tr.df-add").count() == 1
+    assert page.locator("aside.panel .md tr.df-del").count() == 1
+    # 変えていない段落は印の外で、今の本文の行（1・14 行目の段落など）を持つ
+    unchanged = page.eval_on_selector_all(
+        "aside.panel .md > p[data-line-start]", "ps => ps.map(p => [p.dataset.lineStart, p.textContent])"
+    )
+    assert ["3", "最初の段落です。"] in unchanged or ["3", "最初の段落です。"] in [
+        [line, text] for line, text in unchanged
+    ]
+    assert page.locator("aside.panel .md del.df-blk [data-line-start]").count() == 0
+
+
+def test_diff_diagram(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """flowchart は足した・変えたノードと辺に色を付け、図の下に凡例と「消したもの」を並べる。色を付けない種類は枠に色を付け、Raw で見るよう案内する（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel figure.diagram.df-colored", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 検証（flowchart）
+    figure = page.locator("aside.panel figure.diagram.df-colored")
+    assert figure.locator("g.df-n-add").count() == 1
+    assert (figure.locator("g.df-n-add").text_content() or "").strip() == "追加"
+    assert figure.locator("g.df-n-chg").count() == 1
+    assert "処理を変えた" in (figure.locator("g.df-n-chg").text_content() or "")
+    assert figure.locator(".df-lg-add").count() == 1
+    assert figure.locator(".df-lg-chg").count() == 1
+    removed = figure.locator(".df-removed li").all_inner_texts()
+    assert any("終了" in text for text in removed)
+    # 色を付けない種類（gantt）は枠に色を付ける
+    page.goto(f"{url}#tab=docs&view=table&id=A-1")
+    page.reload()
+    page.wait_for_selector("aside.panel figure.diagram.df-frame", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    assert "図の中の変更は Raw で見られます" in page.inner_text("aside.panel figure.diagram .df-notes")
+    assert page.locator("aside.panel figure.diagram .df-n-add, aside.panel figure.diagram .df-n-chg").count() == 0
+
+
+def test_diff_diagram_raw(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """図の Raw は、記法の行ごとに足した行（+）と消した行（−）を印つきで出す（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel figure.diagram.df-changed", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 実行
+    page.click('aside.panel figure.diagram [data-act="diagram-raw"]')
+    # 検証
+    raw = page.locator("aside.panel figure.diagram > .dg-raw.df-raw")
+    assert raw.is_visible()
+    added = raw.locator(".df-line.df-add").all_inner_texts()
+    removed = raw.locator(".df-line.df-del").all_inner_texts()
+    assert any("処理を変えた" in line and line.startswith("+") for line in added)
+    assert any("終了" in line and line.startswith("−") for line in removed)
+    assert raw.locator(".df-line.df-add .df-sign").first.inner_text() == "+"
+
+
+def test_diff_note_when_trimmed(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """選んだ時点の変更履歴が保持する回数を超えて消えているとき、本文の頭にその旨を出し、今の内容を差分なしで出す（正常系）。"""
+    # 準備（保持する回数 1: D-2 は V-2 の回と、まとめる前の回のうち、新しい 1 回だけを持つ）
+    url, _ = write_history_preview(history_limit=1)
+    _open_diff_panel(page, open_preview, url, "V-2", "#tab=decisions&view=table&id=D-2")
+    # 検証
+    assert page.inner_text("aside.panel .df-note") == NOTE_TRIMMED
+    assert page.locator("aside.panel .df-kv").count() == 0
+    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    # 印は付く
+    page.goto(f"{url}#tab=decisions&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    assert page.locator("table.grid tbody tr[data-id='D-2'] .df-mark").count() == 1
+
+
+def test_diff_note_when_body_rewritten(
+    write_history_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """書き換えの後に本文のファイルが直接書き換えられていると、その旨を出して今の本文を差分なしで描き、キーの差分は出す（正常系）。"""
+    # 準備
+    url, root = write_history_preview()
+    (root / "docs" / "D-1.md").write_text("手で書いた A\n\n手で書いた B\n", encoding="utf-8")
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel .df-note")
+    # 検証
+    assert page.inner_text("aside.panel .df-note") == NOTE_BODY_UNAVAILABLE
+    assert "手で書いた A" in page.inner_text("aside.panel .md")
+    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert page.locator('aside.panel [data-key="status"] .df-kv').count() == 1
+
+
+def test_diff_note_when_body_too_large(
+    write_history_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+    page: Page,
+) -> None:
+    """本文の行の差分を打ち切ったとき、その旨を出して今の本文を差分なしで描き、キーの差分は出す（正常系）。"""
+    # 準備（大きな本文をまとめ、全ての行が違う大きな本文へまとめる前に書き換えて、まとめていない変更を選ぶ）
+    url, root = write_history_preview()
+    before = "".join(f"前の行 {index}\n" for index in range(LARGE_LINE_COUNT))
+    after = "".join(f"後の行 {index}\n" for index in range(LARGE_LINE_COUNT))
+    for body, summary in ((before, "大きな本文にする"), (after, None)):
+        result = call_tool(
+            "update", workspace=str(root), id="D-1", item={"body_markdown": body, "answer": f"答え {body[:5]}"}
+        )
+        assert result.is_error is False, result.text
+        if summary is not None:
+            assert call_tool("commit", workspace=str(root), summary=summary).is_error is False
+    _open_diff_panel(page, open_preview, url, "pending")
+    page.wait_for_selector("aside.panel .df-note", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 検証
+    assert page.inner_text("aside.panel .df-note") == NOTE_BODY_TOO_LARGE
+    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert page.locator("aside.panel .df-kv").count() >= 1
+
+
+def test_diff_note_when_library_unavailable(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """jsdiff を読めないとき、本文の頭にその旨を出し、本文・図・Raw を今の版で差分なしで描き、キーの差分は出す（異常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    page.route(JSDIFF_URL_PATTERN, lambda route: route.abort())
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel .lib-error")
+    # 検証
+    notice = page.inner_text("aside.panel .lib-error[role=alert]")
+    assert "本文と図の差分を表示できません。読み込めなかったライブラリ: jsdiff" in notice
+    assert "通信を確認して、ページを再読み込みしてください。" in notice
+    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert "最初の段落です。" in page.inner_text("aside.panel .md")
+    assert page.locator('aside.panel [data-key="status"] .df-kv').count() == 1
+    assert page.locator("aside.panel figure.diagram.df-changed").count() == 0
+
+
+def test_selection_entry_when_diff(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間も、変えていない文を選べば入口を出し、今の本文の行をコメントに添える。消した部分を含む選択では出さない（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel .md del.df-blk")
+    # 実行（変えていない段落を選ぶ）
+    select_text_for_pill(page, "aside.panel .md", "最初の段落です。")
+    page.click(PILL)
+    # 検証（今の本文の 3 行目）
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 3 行目"
+    # 消した部分を含む選択では出さない
+    page.keyboard.press("Escape")
+    select_text(page, "aside.panel .md del.df-blk", "次の段落を消します。")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    assert page.locator(PILL).count() == 0
+
+
+def test_selection_entry_when_old_set_after_body_edit(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """古いまとまりを選び、その後に本文を直した項目では、本文の行の印を外し、本文を選んでも入口を出さない（正常系）。"""
+    # 準備（D-2 は V-2 の後にも本文を直している）
+    url, _ = write_history_preview()
+    _open_diff_panel(page, open_preview, url, "V-2", "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector("aside.panel .md")
+    # 検証
+    assert page.locator("aside.panel .md [data-line-start]").count() == 0
+    select_text(page, "aside.panel .md", "1 行目の段落")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    assert page.locator(PILL).count() == 0
+    # 値（案・キー）の選択は今まで通り出る
+    select_text_for_pill(page, 'aside.panel [data-key="answer"]', "答え")

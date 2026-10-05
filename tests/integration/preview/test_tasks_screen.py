@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import pytest
+from playwright.sync_api import Page
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
     OpenPreview,
+    WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -161,3 +164,38 @@ def test_table_id_button_size(
     # 検証
     assert sizes["count"] > 0
     assert sizes["smallest"] >= ID_BUTTON_MIN_SIZE_PX
+
+
+def test_diff_marks_when_board(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """ボードのカードのタイトルの横に、文言なしの印を置く。トップバーに札を出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "since")
+    open_preview(url, "#tab=tasks")
+    page.wait_for_selector(".board button.card")
+    # 検証
+    mark = page.locator('.board button.card[data-id="T-1"] .df-mark')
+    assert mark.get_attribute("class") == "df-mark df-chg"
+    assert mark.get_attribute("title") == "変更"
+    assert page.locator(".board .df-badge").count() == 0
+    assert_topbar_history(page)
+
+
+def test_diff_marks_when_table(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表の行のタイトルの右に印を置き、印の無い行は変えない（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert page.locator('table.grid tbody tr[data-id="T-1"] .row-open + .df-mark.df-new').count() == 1
+    # 印の無い時点では付かない
+    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: null}))")
+    page.reload()
+    page.wait_for_selector("table.grid tbody tr")
+    assert page.locator("table.grid .df-mark").count() == 0

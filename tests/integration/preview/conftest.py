@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 from playwright.sync_api import Page
+from preview_history_helpers import build_history_workspace
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     MAIN_SELECTOR,
@@ -72,6 +73,23 @@ def write_review_preview(
             write_comments(root, *comments)
         if drafts:
             write_drafts(root, *drafts)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_history_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
+    """変更履歴つきのワークスペース（まとまり V-1・V-2 とまとめていない変更）を作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write(*, pending: bool = True, history_limit: int | None = None) -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_history_workspace(
+            make_workspace, call_tool, pending=pending, history_limit=history_limit
+        )
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None
