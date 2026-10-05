@@ -76,3 +76,4 @@ priority: 低
 notes:
   E2E の範囲: エンドポイントは HTTP のクライアントで呼ぶ。エンドポイントの名前と形はインターフェース定義設計で決める
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を足す
+test_file: tests/e2e/単一ユースケース/test_config_reload.py

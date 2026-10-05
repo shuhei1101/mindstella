@@ -56,3 +56,4 @@ success_guarantee: 各自の端末の上書きはその端末の表示だけに�
 minimal_guarantee: 表示の設定を変えても、ワークスペースの記録の項目は書き換えない。既定の保存に失敗したときは `config.yaml` を書き換えず、画面の表示は保存の前のまま。
 frequency: 複数人で同じワークスペースを見るたび
 priority: 中
+test_file: tests/e2e/複合ユースケース/test_display_prefs_per_person.py
