@@ -1,0 +1,198 @@
+title: "前回読んだ時点からの変更"
+entry:
+  kind: mcp_tool
+  value: '`changes_since_read`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__changes_since_read`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 読んだ時点より後の追加と変更を、読んだ時点の値つきで返し、read_seq を進める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タイトル `問い A` と 3 行の本文を持つ検討事項 D-1 を足してこのツールを 1 回呼び、`update` で D-1 のタイトルを `問い B` に、続けてタイトルを `問い C` にし本文の 2 行目を直し、タスク T-1 を `add` したワークスペース（保持する回数は既定の 5）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as changes_since_read（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: changes_since_read workspace
+        IF-->>WS: changes.yaml と全ての種類の YAML・本文を読む
+        IF->>IF: read_seq より後に足した・変えた項目と、読んだ時点の値を組み立てる
+        IF->>WS: changes.yaml の read_seq を last_seq に書く
+        IF-->>クライアント: JSON（had_read_point・read_seq・until_seq・added・changed）
+        クライアント->>IF: changes_since_read workspace（2 回目）
+        IF-->>クライアント: JSON（added・changed が空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 1 回目の `had_read_point` が真で、`added` が T-1 の 1 件
+      - '1 回目の `changed` が D-1 の 1 件で、`before` が `{title: 問い A}`'
+      - D-1 の `body_diff` を今の本文に当てると読んだ時点の本文になり、1 行目・3 行目を含まない
+      - 1 回目の後、`changes.yaml` の `read_seq` が `last_seq` と同じで `until_seq` とも同じ
+      - 2 回目の `added`・`changed` が空
+      - 項目の YAML と本文の中身が呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（読んだ時点の記録が無い）
+    summary: read_seq が無ければ差分を返さず、今の last_seq を記録する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `answer` を直したワークスペース（`changes.yaml` が `read_seq` を持たない）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as changes_since_read（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: changes_since_read workspace
+        IF-->>WS: changes.yaml に read_seq が無い
+        IF->>WS: changes.yaml の read_seq を last_seq に書く
+        IF-->>クライアント: JSON（had_read_point が偽、added・changed が空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`had_read_point` が偽、`read_seq` が `null`、`added`・`changed` が空'
+      - '`changes.yaml` の `read_seq` が `last_seq` と同じ'
+    test: test_normal_when_no_read_point
+  - name: 正常系（保持する回数が 0）
+    summary: 変更履歴が無いときは、変えた項目を ID だけで返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`history_limit` を 0 にし、検討事項 D-1 を足してこのツールを 1 回呼び、D-1 の `answer` を直してタスク T-1 を足したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as changes_since_read（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: changes_since_read workspace
+        IF-->>WS: changes.yaml と全ての種類の YAML を読む
+        IF->>IF: seq・added_seq が read_seq より大きい項目を集める（前の値は組み立てない）
+        IF->>WS: changes.yaml の read_seq を書く
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`added` が T-1、`changed` が D-1 の 1 件'
+      - D-1 の `before`・`body_diff` が `null`
+    test: test_normal_when_history_limit_zero
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as changes_since_read（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: changes_since_read workspace
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+      - フォルダに `changes.yaml` が作られていない
+    test: test_error_when_workspace_not_found
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: read_seq を書けないときは書き換えず、次に呼んだときに同じ変更を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: このツールを 1 回呼んだ後に検討事項 D-1 を足し、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する。権限を戻してから 2 回目を呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as changes_since_read（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: changes_since_read workspace
+        IF-->>WS: 読む
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+        クライアント->>IF: 権限を戻して changes_since_read workspace
+        IF-->>クライアント: JSON（added に D-1）
+      ```
+    expected:
+      - '1 回目がツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
+      - 1 回目の後、`changes.yaml` の `read_seq` が呼ぶ前と同じ
+      - 2 回目の `added` が D-1
+    test: test_error_when_write_fails
+lead: AI が最後に読んだ時点（`changes.yaml` の `read_seq`）より後に足した・変えた項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。`session` の準備で必ず呼ぶ。
+idempotent: false
+side_effects: '`changes.yaml` の `read_seq` を書き換える（`changes.yaml` が無ければ、まとまり 0 件・まだまとめていない変更なし・`last_seq: 0`・`read_seq: 0` で作る）。項目の YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）。読むのと `read_seq` を書くのを同じロックの中で行い、その間の書き換えを読み落とさない
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`mindmap.yaml` があるフォルダ'
+response:
+  - name: had_read_point
+    type: bool
+    description: 呼ぶ前に `read_seq` があったか。偽のときは `added`・`changed` を空で返す
+  - name: read_seq
+    type: int | None
+    description: 呼ぶ前の `read_seq`。無ければ `null`
+  - name: until_seq
+    type: int
+    description: 今回記録した `read_seq`（呼んだときの `last_seq`）
+  - name: added[]
+    type: list[{id, kind, title}]
+    description: '`added_seq` が `read_seq` より大きい項目。種類の順、同じ種類の中は項目の並びの順'
+  - name: changed[].id
+    type: str
+    description: '`seq` が `read_seq` より大きく、`added` に入らない項目の ID。種類の順、同じ種類の中は項目の並びの順'
+  - name: changed[].kind
+    type: str
+    description: 種類（`decision` など）
+  - name: changed[].title
+    type: str
+    description: 今のタイトル
+  - name: changed[].before
+    type: dict | None
+    description: 変わったキー → 読んだ時点の値（無かったキーは `null`）。保持する回数が 0 で変更履歴が無いときは `null`
+  - name: changed[].body_diff
+    type: list[{line, now, before}] | None
+    description: 本文が変わったとき、今の本文の行を読んだ時点の本文の行へ戻す差分（形は変更履歴の `body_diff` と同じ）。本文が変わっていないときと、保持する回数が 0 のときは `null`
+exceptions:
+  - name: なし（正常終了）
+    condition: 読めて、`read_seq` を書けた
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: '`changes.yaml` の一時ファイルの書き込みか置き換えに失敗した'
+    notes: ツールのエラー。`read_seq` を書き換えず、次に呼んだときに同じ変更を返す
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 読んだ時点の値の組み立て方
+    constraint: 項目の `history` のうち `seq` が `read_seq` より大きい回を古い順に見て、キーごとに最も古い回の `before` を読んだ時点の値にする。本文はその回の `body_diff` を新しい順に当てて読んだ時点の本文を組み立て、今の本文との差分を返す。読んだ時点の値が今の値と同じキーは `before` に入れず、変わったキーも本文の差分も残らない項目は `changed` に入れない
+  - item: 読んでいない回が残ること
+    constraint: '`read_seq` があるとき、`read_seq` より大きい `seq` の回は保持する回数を超えても消えない（『項目の更新』の「保持する回数」）ため、読んだ時点の値を必ず組み立てられる'
+  - item: 対象
+    constraint: 種類ごとの YAML の項目だけ。設定（`mindmap.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、通し番号も進めない）
+  - item: 読んだ時点が進むとき
+    constraint: このツールを呼んだときだけ。ほかのツールの書き込みは `read_seq` を書き換えない

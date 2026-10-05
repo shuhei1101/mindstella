@@ -125,7 +125,7 @@ tables:
         title: 保持する回数
         type: number
         default: '5'
-        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5 として扱う
+        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5 として扱う。AI がまだ読んでいない回（`changes.yaml` の `read_seq` より後の回）は、この回数を超えても消さない
         example: '3'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
@@ -190,13 +190,25 @@ tables:
       - name: history
         title: 変更履歴
         type: array
-        description: '`update`・`adopt` が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`history`・`history_dropped_seq`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
+        description: '`update`・`adopt`・案の書き換えが値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても消さない。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
       - name: history_dropped_seq
         title: 消した変更履歴の通し番号
         type: number
         not_null: false
         description: 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換える。差分の表示で、選んだ時点の範囲の中の回が消えたかを見分けるのに使う。一度も消していなければキーを持たない。ツールが付け、`add`・`update` の `item` では渡せない
         example: '5'
+      - name: seq
+        title: 最後に振った通し番号
+        type: number
+        not_null: false
+        description: その項目を足した・値を変えたときに振った `changes.yaml` の通し番号のうち、最も新しいもの。『前回読んだ時点からの変更』が `read_seq` と比べる。フェーズ・対象・カテゴリーの付け替えでは進めない。このキーを入れる前に足した項目は、次に値を変えるまでキーを持たない。ツールが付け、`add`・`update` の `item` では渡せない
+        example: '14'
+      - name: added_seq
+        title: 足したときの通し番号
+        type: number
+        not_null: false
+        description: その項目を足したときに振った `changes.yaml` の通し番号。『前回読んだ時点からの変更』が、読んだ時点より後に足した項目と変えた項目を分けるのに使う。このキーを入れる前に足した項目は持たない。ツールが付け、`add`・`update` の `item` では渡せない
+        example: '14'
   - name: decisions.yaml
     title: 検討事項
     datastore: YAML
@@ -506,7 +518,7 @@ tables:
         title: 最後の通し番号
         type: number
         not_null: true
-        description: 最後に積んだ変更履歴の `seq`。積むたびに 1 足す
+        description: 最後に振った通し番号。変更履歴を積むとき・項目を足すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す
       - name: sets
         title: まとまり
         type: array
@@ -517,6 +529,12 @@ tables:
         type: object
         not_null: true
         description: '`added`・`changed`（書き換えた順の ID）。保持する回数が 0 の書き換えは `changed` に入れない'
+      - name: read_seq
+        title: AI が最後に読んだ時点
+        type: number
+        not_null: false
+        description: 『前回読んだ時点からの変更』を最後に呼んだときの `last_seq`。そのツールだけが書き換える。一度も呼んでいなければキーを持たず、そのうちは保持する回数を超えた古い変更履歴を今までどおり消す
+        example: '12'
   - name: .mindstella-opened
     title: 前回開いた日時
     datastore: テキスト

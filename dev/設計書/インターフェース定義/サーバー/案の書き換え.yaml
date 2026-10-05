@@ -1,0 +1,369 @@
+title: "案の書き換え"
+entry:
+  kind: mcp_tool
+  value: '`edit_option`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__edit_option`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系（足す）
+    summary: 案を並びの末尾に足し、変更履歴を積む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A だけを持つ未決定の検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
+      - name: 引数
+        description: '`action: add`、`key: B`、`option` に `content`・`pros`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action add key B（option）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 同じ記号が無いことを確かめて末尾に足し、変更履歴を積んでスキーマと突き合わせる
+        IF->>WS: decisions.yaml と changes.yaml を書く
+        IF-->>クライアント: JSON（id・file・options・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 の `options` が A・B の順で、B が渡した `content`・`pros` を持ち `adopted` を持たない
+      - '`changed` が真'
+      - D-1 が `history` を 1 回分持ち、`before.options` が A だけの並び
+      - '`changes.yaml` の `pending.changed` が `[D-1]` で、D-1 の `seq` が `last_seq` と同じ'
+    test: test_normal_when_added
+  - name: 正常系（直す）
+    summary: 指した案の渡したキーだけを置き換え、ほかの案はそのまま残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`pros`・`cons` を持つ案 A と案 B を持つ検討事項 D-1 を足して `commit` したワークスペース'
+      - name: 引数
+        description: '`action: update`、`key: A`、`option` に `pros` と `cons: null`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action update key A（option）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 案 A の pros を置き換え cons を消し、変更履歴を積む
+        IF->>WS: decisions.yaml と changes.yaml を書く
+        IF-->>クライアント: JSON（options・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 案 A の `pros` が渡した値で `cons` のキーが無く、`content` が呼ぶ前と同じ
+      - 案 B と並びが呼ぶ前と同じ
+      - D-1 が `history` を 1 回分持ち、`before.options` が呼ぶ前の並び
+    test: test_normal_when_updated
+  - name: 正常系（消す）
+    summary: 採用していない案を消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B・C を持ち A を採用した検討事項 D-1 を足して `commit` したワークスペース
+      - name: 引数
+        description: '`action: remove`、`key: B`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action remove key B
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 案 B が採用されていないことを確かめて抜き、変更履歴を積む
+        IF->>WS: decisions.yaml と changes.yaml を書く
+        IF-->>クライアント: JSON（options・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 の `options` が A・C の順で、A が採用されたまま
+      - D-1 の `status`・`answer` が呼ぶ前と同じ
+    test: test_normal_when_removed
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: edit_option workspace id D-1 action remove key A
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（ID が無い・ItemNotFoundError）
+    summary: 存在しない検討事項を指すと、何も書かずに渡した ID を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-9 action remove key A
+        IF-->>WS: D-9 が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `D-9` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_id_not_found
+  - name: 異常系（同じ記号の案を足す・OptionExistsError）
+    summary: 既にある記号の案は足さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B を持つ検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action add key B（option）
+        IF-->>WS: 記号 B の案が既にある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `D-1` と `B` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_key_exists
+  - name: 異常系（無い記号の案を直す・OptionNotFoundError）
+    summary: 無い記号の案は直さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A だけを持つ検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action update key Z（option）
+        IF-->>WS: 記号 Z の案が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `D-1` と `Z` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_key_not_found
+  - name: 異常系（採用している案を消す・AdoptedOptionError）
+    summary: 採用している案は消さず、採用を先に移すよう示す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B を持ち A を採用した検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action remove key A
+        IF-->>WS: 案 A が採用されている
+        IF-->>クライアント: ツールのエラー（採用を先に移す案内）
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `D-1`、`A`、`adopt` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_adopted_option_removed
+  - name: 異常系（スキーマに合わない・SchemaMismatchError）
+    summary: 案の中身がスキーマに合わないと、何も書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A を持つ検討事項 D-1 を持つワークスペース
+      - name: 引数
+        description: '`action: add`、`key: B`、`option` の `content` に数値'
+        notes: '`{"content": 1}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+
+        クライアント->>IF: edit_option workspace id D-1 action add key B（content が数値）
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `decisions.yaml` で始まり `content` を含む行がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_schema_mismatch
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは何も書き換えず、エラーの行を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A を持つ検討事項 D-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action add key B（option）
+        IF-->>WS: 全ての YAML を読む
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_write_fails
+  - name: 異常系（引数の誤り）
+    summary: 採用の印を option で渡すと、何も書かずに引数の誤りを返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B を持つ検討事項 D-1 を持つワークスペース
+      - name: 引数
+        description: '`action: update`、`key: B`、`option` に `adopted: true`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+
+        クライアント->>IF: edit_option workspace id D-1 action update key B（adopted を含む）
+        IF->>IF: option が adopted を持つ
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: 引数の誤り: option:` で始まり、`adopted` を含む'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_argument_invalid
+lead: 検討事項の案を記号（`key`）で指して、1 つ足す・中身を直す・消す。指さない案と検討事項のほかのキーはそのまま残し、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
+idempotent: false
+side_effects: '`decisions.yaml` のその検討事項の `options` と `updated` を書き換える。値が変わったときは、『項目の更新』と同じく `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML と `changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`mindmap.yaml` があるフォルダ'
+  - name: id
+    type: str
+    required: true
+    location: argument
+    description: 案を書き換える検討事項の ID
+    constraints: '`D-` で始まる'
+    example: D-1
+  - name: action
+    type: Literal['add', 'update', 'remove']
+    required: true
+    location: argument
+    description: '`add` は案を並びの末尾に足す、`update` は指した案の中身を直す、`remove` は指した案を消す'
+  - name: key
+    type: str
+    required: true
+    location: argument
+    description: 案の記号。`add` では足す案の記号、`update`・`remove` では指す案の記号
+    example: B
+  - name: option
+    type: dict
+    required: false
+    default: なし（`remove` のとき）
+    location: argument
+    description: '`add` では足す案の中身。`update` では置き換えるキーと値で、渡したキーだけを置き換え、値が `null` のキーは消す'
+    constraints: キーは `content`・`pros`・`cons`・`note`・`reason` だけ（`key` は引数の `key`、`adopted` は『採用する案の切り替え』が持つ）。`add`・`update` では必ず渡し、`remove` では渡さない
+    example: '{"content": "種類ごとに分ける", "pros": "探しやすい"}'
+response:
+  - name: id
+    type: str
+    description: 書き換えた検討事項の ID
+  - name: file
+    type: str
+    description: 書き換えた YAML（ワークスペースからの相対パス）
+  - name: options
+    type: list[dict]
+    description: 書き換えた後の案の並び
+  - name: changed
+    type: bool
+    description: 案の並びが変わったか（同じ値で直したときは偽）
+exceptions:
+  - name: なし（正常終了）
+    condition: 書き換えられた
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: ItemNotFoundError
+    condition: 渡した ID の検討事項が無い
+    notes: ツールのエラー。エラーの本文に渡した ID。何も書き込まない
+  - name: OptionExistsError
+    condition: '`add` で、同じ記号の案が既にある'
+    notes: ツールのエラー。エラーの本文に ID と記号。何も書き込まない
+  - name: OptionNotFoundError
+    condition: '`update`・`remove` で、指した記号の案が無い'
+    notes: ツールのエラー。エラーの本文に ID と記号。何も書き込まない
+  - name: AdoptedOptionError
+    condition: '`remove` で、指した案が採用されている（`adopted` が真）'
+    notes: ツールのエラー。エラーの本文に ID と記号と、先に『採用する案の切り替え』で採用を移す案内。何も書き込まない
+  - name: SchemaMismatchError
+    condition: 書き換えた後のワークスペースのどれかの YAML がスキーマに合わない
+    notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻す
+  - name: 引数の誤り
+    condition: '`id` が `D-` で始まらない、`add`・`update` で `option` を渡さない、`remove` で `option` を渡した、または `option` が `key`・`adopted` を持つ'
+    notes: ツールのエラー。何も書き込まない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。案の記号のエラーは `エラー: {ID} の案 {記号}: {理由}` にする。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 案の並び
+    constraint: '`add` は末尾に足す。`update` はその案の位置のまま直し、`remove` はその案だけを抜く。ほかの案の中身と並びは変えない'
+  - item: 採用と状態
+    constraint: '案の `adopted` と検討事項の `status`・`answer` は書き換えない（採用は『採用する案の切り替え』が持ち、採用と状態の連動は #86 が扱う）'
+  - item: 変更履歴
+    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は `options`（書き換える前の案の並びの全体）
+  - item: 部分成功
+    constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる

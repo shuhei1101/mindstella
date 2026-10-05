@@ -268,7 +268,7 @@ request:
     required: true
     location: argument
     description: 置き換えるキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: '`id`・`created`・`updated`・`body`・`history` は持たない'
+    constraints: '`id`・`created`・`updated`・`body`・`history`・`seq`・`added_seq` は持たない'
   - name: item.body_markdown
     type: str
     required: false
@@ -321,8 +321,10 @@ constraints:
   - item: 変更履歴の 1 回分
     constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（`updated` と同じ日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前の本文の行へ戻す差分）を、`history` の先頭に置く。本文の全文は持たない。形は ER 図『ワークスペース』の共通のキー `history`'
   - item: 保持する回数
-    constraint: '`mindmap.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
+    constraint: '`mindmap.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
   - item: まだまとめていない変更
     constraint: 積んだとき、`changes.yaml` の `pending.changed` に ID を足す。既に `pending.added`・`pending.changed` にある ID は足さない。`changes.yaml` が無ければ作る
+  - item: 通し番号
+    constraint: 値が変わったとき、項目の `seq` をその書き換えで振った番号にする（変更履歴を積むときはその回の `seq`。保持する回数が 0 で積まないときも `changes.yaml` の `last_seq` を 1 進めてその番号を入れる）。変わったものが無ければ進めない
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_update.py
