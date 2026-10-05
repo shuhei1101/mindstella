@@ -119,3 +119,9 @@ dialog.drawer .btn[hidden] { display: none; }
 
 /* ドロワーが左からすべり込む動き */
 @keyframes fd-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 狭い幅ではマップを描かず縦の一覧にするため、マップの拡大率の操作も出さない */
+@media (max-width: 720px) {
+  /* マップの拡大率の操作 */
+  .map-view .zoom { display: none; }
+}

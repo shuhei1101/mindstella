@@ -42,6 +42,7 @@
     if (state.badge !== "C") p.set("badge", state.badge);
     if (state.band !== "A") p.set("band", state.band);
     if (state.dw !== "A") p.set("dw", state.dw);
+    if (state.col !== "A") p.set("col", state.col);
     const h = p.toString();
     return `${PAGES}${SCREEN_OF[tab]}/89/${MOCK_VARIANT}/index.html${h ? "#" + h : ""}`;
   };
@@ -247,9 +248,11 @@
   const BANDS = [["A", "A 帯を外す"], ["B", "B 凡例で残す"]];
   // ドロワーの出し方の案: A = 広い幅では本文の横に並べ、選ぶたびに変わる結果を見ながら選ぶ（推奨）/ B = どの幅でも本文に重ねるモーダル
   const DRAWERS = [["A", "A 横に並べる"], ["B", "B 重ねる"]];
+  // ボードで状態の条件から外した列の案: A = 列を残して外していることを書く（推奨）/ B = 列を隠す
+  const COLS = [["A", "A 列を残す"], ["B", "B 列を隠す"]];
   // 検討事項は、どの表示形式でも状態で要見直し・未決定・未整理・保留を選んだ状態で開く
   const DECISION_DEFAULT = ["要見直し", "未決定", "未整理", "保留"];
-  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", badge: "C", band: "A", dw: "A", mapQ: "", tables: {}, graphF: {}, deps: true };
+  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", badge: "C", band: "A", dw: "A", col: "A", mapQ: "", tables: {}, graphF: {}, deps: true };
   for (const k of Object.keys(COLUMNS)) state.tables[k] = { q: "", filters: k === "decisions" ? { status: new Set(DECISION_DEFAULT) } : {}, sort: null };
   const colPrefs = (kind) => (prefs.cols[kind] ??= { hidden: COLUMNS[kind].filter((c) => c.hidden).map((c) => c.key), pin: 0 });
 
@@ -267,6 +270,7 @@
     state.badge = BADGES.some(([v]) => v === p.get("badge")) ? p.get("badge") : "C";
     state.band = BANDS.some(([v]) => v === p.get("band")) ? p.get("band") : "A";
     state.dw = DRAWERS.some(([v]) => v === p.get("dw")) ? p.get("dw") : "A";
+    state.col = COLS.some(([v]) => v === p.get("col")) ? p.get("col") : "A";
     if (first) {
       // f.{列} があるときは、既定の条件に代えてその条件だけで開く
       const fs = [...p].filter(([k]) => k.startsWith("f."));
@@ -290,6 +294,7 @@
     if (state.badge !== "C") p.set("badge", state.badge);
     if (state.band !== "A") p.set("band", state.band);
     if (state.dw !== "A") p.set("dw", state.dw);
+    if (state.col !== "A") p.set("col", state.col);
     const h = p.toString();
     return h ? "#" + h : location.pathname;
   };
@@ -511,6 +516,8 @@
 
   // ===== ボード（検討事項・タスク） =====
   // 状態の条件で外した列も残し、外していることを列の中に書く
+  // 案 B では、状態の条件で外した列を出さない
+  const boardCols = (kind, cols) => state.col === "B" && fstate(kind).status?.size ? cols.filter((st) => fstate(kind).status.has(st)) : cols;
   const emptyCol = (kind, st) => fstate(kind).status?.size && !fstate(kind).status.has(st)
     ? `<p class="empty">状態の条件で外しています。</p>` : `<p class="empty">${KIND_NOUN[kind]}はありません。</p>`;
   const boardCard = (kind, r) => kind === "decisions"
@@ -518,7 +525,7 @@
     : `<button class="card" data-act="open" data-id="${r.id}"><div class="c-ttl">${esc(r.title)}</div><div class="c-meta"><span class="mono">${r.id}</span><span>${esc(r.kind)}</span><span>${esc(r.category)}</span></div>${(r.for || []).length ? `<div class="c-for">${r.for.map((id) => `<div><span class="mono">${id}</span> ${esc(titleOf(id))}</div>`).join("")}</div>` : ""}</button>`;
   const renderBoard = (kind = "tasks") => {
     const rows = rowsFor(kind);
-    const cols = BOARD_COLS[kind];
+    const cols = boardCols(kind, BOARD_COLS[kind]);
     return `<div class="board" style="--cols:${cols.length}">${cols.map((st) => {
       const cards = rows.filter((r) => r.status === st);
       return `<section class="board-col" aria-label="${st}"><h3>${mark(st)}${st}<span class="n">${cards.length}</span></h3>${cards.length ? cards.map((r) => boardCard(kind, r)).join("") : emptyCol(kind, st)}</section>`;
@@ -531,7 +538,8 @@
   const docBoardCard = (r) => `<button class="card doc-card${r.deliverable ? " deliv-card" : ""}${state.panel === r.id ? " selected" : ""}" data-act="open" data-id="${r.id}">${r.deliverable ? `<span class="deliv-badge">${icon("box")}納品物</span>` : ""}<span class="doc-kind">${icon(r.kind === "図" ? "graph" : "cards")}${esc(r.kind)}</span><span class="c-ttl">${esc(r.title)}</span><span class="c-meta"><span class="mono">${r.id}</span><span>${esc(r.category)} · ${esc(r.stage)}</span></span>${(r.tags || []).length ? `<span class="c-tags">${tags(r.tags)}</span>` : ""}</button>`;
   const renderDocBoard = () => {
     const rows = orderDocs(rowsFor("docs"));
-    return `<div class="board doc-board" style="--cols:${DOC_STATUS.length}">${DOC_STATUS.map((st) => {
+    const cols = boardCols("docs", DOC_STATUS);
+    return `<div class="board doc-board" style="--cols:${cols.length}">${cols.map((st) => {
       const cards = rows.filter((r) => r.status === st);
       return `<section class="board-col" aria-label="${st}"><h3>${mark(st)}${st}<span class="n">${cards.length}</span></h3>${cards.length ? cards.map(docBoardCard).join("") : emptyCol("docs", st)}</section>`;
     }).join("")}</div>`;
@@ -1221,8 +1229,10 @@
     const bar = document.getElementById("mock-states");
     const group = (label, act, list, cur) => `<span class="mock-group" role="group" aria-label="${label}"><span class="mock-label">${label}</span>${list.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join("")}</span>`;
     const hasBand = SCREEN === "graph" || (SCREEN === "decisions" && state.view === "map");
+    const hasBoard = ["decisions", "tasks", "docs"].includes(SCREEN) && state.view === "board";
     bar.innerHTML = (SCREEN === "overview" ? "" : group("ドロワー", "mdw", DRAWERS, state.dw) + group("バッジ", "mbadge", BADGES, state.badge))
       + (hasBand ? group("帯", "mband", BANDS, state.band) : "")
+      + (hasBoard ? group("外した列", "mcol", COLS, state.col) : "")
       + group("状態", "sim", SIMS, state.sim);
   };
   // 見てきた項目の並び（trail）と今の位置（pos）を履歴の状態に持つ
@@ -1400,6 +1410,7 @@
       case "dclearall": for (const k of Object.keys(fstate(state.tab))) delete fstate(state.tab)[k]; changeFilter(".fd-body input"); break;
       case "mbadge": state.badge = el.dataset.v; history.replaceState(null, "", hashOf()); render(); break;
       case "mband": state.band = el.dataset.v; history.replaceState(null, "", hashOf()); lastScreen = ""; render(); break;
+      case "mcol": state.col = el.dataset.v; history.replaceState(null, "", hashOf()); render(); break;
       case "mdw": state.dw = el.dataset.v; history.replaceState(null, "", hashOf()); if (drawerDlg.open) { drawerDlg.close(); openDrawer(); } render(); break;
       case "zoom": {
         const cur = state.zoom === "fit" ? 0.6 : state.zoom, zd = el.dataset.z;
