@@ -31,6 +31,19 @@ NEW_GOAL = {
     "deliverables": [{"title": "要件定義書"}],
 }
 
+# 壁打ちで作った対象とカテゴリー（どちらも 話題 の下）
+OLD_TARGETS = [{"name": "話題", "summary": "話し合う話題"}]
+OLD_CATEGORIES = [
+    {"name": "論点", "target": "話題", "summary": "決める論点"},
+    {"name": "アイデア", "target": "話題", "summary": "出たアイデア"},
+]
+
+# 利用者が確定した、書き換えた後の対象とカテゴリーと、古い名前から新しい名前への対応
+NEW_TARGETS = [{"name": "本体", "summary": "作るシステムの本体"}]
+NEW_CATEGORIES = [{"name": "論点", "target": "本体", "summary": "決める論点"}]
+TARGET_MAP = {"話題": "本体"}
+CATEGORY_MAP = {"アイデア": "論点"}
+
 # 会話の日付
 TODAY = "2026-10-02"
 
@@ -53,9 +66,13 @@ def test_normal(
         "playbooks": ["壁打ち"],
         "target_label": "テーマ",
         "phases": WALL_PHASES,
+        "targets": OLD_TARGETS,
+        "categories": OLD_CATEGORIES,
     }
     root = make_workspace(
-        make_item("D-1", phase="問い"), make_item("D-2", phase="発散"), settings=settings
+        make_item("D-1", phase="問い", target="話題", category="論点"),
+        make_item("D-2", phase="発散", target="話題", category="アイデア"),
+        settings=settings,
     )
     ws = {"workspace": str(root)}
     # 実行
@@ -68,9 +85,13 @@ def test_normal(
             "playbooks": ["壁打ち", "システム開発"],
             "phases": NEW_PHASES,
             "target_label": "機能",
+            "targets": NEW_TARGETS,
+            "categories": NEW_CATEGORIES,
             "goal": NEW_GOAL,
         },
         phase_map=PHASE_MAP,
+        target_map=TARGET_MAP,
+        category_map=CATEGORY_MAP,
     )
     # 書き換えた設定で足した納品物の資料を作り、納品物の doc から指す
     replay(
@@ -82,6 +103,7 @@ def test_normal(
             "kind": "文書",
             "deliverable": True,
             "status": "下書き",
+            "target": "本体",
             "body_markdown": DELIVERABLE_BODY,
         },
     )
@@ -110,6 +132,8 @@ def test_normal(
     assert updated["summary"] == "家計簿アプリの要件を決める"
     assert updated["target_label"] == "機能"
     assert updated["phases"] == NEW_PHASES
+    assert updated["targets"] == NEW_TARGETS
+    assert updated["categories"] == NEW_CATEGORIES
     # goal が確定したたたき台の値で、納品物 要件定義書 の doc が A-1 である
     assert updated["goal"] == {**NEW_GOAL, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}
     # 資料 A-1 が deliverable: true を持ち、docs/ の本文が概要・背景・構成の見出しを持つ
@@ -120,6 +144,11 @@ def test_normal(
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["phase"] == "目的"
     assert decisions["D-2"]["phase"] == "発散"
+    # D-1・D-2 の target が 本体、category が 論点 である
+    assert [(decisions[item_id]["target"], decisions[item_id]["category"]) for item_id in ("D-1", "D-2")] == [
+        ("本体", "論点"),
+        ("本体", "論点"),
+    ]
     # 会話ログが 1 件足されている
     assert [item["id"] for item in read_yaml(root, "logs.yaml")["items"]] == ["L-1"]
     # check が問題を 0 件で返す

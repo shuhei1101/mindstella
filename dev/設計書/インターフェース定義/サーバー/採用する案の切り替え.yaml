@@ -211,6 +211,6 @@ constraints:
   - item: 影響の洗い出し
     constraint: しない（影響は `impact`、要見直しにするかはスキルの手順が決める）
   - item: 変更履歴
-    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「まだまとめていない変更」と同じ。`before` は `options`（切り替える前の案の並びの全体）。既にその案が採用のときは積まない
+    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は `options`（切り替える前の案の並びの全体）。既にその案が採用のときは積まない
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_adopt.py

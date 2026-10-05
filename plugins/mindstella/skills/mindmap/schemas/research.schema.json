@@ -68,6 +68,12 @@
         "history_dropped_seq": {
           "$ref": "common.schema.json#/$defs/item/properties/history_dropped_seq"
         },
+        "seq": {
+          "$ref": "common.schema.json#/$defs/item/properties/seq"
+        },
+        "added_seq": {
+          "$ref": "common.schema.json#/$defs/item/properties/added_seq"
+        },
         "question": {
           "type": "string",
           "description": "何を調べたか"

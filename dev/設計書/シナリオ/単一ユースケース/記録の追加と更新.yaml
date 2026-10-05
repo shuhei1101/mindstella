@@ -159,6 +159,89 @@ scenarios:
       - 2 回目の `pending` が空を返す
       - 書き換えは `commit` を呼ぶ前からワークスペースに書かれている
     test: test_normal_when_changes_committed
+  - name: 正常シナリオ（まとめて読み書きする）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を 1 件足して `commit` したワークスペース
+      - name: まとめて渡す操作
+        description: 検討事項を足す → その検討事項を進めるタスクを足す → D-1 の答えと状態を直す → D-1 を取得する、の 4 つをこの順に 1 回の呼び出しで渡す
+        notes: タスクの `for` は、同じ呼び出しで先に足す検討事項を指す。指し方はインターフェース定義設計で決める
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 追加・追加・更新・取得の操作を並べて渡す
+        SV->>WS: 種類の YAML を読む
+        SV->>SV: 並べた順に当て、ID・日時・通し番号・変更履歴を付け、全てを当てた後に 1 回だけスキーマと突き合わせる
+        SV->>WS: decisions.yaml と tasks.yaml を書く
+        SV-->>CC: 操作ごとの結果（振った ID・直した ID・取得した中身）
+      ```
+    expected:
+      - 結果が渡した操作と同じ順に 4 件あり、足した検討事項が D-2、タスクが T-1 である
+      - 'T-1 が `for: [D-2]` を持つ'
+      - 4 つ目の取得の結果が、直した後の D-1 の答えと状態を持つ
+      - D-1 が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
+      - '`pending` が D-2・T-1（足した）と D-1（変えた）を返す'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_batched
+  - name: 異常シナリオ（まとめた操作の途中が合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を 1 件足したワークスペース
+      - name: まとめて渡す操作
+        description: 正しい検討事項を足す → D-1 の状態を、決めた状態の名前に無い値に直す、の 2 つを 1 回の呼び出しで渡す
+        notes: 状態 `完了`（タスクの状態で、検討事項には無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 追加と誤った更新を並べて渡す
+        SV->>SV: 並べた順に当て、スキーマと突き合わせて 2 つ目が合わない
+        SV-->>CC: 合わない操作と箇所を示すエラー
+      ```
+    expected:
+      - まとめて読み書きするツールがエラーを返す
+      - エラーの本文に、合わないのが 2 つ目の操作であることと、キー `status` と値 `完了` がある
+      - 1 つ目の検討事項も足されていない
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_batch_has_invalid_operation
+  - name: 正常シナリオ（読んでいない回を残す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 保持する回数を 1 にし、検討事項 D-1 を足してから前回読んだ時点からの変更を一度読んだワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の答えを直す
+        CC->>SV: D-1 の理由を直す
+        SV->>SV: 保持する回数を超えるが、どちらの回も AI が最後に読んだ時点より後なので消さない
+        SV->>WS: decisions.yaml を書く
+        CC->>SV: 前回読んだ時点からの変更を読む
+        CC->>SV: D-1 の答えをもう一度直す
+        SV->>SV: 読み終えた回のうち、保持する回数を超えた古い回を消す
+        SV->>WS: decisions.yaml を書く
+      ```
+    expected:
+      - 2 回直した後、D-1 が変更履歴を 2 回分持ち、`history_dropped_seq` を持たない
+      - 前回読んだ時点からの変更が、D-1 の答えと理由の両方を前の値つきで返す
+      - 3 回目に直した後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が消した回の最も大きい通し番号である
+    test: test_normal_when_unread_history_kept
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -171,3 +254,5 @@ preconditions:
 success_guarantee: 足した項目に種類の頭の文字の ID と作成日・更新日が付き、直した項目の更新日が変わり、ワークスペースの全ての YAML がスキーマに合う。
 minimal_guarantee: スキーマに合わない書き込み・存在しない ID への書き込みでは、どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_record_add_update.py
+notes:
+  読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、今までどおり超えた古い回を消す（正常シナリオ（保持する回数を超えて直す）はこの形）。保持する回数が 0 のときは、今までどおり積まない
