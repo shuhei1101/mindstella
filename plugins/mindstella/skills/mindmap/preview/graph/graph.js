@@ -9,11 +9,11 @@ var MindmapPreview;
         ["sources", "source"],
         ["related", "related"],
     ];
-    /** 表示する種類の項目を玉に、関連を線にして返す（両端のどちらかが非表示か記録に無い線は含めない） */
-    function buildGraph({ index, shownKinds, }) {
+    /** 渡した ID の項目を玉に、関連を線にして返す（両端のどちらかが渡していない項目か記録に無い線は含めない） */
+    function buildGraph({ index, shownIds, }) {
         const nodes = [];
         for (const [id, { kind }] of index.byId)
-            if (shownKinds.has(kind))
+            if (shownIds.has(id))
                 nodes.push({ id, kind });
         const shown = new Set(nodes.map((node) => node.id));
         const links = [];
@@ -25,7 +25,7 @@ var MindmapPreview;
             for (const [key, type] of LINK_KEYS) {
                 for (const target of item[key] ?? []) {
                     const identity = `${type}|${source}|${target}`;
-                    // 自分自身へ・非表示や記録に無い項目へ・同じ線の重なりは作らない
+                    // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
                     if (source === target || !shown.has(target) || seen.has(identity))
                         continue;
                     seen.add(identity);
@@ -36,6 +36,31 @@ var MindmapPreview;
         return { nodes, links };
     }
     MindmapPreview.buildGraph = buildGraph;
+    /** 状態を持つ種類（検討事項・タスク・資料）の状態を重ねた並び（つながりの状態の条件の値の順） */
+    const GRAPH_STATUS_ORDER = [
+        ...new Set([...MindmapPreview.DECISION_STATUSES, ...MindmapPreview.TASK_STATUSES, ...MindmapPreview.DOC_STATUSES]),
+    ];
+    /** つながりで絞る条件（種類・状態・タグ）の定義を返す。値は索引の項目（`{kind, item}`）から取る */
+    function graphConditions() {
+        // 行は索引の項目に ID を足したもの。列の定義が行の型を `Row` と受けるので、ここで読み替える
+        const entry = (row) => row;
+        return [
+            {
+                key: "type",
+                label: "種類",
+                order: MindmapPreview.KIND_KEYS.map((kind) => MindmapPreview.KIND_LABEL[kind]),
+                get: (row) => MindmapPreview.KIND_LABEL[entry(row).kind],
+            },
+            {
+                key: "status",
+                label: "状態",
+                order: GRAPH_STATUS_ORDER,
+                get: (row) => entry(row).item.status,
+            },
+            { key: "tags", label: "タグ", get: (row) => entry(row).item.tags ?? [] },
+        ];
+    }
+    MindmapPreview.graphConditions = graphConditions;
     /** 線の種類ごとの見た目（実線・点線・破線・一点鎖線） */
     const LINK_DASH = {
         depends: [],
@@ -44,7 +69,7 @@ var MindmapPreview;
         for: [10, 3, 2, 3],
     };
     /** 項目の種類 → 色のトークン */
-    const KIND_COLOR_VAR = {
+    MindmapPreview.KIND_COLOR_VAR = {
         decisions: "--k-dec",
         tasks: "--k-task",
         research: "--k-res",
@@ -75,7 +100,7 @@ var MindmapPreview;
         const style = getComputedStyle(document.documentElement);
         const read = (name) => style.getPropertyValue(name).trim();
         return {
-            kind: Object.fromEntries(Object.entries(KIND_COLOR_VAR).map(([kind, name]) => [kind, read(name)])),
+            kind: Object.fromEntries(Object.entries(MindmapPreview.KIND_COLOR_VAR).map(([kind, name]) => [kind, read(name)])),
             label: read("--g-label"),
             line: read("--g-line"),
             dot: read("--g-dot"),
@@ -189,19 +214,29 @@ var MindmapPreview;
     }
     MindmapPreview.selectGraphItem = selectGraphItem;
     /** つながりの画面を返す。`selected` は最初に選んでおく項目 */
-    function graphScreen({ index, on, selected = null, }) {
+    function graphScreen({ index, on, filters, drawerOpen, selected = null, }) {
+        // ===== 絞り込み: 条件に合う項目の ID =====
+        const conditions = graphConditions();
+        const rows = [...index.byId].map(([id, entry]) => ({ id, ...entry }));
+        const shownIds = new Set(MindmapPreview.filterRows({ rows, columns: conditions, filters }).map((row) => row.id));
         // ===== 状態 =====
-        const shownKinds = new Set(MindmapPreview.KIND_KEYS);
         const canvas = MindmapPreview.h({ tag: "canvas", attrs: { id: "graph-canvas", class: "g3-wrap", role: "img", "aria-label": "すべての項目のつながり" } });
-        const kindToggles = MindmapPreview.h({ tag: "div", attrs: { class: "legend", role: "group", "aria-label": "表示する種類" } });
-        // 表示する種類が 1 つも無いときに、枠の中央に出す文
-        const emptyNotice = MindmapPreview.h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownKinds.size > 0 }, children: ["表示する項目はありません。"] });
+        // 絞り込みの条件に合う項目が 1 件も無いときに、枠の中央に出す文
+        const emptyNotice = MindmapPreview.h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownIds.size > 0 }, children: ["表示する項目はありません。"] });
         const root = MindmapPreview.h({
             tag: "div",
             attrs: { class: "screen graph" },
             children: [
-                MindmapPreview.h({ tag: "div", attrs: { class: "map-tools" }, children: [kindToggles] }),
                 MindmapPreview.h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),
+                MindmapPreview.screenDrawer({
+                    drawerOpen,
+                    rows,
+                    columns: conditions,
+                    filters,
+                    shown: shownIds.size,
+                    onFilter: on.filter,
+                    onClose: on.closeDrawer,
+                }),
             ],
         });
         const labelCache = new Map();
@@ -255,10 +290,9 @@ var MindmapPreview;
             labelCache.set(key, image);
             return image;
         };
-        /** 玉と線を作り直す（表示する種類が変わったとき） */
+        /** 玉と線を作る（絞り込みの条件に合う項目で） */
         const rebuild = () => {
-            emptyNotice.hidden = shownKinds.size > 0;
-            const graph = buildGraph({ index, shownKinds });
+            const graph = buildGraph({ index, shownIds });
             balls = placeBalls(index, graph);
             ballById = new Map(balls.map((ball) => [ball.id, ball]));
             links = graph.links.flatMap((link) => {
@@ -277,46 +311,6 @@ var MindmapPreview;
             camera.centerTarget = { x: 0, y: 0, z: 0 };
             birth = performance.now();
             select(current);
-        };
-        /** 項目の種類ごとの表示 / 非表示の切り替え（右端にまとめて切り替える箱） */
-        const drawToggles = () => {
-            kindToggles.replaceChildren(...MindmapPreview.KIND_KEYS.map((kind) => MindmapPreview.h({
-                tag: "label",
-                children: [
-                    MindmapPreview.h({
-                        tag: "input",
-                        attrs: {
-                            type: "checkbox",
-                            value: kind,
-                            "data-act": "gkind",
-                            checked: shownKinds.has(kind),
-                            "aria-label": MindmapPreview.KIND_LABEL[kind],
-                            onchange: (event) => {
-                                if (event.target.checked)
-                                    shownKinds.add(kind);
-                                else
-                                    shownKinds.delete(kind);
-                                drawToggles();
-                                rebuild();
-                            },
-                        },
-                    }),
-                    MindmapPreview.h({ tag: "span", attrs: { class: "kdot", style: `background:var(${KIND_COLOR_VAR[kind]})` } }),
-                    MindmapPreview.KIND_LABEL[kind],
-                    MindmapPreview.h({ tag: "span", attrs: { class: "n" }, children: [index.data[kind].length] }),
-                ],
-            })), MindmapPreview.toggleAllBox({
-                label: "すべての種類を表示",
-                shown: shownKinds,
-                all: [...MindmapPreview.KIND_KEYS],
-                onChange: (next) => {
-                    shownKinds.clear();
-                    for (const kind of next)
-                        shownKinds.add(kind);
-                    drawToggles();
-                    rebuild();
-                },
-            }));
         };
         /** 項目を選ぶ（その玉へゆっくり寄る）。選ぶのをやめたら、全体を見る位置へ戻す */
         const select = (id) => {
@@ -661,7 +655,6 @@ var MindmapPreview;
             context.globalAlpha = 1;
         };
         // ===== 起動 =====
-        drawToggles();
         // 文字の書体が読み込まれたら、取っておいた文字の画像を作り直す
         document.fonts?.addEventListener("loadingdone", () => labelCache.clear());
         // テーマが変わったら、色を読み直す

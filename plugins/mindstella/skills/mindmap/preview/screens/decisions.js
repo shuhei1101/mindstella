@@ -23,22 +23,18 @@ var MindmapPreview;
         "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED",
         "elk.padding": "[top=24,left=24,bottom=24,right=24]",
     };
-    /** マップで最初に表示する状態（決定済み・対象外・取り下げは隠す） */
-    const DEFAULT_SHOWN_STATUSES = ["要見直し", "未決定", "未整理", "保留"];
     /** 拡大・縮小 1 回の倍率の幅と、倍率の範囲 */
     const ZOOM_STEP = 0.15;
     const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 1.5;
     /** マップの狭い幅の境（これ以下は字下げした縦の一覧） */
     const NARROW_QUERY = "(max-width: 900px)";
-    /** 表示する状態の検討事項が 1 件も無いときに、マップの枠と字下げの一覧に出す文 */
-    const NO_SHOWN_STATUS_TEXT = "表示する検討事項はありません。";
-    /** 対象 → カテゴリー → フェーズ → 検討事項の木を、表示する状態で絞って返す（ELK に渡す節と枝の形） */
-    function buildDecisionTree({ index, shownStatuses, }) {
+    /** 絞り込みの条件に合う検討事項が 1 件も無いときに、マップの枠と字下げの一覧に出す文 */
+    const NO_SHOWN_DECISIONS_TEXT = "表示する検討事項はありません。";
+    /** 対象 → カテゴリー → フェーズ → 検討事項の木を、渡した検討事項だけで組んで返す（ELK に渡す節と枝の形） */
+    function buildDecisionTree({ index, decisions, }) {
         const { settings } = index.data;
-        const shown = index.data.decisions
-            .filter((item) => shownStatuses.has(item.status ?? ""))
-            .sort((a, b) => MindmapPreview.compareIds(a.id, b.id));
+        const shown = [...decisions].sort((a, b) => MindmapPreview.compareIds(a.id, b.id));
         /** 設定の並びの順（設定に無いものは最後） */
         const rankIn = (list, name) => {
             const position = list.indexOf(name);
@@ -86,13 +82,12 @@ var MindmapPreview;
     // ───── マップの状態（描き直しても保つ） ─────
     /** マップの状態 */
     const mapState = {
-        shownStatuses: new Set(DEFAULT_SHOWN_STATUSES),
         keyword: "",
         zoom: "fit",
         scroll: null,
         selected: null,
     };
-    /** 配置の結果（表示する状態の組み合わせごと） */
+    /** 配置の結果（絞り込みの条件に合う検討事項の組み合わせごと） */
     const layoutCache = new Map();
     /** 配置を計算する（同じ状態の組み合わせは取っておく） */
     async function layoutOf(graph, key) {
@@ -234,8 +229,8 @@ var MindmapPreview;
         canvas.replaceChildren(edgeSvg, ...nodes);
     }
     /** 狭い幅で使う、字下げした縦の一覧 */
-    function outline({ index, open, marks, }) {
-        const tree = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
+    function outline({ index, decisions, open, marks, }) {
+        const tree = buildDecisionTree({ index, decisions });
         const nodeOf = new Map(tree.children.map((node) => [node.id, node]));
         const childrenOf = new Map();
         for (const edge of tree.edges) {
@@ -267,18 +262,16 @@ var MindmapPreview;
         return MindmapPreview.h({
             tag: "nav",
             attrs: { class: "map-outline", "aria-label": "検討事項の一覧" },
-            // 表示する状態の検討事項が無いときは、対象の見出しを並べず空の旨を出す
-            children: [roots.length > 0 ? MindmapPreview.h({ tag: "ul", children: [...roots.map(entry)] }) : MindmapPreview.emptyNote(NO_SHOWN_STATUS_TEXT)],
+            // 絞り込みの条件に合う検討事項が無いときは、対象の見出しを並べず空の旨を出す
+            children: [roots.length > 0 ? MindmapPreview.h({ tag: "ul", children: [...roots.map(entry)] }) : MindmapPreview.emptyNote(NO_SHOWN_DECISIONS_TEXT)],
         });
     }
-    /** マップの道具の行（状態の印・キーワード）と、マップの枠・拡大の道具を作る */
-    function mapView({ index, route, on, marks }) {
+    /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
+    function mapView({ index, route, on, marks }, { shown, makeDrawer, }) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "map-view-root" } });
-        const decisions = index.data.decisions;
-        const legend = MindmapPreview.h({ tag: "div", attrs: { class: "legend", role: "group", "aria-label": "表示する状態" } });
         const frame = MindmapPreview.h({ tag: "div", attrs: { class: "map-frame" } });
-        // 表示する状態の検討事項が無いときに、マップの枠の中央に出す文
-        const emptyNotice = MindmapPreview.h({ tag: "p", attrs: { class: "empty map-empty", hidden: true }, children: [NO_SHOWN_STATUS_TEXT] });
+        // 絞り込みの条件に合う検討事項が無いときに、マップの枠の中央に出す文
+        const emptyNotice = MindmapPreview.h({ tag: "p", attrs: { class: "empty map-empty", hidden: true }, children: [NO_SHOWN_DECISIONS_TEXT] });
         const canvas = MindmapPreview.h({ tag: "div", attrs: { id: "decision-map", class: "map-canvas", role: "group", "aria-label": "検討事項のマップ" } });
         const sizer = MindmapPreview.h({ tag: "div", attrs: { class: "map-sizer" }, children: [canvas] });
         const wrap = MindmapPreview.h({ tag: "div", attrs: { class: "map-wrap" }, children: [sizer] });
@@ -296,55 +289,22 @@ var MindmapPreview;
             },
             children: ["全体を表示"],
         });
-        let outlineElement = outline({ index, open: on.open, marks });
+        let outlineElement = outline({ index, decisions: shown, open: on.open, marks });
         let current = null;
         /** キーワードに当たった検討事項か */
         const isHit = (item) => mapState.keyword !== "" && item.title.toLowerCase().includes(mapState.keyword.toLowerCase());
-        /** 状態の印の行（表示 / 非表示の切り替えと、件数・キーワードに当たった件数のバッジ。右端にまとめて切り替える箱） */
-        const drawLegend = () => {
-            const bandStatuses = MindmapPreview.DECISION_STATUSES.filter((status) => decisions.some((item) => item.status === status));
-            legend.replaceChildren(...bandStatuses.map((status) => {
-                const total = decisions.filter((item) => item.status === status).length;
-                const hits = decisions.filter((item) => item.status === status && isHit(item)).length;
-                return MindmapPreview.h({
-                    tag: "label",
-                    children: [
-                        MindmapPreview.h({
-                            tag: "input",
-                            attrs: {
-                                type: "checkbox",
-                                value: status,
-                                checked: mapState.shownStatuses.has(status),
-                                onchange: (event) => {
-                                    if (event.target.checked)
-                                        mapState.shownStatuses.add(status);
-                                    else
-                                        mapState.shownStatuses.delete(status);
-                                    void draw();
-                                },
-                            },
-                        }),
-                        MindmapPreview.statusMark(status),
-                        status,
-                        MindmapPreview.h({ tag: "span", attrs: { class: "n" }, children: [total] }),
-                        hits > 0
-                            ? MindmapPreview.h({
-                                tag: "span",
-                                attrs: { class: "hit-n", "aria-label": `キーワードに一致した項目 ${hits} 件` },
-                                children: [hits],
-                            })
-                            : null,
-                    ],
-                });
-            }), MindmapPreview.toggleAllBox({
-                label: "すべての状態を表示",
-                shown: mapState.shownStatuses,
-                all: bandStatuses,
-                onChange: (next) => {
-                    mapState.shownStatuses = next;
-                    void draw();
-                },
-            }));
+        /** 絞り込みのドロワー（キーワードに一致した件数を値ごとに添える） */
+        const drawerHit = (row) => isHit(row);
+        let drawerElement = makeDrawer(drawerHit);
+        /** キーワードが変わったとき、ドロワーの件数だけを組み直す */
+        const refreshDrawer = () => {
+            if (drawerElement === null)
+                return;
+            const next = makeDrawer(drawerHit);
+            if (next === null)
+                return;
+            drawerElement.replaceWith(next);
+            drawerElement = next;
         };
         /** 拡大率を決めて、マップの大きさと拡大を当てる（全体を表示は、枠に木の全体が収まる倍率） */
         const applyZoom = () => {
@@ -362,12 +322,11 @@ var MindmapPreview;
         };
         /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
         const draw = async () => {
-            drawLegend();
-            outlineElement.replaceWith((outlineElement = outline({ index, open: on.open, marks })));
+            outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks })));
             if (MindmapPreview.missingLibraries(["elkjs"]).length > 0)
                 return;
-            const key = [...mapState.shownStatuses].sort().join(",");
-            const graph = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
+            const key = shown.map((item) => item.id).join(",");
+            const graph = buildDecisionTree({ index, decisions: shown });
             emptyNotice.hidden = graph.children.length > 0;
             current = await layoutOf(graph, key);
             drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks });
@@ -401,12 +360,12 @@ var MindmapPreview;
             window.clearTimeout(timer);
             timer = window.setTimeout(() => {
                 mapState.keyword = keyword.value;
-                // 当たった節の色と、状態の印のバッジだけを更新する
+                // 当たった節の色と、ドロワーの一致した件数だけを更新する
                 for (const button of canvas.querySelectorAll("button.n-item")) {
                     const item = index.byId.get(button.dataset["node"] ?? "")?.item;
                     button.classList.toggle("hit", item !== undefined && isHit(item));
                 }
-                drawLegend();
+                refreshDrawer();
             }, 150);
         });
         const toolbarElement = MindmapPreview.toolbar([
@@ -476,11 +435,11 @@ var MindmapPreview;
             parent: root,
             children: [
                 toolbarElement,
-                MindmapPreview.h({ tag: "div", attrs: { class: "map-tools" }, children: [legend] }),
                 notice,
                 frame,
                 zoomBar,
                 outlineElement,
+                drawerElement,
             ],
         });
         // 拡大率が「全体を表示」のときは、枠の大きさが変わるたびに倍率を求め直す
@@ -491,39 +450,10 @@ var MindmapPreview;
         void draw();
         return root;
     }
-    /** 検討事項の画面を返す */
-    function decisionsScreen(props) {
-        const { index, route, on, marks } = props;
-        if (route.view === "map")
-            return MindmapPreview.h({ tag: "div", attrs: { class: "screen decisions" }, children: [mapView(props)] });
-        const toolbarElement = MindmapPreview.toolbar([
-            { key: "map", label: "マップ" },
-            { key: "board", label: "ボード" },
-            { key: "table", label: "表" },
-        ], route, on.view);
-        if (route.view === "board") {
-            return MindmapPreview.h({
-                tag: "div",
-                attrs: { class: "screen decisions" },
-                children: [
-                    toolbarElement,
-                    MindmapPreview.board({
-                        columns: MindmapPreview.boardColumns({ items: index.data.decisions, statuses: [...MindmapPreview.DECISION_STATUSES] }),
-                        card: (item) => MindmapPreview.boardCard({
-                            index,
-                            item,
-                            meta: [item.category, item.phase],
-                            links: item.depends_on ?? [],
-                            open: on.open,
-                            mark: marks?.[item.id],
-                        }),
-                        emptyText: "検討事項はありません。",
-                    }),
-                ],
-            });
-        }
+    /** 検討事項の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+    function decisionColumns({ index, open }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
-        const columns = [
+        return [
             common.id,
             common.title(),
             common.status(MindmapPreview.DECISION_STATUSES),
@@ -555,10 +485,65 @@ var MindmapPreview;
                 label: "前提",
                 priority: 3,
                 get: (row) => MindmapPreview.rowTexts(row, "depends_on"),
-                cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "depends_on"), on.open),
+                cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "depends_on"), open),
             },
             common.tags,
         ];
+    }
+    /** 検討事項の画面を返す */
+    function decisionsScreen(props) {
+        const { index, route, on, marks, filters, drawerOpen } = props;
+        const columns = decisionColumns({ index, open: on.open });
+        // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
+        const shown = MindmapPreview.filterRows({ rows: index.data.decisions, columns, filters });
+        const makeDrawer = (hit) => MindmapPreview.screenDrawer({
+            drawerOpen,
+            rows: index.data.decisions,
+            columns: columns.filter((column) => column.filterable === true),
+            filters,
+            shown: shown.length,
+            hit,
+            onFilter: on.filter,
+            onClose: on.closeDrawer,
+        });
+        if (route.view === "map") {
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "screen decisions" },
+                children: [mapView(props, { shown, makeDrawer })],
+            });
+        }
+        const toolbarElement = MindmapPreview.toolbar([
+            { key: "map", label: "マップ" },
+            { key: "board", label: "ボード" },
+            { key: "table", label: "表" },
+        ], route, on.view);
+        if (route.view === "board") {
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "screen decisions" },
+                children: [
+                    toolbarElement,
+                    MindmapPreview.board({
+                        columns: MindmapPreview.boardColumns({
+                            items: shown,
+                            statuses: [...MindmapPreview.DECISION_STATUSES],
+                            statusFilter: filters["status"] ?? [],
+                        }),
+                        card: (item) => MindmapPreview.boardCard({
+                            index,
+                            item,
+                            meta: [item.category, item.phase],
+                            links: item.depends_on ?? [],
+                            open: on.open,
+                            mark: marks?.[item.id],
+                        }),
+                        emptyText: "検討事項はありません。",
+                    }),
+                    makeDrawer(),
+                ],
+            });
+        }
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "screen decisions" },
@@ -567,11 +552,13 @@ var MindmapPreview;
                 MindmapPreview.managedTable({
                     kind: "decisions",
                     columns,
-                    rows: index.data.decisions,
+                    rows: shown,
+                    filters,
+                    onFilter: on.filter,
                     open: on.open,
-                    initialFilters: route.filters,
                     marks,
                 }),
+                makeDrawer(),
             ],
         });
     }

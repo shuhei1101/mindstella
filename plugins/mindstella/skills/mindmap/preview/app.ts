@@ -51,6 +51,14 @@ namespace MindmapPreview {
     return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null]);
   }
 
+  /** 絞り込みの状態（開いている間だけ持つ。表示形式の切り替え・描き直し・書き換えの知らせでも保ち、端末には残さない） */
+  export type FilterState = {
+    /** 画面（記録の表は種類）ごとの絞り込み。初めて開いた画面は `initialFilters` で入れる */
+    byTab: Record<string, Filters>;
+    /** 絞り込みのドロワーを開いているか。コメントの一覧（`CommentState.listOpen`）と同時に真にしない */
+    drawerOpen: boolean;
+  };
+
   /** 端末に残す設定 */
   export type Prefs = {
     /** ライト / ダーク。null は OS の設定に従う */
@@ -294,6 +302,7 @@ namespace MindmapPreview {
     document.body.prepend(top, main);
     let route = parseHash({ hash: location.hash, index });
     let fullViewer: HTMLElement | null = null;
+    const filterState: FilterState = { byTab: {}, drawerOpen: false };
 
     // ===== 移動 =====
     /** 詳細パネルを別画面として積む幅か */
@@ -305,6 +314,8 @@ namespace MindmapPreview {
         next.tab !== route.tab || next.view !== route.view || Object.keys(next.filters).length > 0;
       const idChanged = next.id !== route.id;
       route = next;
+      // 概要には絞り込みのドロワーを置かない
+      if (route.tab === "overview") filterState.drawerOpen = false;
       navigate({ route: { ...route, filters: {} }, push });
       render({ screen: screenChanged || (route.tab === "decisions" && route.view === "map" && idChanged) });
     };
@@ -372,6 +383,11 @@ namespace MindmapPreview {
           commentCount: comment.review.items.length,
           commentsOpen: comment.listOpen,
           onComments: () => (comment.listOpen ? closeList() : openList()),
+          // 概要以外の画面に絞り込みのボタンを置き、値を選んでいる条件の数をバッジに出す
+          filter: route.tab !== "overview",
+          filterCount: activeConditionCount(filterState.byTab[route.tab] ?? {}),
+          filterOpen: filterState.drawerOpen,
+          onFilter: toggleDrawer,
           diffPoint: point === null ? null : { name: point.name, sub: point.sub },
           onHistory: openHistory,
           onDiffOff: () => selectPoint(null),
@@ -390,21 +406,41 @@ namespace MindmapPreview {
 
     /** 今の画面 */
     const screenElement = (): HTMLElement => {
-      const on = { open: (id: string) => openItem(id, false), view: (view: View) => go({ ...route, view, filters: {} }, false) };
+      const on = {
+        open: (id: string) => openItem(id, false),
+        view: (view: View) => go({ ...route, view, filters: {} }, false),
+        filter: changeFilters,
+        closeDrawer,
+      };
       const marks = marksOf(point);
+      const filters = filterState.byTab[route.tab] ?? {};
+      const { drawerOpen } = filterState;
       switch (route.tab) {
         case "overview":
           return overviewScreen({ index, on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) }, marks });
         case "decisions":
-          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, marks });
+          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, filters, drawerOpen, marks });
         case "tasks":
-          return tasksScreen({ index, route, on, marks });
+          return tasksScreen({ index, route, on, filters, drawerOpen, marks });
         case "docs":
-          return docsScreen({ index, route, on, marks });
+          return docsScreen({ index, route, on, filters, drawerOpen, marks });
         case "graph":
-          return graphScreen({ index, on: { open: on.open }, selected: route.id });
+          return graphScreen({
+            index,
+            on: { open: on.open, filter: changeFilters, closeDrawer },
+            filters,
+            drawerOpen,
+            selected: route.id,
+          });
         default:
-          return recordsScreen({ index, route, on: { open: on.open }, marks });
+          return recordsScreen({
+            index,
+            route,
+            on: { open: on.open, filter: changeFilters, closeDrawer },
+            filters,
+            drawerOpen,
+            marks,
+          });
       }
     };
 
@@ -418,9 +454,15 @@ namespace MindmapPreview {
           : [h({ tag: "h1", attrs: { class: "sr-only" }, children: [screenName(route.tab)] })]),
         screenElement(),
       );
-      // 開いたときの絞り込みは一度だけ使い、描き直しで使い回さない
-      route = { ...route, filters: {} };
       if (route.tab === "graph") selectGraphItem(route.id);
+    };
+
+    /** 今の画面の絞り込みを用意する。ハッシュの `f.{列}` があればそれだけを（開き直したときも）、無く初めて開く画面なら既定を入れ、ハッシュの分は一度だけ使う */
+    const prepareFilters = (): void => {
+      if (Object.keys(route.filters).length > 0 || filterState.byTab[route.tab] === undefined) {
+        filterState.byTab[route.tab] = initialFilters(route.tab, route.filters);
+      }
+      route = { ...route, filters: {} };
     };
 
     /** 詳細パネルと全画面 */
@@ -494,6 +536,7 @@ namespace MindmapPreview {
 
     /** 描く（`screen` が真のとき本文の領域も描き直す） */
     const render = ({ screen }: { screen: boolean }): void => {
+      prepareFilters();
       renderTop();
       if (screen) {
         const wide = document.querySelector<HTMLElement>(".table-wrap, .map-wrap, .board");
@@ -503,6 +546,51 @@ namespace MindmapPreview {
       }
       renderDetail();
       if (route.tab === "graph") selectGraphItem(route.id);
+      // 作り直した本文にも、開いているパネルの下の部品を止める
+      scheduleInert();
+    };
+
+    // ===== 絞り込み =====
+    /** 開いているパネルが覆った本文の部品を止める関数が返した、止めた分を外す関数 */
+    let releaseInert: (() => void) | null = null;
+
+    /** 前に止めた分を外してから、開いているパネル（絞り込みのドロワーかコメントの一覧）が覆った本文の部品を止める */
+    const applyInert = (): void => {
+      releaseInert?.();
+      releaseInert = null;
+      const panel = filterState.drawerOpen
+        ? document.querySelector<HTMLElement>("dialog.drawer")
+        : comment.listOpen
+          ? document.querySelector<HTMLElement>(".comments-panel")
+          : null;
+      if (panel !== null) releaseInert = inertBehind(panel);
+    };
+
+    /** パネルが開いた後（ドロワーは文書に入った後の次のマイクロタスクで開く）に、本文の部品を止める */
+    const scheduleInert = (): void => queueMicrotask(applyInert);
+
+    /** 画面の条件を変えて描き直す（ドロワーは開いたまま） */
+    const changeFilters = (next: Filters): void => {
+      filterState.byTab[route.tab] = next;
+      redrawKeepingState();
+    };
+
+    /** 絞り込みのドロワーを閉じ、絞り込みのボタンへフォーカスを戻す */
+    const closeDrawer = (): void => {
+      filterState.drawerOpen = false;
+      redrawKeepingState();
+      document.querySelector<HTMLElement>("[data-act='filter']")?.focus();
+    };
+
+    /** 絞り込みのドロワーを開く・閉じる（開くときはコメントの一覧を閉じる） */
+    const toggleDrawer = (): void => {
+      if (filterState.drawerOpen) {
+        closeDrawer();
+        return;
+      }
+      if (comment.listOpen) closeList();
+      filterState.drawerOpen = true;
+      redrawKeepingState();
     };
 
     // ===== 図の拡大 =====
@@ -784,6 +872,7 @@ namespace MindmapPreview {
       const current = document.querySelector<HTMLElement>(".comments-panel");
       if (!comment.listOpen) {
         current?.remove();
+        scheduleInert();
         return;
       }
       const active = document.activeElement;
@@ -851,6 +940,7 @@ namespace MindmapPreview {
       } else if (focusKey !== null) {
         panel?.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`)?.focus();
       }
+      scheduleInert();
     };
 
     /** トップバーの件数・詳細パネルのレビュー中のコメント・一覧を、入力中の欄とスクロールの位置を保って描き直す */
@@ -862,8 +952,12 @@ namespace MindmapPreview {
       renderComments();
     };
 
-    /** コメントの一覧を開く */
+    /** コメントの一覧を開く（絞り込みのドロワーは閉じる） */
     const openList = (): void => {
+      if (filterState.drawerOpen) {
+        filterState.drawerOpen = false;
+        redrawKeepingState();
+      }
       comment.listOpen = true;
       renderTop();
       renderComments();
@@ -1102,7 +1196,7 @@ namespace MindmapPreview {
     // ===== 操作と履歴 =====
     document.addEventListener("keydown", (event) => {
       const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? "");
-      if (event.key === "/" && !typing && document.querySelector("dialog[open]") === null) {
+      if (event.key === "/" && !typing && document.querySelector("dialog[open]:not(.drawer)") === null) {
         event.preventDefault();
         openSearch();
       }
@@ -1111,7 +1205,7 @@ namespace MindmapPreview {
         event.key === "Escape" &&
         route.id !== null &&
         !route.full &&
-        document.querySelector("dialog[open]") === null &&
+        document.querySelector("dialog[open]:not(.drawer)") === null &&
         document.querySelector(":popover-open") === null
       ) {
         closeDetail();
@@ -1119,7 +1213,7 @@ namespace MindmapPreview {
         event.key === "Escape" &&
         route.id === null &&
         comment.listOpen &&
-        document.querySelector("dialog[open]") === null &&
+        document.querySelector("dialog[open]:not(.drawer)") === null &&
         document.querySelector(":popover-open") === null
       ) {
         closeList();
@@ -1129,7 +1223,11 @@ namespace MindmapPreview {
     const onLocationChange = (): void => {
       const next = parseHash({ hash: location.hash, index });
       if (toHash(next) === toHash(route)) return;
-      const screen = next.tab !== route.tab || next.view !== route.view || (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
+      const screen =
+        next.tab !== route.tab ||
+        next.view !== route.view ||
+        Object.keys(next.filters).length > 0 ||
+        (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
       route = next;
       render({ screen });
     };

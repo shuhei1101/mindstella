@@ -48,6 +48,7 @@ SCRIPT_FILES = (
     "components/diff-mark.js",
     "components/history-dialog.js",
     "components/table.js",
+    "components/filter-drawer.js",
     "components/send-form.js",
     "components/selection-comment.js",
     "screens/overview.js",

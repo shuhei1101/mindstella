@@ -170,27 +170,6 @@ th:hover .th-tool.pin, th:focus-within .th-tool.pin, .th-tool.pin[aria-pressed="
 .card .c-for { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: var(--fs-xs); color: var(--text-2); }
 
 /* ===== マップ ===== */
-.map-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 10px; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
-.legend .lg-title { font-size: var(--fs-xs); color: var(--text-2); margin-right: 4px; }
-.legend label { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 1px solid var(--border-soft); border-radius: 3px; font-size: var(--fs-xs); color: var(--text-2); cursor: pointer; }
-.legend label:has(input:checked) { border-color: var(--border); color: var(--text); background: var(--surface); }
-.legend input { position: absolute; opacity: 0; pointer-events: none; }
-.legend label:has(input:not(:checked)) .mark { opacity: .35; }
-.legend label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
-.legend .n { font-family: var(--font-mono); color: var(--text-3); }
-/* 非表示のチップ（状態の印・項目の種類）: 枠を点線にして、表示中と見分ける */
-.legend label:not(.legend-all-check):has(input:not(:checked)) { border-style: dashed; }
-/* 項目の種類の色の点: 非表示のときは状態の印と同じ薄さにする */
-.legend label:has(input:not(:checked)) .kdot { opacity: .35; }
-/* まとめて切り替えるチェックの箱: 並びの右端に、文字を持たない箱だけを置く */
-.legend .legend-all-check, .legend .legend-all-check:has(input:checked) { margin-left: 6px; padding: 0 4px; border: 0; background: none; }
-/* まとめて切り替えるチェックの箱の本体: 背景は塗らず、枠とチェック・横棒の記号だけで描く */
-.legend .legend-all-check input { position: relative; box-sizing: border-box; opacity: 1; pointer-events: auto; appearance: none; width: 14px; height: 14px; margin: 0; border: 1px solid var(--border); border-radius: 3px; background: transparent; cursor: pointer; }
-/* チェックの記号: 右下の 2 辺の枠を回してレ点にし、箱の中心に置く。線の太さは状態の印の線にそろえる */
-.legend .legend-all-check input:checked::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 7px; border: solid var(--text); border-width: 0 1.5px 1.5px 0; transform: translate(-50%, -60%) rotate(45deg); }
-/* 横棒の記号: 一部だけ表示しているとき。枠線で描き、ハイコントラストでも消えないようにする */
-.legend .legend-all-check input:indeterminate::after { content: ""; position: absolute; left: 2.5px; right: 2.5px; top: calc(50% - .75px); border-top: 1.5px solid var(--text); }
 /* 表示するものが無いとき: 枠の中央に空の旨を出す（押しても邪魔にならない） */
 .map-empty { position: absolute; left: 0; right: 0; top: 40%; z-index: 1; margin: 0; text-align: center; pointer-events: none; }
 .map-wrap { position: relative; overflow: auto; height: calc(100dvh - var(--topbar-h) - var(--tab-h) - 150px); min-height: 420px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
@@ -552,10 +531,10 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 /* ===== 表示形式の切り替え: どのタブでも同じ幅・同じ位置 ===== */
 .segment button { width: var(--view-switch-item-width, 96px); min-width: 0; }
 
-/* ===== マップのキーワード: 名前に含む項目を黄色で強調し、状態の印に件数のバッジを付ける ===== */
+/* ===== マップのキーワード: 名前に含む項目を黄色で強調し、ドロワーの値に一致した件数を付ける ===== */
 .map-node.hit { background: var(--hit); }
-/* 当たった件数のバッジ */
-.legend .hit-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius); background: var(--hit); color: var(--text); font: 600 11px var(--font-mono); }
+/* 当たった件数のバッジ（絞り込みのドロワーの値） */
+.fd-opt .hit-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius); background: var(--hit); color: var(--text); font: 600 11px var(--font-mono); }
 /* マップのキーワードの入力 */
 .map-q { min-width: 200px; }
 
@@ -683,18 +662,18 @@ dialog.full:has(.full-viewer) .send { display: none; }
 
 /* トップバーの検索の入口の両側の空き: 同じ伸び方にして、コメントのボタンを右端に置いたとき検索の入口を中央へ寄せる */
 .topbar.has-comments .spacer { flex: 1 1 0; }
-/* コメントのボタン（トップバー）: 検索の入口と同じ高さと枠 */
-.comments-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
-.comments-btn:hover { background: var(--topbar-hover); }
-.comments-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+/* コメントのボタンと絞り込みのボタン（トップバー）: 検索の入口と同じ高さと枠 */
+.comments-btn, .filter-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.comments-btn:hover, .filter-btn:hover { background: var(--topbar-hover); }
+.comments-btn:focus-visible, .filter-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
 /* コメントの一覧を開いているときのボタン: 枠と面で選んだ見た目にする */
-.comments-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
+.comments-btn.open, .filter-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
 /* コメントのボタンの件数: 0 件でも出し、数字は等幅で幅を揺らさない */
 .comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 /* 件数が 0 のとき: 塗りを外して目立たせない */
 .comments-btn .count.zero { background: transparent; color: var(--topbar-fg-2); box-shadow: inset 0 0 0 1px var(--topbar-line); }
 /* 狭い幅（900px 以下）: 文字を隠し、印と件数だけにする */
-@media (max-width: 900px) { .comments-btn .label { display: none; } .comments-btn { padding: 0 8px; } }
+@media (max-width: 900px) { .comments-btn .label, .filter-btn .label { display: none; } .comments-btn, .filter-btn { padding: 0 8px; } }
 
 /* コメントの入力: 添えた箇所（名前・外す ×・選んだ文）の箱 */
 .send-loc { display: grid; gap: 4px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
@@ -1066,3 +1045,58 @@ text.df-t-chg { font-weight: 700 !important; }
 .v-notes { margin: 0; padding: 8px 12px; }
 /* 色を付けない種類の変わった図の拡大: 描く面の内側に破線の枠を引く */
 .viewer-body.df-frame .v-canvas { outline: 2px dashed var(--df-chg); outline-offset: -6px; }
+
+/* ===== 絞り込みのドロワー: コメントの一覧と同じく、幕を付けずにタブの帯の下から左に重ねる非モーダルのパネル ===== */
+/* 件数のバッジ（絞り込みのボタン）: 絞り込み中という状態を示すため印の色で塗る。数は等幅で桁を揃える */
+.fbadge { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--accent); color: var(--on-accent); font: 600 11px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+/* ドロワー本体: 重ねていない右側の本文は見えたまま操作できる */
+dialog.drawer { position: fixed; z-index: 22; inset: calc(var(--topbar-h) + var(--tab-h) + 1px) auto 0 0; width: min(var(--drawer-w), 100%); max-width: none; height: auto; max-height: none; margin: 0; padding: 0; border: 0; border-right: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: 14px 0 32px var(--shadow-color); }
+/* 開いているときだけ縦に並べる（閉じているときは dialog の既定の非表示に任せる） */
+dialog.drawer[open] { display: flex; flex-direction: column; }
+/* 狭い幅: トップバーの下から画面の幅いっぱいに重ねる（コメントの一覧と同じ） */
+dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-right: 0; }
+/* ドロワーの見出しの行: 題・件数・閉じるボタン */
+.fd-top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
+/* ドロワーの題: dialog の名前として出し、本文の見出しの段には入れない */
+.fd-top .fd-title { margin: 0; font-size: var(--fs-h2); font-weight: 700; }
+/* 絞り込んだ後の件数: 題の隣に控えめに出す */
+.fd-count { color: var(--text-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+/* 見出しの行・下端の空き */
+.fd-top .spacer, .fd-foot .spacer { flex: 1; }
+/* 条件を並べる本文: 縦に送る */
+.fd-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 16px; }
+/* 1 つの条件のまとまり: 行の境の線で区切る。fieldset の既定の枠と余白を外し、「解除」を重ねる基準にする */
+.fd-group { position: relative; min-width: 0; margin: 0; padding: 14px 20px 10px; border: 0; }
+/* 条件のまとまりの境 */
+.fd-group + .fd-group { border-top: 1px solid var(--border-soft); }
+/* 条件の名前: 見出しの段に入れず、チェックボックスの組の名前として出す。右に「解除」の幅を空ける */
+.fd-group legend { display: flex; align-items: center; gap: 8px; float: left; width: 100%; min-height: 28px; margin-bottom: 4px; padding: 0 64px 0 0; font-size: var(--fs-small); font-weight: 600; }
+/* 名前の下の値の並び: 名前の float を解く */
+.fd-group .fd-opts { clear: both; }
+/* 選んでいる値の数: 条件の名前の後ろに補足として出す */
+.fd-sel { color: var(--text-2); font-size: var(--fs-xs); font-weight: 400; }
+/* 条件ごとの「解除」: 条件の名前の行の右端に重ね、行の高さに収める */
+.fd-clear { position: absolute; top: 15px; right: 20px; height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
+/* 値の並び */
+.fd-opts { list-style: none; margin: 0; padding: 0; }
+/* 値 1 つ: チェックボックス・印・値・件数。行全体を押せる的にする */
+.fd-opt { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 8px; margin: 0 -8px; border-radius: 3px; font-size: var(--fs-small); cursor: pointer; }
+/* 値の行のホバー */
+.fd-opt:hover { background: var(--hover); }
+/* 値のチェックボックス: 印の色で塗る */
+.fd-opt input { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+/* 値の文字: 長い値は折り返して全体を読ませる */
+.fd-v { min-width: 0; overflow-wrap: anywhere; }
+/* 値ごとの件数: 右端に等幅で揃える */
+.fd-opt .n { margin-left: auto; padding-left: 8px; color: var(--text-3); font: var(--fs-xs) var(--font-mono); font-variant-numeric: tabular-nums; }
+/* 今の条件では 0 件になる値: 選べるが、件数の無いことを文字の濃さで示す */
+.fd-opt.zero .fd-v { color: var(--text-3); }
+/* ドロワーの下端: 全ての条件の解除と、閉じて結果を見るボタン */
+.fd-foot { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-top: 1px solid var(--border-soft); }
+/* 動きを減らす設定では、ドロワーを出す動きを付けない。それ以外では左からすべり込ませる */
+@media (prefers-reduced-motion: no-preference) {
+  /* ドロワーの出方 */
+  dialog.drawer[open] { animation: fd-in .18s ease-out; }
+}
+/* ドロワーが左からすべり込む動き */
+@keyframes fd-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -3,7 +3,7 @@
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
-    function recordsScreen({ index, route, on, marks, }) {
+    function recordsScreen({ index, route, on, filters, drawerOpen, marks, }) {
         const kind = route.tab;
         const common = MindmapPreview.commonColumns(index.data.settings);
         const related = (label) => ({
@@ -58,20 +58,34 @@ var MindmapPreview;
                 common.id,
                 common.text("date", "日付", { nowrap: true, priority: 2 }),
                 common.title(),
+                common.tags,
                 related("更新した項目"),
             ],
         };
+        const columns = columnsOf[kind];
+        // 絞り込みの条件に合う項目を表に渡す
+        const shown = MindmapPreview.filterRows({ rows: index.data[kind], columns, filters });
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "screen records" },
             children: [
                 MindmapPreview.managedTable({
                     kind,
-                    columns: columnsOf[kind],
-                    rows: index.data[kind],
+                    columns,
+                    rows: shown,
+                    filters,
+                    onFilter: on.filter,
                     open: on.open,
-                    initialFilters: route.filters,
                     marks,
+                }),
+                MindmapPreview.screenDrawer({
+                    drawerOpen,
+                    rows: index.data[kind],
+                    columns: columns.filter((column) => column.filterable === true),
+                    filters,
+                    shown: shown.length,
+                    onFilter: on.filter,
+                    onClose: on.closeDrawer,
                 }),
             ],
         });

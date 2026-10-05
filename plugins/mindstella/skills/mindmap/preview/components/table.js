@@ -1,5 +1,5 @@
 "use strict";
-// 表と、並べ替え・絞り込みの計算。列の見出しで並べ替え・絞り込み・ピン留めでき、表の上に条件のチップを並べる。
+// 表と、並べ替え・絞り込みの計算。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件のチップを並べる。絞り込みの条件はドロワーで選ぶ。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 列が行から取る値を、文字の配列にする */
@@ -20,7 +20,7 @@ var MindmapPreview;
         }
         return a.localeCompare(b, "ja");
     }
-    /** 列ごとの条件に合う行を返す（列の中はどれかに当たればよく、列の間は全てに当たる） */
+    /** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる） */
     function filterRows({ rows, columns, filters, }) {
         const active = Object.entries(filters).filter(([, values]) => values.length > 0);
         return rows.filter((row) => active.every(([key, wanted]) => {
@@ -54,12 +54,12 @@ var MindmapPreview;
             .map(({ row }) => row);
     }
     MindmapPreview.sortRows = sortRows;
-    /** 絞り込みのポップオーバーに出す、列の値ごとの件数を返す（その列以外の条件で絞った行で数える） */
+    /** 条件の値ごとの件数を返す（その条件以外の条件で絞った行で数える） */
     function filterCounts({ rows, columns, filters, key, }) {
         const column = columns.find((candidate) => candidate.key === key);
         if (column === undefined)
             return [];
-        const others = Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
+        const others = withoutKey(filters, key);
         const counts = new Map();
         // 選べる値は全ての行の値（件数が 0 のものも出す）
         for (const row of rows)
@@ -74,6 +74,59 @@ var MindmapPreview;
             .sort((a, b) => compareValues(column, a.value, b.value));
     }
     MindmapPreview.filterCounts = filterCounts;
+    /** ドロワーの条件を並べるとき、先に置くキー（この順） */
+    const LEADING_CONDITION_KEYS = ["kind", "type", "status", "tags"];
+    /** 検討事項を開いたときの絞り込みの状態 */
+    const DEFAULT_DECISION_STATUSES = ["要見直し", "未決定", "未整理", "保留"];
+    /** 絞り込みから、1 つの条件を除いたものを返す */
+    function withoutKey(filters, key) {
+        return Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
+    }
+    MindmapPreview.withoutKey = withoutKey;
+    /** 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む（キーワードに一致した件数を `hit` で添えられる） */
+    function drawerGroups({ rows, columns, filters, hit, }) {
+        const rank = (key) => {
+            const position = LEADING_CONDITION_KEYS.indexOf(key);
+            return position < 0 ? LEADING_CONDITION_KEYS.length : position;
+        };
+        const ordered = [...columns].sort((a, b) => rank(a.key) - rank(b.key));
+        const groups = [];
+        for (const column of ordered) {
+            const counts = filterCounts({ rows, columns, filters, key: column.key });
+            // 値を 1 つも持たない条件は並べない
+            if (counts.length === 0)
+                continue;
+            // キーワードに一致した件数は、その条件以外の条件で絞った行で数える
+            const others = hit === undefined ? [] : filterRows({ rows, columns, filters: withoutKey(filters, column.key) });
+            groups.push({
+                key: column.key,
+                label: column.label,
+                values: counts.map(({ value, count }) => hit === undefined
+                    ? { value, count }
+                    : {
+                        value,
+                        count,
+                        hit: others.filter((row) => hit(row) && valuesOf(column, row).includes(value)).length,
+                    }),
+                ...(column.key === "status" ? { mark: "status" } : {}),
+                ...(column.key === "type" ? { mark: "kind" } : {}),
+            });
+        }
+        return groups;
+    }
+    MindmapPreview.drawerGroups = drawerGroups;
+    /** 値を 1 つ以上選んでいる条件の数を返す（絞り込みのボタンのバッジ） */
+    function activeConditionCount(filters) {
+        return Object.values(filters).filter((values) => values.length > 0).length;
+    }
+    MindmapPreview.activeConditionCount = activeConditionCount;
+    /** 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ画面の既定 */
+    function initialFilters(tab, fromHash) {
+        if (Object.keys(fromHash).length > 0)
+            return { ...fromHash };
+        return tab === "decisions" ? { status: [...DEFAULT_DECISION_STATUSES] } : {};
+    }
+    MindmapPreview.initialFilters = initialFilters;
     /** ポップオーバーを開いた元のボタンの上か下に置く（収まる側に開き、どちらも収まらないときは広い側で高さを抑える） */
     function positionPopover(pop, anchor) {
         const gap = 6;
@@ -163,16 +216,12 @@ var MindmapPreview;
         });
         /** ポップオーバーの題 */
         const popoverTitle = (text) => MindmapPreview.h({ tag: "p", attrs: { class: "pop-title", id: popTitleId }, children: [text] });
-        // 開いたポップオーバーの元のボタンを探す
-        const anchorOf = (spec) => root.querySelector(spec.type === "columns" ? '[data-popover="columns"]' : `[data-popover="filter:${spec.key}"]`);
-        /** ポップオーバーの中身を作って開く */
-        const showPopover = (spec) => {
-            pop.replaceChildren(spec.type === "columns"
-                ? columnsPopoverBody()
-                : filterPopoverBody(spec.key));
+        /** ポップオーバーの中身を作り、元のボタンの近くに開く */
+        const showPopover = () => {
+            pop.replaceChildren(columnsPopoverBody());
             if (!pop.matches(":popover-open"))
                 pop.showPopover();
-            const anchor = anchorOf(spec);
+            const anchor = root.querySelector('[data-popover="columns"]');
             if (anchor !== null)
                 positionPopover(pop, anchor);
         };
@@ -223,46 +272,15 @@ var MindmapPreview;
                 ],
             });
         };
-        /** 列の絞り込みのポップオーバーの中身（値ごとの件数つき） */
-        const filterPopoverBody = (key) => {
-            const column = columns.find((candidate) => candidate.key === key);
-            const chosen = filters[key] ?? [];
-            const options = filterCounts({ rows, columns, filters, key }).map(({ value, count }) => MindmapPreview.h({
-                tag: "label",
-                children: [
-                    MindmapPreview.h({
-                        tag: "input",
-                        attrs: {
-                            type: "checkbox",
-                            checked: chosen.includes(value),
-                            onchange: (event) => {
-                                const checked = event.target.checked;
-                                on.filter({
-                                    key,
-                                    values: checked ? [...chosen, value] : chosen.filter((item) => item !== value),
-                                });
-                            },
-                        },
-                    }),
-                    key === "status" ? MindmapPreview.statusMark(value) : null,
-                    value,
-                    MindmapPreview.h({ tag: "span", attrs: { class: "n" }, children: [count] }),
-                ],
-            }));
-            return MindmapPreview.h({
-                tag: "div",
-                children: [popoverTitle(`${column?.label ?? key}で絞り込み`), ...options],
-            });
-        };
         // ポップオーバーを閉じたら、使う側にも知らせる（描き直しで消えたときは知らせない）
         pop.addEventListener("toggle", (event) => {
             if (event.newState === "closed" && pop.isConnected)
                 on.popover?.(null);
         });
         /** ポップオーバーを開き、使う側にも知らせる */
-        const openPopover = (spec) => {
-            showPopover(spec);
-            on.popover?.(spec);
+        const openPopover = () => {
+            showPopover();
+            on.popover?.({ type: "columns" });
         };
         const toolbar = MindmapPreview.h({
             tag: "div",
@@ -276,7 +294,7 @@ var MindmapPreview;
                         type: "button",
                         "data-popover": "columns",
                         "aria-label": "表示する列",
-                        onclick: () => openPopover({ type: "columns" }),
+                        onclick: openPopover,
                     },
                     children: [
                         MindmapPreview.icon("cols"),
@@ -288,7 +306,6 @@ var MindmapPreview;
         // ===== 見出し =====
         const headers = visible.map((column, position) => {
             const direction = sort !== null && sort.key === column.key ? sort.dir : null;
-            const isFiltered = (filters[column.key] ?? []).length > 0;
             const isPinned = position === pinned - 1;
             return MindmapPreview.h({
                 tag: "th",
@@ -317,20 +334,6 @@ var MindmapPreview;
                                 },
                                 children: [column.label, sortIcon(direction)],
                             }),
-                            column.filterable === true
-                                ? MindmapPreview.h({
-                                    tag: "button",
-                                    attrs: {
-                                        class: "th-tool",
-                                        type: "button",
-                                        "data-popover": `filter:${column.key}`,
-                                        "aria-pressed": String(isFiltered),
-                                        "aria-label": `${column.label}で絞り込み`,
-                                        onclick: () => openPopover({ type: "filter", key: column.key }),
-                                    },
-                                    children: [MindmapPreview.icon("filter")],
-                                })
-                                : null,
                             MindmapPreview.h({
                                 tag: "button",
                                 attrs: {
@@ -446,7 +449,7 @@ var MindmapPreview;
         observer.observe(wrap);
         // 開いたままにするポップオーバーを、表が文書に入った後に開く
         if (popover !== null)
-            queueMicrotask(() => showPopover(popover));
+            queueMicrotask(showPopover);
         return root;
     }
     // ───── 画面が共通で使う列 ─────
@@ -567,20 +570,17 @@ var MindmapPreview;
     function tableState(kind) {
         let state = tableStates.get(kind);
         if (state === undefined) {
-            state = { sort: null, filters: {}, popover: null, hidden: undefined, pinTo: null };
+            state = { sort: null, popover: null, hidden: undefined, pinTo: null };
             tableStates.set(kind, state);
         }
         return state;
     }
     MindmapPreview.tableState = tableState;
-    /** 状態を持つ表を返す。操作に応じて自分で描き直し、表示する列とピン留めは端末に残す */
-    function managedTable({ kind, columns, rows, open, initialFilters, marks, }) {
+    /** 状態を持つ表を返す。並べ替え・列・ピン留めの操作は自分で描き直し、表示する列とピン留めは端末に残す。絞り込みの条件は画面から受け、チップで変えたときは `onFilter` に新しい条件を渡す */
+    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, }) {
         const state = tableState(kind);
         // 画面を描き直したときは、前のポップオーバーを開いたままにしない
         state.popover = null;
-        if (initialFilters !== undefined && Object.keys(initialFilters).length > 0) {
-            state.filters = { ...initialFilters };
-        }
         const slot = MindmapPreview.h({ tag: "div", attrs: { class: "table-slot" } });
         /** 端末に残す値が変わったことを知らせる */
         const persist = () => {
@@ -596,7 +596,7 @@ var MindmapPreview;
                     columns,
                     rows,
                     sort: state.sort,
-                    filters: state.filters,
+                    filters,
                     pinTo: state.pinTo,
                     hiddenColumns: state.hidden,
                     popover: state.popover,
@@ -612,12 +612,9 @@ var MindmapPreview;
                         },
                         filter: ({ key, values }) => {
                             if (key === null)
-                                state.filters = {};
-                            else if (values.length === 0)
-                                delete state.filters[key];
+                                onFilter({});
                             else
-                                state.filters = { ...state.filters, [key]: values };
-                            render();
+                                onFilter(values.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: values });
                         },
                         pin: (key) => {
                             state.pinTo = state.pinTo === key ? null : key;

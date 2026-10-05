@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・絞り込みとコメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -57,6 +57,14 @@ namespace MindmapPreview {
     onHistory?: () => void;
     /** 札の × を押したとき（差分の表示をやめる） */
     onDiffOff?: () => void;
+    /** 絞り込みのボタンを出すか。項目を並べる画面では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときは右端）に置く */
+    filter?: boolean;
+    /** 値を 1 つ以上選んでいる条件の数。1 以上のときだけ、印の色のバッジで「絞り込み」の右に出す */
+    filterCount?: number;
+    /** 絞り込みのドロワーを開いているか */
+    filterOpen?: boolean;
+    /** 絞り込みのボタンを押したとき（ドロワーを開く・閉じる） */
+    onFilter?: () => void;
   };
 
   /** 件数の表示を揺らさない上限 */
@@ -197,6 +205,27 @@ namespace MindmapPreview {
     });
   }
 
+  /** 絞り込みのボタン（印と「絞り込み」と、値を選んでいる条件の数のバッジ）。押すと絞り込みのドロワーを開く・閉じる */
+  function filterButton({ count, open, onClick }: { count: number; open: boolean; onClick?: () => void }): HTMLElement {
+    return h({
+      tag: "button",
+      attrs: {
+        class: `filter-btn${open ? " open" : ""}`,
+        type: "button",
+        "data-act": "filter",
+        "aria-label": count === 0 ? "絞り込み" : `絞り込み（${count} つの条件で絞り込み中）`,
+        "aria-expanded": String(open),
+        "aria-controls": "drawer",
+        onclick: () => onClick?.(),
+      },
+      children: [
+        icon("filter"),
+        h({ tag: "span", attrs: { class: "label" }, children: ["絞り込み"] }),
+        count === 0 ? null : h({ tag: "span", attrs: { class: "fbadge", "aria-hidden": "true" }, children: [count] }),
+      ],
+    });
+  }
+
   /** トップバーとタブの帯を返す */
   export function topbar({
     title,
@@ -215,6 +244,10 @@ namespace MindmapPreview {
     diffPoint = null,
     onHistory,
     onDiffOff,
+    filter = false,
+    filterCount = 0,
+    filterOpen = false,
+    onFilter,
   }: TopbarProps): HTMLElement {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     const bar = h({
@@ -263,6 +296,7 @@ namespace MindmapPreview {
           },
           children: [icon(theme === "dark" ? "sun" : "moon")],
         }),
+        filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
         comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
       ],
     });
