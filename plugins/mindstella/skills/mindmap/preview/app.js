@@ -246,9 +246,6 @@ var MindmapPreview;
             const screenChanged = next.tab !== route.tab || next.view !== route.view || Object.keys(next.filters).length > 0;
             const idChanged = next.id !== route.id;
             route = next;
-            // 概要には絞り込みのドロワーを置かない
-            if (route.tab === "overview")
-                filterState.drawerOpen = false;
             MindmapPreview.navigate({ route: { ...route, filters: {} }, push });
             render({ screen: screenChanged || (route.tab === "decisions" && route.view === "map" && idChanged) });
         };
@@ -380,8 +377,10 @@ var MindmapPreview;
             if (route.tab === "graph")
                 MindmapPreview.selectGraphItem(route.id);
         };
-        /** 今の画面の絞り込みを用意する。ハッシュの `f.{列}` があればそれだけを（開き直したときも）、無く初めて開く画面なら既定を入れ、ハッシュの分は一度だけ使う */
+        /** 今の画面の絞り込みを用意する。ハッシュの `f.{列}` があればそれだけを（開き直したときも）、無く初めて開く画面なら既定を入れ、ハッシュの分は一度だけ使う。概要には絞り込みのドロワーを置かないので閉じる（タブを押したときも、戻る・進むで移ったときも通る） */
         const prepareFilters = () => {
+            if (route.tab === "overview")
+                filterState.drawerOpen = false;
             if (Object.keys(route.filters).length > 0 || filterState.byTab[route.tab] === undefined) {
                 filterState.byTab[route.tab] = MindmapPreview.initialFilters(route.tab, route.filters);
             }
