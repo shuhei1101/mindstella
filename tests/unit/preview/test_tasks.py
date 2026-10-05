@@ -82,7 +82,7 @@ def test_board_columns_when_status_filter(
     # 実行
     columns = preview_page.evaluate(
         """({items, statuses, statusFilter}) => MindmapPreview.boardColumns(
-            {items, statuses}, statusFilter
+            {items, statuses, statusFilter}
         ).map((column) => [column.status, column.excluded])""",
         {"items": items, "statuses": TASK_STATUSES, "statusFilter": status_filter},
     )
