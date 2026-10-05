@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
+from .history_helpers import add_item, commit, read_changes
 
 
 @pytest.fixture
@@ -22,15 +23,24 @@ def two_options() -> list[dict[str, Any]]:
 
 def test_normal(
     make_workspace: MakeWorkspace,
-    make_item: MakeItem,
     call_tool: CallTool,
     two_options: list[dict[str, Any]],
 ) -> None:
-    """案 A から案 B へ採用を切り替える（正常系）。"""
+    """案 A から案 B へ採用を切り替え、変更履歴を 1 回分積む（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", status="決定済み", answer="案 A に決めた", options=two_options)
+    root = make_workspace()
+    add_item(
+        call_tool,
+        root,
+        "decision",
+        {
+            "title": "D-1の題",
+            "status": "決定済み",
+            "answer": "案 A に決めた",
+            "options": two_options,
+        },
     )
+    commit(call_tool, root, "足す")
     # 実行
     result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証
@@ -43,6 +53,9 @@ def test_normal(
     ]
     assert adopted["status"] == "決定済み"
     assert adopted["answer"] == "案 A に決めた"
+    assert len(adopted["history"]) == 1
+    assert adopted["history"][0]["before"]["options"] == two_options
+    assert read_changes(root)["pending"]["changed"] == ["D-1"]
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
