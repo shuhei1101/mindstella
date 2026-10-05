@@ -1,3 +1,3 @@
 $ pytest tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_detail_full_screen.py -q
 .........................................                                [100%]
-41 passed in 57.17s
+41 passed in 54.79s
