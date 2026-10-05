@@ -21,7 +21,7 @@ states:
       - name: selected
         value: '{"kind": ["作業"], "status": ["未着手"]}'
   - name: Narrow
-    description: 幅 390px。ドロワーを画面の幅から 48px 引いた幅で出す
+    description: 幅 390px。トップバーの下から画面の幅いっぱいに重ねる
     args:
       - name: narrow
         value: 'true'
@@ -71,7 +71,7 @@ args:
   - name: narrow
     type: 真偽値
     default: 'false'
-    description: 画面の幅が 720px 以下か。真のとき、ドロワーの幅を画面の幅から 48px 引いた幅にする
+    description: 画面の幅が 900px 以下か。偽のときはコメントの一覧と同じ 420px の幅で、真のときはトップバーの下から画面の幅いっぱいに重ねる（コメントの一覧と同じ）
     status: planned
 events:
   - name: 値の選択

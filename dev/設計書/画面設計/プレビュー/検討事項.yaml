@@ -127,7 +127,7 @@ elements:
       - name: shown
         value: 条件に合う検討事項の件数
       - name: narrow
-        value: 画面の幅が 720px 以下のとき true
+        value: 画面の幅が 900px 以下のとき true
 lead: 検討事項をマップ（既定）・ボード・表で見る画面。
 mock: dev/mock/pages/decisions/89/standard/index.html
 test_file: tests/integration/preview/test_decisions_screen.py

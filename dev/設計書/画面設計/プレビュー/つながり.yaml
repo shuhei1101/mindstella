@@ -64,7 +64,7 @@ elements:
       - name: shown
         value: 条件に合う項目の件数
       - name: narrow
-        value: 画面の幅が 720px 以下のとき true
+        value: 画面の幅が 900px 以下のとき true
 lead: 全種類の項目を関連でつないで 3D で描く画面。タブの帯の右端の入口から開く。
 mock: dev/mock/pages/graph/89/standard/index.html
 test_file: tests/integration/preview/test_graph_screen.py

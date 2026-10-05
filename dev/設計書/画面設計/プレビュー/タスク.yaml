@@ -92,7 +92,7 @@ elements:
       - name: shown
         value: 条件に合うタスクの件数
       - name: narrow
-        value: 画面の幅が 720px 以下のとき true
+        value: 画面の幅が 900px 以下のとき true
 lead: タスクをボード（既定）・表で見る画面。
 mock: dev/mock/pages/tasks/89/standard/index.html
 test_file: tests/integration/preview/test_tasks_screen.py
