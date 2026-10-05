@@ -27,6 +27,8 @@ directory: |-
     graph/
       graph.ts            つながり（3D）。見本の作りを関数に分けて整える
   ```
+
+  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え

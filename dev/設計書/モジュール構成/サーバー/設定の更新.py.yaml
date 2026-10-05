@@ -39,12 +39,6 @@ constants:
     usecase: 設定の更新
     summary: 値が `null` のときに消してよい任意のキー
     value: ("description", "goal", "links", "history_limit", "display")
-  - name: NETWORK_LOOKS
-    title: 選べるつながりの見た目
-    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
-    usecase: ワークスペースの既定を変える
-    summary: 既定の書き換えが受ける `network_look` の値。設定のスキーマの `display.network_look` の列挙と同じ並び
-    value: ("glow", "starlight", "constellation", "deep", "dust")
 functions:
   - name: validate_settings_input
     title: 設定の更新の引数の確かめ
@@ -443,8 +437,8 @@ functions:
       description: '`{display}`（書いた後の `config.yaml` の `display`）'
     process: |-
       1. 本文を確かめる
-         - `network_look` が無いか `NETWORK_LOOKS` に無い場合、`SettingsInvalidError`（`network_look: glow・starlight・constellation・deep・dust のどれかにしてください`）
-         - `visible_kinds` が無いか、配列でない、種類の名前（`KINDS` のファイル名から `.yaml` を落としたもの）でない要素を持つ、重複する場合、`SettingsInvalidError`（`visible_kinds: {理由}`）
+         - `network_look`・`visible_kinds` のどちらかが無い場合、`SettingsInvalidError`（`{キー}: 渡してください`）
+         - 2 つのキーだけにした値を、設定のスキーマの `display` の部分（`properties.display`。共通のスキーマを登録した検証器で）と突き合わせ、合わない場合は問題ごとの `{キーのパス}: {理由}`（列挙の誤りは選べる値を含む）をメッセージにした `SettingsInvalidError` を送る（選べる見た目と種類の名前はスキーマだけが持つ）
       2. `config.yaml` を検査する（`check_settings`）
          - 問題がある場合、`SchemaMismatchError` を送る（崩れた設定の上に書き足さない。配信は 422）
       3. 読んだ設定の `display` を `{network_look, visible_kinds}` に置き換える（キーの並びは保ち、`display` が無ければ末尾に足す）
