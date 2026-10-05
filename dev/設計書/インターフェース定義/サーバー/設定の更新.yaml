@@ -246,7 +246,8 @@ flows:
       - ツールのエラーにならない
       - '`changed` が `targets`・`categories`'
       - '`remapped` が `{D-1, target, 本体, アプリ}`・`{D-2, category, 設定, 運用}` の 2 件'
-      - D-1 の `target` が `アプリ`、D-2 の `category` が `運用` で、どちらも `history` を持たず `updated` が呼ぶ前と同じ
+      - D-1 の `target` が `アプリ`、D-2 の `category` が `運用` で、どちらも `history` を持たない
+      - '`mindmap.yaml` のカテゴリー画面・API の `target` が `アプリ`'
       - '`changes.yaml` の `pending` の `added`・`changed` が空で、`last_seq` が呼ぶ前と同じ'
     test: test_normal_when_targets_remapped
   - name: 正常系（関連する場所と保持する回数）
