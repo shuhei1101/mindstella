@@ -259,7 +259,7 @@ var MindmapPreview;
                 case "overview":
                     return MindmapPreview.overviewScreen({ index, on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) } });
                 case "decisions":
-                    return MindmapPreview.decisionsScreen({ index, route, on });
+                    return MindmapPreview.decisionsScreen({ index, route, on: { ...on, clear: closeDetail } });
                 case "tasks":
                     return MindmapPreview.tasksScreen({ index, route, on });
                 case "docs":

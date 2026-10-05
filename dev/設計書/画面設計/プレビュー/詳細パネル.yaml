@@ -20,7 +20,7 @@ elements:
   - name: 閉じる
     kind: button
     position: 見出し
-    description: パネルを閉じる。Esc でも閉じる
+    description: パネルを閉じる。Esc でも閉じる。検討事項のマップでは、余白を押しても閉じる
   - name: 案
     kind: list
     description: 検討事項の案をカードの縦並びで出し、採用 / 不採用と理由を出す

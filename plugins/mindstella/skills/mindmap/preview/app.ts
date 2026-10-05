@@ -314,7 +314,7 @@ namespace MindmapPreview {
         case "overview":
           return overviewScreen({ index, on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) } });
         case "decisions":
-          return decisionsScreen({ index, route, on });
+          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail } });
         case "tasks":
           return tasksScreen({ index, route, on });
         case "docs":
