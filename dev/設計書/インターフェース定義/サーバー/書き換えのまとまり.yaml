@@ -19,15 +19,15 @@ flows:
 
         クライアント->>IF: commit workspace summary「D-1 を決め、T-1 を積む」
         IF-->>WS: changes.yaml を読む
-        IF->>IF: pending をまとまり C-2 にする
+        IF->>IF: pending をまとまり V-2 にする
         IF->>WS: changes.yaml を書く
-        IF-->>クライアント: JSON（id: C-2・added・changed）
+        IF-->>クライアント: JSON（id: V-2・added・changed）
       ```
     expected:
       - ツールのエラーにならない
-      - '`id` が `C-2`、`added` が `[T-1]`、`changed` が `[D-1]`、`summary` が渡した説明'
-      - '`changes.yaml` の `sets` の先頭が C-2 で、`until_seq` が `last_seq` と同じ。`pending` の `added`・`changed` が空'
-      - D-1 の変更履歴の先頭の `seq` が、C-1 の `until_seq` より大きく C-2 の `until_seq` 以下
+      - '`id` が `V-2`、`added` が `[T-1]`、`changed` が `[D-1]`、`summary` が渡した説明'
+      - '`changes.yaml` の `sets` の先頭が V-2 で、`until_seq` が `last_seq` と同じ。`pending` の `added`・`changed` が空'
+      - D-1 の変更履歴の先頭の `seq` が、V-1 の `until_seq` より大きく V-2 の `until_seq` 以下
       - '`decisions.yaml`・`tasks.yaml` の中身が呼ぶ前と同じ'
     test: test_normal
   - name: 正常系（まとめる書き換えが無い）
@@ -168,7 +168,7 @@ response:
   - name: id
     type: str | None
     description: 足したまとまりの ID。まだまとめていない書き換えが無く、まとまりを足さなかったときは `null`
-    example: C-3
+    example: V-3
   - name: at
     type: str | None
     description: まとめた日時（UTC のタイムゾーン付き ISO 8601、秒まで）。足さなかったときは `null`
@@ -204,7 +204,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: まとまりの ID
-    constraint: '`C-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
+    constraint: '`V-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
   - item: まとまりの中身
     constraint: '`changes.yaml` の `pending` の `added`・`changed` をそのまま写し、`until_seq` に `last_seq` を書く。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
   - item: まだまとめていない書き換えが無いとき

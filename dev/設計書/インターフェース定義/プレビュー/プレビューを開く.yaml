@@ -317,7 +317,7 @@ request:
     type: None | 'since' | 'pending' | str
     required: false
     default: なし（差分を出さない）
-    description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`C-{番号}`）
+    description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
     constraints: 記録に無いまとまりの ID・まだまとめていない変更が空の `pending` のときは差分を出さない
     notes: 利用者が変更履歴のモーダルで選ぶ。端末の保存領域に持ち、URL のハッシュには書かない
   - name: 選んだ範囲

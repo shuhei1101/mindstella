@@ -1026,13 +1026,13 @@ functions:
       - name: test_selection_location
         case: 正常
         summary: 本文の行の範囲と値のキーを求める
-        condition: 'PoC #80 の選択のケース 19 件（見出し・段落・入れ子の項目・番号付きリスト・表・コード・引用・ソフト改行・ハードブレイク・ブロックをまたぐ選択）と、`data-key="options[B].cons"` の値の中の選択'
+        condition: 'PoC #80 の選択のケース 19 件（見出し・段落・入れ子の項目・番号付きリスト・表・コード・引用・ソフト改行・ハードブレイク・ブロックをまたぐ選択）と、`data-key="options[B].cons"` の値の中の選択。差分の表示の間に、消した部分の後ろの段落を選んだとき'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '本文は各ケースの元の行の範囲。値は `{kind: value, key: options[B].cons, text}`'
+        expected: '本文は各ケースの元の行の範囲（差分の表示の間は今の本文の行）。値は `{kind: value, key: options[B].cons, text}`'
       - name: test_selection_location_when_outside
         case: 正常
         summary: 本文と値の外は null
-        condition: '`parametrize`: 空の選択 / 見出しの帯 / 関係する項目 / 図の SVG / 図の Raw の原文 / 本文から値へまたぐ選択'
+        condition: '`parametrize`: 空の選択 / 見出しの帯 / 関係する項目 / 図の SVG / 図の Raw の原文 / 本文から値へまたぐ選択 / 差分の表示の間の消した部分 / 消した部分と今の部分をまたぐ選択'
         mock: なし
         expected: どれも `null`
   - name: locationLabel

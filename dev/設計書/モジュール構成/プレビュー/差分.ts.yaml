@@ -143,9 +143,9 @@ functions:
       - name: test_resolve_diff_point
         case: 正常
         summary: 古いまとまりと「前回開いてから」で印と範囲が分かれる
-        condition: 'C-1（`until_seq` 1、A-1 を変えた）・C-2（`until_seq` 2、D-3 を変え D-6 を足した、`at` が `since` より後）。`parametrize`: `C-1` / `since`'
+        condition: 'V-1（`until_seq` 1、A-1 を変えた）・V-2（`until_seq` 2、D-3 を変え D-6 を足した、`at` が `since` より後）。`parametrize`: `V-1` / `since`'
         mock: なし
-        expected: '`C-1` は `changed` が {A-1}、`fromSeq` 0、`untilSeq` 1。`since` は `added` が {D-6}、`changed` が {D-3}、`fromSeq` 1、`untilSeq` が `null`'
+        expected: '`V-1` は `changed` が {A-1}、`fromSeq` 0、`untilSeq` 1。`since` は `added` が {D-6}、`changed` が {D-3}、`fromSeq` 1、`untilSeq` が `null`'
   - name: buildVersions
     title: 前後の版を組み立てる
     kind: 関数
@@ -278,5 +278,38 @@ functions:
         condition: gantt の前後
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`null`'
+  - name: placeRemovedBlocks
+    title: 消した行の置き場所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す
+    args:
+      - name: parts
+        type: LinePart[]
+        required: true
+        passing: positional
+        description: 本文の行の差分（`diffLineParts` の戻り値）
+    returns:
+      type: '{lines: string[], beforeLine: number | null, tableHeader: string[] | null}[]'
+      description: 消した行のかたまりの並び（本文の頭からの順）。`beforeLine` は直後に来る今の本文の 1 始まりの行（本文の最後なら `null`）。`tableHeader` はかたまりが表の本体の行だけのとき、前の版のその表の見出しの行と区切りの行
+    process: |-
+      1. `parts` を頭からたどり、`same`・`added` の行で今の本文の行を、`same`・`removed` の行で前の版の行を数え進める
+      2. `removed` の部分ごとに、その行と、次に来る今の本文の行（無ければ `null`）を 1 つのかたまりにする
+      3. かたまりの行がどれも `|` で始まり、前の版で直前の行も `|` で始まるとき、前の版をその表の頭までさかのぼった 2 行（見出しと区切り）を `tableHeader` に入れる
+    unit_tests:
+      - name: test_place_removed_blocks
+        case: 正常
+        summary: 消した段落を直後の今の行の前に置き、末尾は null
+        condition: '`parametrize`: 1・3・5 行目の段落のうち 3 行目を消した前後 / 最後の段落を消した前後'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`[{lines: [3 行目と空行], beforeLine: 3, tableHeader: null}]` / `beforeLine` が `null`'
+      - name: test_place_removed_blocks_when_table_row
+        case: 正常
+        summary: 表の 1 行だけを消したとき、表の見出しを添える
+        condition: 見出し・区切り・3 行の表から 2 行目を消した前後
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`lines` が消した行だけ、`beforeLine` が今の表の 2 行目の行、`tableHeader` が見出しと区切りの 2 行'
 test_files:
   - tests/unit/preview/test_diff.py

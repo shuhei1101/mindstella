@@ -56,7 +56,7 @@ data_models:
     properties:
       - name: id
         type: str
-        description: '`C-` + 連番'
+        description: '`V-` + 連番'
       - name: at
         type: str
         description: まとめた日時
@@ -119,7 +119,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     summary: まとまりの ID の頭の文字
-    value: '"C-"'
+    value: '"V-"'
   - name: SUMMARY_MAX_LENGTH
     title: まとまりの説明の上限
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -429,9 +429,9 @@ functions:
       - name: test_commit_pending
         case: 正常
         summary: まだまとめていない変更をまとまりにする
-        condition: '`sets` に C-1、`pending` に `added: [T-1]`・`changed: [D-1]`、`last_seq` 3'
+        condition: '`sets` に V-1、`pending` に `added: [T-1]`・`changed: [D-1]`、`last_seq` 3'
         mock: なし
-        expected: まとまりの `id` が `C-2`・`until_seq` が 3・`added` が `[T-1]`・`changed` が `[D-1]`。新しい記録の `sets` の先頭が C-2 で `pending` が空
+        expected: まとまりの `id` が `V-2`・`until_seq` が 3・`added` が `[T-1]`・`changed` が `[D-1]`。新しい記録の `sets` の先頭が V-2 で `pending` が空
       - name: test_commit_pending_when_empty
         case: 正常
         summary: まとめるものが無ければ何もしない

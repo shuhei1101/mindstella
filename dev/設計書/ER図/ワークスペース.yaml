@@ -505,7 +505,7 @@ tables:
         title: まとまり
         type: array
         not_null: true
-        description: 新しい順。要素は `id`（`C-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）
+        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）
       - name: pending
         title: まだまとめていない変更
         type: object

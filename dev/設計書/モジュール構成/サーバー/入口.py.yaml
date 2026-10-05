@@ -1165,7 +1165,7 @@ functions:
         summary: まだまとめていない変更をまとめる
         condition: D-1 を足した直後。`summary` 「  足す 」
         mock: '`now`'
-        expected: '`id` が `C-1`・`summary` が「足す」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
+        expected: '`id` が `V-1`・`summary` が「足す」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
       - name: test_run_commit_when_summary_blank
         case: 異常
         summary: 空白だけの説明は引数の誤り
