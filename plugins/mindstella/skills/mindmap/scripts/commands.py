@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import os
-from dataclasses import asdict, replace
+import re
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from builder import export_preview, validate_export_out
 from checker import check_workspace
 from errors import (
+    AdoptedOptionError,
     ArgumentError,
     ItemNotFoundError,
+    MindmapError,
+    OptionExistsError,
     OptionNotFoundError,
     SchemaMismatchError,
     WorkspaceNotFoundError,
@@ -20,10 +24,13 @@ from graph import judge_goal, list_next_candidates, summarize_status, trace_impa
 from history import (
     SUMMARY_MAX_LENGTH,
     Changes,
+    advance_seq,
+    changes_since,
     commit_pending,
     history_limit,
     load_changes,
     make_entry,
+    mark_read,
     note_pending,
     pending_view,
     stack_history,
@@ -36,6 +43,7 @@ from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
     CHANGES_FILE,
+    BatchChange,
     BodyWrite,
     Change,
     NowFn,
@@ -50,6 +58,7 @@ from store import (
     now_utc,
     read_body,
     remove_files,
+    save_batch,
     save_change,
     write_failed,
     write_temp,
@@ -61,7 +70,16 @@ from versions import Version, parse_release_version, read_plugin_version
 MIGRATE_HINT = "（/mindstella:upgrade で今の形式に移せます）"
 
 # `item` で渡させない、ツールが付けるキー
-RESERVED_KEYS = ("id", "created", "updated", "body", "history", "history_dropped_seq")
+RESERVED_KEYS = (
+    "id",
+    "created",
+    "updated",
+    "body",
+    "history",
+    "history_dropped_seq",
+    "seq",
+    "added_seq",
+)
 
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
 BODY_INPUT_KEY = "body_markdown"
@@ -71,6 +89,44 @@ ITEM_NAME = "item"
 
 # `values` の 1 要素が持つ、文字列で渡させるキー
 VALUE_KEYS = ("file", "key", "value")
+
+# `edit_option` の `option` に渡せるキー
+OPTION_KEYS = ("content", "pros", "cons", "note", "reason")
+
+# `batch` が `$番号` を置き換えるキー
+REF_KEYS = ("parent", "depends_on", "for", "related", "sources")
+
+# `batch` の操作ごとに持つ・持たないキー（操作 → 要るキー）。`op` は全ての操作が持つ
+OPERATION_REQUIRED_KEYS = {
+    "add": frozenset({"kind", "item"}),
+    "update": frozenset({"id", "item"}),
+    "show": frozenset({"id"}),
+}
+
+# 先に足した項目を指す番号（全体が `$` と数字だけの文字列）
+REF_PATTERN = re.compile(r"^\$([0-9]+)$")
+
+# 検討事項の ID の頭（`edit_option` が受ける ID）
+DECISION_PREFIX = "D-"
+
+# 案の書き換えの `option` を渡す引数の名前（引数の誤りに添える）
+OPTION_NAME = "option"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Staged:
+    """書き込む前にメモリの上で当てた、種類ごとの項目・本文・まとまり。"""
+
+    # 読んだワークスペース（書き込みの前の中身。`save_batch` に渡す）
+    workspace: Workspace
+    # 当てた後の種類ごとの項目の並び（書き換えた種類だけでなく全て）
+    items: dict[Kind, list[dict[str, Any]]]
+    # 書き換えた種類
+    touched: frozenset[Kind]
+    # 書く本文（ファイル名 → 本文。同じ項目を二度直すと後の本文で置き換える）
+    bodies: dict[str, BodyWrite]
+    # 当てた後のまとまりの記録
+    changes: Changes
 
 
 def validate_input_keys(kind: Kind, data: dict[str, Any]) -> None:
@@ -123,41 +179,107 @@ def run_init(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
     return {"workspace": str(root.resolve()), "files": files}
 
 
-def run_add(root: Path, kind: Kind, item: dict[str, Any], now: NowFn = now_utc) -> dict[str, Any]:
-    """ID・日時・本文を付けて 1 項目を足す。"""
-    workspace = load_workspace(root)
-    changes = load_changes(root)
+def apply_option_edit(
+    item: dict[str, Any],
+    action: Literal["add", "update", "remove"],
+    key: str,
+    option: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """検討事項の案の並びに、記号で指した 1 つの足す・直す・消すを当てた新しい並びを返す。"""
+    # option の渡し方が合わない: 足す・直すは必須、消すは渡さない、渡せるキーは決まっている
+    if action in ("add", "update") and option is None:
+        raise ArgumentError(OPTION_NAME, f"{action} では option を渡してください")
+    if action == "remove" and option is not None:
+        raise ArgumentError(OPTION_NAME, "remove では option を渡せません")
+    unknown = [name for name in (option or {}) if name not in OPTION_KEYS]
+    if unknown:
+        raise ArgumentError(
+            OPTION_NAME, f"渡せないキーです: {', '.join(unknown)}（渡せるのは {', '.join(OPTION_KEYS)}）"
+        )
+    options = [dict(entry) for entry in item.get("options") or []]
+    position = next((index for index, entry in enumerate(options) if entry.get("key") == key), None)
+    prefix = f"{item['id']} の案 {key}"
+    if action == "add":
+        # 同じ記号の案が既にある
+        if position is not None:
+            raise OptionExistsError(f"{prefix}: 同じ記号の案が既にあります")
+        return [*options, {"key": key, **(option or {})}]
+    # 直す・消すは、その記号の案が要る
+    if position is None:
+        raise OptionNotFoundError(f"{prefix}: その記号の案がありません")
+    if action == "update":
+        edited = options[position]
+        for name, value in (option or {}).items():
+            # null のキーは消し、それ以外は置き換える
+            if value is None:
+                edited.pop(name, None)
+            else:
+                edited[name] = value
+        return options
+    # 採用している案は消せない
+    if options[position].get("adopted") is True:
+        raise AdoptedOptionError(
+            f"{prefix}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください"
+        )
+    del options[position]
+    return options
+
+
+def resolve_refs(item: dict[str, Any], added: dict[int, str]) -> dict[str, Any]:
+    """`item` の参照のキーの `$番号` を、その番号の `add` で振った ID に置き換えた新しい `item` を返す。"""
+    resolved = dict(item)
+    for key in REF_KEYS:
+        if key not in resolved:
+            continue
+        value = resolved[key]
+        # 配列は要素ごとに、文字列はそのまま置き換える
+        if isinstance(value, list):
+            resolved[key] = [_resolve_ref(key, entry, added) for entry in value]
+        else:
+            resolved[key] = _resolve_ref(key, value, added)
+    return resolved
+
+
+def stage_add(
+    staged: Staged, kind: Kind, item: dict[str, Any], now: NowFn = now_utc
+) -> tuple[Staged, dict[str, Any]]:
+    """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
     validate_input_keys(kind, item)
-    item_id = next_id(workspace, kind)
+    item_id = next_id(replace(staged.workspace, items=staged.items), kind)
     timestamp = now()
-    # id を先頭に、created・updated を末尾に置く
+    record, seq = advance_seq(staged.changes)
+    # id を先頭に、created・updated・seq・added_seq を末尾に置く
     added: dict[str, Any] = {"id": item_id}
     added.update({key: value for key, value in item.items() if key != BODY_INPUT_KEY})
     body = _body_write(item_id, item)
-    # 本文を渡したときだけ、項目の body を `{ID}.md` にする
+    bodies = dict(staged.bodies)
+    # 本文を渡したときだけ、項目の body を `{ID}.md` にして本文の書き込みを足す
     if body is not None:
         added["body"] = body.name
-    added["created"] = timestamp
-    added["updated"] = timestamp
+        bodies[body.name] = body
+    added.update({"created": timestamp, "updated": timestamp, "seq": seq, "added_seq": seq})
     # 足した項目は変更履歴を持たず、まだまとめていない変更の足した項目に入る
-    noted = note_pending(changes, item_id, "added")
-    save_change(
-        workspace,
-        Change(kind=kind, items=[*workspace.items[kind], added], body=body, changes=dict(noted)),
+    record = note_pending(record, item_id, "added")
+    new_staged = replace(
+        staged,
+        items={**staged.items, kind: [*staged.items[kind], added]},
+        touched=staged.touched | {kind},
+        bodies=bodies,
+        changes=record,
     )
-    return {
+    result = {
         "id": item_id,
         "file": KINDS[kind].file,
         "body": f"docs/{body.name}" if body is not None else None,
     }
+    return new_staged, result
 
 
-def run_update(
-    root: Path, item_id: str, item: dict[str, Any], now: NowFn = now_utc
-) -> dict[str, Any]:
-    """1 項目のキーを置き換え、更新日時を変える。"""
-    workspace = load_workspace(root)
-    record = load_changes(root)
+def stage_update(
+    staged: Staged, item_id: str, item: dict[str, Any], now: NowFn = now_utc
+) -> tuple[Staged, dict[str, Any]]:
+    """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。"""
+    workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
     validate_input_keys(ref.kind, item)
     changes = {key: value for key, value in item.items() if key != BODY_INPUT_KEY}
@@ -168,33 +290,65 @@ def run_update(
     if body is not None and merged.get("body") != body.name:
         merged["body"] = body.name
         changed.append("body")
-    # 書き換える前の本文（本文を変えないときは、後の本文も同じ）
-    previous_body = _read_item_body(workspace, ref.item)
+    # 書き換える前の本文（同じ呼び出しで先に書いた本文があればそれ）
+    previous_name = ref.item.get("body")
+    previous_body = (
+        staged.bodies[previous_name].text
+        if isinstance(previous_name, str) and previous_name in staged.bodies
+        else _read_item_body(workspace, ref.item)
+    )
     # 本文の中身が変わったときは、`body_markdown` も changed に入れる
     if body is not None and body.text != previous_body:
         changed.append(BODY_INPUT_KEY)
-    merged, noted = _stack_changes(
+    merged, record = _stack_changes(
         workspace,
-        record,
+        staged.changes,
         before_item=ref.item,
         after_item=merged,
         before_body=previous_body,
         after_body=body.text if body is not None else previous_body,
     )
-    items = list(workspace.items[ref.kind])
-    items[ref.index] = merged
-    save_change(
-        workspace,
-        Change(kind=ref.kind, items=items, body=body, changes=dict(noted) if noted else None),
+    rows = list(staged.items[ref.kind])
+    rows[ref.index] = merged
+    new_staged = replace(
+        staged,
+        items={**staged.items, ref.kind: rows},
+        touched=staged.touched | {ref.kind},
+        bodies={**staged.bodies, **({body.name: body} if body is not None else {})},
+        changes=record,
     )
-    return {"id": item_id, "file": KINDS[ref.kind].file, "changed": changed}
+    return new_staged, {"id": item_id, "file": KINDS[ref.kind].file, "changed": changed}
+
+
+def run_add(root: Path, kind: Kind, item: dict[str, Any], now: NowFn = now_utc) -> dict[str, Any]:
+    """ID・日時・本文を付けて 1 項目を足す。"""
+    staged = _start_staged(root)
+    new_staged, result = stage_add(staged, kind, item, now)
+    save_batch(staged.workspace, _batch_of(new_staged, staged.changes))
+    return result
+
+
+def run_update(
+    root: Path, item_id: str, item: dict[str, Any], now: NowFn = now_utc
+) -> dict[str, Any]:
+    """1 項目のキーを置き換え、更新日時を変える。"""
+    staged = _start_staged(root)
+    new_staged, result = stage_update(staged, item_id, item, now)
+    save_batch(staged.workspace, _batch_of(new_staged, staged.changes))
+    return result
 
 
 def run_update_settings(
-    root: Path, settings: dict[str, Any], phase_map: dict[str, str] | None
+    root: Path,
+    settings: dict[str, Any],
+    phase_map: dict[str, str] | None,
+    target_map: dict[str, str] | None,
+    category_map: dict[str, str] | None,
 ) -> dict[str, Any]:
-    """設定のキーを置き換え、フェーズを変えるときは項目のフェーズも付け替える。"""
-    return update_settings(root, settings, phase_map)
+    """設定のキーを置き換え、フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする。"""
+    return update_settings(
+        root, settings, phase_map, target_map=target_map, category_map=category_map
+    )
 
 
 def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[str, Any]:
@@ -219,9 +373,97 @@ def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[
     items = list(workspace.items["decision"])
     items[ref.index] = switched
     save_change(
-        workspace, Change(kind="decision", items=items, changes=dict(noted) if noted else None)
+        workspace,
+        Change(kind="decision", items=items, changes=dict(noted) if noted != record else None),
     )
     return {"id": item_id, "adopted": key, "previous": previous}
+
+
+def run_edit_option(
+    root: Path,
+    item_id: str,
+    action: Literal["add", "update", "remove"],
+    key: str,
+    option: dict[str, Any] | None,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """検討事項の案を 1 つ足す・直す・消す。"""
+    # 検討事項の ID でない
+    if not item_id.startswith(DECISION_PREFIX):
+        raise ArgumentError("id", "検討事項の ID（D-）を渡してください")
+    staged = _start_staged(root)
+    ref = find_item(replace(staged.workspace, items=staged.items), item_id)
+    options = apply_option_edit(ref.item, action, key, option)
+    # 並びを丸ごと渡して更新を当てる（options は渡せないキーに入っていない）
+    new_staged, result = stage_update(staged, item_id, {"options": options}, now)
+    save_batch(staged.workspace, _batch_of(new_staged, staged.changes))
+    return {
+        "id": item_id,
+        "file": result["file"],
+        "options": options,
+        "changed": "options" in result["changed"],
+    }
+
+
+def run_batch(
+    root: Path, operations: list[dict[str, Any]], now: NowFn = now_utc
+) -> dict[str, Any]:
+    """追加・更新・取得の操作を並べた順に当て、最後に 1 回だけ書き込む。"""
+    # 1 件も渡していない
+    if not operations:
+        raise ArgumentError("operations", "1 件以上の操作を渡してください")
+    staged = _start_staged(root)
+    original = staged.changes
+    # `$番号`（1 始まりの add の番号）→ 振った ID、項目の ID → 最後に書いた操作の（番号, op）
+    added: dict[int, str] = {}
+    writers: dict[str, tuple[int, str]] = {}
+    results: list[dict[str, Any]] = []
+    add_count = 0
+    for number, operation in enumerate(operations, start=1):
+        op = str(operation.get("op"))
+        try:
+            _validate_operation(operation)
+            if op == "add":
+                staged, result = stage_add(
+                    staged, operation["kind"], resolve_refs(operation["item"], added), now
+                )
+                add_count += 1
+                added[add_count] = result["id"]
+                writers[result["id"]] = (number, op)
+            elif op == "update":
+                item_id = _resolve_ref("id", operation["id"], added)
+                staged, result = stage_update(
+                    staged, item_id, resolve_refs(operation["item"], added), now
+                )
+                writers[item_id] = (number, op)
+            else:
+                result = _show_staged(staged, _resolve_ref("id", operation["id"], added))
+        except MindmapError as error:
+            # どの操作で起きたかをメッセージの頭に付けて、同じ種類のエラーのまま送る
+            _prefix_error(error, number, op)
+            raise
+        results.append({"op": op, "result": result})
+    # 書き換えた種類があるときだけ、1 回で書き込む
+    if staged.touched:
+        try:
+            save_batch(staged.workspace, _batch_of(staged, original))
+        except SchemaMismatchError as error:
+            # 合わない箇所の項目を最後に書いた操作の番号を付ける
+            writer = _schema_error_writer(error, staged, writers)
+            if writer is not None:
+                _prefix_error(error, *writer)
+            raise
+    return {"results": results}
+
+
+def run_changes_since_read(root: Path) -> dict[str, Any]:
+    """読んだ時点からの変更を並べ、読んだ時点を進めて書き込む。"""
+    workspace = load_workspace(root)
+    record = load_changes(root)
+    result = changes_since(workspace, record)
+    # 読んだ時点を進めた記録だけを書く（項目は書き換えない）
+    save_batch(workspace, BatchChange(items={}, changes=dict(mark_read(record))))
+    return result
 
 
 def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]:
@@ -395,8 +637,8 @@ def _stack_changes(
     after_item: dict[str, Any],
     before_body: str | None,
     after_body: str | None,
-) -> tuple[dict[str, Any], Changes | None]:
-    """変更履歴の 1 回分を作って積んだ項目と、まとまりが変わったときの新しい記録（変わらなければ None）を返す。"""
+) -> tuple[dict[str, Any], Changes]:
+    """変更履歴の 1 回分を作って積み、通し番号を振った項目と、新しい記録を返す。"""
     limit = history_limit(workspace.settings)
     entry = make_entry(
         before_item,
@@ -406,11 +648,97 @@ def _stack_changes(
         seq=record["last_seq"] + 1,
         at=after_item["updated"],
     )
-    stacked = stack_history(after_item, entry, limit)
-    # 積んだ（保持する回数が 0 でなく、変わったものがある）: まだまとめていない変更に足す
-    if entry is not None and limit > 0:
-        return stacked, note_pending(record, after_item["id"], "changed", stacked=True)
-    return stacked, None
+    read_seq = record.get("read_seq")
+    # 変わったものが無い: 通し番号は進めない
+    if entry is None:
+        return stack_history(after_item, None, limit, read_seq=read_seq), record
+    # 変わった: 通し番号を振り、項目の seq にして変更履歴を積む
+    record, seq = advance_seq(record)
+    stacked = stack_history({**after_item, "seq": seq}, entry, limit, read_seq=read_seq)
+    # 積んだ（保持する回数が 0 でない）: まだまとめていない変更に足す
+    if limit > 0:
+        record = note_pending(record, after_item["id"], "changed")
+    return stacked, record
+
+
+def _start_staged(root: Path) -> Staged:
+    """ワークスペースとまとまりを読み、まだ何も当てていない `Staged` を作る。"""
+    workspace = load_workspace(root)
+    return Staged(
+        workspace=workspace,
+        items=workspace.items,
+        touched=frozenset(),
+        bodies={},
+        changes=load_changes(root),
+    )
+
+
+def _batch_of(staged: Staged, original: Changes) -> BatchChange:
+    """当てた書き換えを、書き込む変更にする（まとまりは変わったときだけ書く）。"""
+    return BatchChange(
+        items={kind: staged.items[kind] for kind in KINDS if kind in staged.touched},
+        bodies=list(staged.bodies.values()),
+        changes=dict(staged.changes) if staged.changes != original else None,
+    )
+
+
+def _resolve_ref(key: str, value: Any, added: dict[int, str]) -> Any:
+    """全体が `$番号` の文字列を、その番号の `add` で振った ID にする（ほかの値はそのまま）。"""
+    if not isinstance(value, str):
+        return value
+    matched = REF_PATTERN.fullmatch(value)
+    if matched is None:
+        return value
+    # 前の add を指していない番号
+    if int(matched.group(1)) not in added:
+        raise ArgumentError(key, f"{value} はこの操作より前の add を指していません")
+    return added[int(matched.group(1))]
+
+
+def _validate_operation(operation: dict[str, Any]) -> None:
+    """操作に要るキーが揃い、要らないキーが無いことを確かめる。"""
+    op = operation.get("op")
+    required = OPERATION_REQUIRED_KEYS.get(str(op))
+    if required is None:
+        raise ArgumentError("operations", f"op は add・update・show のどれかです: {op}")
+    given = set(operation) - {"op"}
+    missing = sorted(required - given)
+    extra = sorted(given - required)
+    if missing:
+        raise ArgumentError("operations", f"{op} に要るキーがありません: {', '.join(missing)}")
+    if extra:
+        raise ArgumentError("operations", f"{op} に要らないキーがあります: {', '.join(extra)}")
+
+
+def _show_staged(staged: Staged, item_id: str) -> dict[str, Any]:
+    """当てた後の並びと本文で、`show` と同じ形の結果を作る。"""
+    shown = show_item(replace(staged.workspace, items=staged.items), item_id)
+    name = shown["item"].get("body")
+    # 同じ呼び出しで先に書いた本文は、ファイルより新しい
+    if isinstance(name, str) and name in staged.bodies:
+        shown["body_markdown"] = staged.bodies[name].text
+    return shown
+
+
+def _prefix_error(error: MindmapError, number: int, op: str) -> None:
+    """エラーのメッセージの頭に、何番目の操作かを付ける（同じ種類のエラーのまま）。"""
+    error.args = (f"{number} 番目の操作（{op}）: {error.args[0]}", *error.args[1:])
+
+
+def _schema_error_writer(
+    error: SchemaMismatchError, staged: Staged, writers: dict[str, tuple[int, str]]
+) -> tuple[int, str] | None:
+    """スキーマに合わない最初の行の項目を、最後に書いた操作の（番号, op）を返す（見つからなければ None）。"""
+    files = {spec.file: kind for kind, spec in KINDS.items()}
+    for line in error.lines:
+        matched = re.match(r"^(?P<file>[^:]+): items\[(?P<index>[0-9]+)\]", line)
+        if matched is None or matched.group("file") not in files:
+            continue
+        rows = staged.items[files[matched.group("file")]]
+        index = int(matched.group("index"))
+        if index < len(rows) and rows[index].get("id") in writers:
+            return writers[rows[index]["id"]]
+    return None
 
 
 def _write_changes(root: Path, record: Changes) -> None:

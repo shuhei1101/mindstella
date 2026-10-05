@@ -13,8 +13,9 @@ from pathlib import Path
 from typing import Any, Literal, NotRequired, TypedDict
 
 import yaml
-from errors import SchemaMismatchError
+from errors import ItemNotFoundError, SchemaMismatchError
 from jsonschema import Draft202012Validator
+from kinds import KINDS
 from store import (
     CHANGES_FILE,
     SCHEMA_DIR,
@@ -22,11 +23,11 @@ from store import (
     Workspace,
     find_item,
     format_path,
+    read_body,
     remove_files,
     write_failed,
     write_temp,
 )
-from errors import ItemNotFoundError
 
 __all__ = [
     "CHANGES_FILE",
@@ -39,16 +40,20 @@ __all__ = [
     "ChangeSet",
     "Changes",
     "HistoryEntry",
+    "advance_seq",
     "apply_body_diff",
+    "changes_since",
     "commit_pending",
     "diff_body",
     "history_limit",
     "load_changes",
     "make_entry",
+    "mark_read",
     "note_pending",
     "pending_view",
     "stack_history",
     "touch_opened",
+    "values_at_read",
 ]
 
 # `SCHEMA_DIR` の下の、`changes.yaml` を検証するスキーマのファイル名
@@ -67,7 +72,9 @@ SET_ID_PREFIX = "V-"
 SUMMARY_MAX_LENGTH = 200
 
 # 変更履歴の `before` に入れない、ツールが付けるキー（本文は `body_diff` で持つ）
-NON_HISTORY_KEYS = frozenset({"updated", "history", "history_dropped_seq", "body"})
+NON_HISTORY_KEYS = frozenset(
+    {"updated", "history", "history_dropped_seq", "seq", "added_seq", "body"}
+)
 
 # 前に本文が無かった回の、`before` に入れる本文のキー
 BODY_KEY = "body"
@@ -115,6 +122,8 @@ class Changes(TypedDict):
     last_seq: int
     sets: list[ChangeSet]
     pending: dict[Literal["added", "changed"], list[str]]
+    # AI が最後に読んだ時点。`changes_since_read` を一度も呼んでいなければキーが無い
+    read_seq: NotRequired[int]
 
 
 def load_changes(root: Path) -> Changes:
@@ -213,7 +222,9 @@ def make_entry(
     return entry
 
 
-def stack_history(item: dict[str, Any], entry: HistoryEntry | None, limit: int) -> dict[str, Any]:
+def stack_history(
+    item: dict[str, Any], entry: HistoryEntry | None, limit: int, *, read_seq: int | None
+) -> dict[str, Any]:
     """項目の `history` の先頭に 1 回分を足し、保持する回数を超えた古いものを消して、消した回の最大の `seq` を `history_dropped_seq` に残した新しい項目を返す。"""
     # 保持する回数が 0: 変更履歴を持たない
     if limit == 0:
@@ -224,7 +235,13 @@ def stack_history(item: dict[str, Any], entry: HistoryEntry | None, limit: int) 
     if entry is None:
         return item
     stacked = [entry, *item.get("history", [])]
-    kept, dropped = stacked[:limit], stacked[limit:]
+    # 先頭から保持する回数までと、AI がまだ読んでいない回（`read_seq` より後）は消さない
+    kept = [
+        old
+        for position, old in enumerate(stacked)
+        if position < limit or (read_seq is not None and old["seq"] > read_seq)
+    ]
+    dropped = [old for old in stacked if old not in kept]
     result = {**item, "history": kept}
     # 消した回があれば、その最大の seq と今の history_dropped_seq の大きい方を残す
     if dropped:
@@ -235,16 +252,21 @@ def stack_history(item: dict[str, Any], entry: HistoryEntry | None, limit: int) 
 
 
 def note_pending(
-    changes: Changes, item_id: str, kind: Literal["added", "changed"], *, stacked: bool = False
+    changes: Changes, item_id: str, kind: Literal["added", "changed"]
 ) -> Changes:
-    """まだまとめていない変更に ID を足した新しい記録を返す。変更履歴を積んだときは `last_seq` を進める。"""
+    """まだまとめていない変更に ID を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
     pending = {key: list(ids) for key, ids in changes["pending"].items()}
     # 足した項目は、変えても changed に入れない。同じ ID は二度足さない
     already = item_id in pending["added"] or (kind == "changed" and item_id in pending["changed"])
     if not already:
         pending[kind].append(item_id)
-    last_seq = changes["last_seq"] + 1 if stacked else changes["last_seq"]
-    return {"last_seq": last_seq, "sets": changes["sets"], "pending": pending}
+    return {**changes, "pending": pending}
+
+
+def advance_seq(changes: Changes) -> tuple[Changes, int]:
+    """`last_seq` を 1 進めた新しい記録と、振った番号を返す。"""
+    seq = changes["last_seq"] + 1
+    return {**changes, "last_seq": seq}, seq
 
 
 def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, ChangeSet | None]:
@@ -263,7 +285,7 @@ def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, Ch
         "changed": list(pending["changed"]),
     }
     committed: Changes = {
-        "last_seq": changes["last_seq"],
+        **changes,
         "sets": [change_set, *changes["sets"]],
         "pending": {"added": [], "changed": []},
     }
@@ -291,6 +313,88 @@ def pending_view(workspace: Workspace, changes: Changes) -> dict[str, Any]:
                 keys.append(BODY_MARKDOWN_KEY)
         changed.append({"id": item_id, "title": item["title"], "keys": list(dict.fromkeys(keys))})
     return {"added": added, "changed": changed}
+
+
+def values_at_read(
+    item: dict[str, Any], body: str | None, read_seq: int
+) -> tuple[dict[str, Any], list[BodyDiffHunk] | None]:
+    """読んだ時点より後に変わったキーの読んだ時点の値と、今の本文を読んだ時点の本文へ戻す差分を組み立てる。"""
+    # 読んだ時点より後の回（新しい順）
+    entries = [entry for entry in item.get("history", []) if entry["seq"] > read_seq]
+    before: dict[str, Any] = {}
+    # 新しい回から重ね、同じキーは古い回の値で上書きする（最も古い回の値が読んだ時点の値）
+    for entry in entries:
+        before.update(entry["before"])
+    # 今の項目と同じ値に戻っているキーは、変わっていないので返さない
+    before = {key: value for key, value in before.items() if item.get(key) != value}
+    body_diff: list[BodyDiffHunk] | None = None
+    if body is not None:
+        text: str | None = body
+        # 本文を変えた回を新しい順に当てて、読んだ時点の本文を作る
+        for entry in entries:
+            if text is not None and "body_diff" in entry:
+                text = apply_body_diff(text, entry["body_diff"])
+        # 作れて、今の本文と違うときだけ差分にする
+        if text is not None and text != body:
+            body_diff = diff_body(text, body)
+    return before, body_diff
+
+
+def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
+    """AI が最後に読んだ時点より後に足した・変えた項目を、`changes_since_read` の結果の形に並べる。"""
+    read_seq = changes.get("read_seq")
+    # 読んだ時点の記録が無い: 差分を返さない
+    if read_seq is None:
+        return {
+            "had_read_point": False,
+            "read_seq": None,
+            "until_seq": changes["last_seq"],
+            "added": [],
+            "changed": [],
+        }
+    limit = history_limit(workspace.settings)
+    added: list[dict[str, Any]] = []
+    changed: list[dict[str, Any]] = []
+    for kind in KINDS:
+        for item in workspace.items[kind]:
+            # 読んだ時点より後に足した項目
+            if item.get("added_seq", 0) > read_seq:
+                added.append({"id": item["id"], "kind": kind, "title": item["title"]})
+                continue
+            # 読んだ時点より後に変えていない項目
+            if item.get("seq", 0) <= read_seq:
+                continue
+            before: dict[str, Any] | None = None
+            body_diff: list[BodyDiffHunk] | None = None
+            # 保持する回数が 0 のときは変更履歴が無いので、前の値を組み立てない
+            if limit > 0:
+                name = item.get("body")
+                body = read_body(workspace, name) if isinstance(name, str) else None
+                before, body_diff = values_at_read(item, body, read_seq)
+                # 変わったキーも本文の差分も残らない項目は返さない
+                if not before and body_diff is None:
+                    continue
+            changed.append(
+                {
+                    "id": item["id"],
+                    "kind": kind,
+                    "title": item["title"],
+                    "before": before,
+                    "body_diff": body_diff,
+                }
+            )
+    return {
+        "had_read_point": True,
+        "read_seq": read_seq,
+        "until_seq": changes["last_seq"],
+        "added": added,
+        "changed": changed,
+    }
+
+
+def mark_read(changes: Changes) -> Changes:
+    """`read_seq` を `last_seq` にした新しい記録を返す。"""
+    return {**changes, "read_seq": changes["last_seq"]}
 
 
 def touch_opened(root: Path, now: str) -> str | None:
