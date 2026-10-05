@@ -1,5 +1,5 @@
 title: 表
-lead: 項目の一覧の表。列の見出しで並べ替え・絞り込み・ピン留めでき、表の上に絞り込みの条件のチップを並べる。表示する列の選択と初期設定に戻すのポップオーバーを持つ。
+lead: 項目の一覧の表。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件のチップを並べる。絞り込みの条件は部品『絞り込み』で選び、表は受け取った条件で行を絞る。表示する列の選択と初期設定に戻すのポップオーバーを持つ。
 implementation: plugins/mindstella/skills/mindmap/preview/components/table.ts#MindmapPreview.table
 story: Preview/Table
 test_file: tests/integration/storybook/test_table_stories.py
@@ -25,7 +25,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 値で絞り込めるか。絞り込みのボタンを出す
+    description: 値で絞り込めるか。真の列を絞り込みのドロワーの条件にする。列の見出しには絞り込みのボタンを出さない
   - name: columns[].fixed
     type: 真偽値
     required: false
@@ -49,7 +49,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（絞り込まない）
-    description: 列の `key` → 選んだ値の配列
+    description: 列の `key` → 選んだ値の配列。絞り込みのドロワーで選んだ条件をそのまま受ける。同じ列の中はどれかに合う行、列どうしは全てに合う行を出し、値を 1 つも選んでいない列では絞らない
   - name: pinTo
     type: 文字列
     required: false
@@ -72,9 +72,9 @@ events:
     value: key（`data-sort`）
     description: 使う側が 昇順 → 降順 → 解除 と巡る
   - name: 絞り込み
-    when: 絞り込みのポップオーバーで値を選んだ・外したとき、チップの × か「すべて解除」を押したとき
+    when: チップの × か「すべて解除」を押したとき
     value: key と値の配列
-    description: 使う側が `filters` を変えて描き直す。保存しない
+    description: 使う側が `filters` を変えて表と絞り込みのドロワーを描き直す。保存しない
   - name: ピン留め
     when: 見出しのピンのボタンを押したとき
     value: key（`data-pin`）
@@ -104,7 +104,7 @@ states:
       - name: sort
         value: '{"key": "title", "dir": "desc"}'
   - name: Filtered
-    description: 確度 = 高で絞り込み中。絞り込み中の列の道具は押された見た目で、表の上にチップと「すべて解除」を並べる
+    description: 確度 = 高で絞り込み中。表の上にチップと「すべて解除」を並べる。列の見出しには並べ替えとピン留めだけを置き、絞り込みのボタンを出さない
     args:
       - name: filters
         value: '{"conf": ["高"]}'
@@ -133,7 +133,7 @@ states:
         value: '{"D-5": "changed", "D-37": "new"}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
-  - 絞り込み・ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列} で絞り込み`・`{列}まで固定` の読み上げ名を付ける
+  - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
   - 'チップの × に `{列}: {値} の条件を解除` の読み上げ名を付ける'
   - 行のタイトルは `button` 要素にし、キーボードで詳細を開ける
   - 操作してもスクロールの位置を保つ
