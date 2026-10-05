@@ -370,7 +370,6 @@ var MindmapPreview;
             const graph = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
             emptyNotice.hidden = graph.children.length > 0;
             current = await layoutOf(graph, key);
-            const previous = { left: wrap.scrollLeft, top: wrap.scrollTop };
             drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks });
             applyZoom();
             const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
