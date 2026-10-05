@@ -9,6 +9,7 @@ directory: |-
       diff-mark.ts          差分の印（部品設計『差分の印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
+      filter-drawer.ts      絞り込みのドロワー（部品設計『絞り込み』）
       send-form.ts          コメントの入力（部品設計『コメントの入力』）
       selection-comment.ts  選んだ箇所のコメントの入口（部品設計『選んだ箇所のコメントの入口』）
     screens/
@@ -111,12 +112,17 @@ components:
         required: false
         default: 'null'
         description: コメントのボタンの件数・一覧を開いているか・押したとき。`null`（配る書き出し）ならボタンを置かず、検索の入口も今の位置のまま。件数は 99 を超えたら `99+`、読み上げの名前には実際の件数
+      - name: filter
+        type: '{count: number, open: boolean, onToggle: () => void} | null'
+        required: false
+        default: 'null'
+        description: 絞り込みのボタンの値を 1 つ以上選んでいる条件の数・ドロワーを開いているか・押したとき。`null`（概要）ならボタンを置かない。置くときはコメントのボタンの左（無ければ右端）。`count` が 0 ならバッジを出さない
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『表』の引数を受け、並べ替え・絞り込み・ピン留め・表示する列・初期設定に戻す・詳細を開くをコールバックで知らせる。行の絞り込みと並べ替えは `filterRows`・`sortRows`
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・表示する列・初期設定に戻す・詳細を開くをコールバックで知らせる。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
     description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
@@ -140,7 +146,7 @@ components:
         type: Record<string, string[]>
         required: false
         default: '{}'
-        description: 絞り込み
+        description: 絞り込み（画面が絞り込みのドロワーと共有する条件）
       - name: pinTo
         type: string | null
         required: false
@@ -179,7 +185,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: 画面設計『検討事項』を描く。マップは `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。elkjs が読めないときは `libraryNotice`。状態の印の右端に `toggleAllBox` を置き、`shownStatuses` をまとめて入れ替えて描き直す。表示する状態の検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
+    summary: 画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、マップ・ボード・表に同じ結果を渡す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
     props:
       - name: index
         type: RecordIndex
@@ -190,14 +196,18 @@ components:
         required: true
         description: 表示形式と絞り込み
       - name: on
-        type: '{open, view, clear}'
+        type: '{open, view, clear, filter, closeDrawer}'
         required: true
-        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）
+        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）・条件を変える（新しい `filters`。ドロワーと表のチップから）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの画面の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
     state:
-      - name: shownStatuses
-        type: Set<string>
-        initial: 要見直し・未決定・未整理・保留
-        description: マップで表示する状態
       - name: keyword
         type: string
         initial: 空
@@ -211,7 +221,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
     usecase: タスクをボードで見る
     kind: 画面
-    summary: 画面設計『タスク』を描く。ボードの列は `boardColumns`
+    summary: 画面設計『タスク』を描く。タスクを `filters` で絞り（`filterRows`）、ボードと表に同じ結果を渡す。ボードの列は `boardColumns`（状態の条件を渡し、外した列に「状態の条件で外しています。」を出す）。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
@@ -222,15 +232,23 @@ components:
         required: true
         description: 表示形式と絞り込み
       - name: on
-        type: '{open, view}'
+        type: '{open, view, filter, closeDrawer}'
         required: true
-        description: 項目を開く・表示形式を切り替える
+        description: 項目を開く・表示形式を切り替える・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの画面の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
   - name: docsScreen
     title: 資料
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
     usecase: 資料を読む
     kind: 画面
-    summary: 画面設計『資料』を描く。カードの並びは `orderDocs`、絞り込みは `filterRows`（カードとボードで同じ条件）。ボードは絞り込んだ資料を `boardColumns`（`DOC_STATUSES`）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの
+    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。ツールバーに絞り込みのボタンとポップオーバーを置かない。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
@@ -241,15 +259,23 @@ components:
         required: true
         description: 表示形式と絞り込み
       - name: on
-        type: '{open, view}'
+        type: '{open, view, filter, closeDrawer}'
         required: true
-        description: 項目を開く・表示形式を切り替える
+        description: 項目を開く・表示形式を切り替える・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの画面の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
   - name: recordsScreen
     title: 記録の表
     container: plugins/mindstella/skills/mindmap/preview/screens/records.ts
     usecase: 項目を表で絞り込む
     kind: 画面
-    summary: 画面設計『記録の表』を描く。調査・用語集・メモ・会話ログの列の定義を種類ごとに持ち、`table` に渡す
+    summary: 画面設計『記録の表』を描く。調査・用語集・メモ・会話ログの列の定義を種類ごとに持ち（会話ログもタグの列を持つ）、`filters` と共に `table` に渡す。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
@@ -260,9 +286,17 @@ components:
         required: true
         description: 種類（`tab`）と絞り込み
       - name: on
-        type: '{open}'
+        type: '{open, filter, closeDrawer}'
         required: true
-        description: 項目を開く
+        description: 項目を開く・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの種類の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
   - name: detailPanel
     title: 詳細パネル
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
@@ -353,21 +387,25 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
     usecase: つながりを辿る
     kind: 画面
-    summary: 画面設計『つながり』をキャンバスに描く。玉と線は `buildGraph`、毎コマの描画は玉ごとに一度だけ画像にした文字を倍率をかけて置く（PoC の `opt-each-bitmap`）。画面の外は描かない。項目の種類の右端に `toggleAllBox` を置き、`shownKinds` をまとめて入れ替えて玉と線を作り直す。表示する種類が 1 つも無いときは、枠の中央に空の旨を出す
+    summary: 画面設計『つながり』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマの描画は玉ごとに一度だけ画像にした文字を倍率をかけて置く（PoC の `opt-each-bitmap`）。画面の外は描かない。条件が変わったら玉と線を作り直し、条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
         required: true
         description: 索引
       - name: on
-        type: '{open}'
+        type: '{open, filter, closeDrawer}'
         required: true
-        description: 玉を押して項目を開く
+        description: 玉を押して項目を開く・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のつながりの分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
     state:
-      - name: shownKinds
-        type: Set<string>
-        initial: 全ての種類
-        description: 表示する項目の種類
       - name: camera
         type: '{yaw, pitch, distance, target}'
         initial: 全体が収まる向きと距離
@@ -577,6 +615,37 @@ components:
         type: () => void
         required: true
         description: 閉じる
+  - name: filterDrawer
+    title: 絞り込みのドロワー
+    container: plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts
+    usecase: 項目を表で絞り込む
+    kind: コンポーネント
+    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値へのフォーカスを保つ。開いている間、ドロワーが覆った本文の部品に `inert` を付け、閉じたら外す
+    props:
+      - name: groups
+        type: FilterGroup[]
+        required: true
+        description: 条件の並び（`drawerGroups` の結果）
+      - name: selected
+        type: Record<string, string[]>
+        required: true
+        description: 選んだ値
+      - name: total
+        type: number
+        required: true
+        description: 画面の項目の件数
+      - name: shown
+        type: number
+        required: true
+        description: 条件に合う項目の件数
+      - name: narrow
+        type: boolean
+        required: true
+        description: 画面の幅が 900px 以下か
+      - name: on
+        type: '{select, clear, clearAll, close}'
+        required: true
+        description: 値の選択（`key`・`value`・入れたか）・条件の解除（`key`）・すべて解除・閉じる
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -592,10 +661,10 @@ functions:
         passing: keyword
         description: 行
       - name: columns
-        type: Column[]
+        type: '{key, get}[]'
         required: true
         passing: keyword
-        description: 列の定義
+        description: 条件の定義（表の列か、つながりの `graphConditions`）
       - name: filters
         type: Record<string, string[]>
         required: true
@@ -650,7 +719,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     scope: public
-    summary: 絞り込みのポップオーバーに出す、列の値ごとの件数を返す（その列以外の条件で絞った行で数える）
+    summary: 絞り込みのドロワーに出す、条件の値ごとの件数を返す（その条件以外の条件で絞った行で数える）
     args:
       - name: rows
         type: object[]
@@ -700,9 +769,14 @@ functions:
         required: true
         passing: keyword
         description: 列にする状態の並び（スキーマの列挙の順。タスクは完了・中止も含む）
+      - name: statusFilter
+        type: string[]
+        required: false
+        passing: positional
+        description: 状態の条件で選んだ値（空なら状態で絞っていない）
     returns:
-      type: '{status, items}[]'
-      description: 状態ごとの項目（項目が 0 件の列も返す。列の中は連番の順）
+      type: '{status, items, excluded}[]'
+      description: 状態ごとの項目（項目が 0 件の列も返す。列の中は連番の順）。`excluded` は状態の条件で外した列（`statusFilter` が空でなく、その状態を含まない）か
     unit_tests:
       - name: test_board_columns
         case: 正常
@@ -710,6 +784,12 @@ functions:
         condition: 未着手の T-2・T-1、完了の T-3
         mock: なし
         expected: 未着手の列が T-1・T-2、進行中・保留・中止が空、完了が T-3
+      - name: test_board_columns_when_status_filter
+        case: 正常
+        summary: 状態の条件から外した列を示す
+        condition: 未着手の T-1。状態の条件は 未着手・進行中
+        mock: なし
+        expected: 未着手・進行中の列は `excluded` が偽、保留・完了・中止は真。条件が空のときは全て偽
   - name: orderDocs
     title: 資料の並び
     kind: 関数
@@ -739,26 +819,26 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     scope: public
-    summary: 対象 → カテゴリー → フェーズ → 検討事項の木を、表示する状態で絞って返す（ELK に渡す節と枝の形）
+    summary: 対象 → カテゴリー → フェーズ → 検討事項の木を、渡した検討事項だけで組んで返す（ELK に渡す節と枝の形）
     args:
       - name: index
         type: RecordIndex
         required: true
         passing: keyword
         description: 索引
-      - name: shownStatuses
-        type: Set<string>
+      - name: decisions
+        type: object[]
         required: true
         passing: keyword
-        description: 表示する状態
+        description: 絞り込みの条件に合う検討事項（`filterRows` の結果）
     returns:
       type: '{children, edges}'
       description: ELK のグラフ。検討事項が 1 つも残らない枝（カテゴリー・フェーズ）は含めない。対象・カテゴリー・フェーズの節の ID は項目の ID と重ならない形（`target:{名前}` など）
     unit_tests:
       - name: test_build_decision_tree
         case: 正常
-        summary: 非表示の状態だけの枝を落とす
-        condition: カテゴリー A に未決定の D-1、カテゴリー B に決定済みの D-2 だけ。表示する状態は未決定だけ
+        summary: 渡した検討事項を持たない枝を落とす
+        condition: カテゴリー A に D-1、カテゴリー B に D-2 を持つ索引。`decisions` は D-1 だけ
         mock: なし
         expected: 節に D-1 とその対象・カテゴリー A・フェーズがあり、D-2 とカテゴリー B が無い
   - name: buildGraph
@@ -767,26 +847,26 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
     usecase: つながりを辿る
     scope: public
-    summary: 表示する種類の項目を玉に、関連（依存・関連・根拠・進めるタスク）を線にして返す
+    summary: 渡した ID の項目を玉に、その間の関連（依存・関連・根拠・進めるタスク）を線にして返す
     args:
       - name: index
         type: RecordIndex
         required: true
         passing: keyword
         description: 索引
-      - name: shownKinds
+      - name: shownIds
         type: Set<string>
         required: true
         passing: keyword
-        description: 表示する種類
+        description: 絞り込みの条件に合う項目の ID
     returns:
       type: '{nodes: {id, kind}[], links: {source, target, type}[]}'
       description: '`type` は `depends`・`related`・`source`・`for`。両端のどちらかが非表示か記録に無い線は含めない'
     unit_tests:
       - name: test_build_graph
         case: 正常
-        summary: 線の種類を分け、非表示の種類の線を落とす
-        condition: 'D-2（`depends_on: [D-1]`、`sources: [R-1]`）・T-1（`for: [D-1]`）・N-1（`related: [D-1]`）。表示する種類からメモを外す'
+        summary: 線の種類を分け、渡していない項目の線を落とす
+        condition: 'D-2（`depends_on: [D-1]`、`sources: [R-1]`）・T-1（`for: [D-1]`）・N-1（`related: [D-1]`）。`shownIds` から N-1 を外す'
         mock: なし
         expected: 線が `depends`（D-2→D-1）・`source`（D-2→R-1）・`for`（T-1→D-1）の 3 本で、N-1 とその線が無い
   - name: formatJst
@@ -813,6 +893,128 @@ functions:
         condition: '`parametrize`: `2026-10-04T02:23:00+00:00` / `2026-10-04T16:05:00+00:00`'
         mock: なし
         expected: '`10/04 11:23` / `10/05 01:05`'
+  - name: drawerGroups
+    title: ドロワーの条件
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: 画面の全ての行
+      - name: columns
+        type: '{key, label, get, filterable?, order?}[]'
+        required: true
+        passing: keyword
+        description: 条件の定義（`filterable` が真の表の列か、`graphConditions`）
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 絞り込み
+      - name: hit
+        type: (row) => boolean
+        required: false
+        passing: keyword
+        description: キーワードに一致した行か（検討事項のマップだけが渡す）
+    returns:
+      type: FilterGroup[]
+      description: 条件の並び。キーが `kind`・`type`・`status`・`tags` の条件をこの順で先に置き、残りは元の順。値を 1 つも持たない条件は含めない。`FilterGroup` は部品設計『絞り込み』の `groups[]`（`key`・`label`・`values`・`mark`）
+    process: |-
+      1. 条件ごとに、全ての行が持つ値を集め（配列の値は要素ごと）、`order` を持つ条件はその順、ほかは値の順に並べる
+      2. 値ごとの `count` は `filterCounts`（少ない値は 0）、`hit` を渡されたときはその条件以外の条件で絞った行のうちキーワードに一致した件数も数える
+      3. `status` の条件に `mark: status`、`type` の条件に `mark: kind` を付ける
+    unit_tests:
+      - name: test_drawer_groups
+        case: 正常
+        summary: 種類・状態・タグを先に並べ、件数はその条件以外で絞って数える
+        condition: 列の順が 対象・タグ・状態・種類。T-1（作業・未着手・タグ a）・T-2（調査・完了・タグ a・b）。種類 = 作業で絞っている
+        mock: なし
+        expected: 並びが 種類・状態・タグ・対象。種類は 作業 1・調査 1、状態は 未着手 1・完了 0、タグは a 1・b 0。状態の `mark` が status
+      - name: test_drawer_groups_when_no_values
+        case: 正常
+        summary: 値を持たない条件は含めない
+        condition: どの行もタグを持たない
+        mock: なし
+        expected: タグの条件が無い
+      - name: test_drawer_groups_when_hit
+        case: 正常
+        summary: キーワードに一致した件数を添える
+        condition: D-1（未決定・一致）・D-2（未決定）・D-3（保留）。`hit` は D-1 だけ真
+        mock: なし
+        expected: '状態の未決定が `count: 2`・`hit: 1`、保留が `hit: 0`'
+  - name: activeConditionCount
+    title: 絞っている条件の数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 値を 1 つ以上選んでいる条件の数を返す（絞り込みのボタンのバッジ）
+    args:
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: positional
+        description: 絞り込み
+    returns:
+      type: number
+      description: 空でない値の配列を持つキーの数
+    unit_tests:
+      - name: test_active_condition_count
+        case: 正常
+        summary: 値を選んだ条件だけを数える
+        condition: '`parametrize`: `{}` / `{status: [未決定, 保留], tags: [a]}` / `{status: []}`'
+        mock: なし
+        expected: 0 / 2 / 0
+  - name: initialFilters
+    title: 開いたときの絞り込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ画面の既定
+    args:
+      - name: tab
+        type: Route['tab']
+        required: true
+        passing: positional
+        description: 画面
+      - name: fromHash
+        type: Record<string, string[]>
+        required: true
+        passing: positional
+        description: ハッシュの絞り込み（`Route.filters`）
+    returns:
+      type: Record<string, string[]>
+      description: '絞り込み。検討事項の既定は `{status: [要見直し, 未決定, 未整理, 保留]}`、ほかの画面は `{}`'
+    unit_tests:
+      - name: test_initial_filters
+        case: 正常
+        summary: ハッシュがあれば既定に代えて使う
+        condition: '`parametrize`: decisions と `{}` / decisions と `{phase: [要件]}` / tasks と `{}`'
+        mock: なし
+        expected: '状態 4 つ / `{phase: [要件]}`（状態の既定を含まない） / `{}`'
+  - name: graphConditions
+    title: つながりの条件
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: つながりを辿る
+    scope: public
+    summary: つながりで絞る条件（種類・状態・タグ）の定義を返す
+    returns:
+      type: '{key, label, get, order?}[]'
+      description: '`type`（項目の種類の名前。検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`。`get` は索引の項目（`{kind, item}`）から値を取る'
+    unit_tests:
+      - name: test_graph_conditions
+        case: 正常
+        summary: 種類・状態・タグの値を取る
+        condition: 未決定・タグ a の D-1 と、タグの無い N-1
+        mock: なし
+        expected: D-1 は `検討事項`・`未決定`・`[a]`、N-1 は `メモ`・状態無し・`[]`
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
