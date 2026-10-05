@@ -103,3 +103,5 @@ items:
   - page: コメントをまとめて送る.yaml
     summary: 'POST /api/comments/send: チェックしたレビュー中のコメントを取り込んでいない送信へ移す'
     group: 送信
+  - page: タグの一覧.md
+    summary: 'tags: 使っているタグと件数・種類を返す'
