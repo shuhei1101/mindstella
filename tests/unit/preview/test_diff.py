@@ -256,6 +256,46 @@ def test_build_versions_when_body_rewritten(
     assert versions["before"]["status"] == "未決定"
 
 
+@pytest.mark.parametrize(
+    ("dropped_seq", "trimmed"),
+    [
+        pytest.param(7, True, id="dropped_in_range"),
+        pytest.param(5, False, id="dropped_before_range"),
+    ],
+)
+def test_build_versions_when_dropped_in_range(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    dropped_seq: int,
+    trimmed: bool,
+) -> None:
+    """範囲の中の古い回が消えていれば組み立てられない。範囲より前の回が消えただけなら組み立てる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    item = {
+        "id": "D-1",
+        "title": "問い",
+        "status": "決定済み",
+        "history": [{"seq": 9, "at": ENTRY_AT, "before": {"status": "未決定"}}],
+        "history_dropped_seq": dropped_seq,
+    }
+    point = {"sel": "since", "name": "前回開いてから", "sub": "10/02 09:00 より後", "fromSeq": 5}
+    # 実行
+    versions = preview_page.evaluate(
+        """([item, point]) => MindmapPreview.buildVersions(
+            item, "", {...point, untilSeq: null, added: new Set(), changed: new Set()}
+        )""",
+        [item, point],
+    )
+    # 検証
+    assert versions["trimmed"] is trimmed
+    if trimmed:
+        assert versions["before"] is None
+        assert versions["beforeBody"] is None
+    else:
+        assert versions["before"]["status"] == "未決定"
+
+
 def test_diff_line_parts(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
 ) -> None:

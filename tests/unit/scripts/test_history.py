@@ -70,13 +70,13 @@ def test_load_changes_when_schema_mismatch(make_workspace: MakeWorkspace) -> Non
 @pytest.mark.parametrize(
     ("settings", "expected"),
     [
-        pytest.param({}, 1, id="missing"),
+        pytest.param({}, 5, id="missing"),
         pytest.param({"history_limit": 0}, 0, id="zero"),
         pytest.param({"history_limit": 3}, 3, id="three"),
     ],
 )
 def test_history_limit(settings: dict[str, Any], expected: int) -> None:
-    """設定が無ければ既定の 1 を返し、あればその回数を返す（正常系）。"""
+    """設定が無ければ既定の 5 を返し、あればその回数を返す（正常系）。"""
     # 実行
     limit = history.history_limit(settings)
     # 検証
@@ -163,28 +163,43 @@ def test_make_entry_when_nothing_changed() -> None:
 
 
 def test_stack_history() -> None:
-    """保持する回数を超えた古いものを消す（正常系）。"""
+    """保持する回数を超えた古いものを消し、消した回の seq を残す（正常系）。"""
     # 準備
-    old_entry = {"seq": 1, "at": "2026-10-01T00:00:00+00:00", "before": {"answer": None}}
-    new_entry = {"seq": 2, "at": NOW, "before": {"status": "未決定"}}
-    item = {"id": "D-1", "title": "問い", "history": [old_entry]}
+    old_entry = {"seq": 5, "at": "2026-10-01T00:00:00+00:00", "before": {"answer": None}}
+    new_entry = {"seq": 9, "at": NOW, "before": {"status": "未決定"}}
+    item = {"id": "D-1", "title": "問い", "history": [old_entry], "history_dropped_seq": 3}
     # 実行
     stacked = history.stack_history(item, new_entry, 1)
     # 検証
     assert stacked["history"] == [new_entry]
+    assert stacked["history_dropped_seq"] == 5
     assert item["history"] == [old_entry]
+    assert item["history_dropped_seq"] == 3
+
+
+def test_stack_history_when_not_dropped() -> None:
+    """消さなければ消した回の seq を付けない（正常系）。"""
+    # 準備
+    new_entry = {"seq": 1, "at": NOW, "before": {"status": "未決定"}}
+    item = {"id": "D-1", "title": "問い"}
+    # 実行
+    stacked = history.stack_history(item, new_entry, 1)
+    # 検証
+    assert stacked["history"] == [new_entry]
+    assert "history_dropped_seq" not in stacked
 
 
 def test_stack_history_when_limit_zero() -> None:
-    """回数が 0 なら変更履歴を消す（正常系）。"""
+    """回数が 0 なら変更履歴と消した回の seq を消す（正常系）。"""
     # 準備
     old_entry = {"seq": 1, "at": "2026-10-01T00:00:00+00:00", "before": {"answer": None}}
     new_entry = {"seq": 2, "at": NOW, "before": {"status": "未決定"}}
-    item = {"id": "D-1", "title": "問い", "history": [old_entry]}
+    item = {"id": "D-1", "title": "問い", "history": [old_entry], "history_dropped_seq": 1}
     # 実行
     stacked = history.stack_history(item, new_entry, 0)
     # 検証
     assert "history" not in stacked
+    assert "history_dropped_seq" not in stacked
 
 
 def test_note_pending() -> None:

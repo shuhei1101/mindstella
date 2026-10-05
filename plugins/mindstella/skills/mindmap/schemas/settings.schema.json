@@ -167,7 +167,7 @@
     },
     "history_limit": {
       "type": "integer",
-      "description": "項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 1。`update_settings` では変えず、`mindmap.yaml` を直して変える",
+      "description": "項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5。`update_settings` では変えず、`mindmap.yaml` を直して変える",
       "minimum": 0
     }
   }

@@ -85,3 +85,84 @@ def test_detail_panel_when_diff_highlight(
     assert "消した段落 A" in first["text"]
     assert "消した段落 B" in second["text"]
     assert (first["underLineMark"], second["underLineMark"]) == (False, False)
+
+
+# 古いまとまり V-1 の直後の本文（3 行目の段落）と、V-2 で頭に段落を足して行がずれた今の本文
+OLD_SET_NOW_BODY = "頭に足した段落\n\n1 行目の段落\n\nV-1 の 3 行目の段落\n"
+
+# V-2 の後に頭へ段落を足した回（seq 2）と、V-1 の 3 行目を書き換えた回（seq 1）
+OLD_SET_HISTORY = [
+    {
+        "seq": 2,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": [{"line": 1, "now": ["頭に足した段落", ""], "before": []}],
+    },
+    {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": [
+            {"line": 3, "now": ["V-1 の 3 行目の段落"], "before": ["元の 3 行目の段落"]},
+        ],
+    },
+]
+
+# 古いまとまり V-1 を選んだ時点（その後の V-2 も同じ項目を直している）
+OLD_SET_POINT = {
+    "sel": "V-1",
+    "name": "最初の書き換え",
+    "sub": "10/03 18:00",
+    "fromSeq": 0,
+    "untilSeq": 1,
+}
+
+# 詳細パネルを開き、本文の行の印と示した箇所を調べる
+OPEN_OLD_SET_PANEL_SCRIPT = """async ({data, point, highlight}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return {
+        marked: panel.querySelectorAll(".md [data-line-start]").length,
+        hits: panel.querySelectorAll(".loc-hit").length,
+        text: panel.querySelector(".md")?.textContent ?? "",
+    };
+}"""
+
+
+def test_detail_panel_when_old_set_after_body_edit(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """古いまとまりを選び、その後に本文を直した項目では、本文の行の印を外す（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=OLD_SET_HISTORY)],
+        bodies={"D-1.md": OLD_SET_NOW_BODY},
+    )
+    highlight = {"kind": "body", "start": 5, "end": 5, "text": "V-1 の 3 行目の段落"}
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_OLD_SET_PANEL_SCRIPT, {"data": data, "point": OLD_SET_POINT, "highlight": highlight}
+    )
+    # 検証
+    assert "V-1 の 3 行目の段落" in result["text"]
+    assert result["marked"] == 0
+    assert result["hits"] == 0

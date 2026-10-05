@@ -5,7 +5,7 @@ var MindmapPreview;
     /** 前の値が無いときに出す文字 */
     const NO_VALUE = "（なし）";
     /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
-    const UNDIFFED_KEYS = new Set(["id", "created", "updated", "history", "body"]);
+    const UNDIFFED_KEYS = new Set(["id", "created", "updated", "history", "history_dropped_seq", "body"]);
     /** 前後を組み立てられない旨・本文の差分を出せない旨の文言 */
     const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
     const NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。";
@@ -698,6 +698,9 @@ var MindmapPreview;
             const root = rendered ?? MindmapPreview.renderMarkdown(source);
             if (rendered === null)
                 lowerHeadings(root);
+            // 古いまとまりを選び、その後に本文を直した: 描いた本文は今の本文の行と合わないので、行の印を外す（選んだ箇所のコメントも示す箇所も今の行に向けない）
+            if (source !== index.data.bodies[item.body ?? ""])
+                withoutLineMarks(root);
             const drawn = MindmapPreview.renderDiagrams(root);
             if (diagramBefore !== null) {
                 const before = diagramBefore;

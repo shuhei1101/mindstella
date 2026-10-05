@@ -81,7 +81,9 @@ def test_validate_input_keys() -> None:
     assert result is None
 
 
-@pytest.mark.parametrize("key", ["id", "created", "updated", "body"])
+@pytest.mark.parametrize(
+    "key", ["id", "created", "updated", "body", "history", "history_dropped_seq"]
+)
 def test_validate_input_keys_when_reserved(key: str) -> None:
     """ツールが付けるキーを弾く（異常系）。"""
     # 実行・検証

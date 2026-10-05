@@ -99,6 +99,11 @@
         },
         "history": {
           "$ref": "#/$defs/history"
+        },
+        "history_dropped_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換え、一度も消していなければ持たない。ツールが付ける"
         }
       }
     },
@@ -127,7 +132,7 @@
           },
           "before": {
             "type": "object",
-            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`history`・`body` は入れない"
+            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`history`・`history_dropped_seq`・`body` は入れない"
           },
           "body_diff": {
             "type": "array",

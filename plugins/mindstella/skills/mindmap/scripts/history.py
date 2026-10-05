@@ -58,7 +58,7 @@ CHANGES_SCHEMA = "changes.schema.json"
 OPENED_FILE = ".mindstella-opened"
 
 # `mindmap.yaml` に `history_limit` が無いときの回数
-DEFAULT_HISTORY_LIMIT = 1
+DEFAULT_HISTORY_LIMIT = 5
 
 # まとまりの ID の頭の文字
 SET_ID_PREFIX = "V-"
@@ -67,7 +67,7 @@ SET_ID_PREFIX = "V-"
 SUMMARY_MAX_LENGTH = 200
 
 # 変更履歴の `before` に入れない、ツールが付けるキー（本文は `body_diff` で持つ）
-NON_HISTORY_KEYS = frozenset({"updated", "history", "body"})
+NON_HISTORY_KEYS = frozenset({"updated", "history", "history_dropped_seq", "body"})
 
 # 前に本文が無かった回の、`before` に入れる本文のキー
 BODY_KEY = "body"
@@ -214,14 +214,24 @@ def make_entry(
 
 
 def stack_history(item: dict[str, Any], entry: HistoryEntry | None, limit: int) -> dict[str, Any]:
-    """項目の `history` の先頭に 1 回分を足し、保持する回数を超えた古いものを消した新しい項目を返す。"""
+    """項目の `history` の先頭に 1 回分を足し、保持する回数を超えた古いものを消して、消した回の最大の `seq` を `history_dropped_seq` に残した新しい項目を返す。"""
     # 保持する回数が 0: 変更履歴を持たない
     if limit == 0:
-        return {key: value for key, value in item.items() if key != "history"}
+        return {
+            key: value for key, value in item.items() if key not in ("history", "history_dropped_seq")
+        }
     # 積むものが無い
     if entry is None:
         return item
-    return {**item, "history": [entry, *item.get("history", [])][:limit]}
+    stacked = [entry, *item.get("history", [])]
+    kept, dropped = stacked[:limit], stacked[limit:]
+    result = {**item, "history": kept}
+    # 消した回があれば、その最大の seq と今の history_dropped_seq の大きい方を残す
+    if dropped:
+        result["history_dropped_seq"] = max(
+            item.get("history_dropped_seq", 0), *(old["seq"] for old in dropped)
+        )
+    return result
 
 
 def note_pending(

@@ -144,6 +144,8 @@ namespace MindmapPreview {
     date?: string;
     /** 変更履歴（新しい順） */
     history?: HistoryEntry[];
+    /** 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。一度も消していなければ持たない */
+    history_dropped_seq?: number;
   };
 
   /** 設定（`mindmap.yaml`） */

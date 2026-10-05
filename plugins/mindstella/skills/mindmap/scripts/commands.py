@@ -61,7 +61,7 @@ from versions import Version, parse_release_version, read_plugin_version
 MIGRATE_HINT = "（/mindstella:upgrade で今の形式に移せます）"
 
 # `item` で渡させない、ツールが付けるキー
-RESERVED_KEYS = ("id", "created", "updated", "body", "history")
+RESERVED_KEYS = ("id", "created", "updated", "body", "history", "history_dropped_seq")
 
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
 BODY_INPUT_KEY = "body_markdown"

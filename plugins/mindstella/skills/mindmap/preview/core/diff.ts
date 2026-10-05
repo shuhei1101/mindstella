@@ -202,8 +202,8 @@ namespace MindmapPreview {
       before = undoEntry(before, entry);
       if (point.untilSeq === null || entry.seq <= point.untilSeq) inRange = true;
     }
-    // 選んだ時点の範囲に変更履歴が 1 回も無い: 保持する回数を超えて消えた
-    if (!inRange) {
+    // 選んだ時点の範囲に変更履歴が 1 回も無いか、範囲の中の回が消えている（消した回の最大の `seq` が範囲の始まりより大きい）: 保持する回数を超えて消えた
+    if (!inRange || (item.history_dropped_seq ?? 0) > point.fromSeq) {
       return { before: null, after: after.item, beforeBody: null, afterBody: after.body ?? body, trimmed: true, bodyUnavailable: false };
     }
     const bodyUnavailable = before.body === null || after.body === null;
