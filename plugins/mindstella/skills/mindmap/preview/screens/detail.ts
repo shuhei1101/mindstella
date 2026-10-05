@@ -459,7 +459,12 @@ namespace MindmapPreview {
   export function detailPanel(props: DetailProps): HTMLElement {
     const { id, index, full, on, send } = props;
     const kind = index.byId.get(id)?.kind;
-    const body = h({ tag: "div", attrs: { class: "panel-body" }, children: [detailBody(props)] });
+    // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
+    const body = h({
+      tag: "div",
+      attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
+      children: [detailBody(props)],
+    });
     const head = detailHead(props);
     // 見出しと下端の入力の間の本文だけをスクロールする
     const footer = send === null ? null : sendForm(send);
