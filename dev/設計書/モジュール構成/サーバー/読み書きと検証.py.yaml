@@ -1356,6 +1356,41 @@ functions:
         condition: '`parametrize`: `display.network_look` が `rainbow` / `display.visible_kinds` が `[decisions, decisions]` / YAML として読めない'
         mock: なし
         expected: '`key` が `display.network_look` / `display.visible_kinds` / `(全体)` の問題が 1 件以上。どれも `file` が `config.yaml`'
+  - name: load_display_validator
+    title: 表示の既定の検証器の用意
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの既定を変える
+    scope: public
+    summary: 設定のスキーマの `display` の部分（`properties.display`）だけを検証する検証器を作る（選べる見た目と種類の名前はスキーマだけが持つ。設定の更新の `update_display` が使う）
+    returns:
+      type: Draft202012Validator
+      description: '`display` の検証器'
+    process: |-
+      1. `load_validators` と同じく共通のスキーマを登録した Registry を作る
+      2. 設定のスキーマの `properties.display` で `Draft202012Validator` を作って返す
+
+      分岐を持たないため単体テストを置かず、`update_display` のテストで確かめる
+  - name: format_path
+    title: キーのパスの文字列化（公開）
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの既定を変える
+    scope: public
+    summary: '`_format_path` をほかのモジュール（設定の更新の `update_display`）から使うための公開の入口'
+    args:
+      - name: path
+        type: Iterable[str | int]
+        required: true
+        passing: positional
+        description: キーと添字の並び
+    returns:
+      type: str
+      description: '`_format_path` の結果'
+    process: |-
+      1. `_format_path(path)` を返す
+
+      分岐を持たないため単体テストを置かず、`_format_path` のテストで確かめる
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py
