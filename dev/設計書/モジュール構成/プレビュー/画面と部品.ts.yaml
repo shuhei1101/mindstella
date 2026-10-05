@@ -772,7 +772,7 @@ functions:
       - name: statusFilter
         type: string[]
         required: false
-        passing: positional
+        passing: keyword
         description: 状態の条件で選んだ値（空なら状態で絞っていない）
     returns:
       type: '{status, items, excluded}[]'
