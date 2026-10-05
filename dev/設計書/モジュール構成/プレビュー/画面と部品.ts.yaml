@@ -122,7 +122,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・表示する列・初期設定に戻す・詳細を開くをコールバックで知らせる。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・表示する列・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
     description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
@@ -165,6 +165,25 @@ components:
         required: false
         default: '{}'
         description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
+  - name: filterChips
+    title: 条件のチップの行
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    kind: コンポーネント
+    summary: '選んでいる値を 1 つずつ `{列}: {値}` のチップにし、× と「すべて解除」で条件の解除を知らせる行を返す。表と、表以外の表示形式（マップ・ボード・カード・つながり）のツールバーの下で同じものを使う。条件が無いときは中身の無い行を返す'
+    props:
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みのドロワーと共有する条件
+      - name: labels
+        type: Record<string, string>
+        required: true
+        description: 条件の `key` → チップに出す列の名前
+      - name: onFilter
+        type: '(key: string | null, values: string[]) => void'
+        required: true
+        description: × では `key` と残りの値、「すべて解除」では `key` を `null` にして知らせる（部品設計『表』の `絞り込み` のイベント）
   - name: overviewScreen
     title: 概要
     container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts

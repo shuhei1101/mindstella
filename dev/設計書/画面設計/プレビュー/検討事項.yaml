@@ -52,6 +52,12 @@ elements:
     placeholder: タイトルで強調
     initial_value: 空
     visible_when: 表示形式がマップ
+  - name: 条件のチップ
+    kind: list
+    position: ツールバーの下
+    description: '絞り込みのドロワーで選んでいる値を `{列}: {値}` のチップで並べ、× で 1 つ解除し、末尾の「すべて解除」で全ての条件を外す（表の上のチップと同じ行。モジュール構成『画面と部品』の `filterChips`）。解除するとドロワー・バッジ・マップ・ボードを描き直す'
+    io: 入力
+    visible_when: 表示形式がマップ・ボードで、値を 1 つ以上選んでいる条件があるとき
   - name: マップ
     id: decision-map
     kind: canvas

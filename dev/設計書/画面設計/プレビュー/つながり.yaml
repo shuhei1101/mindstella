@@ -32,6 +32,12 @@ elements:
         value: 絞り込みのドロワーを開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
+  - name: 条件のチップ
+    kind: list
+    position: タブの帯の下、3D のキャンバスの上
+    description: '絞り込みのドロワーで選んでいる値を `{列}: {値}` のチップで並べ、× で 1 つ解除し、末尾の「すべて解除」で全ての条件を外す（表の上のチップと同じ行。モジュール構成『画面と部品』の `filterChips`）。解除するとドロワー・バッジ・3D のキャンバスを描き直す'
+    io: 入力
+    visible_when: 値を 1 つ以上選んでいる条件があるとき
   - name: 3D のキャンバス
     id: graph-canvas
     kind: canvas
