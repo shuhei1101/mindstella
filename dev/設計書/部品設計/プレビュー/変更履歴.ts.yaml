@@ -7,7 +7,7 @@ states:
     args:
       - name: current
         value: since
-  - name: Off
+  - name: "Off"
     description: 差分を出していない。「差分を出さない（今の内容）」にチェック
     args:
       - name: current
