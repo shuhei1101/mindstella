@@ -319,7 +319,7 @@ var MindmapPreview;
                                         mapState.shownStatuses.add(status);
                                     else
                                         mapState.shownStatuses.delete(status);
-                                    void draw(false);
+                                    void draw();
                                 },
                             },
                         }),
@@ -341,7 +341,7 @@ var MindmapPreview;
                 all: bandStatuses,
                 onChange: (next) => {
                     mapState.shownStatuses = next;
-                    void draw(false);
+                    void draw();
                 },
             }));
         };
@@ -359,8 +359,8 @@ var MindmapPreview;
             canvas.style.transform = `scale(${scale})`;
             fitButton.setAttribute("aria-pressed", String(mapState.zoom === "fit"));
         };
-        /** 配置を求めて、マップを描く。選んだ項目が変わったときは、その節が中央に来るようにマップを送る */
-        const draw = async (keepScroll) => {
+        /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
+        const draw = async () => {
             drawLegend();
             outlineElement.replaceWith((outlineElement = outline({ index, open: on.open })));
             if (MindmapPreview.missingLibraries(["elkjs"]).length > 0)
@@ -369,7 +369,6 @@ var MindmapPreview;
             const graph = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
             emptyNotice.hidden = graph.children.length > 0;
             current = await layoutOf(graph, key);
-            const previous = { left: wrap.scrollLeft, top: wrap.scrollTop };
             drawMap({ laid: current, canvas, selected: route.id, open: on.open });
             applyZoom();
             const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
@@ -379,9 +378,6 @@ var MindmapPreview;
                     left: ((node.x ?? 0) + node.width / 2) * scale - wrap.clientWidth / 2,
                     top: ((node.y ?? 0) + node.height / 2) * scale - wrap.clientHeight / 2,
                 });
-            }
-            else if (keepScroll) {
-                wrap.scrollTo(previous);
             }
             else if (mapState.scroll !== null) {
                 wrap.scrollTo(mapState.scroll);
@@ -457,7 +453,11 @@ var MindmapPreview;
         wrap.addEventListener("scroll", () => {
             mapState.scroll = { left: wrap.scrollLeft, top: wrap.scrollTop };
         });
-        MindmapPreview.enableDragScroll(wrap);
+        // 余白を押したときは、選んでいる項目があるときだけ選びを外す
+        MindmapPreview.enableDragScroll(wrap, () => {
+            if (route.id !== null)
+                on.clear();
+        });
         // elkjs が読めない: 知らせを出し、表示形式を表に切り替えると読めることを伝える
         const notice = MindmapPreview.missingLibraries(["elkjs"]).length > 0
             ? MindmapPreview.h({
@@ -487,7 +487,7 @@ var MindmapPreview;
             if (mapState.zoom === "fit")
                 applyZoom();
         }).observe(wrap);
-        void draw(true);
+        void draw();
         return root;
     }
     /** 検討事項の画面を返す */
