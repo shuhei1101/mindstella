@@ -1,0 +1,149 @@
+title: "表示の設定"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts#MindmapPreview.settingsPanel"
+story: "Preview/SettingsPanel"
+states:
+  - name: Default
+    description: 開いた直後（ワークスペースの既定のまま）。「既定に戻す」と「ワークスペースの既定にする」を出さず、そのことを文言で示す
+    args:
+      - name: look
+        value: deep
+      - name: default_look
+        value: deep
+      - name: overrides
+        value: '[]'
+  - name: Overridden
+    description: この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く
+    args:
+      - name: look
+        value: dust
+      - name: default_look
+        value: starlight
+      - name: default_kinds
+        value: メモを除いた 6 種類
+      - name: overrides
+        value: '["つながりの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"]'
+  - name: SomeKindsHidden
+    description: 用語集と会話ログを外した。「すべて」を途中の印にし、`5/7` を出す
+    args:
+      - name: visible_kinds
+        value: 用語集・会話ログを除いた 5 種類
+      - name: overrides
+        value: '["表示する種類"]'
+  - name: Saved
+    description: 既定にした直後。今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す
+    args:
+      - name: look
+        value: glow
+      - name: default_look
+        value: glow
+      - name: overrides
+        value: '["つながりの見た目"]'
+      - name: message
+        value: '{"kind": "ok", "text": "ワークスペースの既定にしました（10/05 14:20）。"}'
+  - name: DefaultsArrived
+    description: 他の人が保存した既定が届いた。上書きを持たない項目に新しい既定が当たり、パネルに知らせを残す
+    args:
+      - name: look
+        value: starlight
+      - name: default_look
+        value: starlight
+      - name: message
+        value: '{"kind": "info", "text": "ワークスペースの既定が変わりました（10/05 14:22）。"}'
+  - name: NoStorage
+    description: 端末の保存領域に書けない。選んだ表示は当てるが、開いている間だけであることを先頭に出す
+    args:
+      - name: storage_available
+        value: 'false'
+      - name: look
+        value: glow
+      - name: overrides
+        value: '["つながりの見た目"]'
+  - name: Export
+    description: 配る書き出し。見た目・表示する種類は変えられ、「ワークスペースの既定にする」は出さない
+    args:
+      - name: can_save
+        value: 'false'
+      - name: look
+        value: glow
+      - name: overrides
+        value: '["つながりの見た目"]'
+  - name: Narrow
+    description: 幅 390px。画面の幅いっぱいに出し、行の高さと押せる的は変えない
+    args:
+      - name: look
+        value: dust
+      - name: default_look
+        value: starlight
+      - name: overrides
+        value: '["つながりの見た目", "表示する種類"]'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+lead: トップバーの「表示の設定」で左から出すパネルの中身。つながりの見た目と表示する種類を選ばせ、この端末で変えている項目と「既定に戻す」、線で区切った下に「ワークスペースの既定にする」を出す。枠と開閉はコメントの一覧と同じ左のパネルを使う。
+status: planned
+args:
+  - name: look
+    type: 列挙
+    required: true
+    choices: glow・starlight・constellation・deep・dust
+    description: 今当てているつながりの見た目。5 つを名前（グロウ・星の光・星図・深宇宙・星屑）と短い説明で縦に並べ、この値にチェックを付ける
+  - name: default_look
+    type: 列挙
+    required: true
+    choices: glow・starlight・constellation・deep・dust
+    description: ワークスペースの既定の見た目（`config.yaml` の `display.network_look`。無ければ `deep`）。その行の名前の右に「既定」の札を付ける
+  - name: visible_kinds
+    type: 配列
+    required: true
+    choices: decisions・tasks・research・docs・terms・notes・logs の重複しない並び
+    description: 今当てている表示する種類。先頭に「すべて」のチェック（一部だけのときは途中の印と `{数}/7`）、7 つの種類のチェックを並べ、概要とつながりは「常に表示」の行で出す
+  - name: default_kinds
+    type: 配列
+    required: true
+    description: ワークスペースの既定の表示する種類（`config.yaml` の `display.visible_kinds`。無ければ全ての種類）。`look`・`visible_kinds` と比べて「ワークスペースの既定にする」を出すかを決める
+  - name: counts
+    type: オブジェクト
+    required: true
+    description: 種類の識別子 → 項目の件数。種類の行の右に出す
+  - name: overrides
+    type: 配列
+    required: true
+    description: この端末で変えている項目の名前（「つながりの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類}）」）。あるときは「この端末で変えている項目」に「・」でつないで並べ、「既定に戻す」を出す。空のときは「ワークスペースの既定のまま表示しています。」を出し、ボタンを出さない
+  - name: can_save
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: 「ワークスペースの既定にする」を置くか。配る書き出しでは false。true で `look`・`visible_kinds` が既定と同じときは、ボタンの代わりに「今の選びはワークスペースの既定と同じです。」を出す
+  - name: message
+    type: オブジェクト
+    required: false
+    default: なし（知らせを出さない）
+    description: パネルの下端に残す知らせ。`kind`（ok は既定にした、info は既定が変わった）と `text`（時刻つきの文言。例「ワークスペースの既定が変わりました（10/05 14:22）。」）を持つ
+  - name: storage_available
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: 端末の保存領域に書けるか。false のとき、先頭に「この端末に保存できません。選んだ表示は、このページを開いている間だけ当たります。」を出す
+events:
+  - name: 見た目を選ぶ
+    when: 見た目の行を選んだとき
+    value: look（`value`）
+    description: 使う側が個人の上書きとして端末の保存領域に残し、その場でつながりに当てる
+  - name: 表示する種類を変える
+    when: 種類のチェックか「すべて」を付け外ししたとき
+    value: 変えた後の種類の並び
+    description: 使う側が個人の上書きとして残し、タブの帯を描き直す。開いている画面の種類を外したときは概要へ移し、履歴は置き換える
+  - name: 既定に戻す
+    when: 「既定に戻す」を押したとき
+    description: 使う側が個人の上書き（見た目・表示する種類・ライト / ダーク・表の列）を全て外し、ワークスペースの既定で描き直す。フォーカスを「ワークスペースの既定のまま表示しています。」の文に移す
+  - name: ワークスペースの既定にする
+    when: 「ワークスペースの既定にする」を押したとき
+    description: 使う側が確かめのモーダル（部品設計『既定の保存の確かめ』）を、今の既定と今の選びで開く
+  - name: 閉じる
+    when: 見出しの帯の × か Esc を押したとき
+    description: 使う側がパネルを閉じ、トップバーの表示の設定のボタンにフォーカスを戻す。履歴に積まない
+accessibility:
+  - 見た目は凡例「つながりの見た目」の `fieldset` の中のラジオボタン、表示する種類は凡例「表示する種類」の中のチェックボックスにする。「すべて」の途中の状態は `indeterminate` で示す
+  - 「既定」の札は行の読み上げ名に含め、色だけに頼らない
+  - 知らせは `role="status"`、端末に保存できないことは `role="alert"` で読み上げに伝える
+  - 「ワークスペースの既定にする」は `aria-haspopup="dialog"` を持つ
+  - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける

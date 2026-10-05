@@ -1,0 +1,72 @@
+title: "既定の保存の確かめ"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts#MindmapPreview.settingsConfirm"
+story: "Preview/SettingsSaveConfirm"
+states:
+  - name: BothChanged
+    description: 2 つの項目を変える。今の既定と保存する値を矢印で並べる。最初のフォーカスは取り消す
+    args:
+      - name: from
+        value: '{"look": "starlight", "visible_kinds": "メモを除いた 6 種類"}'
+      - name: to
+        value: '{"look": "dust", "visible_kinds": "全ての種類"}'
+  - name: OneUnchanged
+    description: 表示する種類を変えない。今の値に「変えない」の札を付ける
+    args:
+      - name: from
+        value: '{"look": "deep", "visible_kinds": "全ての種類"}'
+      - name: to
+        value: '{"look": "glow", "visible_kinds": "全ての種類"}'
+  - name: Busy
+    description: 保存している途中。ボタンを押せなくし、保存するボタンに待つ印を出す
+    args:
+      - name: busy
+        value: 'true'
+  - name: ErrorReadOnly
+    description: ワークスペースのフォルダに書き込めず保存できなかった。理由と直し方を出し、もう一度保存できる
+    args:
+      - name: error
+        value: 保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。
+  - name: ErrorOffline
+    description: サーバーが止まっていて保存できなかった。コメントを送れなかったときと同じ直し方を出す
+    args:
+      - name: error
+        value: 保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。
+  - name: Narrow
+    description: 幅 320pxで外した種類が多い。値を折り返す
+    args:
+      - name: to
+        value: '{"look": "constellation", "visible_kinds": ["logs"]}'
+    notes:
+      見せ方: Storybook の画面幅を 320px にして見せる
+lead: 表示の設定の「ワークスペースの既定にする」で開くモーダル。見出し「ワークスペースの既定を書き換えますか」の下に、つながりの見た目と表示する種類の今の既定と保存する値を並べ、取り消すと保存するを出す。
+status: planned
+args:
+  - name: from
+    type: オブジェクト
+    required: true
+    description: 今のワークスペースの既定（`look`・`visible_kinds`）
+  - name: to
+    type: オブジェクト
+    required: true
+    description: 保存する値（表示の設定で今当てている `look`・`visible_kinds`）。項目ごとに、変える項目は「{今の既定} → {保存する値}」、変えない項目は今の値と「変えない」の札を出す。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
+  - name: busy
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 保存している途中か。true のときは 2 つのボタンを押せなくし、保存するボタンに待つ印と「保存しています」を出す。Esc でも閉じない
+  - name: error
+    type: 文字列
+    required: false
+    default: なし（理由を出さない）
+    description: 保存できなかった理由と直し方。あるときは並べた値の下に出し、もう一度保存できるままにする
+events:
+  - name: 保存する
+    when: 「保存する」を押したとき
+    description: 使う側が `busy` にして『設定の既定の書き換え』を呼ぶ。書けたらモーダルを閉じてパネルに知らせを残し、書けなければ `error` に理由を入れて描き直す（画面の表示は保存の前のまま）
+  - name: 取り消す
+    when: 「取り消す」か Esc を押したとき（`busy` の間は受けない）
+    description: 使う側がモーダルを閉じ、「ワークスペースの既定にする」にフォーカスを戻す。何も書かない
+accessibility:
+  - '`dialog` を `showModal()` で開き、見出し「ワークスペースの既定を書き換えますか」を読み上げ名にする。開いたときのフォーカスは取り消すに置く'
+  - 変える項目は「今の既定」「保存する値」を読み上げにだけ残し、矢印の印に頼らない
+  - 保存できなかった理由は `role="alert"` で読み上げに伝える
