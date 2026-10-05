@@ -41,7 +41,6 @@
     if (state.sim) p.set("sim", state.sim);
     if (state.badge !== "C") p.set("badge", state.badge);
     if (state.band !== "A") p.set("band", state.band);
-    if (state.dw !== "A") p.set("dw", state.dw);
     if (state.col !== "A") p.set("col", state.col);
     const h = p.toString();
     return `${PAGES}${SCREEN_OF[tab]}/89/${MOCK_VARIANT}/index.html${h ? "#" + h : ""}`;
@@ -246,13 +245,11 @@
   const BADGES = [["A", "A 値の数"], ["B", "B 項目の数"], ["C", "C 条件の数"]];
   // マップの状態の帯・つながりの種類の帯の案: A = 帯を外す（推奨）/ B = 件数つきの凡例として残す
   const BANDS = [["A", "A 帯を外す"], ["B", "B 凡例で残す"]];
-  // ドロワーの出し方の案: A = 広い幅では本文の横に並べ、選ぶたびに変わる結果を見ながら選ぶ（推奨）/ B = どの幅でも本文に重ねるモーダル
-  const DRAWERS = [["A", "A 横に並べる"], ["B", "B 重ねる"]];
   // ボードで状態の条件から外した列の案: A = 列を残して外していることを書く（推奨）/ B = 列を隠す
   const COLS = [["A", "A 列を残す"], ["B", "B 列を隠す"]];
   // 検討事項は、どの表示形式でも状態で要見直し・未決定・未整理・保留を選んだ状態で開く
   const DECISION_DEFAULT = ["要見直し", "未決定", "未整理", "保留"];
-  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", badge: "C", band: "A", dw: "A", col: "A", mapQ: "", tables: {}, graphF: {}, deps: true };
+  const state = { zoom: 1, tab: "overview", view: "table", panel: null, full: false, sim: "", badge: "C", band: "A", col: "A", comments: false, mapQ: "", tables: {}, graphF: {}, deps: true };
   for (const k of Object.keys(COLUMNS)) state.tables[k] = { q: "", filters: k === "decisions" ? { status: new Set(DECISION_DEFAULT) } : {}, sort: null };
   const colPrefs = (kind) => (prefs.cols[kind] ??= { hidden: COLUMNS[kind].filter((c) => c.hidden).map((c) => c.key), pin: 0 });
 
@@ -269,7 +266,6 @@
     state.sim = SIMS.some(([v]) => v && v === p.get("sim")) ? p.get("sim") : "";
     state.badge = BADGES.some(([v]) => v === p.get("badge")) ? p.get("badge") : "C";
     state.band = BANDS.some(([v]) => v === p.get("band")) ? p.get("band") : "A";
-    state.dw = DRAWERS.some(([v]) => v === p.get("dw")) ? p.get("dw") : "A";
     state.col = COLS.some(([v]) => v === p.get("col")) ? p.get("col") : "A";
     if (first) {
       // f.{列} があるときは、既定の条件に代えてその条件だけで開く
@@ -293,7 +289,6 @@
     if (state.sim) p.set("sim", state.sim);
     if (state.badge !== "C") p.set("badge", state.badge);
     if (state.band !== "A") p.set("band", state.band);
-    if (state.dw !== "A") p.set("dw", state.dw);
     if (state.col !== "A") p.set("col", state.col);
     const h = p.toString();
     return h ? "#" + h : location.pathname;
@@ -1230,7 +1225,7 @@
     const group = (label, act, list, cur) => `<span class="mock-group" role="group" aria-label="${label}"><span class="mock-label">${label}</span>${list.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join("")}</span>`;
     const hasBand = SCREEN === "graph" || (SCREEN === "decisions" && state.view === "map");
     const hasBoard = ["decisions", "tasks", "docs"].includes(SCREEN) && state.view === "board";
-    bar.innerHTML = (SCREEN === "overview" ? "" : group("ドロワー", "mdw", DRAWERS, state.dw) + group("バッジ", "mbadge", BADGES, state.badge))
+    bar.innerHTML = (SCREEN === "overview" ? "" : group("バッジ", "mbadge", BADGES, state.badge))
       + (hasBand ? group("帯", "mband", BANDS, state.band) : "")
       + (hasBoard ? group("外した列", "mcol", COLS, state.col) : "")
       + group("状態", "sim", SIMS, state.sim);
@@ -1324,31 +1319,47 @@
     const any = activeConds(scope).length > 0;
     drawerDlg.querySelector(".fd-count").textContent = any ? `${total} 件中 ${shown} 件` : `${total} 件`;
     drawerDlg.querySelector(".fd-body").innerHTML = groups;
-    drawerDlg.querySelector(".fd-foot").innerHTML = `<button class="btn ghost" type="button" data-act="dclearall"${any ? "" : " hidden"}>すべて解除</button><span class="spacer"></span><button class="btn primary" type="button" data-act="dclose">${drawerModal() ? `${shown} 件を表示` : "閉じる"}</button>`;
+    drawerDlg.querySelector(".fd-foot").innerHTML = `<button class="btn ghost" type="button" data-act="dclearall"${any ? "" : " hidden"}>すべて解除</button><span class="spacer"></span><button class="btn primary" type="button" data-act="dclose">${shown} 件を表示</button>`;
   };
-  // 重ねて出すか: 案 B と、本文の横に並べる幅の無い狭い幅では重ねる
-  const drawerModal = () => state.dw === "B" || matchMedia("(max-width: 900px)").matches;
+  // ドロワーはどの幅でも見ている画面に重ね、外側の押下と Esc で閉じる。同じ左から出るコメントの一覧とは同時に開かず、後から開いた方に切り替える
   const openDrawer = () => {
-    const modal = drawerModal();
-    // 重ねるときは外側の押下と Esc で、横に並べるときは Esc で閉じる（本文を押しても閉じない）
-    drawerDlg.setAttribute("closedby", modal ? "any" : "closerequest");
-    if (modal) drawerDlg.showModal(); else drawerDlg.show();
-    document.body.classList.toggle("drawer-open", !modal);
-    // 横に並べると本文の幅が変わるので、マップの大きさや固定した列の位置を描き直す
-    render();
+    if (state.comments) setComments(false);
+    drawerDlg.showModal();
+    renderDrawer();
     document.getElementById("filter-btn")?.setAttribute("aria-expanded", "true");
     // 開いたら最初の選択肢へフォーカスを移す
     drawerDlg.querySelector(".fd-body input")?.focus();
   };
   drawerDlg.addEventListener("close", () => {
-    document.body.classList.remove("drawer-open");
-    render();
     const b = document.getElementById("filter-btn");
     b?.setAttribute("aria-expanded", "false");
-    b?.focus();
+    // コメントの一覧に切り替えたときは、フォーカスを一覧に残す
+    if (!state.comments) b?.focus();
   });
-  // closedby に対応していないブラウザでも、重ねたときは外側（幕）の押下で閉じる
-  if (!("closedBy" in HTMLDialogElement.prototype)) drawerDlg.addEventListener("click", (e) => { if (e.target === drawerDlg && drawerDlg.matches(":modal")) drawerDlg.close(); });
+  // 外側（幕）の押下で閉じる（closedby に対応していないブラウザの分も）。幕越しにコメントのボタンを押したときは、閉じてコメントの一覧に切り替える
+  drawerDlg.addEventListener("click", (e) => {
+    if (e.target !== drawerDlg) return;
+    const r = drawerDlg.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+    const cb = document.getElementById("comment-btn")?.getBoundingClientRect();
+    const onComments = cb && e.clientX >= cb.left && e.clientX <= cb.right && e.clientY >= cb.top && e.clientY <= cb.bottom;
+    if (drawerDlg.open) drawerDlg.close();
+    if (onComments) { setComments(true); cdrawer.querySelector(".icon-btn")?.focus(); }
+  });
+  // ===== コメントの一覧（#78 の左から重ねるパネル）: 絞り込みのドロワーと同時に開かないことを見せるための見本 =====
+  const cdrawer = document.getElementById("cdrawer");
+  const SAMPLE_COMMENTS = [["D-022", "見本は 3 案で足りるか、ユーザーに聞きたい"], ["T-002", "モダンの案は余白を詰めた版も見たい"]];
+  const renderCommentBtn = () => {
+    const n = SAMPLE_COMMENTS.length;
+    document.getElementById("comment-btn-slot").innerHTML = `<button class="comment-btn" id="comment-btn" type="button" data-act="comments" aria-expanded="${state.comments}" aria-controls="cdrawer" aria-label="レビュー中のコメント ${n} 件">${icon("log")}<span class="cb-label">コメント</span><span class="count">${n}</span></button>`;
+  };
+  const setComments = (open) => {
+    state.comments = open;
+    cdrawer.classList.toggle("open", open);
+    cdrawer.innerHTML = open ? `<div class="panel-head cdrawer-head"><h2 class="cm-h">レビュー中のコメント<span class="count">${SAMPLE_COMMENTS.length}</span></h2><span class="spacer"></span><button class="icon-btn" type="button" data-act="comments" aria-label="コメントの一覧を閉じる">${icon("x")}</button></div>
+      <ul class="cm-list">${SAMPLE_COMMENTS.map(([id, t]) => `<li class="card"><span class="mono">${id}</span> ${esc(titleOf(id))}<p>${esc(t)}</p></li>`).join("")}</ul>` : "";
+    renderCommentBtn();
+  };
   // 条件を変えたら、本文とドロワーを描き直し、押した選択肢へフォーカスを戻す
   const changeFilter = (focusSel) => {
     const body = drawerDlg.querySelector(".fd-body"), top = body.scrollTop;
@@ -1411,7 +1422,14 @@
       case "mbadge": state.badge = el.dataset.v; history.replaceState(null, "", hashOf()); render(); break;
       case "mband": state.band = el.dataset.v; history.replaceState(null, "", hashOf()); lastScreen = ""; render(); break;
       case "mcol": state.col = el.dataset.v; history.replaceState(null, "", hashOf()); render(); break;
-      case "mdw": state.dw = el.dataset.v; history.replaceState(null, "", hashOf()); if (drawerDlg.open) { drawerDlg.close(); openDrawer(); } render(); break;
+      case "comments": {
+        // 開くときは絞り込みのドロワーを閉じて切り替える
+        const open = !state.comments;
+        if (open && drawerDlg.open) drawerDlg.close();
+        setComments(open);
+        (open ? cdrawer.querySelector(".icon-btn") : document.getElementById("comment-btn"))?.focus();
+        break;
+      }
       case "zoom": {
         const cur = state.zoom === "fit" ? 0.6 : state.zoom, zd = el.dataset.z;
         state.zoom = zd === "fit" ? (state.zoom === "fit" ? 1 : "fit") : Math.max(0.4, Math.min(1.5, Math.round((cur + (zd === "in" ? 0.15 : -0.15)) * 100) / 100));
@@ -1504,8 +1522,8 @@
     }, 150);
   });
   document.addEventListener("keydown", (e) => {
-    // 横に並べたドロワーは、フォーカスが本文にあっても Esc で閉じる
-    if (e.key === "Escape" && drawerDlg.open && !drawerDlg.matches(":modal") && !dlg.open && !viewerDlg.open && !fullDlg.open) { e.preventDefault(); drawerDlg.close(); return; }
+    // コメントの一覧は Esc で閉じ、コメントのボタンへフォーカスを戻す
+    if (e.key === "Escape" && state.comments && !drawerDlg.open && !dlg.open && !viewerDlg.open && !fullDlg.open) { e.preventDefault(); setComments(false); document.getElementById("comment-btn")?.focus(); return; }
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.closest(".send")) { e.preventDefault(); e.target.closest(".send").requestSubmit(); return; }
     const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
     if (e.key === "/" && !typing && !dlg.open) { e.preventDefault(); openSearch(); }
@@ -1536,6 +1554,7 @@
   readHash(true);
   applyTheme();
   render();
+  renderCommentBtn();
   // ドロワーを開いた状態のモック
   if (state.initDrawer) openDrawer();
   // 検索を開いた状態のモック

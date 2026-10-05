@@ -67,14 +67,14 @@
     <!-- ドロワーの状態 -->
     <section class="cat-sec">
       <h2>ドロワー</h2>
-      <p>条件ごとに値を件数つきのチェックボックスで並べる。値を選んだ条件にだけ「解除」を出し、今の条件では 0 件になる値は文字を薄くする。広い幅では本文の横に並べ、下端のボタンは「閉じる」にする。</p>
+      <p>条件ごとに値を件数つきのチェックボックスで並べる。値を選んだ条件にだけ「解除」を出し、今の条件では 0 件になる値は文字を薄くする。どの幅でも見ている画面に重ね、下端のボタンは絞った件数を添えて閉じる。</p>
       <div class="stages" id="drawers"></div>
     </section>
 
     <!-- 狭い幅 -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>ボタンは文字を隠してアイコンとバッジだけにし、名前は読み上げで渡す。ドロワーは本文に重ねるモーダルにし、画面の幅から 48px を引いた幅で右に後ろの画面を残す。下端のボタンは絞った件数を添えて閉じる。</p>
+      <p>ボタンは文字を隠してアイコンとバッジだけにし、名前は読み上げで渡す。ドロワーは画面の幅から 48px を引いた幅で、右に後ろの画面を残す。</p>
       <div class="stages" id="narrow"></div>
     </section>
 
@@ -138,14 +138,14 @@
         stage("C 値を選んでいる条件の数（推奨）", button(TWO)),
       ].join("");
       document.getElementById("drawers").innerHTML = [
-        stage("何も選んでいない（タスク）", drawer("8 件", [["種類", [["作業", 4], ["調査", 3], ["検証", 1]]], ["状態", [["進行中", 2], ["未着手", 3], ["保留", 1], ["完了", 1], ["中止", 1]]], ["タグ", TAGS([], [4, 1, 0, 1, 0, 3])]], "閉じる")),
-        stage("値を選んでいる・0 件の値・長いタグ（検討事項）", drawer("36 件中 3 件", [["状態", STATUS(OPEN4, [0, 2, 1, 0, 3])], ["タグ", TAGS(["プレビュー"], [3, 2, 3, 0, 1, 5])]], "閉じる")),
-        stage("マップのキーワードに一致した件数", drawer("36 件中 12 件", [["状態", STATUS(OPEN4, [1, 9, 1, 1, 24], { "未決定": 2, "要見直し": 1 })]], "閉じる")),
-        stage("該当なし", drawer("8 件中 0 件", [["種類", [["作業", 0, true], ["調査", 3], ["検証", 1]]], ["状態", [["未着手", 0, true], ["完了", 1]]]], "閉じる")),
+        stage("何も選んでいない（タスク）", drawer("8 件", [["種類", [["作業", 4], ["調査", 3], ["検証", 1]]], ["状態", [["進行中", 2], ["未着手", 3], ["保留", 1], ["完了", 1], ["中止", 1]]], ["タグ", TAGS([], [4, 1, 0, 1, 0, 3])]], "8 件を表示")),
+        stage("値を選んでいる・0 件の値・長いタグ（検討事項）", drawer("36 件中 3 件", [["状態", STATUS(OPEN4, [0, 2, 1, 0, 3])], ["タグ", TAGS(["プレビュー"], [3, 2, 3, 0, 1, 5])]], "3 件を表示")),
+        stage("マップのキーワードに一致した件数", drawer("36 件中 12 件", [["状態", STATUS(OPEN4, [1, 9, 1, 1, 24], { "未決定": 2, "要見直し": 1 })]], "12 件を表示")),
+        stage("該当なし", drawer("8 件中 0 件", [["種類", [["作業", 0, true], ["調査", 3], ["検証", 1]]], ["状態", [["未着手", 0, true], ["完了", 1]]]], "0 件を表示")),
       ].join("");
       document.getElementById("narrow").innerHTML = [
         stage("ボタン", button({ n: 1, say: "1 つの条件で絞り込み中" }), "narrow"),
-        stage("ドロワー（重ねる）", drawer("36 件中 12 件", [["状態", STATUS(OPEN4, [1, 9, 1, 1, 24])], ["タグ", TAGS([], [3, 2, 9, 1, 2, 7])]], "12 件を表示"), "narrow"),
+        stage("ドロワー", drawer("36 件中 12 件", [["状態", STATUS(OPEN4, [1, 9, 1, 1, 24])], ["タグ", TAGS([], [3, 2, 9, 1, 2, 7])]], "12 件を表示"), "narrow"),
       ].join("");
       const th = (label) => `<th scope="col" aria-sort="none"><div class="th-in"><button class="th-sort" type="button">${label}<span class="sort-hint">${icon(UPDOWN)}</span></button><button class="th-tool pin" type="button" aria-pressed="false" aria-label="${label}まで固定">${icon(PIN)}</button></div></th>`;
       document.getElementById("thead").innerHTML = `<div class="table-wrap"><table class="grid"><thead><tr>${["ID", "タイトル", "状態", "種類", "タグ"].map(th).join("")}</tr></thead><tbody><tr><td><span class="mono">T-002</span></td><td>プレビューのモックを作る（モダン）</td><td>進行中</td><td>作業</td><td><span class="tag">プレビュー</span></td></tr></tbody></table></div>`;
