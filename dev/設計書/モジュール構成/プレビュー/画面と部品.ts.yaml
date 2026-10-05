@@ -181,9 +181,9 @@ components:
         required: true
         description: 条件の `key` → チップに出す列の名前
       - name: onFilter
-        type: '(key: string | null, values: string[]) => void'
+        type: '(filters: Record<string, string[]>) => void'
         required: true
-        description: × では `key` と残りの値、「すべて解除」では `key` を `null` にして知らせる（部品設計『表』の `絞り込み` のイベント）
+        description: 解除した後の新しい条件を知らせる（部品設計『表』の `絞り込み` のイベント）。× は押した値を外し、値が残らない条件は `key` ごと消す。「すべて解除」は `{}`。組み立ては `filterChips` が持ち、`table` も同じものを使う
   - name: overviewScreen
     title: 概要
     container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
@@ -204,7 +204,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: 画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、マップ・ボード・表に同じ結果を渡す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
+    summary: 画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、マップ・ボード・表に同じ結果を渡す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
     props:
       - name: index
         type: RecordIndex
@@ -240,7 +240,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
     usecase: タスクをボードで見る
     kind: 画面
-    summary: 画面設計『タスク』を描く。タスクを `filters` で絞り（`filterRows`）、ボードと表に同じ結果を渡す。ボードの列は `boardColumns`（状態の条件を渡し、外した列に「状態の条件で外しています。」を出す）。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    summary: 画面設計『タスク』を描く。タスクを `filters` で絞り（`filterRows`）、ボードと表に同じ結果を渡す。ボードの列は `boardColumns`（状態の条件を渡し、外した列に「状態の条件で外しています。」を出す）。ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
@@ -267,7 +267,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
     usecase: 資料を読む
     kind: 画面
-    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。ツールバーに絞り込みのボタンとポップオーバーを置かない。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。ツールバーに絞り込みのボタンとポップオーバーを置かない。カード・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
@@ -406,7 +406,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
     usecase: つながりを辿る
     kind: 画面
-    summary: 画面設計『つながり』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマの描画は玉ごとに一度だけ画像にした文字を倍率をかけて置く（PoC の `opt-each-bitmap`）。画面の外は描かない。条件が変わったら玉と線を作り直し、条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    summary: 画面設計『つながり』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマの描画は玉ごとに一度だけ画像にした文字を倍率をかけて置く（PoC の `opt-each-bitmap`）。画面の外は描かない。条件が変わったら玉と線を作り直し、条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。キャンバスの上に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
