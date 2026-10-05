@@ -66,3 +66,4 @@ accessibility:
   - '`dialog` を `showModal()` で開き、見出し「変更履歴」を読み上げ名にする'
   - 選んでいる行に `aria-current="true"` を付け、チェックの印だけに頼らない
   - 行はボタンにし、キーボードで移って選べる
+test_file: tests/integration/storybook/test_history_dialog_stories.py

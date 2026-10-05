@@ -36,3 +36,4 @@ args:
 accessibility:
   - 記号は `aria-hidden` にし、「新規」「変更」を読み上げにだけ残す文字と `title` を持つ
   - 色だけに頼らず、新規と変更を記号の形でも分ける
+test_file: tests/integration/storybook/test_diff_mark_stories.py

@@ -219,3 +219,4 @@ exclusivity: ワークスペースを書き換えるツールと同じ鍵とロ�
 refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/インターフェース定義/サーバー/まだまとめていない変更#
+test_file: tests/integration/server/test_commit.py

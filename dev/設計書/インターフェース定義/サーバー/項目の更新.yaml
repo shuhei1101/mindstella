@@ -64,6 +64,7 @@ flows:
       - '`body_diff` に 1 行目・3 行目が入っていない'
       - D-1 の `history_dropped_seq` が、消した `answer` の回の `seq`
       - '`changed` が `body_markdown`'
+    test: test_normal_when_body_rewritten_over_limit
   - name: 正常系（変わったキーが無い）
     summary: 同じ値で直しても変更履歴を積まない
     setup:
@@ -92,6 +93,7 @@ flows:
       - '`changed` が空'
       - D-1 が `history` を持たない
       - '`changes.yaml` の `pending` の `added`・`changed` が空'
+    test: test_normal_when_nothing_changed
   - name: 正常系（保持する回数が 0）
     summary: 保持する回数が 0 なら変更履歴を積まず、持っていた変更履歴を消す
     setup:
@@ -119,6 +121,7 @@ flows:
       - ツールのエラーにならない
       - D-1 の `status` が `決定済み` で、`history` のキーが無い
       - '`changes.yaml` の `pending.changed` が空'
+    test: test_normal_when_limit_zero
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:

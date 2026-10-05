@@ -102,6 +102,7 @@ flows:
       - '`ok` が偽'
       - '`problems` に `stale_history`（D-1・`history[0].body_diff`）がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal_when_history_stale
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
     setup:

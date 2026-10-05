@@ -26,3 +26,4 @@ elements:
     visible_when: 常時
 lead: 差分の表示で比べる時点を選ぶモーダル。トップバーの「変更履歴」で開く。
 mock: dev/mock/pages/decisions/79/standard/index.html
+test_file: tests/integration/preview/test_history_screen.py

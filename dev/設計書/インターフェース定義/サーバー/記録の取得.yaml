@@ -75,6 +75,7 @@ flows:
       - '`decisions` の D-1 が `history` を 1 回分持ち、YAML と同じ'
       - '`changes.sets` が「足す」の 1 つで、`added` が `[D-1]`'
       - '`changes.pending.changed` が `[D-1]`'
+    test: test_normal_when_history
   - name: 異常系（YAML がスキーマに合わない・422）
     summary: 手で崩した YAML があると、合わない箇所を返す
     setup:

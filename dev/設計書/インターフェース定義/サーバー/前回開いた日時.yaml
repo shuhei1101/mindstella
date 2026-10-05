@@ -100,3 +100,4 @@ constraints:
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
   - dev/設計書/ER図/ワークスペース#
+test_file: tests/integration/server/test_opened.py
