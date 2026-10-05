@@ -120,7 +120,7 @@ def test_normal(
     snapshot_tree: SnapshotTree,
     page: Page,
 ) -> None:
-    """変更履歴から「前回開いてから」を選び、概要の要見直しから D-3 の詳細を開き、つながりで D-3 を押して、終えた URL を開き直す（正常系）。"""
+    """変更履歴から書き換えのまとまりを選び、概要の要見直しから D-3 の詳細を開き、つながりで D-3 を押して、終えた URL を開き直す（正常系）。"""
     # 準備（プレビューを一度開いて閉じた後に、D-3 の状態と本文を書き換え、D-6 を足して 1 つのまとまりにする）
     root = make_workspace(
         *_records(make_item),
@@ -138,9 +138,9 @@ def test_normal(
     replay("add", workspace=ws, kind="decision", item=NEW_DECISION)
     replay("commit", workspace=ws, summary=COMMIT_SUMMARY)
     before = snapshot_records(snapshot_tree(root))
-    # 実行（概要を開き、変更履歴から「前回開いてから」を選ぶ）
+    # 実行（概要を開き、変更履歴から書き換えのまとまりを選ぶ）
     open_preview(url)
-    pick_history_point(page, "前回開いてから")
+    pick_history_point(page, COMMIT_SUMMARY)
     # 実行（概要の要見直しのタイルで D-3 を押す）
     page.click('#tile-review button[data-id="D-3"]')
     page.wait_for_selector("aside.panel.open")
