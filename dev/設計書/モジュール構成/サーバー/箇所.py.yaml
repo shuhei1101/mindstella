@@ -1,0 +1,243 @@
+title: "サーバー / 箇所"
+lead: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    locations.py   箇所の形の確かめ・今の項目に合うかの確かめ・書式の記号を外した比べ方
+  ```
+data_models:
+  - name: Location
+    title: 箇所
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    role: DTO
+    summary: コメント・書きかけ・送信が持つ `loc`（ER 図『ワークスペース』）。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: kind
+        type: Literal['body', 'value']
+        description: '`body` は本文の文、`value` は項目の値'
+      - name: start
+        type: int | None
+        default: None
+        description: '`body` のときの始めの行（1 始まり）'
+      - name: end
+        type: int | None
+        default: None
+        description: '`body` のときの終わりの行（`start` 以上）'
+      - name: key
+        type: str | None
+        default: None
+        description: '`value` のときの項目のキーのパス（案の中は `options[{案の key}].{キー}`）'
+      - name: text
+        type: str
+        description: 画面で選んだ文（前後の空白を除いたもの）
+constants:
+  - name: MARK_CHARS
+    title: 比べる前に外す記号
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    summary: 選んだ文と元の文の両方から外す Markdown の書式の記号（計画書『サーバー』の「検証」）
+    value: '"*_~`\\|#>"'
+  - name: LINE_MARKUP_PATTERNS
+    title: 行ごとに外す書式
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    summary: 本文の元の文から、記号を外す前に行ごとに並びの順に置き換える正規表現と置き換え先の組（行頭のリストの記号 `-`・`+`・`数字.`・`数字)` を外す、表の区切りの行とコードブロックのフェンスの行を外す、画像 `![代わりの文](URL)` を丸ごと外す、リンク `[文](URL)` を `文` にする。描いた文では画像の `alt` が `Range.toString()` に入らず、リンクの括弧も出ないため。画像はリンクより先に当てる）
+    value: ((re.compile(r"^\s*(?:[-+]|\d+[.)])\s+"), ""), (re.compile(r"^\s*\|?\s*:?-{3,}.*$"), ""), (re.compile(r"^\s*(?:`{3,}|~{3,}).*$"), ""), (re.compile(r"!\[[^\]]*\]\([^)]*\)"), ""), (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"))
+functions:
+  - name: parse_location
+    title: 箇所の読み取り
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: 要求の `loc` の形を確かめ、`Location` にする
+    args:
+      - name: value
+        type: Any
+        required: true
+        passing: positional
+        description: 要求の `loc` の値
+    returns:
+      type: Location
+      description: 確かめた箇所（`text` は前後の空白を除く）
+    process: |-
+      1. オブジェクトで、`kind` が `body` か `value` かを確かめる
+      2. `body` なら `start`・`end` が 1 以上の整数（真偽値でない）で `start <= end` か、`value` なら `key` が空でない文字列かを確かめる
+      3. `text` が文字列で、前後の空白を除いて 1〜`MAX_BODY_CHARS` 文字かを確かめる
+         - どれかに合わない場合、`loc.{キー}: {理由}` の `CommentInvalidError` を送る
+    exceptions:
+      - name: CommentInvalidError
+        condition: オブジェクトでない、`kind` が違う、`kind` に合うキーが無いか型が違う、`start > end`、`text` が空白だけか上限を超える
+        message: 'loc.{キー}: {理由}'
+    unit_tests:
+      - name: test_parse_location
+        case: 正常
+        summary: 本文と値の箇所を読む
+        condition: '`parametrize`: `{kind: body, start: 2, end: 3, text: " 文 "}` / `{kind: value, key: options[B].cons, text: 文}`'
+        mock: なし
+        expected: '`Location(kind=body, start=2, end=3, text=文)` / `Location(kind=value, key=options[B].cons, text=文)`'
+      - name: test_parse_location_when_invalid
+        case: 異常
+        summary: 崩れた箇所は読まない
+        condition: '`parametrize`: `[]` / `kind: line` / `body` で `end` が無い / `start: 3, end: 2` / `start: true` / `value` で `key` が無い / `text: "  "` / `text` が 10001 文字'
+        mock: なし
+        expected: '`CommentInvalidError`（メッセージが `loc` で始まる）'
+        exception: 箇所の形の誤り
+  - name: location_to_dict
+    title: 箇所の書き出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 共通
+    scope: public
+    summary: '`Location` を YAML・JSON に書く辞書にする（`None` のキーは書かない）'
+    args:
+      - name: location
+        type: Location
+        required: true
+        passing: positional
+        description: 箇所
+    returns:
+      type: dict[str, Any]
+      description: '`kind`・`start`・`end`・`key`・`text` のうち値を持つもの'
+    process: 1. `asdict` し、値が `None` のキーを落として返す
+    unit_tests:
+      - name: test_location_to_dict
+        case: 正常
+        summary: 無いキーを書かない
+        condition: '`Location(kind=value, key=title, text=文)`'
+        mock: なし
+        expected: '`{kind: value, key: title, text: 文}`（`start`・`end` を持たない）'
+  - name: check_location
+    title: 箇所の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: 箇所が今の項目に合うかを確かめ、合わなければ理由を返す
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 向けた項目
+      - name: location
+        type: Location
+        required: true
+        passing: positional
+        description: 箇所
+    returns:
+      type: str | None
+      description: 合えば `None`、合わなければ日本語の理由
+    process: |-
+      1. `body` の場合
+         - 項目の `body` の本文を読む（`read_body`。無ければ `{ID} は本文を持ちません` を返す）
+         - 改行で分け、`end` が行数を超えれば `{ID} の本文は {行数} 行しかありません` を返す
+         - `start`〜`end` 行をつないだものを元の文にする（`normalize_source`）
+      2. `value` の場合
+         - キーのパスで値を引く（`value_at`。無ければ `{ID} にキー {key} がありません` を返す）
+         - 配列は要素を改行でつなぎ、それ以外は文字列にして元の文にする（`normalize_selected`）
+      3. 選んだ文を記号と空白を外して（`normalize_selected`）元の文に含まれれば `None`、含まれなければ `選んだ文が {ID} の {本文の {start}〜{end} 行目 | {key}} にありません` を返す
+    unit_tests:
+      - name: test_check_location
+        case: 正常
+        summary: 書式の記号を外して合う箇所を通す
+        condition: '`parametrize`: 本文の 2 行目 `- **言い換えたい**文` で「言い換えたい文」 / 2〜3 行目のソフト改行をまたぐ文 / 表の行 `| A | 内容 |` で「A 内容」 / リンク `[資料](https://x)` で「資料」 / `詳しくは [規約](https://e.x) を読む。` でリンクの前後をまたぐ「詳しくは規約を読む」 / `図は ![構成](a.png) のとおり。` で画像をまたぐ「図は のとおり」 / `&amp;` を含む行で `&` / 値 `options[B].cons` の文 / 値 `title` の文'
+        mock: なし
+        expected: どれも `None`
+      - name: test_check_location_when_stale
+        case: 正常
+        summary: 合わない箇所は理由を返す
+        condition: '`parametrize`: 3 行の本文で `end: 5` / 1 行目に無い文 / 本文を持たない項目で `body` / 無いキー `options[Z].cons`'
+        mock: なし
+        expected: どれも空でない文字列（順に `3 行`・`1〜1 行目`・`本文を持ちません`・`options[Z].cons` を含む）
+  - name: value_at
+    title: キーのパスの値
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: '`.` で区切ったキーのパスをたどり、`name[{key}]` は配列のうち `key` が等しい要素を引く'
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 項目
+      - name: key
+        type: str
+        required: true
+        passing: positional
+        description: キーのパス（例 `options[B].cons`）
+    returns:
+      type: Any | None
+      description: 値。たどれなければ `None`
+    process: |-
+      1. `.` で段に分け、段ごとに辞書のキーを引く
+      2. 段が `name[{key}]` なら、`name` の配列のうち `key` が等しい要素へ進む
+      3. 途中で辞書・配列でないか無ければ `None` を返す
+    unit_tests:
+      - name: test_value_at
+        case: 正常
+        summary: 入れ子と案の中を引く
+        condition: '`parametrize`: `title` / `options[B].cons` / `options[Z].cons` / `title.x`'
+        mock: なし
+        expected: タイトル / 案 B の `cons` / `None` / `None`
+  - name: normalize_selected
+    title: 選んだ文の整え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: '`MARK_CHARS` と空白・改行を外す'
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 文
+    returns:
+      type: str
+      description: 記号と空白を外した文
+    process: 1. `MARK_CHARS` の文字と `str.isspace` の文字を外して返す
+    unit_tests:
+      - name: test_normalize_selected
+        case: 正常
+        summary: 記号と空白を外す
+        condition: '`**太字** \| `コード`\n次`'
+        mock: なし
+        expected: '`太字コード次`'
+  - name: normalize_source
+    title: 本文の元の文の整え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/locations.py
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: 本文の Markdown の行から、描いた文に現れない書式を外してから記号と空白を外す
+    args:
+      - name: markdown
+        type: str
+        required: true
+        passing: positional
+        description: 本文の行（改行でつないだもの）
+    returns:
+      type: str
+      description: 比べるための文
+    process: |-
+      1. 行ごとに `LINE_MARKUP_PATTERNS` を並びの順に当てる（リストの記号を外し、表の区切りの行とフェンスの行は行ごと外し、画像は丸ごと外し、リンクは中の文だけを残す）
+      2. `html.unescape` で文字参照を文字に戻す
+      3. `normalize_selected` を当てて返す
+    unit_tests:
+      - name: test_normalize_source
+        case: 正常
+        summary: 行頭の記号・区切りの行・フェンス・画像・リンクの括弧と URL・文字参照を外す
+        condition: '`parametrize`: `1. 項目` / `| --- | --- |` / … ```` ```mermaid ```` / `![図](a.png)` / `[資料](https://x)` / `A &amp; B`'
+        mock: なし
+        expected: '`項目` / 空 / 空 / 空 / `資料` / `A&B`'
+test_files:
+  - tests/unit/scripts/test_locations.py

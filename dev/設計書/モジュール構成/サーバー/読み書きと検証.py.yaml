@@ -8,6 +8,8 @@ directory: |-
       settings.schema.json     mindmap.yaml
       decisions.schema.json    ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
       submissions.schema.json  submissions.yaml（『送信』が使う）
+      comments.schema.json     comments.yaml（『コメント』が使う）
+      drafts.schema.json       drafts.yaml（『コメント』が使う）
     scripts/
       kinds.py                 種類の定義と状態の分類（定数）
       errors.py                ツールのエラーにする例外
@@ -286,13 +288,6 @@ classes:
     summary: 渡した ID の送信が無い。メッセージに ID
     kind: クラス
     inherits: MindmapError
-  - name: SubmissionInvalidError
-    title: 送信の中身の誤り
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 回答・意見を送る
-    summary: 送信の `target`・`body` が無い・文字列でない、または `body` が空白だけか上限を超える。配信は 400 にする。メッセージにキーの名前と理由
-    kind: クラス
-    inherits: MindmapError
   - name: ServeFailedError
     title: 配信を立てられない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -311,6 +306,31 @@ classes:
       - name: unmapped
         type: list[tuple[str, str]]
         description: 残るもの（ID か `goal`、フェーズ）
+  - name: CommentInvalidError
+    title: コメントの中身の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 項目へコメントする
+    summary: 'コメント・書きかけ・まとめて送るの要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の形が崩れている。配信は 400 にする。メッセージは `{キーのパス}: {理由}`'
+    kind: クラス
+    inherits: MindmapError
+  - name: CommentNotFoundError
+    title: コメントが無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: コメントを選んで送る
+    summary: 渡した ID のコメントがレビュー中に無い。配信は 404 にする。メッセージに無い ID（複数なら、でつなぐ）
+    kind: クラス
+    inherits: MindmapError
+  - name: CommentConflictError
+    title: コメントが今の記録に合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: コメントを選んで送る
+    summary: 箇所が今の項目に合わない、向けた項目が消えた、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: stale
+        type: list[tuple[str, str]]
+        description: 合わないコメントの ID と理由。溜めた順
 constants:
   - name: KINDS
     title: 種類の一覧

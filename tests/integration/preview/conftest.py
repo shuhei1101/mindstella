@@ -6,6 +6,7 @@ MCP サーバーが `preview_url` で配る URL を開き、ハッシュで画�
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -15,9 +16,16 @@ from preview_fixture_types import (
     MAIN_SELECTOR,
     OpenPreview,
     WritePreview,
+    WriteReviewPreview,
     WriteSamplePreview,
 )
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import (
+    CallTool,
+    MakeItem,
+    MakeWorkspace,
+    WriteComments,
+    WriteDrafts,
+)
 
 # 画面が描き終わるまで待つ上限ミリ秒
 RENDER_TIMEOUT_MS = 15_000
@@ -38,6 +46,36 @@ def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePr
         assert result.is_error is False, result.text
         assert result.data is not None
         return str(result.data["url"])
+
+    return _write
+
+
+@pytest.fixture
+def write_review_preview(
+    make_workspace: MakeWorkspace,
+    write_comments: WriteComments,
+    write_drafts: WriteDrafts,
+    call_tool: CallTool,
+) -> WriteReviewPreview:
+    """項目・レビュー中のコメント・書きかけを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
+
+    def _write(
+        *items: dict[str, Any],
+        comments: tuple[dict[str, Any], ...] = (),
+        drafts: tuple[dict[str, Any], ...] = (),
+        bodies: dict[str, str] | None = None,
+        settings: dict[str, Any] | None = None,
+    ) -> tuple[str, Path]:
+        """ワークスペースを作って配信を立てる。`preview_url` が失敗したらテストを止める。"""
+        root = make_workspace(*items, settings=settings, bodies=bodies)
+        if comments:
+            write_comments(root, *comments)
+        if drafts:
+            write_drafts(root, *drafts)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
 
     return _write
 

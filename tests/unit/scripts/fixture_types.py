@@ -6,12 +6,16 @@ from collections.abc import Callable
 from typing import Any
 
 from workspace_fixtures import (
+    MakeComment,
+    MakeDraft,
     MakeItem,
     MakeLegacyItem,
     MakeLegacyWorkspace,
     MakeSubmission,
     MakeWorkspace,
     SnapshotTree,
+    WriteComments,
+    WriteDrafts,
     WriteSubmissions,
 )
 
@@ -19,6 +23,8 @@ __all__ = [
     "FailingReplace",
     "FailingUnlink",
     "FailingWriteText",
+    "MakeComment",
+    "MakeDraft",
     "MakeItem",
     "MakeLegacyItem",
     "MakeLegacyWorkspace",
@@ -26,6 +32,8 @@ __all__ = [
     "MakeWorkspace",
     "PatchPluginVersion",
     "SnapshotTree",
+    "WriteComments",
+    "WriteDrafts",
     "WriteSubmissions",
 ]
 

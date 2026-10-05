@@ -83,9 +83,22 @@ class SubmissionNotFoundError(MindmapError):
     """渡した ID の送信が無い。"""
 
 
-class SubmissionInvalidError(MindmapError):
-    """送信の `target`・`body` が無い・文字列でない、または `body` が空白だけか上限を超える。"""
-
-
 class ServeFailedError(MindmapError):
     """プレビューの配信の待ち受けを立てられない（`OSError`）。"""
+
+
+class CommentInvalidError(MindmapError):
+    """コメント・書きかけ・まとめて送るの要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の形が崩れている。メッセージは `{キーのパス}: {理由}`。"""
+
+
+class CommentNotFoundError(MindmapError):
+    """渡した ID のコメントがレビュー中に無い。メッセージに無い ID（複数なら `、` でつなぐ）。"""
+
+
+class CommentConflictError(MindmapError):
+    """箇所が今の項目に合わない・向けた項目が消えた・元に戻す ID が使えない。`stale` に合わないコメントの `(ID, 理由)` を溜めた順に持つ（まとめて送るときだけ）。"""
+
+    def __init__(self, message: str, *, stale: list[tuple[str, str]] | None = None) -> None:
+        """合わない理由と、合わないコメントごとの ID と理由を持つ。"""
+        super().__init__(message)
+        self.stale: list[tuple[str, str]] = stale if stale is not None else []

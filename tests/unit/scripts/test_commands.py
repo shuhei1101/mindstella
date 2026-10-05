@@ -635,10 +635,13 @@ def test_run_submissions(
     """取り込んでいない送信を返す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="最初の問い"))
+    no_target = make_submission("S-3", body="全体に目を通した")
+    del no_target["target"]
     write_submissions(
         root,
         make_submission("S-1", taken="2026-10-03T00:00:00+00:00"),
         make_submission("S-2", body="案 A にする"),
+        no_target,
     )
     # 実行
     payload = commands.run_submissions(root)
@@ -649,9 +652,18 @@ def test_run_submissions(
                 "id": "S-2",
                 "target": "D-1",
                 "target_title": "最初の問い",
+                "loc": None,
                 "body": "案 A にする",
                 "sent": DEFAULT_TIMESTAMP,
-            }
+            },
+            {
+                "id": "S-3",
+                "target": None,
+                "target_title": None,
+                "loc": None,
+                "body": "全体に目を通した",
+                "sent": DEFAULT_TIMESTAMP,
+            },
         ]
     }
 

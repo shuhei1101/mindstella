@@ -1,5 +1,5 @@
 "use strict";
-// 描画のライブラリ（marked・DOMPurify・elkjs・mermaid）の有無と呼び出し。読めなかったときは名前を出し、代わりの読み込みはしない。
+// 描画のライブラリ（marked・DOMPurify・elkjs・mermaid）の有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 描画のライブラリの名前 → 読めたときに置かれるグローバルの名前 */
@@ -28,6 +28,130 @@ var MindmapPreview;
         });
     }
     MindmapPreview.libraryNotice = libraryNotice;
+    // ─── 本文の行の印 ───
+    /** 本文のブロックの要素が持つ、元の Markdown の先頭の行（1 始まり）の属性 */
+    MindmapPreview.LINE_ATTR = "data-line-start";
+    /** 項目の値を描いた要素が持つ、項目のキーのパスの属性 */
+    MindmapPreview.VALUE_KEY_ATTR = "data-key";
+    /** 改行の数を返す */
+    function countNewlines(text) {
+        return text.split("\n").length - 1;
+    }
+    /** token の並びに、先頭の行から raw の改行を足し進めた行を持たせる（リストの項目・引用の中も同じ） */
+    function assignLines({ tokens, start }) {
+        let line = start;
+        for (const token of tokens) {
+            token.line = line;
+            if (token.type === "list" && token.items) {
+                assignLines({ tokens: token.items, start: line });
+            }
+            else if ((token.type === "list_item" || token.type === "blockquote") && token.tokens) {
+                // 項目の中の token は字下げを外した raw を持つが、改行の数は元と同じ
+                assignLines({ tokens: token.tokens, start: line });
+            }
+            line += countNewlines(token.raw);
+        }
+    }
+    /** token が持つ行を返す */
+    function lineOf(token) {
+        return token.line;
+    }
+    /** 描いた HTML の最初の開きタグに、行の印を足す */
+    function withLine(html, line) {
+        if (line === undefined)
+            return html;
+        return html.replace(/^<(\w+)/, `<$1 ${MindmapPreview.LINE_ATTR}="${line + 1}"`);
+    }
+    /** 本文の Markdown を、空行を持たないブロックごとに行の印を付けて HTML に描く */
+    function renderWithLines(source) {
+        const tokens = marked.lexer(source);
+        assignLines({ tokens: tokens, start: 0 });
+        const renderer = new marked.Renderer();
+        const base = {
+            heading: renderer.heading.bind(renderer),
+            paragraph: renderer.paragraph.bind(renderer),
+            code: renderer.code.bind(renderer),
+            listitem: renderer.listitem.bind(renderer),
+            table: renderer.table.bind(renderer),
+        };
+        renderer.heading = (token) => withLine(base.heading(token), lineOf(token));
+        renderer.paragraph = (token) => withLine(base.paragraph(token), lineOf(token));
+        // mermaid の図は印を付けない（図の中の選択を本文の外として扱う）
+        // フェンスで囲んだコードは、中身がフェンスの次の行から始まる
+        renderer.code = (token) => {
+            if (token.lang === "mermaid")
+                return base.code(token);
+            const line = lineOf(token);
+            const fence = token.codeBlockStyle === "indented" ? 0 : 1;
+            return withLine(base.code(token), line === undefined ? undefined : line + fence);
+        };
+        // 段落を持つ項目は中の段落が印を持つので、段落を持たない項目だけ li に付ける
+        renderer.listitem = (item) => (item.loose ? base.listitem(item) : withLine(base.listitem(item), lineOf(item)));
+        // 表は行ごとに 1 行。見出しの行の次に区切りの行がある
+        renderer.table = (token) => {
+            const start = lineOf(token);
+            if (start === undefined)
+                return base.table(token);
+            let row = 0;
+            return base.table(token).replace(/<tr>/g, () => {
+                const line = row === 0 ? start : start + 1 + row;
+                row += 1;
+                return `<tr ${MindmapPreview.LINE_ATTR}="${line + 1}">`;
+            });
+        };
+        return marked.parser(tokens, { renderer });
+    }
+    MindmapPreview.renderWithLines = renderWithLines;
+    /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */
+    function linesBefore({ block, node, offset }) {
+        // 表の行は 1 行で、セルの間の空白の改行は数えない
+        if (block.tagName === "TR")
+            return 0;
+        const range = document.createRange();
+        range.setStart(block, 0);
+        range.setEnd(node, offset);
+        const fragment = range.cloneContents();
+        return countNewlines(fragment.textContent ?? "") + fragment.querySelectorAll("br").length;
+    }
+    /** 選択の端から、本文の中で印を持つ最も近いブロックを返す（本文の外なら null） */
+    function lineBlock(node) {
+        const element = node instanceof Element ? node : node.parentElement;
+        const block = element?.closest(`[${MindmapPreview.LINE_ATTR}]`) ?? null;
+        return block?.closest(".md") ? block : null;
+    }
+    /** 選んだ範囲を、本文なら元の Markdown の行の範囲、値ならキーのパスの箇所にする。本文と値の外・空の選択は null */
+    function selectionLocation(range) {
+        if (range.collapsed)
+            return null;
+        const text = range.toString().trim();
+        // 文が空白だけ
+        if (text === "")
+            return null;
+        // 始点と終点が同じ値の中: 値の箇所
+        const startKey = keyElement(range.startContainer);
+        if (startKey !== null && startKey === keyElement(range.endContainer)) {
+            return { kind: "value", key: startKey.getAttribute(MindmapPreview.VALUE_KEY_ATTR) ?? "", text };
+        }
+        const startBlock = lineBlock(range.startContainer);
+        const endBlock = lineBlock(range.endContainer);
+        // 本文の外
+        if (!startBlock || !endBlock)
+            return null;
+        const first = Number(startBlock.getAttribute(MindmapPreview.LINE_ATTR));
+        const last = Number(endBlock.getAttribute(MindmapPreview.LINE_ATTR));
+        return {
+            kind: "body",
+            start: first + linesBefore({ block: startBlock, node: range.startContainer, offset: range.startOffset }),
+            end: last + linesBefore({ block: endBlock, node: range.endContainer, offset: range.endOffset }),
+            text,
+        };
+    }
+    MindmapPreview.selectionLocation = selectionLocation;
+    /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
+    function keyElement(node) {
+        const element = node instanceof Element ? node : node.parentElement;
+        return element?.closest(`[${MindmapPreview.VALUE_KEY_ATTR}]`) ?? null;
+    }
     /** 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える */
     function renderMarkdown(source) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "md" } });
@@ -42,7 +166,7 @@ var MindmapPreview;
             return root;
         }
         // 描いた HTML は無害化してから差し込む（記録は利用者のもの）
-        root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false }));
+        root.innerHTML = DOMPurify.sanitize(renderWithLines(source));
         // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える
         for (const code of root.querySelectorAll("code.language-mermaid")) {
             const original = code.textContent ?? "";

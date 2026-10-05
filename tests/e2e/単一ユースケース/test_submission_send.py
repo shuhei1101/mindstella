@@ -1,4 +1,4 @@
-"""回答・意見を送る（サーバーが配るプレビューの詳細パネルから、項目の ID ごとに回答・意見を送る）の E2E テスト。
+"""項目へコメントする（サーバーが配るプレビューの詳細パネルで、開いている項目へのコメントを書き、送らずにレビュー中として溜める）の E2E テスト。
 
 MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む。
 """
@@ -9,7 +9,12 @@ from typing import Any
 
 import yaml
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview
+from preview_helpers import (
+    COMMENTS_BUTTON,
+    DETAIL_MESSAGE,
+    DETAIL_TEXTAREA,
+    OpenPreview,
+)
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
 
 # 未決定の検討事項 D-1 の案
@@ -18,22 +23,29 @@ OPTIONS = [
     {"key": "B", "content": "カードで見せる"},
 ]
 
-# 送る本文
+# 溜める本文
 BODY = "案 A にする"
 
-# 送信の入力欄・結果・送るボタン
-TEXTAREA = "aside.panel form.send textarea"
-MESSAGE = "aside.panel form.send .send-msg"
-SEND_BUTTON = "aside.panel form.send button[type=submit]"
+# 溜めずにパネルを閉じる書きかけの本文
+DRAFT_BODY = "案 B も見たい"
 
 # 画面に結果が出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
 
+# 閉じるときに保つ書きかけが、ファイルに届くまで待つミリ秒
+DRAFT_FLUSH_WAIT_MS = 600
+
 
 def _open_detail(page: Page, open_preview: OpenPreview, url: str) -> None:
-    """検討事項 D-1 の詳細パネルを開き、送信の入力欄が出るのを待つ。"""
+    """検討事項 D-1 の詳細パネルを開き、コメントの入力欄が出るのを待つ。"""
     open_preview(url, "#tab=decisions&id=D-1")
-    page.wait_for_selector(TEXTAREA)
+    page.wait_for_selector(DETAIL_TEXTAREA)
+
+
+def _read_comments(root: Any) -> list[dict[str, Any]]:
+    """ワークスペースのレビュー中のコメントを読む（ファイルが無ければ 0 件）。"""
+    path = root / "comments.yaml"
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["items"] if path.exists() else []
 
 
 def test_normal(
@@ -43,7 +55,7 @@ def test_normal(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """詳細パネルから回答・意見を送ると、取り込んでいない送信として残り、入力欄が空になる（正常系）。"""
+    """詳細パネルでコメントを溜めると、レビュー中のコメントとして残り、入力欄が空になる（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=OPTIONS))
     decisions_before = (root / "decisions.yaml").read_bytes()
@@ -51,19 +63,16 @@ def test_normal(
     assert served.data is not None
     _open_detail(page, open_preview, served.data["url"])
     # 実行
-    page.fill(TEXTAREA, BODY)
-    page.click(SEND_BUTTON)
-    page.wait_for_selector(f"{MESSAGE}.sent", timeout=RESULT_TIMEOUT_MS)
+    page.fill(DETAIL_TEXTAREA, BODY)
+    page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    submissions: list[dict[str, Any]] = yaml.safe_load(
-        (root / "submissions.yaml").read_text(encoding="utf-8")
-    )["items"]
-    assert [(item["target"], item["body"], item["taken"]) for item in submissions] == [
-        ("D-1", BODY, None)
-    ]
-    assert submissions[0]["sent"]
-    assert "送りました" in page.inner_text(MESSAGE)
-    assert page.input_value(TEXTAREA) == ""
+    comments = _read_comments(root)
+    assert [(item["target"], item["body"]) for item in comments] == [("D-1", BODY)]
+    assert not (root / "submissions.yaml").exists()
+    assert page.inner_text(DETAIL_MESSAGE) == "レビューに追加しました（レビュー中 1 件）。"
+    assert page.input_value(DETAIL_TEXTAREA) == ""
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
     assert (root / "decisions.yaml").read_bytes() == decisions_before
 
 
@@ -74,19 +83,19 @@ def test_error_when_body_empty(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """本文が空だと送らず、本文が要る旨を出す（異常系）。"""
+    """本文が空だと溜めず、本文が要る旨を出す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=OPTIONS))
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     _open_detail(page, open_preview, served.data["url"])
     # 実行
-    page.fill(TEXTAREA, "   ")
-    page.click(SEND_BUTTON)
-    page.wait_for_selector(f"{MESSAGE}.empty", timeout=RESULT_TIMEOUT_MS)
+    page.fill(DETAIL_TEXTAREA, "   ")
+    page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{DETAIL_MESSAGE}.empty", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    assert not (root / "submissions.yaml").exists()
-    assert "回答・意見を入れてから送ってください。" in page.inner_text(MESSAGE)
+    assert _read_comments(root) == []
+    assert "コメントを入れてから追加してください。" in page.inner_text(DETAIL_MESSAGE)
 
 
 def test_error_when_server_unreachable(
@@ -96,7 +105,7 @@ def test_error_when_server_unreachable(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """サーバーを止めてから送ると、送れなかった旨を出し、入力した本文を残す（異常系）。"""
+    """サーバーを止めてから溜めると、溜められなかった旨を出し、入力した本文を残す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=OPTIONS))
     server = start_server()
@@ -107,10 +116,42 @@ def test_error_when_server_unreachable(
     server.close_stdin()
     server.wait_exit()
     # 実行
-    page.fill(TEXTAREA, BODY)
-    page.click(SEND_BUTTON)
-    page.wait_for_selector(f"{MESSAGE}.failed", timeout=RESULT_TIMEOUT_MS)
+    page.fill(DETAIL_TEXTAREA, BODY)
+    page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{DETAIL_MESSAGE}.failed", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    assert "送れませんでした" in page.inner_text(MESSAGE)
-    assert page.input_value(TEXTAREA) == BODY
-    assert not (root / "submissions.yaml").exists()
+    assert "レビューに追加できませんでした" in page.inner_text(DETAIL_MESSAGE)
+    assert page.input_value(DETAIL_TEXTAREA) == BODY
+    assert _read_comments(root) == []
+
+
+def test_normal_when_draft_restored_after_restart(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """溜めずにパネルを閉じた書きかけを、サーバーを立ち上げ直した後の新しい URL で開いた入力欄へ戻す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=OPTIONS))
+    first_server = start_server()
+    served = first_server.call("preview_url", workspace=str(root))
+    assert served.data is not None
+    _open_detail(page, open_preview, served.data["url"])
+    # 実行（書きかけを入れて溜めずにパネルを閉じる）
+    page.fill(DETAIL_TEXTAREA, DRAFT_BODY)
+    page.click('aside.panel button[data-act="close"]')
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.wait_for_timeout(DRAFT_FLUSH_WAIT_MS)
+    # サーバーを止めて立て直し、新しい URL で開く
+    first_server.close_stdin()
+    first_server.wait_exit()
+    second_server = start_server()
+    restarted = second_server.call("preview_url", workspace=str(root))
+    assert restarted.data is not None
+    _open_detail(page, open_preview, restarted.data["url"])
+    # 検証
+    assert restarted.data["url"] != served.data["url"]
+    assert page.input_value(DETAIL_TEXTAREA) == DRAFT_BODY
+    assert _read_comments(root) == []

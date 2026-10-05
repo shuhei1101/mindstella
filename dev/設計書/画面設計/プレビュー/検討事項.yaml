@@ -18,6 +18,12 @@ elements:
         value: 概要と同じ
       - name: diffPoint
         value: 『概要』のトップバーと同じ
+      - name: comments
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: comment_count
+        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
+      - name: comments_open
+        value: コメントの一覧を開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え

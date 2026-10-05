@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- color-scheme: 既定は端末の明暗 -->
   <meta name="color-scheme" content="light dark">
-  <title>回答・意見の送信 | mindmap 部品のモック</title>
+  <title>コメントの入力 | mindstella 部品のモック</title>
   <!-- 文字: デザイン方針の Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../refs/65/assets/style.css">
   <link rel="stylesheet" href="../../refs/71/assets/style.css">
+  <link rel="stylesheet" href="../../refs/78/assets/style.css">
   <style>
     /* カタログの節: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
@@ -22,18 +23,16 @@
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
-    /* 部品を置く台: 詳細パネルの幅に揃える */
+    /* 部品を置く台 */
     .stage { width: var(--panel-w); max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
-    /* 台の中の送信の入力: 詳細パネルの下端と同じ面に置く */
-    .stage .send { border: 1px solid var(--border); }
-    /* 台の中では帯を流れに置く */
-    .stage .topbar { position: static; }
     /* 狭い幅の見本 */
     .stage.narrow { width: 390px; }
+    /* 台の中の入力: 詳細パネルの下端と同じ面に置く */
+    .stage .send { border: 1px solid var(--border); }
     /* 最も狭い幅の見本 */
     .stage.narrowest { width: 320px; }
-    /* 狭い幅の見本: 画面幅 900px 以下のときと同じ置き方にする */
-    .stage.narrow .send.send-footer, .stage.narrowest .send.send-footer { padding: 10px 16px 12px; }
+    /* 台の中では帯を流れに置く */
+    .stage .topbar { position: static; }
     /* 狭い幅の見本の接続の状態: 短い文言を出す */
     .stage .conn.short .conn-long { display: none; }
     .stage .conn.short .conn-short { display: inline; }
@@ -43,90 +42,104 @@
     /* 接続の状態の見本の台: 長い文言が入る幅にする */
     .stage:has(.conn:not(.short)) { width: 720px; }
     /* ホバーの見本 */
-    .is-hover { background: var(--hover) !important; color: var(--text) !important; }
+    .is-hover { background: var(--hover) !important; }
     /* キーボードのフォーカスの見本 */
-    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .is-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
   </style>
 </head>
 <body>
   <main class="content">
     <!-- パンくず -->
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / send-form</nav>
-    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">回答・意見の送信</h1>
-    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">詳細パネルと詳細の全画面の下端に置く、項目の ID ごとに回答・意見を送る入力と、サーバーにつながらないときのトップバーの表示。</p>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">コメントの入力</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">詳細パネルと詳細の全画面の下端に置く、開いている項目へのコメントをレビュー中に溜める入力。選んだ箇所を添えられる。配る書き出しでは出さない。</p>
     <section class="cat-sec">
       <h2>通常（入力が空）</h2>
-      <p>詳細パネルの下端に、本文と線で区切って置く。ラベルは常に見せ、どの項目へ送るかを ID で示す。入力欄は 2 行から始まる。</p>
+      <p>詳細パネルと詳細の全画面の下端に、本文と線で区切って置く。ラベルは常に見せ、どの項目へのコメントかを ID で示す。書いたコメントは送らずにレビュー中に溜める。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-1"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-1" name="body" rows="2" class="" aria-describedby="send-1-msg"></textarea>
-        <div class="send-row"><p class="send-msg" id="send-1-msg" role="status"></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-1"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-1" rows="2" class="" aria-describedby="sf-1-msg"></textarea>
+        <div class="send-row"><p class="send-msg " id="sf-1-msg" role="status"></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
       <h2>入力中（フォーカス）</h2>
-      <p>入力欄に印の色の輪。中身に合わせて 8 行まで伸びる。Ctrl+Enter でも送れる。</p>
+      <p>入力欄に印の色の輪。書きかけはサーバーに保ち、パネルを閉じても・立ち上げ直しても戻る。Ctrl+Enter でも溜められる。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-2"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-2" name="body" rows="2" class="is-focus" aria-describedby="send-2-msg">案 A にする</textarea>
-        <div class="send-row"><p class="send-msg" id="send-2-msg" role="status"></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-2"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-2" rows="2" class="is-focus" aria-describedby="sf-2-msg">案 A にする</textarea>
+        <div class="send-row"><p class="send-msg " id="sf-2-msg" role="status"></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
-      <h2>送るボタンのホバー・フォーカス</h2>
-      <p>ホバーは面の色、フォーカスは印の色の輪。</p>
+      <h2>溜めるボタンのフォーカス</h2>
+      <p>印の色の輪。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-3"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-3" name="body" rows="2" class="" aria-describedby="send-3-msg">案 A にする</textarea>
-        <div class="send-row"><p class="send-msg" id="send-3-msg" role="status"></p><button class="btn primary is-hover" type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
-      </form><div style="height:12px"></div><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-4"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-4" name="body" rows="2" class="" aria-describedby="send-4-msg">案 A にする</textarea>
-        <div class="send-row"><p class="send-msg" id="send-4-msg" role="status"></p><button class="btn primary is-focus" type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-3"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-3" rows="2" class="" aria-describedby="sf-3-msg">案 A にする</textarea>
+        <div class="send-row"><p class="send-msg " id="sf-3-msg" role="status"></p><button class="btn primary is-focus" type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
-      <h2>送っている（読み込み中）</h2>
-      <p>二重に送らないよう送るボタンを押せなくし、入力欄を書き換えられなくする。1 秒を超えたら回る印と「送っています」を出す。</p>
+      <h2>箇所を添えた（入口を押した後の入力の置き場所の案 A・推奨）</h2>
+      <p>選んだ箇所の入口を押すと、入力欄の上に箇所の名前と選んだ文を添える。× で外すと、項目へのコメントに戻る。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-5"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-5" name="body" rows="2" class="" aria-describedby="send-5-msg" readonly>案 A にする</textarea>
-        <div class="send-row"><p class="send-msg sending" id="send-5-msg" role="status"><span class="spinner" aria-hidden="true"></span><span>送っています</span></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-4"><span class="mono">A-005</span> へのコメント</label><div class="send-quote"><span class="sq-loc">本文 3 行目</span><q>受け取る人へ渡す形</q><button class="icon-btn sq-x" type="button" aria-label="添えた箇所を外す" title="添えた箇所を外す"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <textarea id="sf-4" rows="2" class="is-focus" aria-describedby="sf-4-msg"></textarea>
+        <div class="send-row"><p class="send-msg " id="sf-4-msg" role="status"></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
-      <h2>送った</h2>
-      <p>入力欄を空にし、送った時刻と、次の話し合いで取り込むことを出す。次に入力を始めたら消す。</p>
+      <h2>箇所を添えた（値・長い選んだ文）</h2>
+      <p>選んだ文は 3 行までにして末尾を省く。値のときは箇所の名前にキーの名前を出す。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-6"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-6" name="body" rows="2" class="" aria-describedby="send-6-msg"></textarea>
-        <div class="send-row"><p class="send-msg sent" id="send-6-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>送りました（10/04 11:23）。次の話し合いの最初に取り込みます。</span></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-5"><span class="mono">D-022</span> へのコメント</label><div class="send-quote"><span class="sq-loc">案 C のデメリット</span><q>表の密度が下がる。表の列を詰めて並べるため、1 行に出せる項目の数が減り、ID と状態の列が画面の外へ押し出される。狭い幅では横に送らないと読めない列が増え、比べるのに手間がかかる</q><button class="icon-btn sq-x" type="button" aria-label="添えた箇所を外す" title="添えた箇所を外す"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <textarea id="sf-5" rows="2" class="" aria-describedby="sf-5-msg">ここは別の言い方にしたい</textarea>
+        <div class="send-row"><p class="send-msg " id="sf-5-msg" role="status"></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
-      <h2>本文が空（入力エラー）</h2>
-      <p>送らずに、入力欄の枠と文言で本文が要ることを示し、入力欄へフォーカスを戻す。入力を始めたら消す。送るボタンは押せないようにしない。</p>
+      <h2>溜めている</h2>
+      <p>入力欄を書き換えられなくし、ボタンを押せなくする。回る印で処理中を示す。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-7"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-7" name="body" rows="2" class="" aria-describedby="send-7-msg" aria-invalid="true"></textarea>
-        <div class="send-row"><p class="send-msg empty" id="send-7-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>回答・意見を入れてから送ってください。</span></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-6"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-6" rows="2" class="" aria-describedby="sf-6-msg" readonly>案 A にする</textarea>
+        <div class="send-row"><p class="send-msg adding" id="sf-6-msg" role="status"><span class="spinner" aria-hidden="true"></span><span>レビューに追加しています</span></p><button class="btn primary " type="submit" disabled title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
-      <h2>送れなかった（エラー）</h2>
-      <p>サーバーが止まっているとき。立ち上げ直すと URL が変わり、開き直した画面には入力途中の本文が引き継がれないので、本文を写すボタンを添える。入力した本文を残し、次に送るまで文言を消さない。</p>
+      <h2>溜めた</h2>
+      <p>入力欄を空にし、溜めたことと件数を入力の近くに出す。入力を始めたら消す。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-8"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-8" name="body" rows="2" class="" aria-describedby="send-8-msg">案 A にする</textarea>
-        <div class="send-row"><p class="send-msg failed" id="send-8-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span class="send-msg-body"><span>送れませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから送ってください。</span><button class="btn ghost send-copy" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/></svg>本文を写す</button></span></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-7"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-7" rows="2" class="" aria-describedby="sf-7-msg"></textarea>
+        <div class="send-row"><p class="send-msg added" id="sf-7-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>レビューに追加しました（レビュー中 3 件）。</span></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
+      </form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>本文が空</h2>
+      <p>溜めずに、本文が要ることを出す。入力欄の枠の全体を状態の色にする。</p>
+      <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
+        <label class="send-label" for="sf-8"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-8" rows="2" class="" aria-describedby="sf-8-msg" aria-invalid="true"></textarea>
+        <div class="send-row"><p class="send-msg empty" id="sf-8-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>コメントを入れてから追加してください。</span></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
+      </form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>溜められなかった（サーバーにつながらない）</h2>
+      <p>入力した本文を消さずに残し、次に溜めるまで理由を出す。開き直すと書きかけが戻らないため、本文を写すボタンを添える。</p>
+      <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
+        <label class="send-label" for="sf-9"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-9" rows="2" class="" aria-describedby="sf-9-msg">案 A にする</textarea>
+        <div class="send-row"><p class="send-msg failed" id="sf-9-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span class="send-msg-body"><span>レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。</span><button class="btn ghost send-copy" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/></svg>本文を写す</button></span></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
       <h2>長文</h2>
       <p>8 行を超えたら入力欄の中を送る。</p>
       <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-9"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-9" name="body" rows="2" class="" aria-describedby="send-9-msg">案 A にする。
+        <label class="send-label" for="sf-10"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-10" rows="2" class="" aria-describedby="sf-10-msg">案 A にする。
 理由: 読み返す画面なので、表と数値を長く読んでも疲れない無彩色の骨格がよい。
 印の色は 1 色に絞り、状態の色は状態の表示だけに使う。
 B のカード中心は一覧が長くなると縦に伸びるので、検討事項の表と相性が悪い。
@@ -136,41 +149,68 @@ C のダークは夜間に読むことが少ないので、明暗の切り替え
 ID の等幅は残す。
 図の色はトークンから決める今の形でよい。
 以上。</textarea>
-        <div class="send-row"><p class="send-msg" id="send-9-msg" role="status"></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <div class="send-row"><p class="send-msg " id="sf-10-msg" role="status"></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
+      </form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>項目を指さないコメント（コメントの一覧の中）</h2>
+      <p>見出しを出さず、入力欄と「レビューに追加」だけにした同じ部品。名前「項目を指さないコメント」は読み上げにだけ持つ。コメントの一覧の下端に留める。</p>
+      <div class="stage"><form class="send send-free" novalidate onsubmit="return false">
+        <label class="send-label sr-only" for="sf-11">項目を指さないコメント</label>
+        <textarea id="sf-11" rows="2" class="" aria-describedby="sf-11-msg"></textarea>
+        <div class="send-row"><p class="send-msg " id="sf-11-msg" role="status"></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
+      </form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>文言の案 B 送信待ち</h2>
+      <p>状態の名前を「送信待ち」、溜めるボタンを「送信待ちに追加」にした案。</p>
+      <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
+        <label class="send-label" for="sf-12"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-12" rows="2" class="" aria-describedby="sf-12-msg"></textarea>
+        <div class="send-row"><p class="send-msg added" id="sf-12-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>送信待ちに追加しました（送信待ち 3 件）。</span></p><button class="btn primary " type="submit" title="送信待ちに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>送信待ちに追加</button></div>
+      </form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>文言の案 C 下書き</h2>
+      <p>状態の名前を「下書き」、溜めるボタンを「下書きに保存」にした案。</p>
+      <div class="stage"><form class="send send-footer" novalidate onsubmit="return false">
+        <label class="send-label" for="sf-13"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-13" rows="2" class="" aria-describedby="sf-13-msg"></textarea>
+        <div class="send-row"><p class="send-msg added" id="sf-13-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>下書きに保存しました（下書き 3 件）。</span></p><button class="btn primary " type="submit" title="下書きに保存（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>下書きに保存</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>詳細パネルが画面幅いっぱいになる幅。左右の余白を 16px にする。</p>
+      <p>左右の余白をパネルの本文に揃える。結果は下の行に幅いっぱいで出す。</p>
       <div class="stage narrow"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-10"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-10" name="body" rows="2" class="" aria-describedby="send-10-msg">案 A にする</textarea>
-        <div class="send-row"><p class="send-msg failed" id="send-10-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span class="send-msg-body"><span>送れませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから送ってください。</span><button class="btn ghost send-copy" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/></svg>本文を写す</button></span></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-14"><span class="mono">D-022</span> へのコメント</label><div class="send-quote"><span class="sq-loc">本文 3 行目</span><q>受け取る人へ渡す形</q><button class="icon-btn sq-x" type="button" aria-label="添えた箇所を外す" title="添えた箇所を外す"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <textarea id="sf-14" rows="2" class="" aria-describedby="sf-14-msg">案 A にする</textarea>
+        <div class="send-row"><p class="send-msg failed" id="sf-14-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span class="send-msg-body"><span>レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。</span><button class="btn ghost send-copy" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/></svg>本文を写す</button></span></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
       <h2>最も狭い幅（320px）</h2>
-      <p>結果の文言は折り返し、送るボタンの幅は保つ。</p>
+      <p>結果の文言は折り返し、溜めるボタンの幅は保つ。</p>
       <div class="stage narrowest"><form class="send send-footer" novalidate onsubmit="return false">
-        <label class="send-label" for="send-11"><span class="mono">D-022</span> への回答・意見</label>
-        <textarea id="send-11" name="body" rows="2" class="" aria-describedby="send-11-msg"></textarea>
-        <div class="send-row"><p class="send-msg sent" id="send-11-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>送りました（10/04 11:23）。次の話し合いの最初に取り込みます。</span></p><button class="btn primary " type="submit" title="送る（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/></svg>送る</button></div>
+        <label class="send-label" for="sf-15"><span class="mono">D-022</span> へのコメント</label>
+        <textarea id="sf-15" rows="2" class="" aria-describedby="sf-15-msg"></textarea>
+        <div class="send-row"><p class="send-msg added" id="sf-15-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>レビューに追加しました（レビュー中 3 件）。</span></p><button class="btn primary " type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div>
       </form></div>
     </section>
     <section class="cat-sec">
       <h2>配る書き出し</h2>
-      <p>サーバーなしで開く 1 枚の HTML では、記録を書き換える操作を持たないので送信の入力を出さない（詳細パネルは本文で終わる）。</p>
-      <div class="stage"><p class="muted" style="margin:0">（送信の入力は出さない）</p></div>
+      <p>サーバーなしで開く 1 枚の HTML では、記録を書き換える操作を持たないのでコメントの入力を出さない（詳細パネルは本文で終わる）。</p>
+      <div class="stage"><p class="muted" style="margin:0">（コメントの入力は出さない）</p></div>
     </section>
     <section class="cat-sec">
       <h2>接続の状態（サーバーにつながらない）</h2>
       <p>トップバーの検索の入口の左に出す。押せない表示。最後に読めた記録で描き続けていることと、その時刻を添える。</p>
-      <div class="stage"><header class="topbar"><span class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"/><path d="M12 16h5M17 16V7h5M17 16v9h5"/><circle cx="25" cy="7" r="2.6"/><circle cx="25" cy="25" r="2.6"/></svg><span class="brand-name">mindmap</span></span><span class="spacer"></span><span class="conn" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/></svg><span class="conn-long">サーバーにつながりません（10/04 11:21 に読んだ記録）</span><span class="conn-short">つながりません</span></span><button class="top-btn" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></header></div>
+      <div class="stage"><header class="topbar"><span class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"/><path d="M12 16h5M17 16V7h5M17 16v9h5"/><circle cx="25" cy="7" r="2.6"/><circle cx="25" cy="25" r="2.6"/></svg><span class="brand-name">mindstella</span></span><span class="spacer"></span><span class="conn" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/></svg><span class="conn-long">サーバーにつながりません（10/04 11:21 に読んだ記録）</span><span class="conn-short">つながりません</span></span><button class="top-btn" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></header></div>
     </section>
     <section class="cat-sec">
       <h2>接続の状態（狭い幅）</h2>
       <p>幅 1100px 以下では短い文言にし、読んだ時刻は title に持つ。幅 360px 以下では印だけを見せ、文言は読み上げにだけ残す。</p>
-      <div class="stage narrow"><header class="topbar"><span class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"/><path d="M12 16h5M17 16V7h5M17 16v9h5"/><circle cx="25" cy="7" r="2.6"/><circle cx="25" cy="25" r="2.6"/></svg><span class="brand-name">mindmap</span></span><span class="spacer"></span><span class="conn short" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/></svg><span class="conn-long">サーバーにつながりません（10/04 11:21 に読んだ記録）</span><span class="conn-short">つながりません</span></span><button class="top-btn" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></header></div>
+      <div class="stage narrow"><header class="topbar"><span class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"/><path d="M12 16h5M17 16V7h5M17 16v9h5"/><circle cx="25" cy="7" r="2.6"/><circle cx="25" cy="25" r="2.6"/></svg><span class="brand-name">mindstella</span></span><span class="spacer"></span><span class="conn short" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/></svg><span class="conn-long">サーバーにつながりません（10/04 11:21 に読んだ記録）</span><span class="conn-short">つながりません</span></span><button class="top-btn" type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></header></div>
     </section>
   </main>
 </body>

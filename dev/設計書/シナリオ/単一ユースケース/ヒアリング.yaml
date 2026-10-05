@@ -5,9 +5,9 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。手順が連ねる `next`・`update`・`add`（会話ログ）を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
-        description: 前提が揃った未決定 D-1・D-2 と、D-1 に `depends_on` で依存する未決定 D-3 を持つ
+        description: 前提が揃った未決定 D-1・D-2（どちらも案 A・B を持つ）と、D-1 に `depends_on` で依存する未決定 D-3 を持つ
       - name: 再生する答え
-        description: D-1・D-2 に `answer` を入れて決定済みにする
+        description: 'D-1 は案 A、D-2 は案 B を `adopted: true` にし、`answer` を入れて決定済みにする'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -19,14 +19,15 @@ scenarios:
         CC->>SV: next
         SV->>WS: 全ての YAML を読む
         SV-->>CC: 前提が揃った未決定（D-1・D-2）
-        CC-->>U: D-1・D-2 を 1 ラウンドにまとめて質問の書式で聞く
+        CC-->>U: D-1・D-2 を、それぞれが持つ案の表を付けて 1 ラウンドにまとめて質問の書式で聞く
         U->>CC: 答える
-        CC->>SV: update（D-1・D-2 を決定済みにし、answer を入れる）
+        CC->>SV: update（D-1・D-2 を決定済みにし、選ばれた案を採用して answer を入れる）
         CC->>SV: add（会話ログ）
       ```
     expected:
       - '`next` の候補に D-1・D-2 があり、D-3 が無い'
       - D-1・D-2 が決定済みで `answer` を持つ
+      - 'D-1 は案 A、D-2 は案 B だけが `adopted: true` である'
       - 書き込みの後の `next` の候補に D-3 がある
       - 会話ログが 1 件足されている
     test: test_normal

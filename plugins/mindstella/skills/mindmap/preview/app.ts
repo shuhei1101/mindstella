@@ -1,4 +1,4 @@
-// 起動。記録を読み（配る書き出しは埋め込みから、サーバーの配信は記録の取得から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・回答・意見の送信・端末の保存領域につなぐ。
+// 起動。記録を読み（配る書き出しは埋め込みから、サーバーの配信は記録の取得から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。
 
 namespace MindmapPreview {
   /** 埋め込みのデータの要素の ID */
@@ -7,19 +7,46 @@ namespace MindmapPreview {
   /** 端末の保存領域のキー */
   export const PREFS_KEY = "mindmap-preview";
 
-  /** 書きかけの本文を残す sessionStorage のキーの頭（`{頭}{項目の ID}`）。ポートを含むオリジンごとに分かれ、配信はワークスペースごとに別のポートなので、ワークスペースを含めなくても混ざらない */
-  export const DRAFT_KEY_PREFIX = "mindmap-draft:";
+  /** 入力が止まってから書きかけを保つまでの待ち（ミリ秒）。打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ */
+  export const DRAFT_SAVE_DELAY_MS = 500;
 
-  /** 項目 1 つの回答・意見の送信の状態（開いている間だけ持つ。`body` は sessionStorage にも残す） */
-  export type SendState = {
+  /** 入力欄 1 つ（向けた先ごと）の書きかけと溜める状態（開いている間だけ持つ。書きかけの本文はサーバーにも残す） */
+  export type FormState = {
+    target: string | null;
+    loc: Location | null;
     /** 入力欄の書きかけ */
     body: string;
     status: SendStatus;
-    /** 送った日時 */
-    sentAt: string | null;
-    /** サーバーが返した送れなかった理由 */
+    /** 溜めた後のレビュー中の件数 */
+    count: number | null;
+    /** サーバーが返した溜められなかった理由 */
     detail: string | null;
   };
+
+  /** コメントの画面の状態（開いている間だけ持つ。描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ） */
+  export type CommentState = {
+    /** 最後に読んだレビュー中のコメントと書きかけ */
+    review: ReviewState;
+    /** 入力欄ごと（`formKey`）の書きかけと溜める状態 */
+    forms: Map<string, FormState>;
+    /** 項目の ID → 選んだ箇所の入口を押して入力に添えた箇所 */
+    pendingLoc: Map<string, Location>;
+    /** コメントの一覧でチェックしたコメントの ID */
+    checked: Set<string>;
+    /** 一覧を開いている間に消したコメント */
+    removed: ReviewState["items"];
+    /** 箇所が合わないコメントの ID → 理由 */
+    stale: Map<string, string>;
+    /** コメントの一覧を開いているか */
+    listOpen: boolean;
+    /** 一覧の行から開いたコメントの ID */
+    opened: string | null;
+  };
+
+  /** 入力欄のキー。向けた先（`target` と `loc` の組）を 1 つの文字列にする */
+  export function formKey(target: string | null, loc: Location | null): string {
+    return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null]);
+  }
 
   /** 端末に残す設定 */
   export type Prefs = {
@@ -94,27 +121,8 @@ namespace MindmapPreview {
     }
   }
 
-  /** その項目の書きかけを sessionStorage から読む。無いか保存領域が例外を送るときは空を返す */
-  export function loadDraft(storage: Storage, id: string): string {
-    try {
-      return storage.getItem(`${DRAFT_KEY_PREFIX}${id}`) ?? "";
-    } catch {
-      return "";
-    }
-  }
-
-  /** その項目の書きかけを sessionStorage に残す。空なら消す。保存領域が例外を送るときは何もしない */
-  export function saveDraft(storage: Storage, id: string, body: string): void {
-    try {
-      if (body === "") storage.removeItem(`${DRAFT_KEY_PREFIX}${id}`);
-      else storage.setItem(`${DRAFT_KEY_PREFIX}${id}`, body);
-    } catch {
-      // 保存できない環境では、開いている間のメモリの状態だけで保つ
-    }
-  }
-
   /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
-  function openStorage(kind: "localStorage" | "sessionStorage"): Storage {
+  function openStorage(kind: "localStorage"): Storage {
     try {
       return window[kind];
     } catch {
@@ -187,7 +195,6 @@ namespace MindmapPreview {
     /** サーバーの配信か（配る書き出しは記録を埋め込みから読み、送信も書き換えの知らせも持たない） */
     const serverMode = embedded === null;
     const storage = openStorage("localStorage");
-    const draftStorage = openStorage("sessionStorage");
     const prefs = loadPrefs(storage);
     const persist = (): void => savePrefs({ storage, prefs });
     restoreTablePrefs(prefs.columns, (kind, tablePrefs) => {
@@ -229,6 +236,7 @@ namespace MindmapPreview {
 
     /** 項目を開く。パネル・全画面の中の移動は履歴に積み、見てきた項目を行き来できるようにする */
     const openItem = (id: string, inPanel: boolean): void => {
+      flushDrafts();
       const next: Route = { ...route, id, filters: {} };
       const trail = history.state as Trail | null;
       if (inPanel && route.id !== null) {
@@ -248,6 +256,7 @@ namespace MindmapPreview {
 
     /** 詳細パネルを閉じる */
     const closeDetail = (): void => {
+      flushDrafts();
       if (isNarrow() && history.state !== null && (history.state as Trail).items !== undefined && history.length > 1) {
         history.back();
         return;
@@ -281,6 +290,10 @@ namespace MindmapPreview {
           theme,
           connection,
           readAt: serverMode ? data.built_at : null,
+          comments: serverMode,
+          commentCount: comment.review.items.length,
+          commentsOpen: comment.listOpen,
+          onComments: () => (comment.listOpen ? closeList() : openList()),
           onNavigate: (tab) => go({ ...route, tab, view: defaultView(tab), filters: {} }, true),
           onSearch: openSearch,
           onTheme: (next) => {
@@ -333,10 +346,13 @@ namespace MindmapPreview {
       const existing = document.querySelector<HTMLElement>("aside.panel");
       const fullDialog = document.querySelector<HTMLDialogElement>("dialog.full");
       fullViewer = null;
+      closePill();
       document.body.classList.toggle("panel-open", route.id !== null && !route.full);
       markSelected(route.id);
       // 開いている項目が無い: パネルも全画面も閉じる
       if (route.id === null) {
+        flushDrafts();
+        comment.opened = null;
         existing?.classList.remove("open");
         fullDialog?.close();
         fullDialog?.remove();
@@ -358,13 +374,15 @@ namespace MindmapPreview {
           forward: () => history.forward(),
           diagram: showDiagram,
         },
-        send: serverMode ? sendFormProps(route.id) : null,
+        send: serverMode ? formProps(route.id) : null,
+        review: serverMode ? comment.review.items.filter((item) => item.target === route.id) : null,
       });
       if (route.full) {
         existing?.classList.remove("open");
         fullDialog?.remove();
         document.body.append(panel);
         (panel as HTMLDialogElement).showModal();
+        showOpenedLocation();
         return;
       }
       fullDialog?.close();
@@ -378,6 +396,18 @@ namespace MindmapPreview {
         existing.className = `${panel.className} open`;
         existing.replaceChildren(...panel.children);
       }
+      showOpenedLocation();
+    };
+
+    /** コメントの一覧の行から開いたとき、そのコメントの箇所を示す。別の項目へ移っていれば示すのをやめる */
+    const showOpenedLocation = (): void => {
+      const opened = comment.review.items.find((item) => item.id === comment.opened);
+      if (opened === undefined || opened.target !== route.id) {
+        comment.opened = null;
+        return;
+      }
+      const root = document.querySelector(route.full ? "dialog.full" : "aside.panel");
+      if (opened.loc !== null && root !== null) highlightLocation({ root, loc: opened.loc });
     };
 
     /** 描く（`screen` が真のとき本文の領域も描き直す） */
@@ -443,23 +473,101 @@ namespace MindmapPreview {
       dialog.showModal();
     };
 
-    // ===== 回答・意見の送信 =====
-    /** 項目ごとの送信の状態（描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ） */
-    const sendStates = new Map<string, SendState>();
+    // ===== コメント =====
+    const api = commentApi();
+    const comment: CommentState = {
+      review: { items: [], drafts: [] },
+      forms: new Map(),
+      pendingLoc: new Map(),
+      checked: new Set(),
+      removed: [],
+      stale: new Map(),
+      listOpen: false,
+      opened: null,
+    };
+    /** まとめて送った結果・本文を直している行・直せなかった理由・項目を指さない入力にフォーカスがあるか */
+    let outcome: SendOutcome | null = null;
+    let editing: string | null = null;
+    let editError: string | null = null;
+    let editBody: string | null = null;
+    let freeFocused = false;
+    /** 入力欄を差し替えている間か（外した入力欄の blur を受けないため） */
+    let formRedrawing = false;
+    /** チェックした状態で入れるのは、初めて読んだコメントだけ */
+    const knownIds = new Set<string>();
+    /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
+    const draftTimers = new Map<string, number>();
 
-    /** 項目の送信の状態。無ければ、sessionStorage の書きかけから作る */
-    const sendStateOf = (id: string): SendState => {
-      let state = sendStates.get(id);
+    /** 幅 720px 以下か（項目を指さない入力を畳む幅） */
+    const isCompact = (): boolean => matchMedia("(max-width: 720px)").matches;
+
+    /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ書きかけの箇所を入力に添える */
+    const applyReview = (review: ReviewState, first: boolean): void => {
+      comment.review = review;
+      for (const item of review.items) {
+        if (knownIds.has(item.id)) continue;
+        knownIds.add(item.id);
+        comment.checked.add(item.id);
+      }
+      if (!first) return;
+      for (const draft of review.drafts) {
+        if (draft.target !== null && draft.loc !== null && !comment.pendingLoc.has(draft.target)) {
+          comment.pendingLoc.set(draft.target, draft.loc);
+        }
+      }
+    };
+
+    /** レビュー中のコメントと書きかけを読み直す。届かないときは前の写しのまま */
+    const loadReview = async (first = false): Promise<void> => {
+      const result = await api.read();
+      if (result.ok && result.data !== null) applyReview(result.data, first);
+    };
+
+    /** 向けた先の入力欄の状態。無ければ、同じ向けた先の書きかけの本文で作る */
+    const formStateOf = (target: string | null, loc: Location | null): FormState => {
+      const key = formKey(target, loc);
+      let state = comment.forms.get(key);
       if (state === undefined) {
-        state = { body: loadDraft(draftStorage, id), status: "idle", sentAt: null, detail: null };
-        sendStates.set(id, state);
+        const draft = comment.review.drafts.find((entry) => formKey(entry.target, entry.loc) === key);
+        state = { target, loc, body: draft?.body ?? "", status: "idle", count: null, detail: null };
+        comment.forms.set(key, state);
       }
       return state;
     };
 
-    /** 開いている送信の部品の結果を消す。入力中の欄を作り直さない（変換の途中を壊さないため） */
+    /** 書きかけをすぐ保つ（空なら消える）。届かないときは何も出さない */
+    const saveDraftNow = (state: FormState): void => {
+      const key = formKey(state.target, state.loc);
+      window.clearTimeout(draftTimers.get(key));
+      draftTimers.delete(key);
+      void api.saveDraft({
+        ...(state.target === null ? {} : { target: state.target }),
+        ...(state.loc === null ? {} : { loc: state.loc }),
+        body: state.body,
+      });
+    };
+
+    /** 入力が止まってから書きかけを保つ */
+    const scheduleDraft = (state: FormState): void => {
+      const key = formKey(state.target, state.loc);
+      window.clearTimeout(draftTimers.get(key));
+      draftTimers.set(
+        key,
+        window.setTimeout(() => saveDraftNow(state), DRAFT_SAVE_DELAY_MS),
+      );
+    };
+
+    /** 待っている書きかけを全て、待たずに保つ（パネル・一覧を閉じるときと項目を移るとき） */
+    const flushDrafts = (): void => {
+      for (const key of [...draftTimers.keys()]) {
+        const state = comment.forms.get(key);
+        if (state !== undefined) saveDraftNow(state);
+      }
+    };
+
+    /** 開いている入力の結果を消す。入力中の欄を作り直さない（変換の途中を壊さないため） */
     const clearSendResult = (): void => {
-      const form = document.querySelector<HTMLFormElement>("form.send");
+      const form = document.activeElement?.closest("form.send");
       const message = form?.querySelector(".send-msg");
       if (message !== null && message !== undefined) {
         message.className = "send-msg";
@@ -468,88 +576,406 @@ namespace MindmapPreview {
       form?.querySelector("textarea")?.removeAttribute("aria-invalid");
     };
 
-    /** 開いている項目の送信の部品を、今の状態で差し替え、入力欄へフォーカスを戻す */
-    const redrawSend = (id: string): void => {
-      const current = document.querySelector<HTMLFormElement>("form.send");
-      // 別の項目へ移っていたら、状態だけ持っておく
-      if (current === null || route.id !== id) return;
-      const next = sendForm(sendFormProps(id));
+    /** 入力欄を、今の状態で差し替える（`focus` なら入力欄へフォーカスを戻す）。別の項目へ移っていたら状態だけ持っておく */
+    const redrawForm = ({ target, focus }: { target: string | null; focus: boolean }): void => {
+      const current =
+        target === null
+          ? document.querySelector<HTMLFormElement>(".comments-panel form.send")
+          : document.querySelector<HTMLFormElement>("aside.panel form.send, dialog.full form.send");
+      if (current === null || (target !== null && route.id !== target)) return;
+      const next = sendForm(formProps(target));
+      // 外した入力欄の blur は、利用者が外へ出たのではないので受けない
+      formRedrawing = true;
       current.replaceWith(next);
+      formRedrawing = false;
+      if (!focus) return;
       const field = next.querySelector("textarea");
       field?.focus();
       field?.setSelectionRange(field.value.length, field.value.length);
     };
 
-    /** 本文を送り、結果を状態に残して部品を描き直す */
-    const submit = async (id: string, body: string): Promise<void> => {
-      const state = sendStateOf(id);
-      state.body = body;
-      // 空白だけ: 送らず、入力欄へフォーカスを戻す
-      if (body.trim() === "") {
-        Object.assign(state, { status: "empty", detail: null });
-        redrawSend(id);
-        return;
+    /** 箇所を外す。書きかけは箇所を持たない向けた先へ移す */
+    const unquote = (state: FormState): void => {
+      const { target } = state;
+      if (target === null || state.loc === null) return;
+      const plain = formStateOf(target, null);
+      // 箇所を持つ書きかけを消し、本文を箇所を持たない向けた先へ移す
+      const moved = state.body;
+      saveDraftNow({ ...state, body: "" });
+      comment.forms.delete(formKey(target, state.loc));
+      comment.pendingLoc.delete(target);
+      if (moved !== "") {
+        plain.body = plain.body === "" ? moved : `${plain.body}\n${moved}`;
+        saveDraftNow(plain);
       }
-      Object.assign(state, { status: "sending", detail: null });
-      redrawSend(id);
-      const result = await postSubmission(id, body);
-      if (result.ok) {
-        // 送れた: 書きかけを空にする
-        Object.assign(state, { body: "", status: "sent", sentAt: result.sent, detail: null });
-        saveDraft(draftStorage, id, "");
-      } else {
-        // 断られた・届かない: 本文を残す
-        Object.assign(state, { status: "failed", detail: result.detail });
-      }
-      redrawSend(id);
+      redrawForm({ target, focus: true });
     };
 
-    /** 項目の送信の部品の引数 */
-    const sendFormProps = (id: string): SendFormProps => {
-      const state = sendStateOf(id);
+    /** 入力欄の引数。`target` が null なら、コメントの一覧の下端の項目を指さない入力 */
+    const formProps = (target: string | null): SendFormProps => {
+      const loc = target === null ? null : (comment.pendingLoc.get(target) ?? null);
+      const state = formStateOf(target, loc);
       return {
-        target: id,
+        target,
+        loc,
         body: state.body,
         status: state.status,
-        sentAt: state.sentAt,
+        count: state.count,
         detail: state.detail,
-        onInput: (body) => {
-          state.body = body;
-          saveDraft(draftStorage, id, body);
-          // 送った・本文が空の結果は、入力を始めたら消す（送れなかった結果は次に送るまで残す）
-          if (state.status === "sent" || state.status === "empty") {
-            state.status = "idle";
-            clearSendResult();
-          }
+        collapsed: target === null && isCompact() && !freeFocused && state.body === "",
+        on: {
+          input: (body) => {
+            state.body = body;
+            scheduleDraft(state);
+            // 溜めた・本文が空の結果は、入力を始めたら消す（溜められなかった結果は次に溜めるまで残す）
+            if (state.status === "saved" || state.status === "empty") {
+              state.status = "idle";
+              clearSendResult();
+            }
+          },
+          save: (body) => void saveComment(state, body),
+          unquote: () => unquote(state),
+          copy: (body) => void navigator.clipboard?.writeText(body),
+          focus: () => {
+            if (target !== null || freeFocused) return;
+            freeFocused = true;
+            // 畳んでいた入力だけを広げる（広げない入力は作り直さず、入力中の欄を壊さない）
+            if (isCompact() && state.body === "") redrawForm({ target: null, focus: true });
+          },
+          blur: () => {
+            if (formRedrawing || target !== null || !freeFocused) return;
+            freeFocused = false;
+            // 本文が空のまま外へ出たら畳む
+            if (isCompact() && state.body === "") redrawForm({ target: null, focus: false });
+          },
         },
-        onSend: (body) => void submit(id, body),
-        onCopy: (body) => void navigator.clipboard?.writeText(body),
       };
     };
 
+    /** 本文を溜め、結果を状態に残して部品を描き直す */
+    const saveComment = async (state: FormState, body: string): Promise<void> => {
+      state.body = body;
+      // 空白だけ: 溜めず、入力欄へフォーカスを戻す
+      if (body.trim() === "") {
+        Object.assign(state, { status: "empty", detail: null });
+        redrawForm({ target: state.target, focus: true });
+        return;
+      }
+      // 溜める前に、この向けた先の書きかけを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた書きかけを書き戻さないため）
+      window.clearTimeout(draftTimers.get(formKey(state.target, state.loc)));
+      draftTimers.delete(formKey(state.target, state.loc));
+      Object.assign(state, { status: "saving", detail: null });
+      redrawForm({ target: state.target, focus: true });
+      const result = await api.add({
+        ...(state.target === null ? {} : { target: state.target }),
+        ...(state.loc === null ? {} : { loc: state.loc }),
+        body,
+      });
+      if (!result.ok || result.data === null) {
+        // 断られた・届かない: 本文を残す
+        Object.assign(state, { status: "failed", detail: result.ok ? null : result.detail });
+        // 止めた待ちを戻す（本文を残したまま閉じても、書きかけは保つ）
+        scheduleDraft(state);
+        redrawForm({ target: state.target, focus: true });
+        return;
+      }
+      // 溜めた: 入力欄と添えた箇所を空にし、結果は箇所を持たない入力に出す
+      const added = result.data;
+      if (state.loc !== null && state.target !== null) {
+        comment.forms.delete(formKey(state.target, state.loc));
+        comment.pendingLoc.delete(state.target);
+      }
+      const shown = formStateOf(state.target, null);
+      Object.assign(shown, { status: "saved", count: added.count, detail: null });
+      // 箇所を持たない入力を溜めたときだけ本文を空にする（箇所を持つ入力を溜めたときは、別の向けた先の書きかけを残す）
+      if (state.loc === null) shown.body = "";
+      knownIds.add(added.id);
+      comment.checked.add(added.id);
+      await loadReview();
+      refreshComments();
+      redrawForm({ target: state.target, focus: true });
+    };
+
+    // ===== コメントの一覧 =====
+    /** 一覧を作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
+    const renderComments = (): void => {
+      const current = document.querySelector<HTMLElement>(".comments-panel");
+      if (!comment.listOpen) {
+        current?.remove();
+        return;
+      }
+      const active = document.activeElement;
+      const focusKey = active instanceof HTMLElement && current?.contains(active) === true ? (active.dataset["focus"] ?? null) : null;
+      const typing = active instanceof HTMLTextAreaElement && active.closest(".comments-panel form.send") !== null ? active : null;
+      const selection = typing === null ? null : { start: typing.selectionStart, end: typing.selectionEnd };
+      const scroll = current?.querySelector<HTMLElement>(".comments-body")?.scrollTop ?? 0;
+      const next = commentsPanel({
+        items: comment.review.items,
+        removed: comment.removed,
+        checked: comment.checked,
+        editing,
+        editError,
+        editBody,
+        stale: comment.stale,
+        result: outcome,
+        selected: comment.opened,
+        titleOf: (id) => index.byId.get(id)?.item.title ?? null,
+        free: formProps(null),
+        on: {
+          close: closeList,
+          check: (id, checked) => {
+            if (checked) comment.checked.add(id);
+            else comment.checked.delete(id);
+            renderComments();
+          },
+          checkAll: (checked) => {
+            comment.checked = checked ? new Set(comment.review.items.map((item) => item.id)) : new Set();
+            renderComments();
+          },
+          send: () => void sendChecked(),
+          open: openRow,
+          edit: (id) => {
+            editing = id;
+            editError = null;
+            editBody = null;
+            renderComments();
+          },
+          saveEdit: (id, body) => void saveEdit(id, body),
+          cancelEdit: () => {
+            editing = null;
+            editError = null;
+            editBody = null;
+            renderComments();
+          },
+          remove: (id) => void removeComment(id),
+          restore: (id) => void restoreComment(id),
+          unloc: (id) => void detachLocation(id),
+        },
+      });
+      if (current === null) {
+        document.body.append(next);
+        requestAnimationFrame(() => next.classList.add("open"));
+      } else {
+        current.className = `${next.className} open`;
+        current.replaceChildren(...next.children);
+      }
+      const panel = document.querySelector<HTMLElement>(".comments-panel");
+      const body = panel?.querySelector<HTMLElement>(".comments-body");
+      if (body !== null && body !== undefined) body.scrollTop = scroll;
+      if (typing !== null && selection !== null) {
+        const restored = panel?.querySelector<HTMLTextAreaElement>("form.send textarea");
+        restored?.focus();
+        restored?.setSelectionRange(selection.start, selection.end);
+      } else if (focusKey !== null) {
+        panel?.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`)?.focus();
+      }
+    };
+
+    /** トップバーの件数・詳細パネルのレビュー中のコメント・一覧を、入力中の欄とスクロールの位置を保って描き直す */
+    const refreshComments = (): void => {
+      preserving(() => {
+        renderTop();
+        renderDetail();
+      });
+      renderComments();
+    };
+
+    /** コメントの一覧を開く */
+    const openList = (): void => {
+      comment.listOpen = true;
+      renderTop();
+      renderComments();
+    };
+
+    /** コメントの一覧を閉じる */
+    const closeList = (): void => {
+      flushDrafts();
+      comment.listOpen = false;
+      comment.opened = null;
+      comment.removed = [];
+      renderTop();
+      renderComments();
+      renderDetail();
+    };
+
+    /** 行の向けた項目を、一覧を開いたまま詳細パネルに開く（箇所があればその箇所を示す） */
+    const openRow = (item: ReviewItem): void => {
+      if (item.target === null) return;
+      comment.opened = item.id;
+      if (route.id === item.target) {
+        renderDetail();
+        renderComments();
+        return;
+      }
+      openItem(item.target, false);
+      renderComments();
+    };
+
+    /** 読み直して一覧まで描き直す */
+    const reloadAndRefresh = async (): Promise<void> => {
+      await loadReview();
+      refreshComments();
+    };
+
+    /** 行の本文を直す */
+    const saveEdit = async (id: string, body: string): Promise<void> => {
+      const result = await api.update(id, { body });
+      if (!result.ok) {
+        // 断られた・届かない: 入力を残して理由を出す
+        editError = result.detail ?? "サーバーが止まっています。立ち上げ直してから直してください。";
+        editBody = body;
+        renderComments();
+        return;
+      }
+      editing = null;
+      editError = null;
+      editBody = null;
+      await reloadAndRefresh();
+    };
+
+    /** 行を消す（確認は挟まず、元の場所に「元に戻す」を出す） */
+    const removeComment = async (id: string): Promise<void> => {
+      const result = await api.remove(id);
+      if (result.ok && result.data !== null) {
+        const { count: _count, ...item } = result.data;
+        comment.removed = [...comment.removed, item];
+        comment.stale.delete(id);
+      }
+      await reloadAndRefresh();
+    };
+
+    /** 消した行を、同じ ID と日時で元の場所に戻す */
+    const restoreComment = async (id: string): Promise<void> => {
+      const item = comment.removed.find((entry) => entry.id === id);
+      if (item === undefined) return;
+      const result = await api.add({
+        id: item.id,
+        created: item.created,
+        ...(item.target === null ? {} : { target: item.target }),
+        ...(item.loc === null ? {} : { loc: item.loc }),
+        body: item.body,
+      });
+      if (result.ok) comment.removed = comment.removed.filter((entry) => entry.id !== id);
+      await reloadAndRefresh();
+    };
+
+    /** 箇所が合わないコメントから箇所を外し、項目へのコメントにする */
+    const detachLocation = async (id: string): Promise<void> => {
+      const result = await api.update(id, { loc: null });
+      if (result.ok) comment.stale.delete(id);
+      await reloadAndRefresh();
+    };
+
+    /** チェックしたコメントを溜めた順にまとめて送る */
+    const sendChecked = async (): Promise<void> => {
+      const ids = comment.review.items.filter((item) => comment.checked.has(item.id)).map((item) => item.id);
+      // 送るものが無い
+      if (ids.length === 0) return;
+      outcome = { kind: "sending" };
+      renderComments();
+      const result = await api.send(ids);
+      if (result.ok && result.data !== null) {
+        comment.removed = [];
+        comment.stale = new Map();
+        outcome = { kind: "sent", count: ids.length, at: result.data.sent };
+      } else if (!result.ok && result.status === 409) {
+        comment.stale = new Map(result.stale.map((entry) => [entry.id, entry.reason]));
+        outcome = { kind: "stale", count: result.stale.length };
+      } else {
+        outcome = { kind: "failed", detail: result.ok ? null : result.detail };
+      }
+      await reloadAndRefresh();
+    };
+
+    // ===== 選んだ箇所のコメントの入口 =====
+    /** 出している入口 */
+    let pill: HTMLElement | null = null;
+    /** ポインターを押している間は入口を出さない（選び終えてから出す） */
+    let pointerHeld = false;
+
+    /** 入口を閉じる */
+    const closePill = (): void => {
+      pill?.remove();
+      pill = null;
+    };
+
+    /** 選んだ範囲から箇所を求め、あれば入口を出し、無ければ閉じる */
+    const updatePill = (): void => {
+      closePill();
+      const selection = getSelection();
+      const host = document.querySelector<HTMLElement>("dialog.full[open], aside.panel");
+      // 図の拡大を開いている間・選んだ範囲が無い・詳細パネルの外
+      if (!serverMode || route.id === null || document.querySelector("dialog.viewer") !== null || fullViewer !== null) return;
+      if (selection === null || selection.rangeCount === 0 || selection.isCollapsed || host === null) return;
+      const range = selection.getRangeAt(0);
+      if (!host.contains(range.commonAncestorContainer)) return;
+      const loc = selectionLocation(range);
+      const rects = range.getClientRects();
+      const first = rects[0];
+      const last = rects[rects.length - 1];
+      if (loc === null || first === undefined || last === undefined) return;
+      const id = route.id;
+      pill = selectionComment({
+        anchor: { first, last },
+        viewport: { width: innerWidth, height: innerHeight },
+        on: {
+          press: () => {
+            closePill();
+            comment.pendingLoc.set(id, loc);
+            redrawForm({ target: id, focus: true });
+          },
+          close: () => {
+            closePill();
+            host.querySelector<HTMLElement>(".md")?.focus();
+          },
+        },
+      });
+      // 全画面はモーダルなので、入口もその中に置く（外に置くと押せない）
+      (host.matches("dialog") ? host : document.body).append(pill);
+    };
+
+    document.addEventListener("pointerdown", () => {
+      pointerHeld = true;
+    });
+    document.addEventListener("pointerup", () => {
+      pointerHeld = false;
+      window.setTimeout(updatePill, 0);
+    });
+    document.addEventListener("selectionchange", () => {
+      if (!pointerHeld) updatePill();
+    });
+
     // ===== 書き換えの知らせ =====
-    /** 入力中の欄の選択とスクロールの位置を保って、画面を描き直す */
-    const redrawKeepingState = (): void => {
+    /** 入力中の欄の選択とスクロールの位置を保って、渡した描き方で描き直す */
+    const preserving = (draw: () => void): void => {
       const field = document.activeElement;
-      const typing = field instanceof HTMLTextAreaElement && field.closest("form.send") !== null;
-      const selection = typing ? { start: field.selectionStart, end: field.selectionEnd } : null;
+      const form = field instanceof HTMLTextAreaElement ? field.closest("form.send") : null;
+      const inList = form !== null && form.closest(".comments-panel") !== null;
+      const selection =
+        field instanceof HTMLTextAreaElement && form !== null ? { start: field.selectionStart, end: field.selectionEnd } : null;
       const panelScroll = document.querySelector<HTMLElement>(".panel-body")?.scrollTop ?? 0;
       const pageScroll = window.scrollY;
-      render({ screen: true });
+      draw();
       const panelBody = document.querySelector<HTMLElement>(".panel-body");
       if (panelBody !== null) panelBody.scrollTop = panelScroll;
       window.scrollTo(0, pageScroll);
       if (selection !== null) {
-        const restored = document.querySelector<HTMLTextAreaElement>("form.send textarea");
+        const restored = document.querySelector<HTMLTextAreaElement>(
+          inList ? ".comments-panel form.send textarea" : "aside.panel form.send textarea, dialog.full form.send textarea",
+        );
         restored?.focus();
         restored?.setSelectionRange(selection.start, selection.end);
       }
     };
 
+    /** 入力中の欄の選択とスクロールの位置を保って、画面を描き直す */
+    const redrawKeepingState = (): void => preserving(() => render({ screen: true }));
+
     /** 記録を読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
     const reload = async (): Promise<void> => {
       const result = await fetchRecords();
       if (!result.ok) return;
+      await loadReview();
       data = result.data;
       index = buildIndex(data);
       document.title = `${data.settings.summary} | mindstella`;
@@ -559,6 +985,7 @@ namespace MindmapPreview {
         navigate({ route, push: false });
       }
       redrawKeepingState();
+      renderComments();
     };
 
     // ===== 操作と履歴 =====
@@ -577,6 +1004,14 @@ namespace MindmapPreview {
         document.querySelector(":popover-open") === null
       ) {
         closeDetail();
+      } else if (
+        event.key === "Escape" &&
+        route.id === null &&
+        comment.listOpen &&
+        document.querySelector("dialog[open]") === null &&
+        document.querySelector(":popover-open") === null
+      ) {
+        closeList();
       }
     });
     /** ハッシュが変わったとき（戻る・進む・手で書き換えた）、その画面を描く */
@@ -591,6 +1026,8 @@ namespace MindmapPreview {
     addEventListener("hashchange", onLocationChange);
 
     // ===== 最初の描き =====
+    // サーバーの配信では、レビュー中のコメントと書きかけを読んでおく（コメントのボタンの件数と入力に使う）
+    if (serverMode) await loadReview(true);
     // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える
     const requested = new URLSearchParams(location.hash.replace(/^#/, "")).get("id");
     if (requested !== null && route.id === null) navigate({ route: { ...route, filters: {} }, push: false });

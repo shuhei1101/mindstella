@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・ライト / ダークの切り替えと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -33,7 +33,18 @@ namespace MindmapPreview {
     connection?: "online" | "offline";
     /** 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える */
     readAt?: string | null;
+    /** コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときは右端に置き、検索の入口を中央へ寄せる */
+    comments?: boolean;
+    /** レビュー中のコメントの件数。印と「コメント」の右に出す（0 件は件数の塗りを外し、99 を超えたら `99+`） */
+    commentCount?: number;
+    /** コメントの一覧を開いているか */
+    commentsOpen?: boolean;
+    /** コメントのボタンを押したとき（0 件でも押せる。一覧を開く・閉じる） */
+    onComments?: () => void;
   };
+
+  /** 件数の表示を揺らさない上限 */
+  const COMMENT_COUNT_CAP = 99;
 
   /** ブランドのマーク（木の形の線画） */
   function brandMark(): SVGSVGElement {
@@ -96,6 +107,30 @@ namespace MindmapPreview {
     });
   }
 
+  /** コメントのボタン（印と「コメント」と件数）。押すとコメントの一覧を開く・閉じる */
+  function commentsButton({ count, open, onClick }: { count: number; open: boolean; onClick?: () => void }): HTMLElement {
+    return h({
+      tag: "button",
+      attrs: {
+        class: `comments-btn${open ? " open" : ""}`,
+        type: "button",
+        "data-act": "comments",
+        "aria-label": `コメント（レビュー中 ${count} 件）`,
+        "aria-expanded": String(open),
+        onclick: () => onClick?.(),
+      },
+      children: [
+        icon("comment"),
+        h({ tag: "span", attrs: { class: "label" }, children: ["コメント"] }),
+        h({
+          tag: "span",
+          attrs: { class: `count${count === 0 ? " zero" : ""}` },
+          children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
+        }),
+      ],
+    });
+  }
+
   /** トップバーとタブの帯を返す */
   export function topbar({
     title,
@@ -107,11 +142,15 @@ namespace MindmapPreview {
     onTheme,
     connection = "online",
     readAt = null,
+    comments = false,
+    commentCount = 0,
+    commentsOpen = false,
+    onComments,
   }: TopbarProps): HTMLElement {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     const bar = h({
       tag: "header",
-      attrs: { class: "topbar" },
+      attrs: { class: comments ? "topbar has-comments" : "topbar" },
       children: [
         h({
           tag: "span",
@@ -139,6 +178,8 @@ namespace MindmapPreview {
             h({ tag: "kbd", children: ["/"] }),
           ],
         }),
+        // コメントのボタンを右端に置くとき、検索の入口を中央へ寄せる
+        comments ? h({ tag: "span", attrs: { class: "spacer" } }) : null,
         h({
           tag: "button",
           attrs: {
@@ -150,6 +191,7 @@ namespace MindmapPreview {
           },
           children: [icon(theme === "dark" ? "sun" : "moon")],
         }),
+        comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
       ],
     });
     const tabbar = h({

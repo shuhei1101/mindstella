@@ -15,6 +15,12 @@ if TYPE_CHECKING:
 
     from conftest import Replay
 
+# 検討事項が持つ案
+OPTIONS = [
+    {"key": "A", "content": "YAML", "pros": "手で読める", "cons": "大きいと遅い"},
+    {"key": "B", "content": "種類ごとに分ける", "pros": "探しやすい", "cons": "ファイルが増える"},
+]
+
 
 def test_normal(
     make_workspace: MakeWorkspace,
@@ -22,18 +28,37 @@ def test_normal(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """前提が揃った未決定だけを聞いて決定済みにし、依存していた問いが次の候補に上がる（正常系）。"""
+    """前提が揃った未決定を、案を持たせて聞いて選ばれた案を採用し、依存していた問いが次の候補に上がる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1"),
-        make_item("D-2"),
+        make_item("D-1", options=OPTIONS),
+        make_item("D-2", options=OPTIONS),
         make_item("D-3", depends_on=["D-1"]),
     )
     ws = {"workspace": str(root)}
     # 実行
     before = replay("next", **ws)["candidates"]
-    replay("update", **ws, id="D-1", item={"status": "決定済み", "answer": "YAML"})
-    replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "種類ごとに分ける"})
+    # 利用者が選んだ案を adopted: true にして、決定済みにする
+    replay(
+        "update",
+        **ws,
+        id="D-1",
+        item={
+            "status": "決定済み",
+            "answer": "YAML",
+            "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
+        },
+    )
+    replay(
+        "update",
+        **ws,
+        id="D-2",
+        item={
+            "status": "決定済み",
+            "answer": "種類ごとに分ける",
+            "options": [OPTIONS[0], {**OPTIONS[1], "adopted": True}],
+        },
+    )
     replay(
         "add",
         **ws,
@@ -51,6 +76,9 @@ def test_normal(
         "決定済み",
         "種類ごとに分ける",
     ]
+    # D-1 は案 A、D-2 は案 B だけが adopted: true である
+    assert [o["key"] for o in decisions["D-1"]["options"] if o.get("adopted")] == ["A"]
+    assert [o["key"] for o in decisions["D-2"]["options"] if o.get("adopted")] == ["B"]
     # 書き込みの後の next の候補に D-3 がある
     assert [candidate["id"] for candidate in after] == ["D-3"]
     # 会話ログが 1 件足されている

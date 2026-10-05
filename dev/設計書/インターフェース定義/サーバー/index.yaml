@@ -67,9 +67,6 @@ items:
   - page: 書き換えの知らせ.yaml
     summary: 'GET /api/events: 書き換えを Server-Sent Events で知らせる'
     group: プレビューの配信
-  - page: 回答・意見の送信.yaml
-    summary: 'POST /api/submissions: 項目の ID ごとの回答・意見を取り込んでいない送信として足す'
-    group: 送信
   - page: 取り込んでいない送信.yaml
     summary: 'submissions: 取り込んでいない送信を送った順に返す'
     group: 送信
@@ -88,3 +85,21 @@ items:
   - page: 設定の更新.yaml
     summary: 'update_settings: 設定のキーを置き換え、フェーズの対応で項目のフェーズを付け替える'
     group: 書く
+  - page: レビュー中のコメントの読み取り.yaml
+    summary: 'GET /api/comments: レビュー中のコメントと書きかけをその場で読んで返す'
+    group: コメント
+  - page: レビュー中のコメントの追加.yaml
+    summary: 'POST /api/comments: 項目・選んだ箇所へのコメントか項目に紐づかないコメントをレビュー中に溜める'
+    group: コメント
+  - page: レビュー中のコメントの書き換え.yaml
+    summary: 'PATCH /api/comments/{id}: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す'
+    group: コメント
+  - page: レビュー中のコメントの削除.yaml
+    summary: 'DELETE /api/comments/{id}: レビュー中のコメント 1 件を消し、元に戻すための中身を返す'
+    group: コメント
+  - page: 書きかけの保存.yaml
+    summary: 'PUT /api/drafts: コメントの入力欄の書きかけを向けた先ごとに保つ'
+    group: コメント
+  - page: コメントをまとめて送る.yaml
+    summary: 'POST /api/comments/send: チェックしたレビュー中のコメントを取り込んでいない送信へ移す'
+    group: 送信

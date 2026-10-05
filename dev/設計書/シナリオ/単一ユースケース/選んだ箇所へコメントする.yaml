@@ -1,0 +1,132 @@
+title: "選んだ箇所へコメントする"
+scenarios:
+  - name: 正常シナリオ（本文の文を選ぶ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文に 3 行の段落を持つ資料 A-1
+        notes: 段落の 2 行目は「言い換えたい文」。同じ文を 3 行目にも置き、2 行目のほうを選ぶ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: A-1 の詳細パネルで、本文の 2 行目の「言い換えたい文」を選ぶ
+        P-->>U: 選んだ範囲の近くにコメントの入口
+        U->>P: 入口を押す
+        P-->>U: 選んだ文の引用と箇所を添えた入力
+        U->>P: 「ここは言い換える」を入れて溜める
+        P->>SV: レビュー中のコメントを足す（A-1・箇所・本文）
+        SV->>WS: 書く
+        SV-->>P: 受け付けた
+        P-->>U: 溜めたことと件数を出す
+      ```
+    expected:
+      - ワークスペースに、A-1 を指し、箇所が本文の 2 行目（開始と終わりが 2）と選んだ文「言い換えたい文」で、本文が「ここは言い換える」のレビュー中のコメントが 1 件ある
+      - コメントの入口が閉じている
+      - コメントのボタンの件数が 1 である
+    test: test_normal_when_body_text
+  - name: 正常シナリオ（項目の値を選ぶ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 案 A・B を持ち、案 B が短所「数が多いと長い」を持つ未決定の検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1 の詳細パネルで、案 B の短所「数が多いと長い」を選ぶ
+        P-->>U: 選んだ範囲の近くにコメントの入口
+        U->>P: 入口を押し、「絞り込めば短い」を入れて溜める
+        P->>SV: レビュー中のコメントを足す（D-1・箇所・本文）
+        SV-->>P: 受け付けた
+      ```
+    expected:
+      - ワークスペースに、D-1 を指し、箇所が案 B の短所のキーと選んだ文「数が多いと長い」で、本文が「絞り込めば短い」のレビュー中のコメントが 1 件ある
+    test: test_normal_when_value
+  - name: 正常シナリオ（タイトルを選ぶ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: タイトルが「表示の形」の未決定の検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1 の詳細パネルで、見出しのタイトル「表示の形」を選ぶ
+        P-->>U: 選んだ範囲の近くにコメントの入口
+        U->>P: 入口を押し、「題を具体的にする」を入れて溜める
+        P->>SV: レビュー中のコメントを足す（D-1・箇所・本文）
+        SV-->>P: 受け付けた
+      ```
+    expected:
+      - ワークスペースに、D-1 を指し、箇所が `title` のキーと選んだ文「表示の形」で、本文が「題を具体的にする」のレビュー中のコメントが 1 件ある
+    test: test_normal_when_title
+  - name: 異常シナリオ（本文と値の外を選ぶ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 前提に D-2 を持ち、本文に mermaid の図を持つ検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: D-1 の詳細パネルで、関係する項目の節の見出し「前提」と、図の中の文字をそれぞれ選ぶ
+        P-->>U: コメントの入口を出さない
+      ```
+    expected:
+      - どちらを選んだときもコメントの入口が出ない
+      - レビュー中のコメントが 0 件である
+    test: test_error_when_outside_body_and_value
+lead: 利用者が、詳細パネルで本文の文章か項目の値を選び、その箇所を指すコメントをレビュー中に溜める単一ユースケース。
+issue: 13
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 長い本文のどの文への意見かを、書き写さずに伝えられる
+  - name: Claude Code（session）
+    interest: 取り込むとき、意見が本文のどの行・どの値へのものかを、本文の中を探さずに知れる
+trigger: 利用者が詳細パネルで本文を読み、特定の文や値に意見を付けたくなる
+preconditions:
+  - ワークスペースに記録があり、サーバーがプレビューを配っている
+success_guarantee: 選んだ箇所（本文は元の Markdown の行の範囲と選んだ文、ほかの値はキーと選んだ文）を持つコメントが、項目の ID とともにレビュー中のコメントとしてワークスペースに残る。
+minimal_guarantee: 本文と値の外を選んだときは入口を出さず、何も溜めない。
+frequency: プレビューを読むたびに数回
+priority: 中
+notes:
+  行の対応づけ: 本文の選択を元の Markdown の行へ対応づける仕組みは PoC（#80）で成立を確かめた。本文の外は、見出しの帯・関係する項目・図の SVG・図の Raw の原文
+  入口の形と入力の置き場所: ポップアップの形と、入口を押した後の入力の置き場所はモック作成で決め、画面設計に書く
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+  値の範囲: 入口を出す値は、項目のキーが持つ文字を画面に出したもの（見出しのタイトル・状態、案の中身・長所・短所・理由、決め事など）。項目の ID・節の見出し・ボタンの文字・関係する項目の一覧は値に含めない
+test_file: tests/e2e/単一ユースケース/test_selection_comment.py

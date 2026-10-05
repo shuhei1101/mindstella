@@ -1,22 +1,18 @@
-"""プレビューから送られた回答・意見（`submissions.yaml`）を読み書きする。鍵は呼ぶ側が取る。"""
+"""プレビューのコメントの一覧からまとめて送られたコメント（`submissions.yaml`）を読み書きする。鍵は呼ぶ側が取る。"""
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from jsonschema import Draft202012Validator
 
-from errors import (
-    ItemNotFoundError,
-    SchemaMismatchError,
-    SubmissionInvalidError,
-    SubmissionNotFoundError,
-)
+from errors import ItemNotFoundError, SchemaMismatchError, SubmissionNotFoundError
 from store import (
     SCHEMA_DIR,
     WHOLE_PATH,
@@ -25,12 +21,16 @@ from store import (
     dump_yaml,
     find_item,
     format_path,
-    load_workspace,
     now_utc,
     remove_files,
     write_failed,
     write_temp,
 )
+
+if TYPE_CHECKING:
+    from comments import ReviewComment
+
+logger = logging.getLogger(__name__)
 
 # ワークスペースの送信のファイル名（無ければ送信 0 件）
 SUBMISSIONS_FILE = "submissions.yaml"
@@ -50,14 +50,18 @@ class Submission:
     """`submissions.yaml` の 1 件。"""
 
     id: str
-    # 回答・意見を向けた項目の ID
-    target: str
+    # コメントを向けた項目の ID（項目に紐づかない送信は None で、キーを書かない）
+    target: str | None
     # 前後の空白を除いた本文
     body: str
     # 送った日時
     sent: str
     # 取り込んだ日時（取り込んでいなければ None）
     taken: str | None
+    # 選んだ箇所（持たない送信は None で、キーを書かない）
+    loc: dict[str, Any] | None = None
+    # 送ったレビュー中のコメントの ID。まとめて送る途中で止まったときに二重に送らないために持つ（前の版の送信は None で、キーを書かない）
+    comment: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -65,11 +69,13 @@ class PendingSubmission:
     """`submissions` の出力の `items[]` の 1 行（取り込んでいない送信）。"""
 
     id: str
-    target: str
-    # 向けた項目のタイトル（項目が消えていれば None）
+    target: str | None
+    # 向けた項目のタイトル（項目に紐づかないか、項目が消えていれば None）
     target_title: str | None
     body: str
     sent: str
+    # 選んだ箇所（持たなければ None）
+    loc: dict[str, Any] | None
 
 
 def load_submissions(root: Path) -> list[Submission]:
@@ -100,31 +106,24 @@ def load_submissions(root: Path) -> list[Submission]:
                 for error in errors
             ]
         )
-    return [Submission(**item) for item in value["items"]]
-
-
-def add_submission(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> Submission:
-    """本文と向けた項目を確かめ、取り込んでいない送信として 1 件足す。"""
-    target, body = _validate_input(data)
-    # 向けた項目がワークスペースにあるか（無ければ ItemNotFoundError が上がる）
-    find_item(load_workspace(root), target)
-
-    current = load_submissions(root)
-    # 連番は最大 + 1 で振り、消した番号を使い回さない
-    number = max((_number_of(submission) for submission in current), default=0) + 1
-    submission = Submission(
-        id=f"{ID_PREFIX}-{number}", target=target, body=body, sent=now(), taken=None
-    )
-    _write_submissions(root, [*current, submission])
-    return submission
+    return [
+        Submission(
+            id=item["id"],
+            target=item.get("target"),
+            body=item["body"],
+            sent=item["sent"],
+            taken=item["taken"],
+            loc=item.get("loc"),
+            comment=item.get("comment"),
+        )
+        for item in value["items"]
+    ]
 
 
 def list_pending_submissions(workspace: Workspace) -> list[PendingSubmission]:
     """`taken` が空の送信を連番の小さい順に、向けた項目のタイトルを付けて返す。"""
     pending = [
-        submission
-        for submission in load_submissions(workspace.root)
-        if submission.taken is None
+        submission for submission in load_submissions(workspace.root) if submission.taken is None
     ]
     return [
         PendingSubmission(
@@ -133,6 +132,7 @@ def list_pending_submissions(workspace: Workspace) -> list[PendingSubmission]:
             target_title=_title_of(workspace, submission.target),
             body=submission.body,
             sent=submission.sent,
+            loc=submission.loc,
         )
         for submission in sorted(pending, key=_number_of)
     ]
@@ -157,20 +157,43 @@ def take_submission(root: Path, submission_id: str, now: NowFn = now_utc) -> tup
     return taken, False
 
 
-def _validate_input(data: dict[str, Any]) -> tuple[str, str]:
-    """`target`・`body` が文字列で、`body` が空白だけでも上限超えでもないかを確かめる。"""
-    for key in ("target", "body"):
-        # 無いか文字列でない
-        if not isinstance(data.get(key), str):
-            raise SubmissionInvalidError(f"{key}: 文字列で渡してください")
-    body = data["body"].strip()
-    # 空白だけ
-    if not body:
-        raise SubmissionInvalidError("body: 回答・意見を入れてください")
-    # 上限超え
-    if len(body) > MAX_BODY_CHARS:
-        raise SubmissionInvalidError(f"body: {MAX_BODY_CHARS} 文字以内にしてください")
-    return data["target"], body
+def append_submissions(
+    root: Path, comments: list[ReviewComment], now: NowFn = now_utc
+) -> list[Submission]:
+    """レビュー中のコメントを並びの順に、取り込んでいない送信として足す。同じコメントの送信が既にあれば足さずにそれを返す。"""
+    current = load_submissions(root)
+    sent_already = {submission.comment: submission for submission in current if submission.comment}
+    # 連番は最大 + 1 から振り、消した番号を使い回さない
+    number = max((_number_of(submission) for submission in current), default=0)
+    sent = ""
+    added: list[Submission] = []
+    result: list[Submission] = []
+    for comment in comments:
+        existing = sent_already.get(comment.id)
+        # 既に送っている: 足さずにその送信を返す
+        if existing is not None:
+            logger.warning("既に送っていたコメント: %s %s", comment.id, existing.id)
+            result.append(existing)
+            continue
+        # この呼び出しの送信は 1 つの日時にそろえる
+        if not sent:
+            sent = now()
+        number += 1
+        submission = Submission(
+            id=f"{ID_PREFIX}-{number}",
+            target=comment.target,
+            body=comment.body,
+            sent=sent,
+            taken=None,
+            loc=None if comment.loc is None else _location_dict(comment.loc),
+            comment=comment.id,
+        )
+        added.append(submission)
+        result.append(submission)
+    # 足すものがある: 1 回で置き換える
+    if added:
+        _write_submissions(root, [*current, *added])
+    return result
 
 
 def _number_of(submission: Submission) -> int:
@@ -178,8 +201,11 @@ def _number_of(submission: Submission) -> int:
     return int(submission.id.removeprefix(f"{ID_PREFIX}-"))
 
 
-def _title_of(workspace: Workspace, item_id: str) -> str | None:
-    """項目のタイトルを返す（項目が消えていれば None）。"""
+def _title_of(workspace: Workspace, item_id: str | None) -> str | None:
+    """項目のタイトルを返す（項目に紐づかないか、項目が消えていれば None）。"""
+    # 項目に紐づかない
+    if item_id is None:
+        return None
     try:
         return find_item(workspace, item_id).item["title"]
     except ItemNotFoundError:
@@ -190,7 +216,7 @@ def _title_of(workspace: Workspace, item_id: str) -> str | None:
 def _write_submissions(root: Path, submissions: list[Submission]) -> None:
     """送信の並びを一時ファイルに書いてから `submissions.yaml` を置き換える。"""
     path = root / SUBMISSIONS_FILE
-    text = dump_yaml({"items": [asdict(submission) for submission in submissions]})
+    text = dump_yaml({"items": [_submission_dict(submission) for submission in submissions]})
     try:
         temp = write_temp(path, text)
     except OSError as error:
@@ -201,3 +227,17 @@ def _write_submissions(root: Path, submissions: list[Submission]) -> None:
         # 置き換えに失敗: 一時ファイルを消し、前の送信を残す
         remove_files([temp])
         raise write_failed(path, error) from error
+
+
+def _submission_dict(submission: Submission) -> dict[str, Any]:
+    """送信を YAML に書く辞書にする（`taken` は `null` のまま書き、`target`・`loc`・`comment` は無ければ書かない）。"""
+    return {
+        name: value
+        for name, value in asdict(submission).items()
+        if name == "taken" or value is not None
+    }
+
+
+def _location_dict(location: Any) -> dict[str, Any]:
+    """箇所を YAML に書く辞書にする（値を持たないキーは書かない）。"""
+    return {name: value for name, value in asdict(location).items() if value is not None}

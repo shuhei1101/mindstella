@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 import yaml
 
 import checker
@@ -211,11 +212,16 @@ def test_check_submissions(
     make_submission: MakeSubmission,
     write_submissions: WriteSubmissions,
 ) -> None:
-    """無い項目への送信を拾う（正常系）。"""
+    """無い項目への送信を拾い、項目に紐づかない送信は拾わない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
+    no_target = make_submission("S-3")
+    del no_target["target"]
     write_submissions(
-        root, make_submission("S-1", target="D-8"), make_submission("S-2", target="D-1")
+        root,
+        make_submission("S-1", target="D-8"),
+        make_submission("S-2", target="D-1"),
+        no_target,
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -306,3 +312,45 @@ def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item:
         ("broken_ref", "changes.yaml", "sets[0].changed")
     ]
     assert "D-9" in problems[0].detail
+@pytest.mark.parametrize(
+    ("raw_files", "expected_files"),
+    [
+        pytest.param(
+            {
+                "comments.yaml": (
+                    "seq: 1\nitems:\n  - id: C-1\n    target: D-1\n"
+                    "    created: 2026-10-01T00:00:00+00:00\n"
+                )
+            },
+            {"comments.yaml"},
+            id="comments_body_removed",
+        ),
+        pytest.param({"drafts.yaml": "items: [\n"}, {"drafts.yaml"}, id="drafts_unreadable"),
+        pytest.param(
+            {
+                "comments.yaml": (
+                    "seq: 1\nitems:\n  - id: C-1\n    target: D-9\n    body: 本文\n"
+                    "    created: '2026-10-01T00:00:00+00:00'\n"
+                )
+            },
+            set(),
+            id="target_removed",
+        ),
+        pytest.param({}, set(), id="no_files"),
+    ],
+)
+def test_check_comments(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    raw_files: dict[str, str],
+    expected_files: set[str],
+) -> None:
+    """崩れたファイルだけを schema にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files=raw_files)
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_comments(workspace)
+    # 検証
+    assert {problem.file for problem in problems} == expected_files
+    assert all(problem.kind == "schema" and problem.id is None for problem in problems)

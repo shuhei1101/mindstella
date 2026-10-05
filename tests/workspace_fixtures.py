@@ -68,6 +68,10 @@ type CallTool = Callable[..., ToolResult]
 type MakeItem = Callable[..., dict[str, Any]]
 type MakeSubmission = Callable[..., dict[str, Any]]
 type WriteSubmissions = Callable[..., None]
+type MakeComment = Callable[..., dict[str, Any]]
+type WriteComments = Callable[..., None]
+type MakeDraft = Callable[..., dict[str, Any]]
+type WriteDrafts = Callable[..., None]
 type MakeWorkspace = Callable[..., Path]
 type MakeLegacyItem = Callable[[str, bool], dict[str, Any]]
 type MakeLegacyWorkspace = Callable[..., Path]
@@ -278,6 +282,62 @@ def write_submissions() -> WriteSubmissions:
     def _write(root: Path, *submissions: dict[str, Any]) -> None:
         """渡した送信を並びのまま items に入れて、root の submissions.yaml に書く。"""
         write_yaml(root / "submissions.yaml", {"items": list(submissions)})
+
+    return _write
+
+
+@pytest.fixture
+def make_comment() -> MakeComment:
+    """レビュー中のコメント（comments.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(comment_id: str, **overrides: Any) -> dict[str, Any]:
+        """ID・向けた項目・本文・溜めた日時に、渡したキーを重ねたコメントを返す。"""
+        comment: dict[str, Any] = {
+            "id": comment_id,
+            "target": "D-1",
+            "body": f"{comment_id}の本文",
+            "created": DEFAULT_TIMESTAMP,
+        }
+        comment.update(overrides)
+        return comment
+
+    return _make
+
+
+@pytest.fixture
+def write_comments() -> WriteComments:
+    """ワークスペースに comments.yaml を書く関数を返す。"""
+
+    def _write(root: Path, *comments: dict[str, Any], seq: int | None = None) -> None:
+        """seq と渡したコメントを並びのまま書く。seq を渡さなければコメントの ID の連番の最大にする。"""
+        last = max((int(comment["id"].split("-")[1]) for comment in comments), default=0)
+        write_yaml(
+            root / "comments.yaml", {"seq": last if seq is None else seq, "items": list(comments)}
+        )
+
+    return _write
+
+
+@pytest.fixture
+def make_draft() -> MakeDraft:
+    """書きかけ（drafts.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(**overrides: Any) -> dict[str, Any]:
+        """向けた項目・本文・書いた日時に、渡したキーを重ねた書きかけを返す。"""
+        draft: dict[str, Any] = {"target": "D-1", "body": "書きかけ", "updated": DEFAULT_TIMESTAMP}
+        draft.update(overrides)
+        return draft
+
+    return _make
+
+
+@pytest.fixture
+def write_drafts() -> WriteDrafts:
+    """ワークスペースに drafts.yaml を書く関数を返す。"""
+
+    def _write(root: Path, *drafts: dict[str, Any]) -> None:
+        """渡した書きかけを並びのまま items に入れて、root の drafts.yaml に書く。"""
+        write_yaml(root / "drafts.yaml", {"items": list(drafts)})
 
     return _write
 

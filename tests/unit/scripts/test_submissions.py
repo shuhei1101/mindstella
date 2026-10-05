@@ -1,4 +1,4 @@
-"""submissions.py（回答・意見の送信の読み書き）の単体テスト。"""
+"""submissions.py（コメントの送信の読み書き）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -8,22 +8,21 @@ from typing import Any
 import pytest
 import yaml
 
+import comments
+import locations
 import store
 import submissions
-from errors import (
-    ItemNotFoundError,
-    SchemaMismatchError,
-    SubmissionInvalidError,
-    SubmissionNotFoundError,
-    WriteFailedError,
-)
+from errors import SchemaMismatchError, SubmissionNotFoundError, WriteFailedError
 from fixture_types import FailingReplace, MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
 
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-04T03:00:00+00:00"
 
-# 本文の上限（非機能要件の「送信の本文の長さ」）
-MAX_BODY_CHARS = 10000
+# 本文の 2 行目を指す箇所（資料 A-1 の本文 `A_BODY` の 2 行目）
+LINE2_LOC = {"kind": "body", "start": 2, "end": 2, "text": "言い換えたい文"}
+
+# 資料 A-1 の本文
+A_BODY = "1 行目\n言い換えたい文\n3 行目"
 
 
 def _fixed_now() -> str:
@@ -101,106 +100,20 @@ def test_load_submissions_when_invalid(
     assert exc_info.value.lines[0].startswith(expected_prefix)
 
 
-def test_add_submission(
+def test_load_submissions_when_previous_version(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_submission: MakeSubmission,
     write_submissions: WriteSubmissions,
 ) -> None:
-    """連番を振って末尾に足す（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    write_submissions(root, make_submission("S-1"), make_submission("S-3"))
-    # 実行
-    result = submissions.add_submission(
-        root, {"target": "D-1", "body": "  案 A にする "}, now=_fixed_now
-    )
-    # 検証
-    assert result == submissions.Submission(
-        id="S-4", target="D-1", body="案 A にする", sent=FIXED_NOW, taken=None
-    )
-    assert _read_submissions(root)[-1] == {
-        "id": "S-4",
-        "target": "D-1",
-        "body": "案 A にする",
-        "sent": FIXED_NOW,
-        "taken": None,
-    }
-
-
-def test_add_submission_when_first(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """ファイルが無ければ作って S-1（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行
-    result = submissions.add_submission(root, {"target": "D-1", "body": "最初"}, now=_fixed_now)
-    # 検証
-    assert result.id == "S-1"
-    assert (root / "submissions.yaml").is_file()
-
-
-@pytest.mark.parametrize(
-    ("data", "expected_key"),
-    [
-        pytest.param({"target": "D-1", "body": "  "}, "body", id="blank_body"),
-        pytest.param({"target": "D-1", "body": "あ" * (MAX_BODY_CHARS + 1)}, "body", id="too_long"),
-        pytest.param({"body": "本文"}, "target", id="target_missing"),
-        pytest.param({"target": "D-1", "body": 1}, "body", id="body_not_string"),
-    ],
-)
-def test_add_submission_when_invalid(
-    make_workspace: MakeWorkspace, make_item: MakeItem, data: dict[str, Any], expected_key: str
-) -> None:
-    """本文・形の誤りは足さない（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行・検証
-    with pytest.raises(SubmissionInvalidError, match=expected_key):
-        submissions.add_submission(root, data, now=_fixed_now)
-    assert not (root / "submissions.yaml").exists()
-
-
-def test_add_submission_when_boundary(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """ちょうど上限の本文は足す（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    body = " " + "あ" * MAX_BODY_CHARS + " "
-    # 実行
-    result = submissions.add_submission(root, {"target": "D-1", "body": body}, now=_fixed_now)
-    # 検証
-    assert len(result.body) == MAX_BODY_CHARS
-
-
-def test_add_submission_when_target_missing(
-    make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """無い項目へは足さない（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行・検証
-    with pytest.raises(ItemNotFoundError, match="D-99"):
-        submissions.add_submission(root, {"target": "D-99", "body": "本文"}, now=_fixed_now)
-
-
-def test_add_submission_when_write_fails(
-    monkeypatch: pytest.MonkeyPatch,
-    failing_replace: FailingReplace,
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
-) -> None:
-    """置き換えに失敗したら前の送信を残す（異常系）。"""
+    """loc・comment を持たない前の版の送信も読む（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
-    before = (root / "submissions.yaml").read_bytes()
-    monkeypatch.setattr(submissions.os, "replace", failing_replace("submissions.yaml"))
-    # 実行・検証
-    with pytest.raises(WriteFailedError):
-        submissions.add_submission(root, {"target": "D-1", "body": "本文"}, now=_fixed_now)
-    assert (root / "submissions.yaml").read_bytes() == before
-    assert list(root.rglob("*.tmp")) == []
+    # 実行
+    result = submissions.load_submissions(root)
+    # 検証
+    assert (result[0].loc, result[0].comment) == (None, None)
 
 
 def test_list_pending_submissions(
@@ -249,8 +162,29 @@ def test_list_pending_submissions_when_target_removed(
             target_title=None,
             body="S-1の本文",
             sent="2026-10-01T00:00:00+00:00",
+            loc=None,
         )
     ]
+
+
+def test_list_pending_submissions_when_location_and_no_target(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """箇所を持つ送信と項目に紐づかない送信を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1"), bodies={"A-1.md": A_BODY})
+    no_target = make_submission("S-2")
+    del no_target["target"]
+    write_submissions(root, make_submission("S-1", target="A-1", loc=LINE2_LOC), no_target)
+    workspace = store.load_workspace(root)
+    # 実行
+    result = submissions.list_pending_submissions(workspace)
+    # 検証
+    assert result[0].loc == LINE2_LOC
+    assert (result[1].target, result[1].target_title, result[1].loc) == (None, None, None)
 
 
 def test_take_submission(
@@ -329,3 +263,119 @@ def test_take_submission_when_write_fails(
     with pytest.raises(WriteFailedError):
         submissions.take_submission(root, "S-1", now=_fixed_now)
     assert (root / "submissions.yaml").read_bytes() == before
+
+
+def _review_comment(
+    comment_id: str, *, target: str | None, loc: dict[str, Any] | None = None
+) -> comments.ReviewComment:
+    """送るレビュー中のコメントを作る。"""
+    return comments.ReviewComment(
+        id=comment_id,
+        target=target,
+        loc=None if loc is None else locations.parse_location(loc),
+        body=f"{comment_id}の本文",
+        created="2026-10-01T00:00:00+00:00",
+    )
+
+
+def test_append_submissions(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """連番を振って並びの順に末尾へ足す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    write_submissions(root, make_submission("S-1"), make_submission("S-3"))
+    pending = [
+        _review_comment("C-1", target="D-1"),
+        _review_comment("C-2", target="A-1", loc=LINE2_LOC),
+        _review_comment("C-3", target=None),
+    ]
+    # 実行
+    result = submissions.append_submissions(root, pending, now=_fixed_now)
+    # 検証
+    assert [(sent.id, sent.comment) for sent in result] == [
+        ("S-4", "C-1"),
+        ("S-5", "C-2"),
+        ("S-6", "C-3"),
+    ]
+    assert _read_submissions(root)[2:] == [
+        {
+            "id": "S-4",
+            "target": "D-1",
+            "body": "C-1の本文",
+            "sent": FIXED_NOW,
+            "taken": None,
+            "comment": "C-1",
+        },
+        {
+            "id": "S-5",
+            "target": "A-1",
+            "loc": LINE2_LOC,
+            "body": "C-2の本文",
+            "sent": FIXED_NOW,
+            "taken": None,
+            "comment": "C-2",
+        },
+        {
+            "id": "S-6",
+            "body": "C-3の本文",
+            "sent": FIXED_NOW,
+            "taken": None,
+            "comment": "C-3",
+        },
+    ]
+
+
+def test_append_submissions_when_first(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """ファイルが無ければ作って S-1（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行
+    result = submissions.append_submissions(
+        root, [_review_comment("C-1", target="D-1")], now=_fixed_now
+    )
+    # 検証
+    assert [sent.id for sent in result] == ["S-1"]
+    assert (root / "submissions.yaml").is_file()
+
+
+def test_append_submissions_when_already_sent(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """既に送ったコメントは足さずにその送信を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_submissions(root, make_submission("S-1", comment="C-1"))
+    pending = [_review_comment("C-1", target="D-1"), _review_comment("C-2", target="D-1")]
+    # 実行
+    result = submissions.append_submissions(root, pending, now=_fixed_now)
+    # 検証
+    assert [sent.id for sent in result] == ["S-1", "S-2"]
+    assert len(_read_submissions(root)) == 2
+
+
+def test_append_submissions_when_write_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    failing_replace: FailingReplace,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """置き換えに失敗したら前の送信を残す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_submissions(root, make_submission("S-1"))
+    before = (root / "submissions.yaml").read_bytes()
+    monkeypatch.setattr(submissions.os, "replace", failing_replace("submissions.yaml"))
+    # 実行・検証
+    with pytest.raises(WriteFailedError):
+        submissions.append_submissions(root, [_review_comment("C-1", target="D-1")], now=_fixed_now)
+    assert (root / "submissions.yaml").read_bytes() == before
+    assert list(root.rglob("*.tmp")) == []

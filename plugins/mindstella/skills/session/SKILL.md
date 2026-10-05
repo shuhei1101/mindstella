@@ -21,7 +21,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 | ステップ | 手順 | 実行する場面 |
 | --- | --- | --- |
-| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`）を示し、送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。0 件なら取り込みを飛ばす | 話し合いの最初の 1 回 |
+| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`・`loc`）を示す。`loc` を持つ送信には本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` の送信には項目を指さない旨を添える。送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。`loc` を持つ送信はその箇所への意見として、項目を指さない送信は発言と同じく対象を振り分けて記録する。0 件なら取り込みを飛ばす | 話し合いの最初の 1 回 |
 | 取り込み | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/取り込み.md` | 利用者が発言した（決め事・問い・やること・保留・中止・図や文書・脱線した質問） |
 | ヒアリング | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ヒアリング.md` | 取り込みの後に前提が揃った未決定がある、または利用者が次に決めることを求めた |
 | リサーチ | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/リサーチ.md` | 外部ライブラリ・外部 API を決める検討事項が積まれた、進め方ガイドの「必ず調べるもの」に当たった、または利用者が調べるよう頼んだ |
@@ -29,6 +29,12 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | 範囲の見直し | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/範囲の見直し.md` | 話の範囲が広がった、利用者が題名・話し合いの概要・ゴール・進め方ガイド・最上位の軸の呼び名を変えたいと言った、話の中身と呼び名が合わなくなった、またはゴール判定でゴールが無く利用者が決めると言った |
 | プレビュー | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/プレビュー.md` | 利用者が記録を見たいと言った、または人に渡したいと言った |
 | ゴール判定 | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ゴール判定.md` | 利用者がゴールに届いたかを尋ねた、または `next` の候補が無くなった |
+
+## 記録の書き方
+
+記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は、状況が変わるたびに利用者に確かめずに足し、書き換える。
+利用者に確かめるのは、GitHub への起票などワークスペースの外へ書き込むときだけ。
+設定（`mindmap.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す。
 
 ## ツール
 
