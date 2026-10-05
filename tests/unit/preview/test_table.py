@@ -209,7 +209,7 @@ def test_drawer_groups_when_hit(
     values = preview_page.evaluate(
         f"""({{rows}}) => {{
             {COLUMNS_JS}
-            const columns = makeColumns([{{key: "status"}}]);
+            const columns = makeColumns([{{key: "status", order: ["未決定", "保留"]}}]);
             const hit = (row) => row.id === "D-1";
             const groups = MindmapPreview.drawerGroups({{rows, columns, filters: {{}}, hit}});
             return groups.find((group) => group.key === "status").values.map(
