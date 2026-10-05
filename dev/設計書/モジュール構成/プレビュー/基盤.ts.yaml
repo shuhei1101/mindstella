@@ -1035,6 +1035,12 @@ functions:
         condition: 左端 0〜420px のパネル。`main` に左端のボタン A（x=10）・右側のボタン B（x=600）・始めから `inert` の C（x=20）、トップバーのボタン D（x=10）
         mock: なし
         expected: A だけに `inert` が付き、B・D は付かない。返った関数を呼ぶと A から外れ、C は `inert` のまま
+      - name: test_inert_behind_when_redrawn
+        case: 正常
+        summary: 本文を描き直してから呼び直すと、新しい部品も止まる
+        condition: '`test_inert_behind` と同じパネルと本文で呼んだ後、`main` の中身を左端のボタン E（x=10）だけに差し替え、返った解除を呼んでからもう一度呼ぶ'
+        mock: なし
+        expected: E に `inert` が付き、E にフォーカスを移せない
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
