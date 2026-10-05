@@ -1,0 +1,160 @@
+/* 65・71・78 のスタイルの上に重ね、表示の設定のボタン・パネル・既定の保存の確かめ・届いた既定の知らせを足す分 */
+
+/* ===== トップバー: 表示の設定のボタン（コメントのボタンと同じ形で、その左に置く） ===== */
+
+/* 表示の設定のボタン: ボタン要素の文字をトップバーに揃える */
+.settings-btn { font: inherit; font-size: var(--fs-small); cursor: pointer; }
+
+/* ===== 表示の設定のパネル（コメントの一覧と同じ左のパネルの中身） ===== */
+
+/* パネルの本文: 中だけを送り、区画を距離で分ける */
+.st-wrap { flex: 1; overflow-y: auto; display: grid; gap: 20px; align-content: start; padding: 16px 16px 24px; }
+/* 区画: 枠を付けず、見出しの下に選ぶ部品を置く */
+.st-sec { min-width: 0; margin: 0; padding: 0; border: 0; }
+/* 区画の見出し */
+.st-sec > legend { margin-bottom: 8px; padding: 0; font-weight: 600; }
+/* 案 sections の大きな区切り（この端末・ワークスペースの既定） */
+.st-part { margin: 4px 0 -8px; font-size: var(--fs-body); font-weight: 700; }
+/* パネルの中のチェックとラジオ: 印の色で塗る */
+.st-wrap input[type="checkbox"], .st-wrap input[type="radio"] { flex: none; margin: 0; accent-color: var(--accent); }
+/* パネルの中の部品のフォーカス: 印の色の輪 */
+.st-wrap input:focus-visible, .st-wrap select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* つながりの見た目: 面の上に 5 つを縦に並べ、行の境を薄い線で区切る */
+.st-looks { display: grid; background: var(--surface); border-radius: var(--radius); }
+/* 見た目の 1 行: ラジオと、名前・短い説明 */
+.st-look { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); cursor: pointer; }
+.st-look:last-child { border-bottom: 0; }
+.st-look:hover { background: var(--hover); }
+/* 選んでいる見た目: 印の色の薄い面 */
+.st-look:has(input:checked) { background: var(--row-selected); }
+/* ラジオを名前の 1 行目に揃える */
+.st-look input { margin-top: 3px; }
+/* 名前と短い説明を縦に積む */
+.st-look-main { display: grid; gap: 2px; min-width: 0; }
+/* 見た目の名前と、ワークスペースの既定の印 */
+.st-look-name { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+/* 見た目の短い説明 */
+.st-look-note { color: var(--text-2); font-size: var(--fs-small); }
+/* ワークスペースの既定の印: 小さな枠の札 */
+.st-def { padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); font-weight: 400; line-height: 18px; }
+
+/* ライト / ダーク（パネルにも置く案）: 3 つのセグメント */
+.st-seg { display: flex; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* セグメントの 1 つ: ラジオを全面に重ねて押せる的にする */
+.st-seg label { position: relative; flex: 1; min-width: 0; }
+/* セグメントのラジオ: 見えなくして、文字の面を押させる */
+.st-seg input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+/* セグメントの文字の面 */
+.st-seg span { display: grid; place-items: center; height: calc(var(--control-h) - 2px); padding: 0 8px; color: var(--text-2); font-size: var(--fs-small); white-space: nowrap; }
+/* セグメントの区切り */
+.st-seg label + label span { border-left: 1px solid var(--border); }
+/* 選んでいるセグメント: 表示形式の切り替えと同じく文字色で塗る */
+.st-seg input:checked + span { background: var(--text); color: var(--bg); }
+.st-seg label:hover input:not(:checked) + span { background: var(--hover); color: var(--text); }
+.st-seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* 表示する種類: 面の上に縦に並べ、行の境を薄い線で区切る */
+.st-kinds { margin: 0; padding: 0; list-style: none; background: var(--surface); border-radius: var(--radius); }
+/* 種類の 1 行 */
+.st-kinds li { border-bottom: 1px solid var(--border-soft); }
+.st-kinds li:last-child { border-bottom: 0; }
+/* 種類の行の中身: チェック・印・名前・件数 */
+.st-kinds label, .st-always { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; }
+/* 押せる行 */
+.st-kinds label { cursor: pointer; }
+.st-kinds label:hover { background: var(--hover); }
+/* 種類の印 */
+.st-kinds svg.icon { flex: none; width: 16px; height: 16px; color: var(--text-2); }
+/* 種類の名前: 件数を右端へ押す */
+.st-k-label { flex: 1; min-width: 0; }
+/* 件数: 等幅で右に揃える */
+.st-kinds .n { color: var(--text-3); font-size: var(--fs-small); }
+/* まとめて選ぶ行: 見出し行と同じ面 */
+.st-all { background: var(--thead-bg); border-radius: var(--radius) var(--radius) 0 0; }
+/* 常に出す行（概要・つながり）: 押せないことを、チェックの箱を持たない形と文言で示す */
+.st-always { color: var(--text-2); }
+/* 常に出す行のチェックの位置: チェックの箱と同じ幅を取り、印だけを置く */
+.st-always-box { display: inline-grid; flex: none; place-items: center; width: 13px; }
+.st-always .st-always-box svg.icon { width: 13px; height: 13px; color: var(--text-3); }
+/* 常に出す旨 */
+.st-always-note { color: var(--text-3); font-size: var(--fs-xs); }
+
+/* 既定に戻す: この端末で変えている項目と、戻すボタン */
+.st-reset { display: grid; justify-items: start; gap: 8px; }
+/* 変えている項目の並び */
+.st-over { display: grid; gap: 2px; margin: 0; font-size: var(--fs-small); }
+/* 変えている項目の見出し */
+.st-over-h { color: var(--text-2); }
+/* 上書きが無いときの文言 */
+.st-none { color: var(--text-2); }
+/* ワークスペースの既定にする: 個人の選びと取り違えないよう、線で区切った下に置く */
+.st-save { padding-top: 16px; border-top: 1px solid var(--border); }
+/* 既定と同じ選びのときの文言 */
+.st-same { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
+/* 保存した・既定が変わったの知らせ */
+.st-msg { display: flex; align-items: flex-start; gap: 6px; margin: -8px 0 0; color: var(--text-2); font-size: var(--fs-small); }
+.st-msg:empty { display: none; }
+/* 知らせの印 */
+.st-msg svg.icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--accent); }
+/* 端末に保存できない旨: パネルの先頭に、印と文言で出す */
+.st-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 保存できない旨の印 */
+.st-note svg.icon { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--st-review); }
+
+/* 案 sections: ワークスペースの既定の区画 */
+.st-ws { display: grid; gap: 14px; padding: 12px; background: var(--surface); border-radius: var(--radius); }
+/* 区画の中の見た目の選び: 見出しの下にセレクト */
+.st-field { display: grid; gap: 6px; }
+/* 見た目の選びの見出し */
+.st-field > span { font-weight: 600; }
+/* 見た目のセレクト: 部品の高さに揃える */
+.st-field select { height: var(--control-h); padding: 0 8px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font: inherit; }
+/* 区画の中の表示する種類: 2 列に詰める */
+.st-ws-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+/* 区画の中の種類の 1 つ */
+.st-ws-kinds label { display: flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; }
+/* 区画の中の保存: 区画の面の中なので線で区切らない */
+.st-ws .st-save { padding-top: 0; border-top: 0; }
+
+/* ===== ワークスペースの既定として保存する前の確かめ ===== */
+
+/* 確かめのモーダル: 削除の確認より少し広くし、保存する値の 2 行を収める */
+dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
+/* 誰の表示が変わるかの説明 */
+.sc-lead { margin: 0 0 14px; color: var(--text-2); }
+/* 保存する値: 項目ごとに、今の既定と保存する値を並べる */
+.sc-list { display: grid; margin: 0 0 16px; background: var(--surface-2); border-radius: var(--radius); }
+/* 項目の 1 行 */
+.sc-row { display: grid; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
+.sc-row:last-child { border-bottom: 0; }
+/* 項目の名前 */
+.sc-row dt { color: var(--text-2); font-size: var(--fs-small); }
+/* 今の既定 → 保存する値: 狭い幅では折り返す */
+.sc-row dd { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; overflow-wrap: anywhere; }
+/* 今の既定 */
+.sc-from { color: var(--text-2); }
+/* 今の既定と保存する値の間の矢印 */
+.sc-row dd svg.icon { flex: none; width: 14px; height: 14px; color: var(--text-3); }
+/* 保存する値 */
+.sc-to { font-weight: 600; }
+/* 変えない項目の札 */
+.sc-same { padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); line-height: 18px; }
+/* 保存できなかった理由: 印と文言を、要見直しの色の枠で囲む */
+.sc-error { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--st-review); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 保存できなかった理由の印 */
+.sc-error svg.icon { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--st-review); }
+/* 保存している途中のボタン: 押せない間は面を落とし、待つ印を出す */
+.sconfirm .btn:disabled { cursor: progress; }
+.sconfirm .btn.primary:disabled { background: var(--surface-2); border-color: var(--border); color: var(--text-2); }
+
+/* ===== 他の人が保存した既定が届いた知らせ: 画面の下の中央に短く出して消す ===== */
+
+/* 知らせの箱: 出ていない間は見えなくする */
+.stoast { position: fixed; z-index: 45; left: 50%; bottom: 24px; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 10px 14px; background: var(--text); color: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow-pop); font-size: var(--fs-small); opacity: 0; visibility: hidden; transform: translate(-50%, 12px); transition: opacity .2s, transform .2s, visibility 0s linear .2s; }
+/* 出ている知らせ */
+.stoast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity .2s, transform .2s; }
+/* 知らせの印 */
+.stoast svg.icon { flex: none; width: 16px; height: 16px; }
+/* 動きを減らす設定: 知らせを動かさない */
+@media (prefers-reduced-motion: reduce) { .stoast, .stoast.show { transition: none; } }

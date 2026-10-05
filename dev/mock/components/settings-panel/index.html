@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>表示の設定のパネル | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/65/assets/style.css">
+  <link rel="stylesheet" href="../../refs/71/assets/style.css">
+  <link rel="stylesheet" href="../../refs/78/assets/style.css">
+  <!-- 表示の設定のパネルと確かめの分 -->
+  <link rel="stylesheet" href="../../refs/95/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { max-width: 100%; padding: 12px; background: var(--bg); border: 1px dashed var(--border); border-radius: var(--radius); }
+    /* 左のパネルの見本: 画面のパネルと同じ幅・面・線で、高さは中身に合わせる */
+    .st-demo { display: flex; flex-direction: column; width: var(--drawer-w); max-width: 100%; background: var(--bg); border: 1px solid var(--border); }
+    /* 左のパネルの見本の見出し: 画面のパネルの見出しと同じ大きさ */
+    .st-demo .cm-h { margin: 0; font-size: var(--fs-h2); }
+    /* 狭い幅の見本: 画面幅 900px 以下では、パネルを画面の幅いっぱいに出す */
+    .st-demo.narrow { width: 390px; }
+    /* 確かめの見本: モーダルにせず、台の中に置く */
+    .stage dialog.confirm { position: static; margin: 0; }
+    /* 狭い幅の確かめの見本: 最も狭い端末（320px）の画面幅から余白を引いた幅 */
+    .stage dialog.confirm.narrow { width: 288px; }
+    /* 状態を見せるための見本のクラス */
+    .is-hover { background: var(--hover) !important; }
+    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+  <!-- 表示の設定のパネルと確かめの中身の組み方（画面のモックと共有） -->
+  <script src="../../refs/95/assets/settings.js" defer></script>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / settings-panel</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">表示の設定のパネル</h1>
+    <!-- 状態ごとの見本: 下のスクリプトが data-demo の名前で中身を描く -->
+    <div id="catalog"></div>
+  </main>
+  <!-- 見本の描き分け: 画面のモックと同じ settings.js の組み方に、状態ごとの値を渡す -->
+  <script>
+    addEventListener("DOMContentLoaded", () => {
+      const S = window.SETTINGS_UI;
+      const ALL = S.KINDS.map((k) => k.key);
+      const counts = { decisions: 36, tasks: 8, research: 4, docs: 5, terms: 6, notes: 3, logs: 7 };
+      const without = (...ks) => new Set(ALL.filter((k) => !ks.includes(k)));
+      // 開いた直後の値（ワークスペースの既定も上書きも無い）
+      const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false };
+      const PANELS = [
+        ["開いた直後（ワークスペースの既定のまま）", "上書きが無い。既定に戻すとワークスペースの既定にするのボタンを出さず、そのことを文言で示す。", {}],
+        ["この端末で変えている（推奨の案 A）", "上書きを持つ項目を並べ、既定に戻すで 4 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { look: "dust", defLook: "starlight", defShown: without("notes"), overrides: ["つながりの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"] }],
+        ["表示する種類を一部外した", "すべてのチェックを途中の印にし、選んだ数を出す。概要とつながりは常に出す行にする。", { shown: without("terms", "logs"), overrides: ["表示する種類"] }],
+        ["保存した直後", "今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す。", { look: "glow", defLook: "glow", overrides: ["つながりの見た目"], msg: { kind: "ok", text: "ワークスペースの既定にしました（10/05 14:20）。" } }],
+        ["他の人が保存した既定が届いた", "上書きを持たない項目に新しい既定を当て、パネルにも知らせを残す（画面の下の知らせは消える）。", { look: "starlight", defLook: "starlight", shown: without("logs"), defShown: without("logs"), msg: { kind: "info", text: "ワークスペースの既定が変わりました（10/05 14:22）。" } }],
+        ["端末に保存できない", "選んだ表示は当てるが、開いている間だけであることを先頭に出す。", { nostore: true, look: "glow", overrides: ["つながりの見た目"] }],
+        ["配る書き出し", "見た目・表示する種類はその端末の上書きとして変えられる。ワークスペースの既定にするは出さない。", { save: "none", look: "glow", overrides: ["つながりの見た目"] }],
+        ["案 B: ライト / ダークもパネルに置く", "トップバーの切り替えと同じ選びを、端末に合わせるを含む 3 つのセグメントで並べる。", { showTheme: true, theme: "dark", overrides: ["ライト / ダーク"] }],
+        ["案 B: ワークスペースの既定を別の区画で選ぶ", "この端末の区画とワークスペースの既定の区画を分け、既定は保存するまで画面に当てない。", { save: "sections", ws: { look: "starlight", shown: without("logs") } }],
+        ["ホバー・キーボードのフォーカス", "見た目の行のホバーは面の色、フォーカスは印の色の輪。", { hover: true }],
+        ["狭い幅（390px）", "画面の幅いっぱいに出す。行の高さと押せる的は変えない。", { narrow: true, look: "dust", defLook: "starlight", overrides: ["つながりの見た目", "表示する種類"], shown: without("notes") }],
+      ];
+      const CONFIRMS = [
+        ["確かめ（2 つの項目を変える）", "今の既定と保存する値を並べる。最初のフォーカスは取り消すに置く。", { from: { look: "starlight", shown: without("notes") }, to: { look: "dust", shown: new Set(ALL) } }],
+        ["確かめ（変えない項目がある）", "変えない項目は今の値に「変えない」の札を付ける。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: new Set(ALL) } }],
+        ["保存している途中", "閉じられないようにし、保存するボタンに待つ印を出す。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: without("logs") }, busy: true }],
+        ["保存できなかった（フォルダに書き込めない）", "モーダルの中に理由と直し方を出し、もう一度保存できる。config.yaml と画面の表示は保存の前のまま。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: without("logs") }, error: "保存できませんでした。ワークスペースのフォルダに書き込めません（読み取り専用）。フォルダに書き込めるようにしてから、もう一度保存してください。" }],
+        ["保存できなかった（サーバーが止まっている）", "コメントを送れなかったときと同じ直し方を出す。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "glow", shown: without("logs") }, error: "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。" }],
+        ["狭い幅（320px）・外した種類が多い", "値は折り返す。", { from: { look: "deep", shown: new Set(ALL) }, to: { look: "constellation", shown: new Set(["logs"]) }, narrow: true }],
+      ];
+      const sec = (h, p, inner) => `<section class="cat-sec"><h2>${h}</h2><p>${p}</p><div class="stage">${inner}</div></section>`;
+      let html = "";
+      PANELS.forEach(([h, p, o], i) => {
+        const m = { ...base, ...o, p: `d${i}-` };
+        html += sec(h, p, `<div class="st-demo${o.narrow ? " narrow" : ""}" data-demo="${i}">${S.panelHtml(m)}</div>`);
+      });
+      CONFIRMS.forEach(([h, p, c]) => {
+        html += sec(h, p, `<dialog open class="confirm sconfirm${c.narrow ? " narrow" : ""}" aria-label="${h}">${S.confirmHtml(c).replace('id="sc-h"', "")}</dialog>`);
+      });
+      document.getElementById("catalog").innerHTML = html;
+      S.markMixed(document);
+      // ホバー・フォーカスの見本: 見た目の 2 行目にホバー、表示する種類の 1 つにフォーカスの輪
+      const hv = document.querySelector('[data-demo="9"]');
+      hv.querySelectorAll(".st-look")[1].classList.add("is-hover");
+      hv.querySelector('[data-act=skind][value="tasks"]').classList.add("is-focus");
+    });
+  </script>
+</body>
+</html>
