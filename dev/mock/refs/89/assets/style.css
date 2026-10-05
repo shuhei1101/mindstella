@@ -129,10 +129,25 @@ dialog.drawer .btn[hidden] { display: none; }
 /* 横に並べたドロワーを開いている間は、全ての条件の解除をドロワーの下端の 1 つにし、チップの行の「すべて解除」を出さない */
 body.drawer-open .chips [data-act="clearall"] { display: none; }
 
+/* ツールバーの折り返しの位置: 広い幅では使わない */
+.tb-break { display: none; }
+
 /* 狭い幅のツールバー: 1 行目に表示形式の切り替えと絞り込みのボタン、2 行目にキーワードと右側のボタンを並べ、どの表示形式でも 2 行に揃える */
-@media (max-width: 720px) {
+@media (max-width: 900px) {
+  /* 行の間の空き: 折り返しの位置の高さで取り、空きが重ならないようにする */
+  .toolbar { row-gap: 0; }
+  /* 折り返しの位置: 1 行を占め、行の間の空きの高さを持つ */
+  .toolbar .tb-break { display: block; flex-basis: 100%; height: 10px; }
   /* キーワードの欄: 残りの幅いっぱいに伸ばし、右側のボタンを同じ行に残す */
   .toolbar .grow, .toolbar .map-q { flex: 1 1 0; min-width: 0; max-width: none; }
   /* 右寄せの空き: 2 行目ではキーワードの欄が幅を取るので使わない */
   .toolbar .spacer { display: none; }
+}
+
+/* スマホ幅: 表示形式の切り替えを残りの幅に縮め、絞り込みのボタン（バッジつき）と同じ 1 行目に収める */
+@media (max-width: 720px) {
+  /* 切り替えの枠 */
+  .toolbar .segment { flex: 1 1 0; min-width: 0; }
+  /* 切り替えの各ボタン: 同じ幅で並べる */
+  .toolbar .segment button { flex: 1 1 0; min-width: 0; justify-content: center; }
 }
