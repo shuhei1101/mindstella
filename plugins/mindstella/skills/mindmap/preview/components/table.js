@@ -159,6 +159,44 @@ var MindmapPreview;
         return buildTable({ props, previous: null });
     }
     MindmapPreview.table = table;
+    /** 選んでいる値を `{列}: {値}` のチップにし、× と「すべて解除」で条件の解除を知らせる行を返す（条件が無いときは中身の無い行） */
+    function filterChips({ filters, labels, onFilter, }) {
+        const items = [];
+        for (const [key, values] of Object.entries(filters)) {
+            const label = labels[key] ?? key;
+            for (const value of values) {
+                items.push(MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: "chip" },
+                    children: [
+                        `${label}: ${value}`,
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: {
+                                type: "button",
+                                "aria-label": `${label}: ${value} の条件を解除`,
+                                onclick: () => {
+                                    // 押した値を外し、値が残らない条件は key ごと消す
+                                    const rest = values.filter((candidate) => candidate !== value);
+                                    onFilter(rest.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: rest });
+                                },
+                            },
+                            children: [MindmapPreview.icon("x")],
+                        }),
+                    ],
+                }));
+            }
+        }
+        if (items.length > 0) {
+            items.push(MindmapPreview.h({
+                tag: "button",
+                attrs: { class: "btn ghost", type: "button", onclick: () => onFilter({}) },
+                children: ["すべて解除"],
+            }));
+        }
+        return MindmapPreview.h({ tag: "div", attrs: { class: "chips" }, children: items });
+    }
+    MindmapPreview.filterChips = filterChips;
     /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
     function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on }, previous, }) {
         const hidden = new Set(hiddenColumns ?? columns.filter((column) => column.hidden).map((column) => column.key));
@@ -171,43 +209,11 @@ var MindmapPreview;
         const wrap = previous?.querySelector(".table-wrap") ??
             MindmapPreview.h({ tag: "div", attrs: { class: "table-wrap" } });
         // ===== 条件のチップと、表示する列のボタン =====
-        const chips = [];
-        for (const [key, values] of Object.entries(filters)) {
-            const column = columns.find((candidate) => candidate.key === key);
-            for (const value of values) {
-                chips.push(MindmapPreview.h({
-                    tag: "span",
-                    attrs: { class: "chip" },
-                    children: [
-                        `${column?.label ?? key}: ${value}`,
-                        MindmapPreview.h({
-                            tag: "button",
-                            attrs: {
-                                type: "button",
-                                "aria-label": `${column?.label ?? key}: ${value} の条件を解除`,
-                                onclick: () => {
-                                    on.filter({ key, values: values.filter((candidate) => candidate !== value) });
-                                },
-                            },
-                            children: [MindmapPreview.icon("x")],
-                        }),
-                    ],
-                }));
-            }
-        }
-        if (chips.length > 0) {
-            chips.push(MindmapPreview.h({
-                tag: "button",
-                attrs: {
-                    class: "btn ghost",
-                    type: "button",
-                    onclick: () => {
-                        on.filter({ key: null, values: [] });
-                    },
-                },
-                children: ["すべて解除"],
-            }));
-        }
+        const chipsRow = filterChips({
+            filters,
+            labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+            onFilter: on.filter,
+        });
         // ポップオーバーの題の要素の id（`aria-labelledby` が指す。置かれる画面の見出しの深さを知らないので、見出しの要素にはしない）
         const popTitleId = `pop-title-${kind}`;
         const pop = MindmapPreview.h({
@@ -286,7 +292,7 @@ var MindmapPreview;
             tag: "div",
             attrs: { class: "table-toolbar" },
             children: [
-                MindmapPreview.h({ tag: "div", attrs: { class: "chips" }, children: [...chips] }),
+                chipsRow,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
@@ -610,12 +616,7 @@ var MindmapPreview;
                                 state.sort = state.sort.dir === "asc" ? { key, dir: "desc" } : null;
                             render();
                         },
-                        filter: ({ key, values }) => {
-                            if (key === null)
-                                onFilter({});
-                            else
-                                onFilter(values.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: values });
-                        },
+                        filter: onFilter,
                         pin: (key) => {
                             state.pinTo = state.pinTo === key ? null : key;
                             persist();

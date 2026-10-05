@@ -116,6 +116,14 @@ var MindmapPreview;
         ];
         // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.tasks, columns, filters });
+        // ボードでは、ツールバーの下に条件のチップの行を置く（表は表の上に持つ）
+        const chips = route.view === "board" && MindmapPreview.activeConditionCount(filters) > 0
+            ? MindmapPreview.filterChips({
+                filters,
+                labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+                onFilter: on.filter,
+            })
+            : null;
         const content = route.view === "board"
             ? board({
                 columns: boardColumns({
@@ -150,6 +158,7 @@ var MindmapPreview;
                     { key: "board", label: "ボード" },
                     { key: "table", label: "表" },
                 ], route, on.view),
+                chips,
                 content,
                 MindmapPreview.screenDrawer({
                     drawerOpen,

@@ -67,6 +67,14 @@ var MindmapPreview;
                 ],
             });
         }
+        // カード・ボードでは、ツールバーの下に条件のチップの行を置く
+        const chips = MindmapPreview.activeConditionCount(filters) > 0
+            ? MindmapPreview.filterChips({
+                filters,
+                labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+                onFilter: on.filter,
+            })
+            : null;
         const content = route.view === "board"
             ? // 列ごとに納品物を先頭に並べ直す
                 MindmapPreview.board({
@@ -85,7 +93,7 @@ var MindmapPreview;
                     ? orderDocs(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id] }))
                     : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
             });
-        return MindmapPreview.h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, content, drawer] });
+        return MindmapPreview.h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, chips, content, drawer] });
     }
     MindmapPreview.docsScreen = docsScreen;
     /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */

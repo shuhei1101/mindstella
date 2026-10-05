@@ -298,10 +298,20 @@ namespace MindmapPreview {
     const canvas = h({ tag: "canvas", attrs: { id: "graph-canvas", class: "g3-wrap", role: "img", "aria-label": "すべての項目のつながり" } });
     // 絞り込みの条件に合う項目が 1 件も無いときに、枠の中央に出す文
     const emptyNotice = h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownIds.size > 0 }, children: ["表示する項目はありません。"] });
+    // 値を選んでいる条件があるときは、キャンバスの上に条件のチップの行を置く
+    const chips =
+      activeConditionCount(filters) > 0
+        ? filterChips({
+            filters,
+            labels: Object.fromEntries(conditions.map((condition) => [condition.key, condition.label])),
+            onFilter: on.filter,
+          })
+        : null;
     const root = h({
       tag: "div",
       attrs: { class: "screen graph" },
       children: [
+        chips,
         h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),
         screenDrawer({
           drawerOpen,

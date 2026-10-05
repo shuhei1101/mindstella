@@ -267,7 +267,7 @@ var MindmapPreview;
         });
     }
     /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
-    function mapView({ index, route, on, marks }, { shown, makeDrawer, }) {
+    function mapView({ index, route, on, marks }, { shown, chips, makeDrawer, }) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "map-view-root" } });
         const frame = MindmapPreview.h({ tag: "div", attrs: { class: "map-frame" } });
         // 絞り込みの条件に合う検討事項が無いときに、マップの枠の中央に出す文
@@ -435,6 +435,7 @@ var MindmapPreview;
             parent: root,
             children: [
                 toolbarElement,
+                chips,
                 notice,
                 frame,
                 zoomBar,
@@ -496,6 +497,14 @@ var MindmapPreview;
         const columns = decisionColumns({ index, open: on.open });
         // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.decisions, columns, filters });
+        // 表以外の表示形式では、ツールバーの下に条件のチップの行を置く
+        const chips = MindmapPreview.activeConditionCount(filters) > 0
+            ? MindmapPreview.filterChips({
+                filters,
+                labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+                onFilter: on.filter,
+            })
+            : null;
         const makeDrawer = (hit) => MindmapPreview.screenDrawer({
             drawerOpen,
             rows: index.data.decisions,
@@ -510,7 +519,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "screen decisions" },
-                children: [mapView(props, { shown, makeDrawer })],
+                children: [mapView(props, { shown, chips, makeDrawer })],
             });
         }
         const toolbarElement = MindmapPreview.toolbar([
@@ -524,6 +533,7 @@ var MindmapPreview;
                 attrs: { class: "screen decisions" },
                 children: [
                     toolbarElement,
+                    chips,
                     MindmapPreview.board({
                         columns: MindmapPreview.boardColumns({
                             items: shown,

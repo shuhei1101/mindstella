@@ -67,7 +67,7 @@ namespace MindmapPreview {
     /** 見出しの文字を押したとき（昇順 → 降順 → 解除は使う側が巡る） */
     sort: (key: string) => void;
     /** チップの × か「すべて解除」を押したとき。key が null のときは全ての条件を外す */
-    filter: (change: { key: string | null; values: string[] }) => void;
+    filter: (filters: Filters) => void;
     /** ピン留めのボタンを押したとき（固定中の列をもう一度押すと外す） */
     pin: (key: string) => void;
     /** 表示する列を付け外ししたとき（隠している列の key） */
@@ -289,6 +289,59 @@ namespace MindmapPreview {
     return buildTable({ props, previous: null });
   }
 
+  /** 選んでいる値を `{列}: {値}` のチップにし、× と「すべて解除」で条件の解除を知らせる行を返す（条件が無いときは中身の無い行） */
+  export function filterChips({
+    filters,
+    labels,
+    onFilter,
+  }: {
+    /** 絞り込みのドロワーと共有する条件 */
+    filters: Filters;
+    /** 条件の key → チップに出す列の名前 */
+    labels: Record<string, string>;
+    /** 解除した後の新しい条件を知らせる */
+    onFilter: (filters: Filters) => void;
+  }): HTMLElement {
+    const items: HTMLElement[] = [];
+    for (const [key, values] of Object.entries(filters)) {
+      const label = labels[key] ?? key;
+      for (const value of values) {
+        items.push(
+          h({
+            tag: "span",
+            attrs: { class: "chip" },
+            children: [
+              `${label}: ${value}`,
+              h({
+                tag: "button",
+                attrs: {
+                  type: "button",
+                  "aria-label": `${label}: ${value} の条件を解除`,
+                  onclick: () => {
+                    // 押した値を外し、値が残らない条件は key ごと消す
+                    const rest = values.filter((candidate) => candidate !== value);
+                    onFilter(rest.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: rest });
+                  },
+                },
+                children: [icon("x")],
+              }),
+            ],
+          }),
+        );
+      }
+    }
+    if (items.length > 0) {
+      items.push(
+        h({
+          tag: "button",
+          attrs: { class: "btn ghost", type: "button", onclick: () => onFilter({}) },
+          children: ["すべて解除"],
+        }),
+      );
+    }
+    return h({ tag: "div", attrs: { class: "chips" }, children: items });
+  }
+
   /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
   function buildTable({
     props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on },
@@ -312,47 +365,11 @@ namespace MindmapPreview {
       h({ tag: "div", attrs: { class: "table-wrap" } });
 
     // ===== 条件のチップと、表示する列のボタン =====
-    const chips: HTMLElement[] = [];
-    for (const [key, values] of Object.entries(filters)) {
-      const column = columns.find((candidate) => candidate.key === key);
-      for (const value of values) {
-        chips.push(
-          h({
-            tag: "span",
-            attrs: { class: "chip" },
-            children: [
-              `${column?.label ?? key}: ${value}`,
-              h({
-                tag: "button",
-                attrs: {
-                  type: "button",
-                  "aria-label": `${column?.label ?? key}: ${value} の条件を解除`,
-                  onclick: () => {
-                    on.filter({ key, values: values.filter((candidate) => candidate !== value) });
-                  },
-                },
-                children: [icon("x")],
-              }),
-            ],
-          }),
-        );
-      }
-    }
-    if (chips.length > 0) {
-      chips.push(
-        h({
-          tag: "button",
-          attrs: {
-            class: "btn ghost",
-            type: "button",
-            onclick: () => {
-              on.filter({ key: null, values: [] });
-            },
-          },
-          children: ["すべて解除"],
-        }),
-      );
-    }
+    const chipsRow = filterChips({
+      filters,
+      labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+      onFilter: on.filter,
+    });
     // ポップオーバーの題の要素の id（`aria-labelledby` が指す。置かれる画面の見出しの深さを知らないので、見出しの要素にはしない）
     const popTitleId = `pop-title-${kind}`;
     const pop = h({
@@ -434,7 +451,7 @@ namespace MindmapPreview {
         tag: "div",
         attrs: { class: "table-toolbar" },
         children: [
-          h({ tag: "div", attrs: { class: "chips" }, children: [...chips] }),
+          chipsRow,
           h({
             tag: "button",
             attrs: {
@@ -811,10 +828,7 @@ namespace MindmapPreview {
               else state.sort = state.sort.dir === "asc" ? { key, dir: "desc" } : null;
               render();
             },
-            filter: ({ key, values }) => {
-              if (key === null) onFilter({});
-              else onFilter(values.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: values });
-            },
+            filter: onFilter,
             pin: (key) => {
               state.pinTo = state.pinTo === key ? null : key;
               persist();

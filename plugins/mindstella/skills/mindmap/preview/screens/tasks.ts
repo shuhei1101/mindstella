@@ -175,6 +175,15 @@ namespace MindmapPreview {
     ];
     // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.tasks, columns, filters }) as Item[];
+    // ボードでは、ツールバーの下に条件のチップの行を置く（表は表の上に持つ）
+    const chips =
+      route.view === "board" && activeConditionCount(filters) > 0
+        ? filterChips({
+            filters,
+            labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+            onFilter: on.filter,
+          })
+        : null;
     const content =
       route.view === "board"
         ? board({
@@ -215,6 +224,7 @@ namespace MindmapPreview {
           route,
           on.view,
         ),
+        chips,
         content,
         screenDrawer({
           drawerOpen,

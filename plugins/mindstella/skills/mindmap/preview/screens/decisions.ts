@@ -389,10 +389,13 @@ namespace MindmapPreview {
     { index, route, on, marks }: DecisionsScreenProps,
     {
       shown,
+      chips,
       makeDrawer,
     }: {
       /** 絞り込みの条件に合う検討事項 */
       shown: Item[];
+      /** 条件のチップの行（値を選んでいる条件が無ければ null） */
+      chips: HTMLElement | null;
       /** ドロワーを組む（開いていなければ null。キーワードに一致した件数を添えるには `hit` を渡す） */
       makeDrawer: (hit?: (row: Row) => boolean) => HTMLDialogElement | null;
     },
@@ -570,6 +573,7 @@ namespace MindmapPreview {
       parent: root,
       children: [
         toolbarElement,
+        chips,
         notice,
         frame,
         zoomBar,
@@ -632,6 +636,15 @@ namespace MindmapPreview {
     const columns = decisionColumns({ index, open: on.open });
     // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.decisions, columns, filters }) as Item[];
+    // 表以外の表示形式では、ツールバーの下に条件のチップの行を置く
+    const chips =
+      activeConditionCount(filters) > 0
+        ? filterChips({
+            filters,
+            labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+            onFilter: on.filter,
+          })
+        : null;
     const makeDrawer = (hit?: (row: Row) => boolean): HTMLDialogElement | null =>
       screenDrawer({
         drawerOpen,
@@ -647,7 +660,7 @@ namespace MindmapPreview {
       return h({
         tag: "div",
         attrs: { class: "screen decisions" },
-        children: [mapView(props, { shown, makeDrawer })],
+        children: [mapView(props, { shown, chips, makeDrawer })],
       });
     }
     const toolbarElement = toolbar(
@@ -665,6 +678,7 @@ namespace MindmapPreview {
         attrs: { class: "screen decisions" },
         children: [
           toolbarElement,
+          chips,
           board({
             columns: boardColumns({
               items: shown,
