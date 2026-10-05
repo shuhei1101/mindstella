@@ -65,6 +65,7 @@ args:
     required: false
     default: なし（差分を出さない）
     description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ
+    status: planned
   - name: comments
     type: 真偽値
     required: false
@@ -156,10 +157,16 @@ states:
       - name: tabs
         value: 検討事項・資料の `marked` を真にした並び
   - name: DiffOnNarrow
-    description: 幅 390px で差分の表示の間。「変更履歴」をアイコンだけにし、札の名前の末尾を省略して × を押し出さない
+    description: 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、札の名前の末尾を省略して、コメントのボタンと × を押し出さずに 390px の中に収める
     args:
       - name: diffPoint
         value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
   - name: Comments
     description: コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す
     args:
