@@ -21,13 +21,22 @@ PLACE = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
 # 会話の日付
 TODAY = "2026-10-02"
 
+# 納品物の資料の本文（概要・背景・最終的な構成の見出しを先に置く）
+DELIVERABLE_BODY = "# 要件定義書\n\n## 概要\n\n支出を記録する。\n\n## 背景\n\n## 構成\n\n- 画面\n- データ\n"
+
+# 検討事項に書く案（A を採用する）
+OPTIONS = [
+    {"key": "A", "content": "YAML", "pros": "手で読める", "cons": "大きいと遅い"},
+    {"key": "B", "content": "SQLite", "pros": "速い", "cons": "手で読めない"},
+]
+
 
 def test_normal(
     make_workspace: MakeWorkspace,
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """決め事・派生の検討事項・未整理・タスク・会話ログを積み、プレビューを書き出し直す（正常系）。"""
+    """案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを積む（正常系）。"""
     # 準備
     root = make_workspace()
     ws = {"workspace": str(root)}
@@ -41,6 +50,8 @@ def test_normal(
             "status": "決定済み",
             "answer": "YAML",
             "reason": "手で読める",
+            # 決めたこととして足すので、選ばれた案 A を採用する
+            "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
             **PLACE,
         },
     )
@@ -48,7 +59,13 @@ def test_normal(
         "add",
         **ws,
         kind="decision",
-        item={"title": "ファイルの分け方", "status": "未決定", "parent": "D-1", **PLACE},
+        item={
+            "title": "ファイルの分け方",
+            "status": "未決定",
+            "parent": "D-1",
+            "options": OPTIONS,
+            **PLACE,
+        },
     )
     replay(
         "add", **ws, kind="decision", item={"title": "いつか使うかも", "status": "未整理", **PLACE}
@@ -75,8 +92,12 @@ def test_normal(
     # D-1 が決定済みで answer を持つ
     assert decisions["D-1"]["status"] == "決定済み"
     assert decisions["D-1"]["answer"] == "YAML"
-    # D-2 が parent: D-1 を持ち、未決定である
+    # D-1 が案を持ち、A だけが adopted: true である
+    assert [option["key"] for option in decisions["D-1"]["options"]] == ["A", "B"]
+    assert [option.get("adopted", False) for option in decisions["D-1"]["options"]] == [True, False]
+    # D-2 が parent: D-1 と案を持ち、未決定である
     assert decisions["D-2"]["parent"] == "D-1"
+    assert [option["key"] for option in decisions["D-2"]["options"]] == ["A", "B"]
     assert decisions["D-2"]["status"] == "未決定"
     # D-3 が未整理である
     assert decisions["D-3"]["status"] == "未整理"
@@ -181,7 +202,7 @@ def test_normal_when_deliverable_doc_created(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """納品物の資料を作ったら、同じタイトルのゴールの納品物からその資料を指す（正常系）。"""
+    """概要・背景・構成を先に置いた納品物の資料を作り、同じタイトルのゴールの納品物からその資料を指す（正常系）。"""
     # 準備
     settings = {
         **valid_settings,
@@ -204,7 +225,7 @@ def test_normal_when_deliverable_doc_created(
             "kind": "文書",
             "deliverable": True,
             "status": "下書き",
-            "body_markdown": "# 要件定義書\n\n支出を記録する。",
+            "body_markdown": DELIVERABLE_BODY,
             **PLACE,
         },
     )
@@ -224,7 +245,78 @@ def test_normal_when_deliverable_doc_created(
     assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == [
         {"title": "要件定義書", "doc": "A-1"}
     ]
-    # 資料 A-1 が deliverable: true を持つ
-    assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is True
+    # 資料 A-1 が deliverable: true と status: 下書き を持つ
+    doc = read_yaml(root, "docs.yaml")["items"][0]
+    assert doc["deliverable"] is True
+    assert doc["status"] == "下書き"
+    # docs/ の A-1 の本文が、概要・背景・構成の見出しを持つ
+    body = (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
+    # check が問題を 0 件で返す
+    assert checked == {"ok": True, "problems": []}
+
+
+def test_normal_when_task_output_kept_as_doc(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """タスクで作った成果を資料に残し、タスクの related から指して完了にする（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "goal": {
+            "phase": "要件",
+            "summary": "要件が決まる",
+            "deliverables": [{"title": "要件定義書"}],
+        },
+    }
+    root = make_workspace(
+        make_item("D-1"),
+        make_item("T-1", status="進行中", **{"for": ["D-1"]}),
+        settings=settings,
+    )
+    ws = {"workspace": str(root)}
+    goal_before = read_yaml(root, "mindmap.yaml")["goal"]
+    # 実行
+    # 成果の資料は、ゴールの納品物に当たらないので deliverable: false にする
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "画面の一覧",
+            "kind": "文書",
+            "deliverable": False,
+            "status": "下書き",
+            "body_markdown": "# 画面の一覧\n\n- 入力\n- 一覧\n",
+        },
+    )
+    # 成果と資料が 1 対 1 で揃ったので、タスクを資料に結んで完了にする
+    replay(
+        "update",
+        **ws,
+        id="T-1",
+        item={"related": ["A-1"], "status": "完了", "result": "画面の一覧をまとめた"},
+    )
+    replay(
+        "add",
+        **ws,
+        kind="log",
+        item={"title": "画面の一覧ができた", "date": TODAY, "related": ["T-1", "A-1"]},
+    )
+    checked = replay("check", **ws)
+    # 検証
+    task = read_yaml(root, "tasks.yaml")["items"][0]
+    # T-1 が完了で、related に A-1 を持つ
+    assert task["status"] == "完了"
+    assert task["related"] == ["A-1"]
+    # 資料 A-1 が deliverable: false を持ち、docs/ に本文がある
+    assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is False
+    assert "画面の一覧" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    # goal.deliverables が呼ぶ前と同じである
+    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
     # check が問題を 0 件で返す
     assert checked == {"ok": True, "problems": []}

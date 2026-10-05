@@ -80,6 +80,34 @@ scenarios:
       - 出力の決着していない検討事項に D-1 があり、D-2 が無い
       - '`release/` に何も書かれていない'
     test: test_normal_when_no_goal
+  - name: 正常シナリオ（タスクの成果の資料が欠けている）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる `goal`・`find`・`add`・`update` を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: 'ゴールに届いた状態（ゴールのフェーズまでの検討事項が決着し、納品物の資料 A-1 が `status: 完成`）で、完了した作業のタスク T-1 が `result` に成果を持ち、成果の資料を `related` に持たない'
+      - name: 再生する書き込み
+        description: 'T-1 の成果を本文にした資料 A-2（`deliverable: false`）を足し、T-1 を `related: [A-2]` に更新する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+
+        CC->>SV: goal
+        SV-->>CC: 届いた（残り 0 件）
+        CC->>SV: find（完了したタスク）
+        SV-->>CC: T-1（成果の資料が無い）
+        CC->>SV: add（資料 A-2）
+        CC->>SV: update（T-1 を related: A-2 にする）
+        CC-->>U: 足した資料と、決まった検討事項と納品物を示して確定を求める
+      ```
+    expected:
+      - T-1 が `related` に A-2 を持ち、A-2 の本文が `docs/` にある
+      - 書き込みの後の `goal` の出力が「届いた」のままである
+      - '`release/` に何も書かれていない'
+    test: test_normal_when_task_output_doc_missing
 lead: '`session` が、ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って `release/` にリリースの資料を書き出す単一ユースケース。'
 issue: 4
 primary_actor: 利用者
@@ -98,4 +126,5 @@ priority: 高
 notes:
   リリースの形: '`release/` に書き出す資料の形は進め方ガイドの「リリースの形」が決める。書き出しはスキルが Markdown を書く。書き出す前に `clear-release` で `release/` の中身を消し、最新の確定版の一式だけを置く（版はフォルダで切らない）'
   ゴールに届いたかの判定: 'MCP のツール `goal` が判定する。ゴールのフェーズまでの検討事項が全て決定済みか対象外・取り下げで、ゴールの `deliverables` の資料が全て `status: 完成` のときに届いたとする。ゴールが無いときは判定せず、全フェーズの決着していない検討事項を返す。引数と出力の形はインターフェース定義設計で決める'
+  タスクの成果と資料: '`goal` が届いたと返した後、確定を取る前に AI が完了した作業・検証のタスクを読み、成果と資料が 1 対 1 で揃っているかを確かめる。欠けていれば資料を足してから確定を取る。調査のタスクは成果を調査の記録に書くため除く。`goal` の判定は変えない'
 test_file: tests/e2e/単一ユースケース/test_goal_check.py
