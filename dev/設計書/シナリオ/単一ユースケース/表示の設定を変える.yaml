@@ -1,0 +1,139 @@
+title: "表示の設定を変える"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+        notes: 組み込みの既定により、見た目は `deep`、表示する種類は全ての種類になる
+      - name: 記録
+        description: 検討事項 D-1・タスク T-1・用語 G-1
+      - name: 配信
+        description: 記録を配っているサーバーと、そのプレビューの URL。端末の保存領域は空
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant LS as 端末の保存領域
+
+        U->>P: トップバーの表示の設定を押す
+        P-->>U: 左から表示の設定のパネル（見た目 deep・全ての種類に印）
+        U->>P: 見た目で glow を選ぶ
+        P->>LS: 見た目を残す
+        U->>P: 表示する種類から用語集を外す
+        P->>LS: 表示する種類を残す
+        P-->>U: トップバーから用語集のタブが消える
+        U->>P: 画面を読み込み直す
+        P->>LS: 上書きを読む
+        P-->>U: 見た目 glow・用語集のタブ無し
+      ```
+    expected:
+      - パネルを開いた直後、見た目が `deep` で、全ての種類に印が付いている
+      - 用語集を外した直後と、読み込み直した後のどちらも、トップバーに用語集のタブが無く、概要とつながりのタブはある
+      - 読み込み直した後、つながりの画面に渡る見た目が `glow` である
+      - 端末の保存領域に、見た目 `glow` と、用語集を除いた表示する種類が残っている
+      - '`config.yaml` の中身が、開く前と同じである'
+    test: test_normal
+  - name: 正常シナリオ（既定に戻す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の見た目の既定を `starlight` にし、表示する種類の既定からメモを外したワークスペース
+      - name: 記録
+        description: 調査 R-1・メモ N-1
+      - name: 端末の上書き
+        description: 端末の保存領域に、見た目 `dust`、表示する種類（全ての種類）、ライト / ダーク（ダーク）、調査の表で隠した列 1 つを残しておく
+        notes: ブラウザのライト / ダークはライトにしておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant LS as 端末の保存領域
+
+        U->>P: トップバーの表示の設定を押す
+        P-->>U: 見た目 dust・全ての種類に印
+        U->>P: 既定に戻す
+        P->>LS: 見た目・表示する種類・ライト / ダーク・表の列の上書きを消す
+        P-->>U: 見た目 starlight・メモのタブ無し・ライト・調査の表は既定の列
+      ```
+    expected:
+      - つながりの画面に渡る見た目が `starlight` である
+      - トップバーにメモのタブが無い
+      - 画面がブラウザのライト / ダークに従ってライトになる
+      - 調査の表が既定の列で並ぶ
+      - 端末の保存領域に、見た目・表示する種類・ライト / ダーク・表の列の上書きが無い
+      - '`config.yaml` の中身が、操作の前と同じである'
+    test: test_normal_when_reset
+  - name: 正常シナリオ（開いている種類を表示しない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+      - name: 記録
+        description: 検討事項 D-1・タスク T-1
+      - name: 開いている画面
+        description: 概要からタスクのタブへ移った後の、タスクの画面
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: トップバーの表示の設定を押す
+        U->>P: 表示する種類からタスクを外す
+        P-->>U: 概要へ移る（履歴は置き換える）
+        U->>P: ブラウザの戻る
+        P-->>U: タスクの画面へは戻らない
+      ```
+    expected:
+      - タスクを外した直後、画面が概要で、URL のハッシュが概要を指す
+      - トップバーにタスクのタブが無い
+      - ブラウザの戻るで、タスクの画面が開かない
+    test: test_normal_when_current_kind_hidden
+  - name: 正常シナリオ（コメントの一覧と入れ替える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 検討事項 D-1
+      - name: 開いている画面
+        description: 検討事項の表で D-1 の詳細パネルを右に開き、トップバーからコメントの一覧を左に開いた画面
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: トップバーの表示の設定を押す
+        P-->>U: コメントの一覧を閉じ、左に表示の設定のパネルを出す
+        U->>P: トップバーのコメントを押す
+        P-->>U: 表示の設定のパネルを閉じ、左にコメントの一覧を出す
+      ```
+    expected:
+      - 表示の設定を押した後、コメントの一覧が閉じ、表示の設定のパネルが開いている
+      - コメントを押した後、表示の設定のパネルが閉じ、コメントの一覧が開いている
+      - どちらの間も、右の D-1 の詳細パネルが開いたままである
+    test: test_normal_when_switched_with_comments
+lead: 利用者が、プレビューのトップバーから表示の設定のパネルを開き、見た目と表示する種類を自分の端末だけで変え、既定に戻す単一ユースケース。
+issue: 24
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 自分の見やすい見た目・表示する種類に変えても、同じワークスペースを見ている他の人の表示と `config.yaml` を変えない。変えた表示は読み込み直しても残る
+trigger: 利用者がトップバーの表示の設定を押す
+preconditions:
+  - サーバーがプレビューを配っている
+success_guarantee: 選んだ見た目と表示する種類がその場で画面に当たり、そのブラウザの端末の保存領域に残って、読み込み直しても保たれる。既定に戻すと、見た目・表示する種類・ライト / ダーク・表の列の上書きが外れ、ワークスペースの既定の表示に戻る。`config.yaml` は変わらない。
+minimal_guarantee: 端末の保存領域が使えないときも、開いている間は選んだ表示が当たる。`config.yaml` は変わらない。
+frequency: 見始めるときと、見方を変えたいとき
+priority: 中
+notes:
+  E2E の範囲: 'サーバーが配るプレビューを実際のブラウザで開き、パネルの操作と画面・端末の保存領域の状態を確かめる。見た目ごとの描き分けは #28 のため、つながりの画面に渡った見た目の値だけを確かめる'
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を足す

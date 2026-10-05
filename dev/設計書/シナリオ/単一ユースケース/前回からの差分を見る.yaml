@@ -225,7 +225,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+        description: 作成を済ませ、`config.yaml` の `history_limit` を 1 にしたワークスペース
       - name: 記録
         description: 本文を持つ検討事項 D-3
       - name: 書き換え
@@ -278,7 +278,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+        description: 作成を済ませ、`config.yaml` の `history_limit` を 1 にしたワークスペース
       - name: 記録
         description: 本文を持つ検討事項 D-3・D-4
       - name: 前回開いた

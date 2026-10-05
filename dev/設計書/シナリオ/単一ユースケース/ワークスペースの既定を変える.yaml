@@ -1,0 +1,112 @@
+title: "ワークスペースの既定を変える"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを、端末の保存領域を共有しない 2 つのブラウザのコンテキスト（A と B）で開く）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+      - name: 記録
+        description: 検討事項 D-1・用語 G-1
+      - name: A の上書き
+        description: A の端末の保存領域に、見た目 `glow` と、用語集を除いた表示する種類を残しておく。B の端末の保存領域は空
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者（A）
+        participant PA as プレビュー（A）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant PB as プレビュー（B）
+
+        U->>PA: 表示の設定で「ワークスペースの既定にする」を押す
+        PA-->>U: 確かめのモーダル（保存する見た目と表示する種類）
+        U->>PA: 保存する
+        PA->>SV: 既定の書き換え（見た目 glow・用語集を除いた種類）
+        SV->>SV: スキーマと突き合わせる
+        SV->>WS: config.yaml を書く
+        SV-->>PA: 保存した
+        SV-->>PB: 書き換えを知らせる
+        PB->>SV: 記録と設定を読み直す
+        PB-->>PB: 上書きを持たない項目に新しい既定を当てる
+      ```
+    expected:
+      - 確かめのモーダルに、保存する見た目 `glow` と、用語集を除いた表示する種類が出る
+      - '`config.yaml` の見た目の既定が `glow` で、表示する種類の既定が用語集を除いた種類である'
+      - '`config.yaml` のそのほかのキーが、操作の前と同じである'
+      - B の画面が、開き直さずに用語集のタブを外し、つながりに渡る見た目が `glow` になる
+      - A の端末の保存領域の上書きが残っている
+    test: test_normal
+  - name: 正常シナリオ（取り消す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+      - name: 端末の上書き
+        description: 端末の保存領域に見た目 `dust` を残しておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 表示の設定で「ワークスペースの既定にする」を押す
+        P-->>U: 確かめのモーダル
+        U->>P: 取り消す
+        P-->>U: モーダルを閉じ、表示の設定のパネルに戻る
+      ```
+    expected:
+      - モーダルが閉じ、表示の設定のパネルが開いたままである
+      - 既定の書き換えの要求がサーバーへ出ていない
+      - '`config.yaml` の中身が、操作の前と同じである'
+    test: test_normal_when_cancelled
+  - name: 異常シナリオ（保存に失敗する）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを、端末の保存領域を共有しない 2 つのブラウザのコンテキスト（A と B）で開く）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
+      - name: 書き込めない設定
+        description: 画面を開いた後に `config.yaml` を読み取り専用にする
+      - name: A の上書き
+        description: A の端末の保存領域に見た目 `glow` を残しておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者（A）
+        participant PA as プレビュー（A）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>PA: 「ワークスペースの既定にする」→ 保存する
+        PA->>SV: 既定の書き換え
+        SV->>WS: config.yaml を書く（書けない）
+        SV-->>PA: 書けなかった理由を示すエラー
+        PA-->>U: 確かめのモーダルの中に理由を出す
+      ```
+    expected:
+      - 確かめのモーダルの中に、保存できなかった理由が出る
+      - '`config.yaml` の中身が、操作の前と同じである'
+      - B の画面の見た目とタブが、操作の前と同じである
+      - A の画面の見た目が `glow` のままである
+    test: test_error_when_save_fails
+lead: 利用者が、表示の設定のパネルで選んだ見た目と表示する種類を、確かめてからワークスペースの既定として `config.yaml` に保存し、上書きを持たない人の画面がその既定に変わる単一ユースケース。
+issue: 24
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 自分が選んだ表示を、同じワークスペースを見る人の既定にできる。誤って押しても、確かめで取り消せる
+  - name: 同じワークスペースを見る他の人
+    interest: 自分で変えていない項目だけが、開き直さずに新しい既定になる
+trigger: 利用者が表示の設定のパネルで「ワークスペースの既定にする」を押す
+preconditions:
+  - サーバーがプレビューを配っている（配る書き出しにはこの操作が無い）
+success_guarantee: '`config.yaml` の見た目の既定と表示する種類の既定が保存した値になり、そのほかのキーは変わらない。開いている画面のうち上書きを持たない項目が、開き直さずにその値になる。'
+minimal_guarantee: 取り消したときと保存に失敗したときは、`config.yaml` を書き換えず、どの画面の表示も保存の前のまま。
+frequency: 話し合いごとに数回
+priority: 中
+notes:
+  保存できる人: '開けた人は誰でも保存できる。管理者だけに絞るのは #25'
+  保存した人の上書き: 保存しても、保存した人の端末の上書きはそのまま残る
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を足す
