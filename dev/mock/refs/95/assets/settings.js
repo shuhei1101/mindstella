@@ -82,7 +82,7 @@
   // 案 B: ワークスペースの既定を別の区画で選び、区画の中の保存ボタンで保存する
   const wsSection = (m) => {
     const differs = m.ws.look !== m.defLook || !sameSet(m.ws.shown, m.defShown);
-    return `<h3 class="st-part">ワークスペースの既定</h3>
+    return `<p class="st-part st-part-ws">ワークスペースの既定</p>
       <div class="st-ws">
         <label class="st-field"><span>つながりの見た目</span><select data-act="wslook">${LOOKS.map((l) => `<option value="${l.key}" ${m.ws.look === l.key ? "selected" : ""}>${l.label}</option>`).join("")}</select></label>
         <fieldset class="st-sec"><legend>表示する種類</legend><div class="st-ws-kinds">${KINDS.map((k) => `<label><input type="checkbox" data-act="wskind" value="${k.key}" ${m.ws.shown.has(k.key) ? "checked" : ""}>${k.label}</label>`).join("")}</div></fieldset>
@@ -103,7 +103,7 @@
     return `<div class="panel-head cdrawer-head"><h2 class="cm-h">表示の設定</h2><span class="spacer"></span><button class="icon-btn" type="button" data-act="settings" aria-label="表示の設定を閉じる">${icon("x")}</button></div>
       <div class="st-wrap">
         ${m.nostore ? `<p class="st-note" role="alert">${icon("alert")}<span>この端末に保存できません。選んだ表示は、このページを開いている間だけ当たります。</span></p>` : ""}
-        ${sections ? `<h3 class="st-part">この端末</h3>` : ""}
+        ${sections ? `<p class="st-part">この端末</p>` : ""}
         ${lookField(m)}
         ${m.showTheme ? themeField(m) : ""}
         ${kindsField(m)}
