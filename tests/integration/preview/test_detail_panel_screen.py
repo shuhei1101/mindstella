@@ -6,6 +6,13 @@ import json
 
 import pytest
 from playwright.sync_api import APIResponse, Page, Route
+from preview_a11y_checks import axe_rule_results
+from preview_body_scroll_helpers import (
+    LONG_BODY,
+    NEW_DECISION,
+    SCROLLABLE_REGION_RULE,
+    SETTLED_SCROLL_TOP_JS,
+)
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -28,7 +35,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
-from workspace_fixtures import MakeComment, MakeDraft, MakeItem
+from workspace_fixtures import CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
@@ -47,6 +54,10 @@ NARROW_HEIGHT = 700
 
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
+
+# 本文のスクロール領域と、Tab で本文の前に来る見出しの最後のボタン
+PANEL_BODY = "aside.panel .panel-body"
+PANEL_HEAD_LAST_BUTTON = "aside.panel .panel-head button:not([disabled])"
 
 
 def _hold_post_response(route: Route, held: list[tuple[Route, APIResponse]]) -> None:
@@ -782,3 +793,119 @@ def test_highlight_location_when_mismatched(
     # 検証
     assert page.locator(".loc-hit").count() == 0
     assert page.eval_on_selector("aside.panel .panel-body", "e => e.scrollTop") == 0
+
+
+def _open_long_body(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """フォーカスできる要素を持たない、縦にあふれる本文の項目を詳細パネルで開く。"""
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    # 前提: 本文の中にフォーカスできる要素は無く、縦にあふれている
+    assert page.locator(f"{PANEL_BODY} :is(a[href], button, input, textarea, select, [tabindex])").count() == 0
+    assert page.eval_on_selector(PANEL_BODY, "e => e.scrollHeight > e.clientHeight")
+    return page
+
+
+def test_body_scroll_region_attributes(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文のスクロール領域は、フォーカスでき、読み上げの名前「詳細の本文」の領域になる（正常系）。"""
+    # 準備・実行
+    page = _open_long_body(write_preview, open_preview, make_item)
+    # 検証
+    assert page.get_attribute(PANEL_BODY, "tabindex") == "0"
+    assert page.get_attribute(PANEL_BODY, "role") == "region"
+    assert page.get_attribute(PANEL_BODY, "aria-label") == "詳細の本文"
+
+
+def test_body_scroll_by_keyboard(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """見出しのボタンの後の Tab で本文のスクロール領域にフォーカスが移り、PageDown で本文が送れる（正常系）。"""
+    # 準備
+    page = _open_long_body(write_preview, open_preview, make_item)
+    page.locator(PANEL_HEAD_LAST_BUTTON).last.focus()
+    # 実行
+    page.keyboard.press("Tab")
+    page.keyboard.press("PageDown")
+    # 検証
+    assert page.evaluate("document.activeElement?.matches('aside.panel .panel-body')")
+    page.wait_for_function("document.querySelector('aside.panel .panel-body').scrollTop > 0")
+
+
+def test_body_scroll_region_when_axe(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """axe の `scrollable-region-focusable` に、本文のスクロール領域が当たらない（正常系）。"""
+    # 準備
+    page = _open_long_body(write_preview, open_preview, make_item)
+    # 実行
+    result = axe_rule_results(page, PANEL_BODY, SCROLLABLE_REGION_RULE)
+    # 検証（規則が本文のスクロール領域に当たったうえで、通る）
+    assert result["violations"] == []
+    assert result["passes"] == [".panel-body"]
+
+
+def test_body_focus_outline_inside(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文のスクロール領域にフォーカスしたとき、輪郭は領域の内側に描く（正常系）。"""
+    # 準備
+    page = _open_long_body(write_preview, open_preview, make_item)
+    page.locator(PANEL_HEAD_LAST_BUTTON).last.focus()
+    # 実行
+    page.keyboard.press("Tab")
+    # 検証
+    outline = page.eval_on_selector(
+        PANEL_BODY, "e => { const s = getComputedStyle(e); return [s.outlineOffset, s.outlineStyle]; }"
+    )
+    assert outline == ["-2px", "solid"]
+
+
+def test_body_focus_when_redrawn(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+) -> None:
+    """本文のスクロール領域にフォーカスして送った後、書き換えの知らせで描き直しても、フォーカスとスクロールの位置が残る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    page = open_preview(str(served.data["url"]), "#tab=docs&id=A-1")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.locator(PANEL_HEAD_LAST_BUTTON).last.focus()
+    page.keyboard.press("Tab")
+    page.keyboard.press("PageDown")
+    page.wait_for_function("document.querySelector('aside.panel .panel-body').scrollTop > 0")
+    scrolled = page.evaluate(SETTLED_SCROLL_TOP_JS, PANEL_BODY)
+    page.evaluate("document.querySelector('aside.panel .panel-body').dataset.drawn = 'before'")
+    # 実行（項目を足して、書き換えの知らせで描き直させる）
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    assert added.is_error is False, added.text
+    page.wait_for_function(
+        "document.querySelector('aside.panel .panel-body')?.dataset.drawn !== 'before'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.evaluate("document.activeElement?.matches('aside.panel .panel-body')")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, PANEL_BODY) == scrolled
+
+
+def test_body_escape_closes_panel(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文のスクロール領域にフォーカスがあっても、Esc で詳細パネルを閉じる（正常系）。"""
+    # 準備
+    page = _open_long_body(write_preview, open_preview, make_item)
+    page.locator(PANEL_HEAD_LAST_BUTTON).last.focus()
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement?.matches('aside.panel .panel-body')")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_selector("aside.panel.open", state="detached")
+    assert "id=" not in page.evaluate("location.hash")
