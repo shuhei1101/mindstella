@@ -70,3 +70,4 @@ accessibility:
   - '`dialog` を `showModal()` で開き、見出し「ワークスペースの既定を書き換えますか」を読み上げ名にする。開いたときのフォーカスは取り消すに置く'
   - 変える項目は「今の既定」「保存する値」を読み上げにだけ残し、矢印の印に頼らない
   - 保存できなかった理由は `role="alert"` で読み上げに伝える
+test_file: tests/integration/storybook/test_settings_confirm_stories.py

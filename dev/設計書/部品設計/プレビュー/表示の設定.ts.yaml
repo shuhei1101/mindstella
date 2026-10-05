@@ -147,3 +147,4 @@ accessibility:
   - 知らせは `role="status"`、端末に保存できないことは `role="alert"` で読み上げに伝える
   - 「ワークスペースの既定にする」は `aria-haspopup="dialog"` を持つ
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
+test_file: tests/integration/storybook/test_settings_panel_stories.py

@@ -98,3 +98,4 @@ constraints:
 refs:
   - dev/設計書/インターフェース定義/サーバー/記録の取得#
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+test_file: tests/integration/server/test_config_reload.py

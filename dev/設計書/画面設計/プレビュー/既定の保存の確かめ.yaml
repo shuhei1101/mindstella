@@ -18,3 +18,4 @@ elements:
 lead: ワークスペースの既定として保存する前に、今の既定と保存する値を並べて確かめるモーダル。表示の設定の「ワークスペースの既定にする」で開き、閉じると表示の設定に戻る。配る書き出しには無い。
 mock: dev/mock/pages/settings-save-confirm/95/standard/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
+test_file: tests/integration/preview/test_settings_confirm_screen.py
