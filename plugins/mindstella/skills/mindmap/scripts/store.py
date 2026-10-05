@@ -257,7 +257,11 @@ def _open_lock_file(root: Path) -> IO[str]:
 
 @contextlib.contextmanager
 def workspace_lock(
-    root: Path, process_lock: threading.Lock, *, create: bool = False
+    root: Path,
+    process_lock: threading.Lock,
+    *,
+    create: bool = False,
+    require: Callable[[Path], None] = require_workspace,
 ) -> Iterator[None]:
     """プロセスの中の鍵とワークスペースの排他ロックをこの順に取り、抜けるときに放す。"""
     with process_lock:
@@ -268,7 +272,7 @@ def workspace_lock(
             root.mkdir(parents=True, exist_ok=True)
         else:
             # ワークスペースでないフォルダには何も作らず止める
-            require_workspace(root)
+            require(root)
         try:
             with _open_lock_file(root) as stream:
                 # 別のプロセスが持っている間は、取れるまで待つ
