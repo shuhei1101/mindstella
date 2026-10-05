@@ -199,7 +199,7 @@ scenarios:
       - name: make_workspace
         description: 保持する回数を 0 にしたワークスペース
       - name: 記録
-        description: 本文を持つ検討事項 D-3
+        description: 検討事項 D-1〜D-5。D-3 だけが本文を持つ
       - name: 前回開いた
         description: 記録を作った後に、プレビューを一度開いて閉じる
       - name: 書き換え
@@ -217,7 +217,7 @@ scenarios:
         P-->>U: 今の内容だけの詳細パネル
       ```
     expected:
-      - 検討事項の表で D-6 に新規の印が付き、D-3 には変更の印が付かない
+      - 検討事項の表で D-6 に新規の印が付き、D-3 には変更の印が付かない。D-1・D-2・D-4・D-5 にも印が付かない
       - D-3 の詳細パネルに差分の印が無く、今の本文だけが出る
     test: test_normal_when_history_limit_zero
   - name: 正常シナリオ（前後を組み立てられない古いまとまり）
