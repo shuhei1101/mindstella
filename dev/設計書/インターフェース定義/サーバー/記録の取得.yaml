@@ -124,6 +124,30 @@ flows:
       - '`derived.goal.phase_progress` が 目的 1/1・要件 0/1'
       - '`derived.goal` が `goal` の結果と同じキーで同じ値を持つ'
     test: test_normal_when_no_goal
+  - name: 正常系（設定がスキーマに合わない）
+    summary: 配信中に `config.yaml` を崩しても、最後に検査に通った設定で記録を返し、合わない箇所を添える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`config.yaml` の `display.network_look` を `starlight` にしたワークスペース。`preview_url` を呼んだ後に `display.network_look` を `rainbow` に直接書き換える'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/records
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: config.yaml だけが合わない
+        IF-->>クライアント: 200、最後に通った設定と合わない箇所
+      ```
+    expected:
+      - ステータスが 200
+      - '`settings.display.network_look` が `starlight`'
+      - '`settings_problem` に `config.yaml: display.network_look: ` で始まる行がある'
+    test: test_normal_when_config_invalid
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -139,7 +163,7 @@ request:
 response:
   - name: settings
     type: dict
-    description: '`mindmap.yaml` の中身'
+    description: '`config.yaml` の中身。`display`（見た目の既定・表示する種類の既定）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
   - name: decisions / tasks / research / docs / terms / notes / logs
     type: list[dict]
     description: 種類ごとの YAML の `items` の中身（キー名はファイル名から `.yaml` を落としたもの）
@@ -161,6 +185,9 @@ response:
   - name: changes
     type: dict
     description: '`changes.yaml` の中身（`last_seq`・`sets`・`pending`）。無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`。画面の変更履歴の一覧と、新規・変更の印はここから取る。種類ごとの項目は `history` を持ったまま返し、画面はそこから前の版を組み立てる'
+  - name: settings_problem
+    type: list[str] | None
+    description: '`config.yaml` がスキーマに合わないとき、合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。合うときは `null`。画面は表示を変えず、設定を直すよう知らせる'
 response_notes: |-
   > [!NOTE]
   > 配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。送信（`submissions.yaml`）は返さない。
@@ -168,7 +195,7 @@ status_codes:
   - code: '200'
     condition: 読めた
   - code: '422'
-    condition: ワークスペースのどれかの YAML がスキーマに合わないか、YAML として読めない。または `mindmap.yaml` が無くなった
+    condition: '`config.yaml` 以外のどれかの YAML がスキーマに合わないか、YAML として読めない。または `config.yaml` が無くなった'
     notes: '`detail` に合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` を改行でつなぐ。画面は前に読んだ記録で描き続ける'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
@@ -180,6 +207,8 @@ constraints:
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
   - item: 読みかけ
     constraint: ツールは YAML を一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
+  - item: 設定の読み方
+    constraint: 呼ばれるたびに `config.yaml` を読み、スキーマに合えば配信の「最後に検査に通った設定」をその値に差し替える。合わなければ差し替えず、最後に検査に通った設定を `settings` に、合わない箇所を `settings_problem` に入れて 200 を返す
 refs:
   - dev/設計書/インターフェース定義/サーバー/次の候補#
   - dev/設計書/インターフェース定義/サーバー/ゴール判定#

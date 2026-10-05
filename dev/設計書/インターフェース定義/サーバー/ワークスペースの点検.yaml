@@ -69,14 +69,14 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: check workspace
-        IF-->>WS: mindmap.yaml と全ての YAML を読む
+        IF-->>WS: config.yaml と全ての YAML を読む
         IF->>IF: phase と goal.phase を phases と突き合わせる
         IF-->>クライアント: JSON（ok: false）
       ```
     expected:
       - ツールのエラーにならず、`ok` が偽
       - '`problems` に `kind: unknown_phase`・`file: decisions.yaml`・`id: D-1`・`key: items[0].phase`・`detail` に `発散` がある'
-      - '`problems` に `kind: unknown_phase`・`file: mindmap.yaml`・`key: goal.phase`・`detail` に `結論` がある'
+      - '`problems` に `kind: unknown_phase`・`file: config.yaml`・`key: goal.phase`・`detail` に `結論` がある'
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じ
     test: test_normal_when_unknown_phase
   - name: 正常系（変更履歴が本文とずれている）
@@ -104,12 +104,12 @@ flows:
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_history_stale
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    summary: config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -118,7 +118,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: check workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -134,7 +134,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
 response:
   - name: ok
     type: bool
@@ -153,7 +153,7 @@ response:
     description: 問題のあるキーのパス（`items[0].status`・`depends_on` など）
   - name: problems[].detail
     type: str
-    description: 中身（参照先の ID・スキーマの理由など）。前の版の形式（資料の `done`・`mindmap.yaml` の `summary` が無い・`mindmap.yaml` の `field`）で合わない `schema` は、理由に続けて `/mindstella:upgrade` で今の形式に移せることを書く
+    description: 中身（参照先の ID・スキーマの理由など）。前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`）で合わない `schema` は、理由に続けて `/mindstella:upgrade` で今の形式に移せることを書く
 response_notes: |-
   > [!NOTE]
   > 問題があるときも点検そのものは正常に終えているので、ツールのエラーにせず、同じ形の結果（`ok: false`）を返す。
@@ -162,7 +162,7 @@ exceptions:
     condition: 点検できた
     notes: 結果を返す（問題があるときも）
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
@@ -171,7 +171,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 点検するファイル
-    constraint: '`mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`（無ければ送信 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）・`docs/`'
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`（無ければ送信 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）・`docs/`'
   - item: 参照切れを確かめるキー
     constraint: '`depends_on`・`parent`・`for`・`related`・`sources` と設定の `goal.deliverables[].doc`、送信の `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、キーが決めた種類でない ID（`parent` が `D-` 以外など）を `broken_ref` にする。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
   - item: 本文のずれ
@@ -179,7 +179,7 @@ constraints:
   - item: 問題の並び
     constraint: ファイル名の順、同じファイルの中は項目の並びの順
   - item: フェーズを確かめるキー
-    constraint: '種類ごとの YAML の項目の `phase` と設定の `goal.phase` が、設定の `phases` のどれかでないものを `unknown_phase` にする（`goal.phase` は `file: mindmap.yaml`・`id: null`・`key: goal.phase`）。`detail` にそのフェーズの名前'
+    constraint: '種類ごとの YAML の項目の `phase` と設定の `goal.phase` が、設定の `phases` のどれかでないものを `unknown_phase` にする（`goal.phase` は `file: config.yaml`・`id: null`・`key: goal.phase`）。`detail` にそのフェーズの名前'
   - item: 変更履歴のずれ
     constraint: 本文を持つ項目の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
 refs:

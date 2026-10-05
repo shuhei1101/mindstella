@@ -88,12 +88,12 @@ flows:
       - D-1 の `status`・`answer` が呼ぶ前と同じ
     test: test_normal_when_removed
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -102,7 +102,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: edit_option workspace id D-1 action remove key A
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -285,7 +285,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -330,7 +330,7 @@ exceptions:
     condition: 書き換えられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: ItemNotFoundError
     condition: 渡した ID の検討事項が無い

@@ -4,7 +4,7 @@ entry:
   value: '`migrate`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__migrate`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系（手順を並べる）
-    summary: 版を記録する前の形式のワークスペースで、v0.3.0・v0.5.0 の手順と値が要るキーを返す
+    summary: 版を記録する前の形式のワークスペースで、v0.3.0・v0.5.0・v0.6.0 の手順と値が要るキーを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -25,13 +25,13 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`workspace_version` が `null`、`plugin_version` が `v0.5.0`、`relation` が `older`'
-      - '`steps` の版が `v0.3.0` と `v0.5.0` で、`destructive` が全て `false`'
-      - '`needs_values` に `mindmap.yaml` の `summary` がある'
+      - '`workspace_version` が `null`、`plugin_version` が `v0.6.0`、`relation` が `older`'
+      - '`steps` の版が `v0.3.0`・`v0.5.0`・`v0.6.0` で、`destructive` が v0.6.0 の `rename_file`（`mindmap.yaml` → `config.yaml`）だけ `true`'
+      - '`needs_values` に `config.yaml` の `summary` がある（改名した後の名前で返す）'
       - ワークスペースの全てのファイルの中身と更新日時が呼ぶ前と同じ
     test: test_normal_when_plan
   - name: 正常系（手順を当てる）
-    summary: 写しを取って v0.3.0・v0.5.0 の手順を当て、版のファイルは書かない
+    summary: 写しを取って v0.3.0・v0.5.0・v0.6.0 の手順を当て、版のファイルは書かない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -46,14 +46,15 @@ flows:
 
         クライアント->>IF: migrate workspace
         IF->>WS: 隣のフォルダへ複製する
-        IF->>WS: v0.3.0・v0.5.0 の手順を並びの順に当てる
+        IF->>WS: v0.3.0・v0.5.0・v0.6.0 の手順を並びの順に当てる
         IF-->>クライアント: JSON（steps・needs_values・backup）
       ```
     expected:
       - ツールのエラーにならない
       - '`docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たず、`updated` が呼ぶ前と同じ'
-      - '`needs_values` に `mindmap.yaml` の `summary` がある'
-      - '`backup.kind` が `copy` で、`backup.ref` のフォルダに呼ぶ前の `docs.yaml` がある'
+      - ワークスペースに `mindmap.yaml` が無く、`config.yaml` が `mindmap.yaml` の中身（`field` を `playbooks` に移した後）を持つ
+      - '`needs_values` に `config.yaml` の `summary` がある'
+      - '`backup.kind` が `copy` で、`backup.ref` のフォルダに呼ぶ前の `docs.yaml` と `mindmap.yaml` がある'
       - '`mindstella-version.ini` が無いまま'
     test: test_normal_when_apply
   - name: 正常系（写しを git のコミットで取る）
@@ -88,8 +89,8 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 手順を当てた後の、`summary` を持たない `mindmap.yaml` のワークスペース
-        notes: '`values` は `[{"file": "mindmap.yaml", "key": "summary", "value": "要件出しのスキルを設計する"}]`'
+        description: 手順を当てた後の、`summary` を持たない `config.yaml` のワークスペース
+        notes: '`values` は `[{"file": "config.yaml", "key": "summary", "value": "要件出しのスキルを設計する"}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -98,12 +99,12 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: migrate workspace values
-        IF->>WS: mindmap.yaml の summary を書く
+        IF->>WS: config.yaml の summary を書く
         IF-->>クライアント: JSON
       ```
     expected:
       - ツールのエラーにならない
-      - '`mindmap.yaml` の `summary` が渡した題名'
+      - '`config.yaml` の `summary` が渡した題名'
       - '`mindstella-version.ini` が無いまま'
     test: test_normal_when_set
   - name: 正常系（版を書く）
@@ -127,8 +128,8 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`recorded` が `v0.5.0`'
-      - '`mindstella-version.ini` の 1 行目が `v0.5.0`'
+      - '`recorded` が `v0.6.0`'
+      - '`mindstella-version.ini` の 1 行目が `v0.6.0`'
     test: test_normal_when_record
   - name: 正常系（版が同じ）
     summary: 今の版のワークスペースでは並べる手順が無い
@@ -204,12 +205,12 @@ flows:
       - 作業ツリーにコミットが増えていない
     test: test_normal_when_backup_ignored
   - name: 正常系（既に今の形のワークスペースに当てる）
-    summary: v0.2.0 で作った形（版のファイルが無く、資料が status、題名がある）に当てても何も変えずに成功する
+    summary: 今の形（版のファイルが無く、`config.yaml` が題名を持ち、資料が status）に当てても何も変えずに成功する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '版のファイルを持たず、`summary` を持つ `mindmap.yaml` と、資料 A-1（`status: 完成`）を持つ、git の作業ツリーではないワークスペース'
+        description: '版のファイルを持たず、`summary` を持つ `config.yaml`（`mindmap.yaml` は無い）と、資料 A-1（`status: 完成`）を持つ、git の作業ツリーではないワークスペース'
         notes: 当て直し（手順を当てた後、版を書く前に止めたワークスペース）も同じ形になる
     flow: |-
       ```mermaid
@@ -226,7 +227,8 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`needs_values` が空'
-      - '`mindmap.yaml`・`docs.yaml` の中身と更新日時が呼ぶ前と同じ'
+      - '`config.yaml`・`docs.yaml` の中身と更新日時が呼ぶ前と同じ'
+      - '`mindmap.yaml` が作られていない'
     test: test_normal_when_already_current
   - name: 正常系（分野をプレイブックの配列へ移す）
     summary: v0.5.0 の手順で mindmap.yaml の field を playbooks の 1 件の配列へ移す
@@ -256,6 +258,33 @@ flows:
       - '`mindmap.yaml` が `field` を持たず、`playbooks` が `[システム開発]`、`target_label` が `システム` のまま'
       - '`mindstella-version.ini` が `v0.4.0` のまま'
     test: test_normal_when_field_to_playbooks
+  - name: 正常系（設定ファイルの名前を改める）
+    summary: v0.6.0 の手順で `mindmap.yaml` を `config.yaml` に改める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 版のファイルが `v0.5.0` で、`summary` を持つ `mindmap.yaml` を持つ（`config.yaml` は無い）、git の作業ツリーではないワークスペース
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace
+        IF->>WS: 隣のフォルダへ複製する
+        IF->>WS: v0.6.0 の手順（rename_file mindmap.yaml → config.yaml）を当てる
+        IF-->>クライアント: JSON（steps・needs_values・backup）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`steps` が `version: v0.6.0`・`op: rename_file`・`destructive: true` の 1 件'
+      - ワークスペースに `mindmap.yaml` が無く、`config.yaml` の中身が呼ぶ前の `mindmap.yaml` と同じ
+      - '`needs_values` が空'
+      - '`mindstella-version.ini` が `v0.5.0` のまま'
+    test: test_normal_when_rename_settings_file
   - name: 異常系（版が新しい・WorkspaceNewerError）
     summary: 版が新しいワークスペースには手順を当てない
     setup:
@@ -312,7 +341,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 手順を当てた後の、`summary` を持たない `mindmap.yaml` のワークスペース
+        description: 手順を当てた後の、`summary` を持たない `config.yaml` のワークスペース
         notes: '`record` に `true` を渡す'
     flow: |-
       ```mermaid
@@ -327,16 +356,16 @@ flows:
       ```
     expected:
       - ツールのエラーになる
-      - 'エラーの本文に `mindmap.yaml: ` で始まり `summary` を含む行がある'
+      - 'エラーの本文に `config.yaml: ` で始まり `summary` を含む行がある'
       - '`mindstella-version.ini` が無いまま'
     test: test_error_when_schema_mismatch
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと何も書かずに終わる
+    summary: '`config.yaml` も `mindmap.yaml` も無いフォルダを指すと何も書かずに終わる'
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` も `mindmap.yaml` も無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -345,7 +374,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: migrate workspace plan
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml も mindmap.yaml も無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -367,7 +396,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` か `mindmap.yaml`（v0.6.0 より前の版の設定ファイル）があるフォルダ'
   - name: plan
     type: bool
     required: false
@@ -396,7 +425,7 @@ request:
     location: argument
     description: 値が要るキーに入れる値。1 キー = 1 要素
     constraints: '`file` はワークスペースからの相対パス、`key` は `.` 区切りのキーのパス。手順を当てる・`record` と一緒に使わない'
-    example: '[{"file": "mindmap.yaml", "key": "summary", "value": "要件出しのスキルを設計する"}]'
+    example: '[{"file": "config.yaml", "key": "summary", "value": "要件出しのスキルを設計する"}]'
   - name: record
     type: bool
     required: false
@@ -435,7 +464,7 @@ response:
     example: docs.yaml の items[].done を status に名前を変える
   - name: needs_values[]
     type: list[{file, key, description}]
-    description: 手順を当てた後に値が要るキー（`set_default` の `ask`）。値を入れるまで点検に合わない。`plan` でも返す
+    description: 手順を当てた後に値が要るキー（`set_default` の `ask`）。値を入れるまで点検に合わない。`plan` でも返す。`file` は全ての手順を当てた後の名前（`rename_file` で改めたファイルは改めた先の名前）
   - name: backup
     type: '{kind, ref} | None'
     description: 取った写し。手順を当てたときだけ持つ
@@ -453,7 +482,7 @@ exceptions:
     condition: 並べた・当てた・値を入れた・版を書いた、または当てる手順が無かった
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` も `mindmap.yaml` も無い'
     notes: ツールのエラー。何も書き込まない
   - name: WorkspaceNewerError
     condition: 手順を当てる・`record` で、ワークスペースの版がプラグインの版より新しい
@@ -500,6 +529,10 @@ constraints:
     constraint: どの操作も、同じ手順を 2 度当てても結果が変わらないように振る舞う。`rename_key` は `from` が無い項目を飛ばし、`from` と `to` が両方ある項目は StepFailedError。`map_values` は `key` が無い項目と `map` に無い値を変えない。`set_default` は `key` を既に持つ項目を変えず、`ask` でも `needs_values` に返さない。`rename_file`・`move_dir` は `from` が無ければ飛ばし、`to` が既にあれば StepFailedError。`delete` は `path` が無ければ飛ばす。`call` の変換も同じ振る舞いで書く。手順が何も変えなかったファイルは書かない
   - item: v0.5.0 の手順
     constraint: '`call`（`field_to_playbooks`）の 1 手順。`mindmap.yaml` の `field` を `playbooks` の 1 件の配列へ移し、`field` を消す。`field` が無ければ飛ばし、`field` と `playbooks` を両方持つときは StepFailedError。`target_label` とキーの並びは変えない（`playbooks` は `field` の位置に置く）'
+  - item: v0.6.0 の手順
+    constraint: '`rename_file`（`from: mindmap.yaml`・`to: config.yaml`）の 1 手順。破壊的な操作。`mindmap.yaml` が無ければ飛ばし、両方あれば StepFailedError（『対象が無い・既にあるとき』）。v0.3.0・v0.5.0 の手順は改める前に当たるため、`mindmap.yaml` を指したまま残す'
+  - item: ワークスペースの見分け
+    constraint: このツールだけは `config.yaml` か `mindmap.yaml` のどちらかがあればワークスペースとして扱う（ほかのツールは `config.yaml` だけ）
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]

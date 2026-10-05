@@ -1,0 +1,172 @@
+title: "設定の既定の書き換え"
+entry:
+  kind: endpoint
+  value: PUT /api/config/display
+flows:
+  - name: 正常系
+    summary: 見た目の既定と表示する種類の既定を書き、ほかのキーを残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が `display` を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/config/display
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT（network_look: glow、visible_kinds: 用語集を除く 6 種類）
+        IF-->>WS: config.yaml を読む
+        IF->>IF: display を置き換え、スキーマと突き合わせる
+        IF->>WS: config.yaml を書く
+        IF-->>クライアント: 200、display
+      ```
+    expected:
+      - ステータスが 200 で、`display.network_look` が `glow`
+      - '`config.yaml` の `display.visible_kinds` が `terms` を除いた 6 種類'
+      - '`config.yaml` のほかのキーが呼ぶ前と同じ'
+      - '`GET /api/events` に書き換えの知らせが届く'
+    test: test_normal
+  - name: 異常系（値が合わない・400）
+    summary: 選べない見た目は書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`network_look` に `rainbow` を送る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/config/display
+
+        クライアント->>IF: PUT（network_look: rainbow）
+        IF-->>クライアント: 400
+      ```
+    expected:
+      - ステータスが 400
+      - '`detail` に `network_look` と選べる値がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_value_invalid
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからは書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/config/display
+
+        クライアント->>IF: PUT（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（書けない・500）
+    summary: ワークスペースのフォルダに書けないと、理由を返して何も変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 作成を済ませ、`preview_url` を呼んだ後にワークスペースのフォルダを読み取り専用（`0o500`）にしたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/config/display
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT（network_look: glow）
+        IF->>WS: 一時ファイルを書く（書けない）
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500
+      - '`detail` に書けなかったパスと理由がある'
+      - '`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_write_fails
+lead: プレビューの表示の設定で「ワークスペースの既定にする」を確かめて保存したとき、見た目の既定と表示する種類の既定を `config.yaml` の `display` に書く。書いたら開いている画面へ知らせる。
+idempotent: true
+side_effects: '`config.yaml` の `display` だけを書き換え、書き換えの知らせを送る。ほかのキーと種類ごとの YAML は書き換えない'
+permissions: 配信の画面からの要求だけ（`Host` と `Origin` を確かめる）。役割での絞り込みは持たない（#25 が入れる）
+exclusivity: ほかの書き込むエンドポイントと同じく、書き換えの鍵（プロセスの中の鍵と `.mindstella.lock`）を取ってから読み書きする
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+  - name: Origin
+    type: str
+    required: false
+    location: header
+    description: 送り元
+    constraints: 無いか、配信の URL と同じ
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: network_look
+    type: Literal['glow', 'starlight', 'constellation', 'deep', 'dust']
+    required: true
+    location: body
+    description: 見た目の既定
+  - name: visible_kinds
+    type: list[Literal['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']]
+    required: true
+    location: body
+    description: 表示する種類の既定
+    constraints: 重複しない。空の配列も許す（概要とつながりだけを出す）
+request_example: |-
+  ```json
+  {"network_look": "glow", "visible_kinds": ["decisions", "tasks", "research", "docs", "notes", "logs"]}
+  ```
+response:
+  - name: display
+    type: '{network_look, visible_kinds}'
+    description: 書いた後の `config.yaml` の `display`
+status_codes:
+  - code: '200'
+    condition: 書けた
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`network_look`・`visible_kinds` が無いか値が合わない
+    notes: '`detail` に合わないキーと選べる値。何も書かない'
+  - code: '403'
+    condition: '`Host` か `Origin` が合わない'
+    notes: 何も書かない
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+  - code: '422'
+    condition: 今の `config.yaml` がスキーマに合わない（`display` 以外のキーが崩れている）
+    notes: '`detail` に合わない箇所。何も書かない'
+  - code: '500'
+    condition: '`config.yaml` を書けない（ワークスペースのフォルダが読み取り専用 など）'
+    notes: '`detail` に書けなかったパスと理由。`config.yaml` は書く前の中身のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 書き方
+    constraint: '`config.yaml` を読み、`display` だけを本文の値で丸ごと置き換え、スキーマと突き合わせてから一時ファイルに書いて `os.replace` で置き換える。キーの並びは今の並びを保ち、`display` が無ければ末尾に足す'
+  - item: 書き換えの知らせ
+    constraint: 書き終えたら『書き換えの知らせ』を送る（`config.yaml` の更新日時で見つける）
+  - item: 変更履歴
+    constraint: '`changes.yaml` にも項目の `history` にも入れない'
+  - item: 配る書き出し
+    constraint: 配る書き出しの画面はこのエンドポイントを呼ばない（ボタンを出さない）
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[config.yaml]
+  - dev/設計書/インターフェース定義/サーバー/書き換えの知らせ#

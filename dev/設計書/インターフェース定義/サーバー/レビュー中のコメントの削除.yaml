@@ -121,7 +121,7 @@ status_codes:
     condition: '`id` のコメントがレビュー中に無い（既に消した・送ったものを含む）'
     notes: 何も書かない
   - code: '422'
-    condition: '`comments.yaml` がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった'
+    condition: '`comments.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
     notes: 何も書かない
   - code: '500'
     condition: '`comments.yaml` を書けない'

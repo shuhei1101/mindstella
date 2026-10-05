@@ -30,7 +30,7 @@ flows:
       - name: Mock
         description: なし（テストを動かす Python で MCP サーバーを立て、MCP のクライアントでつなぐ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -143,7 +143,7 @@ constraints:
   - item: ツールの引数
     constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`init`・`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
   - item: ワークスペース
-    constraint: 全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスはサーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む
+    constraint: 全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスはサーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む。`config.yaml` があるフォルダをワークスペースとして扱う。`config.yaml` が無く `mindmap.yaml`（v0.6.0 より前の版の設定ファイル）だけがあるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する
   - item: 同時の呼び出し
     constraint: ワークスペースを書き換えるツールと送信の受け付けは、プロセスの中の 1 本の鍵を取った後に、ワークスペースのロックファイル `.mindstella.lock` に `fcntl.flock` の排他ロックを取ってから読み・書く。同じワークスペースを開く別のプロセスとも排他する。ロックは取れるまで待ち、持つプロセスが落ちると OS が外す。読むだけのツールと配信はロックを取らない（書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない）
   - item: 終わり方

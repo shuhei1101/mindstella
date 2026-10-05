@@ -21,15 +21,15 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: update_settings workspace（`settings` に置き換えるキー）
-        IF-->>WS: mindmap.yaml と全ての YAML を読む
+        IF-->>WS: config.yaml と全ての YAML を読む
         IF->>IF: キーを置き換え、スキーマと突き合わせる
-        IF->>WS: mindmap.yaml を書く
+        IF->>WS: config.yaml を書く
         IF-->>クライアント: JSON（changed・remapped・files）
       ```
     expected:
       - ツールのエラーにならない
-      - '`mindmap.yaml` の `summary`・`description`・`target_label`・`goal` が渡した値で、`playbooks`・`phases`・`targets`・`categories`・`links` が呼ぶ前と同じ'
-      - '`changed` が `summary`・`description`・`target_label`・`goal`、`remapped` が空、`files` が `mindmap.yaml` だけ'
+      - '`config.yaml` の `summary`・`description`・`target_label`・`goal` が渡した値で、`playbooks`・`phases`・`targets`・`categories`・`links` が呼ぶ前と同じ'
+      - '`changed` が `summary`・`description`・`target_label`・`goal`、`remapped` が空、`files` が `config.yaml` だけ'
       - 種類ごとの YAML の中身が呼ぶ前と同じ
     test: test_normal
   - name: 正常系（フェーズを付け替える）
@@ -52,9 +52,9 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: update_settings workspace（settings・phase_map）
-        IF-->>WS: mindmap.yaml と全ての YAML を読む
+        IF-->>WS: config.yaml と全ての YAML を読む
         IF->>IF: 設定を置き換え、項目の phase と goal.phase を対応で付け替えてスキーマと突き合わせる
-        IF->>WS: decisions.yaml・tasks.yaml・mindmap.yaml を書く
+        IF->>WS: decisions.yaml・tasks.yaml・config.yaml を書く
         IF-->>クライアント: JSON（changed・remapped・files）
       ```
     expected:
@@ -84,21 +84,47 @@ flows:
 
         クライアント->>IF: update_settings workspace（goal と description を null）
         IF->>IF: キーを消し、スキーマと突き合わせる
-        IF->>WS: mindmap.yaml を書く
+        IF->>WS: config.yaml を書く
         IF-->>クライアント: JSON
       ```
     expected:
       - ツールのエラーにならない
-      - '`mindmap.yaml` が `goal` と `description` のキーを持たない'
+      - '`config.yaml` が `goal` と `description` のキーを持たない'
       - '`changed` が `goal`・`description`'
     test: test_normal_when_goal_removed
+  - name: 正常系（表示の既定を書き換える）
+    summary: 見た目の既定と表示する種類の既定を書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が `display` を持たないワークスペース
+        notes: '`settings` は `{"display": {"network_look": "starlight", "visible_kinds": [会話ログを除いた 6 種類]}}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace settings.display
+        IF-->>WS: config.yaml を読む
+        IF->>IF: display を置き換え、スキーマと突き合わせる
+        IF->>WS: config.yaml を書く
+        IF-->>クライアント: JSON（changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`config.yaml` の `display.network_look` が `starlight`、`display.visible_kinds` が `logs` を除いた 6 種類'
+      - '`summary`・`playbooks`・`phases`・`goal`・`history_limit` が呼ぶ前と同じ'
+    test: test_normal_when_display
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -107,7 +133,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: update_settings workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -163,7 +189,7 @@ flows:
       ```
     expected:
       - ツールのエラーになる
-      - 'エラーの本文に `mindmap.yaml: playbooks` で始まる行がある'
+      - 'エラーの本文に `config.yaml: playbooks` で始まる行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_schema_mismatch
   - name: 異常系（書き込めない・WriteFailedError）
@@ -176,7 +202,7 @@ flows:
         notes: root で動かすときは skip する
       - name: settings と phase_map
         description: '`phases` を 目的 → 発散 にし、`phase_map` に `{"問い": "目的"}` を渡す'
-        notes: '`mindmap.yaml` と `decisions.yaml` の 2 つを書く場合'
+        notes: '`config.yaml` と `decisions.yaml` の 2 つを書く場合'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -239,7 +265,7 @@ flows:
         クライアント->>IF: update_settings workspace（settings・target_map・category_map）
         IF-->>WS: 全ての YAML を読む
         IF->>IF: 設定を置き換え、項目とカテゴリーの target・category を対応で付け替え、スキーマと突き合わせる
-        IF->>WS: mindmap.yaml と decisions.yaml を書く
+        IF->>WS: config.yaml と decisions.yaml を書く
         IF-->>クライアント: JSON（changed・remapped・files）
       ```
     expected:
@@ -247,7 +273,7 @@ flows:
       - '`changed` が `targets`・`categories`'
       - '`remapped` が `{D-1, target, 本体, アプリ}`・`{D-2, category, 設定, 運用}` の 2 件'
       - D-1 の `target` が `アプリ`、D-2 の `category` が `運用` で、どちらも `history` を持たない
-      - '`mindmap.yaml` のカテゴリー画面・API の `target` が `アプリ`'
+      - '`config.yaml` のカテゴリー画面・API の `target` が `アプリ`'
       - '`changes.yaml` の `pending` の `added`・`changed` が空で、`last_seq` が呼ぶ前と同じ'
     test: test_normal_when_targets_remapped
   - name: 正常系（関連する場所と保持する回数）
@@ -268,15 +294,15 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: update_settings workspace（links・history_limit）
-        IF-->>WS: mindmap.yaml を読む
+        IF-->>WS: config.yaml を読む
         IF->>IF: 渡したキーを置き換え、スキーマと突き合わせる
-        IF->>WS: mindmap.yaml を書く
+        IF->>WS: config.yaml を書く
         IF-->>クライアント: JSON（changed）
       ```
     expected:
       - ツールのエラーにならない
       - '`changed` が `links`・`history_limit`'
-      - '`mindmap.yaml` の `links` が渡した 1 件で、`history_limit` が 3'
+      - '`config.yaml` の `links` が渡した 1 件で、`history_limit` が 3'
       - ほかのキーが呼ぶ前と同じ
     test: test_normal_when_links_and_history_limit
   - name: 異常系（対応の無いカテゴリーが残る・UnmappedTargetError）
@@ -307,7 +333,7 @@ flows:
     test: test_error_when_unmapped_category
 lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
-side_effects: '`mindmap.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換える。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換える。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -315,13 +341,14 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`config.yaml` があるフォルダ'
   - name: settings
     type: dict
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit` だけ。1 つ以上のキーを持つ
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display` だけ。1 つ以上のキーを持つ
+    example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
   - name: phase_map
     type: dict[str, str]
     required: false
@@ -380,7 +407,7 @@ exceptions:
     condition: 書き換えられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: UnmappedPhaseError
     condition: 書き換えた後に、新しい `phases` に無いフェーズを持つ項目か `goal.phase` が残る。`phase_map` の値が新しい `phases` に無いときも含む
@@ -404,17 +431,17 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
-    constraint: '`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`。対象・カテゴリー・関連する場所はこのツールでは書き換えない'
+    constraint: '`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`display`（見た目の既定・表示する種類の既定。`display` は丸ごと置き換える）。対象・カテゴリー・関連する場所はこのツールでは書き換えない'
   - item: フェーズの付け替え
     constraint: 新しい `phases` に無いフェーズを持つ全ての種類の項目と `goal.phase`（`settings.goal` を渡したときは渡した値）を `phase_map` で付け替える。付け替えた項目だけ `updated` を変える。`phase` を持たない項目は触らない
   - item: 検証の範囲
     constraint: 書き換えた後のワークスペースの全ての YAML をスキーマと突き合わせ、全ての項目の `phase` と `goal.phase` が `phases` にあることを確かめる。参照先の ID があるかは確かめない（点検が持つ）
   - item: YAML の書き方
-    constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。キーの並びは今の `mindmap.yaml` の並びを保ち、新しいキーは末尾に足す'
+    constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない。キーの並びは今の `config.yaml` の並びを保ち、新しいキーは末尾に足す'
   - item: 部分成功
     constraint: 起こさない。書き換える全てのファイルの一時ファイルを書き終えてから置き換え、途中で失敗したら置き換えたファイルを前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
   - item: 書き換えの知らせ
     constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの知らせ』）
   - item: 変更履歴
-    constraint: '`phase_map` による項目の `phase` の付け替えは、`history` にも `changes.yaml` の `pending` にも入れない（設定の書き換えに伴う機械的な付け替えとして、差分の表示の対象にしない）。`history_limit` は `settings` のキーにしない（利用者が `mindmap.yaml` を直して変える）'
+    constraint: '`phase_map` による項目の `phase` の付け替えは、`history` にも `changes.yaml` の `pending` にも入れない（設定の書き換えに伴う機械的な付け替えとして、差分の表示の対象にしない）。`history_limit` は `settings` のキーにしない（利用者が `config.yaml` を直して変える）'
 test_file: tests/integration/server/test_update_settings.py
