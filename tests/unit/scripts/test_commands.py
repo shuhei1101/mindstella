@@ -506,6 +506,29 @@ def test_run_changes_since_read(make_workspace: MakeWorkspace, make_item: MakeIt
     assert changes["read_seq"] == 4
 
 
+def test_run_changes_since_read_when_schema_mismatch(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """ワークスペースにスキーマ違反があっても読んだ時点を進める（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", status="完了"),
+        raw_files={
+            "changes.yaml": (
+                "last_seq: 3\nread_seq: 2\nsets: []\npending:\n  added: []\n  changed: []\n"
+            )
+        },
+    )
+    before = snapshot_tree(root)
+    # 実行
+    commands.run_changes_since_read(root)
+    # 検証
+    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    assert changes["read_seq"] == 3
+    after = snapshot_tree(root)
+    assert after["decisions.yaml"] == before["decisions.yaml"]
+
+
 def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """切り替えて書き込む（正常系）。"""
     # 準備
