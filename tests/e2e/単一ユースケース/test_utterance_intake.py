@@ -39,54 +39,62 @@ def test_normal(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを積む（正常系）。"""
+    """案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
     # 準備
     root = make_workspace()
     ws = {"workspace": str(root)}
     # 実行
+    # 1 つの発言から出た記録を、1 回のまとめての書き込みで渡す（D-2 の parent と T-1 の for は、先に足す項目を指す）
     replay(
-        "add",
+        "batch",
         **ws,
-        kind="decision",
-        item={
-            "title": "保存先",
-            "status": "決定済み",
-            "answer": "YAML",
-            "reason": "手で読める",
-            # 決めたこととして足すので、選ばれた案 A を採用する
-            "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
-            **PLACE,
-        },
-    )
-    replay(
-        "add",
-        **ws,
-        kind="decision",
-        item={
-            "title": "ファイルの分け方",
-            "status": "未決定",
-            "parent": "D-1",
-            "options": OPTIONS,
-            **PLACE,
-        },
-    )
-    replay(
-        "add", **ws, kind="decision", item={"title": "いつか使うかも", "status": "未整理", **PLACE}
-    )
-    replay(
-        "add",
-        **ws,
-        kind="task",
-        item={
-            "title": "分け方の案を出す",
-            "kind": "作業",
-            "status": "未着手",
-            "for": ["D-2"],
-            **PLACE,
-        },
-    )
-    replay(
-        "add", **ws, kind="log", item={"title": "発言", "date": TODAY, "related": ["D-1"], **PLACE}
+        operations=[
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": {
+                    "title": "保存先",
+                    "status": "決定済み",
+                    "answer": "YAML",
+                    "reason": "手で読める",
+                    # 決めたこととして足すので、選ばれた案 A を採用する
+                    "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
+                    **PLACE,
+                },
+            },
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": {
+                    "title": "ファイルの分け方",
+                    "status": "未決定",
+                    "parent": "$1",
+                    "options": OPTIONS,
+                    **PLACE,
+                },
+            },
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": {"title": "いつか使うかも", "status": "未整理", **PLACE},
+            },
+            {
+                "op": "add",
+                "kind": "task",
+                "item": {
+                    "title": "分け方の案を出す",
+                    "kind": "作業",
+                    "status": "未着手",
+                    "for": ["$2"],
+                    **PLACE,
+                },
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "発言", "date": TODAY, "related": ["$1"], **PLACE},
+            },
+        ],
     )
     replay("commit", **ws, summary=INTAKE_SUMMARY)
     pending = replay("pending", **ws)
@@ -146,20 +154,30 @@ def test_normal_when_diagram_kept_as_doc(
     root = make_workspace(make_item("D-1"))
     ws = {"workspace": str(root)}
     # 実行
+    # 資料と会話ログを、1 回のまとめての書き込みで渡す
     replay(
-        "add",
+        "batch",
         **ws,
-        kind="doc",
-        item={
-            "title": "保存の流れ",
-            "kind": "図",
-            "deliverable": False,
-            "status": "下書き",
-            "related": ["D-1"],
-            "body_markdown": "```mermaid\nflowchart TD\n  A --> B\n```\n",
-        },
+        operations=[
+            {
+                "op": "add",
+                "kind": "doc",
+                "item": {
+                    "title": "保存の流れ",
+                    "kind": "図",
+                    "deliverable": False,
+                    "status": "下書き",
+                    "related": ["D-1"],
+                    "body_markdown": "```mermaid\nflowchart TD\n  A --> B\n```\n",
+                },
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "図を出した", "date": TODAY, "related": ["$1"]},
+            },
+        ],
     )
-    replay("add", **ws, kind="log", item={"title": "図を出した", "date": TODAY, "related": ["A-1"]})
     checked = call_tool("check", **ws)
     # 検証
     doc = read_yaml(root, "docs.yaml")["items"][0]
@@ -184,15 +202,26 @@ def test_normal_when_off_topic_question(
     root = make_workspace()
     ws = {"workspace": str(root)}
     # 実行
-    replay("add", **ws, kind="term", item={"title": "検討事項", "meaning": "問いと答えの 1 件"})
     replay(
-        "add",
+        "batch",
         **ws,
-        kind="note",
-        item={"title": "他社の例", "content": "他社は DB を使う", "tags": ["脱線"]},
-    )
-    replay(
-        "add", **ws, kind="log", item={"title": "脱線", "date": TODAY, "related": ["G-1", "N-1"]}
+        operations=[
+            {
+                "op": "add",
+                "kind": "term",
+                "item": {"title": "検討事項", "meaning": "問いと答えの 1 件"},
+            },
+            {
+                "op": "add",
+                "kind": "note",
+                "item": {"title": "他社の例", "content": "他社は DB を使う", "tags": ["脱線"]},
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "脱線", "date": TODAY, "related": ["$1", "$2"]},
+            },
+        ],
     )
     # 検証
     # 用語集 G-1 が meaning を持つ
@@ -292,31 +321,33 @@ def test_normal_when_task_output_kept_as_doc(
     ws = {"workspace": str(root)}
     goal_before = read_yaml(root, "mindmap.yaml")["goal"]
     # 実行
-    # 成果の資料は、ゴールの納品物に当たらないので deliverable: false にする
+    # 成果の資料（ゴールの納品物に当たらないので deliverable: false）を足し、成果と資料が 1 対 1 で揃ったタスクを資料に結んで完了にし、会話ログを足す。3 つを 1 回のまとめての書き込みで渡す
     replay(
-        "add",
+        "batch",
         **ws,
-        kind="doc",
-        item={
-            "title": "画面の一覧",
-            "kind": "文書",
-            "deliverable": False,
-            "status": "下書き",
-            "body_markdown": "# 画面の一覧\n\n- 入力\n- 一覧\n",
-        },
-    )
-    # 成果と資料が 1 対 1 で揃ったので、タスクを資料に結んで完了にする
-    replay(
-        "update",
-        **ws,
-        id="T-1",
-        item={"related": ["A-1"], "status": "完了", "result": "画面の一覧をまとめた"},
-    )
-    replay(
-        "add",
-        **ws,
-        kind="log",
-        item={"title": "画面の一覧ができた", "date": TODAY, "related": ["T-1", "A-1"]},
+        operations=[
+            {
+                "op": "add",
+                "kind": "doc",
+                "item": {
+                    "title": "画面の一覧",
+                    "kind": "文書",
+                    "deliverable": False,
+                    "status": "下書き",
+                    "body_markdown": "# 画面の一覧\n\n- 入力\n- 一覧\n",
+                },
+            },
+            {
+                "op": "update",
+                "id": "T-1",
+                "item": {"related": ["$1"], "status": "完了", "result": "画面の一覧をまとめた"},
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "画面の一覧ができた", "date": TODAY, "related": ["T-1", "$1"]},
+            },
+        ],
     )
     checked = replay("check", **ws)
     # 検証

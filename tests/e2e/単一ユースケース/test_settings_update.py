@@ -199,3 +199,142 @@ def test_error_when_schema_mismatch(
     assert "playbooks" in result.text
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_targets_remapped(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """対象・カテゴリーを置き換え、対応で項目とカテゴリーの target・category を付け替える（正常系）。"""
+    # 準備
+    root = make_workspace(
+        settings={
+            **valid_settings,
+            "targets": [
+                {"name": "本体", "summary": "アプリの本体"},
+                {"name": "管理画面", "summary": "運用の画面"},
+            ],
+            "categories": [
+                {"name": "画面", "target": "本体", "summary": "画面の部品"},
+                {"name": "API", "target": "本体", "summary": "呼び出しの口"},
+                {"name": "設定", "target": "管理画面", "summary": "設定の画面"},
+            ],
+        }
+    )
+    ws = {"workspace": str(root)}
+    replay(
+        "add",
+        **ws,
+        kind="decision",
+        item={"title": "画面の問い", "status": "未決定", "target": "本体", "category": "画面"},
+    )
+    replay(
+        "add",
+        **ws,
+        kind="decision",
+        item={"title": "設定の問い", "status": "未決定", "target": "管理画面", "category": "設定"},
+    )
+    replay("commit", **ws, summary="足す")
+    new_targets = [
+        {"name": "アプリ", "summary": "アプリの本体"},
+        {"name": "管理画面", "summary": "運用の画面"},
+    ]
+    new_categories = [
+        {"name": "画面", "target": "アプリ", "summary": "画面の部品"},
+        {"name": "API", "target": "アプリ", "summary": "呼び出しの口"},
+        {"name": "運用", "target": "管理画面", "summary": "運用の設定"},
+    ]
+    # 実行
+    replay(
+        "update_settings",
+        **ws,
+        settings={"targets": new_targets, "categories": new_categories},
+        target_map={"本体": "アプリ"},
+        category_map={"設定": "運用"},
+    )
+    pending = replay("pending", **ws)
+    checked = call_tool("check", **ws)
+    # 検証
+    settings = read_yaml(root, "mindmap.yaml")
+    # targets・categories が渡した値である
+    assert settings["targets"] == new_targets
+    assert settings["categories"] == new_categories
+    decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
+    # D-1 の target が アプリ、category が 画面。D-2 の target が 管理画面、category が 運用
+    assert (decisions["D-1"]["target"], decisions["D-1"]["category"]) == ("アプリ", "画面")
+    assert (decisions["D-2"]["target"], decisions["D-2"]["category"]) == ("管理画面", "運用")
+    # D-1・D-2 が変更履歴を持たず、pending が空を返す
+    assert "history" not in decisions["D-1"]
+    assert "history" not in decisions["D-2"]
+    assert pending == {"added": [], "changed": []}
+    # 点検が問題を 0 件で返す
+    assert checked.data["problems"] == []
+
+
+def test_normal_when_links_and_history_limit(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """関連する場所と保持する回数を書き換える（正常系）。"""
+    # 準備
+    root = make_workspace(
+        settings={key: value for key, value in valid_settings.items() if key != "links"}
+    )
+    ws = {"workspace": str(root)}
+    before = read_yaml(root, "mindmap.yaml")
+    links = [{"title": "仕様", "url": "https://example.com/spec"}]
+    # 実行
+    replay("update_settings", **ws, settings={"links": links, "history_limit": 3})
+    checked = call_tool("check", **ws)
+    # 検証
+    settings = read_yaml(root, "mindmap.yaml")
+    # links が渡した 1 件で、history_limit が 3 である
+    assert settings["links"] == links
+    assert settings["history_limit"] == 3
+    # 題名・プレイブック・フェーズ・対象・カテゴリー・ゴールが呼ぶ前と同じである
+    for key in ("summary", "playbooks", "phases", "targets", "categories", "goal"):
+        assert settings[key] == before[key]
+    # ワークスペースの全ての YAML がスキーマに合う
+    assert checked.data["problems"] == []
+
+
+def test_error_when_unmapped_category(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """新しいカテゴリーに無いカテゴリーを持つ項目が残る書き換えは、何も書かずにエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", category="画面"),
+        make_item("D-2", category="設定"),
+        settings={
+            **valid_settings,
+            "categories": [
+                {"name": "画面", "target": "mindmap", "summary": "画面の部品"},
+                {"name": "設定", "target": "mindmap", "summary": "設定の画面"},
+            ],
+        },
+    )
+    before = snapshot_tree(root)
+    # 実行
+    # 設定の対応を渡さない
+    result = call_tool(
+        "update_settings",
+        workspace=str(root),
+        settings={"categories": [{"name": "画面", "target": "mindmap", "summary": "画面の部品"}]},
+    )
+    # 検証
+    # 設定を書き換えるツールがエラーを返し、本文に D-2 とカテゴリー 設定 がある
+    assert result.is_error is True
+    assert "D-2: category: 設定" in result.text.splitlines()
+    # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    assert snapshot_tree(root) == before
