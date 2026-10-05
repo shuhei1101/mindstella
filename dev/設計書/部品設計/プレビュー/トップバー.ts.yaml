@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -87,6 +87,24 @@ args:
     enabled_when: '`comments` が `true` のとき'
     description: コメントの一覧を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
     status: planned
+  - name: filter
+    type: 真偽値
+    default: 'false'
+    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・つながり）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときは右端）に置き、どちらのパネルにも覆われないようにする
+    status: planned
+  - name: filter_count
+    type: 整数
+    default: '0'
+    choices: 0 以上
+    enabled_when: '`filter` が `true` のとき'
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない
+    status: planned
+  - name: filter_open
+    type: 真偽値
+    default: 'false'
+    enabled_when: '`filter` が `true` のとき'
+    description: 絞り込みのドロワー（部品設計『絞り込み』）を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
+    status: planned
 events:
   - name: 画面を移る
     when: タブかつながりの入口を押したとき
@@ -108,6 +126,9 @@ events:
   - name: コメントを開く
     when: コメントのボタンを押したとき（0 件でも押せる）
     description: 使う側がコメントの一覧を開く。開いているときは閉じる。どちらも履歴に積まない
+  - name: 絞り込みを開く
+    when: 絞り込みのボタンを押したとき
+    description: 使う側が絞り込みのドロワーを開く。開いているときは閉じる。コメントの一覧を開いていれば閉じてから開く。どちらも履歴に積まない
 states:
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
@@ -206,6 +227,50 @@ states:
         value: '3'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: Filter
+    description: 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterOn
+    description: 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterOpen
+    description: 絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: filter_open
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterNarrow
+    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（幅 900px 以下で同じ）
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '1'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
@@ -213,3 +278,4 @@ accessibility:
   - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
   - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す
+  - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す

@@ -1,11 +1,22 @@
-"""項目を表で絞り込む（並べ替え・列ごとの絞り込み・ピン留め・表示する列の選択・初期設定に戻す）の E2E テスト。"""
+"""項目を表で絞り込む（並べ替え・ドロワーでの絞り込み・ピン留め・表示する列の選択・初期設定に戻す）の E2E テスト。"""
 
 from __future__ import annotations
 
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview, row_ids
+from preview_helpers import (
+    DRAWER,
+    FILTER_BUTTON,
+    OpenPreview,
+    ServePreview,
+    badge_text,
+    close_drawer,
+    drawer_counts,
+    open_drawer,
+    row_ids,
+    toggle_value,
+)
 from workspace_fixtures import MakeItem
 
 # 表が縦に送れる件数にするために足す調査の件数
@@ -50,7 +61,7 @@ def test_normal(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """確度の並べ替え・絞り込み・ピン留め・表示する列の選択をして、初期設定に戻す（正常系）。"""
+    """確度の並べ替え・ドロワーでの絞り込み・ピン留め・表示する列の選択をして、初期設定に戻す（正常系）。"""
     # 準備
     extras = [
         make_item(f"R-{number}", confidence="中") for number in range(4, 4 + EXTRA_RESEARCH_COUNT)
@@ -80,20 +91,20 @@ def test_normal(
         assert _headers(page)["confidence"] == aria_sort
         assert _first_ids(page, 3) == first_ids
         assert abs(_table_scroll_top(page) - scrolled) <= SCROLL_TOLERANCE_PX
-    # 絞り込み: 選択肢に値ごとの件数が出る。「高」で絞ると R-2 が無く、確度 = 高のチップが出る
-    page.click('button[data-popover="filter:confidence"]')
-    page.wait_for_selector(".pop:popover-open label")
-    counts = page.eval_on_selector_all(
-        ".pop:popover-open label",
-        "labels => Object.fromEntries(labels.map(l => [l.textContent.replace(/\\d+$/, '').trim(), l.querySelector('.n').textContent]))",
-    )
-    assert counts == {"高": "2", "中": str(EXTRA_RESEARCH_COUNT), "低": "1"}
-    page.click('.pop:popover-open label:has-text("高")')
+    # 絞り込み: 列の見出しに絞り込みのボタンが無く、表の上に絞り込みのボタンが 1 つある
+    assert page.locator('button[data-popover^="filter:"]').count() == 0
+    assert page.locator(FILTER_BUTTON).count() == 1
+    # ドロワーの確度の選択肢に値ごとの件数が出る。「高」で絞ると R-2 が無く、確度 = 高のチップが出る
+    open_drawer(page)
+    assert drawer_counts(page, "confidence") == {"高": 2, "中": EXTRA_RESEARCH_COUNT, "低": 1}
+    toggle_value(page, "confidence", "高")
     page.wait_for_selector(".chips .chip")
+    close_drawer(page)
     assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
         "確度: 高"
     ]
     assert "R-2" not in row_ids(page)
+    assert badge_text(page) == "1"
     page.click(".chips >> text=すべて解除")
     page.wait_for_function(
         f"document.querySelectorAll('table.grid tbody tr').length === {EXTRA_RESEARCH_COUNT + 3}"
@@ -151,9 +162,14 @@ def test_normal_when_no_match(
         make_item("T-2", kind="調査", status="未着手"),
         settings=valid_settings,
     )
-    # 実行（種類 = 作業 かつ 状態 = 未着手 で絞る）
-    page = open_preview(url, "#tab=tasks&view=table&f.kind=作業&f.status=未着手")
+    page = open_preview(url, "#tab=tasks&view=table")
     page.wait_for_selector("table.grid")
+    # 実行（ドロワーで種類 = 作業 かつ 状態 = 未着手 を選ぶ）
+    open_drawer(page)
+    toggle_value(page, "kind", "作業")
+    toggle_value(page, "status", "未着手")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 0")
+    close_drawer(page)
     # 検証
     assert "該当するタスクはありません。別の条件を試してください。" in page.inner_text(
         ".table-block"
@@ -162,3 +178,46 @@ def test_normal_when_no_match(
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
     assert row_ids(page) == ["T-1", "T-2"]
     assert page.locator(".chips .chip").count() == 0
+    assert badge_text(page) is None
+
+
+def test_normal_when_topic_tags(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """ドロワーに種類・状態・タグを並べ、タグと種類を選んで表を絞り、ボードに切り替えても条件を保つ（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("T-1", kind="作業", status="未着手", tags=["保存", "画面"]),
+        make_item("T-2", kind="調査", status="進行中", tags=["保存"]),
+        make_item("T-3", kind="作業", status="未着手", tags=["通知"]),
+        make_item("T-4", kind="作業", status="完了"),
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid")
+    # 実行・検証（開く: 種類・状態・タグの条件があり、どの値も選ばれていない）
+    open_drawer(page)
+    labels = page.eval_on_selector_all(f"{DRAWER} .fd-group legend", "ls => ls.map(l => l.childNodes[0].textContent)")
+    assert labels[:3] == ["種類", "状態", "タグ"]
+    assert page.locator(f"{DRAWER} input:checked").count() == 0
+    assert badge_text(page) is None
+    assert drawer_counts(page, "tags") == {"保存": 2, "画面": 1, "通知": 1}
+    # 実行・検証（タグの「保存」と「通知」: どちらかのタグを持つ行）
+    toggle_value(page, "tags", "保存")
+    toggle_value(page, "tags", "通知")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
+    assert row_ids(page) == ["T-1", "T-2", "T-3"]
+    # 実行・検証（種類の「作業」を足す: 両方の条件に合う行）
+    toggle_value(page, "kind", "作業")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
+    assert row_ids(page) == ["T-1", "T-3"]
+    close_drawer(page)
+    # 実行・検証（ボードに切り替えても同じ条件で絞り、バッジが付いたまま）
+    page.click('.segment button[data-view="board"]')
+    page.wait_for_selector(".board")
+    cards = page.eval_on_selector_all(".board .card", "cards => cards.map(c => c.dataset.id)")
+    assert sorted(cards) == ["T-1", "T-3"]
+    assert badge_text(page) == "2"

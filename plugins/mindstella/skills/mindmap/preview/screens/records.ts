@@ -9,11 +9,23 @@ namespace MindmapPreview {
     index,
     route,
     on,
+    filters,
+    drawerOpen,
     marks,
   }: {
     index: RecordIndex;
     route: Route;
-    on: { open: (id: string) => void };
+    on: {
+      open: (id: string) => void;
+      /** 条件を変える（新しい `filters`。ドロワーと表のチップから） */
+      filter: (filters: Filters) => void;
+      /** 絞り込みのドロワーを閉じる */
+      closeDrawer: () => void;
+    };
+    /** 絞り込みの条件（入口の `FilterState` のこの種類の分） */
+    filters: Filters;
+    /** 絞り込みのドロワーを開いているか */
+    drawerOpen: boolean;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
   }): HTMLElement {
@@ -71,20 +83,34 @@ namespace MindmapPreview {
         common.id,
         common.text("date", "日付", { nowrap: true, priority: 2 }),
         common.title(),
+        common.tags,
         related("更新した項目"),
       ],
     };
+    const columns = columnsOf[kind];
+    // 絞り込みの条件に合う項目を表に渡す
+    const shown = filterRows({ rows: index.data[kind], columns, filters });
     return h({
       tag: "div",
       attrs: { class: "screen records" },
       children: [
         managedTable({
           kind,
-          columns: columnsOf[kind],
-          rows: index.data[kind],
+          columns,
+          rows: shown,
+          filters,
+          onFilter: on.filter,
           open: on.open,
-          initialFilters: route.filters,
           marks,
+        }),
+        screenDrawer({
+          drawerOpen,
+          rows: index.data[kind],
+          columns: columns.filter((column) => column.filterable === true),
+          filters,
+          shown: shown.length,
+          onFilter: on.filter,
+          onClose: on.closeDrawer,
         }),
       ],
     });

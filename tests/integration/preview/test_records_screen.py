@@ -4,6 +4,14 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page
+from preview_drawer_helpers import (
+    DRAWER,
+    badge_text,
+    checked_values,
+    click_value,
+    drawer_groups,
+    open_drawer,
+)
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -37,7 +45,7 @@ from workspace_fixtures import MakeItem
             "notes", "メモ", "N-1", ["ID", "タイトル", "内容", "タグ", "関連"], id="notes"
         ),
         pytest.param(
-            "logs", "会話ログ", "L-1", ["ID", "日付", "タイトル", "更新した項目"], id="logs"
+            "logs", "会話ログ", "L-1", ["ID", "日付", "タイトル", "タグ", "更新した項目"], id="logs"
         ),
     ],
 )
@@ -101,3 +109,75 @@ def test_diff_marks(
     assert mark.get_attribute("title") == "新規"
     assert page.locator('nav.tabbar a[data-tab="notes"] .df-dot').count() == 1
     assert_topbar_history(page)
+
+
+def _row_ids(page: Page) -> list[str]:
+    """表に並んでいる行の ID を並びのまま返す。"""
+    return page.eval_on_selector_all(
+        "table.grid tbody tr[data-id]", "rows => rows.map(r => r.dataset.id)"
+    )
+
+
+def test_drawer_per_kind(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ドロワーの条件は種類ごとに持つ。調査はタグ・確度、メモはタグを並べ、別の種類へ移っても条件を持ち越さず、戻ると保っている（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("R-1", confidence="高", tags=["調査の話題"]),
+        make_item("R-2", confidence="低"),
+        make_item("N-1", tags=["調査の話題"]),
+        make_item("N-2"),
+    )
+    page = open_preview(url, "#tab=research")
+    open_drawer(page)
+    research_groups = [group["label"] for group in drawer_groups(page)]
+    # 実行（調査で確度を選ぶ）
+    click_value(page, "confidence", "高")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    research_rows = _row_ids(page)
+    research_badge = badge_text(page)
+    # 実行（メモへ移る。ドロワーは開いたまま）
+    page.click('a.tab[data-tab="notes"]')
+    page.wait_for_selector('table.grid tbody tr[data-id="N-2"]')
+    notes_state = (
+        [group["label"] for group in drawer_groups(page)],
+        badge_text(page),
+        _row_ids(page),
+        page.locator("dialog.drawer[open]").count(),
+    )
+    # 実行（調査へ戻る）
+    page.click('a.tab[data-tab="research"]')
+    page.wait_for_selector('table.grid tbody tr[data-id="R-1"]')
+    # 検証
+    assert research_groups == ["タグ", "確度"]
+    assert (research_rows, research_badge) == (["R-1"], "1")
+    assert notes_state == (["タグ"], None, ["N-1", "N-2"], 1)
+    assert badge_text(page) == "1"
+    assert checked_values(page, "confidence") == ["高"]
+    assert page.locator(f"{DRAWER} .fd-group").count() == 2
+
+
+def test_drawer_logs_tags(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """会話ログもタグの列を持ち、ドロワーのタグの条件で絞れる。表の上のチップで解除できる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("L-1", tags=["脱線"]),
+        make_item("L-2", date="2026-10-02"),
+    )
+    page = open_preview(url, "#tab=logs")
+    open_drawer(page)
+    # 実行
+    click_value(page, "tags", "脱線")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    rows = _row_ids(page)
+    tag_cells = page.eval_on_selector_all(
+        "table.grid tbody tr[data-id] td .tag", "tags => tags.map(t => t.textContent)"
+    )
+    chips = page.eval_on_selector_all(".table-block .chip", "chips => chips.map(c => c.textContent)")
+    # 検証
+    assert rows == ["L-1"]
+    assert tag_cells == ["脱線"]
+    assert chips == ["タグ: 脱線"]

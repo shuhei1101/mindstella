@@ -64,7 +64,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -829,7 +829,7 @@ functions:
     unit_tests:
       - name: test_build_server
         case: 正常
-        summary: 19 個のツールを workspace つきで登録する
+        summary: 全てのツールを workspace つきで登録する
         condition: 空の `PreviewRegistry` と `tmp_path`。作ったサーバーの `list_tools()` を呼ぶ
         mock: なし
         expected: ツールの名前が `TOOL_NAMES` と一致し、どれも入力のスキーマの `required` に `workspace` を持つ
@@ -1568,6 +1568,30 @@ functions:
         condition: '`status: 完了`（検討事項に無い状態）の D-1 と、`read_seq` 2・`last_seq` 3 の `changes.yaml` を持つワークスペース'
         mock: なし
         expected: 例外にならず、`changes.yaml` の `read_seq` が 3。`decisions.yaml` が呼ぶ前と同じ
+  - name: run_tags
+    title: tags の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の検索
+    scope: public
+    summary: タグの一覧を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{tags}`'
+    process: 1. ワークスペースを読み、数える（`load_workspace`、`list_tags`）
+    unit_tests:
+      - name: test_run_tags
+        case: 正常
+        summary: タグを出力の形にする
+        condition: タグ `データ` の D-1
+        mock: なし
+        expected: '`{tags: [{name: データ, count: 1, kinds: [decision]}]}`'
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

@@ -1,4 +1,4 @@
-// 表と、並べ替え・絞り込みの計算。列の見出しで並べ替え・絞り込み・ピン留めでき、表の上に条件のチップを並べる。
+// 表と、並べ替え・絞り込みの計算。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件のチップを並べる。絞り込みの条件はドロワーで選ぶ。
 
 namespace MindmapPreview {
   /** 表の行（埋め込みのデータの項目そのもの） */
@@ -13,7 +13,7 @@ namespace MindmapPreview {
     key: string;
     /** 見出しの文字 */
     label: string;
-    /** 値で絞り込めるか。絞り込みのボタンを出す */
+    /** 値で絞り込めるか。真の列を絞り込みのドロワーの条件にする（列の見出しには絞り込みのボタンを出さない） */
     filterable?: boolean;
     /** 表示する列から外せないか（タイトルの列。行を押して詳細を開くボタンにする） */
     fixed?: boolean;
@@ -41,15 +41,33 @@ namespace MindmapPreview {
   /** 列の `key` → 選んだ値の配列 */
   export type Filters = Record<string, string[]>;
 
+  /** 絞り込みの条件の定義（行から値を取る） */
+  export type FilterColumn = Pick<Column, "key" | "get">;
+
+  /** 値の件数を数える条件の定義（値の並びを持つ） */
+  export type ConditionColumn = FilterColumn & Pick<Column, "order">;
+
+  /** ドロワーの条件の値（件数と、キーワードに一致した件数） */
+  export type FilterValue = { value: string; count: number; hit?: number };
+
+  /** ドロワーの条件 1 つ（部品設計『絞り込み』の `groups[]`） */
+  export type FilterGroup = {
+    key: string;
+    label: string;
+    values: FilterValue[];
+    /** 値の左に添える印。状態の印か、項目の種類の色の点 */
+    mark?: "status" | "kind";
+  };
+
   /** 表で開いているポップオーバー */
-  export type TablePopover = { type: "filter"; key: string } | { type: "columns" };
+  export type TablePopover = { type: "columns" };
 
   /** 表のイベントごとのコールバック（使う側が描き直す） */
   export type TableHandlers = {
     /** 見出しの文字を押したとき（昇順 → 降順 → 解除は使う側が巡る） */
     sort: (key: string) => void;
-    /** 絞り込みを変えたとき。key が null のときは全ての条件を外す */
-    filter: (change: { key: string | null; values: string[] }) => void;
+    /** チップの × か「すべて解除」を押したとき。key が null のときは全ての条件を外す */
+    filter: (filters: Filters) => void;
     /** ピン留めのボタンを押したとき（固定中の列をもう一度押すと外す） */
     pin: (key: string) => void;
     /** 表示する列を付け外ししたとき（隠している列の key） */
@@ -83,14 +101,14 @@ namespace MindmapPreview {
   };
 
   /** 列が行から取る値を、文字の配列にする */
-  function valuesOf(column: Column, row: Row): string[] {
+  function valuesOf(column: FilterColumn, row: Row): string[] {
     const value = column.get(row);
     if (value === null || value === undefined) return [];
     return Array.isArray(value) ? value.map(String) : [String(value)];
   }
 
   /** 値を文字で比べる順（`order` を持つ列はその並びの順、無ければ日本語の順） */
-  function compareValues(column: Column, a: string, b: string): number {
+  function compareValues(column: Pick<Column, "order">, a: string, b: string): number {
     if (column.order) {
       const rank = (value: string) => {
         const index = column.order?.indexOf(value) ?? -1;
@@ -101,14 +119,14 @@ namespace MindmapPreview {
     return a.localeCompare(b, "ja");
   }
 
-  /** 列ごとの条件に合う行を返す（列の中はどれかに当たればよく、列の間は全てに当たる） */
+  /** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる） */
   export function filterRows({
     rows,
     columns,
     filters,
   }: {
     rows: Row[];
-    columns: Column[];
+    columns: FilterColumn[];
     filters: Filters;
   }): Row[] {
     const active = Object.entries(filters).filter(([, values]) => values.length > 0);
@@ -149,7 +167,7 @@ namespace MindmapPreview {
       .map(({ row }) => row);
   }
 
-  /** 絞り込みのポップオーバーに出す、列の値ごとの件数を返す（その列以外の条件で絞った行で数える） */
+  /** 条件の値ごとの件数を返す（その条件以外の条件で絞った行で数える） */
   export function filterCounts({
     rows,
     columns,
@@ -157,13 +175,13 @@ namespace MindmapPreview {
     key,
   }: {
     rows: Row[];
-    columns: Column[];
+    columns: ConditionColumn[];
     filters: Filters;
     key: string;
   }): { value: string; count: number }[] {
     const column = columns.find((candidate) => candidate.key === key);
     if (column === undefined) return [];
-    const others = Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
+    const others = withoutKey(filters, key);
     const counts = new Map<string, number>();
     // 選べる値は全ての行の値（件数が 0 のものも出す）
     for (const row of rows) for (const value of valuesOf(column, row)) counts.set(value, 0);
@@ -173,6 +191,71 @@ namespace MindmapPreview {
     return [...counts]
       .map(([value, count]) => ({ value, count }))
       .sort((a, b) => compareValues(column, a.value, b.value));
+  }
+
+  /** ドロワーの条件を並べるとき、先に置くキー（この順） */
+  const LEADING_CONDITION_KEYS = ["kind", "type", "status", "tags"];
+
+  /** 検討事項を開いたときの絞り込みの状態 */
+  const DEFAULT_DECISION_STATUSES = ["要見直し", "未決定", "未整理", "保留"];
+
+  /** 絞り込みから、1 つの条件を除いたものを返す */
+  export function withoutKey(filters: Filters, key: string): Filters {
+    return Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
+  }
+
+  /** 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む（キーワードに一致した件数を `hit` で添えられる） */
+  export function drawerGroups({
+    rows,
+    columns,
+    filters,
+    hit,
+  }: {
+    rows: Row[];
+    columns: (ConditionColumn & Pick<Column, "label">)[];
+    filters: Filters;
+    hit?: (row: Row) => boolean;
+  }): FilterGroup[] {
+    const rank = (key: string): number => {
+      const position = LEADING_CONDITION_KEYS.indexOf(key);
+      return position < 0 ? LEADING_CONDITION_KEYS.length : position;
+    };
+    const ordered = [...columns].sort((a, b) => rank(a.key) - rank(b.key));
+    const groups: FilterGroup[] = [];
+    for (const column of ordered) {
+      const counts = filterCounts({ rows, columns, filters, key: column.key });
+      // 値を 1 つも持たない条件は並べない
+      if (counts.length === 0) continue;
+      // キーワードに一致した件数は、その条件以外の条件で絞った行で数える
+      const others = hit === undefined ? [] : filterRows({ rows, columns, filters: withoutKey(filters, column.key) });
+      groups.push({
+        key: column.key,
+        label: column.label,
+        values: counts.map(({ value, count }) =>
+          hit === undefined
+            ? { value, count }
+            : {
+                value,
+                count,
+                hit: others.filter((row) => hit(row) && valuesOf(column, row).includes(value)).length,
+              },
+        ),
+        ...(column.key === "status" ? { mark: "status" as const } : {}),
+        ...(column.key === "type" ? { mark: "kind" as const } : {}),
+      });
+    }
+    return groups;
+  }
+
+  /** 値を 1 つ以上選んでいる条件の数を返す（絞り込みのボタンのバッジ） */
+  export function activeConditionCount(filters: Filters): number {
+    return Object.values(filters).filter((values) => values.length > 0).length;
+  }
+
+  /** 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ画面の既定 */
+  export function initialFilters(tab: Route["tab"], fromHash: Filters): Filters {
+    if (Object.keys(fromHash).length > 0) return { ...fromHash };
+    return tab === "decisions" ? { status: [...DEFAULT_DECISION_STATUSES] } : {};
   }
 
   /** ポップオーバーを開いた元のボタンの上か下に置く（収まる側に開き、どちらも収まらないときは広い側で高さを抑える） */
@@ -206,6 +289,59 @@ namespace MindmapPreview {
     return buildTable({ props, previous: null });
   }
 
+  /** 選んでいる値を `{列}: {値}` のチップにし、× と「すべて解除」で条件の解除を知らせる行を返す（条件が無いときは中身の無い行） */
+  export function filterChips({
+    filters,
+    labels,
+    onFilter,
+  }: {
+    /** 絞り込みのドロワーと共有する条件 */
+    filters: Filters;
+    /** 条件の key → チップに出す列の名前 */
+    labels: Record<string, string>;
+    /** 解除した後の新しい条件を知らせる */
+    onFilter: (filters: Filters) => void;
+  }): HTMLElement {
+    const items: HTMLElement[] = [];
+    for (const [key, values] of Object.entries(filters)) {
+      const label = labels[key] ?? key;
+      for (const value of values) {
+        items.push(
+          h({
+            tag: "span",
+            attrs: { class: "chip" },
+            children: [
+              `${label}: ${value}`,
+              h({
+                tag: "button",
+                attrs: {
+                  type: "button",
+                  "aria-label": `${label}: ${value} の条件を解除`,
+                  onclick: () => {
+                    // 押した値を外し、値が残らない条件は key ごと消す
+                    const rest = values.filter((candidate) => candidate !== value);
+                    onFilter(rest.length === 0 ? withoutKey(filters, key) : { ...filters, [key]: rest });
+                  },
+                },
+                children: [icon("x")],
+              }),
+            ],
+          }),
+        );
+      }
+    }
+    if (items.length > 0) {
+      items.push(
+        h({
+          tag: "button",
+          attrs: { class: "btn ghost", type: "button", onclick: () => onFilter({}) },
+          children: ["すべて解除"],
+        }),
+      );
+    }
+    return h({ tag: "div", attrs: { class: "chips" }, children: items });
+  }
+
   /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
   function buildTable({
     props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on },
@@ -229,47 +365,11 @@ namespace MindmapPreview {
       h({ tag: "div", attrs: { class: "table-wrap" } });
 
     // ===== 条件のチップと、表示する列のボタン =====
-    const chips: HTMLElement[] = [];
-    for (const [key, values] of Object.entries(filters)) {
-      const column = columns.find((candidate) => candidate.key === key);
-      for (const value of values) {
-        chips.push(
-          h({
-            tag: "span",
-            attrs: { class: "chip" },
-            children: [
-              `${column?.label ?? key}: ${value}`,
-              h({
-                tag: "button",
-                attrs: {
-                  type: "button",
-                  "aria-label": `${column?.label ?? key}: ${value} の条件を解除`,
-                  onclick: () => {
-                    on.filter({ key, values: values.filter((candidate) => candidate !== value) });
-                  },
-                },
-                children: [icon("x")],
-              }),
-            ],
-          }),
-        );
-      }
-    }
-    if (chips.length > 0) {
-      chips.push(
-        h({
-          tag: "button",
-          attrs: {
-            class: "btn ghost",
-            type: "button",
-            onclick: () => {
-              on.filter({ key: null, values: [] });
-            },
-          },
-          children: ["すべて解除"],
-        }),
-      );
-    }
+    const chipsRow = filterChips({
+      filters,
+      labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+      onFilter: on.filter,
+    });
     // ポップオーバーの題の要素の id（`aria-labelledby` が指す。置かれる画面の見出しの深さを知らないので、見出しの要素にはしない）
     const popTitleId = `pop-title-${kind}`;
     const pop = h({
@@ -279,20 +379,11 @@ namespace MindmapPreview {
     /** ポップオーバーの題 */
     const popoverTitle = (text: string): HTMLElement =>
       h({ tag: "p", attrs: { class: "pop-title", id: popTitleId }, children: [text] });
-    // 開いたポップオーバーの元のボタンを探す
-    const anchorOf = (spec: TablePopover): Element | null =>
-      root.querySelector(
-        spec.type === "columns" ? '[data-popover="columns"]' : `[data-popover="filter:${spec.key}"]`,
-      );
-    /** ポップオーバーの中身を作って開く */
-    const showPopover = (spec: TablePopover): void => {
-      pop.replaceChildren(
-        spec.type === "columns"
-          ? columnsPopoverBody()
-          : filterPopoverBody(spec.key),
-      );
+    /** ポップオーバーの中身を作り、元のボタンの近くに開く */
+    const showPopover = (): void => {
+      pop.replaceChildren(columnsPopoverBody());
       if (!pop.matches(":popover-open")) pop.showPopover();
-      const anchor = anchorOf(spec);
+      const anchor = root.querySelector('[data-popover="columns"]');
       if (anchor !== null) positionPopover(pop, anchor);
     };
     /** 表示する列のポップオーバーの中身 */
@@ -346,54 +437,21 @@ namespace MindmapPreview {
         ],
       });
     };
-    /** 列の絞り込みのポップオーバーの中身（値ごとの件数つき） */
-    const filterPopoverBody = (key: string): Node => {
-      const column = columns.find((candidate) => candidate.key === key);
-      const chosen = filters[key] ?? [];
-      const options = filterCounts({ rows, columns, filters, key }).map(({ value, count }) =>
-        h({
-          tag: "label",
-          children: [
-            h({
-              tag: "input",
-              attrs: {
-                type: "checkbox",
-                checked: chosen.includes(value),
-                onchange: (event: Event) => {
-                  const checked = (event.target as HTMLInputElement).checked;
-                  on.filter({
-                    key,
-                    values: checked ? [...chosen, value] : chosen.filter((item) => item !== value),
-                  });
-                },
-              },
-            }),
-            key === "status" ? statusMark(value) : null,
-            value,
-            h({ tag: "span", attrs: { class: "n" }, children: [count] }),
-          ],
-        }),
-      );
-      return h({
-        tag: "div",
-        children: [popoverTitle(`${column?.label ?? key}で絞り込み`), ...options],
-      });
-    };
     // ポップオーバーを閉じたら、使う側にも知らせる（描き直しで消えたときは知らせない）
     pop.addEventListener("toggle", (event) => {
       if ((event as ToggleEvent).newState === "closed" && pop.isConnected) on.popover?.(null);
     });
     /** ポップオーバーを開き、使う側にも知らせる */
-    const openPopover = (spec: TablePopover): void => {
-      showPopover(spec);
-      on.popover?.(spec);
+    const openPopover = (): void => {
+      showPopover();
+      on.popover?.({ type: "columns" });
     };
 
     const toolbar = h({
         tag: "div",
         attrs: { class: "table-toolbar" },
         children: [
-          h({ tag: "div", attrs: { class: "chips" }, children: [...chips] }),
+          chipsRow,
           h({
             tag: "button",
             attrs: {
@@ -401,7 +459,7 @@ namespace MindmapPreview {
               type: "button",
               "data-popover": "columns",
               "aria-label": "表示する列",
-              onclick: () => openPopover({ type: "columns" }),
+              onclick: openPopover,
             },
             children: [
               icon("cols"),
@@ -414,7 +472,6 @@ namespace MindmapPreview {
     // ===== 見出し =====
     const headers = visible.map((column, position) => {
       const direction = sort !== null && sort.key === column.key ? sort.dir : null;
-      const isFiltered = (filters[column.key] ?? []).length > 0;
       const isPinned = position === pinned - 1;
       return h({
         tag: "th",
@@ -444,20 +501,6 @@ namespace MindmapPreview {
                 },
                 children: [column.label, sortIcon(direction)],
               }),
-              column.filterable === true
-                ? h({
-                  tag: "button",
-                  attrs: {
-                    class: "th-tool",
-                    type: "button",
-                    "data-popover": `filter:${column.key}`,
-                    "aria-pressed": String(isFiltered),
-                    "aria-label": `${column.label}で絞り込み`,
-                    onclick: () => openPopover({ type: "filter", key: column.key }),
-                  },
-                  children: [icon("filter")],
-                })
-                : null,
               h({
                 tag: "button",
                 attrs: {
@@ -577,7 +620,7 @@ namespace MindmapPreview {
     observer.observe(wrap);
 
     // 開いたままにするポップオーバーを、表が文書に入った後に開く
-    if (popover !== null) queueMicrotask(() => showPopover(popover));
+    if (popover !== null) queueMicrotask(showPopover);
     return root;
   }
 
@@ -697,10 +740,9 @@ namespace MindmapPreview {
   /** 端末に残す、表ごとの表示する列とピン留め */
   export type TablePrefs = { hidden: string[]; pinTo: string | null };
 
-  /** 表の状態（並べ替え・絞り込み・ポップオーバーは開いている間だけ、表示する列とピン留めは端末に残す） */
+  /** 表の状態（並べ替え・ポップオーバーは開いている間だけ、表示する列とピン留めは端末に残す。絞り込みは画面が持つ） */
   type TableState = {
     sort: SortState;
-    filters: Filters;
     popover: TablePopover | null;
     hidden: string[] | undefined;
     pinTo: string | null;
@@ -729,36 +771,36 @@ namespace MindmapPreview {
   export function tableState(kind: Kind): TableState {
     let state = tableStates.get(kind);
     if (state === undefined) {
-      state = { sort: null, filters: {}, popover: null, hidden: undefined, pinTo: null };
+      state = { sort: null, popover: null, hidden: undefined, pinTo: null };
       tableStates.set(kind, state);
     }
     return state;
   }
 
-  /** 状態を持つ表を返す。操作に応じて自分で描き直し、表示する列とピン留めは端末に残す */
+  /** 状態を持つ表を返す。並べ替え・列・ピン留めの操作は自分で描き直し、表示する列とピン留めは端末に残す。絞り込みの条件は画面から受け、チップで変えたときは `onFilter` に新しい条件を渡す */
   export function managedTable({
     kind,
     columns,
     rows,
+    filters,
+    onFilter,
     open,
-    initialFilters,
     marks,
   }: {
     kind: Kind;
     columns: Column[];
     rows: Row[];
+    /** 絞り込みの条件（画面が絞り込みのドロワーと共有する） */
+    filters: Filters;
+    /** チップで条件を解除したとき、新しい条件を知らせる（描き直しは使う側が行う） */
+    onFilter: (filters: Filters) => void;
     open: (id: string) => void;
-    /** 開いたときの絞り込み（ハッシュの `f.{列}`）。あれば今の絞り込みと置き換える */
-    initialFilters?: Filters;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
   }): HTMLElement {
     const state = tableState(kind);
     // 画面を描き直したときは、前のポップオーバーを開いたままにしない
     state.popover = null;
-    if (initialFilters !== undefined && Object.keys(initialFilters).length > 0) {
-      state.filters = { ...initialFilters };
-    }
     const slot = h({ tag: "div", attrs: { class: "table-slot" } });
     /** 端末に残す値が変わったことを知らせる */
     const persist = (): void => {
@@ -774,7 +816,7 @@ namespace MindmapPreview {
           columns,
           rows,
           sort: state.sort,
-          filters: state.filters,
+          filters,
           pinTo: state.pinTo,
           hiddenColumns: state.hidden,
           popover: state.popover,
@@ -786,12 +828,7 @@ namespace MindmapPreview {
               else state.sort = state.sort.dir === "asc" ? { key, dir: "desc" } : null;
               render();
             },
-            filter: ({ key, values }) => {
-              if (key === null) state.filters = {};
-              else if (values.length === 0) delete state.filters[key];
-              else state.filters = { ...state.filters, [key]: values };
-              render();
-            },
+            filter: onFilter,
             pin: (key) => {
               state.pinTo = state.pinTo === key ? null : key;
               persist();

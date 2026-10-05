@@ -16,7 +16,7 @@ def test_build_decision_tree(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """非表示の状態だけの枝を落とす（正常系）。"""
+    """渡した検討事項を持たない枝を落とす（正常系）。"""
     # 準備
     settings = {
         **valid_settings,
@@ -39,14 +39,16 @@ def test_build_decision_tree(
     load_preview_scripts()
     # 実行
     tree = preview_page.evaluate(
-        """({data, shown}) => {
+        """({data, shownIds}) => {
             const index = MindmapPreview.buildIndex(data);
-            const graph = MindmapPreview.buildDecisionTree({index, shownStatuses: new Set(shown)});
+            // 絞り込みの条件に合った検討事項だけを渡す
+            const decisions = data.decisions.filter((decision) => shownIds.includes(decision.id));
+            const graph = MindmapPreview.buildDecisionTree({index, decisions});
             // 節は入れ子でも平らでも数えられるよう、再帰で集める
             const collect = (nodes) => nodes.flatMap((node) => [node.id, ...collect(node.children ?? [])]);
             return {nodeIds: collect(graph.children), edgeCount: graph.edges.length};
         }""",
-        {"data": data, "shown": ["未決定"]},
+        {"data": data, "shownIds": ["D-1"]},
     )
     # 検証
     node_ids = tree["nodeIds"]

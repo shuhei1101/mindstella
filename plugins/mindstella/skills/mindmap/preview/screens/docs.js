@@ -10,7 +10,7 @@ var MindmapPreview;
     /** 納品物の列の値 */
     const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
     /** 資料の画面を返す */
-    function docsScreen({ index, route, on, marks }) {
+    function docsScreen({ index, route, on, marks, filters, drawerOpen }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
         const columns = [
             common.id,
@@ -37,6 +37,17 @@ var MindmapPreview;
             { key: "board", label: "ボード" },
             { key: "table", label: "表" },
         ], route, on.view);
+        // 絞り込みの条件に合う資料を、カード・ボード・表に同じ結果で渡す
+        const shown = MindmapPreview.filterRows({ rows: index.data.docs, columns, filters });
+        const drawer = MindmapPreview.screenDrawer({
+            drawerOpen,
+            rows: index.data.docs,
+            columns: columns.filter((column) => column.filterable === true),
+            filters,
+            shown: shown.length,
+            onFilter: on.filter,
+            onClose: on.closeDrawer,
+        });
         if (route.view === "table") {
             return MindmapPreview.h({
                 tag: "div",
@@ -46,160 +57,43 @@ var MindmapPreview;
                     MindmapPreview.managedTable({
                         kind: "docs",
                         columns,
-                        rows: index.data.docs,
+                        rows: shown,
+                        filters,
+                        onFilter: on.filter,
                         open: on.open,
-                        initialFilters: route.filters,
                         marks,
                     }),
+                    drawer,
                 ],
             });
         }
-        // ===== カードとボード: 絞り込みは表と同じ条件を使う =====
-        const state = MindmapPreview.tableState("docs");
-        if (Object.keys(route.filters).length > 0)
-            state.filters = { ...route.filters };
-        const ordered = orderDocs(index.data.docs);
-        const chips = MindmapPreview.h({ tag: "div", attrs: { class: "chips" } });
-        const pop = MindmapPreview.h({ tag: "div", attrs: { class: "pop", popover: "auto" } });
-        const filterButton = MindmapPreview.h({
-            tag: "button",
-            attrs: {
-                class: "btn",
-                type: "button",
-                "aria-label": "絞り込み",
-                onclick: () => {
-                    fillPopover();
-                    pop.showPopover();
-                    MindmapPreview.positionPopover(pop, filterButton);
-                },
-            },
-            children: [
-                MindmapPreview.icon("filter"),
-                MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["絞り込み"] }),
-            ],
-        });
-        /** 絞り込める列の値を、列ごとに件数つきで並べる */
-        const fillPopover = () => {
-            pop.replaceChildren(...columns
-                .filter((column) => column.filterable === true)
-                .map((column) => MindmapPreview.h({
-                tag: "div",
-                children: [
-                    MindmapPreview.h({ tag: "h3", children: [`${column.label}で絞り込み`] }),
-                    ...MindmapPreview.filterCounts({
-                        rows: ordered,
-                        columns,
-                        filters: state.filters,
-                        key: column.key,
-                    }).map(({ value, count }) => MindmapPreview.h({
-                        tag: "label",
-                        children: [
-                            MindmapPreview.h({
-                                tag: "input",
-                                attrs: {
-                                    type: "checkbox",
-                                    checked: (state.filters[column.key] ?? []).includes(value),
-                                    onchange: (event) => {
-                                        const chosen = state.filters[column.key] ?? [];
-                                        const checked = event.target.checked;
-                                        const values = checked ? [...chosen, value] : chosen.filter((v) => v !== value);
-                                        if (values.length === 0)
-                                            delete state.filters[column.key];
-                                        else
-                                            state.filters = { ...state.filters, [column.key]: values };
-                                        render();
-                                        fillPopover();
-                                    },
-                                },
-                            }),
-                            column.key === "status" ? MindmapPreview.statusMark(value) : null,
-                            value,
-                            MindmapPreview.h({ tag: "span", attrs: { class: "n" }, children: [count] }),
-                        ],
-                    })),
-                ],
-            })));
-        };
-        /** カードの並びかボードを、今の絞り込みで描く */
-        const drawContent = () => {
-            const shown = MindmapPreview.filterRows({ rows: ordered, columns, filters: state.filters });
-            if (route.view === "board") {
-                // 列ごとに納品物を先頭に並べ直す
-                return MindmapPreview.board({
-                    columns: MindmapPreview.boardColumns({ items: shown, statuses: [...MindmapPreview.DOC_STATUSES] }).map((column) => ({
-                        status: column.status,
-                        items: orderDocs(column.items),
-                    })),
+        // カード・ボードでは、ツールバーの下に条件のチップの行を置く
+        const chips = MindmapPreview.activeConditionCount(filters) > 0
+            ? MindmapPreview.filterChips({
+                filters,
+                labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+                onFilter: on.filter,
+            })
+            : null;
+        const content = route.view === "board"
+            ? // 列ごとに納品物を先頭に並べ直す
+                MindmapPreview.board({
+                    columns: MindmapPreview.boardColumns({
+                        items: shown,
+                        statuses: [...MindmapPreview.DOC_STATUSES],
+                        statusFilter: filters["status"] ?? [],
+                    }).map((column) => ({ ...column, items: orderDocs(column.items) })),
                     card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id] }),
                     emptyText: "資料はありません。",
-                });
-            }
-            return MindmapPreview.h({
+                })
+            : MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "doc-grid" },
                 children: shown.length > 0
-                    ? shown.map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id] }))
+                    ? orderDocs(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id] }))
                     : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
             });
-        };
-        let content = drawContent();
-        /** カードの並びかボードと条件のチップを、今の絞り込みで描き直す */
-        const render = () => {
-            const next = drawContent();
-            content.replaceWith(next);
-            content = next;
-            drawChips();
-        };
-        /** 条件のチップを、今の絞り込みで描く */
-        const drawChips = () => {
-            const items = [];
-            for (const [key, values] of Object.entries(state.filters)) {
-                const label = columns.find((column) => column.key === key)?.label ?? key;
-                for (const value of values) {
-                    items.push(MindmapPreview.h({
-                        tag: "span",
-                        attrs: { class: "chip" },
-                        children: [
-                            `${label}: ${value}`,
-                            MindmapPreview.h({
-                                tag: "button",
-                                attrs: {
-                                    type: "button",
-                                    "aria-label": `${label}: ${value} の条件を解除`,
-                                    onclick: () => {
-                                        const rest = values.filter((v) => v !== value);
-                                        if (rest.length === 0)
-                                            delete state.filters[key];
-                                        else
-                                            state.filters = { ...state.filters, [key]: rest };
-                                        render();
-                                    },
-                                },
-                                children: [MindmapPreview.icon("x")],
-                            }),
-                        ],
-                    }));
-                }
-            }
-            if (items.length > 0) {
-                items.push(MindmapPreview.h({
-                    tag: "button",
-                    attrs: {
-                        class: "btn ghost",
-                        type: "button",
-                        onclick: () => {
-                            state.filters = {};
-                            render();
-                        },
-                    },
-                    children: ["すべて解除"],
-                }));
-            }
-            chips.replaceChildren(...items);
-        };
-        drawChips();
-        toolbarElement.append(MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }), filterButton);
-        return MindmapPreview.h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, chips, content, pop] });
+        return MindmapPreview.h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, chips, content, drawer] });
     }
     MindmapPreview.docsScreen = docsScreen;
     /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */

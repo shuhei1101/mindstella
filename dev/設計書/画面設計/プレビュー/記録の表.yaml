@@ -24,6 +24,12 @@ elements:
         value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
       - name: comments_open
         value: コメントの一覧を開いているか
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: 絞り込みのドロワーで値を 1 つ以上選んでいる条件の数
+      - name: filter_open
+        value: 絞り込みのドロワーを開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表
@@ -33,15 +39,33 @@ elements:
       - name: kind
         value: プレビューを開く.tab
       - name: columns
-        value: '調査: ID・タイトル・問い・結論・確度（絞れる）・タグ（絞れる） / 用語集: ID・用語・意味・別名・使わない表記・タグ（絞れる） / メモ: ID・タイトル・内容・タグ（絞れる）・関連 / 会話ログ: ID・日付・タイトル・更新した項目'
+        value: '調査: ID・タイトル・問い・結論・確度（絞れる）・タグ（絞れる） / 用語集: ID・用語・意味・別名・使わない表記・タグ（絞れる） / メモ: ID・タイトル・内容・タグ（絞れる）・関連 / 会話ログ: ID・日付・タイトル・更新した項目・タグ（絞れる）'
       - name: rows
         value: プレビューを開く.mindmap-data.{research・terms・notes・logs}
       - name: filters
-        value: プレビューを開く.f.{列}（開いたときだけ）
+        value: 絞り込みのドロワーの selected
       - name: marks
         value: 差分の表示の間、選んだ時点で足した・変えた項目（記録の取得.changes）
     description: その種類の表。表示形式の切り替えは出さない
     visible_when: 常時
+  - name: 絞り込みのドロワー
+    kind: dialog
+    component: dev/設計書/部品設計/プレビュー/絞り込み.ts#
+    description: 画面設計『検討事項』の絞り込みのドロワーと同じ出し方で、表の条件を選ぶ。条件は種類（調査・用語集・メモ・会話ログ）ごとに持ち、別の種類へ移っても持ち越さない
+    io: 入力
+    visible_when: トップバーの絞り込みのボタンを押したとき
+    initial_value: どの値も選んでいない。URL のハッシュに `f.{列}` があるときはその条件で開く
+    args:
+      - name: groups
+        value: '調査: タグ（tags）・確度（confidence） / 用語集・メモ・会話ログ: タグ（tags）。どれも種類（`kind`）と状態を持たないので、その条件を出さない'
+      - name: selected
+        value: 開いたときは「初期値」。以降はドロワーと表のチップで変えた条件
+      - name: total
+        value: プレビューを開く.mindmap-data.{research・terms・notes・logs} の件数
+      - name: shown
+        value: 条件に合う行の件数
+      - name: narrow
+        value: 画面の幅が 900px 以下のとき true
 lead: 調査・用語集・メモ・会話ログを表だけで見る画面。種類ごとに同じ画面を使い回す。
-mock: dev/mock/pages/records/63/standard/index.html
+mock: dev/mock/pages/records/89/standard/index.html
 test_file: tests/integration/preview/test_records_screen.py

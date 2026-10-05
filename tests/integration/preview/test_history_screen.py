@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
+from preview_drawer_helpers import ALL_DECISION_STATUSES_HASH
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_history_helpers import preselect_diff
 from workspace_fixtures import CallTool
@@ -77,7 +78,8 @@ def test_pick(write_history_preview: WriteReviewPreview, open_preview: OpenPrevi
     """行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で描き直し、選んだ時点を端末に残す（正常系）。"""
     # 準備
     url, _ = write_history_preview()
-    page = open_preview(url, "#tab=decisions&view=table")
+    # 決定済みの D-1 も出すため、全ての状態を選んで開く
+    page = open_preview(url, f"#tab=decisions&view=table{ALL_DECISION_STATUSES_HASH}")
     _open_dialog(page)
     # 実行
     page.click(f"{ROW}[data-sel='V-2']")
@@ -160,7 +162,8 @@ def test_selection_kept_when_reloaded_and_rewritten(
     page.wait_for_selector("table.grid tbody tr")
     # 検証
     assert page.inner_text(".df-chip-t").endswith("決める")
-    assert page.locator("table.grid .df-mark").count() == 2
+    # 読み込み直すと絞り込みは開いたときの既定に戻るので、決定済みの D-1 は出ず、印は D-2 だけに付く
+    assert page.locator("table.grid .df-mark").count() == 1
     # 実行（開いたまま、まとまり V-2 に入る項目をまとめる前に別の項目を足す）
     result = call_tool(
         "add",

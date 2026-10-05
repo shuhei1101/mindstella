@@ -135,3 +135,27 @@ export const CommentsNarrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない */
+export const Filter: Story = { args: { filter: true, onFilter: fn(), comments: true, commentCount: 3 } };
+
+/** 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す */
+export const FilterOn: Story = {
+  args: { filter: true, filterCount: 2, onFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする */
+export const FilterOpen: Story = {
+  args: { filter: true, filterCount: 2, filterOpen: true, onFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする */
+export const FilterNarrow: Story = {
+  args: { filter: true, filterCount: 1, onFilter: fn(), comments: true, commentCount: 3 },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};

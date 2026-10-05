@@ -7,6 +7,19 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_drawer_helpers import (
+    DRAWER,
+    FILTER_BUTTON,
+    badge_text,
+    checked_values,
+    chip_texts,
+    clear_all_chips,
+    click_value,
+    close_drawer,
+    drawer_groups,
+    open_drawer,
+    remove_chip,
+)
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
@@ -66,38 +79,57 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
 
 
 def test_card_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """カードの絞り込みのポップオーバーで値を選ぶと、条件のチップが出て、個別とすべてを外せる（正常系）。"""
+    """ドロワーで値を選ぶとカードが絞られてバッジとチップが付き、条件の「解除」で戻る。ツールバーに絞り込みのボタンを出さない（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs")
+    toolbar_buttons = page.locator('.toolbar [aria-label="絞り込み"]').count()
     # 実行
-    page.click('button[aria-label="絞り込み"]')
-    page.click('.pop label:has-text("納品物以外")')
-    page.wait_for_selector(".chips .chip")
-    # 検証
-    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
-        "納品物: 納品物以外"
-    ]
-    assert _card_ids(page) == ["A-2"]
-    # チップの × で個別に解除する
-    page.click('.chips .chip button[aria-label="納品物: 納品物以外 の条件を解除"]')
+    open_drawer(page)
+    click_value(page, "deliverable", "納品物以外")
+    page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
+    selected = (_card_ids(page), badge_text(page), chip_texts(page))
+    page.click(f"{DRAWER} button[aria-label='納品物の条件を解除']")
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 2")
+    # 検証
+    assert toolbar_buttons == 0
+    assert selected == (["A-2"], "1", ["納品物: 納品物以外"])
     assert _card_ids(page) == ["A-1", "A-2"]
+    assert page.locator(".chips .chip").count() == 0
+    assert page.locator(".pop").count() == 0
 
 
 def test_card_filter_clear_all(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """条件が 2 つ以上あるとき、すべて解除で全ての条件を解除する（正常系）。"""
+    """条件が 2 つあるとき、ドロワーの「すべて解除」で全ての条件を解除し、バッジを外す（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs&f.deliverable=納品物&f.status=完成")
     assert _card_ids(page) == ["A-1"]
+    assert badge_text(page) == "2"
     # 実行
-    page.click(".chips >> text=すべて解除")
+    open_drawer(page)
+    page.click(f"{DRAWER} .fd-foot button:has-text('すべて解除')")
     # 検証
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 2")
-    assert page.locator(".chips .chip").count() == 0
+    assert badge_text(page) is None
+
+
+def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ドロワーは、種類・状態・納品物（納品物 → 納品物以外の順）を並べ、何も選んでいない状態で開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    # 実行
+    open_drawer(page)
+    groups = {group["label"]: group for group in drawer_groups(page)}
+    # 検証
+    assert list(groups) == ["種類", "状態", "納品物"]
+    assert groups["状態"]["values"] == [["下書き", 1, False], ["完成", 1, False]]
+    assert groups["納品物"]["values"] == [["納品物", 1, False], ["納品物以外", 1, False]]
+    assert badge_text(page) is None
+    assert page.is_visible(FILTER_BUTTON)
 
 
 def _board_columns(page) -> list[list[Any]]:
@@ -196,25 +228,23 @@ def test_board_open_detail(
 
 
 def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """ボードでも絞り込みのポップオーバーで値を選ぶと、条件のチップが出て、列のカードが絞られ、解除すると戻る（正常系）。"""
+    """ボードでもドロワーで値を選ぶと列のカードが絞られてチップが付き、条件の「解除」で戻る（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs&view=board")
     # 実行
-    page.click('button[aria-label="絞り込み"]')
-    page.click('.pop label:has-text("納品物以外")')
-    page.wait_for_selector(".chips .chip")
+    open_drawer(page)
+    click_value(page, "deliverable", "納品物以外")
+    page.wait_for_function("document.querySelectorAll('.board .doc-card').length === 1")
     # 検証
-    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
-        "納品物: 納品物以外"
-    ]
     assert _board_columns(page) == [
         ["下書き", "1", ["A-2"]],
         ["確認中", "0", []],
         ["完成", "0", []],
     ]
-    # チップの × で解除すると全ての列のカードが戻る
-    page.click('.chips .chip button[aria-label="納品物: 納品物以外 の条件を解除"]')
+    assert chip_texts(page) == ["納品物: 納品物以外"]
+    # 条件の「解除」で全ての列のカードが戻る
+    page.click(f"{DRAWER} button[aria-label='納品物の条件を解除']")
     page.wait_for_function("document.querySelectorAll('.board .doc-card').length === 2")
     assert _board_columns(page) == [
         ["下書き", "1", ["A-2"]],
@@ -226,19 +256,24 @@ def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: Op
 def test_board_filter_from_url(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """URL の条件でボードを開くと、カードと同じ条件で絞られ、チップが出る（正常系）。"""
+    """URL の条件でボードを開くと、カードと同じ条件で絞られ、状態の条件から外した列は列を残して外した旨を出す（正常系）。"""
     # 準備・実行
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs&view=board&f.status=完成")
+    excluded = [
+        page.inner_text(f'.board section.board-col[aria-label="{status}"] .empty')
+        for status in ("下書き", "確認中")
+    ]
+    open_drawer(page)
     # 検証
     assert _board_columns(page) == [
         ["下書き", "0", []],
         ["確認中", "0", []],
         ["完成", "1", ["A-1"]],
     ]
-    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
-        "状態: 完成"
-    ]
+    assert excluded == ["状態の条件で外しています。", "状態の条件で外しています。"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["完成"]
 
 
 def test_board_edge_gap(
@@ -340,3 +375,37 @@ def test_diff_marks_when_table(
     page.wait_for_selector("table.grid tbody tr")
     # 検証
     assert page.locator('table.grid tbody tr[data-id="A-1"] .row-open + .df-mark.df-chg').count() == 1
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_chips(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, view: str
+) -> None:
+    """カード・ボードのツールバーの下に条件のチップの行を置き、× で 1 つ解除し、「すべて解除」で全ての条件を外す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, f"#tab=docs&view={view}")
+    open_drawer(page)
+    click_value(page, "deliverable", "納品物以外")
+    click_value(page, "status", "下書き")
+    close_drawer(page)
+    # 実行
+    chips = chip_texts(page)
+    below_toolbar = page.evaluate(
+        "document.querySelector('.screen.docs .toolbar').nextElementSibling.classList.contains('chips')"
+    )
+    remove_chip(page, "納品物: 納品物以外")
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 1")
+    after_remove = (chip_texts(page), badge_text(page), len(_card_ids(page)))
+    clear_all_chips(page)
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 0")
+    page.wait_for_function("document.querySelectorAll('.doc-card').length === 2")
+    # 検証
+    assert chips == ["納品物: 納品物以外", "状態: 下書き"]
+    assert below_toolbar is True
+    assert after_remove == (["状態: 下書き"], "1", 1)
+    assert badge_text(page) is None
+    # チップを外すとドロワーの選びも外れる
+    open_drawer(page)
+    assert checked_values(page, "deliverable") == []
+    assert checked_values(page, "status") == []
