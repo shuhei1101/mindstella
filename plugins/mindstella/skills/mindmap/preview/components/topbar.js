@@ -1,5 +1,5 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 件数の表示を揺らさない上限 */
@@ -143,8 +143,29 @@ var MindmapPreview;
             children: [MindmapPreview.icon("sliders"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["表示の設定"] })],
         });
     }
+    /** 絞り込みのボタン（印と「絞り込み」と、値を選んでいる条件の数のバッジ）。押すと絞り込みのドロワーを開く・閉じる */
+    function filterButton({ count, open, onClick }) {
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: `filter-btn${open ? " open" : ""}`,
+                type: "button",
+                "data-act": "filter",
+                "aria-label": count === 0 ? "絞り込み" : `絞り込み（${count} つの条件で絞り込み中）`,
+                "aria-expanded": String(open),
+                // ドロワーを開いていて、指す先が文書にあるときだけ付ける（ドロワーを描いた後は、ドロワーが付け直す）
+                "aria-controls": open && document.getElementById("drawer") !== null ? "drawer" : null,
+                onclick: () => onClick?.(),
+            },
+            children: [
+                MindmapPreview.icon("filter"),
+                MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["絞り込み"] }),
+                count === 0 ? null : MindmapPreview.h({ tag: "span", attrs: { class: "fbadge", "aria-hidden": "true" }, children: [count] }),
+            ],
+        });
+    }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -193,6 +214,7 @@ var MindmapPreview;
                     children: [MindmapPreview.icon(theme === "dark" ? "sun" : "moon")],
                 }),
                 onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
+                filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
                 comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
             ],
         });

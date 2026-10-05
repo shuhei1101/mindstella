@@ -42,13 +42,18 @@ def test_sorted_desc(open_story: OpenStory) -> None:
 
 
 def test_filtered(open_story: OpenStory) -> None:
-    """確度 = 高で絞り込み中。条件のチップとすべて解除を並べ、絞り込みの道具を押された見た目にする（正常系）。"""
+    """確度 = 高で絞り込み中。条件のチップとすべて解除を並べ、列の見出しには並べ替えとピン留めだけを置く（正常系）。"""
     # 準備・実行
     page = open_story("preview-table--filtered")
     # 検証
     assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == ["確度: 高"]
     assert page.locator(".chips >> text=すべて解除").count() == 1
-    assert page.get_attribute('button[aria-label="確度で絞り込み"]', "aria-pressed") == "true"
+    # 列の見出しに絞り込みのボタンを出さず、並べ替えとピン留めのボタンだけを置く
+    assert page.locator('table.grid thead button[aria-label$="で絞り込み"]').count() == 0
+    classes = page.eval_on_selector_all(
+        "table.grid thead button", "buttons => [...new Set(buttons.map(b => b.className))]"
+    )
+    assert sorted(classes) == ["th-sort", "th-tool pin"]
     rows = page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
     assert rows == ["D-1", "D-3"]
 

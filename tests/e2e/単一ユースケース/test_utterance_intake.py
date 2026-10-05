@@ -18,6 +18,10 @@ if TYPE_CHECKING:
 # valid_settings の対象・カテゴリー（記録した項目に付ける）
 PLACE = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
 
+# 取り込みの前からある話題のタグと、取り込みで作る新しい話題のタグ
+TOPIC_TAG = "保存"
+NEW_TOPIC_TAG = "通知"
+
 # 会話の日付
 TODAY = "2026-10-02"
 
@@ -36,14 +40,17 @@ OPTIONS = [
 
 def test_normal(
     make_workspace: MakeWorkspace,
+    make_item: MakeItem,
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
-    # 準備
-    root = make_workspace()
+    """話題のタグを引いて使い回し、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
+    # 準備（取り込みの前から、タグ `保存` を持つメモ N-1 がある）
+    root = make_workspace(make_item("N-1", tags=[TOPIC_TAG]))
     ws = {"workspace": str(root)}
     # 実行
+    # 取り込みの最初に、使っているタグの一覧を引く
+    tags_before = replay("tags", **ws)
     # 1 つの発言から出た記録を、1 回のまとめての書き込みで渡す（D-2 の parent と T-1 の for は、先に足す項目を指す）
     replay(
         "batch",
@@ -59,6 +66,7 @@ def test_normal(
                     "reason": "手で読める",
                     # 決めたこととして足すので、選ばれた案 A を採用する
                     "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
+                    "tags": [TOPIC_TAG],
                     **PLACE,
                 },
             },
@@ -70,13 +78,19 @@ def test_normal(
                     "status": "未決定",
                     "parent": "$1",
                     "options": OPTIONS,
+                    "tags": [TOPIC_TAG],
                     **PLACE,
                 },
             },
             {
                 "op": "add",
                 "kind": "decision",
-                "item": {"title": "いつか使うかも", "status": "未整理", **PLACE},
+                "item": {
+                    "title": "いつか使うかも",
+                    "status": "未整理",
+                    "tags": [TOPIC_TAG, NEW_TOPIC_TAG],
+                    **PLACE,
+                },
             },
             {
                 "op": "add",
@@ -86,6 +100,7 @@ def test_normal(
                     "kind": "作業",
                     "status": "未着手",
                     "for": ["$2"],
+                    "tags": [TOPIC_TAG],
                     **PLACE,
                 },
             },
@@ -98,6 +113,7 @@ def test_normal(
     )
     replay("commit", **ws, summary=INTAKE_SUMMARY)
     pending = replay("pending", **ws)
+    tags_after = replay("tags", **ws)
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = read_yaml(root, "tasks.yaml")["items"]
@@ -134,6 +150,14 @@ def test_normal(
         "データ構造",
         "要件",
     ]
+    # 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と `通知`（1 件）を返す
+    assert tags_before == {"tags": [{"name": TOPIC_TAG, "count": 1, "kinds": ["note"]}]}
+    assert tags_after == {
+        "tags": [
+            {"name": TOPIC_TAG, "count": 5, "kinds": ["decision", "task", "note"]},
+            {"name": NEW_TOPIC_TAG, "count": 1, "kinds": ["decision"]},
+        ]
+    }
     # 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。pending が空を返す
     changes = read_yaml(root, "changes.yaml")
     assert len(changes["sets"]) == 1

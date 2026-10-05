@@ -37,7 +37,7 @@ from history import (
 from kinds import KINDS, Kind
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
-from query import SearchFilter, list_attrs, search_items, show_item
+from query import SearchFilter, list_attrs, list_tags, search_items, show_item
 from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
@@ -547,6 +547,11 @@ def run_show(root: Path, item_id: str) -> dict[str, Any]:
 def run_attrs(root: Path) -> dict[str, Any]:
     """属性名の一覧を出力の形にする。"""
     return {"attrs": list_attrs(load_workspace(root))}
+
+
+def run_tags(root: Path) -> dict[str, Any]:
+    """タグの一覧を出力の形にする。"""
+    return {"tags": list_tags(load_workspace(root))}
 
 
 def run_migrate(

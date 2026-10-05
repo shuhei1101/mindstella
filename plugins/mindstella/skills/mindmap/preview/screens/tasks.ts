@@ -1,7 +1,7 @@
 // タスク。ボード（既定）と表で見る。
 
 namespace MindmapPreview {
-  /** 画面が受ける、表示形式の切り替えと項目を開く操作 */
+  /** 画面が受ける、表示形式の切り替え・項目を開く・絞り込みの操作 */
   export type ScreenProps = {
     index: RecordIndex;
     /** 表示形式と絞り込み */
@@ -11,24 +11,36 @@ namespace MindmapPreview {
       open: (id: string) => void;
       /** 表示形式を切り替える */
       view: (view: View) => void;
+      /** 条件を変える（新しい `filters`。ドロワーと表のチップから） */
+      filter: (filters: Filters) => void;
+      /** 絞り込みのドロワーを閉じる */
+      closeDrawer: () => void;
     };
+    /** 絞り込みの条件（入口の `FilterState` のこの画面の分） */
+    filters: Filters;
+    /** 絞り込みのドロワーを開いているか */
+    drawerOpen: boolean;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
   };
 
-  /** 状態の並びの順に、状態ごとの項目を返す（項目が 0 件の列も返す。列の中は連番の順） */
+  /** 状態の並びの順に、状態ごとの項目を返す（項目が 0 件の列も返す。列の中は連番の順）。`excluded` は状態の条件で外した列 */
   export function boardColumns({
     items,
     statuses,
+    statusFilter = [],
   }: {
     items: Item[];
     statuses: string[];
-  }): { status: string; items: Item[] }[] {
+    /** 状態の条件で選んだ値（空なら状態で絞っていない） */
+    statusFilter?: string[];
+  }): { status: string; items: Item[]; excluded: boolean }[] {
     return statuses.map((status) => ({
       status,
       items: items
         .filter((item) => item.status === status)
         .sort((a, b) => compareIds(a.id, b.id)),
+      excluded: statusFilter.length > 0 && !statusFilter.includes(status),
     }));
   }
 
@@ -95,7 +107,7 @@ namespace MindmapPreview {
     card,
     emptyText,
   }: {
-    columns: { status: string; items: Item[] }[];
+    columns: { status: string; items: Item[]; excluded?: boolean }[];
     card: (item: Item) => HTMLElement;
     /** 0 件の列に出す文 */
     emptyText: string;
@@ -104,7 +116,7 @@ namespace MindmapPreview {
       tag: "div",
       attrs: { class: "board", style: `--cols:${columns.length}` },
       children: [
-        ...columns.map(({ status, items }) =>
+        ...columns.map(({ status, items, excluded = false }) =>
           h({
             tag: "section",
             attrs: { class: "board-col", "aria-label": status },
@@ -117,7 +129,12 @@ namespace MindmapPreview {
                   h({ tag: "span", attrs: { class: "n" }, children: [items.length] }),
                 ],
               }),
-              ...(items.length > 0 ? items.map(card) : [emptyNote(emptyText)]),
+              // 状態の条件で外した列は、列を残して外した旨を出す
+              ...(excluded
+                ? [emptyNote("状態の条件で外しています。")]
+                : items.length > 0
+                  ? items.map(card)
+                  : [emptyNote(emptyText)]),
             ],
           }),
         ),
@@ -137,7 +154,7 @@ namespace MindmapPreview {
   }
 
   /** タスクの画面を返す */
-  export function tasksScreen({ index, route, on, marks }: ScreenProps): HTMLElement {
+  export function tasksScreen({ index, route, on, marks, filters, drawerOpen }: ScreenProps): HTMLElement {
     const common = commonColumns(index.data.settings);
     const columns: Column[] = [
       common.id,
@@ -156,10 +173,25 @@ namespace MindmapPreview {
       common.phase,
       common.tags,
     ];
+    // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
+    const shown = filterRows({ rows: index.data.tasks, columns, filters }) as Item[];
+    // ボードでは、ツールバーの下に条件のチップの行を置く（表は表の上に持つ）
+    const chips =
+      route.view === "board" && activeConditionCount(filters) > 0
+        ? filterChips({
+            filters,
+            labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
+            onFilter: on.filter,
+          })
+        : null;
     const content =
       route.view === "board"
         ? board({
-            columns: boardColumns({ items: index.data.tasks, statuses: [...TASK_STATUSES] }),
+            columns: boardColumns({
+              items: shown,
+              statuses: [...TASK_STATUSES],
+              statusFilter: filters["status"] ?? [],
+            }),
             card: (item) =>
               boardCard({
                 index,
@@ -174,9 +206,10 @@ namespace MindmapPreview {
         : managedTable({
             kind: "tasks",
             columns,
-            rows: index.data.tasks,
+            rows: shown,
+            filters,
+            onFilter: on.filter,
             open: on.open,
-            initialFilters: route.filters,
             marks,
           });
     return h({
@@ -191,7 +224,17 @@ namespace MindmapPreview {
           route,
           on.view,
         ),
+        chips,
         content,
+        screenDrawer({
+          drawerOpen,
+          rows: index.data.tasks,
+          columns: columns.filter((column) => column.filterable === true),
+          filters,
+          shown: shown.length,
+          onFilter: on.filter,
+          onClose: on.closeDrawer,
+        }),
       ],
     });
   }

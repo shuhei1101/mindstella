@@ -48,6 +48,7 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
         "find",
         "show",
         "attrs",
+        "tags",
         "check",
         "goal",
         "migrate",
@@ -127,6 +128,10 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/取り込み.md が batch を呼ぶ
     capture_step = (SKILLS_DIR / "session" / "steps" / "取り込み.md").read_text(encoding="utf-8")
     assert "`batch`" in capture_step
+    # steps/取り込み.md が batch で書く前に tags を引き、対象を話題に使わないと書く
+    assert "`tags`" in capture_step
+    assert capture_step.index("`tags`") < capture_step.index("`batch`")
+    assert "話題には使わない" in capture_step
     # 取り込み・ヒアリング・リサーチ・方針転換のステップが commit を呼ぶ
     for step_file in COMMIT_STEP_FILES:
         step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")

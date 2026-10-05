@@ -40,6 +40,9 @@ items:
   - page: 属性名の一覧.yaml
     summary: 'attrs: 使っている属性名と件数を返す'
     group: 読む
+  - page: タグの一覧.yaml
+    summary: 'tags: 使っているタグと件数・種類を返す'
+    group: 読む
   - page: ゴール判定.yaml
     summary: 'goal: ゴールのフェーズまでが決着し納品物が揃ったかと、残りの項目を返す'
     group: 読む

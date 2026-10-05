@@ -196,6 +196,65 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
+# 絞り込みのボタン
+FILTER_BUTTON = "[data-act='filter']"
+
+
+def test_filter(open_story: OpenStory) -> None:
+    """絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--filter")
+    # 検証
+    assert page.inner_text(f"{FILTER_BUTTON} .label") == "絞り込み"
+    assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み"
+    assert page.get_attribute(FILTER_BUTTON, "aria-expanded") == "false"
+    assert page.locator(f"{FILTER_BUTTON} .fbadge").count() == 0
+    # 絞り込みのボタンはコメントのボタンの左隣で、重ならない
+    filter_box = page.locator(FILTER_BUTTON).bounding_box()
+    comments_box = page.locator(".comments-btn").bounding_box()
+    assert filter_box["x"] + filter_box["width"] <= comments_box["x"]
+
+
+def test_filter_on(open_story: OpenStory) -> None:
+    """2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--filter-on")
+    # 検証
+    assert page.inner_text(f"{FILTER_BUTTON} .fbadge") == "2"
+    # 読み上げの名前は絞り込み中の条件の数を含み、バッジは読み上げから外す
+    assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み（2 つの条件で絞り込み中）"
+    assert page.get_attribute(f"{FILTER_BUTTON} .fbadge", "aria-hidden") == "true"
+    assert page.eval_on_selector(f"{FILTER_BUTTON} .fbadge", BACKGROUND_SCRIPT) != TRANSPARENT
+    label_box = page.locator(f"{FILTER_BUTTON} .label").bounding_box()
+    badge_box = page.locator(f"{FILTER_BUTTON} .fbadge").bounding_box()
+    assert label_box["x"] + label_box["width"] <= badge_box["x"]
+
+
+def test_filter_open(open_story: OpenStory) -> None:
+    """絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--filter-open")
+    # 検証
+    assert page.get_attribute(FILTER_BUTTON, "aria-expanded") == "true"
+    assert page.eval_on_selector(FILTER_BUTTON, BACKGROUND_SCRIPT) != TRANSPARENT
+    assert page.eval_on_selector(FILTER_BUTTON, "e => e.classList.contains('open')") is True
+
+
+def test_filter_narrow(open_story: OpenStory) -> None:
+    """幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--filter-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert not page.is_visible(f"{FILTER_BUTTON} .label")
+    assert page.is_visible(f"{FILTER_BUTTON} svg.icon")
+    assert page.inner_text(f"{FILTER_BUTTON} .fbadge") == "1"
+    # 文字を隠しても読み上げの名前を残す
+    assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み（1 つの条件で絞り込み中）"
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
 # 帯の子の左右の位置（ツール名・検索の入口・変更履歴・札・テーマの切り替え・コメント）を同じ瞬間に読む
 DIFF_BOXES_SCRIPT = """() => {
   const box = (selector) => {

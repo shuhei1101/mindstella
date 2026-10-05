@@ -1,9 +1,9 @@
 title: "サーバー / 検索"
-lead: 条件で項目を探し、1 件の中身と参照元、使っている属性名を出す。読み書きと検証だけに依存し、ファイルを書かない。
+lead: 条件で項目を探し、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証だけに依存し、ファイルを書かない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    query.py   検索・1 件の表示と参照元・属性名の一覧
+    query.py   検索・1 件の表示と参照元・属性名とタグの一覧
   ```
 data_models:
   - name: SearchFilter
@@ -263,6 +263,44 @@ functions:
         case: 正常
         summary: 属性が無ければ空
         condition: '`attrs` を持たない D-1 だけ'
+        mock: なし
+        expected: 空の並び
+  - name: list_tags
+    title: タグの一覧
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: 全ての項目の `tags` のタグごとに、持つ項目の数と種類を数える
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[dict[str, Any]]
+      description: '`{name, count, kinds}` の並び（名前の順。`kinds` は `KINDS` の順で重なりなし）'
+    process: |-
+      1. 全ての項目の `tags` を、項目ごとに重なりを除いてからタグごとに件数と種類を数える（字面が違えば別のタグ）
+      2. 名前の順に並べる
+    unit_tests:
+      - name: test_list_tags
+        case: 正常
+        summary: 種類をまたいで数える
+        condition: 'D-1: タグ `データ`／D-2: タグ `画面`／T-1: タグ `データ`／N-1: タグ無し'
+        mock: なし
+        expected: '`データ`（2・`[decision, task]`）・`画面`（1・`[decision]`）の順'
+      - name: test_list_tags_when_duplicated
+        case: 正常
+        summary: 1 つの項目が同じタグを 2 回持っても 1 件と数える
+        condition: 'D-1: タグ `[データ, データ]`'
+        mock: なし
+        expected: '`データ`（1・`[decision]`）'
+      - name: test_list_tags_when_none
+        case: 正常
+        summary: タグが無ければ空
+        condition: '`tags` を持たない D-1 だけ'
         mock: なし
         expected: 空の並び
 test_files:

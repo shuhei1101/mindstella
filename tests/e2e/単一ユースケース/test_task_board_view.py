@@ -1,10 +1,19 @@
-"""タスクをボードで見る（状態ごとの列のボードで見て、カードから詳細を開く）の E2E テスト。"""
+"""タスクをボードで見る（状態ごとの列のボードで見て、ドロワーで絞り、カードから詳細を開く）の E2E テスト。"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from preview_helpers import OpenPreview, ServePreview, row_ids
+from playwright.sync_api import Page
+from preview_helpers import (
+    OpenPreview,
+    ServePreview,
+    badge_text,
+    close_drawer,
+    open_drawer,
+    row_ids,
+    toggle_value,
+)
 from workspace_fixtures import MakeItem
 
 # ボードの列の並び（タスクの状態の順）
@@ -56,3 +65,54 @@ def test_normal(
     page.click('.segment button[data-view="table"]')
     page.wait_for_selector("table.grid")
     assert row_ids(page) == ["T-1", "T-2", "T-3", "T-4", "T-5"]
+
+
+def _board_columns(page: Page) -> dict[str, list[str]]:
+    """ボードの列を、状態ごとのカードの ID の並びで返す。"""
+    return page.eval_on_selector_all(
+        ".board section.board-col",
+        "cols => Object.fromEntries(cols.map(c => [c.getAttribute('aria-label'), [...c.querySelectorAll('.card')].map(k => k.dataset.id)]))",
+    )
+
+
+def _column_counts(page: Page) -> dict[str, int]:
+    """ボードの列の見出しの件数を、状態ごとに返す。"""
+    return page.eval_on_selector_all(
+        ".board section.board-col",
+        "cols => Object.fromEntries(cols.map(c => [c.getAttribute('aria-label'), Number(c.querySelector('h3 .n').textContent)]))",
+    )
+
+
+def test_normal_when_filtered(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """ドロワーのタグで話題を選び、種類を足して、条件に合うタスクだけのボードにする（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("T-1", kind="作業", status="未着手", tags=["保存"]),
+        make_item("T-2", kind="調査", status="進行中", tags=["保存"]),
+        make_item("T-3", kind="作業", status="完了", tags=["通知"]),
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=tasks")
+    page.wait_for_selector(".board")
+    # 実行（タグ「保存」を選ぶ）
+    open_drawer(page)
+    toggle_value(page, "tags", "保存")
+    page.wait_for_function("document.querySelectorAll('.board .card').length === 2")
+    tagged = _board_columns(page)
+    # 実行（種類に「調査」を足す）
+    toggle_value(page, "kind", "調査")
+    page.wait_for_function("document.querySelectorAll('.board .card').length === 1")
+    both = _board_columns(page)
+    counts = _column_counts(page)
+    close_drawer(page)
+    # 検証
+    assert tagged == {"未着手": ["T-1"], "進行中": ["T-2"], "保留": [], "完了": [], "中止": []}
+    # 絞っても 5 列が残り、各列の件数が絞った後のカードの数に合う
+    assert both == {"未着手": [], "進行中": ["T-2"], "保留": [], "完了": [], "中止": []}
+    assert counts == {"未着手": 0, "進行中": 1, "保留": 0, "完了": 0, "中止": 0}
+    assert badge_text(page) == "2"

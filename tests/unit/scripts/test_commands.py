@@ -730,6 +730,16 @@ def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     assert payload == {"attrs": [{"name": "担当", "count": 1, "kinds": ["decision"]}]}
 
 
+def test_run_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """タグを出力の形にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=["データ"]))
+    # 実行
+    payload = commands.run_tags(root)
+    # 検証
+    assert payload == {"tags": [{"name": "データ", "count": 1, "kinds": ["decision"]}]}
+
+
 def test_run_goal(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """判定を出力の形にする（正常系）。"""
     # 準備

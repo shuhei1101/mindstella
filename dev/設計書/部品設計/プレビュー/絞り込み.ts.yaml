@@ -1,0 +1,102 @@
+title: "絞り込み"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts#MindmapPreview.filterDrawer"
+story: "Preview/FilterDrawer"
+states:
+  - name: Default
+    description: '何も選んでいない（タスク: 種類・状態・タグ）。見出しの右は「8 件」で、「解除」と「すべて解除」を出さない'
+  - name: Selected
+    description: 検討事項で状態に 4 つ・タグに 1 つを選んでいる。見出しの右は「36 件中 3 件」、選んだ条件に「{件数} 件を選択」と「解除」、下端に「すべて解除」と「3 件を表示」
+    args:
+      - name: selected
+        value: '{"status": ["要見直し", "未決定", "保留", "未整理"], "tags": ["プレビュー"]}'
+  - name: ZeroValue
+    description: 今の条件では 0 件になる値がある。その値は文字と件数を薄くし、選べるまま残す
+  - name: LongTag
+    description: 長いタグ。値の文字を折り返し、件数の列を押し出さない
+  - name: KeywordHits
+    description: 検討事項のマップでキーワードに一致した項目がある。一致した件数を件数の左に印の色で出す
+  - name: NoMatch
+    description: 該当なし。見出しの右は「8 件中 0 件」、下端のボタンは「0 件を表示」
+    args:
+      - name: selected
+        value: '{"kind": ["作業"], "status": ["未着手"]}'
+  - name: Narrow
+    description: 幅 390px。トップバーの下から画面の幅いっぱいに重ねる
+    args:
+      - name: narrow
+        value: 'true'
+lead: 項目を並べる画面で、条件ごとに値を件数つきのチェックボックスで並べて選ぶドロワー。タブの帯の下から左に重ねる非モーダルのパネルで、開閉はトップバーの絞り込みのボタン（部品設計『トップバー』）が持つ。
+args:
+  - name: groups
+    type: オブジェクトの配列
+    required: true
+    description: 条件の並び。種類・状態・タグを先に置き、残りは表の列の順。値を 1 つも持たない条件は渡さない
+    status: planned
+  - name: groups[].key
+    type: 文字列
+    required: true
+    description: 条件の識別子（表の列の `key`。つながりの種類は `type`）。URL のハッシュの `f.{列}` と同じ値
+    status: planned
+  - name: groups[].label
+    type: 文字列
+    required: true
+    description: 条件の見出し（`legend`）
+    status: planned
+  - name: groups[].values
+    type: オブジェクトの配列
+    required: true
+    description: 選べる値の並び（`value`・`count`、マップでは `hit` も）。並びは状態・フェーズなどの決まった順、ほかは五十音の順。`count` は、その条件以外の条件で絞った項目のうち、その値を持つ件数。0 件の値も並べ、文字を薄くする。`hit` はマップのキーワードに一致した件数で、1 以上のときだけ件数の左に出す
+    status: planned
+  - name: groups[].mark
+    type: 列挙
+    default: none
+    choices: none・status・kind
+    description: 値の左に添える印。status は状態の印（色と形）、kind は項目の種類の色の点
+    status: planned
+  - name: selected
+    type: オブジェクト
+    default: なし（どの条件でも絞らない）
+    description: 条件の `key` → 選んだ値の配列。値を選んだ条件の見出しの右に「{件数} 件を選択」と「解除」を出す。件数は、その条件の `values` に並ぶ値のうち選んだものの数（並ばない値は数えない）
+    status: planned
+  - name: total
+    type: 整数
+    required: true
+    description: 画面の項目の件数
+    status: planned
+  - name: shown
+    type: 整数
+    required: true
+    description: 今の条件に合う項目の件数。値を選んだ条件があるときは見出しの右に「{total} 件中 {shown} 件」、無いときは「{total} 件」と出し、下端のボタンを「{shown} 件を表示」にする
+    status: planned
+  - name: narrow
+    type: 真偽値
+    default: 'false'
+    description: 画面の幅が 900px 以下か。偽のときはコメントの一覧と同じ 420px の幅で、真のときはトップバーの下から画面の幅いっぱいに重ねる（コメントの一覧と同じ）
+    status: planned
+events:
+  - name: 値の選択
+    when: 値のチェックボックスを入れた・外したとき
+    value: key と値（`data-key`・`value`）
+    description: 使う側が `selected` を変えて画面とドロワーを描き直し、押した値へフォーカスを戻す。保存しない
+  - name: 条件の解除
+    when: 条件の見出しの右の「解除」を押したとき
+    value: key（`data-key`）
+    description: 使う側がその条件の選びを外して描き直し、その条件の最初の値へフォーカスを移す
+  - name: すべて解除
+    when: 下端の「すべて解除」を押したとき（値を選んだ条件があるときだけ出す）
+    description: 使う側が全ての条件の選びを外して描き直し、最初の値へフォーカスを移す
+  - name: 閉じる
+    when: 見出しの × か下端の「{shown} 件を表示」を押したとき、ドロワーの中で Esc を押したとき
+    description: 使う側がドロワーを閉じ、絞り込みのボタンへフォーカスを戻す。外側を押しても閉じない
+accessibility:
+  - ドロワーは `dialog` 要素を `show()` で非モーダルに開き、読み上げの名前を「絞り込み」にする。開いたら最初の値へフォーカスを移す
+  - 条件のまとまりは `fieldset` と `legend` で組み、値はチェックボックスにする
+  - 「解除」に「{条件}の条件を解除」の読み上げ名を付ける
+  - 値の件数に「{件数} 件」、キーワードに一致した件数に「キーワードに一致した項目 {件数} 件」の読み上げ名を付ける
+  - 0 件の値を色だけでなく件数の 0 でも伝える
+  - 閉じたら絞り込みのボタンへフォーカスを戻す（コメントの一覧に切り替えて閉じたときはコメントの一覧に残す）
+refs:
+  - dev/設計書/部品設計/プレビュー/トップバー.ts#
+  - dev/設計書/部品設計/プレビュー/表.ts#
+status: planned
+test_file: tests/integration/storybook/test_filter_drawer_stories.py

@@ -13,6 +13,7 @@ from preview_comment_helpers import (
     select_text,
     select_text_for_pill,
 )
+from preview_drawer_helpers import FILTER_BUTTON, badge_text, checked_values, open_drawer
 from preview_fixture_types import BODY_WITH_DIAGRAM, OpenPreview, WritePreview
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
 
@@ -113,6 +114,12 @@ def test_normal_when_filter_in_hash(
     assert _row_ids(page) == ["D-3", "D-4"]
     # 開いた後は、ハッシュから f. の引数が消えている
     assert "f." not in page.evaluate("location.hash")
+    # 絞り込みのドロワーは、状態で要見直し・保留だけが選ばれ、絞り込みのボタンにバッジ 1 が付く
+    open_drawer(page)
+    assert checked_values(page, "status") == ["要見直し", "保留"]
+    assert badge_text(page) == "1"
+    page.click(FILTER_BUTTON)
+    page.wait_for_selector("dialog.drawer", state="detached")
     # チップを解除すると、D-1 の行も出る
     page.click(".chips >> text=すべて解除")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr').length === 3")

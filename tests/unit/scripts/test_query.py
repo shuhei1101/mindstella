@@ -234,3 +234,42 @@ def test_list_attrs_when_none(make_workspace: MakeWorkspace, make_item: MakeItem
     attrs = query.list_attrs(workspace)
     # 検証
     assert attrs == []
+
+
+def test_list_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """種類をまたいで数える（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["データ"]),
+        make_item("D-2", tags=["画面"]),
+        make_item("T-1", tags=["データ"]),
+        make_item("N-1"),
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    tags = query.list_tags(workspace)
+    # 検証
+    assert tags == [
+        {"name": "データ", "count": 2, "kinds": ["decision", "task"]},
+        {"name": "画面", "count": 1, "kinds": ["decision"]},
+    ]
+
+
+def test_list_tags_when_duplicated(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """1 つの項目が同じタグを 2 回持っても 1 件と数える（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1", tags=["データ", "データ"])))
+    # 実行
+    tags = query.list_tags(workspace)
+    # 検証
+    assert tags == [{"name": "データ", "count": 1, "kinds": ["decision"]}]
+
+
+def test_list_tags_when_none(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """タグが無ければ空の並びを返す（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1")))
+    # 実行
+    tags = query.list_tags(workspace)
+    # 検証
+    assert tags == []

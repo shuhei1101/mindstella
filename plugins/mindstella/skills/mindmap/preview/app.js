@@ -293,6 +293,7 @@ var MindmapPreview;
         document.body.prepend(top, main);
         let route = visibleRoute(MindmapPreview.parseHash({ hash: location.hash, index }));
         let fullViewer = null;
+        const filterState = { byTab: {}, drawerOpen: false };
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
         const isNarrow = () => matchMedia(NARROW_QUERY).matches;
@@ -367,6 +368,11 @@ var MindmapPreview;
                 onComments: () => (comment.listOpen ? closeList() : openList()),
                 settingsOpen: display.open,
                 onSettings: () => (display.open ? closeSettings() : openSettings()),
+                // 概要以外の画面に絞り込みのボタンを置き、値を選んでいる条件の数をバッジに出す
+                filter: route.tab !== "overview",
+                filterCount: MindmapPreview.activeConditionCount(filterState.byTab[route.tab] ?? {}),
+                filterOpen: filterState.drawerOpen,
+                onFilter: toggleDrawer,
                 diffPoint: point === null ? null : { name: point.name, sub: point.sub },
                 onHistory: openHistory,
                 onDiffOff: () => selectPoint(null),
@@ -382,8 +388,15 @@ var MindmapPreview;
         };
         /** 今の画面 */
         const screenElement = () => {
-            const on = { open: (id) => openItem(id, false), view: (view) => go({ ...route, view, filters: {} }, false) };
+            const on = {
+                open: (id) => openItem(id, false),
+                view: (view) => go({ ...route, view, filters: {} }, false),
+                filter: changeFilters,
+                closeDrawer,
+            };
             const marks = marksOf(point);
+            const filters = filterState.byTab[route.tab] ?? {};
+            const { drawerOpen } = filterState;
             switch (route.tab) {
                 case "overview":
                     return MindmapPreview.overviewScreen({
@@ -393,15 +406,29 @@ var MindmapPreview;
                         visibleKinds: resolved.kinds,
                     });
                 case "decisions":
-                    return MindmapPreview.decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, marks });
+                    return MindmapPreview.decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, filters, drawerOpen, marks });
                 case "tasks":
-                    return MindmapPreview.tasksScreen({ index, route, on, marks });
+                    return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks });
                 case "docs":
-                    return MindmapPreview.docsScreen({ index, route, on, marks });
+                    return MindmapPreview.docsScreen({ index, route, on, filters, drawerOpen, marks });
                 case "graph":
-                    return MindmapPreview.graphScreen({ index, on: { open: on.open }, selected: route.id, look: resolved.look });
+                    return MindmapPreview.graphScreen({
+                        index,
+                        on: { open: on.open, filter: changeFilters, closeDrawer },
+                        filters,
+                        drawerOpen,
+                        selected: route.id,
+                        look: resolved.look,
+                    });
                 default:
-                    return MindmapPreview.recordsScreen({ index, route, on: { open: on.open }, marks });
+                    return MindmapPreview.recordsScreen({
+                        index,
+                        route,
+                        on: { open: on.open, filter: changeFilters, closeDrawer },
+                        filters,
+                        drawerOpen,
+                        marks,
+                    });
             }
         };
         /** 本文の領域を描く。画面（タブ・表示形式）が変わったときだけ描き直す */
@@ -411,10 +438,17 @@ var MindmapPreview;
             main.replaceChildren(...(route.tab === "overview"
                 ? []
                 : [MindmapPreview.h({ tag: "h1", attrs: { class: "sr-only" }, children: [screenName(route.tab)] })]), screenElement());
-            // 開いたときの絞り込みは一度だけ使い、描き直しで使い回さない
-            route = { ...route, filters: {} };
             if (route.tab === "graph")
                 MindmapPreview.selectGraphItem(route.id);
+        };
+        /** 今の画面の絞り込みを用意する。ハッシュの `f.{列}` があればそれだけを（開き直したときも）、無く初めて開く画面なら既定を入れ、ハッシュの分は一度だけ使う。概要には絞り込みのドロワーを置かないので閉じる（タブを押したときも、戻る・進むで移ったときも通る） */
+        const prepareFilters = () => {
+            if (route.tab === "overview")
+                filterState.drawerOpen = false;
+            if (Object.keys(route.filters).length > 0 || filterState.byTab[route.tab] === undefined) {
+                filterState.byTab[route.tab] = MindmapPreview.initialFilters(route.tab, route.filters);
+            }
+            route = { ...route, filters: {} };
         };
         /** 詳細パネルと全画面 */
         const renderDetail = () => {
@@ -487,6 +521,7 @@ var MindmapPreview;
         };
         /** 描く（`screen` が真のとき本文の領域も描き直す） */
         const render = ({ screen }) => {
+            prepareFilters();
             renderTop();
             if (screen) {
                 const wide = document.querySelector(".table-wrap, .map-wrap, .board");
@@ -497,6 +532,53 @@ var MindmapPreview;
             renderDetail();
             if (route.tab === "graph")
                 MindmapPreview.selectGraphItem(route.id);
+            // 作り直した本文にも、開いているパネルの下の部品を止める
+            scheduleInert();
+        };
+        // ===== 絞り込み =====
+        /** 開いているパネルが覆った本文の部品を止める関数が返した、止めた分を外す関数 */
+        let releaseInert = null;
+        /** 前に止めた分を外してから、開いているパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品を止める */
+        const applyInert = () => {
+            releaseInert?.();
+            releaseInert = null;
+            const panel = filterState.drawerOpen
+                ? document.querySelector("dialog.drawer")
+                : comment.listOpen
+                    ? document.querySelector(".comments-panel")
+                    : display.open
+                        ? document.querySelector(".settings-drawer")
+                        : null;
+            if (panel !== null)
+                releaseInert = MindmapPreview.inertBehind(panel);
+        };
+        /** パネルが開いた後（ドロワーは文書に入った後の次のマイクロタスクで開く）に、本文の部品を止める */
+        const scheduleInert = () => queueMicrotask(applyInert);
+        /** 画面の条件を変えて描き直す（ドロワーは開いたまま） */
+        const changeFilters = (next) => {
+            filterState.byTab[route.tab] = next;
+            redrawKeepingState();
+        };
+        /** 絞り込みのドロワーを閉じ、絞り込みのボタンへフォーカスを戻す */
+        const closeDrawer = () => {
+            filterState.drawerOpen = false;
+            redrawKeepingState();
+            document.querySelector("[data-act='filter']")?.focus();
+        };
+        /** 絞り込みのドロワーを開く・閉じる（開くときはコメントの一覧と表示の設定のパネルを閉じる） */
+        const toggleDrawer = () => {
+            if (filterState.drawerOpen) {
+                closeDrawer();
+                return;
+            }
+            if (comment.listOpen)
+                closeList();
+            if (display.open) {
+                display.open = false;
+                renderSettings();
+            }
+            filterState.drawerOpen = true;
+            redrawKeepingState();
         };
         // ===== 図の拡大 =====
         /** 図を拡大して見る。詳細パネルからはモーダル、全画面からは全画面の中身を切り替える */
@@ -772,6 +854,7 @@ var MindmapPreview;
             const current = document.querySelector(".comments-panel");
             if (!comment.listOpen) {
                 current?.remove();
+                scheduleInert();
                 return;
             }
             const active = document.activeElement;
@@ -844,6 +927,7 @@ var MindmapPreview;
             else if (focusKey !== null) {
                 panel?.querySelector(`[data-focus="${focusKey}"]`)?.focus();
             }
+            scheduleInert();
         };
         /** トップバーの件数・詳細パネルのレビュー中のコメント・一覧を、入力中の欄とスクロールの位置を保って描き直す */
         const refreshComments = () => {
@@ -853,9 +937,13 @@ var MindmapPreview;
             });
             renderComments();
         };
-        /** コメントの一覧を開く */
+        /** コメントの一覧を開く（絞り込みのドロワーは閉じる） */
         const openList = () => {
-            // 表示の設定とは片方だけを開く
+            // 絞り込みのドロワー・表示の設定のパネルとは 1 つだけを開く
+            if (filterState.drawerOpen) {
+                filterState.drawerOpen = false;
+                redrawKeepingState();
+            }
             display.open = false;
             renderSettings();
             comment.listOpen = true;
@@ -1123,7 +1211,7 @@ var MindmapPreview;
             if (focusKey !== null)
                 panel?.querySelector(`[data-focus="${focusKey}"]`)?.focus();
         };
-        /** 表示の設定のパネルを開く。コメントの一覧は閉じ、右の詳細パネルは開いたままにする（履歴に積まない） */
+        /** 表示の設定のパネルを開く。コメントの一覧と絞り込みのドロワーは閉じ、右の詳細パネルは開いたままにする（履歴に積まない） */
         const openSettings = () => {
             if (comment.listOpen) {
                 flushDrafts();
@@ -1133,14 +1221,22 @@ var MindmapPreview;
                 renderComments();
             }
             display.open = true;
-            renderTop();
+            if (filterState.drawerOpen) {
+                filterState.drawerOpen = false;
+                redrawKeepingState();
+            }
+            else {
+                renderTop();
+            }
             renderSettings();
+            scheduleInert();
         };
         /** 表示の設定のパネルを閉じ、トップバーのボタンへフォーカスを戻す */
         const closeSettings = () => {
             display.open = false;
             renderTop();
             renderSettings();
+            scheduleInert();
             document.querySelector("[data-act='settings']")?.focus();
         };
         // ===== ワークスペースの既定の保存 =====
@@ -1268,7 +1364,7 @@ var MindmapPreview;
         // ===== 操作と履歴 =====
         document.addEventListener("keydown", (event) => {
             const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? "");
-            if (event.key === "/" && !typing && document.querySelector("dialog[open]") === null) {
+            if (event.key === "/" && !typing && document.querySelector("dialog[open]:not(.drawer)") === null) {
                 event.preventDefault();
                 openSearch();
             }
@@ -1276,14 +1372,14 @@ var MindmapPreview;
             if (event.key === "Escape" &&
                 route.id !== null &&
                 !route.full &&
-                document.querySelector("dialog[open]") === null &&
+                document.querySelector("dialog[open]:not(.drawer)") === null &&
                 document.querySelector(":popover-open") === null) {
                 closeDetail();
             }
             else if (event.key === "Escape" &&
                 route.id === null &&
                 comment.listOpen &&
-                document.querySelector("dialog[open]") === null &&
+                document.querySelector("dialog[open]:not(.drawer)") === null &&
                 document.querySelector(":popover-open") === null) {
                 closeList();
             }
@@ -1302,11 +1398,18 @@ var MindmapPreview;
             // 表示しない種類のタブを指していた: ハッシュを概要に置き換える
             if (next !== parsed)
                 MindmapPreview.navigate({ route: { ...next, filters: {} }, push: false });
-            if (MindmapPreview.toHash(next) === MindmapPreview.toHash(route))
+            // 画面・表示形式・項目が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
+            if (MindmapPreview.toHash(next) === MindmapPreview.toHash(route) && Object.keys(next.filters).length === 0)
                 return;
-            const screen = next.tab !== route.tab || next.view !== route.view || (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
+            const screen = next.tab !== route.tab ||
+                next.view !== route.view ||
+                Object.keys(next.filters).length > 0 ||
+                (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
             route = next;
             render({ screen });
+            // 絞り込みは画面に渡した後、ハッシュから消す（残すと、次のハッシュの変化で使い回される）
+            if (Object.keys(next.filters).length > 0)
+                MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
         };
         addEventListener("popstate", onLocationChange);
         addEventListener("hashchange", onLocationChange);

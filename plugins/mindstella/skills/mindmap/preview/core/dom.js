@@ -134,31 +134,54 @@ var MindmapPreview;
         });
     }
     MindmapPreview.statusBadge = statusBadge;
-    /** 帯に並ぶ値のうち表示している数から、まとめて切り替える箱の状態を返す（帯に無い値は数えない） */
-    function toggleAllState({ shown, all }) {
-        const count = all.filter((value) => shown.has(value)).length;
-        if (count === 0)
-            return "none";
-        return count === all.length ? "all" : "some";
+    /** 左から重ねるパネル（絞り込みのドロワー・コメントの一覧）が覆った本文の部品に `inert` を付け、外す関数を返す */
+    function inertBehind(panel) {
+        // 開く動き（`transform`）の途中でも、重なる先の位置で覆う範囲を決めるため、配置の位置から求める
+        const covered = {
+            left: panel.offsetLeft,
+            top: panel.offsetTop,
+            right: panel.offsetLeft + panel.offsetWidth,
+            bottom: panel.offsetTop + panel.offsetHeight,
+        };
+        const attached = [];
+        /** 要素がパネルの矩形に全体が収まるなら `inert` を付け、一部だけ重なるなら子をたどる */
+        const visit = (element) => {
+            // パネル自身と、始めから `inert` の要素（その子も止まっている）には付けない
+            if (element === panel || element.inert)
+                return;
+            const rect = element.getBoundingClientRect();
+            // 大きさを持たない要素（`display: contents` など）は、子をたどる
+            if (rect.width === 0 || rect.height === 0) {
+                for (const child of element.children)
+                    if (child instanceof HTMLElement)
+                        visit(child);
+                return;
+            }
+            const overlaps = rect.left < covered.right && rect.right > covered.left && rect.top < covered.bottom && rect.bottom > covered.top;
+            if (!overlaps)
+                return;
+            const inside = rect.left >= covered.left && rect.right <= covered.right && rect.top >= covered.top && rect.bottom <= covered.bottom;
+            // 全体が収まり、パネルを中に持たない要素は、まとめて止める
+            if (inside && !element.contains(panel)) {
+                element.inert = true;
+                attached.push(element);
+                return;
+            }
+            for (const child of element.children)
+                if (child instanceof HTMLElement)
+                    visit(child);
+        };
+        const main = document.querySelector("main");
+        if (main !== null)
+            for (const child of main.children)
+                if (child instanceof HTMLElement)
+                    visit(child);
+        return () => {
+            for (const element of attached)
+                element.inert = false;
+        };
     }
-    MindmapPreview.toggleAllState = toggleAllState;
-    /** 帯の右端に置く、文字を添えない三状態のチェックの箱。押すと、全て表示していれば空、それ以外は全てを `onChange` に渡す */
-    function toggleAllBox({ label, shown, all, onChange, }) {
-        const state = toggleAllState({ shown, all });
-        const checkbox = h({
-            tag: "input",
-            attrs: {
-                type: "checkbox",
-                checked: state === "all",
-                "aria-label": label,
-                onchange: () => onChange(state === "all" ? new Set() : new Set(all)),
-            },
-        });
-        // 一部だけ表示しているときの横棒は、属性でなくプロパティで付ける
-        checkbox.indeterminate = state === "some";
-        return h({ tag: "label", attrs: { class: "legend-all-check", title: label }, children: [checkbox] });
-    }
-    MindmapPreview.toggleAllBox = toggleAllBox;
+    MindmapPreview.inertBehind = inertBehind;
     /** 影響度（大・中・小）の 3 本の目盛りと文字 */
     function impactBadge(weight, labeled = false) {
         const levels = ["大", "中", "小"];

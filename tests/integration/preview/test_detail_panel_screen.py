@@ -199,7 +199,7 @@ def test_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     page.click('aside.panel button[data-act="close"]')
     page.wait_for_function("!document.querySelector('aside.panel.open')")
     assert "id=" not in page.evaluate("location.hash")
-    page.click('table.grid button.row-open[data-id="D-1"]')
+    page.click('table.grid button.row-open[data-id="D-2"]')
     page.wait_for_selector("aside.panel.open")
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('aside.panel.open')")
@@ -215,7 +215,7 @@ def test_side_by_side_when_wide(
     page = open_preview(url, "#tab=decisions&view=table")
     before = page.evaluate("document.querySelector('main#main').getBoundingClientRect().width")
     # 実行
-    page.click('table.grid button.row-open[data-id="D-1"]')
+    page.click('table.grid button.row-open[data-id="D-2"]')
     page.wait_for_selector("aside.panel.open")
     # 検証
     assert page.evaluate("document.body.classList.contains('panel-open')")
@@ -233,7 +233,7 @@ def test_overlay_when_narrow(
     page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
     history_length = page.evaluate("history.length")
     # 実行
-    page.click('table.grid button.row-open[data-id="D-1"]')
+    page.click('table.grid button.row-open[data-id="D-2"]')
     page.wait_for_selector("aside.panel.open")
     # 検証
     assert page.evaluate("history.length") == history_length + 1

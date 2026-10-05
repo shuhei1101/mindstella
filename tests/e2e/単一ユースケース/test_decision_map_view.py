@@ -1,4 +1,4 @@
-"""検討事項をマップで辿る（マップ・状態で絞る・枝と依存を辿る・ボードと表への切り替え）の E2E テスト。"""
+"""検討事項をマップで辿る（マップ・ドロワーで絞る・枝と依存を辿る・ボードと表への切り替え）の E2E テスト。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,18 @@ from typing import Any
 
 import pytest
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview, row_ids
+from preview_helpers import (
+    DRAWER,
+    OpenPreview,
+    ServePreview,
+    badge_text,
+    checked_values,
+    clear_condition,
+    close_drawer,
+    open_drawer,
+    row_ids,
+    toggle_value,
+)
 from workspace_fixtures import MakeItem
 
 # マップを広い幅で出す画面の幅（px）
@@ -25,15 +36,14 @@ TREE_EDGES_TO_ROOT = 3
 # 依存の線の本数（D-1 → D-3 と D-3 → D-5）
 DEPENDENCY_EDGES = 2
 
-# まとめて切り替える箱（状態の印の並びの右端）と、状態の印のチェックボックス（箱を除く）
-TOGGLE_ALL_BOX = ".legend .legend-all-check input"
-STATUS_INPUTS = ".legend label:not(.legend-all-check) input"
+# 絞り込みの条件に合う検討事項が無いときに出す文
+NO_SHOWN_ITEM_TEXT = "表示する検討事項はありません。"
 
-# 全ての状態を隠したときに出す文
-NO_SHOWN_STATUS_TEXT = "表示する検討事項はありません。"
+# 2 つ目のフェーズ（D-3・D-5 が属する）
+SECOND_PHASE = "要件"
 
-# マップに検討事項が 1 件も描かれていない
-NO_MAP_ITEM_SCRIPT = "!document.querySelector('#decision-map button.n-item')"
+# 開いた直後にドロワーで選ばれている状態（開いたときの既定の状態のうち、記録にある値）
+DEFAULT_CHECKED_STATUSES = ["要見直し", "未決定"]
 
 # 余白を右へドラッグする距離（px。押したとみなす移動の上限 5px を超える。選んで中央へ送られたマップを左端寄りへ戻す）
 DRAG_RIGHT_PX = 450
@@ -149,9 +159,15 @@ def test_normal(
     page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
     assert _map_item_ids(page) == ["D-3", "D-5"]
-    page.click('.legend label:has(input[value="決定済み"])')
+    # 開いた直後から、ドロワーの状態で要見直し・未決定が選ばれ、絞り込みのボタンに件数のバッジが付いている
+    open_drawer(page)
+    assert checked_values(page, "status") == DEFAULT_CHECKED_STATUSES
+    assert badge_text(page) == "1"
+    toggle_value(page, "status", "決定済み")
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
     assert _map_item_ids(page) == ["D-1", "D-3", "D-5"]
+    # ドロワーを閉じてから、マップの項目を押す
+    close_drawer(page)
     # D-3 を押すと、根までの枝と D-1・D-5 への依存の線を強調し、それ以外を薄くする
     page.click('#decision-map button[data-node="D-3"]')
     page.wait_for_selector("#decision-map.focusing")
@@ -187,6 +203,11 @@ def test_normal(
     page.wait_for_selector("table.grid")
     boxes["table"] = _segment_boxes(page)
     assert boxes["map"] == boxes["board"] == boxes["table"]
+    # 表示形式を切り替えても、ドロワーで選んだ状態の条件が保たれる
+    open_drawer(page)
+    assert checked_values(page, "status") == ["要見直し", "未決定", "決定済み"]
+    assert badge_text(page) == "1"
+    close_drawer(page)
     ready = page.evaluate(
         """() => {
             const header = [...document.querySelectorAll('table.grid thead th')]
@@ -204,7 +225,7 @@ def test_normal_when_keyword(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """キーワードをタイトルに含む項目を強調し、状態の印に一致した件数のバッジを付ける（正常系）。"""
+    """キーワードをタイトルに含む項目を強調し、ドロワーの状態の値に一致した件数のバッジを付ける（正常系）。"""
     # 準備
     common: dict[str, Any] = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
     url = serve_preview(
@@ -218,13 +239,14 @@ def test_normal_when_keyword(
     # 実行
     page.fill("input.map-q", "保存")
     page.wait_for_selector("#decision-map .map-node.hit")
+    open_drawer(page)
     # 検証
     hits = page.eval_on_selector_all(
         "#decision-map .map-node.hit", "nodes => nodes.map(n => n.dataset.node)"
     )
     assert sorted(hits) == ["D-2", "D-3"]
-    undecided_badge = page.inner_text('.legend label:has(input[value="未決定"]) .hit-n')
-    review_badge = page.inner_text('.legend label:has(input[value="要見直し"]) .hit-n')
+    undecided_badge = page.inner_text(f'{DRAWER} label.fd-opt:has(input[data-key="status"][value="未決定"]) .hit-n')
+    review_badge = page.inner_text(f'{DRAWER} label.fd-opt:has(input[data-key="status"][value="要見直し"]) .hit-n')
     assert (undecided_badge, review_badge) == ("1", "1")
 
 
@@ -275,51 +297,79 @@ def test_error_when_layout_library_unavailable(
     assert row_ids(page) == ["D-5"]
 
 
-def _toggle_all_box(page: Page) -> dict[str, bool]:
-    """まとめて切り替える箱の、チェック・横棒・状態の印の並びの右端かを返す。"""
-    return page.eval_on_selector(
-        TOGGLE_ALL_BOX,
-        """box => ({
-            checked: box.checked,
-            indeterminate: box.indeterminate,
-            last: box.closest('.legend').lastElementChild === box.closest('label'),
-        })""",
-    )
-
-
-def _status_checks(page: Page) -> list[bool]:
-    """状態の印のチェックを、並びの順に返す。"""
-    return page.eval_on_selector_all(STATUS_INPUTS, "inputs => inputs.map(i => i.checked)")
-
-
-def test_normal_when_toggle_all_statuses(
+def test_normal_when_status_condition_cleared(
     serve_preview: ServePreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """まとめて切り替える箱で全ての状態を出し・隠し、箱と状態の印をそろえ、空の旨の文を出す（正常系）。"""
-    # 準備
-    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
-    # 実行・検証（開く: 決定済みを隠した木と、横棒の箱）
+    """ドロワーの状態の「解除」で全ての状態の項目を出し、状態とフェーズの条件を重ねて 0 件にする（正常系）。"""
+    # 準備（D-1 だけが 1 つ目のフェーズ、D-3・D-5 は 2 つ目のフェーズに属する）
+    place: dict[str, Any] = {"target": "mindmap", "category": "データ構造"}
+    url = serve_preview(
+        make_item("D-1", status="決定済み", phase="目的", answer="種類ごとに分ける", **place),
+        make_item("D-3", status="要見直し", phase="要件", depends_on=["D-1"], **place),
+        make_item("D-5", status="未決定", phase="要件", depends_on=["D-3"], **place),
+        settings=_settings(valid_settings),
+    )
+    # 実行・検証（開く: 決定済みを隠した木と、要見直し・未決定が選ばれたドロワー）
     page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
+    open_drawer(page)
     assert _map_item_ids(page) == ["D-3", "D-5"]
-    assert _toggle_all_box(page) == {"checked": False, "indeterminate": True, "last": True}
-    # 実行・検証（1 回目: 全ての状態を出す）
-    page.click(TOGGLE_ALL_BOX)
+    assert checked_values(page, "status") == DEFAULT_CHECKED_STATUSES
+    # 実行・検証（状態の「解除」: 全ての状態の項目を出し、チェックが全て外れ、バッジが消える）
+    clear_condition(page, "状態")
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
     assert _map_item_ids(page) == ["D-1", "D-3", "D-5"]
-    assert _toggle_all_box(page) == {"checked": True, "indeterminate": False, "last": True}
-    assert _status_checks(page) == [True, True, True]
-    assert not page.is_visible("p.map-empty")
-    # 実行・検証（2 回目: 全ての状態を隠す）
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_function(NO_MAP_ITEM_SCRIPT)
+    assert checked_values(page, "status") == []
+    assert badge_text(page) is None
+    # 実行・検証（状態で決定済み、フェーズで 2 つ目のフェーズを選ぶ: 検討事項の無いマップと空の旨の文）
+    toggle_value(page, "status", "決定済み")
+    toggle_value(page, "phase", SECOND_PHASE)
+    page.wait_for_function("!document.querySelector('#decision-map button.n-item')")
     assert _map_item_ids(page) == []
-    assert _toggle_all_box(page) == {"checked": False, "indeterminate": False, "last": True}
-    assert _status_checks(page) == [False, False, False]
-    assert page.inner_text("p.map-empty") == NO_SHOWN_STATUS_TEXT
+    assert page.inner_text("p.map-empty") == NO_SHOWN_ITEM_TEXT
+    assert badge_text(page) == "2"
+
+
+def test_normal_when_topic_tag(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """ドロワーのタグで話題を選ぶと、そのタグを持つ検討事項だけの木にする（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item(
+            "D-2", status="未決定", target="mindmap", category="データ構造", phase="要件", tags=["保存"]
+        ),
+        make_item(
+            "D-3",
+            status="未決定",
+            target="mindmap",
+            category="データ構造",
+            phase="要件",
+            tags=["保存", "通知"],
+        ),
+        make_item(
+            "D-5", status="未決定", target="mindmap", category="画面", phase="要件", tags=["通知"]
+        ),
+        settings=_settings(valid_settings),
+    )
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page.wait_for_selector("#decision-map button.n-item")
+    assert _map_item_ids(page) == ["D-2", "D-3", "D-5"]
+    # 実行
+    open_drawer(page)
+    toggle_value(page, "tags", "保存")
+    page.wait_for_function("!document.querySelector('#decision-map [data-node=\"D-5\"]')")
+    # 検証
+    assert _map_item_ids(page) == ["D-2", "D-3"]
+    # D-5 だけが属するカテゴリー「画面」の枝が無い
+    assert page.locator('#decision-map [data-node="category:mindmap/画面"]').count() == 0
+    assert badge_text(page) == "2"
 
 
 def _map_snapshot(page: Page) -> list[list[str]]:
@@ -381,9 +431,11 @@ def test_normal_when_background_pressed(
     url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
     page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
-    # 決定済みの D-1 も出して、D-3 の前提の依存の線が描かれるようにする
-    page.click('.legend label:has(input[value="決定済み"])')
+    # ドロワーの状態で決定済みも選んで D-1 を出し、D-3 の前提の依存の線が描かれるようにする
+    open_drawer(page)
+    toggle_value(page, "status", "決定済み")
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
+    close_drawer(page)
     # 拡大を最大の 150% にして、詳細パネルが閉じて広がった枠でも横に送れる幅を残す
     _zoom_to_max(page)
     before_select = _map_snapshot(page)
