@@ -77,6 +77,8 @@ namespace MindmapPreview {
     hiddenColumns?: string[];
     /** 開いているポップオーバー */
     popover?: TablePopover | null;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡し、当たる行のタイトルの右に印を文言なしで置く */
+    marks?: DiffMarks;
     on: TableHandlers;
   };
 
@@ -206,7 +208,7 @@ namespace MindmapPreview {
 
   /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
   function buildTable({
-    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, on },
+    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on },
     previous,
   }: {
     props: TableProps;
@@ -482,12 +484,17 @@ namespace MindmapPreview {
       const content =
         column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");
       if (column.fixed !== true) return content;
-      // タイトルの列は、押すと詳細を開くボタンにする
-      return h({
+      // タイトルの列は、押すと詳細を開くボタンにし、差分の印があれば右に置く
+      const opener = h({
         tag: "button",
         attrs: { class: "row-open", type: "button", "data-id": row.id, onclick: () => on.open(row.id) },
         children: [content],
       });
+      const mark = markFor({ marks, id: row.id });
+      if (mark === null) return opener;
+      const fragment = document.createDocumentFragment();
+      fragment.append(opener, mark);
+      return fragment;
     };
     const body =
       shownRows.length > 0
@@ -735,6 +742,7 @@ namespace MindmapPreview {
     rows,
     open,
     initialFilters,
+    marks,
   }: {
     kind: Kind;
     columns: Column[];
@@ -742,6 +750,8 @@ namespace MindmapPreview {
     open: (id: string) => void;
     /** 開いたときの絞り込み（ハッシュの `f.{列}`）。あれば今の絞り込みと置き換える */
     initialFilters?: Filters;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks;
   }): HTMLElement {
     const state = tableState(kind);
     // 画面を描き直したときは、前のポップオーバーを開いたままにしない
@@ -768,6 +778,7 @@ namespace MindmapPreview {
           pinTo: state.pinTo,
           hiddenColumns: state.hidden,
           popover: state.popover,
+          ...(marks === undefined ? {} : { marks }),
           on: {
             sort: (key) => {
               // 昇順 → 降順 → 解除

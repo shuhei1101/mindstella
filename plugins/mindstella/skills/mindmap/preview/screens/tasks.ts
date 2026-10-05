@@ -12,6 +12,8 @@ namespace MindmapPreview {
       /** 表示形式を切り替える */
       view: (view: View) => void;
     };
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks;
   };
 
   /** 状態の並びの順に、状態ごとの項目を返す（項目が 0 件の列も返す。列の中は連番の順） */
@@ -37,12 +39,15 @@ namespace MindmapPreview {
     meta,
     links,
     open,
+    mark,
   }: {
     index: RecordIndex;
     item: Item;
     meta: (string | undefined)[];
     links: string[];
     open: (id: string) => void;
+    /** 差分の印（差分の表示の間で、その項目に印があるとき） */
+    mark?: DiffKind | undefined;
   }): HTMLElement {
     return h({
       tag: "button",
@@ -58,6 +63,7 @@ namespace MindmapPreview {
           tag: "div",
           attrs: { class: "c-meta" },
           children: [
+            mark === undefined ? null : diffMark({ kind: mark }),
             h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
             ...meta.filter(Boolean).map((value) => h({ tag: "span", children: [value] })),
           ],
@@ -131,7 +137,7 @@ namespace MindmapPreview {
   }
 
   /** タスクの画面を返す */
-  export function tasksScreen({ index, route, on }: ScreenProps): HTMLElement {
+  export function tasksScreen({ index, route, on, marks }: ScreenProps): HTMLElement {
     const common = commonColumns(index.data.settings);
     const columns: Column[] = [
       common.id,
@@ -161,6 +167,7 @@ namespace MindmapPreview {
                 meta: [item.kind, item.category],
                 links: item.for ?? [],
                 open: on.open,
+                mark: marks?.[item.id],
               }),
             emptyText: "タスクはありません。",
           })
@@ -170,6 +177,7 @@ namespace MindmapPreview {
             rows: index.data.tasks,
             open: on.open,
             initialFilters: route.filters,
+            marks,
           });
     return h({
       tag: "div",

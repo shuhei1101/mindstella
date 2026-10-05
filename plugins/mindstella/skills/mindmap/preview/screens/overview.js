@@ -31,7 +31,7 @@ var MindmapPreview;
         });
     }
     /** 1 行が項目のボタンの一覧（押すと詳細を開く） */
-    function miniList(items, emptyText, open) {
+    function miniList(items, emptyText, open, marks) {
         if (items.length === 0)
             return MindmapPreview.emptyNote(emptyText);
         return MindmapPreview.h({
@@ -47,6 +47,7 @@ var MindmapPreview;
                             children: [
                                 MindmapPreview.statusMark(item.status),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "mt" }, children: [item.title] }),
+                                MindmapPreview.markFor({ marks, id: item.id }),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "go", "aria-hidden": "true" }, children: [MindmapPreview.icon("chev")] }),
                             ],
                         }),
@@ -61,7 +62,7 @@ var MindmapPreview;
         return MindmapPreview.h({ tag: "i", children: [MindmapPreview.h({ tag: "b", attrs: { style: `width:${ratio}%` } })] });
     }
     /** 次に検討する項目のタイル */
-    function nextTile({ index, on }) {
+    function nextTile({ index, on, marks }) {
         const candidates = index.data.derived.next;
         const list = MindmapPreview.h({
             tag: "ol",
@@ -81,6 +82,7 @@ var MindmapPreview;
                                         tag: "span",
                                         attrs: { class: "nl-meta" },
                                         children: [
+                                            MindmapPreview.markFor({ marks, id: candidate.id }),
                                             MindmapPreview.h({ tag: "span", children: [[item?.category, candidate.phase].filter(Boolean).join(" · ")] }),
                                             MindmapPreview.impactBadge(candidate.weight ?? undefined, true),
                                             MindmapPreview.h({
@@ -217,14 +219,14 @@ var MindmapPreview;
         });
     }
     /** 件数と名前の小さなタイル（要見直し・保留・進行中のタスク） */
-    function smallTile({ tileId, id, iconName, title, items, emptyText, link, open, }) {
+    function smallTile({ tileId, id, iconName, title, items, emptyText, link, open, marks, }) {
         return MindmapPreview.h({
             tag: "section",
             attrs: { id: tileId, class: "tile t-small", "aria-labelledby": id },
             children: [
                 tileHead(id, iconName, title, items.length > 0 ? showAll(items.length, link) : null),
                 MindmapPreview.h({ tag: "p", attrs: { class: "num" }, children: [items.length] }),
-                miniList(items, emptyText, open),
+                miniList(items, emptyText, open, marks),
             ],
         });
     }
@@ -377,6 +379,7 @@ var MindmapPreview;
                             emptyText: "要見直しの検討事項はありません。",
                             link: () => on.navigate(tableRoute("decisions", { status: ["要見直し"] })),
                             open: on.open,
+                            marks: props.marks,
                         }),
                         smallTile({
                             tileId: "tile-hold",
@@ -387,6 +390,7 @@ var MindmapPreview;
                             emptyText: "保留の検討事項はありません。",
                             link: () => on.navigate(tableRoute("decisions", { status: ["保留"] })),
                             open: on.open,
+                            marks: props.marks,
                         }),
                         smallTile({
                             tileId: "tile-running",
@@ -397,6 +401,7 @@ var MindmapPreview;
                             emptyText: "進行中のタスクはありません。",
                             link: () => on.navigate(tableRoute("tasks", { status: ["進行中"] })),
                             open: on.open,
+                            marks: props.marks,
                         }),
                         progressTile(props),
                     ],

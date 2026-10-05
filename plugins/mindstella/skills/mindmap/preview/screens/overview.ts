@@ -10,6 +10,8 @@ namespace MindmapPreview {
       /** 絞った表へ移る（`Route`） */
       navigate: (route: Route) => void;
     };
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks;
   };
 
   /** 縦に積む幅で出す、次に検討する項目の件数 */
@@ -52,6 +54,7 @@ namespace MindmapPreview {
     items: Item[],
     emptyText: string,
     open: (id: string) => void,
+    marks?: DiffMarks,
   ): HTMLElement {
     if (items.length === 0) return emptyNote(emptyText);
     return h({
@@ -68,6 +71,7 @@ namespace MindmapPreview {
                 children: [
                   statusMark(item.status),
                   h({ tag: "span", attrs: { class: "mt" }, children: [item.title] }),
+                  markFor({ marks, id: item.id }),
                   h({ tag: "span", attrs: { class: "go", "aria-hidden": "true" }, children: [icon("chev")] }),
                 ],
               }),
@@ -85,7 +89,7 @@ namespace MindmapPreview {
   }
 
   /** 次に検討する項目のタイル */
-  function nextTile({ index, on }: OverviewProps): HTMLElement {
+  function nextTile({ index, on, marks }: OverviewProps): HTMLElement {
     const candidates = index.data.derived.next;
     const list = h({
       tag: "ol",
@@ -105,6 +109,7 @@ namespace MindmapPreview {
                     tag: "span",
                     attrs: { class: "nl-meta" },
                     children: [
+                      markFor({ marks, id: candidate.id }),
                       h({ tag: "span", children: [[item?.category, candidate.phase].filter(Boolean).join(" · ")] }),
                       impactBadge(candidate.weight ?? undefined, true),
                       h({
@@ -261,6 +266,7 @@ namespace MindmapPreview {
     emptyText,
     link,
     open,
+    marks,
   }: {
     /** タイルの項目 ID（画面設計） */
     tileId: string;
@@ -273,6 +279,8 @@ namespace MindmapPreview {
     emptyText: string;
     link: () => void;
     open: (id: string) => void;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks | undefined;
   }): HTMLElement {
     return h({
       tag: "section",
@@ -280,7 +288,7 @@ namespace MindmapPreview {
       children: [
         tileHead(id, iconName, title, items.length > 0 ? showAll(items.length, link) : null),
         h({ tag: "p", attrs: { class: "num" }, children: [items.length] }),
-        miniList(items, emptyText, open),
+        miniList(items, emptyText, open, marks),
       ],
     });
   }
@@ -446,6 +454,7 @@ namespace MindmapPreview {
               emptyText: "要見直しの検討事項はありません。",
               link: () => on.navigate(tableRoute("decisions", { status: ["要見直し"] })),
               open: on.open,
+              marks: props.marks,
             }),
             smallTile({
               tileId: "tile-hold",
@@ -456,6 +465,7 @@ namespace MindmapPreview {
               emptyText: "保留の検討事項はありません。",
               link: () => on.navigate(tableRoute("decisions", { status: ["保留"] })),
               open: on.open,
+              marks: props.marks,
             }),
             smallTile({
               tileId: "tile-running",
@@ -466,6 +476,7 @@ namespace MindmapPreview {
               emptyText: "進行中のタスクはありません。",
               link: () => on.navigate(tableRoute("tasks", { status: ["進行中"] })),
               open: on.open,
+              marks: props.marks,
             }),
             progressTile(props),
           ],

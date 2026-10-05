@@ -65,6 +65,48 @@ namespace MindmapPreview {
     reason?: string;
   };
 
+  /** 本文の差分の 1 か所。書き換えた後の本文のある行からの並びを、前の行の並びに置き換える */
+  export type BodyDiffHunk = {
+    /** 書き換えた後の本文の 1 始まりの行。`now` が空のときはその行の前に差し込む */
+    line: number;
+    /** その行からの今の行（改行を含まない） */
+    now: string[];
+    /** 置き換える前の行 */
+    before: string[];
+  };
+
+  /** 項目の変更履歴の 1 回分 */
+  export type HistoryEntry = {
+    /** `changes.yaml` の通し番号 */
+    seq: number;
+    /** 書き換えた日時 */
+    at: string;
+    /** 変わったキー → 書き換える前の値。前に無かったキーは null */
+    before: Record<string, unknown>;
+    /** 今の本文を前の本文へ戻す行の置き換え（本文が変わったときだけ） */
+    body_diff?: BodyDiffHunk[];
+  };
+
+  /** 書き換えのまとまり */
+  export type ChangeSet = {
+    id: string;
+    at: string;
+    /** 一言の説明 */
+    summary: string;
+    /** まとめたときの `last_seq` */
+    until_seq: number;
+    added: string[];
+    changed: string[];
+  };
+
+  /** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
+  export type Changes = {
+    last_seq: number;
+    /** 新しい順 */
+    sets: ChangeSet[];
+    pending: { added: string[]; changed: string[] };
+  };
+
   /** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
   export type Item = {
     id: string;
@@ -100,6 +142,8 @@ namespace MindmapPreview {
     avoid?: string[];
     content?: string;
     date?: string;
+    /** 変更履歴（新しい順） */
+    history?: HistoryEntry[];
   };
 
   /** 設定（`mindmap.yaml`） */
@@ -114,6 +158,8 @@ namespace MindmapPreview {
     categories: { name: string; target: string; summary: string }[];
     /** ゴール。ゴールを決めていない話し合いは持たない */
     goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
+    /** 項目ごとに変更履歴を何回分持つか */
+    history_limit?: number;
   };
 
   /** フェーズごと・カテゴリーごとの、決着した数と全体の数 */
@@ -139,6 +185,8 @@ namespace MindmapPreview {
   export type MindmapData = Record<Kind, Item[]> & {
     settings: Settings;
     bodies: Record<string, string>;
+    /** 書き換えのまとまりと、まだまとめていない変更 */
+    changes: Changes;
     derived: Derived;
     built_at: string;
   };

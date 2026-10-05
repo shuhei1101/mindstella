@@ -13,7 +13,7 @@ var MindmapPreview;
     }
     MindmapPreview.boardColumns = boardColumns;
     /** ボードのカード（押すと詳細を開く）。`links` が項目を指す ID の並びなら、その題を添える */
-    function boardCard({ index, item, meta, links, open, }) {
+    function boardCard({ index, item, meta, links, open, mark, }) {
         return MindmapPreview.h({
             tag: "button",
             attrs: {
@@ -28,6 +28,7 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "c-meta" },
                     children: [
+                        mark === undefined ? null : MindmapPreview.diffMark({ kind: mark }),
                         MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
                         ...meta.filter(Boolean).map((value) => MindmapPreview.h({ tag: "span", children: [value] })),
                     ],
@@ -88,7 +89,7 @@ var MindmapPreview;
     }
     MindmapPreview.toolbar = toolbar;
     /** タスクの画面を返す */
-    function tasksScreen({ index, route, on }) {
+    function tasksScreen({ index, route, on, marks }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
         const columns = [
             common.id,
@@ -116,6 +117,7 @@ var MindmapPreview;
                     meta: [item.kind, item.category],
                     links: item.for ?? [],
                     open: on.open,
+                    mark: marks?.[item.id],
                 }),
                 emptyText: "タスクはありません。",
             })
@@ -125,6 +127,7 @@ var MindmapPreview;
                 rows: index.data.tasks,
                 open: on.open,
                 initialFilters: route.filters,
+                marks,
             });
         return MindmapPreview.h({
             tag: "div",
