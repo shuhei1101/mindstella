@@ -1234,8 +1234,13 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
 /* 動きを減らす設定: 知らせを動かさない */
 @media (prefers-reduced-motion: reduce) { .stoast, .stoast.show { transition: none; } }
 
-/* 狭い幅（480px 以下）: 表示の設定・絞り込み・コメントの 3 つのボタンが並んでも横に溢れないよう、トップバーの間隔と余白を詰める */
-@media (max-width: 480px) { .topbar { gap: 4px; padding: 0 12px; } }
+/* 狭い幅（480px 以下）: 表示の設定・絞り込み・コメントの 3 つのボタン（絞り込みとコメントは件数の札つき）が並んでも横に溢れないよう、トップバーの間隔と余白、ボタンの余白と印・件数の間隔を詰める */
+@media (max-width: 480px) {
+  /* トップバー: 要素の間隔と左右の余白を詰める */
+  .topbar { gap: 3px; padding: 0 10px; }
+  /* 表示の設定・絞り込み・コメントのボタン: 印と件数の間隔と左右の余白を詰める */
+  .comments-btn, .filter-btn, .settings-btn { gap: 4px; padding: 0 6px; }
+}
 
 /* ===== 絞り込みのドロワー: コメントの一覧と同じく、幕を付けずにタブの帯の下から左に重ねる非モーダルのパネル ===== */
 /* 件数のバッジ（絞り込みのボタン）: 絞り込み中という状態を示すため印の色で塗る。数は等幅で桁を揃える */
