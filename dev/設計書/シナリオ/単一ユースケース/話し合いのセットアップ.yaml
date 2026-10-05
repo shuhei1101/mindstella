@@ -113,7 +113,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 版を記録する前の形式のワークスペース
-        description: '版のファイルを持たず、資料 A-1 が `done: true` のワークスペース'
+        description: '版のファイルと `config.yaml` を持たず `mindmap.yaml` だけを持ち、資料 A-1 が `done: true` のワークスペース'
         notes: YAML を直接書いて作る
     flow: |-
       ```mermaid

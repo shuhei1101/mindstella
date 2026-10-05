@@ -67,8 +67,9 @@ scenarios:
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを、端末の保存領域を共有しない 2 つのブラウザのコンテキスト（A と B）で開く）
       - name: make_workspace
         description: 作成を済ませ、`config.yaml` が見た目の既定と表示する種類の既定を持たないワークスペース
-      - name: 書き込めない設定
-        description: 画面を開いた後に `config.yaml` を読み取り専用にする
+      - name: 書き込めないワークスペース
+        description: 画面を開いた後に、ワークスペースのフォルダを読み取り専用にする
+        notes: '`0o500`（結合テストの書き込めないワークスペースと同じ）。設定は一時ファイルから置き換えて書くため、`config.yaml` だけを読み取り専用にしても失敗しない'
       - name: A の上書き
         description: A の端末の保存領域に見た目 `glow` を残しておく
     flow: |-
