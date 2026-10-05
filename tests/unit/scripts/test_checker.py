@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import yaml
+
 import checker
+import commands
 import store
 from fixture_types import MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
 
@@ -253,3 +256,53 @@ def test_check_submissions_when_missing(make_workspace: MakeWorkspace, make_item
     problems = checker._check_submissions(workspace)
     # 検証
     assert problems == []
+
+
+def test_check_history_when_body_rewritten(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """手で書き換えた本文に当たらない変更履歴を拾う（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", body="D-1.md"), bodies={"D-1.md": "元の 1 行目\n元の 2 行目\n"}
+    )
+    commands.run_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
+    (root / "docs" / "D-1.md").write_text("手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8")
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_history(workspace)
+    # 検証
+    assert [(problem.kind, problem.id, problem.key) for problem in problems] == [
+        ("stale_history", "D-1", "history[0].body_diff")
+    ]
+
+
+def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """まとまりが指す無い ID を拾う（正常系）。"""
+    # 準備
+    changes = {
+        "last_seq": 1,
+        "sets": [
+            {
+                "id": "C-1",
+                "at": "2026-10-02T08:00:00+00:00",
+                "summary": "決める",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["D-9"],
+            }
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_history(workspace)
+    # 検証
+    assert [(problem.kind, problem.file, problem.key) for problem in problems] == [
+        ("broken_ref", "changes.yaml", "sets[0].changed")
+    ]
+    assert "D-9" in problems[0].detail

@@ -232,6 +232,20 @@ def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     assert updated["updated"] == FIXED_NOW
 
 
+def test_run_update_stacks_history(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """変わったキーを変更履歴に積み、まだまとめていない変更に足す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="未決定"))
+    # 実行
+    commands.run_update(root, "D-1", {"status": "決定済み"}, now=_fixed_now)
+    # 検証
+    stacked = _read_items(root, "decisions.yaml")[0]["history"][0]
+    assert stacked["before"] == {"status": "未決定"}
+    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    assert changes["pending"]["changed"] == ["D-1"]
+    assert changes["last_seq"] == stacked["seq"]
+
+
 def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """切り替えて書き込む（正常系）。"""
     # 準備
@@ -260,6 +274,46 @@ def test_run_adopt_when_not_decision(make_workspace: MakeWorkspace, make_item: M
     # 実行・検証
     with pytest.raises(ItemNotFoundError, match="T-1"):
         commands.run_adopt(root, "T-1", "A", now=_fixed_now)
+
+
+def test_run_commit(make_workspace: MakeWorkspace) -> None:
+    """まだまとめていない変更をまとめる（正常系）。"""
+    # 準備
+    root = make_workspace()
+    commands.run_add(root, "decision", {"title": "問い", "status": "未決定"}, now=_fixed_now)
+    # 実行
+    payload = commands.run_commit(root, "  足す ", now=_fixed_now)
+    # 検証
+    assert payload == {
+        "id": "C-1",
+        "at": FIXED_NOW,
+        "summary": "足す",
+        "added": ["D-1"],
+        "changed": [],
+    }
+    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    assert changes["pending"] == {"added": [], "changed": []}
+
+
+def test_run_commit_when_summary_blank(make_workspace: MakeWorkspace) -> None:
+    """空白だけの説明は引数の誤り（異常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行・検証
+    with pytest.raises(ArgumentError, match="summary") as exc_info:
+        commands.run_commit(root, "   ", now=_fixed_now)
+    assert exc_info.value.argument == "summary"
+
+
+def test_run_pending_when_empty(make_workspace: MakeWorkspace) -> None:
+    """まとまりのファイルが無ければ空を返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行
+    payload = commands.run_pending(root)
+    # 検証
+    assert payload == {"added": [], "changed": []}
+    assert not (root / "changes.yaml").exists()
 
 
 def test_run_check(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

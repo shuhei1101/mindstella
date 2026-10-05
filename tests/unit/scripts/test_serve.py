@@ -29,6 +29,10 @@ PORT = 5000
 # 接続や応答を待つ上限秒数
 HTTP_TIMEOUT_SEC = 10
 
+# 前回開いた日時として、1 回目・2 回目の呼び出しで返す日時
+FIRST_OPENED = "2026-10-04T13:05:00+00:00"
+SECOND_OPENED = "2026-10-04T14:45:00+00:00"
+
 
 @pytest.fixture
 def registry() -> Iterator[serve.PreviewRegistry]:
@@ -54,6 +58,21 @@ def _get_status(url: str) -> int:
 def _context(root: Path) -> serve.ServeContext:
     """ワークスペースを配る文脈（待ち受けず、ポートだけ持つ）を作る。"""
     return serve.ServeContext(root=root, port=PORT, write_lock=threading.Lock())
+
+
+def _first_opened_now() -> str:
+    """今の日時の代わりに、1 回目に開いた日時を返す。"""
+    return FIRST_OPENED
+
+
+def _second_opened_now() -> str:
+    """今の日時の代わりに、2 回目に開いた日時を返す。"""
+    return SECOND_OPENED
+
+
+def _failing_touch_opened(*args: Any, **kwargs: Any) -> Any:
+    """書き込めないことにして WriteFailedError を送る、前回開いた日時を書き換える代わりの関数。"""
+    raise WriteFailedError("書き込めませんでした: .mindstella-opened（権限がありません）")
 
 
 def test_start(
@@ -266,6 +285,36 @@ def test_workspace_signature(
     assert (after != before) is changes
 
 
+@pytest.mark.parametrize(
+    ("file_name", "text", "changes"),
+    [
+        pytest.param(
+            "changes.yaml",
+            "last_seq: 0\nsets: []\npending:\n  added: []\n  changed: []\n",
+            True,
+            id="add_changes",
+        ),
+        pytest.param(".mindstella-opened", FIRST_OPENED, False, id="add_opened"),
+    ],
+)
+def test_workspace_signature_with_changes(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    file_name: str,
+    text: str,
+    changes: bool,
+) -> None:
+    """まとまりは見て、前回開いた日時は見ない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = serve.workspace_signature(root)
+    # 実行
+    (root / file_name).write_text(text, encoding="utf-8")
+    after = serve.workspace_signature(root)
+    # 検証
+    assert (after != before) is changes
+
+
 class _ScriptedSignature:
     """決めた印を順に返す、書き換えの印を作る代わりの関数。"""
 
@@ -426,3 +475,32 @@ def test_submission_response_when_rejected(
     assert response.status == expected_status
     assert response.content_type == "application/problem+json; charset=utf-8"
     assert not (root / "submissions.yaml").exists()
+
+
+def test_opened_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """2 回目は 1 回目の日時を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行
+    first = serve.opened_response(_context(root), now=_first_opened_now)
+    second = serve.opened_response(_context(root), now=_second_opened_now)
+    # 検証
+    assert (first.status, second.status) == (200, 200)
+    assert second.content_type == "application/json; charset=utf-8"
+    assert json.loads(first.body) == {"previous": None, "opened": FIRST_OPENED}
+    assert json.loads(second.body) == {"previous": FIRST_OPENED, "opened": SECOND_OPENED}
+
+
+def test_opened_response_when_write_fails(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """書けなければ 500（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # serve モジュールの参照を、書き込めないエラーを送る関数に差し替える
+    monkeypatch.setattr(serve, "touch_opened", _failing_touch_opened)
+    # 実行
+    response = serve.opened_response(_context(root))
+    # 検証
+    assert response.status == 500
+    assert response.content_type == "application/problem+json; charset=utf-8"

@@ -2,12 +2,39 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Route
 
 from .fixture_types import LoadPreviewScripts
+
+# 前回開いた日時として返す日時
+PREVIOUS_OPENED = "2026-10-04T13:05:00+00:00"
+
+
+def _respond_previous(route: Route) -> None:
+    """前回開いた日時を 200 で返す。"""
+    route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({"previous": PREVIOUS_OPENED, "opened": "2026-10-04T14:45:00+00:00"}),
+    )
+
+
+def _respond_server_error(route: Route) -> None:
+    """書き込めないことにして 500 の problem+json を返す。"""
+    route.fulfill(
+        status=500,
+        content_type="application/problem+json",
+        body=json.dumps({"detail": "書き込めませんでした: .mindstella-opened"}, ensure_ascii=False),
+    )
+
+
+def _respond_abort(route: Route) -> None:
+    """通信を切って、サーバーに届かない状態にする。"""
+    route.abort()
 
 
 def test_fetch_records(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
@@ -182,3 +209,27 @@ def test_subscribe_events(preview_page: Page, load_preview_scripts: LoadPreviewS
     assert result["changed"] == 1
     assert result["closed"] == 1
     assert result["url"].endswith("api/events")
+
+
+@pytest.mark.parametrize(
+    ("respond", "expected"),
+    [
+        pytest.param(_respond_previous, PREVIOUS_OPENED, id="ok"),
+        pytest.param(_respond_server_error, None, id="server_error"),
+        pytest.param(_respond_abort, None, id="unreachable"),
+    ],
+)
+def test_post_opened(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    respond: Any,
+    expected: str | None,
+) -> None:
+    """前回の日時を返し、失敗は null を返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    preview_page.route("**/api/opened", respond)
+    # 実行
+    result = preview_page.evaluate("() => MindmapPreview.postOpened()")
+    # 検証
+    assert result == expected
