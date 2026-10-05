@@ -1,10 +1,12 @@
-"""スキーマ違反・ID の重複・参照切れ・本文のずれの点検（読むだけで、ファイルを書かない）。"""
+"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
 from typing import Any
 
+from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
+from history import CHANGES_FILE, Changes, apply_body_diff, load_changes
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, kind_of_id
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
 from submissions import SUBMISSIONS_FILE, load_submissions
@@ -33,6 +35,9 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_refs(workspace),
         *_check_bodies(workspace),
         *_check_submissions(workspace),
+        *_check_comments(workspace),
+        *_check_phases(workspace),
+        *_check_history(workspace),
     ]
     # ファイル名の順に並べる（sorted は安定なので、同じファイルの中は拾った順を保つ）
     return sorted(problems, key=lambda problem: problem.file)
@@ -149,6 +154,62 @@ def _ref_error(ref: str, allowed: frozenset[str], existing: dict[str, set[Any]])
     return None
 
 
+def _check_comments(workspace: Workspace) -> list[Problem]:
+    """`comments.yaml`・`drafts.yaml` のスキーマ違反を `schema` にする（向けた項目は確かめない）。"""
+    problems: list[Problem] = []
+    for file, load in ((COMMENTS_FILE, load_comments), (DRAFTS_FILE, load_drafts)):
+        try:
+            load(workspace.root)
+        except SchemaMismatchError as error:
+            # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にする
+            problems.extend(
+                Problem(
+                    kind="schema",
+                    file=file,
+                    id=None,
+                    key=line.split(": ", 2)[1],
+                    detail=line.split(": ", 2)[2],
+                )
+                for line in error.lines
+            )
+    return problems
+
+
+def _check_phases(workspace: Workspace) -> list[Problem]:
+    """項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする。"""
+    settings = workspace.settings
+    phases = settings.get("phases")
+    known = set(phases) if isinstance(phases, list) else set()
+    problems: list[Problem] = []
+    goal = settings.get("goal")
+    # ゴールのフェーズが phases に無い
+    if isinstance(goal, dict) and goal.get("phase") not in known:
+        problems.append(
+            Problem(
+                kind="unknown_phase",
+                file=SETTINGS_FILE,
+                id=None,
+                key="goal.phase",
+                detail=str(goal.get("phase")),
+            )
+        )
+    for kind, spec in KINDS.items():
+        for index, item in enumerate(workspace.items[kind]):
+            phase = item.get("phase")
+            # フェーズを持ち、phases に無い
+            if phase is not None and phase not in known:
+                problems.append(
+                    Problem(
+                        kind="unknown_phase",
+                        file=spec.file,
+                        id=item.get("id") if isinstance(item.get("id"), str) else None,
+                        key=f"items[{index}].phase",
+                        detail=str(phase),
+                    )
+                )
+    return problems
+
+
 def _deliverables(settings: dict[str, Any]) -> list[dict[str, Any]]:
     """設定のゴールの納品物のうち、辞書のものを取り出す。"""
     goal = settings.get("goal")
@@ -176,6 +237,9 @@ def _check_submissions(workspace: Workspace) -> list[Problem]:
         ]
     problems: list[Problem] = []
     for submission in submissions:
+        # 項目に紐づかない送信は確かめるものが無い
+        if submission.target is None:
+            continue
         try:
             find_item(workspace, submission.target)
         except ItemNotFoundError:
@@ -189,4 +253,84 @@ def _check_submissions(workspace: Workspace) -> list[Problem]:
                     detail=f"存在しない ID: {submission.target}",
                 )
             )
+    return problems
+
+
+def _check_history(workspace: Workspace) -> list[Problem]:
+    """`changes.yaml` のスキーマ違反・参照切れと、今の本文に当たらない変更履歴を拾う。"""
+    problems: list[Problem] = []
+    try:
+        changes = load_changes(workspace.root)
+    except SchemaMismatchError as error:
+        # 読めない・合わない: 行を `schema` にして、参照切れは確かめない
+        problems.extend(
+            Problem(
+                kind="schema",
+                file=CHANGES_FILE,
+                id=None,
+                key=line.split(": ", 2)[1],
+                detail=line.split(": ", 2)[2],
+            )
+            for line in error.lines
+        )
+    else:
+        problems.extend(_missing_change_refs(workspace, changes))
+    problems.extend(_stale_histories(workspace))
+    return problems
+
+
+def _missing_change_refs(workspace: Workspace, changes: Changes) -> list[Problem]:
+    """まとまりと、まだまとめていない変更が指す ID のうち、項目が無いものを `broken_ref` にする。"""
+    existing = {item.get("id") for kind in KINDS for item in workspace.items[kind]}
+    groups = [
+        *(
+            (change_set["id"], f"sets[{index}].{key}", change_set[key])
+            for index, change_set in enumerate(changes["sets"])
+            for key in ("added", "changed")
+        ),
+        *((None, f"pending.{key}", changes["pending"][key]) for key in ("added", "changed")),
+    ]
+    return [
+        Problem(
+            kind="broken_ref",
+            file=CHANGES_FILE,
+            id=owner,
+            key=key,
+            detail=f"存在しない ID: {ref}",
+        )
+        for owner, key, ids in groups
+        for ref in ids
+        if ref not in existing
+    ]
+
+
+def _stale_histories(workspace: Workspace) -> list[Problem]:
+    """本文を持つ項目の変更履歴を今の本文へ新しい順に当て、当たらなくなる回を `stale_history` にする。"""
+    problems: list[Problem] = []
+    for kind, spec in KINDS.items():
+        for item in workspace.items[kind]:
+            name = item.get("body")
+            text = read_body(workspace, name) if isinstance(name, str) else None
+            history = item.get("history")
+            # 本文か変更履歴が無い項目は確かめるものが無い
+            if text is None or not isinstance(history, list):
+                continue
+            for position, entry in enumerate(history):
+                # 本文を変えていない回は、本文を戻さない
+                if not isinstance(entry, dict) or "body_diff" not in entry:
+                    continue
+                restored = apply_body_diff(text, entry["body_diff"])
+                # 差分が本文に当たらない: この回より前の本文を出せない
+                if restored is None:
+                    problems.append(
+                        Problem(
+                            kind="stale_history",
+                            file=spec.file,
+                            id=item.get("id") if isinstance(item.get("id"), str) else None,
+                            key=f"history[{position}].body_diff",
+                            detail=f"本文に当たりません。この回より前の本文の差分を出せません: {name}",
+                        )
+                    )
+                    break
+                text = restored
     return problems

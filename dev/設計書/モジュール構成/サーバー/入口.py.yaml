@@ -16,12 +16,14 @@ diagrams:
         class ツールの処理
         class 配信
         class 送信
+        class コメント
         class 読み書きと検証
         class 検索
         class 依存と影響
         class 点検
         class ビルド
         class 移行
+        class 設定の更新
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
@@ -33,8 +35,10 @@ diagrams:
         ツールの処理 --> 点検
         ツールの処理 --> ビルド
         ツールの処理 --> 移行
+        ツールの処理 --> 設定の更新 : update_settings
         配信 --> ビルド : 雛形と記録
-        配信 --> 送信 : POST /api/submissions
+        配信 --> コメント : /api/comments・/api/drafts
+        コメント --> 送信 : まとめて送る
       ```
 constants:
   - name: RESERVED_KEYS
@@ -42,7 +46,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     summary: '`item` で渡させないキー'
-    value: ("id", "created", "updated", "body")
+    value: ("id", "created", "updated", "body", "history", "history_dropped_seq", "seq", "added_seq")
   - name: BODY_INPUT_KEY
     title: 本文を渡すキー
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
@@ -60,13 +64,25 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "adopt", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: '`MindmapError` でない例外をツールのエラーにするときの文言（`{type}` は例外のクラス名）'
     value: '"予期しないエラー（{type}）: {message}"'
+  - name: OPTION_KEYS
+    title: 案で渡せるキー
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 検討事項の案の編集
+    summary: '`edit_option` の `option` に渡せるキー'
+    value: ("content", "pros", "cons", "note", "reason")
+  - name: REF_KEYS
+    title: 参照のキー
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    summary: '`batch` が `$番号` を置き換えるキー'
+    value: ("parent", "depends_on", "for", "related", "sources")
 functions:
   - name: validate_input_keys
     title: 渡せないキーの確認
@@ -104,7 +120,7 @@ functions:
       - name: test_validate_input_keys_when_reserved
         case: 異常
         summary: スクリプトが付けるキーを弾く
-        condition: '`parametrize`: `id` / `created` / `updated` / `body`'
+        condition: '`parametrize`: `id` / `created` / `updated` / `body` / `history` / `history_dropped_seq`'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` にそのキー）'
         exception: スクリプトが付けるキーを持つ
@@ -259,10 +275,9 @@ functions:
       type: dict[str, Any]
       description: '`{id, file, body}`'
     process: |-
-      1. ワークスペースを読み、渡せないキーを確かめる（`load_workspace`、`validate_input_keys`）
-      2. ID を振り、`id` を先頭に、`created`・`updated` を末尾に置いた項目を作る（`next_id`）
-         - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを作る
-      3. 末尾に足した並びを書き込む（変更の書き込み。`save_change`）
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 1 項目を当てる（`stage_add`）
+      3. 当てた種類の並び・本文・まとまりを書き込む（`save_batch`）
     unit_tests:
       - name: test_run_add
         case: 正常
@@ -309,11 +324,9 @@ functions:
       type: dict[str, Any]
       description: '`{id, file, changed}`'
     process: |-
-      1. ワークスペースを読み、項目を引く（`load_workspace`、`find_item`）
-      2. 渡せないキーを確かめる（`validate_input_keys`）
-      3. 変更を当てはめ、`updated` を今の日時にする（`merge_changes`）
-         - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（`changed` に `body` を含めるのは値が変わったときだけ）
-      4. その位置を差し替えた並びを書き込む（`save_change`）
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 1 項目の変更を当てる（`stage_update`）
+      3. 当てた種類の並び・本文・まとまりを書き込む（`save_batch`）
     unit_tests:
       - name: test_run_update
         case: 正常
@@ -321,6 +334,12 @@ functions:
         condition: 'D-1（`created`・`updated` が `2026-10-01T00:00:00+00:00`）に `{"answer": "a", "weight": null}`。`now` は `2026-10-02T08:00:00+00:00`'
         mock: '`now`'
         expected: '`changed` が `[answer, weight]`、D-1 の `updated` が `now` の値で `created` はそのまま'
+      - name: test_run_update_stacks_history
+        case: 正常
+        summary: 変わったキーを変更履歴に積み、まだまとめていない変更に足す
+        condition: '`commit` 済みの D-1（`status: 未決定`）に `{"status": "決定済み"}`。保持する回数は既定'
+        mock: '`now`'
+        expected: 'D-1 の `history[0].before` が `{status: 未決定}`、`changes.yaml` の `pending.changed` が `[D-1]` で `last_seq` が `history[0].seq`'
   - name: run_adopt
     title: adopt の処理
     kind: 関数
@@ -354,10 +373,11 @@ functions:
       type: dict[str, Any]
       description: '`{id, adopted, previous}`'
     process: |-
-      1. ワークスペースを読み、項目を引く（`load_workspace`、`find_item`）
+      1. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
          - 種類が `decision` でない場合、`ItemNotFoundError` を送る
       2. 採用を切り替え、`updated` を今の日時にする（`switch_adopted`）
-      3. 差し替えた並びを書き込む（`save_change`）
+      3. 変更履歴と通し番号を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ）
+      4. 差し替えた並びと、まとまりが変わったときは新しい記録を書き込む（`save_change`）
     exceptions:
       - name: ItemNotFoundError
         condition: ID が検討事項でない
@@ -804,12 +824,12 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`adopt`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も渡す
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
         case: 正常
-        summary: 18 個のツールを workspace つきで登録する
+        summary: 19 個のツールを workspace つきで登録する
         condition: 空の `PreviewRegistry` と `tmp_path`。作ったサーバーの `list_tools()` を呼ぶ
         mock: なし
         expected: ツールの名前が `TOOL_NAMES` と一致し、どれも入力のスキーマの `required` に `workspace` を持つ
@@ -1035,9 +1055,9 @@ functions:
       - name: test_run_submissions
         case: 正常
         summary: 取り込んでいない送信を返す
-        condition: D-1 と、取り込んだ S-1・取り込んでいない S-2（D-1）を持つワークスペース
+        condition: D-1 と、取り込んだ S-1・取り込んでいない S-2（D-1）・S-3（項目を指さない）を持つワークスペース
         mock: なし
-        expected: '`{items: [{id: S-2, target: D-1, target_title: {D-1 のタイトル}, body, sent}]}`'
+        expected: '`{items: [{id: S-2, target: D-1, target_title: {D-1 のタイトル}, loc: null, body, sent}, {id: S-3, target: null, target_title: null, loc: null, body, sent}]}`'
   - name: run_take_submission
     title: take_submission の処理
     kind: 関数
@@ -1075,9 +1095,506 @@ functions:
         condition: 取り込んでいない S-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`
         mock: '`now`'
         expected: '`{id: S-1, taken: 2026-10-04T03:00:00+00:00, already: false}`'
+  - name: run_update_settings
+    title: update_settings の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 設定の更新
+    scope: public
+    summary: 設定の更新（モジュール構成『設定の更新』の `update_settings`）に引数を渡す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`settings`'
+      - name: phase_map
+        type: dict[str, str] | None
+        required: true
+        passing: positional
+        description: '`phase_map`'
+      - name: target_map
+        type: dict[str, str] | None
+        required: true
+        passing: positional
+        description: '`target_map`'
+      - name: category_map
+        type: dict[str, str] | None
+        required: true
+        passing: positional
+        description: '`category_map`'
+    returns:
+      type: dict[str, Any]
+      description: '`{changed, remapped, files}`（`remapped` は `{id, key, from, to}`）'
+    process: 1. `update_settings` を呼び、その結果を返す（単体テストは `update_settings` が持つ）
+  - name: run_commit
+    title: commit の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: まだまとめていない変更を説明つきのまとまりにして書き込む
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: summary
+        type: str
+        required: true
+        passing: positional
+        description: '`summary`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, at, summary, added, changed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed` が空）'
+    process: |-
+      1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送る
+      2. `mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る。まとまりを読む（`load_changes`）
+      3. まとめる（`commit_pending`）
+         - まとまりが `None` の場合、何も書かずに空の結果を返す
+      4. 新しい記録を `changes.yaml` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを消して `WriteFailedError`）
+    exceptions:
+      - name: ArgumentError
+        condition: '`summary` が空白だけか 200 文字を超える'
+        message: '引数の誤り: summary: {理由}'
+      - name: WorkspaceNotFoundError
+        condition: '`mindmap.yaml` が無い'
+        message: 'ワークスペースがありません: {パス}'
+      - name: WriteFailedError
+        condition: '`changes.yaml` を書けない'
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_run_commit
+        case: 正常
+        summary: まだまとめていない変更をまとめる
+        condition: D-1 を足した直後。`summary` 「  足す 」
+        mock: '`now`'
+        expected: '`id` が `V-1`・`summary` が「足す」・`added` が `[D-1]`。`changes.yaml` の `pending` が空'
+      - name: test_run_commit_when_summary_blank
+        case: 異常
+        summary: 空白だけの説明は引数の誤り
+        condition: '`summary` 「   」'
+        mock: なし
+        expected: '`ArgumentError`（引数の名前 `summary`）'
+        exception: 空白だけ
+  - name: run_pending
+    title: pending の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: まだまとめていない変更を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{added: [{id, title}], changed: [{id, title, keys}]}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 並べる（`pending_view`）
+    unit_tests:
+      - name: test_run_pending_when_empty
+        case: 正常
+        summary: まとまりのファイルが無ければ空
+        condition: 作成だけ済ませたワークスペース
+        mock: なし
+        expected: '`added`・`changed` が空で、`changes.yaml` が作られていない'
+  - name: stage_add
+    title: 追加を当てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す
+    args:
+      - name: staged
+        type: Staged
+        required: true
+        passing: positional
+        description: 今までに当てた書き換え
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: '`kind`'
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`item`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[Staged, dict[str, Any]]
+      description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
+    process: |-
+      1. 渡せないキーを確かめる（`validate_input_keys`）
+      2. `staged.items` のその種類で ID を振る（`next_id`）
+      3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`seq`・`added_seq` を末尾に置いた項目を作る
+         - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す
+      4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
+      5. 末尾に足した並びと、`touched` にその種類を足した `Staged` を返す
+    unit_tests:
+      - name: test_stage_add
+        case: 正常
+        summary: 通し番号を振って足す
+        condition: '`last_seq` 3 の記録と D-1 を持つ `Staged` に検討事項を足す'
+        mock: '`now`'
+        expected: 結果の `id` が D-2。D-2 の `seq`・`added_seq` が 4、新しい記録の `last_seq` が 4 で `pending.added` に D-2。渡した `Staged` はそのまま
+  - name: stage_update
+    title: 更新を当てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える
+    args:
+      - name: staged
+        type: Staged
+        required: true
+        passing: positional
+        description: 今までに当てた書き換え
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`item`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[Staged, dict[str, Any]]
+      description: 新しい `Staged` と、`update` の結果 `{id, file, changed}`
+    process: |-
+      1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`）
+      2. 変更を当てはめ、`updated` を今の日時にする（`merge_changes`）
+         - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る
+      3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1）
+         - 変わったものがある場合、通し番号を振り（`advance_seq`）、項目の `seq` をその番号にして、変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は記録のもの）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
+      4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
+    exceptions:
+      - name: ItemNotFoundError
+        condition: '`staged.items` に ID が無い'
+        message: '項目がありません: {item_id}'
+    unit_tests:
+      - name: test_stage_update_when_limit_zero
+        case: 正常
+        summary: 保持する回数が 0 でも通し番号を進める
+        condition: '`history_limit` 0、`last_seq` 3、D-1 に `{"answer": "a"}`'
+        mock: '`now`'
+        expected: D-1 の `seq` が 4 で `history` を持たず、新しい記録の `last_seq` が 4 で `pending.changed` が空
+      - name: test_stage_update_when_nothing_changed
+        case: 正常
+        summary: 変わったものが無ければ通し番号を進めない
+        condition: '`answer: a` の D-1 に `{"answer": "a"}`'
+        mock: '`now`'
+        expected: '`changed` が空で、記録の `last_seq` と D-1 の `seq` が呼ぶ前と同じ'
+  - name: apply_option_edit
+    title: 案の書き換えを当てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 検討事項の案の編集
+    scope: public
+    summary: 検討事項の案の並びに、記号で指した 1 つの足す・直す・消すを当てた新しい並びを返す
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 検討事項
+      - name: action
+        type: Literal['add', 'update', 'remove']
+        required: true
+        passing: positional
+        description: '`action`'
+      - name: key
+        type: str
+        required: true
+        passing: positional
+        description: '`key`'
+      - name: option
+        type: dict[str, Any] | None
+        required: true
+        passing: positional
+        description: '`option`'
+    returns:
+      type: list[dict[str, Any]]
+      description: 書き換えた後の `options`（新しい並び）
+    process: |-
+      1. `add`・`update` で `option` が無いか、`remove` で `option` があるか、`option` が `OPTION_KEYS` に無いキーを持つなら `ArgumentError`（`option`）
+      2. `add` の場合、同じ記号の案があれば `OptionExistsError`。無ければ `{key, **option}` を末尾に足す
+      3. `update`・`remove` の場合、その記号の案が無ければ `OptionNotFoundError`
+         - `update` はその案に `option` を当てる（値が `None` のキーは消す）
+         - `remove` はその案が `adopted` なら `AdoptedOptionError`、そうでなければ抜く
+    exceptions:
+      - name: ArgumentError
+        condition: '`option` の渡し方が合わない'
+        message: '引数の誤り: option: {理由}'
+      - name: OptionExistsError
+        condition: '`add` で同じ記号の案がある'
+        message: '{ID} の案 {記号}: 同じ記号の案が既にあります'
+      - name: OptionNotFoundError
+        condition: '`update`・`remove` でその記号の案が無い'
+        message: '{ID} の案 {記号}: その記号の案がありません'
+      - name: AdoptedOptionError
+        condition: '`remove` で採用している案を指した'
+        message: '{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください'
+    unit_tests:
+      - name: test_apply_option_edit
+        case: 正常
+        summary: 足す・直す・消すで指した案だけが変わる
+        condition: '案 A（`pros`・`cons`）・B を持つ検討事項。`parametrize`: `add` C / `update` A に `{"pros": "x", "cons": null}` / `remove` B'
+        mock: なし
+        expected: A・B・C / A の `pros` が x で `cons` が無く B はそのまま / A だけ
+      - name: test_apply_option_edit_when_rejected
+        case: 異常
+        summary: 記号と採用と引数の誤りを拒む
+        condition: '案 A（採用）・B。`parametrize`: `add` B / `update` Z / `remove` A / `update` B に `{"adopted": true}`'
+        mock: なし
+        expected: '`OptionExistsError` / `OptionNotFoundError` / `AdoptedOptionError` / `ArgumentError`'
+  - name: run_edit_option
+    title: edit_option の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 検討事項の案の編集
+    scope: public
+    summary: 検討事項の案を 1 つ足す・直す・消す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: action
+        type: Literal['add', 'update', 'remove']
+        required: true
+        passing: positional
+        description: '`action`'
+      - name: key
+        type: str
+        required: true
+        passing: positional
+        description: '`key`'
+      - name: option
+        type: dict[str, Any] | None
+        required: true
+        passing: positional
+        description: '`option`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, file, options, changed}`'
+    process: |-
+      1. `item_id` が `D-` で始まらなければ `ArgumentError`（`id`）
+      2. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
+      3. 案の書き換えを当て（`apply_option_edit`）、その `options` を `item` にして更新を当てる（`stage_update`。`options` は `RESERVED_KEYS` に無いのでそのまま渡せる）
+      4. 書き込む（`save_batch`）。`changed` は `stage_update` の `changed` が `options` を含むか
+    exceptions:
+      - name: ArgumentError
+        condition: '`id` が検討事項の ID でない'
+        message: '引数の誤り: id: 検討事項の ID（D-）を渡してください'
+    unit_tests:
+      - name: test_run_edit_option
+        case: 正常
+        summary: 案を足して変更履歴と通し番号を付ける
+        condition: '`commit` 済みの案 A だけを持つ D-1 に `add` B'
+        mock: '`now`'
+        expected: '`options` が A・B、`changed` が真。D-1 の `history[0].before` が `{options: [A]}` で `seq` が `last_seq`'
+  - name: resolve_refs
+    title: 先に足した項目を指す番号を ID にする
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: '`item` の参照のキーの `$番号` を、その番号の `add` で振った ID に置き換えた新しい `item` を返す'
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 操作の `item`
+      - name: added
+        type: dict[int, str]
+        required: true
+        passing: positional
+        description: その操作より前の `add` の番号（1 始まり）→ 振った ID
+    returns:
+      type: dict[str, Any]
+      description: 置き換えた `item`
+    process: |-
+      1. `REF_KEYS` のキーの値（文字列か、文字列の配列）のうち、全体が `$` と数字だけの文字列を `added` で引いた ID にする
+         - `added` に無い番号なら `ArgumentError`（理由にその `$番号`）
+      2. ほかのキーはそのままにする
+    exceptions:
+      - name: ArgumentError
+        condition: '`$番号` がその操作より前の `add` を指していない'
+        message: '引数の誤り: {キー}: {$番号} はこの操作より前の add を指していません'
+    unit_tests:
+      - name: test_resolve_refs
+        case: 正常
+        summary: 参照のキーの番号だけを ID にする
+        condition: '`{"for": ["$1", "D-3"], "parent": "$1", "title": "$1"}` と `{1: "D-5"}`'
+        mock: なし
+        expected: '`for` が `[D-5, D-3]`、`parent` が `D-5`、`title` が `$1` のまま'
+      - name: test_resolve_refs_when_unknown
+        case: 異常
+        summary: 前の add を指さない番号を拒む
+        condition: '`{"for": ["$2"]}` と `{1: "D-5"}`'
+        mock: なし
+        expected: '`ArgumentError`（メッセージに `$2`）'
+  - name: run_batch
+    title: batch の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 追加・更新・取得の操作を並べた順に当て、最後に 1 回だけ書き込む
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: operations
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: '`operations`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{results: [{op, result}]}`'
+    process: |-
+      1. `operations` が空なら `ArgumentError`（`operations`）
+      2. ワークスペースとまとまりを読み、`Staged` を作る（`load_workspace`、`load_changes`）
+      3. 操作ごとに並べた順に当てる。操作に要るキーが無いか要らないキーがあれば `ArgumentError`
+         - `add`: `$番号` を置き換え（`resolve_refs`）、追加を当て、振った ID をその番号で控える（`stage_add`）
+         - `update`: `id` が `$番号` なら ID にし、`$番号` を置き換えて更新を当てる（`resolve_refs`、`stage_update`）
+         - `show`: `staged.items` と当てた本文を使って、`run_show` と同じ形の結果を作る
+         - どの操作で `MindmapError` が起きても、メッセージの頭に `{番号} 番目の操作（{op}）: ` を付けた同じ種類のエラーを送る（何も書かない）
+      4. 書き換えた種類があれば、`touched` の種類の並び・本文・まとまりを 1 回だけ書き込む（`save_batch`）
+         - `SchemaMismatchError` の場合、合わない箇所の項目の ID を最後に書いた操作の番号を頭に付ける
+    exceptions:
+      - name: ArgumentError
+        condition: '`operations` が空・操作のキーが合わない・`$番号` が前の `add` を指さない'
+        message: '{番号} 番目の操作（{op}）: 引数の誤り: {理由}'
+    unit_tests:
+      - name: test_run_batch
+        case: 正常
+        summary: 先に足した項目を指す追加・更新・取得を 1 回で書く
+        condition: 'D-1 を持つワークスペースに、検討事項の `add`、`for: ["$1"]` のタスクの `add`、D-1 の `update`、D-1 の `show`'
+        mock: '`now`'
+        expected: '`results` が 4 件で D-2・T-1（`for: [D-2]`）・D-1 の `changed`・直した後の D-1。`save_batch` を 1 回だけ呼ぶ'
+      - name: test_run_batch_when_operation_fails
+        case: 異常
+        summary: 途中の操作が失敗したら番号を付けて止め、何も書かない
+        condition: 検討事項の `add` と D-9 の `update`
+        mock: なし
+        expected: '`ItemNotFoundError`（メッセージが `2 番目の操作（update）: ` で始まる）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+  - name: run_changes_since_read
+    title: changes_since_read の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 前回読んだ時点からの変更を読む
+    scope: public
+    summary: 読んだ時点からの変更を並べ、読んだ時点を進めて書き込む
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+    returns:
+      type: dict[str, Any]
+      description: '`{had_read_point, read_seq, until_seq, added, changed}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 変更を並べる（`changes_since`）
+      3. 読んだ時点を進めた記録だけを、`changes.yaml` だけを置き換えて書く（`mark_read`、`run_commit` と同じ `_write_changes`）。項目の YAML は書かず、ワークスペースのスキーマの検証もしない（今あるスキーマ違反で止めない）
+      4. 2. の結果を返す（3. で失敗したら返さずにエラーを伝える）
+    unit_tests:
+      - name: test_run_changes_since_read
+        case: 正常
+        summary: 変更を返して読んだ時点を進める
+        condition: '`read_seq` 2、`last_seq` 4 で、`added_seq` 3 の T-1 を持つワークスペース'
+        mock: なし
+        expected: '`added` が T-1、`until_seq` が 4。`changes.yaml` の `read_seq` が 4'
+      - name: test_run_changes_since_read_when_schema_mismatch
+        case: 正常
+        summary: ワークスペースにスキーマ違反があっても読んだ時点を進める
+        condition: '`status: 完了`（検討事項に無い状態）の D-1 と、`read_seq` 2・`last_seq` 3 の `changes.yaml` を持つワークスペース'
+        mock: なし
+        expected: 例外にならず、`changes.yaml` の `read_seq` が 3。`decisions.yaml` が呼ぶ前と同じ
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く
 test_files:
   - tests/unit/scripts/test_server.py
   - tests/unit/scripts/test_commands.py
+data_models:
+  - name: Staged
+    title: 当てた書き換え
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    role: DTO
+    summary: 書き込む前にメモリの上で当てた、種類ごとの項目・本文・まとまり
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`stage_add`・`stage_update` が新しいものを返し、`run_add`・`run_update`・`run_batch` が最後に `BatchChange` にして書く。'
+    properties:
+      - name: workspace
+        type: Workspace
+        description: 読んだワークスペース（書き込みの前の中身。`save_batch` に渡す）
+      - name: items
+        type: dict[Kind, list[dict[str, Any]]]
+        description: 当てた後の種類ごとの項目の並び（書き換えた種類だけでなく全て）
+      - name: touched
+        type: frozenset[Kind]
+        description: 書き換えた種類
+      - name: bodies
+        type: dict[str, BodyWrite]
+        description: 書く本文（ファイル名 → 本文。同じ項目を二度直すと後の本文で置き換える）
+      - name: changes
+        type: Changes
+        description: 当てた後のまとまりの記録

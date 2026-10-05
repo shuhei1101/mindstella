@@ -1,0 +1,129 @@
+title: "項目へコメントする"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 案 A・B を持つ未決定の検討事項 D-1。レビュー中のコメントも送信も持たない
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: D-1 の詳細パネルを開く
+        P-->>U: コメントの入力
+        U->>P: 「案 A にする」を入れて溜める
+        P->>SV: レビュー中のコメントを足す（D-1・本文）
+        SV->>WS: レビュー中のコメントとして書く
+        SV-->>P: 受け付けた
+        P-->>U: 溜めたことと件数を出し、入力欄を空にする
+      ```
+    expected:
+      - ワークスペースに、D-1 を指し本文が「案 A にする」のレビュー中のコメントが 1 件ある
+      - 取り込んでいない送信が 0 件である
+      - 入力の近くに溜めたことが出て、入力欄が空になる
+      - コメントのボタンの件数が 1 である
+      - 検討事項の YAML の中身が、溜める前と同じである
+    test: test_normal
+  - name: 異常シナリオ（本文が空）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: D-1 の詳細パネルで、本文を空のまま溜めようとする
+        P-->>U: 溜めず、本文が要ることを出す
+      ```
+    expected:
+      - レビュー中のコメントが 0 件である
+      - 画面に、本文が要る旨が出る
+    test: test_error_when_body_empty
+  - name: 異常シナリオ（サーバーにつながらない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。開いた後にサーバーを止める）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー（止まっている）
+
+        U->>P: D-1 の詳細パネルで「案 A にする」を入れて溜める
+        P->>SV: レビュー中のコメントを足す
+        SV--xP: つながらない
+        P-->>U: 溜められなかったことを出す
+      ```
+    expected:
+      - 画面に、溜められなかった旨が出る
+      - 入力欄に「案 A にする」が残っている
+      - ワークスペースにレビュー中のコメントが 1 件も無い
+    test: test_error_when_server_unreachable
+  - name: 正常シナリオ（立ち上げ直した後に書きかけを戻す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。立ち上げ直しは、MCP サーバーを止めて立て直し、新しい URL を開くことで代える）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1 の詳細パネルで「案 B も見たい」と入れ、溜めずにパネルを閉じる
+        P->>SV: 書きかけを保つ
+        U->>SV: サーバーを立ち上げ直す
+        U->>P: 新しい URL で D-1 の詳細パネルを開く
+        P->>SV: 書きかけを読む
+        P-->>U: 入力欄に「案 B も見たい」
+      ```
+    expected:
+      - 新しい URL で開いた D-1 の詳細パネルの入力欄に「案 B も見たい」が入っている
+      - レビュー中のコメントが 0 件である（書きかけは溜めたコメントにならない）
+    test: test_normal_when_draft_restored_after_restart
+lead: 利用者が、サーバーが配るプレビューの詳細パネルで、開いている項目へのコメントを書き、送らずにレビュー中として溜める単一ユースケース。溜めたコメントは単一ユースケース『コメントを選んで送る』でまとめて送る。
+issue: 67
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: プレビューで読んだその場で、答えや意見をどの項目へのものかを付けて書き留められる。送る前に見直せ、書きかけも溜めたコメントも、パネルを閉じても・立ち上げ直しても消えない
+trigger: 利用者がプレビューで項目を読み、答えや意見を伝えたくなる
+preconditions:
+  - ワークスペースに記録があり、サーバーがプレビューを配っている
+success_guarantee: 書いたコメントが、項目の ID とともにレビュー中のコメントとしてワークスペースに残る。取り込んでいない送信には足さない。
+minimal_guarantee: 溜められなかったときは、入力した本文を消さずに、溜められなかったことを画面に出す。記録の YAML は書き換えない。
+frequency: プレビューを読むたびに数回
+priority: 高
+notes:
+  入力の置き場所: 詳細パネルのどこに入力を置くか、状態の名前と溜めるボタンの文言はモック作成で決め、画面設計に書く
+  配る書き出し: 配る書き出しは送信の入口を持たない（単一ユースケース『プレビューを配る』が確かめる）
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_submission_send.py

@@ -76,6 +76,24 @@ def post_json(
     )
 
 
+def send_json(
+    base_url: str,
+    method: str,
+    path: str,
+    payload: dict[str, Any],
+    *,
+    headers: dict[str, str] | None = None,
+) -> HttpResult:
+    """JSON のオブジェクトを `application/json` で、渡したメソッド（PUT・PATCH など）で送る。"""
+    return http_request(
+        base_url,
+        path,
+        method=method,
+        headers={"Content-Type": "application/json", **(headers or {})},
+        body=json.dumps(payload, ensure_ascii=False),
+    )
+
+
 class EventStream:
     """書き換えの知らせ（`/api/events`）につなぎ、`event: changed` が届くのを待つ。"""
 

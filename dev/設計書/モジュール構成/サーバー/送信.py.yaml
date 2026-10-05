@@ -1,5 +1,5 @@
 title: "サーバー / 送信"
-lead: プレビューから送られた回答・意見を `submissions.yaml` に足し、取り込んでいない送信を返し、取り込み済みにする。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・配信）が取る。
+lead: コメントの一覧からまとめて送られたコメントを `submissions.yaml` に足し、取り込んでいない送信を返し、取り込み済みにする。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・コメント）が取る。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/
@@ -18,8 +18,8 @@ data_models:
         type: str
         description: '`S-{連番}`'
       - name: target
-        type: str
-        description: 向けた項目の ID
+        type: str | None
+        description: 向けた項目の ID。項目に紐づかない送信は `None`（キーを書かない）
       - name: body
         type: str
         description: 本文（前後の空白を除いたもの）
@@ -29,6 +29,14 @@ data_models:
       - name: taken
         type: str | None
         description: 取り込んだ日時。取り込んでいなければ `None`
+      - name: loc
+        type: dict[str, Any] | None
+        default: None
+        description: 選んだ箇所（ER 図『ワークスペース』の `loc`）。持たない送信は `None`（キーを書かない）
+      - name: comment
+        type: str | None
+        default: None
+        description: 送ったレビュー中のコメントの ID。まとめて送る途中で落ちたときに二重に送らないために持つ。前の版の送信は `None`（キーを書かない）
   - name: PendingSubmission
     title: 取り込んでいない送信
     container: plugins/mindstella/skills/mindmap/scripts/submissions.py
@@ -40,17 +48,20 @@ data_models:
         type: str
         description: 送信の ID
       - name: target
-        type: str
-        description: 向けた項目の ID
+        type: str | None
+        description: 向けた項目の ID。項目に紐づかない送信は `None`
       - name: target_title
         type: str | None
-        description: その項目のタイトル。項目が消えていれば `None`
+        description: その項目のタイトル。項目に紐づかないか、項目が消えていれば `None`
       - name: body
         type: str
         description: 本文
       - name: sent
         type: str
         description: 送った日時
+      - name: loc
+        type: dict[str, Any] | None
+        description: 選んだ箇所。持たなければ `None`
 constants:
   - name: SUBMISSIONS_FILE
     title: 送信のファイル名
@@ -67,13 +78,13 @@ constants:
   - name: MAX_BODY_CHARS
     title: 本文の上限
     container: plugins/mindstella/skills/mindmap/scripts/submissions.py
-    usecase: 回答・意見を送る
-    summary: 非機能要件の「送信の本文の長さ」（前後の空白を除いた文字数）
+    usecase: 共通
+    summary: 非機能要件の「送信の本文の長さ」（前後の空白を除いた文字数）。コメントの本文と選んだ文のそれぞれに使う
     value: '10000'
   - name: ID_PREFIX
     title: 送信の ID の頭
     container: plugins/mindstella/skills/mindmap/scripts/submissions.py
-    usecase: 回答・意見を送る
+    usecase: コメントを選んで送る
     summary: 送信の ID の頭の文字（項目の種類の頭の文字と重ならない）
     value: '"S"'
 functions:
@@ -121,91 +132,12 @@ functions:
         mock: なし
         expected: '`SchemaMismatchError`（`lines` が `submissions.yaml: ` で始まる。後者は `items[0]`）'
         exception: 読めないかスキーマに合わない
-  - name: add_submission
-    title: 送信の追加
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
-    usecase: 回答・意見を送る
-    scope: public
-    summary: 本文と向けた項目を確かめ、取り込んでいない送信として 1 件足す（鍵は呼ぶ側が取る）
-    side_effects: '`submissions.yaml` を一時ファイルから置き換える（無ければ作る）'
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: ワークスペース
-      - name: data
-        type: dict[str, Any]
-        required: true
-        passing: positional
-        description: 要求の本文のオブジェクト（`target`・`body`）
-      - name: now
-        type: Callable[[], str]
-        required: false
-        default: now_utc
-        passing: injected
-        description: 今の日時を返す関数
-    returns:
-      type: Submission
-      description: 足した送信
-    process: |-
-      1. `target`・`body` が文字列かを確かめ、`body` の前後の空白を除く
-         - 無い・文字列でない、空白だけ、`MAX_BODY_CHARS` を超える場合、そのキーと理由を持った `SubmissionInvalidError` を送る
-      2. ワークスペースを読み（`load_workspace`）、`target` の項目があるか確かめる（`find_item`）
-      3. 送信を読み（`load_submissions`）、連番の最大 + 1 の ID で `taken: null` の 1 件を末尾に足す
-      4. `{"items": [...]}` を一時ファイルに書いて置き換える（`dump_yaml`、`_write_temp`、`os.replace`）
-         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る（前の `submissions.yaml` は残る）
-    exceptions:
-      - name: SubmissionInvalidError
-        condition: '`target`・`body` が無いか文字列でない、または `body` が空白だけか `MAX_BODY_CHARS` を超える'
-        message: '{キー}: {理由}'
-      - name: ItemNotFoundError
-        condition: '`target` の項目がワークスペースに無い'
-        message: '項目がありません: {target}'
-      - name: WriteFailedError
-        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルを消した後）
-        message: '書き込めませんでした: {パス}（{理由}）'
-    unit_tests:
-      - name: test_add_submission
+      - name: test_load_submissions_when_previous_version
         case: 正常
-        summary: 連番を振って末尾に足す
-        condition: 'D-1 と S-1・S-3 を持つワークスペース、`{"target": "D-1", "body": "  案 A にする "}`。`now` は `2026-10-04T03:00:00+00:00`'
-        mock: '`now`'
-        expected: '`Submission(id=S-4, target=D-1, body=案 A にする, sent=now の値, taken=None)`。`submissions.yaml` の末尾がその 1 件'
-      - name: test_add_submission_when_first
-        case: 正常
-        summary: ファイルが無ければ作って S-1
-        condition: D-1 だけを持ち `submissions.yaml` が無いワークスペース
-        mock: '`now`'
-        expected: '`id` が `S-1` で、`submissions.yaml` ができている'
-      - name: test_add_submission_when_invalid
-        case: 異常
-        summary: 本文・形の誤りは足さない
-        condition: '`parametrize`: `body` が `"  "` / 10001 文字 / `target` が無い / `body` が `1`'
+        summary: '`loc`・`comment` を持たない前の版の送信も読む'
+        condition: '`id`・`target`・`body`・`sent`・`taken` だけの S-1'
         mock: なし
-        expected: '`SubmissionInvalidError`（メッセージに `body` / `body` / `target` / `body`）。`submissions.yaml` が無い'
-        exception: 本文・形の誤り
-      - name: test_add_submission_when_boundary
-        case: 正常
-        summary: ちょうど上限の本文は足す
-        condition: 前後に空白を付けた 10000 文字の本文
-        mock: '`now`'
-        expected: 足した送信の `body` が 10000 文字
-      - name: test_add_submission_when_target_missing
-        case: 異常
-        summary: 無い項目へは足さない
-        condition: D-1 だけを持つワークスペースで `target` が `D-99`
-        mock: なし
-        expected: '`ItemNotFoundError`（メッセージに `D-99`）'
-        exception: target の項目が無い
-      - name: test_add_submission_when_write_fails
-        case: 異常
-        summary: 置き換えに失敗したら前の送信を残す
-        condition: S-1 を持つワークスペース。`os.replace` を `OSError` を送る関数に差し替える
-        mock: '`os.replace`（`submissions` モジュールの参照を monkeypatch）'
-        expected: '`WriteFailedError`。`submissions.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
-        exception: 置き換えで OSError
+        expected: '`loc` と `comment` が `None` の `Submission`'
   - name: list_pending_submissions
     title: 取り込んでいない送信
     kind: 関数
@@ -224,7 +156,7 @@ functions:
       description: 取り込んでいない送信
     process: |-
       1. 送信を読む（`load_submissions`）
-      2. `taken` が `None` のものを連番の順に並べ、`target` の項目の `title`（無ければ `None`）を付ける（`find_item` の `ItemNotFoundError` は `None` にする）
+      2. `taken` が `None` のものを連番の順に並べ、`target` の項目の `title`（`target` が `None` か項目が無ければ `None`）と `loc` を付ける（`find_item` の `ItemNotFoundError` は `None` にする）
     unit_tests:
       - name: test_list_pending_submissions
         case: 正常
@@ -238,6 +170,12 @@ functions:
         condition: D-9 への取り込んでいない S-1（D-9 は無い）
         mock: なし
         expected: '`target_title` が `None` の S-1'
+      - name: test_list_pending_submissions_when_location_and_no_target
+        case: 正常
+        summary: 箇所を持つ送信と項目に紐づかない送信を返す
+        condition: A-1 と、S-1（A-1 の本文の 2 行目の `loc`）・S-2（`target`・`loc` を持たない）
+        mock: なし
+        expected: S-1 の `loc` が書いた箇所。S-2 の `target`・`target_title`・`loc` が `None`
   - name: take_submission
     title: 取り込み済みにする
     kind: 関数
@@ -305,6 +243,70 @@ functions:
         condition: S-1（取り込んでいない）。`os.replace` を `OSError` を送る関数に差し替える
         mock: '`os.replace`'
         expected: '`WriteFailedError`。`submissions.yaml` が呼ぶ前と同じ'
+        exception: 置き換えで OSError
+  - name: append_submissions
+    title: 送信のまとめた追加
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/submissions.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中のコメントを並びの順に取り込んでいない送信として足す。同じコメントの送信が既にあれば足さずにそれを返す（鍵は呼ぶ側が取る。確かめは呼ぶ側が済ませる）
+    side_effects: '`submissions.yaml` を一時ファイルから 1 回で置き換える（無ければ作る。足すものが無ければ書かない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: comments
+        type: list[ReviewComment]
+        required: true
+        passing: positional
+        description: 送るレビュー中のコメント（溜めた順）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: list[Submission]
+      description: '`comments` と同じ並びの、足したか既にあった送信'
+    process: |-
+      1. 送信を読む（`load_submissions`）
+      2. コメントごとに、同じ `comment` の送信があればそれを使い、無ければ連番の最大 + 1 の ID で `target`・`loc`・`body`・`sent`（この呼び出しで 1 つの日時）・`taken: null`・`comment` の 1 件を末尾に足す
+         - `[WARNING]` 既に送っていたコメント（コメントの ID・送信の ID）
+      3. 足したものがあれば `{"items": [...]}` を一時ファイルに書いて置き換える（`dump_yaml`、`write_temp`、`os.replace`。`None` の `target`・`loc`・`comment` はキーを書かない）
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る（前の `submissions.yaml` は残る）
+    exceptions:
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルを消した後）
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_append_submissions
+        case: 正常
+        summary: 連番を振って並びの順に末尾へ足す
+        condition: S-1・S-3 を持つワークスペース、C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）。`now` は `2026-10-05T03:00:00+00:00`
+        mock: '`now`'
+        expected: '`[S-4, S-5, S-6]` で `comment` が C-1・C-2・C-3。S-4 は `loc` を持たず、S-5 は `loc` を持ち、S-6 は `target`・`loc` のキーを持たない。どれも `sent` が now の値で `taken: null`'
+      - name: test_append_submissions_when_first
+        case: 正常
+        summary: ファイルが無ければ作って S-1
+        condition: '`submissions.yaml` が無いワークスペース、C-1'
+        mock: '`now`'
+        expected: '`[S-1]` で、`submissions.yaml` ができている'
+      - name: test_append_submissions_when_already_sent
+        case: 正常
+        summary: 既に送ったコメントは足さずにその送信を返す
+        condition: '`comment: C-1` の S-1 を持つワークスペース、C-1・C-2'
+        mock: '`now`'
+        expected: '`[S-1, S-2]`。`submissions.yaml` の件数が 2'
+      - name: test_append_submissions_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら前の送信を残す
+        condition: S-1 を持つワークスペース、C-1。`os.replace` を `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`submissions` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`submissions.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: 置き換えで OSError
 test_files:
   - tests/unit/scripts/test_submissions.py

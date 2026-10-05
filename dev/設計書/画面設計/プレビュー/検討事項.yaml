@@ -16,6 +16,14 @@ elements:
         value: 概要と同じ
       - name: read_at
         value: 概要と同じ
+      - name: diffPoint
+        value: 『概要』のトップバーと同じ
+      - name: comments
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: comment_count
+        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
+      - name: comments_open
+        value: コメントの一覧を開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え
@@ -48,10 +56,11 @@ elements:
   - name: マップ
     id: decision-map
     kind: canvas
-    description: 対象 → カテゴリー → フェーズ → 検討事項の木を ELK で配置した直角の枝で描く（SVG）。項目は 2 行目に ID・状態・影響度を補足の下の段（12px）で出す。項目を押すと根までの枝と前提・後続の依存の線を強調し、ほかを薄くし、依存の線に小さな玉を流して詳細パネルを開く。背景のドラッグで動かす
+    description: 対象 → カテゴリー → フェーズ → 検討事項の木を ELK で配置した直角の枝で描く（SVG）。項目は 2 行目に ID・状態・影響度を補足の下の段（12px）で出す。項目を押すと根までの枝と前提・後続の依存の線を強調し、ほかを薄くし、依存の線に小さな玉を流して詳細パネルを開く。余白を押すと選びを外す。背景のドラッグで動かす
     io: 表示
     source: プレビューを開く.mindmap-data.decisions・プレビューを開く.mindmap-data.settings
     visible_when: 表示形式がマップで幅 901px 以上。elkjs が読めないときは読めなかったライブラリの知らせ
+    action: 余白（マップの枠の中で項目の節の上でない所。対象・カテゴリー・フェーズの節と枝・依存の線の上を含む）を左ボタンで押してから離すまでの移動が上限以内なら、選んでいる項目があるときだけ、詳細パネルの「閉じる」と同じく選びを外す（詳細パネルを閉じ、URL のハッシュから項目の ID を外し、強調・薄い表示・玉を消す）。拡大・縮小で決めた倍率は保ち、「全体を表示」のときは広がった枠に合わせて倍率を求め直す。スクロールの位置は、選んだ項目を中央へ送り直さず、縦・横それぞれ、押す前の位置と、広がった枠で送れる端の位置のうち小さい方にする。移動が上限を超えたら背景のドラッグとして扱い、選びを保つ
   - name: 拡大・縮小・全体を表示
     kind: button
     position: マップの枠の外
@@ -81,6 +90,8 @@ elements:
         value: プレビューを開く.mindmap-data.decisions
       - name: filters
         value: プレビューを開く.f.{列}（開いたときだけ）
+      - name: marks
+        value: 差分の表示の間、選んだ時点で足した・変えた検討事項（記録の取得.changes）
     description: 検討事項の表。列「着手可否」は、`derived.next` にある未決定は「着手可能」、それ以外の未決定は「前提待ち」、未決定以外は「なし」
     visible_when: 表示形式が表
   - name: すべての状態を表示
@@ -99,6 +110,15 @@ elements:
     label: 表示する検討事項はありません。
     io: 表示
     visible_when: 表示形式がマップで、表示する状態の検討事項が 1 件も無いとき
+  - name: マップ・ボードの差分の印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    args:
+      - name: kind
+        value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
+    description: マップの箱とボードのカードで、タイトルの横に文言なしで置く。字下げの一覧にも同じ印を置く
+    io: 表示
+    visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 lead: 検討事項をマップ（既定）・ボード・表で見る画面。
 mock: dev/mock/pages/decisions/38/b-check/index.html
 test_file: tests/integration/preview/test_decisions_screen.py

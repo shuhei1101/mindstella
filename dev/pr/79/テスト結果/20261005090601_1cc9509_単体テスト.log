@@ -1,0 +1,97 @@
+# 実装前の単体テスト（既存のテストの回帰確認。今回足した・変えたテストは実装前のため Red で、このログの対象外）
+# テストを実行した commit: 1cc9509
+
+## サーバー（tests/unit/scripts）
+$ pytest tests/unit/scripts --ignore=tests/unit/scripts/test_history.py --deselect tests/unit/scripts/test_builder.py::test_collect_preview_data --deselect tests/unit/scripts/test_builder.py::test_collect_preview_data_with_changes --deselect tests/unit/scripts/test_checker.py::test_check_history_when_body_rewritten --deselect tests/unit/scripts/test_checker.py::test_check_history_when_broken_ref --deselect tests/unit/scripts/test_commands.py::test_run_update_stacks_history --deselect tests/unit/scripts/test_commands.py::test_run_commit --deselect tests/unit/scripts/test_commands.py::test_run_commit_when_summary_blank --deselect tests/unit/scripts/test_commands.py::test_run_pending_when_empty --deselect tests/unit/scripts/test_serve.py::test_workspace_signature_with_changes --deselect tests/unit/scripts/test_serve.py::test_opened_response --deselect tests/unit/scripts/test_serve.py::test_opened_response_when_write_fails --deselect tests/unit/scripts/test_server.py::test_build_server --deselect tests/unit/scripts/test_store.py::test_save_change_when_changes_replace_fails
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-item-history-diff
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 383 items / 15 deselected / 368 selected
+
+tests/unit/scripts/test_backup.py ......                                 [  1%]
+tests/unit/scripts/test_builder.py ..................................... [ 11%]
+...                                                                      [ 12%]
+tests/unit/scripts/test_check_env.py ........................            [ 19%]
+tests/unit/scripts/test_checker.py .............                         [ 22%]
+tests/unit/scripts/test_commands.py .................................... [ 32%]
+....                                                                     [ 33%]
+tests/unit/scripts/test_field_to_playbooks.py ...                        [ 34%]
+tests/unit/scripts/test_graph.py .................                       [ 38%]
+tests/unit/scripts/test_kinds.py ......                                  [ 40%]
+tests/unit/scripts/test_launch.py .........                              [ 42%]
+tests/unit/scripts/test_migration_coverage.py ..                         [ 43%]
+tests/unit/scripts/test_migration_ops.py ................                [ 47%]
+tests/unit/scripts/test_migrator.py .................                    [ 52%]
+tests/unit/scripts/test_query.py ....................                    [ 57%]
+tests/unit/scripts/test_serve.py .................................       [ 66%]
+tests/unit/scripts/test_server.py ............                           [ 70%]
+tests/unit/scripts/test_settings_update.py ................              [ 74%]
+tests/unit/scripts/test_store.py ....................................... [ 85%]
+.....................                                                    [ 90%]
+tests/unit/scripts/test_submissions.py ...................               [ 95%]
+tests/unit/scripts/test_versions.py ...............                      [100%]
+
+===================== 368 passed, 15 deselected in 17.24s ======================
+
+$ pytest tests/unit/scripts/test_server.py::test_build_server_when_relative_workspace
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-item-history-diff
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/unit/scripts/test_server.py .                                      [100%]
+
+============================== 1 passed in 6.73s ===============================
+
+## プレビュー（tests/unit/preview）
+$ pytest tests/unit/preview --ignore=tests/unit/preview/test_diff.py --deselect tests/unit/preview/test_api.py::test_post_opened
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-item-history-diff
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 97 items / 3 deselected / 94 selected
+
+tests/unit/preview/test_api.py .....                                     [  5%]
+tests/unit/preview/test_app.py .......                                   [ 12%]
+tests/unit/preview/test_decisions.py .                                   [ 13%]
+tests/unit/preview/test_docs.py .                                        [ 14%]
+tests/unit/preview/test_dom.py .............                             [ 28%]
+tests/unit/preview/test_graph.py .                                       [ 29%]
+tests/unit/preview/test_libs.py .....                                    [ 35%]
+tests/unit/preview/test_records.py ...                                   [ 38%]
+tests/unit/preview/test_router.py ...                                    [ 41%]
+tests/unit/preview/test_send_form.py ...                                 [ 44%]
+tests/unit/preview/test_table.py ...                                     [ 47%]
+tests/unit/preview/test_tasks.py .                                       [ 48%]
+tests/unit/preview/test_api.py ..                                        [ 51%]
+tests/unit/preview/test_app.py ....                                      [ 55%]
+tests/unit/preview/test_dom.py ........                                  [ 63%]
+tests/unit/preview/test_records.py .                                     [ 64%]
+tests/unit/preview/test_router.py ...                                    [ 68%]
+tests/unit/preview/test_send_form.py ...                                 [ 71%]
+tests/unit/preview/test_table.py ..                                      [ 73%]
+tests/unit/preview/test_app.py ...                                       [ 76%]
+tests/unit/preview/test_dom.py ....                                      [ 80%]
+tests/unit/preview/test_records.py .                                     [ 81%]
+tests/unit/preview/test_router.py .                                      [ 82%]
+tests/unit/preview/test_send_form.py .                                   [ 84%]
+tests/unit/preview/test_table.py ..                                      [ 86%]
+tests/unit/preview/test_dom.py ...                                       [ 89%]
+tests/unit/preview/test_records.py .                                     [ 90%]
+tests/unit/preview/test_router.py .                                      [ 91%]
+tests/unit/preview/test_send_form.py .                                   [ 92%]
+tests/unit/preview/test_table.py .                                       [ 93%]
+tests/unit/preview/test_dom.py ...                                       [ 96%]
+tests/unit/preview/test_router.py .                                      [ 97%]
+tests/unit/preview/test_dom.py .                                         [ 98%]
+tests/unit/preview/test_router.py .                                      [100%]
+
+================= 94 passed, 3 deselected in 64.96s (0:01:04) ==================

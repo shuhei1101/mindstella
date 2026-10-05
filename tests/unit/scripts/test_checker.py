@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+import yaml
+
 import checker
+import commands
 import store
 from fixture_types import MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
 
@@ -93,6 +97,65 @@ def test_check_refs_when_missing(
     }
 
 
+def test_check_refs_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールを持たない設定は納品物の参照を見ない（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "goal"}
+    root = make_workspace(make_item("D-1", depends_on=["D-9"]), settings=settings)
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_refs(workspace)
+    # 検証
+    assert _keys(problems) == {("broken_ref", "decisions.yaml", "D-1", "depends_on")}
+    assert "D-9" in problems[0].detail
+
+
+def test_check_phases(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """設定の phases に無い項目の phase と goal.phase を拾う（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "phases": ["目的", "要件"],
+        "goal": {"phase": "結論", "summary": "まとめる", "deliverables": []},
+    }
+    root = make_workspace(
+        make_item("D-1", phase="発散"),
+        make_item("D-2", phase="要件"),
+        make_item("T-1"),
+        settings=settings,
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_phases(workspace)
+    # 検証
+    assert _keys(problems) == {
+        ("unknown_phase", "mindmap.yaml", None, "goal.phase"),
+        ("unknown_phase", "decisions.yaml", "D-1", "items[0].phase"),
+    }
+    assert {problem.detail for problem in problems} == {"結論", "発散"}
+
+
+def test_check_phases_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールを持たない設定は goal.phase を見ない（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+    }
+    root = make_workspace(make_item("D-1", phase="目的"), settings=settings)
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_phases(workspace)
+    # 検証
+    assert problems == []
+
+
 def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """決めた種類でない ID を指す参照を拾う（正常系）。"""
     # 準備
@@ -149,11 +212,16 @@ def test_check_submissions(
     make_submission: MakeSubmission,
     write_submissions: WriteSubmissions,
 ) -> None:
-    """無い項目への送信を拾う（正常系）。"""
+    """無い項目への送信を拾い、項目に紐づかない送信は拾わない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
+    no_target = make_submission("S-3")
+    del no_target["target"]
     write_submissions(
-        root, make_submission("S-1", target="D-8"), make_submission("S-2", target="D-1")
+        root,
+        make_submission("S-1", target="D-8"),
+        make_submission("S-2", target="D-1"),
+        no_target,
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -194,3 +262,95 @@ def test_check_submissions_when_missing(make_workspace: MakeWorkspace, make_item
     problems = checker._check_submissions(workspace)
     # 検証
     assert problems == []
+
+
+def test_check_history_when_body_rewritten(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """手で書き換えた本文に当たらない変更履歴を拾う（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", body="D-1.md"), bodies={"D-1.md": "元の 1 行目\n元の 2 行目\n"}
+    )
+    commands.run_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
+    (root / "docs" / "D-1.md").write_text("手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8")
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_history(workspace)
+    # 検証
+    assert [(problem.kind, problem.id, problem.key) for problem in problems] == [
+        ("stale_history", "D-1", "history[0].body_diff")
+    ]
+
+
+def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """まとまりが指す無い ID を拾う（正常系）。"""
+    # 準備
+    changes = {
+        "last_seq": 1,
+        "sets": [
+            {
+                "id": "V-1",
+                "at": "2026-10-02T08:00:00+00:00",
+                "summary": "決める",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["D-9"],
+            }
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_history(workspace)
+    # 検証
+    assert [(problem.kind, problem.file, problem.key) for problem in problems] == [
+        ("broken_ref", "changes.yaml", "sets[0].changed")
+    ]
+    assert "D-9" in problems[0].detail
+@pytest.mark.parametrize(
+    ("raw_files", "expected_files"),
+    [
+        pytest.param(
+            {
+                "comments.yaml": (
+                    "seq: 1\nitems:\n  - id: C-1\n    target: D-1\n"
+                    "    created: 2026-10-01T00:00:00+00:00\n"
+                )
+            },
+            {"comments.yaml"},
+            id="comments_body_removed",
+        ),
+        pytest.param({"drafts.yaml": "items: [\n"}, {"drafts.yaml"}, id="drafts_unreadable"),
+        pytest.param(
+            {
+                "comments.yaml": (
+                    "seq: 1\nitems:\n  - id: C-1\n    target: D-9\n    body: 本文\n"
+                    "    created: '2026-10-01T00:00:00+00:00'\n"
+                )
+            },
+            set(),
+            id="target_removed",
+        ),
+        pytest.param({}, set(), id="no_files"),
+    ],
+)
+def test_check_comments(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    raw_files: dict[str, str],
+    expected_files: set[str],
+) -> None:
+    """崩れたファイルだけを schema にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files=raw_files)
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_comments(workspace)
+    # 検証
+    assert {problem.file for problem in problems} == expected_files
+    assert all(problem.kind == "schema" and problem.id is None for problem in problems)

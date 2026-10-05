@@ -27,6 +27,9 @@ SUMMARY = "要件出しのスキルを設計する"
 # 版が新しいワークスペースに書く版
 NEWER_VERSION = "v99.0.0"
 
+# 版のファイルが無いワークスペースで、先に当たる手順（題名を足す手順）の版
+FIRST_STEP_VERSION = "v0.3.0"
+
 # 手順が読めない docs.yaml（閉じていないフローの配列）
 BROKEN_DOCS = "items: [\n"
 
@@ -40,6 +43,18 @@ def _plugin_version() -> str:
 def _read_docs(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの資料の並びを読む。"""
     return yaml.safe_load((root / "docs.yaml").read_text(encoding="utf-8"))["items"]
+
+
+def _to_field_settings(root: Path) -> None:
+    """前の版の形式にするため、mindmap.yaml の playbooks を、同じ位置の field（分野の名前）に置き換える。"""
+    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    legacy = {
+        ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
+        for key, value in settings.items()
+    }
+    (root / "mindmap.yaml").write_text(
+        yaml.safe_dump(legacy, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
 
 
 def _mtimes(root: Path) -> dict[str, int]:
@@ -69,6 +84,7 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     """版が古いワークスペースを、手順の一覧・写し・当てる・題名の入力・版の書き換えの順で今の版へ移し替える（正常系）。"""
     # 準備
     root = make_legacy_workspace(legacy_docs={"A-1": True, "A-2": False}, without_summary=True)
+    _to_field_settings(root)
     updated_before = {item["id"]: item["updated"] for item in _read_docs(root)}
     ws = {"workspace": str(root)}
     # 実行
@@ -105,6 +121,10 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     # mindmap.yaml の summary が答えた題名である
     settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == SUMMARY
+    # mindmap.yaml が field を持たず、playbooks が [システム開発] で、target_label が移し替えの前と同じである
+    assert "field" not in settings
+    assert settings["playbooks"] == ["システム開発"]
+    assert settings["target_label"] == "システム"
     # check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}
@@ -149,7 +169,7 @@ def test_error_when_step_fails(
     assert plan.is_error is False
     # 手順を当てるコマンドが終了コード 1 で終わり、出力に失敗した版・手順・docs.yaml を読めない理由がある
     assert applied.is_error is True
-    assert applied.text.startswith(f"エラー: {_plugin_version()} の手順 ")
+    assert applied.text.startswith(f"エラー: {FIRST_STEP_VERSION} の手順 ")
     assert "docs.yaml" in applied.text
     assert "Traceback" not in applied.text
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである

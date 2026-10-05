@@ -1,0 +1,412 @@
+title: "サーバー / 設定の更新"
+lead: '`update_settings` の引数を確かめ、設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` を付け替えて、設定と種類ごとの YAML をまとめて書く。読み書きと検証だけに依存する。'
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    settings_update.py   設定の更新の引数の確かめ・設定の置き換え・フェーズの付け替え・設定と種類の YAML のまとめた書き込み
+  ```
+data_models:
+  - name: PhaseRemap
+    title: 付け替え
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    role: DTO
+    summary: フェーズ・対象・カテゴリーのどれかを付け替えた 1 項目の 1 キー
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`update_settings` のレスポンスの `remapped[]` に `{id, key, from, to}` で返す（`from_value` → `from`、`to_value` → `to`）。'
+    properties:
+      - name: id
+        type: str
+        description: 項目の ID
+      - name: key
+        type: Literal['phase', 'target', 'category']
+        description: 付け替えたキー
+      - name: from_value
+        type: str
+        description: 前の名前
+      - name: to_value
+        type: str
+        description: 後の名前
+constants:
+  - name: EDITABLE_KEYS
+    title: 書き換えられる設定のキー
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    summary: '`update_settings` の `settings` に渡せるキー'
+    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit")
+  - name: REMOVABLE_KEYS
+    title: null で消せる設定のキー
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    summary: 値が `null` のときに消してよい任意のキー
+    value: ("description", "goal", "links", "history_limit")
+functions:
+  - name: validate_settings_input
+    title: 設定の更新の引数の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: '`settings` のキーと `phase_map`・`target_map`・`category_map` の渡し方を、書き換える前に確かめる'
+    args:
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`settings`'
+      - name: phase_map
+        type: dict[str, str] | None
+        required: true
+        passing: positional
+        description: '`phase_map`（渡さないときは `None`）'
+      - name: current_phases
+        type: list[str]
+        required: true
+        passing: positional
+        description: 今の設定の `phases`
+      - name: target_map
+        type: dict[str, str] | None
+        required: true
+        passing: keyword
+        description: '`target_map`（渡さないときは `None`）'
+      - name: category_map
+        type: dict[str, str] | None
+        required: true
+        passing: keyword
+        description: '`category_map`（渡さないときは `None`）'
+      - name: current
+        type: dict[str, Any]
+        required: true
+        passing: keyword
+        description: 今の設定（`targets`・`categories` の名前を引く）
+    returns:
+      type: None
+      description: 問題が無ければ何も返さない
+    process: |-
+      1. `settings` が空か、`EDITABLE_KEYS` に無いキーを持つか、`REMOVABLE_KEYS` に無いキーの値が `None` なら `SchemaMismatchError`（行は `mindmap.yaml: {キー}: {理由}`）
+      2. `phase_map` がある場合
+         - `settings` が `phases` を持たなければ `ArgumentError`（`phase_map`）
+         - キーが `current_phases` に無いか、新しい `phases` にもあるなら `ArgumentError`（理由にそのキー）
+         - 値が新しい `phases` に無ければ `UnmappedPhaseError`（そのキーと値）
+      3. `target_map`・`category_map` がある場合、それぞれ `targets`・`categories` の名前で 2. と同じく確かめる（引数の誤りは `ArgumentError`（`target_map` か `category_map`）、値が新しい設定に無ければ `UnmappedTargetError`）
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`settings` が空・書き換えられないキー・必須のキーの `None`'
+        message: スキーマに合いません（`lines` に問題ごとの行）
+      - name: ArgumentError
+        condition: 対応の元のキーを渡さずに対応を渡した・キーが合わない
+        message: '引数の誤り: {phase_map か target_map か category_map}: {理由}'
+      - name: UnmappedPhaseError
+        condition: '`phase_map` の値が新しい `phases` に無い'
+        message: '新しいフェーズに対応の無いフェーズが残ります（`lines` に `{ID か goal}: {フェーズ}`）'
+      - name: UnmappedTargetError
+        condition: '`target_map`・`category_map` の値が新しい設定に無い'
+        message: 新しい設定に対応の無い対象・カテゴリーが残ります（`lines` に残るものごとの行）
+    unit_tests:
+      - name: test_validate_settings_input
+        case: 正常
+        summary: 正しい引数は通す
+        condition: '`settings` が `{"phases": ["目的", "発散"], "goal": null}`、`phase_map` が `{"問い": "目的"}`、今の `phases` が 問い・発散'
+        mock: なし
+        expected: 例外にならない
+      - name: test_validate_settings_input_when_bad_key
+        case: 異常
+        summary: 書き換えられないキーと必須のキーの null を拒む
+        condition: '`parametrize`: `{}` / `{"field": "システム開発"}` / `{"summary": null}`'
+        mock: なし
+        expected: '`SchemaMismatchError`'
+      - name: test_validate_settings_input_when_bad_phase_map
+        case: 異常
+        summary: phase_map の誤った渡し方を拒む
+        condition: '今の `phases` 問い・発散。`parametrize`: `phases` 無しで `{"問い": "目的"}` / 新しい `phases` 目的・発散で `{"発散": "目的"}` / 同じで `{"整理": "目的"}` / 同じで `{"問い": "要件"}`'
+        mock: なし
+        expected: '`ArgumentError` / `ArgumentError` / `ArgumentError` / `UnmappedPhaseError`'
+      - name: test_validate_settings_input_when_bad_target_map
+        case: 異常
+        summary: target_map・category_map の誤った渡し方を拒む
+        condition: '今の `targets` 本体・管理画面。`parametrize`: `targets` 無しで `target_map` `{"本体": "アプリ"}` / 新しい `targets` アプリ・管理画面で `{"管理画面": "アプリ"}` / 同じで `{"本体": "画面"}`'
+        mock: なし
+        expected: '`ArgumentError`（メッセージに `target_map`） / `ArgumentError` / `UnmappedTargetError`'
+  - name: merge_settings
+    title: 設定の置き換え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: 今の設定に渡したキーを当て、置き換えた設定と変わったキーを返す
+    args:
+      - name: current
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 今の `mindmap.yaml` の中身
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 確かめた `settings`
+    returns:
+      type: tuple[dict[str, Any], list[str]]
+      description: 置き換えた設定（新しい辞書）と、値が変わった・消えたキーの名前（`settings` の並び）
+    process: |-
+      1. `current` を写し、キーの並びを保つ
+      2. `settings` のキーごとに、値が `None` ならキーを消し、それ以外は値ごと置き換える（無いキーは末尾に足す）
+      3. 前と値が違うキーだけを変わったキーに入れる
+    unit_tests:
+      - name: test_merge_settings
+        case: 正常
+        summary: 渡したキーだけを置き換え、null で消し、並びを保つ
+        condition: '`summary`・`goal`・`phases` を持つ設定に `{"summary": "新しい題名", "goal": null, "description": "概要", "phases": 前と同じ値}`'
+        mock: なし
+        expected: '`summary` が新しい題名、`goal` が無く、`description` が末尾にあり、他のキーの並びがそのまま。変わったキーが `[summary, goal, description]`'
+  - name: remap_phases
+    title: フェーズの付け替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: 新しい phases に無いフェーズを持つ項目と goal.phase を対応で付け替える
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 書き込む前のワークスペース
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`merge_settings` で置き換えた設定（`phases` を渡していなければ今の `phases` を持つ）'
+      - name: phase_map
+        type: dict[str, str]
+        required: true
+        passing: positional
+        description: 古いフェーズ → 新しいフェーズ（渡さないときは空）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[list[Change], list[PhaseRemap], dict[str, Any]]
+      description: 付け替えた種類ごとの変更（付け替えた項目がある種類だけ）・付け替えた項目・`goal.phase` を付け替えた設定
+    process: |-
+      1. 種類の順（`KINDS`）に、項目の並びを見る
+         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え `updated` を今の日時にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
+         - 付け替えた項目がある種類だけ、並び全体を `Change` にする
+      2. 設定が `goal` を持ち `goal.phase` が新しい `phases` に無い場合、`phase_map` に対応があれば置き換え、無ければ残るものに `(goal, {フェーズ})` を足す
+      3. 残るものが 1 つ以上あれば `UnmappedPhaseError`（残るものを全て）
+    exceptions:
+      - name: UnmappedPhaseError
+        condition: 対応の無いフェーズを持つ項目か `goal.phase` が残る
+        message: '新しいフェーズに対応の無いフェーズが残ります（`lines` に `{ID か goal}: {フェーズ}`）'
+    unit_tests:
+      - name: test_remap_phases
+        case: 正常
+        summary: 対応で項目と goal.phase を付け替え、同じ名前のフェーズはそのままにする
+        condition: 'D-1（問い）・D-2（発散）・T-1（整理）、`goal.phase` 結論。新しい `phases` 目的・発散・要件、`phase_map` `{"問い": "目的", "整理": "要件", "結論": "要件"}`。`now` は固定の日時'
+        mock: '`now`'
+        expected: 変更が検討事項とタスクの 2 つで、D-1 が目的・T-1 が要件で `updated` が `now` の値、D-2 は発散のままで `updated` もそのまま。`PhaseRemap` が D-1・T-1、設定の `goal.phase` が要件
+      - name: test_remap_phases_when_unmapped
+        case: 異常
+        summary: 対応の無いフェーズを全て挙げて止める
+        condition: 'D-1（問い）・D-2（発散）、`goal.phase` 結論。新しい `phases` 目的・要件、`phase_map` `{"問い": "目的"}`'
+        mock: なし
+        expected: '`UnmappedPhaseError`（`lines` に `D-2: 発散` と `goal: 結論`）'
+  - name: save_settings
+    title: 設定の書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: 設定と、フェーズを付け替えた種類の項目の並びを、検証してから全て書き換えるか、どれも書き換えない
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 書き込む前のワークスペース
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 書き換えた後の `mindmap.yaml` の中身
+      - name: changes
+        type: list[Change]
+        required: true
+        passing: positional
+        description: 一緒に書く種類ごとの変更（本文は持たない。空なら設定だけ）
+    returns:
+      type: list[str]
+      description: 書き換えた YAML（ワークスペースからの相対パス。`mindmap.yaml` が先、続けて `changes` の並び）
+    process: |-
+      1. `changes` の種類のファイルが、書き戻しても中身を失わない形かを確かめる（読み書きと検証の `save_change` の 1. と同じ）
+      2. `raw` の設定と `changes` の種類のファイルを差し替えたワークスペースを作り、検証する（`validate_workspace`）
+         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
+      3. 書く全てのファイルの一時ファイルを書き（`dump_yaml`、`write_temp`）、置き換える前の中身を控える
+         - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
+      4. `changes` の種類 → `mindmap.yaml` の順に `os.replace` で置き換える
+         - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し、残った一時ファイルを消して `WriteFailedError` を送る
+    exceptions:
+      - name: SchemaMismatchError
+        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
+        message: スキーマに合いません（`lines` に問題ごとの行）
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（置き換えたファイルを戻した後）
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_save_settings
+        case: 正常
+        summary: 設定と付け替えた種類を書き、一時ファイルを残さない
+        condition: '`phases` を変えた設定と、D-1 の `phase` を変えた検討事項の変更'
+        mock: なし
+        expected: 戻り値が `[mindmap.yaml, decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
+      - name: test_save_settings_when_schema_mismatch
+        case: 異常
+        summary: スキーマに合わない設定は書かない
+        condition: '`playbooks: []` の設定'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `mindmap.yaml: playbooks` で始まる行）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+      - name: test_save_settings_when_replace_fails
+        case: 異常
+        summary: 途中の置き換えに失敗したら、置き換えたファイルを戻す
+        condition: 設定と検討事項の変更。`os.replace` を、置き換え先が `mindmap.yaml` のときだけ `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`settings_update` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`（メッセージに `mindmap.yaml`）。`decisions.yaml` と `mindmap.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+  - name: update_settings
+    title: 設定の更新
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: 引数を確かめ、設定を置き換えてフェーズを付け替え、まとめて書く
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ（絶対パス）
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`settings`'
+      - name: phase_map
+        type: dict[str, str] | None
+        required: true
+        passing: positional
+        description: '`phase_map`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+      - name: target_map
+        type: dict[str, str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`target_map`'
+      - name: category_map
+        type: dict[str, str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`category_map`'
+    returns:
+      type: dict[str, Any]
+      description: '`{changed, remapped: [{id, key, from, to}], files}`'
+    process: |-
+      1. ワークスペースを読む（`load_workspace`）
+      2. 引数を確かめる（`validate_settings_input`。今の `phases` と今の設定を渡す）
+      3. 設定を置き換える（`merge_settings`）
+      4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
+      5. 対象とカテゴリーを付け替える（`remap_names`。対応が `None` なら空）。書き換えのたびに呼ぶので、新しい設定に無い対象・カテゴリーが残れば `UnmappedTargetError` で止まる。カテゴリーの `target` が変わったら変わったキーに `categories` を足す
+      6. 4.・5. で付け替えた項目がある種類を `Change` にして、まとめて書く（`save_settings`）
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`mindmap.yaml` が無い（`load_workspace` から伝わる）'
+      - name: SchemaMismatchError
+        condition: '`validate_settings_input`・`save_settings` から伝わる'
+      - name: ArgumentError
+        condition: '`validate_settings_input` から伝わる'
+      - name: UnmappedPhaseError
+        condition: '`validate_settings_input`・`remap_phases` から伝わる'
+      - name: WriteFailedError
+        condition: '`save_settings` から伝わる'
+      - name: UnmappedTargetError
+        condition: '`validate_settings_input`・`remap_names` から伝わる'
+    unit_tests:
+      - name: test_update_settings
+        case: 正常
+        summary: フェーズを付け替えて設定と種類の YAML を書き、結果を出力の形にする
+        condition: 'フェーズ 問い・発散、D-1（問い）、`goal.phase` 問い。`settings` `{"phases": ["目的", "発散"]}`、`phase_map` `{"問い": "目的"}`。`now` は固定の日時'
+        mock: '`now`'
+        expected: '`changed` が `[phases, goal]`、`remapped` が `[{id: D-1, from: 問い, to: 目的}]`、`files` が `[mindmap.yaml, decisions.yaml]`。`mindmap.yaml` の `goal.phase` が目的'
+      - name: test_update_settings_when_goal_phase_unknown
+        case: 異常
+        summary: phases を渡さず、phases に無い goal.phase のゴールだけを渡すと何も書かない
+        condition: 'フェーズ 問い・発散。`settings` `{"goal": {"phase": "結論", "summary": "まとめる", "deliverables": []}}`、`phase_map` は `None`'
+        mock: なし
+        expected: '`UnmappedPhaseError`（`lines` に `goal: 結論`）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+  - name: remap_names
+    title: 対象とカテゴリーの付け替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: 新しい targets・categories に無い名前を持つ項目とカテゴリーの target を対応で付け替える
+    args:
+      - name: items
+        type: dict[Kind, list[dict[str, Any]]]
+        required: true
+        passing: positional
+        description: 種類ごとの項目（`remap_phases` が付け替えた後の並び）
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`merge_settings` で置き換えた設定'
+      - name: target_map
+        type: dict[str, str]
+        required: true
+        passing: positional
+        description: 古い対象 → 新しい対象（渡さないときは空）
+      - name: category_map
+        type: dict[str, str]
+        required: true
+        passing: positional
+        description: 古いカテゴリー → 新しいカテゴリー（渡さないときは空）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[dict[Kind, list[dict[str, Any]]], list[PhaseRemap], dict[str, Any]]
+      description: 付け替えた後の種類ごとの項目・付け替えた項目とキー・カテゴリーの `target` を付け替えた設定
+    process: |-
+      1. 設定の `categories` の `target` が新しい `targets` に無ければ、`target_map` に対応があれば置き換え、無ければ残るものに `(categories[{名前}], target, {名前})` を足す
+      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
+      3. 残るものが 1 つ以上あれば `UnmappedTargetError`（残るものを全て）
+    exceptions:
+      - name: UnmappedTargetError
+        condition: 対応の無い対象・カテゴリーを持つ項目かカテゴリーが残る
+        message: 新しい設定に対応の無い対象・カテゴリーが残ります（`lines` に残るものごとの行）
+    unit_tests:
+      - name: test_remap_names
+        case: 正常
+        summary: 対応で項目とカテゴリーの target・category を付け替え、同じ名前はそのままにする
+        condition: 'D-1（本体・画面）・D-2（管理画面・設定）、新しい `targets` アプリ・管理画面、`categories` 画面（本体）・API（本体）・運用（管理画面）、`target_map` `{"本体": "アプリ"}`、`category_map` `{"設定": "運用"}`'
+        mock: '`now`'
+        expected: D-1 がアプリ・画面、D-2 が管理画面・運用。設定の画面・API の `target` がアプリ。`PhaseRemap` が `{D-1, target}`・`{D-2, category}` の 2 件で、どちらも `history` を持たない
+      - name: test_remap_names_when_unmapped
+        case: 異常
+        summary: 対応の無いカテゴリーを全て挙げて止める
+        condition: D-1（画面）・D-2（設定）、新しい `categories` 画面だけ、`category_map` 空
+        mock: なし
+        expected: '`UnmappedTargetError`（`lines` に `D-2: category: 設定`）'
+test_files:
+  - tests/unit/scripts/test_settings_update.py

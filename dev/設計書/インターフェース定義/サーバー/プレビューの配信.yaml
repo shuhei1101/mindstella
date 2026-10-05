@@ -91,7 +91,7 @@ status_codes:
     condition: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` のどちらでもない'
     notes: 本文は返さない
   - code: '404'
-    condition: '`/`・`/api/records`・`/api/events`・`/api/submissions` 以外のパス'
+    condition: '`/`・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts` 以外のパス'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 待ち受け

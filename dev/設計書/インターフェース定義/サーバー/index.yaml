@@ -67,12 +67,48 @@ items:
   - page: 書き換えの知らせ.yaml
     summary: 'GET /api/events: 書き換えを Server-Sent Events で知らせる'
     group: プレビューの配信
-  - page: 回答・意見の送信.yaml
-    summary: 'POST /api/submissions: 項目の ID ごとの回答・意見を取り込んでいない送信として足す'
-    group: 送信
   - page: 取り込んでいない送信.yaml
     summary: 'submissions: 取り込んでいない送信を送った順に返す'
     group: 送信
   - page: 送信を取り込み済みにする.yaml
     summary: 'take_submission: 取り込んだ送信 1 件を取り込み済みにする'
     group: 送信
+  - page: 書き換えのまとまり.yaml
+    summary: 'commit: まだまとめていない書き換えを説明つきのまとまりにする'
+    group: 書く
+  - page: まだまとめていない変更.yaml
+    summary: 'pending: 最後のまとまりより後に足した・変えた項目を返す'
+    group: 読む
+  - page: 前回開いた日時.yaml
+    summary: 'POST /api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える'
+    group: 配信
+  - page: 設定の更新.yaml
+    summary: 'update_settings: 設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目を付け替える'
+    group: 書く
+  - page: レビュー中のコメントの読み取り.yaml
+    summary: 'GET /api/comments: レビュー中のコメントと書きかけをその場で読んで返す'
+    group: コメント
+  - page: レビュー中のコメントの追加.yaml
+    summary: 'POST /api/comments: 項目・選んだ箇所へのコメントか項目に紐づかないコメントをレビュー中に溜める'
+    group: コメント
+  - page: レビュー中のコメントの書き換え.yaml
+    summary: 'PATCH /api/comments/{id}: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す'
+    group: コメント
+  - page: レビュー中のコメントの削除.yaml
+    summary: 'DELETE /api/comments/{id}: レビュー中のコメント 1 件を消し、元に戻すための中身を返す'
+    group: コメント
+  - page: 書きかけの保存.yaml
+    summary: 'PUT /api/drafts: コメントの入力欄の書きかけを向けた先ごとに保つ'
+    group: コメント
+  - page: コメントをまとめて送る.yaml
+    summary: 'POST /api/comments/send: チェックしたレビュー中のコメントを取り込んでいない送信へ移す'
+    group: 送信
+  - page: 案の書き換え.yaml
+    summary: 'edit_option: 検討事項の案を記号で指して 1 つ足す・直す・消す'
+    group: 書く
+  - page: まとめての読み書き.yaml
+    summary: 'batch: 項目の追加・更新・取得を並べて 1 回で当てる'
+    group: 書く
+  - page: 前回読んだ時点からの変更.yaml
+    summary: 'changes_since_read: AI が前回読んだ時点より後に足した・変えた項目を返し、読んだ時点を進める'
+    group: 読む

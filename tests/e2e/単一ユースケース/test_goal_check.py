@@ -109,3 +109,79 @@ def test_normal_when_not_reached(
     assert goal["remaining_deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
     # release/ に何も書かれていない
     assert list((root / "release").iterdir()) == []
+
+
+def test_normal_when_no_goal(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+) -> None:
+    """ゴールが無ければ、判定せずに全フェーズの決着していない検討事項を示し、release/ には何も書かない（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "goal"}
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="未決定"),
+        make_item("D-2", phase="要件", status="決定済み"),
+        settings=settings,
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    goal = replay("goal", **ws)
+    # 検証
+    # goal の出力が、ゴールが無いことを示し、届いたとも届いていないとも返さない
+    assert goal["has_goal"] is False
+    assert goal["reached"] is None
+    # 出力の決着していない検討事項に D-1 があり、D-2 が無い
+    assert [decision["id"] for decision in goal["remaining_decisions"]] == ["D-1"]
+    # release/ に何も書かれていない
+    assert list((root / "release").iterdir()) == []
+
+
+def test_normal_when_task_output_doc_missing(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """ゴールに届いた後、完了した作業のタスクに成果の資料が無ければ資料を足して結ぶ（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="決定済み", answer="記録する"),
+        make_item("A-1", deliverable=True, status="完成"),
+        make_item("T-1", status="完了", result="画面の一覧をまとめた"),
+        settings=_goal_settings(valid_settings),
+        bodies={"A-1.md": "# 要件定義書\n\n支出を記録する。"},
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    reached = replay("goal", **ws)
+    # 確定を取る前に、完了したタスクの成果と資料が 1 対 1 で揃っているかを確かめる
+    done = replay("find", **ws, kind="task", status="完了")
+    # 成果の資料が無い T-1 に、result を本文にした資料を足して結ぶ
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "画面の一覧",
+            "kind": "文書",
+            "deliverable": False,
+            "status": "下書き",
+            "body_markdown": "# 画面の一覧\n\n画面の一覧をまとめた。\n",
+        },
+    )
+    replay("update", **ws, id="T-1", item={"related": ["A-2"]})
+    after = replay("goal", **ws)
+    # 検証
+    # goal の出力が「届いた」で、完了したタスクは T-1 だけである
+    assert reached["reached"] is True
+    assert [item["id"] for item in done["items"]] == ["T-1"]
+    # T-1 が related に A-2 を持ち、A-2 の本文が docs/ にある
+    assert read_yaml(root, "tasks.yaml")["items"][0]["related"] == ["A-2"]
+    assert "画面の一覧" in (root / "docs" / "A-2.md").read_text(encoding="utf-8")
+    # 書き込みの後の goal の出力が「届いた」のままである
+    assert after["reached"] is True
+    # release/ に何も書かれていない
+    assert list((root / "release").iterdir()) == []

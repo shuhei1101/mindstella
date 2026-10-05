@@ -1,0 +1,64 @@
+# 結合テスト（バック・フロント）の全件実行（commit 6f0a6a0）
+# 仮想環境: requirements-dev.txt を入れた Python 3.12（mcp 2.3.0）
+$ pytest tests/integration
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-workspace-change-settings-midway
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 266 items
+
+tests/integration/plugin/test_marketplace_registration.py .              [  0%]
+tests/integration/plugin/test_plugin_loading.py .                        [  0%]
+tests/integration/preview/test_decisions_screen.py ...................   [  7%]
+tests/integration/preview/test_detail_full_screen.py .......             [ 10%]
+tests/integration/preview/test_detail_panel_screen.py .............      [ 15%]
+tests/integration/preview/test_diagram_viewer_screen.py ....             [ 16%]
+tests/integration/preview/test_docs_screen.py ..............             [ 22%]
+tests/integration/preview/test_graph_screen.py ......                    [ 24%]
+tests/integration/preview/test_open_preview.py ..........                [ 28%]
+tests/integration/preview/test_overview_screen.py .............          [ 33%]
+tests/integration/preview/test_records_screen.py ..                      [ 33%]
+tests/integration/preview/test_search_screen.py .....                    [ 35%]
+tests/integration/preview/test_tasks_screen.py ........                  [ 38%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 39%]
+tests/integration/storybook/test_send_form_stories.py .........          [ 43%]
+tests/integration/storybook/test_table_stories.py ........               [ 46%]
+tests/integration/storybook/test_topbar_stories.py .......               [ 48%]
+tests/integration/storybook/test_view_switch_stories.py ..               [ 49%]
+tests/integration/preview/test_records_screen.py .                       [ 50%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 50%]
+tests/integration/preview/test_records_screen.py .                       [ 50%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 51%]
+tests/integration/preview/test_records_screen.py .                       [ 51%]
+tests/integration/server/test_add.py .....                               [ 53%]
+tests/integration/server/test_adopt.py ......                            [ 55%]
+tests/integration/server/test_attrs.py ..                                [ 56%]
+tests/integration/server/test_check.py ....                              [ 57%]
+tests/integration/server/test_check_env.py ..s.s                         [ 59%]
+tests/integration/server/test_clear_release.py ....                      [ 61%]
+tests/integration/server/test_events.py ...                              [ 62%]
+tests/integration/server/test_export.py ......                           [ 64%]
+tests/integration/server/test_find.py ...                                [ 65%]
+tests/integration/server/test_goal.py ....                               [ 67%]
+tests/integration/server/test_impact.py ...                              [ 68%]
+tests/integration/server/test_init.py .....                              [ 70%]
+tests/integration/server/test_launch.py .........                        [ 73%]
+tests/integration/server/test_mcp_server.py .....                        [ 75%]
+tests/integration/server/test_migrate.py ..............                  [ 80%]
+tests/integration/server/test_next.py ...                                [ 81%]
+tests/integration/server/test_preview_serve.py ...                       [ 83%]
+tests/integration/server/test_preview_url.py ....                        [ 84%]
+tests/integration/server/test_records.py ....                            [ 86%]
+tests/integration/server/test_show.py ...                                [ 87%]
+tests/integration/server/test_status.py ..                               [ 87%]
+tests/integration/server/test_submissions.py ....                        [ 89%]
+tests/integration/server/test_submit.py ......                           [ 91%]
+tests/integration/server/test_take_submission.py .....                   [ 93%]
+tests/integration/server/test_update.py ......                           [ 95%]
+tests/integration/server/test_update_settings.py ........                [ 98%]
+tests/integration/skill/test_session.py .                                [ 99%]
+tests/integration/skill/test_setup.py .                                  [ 99%]
+tests/integration/skill/test_upgrade.py .                                [100%]
+
+================== 264 passed, 2 skipped in 181.59s (0:03:01) ==================

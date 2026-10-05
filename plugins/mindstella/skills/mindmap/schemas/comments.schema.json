@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "レビュー中のコメント",
+  "description": "comments.yaml。プレビューで書いて溜め、まだ送っていないコメント。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "items"
+  ],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "body",
+          "created"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^C-[0-9]+$"
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "loc": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "text"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "body",
+                  "value"
+                ]
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 10000
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "body"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "start",
+                    "end"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "value"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "key"
+                  ]
+                }
+              }
+            ]
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "created": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

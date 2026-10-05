@@ -10,7 +10,7 @@ import sys
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import CallToolResult, TextContent
@@ -31,7 +31,13 @@ TOOL_NAMES = (
     "init",
     "add",
     "update",
+    "update_settings",
     "adopt",
+    "edit_option",
+    "batch",
+    "changes_since_read",
+    "commit",
+    "pending",
     "status",
     "next",
     "impact",
@@ -115,6 +121,40 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_update(root, id, item))
 
+    @server.tool(
+        name="update_settings",
+        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする",
+    )
+    def update_settings(
+        workspace: WorkspaceArg,
+        settings: Annotated[
+            dict[str, Any],
+            Field(
+                description="置き換える設定のキーと値。description・goal・links・history_limit は null で消す"
+            ),
+        ],
+        phase_map: Annotated[
+            dict[str, str] | None,
+            Field(description="古いフェーズ → 新しいフェーズの対応。phases を変えるときだけ渡す"),
+        ] = None,
+        target_map: Annotated[
+            dict[str, str] | None,
+            Field(description="古い対象 → 新しい対象の対応。targets を変えるときだけ渡す"),
+        ] = None,
+        category_map: Annotated[
+            dict[str, str] | None,
+            Field(
+                description="古いカテゴリー → 新しいカテゴリーの対応。categories を変えるときだけ渡す"
+            ),
+        ] = None,
+    ) -> CallToolResult:
+        return write(
+            workspace,
+            lambda root: commands.run_update_settings(
+                root, settings, phase_map, target_map, category_map
+            ),
+        )
+
     @server.tool(name="adopt", description="検討事項の採用する案を 1 つに切り替える")
     def adopt(
         workspace: WorkspaceArg,
@@ -122,6 +162,69 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         key: Annotated[str, Field(description="採用する案の記号")],
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_adopt(root, id, key))
+
+    @server.tool(
+        name="edit_option",
+        description="検討事項の案を記号で指して、1 つ足す・中身を直す・消す。指さない案はそのまま残る",
+    )
+    def edit_option(
+        workspace: WorkspaceArg,
+        id: ItemIdArg,  # noqa: A002
+        action: Annotated[
+            Literal["add", "update", "remove"],
+            Field(description="add は末尾に足す、update は指した案を直す、remove は指した案を消す"),
+        ],
+        key: Annotated[str, Field(description="案の記号。add では足す案、update・remove では指す案")],
+        option: Annotated[
+            dict[str, Any] | None,
+            Field(
+                description="add・update の案の中身（content・pros・cons・note・reason）。update は null のキーを消す。remove では渡さない"
+            ),
+        ] = None,
+    ) -> CallToolResult:
+        return write(
+            workspace, lambda root: commands.run_edit_option(root, id, action, key, option)
+        )
+
+    @server.tool(
+        name="batch",
+        description="項目の追加・更新・取得の操作を並べた順に 1 回で当てる。全てを当ててから 1 回だけ書き、1 つでも失敗したら何も書かない。先に足した項目は $番号（add の番号、1 始まり）で指せる",
+    )
+    def batch(
+        workspace: WorkspaceArg,
+        operations: Annotated[
+            list[dict[str, Any]],
+            Field(
+                description="当てる操作の並び。要素は op（add・update・show）と、add は kind・item、update は id・item、show は id"
+            ),
+        ],
+    ) -> CallToolResult:
+        return write(workspace, lambda root: commands.run_batch(root, operations))
+
+    @server.tool(
+        name="changes_since_read",
+        description="AI が最後に読んだ時点より後に足した・変えた項目を、変わったキーと読んだ時点の値つきで返し、読んだ時点を今に進める",
+    )
+    def changes_since_read(workspace: WorkspaceArg) -> CallToolResult:
+        return write(workspace, commands.run_changes_since_read)
+
+    @server.tool(
+        name="commit",
+        description="まだまとめていない書き換えを、日時と一言の説明を付けた 1 つのまとまりにする",
+    )
+    def commit(
+        workspace: WorkspaceArg,
+        summary: Annotated[
+            str, Field(description="このまとまりで何をしたかの一言の説明（1〜200 文字）")
+        ],
+    ) -> CallToolResult:
+        return write(workspace, lambda root: commands.run_commit(root, summary))
+
+    @server.tool(
+        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー）を返す"
+    )
+    def pending(workspace: WorkspaceArg) -> CallToolResult:
+        return read(workspace, commands.run_pending)
 
     @server.tool(name="status", description="再開時の状況（要見直し・進行中・再開可能など）を返す")
     def status(workspace: WorkspaceArg) -> CallToolResult:
@@ -220,7 +323,9 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         out_path = resolve_workspace(out, cwd)
         return read(workspace, lambda root: commands.run_export(root, out_path))
 
-    @server.tool(name="preview_url", description="プレビューを配る URL を返す（無ければ配信を立てる）")
+    @server.tool(
+        name="preview_url", description="プレビューを配る URL を返す（無ければ配信を立てる）"
+    )
     def preview_url(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_preview_url(root, previews=previews))
 
@@ -275,9 +380,7 @@ def error_result(error: MindmapError) -> CallToolResult:
     # 前の版の形式のスキーマ違反: 移し替えのスキルを案内する
     if isinstance(error, SchemaMismatchError) and error.legacy:
         lines.append(LEGACY_HINT)
-    return CallToolResult(
-        content=[TextContent(type="text", text="\n".join(lines))], is_error=True
-    )
+    return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))], is_error=True)
 
 
 def resolve_workspace(path: str, cwd: Path) -> Path:

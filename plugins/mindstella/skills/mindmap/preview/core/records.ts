@@ -1,4 +1,4 @@
-// 記録の索引・関係する項目・検索。次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。
+// 記録の索引・関係する項目・検索・箇所の名前。次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。
 
 namespace MindmapPreview {
   /** 項目の種類（`mindmap-data` のキー） */
@@ -65,6 +65,48 @@ namespace MindmapPreview {
     reason?: string;
   };
 
+  /** 本文の差分の 1 か所。書き換えた後の本文のある行からの並びを、前の行の並びに置き換える */
+  export type BodyDiffHunk = {
+    /** 書き換えた後の本文の 1 始まりの行。`now` が空のときはその行の前に差し込む */
+    line: number;
+    /** その行からの今の行（改行を含まない） */
+    now: string[];
+    /** 置き換える前の行 */
+    before: string[];
+  };
+
+  /** 項目の変更履歴の 1 回分 */
+  export type HistoryEntry = {
+    /** `changes.yaml` の通し番号 */
+    seq: number;
+    /** 書き換えた日時 */
+    at: string;
+    /** 変わったキー → 書き換える前の値。前に無かったキーは null */
+    before: Record<string, unknown>;
+    /** 今の本文を前の本文へ戻す行の置き換え（本文が変わったときだけ） */
+    body_diff?: BodyDiffHunk[];
+  };
+
+  /** 書き換えのまとまり */
+  export type ChangeSet = {
+    id: string;
+    at: string;
+    /** 一言の説明 */
+    summary: string;
+    /** まとめたときの `last_seq` */
+    until_seq: number;
+    added: string[];
+    changed: string[];
+  };
+
+  /** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
+  export type Changes = {
+    last_seq: number;
+    /** 新しい順 */
+    sets: ChangeSet[];
+    pending: { added: string[]; changed: string[] };
+  };
+
   /** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
   export type Item = {
     id: string;
@@ -100,17 +142,26 @@ namespace MindmapPreview {
     avoid?: string[];
     content?: string;
     date?: string;
+    /** 変更履歴（新しい順） */
+    history?: HistoryEntry[];
+    /** 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。一度も消していなければ持たない */
+    history_dropped_seq?: number;
   };
 
   /** 設定（`mindmap.yaml`） */
   export type Settings = {
     summary: string;
-    field: string;
+    /** 話し合いの概要（1 文の短い文）。無い設定もある */
+    description?: string;
+    playbooks: string[];
     target_label: string;
     phases: string[];
     targets: { name: string; summary: string }[];
     categories: { name: string; target: string; summary: string }[];
-    goal: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
+    /** ゴール。ゴールを決めていない話し合いは持たない */
+    goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
+    /** 項目ごとに変更履歴を何回分持つか */
+    history_limit?: number;
   };
 
   /** フェーズごと・カテゴリーごとの、決着した数と全体の数 */
@@ -120,8 +171,10 @@ namespace MindmapPreview {
   export type Derived = {
     next: { id: string; title: string; phase: string | null; weight: string | null; followers: number }[];
     goal: {
-      reached: boolean;
-      goal_phase: string;
+      has_goal: boolean;
+      /** ゴールが無いときは判定せず `null` */
+      reached: boolean | null;
+      goal_phase: string | null;
       phases: string[];
       remaining_decisions: { id: string; title: string; phase: string; status: string }[];
       remaining_deliverables: { title: string; doc: string | null }[];
@@ -134,6 +187,8 @@ namespace MindmapPreview {
   export type MindmapData = Record<Kind, Item[]> & {
     settings: Settings;
     bodies: Record<string, string>;
+    /** 書き換えのまとまりと、まだまとめていない変更 */
+    changes: Changes;
     derived: Derived;
     built_at: string;
   };
@@ -263,5 +318,39 @@ namespace MindmapPreview {
   /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */
   export function titleOf(index: RecordIndex, id: string): string {
     return index.byId.get(id)?.item.title ?? "（記録にありません）";
+  }
+
+  /** 項目のキー → 詳細パネルがそのキーに出す見出し（案の中のキーも同じ辞書） */
+  const VALUE_HEADINGS: Record<string, string> = {
+    title: "タイトル",
+    status: "状態",
+    lead: "問い",
+    answer: "決定内容",
+    reason: "理由",
+    content: "内容",
+    pros: "メリット",
+    cons: "デメリット",
+    note: "備考",
+    question: "調べたこと",
+    conclusion: "結論",
+    meaning: "意味",
+    result: "結果",
+  };
+
+  /** 案の中のキー（`options[C].cons`）の形 */
+  const OPTION_KEY = /^options\[([^\]]+)\]\.(\w+)$/;
+
+  /** 箇所を画面に出す名前にする。本文は行（範囲は「〜」でつなぐ）、値は詳細パネルがそのキーに出す見出し（案の中は「案 {key} の{見出し}」） */
+  export function locationLabel(loc: Location): string {
+    if (loc.kind === "body") {
+      const start = loc.start ?? 0;
+      const end = loc.end ?? start;
+      return start === end ? `本文 ${start} 行目` : `本文 ${start}〜${end} 行目`;
+    }
+    const key = loc.key ?? "";
+    const option = OPTION_KEY.exec(key);
+    // 案の中の値: 案の記号と見出し
+    if (option !== null) return `案 ${option[1]} の${VALUE_HEADINGS[option[2] ?? ""] ?? option[2]}`;
+    return VALUE_HEADINGS[key] ?? key;
   }
 }

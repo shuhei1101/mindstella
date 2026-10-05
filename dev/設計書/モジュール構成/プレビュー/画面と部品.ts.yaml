@@ -4,10 +4,13 @@ directory: |-
   ```
   plugins/mindstella/skills/mindmap/preview/
     components/
-      view-switch.ts      表示形式の切り替え（部品設計『表示形式の切り替え』）
-      topbar.ts           トップバー（部品設計『トップバー』）
-      table.ts            表と、並べ替え・絞り込みの計算（部品設計『表』）
-      send-form.ts        回答・意見の送信（部品設計『回答・意見の送信』）
+      view-switch.ts        表示形式の切り替え（部品設計『表示形式の切り替え』）
+      topbar.ts             トップバー（部品設計『トップバー』）
+      diff-mark.ts          差分の印（部品設計『差分の印』）
+      history-dialog.ts     変更履歴（部品設計『変更履歴』）
+      table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
+      send-form.ts          コメントの入力（部品設計『コメントの入力』）
+      selection-comment.ts  選んだ箇所のコメントの入口（部品設計『選んだ箇所のコメントの入口』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（マップ・ボード・表）
@@ -15,6 +18,7 @@ directory: |-
       docs.ts             資料（カード・ボード・表）
       records.ts          調査・用語集・メモ・会話ログ（表）
       detail.ts           詳細パネルと詳細の全画面
+      comments.ts         コメントの一覧（左から出すパネル）
       search.ts           全体の検索
       diagram-viewer.ts   図の拡大
     graph/
@@ -54,7 +58,7 @@ components:
         required: true
         description: 題名
       - name: tabs
-        type: '{key, label, icon, count?}[]'
+        type: '{key, label, icon, count?, marked?}[]'
         required: true
         description: タブ
       - name: current
@@ -87,6 +91,26 @@ components:
         required: false
         default: 'null'
         description: 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える（`formatJst`）
+      - name: diffPoint
+        type: '{name, sub} | null'
+        required: false
+        default: 'null'
+        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ねる
+      - name: onHistory
+        type: () => void
+        required: false
+        default: なし（「変更履歴」を出さない）
+        description: 変更履歴を開く
+      - name: onDiffOff
+        type: () => void
+        required: false
+        default: なし
+        description: 札の × で差分の表示をやめる
+      - name: comments
+        type: '{count: number, open: boolean, onToggle: () => void} | null'
+        required: false
+        default: 'null'
+        description: コメントのボタンの件数・一覧を開いているか・押したとき。`null`（配る書き出し）ならボタンを置かず、検索の入口も今の位置のまま。件数は 99 を超えたら `99+`、読み上げの名前には実際の件数
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -130,12 +154,17 @@ components:
         type: '{sort, filter, pin, columns, reset, open}'
         required: true
         description: 部品設計のイベントごとのコールバック
+      - name: marks
+        type: Record<string, 'new' | 'changed'>
+        required: false
+        default: '{}'
+        description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
   - name: overviewScreen
     title: 概要
     container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
     usecase: 概要を見る
     kind: 画面
-    summary: 画面設計『概要』のタイルを描く。次の候補・ゴールまでの進捗・カテゴリー別の進捗は埋め込みのデータの `derived` をそのまま並べる（画面で計算しない）
+    summary: 画面設計『概要』のタイルを描く。次の候補・ゴールまでの進捗・カテゴリー別の進捗は埋め込みのデータの `derived` をそのまま並べる（画面で計算しない）。題名の上には `settings.description` があるときだけその 1 行を出す。`derived.goal.has_goal` が偽のときは、ゴールまでの進捗のタイルの見出しを「フェーズ別の進捗」にして「ゴールは決まっていません」と `phase_progress` だけを出し、納品物は出さない（`settings.goal` を読まない）
     props:
       - name: index
         type: RecordIndex
@@ -150,7 +179,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: 画面設計『検討事項』を描く。マップは `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。elkjs が読めないときは `libraryNotice`。状態の印の右端に `toggleAllBox` を置き、`shownStatuses` をまとめて入れ替えて描き直す。表示する状態の検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す
+    summary: 画面設計『検討事項』を描く。マップは `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。elkjs が読めないときは `libraryNotice`。状態の印の右端に `toggleAllBox` を置き、`shownStatuses` をまとめて入れ替えて描き直す。表示する状態の検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
     props:
       - name: index
         type: RecordIndex
@@ -161,9 +190,9 @@ components:
         required: true
         description: 表示形式と絞り込み
       - name: on
-        type: '{open, view}'
+        type: '{open, view, clear}'
         required: true
-        description: 項目を開く・表示形式を切り替える
+        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）
     state:
       - name: shownStatuses
         type: Set<string>
@@ -239,7 +268,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`、関係する項目は `relatedItems`。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`send` があれば下端に `sendForm` を留め、見出しと下端の間だけをスクロールする
+    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）、関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す
     props:
       - name: id
         type: string
@@ -257,10 +286,33 @@ components:
         type: '{open, close, full, back, forward, diagram}'
         required: true
         description: 項目へ移る・閉じる・全画面の切り替え・戻る進む・図を拡大する
-      - name: send
-        type: SendFormProps | null
+      - name: comment
+        type: "{form: SendFormProps, reviews: ReviewState['items']} | null"
         required: true
-        description: 下端に置く回答・意見の送信の引数。配る書き出しでは `null`（置かない）
+        description: 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント。配る書き出しでは `null`（どちらも置かず、選んだ箇所の入口も出さない）
+      - name: highlight
+        type: Location | null
+        required: false
+        default: 'null'
+        description: コメントの一覧から開いたときに示す箇所。本文は `start` の行を含む `data-line-start` のブロック、値は `data-key` が `key` の要素。見つからなければ示さず、項目の先頭を出す
+      - name: diff
+        type: DiffPoint | null
+        required: false
+        default: 'null'
+        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagram`）・Raw の差分と、組み立てられない旨を描く。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す'
+    unit_tests:
+      - name: test_detail_panel_when_diff_highlight
+        case: 正常
+        summary: 差分の表示の間も、消した部分の後ろの箇所を今の行のブロックで示す
+        condition: 前の版の 2、3 行目の段落を消した D-1 を `diff` つきで開き、`highlight` に今の本文の 3 行目（消した部分の後ろの段落）を渡す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 示されたブロックの `data-line-start` が 3 で文字が今の 3 行目。消した部分の要素は `data-line-start` を持たない
+      - name: test_detail_panel_when_old_set_after_body_edit
+        case: 正常
+        summary: 古いまとまりを選び、その後に本文を直した項目では、本文の行の印を外す
+        condition: V-1 で本文を直し、V-2 で本文の頭に段落を足して行をずらした D-1 を、V-1 を選んだ `diff` と今の本文の 3 行目の `highlight` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 本文のどの要素も `data-line-start` を持たず、`highlight` は項目の先頭を示す
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -291,6 +343,11 @@ components:
         type: '{close}'
         required: true
         description: 閉じる
+      - name: diff
+        type: '{beforeSource: string} | null'
+        required: false
+        default: 'null'
+        description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分（`diffLineParts`）を出す。`diffLineParts` が `null` のときは Raw に今の記法を差分なしで出す
   - name: graphScreen
     title: つながり
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
@@ -320,61 +377,206 @@ components:
         initial: 空
         description: 玉・太さ・色ごとに描いた文字の画像
   - name: sendForm
-    title: 回答・意見の送信
+    title: コメントの入力
     container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
-    usecase: 回答・意見を送る
+    usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 部品設計『回答・意見の送信』の引数を受け、入力・送る・本文を写すをコールバックで知らせる。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
+    summary: 部品設計『コメントの入力』の引数を受け、入力・溜める・箇所を外す・本文を写す・入力欄に入る・出るをコールバックで知らせる。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
     props:
       - name: target
-        type: string
+        type: string | null
         required: true
-        description: 送る先の項目の ID
+        description: 向ける項目の ID。`null` は項目を指さないコメント（ラベルを見せず `aria-label`）
+      - name: loc
+        type: Location | null
+        required: false
+        default: 'null'
+        description: 添えた箇所。入力欄の上に `locationLabel` と選んだ文（3 行まで）と × を出す
       - name: body
         type: string
         required: false
         default: "''"
         description: 入力欄の中身
       - name: status
-        type: "'idle' | 'sending' | 'sent' | 'empty' | 'failed'"
+        type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed'"
         required: false
         default: "'idle'"
-        description: 送信の状態
-      - name: sentAt
-        type: string | null
+        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）
+      - name: count
+        type: number | null
         required: false
         default: 'null'
-        description: 受けた日時。`sent` のとき JST で出す（`formatJst`）
+        description: 溜めた後の件数。`saved` のときに出す
       - name: detail
         type: string | null
         required: false
         default: 'null'
         description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち上げ直しの案内と「本文を写す」を出す
-      - name: onInput
-        type: '(body: string) => void'
+      - name: collapsed
+        type: boolean
+        required: false
+        default: 'false'
+        description: 畳んだ形（`target` が `null` のときだけ使う）
+      - name: on
+        type: '{input, save, unquote, copy, focus, blur}'
         required: true
-        description: 入力欄の中身が変わった
-      - name: onSend
-        type: '(body: string) => void'
-        required: true
-        description: 送るボタンか Ctrl+Enter（macOS は Cmd+Enter）。`sending` の間は呼ばない
-      - name: onCopy
-        type: '(body: string) => void'
-        required: true
-        description: 「本文を写す」
+        description: 入力欄の中身が変わった・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。`saving` の間は呼ばない）・箇所の ×・「本文を写す」・入力欄に入った・部品の外へ出た
     unit_tests:
       - name: test_send_form
         case: 正常
         summary: 状態ごとの入力欄と結果
-        condition: '`parametrize`: `sending` / `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
+        condition: '`parametrize`: `saving` / `saved`（`count: 3`）/ `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: '`sending` は送るボタンが `disabled` で入力欄が `readonly` / `empty` は入力欄が `aria-invalid="true"` / 「本文を写す」がある / 理由が出て「本文を写す」が無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指す'
+        expected: '`saving` はボタンが `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 入力欄が `aria-invalid="true"` / 「本文を写す」がある / 「レビューに追加できませんでした。{理由}」で「本文を写す」が無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指す'
+      - name: test_send_form_when_location_and_no_target
+        case: 正常
+        summary: 添えた箇所と項目を指さない形
+        condition: '`parametrize`: `target: A-005`・`loc` が本文の 3 行目 / `target: null` / `target: null`・`collapsed: true`'
+        mock: '`on.unquote`'
+        expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」/ 「レビューに追加」が無く入力欄が 1 行
       - name: test_send_form_when_ctrl_enter
         case: 正常
-        summary: Ctrl+Enter で送り、送っている間は送らない
-        condition: '`parametrize`: `idle` で Ctrl+Enter / `sending` で Ctrl+Enter'
-        mock: '`onSend`'
-        expected: '`onSend` が入力欄の中身で 1 回 / 呼ばれない'
+        summary: Ctrl+Enter で溜め、溜めている間は溜めない
+        condition: '`parametrize`: `idle` で Ctrl+Enter / `saving` で Ctrl+Enter'
+        mock: '`on.save`'
+        expected: '`on.save` が入力欄の中身で 1 回 / 呼ばれない'
+  - name: selectionComment
+    title: 選んだ箇所のコメントの入口
+    container: plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts
+    usecase: 選んだ箇所へコメントする
+    kind: コンポーネント
+    summary: 部品設計『選んだ箇所のコメントの入口』のピル。選んだ範囲の矩形から位置を決め（下に収まらなければ上、左右は画面の端から 8px の内側）、押す・Esc をコールバックで知らせる。押したときに選択が外れないよう `pointerdown` の既定の動きを止める
+    props:
+      - name: anchor
+        type: '{first: DOMRect, last: DOMRect}'
+        required: true
+        description: 選んだ範囲の最初と最後の矩形（`Range.getClientRects()`）
+      - name: viewport
+        type: '{width: number, height: number}'
+        required: true
+        description: 画面の大きさ
+      - name: on
+        type: '{press, close}'
+        required: true
+        description: 押した（Enter・Space を含む）・Esc
+    unit_tests:
+      - name: test_selection_comment_position
+        case: 正常
+        summary: 下に収まらなければ上、端は内側に収める
+        condition: '`parametrize`: 画面の中ほど / 最後の矩形が画面の下端の近く / 右端に寄った幅 390px'
+        mock: なし
+        expected: 最後の矩形の下 / 最初の矩形の上 / 右端から 8px の内側
+      - name: test_selection_comment_keys
+        case: 正常
+        summary: Enter で押し、Esc で閉じる
+        condition: 入口にフォーカスして Enter、Esc
+        mock: '`on.press`・`on.close`'
+        expected: それぞれ 1 回呼ばれる。読み上げの名前が「選んだ箇所にコメント」
+  - name: commentsPanel
+    title: コメントの一覧
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    kind: 画面
+    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。描き直しても操作していた部品にフォーカスを戻す
+    props:
+      - name: items
+        type: ReviewState['items']
+        required: true
+        description: レビュー中のコメント
+      - name: removed
+        type: ReviewState['items']
+        required: true
+        description: 一覧を開いている間に消したコメント（元の場所に「元に戻す」を出す）
+      - name: checked
+        type: Set<string>
+        required: true
+        description: チェックしたコメントの ID
+      - name: editing
+        type: string | null
+        required: true
+        description: 本文を直しているコメントの ID
+      - name: stale
+        type: Map<string, string>
+        required: true
+        description: 箇所が合わないコメントの ID → 理由
+      - name: result
+        type: "{kind: 'sending' | 'sent' | 'failed' | 'stale', count?, at?, detail?} | null"
+        required: true
+        description: まとめて送った結果（送った結果の文言は画面設計どおり）
+      - name: selected
+        type: string | null
+        required: true
+        description: 行から開いて詳細パネルに出しているコメントの ID（選んだ見た目にする）
+      - name: titleOf
+        type: '(id: string) => string | null'
+        required: true
+        description: 項目のタイトル（記録から消えていれば `null`。押せない ID だけを出し、箇所を外すを出さない）
+      - name: free
+        type: SendFormProps
+        required: true
+        description: 下端の項目を指さない入力の引数
+      - name: on
+        type: '{close, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc}'
+        required: true
+        description: 閉じる・チェック・すべて選ぶ・まとめて送る・行の項目を開く・直す・直しを送る・やめる・削除・元に戻す・箇所を外す
+    unit_tests:
+      - name: test_comments_panel
+        case: 正常
+        summary: 送る帯と行を描く
+        condition: C-1（D-1）・C-2（消えた D-9、箇所が合わない）・C-3（項目を指さない）、C-1・C-3 をチェック、削除した C-4
+        mock: なし（DOM を作って見る）
+        expected: 「2 / 3 件」と「まとめて送る（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の向けた項目が「項目を指さない」。C-4 の場所に「元に戻す」
+      - name: test_comments_panel_when_empty
+        case: 正常
+        summary: 0 件は空の状態と入力だけ
+        condition: '`items`・`removed` が空'
+        mock: なし
+        expected: 「レビュー中のコメントはありません。」と下端の入力があり、送る帯が無い
+      - name: test_comments_panel_when_send_disabled
+        case: 正常
+        summary: チェック 0 件と送っている間は送れない
+        condition: '`parametrize`: チェックが 0 件 / `result.kind` が `sending`'
+        mock: '`on.send`'
+        expected: まとめて送るが `disabled` で、押しても `on.send` が呼ばれない。前者は「送るコメントにチェックを付けてください。」
+  - name: diffMark
+    title: 差分の印
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『差分の印』の引数を受け、新規（+）か変更（●）の印を返す。表・ボード・カード・マップ・概要のタイル・詳細パネルが使う
+    props:
+      - name: kind
+        type: "'new' | 'changed'"
+        required: true
+        description: 新規か変更か
+      - name: labeled
+        type: boolean
+        required: false
+        default: 'false'
+        description: 文言つきの札にするか
+  - name: historyDialog
+    title: 変更履歴
+    container: plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『変更履歴』の引数を受け、`dialog` を `showModal()` で開く。行を押すと選んだ `sel` を知らせて閉じる。閉じたら「変更履歴」のボタンにフォーカスを戻す。並べる時点は入口が記録の `changes` と「前回開いてから」の始まりから作る（画面設計『変更履歴』の時点の一覧）
+    props:
+      - name: points
+        type: '{sel, name, sub, count?}[]'
+        required: true
+        description: 並べる時点
+      - name: current
+        type: string
+        required: true
+        description: 今選んでいる時点の `sel`（差分を出さないときは空文字列）
+      - name: onPick
+        type: '(sel: string) => void'
+        required: true
+        description: 時点を選ぶ（空文字列は差分の表示をやめる）
+      - name: onClose
+        type: () => void
+        required: true
+        description: 閉じる
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -618,3 +820,6 @@ test_files:
   - tests/unit/preview/test_decisions.py
   - tests/unit/preview/test_graph.py
   - tests/unit/preview/test_send_form.py
+  - tests/unit/preview/test_selection_comment.py
+  - tests/unit/preview/test_comments_panel.py
+  - tests/unit/preview/test_detail.py

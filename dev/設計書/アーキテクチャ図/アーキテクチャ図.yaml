@@ -138,7 +138,7 @@ external_systems:
       事前確認: 要。起動スクリプトが、`PATH` に `claude` があることと、`claude plugin list --json` に mindstella があることを確かめ、無ければ Claude Code を立てずに止まる。MCP のサーバーは Claude Code が立てる側のため、立った時点で到達している。
     detail: dev/設計書/外部ライブラリ/claude-code#
   - name: jsDelivr
-    purpose: プレビューの描画のライブラリ（marked・DOMPurify・elkjs・mermaid）の取得。サーバーが配るプレビューは開いたブラウザが読み、配る書き出し（`export`）は書き出すときに取って中に持つ
+    purpose: プレビューの描画のライブラリ（marked・DOMPurify・elkjs・mermaid）と差分の計算のライブラリ（jsdiff）の取得。サーバーが配るプレビューは開いたブラウザが読み、配る書き出し（`export`）は書き出すときに取って中に持つ
     direction: 受信のみ
     protocol: HTTPS
     notes:

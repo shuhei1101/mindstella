@@ -1,0 +1,44 @@
+title: "選んだ箇所のコメントの入口"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts#MindmapPreview.selectionComment"
+story: "Preview/SelectionComment"
+states:
+  - name: Below
+    description: 選んだ範囲の終わりの下に出す。角を丸め切った横長の形（ピル）に、印と「コメント」
+  - name: Hover
+    description: ホバー。面の色だけを変える
+    notes:
+      見せ方: Storybook のホバーの疑似クラスで見せる
+  - name: Focus
+    description: キーボードのフォーカス。印の色の輪で、ホバーと見分ける
+    notes:
+      見せ方: ストーリーの play で入口へ Tab で届かせる
+  - name: Above
+    description: 下に収まらない。選んだ範囲の始まりの上に出す
+  - name: Narrow
+    description: 幅 390px で選んだ範囲が画面の端に寄る。入口を画面の端から 8px の内側に収める
+    notes:
+      見せ方: Storybook の画面幅を 390px にし、選んだ範囲を右端に置いて見せる
+lead: 詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出すピルの形の入口。押すと使う側が下端のコメントの入力に箇所を添える。
+status: planned
+args:
+  - name: anchor
+    type: オブジェクト
+    required: true
+    description: 選んだ範囲の端の画面上の位置（`Range.getClientRects()` の最後と最初の矩形）。入口をこの近くに出す
+  - name: viewport
+    type: オブジェクト
+    required: true
+    description: 画面の大きさ（`{width, height}`）。選んだ範囲の終わりの下に出し、下に収まらなければ始まりの上に出す。左右は画面の端から 8px の内側に収める
+events:
+  - name: 押す
+    when: 入口を押したときと、フォーカスして Enter・Space を押したとき
+    description: 使う側が入口を閉じ、選んだ範囲から作った箇所を下端のコメントの入力に添えて、入力欄へフォーカスを移す
+  - name: 閉じる
+    when: Esc を押したとき
+    description: 使う側が入口を閉じ、選択を残したままフォーカスを本文へ戻す。選択を外したとき・内容を送ったときも使う側が閉じる
+accessibility:
+  - 入口はボタンにし、読み上げの名前を「選んだ箇所にコメント」にする（見せる文字は「コメント」）
+  - Tab で、開いている詳細の本文の次に届く。Esc で閉じる
+  - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
+  - 押せる的は高さ 32px 以上にする
+test_file: tests/integration/storybook/test_selection_comment_stories.py

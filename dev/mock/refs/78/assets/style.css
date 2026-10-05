@@ -1,0 +1,290 @@
+/* 65・71 のスタイルの上に重ね、コメントのボタン・コメントの一覧・箇所を添えた入力・選んだ箇所の入口を足す分 */
+
+/* 足す寸法: 角の丸い入口と、一覧の行 */
+:root {
+  --radius-pill: 999px;
+  --radius-bubble: 10px;
+  --drawer-w: 420px;
+  --count-h: 18px;
+}
+
+/* ===== トップバー: 全体の検索の入口を中央へ寄せ、右端にコメントのボタンを置く ===== */
+
+/* 検索の入口の両側の空き: 同じ伸び方にして、入口を中央に寄せる */
+.topbar .spacer { flex: 1 1 0; }
+/* コメントのボタン（トップバー）: 検索の入口と同じ高さと枠 */
+.comment-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); text-decoration: none; font-size: var(--fs-small); white-space: nowrap; }
+.comment-btn:hover { background: var(--topbar-hover); }
+.comment-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+/* コメントの一覧を開いているときのボタン: 枠と面で選んだ見た目にする */
+.comment-btn[aria-current="page"], .comment-btn[aria-expanded="true"] { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
+/* コメントのボタンの件数: 0 件でも出し、数字は等幅で幅を揺らさない */
+.cb-count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+/* 件数が 0 のとき: 塗りを外して目立たせない */
+.cb-count.zero { background: transparent; color: var(--topbar-fg-2); box-shadow: inset 0 0 0 1px var(--topbar-line); }
+/* タブの帯に置く案のコメントのボタン: つながりの入口と同じ形で、その左に並べる */
+.comment-tab { margin-right: 8px; }
+/* タブの帯のボタンの件数: 帯の面の上の色にする */
+.comment-tab .cb-count { background: var(--text); color: var(--surface); }
+.comment-tab .cb-count.zero { background: transparent; color: var(--text-3); box-shadow: inset 0 0 0 1px var(--border); }
+/* タブの帯のボタンを押せる形にする（リンクのタブと同じ見た目） */
+button.comment-tab { font: inherit; cursor: pointer; }
+/* 狭い幅（900px 以下）: 文字を隠し、印と件数だけにする */
+@media (max-width: 900px) { .comment-btn .cb-label { display: none; } .comment-btn { padding: 0 8px; } }
+
+/* ===== コメントの入力: 箇所の添え書き ===== */
+
+/* 添えた箇所: 入力欄の上に、どこへのコメントかと選んだ文を出す */
+.send-quote { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 箇所の名前: 行の範囲かキーの名前 */
+.sq-loc { flex: none; color: var(--text-2); font-weight: 600; }
+/* 選んだ文: 3 行までにして、それより長いと末尾を省く */
+.send-quote q, .cm-loc q { flex: 1; min-width: 0; color: var(--text); text-align: start; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+/* 添えた箇所を外すボタン: 文字の 1 行目に揃える */
+.send-quote .sq-x { flex: none; width: var(--target-min); height: var(--target-min); margin-top: -2px; }
+/* 添えた箇所を外すボタンの印 */
+.send-quote .sq-x svg.icon { width: 14px; height: 14px; }
+/* 溜めたときの印: 印の色にする */
+.send-msg.added svg.icon { color: var(--accent); }
+
+/* ===== 詳細パネルの左の空きに入力を置く案 ===== */
+
+/* パネルの左の空き: 本文側の下端に、パネルと同じ面の箱で浮かせる */
+.send.send-left { position: fixed; z-index: 21; right: calc(var(--panel-w) + 16px); bottom: 16px; width: min(560px, calc(100vw - var(--panel-w) - 48px)); padding: 12px 16px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+/* 資料のように広いパネルのとき: パネルの幅に合わせて左へずらす */
+body:has(.panel.wide.open) .send.send-left { right: calc(min(760px, 100%) + 16px); width: min(560px, calc(100vw - min(760px, 100%) - 48px)); }
+/* パネルが本文に重なる幅（1100px 未満）: 左の空きが無いので、パネルの下端に重ねて置く */
+@media (max-width: 1099px) { .send.send-left { right: 0; bottom: 0; width: var(--panel-w); max-width: 100%; border-radius: 0; border-width: 1px 0 0; box-shadow: none; } body:has(.panel.wide.open) .send.send-left { right: 0; width: min(760px, 100%); } }
+/* パネルを閉じているとき: 出さない */
+body:not(.panel-open) .send.send-left { display: none; }
+
+/* ===== コメントの一覧（本文の場所に出す画面） ===== */
+
+/* 見出し: 状態の名前と件数 */
+.cm-head { margin-bottom: 16px; }
+/* 見出しの文字 */
+.cm-head h1, .cm-h { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em; }
+/* 見出しの件数 */
+.cm-head .count, .cm-h .count { font-family: var(--font-mono); font-size: var(--fs-body); font-weight: 400; color: var(--text-3); }
+/* 一覧の中身: 読みやすい幅に収める */
+.cm-wrap { display: grid; gap: 12px; max-width: 880px; }
+/* まとめて送る帯: すべて選ぶ・選んだ件数・送るボタンを 1 行に並べ、画面を送っても見える位置に留める */
+.cm-bar { position: sticky; top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 帯の空き */
+.cm-bar .spacer { flex: 1; }
+/* すべて選ぶのチェックの箱: 行のチェックと同じ列に揃える */
+.cm-all { display: inline-grid; place-items: center; width: var(--target-min); height: var(--target-min); }
+/* チェックの箱の大きさと色 */
+.cm-all input, .cm-check { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+/* 選んだ件数 */
+.cm-sel { font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* まとめて送った結果・押せない理由: 留める帯の直下の流れに出し、画面を送ったら一覧と一緒に流れる */
+.cm-msg { display: flex; align-items: flex-start; gap: 6px; margin: -4px 0 0; padding: 0 12px; font-size: var(--fs-small); color: var(--text-2); }
+/* 結果も理由も無いとき: 2 行目を空けない */
+.cm-msg:empty { display: none; }
+/* 結果の印 */
+.cm-msg svg.icon { flex: none; width: 14px; height: 14px; margin-top: 2px; }
+/* 送った: 印の色 */
+.cm-msg.sent svg.icon { color: var(--accent); }
+/* 送れなかった・箇所が合わない: 状態の色の印と、本文の色の文字 */
+.cm-msg.failed, .cm-msg.stale { color: var(--text); }
+.cm-msg.failed svg.icon, .cm-msg.stale svg.icon { color: var(--st-review); }
+/* 送るボタンが押せないとき: 塗りを外し、押せない理由を左に出す */
+.cm-bar .btn.primary:disabled { background: var(--surface-2); border-color: var(--border); color: var(--text-2); cursor: default; }
+
+/* 一覧: 溜めた順の縦並び。行どうしは面の色の差で区切る */
+.cm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* 行: チェック・中身・操作の 3 列 */
+.cm-row { display: grid; grid-template-columns: var(--target-min) minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 行のチェック: 1 行目の中央に揃える */
+.cm-check { justify-self: center; margin-top: 6px; }
+/* 一覧から開いている行: 選んだ行の面にする */
+.cm-row.selected { background: var(--row-selected); border-color: var(--accent-line); }
+/* 箇所が合わない行: 枠の全体を状態の色にする（文言と印でも示す） */
+.cm-row.is-stale { border-color: var(--st-review); }
+/* 行の中身: 向けた項目・箇所・本文を縦に積む。列を中身の幅で広げず、長い項目名は操作の列の手前で省く */
+.cm-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+/* 向けた項目: 押すと詳細パネルを開く */
+.cm-target { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: var(--control-h); padding: 0 6px; margin-left: -6px; border: 0; border-radius: var(--radius); background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.cm-target:hover { background: var(--hover); }
+.cm-target:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 向けた項目の ID */
+.cm-target .mono { flex: none; font-weight: 400; color: var(--text-2); }
+/* 向けた項目のタイトル: 1 行で末尾を省く */
+.cm-ttl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 向けた項目の印 */
+.cm-target svg.icon { flex: none; width: 14px; height: 14px; color: var(--text-3); }
+/* 項目を指さないコメント: 押せない見出しにする */
+.cm-target.none { display: inline-flex; align-items: center; min-height: var(--control-h); font-weight: 600; color: var(--text-2); cursor: default; }
+/* 行の箇所: 添えた箇所と同じ形 */
+.cm-loc { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 行の本文: 改行を保ち、長い URL も折り返す */
+.cm-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+/* 行の操作: 直す・削除を縦の中央ではなく上に揃える */
+.cm-tools { display: flex; gap: 2px; }
+/* 箇所が合わない理由と、箇所を外すボタン */
+.cm-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-small); }
+/* 箇所が合わない印 */
+.cm-stale svg.icon { flex: none; width: 14px; height: 14px; color: var(--st-review); }
+/* 箇所が合わない理由の文字 */
+.cm-stale span { flex: 1; min-width: 12em; }
+/* 本文を直す入力 */
+.cm-edit { display: grid; gap: 8px; }
+/* 本文を直す入力欄: 送信の入力欄と同じ見た目 */
+.cm-edit textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(10lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.cm-edit textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 本文を空にして直そうとした入力欄 */
+.cm-edit textarea[aria-invalid="true"] { border-color: var(--st-review); }
+/* 直す・やめるの行: 右に寄せる */
+.cm-edit-row { display: flex; justify-content: flex-end; gap: 8px; }
+/* 削除した行: 元に戻すボタンだけを残す */
+.cm-row.cm-removed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; background: var(--surface-2); border-style: dashed; }
+/* 削除した旨 */
+.cm-removed-msg { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: var(--fs-small); }
+/* 削除した旨の印 */
+.cm-removed-msg svg.icon { width: 14px; height: 14px; }
+/* 0 件のとき: 印と文言だけを置く */
+.cm-empty { display: flex; align-items: center; gap: 10px; padding: 24px 16px; color: var(--text-2); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
+/* 0 件の文言 */
+.cm-empty p { margin: 0; }
+/* 0 件の印 */
+.cm-empty svg.icon { width: 20px; height: 20px; color: var(--text-3); }
+/* 項目を指さないコメントの入力: 行と同じ面の箱にする */
+.send.send-free { padding: 12px 16px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 狭い幅（720px 以下）: 見出しと行の余白を詰め、箇所の名前と選んだ文を縦に積む */
+@media (max-width: 720px) {
+  .cm-head h1 { font-size: 26px; }
+  .cm-row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
+  /* 直す・削除を右上に重ね、中身を行の幅いっぱいに使う */
+  .cm-tools { position: absolute; top: 10px; right: 10px; }
+  .cm-target { max-width: calc(100% - 2 * var(--control-h) - 8px); }
+  .cm-row.cm-removed { grid-template-columns: minmax(0, 1fr) auto; }
+  .cm-loc, .send-quote { flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
+  .cm-loc q, .send-quote q { flex-basis: 100%; order: 3; }
+  .send-quote .sq-x { margin-left: auto; }
+}
+
+/* ===== 一覧から開いた箇所の印 ===== */
+
+/* 示した箇所: 検索で当たった語と同じ地で、枠の全体で囲む */
+.loc-mark { background: var(--hit); color: inherit; border-radius: 2px; box-shadow: 0 0 0 2px var(--hit); }
+
+/* ===== コメントの一覧を左から出すパネルの案 ===== */
+
+/* 左のパネル: タブの帯の下から、本文に重ねて出す */
+.cdrawer { position: fixed; z-index: 22; top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); visibility: hidden; transition: transform .35s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .35s; }
+/* 開いた左のパネル */
+.cdrawer.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.22, .8, .24, 1); }
+/* 左のパネルの見出し: 詳細パネルの見出しと同じ帯 */
+.cdrawer-head { flex: none; background: var(--surface); }
+/* 左のパネルの見出しの文字 */
+.cdrawer .cm-h { font-size: var(--fs-h2); }
+/* 左のパネルの中身: 中だけを送る */
+.cdrawer .cm-wrap { flex: 1; overflow-y: auto; padding: 12px; align-content: start; }
+/* 左のパネルの帯: 中を送っても上に留める */
+.cdrawer .cm-bar { top: -12px; }
+/* 狭い幅（900px 以下）: 詳細パネルと同じく画面の幅いっぱいにする */
+@media (max-width: 900px) { .cdrawer { width: 100%; top: calc(var(--mock-h, 0px) + var(--topbar-h)); z-index: 34; } }
+
+/* ===== 削除の確認（案 B） ===== */
+
+/* 確認のモーダル: 小さな箱にする */
+dialog.confirm { width: min(420px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); }
+/* 確認のモーダルの後ろの幕 */
+dialog.confirm::backdrop { background: var(--scrim); }
+/* 確認の見出し */
+dialog.confirm h2 { margin: 0 0 8px; font-size: var(--fs-h2); }
+/* 削除するコメントの本文: 3 行までにする */
+.cf-body { margin: 0 0 16px; padding: 8px 10px; background: var(--surface-2); border-radius: var(--radius); color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+/* やめる・削除するの行 */
+.cf-row { display: flex; justify-content: flex-end; gap: 8px; margin: 0; }
+/* 削除するボタン: 状態の色で塗り、取り消せない操作であることを示す */
+.btn.danger { background: var(--st-review); border-color: var(--st-review); color: var(--on-accent); }
+.btn.danger:hover { background: color-mix(in oklab, var(--st-review) 85%, var(--text)); }
+
+/* ===== 選んだ箇所の入口 ===== */
+
+/* 入口: 選んだ範囲の近くに出す。位置はスクリプトが決める */
+.selpop { position: fixed; inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; color: var(--text); }
+/* 入口のボタン: 面の色・影・角の丸みは形ごとに変える */
+.selpop .sp-btn { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); font-weight: 600; white-space: nowrap; box-shadow: var(--shadow-pop); cursor: pointer; }
+.selpop .sp-btn:hover { background: var(--hover); }
+.selpop .sp-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 入口の印: 印の色 */
+.selpop .sp-btn svg.icon { width: 16px; height: 16px; color: var(--accent); }
+/* 案 A ピル: 角を丸め切った横長の形に、印と「コメント」 */
+.selpop[data-shape="pill"] .sp-btn { border-radius: var(--radius-pill); }
+/* 案 B 丸: 印だけの円。押せる的は 32px */
+.selpop[data-shape="round"] .sp-btn { width: var(--control-h); padding: 0; justify-content: center; border-radius: 50%; }
+/* 案 C 吹き出し: 角の丸い箱から、選んだ範囲へ尾を伸ばす */
+.selpop[data-shape="bubble"] .sp-btn { position: relative; border-radius: var(--radius-bubble); }
+/* 吹き出しの尾: 枠の色の三角に面の色の三角を 1px ずらして重ね、選んだ範囲の側へ向ける */
+.selpop[data-shape="bubble"] .sp-btn::before, .selpop[data-shape="bubble"] .sp-btn::after { content: ""; position: absolute; left: calc(var(--tail-x, 50%) - 7px); border: 7px solid transparent; }
+/* 下に出したときの尾（枠）: 上へ向ける */
+.selpop[data-shape="bubble"][data-side="below"] .sp-btn::before { top: -14px; border-bottom-color: var(--border); }
+/* 下に出したときの尾（面） */
+.selpop[data-shape="bubble"][data-side="below"] .sp-btn::after { top: -13px; border-bottom-color: var(--surface); }
+/* 上に出したときの尾（枠）: 下へ向ける */
+.selpop[data-shape="bubble"][data-side="above"] .sp-btn::before { bottom: -14px; border-top-color: var(--border); }
+/* 上に出したときの尾（面） */
+.selpop[data-shape="bubble"][data-side="above"] .sp-btn::after { bottom: -13px; border-top-color: var(--surface); }
+/* 吹き出しにホバーしたときの尾: 箱と同じ面の色にする */
+.selpop[data-shape="bubble"][data-side="below"] .sp-btn:hover::after { border-bottom-color: var(--hover); }
+.selpop[data-shape="bubble"][data-side="above"] .sp-btn:hover::after { border-top-color: var(--hover); }
+/* その場の入力（入力の置き場所の案 B）: 入口を広げた角の丸い箱 */
+.selpop[data-mode="form"] { width: min(380px, calc(100vw - 16px)); }
+/* その場の入力の箱 */
+.selpop[data-mode="form"] .send { padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-bubble); box-shadow: var(--shadow-pop); }
+
+/* ===== 撮影のときだけの全画面（ハッシュに shot=1） ===== */
+
+/* モーダルにしない全画面: モーダルと同じ位置に重ね、周りを薄い幕の色で覆う */
+dialog.full[open]:not(:modal) { position: fixed; inset: 0; z-index: 40; margin: auto; box-shadow: var(--shadow-pop), 0 0 0 100vmax var(--scrim-soft); }
+
+/* ===== 項目を指さないコメントの入力: 一覧の下端に固定する ===== */
+
+/* 一覧が長くても、画面（左右のパネルでは一覧の枠）の下端に留めていつでも書けるようにする */
+.cm-wrap .send.send-free { position: sticky; bottom: 12px; z-index: 5; box-shadow: var(--shadow-pop); }
+/* 左右のパネルの中: 枠の下端に付ける */
+.cdrawer .cm-wrap .send.send-free { bottom: -12px; }
+
+/* ===== 詳細の一番下の、その項目へのレビュー中のコメント ===== */
+
+/* 見出しの件数 */
+.d-reviews h3 .count { margin-left: 8px; font-family: var(--font-mono); font-weight: 400; color: var(--text-3); }
+/* 溜めた順の並び: 行どうしを細い線で区切る */
+.dr-list { list-style: none; margin: 0; padding: 0; }
+/* 1 件: 箇所と本文を縦に積む */
+.dr-row { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+/* 最後の行: 下の線を引かない */
+.dr-row:last-child { border-bottom: 0; }
+
+/* ===== コメントの一覧を右から出し、詳細パネルを左に出す案 ===== */
+
+/* 右のパネル: 左のパネルと同じ形を右端に置く */
+.cdrawer.right { left: auto; right: 0; border-right: 0; border-left: 1px solid var(--border); box-shadow: -14px 0 32px var(--shadow-color); transform: translateX(102%); }
+/* 開いた右のパネル */
+.cdrawer.right.open { transform: none; }
+/* 左に出す詳細パネル: 左端に置き、左からすべり込む */
+body.panel-left .panel { left: 0; right: auto; border-left: 0; border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); }
+/* 開いた左の詳細パネル */
+body.panel-left .panel.open { transform: none; }
+/* 左の詳細パネルを本文に並べる幅: 本文を右へ寄せる */
+@media (min-width: 1100px) {
+  body.panel-left.panel-open .content, body.panel-left.panel-open .crumbs-bar { margin-right: auto; margin-left: var(--panel-w); }
+  body.panel-left.panel-open:has(.panel.wide) .content, body.panel-left.panel-open:has(.panel.wide) .crumbs-bar { margin-right: auto; margin-left: min(760px, 100%); }
+}
+/* マップを並べる幅（901px 以上）: 同じく本文を右へ寄せる */
+@media (min-width: 901px) { body.panel-left.panel-open .content.map-view { margin-right: auto; margin-left: var(--panel-w); } }
+/* 本文の寄せは左の余白で動かす */
+body.panel-left .content { transition: margin-left .45s cubic-bezier(.22, .8, .24, 1); }
+
+/* 狭い幅（720px 以下）: 項目を指さないコメントの入力を 1 行に畳み、押すと広げる（下端に留めた入力が一覧を狭めないように） */
+@media (max-width: 720px) {
+  /* 畳んだ入力: 余白を詰め、ラベルと 1 行の入力欄だけを出す */
+  .send.send-free:not(.expanded) { gap: 4px; padding: 8px 12px; }
+  /* 畳んだ入力欄: 1 行の高さにし、伸ばさない */
+  .send.send-free:not(.expanded) textarea { min-block-size: 0; block-size: var(--control-h); field-sizing: fixed; resize: none; overflow: hidden; padding-block: 5px; }
+  /* 畳んだ入力: 結果と追加のボタンは広げてから出す */
+  .send.send-free:not(.expanded) .send-row { display: none; }
+}

@@ -11,17 +11,73 @@ from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 __all__ = [
+    "COMMENTS_BUTTON",
+    "COMMENTS_PANEL",
+    "DETAIL_FORM",
+    "DETAIL_MESSAGE",
+    "DETAIL_TEXTAREA",
+    "FREE_FORM",
+    "FREE_TEXTAREA",
+    "HISTORY_DIALOG",
+    "HISTORY_REDRAW_TIMEOUT_MS",
+    "HISTORY_ROW",
+    "PILL",
     "OpenPreview",
     "ServePreview",
     "click_item_ball",
     "count_balls",
     "fetch_records",
+    "pick_history_point",
     "row_ids",
+    "select_text",
+    "select_text_for_pill",
     "shown_ball_item_ids",
+    "snapshot_records",
+    "visit_and_close",
 ]
 
 type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
+
+# トップバーのコメントのボタンと、コメントの一覧のパネル
+COMMENTS_BUTTON = "header.topbar button.comments-btn"
+COMMENTS_PANEL = "aside.comments-panel"
+
+# 詳細パネルの下端のコメントの入力とその入力欄・結果
+DETAIL_FORM = "aside.panel form.send"
+DETAIL_TEXTAREA = "aside.panel form.send textarea"
+DETAIL_MESSAGE = "aside.panel form.send .send-msg"
+
+# コメントの一覧の下端の、項目を指さないコメントの入力とその入力欄
+FREE_FORM = f"{COMMENTS_PANEL} .comments-free form.send"
+FREE_TEXTAREA = f"{FREE_FORM} textarea"
+
+# 選んだ箇所のコメントの入口
+PILL = "button.selection-comment"
+
+# 選んだ後に入口が出るまで待つ 1 回のミリ秒と、選び直す回数の上限（描き直しで選択が外れても選び直す）
+PILL_WAIT_MS = 2_000
+PILL_SELECT_ATTEMPTS = 5
+
+# 要素の中の文を、始まりから終わりまで選ぶ
+SELECT_TEXT_SCRIPT = """([selector, text]) => {
+  const root = document.querySelector(selector);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const at = node.textContent.indexOf(text);
+    if (at >= 0) {
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + text.length);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return true;
+    }
+  }
+  return false;
+}"""
 
 # つながりのキャンバスの上を調べる間隔（px）。玉の当たりの半径（12px 前後）より細かくして、玉を取りこぼさない
 BALL_SCAN_STEP = 4
@@ -65,10 +121,69 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
 }"""
 
 
+# プレビューを開くたびに今の日時へ書き換わる、前回開いた日時のファイル
+OPENED_FILE_NAME = ".mindstella-opened"
+
+# 前回開いた日時（秒の単位）より後に書き換えが入るよう、開いて閉じた後に待つミリ秒
+OPENED_TICK_MS = 1_100
+
+# 一度開く画面が描き終わるまで待つ上限ミリ秒
+VISIT_RENDER_TIMEOUT_MS = 20_000
+
+
+# 変更履歴のモーダルと、時点の行
+HISTORY_DIALOG = "dialog.hist"
+HISTORY_ROW = f"{HISTORY_DIALOG} .hist-item"
+
+# 時点を選んだ後に描き直るのを待つ上限ミリ秒
+HISTORY_REDRAW_TIMEOUT_MS = 10_000
+
+
+def pick_history_point(page: Page, name: str) -> None:
+    """トップバーの「変更履歴」から、名前の合う時点を選び、差分の表示になるまで待つ。"""
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.locator(HISTORY_ROW).filter(has_text=name).click()
+    page.wait_for_selector(".df-chip", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+
+
+def snapshot_records(snapshot: dict[str, bytes]) -> dict[str, bytes]:
+    """フォルダの写しから、開くたびに書き換わる前回開いた日時のファイルを除いて返す。"""
+    return {path: content for path, content in snapshot.items() if path != OPENED_FILE_NAME}
+
+
+def visit_and_close(page: Page, url: str) -> None:
+    """新しいタブでプレビューを一度開いて閉じ、前回開いた日時を残す。後の書き換えがその日時より後になるまで待つ。"""
+    tab = page.context.new_page()
+    tab.goto(url)
+    tab.wait_for_selector("main#main > *", state="attached", timeout=VISIT_RENDER_TIMEOUT_MS)
+    tab.close()
+    page.wait_for_timeout(OPENED_TICK_MS)
+
+
 def fetch_records(url: str) -> dict[str, Any]:
     """配信の URL から記録（`/api/records`）を読み、JSON のオブジェクトにして返す。"""
     with urllib.request.urlopen(f"{url}api/records", timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def select_text(page: Page, selector: str, text: str) -> None:
+    """要素の中で最初に出てくる文を選ぶ。文が見つからなければ例外にする。"""
+    found = page.evaluate(SELECT_TEXT_SCRIPT, [selector, text])
+    if found is not True:
+        raise AssertionError(f"{selector} の中に選ぶ文がありません: {text}")
+
+
+def select_text_for_pill(page: Page, selector: str, text: str) -> None:
+    """要素の中の文を選び、選んだ箇所のコメントの入口が出るまで待つ。画面の描き直しで選択が外れたときは選び直す。"""
+    for _ in range(PILL_SELECT_ATTEMPTS):
+        select_text(page, selector, text)
+        try:
+            page.wait_for_selector(PILL, timeout=PILL_WAIT_MS)
+        except PlaywrightTimeoutError:
+            continue
+        return
+    raise AssertionError(f"選んだ後に入口が出ませんでした: {selector} / {text}")
 
 
 def row_ids(page: Page) -> list[str]:

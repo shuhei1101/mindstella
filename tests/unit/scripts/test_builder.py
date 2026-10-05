@@ -114,10 +114,43 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "notes",
         "logs",
         "bodies",
+        "changes",
         "derived",
         "built_at",
     }
     assert data["bodies"] == {"A-1.md": "資料の本文\n"}
+
+
+def test_collect_preview_data_with_changes(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """まとまりと変更履歴を含める（正常系）。"""
+    # 準備
+    entry = {"seq": 1, "at": BUILT_AT, "before": {"status": "未決定"}}
+    changes = {
+        "last_seq": 1,
+        "sets": [
+            {
+                "id": "V-1",
+                "at": BUILT_AT,
+                "summary": "決める",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["D-1"],
+            }
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    root = make_workspace(
+        make_item("D-1", status="決定済み", history=[entry]),
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
+    # 検証
+    assert data["changes"] == changes
+    assert data["decisions"][0]["history"] == [entry]
 
 
 def test_escape_for_script() -> None:
@@ -242,6 +275,59 @@ def test_derive_preview_values(
         {"phase": "目的", "settled": 1, "total": 1},
         {"phase": "要件", "settled": 1, "total": 2},
     ]
+    assert derived["progress"] == [
+        {
+            "category": "A",
+            "cells": [
+                {"phase": "目的", "settled": 1, "total": 1},
+                {"phase": "要件", "settled": 0, "total": 1},
+            ],
+            "settled": 1,
+            "total": 2,
+        },
+        {
+            "category": "B",
+            "cells": [
+                {"phase": "目的", "settled": 0, "total": 0},
+                {"phase": "要件", "settled": 1, "total": 1},
+            ],
+            "settled": 1,
+            "total": 1,
+        },
+    ]
+
+
+def test_derive_preview_values_when_no_goal(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """ゴールが無ければ全フェーズの進捗を返し、届いたかは判定しない（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+        "categories": [
+            {"name": "A", "target": "mindmap", "summary": "カテゴリー A"},
+            {"name": "B", "target": "mindmap", "summary": "カテゴリー B"},
+        ],
+    }
+    root = make_workspace(
+        make_item("D-1", category="A", phase="目的", status="決定済み"),
+        make_item("D-2", category="A", phase="要件", status="未決定", depends_on=["D-1"]),
+        make_item("D-3", category="B", phase="要件", status="対象外"),
+        settings=settings,
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    derived = builder.derive_preview_values(workspace)
+    # 検証
+    assert derived["goal"]["has_goal"] is False
+    assert derived["goal"]["reached"] is None
+    assert derived["goal"]["phase_progress"] == [
+        {"phase": "目的", "settled": 1, "total": 1},
+        {"phase": "要件", "settled": 1, "total": 2},
+    ]
+    assert derived["goal"]["remaining_deliverables"] == []
+    assert [candidate["id"] for candidate in derived["next"]] == ["D-2"]
     assert derived["progress"] == [
         {
             "category": "A",

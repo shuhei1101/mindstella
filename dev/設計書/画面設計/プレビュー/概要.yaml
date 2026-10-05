@@ -16,6 +16,14 @@ elements:
         value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: read_at
         value: 記録の取得.built_at（最後に読めた記録）
+      - name: diffPoint
+        value: 変更履歴で選んだ時点の名前と日時（プレビューを開く.変更履歴で選んだ時点。選んでいなければ渡さない）。`tabs[].marked` はその時点で印の付く項目を持つ種類
+      - name: comments
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: comment_count
+        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
+      - name: comments_open
+        value: コメントの一覧を開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目
@@ -33,18 +41,18 @@ elements:
   - name: ゴールまでの進捗
     id: tile-goal
     kind: section
-    description: ゴールのフェーズまでの決定済みの数と、フェーズごとの棒（決定済み / 全体）。数は `goal` と同じ決着で数え、対象外・取り下げも決定済みに含める
+    description: ゴールがあるときは、ゴールのフェーズまでの決定済みの数と、フェーズごとの棒（決定済み / 全体）。ゴールが無いとき（`derived.goal.has_goal` が偽）は、見出しを「フェーズ別の進捗」にし、見出しの下に「ゴールは決まっていません」を出して、全フェーズの決定済みの数と棒だけを出す。数は `goal` と同じ決着で数え、対象外・取り下げも決定済みに含める。見出しのアイコンはどちらも旗（モックで合意した形）
     io: 表示
     source: プレビューを開く.mindmap-data.derived.goal
     visible_when: 常時
-    label: ゴールまでの進捗
+    label: ゴールまでの進捗（ゴールが無いときはフェーズ別の進捗）
   - name: 納品物のチェックリスト
     kind: list
     position: ゴールまでの進捗
     description: ゴールの納品物。`derived.goal.remaining_deliverables` に無い納品物をチェック済みにする（判定は `goal` と同じ。`doc` の資料の状態が完成）。押すとその資料の詳細パネルを開く
     io: 表示
     source: プレビューを開く.mindmap-data.settings.goal.deliverables・プレビューを開く.mindmap-data.derived.goal.remaining_deliverables
-    visible_when: 納品物が 5 件以下のとき全て、5 件を超えたら先頭 5 件
+    visible_when: ゴールがあるとき。納品物が 5 件以下のとき全て、5 件を超えたら先頭 5 件
   - name: 納品物のすべて表示
     kind: link
     position: ゴールまでの進捗
@@ -80,6 +88,31 @@ elements:
     source: プレビューを開く.mindmap-data.derived.progress
     visible_when: 常時（そのカテゴリーとフェーズに項目が無いセルは「—」で押せない）
     label: カテゴリー別の進捗
+  - name: ゴールが無いこと
+    kind: label
+    position: ゴールまでの進捗
+    description: ゴールが無いことを示す 1 行
+    label: ゴールは決まっていません
+    io: 表示
+    visible_when: ゴールが無いとき（`derived.goal.has_goal` が偽）
+    source: プレビューを開く.mindmap-data.derived.goal.has_goal
+  - name: 話し合いの概要
+    id: overview-description
+    kind: label
+    description: 題名の上に、設定の話し合いの概要（1 文の短い文）を出す。プレイブックの名前とゴールのフェーズは出さない。読める幅（46em）で折り返す
+    io: 表示
+    type: 文字列
+    visible_when: 設定が話し合いの概要を持つとき（無ければ行を出さない）
+    source: プレビューを開く.mindmap-data.settings.description
+  - name: タイルの項目の差分の印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    args:
+      - name: kind
+        value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
+    description: 次に検討する項目・要見直し・保留・進行中のタスクのタイルの各行で、項目のタイトルの横に文言なしで置く
+    io: 表示
+    visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 lead: プレビューを開いたときの既定の画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。
-mock: dev/mock/pages/overview/21/standard/index.html
+mock: dev/mock/pages/overview/81/b-phase-progress/index.html
 test_file: tests/integration/preview/test_overview_screen.py

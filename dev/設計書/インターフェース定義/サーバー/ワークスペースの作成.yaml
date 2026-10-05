@@ -32,6 +32,32 @@ flows:
       - '`docs/` と `release/` がある'
       - '`files` に作った 8 つの YAML、`mindstella-version.ini` と 2 つのフォルダがある'
     test: test_normal
+  - name: 正常系（ゴールを持たない）
+    summary: ゴールと概要を持たず、プレイブックを 2 つ並べた設定で作る
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: ワークスペースの場所
+        description: テストごとの一時フォルダの下の、まだ無いフォルダ
+      - name: 設定
+        description: リクエスト例の設定から `goal` と `description` を除き、`playbooks` を `[壁打ち, 調査]` にしたもの
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as init（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: init workspace（goal を持たない `settings`）
+        IF->>IF: 設定をスキーマと突き合わせる
+        IF->>WS: mindmap.yaml・種類ごとの YAML・mindstella-version.ini・docs/・release/ を作る
+        IF-->>クライアント: JSON（workspace・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`mindmap.yaml` が `goal` と `description` のキーを持たず、`playbooks` が `[壁打ち, 調査]`'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_no_goal
   - name: 異常系（既にワークスペースがある・WorkspaceExistsError）
     summary: mindmap.yaml があるフォルダには作らず、何も書き換えない
     setup:
@@ -115,7 +141,7 @@ request:
     type: dict
     required: true
     location: argument
-    description: 設定の中身（`summary`・`field`・`target_label`・`phases`・`targets`・`categories`・`goal`・`links`）。キーと型は ER 図『ワークスペース』の `mindmap.yaml`
+    description: 設定の中身（`summary`・`description`・`playbooks`・`target_label`・`phases`・`targets`・`categories`・`goal`・`links`。`description`・`goal`・`links` は任意）。キーと型は ER 図『ワークスペース』の `mindmap.yaml`
     constraints: 設定のスキーマに合うこと
 request_example: |-
   ```json
@@ -123,8 +149,11 @@ request_example: |-
     "workspace": "~/discussions/家計簿アプリ",
     "settings": {
       "summary": "要件出しのスキル mindmap を設計する",
-      "field": "システム開発",
-      "target_label": "システム",
+      "description": "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。",
+      "playbooks": [
+        "システム開発"
+      ],
+      "target_label": "機能",
       "phases": [
         "目的",
         "要件",
@@ -184,5 +213,5 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない'
-exclusivity: 同じプロセスの中では、書き換えの鍵（『MCP サーバーの起動』）で書き換えるツールを 1 つずつ動かす。別のプロセスとは排他しない（スキルが 1 つずつ呼ぶ前提）
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_init.py

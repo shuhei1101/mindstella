@@ -9,7 +9,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '検討事項 D-1（状態 `未決定`、`lead` あり、`weight: 大`）を持つワークスペース'
+        description: '検討事項 D-1（状態 `未決定`、`lead` あり、`weight: 大`）を足して `commit` したワークスペース（保持する回数は既定の 5）'
       - name: item
         description: '`answer`・`status` を変え、`weight` を消す'
         notes: '`{"answer": "種類ごとに分ける", "status": "決定済み", "weight": null}`'
@@ -31,7 +31,97 @@ flows:
       - D-1 の `answer` と `status` が渡した値で、`weight` のキーが無い
       - D-1 の `lead` と `created` が呼ぶ前と同じで、`updated` が `created` より後
       - '`changed` が `answer`・`status`・`weight`'
+      - D-1 が `history` を 1 回分持ち、`before` が `answer` の前の値（無かったので `null`）・`status` の `未決定`・`weight` の `大`
+      - '`changes.yaml` の `pending.changed` が `[D-1]` で、`last_seq` が D-1 の `history` の先頭の `seq` と同じ'
     test: test_normal
+  - name: 正常系（本文を直し、保持する回数を超える）
+    summary: 本文の差分を積み、保持する回数を超えた古い変更履歴を消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`mindmap.yaml` の `history_limit` を 1 にし、本文（3 行）を持つ検討事項 D-1 を足して `commit` し、`answer` を `update` で直したワークスペース'
+      - name: item
+        description: 本文の 2 行目を書き換える
+        notes: '`{"body_markdown": "{1 行目}\n{書き換えた 2 行目}\n{3 行目}\n"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update workspace id D-1（body_markdown）
+        IF-->>WS: 全ての YAML と docs/D-1.md を読む
+        IF->>IF: 本文の差分を積み、古い変更履歴を消す
+        IF->>WS: docs/D-1.md・decisions.yaml・changes.yaml を書く
+        IF-->>クライアント: JSON（changed: body_markdown）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 の `history` が 1 回分だけで、`before` に `answer` が無く、`body_diff` を持つ
+      - '`body_diff` を今の本文に当てると、書き換える前の本文になる'
+      - '`body_diff` に 1 行目・3 行目が入っていない'
+      - D-1 の `history_dropped_seq` が、消した `answer` の回の `seq`
+      - '`changed` が `body_markdown`'
+    test: test_normal_when_body_rewritten_over_limit
+  - name: 正常系（変わったキーが無い）
+    summary: 同じ値で直しても変更履歴を積まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`answer: a` を持つ検討事項 D-1 を足して `commit` したワークスペース'
+      - name: item
+        description: 今と同じ値
+        notes: '`{"answer": "a"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update workspace id D-1（answer: a）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 変わったキーが無く、変更履歴を積まない
+        IF->>WS: decisions.yaml を書く
+        IF-->>クライアント: JSON（changed は空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`changed` が空'
+      - D-1 が `history` を持たない
+      - '`changes.yaml` の `pending` の `added`・`changed` が空'
+    test: test_normal_when_nothing_changed
+  - name: 正常系（保持する回数が 0）
+    summary: 保持する回数が 0 なら変更履歴を積まず、持っていた変更履歴を消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` し、`answer` を直して変更履歴を 1 回分持たせて `commit` した後、`mindmap.yaml` の `history_limit` を 0 にしたワークスペース
+      - name: item
+        description: '`status` を変える'
+        notes: '`{"status": "決定済み"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update workspace id D-1（status）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 保持する回数が 0 のため積まず、history を消す
+        IF->>WS: decisions.yaml を書く
+        IF-->>クライアント: JSON（changed: status）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 の `status` が `決定済み` で、`history` のキーが無い
+      - '`changes.yaml` の `pending.changed` が空'
+    test: test_normal_when_limit_zero
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
@@ -157,9 +247,9 @@ flows:
       - 'エラーの本文に `docs.yaml: items[0]` で始まる行があり、最後の行が `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます`'
       - '`decisions.yaml`・`docs.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_legacy_format
-lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。
+lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。値が変わったときは、書き換える前の値をその項目の変更履歴に 1 回分積む。
 idempotent: false
-side_effects: その項目の種類の YAML を書き換える。`body_markdown` を渡したときは `docs/{ID}.md` を書き換え、`body` を `{ID}.md` にする。本文と YAML の一時ファイルを両方書き終えてから、本文 → YAML の順に `os.replace` で置き換える
+side_effects: その項目の種類の YAML を書き換える。`body_markdown` を渡したときは `docs/{ID}.md` を書き換え、`body` を `{ID}.md` にする。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
 request:
   - name: workspace
     type: str
@@ -178,7 +268,7 @@ request:
     required: true
     location: argument
     description: 置き換えるキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: '`id`・`created`・`updated`・`body` は持たない'
+    constraints: '`id`・`created`・`updated`・`body`・`history`・`seq`・`added_seq` は持たない'
   - name: item.body_markdown
     type: str
     required: false
@@ -212,7 +302,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。本文は前の中身に戻し、どのファイルも書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`mindmap.yaml` の `summary` が無い）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`mindmap.yaml` の `summary` が無い・`mindmap.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -225,6 +315,16 @@ constraints:
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない'
   - item: 部分成功
-    constraint: 起こさない。本文を置き換える前に前の本文を控え、YAML の置き換えに失敗したら本文を控えに戻して（前に本文が無ければ消して）からツールのエラーで終わる（残った一時ファイルも消す）
-exclusivity: 同じプロセスの中では、書き換えの鍵（『MCP サーバーの起動』）で書き換えるツールを 1 つずつ動かす。別のプロセスとは排他しない（スキルが 1 つずつ呼ぶ前提）
+    constraint: 起こさない。置き換える前に本文と種類の YAML の前の中身を控え、YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを控えに戻して（前に本文が無ければ消して）からツールのエラーで終わる（残った一時ファイルも消す）
+  - item: 変更履歴を積むとき
+    constraint: 書き換える前と後の項目を比べ、`updated`・`history` を除いて値が変わった・消えた・足したキーか、中身が変わった本文があるときだけ積む。変わったものが無ければ積まず、`pending` にも足さない（`updated` は変える）
+  - item: 変更履歴の 1 回分
+    constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（`updated` と同じ日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前の本文の行へ戻す差分）を、`history` の先頭に置く。本文の全文は持たない。形は ER 図『ワークスペース』の共通のキー `history`'
+  - item: 保持する回数
+    constraint: '`mindmap.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
+  - item: まだまとめていない変更
+    constraint: 積んだとき、`changes.yaml` の `pending.changed` に ID を足す。既に `pending.added`・`pending.changed` にある ID は足さない。`changes.yaml` が無ければ作る
+  - item: 通し番号
+    constraint: 値が変わったとき、項目の `seq` をその書き換えで振った番号にする（変更履歴を積むときはその回の `seq`。保持する回数が 0 で積まないときも `changes.yaml` の `last_seq` を 1 進めてその番号を入れる）。変わったものが無ければ進めない
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_update.py

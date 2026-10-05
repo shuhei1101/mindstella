@@ -11,3 +11,6 @@ declare const ELK: typeof import("elkjs").default;
 
 /** 図を SVG に描く mermaid */
 declare const mermaid: typeof import("mermaid").default;
+
+/** 本文と図の差分を計算する jsdiff（`Diff.diffLines`・`Diff.diffArrays`） */
+declare const Diff: typeof import("diff");

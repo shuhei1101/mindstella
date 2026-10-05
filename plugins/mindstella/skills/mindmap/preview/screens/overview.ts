@@ -10,6 +10,8 @@ namespace MindmapPreview {
       /** 絞った表へ移る（`Route`） */
       navigate: (route: Route) => void;
     };
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks;
   };
 
   /** 縦に積む幅で出す、次に検討する項目の件数 */
@@ -52,6 +54,7 @@ namespace MindmapPreview {
     items: Item[],
     emptyText: string,
     open: (id: string) => void,
+    marks?: DiffMarks,
   ): HTMLElement {
     if (items.length === 0) return emptyNote(emptyText);
     return h({
@@ -68,6 +71,7 @@ namespace MindmapPreview {
                 children: [
                   statusMark(item.status),
                   h({ tag: "span", attrs: { class: "mt" }, children: [item.title] }),
+                  markFor({ marks, id: item.id }),
                   h({ tag: "span", attrs: { class: "go", "aria-hidden": "true" }, children: [icon("chev")] }),
                 ],
               }),
@@ -85,7 +89,7 @@ namespace MindmapPreview {
   }
 
   /** 次に検討する項目のタイル */
-  function nextTile({ index, on }: OverviewProps): HTMLElement {
+  function nextTile({ index, on, marks }: OverviewProps): HTMLElement {
     const candidates = index.data.derived.next;
     const list = h({
       tag: "ol",
@@ -105,6 +109,7 @@ namespace MindmapPreview {
                     tag: "span",
                     attrs: { class: "nl-meta" },
                     children: [
+                      markFor({ marks, id: candidate.id }),
                       h({ tag: "span", children: [[item?.category, candidate.phase].filter(Boolean).join(" · ")] }),
                       impactBadge(candidate.weight ?? undefined, true),
                       h({
@@ -157,12 +162,41 @@ namespace MindmapPreview {
     return tile;
   }
 
-  /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト） */
+  /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト）。ゴールが無いときはフェーズ別の進捗だけ */
   function goalTile({ index, on }: OverviewProps): HTMLElement {
     const { goal } = index.data.derived;
     const settled = goal.phase_progress.reduce((sum, cell) => sum + cell.settled, 0);
     const total = goal.phase_progress.reduce((sum, cell) => sum + cell.total, 0);
-    const { deliverables } = index.data.settings.goal;
+    const stageRows = goal.phase_progress.map((cell) =>
+      h({
+        tag: "li",
+        children: [
+          h({ tag: "span", children: [cell.phase] }),
+          bar(cell.settled, cell.total),
+          h({ tag: "span", attrs: { class: "mono" }, children: [`${cell.settled}/${cell.total}`] }),
+        ],
+      }),
+    );
+    // ゴールが無い: 見出しを替え、ゴールが無いことと全フェーズの決着の数だけを出す（納品物は出さない）
+    if (!goal.has_goal) {
+      return h({
+        tag: "section",
+        attrs: { id: "tile-goal", class: "tile t-goal", "aria-labelledby": "h-goal" },
+        children: [
+          h({ tag: "h2", attrs: { id: "h-goal" }, children: [icon("flag"), "フェーズ別の進捗"] }),
+          h({ tag: "p", attrs: { class: "goal-none" }, children: ["ゴールは決まっていません"] }),
+          h({
+            tag: "p",
+            attrs: { class: "big" },
+            children: [settled, h({ tag: "small", children: [` / ${total}`] })],
+          }),
+          h({ tag: "p", attrs: { class: "big-sub" }, children: ["決定済み"] }),
+          h({ tag: "ul", attrs: { class: "stage-rows" }, children: [...stageRows] }),
+        ],
+      });
+    }
+    // ゴールがあるとき、設定のゴールは必ずある
+    const deliverables = index.data.settings.goal?.deliverables ?? [];
     const remaining = new Set(goal.remaining_deliverables.map((entry) => entry.title));
     const doneCount = deliverables.filter((entry) => !remaining.has(entry.title)).length;
     const checklist = deliverables.slice(0, DELIVERABLE_LIMIT).map((entry) => {
@@ -195,18 +229,7 @@ namespace MindmapPreview {
         h({
           tag: "ul",
           attrs: { class: "stage-rows" },
-          children: [
-            ...goal.phase_progress.map((cell) =>
-              h({
-                tag: "li",
-                children: [
-                  h({ tag: "span", children: [cell.phase] }),
-                  bar(cell.settled, cell.total),
-                  h({ tag: "span", attrs: { class: "mono" }, children: [`${cell.settled}/${cell.total}`] }),
-                ],
-              }),
-            ),
-          ],
+          children: [...stageRows],
         }),
         h({
           tag: "div",
@@ -243,6 +266,7 @@ namespace MindmapPreview {
     emptyText,
     link,
     open,
+    marks,
   }: {
     /** タイルの項目 ID（画面設計） */
     tileId: string;
@@ -255,6 +279,8 @@ namespace MindmapPreview {
     emptyText: string;
     link: () => void;
     open: (id: string) => void;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks | undefined;
   }): HTMLElement {
     return h({
       tag: "section",
@@ -262,7 +288,7 @@ namespace MindmapPreview {
       children: [
         tileHead(id, iconName, title, items.length > 0 ? showAll(items.length, link) : null),
         h({ tag: "p", attrs: { class: "num" }, children: [items.length] }),
-        miniList(items, emptyText, open),
+        miniList(items, emptyText, open, marks),
       ],
     });
   }
@@ -402,11 +428,14 @@ namespace MindmapPreview {
           tag: "header",
           attrs: { class: "hero" },
           children: [
-            h({
-              tag: "p",
-              attrs: { class: "hero-sub" },
-              children: [`${settings.field} · ゴールは${settings.goal.phase}のフェーズまで`],
-            }),
+            // 話し合いの概要があるときだけ、題名の上に出す
+            settings.description !== undefined
+              ? h({
+                  tag: "p",
+                  attrs: { id: "overview-description", class: "hero-sub hero-desc" },
+                  children: [settings.description],
+                })
+              : null,
             h({ tag: "h1", children: [settings.summary] }),
           ],
         }),
@@ -425,6 +454,7 @@ namespace MindmapPreview {
               emptyText: "要見直しの検討事項はありません。",
               link: () => on.navigate(tableRoute("decisions", { status: ["要見直し"] })),
               open: on.open,
+              marks: props.marks,
             }),
             smallTile({
               tileId: "tile-hold",
@@ -435,6 +465,7 @@ namespace MindmapPreview {
               emptyText: "保留の検討事項はありません。",
               link: () => on.navigate(tableRoute("decisions", { status: ["保留"] })),
               open: on.open,
+              marks: props.marks,
             }),
             smallTile({
               tileId: "tile-running",
@@ -445,6 +476,7 @@ namespace MindmapPreview {
               emptyText: "進行中のタスクはありません。",
               link: () => on.navigate(tableRoute("tasks", { status: ["進行中"] })),
               open: on.open,
+              marks: props.marks,
             }),
             progressTile(props),
           ],

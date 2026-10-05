@@ -32,10 +32,10 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`path` が `配る.html` の絶対パス'
-      - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`settings` と 7 つの種類の項目が YAML と同じで、`bodies` に `A-1.md` の本文がある'
+      - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`settings` と 7 つの種類の項目が YAML と同じで、`bodies` に `A-1.md` の本文、`changes` に書き換えのまとまりがある'
       - '`配る.html` の `script`・`link`・`img` に `src`・`href` を持つものが無い'
       - '`配る.html` の中の `</script>` の数が、雛形の数にライセンスの表示の要素の 1 つを足した数（本文の `</script>` で要素が閉じていない）'
-      - '`mindmap-licenses` の中身に、marked・DOMPurify・elkjs・mermaid のそれぞれの名前・版・著作権の表示・ライセンスの名前があり、elkjs のソースコードの入手先の URL がある'
+      - '`mindmap-licenses` の中身に、marked・DOMPurify・elkjs・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前があり、elkjs のソースコードの入手先の URL がある'
     test: test_normal
   - name: 異常系（out の末尾が .html でない・引数の誤り）
     summary: 書き出す先の末尾が .html でないと、何も書かずに終わる
@@ -222,7 +222,7 @@ constraints:
   - item: 読み込むファイル
     constraint: 書き出した HTML は外のファイルも URL も指さない（`script`・`link`・`img` に `src`・`href` を持たない）。文字は端末の文字で描く
   - item: 見るだけ
-    constraint: 画面の JavaScript はサーバーが配るものと同じものを差し込む。記録を埋め込みのデータから読み、回答・意見の送信の入口と書き換えの知らせの購読を出さない
+    constraint: 画面の JavaScript はサーバーが配るものと同じものを差し込む。記録を埋め込みのデータから読み、コメントのボタン・一覧・入力・選んだ箇所の入口と書き換えの知らせの購読を出さない
   - item: 通信
     constraint: ツールは、雛形の描画のライブラリの `<script src>` の URL（jsDelivr、版を固定）と、ライブラリのライセンスの本文の URL（同じ版）を取るときだけ通信する。取った配布ファイルは雛形の `integrity`（sha384）と突き合わせ、合わなければ書き出さない。書き出した HTML は通信しない
   - item: 待ちの上限

@@ -16,6 +16,14 @@ elements:
         value: 概要と同じ
       - name: read_at
         value: 概要と同じ
+      - name: diffPoint
+        value: 『概要』のトップバーと同じ
+      - name: comments
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: comment_count
+        value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
+      - name: comments_open
+        value: コメントの一覧を開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え
@@ -53,6 +61,8 @@ elements:
         value: プレビューを開く.mindmap-data.docs
       - name: filters
         value: プレビューを開く.f.{列}（開いたときだけ。カード・ボードの絞り込みも同じ条件で開く）
+      - name: marks
+        value: 差分の表示の間、選んだ時点で足した・変えた資料（記録の取得.changes）
     description: 資料の表
     visible_when: 表示形式が表
   - name: ボード
@@ -61,6 +71,15 @@ elements:
     io: 表示
     source: プレビューを開く.mindmap-data.docs
     visible_when: 表示形式がボード
+  - name: カード・ボードの差分の印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    args:
+      - name: kind
+        value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
+    description: 資料のカードとボードのカードのタイトルの横に文言なしで置く
+    io: 表示
+    visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/60/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py

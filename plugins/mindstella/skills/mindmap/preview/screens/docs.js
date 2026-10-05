@@ -10,7 +10,7 @@ var MindmapPreview;
     /** 納品物の列の値 */
     const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
     /** 資料の画面を返す */
-    function docsScreen({ index, route, on }) {
+    function docsScreen({ index, route, on, marks }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
         const columns = [
             common.id,
@@ -49,6 +49,7 @@ var MindmapPreview;
                         rows: index.data.docs,
                         open: on.open,
                         initialFilters: route.filters,
+                        marks,
                     }),
                 ],
             });
@@ -129,7 +130,7 @@ var MindmapPreview;
                         status: column.status,
                         items: orderDocs(column.items),
                     })),
-                    card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true }),
+                    card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id] }),
                     emptyText: "資料はありません。",
                 });
             }
@@ -137,7 +138,7 @@ var MindmapPreview;
                 tag: "div",
                 attrs: { class: "doc-grid" },
                 children: shown.length > 0
-                    ? shown.map((row) => docCard({ index, doc: row, open: on.open, inBoard: false }))
+                    ? shown.map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id] }))
                     : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
             });
         };
@@ -202,7 +203,7 @@ var MindmapPreview;
     }
     MindmapPreview.docsScreen = docsScreen;
     /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
-    function docCard({ index, doc, open, inBoard, }) {
+    function docCard({ index, doc, open, inBoard, mark, }) {
         return MindmapPreview.h({
             tag: "button",
             attrs: {
@@ -223,6 +224,7 @@ var MindmapPreview;
                     tag: "span",
                     attrs: { class: "c-meta" },
                     children: [
+                        mark === undefined ? null : MindmapPreview.diffMark({ kind: mark }),
                         MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
                         inBoard ? null : MindmapPreview.statusBadge(doc.status),
                         MindmapPreview.h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),

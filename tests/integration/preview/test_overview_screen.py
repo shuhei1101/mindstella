@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from playwright.sync_api import Page
-from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
+from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeItem
 
 # 概要のタイルの項目 ID
@@ -106,6 +109,69 @@ def test_goal_tile(write_sample_preview: WriteSamplePreview, open_preview: OpenP
     assert page.inner_text("aside.panel .d-title") == "A-1の題\n納品物"
 
 
+def test_goal_tile_when_no_goal(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """ゴールが無いときは、見出しを「フェーズ別の進捗」にし、ゴールが無いことと全フェーズの棒だけを出す（正常系）。"""
+    # 準備
+    settings = {
+        **{key: value for key, value in valid_settings.items() if key != "goal"},
+        "phases": ["目的", "要件"],
+    }
+    url = write_preview(
+        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-2", phase="要件", status="未決定"),
+        settings=settings,
+    )
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.inner_text("#tile-goal h2") == "フェーズ別の進捗"
+    assert page.inner_text("#tile-goal .goal-none") == "ゴールは決まっていません"
+    assert page.inner_text("#tile-goal .big").replace("\n", "").replace(" ", "") == "1/2"
+    stages = page.eval_on_selector_all(
+        "#tile-goal .stage-rows li", "rows => rows.map(r => r.textContent)"
+    )
+    assert stages == ["目的1/1", "要件0/1"]
+    # 納品物は出さない
+    assert page.locator("#tile-goal .deliv").count() == 0
+
+
+def test_description(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """設定の話し合いの概要を題名の上に出し、プレイブックの名前は出さない（正常系）。"""
+    # 準備
+    description = "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
+    url = write_preview(make_item("D-1"), settings={**valid_settings, "description": description})
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.inner_text("#overview-description") == description
+    rows = page.eval_on_selector_all("main .hero > *", "els => els.map(e => e.textContent)")
+    assert rows == [description, "要件出しのスキル mindmap を設計する"]
+    assert "システム開発" not in page.inner_text("main .hero")
+
+
+def test_description_when_missing(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """話し合いの概要が無い設定では、行を出さず題名がそのまま上に来る（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.locator("#overview-description").count() == 0
+    assert page.inner_text("main .hero") == "要件出しのスキル mindmap を設計する"
+
+
 def test_small_tiles(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """要見直し・保留・進行中のタスクの件数と名前を出し、押すと詳細パネルを開く（正常系）。"""
     # 準備
@@ -189,3 +255,22 @@ def test_progress_tile_category_link(
     # 検証
     assert _chips(page) == ["カテゴリー: データ構造"]
     assert _row_ids(page) == ["D-1", "D-2"]
+
+
+def test_diff_marks(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間、タイルの項目のタイトルの横に印を文言なしで置く。トップバーに選んだ時点の札を出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "since")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector("#tile-next button[data-id]")
+    # 検証
+    next_mark = page.locator('#tile-next button[data-id="D-2"] .df-mark')
+    assert next_mark.get_attribute("class") == "df-mark df-chg"
+    assert next_mark.inner_text() == "変更"
+    running_mark = page.locator('#tile-running button[data-id="T-1"] .df-mark')
+    assert running_mark.get_attribute("title") == "変更"
+    assert page.locator("#tile-next .df-badge, #tile-running .df-badge").count() == 0
+    assert_topbar_history(page)

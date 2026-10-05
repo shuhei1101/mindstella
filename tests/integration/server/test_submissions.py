@@ -24,14 +24,22 @@ def test_normal(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """取り込んでいない送信だけを送った順に返す（正常系）。"""
+    """取り込んでいない送信だけを送った順に返し、箇所と項目に紐づかない送信も返す（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", title="最初の問い"))
+    root = make_workspace(
+        make_item("D-1", title="最初の問い"),
+        make_item("A-1"),
+        bodies={"A-1.md": "1 行目\n言い換えたい文\n3 行目"},
+    )
+    loc = {"kind": "body", "start": 2, "end": 2, "text": "言い換えたい文"}
+    no_target = make_submission("S-4", body="全体に目を通した")
+    del no_target["target"]
     write_submissions(
         root,
         make_submission("S-1", body="取り込み済み", taken="2026-10-02T00:00:00+00:00"),
         make_submission("S-2", body="案 A にする"),
-        make_submission("S-3", body="理由も残して"),
+        make_submission("S-3", target="A-1", body="ここは言い換える", loc=loc),
+        no_target,
     )
     before = snapshot_tree(root)
     # 実行
@@ -40,9 +48,10 @@ def test_normal(
     assert result.is_error is False
     assert result.data is not None
     items = result.data["items"]
-    assert [item["id"] for item in items] == ["S-2", "S-3"]
-    assert [item["target_title"] for item in items] == ["最初の問い", "最初の問い"]
-    assert [item["body"] for item in items] == ["案 A にする", "理由も残して"]
+    assert [item["id"] for item in items] == ["S-2", "S-3", "S-4"]
+    assert (items[0]["target_title"], items[0]["loc"]) == ("最初の問い", None)
+    assert items[1]["loc"] == loc
+    assert (items[2]["target"], items[2]["target_title"], items[2]["loc"]) == (None, None, None)
     assert snapshot_tree(root) == before
 
 

@@ -76,3 +76,62 @@ export const OfflineNarrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右に札と ×、検討事項・資料のタブに点 */
+export const DiffOn: Story = {
+  args: {
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+    tabs: [
+      { key: "overview", label: "概要", icon: "home" },
+      { key: "decisions", label: "検討事項", icon: "decision", count: 12, marked: true },
+      { key: "tasks", label: "タスク", icon: "task", count: 8 },
+      { key: "research", label: "調査", icon: "research", count: 3 },
+      { key: "docs", label: "資料", icon: "doc", count: 5, marked: true },
+      { key: "terms", label: "用語集", icon: "term", count: 9 },
+      { key: "notes", label: "メモ", icon: "note", count: 4 },
+      { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+    ],
+  },
+};
+
+/** 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、札の名前の末尾を省略して、コメントのボタンと × を押し出さずに収める */
+export const DiffOnNarrow: Story = {
+  args: {
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+    comments: true,
+    commentCount: 3,
+  },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す */
+export const Comments: Story = { args: { comments: true, commentCount: 3 } };
+
+/** レビュー中のコメントが 0 件。押せるまま、件数の塗りを外して目立たせない */
+export const CommentsZero: Story = { args: { comments: true, commentCount: 0 } };
+
+/** 100 件以上。件数を 99+ にし、読み上げの名前には実際の件数を持つ */
+export const CommentsMany: Story = { args: { comments: true, commentCount: 120 } };
+
+/** コメントの一覧を開いている。ボタンを枠と面で選んだ見た目にする */
+export const CommentsOpen: Story = { args: { comments: true, commentCount: 3, commentsOpen: true } };
+
+/** 幅 390px。コメントのボタンの文字を隠し、印と件数だけにする */
+export const CommentsNarrow: Story = {
+  args: { comments: true, commentCount: 3 },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};

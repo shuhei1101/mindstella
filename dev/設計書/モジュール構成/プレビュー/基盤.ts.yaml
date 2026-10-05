@@ -7,10 +7,10 @@ directory: |-
     core/
       globals.d.ts   描画のライブラリ（marked・DOMPurify・ELK・mermaid）のグローバルに npm の型を割り当てる（出力しない）
       dom.ts         要素の組み立て（`h`）・アイコン・状態の印など、画面が共通で使う DOM の部品
-      records.ts     記録の索引・関係する項目・検索（次の候補・ゴールまでの進捗・カテゴリー別の進捗はサーバーが計算した `derived` を使う）
-      libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）
+      records.ts     記録の索引・関係する項目・検索・箇所の名前（次の候補・ゴールまでの進捗・カテゴリー別の進捗はサーバーが計算した `derived` を使う）
+      libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
       router.ts      URL のハッシュの読み書きと履歴
-      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・回答・意見の送信）
+      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る）
   ```
 
   全ての `.ts` は import / export を持たない script で、`namespace MindmapPreview` の下に関数を置く。読んだだけでは DOM に触らない。
@@ -73,24 +73,60 @@ data_models:
       - name: detail
         type: string | null
         description: 422 の `detail`
-  - name: SendResult
-    title: 送信の結果
+  - name: ApiResult
+    title: 配信の結果
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
-    usecase: 回答・意見を送る
-    summary: '`postSubmission` の結果（`{ok: true, id, sent} | {ok: false, detail}`。届かなければ `detail` は `null`）'
+    usecase: コメントを選んで送る
+    summary: 'コメント・書きかけの API を呼んだ結果（`{ok: true, data} | {ok: false, status, detail, stale}`。届かなければ `status`・`detail` は `null`）'
     properties:
       - name: ok
         type: boolean
-        description: 201 が返ったか
-      - name: id
-        type: string
-        description: '`ok` のとき、振られた送信の ID'
-      - name: sent
-        type: string
-        description: '`ok` のとき、受けた日時'
+        description: 2xx が返ったか
+      - name: data
+        type: T | null
+        description: '`ok` のときの本文（204 は `null`）'
+      - name: status
+        type: number | null
+        description: 断られたときのステータスコード。届かなかったときは `null`
       - name: detail
         type: string | null
         description: 断られたときの `detail`。届かなかったときは `null`
+      - name: stale
+        type: '{id, reason}[]'
+        description: 409 のときの箇所が合わないコメント（それ以外は空）
+  - name: Location
+    title: 箇所
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 選んだ箇所へコメントする
+    summary: コメント・書きかけが持つ `loc`（ER 図『ワークスペース』）
+    properties:
+      - name: kind
+        type: "'body' | 'value'"
+        description: 箇所の種類
+      - name: start
+        type: number
+        description: '`body` のときの始めの行（無ければ持たない）'
+      - name: end
+        type: number
+        description: '`body` のときの終わりの行'
+      - name: key
+        type: string
+        description: '`value` のときのキーのパス'
+      - name: text
+        type: string
+        description: 選んだ文
+  - name: ReviewState
+    title: レビュー中
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: コメントを選んで送る
+    summary: 『レビュー中のコメントの読み取り』の本文
+    properties:
+      - name: items
+        type: '{id, target, target_title, loc, body, created}[]'
+        description: レビュー中のコメント（溜めた順）
+      - name: drafts
+        type: '{target, loc, body}[]'
+        description: 書きかけ
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -134,6 +170,8 @@ constants:
         value: ELK
       - key: mermaid
         value: mermaid
+      - key: jsdiff
+        value: Diff
   - name: API_PATHS
     title: 配信のパス
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -144,8 +182,20 @@ constants:
         value: '"api/records"'
       - key: events
         value: '"api/events"'
-      - key: submissions
-        value: '"api/submissions"'
+      - key: comments
+        value: '"api/comments"'
+      - key: commentsSend
+        value: '"api/comments/send"'
+      - key: drafts
+        value: '"api/drafts"'
+      - key: opened
+        value: '"api/opened"'
+  - name: PRESS_SLOP_PX
+    title: 押したとみなす移動の上限
+    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    usecase: 検討事項をマップで辿る
+    summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）
+    value: '5'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -300,8 +350,9 @@ functions:
     process: |-
       1. marked・DOMPurify が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、知らせと原文を返す（本文に mermaid のコードブロックがあり mermaid も読めていなければ名前に足す）
-      2. `marked.parse` した HTML を `DOMPurify.sanitize` して要素に入れる
-      3. `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に置き換える（描くのは `renderDiagrams`）
+      2. `marked.lexer` の token に先頭の行から `raw` の改行を足し進めた行を持たせ（リストの項目と引用は中の token にも）、見出し・段落・コード・リストの項目・表の行の最初の開きタグに `data-line-start` を付けて HTML にする（`marked.Renderer` を包む。段落を持つ項目は中の段落に任せ、mermaid のコードには付けない。フェンスのコードは次の行、表は見出しの行と区切りの行の次から 1 行ずつ。PoC #80 の方式）
+      3. `DOMPurify.sanitize`（`data-line-start` を残す）して要素に入れる
+      4. `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に置き換える（描くのは `renderDiagrams`）
     unit_tests:
       - name: test_render_markdown
         case: 正常
@@ -315,6 +366,12 @@ functions:
         condition: marked を読まない。本文に mermaid のコードブロック
         mock: なし
         expected: '`role="alert"` に `marked`・`DOMPurify`・`mermaid`、`pre` に原文'
+      - name: test_render_markdown_when_line_marks
+        case: 正常
+        summary: ブロックに元の行の印を付け、見た目を変えない
+        condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・表・フェンスのコード・mermaid のコードブロックを持つ本文
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`h1` の `data-line-start` が 1、段落が 3、表の各行とコードが PoC #80 の対応づけどおり。図の入れ物には付かない。`data-line-start` を除いた HTML が印を付けないときと同じ'
   - name: renderDiagrams
     title: 図を描く
     kind: 関数
@@ -658,7 +715,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: スクロールする要素を、押せるもの（button・a・input・label）の上でない所の左ボタンのドラッグで動かせるようにする
+    summary: スクロールする要素を、押せるもの（button・a・input・label）の上でない所の左ボタンのドラッグで動かせるようにする。`onPress` を渡したときは、押してから離すまでの移動が縦・横とも `PRESS_SLOP_PX` 以内なら、離したときにそれを呼ぶ
     side_effects: 要素にポインターのリスナーを付ける。ドラッグの間は `dragging` のクラスを付ける
     args:
       - name: scroller
@@ -666,6 +723,11 @@ functions:
         required: true
         passing: positional
         description: スクロールする要素（ボード・マップ）
+      - name: onPress
+        type: () => void
+        required: false
+        passing: positional
+        description: 背景を押した（ドラッグしなかった）ときに呼ぶ。渡さなければ何も呼ばない（ボード）
     returns:
       type: void
       description: '-'
@@ -676,6 +738,12 @@ functions:
         condition: '`parametrize`: 背景で押して左へ 50px・上へ 30px 動かす / ボタンの上で押して同じだけ動かす'
         mock: なし
         expected: '`scrollLeft` が 50・`scrollTop` が 30 増え、離すと `dragging` が外れる / `scrollLeft`・`scrollTop` が変わらない'
+      - name: test_enable_drag_scroll_when_pressed
+        case: 正常
+        summary: 背景を押したときだけ `onPress` を呼び、ドラッグとボタンの上では呼ばない
+        condition: '`parametrize`: 背景で押して動かさずに離す / 背景で押して右へ 5px・下へ 5px 動かして離す / 背景で押して右へ 6px 動かして離す / ボタンの上で押して動かさずに離す'
+        mock: '`onPress` に呼ばれた回数を数える関数'
+        expected: 呼ばれた回数が 1 / 1 / 0 / 0
   - name: markSelected
     title: 選択中の印を付け替える
     kind: 関数
@@ -815,51 +883,6 @@ functions:
         condition: '`parametrize`: `fetchFn` が `TypeError` を送る / 422・`{"detail": "理由"}` を返す'
         mock: '`fetchFn`'
         expected: "`{ok: false, reason: 'unreachable', detail: null}` / `{ok: false, reason: 'invalid', detail: '理由'}`"
-  - name: postSubmission
-    title: 回答・意見の送信
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
-    usecase: 回答・意見を送る
-    scope: public
-    is_async: true
-    summary: '`POST /api/submissions` へ項目の ID と本文を送り、結果にする'
-    args:
-      - name: target
-        type: string
-        required: true
-        passing: positional
-        description: 項目の ID
-      - name: body
-        type: string
-        required: true
-        passing: positional
-        description: 本文（入力欄の中身そのまま。前後の空白はサーバーが除く）
-      - name: fetchFn
-        type: typeof fetch
-        required: false
-        default: window.fetch
-        passing: injected
-        description: 要求を送る関数
-    returns:
-      type: Promise<SendResult>
-      description: 送信の結果
-    process: |-
-      1. `Content-Type: application/json` で `{target, body}` を `API_PATHS.submissions` へ送る
-         - 例外を送った場合（届かない）、`{ok: false, detail: null}` を返す
-      2. 201 なら本文の `id`・`sent` を、それ以外は本文の `detail`（読めなければステータスの文言）を返す
-    unit_tests:
-      - name: test_post_submission
-        case: 正常
-        summary: 201 の本文を返す
-        condition: '`fetchFn` が 201・`{"id": "S-1", "sent": "2026-10-04T02:23:00+00:00"}` を返す'
-        mock: '`fetchFn`'
-        expected: "`{ok: true, id: 'S-1', sent: ...}`。`fetchFn` に渡った本文が `{\"target\":\"D-1\",\"body\":\"案 A にする\"}` で `Content-Type` が `application/json`"
-      - name: test_post_submission_when_failed
-        case: 正常
-        summary: 断られた・届かないを分ける
-        condition: '`parametrize`: 404・`{"detail": "項目がありません: D-99"}` / `fetchFn` が `TypeError` を送る'
-        mock: '`fetchFn`'
-        expected: "`{ok: false, detail: '項目がありません: D-99'}` / `{ok: false, detail: null}`"
   - name: subscribeEvents
     title: 書き換えの知らせの購読
     kind: 関数
@@ -897,6 +920,162 @@ functions:
         condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
         mock: '`EventSourceCtor`'
         expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
+  - name: postOpened
+    title: 前回開いた日時を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: '`POST /api/opened` を呼び、前回開いた日時を返す'
+    args: []
+    returns:
+      type: Promise<string | null>
+      description: '`previous`。届かない・200 でない・読めないときも `null`'
+    process: |-
+      1. `fetch(API_PATHS.opened, {method: "POST"})` を呼ぶ
+      2. 200 なら JSON の `previous` を返し、それ以外と例外は `null` を返す
+    unit_tests:
+      - name: test_post_opened
+        case: 正常
+        summary: 前回の日時を返し、失敗は null
+        condition: '`parametrize`: 200 で `{previous: "2026-10-04T13:05:00+00:00"}` / 500 / 届かない'
+        mock: '`page.route`'
+        expected: '`2026-10-04T13:05:00+00:00` / `null` / `null`'
+  - name: callApi
+    title: 配信の呼び出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 共通
+    scope: public
+    is_async: true
+    summary: コメント・書きかけの API を 1 回呼び、`ApiResult` にする
+    args:
+      - name: method
+        type: "'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'"
+        required: true
+        passing: positional
+        description: メソッド
+      - name: path
+        type: string
+        required: true
+        passing: positional
+        description: 画面が開いた URL からの相対パス（`API_PATHS` の値。`/{id}` は `encodeURIComponent` で足す）
+      - name: body
+        type: object | null
+        required: false
+        default: 'null'
+        passing: positional
+        description: 送る本文。`null` なら送らず `Content-Type` も付けない
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<ApiResult>
+      description: 結果
+    process: |-
+      1. `body` があれば `Content-Type: application/json` で JSON にして送る
+         - 例外を送った場合（届かない）、`{ok: false, status: null, detail: null, stale: []}` を返す
+      2. 2xx なら本文の JSON（204 は `null`）を `data` に、それ以外は本文の `detail`（読めなければステータスの文言）と `stale`（無ければ空）を返す
+    unit_tests:
+      - name: test_call_api
+        case: 正常
+        summary: 成功の本文を返し、本文を JSON で送る
+        condition: '`parametrize`: `POST api/comments` に `{target: D-1, body: x}` で 201・`{"id": "C-1", "count": 1}` / `PUT api/drafts` で 204 / `DELETE api/comments/C-1` で 200'
+        mock: '`fetchFn`'
+        expected: '`{ok: true, data: {id: C-1, count: 1}}` で渡った本文が JSON・`Content-Type` が `application/json` / `{ok: true, data: null}` / `DELETE` に `Content-Type` が無い'
+      - name: test_call_api_when_failed
+        case: 正常
+        summary: 断られた・届かないを分ける
+        condition: '`parametrize`: 409・`{"detail": "…", "stale": [{"id": "C-2", "reason": "…"}]}` / 500・本文が JSON でない / `fetchFn` が `TypeError` を送る'
+        mock: '`fetchFn`'
+        expected: "`{ok: false, status: 409, stale: [C-2]}` / `{ok: false, status: 500, detail: 'Internal Server Error'}` / `{ok: false, status: null, detail: null}`"
+  - name: commentApi
+    title: コメントの API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: コメントを選んで送る
+    scope: public
+    summary: コメント・書きかけの 6 つの呼び出しを `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, add, update, remove, saveDraft, send}'
+      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`、`send(ids)` は `POST api/comments/send` を呼ぶ'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す
+    unit_tests:
+      - name: test_comment_api
+        case: 正常
+        summary: 各呼び出しのメソッドとパス
+        condition: "`parametrize`: `read()` / `add({body: x})` / `update('C-1', {loc: null})` / `remove('C-1')` / `saveDraft({target: D-1, body: x})` / `send(['C-1'])`"
+        mock: '`fetchFn`'
+        expected: '`GET api/comments` / `POST api/comments` / `PATCH api/comments/C-1`（本文 `{"loc":null}`）/ `DELETE api/comments/C-1` / `PUT api/drafts` / `POST api/comments/send`（本文 `{"ids":["C-1"]}`）'
+  - name: selectionLocation
+    title: 選んだ範囲の箇所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: 選んだ範囲を、本文なら元の Markdown の行の範囲、値ならキーのパスの箇所にする。本文と値の外は `null`
+    args:
+      - name: range
+        type: Range
+        required: true
+        passing: positional
+        description: 選んだ範囲
+    returns:
+      type: Location | null
+      description: 箇所（`text` は `range.toString()` の前後の空白を除いたもの）。空の選択・本文と値の外・本文と値をまたぐ選択・異なる値をまたぐ選択は `null`
+    process: |-
+      1. 空の選択か、文が空白だけなら `null`
+      2. 始点と終点から `[data-key]` を持つ最も近い祖先を引き、どちらも同じ要素なら `{kind: value, key}` を返す
+      3. 始点と終点から `.md` の中で `data-line-start` を持つ最も近い祖先を引き（無ければ `null`）、祖先の先頭から端までを `cloneContents` した中の `\n` の数と `br` の数を印の行に足す（表の行は数えない。PoC #80 の `selectionLines`）
+      4. `{kind: body, start, end, text}` を返す
+    unit_tests:
+      - name: test_selection_location
+        case: 正常
+        summary: 本文の行の範囲と値のキーを求める
+        condition: 'PoC #80 の選択のケース 19 件（見出し・段落・入れ子の項目・番号付きリスト・表・コード・引用・ソフト改行・ハードブレイク・ブロックをまたぐ選択）と、`data-key="options[B].cons"` の値の中の選択。差分の表示の間に、消した部分の後ろの段落を選んだとき'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '本文は各ケースの元の行の範囲（差分の表示の間は今の本文の行）。値は `{kind: value, key: options[B].cons, text}`'
+      - name: test_selection_location_when_outside
+        case: 正常
+        summary: 本文と値の外は null
+        condition: '`parametrize`: 空の選択 / 見出しの帯 / 関係する項目 / 図の SVG / 図の Raw の原文 / 本文から値へまたぐ選択 / 差分の表示の間の消した部分 / 消した部分と今の部分をまたぐ選択'
+        mock: なし
+        expected: どれも `null`
+  - name: locationLabel
+    title: 箇所の名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: 箇所を画面に出す名前にする
+    args:
+      - name: loc
+        type: Location
+        required: true
+        passing: positional
+        description: 箇所
+    returns:
+      type: string
+      description: 本文は `本文 {start} 行目`（`start` と `end` が違えば `本文 {start}〜{end} 行目`）、値は詳細パネルがそのキーに出す見出し（案の中は `案 {key} の{見出し}`）
+    process: 1. `kind` で分け、値はキーの最後の段の見出し（詳細パネルと同じ辞書。無ければキーそのまま）を使う
+    unit_tests:
+      - name: test_location_label
+        case: 正常
+        summary: 箇所の名前
+        condition: '`parametrize`: `{kind: body, start: 3, end: 3}` / `{kind: body, start: 2, end: 4}` / `{kind: value, key: options[C].cons}` / `{kind: value, key: unknown_key}`'
+        mock: なし
+        expected: '`本文 3 行目` / `本文 2〜4 行目` / `案 C のデメリット` / `unknown_key`'
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

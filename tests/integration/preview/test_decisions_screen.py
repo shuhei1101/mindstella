@@ -9,8 +9,10 @@ from preview_fixture_types import (
     ID_BUTTON_SIZE_JS,
     OpenPreview,
     WritePreview,
+    WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -53,6 +55,67 @@ CHECK_CENTER_TOLERANCE = 1
 
 # マップに検討事項が 1 件も描かれていない
 NO_MAP_ITEM_SCRIPT = "!document.querySelector('#decision-map .map-node.n-item')"
+
+# 項目を選んでいる（詳細パネルが開き、マップの節に選んだ印が付き、ほかが薄い）
+SELECTED_MAP_SCRIPT = (
+    "!!document.querySelector('aside.panel.open')"
+    " && !!document.querySelector('#decision-map button.map-node.sel')"
+    " && document.getElementById('decision-map').classList.contains('focusing')"
+)
+
+# 選びが外れている（詳細パネルが閉じ、マップの節の選んだ印と薄い表示が消えている）
+DESELECTED_MAP_SCRIPT = (
+    "!document.querySelector('aside.panel.open')"
+    " && !document.querySelector('#decision-map button.map-node.sel')"
+    " && !document.getElementById('decision-map').classList.contains('focusing')"
+)
+
+# 余白を押してから、描き直しなどで変わるものが落ち着くまで待つ時間（ms。変わらないことを確かめる前に置く）
+PRESS_SETTLE_MS = 400
+
+# 押したとみなす移動の上限（`PRESS_SLOP_PX`）と、それを超える移動（px）
+PRESS_SLOP_PX = 5
+DRAG_OVER_SLOP_PX = PRESS_SLOP_PX + 1
+
+# 余白の点を探すとき、マップの枠の右下から内へ入る余白と、探す間隔（px）
+BLANK_SCAN_MARGIN_PX = 24
+BLANK_SCAN_STEP_PX = 20
+
+# 拡大・縮小で倍率を決めるための「拡大」を押す回数（上限の倍率になる）と、スクロールさせる位置（px）
+ZOOM_IN_CLICKS = 6
+SCROLL_LEFT_PX = 150
+SCROLL_TOP_PX = 40
+
+# マップの枠の右下から内へ探して、枠・拡大の土台・マップの面だけが当たる余白の点（画面上の座標）を返す
+BLANK_POINT_SCRIPT = """([margin, step]) => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    const blanks = [wrap, wrap.firstElementChild, canvas];
+    const box = wrap.getBoundingClientRect();
+    const right = box.left + wrap.clientLeft + wrap.clientWidth;
+    const bottom = box.top + wrap.clientTop + wrap.clientHeight;
+    for (let y = bottom - margin; y > box.top; y -= step) {
+        for (let x = right - margin; x > box.left; x -= step) {
+            if (blanks.includes(document.elementFromPoint(x, y))) return { x, y };
+        }
+    }
+    return null;
+}"""
+
+# 木の枝（対象 → カテゴリーの最初の線）の中ほどの点（画面上の座標）を返す
+EDGE_POINT_SCRIPT = """() => {
+    const path = document.querySelector("#decision-map svg.edges path.edge-tree");
+    const middle = path.getPointAtLength(path.getTotalLength() / 2);
+    const point = new DOMPoint(middle.x, middle.y).matrixTransform(path.getScreenCTM());
+    return { x: point.x, y: point.y };
+}"""
+
+# マップの枠のスクロールの位置と、拡大の倍率
+MAP_VIEW_SCRIPT = """() => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    return { left: wrap.scrollLeft, top: wrap.scrollTop, transform: canvas.style.transform };
+}"""
 
 
 def _view_pressed(page: Page, view: str) -> str | None:
@@ -165,6 +228,137 @@ def test_map_zoom(write_sample_preview: WriteSamplePreview, open_preview: OpenPr
     page.wait_for_function(
         "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
     )
+
+
+def _open_selected_map(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> Page:
+    """項目 D-2 を選んだ状態でマップを開き、選びが描き終わるまで待つ。"""
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map&id=D-2")
+    page.wait_for_function(SELECTED_MAP_SCRIPT)
+    return page
+
+
+def _press_at(page: Page, point: dict[str, float]) -> None:
+    """動かさずに左ボタンを押して離す。"""
+    page.mouse.move(point["x"], point["y"])
+    page.mouse.down()
+    page.mouse.up()
+
+
+def _box_center(page: Page, selector: str) -> dict[str, float]:
+    """要素の中心の画面上の座標を返す。"""
+    box = page.locator(selector).first.bounding_box()
+    assert box is not None
+    return {"x": box["x"] + box["width"] / 2, "y": box["y"] + box["height"] / 2}
+
+
+def _blank_point(page: Page) -> dict[str, float]:
+    """マップの枠の中の、節にも線にも当たらない余白の点を返す。"""
+    point = page.evaluate(BLANK_POINT_SCRIPT, [BLANK_SCAN_MARGIN_PX, BLANK_SCAN_STEP_PX])
+    assert point is not None
+    return point
+
+
+@pytest.mark.parametrize(
+    "place",
+    [
+        pytest.param("blank", id="blank"),
+        pytest.param(".n-target", id="target_node"),
+        pytest.param(".n-category", id="category_node"),
+        pytest.param(".n-phase", id="phase_node"),
+        pytest.param("edge", id="edge"),
+    ],
+)
+def test_map_background_press(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, place: str
+) -> None:
+    """項目を選んだ状態で余白を押して離すと、詳細パネルを閉じ、ハッシュから項目の ID を外し、強調と薄い表示を消す（正常系）。"""
+    # 準備（選んだ項目が中央に来る位置から、左上の節と線が見える位置へ送る）
+    page = _open_selected_map(write_sample_preview, open_preview)
+    page.evaluate("document.querySelector('.map-wrap').scrollTo({left: 0, top: 0})")
+    if place == "blank":
+        point = _blank_point(page)
+    elif place == "edge":
+        point = page.evaluate(EDGE_POINT_SCRIPT)
+    else:
+        point = _box_center(page, f"#decision-map {place}")
+    # 実行
+    _press_at(page, point)
+    page.wait_for_function(DESELECTED_MAP_SCRIPT)
+    # 検証
+    assert "id=" not in page.evaluate("location.hash")
+    assert page.evaluate("document.querySelectorAll('#decision-map .flow-dot').length") == 0
+    assert _map_item_ids(page) == ["D-2", "D-3", "D-4", "D-5"]
+
+
+def test_map_background_press_when_dragged(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """余白を押して上限を超えてドラッグし離したときは、選びを保つ（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    hash_text = page.evaluate("location.hash")
+    point = _blank_point(page)
+    # 実行
+    page.mouse.move(point["x"], point["y"])
+    page.mouse.down()
+    page.mouse.move(point["x"] - DRAG_OVER_SLOP_PX, point["y"], steps=3)
+    page.mouse.up()
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    # 検証
+    assert page.evaluate(SELECTED_MAP_SCRIPT) is True
+    assert page.evaluate("location.hash") == hash_text
+
+
+def test_map_background_press_when_nothing_selected(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """何も選んでいないときに余白を押しても、ハッシュとマップの表示が変わらない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    hash_text = page.evaluate("location.hash")
+    history_length = page.evaluate("history.length")
+    view_before = page.evaluate(MAP_VIEW_SCRIPT)
+    # 実行
+    _press_at(page, _blank_point(page))
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    # 検証
+    assert page.evaluate("location.hash") == hash_text
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate(DESELECTED_MAP_SCRIPT) is True
+    assert _map_item_ids(page) == ["D-2", "D-3", "D-4", "D-5"]
+    assert page.evaluate(MAP_VIEW_SCRIPT) == view_before
+
+
+def test_map_background_press_when_zoomed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """拡大・縮小で倍率を決めたとき、余白を押す前後でスクロールの位置と倍率が変わらない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    for _ in range(ZOOM_IN_CLICKS):
+        page.click('.zoom button[aria-label="拡大"]')
+    page.wait_for_function(
+        "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'false'"
+    )
+    page.evaluate(
+        "([left, top]) => document.querySelector('.map-wrap').scrollTo({left, top})",
+        [SCROLL_LEFT_PX, SCROLL_TOP_PX],
+    )
+    before = page.evaluate(MAP_VIEW_SCRIPT)
+    # スクロールが効いていて、押した後に枠が広がっても位置が切り詰められない余地がある
+    assert before["left"] == SCROLL_LEFT_PX
+    assert before["top"] == SCROLL_TOP_PX
+    # 実行
+    _press_at(page, _blank_point(page))
+    page.wait_for_function(DESELECTED_MAP_SCRIPT)
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    # 検証
+    assert page.evaluate(MAP_VIEW_SCRIPT) == before
 
 
 def test_map_when_narrow(
@@ -530,3 +724,65 @@ def test_table_id_button_size(
     # 検証
     assert sizes["count"] > 0
     assert sizes["smallest"] >= ID_BUTTON_MIN_SIZE_PX
+
+
+
+def test_diff_marks_when_table(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表の行のタイトルの右に印を置く。変えた行は ●、足した行は + で、トップバーに札を出し、タブに点を付ける（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    new_rows = page.eval_on_selector_all(
+        "table.grid tbody tr:has(.row-open + .df-mark.df-new)", "rows => rows.map(r => r.dataset.id)"
+    )
+    assert new_rows == ["D-1", "D-2"]
+    assert page.locator("table.grid .df-mark.df-chg").count() == 0
+    assert page.locator('nav.tabbar a[data-tab="decisions"] .df-dot').count() == 1
+    assert_topbar_history(page)
+
+
+def test_diff_marks_when_board(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """ボードのカードのタイトルの横に、文言なしの印を置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(".board button.card")
+    # 検証
+    marked = page.eval_on_selector_all(
+        ".board button.card:has(.df-mark.df-chg)", "cards => cards.map(c => c.dataset.id)"
+    )
+    assert sorted(marked) == ["D-1", "D-2"]
+    assert page.locator(".board .df-badge").count() == 0
+
+
+def test_diff_marks_when_map(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """マップの箱に印を置く。狭い幅の字下げの一覧にも同じ印を置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    # 検証
+    marked = page.eval_on_selector_all(
+        "#decision-map .map-node.n-item:has(.df-mark.df-chg)", "nodes => nodes.map(n => n.dataset.node)"
+    )
+    # 既定で表示する状態（決定済みを除く）の検討事項だけが箱になる
+    assert sorted(marked) == ["D-2"]
+    # 狭い幅の字下げの一覧
+    page.set_viewport_size({"width": 800, "height": 700})
+    page.wait_for_selector(".map-outline button[data-id] .df-mark")
+    outlined = page.eval_on_selector_all(
+        ".map-outline button[data-id]:has(.df-mark.df-chg)", "buttons => buttons.map(b => b.dataset.id)"
+    )
+    assert sorted(outlined) == ["D-2"]
+    assert_topbar_history(page)

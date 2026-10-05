@@ -6,6 +6,8 @@ from collections.abc import Callable
 
 from workspace_fixtures import (
     CallTool,
+    MakeComment,
+    MakeDraft,
     MakeItem,
     MakeLegacyWorkspace,
     MakeSubmission,
@@ -15,6 +17,8 @@ from workspace_fixtures import (
     SnapshotTree,
     StartServer,
     ToolResult,
+    WriteComments,
+    WriteDrafts,
     WriteSubmissions,
 )
 
@@ -22,6 +26,8 @@ __all__ = [
     "CallTool",
     "FindOldPython",
     "LockDirs",
+    "MakeComment",
+    "MakeDraft",
     "MakeItem",
     "MakeLegacyWorkspace",
     "MakeSubmission",
@@ -31,6 +37,8 @@ __all__ = [
     "SnapshotTree",
     "StartServer",
     "ToolResult",
+    "WriteComments",
+    "WriteDrafts",
     "WriteSubmissions",
 ]
 

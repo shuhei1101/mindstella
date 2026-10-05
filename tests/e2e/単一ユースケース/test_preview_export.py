@@ -53,6 +53,7 @@ EXPECTED_LICENSES = {
     "dompurify": ("DOMPurify", "Apache-2.0", "(c) Cure53 and other contributors"),
     "elkjs": ("elkjs", "EPL-2.0", "(c) Kiel University and others"),
     "mermaid": ("mermaid", "MIT", "Copyright (c) 2014 - 2022 Knut Sveidqvist"),
+    "diff": ("jsdiff", "BSD-3-Clause", "Copyright (c) 2009-2015, Kevin Decker"),
 }
 
 # elkjs のソースコードの入手先（リポジトリ）

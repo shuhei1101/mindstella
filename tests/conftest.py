@@ -15,6 +15,8 @@ from launch_fixtures import ready_venv, sandbox  # noqa: F401
 # 単体・結合・E2E が共有する fixture（pytest は conftest の名前空間にある fixture を登録する）
 from workspace_fixtures import (  # noqa: F401
     call_tool,
+    make_comment,
+    make_draft,
     make_item,
     make_legacy_item,
     make_legacy_workspace,
@@ -25,6 +27,8 @@ from workspace_fixtures import (  # noqa: F401
     snapshot_tree,
     start_server,
     valid_settings,
+    write_comments,
+    write_drafts,
     write_submissions,
 )
 

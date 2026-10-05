@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
-from preview_fixture_types import OpenPreview, WriteSamplePreview
+from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import assert_topbar_history, preselect_diff
 
 # 種類の切り替えの並び（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）
 KIND_VALUES = ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]
@@ -213,3 +214,17 @@ def test_kind_chip_style(
     assert styles["shown"]["textDecoration"] == styles["hidden"]["textDecoration"] == "none"
     assert styles["shown"]["fontWeight"] == styles["hidden"]["fontWeight"]
     assert box_label_style == "none"
+
+
+def test_topbar_history(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """つながりでも、トップバーに「変更履歴」のボタンと選んだ時点の札を出し、玉と線には印を付けない（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=graph")
+    page.wait_for_selector("#graph-canvas")
+    # 検証
+    assert_topbar_history(page)
+    assert page.locator("main .df-mark").count() == 0

@@ -42,6 +42,9 @@ def test_normal(
     options = decisions[0]["options"]
     assert options[0]["adopted"] is False
     assert options[1]["adopted"] is True
+    # D-1 が変更履歴を 1 回分持ち、切り替える前の案の採否が入っている
+    assert len(decisions[0]["history"]) == 1
+    assert decisions[0]["history"][0]["before"]["options"] == two_options
     assert affected.is_error is False
     rows = affected.data["affected"]
     assert [row["id"] for row in rows] == ["D-2", "D-3", "T-1"]

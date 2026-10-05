@@ -89,6 +89,13 @@ namespace MindmapPreview {
     note: '<path d="M5 4h14v12l-4 4H5Z"/><path d="M15 20v-4h4"/>',
     log: '<path d="M4 6h16v10H9l-5 4Z"/>',
     send: '<path d="M4 12 20 4l-4 16-4-6Z"/><path d="m12 14 8-10"/>',
+    comment: '<path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/>',
+    edit: '<path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/>',
+    trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/><path d="M10 11v6M14 11v6"/>',
+    undo: '<path d="M9 7 4 12l5 5"/><path d="M4 12h10a5 5 0 0 1 0 10h-2"/>',
+    history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    changed: '<circle cx="12" cy="12" r="5"/>',
     offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/>',
   } as const;
 
@@ -210,26 +217,37 @@ namespace MindmapPreview {
     return h({ tag: "p", attrs: { class: "empty" }, children: [text] });
   }
 
-  /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする */
-  export function enableDragScroll(scroller: HTMLElement): void {
-    let drag: { x: number; y: number; left: number; top: number } | null = null;
+  /** 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす */
+  const PRESS_SLOP_PX = 5;
+
+  /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする。`onPress` は、背景を押して離したとき（ドラッグでないとき）に呼ぶ */
+  export function enableDragScroll(scroller: HTMLElement, onPress?: () => void): void {
+    let drag: { x: number; y: number; left: number; top: number; moved: boolean } | null = null;
     scroller.addEventListener("pointerdown", (event) => {
       // 左ボタンで、押せるものの上でないとき
       if (event.button !== 0 || (event.target as Element).closest("button, a, input, label")) return;
-      drag = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop };
+      drag = { x: event.clientX, y: event.clientY, left: scroller.scrollLeft, top: scroller.scrollTop, moved: false };
       scroller.classList.add("dragging");
       scroller.setPointerCapture(event.pointerId);
     });
     scroller.addEventListener("pointermove", (event) => {
       if (drag === null) return;
-      scroller.scrollLeft = drag.left - (event.clientX - drag.x);
-      scroller.scrollTop = drag.top - (event.clientY - drag.y);
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      // 一度でも上限を超えて動いたら、離した位置が近くてもドラッグとして扱う
+      if (Math.abs(dx) > PRESS_SLOP_PX || Math.abs(dy) > PRESS_SLOP_PX) drag.moved = true;
+      scroller.scrollLeft = drag.left - dx;
+      scroller.scrollTop = drag.top - dy;
     });
     const release = (): void => {
       drag = null;
       scroller.classList.remove("dragging");
     };
-    scroller.addEventListener("pointerup", release);
+    scroller.addEventListener("pointerup", () => {
+      const pressed = drag !== null && !drag.moved;
+      release();
+      if (pressed) onPress?.();
+    });
     scroller.addEventListener("pointercancel", release);
   }
 

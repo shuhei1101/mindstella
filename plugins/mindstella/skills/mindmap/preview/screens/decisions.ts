@@ -214,11 +214,14 @@ namespace MindmapPreview {
     canvas,
     selected,
     open,
+    marks,
   }: {
     laid: MapGraph;
     canvas: HTMLElement;
     selected: string | null;
     open: (id: string) => void;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks | undefined;
   }): void {
     const positions = new Map(laid.children.map((node) => [node.id, node]));
     const parentOf = new Map(laid.edges.map((edge) => [edge.targets[0], edge.sources[0]]));
@@ -313,6 +316,7 @@ namespace MindmapPreview {
             tag: "span",
             attrs: { class: "r2" },
             children: [
+              markFor({ marks, id: item.id }),
               h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
               h({ tag: "span", children: [item.status ?? ""] }),
               item.weight === undefined ? null : h({ tag: "span", children: [`影響度 ${item.weight}`] }),
@@ -331,9 +335,12 @@ namespace MindmapPreview {
   function outline({
     index,
     open,
+    marks,
   }: {
     index: RecordIndex;
     open: (id: string) => void;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks | undefined;
   }): HTMLElement {
     const tree = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
     const nodeOf = new Map(tree.children.map((node) => [node.id, node]));
@@ -351,7 +358,7 @@ namespace MindmapPreview {
           ? h({
             tag: "button",
             attrs: { type: "button", "data-id": node.id, onclick: () => open(node.id) },
-            children: [statusMark(node.item.status), h({ tag: "span", children: [node.label] })],
+            children: [statusMark(node.item.status), h({ tag: "span", children: [node.label] }), markFor({ marks, id: node.id })],
           })
           : h({ tag: "div", attrs: { class: `o-${node.kind}` }, children: [node.label] });
       const below = childrenOf.get(node.id) ?? [];
@@ -372,8 +379,16 @@ namespace MindmapPreview {
     });
   }
 
+  /** 検討事項の画面が受ける操作（項目を開く・表示形式を切り替えるに、マップの余白で選びを外すを足す） */
+  export type DecisionsScreenProps = Omit<ScreenProps, "on"> & {
+    on: ScreenProps["on"] & {
+      /** 選びを外す（詳細パネルの「閉じる」と同じ） */
+      clear: () => void;
+    };
+  };
+
   /** マップの道具の行（状態の印・キーワード）と、マップの枠・拡大の道具を作る */
-  function mapView({ index, route, on }: ScreenProps): HTMLElement {
+  function mapView({ index, route, on, marks }: DecisionsScreenProps): HTMLElement {
     const root = h({ tag: "div", attrs: { class: "map-view-root" } });
     const decisions = index.data.decisions;
     const legend = h({ tag: "div", attrs: { class: "legend", role: "group", "aria-label": "表示する状態" } });
@@ -397,7 +412,7 @@ namespace MindmapPreview {
       },
       children: ["全体を表示"],
     });
-    let outlineElement = outline({ index, open: on.open });
+    let outlineElement = outline({ index, open: on.open, marks });
     let current: MapGraph | null = null;
 
     /** キーワードに当たった検討事項か */
@@ -424,7 +439,7 @@ namespace MindmapPreview {
                     onchange: (event: Event) => {
                       if ((event.target as HTMLInputElement).checked) mapState.shownStatuses.add(status);
                       else mapState.shownStatuses.delete(status);
-                      void draw(false);
+                      void draw();
                     },
                   },
                 }),
@@ -448,7 +463,7 @@ namespace MindmapPreview {
           all: bandStatuses,
           onChange: (next) => {
             mapState.shownStatuses = next;
-            void draw(false);
+            void draw();
           },
         }),
       );
@@ -469,17 +484,16 @@ namespace MindmapPreview {
       fitButton.setAttribute("aria-pressed", String(mapState.zoom === "fit"));
     };
 
-    /** 配置を求めて、マップを描く。選んだ項目が変わったときは、その節が中央に来るようにマップを送る */
-    const draw = async (keepScroll: boolean): Promise<void> => {
+    /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
+    const draw = async (): Promise<void> => {
       drawLegend();
-      outlineElement.replaceWith((outlineElement = outline({ index, open: on.open })));
+      outlineElement.replaceWith((outlineElement = outline({ index, open: on.open, marks })));
       if (missingLibraries(["elkjs"]).length > 0) return;
       const key = [...mapState.shownStatuses].sort().join(",");
       const graph = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
       emptyNotice.hidden = graph.children.length > 0;
       current = await layoutOf(graph, key);
-      const previous = { left: wrap.scrollLeft, top: wrap.scrollTop };
-      drawMap({ laid: current, canvas, selected: route.id, open: on.open });
+      drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks });
       applyZoom();
       const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
       const scale = mapState.zoom === "fit" ? Number.parseFloat(canvas.style.transform.slice(6)) : mapState.zoom;
@@ -488,8 +502,6 @@ namespace MindmapPreview {
           left: ((node.x ?? 0) + node.width / 2) * scale - wrap.clientWidth / 2,
           top: ((node.y ?? 0) + node.height / 2) * scale - wrap.clientHeight / 2,
         });
-      } else if (keepScroll) {
-        wrap.scrollTo(previous);
       } else if (mapState.scroll !== null) {
         wrap.scrollTo(mapState.scroll);
       }
@@ -570,7 +582,10 @@ namespace MindmapPreview {
     wrap.addEventListener("scroll", () => {
       mapState.scroll = { left: wrap.scrollLeft, top: wrap.scrollTop };
     });
-    enableDragScroll(wrap);
+    // 余白を押したときは、選んでいる項目があるときだけ選びを外す
+    enableDragScroll(wrap, () => {
+      if (route.id !== null) on.clear();
+    });
 
     // elkjs が読めない: 知らせを出し、表示形式を表に切り替えると読めることを伝える
     const notice =
@@ -601,13 +616,13 @@ namespace MindmapPreview {
     new ResizeObserver(() => {
       if (mapState.zoom === "fit") applyZoom();
     }).observe(wrap);
-    void draw(true);
+    void draw();
     return root;
   }
 
   /** 検討事項の画面を返す */
-  export function decisionsScreen(props: ScreenProps): HTMLElement {
-    const { index, route, on } = props;
+  export function decisionsScreen(props: DecisionsScreenProps): HTMLElement {
+    const { index, route, on, marks } = props;
     if (route.view === "map") return h({ tag: "div", attrs: { class: "screen decisions" }, children: [mapView(props)] });
     const toolbarElement = toolbar(
       [
@@ -633,6 +648,7 @@ namespace MindmapPreview {
                 meta: [item.category, item.phase],
                 links: item.depends_on ?? [],
                 open: on.open,
+                mark: marks?.[item.id],
               }),
             emptyText: "検討事項はありません。",
           }),
@@ -687,6 +703,7 @@ namespace MindmapPreview {
           rows: index.data.decisions,
           open: on.open,
           initialFilters: route.filters,
+          marks,
         }),
       ],
     });

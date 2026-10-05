@@ -10,7 +10,7 @@ import shutil
 import tempfile
 import threading
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, Any, Literal
@@ -62,6 +62,9 @@ VERSION_FILE = "mindstella-version.ini"
 # プロセスをまたいだ書き換えの排他に使う空のファイルの名前
 LOCK_FILE = ".mindstella.lock"
 
+# 書き換えのまとまりを持つファイルの名前
+CHANGES_FILE = "changes.yaml"
+
 # 今の日時（UTC のタイムゾーン付き ISO 8601）を返す関数。テストで決めた日時を注入する
 type NowFn = Callable[[], str]
 
@@ -70,7 +73,15 @@ type NowFn = Callable[[], str]
 class Problem:
     """スキーマ違反・参照切れなど 1 件の問題。"""
 
-    kind: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body"]
+    kind: Literal[
+        "schema",
+        "duplicate_id",
+        "broken_ref",
+        "missing_body",
+        "orphan_body",
+        "unknown_phase",
+        "stale_history",
+    ]
     # ワークスペースからの相対パス
     file: str
     # 問題のある項目の ID
@@ -125,6 +136,20 @@ class Change:
     # 書き換えた後の `items` の並び全体
     items: list[dict[str, Any]]
     body: BodyWrite | None = None
+    # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
+    changes: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchChange:
+    """複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更。"""
+
+    # 書き換える種類 → 書き換えた後の `items` の並び全体（書き換えない種類は持たない）
+    items: dict[Kind, list[dict[str, Any]]]
+    # 一緒に書く本文（同じ名前は 1 つだけ。後のものを残す）
+    bodies: list[BodyWrite] = field(default_factory=list)
+    # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
+    changes: dict[str, Any] | None = None
 
 
 def load_workspace(root: Path) -> Workspace:
@@ -286,14 +311,17 @@ def build_mismatch_error(
 
 
 def is_legacy_problem(problem: Problem, workspace: Workspace) -> bool:
-    """問題が、前の版の形式（資料の `done`・題名の無い設定）から来ているかを返す。"""
+    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）から来ているかを返す。"""
     # スキーマ違反以外（参照切れなど）は前の版の形式のせいではない
     if problem.kind != "schema":
         return False
-    # 設定: 題名（summary）が無い
+    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たない
     if problem.file == SETTINGS_FILE:
         raw_settings = workspace.raw.get(SETTINGS_FILE)
-        return isinstance(raw_settings, dict) and "summary" not in raw_settings
+        return isinstance(raw_settings, dict) and (
+            "summary" not in raw_settings
+            or ("field" in raw_settings and "playbooks" not in raw_settings)
+        )
     # 資料: done を持ち、status を持たない
     if problem.file == KINDS["doc"].file and problem.id is not None:
         docs = _extract_items(workspace.raw.get(problem.file))
@@ -305,7 +333,7 @@ def is_legacy_problem(problem: Problem, workspace: Workspace) -> bool:
 
 
 def save_change(workspace: Workspace, change: Change) -> None:
-    """1 種類の項目の並びと本文を、検証してから両方とも書き換えるか、どちらも書き換えない。"""
+    """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。"""
     spec = KINDS[change.kind]
     # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
     if _loses_content_on_rewrite(workspace, change.kind):
@@ -319,13 +347,16 @@ def save_change(workspace: Workspace, change: Change) -> None:
         raise build_mismatch_error(problems, changed)
 
     yaml_path = workspace.root / spec.file
+    changes_path = workspace.root / CHANGES_FILE
     body_path = workspace.root / BODY_DIR / change.body.name if change.body else None
-    # 本文があるときは置き換える前の中身を控える（無ければ None）
+    # 置き換える前の中身を控える（無ければ None）
     previous_body = body_path.read_bytes() if body_path and body_path.is_file() else None
+    previous_yaml = yaml_path.read_bytes() if yaml_path.is_file() else None
 
     # 一時ファイルを先に全て書く
     temps: list[Path] = []
     body_temp: Path | None = None
+    changes_temp: Path | None = None
     try:
         yaml_temp = write_temp(yaml_path, dump_yaml({"items": change.items}))
         temps.append(yaml_temp)
@@ -333,11 +364,14 @@ def save_change(workspace: Workspace, change: Change) -> None:
             body_path.parent.mkdir(exist_ok=True)
             body_temp = write_temp(body_path, change.body.text)
             temps.append(body_temp)
+        if change.changes is not None:
+            changes_temp = write_temp(changes_path, dump_yaml(change.changes))
+            temps.append(changes_temp)
     except OSError as error:
         _remove_files(temps)
         raise write_failed(yaml_path, error) from error
 
-    # 本文 → YAML の順に置き換える
+    # 本文 → YAML → まとまりの順に置き換える
     try:
         if body_temp and body_path:
             os.replace(body_temp, body_path)
@@ -352,6 +386,73 @@ def save_change(workspace: Workspace, change: Change) -> None:
             _restore_body(body_path, previous_body)
         _remove_files(temps)
         raise write_failed(yaml_path, error) from error
+    try:
+        if changes_temp:
+            os.replace(changes_temp, changes_path)
+    except OSError as error:
+        # まとまりを置き換えられなかった: 置き換えた YAML と本文を元に戻す
+        _restore_file(yaml_path, previous_yaml)
+        if body_path and body_temp:
+            _restore_body(body_path, previous_body)
+        _remove_files(temps)
+        raise write_failed(changes_path, error) from error
+
+
+def save_batch(workspace: Workspace, change: BatchChange) -> None:
+    """複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。"""
+    kinds = [kind for kind in KINDS if kind in change.items]
+    # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+    for kind in kinds:
+        if _loses_content_on_rewrite(workspace, kind):
+            file_name = KINDS[kind].file
+            current = [p for p in validate_workspace(workspace) if p.file == file_name]
+            raise build_mismatch_error(current, workspace)
+    # 変更を当てた後のワークスペース全体を検証する
+    changed_raw = {
+        **workspace.raw,
+        **{KINDS[kind].file: {"items": change.items[kind]} for kind in kinds},
+    }
+    changed = replace(workspace, raw=changed_raw)
+    problems = validate_workspace(changed)
+    if problems:
+        raise build_mismatch_error(problems, changed)
+
+    # 置き換える順（本文 → 種類の YAML → まとまり）に、書く先と中身を並べる
+    bodies = {body.name: body for body in change.bodies}
+    targets: list[tuple[Path, str]] = [
+        (workspace.root / BODY_DIR / body.name, body.text) for body in bodies.values()
+    ]
+    targets.extend(
+        (workspace.root / KINDS[kind].file, dump_yaml({"items": change.items[kind]}))
+        for kind in kinds
+    )
+    if change.changes is not None:
+        targets.append((workspace.root / CHANGES_FILE, dump_yaml(change.changes)))
+    # 置き換える前の中身を控える（無ければ None）
+    previous = {path: path.read_bytes() if path.is_file() else None for path, _ in targets}
+
+    # 一時ファイルを先に全て書く
+    temps: list[Path] = []
+    for path, text in targets:
+        try:
+            if path.parent.name == BODY_DIR:
+                path.parent.mkdir(exist_ok=True)
+            temps.append(write_temp(path, text))
+        except OSError as error:
+            _remove_files(temps)
+            raise write_failed(path, error) from error
+
+    # 順に置き換え、失敗したら置き換えたファイルを控えに戻す（前に無ければ消す）
+    replaced: list[Path] = []
+    for (path, _), temp in zip(targets, temps, strict=True):
+        try:
+            os.replace(temp, path)
+        except OSError as error:
+            for done in reversed(replaced):
+                _restore_file(done, previous[done])
+            _remove_files(temps)
+            raise write_failed(path, error) from error
+        replaced.append(path)
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
@@ -512,6 +613,11 @@ def write_temp(target: Path, text: str) -> Path:
     return _write_temp(target, text)
 
 
+def loses_content_on_rewrite(workspace: Workspace, kind: Kind) -> bool:
+    """その種類のファイルが、項目の並びで書き戻すと中身を失う形かを返す。"""
+    return _loses_content_on_rewrite(workspace, kind)
+
+
 def _write_temp(target: Path, text: str) -> Path:
     """置き換え先と同じフォルダに一時ファイルを書き、置き換え先の権限に揃えてそのパスを返す。"""
     fd, name = tempfile.mkstemp(dir=target.parent, suffix=TEMP_SUFFIX)
@@ -563,11 +669,16 @@ def _remove_files(paths: list[Path]) -> None:
 
 def _restore_body(body_path: Path, previous_body: bytes | None) -> None:
     """置き換えた本文を、置き換える前の中身に戻す（前に本文が無ければ消す）。"""
-    # 前に本文が無かった: 新しく書いた本文を消す
-    if previous_body is None:
-        body_path.unlink(missing_ok=True)
+    _restore_file(body_path, previous_body)
+
+
+def _restore_file(path: Path, previous: bytes | None) -> None:
+    """置き換えたファイルを、置き換える前の中身に戻す（前に無ければ消す）。"""
+    # 前に無かった: 新しく書いたものを消す
+    if previous is None:
+        path.unlink(missing_ok=True)
         return
-    body_path.write_bytes(previous_body)
+    path.write_bytes(previous)
 
 
 def write_failed(path: Path, error: OSError) -> WriteFailedError:

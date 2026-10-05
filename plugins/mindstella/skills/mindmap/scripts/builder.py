@@ -19,6 +19,7 @@ from typing import Any
 import store
 from errors import ArgumentError, DownloadFailedError
 from graph import is_settled, judge_goal, list_next_candidates
+from history import load_changes
 from kinds import KINDS
 from store import NowFn, Workspace, now_utc
 
@@ -39,18 +40,23 @@ SCRIPT_FILES = (
     "core/dom.js",
     "core/records.js",
     "core/libs.js",
+    "core/diff.js",
     "core/router.js",
     "core/api.js",
     "components/view-switch.js",
     "components/topbar.js",
+    "components/diff-mark.js",
+    "components/history-dialog.js",
     "components/table.js",
     "components/send-form.js",
+    "components/selection-comment.js",
     "screens/overview.js",
     "screens/decisions.js",
     "screens/tasks.js",
     "screens/docs.js",
     "screens/records.js",
     "screens/detail.js",
+    "screens/comments.js",
     "screens/search.js",
     "screens/diagram-viewer.js",
     "graph/graph.js",
@@ -177,6 +183,16 @@ VENDOR_LIBRARIES = (
         repository="https://github.com/mermaid-js/mermaid",
         tag="mermaid@{version}",
     ),
+    VendorLibrary(
+        package="diff",
+        name="jsdiff",
+        notice="Copyright (c) 2009-2015, Kevin Decker",
+        license="BSD-3-Clause",
+        license_path="LICENSE",
+        bundled_license_file=None,
+        repository="https://github.com/kpdecker/jsdiff",
+        tag="v{version}",
+    ),
 )
 
 # URL を受けて本文のバイト列を返す関数（取れなければ DownloadFailedError を送る）
@@ -197,7 +213,7 @@ def replace_file(path: Path, text: str) -> None:
 
 
 def collect_preview_data(workspace: Workspace, *, built_at: str) -> dict[str, Any]:
-    """設定・7 種類・本文・画面に出す値・読んだ日時を 1 つの辞書にまとめる（送信は含めない）。"""
+    """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時を 1 つの辞書にまとめる（送信は含めない）。"""
     data: dict[str, Any] = {"settings": workspace.settings}
     # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで入れる
     for kind, spec in KINDS.items():
@@ -213,6 +229,8 @@ def collect_preview_data(workspace: Workspace, *, built_at: str) -> dict[str, An
             if text is not None:
                 bodies[body] = text
     data["bodies"] = bodies
+    # 書き換えのまとまり（項目の `history` は項目のまま入っている）
+    data["changes"] = load_changes(workspace.root)
     data["derived"] = derive_preview_values(workspace)
     data["built_at"] = built_at
     return data

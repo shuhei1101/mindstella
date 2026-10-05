@@ -1,7 +1,9 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・ライト / ダークの切り替えと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
+    /** 件数の表示を揺らさない上限 */
+    const COMMENT_COUNT_CAP = 99;
     /** ブランドのマーク（木の形の線画） */
     function brandMark() {
         const holder = document.createElement("template");
@@ -10,7 +12,7 @@ var MindmapPreview;
         return holder.content.firstElementChild;
     }
     /** 画面を移るリンク（ハッシュのリンクにして、押したときは使う側が移る） */
-    function tabLink({ key, label, icon: iconName, count }, current, onNavigate, extraClass = "") {
+    function tabLink({ key, label, icon: iconName, count, marked = false }, current, onNavigate, extraClass = "") {
         return MindmapPreview.h({
             tag: "a",
             attrs: {
@@ -27,6 +29,54 @@ var MindmapPreview;
                 MindmapPreview.icon(iconName),
                 label,
                 count === undefined ? null : MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [count] }),
+                // 差分の表示の間、印の付いた項目を持つ種類に、件数を残したまま点を重ねる
+                marked
+                    ? MindmapPreview.h({
+                        tag: "span",
+                        attrs: { class: "df-dot" },
+                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更の項目があります"] })],
+                    })
+                    : null,
+            ],
+        });
+    }
+    /** 「変更履歴」のボタン（印と文言）。押すと変更履歴のモーダルを開く */
+    function historyButton(onClick) {
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: "hist-btn",
+                type: "button",
+                "data-act": "hist",
+                "aria-haspopup": "dialog",
+                "aria-label": "変更履歴",
+                onclick: onClick,
+            },
+            children: [MindmapPreview.icon("history"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["変更履歴"] })],
+        });
+    }
+    /** 選んだ時点の札と、差分の表示をやめる × */
+    function diffChip({ point, onOff }) {
+        return MindmapPreview.h({
+            tag: "span",
+            attrs: { class: "df-chip" },
+            children: [
+                MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: "df-chip-t", title: `${point.name}（${point.sub}）` },
+                    children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["差分の時点: "] }), point.name],
+                }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: {
+                        type: "button",
+                        "data-act": "diffoff",
+                        "aria-label": "差分の表示をやめる",
+                        title: "差分の表示をやめる",
+                        onclick: () => onOff?.(),
+                    },
+                    children: [MindmapPreview.icon("x")],
+                }),
             ],
         });
     }
@@ -55,12 +105,35 @@ var MindmapPreview;
             ],
         });
     }
+    /** コメントのボタン（印と「コメント」と件数）。押すとコメントの一覧を開く・閉じる */
+    function commentsButton({ count, open, onClick }) {
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: `comments-btn${open ? " open" : ""}`,
+                type: "button",
+                "data-act": "comments",
+                "aria-label": `コメント（レビュー中 ${count} 件）`,
+                "aria-expanded": String(open),
+                onclick: () => onClick?.(),
+            },
+            children: [
+                MindmapPreview.icon("comment"),
+                MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["コメント"] }),
+                MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: `count${count === 0 ? " zero" : ""}` },
+                    children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
+                }),
+            ],
+        });
+    }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, onComments, diffPoint = null, onHistory, onDiffOff, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
-            attrs: { class: "topbar" },
+            attrs: { class: comments ? "topbar has-comments" : "topbar" },
             children: [
                 MindmapPreview.h({
                     tag: "span",
@@ -88,6 +161,11 @@ var MindmapPreview;
                         MindmapPreview.h({ tag: "kbd", children: ["/"] }),
                     ],
                 }),
+                onHistory === undefined ? null : historyButton(onHistory),
+                // 差分の表示の間は、選んだ時点の札と外すボタンを「変更履歴」の右に出す
+                diffPoint === null ? null : diffChip({ point: diffPoint, onOff: onDiffOff }),
+                // コメントのボタンを右端に置くとき、検索の入口を中央へ寄せる
+                comments ? MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }) : null,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
@@ -99,6 +177,7 @@ var MindmapPreview;
                     },
                     children: [MindmapPreview.icon(theme === "dark" ? "sun" : "moon")],
                 }),
+                comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
             ],
         });
         const tabbar = MindmapPreview.h({

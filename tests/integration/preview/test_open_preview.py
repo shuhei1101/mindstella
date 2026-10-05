@@ -5,6 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from preview_comment_helpers import (
+    COMMENTS_BUTTON,
+    COMMENTS_PANEL,
+    PILL,
+    THREE_LINE_BODY,
+    select_text,
+    select_text_for_pill,
+)
 from preview_fixture_types import BODY_WITH_DIAGRAM, OpenPreview, WritePreview
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
 
@@ -17,14 +25,20 @@ DIAGRAM_TIMEOUT_MS = 20_000
 # 書き換えや接続の切れが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
 
-# 送信の入力欄・結果・送るボタン・接続の状態
+# 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
+SELECTION_SETTLE_MS = 400
+
+# コメントの入力欄・結果・「レビューに追加」のボタン・接続の状態
 SEND_TEXTAREA = "aside.panel form.send textarea"
 SEND_MESSAGE = "aside.panel form.send .send-msg"
 SEND_BUTTON = "aside.panel form.send button[type=submit]"
 CONNECTION = "header.topbar .conn"
 
-# 送信を受け付けるパス
-SUBMISSIONS_PATH = "/api/submissions"
+# 溜めたコメントを受け付けるパス
+COMMENTS_PATH = "/api/comments"
+
+# コメントの一覧の送る帯の「まとめて送る」
+LIST_SEND_BUTTON = f"{COMMENTS_PANEL} .send-band button.btn.primary"
 
 
 # `file:` 以外の URL への要求（外への要求）を全て拾う条件
@@ -156,11 +170,15 @@ def test_normal_when_exported_offline(
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     assert page.locator("aside.panel .md h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
-    # 詳細パネルに回答・意見の入力と送るボタンが無く、接続の状態も出ていない
+    # コメントのボタン・入力・選んだ箇所の入口が無く、接続の状態も出ていない
+    assert page.locator(COMMENTS_BUTTON).count() == 0
     assert page.locator("aside.panel form.send").count() == 0
     assert page.locator(SEND_TEXTAREA).count() == 0
     assert page.locator(SEND_BUTTON).count() == 0
     assert page.locator(CONNECTION).count() == 0
+    select_text(page, "aside.panel .md", "本文の段落")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    assert page.locator(PILL).count() == 0
 
 
 def test_error_when_library_unavailable(
@@ -242,30 +260,54 @@ def test_normal_when_sent(
     open_preview: OpenPreview,
     page: Any,
 ) -> None:
-    """詳細パネルから送ると、入力欄を空にして送った旨を出す（正常系）。"""
+    """本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧からまとめて送る（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"))
+    root = make_workspace(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
-    open_preview(served.data["url"], "#tab=decisions&id=D-1")
-    page.wait_for_selector(SEND_TEXTAREA)
-    page.fill(SEND_TEXTAREA, "案 A にする")
-    # 入力欄から Tab キーで送るボタンに届く
+    open_preview(served.data["url"], "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md")
+    # 実行（本文の 2 行目の文を選ぶと、近くに入口が出る）
+    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    # 実行（入口を押し、箇所を添えて溜める）
+    page.click(PILL)
+    # 検証（箇所を添えた入力）
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 2 行目"
+    assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
+    assert page.evaluate("document.activeElement.matches('form.send textarea')") is True
+    page.fill(SEND_TEXTAREA, "ここは言い換える")
+    # 入力欄から Tab キーで「レビューに追加」に届く（箇所を外すの × を経て、追加のボタンへ）
     page.focus(SEND_TEXTAREA)
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement.matches('form.send button[type=submit]')") is True
-    # 実行（送るボタンを Enter で押す）
     page.keyboard.press("Enter")
-    page.wait_for_selector(f"{SEND_MESSAGE}.sent", timeout=UPDATE_TIMEOUT_MS)
-    # 検証
-    assert page.get_attribute(SEND_MESSAGE, "role") == "status"
-    assert "送りました" in page.inner_text(SEND_MESSAGE)
-    assert page.input_value(SEND_TEXTAREA) == ""
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（溜めた後）
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
+    assert page.inner_text("aside.panel .d-review .review-body") == "ここは言い換える"
+    assert page.inner_text("aside.panel .d-review .review-loc-name") == "本文 2 行目"
+    # 実行（コメントのボタンから一覧を開き、まとめて送る）
+    page.focus(COMMENTS_BUTTON)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.focus(LIST_SEND_BUTTON)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .send-msg.sent", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（送った後）
     pending = call_tool("submissions", workspace=str(root))
     assert pending.data is not None
-    assert [(item["target"], item["body"]) for item in pending.data["items"]] == [
-        ("D-1", "案 A にする")
-    ]
+    assert [
+        (item["target"], item["loc"]["kind"], item["loc"]["start"], item["body"])
+        for item in pending.data["items"]
+    ] == [("A-1", "body", 2, "ここは言い換える")]
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
+    assert page.locator(f"{COMMENTS_PANEL} .comments-list li").count() == 0
+    # 検証（入口は Esc で閉じる）
+    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    page.focus(PILL)
+    page.keyboard.press("Escape")
+    assert page.locator(PILL).count() == 0
+    assert page.locator("aside.panel.open").count() == 1
 
 
 def test_error_when_body_empty(
@@ -275,7 +317,7 @@ def test_error_when_body_empty(
     open_preview: OpenPreview,
     page: Any,
 ) -> None:
-    """空白だけの本文は送らずに、理由を出す（異常系）。"""
+    """空白だけの本文は溜めずに、理由を出す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     served = call_tool("preview_url", workspace=str(root))
@@ -285,7 +327,7 @@ def test_error_when_body_empty(
         "request",
         lambda request: (
             posts.append(request.url)
-            if request.method == "POST" and request.url.endswith(SUBMISSIONS_PATH)
+            if request.method == "POST" and request.url.endswith(COMMENTS_PATH)
             else None
         ),
     )
@@ -297,7 +339,7 @@ def test_error_when_body_empty(
     page.wait_for_selector(f"{SEND_MESSAGE}.empty", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert posts == []
-    assert "回答・意見を入れてから送ってください。" in page.inner_text(SEND_MESSAGE)
+    assert "コメントを入れてから追加してください。" in page.inner_text(SEND_MESSAGE)
 
 
 def test_error_when_server_unreachable(
@@ -307,7 +349,7 @@ def test_error_when_server_unreachable(
     open_preview: OpenPreview,
     page: Any,
 ) -> None:
-    """サーバーが止まると接続の状態を出し、前に読んだ記録で描き続け、送れなかった本文を残す（異常系）。"""
+    """サーバーが止まると接続の状態を出し、前に読んだ記録で描き続け、溜められなかった本文を残す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), make_item("D-3", status="要見直し"))
     server = start_server()
@@ -328,5 +370,5 @@ def test_error_when_server_unreachable(
     assert "に読んだ記録" in connection
     assert _row_ids(page) == ["D-1", "D-3"]
     assert page.inner_text("aside.panel .d-title") == "D-1の題"
-    assert "送れませんでした" in page.inner_text(SEND_MESSAGE)
+    assert "レビューに追加できませんでした" in page.inner_text(SEND_MESSAGE)
     assert page.input_value(SEND_TEXTAREA) == "案 A にする"

@@ -1,23 +1,116 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "送信",
-  "description": "submissions.yaml。プレビューの詳細パネルから送られた、項目ごとの回答・意見。",
+  "description": "submissions.yaml。プレビューのコメントの一覧からまとめて送られた、項目・箇所へのコメントと項目に紐づかないコメント。",
   "type": "object",
   "additionalProperties": false,
-  "required": ["items"],
+  "required": [
+    "items"
+  ],
   "properties": {
     "items": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "target", "body", "sent", "taken"],
+        "required": [
+          "id",
+          "body",
+          "sent",
+          "taken"
+        ],
         "properties": {
-          "id": {"type": "string", "pattern": "^S-[0-9]+$"},
-          "target": {"type": "string", "minLength": 1},
-          "body": {"type": "string", "minLength": 1, "maxLength": 10000},
-          "sent": {"type": "string", "minLength": 1},
-          "taken": {"type": ["string", "null"]}
+          "id": {
+            "type": "string",
+            "pattern": "^S-[0-9]+$"
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "sent": {
+            "type": "string",
+            "minLength": 1
+          },
+          "taken": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "loc": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "text"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "body",
+                  "value"
+                ]
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 10000
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "body"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "start",
+                    "end"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "value"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "key"
+                  ]
+                }
+              }
+            ]
+          },
+          "comment": {
+            "type": "string",
+            "pattern": "^C-[0-9]+$"
+          }
         }
       }
     }

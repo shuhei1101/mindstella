@@ -15,6 +15,25 @@ from .fixture_types import (
     MakeWorkspace,
     SnapshotTree,
 )
+from .history_helpers import (
+    DECISION_ITEM,
+    add_item,
+    commit,
+    read_changes,
+    read_items,
+    update_item,
+    write_settings,
+)
+
+# 検討事項 D-1 を足して `commit` した後の `changes.yaml`
+COMMITTED_D1 = (
+    "last_seq: 0\nsets:\n- id: V-1\n  at: '2026-10-01T00:00:00+00:00'\n  summary: 足す\n"
+    "  until_seq: 0\n  added: [D-1]\n  changed: []\npending:\n  added: []\n  changed: []\n"
+)
+
+# 本文（3 行）と、2 行目を書き換えた本文
+BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
+BODY_AFTER = "1 行目\n書き換えた 2 行目\n3 行目\n"
 
 
 def _read_decisions(root: Path) -> list[dict[str, Any]]:
@@ -23,9 +42,12 @@ def _read_decisions(root: Path) -> list[dict[str, Any]]:
 
 
 def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
-    """検討事項の答えと状態を直し、不要になったキーを消す（正常系）。"""
+    """検討事項の答えと状態を直し、不要になったキーを消して、変更履歴を 1 回分積む（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", lead="キーを種類ごとに分けるか", weight="大"))
+    root = make_workspace(
+        make_item("D-1", status="未決定", lead=DECISION_ITEM["lead"], weight="大"),
+        raw_files={"changes.yaml": COMMITTED_D1},
+    )
     item = {"answer": "種類ごとに分ける", "status": "決定済み", "weight": None}
     # 実行
     result = call_tool("update", workspace=str(root), id="D-1", item=item)
@@ -36,16 +58,85 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert payload["file"] == "decisions.yaml"
     assert payload["changed"] == ["answer", "status", "weight"]
     updated_item = _read_decisions(root)[0]
-    updated = updated_item.pop("updated")
-    assert updated > "2026-10-01T00:00:00+00:00"
-    assert updated_item == {
-        "id": "D-1",
-        "title": "D-1の題",
-        "status": "決定済み",
-        "lead": "キーを種類ごとに分けるか",
-        "answer": "種類ごとに分ける",
-        "created": "2026-10-01T00:00:00+00:00",
+    assert updated_item["answer"] == "種類ごとに分ける"
+    assert updated_item["status"] == "決定済み"
+    assert "weight" not in updated_item
+    assert updated_item["lead"] == DECISION_ITEM["lead"]
+    assert updated_item["created"] == "2026-10-01T00:00:00+00:00"
+    assert updated_item["updated"] > updated_item["created"]
+    assert len(updated_item["history"]) == 1
+    assert updated_item["history"][0]["before"] == {
+        "answer": None,
+        "status": "未決定",
+        "weight": "大",
     }
+    changes = read_changes(root)
+    assert changes["pending"]["changed"] == ["D-1"]
+    assert changes["last_seq"] == updated_item["history"][0]["seq"]
+
+
+def test_normal_when_body_rewritten_over_limit(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """本文を直して保持する回数を超えると、古い回を消して消した回の seq を残す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    write_settings(root, history_limit=1)
+    add_item(call_tool, root, "decision", {**DECISION_ITEM, "body_markdown": BODY_BEFORE})
+    commit(call_tool, root, "足す")
+    update_item(call_tool, root, "D-1", {"answer": "種類ごとに分ける"})
+    answer_seq = read_items(root, "decisions.yaml")[0]["history"][0]["seq"]
+    # 実行
+    result = call_tool("update", workspace=str(root), id="D-1", item={"body_markdown": BODY_AFTER})
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["body_markdown"]
+    item = _read_decisions(root)[0]
+    assert len(item["history"]) == 1
+    entry = item["history"][0]
+    assert "answer" not in entry["before"]
+    assert entry["body_diff"] == [
+        {"line": 2, "now": ["書き換えた 2 行目"], "before": ["2 行目"]},
+    ]
+    assert (root / "docs" / "D-1.md").read_text(encoding="utf-8") == BODY_AFTER
+    assert item["history_dropped_seq"] == answer_seq
+
+
+def test_normal_when_nothing_changed(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """今と同じ値を渡すと、変更履歴を積まず、まとめていない変更にも足さない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "decision", {**DECISION_ITEM, "answer": "a"})
+    commit(call_tool, root, "足す")
+    # 実行
+    result = call_tool("update", workspace=str(root), id="D-1", item={"answer": "a"})
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == []
+    assert "history" not in _read_decisions(root)[0]
+    assert read_changes(root)["pending"] == {"added": [], "changed": []}
+
+
+def test_normal_when_limit_zero(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """保持する回数が 0 のときは積まず、持っている変更履歴を消す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "decision", DECISION_ITEM)
+    commit(call_tool, root, "足す")
+    update_item(call_tool, root, "D-1", {"answer": "種類ごとに分ける"})
+    commit(call_tool, root, "直す")
+    assert "history" in _read_decisions(root)[0]
+    write_settings(root, history_limit=0)
+    # 実行
+    result = call_tool("update", workspace=str(root), id="D-1", item={"status": "決定済み"})
+    # 検証
+    assert result.is_error is False
+    item = _read_decisions(root)[0]
+    assert item["status"] == "決定済み"
+    assert "history" not in item
+    assert read_changes(root)["pending"]["changed"] == []
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:

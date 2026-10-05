@@ -13,7 +13,7 @@ namespace MindmapPreview {
   const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
 
   /** 資料の画面を返す */
-  export function docsScreen({ index, route, on }: ScreenProps): HTMLElement {
+  export function docsScreen({ index, route, on, marks }: ScreenProps): HTMLElement {
     const common = commonColumns(index.data.settings);
     const columns: Column[] = [
       common.id,
@@ -57,6 +57,7 @@ namespace MindmapPreview {
             rows: index.data.docs,
             open: on.open,
             initialFilters: route.filters,
+            marks,
           }),
         ],
       });
@@ -141,7 +142,7 @@ namespace MindmapPreview {
             status: column.status,
             items: orderDocs(column.items),
           })),
-          card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true }),
+          card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id] }),
           emptyText: "資料はありません。",
         });
       }
@@ -150,7 +151,7 @@ namespace MindmapPreview {
         attrs: { class: "doc-grid" },
         children:
           shown.length > 0
-            ? shown.map((row) => docCard({ index, doc: row, open: on.open, inBoard: false }))
+            ? shown.map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id] }))
             : [h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
       });
     };
@@ -222,11 +223,14 @@ namespace MindmapPreview {
     doc,
     open,
     inBoard,
+    mark,
   }: {
     index: RecordIndex;
     doc: Item;
     open: (id: string) => void;
     inBoard: boolean;
+    /** 差分の印（差分の表示の間で、その資料に印があるとき） */
+    mark?: DiffKind | undefined;
   }): HTMLElement {
     return h({
       tag: "button",
@@ -248,6 +252,7 @@ namespace MindmapPreview {
           tag: "span",
           attrs: { class: "c-meta" },
           children: [
+            mark === undefined ? null : diffMark({ kind: mark }),
             h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
             inBoard ? null : statusBadge(doc.status),
             h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),

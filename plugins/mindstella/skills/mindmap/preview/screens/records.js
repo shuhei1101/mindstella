@@ -3,7 +3,7 @@
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
-    function recordsScreen({ index, route, on, }) {
+    function recordsScreen({ index, route, on, marks, }) {
         const kind = route.tab;
         const common = MindmapPreview.commonColumns(index.data.settings);
         const related = (label) => ({
@@ -71,6 +71,7 @@ var MindmapPreview;
                     rows: index.data[kind],
                     open: on.open,
                     initialFilters: route.filters,
+                    marks,
                 }),
             ],
         });

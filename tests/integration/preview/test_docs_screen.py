@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
+from playwright.sync_api import Page
+from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -304,3 +306,37 @@ def test_table_cell_surface(
     assert backgrounds["plain"] == [TRANSPARENT]
     assert len(backgrounds["pinned"]) > 0
     assert TRANSPARENT not in backgrounds["pinned"]
+
+
+def test_diff_marks_when_cards_and_board(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """資料のカードとボードのカードのタイトルの横に、文言なしの印を置く。トップバーに札を出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&view=cards")
+    page.wait_for_selector(".doc-card")
+    # 検証（カード）
+    mark = page.locator('.doc-card[data-id="A-1"] .df-mark')
+    assert mark.get_attribute("class") == "df-mark df-chg"
+    assert mark.inner_text() == "変更"
+    assert page.locator(".doc-card .df-badge").count() == 0
+    assert_topbar_history(page)
+    # 検証（ボード）
+    page.click('.segment button[data-view="board"]')
+    page.wait_for_selector(".board .doc-card")
+    assert page.locator('.board .doc-card[data-id="A-1"] .df-mark.df-chg').count() == 1
+
+
+def test_diff_marks_when_table(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表の行のタイトルの右に印を置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert page.locator('table.grid tbody tr[data-id="A-1"] .row-open + .df-mark.df-chg').count() == 1

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+import pytest
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview, row_ids
 from workspace_fixtures import MakeItem
@@ -33,6 +34,41 @@ NO_SHOWN_STATUS_TEXT = "表示する検討事項はありません。"
 
 # マップに検討事項が 1 件も描かれていない
 NO_MAP_ITEM_SCRIPT = "!document.querySelector('#decision-map button.n-item')"
+
+# 余白を右へドラッグする距離（px。押したとみなす移動の上限 5px を超える。選んで中央へ送られたマップを左端寄りへ戻す）
+DRAG_RIGHT_PX = 450
+
+# 拡大を最大の 150% にするために押す回数（「全体を表示」の 0.6 から 0.15 ずつ上がって 6 回目で最大になる）
+ZOOM_IN_PRESSES = 6
+
+# 拡大を最大にしたときにマップへ当たる拡大の指定
+MAX_ZOOM_TRANSFORM = "scale(1.5)"
+
+# スクロールの位置を比べるときの許容差（px。ブラウザの丸めを吸収する）
+SCROLL_TOLERANCE_PX = 1
+
+# 余白を押した後、描き直しなどで変わるものが落ち着くまで待つ時間（ms。変わらないことを確かめる前に置く）
+PRESS_SETTLE_MS = 400
+
+# 余白の点を探すとき、マップの枠の右下から内へ入る余白と、探す間隔（px）
+BLANK_SCAN_MARGIN_PX = 24
+BLANK_SCAN_STEP_PX = 20
+
+# マップの枠の右下から内へ探して、枠・拡大の土台・マップの面だけが当たる余白の点（画面上の座標）を返す
+BLANK_POINT_SCRIPT = """([margin, step]) => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    const blanks = [wrap, wrap.firstElementChild, canvas];
+    const box = wrap.getBoundingClientRect();
+    const right = box.left + wrap.clientLeft + wrap.clientWidth;
+    const bottom = box.top + wrap.clientTop + wrap.clientHeight;
+    for (let y = bottom - margin; y > box.top; y -= step) {
+        for (let x = right - margin; x > box.left; x -= step) {
+            if (blanks.includes(document.elementFromPoint(x, y))) return { x, y };
+        }
+    }
+    return null;
+}"""
 
 
 def _settings(valid_settings: dict[str, Any]) -> dict[str, Any]:
@@ -284,3 +320,118 @@ def test_normal_when_toggle_all_statuses(
     assert _toggle_all_box(page) == {"checked": False, "indeterminate": False, "last": True}
     assert _status_checks(page) == [False, False, False]
     assert page.inner_text("p.map-empty") == NO_SHOWN_STATUS_TEXT
+
+
+def _map_snapshot(page: Page) -> list[list[str]]:
+    """マップの節と線の、ID（線は順番）とクラスを並びのまま返す。"""
+    return page.evaluate(
+        """() => [
+            ...[...document.querySelectorAll('#decision-map [data-node]')]
+                .map(n => [n.dataset.node, n.className]),
+            ...[...document.querySelectorAll('#decision-map svg.edges path')]
+                .map((p, i) => [`edge-${i}`, p.getAttribute('class')]),
+        ]"""
+    )
+
+
+def _map_scroll(page: Page) -> list[float]:
+    """マップの枠のスクロールの位置（左・上）を返す。"""
+    return page.evaluate(
+        "(() => { const w = document.getElementById('decision-map').closest('.map-wrap'); return [w.scrollLeft, w.scrollTop]; })()"
+    )
+
+
+def _map_scroll_limits(page: Page) -> list[float]:
+    """マップの枠で送れる端の位置（左・上。scrollWidth - clientWidth、scrollHeight - clientHeight）を返す。"""
+    return page.evaluate(
+        "(() => { const w = document.getElementById('decision-map').closest('.map-wrap'); return [w.scrollWidth - w.clientWidth, w.scrollHeight - w.clientHeight]; })()"
+    )
+
+
+def _smaller_of_each(first: list[float], second: list[float]) -> list[float]:
+    """2 つの位置（左・上）を、横・縦それぞれ小さい方に揃えて返す。"""
+    return [min(a, b) for a, b in zip(first, second, strict=True)]
+
+
+def _zoom_to_max(page: Page) -> None:
+    """拡大を押して最大の 150% にし、マップへ当たるまで待つ。"""
+    for _ in range(ZOOM_IN_PRESSES):
+        page.click('.zoom button[aria-label="拡大"]')
+    page.wait_for_function(
+        "(transform) => document.getElementById('decision-map').style.transform === transform",
+        arg=MAX_ZOOM_TRANSFORM,
+    )
+
+
+def _blank_point(page: Page) -> dict[str, float]:
+    """マップの枠の右下から内へ探して、節にも線にも当たらない余白の点（画面上の座標）を返す。"""
+    point = page.evaluate(BLANK_POINT_SCRIPT, [BLANK_SCAN_MARGIN_PX, BLANK_SCAN_STEP_PX])
+    assert point is not None
+    return point
+
+
+def test_normal_when_background_pressed(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """マップの余白をドラッグしても選びを保ち、余白を 1 回押すと選びを外して全体の表示に戻る（正常系）。"""
+    # 準備
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page.wait_for_selector("#decision-map button.n-item")
+    # 決定済みの D-1 も出して、D-3 の前提の依存の線が描かれるようにする
+    page.click('.legend label:has(input[value="決定済み"])')
+    page.wait_for_selector('#decision-map button[data-node="D-1"]')
+    # 拡大を最大の 150% にして、詳細パネルが閉じて広がった枠でも横に送れる幅を残す
+    _zoom_to_max(page)
+    before_select = _map_snapshot(page)
+    # 実行・検証（D-3 を押すと強調し、詳細パネルを開く）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector("#decision-map.focusing")
+    page.wait_for_selector("aside.panel.open")
+    assert page.locator("#decision-map .edge-tree.rel").count() == TREE_EDGES_TO_ROOT
+    assert page.locator("#decision-map .edge-dep.rel").count() == DEPENDENCY_EDGES
+    # 実行・検証（余白を右へドラッグしても、D-3 を選んだまま）
+    start = _blank_point(page)
+    page.mouse.move(start["x"], start["y"])
+    page.mouse.down()
+    page.mouse.move(start["x"] + DRAG_RIGHT_PX, start["y"], steps=5)
+    page.mouse.up()
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    assert page.is_visible("aside.panel.open")
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert page.locator("#decision-map .edge-tree.rel").count() == TREE_EDGES_TO_ROOT
+    assert page.locator("#decision-map .edge-dep.rel").count() == DEPENDENCY_EDGES
+    scroll_before_press = _map_scroll(page)
+    # 前提（押す前の横の位置が 0 より大きく、位置を戻すかどうかを見分けられる）
+    assert scroll_before_press[0] > 0
+    # 実行（余白を 1 回押す）
+    press = _blank_point(page)
+    page.mouse.move(press["x"], press["y"])
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.wait_for_function(
+        "!document.getElementById('decision-map').classList.contains('focusing')"
+    )
+    # 検証（詳細パネルが閉じ、ハッシュが検討事項のタブを指して項目の ID を持たない）
+    hash_text = page.evaluate("location.hash")
+    assert "tab=decisions" in hash_text
+    assert "id=" not in hash_text
+    # 検証（強調した枝・依存の線と薄くした項目が無く、選ぶ前と同じ表示になる）
+    assert page.locator("#decision-map .edge-tree.rel").count() == 0
+    assert page.locator("#decision-map .edge-dep.rel").count() == 0
+    page.wait_for_function(
+        "[...document.querySelectorAll('#decision-map [data-node]')]"
+        ".every(n => getComputedStyle(n).opacity === '1')"
+    )
+    assert _map_snapshot(page) == before_select
+    # 検証（押す前の横の位置が、広がった枠で送れる端より手前で、押す前の位置と比べて見分けられる）
+    scroll_limits = _map_scroll_limits(page)
+    assert scroll_before_press[0] < scroll_limits[0]
+    # 検証（スクロールの位置が、縦・横それぞれ押す前の位置と送れる端のうち小さい方になる）
+    assert _map_scroll(page) == pytest.approx(
+        _smaller_of_each(scroll_before_press, scroll_limits), abs=SCROLL_TOLERANCE_PX
+    )

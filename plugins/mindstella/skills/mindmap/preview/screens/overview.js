@@ -31,7 +31,7 @@ var MindmapPreview;
         });
     }
     /** 1 行が項目のボタンの一覧（押すと詳細を開く） */
-    function miniList(items, emptyText, open) {
+    function miniList(items, emptyText, open, marks) {
         if (items.length === 0)
             return MindmapPreview.emptyNote(emptyText);
         return MindmapPreview.h({
@@ -47,6 +47,7 @@ var MindmapPreview;
                             children: [
                                 MindmapPreview.statusMark(item.status),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "mt" }, children: [item.title] }),
+                                MindmapPreview.markFor({ marks, id: item.id }),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "go", "aria-hidden": "true" }, children: [MindmapPreview.icon("chev")] }),
                             ],
                         }),
@@ -61,7 +62,7 @@ var MindmapPreview;
         return MindmapPreview.h({ tag: "i", children: [MindmapPreview.h({ tag: "b", attrs: { style: `width:${ratio}%` } })] });
     }
     /** 次に検討する項目のタイル */
-    function nextTile({ index, on }) {
+    function nextTile({ index, on, marks }) {
         const candidates = index.data.derived.next;
         const list = MindmapPreview.h({
             tag: "ol",
@@ -81,6 +82,7 @@ var MindmapPreview;
                                         tag: "span",
                                         attrs: { class: "nl-meta" },
                                         children: [
+                                            MindmapPreview.markFor({ marks, id: candidate.id }),
                                             MindmapPreview.h({ tag: "span", children: [[item?.category, candidate.phase].filter(Boolean).join(" · ")] }),
                                             MindmapPreview.impactBadge(candidate.weight ?? undefined, true),
                                             MindmapPreview.h({
@@ -128,12 +130,39 @@ var MindmapPreview;
         new ResizeObserver(fit).observe(tile);
         return tile;
     }
-    /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト） */
+    /** ゴールまでの進捗のタイル（決定済みの数・フェーズごとの棒・納品物のチェックリスト）。ゴールが無いときはフェーズ別の進捗だけ */
     function goalTile({ index, on }) {
         const { goal } = index.data.derived;
         const settled = goal.phase_progress.reduce((sum, cell) => sum + cell.settled, 0);
         const total = goal.phase_progress.reduce((sum, cell) => sum + cell.total, 0);
-        const { deliverables } = index.data.settings.goal;
+        const stageRows = goal.phase_progress.map((cell) => MindmapPreview.h({
+            tag: "li",
+            children: [
+                MindmapPreview.h({ tag: "span", children: [cell.phase] }),
+                bar(cell.settled, cell.total),
+                MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [`${cell.settled}/${cell.total}`] }),
+            ],
+        }));
+        // ゴールが無い: 見出しを替え、ゴールが無いことと全フェーズの決着の数だけを出す（納品物は出さない）
+        if (!goal.has_goal) {
+            return MindmapPreview.h({
+                tag: "section",
+                attrs: { id: "tile-goal", class: "tile t-goal", "aria-labelledby": "h-goal" },
+                children: [
+                    MindmapPreview.h({ tag: "h2", attrs: { id: "h-goal" }, children: [MindmapPreview.icon("flag"), "フェーズ別の進捗"] }),
+                    MindmapPreview.h({ tag: "p", attrs: { class: "goal-none" }, children: ["ゴールは決まっていません"] }),
+                    MindmapPreview.h({
+                        tag: "p",
+                        attrs: { class: "big" },
+                        children: [settled, MindmapPreview.h({ tag: "small", children: [` / ${total}`] })],
+                    }),
+                    MindmapPreview.h({ tag: "p", attrs: { class: "big-sub" }, children: ["決定済み"] }),
+                    MindmapPreview.h({ tag: "ul", attrs: { class: "stage-rows" }, children: [...stageRows] }),
+                ],
+            });
+        }
+        // ゴールがあるとき、設定のゴールは必ずある
+        const deliverables = index.data.settings.goal?.deliverables ?? [];
         const remaining = new Set(goal.remaining_deliverables.map((entry) => entry.title));
         const doneCount = deliverables.filter((entry) => !remaining.has(entry.title)).length;
         const checklist = deliverables.slice(0, DELIVERABLE_LIMIT).map((entry) => {
@@ -165,16 +194,7 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "ul",
                     attrs: { class: "stage-rows" },
-                    children: [
-                        ...goal.phase_progress.map((cell) => MindmapPreview.h({
-                            tag: "li",
-                            children: [
-                                MindmapPreview.h({ tag: "span", children: [cell.phase] }),
-                                bar(cell.settled, cell.total),
-                                MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [`${cell.settled}/${cell.total}`] }),
-                            ],
-                        })),
-                    ],
+                    children: [...stageRows],
                 }),
                 MindmapPreview.h({
                     tag: "div",
@@ -199,14 +219,14 @@ var MindmapPreview;
         });
     }
     /** 件数と名前の小さなタイル（要見直し・保留・進行中のタスク） */
-    function smallTile({ tileId, id, iconName, title, items, emptyText, link, open, }) {
+    function smallTile({ tileId, id, iconName, title, items, emptyText, link, open, marks, }) {
         return MindmapPreview.h({
             tag: "section",
             attrs: { id: tileId, class: "tile t-small", "aria-labelledby": id },
             children: [
                 tileHead(id, iconName, title, items.length > 0 ? showAll(items.length, link) : null),
                 MindmapPreview.h({ tag: "p", attrs: { class: "num" }, children: [items.length] }),
-                miniList(items, emptyText, open),
+                miniList(items, emptyText, open, marks),
             ],
         });
     }
@@ -333,11 +353,14 @@ var MindmapPreview;
                     tag: "header",
                     attrs: { class: "hero" },
                     children: [
-                        MindmapPreview.h({
-                            tag: "p",
-                            attrs: { class: "hero-sub" },
-                            children: [`${settings.field} · ゴールは${settings.goal.phase}のフェーズまで`],
-                        }),
+                        // 話し合いの概要があるときだけ、題名の上に出す
+                        settings.description !== undefined
+                            ? MindmapPreview.h({
+                                tag: "p",
+                                attrs: { id: "overview-description", class: "hero-sub hero-desc" },
+                                children: [settings.description],
+                            })
+                            : null,
                         MindmapPreview.h({ tag: "h1", children: [settings.summary] }),
                     ],
                 }),
@@ -356,6 +379,7 @@ var MindmapPreview;
                             emptyText: "要見直しの検討事項はありません。",
                             link: () => on.navigate(tableRoute("decisions", { status: ["要見直し"] })),
                             open: on.open,
+                            marks: props.marks,
                         }),
                         smallTile({
                             tileId: "tile-hold",
@@ -366,6 +390,7 @@ var MindmapPreview;
                             emptyText: "保留の検討事項はありません。",
                             link: () => on.navigate(tableRoute("decisions", { status: ["保留"] })),
                             open: on.open,
+                            marks: props.marks,
                         }),
                         smallTile({
                             tileId: "tile-running",
@@ -376,6 +401,7 @@ var MindmapPreview;
                             emptyText: "進行中のタスクはありません。",
                             link: () => on.navigate(tableRoute("tasks", { status: ["進行中"] })),
                             open: on.open,
+                            marks: props.marks,
                         }),
                         progressTile(props),
                     ],

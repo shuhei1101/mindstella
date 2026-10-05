@@ -1,0 +1,134 @@
+title: "レビュー中のコメントの読み取り"
+entry:
+  kind: endpoint
+  value: GET /api/comments
+flows:
+  - name: 正常系
+    summary: レビュー中のコメントを溜めた順に、書きかけと一緒に返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1）・C-2（項目を指さない）と、D-1 への書きかけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/comments
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/comments
+        IF-->>WS: comments.yaml・drafts.yaml・項目を読む
+        IF-->>クライアント: 200、JSON（items・drafts）
+      ```
+    expected:
+      - ステータスが 200 で、`items` が C-1・C-2 の順
+      - C-1 の `target_title` が D-1 のタイトルで、C-2 の `target` と `target_title` が `null`
+      - '`drafts` に D-1 への書きかけが 1 件ある'
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（まだ無い）
+    summary: comments.yaml・drafts.yaml が無ければ空を返し、ファイルを作らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`comments.yaml` と `drafts.yaml` を持たないワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/comments
+
+        クライアント->>IF: GET /api/comments
+        IF-->>クライアント: 200、items と drafts が空
+      ```
+    expected:
+      - ステータスが 200 で、`items` と `drafts` が空
+      - '`comments.yaml`・`drafts.yaml` が作られていない'
+    test: test_normal_when_empty
+  - name: 異常系（形が崩れている・422）
+    summary: 手で崩した comments.yaml は読まずに合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`comments.yaml` の C-1 から `body` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/comments
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/comments
+        IF-->>WS: comments.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - 'ステータスが 422 で、`detail` に `comments.yaml: items[0]` で始まる行がある'
+    test: test_error_when_schema_mismatch
+lead: レビュー中のコメントと書きかけを、その場で読んで返す。プレビューの画面が開いたときと、コメントの一覧・詳細の一番下のレビュー中のコメントを描くときに読む。
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+response:
+  - name: items[].id
+    type: str
+    description: コメントの ID。並びは連番の小さい順（溜めた順）
+    example: C-1
+  - name: items[].target
+    type: str | None
+    description: 向けた項目の ID。項目に紐づかないコメントは `null`
+    example: A-1
+  - name: items[].target_title
+    type: str | None
+    description: 向けた項目のタイトル。項目に紐づかないか、項目が消えていれば `null`
+  - name: items[].loc
+    type: dict | None
+    description: 選んだ箇所（`kind`・`start`・`end`・`key`・`text`）。箇所を持たなければ `null`。形は ER 図『ワークスペース』の `comments.yaml`
+  - name: items[].body
+    type: str
+    description: 本文
+  - name: items[].created
+    type: str
+    description: 溜めた日時（UTC のタイムゾーン付き ISO 8601）
+  - name: drafts[].target
+    type: str | None
+    description: 書きかけの入力欄が向ける項目の ID。項目に紐づかないコメントの入力欄は `null`
+  - name: drafts[].loc
+    type: dict | None
+    description: 入力欄に添えた箇所。無ければ `null`
+  - name: drafts[].body
+    type: str
+    description: 書きかけの本文
+status_codes:
+  - code: '200'
+    condition: 読めた（`comments.yaml`・`drafts.yaml` が無いときはどちらも空）
+  - code: '422'
+    condition: '`comments.yaml`・`drafts.yaml` がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった'
+    notes: '`detail` は『記録の取得』の 422 と同じ形'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 読む時
+    constraint: 呼ばれるたびに `comments.yaml`・`drafts.yaml` と項目を読み直す。『記録の取得』はレビュー中のコメントと書きかけを返さない
+  - item: 本文の形
+    constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-store`'
+  - item: 接続先の確かめ
+    constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403。確かめは『プレビューの配信』の異常系が持つ）
+  - item: 読みかけ
+    constraint: 書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+  - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
+test_file: tests/integration/server/test_comments_read.py
