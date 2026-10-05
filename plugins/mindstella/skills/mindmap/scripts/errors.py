@@ -42,12 +42,28 @@ class UnmappedPhaseError(MindmapError):
         self.unmapped = unmapped
 
 
+class UnmappedTargetError(MindmapError):
+    """新しい設定に無い対象・カテゴリーを持つ項目かカテゴリーが残る、または `target_map`・`category_map` の値が新しい設定に無い。`lines` に残るものごとの行を持つ。"""
+
+    def __init__(self, lines: list[str]) -> None:
+        """残るものごとの行を持ち、メッセージを固定の文言にする。"""
+        super().__init__("新しい設定に対応の無い対象・カテゴリーが残ります", lines)
+
+
 class ItemNotFoundError(MindmapError):
     """渡した ID の項目が無い。"""
 
 
 class OptionNotFoundError(MindmapError):
-    """検討事項が渡した記号の案を持たない。"""
+    """検討事項が渡した記号の案を持たない（`adopt` の切り替え・`edit_option` の `update`・`remove`）。"""
+
+
+class OptionExistsError(MindmapError):
+    """`edit_option` の `add` で、検討事項が同じ記号の案を既に持つ。"""
+
+
+class AdoptedOptionError(MindmapError):
+    """`edit_option` の `remove` で、採用している案を指した。"""
 
 
 class WriteFailedError(MindmapError):

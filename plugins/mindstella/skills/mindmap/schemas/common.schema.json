@@ -104,6 +104,16 @@
           "type": "integer",
           "minimum": 1,
           "description": "保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換え、一度も消していなければ持たない。ツールが付ける"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "その項目を足した・値を変えたときに振った `changes.yaml` の通し番号のうち、最も新しいもの。フェーズ・対象・カテゴリーの付け替えでは進めない。ツールが付ける"
+        },
+        "added_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "その項目を足したときに振った `changes.yaml` の通し番号。ツールが付ける"
         }
       }
     },
@@ -132,7 +142,7 @@
           },
           "before": {
             "type": "object",
-            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`history`・`history_dropped_seq`・`body` は入れない"
+            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は入れない"
           },
           "body_diff": {
             "type": "array",

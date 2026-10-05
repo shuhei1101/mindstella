@@ -130,7 +130,88 @@ scenarios:
       - エラーの本文に、合わないキー `playbooks` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_schema_mismatch
-lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール）を書き換え、フェーズが変わるときは古いフェーズから新しいフェーズへの対応で項目のフェーズも付け替える単一ユースケース。
+  - name: 正常シナリオ（対象とカテゴリーを付け替える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 対象 `本体`・`管理画面`、カテゴリー `画面`（本体）・`API`（本体）・`設定`（管理画面）で作成し、検討事項 D-1（本体・画面）・D-2（管理画面・設定）を足して `commit` したワークスペース
+      - name: 書き換える設定
+        description: 対象を `アプリ`・`管理画面` に、カテゴリーを `画面`（アプリ）・`API`（アプリ）・`運用`（管理画面）に置き換え、古い対象から新しい対象への対応と、古いカテゴリーから新しいカテゴリーへの対応を渡す
+        notes: 対象の対応は 本体 → アプリ、カテゴリーの対応は 設定 → 運用。管理画面・画面・API は新しい設定にもあるので対応を渡さない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 対象・カテゴリーと、古い名前から新しい名前への対応を渡す
+        SV->>WS: mindmap.yaml と全ての種類の YAML を読む
+        SV->>SV: 設定を置き換え、項目の target・category を対応で付け替え（変更履歴は積まない）、スキーマと突き合わせる
+        SV->>WS: mindmap.yaml と付け替えた種類の YAML を書く
+        SV-->>CC: 書き換えた後の設定と、付け替えた項目
+      ```
+    expected:
+      - '`mindmap.yaml` の `targets`・`categories` が渡した値である'
+      - D-1 の `target` が `アプリ`、`category` が `画面` である
+      - D-2 の `target` が `管理画面`、`category` が `運用` である
+      - D-1・D-2 が変更履歴を持たず、`pending` が空を返す（フェーズの付け替えと同じく、付け替えは変更履歴にも書き換えのまとまりにも入れない）
+      - 点検が問題を 0 件で返す
+    test: test_normal_when_targets_remapped
+  - name: 正常シナリオ（関連する場所と保持する回数）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、関連する場所を持たず、保持する回数のキーを持たないワークスペース
+      - name: 書き換える設定
+        description: 関連する場所を 1 件（`title`・`url`）にし、保持する回数を 3 にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 関連する場所と保持する回数を渡す
+        SV->>WS: mindmap.yaml を読む
+        SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
+        SV->>WS: mindmap.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`mindmap.yaml` の `links` が渡した 1 件で、`history_limit` が 3 である'
+      - 題名・プレイブック・フェーズ・対象・カテゴリー・ゴールが呼ぶ前と同じである
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_links_and_history_limit
+  - name: 異常シナリオ（対応の無いカテゴリーが残る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: カテゴリー `画面`・`設定` で作成し、検討事項 D-1（画面）・D-2（設定）を足したワークスペース
+      - name: 書き換える設定
+        description: カテゴリーを `画面` だけに置き換え、カテゴリーの対応を渡さない
+        notes: 設定の対応が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 設定の対応を欠いたカテゴリーを渡す
+        SV->>WS: 全ての種類の YAML を読む
+        SV->>SV: 新しいカテゴリーに無いカテゴリーを持つ項目が残る
+        SV-->>CC: 残る項目とカテゴリーを示すエラー
+      ```
+    expected:
+      - 設定を書き換えるツールがエラーを返す
+      - エラーの本文に、D-2 とカテゴリー `設定` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_unmapped_category
+lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換え、フェーズ・対象・カテゴリーが変わるときは古い名前から新しい名前への対応で項目のフェーズ・対象・カテゴリーも付け替える単一ユースケース。
 issue: 44
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:
@@ -140,11 +221,12 @@ trigger: スキルが範囲の見直し・取り込み・方針転換のステ�
 preconditions:
   - ワークスペースが作成済みである
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: 渡したキーだけが置き換わり、渡さなかったキーは元のまま残る。フェーズを変えたときは、全ての項目の `phase` と `goal.phase` が新しい `phases` のどれかになっている。ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す。
-minimal_guarantee: スキーマに合わない設定・新しいフェーズに無いフェーズを持つ項目が残る書き換えでは、どのファイルも書き換えない。
+success_guarantee: 渡したキーだけが置き換わり、渡さなかったキーは元のまま残る。フェーズを変えたときは、全ての項目の `phase` と `goal.phase` が新しい `phases` のどれかになっている。対象・カテゴリーを変えたときは、全ての項目の `target`・`category` とカテゴリーの `target` が新しい `targets`・`categories` のどれかになっている。ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す。
+minimal_guarantee: スキーマに合わない設定・新しいフェーズ・対象・カテゴリーに無い名前を持つ項目が残る書き換えでは、どのファイルも書き換えない。
 frequency: 話し合いの途中で、範囲が広がったとき・納品物が増減したときに数回
 priority: 高
 notes:
   E2E の範囲: MCP サーバーを立て、MCP のクライアントで設定を書き換えるツールを呼んでワークスペースの状態を確かめる。ツールの名前と引数はインターフェース定義設計で決める
   フェーズの対応: 新しい `phases` に同じ名前があるフェーズは、対応を渡さなくてもそのまま残る。対応は、新しい `phases` に無いフェーズにだけ渡す
+  対象とカテゴリーの対応: フェーズの対応と同じく、新しい設定に同じ名前がある対象・カテゴリーは対応を渡さなくてもそのまま残る。対象の対応は、項目の `target` とカテゴリーの `target` の両方に当てる。付け替えは、フェーズと同じく変更履歴にも書き換えのまとまりにも入れず、項目の通し番号も進めない
 test_file: tests/e2e/単一ユースケース/test_settings_update.py

@@ -201,3 +201,105 @@ def test_normal_when_changes_committed(make_workspace: MakeWorkspace, call_tool:
     assert second.data == {"added": [], "changed": []}
     # 書き換えは `commit` を呼ぶ前からワークスペースに書かれている
     assert _read_decisions(root)[0]["answer"] == "種類ごとに分ける"
+
+
+def test_normal_when_batched(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """追加・先の追加を指す追加・更新・取得を 1 回で当てる（正常系）。"""
+    # 準備
+    root = make_workspace()
+    call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    call_tool("commit", workspace=str(root), summary="足す")
+    operations = [
+        {
+            "op": "add",
+            "kind": "decision",
+            "item": {**NEW_DECISION, "title": "記録の単位", "options": [{"key": "A", "content": "1 日ごと"}]},
+        },
+        {
+            "op": "add",
+            "kind": "task",
+            "item": {"title": "記録の単位を調べる", "kind": "調査", "status": "未着手", "for": ["$1"]},
+        },
+        {"op": "update", "id": "D-1", "item": {"answer": "月ごとに分ける", "status": "決定済み"}},
+        {"op": "show", "id": "D-1"},
+    ]
+    # 実行
+    batched = call_tool("batch", workspace=str(root), operations=operations)
+    pending = call_tool("pending", workspace=str(root))
+    checked = call_tool("check", workspace=str(root))
+    # 検証
+    assert batched.is_error is False, batched.text
+    results = batched.data["results"]
+    # 結果が渡した操作と同じ順に 4 件あり、足した検討事項が D-2、タスクが T-1 である
+    assert [entry["op"] for entry in results] == ["add", "add", "update", "show"]
+    assert results[0]["result"]["id"] == "D-2"
+    assert results[1]["result"]["id"] == "T-1"
+    # T-1 が for: [D-2] を持つ
+    tasks = yaml.safe_load((root / "tasks.yaml").read_text(encoding="utf-8"))["items"]
+    assert tasks[0]["for"] == ["D-2"]
+    # 4 つ目の取得の結果が、直した後の D-1 の答えと状態を持つ
+    shown = results[3]["result"]["item"]
+    assert shown["answer"] == "月ごとに分ける"
+    assert shown["status"] == "決定済み"
+    # D-1 が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
+    decision = _read_decisions(root)[0]
+    assert len(decision["history"]) == 1
+    assert decision["history"][0]["before"] == {"answer": None, "status": "未決定"}
+    # pending が D-2・T-1（足した）と D-1（変えた）を返す
+    assert [row["id"] for row in pending.data["added"]] == ["D-2", "T-1"]
+    assert [row["id"] for row in pending.data["changed"]] == ["D-1"]
+    # ワークスペースの全ての YAML がスキーマに合う
+    assert checked.is_error is False
+    assert checked.data["problems"] == []
+
+
+def test_error_when_batch_has_invalid_operation(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """まとめた操作の途中が合わないと、合わない操作と箇所を示すエラーになり、何も書かない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = snapshot_tree(root)
+    operations = [
+        {"op": "add", "kind": "decision", "item": NEW_DECISION},
+        {"op": "update", "id": "D-1", "item": {"status": "完了"}},
+    ]
+    # 実行
+    result = call_tool("batch", workspace=str(root), operations=operations)
+    # 検証
+    # まとめて読み書きするツールがエラーを返し、本文に 2 つ目の操作・キー status・値 完了 がある
+    assert result.is_error is True
+    assert "2 番目の操作" in result.text
+    assert "status" in result.text
+    assert "完了" in result.text
+    # 1 つ目の検討事項も足されていない。ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_unread_history_kept(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """読んでいない回は保持する回数を超えても残し、読み終えた後の書き換えで古い回を消す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    _set_history_limit(root, 1)
+    item_id = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION).data["id"]
+    call_tool("changes_since_read", workspace=str(root))
+    # 実行
+    call_tool("update", workspace=str(root), id=item_id, item={"answer": "種類ごとに分ける"})
+    call_tool("update", workspace=str(root), id=item_id, item={"reason": "探しやすい"})
+    after_two = _read_decisions(root)[0]
+    read = call_tool("changes_since_read", workspace=str(root))
+    call_tool("update", workspace=str(root), id=item_id, item={"answer": "1 つにまとめる"})
+    after_three = _read_decisions(root)[0]
+    # 検証
+    # 2 回直した後、D-1 が変更履歴を 2 回分持ち、history_dropped_seq を持たない
+    assert len(after_two["history"]) == 2
+    assert "history_dropped_seq" not in after_two
+    # 前回読んだ時点からの変更が、答えと理由の両方を前の値つきで返す
+    assert [entry["id"] for entry in read.data["changed"]] == [item_id]
+    assert read.data["changed"][0]["before"] == {"answer": None, "reason": None}
+    # 3 回目に直した後、変更履歴が 3 回目の 1 回分だけで、history_dropped_seq が消した回の最も大きい通し番号である
+    assert len(after_three["history"]) == 1
+    assert after_three["history_dropped_seq"] == max(entry["seq"] for entry in after_two["history"])

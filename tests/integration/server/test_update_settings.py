@@ -10,6 +10,7 @@ import yaml
 from workspace_fixtures import DEFAULT_TIMESTAMP
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
+from .history_helpers import add_item, commit, read_changes
 
 # 話し合いの概要（ゴールと一緒に外すテストで使う）
 DESCRIPTION = "スキル mindmap の記録の形とプレビューの画面を、作り始められるところまで決める話し合い。"
@@ -128,8 +129,8 @@ def test_normal_when_phases_remapped(
     assert result.data == {
         "changed": ["playbooks", "phases", "goal"],
         "remapped": [
-            {"id": "D-1", "from": "問い", "to": "目的"},
-            {"id": "T-1", "from": "整理", "to": "要件"},
+            {"id": "D-1", "key": "phase", "from": "問い", "to": "目的"},
+            {"id": "T-1", "key": "phase", "from": "整理", "to": "要件"},
         ],
         "files": ["mindmap.yaml", "decisions.yaml", "tasks.yaml"],
     }
@@ -278,4 +279,143 @@ def test_error_when_bad_argument(
     # 検証
     assert result.is_error is True
     assert "発散" in result.text
+    assert snapshot_tree(root) == before
+
+
+def _target_settings(valid_settings: dict[str, Any]) -> dict[str, Any]:
+    """対象 本体・管理画面、カテゴリー 画面（本体）・API（本体）・設定（管理画面）を持つ設定を返す。"""
+    return {
+        **valid_settings,
+        "targets": [
+            {"name": "本体", "summary": "アプリの本体"},
+            {"name": "管理画面", "summary": "運用の画面"},
+        ],
+        "categories": [
+            {"name": "画面", "target": "本体", "summary": "画面の部品"},
+            {"name": "API", "target": "本体", "summary": "呼び出しの口"},
+            {"name": "設定", "target": "管理画面", "summary": "設定の画面"},
+        ],
+    }
+
+
+def test_normal_when_targets_remapped(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+) -> None:
+    """対象・カテゴリーを置き換え、対応で項目とカテゴリーの target・category を付け替える（正常系）。"""
+    # 準備
+    root = make_workspace(settings=_target_settings(valid_settings))
+    add_item(
+        call_tool,
+        root,
+        "decision",
+        {"title": "画面の問い", "status": "未決定", "target": "本体", "category": "画面"},
+    )
+    add_item(
+        call_tool,
+        root,
+        "decision",
+        {"title": "設定の問い", "status": "未決定", "target": "管理画面", "category": "設定"},
+    )
+    commit(call_tool, root, "足す")
+    changes_before = read_changes(root)
+    # 実行
+    result = call_tool(
+        "update_settings",
+        workspace=str(root),
+        settings={
+            "targets": [
+                {"name": "アプリ", "summary": "アプリの本体"},
+                {"name": "管理画面", "summary": "運用の画面"},
+            ],
+            "categories": [
+                {"name": "画面", "target": "アプリ", "summary": "画面の部品"},
+                {"name": "API", "target": "アプリ", "summary": "呼び出しの口"},
+                {"name": "運用", "target": "管理画面", "summary": "運用の設定"},
+            ],
+        },
+        target_map={"本体": "アプリ"},
+        category_map={"設定": "運用"},
+    )
+    # 検証
+    assert result.is_error is False
+    assert result.data == {
+        "changed": ["targets", "categories"],
+        "remapped": [
+            {"id": "D-1", "key": "target", "from": "本体", "to": "アプリ"},
+            {"id": "D-2", "key": "category", "from": "設定", "to": "運用"},
+        ],
+        "files": ["mindmap.yaml", "decisions.yaml"],
+    }
+    decisions = {item["id"]: item for item in _read_yaml(root, "decisions.yaml")["items"]}
+    assert decisions["D-1"]["target"] == "アプリ"
+    assert decisions["D-2"]["category"] == "運用"
+    # 付け替えは変更履歴に入れない
+    assert "history" not in decisions["D-1"]
+    assert "history" not in decisions["D-2"]
+    categories = {entry["name"]: entry for entry in _read_yaml(root, "mindmap.yaml")["categories"]}
+    assert categories["画面"]["target"] == "アプリ"
+    assert categories["API"]["target"] == "アプリ"
+    # まとめていない変更にも、通し番号にも入れない
+    assert read_changes(root) == changes_before
+
+
+def test_normal_when_links_and_history_limit(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+) -> None:
+    """関連する場所と保持する回数を書き換える（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "links"}
+    root = make_workspace(settings=settings)
+    settings_before = _read_yaml(root, "mindmap.yaml")
+    links = [{"title": "仕様", "url": "https://example.com/spec"}]
+    # 実行
+    result = call_tool(
+        "update_settings",
+        workspace=str(root),
+        settings={"links": links, "history_limit": 3},
+    )
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["links", "history_limit"]
+    settings_after = _read_yaml(root, "mindmap.yaml")
+    assert settings_after["links"] == links
+    assert settings_after["history_limit"] == 3
+    for key, value in settings_before.items():
+        assert settings_after[key] == value
+
+
+def test_error_when_unmapped_category(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """新しいカテゴリーに無いカテゴリーを持つ項目が残ると、何も書かずに終わる（異常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "categories": [
+            {"name": "画面", "target": "mindmap", "summary": "画面の部品"},
+            {"name": "設定", "target": "mindmap", "summary": "設定の画面"},
+        ],
+    }
+    root = make_workspace(
+        make_item("D-1", category="画面"), make_item("D-2", category="設定"), settings=settings
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool(
+        "update_settings",
+        workspace=str(root),
+        settings={"categories": [{"name": "画面", "target": "mindmap", "summary": "画面の部品"}]},
+    )
+    # 検証
+    assert result.is_error is True
+    assert "D-2: category: 設定" in result.text.splitlines()
     assert snapshot_tree(root) == before

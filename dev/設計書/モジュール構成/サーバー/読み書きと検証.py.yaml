@@ -160,6 +160,25 @@ data_models:
         type: Changes | None
         default: None
         description: 一緒に書く `changes.yaml` の新しい中身（モジュール構成『変更履歴』）。変えないときは `None`
+  - name: BatchChange
+    title: まとめた書き込みの変更
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    role: DTO
+    summary: 複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`edit_option`・`batch` が使う。'
+    properties:
+      - name: items
+        type: dict[Kind, list[dict[str, Any]]]
+        description: 書き換える種類 → 書き換えた後の `items` の並び全体（書き換えない種類は持たない）
+      - name: bodies
+        type: list[BodyWrite]
+        default: '[]'
+        description: 一緒に書く本文（同じ名前は 1 つだけ。後のものを残す）
+      - name: changes
+        type: Changes | None
+        default: None
+        description: 一緒に書く `changes.yaml` の新しい中身。変えないときは `None`
 enums:
   - name: Kind
     title: 種類
@@ -231,8 +250,8 @@ classes:
   - name: OptionNotFoundError
     title: 案が無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 採用する案の切り替え
-    summary: 検討事項が渡した記号の案を持たない。メッセージに渡した記号と持っている記号の一覧
+    usecase: 共通
+    summary: '検討事項が渡した記号の案を持たない。メッセージは送る側が決める（採用する案の切り替えの `switch_adopted` は渡した記号と持っている記号の一覧、案の書き換えの `apply_option_edit` は `{ID} の案 {記号}: その記号の案がありません`）'
     kind: クラス
     inherits: MindmapError
   - name: WriteFailedError
@@ -331,6 +350,31 @@ classes:
       - name: stale
         type: list[tuple[str, str]]
         description: 合わないコメントの ID と理由。溜めた順
+  - name: OptionExistsError
+    title: 同じ記号の案がある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '足そうとした記号の案を検討事項が既に持つ。メッセージは `{ID} の案 {記号}: 同じ記号の案が既にあります`'
+    kind: クラス
+    inherits: MindmapError
+  - name: AdoptedOptionError
+    title: 採用している案
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '採用している案を消そうとした。メッセージは `{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください`'
+    kind: クラス
+    inherits: MindmapError
+  - name: UnmappedTargetError
+    title: 対応の無い対象・カテゴリー
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 設定の更新
+    summary: '新しい `targets`・`categories` に対応の無い対象・カテゴリーを持つ項目かカテゴリーが残る。メッセージは `新しい設定に対応の無い対象・カテゴリーが残ります`、`lines` に残るものごとの `{ID か categories[{名前}]}: {target か category}: {名前}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: unmapped
+        type: list[tuple[str, str, str]]
+        description: 残るもの（ID か `categories[{名前}]`、キー、名前）
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -1162,6 +1206,59 @@ functions:
       - name: WriteFailedError
         condition: '`LOCK_FILE` を開けない（書き込みの権限が無い等）'
         message: '書き込めませんでした: {パス}（{理由}）'
+  - name: save_batch
+    title: まとめた変更の書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
+    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換える
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 書き込む前のワークスペース
+      - name: change
+        type: BatchChange
+        required: true
+        passing: positional
+        description: 書き込む変更
+    process: |-
+      1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
+      2. `raw` の `items` の種類のファイルを全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
+         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
+      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）
+         - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
+      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換える
+         - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
+    exceptions:
+      - name: SchemaMismatchError
+        condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
+        message: スキーマに合いません（`lines` に問題ごとの行）
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（置き換えたものを戻した後）
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_save_batch
+        case: 正常
+        summary: 複数の種類と本文とまとまりを書き、一時ファイルを残さない
+        condition: D-1 を足した検討事項の並び、T-1 を足したタスクの並び、本文 `D-1.md`、新しいまとまり
+        mock: なし
+        expected: '`decisions.yaml`・`tasks.yaml`・`docs/D-1.md`・`changes.yaml` を読むと渡した中身。`.tmp` のファイルが無い'
+      - name: test_save_batch_when_schema_mismatch
+        case: 異常
+        summary: 1 つの種類でもスキーマに合わなければ何も書かない
+        condition: '正しい T-1 のタスクの並びと、`status: 完了` の D-1 の検討事項の並び'
+        mock: なし
+        expected: '`SchemaMismatchError`。ワークスペースの全てのファイルが呼ぶ前と同じ'
+      - name: test_save_batch_when_replace_fails
+        case: 異常
+        summary: 途中の置き換えに失敗したら、置き換えたファイルを戻す
+        condition: 検討事項とタスクの並びと本文。`os.replace` を、置き換え先が `tasks.yaml` のときだけ `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`（メッセージに `tasks.yaml`）。`decisions.yaml`・`tasks.yaml`・`docs/` が呼ぶ前と同じで、`.tmp` のファイルが無い'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

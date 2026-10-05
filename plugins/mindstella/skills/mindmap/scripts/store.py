@@ -10,7 +10,7 @@ import shutil
 import tempfile
 import threading
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, Any, Literal
@@ -136,6 +136,18 @@ class Change:
     # 書き換えた後の `items` の並び全体
     items: list[dict[str, Any]]
     body: BodyWrite | None = None
+    # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
+    changes: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class BatchChange:
+    """複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更。"""
+
+    # 書き換える種類 → 書き換えた後の `items` の並び全体（書き換えない種類は持たない）
+    items: dict[Kind, list[dict[str, Any]]]
+    # 一緒に書く本文（同じ名前は 1 つだけ。後のものを残す）
+    bodies: list[BodyWrite] = field(default_factory=list)
     # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
     changes: dict[str, Any] | None = None
 
@@ -384,6 +396,63 @@ def save_change(workspace: Workspace, change: Change) -> None:
             _restore_body(body_path, previous_body)
         _remove_files(temps)
         raise write_failed(changes_path, error) from error
+
+
+def save_batch(workspace: Workspace, change: BatchChange) -> None:
+    """複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。"""
+    kinds = [kind for kind in KINDS if kind in change.items]
+    # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
+    for kind in kinds:
+        if _loses_content_on_rewrite(workspace, kind):
+            file_name = KINDS[kind].file
+            current = [p for p in validate_workspace(workspace) if p.file == file_name]
+            raise build_mismatch_error(current, workspace)
+    # 変更を当てた後のワークスペース全体を検証する
+    changed_raw = {
+        **workspace.raw,
+        **{KINDS[kind].file: {"items": change.items[kind]} for kind in kinds},
+    }
+    changed = replace(workspace, raw=changed_raw)
+    problems = validate_workspace(changed)
+    if problems:
+        raise build_mismatch_error(problems, changed)
+
+    # 置き換える順（本文 → 種類の YAML → まとまり）に、書く先と中身を並べる
+    bodies = {body.name: body for body in change.bodies}
+    targets: list[tuple[Path, str]] = [
+        (workspace.root / BODY_DIR / body.name, body.text) for body in bodies.values()
+    ]
+    targets.extend(
+        (workspace.root / KINDS[kind].file, dump_yaml({"items": change.items[kind]}))
+        for kind in kinds
+    )
+    if change.changes is not None:
+        targets.append((workspace.root / CHANGES_FILE, dump_yaml(change.changes)))
+    # 置き換える前の中身を控える（無ければ None）
+    previous = {path: path.read_bytes() if path.is_file() else None for path, _ in targets}
+
+    # 一時ファイルを先に全て書く
+    temps: list[Path] = []
+    for path, text in targets:
+        try:
+            if path.parent.name == BODY_DIR:
+                path.parent.mkdir(exist_ok=True)
+            temps.append(write_temp(path, text))
+        except OSError as error:
+            _remove_files(temps)
+            raise write_failed(path, error) from error
+
+    # 順に置き換え、失敗したら置き換えたファイルを控えに戻す（前に無ければ消す）
+    replaced: list[Path] = []
+    for (path, _), temp in zip(targets, temps, strict=True):
+        try:
+            os.replace(temp, path)
+        except OSError as error:
+            for done in reversed(replaced):
+                _restore_file(done, previous[done])
+            _remove_files(temps)
+            raise write_failed(path, error) from error
+        replaced.append(path)
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:

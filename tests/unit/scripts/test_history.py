@@ -169,7 +169,7 @@ def test_stack_history() -> None:
     new_entry = {"seq": 9, "at": NOW, "before": {"status": "未決定"}}
     item = {"id": "D-1", "title": "問い", "history": [old_entry], "history_dropped_seq": 3}
     # 実行
-    stacked = history.stack_history(item, new_entry, 1)
+    stacked = history.stack_history(item, new_entry, 1, read_seq=None)
     # 検証
     assert stacked["history"] == [new_entry]
     assert stacked["history_dropped_seq"] == 5
@@ -183,7 +183,7 @@ def test_stack_history_when_not_dropped() -> None:
     new_entry = {"seq": 1, "at": NOW, "before": {"status": "未決定"}}
     item = {"id": "D-1", "title": "問い"}
     # 実行
-    stacked = history.stack_history(item, new_entry, 1)
+    stacked = history.stack_history(item, new_entry, 1, read_seq=None)
     # 検証
     assert stacked["history"] == [new_entry]
     assert "history_dropped_seq" not in stacked
@@ -196,21 +196,35 @@ def test_stack_history_when_limit_zero() -> None:
     new_entry = {"seq": 2, "at": NOW, "before": {"status": "未決定"}}
     item = {"id": "D-1", "title": "問い", "history": [old_entry], "history_dropped_seq": 1}
     # 実行
-    stacked = history.stack_history(item, new_entry, 0)
+    stacked = history.stack_history(item, new_entry, 0, read_seq=None)
     # 検証
     assert "history" not in stacked
     assert "history_dropped_seq" not in stacked
 
 
+def test_stack_history_keeps_unread() -> None:
+    """読んでいない回は保持する回数を超えても残す（正常系）。"""
+    # 準備
+    entry_4 = {"seq": 4, "at": "2026-10-01T00:00:00+00:00", "before": {"answer": None}}
+    entry_2 = {"seq": 2, "at": "2026-10-01T00:00:00+00:00", "before": {"weight": "大"}}
+    new_entry = {"seq": 6, "at": NOW, "before": {"status": "未決定"}}
+    item = {"id": "D-1", "title": "問い", "history": [entry_4, entry_2]}
+    # 実行
+    stacked = history.stack_history(item, new_entry, 1, read_seq=3)
+    # 検証
+    assert stacked["history"] == [new_entry, entry_4]
+    assert stacked["history_dropped_seq"] == 2
+
+
 def test_note_pending() -> None:
-    """足した項目は変えても changed に入らない（正常系）。"""
+    """足した項目は変えても changed に入らず、通し番号は進めない（正常系）。"""
     # 準備
     added = history.note_pending(_empty_changes(), "D-1", "added")
     # 実行
-    noted = history.note_pending(added, "D-1", "changed", stacked=True)
+    noted = history.note_pending(added, "D-1", "changed")
     # 検証
     assert noted["pending"] == {"added": ["D-1"], "changed": []}
-    assert noted["last_seq"] == 1
+    assert noted["last_seq"] == 0
 
 
 def test_commit_pending() -> None:
@@ -305,3 +319,133 @@ def test_touch_opened(tmp_path: Path) -> None:
     assert second == FIRST_OPENED
     opened_text = (tmp_path / ".mindstella-opened").read_text(encoding="utf-8")
     assert opened_text.splitlines()[0] == SECOND_OPENED
+
+
+def test_advance_seq() -> None:
+    """番号を 1 進め、渡した記録は書き換えない（正常系）。"""
+    # 準備
+    changes = {"last_seq": 3, "sets": [], "pending": {"added": [], "changed": []}}
+    # 実行
+    advanced, seq = history.advance_seq(changes)
+    # 検証
+    assert advanced["last_seq"] == 4
+    assert seq == 4
+    assert changes["last_seq"] == 3
+
+
+def test_values_at_read(make_item: MakeItem) -> None:
+    """読んだ時点の値と本文の差分を組み立てる（正常系）。"""
+    # 準備
+    entries = [
+        {
+            "seq": 5,
+            "at": NOW,
+            "before": {"title": "問い B"},
+            "body_diff": [{"line": 2, "now": ["書き換えた段落"], "before": ["元の段落"]}],
+        },
+        {"seq": 4, "at": NOW, "before": {"title": "問い A"}},
+    ]
+    item = make_item("D-1", title="問い C", history=entries)
+    body = "# 見出し\n書き換えた段落\n末尾の段落\n"
+    # 実行
+    before, hunks = history.values_at_read(item, body, 3)
+    # 検証
+    assert before == {"title": "問い A"}
+    assert hunks == [{"line": 2, "now": ["書き換えた段落"], "before": ["元の段落"]}]
+    assert history.apply_body_diff(body, hunks) == "# 見出し\n元の段落\n末尾の段落\n"
+
+
+def test_values_at_read_when_changed_back(make_item: MakeItem) -> None:
+    """元の値に戻したキーは返さない（正常系）。"""
+    # 準備
+    entries = [
+        {"seq": 5, "at": NOW, "before": {"answer": "b"}},
+        {"seq": 4, "at": NOW, "before": {"answer": "a"}},
+    ]
+    item = make_item("D-1", answer="a", history=entries)
+    # 実行
+    before, hunks = history.values_at_read(item, None, 3)
+    # 検証
+    assert before == {}
+    assert hunks is None
+
+
+def test_changes_since(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """読んだ時点より後の追加と変更を分けて返す（正常系）。"""
+    # 準備
+    entry = {"seq": 5, "at": NOW, "before": {"answer": None}}
+    root = make_workspace(
+        make_item("D-1", answer="新しい答え", added_seq=1, seq=5, history=[entry]),
+        make_item("D-2", added_seq=2, seq=2),
+        make_item("T-1", added_seq=4, seq=4),
+    )
+    workspace = store.load_workspace(root)
+    changes = {"last_seq": 5, "read_seq": 3, "sets": [], "pending": {"added": [], "changed": []}}
+    # 実行
+    result = history.changes_since(workspace, changes)
+    # 検証
+    assert result["had_read_point"] is True
+    assert result["read_seq"] == 3
+    assert result["until_seq"] == 5
+    assert result["added"] == [{"id": "T-1", "kind": "task", "title": "T-1の題"}]
+    assert result["changed"] == [
+        {
+            "id": "D-1",
+            "kind": "decision",
+            "title": "D-1の題",
+            "before": {"answer": None},
+            "body_diff": None,
+        }
+    ]
+
+
+def test_changes_since_when_no_read_point(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """読んだ時点が無ければ差分を返さない（正常系）。"""
+    # 準備
+    entry = {"seq": 2, "at": NOW, "before": {"answer": None}}
+    root = make_workspace(make_item("D-1", answer="答え", added_seq=1, seq=2, history=[entry]))
+    workspace = store.load_workspace(root)
+    changes = {"last_seq": 2, "sets": [], "pending": {"added": [], "changed": []}}
+    # 実行
+    result = history.changes_since(workspace, changes)
+    # 検証
+    assert result == {
+        "had_read_point": False,
+        "read_seq": None,
+        "until_seq": 2,
+        "added": [],
+        "changed": [],
+    }
+
+
+def test_changes_since_when_limit_zero(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """保持する回数が 0 なら前の値を組み立てない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", added_seq=1, seq=5),
+        settings={**valid_settings, "history_limit": 0},
+    )
+    workspace = store.load_workspace(root)
+    changes = {"last_seq": 5, "read_seq": 3, "sets": [], "pending": {"added": [], "changed": []}}
+    # 実行
+    result = history.changes_since(workspace, changes)
+    # 検証
+    assert result["added"] == []
+    assert result["changed"] == [
+        {"id": "D-1", "kind": "decision", "title": "D-1の題", "before": None, "body_diff": None}
+    ]
+
+
+def test_mark_read() -> None:
+    """読んだ時点を最後の通し番号にする（正常系）。"""
+    # 準備
+    changes = {"last_seq": 7, "sets": [], "pending": {"added": [], "changed": []}}
+    # 実行
+    marked = history.mark_read(changes)
+    # 検証
+    assert marked["read_seq"] == 7
+    assert "read_seq" not in changes

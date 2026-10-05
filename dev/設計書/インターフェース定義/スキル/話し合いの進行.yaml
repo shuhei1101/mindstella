@@ -38,6 +38,8 @@ flows:
       - スキルの全ての Markdown に特定の開発基盤の名前が無い
       - '`claude plugin validate` が終了コード 0'
       - '`steps/取り込み.md`・`ヒアリング.md`・`リサーチ.md`・`方針転換.md` が `commit` を呼ぶ'
+      - 本文が準備で `changes_since_read` を `submissions` より前に呼ぶ
+      - '`steps/取り込み.md` が `batch` を呼ぶ'
       - '`steps/取り込み.md` が `tags` を呼ぶ'
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
@@ -65,7 +67,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で、`mindmap.yaml` は `update_settings` で書く。`release/` の Markdown の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -96,16 +98,16 @@ constraints:
     constraint: プレビューのステップで `preview_url` を呼び、返った `url` を示す。開く画面と項目が決まっていれば URL のハッシュ（インターフェース定義『プレビューを開く』）を付けて示す。ブラウザは開かない
     notes: インターフェース定義『プレビューの URL』
   - item: 範囲の見直し
-    constraint: 範囲が広がった・利用者が題名・話し合いの概要・ゴール・プレイブック・最上位の軸の呼び名を変えたいと言った・話の中身と呼び名が合わなくなった・ゴール判定でゴールが無く利用者が決めると言ったときに回す。書き換えのたたき台を示し、フェーズが変わるときは新しい `phases` に無い古いフェーズごとの対応の表も示して、利用者が確定してから `update_settings`（`settings`・`phase_map`）を呼ぶ。終えたら会話ログを足す
+    constraint: 範囲が広がった・利用者が題名・話し合いの概要・ゴール・プレイブック・最上位の軸の呼び名・対象・カテゴリーを変えたいと言った・話の中身と呼び名が合わなくなった・ゴール判定でゴールが無く利用者が決めると言ったときに回す。書き換えのたたき台を示し、フェーズ・対象・カテゴリーが変わるときは新しい設定に無い古い名前ごとの対応の表も示して、利用者が確定してから `update_settings`（`settings`・`phase_map`・`target_map`・`category_map`）を呼ぶ。終えたら会話ログを足す
     notes: 単一ユースケース『話し合いの範囲の見直し』、インターフェース定義『設定の更新』（サーバー）
   - item: 書き換えのまとまり
-    constraint: 取り込み・ヒアリング・リサーチ・方針転換の各ステップで記録を書き換え終えたら、そのステップで何をしたかを一言の説明にして `commit` を呼ぶ。書き換えが無いステップでは呼ばない。範囲の見直しは `update_settings` のフェーズの付け替えを変更履歴の対象にしないと決めたため、`commit` を呼ぶステップに入れない。準備のステップで `pending` が空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する
+    constraint: 取り込み・ヒアリング・リサーチ・方針転換の各ステップで記録を書き換え終えたら、そのステップで何をしたかを一言の説明にして `commit` を呼ぶ。書き換えが無いステップでは呼ばない。範囲の見直しは `update_settings` のフェーズ・対象・カテゴリーの付け替えを変更履歴の対象にしないと決めたため、`commit` を呼ぶステップに入れない。準備のステップで `pending` が空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する
     notes: インターフェース定義『書き換えのまとまり』『まだまとめていない変更』
   - item: 記録の書き方
     constraint: SKILL.md の `## 記録の書き方` に、記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は状況が変わるたびに利用者に確かめずに足し、書き換えることと、確かめるのはワークスペースの外へ書き込むときだけであることを書く。設定（`mindmap.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す
     notes: 全てのステップに効くため、準備で必ず読まれる SKILL.md に置く
   - item: 検討事項の案
-    constraint: '取り込みで検討事項を足すときに、案（`options` の `key`・`content`・`pros`・`cons`）を書いて足す。決まったこととして足すときは、選ばれた案を `adopted: true` にする。ヒアリングは検討事項が持つ案を案の表に出し、案の無い検討事項は案を書き足してから聞く'
+    constraint: '取り込みで検討事項を足すときに、案（`options` の `key`・`content`・`pros`・`cons`）を書いて足す。決まったこととして足すときは、選ばれた案を `adopted: true` にする。既にある検討事項の案を足す・直す・消すときは `edit_option` を使い、`update` で案の配列を丸ごと渡さない。採用している案を消すときは、先に `adopt` で採用を移す。ヒアリングは検討事項が持つ案を案の表に出し、案の無い検討事項は案を書き足してから聞く'
     notes: 単一ユースケース『発言の取り込み』『ヒアリング』
   - item: 納品物の資料
     constraint: 'ゴールの納品物のうち `doc` を持たないものがあれば、取り込み（範囲の見直しで納品物を足したときはその後）で、概要・背景・最終的な構成を先に置いた本文の資料（`deliverable: true`・`status: 下書き`）を `add` で足し、`update_settings` で納品物の `doc` から指す。以降は決まったことに合わせて本文を `update` で書き足す'
@@ -116,8 +118,14 @@ constraints:
   - item: タスクの成果と資料
     constraint: '作業・検証のタスクで作った成果は 1 件ずつ資料にし、タスクの `related` から指す。成果の資料はゴールの納品物に当たるときだけ `deliverable: true` にする。タスクを完了にする前と、ゴール判定で `goal` が届いたと返した後の確定を取る前に、成果と資料が 1 対 1 で揃っているかを確かめ、欠けていれば資料を足す。調査のタスクの成果は調査の記録に書き、資料にしない'
     notes: 調査は一次情報をまとめたもの、資料は調査を踏まえて今の話し合いで使える形にしたもの。単一ユースケース『発言の取り込み』『ゴール判定』
+  - item: 前回読んだ時点からの変更
+    constraint: 準備のステップで版の比較が `same` のとき、`submissions` より前に `changes_since_read` を必ず呼ぶ。`added`・`changed` があれば、前回の後に足された・変わった項目として利用者に短く示し、話し合いの前提にする。`had_read_point` が偽なら何も示さない
+    notes: 単一ユースケース『前回読んだ時点からの変更を読む』、インターフェース定義『前回読んだ時点からの変更』（サーバー）
+  - item: まとめての書き込み
+    constraint: 取り込みで、利用者の 1 つの発言から出た記録（項目の追加・更新と会話ログ）は `batch` で 1 回に書く。同じ発言で足す項目を指すときは `$番号` を使う。設定の書き換え（`update_settings`）と採用の切り替え（`adopt`）は `batch` に含めず、別に呼ぶ
+    notes: 単一ユースケース『発言の取り込み』、インターフェース定義『まとめての読み書き』（サーバー）
   - item: 話題のタグ
-    constraint: 取り込みで項目を `add` する前に `tags` を引き、既にある話題のタグを使い回し、新しい話題のときだけタグを作って `tags` に付ける。1 項目に複数の話題が当たるときは全て付ける。対象は作るものの区分として使い、話題には使わない
+    constraint: 取り込みで記録を `batch` で書く前に `tags` を引き、既にある話題のタグを使い回し、新しい話題のときだけタグを作って `tags` に付ける。1 項目に複数の話題が当たるときは全て付ける。対象は作るものの区分として使い、話題には使わない
     notes: 単一ユースケース『発言の取り込み』、インターフェース定義『タグの一覧』（サーバー）
 refs:
   - dev/設計書/外部ライブラリ/claude-code#

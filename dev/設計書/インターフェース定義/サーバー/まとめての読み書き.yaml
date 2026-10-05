@@ -1,0 +1,259 @@
+title: "まとめての読み書き"
+entry:
+  kind: mcp_tool
+  value: '`batch`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__batch`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 追加・先の追加を指す追加・更新・取得を 1 回で当てる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` したワークスペース
+      - name: operations
+        description: '検討事項を足す → `for: ["$1"]` のタスクを足す → D-1 の `answer`・`status` を直す → D-1 を取得する'
+        notes: リクエスト例のとおり
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as batch（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: batch workspace（operations 4 件）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 並べた順に当て、$1 を振った ID に置き換え、1 回だけスキーマと突き合わせる
+        IF->>WS: decisions.yaml・tasks.yaml・changes.yaml を書く
+        IF-->>クライアント: JSON（results 4 件）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`results` が 4 件で、`op` が `add`・`add`・`update`・`show` の順'
+      - 1 件目の `id` が D-2、2 件目の `id` が T-1 で、T-1 の `for` が `[D-2]`
+      - 4 件目の `item` が直した後の D-1 の `answer`・`status` を持つ
+      - D-1 が `history` を 1 回分持ち、D-2・T-1・D-1 の `seq` がどれも違い、最も大きいものが `changes.yaml` の `last_seq` と同じ
+      - '`changes.yaml` の `pending.added` が `[D-2, T-1]`、`pending.changed` が `[D-1]`'
+    test: test_normal
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as batch（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: batch workspace（add 1 件）
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（ID が無い・ItemNotFoundError）
+    summary: 途中の更新が存在しない ID を指すと、前の追加も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 だけを持つワークスペース
+      - name: operations
+        description: 検討事項を足す → D-9 を直す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as batch（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: batch workspace（add・update D-9）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 2 番目の操作の D-9 が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: 2 番目の操作（update）:` で始まり、`D-9` を含む'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ（1 番目の検討事項も足されていない）
+    test: test_error_when_id_not_found
+  - name: 異常系（スキーマに合わない・SchemaMismatchError）
+    summary: 途中の更新がスキーマに合わないと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+      - name: operations
+        description: 正しい検討事項を足す → D-1 の `status` を `完了` にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as batch（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: batch workspace（add・update D-1）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 全てを当ててスキーマと突き合わせ、D-1 の status が合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: 2 番目の操作（update）:` で始まり、`decisions.yaml` で始まり `status` を含む行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_schema_mismatch
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは何も書き換えず、エラーの行を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as batch（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: batch workspace（add・update D-1）
+        IF-->>WS: 全ての YAML を読む
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_write_fails
+  - name: 異常系（引数の誤り）
+    summary: 後ろの追加を指す $番号 を渡すと、何も書かずに引数の誤りを返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: operations
+        description: '`for: ["$2"]` のタスクを足す → 検討事項を足す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as batch（MCP のツール）
+
+        クライアント->>IF: batch workspace（add task for $2・add decision）
+        IF->>IF: 1 番目の操作の $2 が後ろの操作を指す
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: 1 番目の操作（add）:` で始まり、`$2` を含む'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_argument_invalid
+lead: 項目の追加・更新・取得の操作を並べて受け、並べた順に 1 回の呼び出しで当てる。全てを当ててから 1 回だけ検証して書き、1 つでも失敗したらどのファイルも書き換えない。
+idempotent: false
+side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。取得だけの呼び出しは何も書かない
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）。並べた操作の間にほかの書き込みを挟まない
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`mindmap.yaml` があるフォルダ'
+  - name: operations
+    type: list[dict]
+    required: true
+    location: argument
+    description: 当てる操作の並び。並べた順に当てる
+    constraints: 1 件以上
+  - name: operations[].op
+    type: Literal['add', 'update', 'show']
+    required: true
+    location: argument
+    description: '`add` は『項目の追加』、`update` は『項目の更新』、`show` は『項目の表示』と同じ操作'
+  - name: operations[].kind
+    type: '"decision" | "task" | "research" | "doc" | "term" | "note" | "log"'
+    required: false
+    default: なし（`update`・`show` のとき）
+    location: argument
+    description: '`add` で足す項目の種類。『項目の追加』の `kind` と同じ'
+    constraints: '`add` だけが持つ'
+  - name: operations[].id
+    type: str
+    required: false
+    default: なし（`add` のとき）
+    location: argument
+    description: '`update`・`show` で指す項目の ID。同じ呼び出しで先に足した項目は `$番号` で指せる'
+    constraints: '`update`・`show` だけが持つ'
+    example: D-1
+  - name: operations[].item
+    type: dict
+    required: false
+    default: なし（`show` のとき）
+    location: argument
+    description: '`add`・`update` の項目の中身。『項目の追加』『項目の更新』の `item` と同じ。参照のキー（`parent`・`depends_on`・`for`・`related`・`sources`）の値に `$番号` を書くと、その番号の `add` で振った ID に置き換える'
+    constraints: '`add`・`update` だけが持つ。`$番号` の番号は 1 始まりで、その操作より前の `add` だけを指す'
+request_example: |-
+  ```json
+  {
+    "workspace": "~/discussions/家計簿アプリ",
+    "operations": [
+      {"op": "add", "kind": "decision", "item": {"title": "記録の単位", "target": "アプリ", "category": "データ", "phase": "要件", "status": "未決定", "options": [{"key": "A", "content": "1 日ごと"}]}},
+      {"op": "add", "kind": "task", "item": {"title": "記録の単位を調べる", "kind": "調査", "status": "未着手", "for": ["$1"]}},
+      {"op": "update", "id": "D-1", "item": {"answer": "月ごとに分ける", "status": "決定済み"}},
+      {"op": "show", "id": "D-1"}
+    ]
+  }
+  ```
+response:
+  - name: results
+    type: list[dict]
+    description: 操作ごとの結果。渡した操作と同じ順で同じ数
+  - name: results[].op
+    type: Literal['add', 'update', 'show']
+    description: その結果の操作
+  - name: results[].result
+    type: dict
+    description: '`add` は『項目の追加』、`update` は『項目の更新』、`show` は『項目の表示』の結果と同じ形。`show` は、それより前の操作を当てた後の中身を返す'
+exceptions:
+  - name: なし（正常終了）
+    condition: 全ての操作を当てられた
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: ItemNotFoundError
+    condition: '`update`・`show` の ID の項目が無い'
+    notes: ツールのエラー。エラーの本文に何番目の操作かと渡した ID。何も書き込まない
+  - name: SchemaMismatchError
+    condition: 全ての操作を当てた後のワークスペースのどれかの YAML がスキーマに合わない（ツールが付けるキーを渡したときも含む）
+    notes: ツールのエラー。エラーの本文に合わない箇所と、その箇所を書いた操作の番号。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻す
+  - name: 引数の誤り
+    condition: '`operations` が空、操作に要るキーが無いか要らないキーがある、または `$番号` がその操作より前の `add` を指していない'
+    notes: ツールのエラー。エラーの本文に何番目の操作か。何も書き込まない
+error_format: 'ツールのエラーの本文に `エラー: {番号} 番目の操作（{op}）: {内容}` の行を出す（ワークスペースが無い・書き込めないときは番号を付けず `エラー: {内容}`）。番号は 1 始まり。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 操作の当て方
+    constraint: 全ての操作をメモリの上のワークスペースに並べた順に当ててから、全ての YAML を 1 回だけスキーマと突き合わせて書く。ID・日時・通し番号・変更履歴の付け方は『項目の追加』『項目の更新』と同じで、操作ごとに振る
+  - item: 参照の置き換え
+    constraint: 参照のキー（`parent`・`depends_on`・`for`・`related`・`sources`）の値だけを置き換える。値全体が `$` と数字だけの文字列を、その番号の `add` で振った ID にする。ほかのキーの文字列はそのまま書く
+  - item: 操作の数
+    constraint: 制限なし
+  - item: 部分成功
+    constraint: 起こさない。どれかの操作が失敗するか、置き換えに失敗したら、置き換えたものを前の中身に戻して（前に本文が無ければ消して）からツールのエラーで終わる
+test_file: tests/integration/server/test_batch.py
