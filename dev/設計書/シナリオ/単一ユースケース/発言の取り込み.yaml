@@ -3,14 +3,15 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `add` を、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねるタグの一覧と `add` を、決めた引数で順に再生する
+        notes: '-'
       - name: 作成済みのワークスペース
-        description: プレイブックがシステム開発で、検討事項を持たないワークスペース
+        description: プレイブックがシステム開発で、検討事項を持たず、タグ `保存` を持つメモ N-1 だけを持つワークスペース
+        notes: '-'
       - name: 再生する書き込み
         description: 決め事を持つ検討事項 D-1（決定済み。案 A・B を持ち、A を採用）、D-1 を `parent` に持つ派生の検討事項 D-2（未決定。案 A・B を持つ）、問いの形にならない D-3（未整理）、D-2 を進めるタスク T-1、会話ログ L-1
-        notes: どの項目も `target`・`category`・`phase` を持つ
-    flow: |-
-      ```mermaid
+        notes: どの項目も `target`・`category`・`phase` を持つ。D-1・D-2・T-1 は既にある話題のタグ `保存`、D-3 は `保存` と新しい話題のタグ `通知` を持つ
+    flow: |
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
@@ -18,13 +19,14 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: 発言（決め事を含む）
-        CC->>CC: 対象・カテゴリー・フェーズに振り分け、並べた進め方ガイドの観点と照らし、検討事項ごとに案を書く
+        CC->>SV: 使っているタグを出す
+        SV-->>CC: タグの一覧
+        CC->>CC: 対象・カテゴリー・フェーズに振り分け、話題のタグを決め、並べた進め方ガイドの観点と照らし、検討事項ごとに案を書く
         CC->>SV: add（案を持つ検討事項・派生の検討事項・未整理・タスク）
         SV->>WS: スキーマと突き合わせて書く
         CC->>SV: add（会話ログ）
         SV->>WS: 書く
         CC-->>U: 記録した項目と、積んだ問いを短く示す
-      ```
     expected:
       - D-1 が決定済みで `answer` を持つ
       - 'D-1 が案を持ち、A だけが `adopted: true` である'
@@ -33,6 +35,7 @@ scenarios:
       - 'T-1 が `for: [D-2]` を持つ'
       - 会話ログ L-1 がある
       - 足した全ての項目が `target`・`category`・`phase` を持つ
+      - 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と `通知`（1 件）を返す
     test: test_normal
   - name: 正常シナリオ（保留・解除・中止）
     setup:
