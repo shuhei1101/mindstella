@@ -1,0 +1,20 @@
+title: "既定の保存の確かめ"
+elements:
+  - name: 確かめの中身
+    kind: dialog
+    component: dev/設計書/部品設計/プレビュー/既定の保存の確かめ.ts#
+    args:
+      - name: from
+        value: 記録の取得.settings.display（無いキーは組み込みの既定。見た目は deep、表示する種類は全て）
+      - name: to
+        value: 表示の設定で今当てている見た目と表示する種類
+      - name: busy
+        value: 設定の既定の書き換えの応答を待っている間 true
+      - name: error
+        value: 設定の既定の書き換えが失敗したときの理由。届かないときは「保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。」、500 は「保存できませんでした。{detail}」、そのほかのエラーも「保存できませんでした。{detail}」
+    description: 「保存する」で `PUT /api/config/display` へ `network_look`・`visible_kinds` を送る。200 ならモーダルを閉じ、返った `display` を新しい既定にして、個人の上書きのうち既定と同じになった項目（見た目・表示する種類）を外す。パネルに「ワークスペースの既定にしました（{MM/DD HH:mm}）。」を残す。失敗したらモーダルを開いたまま理由を出し、`config.yaml` と画面の表示は保存の前のままにする。「取り消す」と Esc で何も書かずに閉じる（保存している間は閉じない）
+    io: 入力
+    visible_when: 表示の設定で「ワークスペースの既定にする」を押したとき（サーバーの配信だけ）
+lead: ワークスペースの既定として保存する前に、今の既定と保存する値を並べて確かめるモーダル。表示の設定の「ワークスペースの既定にする」で開き、閉じると表示の設定に戻る。配る書き出しには無い。
+mock: dev/mock/pages/settings-save-confirm/95/standard/index.html
+screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts

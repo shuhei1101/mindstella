@@ -24,6 +24,8 @@ elements:
         value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
       - name: comments_open
         value: コメントの一覧を開いているか
+      - name: settings_open
+        value: 概要と同じ
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表

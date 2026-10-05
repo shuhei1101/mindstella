@@ -1,0 +1,48 @@
+title: "表示の設定"
+elements:
+  - name: パネルの見出し
+    kind: heading
+    position: 見出し
+    description: 「表示の設定」
+    label: 表示の設定
+    io: 表示
+  - name: パネルを閉じる
+    kind: button
+    position: 見出し
+    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーの表示の設定のボタンでも閉じる。詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。読み上げの名前は「表示の設定を閉じる」
+  - name: 表示の設定の中身
+    kind: form
+    component: dev/設計書/部品設計/プレビュー/表示の設定.ts#
+    args:
+      - name: look
+        value: 個人の上書きの見た目（プレビューを開く.個人の上書き.network_look）。無ければ default_look
+      - name: default_look
+        value: 記録の取得.settings.display.network_look（無ければ deep）
+      - name: visible_kinds
+        value: 個人の上書きの表示する種類（プレビューを開く.個人の上書き.visible_kinds）。無ければ default_kinds
+      - name: default_kinds
+        value: 記録の取得.settings.display.visible_kinds（無ければ全ての種類）
+      - name: counts
+        value: プレビューを開く.mindmap-data.{種類} の件数
+      - name: overrides
+        value: 個人の上書きが持つ項目（見た目・表示する種類・ライト / ダーク・種類ごとの表の列）の名前
+      - name: can_save
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: message
+        value: この画面を開いてから最後に既定にした知らせか、既定が変わった知らせ（時刻つき）
+      - name: storage_available
+        value: 端末の保存領域に書けるか
+    position: 本文
+    description: 見た目・表示する種類を選ぶと、その場で個人の上書きとして端末の保存領域に残し、画面に当てる（サーバーへは送らない）。開いている画面の種類を外したときは概要へ移し、履歴は置き換える。「既定に戻す」で個人の上書きを全て外す。「ワークスペースの既定にする」で『既定の保存の確かめ』を開く
+    io: 入力
+  - name: 既定が変わった知らせ
+    kind: label
+    position: 画面の下（パネルを開いていなくても出す）
+    description: '`role="status"`。書き換えの知らせで読み直した記録の `settings.display` が前と違うとき、上書きを持たない項目に新しい既定を当て、画面の下に 6 秒出す。同じ知らせを時刻つきでパネルの `message` にも残す。自分が既定にした直後の知らせでは出さない'
+    label: ワークスペースの既定が変わりました。
+    io: 表示
+    source: 書き換えの知らせ・記録の取得.settings.display
+    visible_when: サーバーの配信で、他の人の保存・`update_settings`・設定の再読み込みで既定が変わってから 6 秒の間
+lead: つながりの見た目と表示する種類を、この端末だけの個人の上書きとして変える。トップバーの表示の設定のボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧とは片方だけを開き、右の詳細パネルは開いたままにする。
+mock: dev/mock/pages/settings-panel/95/a-default-button/index.html
+screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
