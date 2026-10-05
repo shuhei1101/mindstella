@@ -53,6 +53,10 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
         "body": "D-2.md",
     }
     assert (root / "docs" / "D-2.md").read_text(encoding="utf-8") == NEW_DECISION["body_markdown"]
+    # 足した項目は変更履歴を持たず、まだまとめていない変更の足した項目に入る
+    assert "history" not in added
+    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    assert changes["pending"]["added"] == ["D-2"]
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "設定",
-  "description": "`mindmap.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所を持つ。",
+  "description": "`mindmap.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数を持つ。",
   "type": "object",
   "required": [
     "playbooks",
@@ -164,6 +164,11 @@
       "description": "話し合いの概要（何についての話し合いかを 1 文の短い文で）。プレビューの概要の画面の題名の上に出す。題名（`summary`）・ゴールの概要（`goal.summary`）とは別のもの",
       "maxLength": 60,
       "minLength": 1
+    },
+    "history_limit": {
+      "type": "integer",
+      "description": "項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5。`update_settings` では変えず、`mindmap.yaml` を直して変える",
+      "minimum": 0
     }
   }
 }

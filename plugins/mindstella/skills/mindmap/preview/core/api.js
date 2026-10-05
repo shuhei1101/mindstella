@@ -9,6 +9,7 @@ var MindmapPreview;
         comments: "api/comments",
         commentsSend: "api/comments/send",
         drafts: "api/drafts",
+        opened: "api/opened",
     };
     /** 応答の本文から、日本語の理由（`detail`）を取り出す。読めなければ null */
     async function detailOf(response) {
@@ -35,6 +36,20 @@ var MindmapPreview;
         return { ok: true, data: (await response.json()) };
     }
     MindmapPreview.fetchRecords = fetchRecords;
+    /** プレビューを開いたことを知らせ、前回開いた日時を返す。届かない・200 でない・読めないときは null */
+    async function postOpened(fetchFn = window.fetch.bind(window)) {
+        try {
+            const response = await fetchFn(MindmapPreview.API_PATHS.opened, { method: "POST" });
+            if (!response.ok)
+                return null;
+            const body = (await response.json());
+            return typeof body.previous === "string" ? body.previous : null;
+        }
+        catch {
+            return null;
+        }
+    }
+    MindmapPreview.postOpened = postOpened;
     /** コメント・書きかけの API を 1 回呼ぶ。届かないときと、断られたときを分ける */
     async function callApi(method, path, body = null, fetchFn = window.fetch.bind(window)) {
         let response;

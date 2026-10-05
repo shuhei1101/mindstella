@@ -9,8 +9,10 @@ from preview_fixture_types import (
     ID_BUTTON_SIZE_JS,
     OpenPreview,
     WritePreview,
+    WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -722,3 +724,65 @@ def test_table_id_button_size(
     # 検証
     assert sizes["count"] > 0
     assert sizes["smallest"] >= ID_BUTTON_MIN_SIZE_PX
+
+
+
+def test_diff_marks_when_table(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表の行のタイトルの右に印を置く。変えた行は ●、足した行は + で、トップバーに札を出し、タブに点を付ける（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    new_rows = page.eval_on_selector_all(
+        "table.grid tbody tr:has(.row-open + .df-mark.df-new)", "rows => rows.map(r => r.dataset.id)"
+    )
+    assert new_rows == ["D-1", "D-2"]
+    assert page.locator("table.grid .df-mark.df-chg").count() == 0
+    assert page.locator('nav.tabbar a[data-tab="decisions"] .df-dot').count() == 1
+    assert_topbar_history(page)
+
+
+def test_diff_marks_when_board(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """ボードのカードのタイトルの横に、文言なしの印を置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(".board button.card")
+    # 検証
+    marked = page.eval_on_selector_all(
+        ".board button.card:has(.df-mark.df-chg)", "cards => cards.map(c => c.dataset.id)"
+    )
+    assert sorted(marked) == ["D-1", "D-2"]
+    assert page.locator(".board .df-badge").count() == 0
+
+
+def test_diff_marks_when_map(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """マップの箱に印を置く。狭い幅の字下げの一覧にも同じ印を置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    # 検証
+    marked = page.eval_on_selector_all(
+        "#decision-map .map-node.n-item:has(.df-mark.df-chg)", "nodes => nodes.map(n => n.dataset.node)"
+    )
+    # 既定で表示する状態（決定済みを除く）の検討事項だけが箱になる
+    assert sorted(marked) == ["D-2"]
+    # 狭い幅の字下げの一覧
+    page.set_viewport_size({"width": 800, "height": 700})
+    page.wait_for_selector(".map-outline button[data-id] .df-mark")
+    outlined = page.eval_on_selector_all(
+        ".map-outline button[data-id]:has(.df-mark.df-chg)", "buttons => buttons.map(b => b.dataset.id)"
+    )
+    assert sorted(outlined) == ["D-2"]
+    assert_topbar_history(page)

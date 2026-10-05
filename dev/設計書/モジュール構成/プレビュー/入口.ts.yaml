@@ -23,6 +23,9 @@ data_models:
       - name: columns
         type: 'Record<string, {hidden: string[], pinTo: string | null}>'
         description: 種類ごとの表示する列とピン留め
+      - name: diffSel
+        type: string | null
+        description: 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。`null` は差分を出さない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -66,6 +69,12 @@ constants:
     usecase: 項目へコメントする
     summary: 入力が止まってから『書きかけの保存』を呼ぶまでの待ち（打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ。閉じるときは待たずに呼ぶ）
     value: '500'
+  - name: SINCE_KEY
+    title: 「前回開いてから」の始まりのキー
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 前回からの差分を見る
+    summary: そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた日時を `Prefs` と同じ `localStorage` のキーの `opened` に持つ
+    value: '"mindmap-since"'
 functions:
   - name: readEmbeddedData
     title: 埋め込みのデータを読む
@@ -178,10 +187,12 @@ functions:
          - データがある場合、配る書き出しとしてそれを記録にし、コメントのボタン・一覧・入力・選んだ箇所の入口と接続の状態を出さない（以降の 2・6・7・8 をしない）
          - `null` の場合、サーバーの配信として 2 へ進む
       2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）
-         - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（9 へ）
+         - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（10 へ）
       3. 索引を作る（`buildIndex`）。端末の設定を読み、テーマを当てる（`loadPrefs`）。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
+         - 「前回開いてから」の始まりを決める。`SINCE_KEY` が sessionStorage にあればそれを使う。無ければ、サーバーの配信では `postOpened`、配る書き出しでは `localStorage` の `opened` を読んで今の日時に書き換え、`null` ならタブを開いた日時にして `SINCE_KEY` に残す
+         - 選んだ時点を引く（`resolveDiffPoint`。`Prefs.diffSel` と始まり）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）
-      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。絞り込みは画面に渡した後、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を重ねる
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。絞り込みは画面に渡した後、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を重ねる
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
       6. コメントの入力のコールバックを次で扱う
          - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って書きかけを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
@@ -197,11 +208,14 @@ functions:
          - 「直しを送る」「箇所を外す」では `update`、「削除」では `remove` して消した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を読み直して描き直す
          - 「まとめて送る」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして「{件数} 件を送りました（{HH:mm}）。」、409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を読み直す
          - Esc は、詳細パネルを開いていれば詳細パネルを、無ければ一覧を閉じる
-      9. 書き換えの知らせにつなぐ（`subscribeEvents`）
-         - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の絞り込みと並べ替え・`CommentState` を保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
+      9. 変更履歴のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
+         - 「変更履歴を開く」では変更履歴のモーダルを開く（`historyDialog`）
+         - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の引き直しと 5 をやり直す
+      10. 書き換えの知らせにつなぐ（`subscribeEvents`）
+         - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の絞り込みと並べ替え・`CommentState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
          - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを描き直す
          - つながり直した場合、記録とレビュー中を読み直して接続の状態を `online` に戻す
-      10. `hashchange`・`popstate` で 4・5 を繰り返す
+      11. `hashchange`・`popstate` で 4・5 を繰り返す
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
   - name: formKey

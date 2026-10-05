@@ -33,6 +33,8 @@ TOOL_NAMES = (
     "update",
     "update_settings",
     "adopt",
+    "commit",
+    "pending",
     "status",
     "next",
     "impact",
@@ -123,7 +125,8 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     def update_settings(
         workspace: WorkspaceArg,
         settings: Annotated[
-            dict[str, Any], Field(description="置き換える設定のキーと値。description と goal は null で消す")
+            dict[str, Any],
+            Field(description="置き換える設定のキーと値。description と goal は null で消す"),
         ],
         phase_map: Annotated[
             dict[str, str] | None,
@@ -141,6 +144,24 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         key: Annotated[str, Field(description="採用する案の記号")],
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_adopt(root, id, key))
+
+    @server.tool(
+        name="commit",
+        description="まだまとめていない書き換えを、日時と一言の説明を付けた 1 つのまとまりにする",
+    )
+    def commit(
+        workspace: WorkspaceArg,
+        summary: Annotated[
+            str, Field(description="このまとまりで何をしたかの一言の説明（1〜200 文字）")
+        ],
+    ) -> CallToolResult:
+        return write(workspace, lambda root: commands.run_commit(root, summary))
+
+    @server.tool(
+        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー）を返す"
+    )
+    def pending(workspace: WorkspaceArg) -> CallToolResult:
+        return read(workspace, commands.run_pending)
 
     @server.tool(name="status", description="再開時の状況（要見直し・進行中・再開可能など）を返す")
     def status(workspace: WorkspaceArg) -> CallToolResult:
@@ -239,7 +260,9 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         out_path = resolve_workspace(out, cwd)
         return read(workspace, lambda root: commands.run_export(root, out_path))
 
-    @server.tool(name="preview_url", description="プレビューを配る URL を返す（無ければ配信を立てる）")
+    @server.tool(
+        name="preview_url", description="プレビューを配る URL を返す（無ければ配信を立てる）"
+    )
     def preview_url(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_preview_url(root, previews=previews))
 
@@ -294,9 +317,7 @@ def error_result(error: MindmapError) -> CallToolResult:
     # 前の版の形式のスキーマ違反: 移し替えのスキルを案内する
     if isinstance(error, SchemaMismatchError) and error.legacy:
         lines.append(LEGACY_HINT)
-    return CallToolResult(
-        content=[TextContent(type="text", text="\n".join(lines))], is_error=True
-    )
+    return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))], is_error=True)
 
 
 def resolve_workspace(path: str, cwd: Path) -> Path:

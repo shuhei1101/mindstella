@@ -1,0 +1,152 @@
+title: "まだまとめていない変更"
+entry:
+  kind: mcp_tool
+  value: '`pending`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__pending`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 足した項目と、変えた項目・キーを返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer`・`status` を `update` で直し、タスク T-1 を `add` で足したワークスペース（保持する回数は既定の 5）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as pending（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: pending workspace
+        IF-->>WS: changes.yaml と項目を読む
+        IF-->>クライアント: JSON（added・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`added` が T-1 だけで、`title` が T-1 のタイトル'
+      - '`changed` が D-1 だけで、`keys` が `answer`・`status`'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal
+  - name: 正常系（まとめていない変更が無い）
+    summary: changes.yaml が無ければ空を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成だけを済ませ、`changes.yaml` を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as pending（MCP のツール）
+
+        クライアント->>IF: pending workspace
+        IF-->>クライアント: JSON（added・changed は空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`added`・`changed` が空'
+      - '`changes.yaml` が作られていない'
+    test: test_normal_when_empty
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as pending（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: pending workspace
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（記録の形が崩れている・SchemaMismatchError）
+    summary: 手で崩した changes.yaml は読まずに合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`changes.yaml` の `pending` から `added` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as pending（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: pending workspace
+        IF-->>WS: changes.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `changes.yaml: pending` で始まる行がある'
+    test: test_error_when_schema_mismatch
+lead: 最後のまとまりより後に足した項目と、変えた項目・変えたキーを返す。読むだけで、まとめない。
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`mindmap.yaml` があるフォルダ'
+response:
+  - name: added[].id
+    type: str
+    description: 足した項目の ID
+    example: T-1
+  - name: added[].title
+    type: str
+    description: その項目のタイトル
+  - name: changed[].id
+    type: str
+    description: 変えた項目の ID（足した項目は `added` にだけ入る）
+    example: D-1
+  - name: changed[].title
+    type: str
+    description: その項目のタイトル
+  - name: changed[].keys
+    type: list[str]
+    description: 最後のまとまりより後に変えたキーの名前。変更履歴の `before` のキーと、本文を変えたときの `body_markdown` を、つなげて重なりを除いたもの
+    example: '["answer", "status"]'
+exceptions:
+  - name: なし（正常終了）
+    condition: 一覧を作れた（空のときも含む。`changes.yaml` が無ければ空）
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    notes: ツールのエラー
+  - name: SchemaMismatchError
+    condition: '`changes.yaml` か種類ごとの YAML がスキーマに合わないか、YAML として読めない'
+    notes: ツールのエラー。エラーの本文に合わない箇所
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 返す項目
+    constraint: '`changes.yaml` の `pending` の `added`・`changed` の ID。変えたキーは、その項目の変更履歴のうち `seq` が最後のまとまりの `until_seq` より大きいものから取る。保持する回数を超えて消えた分のキーは返らない'
+  - item: 並び
+    constraint: '`pending` に入った順（書き換えた順）'
+  - item: 件数
+    constraint: 制限なし（`commit` で空になる）
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/インターフェース定義/サーバー/書き換えのまとまり#
+test_file: tests/integration/server/test_pending.py

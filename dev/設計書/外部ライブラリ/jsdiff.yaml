@@ -1,0 +1,41 @@
+title: "jsdiff"
+kind: "CDN の JS"
+version:
+  current: 9.0.0
+  latest: 9.0.0
+  checked_on: '2026-10-05'
+  source: https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js
+  pinning: 版を固定し、script 要素に integrity（`sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1`）と `crossorigin="anonymous"` を付ける。上げるときは integrity も書き換える
+catalogs:
+  - name: API
+    version: 9.0.0
+    entries:
+      - name: Diff.diffLines
+        kind: 関数
+        purpose: 本文の Markdown と mermaid の記法の前後を行ごとに比べ、足した行・消した行を出す。`timeout` を渡し、打ち切ったら `undefined` を返す
+      - name: Diff.diffArrays
+        kind: 関数
+        purpose: sequenceDiagram のメッセージの並びを前後で揃える。`timeout` を渡し、打ち切ったら `undefined` を返す
+lead: 2 つの文字列・配列を比べ、同じ部分・足した部分・消した部分の並びを返す JavaScript のライブラリ（npm の `diff`）。
+purl: pkg:npm/diff
+dependency_scope: 必須
+adoption: 採用
+upstream: kpdecker/jsdiff
+used_in:
+  - plugins/mindstella/skills/mindmap/preview/template.html
+  - plugins/mindstella/skills/mindmap/scripts/builder.py
+verification:
+  state: 済
+  date: '2026-10-05'
+  detail: 'PoC #83 で 9.0.0 を HTML に埋め込み、本文 5000 行の差分が 10〜16ms だった。採用の反映で Node.js 24.14.0 に入れた 9.0.0 で打ち切りを確かめた: 全ての行を書き換えた 5000 行の前後は、`timeout` 無しで 2197ms かかり、`diffLines` に `timeout: 50` を渡すと 52ms で `undefined` を返した。1 行だけ変えた 5000 行は 0.9ms。`diffArrays` も 3000 要素の全て違う配列で `timeout: 20` で 21ms で `undefined` を返した。jsDelivr の `dist/diff.min.js` の sha384 が npm の同じファイルと一致し、UMD でグローバルの `Diff` に入ることを確かめた'
+license: BSD-3-Clause（商用利用可）。配る書き出しに入れるときは、版・著作権の表示（Copyright (c) 2009-2015, Kevin Decker）・BSD-3-Clause の本文を残す
+official_url: https://github.com/kpdecker/jsdiff
+selection:
+  candidates: jsdiff 9.0.0 と、Myers の差分の自作を比べた（[選定の案](https://github.com/shuhei1101/mindstella/pull/79#discussion_r4178678194)、[指摘と直した案](https://github.com/shuhei1101/mindstella/pull/79#discussion_r4178689633)）
+  decision: 'jsdiff を採る。要る処理は差分の算法そのもので、上流が最悪の場合の打ち切り（`timeout`・`maxEditLength`）まで用意し、PoC #83 でも動いている。読み込み・埋め込みは描画のライブラリと同じ仕組みに載る'
+install: |-
+  ```html
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous"></script>
+  ```
+
+  プレビューの雛形が読む。グローバルの `Diff` に入る

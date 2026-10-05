@@ -16,6 +16,8 @@ elements:
         value: 概要と同じ
       - name: read_at
         value: 概要と同じ
+      - name: diffPoint
+        value: 『概要』のトップバーと同じ
       - name: comments
         value: サーバーの配信では true、配る書き出しでは false
       - name: comment_count
@@ -88,6 +90,8 @@ elements:
         value: プレビューを開く.mindmap-data.decisions
       - name: filters
         value: プレビューを開く.f.{列}（開いたときだけ）
+      - name: marks
+        value: 差分の表示の間、選んだ時点で足した・変えた検討事項（記録の取得.changes）
     description: 検討事項の表。列「着手可否」は、`derived.next` にある未決定は「着手可能」、それ以外の未決定は「前提待ち」、未決定以外は「なし」
     visible_when: 表示形式が表
   - name: すべての状態を表示
@@ -106,6 +110,15 @@ elements:
     label: 表示する検討事項はありません。
     io: 表示
     visible_when: 表示形式がマップで、表示する状態の検討事項が 1 件も無いとき
+  - name: マップ・ボードの差分の印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    args:
+      - name: kind
+        value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
+    description: マップの箱とボードのカードで、タイトルの横に文言なしで置く。字下げの一覧にも同じ印を置く
+    io: 表示
+    visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 lead: 検討事項をマップ（既定）・ボード・表で見る画面。
 mock: dev/mock/pages/decisions/38/b-check/index.html
 test_file: tests/integration/preview/test_decisions_screen.py

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,17 @@ from errors import (
     WorkspaceNotFoundError,
 )
 from graph import judge_goal, list_next_candidates, summarize_status, trace_impact
+from history import (
+    SUMMARY_MAX_LENGTH,
+    Changes,
+    commit_pending,
+    history_limit,
+    load_changes,
+    make_entry,
+    note_pending,
+    pending_view,
+    stack_history,
+)
 from kinds import KINDS, SETTINGS_FILE, Kind
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
@@ -23,17 +35,24 @@ from query import SearchFilter, list_attrs, search_items, show_item
 from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
+    CHANGES_FILE,
     BodyWrite,
     Change,
     NowFn,
+    Workspace,
     clear_release,
     create_workspace,
+    dump_yaml,
     find_item,
     is_legacy_problem,
     load_workspace,
     next_id,
     now_utc,
+    read_body,
+    remove_files,
     save_change,
+    write_failed,
+    write_temp,
 )
 from submissions import list_pending_submissions, take_submission
 from versions import Version, parse_release_version, read_plugin_version
@@ -42,7 +61,7 @@ from versions import Version, parse_release_version, read_plugin_version
 MIGRATE_HINT = "（/mindstella:upgrade で今の形式に移せます）"
 
 # `item` で渡させない、ツールが付けるキー
-RESERVED_KEYS = ("id", "created", "updated", "body")
+RESERVED_KEYS = ("id", "created", "updated", "body", "history", "history_dropped_seq")
 
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
 BODY_INPUT_KEY = "body_markdown"
@@ -107,6 +126,7 @@ def run_init(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
 def run_add(root: Path, kind: Kind, item: dict[str, Any], now: NowFn = now_utc) -> dict[str, Any]:
     """ID・日時・本文を付けて 1 項目を足す。"""
     workspace = load_workspace(root)
+    changes = load_changes(root)
     validate_input_keys(kind, item)
     item_id = next_id(workspace, kind)
     timestamp = now()
@@ -119,7 +139,12 @@ def run_add(root: Path, kind: Kind, item: dict[str, Any], now: NowFn = now_utc) 
         added["body"] = body.name
     added["created"] = timestamp
     added["updated"] = timestamp
-    save_change(workspace, Change(kind=kind, items=[*workspace.items[kind], added], body=body))
+    # 足した項目は変更履歴を持たず、まだまとめていない変更の足した項目に入る
+    noted = note_pending(changes, item_id, "added")
+    save_change(
+        workspace,
+        Change(kind=kind, items=[*workspace.items[kind], added], body=body, changes=dict(noted)),
+    )
     return {
         "id": item_id,
         "file": KINDS[kind].file,
@@ -132,6 +157,7 @@ def run_update(
 ) -> dict[str, Any]:
     """1 項目のキーを置き換え、更新日時を変える。"""
     workspace = load_workspace(root)
+    record = load_changes(root)
     ref = find_item(workspace, item_id)
     validate_input_keys(ref.kind, item)
     changes = {key: value for key, value in item.items() if key != BODY_INPUT_KEY}
@@ -142,9 +168,25 @@ def run_update(
     if body is not None and merged.get("body") != body.name:
         merged["body"] = body.name
         changed.append("body")
+    # 書き換える前の本文（本文を変えないときは、後の本文も同じ）
+    previous_body = _read_item_body(workspace, ref.item)
+    # 本文の中身が変わったときは、`body_markdown` も changed に入れる
+    if body is not None and body.text != previous_body:
+        changed.append(BODY_INPUT_KEY)
+    merged, noted = _stack_changes(
+        workspace,
+        record,
+        before_item=ref.item,
+        after_item=merged,
+        before_body=previous_body,
+        after_body=body.text if body is not None else previous_body,
+    )
     items = list(workspace.items[ref.kind])
     items[ref.index] = merged
-    save_change(workspace, Change(kind=ref.kind, items=items, body=body))
+    save_change(
+        workspace,
+        Change(kind=ref.kind, items=items, body=body, changes=dict(noted) if noted else None),
+    )
     return {"id": item_id, "file": KINDS[ref.kind].file, "changed": changed}
 
 
@@ -158,16 +200,57 @@ def run_update_settings(
 def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[str, Any]:
     """検討事項の採用する案を切り替えて書き込む。"""
     workspace = load_workspace(root)
+    record = load_changes(root)
     ref = find_item(workspace, item_id)
     # 検討事項以外の項目は案を持たない
     if ref.kind != "decision":
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
     switched, previous = switch_adopted(ref.item, key)
     switched["updated"] = now()
+    # 本文は変えないので、前後の本文は同じ（読まない）
+    switched, noted = _stack_changes(
+        workspace,
+        record,
+        before_item=ref.item,
+        after_item=switched,
+        before_body=None,
+        after_body=None,
+    )
     items = list(workspace.items["decision"])
     items[ref.index] = switched
-    save_change(workspace, Change(kind="decision", items=items))
+    save_change(
+        workspace, Change(kind="decision", items=items, changes=dict(noted) if noted else None)
+    )
     return {"id": item_id, "adopted": key, "previous": previous}
+
+
+def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]:
+    """まだまとめていない変更を、説明つきの 1 つのまとまりにして書き込む。"""
+    text = summary.strip()
+    # 説明が空白だけか、長すぎる
+    if not text or len(text) > SUMMARY_MAX_LENGTH:
+        raise ArgumentError(
+            "summary", f"前後の空白を除いて 1〜{SUMMARY_MAX_LENGTH} 文字で渡してください"
+        )
+    _require_workspace(root)
+    committed, change_set = commit_pending(load_changes(root), text, now())
+    # まとめる書き換えが無い: 何も書かない
+    if change_set is None:
+        return {"id": None, "at": None, "summary": None, "added": [], "changed": []}
+    _write_changes(root, committed)
+    return {
+        "id": change_set["id"],
+        "at": change_set["at"],
+        "summary": change_set["summary"],
+        "added": change_set["added"],
+        "changed": change_set["changed"],
+    }
+
+
+def run_pending(root: Path) -> dict[str, Any]:
+    """まだまとめていない変更を、出力の形にする。"""
+    workspace = load_workspace(root)
+    return pending_view(workspace, load_changes(root))
 
 
 def run_check(root: Path) -> dict[str, Any]:
@@ -296,6 +379,53 @@ def run_take_submission(root: Path, submission_id: str, now: NowFn = now_utc) ->
     _require_workspace(root)
     taken, already = take_submission(root, submission_id, now=now)
     return {"id": submission_id, "taken": taken, "already": already}
+
+
+def _read_item_body(workspace: Workspace, item: dict[str, Any]) -> str | None:
+    """項目の `body` が指す本文を読む（`body` を持たないか、ファイルが無ければ None）。"""
+    name = item.get("body")
+    return read_body(workspace, name) if isinstance(name, str) else None
+
+
+def _stack_changes(
+    workspace: Workspace,
+    record: Changes,
+    *,
+    before_item: dict[str, Any],
+    after_item: dict[str, Any],
+    before_body: str | None,
+    after_body: str | None,
+) -> tuple[dict[str, Any], Changes | None]:
+    """変更履歴の 1 回分を作って積んだ項目と、まとまりが変わったときの新しい記録（変わらなければ None）を返す。"""
+    limit = history_limit(workspace.settings)
+    entry = make_entry(
+        before_item,
+        after_item,
+        before_body=before_body,
+        after_body=after_body,
+        seq=record["last_seq"] + 1,
+        at=after_item["updated"],
+    )
+    stacked = stack_history(after_item, entry, limit)
+    # 積んだ（保持する回数が 0 でなく、変わったものがある）: まだまとめていない変更に足す
+    if entry is not None and limit > 0:
+        return stacked, note_pending(record, after_item["id"], "changed", stacked=True)
+    return stacked, None
+
+
+def _write_changes(root: Path, record: Changes) -> None:
+    """`changes.yaml` を、一時ファイルを書いてから置き換えて書く。"""
+    path = root / CHANGES_FILE
+    try:
+        temp = write_temp(path, dump_yaml(record))
+    except OSError as error:
+        raise write_failed(path, error) from error
+    try:
+        os.replace(temp, path)
+    except OSError as error:
+        # 置き換えられなかった: 書いた一時ファイルを残さない
+        remove_files([temp])
+        raise write_failed(path, error) from error
 
 
 def _require_workspace(root: Path) -> None:

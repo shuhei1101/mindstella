@@ -1,0 +1,69 @@
+title: "変更履歴"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts#MindmapPreview.historyDialog"
+story: "Preview/HistoryDialog"
+states:
+  - name: SinceSelected
+    description: 「前回開いてから」を選んでいる。先頭から差分を出さない・まだまとめていない変更・前回開いてから・まとまり 2 つ
+    args:
+      - name: current
+        value: since
+  - name: "Off"
+    description: 差分を出していない。「差分を出さない（今の内容）」にチェック
+    args:
+      - name: current
+        value: （空文字列）
+  - name: NoPending
+    description: まだまとめていない変更が無い。その行を出さない
+  - name: LongName
+    description: 長い説明のまとまり。名前を折り返し、日時と件数の列を押し出さない
+  - name: Narrow
+    description: 幅 390px。モーダルを画面幅に合わせ、一覧を縦に送る
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+lead: トップバーの「変更履歴」で開くモーダル。差分の表示で比べる時点を、日時・説明・変わった項目の数つきで新しい順に並べ、1 つ選ばせる。
+args:
+  - name: points
+    type: オブジェクトの配列
+    required: true
+    description: 選べる時点。先頭から「差分を出さない（今の内容）」・「まだまとめていない変更」（あるときだけ）・「前回開いてから」・まとまりを新しい順に。その並びで出す
+    status: planned
+  - name: points[].sel
+    type: 文字列
+    required: true
+    description: 時点の識別子。空文字列は差分を出さない、`pending`・`since`・まとまりの ID
+    status: planned
+  - name: points[].name
+    type: 文字列
+    required: true
+    description: 行の名前。まとまりは `commit` の説明。長ければ折り返し、日時と件数の列を押し出さない
+    status: planned
+  - name: points[].sub
+    type: 文字列
+    required: true
+    description: 名前の下の補足（まとまりの日時・「{日時} より後」・差分を出さない行の説明）
+    status: planned
+  - name: points[].count
+    type: 整数
+    required: false
+    default: なし（件数を出さない）
+    choices: 0 以上
+    description: その時点で足した・変えた項目の数。「{数} 件」と出す
+    status: planned
+  - name: current
+    type: 文字列
+    required: true
+    description: 今選んでいる時点の `sel`。その行にチェックを付け、開いたときにフォーカスを置く
+    status: planned
+events:
+  - name: 時点を選ぶ
+    when: 行を押したとき
+    value: sel（`data-sel`）
+    description: 使う側がモーダルを閉じ、選んだ時点を端末の保存領域に残して、どの画面もその時点の差分の表示で描き直す。空の `sel` は差分の表示をやめる
+  - name: 閉じる
+    when: 閉じるボタン・Esc・モーダルの外を押したとき
+    description: 使う側がモーダルを閉じ、「変更履歴」のボタンにフォーカスを戻す。選んだ時点は変えない
+accessibility:
+  - '`dialog` を `showModal()` で開き、見出し「変更履歴」を読み上げ名にする'
+  - 選んでいる行に `aria-current="true"` を付け、チェックの印だけに頼らない
+  - 行はボタンにし、キーボードで移って選べる
+test_file: tests/integration/storybook/test_history_dialog_stories.py

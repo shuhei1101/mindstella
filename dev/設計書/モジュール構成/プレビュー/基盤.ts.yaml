@@ -170,6 +170,8 @@ constants:
         value: ELK
       - key: mermaid
         value: mermaid
+      - key: jsdiff
+        value: Diff
   - name: API_PATHS
     title: 配信のパス
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -186,6 +188,8 @@ constants:
         value: '"api/comments/send"'
       - key: drafts
         value: '"api/drafts"'
+      - key: opened
+        value: '"api/opened"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
@@ -916,6 +920,28 @@ functions:
         condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
         mock: '`EventSourceCtor`'
         expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
+  - name: postOpened
+    title: 前回開いた日時を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: '`POST /api/opened` を呼び、前回開いた日時を返す'
+    args: []
+    returns:
+      type: Promise<string | null>
+      description: '`previous`。届かない・200 でない・読めないときも `null`'
+    process: |-
+      1. `fetch(API_PATHS.opened, {method: "POST"})` を呼ぶ
+      2. 200 なら JSON の `previous` を返し、それ以外と例外は `null` を返す
+    unit_tests:
+      - name: test_post_opened
+        case: 正常
+        summary: 前回の日時を返し、失敗は null
+        condition: '`parametrize`: 200 で `{previous: "2026-10-04T13:05:00+00:00"}` / 500 / 届かない'
+        mock: '`page.route`'
+        expected: '`2026-10-04T13:05:00+00:00` / `null` / `null`'
   - name: callApi
     title: 配信の呼び出し
     kind: 関数
@@ -1017,13 +1043,13 @@ functions:
       - name: test_selection_location
         case: 正常
         summary: 本文の行の範囲と値のキーを求める
-        condition: 'PoC #80 の選択のケース 19 件（見出し・段落・入れ子の項目・番号付きリスト・表・コード・引用・ソフト改行・ハードブレイク・ブロックをまたぐ選択）と、`data-key="options[B].cons"` の値の中の選択'
+        condition: 'PoC #80 の選択のケース 19 件（見出し・段落・入れ子の項目・番号付きリスト・表・コード・引用・ソフト改行・ハードブレイク・ブロックをまたぐ選択）と、`data-key="options[B].cons"` の値の中の選択。差分の表示の間に、消した部分の後ろの段落を選んだとき'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '本文は各ケースの元の行の範囲。値は `{kind: value, key: options[B].cons, text}`'
+        expected: '本文は各ケースの元の行の範囲（差分の表示の間は今の本文の行）。値は `{kind: value, key: options[B].cons, text}`'
       - name: test_selection_location_when_outside
         case: 正常
         summary: 本文と値の外は null
-        condition: '`parametrize`: 空の選択 / 見出しの帯 / 関係する項目 / 図の SVG / 図の Raw の原文 / 本文から値へまたぐ選択'
+        condition: '`parametrize`: 空の選択 / 見出しの帯 / 関係する項目 / 図の SVG / 図の Raw の原文 / 本文から値へまたぐ選択 / 差分の表示の間の消した部分 / 消した部分と今の部分をまたぐ選択'
         mock: なし
         expected: どれも `null`
   - name: locationLabel

@@ -62,6 +62,9 @@ VERSION_FILE = "mindstella-version.ini"
 # プロセスをまたいだ書き換えの排他に使う空のファイルの名前
 LOCK_FILE = ".mindstella.lock"
 
+# 書き換えのまとまりを持つファイルの名前
+CHANGES_FILE = "changes.yaml"
+
 # 今の日時（UTC のタイムゾーン付き ISO 8601）を返す関数。テストで決めた日時を注入する
 type NowFn = Callable[[], str]
 
@@ -71,7 +74,13 @@ class Problem:
     """スキーマ違反・参照切れなど 1 件の問題。"""
 
     kind: Literal[
-        "schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase"
+        "schema",
+        "duplicate_id",
+        "broken_ref",
+        "missing_body",
+        "orphan_body",
+        "unknown_phase",
+        "stale_history",
     ]
     # ワークスペースからの相対パス
     file: str
@@ -127,6 +136,8 @@ class Change:
     # 書き換えた後の `items` の並び全体
     items: list[dict[str, Any]]
     body: BodyWrite | None = None
+    # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
+    changes: dict[str, Any] | None = None
 
 
 def load_workspace(root: Path) -> Workspace:
@@ -310,7 +321,7 @@ def is_legacy_problem(problem: Problem, workspace: Workspace) -> bool:
 
 
 def save_change(workspace: Workspace, change: Change) -> None:
-    """1 種類の項目の並びと本文を、検証してから両方とも書き換えるか、どちらも書き換えない。"""
+    """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。"""
     spec = KINDS[change.kind]
     # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
     if _loses_content_on_rewrite(workspace, change.kind):
@@ -324,13 +335,16 @@ def save_change(workspace: Workspace, change: Change) -> None:
         raise build_mismatch_error(problems, changed)
 
     yaml_path = workspace.root / spec.file
+    changes_path = workspace.root / CHANGES_FILE
     body_path = workspace.root / BODY_DIR / change.body.name if change.body else None
-    # 本文があるときは置き換える前の中身を控える（無ければ None）
+    # 置き換える前の中身を控える（無ければ None）
     previous_body = body_path.read_bytes() if body_path and body_path.is_file() else None
+    previous_yaml = yaml_path.read_bytes() if yaml_path.is_file() else None
 
     # 一時ファイルを先に全て書く
     temps: list[Path] = []
     body_temp: Path | None = None
+    changes_temp: Path | None = None
     try:
         yaml_temp = write_temp(yaml_path, dump_yaml({"items": change.items}))
         temps.append(yaml_temp)
@@ -338,11 +352,14 @@ def save_change(workspace: Workspace, change: Change) -> None:
             body_path.parent.mkdir(exist_ok=True)
             body_temp = write_temp(body_path, change.body.text)
             temps.append(body_temp)
+        if change.changes is not None:
+            changes_temp = write_temp(changes_path, dump_yaml(change.changes))
+            temps.append(changes_temp)
     except OSError as error:
         _remove_files(temps)
         raise write_failed(yaml_path, error) from error
 
-    # 本文 → YAML の順に置き換える
+    # 本文 → YAML → まとまりの順に置き換える
     try:
         if body_temp and body_path:
             os.replace(body_temp, body_path)
@@ -357,6 +374,16 @@ def save_change(workspace: Workspace, change: Change) -> None:
             _restore_body(body_path, previous_body)
         _remove_files(temps)
         raise write_failed(yaml_path, error) from error
+    try:
+        if changes_temp:
+            os.replace(changes_temp, changes_path)
+    except OSError as error:
+        # まとまりを置き換えられなかった: 置き換えた YAML と本文を元に戻す
+        _restore_file(yaml_path, previous_yaml)
+        if body_path and body_temp:
+            _restore_body(body_path, previous_body)
+        _remove_files(temps)
+        raise write_failed(changes_path, error) from error
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
@@ -573,11 +600,16 @@ def _remove_files(paths: list[Path]) -> None:
 
 def _restore_body(body_path: Path, previous_body: bytes | None) -> None:
     """置き換えた本文を、置き換える前の中身に戻す（前に本文が無ければ消す）。"""
-    # 前に本文が無かった: 新しく書いた本文を消す
-    if previous_body is None:
-        body_path.unlink(missing_ok=True)
+    _restore_file(body_path, previous_body)
+
+
+def _restore_file(path: Path, previous: bytes | None) -> None:
+    """置き換えたファイルを、置き換える前の中身に戻す（前に無ければ消す）。"""
+    # 前に無かった: 新しく書いたものを消す
+    if previous is None:
+        path.unlink(missing_ok=True)
         return
-    body_path.write_bytes(previous_body)
+    path.write_bytes(previous)
 
 
 def write_failed(path: Path, error: OSError) -> WriteFailedError:

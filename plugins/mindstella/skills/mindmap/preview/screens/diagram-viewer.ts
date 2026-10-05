@@ -1,4 +1,4 @@
-// 図の拡大。ホイールで拡大・縮小し、背景のドラッグで動かす。図の文字は選んでコピーできる（文字の上のドラッグは選択に任せる）。
+// 図の拡大。ホイールで拡大・縮小し、背景のドラッグで動かす。図の文字は選んでコピーできる（文字の上のドラッグは選択に任せる）。差分の表示の間は、色・凡例と消したもの・Raw の行ごとの差分も出す。
 
 namespace MindmapPreview {
   /** 図の拡大の引数 */
@@ -9,6 +9,8 @@ namespace MindmapPreview {
       /** 閉じる（開いた元の詳細パネルか詳細の全画面の本文に戻る） */
       close: () => void;
     };
+    /** 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分を出す */
+    diff?: DiagramViewerDiff | null;
   };
 
   /** 拡大率の範囲と、ボタン 1 回の倍率 */
@@ -23,8 +25,19 @@ namespace MindmapPreview {
   /** 開いたときの拡大率の上限 */
   const FIT_MAX_SCALE = 3;
 
+  /** Raw で出す記法。差分の表示の間は記法の行ごとの差分（jsdiff を読めないときと打ち切ったときは、今の記法のまま） */
+  function rawElement({ source, before }: { source: string; before: string | null }): HTMLElement {
+    const raw = h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true }, children: [source] });
+    if (before === null) return raw;
+    const parts = diffLineParts(before.endsWith("\n") ? before : `${before}\n`, source.endsWith("\n") ? source : `${source}\n`);
+    if (parts === null) return raw;
+    raw.classList.add("df-raw");
+    raw.replaceChildren(...rawDiffLines(parts));
+    return raw;
+  }
+
   /** 図の拡大の中身（道具の行と、図を置く窓）を返す。モーダルか全画面の中に入れて使う */
-  export function diagramViewer({ svg, on }: DiagramViewerProps): HTMLElement {
+  export function diagramViewer({ svg, on, diff = null }: DiagramViewerProps): HTMLElement {
     const stage = h({ tag: "div", attrs: { class: "v-stage" } });
     const canvas = h({ tag: "div", attrs: { class: "v-canvas" }, children: [stage] });
     const percent = h({ tag: "span", attrs: { class: "v-pct mono" }, children: ["100%"] });
@@ -86,9 +99,36 @@ namespace MindmapPreview {
     canvas.addEventListener("pointerup", release);
     canvas.addEventListener("pointercancel", release);
 
+    // Raw: 図の代わりに記法を出す（記法は、図を描いた入れ物が持つ原文）
+    const source = svg.closest(`[${DIAGRAM_SOURCE_ATTR}]`)?.getAttribute(DIAGRAM_SOURCE_ATTR) ?? null;
+    const raw = source === null ? null : rawElement({ source, before: diff === null ? null : diff.beforeSource });
+    const rawButton =
+      raw === null
+        ? null
+        : h({
+          tag: "button",
+          attrs: {
+            class: "btn ghost",
+            type: "button",
+            "data-act": "viewer-raw",
+            "aria-pressed": "false",
+            onclick: () => {
+              const pressed = rawButton?.getAttribute("aria-pressed") !== "true";
+              rawButton?.setAttribute("aria-pressed", String(pressed));
+              canvas.hidden = pressed;
+              raw.hidden = !pressed;
+            },
+          },
+          children: ["Raw"],
+        });
+    // 差分の表示の間: 詳細パネルの図と同じ凡例と「消したもの」を窓の下端に置き、色を付けない種類は窓に枠の色を付ける
+    const figure = diff === null ? null : svg.closest("figure.diagram");
+    const notes = figure?.querySelector(":scope > .df-notes")?.cloneNode(true) as HTMLElement | undefined;
+    notes?.classList.add("v-notes");
+
     const root = h({
       tag: "div",
-      attrs: { class: "viewer-body" },
+      attrs: { class: `viewer-body${figure?.classList.contains("df-frame") === true ? " df-frame" : ""}` },
       children: [
         h({
           tag: "div",
@@ -106,6 +146,7 @@ namespace MindmapPreview {
               children: ["＋"],
             }),
             h({ tag: "span", attrs: { class: "spacer" } }),
+            rawButton,
             h({
               tag: "button",
               attrs: { class: "btn ghost", type: "button", "data-act": "diagram-close", onclick: on.close },
@@ -114,6 +155,8 @@ namespace MindmapPreview {
           ],
         }),
         canvas,
+        raw,
+        notes,
       ],
     });
     // 開いたときは、窓に収まる大きさで中央に置く（窓の大きさが決まってから）

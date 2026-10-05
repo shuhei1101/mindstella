@@ -310,4 +310,6 @@ constraints:
     constraint: 起こさない。書き換える全てのファイルの一時ファイルを書き終えてから置き換え、途中で失敗したら置き換えたファイルを前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
   - item: 書き換えの知らせ
     constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの知らせ』）
+  - item: 変更履歴
+    constraint: '`phase_map` による項目の `phase` の付け替えは、`history` にも `changes.yaml` の `pending` にも入れない（設定の書き換えに伴う機械的な付け替えとして、差分の表示の対象にしない）。`history_limit` は `settings` のキーにしない（利用者が `mindmap.yaml` を直して変える）'
 test_file: tests/integration/server/test_update_settings.py

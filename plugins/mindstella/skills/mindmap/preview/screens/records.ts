@@ -9,10 +9,13 @@ namespace MindmapPreview {
     index,
     route,
     on,
+    marks,
   }: {
     index: RecordIndex;
     route: Route;
     on: { open: (id: string) => void };
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks;
   }): HTMLElement {
     const kind = route.tab as RecordKind;
     const common = commonColumns(index.data.settings);
@@ -81,6 +84,7 @@ namespace MindmapPreview {
           rows: index.data[kind],
           open: on.open,
           initialFilters: route.filters,
+          marks,
         }),
       ],
     });

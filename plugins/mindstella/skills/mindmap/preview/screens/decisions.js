@@ -126,7 +126,7 @@ var MindmapPreview;
         return element;
     }
     /** 木の節と枝を、配置された座標で描く。選んだ項目の根までの枝と依存の線を強調し、ほかを薄くする */
-    function drawMap({ laid, canvas, selected, open, }) {
+    function drawMap({ laid, canvas, selected, open, marks, }) {
         const positions = new Map(laid.children.map((node) => [node.id, node]));
         const parentOf = new Map(laid.edges.map((edge) => [edge.targets[0], edge.sources[0]]));
         // 選んだ項目から根までの節
@@ -219,6 +219,7 @@ var MindmapPreview;
                         tag: "span",
                         attrs: { class: "r2" },
                         children: [
+                            MindmapPreview.markFor({ marks, id: item.id }),
                             MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
                             MindmapPreview.h({ tag: "span", children: [item.status ?? ""] }),
                             item.weight === undefined ? null : MindmapPreview.h({ tag: "span", children: [`影響度 ${item.weight}`] }),
@@ -233,7 +234,7 @@ var MindmapPreview;
         canvas.replaceChildren(edgeSvg, ...nodes);
     }
     /** 狭い幅で使う、字下げした縦の一覧 */
-    function outline({ index, open, }) {
+    function outline({ index, open, marks, }) {
         const tree = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
         const nodeOf = new Map(tree.children.map((node) => [node.id, node]));
         const childrenOf = new Map();
@@ -250,7 +251,7 @@ var MindmapPreview;
                 ? MindmapPreview.h({
                     tag: "button",
                     attrs: { type: "button", "data-id": node.id, onclick: () => open(node.id) },
-                    children: [MindmapPreview.statusMark(node.item.status), MindmapPreview.h({ tag: "span", children: [node.label] })],
+                    children: [MindmapPreview.statusMark(node.item.status), MindmapPreview.h({ tag: "span", children: [node.label] }), MindmapPreview.markFor({ marks, id: node.id })],
                 })
                 : MindmapPreview.h({ tag: "div", attrs: { class: `o-${node.kind}` }, children: [node.label] });
             const below = childrenOf.get(node.id) ?? [];
@@ -271,7 +272,7 @@ var MindmapPreview;
         });
     }
     /** マップの道具の行（状態の印・キーワード）と、マップの枠・拡大の道具を作る */
-    function mapView({ index, route, on }) {
+    function mapView({ index, route, on, marks }) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "map-view-root" } });
         const decisions = index.data.decisions;
         const legend = MindmapPreview.h({ tag: "div", attrs: { class: "legend", role: "group", "aria-label": "表示する状態" } });
@@ -295,7 +296,7 @@ var MindmapPreview;
             },
             children: ["全体を表示"],
         });
-        let outlineElement = outline({ index, open: on.open });
+        let outlineElement = outline({ index, open: on.open, marks });
         let current = null;
         /** キーワードに当たった検討事項か */
         const isHit = (item) => mapState.keyword !== "" && item.title.toLowerCase().includes(mapState.keyword.toLowerCase());
@@ -362,14 +363,14 @@ var MindmapPreview;
         /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
         const draw = async () => {
             drawLegend();
-            outlineElement.replaceWith((outlineElement = outline({ index, open: on.open })));
+            outlineElement.replaceWith((outlineElement = outline({ index, open: on.open, marks })));
             if (MindmapPreview.missingLibraries(["elkjs"]).length > 0)
                 return;
             const key = [...mapState.shownStatuses].sort().join(",");
             const graph = buildDecisionTree({ index, shownStatuses: mapState.shownStatuses });
             emptyNotice.hidden = graph.children.length > 0;
             current = await layoutOf(graph, key);
-            drawMap({ laid: current, canvas, selected: route.id, open: on.open });
+            drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks });
             applyZoom();
             const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
             const scale = mapState.zoom === "fit" ? Number.parseFloat(canvas.style.transform.slice(6)) : mapState.zoom;
@@ -492,7 +493,7 @@ var MindmapPreview;
     }
     /** 検討事項の画面を返す */
     function decisionsScreen(props) {
-        const { index, route, on } = props;
+        const { index, route, on, marks } = props;
         if (route.view === "map")
             return MindmapPreview.h({ tag: "div", attrs: { class: "screen decisions" }, children: [mapView(props)] });
         const toolbarElement = MindmapPreview.toolbar([
@@ -514,6 +515,7 @@ var MindmapPreview;
                             meta: [item.category, item.phase],
                             links: item.depends_on ?? [],
                             open: on.open,
+                            mark: marks?.[item.id],
                         }),
                         emptyText: "検討事項はありません。",
                     }),
@@ -568,6 +570,7 @@ var MindmapPreview;
                     rows: index.data.decisions,
                     open: on.open,
                     initialFilters: route.filters,
+                    marks,
                 }),
             ],
         });

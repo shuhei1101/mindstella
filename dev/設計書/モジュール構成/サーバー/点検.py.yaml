@@ -51,7 +51,8 @@ functions:
       5. 送信のスキーマ違反と参照切れを拾う（`_check_submissions`）
       6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
       7. 設定に無いフェーズを拾う（`_check_phases`）
-      8. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      8. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
+      9. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -257,5 +258,40 @@ functions:
         condition: '`parametrize`: C-1 から `body` を消した `comments.yaml` / `items: [` の `drafts.yaml` / 消えた D-9 への整った C-1 / どちらも無い'
         mock: なし
         expected: '`schema`（`file` が `comments.yaml`）が 1 件以上 / `schema`（`file` が `drafts.yaml`）が 1 件以上 / 空 / 空'
+  - name: _check_history
+    title: 変更履歴の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: '`changes.yaml` のスキーマ違反・参照切れと、今の本文に当たらない変更履歴を拾う'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び
+    process: |-
+      1. `changes.yaml` を読む（`load_changes`）
+         - `SchemaMismatchError` の場合、`lines` を `schema`（`file: changes.yaml`）の問題にして、参照切れは確かめない
+      2. `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed` の ID が無ければ `broken_ref`（`file: changes.yaml`、`key` は `sets[0].added` の形）にする
+      3. 本文を持ち `history` を持つ項目ごとに、今の本文へ `history` を新しいものから順に当てる（`apply_body_diff`）
+         - `None` を返した要素で止め、`stale_history`（`key: history[{位置}].body_diff`、`detail` にその回より前の本文の差分を出せないこと）にする
+    unit_tests:
+      - name: test_check_history_when_body_rewritten
+        case: 正常
+        summary: 手で書き換えた本文に当たらない変更履歴を拾う
+        condition: D-1 の本文を `run_update` で直した後、`docs/D-1.md` の全ての行を書き換える
+        mock: なし
+        expected: '`stale_history`（D-1・`history[0].body_diff`）が 1 件'
+      - name: test_check_history_when_broken_ref
+        case: 正常
+        summary: まとまりが指す無い ID を拾う
+        condition: '`sets[0].changed` に D-9（無い）を持つ `changes.yaml`'
+        mock: なし
+        expected: '`broken_ref`（`changes.yaml`・`sets[0].changed`・`D-9`）'
 test_files:
   - tests/unit/scripts/test_checker.py

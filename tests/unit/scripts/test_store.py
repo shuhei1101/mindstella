@@ -443,6 +443,33 @@ def test_save_change_when_yaml_replace_fails_without_previous_body(
     assert list(root.rglob("*.tmp")) == []
 
 
+def test_save_change_when_changes_replace_fails(
+    make_workspace,
+    make_item,
+    snapshot_tree,
+    failing_replace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """まとまりの置き換えに失敗したら項目と本文を戻す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", body="D-1.md"), bodies={"D-1.md": "前の本文\n"})
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    change = store.Change(
+        kind="decision",
+        items=[make_item("D-1", body="D-1.md", answer="a")],
+        body=store.BodyWrite(name="D-1.md", text="新しい本文\n"),
+        changes={"last_seq": 1, "sets": [], "pending": {"added": [], "changed": ["D-1"]}},
+    )
+    # store モジュールの参照を、changes.yaml への置き換えだけ失敗するものに差し替える
+    monkeypatch.setattr(store.os, "replace", failing_replace("changes.yaml"))
+    # 実行・検証
+    with pytest.raises(WriteFailedError, match=r"changes\.yaml"):
+        store.save_change(workspace, change)
+    assert snapshot_tree(root) == before
+    assert list(root.rglob("*.tmp")) == []
+
+
 def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
     """まだ無いフォルダにワークスペースを作る（正常系）。"""
     # 準備

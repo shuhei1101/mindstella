@@ -37,6 +37,8 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
         "update",
         "update_settings",
         "adopt",
+        "commit",
+        "pending",
         "status",
         "next",
         "impact",
@@ -59,6 +61,9 @@ PLAN_CALL = "`plan: true`"
 
 # SKILL.md が持つ、記録の書き方の節の見出し（`## ` を除く）
 RECORD_SECTION = "記録の書き方"
+
+# 記録を書き換え終えたら `commit` を呼ぶステップのファイル
+COMMIT_STEP_FILES = ["取り込み.md", "ヒアリング.md", "リサーチ.md", "方針転換.md"]
 
 # スキル session の steps/ のファイル
 SESSION_STEP_FILES = [
@@ -113,6 +118,10 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/範囲の見直し.md が update_settings を呼ぶ
     scope_step = (SKILLS_DIR / "session" / "steps" / "範囲の見直し.md").read_text(encoding="utf-8")
     assert "`update_settings`" in scope_step
+    # 取り込み・ヒアリング・リサーチ・方針転換のステップが commit を呼ぶ
+    for step_file in COMMIT_STEP_FILES:
+        step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")
+        assert "`commit`" in step
     # skills/mindmap/ に SKILL.md が無く、references/・playbooks/ がある
     assert not (SKILLS_DIR / "mindmap" / "SKILL.md").exists()
     assert (SKILLS_DIR / "mindmap" / "references").is_dir()

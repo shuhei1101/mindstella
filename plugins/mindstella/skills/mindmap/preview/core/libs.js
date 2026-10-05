@@ -1,5 +1,5 @@
 "use strict";
-// 描画のライブラリ（marked・DOMPurify・elkjs・mermaid）の有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
+// 描画のライブラリ（marked・DOMPurify・elkjs・mermaid）と差分のライブラリ（jsdiff）の有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 描画のライブラリの名前 → 読めたときに置かれるグローバルの名前 */
@@ -8,6 +8,7 @@ var MindmapPreview;
         DOMPurify: "DOMPurify",
         elkjs: "ELK",
         mermaid: "mermaid",
+        jsdiff: "Diff",
     };
     /** 図の入れ物が原文を持つ属性の名前 */
     MindmapPreview.DIAGRAM_SOURCE_ATTR = "data-source";
@@ -212,20 +213,8 @@ var MindmapPreview;
     function token(name) {
         return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     }
-    /** 要素の中の図の入れ物を mermaid で SVG に描く。描けない図は原文を残し、ほかの図は続ける */
-    async function renderDiagrams(root) {
-        const containers = [...root.querySelectorAll(`[${MindmapPreview.DIAGRAM_SOURCE_ATTR}]`)];
-        // mermaid が読めていない: 各入れ物に知らせと原文を入れる
-        if (missingLibraries(["mermaid"]).length > 0) {
-            for (const container of containers) {
-                container.replaceChildren(libraryNotice({ names: ["mermaid"], what: "図" }), MindmapPreview.h({
-                    tag: "pre",
-                    attrs: { class: "dg-raw" },
-                    children: [container.getAttribute(MindmapPreview.DIAGRAM_SOURCE_ATTR) ?? ""],
-                }));
-            }
-            return;
-        }
+    /** 初めて描くとき（と、テーマが変わったとき）に、トークンの色で mermaid を初期化する */
+    function initializeMermaid() {
         // 初めて描くとき（と、テーマが変わったとき）に、トークンの色で初期化する
         const surface = token("--surface");
         if (initializedFor !== surface) {
@@ -255,6 +244,42 @@ var MindmapPreview;
             });
             initializedFor = surface;
         }
+    }
+    /** 記法を mermaid で SVG に描いて返す（画面には出さない）。mermaid が読めていないか、描けないときは null */
+    async function renderDiagramSvg(source) {
+        if (missingLibraries(["mermaid"]).length > 0)
+            return null;
+        initializeMermaid();
+        const id = `mindmap-diagram-${(diagramCounter += 1)}`;
+        try {
+            const { svg } = await mermaid.render(id, source);
+            const holder = document.createElement("template");
+            holder.innerHTML = svg;
+            return holder.content.firstElementChild;
+        }
+        catch {
+            // 描けなかった図: mermaid が body に残した作業用の要素を消す
+            document.getElementById(`d${id}`)?.remove();
+            document.getElementById(id)?.remove();
+            return null;
+        }
+    }
+    MindmapPreview.renderDiagramSvg = renderDiagramSvg;
+    /** 要素の中の図の入れ物を mermaid で SVG に描く。描けない図は原文を残し、ほかの図は続ける */
+    async function renderDiagrams(root) {
+        const containers = [...root.querySelectorAll(`[${MindmapPreview.DIAGRAM_SOURCE_ATTR}]`)];
+        // mermaid が読めていない: 各入れ物に知らせと原文を入れる
+        if (missingLibraries(["mermaid"]).length > 0) {
+            for (const container of containers) {
+                container.replaceChildren(libraryNotice({ names: ["mermaid"], what: "図" }), MindmapPreview.h({
+                    tag: "pre",
+                    attrs: { class: "dg-raw" },
+                    children: [container.getAttribute(MindmapPreview.DIAGRAM_SOURCE_ATTR) ?? ""],
+                }));
+            }
+            return;
+        }
+        initializeMermaid();
         for (const container of containers) {
             const source = container.getAttribute(MindmapPreview.DIAGRAM_SOURCE_ATTR) ?? "";
             const id = `mindmap-diagram-${(diagramCounter += 1)}`;

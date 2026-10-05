@@ -18,16 +18,22 @@ __all__ = [
     "DETAIL_TEXTAREA",
     "FREE_FORM",
     "FREE_TEXTAREA",
+    "HISTORY_DIALOG",
+    "HISTORY_REDRAW_TIMEOUT_MS",
+    "HISTORY_ROW",
     "PILL",
     "OpenPreview",
     "ServePreview",
     "click_item_ball",
     "count_balls",
     "fetch_records",
+    "pick_history_point",
     "row_ids",
     "select_text",
     "select_text_for_pill",
     "shown_ball_item_ids",
+    "snapshot_records",
+    "visit_and_close",
 ]
 
 type ServePreview = Callable[..., str]
@@ -113,6 +119,46 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
     canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
     return found;
 }"""
+
+
+# プレビューを開くたびに今の日時へ書き換わる、前回開いた日時のファイル
+OPENED_FILE_NAME = ".mindstella-opened"
+
+# 前回開いた日時（秒の単位）より後に書き換えが入るよう、開いて閉じた後に待つミリ秒
+OPENED_TICK_MS = 1_100
+
+# 一度開く画面が描き終わるまで待つ上限ミリ秒
+VISIT_RENDER_TIMEOUT_MS = 20_000
+
+
+# 変更履歴のモーダルと、時点の行
+HISTORY_DIALOG = "dialog.hist"
+HISTORY_ROW = f"{HISTORY_DIALOG} .hist-item"
+
+# 時点を選んだ後に描き直るのを待つ上限ミリ秒
+HISTORY_REDRAW_TIMEOUT_MS = 10_000
+
+
+def pick_history_point(page: Page, name: str) -> None:
+    """トップバーの「変更履歴」から、名前の合う時点を選び、差分の表示になるまで待つ。"""
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.locator(HISTORY_ROW).filter(has_text=name).click()
+    page.wait_for_selector(".df-chip", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+
+
+def snapshot_records(snapshot: dict[str, bytes]) -> dict[str, bytes]:
+    """フォルダの写しから、開くたびに書き換わる前回開いた日時のファイルを除いて返す。"""
+    return {path: content for path, content in snapshot.items() if path != OPENED_FILE_NAME}
+
+
+def visit_and_close(page: Page, url: str) -> None:
+    """新しいタブでプレビューを一度開いて閉じ、前回開いた日時を残す。後の書き換えがその日時より後になるまで待つ。"""
+    tab = page.context.new_page()
+    tab.goto(url)
+    tab.wait_for_selector("main#main > *", state="attached", timeout=VISIT_RENDER_TIMEOUT_MS)
+    tab.close()
+    page.wait_for_timeout(OPENED_TICK_MS)
 
 
 def fetch_records(url: str) -> dict[str, Any]:

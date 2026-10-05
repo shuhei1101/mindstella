@@ -267,13 +267,20 @@ SELECTION_BODY = "\n".join(
     ]
 )
 
-# 本文の描いた要素と、項目の値（案 B の短所）を置いたパネル（選んだ範囲を調べる文書）
-SELECTION_DOCUMENT_SCRIPT = """(source) => {
+# 本文の描いた要素と、項目の値（案 B の短所）を置いたパネル（選んだ範囲を調べる文書）。
+# removedBefore の行のブロックの前に、行の印を持たない消した部分を差し込む（差分の表示の間）
+SELECTION_DOCUMENT_SCRIPT = """([source, removedBefore]) => {
     const panel = document.createElement("div");
     panel.className = "panel";
     const md = document.createElement("div");
     md.className = "md";
     md.append(MindmapPreview.renderMarkdown(source));
+    if (removedBefore !== null) {
+        const removed = document.createElement("div");
+        removed.className = "diff-removed";
+        removed.innerHTML = "<p>消した段落</p>";
+        md.querySelector(`[data-line-start="${removedBefore}"]`).before(removed);
+    }
     const value = document.createElement("div");
     value.setAttribute("data-key", "options[B].cons");
     value.textContent = "数が多いと長い";
@@ -312,7 +319,7 @@ SELECT_TEXT_SCRIPT = """([startText, startNth, endText, endNth]) => {
     return MindmapPreview.selectionLocation(range);
 }"""
 
-SELECTION_CASES = [
+BODY_SELECTION_CASES = [
     pytest.param(
         "見出しの一", 0, "見出しの一", 0, {"kind": "body", "start": 1, "end": 1}, id="heading"
     ),
@@ -399,8 +406,25 @@ SELECTION_CASES = [
     ),
 ]
 
+# 全ての選び方に、消した部分を差し込む行（差し込まないときは None）を添える。
+# 差分の表示の間は、消した部分の後ろの段落（41 行目）を選んでも、今の本文の行で求める
+SELECTION_CASES = [
+    *(pytest.param(*case.values, None, id=case.id) for case in BODY_SELECTION_CASES),
+    pytest.param(
+        "図の前の段落",
+        0,
+        "図の前の段落",
+        0,
+        {"kind": "body", "start": 41, "end": 41},
+        41,
+        id="after_removed",
+    ),
+]
 
-@pytest.mark.parametrize(("start", "start_nth", "end", "end_nth", "expected"), SELECTION_CASES)
+
+@pytest.mark.parametrize(
+    ("start", "start_nth", "end", "end_nth", "expected", "removed_before"), SELECTION_CASES
+)
 def test_selection_location(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
@@ -410,13 +434,14 @@ def test_selection_location(
     end: str,
     end_nth: int,
     expected: dict[str, Any],
+    removed_before: int | None,
 ) -> None:
     """本文の行の範囲と値のキーを求める（正常系）。"""
     # 準備
     load_preview_scripts()
     load_library("marked")
     load_library("DOMPurify")
-    preview_page.evaluate(SELECTION_DOCUMENT_SCRIPT, SELECTION_BODY)
+    preview_page.evaluate(SELECTION_DOCUMENT_SCRIPT, [SELECTION_BODY, removed_before])
     # 実行
     result = preview_page.evaluate(SELECT_TEXT_SCRIPT, [start, start_nth, end, end_nth])
     # 検証
@@ -430,6 +455,8 @@ OUTSIDE_DOCUMENT_SCRIPT = """() => {
           <div class="d-head"><span>D-1</span><button type="button">閉じる</button></div>
           <div class="md">
             <p data-line-start="1">本文の段落</p>
+            <div class="diff-removed"><p>消した段落</p></div>
+            <p data-line-start="3">続きの段落</p>
             <figure class="diagram">
               <div class="mermaid"><svg><text>図の文字</text></svg></div>
               <pre class="dg-raw">flowchart LR</pre>
@@ -465,6 +492,11 @@ SELECT_OUTSIDE_SCRIPT = """(how) => {
         pytest.param({"kind": "contents", "selector": ".mermaid svg"}, id="diagram_svg"),
         pytest.param({"kind": "contents", "selector": ".dg-raw"}, id="diagram_raw"),
         pytest.param({"kind": "between", "from": ".md p", "to": "[data-key]"}, id="body_to_value"),
+        pytest.param({"kind": "contents", "selector": ".diff-removed p"}, id="removed_part"),
+        pytest.param(
+            {"kind": "between", "from": ".diff-removed p", "to": '.md p[data-line-start="3"]'},
+            id="removed_to_current",
+        ),
     ],
 )
 def test_selection_location_when_outside(

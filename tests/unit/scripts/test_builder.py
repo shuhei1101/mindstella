@@ -114,10 +114,43 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "notes",
         "logs",
         "bodies",
+        "changes",
         "derived",
         "built_at",
     }
     assert data["bodies"] == {"A-1.md": "資料の本文\n"}
+
+
+def test_collect_preview_data_with_changes(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """まとまりと変更履歴を含める（正常系）。"""
+    # 準備
+    entry = {"seq": 1, "at": BUILT_AT, "before": {"status": "未決定"}}
+    changes = {
+        "last_seq": 1,
+        "sets": [
+            {
+                "id": "V-1",
+                "at": BUILT_AT,
+                "summary": "決める",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["D-1"],
+            }
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    root = make_workspace(
+        make_item("D-1", status="決定済み", history=[entry]),
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
+    # 検証
+    assert data["changes"] == changes
+    assert data["decisions"][0]["history"] == [entry]
 
 
 def test_escape_for_script() -> None:

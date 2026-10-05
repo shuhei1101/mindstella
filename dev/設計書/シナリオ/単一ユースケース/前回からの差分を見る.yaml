@@ -1,0 +1,325 @@
+title: "前回からの差分を見る"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: 検討事項 D-1〜D-5 とタスク T-1。D-3 は状態 `未決定` で、本文に段落 3 つと mermaid の flowchart を 1 つ持つ
+      - name: 前回開いた
+        description: 記録を作った後に、プレビューを一度開いて閉じる
+        notes: 端末に前回開いた日時が残る
+      - name: 書き換え
+        description: MCP のツールで、D-3 の状態を `要見直し` にし、本文の段落を 1 つ書き換えて 1 つ消し、図のノードのラベルを 1 つ変える。検討事項 D-6 を足す。`commit` で 1 つのまとまりにする
+        notes: D-3 は変更履歴を 1 回分持ち、D-6 は変更履歴を持たない。T-1 は書き換えない
+      - name: 配信
+        description: 記録を配っているサーバー。差分の表示は出していない（既定）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 新しいタブでプレビューを開く
+        P-->>U: 概要（差分の表示なし）
+        U->>P: 「変更履歴」を押す
+        P-->>U: 書き換えのまとまりの一覧（先頭は「前回開いてから」）
+        U->>P: 「前回開いてから」を選ぶ
+        P-->>U: 検討事項のタブに印
+        U->>P: 検討事項の表を開く
+        P-->>U: D-3 に変更、D-6 に新規の印
+        U->>P: D-3 を押す
+        P-->>U: 状態・本文・図の変更を出した詳細パネル
+        U->>P: 図の Raw を押す
+        P-->>U: 記法の行ごとの差分
+        U->>P: ページを読み込み直す
+        P-->>U: 同じ時点の差分の表示
+        U->>P: 差分の表示から抜ける
+        P-->>U: 印と差分のない画面
+      ```
+    expected:
+      - 差分の表示に入る前は、どの項目にもタブにも印が無い
+      - 変更履歴の一覧の先頭に「前回開いてから」があり、その下に `commit` したまとまりが日時と説明つきで並ぶ
+      - 「前回開いてから」を選ぶと、検討事項のタブに印が付き、タスクのタブには付かない。タブの件数は選ぶ前と同じ
+      - 検討事項の表で、D-3 に変更の印（●）、D-6 に新規の印（+）が付き、文言の札は出ない。D-1・D-2・D-4・D-5 には印が無い
+      - D-3 の詳細パネルで、状態の前の値 `未決定` と今の値 `要見直し` を見分けられる
+      - D-3 の本文が Markdown として描かれたまま、書き換えた段落に足した印、消した段落に消した印が付き、変えていない段落には印が無い
+      - D-3 の図で、ラベルを変えたノードに変わった色が付き、ほかのノードと辺には付かない
+      - 図の Raw で、変えた行が消した行と足した行として出る
+      - 読み込み直した後も「前回開いてから」の差分の表示のままで、D-3 と D-6 の印が残る
+      - 差分の表示から抜けると、印と差分が消え、D-3 の本文は今の内容だけになる
+      - ワークスペースの YAML と本文の中身が、開く前と同じ
+    test: test_normal
+  - name: 正常シナリオ（古いまとまりを選ぶ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: 本文を持つ資料 A-1 と検討事項 D-3
+      - name: 書き換え
+        description: MCP のツールで A-1 の本文を書き換えて `commit`（説明「仕様書を直す」）し、その後 D-3 の本文を書き換えて `commit`（説明「検討事項を直す」）する
+        notes: まとまりが 2 つでき、それぞれで変わった項目が違う
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 「変更履歴」を押す
+        P-->>U: まとまりの一覧
+        U->>P: 「仕様書を直す」を選ぶ
+        P-->>U: A-1 に変更の印
+        U->>P: A-1 を押す
+        P-->>U: そのまとまりの前後の本文の差分
+      ```
+    expected:
+      - 一覧に「検討事項を直す」「仕様書を直す」が新しい順に、日時と変わった項目の数つきで並ぶ
+      - 「仕様書を直す」を選ぶと、資料のタブと A-1 に印が付き、検討事項のタブと D-3 には付かない
+      - A-1 の詳細パネルに、そのまとまりの前後の本文の足した・消した印が出る
+    test: test_normal_when_older_change_set_selected
+  - name: 正常シナリオ（まだまとめていない変更）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: 本文を持つ検討事項 D-1・D-3
+      - name: 書き換え
+        description: MCP のツールで D-3 の本文を書き換え、`commit` を呼ばない
+        notes: D-3 の書き換えはまだまとめていない変更になる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 「変更履歴」を押す
+        P-->>U: 先頭に「まだまとめていない変更」を含む一覧
+        U->>P: 「まだまとめていない変更」を選ぶ
+        P-->>U: D-3 に変更の印
+      ```
+    expected:
+      - 一覧の先頭に「まだまとめていない変更」があり、変わった項目の数が 1
+      - 選ぶと D-3 に変更の印が付き、D-1 には付かない
+      - D-3 の詳細パネルに、書き換えた本文の差分が出る
+    test: test_normal_when_pending_changes
+  - name: 正常シナリオ（図の種類が色付けの対象外）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: 本文に mermaid の gantt を 1 つ持つ資料 A-1
+      - name: 書き換え
+        description: MCP のツールで、A-1 の gantt のタスク 1 本の期間を変えて `commit` する
+        notes: gantt はノード・辺に色を付ける対象（flowchart・sequenceDiagram・classDiagram・erDiagram・stateDiagram-v2）に入らない
+      - name: 配信
+        description: 記録を配っているサーバー。変更履歴からそのまとまりを選んである
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: A-1 の詳細パネルを開く
+        P-->>U: 変わった図の枠に色
+        U->>P: 図の Raw を押す
+        P-->>U: 記法の行ごとの差分
+      ```
+    expected:
+      - A-1 の図の枠に変わった色が付き、図の中の要素には色が付かない
+      - 図の Raw で、期間を変えた行が消した行と足した行として出る
+    test: test_normal_when_diagram_type_not_colored
+  - name: 正常シナリオ（開いたまま書き換わる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、端末の保存領域が空のブラウザでプレビューを開いたまま、MCP のクライアントで `update` と `commit` を呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: 本文を持つ検討事項 D-1・D-3
+      - name: 開いている画面
+        description: 変更履歴から「前回開いてから」を選んだ検討事項の表。どの項目にも印が無い
+        notes: 前回開いた日時が無いため、タブを開いた日時が「前回開いてから」の範囲の始まりになる。書き換えはそれより後
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+        actor U as 利用者
+
+        CC->>SV: update（D-3 の本文を書き換える）と commit
+        SV-->>P: 書き換えを知らせる
+        P->>SV: 記録を読み直す
+        P-->>U: 同じ時点の差分の表示のまま描き直した検討事項の表
+        U->>P: D-3 を押す
+        P-->>U: 本文の変更を出した詳細パネル
+      ```
+    expected:
+      - 再読み込みの操作をせずに、検討事項の表の D-3 に変更の印が付き、D-1 には付かない
+      - 描き直した後も「前回開いてから」の差分の表示のままで、開いていた画面と URL のハッシュが変わらない
+      - D-3 の詳細パネルで、書き換えた本文に足した・消した印がある
+    test: test_normal_when_rewritten_while_open
+  - name: 正常シナリオ（端末で初めて開く）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、端末の保存領域が空のブラウザでプレビューを開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: 本文を書き換えて `commit`（説明「検討事項を直す」）し、変更履歴を 1 回分持つ検討事項 D-3 と、変更履歴を持たない D-1
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: プレビューを開き、変更履歴から「前回開いてから」を選ぶ
+        P-->>U: 印のない検討事項の表
+        U->>P: 変更履歴から「検討事項を直す」を選ぶ
+        P-->>U: D-3 に変更の印
+      ```
+    expected:
+      - 「前回開いてから」では、前回開いた日時が無いためタブを開いた日時が範囲の始まりになり、開く前に書き換えた D-3 にも、どのタブにも印が付かない
+      - 「検討事項を直す」を選ぶと D-3 に変更の印が付き、詳細パネルに本文の差分が出る
+    test: test_normal_when_first_open
+  - name: 正常シナリオ（保持する回数が 0）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 保持する回数を 0 にしたワークスペース
+      - name: 記録
+        description: 本文を持つ検討事項 D-3
+      - name: 前回開いた
+        description: 記録を作った後に、プレビューを一度開いて閉じる
+      - name: 書き換え
+        description: MCP のツールで D-3 の本文を書き換え、検討事項 D-6 を足して `commit` する
+        notes: 保持する回数が 0 のため、D-3 は変更履歴を持たない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: プレビューを開き、変更履歴から「前回開いてから」を選ぶ
+        P-->>U: 検討事項の表
+        U->>P: D-3 を押す
+        P-->>U: 今の内容だけの詳細パネル
+      ```
+    expected:
+      - 検討事項の表で D-6 に新規の印が付き、D-3 には変更の印が付かない
+      - D-3 の詳細パネルに差分の印が無く、今の本文だけが出る
+    test: test_normal_when_history_limit_zero
+  - name: 正常シナリオ（前後を組み立てられない古いまとまり）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+      - name: 記録
+        description: 本文を持つ検討事項 D-3
+      - name: 書き換え
+        description: MCP のツールで D-3 の本文を書き換えて `commit`（説明「1 回目」）し、もう一度 D-3 の本文を書き換えて `commit`（説明「2 回目」）する
+        notes: 保持する回数が 1 のため、「1 回目」の D-3 の変更履歴は消えている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 変更履歴から「1 回目」を選ぶ
+        P-->>U: D-3 に変更の印
+        U->>P: D-3 を押す
+        P-->>U: 今の本文と、そのまとまりの差分を出せない旨
+      ```
+    expected:
+      - 「1 回目」を選ぶと D-3 に変更の印が付く
+      - D-3 の詳細パネルは今の本文を出し、そのまとまりの差分を出せない旨が出る
+    test: test_normal_when_change_set_history_trimmed
+  - name: 異常シナリオ（前の版を組み立てられない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
+      - name: 記録
+        description: MCP のツールで状態と本文を書き換えて `commit` し、変更履歴を 1 回分持つ検討事項 D-3
+      - name: 手での書き換え
+        description: その後、`docs/D-3.md` の全ての行をツールを通さずに手で書き換える
+        notes: 変更履歴の本文の差分が、今の本文に当たらない
+      - name: 配信
+        description: 記録を配っているサーバー。変更履歴からそのまとまりを選んである
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: D-3 の詳細パネルを開く
+        P-->>U: 今の本文と、本文の差分を出せない旨
+      ```
+    expected:
+      - D-3 の本文は今の内容が Markdown として描かれ、差分の印が無い
+      - 本文の差分を出せない旨が出る
+      - 状態の前の値と今の値は、本文と関係なく見分けられる
+    test: test_error_when_previous_version_unavailable
+  - name: 正常シナリオ（前回開いてからの古い書き換えが消えている）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+      - name: 記録
+        description: 本文を持つ検討事項 D-3・D-4
+      - name: 前回開いた
+        description: 記録を作った後に、プレビューを一度開いて閉じる
+        notes: 端末に前回開いた日時が残る
+      - name: 書き換え
+        description: その後、MCP のツールで D-3 の本文を書き換えて `commit` し、もう一度 D-3 の本文を書き換えて `commit` する。D-4 は 1 回だけ本文を書き換えて `commit` する
+        notes: 保持する回数が 1 のため、D-3 の 1 回目の変更履歴は消え、D-3 は `history_dropped_seq` を持つ。D-4 の変更履歴は消えていない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 開いて、変更履歴から「前回開いてから」を選ぶ
+        P-->>U: D-3・D-4 に変更の印
+        U->>P: D-3 を押す
+        P-->>U: 今の本文と、前後を組み立てられない旨
+        U->>P: D-4 を押す
+        P-->>U: 本文の差分
+      ```
+    expected:
+      - 「前回開いてから」を選ぶと D-3・D-4 に変更の印が付く
+      - D-3 の詳細パネルは今の本文を出し、前後を組み立てられない旨が出る（2 回目だけの差分は出ない）
+      - D-4 の詳細パネルは本文の差分を出す
+    test: test_normal_when_since_history_dropped
+lead: 利用者が、プレビューの変更履歴から書き換えのまとまりを選んで差分の表示にし、そのまとまりで足された・変わった項目を印で見つけ、詳細パネルで本文・図・Raw・キーの変更を読む単一ユースケース。
+issue: 68
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: AI が書き換えた資料などのどこが変わったかを、本文を読み比べずに素早く読める
+trigger: 利用者が、AI が記録を書き換えた後に、何が変わったかを確かめたくなる
+preconditions:
+  - ワークスペースに記録があり、サーバーがプレビューを配っている
+  - 書き換えた項目が、保持する回数の分だけ変更履歴を持ち、その書き換えが `commit` でまとまりになっている
+success_guarantee: 変更履歴から選んだまとまりで足された項目に新規、変わった項目に変更の印が付き、印の付いた項目を持つタブに印が付く。詳細パネルで、そのまとまりの前後の本文・図・Raw・キーの変更を読める。差分の表示に入る・抜けるだけではワークスペースの記録を書き換えない。
+minimal_guarantee: 前後を組み立てられない項目でも、今の内容は読める。差分の表示から抜ければ、差分の表示に入る前と同じ画面に戻る。
+frequency: AI が記録を書き換えるたび
+priority: 高
+notes:
+  「前回開いてから」の範囲: ワークスペースごとに「前回開いた日時」を持ち（サーバーの配信ではワークスペースの中、配る書き出しでは端末の保存領域。インターフェース定義『前回開いた日時』）、タブで最初に開いたときに残っていた値より後の書き換えをそのタブの「前回開いてから」にする。残っていなければ、そのタブを開いた日時からにする。開いた後は「前回開いた日時」を今の日時に書き換え、同じタブで読み込み直しても範囲は変えない
+  抜ける操作: 'フローの「差分の表示から抜ける」は、トップバーの選んだ時点の札の × か、変更履歴のモーダルの「差分を出さない（今の内容）」（確認ログ）'
+test_file: tests/e2e/単一ユースケース/test_diff_view.py
