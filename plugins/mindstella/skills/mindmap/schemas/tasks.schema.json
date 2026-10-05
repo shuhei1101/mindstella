@@ -63,6 +63,9 @@
         "updated": {
           "$ref": "common.schema.json#/$defs/item/properties/updated"
         },
+        "history": {
+          "$ref": "common.schema.json#/$defs/item/properties/history"
+        },
         "kind": {
           "type": "string",
           "enum": [

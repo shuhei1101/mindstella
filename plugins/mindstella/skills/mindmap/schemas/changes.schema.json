@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "書き換えのまとまり",
+  "description": "changes.yaml。`commit` でまとめた書き換えのまとまりと、まだまとめていない変更。ツールが書く。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "last_seq",
+    "sets",
+    "pending"
+  ],
+  "properties": {
+    "last_seq": {
+      "type": "integer",
+      "description": "最後に積んだ変更履歴の `seq`。積むたびに 1 足す",
+      "minimum": 0
+    },
+    "sets": {
+      "type": "array",
+      "description": "まとまり。新しい順",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "summary",
+          "until_seq",
+          "added",
+          "changed"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`V-` + 連番",
+            "pattern": "^V-[0-9]+$"
+          },
+          "at": {
+            "type": "string",
+            "description": "まとめた日時。UTC のタイムゾーン付き ISO 8601",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(\\+00:00|Z)$"
+          },
+          "summary": {
+            "type": "string",
+            "description": "一言の説明",
+            "minLength": 1
+          },
+          "until_seq": {
+            "type": "integer",
+            "description": "まとめたときの `last_seq`",
+            "minimum": 0
+          },
+          "added": {
+            "type": "array",
+            "description": "足した項目の ID",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z]-[0-9]+$"
+            }
+          },
+          "changed": {
+            "type": "array",
+            "description": "変えた項目の ID。足した項目は入れない",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z]-[0-9]+$"
+            }
+          }
+        }
+      }
+    },
+    "pending": {
+      "type": "object",
+      "description": "まだまとめていない変更。書き換えた順の項目の ID",
+      "required": [
+        "added",
+        "changed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "added": {
+          "type": "array",
+          "description": "足した項目の ID",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]-[0-9]+$"
+          }
+        },
+        "changed": {
+          "type": "array",
+          "description": "変えた項目の ID",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]-[0-9]+$"
+          }
+        }
+      }
+    }
+  }
+}

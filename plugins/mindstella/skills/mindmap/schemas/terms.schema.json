@@ -62,6 +62,9 @@
         "updated": {
           "$ref": "common.schema.json#/$defs/item/properties/updated"
         },
+        "history": {
+          "$ref": "common.schema.json#/$defs/item/properties/history"
+        },
         "meaning": {
           "type": "string",
           "description": "用語の意味"

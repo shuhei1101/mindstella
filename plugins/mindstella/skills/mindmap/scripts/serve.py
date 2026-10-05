@@ -39,9 +39,10 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
+from history import touch_opened
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE
 from locations import location_to_dict
-from store import load_workspace, workspace_lock
+from store import CHANGES_FILE, NowFn, load_workspace, now_utc, workspace_lock
 from submissions import SUBMISSIONS_FILE
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,9 @@ MAX_REQUEST_BYTES = 131072
 COMMENTS_PATH = "/api/comments"
 SEND_PATH = "/api/comments/send"
 DRAFTS_PATH = "/api/drafts"
+
+# 前回開いた日時のパス
+OPENED_PATH = "/api/opened"
 
 # JSON・HTML・問題の応答の `Content-Type`
 JSON_TYPE = "application/json; charset=utf-8"
@@ -171,9 +175,12 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_POST(self) -> None:
-        """レビュー中のコメントを溜める・まとめて送るを受け付けの関数へ渡す。"""
+        """前回開いた日時を返す・レビュー中のコメントを溜める・まとめて送るを処理の関数へ渡す。"""
         path = self._checked_path()
-        if path == COMMENTS_PATH:
+        if path == OPENED_PATH:
+            # 本文を読まずに、前回開いた日時を返して書き換える
+            self._reply(opened_response(self.context))
+        elif path == COMMENTS_PATH:
             self._write(
                 lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
             )
@@ -370,9 +377,27 @@ def records_response(root: Path, read: Callable[[Path], dict[str, Any]] = read_r
     )
 
 
+def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
+    """前回開いた日時を返し、今の日時に書き換える（記録のロックは取らない）。"""
+    opened = now()
+    try:
+        previous = touch_opened(context.root, opened)
+    except WriteFailedError as error:
+        # 前回開いた日時を書けない: 画面はタブを開いた日時を範囲の始まりにする
+        return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, str(error))
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps({"previous": previous, "opened": opened}, ensure_ascii=False).encode(
+            "utf-8"
+        ),
+    )
+
+
 def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
-    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE]
+    # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
+    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE, CHANGES_FILE]
     # 本文の Markdown（`docs/` の直下）も見る
     body_dir = root / BODY_DIR
     if body_dir.is_dir():
