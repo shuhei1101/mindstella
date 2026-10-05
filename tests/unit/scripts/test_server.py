@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from mcp.types import CallToolResult, TextContent
 
+import migrator
 import serve
 import server
 import store
@@ -231,6 +232,27 @@ def test_call_tool_when_lock_root(tmp_path: Path) -> None:
     # 検証
     assert locked_in_handler == [True]
     assert write_lock.locked() is False
+    assert (tmp_path / ".mindstella.lock").exists()
+
+
+def test_call_tool_when_lock_require(tmp_path: Path) -> None:
+    """渡した確かめの関数で、前の版の設定ファイルだけのフォルダにも鍵を取る（正常系）。"""
+    # 準備
+    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
+
+    def _handler() -> dict[str, Any]:
+        """何もせず空の辞書を返す。"""
+        return {}
+
+    # 実行
+    result = server.call_tool(
+        _handler,
+        write_lock=threading.Lock(),
+        lock_root=tmp_path,
+        lock_require=migrator.require_migratable,
+    )
+    # 検証
+    assert result.is_error is False
     assert (tmp_path / ".mindstella.lock").exists()
 
 

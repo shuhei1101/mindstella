@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
+import migrator
 import store
 from errors import (
     ItemNotFoundError,
@@ -902,6 +904,35 @@ def test_workspace_lock_when_not_workspace(tmp_path: Path, relative: Path) -> No
         pass
     assert process_lock.locked() is False
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("require", "expectation", "lock_file_exists"),
+    [
+        pytest.param(migrator.require_migratable, nullcontext(), True, id="require_migratable"),
+        pytest.param(
+            store.require_workspace,
+            pytest.raises(WorkspaceNotFoundError, match="ワークスペースがありません"),
+            False,
+            id="default",
+        ),
+    ],
+)
+def test_workspace_lock_when_require_given(
+    tmp_path: Path,
+    require: Callable[[Path], None],
+    expectation: AbstractContextManager[Any],
+    lock_file_exists: bool,
+) -> None:
+    """渡した確かめの関数でワークスペースを確かめる（正常系）。"""
+    # 準備
+    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
+    process_lock = threading.Lock()
+    # 実行・検証
+    with expectation, store.workspace_lock(tmp_path, process_lock, require=require):
+        pass
+    assert (tmp_path / ".mindstella.lock").exists() is lock_file_exists
+    assert process_lock.locked() is False
 
 
 def test_require_workspace(make_workspace: MakeWorkspace) -> None:
