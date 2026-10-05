@@ -108,15 +108,15 @@ components:
         default: なし
         description: 札の × で差分の表示をやめる
       - name: comments
-        type: '{count: number, open: boolean, onToggle: () => void} | null'
+        type: boolean
         required: false
-        default: 'null'
-        description: コメントのボタンの件数・一覧を開いているか・押したとき。`null`（配る書き出し）ならボタンを置かず、検索の入口も今の位置のまま。件数は 99 を超えたら `99+`、読み上げの名前には実際の件数
+        default: 'false'
+        description: コメントのボタンを置くか（配る書き出しでは false。置かないときは検索の入口も今の位置のまま）。件数は `commentCount`（99 を超えたら `99+`、読み上げの名前には実際の件数）、一覧を開いているかは `commentsOpen`、押したときは `onComments`
       - name: filter
-        type: '{count: number, open: boolean, onToggle: () => void} | null'
+        type: boolean
         required: false
-        default: 'null'
-        description: 絞り込みのボタンの値を 1 つ以上選んでいる条件の数・ドロワーを開いているか・押したとき。`null`（概要）ならボタンを置かない。置くときはコメントのボタンの左（無ければ右端）。`count` が 0 ならバッジを出さない
+        default: 'false'
+        description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければ右端）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -515,7 +515,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: コメントを選んで送る
     kind: 画面
-    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
+    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）。描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
     props:
       - name: items
         type: ReviewState['items']
@@ -944,7 +944,7 @@ functions:
       - name: test_drawer_groups_when_hit
         case: 正常
         summary: キーワードに一致した件数を添える
-        condition: D-1（未決定・一致）・D-2（未決定）・D-3（保留）。`hit` は D-1 だけ真
+        condition: 状態の条件は `order`（未決定・保留）を持つ。D-1（未決定・一致）・D-2（未決定）・D-3（保留）。`hit` は D-1 だけ真
         mock: なし
         expected: '状態の未決定が `count: 2`・`hit: 1`、保留が `hit: 0`'
   - name: activeConditionCount
