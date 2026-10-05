@@ -431,7 +431,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
-    constraint: '`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`display`（見た目の既定・表示する種類の既定。`display` は丸ごと置き換える）。対象・カテゴリー・関連する場所はこのツールでは書き換えない'
+    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`）。`display`（見た目の既定・表示する種類の既定）は丸ごと置き換える'
   - item: フェーズの付け替え
     constraint: 新しい `phases` に無いフェーズを持つ全ての種類の項目と `goal.phase`（`settings.goal` を渡したときは渡した値）を `phase_map` で付け替える。付け替えた項目だけ `updated` を変える。`phase` を持たない項目は触らない
   - item: 検証の範囲
@@ -443,5 +443,5 @@ constraints:
   - item: 書き換えの知らせ
     constraint: 書き終えたら、ほかの書き換えるツールと同じく開いているプレビューへ知らせる（『書き換えの知らせ』）
   - item: 変更履歴
-    constraint: '`phase_map` による項目の `phase` の付け替えは、`history` にも `changes.yaml` の `pending` にも入れない（設定の書き換えに伴う機械的な付け替えとして、差分の表示の対象にしない）。`history_limit` は `settings` のキーにしない（利用者が `config.yaml` を直して変える）'
+    constraint: '`phase_map` による項目の `phase` の付け替えは、`history` にも `changes.yaml` の `pending` にも入れない（設定の書き換えに伴う機械的な付け替えとして、差分の表示の対象にしない）。'
 test_file: tests/integration/server/test_update_settings.py

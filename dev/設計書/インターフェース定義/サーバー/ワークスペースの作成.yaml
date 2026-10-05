@@ -127,6 +127,30 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - '`workspace` のフォルダが無い'
     test: test_error_when_write_fails
+  - name: 異常系（mindmap.yaml だけがある・WorkspaceExistsError）
+    summary: 版が古いワークスペース（`mindmap.yaml` だけを持つフォルダ）には作らず、記録を上書きしない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 版が古いワークスペース
+        description: '`mindmap.yaml` と、検討事項を 1 件持つ `decisions.yaml` があり、`config.yaml` が無いフォルダ'
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as init（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: init workspace
+        IF-->>WS: config.yaml は無いが mindmap.yaml がある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - '`config.yaml` が作られていない'
+      - '`mindmap.yaml` と種類ごとの YAML の中身が呼ぶ前と同じ'
+    test: test_error_when_old_settings_file_exists
 lead: 指定したフォルダに、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作る。
 idempotent: false
 side_effects: 'ワークスペースのフォルダ（無ければ作る）に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る'
