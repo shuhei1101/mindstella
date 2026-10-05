@@ -186,6 +186,12 @@ constants:
         value: '"api/comments/send"'
       - key: drafts
         value: '"api/drafts"'
+  - name: PRESS_SLOP_PX
+    title: 押したとみなす移動の上限
+    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    usecase: 検討事項をマップで辿る
+    summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）
+    value: '5'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -705,7 +711,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: スクロールする要素を、押せるもの（button・a・input・label）の上でない所の左ボタンのドラッグで動かせるようにする
+    summary: スクロールする要素を、押せるもの（button・a・input・label）の上でない所の左ボタンのドラッグで動かせるようにする。`onPress` を渡したときは、押してから離すまでの移動が縦・横とも `PRESS_SLOP_PX` 以内なら、離したときにそれを呼ぶ
     side_effects: 要素にポインターのリスナーを付ける。ドラッグの間は `dragging` のクラスを付ける
     args:
       - name: scroller
@@ -713,6 +719,11 @@ functions:
         required: true
         passing: positional
         description: スクロールする要素（ボード・マップ）
+      - name: onPress
+        type: () => void
+        required: false
+        passing: positional
+        description: 背景を押した（ドラッグしなかった）ときに呼ぶ。渡さなければ何も呼ばない（ボード）
     returns:
       type: void
       description: '-'
@@ -723,6 +734,12 @@ functions:
         condition: '`parametrize`: 背景で押して左へ 50px・上へ 30px 動かす / ボタンの上で押して同じだけ動かす'
         mock: なし
         expected: '`scrollLeft` が 50・`scrollTop` が 30 増え、離すと `dragging` が外れる / `scrollLeft`・`scrollTop` が変わらない'
+      - name: test_enable_drag_scroll_when_pressed
+        case: 正常
+        summary: 背景を押したときだけ `onPress` を呼び、ドラッグとボタンの上では呼ばない
+        condition: '`parametrize`: 背景で押して動かさずに離す / 背景で押して右へ 5px・下へ 5px 動かして離す / 背景で押して右へ 6px 動かして離す / ボタンの上で押して動かさずに離す'
+        mock: '`onPress` に呼ばれた回数を数える関数'
+        expected: 呼ばれた回数が 1 / 1 / 0 / 0
   - name: markSelected
     title: 選択中の印を付け替える
     kind: 関数
