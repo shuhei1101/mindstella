@@ -5,7 +5,7 @@ rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-topic-ta
 configfile: pytest.ini
 plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 326 items
+collected 328 items
 
 tests/integration/server/test_tags.py ...                                [  0%]
 tests/integration/server/test_mcp_server.py .....                        [  2%]
@@ -15,8 +15,8 @@ tests/integration/preview/test_comments_screen.py ...................... [  9%]
 tests/integration/preview/test_decisions_screen.py ..................... [ 19%]
 .............                                                            [ 23%]
 tests/integration/preview/test_detail_full_screen.py .................   [ 28%]
-tests/integration/preview/test_detail_panel_screen.py .................. [ 34%]
-..............................                                           [ 43%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 33%]
+..............................                                           [ 42%]
 tests/integration/preview/test_diagram_viewer_screen.py ........         [ 45%]
 tests/integration/preview/test_docs_screen.py .................          [ 50%]
 tests/integration/preview/test_graph_screen.py ......                    [ 52%]
@@ -24,9 +24,9 @@ tests/integration/preview/test_history_screen.py ......                  [ 54%]
 tests/integration/preview/test_open_preview.py ..........                [ 57%]
 tests/integration/preview/test_overview_screen.py ..............         [ 61%]
 tests/integration/preview/test_records_screen.py .....                   [ 63%]
-tests/integration/preview/test_search_screen.py .....                    [ 65%]
-tests/integration/preview/test_tasks_screen.py ..............            [ 69%]
-tests/integration/preview/test_topbar_screen.py ...........              [ 72%]
+tests/integration/preview/test_search_screen.py .....                    [ 64%]
+tests/integration/preview/test_tasks_screen.py ..............            [ 68%]
+tests/integration/preview/test_topbar_screen.py .............            [ 72%]
 tests/integration/storybook/test_diff_mark_stories.py ...                [ 73%]
 tests/integration/storybook/test_filter_drawer_stories.py .......        [ 75%]
 tests/integration/storybook/test_history_dialog_stories.py .....         [ 77%]
@@ -49,4 +49,4 @@ tests/integration/preview/test_topbar_screen.py ...                      [ 97%]
 tests/integration/preview/test_decisions_screen.py .                     [ 97%]
 tests/integration/preview/test_topbar_screen.py ........                 [100%]
 
-======================= 326 passed in 346.84s (0:05:46) ========================
+======================= 328 passed in 316.72s (0:05:16) ========================
