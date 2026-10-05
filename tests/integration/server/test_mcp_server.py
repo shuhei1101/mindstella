@@ -34,6 +34,7 @@ TOOL_NAMES = [
     "find",
     "show",
     "attrs",
+    "tags",
     "check",
     "goal",
     "migrate",

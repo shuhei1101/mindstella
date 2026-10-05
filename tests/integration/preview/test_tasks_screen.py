@@ -4,6 +4,16 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page
+from preview_drawer_helpers import (
+    DRAWER,
+    FILTER_BUTTON,
+    badge_text,
+    checked_values,
+    click_value,
+    drawer_groups,
+    drawer_head,
+    open_drawer,
+)
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -199,3 +209,97 @@ def test_diff_marks_when_table(
     page.reload()
     page.wait_for_selector("table.grid tbody tr")
     assert page.locator("table.grid .df-mark").count() == 0
+
+
+def _board_columns(page: Page) -> list[list[object]]:
+    """ボードの列を、状態・カードの ID の並び・0 件の列に出した文で返す。"""
+    return page.eval_on_selector_all(
+        ".board section.board-col",
+        """cols => cols.map(c => [
+            c.getAttribute('aria-label'),
+            [...c.querySelectorAll('.card')].map(k => k.dataset.id),
+            c.querySelector('.empty')?.textContent ?? null,
+        ])""",
+    )
+
+
+def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ドロワーは、種類・状態を並べ（記録に値の無い条件は並べない）、何も選んでいない状態で開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
+    # 実行
+    open_drawer(page)
+    groups = {group["label"]: group for group in drawer_groups(page)}
+    # 検証
+    assert list(groups) == ["種類", "状態"]
+    assert groups["種類"]["values"] == [["作業", 3, False]]
+    assert groups["状態"]["values"] == [["未着手", 1, False], ["進行中", 1, False], ["完了", 1, False]]
+    assert badge_text(page) is None
+    assert drawer_head(page) == {"count": "3 件", "foot": ["3 件を表示"]}
+    assert page.is_visible(FILTER_BUTTON)
+
+
+def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ボードはドロワーの条件に合うタスクだけを並べ、状態の条件から外した列は列を残して外した旨を出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
+    open_drawer(page)
+    # 実行
+    click_value(page, "status", "進行中")
+    page.wait_for_function("document.querySelectorAll('.board .card').length === 1")
+    # 検証
+    assert _board_columns(page) == [
+        ["未着手", [], "状態の条件で外しています。"],
+        ["進行中", ["T-1"], None],
+        ["保留", [], "状態の条件で外しています。"],
+        ["完了", [], "状態の条件で外しています。"],
+        ["中止", [], "状態の条件で外しています。"],
+    ]
+    assert badge_text(page) == "1"
+    assert page.locator(".chips").count() == 0
+
+
+def test_board_filter_when_nothing_selected(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """状態を選んでいない間は、0 件の列に「タスクはありません。」を出す（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
+    # 検証
+    assert [column[2] for column in _board_columns(page)] == [
+        None,
+        None,
+        "タスクはありません。",
+        None,
+        "タスクはありません。",
+    ]
+
+
+def test_table_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """表もドロワーの条件に合うタスクだけを並べ、表の上のチップで解除できる。ボードと条件を共有する（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
+    open_drawer(page)
+    click_value(page, "status", "完了")
+    page.wait_for_function("document.querySelectorAll('.board .card').length === 1")
+    page.click(f"{DRAWER} .fd-foot .btn.primary")
+    page.wait_for_selector(DRAWER, state="detached")
+    # 実行（表へ切り替える）
+    page.click('.segment button[data-view="table"]')
+    page.wait_for_selector("table.grid")
+    rows = page.eval_on_selector_all(
+        "table.grid tbody tr[data-id]", "rows => rows.map(r => r.dataset.id)"
+    )
+    chips = page.eval_on_selector_all(".table-block .chip", "chips => chips.map(c => c.textContent)")
+    page.click(".table-block .chip button[aria-label='状態: 完了 の条件を解除']")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
+    # 検証
+    assert rows == ["T-3"]
+    assert chips == ["状態: 完了"]
+    assert badge_text(page) is None
+    open_drawer(page)
+    assert checked_values(page, "status") == []

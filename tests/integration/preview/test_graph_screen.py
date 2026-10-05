@@ -3,25 +3,27 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
+from preview_drawer_helpers import (
+    DRAWER,
+    badge_text,
+    checked_values,
+    click_value,
+    drawer_groups,
+    drawer_head,
+    open_drawer,
+)
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
-
-# 種類の切り替えの並び（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）
-KIND_VALUES = ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"]
 
 # 狭い幅の画面の大きさ（空の旨の文はどの幅でも出す）
 NARROW_WIDTH = 800
 NARROW_HEIGHT = 700
 
-# まとめて切り替える箱（項目の種類の並びの右端）と、その読み上げの名前
-TOGGLE_ALL_BOX = ".legend .legend-all-check input"
-TOGGLE_ALL_LABEL = "すべての種類を表示"
+# 絞り込みの条件に合う項目が無いときに出す文
+NO_MATCH_TEXT = "表示する項目はありません。"
 
-# 全ての種類を隠したときに出す文
-NO_SHOWN_KIND_TEXT = "表示する項目はありません。"
-
-# 項目の種類のチェックボックス（まとめて切り替える箱を除く）
-KIND_INPUTS = ".legend label:not(.legend-all-check) input"
+# 項目の種類の値の並び（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）
+KIND_LABELS = ["検討事項", "タスク", "調査", "資料", "用語集", "メモ", "会話ログ"]
 
 # キャンバスに描かれた画素のうち、背景以外が 1 つでもあるかを調べる
 HAS_DRAWING_SCRIPT = """() => {
@@ -43,40 +45,62 @@ def test_canvas(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
     assert page.get_attribute("#graph-canvas", "role") == "img"
     assert page.inner_text("main h1") == "つながり"
     assert page.get_attribute('nav.tabbar a[data-tab="graph"]', "aria-current") == "page"
+    # 種類の帯は出さない
+    assert page.locator(".legend").count() == 0
 
 
-def test_kind_toggles(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """種類ごとに表示 / 非表示を切り替え、件数を出す（正常系）。"""
+def test_drawer_type(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ドロワーの種類（項目の種類）の値を選ぶと、その種類の玉だけを描く。何も選んでいない状態で開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
-    toggles = page.eval_on_selector_all(
-        ".legend label:not(.legend-all-check)",
-        "labels => labels.map(l => [l.querySelector('input').value, l.querySelector('.n').textContent, l.querySelector('input').checked])",
-    )
     # 実行
-    page.click('.legend label:has(input[value="logs"])')
+    open_drawer(page)
+    groups = {group["label"]: group for group in drawer_groups(page)}
+    initial = (badge_text(page), drawer_head(page)["count"])
+    click_value(page, "type", "会話ログ")
+    page.wait_for_function("document.querySelector('dialog.drawer .fd-count').textContent === '14 件中 1 件'")
     # 検証
-    assert toggles == [
-        ["decisions", "5", True],
-        ["tasks", "3", True],
-        ["research", "1", True],
-        ["docs", "2", True],
-        ["terms", "1", True],
-        ["notes", "1", True],
-        ["logs", "1", True],
+    assert list(groups)[:2] == ["種類", "状態"]
+    assert [value[0] for value in groups["種類"]["values"]] == KIND_LABELS
+    assert [value[1] for value in groups["種類"]["values"]] == [5, 3, 1, 2, 1, 1, 1]
+    assert all(value[2] is False for value in groups["種類"]["values"])
+    assert initial == (None, "14 件")
+    assert checked_values(page, "type") == ["会話ログ"]
+    assert badge_text(page) == "1"
+    # 種類の値には、種類の色の点を添える
+    assert page.locator(f"{DRAWER} .fd-group:first-of-type .fd-opt .kdot").count() == len(KIND_LABELS)
+
+
+def test_drawer_status(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ドロワーの状態は、検討事項・タスク・資料の状態を並べ、選ぶと状態を持たない種類の玉を外す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    groups = {group["label"]: group for group in drawer_groups(page)}
+    # 実行
+    click_value(page, "status", "完成")
+    page.wait_for_function("document.querySelector('dialog.drawer .fd-count').textContent === '14 件中 1 件'")
+    # 検証
+    assert [value[0] for value in groups["状態"]["values"]] == [
+        "要見直し",
+        "未決定",
+        "保留",
+        "決定済み",
+        "未着手",
+        "進行中",
+        "完了",
+        "下書き",
+        "完成",
     ]
-    assert [row[0] for row in toggles] == KIND_VALUES
-    assert page.is_checked('.legend input[value="logs"]') is False
-    # 非表示の種類は、見た目も変わる（種類の色の点が薄くなる）
-    assert (
-        page.evaluate(
-            "getComputedStyle(document.querySelector('.legend label:has(input[value=\"logs\"]) .kdot')).opacity"
-        )
-        == "0.35"
-    )
-    assert page.is_checked('.legend input[value="decisions"]') is True
+    assert checked_values(page, "status") == ["完成"]
+    # 種類の値の件数は、状態で絞った項目で数え直す（資料の 1 件だけ）
+    counts = {value[0]: value[1] for value in drawer_groups(page)[0]["values"]}
+    assert counts["資料"] == 1
+    assert counts["メモ"] == 0
 
 
 def test_open_item_from_hash(
@@ -93,127 +117,31 @@ def test_open_item_from_hash(
     assert page.locator("#graph-canvas").count() == 1
 
 
-def _toggle_all_box(page: Page) -> dict[str, object]:
-    """まとめて切り替える箱の、チェック・横棒・読み上げの名前・並びの右端かを返す。"""
-    return page.eval_on_selector(
-        TOGGLE_ALL_BOX,
-        """box => ({
-            checked: box.checked,
-            indeterminate: box.indeterminate,
-            ariaLabel: box.getAttribute('aria-label'),
-            last: box.closest('.legend').lastElementChild === box.closest('label'),
-        })""",
-    )
-
-
-def _kind_checks(page: Page) -> list[bool]:
-    """項目の種類のチェックを、並びの順に返す。"""
-    return page.eval_on_selector_all(KIND_INPUTS, "inputs => inputs.map(i => i.checked)")
-
-
-def test_kind_toggle_all_box(
+def test_no_match_note(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """項目の種類の右端の箱を押すと、全ての種類を出し・隠し、各種類のチェックをそろえる（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url, "#tab=graph")
-    page.wait_for_function(HAS_DRAWING_SCRIPT)
-    initial = _toggle_all_box(page)
-    # 実行・検証（チェックのとき: 全て隠す）
-    page.click(TOGGLE_ALL_BOX)
-    after_all_hidden = _toggle_all_box(page)
-    all_hidden_checks = _kind_checks(page)
-    # 実行・検証（空のとき: 全ての種類を表示）
-    page.click(TOGGLE_ALL_BOX)
-    after_all_shown = _toggle_all_box(page)
-    all_shown_checks = _kind_checks(page)
-    # 実行・検証（1 つだけ隠すと横棒）
-    page.click('.legend label:has(input[value="logs"])')
-    after_one_hidden = _toggle_all_box(page)
-    # 実行・検証（横棒のとき: 全ての種類を表示）
-    page.click(TOGGLE_ALL_BOX)
-    after_all_shown_from_some = _toggle_all_box(page)
-    # 検証
-    assert initial == {
-        "checked": True,
-        "indeterminate": False,
-        "ariaLabel": TOGGLE_ALL_LABEL,
-        "last": True,
-    }
-    assert (after_all_hidden["checked"], after_all_hidden["indeterminate"]) == (False, False)
-    assert all_hidden_checks == [False] * len(KIND_VALUES)
-    assert (after_all_shown["checked"], after_all_shown["indeterminate"]) == (True, False)
-    assert all_shown_checks == [True] * len(KIND_VALUES)
-    assert (after_one_hidden["checked"], after_one_hidden["indeterminate"]) == (False, True)
-    assert (after_all_shown_from_some["checked"], after_all_shown_from_some["indeterminate"]) == (
-        True,
-        False,
-    )
-
-
-def test_no_shown_kind_note(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """全ての種類を隠すと、どの幅でも枠の中央に空の旨を出す。1 つでも出すと消す（正常系）。"""
-    # 準備
+    """条件に合う項目が無いと、どの幅でも枠の中央に空の旨を出す。条件を 1 つ外して項目が合うようになると消す（正常系）。"""
+    # 準備（条件に合う項目があるときは出さない。種類が会話ログで、状態が完成の項目は無い）
     url = write_sample_preview()
     page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     shown_before = page.is_visible("p.map-empty")
-    # 実行（全て隠す）
-    page.click(TOGGLE_ALL_BOX)
+    page = open_preview(url, "#tab=graph&f.type=会話ログ&f.status=完成")
     page.wait_for_selector("p.map-empty", state="visible")
     # 検証（広い幅）
     assert shown_before is False
-    assert page.inner_text("p.map-empty") == NO_SHOWN_KIND_TEXT
+    assert page.inner_text("p.map-empty") == NO_MATCH_TEXT
     # 実行（狭い幅へ）
     page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
     page.wait_for_selector("p.map-empty", state="visible")
     # 検証（狭い幅）
-    assert page.inner_text("p.map-empty") == NO_SHOWN_KIND_TEXT
-    # 実行（1 つ戻す）
-    page.click('.legend label:has(input[value="decisions"])')
+    assert page.inner_text("p.map-empty") == NO_MATCH_TEXT
+    # 実行（状態の条件を解除する）
+    open_drawer(page)
+    page.click(f"{DRAWER} button[aria-label='状態の条件を解除']")
     page.wait_for_selector("p.map-empty", state="hidden")
     # 検証
     assert page.is_visible("p.map-empty") is False
-
-
-def test_kind_chip_style(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """項目の種類のチップは、枠と表示中・非表示の見た目を状態の印にそろえ、非表示は点線の枠にして打ち消し線は付けない（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url, "#tab=graph")
-    page.wait_for_function(HAS_DRAWING_SCRIPT)
-    page.click('.legend label:has(input[value="logs"])')
-    # 実行
-    styles = page.evaluate(
-        """() => {
-            const read = (value) => {
-                const chip = document.querySelector(`.legend label:has(input[value="${value}"])`);
-                const style = getComputedStyle(chip);
-                return {
-                    borderStyle: style.borderTopStyle,
-                    borderWidth: style.borderTopWidth,
-                    textDecoration: style.textDecorationLine,
-                    fontWeight: style.fontWeight,
-                };
-            };
-            return {shown: read('decisions'), hidden: read('logs')};
-        }"""
-    )
-    box_label_style = page.evaluate(
-        "getComputedStyle(document.querySelector('.legend .legend-all-check')).borderTopStyle"
-    )
-    # 検証
-    assert styles["shown"]["borderStyle"] == "solid"
-    assert styles["hidden"]["borderStyle"] == "dashed"
-    assert styles["shown"]["borderWidth"] == styles["hidden"]["borderWidth"] == "1px"
-    assert styles["shown"]["textDecoration"] == styles["hidden"]["textDecoration"] == "none"
-    assert styles["shown"]["fontWeight"] == styles["hidden"]["fontWeight"]
-    assert box_label_style == "none"
 
 
 def test_topbar_history(

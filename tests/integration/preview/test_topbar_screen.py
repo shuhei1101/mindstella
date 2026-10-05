@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Page
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, free_comment
+from preview_drawer_helpers import FILTER_BUTTON
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeComment, MakeItem
@@ -225,3 +226,26 @@ def test_tab_marks(
     assert dotted == ["decisions", "tasks", "notes"]
     assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
     assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+
+
+@pytest.mark.parametrize("tab", [key for key in TAB_KEYS if key != "overview"])
+def test_filter_button_on_item_screens(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, tab: str
+) -> None:
+    """項目を並べる画面（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・つながり）に絞り込みのボタンを置く（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url, f"#tab={tab}")
+    # 検証
+    assert page.locator(FILTER_BUTTON).count() == 1
+
+
+def test_filter_button_not_on_overview(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """概要には絞り込みのボタンを置かない（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 検証
+    assert page.locator(FILTER_BUTTON).count() == 0

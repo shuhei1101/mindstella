@@ -12,6 +12,19 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_drawer_helpers import (
+    ALL_DECISION_STATUSES_HASH,
+    DRAWER,
+    DRAWER_OPEN,
+    FILTER_BUTTON,
+    badge_text,
+    checked_values,
+    click_value,
+    drawer_groups,
+    drawer_head,
+    open_drawer,
+    value_selector,
+)
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
@@ -37,21 +50,18 @@ NARROW_HEIGHT = 700
 # 状態の順（ボードの列の並び）
 DECISION_STATUSES = ["要見直し", "未決定", "保留", "未整理", "決定済み", "対象外", "取り下げ"]
 
-# サンプルの記録が持つ状態（状態の印の並びの順）
+# サンプルの記録が持つ状態（ドロワーの状態の値の並びの順）
 SAMPLE_STATUSES = ["要見直し", "未決定", "保留", "決定済み"]
 
-# まとめて切り替える箱（状態の印の並びの右端）と、その読み上げの名前
-TOGGLE_ALL_BOX = ".legend .legend-all-check input"
-TOGGLE_ALL_LABEL = "すべての状態を表示"
+# 絞り込みの条件に合う検討事項が無いときに出す文
+NO_MATCH_TEXT = "表示する検討事項はありません。"
 
-# 全ての状態を隠したときに出す文
-NO_SHOWN_STATUS_TEXT = "表示する検討事項はありません。"
+# 状態の条件から外した状態の列に出す文と、0 件の列に出す文
+EXCLUDED_COLUMN_TEXT = "状態の条件で外しています。"
+EMPTY_COLUMN_TEXT = "検討事項はありません。"
 
-# 状態の印のチェックボックス（まとめて切り替える箱を除く）
-STATUS_INPUTS = ".legend label:not(.legend-all-check) input"
-
-# チェックの記号の見た目の中心が、箱の中心からずれてよい幅（px。チェックの形の偏りを許す）
-CHECK_CENTER_TOLERANCE = 1
+# 幅 900px 以下の画面の大きさ（絞り込みのドロワーが画面の幅いっぱいに出る）
+DRAWER_NARROW_VIEWPORT = {"width": 390, "height": 844}
 
 # マップに検討事項が 1 件も描かれていない
 NO_MAP_ITEM_SCRIPT = "!document.querySelector('#decision-map .map-node.n-item')"
@@ -169,28 +179,27 @@ def test_map(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
     assert "id=D-2" in page.evaluate("location.hash")
 
 
-def test_map_status_legend(
+def test_map_drawer_status(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """状態の印を押すと、その状態の項目をマップに出し・隠す（正常系）。"""
+    """ドロワーの状態の値を選ぶとその状態の検討事項をマップに出し、外すと隠す。状態の帯は出さない（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
-    initial = page.eval_on_selector_all(
-        ".legend label:not(.legend-all-check) input",
-        "inputs => inputs.map(i => [i.value, i.checked])",
-    )
+    open_drawer(page)
+    initial = checked_values(page, "status")
     # 実行
-    page.click('.legend label:has(input[value="決定済み"])')
+    click_value(page, "status", "決定済み")
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
     shown = _map_item_ids(page)
-    page.click('.legend label:has(input[value="保留"])')
+    click_value(page, "status", "保留")
     page.wait_for_function("!document.querySelector('#decision-map [data-node=\"D-4\"]')")
     # 検証
-    assert initial == [["要見直し", True], ["未決定", True], ["保留", True], ["決定済み", False]]
+    assert initial == ["要見直し", "未決定", "保留"]
     assert "D-1" in shown
     assert "D-4" not in _map_item_ids(page)
+    assert page.locator(".legend").count() == 0
 
 
 def test_map_keyword(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -380,7 +389,7 @@ def test_map_when_narrow(
 
 
 def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """状態ごとの列にカードを並べ、カードを押すと詳細を開く（正常系）。"""
+    """ドロワーの条件に合う検討事項を状態ごとの列に並べ、条件から外した状態の列も残し、カードを押すと詳細を開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=board")
@@ -396,15 +405,19 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
         ["未決定", ["D-2", "D-5"]],
         ["保留", ["D-4"]],
         ["未整理", []],
-        ["決定済み", ["D-1"]],
+        ["決定済み", []],
         ["対象外", []],
         ["取り下げ", []],
     ]
-    # 0 件の列には、種類の名前で空の旨を出す
+    # 状態の条件に含む 0 件の列には、種類の名前で空の旨を出し、条件から外した列には外した旨を出す
     assert (
-        page.inner_text('.board section.board-col[aria-label="未整理"] .empty')
-        == "検討事項はありません。"
+        page.inner_text('.board section.board-col[aria-label="未整理"] .empty') == EMPTY_COLUMN_TEXT
     )
+    for status in ("決定済み", "対象外", "取り下げ"):
+        assert (
+            page.inner_text(f'.board section.board-col[aria-label="{status}"] .empty')
+            == EXCLUDED_COLUMN_TEXT
+        )
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-5の題"
 
@@ -432,9 +445,9 @@ def test_table_ready_column(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
     """表の「着手可否」は、build が埋め込んだ次の候補にある未決定を「着手可能」、未決定以外を「なし」にする（正常系）。"""
-    # 準備
+    # 準備（決定済みの D-1 も出すため、全ての状態を選んで開く）
     url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=table")
+    page = open_preview(url, f"#tab=decisions&view=table{ALL_DECISION_STATUSES_HASH}")
     # 実行
     ready = page.eval_on_selector_all(
         "table.grid tbody tr",
@@ -455,180 +468,33 @@ def test_table_ready_column(
     assert page.inner_text("aside.panel .d-title") == "D-4の題"
 
 
-def _toggle_all_box(page: Page) -> dict[str, object]:
-    """まとめて切り替える箱の、チェック・横棒・読み上げの名前・並びの右端かを返す。"""
-    return page.eval_on_selector(
-        TOGGLE_ALL_BOX,
-        """box => ({
-            checked: box.checked,
-            indeterminate: box.indeterminate,
-            ariaLabel: box.getAttribute('aria-label'),
-            last: box.closest('.legend').lastElementChild === box.closest('label'),
-        })""",
-    )
-
-
-def _status_checks(page: Page) -> list[bool]:
-    """状態の印のチェックを、並びの順に返す。"""
-    return page.eval_on_selector_all(STATUS_INPUTS, "inputs => inputs.map(i => i.checked)")
-
-
-def _border_style(page: Page, selector: str) -> str:
-    """要素の枠線の種類（実線・点線・なし）を返す。"""
-    return page.evaluate(
-        "selector => getComputedStyle(document.querySelector(selector)).borderTopStyle", selector
-    )
-
-
-def test_map_toggle_all_box(
+def test_map_no_match_note(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """状態の印の右端の箱を押すと、全ての状態を出し・隠し、各状態の印のチェックをそろえる（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
-    page.wait_for_selector("#decision-map .map-node.n-item")
-    initial = _toggle_all_box(page)
-    initial_checks = _status_checks(page)
-    # 実行・検証（横棒のとき: 全ての状態を表示）
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_selector('#decision-map button[data-node="D-1"]')
-    after_all_shown = _toggle_all_box(page)
-    all_shown_checks = _status_checks(page)
-    # 実行・検証（チェックのとき: 全て隠す）
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_function(NO_MAP_ITEM_SCRIPT)
-    after_all_hidden = _toggle_all_box(page)
-    all_hidden_checks = _status_checks(page)
-    # 実行・検証（空のとき: 全ての状態を表示）
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_selector('#decision-map button[data-node="D-1"]')
-    after_all_shown_again = _toggle_all_box(page)
-    # 実行・検証（1 つだけ隠すと横棒）
-    page.click('.legend label:has(input[value="保留"])')
-    page.wait_for_function("!document.querySelector('#decision-map [data-node=\"D-4\"]')")
-    after_one_hidden = _toggle_all_box(page)
-    # 検証
-    assert initial == {
-        "checked": False,
-        "indeterminate": True,
-        "ariaLabel": TOGGLE_ALL_LABEL,
-        "last": True,
-    }
-    assert initial_checks == [True, True, True, False]
-    assert (after_all_shown["checked"], after_all_shown["indeterminate"]) == (True, False)
-    assert all_shown_checks == [True, True, True, True]
-    assert (after_all_hidden["checked"], after_all_hidden["indeterminate"]) == (False, False)
-    assert all_hidden_checks == [False, False, False, False]
-    assert (after_all_shown_again["checked"], after_all_shown_again["indeterminate"]) == (
-        True,
-        False,
-    )
-    assert (after_one_hidden["checked"], after_one_hidden["indeterminate"]) == (False, True)
-
-
-def test_map_no_shown_status_note(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """全ての状態を隠すと、幅 901px 以上はマップの枠の中央、900px 以下は字下げの一覧に空の旨を出す（正常系）。"""
-    # 準備
+    """条件に合う検討事項が無いと、幅 901px 以上はマップの枠の中央、900px 以下は字下げの一覧に空の旨を出し、条件を戻すと消す（正常系）。"""
+    # 準備（条件に合う検討事項があるときは出さない。記録に無い状態だけを選んで開き直す）
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     shown_before = page.is_visible("p.map-empty")
-    # 実行（全ての状態を隠す。横棒 → 全て表示 → 全て隠す）
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_selector('#decision-map button[data-node="D-1"]')
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_function(NO_MAP_ITEM_SCRIPT)
+    page = open_preview(url, "#tab=decisions&view=map&f.status=取り下げ")
+    page.wait_for_selector("p.map-empty", state="visible")
     # 検証（広い幅: マップの枠の中央）
     assert shown_before is False
-    assert page.inner_text("p.map-empty") == NO_SHOWN_STATUS_TEXT
+    assert page.inner_text("p.map-empty") == NO_MATCH_TEXT
     assert not page.is_visible("nav.map-outline")
     # 実行（狭い幅へ）
     page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
     page.wait_for_selector("nav.map-outline", state="visible")
     # 検証（狭い幅: 字下げの一覧）
-    assert page.inner_text("nav.map-outline p.empty") == NO_SHOWN_STATUS_TEXT
+    assert page.inner_text("nav.map-outline p.empty") == NO_MATCH_TEXT
     assert not page.is_visible("p.map-empty")
-    # 実行（1 つ戻すと、空の旨を消す）
-    page.click('.legend label:has(input[value="未決定"])')
+    # 実行（条件を 1 つ足すと、空の旨を消す）
+    open_drawer(page)
+    click_value(page, "status", "未決定")
     page.wait_for_selector('nav.map-outline button[data-id="D-2"]')
     # 検証
     assert page.locator("nav.map-outline p.empty").count() == 0
-
-
-def test_map_status_chip_border(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """非表示の状態の印は枠を点線にして、表示中と見分ける。まとめて切り替える箱の枠は点線にしない（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
-    page.wait_for_selector("#decision-map .map-node.n-item")
-    # 実行
-    shown_style = _border_style(page, '.legend label:has(input[value="未決定"])')
-    hidden_style = _border_style(page, '.legend label:has(input[value="決定済み"])')
-    box_label_style = _border_style(page, ".legend .legend-all-check")
-    # 検証
-    assert shown_style == "solid"
-    assert hidden_style == "dashed"
-    assert box_label_style == "none"
-
-
-def test_map_toggle_all_box_appearance(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """箱は背景を透過にして枠と記号だけで描き、枠は印の枠と同じ色、横棒も枠線で描き、チェックは箱の中心に置く（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
-    page.wait_for_selector("#decision-map .map-node.n-item")
-    # 実行（初期は横棒）
-    box = page.evaluate(
-        """box => {
-            const input = document.querySelector(box);
-            const chip = document.querySelector('.legend label:has(input[value="未決定"])');
-            const bar = getComputedStyle(input, '::after');
-            return {
-                background: getComputedStyle(input).backgroundColor,
-                borderWidth: getComputedStyle(input).borderTopWidth,
-                borderColor: getComputedStyle(input).borderTopColor,
-                chipBorderColor: getComputedStyle(chip).borderTopColor,
-                barStyle: bar.borderTopStyle,
-                barWidth: bar.borderTopWidth,
-            };
-        }""",
-        TOGGLE_ALL_BOX,
-    )
-    # 実行（押して全部表示にし、チェックの記号の見た目の中心と箱の中心のずれを測る）
-    page.click(TOGGLE_ALL_BOX)
-    page.wait_for_selector('#decision-map button[data-node="D-1"]')
-    check = page.evaluate(
-        """box => {
-            const input = document.querySelector(box);
-            const mark = getComputedStyle(input, '::after');
-            const px = (name) => parseFloat(mark.getPropertyValue(name));
-            // 記号の枠の外形。回転は中心を動かさないので、中心へ寄せる移動だけを足す
-            const width = px('width') + px('border-left-width') + px('border-right-width');
-            const height = px('height') + px('border-top-width') + px('border-bottom-width');
-            const move = new DOMMatrix(mark.transform);
-            return {
-                dx: px('left') + width / 2 + move.e - input.clientWidth / 2,
-                dy: px('top') + height / 2 + move.f - input.clientHeight / 2,
-            };
-        }""",
-        TOGGLE_ALL_BOX,
-    )
-    # 検証
-    assert box["background"] == "rgba(0, 0, 0, 0)"
-    assert box["borderWidth"] == "1px"
-    assert box["borderColor"] == box["chipBorderColor"]
-    # 横棒は枠線で描く（線の太さは画面の倍率で丸められるため、線があることだけを確かめる）
-    assert box["barStyle"] == "solid"
-    assert box["barWidth"] != "0px"
-    assert abs(check["dx"]) <= CHECK_CENTER_TOLERANCE
-    assert abs(check["dy"]) <= CHECK_CENTER_TOLERANCE
 
 
 def test_map_item_id_size(
@@ -734,7 +600,7 @@ def test_diff_marks_when_table(
     # 準備・実行
     url, _ = write_history_preview()
     preselect_diff(page, "V-1")
-    open_preview(url, "#tab=decisions&view=table")
+    open_preview(url, f"#tab=decisions&view=table{ALL_DECISION_STATUSES_HASH}")
     page.wait_for_selector("table.grid tbody tr")
     # 検証
     new_rows = page.eval_on_selector_all(
@@ -753,7 +619,7 @@ def test_diff_marks_when_board(
     # 準備・実行
     url, _ = write_history_preview()
     preselect_diff(page, "V-2")
-    open_preview(url, "#tab=decisions&view=board")
+    open_preview(url, f"#tab=decisions&view=board{ALL_DECISION_STATUSES_HASH}")
     page.wait_for_selector(".board button.card")
     # 検証
     marked = page.eval_on_selector_all(
@@ -786,3 +652,294 @@ def test_diff_marks_when_map(
     )
     assert sorted(outlined) == ["D-2"]
     assert_topbar_history(page)
+
+
+def _table_row_ids(page: Page) -> list[str]:
+    """表に並んでいる行の ID を並びのまま返す。"""
+    return page.eval_on_selector_all(
+        "table.grid tbody tr[data-id]", "rows => rows.map(r => r.dataset.id)"
+    )
+
+
+def test_filter_button(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """トップバーの絞り込みのボタンをコメントのボタンの左に置き、値を選んでいる条件の数をバッジに出し、押すとドロワーを開閉する（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions")
+    # 実行
+    order = page.eval_on_selector_all(
+        "header.topbar > button", "buttons => buttons.map(b => b.dataset.act ?? null)"
+    )
+    closed = page.eval_on_selector(
+        FILTER_BUTTON,
+        "b => [b.getAttribute('aria-label'), b.getAttribute('aria-expanded'), b.getAttribute('aria-controls')]",
+    )
+    open_drawer(page)
+    opened = page.eval_on_selector(
+        FILTER_BUTTON,
+        "b => [b.getAttribute('aria-expanded'), b.getAttribute('aria-controls'), b.classList.contains('open')]",
+    )
+    page.click(FILTER_BUTTON)
+    page.wait_for_selector(DRAWER, state="detached")
+    # 検証
+    assert order[-2:] == ["filter", "comments"]
+    # 開いたときの条件（状態）の 1 つだけにバッジが付く
+    assert badge_text(page) == "1"
+    assert closed == ["絞り込み（1 つの条件で絞り込み中）", "false", None]
+    assert opened == ["true", "drawer", True]
+    assert page.get_attribute(FILTER_BUTTON, "aria-expanded") == "false"
+
+
+def test_drawer_default(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ドロワーは、状態で要見直し・未決定・未整理・保留を選んだ状態で開き、見出しの右に件数、下端に「すべて解除」と「{件数} 件を表示」を出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    open_drawer(page)
+    groups = drawer_groups(page)
+    head = drawer_head(page)
+    # 検証
+    assert [group["label"] for group in groups] == [
+        "状態",
+        "システム",
+        "カテゴリー",
+        "フェーズ",
+        "影響度",
+        "着手可否",
+    ]
+    status = groups[0]
+    # 並ぶ値のうち選んでいるものだけを数える（記録に無い「未整理」は数えない）
+    assert status["values"] == [
+        ["要見直し", 1, True],
+        ["未決定", 2, True],
+        ["保留", 1, True],
+        ["決定済み", 1, False],
+    ]
+    assert status["sel"] == "3 件を選択"
+    assert status["clear"] is True
+    assert all(group["sel"] is None and group["clear"] is False for group in groups[1:])
+    assert head == {"count": "5 件中 4 件", "foot": ["すべて解除", "4 件を表示"]}
+    assert page.get_attribute(DRAWER, "aria-labelledby") == "drawer-title"
+    assert page.inner_text("#drawer-title") == "絞り込み"
+
+
+def test_drawer_keeps_when_view_switched(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """マップ・ボード・表を切り替えても、ドロワーで選んだ条件を保つ（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    open_drawer(page)
+    click_value(page, "status", "決定済み")
+    page.wait_for_selector('#decision-map button[data-node="D-1"]')
+    page.click(f"{DRAWER} .fd-foot .btn.primary")
+    page.wait_for_selector(DRAWER, state="detached")
+    # 実行（ボード）
+    page.click('.segment button[data-view="board"]')
+    page.wait_for_selector(".board")
+    board_done = page.eval_on_selector_all(
+        '.board section.board-col[aria-label="決定済み"] .card', "cards => cards.map(c => c.dataset.id)"
+    )
+    # 実行（表）
+    page.click('.segment button[data-view="table"]')
+    page.wait_for_selector("table.grid")
+    rows = _table_row_ids(page)
+    # 検証
+    assert board_done == ["D-1"]
+    assert rows == ["D-1", "D-2", "D-3", "D-4", "D-5"]
+    assert badge_text(page) == "1"
+    open_drawer(page)
+    assert checked_values(page, "status") == ["要見直し", "未決定", "保留", "決定済み"]
+
+
+def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタンで閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。外側を押しても閉じない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    focused: list[str | None] = []
+    # 実行（外側を押しても閉じない）
+    open_drawer(page)
+    page.mouse.click(900, 500)
+    still_open = page.locator(DRAWER_OPEN).count()
+    # 実行（×・下端のボタン・Esc で閉じる）
+    for close in (
+        lambda: page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']"),
+        lambda: page.click(f"{DRAWER} .fd-foot .btn.primary"),
+        lambda: page.keyboard.press("Escape"),
+    ):
+        if page.locator(DRAWER_OPEN).count() == 0:
+            open_drawer(page)
+        close()
+        page.wait_for_selector(DRAWER, state="detached")
+        focused.append(page.evaluate("document.activeElement?.dataset.act ?? null"))
+    # 実行（絞り込みのボタンで閉じる）
+    open_drawer(page)
+    page.click(FILTER_BUTTON)
+    page.wait_for_selector(DRAWER, state="detached")
+    # 検証
+    assert still_open == 1
+    assert focused == ["filter", "filter", "filter"]
+
+
+def test_drawer_clear(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """条件ごとの「解除」でその条件の選びを外し、下端の「すべて解除」で全ての条件を外す。バッジは値を選んでいる条件の数に追従する（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "phase", "要件")
+    page.wait_for_function("document.querySelector('[data-act=filter] .fbadge')?.textContent === '2'")
+    # 実行（状態の条件を解除する）
+    page.click(f"{DRAWER} button[aria-label='状態の条件を解除']")
+    page.wait_for_function("document.querySelector('[data-act=filter] .fbadge')?.textContent === '1'")
+    after_clear_status = (badge_text(page), drawer_groups(page)[0]["sel"], _table_row_ids(page))
+    # 実行（すべて解除）
+    click_value(page, "status", "未決定")
+    page.click(f"{DRAWER} .fd-foot button:has-text('すべて解除')")
+    page.wait_for_function("!document.querySelector('[data-act=filter] .fbadge')")
+    after_clear_all = (badge_text(page), drawer_head(page), _table_row_ids(page))
+    # 検証
+    assert after_clear_status == ("1", None, ["D-2", "D-3"])
+    assert after_clear_all == (None, {"count": "5 件", "foot": ["5 件を表示"]}, ["D-1", "D-2", "D-3", "D-4", "D-5"])
+
+
+def test_drawer_tags(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """タグの条件を状態の次に並べ、選ぶとそのタグを持つ検討事項に絞る。表のチップで解除できる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", status="未決定", tags=["プレビュー"]),
+        make_item("D-2", status="未決定", tags=["サーバー", "プレビュー"]),
+        make_item("D-3", status="未決定"),
+    )
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    groups = drawer_groups(page)
+    # 実行
+    click_value(page, "tags", "プレビュー")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
+    selected = (_table_row_ids(page), drawer_head(page)["count"], badge_text(page))
+    tag_chip = ".table-block .chip:has(button[aria-label='タグ: プレビュー の条件を解除'])"
+    chip = page.inner_text(tag_chip)
+    page.click(f"{tag_chip} button")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
+    # 検証
+    assert [group["label"] for group in groups][:2] == ["状態", "タグ"]
+    assert groups[1]["values"] == [["サーバー", 1, False], ["プレビュー", 2, False]]
+    assert selected == (["D-1", "D-2"], "3 件中 2 件", "2")
+    assert chip == "タグ: プレビュー"
+    assert checked_values(page, "tags") == []
+
+
+def test_drawer_zero_value(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """今の条件では 0 件になる値は、薄く出して件数を 0 にし、選べるまま残す（正常系）。"""
+    # 準備（フェーズ「目的」だけを選んで開く。目的は決定済みの D-1 だけ）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&f.phase=目的")
+    open_drawer(page)
+    # 実行
+    groups = drawer_groups(page)
+    zero_values = page.eval_on_selector_all(
+        f'{DRAWER} label.fd-opt.zero:has(input[data-key="status"]) .fd-v',
+        "values => values.map(v => v.textContent)",
+    )
+    click_value(page, "status", "未決定")
+    # 検証
+    assert groups[0]["values"] == [
+        ["要見直し", 0, False],
+        ["未決定", 0, False],
+        ["保留", 0, False],
+        ["決定済み", 1, False],
+    ]
+    assert zero_values == ["要見直し", "未決定", "保留"]
+    assert checked_values(page, "status") == ["未決定"]
+
+
+def test_drawer_keyword_hits(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """マップでキーワードを入れると、ドロワーの値の件数の左に、キーワードに一致した件数を出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    open_drawer(page)
+    # 実行
+    page.fill("input.map-q", "D-2")
+    page.wait_for_selector(f"{DRAWER} .hit-n")
+    hits = page.eval_on_selector_all(
+        f'{DRAWER} .fd-opt:has(input[data-key="status"]):has(.hit-n)',
+        "opts => opts.map(o => [o.querySelector('.fd-v').textContent, o.querySelector('.hit-n').textContent, o.querySelector('.hit-n').getAttribute('aria-label')])",
+    )
+    # 検証
+    assert hits == [["未決定", "1", "キーワードに一致した項目 1 件"]]
+
+
+def test_drawer_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、開いたときの既定の条件に代えてその条件だけを選んだ状態でドロワーに入り、バッジが付き、ハッシュからは消える（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&f.phase=要件")
+    open_drawer(page)
+    groups = {group["label"]: group for group in drawer_groups(page)}
+    # 検証
+    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "phase") == ["要件"]
+    assert checked_values(page, "status") == []
+    assert groups["フェーズ"]["sel"] == "1 件を選択"
+    assert "f." not in page.evaluate("location.hash")
+
+
+def test_drawer_when_narrow(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """幅 900px 以下では、ドロワーをトップバーの下から画面の幅いっぱいに重ね、絞り込みのボタンは文字を隠してバッジだけ出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    page.set_viewport_size(DRAWER_NARROW_VIEWPORT)
+    # 実行
+    open_drawer(page)
+    # 開く動きが終わって、左端に着くのを待つ
+    page.wait_for_function("document.querySelector('dialog.drawer').getBoundingClientRect().left === 0")
+    box = page.eval_on_selector(
+        DRAWER, "d => { const r = d.getBoundingClientRect(); return [r.left, r.width]; }"
+    )
+    label_visible = page.is_visible(f"{FILTER_BUTTON} .label")
+    # 検証
+    assert box == [0, DRAWER_NARROW_VIEWPORT["width"]]
+    assert label_visible is False
+    assert badge_text(page) == "1"
+
+
+def test_drawer_value_is_checkbox(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """条件のまとまりは fieldset と legend で組み、値はチェックボックスにして、値の件数に読み上げの名前を付ける（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    # 実行
+    structure = page.evaluate(
+        """() => ({
+            groups: document.querySelectorAll('dialog.drawer fieldset.fd-group > legend').length,
+            checkboxes: [...document.querySelectorAll('dialog.drawer .fd-body input')].every(i => i.type === 'checkbox'),
+            counts: document.querySelector('dialog.drawer .fd-opt .n').getAttribute('aria-label'),
+            firstFocused: document.activeElement === document.querySelector('dialog.drawer .fd-body input'),
+        })"""
+    )
+    selector = value_selector("status", "未決定")
+    # 検証
+    assert structure == {"groups": 6, "checkboxes": True, "counts": "1 件", "firstFocused": True}
+    assert page.locator(selector).count() == 1
