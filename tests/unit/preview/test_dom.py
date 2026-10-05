@@ -434,94 +434,77 @@ def test_mark_selected(
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    ("all_values", "shown", "expected"),
-    [
-        pytest.param(["a", "b", "c"], ["a", "b", "c"], "all", id="all_shown"),
-        pytest.param(["a", "b", "c"], ["a"], "some", id="some_shown"),
-        pytest.param(["a", "b", "c"], [], "none", id="none_shown"),
-        pytest.param(["a", "b", "c"], ["a", "b", "c", "z"], "all", id="shown_has_extra_value"),
-        pytest.param([], [], "none", id="no_values"),
-    ],
-)
-def test_toggle_all_state(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    all_values: list[str],
-    shown: list[str],
-    expected: str,
-) -> None:
-    """表示している数で、まとめて切り替える箱の状態を返す（正常系）。"""
+# 左端 0〜420px のパネルと、本文（main）・トップバー（header）を置く。
+# ボタンは、本文の左端の A（x=10）・本文の右側の B（x=600）・始めから inert の C（x=20）と、トップバーの D（x=10）
+INERT_SETUP = """
+    const place = (parent, id, left, top) => {
+        const button = document.createElement("button");
+        button.id = id;
+        button.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:40px;height:24px`;
+        parent.append(button);
+        return button;
+    };
+    const topbar = document.createElement("header");
+    place(topbar, "D", 10, 20);
+    const main = document.createElement("main");
+    place(main, "A", 10, 100);
+    place(main, "B", 600, 100);
+    place(main, "C", 20, 160).inert = true;
+    const panel = document.createElement("div");
+    panel.style.cssText = "position:fixed;left:0;top:0;width:420px;height:600px";
+    document.body.append(topbar, main, panel);
+"""
+
+# ボタン A〜D の inert を `{id: inert}` で返す式
+INERT_STATES = """
+    const inertStates = () => Object.fromEntries(
+        ["A", "B", "C", "D"].map((id) => [id, document.getElementById(id).inert])
+    );
+"""
+
+
+def test_inert_behind(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """パネルに覆われた部品だけを止め、外すと付けた分だけ戻す（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
     result = preview_page.evaluate(
-        """({shown, all}) => MindmapPreview.toggleAllState({shown: new Set(shown), all})""",
-        {"shown": shown, "all": all_values},
+        "() => {"
+        + INERT_SETUP
+        + INERT_STATES
+        + """
+            const release = MindmapPreview.inertBehind(panel);
+            const covered = inertStates();
+            release();
+            return {covered, released: inertStates()};
+        }"""
     )
     # 検証
-    assert result == expected
+    assert result["covered"] == {"A": True, "B": False, "C": True, "D": False}
+    # 始めから inert の C は外さない
+    assert result["released"] == {"A": False, "B": False, "C": True, "D": False}
 
 
-@pytest.mark.parametrize(
-    ("shown", "expected"),
-    [
-        pytest.param(
-            ["a", "b", "c"],
-            {"checked": True, "indeterminate": False, "next": []},
-            id="all_shown",
-        ),
-        pytest.param(
-            ["a"],
-            {"checked": False, "indeterminate": True, "next": ["a", "b", "c"]},
-            id="some_shown",
-        ),
-        pytest.param(
-            [],
-            {"checked": False, "indeterminate": False, "next": ["a", "b", "c"]},
-            id="none_shown",
-        ),
-    ],
-)
-def test_toggle_all_box(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    shown: list[str],
-    expected: dict[str, Any],
+def test_inert_behind_when_redrawn(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
 ) -> None:
-    """状態に合わせて箱を作り、押すと次に表示する値を渡す（正常系）。"""
+    """本文を描き直してから呼び直すと、新しい部品も止まる（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
     result = preview_page.evaluate(
-        """({shown}) => {
-            const calls = [];
-            const box = MindmapPreview.toggleAllBox({
-                label: "すべての状態を表示",
-                shown: new Set(shown),
-                all: ["a", "b", "c"],
-                onChange: (next) => { calls.push(Array.from(next).sort()); },
-            });
-            document.body.append(box);
-            const checkbox = box.querySelector("input[type=checkbox]");
-            const before = {checked: checkbox.checked, indeterminate: checkbox.indeterminate};
-            checkbox.click();
-            return {
-                tag: box.tagName,
-                className: box.className,
-                ariaLabel: checkbox.getAttribute("aria-label"),
-                ...before,
-                calls,
-            };
-        }""",
-        {"shown": shown},
+        "() => {"
+        + INERT_SETUP
+        + """
+            const release = MindmapPreview.inertBehind(panel);
+            // 本文を左端のボタン E だけに描き直す
+            main.replaceChildren();
+            const button = place(main, "E", 10, 100);
+            release();
+            MindmapPreview.inertBehind(panel);
+            button.focus();
+            return {inert: button.inert, focused: document.activeElement === button};
+        }"""
     )
     # 検証
-    assert result == {
-        "tag": "LABEL",
-        "className": "legend-all-check",
-        "ariaLabel": "すべての状態を表示",
-        "checked": expected["checked"],
-        "indeterminate": expected["indeterminate"],
-        "calls": [expected["next"]],
-    }
+    assert result == {"inert": True, "focused": False}

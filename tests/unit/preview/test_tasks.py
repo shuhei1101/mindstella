@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import pytest
 from playwright.sync_api import Page
 
 from .fixture_types import LoadPreviewScripts, MakeItem
@@ -36,3 +39,52 @@ def test_board_columns(
         ["完了", ["T-3"]],
         ["中止", []],
     ]
+
+
+@pytest.mark.parametrize(
+    ("status_filter", "expected"),
+    [
+        pytest.param(
+            ["未着手", "進行中"],
+            [
+                ["未着手", False],
+                ["進行中", False],
+                ["保留", True],
+                ["完了", True],
+                ["中止", True],
+            ],
+            id="status_condition",
+        ),
+        pytest.param(
+            [],
+            [
+                ["未着手", False],
+                ["進行中", False],
+                ["保留", False],
+                ["完了", False],
+                ["中止", False],
+            ],
+            id="no_status_condition",
+        ),
+    ],
+)
+def test_board_columns_when_status_filter(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_item: MakeItem,
+    status_filter: list[str],
+    expected: list[list[Any]],
+) -> None:
+    """状態の条件から外した列を示す（正常系）。"""
+    # 準備
+    items = [make_item("T-1", status="未着手")]
+    load_preview_scripts()
+    # 実行
+    columns = preview_page.evaluate(
+        """({items, statuses, statusFilter}) => MindmapPreview.boardColumns(
+            {items, statuses}, statusFilter
+        ).map((column) => [column.status, column.excluded])""",
+        {"items": items, "statuses": TASK_STATUSES, "statusFilter": status_filter},
+    )
+    # 検証
+    assert columns == expected
