@@ -1,0 +1,72 @@
+# 実行したコマンド
+pytest tests/integration/preview/test_decisions_screen.py tests/integration/preview/test_detail_panel_screen.py -v
+# コミット: 29e44eff5c36e61837e383bc77daaf7c2c8f71ef
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-map-deselect-on-background
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 57 items
+
+tests/integration/preview/test_decisions_screen.py::test_view_switch[chromium] PASSED [  1%]
+tests/integration/preview/test_decisions_screen.py::test_map[chromium] PASSED [  3%]
+tests/integration/preview/test_decisions_screen.py::test_map_status_legend[chromium] PASSED [  5%]
+tests/integration/preview/test_decisions_screen.py::test_map_keyword[chromium] PASSED [  7%]
+tests/integration/preview/test_decisions_screen.py::test_map_zoom[chromium] PASSED [  8%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-blank] PASSED [ 10%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_dragged[chromium] PASSED [ 12%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_nothing_selected[chromium] PASSED [ 14%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_zoomed[chromium] PASSED [ 15%]
+tests/integration/preview/test_decisions_screen.py::test_map_when_narrow[chromium] PASSED [ 17%]
+tests/integration/preview/test_decisions_screen.py::test_board[chromium] PASSED [ 19%]
+tests/integration/preview/test_decisions_screen.py::test_table_ready_column_when_waiting[chromium] PASSED [ 21%]
+tests/integration/preview/test_decisions_screen.py::test_table_ready_column[chromium] PASSED [ 22%]
+tests/integration/preview/test_decisions_screen.py::test_map_toggle_all_box[chromium] PASSED [ 24%]
+tests/integration/preview/test_decisions_screen.py::test_map_no_shown_status_note[chromium] PASSED [ 26%]
+tests/integration/preview/test_decisions_screen.py::test_map_status_chip_border[chromium] PASSED [ 28%]
+tests/integration/preview/test_decisions_screen.py::test_map_toggle_all_box_appearance[chromium] PASSED [ 29%]
+tests/integration/preview/test_decisions_screen.py::test_map_item_id_size[chromium] PASSED [ 31%]
+tests/integration/preview/test_decisions_screen.py::test_board_edge_gap[chromium] PASSED [ 33%]
+tests/integration/preview/test_decisions_screen.py::test_board_columns_when_narrow[chromium] PASSED [ 35%]
+tests/integration/preview/test_decisions_screen.py::test_board_columns_when_wide[chromium] PASSED [ 36%]
+tests/integration/preview/test_decisions_screen.py::test_table_cell_surface[chromium] PASSED [ 38%]
+tests/integration/preview/test_decisions_screen.py::test_table_id_button_size[chromium] PASSED [ 40%]
+tests/integration/preview/test_detail_panel_screen.py::test_content[chromium] PASSED [ 42%]
+tests/integration/preview/test_detail_panel_screen.py::test_related_items[chromium] PASSED [ 43%]
+tests/integration/preview/test_detail_panel_screen.py::test_referenced_by[chromium] PASSED [ 45%]
+tests/integration/preview/test_detail_panel_screen.py::test_back_and_forward[chromium] PASSED [ 47%]
+tests/integration/preview/test_detail_panel_screen.py::test_selected_row[chromium] PASSED [ 49%]
+tests/integration/preview/test_detail_panel_screen.py::test_close[chromium] PASSED [ 50%]
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_when_wide[chromium] PASSED [ 52%]
+tests/integration/preview/test_detail_panel_screen.py::test_overlay_when_narrow[chromium] PASSED [ 54%]
+tests/integration/preview/test_detail_panel_screen.py::test_diagram_raw[chromium] PASSED [ 56%]
+tests/integration/preview/test_detail_panel_screen.py::test_content_transition[chromium] PASSED [ 57%]
+tests/integration/preview/test_detail_panel_screen.py::test_selected_row_hover[chromium] PASSED [ 59%]
+tests/integration/preview/test_detail_panel_screen.py::test_id_button_size[chromium] PASSED [ 61%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input[chromium] PASSED [ 63%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_saved[chromium] PASSED [ 64%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_ctrl_enter[chromium] PASSED [ 66%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_body_empty[chromium] PASSED [ 68%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_server_refuses[chromium] PASSED [ 70%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft[chromium] PASSED [ 71%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_closed[chromium] PASSED [ 73%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_saved_at_once[chromium] PASSED [ 75%]
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_saved_with_location[chromium] PASSED [ 77%]
+tests/integration/preview/test_detail_panel_screen.py::test_review_comments[chromium] PASSED [ 78%]
+tests/integration/preview/test_detail_panel_screen.py::test_review_comments_when_empty[chromium] PASSED [ 80%]
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_body[chromium] PASSED [ 82%]
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_value[chromium] PASSED [ 84%]
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_outside_body[chromium] PASSED [ 85%]
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_closed_by_escape[chromium] PASSED [ 87%]
+tests/integration/preview/test_detail_panel_screen.py::test_highlight_location[chromium] PASSED [ 89%]
+tests/integration/preview/test_detail_panel_screen.py::test_highlight_location_when_value[chromium] PASSED [ 91%]
+tests/integration/preview/test_detail_panel_screen.py::test_highlight_location_when_mismatched[chromium] PASSED [ 92%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-target_node] PASSED [ 94%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-category_node] PASSED [ 96%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-phase_node] PASSED [ 98%]
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-edge] PASSED [100%]
+
+======================== 57 passed in 70.05s (0:01:10) =========================
