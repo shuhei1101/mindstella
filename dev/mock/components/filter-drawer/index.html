@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>絞り込みのボタンとドロワー | mindmap 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル（89 の絞り込みの分を重ねる） -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/65/assets/style.css">
+  <link rel="stylesheet" href="../../refs/71/assets/style.css">
+  <link rel="stylesheet" href="../../refs/89/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    /* 台を横に並べる: 収まらなければ折り返す */
+    .stages { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    /* 台に添える見本の名前 */
+    .stage-name { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-xs); }
+    /* 台の中のツールバーは下の余白を持たない */
+    .stage .toolbar { margin-bottom: 0; }
+    /* 台の中のドロワー: 流れに置き、高さを中身に合わせる */
+    .stage dialog.drawer { position: static; display: flex; flex-direction: column; width: 320px; height: auto; max-height: 560px; border: 1px solid var(--border); box-shadow: none; animation: none; }
+    /* 狭い幅の見本: 画面幅 720px 以下のときと同じ置き方にする（ボタンの文字を隠し、ドロワーは画面の幅から 48px 引く） */
+    .stage.narrow { width: 390px; max-width: 100%; box-sizing: border-box; }
+    /* 狭い幅の見本のボタン */
+    .stage.narrow .toolbar .btn .lbl { display: none; }
+    /* 狭い幅の見本のドロワー */
+    .stage.narrow dialog.drawer { width: 342px; max-width: 100%; }
+    /* 状態を見せるための見本のクラス */
+    .is-hover { background: var(--hover) !important; }
+    /* キーボードのフォーカスの見本 */
+    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / filter-drawer</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">絞り込みのボタンとドロワー</h1>
+
+    <!-- ボタン: 絞っていない・絞り込み中・開いている・ホバー・フォーカス -->
+    <section class="cat-sec">
+      <h2>絞り込みのボタン</h2>
+      <p>どの画面もキーワードの隣に 1 つだけ置く。絞っていないときはバッジを出さず、絞り込み中だけ印の色のバッジを付ける。ドロワーを開いている間は押された見た目にし、もう一度押すと閉じる。</p>
+      <div class="stages" id="buttons"></div>
+    </section>
+
+    <!-- バッジの数の案 -->
+    <section class="cat-sec">
+      <h2>件数のバッジに出す数（未確定）</h2>
+      <p>同じ条件（状態で 4 つ・タグで 1 つを選び、36 件中 3 件）を、案ごとのバッジで出す。推奨は C。</p>
+      <div class="stages" id="badges"></div>
+    </section>
+
+    <!-- ドロワーの状態 -->
+    <section class="cat-sec">
+      <h2>ドロワー</h2>
+      <p>条件ごとに値を件数つきのチェックボックスで並べる。値を選んだ条件にだけ「解除」を出し、今の条件では 0 件になる値は文字を薄くする。広い幅では本文の横に並べ、下端のボタンは「閉じる」にする。</p>
+      <div class="stages" id="drawers"></div>
+    </section>
+
+    <!-- 狭い幅 -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>ボタンは文字を隠してアイコンとバッジだけにし、名前は読み上げで渡す。ドロワーは本文に重ねるモーダルにし、画面の幅から 48px を引いた幅で右に後ろの画面を残す。下端のボタンは絞った件数を添えて閉じる。</p>
+      <div class="stages" id="narrow"></div>
+    </section>
+
+    <!-- 表の見出し -->
+    <section class="cat-sec">
+      <h2>表の列の見出し</h2>
+      <p>列の見出しの絞り込みのボタンを外し、並べ替えとピン留めだけを残す。</p>
+      <div class="stage" id="thead"></div>
+    </section>
+  </main>
+
+  <!-- 見本を描くスクリプト: 同じ部品を状態ごとに組み立てて台に並べる -->
+  <script>
+    (() => {
+      const icon = (d) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+      const FILTER = '<path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/>';
+      const X = '<path d="M18 6 6 18M6 6l12 12"/>';
+      const PIN = '<path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/>';
+      const UPDOWN = '<path d="m8 9 4-4 4 4M8 15l4 4 4-4"/>';
+      const MARK = {
+        "要見直し": '<path d="M5 .3 9.7 5 5 9.7.3 5Z" fill="var(--st-review)"/>',
+        "未決定": '<circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-open)" stroke-width="1.6"/>',
+        "保留": '<rect x="1.2" y="1" width="2.6" height="8" fill="var(--st-hold)"/><rect x="6.2" y="1" width="2.6" height="8" fill="var(--st-hold)"/>',
+        "未整理": '<circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-loose)" stroke-width="1.6" stroke-dasharray="2 1.6"/>',
+        "決定済み": '<circle cx="5" cy="5" r="4.5" fill="var(--st-done)"/>',
+      };
+      const mark = (s) => (MARK[s] ? `<svg class="mark" viewBox="0 0 10 10" aria-hidden="true">${MARK[s]}</svg>` : "");
+      // ボタン: badge は { n, say }、open はドロワーを開いているか、cls は見本の状態のクラス
+      const button = (badge, cls = "", open = false) => `<div class="toolbar"><input class="input grow" type="search" placeholder="キーワード" aria-label="キーワードで絞り込み"><button class="btn filter-btn ${cls}" type="button" aria-haspopup="dialog" aria-expanded="${open}" aria-label="絞り込み${badge ? `（${badge.say}）` : ""}">${icon(FILTER)}<span class="lbl">絞り込み</span>${badge ? `<span class="fbadge" aria-hidden="true">${badge.n}</span>` : ""}</button></div>`;
+      const stage = (name, html, cls = "") => `<div class="stage ${cls}"><p class="stage-name">${name}</p>${html}</div>`;
+      // ドロワー: groups は [条件名, [[値, 件数, 選択, キーワードの一致]]]。foot は下端のボタンの文言
+      const drawer = (count, groups, foot) => {
+        const any = groups.some(([, vs]) => vs.some((v) => v[2]));
+        return `<dialog class="drawer" open aria-label="絞り込み"><div class="fd-top"><h2>絞り込み</h2><span class="fd-count">${count}</span><span class="spacer"></span><button class="icon-btn" type="button" aria-label="絞り込みを閉じる">${icon(X)}</button></div>
+          <div class="fd-body">${groups.map(([label, vals]) => {
+            const sel = vals.filter((v) => v[2]).length;
+            return `<section class="fd-group" role="group" aria-label="${label}"><div class="fd-head"><h3>${label}${sel ? `<span class="fd-sel">${sel} 件を選択</span>` : ""}</h3><button class="btn ghost fd-clear" type="button" aria-label="${label}の条件を解除"${sel ? "" : " hidden"}>解除</button></div>
+              <ul class="fd-opts">${vals.map(([v, n, on, hit]) => `<li><label class="fd-opt${n ? "" : " zero"}"><input type="checkbox" ${on ? "checked" : ""}>${mark(v)}<span class="fd-v">${v}</span>${hit ? `<span class="hit-n">${hit}</span>` : ""}<span class="n">${n}</span></label></li>`).join("")}</ul></section>`;
+          }).join("")}</div>
+          <div class="fd-foot"><button class="btn ghost" type="button"${any ? "" : " hidden"}>すべての条件を解除</button><span class="spacer"></span><button class="btn primary" type="button">${foot}</button></div></dialog>`;
+      };
+      const STATUS = (sel, counts, hits = {}) => ["要見直し", "未決定", "保留", "未整理", "決定済み"].map((s, i) => [s, counts[i], sel.includes(s), hits[s]]);
+      const TAGS = (sel, counts) => ["プレビュー", "プレビューの画面で項目を探す操作", "記録の形", "調べ方", "配布と導入", "話し合いの進め方"].map((t, i) => [t, counts[i], sel.includes(t)]);
+      const OPEN4 = ["要見直し", "未決定", "保留", "未整理"];
+      const TWO = { n: 2, say: "2 つの条件で絞り込み中" };
+
+      document.getElementById("buttons").innerHTML = [
+        stage("絞っていない", button(null)),
+        stage("絞り込み中（2 つの条件）", button(TWO)),
+        stage("ドロワーを開いている", button(TWO, "", true)),
+        stage("ホバー", button(TWO, "is-hover")),
+        stage("キーボードのフォーカス", button(null, "is-focus")),
+      ].join("");
+      document.getElementById("badges").innerHTML = [
+        stage("A 選んでいる値の数", button({ n: 5, say: "5 個の値を選んで絞り込み中" })),
+        stage("B 絞り込んだ後の項目の数", button({ n: 3, say: "3 件に絞り込み中" })),
+        stage("C 値を選んでいる条件の数（推奨）", button(TWO)),
+      ].join("");
+      document.getElementById("drawers").innerHTML = [
+        stage("何も選んでいない（タスク）", drawer("8 件", [["種類", [["作業", 4], ["調査", 3], ["検証", 1]]], ["状態", [["進行中", 2], ["未着手", 3], ["保留", 1], ["完了", 1], ["中止", 1]]], ["タグ", TAGS([], [4, 1, 0, 1, 0, 3])]], "閉じる")),
+        stage("値を選んでいる・0 件の値・長いタグ（検討事項）", drawer("36 件中 3 件", [["状態", STATUS(OPEN4, [0, 2, 1, 0, 3])], ["タグ", TAGS(["プレビュー"], [3, 2, 3, 0, 1, 5])]], "閉じる")),
+        stage("マップのキーワードに一致した件数", drawer("36 件中 12 件", [["状態", STATUS(OPEN4, [1, 9, 1, 1, 24], { "未決定": 2, "要見直し": 1 })]], "閉じる")),
+        stage("該当なし", drawer("8 件中 0 件", [["種類", [["作業", 0, true], ["調査", 3], ["検証", 1]]], ["状態", [["未着手", 0, true], ["完了", 1]]]], "閉じる")),
+      ].join("");
+      document.getElementById("narrow").innerHTML = [
+        stage("ボタン", button({ n: 1, say: "1 つの条件で絞り込み中" }), "narrow"),
+        stage("ドロワー（重ねる）", drawer("36 件中 12 件", [["状態", STATUS(OPEN4, [1, 9, 1, 1, 24])], ["タグ", TAGS([], [3, 2, 9, 1, 2, 7])]], "12 件を表示"), "narrow"),
+      ].join("");
+      const th = (label) => `<th scope="col" aria-sort="none"><div class="th-in"><button class="th-sort" type="button">${label}<span class="sort-hint">${icon(UPDOWN)}</span></button><button class="th-tool pin" type="button" aria-pressed="false" aria-label="${label}まで固定">${icon(PIN)}</button></div></th>`;
+      document.getElementById("thead").innerHTML = `<div class="table-wrap"><table class="grid"><thead><tr>${["ID", "タイトル", "状態", "種類", "タグ"].map(th).join("")}</tr></thead><tbody><tr><td><span class="mono">T-002</span></td><td>プレビューのモックを作る（モダン）</td><td>進行中</td><td>作業</td><td><span class="tag">プレビュー</span></td></tr></tbody></table></div>`;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+/* 71 のスタイルの上に重ね、絞り込みのボタン・件数のバッジ・絞り込みのドロワー・案 B の凡例を足す分 */
+
+/* 絞り込みのボタン: 部品の高さに揃え、バッジは文字の後ろに置く */
+.filter-btn { gap: 6px; }
+
+/* ドロワーを開いている間のボタン: 押された見た目にし、もう一度押すと閉じることを示す */
+.filter-btn[aria-expanded="true"] { border-color: var(--accent-line); background: var(--accent-weak); }
+
+/* 件数のバッジ: 絞り込み中という状態を示すため印の色で塗る。数は等幅で桁を揃える */
+.fbadge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 600 11px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* 絞り込みのドロワー: 左端から出す。重ねる案（B と狭い幅）は全高のモーダルにし、後ろの本文が透けて見える薄い幕で選ぶたびに変わる結果を見せる */
+dialog.drawer { position: fixed; inset: 0 auto 0 0; width: min(360px, calc(100vw - 48px)); max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; border-right: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: 14px 0 32px var(--shadow-color); }
+
+/* 開いているときだけ縦に並べる（閉じているときは dialog の既定の非表示に任せる） */
+dialog.drawer[open] { display: flex; flex-direction: column; }
+
+/* ドロワーの幕 */
+dialog.drawer::backdrop { background: var(--scrim-soft); }
+
+/* 本文の横に並べるドロワー（広い幅の案 A）: トップバーとタブの帯の下に留め、本文を右へ寄せる。重ねないので影を付けない */
+dialog.drawer:not(:modal) { top: calc(var(--mock-h, 0px) + var(--topbar-h) + var(--tab-h) + 1px); height: auto; z-index: 22; width: var(--drawer-w); box-shadow: none; }
+
+/* 横に並べるドロワーの幅 */
+body { --drawer-w: 320px; }
+
+/* 横に並べるドロワーを開いている間: 本文とパンくずをドロワーの幅だけ右へ寄せる */
+@media (min-width: 901px) {
+  /* 本文の寄せ */
+  body.drawer-open .content, body.drawer-open .crumbs-bar { max-width: none; margin-left: var(--drawer-w); }
+}
+
+/* ドロワーの見出しの行: 題・件数・閉じるボタン */
+.fd-top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
+
+/* ドロワーの題 */
+.fd-top h2 { margin: 0; font-size: var(--fs-h2); }
+
+/* 絞り込んだ後の件数: 題の隣に控えめに出す */
+.fd-count { color: var(--text-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+
+/* 選んでいない条件の「解除」と、条件の無いときの「すべての条件を解除」: 部品の表示の指定より優先して隠す */
+dialog.drawer .btn[hidden] { display: none; }
+
+/* 見出しの行の空き */
+.fd-top .spacer { flex: 1; }
+
+/* 条件を並べる本文: 縦に送る */
+.fd-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 16px; }
+
+/* 1 つの条件のまとまり: 行の境の線で区切る */
+.fd-group { padding: 14px 20px 10px; }
+
+/* 条件のまとまりの境 */
+.fd-group + .fd-group { border-top: 1px solid var(--border-soft); }
+
+/* 条件の見出しの行: 条件の名前と「解除」 */
+.fd-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 4px; }
+
+/* 条件の名前 */
+.fd-head h3 { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--fs-small); font-weight: 600; }
+
+/* 選んでいる値の数: 条件の名前の後ろに補足として出す */
+.fd-sel { color: var(--text-2); font-size: var(--fs-xs); font-weight: 400; }
+
+/* 条件ごとの「解除」: 見出しの行の高さに収める */
+.fd-clear { height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
+
+/* 値の並び */
+.fd-opts { list-style: none; margin: 0; padding: 0; }
+
+/* 値 1 つ: チェックボックス・印・値・件数。行全体を押せる的にする */
+.fd-opt { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 8px; margin: 0 -8px; border-radius: 3px; font-size: var(--fs-small); cursor: pointer; }
+
+/* 値の行のホバー */
+.fd-opt:hover { background: var(--hover); }
+
+/* 値のチェックボックス: 印の色で塗る */
+.fd-opt input { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+
+/* 値の文字: 長い値は折り返して全体を読ませる */
+.fd-v { min-width: 0; overflow-wrap: anywhere; }
+
+/* 値ごとの件数: 右端に等幅で揃える */
+.fd-opt .n { margin-left: auto; padding-left: 8px; color: var(--text-3); font: var(--fs-xs) var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* 今の条件では 0 件になる値: 選べるが、件数の無いことを文字の濃さで示す */
+.fd-opt.zero .fd-v { color: var(--text-3); }
+
+/* キーワードに一致した件数: マップの強調と同じ黄色の地 */
+.fd-opt .hit-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--radius); background: var(--hit); color: var(--text); font: 600 11px var(--font-mono); }
+
+/* ドロワーの下端: 全ての条件の解除と、閉じて結果を見るボタン */
+.fd-foot { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-top: 1px solid var(--border-soft); }
+
+/* 下端の空き */
+.fd-foot .spacer { flex: 1; }
+
+/* 案 B の凡例: 押せない帯。枠を持たず、印と件数だけを並べる */
+.legend-static { list-style: none; margin: 0; padding: 0; }
+
+/* 凡例の 1 項目 */
+.legend-static li { display: inline-flex; align-items: center; gap: 6px; height: 24px; font-size: var(--fs-xs); color: var(--text-2); }
+
+/* つながりの絞り込みのボタンの行: マップの枠との間を空ける */
+.map-frame.space { margin-top: 4px; }
+
+/* モック専用の操作列のまとまり: まとまりの間を空け、名前を添える */
+.mock-group + .mock-group { margin-left: 14px; }
+
+/* まとまりの名前 */
+.mock-label { margin-right: 4px; opacity: .8; }
+
+/* 動きを減らす設定では、ドロワーを出す動きを付けない。それ以外では左からすべり込ませる */
+@media (prefers-reduced-motion: no-preference) {
+  /* ドロワーの出方 */
+  dialog.drawer[open] { animation: fd-in .18s ease-out; }
+}
+
+/* ドロワーが左からすべり込む動き */
+@keyframes fd-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
