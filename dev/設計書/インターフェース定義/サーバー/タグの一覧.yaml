@@ -107,3 +107,4 @@ constraints:
     constraint: しない（字面が違えば別のタグとして並べ、揺れの判断はスキルが行う）
   - item: 数える範囲
     constraint: 全ての種類の項目の `tags` を数える。1 つの項目が同じタグを 2 回持っても 1 件と数える
+test_file: tests/integration/server/test_tags.py
