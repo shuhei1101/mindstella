@@ -725,6 +725,14 @@ namespace MindmapPreview {
     }
   }
 
+  /** どの表の表示する列とピン留めも初期設定に戻す（「既定に戻す」で個人の上書きを外すとき） */
+  export function clearTablePrefs(): void {
+    for (const state of tableStates.values()) {
+      state.hidden = undefined;
+      state.pinTo = null;
+    }
+  }
+
   /** 種類の表の状態（無ければ作る） */
   export function tableState(kind: Kind): TableState {
     let state = tableStates.get(kind);

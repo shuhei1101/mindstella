@@ -14,7 +14,7 @@ allowed-tools: Read, mcp__mindstella__migrate, mcp__mindstella__check
 
 - ワークスペースのフォルダ: $ARGUMENTS
   - 空ならフォルダの指定を尋ねて終える
-  - `{ワークスペースのフォルダ}/mindmap.yaml` を Read で読めないときは、何も書き込まず `/mindstella:setup` を案内して終える
+  - `{ワークスペースのフォルダ}/config.yaml` か `mindmap.yaml` を Read で読めないときは、何も書き込まず `/mindstella:setup` を案内して終える
 
 ## ステップ
 

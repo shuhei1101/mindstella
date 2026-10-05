@@ -13,11 +13,11 @@ class MindmapError(Exception):
 
 
 class WorkspaceNotFoundError(MindmapError):
-    """`mindmap.yaml` が無いフォルダを指した。"""
+    """`config.yaml` が無いフォルダを指した。`mindmap.yaml`（前の版の設定ファイル）だけがあるフォルダでは、`lines` に移し替えの案内を持つ。"""
 
 
 class WorkspaceExistsError(MindmapError):
-    """`mindmap.yaml` が既にあるフォルダに作ろうとした。"""
+    """`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。"""
 
 
 class SchemaMismatchError(MindmapError):
@@ -52,6 +52,10 @@ class UnmappedTargetError(MindmapError):
 
 class ItemNotFoundError(MindmapError):
     """渡した ID の項目が無い。"""
+
+
+class SettingsInvalidError(MindmapError):
+    """既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。メッセージは `{キー}: {理由}`。"""
 
 
 class OptionNotFoundError(MindmapError):

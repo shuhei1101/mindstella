@@ -145,6 +145,9 @@ def _apply_yaml_step(root: Path, step: MigrationStep) -> list[str]:
     """YAML のキーを操作する手順を当てる。中身が変わったときだけ書く。"""
     args = step.args
     file_name = args["file"]
+    # 対象のファイルが無い: 後の版で名前を改めたファイルを指す前の版の手順を、今の形のワークスペースに当てたとして飛ばす
+    if not _resolve(root, file_name).exists():
+        return []
     data = _read_yaml(root, file_name)
     changed = False
     for position, target in enumerate(_targets(data, bool(args["each_item"]))):

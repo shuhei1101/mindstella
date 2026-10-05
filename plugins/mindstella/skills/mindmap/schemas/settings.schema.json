@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "設定",
-  "description": "`mindmap.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数を持つ。",
+  "description": "`config.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定を持つ。",
   "type": "object",
   "required": [
     "playbooks",
@@ -169,6 +169,41 @@
       "type": "integer",
       "description": "項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5。`update_settings` で変える。AI がまだ読んでいない回（`changes.yaml` の `read_seq` より後の回）は、この回数を超えても消さない",
       "minimum": 0
+    },
+    "display": {
+      "type": "object",
+      "description": "プレビューのワークスペースの既定。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と、プレビューの「ワークスペースの既定にする」が書く",
+      "additionalProperties": false,
+      "properties": {
+        "network_look": {
+          "type": "string",
+          "description": "つながりの見た目。無ければ `deep`",
+          "enum": [
+            "glow",
+            "starlight",
+            "constellation",
+            "deep",
+            "dust"
+          ]
+        },
+        "visible_kinds": {
+          "type": "array",
+          "description": "プレビューのタブに出す種類。無ければ全ての種類。概要とつながりは常に出す",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "decisions",
+              "tasks",
+              "research",
+              "docs",
+              "terms",
+              "notes",
+              "logs"
+            ]
+          }
+        }
+      }
     }
   }
 }

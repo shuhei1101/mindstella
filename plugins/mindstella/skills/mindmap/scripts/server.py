@@ -100,7 +100,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     @server.tool(name="init", description="設定を受け取って空のワークスペースを作る")
     def init(
         workspace: WorkspaceArg,
-        settings: Annotated[dict[str, Any], Field(description="mindmap.yaml の中身")],
+        settings: Annotated[dict[str, Any], Field(description="config.yaml の中身")],
     ) -> CallToolResult:
         # まだ無いフォルダへ書く `init` だけが、フォルダを作る鍵を取る
         return write(workspace, lambda root: commands.run_init(root, settings), create=True)

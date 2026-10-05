@@ -241,15 +241,17 @@ namespace MindmapPreview {
     live?.select(id);
   }
 
-  /** つながりの画面を返す。`selected` は最初に選んでおく項目 */
+  /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
   export function graphScreen({
     index,
     on,
     selected = null,
+    look = BUILTIN_LOOK,
   }: {
     index: RecordIndex;
     on: { open: (id: string) => void };
     selected?: string | null;
+    look?: NetworkLook;
   }): HTMLElement {
     // ===== 状態 =====
     const shownKinds = new Set<string>(KIND_KEYS);
@@ -259,7 +261,7 @@ namespace MindmapPreview {
     const emptyNotice = h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownKinds.size > 0 }, children: ["表示する項目はありません。"] });
     const root = h({
       tag: "div",
-      attrs: { class: "screen graph" },
+      attrs: { class: "screen graph", "data-look": look },
       children: [
         h({ tag: "div", attrs: { class: "map-tools" }, children: [kindToggles] }),
         h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),

@@ -188,8 +188,8 @@ var MindmapPreview;
         live?.select(id);
     }
     MindmapPreview.selectGraphItem = selectGraphItem;
-    /** つながりの画面を返す。`selected` は最初に選んでおく項目 */
-    function graphScreen({ index, on, selected = null, }) {
+    /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
+    function graphScreen({ index, on, selected = null, look = MindmapPreview.BUILTIN_LOOK, }) {
         // ===== 状態 =====
         const shownKinds = new Set(MindmapPreview.KIND_KEYS);
         const canvas = MindmapPreview.h({ tag: "canvas", attrs: { id: "graph-canvas", class: "g3-wrap", role: "img", "aria-label": "すべての項目のつながり" } });
@@ -198,7 +198,7 @@ var MindmapPreview;
         const emptyNotice = MindmapPreview.h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownKinds.size > 0 }, children: ["表示する項目はありません。"] });
         const root = MindmapPreview.h({
             tag: "div",
-            attrs: { class: "screen graph" },
+            attrs: { class: "screen graph", "data-look": look },
             children: [
                 MindmapPreview.h({ tag: "div", attrs: { class: "map-tools" }, children: [kindToggles] }),
                 MindmapPreview.h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),

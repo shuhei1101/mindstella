@@ -563,6 +563,14 @@ var MindmapPreview;
         }
     }
     MindmapPreview.restoreTablePrefs = restoreTablePrefs;
+    /** どの表の表示する列とピン留めも初期設定に戻す（「既定に戻す」で個人の上書きを外すとき） */
+    function clearTablePrefs() {
+        for (const state of tableStates.values()) {
+            state.hidden = undefined;
+            state.pinTo = null;
+        }
+    }
+    MindmapPreview.clearTablePrefs = clearTablePrefs;
     /** 種類の表の状態（無ければ作る） */
     function tableState(kind) {
         let state = tableStates.get(kind);

@@ -9,7 +9,10 @@ from typing import Literal
 type Kind = Literal["decision", "task", "research", "doc", "term", "note", "log"]
 
 # ワークスペースの設定のファイル名
-SETTINGS_FILE = "mindmap.yaml"
+SETTINGS_FILE = "config.yaml"
+
+# v0.6.0 より前の版の設定のファイル名（ワークスペースとしては扱わず、移し替えが見分ける）
+LEGACY_SETTINGS_FILE = "mindmap.yaml"
 
 # 本文の Markdown を置くフォルダ名
 BODY_DIR = "docs"

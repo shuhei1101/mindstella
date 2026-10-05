@@ -8,6 +8,8 @@ var MindmapPreview;
     MindmapPreview.PREFS_KEY = "mindmap-preview";
     /** 入力が止まってから書きかけを保つまでの待ち（ミリ秒）。打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ */
     MindmapPreview.DRAFT_SAVE_DELAY_MS = 500;
+    /** 画面の下に「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
+    MindmapPreview.NOTICE_MS = 6000;
     /** そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
     MindmapPreview.SINCE_KEY = "mindmap-since";
     /** 入力欄のキー。向けた先（`target` と `loc` の組）を 1 つの文字列にする */
@@ -55,7 +57,7 @@ var MindmapPreview;
     MindmapPreview.readEmbeddedData = readEmbeddedData;
     /** 既定の設定 */
     function defaultPrefs() {
-        return { theme: null, columns: {} };
+        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null };
     }
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
@@ -63,24 +65,62 @@ var MindmapPreview;
             const saved = storage.getItem(MindmapPreview.PREFS_KEY);
             if (saved === null)
                 return defaultPrefs();
-            const parsed = JSON.parse(saved);
-            return { ...defaultPrefs(), ...parsed };
+            const parsed = { ...defaultPrefs(), ...JSON.parse(saved) };
+            // 選べない値の見た目・種類は、その項目だけワークスペースの既定に従う
+            const looks = MindmapPreview.NETWORK_LOOKS.map((option) => option.key);
+            if (!looks.includes(parsed.look))
+                parsed.look = null;
+            const kinds = MindmapPreview.KIND_KEYS;
+            if (!Array.isArray(parsed.kinds) || !parsed.kinds.every((kind) => kinds.includes(kind)))
+                parsed.kinds = null;
+            return parsed;
         }
         catch {
             return defaultPrefs();
         }
     }
     MindmapPreview.loadPrefs = loadPrefs;
-    /** 設定を端末の保存領域に残す。保存領域が例外を送るときは何もしない */
+    /** 設定を端末の保存領域に残し、書けたかを返す。保存領域が例外を送るときは偽を返す（開いている間だけ設定を保つ） */
     function savePrefs({ storage, prefs }) {
         try {
             storage.setItem(MindmapPreview.PREFS_KEY, JSON.stringify(prefs));
+            return true;
         }
         catch {
-            // 保存できない環境では、開いている間だけ設定を保つ
+            return false;
         }
     }
     MindmapPreview.savePrefs = savePrefs;
+    /** 項目ごとに、個人の上書きがあればそれを、無ければワークスペースの既定を、それも無ければ組み込みの既定を使う */
+    function resolveDisplay(prefs, display) {
+        const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
+        const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列の順に並べる
+        const overrides = [
+            ...(prefs.look === null ? [] : ["つながりの見た目"]),
+            ...(prefs.kinds === null ? [] : ["表示する種類"]),
+            ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
+            ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
+        ];
+        return {
+            look: prefs.look ?? defaultLook,
+            kinds: prefs.kinds === null ? defaultKinds : new Set(prefs.kinds),
+            defaultLook,
+            defaultKinds,
+            overrides,
+        };
+    }
+    MindmapPreview.resolveDisplay = resolveDisplay;
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    function clearOverrides(prefs) {
+        return { ...prefs, theme: null, look: null, kinds: null, columns: {} };
+    }
+    MindmapPreview.clearOverrides = clearOverrides;
+    /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
+    function sameDisplay(a, b) {
+        const key = (display) => JSON.stringify([display?.network_look ?? null, display?.visible_kinds ?? null]);
+        return key(a) === key(b);
+    }
     /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
     function openStorage(kind) {
         try {
@@ -93,7 +133,10 @@ var MindmapPreview;
                 getItem: () => null,
                 key: () => null,
                 removeItem: () => undefined,
-                setItem: () => undefined,
+                // 残せない旨を呼び手に伝える（`savePrefs` が偽を返す）
+                setItem: () => {
+                    throw new Error("保存領域が使えません");
+                },
             };
         }
     }
@@ -218,16 +261,29 @@ var MindmapPreview;
                 delete prefs.columns[kind];
             else
                 prefs.columns[kind] = tablePrefs;
-            persist();
+            display.storageOk = persist();
+            // 表の列の上書きは、パネルの「この端末で変えている項目」に合わせる
+            resolved = resolveDisplay(prefs, data.settings.display);
+            if (display.open)
+                renderSettings();
         });
         // ===== テーマ =====
-        let theme = prefs.theme ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        /** 端末のライト / ダーク（個人の上書きが無いときに従う） */
+        const systemTheme = () => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        let theme = prefs.theme ?? systemTheme();
         document.documentElement.dataset["theme"] = theme;
         // ===== 記録 =====
         let data = embedded ?? (await waitForRecords(theme));
         let index = MindmapPreview.buildIndex(data);
         document.title = `${data.settings.summary} | mindstella`;
         let connection = "online";
+        // 表示の設定: 項目ごとに、個人の上書き → ワークスペースの既定 → 組み込みの既定の順で読み分けた値
+        let resolved = resolveDisplay(prefs, data.settings.display);
+        const display = { open: false, confirm: null, message: null, savedDisplay: null, storageOk: true };
+        /** 表示しない種類のタブを指す route は、概要へ置き換える（`id` は残し、詳細パネルは開く） */
+        const visibleRoute = (next) => next.tab === "overview" || next.tab === "graph" || resolved.kinds.has(next.tab)
+            ? next
+            : { ...next, tab: "overview", view: MindmapPreview.defaultView("overview"), filters: {} };
         // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
         const since = await resolveSince({ serverMode, prefs, persist });
         let point = MindmapPreview.resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
@@ -235,7 +291,7 @@ var MindmapPreview;
         const top = MindmapPreview.h({ tag: "div", attrs: { id: "top" } });
         const main = MindmapPreview.h({ tag: "main", attrs: { class: "content", id: "main" } });
         document.body.prepend(top, main);
-        let route = MindmapPreview.parseHash({ hash: location.hash, index });
+        let route = visibleRoute(MindmapPreview.parseHash({ hash: location.hash, index }));
         let fullViewer = null;
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
@@ -283,7 +339,8 @@ var MindmapPreview;
             const kind = index.byId.get(id)?.kind;
             if (kind === undefined)
                 return;
-            const tab = kind;
+            // 表示しない種類の項目は、概要の上の詳細パネルで開く
+            const tab = resolved.kinds.has(kind) ? kind : "overview";
             go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {} }, tab !== route.tab);
         };
         // ===== 描く =====
@@ -292,7 +349,7 @@ var MindmapPreview;
             const marks = marksOf(point);
             top.replaceChildren(MindmapPreview.topbar({
                 title: data.settings.summary,
-                tabs: MindmapPreview.TAB_KEYS.map((key) => ({
+                tabs: MindmapPreview.TAB_KEYS.filter((key) => key === "overview" || resolved.kinds.has(key)).map((key) => ({
                     key,
                     label: tabLabel(key),
                     icon: TAB_ICON[key],
@@ -308,6 +365,8 @@ var MindmapPreview;
                 commentCount: comment.review.items.length,
                 commentsOpen: comment.listOpen,
                 onComments: () => (comment.listOpen ? closeList() : openList()),
+                settingsOpen: display.open,
+                onSettings: () => (display.open ? closeSettings() : openSettings()),
                 diffPoint: point === null ? null : { name: point.name, sub: point.sub },
                 onHistory: openHistory,
                 onDiffOff: () => selectPoint(null),
@@ -316,9 +375,8 @@ var MindmapPreview;
                 onTheme: (next) => {
                     theme = next;
                     prefs.theme = next;
-                    persist();
+                    changePrefs({ redrawMain: false });
                     document.documentElement.dataset["theme"] = next;
-                    renderTop();
                 },
             }));
         };
@@ -328,7 +386,12 @@ var MindmapPreview;
             const marks = marksOf(point);
             switch (route.tab) {
                 case "overview":
-                    return MindmapPreview.overviewScreen({ index, on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) }, marks });
+                    return MindmapPreview.overviewScreen({
+                        index,
+                        on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) },
+                        marks,
+                        visibleKinds: resolved.kinds,
+                    });
                 case "decisions":
                     return MindmapPreview.decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, marks });
                 case "tasks":
@@ -336,7 +399,7 @@ var MindmapPreview;
                 case "docs":
                     return MindmapPreview.docsScreen({ index, route, on, marks });
                 case "graph":
-                    return MindmapPreview.graphScreen({ index, on: { open: on.open }, selected: route.id });
+                    return MindmapPreview.graphScreen({ index, on: { open: on.open }, selected: route.id, look: resolved.look });
                 default:
                     return MindmapPreview.recordsScreen({ index, route, on: { open: on.open }, marks });
             }
@@ -792,6 +855,9 @@ var MindmapPreview;
         };
         /** コメントの一覧を開く */
         const openList = () => {
+            // 表示の設定とは片方だけを開く
+            display.open = false;
+            renderSettings();
             comment.listOpen = true;
             renderTop();
             renderComments();
@@ -981,6 +1047,165 @@ var MindmapPreview;
         };
         /** 入力中の欄の選択とスクロールの位置を保って、画面を描き直す */
         const redrawKeepingState = () => preserving(() => render({ screen: true }));
+        // ===== 表示の設定 =====
+        /** 端末の上書きを変えた後に、残して読み分け直し、描き直す。開いている画面の種類を外したときは概要へ移る（履歴に積まない） */
+        const changePrefs = ({ redrawMain }) => {
+            display.storageOk = persist();
+            resolved = resolveDisplay(prefs, data.settings.display);
+            const visible = visibleRoute(route);
+            const moved = visible !== route;
+            if (moved) {
+                route = visible;
+                MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
+            }
+            if (redrawMain || moved)
+                redrawKeepingState();
+            else
+                renderTop();
+            renderSettings();
+        };
+        /** 表示の設定の中身の引数 */
+        const settingsProps = () => ({
+            look: resolved.look,
+            defaultLook: resolved.defaultLook,
+            kinds: resolved.kinds,
+            defaultKinds: resolved.defaultKinds,
+            counts: Object.fromEntries(MindmapPreview.KIND_KEYS.map((kind) => [kind, data[kind].length])),
+            overrides: resolved.overrides,
+            canSave: serverMode,
+            message: display.message,
+            storageOk: display.storageOk,
+            on: {
+                look: (value) => {
+                    prefs.look = value;
+                    changePrefs({ redrawMain: true });
+                },
+                kinds: (kinds) => {
+                    prefs.kinds = kinds;
+                    changePrefs({ redrawMain: true });
+                },
+                reset: () => {
+                    // 見た目・表示する種類・ライト / ダーク・表の列を全て外し、ワークスペースの既定の表示に戻す
+                    Object.assign(prefs, clearOverrides(prefs));
+                    MindmapPreview.clearTablePrefs();
+                    theme = systemTheme();
+                    document.documentElement.dataset["theme"] = theme;
+                    changePrefs({ redrawMain: true });
+                    document.querySelector('.settings-drawer [data-focus="over"]')?.focus();
+                },
+                save: openConfirm,
+                close: closeSettings,
+            },
+        });
+        /** 表示の設定のパネルを作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
+        const renderSettings = () => {
+            const current = document.querySelector(".settings-drawer");
+            if (!display.open) {
+                current?.remove();
+                return;
+            }
+            const active = document.activeElement;
+            const focusKey = active instanceof HTMLElement && current?.contains(active) === true ? (active.dataset["focus"] ?? null) : null;
+            const scroll = current?.querySelector(".st-wrap")?.scrollTop ?? 0;
+            const next = MindmapPreview.settingsDrawer({ panel: settingsProps() });
+            if (current === null) {
+                document.body.append(next);
+                requestAnimationFrame(() => next.classList.add("open"));
+            }
+            else {
+                current.className = `${next.className} open`;
+                current.replaceChildren(...next.children);
+            }
+            const panel = document.querySelector(".settings-drawer");
+            const wrap = panel?.querySelector(".st-wrap");
+            if (wrap !== null && wrap !== undefined)
+                wrap.scrollTop = scroll;
+            if (focusKey !== null)
+                panel?.querySelector(`[data-focus="${focusKey}"]`)?.focus();
+        };
+        /** 表示の設定のパネルを開く。コメントの一覧は閉じ、右の詳細パネルは開いたままにする（履歴に積まない） */
+        const openSettings = () => {
+            if (comment.listOpen) {
+                flushDrafts();
+                comment.listOpen = false;
+                comment.opened = null;
+                comment.removed = [];
+                renderComments();
+            }
+            display.open = true;
+            renderTop();
+            renderSettings();
+        };
+        /** 表示の設定のパネルを閉じ、トップバーのボタンへフォーカスを戻す */
+        const closeSettings = () => {
+            display.open = false;
+            renderTop();
+            renderSettings();
+            document.querySelector("[data-act='settings']")?.focus();
+        };
+        // ===== ワークスペースの既定の保存 =====
+        /** 既定の保存の確かめを今の状態で描く（開き直して、最初のフォーカスを取り消すに置く） */
+        const renderConfirm = () => {
+            const old = document.querySelector("dialog.sconfirm");
+            old?.close();
+            old?.remove();
+            if (display.confirm === null)
+                return;
+            const dialog = MindmapPreview.settingsConfirm({
+                from: { look: resolved.defaultLook, kinds: resolved.defaultKinds },
+                to: { look: resolved.look, kinds: resolved.kinds },
+                busy: display.confirm.busy,
+                error: display.confirm.error,
+                on: { save: () => void saveDefault(), cancel: closeConfirm },
+            });
+            document.body.append(dialog);
+            dialog.showModal();
+        };
+        /** 確かめを開く */
+        const openConfirm = () => {
+            display.confirm = { busy: false, error: null };
+            renderConfirm();
+        };
+        /** 何も書かずに確かめを閉じ、「ワークスペースの既定にする」へフォーカスを戻す */
+        const closeConfirm = () => {
+            display.confirm = null;
+            renderConfirm();
+            document.querySelector('.settings-drawer [data-focus="save"]')?.focus();
+        };
+        /** 今当てている見た目と表示する種類を、ワークスペースの既定として保存する */
+        const saveDefault = async () => {
+            if (display.confirm === null)
+                return;
+            display.confirm = { busy: true, error: null };
+            renderConfirm();
+            const result = await MindmapPreview.putDisplay({
+                network_look: resolved.look,
+                visible_kinds: MindmapPreview.KIND_KEYS.filter((kind) => resolved.kinds.has(kind)),
+            });
+            if (!result.ok) {
+                // 断られた・届かない: 確かめの中に理由を出し、config.yaml と画面の表示は保存の前のまま
+                display.confirm = {
+                    busy: false,
+                    error: result.detail === null
+                        ? "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから保存してください。"
+                        : `保存できませんでした。${result.detail}`,
+                };
+                renderConfirm();
+                return;
+            }
+            // 書けた: 返った既定を記録に入れ、個人の上書きはそのまま残す
+            const saved = result.data?.display ?? { network_look: resolved.look, visible_kinds: MindmapPreview.KIND_KEYS.filter((kind) => resolved.kinds.has(kind)) };
+            data = { ...data, settings: { ...data.settings, display: saved } };
+            index = MindmapPreview.buildIndex(data);
+            display.savedDisplay = saved;
+            display.message = { kind: "ok", text: `ワークスペースの既定にしました（${MindmapPreview.formatJst(new Date().toISOString())}）。` };
+            display.confirm = null;
+            renderConfirm();
+            resolved = resolveDisplay(prefs, data.settings.display);
+            redrawKeepingState();
+            renderSettings();
+            document.querySelector('.settings-drawer [data-focus="same"]')?.focus();
+        };
         // ===== 変更履歴と差分の表示 =====
         /** 選んだ時点を変えて残し、どの画面もその時点の差分の表示で描き直す（記録は読み直さず、履歴に積まない）。null は差分の表示をやめる */
         const selectPoint = (sel) => {
@@ -1009,8 +1234,25 @@ var MindmapPreview;
             if (!result.ok)
                 return;
             await loadReview();
+            const previousDisplay = data.settings.display;
             data = result.data;
             index = MindmapPreview.buildIndex(data);
+            // 表示の既定が変わった: 上書きを持たない項目に新しい既定を当て、知らせる（自分が既定にした直後の知らせは出さない）
+            if (display.savedDisplay !== null && sameDisplay(display.savedDisplay, data.settings.display)) {
+                display.savedDisplay = null;
+            }
+            else if (!sameDisplay(previousDisplay, data.settings.display)) {
+                display.savedDisplay = null;
+                MindmapPreview.settingsNotice({ durationMs: MindmapPreview.NOTICE_MS });
+                display.message = { kind: "info", text: `ワークスペースの既定が変わりました（${MindmapPreview.formatJst(new Date().toISOString())}）。` };
+            }
+            resolved = resolveDisplay(prefs, data.settings.display);
+            // 開いていた画面の種類が表示しない種類になった: 概要へ移る
+            const visible = visibleRoute(route);
+            if (visible !== route) {
+                route = visible;
+                MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
+            }
             // 選んだ時点と「前回開いてから」の始まりは保ち、新しい記録で印を引き直す
             point = MindmapPreview.resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
             document.title = `${data.settings.summary} | mindstella`;
@@ -1021,6 +1263,7 @@ var MindmapPreview;
             }
             redrawKeepingState();
             renderComments();
+            renderSettings();
         };
         // ===== 操作と履歴 =====
         document.addEventListener("keydown", (event) => {
@@ -1044,10 +1287,21 @@ var MindmapPreview;
                 document.querySelector(":popover-open") === null) {
                 closeList();
             }
+            else if (event.key === "Escape" &&
+                route.id === null &&
+                display.open &&
+                document.querySelector("dialog[open]") === null &&
+                document.querySelector(":popover-open") === null) {
+                closeSettings();
+            }
         });
         /** ハッシュが変わったとき（戻る・進む・手で書き換えた）、その画面を描く */
         const onLocationChange = () => {
-            const next = MindmapPreview.parseHash({ hash: location.hash, index });
+            const parsed = MindmapPreview.parseHash({ hash: location.hash, index });
+            const next = visibleRoute(parsed);
+            // 表示しない種類のタブを指していた: ハッシュを概要に置き換える
+            if (next !== parsed)
+                MindmapPreview.navigate({ route: { ...next, filters: {} }, push: false });
             if (MindmapPreview.toHash(next) === MindmapPreview.toHash(route))
                 return;
             const screen = next.tab !== route.tab || next.view !== route.view || (next.tab === "decisions" && next.view === "map" && next.id !== route.id);

@@ -18,7 +18,6 @@ from errors import (
     OptionExistsError,
     OptionNotFoundError,
     SchemaMismatchError,
-    WorkspaceNotFoundError,
 )
 from graph import judge_goal, list_next_candidates, summarize_status, trace_impact
 from history import (
@@ -35,7 +34,7 @@ from history import (
     pending_view,
     stack_history,
 )
-from kinds import KINDS, SETTINGS_FILE, Kind
+from kinds import KINDS, Kind
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
 from query import SearchFilter, list_attrs, search_items, show_item
@@ -58,6 +57,7 @@ from store import (
     now_utc,
     read_body,
     remove_files,
+    require_workspace,
     save_batch,
     save_change,
     write_failed,
@@ -474,7 +474,7 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
         raise ArgumentError(
             "summary", f"前後の空白を除いて 1〜{SUMMARY_MAX_LENGTH} 文字で渡してください"
         )
-    _require_workspace(root)
+    require_workspace(root)
     committed, change_set = commit_pending(load_changes(root), text, now())
     # まとめる書き換えが無い: 何も書かない
     if change_set is None:
@@ -605,7 +605,7 @@ def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
 
 def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
     """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。"""
-    _require_workspace(root)
+    require_workspace(root)
     url, started = previews.start(root)
     return {"url": url, "workspace": str(root), "started": started}
 
@@ -618,7 +618,7 @@ def run_submissions(root: Path) -> dict[str, Any]:
 
 def run_take_submission(root: Path, submission_id: str, now: NowFn = now_utc) -> dict[str, Any]:
     """送信 1 件を取り込み済みにし、出力の形にする。"""
-    _require_workspace(root)
+    require_workspace(root)
     taken, already = take_submission(root, submission_id, now=now)
     return {"id": submission_id, "taken": taken, "already": already}
 
@@ -754,12 +754,6 @@ def _write_changes(root: Path, record: Changes) -> None:
         # 置き換えられなかった: 書いた一時ファイルを残さない
         remove_files([temp])
         raise write_failed(path, error) from error
-
-
-def _require_workspace(root: Path) -> None:
-    """`mindmap.yaml` が無いフォルダはワークスペースではないので、無ければ送る。"""
-    if not (root / SETTINGS_FILE).is_file():
-        raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
 
 
 def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:
