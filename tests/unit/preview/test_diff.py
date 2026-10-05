@@ -9,7 +9,7 @@ from playwright.sync_api import Page
 
 from .fixture_types import LoadLibrary, LoadPreviewScripts
 
-# 差分の時点を決める記録の日時（C-1 より後・C-2 より前の「前回開いてから」の始まりを含む）
+# 差分の時点を決める記録の日時（V-1 より後・V-2 より前の「前回開いてから」の始まりを含む）
 FIRST_SET_AT = "2026-10-01T09:00:00+00:00"
 SINCE = "2026-10-02T00:00:00+00:00"
 SECOND_SET_AT = "2026-10-03T09:00:00+00:00"
@@ -20,6 +20,16 @@ ENTRY_AT = "2026-10-03T09:00:00+00:00"
 # 大きな書き換えの行数と、打ち切りを確かめる呼び出しの上限（ミリ秒）
 LARGE_LINE_COUNT = 5000
 TIMEOUT_LIMIT_MS = 200
+
+# 1・3・5 行目に段落を持つ本文と、3 行目・5 行目の段落を消した後の本文
+THREE_PARAGRAPHS = "1 行目の段落\n\n3 行目の段落\n\n5 行目の段落\n"
+WITHOUT_MIDDLE_PARAGRAPH = "1 行目の段落\n\n5 行目の段落\n"
+WITHOUT_LAST_PARAGRAPH = "1 行目の段落\n\n3 行目の段落\n"
+
+# 見出し・区切り・3 行の表と、その 2 行目を消した後の表
+TABLE_HEADER_LINES = ["| 列 A | 列 B |", "| --- | --- |"]
+TABLE_THREE_ROWS = "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 3 | 4 |", "| 5 | 6 |", ""])
+TABLE_WITHOUT_SECOND_ROW = "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 5 | 6 |", ""])
 
 # 図の差分を確かめる前後の記法（足したもの・文字を変えたもの・消したものが 1 つずつ）
 FLOWCHART_BEFORE = "flowchart TD\n  A[開始]\n  B_1[処理]\n  C[終了]\n"
@@ -88,7 +98,7 @@ def _lines_of(prefix: str) -> str:
     ("sel", "expected"),
     [
         pytest.param(
-            "C-1",
+            "V-1",
             {"added": [], "changed": ["A-1"], "fromSeq": 0, "untilSeq": 1},
             id="old_set",
         ),
@@ -112,7 +122,7 @@ def test_resolve_diff_point(
         "last_seq": 2,
         "sets": [
             {
-                "id": "C-2",
+                "id": "V-2",
                 "at": SECOND_SET_AT,
                 "summary": "決める",
                 "until_seq": 2,
@@ -120,7 +130,7 @@ def test_resolve_diff_point(
                 "changed": ["D-3"],
             },
             {
-                "id": "C-1",
+                "id": "V-1",
                 "at": FIRST_SET_AT,
                 "summary": "最初",
                 "until_seq": 1,
@@ -168,7 +178,7 @@ def test_build_versions(preview_page: Page, load_preview_scripts: LoadPreviewScr
         ],
     }
     body = "1 行目\n新しい 2 行目\n3 行目\n"
-    point = {"sel": "C-1", "name": "最初", "sub": "10/01 18:00", "fromSeq": 0, "untilSeq": 1}
+    point = {"sel": "V-1", "name": "最初", "sub": "10/01 18:00", "fromSeq": 0, "untilSeq": 1}
     # 実行
     versions = preview_page.evaluate(
         """([item, body, point]) => MindmapPreview.buildVersions(
@@ -197,7 +207,7 @@ def test_build_versions_when_trimmed(
         "status": "決定済み",
         "history": [{"seq": 2, "at": ENTRY_AT, "before": {"status": "未決定"}}],
     }
-    point = {"sel": "C-1", "name": "最初", "sub": "10/01 18:00", "fromSeq": 0, "untilSeq": 1}
+    point = {"sel": "V-1", "name": "最初", "sub": "10/01 18:00", "fromSeq": 0, "untilSeq": 1}
     # 実行
     versions = preview_page.evaluate(
         """([item, point]) => MindmapPreview.buildVersions(
@@ -287,6 +297,64 @@ def test_diff_line_parts_when_timeout(
     # 検証
     assert result["parts"] is None
     assert result["elapsed"] < TIMEOUT_LIMIT_MS
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "expected"),
+    [
+        pytest.param(
+            THREE_PARAGRAPHS,
+            WITHOUT_MIDDLE_PARAGRAPH,
+            [{"lines": ["3 行目の段落", ""], "beforeLine": 3, "tableHeader": None}],
+            id="middle_paragraph",
+        ),
+        pytest.param(
+            THREE_PARAGRAPHS,
+            WITHOUT_LAST_PARAGRAPH,
+            [{"lines": ["", "5 行目の段落"], "beforeLine": None, "tableHeader": None}],
+            id="last_paragraph",
+        ),
+    ],
+)
+def test_place_removed_blocks(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    before: str,
+    after: str,
+    expected: list[dict[str, Any]],
+) -> None:
+    """消した段落を直後の今の行の前に置き、末尾は null にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    blocks = preview_page.evaluate(
+        """([before, after]) => MindmapPreview.placeRemovedBlocks(
+            MindmapPreview.diffLineParts(before, after)
+        )""",
+        [before, after],
+    )
+    # 検証
+    assert blocks == expected
+
+
+def test_place_removed_blocks_when_table_row(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """表の 1 行だけを消したとき、表の見出しを添える（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    blocks = preview_page.evaluate(
+        """([before, after]) => MindmapPreview.placeRemovedBlocks(
+            MindmapPreview.diffLineParts(before, after)
+        )""",
+        [TABLE_THREE_ROWS, TABLE_WITHOUT_SECOND_ROW],
+    )
+    # 検証
+    assert blocks == [{"lines": ["| 3 | 4 |"], "beforeLine": 4, "tableHeader": TABLE_HEADER_LINES}]
 
 
 @pytest.mark.parametrize(

@@ -285,7 +285,7 @@ def test_run_commit(make_workspace: MakeWorkspace) -> None:
     payload = commands.run_commit(root, "  足す ", now=_fixed_now)
     # 検証
     assert payload == {
-        "id": "C-1",
+        "id": "V-1",
         "at": FIXED_NOW,
         "summary": "足す",
         "added": ["D-1"],

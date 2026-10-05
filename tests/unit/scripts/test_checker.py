@@ -290,7 +290,7 @@ def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item:
         "last_seq": 1,
         "sets": [
             {
-                "id": "C-1",
+                "id": "V-1",
                 "at": "2026-10-02T08:00:00+00:00",
                 "summary": "決める",
                 "until_seq": 1,

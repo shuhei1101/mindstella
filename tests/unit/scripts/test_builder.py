@@ -131,7 +131,7 @@ def test_collect_preview_data_with_changes(
         "last_seq": 1,
         "sets": [
             {
-                "id": "C-1",
+                "id": "V-1",
                 "at": BUILT_AT,
                 "summary": "決める",
                 "until_seq": 1,

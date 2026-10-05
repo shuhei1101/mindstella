@@ -205,7 +205,7 @@ def test_commit_pending() -> None:
         "last_seq": 3,
         "sets": [
             {
-                "id": "C-1",
+                "id": "V-1",
                 "at": "2026-10-01T00:00:00+00:00",
                 "summary": "最初",
                 "until_seq": 1,
@@ -219,7 +219,7 @@ def test_commit_pending() -> None:
     committed, change_set = history.commit_pending(changes, "決める", NOW)
     # 検証
     assert change_set == {
-        "id": "C-2",
+        "id": "V-2",
         "at": NOW,
         "summary": "決める",
         "until_seq": 3,
@@ -227,7 +227,7 @@ def test_commit_pending() -> None:
         "changed": ["D-1"],
     }
     assert committed["sets"][0] == change_set
-    assert committed["sets"][1]["id"] == "C-1"
+    assert committed["sets"][1]["id"] == "V-1"
     assert committed["pending"] == {"added": [], "changed": []}
 
 
@@ -260,7 +260,7 @@ def test_pending_view(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
         "last_seq": 3,
         "sets": [
             {
-                "id": "C-1",
+                "id": "V-1",
                 "at": "2026-10-01T00:00:00+00:00",
                 "summary": "最初",
                 "until_seq": 1,
