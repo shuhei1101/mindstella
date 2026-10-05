@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from storybook_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -194,6 +195,26 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.inner_text(".comments-btn .count") == "3"
     assert page.get_attribute(".comments-btn", "aria-label") == "コメント（レビュー中 3 件）"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@pytest.mark.parametrize(
+    "story_id",
+    [
+        pytest.param("preview-topbar--filter-on", id="filter_on"),
+        pytest.param("preview-topbar--filter-open", id="filter_open"),
+        pytest.param("preview-topbar--settings-open", id="settings_open"),
+        pytest.param("preview-topbar--comments-narrow", id="comments_narrow"),
+        pytest.param("preview-topbar--diff-on-narrow", id="diff_on_narrow"),
+    ],
+)
+def test_no_overflow_when_narrow(open_story: OpenStory, story_id: str) -> None:
+    """幅 390px で、ボタンが並ぶ状態でも横に溢れない（正常系）。"""
+    # 準備
+    page = open_story(story_id)
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
 
 
 # 絞り込みのボタン
