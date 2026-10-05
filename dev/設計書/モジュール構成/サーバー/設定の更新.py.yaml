@@ -467,7 +467,7 @@ functions:
         summary: 合わない本文は書かない
         condition: '`parametrize`: `network_look` が `rainbow` / `network_look` が無い / `visible_kinds` が `[decisions, decisions]` / `visible_kinds` が `[graph]` / `visible_kinds` が文字列'
         mock: なし
-        expected: どれも `SettingsInvalidError`（前の 2 つはメッセージに `network_look` と `glow`、後の 3 つは `visible_kinds`）。`config.yaml` が呼ぶ前と同じ
+        expected: どれも `SettingsInvalidError`。メッセージは、`rainbow` では `network_look` と選べる値（`glow` を含む）、`network_look` が無いときは `network_look`、後の 3 つは `visible_kinds` を含む。`config.yaml` が呼ぶ前と同じ
         exception: 本文の値が合わない
       - name: test_update_display_when_settings_broken
         case: 異常
