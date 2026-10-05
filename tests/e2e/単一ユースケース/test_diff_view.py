@@ -493,10 +493,10 @@ def test_normal_when_history_limit_zero(
     valid_settings: dict[str, Any],
     page: Page,
 ) -> None:
-    """保持する回数が 0 だと、書き換えた D-3 は変更履歴を持たず、新規の D-6 にだけ印が付く（正常系）。"""
+    """保持する回数が 0 だと、書き換えた D-3 は変更履歴を持たず、足した D-6 にだけ新規の印が付く（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-3", status="未決定", body="D-3.md"),
+        *_decisions(make_item, "D-3"),
         settings={**valid_settings, "history_limit": 0},
         bodies={"D-3.md": BODY_V0},
     )
@@ -509,8 +509,15 @@ def test_normal_when_history_limit_zero(
     open_preview(url, "#tab=decisions&view=table")
     # 実行
     pick_history_point(page, "前回開いてから")
-    # 検証（D-6 に新規の印が付き、D-3 には変更の印が付かない）
-    assert _row_marks(page) == {"D-3": None, "D-6": MARK_NEW}
+    # 検証（D-6 に新規の印が付き、D-3 を含む D-1〜D-5 には印が付かない）
+    assert _row_marks(page) == {
+        "D-1": None,
+        "D-2": None,
+        "D-3": None,
+        "D-4": None,
+        "D-5": None,
+        "D-6": MARK_NEW,
+    }
     # 実行（D-3 の詳細パネルを開く）
     _open_decision(page, "D-3")
     # 検証（差分の印が無く、今の本文だけが出る）
