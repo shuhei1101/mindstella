@@ -36,6 +36,12 @@ TREE_EDGES_TO_ROOT = 3
 # 依存の線の本数（D-1 → D-3 と D-3 → D-5）
 DEPENDENCY_EDGES = 2
 
+# 絞り込みの条件に合う検討事項が無いときに出す文
+NO_SHOWN_ITEM_TEXT = "表示する検討事項はありません。"
+
+# 2 つ目のフェーズ（D-3・D-5 が属する）
+SECOND_PHASE = "要件"
+
 # 開いた直後にドロワーで選ばれている状態（開いたときの既定の状態のうち、記録にある値）
 DEFAULT_CHECKED_STATUSES = ["要見直し", "未決定"]
 
@@ -297,9 +303,15 @@ def test_normal_when_status_condition_cleared(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """ドロワーの状態の「解除」で全ての状態の項目を出す（正常系）。"""
-    # 準備
-    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    """ドロワーの状態の「解除」で全ての状態の項目を出し、状態とフェーズの条件を重ねて 0 件にする（正常系）。"""
+    # 準備（D-1 だけが 1 つ目のフェーズ、D-3・D-5 は 2 つ目のフェーズに属する）
+    place: dict[str, Any] = {"target": "mindmap", "category": "データ構造"}
+    url = serve_preview(
+        make_item("D-1", status="決定済み", phase="目的", answer="種類ごとに分ける", **place),
+        make_item("D-3", status="要見直し", phase="要件", depends_on=["D-1"], **place),
+        make_item("D-5", status="未決定", phase="要件", depends_on=["D-3"], **place),
+        settings=_settings(valid_settings),
+    )
     # 実行・検証（開く: 決定済みを隠した木と、要見直し・未決定が選ばれたドロワー）
     page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
     page.wait_for_selector("#decision-map button.n-item")
@@ -312,6 +324,13 @@ def test_normal_when_status_condition_cleared(
     assert _map_item_ids(page) == ["D-1", "D-3", "D-5"]
     assert checked_values(page, "status") == []
     assert badge_text(page) is None
+    # 実行・検証（状態で決定済み、フェーズで 2 つ目のフェーズを選ぶ: 検討事項の無いマップと空の旨の文）
+    toggle_value(page, "status", "決定済み")
+    toggle_value(page, "phase", SECOND_PHASE)
+    page.wait_for_function("!document.querySelector('#decision-map button.n-item')")
+    assert _map_item_ids(page) == []
+    assert page.inner_text("p.map-empty") == NO_SHOWN_ITEM_TEXT
+    assert badge_text(page) == "2"
 
 
 def test_normal_when_topic_tag(
