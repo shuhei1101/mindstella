@@ -470,6 +470,81 @@ def test_save_change_when_changes_replace_fails(
     assert list(root.rglob("*.tmp")) == []
 
 
+def test_save_batch(make_workspace, make_item) -> None:
+    """複数の種類と本文とまとまりを書き、一時ファイルを残さない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    workspace = store.load_workspace(root)
+    decision = make_item("D-1", body="D-1.md")
+    task = make_item("T-1")
+    changes = {"last_seq": 2, "sets": [], "pending": {"added": ["D-1", "T-1"], "changed": []}}
+    change = store.BatchChange(
+        items={"decision": [decision], "task": [task]},
+        bodies=[store.BodyWrite(name="D-1.md", text="## 経緯\n")],
+        changes=changes,
+    )
+    # 実行
+    store.save_batch(workspace, change)
+    # 検証
+    assert yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8")) == {
+        "items": [decision]
+    }
+    assert yaml.safe_load((root / "tasks.yaml").read_text(encoding="utf-8")) == {"items": [task]}
+    assert (root / "docs" / "D-1.md").read_text(encoding="utf-8") == "## 経緯\n"
+    assert yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8")) == changes
+    assert list(root.rglob("*.tmp")) == []
+
+
+def test_save_batch_when_schema_mismatch(make_workspace, make_item, snapshot_tree) -> None:
+    """1 つの種類でもスキーマに合わなければ何も書かない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    change = store.BatchChange(
+        items={
+            "task": [make_item("T-1")],
+            "decision": [make_item("D-1", status="完了")],
+        }
+    )
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError):
+        store.save_batch(workspace, change)
+    assert snapshot_tree(root) == before
+
+
+def test_save_batch_when_replace_fails(
+    make_workspace,
+    make_item,
+    snapshot_tree,
+    failing_replace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """途中の置き換えに失敗したら、置き換えたファイルを戻す（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", body="D-1.md"),
+        make_item("T-1"),
+        bodies={"D-1.md": "前の本文\n"},
+    )
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    change = store.BatchChange(
+        items={
+            "decision": [make_item("D-1", body="D-1.md", answer="a")],
+            "task": [make_item("T-1", result="r")],
+        },
+        bodies=[store.BodyWrite(name="D-1.md", text="新しい本文\n")],
+    )
+    # store モジュールの参照を、tasks.yaml への置き換えだけ失敗するものに差し替える
+    monkeypatch.setattr(store.os, "replace", failing_replace("tasks.yaml"))
+    # 実行・検証
+    with pytest.raises(WriteFailedError, match=r"tasks\.yaml"):
+        store.save_batch(workspace, change)
+    assert snapshot_tree(root) == before
+    assert list(root.rglob("*.tmp")) == []
+
+
 def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
     """まだ無いフォルダにワークスペースを作る（正常系）。"""
     # 準備
