@@ -108,6 +108,7 @@ scenarios:
       - 答えを直した回の変更履歴は残っていない
       - 同じ中身で直した後も、変更履歴はその前と同じ
       - 変更履歴に本文の全文は入っていない
+    test: test_normal_when_over_history_limit
   - name: 正常シナリオ（保持する回数が 0）
     setup:
       - name: Mock
@@ -128,6 +129,7 @@ scenarios:
     expected:
       - D-1 の答えが直した値になっている
       - D-1 が変更履歴を持たない
+    test: test_normal_when_history_limit_zero
   - name: 正常シナリオ（書き換えをまとめる）
     setup:
       - name: Mock
@@ -156,6 +158,7 @@ scenarios:
       - D-1 の変更履歴と T-1 が、そのまとまりに属する
       - 2 回目の `pending` が空を返す
       - 書き換えは `commit` を呼ぶ前からワークスペースに書かれている
+    test: test_normal_when_changes_committed
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

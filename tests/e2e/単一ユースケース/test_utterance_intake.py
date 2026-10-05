@@ -21,6 +21,9 @@ PLACE = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
 # 会話の日付
 TODAY = "2026-10-02"
 
+# 取り込んだ内容の一言の説明
+INTAKE_SUMMARY = "発言を取り込む"
+
 # 納品物の資料の本文（概要・背景・最終的な構成の見出しを先に置く）
 DELIVERABLE_BODY = "# 要件定義書\n\n## 概要\n\n支出を記録する。\n\n## 背景\n\n## 構成\n\n- 画面\n- データ\n"
 
@@ -85,6 +88,8 @@ def test_normal(
     replay(
         "add", **ws, kind="log", item={"title": "発言", "date": TODAY, "related": ["D-1"], **PLACE}
     )
+    replay("commit", **ws, summary=INTAKE_SUMMARY)
+    pending = replay("pending", **ws)
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = read_yaml(root, "tasks.yaml")["items"]
@@ -121,6 +126,12 @@ def test_normal(
         "データ構造",
         "要件",
     ]
+    # 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。pending が空を返す
+    changes = read_yaml(root, "changes.yaml")
+    assert len(changes["sets"]) == 1
+    assert changes["sets"][0]["summary"] == INTAKE_SUMMARY
+    assert changes["sets"][0]["added"] == ["D-1", "D-2", "D-3", "T-1", "L-1"]
+    assert pending == {"added": [], "changed": []}
 
 
 def test_normal_when_diagram_kept_as_doc(
