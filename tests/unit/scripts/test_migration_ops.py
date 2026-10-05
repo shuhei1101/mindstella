@@ -125,13 +125,47 @@ def test_apply_step_when_set_default_ask(
 ) -> None:
     """ask は何も書かない（正常系）。"""
     # 準備
-    root = make_legacy_workspace(without_summary=True)
+    root = make_legacy_workspace(without_summary=True, settings_file="mindmap.yaml")
     before = snapshot_tree(root)
     # 実行
     changed = migration_ops.apply_step(root, make_step("set_default", ASK_SUMMARY_ARGS))
     # 検証
     assert changed == []
     assert snapshot_tree(root) == before
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        pytest.param(
+            make_step("set_default", ASK_SUMMARY_ARGS),
+            id="set_default",
+        ),
+        pytest.param(
+            make_step(
+                "rename_key",
+                {"file": "mindmap.yaml", "each_item": False, "from": "field", "to": "playbooks"},
+            ),
+            id="rename_key",
+        ),
+        pytest.param(
+            make_step(
+                "map_values",
+                {"file": "mindmap.yaml", "each_item": False, "key": "field", "map": {}},
+            ),
+            id="map_values",
+        ),
+    ],
+)
+def test_apply_step_when_file_missing(make_workspace: MakeWorkspace, step: Any) -> None:
+    """対象のファイルが無ければ飛ばし、ファイルを作らない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行
+    changed = migration_ops.apply_step(root, step)
+    # 検証
+    assert changed == []
+    assert not (root / "mindmap.yaml").exists()
 
 
 def test_apply_step_when_set_default_value(
@@ -281,7 +315,7 @@ def test_list_needed_values(
 ) -> None:
     """キーが無ければ返し、あれば返さない（正常系）。"""
     # 準備
-    root = make_legacy_workspace(without_summary=without_summary)
+    root = make_legacy_workspace(without_summary=without_summary, settings_file="mindmap.yaml")
     # 実行
     result = migration_ops.list_needed_values(root, make_step("set_default", ASK_SUMMARY_ARGS))
     # 検証

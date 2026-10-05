@@ -220,7 +220,7 @@ def call_tool(mcp_server: McpServer) -> CallTool:
 
 @pytest.fixture
 def valid_settings() -> dict[str, Any]:
-    """設定のスキーマに合う設定（mindmap.yaml の中身）を返す。"""
+    """設定のスキーマに合う設定（config.yaml の中身）を返す。"""
     return {
         "summary": "要件出しのスキル mindmap を設計する",
         "playbooks": ["システム開発"],
@@ -352,12 +352,16 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         raw_files: dict[str, str] | None = None,
         bodies: dict[str, str] | None = None,
         name: str = "workspace",
+        settings_file: str = "config.yaml",
     ) -> Path:
-        """項目のある種類の YAML だけを置いたワークスペースを作り、そのフォルダを返す。"""
+        """項目のある種類の YAML だけを置いたワークスペースを作り、そのフォルダを返す。
+
+        設定のファイル名は settings_file で決める（v0.6.0 より前の形式は mindmap.yaml）。
+        """
         root = tmp_path / name
         (root / "docs").mkdir(parents=True)
         (root / "release").mkdir()
-        write_yaml(root / "mindmap.yaml", valid_settings if settings is None else settings)
+        write_yaml(root / settings_file, valid_settings if settings is None else settings)
         # 項目のある種類だけ、渡した並びのまま 1 つの YAML にまとめる
         for prefix, file_name in KIND_FILES.items():
             kind_items = [item for item in items if item["id"][0] == prefix]
@@ -398,13 +402,19 @@ def make_legacy_workspace(
         *items: dict[str, Any],
         legacy_docs: dict[str, bool] | None = None,
         without_summary: bool = False,
+        settings_file: str = "config.yaml",
     ) -> Path:
-        """items は今の形式の項目、legacy_docs は資料の ID → done。設定の題名は without_summary で外す。"""
+        """items は今の形式の項目、legacy_docs は資料の ID → done。設定の題名は without_summary で外す。
+
+        設定のファイル名は settings_file で決める（v0.6.0 より前の形式は mindmap.yaml）。
+        """
         legacy_items = [
             make_legacy_item(doc_id, done) for doc_id, done in (legacy_docs or {}).items()
         ]
         root = make_workspace(
-            *items, bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items}
+            *items,
+            bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items},
+            settings_file=settings_file,
         )
         # 前の形式の資料を docs.yaml に直接書く（今の形式の資料の後ろに並べる）
         if legacy_items:
@@ -417,9 +427,9 @@ def make_legacy_workspace(
             write_yaml(docs_path, {"items": [*current, *legacy_items]})
         # 題名を持たない設定にする
         if without_summary:
-            settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+            settings = yaml.safe_load((root / settings_file).read_text(encoding="utf-8"))
             del settings["summary"]
-            write_yaml(root / "mindmap.yaml", settings)
+            write_yaml(root / settings_file, settings)
         return root
 
     return _make

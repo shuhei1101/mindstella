@@ -282,6 +282,65 @@ def test_comment_api(
     assert (call["method"], call["body"]) == (expected_method, expected_body)
 
 
+# 保存する表示の既定
+DISPLAY = {"network_look": "glow", "visible_kinds": ["decisions"]}
+
+
+@pytest.mark.parametrize(
+    ("status", "response_text", "expected"),
+    [
+        pytest.param(
+            200,
+            json.dumps({"display": DISPLAY}),
+            {"ok": True, "data": {"display": DISPLAY}},
+            id="saved",
+        ),
+        pytest.param(
+            500,
+            json.dumps({"detail": "書き込めませんでした"}, ensure_ascii=False),
+            {"ok": False, "status": 500, "detail": "書き込めませんでした", "stale": []},
+            id="write_failed",
+        ),
+    ],
+)
+def test_put_display(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    status: int,
+    response_text: str,
+    expected: dict[str, Any],
+) -> None:
+    """PUT api/config/display に JSON で送る（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """async ([display, status, responseText]) => {
+            const calls = [];
+            const fetchFn = async (url, init) => {
+                calls.push({
+                    url: String(url),
+                    method: init?.method,
+                    body: init?.body ?? null,
+                    contentType: new Headers(init?.headers).get("Content-Type"),
+                });
+                return new Response(responseText, {status});
+            };
+            const result = await MindmapPreview.putDisplay(display, fetchFn);
+            return {result, calls};
+        }""",
+        [DISPLAY, status, response_text],
+    )
+    # 検証
+    assert result["result"] == expected
+    assert len(result["calls"]) == 1
+    call = result["calls"][0]
+    assert call["url"].endswith("api/config/display")
+    assert call["method"] == "PUT"
+    assert json.loads(call["body"]) == DISPLAY
+    assert call["contentType"] == "application/json"
+
+
 def test_subscribe_events(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """changed と接続の変化だけを知らせる（正常系）。"""
     # 準備

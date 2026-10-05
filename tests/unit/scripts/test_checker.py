@@ -133,7 +133,7 @@ def test_check_phases(
     problems = checker._check_phases(workspace)
     # 検証
     assert _keys(problems) == {
-        ("unknown_phase", "mindmap.yaml", None, "goal.phase"),
+        ("unknown_phase", "config.yaml", None, "goal.phase"),
         ("unknown_phase", "decisions.yaml", "D-1", "items[0].phase"),
     }
     assert {problem.detail for problem in problems} == {"結論", "発散"}

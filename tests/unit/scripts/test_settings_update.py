@@ -308,8 +308,8 @@ def test_save_settings(
     # 実行
     files = settings_update.save_settings(workspace, settings, [change])
     # 検証
-    assert files == ["mindmap.yaml", "decisions.yaml"]
-    assert yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8")) == settings
+    assert files == ["config.yaml", "decisions.yaml"]
+    assert yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8")) == settings
     assert yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8")) == {
         "items": change.items
     }
@@ -333,7 +333,7 @@ def test_save_settings_when_schema_mismatch(
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as raised:
         settings_update.save_settings(workspace, settings, [])
-    assert any(line.startswith("mindmap.yaml: playbooks") for line in raised.value.lines)
+    assert any(line.startswith("config.yaml: playbooks") for line in raised.value.lines)
     assert snapshot_tree(root) == before
 
 
@@ -353,10 +353,10 @@ def test_save_settings_when_replace_fails(
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
     change = store.Change(kind="decision", items=[make_item("D-1", phase="目的")])
-    # settings_update モジュールの参照を、mindmap.yaml への置き換えだけ失敗するものに差し替える
-    monkeypatch.setattr(settings_update.os, "replace", failing_replace("mindmap.yaml"))
+    # settings_update モジュールの参照を、config.yaml への置き換えだけ失敗するものに差し替える
+    monkeypatch.setattr(settings_update.os, "replace", failing_replace("config.yaml"))
     # 実行・検証
-    with pytest.raises(WriteFailedError, match=r"mindmap\.yaml"):
+    with pytest.raises(WriteFailedError, match=r"config\.yaml"):
         settings_update.save_settings(workspace, make_settings(["目的", "発散"]), [change])
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []
@@ -381,9 +381,9 @@ def test_update_settings(
     assert result == {
         "changed": ["phases", "goal"],
         "remapped": [{"id": "D-1", "key": "phase", "from": "問い", "to": "目的"}],
-        "files": ["mindmap.yaml", "decisions.yaml"],
+        "files": ["config.yaml", "decisions.yaml"],
     }
-    saved = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    saved = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
     assert saved["goal"]["phase"] == "目的"
 
 
@@ -405,6 +405,33 @@ def test_update_settings_when_goal_phase_unknown(
         settings_update.update_settings(root, settings, None)
     assert raised.value.lines == ["goal: 結論"]
     assert snapshot_tree(root) == before
+
+
+# 表示する種類の既定のうち、用語集を除いた 6 種類
+KINDS_WITHOUT_TERMS = ["decisions", "tasks", "research", "docs", "notes", "logs"]
+
+# 表示する種類の既定のうち、会話ログを除いた 6 種類
+KINDS_WITHOUT_LOGS = ["decisions", "tasks", "research", "docs", "terms", "notes"]
+
+
+def test_update_settings_when_display(make_workspace: MakeWorkspace) -> None:
+    """表示の既定を丸ごと置き換え、ほかのキーと項目を変えない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    before = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    display = {"network_look": "starlight", "visible_kinds": KINDS_WITHOUT_LOGS}
+    # 実行
+    first = settings_update.update_settings(root, {"display": display}, None)
+    after_first = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    second = settings_update.update_settings(root, {"display": {"network_look": "glow"}}, None)
+    after_second = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    # 検証
+    assert first["changed"] == ["display"]
+    assert first["files"] == ["config.yaml"]
+    assert after_first["display"] == display
+    assert {key: value for key, value in after_first.items() if key != "display"} == before
+    assert second["changed"] == ["display"]
+    assert after_second["display"] == {"network_look": "glow"}
 
 
 def test_remap_names(
@@ -473,3 +500,76 @@ def test_remap_names_when_unmapped(
     with pytest.raises(errors.UnmappedTargetError) as raised:
         settings_update.remap_names(workspace.items, settings, {}, {})
     assert raised.value.lines == ["D-2: category: 設定"]
+
+
+def test_update_display(make_workspace: MakeWorkspace) -> None:
+    """display だけを置き換え、ほかのキーと並びを保つ（正常系）。"""
+    # 準備
+    root = make_workspace()
+    before = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
+    # 実行
+    result = settings_update.update_display(root, body)
+    # 検証
+    saved = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    assert result == {"display": body}
+    assert list(saved) == [*before, "display"]
+    assert {key: value for key, value in saved.items() if key != "display"} == before
+    assert saved["display"] == body
+    assert not (root / "changes.yaml").exists()
+
+
+@pytest.mark.parametrize(
+    ("body", "words"),
+    [
+        pytest.param(
+            {"network_look": "rainbow", "visible_kinds": KINDS_WITHOUT_TERMS},
+            ["network_look", "glow"],
+            id="unknown_look",
+        ),
+        pytest.param({"visible_kinds": KINDS_WITHOUT_TERMS}, ["network_look"], id="no_look"),
+        pytest.param(
+            {"network_look": "glow", "visible_kinds": ["decisions", "decisions"]},
+            ["visible_kinds"],
+            id="duplicate_kinds",
+        ),
+        pytest.param(
+            {"network_look": "glow", "visible_kinds": ["graph"]},
+            ["visible_kinds"],
+            id="unknown_kind",
+        ),
+        pytest.param(
+            {"network_look": "glow", "visible_kinds": "decisions"},
+            ["visible_kinds"],
+            id="kinds_string",
+        ),
+    ],
+)
+def test_update_display_when_body_invalid(
+    make_workspace: MakeWorkspace, body: dict[str, Any], words: list[str]
+) -> None:
+    """合わない本文は書かない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = (root / "config.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(errors.SettingsInvalidError) as raised:
+        settings_update.update_display(root, body)
+    assert all(word in str(raised.value) for word in words)
+    assert (root / "config.yaml").read_bytes() == before
+
+
+def test_update_display_when_settings_broken(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
+) -> None:
+    """崩れた config.yaml には書き足さない（異常系）。"""
+    # 準備
+    broken = {key: value for key, value in valid_settings.items() if key != "phases"}
+    root = make_workspace(settings=broken)
+    before = (root / "config.yaml").read_bytes()
+    body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as raised:
+        settings_update.update_display(root, body)
+    assert any(line.startswith("config.yaml: ") and "phases" in line for line in raised.value.lines)
+    assert (root / "config.yaml").read_bytes() == before

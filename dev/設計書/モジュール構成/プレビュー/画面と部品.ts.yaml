@@ -973,3 +973,7 @@ test_files:
   - tests/unit/preview/test_selection_comment.py
   - tests/unit/preview/test_comments_panel.py
   - tests/unit/preview/test_detail.py
+  - tests/unit/preview/test_overview.py
+  - tests/unit/preview/test_settings_panel.py
+  - tests/unit/preview/test_settings_confirm.py
+  - tests/unit/preview/test_settings.py

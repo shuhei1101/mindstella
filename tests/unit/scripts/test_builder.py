@@ -92,6 +92,46 @@ def test_read_records_when_schema_mismatch(
     assert exc_info.value.lines[0].startswith("decisions.yaml: items[0].status:")
 
 
+def _settings_with_look(base: dict[str, Any], look: str | None) -> dict[str, Any] | None:
+    """見た目の既定を look にした設定を返す。look が None なら None を返す。"""
+    if look is None:
+        return None
+    return {**base, "display": {"network_look": look}}
+
+
+def _read_records_or_lines(root: Path, last_settings: dict[str, Any] | None) -> dict[str, Any]:
+    """記録を読んで返す。SchemaMismatchError のときは lines だけを持つ辞書で返す。"""
+    try:
+        return builder.read_records(root, last_settings=last_settings, now=lambda: BUILT_AT)
+    except SchemaMismatchError as error:
+        return {"error_lines": error.lines}
+
+
+@pytest.mark.parametrize(
+    ("last_look", "expected_look", "problem_key"),
+    [
+        pytest.param("starlight", "starlight", "settings_problem", id="with_last_settings"),
+        pytest.param(None, None, "error_lines", id="without_last_settings"),
+    ],
+)
+def test_read_records_when_settings_invalid(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    last_look: str | None,
+    expected_look: str | None,
+    problem_key: str,
+) -> None:
+    """config.yaml だけが合わなければ最後に通った設定で返す（正常系）。"""
+    # 準備
+    root = make_workspace(settings=_settings_with_look(valid_settings, "rainbow"))
+    last_settings = _settings_with_look(valid_settings, last_look)
+    # 実行
+    outcome = _read_records_or_lines(root, last_settings)
+    # 検証
+    assert outcome.get("settings", {}).get("display", {}).get("network_look") == expected_look
+    assert outcome[problem_key][0].startswith("config.yaml: display.network_look: ")
+
+
 def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """種類ごとのキーと、指された本文だけを集める（正常系）。"""
     # 準備
@@ -117,8 +157,10 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "changes",
         "derived",
         "built_at",
+        "settings_problem",
     }
     assert data["bodies"] == {"A-1.md": "資料の本文\n"}
+    assert data["settings_problem"] is None
 
 
 def test_collect_preview_data_with_changes(

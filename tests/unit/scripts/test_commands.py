@@ -94,7 +94,7 @@ class _FakeRegistry:
     def start(self, root: Path) -> tuple[str, bool]:
         """渡されたワークスペースを控えて、決めた URL と今立てたことを返す。"""
         self.started.append(root)
-        return "http://127.0.0.1:1/", True
+        return "http://127.0.0.1:1/mindstella.html", True
 
 
 def test_validate_input_keys() -> None:
@@ -751,7 +751,9 @@ def test_run_migrate(
 ) -> None:
     """手順を並べて出力の形にする（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file="mindmap.yaml"
+    )
     patch_plugin_version("v0.3.0")
     # 実行
     payload = commands.run_migrate(
@@ -781,7 +783,7 @@ def test_run_migrate_when_values(
     # 準備
     root = make_legacy_workspace(without_summary=True)
     patch_plugin_version("v0.3.0")
-    values = [{"file": "mindmap.yaml", "key": "summary", "value": "題名"}]
+    values = [{"file": "config.yaml", "key": "summary", "value": "題名"}]
     # 実行
     payload = commands.run_migrate(
         root, plan=False, record=False, values=values, from_version=None, to_version=None
@@ -789,7 +791,7 @@ def test_run_migrate_when_values(
     # 検証
     assert payload["steps"] == []
     assert payload["needs_values"] == []
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    settings = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == "題名"
 
 
@@ -801,7 +803,7 @@ def test_run_migrate_when_values(
         pytest.param(
             {"from_version": "v0.3.0", "to_version": "v0.2.0"}, "to_version", id="reversed"
         ),
-        pytest.param({"values": [{"file": "mindmap.yaml"}]}, "values", id="values_form"),
+        pytest.param({"values": [{"file": "config.yaml"}]}, "values", id="values_form"),
     ],
 )
 def test_run_migrate_when_argument_invalid(
@@ -895,17 +897,33 @@ def test_run_preview_url(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     # 実行
     payload = commands.run_preview_url(root, previews=previews)
     # 検証
-    assert payload == {"url": "http://127.0.0.1:1/", "workspace": str(root), "started": True}
+    assert payload == {
+        "url": "http://127.0.0.1:1/mindstella.html",
+        "workspace": str(root),
+        "started": True,
+    }
     assert previews.started == [root]
 
 
-def test_run_preview_url_when_not_workspace(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("files", "expects_hint"),
+    [
+        pytest.param({}, False, id="empty_folder"),
+        pytest.param({"mindmap.yaml": "field: システム開発\n"}, True, id="legacy_settings_only"),
+    ],
+)
+def test_run_preview_url_when_not_workspace(
+    tmp_path: Path, files: dict[str, str], expects_hint: bool
+) -> None:
     """ワークスペースでなければ配信を立てない（異常系）。"""
     # 準備
+    for file_name, text in files.items():
+        (tmp_path / file_name).write_text(text, encoding="utf-8")
     previews = _FakeRegistry()
     # 実行・検証
-    with pytest.raises(WorkspaceNotFoundError):
+    with pytest.raises(WorkspaceNotFoundError) as exc_info:
         commands.run_preview_url(tmp_path, previews=previews)
+    assert ("/mindstella:upgrade" in "".join(exc_info.value.lines)) is expects_hint
     assert previews.started == []
 
 
