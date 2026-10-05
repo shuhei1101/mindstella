@@ -11,7 +11,8 @@ scenarios:
         notes: 資料の状態の値はインターフェース定義設計で `docs.schema.json` と決め、決まった値に合わせる
       - name: 配信
         description: 記録を配っているサーバー
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -28,6 +29,7 @@ scenarios:
         P-->>U: 絞り込んだカード
         U->>P: A-2 のカードを押す
         P-->>U: A-2 の詳細パネル（本文）
+      ```
     expected:
       - 開いた直後のカードの並びが A-2、A-1 の順で、A-2 に納品物の印がある
       - カードに資料の状態が出る（A-2 は完成、A-1 は下書き）

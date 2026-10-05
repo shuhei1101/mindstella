@@ -11,7 +11,8 @@ scenarios:
       - name: 再生する書き込み
         description: 決め事を持つ検討事項 D-1（決定済み。案 A・B を持ち、A を採用）、D-1 を `parent` に持つ派生の検討事項 D-2（未決定。案 A・B を持つ）、問いの形にならない D-3（未整理）、D-2 を進めるタスク T-1、会話ログ L-1
         notes: どの項目も `target`・`category`・`phase` を持つ。D-1・D-2・T-1 は既にある話題のタグ `保存`、D-3 は `保存` と新しい話題のタグ `通知` を持つ
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
@@ -27,6 +28,7 @@ scenarios:
         CC->>SV: add（会話ログ）
         SV->>WS: 書く
         CC-->>U: 記録した項目と、積んだ問いを短く示す
+      ```
     expected:
       - D-1 が決定済みで `answer` を持つ
       - 'D-1 が案を持ち、A だけが `adopted: true` である'

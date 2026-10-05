@@ -39,7 +39,8 @@ scenarios:
         description: 'タスク T-1（種類: 作業・状態: 未着手・タグ: 保存）、T-2（種類: 調査・状態: 進行中・タグ: 保存）、T-3（種類: 作業・状態: 完了・タグ: 通知）'
       - name: 配信
         description: 記録を配っているサーバー
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -49,6 +50,7 @@ scenarios:
         P-->>U: 「保存」を持つタスクだけのボード
         U->>P: ドロワーの種類で「調査」を選ぶ
         P-->>U: 両方の条件に合うタスクだけのボード
+      ```
     expected:
       - 「保存」を選ぶと、ボードに T-1・T-2 のカードがあり、T-3 が無い
       - 「調査」を足すと、ボードに T-2 のカードだけがある

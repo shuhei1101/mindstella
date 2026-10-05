@@ -14,7 +14,8 @@ scenarios:
       - name: タスク T-1
         description: 'どの文字の欄にも `スキーマ` を含まず、D-1 を進め、属性 `期限: 10 月` を持つタスク'
         notes: '`for: [D-1]`・タグ `データ`'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
@@ -31,6 +32,7 @@ scenarios:
         SV-->>CC: タグと付いている件数・種類
         CC->>SV: タグ「データ」を持つ項目を探す
         SV-->>CC: 合う項目の一覧
+      ```
     expected:
       - 探した結果に D-1 があり、D-2・T-1 が無い
       - D-1 の中身に、タイトル・状態・タグ・属性がある
