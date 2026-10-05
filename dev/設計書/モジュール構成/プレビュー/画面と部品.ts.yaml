@@ -515,7 +515,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: コメントを選んで送る
     kind: 画面
-    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。描き直しても操作していた部品にフォーカスを戻す
+    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
     props:
       - name: items
         type: ReviewState['items']
@@ -620,7 +620,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値へのフォーカスを保つ。開いている間、ドロワーが覆った本文の部品に `inert` を付け、閉じたら外す
+    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値へのフォーカスを保つ。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
     props:
       - name: groups
         type: FilterGroup[]

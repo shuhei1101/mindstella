@@ -1008,6 +1008,33 @@ functions:
         condition: '`parametrize`: `{kind: body, start: 3, end: 3}` / `{kind: body, start: 2, end: 4}` / `{kind: value, key: options[C].cons}` / `{kind: value, key: unknown_key}`'
         mock: なし
         expected: '`本文 3 行目` / `本文 2〜4 行目` / `案 C のデメリット` / `unknown_key`'
+  - name: inertBehind
+    title: パネルの下を止める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    usecase: 共通
+    scope: public
+    summary: 左から重ねるパネル（絞り込みのドロワー・コメントの一覧）が覆った本文の部品に `inert` を付け、外す関数を返す
+    side_effects: '`main` の中の要素の `inert` 属性を書き換える'
+    args:
+      - name: panel
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 開いたパネル
+    returns:
+      type: () => void
+      description: 付けた分だけ `inert` を外す関数（パネルを閉じるときに呼ぶ）
+    process: |-
+      1. `main` の直下からたどり、パネルの矩形に全体が収まる要素に `inert` を付ける（一部だけ重なる要素はその子をたどる）。パネル自身・トップバー・既に `inert` の要素には付けない
+      2. 付けた要素を控え、それだけから `inert` を外す関数を返す
+    unit_tests:
+      - name: test_inert_behind
+        case: 正常
+        summary: パネルに覆われた部品だけを止め、外すと付けた分だけ戻す
+        condition: 左端 0〜420px のパネル。`main` に左端のボタン A（x=10）・右側のボタン B（x=600）・始めから `inert` の C（x=20）、トップバーのボタン D（x=10）
+        mock: なし
+        expected: A だけに `inert` が付き、B・D は付かない。返った関数を呼ぶと A から外れ、C は `inert` のまま
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
