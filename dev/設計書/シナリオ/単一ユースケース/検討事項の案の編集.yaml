@@ -1,0 +1,122 @@
+title: "検討事項の案の編集"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A だけを持つ未決定の検討事項 D-1 を足したワークスペース（保持する回数は既定の 5）
+      - name: 案の書き換え
+        description: 案 B を足し、案 A の `pros` を直し、案 C を足し、案 C を消す
+        notes: 4 回に分けて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 に案 B を足す
+        SV->>SV: 同じ記号の案が無いことを確かめ、案の並びの末尾に足し、変更履歴を積んでスキーマと突き合わせる
+        SV->>WS: decisions.yaml に書く
+        CC->>SV: D-1 の案 A の pros を直す
+        SV->>WS: 案 A だけを直して書く
+        CC->>SV: D-1 に案 C を足す
+        SV->>WS: 書く
+        CC->>SV: D-1 の案 C を消す
+        SV->>SV: 案 C が採用されていないことを確かめる
+        SV->>WS: 案 C だけを消して書く
+        SV-->>CC: 書き換えた後の案の並び
+      ```
+    expected:
+      - D-1 の案が A・B の 2 件で、この並びである
+      - 案 A の `pros` が直した値で、`content`・`cons` は元の値である
+      - 案 B が足した中身を持ち、`adopted` が真ではない
+      - D-1 の状態・タイトル・問いの説明が元の値である
+      - D-1 の変更履歴が 4 回分で、どの回も `options` の前の値を持つ
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal
+  - name: 異常シナリオ（同じ記号の案を足す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A・B を持つ検討事項 D-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 に記号 B の案を足す
+        SV->>WS: D-1 を読み、記号 B の案が既にある
+        SV-->>CC: 同じ記号の案があるエラー
+      ```
+    expected:
+      - 案を書き換えるツールがエラーを返す
+      - エラーの本文に、D-1 と記号 `B` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_key_exists
+  - name: 異常シナリオ（無い記号の案を直す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A だけを持つ検討事項 D-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の記号 Z の案を直す
+        SV->>WS: D-1 を読み、記号 Z の案が無い
+        SV-->>CC: 記号の案が無いエラー
+      ```
+    expected:
+      - 案を書き換えるツールがエラーを返す
+      - エラーの本文に、D-1 と記号 `Z` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_key_not_found
+  - name: 異常シナリオ（採用している案を消す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A・B を持ち A を採用した決定済みの検討事項 D-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の案 A を消す
+        SV->>WS: D-1 を読み、案 A が採用されている
+        SV-->>CC: 採用している案は消せず、先に採用を切り替えるよう示すエラー
+      ```
+    expected:
+      - 案を書き換えるツールがエラーを返す
+      - エラーの本文に、D-1 と記号 `A` と、採用している案であることがある
+      - D-1 の案が A・B のままで、A が採用されたままである
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_adopted_option_removed
+lead: スキルが、検討事項の案を記号で指して 1 つずつ足す・中身を直す・消す単一ユースケース。案の配列を丸ごと渡さず、指さない案はそのまま残る。
+issue: 45
+primary_actor: スキルの手順を実行する Claude Code
+stakeholders:
+  - name: 利用者
+    interest: 話し合いで出た案が、他の案を壊さずに足され・直される。採用した案が黙って消えない
+trigger: スキルが取り込み・ヒアリングのステップで、検討事項の案を足す・直す・消すと決める
+preconditions:
+  - ワークスペースが作成済みで、案を書き換える検討事項がある
+  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
+success_guarantee: 指した案だけが足され・直され・消され、指さない案と検討事項の他のキーは元のまま残る。書き換えのたびに、検討事項の変更履歴に案の前の値が 1 回分積まれる。
+minimal_guarantee: 同じ記号の案を足す・無い記号の案を直す・採用している案を消す書き換えでは、どのファイルも書き換えない。
+frequency: 話し合いの中で案が出た・直したとき
+priority: 中
+notes:
+  E2E の範囲: MCP サーバーを立て、MCP のクライアントで案を書き換えるツールを呼んでワークスペースの状態を確かめる。ツールの名前と引数はインターフェース定義設計で決める
+  採用している案: '採用している案を消すには、先に『採用する案の切り替え』で採用を他の案へ移す。採用と状態の連動は #86 が扱うため、このツールは採用の印と状態を書き換えない'
