@@ -4,6 +4,10 @@
 
 /* 表示の設定のボタン: ボタン要素の文字をトップバーに揃える */
 .settings-btn { font: inherit; font-size: var(--fs-small); cursor: pointer; }
+/* ツール名: ボタンが増えて幅が詰まっても縮めず、題名の側を省略する */
+.topbar .brand { flex: none; }
+/* 話し合いの題名: 詰まった幅の分だけ縮み、末尾を省略する */
+.topbar .brand-sub { flex: 0 1 auto; min-width: 0; }
 
 /* ===== 表示の設定のパネル（コメントの一覧と同じ左のパネルの中身） ===== */
 
