@@ -1,5 +1,5 @@
 # 単体テスト（バック・フロントの全件）。環境: requirements-dev.txt の版と pytest-asyncio を uv で入れて流した
-# テストを実行した commit: 8079f22
+# テストを実行した commit: 8606fdd
 
 $ uv run --no-project --with-requirements requirements-dev.txt --with pytest-asyncio pytest tests/unit
 ============================= test session starts ==============================
@@ -96,4 +96,4 @@ tests/unit/scripts/test_store.py ....................................... [ 92%]
 tests/unit/scripts/test_submissions.py ................                  [ 97%]
 tests/unit/scripts/test_versions.py ...............                      [100%]
 
-======================== 671 passed in 75.34s (0:01:15) ========================
+======================== 671 passed in 78.55s (0:01:18) ========================
