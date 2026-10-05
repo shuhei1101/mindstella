@@ -37,6 +37,7 @@ flows:
       - '`playbooks/` に システム開発・調査・資料作り・壁打ち の 4 つのガイドがあり、どれも制約の 6 つの節をその並びで持ち、`## ゴールの候補` に `（既定）` の行が 1 つだけある'
       - スキルの全ての Markdown に特定の開発基盤の名前が無い
       - '`claude plugin validate` が終了コード 0'
+      - '`steps/取り込み.md`・`ヒアリング.md`・`リサーチ.md`・`方針転換.md` が `commit` を呼ぶ'
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
@@ -63,7 +64,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で、`mindmap.yaml` は `update_settings` で書く。`release/` の Markdown の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -96,6 +97,9 @@ constraints:
   - item: 範囲の見直し
     constraint: 範囲が広がった・利用者が題名・話し合いの概要・ゴール・プレイブック・最上位の軸の呼び名を変えたいと言った・話の中身と呼び名が合わなくなった・ゴール判定でゴールが無く利用者が決めると言ったときに回す。書き換えのたたき台を示し、フェーズが変わるときは新しい `phases` に無い古いフェーズごとの対応の表も示して、利用者が確定してから `update_settings`（`settings`・`phase_map`）を呼ぶ。終えたら会話ログを足す
     notes: 単一ユースケース『話し合いの範囲の見直し』、インターフェース定義『設定の更新』（サーバー）
+  - item: 書き換えのまとまり
+    constraint: 取り込み・ヒアリング・リサーチ・方針転換の各ステップで記録を書き換え終えたら、そのステップで何をしたかを一言の説明にして `commit` を呼ぶ。書き換えが無いステップでは呼ばない。範囲の見直しは `update_settings` のフェーズの付け替えを変更履歴の対象にしないと決めたため、`commit` を呼ぶステップに入れない。準備のステップで `pending` が空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する
+    notes: インターフェース定義『書き換えのまとまり』『まだまとめていない変更』
   - item: 記録の書き方
     constraint: SKILL.md の `## 記録の書き方` に、記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は状況が変わるたびに利用者に確かめずに足し、書き換えることと、確かめるのはワークスペースの外へ書き込むときだけであることを書く。設定（`mindmap.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す
     notes: 全てのステップに効くため、準備で必ず読まれる SKILL.md に置く

@@ -1,0 +1,323 @@
+title: "プレビュー / 差分"
+lead: 差分の表示の計算。変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。DOM には触らず、描くのは画面が持つ。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/preview/
+    core/
+      diff.ts   選んだ時点の印・前の版の組み立て・行の差分・図の要素の突き合わせ（jsdiff を使う）
+  ```
+
+  書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。
+data_models:
+  - name: DiffPoint
+    title: 選んだ時点
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 変更履歴で選んだ時点と、その時点で印を付ける項目
+    properties:
+      - name: sel
+        type: string
+        description: '`since`・`pending`・まとまりの ID'
+      - name: name
+        type: string
+        description: 札と詳細パネルに出す名前
+      - name: sub
+        type: string
+        description: 日時（JST）。「前回開いてから」は `{日時} より後`
+      - name: added
+        type: Set<string>
+        description: 新規の印を付ける ID
+      - name: changed
+        type: Set<string>
+        description: 変更の印を付ける ID（`added` にある ID は入れない）
+      - name: fromSeq
+        type: number
+        description: この時点の変更履歴の始まりの `seq`（これより大きい `seq` を戻す）
+      - name: untilSeq
+        type: number | null
+        description: この時点の終わりの `seq`。`null` は今まで（`since`・`pending`）
+  - name: VersionPair
+    title: 前後の版
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 選んだ時点の前と後の項目・本文と、組み立てられなかったこと
+    properties:
+      - name: before
+        type: Record<string, unknown> | null
+        description: 前の版の項目。組み立てられないとき `null`
+      - name: after
+        type: Record<string, unknown>
+        description: 後の版の項目（古いまとまりならそのまとまりの直後の形）
+      - name: beforeBody
+        type: string | null
+        description: 前の本文。無ければ空文字列、組み立てられないとき `null`
+      - name: afterBody
+        type: string
+        description: 後の本文
+      - name: trimmed
+        type: boolean
+        description: その時点の変更履歴が保持する回数を超えて消えている
+      - name: bodyUnavailable
+        type: boolean
+        description: '`body_diff` の `now` が当てる先の行と合わなかった'
+  - name: LinePart
+    title: 行の差分の 1 つ
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 同じ・足した・消した行のまとまり
+    properties:
+      - name: kind
+        type: "'same' | 'added' | 'removed'"
+        description: 種類
+      - name: lines
+        type: string[]
+        description: 行（改行を含まない）
+  - name: DiagramDiff
+    title: 図の差分
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 今の版の図で色を付ける要素と、消したものの名前
+    properties:
+      - name: added
+        type: Element[]
+        description: 足したノード・辺の要素
+      - name: changed
+        type: Element[]
+        description: 文字が変わったノード・辺の要素
+      - name: removed
+        type: string[]
+        description: 前にだけあるノード・辺の文字（「消したもの」に並べる）
+constants:
+  - name: LINE_DIFF_TIMEOUT_MS
+    title: 行の差分の打ち切り
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: '`Diff.diffLines` に渡す `timeout`（ミリ秒）。非機能要件「差分の表示の切り替えの時間」200ms のうち、PoC #83 で描画に 117〜160ms かかった残りを本文 1 つの差分に充てる'
+    value: '40'
+  - name: ARRAY_DIFF_TIMEOUT_MS
+    title: 並びの差分の打ち切り
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: '`Diff.diffArrays`（sequenceDiagram のメッセージの並び）に渡す `timeout`（ミリ秒）'
+    value: '20'
+  - name: COLORED_DIAGRAM_TYPES
+    title: 要素に色を付ける図の種類
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: ノード・辺に色を付ける mermaid の図の種類（記法の 1 行目の語）。それ以外は図の枠に色を付ける
+    value: '["flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram-v2"]'
+functions:
+  - name: resolveDiffPoint
+    title: 選んだ時点を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 記録の `changes`
+      - name: sel
+        type: string | null
+        required: true
+        passing: positional
+        description: 端末に残した選んだ時点
+      - name: since
+        type: string
+        required: true
+        passing: positional
+        description: そのタブの「前回開いてから」の始まりの日時
+    returns:
+      type: DiffPoint | null
+      description: 差分を出さないとき（`sel` が `null`・記録に無いまとまり・空の `pending`）は `null`
+    process: |-
+      1. `sel` で分ける
+         - まとまりの ID の場合、そのまとまりの `added`・`changed` を印にし、`fromSeq` を 1 つ古いまとまりの `until_seq`（無ければ 0）、`untilSeq` をそのまとまりの `until_seq` にする
+         - `pending` の場合、`pending` を印にし、`fromSeq` を先頭のまとまりの `until_seq`（無ければ 0）にする
+         - `since` の場合、`at` が `since` より後のまとまりと `pending` を合わせて印にし、`fromSeq` をそのうち一番古いまとまりの 1 つ前の `until_seq`（まとまりが無ければ先頭の `until_seq`）にする
+      2. `added` にある ID を `changed` から除く
+    unit_tests:
+      - name: test_resolve_diff_point
+        case: 正常
+        summary: 古いまとまりと「前回開いてから」で印と範囲が分かれる
+        condition: 'V-1（`until_seq` 1、A-1 を変えた）・V-2（`until_seq` 2、D-3 を変え D-6 を足した、`at` が `since` より後）。`parametrize`: `V-1` / `since`'
+        mock: なし
+        expected: '`V-1` は `changed` が {A-1}、`fromSeq` 0、`untilSeq` 1。`since` は `added` が {D-6}、`changed` が {D-3}、`fromSeq` 1、`untilSeq` が `null`'
+  - name: buildVersions
+    title: 前後の版を組み立てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 今の項目と本文に `history` を新しいものから当て、選んだ時点の前後の版を作る
+    args:
+      - name: item
+        type: Record<string, unknown>
+        required: true
+        passing: positional
+        description: 今の項目
+      - name: body
+        type: string
+        required: true
+        passing: positional
+        description: 今の本文（無ければ空文字列）
+      - name: point
+        type: DiffPoint
+        required: true
+        passing: positional
+        description: 選んだ時点
+    returns:
+      type: VersionPair
+      description: 前後の版
+    process: |-
+      1. `history` を `seq` の大きい順に当てる。`seq` が `untilSeq` を超えるものを当てた形を後の版、`fromSeq` を超えるものまで当てた形を前の版にする（キーは `before` で置き換え、`null` はキーを消す。本文は `body_diff` を行の位置の大きい順に当てる）
+         - `body_diff` の `now` が当てる先の行と合わなければ、本文はそこで止めて `bodyUnavailable` を真にし、`beforeBody` を `null` にする（キーは当て続ける）
+      2. 次のどちらかの場合、`trimmed` を真にし `before`・`beforeBody` を `null` にする（保持する回数を超えて消えた）
+         - `fromSeq` より大きく `untilSeq` 以下の `seq` を持つ要素が 1 つも無い
+         - 項目の `history_dropped_seq` が `fromSeq` より大きい（選んだ時点の範囲の中の回が消えている）
+      3. `before.body` が `null` の要素を当てた場合、`beforeBody` を空文字列にする（本文を初めて足した回）
+    unit_tests:
+      - name: test_build_versions
+        case: 正常
+        summary: 古いまとまりの前後のキーと本文を組み立てる
+        condition: '`history` が seq 2（`before: {status: 未決定}`）・seq 1（`body_diff` で 2 行目を戻す）。`fromSeq` 0、`untilSeq` 1'
+        mock: なし
+        expected: '`after` の `status` が `未決定`、`beforeBody` の 2 行目が戻った行、`trimmed`・`bodyUnavailable` が偽'
+      - name: test_build_versions_when_trimmed
+        case: 正常
+        summary: 消えた回は組み立てられない
+        condition: '`history` が seq 2 だけ。`fromSeq` 0、`untilSeq` 1'
+        mock: なし
+        expected: '`trimmed` が真で `before`・`beforeBody` が `null`'
+      - name: test_build_versions_when_body_rewritten
+        case: 正常
+        summary: 本文が当たらなければ本文だけ出せない
+        condition: '`history` の `body_diff` の `now` が今の本文と合わない。`before` に `status`'
+        mock: なし
+        expected: '`bodyUnavailable` が真で `beforeBody` が `null`、`before.status` は戻っている'
+      - name: test_build_versions_when_dropped_in_range
+        case: 正常
+        summary: 範囲の中の古い回が消えていれば組み立てられない。範囲より前の回が消えただけなら組み立てる
+        condition: '`history` が seq 9 だけの項目。`parametrize`: `history_dropped_seq` 7、`fromSeq` 5、`untilSeq` `null` / `history_dropped_seq` 5、`fromSeq` 5、`untilSeq` `null`'
+        mock: なし
+        expected: '`trimmed` が真で `before`・`beforeBody` が `null` / `trimmed` が偽で `before` が seq 9 を戻した形'
+  - name: diffLineParts
+    title: 行の差分
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 前後の文字列を行ごとに比べる。打ち切ったら `null`
+    args:
+      - name: before
+        type: string
+        required: true
+        passing: positional
+        description: 前の本文か記法
+      - name: after
+        type: string
+        required: true
+        passing: positional
+        description: 後の本文か記法
+    returns:
+      type: LinePart[] | null
+      description: 並び。jsdiff が読めていないときと打ち切ったときは `null`
+    process: |-
+      1. jsdiff が読めたか確かめる（`missingLibraries`）。読めていなければ `null`
+      2. `Diff.diffLines(before, after, {timeout: LINE_DIFF_TIMEOUT_MS})` を呼ぶ。`undefined` なら `null`
+      3. 各部分を `added`・`removed`・`same` と行の並びにする
+    unit_tests:
+      - name: test_diff_line_parts
+        case: 正常
+        summary: 足した行と消した行を分ける
+        condition: 3 行のうち 2 行目を書き換えた前後。jsdiff はリポジトリの外部ライブラリの設計書の版を `page.route` で返す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`same`（1 行目）・`removed`（前の 2 行目）・`added`（後の 2 行目）・`same`（3 行目）'
+      - name: test_diff_line_parts_when_timeout
+        case: 正常
+        summary: 丸ごと書き換えた大きな本文は打ち切る
+        condition: 全ての行が違う 5000 行の前後
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`null` を返し、呼んでから 200ms 以内に戻る'
+  - name: diffDiagram
+    title: 図の差分
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: '前後の版で描いた SVG のノード・辺を鍵で突き合わせる（PoC #83 の `diagdiff.js` の方式）'
+    args:
+      - name: type
+        type: string
+        required: true
+        passing: positional
+        description: 図の種類（記法の 1 行目の語）
+      - name: beforeSvg
+        type: SVGElement
+        required: true
+        passing: positional
+        description: 前の版を `mermaid.render` で描いた SVG（画面には出さない）
+      - name: afterSvg
+        type: SVGElement
+        required: true
+        passing: positional
+        description: 画面に描いてある今の版の SVG（使い回す）
+    returns:
+      type: DiagramDiff | null
+      description: '`COLORED_DIAGRAM_TYPES` に無い種類と、並びの突き合わせを打ち切ったときは `null`（画面は図の枠に色を付け、Raw で記法の行の差分を見せる）'
+    process: |-
+      1. 種類ごとにノードと辺の鍵を取る
+         - flowchart・classDiagram・erDiagram・stateDiagram-v2: ノードは要素の id、辺は `data-id` から端点を引く。端点はノードの鍵の一覧と突き合わせて決める（PoC の既知の限界「ノードの id に `_` を含む」への対処）。stateDiagram-v2 の遷移は線の端に一番近い状態を端点にする
+         - sequenceDiagram: メッセージの線の端の x を生命線に当てて端点を決め、前後の「端点と文字」の並びを `Diff.diffArrays`（`timeout: ARRAY_DIFF_TIMEOUT_MS`）で揃える。`undefined` なら `null` を返す
+      2. 今にだけある鍵を `added`、文字が違う鍵を `changed`、前にだけある鍵の文字を `removed` にする
+    unit_tests:
+      - name: test_diff_diagram
+        case: 正常
+        summary: 5 種類で足した・変えた・消したものを取りこぼさない
+        condition: '`parametrize`: flowchart（`_` を含むノードの id）/ sequenceDiagram / classDiagram / erDiagram / stateDiagram-v2 のそれぞれで、ノードを 1 つ足し、1 つのラベルを変え、1 つ消した前後。mermaid・jsdiff は `page.route` で返す'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`added`・`changed` がその要素だけ、`removed` が消したノードの文字だけ'
+      - name: test_diff_diagram_when_type_not_colored
+        case: 正常
+        summary: 色付けの対象外の種類は null
+        condition: gantt の前後
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`null`'
+  - name: placeRemovedBlocks
+    title: 消した行の置き場所
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す
+    args:
+      - name: parts
+        type: LinePart[]
+        required: true
+        passing: positional
+        description: 本文の行の差分（`diffLineParts` の戻り値）
+    returns:
+      type: '{lines: string[], beforeLine: number | null, tableHeader: string[] | null}[]'
+      description: 消した行のかたまりの並び（本文の頭からの順）。`beforeLine` は直後に来る今の本文の 1 始まりの行（本文の最後なら `null`）。`tableHeader` はかたまりが表の本体の行だけのとき、前の版のその表の見出しの行と区切りの行
+    process: |-
+      1. `parts` を頭からたどり、`same`・`added` の行で今の本文の行を、`same`・`removed` の行で前の版の行を数え進める
+      2. `removed` の部分ごとに、その行と、次に来る今の本文の行（無ければ `null`）を 1 つのかたまりにする
+      3. かたまりの行がどれも `|` で始まり、前の版で直前の行も `|` で始まるとき、前の版をその表の頭までさかのぼった 2 行（見出しと区切り）を `tableHeader` に入れる
+    unit_tests:
+      - name: test_place_removed_blocks
+        case: 正常
+        summary: 消した段落を直後の今の行の前に置き、末尾は null
+        condition: '`parametrize`: 1・3・5 行目の段落のうち 3 行目を消した前後 / 最後の段落を消した前後'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`[{lines: [3 行目と空行], beforeLine: 3, tableHeader: null}]` / `beforeLine` が `null`'
+      - name: test_place_removed_blocks_when_table_row
+        case: 正常
+        summary: 表の 1 行だけを消したとき、表の見出しを添える
+        condition: 見出し・区切り・3 行の表から 2 行目を消した前後
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`lines` が消した行だけ、`beforeLine` が今の表の 2 行目の行、`tableHeader` が見出しと区切りの 2 行'
+test_files:
+  - tests/unit/preview/test_diff.py

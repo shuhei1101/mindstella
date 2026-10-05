@@ -245,7 +245,11 @@ def test_send_when_nothing_checked(
     posts: list[str] = []
     page.on(
         "request",
-        lambda request: posts.append(request.url) if request.method == "POST" else None,
+        lambda request: (
+            posts.append(request.url)
+            if request.method == "POST" and not request.url.endswith("/api/opened")
+            else None
+        ),
     )
     open_preview(url)
     _open_list(page)

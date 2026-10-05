@@ -9,7 +9,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A（採用）と案 B を持つ検討事項 D-1 を持つワークスペース
+        description: 案 A（採用）と案 B を持つ検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -28,6 +28,8 @@ flows:
       - '`adopted` が `B`、`previous` が `A`'
       - D-1 の案 B の `adopted` が真、案 A の `adopted` が偽
       - D-1 の `status`・`answer` が呼ぶ前と同じ
+      - D-1 が `history` を 1 回分持ち、`before.options` で案 A の `adopted` が真、案 B の `adopted` が偽
+      - '`changes.yaml` の `pending.changed` に D-1 がある'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
@@ -148,7 +150,7 @@ flows:
     test: test_error_when_write_fails
 lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外す。
 idempotent: true
-side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated` を書き換える。状態・答えは変えない'
+side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated` を書き換える。採用が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。状態・答えは変えない'
 request:
   - name: workspace
     type: str
@@ -208,5 +210,7 @@ constraints:
     constraint: 切り替えた後、`adopted` が真の案はちょうど 1 つ
   - item: 影響の洗い出し
     constraint: しない（影響は `impact`、要見直しにするかはスキルの手順が決める）
+  - item: 変更履歴
+    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「まだまとめていない変更」と同じ。`before` は `options`（切り替える前の案の並びの全体）。既にその案が採用のときは積まない
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_adopt.py

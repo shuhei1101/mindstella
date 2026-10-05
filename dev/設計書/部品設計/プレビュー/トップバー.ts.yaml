@@ -54,6 +54,18 @@ args:
     enabled_when: '`connection` が `offline` のとき'
     description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1100px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
     status: planned
+  - name: tabs[].marked
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 差分の表示の間、その種類に新規・変更の項目があるか。真のとき、件数を残したままタブの右上に点を重ね、「新規・変更の項目があります」を読み上げに残す。タブの幅は変えない
+    status: planned
+  - name: diffPoint
+    type: オブジェクト
+    required: false
+    default: なし（差分を出さない）
+    description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ
+    status: planned
   - name: comments
     type: 真偽値
     required: false
@@ -87,6 +99,12 @@ events:
     when: ライト / ダークのボタンを押したとき
     value: theme（`data-theme`）
     description: 使う側が切り替えて、端末の保存領域に残す
+  - name: 変更履歴を開く
+    when: 「変更履歴」のボタンを押したとき
+    description: 使う側が変更履歴のモーダル（部品設計『変更履歴』）を開く
+  - name: 差分の表示をやめる
+    when: 選んだ時点の札の × を押したとき
+    description: 使う側が選んだ時点を消して端末の保存領域に残し、印と差分のない画面に描き直す
   - name: コメントを開く
     when: コメントのボタンを押したとき（0 件でも押せる）
     description: 使う側がコメントの一覧を開く。開いているときは閉じる。どちらも履歴に積まない
@@ -129,6 +147,24 @@ states:
         value: offline
       - name: read_at
         value: '2026-10-04T02:21:00+00:00'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+  - name: DiffOn
+    description: 変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右に札と ×、検討事項・資料のタブに点
+    args:
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+      - name: tabs
+        value: 検討事項・資料の `marked` を真にした並び
+  - name: DiffOnNarrow
+    description: 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、札の名前の末尾を省略して、コメントのボタンと × を押し出さずに 390px の中に収める
+    args:
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
   - name: Comments
@@ -175,4 +211,5 @@ accessibility:
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
   - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
+  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す

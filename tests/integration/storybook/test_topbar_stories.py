@@ -194,3 +194,79 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.inner_text(".comments-btn .count") == "3"
     assert page.get_attribute(".comments-btn", "aria-label") == "コメント（レビュー中 3 件）"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+# 帯の子の左右の位置（ツール名・検索の入口・変更履歴・札・テーマの切り替え・コメント）を同じ瞬間に読む
+DIFF_BOXES_SCRIPT = """() => {
+  const box = (selector) => {
+    const element = document.querySelector(selector);
+    if (!element) return null;
+    const r = element.getBoundingClientRect();
+    return { left: r.left, right: r.right };
+  };
+  return {
+    brand: box('.brand'),
+    search: box('.search-trigger'),
+    history: box('.hist-btn'),
+    chip: box('.df-chip'),
+    chipText: box('.df-chip-t'),
+    off: box('.df-chip button'),
+    theme: box('.top-btn'),
+    comments: box('.comments-btn'),
+    page: { width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth },
+  };
+}"""
+
+# 札の名前が読める幅の下限（ピクセル）
+MIN_CHIP_TEXT_PX = 40
+
+
+def test_diff_on(open_story: OpenStory) -> None:
+    """変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右に札と ×、検討事項・資料のタブに点を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--diff-on")
+    # 検証
+    history = page.get_by_role("button", name="変更履歴")
+    assert history.get_attribute("aria-haspopup") == "dialog"
+    assert history.locator(".label").inner_text() == "変更履歴"
+    chip = page.locator(".df-chip")
+    assert chip.locator(".df-chip-t").inner_text().endswith("前回開いてから")
+    assert chip.locator(".df-chip-t").get_attribute("title") == "前回開いてから（10/04 13:05 より後）"
+    assert chip.get_by_role("button", name="差分の表示をやめる").count() == 1
+    boxes = page.evaluate(DIFF_BOXES_SCRIPT)
+    assert boxes["history"]["right"] <= boxes["chip"]["left"]
+    # 印の付いた種類のタブにだけ点が付き、件数は残る
+    dotted = page.eval_on_selector_all(
+        "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
+    )
+    assert dotted == ["decisions", "docs"]
+    assert page.inner_text("nav.tabbar a[data-tab='decisions'] .count") == "12"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+
+
+def test_diff_on_narrow(open_story: OpenStory) -> None:
+    """幅 390px のサーバーの配信で、差分の表示の間。ボタンをアイコンだけにし、札の名前を省略して 390px の中に収める（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--diff-on-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行
+    boxes = page.evaluate(DIFF_BOXES_SCRIPT)
+    # 検証
+    assert not page.is_visible(".hist-btn .label")
+    assert not page.is_visible(".comments-btn .label")
+    assert page.inner_text(".comments-btn .count") == "3"
+    assert page.get_attribute(".hist-btn", "aria-label") == "変更履歴"
+    # 帯の子が左から順に並び、重ならず、画面の中に収まる
+    order = ["brand", "search", "history", "chip", "theme", "comments"]
+    for left, right in zip(order, order[1:], strict=False):
+        assert boxes[left]["right"] <= boxes[right]["left"], (left, right)
+    assert boxes["comments"]["right"] <= boxes["page"]["width"]
+    assert boxes["page"]["scroll"] <= boxes["page"]["width"]
+    # 札の名前は末尾を省略しても数文字が読め、× は札の中にある
+    assert boxes["chipText"]["right"] - boxes["chipText"]["left"] >= MIN_CHIP_TEXT_PX
+    assert boxes["off"]["right"] <= boxes["chip"]["right"]
+    assert (
+        page.evaluate("getComputedStyle(document.querySelector('.df-chip-t')).textOverflow")
+        == "ellipsis"
+    )

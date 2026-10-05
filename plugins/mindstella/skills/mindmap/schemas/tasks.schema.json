@@ -63,6 +63,12 @@
         "updated": {
           "$ref": "common.schema.json#/$defs/item/properties/updated"
         },
+        "history": {
+          "$ref": "common.schema.json#/$defs/item/properties/history"
+        },
+        "history_dropped_seq": {
+          "$ref": "common.schema.json#/$defs/item/properties/history_dropped_seq"
+        },
         "kind": {
           "type": "string",
           "enum": [

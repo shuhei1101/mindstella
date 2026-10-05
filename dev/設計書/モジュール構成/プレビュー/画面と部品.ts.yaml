@@ -6,6 +6,8 @@ directory: |-
     components/
       view-switch.ts        表示形式の切り替え（部品設計『表示形式の切り替え』）
       topbar.ts             トップバー（部品設計『トップバー』）
+      diff-mark.ts          差分の印（部品設計『差分の印』）
+      history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
       send-form.ts          コメントの入力（部品設計『コメントの入力』）
       selection-comment.ts  選んだ箇所のコメントの入口（部品設計『選んだ箇所のコメントの入口』）
@@ -56,7 +58,7 @@ components:
         required: true
         description: 題名
       - name: tabs
-        type: '{key, label, icon, count?}[]'
+        type: '{key, label, icon, count?, marked?}[]'
         required: true
         description: タブ
       - name: current
@@ -89,6 +91,21 @@ components:
         required: false
         default: 'null'
         description: 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える（`formatJst`）
+      - name: diffPoint
+        type: '{name, sub} | null'
+        required: false
+        default: 'null'
+        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ねる
+      - name: onHistory
+        type: () => void
+        required: false
+        default: なし（「変更履歴」を出さない）
+        description: 変更履歴を開く
+      - name: onDiffOff
+        type: () => void
+        required: false
+        default: なし
+        description: 札の × で差分の表示をやめる
       - name: comments
         type: '{count: number, open: boolean, onToggle: () => void} | null'
         required: false
@@ -137,6 +154,11 @@ components:
         type: '{sort, filter, pin, columns, reset, open}'
         required: true
         description: 部品設計のイベントごとのコールバック
+      - name: marks
+        type: Record<string, 'new' | 'changed'>
+        required: false
+        default: '{}'
+        description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
   - name: overviewScreen
     title: 概要
     container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
@@ -273,6 +295,24 @@ components:
         required: false
         default: 'null'
         description: コメントの一覧から開いたときに示す箇所。本文は `start` の行を含む `data-line-start` のブロック、値は `data-key` が `key` の要素。見つからなければ示さず、項目の先頭を出す
+      - name: diff
+        type: DiffPoint | null
+        required: false
+        default: 'null'
+        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagram`）・Raw の差分と、組み立てられない旨を描く。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す'
+    unit_tests:
+      - name: test_detail_panel_when_diff_highlight
+        case: 正常
+        summary: 差分の表示の間も、消した部分の後ろの箇所を今の行のブロックで示す
+        condition: 前の版の 2、3 行目の段落を消した D-1 を `diff` つきで開き、`highlight` に今の本文の 3 行目（消した部分の後ろの段落）を渡す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 示されたブロックの `data-line-start` が 3 で文字が今の 3 行目。消した部分の要素は `data-line-start` を持たない
+      - name: test_detail_panel_when_old_set_after_body_edit
+        case: 正常
+        summary: 古いまとまりを選び、その後に本文を直した項目では、本文の行の印を外す
+        condition: V-1 で本文を直し、V-2 で本文の頭に段落を足して行をずらした D-1 を、V-1 を選んだ `diff` と今の本文の 3 行目の `highlight` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 本文のどの要素も `data-line-start` を持たず、`highlight` は項目の先頭を示す
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -303,6 +343,11 @@ components:
         type: '{close}'
         required: true
         description: 閉じる
+      - name: diff
+        type: '{beforeSource: string} | null'
+        required: false
+        default: 'null'
+        description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分（`diffLineParts`）を出す。`diffLineParts` が `null` のときは Raw に今の記法を差分なしで出す
   - name: graphScreen
     title: つながり
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
@@ -493,6 +538,45 @@ components:
         condition: '`parametrize`: チェックが 0 件 / `result.kind` が `sending`'
         mock: '`on.send`'
         expected: まとめて送るが `disabled` で、押しても `on.send` が呼ばれない。前者は「送るコメントにチェックを付けてください。」
+  - name: diffMark
+    title: 差分の印
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『差分の印』の引数を受け、新規（+）か変更（●）の印を返す。表・ボード・カード・マップ・概要のタイル・詳細パネルが使う
+    props:
+      - name: kind
+        type: "'new' | 'changed'"
+        required: true
+        description: 新規か変更か
+      - name: labeled
+        type: boolean
+        required: false
+        default: 'false'
+        description: 文言つきの札にするか
+  - name: historyDialog
+    title: 変更履歴
+    container: plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『変更履歴』の引数を受け、`dialog` を `showModal()` で開く。行を押すと選んだ `sel` を知らせて閉じる。閉じたら「変更履歴」のボタンにフォーカスを戻す。並べる時点は入口が記録の `changes` と「前回開いてから」の始まりから作る（画面設計『変更履歴』の時点の一覧）
+    props:
+      - name: points
+        type: '{sel, name, sub, count?}[]'
+        required: true
+        description: 並べる時点
+      - name: current
+        type: string
+        required: true
+        description: 今選んでいる時点の `sel`（差分を出さないときは空文字列）
+      - name: onPick
+        type: '(sel: string) => void'
+        required: true
+        description: 時点を選ぶ（空文字列は差分の表示をやめる）
+      - name: onClose
+        type: () => void
+        required: true
+        description: 閉じる
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -738,3 +822,4 @@ test_files:
   - tests/unit/preview/test_send_form.py
   - tests/unit/preview/test_selection_comment.py
   - tests/unit/preview/test_comments_panel.py
+  - tests/unit/preview/test_detail.py

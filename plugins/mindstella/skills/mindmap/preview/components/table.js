@@ -107,7 +107,7 @@ var MindmapPreview;
     }
     MindmapPreview.table = table;
     /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
-    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, on }, previous, }) {
+    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on }, previous, }) {
         const hidden = new Set(hiddenColumns ?? columns.filter((column) => column.hidden).map((column) => column.key));
         const visible = columns.filter((column) => !hidden.has(column.key));
         // 固定する列の数（左端から pinTo の列まで）
@@ -356,12 +356,18 @@ var MindmapPreview;
             const content = column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");
             if (column.fixed !== true)
                 return content;
-            // タイトルの列は、押すと詳細を開くボタンにする
-            return MindmapPreview.h({
+            // タイトルの列は、押すと詳細を開くボタンにし、差分の印があれば右に置く
+            const opener = MindmapPreview.h({
                 tag: "button",
                 attrs: { class: "row-open", type: "button", "data-id": row.id, onclick: () => on.open(row.id) },
                 children: [content],
             });
+            const mark = MindmapPreview.markFor({ marks, id: row.id });
+            if (mark === null)
+                return opener;
+            const fragment = document.createDocumentFragment();
+            fragment.append(opener, mark);
+            return fragment;
         };
         const body = shownRows.length > 0
             ? shownRows.map((row) => MindmapPreview.h({
@@ -568,7 +574,7 @@ var MindmapPreview;
     }
     MindmapPreview.tableState = tableState;
     /** 状態を持つ表を返す。操作に応じて自分で描き直し、表示する列とピン留めは端末に残す */
-    function managedTable({ kind, columns, rows, open, initialFilters, }) {
+    function managedTable({ kind, columns, rows, open, initialFilters, marks, }) {
         const state = tableState(kind);
         // 画面を描き直したときは、前のポップオーバーを開いたままにしない
         state.popover = null;
@@ -594,6 +600,7 @@ var MindmapPreview;
                     pinTo: state.pinTo,
                     hiddenColumns: state.hidden,
                     popover: state.popover,
+                    ...(marks === undefined ? {} : { marks }),
                     on: {
                         sort: (key) => {
                             // 昇順 → 降順 → 解除

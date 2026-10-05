@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import pytest
+from playwright.sync_api import Page
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
     OpenPreview,
     WritePreview,
+    WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeItem
 
 
@@ -81,3 +84,20 @@ def test_notes_id_button_size(
     # 検証
     assert sizes["count"] > 0
     assert sizes["smallest"] >= ID_BUTTON_MIN_SIZE_PX
+
+
+def test_diff_marks(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表の行のタイトルの右に印を置く。足したメモには +、トップバーに札を出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, "#tab=notes")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    mark = page.locator('table.grid tbody tr[data-id="N-1"] .row-open + .df-mark')
+    assert mark.get_attribute("class") == "df-mark df-new"
+    assert mark.get_attribute("title") == "新規"
+    assert page.locator('nav.tabbar a[data-tab="notes"] .df-dot').count() == 1
+    assert_topbar_history(page)

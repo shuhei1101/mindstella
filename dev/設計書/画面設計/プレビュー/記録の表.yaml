@@ -16,6 +16,8 @@ elements:
         value: 概要と同じ
       - name: read_at
         value: 概要と同じ
+      - name: diffPoint
+        value: 『概要』のトップバーと同じ
       - name: comments
         value: サーバーの配信では true、配る書き出しでは false
       - name: comment_count
@@ -36,6 +38,8 @@ elements:
         value: プレビューを開く.mindmap-data.{research・terms・notes・logs}
       - name: filters
         value: プレビューを開く.f.{列}（開いたときだけ）
+      - name: marks
+        value: 差分の表示の間、選んだ時点で足した・変えた項目（記録の取得.changes）
     description: その種類の表。表示形式の切り替えは出さない
     visible_when: 常時
 lead: 調査・用語集・メモ・会話ログを表だけで見る画面。種類ごとに同じ画面を使い回す。

@@ -93,6 +93,18 @@ export const LongTitle: Story = {
 /** 該当なし（ピン留め中）。表の場所に該当なしと次の操作を書き、横に送っても文言は表の枠の左に留める */
 export const NoMatch: Story = { args: { filters: { conf: ["中"] }, pinTo: "id", rows: [rows[0]!] } };
 
+/** 差分の表示の間。変えた行のタイトルの右に ●、足した行に + を置き、印の無い行は変わらない */
+export const Marked: Story = {
+  args: {
+    rows: [
+      ...rows,
+      { id: "D-5", title: "変更履歴に持たせる回数の既定", conf: "中", status: "決定済み" },
+      { id: "D-37", title: "差分の表示から抜ける操作の置き場所", conf: "高", status: "未決定" },
+    ],
+    marks: { "D-5": "changed", "D-37": "new" },
+  },
+};
+
 /** 表示する列のポップオーバーを開いている。タイトルの列は外せない */
 export const ColumnsPopover: Story = {
   play: async ({ canvasElement }) => {

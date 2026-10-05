@@ -23,6 +23,8 @@ TOOL_NAMES = [
     "update",
     "update_settings",
     "adopt",
+    "commit",
+    "pending",
     "status",
     "next",
     "impact",

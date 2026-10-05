@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace
+from .history_helpers import DECISION_ITEM, add_item, commit, read_items, update_item
 from .http_helpers import http_request
 
 # 検討事項 D-1 の本文
@@ -55,6 +56,30 @@ def test_normal(
     goal = records["derived"]["goal"]
     assert {key: goal[key] for key in goal_result.data} == goal_result.data
     assert "phase_progress" in goal
+
+
+def test_normal_when_history(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """変更履歴とまとまりを、項目に載せたまま返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "decision", DECISION_ITEM)
+    commit(call_tool, root, "足す")
+    update_item(call_tool, root, "D-1", {"answer": "種類ごとに分ける"})
+    url = serve_preview(root)
+    # 実行
+    result = http_request(url, "/api/records")
+    # 検証
+    assert result.status == 200
+    records = result.json()
+    assert records["decisions"] == read_items(root, "decisions.yaml")
+    assert len(records["decisions"][0]["history"]) == 1
+    assert [entry["summary"] for entry in records["changes"]["sets"]] == ["足す"]
+    assert records["changes"]["sets"][0]["added"] == ["D-1"]
+    assert records["changes"]["pending"]["changed"] == ["D-1"]
 
 
 def test_normal_when_no_goal(

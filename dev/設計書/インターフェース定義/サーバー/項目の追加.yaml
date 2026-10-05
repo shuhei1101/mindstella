@@ -31,6 +31,7 @@ flows:
       - '`decisions.yaml` の D-2 が渡したキーを持ち、`body` が `D-2.md`、`created` と `updated` が同じ日時'
       - '`docs/D-2.md` の中身が渡した `body_markdown` と同じ'
       - '`decisions.yaml` に `body_markdown` のキーが無い'
+      - 足した項目が `history` を持たず、`changes.yaml` の `pending.added` にその ID がある
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
@@ -136,7 +137,7 @@ flows:
     test: test_error_when_file_shape_broken
 lead: '`item` で渡した中身に ID・作成日時・更新日時を付けて、種類の YAML に 1 項目足す。本文を渡したときは `docs/{ID}.md` に書く。'
 idempotent: false
-side_effects: 種類の YAML に 1 項目を足す。`body_markdown` を渡したときは `docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文と YAML の一時ファイルを両方書き終えてから、本文 → YAML の順に `os.replace` で置き換える
+side_effects: 種類の YAML に 1 項目を足し、`changes.yaml` の `pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
 request:
   - name: workspace
     type: str
@@ -154,7 +155,7 @@ request:
     required: true
     location: argument
     description: 項目の中身。キーと型は ER 図『ワークスペース』のその種類の表と共通のキー
-    constraints: '`id`・`created`・`updated`・`body` は持たない（ツールが付ける）'
+    constraints: '`id`・`created`・`updated`・`body`・`history` は持たない（ツールが付ける）'
   - name: item.body_markdown
     type: str
     required: false
@@ -223,6 +224,8 @@ constraints:
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない'
   - item: 部分成功
-    constraint: 起こさない。YAML の置き換えに失敗したら、置き換えた本文を消してからツールのエラーで終わる（残った一時ファイルも消す）
+    constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えた本文を消し、置き換えた YAML を前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
+  - item: 変更履歴
+    constraint: 積まない（足した項目は `history` を持たない）。新規の印は `changes.yaml` の `pending.added`・`sets[].added` から取る
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_add.py

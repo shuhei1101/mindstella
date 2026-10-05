@@ -16,6 +16,8 @@ elements:
         value: 概要と同じ
       - name: read_at
         value: 概要と同じ
+      - name: diffPoint
+        value: 『概要』のトップバーと同じ
       - name: comments
         value: サーバーの配信では true、配る書き出しでは false
       - name: comment_count

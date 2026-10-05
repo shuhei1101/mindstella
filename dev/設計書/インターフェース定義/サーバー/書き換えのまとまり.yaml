@@ -1,0 +1,222 @@
+title: "書き換えのまとまり"
+entry:
+  kind: mcp_tool
+  value: '`commit`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__commit`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: まだまとめていない書き換えを説明つきのまとまりにする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer` を `update` で直し、タスク T-1 を `add` で足したワークスペース（保持する回数は既定の 5）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「D-1 を決め、T-1 を積む」
+        IF-->>WS: changes.yaml を読む
+        IF->>IF: pending をまとまり V-2 にする
+        IF->>WS: changes.yaml を書く
+        IF-->>クライアント: JSON（id: V-2・added・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`id` が `V-2`、`added` が `[T-1]`、`changed` が `[D-1]`、`summary` が渡した説明'
+      - '`changes.yaml` の `sets` の先頭が V-2 で、`until_seq` が `last_seq` と同じ。`pending` の `added`・`changed` が空'
+      - D-1 の変更履歴の先頭の `seq` が、V-1 の `until_seq` より大きく V-2 の `until_seq` 以下
+      - '`decisions.yaml`・`tasks.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal
+  - name: 正常系（まとめる書き換えが無い）
+    summary: まだまとめていない書き換えが無ければ、まとまりを足さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「何もしない」
+        IF-->>WS: changes.yaml を読む
+        IF-->>クライアント: JSON（id: null）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`id`・`at`・`summary` が `null`、`added`・`changed` が空'
+      - '`changes.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_nothing_pending
+  - name: 異常系（説明が空・引数の誤り）
+    summary: 空白だけの説明ではまとめない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足し、まだ `commit` していないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+
+        クライアント->>IF: commit workspace summary（空白だけ）
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: 引数の誤り: summary:` で始まる'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_summary_empty
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: commit workspace summary「a」
+        IF-->>WS: mindmap.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（記録の形が崩れている・SchemaMismatchError）
+    summary: 手で崩した changes.yaml ではまとめず、合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`changes.yaml` の `pending` から `added` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「a」
+        IF-->>WS: changes.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `changes.yaml: pending` で始まる行がある'
+      - '`changes.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_schema_mismatch
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースではまとめず、エラーの行を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足し、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「a」
+        IF-->>WS: changes.yaml を読む
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
+      - '`changes.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_write_fails
+lead: まだまとめていない書き換え（最後のまとまりより後の `add`・`update`・`adopt`）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
+idempotent: false
+side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`mindmap.yaml` があるフォルダ'
+  - name: summary
+    type: str
+    required: true
+    location: argument
+    description: このまとまりで何をしたかの一言の説明。プレビューの変更履歴にそのまま出る
+    constraints: 前後の空白を除いて 1〜200 文字
+    example: D-1 を決め、T-1 を積む
+response:
+  - name: id
+    type: str | None
+    description: 足したまとまりの ID。まだまとめていない書き換えが無く、まとまりを足さなかったときは `null`
+    example: V-3
+  - name: at
+    type: str | None
+    description: まとめた日時（UTC のタイムゾーン付き ISO 8601、秒まで）。足さなかったときは `null`
+  - name: summary
+    type: str | None
+    description: 前後の空白を除いた説明。足さなかったときは `null`
+  - name: added
+    type: list[str]
+    description: このまとまりで足した項目の ID
+  - name: changed
+    type: list[str]
+    description: このまとまりで変えた項目の ID（足した項目は含めない）
+exceptions:
+  - name: なし（正常終了）
+    condition: まとめた（まだまとめていない書き換えが無く、何も足さなかったときも含む）
+    notes: 結果を返す
+  - name: 引数の誤り
+    condition: '`summary` が空白だけか、200 文字を超える'
+    notes: ツールのエラー。何も書き込まない
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: SchemaMismatchError
+    condition: '`changes.yaml` がスキーマに合わないか、YAML として読めない'
+    notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換えに失敗した
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。`changes.yaml` を書き換えない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。引数の誤りは `エラー: 引数の誤り: summary: {理由}`。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: まとまりの ID
+    constraint: '`V-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
+  - item: まとまりの中身
+    constraint: '`changes.yaml` の `pending` の `added`・`changed` をそのまま写し、`until_seq` に `last_seq` を書く。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
+  - item: まだまとめていない書き換えが無いとき
+    constraint: '`pending` の `added`・`changed` がどちらも空なら、まとまりを足さず、`changes.yaml` も書かない'
+  - item: まとまりの保持
+    constraint: 消さない（保持する回数は項目の変更履歴だけにかかる）
+  - item: 巻き戻し
+    constraint: 持たない。まとめた後も書き換えはワークスペースに残る
+  - item: YAML の書き方
+    constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。一時ファイルに書いてから `os.replace` で置き換える'
+exclusivity: ワークスペースを書き換えるツールと同じ鍵とロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/インターフェース定義/サーバー/まだまとめていない変更#
+test_file: tests/integration/server/test_commit.py

@@ -8,6 +8,7 @@ namespace MindmapPreview {
     comments: "api/comments",
     commentsSend: "api/comments/send",
     drafts: "api/drafts",
+    opened: "api/opened",
   } as const;
 
   /** 記録の取得の結果。読めなかったときは、届かなかったか、サーバーが 422 を返したかを分ける */
@@ -76,6 +77,18 @@ namespace MindmapPreview {
     // 200 でない: サーバーが読めないと返した
     if (!response.ok) return { ok: false, reason: "invalid", detail: await detailOf(response) };
     return { ok: true, data: (await response.json()) as MindmapData };
+  }
+
+  /** プレビューを開いたことを知らせ、前回開いた日時を返す。届かない・200 でない・読めないときは null */
+  export async function postOpened(fetchFn: FetchFn = window.fetch.bind(window)): Promise<string | null> {
+    try {
+      const response = await fetchFn(API_PATHS.opened, { method: "POST" });
+      if (!response.ok) return null;
+      const body = (await response.json()) as { previous?: unknown };
+      return typeof body.previous === "string" ? body.previous : null;
+    } catch {
+      return null;
+    }
   }
 
   /** コメント・書きかけの API を 1 回呼ぶ。届かないときと、断られたときを分ける */

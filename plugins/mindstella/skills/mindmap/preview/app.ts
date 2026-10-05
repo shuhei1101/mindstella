@@ -10,6 +10,9 @@ namespace MindmapPreview {
   /** 入力が止まってから書きかけを保つまでの待ち（ミリ秒）。打つたびに書かず、打ち終えた直後に閉じても失うのがこの待ちの分だけで済む長さ */
   export const DRAFT_SAVE_DELAY_MS = 500;
 
+  /** そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
+  export const SINCE_KEY = "mindmap-since";
+
   /** 入力欄 1 つ（向けた先ごと）の書きかけと溜める状態（開いている間だけ持つ。書きかけの本文はサーバーにも残す） */
   export type FormState = {
     target: string | null;
@@ -54,6 +57,10 @@ namespace MindmapPreview {
     theme: Theme | null;
     /** 種類ごとの表示する列とピン留め */
     columns: Record<string, TablePrefs>;
+    /** 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。持たない・null は差分を出さない */
+    diffSel?: string | null;
+    /** 配る書き出しだけが持つ、前回開いた日時 */
+    opened?: string;
   };
 
   /** 狭い幅（詳細パネルを別画面として積む幅） */
@@ -122,7 +129,7 @@ namespace MindmapPreview {
   }
 
   /** 端末の保存領域（開けない環境では、何も返さない保存領域） */
-  function openStorage(kind: "localStorage"): Storage {
+  function openStorage(kind: "localStorage" | "sessionStorage"): Storage {
     try {
       return window[kind];
     } catch {
@@ -135,6 +142,71 @@ namespace MindmapPreview {
         setItem: () => undefined,
       };
     }
+  }
+
+  /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した日時をそのまま使う */
+  async function resolveSince({
+    serverMode,
+    prefs,
+    persist,
+  }: {
+    serverMode: boolean;
+    prefs: Prefs;
+    persist: () => void;
+  }): Promise<string> {
+    const session = openStorage("sessionStorage");
+    let kept: string | null;
+    try {
+      kept = session.getItem(SINCE_KEY);
+    } catch {
+      kept = null;
+    }
+    if (kept !== null) return kept;
+    const now = new Date().toISOString();
+    let previous: string | null;
+    if (serverMode) {
+      previous = await postOpened();
+    } else {
+      // 配る書き出しは、前回開いた日時を端末の設定に持ち、今の日時に書き換える
+      previous = prefs.opened ?? null;
+      prefs.opened = now;
+      persist();
+    }
+    // 前回開いた日時が無い・呼べなかったときは、タブを開いた日時にする
+    const since = previous ?? now;
+    try {
+      session.setItem(SINCE_KEY, since);
+    } catch {
+      // 残せない環境では、読み込み直すたびに決め直す
+    }
+    return since;
+  }
+
+  /** 変更履歴のモーダルに、差分を出さない行と、まだまとめていない変更・前回開いてから・まとまりの行を新しい順に並べる */
+  function historyPoints({ changes, since }: { changes: Changes; since: string }): HistoryPoint[] {
+    /** その時点で足した・変えた項目の数 */
+    const countOf = (sel: string): number => {
+      const point = resolveDiffPoint(changes, sel, since);
+      return point === null ? 0 : point.added.size + point.changed.size;
+    };
+    const hasPending = changes.pending.added.length + changes.pending.changed.length > 0;
+    return [
+      { sel: "", name: "差分を出さない（今の内容）", sub: "印と差分を出さずに今の内容だけを読む" },
+      ...(hasPending
+        ? [{ sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: countOf("pending") }]
+        : []),
+      { sel: "since", name: "前回開いてから", sub: `${formatJst(since)} より後`, count: countOf("since") },
+      ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: formatJst(set.at), count: countOf(set.id) })),
+    ];
+  }
+
+  /** 選んだ時点の、項目の ID → 差分の印 */
+  function marksOf(point: DiffPoint | null): DiffMarks | undefined {
+    if (point === null) return undefined;
+    return Object.fromEntries([
+      ...[...point.added].map((id) => [id, "new" as const]),
+      ...[...point.changed].map((id) => [id, "changed" as const]),
+    ]);
   }
 
   /** 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
@@ -212,6 +284,9 @@ namespace MindmapPreview {
     let index = buildIndex(data);
     document.title = `${data.settings.summary} | mindstella`;
     let connection: "online" | "offline" = "online";
+    // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
+    const since = await resolveSince({ serverMode, prefs, persist });
+    let point: DiffPoint | null = resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
 
     // ===== 画面の土台 =====
     const top = h({ tag: "div", attrs: { id: "top" } });
@@ -277,6 +352,7 @@ namespace MindmapPreview {
     // ===== 描く =====
     /** トップバーとタブの帯 */
     const renderTop = (): void => {
+      const marks = marksOf(point);
       top.replaceChildren(
         topbar({
           title: data.settings.summary,
@@ -285,6 +361,8 @@ namespace MindmapPreview {
             label: tabLabel(key as Exclude<Tab, "graph">),
             icon: TAB_ICON[key as Exclude<Tab, "graph">],
             count: key === "overview" ? undefined : data[key as Kind].length,
+            // 差分の表示の間、新規・変更の項目を持つ種類のタブに点を重ねる
+            marked: key !== "overview" && marks !== undefined && data[key as Kind].some((item) => marks[item.id] !== undefined),
           })),
           current: route.tab,
           theme,
@@ -294,6 +372,9 @@ namespace MindmapPreview {
           commentCount: comment.review.items.length,
           commentsOpen: comment.listOpen,
           onComments: () => (comment.listOpen ? closeList() : openList()),
+          diffPoint: point === null ? null : { name: point.name, sub: point.sub },
+          onHistory: openHistory,
+          onDiffOff: () => selectPoint(null),
           onNavigate: (tab) => go({ ...route, tab, view: defaultView(tab), filters: {} }, true),
           onSearch: openSearch,
           onTheme: (next) => {
@@ -310,19 +391,20 @@ namespace MindmapPreview {
     /** 今の画面 */
     const screenElement = (): HTMLElement => {
       const on = { open: (id: string) => openItem(id, false), view: (view: View) => go({ ...route, view, filters: {} }, false) };
+      const marks = marksOf(point);
       switch (route.tab) {
         case "overview":
-          return overviewScreen({ index, on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) } });
+          return overviewScreen({ index, on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) }, marks });
         case "decisions":
-          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail } });
+          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, marks });
         case "tasks":
-          return tasksScreen({ index, route, on });
+          return tasksScreen({ index, route, on, marks });
         case "docs":
-          return docsScreen({ index, route, on });
+          return docsScreen({ index, route, on, marks });
         case "graph":
           return graphScreen({ index, on: { open: on.open }, selected: route.id });
         default:
-          return recordsScreen({ index, route, on: { open: on.open } });
+          return recordsScreen({ index, route, on: { open: on.open }, marks });
       }
     };
 
@@ -374,15 +456,17 @@ namespace MindmapPreview {
           forward: () => history.forward(),
           diagram: showDiagram,
         },
-        send: serverMode ? formProps(route.id) : null,
-        review: serverMode ? comment.review.items.filter((item) => item.target === route.id) : null,
+        comment: serverMode
+          ? { form: formProps(route.id), reviews: comment.review.items.filter((item) => item.target === route.id) }
+          : null,
+        highlight: openedLocation(),
+        diff: point,
       });
       if (route.full) {
         existing?.classList.remove("open");
         fullDialog?.remove();
         document.body.append(panel);
         (panel as HTMLDialogElement).showModal();
-        showOpenedLocation();
         return;
       }
       fullDialog?.close();
@@ -396,18 +480,16 @@ namespace MindmapPreview {
         existing.className = `${panel.className} open`;
         existing.replaceChildren(...panel.children);
       }
-      showOpenedLocation();
     };
 
-    /** コメントの一覧の行から開いたとき、そのコメントの箇所を示す。別の項目へ移っていれば示すのをやめる */
-    const showOpenedLocation = (): void => {
+    /** コメントの一覧の行から開いたとき、そのコメントの箇所。別の項目へ移っていれば示すのをやめる */
+    const openedLocation = (): Location | null => {
       const opened = comment.review.items.find((item) => item.id === comment.opened);
       if (opened === undefined || opened.target !== route.id) {
         comment.opened = null;
-        return;
+        return null;
       }
-      const root = document.querySelector(route.full ? "dialog.full" : "aside.panel");
-      if (opened.loc !== null && root !== null) highlightLocation({ root, loc: opened.loc });
+      return opened.loc;
     };
 
     /** 描く（`screen` が真のとき本文の領域も描き直す） */
@@ -425,7 +507,7 @@ namespace MindmapPreview {
 
     // ===== 図の拡大 =====
     /** 図を拡大して見る。詳細パネルからはモーダル、全画面からは全画面の中身を切り替える */
-    const showDiagram = (svg: SVGElement): void => {
+    const showDiagram = (svg: SVGElement, diff: DiagramViewerDiff | null): void => {
       if (route.full) {
         const dialog = document.querySelector<HTMLDialogElement>("dialog.full");
         const body = dialog?.querySelector<HTMLElement>(".panel-body");
@@ -434,14 +516,14 @@ namespace MindmapPreview {
         const viewer = h({
           tag: "div",
           attrs: { class: "full-viewer" },
-          children: [diagramViewer({ svg, on: { close: closeFullViewer } })],
+          children: [diagramViewer({ svg, on: { close: closeFullViewer }, diff })],
         });
         body.after(viewer);
         fullViewer = viewer;
         return;
       }
       const modal = h({ tag: "dialog", attrs: { class: "viewer", "aria-label": "図の拡大" } });
-      modal.append(diagramViewer({ svg, on: { close: () => modal.close() } }));
+      modal.append(diagramViewer({ svg, on: { close: () => modal.close() }, diff }));
       modal.addEventListener("close", () => modal.remove());
       document.body.append(modal);
       modal.showModal();
@@ -975,6 +1057,29 @@ namespace MindmapPreview {
     /** 入力中の欄の選択とスクロールの位置を保って、画面を描き直す */
     const redrawKeepingState = (): void => preserving(() => render({ screen: true }));
 
+    // ===== 変更履歴と差分の表示 =====
+    /** 選んだ時点を変えて残し、どの画面もその時点の差分の表示で描き直す（記録は読み直さず、履歴に積まない）。null は差分の表示をやめる */
+    const selectPoint = (sel: string | null): void => {
+      prefs.diffSel = sel;
+      persist();
+      point = resolveDiffPoint(data.changes, sel, since);
+      redrawKeepingState();
+    };
+
+    /** 変更履歴のモーダルを開く（開いているときは何もしない） */
+    const openHistory = (): void => {
+      if (document.querySelector("dialog.hist") !== null) return;
+      const dialog = historyDialog({
+        points: historyPoints({ changes: data.changes, since }),
+        current: point?.sel ?? "",
+        onPick: (sel) => selectPoint(sel === "" ? null : sel),
+        // 選ばずに閉じたときも、選んだときも、「変更履歴」のボタンへフォーカスを戻す
+        onClose: () => document.querySelector<HTMLElement>("[data-act='hist']")?.focus(),
+      });
+      document.body.append(dialog);
+      dialog.showModal();
+    };
+
     /** 記録を読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
     const reload = async (): Promise<void> => {
       const result = await fetchRecords();
@@ -982,6 +1087,8 @@ namespace MindmapPreview {
       await loadReview();
       data = result.data;
       index = buildIndex(data);
+      // 選んだ時点と「前回開いてから」の始まりは保ち、新しい記録で印を引き直す
+      point = resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
       document.title = `${data.settings.summary} | mindstella`;
       // 開いていた項目が消えた: 詳細パネルを閉じる
       if (route.id !== null && !index.byId.has(route.id)) {

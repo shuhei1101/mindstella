@@ -1,0 +1,103 @@
+title: "前回開いた日時"
+entry:
+  kind: endpoint
+  value: POST /api/opened
+flows:
+  - name: 正常系
+    summary: 前回開いた日時を返し、今の日時に書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`.mindstella-opened` を持たないワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/opened
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST /api/opened
+        IF->>WS: .mindstella-opened を書く
+        IF-->>クライアント: 200（previous: null）
+        クライアント->>IF: POST /api/opened
+        IF-->>WS: .mindstella-opened を読む
+        IF->>WS: .mindstella-opened を書く
+        IF-->>クライアント: 200（previous: 1 回目の opened）
+      ```
+    expected:
+      - 2 回ともステータスが 200
+      - 1 回目の `previous` が `null`
+      - 2 回目の `previous` が 1 回目の `opened` と同じ
+      - 種類ごとの YAML・`changes.yaml` の中身が呼ぶ前と同じ
+    test: test_normal
+  - name: 異常系（書き込めない・500）
+    summary: 書き込めないワークスペースでは理由を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: フォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/opened
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST /api/opened
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500、`Content-Type` が `application/problem+json`
+      - '`.mindstella-opened` が作られていない'
+    test: test_error_when_write_fails
+lead: プレビューのタブが開いたときに 1 度呼び、そのワークスペースを前回開いた日時を返して、今の日時に書き換える。変更履歴の「前回開いてから」の範囲の始まりに使う。
+idempotent: false
+side_effects: ワークスペースの `.mindstella-opened` を今の日時で書き換える（無ければ作る）。記録（種類ごとの YAML・本文・`changes.yaml`）は書き換えない
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+response:
+  - name: previous
+    type: str | None
+    description: 書き換える前の `.mindstella-opened` の日時（UTC のタイムゾーン付き ISO 8601）。無いか読めなければ `null`
+  - name: opened
+    type: str
+    description: 書き込んだ今の日時
+status_codes:
+  - code: '200'
+    condition: 書き換えた
+  - code: '500'
+    condition: '`.mindstella-opened` を書けない'
+    notes: '`detail` に書けなかった理由。画面はタブを開いた日時を範囲の始まりにする'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 呼ぶ時
+    constraint: 画面がタブで最初に記録を読む前に 1 度だけ。同じタブで読み込み直したときと、書き換えの知らせで読み直すときは呼ばない（『プレビューを開く』）
+  - item: 置き場所
+    constraint: ワークスペースの直下の `.mindstella-opened`（1 行の日時）。配信のポートは立てるたびに変わり、端末の保存領域はポートごとに分かれるため、ワークスペースの中に置く
+  - item: 書き換えの知らせ・点検
+    constraint: '`.mindstella-opened` は書き換えの知らせの見るファイル・点検・移し替えの対象にしない'
+  - item: 書き方
+    constraint: 一時ファイルに書いてから `os.replace` で置き換える。記録のロックは取らない（同時に開いたタブどうしは、後に書いた方が残る）
+  - item: 接続先の確かめ
+    constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
+  - item: 本文の形
+    constraint: '`application/json; charset=utf-8`。`Cache-Control: no-store`'
+  - item: 版の管理
+    constraint: 開くたびに書き換わるため、ワークスペースを git などで管理するときは版の管理から外す（リファレンス『ワークスペースの書式』で `.gitignore` に入れるよう案内する）。サーバーは `.gitignore` を書かない
+  - item: 共有の範囲
+    constraint: ワークスペースごとに 1 つ。同じワークスペースを開いた全てのブラウザで共有し、Claude Code を立て直しても残る
+refs:
+  - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
+  - dev/設計書/ER図/ワークスペース#
+test_file: tests/integration/server/test_opened.py

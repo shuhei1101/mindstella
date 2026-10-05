@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
+from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeItem
 
 # 概要のタイルの項目 ID
@@ -254,3 +255,22 @@ def test_progress_tile_category_link(
     # 検証
     assert _chips(page) == ["カテゴリー: データ構造"]
     assert _row_ids(page) == ["D-1", "D-2"]
+
+
+def test_diff_marks(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間、タイルの項目のタイトルの横に印を文言なしで置く。トップバーに選んだ時点の札を出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_history_preview()
+    preselect_diff(page, "since")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector("#tile-next button[data-id]")
+    # 検証
+    next_mark = page.locator('#tile-next button[data-id="D-2"] .df-mark')
+    assert next_mark.get_attribute("class") == "df-mark df-chg"
+    assert next_mark.inner_text() == "変更"
+    running_mark = page.locator('#tile-running button[data-id="T-1"] .df-mark')
+    assert running_mark.get_attribute("title") == "変更"
+    assert page.locator("#tile-next .df-badge, #tile-running .df-badge").count() == 0
+    assert_topbar_history(page)

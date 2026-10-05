@@ -46,7 +46,14 @@ EXPECTED_LICENSES = {
     "dompurify": ("DOMPurify", "Apache-2.0", "(c) Cure53 and other contributors"),
     "elkjs": ("elkjs", "EPL-2.0", "(c) Kiel University and others"),
     "mermaid": ("mermaid", "MIT", "Copyright (c) 2014 - 2022 Knut Sveidqvist"),
+    "diff": ("jsdiff", "BSD-3-Clause", "Copyright (c) 2009-2015, Kevin Decker"),
 }
+
+# 書き換えのまとまりを 1 つ持つ `changes.yaml`
+COMMITTED_CHANGES = (
+    "last_seq: 0\nsets:\n- id: V-1\n  at: '2026-10-01T00:00:00+00:00'\n  summary: 足す\n"
+    "  until_seq: 0\n  added: [D-1]\n  changed: []\npending:\n  added: []\n  changed: []\n"
+)
 
 # elkjs のソースコードの入手先（リポジトリ）
 ELKJS_REPOSITORY = "https://github.com/kieler/elkjs"
@@ -97,6 +104,7 @@ def test_normal(
         make_item("N-1"),
         make_item("L-1"),
         bodies={"A-1.md": BODY_WITH_SCRIPT_TAG},
+        raw_files={"changes.yaml": COMMITTED_CHANGES},
     )
     before = snapshot_tree(root)
     out = tmp_path / "配る.html"
@@ -116,6 +124,7 @@ def test_normal(
     assert data["notes"] == [make_item("N-1")]
     assert data["logs"] == [make_item("L-1")]
     assert data["bodies"] == {"A-1.md": BODY_WITH_SCRIPT_TAG}
+    assert [entry["id"] for entry in data["changes"]["sets"]] == ["V-1"]
     # script・link・img が外のファイルや URL を指さない
     references = _ExternalReferences()
     references.feed(html)

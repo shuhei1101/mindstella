@@ -13,6 +13,7 @@ from .fixture_types import (
     SnapshotTree,
     WriteSubmissions,
 )
+from .history_helpers import DECISION_ITEM, add_item, commit, update_item
 
 
 def _problem_keys(problems: list[dict[str, Any]]) -> set[tuple[str, str, str | None, str | None]]:
@@ -83,6 +84,31 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
     # 検証
     assert result.is_error is True
     assert str(root) in result.text
+
+
+def test_normal_when_history_stale(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """本文を手で書き換えて前の版を組み立てられない変更履歴を、問題として返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "decision", {**DECISION_ITEM, "body_markdown": "1 行目\n2 行目\n3 行目\n"})
+    commit(call_tool, root, "足す")
+    update_item(call_tool, root, "D-1", {"body_markdown": "1 行目\n書き換えた 2 行目\n3 行目\n"})
+    (root / "docs" / "D-1.md").write_text("手で書いた A\n手で書いた B\n手で書いた C\n", encoding="utf-8")
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    assert ("stale_history", "decisions.yaml", "D-1", "history[0].body_diff") in _problem_keys(
+        result.data["problems"]
+    )
+    assert snapshot_tree(root) == before
 
 
 def test_normal_when_unknown_phase(

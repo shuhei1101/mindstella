@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -11,6 +11,16 @@ namespace MindmapPreview {
     icon: IconName;
     /** その種類の項目の件数（概要は持たない） */
     count?: number;
+    /** 差分の表示の間、その種類に新規・変更の項目があるか。真のとき、件数を残したまま右上に点を重ねる */
+    marked?: boolean;
+  };
+
+  /** 変更履歴で選んだ時点（札に出す名前と補足） */
+  export type DiffPointLabel = {
+    /** 「前回開いてから」・「まだまとめていない変更」・まとまりの説明 */
+    name: string;
+    /** 日時など */
+    sub: string;
   };
 
   /** トップバーの引数 */
@@ -41,6 +51,12 @@ namespace MindmapPreview {
     commentsOpen?: boolean;
     /** コメントのボタンを押したとき（0 件でも押せる。一覧を開く・閉じる） */
     onComments?: () => void;
+    /** 変更履歴で選んだ時点。あるとき、「変更履歴」の右にその名前の札と外す × を出す */
+    diffPoint?: DiffPointLabel | null;
+    /** 「変更履歴」のボタンを押したとき。渡さないと「変更履歴」を出さない */
+    onHistory?: () => void;
+    /** 札の × を押したとき（差分の表示をやめる） */
+    onDiffOff?: () => void;
   };
 
   /** 件数の表示を揺らさない上限 */
@@ -56,7 +72,7 @@ namespace MindmapPreview {
 
   /** 画面を移るリンク（ハッシュのリンクにして、押したときは使う側が移る） */
   function tabLink(
-    { key, label, icon: iconName, count }: TopbarTab,
+    { key, label, icon: iconName, count, marked = false }: TopbarTab,
     current: Tab,
     onNavigate: (key: Tab) => void,
     extraClass = "",
@@ -77,6 +93,56 @@ namespace MindmapPreview {
         icon(iconName),
         label,
         count === undefined ? null : h({ tag: "span", attrs: { class: "count" }, children: [count] }),
+        // 差分の表示の間、印の付いた項目を持つ種類に、件数を残したまま点を重ねる
+        marked
+          ? h({
+            tag: "span",
+            attrs: { class: "df-dot" },
+            children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更の項目があります"] })],
+          })
+          : null,
+      ],
+    });
+  }
+
+  /** 「変更履歴」のボタン（印と文言）。押すと変更履歴のモーダルを開く */
+  function historyButton(onClick: () => void): HTMLElement {
+    return h({
+      tag: "button",
+      attrs: {
+        class: "hist-btn",
+        type: "button",
+        "data-act": "hist",
+        "aria-haspopup": "dialog",
+        "aria-label": "変更履歴",
+        onclick: onClick,
+      },
+      children: [icon("history"), h({ tag: "span", attrs: { class: "label" }, children: ["変更履歴"] })],
+    });
+  }
+
+  /** 選んだ時点の札と、差分の表示をやめる × */
+  function diffChip({ point, onOff }: { point: DiffPointLabel; onOff?: () => void }): HTMLElement {
+    return h({
+      tag: "span",
+      attrs: { class: "df-chip" },
+      children: [
+        h({
+          tag: "span",
+          attrs: { class: "df-chip-t", title: `${point.name}（${point.sub}）` },
+          children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["差分の時点: "] }), point.name],
+        }),
+        h({
+          tag: "button",
+          attrs: {
+            type: "button",
+            "data-act": "diffoff",
+            "aria-label": "差分の表示をやめる",
+            title: "差分の表示をやめる",
+            onclick: () => onOff?.(),
+          },
+          children: [icon("x")],
+        }),
       ],
     });
   }
@@ -146,6 +212,9 @@ namespace MindmapPreview {
     commentCount = 0,
     commentsOpen = false,
     onComments,
+    diffPoint = null,
+    onHistory,
+    onDiffOff,
   }: TopbarProps): HTMLElement {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     const bar = h({
@@ -178,6 +247,9 @@ namespace MindmapPreview {
             h({ tag: "kbd", children: ["/"] }),
           ],
         }),
+        onHistory === undefined ? null : historyButton(onHistory),
+        // 差分の表示の間は、選んだ時点の札と外すボタンを「変更履歴」の右に出す
+        diffPoint === null ? null : diffChip({ point: diffPoint, onOff: onDiffOff }),
         // コメントのボタンを右端に置くとき、検索の入口を中央へ寄せる
         comments ? h({ tag: "span", attrs: { class: "spacer" } }) : null,
         h({
