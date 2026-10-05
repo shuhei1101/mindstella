@@ -40,6 +40,10 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     created = added.pop("created")
     updated = added.pop("updated")
     assert created == updated
+    # 通し番号は、足したときに振った `changes.yaml` の `last_seq` と同じ
+    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    assert added.pop("seq") == changes["last_seq"]
+    assert added.pop("added_seq") == changes["last_seq"]
     assert added == {
         "id": "D-2",
         "title": "YAML のキーをどう分けるか",
@@ -55,7 +59,6 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert (root / "docs" / "D-2.md").read_text(encoding="utf-8") == NEW_DECISION["body_markdown"]
     # 足した項目は変更履歴を持たず、まだまとめていない変更の足した項目に入る
     assert "history" not in added
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
     assert changes["pending"]["added"] == ["D-2"]
 
 

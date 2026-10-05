@@ -37,6 +37,9 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
         "update",
         "update_settings",
         "adopt",
+        "edit_option",
+        "batch",
+        "changes_since_read",
         "commit",
         "pending",
         "status",
@@ -109,6 +112,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert "`migrate`" in preparation
     assert PLAN_CALL in preparation
     assert preparation.index("`migrate`") < preparation.index("`submissions`")
+    # 準備が changes_since_read を submissions より前に呼ぶ
+    assert "`changes_since_read`" in preparation
+    assert preparation.index("`changes_since_read`") < preparation.index("`submissions`")
     # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
     assert "bin/mindstella" in preparation
     assert "止まる" in preparation
@@ -118,6 +124,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/範囲の見直し.md が update_settings を呼ぶ
     scope_step = (SKILLS_DIR / "session" / "steps" / "範囲の見直し.md").read_text(encoding="utf-8")
     assert "`update_settings`" in scope_step
+    # steps/取り込み.md が batch を呼ぶ
+    capture_step = (SKILLS_DIR / "session" / "steps" / "取り込み.md").read_text(encoding="utf-8")
+    assert "`batch`" in capture_step
     # 取り込み・ヒアリング・リサーチ・方針転換のステップが commit を呼ぶ
     for step_file in COMMIT_STEP_FILES:
         step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")
