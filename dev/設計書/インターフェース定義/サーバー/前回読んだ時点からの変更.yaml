@@ -196,3 +196,4 @@ constraints:
     constraint: 種類ごとの YAML の項目だけ。設定（`mindmap.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、通し番号も進めない）
   - item: 読んだ時点が進むとき
     constraint: このツールを呼んだときだけ。ほかのツールの書き込みは `read_seq` を書き換えない
+test_file: tests/integration/server/test_changes_since_read.py

@@ -367,3 +367,4 @@ constraints:
     constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は `options`（書き換える前の案の並びの全体）
   - item: 部分成功
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる
+test_file: tests/integration/server/test_edit_option.py

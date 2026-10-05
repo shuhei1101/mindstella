@@ -256,3 +256,4 @@ constraints:
     constraint: 制限なし
   - item: 部分成功
     constraint: 起こさない。どれかの操作が失敗するか、置き換えに失敗したら、置き換えたものを前の中身に戻して（前に本文が無ければ消して）からツールのエラーで終わる
+test_file: tests/integration/server/test_batch.py
