@@ -113,3 +113,22 @@ def test_columns_popover(open_story: OpenStory) -> None:
     assert page.locator(".pop h3").count() == 0
     labelled = page.get_attribute(".pop", "aria-labelledby")
     assert page.inner_text(f"#{labelled}") == "表示する列"
+
+
+def test_marked(open_story: OpenStory) -> None:
+    """差分の表示の間。変えた行のタイトルの右に ●、足した行に + を置き、印の無い行は変わらない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-table--marked")
+    # 検証
+    marks = page.evaluate(
+        """() => Object.fromEntries([...document.querySelectorAll('table.grid tbody tr')].map(row => {
+            const mark = row.querySelector('.row-open + .df-mark');
+            return [row.dataset.id, mark === null ? null : [mark.classList.contains('df-new') ? 'new' : 'changed', mark.getAttribute('title')]];
+        }))"""
+    )
+    assert marks["D-5"] == ["changed", "変更"]
+    assert marks["D-37"] == ["new", "新規"]
+    assert [marks[row] for row in ("D-1", "D-2", "D-3", "D-4")] == [None] * 4
+    # 表の印は記号だけで、「新規」「変更」の札にしない
+    assert page.locator("table.grid .df-badge").count() == 0
+    assert page.locator("table.grid .df-mark svg.icon").count() == 2
