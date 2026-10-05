@@ -113,7 +113,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     summary: '`mindmap.yaml` に `history_limit` が無いときの回数'
-    value: '1'
+    value: '5'
   - name: SET_ID_PREFIX
     title: まとまりの ID の頭
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -184,10 +184,10 @@ functions:
     unit_tests:
       - name: test_history_limit
         case: 正常
-        summary: 設定が無ければ既定の 1
+        summary: 設定が無ければ既定の 5
         condition: '`parametrize`: `history_limit` が無い / 0 / 3'
         mock: なし
-        expected: 1 / 0 / 3
+        expected: 5 / 0 / 3
   - name: diff_body
     title: 本文の差分を作る
     kind: 関数
@@ -295,7 +295,7 @@ functions:
       type: HistoryEntry | None
       description: 変わったものが無ければ `None`
     process: |-
-      1. `updated`・`history`・`body` を除いたキーの和を取り、値が違うキーを `before` にする（前に無いキーは `None`）
+      1. `updated`・`history`・`history_dropped_seq`・`body` を除いたキーの和を取り、値が違うキーを `before` にする（前に無いキーは `None`）
       2. 前の本文があり後の本文と違う場合、`body_diff` を作る（`diff_body`）。前に本文が無い場合は `before.body` を `None` にする
       3. `before` も `body_diff` も無ければ `None` を返す
     unit_tests:

@@ -46,7 +46,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     summary: '`item` で渡させないキー'
-    value: ("id", "created", "updated", "body")
+    value: ("id", "created", "updated", "body", "history", "history_dropped_seq")
   - name: BODY_INPUT_KEY
     title: 本文を渡すキー
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
@@ -108,7 +108,7 @@ functions:
       - name: test_validate_input_keys_when_reserved
         case: 異常
         summary: スクリプトが付けるキーを弾く
-        condition: '`parametrize`: `id` / `created` / `updated` / `body`'
+        condition: '`parametrize`: `id` / `created` / `updated` / `body` / `history` / `history_dropped_seq`'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` にそのキー）'
         exception: スクリプトが付けるキーを持つ

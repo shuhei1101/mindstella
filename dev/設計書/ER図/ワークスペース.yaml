@@ -124,8 +124,8 @@ tables:
       - name: history_limit
         title: 保持する回数
         type: number
-        default: '1'
-        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 1 として扱う
+        default: '5'
+        description: 項目ごとに変更履歴を何回分持つか。0 以上の整数で上限は設けない。0 は変更履歴を持たず、差分を出さない。無ければ 5 として扱う
         example: '3'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー

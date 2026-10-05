@@ -317,7 +317,7 @@ constraints:
   - item: 変更履歴の 1 回分
     constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（`updated` と同じ日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前の本文の行へ戻す差分）を、`history` の先頭に置く。本文の全文は持たない。形は ER 図『ワークスペース』の共通のキー `history`'
   - item: 保持する回数
-    constraint: '`mindmap.yaml` の `history_limit`（無ければ 1）。積んだ後、新しいものからその回数を残して古いものを消す。0 のときは積まず、`pending.changed` にも足さず、持っている `history` をキーごと消す'
+    constraint: '`mindmap.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
   - item: まだまとめていない変更
     constraint: 積んだとき、`changes.yaml` の `pending.changed` に ID を足す。既に `pending.added`・`pending.changed` にある ID は足さない。`changes.yaml` が無ければ作る
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
