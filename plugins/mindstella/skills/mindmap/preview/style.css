@@ -847,7 +847,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .hist-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
 .hist-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 選んだ時点の札: 時点の名前と、札を外すボタン */
-.df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 16em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
+.df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 24em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
 /* 札の時点の名前: 長いときは末尾を省略する */
 .df-chip-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 札を外すボタン */
@@ -856,8 +856,17 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .df-chip button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 札を外すボタンの印 */
 .df-chip button svg.icon { width: 16px; height: 16px; }
-/* 狭い幅（900px 以下）: 検索の入口と同じく変更履歴は印だけにし、札は短くする */
-@media (max-width: 900px) { .hist-btn { width: 32px; padding: 0; justify-content: center; } .hist-btn .label { display: none; } .df-chip { max-width: 7.5em; } }
+/* 狭い幅（900px 以下）: 検索の入口と同じく変更履歴は印だけにし、札は名前が数文字読める幅を取る。差分の表示の間は、帯の間隔を詰め、ツール名の文字と空きの要素を隠して、札に幅を回す */
+@media (max-width: 900px) {
+  .hist-btn { width: 32px; padding: 0; justify-content: center; }
+  .hist-btn .label { display: none; }
+  .df-chip { max-width: 12em; min-width: 5.5em; }
+  .search-trigger { flex: none; }
+  .topbar:has(.df-chip) { gap: 8px; }
+  .topbar:has(.df-chip) .brand { flex: none; }
+  .topbar:has(.df-chip) .brand-name, .topbar:has(.df-chip) .spacer { display: none; }
+  .topbar:has(.df-chip) .top-btn { margin-left: auto; }
+}
 
 /* ===== 変更履歴のモーダル ===== */
 
