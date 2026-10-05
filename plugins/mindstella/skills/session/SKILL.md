@@ -2,7 +2,7 @@
 name: session
 description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__update_settings, mcp__mindstella__adopt, mcp__mindstella__edit_option, mcp__mindstella__batch, mcp__mindstella__changes_since_read, mcp__mindstella__commit, mcp__mindstella__pending, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__submissions, mcp__mindstella__take_submission
+allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__update_settings, mcp__mindstella__adopt, mcp__mindstella__edit_option, mcp__mindstella__batch, mcp__mindstella__changes_since_read, mcp__mindstella__commit, mcp__mindstella__pending, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__tags, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__submissions, mcp__mindstella__take_submission
 ---
 
 # session
@@ -58,6 +58,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | `find` | `workspace`・`text`・`kind`・`status`・`tag`・`target`・`category`・`phase`・`attr`（`名前=値` の配列）。条件は全て任意 |
 | `show` | `workspace`・`id` |
 | `attrs` | `workspace` |
+| `tags` | `workspace` |
 | `migrate` | `workspace`・`plan: true` |
 | `status` | `workspace` |
 | `check` | `workspace` |

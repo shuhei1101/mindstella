@@ -44,6 +44,7 @@ TOOL_NAMES = (
     "find",
     "show",
     "attrs",
+    "tags",
     "check",
     "goal",
     "migrate",
@@ -274,6 +275,10 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     @server.tool(name="attrs", description="使っている属性名と件数を返す")
     def attrs(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_attrs)
+
+    @server.tool(name="tags", description="使っているタグと件数・種類を返す")
+    def tags(workspace: WorkspaceArg) -> CallToolResult:
+        return read(workspace, commands.run_tags)
 
     @server.tool(name="check", description="スキーマ違反・参照切れ・本文のずれを洗い出す")
     def check(workspace: WorkspaceArg) -> CallToolResult:

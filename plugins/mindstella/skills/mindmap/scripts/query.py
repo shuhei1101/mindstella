@@ -1,4 +1,4 @@
-"""項目の検索・1 件の表示と参照元・属性名の一覧（読むだけで、ファイルを書かない）。"""
+"""項目の検索・1 件の表示と参照元・属性名とタグの一覧（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
@@ -96,6 +96,29 @@ def list_attrs(workspace: Workspace) -> list[dict[str, Any]]:
         if not isinstance(attrs, dict):
             continue
         for name in attrs:
+            counts[name] = counts.get(name, 0) + 1
+            kinds_by_name.setdefault(name, set()).add(kind)
+    return [
+        {
+            "name": name,
+            "count": counts[name],
+            # 種類の並びは KINDS の順
+            "kinds": [kind for kind in KINDS if kind in kinds_by_name[name]],
+        }
+        for name in sorted(counts)
+    ]
+
+
+def list_tags(workspace: Workspace) -> list[dict[str, Any]]:
+    """全ての項目の `tags` のタグごとに、持つ項目の数と種類を数える（字面が違えば別のタグ）。"""
+    counts: dict[str, int] = {}
+    kinds_by_name: dict[str, set[Kind]] = {}
+    for kind, item in _iter_sorted_items(workspace):
+        tags = item.get("tags")
+        if not isinstance(tags, list):
+            continue
+        # 1 つの項目が同じタグを 2 回持っても 1 件と数える
+        for name in set(tags):
             counts[name] = counts.get(name, 0) + 1
             kinds_by_name.setdefault(name, set()).add(kind)
     return [
