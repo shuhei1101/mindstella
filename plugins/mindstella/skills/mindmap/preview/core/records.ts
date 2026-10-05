@@ -1,4 +1,4 @@
-// 記録の索引・関係する項目・検索。次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。
+// 記録の索引・関係する項目・検索・箇所の名前。次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。
 
 namespace MindmapPreview {
   /** 項目の種類（`mindmap-data` のキー） */
@@ -268,5 +268,39 @@ namespace MindmapPreview {
   /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */
   export function titleOf(index: RecordIndex, id: string): string {
     return index.byId.get(id)?.item.title ?? "（記録にありません）";
+  }
+
+  /** 項目のキー → 詳細パネルがそのキーに出す見出し（案の中のキーも同じ辞書） */
+  const VALUE_HEADINGS: Record<string, string> = {
+    title: "タイトル",
+    status: "状態",
+    lead: "問い",
+    answer: "決定内容",
+    reason: "理由",
+    content: "内容",
+    pros: "メリット",
+    cons: "デメリット",
+    note: "備考",
+    question: "調べたこと",
+    conclusion: "結論",
+    meaning: "意味",
+    result: "結果",
+  };
+
+  /** 案の中のキー（`options[C].cons`）の形 */
+  const OPTION_KEY = /^options\[([^\]]+)\]\.(\w+)$/;
+
+  /** 箇所を画面に出す名前にする。本文は行（範囲は「〜」でつなぐ）、値は詳細パネルがそのキーに出す見出し（案の中は「案 {key} の{見出し}」） */
+  export function locationLabel(loc: Location): string {
+    if (loc.kind === "body") {
+      const start = loc.start ?? 0;
+      const end = loc.end ?? start;
+      return start === end ? `本文 ${start} 行目` : `本文 ${start}〜${end} 行目`;
+    }
+    const key = loc.key ?? "";
+    const option = OPTION_KEY.exec(key);
+    // 案の中の値: 案の記号と見出し
+    if (option !== null) return `案 ${option[1]} の${VALUE_HEADINGS[option[2] ?? ""] ?? option[2]}`;
+    return VALUE_HEADINGS[key] ?? key;
   }
 }

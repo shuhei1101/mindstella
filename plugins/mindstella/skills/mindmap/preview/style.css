@@ -674,3 +674,153 @@ dialog.full:has(.full-viewer) .send { display: none; }
 @media (max-width: 1100px) { .conn .conn-long { display: none; } .conn .conn-short { display: inline; } }
 /* 最も狭い幅（360px 以下）: 印だけを見せてサイト名と重ねない。文言は読み上げにだけ残す */
 @media (max-width: 360px) { .conn .conn-short { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } .conn svg.icon { width: 18px; height: 18px; } }
+
+/* ===== コメント ===== */
+
+/* 足す寸法: 角の丸め切った入口と、コメントの一覧の幅、件数の高さ */
+:root { --radius-pill: 999px; --drawer-w: 420px; --count-h: 18px; }
+
+/* トップバーの検索の入口の両側の空き: 同じ伸び方にして、コメントのボタンを右端に置いたとき検索の入口を中央へ寄せる */
+.topbar.has-comments .spacer { flex: 1 1 0; }
+/* コメントのボタン（トップバー）: 検索の入口と同じ高さと枠 */
+.comments-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.comments-btn:hover { background: var(--topbar-hover); }
+.comments-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+/* コメントの一覧を開いているときのボタン: 枠と面で選んだ見た目にする */
+.comments-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
+/* コメントのボタンの件数: 0 件でも出し、数字は等幅で幅を揺らさない */
+.comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+/* 件数が 0 のとき: 塗りを外して目立たせない */
+.comments-btn .count.zero { background: transparent; color: var(--topbar-fg-2); box-shadow: inset 0 0 0 1px var(--topbar-line); }
+/* 狭い幅（900px 以下）: 文字を隠し、印と件数だけにする */
+@media (max-width: 900px) { .comments-btn .label { display: none; } .comments-btn { padding: 0 8px; } }
+
+/* コメントの入力: 添えた箇所（名前・外す ×・選んだ文）の箱 */
+.send-loc { display: grid; gap: 4px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 添えた箇所の見出し行: 箇所の名前と外すボタンを両端に置く */
+.send-loc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* 箇所の名前: 行の範囲かキーの名前 */
+.send-loc-name, .review-loc-name { color: var(--text-2); font-weight: 600; }
+/* 添えた箇所を外すボタン */
+.send-unquote { flex: none; width: var(--target-min); height: var(--target-min); }
+/* 添えた箇所を外すボタンの印 */
+.send-unquote svg.icon { width: 14px; height: 14px; }
+/* 選んだ文の引用: 3 行までにして、それより長いと末尾を省く */
+.send-quote { margin: 0; padding: 0; color: var(--text); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: var(--fs-small); }
+/* 溜めたときの印: 印の色にする */
+.send-msg.saved svg.icon { color: var(--accent); }
+/* 畳んだ入力（狭い幅の項目を指さないコメント）: 余白を詰め、1 行の入力欄だけを出す */
+.send.collapsed { gap: 4px; padding-block: 8px; }
+/* 畳んだ入力欄: 1 行の高さにし、伸ばさない */
+.send.collapsed textarea { min-block-size: 0; block-size: var(--control-h); field-sizing: fixed; resize: none; overflow: hidden; padding-block: 5px; }
+
+/* 選んだ箇所の入口: 角を丸め切った横長のピルに、印と「コメント」 */
+.selection-comment { z-index: 60; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); font-weight: 600; white-space: nowrap; box-shadow: var(--shadow-pop); cursor: pointer; }
+/* 入口のホバー: 面の色だけを変える */
+.selection-comment:hover { background: var(--hover); }
+/* 入口のキーボードのフォーカス: 印の色の輪 */
+.selection-comment:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 入口の印: 印の色 */
+.selection-comment svg.icon { width: 16px; height: 16px; color: var(--accent); }
+
+/* 詳細パネルの一番下の、その項目へのレビュー中のコメント: 見出しの件数 */
+.d-review h3 .count { margin-left: 8px; font-family: var(--font-mono); font-weight: 400; color: var(--text-3); }
+/* レビュー中のコメントの並び: 行どうしを細い線で区切る */
+.review-list li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+/* 最後の行: 下の線を引かない */
+.review-list li:last-child { border-bottom: 0; }
+/* レビュー中のコメントの箇所: 名前と選んだ文を縦に積む */
+.review-loc { display: grid; gap: 4px; padding: 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
+/* レビュー中のコメントの本文: 改行を保ち、長い URL も折り返す */
+.review-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+/* 一覧から開いたとき示す箇所: 検索で当たった語と同じ地で囲む */
+.loc-hit { background: var(--hit); border-radius: 2px; box-shadow: 0 0 0 2px var(--hit); }
+
+/* コメントの一覧: タブの帯の下から、本文に重ねて左から出すパネル */
+.comments-panel { position: fixed; z-index: 22; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); visibility: hidden; transition: transform .35s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .35s; }
+/* 開いたコメントの一覧 */
+.comments-panel.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.22, .8, .24, 1); }
+/* 一覧の見出し: 詳細パネルの見出しと同じ帯 */
+.comments-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 48px; padding: 0 10px 0 16px; background: var(--surface); border-bottom: 1px solid var(--border-soft); }
+/* 一覧の見出しの文字と件数 */
+.comments-head h2 { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: var(--fs-h2); }
+.comments-head .count { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: 400; color: var(--text-3); }
+/* まとめて送る帯: すべて選ぶ・選んだ件数・送るボタンを 1 行に並べ、一覧の上端に留める */
+.send-band { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* 選んだ件数 */
+.send-count { flex: 1; font-size: var(--fs-small); color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* まとめて送った結果・押せない理由: 帯の下の行に幅いっぱいで出す */
+.send-band .send-msg { flex-basis: 100%; min-height: 0; padding-top: 0; }
+/* 結果も理由も無いとき: 2 行目を空けない */
+.send-band .send-msg:empty { display: none; }
+/* 送った: 印の色 */
+.send-band .send-msg.sent svg.icon { color: var(--accent); }
+/* 送れなかった・箇所が合わない: 状態の色の印と、本文の色の文字 */
+.send-band .send-msg.failed, .send-band .send-msg.stale { color: var(--text); }
+.send-band .send-msg.failed svg.icon, .send-band .send-msg.stale svg.icon { color: var(--st-review); }
+/* 送るボタンが押せないとき: 塗りを外す */
+.send-band .btn.primary:disabled { background: var(--surface-2); border-color: var(--border); color: var(--text-2); cursor: default; }
+/* 一覧の中身: 中だけを送る */
+.comments-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+/* 一覧: 溜めた順の縦並び */
+.comments-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* 行: チェック・中身・操作の 3 列 */
+.comments-list .row { display: grid; grid-template-columns: var(--target-min) minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 一覧から開いている行: 選んだ行の面にする */
+.comments-list .row.selected { background: var(--row-selected); border-color: var(--accent-line); }
+/* 箇所が合わない行: 枠の全体を状態の色にする（文言と印でも示す） */
+.comments-list .row.stale { border-color: var(--st-review); }
+/* 行のチェック */
+.row-check { justify-self: center; width: 16px; height: 16px; margin: 6px 0 0; accent-color: var(--accent); }
+/* 行の中身: 向けた項目・箇所・本文を縦に積む */
+.row-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+/* 向けた項目: 押すと詳細パネルを開く。長い項目名は操作の列の手前で省く */
+.row-target { justify-self: start; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: var(--control-h); padding: 0 6px; margin-left: -6px; border: 0; border-radius: var(--radius); background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; }
+button.row-target { cursor: pointer; }
+button.row-target:hover { background: var(--hover); }
+button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 向けた項目の ID */
+.row-target .mono { flex: none; font-weight: 400; color: var(--text-2); }
+/* 向けた項目のタイトル: 1 行で末尾を省く */
+.row-target .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 項目を指さないコメント・消えた項目: 押せない見出しにする */
+.row-target.none, .row-target.gone { color: var(--text-2); cursor: default; }
+/* 箇所が合わない理由と、箇所を外すボタン */
+.row-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-small); }
+/* 箇所が合わない印 */
+.row-stale svg.icon { flex: none; width: 14px; height: 14px; color: var(--st-review); }
+/* 箇所が合わない理由の文字 */
+.row-stale span { flex: 1; min-width: 12em; }
+/* 行の操作: 直す・削除 */
+.row-actions { display: flex; gap: 2px; }
+/* 本文を直す入力 */
+.row-edit { display: grid; gap: 8px; }
+/* 本文を直す入力欄: コメントの入力欄と同じ見た目 */
+.row-edit textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(10lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.row-edit textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 直せなかった理由 */
+.row-edit .send-msg { min-height: 0; padding-top: 0; }
+.row-edit .send-msg:empty { display: none; }
+/* やめる・直すの行: 右に寄せる */
+.row-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* 削除した行: 元に戻すボタンだけを残す */
+.comments-list .row.removed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; background: var(--surface-2); border-style: dashed; }
+/* 削除した旨 */
+.removed-msg { color: var(--text-2); font-size: var(--fs-small); }
+/* 0 件のとき: 印と文言だけを置く */
+.comments-empty { display: flex; align-items: center; gap: 10px; margin: 0; padding: 24px 16px; color: var(--text-2); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
+/* 0 件の印 */
+.comments-empty svg.icon { width: 20px; height: 20px; color: var(--text-3); }
+/* 下端の項目を指さないコメントの入力: 一覧の下端に固定していつでも書けるようにする */
+.comments-free { flex: none; background: var(--surface); border-top: 1px solid var(--border); }
+/* 下端の入力の余白: 一覧の幅に合わせる */
+.comments-free .send.send-footer { padding: 12px 16px 14px; border-top: 0; }
+/* 狭い幅（900px 以下）: 詳細パネルと同じく画面の幅いっぱいにする */
+@media (max-width: 900px) { .comments-panel { width: 100%; top: var(--topbar-h); z-index: 34; } }
+/* 狭い幅（720px 以下）: 行の余白を詰め、直す・削除を右上に重ねる */
+@media (max-width: 720px) {
+  .comments-list .row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
+  .row-actions { position: absolute; top: 10px; right: 10px; }
+  .row-target { max-width: calc(100% - 2 * var(--control-h) - 8px); }
+  .comments-list .row.removed { grid-template-columns: minmax(0, 1fr) auto; }
+}

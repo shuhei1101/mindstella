@@ -31,3 +31,6 @@ items:
   - page: 図の拡大.yaml
     summary: 本文の図を大きく見る
     group: 重ねる画面
+  - page: コメントの一覧.yaml
+    summary: レビュー中のコメントを並べ、チェックしたものをまとめて送る。左から出すパネル
+    group: 重ねる画面

@@ -16,6 +16,7 @@ diagrams:
         class ツールの処理
         class 配信
         class 送信
+        class コメント
         class 読み書きと検証
         class 検索
         class 依存と影響
@@ -36,7 +37,8 @@ diagrams:
         ツールの処理 --> 移行
         ツールの処理 --> 設定の更新 : update_settings
         配信 --> ビルド : 雛形と記録
-        配信 --> 送信 : POST /api/submissions
+        配信 --> コメント : /api/comments・/api/drafts
+        コメント --> 送信 : まとめて送る
       ```
 constants:
   - name: RESERVED_KEYS
@@ -1037,9 +1039,9 @@ functions:
       - name: test_run_submissions
         case: 正常
         summary: 取り込んでいない送信を返す
-        condition: D-1 と、取り込んだ S-1・取り込んでいない S-2（D-1）を持つワークスペース
+        condition: D-1 と、取り込んだ S-1・取り込んでいない S-2（D-1）・S-3（項目を指さない）を持つワークスペース
         mock: なし
-        expected: '`{items: [{id: S-2, target: D-1, target_title: {D-1 のタイトル}, body, sent}]}`'
+        expected: '`{items: [{id: S-2, target: D-1, target_title: {D-1 のタイトル}, loc: null, body, sent}, {id: S-3, target: null, target_title: null, loc: null, body, sent}]}`'
   - name: run_take_submission
     title: take_submission の処理
     kind: 関数

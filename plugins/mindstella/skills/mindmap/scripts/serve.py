@@ -1,6 +1,6 @@
 """ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
 
-画面・記録・書き換えの知らせを返し、回答・意見の送信を受け付ける。
+画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送るを受け付ける。
 """
 
 from __future__ import annotations
@@ -10,25 +10,39 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from builder import PREVIEW_DIR, assemble_template, read_records
+from comments import (
+    ReviewComment,
+    SentComment,
+    add_comment,
+    delete_comment,
+    list_review,
+    save_draft,
+    send_comments,
+    update_comment,
+)
 from errors import (
+    CommentConflictError,
+    CommentInvalidError,
+    CommentNotFoundError,
     ItemNotFoundError,
+    MindmapError,
     SchemaMismatchError,
     ServeFailedError,
-    SubmissionInvalidError,
     WorkspaceNotFoundError,
     WriteFailedError,
 )
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE
-from store import workspace_lock
-from submissions import SUBMISSIONS_FILE, Submission, add_submission
+from locations import location_to_dict
+from store import load_workspace, workspace_lock
+from submissions import SUBMISSIONS_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -41,18 +55,20 @@ POLL_INTERVAL_SEC = 0.25
 # 知らせが無いままこの秒数が過ぎたら保つための行を送る
 KEEPALIVE_SEC = 15
 
-# 送信の要求の本文を読む上限（バイト）。`Content-Length` がこれを超えたら読まずに 400 にする
-MAX_REQUEST_BYTES = 65536
+# 書き込む要求の本文を読む上限（バイト）。`Content-Length` がこれを超えたら読まずに 400 にする
+MAX_REQUEST_BYTES = 131072
 
-# 送信を受け付けるパス
-SUBMISSIONS_PATH = "/api/submissions"
+# レビュー中のコメント・まとめて送る・書きかけのパス
+COMMENTS_PATH = "/api/comments"
+SEND_PATH = "/api/comments/send"
+DRAFTS_PATH = "/api/drafts"
 
 # JSON・HTML・問題の応答の `Content-Type`
 JSON_TYPE = "application/json; charset=utf-8"
 HTML_TYPE = "text/html; charset=utf-8"
 PROBLEM_TYPE = "application/problem+json; charset=utf-8"
 
-# 送信の要求が持つべきメディアタイプ
+# 書き込む要求が持つべきメディアタイプ
 REQUEST_JSON_TYPE = "application/json"
 
 # 書き換えの知らせの応答の `Content-Type`
@@ -136,7 +152,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
 
     def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/api/records`・`/api/events` を処理の関数へ振り分ける。"""
+        """`Host` を確かめ、`/`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
         if not check_host(self.headers.get("Host"), context.port):
@@ -149,20 +165,74 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(records_response(context.root))
         elif path == "/api/events":
             self._stream(context.root)
+        elif path == COMMENTS_PATH:
+            self._reply(comments_response(context.root))
         else:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_POST(self) -> None:
-        """`Host` を確かめ、`/api/submissions` を受け付けの関数へ渡す。"""
-        context = self.context
-        # 接続先が合わない
-        if not check_host(self.headers.get("Host"), context.port):
-            self._reply(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
-            return
-        path = urlsplit(self.path).path
-        if path != SUBMISSIONS_PATH:
+        """レビュー中のコメントを溜める・まとめて送るを受け付けの関数へ渡す。"""
+        path = self._checked_path()
+        if path == COMMENTS_PATH:
+            self._write(
+                lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
+            )
+        elif path == SEND_PATH:
+            self._write(
+                lambda root, data: _sent_body(*send_comments(root, data)), HTTPStatus.CREATED
+            )
+        elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
-            return
+
+    def do_PUT(self) -> None:
+        """書きかけを保つ要求を受け付けの関数へ渡す。"""
+        path = self._checked_path()
+        if path == DRAFTS_PATH:
+            self._write(_saved_draft, HTTPStatus.NO_CONTENT)
+        elif path is not None:
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+
+    def do_PATCH(self) -> None:
+        """レビュー中のコメント 1 件を書き換える要求を受け付けの関数へ渡す。"""
+        path = self._checked_path()
+        comment_id = _comment_id_of(path)
+        if comment_id is not None:
+            self._write(
+                lambda root, data: _updated_body(update_comment(root, comment_id, data)),
+                HTTPStatus.OK,
+            )
+        elif path is not None:
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+
+    def do_DELETE(self) -> None:
+        """レビュー中のコメント 1 件を消す要求を受け付けの関数へ渡す。"""
+        path = self._checked_path()
+        comment_id = _comment_id_of(path)
+        if comment_id is not None:
+            self._reply(
+                delete_response(
+                    self.context, origin=self.headers.get("Origin"), comment_id=comment_id
+                )
+            )
+        elif path is not None:
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
+
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+        """標準の要求の記録を `logging` の `DEBUG` に回す（標準エラーへの直接の書き込みをやめる）。"""
+        logger.debug("受けた要求: %s", format % args)
+
+    def _checked_path(self) -> str | None:
+        """`Host` を確かめて要求のパスを返す。接続先が合わなければ 403 を書いて None を返す。"""
+        # 接続先が合わない
+        if not check_host(self.headers.get("Host"), self.context.port):
+            self._reply(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
+            return None
+        return urlsplit(self.path).path
+
+    def _write(
+        self, handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None], status: int
+    ) -> None:
+        """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答を書く。"""
         length = self._content_length()
         # 長さが無いか、上限を超える: 本文を読まずに断る
         if length is None or length > MAX_REQUEST_BYTES:
@@ -173,19 +243,16 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 )
             )
             return
-        body = self.rfile.read(length)
         self._reply(
-            submission_response(
-                context,
+            write_response(
+                self.context,
                 content_type=self.headers.get("Content-Type"),
                 origin=self.headers.get("Origin"),
-                body=body,
+                body=self.rfile.read(length),
+                handle=handle,
+                status=status,
             )
         )
-
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
-        """標準の要求の記録を `logging` の `DEBUG` に回す（標準エラーへの直接の書き込みをやめる）。"""
-        logger.debug("受けた要求: %s", format % args)
 
     def _content_length(self) -> int | None:
         """`Content-Length` を整数で返す（無い・整数でない・負のときは None）。"""
@@ -205,7 +272,9 @@ class PreviewHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(response.body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(response.body)
+        # 204 は本文を持たない
+        if response.status != HTTPStatus.NO_CONTENT:
+            self.wfile.write(response.body)
 
     def _stream(self, root: Path) -> None:
         """`200` と `text/event-stream` を書き、画面が閉じるまで書き換えを知らせ続ける。"""
@@ -284,9 +353,7 @@ def index_response(preview_dir: Path) -> Response:
     return Response(status=HTTPStatus.OK, content_type=HTML_TYPE, body=html.encode("utf-8"))
 
 
-def records_response(
-    root: Path, read: Callable[[Path], dict[str, Any]] = read_records
-) -> Response:
+def records_response(root: Path, read: Callable[[Path], dict[str, Any]] = read_records) -> Response:
     """ワークスペースをその場で読んだ記録の JSON を返す。"""
     try:
         data = read(root)
@@ -350,15 +417,29 @@ def stream_events(
             return
 
 
-def submission_response(
+def comments_response(root: Path) -> Response:
+    """レビュー中のコメントと書きかけをその場で読んだ JSON を返す。"""
+    try:
+        data = list_review(load_workspace(root))
+    except (SchemaMismatchError, WorkspaceNotFoundError) as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def write_response(
     context: ServeContext,
     *,
     content_type: str | None,
     origin: str | None,
     body: bytes,
-    add: Callable[..., Submission] = add_submission,
+    handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+    status: int,
 ) -> Response:
-    """送り元と本文の形を確かめ、書き換えの鍵を取って送信を足し、結果の応答を返す。"""
+    """本文の形と送り元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す。"""
     media_type = (content_type or "").split(";")[0].strip().lower()
     # JSON でない
     if media_type != REQUEST_JSON_TYPE:
@@ -374,25 +455,103 @@ def submission_response(
         data = None
     # JSON として読めないか、オブジェクトでない
     if not isinstance(data, dict):
-        return problem_response(HTTPStatus.BAD_REQUEST, "本文は JSON のオブジェクトで送ってください")
+        return problem_response(
+            HTTPStatus.BAD_REQUEST, "本文は JSON のオブジェクトで送ってください"
+        )
     try:
         with workspace_lock(context.root, context.write_lock):
-            submission = add(context.root, data)
-    except SubmissionInvalidError as error:
-        return problem_response(HTTPStatus.BAD_REQUEST, str(error))
-    except ItemNotFoundError as error:
-        return problem_response(HTTPStatus.NOT_FOUND, str(error))
-    except (WorkspaceNotFoundError, SchemaMismatchError) as error:
-        return problem_response(
-            HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(error.lines) or str(error)
-        )
-    except WriteFailedError as error:
-        return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, str(error))
-    logger.info("送信を受けた: %s %s", submission.id, submission.target)
+            result = handle(context.root, data)
+    except MindmapError as error:
+        return error_response(error)
     return Response(
-        status=HTTPStatus.CREATED,
+        status=status,
         content_type=JSON_TYPE,
-        body=json.dumps({"id": submission.id, "sent": submission.sent}, ensure_ascii=False).encode(
-            "utf-8"
-        ),
+        body=b""
+        if status == HTTPStatus.NO_CONTENT
+        else json.dumps(result, ensure_ascii=False).encode("utf-8"),
     )
+
+
+def delete_response(context: ServeContext, *, origin: str | None, comment_id: str) -> Response:
+    """送り元を確かめ、書き換えの鍵を取ってコメントを消し、消した中身を返す。"""
+    # 別のサイトからの書き込み
+    if not check_origin(origin, context.port):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    try:
+        with workspace_lock(context.root, context.write_lock):
+            deleted, count = delete_comment(context.root, comment_id)
+    except MindmapError as error:
+        return error_response(error)
+    body = {
+        "id": deleted.id,
+        "target": deleted.target,
+        "loc": None if deleted.loc is None else location_to_dict(deleted.loc),
+        "body": deleted.body,
+        "created": deleted.created,
+        "count": count,
+    }
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def error_response(error: MindmapError) -> Response:
+    """ツールのエラーの種類からステータスコードを決めて問題の応答にする。"""
+    detail = str(error)
+    if isinstance(error, CommentInvalidError):
+        return problem_response(HTTPStatus.BAD_REQUEST, detail)
+    if isinstance(error, (ItemNotFoundError, CommentNotFoundError)):
+        return problem_response(HTTPStatus.NOT_FOUND, detail)
+    if isinstance(error, CommentConflictError):
+        response = problem_response(HTTPStatus.CONFLICT, detail)
+        # まとめて送るでは、合わないコメントを全て返す
+        if error.stale:
+            problem = json.loads(response.body)
+            problem["stale"] = [{"id": item, "reason": reason} for item, reason in error.stale]
+            return Response(
+                status=response.status,
+                content_type=PROBLEM_TYPE,
+                body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
+            )
+        return response
+    if isinstance(error, (WorkspaceNotFoundError, SchemaMismatchError)):
+        return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join([detail, *error.lines]))
+    # 書き込めなかった・渡された種類のないエラー
+    if not isinstance(error, WriteFailedError):
+        logger.error("渡された種類のないエラー: %s %s", type(error).__name__, detail)  # noqa: TRY400
+    return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, detail)
+
+
+def _added_body(comment: ReviewComment, count: int) -> dict[str, Any]:
+    """溜めたコメントの応答の本文を作る。"""
+    return {"id": comment.id, "created": comment.created, "count": count}
+
+
+def _sent_body(sent: str, items: list[SentComment]) -> dict[str, Any]:
+    """まとめて送った応答の本文を作る。"""
+    return {"sent": sent, "items": [asdict(item) for item in items]}
+
+
+def _updated_body(comment: ReviewComment) -> dict[str, Any]:
+    """書き換えたコメントの応答の本文を作る。"""
+    return {
+        "id": comment.id,
+        "body": comment.body,
+        "loc": None if comment.loc is None else location_to_dict(comment.loc),
+    }
+
+
+def _saved_draft(root: Path, data: dict[str, Any]) -> None:
+    """書きかけを保つ（応答の本文は持たない）。"""
+    save_draft(root, data)
+
+
+def _comment_id_of(path: str | None) -> str | None:
+    """`/api/comments/{id}` のパスからコメントの ID を取り出す（送る口の `send` は ID でない）。"""
+    prefix = f"{COMMENTS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix) or path == SEND_PATH:
+        return None
+    return unquote(path.removeprefix(prefix))

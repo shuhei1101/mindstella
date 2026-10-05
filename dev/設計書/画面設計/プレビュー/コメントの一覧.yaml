@@ -1,0 +1,132 @@
+title: "コメントの一覧"
+elements:
+  - name: 一覧の見出し
+    kind: heading
+    position: 見出し
+    description: 「レビュー中のコメント」とレビュー中の件数
+    label: レビュー中のコメント
+    io: 表示
+    source: レビュー中のコメントの読み取り.items の件数
+  - name: 一覧を閉じる
+    kind: button
+    position: 見出し
+    description: コメントの一覧を閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーのコメントのボタンでも閉じる。詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。読み上げの名前は「コメントの一覧を閉じる」
+  - name: すべて選ぶ
+    kind: checkbox
+    position: 送る帯
+    description: レビュー中のコメントをまとめてチェックする・外す。一部だけをチェックしているときは横棒（`indeterminate`）。文字を持たず、読み上げの名前と `title` を「すべて選ぶ」にする
+    io: 入力
+    visible_when: レビュー中のコメントが 1 件以上
+  - name: 選んだ件数
+    kind: label
+    position: 送る帯
+    description: 「{チェックした件数} / {レビュー中の件数} 件」
+    io: 表示
+    visible_when: レビュー中のコメントが 1 件以上
+  - name: まとめて送る
+    kind: button
+    position: 送る帯
+    description: チェックしたコメントの ID を溜めた順に `POST /api/comments/send` へ送る。ラベルは「まとめて送る（{チェックした件数} 件）」。201 なら送った行を一覧から外し、コメントのボタンの件数を減らす。409 なら `stale` の行に理由を出し、どれも送らない。送っている間は押せない。送る帯は一覧の上端に留める
+    label: まとめて送る（{件数} 件）
+    visible_when: レビュー中のコメントが 1 件以上
+    enabled_when: チェックしたコメントが 1 件以上で、送っていない
+  - name: 送った結果
+    kind: label
+    position: 送る帯の直下
+    description: '`role="status"`。送っている間は回る印と「送っています」、送れたら「{件数} 件を送りました（{HH:mm}）。」、409 は「送れませんでした。箇所が合わないコメントが {件数} 件あります。」、届かないときは「送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。」、そのほかのエラーは「送れませんでした。{detail}」、チェックが 0 件のときは「送るコメントにチェックを付けてください。」。失敗は印のアイコンと文言でも伝える'
+    io: 表示
+    visible_when: レビュー中のコメントが 1 件以上か、まとめて送った直後
+  - name: コメントの行
+    kind: list
+    position: 一覧
+    description: レビュー中のコメントを溜めた順（ID の連番の小さい順）に 1 件 1 行で並べる。各行にチェック・向けた項目・箇所・本文・直す・削除を置く。一覧から開いた行は、その項目の詳細パネルを開いている間だけ選んだ見た目にする
+    io: 表示
+    source: レビュー中のコメントの読み取り.items
+  - name: 行のチェック
+    kind: checkbox
+    position: コメントの行 > 左端
+    description: まとめて送るものを選ぶ。チェックの状態は画面だけが持ち、開いたときと新しく溜めたコメントはチェックした状態で入る。読み上げの名前は「{向けた項目の ID} へのコメントを送る」（項目を指さないものは「項目を指さないコメントを送る」）
+    io: 入力
+    type: 真偽値
+  - name: 向けた項目
+    kind: button
+    position: コメントの行
+    description: 向けた項目の ID（等幅）とタイトル（1 行で末尾を省き、操作の列の手前で止める）。押すと一覧を開いたまま右にその項目の詳細パネルを開き、箇所があれば詳細パネルの「示す箇所」で示す。項目を指さないコメントは押せない「項目を指さない」、項目が消えたコメントは押せない ID だけを出す
+    io: 表示
+    source: items[].target・items[].target_title
+  - name: 行の箇所
+    kind: label
+    position: コメントの行
+    description: 箇所の名前（「本文 {行} 行目」かキーの見出し）と選んだ文の引用（3 行まで）
+    io: 表示
+    source: items[].loc
+    visible_when: コメントが箇所を持つ
+  - name: 行の本文
+    kind: label
+    position: コメントの行
+    description: コメントの本文。改行を保つ
+    io: 表示
+    source: items[].body
+  - name: 直す
+    kind: button
+    position: コメントの行 > 操作
+    description: 行の本文をその場で入力欄に切り替える。読み上げの名前は「{向けた項目の ID} へのコメントを直す」（項目を指さないものは「項目を指さないコメントを直す」）
+    label: （鉛筆の印）
+  - name: 本文の書き換え
+    kind: form
+    position: コメントの行 > 本文
+    description: 本文の入力欄と「やめる」「直す」。「直す」で `PATCH /api/comments/{id}` へ `body` を送り、200 なら本文に戻す。空白だけは送らず「コメントを入れてから直してください。」、届かない・エラーのときは入力を残して理由を出す。「やめる」と Esc で書き換えを捨てる
+    io: 入力
+    max_length: 10000
+    visible_when: 直すを押した行
+  - name: 削除
+    kind: button
+    position: コメントの行 > 操作
+    description: '`DELETE /api/comments/{id}` で消し、行を「コメントを削除しました。」と「元に戻す」に置き換える。確認のモーダルは挟まない。読み上げの名前は「{向けた項目の ID} へのコメントを削除」（項目を指さないものは「項目を指さないコメントを削除」）'
+    label: （ごみ箱の印）
+  - name: 元に戻す
+    kind: button
+    position: コメントの行（削除した行）
+    description: 削除で返った中身を『レビュー中のコメントの追加』へ同じ `id` と `created` で送り、元の場所に戻す。コメントの一覧を閉じるか、まとめて送るまで出す
+    label: 元に戻す
+    visible_when: 一覧を開いている間に削除した行
+  - name: 箇所が合わない理由
+    kind: label
+    position: コメントの行
+    description: '`role="alert"`。まとめて送るの 409 の `stale[].reason` を印のアイコンと共に出し、行の枠の全体を要見直しの赤（`--st-review`）にする。箇所を外すか削除するまで、または次にまとめて送るまで出す'
+    io: 表示
+    source: コメントをまとめて送る.stale
+    visible_when: 直前にまとめて送ったとき、そのコメントが `stale` にあった
+  - name: 箇所を外す
+    kind: button
+    position: コメントの行 > 箇所が合わない理由
+    description: '`PATCH /api/comments/{id}` へ `loc: null` を送り、項目へのコメントにする。200 なら理由と行の箇所を消す'
+    label: 箇所を外す
+    visible_when: 箇所が合わない理由を出していて、向けた項目が記録にある（項目が消えたコメントは削除だけを示す）
+  - name: 空の状態
+    kind: label
+    position: 一覧
+    description: 印と「レビュー中のコメントはありません。」。送る帯は出さない
+    io: 表示
+    visible_when: レビュー中のコメントも削除した行も 0 件
+  - name: 項目を指さないコメントの入力
+    kind: form
+    component: dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+    args:
+      - name: body
+        value: レビュー中のコメントの読み取り.drafts のうち target を持たない書きかけ
+      - name: status
+        value: レビュー中のコメントの追加（POST /api/comments）の結果
+      - name: count
+        value: レビュー中のコメントの追加.count
+      - name: detail
+        value: レビュー中のコメントの追加のエラーの detail
+      - name: collapsed
+        value: 画面の幅が 720px 以下で、入力欄にフォーカスが無く、書きかけが空のとき true
+    position: 下端
+    description: 一覧の下端に留め、項目を指さないコメントをいつでも溜める。`target` を渡さず、見出しを出さない。溜めたコメントはチェックした状態で一覧の末尾に足す。画面の幅 720px 以下では下端に留めた入力が一覧を狭めないよう 1 行に畳み、入力欄にフォーカスしたときと書きかけがあるときに広げる。空のままフォーカスが外へ出たら畳む。条件は画面の幅で持つ（この幅では一覧が画面の幅いっぱいで、畳む理由が一覧の高さのため）
+    io: 入力
+lead: レビュー中のコメントを並べ、チェックしたものだけをまとめて送る。トップバーのコメントのボタンで開き、見ている画面に重ねて左から出すパネル。行を押すと右に詳細パネルを開く。幅 900px 以下は画面の幅いっぱいに出し、行から開いた詳細パネルを閉じると一覧へ戻る。配る書き出しには無い。
+mock: dev/mock/pages/comments/78/b-left-panel/index.html
+screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+test_file: tests/integration/preview/test_comments_screen.py

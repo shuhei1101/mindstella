@@ -54,6 +54,39 @@ scenarios:
       - 取り込んでいない送信の一覧が 0 件を返す
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_normal_when_no_submissions
+  - name: 正常シナリオ（箇所と項目に紐づかない送信）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、準備が連ねる取り込んでいない送信の一覧・`add`（会話ログ）・取り込み済みにするを、決めた引数で順に再生する
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: 作成済みのワークスペース
+        description: 本文を持つ資料 A-1 と、取り込んでいない送信 2 件を持つ
+        notes: 1 件目は A-1 を指し、箇所が本文の 2 行目と選んだ文「言い換えたい文」で、本文が「ここは言い換える」。2 件目は項目を指さず、本文が「全体に目を通した」
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:session {フォルダ}
+        CC->>SV: 取り込んでいない送信
+        SV->>WS: 送信を読む
+        SV-->>CC: A-1 の 2 行目への「ここは言い換える」と、項目を指さない「全体に目を通した」
+        CC-->>U: 箇所と、項目を指さないことを添えて届いていた送信を示す
+        CC->>SV: add（会話ログ。A-1 の箇所と選んだ文を添える）
+        CC->>SV: 1 件目を取り込み済みにする
+        CC->>SV: add（会話ログ）
+        CC->>SV: 2 件目を取り込み済みにする
+        SV->>WS: 書く
+      ```
+    expected:
+      - 取り込んでいない送信の一覧が、A-1 への送信の箇所（本文の 2 行目と選んだ文）と、項目を指さない送信を返す
+      - 会話ログに、A-1 の本文の 2 行目と選んだ文を添えた「ここは言い換える」と、「全体に目を通した」がある
+      - 2 件とも取り込み済みで、取り込んでいない送信の一覧が 0 件を返す
+    test: test_normal_when_location_and_no_target
 lead: '`session` が話し合いの最初に、プレビューから送られた取り込んでいない送信を拾い、1 件ずつ記録してから取り込み済みにする単一ユースケース。'
 issue: 67
 primary_actor: 利用者

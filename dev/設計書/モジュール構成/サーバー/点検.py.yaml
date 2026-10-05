@@ -49,8 +49,9 @@ functions:
       3. 参照切れを拾う（`_check_refs`）
       4. 本文のずれを拾う（`_check_bodies`）
       5. 送信のスキーマ違反と参照切れを拾う（`_check_submissions`）
-      6. 設定に無いフェーズを拾う（`_check_phases`）
-      7. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
+      7. 設定に無いフェーズを拾う（`_check_phases`）
+      8. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -178,12 +179,12 @@ functions:
     process: |-
       1. 送信を読む（送信の読み込み。`load_submissions`）
          - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `submissions.yaml`、`id` は `null`）にして返す
-      2. 送信ごとに `target` の項目が無ければ `broken_ref`（`id` は送信の ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
+      2. `target` を持つ送信ごとに、その項目が無ければ `broken_ref`（`id` は送信の ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
     unit_tests:
       - name: test_check_submissions
         case: 正常
-        summary: 無い項目への送信を拾う
-        condition: D-1 と、S-1（D-8）・S-2（D-1）
+        summary: 無い項目への送信を拾い、項目に紐づかない送信は拾わない
+        condition: D-1 と、S-1（D-8）・S-2（D-1）・S-3（`target` を持たない）
         mock: なし
         expected: '`broken_ref`（`submissions.yaml`・S-1・`target`・`detail` に `D-8`）の 1 件だけ'
       - name: test_check_submissions_when_invalid
@@ -230,5 +231,31 @@ functions:
         condition: '`phases` 目的・要件で `goal` を持たない設定と D-1（目的）'
         mock: なし
         expected: 空の並び
+  - name: _check_comments
+    title: レビュー中の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: '`comments.yaml`・`drafts.yaml` のスキーマ違反を `schema` にする（向けた項目は確かめない）'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（ファイルが無ければ空）
+    process: |-
+      1. レビュー中のコメントと書きかけをそれぞれ読む（`load_comments`、`load_drafts`）
+         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` はそのファイル名、`id` は `null`）にする
+    unit_tests:
+      - name: test_check_comments
+        case: 正常
+        summary: 崩れたファイルだけを schema にする
+        condition: '`parametrize`: C-1 から `body` を消した `comments.yaml` / `items: [` の `drafts.yaml` / 消えた D-9 への整った C-1 / どちらも無い'
+        mock: なし
+        expected: '`schema`（`file` が `comments.yaml`）が 1 件以上 / `schema`（`file` が `drafts.yaml`）が 1 件以上 / 空 / 空'
 test_files:
   - tests/unit/scripts/test_checker.py

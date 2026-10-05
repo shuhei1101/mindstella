@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 from playwright.sync_api import Page
 
@@ -13,10 +14,12 @@ __all__ = [
     "MAIN_SELECTOR",
     "OpenPreview",
     "WritePreview",
+    "WriteReviewPreview",
     "WriteSamplePreview",
 ]
 
 type WritePreview = Callable[..., str]
+type WriteReviewPreview = Callable[..., tuple[str, Path]]
 type WriteSamplePreview = Callable[[], str]
 type OpenPreview = Callable[..., Page]
 

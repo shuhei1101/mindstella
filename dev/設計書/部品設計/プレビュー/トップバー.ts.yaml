@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替えと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -54,6 +54,27 @@ args:
     enabled_when: '`connection` が `offline` のとき'
     description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1100px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
     status: planned
+  - name: comments
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはトップバーの右端に置き、全体の検索の入口を中央へ寄せる
+    status: planned
+  - name: comment_count
+    type: 整数
+    required: false
+    default: '0'
+    choices: 0 以上
+    enabled_when: '`comments` が `true` のとき'
+    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない
+    status: planned
+  - name: comments_open
+    type: 真偽値
+    required: false
+    default: 'false'
+    enabled_when: '`comments` が `true` のとき'
+    description: コメントの一覧を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
+    status: planned
 events:
   - name: 画面を移る
     when: タブかつながりの入口を押したとき
@@ -66,6 +87,9 @@ events:
     when: ライト / ダークのボタンを押したとき
     value: theme（`data-theme`）
     description: 使う側が切り替えて、端末の保存領域に残す
+  - name: コメントを開く
+    when: コメントのボタンを押したとき（0 件でも押せる）
+    description: 使う側がコメントの一覧を開く。開いているときは閉じる。どちらも履歴に積まない
 states:
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
@@ -107,8 +131,48 @@ states:
         value: '2026-10-04T02:21:00+00:00'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: Comments
+    description: コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+  - name: CommentsZero
+    description: レビュー中のコメントが 0 件。押せるまま、件数の塗りを外して目立たせない
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '0'
+  - name: CommentsMany
+    description: 100 件以上。件数を `99+` にし、読み上げの名前には実際の件数を持つ
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+  - name: CommentsOpen
+    description: コメントの一覧を開いている。ボタンを枠と面で選んだ見た目にする
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: comments_open
+        value: 'true'
+  - name: CommentsNarrow
+    description: 幅 390px。コメントのボタンの文字を隠し、印と件数だけにする
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
   - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
+  - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す

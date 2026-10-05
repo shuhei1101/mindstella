@@ -1,0 +1,206 @@
+title: "レビュー中のコメントの書き換え"
+entry:
+  kind: endpoint
+  value: PATCH /api/comments/{id}
+flows:
+  - name: 正常系
+    summary: 本文を書き換え、並びとほかのキーは変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2 を持つワークスペース
+        notes: '`PATCH /api/comments/C-1` に `{body: 案 A に決める}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/comments/{id}
+        participant WS as ワークスペース
+
+        クライアント->>IF: PATCH /api/comments/C-1 {body}
+        IF->>WS: comments.yaml の C-1 を書き換える
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - ステータスが 200 で、`body` が `案 A に決める`
+      - '`comments.yaml` の C-1 の `body` だけが変わり、並びが C-1・C-2 のまま'
+    test: test_normal
+  - name: 正常系（箇所を外す）
+    summary: 箇所が合わなくなったコメントから箇所を外し、向けた項目は残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 資料 A-1 と、A-1 の本文の 5 行目を指すレビュー中のコメント C-1 を持つワークスペース
+        notes: '`{loc: null}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/comments/{id}
+        participant WS as ワークスペース
+
+        クライアント->>IF: PATCH /api/comments/C-1 {loc: null}
+        IF->>WS: C-1 の loc を消す
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - ステータスが 200 で、`loc` が `null`
+      - '`comments.yaml` の C-1 が `loc` を持たず、`target: A-1` を持つ'
+    test: test_normal_when_remove_location
+  - name: 異常系（本文が空・400）
+    summary: 空白だけの本文には書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: レビュー中のコメント C-1 を持つワークスペース
+        notes: '`{body: "  "}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/comments/{id}
+
+        クライアント->>IF: PATCH /api/comments/C-1 {body: 空白}
+        IF-->>クライアント: 400
+      ```
+    expected:
+      - ステータスが 400 で、`detail` に `body` がある
+      - '`comments.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_body_empty
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからは書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: レビュー中のコメント C-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/comments/{id}
+
+        クライアント->>IF: PATCH（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`comments.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（コメントが無い・404）
+    summary: 無い ID は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: レビュー中のコメント C-1 だけを持つワークスペース
+        notes: '`PATCH /api/comments/C-9`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/comments/{id}
+
+        クライアント->>IF: PATCH /api/comments/C-9
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に `C-9` がある
+      - '`comments.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_comment_not_found
+lead: コメントの一覧の行の中で、レビュー中のコメント 1 件の本文を書き換えるか、箇所が合わなくなったコメントから箇所を外す。
+idempotent: true
+side_effects: '`comments.yaml` のそのコメントの `body` を書き換えるか `loc` を消す。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば `http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: 書き換えるコメントの ID
+    example: C-1
+  - name: body
+    type: str
+    required: false
+    default: なし（本文を変えない）
+    location: body
+    description: 書き換えた後の本文
+    constraints: 前後の空白を除いて 1 文字以上、10000 文字以下
+    example: 案 A に決める
+  - name: loc
+    type: None
+    required: false
+    default: なし（箇所を変えない）
+    location: body
+    description: '`null` を渡すと箇所を外す。箇所を付け替えることはできない'
+    constraints: '`null` だけ'
+response:
+  - name: id
+    type: str
+    description: 書き換えたコメントの ID
+  - name: body
+    type: str
+    description: 書き換えた後の本文
+  - name: loc
+    type: dict | None
+    description: 書き換えた後の箇所。外したら `null`
+status_codes:
+  - code: '200'
+    condition: 書き換えた
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`body` も `loc` も無い・`body` が空白だけか 10000 文字を超える・`loc` が `null` 以外
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が配信の URL と違う'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`id` のコメントがレビュー中に無い'
+    notes: 何も書かない
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: '`comments.yaml` がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった'
+    notes: 何も書かない
+  - code: '500'
+    condition: '`comments.yaml` を書けない'
+    notes: '`detail` に書けなかったパスと理由。`comments.yaml` は前のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 書き換えるキー
+    constraint: '`body` と `loc` だけ。`id`・`target`・`created` は変えない。並びも変えない'
+  - item: 本文の上限
+    constraint: 『レビュー中のコメントの追加』と同じ
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+  - item: 送り元の確かめ
+    constraint: 『コメントをまとめて送る』と同じ
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+test_file: tests/integration/server/test_comment_update.py

@@ -22,8 +22,10 @@ namespace MindmapPreview {
       /** 図を拡大して見る */
       diagram: (svg: SVGElement) => void;
     };
-    /** 下端に置く回答・意見の送信の引数。配る書き出しでは null（置かない） */
+    /** 下端に置くコメントの入力の引数。配る書き出しでは null（置かない） */
     send: SendFormProps | null;
+    /** この項目へのレビュー中のコメント（溜めた順）。配る書き出しでは null（節を置かない） */
+    review: ReviewState["items"] | null;
   };
 
   /** 項目の ID を、押すと開くボタンにする */
@@ -64,6 +66,11 @@ namespace MindmapPreview {
     });
   }
 
+  /** 値を描いた要素。選んだ箇所のコメントが、描いた要素のキーのパスで値を指せるようにする */
+  function valueSpan(key: string, children: Child[]): HTMLElement {
+    return h({ tag: "span", attrs: { [VALUE_KEY_ATTR]: key }, children });
+  }
+
   /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由を出す） */
   function optionCards(options: Option[]): HTMLElement {
     return h({
@@ -71,13 +78,13 @@ namespace MindmapPreview {
       children: [
         ...options.map((option) => {
           const result = option.adopted === true ? "採用" : option.adopted === false ? "不採用" : "検討中";
-          const rows: [string, string | undefined][] = [
-            ["メリット", option.pros],
-            ["デメリット", option.cons],
-            ["備考", option.note],
-            ["理由", option.reason],
+          const rows: [string, string, string | undefined][] = [
+            ["メリット", "pros", option.pros],
+            ["デメリット", "cons", option.cons],
+            ["備考", "note", option.note],
+            ["理由", "reason", option.reason],
           ];
-          const shown = rows.filter((row): row is [string, string] => row[1] !== undefined && row[1] !== "");
+          const shown = rows.filter((row): row is [string, string, string] => row[2] !== undefined && row[2] !== "");
           return h({
             tag: "div",
             attrs: {
@@ -89,7 +96,7 @@ namespace MindmapPreview {
                 attrs: { class: "o-head" },
                 children: [
                   h({ tag: "span", attrs: { class: "key" }, children: [option.key] }),
-                  option.content,
+                  valueSpan(`options[${option.key}].content`, [option.content]),
                   h({ tag: "span", attrs: { class: "res" }, children: [result] }),
                 ],
               }),
@@ -97,7 +104,10 @@ namespace MindmapPreview {
                 ? h({
                   tag: "dl",
                   children: [
-                    ...shown.flatMap(([label, value]) => [h({ tag: "dt", children: [label] }), h({ tag: "dd", children: [value] })]),
+                    ...shown.flatMap(([label, field, value]) => [
+                      h({ tag: "dt", children: [label] }),
+                      h({ tag: "dd", attrs: { [VALUE_KEY_ATTR]: `options[${option.key}].${field}` }, children: [value] }),
+                    ]),
                   ],
                 })
                 : null,
@@ -127,20 +137,58 @@ namespace MindmapPreview {
     return h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
   }
 
+  /** この項目へのレビュー中のコメントの節（読むだけ。直す・消す・チェックはコメントの一覧で行う） */
+  function reviewSection(items: ReviewState["items"]): HTMLElement {
+    return h({
+      tag: "section",
+      attrs: { class: "d-sec d-review" },
+      children: [
+        h({
+          tag: "h3",
+          children: ["レビュー中のコメント", h({ tag: "span", attrs: { class: "count" }, children: [items.length] })],
+        }),
+        items.length === 0
+          ? emptyNote("レビュー中のコメントはありません。")
+          : h({
+            tag: "ul",
+            attrs: { class: "d-list review-list" },
+            children: items.map((comment) =>
+              h({
+                tag: "li",
+                children: [
+                  comment.loc === null
+                    ? null
+                    : h({
+                      tag: "div",
+                      attrs: { class: "review-loc" },
+                      children: [
+                        h({ tag: "span", attrs: { class: "review-loc-name" }, children: [locationLabel(comment.loc)] }),
+                        h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [comment.loc.text] }),
+                      ],
+                    }),
+                  h({ tag: "p", attrs: { class: "review-body" }, children: [comment.body] }),
+                ],
+              }),
+            ),
+          }),
+      ],
+    });
+  }
+
   /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-  function detailBody({ id, index, on }: Omit<DetailProps, "full">): HTMLElement {
+  function detailBody({ id, index, on, review }: Omit<DetailProps, "full">): HTMLElement {
     const entry = index.byId.get(id);
     const body = h({ tag: "div", attrs: { class: "detail" } });
     if (entry === undefined) return body;
     const { kind, item } = entry;
     const related = relatedItems({ id, index });
-    const labelled = (label: string, value: string | undefined): HTMLElement | null =>
+    const labelled = (label: string, key: string, value: string | undefined): HTMLElement | null =>
       value === undefined || value === ""
         ? null
         : h({
           tag: "div",
           attrs: { class: "d-answer" },
-          children: [h({ tag: "b", children: [label] }), value],
+          children: [h({ tag: "b", children: [label] }), valueSpan(key, [value])],
         });
     /** 本文の節。本文の図を描き、図の道具（拡大・Raw・コピー）を動かす */
     const bodySection = (label: string): HTMLElement | null => {
@@ -180,10 +228,10 @@ namespace MindmapPreview {
     append({
       parent: body,
       children: [
-        statusBadge(item.status),
+        valueSpan("status", [statusBadge(item.status)]),
         h({
           tag: "h2",
-          attrs: { class: "d-title" },
+          attrs: { class: "d-title", [VALUE_KEY_ATTR]: "title" },
           children: [item.title, item.deliverable === true ? deliverableBadge() : null],
         }),
         metaList(item, index.data.settings),
@@ -193,9 +241,9 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          item.lead === undefined ? null : h({ tag: "p", attrs: { class: "d-lead" }, children: [item.lead] }),
-          labelled("決定内容", item.answer),
-          labelled("理由", item.reason),
+          item.lead === undefined ? null : h({ tag: "p", attrs: { class: "d-lead", [VALUE_KEY_ATTR]: "lead" }, children: [item.lead] }),
+          labelled("決定内容", "answer", item.answer),
+          labelled("理由", "reason", item.reason),
           (item.options ?? []).length > 0 ? section("案", optionCards(item.options ?? [])) : null,
           bodySection("本文"),
           relation("前提", related.prerequisites),
@@ -208,7 +256,7 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          labelled("理由", item.reason),
+          labelled("理由", "reason", item.reason),
           relation("進める検討事項", item.for ?? []),
           relation("前提", related.prerequisites),
           relation("結果", item.result === undefined ? [] : [item.result]),
@@ -218,8 +266,8 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          item.question === undefined ? null : h({ tag: "p", attrs: { class: "d-lead" }, children: [item.question] }),
-          labelled("結論", item.conclusion),
+          item.question === undefined ? null : h({ tag: "p", attrs: { class: "d-lead", [VALUE_KEY_ATTR]: "question" }, children: [item.question] }),
+          labelled("結論", "conclusion", item.conclusion),
           (item.angles ?? []).length > 0 ? section("調査の観点", tagList(item.angles)) : null,
           bodySection("本文"),
         ],
@@ -230,7 +278,7 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          labelled("意味", item.meaning),
+          labelled("意味", "meaning", item.meaning),
           (item.aliases ?? []).length > 0 ? section("別名", tagList(item.aliases)) : null,
           (item.avoid ?? []).length > 0 ? section("使わない表記", tagList(item.avoid)) : null,
         ],
@@ -239,7 +287,7 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          item.content === undefined ? null : h({ tag: "p", children: [item.content] }),
+          item.content === undefined ? null : h({ tag: "p", attrs: { [VALUE_KEY_ATTR]: "content" }, children: [item.content] }),
         ],
       });
     } else {
@@ -279,6 +327,7 @@ namespace MindmapPreview {
       children: [
         relation(kind === "logs" ? "更新した項目" : "関連", related.related),
         relation("参照元", related.referencedBy),
+        review === null ? null : reviewSection(review),
       ],
     });
     return body;
@@ -371,6 +420,8 @@ namespace MindmapPreview {
         tag: `h${lowered}` as "h4" | "h5" | "h6",
         attrs: {
           "data-md-level": level,
+          // 元の Markdown の行の印を引き継ぐ
+          [LINE_ATTR]: heading.getAttribute(LINE_ATTR),
           // h6 を超える段は、読み上げの段で伝える
           "aria-level": level + BODY_HEADING_OFFSET > LOWEST_HEADING_LEVEL ? level + BODY_HEADING_OFFSET : null,
         },
@@ -378,6 +429,30 @@ namespace MindmapPreview {
       });
       heading.replaceWith(replacement);
     }
+  }
+
+  /** コメントの一覧から開いたとき、そのコメントの箇所までスクロールして示す。合わなければ示さず、項目の先頭を出す */
+  export function highlightLocation({ root, loc }: { root: ParentNode; loc: Location }): void {
+    const scroller = root.querySelector<HTMLElement>(".panel-body");
+    let hits: Element[] = [];
+    if (loc.kind === "value") {
+      hits = [...root.querySelectorAll(`[${VALUE_KEY_ATTR}]`)].filter((element) => element.getAttribute(VALUE_KEY_ATTR) === loc.key);
+    } else {
+      const start = loc.start ?? 0;
+      const end = loc.end ?? start;
+      const blocks = [...root.querySelectorAll(`.md [${LINE_ATTR}]`)];
+      const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
+      // 始まりの行を含む（始まりの行以前で最も後ろの）ブロックから、終わりの行までのブロック
+      const first = blocks.filter((element) => lineOf(element) <= start).at(-1);
+      if (first !== undefined) hits = blocks.filter((element) => lineOf(element) >= lineOf(first) && lineOf(element) <= end);
+    }
+    // 箇所が今の本文に合わない: 示さず、項目の先頭を出す
+    if (hits.length === 0) {
+      scroller?.scrollTo({ top: 0 });
+      return;
+    }
+    for (const element of hits) element.classList.add("loc-hit");
+    hits[0]?.scrollIntoView({ block: "center" });
   }
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */

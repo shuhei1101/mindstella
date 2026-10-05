@@ -1,7 +1,9 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・ライト / ダークの切り替えと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
+    /** 件数の表示を揺らさない上限 */
+    const COMMENT_COUNT_CAP = 99;
     /** ブランドのマーク（木の形の線画） */
     function brandMark() {
         const holder = document.createElement("template");
@@ -55,12 +57,35 @@ var MindmapPreview;
             ],
         });
     }
+    /** コメントのボタン（印と「コメント」と件数）。押すとコメントの一覧を開く・閉じる */
+    function commentsButton({ count, open, onClick }) {
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: `comments-btn${open ? " open" : ""}`,
+                type: "button",
+                "data-act": "comments",
+                "aria-label": `コメント（レビュー中 ${count} 件）`,
+                "aria-expanded": String(open),
+                onclick: () => onClick?.(),
+            },
+            children: [
+                MindmapPreview.icon("comment"),
+                MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["コメント"] }),
+                MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: `count${count === 0 ? " zero" : ""}` },
+                    children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
+                }),
+            ],
+        });
+    }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, onComments, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
-            attrs: { class: "topbar" },
+            attrs: { class: comments ? "topbar has-comments" : "topbar" },
             children: [
                 MindmapPreview.h({
                     tag: "span",
@@ -88,6 +113,8 @@ var MindmapPreview;
                         MindmapPreview.h({ tag: "kbd", children: ["/"] }),
                     ],
                 }),
+                // コメントのボタンを右端に置くとき、検索の入口を中央へ寄せる
+                comments ? MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }) : null,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
@@ -99,6 +126,7 @@ var MindmapPreview;
                     },
                     children: [MindmapPreview.icon(theme === "dark" ? "sun" : "moon")],
                 }),
+                comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
             ],
         });
         const tabbar = MindmapPreview.h({

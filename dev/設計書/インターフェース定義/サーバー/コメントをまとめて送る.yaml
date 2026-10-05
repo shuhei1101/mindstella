@@ -1,0 +1,263 @@
+title: "コメントをまとめて送る"
+entry:
+  kind: endpoint
+  value: POST /api/comments/send
+flows:
+  - name: 正常系
+    summary: チェックしたコメントだけを送信へ移し、残りはレビュー中に残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目を指す「ここは言い換える」）・C-3（項目を指さない「全体に目を通した」）を持ち、`submissions.yaml` を持たないワークスペース
+        notes: '`ids` は `["C-2", "C-1"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-2, C-1]}
+        IF-->>WS: コメント・項目・本文・送信を読む
+        IF->>IF: 向けた項目と箇所を確かめる
+        IF->>WS: submissions.yaml に 2 件足す
+        IF->>WS: comments.yaml から C-1・C-2 を消す
+        IF-->>クライアント: 201、JSON（sent・items）
+      ```
+    expected:
+      - ステータスが 201 で、`items` が C-1 → S-1、C-2 → S-2 の順
+      - '`submissions.yaml` の S-1 が `target: D-1`・`body: 案 A にする` で `loc` を持たず、S-2 が `target: A-1` と本文の 2 行目の `loc` を持ち、どちらも `taken: null`'
+      - '`comments.yaml` に C-3 だけが残る'
+      - '`decisions.yaml`・`docs.yaml` の中身が送る前と同じ'
+    test: test_normal
+  - name: 異常系（送るものが空・400）
+    summary: チェックが 0 件の送信は受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: レビュー中のコメント C-1 を持つワークスペース
+        notes: '`ids` は `[]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+
+        クライアント->>IF: POST {ids: []}
+        IF-->>クライアント: 400
+      ```
+    expected:
+      - ステータスが 400 で、`detail` に `ids` がある
+      - '`submissions.yaml` が無い'
+    test: test_error_when_ids_empty
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからの送信は受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: レビュー中のコメント C-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+
+        クライアント->>IF: POST（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`submissions.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（コメントが無い・404）
+    summary: 消えたコメントを含むと、どれも送らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1 だけを持つワークスペース
+        notes: '`ids` は `["C-1", "C-9"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+
+        クライアント->>IF: POST {ids: [C-1, C-9]}
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に `C-9` がある
+      - '`submissions.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_comment_not_found
+  - name: 異常系（箇所が合わない・409）
+    summary: 本文が書き換わって箇所が合わないコメントがあれば、どれも送らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、本文が 3 行の資料 A-1 と、レビュー中のコメント C-1（D-1）・C-2（A-1 の本文の 5 行目を指す）を持つワークスペース
+        notes: C-2 を溜めた後に A-1 の本文を 3 行に縮めた形。`ids` は `["C-1", "C-2"]`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1, C-2]}
+        IF-->>WS: コメントと A-1 の本文を読む
+        IF->>IF: C-2 の行の範囲が本文に収まらない
+        IF-->>クライアント: 409、stale に C-2
+      ```
+    expected:
+      - ステータスが 409 で、`stale` が C-2 だけで `reason` が空でない
+      - '`submissions.yaml` が無い'
+      - '`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_location_stale
+  - name: 異常系（本文が JSON でない・415）
+    summary: フォームの形の本文は受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: レビュー中のコメント C-1 を持つワークスペース
+        notes: '`Content-Type: application/x-www-form-urlencoded` で `ids=C-1` を送る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+
+        クライアント->>IF: POST（application/x-www-form-urlencoded）
+        IF-->>クライアント: 415
+      ```
+    expected:
+      - ステータスが 415
+      - '`submissions.yaml` が無い'
+    test: test_error_when_not_json
+  - name: 異常系（書き込めない・500）
+    summary: 書き込めないワークスペースでは、送信もレビュー中も前のままにする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1・送信 S-1・レビュー中のコメント C-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
+      - '`submissions.yaml`・`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_write_fails
+lead: コメントの一覧でチェックしたレビュー中のコメントを受け、全てを取り込んでいない送信として `submissions.yaml` に足してから、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。
+idempotent: false
+side_effects: '`submissions.yaml` に送った件数を足し（無ければ作る）、`comments.yaml` からそのコメントを消す。どちらも一時ファイルから `os.replace` で置き換え、`submissions.yaml` を先に書く。ほかのファイルは書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば `http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`
+  - name: ids
+    type: list[str]
+    required: true
+    location: body
+    description: 送るレビュー中のコメントの ID（一覧でチェックしたもの）
+    constraints: 1 件以上。重なりを持たない
+    example: '["C-1", "C-2"]'
+request_example: |-
+  ```json
+  {
+    "ids": ["C-1", "C-2"]
+  }
+  ```
+response:
+  - name: sent
+    type: str
+    description: 送った日時（UTC のタイムゾーン付き ISO 8601）。足した送信の `sent` と同じ
+  - name: items[].comment
+    type: str
+    description: 送ったレビュー中のコメントの ID。並びはコメントの連番の小さい順（溜めた順）
+    example: C-1
+  - name: items[].submission
+    type: str
+    description: 振った送信の ID（`S-{連番}`）
+    example: S-3
+status_codes:
+  - code: '201'
+    condition: 全て送った
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`ids` が無いか空・重なりがある・リクエストの本文が 128KiB を超える
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が配信の URL と違う'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`ids` のどれかがレビュー中のコメントに無い'
+    notes: 何も書かない。`detail` に無い ID
+  - code: '409'
+    condition: 向けた項目が無くなったコメントか、箇所が今の項目に合わないコメントがある
+    notes: 何も書かない。本文に `stale[]`（`{id, reason}`）を足し、合わないコメントを全て返す
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: ワークスペースの YAML（`comments.yaml`・`submissions.yaml` を含む）がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: '`submissions.yaml` か `comments.yaml` を書けない（権限が無い など）'
+    notes: '`detail` に書けなかったパスと理由。`comments.yaml` だけを書けなかったときは `submissions.yaml` を前の中身に書き戻し、どちらも前のままにする'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `stale` を足す
+constraints:
+  - item: 書く中身
+    constraint: '送るコメント 1 件ごとに、`id`（`S-{連番}`。連番の最大 + 1 から順に）・`target`（あれば）・`loc`（あれば）・`body`・`sent`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `submissions.yaml`'
+  - item: 全てか何もなしか
+    constraint: 全ての ID・向けた項目・箇所を確かめてから書く。1 件でも 404・409 に当たれば、どのコメントも送らずレビュー中に残す（単一ユースケース『コメントを選んで送る』の補足）
+  - item: 箇所の確かめ
+    constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。向けた項目が無くなったコメントも 409 の `stale` に載せる（箇所を持たないときも）
+  - item: 本文の上限
+    constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400。ID だけを送るため、送れる件数は溜める件数の規模（ER 図の `comments.yaml`）より大きい
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+  - item: 送り元の確かめ
+    constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば配信の URL と同じかを確かめる（別のサイトのページからの書き込みを防ぐ）'
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスの `take_submission` やコメントの書き換えと重なっても、どちらの書き換えも失わず、送信の ID も重ならない
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+  - item: 二重に送らない
+    constraint: 同じ `comment` の送信が既にあるコメントは足さず、その送信の ID を `items[].submission` に返してレビュー中から外す（`submissions.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+test_file: tests/integration/server/test_comments_send.py

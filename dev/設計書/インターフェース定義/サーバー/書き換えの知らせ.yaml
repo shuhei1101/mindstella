@@ -99,7 +99,7 @@ response_notes: |-
   > つながりが切れたら、ブラウザの EventSource が自分でつなぎ直す。サーバーが止まっている間は画面に「サーバーにつながりません」と出し、前に読んだ記録で描き続ける（『プレビューを開く』）。
 constraints:
   - item: 見るファイル
-    constraint: '`mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`docs/` の直下の `*.md`'
+    constraint: '`mindmap.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`docs/` の直下の `*.md`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から描き直す）'
   - item: 見る間隔
     constraint: 250ms ごとに書き換えの印を作り直し、前と違えば知らせる
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]

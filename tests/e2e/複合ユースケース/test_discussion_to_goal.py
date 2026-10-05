@@ -10,7 +10,18 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, fetch_records
+from preview_helpers import (
+    COMMENTS_BUTTON,
+    COMMENTS_PANEL,
+    DETAIL_MESSAGE,
+    DETAIL_TEXTAREA,
+    FREE_FORM,
+    FREE_TEXTAREA,
+    PILL,
+    OpenPreview,
+    fetch_records,
+    select_text_for_pill,
+)
 from workspace_fixtures import (
     REPO_ROOT,
     CallTool,
@@ -40,10 +51,13 @@ SUBMISSION_OPTIONS = [
     {"key": "B", "content": "カードで見せる"},
 ]
 
-# 詳細パネルの送信の入力欄・結果・送るボタンと、送信の結果を待つ上限ミリ秒
-SEND_TEXTAREA = "aside.panel form.send textarea"
-SEND_MESSAGE = "aside.panel form.send .send-msg"
-SEND_BUTTON = "aside.panel form.send button[type=submit]"
+# 資料 A-1 の 3 行の段落の本文と、2 行目の選ぶ文・その箇所へ溜める本文、項目に紐づかないコメントの本文
+SUBMISSION_DOC_BODY = "最初の文\n言い換えたい文\n最後の文\n"
+SUBMISSION_SENTENCE = "言い換えたい文"
+SUBMISSION_LOCATION_BODY = "ここは言い換える"
+SUBMISSION_FREE_BODY = "全体に目を通した"
+
+# コメントを溜めて送る結果を待つ上限ミリ秒
 SEND_TIMEOUT_MS = 10_000
 
 # 移し替えの点検で聞かれる題名に利用者が答える内容
@@ -491,11 +505,13 @@ def test_normal_when_submission_from_preview(
     page: Page,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """プレビューの詳細パネルから送った回答を、Claude Code を立ち上げ直した後の話し合いの最初に取り込む（正常系）。"""
+    """プレビューで溜めてまとめて送ったコメントを、Claude Code を立ち上げ直した後の話し合いの最初に取り込む（正常系）。"""
     # 準備
-    # 案 A・B を持つ未決定の検討事項 D-1 を持つワークスペース（版のファイルはプラグインと同じ版）
+    # 案 A・B を持つ未決定の検討事項 D-1 と、3 行の段落の本文を持つ資料 A-1 を持つワークスペース（版のファイルはプラグインと同じ版）
     root = make_workspace(
         make_item("D-1", title="見せ方", options=SUBMISSION_OPTIONS),
+        make_item("A-1"),
+        bodies={"A-1.md": SUBMISSION_DOC_BODY},
         raw_files={"mindstella-version.ini": f"{_plugin_version()}\n"},
     )
     ws = {"workspace": str(root)}
@@ -505,12 +521,29 @@ def test_normal_when_submission_from_preview(
     first_status = first_server.call("status", **ws)
     served = first_server.call("preview_url", **ws)
     assert served.data is not None
-    # 示された URL をブラウザで開き、D-1 の詳細パネルから回答を送る
+    # 示された URL をブラウザで開き、D-1 の詳細パネルでコメントを溜める
     open_preview(served.data["url"], "#tab=decisions&id=D-1")
-    page.wait_for_selector(SEND_TEXTAREA)
-    page.fill(SEND_TEXTAREA, SUBMISSION_BODY)
-    page.click(SEND_BUTTON)
-    page.wait_for_selector(f"{SEND_MESSAGE}.sent", timeout=SEND_TIMEOUT_MS)
+    page.wait_for_selector(DETAIL_TEXTAREA)
+    page.fill(DETAIL_TEXTAREA, SUBMISSION_BODY)
+    page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=SEND_TIMEOUT_MS)
+    # A-1 の詳細パネルで、本文の 2 行目の文を選んで箇所を添えたコメントを溜める
+    open_preview(served.data["url"], "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md")
+    select_text_for_pill(page, "aside.panel .md", SUBMISSION_SENTENCE)
+    page.click(PILL)
+    page.fill(DETAIL_TEXTAREA, SUBMISSION_LOCATION_BODY)
+    page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=SEND_TIMEOUT_MS)
+    # コメントのボタンから一覧を開き、項目に紐づかないコメントを溜めてチェックを外し、まとめて送る
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.fill(FREE_TEXTAREA, SUBMISSION_FREE_BODY)
+    page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{COMMENTS_PANEL} li[data-comment='C-3']", timeout=SEND_TIMEOUT_MS)
+    page.locator(f"{COMMENTS_PANEL} li[data-comment='C-3'] input.row-check").uncheck()
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{COMMENTS_PANEL} .send-band .send-msg.sent", timeout=SEND_TIMEOUT_MS)
     # Claude Code を閉じる（MCP サーバーが止まる）
     first_server.close_stdin()
     first_server.wait_exit()
@@ -519,12 +552,12 @@ def test_normal_when_submission_from_preview(
     second_status = second_server.call("status", **ws)
     pending = second_server.call("submissions", **ws)
     assert pending.data is not None
-    # 取り込みのステップ: 本文から D-1 の採用する案を A にして決定済みにし、会話ログに本文を残す
+    # 取り込みのステップ: D-1 への送信の本文から採用する案を A にして決定済みにし、会話ログに本文を残す
     adopted = second_server.call("adopt", **ws, id="D-1", key="A")
     updated = second_server.call(
         "update", **ws, id="D-1", item={"status": "決定済み", "answer": "表で見せる"}
     )
-    logged = second_server.call(
+    first_logged = second_server.call(
         "add",
         **ws,
         kind="log",
@@ -536,24 +569,57 @@ def test_normal_when_submission_from_preview(
         },
     )
     # 記録した後に、その送信を取り込み済みにする
-    taken = second_server.call("take_submission", **ws, id=pending.data["items"][0]["id"])
+    first_taken = second_server.call("take_submission", **ws, id=pending.data["items"][0]["id"])
+    # A-1 の箇所を持つ送信は、本文の 2 行目と選んだ文を添えて会話ログに残し、取り込み済みにする
+    second_logged = second_server.call(
+        "add",
+        **ws,
+        kind="log",
+        item={
+            "title": "画面から届いた意見（A-1 の箇所）",
+            "date": TODAY,
+            "related": ["A-1"],
+            "body_markdown": f"A-1 の本文の 2 行目「{SUBMISSION_SENTENCE}」へ: {SUBMISSION_LOCATION_BODY}",
+        },
+    )
+    second_taken = second_server.call("take_submission", **ws, id=pending.data["items"][1]["id"])
     again = second_server.call("submissions", **ws)
     checked = second_server.call("check", **ws)
     # 検証
     assert first_status.is_error is False
     assert second_status.is_error is False
-    assert [item["target"] for item in pending.data["items"]] == ["D-1"]
-    assert [item["body"] for item in pending.data["items"]] == [SUBMISSION_BODY]
-    for result in (adopted, updated, logged, taken):
+    assert [item["target"] for item in pending.data["items"]] == ["D-1", "A-1"]
+    assert [item["body"] for item in pending.data["items"]] == [
+        SUBMISSION_BODY,
+        SUBMISSION_LOCATION_BODY,
+    ]
+    assert pending.data["items"][1]["loc"] == {
+        "kind": "body",
+        "start": 2,
+        "end": 2,
+        "text": SUBMISSION_SENTENCE,
+    }
+    for result in (adopted, updated, first_logged, first_taken, second_logged, second_taken):
         assert result.is_error is False, result.text
     # D-1 の採用する案が A で、決定済みである
     decision = read_yaml(root, "decisions.yaml")["items"][0]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["A"]
     assert decision["status"] == "決定済み"
-    # 会話ログに送信の本文が残っている
+    # 会話ログに、D-1 への送信の本文と、A-1 の箇所を添えた送信の本文が残っている
     assert SUBMISSION_BODY in (root / "docs" / "L-1.md").read_text(encoding="utf-8")
+    location_log = (root / "docs" / "L-2.md").read_text(encoding="utf-8")
+    assert SUBMISSION_LOCATION_BODY in location_log
+    assert SUBMISSION_SENTENCE in location_log
+    # チェックを外した項目に紐づかないコメントは送信に無く、コメントの一覧に残っている
+    assert [item["body"] for item in read_yaml(root, "submissions.yaml")["items"]] == [
+        SUBMISSION_BODY,
+        SUBMISSION_LOCATION_BODY,
+    ]
+    assert [item["body"] for item in read_yaml(root, "comments.yaml")["items"]] == [
+        SUBMISSION_FREE_BODY
+    ]
     # 送信が取り込み済みで、取り込みのツールをもう一度呼ぶと 0 件を返す
-    assert read_yaml(root, "submissions.yaml")["items"][0]["taken"] is not None
+    assert all(item["taken"] is not None for item in read_yaml(root, "submissions.yaml")["items"])
     assert again.data == {"items": []}
     # check が問題を 0 件で返す
     assert checked.data is not None

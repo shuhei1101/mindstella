@@ -35,6 +35,10 @@ var MindmapPreview;
             children: [MindmapPreview.h({ tag: "h3", children: [label] }), content],
         });
     }
+    /** 値を描いた要素。選んだ箇所のコメントが、描いた要素のキーのパスで値を指せるようにする */
+    function valueSpan(key, children) {
+        return MindmapPreview.h({ tag: "span", attrs: { [MindmapPreview.VALUE_KEY_ATTR]: key }, children });
+    }
     /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由を出す） */
     function optionCards(options) {
         return MindmapPreview.h({
@@ -43,12 +47,12 @@ var MindmapPreview;
                 ...options.map((option) => {
                     const result = option.adopted === true ? "採用" : option.adopted === false ? "不採用" : "検討中";
                     const rows = [
-                        ["メリット", option.pros],
-                        ["デメリット", option.cons],
-                        ["備考", option.note],
-                        ["理由", option.reason],
+                        ["メリット", "pros", option.pros],
+                        ["デメリット", "cons", option.cons],
+                        ["備考", "note", option.note],
+                        ["理由", "reason", option.reason],
                     ];
-                    const shown = rows.filter((row) => row[1] !== undefined && row[1] !== "");
+                    const shown = rows.filter((row) => row[2] !== undefined && row[2] !== "");
                     return MindmapPreview.h({
                         tag: "div",
                         attrs: {
@@ -60,7 +64,7 @@ var MindmapPreview;
                                 attrs: { class: "o-head" },
                                 children: [
                                     MindmapPreview.h({ tag: "span", attrs: { class: "key" }, children: [option.key] }),
-                                    option.content,
+                                    valueSpan(`options[${option.key}].content`, [option.content]),
                                     MindmapPreview.h({ tag: "span", attrs: { class: "res" }, children: [result] }),
                                 ],
                             }),
@@ -68,7 +72,10 @@ var MindmapPreview;
                                 ? MindmapPreview.h({
                                     tag: "dl",
                                     children: [
-                                        ...shown.flatMap(([label, value]) => [MindmapPreview.h({ tag: "dt", children: [label] }), MindmapPreview.h({ tag: "dd", children: [value] })]),
+                                        ...shown.flatMap(([label, field, value]) => [
+                                            MindmapPreview.h({ tag: "dt", children: [label] }),
+                                            MindmapPreview.h({ tag: "dd", attrs: { [MindmapPreview.VALUE_KEY_ATTR]: `options[${option.key}].${field}` }, children: [value] }),
+                                        ]),
                                     ],
                                 })
                                 : null,
@@ -95,20 +102,55 @@ var MindmapPreview;
             rows.push(MindmapPreview.h({ tag: "dt", children: ["タグ"] }), MindmapPreview.h({ tag: "dd", children: [MindmapPreview.tagList(item.tags)] }));
         return MindmapPreview.h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
     }
+    /** この項目へのレビュー中のコメントの節（読むだけ。直す・消す・チェックはコメントの一覧で行う） */
+    function reviewSection(items) {
+        return MindmapPreview.h({
+            tag: "section",
+            attrs: { class: "d-sec d-review" },
+            children: [
+                MindmapPreview.h({
+                    tag: "h3",
+                    children: ["レビュー中のコメント", MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [items.length] })],
+                }),
+                items.length === 0
+                    ? MindmapPreview.emptyNote("レビュー中のコメントはありません。")
+                    : MindmapPreview.h({
+                        tag: "ul",
+                        attrs: { class: "d-list review-list" },
+                        children: items.map((comment) => MindmapPreview.h({
+                            tag: "li",
+                            children: [
+                                comment.loc === null
+                                    ? null
+                                    : MindmapPreview.h({
+                                        tag: "div",
+                                        attrs: { class: "review-loc" },
+                                        children: [
+                                            MindmapPreview.h({ tag: "span", attrs: { class: "review-loc-name" }, children: [MindmapPreview.locationLabel(comment.loc)] }),
+                                            MindmapPreview.h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [comment.loc.text] }),
+                                        ],
+                                    }),
+                                MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [comment.body] }),
+                            ],
+                        })),
+                    }),
+            ],
+        });
+    }
     /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-    function detailBody({ id, index, on }) {
+    function detailBody({ id, index, on, review }) {
         const entry = index.byId.get(id);
         const body = MindmapPreview.h({ tag: "div", attrs: { class: "detail" } });
         if (entry === undefined)
             return body;
         const { kind, item } = entry;
         const related = MindmapPreview.relatedItems({ id, index });
-        const labelled = (label, value) => value === undefined || value === ""
+        const labelled = (label, key, value) => value === undefined || value === ""
             ? null
             : MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "d-answer" },
-                children: [MindmapPreview.h({ tag: "b", children: [label] }), value],
+                children: [MindmapPreview.h({ tag: "b", children: [label] }), valueSpan(key, [value])],
             });
         /** 本文の節。本文の図を描き、図の道具（拡大・Raw・コピー）を動かす */
         const bodySection = (label) => {
@@ -151,10 +193,10 @@ var MindmapPreview;
         MindmapPreview.append({
             parent: body,
             children: [
-                MindmapPreview.statusBadge(item.status),
+                valueSpan("status", [MindmapPreview.statusBadge(item.status)]),
                 MindmapPreview.h({
                     tag: "h2",
-                    attrs: { class: "d-title" },
+                    attrs: { class: "d-title", [MindmapPreview.VALUE_KEY_ATTR]: "title" },
                     children: [item.title, item.deliverable === true ? MindmapPreview.deliverableBadge() : null],
                 }),
                 metaList(item, index.data.settings),
@@ -164,9 +206,9 @@ var MindmapPreview;
             MindmapPreview.append({
                 parent: body,
                 children: [
-                    item.lead === undefined ? null : MindmapPreview.h({ tag: "p", attrs: { class: "d-lead" }, children: [item.lead] }),
-                    labelled("決定内容", item.answer),
-                    labelled("理由", item.reason),
+                    item.lead === undefined ? null : MindmapPreview.h({ tag: "p", attrs: { class: "d-lead", [MindmapPreview.VALUE_KEY_ATTR]: "lead" }, children: [item.lead] }),
+                    labelled("決定内容", "answer", item.answer),
+                    labelled("理由", "reason", item.reason),
                     (item.options ?? []).length > 0 ? section("案", optionCards(item.options ?? [])) : null,
                     bodySection("本文"),
                     relation("前提", related.prerequisites),
@@ -180,7 +222,7 @@ var MindmapPreview;
             MindmapPreview.append({
                 parent: body,
                 children: [
-                    labelled("理由", item.reason),
+                    labelled("理由", "reason", item.reason),
                     relation("進める検討事項", item.for ?? []),
                     relation("前提", related.prerequisites),
                     relation("結果", item.result === undefined ? [] : [item.result]),
@@ -191,8 +233,8 @@ var MindmapPreview;
             MindmapPreview.append({
                 parent: body,
                 children: [
-                    item.question === undefined ? null : MindmapPreview.h({ tag: "p", attrs: { class: "d-lead" }, children: [item.question] }),
-                    labelled("結論", item.conclusion),
+                    item.question === undefined ? null : MindmapPreview.h({ tag: "p", attrs: { class: "d-lead", [MindmapPreview.VALUE_KEY_ATTR]: "question" }, children: [item.question] }),
+                    labelled("結論", "conclusion", item.conclusion),
                     (item.angles ?? []).length > 0 ? section("調査の観点", MindmapPreview.tagList(item.angles)) : null,
                     bodySection("本文"),
                 ],
@@ -205,7 +247,7 @@ var MindmapPreview;
             MindmapPreview.append({
                 parent: body,
                 children: [
-                    labelled("意味", item.meaning),
+                    labelled("意味", "meaning", item.meaning),
                     (item.aliases ?? []).length > 0 ? section("別名", MindmapPreview.tagList(item.aliases)) : null,
                     (item.avoid ?? []).length > 0 ? section("使わない表記", MindmapPreview.tagList(item.avoid)) : null,
                 ],
@@ -215,7 +257,7 @@ var MindmapPreview;
             MindmapPreview.append({
                 parent: body,
                 children: [
-                    item.content === undefined ? null : MindmapPreview.h({ tag: "p", children: [item.content] }),
+                    item.content === undefined ? null : MindmapPreview.h({ tag: "p", attrs: { [MindmapPreview.VALUE_KEY_ATTR]: "content" }, children: [item.content] }),
                 ],
             });
         }
@@ -251,6 +293,7 @@ var MindmapPreview;
             children: [
                 relation(kind === "logs" ? "更新した項目" : "関連", related.related),
                 relation("参照元", related.referencedBy),
+                review === null ? null : reviewSection(review),
             ],
         });
         return body;
@@ -338,6 +381,8 @@ var MindmapPreview;
                 tag: `h${lowered}`,
                 attrs: {
                     "data-md-level": level,
+                    // 元の Markdown の行の印を引き継ぐ
+                    [MindmapPreview.LINE_ATTR]: heading.getAttribute(MindmapPreview.LINE_ATTR),
                     // h6 を超える段は、読み上げの段で伝える
                     "aria-level": level + BODY_HEADING_OFFSET > LOWEST_HEADING_LEVEL ? level + BODY_HEADING_OFFSET : null,
                 },
@@ -346,6 +391,33 @@ var MindmapPreview;
             heading.replaceWith(replacement);
         }
     }
+    /** コメントの一覧から開いたとき、そのコメントの箇所までスクロールして示す。合わなければ示さず、項目の先頭を出す */
+    function highlightLocation({ root, loc }) {
+        const scroller = root.querySelector(".panel-body");
+        let hits = [];
+        if (loc.kind === "value") {
+            hits = [...root.querySelectorAll(`[${MindmapPreview.VALUE_KEY_ATTR}]`)].filter((element) => element.getAttribute(MindmapPreview.VALUE_KEY_ATTR) === loc.key);
+        }
+        else {
+            const start = loc.start ?? 0;
+            const end = loc.end ?? start;
+            const blocks = [...root.querySelectorAll(`.md [${MindmapPreview.LINE_ATTR}]`)];
+            const lineOf = (element) => Number(element.getAttribute(MindmapPreview.LINE_ATTR));
+            // 始まりの行を含む（始まりの行以前で最も後ろの）ブロックから、終わりの行までのブロック
+            const first = blocks.filter((element) => lineOf(element) <= start).at(-1);
+            if (first !== undefined)
+                hits = blocks.filter((element) => lineOf(element) >= lineOf(first) && lineOf(element) <= end);
+        }
+        // 箇所が今の本文に合わない: 示さず、項目の先頭を出す
+        if (hits.length === 0) {
+            scroller?.scrollTo({ top: 0 });
+            return;
+        }
+        for (const element of hits)
+            element.classList.add("loc-hit");
+        hits[0]?.scrollIntoView({ block: "center" });
+    }
+    MindmapPreview.highlightLocation = highlightLocation;
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
         const { id, index, full, on, send } = props;

@@ -4,10 +4,11 @@ directory: |-
   ```
   plugins/mindstella/skills/mindmap/preview/
     components/
-      view-switch.ts      表示形式の切り替え（部品設計『表示形式の切り替え』）
-      topbar.ts           トップバー（部品設計『トップバー』）
-      table.ts            表と、並べ替え・絞り込みの計算（部品設計『表』）
-      send-form.ts        回答・意見の送信（部品設計『回答・意見の送信』）
+      view-switch.ts        表示形式の切り替え（部品設計『表示形式の切り替え』）
+      topbar.ts             トップバー（部品設計『トップバー』）
+      table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
+      send-form.ts          コメントの入力（部品設計『コメントの入力』）
+      selection-comment.ts  選んだ箇所のコメントの入口（部品設計『選んだ箇所のコメントの入口』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（マップ・ボード・表）
@@ -15,6 +16,7 @@ directory: |-
       docs.ts             資料（カード・ボード・表）
       records.ts          調査・用語集・メモ・会話ログ（表）
       detail.ts           詳細パネルと詳細の全画面
+      comments.ts         コメントの一覧（左から出すパネル）
       search.ts           全体の検索
       diagram-viewer.ts   図の拡大
     graph/
@@ -87,6 +89,11 @@ components:
         required: false
         default: 'null'
         description: 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える（`formatJst`）
+      - name: comments
+        type: '{count: number, open: boolean, onToggle: () => void} | null'
+        required: false
+        default: 'null'
+        description: コメントのボタンの件数・一覧を開いているか・押したとき。`null`（配る書き出し）ならボタンを置かず、検索の入口も今の位置のまま。件数は 99 を超えたら `99+`、読み上げの名前には実際の件数
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -239,7 +246,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`、関係する項目は `relatedItems`。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`send` があれば下端に `sendForm` を留め、見出しと下端の間だけをスクロールする
+    summary: 画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）、関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダルで出し、図の拡大は中身を切り替える。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。`highlight` があればその箇所の要素までスクロールして印の色の地で示す
     props:
       - name: id
         type: string
@@ -257,10 +264,15 @@ components:
         type: '{open, close, full, back, forward, diagram}'
         required: true
         description: 項目へ移る・閉じる・全画面の切り替え・戻る進む・図を拡大する
-      - name: send
-        type: SendFormProps | null
+      - name: comment
+        type: "{form: SendFormProps, reviews: ReviewState['items']} | null"
         required: true
-        description: 下端に置く回答・意見の送信の引数。配る書き出しでは `null`（置かない）
+        description: 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント。配る書き出しでは `null`（どちらも置かず、選んだ箇所の入口も出さない）
+      - name: highlight
+        type: Location | null
+        required: false
+        default: 'null'
+        description: コメントの一覧から開いたときに示す箇所。本文は `start` の行を含む `data-line-start` のブロック、値は `data-key` が `key` の要素。見つからなければ示さず、項目の先頭を出す
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -320,61 +332,167 @@ components:
         initial: 空
         description: 玉・太さ・色ごとに描いた文字の画像
   - name: sendForm
-    title: 回答・意見の送信
+    title: コメントの入力
     container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
-    usecase: 回答・意見を送る
+    usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 部品設計『回答・意見の送信』の引数を受け、入力・送る・本文を写すをコールバックで知らせる。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
+    summary: 部品設計『コメントの入力』の引数を受け、入力・溜める・箇所を外す・本文を写す・入力欄に入る・出るをコールバックで知らせる。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
     props:
       - name: target
-        type: string
+        type: string | null
         required: true
-        description: 送る先の項目の ID
+        description: 向ける項目の ID。`null` は項目を指さないコメント（ラベルを見せず `aria-label`）
+      - name: loc
+        type: Location | null
+        required: false
+        default: 'null'
+        description: 添えた箇所。入力欄の上に `locationLabel` と選んだ文（3 行まで）と × を出す
       - name: body
         type: string
         required: false
         default: "''"
         description: 入力欄の中身
       - name: status
-        type: "'idle' | 'sending' | 'sent' | 'empty' | 'failed'"
+        type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed'"
         required: false
         default: "'idle'"
-        description: 送信の状態
-      - name: sentAt
-        type: string | null
+        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）
+      - name: count
+        type: number | null
         required: false
         default: 'null'
-        description: 受けた日時。`sent` のとき JST で出す（`formatJst`）
+        description: 溜めた後の件数。`saved` のときに出す
       - name: detail
         type: string | null
         required: false
         default: 'null'
         description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち上げ直しの案内と「本文を写す」を出す
-      - name: onInput
-        type: '(body: string) => void'
+      - name: collapsed
+        type: boolean
+        required: false
+        default: 'false'
+        description: 畳んだ形（`target` が `null` のときだけ使う）
+      - name: on
+        type: '{input, save, unquote, copy, focus, blur}'
         required: true
-        description: 入力欄の中身が変わった
-      - name: onSend
-        type: '(body: string) => void'
-        required: true
-        description: 送るボタンか Ctrl+Enter（macOS は Cmd+Enter）。`sending` の間は呼ばない
-      - name: onCopy
-        type: '(body: string) => void'
-        required: true
-        description: 「本文を写す」
+        description: 入力欄の中身が変わった・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。`saving` の間は呼ばない）・箇所の ×・「本文を写す」・入力欄に入った・部品の外へ出た
     unit_tests:
       - name: test_send_form
         case: 正常
         summary: 状態ごとの入力欄と結果
-        condition: '`parametrize`: `sending` / `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
+        condition: '`parametrize`: `saving` / `saved`（`count: 3`）/ `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: '`sending` は送るボタンが `disabled` で入力欄が `readonly` / `empty` は入力欄が `aria-invalid="true"` / 「本文を写す」がある / 理由が出て「本文を写す」が無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指す'
+        expected: '`saving` はボタンが `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 入力欄が `aria-invalid="true"` / 「本文を写す」がある / 「レビューに追加できませんでした。{理由}」で「本文を写す」が無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指す'
+      - name: test_send_form_when_location_and_no_target
+        case: 正常
+        summary: 添えた箇所と項目を指さない形
+        condition: '`parametrize`: `target: A-005`・`loc` が本文の 3 行目 / `target: null` / `target: null`・`collapsed: true`'
+        mock: '`on.unquote`'
+        expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」/ 「レビューに追加」が無く入力欄が 1 行
       - name: test_send_form_when_ctrl_enter
         case: 正常
-        summary: Ctrl+Enter で送り、送っている間は送らない
-        condition: '`parametrize`: `idle` で Ctrl+Enter / `sending` で Ctrl+Enter'
-        mock: '`onSend`'
-        expected: '`onSend` が入力欄の中身で 1 回 / 呼ばれない'
+        summary: Ctrl+Enter で溜め、溜めている間は溜めない
+        condition: '`parametrize`: `idle` で Ctrl+Enter / `saving` で Ctrl+Enter'
+        mock: '`on.save`'
+        expected: '`on.save` が入力欄の中身で 1 回 / 呼ばれない'
+  - name: selectionComment
+    title: 選んだ箇所のコメントの入口
+    container: plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts
+    usecase: 選んだ箇所へコメントする
+    kind: コンポーネント
+    summary: 部品設計『選んだ箇所のコメントの入口』のピル。選んだ範囲の矩形から位置を決め（下に収まらなければ上、左右は画面の端から 8px の内側）、押す・Esc をコールバックで知らせる。押したときに選択が外れないよう `pointerdown` の既定の動きを止める
+    props:
+      - name: anchor
+        type: '{first: DOMRect, last: DOMRect}'
+        required: true
+        description: 選んだ範囲の最初と最後の矩形（`Range.getClientRects()`）
+      - name: viewport
+        type: '{width: number, height: number}'
+        required: true
+        description: 画面の大きさ
+      - name: on
+        type: '{press, close}'
+        required: true
+        description: 押した（Enter・Space を含む）・Esc
+    unit_tests:
+      - name: test_selection_comment_position
+        case: 正常
+        summary: 下に収まらなければ上、端は内側に収める
+        condition: '`parametrize`: 画面の中ほど / 最後の矩形が画面の下端の近く / 右端に寄った幅 390px'
+        mock: なし
+        expected: 最後の矩形の下 / 最初の矩形の上 / 右端から 8px の内側
+      - name: test_selection_comment_keys
+        case: 正常
+        summary: Enter で押し、Esc で閉じる
+        condition: 入口にフォーカスして Enter、Esc
+        mock: '`on.press`・`on.close`'
+        expected: それぞれ 1 回呼ばれる。読み上げの名前が「選んだ箇所にコメント」
+  - name: commentsPanel
+    title: コメントの一覧
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    kind: 画面
+    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。描き直しても操作していた部品にフォーカスを戻す
+    props:
+      - name: items
+        type: ReviewState['items']
+        required: true
+        description: レビュー中のコメント
+      - name: removed
+        type: ReviewState['items']
+        required: true
+        description: 一覧を開いている間に消したコメント（元の場所に「元に戻す」を出す）
+      - name: checked
+        type: Set<string>
+        required: true
+        description: チェックしたコメントの ID
+      - name: editing
+        type: string | null
+        required: true
+        description: 本文を直しているコメントの ID
+      - name: stale
+        type: Map<string, string>
+        required: true
+        description: 箇所が合わないコメントの ID → 理由
+      - name: result
+        type: "{kind: 'sending' | 'sent' | 'failed' | 'stale', count?, at?, detail?} | null"
+        required: true
+        description: まとめて送った結果（送った結果の文言は画面設計どおり）
+      - name: selected
+        type: string | null
+        required: true
+        description: 行から開いて詳細パネルに出しているコメントの ID（選んだ見た目にする）
+      - name: titleOf
+        type: '(id: string) => string | null'
+        required: true
+        description: 項目のタイトル（記録から消えていれば `null`。押せない ID だけを出し、箇所を外すを出さない）
+      - name: free
+        type: SendFormProps
+        required: true
+        description: 下端の項目を指さない入力の引数
+      - name: on
+        type: '{close, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc}'
+        required: true
+        description: 閉じる・チェック・すべて選ぶ・まとめて送る・行の項目を開く・直す・直しを送る・やめる・削除・元に戻す・箇所を外す
+    unit_tests:
+      - name: test_comments_panel
+        case: 正常
+        summary: 送る帯と行を描く
+        condition: C-1（D-1）・C-2（消えた D-9、箇所が合わない）・C-3（項目を指さない）、C-1・C-3 をチェック、削除した C-4
+        mock: なし（DOM を作って見る）
+        expected: 「2 / 3 件」と「まとめて送る（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の向けた項目が「項目を指さない」。C-4 の場所に「元に戻す」
+      - name: test_comments_panel_when_empty
+        case: 正常
+        summary: 0 件は空の状態と入力だけ
+        condition: '`items`・`removed` が空'
+        mock: なし
+        expected: 「レビュー中のコメントはありません。」と下端の入力があり、送る帯が無い
+      - name: test_comments_panel_when_send_disabled
+        case: 正常
+        summary: チェック 0 件と送っている間は送れない
+        condition: '`parametrize`: チェックが 0 件 / `result.kind` が `sending`'
+        mock: '`on.send`'
+        expected: まとめて送るが `disabled` で、押しても `on.send` が呼ばれない。前者は「送るコメントにチェックを付けてください。」
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -618,3 +736,5 @@ test_files:
   - tests/unit/preview/test_decisions.py
   - tests/unit/preview/test_graph.py
   - tests/unit/preview/test_send_form.py
+  - tests/unit/preview/test_selection_comment.py
+  - tests/unit/preview/test_comments_panel.py
