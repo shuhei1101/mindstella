@@ -9,10 +9,14 @@ from preview_drawer_helpers import (
     FILTER_BUTTON,
     badge_text,
     checked_values,
+    chip_texts,
+    clear_all_chips,
     click_value,
+    close_drawer,
     drawer_groups,
     drawer_head,
     open_drawer,
+    remove_chip,
 )
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
@@ -258,7 +262,7 @@ def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: Op
         ["中止", [], "状態の条件で外しています。"],
     ]
     assert badge_text(page) == "1"
-    assert page.locator(".chips").count() == 0
+    assert chip_texts(page) == ["状態: 進行中"]
 
 
 def test_board_filter_when_nothing_selected(
@@ -303,3 +307,30 @@ def test_table_filter(write_sample_preview: WriteSamplePreview, open_preview: Op
     assert badge_text(page) is None
     open_drawer(page)
     assert checked_values(page, "status") == []
+
+
+def test_board_chips(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ボードのツールバーの下に条件のチップの行を置き、× で 1 つ解除し、「すべて解除」で全ての条件を外す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
+    open_drawer(page)
+    click_value(page, "status", "進行中")
+    click_value(page, "status", "完了")
+    close_drawer(page)
+    # 実行
+    chips = chip_texts(page)
+    below_toolbar = page.evaluate(
+        "document.querySelector('.screen.tasks .toolbar').nextElementSibling.classList.contains('chips')"
+    )
+    remove_chip(page, "状態: 完了")
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 1")
+    after_remove = (chip_texts(page), badge_text(page), page.locator(".board .card").count())
+    clear_all_chips(page)
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 0")
+    # 検証
+    assert chips == ["状態: 進行中", "状態: 完了"]
+    assert below_toolbar is True
+    assert after_remove == (["状態: 進行中"], "1", 1)
+    assert badge_text(page) is None
+    assert page.locator(".board .card").count() == 3

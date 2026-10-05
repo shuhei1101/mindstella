@@ -15,10 +15,14 @@ __all__ = [
     "FILTER_BUTTON",
     "badge_text",
     "checked_values",
+    "chip_texts",
+    "clear_all_chips",
     "click_value",
+    "close_drawer",
     "drawer_groups",
     "drawer_head",
     "open_drawer",
+    "remove_chip",
     "value_selector",
 ]
 
@@ -93,3 +97,24 @@ def checked_values(page: Page, key: str) -> list[str]:
     return page.eval_on_selector_all(
         f'{DRAWER} input[data-key="{key}"]:checked', "inputs => inputs.map(i => i.value)"
     )
+
+
+def close_drawer(page: Page) -> None:
+    """トップバーの絞り込みのボタンを押してドロワーを閉じ、ドロワーが無くなるのを待つ（開いている間は覆われた範囲が操作できないため）。"""
+    page.click(FILTER_BUTTON)
+    page.wait_for_selector(DRAWER, state="detached")
+
+
+def chip_texts(page: Page) -> list[str]:
+    """条件のチップの文字を並びの順に返す。"""
+    return page.eval_on_selector_all(".chips .chip", "chips => chips.map(c => c.textContent)")
+
+
+def remove_chip(page: Page, text: str) -> None:
+    """文字が `text` のチップの × を押す。"""
+    page.click(f"button[aria-label='{text} の条件を解除']")
+
+
+def clear_all_chips(page: Page) -> None:
+    """条件のチップの行の「すべて解除」を押す。"""
+    page.click(".chips button:has-text('すべて解除')")

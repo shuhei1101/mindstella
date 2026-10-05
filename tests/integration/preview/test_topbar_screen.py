@@ -254,7 +254,7 @@ def test_filter_button_not_on_overview(
 def test_drawer_closes_when_overview_opened(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """絞り込みのドロワーを開いたまま概要のタブへ移ると、ドロワーを閉じる（正常系）。"""
+    """絞り込みのドロワーを開いたまま概要のタブへ移ると、ドロワーを閉じ、タスクのタブへ戻っても閉じたまま（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=tasks")
@@ -262,8 +262,12 @@ def test_drawer_closes_when_overview_opened(
     # 実行
     page.click('nav.tabbar a[data-tab="overview"]')
     page.wait_for_selector(".overview")
+    after_overview = page.locator(DRAWER_OPEN).count()
+    # 実行（概要の後にタスクのタブへ戻る）
+    page.click('nav.tabbar a[data-tab="tasks"]')
+    page.wait_for_selector(".screen.tasks")
     # 検証
-    assert page.locator(DRAWER_OPEN).count() == 0
+    assert (after_overview, page.locator(DRAWER_OPEN).count()) == (0, 0)
 
 
 def test_drawer_closes_when_overview_opened_by_history(

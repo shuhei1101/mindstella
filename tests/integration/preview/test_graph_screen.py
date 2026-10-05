@@ -7,10 +7,13 @@ from preview_drawer_helpers import (
     DRAWER,
     badge_text,
     checked_values,
+    chip_texts,
     click_value,
+    close_drawer,
     drawer_groups,
     drawer_head,
     open_drawer,
+    remove_chip,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
@@ -156,3 +159,28 @@ def test_topbar_history(
     # 検証
     assert_topbar_history(page)
     assert page.locator("main .df-mark").count() == 0
+
+
+def test_chips(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """キャンバスの上に条件のチップの行を置き、× で解除するとドロワーの選びとキャンバスを戻す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    click_value(page, "type", "会話ログ")
+    close_drawer(page)
+    # 実行
+    chips = chip_texts(page)
+    above_canvas = page.evaluate(
+        "document.querySelector('.screen.graph .chips').getBoundingClientRect().bottom <= document.getElementById('graph-canvas').getBoundingClientRect().top"
+    )
+    remove_chip(page, "種類: 会話ログ")
+    page.wait_for_function("document.querySelectorAll('.chips').length === 0")
+    open_drawer(page)
+    # 検証
+    assert chips == ["種類: 会話ログ"]
+    assert above_canvas is True
+    assert checked_values(page, "type") == []
+    assert badge_text(page) is None
+    assert drawer_head(page)["count"] == "14 件"

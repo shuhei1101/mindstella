@@ -19,10 +19,13 @@ from preview_drawer_helpers import (
     FILTER_BUTTON,
     badge_text,
     checked_values,
+    chip_texts,
+    clear_all_chips,
     click_value,
     drawer_groups,
     drawer_head,
     open_drawer,
+    remove_chip,
     value_selector,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
@@ -943,3 +946,31 @@ def test_drawer_value_is_checkbox(
     # 検証
     assert structure == {"groups": 6, "checkboxes": True, "counts": "1 件", "firstFocused": True}
     assert page.locator(selector).count() == 1
+
+
+@pytest.mark.parametrize("view", ["map", "board"])
+def test_chips(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, view: str
+) -> None:
+    """マップ・ボードのツールバーの下に条件のチップの行を置き、× で 1 つ解除し、「すべて解除」で全ての条件を外す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    shown = "#decision-map .map-node.n-item" if view == "map" else ".board .card"
+    page.wait_for_selector(shown)
+    # 実行（開いた直後は、開いたときの既定の状態がチップになっている）
+    chips = chip_texts(page)
+    below_toolbar = page.evaluate(
+        "document.querySelector('.screen.decisions .toolbar').nextElementSibling?.classList.contains('chips') ?? false"
+    )
+    remove_chip(page, "状態: 保留")
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 3")
+    after_remove = (chip_texts(page), badge_text(page))
+    clear_all_chips(page)
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 0")
+    page.wait_for_function(f"document.querySelectorAll('{shown}').length === 5")
+    # 検証
+    assert chips == ["状態: 要見直し", "状態: 未決定", "状態: 未整理", "状態: 保留"]
+    assert below_toolbar is True
+    assert after_remove == (["状態: 要見直し", "状態: 未決定", "状態: 未整理"], "1")
+    assert badge_text(page) is None
