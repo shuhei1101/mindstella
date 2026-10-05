@@ -33,13 +33,13 @@ body { --drawer-w: 320px; }
 /* ドロワーの見出しの行: 題・件数・閉じるボタン */
 .fd-top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
 
-/* ドロワーの題 */
-.fd-top h2 { margin: 0; font-size: var(--fs-h2); }
+/* ドロワーの題: dialog の名前として出し、本文の見出しの段には入れない */
+.fd-top .fd-title { margin: 0; font-size: var(--fs-h2); font-weight: 700; }
 
 /* 絞り込んだ後の件数: 題の隣に控えめに出す */
 .fd-count { color: var(--text-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 
-/* 選んでいない条件の「解除」と、条件の無いときの「すべての条件を解除」: 部品の表示の指定より優先して隠す */
+/* 選んでいない条件の「解除」と、条件の無いときの「すべて解除」: 部品の表示の指定より優先して隠す */
 dialog.drawer .btn[hidden] { display: none; }
 
 /* 見出しの行の空き */
@@ -48,23 +48,23 @@ dialog.drawer .btn[hidden] { display: none; }
 /* 条件を並べる本文: 縦に送る */
 .fd-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 16px; }
 
-/* 1 つの条件のまとまり: 行の境の線で区切る */
-.fd-group { padding: 14px 20px 10px; }
+/* 1 つの条件のまとまり: 行の境の線で区切る。fieldset の既定の枠と余白を外し、「解除」を重ねる基準にする */
+.fd-group { position: relative; min-width: 0; margin: 0; padding: 14px 20px 10px; border: 0; }
 
 /* 条件のまとまりの境 */
 .fd-group + .fd-group { border-top: 1px solid var(--border-soft); }
 
-/* 条件の見出しの行: 条件の名前と「解除」 */
-.fd-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 4px; }
+/* 条件の名前: 見出しの段に入れず、チェックボックスの組の名前として出す。右に「解除」の幅を空ける */
+.fd-group legend { display: flex; align-items: center; gap: 8px; float: left; width: 100%; min-height: 28px; margin-bottom: 4px; padding: 0 64px 0 0; font-size: var(--fs-small); font-weight: 600; }
 
-/* 条件の名前 */
-.fd-head h3 { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--fs-small); font-weight: 600; }
+/* 名前の下の値の並び: 名前の float を解く */
+.fd-group .fd-opts { clear: both; }
 
 /* 選んでいる値の数: 条件の名前の後ろに補足として出す */
 .fd-sel { color: var(--text-2); font-size: var(--fs-xs); font-weight: 400; }
 
-/* 条件ごとの「解除」: 見出しの行の高さに収める */
-.fd-clear { height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
+/* 条件ごとの「解除」: 条件の名前の行の右端に重ね、行の高さに収める */
+.fd-clear { position: absolute; top: 15px; right: 20px; height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
 
 /* 値の並び */
 .fd-opts { list-style: none; margin: 0; padding: 0; }
@@ -124,4 +124,15 @@ dialog.drawer .btn[hidden] { display: none; }
 @media (max-width: 720px) {
   /* マップの拡大率の操作 */
   .map-view .zoom { display: none; }
+}
+
+/* 横に並べたドロワーを開いている間は、全ての条件の解除をドロワーの下端の 1 つにし、チップの行の「すべて解除」を出さない */
+body.drawer-open .chips [data-act="clearall"] { display: none; }
+
+/* 狭い幅のツールバー: 1 行目に表示形式の切り替えと絞り込みのボタン、2 行目にキーワードと右側のボタンを並べ、どの表示形式でも 2 行に揃える */
+@media (max-width: 720px) {
+  /* キーワードの欄: 残りの幅いっぱいに伸ばし、右側のボタンを同じ行に残す */
+  .toolbar .grow, .toolbar .map-q { flex: 1 1 0; min-width: 0; max-width: none; }
+  /* 右寄せの空き: 2 行目ではキーワードの欄が幅を取るので使わない */
+  .toolbar .spacer { display: none; }
 }

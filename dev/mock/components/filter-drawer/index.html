@@ -53,7 +53,7 @@
     <!-- ボタン: 絞っていない・絞り込み中・開いている・ホバー・フォーカス -->
     <section class="cat-sec">
       <h2>絞り込みのボタン</h2>
-      <p>どの画面もキーワードの隣に 1 つだけ置く。絞っていないときはバッジを出さず、絞り込み中だけ印の色のバッジを付ける。ドロワーを開いている間は押された見た目にし、もう一度押すと閉じる。</p>
+      <p>どの画面も表示形式の切り替えの直後（切り替えの無い画面は左端）に 1 つだけ置き、キーワードはその右に続ける。絞っていないときはバッジを出さず、絞り込み中だけ印の色のバッジを付ける。ドロワーを開いている間は押された見た目にし、もう一度押すと閉じる。</p>
       <div class="stages" id="buttons"></div>
     </section>
 
@@ -107,18 +107,18 @@
       };
       const mark = (s) => (MARK[s] ? `<svg class="mark" viewBox="0 0 10 10" aria-hidden="true">${MARK[s]}</svg>` : "");
       // ボタン: badge は { n, say }、open はドロワーを開いているか、cls は見本の状態のクラス
-      const button = (badge, cls = "", open = false) => `<div class="toolbar"><input class="input grow" type="search" placeholder="キーワード" aria-label="キーワードで絞り込み"><button class="btn filter-btn ${cls}" type="button" aria-haspopup="dialog" aria-expanded="${open}" aria-label="絞り込み${badge ? `（${badge.say}）` : ""}">${icon(FILTER)}<span class="lbl">絞り込み</span>${badge ? `<span class="fbadge" aria-hidden="true">${badge.n}</span>` : ""}</button></div>`;
+      const button = (badge, cls = "", open = false) => `<div class="toolbar"><button class="btn filter-btn ${cls}" type="button" aria-haspopup="dialog" aria-expanded="${open}" aria-label="絞り込み${badge ? `（${badge.say}）` : ""}">${icon(FILTER)}<span class="lbl">絞り込み</span>${badge ? `<span class="fbadge" aria-hidden="true">${badge.n}</span>` : ""}</button><input class="input grow" type="search" placeholder="キーワード" aria-label="キーワードで絞り込み"></div>`;
       const stage = (name, html, cls = "") => `<div class="stage ${cls}"><p class="stage-name">${name}</p>${html}</div>`;
       // ドロワー: groups は [条件名, [[値, 件数, 選択, キーワードの一致]]]。foot は下端のボタンの文言
       const drawer = (count, groups, foot) => {
         const any = groups.some(([, vs]) => vs.some((v) => v[2]));
-        return `<dialog class="drawer" open aria-label="絞り込み"><div class="fd-top"><h2>絞り込み</h2><span class="fd-count">${count}</span><span class="spacer"></span><button class="icon-btn" type="button" aria-label="絞り込みを閉じる">${icon(X)}</button></div>
+        return `<dialog class="drawer" open aria-label="絞り込み"><div class="fd-top"><p class="fd-title">絞り込み</p><span class="fd-count">${count}</span><span class="spacer"></span><button class="icon-btn" type="button" aria-label="絞り込みを閉じる">${icon(X)}</button></div>
           <div class="fd-body">${groups.map(([label, vals]) => {
             const sel = vals.filter((v) => v[2]).length;
-            return `<section class="fd-group" role="group" aria-label="${label}"><div class="fd-head"><h3>${label}${sel ? `<span class="fd-sel">${sel} 件を選択</span>` : ""}</h3><button class="btn ghost fd-clear" type="button" aria-label="${label}の条件を解除"${sel ? "" : " hidden"}>解除</button></div>
-              <ul class="fd-opts">${vals.map(([v, n, on, hit]) => `<li><label class="fd-opt${n ? "" : " zero"}"><input type="checkbox" ${on ? "checked" : ""}>${mark(v)}<span class="fd-v">${v}</span>${hit ? `<span class="hit-n">${hit}</span>` : ""}<span class="n">${n}</span></label></li>`).join("")}</ul></section>`;
+            return `<fieldset class="fd-group"><legend>${label}${sel ? `<span class="fd-sel">${sel} 件を選択</span>` : ""}</legend><button class="btn ghost fd-clear" type="button" aria-label="${label}の条件を解除"${sel ? "" : " hidden"}>解除</button>
+              <ul class="fd-opts">${vals.map(([v, n, on, hit]) => `<li><label class="fd-opt${n ? "" : " zero"}"><input type="checkbox" ${on ? "checked" : ""}>${mark(v)}<span class="fd-v">${v}</span>${hit ? `<span class="hit-n">${hit}</span>` : ""}<span class="n">${n}</span></label></li>`).join("")}</ul></fieldset>`;
           }).join("")}</div>
-          <div class="fd-foot"><button class="btn ghost" type="button"${any ? "" : " hidden"}>すべての条件を解除</button><span class="spacer"></span><button class="btn primary" type="button">${foot}</button></div></dialog>`;
+          <div class="fd-foot"><button class="btn ghost" type="button"${any ? "" : " hidden"}>すべて解除</button><span class="spacer"></span><button class="btn primary" type="button">${foot}</button></div></dialog>`;
       };
       const STATUS = (sel, counts, hits = {}) => ["要見直し", "未決定", "保留", "未整理", "決定済み"].map((s, i) => [s, counts[i], sel.includes(s), hits[s]]);
       const TAGS = (sel, counts) => ["プレビュー", "プレビューの画面で項目を探す操作", "記録の形", "調べ方", "配布と導入", "話し合いの進め方"].map((t, i) => [t, counts[i], sel.includes(t)]);

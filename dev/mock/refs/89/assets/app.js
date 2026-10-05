@@ -465,10 +465,10 @@
     const b = badgeOf(scope);
     return `<button class="btn filter-btn" type="button" id="filter-btn" data-act="drawer" aria-haspopup="dialog" aria-controls="drawer" aria-expanded="${drawerDlg.open}" aria-label="絞り込み${b ? `（${b.say}）` : ""}">${icon("filter")}<span class="lbl">絞り込み</span>${b ? `<span class="fbadge" aria-hidden="true">${b.n}</span>` : ""}</button>`;
   };
-  const renderToolbar = (kind) => `<div class="toolbar">${segment(kind)}
+  // 絞り込みのボタンは表示形式の切り替えの直後に置き、どの表示形式でも同じ位置に出す
+  const renderToolbar = (kind) => `<div class="toolbar">${segment(kind)}${filterButton(kind)}
       <label class="sr-only" for="q-${kind}">キーワードで絞り込み</label>
       <input class="input grow" id="q-${kind}" data-act="q" type="search" placeholder="キーワード" value="${esc(state.tables[kind].q)}">
-      ${filterButton(kind)}
       <span class="spacer"></span>
       ${state.view === "table" ? `<button class="btn" data-act="cols" aria-label="表示する列">${icon("cols")}<span class="lbl">表示する列</span></button>` : ""}
     </div>`;
@@ -682,7 +682,7 @@
     const items = mapItems();
     const legend = staticLegend("描いている検討事項の状態", STATUS_ORDER.map((s) => [mark(s), s, items.filter((d) => d.status === s).length]).filter(([, , n]) => n));
     const toggle = `<button class="btn" data-act="deps" aria-pressed="${state.deps}" title="依存関係の線を表示">${icon("deps")}<span class="lbl">依存関係</span></button>`;
-    return `<div class="toolbar">${segment("decisions")}<label class="sr-only" for="map-q">タイトルで強調するキーワード</label><input class="input map-q" id="map-q" data-act="mapq" type="search" placeholder="タイトルで強調" value="${esc(state.mapQ)}">${filterButton("decisions")}<span class="spacer"></span>${toggle}</div>
+    return `<div class="toolbar">${segment("decisions")}${filterButton("decisions")}<label class="sr-only" for="map-q">タイトルで強調するキーワード</label><input class="input map-q" id="map-q" data-act="mapq" type="search" placeholder="タイトルで強調" value="${esc(state.mapQ)}"><span class="spacer"></span>${toggle}</div>
       ${renderChips("decisions")}${legend ? `<div class="map-tools">${legend}</div>` : ""}`;
   };
   const renderMapShell = () => {
@@ -1310,21 +1310,21 @@
       if (!vals.length) return "";
       const set = F[def.key] || new Set();
       const { counts, hits } = optCounts(scope, def);
-      const hid = `fd-h-${def.key}`;
-      return `<section class="fd-group" role="group" aria-labelledby="${hid}">
-        <div class="fd-head"><h3 id="${hid}">${esc(def.label)}${set.size ? `<span class="fd-sel">${set.size} 件を選択</span>` : ""}</h3>
-        <button class="btn ghost fd-clear" type="button" data-act="dclear" data-key="${esc(def.key)}" aria-label="${esc(def.label)}の条件を解除"${set.size ? "" : " hidden"}>解除</button></div>
+      // 条件のまとまりはチェックボックスの組として fieldset と legend で組み、「解除」は legend の右に重ねる
+      return `<fieldset class="fd-group">
+        <legend>${esc(def.label)}${set.size ? `<span class="fd-sel">${set.size} 件を選択</span>` : ""}</legend>
+        <button class="btn ghost fd-clear" type="button" data-act="dclear" data-key="${esc(def.key)}" aria-label="${esc(def.label)}の条件を解除"${set.size ? "" : " hidden"}>解除</button>
         <ul class="fd-opts">${vals.map((v) => {
           const n = counts.get(v) || 0, h = hits.get(v) || 0;
           return `<li><label class="fd-opt${n ? "" : " zero"}"><input type="checkbox" data-act="dval" data-key="${esc(def.key)}" value="${esc(v)}" ${set.has(v) ? "checked" : ""}>${optMark(scope, def, v)}<span class="fd-v">${esc(v)}</span>${h ? `<span class="hit-n" aria-label="キーワードに一致した項目 ${h} 件">${h}</span>` : ""}<span class="n" aria-label="${n} 件">${n}</span></label></li>`;
         }).join("")}</ul>
-      </section>`;
+      </fieldset>`;
     }).join("");
     const shown = shownCount(scope), total = totalCount(scope);
     const any = activeConds(scope).length > 0;
     drawerDlg.querySelector(".fd-count").textContent = any ? `${total} 件中 ${shown} 件` : `${total} 件`;
     drawerDlg.querySelector(".fd-body").innerHTML = groups;
-    drawerDlg.querySelector(".fd-foot").innerHTML = `<button class="btn ghost" type="button" data-act="dclearall"${any ? "" : " hidden"}>すべての条件を解除</button><span class="spacer"></span><button class="btn primary" type="button" data-act="dclose">${drawerModal() ? `${shown} 件を表示` : "閉じる"}</button>`;
+    drawerDlg.querySelector(".fd-foot").innerHTML = `<button class="btn ghost" type="button" data-act="dclearall"${any ? "" : " hidden"}>すべて解除</button><span class="spacer"></span><button class="btn primary" type="button" data-act="dclose">${drawerModal() ? `${shown} 件を表示` : "閉じる"}</button>`;
   };
   // 重ねて出すか: 案 B と、本文の横に並べる幅の無い狭い幅では重ねる
   const drawerModal = () => state.dw === "B" || matchMedia("(max-width: 900px)").matches;
