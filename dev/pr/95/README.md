@@ -1,0 +1,1 @@
+# 設定をワークスペースの既定（config.yaml）と個人の上書き（localStorage）の 2 段にする
