@@ -392,7 +392,7 @@ exceptions:
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻し、どのファイルも書き換えない
   - name: 引数の誤り
     condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した。`target_map`・`category_map` も同じ（`settings.targets`・`settings.categories` を渡さずに渡した、キーが今の設定に無いか新しい設定にもある）'
-    notes: ツールのエラー。エラーの本文に合わない `phase_map` のキー。何も書き込まない
+    notes: ツールのエラー。エラーの本文に合わない対応の引数の名前（`phase_map`・`target_map`・`category_map`）とキー。何も書き込まない
   - name: UnmappedTargetError
     condition: 書き換えた後に、新しい `targets` に無い対象を持つ項目かカテゴリー、新しい `categories` に無いカテゴリーを持つ項目が残る。`target_map`・`category_map` の値が新しい設定に無いときも含む
     notes: ツールのエラー。エラーの本文に残る項目とキーと名前。何も書き込まない
