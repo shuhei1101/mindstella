@@ -1,5 +1,5 @@
 title: "サーバー / 変更履歴"
-lead: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）と前回開いた日時（`.mindstella-opened`）を読み書きする。『読み書きと検証』にだけ依存し、書き込みは `save_change` に任せる。
+lead: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』にだけ依存し、書き込みは `save_change`・`save_batch` に任せる。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/
@@ -82,13 +82,16 @@ data_models:
     properties:
       - name: last_seq
         type: int
-        description: 最後に積んだ変更履歴の `seq`
+        description: 最後に振った通し番号（変更履歴を積むとき・項目を足すとき・保持する回数が 0 で値を変えるときに進む）
       - name: sets
         type: list[ChangeSet]
         description: 新しい順のまとまり
       - name: pending
         type: dict[Literal['added', 'changed'], list[str]]
         description: まだまとめていない項目の ID
+      - name: read_seq
+        type: NotRequired[int]
+        description: AI が最後に読んだ時点。`changes_since_read` を一度も呼んでいなければキーが無い
 constants:
   - name: CHANGES_FILE
     title: まとまりのファイル名
@@ -334,13 +337,18 @@ functions:
         required: true
         passing: positional
         description: '`history_limit` の戻り値'
+      - name: read_seq
+        type: int | None
+        required: true
+        passing: keyword
+        description: '`changes.yaml` の `read_seq`（無ければ `None`）'
     returns:
       type: dict[str, Any]
       description: 新しい項目。`limit` が 0 なら `history` のキーを持たない
     process: |-
       1. `limit` が 0 の場合、`history`・`history_dropped_seq` を除いた項目を返す
       2. `entry` が `None` の場合、項目をそのまま返す
-      3. `[entry] + 今の history` の先頭 `limit` 個を `history` にする
+      3. `[entry] + 今の history` のうち、先頭 `limit` 個と、`read_seq` が `None` でなければ `seq` が `read_seq` より大きいものを、並びを保って `history` にする
       4. 残り（消した要素）があれば、その最大の `seq` と今の `history_dropped_seq` の大きい方を `history_dropped_seq` にする
     unit_tests:
       - name: test_stack_history
@@ -361,13 +369,19 @@ functions:
         condition: '`history` と `history_dropped_seq` を持つ項目、`limit` 0'
         mock: なし
         expected: 戻り値が `history`・`history_dropped_seq` のキーを持たない
+      - name: test_stack_history_keeps_unread
+        case: 正常
+        summary: 読んでいない回は保持する回数を超えても残す
+        condition: '`history` を seq 4・seq 2 の 2 回分持つ項目に seq 6 の新しい 1 回分、`limit` 1、`read_seq` 3'
+        mock: なし
+        expected: '`history` が seq 6・seq 4 の 2 回分で、`history_dropped_seq` が 2'
   - name: note_pending
     title: まだまとめていない変更に足す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
     scope: public
-    summary: '`pending` の `added` か `changed` に ID を足した新しい記録を返す。変更履歴を積んだときは `last_seq` を進める'
+    summary: '`pending` の `added` か `changed` に ID を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）'
     args:
       - name: changes
         type: Changes
@@ -384,25 +398,18 @@ functions:
         required: true
         passing: positional
         description: 足したか変えたか
-      - name: stacked
-        type: bool
-        required: false
-        default: 'False'
-        passing: keyword
-        description: 変更履歴を積んだか（真なら `last_seq` を 1 進める）
     returns:
       type: Changes
       description: 新しい記録
     process: |-
       1. `kind` が `changed` で、ID が既に `pending.added` か `pending.changed` にあれば足さない（`added` も同じ ID を二度足さない）
-      2. `stacked` が真なら `last_seq` を 1 進める
     unit_tests:
       - name: test_note_pending
         case: 正常
-        summary: 足した項目は変えても changed に入らない
-        condition: D-1 を `added` で足し、続けて D-1 を `changed`・`stacked` 真で足す
+        summary: 足した項目は変えても changed に入らず、通し番号は進めない
+        condition: '`last_seq` 0 の記録に D-1 を `added` で足し、続けて D-1 を `changed` で足す'
         mock: なし
-        expected: '`pending.added` が `[D-1]`、`pending.changed` が空、`last_seq` が 1'
+        expected: '`pending.added` が `[D-1]`、`pending.changed` が空、`last_seq` が 0'
   - name: commit_pending
     title: まとめる
     kind: 関数
@@ -513,5 +520,142 @@ functions:
         condition: 無い状態で 1 回、別の日時でもう 1 回呼ぶ
         mock: なし
         expected: 1 回目が `None`、2 回目が 1 回目の `now`。ファイルの 1 行目が 2 回目の `now`
+  - name: advance_seq
+    title: 通し番号を振る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: '`last_seq` を 1 進めた新しい記録と、振った番号を返す'
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 今の記録
+    returns:
+      type: tuple[Changes, int]
+      description: 新しい記録と、振った番号（`last_seq` + 1）
+    process: 1. `last_seq` を 1 進めた写しを作り、その番号と一緒に返す（項目を足す・変更履歴を積む・保持する回数が 0 で値を変えるときに呼ぶ）
+    unit_tests:
+      - name: test_advance_seq
+        case: 正常
+        summary: 番号を 1 進め、渡した記録は書き換えない
+        condition: '`last_seq` 3 の記録'
+        mock: なし
+        expected: 新しい記録の `last_seq` が 4、振った番号が 4、渡した記録の `last_seq` が 3 のまま
+  - name: values_at_read
+    title: 読んだ時点の値を組み立てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 前回読んだ時点からの変更を読む
+    scope: public
+    summary: 項目の `history` から、読んだ時点より後に変わったキーの読んだ時点の値と、今の本文を読んだ時点の本文へ戻す差分を組み立てる
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 今の項目
+      - name: body
+        type: str | None
+        required: true
+        passing: positional
+        description: 今の本文（無ければ `None`）
+      - name: read_seq
+        type: int
+        required: true
+        passing: positional
+        description: AI が最後に読んだ時点
+    returns:
+      type: tuple[dict[str, Any], list[BodyDiffHunk] | None]
+      description: 変わったキー → 読んだ時点の値（今と同じ値のキーは除く）と、本文の差分（本文が変わっていなければ `None`）
+    process: |-
+      1. `history` のうち `seq` が `read_seq` より大きい回を取り出す（新しい順）
+      2. 新しい回から順に `before` を重ね、同じキーは古い回の値で上書きする（最も古い回の値が読んだ時点の値になる）。今の項目と同じ値になったキーを除く
+      3. 本文があり、取り出した回が `body_diff` を持つ場合、今の本文に新しい回から順に当てて読んだ時点の本文を作り（`apply_body_diff`）、今の本文と違えば差分を作る（`diff_body`）
+    unit_tests:
+      - name: test_values_at_read
+        case: 正常
+        summary: 読んだ時点の値と本文の差分を組み立てる
+        condition: '`title` を `問い A` → `問い B`（seq 4）→ `問い C` と本文の 2 行目（seq 5）と変えた項目と今の本文、`read_seq` 3'
+        mock: なし
+        expected: '変わったキーが `{title: 問い A}`、差分を今の本文に当てると読んだ時点の本文になる'
+      - name: test_values_at_read_when_changed_back
+        case: 正常
+        summary: 元の値に戻したキーは返さない
+        condition: '`answer` を `a` → `b`（seq 4）→ `a`（seq 5）と戻した項目、`read_seq` 3'
+        mock: なし
+        expected: 変わったキーが空で、差分が `None`
+  - name: changes_since
+    title: 読んだ時点からの変更を並べる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 前回読んだ時点からの変更を読む
+    scope: public
+    summary: AI が最後に読んだ時点より後に足した・変えた項目を、`changes_since_read` の結果の形に並べる
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 読んだワークスペース
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 今の記録
+    returns:
+      type: dict[str, Any]
+      description: '`{had_read_point, read_seq, until_seq, added, changed}`（インターフェース定義『前回読んだ時点からの変更』のレスポンス）'
+    process: |-
+      1. `read_seq` が無ければ `{had_read_point: False, read_seq: None, until_seq: last_seq, added: [], changed: []}` を返す
+      2. 種類の順（`KINDS`）、項目の並びの順に見る
+         - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title}` で足す
+         - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None` にして `changed` に足す。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に足す
+      3. `until_seq` を `last_seq` にして返す
+    unit_tests:
+      - name: test_changes_since
+        case: 正常
+        summary: 読んだ時点より後の追加と変更を分けて返す
+        condition: '`read_seq` 3、D-1（`added_seq` 1、`seq` 5、seq 5 の `history` で `answer` を変えた）、T-1（`added_seq` 4、`seq` 4）、D-2（`seq` 2）'
+        mock: なし
+        expected: '`added` が T-1、`changed` が D-1（`before` に `answer`）だけで D-2 を含まない。`had_read_point` が真で `until_seq` が `last_seq`'
+      - name: test_changes_since_when_no_read_point
+        case: 正常
+        summary: 読んだ時点が無ければ差分を返さない
+        condition: '`read_seq` を持たない記録と、変更履歴を持つ D-1'
+        mock: なし
+        expected: '`had_read_point` が偽、`read_seq` が `None`、`added`・`changed` が空'
+      - name: test_changes_since_when_limit_zero
+        case: 正常
+        summary: 保持する回数が 0 なら前の値を組み立てない
+        condition: '`history_limit` 0、`read_seq` 3、`seq` 5 で `history` を持たない D-1'
+        mock: なし
+        expected: '`changed` が D-1 で `before`・`body_diff` が `None`'
+  - name: mark_read
+    title: 読んだ時点を進める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 前回読んだ時点からの変更を読む
+    scope: public
+    summary: '`read_seq` を `last_seq` にした新しい記録を返す'
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 今の記録
+    returns:
+      type: Changes
+      description: 新しい記録
+    process: 1. 写しの `read_seq` を `last_seq` にして返す
+    unit_tests:
+      - name: test_mark_read
+        case: 正常
+        summary: 読んだ時点を最後の通し番号にする
+        condition: '`last_seq` 7 で `read_seq` を持たない記録'
+        mock: なし
+        expected: 新しい記録の `read_seq` が 7。渡した記録は `read_seq` を持たないまま
 test_files:
   - tests/unit/scripts/test_history.py

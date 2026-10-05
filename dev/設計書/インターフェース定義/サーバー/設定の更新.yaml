@@ -219,9 +219,95 @@ flows:
       - エラーの本文に `発散` がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_bad_argument
-lead: '`settings` で渡した設定のキーを置き換える。フェーズを変えるときは、`phase_map` の対応で項目の `phase` と `goal.phase` も同じ書き込みで付け替える。'
+  - name: 正常系（対象とカテゴリーを付け替える）
+    summary: 対象・カテゴリーを置き換え、対応で項目とカテゴリーの target・category を付け替える（変更履歴には入れない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 対象 `本体`・`管理画面`、カテゴリー `画面`（本体）・`API`（本体）・`設定`（管理画面）で作り、検討事項 D-1（本体・画面）・D-2（管理画面・設定）を足して `commit` したワークスペース
+      - name: settings と対応
+        description: '`targets` を `アプリ`・`管理画面`、`categories` を `画面`（アプリ）・`API`（アプリ）・`運用`（管理画面）にし、`target_map` と `category_map` を渡す'
+        notes: '`target_map: {"本体": "アプリ"}`、`category_map: {"設定": "運用"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（settings・target_map・category_map）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 設定を置き換え、項目とカテゴリーの target・category を対応で付け替え、スキーマと突き合わせる
+        IF->>WS: mindmap.yaml と decisions.yaml を書く
+        IF-->>クライアント: JSON（changed・remapped・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`changed` が `targets`・`categories`'
+      - '`remapped` が `{D-1, target, 本体, アプリ}`・`{D-2, category, 設定, 運用}` の 2 件'
+      - D-1 の `target` が `アプリ`、D-2 の `category` が `運用` で、どちらも `history` を持たない
+      - '`mindmap.yaml` のカテゴリー画面・API の `target` が `アプリ`'
+      - '`changes.yaml` の `pending` の `added`・`changed` が空で、`last_seq` が呼ぶ前と同じ'
+    test: test_normal_when_targets_remapped
+  - name: 正常系（関連する場所と保持する回数）
+    summary: 関連する場所と保持する回数を書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`links` と `history_limit` を持たないワークスペース'
+      - name: settings
+        description: '`links` を 1 件、`history_limit` を 3 にする'
+        notes: '`{"links": [{"title": "仕様", "url": "https://example.com/spec"}], "history_limit": 3}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（links・history_limit）
+        IF-->>WS: mindmap.yaml を読む
+        IF->>IF: 渡したキーを置き換え、スキーマと突き合わせる
+        IF->>WS: mindmap.yaml を書く
+        IF-->>クライアント: JSON（changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`changed` が `links`・`history_limit`'
+      - '`mindmap.yaml` の `links` が渡した 1 件で、`history_limit` が 3'
+      - ほかのキーが呼ぶ前と同じ
+    test: test_normal_when_links_and_history_limit
+  - name: 異常系（対応の無いカテゴリーが残る・UnmappedTargetError）
+    summary: 新しいカテゴリーに無いカテゴリーを持つ項目が残ると、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: カテゴリー `画面`・`設定` で作り、検討事項 D-1（画面）・D-2（設定）を足したワークスペース
+      - name: settings
+        description: '`categories` を `画面` だけにし、`category_map` を渡さない'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（categories）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 新しい categories に無いカテゴリーを持つ D-2 が残る
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `D-2: category: 設定` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_unmapped_category
+lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
-side_effects: '`mindmap.yaml` を書き換える。フェーズを付け替えた項目があれば、その種類の YAML も書き換える。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`mindmap.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換える。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -235,7 +321,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal` だけ。`null` で消せるのは任意の `description`・`goal` だけ。1 つ以上のキーを持つ
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit` だけ。1 つ以上のキーを持つ
   - name: phase_map
     type: dict[str, str]
     required: false
@@ -244,6 +330,22 @@ request:
     description: 古いフェーズの名前 → 新しいフェーズの名前。`settings.phases` を渡したとき、新しい `phases` に無いフェーズを持つ項目と `goal.phase` をこの対応で付け替える。新しい `phases` に同じ名前があるフェーズは、対応を渡さなくてもそのまま残る
     constraints: キーは今の `phases` にあり、新しい `phases` に無いフェーズだけ。値は新しい `phases` のどれか。`settings.phases` を渡さないときは渡さない（どれも合わなければ引数の誤り）
     example: '{"問い": "目的", "結論": "要件"}'
+  - name: target_map
+    type: dict[str, str]
+    required: false
+    default: なし（対応を渡さない）
+    location: argument
+    description: 古い対象の名前 → 新しい対象の名前。`settings.targets` を渡したとき、新しい `targets` に無い対象を持つ項目の `target` とカテゴリーの `target` をこの対応で付け替える。新しい `targets` に同じ名前がある対象は、対応を渡さなくてもそのまま残る
+    constraints: キーは今の `targets` にあり、新しい `targets` に無い対象だけ。値は新しい `targets` のどれか。`settings.targets` を渡さないときは渡さない（どれも合わなければ引数の誤り）
+    example: '{"本体": "アプリ"}'
+  - name: category_map
+    type: dict[str, str]
+    required: false
+    default: なし（対応を渡さない）
+    location: argument
+    description: 古いカテゴリーの名前 → 新しいカテゴリーの名前。`settings.categories` を渡したとき、新しい `categories` に無いカテゴリーを持つ項目の `category` をこの対応で付け替える。新しい `categories` に同じ名前があるカテゴリーは、対応を渡さなくてもそのまま残る
+    constraints: キーは今の `categories` にあり、新しい `categories` に無いカテゴリーだけ。値は新しい `categories` のどれか。`settings.categories` を渡さないときは渡さない（どれも合わなければ引数の誤り）
+    example: '{"設定": "運用"}'
 request_example: |-
   ```json
   {
@@ -268,8 +370,8 @@ response:
     type: list[str]
     description: 値が変わった・消えた設定のキーの名前。対応で `goal.phase` だけが変わったときも `goal` を含める
   - name: remapped[]
-    type: list[{id, from, to}]
-    description: フェーズを付け替えた項目の ID・前のフェーズ・後のフェーズ。種類の順（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）、同じ種類の中は項目の並びの順
+    type: list[{id, key, from, to}]
+    description: 付け替えた項目の ID・付け替えたキー（`phase`・`target`・`category`）・前の値・後の値。種類の順（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）、同じ種類の中は項目の並びの順、同じ項目の中は `phase`・`target`・`category` の順
   - name: files
     type: list[str]
     description: 書き換えた YAML（ワークスペースからの相対パス）
@@ -290,9 +392,12 @@ exceptions:
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻し、どのファイルも書き換えない
   - name: 引数の誤り
-    condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した'
-    notes: ツールのエラー。エラーの本文に合わない `phase_map` のキー。何も書き込まない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。対応の無いフェーズが残るときは、残るものごとに `{ID か goal}: {フェーズ}` の行を続ける。'
+    condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した。`target_map`・`category_map` も同じ（`settings.targets`・`settings.categories` を渡さずに渡した、キーが今の設定に無いか新しい設定にもある）'
+    notes: ツールのエラー。エラーの本文に合わない対応の引数の名前（`phase_map`・`target_map`・`category_map`）とキー。何も書き込まない
+  - name: UnmappedTargetError
+    condition: 書き換えた後に、新しい `targets` に無い対象を持つ項目かカテゴリー、新しい `categories` に無いカテゴリーを持つ項目が残る。`target_map`・`category_map` の値が新しい設定に無いときも含む
+    notes: ツールのエラー。エラーの本文に残る項目とキーと名前。何も書き込まない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。対応の無いフェーズが残るときは、残るものごとに `{ID か goal}: {フェーズ}` の行を続ける。対応の無い対象・カテゴリーが残るときは、残るものごとに `{ID か categories[{名前}]}: {target か category}: {名前}` の行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）

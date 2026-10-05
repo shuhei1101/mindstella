@@ -137,7 +137,7 @@ flows:
     test: test_error_when_file_shape_broken
 lead: '`item` で渡した中身に ID・作成日時・更新日時を付けて、種類の YAML に 1 項目足す。本文を渡したときは `docs/{ID}.md` に書く。'
 idempotent: false
-side_effects: 種類の YAML に 1 項目を足し、`changes.yaml` の `pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
+side_effects: 種類の YAML に 1 項目を足し、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
 request:
   - name: workspace
     type: str
@@ -155,7 +155,7 @@ request:
     required: true
     location: argument
     description: 項目の中身。キーと型は ER 図『ワークスペース』のその種類の表と共通のキー
-    constraints: '`id`・`created`・`updated`・`body`・`history` は持たない（ツールが付ける）'
+    constraints: '`id`・`created`・`updated`・`body`・`history`・`seq`・`added_seq` は持たない（ツールが付ける）'
   - name: item.body_markdown
     type: str
     required: false
@@ -227,5 +227,7 @@ constraints:
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えた本文を消し、置き換えた YAML を前の中身に戻してからツールのエラーで終わる（残った一時ファイルも消す）
   - item: 変更履歴
     constraint: 積まない（足した項目は `history` を持たない）。新規の印は `changes.yaml` の `pending.added`・`sets[].added` から取る
+  - item: 通し番号
+    constraint: '`changes.yaml` の `last_seq` + 1 を項目の `seq` と `added_seq` に入れ、`last_seq` をその番号にする（『前回読んだ時点からの変更』が読んだ時点より後に足した項目を引く）'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_add.py

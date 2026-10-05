@@ -83,7 +83,7 @@ items:
     summary: 'POST /api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える'
     group: 配信
   - page: 設定の更新.yaml
-    summary: 'update_settings: 設定のキーを置き換え、フェーズの対応で項目のフェーズを付け替える'
+    summary: 'update_settings: 設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目を付け替える'
     group: 書く
   - page: レビュー中のコメントの読み取り.yaml
     summary: 'GET /api/comments: レビュー中のコメントと書きかけをその場で読んで返す'
@@ -103,3 +103,12 @@ items:
   - page: コメントをまとめて送る.yaml
     summary: 'POST /api/comments/send: チェックしたレビュー中のコメントを取り込んでいない送信へ移す'
     group: 送信
+  - page: 案の書き換え.yaml
+    summary: 'edit_option: 検討事項の案を記号で指して 1 つ足す・直す・消す'
+    group: 書く
+  - page: まとめての読み書き.yaml
+    summary: 'batch: 項目の追加・更新・取得を並べて 1 回で当てる'
+    group: 書く
+  - page: 前回読んだ時点からの変更.yaml
+    summary: 'changes_since_read: AI が前回読んだ時点より後に足した・変えた項目を返し、読んだ時点を進める'
+    group: 読む

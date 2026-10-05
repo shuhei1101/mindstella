@@ -145,7 +145,7 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - '`changes.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
-lead: まだまとめていない書き換え（最後のまとまりより後の `add`・`update`・`adopt`）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
+lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'
 callers:

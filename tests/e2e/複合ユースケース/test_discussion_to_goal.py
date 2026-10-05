@@ -41,6 +41,12 @@ if TYPE_CHECKING:
 TARGET = "家計簿アプリ"
 CATEGORY = "機能"
 
+# 範囲の見直しでまとめる前の、壁打ちで使うカテゴリー
+IDEA_CATEGORY = "アイデア"
+
+# 範囲の見直しで変える対象の名前
+NEW_TARGET = "アプリ"
+
 # 会話の日付
 TODAY = "2026-10-02"
 
@@ -122,50 +128,61 @@ def test_normal_when_new_discussion(
     # 実行
     # セットアップ: 新しいワークスペースを作る
     replay("init", **ws, settings=SETTINGS)
-    # 取り込み: 決め事・派生の検討事項・タスク・会話ログを積む
+    # 取り込み: 決め事・派生の検討事項・タスク・会話ログを、1 回のまとめての書き込みで積む
     replay(
-        "add",
+        "batch",
         **ws,
-        kind="decision",
-        item=_placed(
-            "保存先を決める",
-            "構成",
-            status="決定済み",
-            answer="YAML ファイルに保存する",
-            reason="手で読める",
-            options=[
-                {"key": "A", "content": "YAML ファイルに保存する", "adopted": True},
-                {"key": "B", "content": "DB に保存する"},
-            ],
-        ),
-    )
-    replay(
-        "add",
-        **ws,
-        kind="decision",
-        item=_placed(
-            "保存先のファイル分け",
-            "インターフェース",
-            status="未決定",
-            parent="D-1",
-            depends_on=["D-1"],
-        ),
-    )
-    replay(
-        "add",
-        **ws,
-        kind="task",
-        item=_placed(
-            "保存先の候補を調べる", "構成", kind="調査", status="未着手", **{"for": ["D-1"]}
-        ),
-    )
-    replay(
-        "add", **ws, kind="log", item=_log("1 回目の会話", ["D-1", "D-2", "T-1"], "保存先を決めた")
+        operations=[
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": _placed(
+                    "保存先を決める",
+                    "構成",
+                    status="決定済み",
+                    answer="YAML ファイルに保存する",
+                    reason="手で読める",
+                    options=[{"key": "A", "content": "YAML ファイルに保存する", "adopted": True}],
+                ),
+            },
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": _placed(
+                    "保存先のファイル分け",
+                    "インターフェース",
+                    status="未決定",
+                    parent="$1",
+                    depends_on=["$1"],
+                ),
+            },
+            {
+                "op": "add",
+                "kind": "task",
+                "item": _placed(
+                    "保存先の候補を調べる", "構成", kind="調査", status="未着手", **{"for": ["$1"]}
+                ),
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": _log("1 回目の会話", ["$1", "$2", "$3"], "保存先を決めた"),
+            },
+        ],
     )
     # ヒアリング: 前提が揃った未決定を聞いて、答えを記録する
     candidates = replay("next", **ws)["candidates"]
     replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "種類ごとに分ける"})
     replay("add", **ws, kind="log", item=_log("ヒアリング", ["D-2"], "ファイル分けを決めた"))
+    # 取り込み: D-1 に案 B を、案の書き換えで足す
+    replay(
+        "edit_option",
+        **ws,
+        id="D-1",
+        action="add",
+        key="B",
+        option={"content": "DB に保存する"},
+    )
     # リサーチ: 調査を検討事項に繋ぎ、タスクを完了にする
     replay(
         "add",
@@ -291,28 +308,64 @@ def test_normal_when_resume(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """途中まで進んだワークスペースの状況を読み、続きの番号で項目を足す（正常系）。"""
+    """途中まで進んだワークスペースの状況と前回読んだ後の変更を読み、続きの番号で項目を足す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", title="見直しの問い", status="要見直し"),
+        make_item("D-1", title="見直しの問い", status="要見直し", body="D-1.md"),
         make_item("T-1", title="進めている作業", status="進行中"),
         make_item("D-2", title="次に決める問い"),
+        bodies={"D-1.md": "1 行目\n2 行目\n3 行目\n"},
     )
     ws = {"workspace": str(root)}
+    # 前の話し合いの終わりに前回読んだ時点を記録し、その後で D-1 のタイトルと本文を書き換えておく
+    replay("changes_since_read", **ws)
+    replay(
+        "update",
+        **ws,
+        id="D-1",
+        item={"title": "見直しの問い（直した）", "body_markdown": "1 行目\n直した 2 行目\n3 行目\n"},
+    )
     # 実行
     # セットアップ: 既存のワークスペースの状況を読む
     status = replay("status", **ws)
-    # 取り込み: 続きの番号で検討事項を足す
-    added = replay(
-        "add", **ws, kind="decision", item={"title": "続きで出た問い", "status": "未決定"}
+    # 準備: 前回読んだ時点からの変更を読む
+    read = replay("changes_since_read", **ws)
+    read_again = replay("changes_since_read", **ws)
+    # 読んだ直後の changes.yaml を控える（取り込みの書き込みで last_seq が進む前の状態）
+    changes_after_read = read_yaml(root, "changes.yaml")
+    # 取り込み: 続きの番号で、1 つの発言から出た検討事項とタスクを 1 回で足す
+    batched = replay(
+        "batch",
+        **ws,
+        operations=[
+            {"op": "add", "kind": "decision", "item": {"title": "続きで出た問い", "status": "未決定"}},
+            {
+                "op": "add",
+                "kind": "task",
+                "item": {
+                    "title": "続きの問いを調べる",
+                    "kind": "調査",
+                    "status": "未着手",
+                    "for": ["$1"],
+                },
+            },
+        ],
     )
     # 検証
     # status の出力に、要見直しの D-1・進行中の T-1・次の候補の D-2 がある
-    assert status["needs_review"] == [{"id": "D-1", "title": "見直しの問い"}]
+    assert status["needs_review"] == [{"id": "D-1", "title": "見直しの問い（直した）"}]
     assert status["in_progress"] == [{"id": "T-1", "title": "進めている作業"}]
     assert status["next"][0]["id"] == "D-2"
-    # 既存の項目の ID が変わらず、取り込みで足した検討事項が D-3 になっている
-    assert added["id"] == "D-3"
+    # 前回読んだ時点からの変更の出力に、D-1 が変わったキー（タイトル・本文）と前の値つきである
+    assert [entry["id"] for entry in read["changed"]] == ["D-1"]
+    assert read["changed"][0]["before"] == {"title": "見直しの問い"}
+    assert read["changed"][0]["body_diff"] is not None
+    # 読んだ後、AI が最後に読んだ時点が最後の書き換えの通し番号になっており、続けてもう一度読むと変更が 0 件である
+    assert changes_after_read["read_seq"] == changes_after_read["last_seq"]
+    assert read_again["added"] == []
+    assert read_again["changed"] == []
+    # 既存の項目の ID が変わらず、取り込みの 1 回の呼び出しで足した検討事項が D-3、タスクが T-2 になっている
+    assert [entry["result"]["id"] for entry in batched["results"]] == ["D-3", "T-2"]
     ids = [item["id"] for item in read_yaml(root, "decisions.yaml")["items"]]
     assert ids == ["D-1", "D-2", "D-3"]
 
@@ -416,13 +469,21 @@ def test_normal_when_scope_widened(
             "target_label": "テーマ",
             "phases": ["問い", "発散", "整理", "絞り込み", "結論"],
             "targets": [{"name": TARGET, "summary": "支出を記録する"}],
-            "categories": [{"name": CATEGORY, "target": TARGET, "summary": "利用者ができること"}],
+            "categories": [
+                {"name": CATEGORY, "target": TARGET, "summary": "利用者ができること"},
+                {"name": IDEA_CATEGORY, "target": TARGET, "summary": "出たアイデア"},
+            ],
             "links": [],
         },
     )
-    # 取り込み: 問いと発散の検討事項を積む
+    # 取り込み: 問いと発散の検討事項を積む（発散のものは アイデア のカテゴリーに置く）
     replay("add", **ws, kind="decision", item=_placed("何を作るか", "問い", status="未決定"))
-    replay("add", **ws, kind="decision", item=_placed("使う場面の案", "発散", status="未決定"))
+    replay(
+        "add",
+        **ws,
+        kind="decision",
+        item=_placed("使う場面の案", "発散", status="未決定", category=IDEA_CATEGORY),
+    )
     # ゴール判定: ゴールが無いことを示す
     first_goal = replay("goal", **ws)
     # 範囲の見直し: システム開発を足し、フェーズの対応を確かめて付け替え、題名・最上位の軸の呼び名・ゴールを書き換える
@@ -434,9 +495,15 @@ def test_normal_when_scope_widened(
             "playbooks": ["壁打ち", "システム開発"],
             "phases": new_phases,
             "target_label": "機能",
+            "targets": [{"name": NEW_TARGET, "summary": "支出を記録する"}],
+            "categories": [
+                {"name": CATEGORY, "target": NEW_TARGET, "summary": "利用者ができること"}
+            ],
             "goal": new_goal,
         },
         phase_map={"問い": "目的", "整理": "要件", "絞り込み": "要件", "結論": "要件"},
+        target_map={TARGET: NEW_TARGET},
+        category_map={IDEA_CATEGORY: CATEGORY},
     )
     replay("add", **ws, kind="log", item=_log("範囲の見直し", ["D-1", "D-2"], "要件まで決める"))
     # 取り込み: 納品物の資料を作って、同じタイトルのゴールの納品物から指す
@@ -447,6 +514,7 @@ def test_normal_when_scope_widened(
         item=_placed(
             "要件定義書",
             "要件",
+            target=NEW_TARGET,
             kind="文書",
             deliverable=True,
             status="下書き",
@@ -485,6 +553,13 @@ def test_normal_when_scope_widened(
     # 付け替えの前に足した D-1・D-2 のフェーズが、どちらも書き換えた後の phases のどれかである
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     assert {decisions["D-1"]["phase"], decisions["D-2"]["phase"]} <= set(settings["phases"])
+    # D-1・D-2 の対象・カテゴリーが、書き換えた後の targets・categories のどれかである
+    assert {decisions["D-1"]["target"], decisions["D-2"]["target"]} <= {
+        entry["name"] for entry in settings["targets"]
+    }
+    assert {decisions["D-1"]["category"], decisions["D-2"]["category"]} <= {
+        entry["name"] for entry in settings["categories"]
+    }
     # goal.deliverables の納品物が、取り込みで作った資料を doc で指している
     assert settings["goal"]["deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
     # 2 回目の goal の出力が「届いた」である

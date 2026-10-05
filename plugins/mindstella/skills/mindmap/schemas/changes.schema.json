@@ -12,7 +12,7 @@
   "properties": {
     "last_seq": {
       "type": "integer",
-      "description": "最後に積んだ変更履歴の `seq`。積むたびに 1 足す",
+      "description": "最後に振った通し番号。変更履歴を積むとき・項目を足すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す",
       "minimum": 0
     },
     "sets": {
@@ -95,6 +95,12 @@
           }
         }
       }
+    },
+    "read_seq": {
+      "type": "integer",
+      "description": "AI が最後に読んだ時点。`changes_since_read` を最後に呼んだときの `last_seq`。一度も呼んでいなければ持たない",
+      "minimum": 0
     }
   }
 }
+
