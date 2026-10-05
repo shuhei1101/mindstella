@@ -90,6 +90,8 @@ namespace MindmapPreview {
         ],
       }),
     );
+    // 選んだ数は、ここに並ぶ値のうち選んでいるものだけを数える（見えているチェックの数と合わせる）
+    const checkedCount = group.values.filter(({ value }) => chosen.includes(value)).length;
     return h({
       tag: "fieldset",
       attrs: { class: "fd-group" },
@@ -98,10 +100,10 @@ namespace MindmapPreview {
           tag: "legend",
           children: [
             group.label,
-            chosen.length > 0 ? h({ tag: "span", attrs: { class: "fd-sel" }, children: [`${chosen.length} 件を選択`] }) : null,
+            checkedCount > 0 ? h({ tag: "span", attrs: { class: "fd-sel" }, children: [`${checkedCount} 件を選択`] }) : null,
           ],
         }),
-        chosen.length > 0
+        checkedCount > 0
           ? h({
               tag: "button",
               attrs: {
