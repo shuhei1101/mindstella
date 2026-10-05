@@ -215,7 +215,8 @@ namespace MindmapPreview {
         "data-act": "filter",
         "aria-label": count === 0 ? "絞り込み" : `絞り込み（${count} つの条件で絞り込み中）`,
         "aria-expanded": String(open),
-        "aria-controls": "drawer",
+        // ドロワーを開いていて、指す先が文書にあるときだけ付ける（ドロワーを描いた後は、ドロワーが付け直す）
+        "aria-controls": open && document.getElementById("drawer") !== null ? "drawer" : null,
         onclick: () => onClick?.(),
       },
       children: [

@@ -267,6 +267,8 @@ namespace MindmapPreview {
     queueMicrotask(() => {
       if (!drawer.isConnected) return;
       if (!drawer.open) drawer.show();
+      // 指す先ができたので、トップバーの絞り込みのボタンから指す（ボタンはドロワーより先に描かれている）
+      document.querySelector("[data-act='filter']")?.setAttribute("aria-controls", "drawer");
       body.scrollTop = scrollTop;
       const target = focus === null ? null : focusTargetOf({ drawer, focus });
       if (target !== null) {
