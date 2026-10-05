@@ -184,3 +184,15 @@ def test_chips(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     assert checked_values(page, "type") == []
     assert badge_text(page) is None
     assert drawer_head(page)["count"] == "14 件"
+
+
+
+def test_look(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """つながりの見た目の値をキャンバスの入れ物に渡す。既定は深宇宙で、値ごとの描き分けはまだ無い（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    # 検証
+    assert page.get_attribute(".screen.graph", "data-look") == "deep"

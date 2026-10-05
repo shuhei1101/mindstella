@@ -329,3 +329,43 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
         page.evaluate("getComputedStyle(document.querySelector('.df-chip-t')).textOverflow")
         == "ellipsis"
     )
+
+
+def test_settings_open(open_story: OpenStory) -> None:
+    """表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--settings-open")
+    # 検証
+    button = page.get_by_role("button", name="表示の設定", exact=True)
+    assert button.count() == 1
+    assert button.get_attribute("aria-expanded") == "true"
+    assert "open" in (button.get_attribute("class") or "")
+    comments = page.get_by_role("button", name="コメント（レビュー中 3 件）")
+    assert "open" not in (comments.get_attribute("class") or "")
+    # 表示の設定のボタンは、コメントのボタンの左に置く
+    boxes = page.evaluate(
+        "() => ({s: document.querySelector('.settings-btn').getBoundingClientRect().right,"
+        " c: document.querySelector('.comments-btn').getBoundingClientRect().left})"
+    )
+    assert boxes["s"] <= boxes["c"]
+    # 文書に無い要素を指す `aria-controls` を付けない
+    assert button.get_attribute("aria-controls") is None
+
+
+def test_kinds_hidden(open_story: OpenStory) -> None:
+    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--kinds-hidden")
+    # 検証
+    tabs = page.eval_on_selector_all("nav.tabbar a", "links => links.map(a => a.dataset.tab)")
+    assert tabs == ["overview", "decisions", "research", "terms", "notes", "logs", "graph"]
+
+
+def test_export(open_story: OpenStory) -> None:
+    """配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--export")
+    # 検証
+    assert page.get_by_role("button", name="表示の設定", exact=True).count() == 1
+    assert page.locator(".comments-btn").count() == 0
+    assert page.get_attribute(".settings-btn", "aria-expanded") == "false"

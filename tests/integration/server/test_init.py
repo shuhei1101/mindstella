@@ -37,7 +37,7 @@ def test_normal(tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, A
     result = call_tool("init", workspace=str(root), settings=valid_settings)
     # 検証
     assert result.is_error is False
-    assert yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8")) == valid_settings
+    assert yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8")) == valid_settings
     assert _read_kind_yamls(root) == {
         "decisions.yaml": {"items": []},
         "tasks.yaml": {"items": []},
@@ -57,7 +57,7 @@ def test_normal(tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, A
     payload = result.data
     assert payload["workspace"] == str(root)
     assert set(payload["files"]) == {
-        "mindmap.yaml",
+        "config.yaml",
         *KIND_YAML_FILES,
         "mindstella-version.ini",
         "docs/",
@@ -72,14 +72,18 @@ def test_normal_when_no_goal(
     # 準備
     root = tmp_path / "new-workspace"
     settings = {
-        **{key: value for key, value in valid_settings.items() if key not in ("goal", "description")},
+        **{
+            key: value
+            for key, value in valid_settings.items()
+            if key not in ("goal", "description")
+        },
         "playbooks": ["壁打ち", "調査"],
     }
     # 実行
     result = call_tool("init", workspace=str(root), settings=settings)
     # 検証
     assert result.is_error is False
-    created = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    created = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
     assert "goal" not in created
     assert "description" not in created
     assert created["playbooks"] == ["壁打ち", "調査"]
@@ -94,7 +98,7 @@ def test_error_when_workspace_exists(
     snapshot_tree: SnapshotTree,
     valid_settings: dict[str, Any],
 ) -> None:
-    """mindmap.yaml があるフォルダには作らず、何も書き換えない（異常系）。"""
+    """config.yaml があるフォルダには作らず、何も書き換えない（異常系）。"""
     # 準備
     root = make_workspace()
     before = snapshot_tree(root)
@@ -117,7 +121,7 @@ def test_error_when_settings_mismatch(
     result = call_tool("init", workspace=str(root), settings=valid_settings)
     # 検証
     assert result.is_error is True
-    assert "mindmap.yaml" in result.text
+    assert "config.yaml" in result.text
     assert "phases" in result.text
     assert not root.exists()
 
@@ -141,3 +145,27 @@ def test_error_when_write_fails(
     assert result.text.startswith("エラー: ")
     assert "Traceback" not in result.text
     assert not root.exists()
+
+
+def test_error_when_old_settings_file_exists(
+    tmp_path: Path,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+    valid_settings: dict[str, Any],
+) -> None:
+    """mindmap.yaml だけがあるフォルダには作らず、前の版の記録を上書きしない（異常系）。"""
+    # 準備
+    root = tmp_path / "old-workspace"
+    root.mkdir()
+    (root / "mindmap.yaml").write_text("field: システム開発\n", encoding="utf-8")
+    (root / "decisions.yaml").write_text(
+        "items:\n  - id: D-1\n    title: 前の版の検討事項\n", encoding="utf-8"
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("init", workspace=str(root), settings=valid_settings)
+    # 検証
+    assert result.is_error is True
+    assert str(root) in result.text
+    assert not (root / "config.yaml").exists()
+    assert snapshot_tree(root) == before

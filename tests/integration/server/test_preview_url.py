@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
+from typing import Any
 
 from workspace_fixtures import SERVER_SCRIPT
 
-from .fixture_types import CallTool, MakeItem, MakeWorkspace, StartServer
+from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
 from .http_helpers import http_request
 
 # 待ち受けを立てる処理を、OSError を送る偽に差し替えてからサーバーを動かすスクリプトの中身
@@ -31,8 +32,9 @@ FAILING_LISTEN_SCRIPT = textwrap.dedent(
     """
 )
 
-# 配信の URL の頭
+# 配信の URL の頭と、画面のパス
 URL_PREFIX = "http://127.0.0.1:"
+PAGE_PATH = "/mindstella.html"
 
 
 def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
@@ -45,8 +47,9 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert result.is_error is False
     assert result.data is not None
     assert result.data["url"].startswith(URL_PREFIX)
+    assert result.data["url"].endswith(PAGE_PATH)
     assert result.data["started"] is True
-    assert http_request(result.data["url"]).status == 200
+    assert http_request(result.data["url"], PAGE_PATH).status == 200
     assert not (root / "preview.html").exists()
 
 
@@ -68,7 +71,7 @@ def test_normal_when_called_again(
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すと、配信を立てずに終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すと、配信を立てずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -77,6 +80,31 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
     # 検証
     assert result.is_error is True
     assert str(root) in result.text
+
+
+def test_error_when_config_invalid(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """config.yaml がスキーマに合わないと、違う箇所を返して配信を立てない（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "display": {"network_look": "rainbow"}})
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("preview_url", workspace=str(root))
+    # 検証
+    assert result.is_error is True
+    assert any(
+        line.startswith("config.yaml: display.network_look: ") and "glow" in line
+        for line in result.text.splitlines()
+    )
+    assert snapshot_tree(root) == before
+    # 配信が立っていないので、もう一度呼んでも同じエラーになる
+    again = call_tool("preview_url", workspace=str(root))
+    assert again.is_error is True
+    assert "config.yaml: display.network_look: " in again.text
 
 
 def test_error_when_serve_fails(
