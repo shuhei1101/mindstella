@@ -1553,7 +1553,7 @@ functions:
     process: |-
       1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
       2. 変更を並べる（`changes_since`）
-      3. 読んだ時点を進めた記録だけを書き込む（`mark_read`、`save_batch`。`items` は空）
+      3. 読んだ時点を進めた記録だけを、`changes.yaml` だけを置き換えて書く（`mark_read`、`run_commit` と同じ `_write_changes`）。項目の YAML は書かず、ワークスペースのスキーマの検証もしない（今あるスキーマ違反で止めない）
       4. 2. の結果を返す（3. で失敗したら返さずにエラーを伝える）
     unit_tests:
       - name: test_run_changes_since_read
@@ -1562,6 +1562,12 @@ functions:
         condition: '`read_seq` 2、`last_seq` 4 で、`added_seq` 3 の T-1 を持つワークスペース'
         mock: なし
         expected: '`added` が T-1、`until_seq` が 4。`changes.yaml` の `read_seq` が 4'
+      - name: test_run_changes_since_read_when_schema_mismatch
+        case: 正常
+        summary: ワークスペースにスキーマ違反があっても読んだ時点を進める
+        condition: '`status: 完了`（検討事項に無い状態）の D-1 と、`read_seq` 2・`last_seq` 3 の `changes.yaml` を持つワークスペース'
+        mock: なし
+        expected: 例外にならず、`changes.yaml` の `read_seq` が 3。`decisions.yaml` が呼ぶ前と同じ
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

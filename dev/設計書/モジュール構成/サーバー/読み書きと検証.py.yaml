@@ -166,7 +166,7 @@ data_models:
     usecase: 記録の追加と更新
     role: DTO
     summary: 複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`batch` と `changes_since_read` が使う。'
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`edit_option`・`batch` が使う。'
     properties:
       - name: items
         type: dict[Kind, list[dict[str, Any]]]
