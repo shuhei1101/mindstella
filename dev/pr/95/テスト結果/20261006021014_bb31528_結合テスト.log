@@ -1,0 +1,131 @@
+# 結合テスト（全件 pass。test_check_env.py::test_normal と test_launch.py は除く）
+# commit: bb31528
+# 実行日時: 2026-10-06 02:10:14 JST
+$ pytest tests/integration/server tests/integration/plugin --deselect tests/integration/server/test_check_env.py::test_normal --ignore=tests/integration/server/test_launch.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-settings-config-and-personal-override
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 203 items / 1 deselected / 202 selected
+
+tests/integration/server/test_add.py .....                               [  2%]
+tests/integration/server/test_adopt.py ......                            [  5%]
+tests/integration/server/test_attrs.py ..                                [  6%]
+tests/integration/server/test_batch.py ......                            [  9%]
+tests/integration/server/test_changes_since_read.py .....                [ 11%]
+tests/integration/server/test_check.py .....                             [ 14%]
+tests/integration/server/test_check_env.py .s.s                          [ 16%]
+tests/integration/server/test_clear_release.py ....                      [ 18%]
+tests/integration/server/test_comment_add.py ..........                  [ 23%]
+tests/integration/server/test_comment_delete.py ...                      [ 24%]
+tests/integration/server/test_comment_update.py .....                    [ 27%]
+tests/integration/server/test_comments_read.py ...                       [ 28%]
+tests/integration/server/test_comments_send.py .......                   [ 32%]
+tests/integration/server/test_commit.py ......                           [ 35%]
+tests/integration/server/test_config_display.py ....                     [ 37%]
+tests/integration/server/test_config_reload.py ..                        [ 38%]
+tests/integration/server/test_draft_save.py ....                         [ 40%]
+tests/integration/server/test_edit_option.py ...........                 [ 45%]
+tests/integration/server/test_events.py ...                              [ 47%]
+tests/integration/server/test_export.py ......                           [ 50%]
+tests/integration/server/test_find.py ...                                [ 51%]
+tests/integration/server/test_goal.py ....                               [ 53%]
+tests/integration/server/test_impact.py ...                              [ 54%]
+tests/integration/server/test_init.py ......                             [ 57%]
+tests/integration/server/test_mcp_server.py .....                        [ 60%]
+tests/integration/server/test_migrate.py ...............                 [ 67%]
+tests/integration/server/test_next.py ...                                [ 69%]
+tests/integration/server/test_opened.py ..                               [ 70%]
+tests/integration/server/test_pending.py ....                            [ 72%]
+tests/integration/server/test_preview_serve.py ....                      [ 74%]
+tests/integration/server/test_preview_url.py .....                       [ 76%]
+tests/integration/server/test_records.py ......                          [ 79%]
+tests/integration/server/test_show.py ...                                [ 81%]
+tests/integration/server/test_status.py ...                              [ 82%]
+tests/integration/server/test_submissions.py ....                        [ 84%]
+tests/integration/server/test_tags.py ...                                [ 86%]
+tests/integration/server/test_take_submission.py .....                   [ 88%]
+tests/integration/server/test_update.py .........                        [ 93%]
+tests/integration/server/test_update_settings.py ............            [ 99%]
+tests/integration/plugin/test_marketplace_registration.py .              [ 99%]
+tests/integration/plugin/test_plugin_loading.py .                        [100%]
+
+=========== 200 passed, 2 skipped, 1 deselected in 111.49s (0:01:51) ===========
+
+$ pytest tests/integration/preview tests/integration/storybook
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-settings-config-and-personal-override
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 368 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  5%]
+...........                                                              [  8%]
+tests/integration/preview/test_decisions_screen.py ..................... [ 14%]
+..............                                                           [ 18%]
+tests/integration/preview/test_detail_full_screen.py .................   [ 23%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 27%]
+..............................                                           [ 36%]
+tests/integration/preview/test_diagram_viewer_screen.py ........         [ 38%]
+tests/integration/preview/test_docs_screen.py ..................         [ 43%]
+tests/integration/preview/test_graph_screen.py ........                  [ 45%]
+tests/integration/preview/test_history_screen.py ......                  [ 47%]
+tests/integration/preview/test_open_preview.py ..........                [ 49%]
+tests/integration/preview/test_overview_screen.py ................       [ 54%]
+tests/integration/preview/test_records_screen.py .....                   [ 55%]
+tests/integration/preview/test_search_screen.py .....                    [ 56%]
+tests/integration/preview/test_settings_confirm_screen.py .......        [ 58%]
+tests/integration/preview/test_settings_screen.py ..........             [ 61%]
+tests/integration/preview/test_tasks_screen.py ...............           [ 65%]
+tests/integration/preview/test_topbar_screen.py ..............           [ 69%]
+tests/integration/storybook/test_diff_mark_stories.py ...                [ 70%]
+tests/integration/storybook/test_filter_drawer_stories.py .......        [ 72%]
+tests/integration/storybook/test_history_dialog_stories.py .....         [ 73%]
+tests/integration/storybook/test_selection_comment_stories.py .....      [ 74%]
+tests/integration/storybook/test_send_form_stories.py ..............     [ 78%]
+tests/integration/storybook/test_settings_confirm_stories.py ......      [ 80%]
+tests/integration/storybook/test_settings_panel_stories.py ........      [ 82%]
+tests/integration/storybook/test_table_stories.py .........              [ 84%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 90%]
+.                                                                        [ 90%]
+tests/integration/storybook/test_view_switch_stories.py ..               [ 91%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 91%]
+tests/integration/preview/test_docs_screen.py .                          [ 92%]
+tests/integration/preview/test_records_screen.py .                       [ 92%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 93%]
+tests/integration/storybook/test_topbar_stories.py .                     [ 93%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 93%]
+tests/integration/preview/test_decisions_screen.py .                     [ 94%]
+tests/integration/preview/test_records_screen.py .                       [ 94%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 95%]
+tests/integration/storybook/test_topbar_stories.py .                     [ 95%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 95%]
+tests/integration/preview/test_decisions_screen.py .                     [ 95%]
+tests/integration/preview/test_records_screen.py .                       [ 96%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 97%]
+tests/integration/storybook/test_topbar_stories.py .                     [ 97%]
+tests/integration/preview/test_decisions_screen.py .                     [ 97%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 98%]
+tests/integration/storybook/test_topbar_stories.py .                     [ 98%]
+tests/integration/preview/test_topbar_screen.py .....                    [100%]
+
+======================= 368 passed in 351.81s (0:05:51) ========================
+
+$ pytest tests/integration/skill
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-settings-config-and-personal-override
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 3 items
+
+tests/integration/skill/test_session.py .                                [ 33%]
+tests/integration/skill/test_setup.py .                                  [ 66%]
+tests/integration/skill/test_upgrade.py .                                [100%]
+
+============================== 3 passed in 3.34s ===============================
