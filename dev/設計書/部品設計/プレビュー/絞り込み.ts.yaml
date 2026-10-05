@@ -56,7 +56,7 @@ args:
   - name: selected
     type: オブジェクト
     default: なし（どの条件でも絞らない）
-    description: 条件の `key` → 選んだ値の配列。値を選んだ条件の見出しの右に「{件数} 件を選択」と「解除」を出す
+    description: 条件の `key` → 選んだ値の配列。値を選んだ条件の見出しの右に「{件数} 件を選択」と「解除」を出す。件数は、その条件の `values` に並ぶ値のうち選んだものの数（並ばない値は数えない）
     status: planned
   - name: total
     type: 整数
