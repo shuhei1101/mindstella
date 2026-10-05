@@ -5,7 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview, row_ids
+from preview_helpers import (
+    OpenPreview,
+    ServePreview,
+    badge_text,
+    checked_values,
+    open_drawer,
+    row_ids,
+)
 from workspace_fixtures import MakeItem
 
 # ゴールまでのタイルが、納品物を全て出す上限の件数
@@ -89,6 +96,10 @@ def test_normal(
     page.wait_for_selector("table.grid")
     assert _chips(page) == ["状態: 要見直し"]
     assert row_ids(page) == ["D-3"]
+    # ドロワーの状態で要見直しだけが選ばれ、絞り込みのボタンに件数のバッジが付く
+    open_drawer(page)
+    assert checked_values(page, "status") == ["要見直し"]
+    assert badge_text(page) == "1"
     hash_text = page.evaluate("location.hash")
     assert "tab=decisions" in hash_text
     assert "view=table" in hash_text
@@ -114,6 +125,10 @@ def test_normal_when_show_all_holds(
     page.wait_for_selector("table.grid")
     assert _chips(page) == ["状態: 保留"]
     assert row_ids(page) == ["D-4", "D-7"]
+    # ドロワーの状態で保留だけが選ばれ、絞り込みのボタンに件数のバッジが付く
+    open_drawer(page)
+    assert checked_values(page, "status") == ["保留"]
+    assert badge_text(page) == "1"
 
 
 def test_normal_when_many_deliverables(
@@ -144,6 +159,10 @@ def test_normal_when_many_deliverables(
     cards = page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)")
     assert sorted(cards) == deliverable_ids
     assert other_id not in cards
+    # ドロワーの納品物の条件が選ばれ、絞り込みのボタンに件数のバッジが付く
+    open_drawer(page)
+    assert checked_values(page, "deliverable") == ["納品物"]
+    assert badge_text(page) == "1"
 
 
 def test_normal_when_no_goal(

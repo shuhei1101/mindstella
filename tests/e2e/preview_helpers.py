@@ -16,6 +16,10 @@ __all__ = [
     "DETAIL_FORM",
     "DETAIL_MESSAGE",
     "DETAIL_TEXTAREA",
+    "DRAWER",
+    "DRAWER_OPEN",
+    "FILTER_BADGE",
+    "FILTER_BUTTON",
     "FREE_FORM",
     "FREE_TEXTAREA",
     "HISTORY_DIALOG",
@@ -24,15 +28,22 @@ __all__ = [
     "PILL",
     "OpenPreview",
     "ServePreview",
+    "badge_text",
+    "checked_values",
+    "clear_condition",
     "click_item_ball",
+    "close_drawer",
     "count_balls",
+    "drawer_counts",
     "fetch_records",
+    "open_drawer",
     "pick_history_point",
     "row_ids",
     "select_text",
     "select_text_for_pill",
     "shown_ball_item_ids",
     "snapshot_records",
+    "toggle_value",
     "visit_and_close",
 ]
 
@@ -42,6 +53,14 @@ type OpenPreview = Callable[..., Page]
 # トップバーのコメントのボタンと、コメントの一覧のパネル
 COMMENTS_BUTTON = "header.topbar button.comments-btn"
 COMMENTS_PANEL = "aside.comments-panel"
+
+# トップバーの絞り込みのボタンと、値を選んでいる条件の数のバッジ
+FILTER_BUTTON = "header.topbar button[data-act='filter']"
+FILTER_BADGE = f"{FILTER_BUTTON} .fbadge"
+
+# 絞り込みのドロワー（開いているときだけ `open` 属性を持つ）
+DRAWER = "dialog.drawer"
+DRAWER_OPEN = f"{DRAWER}[open]"
 
 # 詳細パネルの下端のコメントの入力とその入力欄・結果
 DETAIL_FORM = "aside.panel form.send"
@@ -189,6 +208,50 @@ def select_text_for_pill(page: Page, selector: str, text: str) -> None:
 def row_ids(page: Page) -> list[str]:
     """表に並んでいる行の ID を上から返す。"""
     return page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
+
+
+def open_drawer(page: Page) -> None:
+    """トップバーの絞り込みのボタンを押し、ドロワーが開くのを待つ。"""
+    page.click(FILTER_BUTTON)
+    page.wait_for_selector(DRAWER_OPEN)
+
+
+def close_drawer(page: Page) -> None:
+    """ドロワーの見出しの × を押して閉じ、ドロワーが無くなるのを待つ（開いている間は本文が操作できないため）。"""
+    page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']")
+    page.wait_for_selector(DRAWER, state="detached")
+
+
+def toggle_value(page: Page, key: str, value: str) -> None:
+    """ドロワーの条件 `key` の値 `value` の行を押して、選ぶ・外す。"""
+    page.click(f'{DRAWER} label.fd-opt:has(input[data-key="{key}"][value="{value}"])')
+
+
+def clear_condition(page: Page, label: str) -> None:
+    """ドロワーの条件の見出し `label` の右の「解除」を押す。"""
+    page.click(f"{DRAWER} button[aria-label='{label}の条件を解除']")
+
+
+def checked_values(page: Page, key: str) -> list[str]:
+    """ドロワーの条件 `key` でチェックの入った値を並びの順に返す。"""
+    return page.eval_on_selector_all(
+        f'{DRAWER} input[data-key="{key}"]:checked', "inputs => inputs.map(i => i.value)"
+    )
+
+
+def drawer_counts(page: Page, key: str) -> dict[str, int]:
+    """ドロワーの条件 `key` の値ごとの件数を返す。"""
+    return page.eval_on_selector_all(
+        f'{DRAWER} label.fd-opt:has(input[data-key="{key}"])',
+        "opts => Object.fromEntries(opts.map(o => [o.querySelector('.fd-v').textContent, Number(o.querySelector('.n').textContent)]))",
+    )
+
+
+def badge_text(page: Page) -> str | None:
+    """絞り込みのボタンのバッジの数を返す。バッジが無ければ None。"""
+    if page.locator(FILTER_BADGE).count() == 0:
+        return None
+    return page.inner_text(FILTER_BADGE)
 
 
 def _find_ball_centers(page: Page) -> list[tuple[float, float]]:

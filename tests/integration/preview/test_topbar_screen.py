@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Page
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, free_comment
-from preview_drawer_helpers import FILTER_BUTTON
+from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeComment, MakeItem
@@ -249,3 +249,40 @@ def test_filter_button_not_on_overview(
     page = open_preview(url)
     # 検証
     assert page.locator(FILTER_BUTTON).count() == 0
+
+
+def test_drawer_closes_when_overview_opened(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """絞り込みのドロワーを開いたまま概要のタブへ移ると、ドロワーを閉じる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
+    open_drawer(page)
+    # 実行
+    page.click('nav.tabbar a[data-tab="overview"]')
+    page.wait_for_selector(".overview")
+    # 検証
+    assert page.locator(DRAWER_OPEN).count() == 0
+
+
+def test_drawer_closes_when_overview_opened_by_history(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """絞り込みのドロワーを開いたまま戻るで概要へ移るとドロワーを閉じ、進むでタスクへ戻ってもドロワーは閉じたまま（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    page.click('nav.tabbar a[data-tab="tasks"]')
+    page.wait_for_selector(".screen.tasks")
+    open_drawer(page)
+    # 実行（戻るで概要へ移る）
+    page.go_back()
+    page.wait_for_selector(".overview")
+    after_back = page.locator(DRAWER_OPEN).count()
+    # 実行（進むでタスクへ戻る）
+    page.go_forward()
+    page.wait_for_selector(".screen.tasks")
+    after_forward = page.locator(DRAWER_OPEN).count()
+    # 検証
+    assert (after_back, after_forward) == (0, 0)

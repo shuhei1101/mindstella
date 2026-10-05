@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from preview_helpers import OpenPreview, ServePreview
+from preview_helpers import (
+    OpenPreview,
+    ServePreview,
+    badge_text,
+    close_drawer,
+    open_drawer,
+    toggle_value,
+)
 from workspace_fixtures import MakeItem
 
 # 見出しと表を持つ資料の本文
@@ -66,15 +73,17 @@ def test_normal(
         "A-2",
         "A-1",
     ]
-    # 種類 = 仕様書で絞り込む
-    page.click('button[aria-label="絞り込み"]')
-    page.click('.pop label:has-text("仕様書")')
+    # 絞り込みのボタンを押し、ドロワーで種類 = 仕様書を選ぶ
+    open_drawer(page)
+    toggle_value(page, "kind", "仕様書")
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
+    close_drawer(page)
     assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == [
         "A-2"
     ]
     chips = page.eval_on_selector_all(".chips .chip", "chips => chips.map(c => c.textContent)")
     assert chips == ["種類: 仕様書"]
+    assert badge_text(page) == "1"
     # カードを押すと、詳細パネルに本文が見出しと表で描かれる
     page.click('.doc-card[data-id="A-2"]')
     page.wait_for_selector('aside.panel.open .md [data-md-level="2"]')
