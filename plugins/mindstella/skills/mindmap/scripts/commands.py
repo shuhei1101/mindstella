@@ -461,8 +461,8 @@ def run_changes_since_read(root: Path) -> dict[str, Any]:
     workspace = load_workspace(root)
     record = load_changes(root)
     result = changes_since(workspace, record)
-    # 読んだ時点を進めた記録だけを書く（項目は書き換えない）
-    save_batch(workspace, BatchChange(items={}, changes=dict(mark_read(record))))
+    # 読んだ時点を進めた記録だけを `changes.yaml` に書く（項目は書かず、今ある違反では止めない）
+    _write_changes(root, mark_read(record))
     return result
 
 
