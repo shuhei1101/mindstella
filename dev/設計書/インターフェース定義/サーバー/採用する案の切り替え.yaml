@@ -9,7 +9,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A（採用）と案 B を持つ検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 1）
+        description: 案 A（採用）と案 B を持つ検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram

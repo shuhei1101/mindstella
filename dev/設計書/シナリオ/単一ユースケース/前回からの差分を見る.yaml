@@ -5,7 +5,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: 検討事項 D-1〜D-5 とタスク T-1。D-3 は状態 `未決定` で、本文に段落 3 つと mermaid の flowchart を 1 つ持つ
       - name: 前回開いた
@@ -57,7 +57,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: 本文を持つ資料 A-1 と検討事項 D-3
       - name: 書き換え
@@ -88,7 +88,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: 本文を持つ検討事項 D-1・D-3
       - name: 書き換え
@@ -115,7 +115,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: 本文に mermaid の gantt を 1 つ持つ資料 A-1
       - name: 書き換え
@@ -143,7 +143,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、端末の保存領域が空のブラウザでプレビューを開いたまま、MCP のクライアントで `update` と `commit` を呼ぶ）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: 本文を持つ検討事項 D-1・D-3
       - name: 開いている画面
@@ -174,7 +174,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、端末の保存領域が空のブラウザでプレビューを開く）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: 本文を書き換えて `commit`（説明「検討事項を直す」）し、変更履歴を 1 回分持つ検討事項 D-3 と、変更履歴を持たない D-1
     flow: |-
@@ -225,7 +225,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
       - name: 記録
         description: 本文を持つ検討事項 D-3
       - name: 書き換え
@@ -251,7 +251,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませたワークスペース（保持する回数は既定の 1）
+        description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
         description: MCP のツールで状態と本文を書き換えて `commit` し、変更履歴を 1 回分持つ検討事項 D-3
       - name: 手での書き換え
@@ -273,6 +273,38 @@ scenarios:
       - 本文の差分を出せない旨が出る
       - 状態の前の値と今の値は、本文と関係なく見分けられる
     test: test_error_when_previous_version_unavailable
+  - name: 正常シナリオ（前回開いてからの古い書き換えが消えている）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+      - name: 記録
+        description: 本文を持つ検討事項 D-3・D-4
+      - name: 前回開いた
+        description: 記録を作った後に、プレビューを一度開いて閉じる
+        notes: 端末に前回開いた日時が残る
+      - name: 書き換え
+        description: その後、MCP のツールで D-3 の本文を書き換えて `commit` し、もう一度 D-3 の本文を書き換えて `commit` する。D-4 は 1 回だけ本文を書き換えて `commit` する
+        notes: 保持する回数が 1 のため、D-3 の 1 回目の変更履歴は消え、D-3 は `history_dropped_seq` を持つ。D-4 の変更履歴は消えていない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 開いて、変更履歴から「前回開いてから」を選ぶ
+        P-->>U: D-3・D-4 に変更の印
+        U->>P: D-3 を押す
+        P-->>U: 今の本文と、前後を組み立てられない旨
+        U->>P: D-4 を押す
+        P-->>U: 本文の差分
+      ```
+    expected:
+      - 「前回開いてから」を選ぶと D-3・D-4 に変更の印が付く
+      - D-3 の詳細パネルは今の本文を出し、前後を組み立てられない旨が出る（2 回目だけの差分は出ない）
+      - D-4 の詳細パネルは本文の差分を出す
+    test: test_normal_when_since_history_dropped
 lead: 利用者が、プレビューの変更履歴から書き換えのまとまりを選んで差分の表示にし、そのまとまりで足された・変わった項目を印で見つけ、詳細パネルで本文・図・Raw・キーの変更を読む単一ユースケース。
 issue: 68
 primary_actor: 利用者

@@ -9,7 +9,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '検討事項 D-1（状態 `未決定`、`lead` あり、`weight: 大`）を足して `commit` したワークスペース（保持する回数は既定の 1）'
+        description: '検討事項 D-1（状態 `未決定`、`lead` あり、`weight: 大`）を足して `commit` したワークスペース（保持する回数は既定の 5）'
       - name: item
         description: '`answer`・`status` を変え、`weight` を消す'
         notes: '`{"answer": "種類ごとに分ける", "status": "決定済み", "weight": null}`'
@@ -40,7 +40,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 本文（3 行）を持つ検討事項 D-1 を足して `commit` し、`answer` を `update` で直したワークスペース（保持する回数は既定の 1）
+        description: '`mindmap.yaml` の `history_limit` を 1 にし、本文（3 行）を持つ検討事項 D-1 を足して `commit` し、`answer` を `update` で直したワークスペース'
       - name: item
         description: 本文の 2 行目を書き換える
         notes: '`{"body_markdown": "{1 行目}\n{書き換えた 2 行目}\n{3 行目}\n"}`'
@@ -62,6 +62,7 @@ flows:
       - D-1 の `history` が 1 回分だけで、`before` に `answer` が無く、`body_diff` を持つ
       - '`body_diff` を今の本文に当てると、書き換える前の本文になる'
       - '`body_diff` に 1 行目・3 行目が入っていない'
+      - D-1 の `history_dropped_seq` が、消した `answer` の回の `seq`
       - '`changed` が `body_markdown`'
   - name: 正常系（変わったキーが無い）
     summary: 同じ値で直しても変更履歴を積まない
