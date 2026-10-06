@@ -673,6 +673,25 @@ namespace MindmapPreview {
     element.classList.add(element.matches("path") ? `df-e-${mode}` : `df-n-${mode}`);
   }
 
+  /** 前の版の図を `renderDiagramSvg` で描き、今の版の図と `diffDiagram` で突き合わせる。前の版の図を描けないときと、色を付けない種類・突き合わせを打ち切ったときは null */
+  async function diffByRenderedBefore({ type, beforeSource, afterSvg }: { type: string; beforeSource: string; afterSvg: SVGElement }): Promise<DiagramDiff | null> {
+    const beforeSvg = await renderDiagramSvg(beforeSource);
+    if (beforeSvg === null) return null;
+    // 前の版の図は、座標を取れるよう画面の外に置いて突き合わせる
+    const offscreen = h({
+      tag: "div",
+      attrs: {
+        "aria-hidden": "true",
+        style: `position:absolute;top:0;left:${OFFSCREEN_LEFT_PX}px;width:${OFFSCREEN_WIDTH_PX}px`,
+      },
+      children: [beforeSvg],
+    });
+    document.body.append(offscreen);
+    const diagram = diffDiagram(type, beforeSvg, afterSvg);
+    offscreen.remove();
+    return diagram;
+  }
+
   /** 変わった図に、色・凡例と消したもの・Raw の行ごとの差分を付ける。前の版の図を描けない・色を付けない種類・突き合わせを打ち切ったときは、図の枠に色を付ける */
   async function decorateDiagram({ figure, beforeSource }: { figure: HTMLElement; beforeSource: string }): Promise<void> {
     const holder = figure.querySelector<HTMLElement>(".mermaid");
@@ -690,26 +709,14 @@ namespace MindmapPreview {
     let colored = false;
     let removed: string[] = [];
     if (afterSvg !== null && COLORED_DIAGRAM_TYPES.includes(type) && beforeSource.trim() !== "") {
-      const beforeSvg = await renderDiagramSvg(beforeSource);
-      if (beforeSvg !== null) {
-        // 前の版の図は、座標を取れるよう画面の外に置いて突き合わせる
-        const offscreen = h({
-          tag: "div",
-          attrs: {
-            "aria-hidden": "true",
-            style: `position:absolute;top:0;left:${OFFSCREEN_LEFT_PX}px;width:${OFFSCREEN_WIDTH_PX}px`,
-          },
-          children: [beforeSvg],
-        });
-        document.body.append(offscreen);
-        const diagram = diffDiagram(type, beforeSvg, afterSvg);
-        offscreen.remove();
-        if (diagram !== null) {
-          for (const element of diagram.added) paintDiagramElement({ element, mode: "add" });
-          for (const element of diagram.changed) paintDiagramElement({ element, mode: "chg" });
-          removed = diagram.removed;
-          colored = true;
-        }
+      // flowchart は前後の記法の解析で突き合わせ、前の版を描かない。null（flowchart でない・解析できない）の図だけ前の版を描く
+      const diagram =
+        (await diffDiagramFromSource(type, beforeSource, afterSource, afterSvg)) ?? (await diffByRenderedBefore({ type, beforeSource, afterSvg }));
+      if (diagram !== null) {
+        for (const element of diagram.added) paintDiagramElement({ element, mode: "add" });
+        for (const element of diagram.changed) paintDiagramElement({ element, mode: "chg" });
+        removed = diagram.removed;
+        colored = true;
       }
     }
     figure.classList.toggle("df-frame", !colored);
