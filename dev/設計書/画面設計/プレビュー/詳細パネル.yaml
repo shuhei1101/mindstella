@@ -15,7 +15,7 @@ elements:
   - name: 全画面表示
     kind: button
     position: 見出し
-    description: 詳細の全画面を開く（履歴に積まない）。ラベルとアイコンは全画面の中でも変えず、全画面の中では押された状態（`aria-pressed`）で出す
+    description: 詳細の全画面を開く（履歴に積まない）。全画面の中では、画面設計『詳細の全画面』の「元の大きさに戻す」に替わる
     label: 全画面表示
   - name: 閉じる
     kind: button
@@ -29,7 +29,7 @@ elements:
     visible_when: 検討事項で案を持つ
   - name: 本文
     kind: article
-    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込む。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文
+    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込み、見出しのリンク・用語の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文
     io: 表示
     source: プレビューを開く.mindmap-data.bodies[{項目の body}]
     visible_when: 項目が `body` を持つ
@@ -171,6 +171,31 @@ elements:
     visible_when: 常時
     reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
     status: planned
+  - name: 見出しのリンク
+    kind: link
+    position: 本文 > 見出しの右
+    description: '本文の見出しを指す #。乗せる・フォーカスで出す（乗せる操作の無い端末は常に出す）。押すと本文の中でその見出しまで送り、URL のハッシュの `h` をその見出しにする（履歴に積まない）。本文の中の `[文言](#見出し)` のリンクも同じく、その見出しまで送る。読み上げの名前は「見出し「{見出し}」へのリンク」'
+    label: '#'
+    visible_when: 本文に見出しがあるとき
+  - name: 用語の印
+    kind: link
+    position: 本文 > 文中
+    description: 本文の文中（コードブロック・図・リンク・見出しの外。インラインコードは中身がちょうど用語のときだけ）に出てくる用語集の用語（用語の項目のタイトル）を、文字の色を変えない点線の下線で示す。出てくる全ての箇所に付け、長い用語から順に当て、英数字の用語は語の切れ目でだけ当てる。用語の項目自身の本文の中のその用語には付けない。押すとその用語の詳細へ移り、履歴に積む
+    visible_when: 本文に用語集の用語が出てくるとき
+    source: プレビューを開く.mindmap-data.terms
+  - name: 用語のツールチップ
+    kind: tooltip
+    position: 用語の印の下（収まらなければ上）
+    description: 用語の印に乗せる・フォーカスすると、用語・ID・意味を出す。ツールチップに乗せている間は消さず、Esc で消す。印から外れて 150 ミリ秒たつと消す（その間にツールチップへ乗せれば消さない）。用語の印は `aria-describedby` でツールチップを指す
+    io: 表示
+    visible_when: 用語の印に乗せる・フォーカスしている間
+    source: プレビューを開く.mindmap-data.terms[].meaning
+  - name: 項目の ID のリンク
+    kind: link
+    position: 本文 > 文中
+    description: 本文の文中（コードブロック・図・リンクの外。インラインコードは中身がちょうど ID のときだけ）に出てくる、記録にある項目の ID を、等幅の印の色の文字と下線のリンクにする（折り返さない）。記録に無い ID と、開いている項目自身の ID はリンクにしない。押すとその項目の詳細へ移り、履歴に積む
+    visible_when: 本文に記録にある項目の ID が出てくるとき
+    source: プレビューを開く.mindmap-data
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
-mock: dev/mock/pages/detail-panel/78/a-footer-quote/index.html
+mock: dev/mock/pages/detail-panel/126/standard/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py

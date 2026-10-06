@@ -309,6 +309,8 @@ var MindmapPreview;
         document.body.prepend(top, main);
         let route = visibleRoute(MindmapPreview.parseHash({ hash: location.hash, index }));
         let fullViewer = null;
+        /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
+        let shownHeading = null;
         const filterState = { byTab: {}, drawerOpen: false };
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
@@ -324,7 +326,7 @@ var MindmapPreview;
         /** 項目を開く。パネル・全画面の中の移動は履歴に積み、見てきた項目を行き来できるようにする */
         const openItem = (id, inPanel) => {
             flushDrafts();
-            const next = { ...route, id, filters: {} };
+            const next = { ...route, id, filters: {}, heading: null };
             const trail = history.state;
             if (inPanel && route.id !== null) {
                 // 今いる履歴にも先の項目を持たせ、戻った後に「→」で進めるようにする
@@ -347,7 +349,7 @@ var MindmapPreview;
                 history.back();
                 return;
             }
-            route = { ...route, id: null, full: false, filters: {} };
+            route = { ...route, id: null, full: false, filters: {}, heading: null };
             MindmapPreview.navigate({ route, push: false });
             render({ screen: route.tab === "decisions" && route.view === "map" });
         };
@@ -358,7 +360,7 @@ var MindmapPreview;
                 return;
             // 表示しない種類の項目は、概要の上の詳細パネルで開く
             const tab = resolved.kinds.has(kind) ? kind : "overview";
-            go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {} }, tab !== route.tab);
+            go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {}, heading: null }, tab !== route.tab);
         };
         // ===== 描く =====
         /** トップバーとタブの帯 */
@@ -503,13 +505,22 @@ var MindmapPreview;
                     back: () => history.back(),
                     forward: () => history.forward(),
                     diagram: showDiagram,
+                    // 本文の見出しへ移った: ハッシュの `h` を、履歴に積まずに置き換える
+                    heading: (heading) => {
+                        route = { ...route, heading };
+                        shownHeading = heading === null || route.id === null ? null : { id: route.id, heading };
+                        MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
+                    },
                 },
                 comment: serverMode
                     ? { form: formProps(route.id), reviews: comment.review.items.filter((item) => item.target === route.id) }
                     : null,
                 highlight: openedLocation(),
                 diff: point,
+                // 開いたときにだけ見出しを画面に入れる
+                heading: shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading,
             });
+            shownHeading = route.heading === null ? null : { id: route.id, heading: route.heading };
             if (route.full) {
                 existing?.classList.remove("open");
                 fullDialog?.remove();
@@ -1388,7 +1399,7 @@ var MindmapPreview;
             document.title = `${data.settings.summary} | mindstella`;
             // 開いていた項目が消えた: 詳細パネルを閉じる
             if (route.id !== null && !index.byId.has(route.id)) {
-                route = { ...route, id: null, full: false, filters: {} };
+                route = { ...route, id: null, full: false, filters: {}, heading: null };
                 MindmapPreview.navigate({ route, push: false });
             }
             redrawKeepingState();
@@ -1397,10 +1408,14 @@ var MindmapPreview;
         };
         // ===== 操作と履歴 =====
         document.addEventListener("keydown", (event) => {
-            const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? "");
-            if (event.key === "/" && !typing && document.querySelector("dialog[open]:not(.drawer)") === null) {
+            // Ctrl+K（macOS は Cmd+K）で全体の検索を開く。入力欄に入力中でも開き、開いているときは検索の言葉を選び直す
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
                 event.preventDefault();
-                openSearch();
+                const opened = document.querySelector("dialog.search input");
+                if (opened !== null)
+                    opened.select();
+                else
+                    openSearch();
             }
             // Esc: 重ねる面が無いときは、詳細パネルを閉じる
             if (event.key === "Escape" &&

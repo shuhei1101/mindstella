@@ -725,6 +725,7 @@ namespace MindmapPreview {
         drawerOpen,
         rows: index.data.decisions,
         columns: columns.filter((column) => column.filterable === true),
+        textColumns: textColumns(columns),
         filters,
         shown: shown.length,
         hit,

@@ -74,6 +74,7 @@ const meta = {
     narrow: false,
     on: {
       select: fn(),
+      text: fn(),
       clear: fn(),
       clearAll: fn(),
       close: fn(),
@@ -156,4 +157,21 @@ export const Narrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 用語集で、用語の欄に「移し」を入れている。値の条件より上に「文字を含む」と ID・用語・意味・別名・使わない表記の欄を並べ、見出しの右は「6 件中 1 件」。タグの件数は文字で絞った 1 件で数える。入っている欄は中身を消す × を出す */
+export const TextConditions: Story = {
+  args: {
+    groups: [{ key: "tags", label: "タグ", values: [{ value: "mindstella", count: 1 }] }],
+    texts: [
+      { key: "id", label: "ID", value: "" },
+      { key: "title", label: "用語", value: "移し" },
+      { key: "meaning", label: "意味", value: "" },
+      { key: "aliases", label: "別名", value: "" },
+      { key: "avoid", label: "使わない表記", value: "" },
+    ],
+    selected: { "~title": ["移し"] },
+    total: 6,
+    shown: 1,
+  },
 };

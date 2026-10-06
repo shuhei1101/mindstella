@@ -1,7 +1,7 @@
 /* 開発者ツール × スイス: 無彩色の骨格に、印の 1 色（枝の線と選択）だけを置く */
 
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; font-feature-settings: "palt" 1; -webkit-font-smoothing: antialiased; }
+body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: var(--fs-body); line-height: 1.6; font-feature-settings: "palt" 1; -webkit-font-smoothing: antialiased; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--accent); }
@@ -16,7 +16,7 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .st[data-st="取り下げ"], .st[data-st="対象外"], .st[data-st="中止"] { color: var(--text-3); }
 
 /* ===== トップバー ===== */
-.topbar { position: sticky; top: 0; z-index: 30; height: var(--topbar-h); display: flex; align-items: center; gap: 16px; padding: 0 20px; background: var(--topbar-bg); color: var(--topbar-fg); }
+.topbar { position: relative; z-index: 30; height: var(--topbar-h); display: flex; align-items: center; gap: 16px; padding: 0 20px; background: var(--topbar-bg); color: var(--topbar-fg); }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand-mark { width: 22px; height: 22px; color: var(--accent); flex: none; }
 .brand-name { font-weight: 700; letter-spacing: -.01em; }
@@ -28,7 +28,7 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .top-btn:hover, .search-trigger:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
 
 /* ===== タブ ===== */
-.tabbar { position: sticky; top: var(--topbar-h); z-index: 25; display: flex; gap: 4px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.tabbar { position: relative; z-index: 25; display: flex; gap: 4px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
 .tabbar::-webkit-scrollbar { display: none; }
 .tab { text-decoration: none; display: flex; align-items: center; gap: 8px; height: var(--tab-h); padding: 0 10px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-2); white-space: nowrap; }
 .tab:hover { color: var(--text); }
@@ -36,7 +36,12 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .tab .count { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); font-weight: 400; }
 
 /* ===== 本文と詳細パネル ===== */
-.content { padding: 28px var(--page-pad) 64px; max-width: var(--content-max); margin: 0 auto; }
+/* トップバーとタブの帯の入れ物: スクロールする領域の外に置き、どの画面でも見えたままにする */
+#top { flex: none; }
+/* スクロールする領域: 帯の下の残りの高さを持ち、中で縦・横にスクロールする。本文の幅の上限は左右の余白で作り、スクロールバーは窓の右端に出す */
+.content { flex: 1 1 auto; min-height: 0; max-width: none; margin: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 28px max(var(--page-pad), calc((100% - var(--content-max)) / 2 + var(--page-pad))) 64px; }
+/* 画面: 領域の中で縦に並べる */
+.content > .screen { flex: 1 0 auto; display: flex; flex-direction: column; min-height: 0; }
 .panel { position: fixed; z-index: 20; top: calc(var(--topbar-h) + var(--tab-h) + 1px); right: 0; bottom: 0; width: var(--panel-w); max-width: 100%; background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow-panel); display: flex; flex-direction: column; }
 
 .panel-head { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
@@ -46,9 +51,9 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
-/* 幅 1100px 以上（マップは 901px 以上）は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる） */
-@media (min-width: 1100px) { body.panel-open .content { max-width: none; margin-right: var(--panel-w); } }
-@media (min-width: 901px) { body.panel-open .content.map-view { max-width: none; margin-right: var(--panel-w); } }
+/* 幅 1100px 以上（マップは 901px 以上）は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる）。左右の余白は中央に寄せる分をやめて `--page-pad` に戻す */
+@media (min-width: 1100px) { body.panel-open .content { max-width: none; margin-right: var(--panel-w); padding-inline: var(--page-pad); } }
+@media (min-width: 901px) { body.panel-open .content.map-view { max-width: none; margin-right: var(--panel-w); padding-inline: var(--page-pad); } }
 
 /* ===== 部品 ===== */
 .btn { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -130,7 +135,7 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .chip svg.icon { width: 13px; height: 13px; }
 
 /* ===== 表 ===== */
-.table-wrap { overflow: auto; max-height: calc(100dvh - var(--topbar-h) - var(--tab-h) - 130px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 table.grid { border-collapse: separate; border-spacing: 0; width: 100%; font-size: var(--fs-small); }
 table.grid th, table.grid td { padding: var(--cell-py) 12px; border-bottom: 1px solid var(--border-soft); text-align: left; vertical-align: top; }
 table.grid tbody .pinned { background: var(--surface); }
@@ -161,7 +166,7 @@ th:hover .th-tool.pin, th:focus-within .th-tool.pin, .th-tool.pin[aria-pressed="
 
 /* ===== ボード ===== */
 .board { display: grid; grid-template-columns: repeat(var(--cols), minmax(240px, 1fr)); gap: 16px; overflow-x: auto; padding: 8px 8px 8px; margin-inline: -8px; }
-.board-col h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--text); font-size: var(--fs-small); }
+.board-col h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--text); font-size: var(--fs-small); position: sticky; top: 0; z-index: 1; background: var(--bg); padding-top: 4px; box-shadow: 0 10px 0 var(--bg); }
 .board-col h3 .n { font-family: var(--font-mono); color: var(--text-3); font-weight: 400; }
 .card { display: block; width: 100%; text-align: left; padding: 12px; margin-bottom: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .card:hover { border-color: var(--accent); }
@@ -172,7 +177,7 @@ th:hover .th-tool.pin, th:focus-within .th-tool.pin, .th-tool.pin[aria-pressed="
 /* ===== マップ ===== */
 /* 表示するものが無いとき: 枠の中央に空の旨を出す（押しても邪魔にならない） */
 .map-empty { position: absolute; left: 0; right: 0; top: 40%; z-index: 1; margin: 0; text-align: center; pointer-events: none; }
-.map-wrap { position: relative; overflow: auto; height: calc(100dvh - var(--topbar-h) - var(--tab-h) - 150px); min-height: 420px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+.map-wrap { position: relative; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
   background-image: radial-gradient(var(--border-soft) 1px, transparent 1px); background-size: 20px 20px; }
 .map-sizer { position: relative; }
 .map-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -188,8 +193,10 @@ th:hover .th-tool.pin, th:focus-within .th-tool.pin, .th-tool.pin[aria-pressed="
 .map-node .lbl { overflow: hidden; text-overflow: ellipsis; }
 .n-root { background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 15px; white-space: normal; line-height: 1.35; padding: 6px 12px; }
 .n-target { background: var(--text); color: var(--bg); font-weight: 700; font-size: 15px; }
-.n-cat { background: var(--surface); border: 1.5px solid var(--accent); font-weight: 700; }
-.n-stage { color: var(--text-2); font-size: var(--fs-xs); background: var(--bg); border: 1px dashed var(--border); }
+/* カテゴリーのラベル: 面と線を持たせ、枝の線の上でも読めるようにする */
+.map-node.n-category { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+/* フェーズのラベル: 地の色の面と薄い線で、カテゴリーより一段控えめにする */
+.map-node.n-phase { background: var(--bg); border: 1px solid var(--border-soft); color: var(--text-2); font-size: var(--fs-xs); }
 button.n-item { flex-direction: column; align-items: stretch; justify-content: center; gap: 1px; padding: 0 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-align: left; cursor: pointer; }
 button.n-item:hover { border-color: var(--accent); }
 button.n-item.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
@@ -279,7 +286,6 @@ dialog.search::backdrop { background: var(--scrim); }
   .goal-num { text-align: left; }
   .table-wrap [data-pri="3"] { display: none; }
   table.grid .pinned { position: static; box-shadow: none; }
-  .table-wrap { max-height: none; }
   table.grid thead th { position: static; }
   .th-tool.pin { display: none; }
   .toolbar .btn .lbl { display: none; }
@@ -425,11 +431,10 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 /* ===== マップの枠と拡大率（拡大率のボタンはスクロールの外に置く） ===== */
 .map-frame { position: relative; }
 .map-frame .zoom { position: absolute; left: auto; right: 14px; bottom: 14px; }
-.fg-wrap { height: calc(100dvh - var(--topbar-h) - var(--tab-h) - 150px); min-height: 420px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; cursor: grab; }
 
 /* 資料の詳細パネルは本文を読むため広くする */
 .panel.wide { width: min(760px, 100%); }
-@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .content { max-width: none; margin-right: min(760px, 100%); } }
+@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .content { max-width: none; margin-right: min(760px, 100%); padding-inline: var(--page-pad); } }
 .mermaid { margin: 8px 0; text-align: center; }
 
 /* ===== 資料のカード ===== */
@@ -481,7 +486,7 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 .map-frame.space { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border-soft);
   background-color: var(--g-bg);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(ellipse at 50% 45%, var(--g-bg-center) 0%, var(--g-bg) 70%); }
-.g3-wrap { display: block; width: 100%; height: calc(100dvh - var(--topbar-h) - var(--tab-h) - 110px); min-height: 460px; cursor: grab; touch-action: none; }
+.g3-wrap { display: block; width: 100%; cursor: grab; touch-action: none; }
 
 /* ===== 詳細パネル: ゆっくりすべり込む。本文の寄せは同時に切り替える ===== */
 .panel { transform: translateX(102%); visibility: hidden; transition: transform .45s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .45s; }
@@ -547,12 +552,12 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 .no-match { padding: 28px 16px; text-align: center; color: var(--text-2); }
 
 /* ===== 詳細の全画面: 周りに余白を空けたモーダル ===== */
-dialog.full { width: calc(100vw - 128px); max-width: 1200px; height: calc(100dvh - 112px); padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); }
+dialog.full { width: calc(100vw - 64px); max-width: 1600px; height: calc(100dvh - 64px); max-height: none; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); }
 /* 全画面を開いているとき */
 dialog.full[open] { display: flex; flex-direction: column; }
 dialog.full::backdrop { background: var(--scrim-soft); }
 /* 全画面の中身 */
-dialog.full .panel-body { flex: 1; max-width: 920px; width: 100%; margin: 0 auto; }
+dialog.full .panel-body { flex: 1; max-width: none; width: 100%; margin: 0 auto; overscroll-behavior: contain; }
 /* 全画面の中の図の拡大 */
 dialog.full .full-viewer { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
@@ -602,7 +607,7 @@ table.grid td.no-match-cell .no-match { position: sticky; left: 0; width: var(--
 /* パネルの下端に留める置き方: 本文の下に線で区切って置く */
 .send.send-footer { flex: none; padding: 12px 24px 14px; border-top: 1px solid var(--border); background: var(--surface); }
 /* 詳細の全画面の下端: 本文と同じ幅に揃える */
-dialog.full .send.send-footer { width: 100%; max-width: 920px; margin: 0 auto; }
+dialog.full .send.send-footer { width: 100%; max-width: none; margin: 0 auto; }
 /* 図を拡大しているときの全画面: 入力を隠して図に場所を譲る */
 dialog.full:has(.full-viewer) .send { display: none; }
 /* 送信の入力のラベル: 常に見せる。どの項目へ送るかを ID で示す */
@@ -1343,3 +1348,100 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 }
 /* ドロワーが左からすべり込む動き */
 @keyframes fd-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ===== 画面の作り: ページを窓の高さに収め、帯の下の領域の中でスクロールする ===== */
+
+/* つながりの画面: 領域の高さいっぱいに広げる（低すぎる窓では領域ごとスクロールする） */
+.content > .screen.graph { flex: 1 1 0; min-height: 360px; }
+/* つながりの枠: 残りの高さを持つ */
+.screen.graph .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* つながりの描く領域: 枠の高さいっぱいに広げる */
+.screen .g3-wrap { flex: 1 1 0; height: auto; min-height: 0; }
+/* マップの入れ物の道具の行・チップ: 縮めない */
+.map-view-root > * { flex-shrink: 0; }
+/* 表・ボードを 2 列以上で並べる幅: 画面を領域の高さいっぱいに広げ、中の枠で縦・横にスクロールする（低すぎる窓では領域ごとスクロールする） */
+@media (min-width: 721px) {
+  .content > .screen:is(:has(.table-wrap), :has(> .board)) { flex: 1 1 0; min-height: 360px; }
+  /* 表の入れ物: 残りの高さを持つ */
+  .screen :is(.table-slot, .table-block) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  /* 表の枠: 行が少なければ中身の高さ、多ければ残りの高さで止めて中で縦・横にスクロールする */
+  .screen .table-wrap { flex: 0 1 auto; min-height: 0; }
+  /* ボード: 残りの高さを持ち、中で縦・横にスクロールする。列は最も長い列の高さまで伸ばし、カードの少ない列の見出しも留める */
+  .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: stretch; margin-bottom: 0; padding-top: 0; }
+}
+/* マップを描く幅: 画面を領域の高さいっぱいに広げ、マップの描く領域の中で縦・横にスクロールする */
+@media (min-width: 901px) {
+  .content > .screen:has(.map-wrap) { flex: 1 1 0; min-height: 360px; }
+  /* マップの入れ物: 残りの高さを持つ */
+  .map-view-root { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  /* マップの枠: 残りの高さを持つ */
+  .map-view-root > .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  /* マップの描く領域: 枠の高さいっぱいに広げる */
+  .screen .map-wrap { flex: 1 1 0; height: auto; min-height: 0; }
+  /* マップの拡大の道具: 描く領域の右下に重ねる */
+  .map-view-root > .zoom { position: relative; left: auto; bottom: auto; z-index: 2; align-self: flex-end; margin: -50px 14px 14px 0; }
+}
+
+/* ===== 全体の検索 ===== */
+
+/* 完全に一致のまとまりの見出し: 種類の見出しと同じ形で、先頭に置く */
+.search-results h3.sr-exact { color: var(--text); }
+/* 完全に一致の結果に添える種類 */
+.sr-item .sr-kind { margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
+/* 完全に一致のまとまりと種類のまとまりの境 */
+.search-results h3.sr-exact ~ h3:not(.sr-exact) { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+/* 結果の ID: 折り返さない */
+.sr-item > .mono { flex: none; white-space: nowrap; }
+/* トップバーの検索の入口のキーの案内: 2 文字以上でも詰まらない幅 */
+.search-trigger kbd { white-space: nowrap; }
+
+/* ===== 表の絞り込み: 列の文字の条件 ===== */
+
+/* ドロワーの文字の欄のまとまり */
+.fd-text .fd-text-row { clear: both; display: grid; grid-template-columns: 7em 1fr; align-items: center; gap: 8px; margin-top: 6px; }
+/* 文字の欄の列名 */
+.fd-text .fd-text-row label { font-size: var(--fs-small); color: var(--text-2); }
+/* 文字の欄 */
+.fd-text input[type="search"] { height: var(--control-h); min-width: 0; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; }
+/* 文字の欄のフォーカス */
+.fd-text input[type="search"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ===== 本文: 見出しのリンク・用語の印・項目の ID のリンク ===== */
+
+/* 見出しのリンク: 見出しの右に置き、乗せたとき・フォーカスしたときに出す */
+.md .h-link { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 4px; vertical-align: middle; border-radius: 3px; color: var(--text-3); opacity: 0; }
+/* 見出しのリンクのアイコン */
+.md .h-link .icon { width: 14px; height: 14px; }
+/* 見出しに乗せた・リンクにフォーカスした */
+.md :is(h1, h2, h3, h4, h5, h6):hover .h-link, .md .h-link:focus-visible { opacity: 1; }
+/* 見出しのリンクに乗せた */
+.md .h-link:hover { color: var(--accent); background: var(--hover); }
+/* 乗せる操作が無い端末: 見出しのリンクを常に出す */
+@media (hover: none) { .md .h-link { opacity: 1; } }
+/* 見出しへ移ったとき: 領域の上に少し空けて止める */
+.md [data-heading] { scroll-margin-top: 12px; }
+/* 用語の印: 文字の色は変えず、点線の下線で示す */
+.md a.term { color: inherit; text-decoration: underline dotted var(--text-3); text-decoration-thickness: 1.5px; text-underline-offset: 4px; cursor: pointer; }
+/* 用語の印に乗せた・フォーカスした */
+.md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--accent); background: var(--accent-weak); border-radius: 2px; }
+/* 項目の ID のリンク: 等幅の印の色の文字と下線 */
+.md a.idref { white-space: nowrap; font-family: var(--font-mono); font-size: .92em; color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+/* 項目の ID のリンクに乗せた */
+.md a.idref:hover { text-decoration-color: var(--accent); }
+/* インラインコードの中の ID のリンク: コードの字の大きさのまま */
+.md code a.idref { font-size: inherit; }
+/* 用語のツールチップ: 本文に重ねる面（影つき）。用語と ID を 1 行目、意味を続けて出す */
+.term-tip { position: fixed; inset: auto; margin: 0; max-width: min(360px, calc(100vw - 16px)); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); font-size: var(--fs-small); line-height: 1.55; }
+/* ツールチップの 1 行目（用語と ID） */
+.term-tip .tt-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-weight: 700; }
+/* ツールチップの ID */
+.term-tip .tt-head .mono { color: var(--text-3); font-weight: 400; font-size: var(--fs-xs); }
+/* ツールチップの意味 */
+.term-tip .tt-body { display: block; color: var(--text-2); }
+
+/* ===== 詳細の全画面 ===== */
+
+/* 全画面を開いている間: 後ろの領域のスクロールを止める */
+body:has(dialog.full[open]) .content { overflow: hidden; }
+/* 狭い幅の全画面: 余白を 8px にする */
+@media (max-width: 720px) { dialog.full { width: calc(100vw - 16px); height: calc(100dvh - 16px); } }

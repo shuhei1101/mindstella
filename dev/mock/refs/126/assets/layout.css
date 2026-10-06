@@ -1,0 +1,71 @@
+/* PR #126 の画面の作り（ページをウィンドウの高さに収め、帯の下の領域の中でスクロールする）と、モック専用の操作列。部品のモックでは読まない */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案 */
+.mockbar [aria-current="page"] { font-weight: 700; border-color: currentColor; text-decoration: none; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列のパンくず */
+.mockbar .crumbs { color: inherit; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+
+/* ===== 画面の作り: ページをウィンドウの高さに収め、帯の下の領域の中でスクロールする ===== */
+
+/* 文書: ウィンドウの高さに固定し、ページ全体の縦スクロールを出さない */
+body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+/* トップバーとタブの帯の入れ物: スクロールする領域の外に置き、どの画面でも見えたままにする */
+#top { flex: none; }
+/* トップバーとタブの帯: sticky に頼らず、領域の外に置くことで見えたままにする */
+.topbar, .tabbar { position: static; }
+/* スクロールする領域: 帯の下の残りの高さを持ち、中で縦・横にスクロールする。本文の幅の上限は左右の余白で作り、スクロールバーは窓の右端に出す */
+.content { flex: 1 1 auto; min-height: 0; max-width: none; margin: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding: 24px max(var(--page-pad), calc((100% - var(--content-max)) / 2 + var(--page-pad))) 24px; }
+/* 画面: 領域の中で縦に並べる */
+.content > .screen { flex: 1 0 auto; display: flex; flex-direction: column; min-height: 0; }
+/* 表の枠: 高さを窓から引き算で決めない（入れ物の高さで止める） */
+.screen .table-wrap { max-height: none; }
+/* つながりの画面: 領域の高さいっぱいに広げる（低すぎる窓では領域ごとスクロールする） */
+.content > .screen.graph { flex: 1 1 0; min-height: 360px; }
+/* つながりの枠: 残りの高さを持つ */
+.screen.graph .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* つながりの描く領域: 枠の高さいっぱいに広げる */
+.screen .g3-wrap { flex: 1 1 0; height: auto; min-height: 0; }
+/* マップの入れ物の道具の行・チップ: 縮めない */
+.map-view-root > * { flex-shrink: 0; }
+/* ボードの列の見出し: ボードを縦にスクロールしても列の上に留める */
+.board-col h3 { position: sticky; top: 0; z-index: 1; background: var(--bg); padding-top: 4px; box-shadow: 0 10px 0 var(--bg); }
+/* 表・ボードを 2 列以上で並べる幅: 画面を領域の高さいっぱいに広げ、中の枠で縦・横にスクロールする（低すぎる窓では領域ごとスクロールする） */
+@media (min-width: 721px) {
+  .content > .screen:is(:has(.table-wrap), :has(> .board)) { flex: 1 1 0; min-height: 360px; }
+  /* 表の入れ物: 残りの高さを持つ */
+  .screen :is(.table-slot, .table-block) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  /* 表の枠: 行が少なければ中身の高さ、多ければ残りの高さで止めて中で縦・横にスクロールする */
+  .screen .table-wrap { flex: 0 1 auto; min-height: 0; }
+  /* ボード: 残りの高さを持ち、中で縦・横にスクロールする。列は最も長い列の高さまで伸ばし、カードの少ない列の見出しも留める */
+  .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: stretch; margin-bottom: 0; padding-top: 0; }
+}
+/* マップを描く幅: 画面を領域の高さいっぱいに広げ、マップの描く領域の中で縦・横にスクロールする */
+@media (min-width: 901px) {
+  .content > .screen:has(.map-wrap) { flex: 1 1 0; min-height: 360px; }
+  /* マップの入れ物: 残りの高さを持つ */
+  .map-view-root { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  /* マップの枠: 残りの高さを持つ */
+  .map-view-root > .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  /* マップの描く領域: 枠の高さいっぱいに広げる */
+  .screen .map-wrap { flex: 1 1 0; height: auto; min-height: 0; }
+  /* マップの拡大の道具: 描く領域の右下に重ねる */
+  .map-view-root > .zoom { position: relative; left: auto; bottom: auto; z-index: 2; align-self: flex-end; margin: -50px 14px 14px 0; }
+}

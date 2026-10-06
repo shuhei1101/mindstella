@@ -4,8 +4,16 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 次に描いたドロワーでフォーカスを移す先（操作した部品が描き直しで消えても、フォーカスを失わないために持つ） */
     let pendingFocus = null;
-    /** 値のチェックボックスのうち、フォーカスを移す先を返す（見つからなければ最初の値） */
+    /** 文字の欄の入力を条件に当てるまで待つミリ秒（打ち終えるのを待つ長さ）と、そのタイマー */
+    MindmapPreview.TEXT_DELAY_MS = 250;
+    let textTimer = 0;
+    /** フォーカスを移す先を返す（文字の欄で打っていたときはその欄、初めて開くときは先頭の文字の欄、無ければ値のチェックボックス。見つからなければ最初の値） */
     function focusTargetOf({ drawer, focus }) {
+        if (focus.kind === "text")
+            return drawer.querySelector(`input[data-text-key="${focus.key}"]`);
+        const firstText = drawer.querySelector(".fd-text input");
+        if (focus.kind === "first" && firstText !== null)
+            return firstText;
         const inputs = [...drawer.querySelectorAll(".fd-body input[data-key]")];
         const found = focus.kind === "value"
             ? inputs.find((input) => input.dataset["key"] === focus.key && input.value === focus.value)
@@ -98,6 +106,12 @@ var MindmapPreview;
                 const next = checked ? [...current, value] : current.filter((candidate) => candidate !== value);
                 onFilter(next.length === 0 ? MindmapPreview.withoutKey(filters, key) : { ...filters, [key]: next });
             },
+            // 文字の条件を入れ替える（前後の空白を除き、空なら外す）
+            text: ({ key, value }) => {
+                const name = `${MindmapPreview.TEXT_FILTER_PREFIX}${key}`;
+                const trimmed = value.trim();
+                onFilter(trimmed === "" ? MindmapPreview.withoutKey(filters, name) : { ...filters, [name]: [trimmed] });
+            },
             clear: (key) => onFilter(MindmapPreview.withoutKey(filters, key)),
             clearAll: () => onFilter({}),
             close: onClose,
@@ -105,12 +119,21 @@ var MindmapPreview;
     }
     /** 絞り込みのドロワーの狭い幅の境（これ以下はトップバーの下から全幅で重ねる） */
     const DRAWER_NARROW_QUERY = "(max-width: 900px)";
-    /** 画面が持つ条件と絞り込みの結果から、ドロワーを組む（開いていなければ null）。キーワードに一致した件数を添える画面は `hit` を渡す */
-    function screenDrawer({ drawerOpen, rows, columns, filters, shown, hit, onFilter, onClose, }) {
+    /** 画面が持つ条件と絞り込みの結果から、ドロワーを組む（開いていなければ null）。キーワードに一致した件数を添える画面は `hit` を、文字の欄を出す画面は `textColumns` を渡す */
+    function screenDrawer({ drawerOpen, rows, columns, textColumns = [], filters, shown, hit, onFilter, onClose, }) {
         if (!drawerOpen)
             return null;
+        // 値を選ぶ条件の件数は、文字の条件で絞った行で数える
+        const textFilters = Object.fromEntries(Object.entries(filters).filter(([key]) => key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX)));
+        const valueFilters = Object.fromEntries(Object.entries(filters).filter(([key]) => !key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX)));
+        const narrowed = MindmapPreview.filterRows({ rows, columns: textColumns, filters: textFilters });
         return filterDrawer({
-            groups: MindmapPreview.drawerGroups({ rows, columns, filters, ...(hit === undefined ? {} : { hit }) }),
+            groups: MindmapPreview.drawerGroups({ rows: narrowed, columns, filters: valueFilters, ...(hit === undefined ? {} : { hit }) }),
+            texts: textColumns.map((column) => ({
+                key: column.key,
+                label: column.label,
+                value: filters[`${MindmapPreview.TEXT_FILTER_PREFIX}${column.key}`]?.[0] ?? "",
+            })),
             selected: filters,
             total: rows.length,
             shown,
@@ -120,7 +143,7 @@ var MindmapPreview;
     }
     MindmapPreview.screenDrawer = screenDrawer;
     /** 絞り込みのドロワーを返す。文書に入った後に非モーダルで開き、描き直しても中のスクロールの位置と押した値へのフォーカスを保つ */
-    function filterDrawer({ groups, selected, total, shown, narrow, on }) {
+    function filterDrawer({ groups, texts = [], selected, total, shown, narrow, on }) {
         // 描き直す前のドロワー（あれば、スクロールの位置とフォーカスを引き継ぐ）
         const previous = document.querySelector("dialog.drawer");
         const scrollTop = previous?.querySelector(".fd-body")?.scrollTop ?? 0;
@@ -134,10 +157,49 @@ var MindmapPreview;
         if (focus === null && previous === null)
             focus = { kind: "first" };
         const filtering = MindmapPreview.activeConditionCount(selected) > 0;
+        // 値を選ぶ条件より上に、文字で絞れる列ごとの欄を並べる
+        const textGroup = texts.length === 0
+            ? null
+            : MindmapPreview.h({
+                tag: "fieldset",
+                attrs: { class: "fd-group fd-text" },
+                children: [
+                    MindmapPreview.h({ tag: "legend", children: ["文字を含む"] }),
+                    ...texts.map((text) => {
+                        const inputId = `fd-text-${text.key}`;
+                        return MindmapPreview.h({
+                            tag: "div",
+                            attrs: { class: "fd-text-row" },
+                            children: [
+                                MindmapPreview.h({ tag: "label", attrs: { for: inputId }, children: [text.label] }),
+                                MindmapPreview.h({
+                                    tag: "input",
+                                    attrs: {
+                                        id: inputId,
+                                        type: "search",
+                                        value: text.value,
+                                        autocomplete: "off",
+                                        "data-text-key": text.key,
+                                        // 打ち終えて少し待ってから当てる（描き直した後も、同じ欄の同じ位置に戻る）
+                                        oninput: (event) => {
+                                            const input = event.target;
+                                            window.clearTimeout(textTimer);
+                                            textTimer = window.setTimeout(() => {
+                                                pendingFocus = { kind: "text", key: text.key, caret: input.selectionStart ?? input.value.length };
+                                                on.text({ key: text.key, value: input.value });
+                                            }, MindmapPreview.TEXT_DELAY_MS);
+                                        },
+                                    },
+                                }),
+                            ],
+                        });
+                    }),
+                ],
+            });
         const body = MindmapPreview.h({
             tag: "div",
             attrs: { class: "fd-body" },
-            children: groups.map((group) => conditionGroup({ group, chosen: selected[group.key] ?? [], on })),
+            children: [textGroup, ...groups.map((group) => conditionGroup({ group, chosen: selected[group.key] ?? [], on }))],
         });
         const drawer = MindmapPreview.h({
             tag: "dialog",
@@ -215,6 +277,9 @@ var MindmapPreview;
             const target = focus === null ? null : focusTargetOf({ drawer, focus });
             if (target !== null) {
                 target.focus();
+                // 文字の欄は、打っていた位置にカーソルを戻す
+                if (focus?.kind === "text")
+                    target.setSelectionRange(focus.caret, focus.caret);
             }
             else if (previous !== null && before instanceof HTMLElement && before.isConnected && !previous.contains(before)) {
                 // 本文などにあったフォーカスは、開き直しで奪わない

@@ -21,6 +21,7 @@ __all__ = [
     "close_drawer",
     "drawer_groups",
     "drawer_head",
+    "drawer_text_fields",
     "open_drawer",
     "remove_chip",
     "value_selector",
@@ -40,8 +41,8 @@ DEFAULT_DECISION_STATUSES = ["要見直し", "未決定", "未整理", "保留"]
 # 検討事項の全ての状態を選ぶハッシュの絞り込み（開いたときの既定に代えて、決定済みなども出す）
 ALL_DECISION_STATUSES_HASH = "&f.status=要見直し|未決定|未整理|保留|決定済み|対象外|取り下げ"
 
-# ドロワーの条件の並び（見出し・選んだ数の文言・値ごとの `[値, 件数, チェック]`）を読む
-_DRAWER_GROUPS_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .fd-group')].map((group) => ({
+# 値を選ぶ条件の並び（見出し・選んだ数の文言・値ごとの `[値, 件数, チェック]`）を読む（文字の欄のまとまり `.fd-text` は含めない）
+_DRAWER_GROUPS_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .fd-group:not(.fd-text)')].map((group) => ({
     label: group.querySelector('legend').childNodes[0].textContent,
     sel: group.querySelector('.fd-sel')?.textContent ?? null,
     clear: group.querySelector('.fd-clear') !== null,
@@ -50,6 +51,13 @@ _DRAWER_GROUPS_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .f
         Number(opt.querySelector('.n').textContent),
         opt.querySelector('input').checked,
     ]),
+}))"""
+
+# 「文字を含む」の欄（列の key・列の名前・今入っている文字）を読む
+_DRAWER_TEXT_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .fd-text input')].map((input) => ({
+    key: input.dataset.textKey,
+    label: document.querySelector(`dialog.drawer label[for="${input.id}"]`).textContent,
+    value: input.value,
 }))"""
 
 # ドロワーの見出しの右の件数と、下端のボタンの文字を読む
@@ -66,8 +74,13 @@ def open_drawer(page: Page) -> None:
 
 
 def drawer_groups(page: Page) -> list[dict[str, Any]]:
-    """ドロワーの条件を並びの順に返す（`label`・`sel`・`clear`・`values`）。"""
+    """ドロワーの値を選ぶ条件を並びの順に返す（`label`・`sel`・`clear`・`values`）。文字の欄のまとまりは含めない。"""
     return page.evaluate(_DRAWER_GROUPS_SCRIPT)
+
+
+def drawer_text_fields(page: Page) -> list[dict[str, str]]:
+    """ドロワーの「文字を含む」の欄を並びの順に返す（`key`・`label`・`value`）。まとまりが無ければ空。"""
+    return page.evaluate(_DRAWER_TEXT_SCRIPT)
 
 
 def drawer_head(page: Page) -> dict[str, Any]:
