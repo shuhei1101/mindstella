@@ -849,7 +849,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
   .topbar:has(.df-chip) { gap: 8px; }
   .topbar:has(.df-chip) .brand { flex: none; }
   .topbar:has(.df-chip) .brand-name, .topbar:has(.df-chip) .spacer { display: none; }
-  .topbar:has(.df-chip) .top-btn { margin-left: auto; }
+  .topbar:has(.df-chip) .settings-btn { margin-left: auto; }
   /* 表示の設定のボタン: 札の文字の幅を確保するため、余白を詰める */
   .topbar:has(.df-chip) .settings-btn { padding: 0 4px; }
 }
@@ -862,7 +862,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
   .topbar:has(.conn):has(.df-chip) { gap: 8px; }
   .topbar:has(.conn):has(.df-chip) .brand { flex: none; }
   .topbar:has(.conn):has(.df-chip) .brand-name, .topbar:has(.conn):has(.df-chip) .spacer { display: none; }
-  .topbar:has(.conn):has(.df-chip) .top-btn { margin-left: auto; }
+  .topbar:has(.conn):has(.df-chip) .settings-btn { margin-left: auto; }
   /* 表示の設定のボタン: 札の文字の幅を確保するため、余白を詰める */
   .topbar:has(.conn):has(.df-chip) .settings-btn { padding: 0 4px; }
 }

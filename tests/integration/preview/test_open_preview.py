@@ -140,7 +140,7 @@ def test_normal_when_item_not_found(
     page = open_preview(url, "#tab=decisions&id=D-99")
     # 検証
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
-    assert page.get_attribute('.segment button[data-view="map"]', "aria-pressed") == "true"
+    assert page.get_attribute('.segment button[data-view="board"]', "aria-pressed") == "true"
     assert page.locator("aside.panel").count() == 0
     assert "id=" not in page.evaluate("location.hash")
 
@@ -171,7 +171,7 @@ def test_normal_when_exported_offline(
 
     page.route(_is_not_file_url, _block)
     # 実行
-    open_preview(out.as_uri(), "#tab=decisions&id=D-3")
+    open_preview(out.as_uri(), "#tab=decisions&view=map&id=D-3")
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     assert blocked == []
@@ -204,7 +204,7 @@ def test_error_when_library_unavailable(
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
-    open_preview(url, "#tab=decisions&id=D-3")
+    open_preview(url, "#tab=decisions&view=map&id=D-3")
     page.wait_for_selector("aside.panel.open .md .lib-error")
     # 検証
     map_notice = page.inner_text("main .lib-error[role=alert]")

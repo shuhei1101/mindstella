@@ -179,8 +179,9 @@ def test_normal(
     open_preview(out.as_uri())
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
     assert page.locator(ALERT_SELECTOR).count() == 0
-    # 検討事項のマップに D-1 と D-2 が描かれる
+    # 検討事項のタブはボードで開くので、表示形式の切り替えでマップに切り替えると、マップに D-1 と D-2 が描かれる
     page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="map"]')
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
     map_ids = page.eval_on_selector_all(
         "#decision-map .map-node.n-item", "nodes => nodes.map(n => n.dataset.node).sort()"

@@ -27,6 +27,8 @@ var MindmapPreview;
     const ZOOM_STEP = 0.15;
     const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 1.5;
+    /** ホイール 1 回の倍率の掛け率（図の拡大と同じ刻み） */
+    const WHEEL_FACTOR = 1.12;
     /** マップの狭い幅の境（これ以下は字下げした縦の一覧） */
     const NARROW_QUERY = "(max-width: 900px)";
     /** 絞り込みの条件に合う検討事項が 1 件も無いときに、マップの枠と字下げの一覧に出す文 */
@@ -266,6 +268,22 @@ var MindmapPreview;
             children: [roots.length > 0 ? MindmapPreview.h({ tag: "ul", children: [...roots.map(entry)] }) : MindmapPreview.emptyNote(NO_SHOWN_DECISIONS_TEXT)],
         });
     }
+    /** ホイール 1 回で変えた後のマップの倍率と、マウスの下の点を残す枠のスクロールの位置を返す */
+    function wheelZoom({ scale, deltaY, point, scroll, }) {
+        // 奥へ回すと拡大、手前へ回すと縮小。下限は、全体を表示の倍率が ZOOM_MIN を下回っているときにその倍率で止める
+        const factor = deltaY < 0 ? WHEEL_FACTOR : 1 / WHEEL_FACTOR;
+        const next = Math.min(ZOOM_MAX, Math.max(Math.min(ZOOM_MIN, scale), scale * factor));
+        // マウスの下の点が、倍率を変えた後も同じ位置に残るようにスクロールの位置を求める
+        const ratio = next / scale;
+        return {
+            scale: next,
+            scroll: {
+                left: (scroll.left + point.x) * ratio - point.x,
+                top: (scroll.top + point.y) * ratio - point.y,
+            },
+        };
+    }
+    MindmapPreview.wheelZoom = wheelZoom;
     /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
     function mapView({ index, route, on, marks }, { shown, chips, makeDrawer, }) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "map-view-root" } });
@@ -315,11 +333,16 @@ var MindmapPreview;
             const scale = mapState.zoom === "fit"
                 ? Math.min(1, (wrap.clientWidth - 16) / width, (wrap.clientHeight - 16) / height)
                 : mapState.zoom;
-            sizer.style.width = `${width * scale + 240}px`;
-            sizer.style.height = `${height * scale + 160}px`;
+            // 全体を表示は右と下に決まった余白、数値の倍率は枠の幅・高さの分の余白（マップが枠より小さくても、ホイールで拡大した点を残せるだけ送れる）
+            const marginRight = mapState.zoom === "fit" ? 240 : wrap.clientWidth;
+            const marginBottom = mapState.zoom === "fit" ? 160 : wrap.clientHeight;
+            sizer.style.width = `${width * scale + marginRight}px`;
+            sizer.style.height = `${height * scale + marginBottom}px`;
             canvas.style.transform = `scale(${scale})`;
             fitButton.setAttribute("aria-pressed", String(mapState.zoom === "fit"));
         };
+        /** 今当たっているマップの倍率（全体を表示は、求めて当てた倍率） */
+        const shownScale = () => mapState.zoom === "fit" ? Number.parseFloat(canvas.style.transform.slice(6)) : mapState.zoom;
         /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
         const draw = async () => {
             outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks })));
@@ -332,7 +355,7 @@ var MindmapPreview;
             drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks });
             applyZoom();
             const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
-            const scale = mapState.zoom === "fit" ? Number.parseFloat(canvas.style.transform.slice(6)) : mapState.zoom;
+            const scale = shownScale();
             if (node !== undefined && route.id !== mapState.selected) {
                 wrap.scrollTo({
                     left: ((node.x ?? 0) + node.width / 2) * scale - wrap.clientWidth / 2,
@@ -369,8 +392,8 @@ var MindmapPreview;
             }, 150);
         });
         const toolbarElement = MindmapPreview.toolbar([
-            { key: "map", label: "マップ" },
             { key: "board", label: "ボード" },
+            { key: "map", label: "マップ" },
             { key: "table", label: "表" },
         ], route, on.view);
         toolbarElement.append(keyword);
@@ -413,6 +436,27 @@ var MindmapPreview;
         wrap.addEventListener("scroll", () => {
             mapState.scroll = { left: wrap.scrollLeft, top: wrap.scrollTop };
         });
+        // ホイールで拡大・縮小する（ページを動かさないよう既定の動作を止め、マウスの下の点を残す）
+        wrap.addEventListener("wheel", (event) => {
+            // 横にだけ回したときは、枠の横スクロールに任せる
+            if (event.deltaY === 0)
+                return;
+            event.preventDefault();
+            // マップを描く前は、倍率が無い
+            if (current === null)
+                return;
+            const box = wrap.getBoundingClientRect();
+            const next = wheelZoom({
+                scale: shownScale(),
+                deltaY: event.deltaY,
+                point: { x: event.clientX - box.left - wrap.clientLeft, y: event.clientY - box.top - wrap.clientTop },
+                scroll: { left: wrap.scrollLeft, top: wrap.scrollTop },
+            });
+            // 数値の倍率にして（「全体を表示」の押された状態を外す）、スクロールの位置を当てる
+            mapState.zoom = next.scale;
+            applyZoom();
+            wrap.scrollTo(next.scroll);
+        }, { passive: false });
         // 余白を押したときは、選んでいる項目があるときだけ選びを外す
         MindmapPreview.enableDragScroll(wrap, () => {
             if (route.id !== null)
@@ -523,8 +567,8 @@ var MindmapPreview;
             });
         }
         const toolbarElement = MindmapPreview.toolbar([
-            { key: "map", label: "マップ" },
             { key: "board", label: "ボード" },
+            { key: "map", label: "マップ" },
             { key: "table", label: "表" },
         ], route, on.view);
         if (route.view === "board") {

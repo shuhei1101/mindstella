@@ -27,7 +27,7 @@ from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
             "#tab=nope&view=cards", "overview", "table", None, False, {}, id="unknown_tab"
         ),
         pytest.param(
-            "#tab=decisions&id=D-99&full=1", "decisions", "map", None, False, {}, id="unknown_id"
+            "#tab=decisions&id=D-99&full=1", "decisions", "board", None, False, {}, id="unknown_id"
         ),
         pytest.param("#tab=tasks&view=map", "tasks", "board", None, False, {}, id="unknown_view"),
         pytest.param("#tab=docs&view=board", "docs", "board", None, False, {}, id="docs_board"),
@@ -83,6 +83,16 @@ def test_parse_hash(
             },
             "#tab=decisions&view=table&id=D-1&full=1",
             id="full_with_filters",
+        ),
+        pytest.param(
+            {"tab": "decisions", "view": "board", "id": None, "full": False, "filters": {}},
+            "#tab=decisions",
+            id="decisions_board",
+        ),
+        pytest.param(
+            {"tab": "decisions", "view": "map", "id": None, "full": False, "filters": {}},
+            "#tab=decisions&view=map",
+            id="decisions_map",
         ),
     ],
 )

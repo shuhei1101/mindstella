@@ -15,13 +15,13 @@ var MindmapPreview;
     ];
     /** 画面ごとの既定の表示形式（書いていない画面は表） */
     MindmapPreview.DEFAULT_VIEW = {
-        decisions: "map",
+        decisions: "board",
         tasks: "board",
         docs: "cards",
     };
     /** 画面が持つ表示形式（書いていない画面は表だけ） */
     MindmapPreview.VIEWS_OF = {
-        decisions: ["map", "board", "table"],
+        decisions: ["board", "map", "table"],
         tasks: ["board", "table"],
         docs: ["cards", "board", "table"],
     };
