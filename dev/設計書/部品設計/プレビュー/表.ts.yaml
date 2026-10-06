@@ -66,6 +66,12 @@ args:
     default: なし（印を出さない）
     description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、当たる行のタイトルの右に部品『差分の印』を文言なしで置く
     status: planned
+  - name: comments
+    type: オブジェクト
+    required: false
+    default: なし（印を出さない）
+    description: 項目の ID → レビュー中のコメントの件数（1 以上）。サーバーにつながって開いたときだけ渡され、当たる行のタイトルの右、差分の印の後ろに部品『コメントの印』を置く。収まらなければ次の行へ送る
+    status: planned
 events:
   - name: 並べ替え
     when: 見出しの文字を押したとき
@@ -131,6 +137,13 @@ states:
     args:
       - name: marks
         value: '{"D-5": "changed", "D-37": "new"}'
+  - name: Commented
+    description: コメントを書いた行。タイトルの右に差分の印、その後ろにコメントの印を置き、印の無い行は変わらない
+    args:
+      - name: marks
+        value: '{"D-5": "changed"}'
+      - name: comments
+        value: '{"D-5": 1, "D-37": 12}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
