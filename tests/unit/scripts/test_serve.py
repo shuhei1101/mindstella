@@ -30,7 +30,7 @@ from errors import (
 )
 from export_helpers import write_preview_dir
 from fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
-from workspace_fixtures import write_yaml
+from workspace_fixtures import RECORD_DIR, write_yaml
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
 SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
@@ -129,7 +129,9 @@ def test_start_when_settings_invalid(
     # 実行（合わない間は 2 回とも立てず、直した後の 1 回で立てる）
     first_lines = _start_expecting_mismatch(registry, root)
     second_lines = _start_expecting_mismatch(registry, root)
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "deep"}})
+    write_yaml(
+        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "deep"}}
+    )
     url, started = registry.start(root)
     # 検証
     assert first_lines[0].startswith("config.yaml: display.network_look: ")
@@ -318,10 +320,15 @@ def test_records_response_when_settings_changed(
     root = make_workspace()
     context = _context(root, {**valid_settings, "display": {"network_look": "starlight"}})
     # 実行（通る設定と崩れた設定を、この順に読む）
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}})
+    write_yaml(
+        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}}
+    )
     first = serve.records_response(context)
     held_after_first = context.settings.current()["display"]["network_look"]
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "rainbow"}})
+    write_yaml(
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"network_look": "rainbow"}},
+    )
     second = serve.records_response(context)
     # 検証
     first_payload = json.loads(first.body)
@@ -358,7 +365,7 @@ def test_workspace_signature(
     root = make_workspace(make_item("D-1"))
     before = serve.workspace_signature(root)
     # 実行
-    (root / file_name).write_text(text, encoding="utf-8")
+    (root / RECORD_DIR / file_name).write_text(text, encoding="utf-8")
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
@@ -388,7 +395,7 @@ def test_workspace_signature_with_changes(
     root = make_workspace(make_item("D-1"))
     before = serve.workspace_signature(root)
     # 実行
-    (root / file_name).write_text(text, encoding="utf-8")
+    (root / RECORD_DIR / file_name).write_text(text, encoding="utf-8")
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
@@ -663,7 +670,9 @@ def test_delete_response(
     assert response.status == expected_status
     payload = json.loads(response.body)
     assert (payload.get("id"), payload.get("count")) == expected_deleted
-    saved = yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    saved = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
     assert [item["id"] for item in saved] == expected_remaining
 
 
@@ -781,8 +790,11 @@ def test_reload_response(
     root = make_workspace()
     context = _context(root, {**valid_settings, "display": {"network_look": "starlight"}})
     # 手で直した config.yaml
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": network_look}})
-    before = (root / "config.yaml").read_bytes()
+    write_yaml(
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"network_look": network_look}},
+    )
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     response = serve.reload_response(context, origin=origin)
     # 検証
@@ -792,4 +804,4 @@ def test_reload_response(
     assert expected_detail in payload.get("detail", "")
     assert context.settings.current()["display"]["network_look"] == expected_held
     assert context.settings.revision() == expected_revision
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

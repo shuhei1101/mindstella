@@ -28,6 +28,7 @@ from export_helpers import (
     make_responses,
 )
 from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR
 
 # 埋め込み先の要素の開きタグ（DATA_ELEMENT から閉じタグを除いたもの）
 DATA_ELEMENT_OPEN = builder.DATA_ELEMENT.removesuffix("</script>")
@@ -67,7 +68,7 @@ def test_read_records(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     root = make_workspace(make_item("D-1"))
     # 実行
     first = builder.read_records(root, now=lambda: BUILT_AT)
-    (root / "decisions.yaml").write_text(
+    (root / RECORD_DIR / "decisions.yaml").write_text(
         yaml.safe_dump(
             {"items": [make_item("D-1"), make_item("D-2")]}, allow_unicode=True, sort_keys=False
         ),

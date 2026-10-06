@@ -10,6 +10,7 @@ import backup
 from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
 from migration_helpers import init_git_repo, run_git
 from versions import Version
+from workspace_fixtures import RECORD_DIR
 
 # 移し替える先の版
 TARGET_VERSION = Version(0, 3, 0)
@@ -101,7 +102,7 @@ def test_restore_backup_when_copy(
     root = make_workspace(make_item("A-1"))
     before = snapshot_tree(root)
     taken = backup.take_backup(root, TARGET_VERSION)
-    (root / "docs.yaml").write_text("items: []\n", encoding="utf-8")
+    (root / RECORD_DIR / "docs.yaml").write_text("items: []\n", encoding="utf-8")
     (root / "new.yaml").write_text("items: []\n", encoding="utf-8")
     # 実行
     backup.restore_backup(root, taken)
@@ -115,7 +116,7 @@ def test_restore_backup_when_git(git_workspace: Path, snapshot_tree: SnapshotTre
     # 準備
     before = snapshot_tree(git_workspace)
     taken = backup.take_backup(git_workspace, TARGET_VERSION)
-    (git_workspace / "docs.yaml").write_text("items: []\n", encoding="utf-8")
+    (git_workspace / RECORD_DIR / "docs.yaml").write_text("items: []\n", encoding="utf-8")
     (git_workspace / "new.yaml").write_text("items: []\n", encoding="utf-8")
     # 実行
     backup.restore_backup(git_workspace, taken)

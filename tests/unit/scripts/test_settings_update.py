@@ -18,7 +18,7 @@ from errors import (
     WriteFailedError,
 )
 from fixture_types import FailingReplace, MakeItem, MakeWorkspace, SnapshotTree
-from workspace_fixtures import DEFAULT_TIMESTAMP
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 # フェーズを付け替えた項目に入る更新日時
 NOW = "2026-10-05T00:00:00+00:00"
@@ -262,10 +262,13 @@ def test_remap_phases(
     tasks = {item["id"]: item for item in changes[1].items}
     assert decisions["D-1"]["phase"] == "目的"
     assert decisions["D-1"]["updated"] == NOW
+    assert decisions["D-1"]["updated_by"] == "ai"
     assert decisions["D-2"]["phase"] == "発散"
     assert decisions["D-2"]["updated"] == DEFAULT_TIMESTAMP
+    assert "updated_by" not in decisions["D-2"]
     assert tasks["T-1"]["phase"] == "要件"
     assert tasks["T-1"]["updated"] == NOW
+    assert tasks["T-1"]["updated_by"] == "ai"
     assert remapped == [
         settings_update.PhaseRemap(id="D-1", key="phase", from_value="問い", to_value="目的"),
         settings_update.PhaseRemap(id="T-1", key="phase", from_value="整理", to_value="要件"),
@@ -308,9 +311,11 @@ def test_save_settings(
     # 実行
     files = settings_update.save_settings(workspace, settings, [change])
     # 検証
-    assert files == ["config.yaml", "decisions.yaml"]
-    assert yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8")) == settings
-    assert yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8")) == {
+    assert files == [".mindstella/config.yaml", ".mindstella/decisions.yaml"]
+    assert (
+        yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")) == settings
+    )
+    assert yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8")) == {
         "items": change.items
     }
     assert list(root.rglob("*.tmp")) == []
@@ -381,10 +386,12 @@ def test_update_settings(
     assert result == {
         "changed": ["phases", "goal"],
         "remapped": [{"id": "D-1", "key": "phase", "from": "問い", "to": "目的"}],
-        "files": ["config.yaml", "decisions.yaml"],
+        "files": [".mindstella/config.yaml", ".mindstella/decisions.yaml"],
     }
-    saved = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    saved = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert saved["goal"]["phase"] == "目的"
+    decisions = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
+    assert decisions["items"][0]["updated_by"] == "ai"
 
 
 def test_update_settings_when_goal_phase_unknown(
@@ -418,16 +425,16 @@ def test_update_settings_when_display(make_workspace: MakeWorkspace) -> None:
     """表示の既定を丸ごと置き換え、ほかのキーと項目を変えない（正常系）。"""
     # 準備
     root = make_workspace()
-    before = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     display = {"network_look": "starlight", "visible_kinds": KINDS_WITHOUT_LOGS}
     # 実行
     first = settings_update.update_settings(root, {"display": display}, None)
-    after_first = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    after_first = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     second = settings_update.update_settings(root, {"display": {"network_look": "glow"}}, None)
-    after_second = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    after_second = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     # 検証
     assert first["changed"] == ["display"]
-    assert first["files"] == ["config.yaml"]
+    assert first["files"] == [".mindstella/config.yaml"]
     assert after_first["display"] == display
     assert {key: value for key, value in after_first.items() if key != "display"} == before
     assert second["changed"] == ["display"]
@@ -467,6 +474,8 @@ def test_remap_names(
     assert (decisions["D-2"]["target"], decisions["D-2"]["category"]) == ("管理画面", "運用")
     assert decisions["D-1"]["updated"] == NOW
     assert decisions["D-2"]["updated"] == NOW
+    assert decisions["D-1"]["updated_by"] == "ai"
+    assert decisions["D-2"]["updated_by"] == "ai"
     assert remapped == [
         settings_update.PhaseRemap(id="D-1", key="target", from_value="本体", to_value="アプリ"),
         settings_update.PhaseRemap(id="D-2", key="category", from_value="設定", to_value="運用"),
@@ -506,17 +515,17 @@ def test_update_display(make_workspace: MakeWorkspace) -> None:
     """display だけを置き換え、ほかのキーと並びを保つ（正常系）。"""
     # 準備
     root = make_workspace()
-    before = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
     # 実行
     result = settings_update.update_display(root, body)
     # 検証
-    saved = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    saved = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert result == {"display": body}
     assert list(saved) == [*before, "display"]
     assert {key: value for key, value in saved.items() if key != "display"} == before
     assert saved["display"] == body
-    assert not (root / "changes.yaml").exists()
+    assert not (root / RECORD_DIR / "changes.yaml").exists()
 
 
 @pytest.mark.parametrize(
@@ -551,12 +560,12 @@ def test_update_display_when_body_invalid(
     """合わない本文は書かない（異常系）。"""
     # 準備
     root = make_workspace()
-    before = (root / "config.yaml").read_bytes()
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(errors.SettingsInvalidError) as raised:
         settings_update.update_display(root, body)
     assert all(word in str(raised.value) for word in words)
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
 
 
 def test_update_display_when_settings_broken(
@@ -566,10 +575,10 @@ def test_update_display_when_settings_broken(
     # 準備
     broken = {key: value for key, value in valid_settings.items() if key != "phases"}
     root = make_workspace(settings=broken)
-    before = (root / "config.yaml").read_bytes()
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     body = {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS}
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as raised:
         settings_update.update_display(root, body)
     assert any(line.startswith("config.yaml: ") and "phases" in line for line in raised.value.lines)
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

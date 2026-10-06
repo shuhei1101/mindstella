@@ -11,6 +11,7 @@ import versions
 from errors import SchemaMismatchError, WriteFailedError
 from fixture_types import FailingReplace
 from versions import Version
+from workspace_fixtures import RECORD_DIR
 
 # ワークスペースの版を持つファイルの名前
 VERSION_FILE = "mindstella-version.ini"
@@ -62,7 +63,8 @@ def test_compare_versions(workspace: Version | None, plugin: Version, expected: 
 def test_read_workspace_version(tmp_path: Path) -> None:
     """1 行目の版を読む（正常系）。"""
     # 準備
-    (tmp_path / VERSION_FILE).write_text("v0.3.0\nほかの文字\n", encoding="utf-8")
+    (tmp_path / RECORD_DIR).mkdir()
+    (tmp_path / RECORD_DIR / VERSION_FILE).write_text("v0.3.0\nほかの文字\n", encoding="utf-8")
     # 実行
     result = versions.read_workspace_version(tmp_path)
     # 検証
@@ -80,12 +82,35 @@ def test_read_workspace_version_when_missing(tmp_path: Path) -> None:
 def test_read_workspace_version_when_invalid(tmp_path: Path) -> None:
     """1 行目が版の形でなければ送る（異常系）。"""
     # 準備
-    (tmp_path / VERSION_FILE).write_text("0.3\n", encoding="utf-8")
+    (tmp_path / RECORD_DIR).mkdir()
+    (tmp_path / RECORD_DIR / VERSION_FILE).write_text("0.3\n", encoding="utf-8")
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
         versions.read_workspace_version(tmp_path)
     assert len(exc_info.value.lines) == 1
     assert exc_info.value.lines[0].startswith(f"{VERSION_FILE}: ")
+
+
+@pytest.mark.parametrize(
+    ("top_version", "record_version", "expected"),
+    [
+        pytest.param("v0.5.0\n", None, Version(0, 5, 0), id="top_only"),
+        pytest.param("v0.5.0\n", "v0.6.0\n", Version(0, 6, 0), id="record_wins"),
+    ],
+)
+def test_read_workspace_version_when_at_top(
+    tmp_path: Path, top_version: str, record_version: str | None, expected: Version
+) -> None:
+    """記録のフォルダに無ければ直下の版のファイルを読む（正常系）。"""
+    # 準備
+    (tmp_path / VERSION_FILE).write_text(top_version, encoding="utf-8")
+    if record_version is not None:
+        (tmp_path / RECORD_DIR).mkdir()
+        (tmp_path / RECORD_DIR / VERSION_FILE).write_text(record_version, encoding="utf-8")
+    # 実行
+    result = versions.read_workspace_version(tmp_path)
+    # 検証
+    assert result == expected
 
 
 def test_read_plugin_version(tmp_path: Path) -> None:
@@ -101,10 +126,12 @@ def test_read_plugin_version(tmp_path: Path) -> None:
 
 def test_write_workspace_version(tmp_path: Path) -> None:
     """版を 1 行で書く（正常系）。"""
+    # 準備
+    (tmp_path / RECORD_DIR).mkdir()
     # 実行
     versions.write_workspace_version(tmp_path, Version(0, 3, 0))
     # 検証
-    assert (tmp_path / VERSION_FILE).read_text(encoding="utf-8") == "v0.3.0\n"
+    assert (tmp_path / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == "v0.3.0\n"
 
 
 def test_write_workspace_version_when_write_fails(
@@ -112,10 +139,11 @@ def test_write_workspace_version_when_write_fails(
 ) -> None:
     """置き換えられなければ送る（異常系）。"""
     # 準備
+    (tmp_path / RECORD_DIR).mkdir()
     # versions モジュールの参照を、版のファイルへの置き換えが失敗するものに差し替える
     monkeypatch.setattr(versions.os, "replace", failing_replace(VERSION_FILE))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         versions.write_workspace_version(tmp_path, Version(0, 3, 0))
-    assert not (tmp_path / VERSION_FILE).exists()
+    assert not (tmp_path / RECORD_DIR / VERSION_FILE).exists()
     assert list(tmp_path.rglob("*.tmp")) == []
