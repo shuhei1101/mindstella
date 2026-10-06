@@ -353,14 +353,14 @@ functions:
     process: |-
       1. `type` が `flowchart`・`graph` でなければ `null` を返す
       2. 前後の記法をそれぞれ `mermaid.mermaidAPI.getDiagramFromText` で解析し、前後とも解析した結果の種類（`Diagram.type`）が flowchart（12.1.0 では `flowchart-v2`・`flowchart-elk`）であることを確かめる。違うときと、手順 2〜3 のどこかで例外を投げたときは `null` を返す（`pairDiagrams` は種類の違う図どうしも組にする。`mermaidAPI` は型定義で `@internal` のため、版を上げて形が変わったときも差分を出せる方へ倒す）
-      3. 解析した結果の `db.getVertices()` からノードを、鍵 `flowchart-{id}`・文字はラベル（空白を 1 つにして前後を除く）で取る。`db.getEdges()` から辺を、鍵 `{始点}>{終点}#{同じ端点の中の出てきた順}`・文字は辺のラベルで取る
-      4. 今の版の SVG から `diffDiagram` と同じ鍵でノードと辺の要素を引き、文字は今の版の解析した結果の文字に置き換える（前後とも解析した結果の文字どうしで比べ、`<br>`・Markdown・文字参照・アイコンの書き方で変えていないノードを変えたと取らない）
+      3. 解析した結果の `db.getVertices()` からノードを、鍵 `flowchart-{id}`・文字はラベル（空白を 1 つにして前後を除く）で取る。`db.getEdges()` から辺を、鍵 `{start}>{end}#{同じ端点の中の db の並びの番号}`・文字は辺のラベルで取り、辺の `id` も持つ（12.1.0 では SVG の辺の `data-id` と同じ値。辺に id を付けた図はその id、付けていない図は `L_{start}_{end}_{n}`）
+      4. 今の版の SVG から、ノードは `diffDiagram` と同じ鍵で要素を引く。辺は `path[data-et="edge"]` の `data-id` を今の版の解析した結果の辺の `id` と突き合わせ、その辺の鍵（手順 3 と同じ作り方）で引く（`edgeEnds` で `data-id` を切ると、id に `_` を含むノードや id を付けた辺で前後の鍵がずれる）。`data-id` が解析した結果に無い辺があれば `null` を返す。文字は前後とも解析した結果の文字どうしで比べる（`<br>`・Markdown・文字参照・アイコンの書き方で変えていないノードを変えたと取らない）
       5. `diffDiagram` と同じく `added`・`changed`・`removed` に分ける。`removed` の名前は、ラベルを画面に出る文字にそろえる（Markdown のラベルの記号と前後の `` ` ``・`<br>` を外し、ほかのタグを除き、文字参照を戻し、`fa:fa-…` を除く）
     unit_tests:
       - name: test_diff_diagram_from_source
         case: 正常
         summary: ラベルの書き方によらず、前の版を描いて突き合わせたときと同じ差分を返す
-        condition: '`parametrize`: 書き方を変えないノード（`<br>`・Markdown・文字参照・アイコン・`:::class`・辺のラベル・ラベルなし）を持ち別のノードの文字を 1 つ変えた前後 / ラベルを変えた前後 / ノードと辺を足し消した前後 / 同じ端点の辺を 2 本持ち、片方の辺のラベルだけを変えた前後（辺の `#{番号}` を `db.getEdges()` の並びと SVG の並びで振っても取り違えないこと） / `subgraph` / `graph`。それぞれ前の版を `renderDiagramSvg` で描いて `diffDiagram` にもかける。mermaid・jsdiff は `page.route` で返す'
+        condition: '`parametrize`: 書き方を変えないノード（`<br>`・Markdown・文字参照・アイコン・`:::class`・辺のラベル・ラベルなし）を持ち別のノードの文字を 1 つ変えた前後 / ラベルを変えた前後 / ノードと辺を足し消した前後 / 同じ端点の辺を 2 本持ち、片方の辺のラベルだけを変えた前後（辺の `#{番号}` を `db.getEdges()` の並びと SVG の並びで振っても取り違えないこと） / id に `_` を含むノード（`my_node`）の辺を持ち別のノードの文字を変えた前後 / id を付けた辺（`A e1@--> B`）を持ち別のノードの文字を変えた前後 / `subgraph` / `graph`。それぞれ前の版を `renderDiagramSvg` で描いて `diffDiagram` にもかける。mermaid・jsdiff は `page.route` で返す'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`added`・`changed`・`removed` が `diffDiagram` の結果と同じ'
       - name: test_diff_diagram_from_source_when_removed_label_marked
