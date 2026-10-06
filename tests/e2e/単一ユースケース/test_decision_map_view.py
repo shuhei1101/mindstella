@@ -137,6 +137,13 @@ def _segment_boxes(page: Page) -> list[list[float]]:
     )
 
 
+def _segment_views(page: Page) -> list[str]:
+    """表示形式の切り替えのボタンの形式を並びのまま返す。"""
+    return page.eval_on_selector_all(
+        ".segment button", "buttons => buttons.map(b => b.dataset.view)"
+    )
+
+
 def _opacity(page: Page, selector: str) -> float:
     """要素の見た目の不透明度を返す。"""
     return float(
@@ -152,11 +159,16 @@ def test_normal(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """マップで状態を絞り、項目を押して枝と依存を辿り、ボード・表に切り替える（正常系）。"""
+    """検討事項をボードで開き、マップに切り替えて状態を絞り、項目を押して枝と依存を辿り、ボード・表に切り替える（正常系）。"""
     # 準備
     url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
-    # 実行・検証（マップ）
-    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    # 実行・検証（開いた直後はボード。表示形式の切り替えはボード・マップ・表の順で、ボードが押されている）
+    page = open_preview(url, "#tab=decisions", width=WIDE_WIDTH)
+    page.wait_for_selector(".board")
+    assert _segment_views(page) == ["board", "map", "table"]
+    assert page.get_attribute('.segment button[data-view="board"]', "aria-pressed") == "true"
+    # 実行・検証（マップに切り替える）
+    page.click('.segment button[data-view="map"]')
     page.wait_for_selector("#decision-map button.n-item")
     assert _map_item_ids(page) == ["D-3", "D-5"]
     # 開いた直後から、ドロワーの状態で要見直し・未決定が選ばれ、絞り込みのボタンに件数のバッジが付いている
@@ -184,6 +196,7 @@ def test_normal(
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     hash_text = page.evaluate("location.hash")
     assert "tab=decisions" in hash_text
+    assert "view=map" in hash_text
     assert "id=D-3" in hash_text
     # 切り替えのボタンの位置と幅が、マップ・ボード・表で変わらない
     boxes = {"map": _segment_boxes(page)}
@@ -217,6 +230,107 @@ def test_normal(
         }"""
     )
     assert ready == "前提待ち"
+
+
+# ホイールを奥へ・手前へ回す 1 件の deltaY
+WHEEL_IN_DELTA = -100
+WHEEL_OUT_DELTA = 100
+
+# 倍率の上限と下限（`transform: scale(...)` の数値）
+WHEEL_ZOOM_MAX = 1.5
+WHEEL_ZOOM_MIN = 0.4
+
+# 上限・下限に届くのに足りる、ホイールを回す回数
+WHEEL_MAX_TURNS = 40
+
+# 回す前にマウスの下にあった節の中心が、回した後に動いてよい距離（px。スクロールの位置の丸めの分）
+WHEEL_POINT_TOLERANCE_PX = 2
+
+# ホイールを回してから、倍率とスクロールの位置が当たるまで待つ時間（ms）
+WHEEL_SETTLE_MS = 200
+
+# 「全体を表示」で木が枠に収まる余白（px。木の全体が枠より大きく出ない）
+FIT_FRAME_MARGIN_PX = 16
+
+# マップの倍率（`transform: scale(...)` の数値）を返す
+MAP_SCALE_SCRIPT = """() => Number.parseFloat(document.getElementById("decision-map").style.transform.slice(6))"""
+
+# マップの枠のスクロールの位置を返す
+MAP_SCROLL_SCRIPT = """() => {
+    const wrap = document.getElementById("decision-map").closest(".map-wrap");
+    return [wrap.scrollLeft, wrap.scrollTop];
+}"""
+
+# 木の全体が枠に収まっているか（拡大後の木の大きさが枠の内側の大きさ以下）
+MAP_FITS_SCRIPT = """(margin) => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    const box = canvas.getBoundingClientRect();
+    return box.width <= wrap.clientWidth - margin + 1 && box.height <= wrap.clientHeight - margin + 1;
+}"""
+
+
+def _center(page: Page, selector: str) -> tuple[float, float]:
+    """要素の中心の画面上の座標を返す。"""
+    box = page.locator(selector).bounding_box()
+    assert box is not None
+    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+
+def _scale(page: Page) -> float:
+    """マップに当たっている倍率を返す。"""
+    return float(page.evaluate(MAP_SCALE_SCRIPT))
+
+
+def test_normal_when_wheel_zoomed(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """マップの節の上でホイールを回すと、節をマウスの下に残したまま 150% まで拡大し、40% まで縮小して止まり、全体を表示で枠に収める（正常系）。"""
+    # 準備
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions", width=WIDE_WIDTH)
+    page.click('.segment button[data-view="map"]')
+    page.wait_for_selector("#decision-map button.n-item")
+    node = '#decision-map button[data-node="D-3"]'
+    fit = page.locator(".zoom .btn")
+    assert fit.get_attribute("aria-pressed") == "true"
+    fit_scale = _scale(page)
+    before = _center(page, node)
+    scroll_y = page.evaluate("window.scrollY")
+    page.mouse.move(*before)
+    # 実行・検証（奥へ 1 回回す）
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert _scale(page) > fit_scale
+    assert _center(page, node) == pytest.approx(before, abs=WHEEL_POINT_TOLERANCE_PX)
+    assert fit.get_attribute("aria-pressed") == "false"
+    # マップの枠のスクロールの位置が、マウスの下の点を残す分だけ変わり、ページ全体は動かない
+    assert page.evaluate(MAP_SCROLL_SCRIPT) != [0, 0]
+    assert page.evaluate("window.scrollY") == scroll_y
+    # 実行・検証（奥へ回し続けると 150% で止まる。回している間、節はマウスの下に残る）
+    for _ in range(WHEEL_MAX_TURNS):
+        page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert _scale(page) == pytest.approx(WHEEL_ZOOM_MAX)
+    assert _center(page, node) == pytest.approx(before, abs=WHEEL_POINT_TOLERANCE_PX)
+    assert page.evaluate("window.scrollY") == scroll_y
+    # 実行・検証（手前へ回し続けると 40% で止まる）
+    for _ in range(WHEEL_MAX_TURNS * 2):
+        page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert _scale(page) == pytest.approx(WHEEL_ZOOM_MIN)
+    assert fit.get_attribute("aria-pressed") == "false"
+    assert page.evaluate("window.scrollY") == scroll_y
+    # 実行・検証（「全体を表示」を押すと、押された状態になり、木の全体が枠に収まる）
+    fit.click()
+    page.wait_for_function(
+        "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
+    )
+    assert _scale(page) == pytest.approx(fit_scale)
+    assert page.evaluate(MAP_FITS_SCRIPT, FIT_FRAME_MARGIN_PX) is True
 
 
 def test_normal_when_keyword(

@@ -342,6 +342,30 @@ def test_map_wheel_zoom_when_repeated(
     assert page.evaluate("window.scrollY") == 0
 
 
+def test_map_wheel_zoom_when_zoomed_out_after_scrolled(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """拡大で枠を送った後に手前へ 1 回回しても、回す前にマウスの下にあった節がマウスの下に残る（正常系）。"""
+    # 準備（奥へ 1 回回して、枠のスクロールの位置が 0 より大きい状態にする）
+    page, node = _open_wheel_map(write_sample_preview, open_preview)
+    before = _box_center(page, node)
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    zoomed_in = page.evaluate(MAP_VIEW_SCRIPT)
+    assert zoomed_in["left"] > 0
+    assert zoomed_in["top"] > 0
+    zoomed_scale = page.evaluate(MAP_SCALE_SCRIPT)
+    # 実行
+    page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    # 検証
+    after = _box_center(page, node)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(zoomed_scale / WHEEL_FACTOR)
+    assert abs(after["x"] - before["x"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert abs(after["y"] - before["y"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert page.evaluate("window.scrollY") == 0
+
+
 def test_map_wheel_zoom_when_fit_pressed(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
