@@ -99,7 +99,8 @@ def test_normal(
         bodies={"D-3.md": LONG_BODY_WITH_DIAGRAM},
     )
     page = open_preview(url, "#tab=decisions&view=table", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
-    box_script = "(() => { const r = document.querySelector('main#main').getBoundingClientRect(); return [r.left, r.right]; })()"
+    # 本文の中身の枠（表の枠）の左右の位置を測る（外枠 `main#main` は窓の左端から始まるので、寄りを測れない）
+    box_script = "(() => { const r = document.querySelector('.table-wrap').getBoundingClientRect(); return [r.left, r.right]; })()"
     left_before = page.evaluate(box_script)[0]
     # 実行
     page.click('table.grid button.row-open[data-id="D-3"]')
@@ -154,15 +155,12 @@ def test_normal(
         }"""
     )
     assert widths["body"] >= widths["dialog"] - 2
-    # モーダルの中でホイールを回して本文を下へ送ると、モーダルの中だけが送られ、後ろの画面は送られない
-    behind_before = page.evaluate("document.querySelector('.content').scrollTop")
+    # モーダルの中でホイールを回して本文を下へ送ると、モーダルの中が送られる（後ろの画面へ伝えない CSS は結合テストで確かめる）
     body_box = page.locator("dialog.full .panel-body").bounding_box()
     assert body_box is not None
     page.mouse.move(body_box["x"] + body_box["width"] / 2, body_box["y"] + body_box["height"] / 2)
     page.mouse.wheel(0, WHEEL_DELTA_PX)
     page.wait_for_function("document.querySelector('dialog.full .panel-body').scrollTop > 0")
-    assert page.evaluate("document.querySelector('.content').scrollTop") == behind_before
-    assert page.evaluate("scrollY") == 0
     page.click('dialog.full button[data-act="diagram-zoom"]')
     page.wait_for_selector("dialog.full .full-viewer .v-stage svg")
     assert page.locator("dialog[open]").count() == 1
@@ -312,12 +310,12 @@ def test_normal_when_body_links(
     page.keyboard.press("Escape")
     # 実行（本文の「決め方」のリンクを押す）
     assert _heading_in_view(page, "決め方") is False
-    page_scroll_before = page.evaluate("scrollY")
+    content_scroll_before = page.evaluate("document.querySelector('.content').scrollTop")
     page.click("aside.panel .md p a:has-text('決め方')")
     page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
     # 検証（詳細パネルの中が送られ、後ろの画面は送られない）
     assert _heading_in_view(page, "決め方") is True
-    assert page.evaluate("scrollY") == page_scroll_before
+    assert page.evaluate("document.querySelector('.content').scrollTop") == content_scroll_before
     hash_text = page.evaluate("location.hash")
     assert "tab=docs" in hash_text
     assert "id=A-1" in hash_text

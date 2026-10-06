@@ -51,9 +51,9 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
-/* 幅 1100px 以上（マップは 901px 以上）は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる） */
-@media (min-width: 1100px) { body.panel-open .content { max-width: none; margin-right: var(--panel-w); } }
-@media (min-width: 901px) { body.panel-open .content.map-view { max-width: none; margin-right: var(--panel-w); } }
+/* 幅 1100px 以上（マップは 901px 以上）は、詳細パネルの分だけ本文を寄せる（それより狭いと重ねる）。左右の余白は中央に寄せる分をやめて `--page-pad` に戻す */
+@media (min-width: 1100px) { body.panel-open .content { max-width: none; margin-right: var(--panel-w); padding-inline: var(--page-pad); } }
+@media (min-width: 901px) { body.panel-open .content.map-view { max-width: none; margin-right: var(--panel-w); padding-inline: var(--page-pad); } }
 
 /* ===== 部品 ===== */
 .btn { display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -434,7 +434,7 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 
 /* 資料の詳細パネルは本文を読むため広くする */
 .panel.wide { width: min(760px, 100%); }
-@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .content { max-width: none; margin-right: min(760px, 100%); } }
+@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .content { max-width: none; margin-right: min(760px, 100%); padding-inline: var(--page-pad); } }
 .mermaid { margin: 8px 0; text-align: center; }
 
 /* ===== 資料のカード ===== */

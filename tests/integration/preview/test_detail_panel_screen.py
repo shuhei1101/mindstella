@@ -254,6 +254,56 @@ def test_side_by_side_when_wide(
     assert after < before
 
 
+@pytest.mark.parametrize(
+    ("hash_text", "frame", "item", "width"),
+    [
+        pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1280, id="table_1280"),
+        pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1440, id="table_1440"),
+        pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1920, id="table_1920"),
+        pytest.param("#tab=decisions&view=map", ".map-wrap", "D-2", 1440, id="map_1440"),
+        pytest.param("#tab=docs&view=table", ".table-wrap", "A-1", 1920, id="docs_wide_1920"),
+    ],
+)
+def test_side_by_side_moves_content_left(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    hash_text: str,
+    frame: str,
+    item: str,
+    width: int,
+) -> None:
+    """窓が本文の幅の上限（1320px）より広くても、パネルを開くと本文の中身の枠が左の余白（32px）まで寄り、パネルに重ならない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, hash_text)
+    page.set_viewport_size({"width": width, "height": 800})
+    page.wait_for_selector(frame)
+    box_js = f"""() => {{
+        const box = document.querySelector('{frame}').getBoundingClientRect();
+        return {{left: box.left, right: box.right}};
+    }}"""
+    before = page.evaluate(box_js)
+    # 実行
+    if frame == ".map-wrap":
+        page.click(f'#decision-map button[data-node="{item}"]')
+    else:
+        page.click(f'table.grid button.row-open[data-id="{item}"]')
+    page.wait_for_selector("aside.panel.open")
+    # パネルがすべり込んで、窓の右端に着くまで待つ（動きの間は位置が動く）
+    page.wait_for_function(
+        "Math.abs(document.querySelector('aside.panel').getBoundingClientRect().right - innerWidth) < 1"
+    )
+    after = page.evaluate(box_js)
+    panel_left = page.evaluate("document.querySelector('aside.panel').getBoundingClientRect().left")
+    # 検証
+    assert after["left"] == 32
+    assert after["left"] <= before["left"]
+    assert after["right"] <= panel_left
+    # 本文の幅の上限より広い窓では、開く前に中央にあった枠が、開いた後は左へ寄る
+    if width > 1320 + 64:
+        assert after["left"] < before["left"]
+
+
 def test_overlay_when_narrow(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
