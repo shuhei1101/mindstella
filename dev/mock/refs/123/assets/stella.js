@@ -7,6 +7,8 @@
   const TWINKLE_PERIOD = 1900;  // 星のまたたきの周期（ms）
   const PULSE_PERIOD = 3600;    // 選んだ星から広がる輪の周期（ms）
   const SPRITE = 128;           // 光の玉の絵の一辺（px）
+  const DUST_MAX = 2.6;         // 星屑の点の半径の上限（px）
+  const DUST_LIT_MAX = 3.8;     // 星屑の灯る星の半径の上限（px）
 
   /** 文字列から 0〜1 の決まった値を作る（玉ごとのまたたきの位相に使う） */
   const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return ((h >>> 0) % 10000) / 10000; };
@@ -340,7 +342,6 @@
 
     dust: {
       label: "星屑", note: "色を抜いた細かな点と髪の毛ほどの線だけ。選んだ星とつながる星にだけ色が灯る",
-      labelLift: 0.7,
       /** いちばん簡素な案: 無彩色の点と細い線。注目したものだけ種類の色を灯す */
       draw(e) {
         const { ctx, C, dark, W, H } = e, ink = dark ? "#dfe3ea" : "#24282e";
@@ -357,7 +358,9 @@
           const lit = d.strong || d.selected || (e.sel && e.near.has(d.n.id));
           ctx.globalAlpha = alphaOf(d) * (lit ? 1 : 0.85);
           ctx.fillStyle = lit ? d.color : ink;
-          circle(ctx, d.p.sx, d.p.sy, Math.max(1, d.rad * (lit ? 0.7 : 0.5)));
+          // 寄っても細かな点のままにする（灯る星だけ少し大きく）。名前・輪・鍵もこの点の大きさに合わせて置く
+          d.rad = Math.max(1, Math.min(d.rad * (lit ? 0.7 : 0.5), lit ? DUST_LIT_MAX : DUST_MAX));
+          circle(ctx, d.p.sx, d.p.sy, d.rad);
           ring(e, d, 3);
         }
       },
