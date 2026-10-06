@@ -122,9 +122,10 @@ var MindmapPreview;
         parts.push(bodies[item.body ?? ""] ?? "");
         return parts.join("\n").toLowerCase();
     }
-    /** 空白で区切った語を全て含む項目を返す（大文字・小文字を区別しない） */
+    /** 空白で区切った語を全て含む項目を、ID かタイトルが言葉と完全に一致する項目を先にして返す（大文字・小文字と前後の空白を区別しない） */
     function searchItems({ query, index }) {
-        const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+        const whole = query.trim().toLowerCase();
+        const terms = whole.split(/\s+/).filter(Boolean);
         // 言葉が空なら何も探さない
         if (terms.length === 0)
             return [];
@@ -134,11 +135,13 @@ var MindmapPreview;
             for (const item of items) {
                 const text = searchableText(item, index.data.bodies);
                 if (terms.every((term) => text.includes(term))) {
-                    hits.push({ id: item.id, kind, title: item.title });
+                    const exact = item.id.toLowerCase() === whole || item.title.trim().toLowerCase() === whole;
+                    hits.push({ id: item.id, kind, title: item.title, exact });
                 }
             }
         }
-        return hits;
+        // 完全に一致する項目を先にする（それぞれ今の種類の順・連番の順のまま）
+        return [...hits.filter((hit) => hit.exact), ...hits.filter((hit) => !hit.exact)];
     }
     MindmapPreview.searchItems = searchItems;
     /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */

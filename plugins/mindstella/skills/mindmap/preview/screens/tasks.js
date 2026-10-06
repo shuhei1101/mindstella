@@ -164,6 +164,7 @@ var MindmapPreview;
                     drawerOpen,
                     rows: index.data.tasks,
                     columns: columns.filter((column) => column.filterable === true),
+                    textColumns: MindmapPreview.textColumns(columns),
                     filters,
                     shown: shown.length,
                     onFilter: on.filter,

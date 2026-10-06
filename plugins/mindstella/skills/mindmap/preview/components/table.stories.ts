@@ -111,3 +111,24 @@ export const ColumnsPopover: Story = {
     await userEvent.click(within(canvasElement).getByRole("button", { name: "表示する列" }));
   },
 };
+
+/** 用語集で、用語に「移し」を含む行に絞っている。表の上に `用語に「移し」を含む` のチップと「すべて解除」を並べる */
+export const TextFiltered: Story = {
+  args: {
+    kind: "terms",
+    columns: [
+      { key: "id", label: "ID", get: (row) => row.id, nowrap: true },
+      { key: "title", label: "用語", fixed: true, get: (row) => (row as SampleRow).title },
+      { key: "meaning", label: "意味", get: (row) => String(row["meaning"] ?? "") },
+      { key: "aliases", label: "別名", get: (row) => (row["aliases"] as string[] | undefined) ?? [] },
+      { key: "avoid", label: "使わない表記", get: (row) => (row["avoid"] as string[] | undefined) ?? [] },
+      { key: "tags", label: "タグ", filterable: true, get: (row) => (row["tags"] as string[] | undefined) ?? [] },
+    ],
+    rows: [
+      { id: "G-1", title: "移し替え", meaning: "ワークスペースを今の版へ直すこと", aliases: ["マイグレーション"], avoid: [], tags: ["mindstella"] },
+      { id: "G-2", title: "ワークスペース", meaning: "話し合いの記録を置くフォルダ", aliases: [], avoid: [], tags: ["mindstella"] },
+      { id: "G-3", title: "検討事項", meaning: "決めたいこと", aliases: [], avoid: [], tags: [] },
+    ],
+    filters: { "~title": ["移し"] },
+  },
+};

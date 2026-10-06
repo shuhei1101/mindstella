@@ -553,6 +553,7 @@ var MindmapPreview;
             drawerOpen,
             rows: index.data.decisions,
             columns: columns.filter((column) => column.filterable === true),
+            textColumns: MindmapPreview.textColumns(columns),
             filters,
             shown: shown.length,
             hit,

@@ -49,6 +49,8 @@ var MindmapPreview;
         cols: '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/>',
         table: '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 10h18M9 10v10"/>',
         board: '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/>',
+        shrink: '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
+        hash: '<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>',
         expand: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
         check: '<path d="m5 12 5 5 9-10"/>',
         checked: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',
@@ -89,10 +91,10 @@ var MindmapPreview;
         sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
         offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/>',
     };
-    /** 24px の枠に描いた線のアイコン（読み上げ名は付けず、装飾として隠す） */
+    /** 24px の枠に描いた線のアイコン（読み上げ名は付けず、装飾として隠す）。大きさは `svg.icon` の CSS が決め、無いときも広がらないよう既定の 16px を属性に持つ */
     function icon(name) {
         const holder = document.createElement("template");
-        holder.innerHTML = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+        holder.innerHTML = `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
         return holder.content.firstElementChild;
     }
     MindmapPreview.icon = icon;
