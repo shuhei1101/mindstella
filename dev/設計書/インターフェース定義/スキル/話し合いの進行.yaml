@@ -45,7 +45,7 @@ flows:
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
   - dev/設計書/シナリオ/複合ユースケース/話し合いをゴールまで進める#
-side_effects: サーバーの MCP の書き込むツールでワークスペースの YAML を書き換える。準備で取り込んだ送信を `take_submission` で取り込み済みにする。資料の本文（`docs/`）とリリースの資料（`release/`）はスキルが Markdown を書き、そのとき利用者に書き込みの確認が出る。リリースの資料を書く前に `clear_release` で `release/` の中身を消す。リサーチではサブエージェントが Web を調べる。配る書き出しを頼まれたときは `export` で、利用者が示したパスへ HTML を書き出す
+side_effects: サーバーの MCP の書き込むツールでワークスペースの YAML を書き換える。準備で取り込んだ送信を `take_submission` で取り込み済みにする。リリースの資料（`.mindstella/release/`）はスキルが Markdown を書き、そのとき利用者に書き込みの確認が出る。リリースの資料を書く前に `clear_release` で `.mindstella/release/` の中身を消す。リサーチではサブエージェントが Web を調べる。配る書き出しを頼まれたときは `export` で、利用者が示したパスへ HTML を書き出す
 request:
   - name: $ARGUMENTS
     type: str
@@ -53,7 +53,7 @@ request:
     default: なし（同じ会話で `setup` が渡したフォルダを使う。無ければ `/mindstella:setup` を案内する）
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` か `mindmap.yaml` があるフォルダ。無ければ書き込まず `/mindstella:setup` を案内する'
+    constraints: '`.mindstella/config.yaml` か、直下の `config.yaml`・`mindmap.yaml` があるフォルダ。無ければ書き込まず `/mindstella:setup` を案内する'
 exceptions:
   - name: なし（正常終了）
     condition: ファイルの形が制約どおりで、Claude Code がスキルとして読み込める
@@ -79,10 +79,10 @@ constraints:
     constraint: '`playbooks/{分野}.md` は、`## 最上位の軸の呼び名`・`## カテゴリーの分け方`・`## フェーズと観点`・`## 必ず調べるもの`・`## ゴールの候補`・`## リリースの形` の節をこの並びで持つ。`## ゴールの候補` は `（既定）` を付けた行を 1 つだけ持つ。準備では `config.yaml` の `playbooks` に並んだガイドをすべて読む'
     notes: 資料作り・壁打ちの値は補足の `進め方ガイドの分野`
   - item: 配る書き出し
-    constraint: 利用者が記録を人に渡したいと言ったときだけ、プレビューのステップで書き出す先のパスを利用者に聞き、`export` を `workspace`・`out` で呼ぶ。書き出す先にワークスペースの `release/` の中を指さない。書き出したら `path` の絶対パスと、ネットにつながらなくても開けて書き込む操作が無いことを示す
+    constraint: 利用者が記録を人に渡したいと言ったときだけ、プレビューのステップで書き出す先のパスを利用者に聞き、`export` を `workspace`・`out` で呼ぶ。書き出す先にワークスペースの `.mindstella/` の中と直下の `mindstella.html` を指さない。書き出したら `path` の絶対パスと、ネットにつながらなくても開けて書き込む操作が無いことを示す
     notes: '`release/` は `clear_release` が中身を消す。インターフェース定義『配る書き出し』（サーバー）'
   - item: 版の比較
-    constraint: '準備のステップで `config.yaml` か `mindmap.yaml` を読んだ後に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる'
+    constraint: '準備のステップで `.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を読んだ後に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる'
     notes: インターフェース定義『記録の形式の移行』（サーバー）
   - item: ツールの呼び出し
     constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。項目の中身は `add`・`update` の `item` に JSON のオブジェクトで渡し、`docs/` の本文はその `body_markdown` で書く。スクリプトを Bash で起動しない。書き換えはサーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない
@@ -126,6 +126,10 @@ constraints:
   - item: 話題のタグ
     constraint: 取り込みで記録を `batch` で書く前に `tags` を引き、既にある話題のタグを使い回し、新しい話題のときだけタグを作って `tags` に付ける。1 項目に複数の話題が当たるときは全て付ける。対象は作るものの区分として使い、話題には使わない
     notes: 単一ユースケース『発言の取り込み』、インターフェース定義『タグの一覧』（サーバー）
+  - item: 記録の置き場所
+    constraint: 手順が Read で読む設定と YAML、リリースの資料を書き出す先は、全て `{ワークスペースのフォルダ}/.mindstella/` の下を指す（`.mindstella/config.yaml`・`.mindstella/decisions.yaml`・`.mindstella/release/`）。進め方ガイドの「リリースの形」も `.mindstella/release/` を指す
+  - item: 全ての種類の本文
+    constraint: 取り込みのステップは、タスク・用語集・メモにも経緯や補足があれば `body_markdown` で本文を書く（脱線で調べたことはメモの本文に残す）。どの種類に何を本文に書くかは取り込みの手順の表が決める
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

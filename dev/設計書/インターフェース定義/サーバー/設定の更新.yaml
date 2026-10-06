@@ -61,7 +61,7 @@ flows:
       - ツールのエラーにならない
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散`、T-1 の `phase` が `要件`
       - '`goal.phase` が `要件`'
-      - D-1 と T-1 の `updated` が書き換えた日時で、D-2 の `updated` が呼ぶ前と同じ
+      - D-1 と T-1 の `updated` が書き換えた日時で `updated_by` が `ai`、D-2 の `updated` と `updated_by` が呼ぶ前と同じ
       - '`remapped` が D-1（問い → 目的）・T-1（整理 → 要件）の 2 件、`changed` が `playbooks`・`phases`・`goal`'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_phases_remapped
@@ -119,12 +119,12 @@ flows:
       - '`summary`・`playbooks`・`phases`・`goal`・`history_limit` が呼ぶ前と同じ'
     test: test_normal_when_display
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -133,7 +133,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: update_settings workspace
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -333,7 +333,7 @@ flows:
     test: test_error_when_unmapped_category
 lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
-side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換える。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える。書き終えた後に『画面の書き出し』で直下の `mindstella.html` を書き直す'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -341,7 +341,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: settings
     type: dict
     required: true
@@ -402,12 +402,15 @@ response:
   - name: files
     type: list[str]
     description: 書き換えた YAML（ワークスペースからの相対パス）
+  - name: screen_error
+    type: str
+    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由
 exceptions:
   - name: なし（正常終了）
     condition: 書き換えられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: UnmappedPhaseError
     condition: 書き換えた後に、新しい `phases` に無いフェーズを持つ項目か `goal.phase` が残る。`phase_map` の値が新しい `phases` に無いときも含む

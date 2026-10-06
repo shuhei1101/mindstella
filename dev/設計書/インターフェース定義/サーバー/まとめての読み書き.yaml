@@ -159,7 +159,7 @@ flows:
     test: test_error_when_argument_invalid
 lead: 項目の追加・更新・取得の操作を並べて受け、並べた順に 1 回の呼び出しで当てる。全てを当ててから 1 回だけ検証して書き、1 つでも失敗したらどのファイルも書き換えない。
 idempotent: false
-side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。取得だけの呼び出しは何も書かない
+side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身（`updated_by` は `ai`）で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換え、書き終えた後に『画面の書き出し』で直下の `mindstella.html` を 1 回だけ書き直す。取得だけの呼び出しは何も書かない
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）。並べた操作の間にほかの書き込みを挟まない
 request:
   - name: workspace
@@ -223,6 +223,9 @@ response:
   - name: results[].result
     type: dict
     description: '`add` は『項目の追加』、`update` は『項目の更新』、`show` は『項目の表示』の結果と同じ形。`show` は、それより前の操作を当てた後の中身を返す'
+  - name: screen_error
+    type: str
+    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由
 exceptions:
   - name: なし（正常終了）
     condition: 全ての操作を当てられた
