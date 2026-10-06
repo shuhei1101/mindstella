@@ -652,8 +652,10 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .conn .conn-short { display: none; }
 /* 1440px 以下: トップバーに収まるよう短い文言に切り替え、時刻は title に持つ */
 @media (max-width: 1440px) { .conn .conn-long { display: none; } .conn .conn-short { display: inline; } }
-/* 最も狭い幅（360px 以下）: 印だけを見せてサイト名と重ねない。文言は読み上げにだけ残す */
-@media (max-width: 360px) { .conn .conn-short { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } .conn svg.icon { width: 18px; height: 18px; } }
+/* 900px 以下: 印だけを見せてトップバーを幅に収める。文言は読み上げにだけ残す */
+@media (max-width: 900px) { .conn .conn-short { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+/* 最も狭い幅（360px 以下）: 印を大きくしてサイト名と重ねない */
+@media (max-width: 360px) { .conn svg.icon { width: 18px; height: 18px; } }
 
 /* ===== コメント ===== */
 
@@ -1255,7 +1257,12 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   .topbar { gap: 3px; padding: 0 10px; }
   /* 表示の設定・絞り込み・コメントのボタン: 印と件数の間隔と左右の余白を詰める */
   .comments-btn, .filter-btn, .settings-btn { gap: 4px; padding: 0 6px; }
+  /* つながらない間に差分を出すと札の幅が足りなくなるため、押せない飾りのツール名の印を隠す */
+  .topbar:has(.conn):has(.df-chip) .brand { display: none; }
 }
+
+/* 幅 481〜900px: 接続の状態・差分の札・変更履歴のボタンが並んでも横に溢れないよう、トップバーの間隔を詰める（480px 以下は上の 3px） */
+@media (min-width: 481px) and (max-width: 900px) { .topbar { gap: 8px; } }
 
 /* ===== 絞り込みのドロワー: コメントの一覧と同じく、幕を付けずにタブの帯の下から左に重ねる非モーダルのパネル ===== */
 /* 件数のバッジ（絞り込みのボタン）: 絞り込み中という状態を示すため印の色で塗る。数は等幅で桁を揃える */

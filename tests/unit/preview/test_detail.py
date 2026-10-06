@@ -222,9 +222,8 @@ def test_detail_panel_when_diff_editor_only(
     assert result["editorShown"] is False
 
 
-# 今の本文（5 行目に図のノードの文字を持つフローチャート）と、前の版の図の記法
+# 今の本文（5 行目に図のノードの文字を持つフローチャート）
 DIAGRAM_NOW_BODY = "# 図\n\n```mermaid\nflowchart TD\n  A[今の文字] --> B\n```\n"
-DIAGRAM_BEFORE_SOURCE = "flowchart TD\n  A[前の文字] --> B\n"
 
 # 選んだ時点の後に、図のノードの文字を 1 つ変えた回
 DIAGRAM_ENTRY = {
@@ -271,7 +270,7 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
-    """開いたまま時点を選ぶと、今の版の図は描き直さず、前の版の図だけを描く（正常系）。"""
+    """開いたまま時点を選ぶと、flowchart の図は今の版を描き直さず、前の版も描かずに差分の印を付ける（正常系）。"""
     # 準備
     data = make_data(
         decisions=[make_item("D-1", body="D-1.md", history=[DIAGRAM_ENTRY], seq=1)],
@@ -292,4 +291,52 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     preview_page.wait_for_function("() => document.querySelector('.mermaid svg .df-n-chg') !== null")
     rendered_sources = preview_page.evaluate("() => window.renderedSources")
     # 検証
-    assert rendered_sources == [DIAGRAM_BEFORE_SOURCE]
+    assert rendered_sources == []
+
+
+# 今の本文（5 行目にメッセージの文字を持つ sequenceDiagram）と、前の版の図の記法
+SEQUENCE_NOW_BODY = "# 図\n\n```mermaid\nsequenceDiagram\n  A->>B: 今の依頼\n```\n"
+SEQUENCE_BEFORE_SOURCE = "sequenceDiagram\n  A->>B: 前の依頼\n"
+
+# 選んだ時点の後に、メッセージの文字を 1 つ変えた回
+SEQUENCE_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {"line": 5, "now": ["  A->>B: 今の依頼"], "before": ["  A->>B: 前の依頼"]},
+    ],
+}
+
+
+def test_detail_panel_when_diff_renders_before_sequence(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """flowchart でない図は、前の版の図だけを描いて突き合わせる（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[SEQUENCE_ENTRY], seq=1)],
+        bodies={"D-1.md": SEQUENCE_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    load_library("mermaid")
+    preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
+    # 差分なしで開いて、今の版の図を描き終える
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
+    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.evaluate("() => { window.renderedSources.length = 0; }")
+    # 実行
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg .df-t-chg') !== null"
+    )
+    rendered_sources = preview_page.evaluate("() => window.renderedSources")
+    # 検証
+    assert rendered_sources == [SEQUENCE_BEFORE_SOURCE]

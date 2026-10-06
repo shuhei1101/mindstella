@@ -376,7 +376,7 @@ components:
         type: DiffPoint | null
         required: false
         default: 'null'
-        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、`mermaid.render` で新しく描くのは前の版の図（`renderDiagramSvg`）だけにする。'
+        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagramFromSource` / `diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、flowchart の図は `diffDiagramFromSource` で前後の記法を解析して突き合わせ、前の版の図を描かない。`diffDiagramFromSource` が `null` を返した図（flowchart でない・解析できない）だけ、前の版の図を `renderDiagramSvg` で描いて `diffDiagram` で突き合わせる。'
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -398,10 +398,16 @@ components:
         expected: 差分の印が `answer` にだけ付き、`updated_by` の前後はどこにも出ない
       - name: test_detail_panel_when_diff_reuses_current_diagram
         case: 正常
-        summary: 開いたまま時点を選ぶと、今の版の図は描き直さず、前の版の図だけを描く
+        summary: 開いたまま時点を選ぶと、flowchart の図は今の版を描き直さず、前の版も描かずに差分の印を付ける
         condition: 本文に flowchart の図を 1 つ持ち、選んだ時点の後に図のノードの文字を 1 つ変えた D-1 を `diff` なしで開いて描き終えた後、同じ D-1 を `diff` つきで開き直す。`mermaid.render` を数える包みを `page.evaluate` で被せる
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: 開き直してからの `mermaid.render` の呼び出しは 1 回で、渡した記法は前の版の図。今の版の図の SVG に変わったノードの印（`df-n-chg`）が付く
+        expected: 開き直してからの `mermaid.render` の呼び出しは 0 回。今の版の図の SVG に変わったノードの印（`df-n-chg`）が付く
+      - name: test_detail_panel_when_diff_renders_before_sequence
+        case: 正常
+        summary: flowchart でない図は、前の版の図だけを描いて突き合わせる
+        condition: 本文に sequenceDiagram の図を 1 つ持ち、選んだ時点の後にメッセージの文字を 1 つ変えた D-1 を `diff` なしで開いて描き終えた後、同じ D-1 を `diff` つきで開き直す。`mermaid.render` を数える包みを `page.evaluate` で被せる
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 開き直してからの `mermaid.render` の呼び出しは 1 回で、渡した記法は前の版の図。変えたメッセージに変えた印（`df-t-chg`）が付く
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
