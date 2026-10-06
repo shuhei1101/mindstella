@@ -13,6 +13,7 @@ from urllib.parse import urljoin
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from workspace_fixtures import RECORD_DIR
 
 __all__ = [
     "HttpResult",
@@ -149,7 +150,7 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
 
 
 # プレビューを開くたびに今の日時へ書き換わる、前回開いた日時のファイル
-OPENED_FILE_NAME = ".mindstella-opened"
+OPENED_FILE_NAME = f"{RECORD_DIR}/.mindstella-opened"
 
 # 前回開いた日時（秒の単位）より後に書き換えが入るよう、開いて閉じた後に待つミリ秒
 OPENED_TICK_MS = 1_100
