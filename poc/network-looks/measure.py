@@ -26,6 +26,10 @@ CDP_URL = os.environ.get("CDP_URL")
 PAGE_URL = os.environ.get("PAGE_URL", PAGE.as_uri())
 # 計測用のブラウザのプロセスを見分ける --user-data-dir の一部（Windows のブラウザでメモリを測るとき）
 MEM_PROFILE = os.environ.get("MEM_PROFILE")
+# 描き方（baked は作り直した描き方。空は見本の描き方のまま）
+DRAW = os.environ.get("DRAW", "")
+# 線をまとめるか（0 はまとめず 1 本ずつ引く。作り直した描き方で使う）
+BATCH = os.environ.get("BATCH", "")
 MB = 1024 * 1024
 # 画面のリフレッシュレートに合わせた落ちたコマ: 間隔の中央値のこの倍を超えたコマ
 REL_DROP_FACTOR = 1.5
@@ -226,7 +230,7 @@ def main() -> None:
                         base_mem = browser_memory_mb()
                         ctx = browser.new_context(viewport={"width": width, "height": height}, device_scale_factor=scale)
                         page = ctx.new_page()
-                        page.goto(f"{PAGE_URL}?n={COUNT}&theme={theme}&look={look}")
+                        page.goto(f"{PAGE_URL}?n={COUNT}&theme={theme}&look={look}&draw={DRAW}&batch={BATCH}")
                         time.sleep(SETTLE_SECONDS)
                         for op in OPS:
                             row = {"look": look, "theme": theme, "n": COUNT, "viewport": f"{width}x{height}", "scale": scale, "op": op, **measure_op(page, op)}

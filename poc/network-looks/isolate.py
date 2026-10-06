@@ -6,14 +6,21 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-from measure import CDP_URL, COUNT, OP_GAP_SECONDS, PAGE_URL, SETTLE_SECONDS, browser_memory_mb, js_heap_mb, measure_op
+from measure import CDP_URL, COUNT, DRAW, OP_GAP_SECONDS, PAGE_URL, SETTLE_SECONDS, browser_memory_mb, js_heap_mb, measure_op
 
+# 焼いた星の絵の一辺（作り直した描き方の切り分け用。空は既定）
+BAKE = os.environ.get("BAKE", "")
+# 線をまとめるか（0 はまとめない。作り直した描き方の切り分け用）
+BATCH = os.environ.get("BATCH", "")
+# 1 本のパスにまとめる線の数の上限（作り直した描き方の切り分け用。空は上限なし）
+CHUNK = os.environ.get("CHUNK", "")
 # 切り分けで測る操作: 操作の入力が軽く、描画の重さがそのまま出る回転と、ロックしたままの回転
 OPS = ["rotate", "lock_rotate"]
 
@@ -31,7 +38,7 @@ def main() -> None:
                 base_mem = browser_memory_mb()
                 ctx = browser.new_context(viewport={"width": width, "height": height}, device_scale_factor=int(scale))
                 page = ctx.new_page()
-                page.goto(f"{PAGE_URL}?n={COUNT}&theme={theme}&look={look}&off={off}")
+                page.goto(f"{PAGE_URL}?n={COUNT}&theme={theme}&look={look}&off={off}&draw={DRAW}&bake={BAKE}&batch={BATCH}&chunk={CHUNK}")
                 time.sleep(SETTLE_SECONDS)
                 for op in OPS:
                     row = {"look": look, "theme": theme, "viewport": viewport, "scale": int(scale), "off": off, "op": op, **measure_op(page, op)}

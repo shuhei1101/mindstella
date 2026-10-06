@@ -84,6 +84,60 @@
     g.addColorStop(0, rgba(ca, alpha)); g.addColorStop(1, rgba(cb, alpha));
     ctx.strokeStyle = g; line(ctx, a, b);
   };
+  // ===== 作り直した描き方（?draw=baked）: 星は一度だけ絵に焼いて置き、線は色と濃さの段ごとに 1 本のパスで引く =====
+  const BAKED = new URLSearchParams(location.search).get("draw") === "baked";
+  const BAKE = Number(new URLSearchParams(location.search).get("bake") || 256);  // 焼いた星の絵の一辺（px）。切り分け用に ?bake= で変えられる
+  const ALPHA_STEP = 0.02;   // 線をまとめる濃さの刻み
+  const NO_BATCH = new URLSearchParams(location.search).get("batch") === "0";
+  const CHUNK = Number(new URLSearchParams(location.search).get("chunk") || 1e9);  // 1 本のパスにまとめる線の数の上限（切り分け用）
+  const bakedImgs = new Map();
+  /** 星の絵を、見た目・色・段ごとに一度だけ描いて返す。paint は (ctx, u) で、u は玉の半径 1 に当たる画素数 */
+  const bake = (key, half, paint) => {
+    let c = bakedImgs.get(key);
+    if (c) return c;
+    c = document.createElement("canvas"); c.width = c.height = BAKE;
+    const x = c.getContext("2d"); x.translate(BAKE / 2, BAKE / 2);
+    paint(x, BAKE / 2 / half);
+    bakedImgs.set(key, c);
+    return c;
+  };
+  /** 焼いた星の絵を、玉の中心と半径に合わせて置く。half は絵の半分の幅が玉の半径の何倍か */
+  const putBaked = (ctx, img, d, half) => ctx.drawImage(img, d.p.sx - d.rad * half, d.p.sy - d.rad * half, d.rad * half * 2, d.rad * half * 2);
+  const mixes = new Map();
+  /** 2 色の中間の色を返す（両端の色でつなぐ線の代わりの単色） */
+  const mix = (a, b) => {
+    const k = a + b;
+    let m = mixes.get(k);
+    if (!m) { const x = rgb(a), y = rgb(b); m = "#" + x.map((v, i) => Math.round((v + y[i]) / 2).toString(16).padStart(2, "0")).join(""); mixes.set(k, m); }
+    return m;
+  };
+  /** 線を色と濃さの段ごとにまとめ、1 段 1 本のパスで引く。seg はパスに 1 本ぶんの線を足す */
+  const batchLines = (ctx, items, colorOf, alphaOf2, seg) => {
+    // 切り分け用: ?batch=0 のときはまとめずに 1 本ずつ引く
+    if (NO_BATCH) { for (const k of items) { const a = alphaOf2(k); if (a < ALPHA_STEP / 2) continue; ctx.strokeStyle = colorOf(k); ctx.globalAlpha = Math.min(1, a); ctx.beginPath(); seg(ctx, k); ctx.stroke(); } return; }
+    const groups = new Map();
+    for (const k of items) {
+      const q = Math.round(alphaOf2(k) / ALPHA_STEP);
+      if (q <= 0) continue;
+      const key = colorOf(k) + "|" + q;
+      let g = groups.get(key);
+      if (!g) groups.set(key, g = []);
+      g.push(k);
+    }
+    for (const [key, g] of groups) {
+      const i = key.lastIndexOf("|");
+      ctx.strokeStyle = key.slice(0, i); ctx.globalAlpha = Math.min(1, Number(key.slice(i + 1)) * ALPHA_STEP);
+      // CHUNK 本ごとに区切って引く（長いパスは倍率 2 で GPU の塗りが重くなる）
+      for (let j = 0; j < g.length; j += CHUNK) {
+        ctx.beginPath();
+        for (let m = j; m < Math.min(g.length, j + CHUNK); m++) seg(ctx, g[m]);
+        ctx.stroke();
+      }
+    }
+  };
+  /** パスに 2 点を結ぶ線を足す */
+  const segLine = (ctx, k) => { ctx.moveTo(k.a.sx, k.a.sy); ctx.lineTo(k.b.sx, k.b.sy); };
+
   /** 群れのおおよその半径（近い順に 9 割目の玉まで）。星図の球の大きさに使う */
   const spread = (G) => G.R ??= (() => { const r = G.nodes.map((n) => Math.hypot(n.x, n.y, n.z)).sort((a, b) => a - b); return Math.max(40, r[Math.floor(r.length * 0.9)] || 40); })();
 
@@ -133,7 +187,8 @@
       draw(e) {
         const { ctx, C, dark } = e;
         ctx.lineWidth = 0.6; ctx.strokeStyle = C.line;
-        for (const k of e.links) { ctx.globalAlpha = (dark ? 0.3 : 0.22) * k.dep * k.fade; line(ctx, k.a, k.b); }
+        if (BAKED) batchLines(ctx, e.links, () => C.line, (k) => (dark ? 0.3 : 0.22) * k.dep * k.fade, segLine);
+        else for (const k of e.links) { ctx.globalAlpha = (dark ? 0.3 : 0.22) * k.dep * k.fade; line(ctx, k.a, k.b); }
         for (const s of e.selLinks) {
           ctx.globalAlpha = 1; ctx.strokeStyle = C.line; ctx.lineWidth = 1; line(ctx, s.from, s.to);
           if (dark) ctx.globalCompositeOperation = "lighter";
@@ -145,8 +200,17 @@
           if (dark) ctx.globalCompositeOperation = "lighter";
           ctx.globalAlpha = a * (dark ? 0.4 : 0.22); blit(ctx, glow(d.color, 2), d.p.sx, d.p.sy, d.rad * 3.4);
           ctx.globalCompositeOperation = "source-over";
-          ctx.globalAlpha = a; ctx.fillStyle = d.color; circle(ctx, d.p.sx, d.p.sy, d.rad);
-          if (dark) { ctx.globalAlpha = a * 0.55; ctx.fillStyle = "#ffffff"; circle(ctx, d.p.sx, d.p.sy, d.rad * 0.35); }
+          if (BAKED) {
+            // 芯と白い点を 1 枚の絵に焼いて置く
+            const img = bake(`glow|${dark}|${d.color}`, 1.05, (x, u) => {
+              x.fillStyle = d.color; circle(x, 0, 0, u);
+              if (dark) { x.globalAlpha = 0.55; x.fillStyle = "#ffffff"; circle(x, 0, 0, u * 0.35); }
+            });
+            ctx.globalAlpha = a; putBaked(ctx, img, d, 1.05);
+          } else {
+            ctx.globalAlpha = a; ctx.fillStyle = d.color; circle(ctx, d.p.sx, d.p.sy, d.rad);
+            if (dark) { ctx.globalAlpha = a * 0.55; ctx.fillStyle = "#ffffff"; circle(ctx, d.p.sx, d.p.sy, d.rad * 0.35); }
+          }
           ring(e, d);
         }
       },
@@ -159,7 +223,8 @@
         const { ctx, C, dark } = e;
         ctx.lineWidth = 0.7;
         if (dark) ctx.globalCompositeOperation = "lighter";
-        for (const k of e.links) { if (dark) gradLine(ctx, k.a, k.b, k.ca, k.cb, 0.2 * k.dep * k.fade); else { ctx.strokeStyle = C.line; ctx.globalAlpha = 0.22 * k.dep * k.fade; line(ctx, k.a, k.b); } }
+        if (BAKED) batchLines(ctx, e.links, dark ? (k) => mix(k.ca, k.cb) : () => C.line, (k) => (dark ? 0.2 : 0.22) * k.dep * k.fade, segLine);
+        else for (const k of e.links) { if (dark) gradLine(ctx, k.a, k.b, k.ca, k.cb, 0.2 * k.dep * k.fade); else { ctx.strokeStyle = C.line; ctx.globalAlpha = 0.22 * k.dep * k.fade; line(ctx, k.a, k.b); } }
         ctx.globalAlpha = 1;
         for (const s of e.selLinks) {
           ctx.lineWidth = 1.1;
@@ -171,7 +236,26 @@
         }
         for (const d of e.nodes) {
           const a = alphaOf(d), tw = twinkle(e, d, 0.18), { sx, sy } = d.p, big = d.n.deg >= 4 || d.strong;
-          if (dark) {
+          if (BAKED && dark) {
+            // にじみ・芯・光条・白い芯を、色と光条の長さの段ごとに 1 枚の絵に焼く。またたきは絵全体の濃さで出す
+            const deg = big ? Math.min(6, d.n.deg) : 0;
+            const img = bake(`sl|d|${d.color}|${big}|${deg}`, 5.2, (x, u) => {
+              x.globalCompositeOperation = "lighter";
+              x.globalAlpha = 0.28; blit(x, glow(d.color, 2.2), 0, 0, u * 4.6);
+              x.globalAlpha = 0.95; blit(x, glow(whiten(d.color, 0.25), 1.3), 0, 0, u * 1.8);
+              x.globalAlpha = 1;
+              if (big) spikes(x, 0, 0, u * (2.4 + deg * 0.45), whiten(d.color, 0.5), 0.55, Math.max(0.8, u * 0.12));
+              x.fillStyle = "#ffffff"; circle(x, 0, 0, u * 0.42);
+            });
+            ctx.globalAlpha = a * tw; putBaked(ctx, img, d, 5.2);
+          } else if (BAKED) {
+            // 昼: にじみと星形を、色と大きさごとに 1 枚の絵に焼く
+            const img = bake(`sl|l|${d.color}|${big}`, 2.8, (x, u) => {
+              x.globalAlpha = 0.22; blit(x, glow(d.color, 2), 0, 0, u * 2.8);
+              x.globalAlpha = 1; x.fillStyle = d.color; star4(x, 0, 0, u * (big ? 1.9 : 1.5));
+            });
+            ctx.globalAlpha = a; putBaked(ctx, img, d, 2.8);
+          } else if (dark) {
             ctx.globalAlpha = a * 0.28 * tw; blit(ctx, glow(d.color, 2.2), sx, sy, d.rad * 4.6);
             ctx.globalAlpha = a * 0.95; blit(ctx, glow(whiten(d.color, 0.25), 1.3), sx, sy, d.rad * 1.8);
             if (big) spikes(ctx, sx, sy, d.rad * (2.4 + Math.min(6, d.n.deg) * 0.45) * tw, whiten(d.color, 0.5), a * 0.55, Math.max(0.8, d.rad * 0.12));
@@ -195,11 +279,14 @@
         // 天球の網: 経線 12 本と緯線 5 本を、奥ほど薄く描く
         ctx.lineWidth = 0.6;
         /** 球面上の点の列を、奥行きで濃さを変えながらつなぐ */
+        const gridGroups = new Map();
         const path = (pts, base) => {
           for (let i = 1; i < pts.length; i++) {
             const a = e.proj(pts[i - 1]), b = e.proj(pts[i]);
             if (a.z + G.dist <= 10 || b.z + G.dist <= 10) continue;
             const far = Math.max(0.15, Math.min(1, 1.3 - ((a.z + b.z) / 2 + G.dist) / (G.dist * 2)));
+            // まとめて引く: 濃さの段ごとに線分をためる
+            if (BAKED && !NO_BATCH) { const q = Math.round((base * far) / 0.01); let g = gridGroups.get(q); if (!g) gridGroups.set(q, g = []); g.push(a.sx, a.sy, b.sx, b.sy); continue; }
             ctx.strokeStyle = `rgba(${grid},${base * far})`; line(ctx, a, b);
           }
         };
@@ -214,6 +301,12 @@
           for (let i = 0; i <= STEP; i++) { const ph = (i / STEP) * TAU; pts.push({ x: Rs * Math.cos(la) * Math.cos(ph), y: Rs * Math.sin(la), z: Rs * Math.cos(la) * Math.sin(ph) }); }
           path(pts, lat === 0 ? (dark ? 0.2 : 0.16) : (dark ? 0.09 : 0.08));
         }
+        // まとめた網を、濃さの段ごとに 1 本のパスで引く
+        for (const [q, g] of gridGroups) {
+          ctx.strokeStyle = `rgba(${grid},${q * 0.01})`; ctx.beginPath();
+          for (let i = 0; i < g.length; i += 4) { ctx.moveTo(g[i], g[i + 1]); ctx.lineTo(g[i + 2], g[i + 3]); }
+          ctx.stroke();
+        }
         // 線: 星に触れないよう両端を少し手前で切る
         const ink = dark ? "#c8d4ff" : "#26365e";
         /** 星の半径ぶん両端を詰めた線を引く */
@@ -225,7 +318,15 @@
         };
         const rOf = (n, p) => n.r * 1.05 * (p.f / e.k0) * e.ease * 0.55;
         ctx.strokeStyle = ink; ctx.lineWidth = 0.6;
-        for (const k of e.links) { ctx.globalAlpha = (dark ? 0.32 : 0.3) * k.dep * k.fade; gapLine(k.a, k.b, rOf(k.l.s, k.a), rOf(k.l.t, k.b)); }
+        /** パスに、星の半径ぶん両端を詰めた線を足す */
+        const gapSeg = (c, k) => {
+          const a = k.a, b = k.b, ra = rOf(k.l.s, a), rb = rOf(k.l.t, b), dx = b.sx - a.sx, dy = b.sy - a.sy, L = Math.hypot(dx, dy);
+          if (L < ra + rb + 4) return;
+          const ux = dx / L, uy = dy / L;
+          c.moveTo(a.sx + ux * (ra + 3), a.sy + uy * (ra + 3)); c.lineTo(b.sx - ux * (rb + 3), b.sy - uy * (rb + 3));
+        };
+        if (BAKED) batchLines(ctx, e.links, () => ink, (k) => (dark ? 0.32 : 0.3) * k.dep * k.fade, gapSeg);
+        else for (const k of e.links) { ctx.globalAlpha = (dark ? 0.32 : 0.3) * k.dep * k.fade; gapLine(k.a, k.b, rOf(k.l.s, k.a), rOf(k.l.t, k.b)); }
         for (const s of e.selLinks) {
           ctx.globalAlpha = 0.9; ctx.lineWidth = 1.1; ctx.strokeStyle = C.ring;
           gapLine(s.from, s.to, rOf(G.nodes[G.idx.get(e.sel)], s.from) + 6, rOf(s.other, s.to));
@@ -235,6 +336,16 @@
         if (dark) ctx.globalCompositeOperation = "lighter";
         for (const d of e.nodes) {
           const a = alphaOf(d), r = d.rad * 0.55, { sx, sy } = d.p;
+          if (BAKED) {
+            // にじみ・点・細い輪を、色ごとに 1 枚の絵に焼く
+            const img = bake(`cs|${dark}|${d.color}`, 2.4, (x, u) => {
+              if (dark) { x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.5; blit(x, glow(d.color, 3), 0, 0, u * 2.4); }
+              x.globalAlpha = 1; x.fillStyle = dark ? whiten(d.color, 0.7) : ink; circle(x, 0, 0, u * 0.55);
+              x.globalAlpha = 0.7; x.strokeStyle = d.color; x.lineWidth = u * 0.17; x.beginPath(); x.arc(0, 0, u * 0.97, 0, TAU); x.stroke();
+            });
+            ctx.globalAlpha = a; putBaked(ctx, img, d, 2.4);
+            continue;
+          }
           if (dark) { ctx.globalAlpha = a * 0.5; blit(ctx, glow(d.color, 3), sx, sy, d.rad * 2.4); }
           ctx.globalAlpha = a; ctx.fillStyle = dark ? whiten(d.color, 0.7) : ink; circle(ctx, sx, sy, r);
           ctx.globalAlpha = a * 0.7; ctx.strokeStyle = d.color; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx, sy, r + 2.5, 0, TAU); ctx.stroke();
@@ -294,7 +405,8 @@
         // 線: 両端の星の色でつなぐ
         ctx.lineWidth = 0.7;
         ctx.globalCompositeOperation = dark ? "lighter" : "source-over";
-        for (const k of e.links) gradLine(ctx, k.a, k.b, k.ca, k.cb, 0.3 * k.dep * k.fade);
+        if (BAKED) batchLines(ctx, e.links, (k) => mix(k.ca, k.cb), (k) => 0.3 * k.dep * k.fade, segLine);
+        else for (const k of e.links) gradLine(ctx, k.a, k.b, k.ca, k.cb, 0.3 * k.dep * k.fade);
         // 注目している線: 光の帯と、尾を引いて流れる彗星
         for (const s of e.selLinks) {
           ctx.globalAlpha = 1;
@@ -311,7 +423,28 @@
         // 星: 夜は大きなにじみ・色の光・白い芯、昼は光沢のある色の玉
         for (const d of e.nodes) {
           const a = alphaOf(d), { sx, sy } = d.p, tw = twinkle(e, d, 0.12);
-          if (dark) {
+          if (BAKED && dark) {
+            // 大きなにじみ・色の光・光条・白い芯を、色と光条の長さの段ごとに 1 枚の絵に焼く。またたきは絵全体の濃さで出す
+            const spk = d.strong || d.n.deg >= 5, deg = spk ? Math.min(6, d.n.deg) : 0;
+            const img = bake(`dp|d|${d.color}|${spk}|${deg}`, 7.5, (x, u) => {
+              x.globalCompositeOperation = "lighter";
+              x.globalAlpha = 0.2; blit(x, glow(d.color, 2.6), 0, 0, u * 7.5);
+              x.globalAlpha = 0.8; blit(x, glow(d.color, 1.4), 0, 0, u * 2.3);
+              x.globalAlpha = 1;
+              if (spk) spikes(x, 0, 0, u * (3 + deg * 0.5), whiten(d.color, 0.6), 0.5, Math.max(0.8, u * 0.1));
+              x.fillStyle = "#ffffff"; circle(x, 0, 0, u * 0.5);
+            });
+            ctx.globalAlpha = a * tw; putBaked(ctx, img, d, 7.5);
+          } else if (BAKED) {
+            // 昼: にじみ・色の玉・つやを、色ごとに 1 枚の絵に焼く
+            ctx.globalCompositeOperation = "source-over";
+            const img = bake(`dp|l|${d.color}`, 3.2, (x, u) => {
+              x.globalAlpha = 0.3; blit(x, glow(d.color, 2), 0, 0, u * 3.2);
+              x.globalAlpha = 1; x.fillStyle = d.color; circle(x, 0, 0, u);
+              x.globalAlpha = 0.6; x.fillStyle = "#ffffff"; circle(x, -u * 0.3, -u * 0.3, u * 0.35);
+            });
+            ctx.globalAlpha = a; putBaked(ctx, img, d, 3.2);
+          } else if (dark) {
             ctx.globalAlpha = a * 0.2 * tw; blit(ctx, glow(d.color, 2.6), sx, sy, d.rad * 7.5);
             ctx.globalAlpha = a * 0.8; blit(ctx, glow(d.color, 1.4), sx, sy, d.rad * 2.3);
             if (d.strong || d.n.deg >= 5) spikes(ctx, sx, sy, d.rad * (3 + Math.min(6, d.n.deg) * 0.5) * tw, whiten(d.color, 0.6), a * 0.5, Math.max(0.8, d.rad * 0.1));

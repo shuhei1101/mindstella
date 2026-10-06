@@ -27,3 +27,22 @@ CDP_URL=http://127.0.0.1:9333 PAGE_URL=http://127.0.0.1:8765/index.html MEM_PROF
 CDP_URL=http://127.0.0.1:9333 PAGE_URL=http://127.0.0.1:8765/index.html MEM_PROFILE=poc-network-looks \
   python3 isolate.py results/isolate-windows-chrome.jsonl deep:dark:1920x1080:1 ";grad;sprites;spikes;sky;grad,sprites,spikes,sky"
 ```
+
+## 作り直した描き方
+
+`?draw=baked` で、星のにじみ・芯・光条を見た目・色・段ごとに一度だけ絵に焼いて毎コマは置くだけにし、線は両端の色のグラデーションをやめて単色で引く。
+`?batch=0` で線を 1 本ずつ引く（まとめて 1 本のパスにすると、倍率 2 で GPU の塗りが極端に重くなる）。
+`?off=`・`?bake=`・`?chunk=` は切り分け用。
+
+```bash
+CDP_URL=http://127.0.0.1:9333 PAGE_URL=http://127.0.0.1:8765/index.html MEM_PROFILE=poc-network-looks DRAW=baked BATCH=0 \
+  python3 measure.py results/results-baked-single-windows-chrome.jsonl
+```
+
+| 結果のファイル | 中身 |
+| --- | --- |
+| `results/results-windows-chrome.jsonl` | 見本の描き方のままの 200 条件 |
+| `results/isolate-windows-chrome.jsonl` | 見本の描き方で描き足しを外した切り分け |
+| `results/results-baked-windows-chrome.jsonl` | 作り直した描き方で、線を色と濃さごとにまとめた 200 条件（倍率 2 で崩れた） |
+| `results/isolate-baked-windows-chrome.jsonl` | 倍率 2 の崩れの切り分け（星の絵の大きさ・線のまとめ方） |
+| `results/results-baked-single-windows-chrome.jsonl` | 作り直した描き方で、線を 1 本ずつ引いた 200 条件 |
