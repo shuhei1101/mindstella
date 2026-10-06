@@ -706,8 +706,10 @@ var MindmapPreview;
                         const nameCenterY = p.sy - radius - 3 * scale - nameHeight / 2;
                         const left = p.sx + nameWidth / 2 + COMMENT_MARK_GAP;
                         const top = nameCenterY - slot.height / 2;
-                        // 名前と印が描く枠が、キャンバスに収まるときだけ置く
-                        const fits = p.sx - nameWidth / 2 >= 0 && left + slot.width <= width && top >= 0 && nameCenterY + nameHeight / 2 <= height;
+                        // 名前と印が描く枠（上端は名前か印の高いほう、下端は低いほう）が、キャンバスに収まるときだけ置く
+                        const frameTop = Math.min(top, nameCenterY - nameHeight / 2);
+                        const frameBottom = Math.max(top + slot.height, nameCenterY + nameHeight / 2);
+                        const fits = p.sx - nameWidth / 2 >= 0 && left + slot.width <= width && frameTop >= 0 && frameBottom <= height;
                         if (fits) {
                             slot.element.style.transform = `translate(${left}px, ${top}px)`;
                             slot.element.style.opacity = String(alpha * close);
