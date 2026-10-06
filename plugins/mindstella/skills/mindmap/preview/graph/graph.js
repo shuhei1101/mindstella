@@ -206,15 +206,24 @@ var MindmapPreview;
     function onScreen(x, y, width, height, margin) {
         return x > -margin && y > -margin && x < width + margin && y < height + margin;
     }
-    /** 開いているつながりの画面（外から玉を選ぶ・色を変えるために覚える） */
+    /** 名前の横の印を出す、名前の文字の大きさの下限（px。これより小さい名前の玉には出さない） */
+    const COMMENT_MARK_MIN_FONT = 8;
+    /** 名前の右端と印の間の隙間（px） */
+    const COMMENT_MARK_GAP = 4;
+    /** 開いているつながりの画面（外から玉を選ぶ・色を変える・コメントの件数を差し替えるために覚える） */
     let live = null;
     /** 詳細パネルで開いた項目を、つながりの画面でも選んだ状態にする（画面を開いていなければ何もしない） */
     function selectGraphItem(id) {
         live?.select(id);
     }
     MindmapPreview.selectGraphItem = selectGraphItem;
+    /** 描いているつながりの、名前の横の印に使う件数を差し替える（玉と線と視点は作り直さず、次のコマから新しい件数で印を置く。描いていなければ何もしない） */
+    function setGraphComments(counts) {
+        live?.setComments(counts);
+    }
+    MindmapPreview.setGraphComments = setGraphComments;
     /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
-    function graphScreen({ index, on, filters, drawerOpen, selected = null, look = MindmapPreview.BUILTIN_LOOK, }) {
+    function graphScreen({ index, on, filters, drawerOpen, selected = null, look = MindmapPreview.BUILTIN_LOOK, comments, }) {
         // ===== 絞り込み: 条件に合う項目の ID =====
         const conditions = graphConditions();
         const rows = [...index.byId].map(([id, entry]) => ({ id, ...entry }));
@@ -231,12 +240,14 @@ var MindmapPreview;
                 onFilter: on.filter,
             })
             : null;
+        // 名前の横のコメントの印を重ねる層（キャンバスと同じ大きさで、押下はキャンバスへ通す）
+        const markLayer = MindmapPreview.h({ tag: "div", attrs: { class: "g3-marks" } });
         const root = MindmapPreview.h({
             tag: "div",
             attrs: { class: "screen graph", "data-look": look },
             children: [
                 chips,
-                MindmapPreview.h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),
+                MindmapPreview.h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas, comments === undefined ? null : markLayer] }),
                 MindmapPreview.screenDrawer({
                     drawerOpen,
                     rows,
@@ -250,6 +261,10 @@ var MindmapPreview;
         });
         const labelCache = new Map();
         let colors = readColors();
+        /** 名前の横の印に使う件数 */
+        let commentCounts = comments ?? {};
+        /** 玉の ID → 名前の横に置いた印 */
+        const markSlots = new Map();
         let balls = [];
         let ballById = new Map();
         let links = [];
@@ -298,6 +313,27 @@ var MindmapPreview;
             context.fillText(ball.label, image.width / 2, image.height);
             labelCache.set(key, image);
             return image;
+        };
+        /** 玉の名前の横の印を返す。件数が変わっていれば作り直す（大きさは作ったときに 1 回だけ測る） */
+        const markSlotOf = (id, count) => {
+            const slot = markSlots.get(id);
+            if (slot !== undefined && slot.count === count)
+                return slot;
+            slot?.element.remove();
+            const element = MindmapPreview.commentMark({ count });
+            element.classList.add("cmk-float");
+            element.style.visibility = "hidden";
+            markLayer.append(element);
+            const made = { element, count, width: element.offsetWidth, height: element.offsetHeight, visible: false };
+            markSlots.set(id, made);
+            return made;
+        };
+        /** 印を見せる・隠す（変わったときだけ触る） */
+        const showMark = ({ slot, visible }) => {
+            if (slot.visible === visible)
+                return;
+            slot.visible = visible;
+            slot.element.style.visibility = visible ? "" : "hidden";
         };
         /** 玉と線を作る（絞り込みの条件に合う項目で） */
         const rebuild = () => {
@@ -616,7 +652,9 @@ var MindmapPreview;
             context.setLineDash([]);
             // 奥から順に描く。遠いほど小さく薄く、注目しているときはつながらないものを沈める
             const order = [...balls].sort((a, b) => (projected.get(b.id)?.z ?? 0) - (projected.get(a.id)?.z ?? 0));
-            for (const ball of order) {
+            /** このコマに印を置いた玉 */
+            const markedBalls = new Set();
+            for (const [rank, ball] of order.entries()) {
                 const p = projected.get(ball.id);
                 if (p === undefined || p.z + camera.distance <= 10)
                     continue;
@@ -659,9 +697,39 @@ var MindmapPreview;
                     context.setTransform(k, 0, 0, k, dpr * p.sx, dpr * (p.sy - radius - 3 * scale));
                     context.drawImage(image, -image.width / 2, -image.height);
                     context.setTransform(dpr, 0, 0, dpr, 0, 0);
+                    // 名前を文字 8px 以上で描いた、件数のある玉には、名前の右端に続けて縦は名前の中央に印を重ねる
+                    const count = commentCounts[ball.id] ?? 0;
+                    if (count > 0 && fontSize >= COMMENT_MARK_MIN_FONT) {
+                        const slot = markSlotOf(ball.id, count);
+                        const nameWidth = (image.width / LABEL_RESOLUTION) * (fontSize / 10);
+                        const nameHeight = LABEL_HEIGHT * (fontSize / 10);
+                        const nameCenterY = p.sy - radius - 3 * scale - nameHeight / 2;
+                        const left = p.sx + nameWidth / 2 + COMMENT_MARK_GAP;
+                        const top = nameCenterY - slot.height / 2;
+                        // 名前と印が描く枠が、キャンバスに収まるときだけ置く
+                        const fits = p.sx - nameWidth / 2 >= 0 && left + slot.width <= width && top >= 0 && nameCenterY + nameHeight / 2 <= height;
+                        if (fits) {
+                            slot.element.style.transform = `translate(${left}px, ${top}px)`;
+                            slot.element.style.opacity = String(alpha * close);
+                            // 手前の玉ほど上に重ねる（重なり順は層の中に閉じる）
+                            slot.element.style.zIndex = String(rank + 1);
+                            showMark({ slot, visible: true });
+                            markedBalls.add(ball.id);
+                        }
+                    }
                 }
             }
             context.globalAlpha = 1;
+            // このコマに置かなかった印は隠し、件数が無くなった玉の印は外す
+            for (const [id, slot] of markSlots) {
+                if (markedBalls.has(id))
+                    continue;
+                showMark({ slot, visible: false });
+                if ((commentCounts[id] ?? 0) === 0) {
+                    slot.element.remove();
+                    markSlots.delete(id);
+                }
+            }
         };
         // ===== 起動 =====
         // 文字の書体が読み込まれたら、取っておいた文字の画像を作り直す
@@ -675,7 +743,15 @@ var MindmapPreview;
             attributes: true,
             attributeFilter: ["data-theme"],
         });
-        live = { select, refreshColors };
+        live = {
+            select,
+            refreshColors,
+            setComments: (counts) => {
+                // 渡していない（配る書き出しなど）ときは印を置かない
+                if (comments !== undefined)
+                    commentCounts = counts;
+            },
+        };
         // 枠の大きさが決まってから玉を置き、描き始める
         const start = new ResizeObserver(() => {
             if (canvas.clientWidth === 0)
