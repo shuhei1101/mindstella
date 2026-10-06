@@ -6048,8 +6048,10 @@ var MindmapPreview;
             .sort((a, b) => b.title.length - a.title.length);
         const byTitle = new Map(terms.map((term) => [term.title, term]));
         const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        // 英数字だけの用語は、ファイル名・識別子の一部（mindstella-version.ini など）に当てないよう語の切れ目でだけ当てる
+        const termPattern = (title) => /^[!-~ ]+$/.test(title) ? `(?<![A-Za-z0-9_.-])${escape(title)}(?![A-Za-z0-9_-])` : escape(title);
         // ID（英大文字 - 数字）と、長い用語から順に当てる
-        const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...terms.map((term) => escape(term.title))].join("|"), "g");
+        const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...terms.map((term) => termPattern(term.title))].join("|"), "g");
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
             acceptNode: (node) => node.parentElement?.closest("pre, figure, a, button, svg, .mermaid") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
         });
@@ -6059,6 +6061,8 @@ var MindmapPreview;
         for (const node of nodes) {
             const text = node.textContent ?? "";
             const inHeading = node.parentElement?.closest("h1, h2, h3, h4, h5, h6") !== null;
+            // インラインコードは、中身がちょうど用語か ID のときだけ（パスや識別子の一部には付けない）
+            const inCode = node.parentElement?.closest("code") !== null;
             const parts = [];
             let last = 0;
             for (const match of text.matchAll(pattern)) {
@@ -6066,7 +6070,7 @@ var MindmapPreview;
                 const term = byTitle.get(word);
                 const isId = term === undefined;
                 // 記録に無い ID・項目自身の ID・見出しの中の用語は、そのままにする
-                if ((isId && (!index.byId.has(word) || word === self)) || (!isId && inHeading))
+                if ((isId && (!index.byId.has(word) || word === self)) || (!isId && inHeading) || (inCode && text.trim() !== word))
                     continue;
                 parts.push(text.slice(last, match.index));
                 const target = isId ? word : term.id;

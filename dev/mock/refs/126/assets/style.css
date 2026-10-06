@@ -62,7 +62,7 @@ th:hover .th-tool.tfilter, th:focus-within .th-tool.tfilter, .th-tool.tfilter[ar
 /* 用語の印に乗せた・フォーカスした */
 .md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--accent); background: var(--accent-weak); border-radius: 2px; }
 /* 項目の ID のリンク: 等幅の印の色の文字と下線 */
-.md a.idref { font-family: var(--font-mono); font-size: .92em; color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+.md a.idref { white-space: nowrap; font-family: var(--font-mono); font-size: .92em; color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
 /* 項目の ID のリンクに乗せた */
 .md a.idref:hover { text-decoration-color: var(--accent); }
 /* インラインコードの中の ID のリンク: コードの字の大きさのまま */

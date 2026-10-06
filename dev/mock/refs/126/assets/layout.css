@@ -46,7 +46,7 @@ body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; 
 /* マップの入れ物の道具の行・チップ: 縮めない */
 .map-view-root > * { flex-shrink: 0; }
 /* ボードの列の見出し: ボードを縦にスクロールしても列の上に留める */
-.board-col h3 { position: sticky; top: 0; z-index: 1; background: var(--bg); padding-top: 4px; }
+.board-col h3 { position: sticky; top: 0; z-index: 1; background: var(--bg); padding-top: 4px; box-shadow: 0 10px 0 var(--bg); }
 /* 表・ボードを 2 列以上で並べる幅: 画面を領域の高さいっぱいに広げ、中の枠で縦・横にスクロールする（低すぎる窓では領域ごとスクロールする） */
 @media (min-width: 721px) {
   .content > .screen:is(:has(.table-wrap), :has(> .board)) { flex: 1 1 0; min-height: 360px; }
@@ -55,7 +55,7 @@ body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; 
   /* 表の枠: 行が少なければ中身の高さ、多ければ残りの高さで止めて中で縦・横にスクロールする */
   .screen .table-wrap { flex: 0 1 auto; min-height: 0; }
   /* ボード: 残りの高さを持ち、中で縦・横にスクロールする */
-  .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: start; margin-bottom: 0; }
+  .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: start; margin-bottom: 0; padding-top: 0; }
 }
 /* マップを描く幅: 画面を領域の高さいっぱいに広げ、マップの描く領域の中で縦・横にスクロールする */
 @media (min-width: 901px) {

@@ -58,9 +58,9 @@
       <h2>見出しのリンク</h2>
       <p>見出しの右に # のリンクを置き、見出しに乗せる・リンクにフォーカスすると出す。乗せる操作が無い端末では常に出す。押すとその見出しまでスクロールし、URL のハッシュをその見出しを指す形（<code>h={見出し}</code>）に書き換える（履歴には積まない）。本文の中の <code>[文言](#見出し)</code> のリンクも、その見出しまでスクロールする。</p>
       <div class="stages">
-        <div class="stage"><p class="stage-name">通常</p><div class="md"><h5 data-md-level="2" data-heading="決まったこと">決まったこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h5><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
-        <div class="stage"><p class="stage-name">見出しに乗せた</p><div class="md"><h5 data-md-level="2" data-heading="決まったこと" class="is-hover">決まったこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h5><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
-        <div class="stage"><p class="stage-name">リンクにキーボードのフォーカス</p><div class="md"><h5 data-md-level="2" data-heading="決まったこと">決まったこと<a class="h-link is-focus" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h5><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
+        <div class="stage"><p class="stage-name">通常</p><div class="md"><h3 data-md-level="2" data-heading="決まったこと">決まったこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
+        <div class="stage"><p class="stage-name">見出しに乗せた</p><div class="md"><h3 data-md-level="2" data-heading="決まったこと" class="is-hover">決まったこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
+        <div class="stage"><p class="stage-name">リンクにキーボードのフォーカス</p><div class="md"><h3 data-md-level="2" data-heading="決まったこと">決まったこと<a class="h-link is-focus" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
         <div class="stage"><p class="stage-name">本文の中の見出しへのリンク</p><div class="md"><p>当て方は<a href="#コマンド">コマンド</a>の節にまとめた。</p></div></div>
       </div>
     </section>
@@ -80,7 +80,7 @@
     <!-- 項目の ID のリンク -->
     <section class="cat-sec">
       <h2>項目の ID のリンク</h2>
-      <p>記録にある項目の ID（<code>D-15</code> など）は、等幅の印の色の文字と下線のリンクにし、押すとその項目の詳細を開く。インラインコードの中の ID にも付ける。記録に無い ID と、開いている項目自身の ID はそのままにする。</p>
+      <p>記録にある項目の ID（<code>D-15</code> など）は、等幅の印の色の文字と下線のリンクにし、押すとその項目の詳細を開く。インラインコードは、中身がちょうど ID か用語のときだけ付ける。記録に無い ID と、開いている項目自身の ID はそのままにする。</p>
       <div class="stages">
         <div class="stage"><p class="stage-name">文中</p><div class="md"><p>作ったワークスペースを壊さずに整えられるようにする（<a class="idref" href="#tab=docs&amp;id=D-1">D-1</a>）。</p></div></div>
         <div class="stage"><p class="stage-name">インラインコードの中</p><div class="md"><p>手順に書ける操作は <code><a class="idref" href="#tab=docs&amp;id=D-15">D-15</a></code> で決めた。</p></div></div>
@@ -92,17 +92,16 @@
     <!-- 付けない所 -->
     <section class="cat-sec">
       <h2>付けない所</h2>
-      <p>コードブロックと図（mermaid）の中の用語・ID と、見出しの中の用語には付けない。見出しの中の ID はリンクにする。</p>
-      <div class="stage"><div class="md"><h5 data-md-level="2" data-heading="ワークスペースの版（D-2）">ワークスペースの版（<a class="idref" href="#tab=docs&amp;id=D-2">D-2</a>）<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=ワークスペースの版（D-2）" aria-label="見出し「ワークスペースの版（D-2）」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h5><pre><code>skills/mindmap/migrations/   # ワークスペースの移し替え（D-11）
-  v0.3.0/
-    steps.yaml</code></pre></div></div>
+      <p>コードブロックと図（mermaid）の中の用語・ID、見出しの中の用語、パスや識別子の一部（<code>mindstella-version.ini</code> の mindstella など）には付けない。英数字だけの用語は語の切れ目でだけ当てる。見出しの中の ID はリンクにする。</p>
+      <div class="stage"><div class="md"><h3 data-md-level="2" data-heading="ワークスペースの版（D-2）">ワークスペースの版（<a class="idref" href="#tab=docs&amp;id=D-2">D-2</a>）<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=ワークスペースの版（D-2）" aria-label="見出し「ワークスペースの版（D-2）」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><pre><code># ワークスペースの移し替え（D-11）
+migrations/v0.3.0/steps.yaml</code></pre><p>直下に <code>mindstella-version.ini</code> を置く。</p></div></div>
     </section>
 
     <!-- 狭い幅 -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
       <p>詳細パネルが画面幅いっぱいになる幅でも同じ印にする。乗せる操作の無い端末では見出しのリンクを常に出す。</p>
-      <div class="stage narrow"><div class="md"><h5 data-md-level="2" data-heading="やりたいこと" class="is-hover">やりたいこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=やりたいこと" aria-label="見出し「やりたいこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h5><p>プラグインの版を上げても、作った<a class="term" href="#tab=docs&amp;id=G-2" aria-describedby="tip-1">ワークスペース</a>を壊さずに今の形へ整えられるようにする（<a class="idref" href="#tab=docs&amp;id=D-1">D-1</a>）。今の <code>migrate</code> は版を持たず、データの形から前の形式を推し量っている。</p></div></div>
+      <div class="stage narrow"><div class="md"><h3 data-md-level="2" data-heading="やりたいこと" class="is-hover">やりたいこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=やりたいこと" aria-label="見出し「やりたいこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>プラグインの版を上げても、作った<a class="term" href="#tab=docs&amp;id=G-2" aria-describedby="tip-1">ワークスペース</a>を壊さずに今の形へ整えられるようにする（<a class="idref" href="#tab=docs&amp;id=D-1">D-1</a>）。今の <code>migrate</code> は版を持たず、データの形から前の形式を推し量っている。</p></div></div>
     </section>
   </main>
 </body>
