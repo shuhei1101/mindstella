@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>検討事項のマップの節の鍵 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/65/assets/style.css">
+  <!-- 節の鍵の分 -->
+  <link rel="stylesheet" href="../../refs/123/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台: マップの地の上に節を並べる */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    /* 台の中のマップ: 節を置く高さだけを取り、拡大はしない */
+    .stage .map-canvas { position: relative; height: var(--rows, 58px); }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / map-lock</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">検討事項のマップの節の鍵</h1>
+    <!-- 状態ごとの見本: 下のスクリプトが中身を描く -->
+    <div id="catalog"></div>
+  </main>
+  <!-- 見本の描き分け: 節の HTML は画面のモック（refs/123/assets/app.js の drawMap）と同じ形 -->
+  <script>
+    addEventListener("DOMContentLoaded", () => {
+      const ICON = {
+        lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+        unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+      };
+      const MARK = {
+        "要見直し": '<path d="M5 .3 9.7 5 5 9.7.3 5Z" fill="var(--st-review)"/>',
+        "未決定": '<circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-open)" stroke-width="1.6"/>',
+        "決定済み": '<circle cx="5" cy="5" r="4.5" fill="var(--st-done)"/>',
+      };
+      const icon = (n) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+      // 震えの途中（震え始めて 4 割の時点）の鍵: 画面のモックが毎コマ当てる値と同じ式で、上を軸に振れ・大きく・赤く光る
+      const SHAKE = "transform-origin: 50% 0; transform: translateX(-3.5px) rotate(-0.26rad) scale(1.27); color: var(--red-700); filter: drop-shadow(0 0 2.4px var(--red-700));";
+      // n: [ID, 題, 状態, 縦の位置, クラス, 鍵の見本のスタイル]
+      const node = ([id, title, st, top, cls, lkStyle]) => `<button class="map-node n-item ${cls}" type="button" style="left:0;top:${top}px;width:260px;height:46px" title="${title}（${st}）"><span class="lk" aria-hidden="true"${lkStyle ? ` style="${lkStyle}"` : ""}>${icon(cls.includes("locked") ? "lock" : "unlock")}</span><span class="r1"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true">${MARK[st]}</svg><span class="lbl">${title}</span></span><span class="r2"><span class="mono">${id}</span><span>${st}</span><span>影響度 大</span></span></button>`;
+      const D3 = ["D-3", "保存の形式", "要見直し"], D5 = ["D-5", "書き出しの範囲", "未決定"], D1 = ["D-1", "ワークスペースの置き場所", "決定済み"];
+      // [見出し, 説明, マップのクラス, 節の並び]
+      const DEMOS = [
+        ["ロックしていない（詳細を開いていない）", "鍵は出さない。", "", [[...D3, 6, ""]]],
+        ["開いた鍵（詳細を開いている節にカーソルを乗せた）", "詳細を開いている節にカーソルを乗せたときだけ、節の右上の内側に開いた鍵を薄く出す。押しても何も起きない。", "demo-open", [[...D3, 6, "sel"]]],
+        ["閉じた鍵（ロック中）", "もう一度押すとロックし、閉じた鍵を印の色でいつも出す。", "has-lock focusing", [[...D3, 6, "sel locked rel"]]],
+        ["ロック中にほかの節を開いた", "詳細は D-5 に切り替わり、強調はロックした D-3 のまま。詳細を開いている D-5 は強調の外でも薄くしない。", "has-lock focusing", [[...D3, 6, "locked rel"], [...D5, 62, "sel"], [...D1, 118, ""]]],
+        ["鍵の震え（ロックを付け替えられない操作をした）", "詳細を開いている別の節をもう一度押す・余白を押すと、鍵を赤く光らせて大きくし、上を軸に左右へ振れさせて約 1 秒で収める。図は震えの途中。", "has-lock focusing", [[...D3, 6, "locked rel", SHAKE], [...D5, 62, "sel"]]],
+        ["長い題（ロック中）", "題は鍵の手前で省略し、鍵と重ねない。", "has-lock focusing", [["D-12", "検討事項の題がとても長く、節の幅に収まらないときの省略のしかた", "要見直し", 6, "sel locked rel"]]],
+      ];
+      document.getElementById("catalog").innerHTML = DEMOS.map(([h, p, cls, nodes]) =>
+        `<section class="cat-sec"><h2>${h}</h2><p>${p}</p><div class="stage"><div class="map-canvas ${cls}" style="--rows:${nodes.length * 56 + 2}px">${nodes.map(node).join("")}</div></div></section>`).join("");
+    });
+  </script>
+</body>
+</html>

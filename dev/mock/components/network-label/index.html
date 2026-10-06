@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ネットワークの名前・状態の印・鍵 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/65/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台: ライトとダークの地を横に並べる */
+    .stage { display: flex; flex-wrap: wrap; gap: 12px; }
+    /* 1 枚の絵: キャンバスの一部を切り出した大きさ */
+    .stage canvas { width: 320px; max-width: 100%; height: 96px; border: 1px dashed var(--border); border-radius: var(--radius); }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / network-label</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">ネットワークの名前・状態の印・鍵</h1>
+    <!-- 状態ごとの見本: 下のスクリプトがキャンバスに描く -->
+    <div id="catalog"></div>
+  </main>
+  <!-- 見本の描き分け: 名前・印・鍵の置き方は画面のモック（refs/123/assets/app.js の drawMarks・drawLock）と同じ寸法 -->
+  <script>
+    addEventListener("DOMContentLoaded", () => {
+      const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+      // ライトとダークの値: キャンバスの中では CSS の変数が効かないので、テーマを切り替えてトークンの値を読む
+      const tokens = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        const t = { bg: css("--g-bg"), label: css("--g-label"), ring: css("--accent"), surface: css("--surface"), red: css(theme === "dark" ? "--red-300" : "--red-700"), done: css("--st-done"), open: css("--st-open"), review: css("--st-review"), hold: css("--st-hold"), star: css("--k-dec") };
+        delete document.documentElement.dataset.theme;
+        return t;
+      };
+      const THEMES = { light: tokens("light"), dark: tokens("dark") };
+      const LOCK = new Path2D("M7 11V7a5 5 0 0 1 10 0v4"), UNLOCK = new Path2D("M7 11V7a5 5 0 0 1 9.9-1");
+      const FS = 12, MARK = FS * 0.8, GAP = FS * 0.4, KEY = 12;
+      /** 状態の印を描く（一覧と同じ形: 決定済みは塗り、未決定は輪、要見直しはひし形、保留は 2 本の棒、成果物は箱） */
+      const mark = (ctx, t, kind, x, y) => {
+        const r = MARK / 2;
+        ctx.lineWidth = 1.6;
+        if (kind === "決定済み") { ctx.fillStyle = t.done; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+        if (kind === "未決定") { ctx.strokeStyle = t.open; ctx.beginPath(); ctx.arc(x, y, r * 0.85, 0, Math.PI * 2); ctx.stroke(); }
+        if (kind === "要見直し") { ctx.fillStyle = t.review; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.fill(); }
+        if (kind === "保留") { ctx.fillStyle = t.hold; ctx.fillRect(x - r * 0.75, y - r * 0.8, r * 0.5, r * 1.6); ctx.fillRect(x + r * 0.25, y - r * 0.8, r * 0.5, r * 1.6); }
+        if (kind === "成果物") { ctx.strokeStyle = t.ring; ctx.lineWidth = 1.3; ctx.strokeRect(x - r * 0.8, y - r * 0.6, r * 1.6, r * 1.4); ctx.beginPath(); ctx.moveTo(x - r * 0.8, y - r * 0.6); ctx.lineTo(x, y - r * 0.1); ctx.lineTo(x + r * 0.8, y - r * 0.6); ctx.stroke(); }
+      };
+      /** 鍵を、中心・一辺・振れを指定して描く（上端を軸に振れる） */
+      const key = (ctx, x, y, size, locked, color, alpha, swing) => {
+        ctx.save();
+        ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        ctx.translate(x, y - size / 2); ctx.rotate(swing); ctx.translate(-size / 2, 0); ctx.scale(size / 24, size / 24);
+        ctx.beginPath(); ctx.roundRect(3, 11, 18, 11, 2); ctx.stroke(); ctx.stroke(locked ? LOCK : UNLOCK);
+        ctx.restore();
+      };
+      /** 1 枚の見本を描く: 星の玉と、その上の名前・左の印・右の鍵 */
+      const draw = (cv, t, d) => {
+        const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+        cv.width = W * dpr; cv.height = H * dpr;
+        const ctx = cv.getContext("2d");
+        ctx.scale(dpr, dpr);
+        ctx.fillStyle = t.bg; ctx.fillRect(0, 0, W, H);
+        const sx = W / 2, sy = H * 0.68, rad = 9;
+        ctx.globalAlpha = d.dim ?? 1; ctx.fillStyle = t.star; ctx.beginPath(); ctx.arc(sx, sy, rad, 0, Math.PI * 2); ctx.fill();
+        if (d.selected) { ctx.globalAlpha = 0.9; ctx.strokeStyle = t.ring; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, rad + 4, 0, Math.PI * 2); ctx.stroke(); }
+        if (d.badge) {
+          // 名前が出ない遠い距離: 玉の右上の札に鍵を入れる
+          const x = sx + rad * 0.8 + 8, y = sy - rad * 0.8 - 8;
+          ctx.globalAlpha = 0.95; ctx.fillStyle = t.surface; ctx.beginPath(); ctx.arc(x, y, KEY * 0.85, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = t.ring; ctx.lineWidth = 1; ctx.stroke();
+          key(ctx, x, y, KEY, true, t.ring, 0.95, 0);
+          return;
+        }
+        const font = `${d.selected ? 500 : 400} ${FS}px "JetBrains Mono", "Noto Sans JP", monospace`;
+        ctx.font = font; ctx.letterSpacing = "0.8px"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        const ly = sy - rad - 6, w = ctx.measureText(d.name).width, my = ly - FS / 2;
+        ctx.globalAlpha = d.labelA ?? 0.85; ctx.fillStyle = d.selected ? t.ring : t.label; ctx.fillText(d.name, sx, ly);
+        if (d.mark) mark(ctx, t, d.mark, sx - w / 2 - GAP - MARK / 2, my);
+        if (!d.key) return;
+        const kx = sx + w / 2 + 9 + (d.shake ? -3.5 : 0);
+        if (d.shake) { const g = ctx.createRadialGradient(kx, my, 0, kx, my, 22); g.addColorStop(0, t.red + "88"); g.addColorStop(1, t.red + "00"); ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(kx - 22, my - 22, 44, 44); }
+        const locked = d.key !== "open";
+        key(ctx, kx, my, KEY * (d.shake ? 1.27 : 1), locked, d.shake ? t.red : locked ? t.ring : t.label, locked ? 0.95 : 0.45, d.shake ? -0.26 : 0);
+      };
+      // [見出し, 説明, 見本の値]
+      const DEMOS = [
+        ["注目していない", "名前だけを薄く出す。印も鍵も出さない。", { name: "保存の形式", labelA: 0.42 }],
+        ["注目している（状態の印）", "選んだ・ロックした起点とつながる項目の名前の左に、一覧と同じ状態の印を出す。大きさは名前の文字の高さの 8 割、名前との間は 4 割。", { name: "保存の形式", mark: "要見直し" }],
+        ["状態の印（決定済み）", "", { name: "ワークスペースの置き場所", mark: "決定済み" }],
+        ["状態の印（未決定）", "", { name: "書き出しの範囲", mark: "未決定" }],
+        ["状態の印（保留）", "", { name: "通知の出し方", mark: "保留" }],
+        ["資料の成果物", "資料の成果物は状態の代わりに箱の印にする。", { name: "要件定義書", mark: "成果物" }],
+        ["開いた鍵（詳細を開いている玉にカーソルを乗せた）", "名前の右に開いた鍵を薄く出す。押しても何も起きない。", { name: "保存の形式", mark: "要見直し", selected: true, key: "open" }],
+        ["閉じた鍵（ロック中）", "ロックしている間はいつも出す。", { name: "保存の形式", mark: "要見直し", selected: true, key: "locked" }],
+        ["閉じた鍵（ロック中にほかの項目を開いた）", "ロックした玉には選択の輪を付けず、閉じた鍵だけを残す。", { name: "保存の形式", mark: "要見直し", key: "locked" }],
+        ["鍵の震え", "ロックを付け替えられない操作をしたとき、赤く光らせて大きくし、上を軸に左右へ振れさせて約 1 秒で収める。図は震えの途中。", { name: "保存の形式", mark: "要見直し", key: "locked", shake: true }],
+        ["遠い距離（名前が出ない）", "名前と印が消える距離では、玉の右上の札に鍵を入れる。", { name: "保存の形式", badge: true, selected: true }],
+      ];
+      const cat = document.getElementById("catalog");
+      cat.innerHTML = DEMOS.map(([h, p], i) => `<section class="cat-sec"><h2>${h}</h2>${p ? `<p>${p}</p>` : ""}<div class="stage"><canvas data-i="${i}" data-t="light" role="img" aria-label="${h}（ライト）"></canvas><canvas data-i="${i}" data-t="dark" role="img" aria-label="${h}（ダーク）"></canvas></div></section>`).join("");
+      document.fonts.ready.then(() => cat.querySelectorAll("canvas").forEach((cv) => draw(cv, THEMES[cv.dataset.t], DEMOS[cv.dataset.i][2])));
+    });
+  </script>
+</body>
+</html>
