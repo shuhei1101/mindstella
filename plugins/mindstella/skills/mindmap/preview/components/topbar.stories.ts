@@ -172,6 +172,36 @@ export const FilterOpen: Story = {
   args: { filter: true, filterCount: 2, filterOpen: true, onFilter: fn(), comments: true, commentCount: 3 },
 };
 
+/** 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に 5.5em 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は 5.5em 以上を保ったまま題名の側を縮める */
+export const FilterDiffMedium: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+};
+
+/** サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は 5.5em 以上を取る */
+export const FilterDiffOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+};
+
 /** 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする */
 export const FilterNarrow: Story = {
   args: { filter: true, filterCount: 1, onFilter: fn(), comments: true, commentCount: 3 },
