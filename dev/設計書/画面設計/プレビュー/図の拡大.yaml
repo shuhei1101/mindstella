@@ -24,7 +24,7 @@ elements:
     io: 表示
     visible_when: Raw を押している間
     reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
-    status: planned
+    status: implemented
 lead: 本文の図を大きく見る。詳細パネルからはモーダルで開き、詳細の全画面からは全画面の中身を切り替える。
 mock: dev/mock/pages/diagram-viewer/21/standard/index.html
 test_file: tests/integration/preview/test_diagram_viewer_screen.py
