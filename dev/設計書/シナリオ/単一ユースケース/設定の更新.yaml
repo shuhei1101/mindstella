@@ -54,7 +54,7 @@ scenarios:
     expected:
       - '`config.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`phases` が渡した並びである'
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散` である
-      - 付け替えた D-1・D-2 の `updated_by` が `ai` である
+      - 付け替えた D-1 の `updated_by` が `ai` である（付け替えていない D-2 は変わらない）
       - '`goal.phase` が `要件` である'
       - 点検が問題を 0 件で返す
     test: test_normal_when_playbooks_replaced
