@@ -16,6 +16,9 @@ catalogs:
       - name: mermaid.render
         kind: 関数
         purpose: 本文の mermaid のコードブロックを SVG に描く
+      - name: mermaid.mermaidAPI.getDiagramFromText
+        kind: 関数
+        purpose: 図の差分で、flowchart の前後の記法を描かずに解析し、`db.getVertices()`・`db.getEdges()` でノードと辺を取る。12.1.0 の型定義では `@internal` のため、例外を投げたら前の版を `mermaid.render` で描く突き合わせへ戻す
 lead: テキストで書いた図（フローチャート・シーケンス図ほか）を SVG に描く JavaScript のライブラリ。
 purl: pkg:npm/mermaid
 dependency_scope: 必須
