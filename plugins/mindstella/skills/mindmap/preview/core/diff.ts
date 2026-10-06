@@ -480,7 +480,7 @@ namespace MindmapPreview {
     type: string;
     db: {
       getVertices: () => Map<string, { text?: string; labelType?: string }>;
-      getEdges: () => { start: string; end: string; text?: string; labelType?: string }[];
+      getEdges: () => { id: string; start: string; end: string; text?: string; labelType?: string }[];
     };
   };
 
@@ -504,8 +504,11 @@ namespace MindmapPreview {
     return normalized(decoder.value.replace(/\bfa[bsrl]?:fa-[\w-]+/g, ""));
   }
 
+  /** 解析した結果から取り出したノードと辺。辺は SVG の辺の `data-id` と同じ値の `id` を持つ */
+  type ParsedParts = { nodes: Map<string, PreviousPart>; edges: (PreviousPart & { id: string })[] };
+
   /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と消したものに出す名前）を取り出す。flowchart でないときは null */
-  async function parseFlowchart(source: string): Promise<DiagramParts<PreviousPart> | null> {
+  async function parseFlowchart(source: string): Promise<ParsedParts | null> {
     const parser = mermaid as unknown as { mermaidAPI: { getDiagramFromText: (text: string) => Promise<ParsedFlowchart> } };
     const parsed = await parser.mermaidAPI.getDiagramFromText(source);
     if (!PARSED_FLOWCHART_TYPES.includes(parsed.type)) return null;
@@ -517,12 +520,12 @@ namespace MindmapPreview {
     }
     const counts = new Map<string, number>();
     const edges = parsed.db.getEdges().map((edge) => {
-      // 辺の鍵は SVG 側（`edgeEnds`）と同じく `flowchart-` を付けない `{始点}>{終点}`
+      // 辺の鍵は `flowchart-` を付けない `{始点}>{終点}` に、同じ端点の中の並びの番号を付ける
       const base = `${edge.start}>${edge.end}`;
       const number = counts.get(base) ?? 0;
       counts.set(base, number + 1);
       const text = edge.text ?? "";
-      return { key: `${base}#${number}`, text: normalized(text), name: displayText({ text, labelType: edge.labelType }) };
+      return { id: edge.id, key: `${base}#${number}`, text: normalized(text), name: displayText({ text, labelType: edge.labelType }) };
     });
     return { nodes, edges };
   }
@@ -530,8 +533,8 @@ namespace MindmapPreview {
   /** flowchart の図の差分を、前の版を SVG に描かず、前後の記法の解析で突き合わせる。flowchart でない種類と解析できなかったときは null */
   export async function diffDiagramFromSource(type: string, beforeSource: string, afterSource: string, afterSvg: SVGElement): Promise<DiagramDiff | null> {
     if (flavorOf(type) !== "flowchart") return null;
-    let previous: DiagramParts<PreviousPart> | null;
-    let parsedNow: DiagramParts<PreviousPart> | null;
+    let previous: ParsedParts | null;
+    let parsedNow: ParsedParts | null;
     try {
       previous = await parseFlowchart(beforeSource);
       parsedNow = await parseFlowchart(afterSource);
@@ -544,8 +547,15 @@ namespace MindmapPreview {
     const drawn = extractDiagram(afterSvg, "flowchart");
     const nodes = new Map<string, DiagramPart>();
     for (const [key, node] of drawn.nodes) nodes.set(key, { ...node, text: parsedNow.nodes.get(key)?.text ?? node.text });
-    const nowEdges = new Map(parsedNow.edges.map((edge) => [edge.key, edge.text]));
-    const edges = drawn.edges.map((edge) => ({ ...edge, text: nowEdges.get(edge.key) ?? edge.text }));
+    // 辺は SVG の `data-id` を解析した辺の `id` と突き合わせ、解析した辺の鍵で引く（`edgeEnds` で `data-id` を切ると、id に `_` を含むノードや id を付けた辺で前後の鍵がずれる）
+    const parsedEdges = new Map(parsedNow.edges.map((edge) => [edge.id, edge]));
+    const edges: DiagramPart[] = [];
+    for (const edge of drawn.edges) {
+      const parsedEdge = parsedEdges.get(edge.element.getAttribute("data-id") ?? "");
+      // 解析した結果に無い辺: 版を上げて `data-id` の作り方が変わった
+      if (parsedEdge === undefined) return null;
+      edges.push({ ...edge, key: parsedEdge.key, text: parsedEdge.text });
+    }
     return compareDiagrams({ flavor: "flowchart", previous, current: { nodes, edges } });
   }
 }

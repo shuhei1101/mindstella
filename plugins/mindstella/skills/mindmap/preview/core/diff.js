@@ -425,12 +425,12 @@ var MindmapPreview;
         }
         const counts = new Map();
         const edges = parsed.db.getEdges().map((edge) => {
-            // 辺の鍵は SVG 側（`edgeEnds`）と同じく `flowchart-` を付けない `{始点}>{終点}`
+            // 辺の鍵は `flowchart-` を付けない `{始点}>{終点}` に、同じ端点の中の並びの番号を付ける
             const base = `${edge.start}>${edge.end}`;
             const number = counts.get(base) ?? 0;
             counts.set(base, number + 1);
             const text = edge.text ?? "";
-            return { key: `${base}#${number}`, text: normalized(text), name: displayText({ text, labelType: edge.labelType }) };
+            return { id: edge.id, key: `${base}#${number}`, text: normalized(text), name: displayText({ text, labelType: edge.labelType }) };
         });
         return { nodes, edges };
     }
@@ -455,8 +455,16 @@ var MindmapPreview;
         const nodes = new Map();
         for (const [key, node] of drawn.nodes)
             nodes.set(key, { ...node, text: parsedNow.nodes.get(key)?.text ?? node.text });
-        const nowEdges = new Map(parsedNow.edges.map((edge) => [edge.key, edge.text]));
-        const edges = drawn.edges.map((edge) => ({ ...edge, text: nowEdges.get(edge.key) ?? edge.text }));
+        // 辺は SVG の `data-id` を解析した辺の `id` と突き合わせ、解析した辺の鍵で引く（`edgeEnds` で `data-id` を切ると、id に `_` を含むノードや id を付けた辺で前後の鍵がずれる）
+        const parsedEdges = new Map(parsedNow.edges.map((edge) => [edge.id, edge]));
+        const edges = [];
+        for (const edge of drawn.edges) {
+            const parsedEdge = parsedEdges.get(edge.element.getAttribute("data-id") ?? "");
+            // 解析した結果に無い辺: 版を上げて `data-id` の作り方が変わった
+            if (parsedEdge === undefined)
+                return null;
+            edges.push({ ...edge, key: parsedEdge.key, text: parsedEdge.text });
+        }
         return compareDiagrams({ flavor: "flowchart", previous, current: { nodes, edges } });
     }
     MindmapPreview.diffDiagramFromSource = diffDiagramFromSource;
