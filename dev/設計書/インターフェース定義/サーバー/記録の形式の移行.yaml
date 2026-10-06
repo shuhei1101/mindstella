@@ -563,7 +563,7 @@ constraints:
   - item: v0.5.0 の手順
     constraint: '`call`（`field_to_playbooks`）の 1 手順。`mindmap.yaml` の `field` を `playbooks` の 1 件の配列へ移し、`field` を消す。`mindmap.yaml` か `field` が無ければ飛ばし、`field` と `playbooks` を両方持つときは StepFailedError。`target_label` とキーの並びは変えない（`playbooks` は `field` の位置に置く）'
   - item: v0.6.0 の手順
-    constraint: '次の順の手順。どれも破壊的な操作。(1) `rename_file`（`mindmap.yaml` → `config.yaml`）。(2) 直下の `config.yaml`・7 つの種類ごとの YAML・`changes.yaml`・`comments.yaml`・`drafts.yaml`・`submissions.yaml`・`mindstella-version.ini`・`.mindstella-opened` を、それぞれ `rename_file` で `.mindstella/{同じ名前}` へ。(3) `docs/`・`release/` を `move_dir` で `.mindstella/` の下へ。(4) 前の版の画面 `preview.html` と直下の `.mindstella.lock` を `delete`。無いファイルは飛ばし（『対象が無い・既にあるとき』）、今の形のワークスペースでは何も変えない。v0.3.0・v0.5.0 の手順は移す前に当たるため、直下の `mindmap.yaml`・`docs.yaml` を指したまま残す。手順のパスはどの版もワークスペースの直下からの相対'
+    constraint: '次の順の手順。どれも破壊的な操作。(1) `rename_file`（`mindmap.yaml` → `config.yaml`）。(2) 直下の 7 つの種類ごとの YAML・`changes.yaml`・`comments.yaml`・`drafts.yaml`・`submissions.yaml`・`mindstella-version.ini`・`.mindstella-opened` を、それぞれ `rename_file` で `.mindstella/{同じ名前}` へ。(3) `docs/`・`release/` を `move_dir` で `.mindstella/` の下へ。(4) 直下の `config.yaml` を `rename_file` で `.mindstella/config.yaml` へ（移し終えるまでほかのツールが移しかけのワークスペースをワークスペースと見ないように、移す手順の最後に置く）。(5) 前の版の画面 `preview.html` と直下の `.mindstella.lock` を `delete`。無いファイルは飛ばし（『対象が無い・既にあるとき』）、今の形のワークスペースでは何も変えない。v0.3.0・v0.5.0 の手順は移す前に当たるため、直下の `mindmap.yaml`・`docs.yaml` を指したまま残す。手順のパスはどの版もワークスペースの直下からの相対'
   - item: ワークスペースの見分け
     constraint: このツールだけは `.mindstella/config.yaml`、直下の `config.yaml`、直下の `mindmap.yaml` のどれかがあればワークスペースとして扱う（ほかのツールは `.mindstella/config.yaml` だけ）。`.mindstella/` が無い移す前の形では、直下の `.mindstella.lock` で排他ロックを取る（v0.6.0 の手順がそのファイルを消す）
   - item: 版の読み取り
