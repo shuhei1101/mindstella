@@ -861,19 +861,22 @@
   const CM_DOT = 2.6;  // 案 C の遠いときの点の半径（px）
   // 名前の横の印を、名前に付けて動かす（名前の右に置いて名前を隠さない）。手前の玉の印ほど上に重ね、名前と同じ濃さにする
   // 名前と印が描く枠に収まりきらないときは印を出さない（枠で切れた印は件数を読み違え、名前の見えない印はどの玉のものか分からない）
+  // 出さなかった玉の点の位置を返す
   const placeGraphMarks = (shown) => {
     const layer = document.getElementById("g3-marks");
     const lw = layer.clientWidth, lh = layer.clientHeight;
+    const hidden = [];
     for (const [id, el] of G.cmEls) {
       const s = shown.get(id);
       el.hidden = !s;
       if (!s) continue;
       const w = el.offsetWidth, h = el.offsetHeight;
-      if (s.nameLeft < 0 || s.x + w > lw || s.y - h / 2 < 0 || s.y + h / 2 > lh) { el.hidden = true; continue; }
+      if (s.nameLeft < 0 || s.x + w > lw || s.y - h / 2 < 0 || s.y + h / 2 > lh) { el.hidden = true; hidden.push(s.dot); continue; }
       el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translateY(-50%)`;
       el.style.opacity = s.a.toFixed(2);
       el.style.zIndex = String(Math.round(1000 - s.z));
     }
+    return hidden;
   };
   const drawGraph3 = () => {
     const cv = document.getElementById("fg3");
@@ -1010,6 +1013,7 @@
       const order = [...G.nodes].sort((a, b) => P.get(b.id).z - P.get(a.id).z);
       ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.letterSpacing = "0.8px";
       if (G.cmDirty) syncGraphMarks();
+      const drawDot = (d) => { ctx.globalAlpha = d.a; ctx.fillStyle = C.label; ctx.beginPath(); ctx.arc(d.x, d.y, CM_DOT, 0, Math.PI * 2); ctx.fill(); };
       const shown = new Map();  // コメントの印を付ける玉の、画面の位置・半径・濃さ
       for (const n of order) {
         const p = P.get(n.id);
@@ -1047,18 +1051,18 @@
         // 名前の横に印を出すか: 案 A・C は名前が読める大きさ（NEAR_FS 以上）に近づいたとき、案 B は玉を指したときと選んだとき
         const pointed = n === G.hover || n.id === state.panel;
         const byName = named && (state.opt.cmgraph === "b" ? pointed : fs >= NEAR_FS);
+        // 案 C の点: 玉の右上の縁に、件数を持たない小さな点だけを打つ（名前は玉の上なので隠さない）
+        const dot = { x: p.sx + rad * 0.75, y: p.sy - rad * 0.75, a: (0.35 + 0.55 * depth) * dim * close };
         if (byName) {
           // 名前の右端と縦の中央: 名前は玉の上に中央揃えで描くので、幅の半分だけ右へ寄せる
           const half = (ctx.measureText(n.label).width * fs) / 10 / 2, base = p.sy - rad - 3 * sc;
-          shown.set(n.id, { nameLeft: p.sx - half, x: p.sx + half + CM_GAP, y: base - fs * 0.55, a: Math.min(1, la * close * 1.6), z: p.z });
-        } else if (state.opt.cmgraph === "c") {
-          // 案 C の遠いとき: 玉の右上の縁に、件数を持たない小さな点だけを打つ（名前は玉の上なので隠さない）
-          ctx.globalAlpha = (0.35 + 0.55 * depth) * dim * close; ctx.fillStyle = C.label;
-          ctx.beginPath(); ctx.arc(p.sx + rad * 0.75, p.sy - rad * 0.75, CM_DOT, 0, Math.PI * 2); ctx.fill();
-        }
+          shown.set(n.id, { nameLeft: p.sx - half, x: p.sx + half + CM_GAP, y: base - fs * 0.55, a: Math.min(1, la * close * 1.6), z: p.z, dot });
+        } else if (state.opt.cmgraph === "c") drawDot(dot);
       }
+      // 案 C で、名前の横の印が描く枠に収まらず出せなかった玉には、遠いときと同じ点を打つ
+      const hiddenByFrame = placeGraphMarks(shown);
+      if (state.opt.cmgraph === "c") hiddenByFrame.forEach(drawDot);
       ctx.globalAlpha = 1;
-      placeGraphMarks(shown);
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
