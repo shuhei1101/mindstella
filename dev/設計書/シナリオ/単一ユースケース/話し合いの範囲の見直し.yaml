@@ -34,9 +34,10 @@ scenarios:
     expected:
       - '`config.yaml` の `playbooks` が `壁打ち`・`システム開発` の 2 件で、`summary`・`target_label`・`phases`・`targets`・`categories` が確定したたたき台の値である'
       - '`goal` が確定したたたき台の値で、納品物 `要件定義書` の `doc` が A-1 である'
-      - '資料 A-1 が `deliverable: true` を持ち、`docs/` の本文が概要・背景・構成の見出しを持つ'
+      - '資料 A-1 が `deliverable: true` を持ち、`.mindstella/docs/` の本文が概要・背景・構成の見出しを持つ'
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散` である
       - D-1・D-2 の `target` が `本体`、`category` が `論点` である
+      - 付け替えた D-1・D-2 の `updated_by` が `ai` である
       - 会話ログが 1 件足されている
       - '`check` が問題を 0 件で返す'
     test: test_normal

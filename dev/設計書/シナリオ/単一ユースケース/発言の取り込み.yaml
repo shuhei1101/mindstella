@@ -90,7 +90,7 @@ scenarios:
       ```
     expected:
       - '資料 A-1 が `kind: 図` と `related: [D-1]` を持つ'
-      - '`docs/` に A-1 の本文の Markdown がある'
+      - '`.mindstella/docs/` に A-1 の本文の Markdown がある'
       - '`check` が YAML と Markdown のずれを 0 件で返す'
     test: test_normal_when_diagram_kept_as_doc
   - name: 正常シナリオ（脱線した質問）
@@ -100,7 +100,7 @@ scenarios:
       - name: 作成済みのワークスペース
         description: タスクを持たない
       - name: 再生する書き込み
-        description: 言葉の意味を尋ねた質問は用語集 G-1、それ以外の脱線はメモ N-1（タグ `脱線`）。どちらも会話ログと一緒に 1 回のまとめての書き込みで渡す
+        description: 言葉の意味を尋ねた質問は用語集 G-1、それ以外の脱線はメモ N-1（タグ `脱線`。調べた経緯を `body_markdown` で本文にする）。どちらも会話ログと一緒に 1 回のまとめての書き込みで渡す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -115,6 +115,7 @@ scenarios:
     expected:
       - 用語集 G-1 が `meaning` を持つ
       - メモ N-1 がタグ `脱線` を持つ
+      - メモ N-1 が本文を持ち、`.mindstella/docs/` にその Markdown がある
       - タスクが 0 件のままである
     test: test_normal_when_off_topic_question
   - name: 正常シナリオ（納品物の資料を作る）
@@ -144,7 +145,7 @@ scenarios:
     expected:
       - '`goal.deliverables` が「要件定義書」の 1 件だけで、その `doc` が A-1 である'
       - '資料 A-1 が `deliverable: true` を持つ'
-      - '`docs/` の A-1 の本文が、概要・背景・構成の見出しを持つ'
+      - '`.mindstella/docs/` の A-1 の本文が、概要・背景・構成の見出しを持つ'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_deliverable_doc_created
   - name: 正常シナリオ（タスクの成果を資料にする）
@@ -172,7 +173,7 @@ scenarios:
       ```
     expected:
       - T-1 が完了で、`related` に A-1 を持つ
-      - '資料 A-1 が `deliverable: false` を持ち、`docs/` に本文がある'
+      - '資料 A-1 が `deliverable: false` を持ち、`.mindstella/docs/` に本文がある'
       - '`goal.deliverables` が呼ぶ前と同じである'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_task_output_kept_as_doc
