@@ -43,6 +43,10 @@
     .ball { position: absolute; border-radius: 50%; }
     /* つながりの見本の玉の名前 */
     .ball-name { position: absolute; transform: translate(-50%, -100%); color: var(--g-label); font: 500 var(--fs-xs) "JetBrains Mono", "Noto Sans JP", monospace; white-space: nowrap; }
+    /* つながりの見本の名前の横の印: 名前の右端に続け、縦は名前の中央に揃える */
+    .ball-name .cmk { position: absolute; left: 100%; top: 50%; margin-left: 4px; transform: translateY(-50%); font-size: var(--fs-xs); }
+    /* つながりの見本の案 C の遠いときの点 */
+    .ball-dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--g-label); }
     /* 状態を見せるための見本のクラス */
     .is-hover { border-color: var(--accent) !important; }
     /* キーボードのフォーカスの見本 */
@@ -87,13 +91,14 @@
       </div>
     </section>
 
-    <!-- つながり: 玉と名前の見本（実際は 3D のキャンバスに描き、案 A の印だけを HTML で重ねる） -->
+    <!-- つながり: 玉と名前の見本（実際は 3D のキャンバスに描き、名前の横の印だけを HTML で重ねる） -->
     <section class="cat-sec">
       <h2>つながりの玉</h2>
-      <p>案 A は玉の右の真横に印を付け、玉に付いて動く（名前は玉の上に出るので隠さない）。案 B は玉に細い輪を付け、件数は玉を指したときの名札に出す。</p>
+      <p>どの案も、印は玉の上に出る名前の右に置き、名前を隠さない。案 A は名前が読める大きさ（文字 8px 以上）に近づいたときだけ出す。案 B は玉を指したときと選んだときだけ出す。案 C は案 A に加えて、遠いときは玉の右上の縁に件数を持たない小さな点を打つ。</p>
       <div class="stage">
-        <div class="map-frame space space-demo" aria-label="案 A の見本"><span class="ball" style="left: 92px; top: 82px; width: 22px; height: 22px; background: var(--k-task);"></span><span class="ball-name" style="left: 103px; top: 78px;">プレビューのモックを作る</span><span class="cmk" data-n="3" style="position: absolute; left: 118px; top: 93px; transform: translateY(-50%);"></span><span class="ball" style="left: 210px; top: 120px; width: 14px; height: 14px; background: var(--k-dec);"></span><span class="ball-name" style="left: 217px; top: 116px;">steps の本文</span></div>
-        <div class="map-frame space space-demo" aria-label="案 B の見本"><span class="ball" style="left: 150px; top: 82px; width: 22px; height: 22px; background: var(--k-task); box-shadow: 0 0 0 2.5px transparent, 0 0 0 3.7px var(--g-label);"></span><span class="ball-name" style="left: 161px; top: 78px; font-weight: 600;">プレビューのモックを作る · コメント 3 件</span><span class="ball" style="left: 210px; top: 120px; width: 14px; height: 14px; background: var(--k-dec);"></span><span class="ball-name" style="left: 217px; top: 116px;">steps の本文</span></div>
+        <div class="map-frame space space-demo" aria-label="遠いとき（案 C の点。案 A・B は何も出さない）"><span class="ball" style="left: 100px; top: 92px; width: 12px; height: 12px; background: var(--k-task);"></span><span class="ball-dot" style="left: 109px; top: 90px;"></span><span class="ball-name" style="left: 106px; top: 88px; font-size: 11px; opacity: .55;">プレビューのモックを作る</span><span class="ball" style="left: 210px; top: 120px; width: 8px; height: 8px; background: var(--k-dec);"></span><span class="ball-name" style="left: 214px; top: 116px; font-size: 11px; opacity: .55;">steps の本文</span></div>
+        <div class="map-frame space space-demo" aria-label="近づいたとき（案 A・C）"><span class="ball" style="left: 80px; top: 92px; width: 28px; height: 28px; background: var(--k-task);"></span><span class="ball-name" style="left: 94px; top: 88px; font-size: 14px;">プレビューのモックを作る<span class="cmk" data-n="3"></span></span><span class="ball" style="left: 220px; top: 140px; width: 18px; height: 18px; background: var(--k-dec);"></span><span class="ball-name" style="left: 229px; top: 136px; font-size: 14px;">steps の本文</span></div>
+        <div class="map-frame space space-demo" aria-label="玉を指したとき・選んだとき（案 B。案 A・C も近づいていれば同じ）"><span class="ball" style="left: 100px; top: 92px; width: 22px; height: 22px; background: var(--k-task); box-shadow: 0 0 0 4px transparent, 0 0 0 5.5px var(--accent);"></span><span class="ball-name" style="left: 111px; top: 86px; font-weight: 600; color: var(--accent);">プレビューのモックを作る<span class="cmk" data-n="3"></span></span><span class="ball" style="left: 220px; top: 140px; width: 14px; height: 14px; background: var(--k-dec);"></span><span class="ball-name" style="left: 227px; top: 136px;">steps の本文</span></div>
       </div>
     </section>
 

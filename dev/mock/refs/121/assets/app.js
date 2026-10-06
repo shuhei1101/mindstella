@@ -287,7 +287,7 @@
   const OPTS = {
     cmshape: { label: "見た目", def: "a", choices: [["a", "A ピル"], ["b", "B 角"]] },
     cmtable: { label: "表", def: "a", choices: [["a", "A 横"], ["b", "B 列"]] },
-    cmgraph: { label: "つながり", def: "a", choices: [["a", "A ラベル"], ["b", "B 輪"]] },
+    cmgraph: { label: "つながり", def: "c", choices: [["a", "A 近づくと名前の横"], ["b", "B 指すと名前の横"], ["c", "C 遠くは点・近づくと名前の横"]] },
     diff: { label: "差分", def: "on", choices: [["on", "並べる"], ["off", "なし"]] },
   };
   // サーバーの配信で開いたか（サーバー無しで開いたときと配る書き出しは、コメントを読まない）
@@ -321,6 +321,8 @@
     if (first) {
       state.initSearch = p.get("search");
       state.initViewer = p.get("viewer") === "1";
+      // つながりを寄った距離で開くモック（gzoom=2 なら全体を表示する距離の半分）。撮影で「近づいたとき」を見せるため
+      state.initGzoom = Number(p.get("gzoom")) || 1;
     }
   };
   const hashOf = () => {
@@ -838,7 +840,7 @@
     const v = (k) => css(k);
     return { kind: Object.fromEntries(Object.entries(KIND_VAR).map(([k, x]) => [k, v(x)])), label: v("--g-label"), line: v("--g-line"), dot: v("--g-dot"), ring: v("--accent") };
   };
-  // つながりのコメントの印: 件数を数え直し、案 A ではキャンバスの上に重ねる印を作り直す。読み上げはキャンバスの名前に件数を足す
+  // つながりのコメントの印: 件数を数え直し、キャンバスの上に重ねる印を作り直す。読み上げはキャンバスの名前に件数を足す
   const syncGraphMarks = () => {
     G.cm = cmCounts();
     G.cmDirty = false;
@@ -847,22 +849,23 @@
     cv.setAttribute("aria-label", `すべての項目のつながり${ids.length ? `（コメントのある項目: ${ids.map((id) => `${id} ${cmLabel(G.cm.get(id))}`).join("、")}）` : ""}`);
     G.cmEls = new Map();
     layer.innerHTML = "";
-    if (state.opt.cmgraph !== "a") return;
     for (const id of ids) {
       const el = Object.assign(document.createElement("span"), { className: "cmk cmk-float", hidden: true, innerHTML: cmInner(G.cm.get(id)) });
       layer.append(el);
       G.cmEls.set(id, el);
     }
   };
-  const CM_GAP = 4;  // 玉の縁から印までの間
-  // 案 A の印を、玉の右に付けて動かす（名前は玉の上に出るので、右の真横に置いて名前を隠さない）。手前の玉の印ほど上に重ね、玉と同じく奥ほど薄くする
+  const CM_GAP = 4;  // 名前の右端から印までの間
+  const NEAR_FS = 8;  // 近づいたとみなす名前の文字の大きさ（px）。全体を表示した距離では 4.6px
+  const CM_DOT = 2.6;  // 案 C の遠いときの点の半径（px）
+  // 名前の横の印を、名前に付けて動かす（名前の右に置いて名前を隠さない）。手前の玉の印ほど上に重ね、名前と同じ濃さにする
   const placeGraphMarks = (shown) => {
     for (const [id, el] of G.cmEls) {
       const s = shown.get(id);
       el.hidden = !s;
       if (!s) continue;
-      el.style.transform = `translate(${Math.round(s.x + s.rad + CM_GAP)}px, ${Math.round(s.y)}px) translateY(-50%)`;
-      el.style.opacity = Math.min(1, s.a * 1.3).toFixed(2);
+      el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translateY(-50%)`;
+      el.style.opacity = s.a.toFixed(2);
       el.style.zIndex = String(Math.round(1000 - s.z));
     }
   };
@@ -878,7 +881,8 @@
     // 全体が枠に収まる距離（外れた玉に引っぱられないよう、近い順に 9 割目の玉までの半径を使う）
     const radii = G.nodes.map((n) => Math.hypot(n.x, n.y, n.z)).sort((a, b) => a - b);
     const R = Math.max(40, radii[Math.floor(radii.length * 0.9)] || 40);
-    G.fit = G.dist = G.distT = ((700 * R) / (Math.min(cv.clientWidth, cv.clientHeight) * 0.42) + R * 0.4) * 0.72;
+    G.fit = ((700 * R) / (Math.min(cv.clientWidth, cv.clientHeight) * 0.42) + R * 0.4) * 0.72;
+    G.dist = G.distT = G.fit / state.initGzoom;
     G.colors = graphColors();
     if (state.panel) graphSelect();
     const ctx = cv.getContext("2d");
@@ -1019,22 +1023,32 @@
         ctx.fillStyle = C.kind[n.kind];
         ctx.beginPath(); ctx.arc(p.sx, p.sy, rad, 0, Math.PI * 2); ctx.fill();
         const cmN = G.cm.get(n.id) || 0;
-        if (cmN && ease > 0.9) shown.set(n.id, { x: p.sx, y: p.sy, rad, a: ctx.globalAlpha, z: p.z });
-        // つながりの案 B: コメントのある玉に、名前の文字の色で細い輪を付ける
-        if (cmN && state.opt.cmgraph === "b") { ctx.strokeStyle = C.label; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.sx, p.sy, rad + 2.5, 0, Math.PI * 2); ctx.stroke(); }
         if (n.id === state.panel || n === G.hover) { ctx.globalAlpha = 0.9; ctx.strokeStyle = C.ring; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.sx, p.sy, rad + 4, 0, Math.PI * 2); ctx.stroke(); }
         // 名前: 大きさは拡大率に合わせる。いつもは薄く、注目している項目とつながる項目ははっきり出す
         const strong = near.has(n.id) || n === G.hover;
         // 文字は玉と同じ倍率で大きさが変わる。玉の幅に英字 6 文字ほどが入る大きさにする
         const sc = p.f / k0, fs = 4.6 * sc;
         const la = (strong ? 0.85 : 0.42 * dim) * Math.pow(depth, 1.4) * Math.max(0, Math.min(1, (fs - 3.5) / 2.5));
-        if (la > 0.03 && ease > 0.9 && onScreen(p.sx, p.sy - rad, 400)) {
+        const named = la > 0.03 && ease > 0.9 && onScreen(p.sx, p.sy - rad, 400);
+        if (named) {
           ctx.globalAlpha = la * close; ctx.fillStyle = n.id === state.panel ? C.ring : C.label;
           ctx.font = n.id === state.panel || n === G.hover ? FONT_B : FONT_N;
           ctx.setTransform(dpr * fs / 10, 0, 0, dpr * fs / 10, dpr * p.sx, dpr * (p.sy - rad - 3 * sc));
-          // つながりの案 B: 玉を指したときだけ、名札に件数を足す
-          ctx.fillText(cmN && state.opt.cmgraph === "b" && n === G.hover ? `${n.label} · ${cmLabel(cmN)}` : n.label, 0, 0);
+          ctx.fillText(n.label, 0, 0);
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        if (!cmN || ease <= 0.9) continue;
+        // 名前の横に印を出すか: 案 A・C は名前が読める大きさ（NEAR_FS 以上）に近づいたとき、案 B は玉を指したときと選んだとき
+        const pointed = n === G.hover || n.id === state.panel;
+        const byName = named && (state.opt.cmgraph === "b" ? pointed : fs >= NEAR_FS);
+        if (byName) {
+          // 名前の右端と縦の中央: 名前は玉の上に中央揃えで描くので、幅の半分だけ右へ寄せる
+          const half = (ctx.measureText(n.label).width * fs) / 10 / 2, base = p.sy - rad - 3 * sc;
+          shown.set(n.id, { x: p.sx + half + CM_GAP, y: base - fs * 0.55, a: Math.min(1, la * close * 1.6), z: p.z });
+        } else if (state.opt.cmgraph === "c") {
+          // 案 C の遠いとき: 玉の右上の縁に、件数を持たない小さな点だけを打つ（名前は玉の上なので隠さない）
+          ctx.globalAlpha = (0.35 + 0.55 * depth) * dim * close; ctx.fillStyle = C.label;
+          ctx.beginPath(); ctx.arc(p.sx + rad * 0.75, p.sy - rad * 0.75, CM_DOT, 0, Math.PI * 2); ctx.fill();
         }
       }
       ctx.globalAlpha = 1;
