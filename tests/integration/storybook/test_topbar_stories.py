@@ -11,6 +11,9 @@ NARROW_SIZE = {"width": 390, "height": 844}
 # 題名が収まりきらなくなる幅（題名を隠す幅 900px より広い）
 MEDIUM_SIZE = {"width": 1000, "height": 600}
 
+# サーバーにつながらないとき、接続の状態の全文が出る幅（幅 1440px 以下は短い文言になる）
+WIDE_SIZE = {"width": 1441, "height": 600}
+
 # 塗りが無いときの背景色
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 
@@ -108,6 +111,8 @@ def test_offline(open_story: OpenStory) -> None:
     """サーバーにつながらない。検索の入口の左に、読んだ日時つきの接続の状態を出す（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--offline")
+    page.set_viewport_size(WIDE_SIZE)
+    page.wait_for_function("innerWidth === 1441")
     # 検証
     status = page.locator(".conn")
     assert status.get_attribute("role") == "status"
