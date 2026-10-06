@@ -23,10 +23,13 @@ from preview_drawer_helpers import (
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import (
+    BOUNDARY_HEIGHT,
     NARROW_VIEWPORT,
+    TABLE_BOARD_BOUNDARY_WIDTHS,
     WIDE_VIEWPORT,
     assert_bands_stay,
     assert_page_does_not_scroll,
+    assert_region_mode,
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
@@ -543,3 +546,23 @@ def test_drawer_text_fields_and_chip(
     # 検証
     assert labels[:2] == ["ID", "タイトル"]
     assert chips == ["ID に「A-1」を含む"]
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+@pytest.mark.parametrize(("width", "filled"), TABLE_BOARD_BOUNDARY_WIDTHS)
+def test_region_at_boundary(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    view: str,
+    width: int,
+    filled: bool,
+) -> None:
+    """領域の高さいっぱいに広げる境（721px）の前後の幅で、広げるか領域ごとスクロールするかが切り替わる（正常系）。"""
+    # 準備
+    url = _write_many_docs(write_preview, make_item)
+    page = open_preview(url, f"#tab=docs&view={view}")
+    page.set_viewport_size({"width": width, "height": BOUNDARY_HEIGHT})
+    page.wait_for_selector(REGION_SCROLLER[view])
+    # 実行・検証
+    assert_region_mode(page, REGION_SCROLLER[view], filled=filled)

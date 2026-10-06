@@ -7,10 +7,14 @@ from typing import Any
 from playwright.sync_api import Page
 
 __all__ = [
+    "BOUNDARY_HEIGHT",
+    "MAP_BOUNDARY_WIDTHS",
     "NARROW_VIEWPORT",
+    "TABLE_BOARD_BOUNDARY_WIDTHS",
     "WIDE_VIEWPORT",
     "assert_bands_stay",
     "assert_page_does_not_scroll",
+    "assert_region_mode",
     "region_metrics",
 ]
 
@@ -48,6 +52,13 @@ _REGION_SCRIPT = """(selector) => {
     };
 }"""
 
+# 表・ボードを領域の高さいっぱいに広げる境（721px 以上）と、マップの境（901px 以上）の前後の幅（px）と、広げるか
+TABLE_BOARD_BOUNDARY_WIDTHS = [(720, False), (721, True)]
+MAP_BOUNDARY_WIDTHS = [(900, False), (901, True)]
+
+# 窓の高さ（px）。項目を多く並べた画面が収まらない高さにする
+BOUNDARY_HEIGHT = 720
+
 # 本文の領域を一番下まで送った後の、トップバーとタブの帯の位置を読む
 _BANDS_SCRIPT = """() => {
     const content = document.querySelector('.content');
@@ -77,3 +88,18 @@ def assert_bands_stay(page: Page) -> None:
     assert bands["topbarTop"] == 0
     assert bands["tabbarTop"] == bands["topbarBottom"]
     assert bands["tabbarBottom"] > bands["tabbarTop"]
+
+
+def assert_region_mode(page: Page, selector: str, *, filled: bool) -> None:
+    """`selector` の枠が、領域の高さいっぱいに広がって中でスクロールする（`filled`）か、領域ごと縦にスクロールする（そうでない）かを確かめる。"""
+    metrics = region_metrics(page, selector)
+    assert_page_does_not_scroll(page)
+    if filled:
+        # 領域そのものはスクロールせず、枠が領域の底まで広がって中で縦にスクロールする
+        assert metrics["content"]["scrollHeight"] <= metrics["content"]["clientHeight"]
+        assert metrics["target"]["scrollHeight"] > metrics["target"]["clientHeight"]
+    else:
+        # 枠の中ではスクロールせず、領域ごと縦にスクロールする
+        assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+        assert metrics["target"]["scrollHeight"] <= metrics["target"]["clientHeight"] + 1
+    assert_bands_stay(page)

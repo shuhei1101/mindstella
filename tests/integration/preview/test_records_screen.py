@@ -26,10 +26,13 @@ from preview_fixture_types import (
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import (
+    BOUNDARY_HEIGHT,
     NARROW_VIEWPORT,
+    TABLE_BOARD_BOUNDARY_WIDTHS,
     WIDE_VIEWPORT,
     assert_bands_stay,
     assert_page_does_not_scroll,
+    assert_region_mode,
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
@@ -281,3 +284,21 @@ def test_drawer_text_fields_when_terms(
     ]
     assert rows == ["G-1"]
     assert chips == ["用語に「移し」を含む"]
+
+
+@pytest.mark.parametrize(("width", "filled"), TABLE_BOARD_BOUNDARY_WIDTHS)
+def test_region_at_boundary(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    width: int,
+    filled: bool,
+) -> None:
+    """領域の高さいっぱいに広げる境（721px）の前後の幅で、表が広がるか領域ごとスクロールするかが切り替わる（正常系）。"""
+    # 準備
+    url = write_preview(*(make_item(f"N-{number}") for number in range(1, MANY_NOTES + 1)))
+    page = open_preview(url, "#tab=notes")
+    page.set_viewport_size({"width": width, "height": BOUNDARY_HEIGHT})
+    page.wait_for_selector(".table-wrap")
+    # 実行・検証
+    assert_region_mode(page, ".table-wrap", filled=filled)

@@ -32,10 +32,14 @@ from preview_drawer_helpers import (
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import (
+    BOUNDARY_HEIGHT,
+    MAP_BOUNDARY_WIDTHS,
     NARROW_VIEWPORT,
+    TABLE_BOARD_BOUNDARY_WIDTHS,
     WIDE_VIEWPORT,
     assert_bands_stay,
     assert_page_does_not_scroll,
+    assert_region_mode,
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
@@ -1502,3 +1506,33 @@ def test_text_filter_when_view_switched(
     assert board_cards == ["D-3"]
     assert board_chips == ["タイトルに「D-3」を含む"]
     assert all("を含む" not in chip for chip in chip_texts(page))
+
+
+@pytest.mark.parametrize(("view", "width", "filled"), [
+    *[(view, width, filled) for view in ("board", "table") for width, filled in TABLE_BOARD_BOUNDARY_WIDTHS],
+    *[("map", width, filled) for width, filled in MAP_BOUNDARY_WIDTHS],
+])
+def test_region_at_boundary(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    view: str,
+    width: int,
+    filled: bool,
+) -> None:
+    """領域の高さいっぱいに広げる境（表・ボードは 721px、マップは 901px）の前後の幅で、広げるか領域ごとスクロールするかが切り替わる（正常系）。"""
+    # 準備
+    url = _write_many_decisions(write_preview, make_item)
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.set_viewport_size({"width": width, "height": BOUNDARY_HEIGHT})
+    # マップは 900px 以下だと字下げの一覧になるので、そのときは領域を指す
+    selector = REGION_SCROLLER[view] if filled or view != "map" else ".map-outline"
+    page.wait_for_selector(selector)
+    # 実行・検証
+    if view == "map" and not filled:
+        metrics = region_metrics(page)
+        assert_page_does_not_scroll(page)
+        assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+        assert_bands_stay(page)
+    else:
+        assert_region_mode(page, selector, filled=filled)
