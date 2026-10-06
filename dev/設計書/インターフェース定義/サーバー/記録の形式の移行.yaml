@@ -89,8 +89,8 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 手順を当てた後の、`summary` を持たない `config.yaml` のワークスペース
-        notes: '`values` は `[{"file": "config.yaml", "key": "summary", "value": "要件出しのスキルを設計する"}]`'
+        description: 手順を当てた後の、`summary` を持たない `.mindstella/config.yaml` のワークスペース
+        notes: '`values` は `[{"file": ".mindstella/config.yaml", "key": "summary", "value": "要件出しのスキルを設計する"}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -104,8 +104,8 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`config.yaml` の `summary` が渡した題名'
-      - '`mindstella-version.ini` が無いまま'
+      - '`.mindstella/config.yaml` の `summary` が渡した題名'
+      - '`.mindstella/mindstella-version.ini` が無いまま'
     test: test_normal_when_set
   - name: 正常系（版を書く）
     summary: 点検に合うワークスペースで record が版のファイルを書く
@@ -307,7 +307,7 @@ flows:
       ```
     expected:
       - ツールのエラーになる
-      - エラーの本文に `v99.0.0` と `v0.5.0` がある
+      - エラーの本文に `v99.0.0` とプラグインの版（`plugins/mindstella/version.ini` の 1 行目）がある
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、写しのフォルダが作られていない
     test: test_error_when_newer
   - name: 異常系（手順が失敗する・StepFailedError）

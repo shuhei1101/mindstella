@@ -249,7 +249,7 @@ flows:
       - '`decisions.yaml`・`docs.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_legacy_format
   - name: 正常系（タスクに本文を足す）
-    summary: 本文を持たないタスクに本文を足し、変更履歴に本文の差分を積む
+    summary: 本文を持たないタスクに本文を足し、本文が無かったことを変更履歴に積む
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -273,9 +273,9 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`.mindstella/docs/T-1.md` の中身が渡した `body_markdown` と同じで、T-1 の `body` が `T-1.md`'
-      - T-1 が `history` を 1 回分持ち、`body_diff` を今の本文に当てると空の本文になる
-      - '`changed` が `body_markdown`'
+      - '`.mindstella/docs/T-1.md` の中身が渡した `body_markdown` と同じで、T-1 の `body` が `T-1.md`、`updated_by` が `ai`'
+      - 'T-1 が `history` を 1 回分持ち、その `before` が `{body: null}`（前に本文が無かった）'
+      - '`changed` が `body`・`body_markdown`'
     test: test_normal_when_task_body_added
 lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。値が変わったときは、書き換える前の値をその項目の変更履歴に 1 回分積む。
 idempotent: false
