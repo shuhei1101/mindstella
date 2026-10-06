@@ -137,3 +137,61 @@ def test_marked(open_story: OpenStory) -> None:
     # 表の印は記号だけで、「新規」「変更」の札にしない
     assert page.locator("table.grid .df-badge").count() == 0
     assert page.locator("table.grid .df-mark svg.icon").count() == 2
+
+
+# 行ごとに、タイトル・差分の印・コメントの印の要素の並びと、印の無い行の印の数を返す
+COMMENTED_ROWS_SCRIPT = """() => Object.fromEntries([...document.querySelectorAll('table.grid tbody tr')].map(row => {
+    const cell = row.querySelector('.row-open').parentElement;
+    return [row.dataset.id, {
+        order: [...cell.children].map(child => child.matches('.row-open') ? 'title' : child.matches('.df-mark') ? 'diff' : child.matches('.cmk-place') ? 'comment' : 'other'),
+        count: row.querySelector('.cmk')?.querySelector('.cmk-n').textContent ?? null,
+        spoken: row.querySelector('.cmk .sr-only')?.textContent ?? null,
+    }];
+}))"""
+
+# タイトルのボタンとコメントの印の外形を返す
+COMMENT_BOXES_SCRIPT = """(id) => {
+    const row = document.querySelector(`table.grid tbody tr[data-id="${id}"]`);
+    const box = (element) => { const r = element.getBoundingClientRect(); return {left: r.left, top: r.top, right: r.right, bottom: r.bottom}; };
+    return {title: box(row.querySelector('.row-open')), mark: box(row.querySelector('.cmk'))};
+}"""
+
+# 幅 390px のストーリーの画面の大きさ
+PHONE_VIEWPORT = {"width": 390, "height": 844}
+
+
+def test_commented(open_story: OpenStory) -> None:
+    """コメントを書いた行。タイトル・差分の印・コメントの印の順に置き、印の無い行は変わらない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-table--commented")
+    # 検証
+    rows = page.evaluate(COMMENTED_ROWS_SCRIPT)
+    assert rows["D-5"] == {
+        "order": ["title", "diff", "comment"],
+        "count": "1",
+        "spoken": "コメント 1 件",
+    }
+    assert rows["D-37"] == {"order": ["title", "comment"], "count": "12", "spoken": "コメント 12 件"}
+    # 印の無い行は、印を置く場所が空のまま（印も読み上げの文字も無い）
+    for row_id in ("D-1", "D-2", "D-3", "D-4"):
+        assert rows[row_id]["order"] == ["title", "comment"]
+        assert rows[row_id]["count"] is None
+        assert rows[row_id]["spoken"] is None
+    assert page.locator("table.grid .cmk-place:empty").count() == 4
+    assert page.locator("table.grid .cmk").count() == 2
+
+
+def test_commented_when_narrow(open_story: OpenStory) -> None:
+    """幅 390px でも、コメントの印がタイトルに重ならず、収まらなければ次の行へ送る（正常系）。"""
+    # 準備
+    page = open_story("preview-table--commented")
+    # 実行
+    page.set_viewport_size(PHONE_VIEWPORT)
+    # 検証
+    for row_id in ("D-5", "D-37"):
+        boxes = page.evaluate(COMMENT_BOXES_SCRIPT, row_id)
+        title, mark = boxes["title"], boxes["mark"]
+        # 同じ行に並ぶなら右に、次の行へ送られたならタイトルの下にあり、どちらもタイトルと重ならない
+        beside = mark["left"] >= title["right"]
+        below = mark["top"] >= title["bottom"]
+        assert beside or below

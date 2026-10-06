@@ -22,6 +22,7 @@ from preview_fixture_types import (
 )
 from workspace_fixtures import (
     CallTool,
+    MakeComment,
     MakeItem,
     MakeWorkspace,
     WriteComments,
@@ -185,6 +186,44 @@ def write_sample_preview(
     def _write() -> str:
         """サンプルの項目・設定・本文のワークスペースを作って配信を立てる。"""
         return write_preview(*sample_items, settings=sample_settings, bodies=sample_bodies)
+
+    return _write
+
+
+@pytest.fixture
+def write_commented_preview(
+    write_review_preview: WriteReviewPreview,
+    make_comment: MakeComment,
+    sample_items: list[dict[str, Any]],
+    sample_settings: dict[str, Any],
+    sample_bodies: dict[str, str],
+) -> WriteReviewPreview:
+    """サンプルの記録に、項目ごとの件数が違うレビュー中のコメントを足した配信の URL とフォルダを返す関数を返す。
+
+    件数は D-2 が 2、D-3 が 1（箇所を指す）、T-1・A-1・A-2・R-1 が 1 で、D-1・D-4・D-5 は 0。項目を指さないコメントが 1 件ある。
+    """
+
+    def _write() -> tuple[str, Path]:
+        """サンプルの記録とコメントのワークスペースを作って配信を立てる。"""
+        return write_review_preview(
+            *sample_items,
+            settings=sample_settings,
+            bodies=sample_bodies,
+            comments=(
+                make_comment("C-1", target="D-2"),
+                make_comment("C-2", target="D-2"),
+                make_comment(
+                    "C-3",
+                    target="D-3",
+                    loc={"kind": "body", "start": 3, "end": 3, "text": "本文の段落"},
+                ),
+                make_comment("C-4", target="T-1"),
+                make_comment("C-5", target="A-1"),
+                make_comment("C-6", target="A-2"),
+                make_comment("C-7", target="R-1"),
+                {key: value for key, value in make_comment("C-8").items() if key != "target"},
+            ),
+        )
 
     return _write
 

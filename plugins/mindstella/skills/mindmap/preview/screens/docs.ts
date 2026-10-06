@@ -13,7 +13,7 @@ namespace MindmapPreview {
   const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
 
   /** 資料の画面を返す */
-  export function docsScreen({ index, route, on, marks, filters, drawerOpen }: ScreenProps): HTMLElement {
+  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen }: ScreenProps): HTMLElement {
     const common = commonColumns(index.data.settings);
     const columns: Column[] = [
       common.id,
@@ -70,6 +70,7 @@ namespace MindmapPreview {
             onFilter: on.filter,
             open: on.open,
             marks,
+            ...(comments === undefined ? {} : { comments }),
           }),
           drawer,
         ],
@@ -93,7 +94,7 @@ namespace MindmapPreview {
               statuses: [...DOC_STATUSES],
               statusFilter: filters["status"] ?? [],
             }).map((column) => ({ ...column, items: orderDocs(column.items) })),
-            card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id] }),
+            card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments }),
             emptyText: "資料はありません。",
           })
         : h({
@@ -102,7 +103,7 @@ namespace MindmapPreview {
             children:
               shown.length > 0
                 ? orderDocs(shown).map((row) =>
-                    docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id] }),
+                    docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments }),
                   )
                 : [h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
           });
@@ -116,6 +117,7 @@ namespace MindmapPreview {
     open,
     inBoard,
     mark,
+    comments,
   }: {
     index: RecordIndex;
     doc: Item;
@@ -123,6 +125,8 @@ namespace MindmapPreview {
     inBoard: boolean;
     /** 差分の印（差分の表示の間で、その資料に印があるとき） */
     mark?: DiffKind | undefined;
+    /** 項目の ID → レビュー中のコメントの件数。渡したとき、メタ情報の並びの右端に印を置く場所を置く */
+    comments?: Record<string, number> | undefined;
   }): HTMLElement {
     return h({
       tag: "button",
@@ -148,6 +152,7 @@ namespace MindmapPreview {
             h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
             inBoard ? null : statusBadge(doc.status),
             h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),
+            comments === undefined ? null : commentPlace({ id: doc.id, count: comments[doc.id] }),
           ],
         }),
         (doc.tags ?? []).length > 0 ? h({ tag: "span", attrs: { class: "c-tags" }, children: [tagList(doc.tags)] }) : null,

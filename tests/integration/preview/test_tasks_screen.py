@@ -26,6 +26,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -334,3 +335,31 @@ def test_board_chips(write_sample_preview: WriteSamplePreview, open_preview: Ope
     assert after_remove == (["状態: 進行中"], "1", 1)
     assert badge_text(page) is None
     assert page.locator(".board .card").count() == 3
+
+
+def test_comment_marks_when_board(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """ボードのカードのメタ情報の右端に、コメントの件数の印を出す。件数 0 のタスクには出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
+    page.wait_for_selector(".board button.card")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["tasks"]
+    assert page.locator(".board button.card").count() == 3
+    assert page.locator(".board button.card .c-meta .cmk").count() == 1
+    assert page.inner_text('.board button.card[data-id="T-1"] .cmk .sr-only') == "コメント 1 件"
+
+
+def test_comment_marks_when_table(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """表の行のタイトルの右に印を出す。件数 0 の行には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["tasks"]
+    assert page.locator("table.grid tbody tr:has(.cmk)").count() == 1

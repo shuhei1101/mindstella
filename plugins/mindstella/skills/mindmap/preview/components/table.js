@@ -198,7 +198,7 @@ var MindmapPreview;
     }
     MindmapPreview.filterChips = filterChips;
     /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
-    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on }, previous, }) {
+    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, on }, previous, }) {
         const hidden = new Set(hiddenColumns ?? columns.filter((column) => column.hidden).map((column) => column.key));
         const visible = columns.filter((column) => !hidden.has(column.key));
         // 固定する列の数（左端から pinTo の列まで）
@@ -372,10 +372,11 @@ var MindmapPreview;
                 children: [content],
             });
             const mark = MindmapPreview.markFor({ marks, id: row.id });
-            if (mark === null)
+            const commentPlaceElement = comments === undefined ? null : MindmapPreview.commentPlace({ id: row.id, count: comments[row.id] });
+            if (mark === null && commentPlaceElement === null)
                 return opener;
             const fragment = document.createDocumentFragment();
-            fragment.append(opener, mark);
+            fragment.append(...[opener, mark, commentPlaceElement].filter((node) => node !== null));
             return fragment;
         };
         const body = shownRows.length > 0
@@ -591,7 +592,7 @@ var MindmapPreview;
     }
     MindmapPreview.tableState = tableState;
     /** 状態を持つ表を返す。並べ替え・列・ピン留めの操作は自分で描き直し、表示する列とピン留めは端末に残す。絞り込みの条件は画面から受け、チップで変えたときは `onFilter` に新しい条件を渡す */
-    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, }) {
+    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, comments, }) {
         const state = tableState(kind);
         // 画面を描き直したときは、前のポップオーバーを開いたままにしない
         state.popover = null;
@@ -615,6 +616,7 @@ var MindmapPreview;
                     hiddenColumns: state.hidden,
                     popover: state.popover,
                     ...(marks === undefined ? {} : { marks }),
+                    ...(comments === undefined ? {} : { comments }),
                     on: {
                         sort: (key) => {
                             // 昇順 → 降順 → 解除

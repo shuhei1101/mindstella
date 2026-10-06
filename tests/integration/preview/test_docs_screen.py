@@ -21,6 +21,7 @@ from preview_drawer_helpers import (
     remove_chip,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -409,3 +410,37 @@ def test_chips(
     open_drawer(page)
     assert checked_values(page, "deliverable") == []
     assert checked_values(page, "status") == []
+
+
+@pytest.mark.parametrize(
+    "view",
+    [
+        pytest.param("cards", id="cards"),
+        pytest.param("board", id="board"),
+    ],
+)
+def test_comment_marks_when_cards(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, view: str
+) -> None:
+    """資料のカードとボードのカードのメタ情報の右端に、コメントの件数の印を出す。件数 0 の資料には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector("button.card")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["docs"]
+    assert page.locator("button.card .c-meta .cmk").count() == 2
+    assert page.inner_text('button.card[data-id="A-1"] .cmk .sr-only') == "コメント 1 件"
+
+
+def test_comment_marks_when_table(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """表の行のタイトルの右に印を出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["docs"]
+    assert page.locator("table.grid tbody tr:has(.row-open ~ .cmk-place .cmk)").count() == 2

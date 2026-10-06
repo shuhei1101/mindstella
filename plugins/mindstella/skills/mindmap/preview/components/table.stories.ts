@@ -105,6 +105,19 @@ export const Marked: Story = {
   },
 };
 
+/** コメントを書いた行。タイトルの右に差分の印、その後ろにコメントの印を置き、印の無い行は変わらない */
+export const Commented: Story = {
+  args: {
+    rows: [
+      ...rows,
+      { id: "D-5", title: "変更履歴に持たせる回数の既定", conf: "中", status: "決定済み" },
+      { id: "D-37", title: "差分の表示から抜ける操作の置き場所", conf: "高", status: "未決定" },
+    ],
+    marks: { "D-5": "changed" },
+    comments: { "D-5": 1, "D-37": 12 },
+  },
+};
+
 /** 表示する列のポップオーバーを開いている。タイトルの列は外せない */
 export const ColumnsPopover: Story = {
   play: async ({ canvasElement }) => {
