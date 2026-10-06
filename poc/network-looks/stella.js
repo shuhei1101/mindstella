@@ -6,6 +6,8 @@
   const TWINKLE_PERIOD = 1900;  // 星のまたたきの周期（ms）
   const PULSE_PERIOD = 3600;    // 選んだ星から広がる輪の周期（ms）
   const SPRITE = 128;           // 光の玉の絵の一辺（px）
+  // 切り分け用: ?off= に並べた描き足しを外す（grad = 2 色の線を単色に / sprites = 光の玉の絵を置かない / spikes = 光条を描かない / sky = 深宇宙の星雲・遠い星・塵を描かない）
+  const OFF = new Set((new URLSearchParams(location.search).get("off") || "").split(",").filter(Boolean));
 
   /** 文字列から 0〜1 の決まった値を作る（玉ごとのまたたきの位相に使う） */
   const hash = (s) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return ((h >>> 0) % 10000) / 10000; };
@@ -32,7 +34,7 @@
     return c;
   };
   /** 光の玉の絵を、中心と半径を指定して置く */
-  const blit = (ctx, img, x, y, r) => ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+  const blit = (ctx, img, x, y, r) => { if (!OFF.has("sprites")) ctx.drawImage(img, x - r, y - r, r * 2, r * 2); };
   /** 2 点を結ぶ線を引く */
   const line = (ctx, a, b) => { ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke(); };
   /** 塗りの円を描く */
@@ -46,6 +48,7 @@
   };
   /** 明るい星の光条（十字の光の筋）を、先へ行くほど薄く描く */
   const spikes = (ctx, x, y, len, hex, alpha, w) => {
+    if (OFF.has("spikes")) return;
     for (const [dx, dy] of [[1, 0], [0, 1]]) {
       const g = ctx.createLinearGradient(x - dx * len, y - dy * len, x + dx * len, y + dy * len);
       g.addColorStop(0, rgba(hex, 0)); g.addColorStop(0.5, rgba(hex, alpha)); g.addColorStop(1, rgba(hex, 0));
@@ -76,6 +79,7 @@
   };
   /** 2 色をなめらかにつなぐ線を引く */
   const gradLine = (ctx, a, b, ca, cb, alpha) => {
+    if (OFF.has("grad")) { ctx.strokeStyle = rgba(ca, alpha); line(ctx, a, b); return; }
     const g = ctx.createLinearGradient(a.sx, a.sy, b.sx, b.sy);
     g.addColorStop(0, rgba(ca, alpha)); g.addColorStop(1, rgba(cb, alpha));
     ctx.strokeStyle = g; line(ctx, a, b);
@@ -260,7 +264,7 @@
         ctx.globalAlpha = 1; ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
         // 星雲: 空の向きに貼ってあり、回すと一緒に流れる
         ctx.globalCompositeOperation = dark ? "lighter" : "source-over";
-        for (const nb of S.nebulae) {
+        if (!OFF.has("sky")) for (const nb of S.nebulae) {
           const p = projDir(e, nb.d);
           if (!p) continue;
           const size = Math.max(W, H) * nb.scale;
@@ -268,7 +272,7 @@
           ctx.drawImage(nb.img, p.sx - size / 2, p.sy - size / 2, size, size);
         }
         // 遠い星と天の川（夜だけ）。ゆっくりまたたく
-        if (dark) for (const st of S.stars) {
+        if (dark && !OFF.has("sky")) for (const st of S.stars) {
           const p = projDir(e, st);
           if (!p || p.sx < -2 || p.sy < -2 || p.sx > W + 2 || p.sy > H + 2) continue;
           const tw = 0.75 + 0.25 * Math.sin(e.now / (1400 + st.s * 1800) + st.s * TAU);
@@ -281,7 +285,7 @@
         // 近くの塵: 群れの周りに浮かび、寄ると視差で動く
         G.dust ??= (() => { const rnd = seeded(7), R = spread(G) * 1.8, out = []; for (let i = 0; i < 260; i++) { const v = dir(rnd), r = R * Math.cbrt(rnd()); out.push({ x: v.x * r, y: v.y * r, z: v.z * r }); } return out; })();
         ctx.fillStyle = dark ? "#b9c8ff" : "#4a5878";
-        for (const pt of G.dust) {
+        if (!OFF.has("sky")) for (const pt of G.dust) {
           const p = e.proj(pt);
           if (p.z + G.dist <= 10) continue;
           const far = Math.max(0, Math.min(1, 1.3 - (p.z + G.dist) / (G.dist * 2)));

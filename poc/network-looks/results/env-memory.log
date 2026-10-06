@@ -1,0 +1,2 @@
+before: WSL available(MB)=41382 Windows free(MB)=12776
+after: WSL available(MB)=40299 Windows free(MB)=8031
