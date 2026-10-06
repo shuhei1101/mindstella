@@ -1,0 +1,70 @@
+# 結合テスト（全 pass）
+# commit: 07ff81b
+# 実行日時: 2026-10-06 23:10:13 JST
+$ pytest tests/integration/preview tests/integration/storybook
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-map-wheel-zoom-board-default
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 456 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  4%]
+...........                                                              [  7%]
+tests/integration/preview/test_decisions_screen.py ..................... [ 11%]
+...................                                                      [ 16%]
+tests/integration/preview/test_detail_full_screen.py .................   [ 19%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 23%]
+...............................                                          [ 30%]
+tests/integration/preview/test_diagram_viewer_screen.py ........         [ 32%]
+tests/integration/preview/test_docs_screen.py ..................         [ 36%]
+tests/integration/preview/test_graph_screen.py ........                  [ 37%]
+tests/integration/preview/test_history_screen.py ......                  [ 39%]
+tests/integration/preview/test_open_preview.py ..........                [ 41%]
+tests/integration/preview/test_overview_screen.py ................       [ 44%]
+tests/integration/preview/test_records_screen.py .....                   [ 46%]
+tests/integration/preview/test_search_screen.py .....                    [ 47%]
+tests/integration/preview/test_settings_confirm_screen.py .......        [ 48%]
+tests/integration/preview/test_settings_screen.py ..........             [ 50%]
+tests/integration/preview/test_tasks_screen.py ...............           [ 54%]
+tests/integration/preview/test_topbar_screen.py ..............           [ 57%]
+tests/integration/storybook/test_diff_mark_stories.py ...                [ 57%]
+tests/integration/storybook/test_filter_drawer_stories.py .......        [ 59%]
+tests/integration/storybook/test_history_dialog_stories.py .....         [ 60%]
+tests/integration/storybook/test_selection_comment_stories.py .....      [ 61%]
+tests/integration/storybook/test_send_form_stories.py ..............     [ 64%]
+tests/integration/storybook/test_settings_confirm_stories.py ......      [ 66%]
+tests/integration/storybook/test_settings_panel_stories.py ........      [ 67%]
+tests/integration/storybook/test_table_stories.py .........              [ 69%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 74%]
+.........                                                                [ 76%]
+tests/integration/storybook/test_view_switch_stories.py ..               [ 76%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 77%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 77%]
+tests/integration/preview/test_docs_screen.py .                          [ 77%]
+tests/integration/preview/test_records_screen.py .                       [ 77%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 78%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 80%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 80%]
+tests/integration/preview/test_decisions_screen.py .                     [ 80%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 80%]
+tests/integration/preview/test_records_screen.py .                       [ 81%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 81%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 83%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 83%]
+tests/integration/preview/test_decisions_screen.py .                     [ 83%]
+tests/integration/preview/test_records_screen.py .                       [ 84%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 84%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 86%]
+tests/integration/preview/test_decisions_screen.py .                     [ 86%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 87%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 89%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 89%]
+tests/integration/storybook/test_topbar_stories.py .......               [ 91%]
+tests/integration/preview/test_topbar_screen.py .                        [ 91%]
+tests/integration/storybook/test_topbar_stories.py ....                  [ 92%]
+tests/integration/preview/test_topbar_screen.py .                        [ 92%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 97%]
+............                                                             [100%]
+
+======================= 456 passed in 361.06s (0:06:01) ========================

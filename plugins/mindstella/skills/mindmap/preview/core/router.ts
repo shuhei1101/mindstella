@@ -42,14 +42,14 @@ namespace MindmapPreview {
 
   /** 画面ごとの既定の表示形式（書いていない画面は表） */
   export const DEFAULT_VIEW: Partial<Record<Tab, View>> = {
-    decisions: "map",
+    decisions: "board",
     tasks: "board",
     docs: "cards",
   };
 
   /** 画面が持つ表示形式（書いていない画面は表だけ） */
   export const VIEWS_OF: Partial<Record<Tab, View[]>> = {
-    decisions: ["map", "board", "table"],
+    decisions: ["board", "map", "table"],
     tasks: ["board", "table"],
     docs: ["cards", "board", "table"],
   };

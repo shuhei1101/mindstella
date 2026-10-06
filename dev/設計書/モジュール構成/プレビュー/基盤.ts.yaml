@@ -135,7 +135,7 @@ constants:
     summary: '`tab` → 既定の `view`'
     entries:
       - key: decisions
-        value: map
+        value: board
       - key: tasks
         value: board
       - key: docs
@@ -149,7 +149,7 @@ constants:
     summary: '`tab` → 切り替えられる `view` の並び'
     entries:
       - key: decisions
-        value: '["map", "board", "table"]'
+        value: '["board", "map", "table"]'
       - key: tasks
         value: '["board", "table"]'
       - key: docs
@@ -456,7 +456,7 @@ functions:
         summary: 既定と誤った値を扱う
         condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board`'
         mock: なし
-        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・map・null・full 偽 / tasks・board / docs・board'
+        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board'
   - name: toHash
     title: ハッシュを作る
     kind: 関数
@@ -477,9 +477,9 @@ functions:
       - name: test_to_hash
         case: 正常
         summary: 既定の値を書かない
-        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり'
+        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり / 検討事項のボード / 検討事項のマップ'
         mock: なし
-        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない）
+        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない） / `#tab=decisions`（既定の `board` は書かない） / `#tab=decisions&view=map`
   - name: navigate
     title: 画面を移る
     kind: 関数
