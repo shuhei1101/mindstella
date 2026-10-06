@@ -186,7 +186,7 @@ elements:
   - name: 用語のツールチップ
     kind: tooltip
     position: 用語の印の下（収まらなければ上）
-    description: 用語の印に乗せる・フォーカスすると、用語・ID・意味を出す。ツールチップに乗せている間は消さず、Esc で消す。印から外れて少し待つと消す。用語の印は `aria-describedby` でツールチップを指す
+    description: 用語の印に乗せる・フォーカスすると、用語・ID・意味を出す。ツールチップに乗せている間は消さず、Esc で消す。印から外れて 150 ミリ秒たつと消す（その間にツールチップへ乗せれば消さない）。用語の印は `aria-describedby` でツールチップを指す
     io: 表示
     visible_when: 用語の印に乗せる・フォーカスしている間
     source: プレビューを開く.mindmap-data.terms[].meaning

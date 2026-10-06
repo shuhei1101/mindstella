@@ -136,8 +136,10 @@ states:
     args:
       - name: kind
         value: terms
+      - name: columns
+        value: 用語集の列（`id`・`title` の `label` が「用語」・`meaning`・`aliases`・`avoid`・`tags`）
       - name: filters
-        value: '{"~term": ["移し"]}'
+        value: '{"~title": ["移し"]}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
