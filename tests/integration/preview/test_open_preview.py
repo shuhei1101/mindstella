@@ -326,6 +326,8 @@ def test_normal_when_sent(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
     assert page.locator(f"{COMMENTS_PANEL} .comments-list li").count() == 0
     # 検証（入口は Esc で閉じる）
+    # 送った後の記録の読み直しと描き直しが終わってから選ぶ（遅れて描き直されると、選んだ範囲と入口が外れる）
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
     select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
     page.focus(PILL)
     page.keyboard.press("Escape")
