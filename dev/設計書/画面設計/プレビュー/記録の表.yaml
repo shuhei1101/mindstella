@@ -73,3 +73,5 @@ elements:
 lead: 調査・用語集・メモ・会話ログを表だけで見る画面。種類ごとに同じ画面を使い回す。
 mock: dev/mock/pages/records/89/standard/index.html
 test_file: tests/integration/preview/test_records_screen.py
+notes:
+  コメントの印のモック: コメントの印の見本は `dev/mock/pages/records/121/standard/index.html`

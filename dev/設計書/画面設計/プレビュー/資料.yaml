@@ -121,3 +121,5 @@ elements:
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/89/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py
+notes:
+  コメントの印のモック: コメントの印の見本は `dev/mock/pages/docs/121/standard/index.html`

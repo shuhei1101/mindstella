@@ -86,3 +86,5 @@ elements:
 lead: 全種類の項目を関連でつないで 3D で描く画面。タブの帯の右端の入口から開く。
 mock: dev/mock/pages/graph/89/standard/index.html
 test_file: tests/integration/preview/test_graph_screen.py
+notes:
+  コメントの印のモック: コメントの印の見本は `dev/mock/pages/graph/121/standard/index.html` の操作列「つながり」の案 A（近づくと名前の横）
