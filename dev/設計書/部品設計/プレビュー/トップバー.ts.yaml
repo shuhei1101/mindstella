@@ -40,7 +40,7 @@ args:
     type: 列挙
     required: true
     choices: light・dark
-    description: 今のライト / ダーク
+    description: 今のライト / ダーク。ライト / ダークの切り替えのボタンは、トップバーの右端に置く
   - name: connection
     type: 列挙
     required: false
@@ -70,7 +70,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはトップバーの右端に置き、全体の検索の入口を中央へ寄せる
+    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる
     status: planned
   - name: comment_count
     type: 整数
@@ -95,7 +95,7 @@ args:
   - name: filter
     type: 真偽値
     default: 'false'
-    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・つながり）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときは右端）に置き、どちらのパネルにも覆われないようにする
+    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・つながり）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする
     status: planned
   - name: filter_count
     type: 整数
@@ -199,7 +199,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
   - name: Comments
-    description: コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す
+    description: コメントのボタンをライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す
     args:
       - name: comments
         value: 'true'
@@ -256,7 +256,7 @@ states:
       - name: comment_count
         value: '3'
   - name: Export
-    description: 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない
+    description: 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない。ライト / ダークの切り替えは表示の設定の右で、右端にある
     args:
       - name: comments
         value: 'false'
