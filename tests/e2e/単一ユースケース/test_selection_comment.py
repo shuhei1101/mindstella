@@ -19,7 +19,7 @@ from preview_helpers import (
     select_text,
     select_text_for_pill,
 )
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
 
 # 資料 A-1 の本文（段落の 2 行目と 3 行目が同じ文。2 行目のほうを選ぶ）
 BODY_WITH_SAME_SENTENCE = "1 行目の文\n言い換えたい文\n言い換えたい文\n"
@@ -49,7 +49,7 @@ def _serve(make_workspace: MakeWorkspace, call_tool: CallTool, *items: Any, **kw
 
 def _read_comments(root: Path) -> list[dict[str, Any]]:
     """ワークスペースのレビュー中のコメントを読む（ファイルが無ければ 0 件）。"""
-    path = root / "comments.yaml"
+    path = root / RECORD_DIR / "comments.yaml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"] if path.exists() else []
 
 

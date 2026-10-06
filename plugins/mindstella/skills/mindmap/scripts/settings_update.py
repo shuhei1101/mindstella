@@ -10,17 +10,21 @@ from typing import Any, Literal
 from errors import (
     ArgumentError,
     SchemaMismatchError,
+    SettingsInvalidError,
     UnmappedPhaseError,
     UnmappedTargetError,
 )
-from kinds import KINDS, SETTINGS_FILE, Kind
+from kinds import EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root
 from store import (
     WHOLE_PATH,
     Change,
     NowFn,
     Workspace,
     build_mismatch_error,
+    check_settings,
     dump_yaml,
+    format_path,
+    load_display_validator,
     load_workspace,
     loses_content_on_rewrite,
     now_utc,
@@ -42,10 +46,14 @@ EDITABLE_KEYS = (
     "categories",
     "links",
     "history_limit",
+    "display",
 )
 
 # 値が `null` のときに消してよい任意のキー
-REMOVABLE_KEYS = ("description", "goal", "links", "history_limit")
+REMOVABLE_KEYS = ("description", "goal", "links", "history_limit", "display")
+
+# 表示の既定の書き換えの本文に必須のキー
+DISPLAY_KEYS = ("network_look", "visible_kinds")
 
 # `phase_map` の引数の名前（引数の誤りに添える）
 PHASE_MAP_ARGUMENT = "phase_map"
@@ -178,6 +186,7 @@ def remap_phases(
             # 対応がある: フェーズと更新日時を置き換える
             item["phase"] = phase_map[phase]
             item["updated"] = now()
+            item["updated_by"] = EDITOR
             remapped.append(
                 PhaseRemap(
                     id=item["id"], key="phase", from_value=phase, to_value=phase_map[phase]
@@ -257,6 +266,7 @@ def remap_names(
             # 付け替えた項目だけ更新日時を変える
             if renamed:
                 item["updated"] = now()
+                item["updated_by"] = EDITOR
             rows.append(item)
         new_items[kind] = rows
     if unmapped:
@@ -292,7 +302,7 @@ def save_settings(
     temps: list[tuple[Path, Path]] = []
     previous: dict[Path, bytes] = {}
     for file_name, data in targets:
-        path = workspace.root / file_name
+        path = records_root(workspace.root) / file_name
         try:
             previous[path] = path.read_bytes()
             temps.append((write_temp(path, dump_yaml(data)), path))
@@ -310,8 +320,11 @@ def save_settings(
             remove_files([leftover for leftover, _ in temps])
             raise write_failed(path, error) from error
         replaced.append(path)
-    # mindmap.yaml を先頭にして返す
-    return [SETTINGS_FILE, *(KINDS[change.kind].file for change in changes)]
+    # config.yaml を先頭にして返す
+    return [
+        f"{RECORD_DIR}/{name}"
+        for name in (SETTINGS_FILE, *(KINDS[change.kind].file for change in changes))
+    ]
 
 
 def update_settings(
@@ -375,6 +388,33 @@ def update_settings(
         ],
         "files": files,
     }
+
+
+def update_display(root: Path, body: dict[str, Any]) -> dict[str, Any]:
+    """要求の本文の `network_look`・`visible_kinds` で `config.yaml` の `display` だけを丸ごと置き換える。"""
+    # 本文に 2 つのキーがあるか
+    for key in DISPLAY_KEYS:
+        if key not in body:
+            raise SettingsInvalidError(f"{key}: 渡してください")
+    # 2 つのキーだけにした値を、設定のスキーマの display と突き合わせる
+    display = {key: body[key] for key in DISPLAY_KEYS}
+    found = sorted(
+        load_display_validator().iter_errors(display), key=lambda error: list(error.absolute_path)
+    )
+    if found:
+        raise SettingsInvalidError(
+            "、".join(f"{format_path(error.absolute_path)}: {error.message}" for error in found)
+        )
+    # 崩れた config.yaml の上には書き足さない
+    _, problems = check_settings(root)
+    if problems:
+        raise build_mismatch_error(problems)
+    # 読んだ設定の display を置き換える（キーの並びは保ち、無ければ末尾に足す）
+    workspace = load_workspace(root)
+    settings = {**workspace.settings, "display": display}
+    # 変更履歴にも書き換えのまとまりにも入れず、設定だけを書く
+    save_settings(workspace, settings, [])
+    return {"display": display}
 
 
 def _settings_key_lines(settings: dict[str, Any]) -> list[str]:

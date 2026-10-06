@@ -56,7 +56,7 @@ def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
 def test_apply_step_when_rename_key(make_legacy_workspace: MakeLegacyWorkspace) -> None:
     """キーの名前を位置を保って変える（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True})
+    root = make_legacy_workspace(legacy_docs={"A-1": True}, top=True)
     # 実行
     changed = migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
     # 検証
@@ -80,7 +80,7 @@ def test_apply_step_when_rename_key_missing(
 ) -> None:
     """from が無い項目は飛ばし、ファイルを書かない（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", status="完成"))
+    root = make_workspace(make_item("A-1", status="完成"), top=True)
     before = snapshot_tree(root)
     mtimes = snapshot_mtimes(root)
     # 実行
@@ -96,7 +96,7 @@ def test_apply_step_when_rename_key_conflict(
 ) -> None:
     """from と to の両方を持つ項目は送る（異常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", done=True))
+    root = make_workspace(make_item("A-1", done=True), top=True)
     # 実行・検証
     with pytest.raises(StepError) as exc_info:
         migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
@@ -112,6 +112,7 @@ def test_apply_step_when_map_values(make_workspace: MakeWorkspace, make_item: Ma
         make_item("A-1", status=True),
         make_item("A-2", status=False),
         make_item("A-3", status="確認中"),
+        top=True,
     )
     # 実行
     migration_ops.apply_step(root, make_step("map_values", MAP_STATUS_ARGS))
@@ -125,7 +126,7 @@ def test_apply_step_when_set_default_ask(
 ) -> None:
     """ask は何も書かない（正常系）。"""
     # 準備
-    root = make_legacy_workspace(without_summary=True)
+    root = make_legacy_workspace(without_summary=True, settings_file="mindmap.yaml", top=True)
     before = snapshot_tree(root)
     # 実行
     changed = migration_ops.apply_step(root, make_step("set_default", ASK_SUMMARY_ARGS))
@@ -134,12 +135,46 @@ def test_apply_step_when_set_default_ask(
     assert snapshot_tree(root) == before
 
 
+@pytest.mark.parametrize(
+    "step",
+    [
+        pytest.param(
+            make_step("set_default", ASK_SUMMARY_ARGS),
+            id="set_default",
+        ),
+        pytest.param(
+            make_step(
+                "rename_key",
+                {"file": "mindmap.yaml", "each_item": False, "from": "field", "to": "playbooks"},
+            ),
+            id="rename_key",
+        ),
+        pytest.param(
+            make_step(
+                "map_values",
+                {"file": "mindmap.yaml", "each_item": False, "key": "field", "map": {}},
+            ),
+            id="map_values",
+        ),
+    ],
+)
+def test_apply_step_when_file_missing(make_workspace: MakeWorkspace, step: Any) -> None:
+    """対象のファイルが無ければ飛ばし、ファイルを作らない（正常系）。"""
+    # 準備
+    root = make_workspace(top=True)
+    # 実行
+    changed = migration_ops.apply_step(root, step)
+    # 検証
+    assert changed == []
+    assert not (root / "mindmap.yaml").exists()
+
+
 def test_apply_step_when_set_default_value(
     make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
     """キーが無い項目にだけ既定の値を足す（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", tags=["既存"]), make_item("D-2"))
+    root = make_workspace(make_item("D-1", tags=["既存"]), make_item("D-2"), top=True)
     step = make_step(
         "set_default",
         {"file": "decisions.yaml", "each_item": True, "key": "tags", "value": []},
@@ -189,7 +224,7 @@ def test_apply_step_when_rename_file(
 ) -> None:
     """ファイルを動かし、動かす先があれば送る（正常系・異常系）。"""
     # 準備
-    root = make_workspace(raw_files=files)
+    root = make_workspace(raw_files=files, top=True)
     step = make_step("rename_file", {"from": "a.yaml", "to": "b.yaml"})
     changed: list[str] | None = None
     # 実行・検証
@@ -200,10 +235,41 @@ def test_apply_step_when_rename_file(
     assert (root / "b.yaml").read_text(encoding="utf-8") == expected_b_text
 
 
+@pytest.mark.parametrize(
+    ("op", "source", "destination", "moved_file"),
+    [
+        pytest.param(
+            "rename_file",
+            "decisions.yaml",
+            ".mindstella/decisions.yaml",
+            ".mindstella/decisions.yaml",
+            id="file",
+        ),
+        pytest.param("move_dir", "docs", ".mindstella/docs", ".mindstella/docs/A-1.md", id="dir"),
+    ],
+)
+def test_apply_step_when_rename_file_into_record_dir(
+    tmp_path: Path, op: str, source: str, destination: str, moved_file: str
+) -> None:
+    """動かす先の親のフォルダが無ければ作って動かす（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    (root / "docs").mkdir(parents=True)
+    (root / "docs" / "A-1.md").write_text("本文\n", encoding="utf-8")
+    (root / "decisions.yaml").write_text("items: []\n", encoding="utf-8")
+    step = make_step(op, {"from": source, "to": destination})
+    # 実行
+    changed = migration_ops.apply_step(root, step)
+    # 検証
+    assert changed == [source, destination]
+    assert (root / moved_file).exists()
+    assert not (root / source).exists()
+
+
 def test_apply_step_when_delete_missing(make_workspace: MakeWorkspace) -> None:
     """消す対象が無ければ飛ばす（正常系）。"""
     # 準備
-    root = make_workspace()
+    root = make_workspace(top=True)
     # 実行
     changed = migration_ops.apply_step(root, make_step("delete", {"path": "old/"}))
     # 検証
@@ -213,7 +279,7 @@ def test_apply_step_when_delete_missing(make_workspace: MakeWorkspace) -> None:
 def test_apply_step_when_call(make_workspace: MakeWorkspace, tmp_path: Path) -> None:
     """変換のスクリプトの migrate を呼ぶ（正常系）。"""
     # 準備
-    root = make_workspace()
+    root = make_workspace(top=True)
     folder = tmp_path / "v0.3.0"
     (folder / "scripts").mkdir(parents=True)
     (folder / "scripts" / "convert.py").write_text(CONVERT_SCRIPT, encoding="utf-8")
@@ -228,7 +294,7 @@ def test_apply_step_when_call(make_workspace: MakeWorkspace, tmp_path: Path) -> 
 def test_apply_step_when_unreadable(make_workspace: MakeWorkspace) -> None:
     """YAML として読めなければ送る（異常系）。"""
     # 準備
-    root = make_workspace(raw_files={"docs.yaml": "items: [\n"})
+    root = make_workspace(raw_files={"docs.yaml": "items: [\n"}, top=True)
     # 実行・検証
     with pytest.raises(StepError) as exc_info:
         migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
@@ -281,7 +347,9 @@ def test_list_needed_values(
 ) -> None:
     """キーが無ければ返し、あれば返さない（正常系）。"""
     # 準備
-    root = make_legacy_workspace(without_summary=without_summary)
+    root = make_legacy_workspace(
+        without_summary=without_summary, settings_file="mindmap.yaml", top=True
+    )
     # 実行
     result = migration_ops.list_needed_values(root, make_step("set_default", ASK_SUMMARY_ARGS))
     # 検証

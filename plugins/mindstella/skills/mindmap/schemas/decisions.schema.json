@@ -62,6 +62,9 @@
         "updated": {
           "$ref": "common.schema.json#/$defs/item/properties/updated"
         },
+        "updated_by": {
+          "$ref": "common.schema.json#/$defs/item/properties/updated_by"
+        },
         "history": {
           "$ref": "common.schema.json#/$defs/item/properties/history"
         },

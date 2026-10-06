@@ -35,12 +35,12 @@ flows:
       - '`changes.yaml` の `pending.added` が `[D-2, T-1]`、`pending.changed` が `[D-1]`'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -49,7 +49,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: batch workspace（add 1 件）
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -159,7 +159,7 @@ flows:
     test: test_error_when_argument_invalid
 lead: 項目の追加・更新・取得の操作を並べて受け、並べた順に 1 回の呼び出しで当てる。全てを当ててから 1 回だけ検証して書き、1 つでも失敗したらどのファイルも書き換えない。
 idempotent: false
-side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。取得だけの呼び出しは何も書かない
+side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身（`updated_by` は `ai`）で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。取得だけの呼び出しは何も書かない
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）。並べた操作の間にほかの書き込みを挟まない
 request:
   - name: workspace
@@ -167,7 +167,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: operations
     type: list[dict]
     required: true
@@ -228,7 +228,7 @@ exceptions:
     condition: 全ての操作を当てられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: ItemNotFoundError
     condition: '`update`・`show` の ID の項目が無い'

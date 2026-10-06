@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
+import migrator
 import store
 from errors import (
     ItemNotFoundError,
@@ -27,7 +29,7 @@ from errors import (
     WriteFailedError,
 )
 from fixture_types import FailingUnlink, MakeItem, MakeWorkspace, SnapshotTree
-from workspace_fixtures import write_yaml
+from workspace_fixtures import RECORD_DIR, write_yaml
 
 # 壊れた YAML（閉じていないフローの配列）
 BROKEN_YAML = "items: [unclosed"
@@ -102,7 +104,7 @@ def test_load_workspace_when_yaml_broken(make_workspace) -> None:
 
 
 def test_load_workspace_when_settings_missing(tmp_path: Path) -> None:
-    """mindmap.yaml が無いフォルダは読まない（異常系）。"""
+    """config.yaml が無いフォルダは読まない（異常系）。"""
     # 実行・検証
     with pytest.raises(WorkspaceNotFoundError, match=re.escape(str(tmp_path))):
         store.load_workspace(tmp_path)
@@ -123,16 +125,16 @@ def test_load_workspace_when_top_level_list(make_workspace) -> None:
 def test_load_workspace_when_settings_broken(make_workspace) -> None:
     """設定が YAML として読めなければ問題に記録して空にする（正常系）。"""
     # 準備
-    root = make_workspace(raw_files={"mindmap.yaml": BROKEN_YAML})
+    root = make_workspace(raw_files={"config.yaml": BROKEN_YAML})
     # 実行
     workspace = store.load_workspace(root)
     # 検証
     assert workspace.settings == {}
     assert len(workspace.load_problems) == 1
     problem = workspace.load_problems[0]
-    assert problem.file == "mindmap.yaml"
+    assert problem.file == "config.yaml"
     assert problem.key == "(全体)"
-    assert "mindmap.yaml" not in workspace.raw
+    assert "config.yaml" not in workspace.raw
 
 
 def test_validate_workspace(make_workspace, make_item) -> None:
@@ -219,12 +221,12 @@ LEGACY_SETTINGS: dict[str, Any] = {
 @pytest.mark.parametrize(
     ("file_name", "item_id", "kind", "settings", "expected"),
     [
-        pytest.param("mindmap.yaml", None, "schema", LEGACY_SETTINGS, True, id="settings"),
+        pytest.param("config.yaml", None, "schema", LEGACY_SETTINGS, True, id="settings"),
         pytest.param("docs.yaml", "A-1", "schema", LEGACY_SETTINGS, True, id="legacy_doc"),
         pytest.param("decisions.yaml", "D-1", "schema", LEGACY_SETTINGS, False, id="decision"),
         pytest.param("docs.yaml", "A-1", "broken_ref", LEGACY_SETTINGS, False, id="broken_ref"),
         pytest.param(
-            "mindmap.yaml",
+            "config.yaml",
             None,
             "schema",
             {"summary": "要件出しのスキルを設計する", **LEGACY_SETTINGS},
@@ -245,7 +247,7 @@ def test_is_legacy_problem(
     """前の版の形式の問題を見分ける（正常系）。"""
     # 準備
     root = make_legacy_workspace(make_item("D-1", status="完了"), legacy_docs={"A-1": True})
-    write_yaml(root / "mindmap.yaml", settings)
+    write_yaml(root / RECORD_DIR / "config.yaml", settings)
     workspace = store.load_workspace(root)
     problems = store.validate_workspace(workspace)
     problem = next(p for p in problems if p.file == file_name and p.id == item_id)
@@ -344,9 +346,9 @@ def test_save_change(make_workspace, make_item, snapshot_tree) -> None:
     # 実行
     store.save_change(workspace, change)
     # 検証
-    saved = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))
+    saved = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
     assert saved == {"items": [item]}
-    assert (root / "docs" / "D-1.md").read_text(encoding="utf-8") == "## 経緯\n"
+    assert (root / RECORD_DIR / "docs" / "D-1.md").read_text(encoding="utf-8") == "## 経緯\n"
     assert list(root.rglob("*.tmp")) == []
 
 
@@ -438,7 +440,7 @@ def test_save_change_when_yaml_replace_fails_without_previous_body(
     # 実行・検証
     with pytest.raises(WriteFailedError):
         store.save_change(workspace, change)
-    assert not (root / "docs" / "D-1.md").exists()
+    assert not (root / RECORD_DIR / "docs" / "D-1.md").exists()
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []
 
@@ -486,12 +488,13 @@ def test_save_batch(make_workspace, make_item) -> None:
     # 実行
     store.save_batch(workspace, change)
     # 検証
-    assert yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8")) == {
+    records = root / RECORD_DIR
+    assert yaml.safe_load((records / "decisions.yaml").read_text(encoding="utf-8")) == {
         "items": [decision]
     }
-    assert yaml.safe_load((root / "tasks.yaml").read_text(encoding="utf-8")) == {"items": [task]}
-    assert (root / "docs" / "D-1.md").read_text(encoding="utf-8") == "## 経緯\n"
-    assert yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8")) == changes
+    assert yaml.safe_load((records / "tasks.yaml").read_text(encoding="utf-8")) == {"items": [task]}
+    assert (records / "docs" / "D-1.md").read_text(encoding="utf-8") == "## 経緯\n"
+    assert yaml.safe_load((records / "changes.yaml").read_text(encoding="utf-8")) == changes
     assert list(root.rglob("*.tmp")) == []
 
 
@@ -554,31 +557,63 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
     # 検証
     assert len(files) == 11
     assert set(files) == {
-        "mindmap.yaml",
-        "decisions.yaml",
-        "tasks.yaml",
-        "research.yaml",
-        "docs.yaml",
-        "terms.yaml",
-        "notes.yaml",
-        "logs.yaml",
-        "mindstella-version.ini",
-        "docs/",
-        "release/",
+        ".mindstella/config.yaml",
+        ".mindstella/decisions.yaml",
+        ".mindstella/tasks.yaml",
+        ".mindstella/research.yaml",
+        ".mindstella/docs.yaml",
+        ".mindstella/terms.yaml",
+        ".mindstella/notes.yaml",
+        ".mindstella/logs.yaml",
+        ".mindstella/mindstella-version.ini",
+        ".mindstella/docs/",
+        ".mindstella/release/",
     }
-    assert yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8")) == valid_settings
-    assert (root / "mindstella-version.ini").read_text(encoding="utf-8") == "v0.3.0\n"
+    records = root / RECORD_DIR
+    assert yaml.safe_load((records / "config.yaml").read_text(encoding="utf-8")) == valid_settings
+    assert (records / "mindstella-version.ini").read_text(encoding="utf-8") == "v0.3.0\n"
+    # 直下には記録のフォルダだけが並ぶ
+    assert [path.name for path in root.iterdir()] == [".mindstella"]
 
 
-def test_create_workspace_when_exists(make_workspace, snapshot_tree, valid_settings) -> None:
-    """mindmap.yaml があるフォルダには作らない（異常系）。"""
+# 前の版の設定ファイル（mindmap.yaml）と検討事項 D-1 だけを持つフォルダの中身
+LEGACY_WORKSPACE_FILES = {
+    "mindmap.yaml": "field: システム開発\ntarget_label: システム\n",
+    "decisions.yaml": "items:\n  - id: D-1\n    title: 前の版の検討事項\n",
+}
+
+
+@pytest.mark.parametrize(
+    ("files", "expects_hint"),
+    [
+        pytest.param({".mindstella/config.yaml": "summary: 題名\n"}, False, id="record_config"),
+        pytest.param({"config.yaml": "summary: 題名\n"}, True, id="top_config_yaml"),
+        pytest.param(LEGACY_WORKSPACE_FILES, True, id="legacy_mindmap_yaml"),
+    ],
+)
+def test_create_workspace_when_exists(
+    tmp_path: Path,
+    snapshot_tree: SnapshotTree,
+    valid_settings: dict[str, Any],
+    files: dict[str, str],
+    expects_hint: bool,
+) -> None:
+    """.mindstella/config.yaml か、直下の config.yaml・mindmap.yaml があるフォルダには作らない（異常系）。"""
     # 準備
-    root = make_workspace()
+    root = tmp_path / "ws"
+    root.mkdir()
+    for file_name, text in files.items():
+        (root / file_name).parent.mkdir(parents=True, exist_ok=True)
+        (root / file_name).write_text(text, encoding="utf-8")
     before = snapshot_tree(root)
+    entries_before = sorted(path.name for path in root.iterdir())
     # 実行・検証
-    with pytest.raises(WorkspaceExistsError, match=re.escape(str(root))):
+    with pytest.raises(WorkspaceExistsError, match=re.escape(str(root))) as exc_info:
         store.create_workspace(root, valid_settings, version="v0.3.0")
     assert snapshot_tree(root) == before
+    assert sorted(path.name for path in root.iterdir()) == entries_before
+    # 直下の前の版の設定ファイルには、移し替えの案内を続ける
+    assert (f"/mindstella:upgrade {root}" in "".join(exc_info.value.lines)) is expects_hint
 
 
 def test_create_workspace_when_settings_invalid(
@@ -591,7 +626,7 @@ def test_create_workspace_when_settings_invalid(
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
         store.create_workspace(root, valid_settings, version="v0.3.0")
-    assert "mindmap.yaml" in str(exc_info.value.lines)
+    assert "config.yaml" in str(exc_info.value.lines)
     assert "phases" in str(exc_info.value.lines)
     assert not root.exists()
 
@@ -614,17 +649,18 @@ def test_clear_release(make_workspace: MakeWorkspace) -> None:
     """release/ の中のファイルとフォルダを消し、消したものを名前の順に返す（正常系）。"""
     # 準備
     root = make_workspace()
-    (root / "release" / "古い資料.md").write_text("古い\n", encoding="utf-8")
-    (root / "release" / "図").mkdir()
-    (root / "release" / "図" / "構成.md").write_text("図\n", encoding="utf-8")
-    settings_before = (root / "mindmap.yaml").read_bytes()
+    release = root / RECORD_DIR / "release"
+    (release / "古い資料.md").write_text("古い\n", encoding="utf-8")
+    (release / "図").mkdir()
+    (release / "図" / "構成.md").write_text("図\n", encoding="utf-8")
+    settings_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     removed = store.clear_release(root)
     # 検証
     assert removed == ["古い資料.md", "図/"]
-    assert (root / "release").is_dir()
-    assert list((root / "release").iterdir()) == []
-    assert (root / "mindmap.yaml").read_bytes() == settings_before
+    assert release.is_dir()
+    assert list(release.iterdir()) == []
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == settings_before
 
 
 def test_clear_release_when_release_dir_missing(
@@ -633,7 +669,7 @@ def test_clear_release_when_release_dir_missing(
     """release/ が無ければ空の release/ を作り、前の版の handoff/ は触らない（正常系）。"""
     # 準備
     root = make_workspace()
-    shutil.rmtree(root / "release")
+    shutil.rmtree(root / RECORD_DIR / "release")
     (root / "handoff").mkdir()
     (root / "handoff" / "資料.md").write_text("前の版の資料\n", encoding="utf-8")
     handoff_before = snapshot_tree(root / "handoff")
@@ -641,20 +677,21 @@ def test_clear_release_when_release_dir_missing(
     removed = store.clear_release(root)
     # 検証
     assert removed == []
-    assert (root / "release").is_dir()
-    assert list((root / "release").iterdir()) == []
+    assert (root / RECORD_DIR / "release").is_dir()
+    assert list((root / RECORD_DIR / "release").iterdir()) == []
     assert snapshot_tree(root / "handoff") == handoff_before
 
 
 def test_clear_release_when_workspace_missing(tmp_path: Path) -> None:
-    """mindmap.yaml が無ければ何も消さない（異常系）。"""
+    """.mindstella/config.yaml が無ければ何も消さない（異常系）。"""
     # 準備
-    (tmp_path / "release").mkdir()
-    (tmp_path / "release" / "資料.md").write_text("資料\n", encoding="utf-8")
+    release = tmp_path / RECORD_DIR / "release"
+    release.mkdir(parents=True)
+    (release / "資料.md").write_text("資料\n", encoding="utf-8")
     # 実行・検証
     with pytest.raises(WorkspaceNotFoundError, match=re.escape(str(tmp_path))):
         store.clear_release(tmp_path)
-    assert (tmp_path / "release" / "資料.md").read_text(encoding="utf-8") == "資料\n"
+    assert (release / "資料.md").read_text(encoding="utf-8") == "資料\n"
 
 
 def test_clear_release_when_remove_fails(
@@ -663,15 +700,16 @@ def test_clear_release_when_remove_fails(
     """消せないものに当たった時点で止まり、それまでに消したものは戻さない（異常系）。"""
     # 準備
     root = make_workspace()
-    (root / "release" / "一.md").write_text("一\n", encoding="utf-8")
-    (root / "release" / "二.md").write_text("二\n", encoding="utf-8")
+    release = root / RECORD_DIR / "release"
+    (release / "一.md").write_text("一\n", encoding="utf-8")
+    (release / "二.md").write_text("二\n", encoding="utf-8")
     # 名前の順に消すので、一.md を消した後に二.md で止まる
     failing_unlink("二.md")
     # 実行・検証
-    with pytest.raises(WriteFailedError, match=re.escape(str(root / "release" / "二.md"))):
+    with pytest.raises(WriteFailedError, match=re.escape(str(release / "二.md"))):
         store.clear_release(root)
-    assert (root / "release" / "二.md").exists()
-    assert not (root / "release" / "一.md").exists()
+    assert (release / "二.md").exists()
+    assert not (release / "一.md").exists()
 
 
 def test_read_body(make_workspace) -> None:
@@ -699,7 +737,7 @@ def test_read_body_when_outside(make_workspace) -> None:
     # 準備
     workspace = store.load_workspace(make_workspace())
     # 実行
-    text = store.read_body(workspace, "../mindmap.yaml")
+    text = store.read_body(workspace, "../config.yaml")
     # 検証
     assert text is None
 
@@ -771,7 +809,7 @@ def test_save_change_when_item_value_fixed(
     # 実行
     store.save_change(workspace, change)
     # 検証
-    saved = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))
+    saved = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
     assert saved["items"][0]["status"] == "未決定"
 
 
@@ -823,9 +861,10 @@ def _try_lock_in_child(lock_file: Path) -> str:
 def test_workspace_lock(tmp_path: Path) -> None:
     """鍵とロックを持ち、抜けたら放す（正常系）。"""
     # 準備
-    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
+    (tmp_path / RECORD_DIR).mkdir()
+    (tmp_path / RECORD_DIR / "config.yaml").write_text("", encoding="utf-8")
     process_lock = threading.Lock()
-    lock_file = tmp_path / ".mindstella.lock"
+    lock_file = tmp_path / RECORD_DIR / ".mindstella.lock"
     # 実行
     with store.workspace_lock(tmp_path, process_lock):
         inside_child = _try_lock_in_child(lock_file)
@@ -840,13 +879,14 @@ def test_workspace_lock(tmp_path: Path) -> None:
 def test_workspace_lock_when_raises(tmp_path: Path) -> None:
     """中の処理が例外でも放す（正常系）。"""
     # 準備
-    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
+    (tmp_path / RECORD_DIR).mkdir()
+    (tmp_path / RECORD_DIR / "config.yaml").write_text("", encoding="utf-8")
     process_lock = threading.Lock()
     # 実行・検証
     with pytest.raises(ValueError, match="中で失敗"), store.workspace_lock(tmp_path, process_lock):
         raise ValueError("中で失敗")
     assert process_lock.locked() is False
-    assert _try_lock_in_child(tmp_path / ".mindstella.lock") == "acquired"
+    assert _try_lock_in_child(tmp_path / RECORD_DIR / ".mindstella.lock") == "acquired"
 
 
 def test_workspace_lock_when_folder_missing(tmp_path: Path) -> None:
@@ -857,7 +897,7 @@ def test_workspace_lock_when_folder_missing(tmp_path: Path) -> None:
     with store.workspace_lock(root, threading.Lock(), create=True):
         pass
     # 検証
-    assert (root / ".mindstella.lock").exists()
+    assert (root / RECORD_DIR / ".mindstella.lock").exists()
 
 
 @pytest.mark.parametrize(
@@ -880,3 +920,104 @@ def test_workspace_lock_when_not_workspace(tmp_path: Path, relative: Path) -> No
         pass
     assert process_lock.locked() is False
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("require", "expectation", "lock_file_exists"),
+    [
+        pytest.param(migrator.require_migratable, nullcontext(), True, id="require_migratable"),
+        pytest.param(
+            store.require_workspace,
+            pytest.raises(WorkspaceNotFoundError, match="ワークスペースがありません"),
+            False,
+            id="default",
+        ),
+    ],
+)
+def test_workspace_lock_when_require_given(
+    tmp_path: Path,
+    require: Callable[[Path], None],
+    expectation: AbstractContextManager[Any],
+    lock_file_exists: bool,
+) -> None:
+    """渡した確かめの関数でワークスペースを確かめる（正常系）。"""
+    # 準備
+    (tmp_path / "mindmap.yaml").write_text("", encoding="utf-8")
+    process_lock = threading.Lock()
+    # 実行・検証
+    with expectation, store.workspace_lock(tmp_path, process_lock, require=require):
+        pass
+    assert (tmp_path / ".mindstella.lock").exists() is lock_file_exists
+    assert process_lock.locked() is False
+
+
+def test_require_workspace(make_workspace: MakeWorkspace) -> None:
+    """.mindstella/config.yaml があれば通す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行・検証（例外にならない）
+    store.require_workspace(root)
+
+
+@pytest.mark.parametrize(
+    ("files", "expects_hint"),
+    [
+        pytest.param({}, False, id="empty_folder"),
+        pytest.param({"mindmap.yaml": "field: システム開発\n"}, True, id="legacy_settings_only"),
+        pytest.param({"config.yaml": "summary: 題名\n"}, True, id="top_config_only"),
+    ],
+)
+def test_require_workspace_when_missing(
+    tmp_path: Path, files: dict[str, str], expects_hint: bool
+) -> None:
+    """無いフォルダと、前の版の形のフォルダを分けて送る（異常系）。"""
+    # 準備
+    for file_name, text in files.items():
+        (tmp_path / file_name).write_text(text, encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(WorkspaceNotFoundError, match=re.escape(str(tmp_path))) as exc_info:
+        store.require_workspace(tmp_path)
+    assert (len(exc_info.value.lines) == 1) is expects_hint
+    assert (f"/mindstella:upgrade {tmp_path}" in "".join(exc_info.value.lines)) is expects_hint
+
+
+def test_check_settings(make_workspace: MakeWorkspace, valid_settings: dict[str, Any]) -> None:
+    """合う設定は問題 0 件で、display も読む（正常系）。"""
+    # 準備
+    display = {"network_look": "starlight", "visible_kinds": ["decisions"]}
+    root = make_workspace(settings={**valid_settings, "display": display})
+    # 実行
+    settings, problems = store.check_settings(root)
+    # 検証
+    assert settings["display"]["network_look"] == "starlight"
+    assert problems == []
+
+
+@pytest.mark.parametrize(
+    ("display", "raw_files", "expected_key"),
+    [
+        pytest.param({"network_look": "rainbow"}, {}, "display.network_look", id="unknown_look"),
+        pytest.param(
+            {"visible_kinds": ["decisions", "decisions"]},
+            {},
+            "display.visible_kinds",
+            id="duplicate_kinds",
+        ),
+        pytest.param({}, {"config.yaml": BROKEN_YAML}, "(全体)", id="broken_yaml"),
+    ],
+)
+def test_check_settings_when_invalid(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    display: dict[str, Any],
+    raw_files: dict[str, str],
+    expected_key: str,
+) -> None:
+    """合わない設定と読めない設定を問題にする（正常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "display": display}, raw_files=raw_files)
+    # 実行
+    _, problems = store.check_settings(root)
+    # 検証
+    assert expected_key in [problem.key for problem in problems]
+    assert {problem.file for problem in problems} == {"config.yaml"}

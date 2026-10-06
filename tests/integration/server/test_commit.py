@@ -13,6 +13,7 @@ from .history_helpers import (
     read_items,
     update_item,
 )
+from workspace_fixtures import RECORD_DIR
 
 # 手で崩した `changes.yaml`（`pending` から `added` を消した）
 BROKEN_CHANGES = "last_seq: 0\nsets: []\npending:\n  changed: []\n"
@@ -28,8 +29,8 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     task_id = add_item(call_tool, root, "task", {"title": "決める", "kind": "作業", "status": "未着手"})
     first = read_changes(root)
     before = {
-        "decisions": (root / "decisions.yaml").read_bytes(),
-        "tasks": (root / "tasks.yaml").read_bytes(),
+        "decisions": (root / RECORD_DIR / "decisions.yaml").read_bytes(),
+        "tasks": (root / RECORD_DIR / "tasks.yaml").read_bytes(),
     }
     # 実行
     result = call_tool("commit", workspace=str(root), summary="D-1 を決め、T-1 を積む")
@@ -46,8 +47,8 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     assert changes["pending"] == {"added": [], "changed": []}
     history_seq = read_items(root, "decisions.yaml")[0]["history"][0]["seq"]
     assert first["sets"][0]["until_seq"] < history_seq <= changes["sets"][0]["until_seq"]
-    assert (root / "decisions.yaml").read_bytes() == before["decisions"]
-    assert (root / "tasks.yaml").read_bytes() == before["tasks"]
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == before["decisions"]
+    assert (root / RECORD_DIR / "tasks.yaml").read_bytes() == before["tasks"]
 
 
 def test_normal_when_nothing_pending(
@@ -89,7 +90,7 @@ def test_error_when_summary_empty(
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -126,7 +127,7 @@ def test_error_when_write_fails(
     root = make_workspace()
     add_item(call_tool, root, "decision", DECISION_ITEM)
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = call_tool("commit", workspace=str(root), summary="a")
     # 検証

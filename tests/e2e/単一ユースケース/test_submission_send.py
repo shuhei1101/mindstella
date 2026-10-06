@@ -15,7 +15,7 @@ from preview_helpers import (
     DETAIL_TEXTAREA,
     OpenPreview,
 )
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, StartServer
 
 # 未決定の検討事項 D-1 の案
 OPTIONS = [
@@ -44,7 +44,7 @@ def _open_detail(page: Page, open_preview: OpenPreview, url: str) -> None:
 
 def _read_comments(root: Any) -> list[dict[str, Any]]:
     """ワークスペースのレビュー中のコメントを読む（ファイルが無ければ 0 件）。"""
-    path = root / "comments.yaml"
+    path = root / RECORD_DIR / "comments.yaml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"] if path.exists() else []
 
 
@@ -58,7 +58,7 @@ def test_normal(
     """詳細パネルでコメントを溜めると、レビュー中のコメントとして残り、入力欄が空になる（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=OPTIONS))
-    decisions_before = (root / "decisions.yaml").read_bytes()
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     _open_detail(page, open_preview, served.data["url"])
@@ -69,11 +69,11 @@ def test_normal(
     # 検証
     comments = _read_comments(root)
     assert [(item["target"], item["body"]) for item in comments] == [("D-1", BODY)]
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert page.inner_text(DETAIL_MESSAGE) == "レビューに追加しました（レビュー中 1 件）。"
     assert page.input_value(DETAIL_TEXTAREA) == ""
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
-    assert (root / "decisions.yaml").read_bytes() == decisions_before
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
 
 
 def test_error_when_body_empty(

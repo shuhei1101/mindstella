@@ -5,13 +5,22 @@
 
 from __future__ import annotations
 
-from workspace_fixtures import CallTool, MakeLegacyWorkspace, MakeWorkspace, SnapshotTree
+from workspace_fixtures import (
+    RECORD_DIR,
+    CallTool,
+    MakeLegacyWorkspace,
+    MakeWorkspace,
+    SnapshotTree,
+)
 
 # ワークスペースの版を持つファイルの名前
 VERSION_FILE = "mindstella-version.ini"
 
 # 版が新しいワークスペースに書く版
 NEWER_VERSION = "v99.0.0"
+
+# 前の版（v0.6.0 より前）の設定ファイルの名前
+LEGACY_SETTINGS = "mindmap.yaml"
 
 
 def test_normal_when_older_version(
@@ -21,7 +30,9 @@ def test_normal_when_older_version(
 ) -> None:
     """版が古いワークスペースでは、状況を示さず、移し替えのスキルを案内して止まる（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True})
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, settings_file=LEGACY_SETTINGS, top=True
+    )
     before = snapshot_tree(root)
     # 実行
     # 手順が連ねるのは版の比較までで、status は呼ばない
@@ -32,6 +43,9 @@ def test_normal_when_older_version(
     payload = plan.data
     assert payload["workspace_version"] is None
     assert payload["relation"] == "older"
+    # 設定は config.yaml でなく直下の mindmap.yaml だけを持つ
+    assert not (root / RECORD_DIR).exists()
+    assert (root / LEGACY_SETTINGS).exists()
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
 
@@ -52,5 +66,29 @@ def test_error_when_newer_version(
     # 版の比較が、ワークスペースの版がプラグインより新しいと返す
     assert plan.is_error is False
     assert plan.data["relation"] == "newer"
+    # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_version_recorded_at_top(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """直下に版を記録した古いワークスペースでは、状況を示さず、移し替えのスキルを案内して止まる（正常系）。"""
+    # 準備
+    root = make_workspace(settings_file=LEGACY_SETTINGS, top=True)
+    (root / VERSION_FILE).write_text("v0.5.0\n", encoding="utf-8")
+    before = snapshot_tree(root)
+    # 実行
+    # 手順が連ねるのは版の比較までで、status は呼ばない
+    plan = call_tool("migrate", workspace=str(root), plan=True)
+    # 検証
+    # 版の比較が、ワークスペースの版を v0.5.0、プラグインより古いと返し、当てる手順が v0.6.0 の手順だけである
+    assert plan.is_error is False
+    payload = plan.data
+    assert payload["workspace_version"] == "v0.5.0"
+    assert payload["relation"] == "older"
+    assert {step["version"] for step in payload["steps"]} == {"v0.6.0"}
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before

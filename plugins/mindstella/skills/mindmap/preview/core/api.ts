@@ -9,6 +9,7 @@ namespace MindmapPreview {
     commentsSend: "api/comments/send",
     drafts: "api/drafts",
     opened: "api/opened",
+    configDisplay: "api/config/display",
   } as const;
 
   /** 記録の取得の結果。読めなかったときは、届かなかったか、サーバーが 422 を返したかを分ける */
@@ -89,6 +90,14 @@ namespace MindmapPreview {
     } catch {
       return null;
     }
+  }
+
+  /** ワークスペースの既定として、見た目と表示する種類を保存する。200 なら `data` が書いた後の `{display}` */
+  export async function putDisplay(
+    display: { network_look: string; visible_kinds: string[] },
+    fetchFn: FetchFn = window.fetch.bind(window),
+  ): Promise<ApiResult<{ display: DisplayDefaults }>> {
+    return callApi("PUT", API_PATHS.configDisplay, display, fetchFn);
   }
 
   /** コメント・書きかけの API を 1 回呼ぶ。届かないときと、断られたときを分ける */

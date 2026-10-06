@@ -43,7 +43,7 @@ request:
     default: なし（ワークスペースのフォルダの指定を求めて終える）
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ。無ければ書き込まず `/mindstella:setup` を案内する'
+    constraints: '`.mindstella/config.yaml` か、直下の `config.yaml`・`mindmap.yaml` があるフォルダ。無ければ書き込まず `/mindstella:setup` を案内する'
 exceptions:
   - name: なし（正常終了）
     condition: ファイルの形が制約どおりで、Claude Code がスキルとして読み込める

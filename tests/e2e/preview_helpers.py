@@ -4,18 +4,28 @@ from __future__ import annotations
 
 import json
 import urllib.request
+import urllib.error
 from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from workspace_fixtures import RECORD_DIR
 
 __all__ = [
+    "HttpResult",
     "COMMENTS_BUTTON",
     "COMMENTS_PANEL",
     "DETAIL_FORM",
     "DETAIL_MESSAGE",
     "DETAIL_TEXTAREA",
+    "DRAWER",
+    "DRAWER_OPEN",
+    "FILTER_BADGE",
+    "FILTER_BUTTON",
     "FREE_FORM",
     "FREE_TEXTAREA",
     "HISTORY_DIALOG",
@@ -24,24 +34,42 @@ __all__ = [
     "PILL",
     "OpenPreview",
     "ServePreview",
+    "ServeWorkspace",
+    "badge_text",
+    "checked_values",
+    "clear_condition",
     "click_item_ball",
+    "close_drawer",
     "count_balls",
+    "drawer_counts",
     "fetch_records",
+    "http_call",
+    "open_drawer",
     "pick_history_point",
     "row_ids",
     "select_text",
     "select_text_for_pill",
     "shown_ball_item_ids",
     "snapshot_records",
+    "toggle_value",
     "visit_and_close",
 ]
 
 type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
+type ServeWorkspace = Callable[..., tuple[str, Path]]
 
 # トップバーのコメントのボタンと、コメントの一覧のパネル
 COMMENTS_BUTTON = "header.topbar button.comments-btn"
 COMMENTS_PANEL = "aside.comments-panel"
+
+# トップバーの絞り込みのボタンと、値を選んでいる条件の数のバッジ
+FILTER_BUTTON = "header.topbar button[data-act='filter']"
+FILTER_BADGE = f"{FILTER_BUTTON} .fbadge"
+
+# 絞り込みのドロワー（開いているときだけ `open` 属性を持つ）
+DRAWER = "dialog.drawer"
+DRAWER_OPEN = f"{DRAWER}[open]"
 
 # 詳細パネルの下端のコメントの入力とその入力欄・結果
 DETAIL_FORM = "aside.panel form.send"
@@ -122,7 +150,7 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
 
 
 # プレビューを開くたびに今の日時へ書き換わる、前回開いた日時のファイル
-OPENED_FILE_NAME = ".mindstella-opened"
+OPENED_FILE_NAME = f"{RECORD_DIR}/.mindstella-opened"
 
 # 前回開いた日時（秒の単位）より後に書き換えが入るよう、開いて閉じた後に待つミリ秒
 OPENED_TICK_MS = 1_100
@@ -163,8 +191,52 @@ def visit_and_close(page: Page, url: str) -> None:
 
 def fetch_records(url: str) -> dict[str, Any]:
     """配信の URL から記録（`/api/records`）を読み、JSON のオブジェクトにして返す。"""
-    with urllib.request.urlopen(f"{url}api/records", timeout=10) as response:
+    with urllib.request.urlopen(urljoin(url, "/api/records"), timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+# 1 回の HTTP を待つ上限秒数
+HTTP_TIMEOUT_SEC = 10
+
+
+@dataclass(frozen=True)
+class HttpResult:
+    """HTTP の応答（ステータス・ヘッダー名を小文字にしたヘッダー・本文）。"""
+
+    status: int
+    headers: dict[str, str]
+    text: str
+
+    def json(self) -> dict[str, Any]:
+        """本文を JSON のオブジェクトとして読む。"""
+        return json.loads(self.text)
+
+
+def http_call(
+    url: str, path: str, *, method: str = "GET", payload: dict[str, Any] | None = None
+) -> HttpResult:
+    """配信の URL のページの路に依らず、パスを足して 1 回つなぐ。ステータスが 4xx・5xx でも例外にせず、応答を返す。"""
+    request = urllib.request.Request(  # noqa: S310
+        urljoin(url, path),
+        method=method,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None,
+        headers={"Content-Type": "application/json"} if payload is not None else {},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:  # noqa: S310
+            return HttpResult(
+                response.status,
+                {name.lower(): value for name, value in response.getheaders()},
+                response.read().decode("utf-8"),
+            )
+    except urllib.error.HTTPError as error:
+        # 4xx・5xx: 応答の本文とヘッダーを読んで返す
+        with error:
+            return HttpResult(
+                error.code,
+                {name.lower(): value for name, value in error.headers.items()},
+                error.read().decode("utf-8"),
+            )
 
 
 def select_text(page: Page, selector: str, text: str) -> None:
@@ -189,6 +261,50 @@ def select_text_for_pill(page: Page, selector: str, text: str) -> None:
 def row_ids(page: Page) -> list[str]:
     """表に並んでいる行の ID を上から返す。"""
     return page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
+
+
+def open_drawer(page: Page) -> None:
+    """トップバーの絞り込みのボタンを押し、ドロワーが開くのを待つ。"""
+    page.click(FILTER_BUTTON)
+    page.wait_for_selector(DRAWER_OPEN)
+
+
+def close_drawer(page: Page) -> None:
+    """ドロワーの見出しの × を押して閉じ、ドロワーが無くなるのを待つ（開いている間は本文が操作できないため）。"""
+    page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']")
+    page.wait_for_selector(DRAWER, state="detached")
+
+
+def toggle_value(page: Page, key: str, value: str) -> None:
+    """ドロワーの条件 `key` の値 `value` の行を押して、選ぶ・外す。"""
+    page.click(f'{DRAWER} label.fd-opt:has(input[data-key="{key}"][value="{value}"])')
+
+
+def clear_condition(page: Page, label: str) -> None:
+    """ドロワーの条件の見出し `label` の右の「解除」を押す。"""
+    page.click(f"{DRAWER} button[aria-label='{label}の条件を解除']")
+
+
+def checked_values(page: Page, key: str) -> list[str]:
+    """ドロワーの条件 `key` でチェックの入った値を並びの順に返す。"""
+    return page.eval_on_selector_all(
+        f'{DRAWER} input[data-key="{key}"]:checked', "inputs => inputs.map(i => i.value)"
+    )
+
+
+def drawer_counts(page: Page, key: str) -> dict[str, int]:
+    """ドロワーの条件 `key` の値ごとの件数を返す。"""
+    return page.eval_on_selector_all(
+        f'{DRAWER} label.fd-opt:has(input[data-key="{key}"])',
+        "opts => Object.fromEntries(opts.map(o => [o.querySelector('.fd-v').textContent, Number(o.querySelector('.n').textContent)]))",
+    )
+
+
+def badge_text(page: Page) -> str | None:
+    """絞り込みのボタンのバッジの数を返す。バッジが無ければ None。"""
+    if page.locator(FILTER_BADGE).count() == 0:
+        return None
+    return page.inner_text(FILTER_BADGE)
 
 
 def _find_ball_centers(page: Page) -> list[tuple[float, float]]:

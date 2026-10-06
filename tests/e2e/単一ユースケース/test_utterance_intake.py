@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 
 # valid_settings の対象・カテゴリー（記録した項目に付ける）
 PLACE = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
+
+# 取り込みの前からある話題のタグと、取り込みで作る新しい話題のタグ
+TOPIC_TAG = "保存"
+NEW_TOPIC_TAG = "通知"
 
 # 会話の日付
 TODAY = "2026-10-02"
@@ -36,14 +40,17 @@ OPTIONS = [
 
 def test_normal(
     make_workspace: MakeWorkspace,
+    make_item: MakeItem,
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
-    # 準備
-    root = make_workspace()
+    """話題のタグを引いて使い回し、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
+    # 準備（取り込みの前から、タグ `保存` を持つメモ N-1 がある）
+    root = make_workspace(make_item("N-1", tags=[TOPIC_TAG]))
     ws = {"workspace": str(root)}
     # 実行
+    # 取り込みの最初に、使っているタグの一覧を引く
+    tags_before = replay("tags", **ws)
     # 1 つの発言から出た記録を、1 回のまとめての書き込みで渡す（D-2 の parent と T-1 の for は、先に足す項目を指す）
     replay(
         "batch",
@@ -59,6 +66,7 @@ def test_normal(
                     "reason": "手で読める",
                     # 決めたこととして足すので、選ばれた案 A を採用する
                     "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
+                    "tags": [TOPIC_TAG],
                     **PLACE,
                 },
             },
@@ -70,13 +78,19 @@ def test_normal(
                     "status": "未決定",
                     "parent": "$1",
                     "options": OPTIONS,
+                    "tags": [TOPIC_TAG],
                     **PLACE,
                 },
             },
             {
                 "op": "add",
                 "kind": "decision",
-                "item": {"title": "いつか使うかも", "status": "未整理", **PLACE},
+                "item": {
+                    "title": "いつか使うかも",
+                    "status": "未整理",
+                    "tags": [TOPIC_TAG, NEW_TOPIC_TAG],
+                    **PLACE,
+                },
             },
             {
                 "op": "add",
@@ -86,6 +100,7 @@ def test_normal(
                     "kind": "作業",
                     "status": "未着手",
                     "for": ["$2"],
+                    "tags": [TOPIC_TAG],
                     **PLACE,
                 },
             },
@@ -98,6 +113,7 @@ def test_normal(
     )
     replay("commit", **ws, summary=INTAKE_SUMMARY)
     pending = replay("pending", **ws)
+    tags_after = replay("tags", **ws)
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = read_yaml(root, "tasks.yaml")["items"]
@@ -134,6 +150,14 @@ def test_normal(
         "データ構造",
         "要件",
     ]
+    # 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と `通知`（1 件）を返す
+    assert tags_before == {"tags": [{"name": TOPIC_TAG, "count": 1, "kinds": ["note"]}]}
+    assert tags_after == {
+        "tags": [
+            {"name": TOPIC_TAG, "count": 5, "kinds": ["decision", "task", "note"]},
+            {"name": NEW_TOPIC_TAG, "count": 1, "kinds": ["decision"]},
+        ]
+    }
     # 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。pending が空を返す
     changes = read_yaml(root, "changes.yaml")
     assert len(changes["sets"]) == 1
@@ -186,7 +210,7 @@ def test_normal_when_diagram_kept_as_doc(
     assert doc["kind"] == "図"
     assert doc["related"] == ["D-1"]
     # docs/ に A-1 の本文の Markdown がある
-    assert "flowchart TD" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert "flowchart TD" in (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     # check が YAML と Markdown のずれを 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
@@ -214,7 +238,12 @@ def test_normal_when_off_topic_question(
             {
                 "op": "add",
                 "kind": "note",
-                "item": {"title": "他社の例", "content": "他社は DB を使う", "tags": ["脱線"]},
+                "item": {
+                    "title": "他社の例",
+                    "content": "他社は DB を使う",
+                    "tags": ["脱線"],
+                    "body_markdown": "調べたこと: 他社の保存先\n結果: DB を使っている\n",
+                },
             },
             {
                 "op": "add",
@@ -232,6 +261,11 @@ def test_normal_when_off_topic_question(
     note = read_yaml(root, "notes.yaml")["items"][0]
     assert note["id"] == "N-1"
     assert note["tags"] == ["脱線"]
+    # メモ N-1 が本文を持ち、.mindstella/docs/ にその Markdown がある
+    assert note["body"] == "N-1.md"
+    assert "結果: DB を使っている" in (root / RECORD_DIR / "docs" / "N-1.md").read_text(
+        encoding="utf-8"
+    )
     # タスクが 0 件のままである
     assert replay("find", **ws, kind="task")["items"] == []
 
@@ -270,7 +304,7 @@ def test_normal_when_deliverable_doc_created(
         },
     )
     # 同じタイトルの納品物があるので、行は足さず、その doc から資料 A-1 を指す（ゴールは丸ごと置き換わる）
-    goal = read_yaml(root, "mindmap.yaml")["goal"]
+    goal = read_yaml(root, "config.yaml")["goal"]
     deliverables = [{"title": "要件定義書", "doc": "A-1"}]
     replay("update_settings", **ws, settings={"goal": {**goal, "deliverables": deliverables}})
     replay(
@@ -282,7 +316,7 @@ def test_normal_when_deliverable_doc_created(
     checked = replay("check", **ws)
     # 検証
     # goal.deliverables が「要件定義書」の 1 件だけで、その doc が A-1 である
-    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == [
+    assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == [
         {"title": "要件定義書", "doc": "A-1"}
     ]
     # 資料 A-1 が deliverable: true と status: 下書き を持つ
@@ -290,7 +324,7 @@ def test_normal_when_deliverable_doc_created(
     assert doc["deliverable"] is True
     assert doc["status"] == "下書き"
     # docs/ の A-1 の本文が、概要・背景・構成の見出しを持つ
-    body = (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    body = (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
     # check が問題を 0 件で返す
     assert checked == {"ok": True, "problems": []}
@@ -319,7 +353,7 @@ def test_normal_when_task_output_kept_as_doc(
         settings=settings,
     )
     ws = {"workspace": str(root)}
-    goal_before = read_yaml(root, "mindmap.yaml")["goal"]
+    goal_before = read_yaml(root, "config.yaml")["goal"]
     # 実行
     # 成果の資料（ゴールの納品物に当たらないので deliverable: false）を足し、成果と資料が 1 対 1 で揃ったタスクを資料に結んで完了にし、会話ログを足す。3 つを 1 回のまとめての書き込みで渡す
     replay(
@@ -357,8 +391,8 @@ def test_normal_when_task_output_kept_as_doc(
     assert task["related"] == ["A-1"]
     # 資料 A-1 が deliverable: false を持ち、docs/ に本文がある
     assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is False
-    assert "画面の一覧" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert "画面の一覧" in (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     # goal.deliverables が呼ぶ前と同じである
-    assert read_yaml(root, "mindmap.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
+    assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
     # check が問題を 0 件で返す
     assert checked == {"ok": True, "problems": []}

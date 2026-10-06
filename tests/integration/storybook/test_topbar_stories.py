@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -9,6 +11,9 @@ NARROW_SIZE = {"width": 390, "height": 844}
 
 # 題名が収まりきらなくなる幅（題名を隠す幅 900px より広い）
 MEDIUM_SIZE = {"width": 1000, "height": 600}
+
+# サーバーにつながらないとき、接続の状態の全文が出る幅（幅 1440px 以下は短い文言になる）
+WIDE_SIZE = {"width": 1441, "height": 600}
 
 # 塗りが無いときの背景色
 TRANSPARENT = "rgba(0, 0, 0, 0)"
@@ -107,6 +112,8 @@ def test_offline(open_story: OpenStory) -> None:
     """サーバーにつながらない。検索の入口の左に、読んだ日時つきの接続の状態を出す（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--offline")
+    page.set_viewport_size(WIDE_SIZE)
+    page.wait_for_function("innerWidth === 1441")
     # 検証
     status = page.locator(".conn")
     assert status.get_attribute("role") == "status"
@@ -121,15 +128,18 @@ def test_offline(open_story: OpenStory) -> None:
 
 
 def test_offline_narrow(open_story: OpenStory) -> None:
-    """幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を title に持つ（正常系）。"""
+    """幅 390px でサーバーにつながらない。接続の状態を印だけにし、「つながりません」は読み上げにだけ残して、読んだ日時を title に持つ（正常系）。"""
     # 準備
     page = open_story("preview-topbar--offline-narrow")
     page.set_viewport_size(NARROW_SIZE)
     page.wait_for_function("innerWidth === 390")
-    # 実行・検証
+    # 実行
+    hidden_text = page.evaluate(ICON_ONLY_SCRIPT)
+    # 検証
     status = page.locator(".conn")
     assert status.get_attribute("title") == "10/04 11:21 に読んだ記録を出しています"
-    assert status.inner_text() == "つながりません"
+    assert status.locator("svg.icon").is_visible()
+    assert hidden_text == {"text": "つながりません", "width": 1, "height": 1, "longShown": False}
 
 
 def test_comments(open_story: OpenStory) -> None:
@@ -193,6 +203,97 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.is_visible(".comments-btn svg.icon")
     assert page.inner_text(".comments-btn .count") == "3"
     assert page.get_attribute(".comments-btn", "aria-label") == "コメント（レビュー中 3 件）"
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@pytest.mark.parametrize(
+    "story_id",
+    [
+        pytest.param("preview-topbar--filter-on", id="filter_on"),
+        pytest.param("preview-topbar--filter-open", id="filter_open"),
+        pytest.param("preview-topbar--settings-open", id="settings_open"),
+        pytest.param("preview-topbar--comments-narrow", id="comments_narrow"),
+        pytest.param("preview-topbar--diff-on-narrow", id="diff_on_narrow"),
+    ],
+)
+def test_no_overflow_when_narrow(open_story: OpenStory, story_id: str) -> None:
+    """幅 390px で、ボタンが並ぶ状態でも横に溢れない（正常系）。"""
+    # 準備
+    page = open_story(story_id)
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
+# 接続の状態の文言が、見た目の上で隠れ（1px 四方に切る）、DOM には残っていることを読む
+ICON_ONLY_SCRIPT = """() => {
+  const short = document.querySelector('.conn .conn-short');
+  const r = short.getBoundingClientRect();
+  return {
+    text: short.textContent,
+    width: r.width,
+    height: r.height,
+    longShown: document.querySelector('.conn .conn-long').getClientRects().length > 0,
+  };
+}"""
+
+# 絞り込みのボタン
+FILTER_BUTTON = "[data-act='filter']"
+
+
+def test_filter(open_story: OpenStory) -> None:
+    """絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--filter")
+    # 検証
+    assert page.inner_text(f"{FILTER_BUTTON} .label") == "絞り込み"
+    assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み"
+    assert page.get_attribute(FILTER_BUTTON, "aria-expanded") == "false"
+    assert page.locator(f"{FILTER_BUTTON} .fbadge").count() == 0
+    # 絞り込みのボタンはコメントのボタンの左隣で、重ならない
+    filter_box = page.locator(FILTER_BUTTON).bounding_box()
+    comments_box = page.locator(".comments-btn").bounding_box()
+    assert filter_box["x"] + filter_box["width"] <= comments_box["x"]
+
+
+def test_filter_on(open_story: OpenStory) -> None:
+    """2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--filter-on")
+    # 検証
+    assert page.inner_text(f"{FILTER_BUTTON} .fbadge") == "2"
+    # 読み上げの名前は絞り込み中の条件の数を含み、バッジは読み上げから外す
+    assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み（2 つの条件で絞り込み中）"
+    assert page.get_attribute(f"{FILTER_BUTTON} .fbadge", "aria-hidden") == "true"
+    assert page.eval_on_selector(f"{FILTER_BUTTON} .fbadge", BACKGROUND_SCRIPT) != TRANSPARENT
+    label_box = page.locator(f"{FILTER_BUTTON} .label").bounding_box()
+    badge_box = page.locator(f"{FILTER_BUTTON} .fbadge").bounding_box()
+    assert label_box["x"] + label_box["width"] <= badge_box["x"]
+
+
+def test_filter_open(open_story: OpenStory) -> None:
+    """絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--filter-open")
+    # 検証
+    assert page.get_attribute(FILTER_BUTTON, "aria-expanded") == "true"
+    assert page.eval_on_selector(FILTER_BUTTON, BACKGROUND_SCRIPT) != TRANSPARENT
+    assert page.eval_on_selector(FILTER_BUTTON, "e => e.classList.contains('open')") is True
+
+
+def test_filter_narrow(open_story: OpenStory) -> None:
+    """幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--filter-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert not page.is_visible(f"{FILTER_BUTTON} .label")
+    assert page.is_visible(f"{FILTER_BUTTON} svg.icon")
+    assert page.inner_text(f"{FILTER_BUTTON} .fbadge") == "1"
+    # 文字を隠しても読み上げの名前を残す
+    assert page.get_attribute(FILTER_BUTTON, "aria-label") == "絞り込み（1 つの条件で絞り込み中）"
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
@@ -270,3 +371,260 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
         page.evaluate("getComputedStyle(document.querySelector('.df-chip-t')).textOverflow")
         == "ellipsis"
     )
+
+
+def test_settings_open(open_story: OpenStory) -> None:
+    """表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--settings-open")
+    # 検証
+    button = page.get_by_role("button", name="表示の設定", exact=True)
+    assert button.count() == 1
+    assert button.get_attribute("aria-expanded") == "true"
+    assert "open" in (button.get_attribute("class") or "")
+    comments = page.get_by_role("button", name="コメント（レビュー中 3 件）")
+    assert "open" not in (comments.get_attribute("class") or "")
+    # 表示の設定のボタンは、コメントのボタンの左に置く
+    boxes = page.evaluate(
+        "() => ({s: document.querySelector('.settings-btn').getBoundingClientRect().right,"
+        " c: document.querySelector('.comments-btn').getBoundingClientRect().left})"
+    )
+    assert boxes["s"] <= boxes["c"]
+    # 文書に無い要素を指す `aria-controls` を付けない
+    assert button.get_attribute("aria-controls") is None
+
+
+def test_kinds_hidden(open_story: OpenStory) -> None:
+    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--kinds-hidden")
+    # 検証
+    tabs = page.eval_on_selector_all("nav.tabbar a", "links => links.map(a => a.dataset.tab)")
+    assert tabs == ["overview", "decisions", "research", "terms", "notes", "logs", "graph"]
+
+
+def test_export(open_story: OpenStory) -> None:
+    """配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--export")
+    # 検証
+    assert page.get_by_role("button", name="表示の設定", exact=True).count() == 1
+    assert page.locator(".comments-btn").count() == 0
+    assert page.get_attribute(".settings-btn", "aria-expanded") == "false"
+
+
+# 差分の札の幅の下限（em）。5.5em を、描画の丸めの 0.01em まで許して測る
+CHIP_MIN_WIDTH_EM = 5.49
+
+# `LongTitle` の題名（差分の札と同じ帯に長い題名を置く）
+LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・つながり・詳細パネル）を見本に沿って作るための話し合いの記録"
+
+# Storybook の body が持つ左右の余白を外す（トップバーを画面の幅いっぱいに置く本物の画面と同じ幅で測る）
+NO_BODY_PADDING = "body { padding: 0 !important; }"
+
+# ページとトップバーが横にはみ出さないことと、札の幅（札の文字の大きさに対する倍率）を同じ瞬間に読む
+FIT_SCRIPT = """() => {
+  const bar = document.querySelector('.topbar');
+  const chip = document.querySelector('.df-chip');
+  return {
+    pageFits: document.documentElement.scrollWidth <= innerWidth,
+    barFits: bar.scrollWidth <= bar.clientWidth,
+    chipEm: chip.getBoundingClientRect().width / parseFloat(getComputedStyle(chip).fontSize),
+  };
+}"""
+
+# 狭い幅の作りの区切り（1100px・1440px）の前後と、報告された幅（901px・963px）
+FIT_WIDTHS = [
+    pytest.param(901, id="w901"),
+    pytest.param(963, id="w963"),
+    pytest.param(1100, id="w1100"),
+    pytest.param(1101, id="w1101"),
+    pytest.param(1440, id="w1440"),
+    pytest.param(1441, id="w1441"),
+]
+
+
+def _open_story_at(open_story: OpenStory, story_id: str, width: int) -> Page:
+    """ストーリーを指定の幅で開き、Storybook の body の余白を外して返す。"""
+    page = open_story(story_id)
+    page.set_viewport_size({"width": width, "height": 600})
+    page.wait_for_function(f"innerWidth === {width}")
+    page.add_style_tag(content=NO_BODY_PADDING)
+    page.evaluate("document.fonts.ready")
+    return page
+
+
+@pytest.mark.parametrize("width", FIT_WIDTHS)
+def test_filter_diff_medium_when_width(open_story: OpenStory, width: int) -> None:
+    """絞り込み・表示の設定・コメントのボタンと差分の札を出しても、幅 901〜1441px でページもトップバーも横にはみ出さず、札は 5.5em 以上を取る（正常系）。"""
+    # 準備・実行
+    page = _open_story_at(open_story, "preview-topbar--filter-diff-medium", width)
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["pageFits"]
+    assert measured["barFits"]
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+@pytest.mark.parametrize("width", FIT_WIDTHS)
+def test_filter_diff_offline_when_width(open_story: OpenStory, width: int) -> None:
+    """サーバーにつながらず差分の札を出しても、幅 901〜1441px でページもトップバーも横にはみ出さず、札は 5.5em 以上を取る（正常系）。"""
+    # 準備・実行
+    page = _open_story_at(open_story, "preview-topbar--filter-diff-offline", width)
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["pageFits"]
+    assert measured["barFits"]
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+def test_filter_diff_medium_when_long_title(open_story: OpenStory) -> None:
+    """題名が長くても、幅 1101px で札は 5.5em 以上を取り、足りない幅は題名の側を縮める（正常系）。"""
+    # 準備
+    page = _open_story_at(open_story, "preview-topbar--filter-diff-medium", 1101)
+    page.evaluate(
+        "title => { const e = document.querySelector('.brand-sub'); e.textContent = title; e.title = title; }",
+        LONG_TITLE,
+    )
+    # 実行
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["pageFits"]
+    assert measured["barFits"]
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+# 幅 390〜900px で全てのボタンを出す 4 つの状態と、部品設計『トップバー』が見せ方に挙げた幅
+CONNECTED_DIFF = "preview-topbar--filter-diff-narrow"
+CONNECTED_HISTORY = "preview-topbar--filter-history-narrow"
+OFFLINE_DIFF = "preview-topbar--filter-diff-offline-narrow"
+OFFLINE_HISTORY = "preview-topbar--filter-offline-narrow"
+
+NARROW_STORY_WIDTHS = {
+    OFFLINE_DIFF: [390, 405, 480, 481, 519, 900],
+    OFFLINE_HISTORY: [390, 480, 481, 616, 900],
+    CONNECTED_HISTORY: [390, 480, 481, 492, 900],
+    CONNECTED_DIFF: [390, 480, 481, 900],
+}
+
+NARROW_STORY_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id, widths in NARROW_STORY_WIDTHS.items()
+    for width in widths
+]
+
+DIFF_STORY_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id in (OFFLINE_DIFF, CONNECTED_DIFF)
+    for width in NARROW_STORY_WIDTHS[story_id]
+]
+
+OFFLINE_STORY_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id in (OFFLINE_DIFF, OFFLINE_HISTORY)
+    for width in NARROW_STORY_WIDTHS[story_id]
+]
+
+# 要素の間隔: 差分を出している間はどの幅でも 8px、差分を出していない間は 480px 以下で 3px・481〜900px で 8px
+GAP_CASES = [
+    pytest.param(
+        story_id,
+        width,
+        "8px" if story_id in (OFFLINE_DIFF, CONNECTED_DIFF) or width > 480 else "3px",
+        id=f"{story_id.removeprefix('preview-topbar--')}-w{width}",
+    )
+    for story_id, widths in NARROW_STORY_WIDTHS.items()
+    for width in widths
+]
+
+# ページがはみ出さないことと、トップバーの表示中のボタンが表示幅の中にあることを同じ瞬間に読む
+BUTTONS_FIT_SCRIPT = """() => {
+  const outside = [...document.querySelectorAll('.topbar button')]
+    .filter(b => b.getClientRects().length > 0)
+    .filter(b => { const r = b.getBoundingClientRect(); return r.left < 0 || r.right > innerWidth; })
+    .map(b => b.getAttribute('aria-label') || b.className);
+  return {
+    pageFits: document.documentElement.scrollWidth <= innerWidth,
+    barFits: document.querySelector('.topbar').scrollWidth <= document.querySelector('.topbar').clientWidth,
+    outside,
+  };
+}"""
+
+# ツール名の印（.brand）が見えているか・トップバーの要素の間隔を読む
+BRAND_VISIBLE_SCRIPT = "() => document.querySelector('.brand').getClientRects().length > 0"
+BAR_GAP_SCRIPT = "() => getComputedStyle(document.querySelector('.topbar')).columnGap"
+
+
+def _open_narrow_story_at(open_story: OpenStory, story_id: str, width: int) -> Page:
+    """狭い幅のストーリーを指定の幅で開く（ストーリーが持つ余白のままで、画面と同じ幅で測る）。"""
+    page = open_story(story_id)
+    page.set_viewport_size({"width": width, "height": 844})
+    page.wait_for_function(f"innerWidth === {width}")
+    page.evaluate("document.fonts.ready")
+    return page
+
+
+@pytest.mark.parametrize(("story_id", "width"), NARROW_STORY_CASES)
+def test_filter_narrow_states_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """幅 390〜900px で全てのボタンを出しても、ページもトップバーも横にはみ出さず、全てのボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(BUTTONS_FIT_SCRIPT)
+    # 検証
+    assert measured == {"pageFits": True, "barFits": True, "outside": []}
+
+
+@pytest.mark.parametrize(("story_id", "width"), DIFF_STORY_CASES)
+def test_filter_narrow_chip_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """差分を出している間は、幅 390〜900px で札の幅が 5.5em 以上ある（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+@pytest.mark.parametrize(("story_id", "width"), OFFLINE_STORY_CASES)
+def test_filter_narrow_offline_icon_only_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """サーバーにつながらない間は、幅 390〜900px で接続の状態が印だけになり、「つながりません」は読み上げに残る（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    hidden_text = page.evaluate(ICON_ONLY_SCRIPT)
+    # 検証
+    assert page.locator(".conn svg.icon").is_visible()
+    assert hidden_text == {"text": "つながりません", "width": 1, "height": 1, "longShown": False}
+
+
+@pytest.mark.parametrize(
+    ("width", "visible"),
+    [
+        pytest.param(390, False, id="w390"),
+        pytest.param(405, False, id="w405"),
+        pytest.param(480, False, id="w480"),
+        pytest.param(481, True, id="w481"),
+        pytest.param(519, True, id="w519"),
+        pytest.param(900, True, id="w900"),
+    ],
+)
+def test_filter_diff_offline_narrow_brand_when_width(open_story: OpenStory, width: int, visible: bool) -> None:
+    """つながらない＋差分では、幅 480px 以下でツール名の印を隠し、481px 以上で出す（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, OFFLINE_DIFF, width)
+    # 実行
+    shown = page.evaluate(BRAND_VISIBLE_SCRIPT)
+    # 検証
+    assert shown is visible
+
+
+@pytest.mark.parametrize(("story_id", "width", "gap"), GAP_CASES)
+def test_filter_narrow_gap_when_width(open_story: OpenStory, story_id: str, width: int, gap: str) -> None:
+    """トップバーの要素の間隔は、差分を出している間はどの幅でも 8px、出していない間は 480px 以下で 3px・481〜900px で 8px にする（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(BAR_GAP_SCRIPT)
+    # 検証
+    assert measured == gap

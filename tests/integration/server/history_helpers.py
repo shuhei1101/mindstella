@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 
 from .fixture_types import CallTool
+from workspace_fixtures import RECORD_DIR
 
 # 検討事項として足す問い
 DECISION_ITEM: dict[str, Any] = {
@@ -42,17 +43,17 @@ def update_item(call_tool: CallTool, root: Path, item_id: str, item: dict[str, A
 
 def read_changes(root: Path) -> dict[str, Any]:
     """`changes.yaml` を読む。"""
-    return yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8"))
 
 
 def read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
     """種類ごとの YAML の項目の並びを読む。"""
-    return yaml.safe_load((root / file_name).read_text(encoding="utf-8"))["items"]
+    return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))["items"]
 
 
 def write_settings(root: Path, **overrides: Any) -> None:
-    """`mindmap.yaml` に渡したキーを書き足す（保持する回数を変えるなど）。"""
-    path = root / "mindmap.yaml"
+    """`config.yaml` に渡したキーを書き足す（保持する回数を変えるなど）。"""
+    path = root / RECORD_DIR / "config.yaml"
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
     settings.update(overrides)
     path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")

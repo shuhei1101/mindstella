@@ -18,7 +18,6 @@ from errors import (
     OptionExistsError,
     OptionNotFoundError,
     SchemaMismatchError,
-    WorkspaceNotFoundError,
 )
 from graph import judge_goal, list_next_candidates, summarize_status, trace_impact
 from history import (
@@ -35,10 +34,10 @@ from history import (
     pending_view,
     stack_history,
 )
-from kinds import KINDS, SETTINGS_FILE, Kind
+from kinds import EDITOR, KINDS, RECORD_DIR, Kind, records_root
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
-from query import SearchFilter, list_attrs, search_items, show_item
+from query import SearchFilter, list_attrs, list_tags, search_items, show_item
 from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
@@ -58,6 +57,7 @@ from store import (
     now_utc,
     read_body,
     remove_files,
+    require_workspace,
     save_batch,
     save_change,
     write_failed,
@@ -74,6 +74,7 @@ RESERVED_KEYS = (
     "id",
     "created",
     "updated",
+    "updated_by",
     "body",
     "history",
     "history_dropped_seq",
@@ -130,11 +131,8 @@ class Staged:
 
 
 def validate_input_keys(kind: Kind, data: dict[str, Any]) -> None:
-    """ツールが付けるキーと、本文を持てない種類への `body_markdown` を弾く。"""
+    """ツールが付けるキーを弾く（`body_markdown` はどの種類も渡せる）。"""
     lines = [f"{ITEM_NAME}: {key}: ツールが付けるキーです" for key in RESERVED_KEYS if key in data]
-    # 本文を持てない種類に本文を渡した
-    if BODY_INPUT_KEY in data and not KINDS[kind].has_body:
-        lines.append(f"{ITEM_NAME}: {BODY_INPUT_KEY}: この種類は本文を持てません")
     if lines:
         raise SchemaMismatchError(lines)
 
@@ -248,16 +246,24 @@ def stage_add(
     item_id = next_id(replace(staged.workspace, items=staged.items), kind)
     timestamp = now()
     record, seq = advance_seq(staged.changes)
-    # id を先頭に、created・updated・seq・added_seq を末尾に置く
+    # id を先頭に、created・updated・updated_by・seq・added_seq を末尾に置く
     added: dict[str, Any] = {"id": item_id}
     added.update({key: value for key, value in item.items() if key != BODY_INPUT_KEY})
     body = _body_write(item_id, item)
     bodies = dict(staged.bodies)
-    # 本文を渡したときだけ、項目の body を `{ID}.md` にして本文の書き込みを足す
+    # 本文を渡したときだけ（どの種類も）、項目の body を `{ID}.md` にして本文の書き込みを足す
     if body is not None:
         added["body"] = body.name
         bodies[body.name] = body
-    added.update({"created": timestamp, "updated": timestamp, "seq": seq, "added_seq": seq})
+    added.update(
+        {
+            "created": timestamp,
+            "updated": timestamp,
+            "updated_by": EDITOR,
+            "seq": seq,
+            "added_seq": seq,
+        }
+    )
     # 足した項目は変更履歴を持たず、まだまとめていない変更の足した項目に入る
     record = note_pending(record, item_id, "added")
     new_staged = replace(
@@ -269,8 +275,8 @@ def stage_add(
     )
     result = {
         "id": item_id,
-        "file": KINDS[kind].file,
-        "body": f"docs/{body.name}" if body is not None else None,
+        "file": f"{RECORD_DIR}/{KINDS[kind].file}",
+        "body": f"{RECORD_DIR}/docs/{body.name}" if body is not None else None,
     }
     return new_staged, result
 
@@ -285,6 +291,7 @@ def stage_update(
     changes = {key: value for key, value in item.items() if key != BODY_INPUT_KEY}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
+    merged["updated_by"] = EDITOR
     body = _body_write(item_id, item)
     # 本文を渡したときは body を `{ID}.md` にする（changed に入れるのは値が変わったときだけ）
     if body is not None and merged.get("body") != body.name:
@@ -317,7 +324,11 @@ def stage_update(
         bodies={**staged.bodies, **({body.name: body} if body is not None else {})},
         changes=record,
     )
-    return new_staged, {"id": item_id, "file": KINDS[ref.kind].file, "changed": changed}
+    return new_staged, {
+        "id": item_id,
+        "file": f"{RECORD_DIR}/{KINDS[ref.kind].file}",
+        "changed": changed,
+    }
 
 
 def run_add(root: Path, kind: Kind, item: dict[str, Any], now: NowFn = now_utc) -> dict[str, Any]:
@@ -361,6 +372,7 @@ def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
     switched, previous = switch_adopted(ref.item, key)
     switched["updated"] = now()
+    switched["updated_by"] = EDITOR
     # 本文は変えないので、前後の本文は同じ（読まない）
     switched, noted = _stack_changes(
         workspace,
@@ -474,7 +486,7 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
         raise ArgumentError(
             "summary", f"前後の空白を除いて 1〜{SUMMARY_MAX_LENGTH} 文字で渡してください"
         )
-    _require_workspace(root)
+    require_workspace(root)
     committed, change_set = commit_pending(load_changes(root), text, now())
     # まとめる書き換えが無い: 何も書かない
     if change_set is None:
@@ -503,7 +515,9 @@ def run_check(root: Path) -> dict[str, Any]:
     for problem in problems:
         row = asdict(problem)
         # 前の版の形式から来た問題: 詳細に移し替えのスキルでの移し方を続ける
-        if is_legacy_problem(problem, workspace):
+        # （問題の file は `.mindstella/` から始まるので、記録のフォルダからのパスに戻して見分ける）
+        relative = replace(problem, file=problem.file.removeprefix(f"{RECORD_DIR}/"))
+        if is_legacy_problem(relative, workspace):
             row["detail"] += MIGRATE_HINT
         rows.append(row)
     return {"ok": not problems, "problems": rows}
@@ -547,6 +561,11 @@ def run_show(root: Path, item_id: str) -> dict[str, Any]:
 def run_attrs(root: Path) -> dict[str, Any]:
     """属性名の一覧を出力の形にする。"""
     return {"attrs": list_attrs(load_workspace(root))}
+
+
+def run_tags(root: Path) -> dict[str, Any]:
+    """タグの一覧を出力の形にする。"""
+    return {"tags": list_tags(load_workspace(root))}
 
 
 def run_migrate(
@@ -605,7 +624,7 @@ def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
 
 def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
     """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。"""
-    _require_workspace(root)
+    require_workspace(root)
     url, started = previews.start(root)
     return {"url": url, "workspace": str(root), "started": started}
 
@@ -618,7 +637,7 @@ def run_submissions(root: Path) -> dict[str, Any]:
 
 def run_take_submission(root: Path, submission_id: str, now: NowFn = now_utc) -> dict[str, Any]:
     """送信 1 件を取り込み済みにし、出力の形にする。"""
-    _require_workspace(root)
+    require_workspace(root)
     taken, already = take_submission(root, submission_id, now=now)
     return {"id": submission_id, "taken": taken, "already": already}
 
@@ -647,6 +666,7 @@ def _stack_changes(
         after_body=after_body,
         seq=record["last_seq"] + 1,
         at=after_item["updated"],
+        by=EDITOR,
     )
     read_seq = record.get("read_seq")
     # 変わったものが無い: 通し番号は進めない
@@ -743,7 +763,7 @@ def _schema_error_writer(
 
 def _write_changes(root: Path, record: Changes) -> None:
     """`changes.yaml` を、一時ファイルを書いてから置き換えて書く。"""
-    path = root / CHANGES_FILE
+    path = records_root(root) / CHANGES_FILE
     try:
         temp = write_temp(path, dump_yaml(record))
     except OSError as error:
@@ -754,12 +774,6 @@ def _write_changes(root: Path, record: Changes) -> None:
         # 置き換えられなかった: 書いた一時ファイルを残さない
         remove_files([temp])
         raise write_failed(path, error) from error
-
-
-def _require_workspace(root: Path) -> None:
-    """`mindmap.yaml` が無いフォルダはワークスペースではないので、無ければ送る。"""
-    if not (root / SETTINGS_FILE).is_file():
-        raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
 
 
 def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:

@@ -225,7 +225,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+        description: 作成を済ませ、`config.yaml` の `history_limit` を 1 にしたワークスペース
       - name: 記録
         description: 本文を持つ検討事項 D-3
       - name: 書き換え
@@ -255,7 +255,7 @@ scenarios:
       - name: 記録
         description: MCP のツールで状態と本文を書き換えて `commit` し、変更履歴を 1 回分持つ検討事項 D-3
       - name: 手での書き換え
-        description: その後、`docs/D-3.md` の全ての行をツールを通さずに手で書き換える
+        description: その後、`.mindstella/docs/D-3.md` の全ての行をツールを通さずに手で書き換える
         notes: 変更履歴の本文の差分が、今の本文に当たらない
       - name: 配信
         description: 記録を配っているサーバー。変更履歴からそのまとまりを選んである
@@ -278,7 +278,7 @@ scenarios:
       - name: Mock
         description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
       - name: make_workspace
-        description: 作成を済ませ、`mindmap.yaml` の `history_limit` を 1 にしたワークスペース
+        description: 作成を済ませ、`config.yaml` の `history_limit` を 1 にしたワークスペース
       - name: 記録
         description: 本文を持つ検討事項 D-3・D-4
       - name: 前回開いた

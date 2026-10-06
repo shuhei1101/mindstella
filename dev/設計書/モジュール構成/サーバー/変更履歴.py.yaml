@@ -29,6 +29,9 @@ data_models:
       - name: body_diff
         type: list[BodyDiffHunk]
         description: 今の本文を前の本文へ戻す行の置き換えの並び（行の位置の小さい順）
+      - name: by
+        type: Literal["ai", "user"]
+        description: その回を書き換えた人（`NotRequired`。このキーを入れる前に積んだ回は持たない）
   - name: BodyDiffHunk
     title: 本文の差分の 1 か所
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -97,7 +100,7 @@ constants:
     title: まとまりのファイル名
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 共通
-    summary: 書き換えのまとまりを持つファイルの名前
+    summary: 書き換えのまとまりを持つファイルの名前（`records_root(root)` の下）
     value: '"changes.yaml"'
   - name: CHANGES_SCHEMA
     title: まとまりのスキーマ
@@ -109,13 +112,13 @@ constants:
     title: 前回開いた日時のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 前回からの差分を見る
-    summary: プレビューを最後に開いた日時を持つファイルの名前
+    summary: プレビューを最後に開いた日時を持つファイルの名前（`records_root(root)` の下）
     value: '".mindstella-opened"'
   - name: DEFAULT_HISTORY_LIMIT
     title: 保持する回数の既定
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 記録の追加と更新
-    summary: '`mindmap.yaml` に `history_limit` が無いときの回数'
+    summary: '`config.yaml` に `history_limit` が無いときの回数'
     value: '5'
   - name: SET_ID_PREFIX
     title: まとまりの ID の頭
@@ -147,7 +150,7 @@ functions:
       type: Changes
       description: '無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`'
     process: |-
-      1. `CHANGES_FILE` が無ければ空の記録を返す
+      1. `records_root(root) / CHANGES_FILE` が無ければ空の記録を返す
       2. `yaml.safe_load` で読み、`CHANGES_SCHEMA` と突き合わせる
          - YAML として読めないか合わない場合、`changes.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
     exceptions:
@@ -180,7 +183,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: '`mindmap.yaml` の中身'
+        description: '`config.yaml` の中身'
     returns:
       type: int
       description: 0 以上の回数（値の範囲はスキーマが確かめる）
@@ -294,13 +297,19 @@ functions:
         required: true
         passing: keyword
         description: 書き換えた日時
+      - name: by
+        type: Literal["ai", "user"]
+        required: true
+        passing: keyword
+        description: 書き換えた人（MCP のツールは `ai`）
     returns:
       type: HistoryEntry | None
       description: 変わったものが無ければ `None`
     process: |-
-      1. `updated`・`history`・`history_dropped_seq`・`body` を除いたキーの和を取り、値が違うキーを `before` にする（前に無いキーは `None`）
+      1. `updated`・`updated_by`・`history`・`history_dropped_seq`・`body` を除いたキーの和を取り、値が違うキーを `before` にする（前に無いキーは `None`）
       2. 前の本文があり後の本文と違う場合、`body_diff` を作る（`diff_body`）。前に本文が無い場合は `before.body` を `None` にする
       3. `before` も `body_diff` も無ければ `None` を返す
+      4. `seq`・`at`・`by`・`before`（とあれば `body_diff`）を持つ 1 回分を返す
     unit_tests:
       - name: test_make_entry
         case: 正常
@@ -314,6 +323,12 @@ functions:
         condition: '`updated` だけが違う項目と同じ本文'
         mock: なし
         expected: '`None`'
+      - name: test_make_entry_records_editor
+        case: 正常
+        summary: 書き換えた人を持ち、updated_by の違いだけでは作らない
+        condition: '`parametrize`: `answer` を変え `by="ai"` / `updated_by` だけが `user` → `ai` に変わった項目で `by="ai"`'
+        mock: なし
+        expected: 前者は `by` が `ai` で `before` に `answer` だけ。後者は `None`
   - name: stack_history
     title: 変更履歴を積む
     kind: 関数
@@ -506,7 +521,7 @@ functions:
       type: str | None
       description: 前の日時。無いか 1 行目が日時として読めなければ `None`
     process: |-
-      1. `OPENED_FILE` の 1 行目を読む（無ければ `None`。`datetime.fromisoformat` で読めなければ `None`）
+      1. `records_root(root) / OPENED_FILE` の 1 行目を読む（無ければ `None`。`datetime.fromisoformat` で読めなければ `None`）
       2. 一時ファイルに `now` を書いて `os.replace` で置き換える
          - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
     exceptions:
@@ -611,8 +626,9 @@ functions:
     process: |-
       1. `read_seq` が無ければ `{had_read_point: False, read_seq: None, until_seq: last_seq, added: [], changed: []}` を返す
       2. 種類の順（`KINDS`）、項目の並びの順に見る
-         - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title}` で足す
-         - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None` にして `changed` に足す。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に足す
+         - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title, updated_by}` で足す（`updated_by` を持たなければ `None`）
+         - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None`、`by` を空にして `changed` に足す。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に足す
+         - `changed` の要素は `updated_by`（今の値。無ければ `None`）と、`by`（`seq` が `read_seq` より大きい変更履歴の回の `by` を重なりなく `user`・`ai` の順で並べたもの。`by` を持たない回は数えない）を持つ
       3. `until_seq` を `last_seq` にして返す
     unit_tests:
       - name: test_changes_since
@@ -633,6 +649,12 @@ functions:
         condition: '`history_limit` 0、`read_seq` 3、`seq` 5 で `history` を持たない D-1'
         mock: なし
         expected: '`changed` が D-1 で `before`・`body_diff` が `None`'
+      - name: test_changes_since_reports_editors
+        case: 正常
+        summary: 読んだ後に利用者と AI が直した項目で、両方を返す
+        condition: '`read_seq` 3。D-1 が `updated_by: ai` で、`history` に `seq` 5（`by: ai`）・4（`by: user`）・2（`by: user`）の回を持つ'
+        mock: なし
+        expected: '`changed` の D-1 が `updated_by: ai`、`by: [user, ai]`（`seq` 2 の回は数えない）'
   - name: mark_read
     title: 読んだ時点を進める
     kind: 関数

@@ -1,8 +1,8 @@
 title: "プレビューを開く"
 entry:
   kind: screen
-  value: 'サーバーの配信の URL（`preview_url` が返す `http://127.0.0.1:{ポート}/`。画面は『プレビューの配信』が返し、雛形は `plugins/mindstella/skills/mindmap/preview/`）。`export` が書き出した配る書き出しも同じ画面を開く'
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中のコメント）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
+  value: サーバーの配信の URL（`preview_url` が返す `http://127.0.0.1:{ポート}/mindstella.html`。画面は『プレビューの配信』が返し、雛形は `plugins/mindstella/skills/mindmap/preview/`）。`export` が書き出した配る書き出しも同じ画面を開く
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中のコメント）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`PUT /api/config/display`（ワークスペースの既定の書き換え）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
 flows:
   - name: 正常系
     summary: ハッシュが指す画面・表示形式・項目を開く
@@ -73,6 +73,7 @@ flows:
     expected:
       - 状態 = 要見直し・保留の条件のチップがある
       - 表の行が D-3・D-4 だけ
+      - 絞り込みのドロワーの状態で要見直し・保留だけが選ばれ、絞り込みのボタンにバッジ 1 が付く
       - チップを外すと D-1 の行も出て、URL のハッシュに `f.` の引数が無い
     test: test_normal_when_filter_in_hash
   - name: 正常系（項目が記録に無い）
@@ -260,20 +261,20 @@ flows:
     test: test_error_when_server_unreachable
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
-side_effects: コメントを溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `submissions.yaml` に足す（『コメントをまとめて送る』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）にライト / ダークと表の表示する列・ピン留め・変更履歴で選んだ時点を書く
+side_effects: コメントを溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `submissions.yaml` に足す（『コメントをまとめて送る』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
 callers:
   - dev/設計書/シナリオ/複合ユースケース/プレビューで記録を読み返す#
 request:
   - name: mindmap-data
     type: JSON（`<script type="application/json" id="mindmap-data">` の中身）
     required: false
-    description: '配る書き出しが埋め込んだ記録。形はインターフェース定義『記録の取得』のレスポンスと同じ。サーバーの配信では空で、画面は『記録の取得』を読む'
+    description: 配る書き出しが埋め込んだ記録。形はインターフェース定義『記録の取得』のレスポンスと同じ。サーバーの配信では空で、画面は『記録の取得』を読む
   - name: tab
     type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'graph'"
     required: false
     default: overview
     description: 開く画面（タブとつながり）
-    constraints: 上の値のどれでもないときは既定の値で開く
+    constraints: 上の値のどれでもないとき、表示しない種類（個人の上書きかワークスペースの既定）を指すときは、`overview` で開く（`overview` と `graph` は常に開ける）
     notes: URL のハッシュの引数
   - name: view
     type: "'map' | 'board' | 'cards' | 'table'"
@@ -301,7 +302,7 @@ request:
     type: str
     required: false
     default: なし（絞り込まない）
-    description: 表・カードをその列の値で絞って開く。概要の「すべて表示」・セルが作る
+    description: 開いた画面を、その列の値で絞って開く。どの表示形式（マップ・ボード・カード・表・つながり）でも絞り込みのドロワーの条件として効き、画面の既定の条件（検討事項の状態）を置き換える。概要の「すべて表示」・セルが作る
     constraints: 複数の値は `|` でつなぐ。開いたときに一度だけ読み、絞り込みを変えてもハッシュには書き戻さない
     example: f.status=要見直し
     notes: URL のハッシュの引数
@@ -313,6 +314,13 @@ request:
     constraints: 前後の空白を除いて 1 文字以上、10000 文字以下
     example: 案 A にする
     notes: 利用者の入力。サーバーの配信でだけ受ける
+  - name: 個人の上書き
+    type: '{network_look?, visible_kinds?, theme?, columns?}'
+    required: false
+    default: なし（ワークスペースの既定で表示する）
+    description: 表示の設定のパネル・トップバーのライト / ダーク・表の表示する列で選んだ値。項目ごとに、あればワークスペースの既定より優先する
+    constraints: '`network_look` は `glow`・`starlight`・`constellation`・`deep`・`dust` のどれか、`visible_kinds` は `decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の配列。読めない値の項目は持たないものとして扱う'
+    notes: 利用者の操作。端末の保存領域に持ち、URL のハッシュには書かない。「既定に戻す」で全て外す
   - name: 変更履歴で選んだ時点
     type: None | 'since' | 'pending' | str
     required: false
@@ -329,7 +337,7 @@ request:
     notes: 利用者の操作。サーバーの配信でだけ受ける
 request_example: |-
   ```text
-  http://127.0.0.1:43817/#tab=decisions&view=table&id=D-3&f.status=%E8%A6%81%E8%A6%8B%E7%9B%B4%E3%81%97
+  http://127.0.0.1:43817/mindstella.html#tab=decisions&view=table&id=D-3&f.status=%E8%A6%81%E8%A6%8B%E7%9B%B4%E3%81%97
   ```
 response:
   - name: 画面
@@ -343,7 +351,7 @@ response:
     description: '`id` の項目の詳細。`full` のときは全画面のモーダル'
   - name: 条件のチップ
     type: DOM
-    description: '`f.{列}` の列と値ごとのチップ。表の行・カードはその条件に合うものだけ'
+    description: '絞り込みのドロワーで選んでいる条件（`f.{列}` で開いたときはその列と値）ごとのチップ。画面の項目はその条件に合うものだけ。トップバーの絞り込みのボタンに、値を 1 つ以上選んでいる条件の数のバッジが付く'
   - name: 読めなかったライブラリの知らせ
     type: DOM（`role="alert"`）
     description: 描画のライブラリが読めなかったとき、そのライブラリを使う箇所（本文・図・マップ）に、読めなかったライブラリの名前を出す
@@ -362,6 +370,15 @@ response:
   - name: 差分の表示
     type: DOM
     description: 時点を選んだ間だけ出す。トップバーの選んだ時点の札と外すボタン、その時点で足した項目の新規の印（+）と変えた項目の変更の印（●）、印の付いた項目を持つタブの点、詳細パネル・資料の本文・図・Raw・キーの前後の差分。印は読み上げの名前を持ち、足した・消したは記号か下線・取り消し線を併せる
+  - name: 表示の設定
+    type: DOM
+    description: トップバーの「表示の設定」で、コメントの一覧と同じ左のパネルに開く。見た目（5 つから 1 つ）・表示する種類・「この端末で変えている項目」・「既定に戻す」・「ワークスペースの既定にする」（サーバーの配信で、選びが既定と違うときだけ）を持つ。既定にする前は確かめのモーダルで今の既定と保存する値を並べ、保存に失敗したらモーダルの中に理由を出す
+  - name: 表示する種類
+    type: DOM
+    description: 表示しない種類のタブをトップバーから外す。概要とつながりは常に出す。概要のタイルは残し、表示しない種類の画面へのリンクだけを外す
+  - name: 既定が変わった知らせ
+    type: DOM（`role="status"`）
+    description: 書き換えの知らせで受けた新しい既定を上書きを持たない項目に当て直したとき、画面の下に「ワークスペースの既定が変わりました。」を 6 秒出す。同じ知らせを時刻つきで表示の設定のパネルにも残す
 response_notes: |-
   > [!NOTE]
   > 開いた後の画面の移動・項目の移動も同じ形のハッシュに書き、同じ URL を開き直すと同じ画面と項目が開く。

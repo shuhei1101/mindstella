@@ -3,12 +3,12 @@ scenarios:
   - name: 正常シナリオ（ゴールに届いた）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `goal`・`show`・`clear-release`・`release/` への書き出し・`add`（会話ログ）を、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねる `goal`・`show`・`clear-release`・`.mindstella/release/` への書き出し・`add`（会話ログ）を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
         description: 'ゴールがインターフェースまでで、目的からインターフェースまでの検討事項が全て決定済みか対象外で、ゴールの `deliverables` の資料 A-1 が `status: 完成`'
         notes: コンテンツのフェーズに未決定の D-9 を置き、ゴールより後ろのフェーズは判定に入らないことを確かめる
       - name: 前回のリリース
-        description: '`release/` に、前回のゴール判定で書き出した `古い資料.md` がある'
+        description: '`.mindstella/release/` に、前回のゴール判定で書き出した `古い資料.md` がある'
       - name: 利用者の返答
         description: 示した検討事項と納品物を確定する
     flow: |-
@@ -20,21 +20,22 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: goal
-        SV->>WS: mindmap.yaml のフェーズ・ゴールと全ての YAML を読む
+        SV->>WS: config.yaml のフェーズ・ゴールと全ての YAML を読む
         SV-->>CC: 届いた（残り 0 件）
         CC-->>U: 決まった検討事項と納品物を示して確定を求める
         U->>CC: 確定する
         CC->>SV: show（納品物の本文）
         CC->>SV: clear-release
-        SV->>WS: release/ の中身を消す
-        CC->>WS: release/ にリリースの資料を書き出す
+        SV->>WS: .mindstella/release/ の中身を消す
+        CC->>WS: .mindstella/release/ にリリースの資料を書き出す
         CC->>SV: add（会話ログ）
-        CC-->>U: release/ のファイルを示す
+        CC-->>U: .mindstella/release/ のファイルを示す
       ```
     expected:
       - '`goal` の出力が「届いた」で、残りの検討事項と納品物が 0 件である（ゴールより後ろの D-9 を含まない）'
-      - '`release/` に、決まった検討事項の一覧と納品物 A-1 の本文がある'
-      - '`release/` に前回の `古い資料.md` が残っていない'
+      - '`.mindstella/release/` に、決まった検討事項の一覧と納品物 A-1 の本文がある'
+      - '`.mindstella/release/` に前回の `古い資料.md` が残っていない'
+      - ワークスペースの直下に `release/` が無い
       - 会話ログが 1 件足されている
     test: test_normal_when_reached
   - name: 正常シナリオ（ゴールに届いていない）
@@ -56,7 +57,7 @@ scenarios:
       ```
     expected:
       - '`goal` の出力が「届いていない」で、残りに D-1 と A-1 がある'
-      - '`release/` に何も書かれていない'
+      - '`.mindstella/release/` に何も書かれていない'
     test: test_normal_when_not_reached
   - name: 正常シナリオ（ゴールが無い）
     setup:
@@ -78,7 +79,7 @@ scenarios:
     expected:
       - '`goal` の出力が、ゴールが無いことを示し、届いたとも届いていないとも返さない'
       - 出力の決着していない検討事項に D-1 があり、D-2 が無い
-      - '`release/` に何も書かれていない'
+      - '`.mindstella/release/` に何も書かれていない'
     test: test_normal_when_no_goal
   - name: 正常シナリオ（タスクの成果の資料が欠けている）
     setup:
@@ -104,27 +105,27 @@ scenarios:
         CC-->>U: 足した資料と、決まった検討事項と納品物を示して確定を求める
       ```
     expected:
-      - T-1 が `related` に A-2 を持ち、A-2 の本文が `docs/` にある
+      - T-1 が `related` に A-2 を持ち、A-2 の本文が `.mindstella/docs/` にある
       - 書き込みの後の `goal` の出力が「届いた」のままである
-      - '`release/` に何も書かれていない'
+      - '`.mindstella/release/` に何も書かれていない'
     test: test_normal_when_task_output_doc_missing
-lead: '`session` が、ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って `release/` にリリースの資料を書き出す単一ユースケース。'
+lead: '`session` が、ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って `.mindstella/release/` にリリースの資料を書き出す単一ユースケース。'
 issue: 4
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: ゴールに届いていないときは、何が残っているかが分かる
   - name: 受け取り手
-    interest: '`release/` だけを読めば、決まったことと納品物が分かる'
+    interest: '`.mindstella/release/` だけを読めば、決まったことと納品物が分かる'
 trigger: 利用者がゴールに届いたかを尋ねる、または `next` の候補が無くなる
 preconditions:
   - ワークスペースが作成済みである
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: ゴールに届いたときだけ、利用者の確定の後に `release/` へ書き出す。届いていないときは残りを示し、`release/` には書かない。
+success_guarantee: ゴールに届いたときだけ、利用者の確定の後に `.mindstella/release/` へ書き出す。届いていないときは残りを示し、`.mindstella/release/` には書かない。
 frequency: 話し合いの終わりに 1〜数回
 priority: 高
 notes:
-  リリースの形: '`release/` に書き出す資料の形は進め方ガイドの「リリースの形」が決める。書き出しはスキルが Markdown を書く。書き出す前に `clear-release` で `release/` の中身を消し、最新の確定版の一式だけを置く（版はフォルダで切らない）'
+  リリースの形: '`.mindstella/release/` に書き出す資料の形は進め方ガイドの「リリースの形」が決める。書き出しはスキルが Markdown を書く。書き出す前に `clear-release` で `.mindstella/release/` の中身を消し、最新の確定版の一式だけを置く（版はフォルダで切らない）'
   ゴールに届いたかの判定: 'MCP のツール `goal` が判定する。ゴールのフェーズまでの検討事項が全て決定済みか対象外・取り下げで、ゴールの `deliverables` の資料が全て `status: 完成` のときに届いたとする。ゴールが無いときは判定せず、全フェーズの決着していない検討事項を返す。引数と出力の形はインターフェース定義設計で決める'
   タスクの成果と資料: '`goal` が届いたと返した後、確定を取る前に AI が完了した作業・検証のタスクを読み、成果と資料が 1 対 1 で揃っているかを確かめる。欠けていれば資料を足してから確定を取る。調査のタスクは成果を調査の記録に書くため除く。`goal` の判定は変えない'
 test_file: tests/e2e/単一ユースケース/test_goal_check.py

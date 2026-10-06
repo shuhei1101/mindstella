@@ -54,7 +54,7 @@ data_models:
         description: 詳細を全画面で開いているか
       - name: filters
         type: Record<string, string[]>
-        description: 開いたときの `f.{列}`（書き戻さない）
+        description: 開いたときの `f.{列}`。どの表示形式でも、入口が絞り込みのドロワーの条件として受ける（`initialFilters`。書き戻さない）
   - name: FetchResult
     title: 記録の取得の結果
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -190,6 +190,8 @@ constants:
         value: '"api/drafts"'
       - key: opened
         value: '"api/opened"'
+      - key: configDisplay
+        value: '"api/config/display"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
@@ -379,7 +381,7 @@ functions:
     usecase: 項目の詳細を読む
     scope: public
     is_async: true
-    summary: 要素の中の図の入れ物を mermaid で SVG に描く
+    summary: 要素の中の図の入れ物を mermaid で SVG に描く。直前の呼び出しで描いた同じ記法の図は描き直さずに写す
     args:
       - name: root
         type: HTMLElement
@@ -392,8 +394,11 @@ functions:
     process: |-
       1. mermaid が読めていない場合、各入れ物に知らせ（`libraryNotice({names: ["mermaid"], what: "図"})`）と原文を入れる
       2. 初めて描くときに `mermaid.initialize({startOnLoad: false, securityLevel: "strict", theme: "base"})` を呼ぶ
+         - テーマが変わって初期化し直したときは、覚えた SVG を捨てる
       3. 入れ物ごとに `mermaid.render` した SVG を入れる
          - 描けなかった場合、その入れ物に「この図は表示できませんでした。原文を表示します。」と原文を入れる（ほかの図は続ける）
+         - 直前の呼び出しで描いた同じ記法の SVG を覚えていれば、`mermaid.render` を呼ばずにそれを写す。写すときは新しい図の ID を振り、SVG の中の元の ID（後ろに数字が続かないもの）を全て新しい ID に置き換える（同じ図が文書に 2 つあっても ID と参照が重ならない）
+      4. この呼び出しで描いた・写した図の記法と SVG（印を付ける前の mermaid の出力）だけを覚え、それまで覚えていたものは捨てる。描けなかった図は覚えない
     unit_tests:
       - name: test_render_diagrams
         case: 正常
@@ -401,6 +406,24 @@ functions:
         condition: 正しいフローチャートと、構文の誤った図の入れ物。mermaid は `page.route` で返す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 1 つ目に `svg`、2 つ目に「この図は表示できませんでした。原文を表示します。」と原文
+      - name: test_render_diagrams_when_same_source_again
+        case: 正常
+        summary: 直前に描いた同じ記法の図は描き直さず、新しい ID で写す
+        condition: 同じフローチャートの入れ物を持つ 2 つの要素を順に `renderDiagrams` で描く。`mermaid.render` を数える包みを `page.evaluate` で被せる
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`mermaid.render` の呼び出しは 1 回。2 つの SVG の `id` は異なり、2 つ目の SVG の中に 1 つ目の `id` が残らない'
+      - name: test_render_diagrams_when_source_not_in_last_call
+        case: 正常
+        summary: 覚えるのは直前の呼び出しの図だけで、その前の図は描き直す
+        condition: 図 A、図 B、図 A の入れ物を持つ要素を 1 つずつ順に `renderDiagrams` で描く。`mermaid.render` を数える包みを被せる
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`mermaid.render` の呼び出しは 3 回'
+      - name: test_render_diagrams_when_theme_changed
+        case: 正常
+        summary: テーマが変わったら、同じ記法の図も描き直す
+        condition: フローチャートを描いた後、`--surface` の値を変えて同じフローチャートの入れ物を描く。`mermaid.render` を数える包みを被せる
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`mermaid.render` の呼び出しは 2 回'
   - name: parseHash
     title: ハッシュを読む
     kind: 関数
@@ -779,74 +802,6 @@ functions:
     returns:
       type: string | null
       description: 開いている項目の ID
-  - name: toggleAllState
-    title: まとめて切り替える箱の状態
-    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
-    usecase: 共通
-    summary: 帯に並ぶ値のうちいくつを表示しているかから、まとめて切り替える箱の状態を返す
-    kind: 関数
-    scope: public
-    status: planned
-    args:
-      - name: shown
-        type: Set<string>
-        required: true
-        passing: keyword
-        description: 表示している値（状態・種類）
-      - name: all
-        type: string[]
-        required: true
-        passing: keyword
-        description: 帯に並ぶ値。`shown` にあって `all` に無い値は数えない
-    returns:
-      type: '"all" | "some" | "none"'
-      description: '`all` を全て表示していれば `all`（チェック）、1 つも表示していなければ `none`（空）、それ以外は `some`（横棒）。`all` が空なら `none`'
-    unit_tests:
-      - name: test_toggle_all_state
-        case: 正常
-        summary: 表示している数で状態を返す
-        condition: '`parametrize`: all = a・b・c で shown = a・b・c / a / 空 / a・b・c・z（`all` に無い値を含む）、all = 空で shown = 空'
-        mock: なし
-        expected: '`all` / `some` / `none` / `all` / `none`'
-  - name: toggleAllBox
-    title: まとめて切り替える箱
-    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
-    usecase: 共通
-    summary: 帯の右端に置く、文字を添えない三状態のチェックの箱を作る。検討事項の状態の印と、つながりの項目の種類で使う
-    kind: 関数
-    scope: public
-    status: planned
-    args:
-      - name: label
-        type: string
-        required: true
-        passing: keyword
-        description: 読み上げの名前（`aria-label` と `title`）。「すべての状態を表示」「すべての種類を表示」
-      - name: shown
-        type: Set<string>
-        required: true
-        passing: keyword
-        description: 表示している値
-      - name: all
-        type: string[]
-        required: true
-        passing: keyword
-        description: 帯に並ぶ値
-      - name: onChange
-        type: '(next: Set<string>) => void'
-        required: true
-        passing: keyword
-        description: 押した後に表示する値を受け取る。`toggleAllState` が `all` なら空、それ以外は `all` の全て
-    returns:
-      type: HTMLLabelElement
-      description: '`class="legend-all-check"` の label と、その中のネイティブの checkbox。状態が `all` なら `checked`、`some` なら `indeterminate`、`none` ならどちらも偽'
-    unit_tests:
-      - name: test_toggle_all_box
-        case: 正常
-        summary: 状態に合わせて箱を作り、押すと次に表示する値を渡す
-        condition: '`parametrize`: all = a・b・c で shown = a・b・c / a / 空。作った箱の checkbox を 1 回押す'
-        mock: '`onChange` を記録する関数'
-        expected: checked・indeterminate が 真・偽 / 偽・真 / 偽・偽、`aria-label` が `label`。押した後の `onChange` の引数が 空 / a・b・c / a・b・c
   - name: fetchRecords
     title: 記録の取得
     kind: 関数
@@ -1076,6 +1031,99 @@ functions:
         condition: '`parametrize`: `{kind: body, start: 3, end: 3}` / `{kind: body, start: 2, end: 4}` / `{kind: value, key: options[C].cons}` / `{kind: value, key: unknown_key}`'
         mock: なし
         expected: '`本文 3 行目` / `本文 2〜4 行目` / `案 C のデメリット` / `unknown_key`'
+  - name: putDisplay
+    title: ワークスペースの既定を保存する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: ワークスペースの既定を変える
+    scope: public
+    is_async: true
+    summary: '`PUT /api/config/display` に見た目と表示する種類を送り、`ApiResult` にする'
+    args:
+      - name: display
+        type: '{network_look: string, visible_kinds: string[]}'
+        required: true
+        passing: positional
+        description: 保存する値
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<ApiResult>
+      description: 200 なら `data` が `{display}`。断られた・届かないときは `callApi` と同じ形
+    process: 1. `callApi('PUT', API_PATHS.configDisplay, display, fetchFn)` を返す
+    unit_tests:
+      - name: test_put_display
+        case: 正常
+        summary: PUT api/config/display に JSON で送る
+        condition: '`{network_look: glow, visible_kinds: [decisions]}`。`parametrize`: `fetchFn` が 200・`{display: 同じ値}` / 500・`{detail: 書き込めませんでした}` を返す'
+        mock: '`fetchFn`'
+        expected: '`PUT api/config/display` に本文が JSON。`{ok: true, data: {display}}` / `{ok: false, status: 500, detail: 書き込めませんでした}`'
+  - name: inertBehind
+    title: パネルの下を止める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    usecase: 共通
+    scope: public
+    summary: 左から重ねるパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品に `inert` を付け、外す関数を返す
+    side_effects: '`main` の中の要素の `inert` 属性を書き換える'
+    args:
+      - name: panel
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 開いたパネル
+    returns:
+      type: () => void
+      description: 付けた分だけ `inert` を外す関数（パネルを閉じるときに呼ぶ）
+    process: |-
+      1. `main` の直下からたどり、パネルの矩形に全体が収まる要素に `inert` を付ける（一部だけ重なる要素はその子をたどる）。パネル自身・トップバー・既に `inert` の要素には付けない
+      2. 付けた要素を控え、それだけから `inert` を外す関数を返す
+    unit_tests:
+      - name: test_inert_behind
+        case: 正常
+        summary: パネルに覆われた部品だけを止め、外すと付けた分だけ戻す
+        condition: 左端 0〜420px のパネル。`main` に左端のボタン A（x=10）・右側のボタン B（x=600）・始めから `inert` の C（x=20）、トップバーのボタン D（x=10）
+        mock: なし
+        expected: A だけに `inert` が付き、B・D は付かない。返った関数を呼ぶと A から外れ、C は `inert` のまま
+      - name: test_inert_behind_when_redrawn
+        case: 正常
+        summary: 本文を描き直してから呼び直すと、新しい部品も止まる
+        condition: '`test_inert_behind` と同じパネルと本文で呼んだ後、`main` の中身を左端のボタン E（x=10）だけに差し替え、返った解除を呼んでからもう一度呼ぶ'
+        mock: なし
+        expected: E に `inert` が付き、E にフォーカスを移せない
+  - name: renderDiagramSvg
+    title: 図を画面に出さずに描く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: 記法を mermaid で SVG に描いて返す（画面には出さない）。差分の表示で前の版の図を描く
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 図の記法
+    returns:
+      type: Promise<SVGElement | null>
+      description: 描いた SVG。mermaid が読めていないか、描けないときは `null`
+    process: |-
+      1. mermaid が読めていない場合、`null` を返す
+      2. `renderDiagrams` と同じく、初めて描くとき（とテーマが変わったとき）に初期化する
+      3. 新しい図の ID で `mermaid.render` し、SVG の要素にして返す（`renderDiagrams` の覚えた SVG は使わず、覚えもしない）
+         - 描けなかった場合、mermaid が `body` に残した作業用の要素を消して `null` を返す
+    unit_tests:
+      - name: test_render_diagram_svg
+        case: 正常
+        summary: 記法を SVG の要素にして返し、描けない記法は null を返す
+        condition: 正しいフローチャートと、構文の誤った記法をそれぞれ渡す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 1 つ目は `svg` の要素、2 つ目は `null` で、`body` に作業用の要素が残らない
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

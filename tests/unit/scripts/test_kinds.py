@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 import kinds
@@ -37,3 +39,13 @@ def test_kind_of_id_when_unknown(item_id: str) -> None:
     kind = kinds.kind_of_id(item_id)
     # 検証
     assert kind is None
+
+
+def test_records_root(tmp_path: Path) -> None:
+    """直下の .mindstella を返す（正常系）。"""
+    # 実行
+    records = kinds.records_root(tmp_path)
+    # 検証
+    assert records == tmp_path / ".mindstella"
+    # フォルダは作らない
+    assert not records.exists()

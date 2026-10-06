@@ -1,7 +1,7 @@
 title: "プレビューの配信"
 entry:
   kind: endpoint
-  value: GET /
+  value: GET /mindstella.html
 flows:
   - name: 正常系
     summary: 雛形に CSS と JavaScript を差し込んだ画面を返す
@@ -14,15 +14,35 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /
+        participant IF as GET /mindstella.html
 
-        クライアント->>IF: GET /（Host: 127.0.0.1:{ポート}）
+        クライアント->>IF: GET /mindstella.html（Host: 127.0.0.1:{ポート}）
         IF-->>クライアント: 200、HTML
       ```
     expected:
       - ステータスが 200 で、`Content-Type` が `text/html; charset=utf-8`、`Cache-Control` が `no-store`
       - 本文に `<style>` と `<script>` があり、`mindmap-data` の要素が空
     test: test_normal
+  - name: 正常系（/ を開く）
+    summary: '`/` は画面のパスへ送り直す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: 送り直しを辿らずに `/` を GET する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as 配信
+
+        クライアント->>IF: GET /
+        IF-->>クライアント: 302、Location: /mindstella.html
+      ```
+    expected:
+      - ステータスが 302 で、`Location` が `/mindstella.html`
+    test: test_normal_when_root
   - name: 異常系（接続先が違う・403）
     summary: Host が端末の中の名前でなければ画面を返さない
     setup:
@@ -35,9 +55,9 @@ flows:
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as GET /
+        participant IF as GET /mindstella.html
 
-        クライアント->>IF: GET /（Host: attacker.example）
+        クライアント->>IF: GET /mindstella.html（Host: attacker.example）
         IF-->>クライアント: 403
       ```
     expected:
@@ -51,21 +71,21 @@ flows:
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませたワークスペース
-        notes: '`/mindmap.yaml` を GET する'
+        notes: '`/config.yaml` を GET する'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as 配信
 
-        クライアント->>IF: GET /mindmap.yaml
+        クライアント->>IF: GET /config.yaml
         IF-->>クライアント: 404
       ```
     expected:
       - ステータスが 404
-      - 本文に `mindmap.yaml` の中身が無い
+      - 本文に `config.yaml` の中身が無い
     test: test_error_when_path_unknown
-lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を返す。記録は画面が『記録の取得』で読む。'
+lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/mindstella.html` で返す。`/` は `/mindstella.html` へ送り直す。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
@@ -87,11 +107,14 @@ response:
 status_codes:
   - code: '200'
     condition: 画面を返せた
+  - code: '302'
+    condition: '`/` を開いた'
+    notes: '`Location: /mindstella.html`'
   - code: '403'
     condition: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` のどちらでもない'
     notes: 本文は返さない
   - code: '404'
-    condition: '`/`・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts` 以外のパス'
+    condition: '`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts`・`/api/config/display`・`/api/config/reload` 以外のパス'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 待ち受け

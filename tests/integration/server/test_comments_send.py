@@ -18,6 +18,7 @@ from .fixture_types import (
     WriteSubmissions,
 )
 from .http_helpers import http_request, post_json
+from workspace_fixtures import RECORD_DIR
 
 # まとめて送るのパス
 SEND_PATH = "/api/comments/send"
@@ -28,7 +29,7 @@ A_BODY = "1 行目\n言い換えたい文\n3 行目"
 
 def _read(root: Path, name: str) -> dict[str, object]:
     """ワークスペースの YAML を読む。"""
-    return yaml.safe_load((root / name).read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / name).read_text(encoding="utf-8"))
 
 
 def test_normal(
@@ -51,8 +52,8 @@ def test_normal(
         no_target,
     )
     url = serve_preview(root)
-    decisions_before = (root / "decisions.yaml").read_bytes()
-    docs_before = (root / "docs.yaml").read_bytes()
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    docs_before = (root / RECORD_DIR / "docs.yaml").read_bytes()
     # 実行
     result = post_json(url, SEND_PATH, {"ids": ["C-2", "C-1"]})
     # 検証
@@ -69,8 +70,8 @@ def test_normal(
     assert "loc" not in submissions[0]
     assert submissions[1]["loc"] == loc
     assert [item["id"] for item in _read(root, "comments.yaml")["items"]] == ["C-3"]
-    assert (root / "decisions.yaml").read_bytes() == decisions_before
-    assert (root / "docs.yaml").read_bytes() == docs_before
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+    assert (root / RECORD_DIR / "docs.yaml").read_bytes() == docs_before
 
 
 def test_error_when_ids_empty(
@@ -90,7 +91,7 @@ def test_error_when_ids_empty(
     # 検証
     assert result.status == 400
     assert "ids" in result.json()["detail"]
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
 
 
 def test_error_when_origin_mismatch(
@@ -105,15 +106,15 @@ def test_error_when_origin_mismatch(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = post_json(
         url, SEND_PATH, {"ids": ["C-1"]}, headers={"Origin": "https://attacker.example"}
     )
     # 検証
     assert result.status == 403
-    assert not (root / "submissions.yaml").exists()
-    assert (root / "comments.yaml").read_bytes() == before
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_error_when_comment_not_found(
@@ -128,14 +129,14 @@ def test_error_when_comment_not_found(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = post_json(url, SEND_PATH, {"ids": ["C-1", "C-9"]})
     # 検証
     assert result.status == 404
     assert "C-9" in result.json()["detail"]
-    assert not (root / "submissions.yaml").exists()
-    assert (root / "comments.yaml").read_bytes() == before
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_error_when_location_stale(
@@ -153,7 +154,7 @@ def test_error_when_location_stale(
     stale_loc = {"kind": "body", "start": 5, "end": 5, "text": "5 行目"}
     write_comments(root, make_comment("C-1"), make_comment("C-2", target="A-1", loc=stale_loc))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = post_json(url, SEND_PATH, {"ids": ["C-1", "C-2"]})
     # 検証
@@ -161,8 +162,8 @@ def test_error_when_location_stale(
     stale = result.json()["stale"]
     assert [item["id"] for item in stale] == ["C-2"]
     assert stale[0]["reason"] != ""
-    assert not (root / "submissions.yaml").exists()
-    assert (root / "comments.yaml").read_bytes() == before
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_error_when_not_json(
@@ -187,7 +188,7 @@ def test_error_when_not_json(
     )
     # 検証
     assert result.status == 415
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
 
 
 def test_error_when_write_fails(
@@ -208,7 +209,7 @@ def test_error_when_write_fails(
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = post_json(url, SEND_PATH, {"ids": ["C-1"]})
     # 検証

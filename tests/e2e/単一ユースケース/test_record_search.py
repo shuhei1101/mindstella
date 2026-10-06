@@ -1,4 +1,4 @@
-"""記録の検索（スキルが項目を探し、1 件の中身と参照元・使っている属性名を読む）の E2E テスト。"""
+"""記録の検索（スキルが項目を探し、1 件の中身と参照元・使っている属性名とタグを読む）の E2E テスト。"""
 
 from __future__ import annotations
 
@@ -13,13 +13,15 @@ def search_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> Path
     """文字・タグ・属性・参照を持つ D-1・D-2・T-1 のワークスペースを作る。"""
     return make_workspace(
         make_item("D-1", title="スキーマの設計", tags=["データ"], attrs={"担当": "自分"}),
-        make_item("D-2", title="別の問い", depends_on=["D-1"], attrs={"担当": "自分"}),
-        make_item("T-1", title="作業", attrs={"期限": "10 月"}, **{"for": ["D-1"]}),
+        make_item(
+            "D-2", title="別の問い", depends_on=["D-1"], attrs={"担当": "自分"}, tags=["画面"]
+        ),
+        make_item("T-1", title="作業", attrs={"期限": "10 月"}, tags=["データ"], **{"for": ["D-1"]}),
     )
 
 
 def test_normal(search_workspace: Path, call_tool: CallTool, snapshot_tree: SnapshotTree) -> None:
-    """文字で探し、D-1 の中身と参照元を読み、使っている属性名を読む（正常系）。"""
+    """文字で探し、D-1 の中身と参照元を読み、使っている属性名とタグを読み、タグで探す（正常系）。"""
     # 準備
     before = snapshot_tree(search_workspace)
     root = str(search_workspace)
@@ -27,6 +29,8 @@ def test_normal(search_workspace: Path, call_tool: CallTool, snapshot_tree: Snap
     found = call_tool("find", workspace=root, text="スキーマ")
     shown = call_tool("show", workspace=root, id="D-1")
     attrs = call_tool("attrs", workspace=root)
+    tags = call_tool("tags", workspace=root)
+    found_by_tag = call_tool("find", workspace=root, tag="データ")
     # 検証
     assert found.is_error is False
     assert [row["id"] for row in found.data["items"]] == ["D-1"]
@@ -43,6 +47,15 @@ def test_normal(search_workspace: Path, call_tool: CallTool, snapshot_tree: Snap
     assert attrs.is_error is False
     counts = {row["name"]: row["count"] for row in attrs.data["attrs"]}
     assert counts == {"担当": 2, "期限": 1}
+    # タグの一覧が名前の順で、データ（2 件・検討事項とタスク）と画面（1 件・検討事項）を持つ
+    assert tags.is_error is False
+    assert tags.data["tags"] == [
+        {"name": "データ", "count": 2, "kinds": ["decision", "task"]},
+        {"name": "画面", "count": 1, "kinds": ["decision"]},
+    ]
+    # タグ「データ」で探した結果に D-1・T-1 があり、D-2 が無い
+    assert found_by_tag.is_error is False
+    assert sorted(row["id"] for row in found_by_tag.data["items"]) == ["D-1", "T-1"]
     assert snapshot_tree(search_workspace) == before
 
 

@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 import yaml
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
 @pytest.fixture
@@ -38,13 +38,18 @@ def test_normal(
     affected = call_tool("impact", workspace=str(root), id="D-1")
     # 検証
     assert switched.is_error is False
-    decisions = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"]
+    decisions = yaml.safe_load(
+        (root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8")
+    )["items"]
     options = decisions[0]["options"]
     assert options[0]["adopted"] is False
     assert options[1]["adopted"] is True
     # D-1 が変更履歴を 1 回分持ち、切り替える前の案の採否が入っている
     assert len(decisions[0]["history"]) == 1
     assert decisions[0]["history"][0]["before"]["options"] == two_options
+    # D-1 の updated_by が ai で、その変更履歴の回が書き換えた人 ai を持つ
+    assert decisions[0]["updated_by"] == "ai"
+    assert decisions[0]["history"][0]["by"] == "ai"
     assert affected.is_error is False
     rows = affected.data["affected"]
     assert [row["id"] for row in rows] == ["D-2", "D-3", "T-1"]

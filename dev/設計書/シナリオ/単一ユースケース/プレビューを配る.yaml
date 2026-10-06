@@ -8,6 +8,8 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 検討事項 D-1 と、D-1 を前提に持つ D-2。資料 A-1（本文の Markdown に表と mermaid の図を 1 つずつ持つ）
+      - name: ワークスペースの既定
+        description: '`config.yaml` の見た目の既定を `starlight` にし、表示する種類の既定から用語集を外す'
       - name: 書き出す先
         description: ワークスペースの外の一時フォルダの中のパス
     flow: |-
@@ -44,6 +46,8 @@ scenarios:
       - 検討事項のマップに D-1 と D-2 が描かれる
       - A-1 の詳細パネルの本文に、表が `table` 要素で、mermaid の図が SVG で描かれる
       - つながりに玉が描かれる
+      - トップバーに用語集のタブが無く、つながりに渡る見た目が `starlight` である
+      - トップバーの表示の設定でパネルが開き、「ワークスペースの既定にする」が無い
       - 画面に、項目の追加・編集・削除、回答・コメントの送信、設定の保存のボタンが無い
       - 書き出した HTML の中に、marked・DOMPurify・elkjs・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前がある
       - 書き出した HTML の中に、elkjs のソースコードの入手先（リポジトリと版のタグの URL）がある

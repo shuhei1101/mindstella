@@ -5,7 +5,7 @@ directory: |-
   plugins/mindstella/skills/mindmap/
     schemas/
       common.schema.json       共通のキー（$defs）
-      settings.schema.json     mindmap.yaml
+      settings.schema.json     config.yaml
       decisions.schema.json    ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
       submissions.schema.json  submissions.yaml（『送信』が使う）
       comments.schema.json     comments.yaml（『コメント』が使う）
@@ -37,7 +37,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
     role: DTO
-    summary: 1 種類のファイル・ID の頭の文字・スキーマ・本文と状態の有無
+    summary: 1 種類のファイル・ID の頭の文字・スキーマ・状態の有無（本文はどの種類も持てる）
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
     properties:
       - name: kind
@@ -55,9 +55,6 @@ data_models:
         type: str
         description: '`schemas/` のスキーマのファイル名'
         example: decisions.schema.json
-      - name: has_body
-        type: bool
-        description: 本文（`body`）を持てるか
       - name: settled_statuses
         type: frozenset[str]
         description: 決着とみなす状態。状態を持たない種類は空
@@ -77,7 +74,7 @@ data_models:
         description: 'ファイル名 → 読んだ値そのまま（設定と 7 種類。無い種類のファイルは `{"items": []}`、YAML として読めないファイルは含めない）。検証はこの値をスキーマと突き合わせる'
       - name: settings
         type: dict[str, Any]
-        description: '`mindmap.yaml` の値。辞書でない・読めないときは空'
+        description: '`config.yaml` の値。辞書でない・読めないときは空'
       - name: items
         type: dict[Kind, list[dict[str, Any]]]
         description: 種類ごとの `items`（ファイルの並びのまま）。一番上が辞書で `items` が配列のときだけ取り出し、それ以外は空（配列の要素のうち辞書でないものも除く）
@@ -97,7 +94,7 @@ data_models:
         description: 問題の種類
       - name: file
         type: str
-        description: ワークスペースからの相対パス
+        description: 記録のフォルダ（`records_root(root)`）からの相対パス（`decisions.yaml` の形）。点検の結果に返すときは、モジュール構成『点検』の `check_workspace` がワークスペースからの相対パス（`.mindstella/decisions.yaml`）にする
       - name: id
         type: str | None
         description: 問題のある項目の ID
@@ -223,14 +220,14 @@ classes:
     title: ワークスペースが無い
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: '`mindmap.yaml` が無いフォルダを指した。メッセージにフォルダのパス'
+    summary: '`config.yaml` が無いフォルダを指した。メッセージにフォルダのパス。`mindmap.yaml`（前の版の設定ファイル）だけがあるフォルダでは、`lines` に `UPGRADE_HINT` を持つ（`require_workspace`）'
     kind: クラス
     inherits: MindmapError
   - name: WorkspaceExistsError
     title: ワークスペースが既にある
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: ワークスペースの作成
-    summary: '`mindmap.yaml` が既にあるフォルダに作ろうとした。メッセージにフォルダのパス'
+    summary: '`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。メッセージにフォルダのパス'
     kind: クラス
     inherits: MindmapError
   - name: SchemaMismatchError
@@ -375,6 +372,13 @@ classes:
       - name: unmapped
         type: list[tuple[str, str, str]]
         description: 残るもの（ID か `categories[{名前}]`、キー、名前）
+  - name: SettingsInvalidError
+    title: 表示の既定の中身の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: ワークスペースの既定を変える
+    summary: '既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。配信は 400 にする。メッセージは `{キー}: {理由}`（選べる値を含む）'
+    kind: クラス
+    inherits: MindmapError
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -383,43 +387,43 @@ constants:
     summary: 種類 → 種類の定義。並びは D・T・R・A・G・N・L の順で、一覧を出す並びにも使う
     entries:
       - key: decision
-        value: decisions.yaml / D / decisions.schema.json / 本文あり
+        value: decisions.yaml / D / decisions.schema.json
         description: '決着: 決定済み・対象外・取り下げ'
       - key: task
-        value: tasks.yaml / T / tasks.schema.json / 本文なし
+        value: tasks.yaml / T / tasks.schema.json
         description: '決着: 完了・中止'
       - key: research
-        value: research.yaml / R / research.schema.json / 本文あり
+        value: research.yaml / R / research.schema.json
         description: 状態なし
       - key: doc
-        value: docs.yaml / A / docs.schema.json / 本文あり
+        value: docs.yaml / A / docs.schema.json
         description: 状態なし
       - key: term
-        value: terms.yaml / G / terms.schema.json / 本文なし
+        value: terms.yaml / G / terms.schema.json
         description: 状態なし
       - key: note
-        value: notes.yaml / N / notes.schema.json / 本文なし
+        value: notes.yaml / N / notes.schema.json
         description: 状態なし
       - key: log
-        value: logs.yaml / L / logs.schema.json / 本文あり
+        value: logs.yaml / L / logs.schema.json
         description: 状態なし
   - name: SETTINGS_FILE
     title: 設定のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: ワークスペースの設定のファイル名
-    value: '"mindmap.yaml"'
+    summary: ワークスペースの設定のファイル名（`records_root(root)` の下）
+    value: '"config.yaml"'
   - name: BODY_DIR
     title: 本文のフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: 本文の Markdown を置くフォルダ名
+    summary: 本文の Markdown を置くフォルダ名（`records_root(root)` の下）
     value: '"docs"'
   - name: RELEASE_DIR
     title: リリースのフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: ワークスペースの作成
-    summary: ゴール判定で書き出す資料のフォルダ名
+    summary: ゴール判定で書き出す資料のフォルダ名（`records_root(root)` の下）
     value: '"release"'
   - name: SCHEMA_DIR
     title: スキーマのフォルダ
@@ -437,7 +441,7 @@ constants:
     title: 設定のスキーマのファイル名
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: '`mindmap.yaml` を検証するスキーマ'
+    summary: '`config.yaml` を検証するスキーマ'
     value: '"settings.schema.json"'
   - name: TEMP_SUFFIX
     title: 一時ファイルの拡張子
@@ -455,14 +459,38 @@ constants:
     title: 版のファイル
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: ワークスペースの版を持つファイルの名前
+    summary: ワークスペースの版を持つファイルの名前（`records_root(root)` の下。v0.6.0 より前は直下）
     value: '"mindstella-version.ini"'
   - name: LOCK_FILE
     title: 書き換えのロックのファイル
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: プロセスをまたいだ書き換えの排他に使う空のファイルの名前（ER 図『ワークスペース』）
+    summary: プロセスをまたいだ書き換えの排他に使う空のファイルの名前（`records_root(root)` の下。ER 図『ワークスペース』）
     value: '".mindstella.lock"'
+  - name: LEGACY_SETTINGS_FILE
+    title: 前の版の設定のファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 記録の形式の移行
+    summary: v0.6.0 より前の版の設定のファイル名。直下にあってもワークスペースとしては扱わず、見つけたら移し替えを案内する（`require_workspace`）・作らない（`create_workspace`）・移し替えだけが見分ける（モジュール構成『移行』）
+    value: '"mindmap.yaml"'
+  - name: UPGRADE_HINT
+    title: 移し替えの案内
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の形式の移行
+    summary: 記録のフォルダが無く直下に前の版の設定ファイル（`config.yaml` か `mindmap.yaml`）があるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
+    value: '"ヒント: 前の版の形の記録があります。/mindstella:upgrade {root} で今の版へ移し替えてください"'
+  - name: RECORD_DIR
+    title: 記録のフォルダ名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名（ER 図『ワークスペース』）
+    value: '".mindstella"'
+  - name: EDITOR
+    title: 編集した人
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
+    value: '"ai"'
 functions:
   - name: kind_of_id
     title: ID の種類
@@ -514,17 +542,16 @@ functions:
       type: Workspace
       description: 読み込んだワークスペース
     process: |-
-      1. `root` を絶対パスにし、`mindmap.yaml` があるか確かめる
-         - 無い場合、`WorkspaceNotFoundError` を送る
-      2. 設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に入れる（読む。`_read_yaml`）
+      1. `root` を絶対パスにし、ワークスペースを確かめる（`require_workspace`）
+      2. `records_root(root)` の下の設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に入れる（読む。`_read_yaml`）
          - 種類のファイルが無い場合、`{"items": []}` を入れる
          - YAML として読めない場合（設定も含む）、`kind: schema`・`key: (全体)` の問題を `load_problems` に足し、`raw` には入れない
       3. `settings` は設定の値が辞書のときだけその値、それ以外は空にする
       4. `items` は、値が辞書で `items` が配列のときだけその要素のうち辞書のものを取り出し、それ以外は空にする（形の誤りは検証が `raw` から拾う）
-      5. `Workspace` を返す
+      5. `Workspace` を返す（`root` は直下のフォルダのまま）
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`root` に `mindmap.yaml` が無い'
+        condition: '`root` に `config.yaml` が無い（`require_workspace`）'
         message: 'ワークスペースがありません: {root}'
     test_setup:
       - name: ワークスペースのフォルダ
@@ -545,11 +572,11 @@ functions:
         expected: '`items["task"]` が空、`load_problems` に `file: tasks.yaml`・`kind: schema` の 1 件'
       - name: test_load_workspace_when_settings_missing
         case: 異常
-        summary: mindmap.yaml が無いフォルダは読まない
+        summary: config.yaml が無いフォルダは読まない
         condition: 空の `tmp_path`
         mock: なし
         expected: '`WorkspaceNotFoundError`（メッセージに `tmp_path`）'
-        exception: mindmap.yaml が無い
+        exception: config.yaml が無い
       - name: test_load_workspace_when_top_level_list
         case: 正常
         summary: 一番上が配列のファイルは項目を空にし、読んだ値は raw に残す
@@ -559,9 +586,9 @@ functions:
       - name: test_load_workspace_when_settings_broken
         case: 正常
         summary: 設定が YAML として読めなければ問題に記録して空にする
-        condition: '`mindmap.yaml` に YAML として読めない文字列を置く'
+        condition: '`config.yaml` に YAML として読めない文字列を置く'
         mock: なし
-        expected: '`settings` が空、`load_problems` に `file: mindmap.yaml`・`key: (全体)` の 1 件、`raw` に `mindmap.yaml` が無い'
+        expected: '`settings` が空、`load_problems` に `file: config.yaml`・`key: (全体)` の 1 件、`raw` に `config.yaml` が無い'
   - name: validate_workspace
     title: ワークスペースの検証
     kind: 関数
@@ -841,7 +868,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの作成
     scope: public
-    summary: 設定を検証してから、設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る
+    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る
     side_effects: フォルダとファイルを作る
     args:
       - name: root
@@ -861,17 +888,17 @@ functions:
         description: 版のファイルに書くプラグインの版（`v0.3.0` の形。入口が `read_plugin_version` で読んで渡す）
     returns:
       type: list[str]
-      description: 作ったファイルとフォルダ（ワークスペースからの相対パス。フォルダは末尾に `/`）
+      description: 作ったファイルとフォルダ（ワークスペースからの相対パスで `.mindstella/` から始まる。フォルダは末尾に `/`）
     process: |-
-      1. `root/mindmap.yaml` があれば `WorkspaceExistsError` を送る
+      1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
-      3. フォルダと `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、最後に `mindmap.yaml` を書く（`dump_yaml`）
-         - `OSError` が起きた場合、この関数が作ったファイルとフォルダを消して `WriteFailedError` を送る（`mindmap.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
+      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、最後に `config.yaml` を書く（`dump_yaml`。どれも `records_root(root)` の下）
+         - `OSError` が起きた場合、この関数が作ったファイルとフォルダを消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
-        condition: '`root` に `mindmap.yaml` が既にある'
-        message: '既にワークスペースがあります: {root}'
+        condition: '`root` に `.mindstella/config.yaml` が既にあるか、直下に `config.yaml` か `mindmap.yaml` がある'
+        message: '既にワークスペースがあります: {root}（直下の設定ファイルのときは `lines` に移し替えの案内）'
       - name: SchemaMismatchError
         condition: 設定が設定のスキーマに合わない
       - name: WriteFailedError
@@ -883,20 +910,20 @@ functions:
         summary: まだ無いフォルダにワークスペースを作る
         condition: '`tmp_path / "ws"`（無い）と正しい設定、`version="v0.3.0"`'
         mock: なし
-        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`。`mindmap.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`
+        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`
       - name: test_create_workspace_when_exists
         case: 異常
-        summary: mindmap.yaml があるフォルダには作らない
-        condition: '`mindmap.yaml` を置いた `tmp_path`'
+        summary: config.yaml か mindmap.yaml があるフォルダには作らない
+        condition: '`parametrize`: `config.yaml` を置いた `tmp_path` / `mindmap.yaml` と D-1 を持つ `decisions.yaml` を置いた `tmp_path`'
         mock: なし
-        expected: '`WorkspaceExistsError`。`mindmap.yaml` が呼ぶ前と同じ'
-        exception: mindmap.yaml が既にある
+        expected: 'どちらも `WorkspaceExistsError`。フォルダの全てのファイルが呼ぶ前と同じで、後者に `config.yaml` が作られていない'
+        exception: config.yaml か mindmap.yaml が既にある
       - name: test_create_workspace_when_settings_invalid
         case: 異常
         summary: 設定がスキーマに合わなければフォルダも作らない
         condition: '`phases` の無い設定と `tmp_path / "ws"`（無い）'
         mock: なし
-        expected: '`SchemaMismatchError`（`lines` に `mindmap.yaml` と `phases`）。`tmp_path / "ws"` が無い'
+        expected: '`SchemaMismatchError`（`lines` に `config.yaml` と `phases`）。`tmp_path / "ws"` が無い'
         exception: 設定が設定のスキーマに合わない
       - name: test_create_workspace_when_write_fails
         case: 異常
@@ -946,7 +973,7 @@ functions:
       - name: test_read_body_when_outside
         case: 正常
         summary: docs/ の外を指す名前は読まない
-        condition: '`../mindmap.yaml`'
+        condition: '`../config.yaml`'
         mock: なし
         expected: '`None`'
   - name: dump_yaml
@@ -1073,14 +1100,14 @@ functions:
       description: 前の版の形式から来ていれば真
     process: |-
       1. `kind` が `schema` でない場合、偽を返す
-      2. `file` が `mindmap.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
+      2. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
       3. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
       4. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
         summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `mindmap.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `mindmap.yaml` の問題'
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 真
   - name: clear_release
@@ -1101,13 +1128,13 @@ functions:
       type: list[str]
       description: 消したものの `release/` からのパス（フォルダは末尾に `/`。名前の順）
     process: |-
-      1. `root/mindmap.yaml` が無ければ `WorkspaceNotFoundError` を送る
-      2. `root / RELEASE_DIR` を作る（あればそのまま）
+      1. ワークスペースを確かめる（`require_workspace`）
+      2. `records_root(root) / RELEASE_DIR` を作る（あればそのまま）
       3. 中の項目を名前の順に消す（シンボリックリンクとファイルは `Path.unlink`、リンクでないフォルダは `shutil.rmtree`。リンク先は消さない）。消したものを戻り値に足す
          - `OSError` が起きた場合、そこで止めて `WriteFailedError` を送る（それまでに消したものは戻さない。次の呼び出しで片付く）
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`root` に `mindmap.yaml` が無い'
+        condition: '`root` に `config.yaml` が無い（`require_workspace`）'
         message: 'ワークスペースがありません: {root}'
       - name: WriteFailedError
         condition: '`release/` を作るか中のものを消す途中で `OSError` が起きた'
@@ -1118,7 +1145,7 @@ functions:
         summary: release/ の中のファイルとフォルダを消す
         condition: 作成済みのワークスペースの `release/` に `古い資料.md` と、ファイルを 1 つ持つ `図/`
         mock: なし
-        expected: 戻り値が `["古い資料.md", "図/"]`。`release/` があり、中身が空。`mindmap.yaml` が呼ぶ前と同じ
+        expected: 戻り値が `["古い資料.md", "図/"]`。`release/` があり、中身が空。`config.yaml` が呼ぶ前と同じ
       - name: test_clear_release_when_release_dir_missing
         case: 正常
         summary: release/ が無ければ空の release/ を作る
@@ -1127,11 +1154,11 @@ functions:
         expected: 戻り値が空。空の `release/` がある。`handoff/` が呼ぶ前と同じ
       - name: test_clear_release_when_workspace_missing
         case: 異常
-        summary: mindmap.yaml が無ければ何も消さない
-        condition: '`mindmap.yaml` が無く、`release/` に `資料.md` がある `tmp_path`'
+        summary: config.yaml が無ければ何も消さない
+        condition: '`config.yaml` が無く、`release/` に `資料.md` がある `tmp_path`'
         mock: なし
         expected: '`WorkspaceNotFoundError`。`release/資料.md` が残っている'
-        exception: mindmap.yaml が無い
+        exception: config.yaml が無い
       - name: test_clear_release_when_remove_fails
         case: 異常
         summary: 消せないものに当たったらそこで止める
@@ -1165,26 +1192,32 @@ functions:
         default: 'False'
         passing: keyword
         description: まだ無いワークスペースを作るか（`init` だけ真）
+      - name: require
+        type: Callable[[Path], None]
+        required: false
+        default: require_workspace
+        passing: keyword
+        description: '`create` が偽のときにワークスペースを確かめる関数。`plan` でない `migrate` だけが、前の版の `mindmap.yaml` だけのフォルダも通す `require_migratable`（モジュール構成『移行』）を渡す'
     returns:
       type: Iterator[None]
       description: 鍵とロックを持っている間だけ返す
     process: |-
       1. `process_lock` を取る
-      2. `create` が真なら `root` を作る（`exist_ok`）。偽なら、`root/mindmap.yaml` が無ければ何も作らずに `WorkspaceNotFoundError` を送る（`process_lock` は放す）
-      3. `LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。開けない（`OSError`）ときは `WriteFailedError` を送る
+      2. `create` が真なら `records_root(root)` を作る（`parents=True`・`exist_ok`）。偽なら、ワークスペースを確かめ（`require(root)`）、送られたら何も作らずに伝える（`process_lock` は放す）
+      3. ロックファイルを追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。ロックファイルは `records_root(root) / LOCK_FILE`。`require` が `require_migratable` で `records_root(root)` が無い（移す前の形）ときだけ、直下の `root / LOCK_FILE` を使う。開けない（`OSError`）ときは `WriteFailedError` を送る
       4. 呼び出し元の処理を動かす
-      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 で `root` を作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と `root` を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
+      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 でフォルダを作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と作ったフォルダ（`records_root(root)` と、無かった `root`）を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
     unit_tests:
       - name: test_workspace_lock
         case: 正常
         summary: 鍵とロックを持ち、抜けたら放す
-        condition: '`mindmap.yaml` を置いた `tmp_path` と `threading.Lock()`。`with` の中で別の子プロセスが同じ `LOCK_FILE` に `flock(LOCK_EX | LOCK_NB)` を試す'
+        condition: '`config.yaml` を置いた `tmp_path` と `threading.Lock()`。`with` の中で別の子プロセスが同じ `LOCK_FILE` に `flock(LOCK_EX | LOCK_NB)` を試す'
         mock: なし
         expected: '`with` の中では子プロセスが `BlockingIOError` で取れず、`process_lock.locked()` が真。抜けた後は子プロセスが取れ、`process_lock` が外れている'
       - name: test_workspace_lock_when_raises
         case: 正常
         summary: 中の処理が例外でも放す
-        condition: '`mindmap.yaml` を置いた `tmp_path`。`with` の中で `ValueError` を送る'
+        condition: '`config.yaml` を置いた `tmp_path`。`with` の中で `ValueError` を送る'
         mock: なし
         expected: '`ValueError` が伝わり、`process_lock` が外れ、子プロセスがロックを取れる'
       - name: test_workspace_lock_when_folder_missing
@@ -1192,16 +1225,22 @@ functions:
         summary: まだ無いフォルダも作って取る
         condition: '`tmp_path / "ws"`（無い）と `create=True`'
         mock: なし
-        expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'
+        expected: '`tmp_path / "ws" / ".mindstella" / ".mindstella.lock"` がある'
       - name: test_workspace_lock_when_not_workspace
         case: 異常
         summary: ワークスペースでないフォルダには何も作らない
         condition: '`parametrize`: 空の `tmp_path` / `tmp_path / "typo" / "ws"`（無い）。`create` は既定（偽）'
         mock: なし
         expected: '`WorkspaceNotFoundError` が伝わり、`process_lock` が外れている。`tmp_path` の中は空のまま（`typo` も作られない）'
+      - name: test_workspace_lock_when_require_given
+        case: 正常
+        summary: 渡した確かめの関数でワークスペースを確かめる
+        condition: '`mindmap.yaml` だけを置いた `tmp_path`。`parametrize`: `require` が `require_migratable` / 既定'
+        mock: なし
+        expected: '`require_migratable` では `with` の中に入り、`tmp_path / ".mindstella.lock"` がある。既定では `WorkspaceNotFoundError`（`lines` に移し替えの案内）が伝わり、`.mindstella.lock` は作られない'
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`create` が偽で、`root` に `mindmap.yaml` が無い'
+        condition: '`create` が偽で、`require` が送った（既定の `require_workspace` では `root` に `config.yaml` が無い）'
         message: 'ワークスペースがありません: {root}'
       - name: WriteFailedError
         condition: '`LOCK_FILE` を開けない（書き込みの権限が無い等）'
@@ -1259,6 +1298,145 @@ functions:
         condition: 検討事項とタスクの並びと本文。`os.replace` を、置き換え先が `tasks.yaml` のときだけ `OSError` を送る関数に差し替える
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `tasks.yaml`）。`decisions.yaml`・`tasks.yaml`・`docs/` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+  - name: require_workspace
+    title: ワークスペースの確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: public
+    summary: '`.mindstella/config.yaml` があるかを確かめ、無ければ送る。直下に前の版の設定ファイルだけがあれば移し替えを案内する'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ（絶対パス）
+    returns:
+      type: None
+      description: '`config.yaml` があれば何も返さない'
+    process: |-
+      1. `records_root(root) / SETTINGS_FILE` がファイルなら戻る
+      2. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
+      3. どれも無ければ `WorkspaceNotFoundError` を送る
+
+      `load_workspace`・`clear_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`root` に `.mindstella/config.yaml` が無い'
+        message: 'ワークスペースがありません: {root}（直下に前の版の設定ファイルがあるときは `lines` に移し替えの案内）'
+    unit_tests:
+      - name: test_require_workspace
+        case: 正常
+        summary: .mindstella/config.yaml があれば通す
+        condition: '`.mindstella/config.yaml` を置いた `tmp_path`'
+        mock: なし
+        expected: 例外にならない
+      - name: test_require_workspace_when_missing
+        case: 異常
+        summary: 無いフォルダと、前の版の形のフォルダを分けて送る
+        condition: '`parametrize`: 空の `tmp_path` / 直下に `mindmap.yaml` だけを置いた `tmp_path` / 直下に `config.yaml` だけを置いた `tmp_path`'
+        mock: なし
+        expected: どれも `WorkspaceNotFoundError`（メッセージに `tmp_path`）。空のフォルダは `lines` が空、ほかの 2 つは `lines` が `/mindstella:upgrade {tmp_path}` を含む 1 行
+        exception: .mindstella/config.yaml が無い
+  - name: check_settings
+    title: 設定の検査
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: プレビューを開く
+    scope: public
+    summary: '`config.yaml` だけを読んで設定のスキーマと突き合わせ、読んだ設定と問題を返す（種類ごとの YAML は読まない）'
+    description: 配信を立てる前の検査（`preview_url`）・設定の再読み込み・既定の書き換えの前の確かめが使う。
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ（絶対パス）
+    returns:
+      type: tuple[dict[str, Any], list[Problem]]
+      description: '読んだ設定（辞書でない・読めないときは空）と問題（`file: config.yaml`・`kind: schema`。合えば空）'
+    process: |-
+      1. ワークスペースを確かめる（`require_workspace`）
+      2. `config.yaml` を読む（`_read_yaml`）
+         - YAML として読めない場合、空の設定と `key: (全体)` の問題 1 件を返す
+      3. 設定のスキーマの検証器で突き合わせ、`validate_workspace` と同じ形の問題（キーのパスは `_format_path`）を並べて返す
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`root` に `config.yaml` が無い'
+        message: 'ワークスペースがありません: {root}'
+    unit_tests:
+      - name: test_check_settings
+        case: 正常
+        summary: 合う設定は問題 0 件で、display も読む
+        condition: '`display: {network_look: starlight, visible_kinds: [decisions]}` を持つ設定'
+        mock: なし
+        expected: 設定の `display.network_look` が `starlight`、問題が空
+      - name: test_check_settings_when_invalid
+        case: 正常
+        summary: 合わない設定と読めない設定を問題にする
+        condition: '`parametrize`: `display.network_look` が `rainbow` / `display.visible_kinds` が `[decisions, decisions]` / YAML として読めない'
+        mock: なし
+        expected: '`key` が `display.network_look` / `display.visible_kinds` / `(全体)` の問題が 1 件以上。どれも `file` が `config.yaml`'
+  - name: load_display_validator
+    title: 表示の既定の検証器の用意
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの既定を変える
+    scope: public
+    summary: 設定のスキーマの `display` の部分（`properties.display`）だけを検証する検証器を作る（選べる見た目と種類の名前はスキーマだけが持つ。設定の更新の `update_display` が使う）
+    returns:
+      type: Draft202012Validator
+      description: '`display` の検証器'
+    process: |-
+      1. `load_validators` と同じく共通のスキーマを登録した Registry を作る
+      2. 設定のスキーマの `properties.display` で `Draft202012Validator` を作って返す
+
+      分岐を持たないため単体テストを置かず、`update_display` のテストで確かめる
+  - name: format_path
+    title: キーのパスの文字列化（公開）
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの既定を変える
+    scope: public
+    summary: '`_format_path` をほかのモジュール（設定の更新の `update_display`）から使うための公開の入口'
+    args:
+      - name: path
+        type: Iterable[str | int]
+        required: true
+        passing: positional
+        description: キーと添字の並び
+    returns:
+      type: str
+      description: '`_format_path` の結果'
+    process: |-
+      1. `_format_path(path)` を返す
+
+      分岐を持たないため単体テストを置かず、`_format_path` のテストで確かめる
+  - name: records_root
+    title: 記録のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    scope: public
+    summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`clear_release`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』『ゴール判定』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: Path
+      description: '`root / RECORD_DIR`'
+    process: 1. `root / RECORD_DIR` を返す（フォルダは作らない）
+    unit_tests:
+      - name: test_records_root
+        case: 正常
+        summary: 直下の .mindstella を返す
+        condition: '`tmp_path`'
+        mock: なし
+        expected: '`tmp_path / ".mindstella"`。フォルダは作られていない'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

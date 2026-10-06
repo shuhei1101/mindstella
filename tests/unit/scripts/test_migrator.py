@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +26,11 @@ from fixture_types import (
     PatchPluginVersion,
     SnapshotTree,
 )
-from migration_helpers import STEPS_FILE, snapshot_mtimes
+from migration_helpers import STEPS_FILE, make_step, snapshot_mtimes
+from migration_ops import DESTRUCTIVE_OPS
 from migrator import NeededValue
 from versions import Version
-from workspace_fixtures import DEFAULT_TIMESTAMP
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR, write_yaml
 
 # 版のファイル
 VERSION_FILE = "mindstella-version.ini"
@@ -39,8 +41,27 @@ V030 = Version(0, 3, 0)
 # v0.5.0 の手順の版（設定の分野をプレイブックの配列へ移す）
 V050 = Version(0, 5, 0)
 
+# v0.6.0 の手順の版（設定ファイルの名前を改める）
+V060 = Version(0, 6, 0)
+
 # 手順を当てる前に値が要るキー（v0.3.0 の set_default の ask）
 SUMMARY_NEEDED = NeededValue(file="mindmap.yaml", key="summary", description="話し合いの題名")
+
+# 設定ファイルの名前を改めた後に値が要るキー（v0.6.0 の手順で改めて記録のフォルダへ移した先の名前）
+RENAMED_SUMMARY_NEEDED = NeededValue(
+    file=".mindstella/config.yaml", key="summary", description="話し合いの題名"
+)
+
+# v0.6.0 の手順の並び（設定ファイルの名前を改め、直下の記録を .mindstella/ へ移し、前の版のファイルを消す）
+V060_STEPS = [
+    make_step("rename_file", {"from": "mindmap.yaml", "to": "config.yaml"}),
+    make_step("rename_file", {"from": "decisions.yaml", "to": ".mindstella/decisions.yaml"}),
+    make_step("rename_file", {"from": "docs.yaml", "to": ".mindstella/docs.yaml"}),
+    make_step("move_dir", {"from": "docs", "to": ".mindstella/docs"}),
+    make_step("move_dir", {"from": "release", "to": ".mindstella/release"}),
+    make_step("rename_file", {"from": "config.yaml", "to": ".mindstella/config.yaml"}),
+    make_step("delete", {"path": "preview.html"}),
+]
 
 # 手順が読めない docs.yaml（閉じていないフローの配列）
 BROKEN_DOCS = "items: [\n"
@@ -138,7 +159,9 @@ def test_plan_migration(
 ) -> None:
     """版を記録する前の形式に v0.3.0 の手順を並べる（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file="mindmap.yaml", top=True
+    )
     patch_plugin_version("v0.3.0")
     mtimes = snapshot_mtimes(root)
     # 実行
@@ -186,10 +209,33 @@ def test_plan_migration_when_newer(
 
 
 def test_plan_migration_when_workspace_missing(tmp_path: Path) -> None:
-    """ワークスペースが無ければ送る（異常系）。"""
+    """設定ファイルがどこにも無ければ送る（異常系）。"""
     # 実行・検証
     with pytest.raises(WorkspaceNotFoundError):
         migrator.plan_migration(tmp_path)
+
+
+def test_plan_migration_when_settings_renamed(
+    make_legacy_workspace: MakeLegacyWorkspace, patch_plugin_version: PatchPluginVersion
+) -> None:
+    """後の手順で名前を改めるファイルの値が要るキーは、改めた先の名前で返す（正常系）。"""
+    # 準備
+    root = make_legacy_workspace(without_summary=True, settings_file="mindmap.yaml", top=True)
+    patch_plugin_version("v0.6.0")
+    # 実行
+    report = migrator.plan_migration(root)
+    # 検証
+    v060_steps = [step for step in report.steps if step.version == V060]
+    assert report.steps[-1].version == V060
+    assert (v060_steps[0].op, v060_steps[0].args) == (
+        "rename_file",
+        {"from": "mindmap.yaml", "to": "config.yaml"},
+    )
+    assert [step.op in DESTRUCTIVE_OPS for step in v060_steps] == [True] * len(v060_steps)
+    assert report.needs_values == [RENAMED_SUMMARY_NEEDED]
+    assert (root / "mindmap.yaml").exists()
+    assert not (root / "config.yaml").exists()
+    assert not (root / RECORD_DIR).exists()
 
 
 def test_apply_migration(
@@ -197,7 +243,12 @@ def test_apply_migration(
 ) -> None:
     """v0.3.0 の手順を当てて、値が要るキーを返す（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True, "A-2": False}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True, "A-2": False},
+        without_summary=True,
+        settings_file="mindmap.yaml",
+        top=True,
+    )
     patch_plugin_version("v0.3.0")
     # 実行
     report = migrator.apply_migration(root)
@@ -254,7 +305,7 @@ def test_apply_migration_when_step_fails(
 ) -> None:
     """手順が失敗したら写しから戻して送る（異常系）。"""
     # 準備
-    root = make_workspace(raw_files={"docs.yaml": BROKEN_DOCS})
+    root = make_workspace(raw_files={"docs.yaml": BROKEN_DOCS}, top=True)
     patch_plugin_version("v0.3.0")
     before = snapshot_tree(root)
     # 実行・検証
@@ -271,7 +322,7 @@ def test_apply_migration_when_restore_fails(
 ) -> None:
     """戻せなかったときは写しの場所を添える（異常系）。"""
     # 準備
-    root = make_workspace(raw_files={"docs.yaml": BROKEN_DOCS})
+    root = make_workspace(raw_files={"docs.yaml": BROKEN_DOCS}, top=True)
     patch_plugin_version("v0.3.0")
     # migrator モジュールの参照を、戻せない関数に差し替える
     monkeypatch.setattr(migrator, "restore_backup", _fail_restore)
@@ -282,6 +333,59 @@ def test_apply_migration_when_restore_fails(
     assert f"写しから戻せませんでした。写しは {backup_dir} にあります" in exc_info.value.lines
 
 
+def test_apply_migration_when_settings_renamed(
+    make_legacy_workspace: MakeLegacyWorkspace, patch_plugin_version: PatchPluginVersion
+) -> None:
+    """前の版の手順を当ててから設定ファイルの名前を改めて記録を .mindstella/ へ移し、値が要るキーを移した先で返す（正常系）。"""
+    # 準備
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file="mindmap.yaml", top=True
+    )
+    legacy_settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    legacy_settings["field"] = "システム開発"
+    del legacy_settings["playbooks"]
+    write_yaml(root / "mindmap.yaml", legacy_settings)
+    # 前の版の画面と、直下のロックのファイル
+    (root / "preview.html").write_text("<html></html>\n", encoding="utf-8")
+    (root / ".mindstella.lock").write_text("", encoding="utf-8")
+    patch_plugin_version("v0.6.0")
+    # 実行
+    report = migrator.apply_migration(root)
+    # 検証
+    records = root / RECORD_DIR
+    settings = yaml.safe_load((records / "config.yaml").read_text(encoding="utf-8"))
+    assert [path.name for path in root.iterdir()] == [".mindstella"]
+    assert settings["playbooks"] == ["システム開発"]
+    assert "field" not in settings
+    assert _read_items(records, "docs.yaml")[0]["status"] == "完成"
+    assert (records / "docs" / "A-1.md").read_text(encoding="utf-8") == "資料の本文\n"
+    assert report.needs_values == [RENAMED_SUMMARY_NEEDED]
+    assert report.backup is not None
+    assert (Path(report.backup.ref) / "mindmap.yaml").exists()
+
+
+def test_apply_migration_when_config_current(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    snapshot_tree: SnapshotTree,
+    patch_plugin_version: PatchPluginVersion,
+) -> None:
+    """版のファイルを持たない今の形（.mindstella/config.yaml）にも全ての手順を当てて何も変えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", status="完成"))
+    patch_plugin_version("v0.6.0")
+    before = snapshot_tree(root)
+    mtimes = snapshot_mtimes(root)
+    # 実行
+    report = migrator.apply_migration(root)
+    # 検証
+    assert report.needs_values == []
+    assert snapshot_tree(root) == before
+    assert snapshot_mtimes(root) == mtimes
+    # 直下に記録のフォルダのほかのものが作られていない
+    assert [path.name for path in root.iterdir()] == [".mindstella"]
+
+
 def test_set_values(
     make_legacy_workspace: MakeLegacyWorkspace, valid_settings: dict[str, Any]
 ) -> None:
@@ -289,13 +393,13 @@ def test_set_values(
     # 準備
     root = make_legacy_workspace(without_summary=True)
     # 実行
-    migrator.set_values(root, [("mindmap.yaml", "summary", "題名")])
+    migrator.set_values(root, [(".mindstella/config.yaml", "summary", "題名")])
     # 検証
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == "題名"
     assert _keys_except(settings, "summary") == _keys_except(valid_settings, "summary")
     assert settings["phases"] == valid_settings["phases"]
-    assert not (root / VERSION_FILE).exists()
+    assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
 def test_set_values_when_write_fails(
@@ -308,11 +412,11 @@ def test_set_values_when_write_fails(
     # 準備
     root = make_legacy_workspace(without_summary=True)
     before = snapshot_tree(root)
-    # migrator モジュールの参照を、mindmap.yaml への置き換えが失敗するものに差し替える
-    monkeypatch.setattr(migrator.os, "replace", failing_replace("mindmap.yaml"))
+    # migrator モジュールの参照を、config.yaml への置き換えが失敗するものに差し替える
+    monkeypatch.setattr(migrator.os, "replace", failing_replace("config.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
-        migrator.set_values(root, [("mindmap.yaml", "summary", "題名")])
+        migrator.set_values(root, [(".mindstella/config.yaml", "summary", "題名")])
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []
 
@@ -325,7 +429,7 @@ def test_record_version(make_workspace: MakeWorkspace, make_item: MakeItem) -> N
     recorded = migrator.record_version(root, to_version=V030)
     # 検証
     assert recorded == V030
-    first_line = (root / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
+    first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
     assert first_line == "v0.3.0"
 
 
@@ -339,6 +443,42 @@ def test_record_version_when_schema_mismatch(
     with pytest.raises(SchemaMismatchError) as exc_info:
         migrator.record_version(root, to_version=V030)
     assert any(
-        line.startswith("mindmap.yaml: ") and "summary" in line for line in exc_info.value.lines
+        line.startswith("config.yaml: ") and "summary" in line for line in exc_info.value.lines
     )
-    assert not (root / VERSION_FILE).exists()
+    assert not (root / RECORD_DIR / VERSION_FILE).exists()
+
+
+@pytest.mark.parametrize(
+    ("files", "expectation"),
+    [
+        pytest.param([".mindstella/config.yaml"], nullcontext(), id="record_config_yaml_only"),
+        pytest.param(["config.yaml"], nullcontext(), id="top_config_yaml_only"),
+        pytest.param(["mindmap.yaml"], nullcontext(), id="legacy_mindmap_yaml_only"),
+        pytest.param([], pytest.raises(WorkspaceNotFoundError), id="neither"),
+    ],
+)
+def test_require_migratable(tmp_path: Path, files: list[str], expectation: Any) -> None:
+    """どれかの設定ファイルがあれば通し、無ければ送る（正常系）。"""
+    # 準備
+    for file_name in files:
+        (tmp_path / file_name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / file_name).write_text("", encoding="utf-8")
+    # 実行・検証
+    with expectation:
+        migrator.require_migratable(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("file_name", "later_steps", "expected"),
+    [
+        pytest.param("mindmap.yaml", V060_STEPS, ".mindstella/config.yaml", id="renamed_later"),
+        pytest.param("mindmap.yaml", [], "mindmap.yaml", id="no_later_steps"),
+        pytest.param("docs.yaml", V060_STEPS, ".mindstella/docs.yaml", id="moved_later"),
+    ],
+)
+def test_renamed_file(file_name: str, later_steps: list[Any], expected: str) -> None:
+    """後の rename_file だけを辿る（正常系）。"""
+    # 実行
+    result = migrator.renamed_file(file_name, later_steps)
+    # 検証
+    assert result == expected

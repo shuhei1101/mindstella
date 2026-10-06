@@ -37,7 +37,9 @@ def test_migrate(field_to_playbooks: ModuleType, make_workspace: MakeWorkspace) 
             "field": "システム開発",
             "target_label": "システム",
             "phases": ["目的", "要件", "構成"],
-        }
+        },
+        settings_file="mindmap.yaml",
+        top=True,
     )
     # 実行
     changed = field_to_playbooks.migrate(root)
@@ -61,7 +63,9 @@ def test_migrate_when_no_field(
             "playbooks": ["システム開発"],
             "target_label": "機能",
             "phases": ["目的", "要件", "構成"],
-        }
+        },
+        settings_file="mindmap.yaml",
+        top=True,
     )
     before = snapshot_tree(root)
     before_mtimes = snapshot_mtimes(root)
@@ -85,10 +89,29 @@ def test_migrate_when_both(
             "playbooks": ["壁打ち"],
             "target_label": "システム",
             "phases": ["目的", "要件", "構成"],
-        }
+        },
+        settings_file="mindmap.yaml",
+        top=True,
     )
     before = snapshot_tree(root)
     # 実行・検証
     with pytest.raises(ValueError, match="field と playbooks を両方持ちます"):
         field_to_playbooks.migrate(root)
     assert snapshot_tree(root) == before
+
+
+def test_migrate_when_settings_renamed(
+    field_to_playbooks: ModuleType, make_workspace: MakeWorkspace, snapshot_tree: SnapshotTree
+) -> None:
+    """mindmap.yaml が無ければ何も書かない（正常系）。"""
+    # 準備
+    root = make_workspace(top=True)
+    before = snapshot_tree(root)
+    before_mtimes = snapshot_mtimes(root)
+    # 実行
+    changed = field_to_playbooks.migrate(root)
+    # 検証
+    assert changed == []
+    assert snapshot_tree(root) == before
+    assert snapshot_mtimes(root) == before_mtimes
+    assert not (root / "mindmap.yaml").exists()

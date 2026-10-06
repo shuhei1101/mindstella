@@ -15,6 +15,7 @@ from .fixture_types import (
     MakeWorkspace,
     WriteSubmissions,
 )
+from workspace_fixtures import RECORD_DIR
 
 # 取り込み済みの送信の日時
 TAKEN_AT = "2026-10-02T00:00:00+00:00"
@@ -22,7 +23,9 @@ TAKEN_AT = "2026-10-02T00:00:00+00:00"
 
 def _read_submissions(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの送信の並びを読む。"""
-    return yaml.safe_load((root / "submissions.yaml").read_text(encoding="utf-8"))["items"]
+    return yaml.safe_load((root / RECORD_DIR / "submissions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
 
 
 def test_normal(
@@ -63,7 +66,7 @@ def test_normal_when_already_taken(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1", taken=TAKEN_AT))
-    before = (root / "submissions.yaml").read_bytes()
+    before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
     # 実行
     result = call_tool("take_submission", workspace=str(root), id="S-1")
     # 検証
@@ -71,11 +74,11 @@ def test_normal_when_already_taken(
     assert result.data is not None
     assert result.data["already"] is True
     assert result.data["taken"] == TAKEN_AT
-    assert (root / "submissions.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == before
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -97,13 +100,13 @@ def test_error_when_submission_not_found(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
-    before = (root / "submissions.yaml").read_bytes()
+    before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
     # 実行
     result = call_tool("take_submission", workspace=str(root), id="S-9")
     # 検証
     assert result.is_error is True
     assert "S-9" in result.text
-    assert (root / "submissions.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == before
 
 
 def test_error_when_write_fails(
@@ -118,12 +121,12 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
-    before = (root / "submissions.yaml").read_bytes()
-    lock_dirs(root)
+    before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = call_tool("take_submission", workspace=str(root), id="S-1")
     # 検証
     assert result.is_error is True
     assert result.text.startswith("エラー: ")
     assert "Traceback" not in result.text
-    assert (root / "submissions.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == before

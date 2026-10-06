@@ -32,12 +32,12 @@ flows:
       - '`changes.yaml` の `pending.changed` に D-1 がある'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -46,7 +46,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: adopt workspace id D-1 key B
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -150,14 +150,14 @@ flows:
     test: test_error_when_write_fails
 lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外す。
 idempotent: true
-side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated` を書き換える。採用が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。状態・答えは変えない'
+side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated`・`updated_by`（`ai`）を書き換える。採用が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。状態・答えは変えない'
 request:
   - name: workspace
     type: str
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -186,7 +186,7 @@ exceptions:
     condition: 切り替えた（既にその案が採用のときも含む）
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: ItemNotFoundError
     condition: 渡した ID の検討事項が無い（`D-` 以外の ID も含む）
@@ -200,7 +200,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。何も書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`mindmap.yaml` の `summary` が無い・`mindmap.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）

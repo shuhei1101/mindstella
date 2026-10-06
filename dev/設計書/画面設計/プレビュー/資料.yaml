@@ -24,6 +24,14 @@ elements:
         value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
       - name: comments_open
         value: コメントの一覧を開いているか
+      - name: settings_open
+        value: 概要と同じ
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: 絞り込みのドロワーで値を 1 つ以上選んでいる条件の数
+      - name: filter_open
+        value: 絞り込みのドロワーを開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え
@@ -37,15 +45,15 @@ elements:
     position: ツールバーの左端
     description: 表示形式を切り替える
     visible_when: 常時
-  - name: 絞り込み
-    kind: button
-    position: ツールバー
-    description: ポップオーバーで納品物 → 納品物以外の順・状態・種類・カテゴリー・フェーズ・タグで絞る。かかっている条件はチップで出し、個別に解除するか「すべて解除」で全て解除する。カードとボードで同じ条件を使う
-    label: 絞り込み
-    visible_when: 表示形式がカードかボード
+  - name: 条件のチップ
+    kind: list
+    position: ツールバーの下
+    description: '絞り込みのドロワーで選んでいる値を `{列}: {値}` のチップで並べ、× で 1 つ解除し、末尾の「すべて解除」で全ての条件を外す（表の上のチップと同じ行。モジュール構成『画面と部品』の `filterChips`）。解除するとドロワー・バッジ・カード・ボードを描き直す'
+    io: 入力
+    visible_when: 表示形式がカード・ボードで、値を 1 つ以上選んでいる条件があるとき
   - name: 資料のカード
     kind: list
-    description: 資料 1 件 = カード 1 枚。納品物を先頭に、タイトルの右に余白を空けて納品物の印を置く。種類・資料の状態（下書き / 確認中 / 完成）・カテゴリー・フェーズ・タグを出す。押すと詳細を開く
+    description: 絞り込みのドロワーの条件に合う資料 1 件 = カード 1 枚。納品物を先頭に、タイトルの右に余白を空けて納品物の印を置く。種類・資料の状態（下書き / 確認中 / 完成）・カテゴリー・フェーズ・タグを出す。押すと詳細を開く。条件に合う資料が無いときは「該当する資料はありません。別の条件を試してください。」
     io: 表示
     source: プレビューを開く.mindmap-data.docs
     visible_when: 表示形式がカード
@@ -60,14 +68,14 @@ elements:
       - name: rows
         value: プレビューを開く.mindmap-data.docs
       - name: filters
-        value: プレビューを開く.f.{列}（開いたときだけ。カード・ボードの絞り込みも同じ条件で開く）
+        value: 絞り込みのドロワーの selected（カード・ボードと共有）
       - name: marks
         value: 差分の表示の間、選んだ時点で足した・変えた資料（記録の取得.changes）
     description: 資料の表
     visible_when: 表示形式が表
   - name: ボード
     kind: board
-    description: 資料の状態（下書き・確認中・完成）ごとの列に、絞り込んだ資料をカードで並べる。0 件の列も出し、「資料はありません。」と書く。列の中は納品物を先頭に連番の順。カードに納品物の印・種類・タイトル・ID・カテゴリー・フェーズ・タグを出し、状態の印は出さない。列の左端とカードの間に余白を空け、カードの端はツールバーに揃える。幅 721px 以上は列を 290px の幅で横に並べ、横に送り、背景のドラッグで動かす。幅 720px 以下は列を縦に 1 列に積む（タスク・検討事項のボードと同じ）。カードを押すと詳細を開き、開いているカードは枠の全体と面の色で示す
+    description: 資料の状態（下書き・確認中・完成）ごとの列に、絞り込みのドロワーの条件に合う資料をカードで並べる。状態の条件から外した状態の列も残し、列の中に「状態の条件で外しています。」と書く。ほかの 0 件の列も出し、「資料はありません。」と書く。列の中は納品物を先頭に連番の順。カードに納品物の印・種類・タイトル・ID・カテゴリー・フェーズ・タグを出し、状態の印は出さない。列の左端とカードの間に余白を空け、カードの端はツールバーに揃える。幅 721px 以上は列を 290px の幅で横に並べ、横に送り、背景のドラッグで動かす。幅 720px 以下は列を縦に 1 列に積む（タスク・検討事項のボードと同じ）。カードを押すと詳細を開き、開いているカードは枠の全体と面の色で示す
     io: 表示
     source: プレビューを開く.mindmap-data.docs
     visible_when: 表示形式がボード
@@ -80,6 +88,25 @@ elements:
     description: 資料のカードとボードのカードのタイトルの横に文言なしで置く
     io: 表示
     visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
+  - name: 絞り込みのドロワー
+    kind: dialog
+    component: dev/設計書/部品設計/プレビュー/絞り込み.ts#
+    position: タブの帯の下から左に重ねる
+    description: 画面設計『検討事項』の絞り込みのドロワーと同じ出し方で、カード・ボード・表で 1 つの条件を共有する
+    io: 入力
+    visible_when: トップバーの絞り込みのボタンを押したとき
+    initial_value: どの値も選んでいない。URL のハッシュに `f.{列}` があるときはその条件で開く
+    args:
+      - name: groups
+        value: 種類（kind）・状態（status。印は status）・タグ（tags）・納品物（deliverable。納品物 → 納品物以外の順）・対象（target）・カテゴリー（category）・フェーズ（phase）
+      - name: selected
+        value: 開いたときは「初期値」。以降はドロワーと表のチップで変えた条件
+      - name: total
+        value: プレビューを開く.mindmap-data.docs の件数
+      - name: shown
+        value: 条件に合う資料の件数
+      - name: narrow
+        value: 画面の幅が 900px 以下のとき true
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
-mock: dev/mock/pages/docs/60/standard/index.html
+mock: dev/mock/pages/docs/89/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py

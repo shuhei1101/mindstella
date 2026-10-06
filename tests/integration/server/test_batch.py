@@ -7,6 +7,7 @@ from typing import Any
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 from .history_helpers import add_item, commit, read_changes, read_items
+from workspace_fixtures import RECORD_DIR
 
 # 先に足した項目を指す $番号 を使う、追加・更新・取得の操作
 NORMAL_OPERATIONS: list[dict[str, Any]] = [
@@ -65,7 +66,7 @@ def test_normal(
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -135,7 +136,7 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     operations = [
         NORMAL_OPERATIONS[0],
         {"op": "update", "id": "D-1", "item": {"answer": "a"}},

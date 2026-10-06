@@ -27,6 +27,7 @@ const meta = {
     onNavigate: fn(),
     onSearch: fn(),
     onTheme: fn(),
+    onSettings: fn(),
   },
 } satisfies Meta<MindmapPreview.TopbarProps>;
 
@@ -61,12 +62,18 @@ export const Narrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す */
+/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す（全文が出る幅 1441px で見せる） */
 export const Offline: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+  parameters: {
+    viewport: {
+      options: { wide: { name: "幅 1441px", styles: { width: "1441px", height: "900px" } } },
+    },
+  },
+  globals: { viewport: { value: "wide", isRotated: false } },
 };
 
-/** 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を title に持つ */
+/** 幅 390px でサーバーにつながらない。幅 900px 以下は印だけを見せ、「つながりません」は読み上げにだけ残して、読んだ日時を title に持つ */
 export const OfflineNarrow: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
   parameters: {
@@ -134,4 +141,151 @@ export const CommentsNarrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
+export const SettingsOpen: Story = { args: { comments: true, commentCount: 3, settingsOpen: true } };
+
+/** 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す */
+export const KindsHidden: Story = {
+  args: {
+    comments: true,
+    commentCount: 3,
+    tabs: [
+      { key: "overview", label: "概要", icon: "home" },
+      { key: "decisions", label: "検討事項", icon: "decision", count: 12 },
+      { key: "research", label: "調査", icon: "research", count: 3 },
+      { key: "terms", label: "用語集", icon: "term", count: 9 },
+      { key: "notes", label: "メモ", icon: "note", count: 4 },
+      { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+    ],
+  },
+};
+
+/** 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない */
+export const Export: Story = { args: { comments: false } };
+
+/** 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない */
+export const Filter: Story = { args: { filter: true, onFilter: fn(), comments: true, commentCount: 3 } };
+
+/** 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す */
+export const FilterOn: Story = {
+  args: { filter: true, filterCount: 2, onFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする */
+export const FilterOpen: Story = {
+  args: { filter: true, filterCount: 2, filterOpen: true, onFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に 5.5em 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は 5.5em 以上を保ったまま題名の側を縮める */
+export const FilterDiffMedium: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+};
+
+/** サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない（幅 900px 以下は印だけにする）。札は 5.5em 以上を取る */
+export const FilterDiffOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+};
+
+/** 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする */
+export const FilterNarrow: Story = {
+  args: { filter: true, filterCount: 1, onFilter: fn(), comments: true, commentCount: 3 },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+// 配信の画面のトップバーは余白なしで表示幅いっぱいに出るため、狭い幅のストーリーも余白を付けない
+const narrowViewport = {
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+} satisfies Story;
+
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、要素の間隔は差分を出している間のどの幅でも 8px にする。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+export const FilterDiffOfflineNarrow: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない */
+export const FilterOfflineNarrow: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない */
+export const FilterHistoryNarrow: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。要素の間隔は差分を出している間のどの幅でも 8px にし、トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+export const FilterDiffNarrow: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...narrowViewport,
 };

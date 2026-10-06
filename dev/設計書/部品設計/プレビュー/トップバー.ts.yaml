@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -7,11 +7,11 @@ args:
   - name: title
     type: 文字列
     required: true
-    description: 話し合いの題名（`mindmap.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる
+    description: 話し合いの題名（`config.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる
   - name: tabs
     type: オブジェクトの配列
     required: true
-    description: タブの帯に並べる画面（概要・検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。つながりは含めない
+    description: タブの帯に並べる画面（概要と、表示する種類の検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。表示しない種類は使う側が外して渡す。概要は常に含める。つながりは含めない（入口は常に出す）
   - name: tabs[].key
     type: 列挙
     required: true
@@ -52,7 +52,7 @@ args:
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
-    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1100px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 900px 以下は印だけを見せて文言を読み上げにだけ残す
     status: planned
   - name: tabs[].marked
     type: 真偽値
@@ -64,7 +64,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（差分を出さない）
-    description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ
+    description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ。札はどの幅でも `5.5em` 以上を取り、足りない幅は題名の側を縮める
     status: planned
   - name: comments
     type: 真偽値
@@ -87,6 +87,29 @@ args:
     enabled_when: '`comments` が `true` のとき'
     description: コメントの一覧を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
     status: planned
+  - name: settings_open
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 表示の設定のパネルを開いているか。開いているときは表示の設定のボタンを枠と面で選んだ見た目にする。表示の設定のボタンはサーバーの配信でも配る書き出しでも出し、絞り込みのボタンがあればその左、無ければコメントのボタンの左に置く
+  - name: filter
+    type: 真偽値
+    default: 'false'
+    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・つながり）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときは右端）に置き、どちらのパネルにも覆われないようにする
+    status: planned
+  - name: filter_count
+    type: 整数
+    default: '0'
+    choices: 0 以上
+    enabled_when: '`filter` が `true` のとき'
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない
+    status: planned
+  - name: filter_open
+    type: 真偽値
+    default: 'false'
+    enabled_when: '`filter` が `true` のとき'
+    description: 絞り込みのドロワー（部品設計『絞り込み』）を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
+    status: planned
 events:
   - name: 画面を移る
     when: タブかつながりの入口を押したとき
@@ -108,6 +131,12 @@ events:
   - name: コメントを開く
     when: コメントのボタンを押したとき（0 件でも押せる）
     description: 使う側がコメントの一覧を開く。開いているときは閉じる。どちらも履歴に積まない
+  - name: 表示の設定を開く
+    when: 表示の設定のボタンを押したとき
+    description: 使う側が表示の設定のパネル（部品設計『表示の設定』）を開き、コメントの一覧か絞り込みのドロワーを開いていれば閉じる。開いているときは閉じる。どちらも履歴に積まない
+  - name: 絞り込みを開く
+    when: 絞り込みのボタンを押したとき
+    description: 使う側が絞り込みのドロワーを開く。開いているときは閉じる。コメントの一覧か表示の設定のパネルを開いていれば閉じてから開く。どちらも履歴に積まない
 states:
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
@@ -140,8 +169,10 @@ states:
         value: offline
       - name: read_at
         value: '2026-10-04T02:21:00+00:00'
+    notes:
+      見せ方: Storybook の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
   - name: OfflineNarrow
-    description: 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を `title` に持つ
+    description: 幅 390px でサーバーにつながらない。印だけを出し、「つながりません」を読み上げに、読んだ日時を `title` に持つ
     args:
       - name: connection
         value: offline
@@ -206,6 +237,171 @@ states:
         value: '3'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: SettingsOpen
+    description: 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま
+    args:
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: settings_open
+        value: 'true'
+  - name: KindsHidden
+    description: 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す
+    args:
+      - name: tabs
+        value: タスク・資料を除いた並び
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+  - name: Export
+    description: 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない
+    args:
+      - name: comments
+        value: 'false'
+  - name: Filter
+    description: 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterOn
+    description: 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterOpen
+    description: 絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: filter_open
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterNarrow
+    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（幅 1100px 以下で同じ）
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '1'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '2'
+  - name: FilterDiffMedium
+    description: 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 900px 以下と同じく、3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に `5.5em` 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は `5.5em` 以上を保ったまま題名の側を縮める
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 901px・963px・1100px にして見せる
+  - name: FilterDiffOffline
+    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 901〜1440px では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 1101px・1440px・1441px にして見せる
+  - name: FilterDiffOfflineNarrow
+    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、要素の間隔は差分を出している間のどの幅でも 8px にする。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 390px・405px・480px・481px・519px・900px にして見せる
+  - name: FilterOfflineNarrow
+    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px・481px・616px・900px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: FilterHistoryNarrow
+    description: 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px・481px・492px・900px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: FilterDiffNarrow
+    description: 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。要素の間隔は差分を出している間のどの幅でも 8px にし、トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px・481px・900px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
@@ -213,3 +409,5 @@ accessibility:
   - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
   - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す
+  - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
+  - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す

@@ -18,14 +18,15 @@ scenarios:
 
         CC->>SV: フォルダと設定を渡してワークスペースを作る
         SV->>SV: 設定をスキーマと突き合わせる
-        SV->>WS: 設定・空の YAML・docs/・release/・版のファイルを書く
+        SV->>WS: .mindstella/ に設定・空の YAML・docs/・release/・版のファイルを書く
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
-      - ワークスペースに `mindmap.yaml` があり、渡したプレイブック・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを持つ
-      - ワークスペースに `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` があり、どれも項目を持たない
-      - ワークスペースに `docs/` と `release/` のフォルダがある
-      - ワークスペースに `mindstella-version.ini` があり、1 行目がプラグインの版である
+      - ワークスペースに `.mindstella/config.yaml` があり、渡したプレイブック・最上位の軸の呼び名・フェーズ・対象・カテゴリー・ゴールを持つ
+      - ワークスペースの `.mindstella/` に `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` があり、どれも項目を持たない
+      - ワークスペースの `.mindstella/` に `docs/` と `release/` のフォルダがある
+      - ワークスペースに `.mindstella/mindstella-version.ini` があり、1 行目がプラグインの版である
+      - ワークスペースの直下に、設定・種類ごとの YAML・`docs/`・`release/`・版のファイルが無い
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal
   - name: 異常シナリオ（既にワークスペースがある）
@@ -42,7 +43,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: 既存のワークスペースのフォルダを渡して作る
-        SV->>WS: mindmap.yaml があることを確かめる
+        SV->>WS: .mindstella/config.yaml か、直下の config.yaml・mindmap.yaml があることを確かめる
         SV-->>CC: 既にワークスペースがあるエラー
       ```
     expected:
@@ -68,13 +69,37 @@ scenarios:
 
         CC->>SV: フォルダと、ゴールを持たない設定を渡してワークスペースを作る
         SV->>SV: 設定をスキーマと突き合わせる
-        SV->>WS: 設定・空の YAML・docs/・release/・版のファイルを書く
+        SV->>WS: .mindstella/ に設定・空の YAML・docs/・release/・版のファイルを書く
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
-      - '`mindmap.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
+      - '`config.yaml` が `goal` のキーを持たず、`playbooks` が `壁打ち`・`調査` の 2 件である'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_without_goal
+  - name: 異常シナリオ（移す前の形のワークスペースがある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 移す前の形のワークスペース
+        description: '`.mindstella/` を持たず、直下に `mindmap.yaml` と種類ごとの YAML を持ち、検討事項 D-1 を持つフォルダ'
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 移す前の形のワークスペースのフォルダを渡して作る
+        SV->>WS: 直下に mindmap.yaml があることを確かめる
+        SV-->>CC: 既にワークスペースがあるエラー（移し替えを案内する）
+      ```
+    expected:
+      - 作成のツールがエラーを返す
+      - エラーの本文に、既にワークスペースがある旨と、移し替えの案内がある
+      - '`.mindstella/` が作られていない'
+      - ワークスペースの全てのファイルの中身が、作成を呼ぶ前と同じである
+    test: test_error_when_unmigrated_workspace_exists
 lead: スキルが、1 つの話し合いのフォルダ（ワークスペース）を新しく作る単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -85,6 +110,6 @@ trigger: 利用者が新しい話し合いを始め、スキルがセットア�
 preconditions:
   - プラグイン mindstella がインストールされている
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: 指定したフォルダに、決めた設定を持つ `mindmap.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` があり、全ての YAML がスキーマに合う。
+success_guarantee: 指定したフォルダの `.mindstella/` に、決めた設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` があり、全ての YAML がスキーマに合う。
 minimal_guarantee: 既にワークスペースがあるときは、フォルダの中身を書き換えない。
 test_file: tests/e2e/単一ユースケース/test_workspace_create.py

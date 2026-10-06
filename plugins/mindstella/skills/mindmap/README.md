@@ -58,7 +58,8 @@ claude plugin install mindstella@mindstella
 | セットアップの後に話し合いを進める | `/mindstella:session {ワークスペースのフォルダ}` |
 | プラグインを上げた後にワークスペースを今の版へ移し替える | `/mindstella:upgrade {ワークスペースのフォルダ}` |
 
-`/mindstella:setup` は、フォルダに `mindmap.yaml` が無ければ新しいワークスペースを作り、あれば状況を示して続きを推奨する。
+`/mindstella:setup` は、フォルダに `.mindstella/config.yaml` も、直下の `config.yaml`・`mindmap.yaml` も無ければ新しいワークスペースを作り、あれば状況を示して続きを推奨する。
+直下の `config.yaml` か `mindmap.yaml` だけなら版が古いワークスペースとして `/mindstella:upgrade` を案内する。
 最後に `/mindstella:session` で続けるよう案内する。
 ワークスペースの版がプラグインより古ければ、`/mindstella:setup`・`/mindstella:session` は `/mindstella:upgrade` を案内して止まる。
 MCP のツールが載っていない会話では、スキルは何も書き込まずに、起動スクリプトでの立ち上げを案内して止まる。

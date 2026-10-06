@@ -7,7 +7,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 整った記録
-        description: D-2 が D-1 に依存し、D-1 の本文が `docs/` にある検討事項
+        description: D-2 が D-1 に依存し、D-1 の本文が `.mindstella/docs/` にある検討事項
         notes: '`depends_on: [D-1]`'
     flow: |-
       ```mermaid
@@ -34,9 +34,9 @@ scenarios:
         description: 存在しない D-9 に依存する検討事項 D-1
         notes: '`depends_on: [D-9]`'
       - name: 本文の無い項目
-        description: 本文を指しているのに、`docs/` にその Markdown が無い調査 R-1
+        description: 本文を指しているのに、`.mindstella/docs/` にその Markdown が無い調査 R-1 とメモ N-1
       - name: 項目の無い本文
-        description: どの項目からも指されていない `docs/` の Markdown
+        description: どの項目からも指されていない `.mindstella/docs/` の Markdown
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -51,8 +51,8 @@ scenarios:
     expected:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
       - 出力に、D-1 の `depends_on` が存在しない D-9 を指す旨がある
-      - 出力に、R-1 の本文が `docs/` に無い旨がある
-      - 出力に、どの項目からも指されていない `docs/` の Markdown のファイル名がある
+      - 出力に、R-1 と N-1 の本文が `.mindstella/docs/` に無い旨がある
+      - 出力に、どの項目からも指されていない `.mindstella/docs/` の Markdown のファイル名がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_problems_found
   - name: 正常シナリオ（設定に無いフェーズがある）
@@ -72,7 +72,7 @@ scenarios:
         participant WS as ワークスペース
 
         CC->>SV: ワークスペースを点検する
-        SV->>WS: mindmap.yaml と全ての YAML を読む
+        SV->>WS: config.yaml と全ての YAML を読む
         SV-->>CC: 設定に無いフェーズの一覧
       ```
     expected:

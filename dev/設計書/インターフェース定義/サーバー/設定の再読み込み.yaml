@@ -1,0 +1,101 @@
+title: "設定の再読み込み"
+entry:
+  kind: endpoint
+  value: POST /api/config/reload
+flows:
+  - name: 正常系
+    summary: 手で直した `config.yaml` が検査に通れば、新しい設定を使い知らせる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース。`preview_url` を呼んだ後に `config.yaml` の `display.network_look` を `dust` に直接書き換える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/config/reload
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST /api/config/reload
+        IF-->>WS: config.yaml を読む
+        IF->>IF: スキーマと突き合わせる（通る）
+        IF-->>クライアント: 200、settings
+      ```
+    expected:
+      - ステータスが 200 で、`settings.display.network_look` が `dust`
+      - '`GET /api/records` の `settings.display.network_look` が `dust`'
+      - '`GET /api/events` に書き換えの知らせが届く'
+    test: test_normal
+  - name: 異常系（検査に通らない・422）
+    summary: 崩れた `config.yaml` では、最後に通った設定のまま違う箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`config.yaml` の `display.network_look` を `starlight` にしたワークスペース。`preview_url` を呼んだ後に `display.network_look` を `rainbow` に直接書き換える'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/config/reload
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST /api/config/reload
+        IF-->>WS: config.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - ステータスが 422、`Content-Type` が `application/problem+json`
+      - '`detail` に `config.yaml: display.network_look: ` で始まる行がある'
+      - '`GET /api/records` の `settings.display.network_look` が `starlight` のまま'
+      - '`config.yaml` の中身が、手で崩したまま（サーバーが書き換えていない）'
+    test: test_error_when_check_fails
+lead: 利用者が `config.yaml` を手で直した後に呼び、`config.yaml` をスキーマと突き合わせた結果を返す。通れば配信の「最後に検査に通った設定」を差し替えて開いている画面へ知らせ、通らなければ前の設定のまま違う箇所を返す。
+idempotent: true
+side_effects: ワークスペースには書かない。検査に通れば、配信が持つ最後に検査に通った設定を差し替え、書き換えの知らせを送る
+permissions: '`Host` と `Origin` を確かめる（`Origin` が無い HTTP のクライアントからの要求は通す）'
+callers:
+  - dev/設計書/シナリオ/単一ユースケース/設定の再読み込み#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 接続先
+    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+  - name: Origin
+    type: str
+    required: false
+    location: header
+    description: 送り元
+    constraints: 無いか、配信の URL と同じ
+request_example: |-
+  ```bash
+  curl -X POST http://127.0.0.1:43817/api/config/reload
+  ```
+response:
+  - name: settings
+    type: dict
+    description: 検査に通った `config.yaml` の中身
+status_codes:
+  - code: '200'
+    condition: 検査に通った
+  - code: '403'
+    condition: '`Host` か `Origin` が合わない'
+  - code: '422'
+    condition: '`config.yaml` がスキーマに合わないか、YAML として読めない'
+    notes: '`detail` に合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。配信は最後に検査に通った設定のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 読み方
+    constraint: '`config.yaml` だけを読んでスキーマと突き合わせる。種類ごとの YAML は読まない'
+  - item: 書き換えの知らせ
+    constraint: 検査に通ったときだけ、開いている画面へ『書き換えの知らせ』を送る
+  - item: 本文
+    constraint: 要求の本文は読まない（空でよい）
+refs:
+  - dev/設計書/インターフェース定義/サーバー/記録の取得#
+  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+test_file: tests/integration/server/test_config_reload.py

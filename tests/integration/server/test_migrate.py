@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import LOCK_FILE_NAME
+from workspace_fixtures import LOCK_FILE_NAME, RECORD_DIR
 
 from .fixture_types import (
     CallTool,
@@ -18,10 +18,10 @@ from .fixture_types import (
 )
 
 # プラグインの版（plugins/mindstella/version.ini の 1 行目）
-PLUGIN_VERSION = "v0.5.0"
+PLUGIN_VERSION = "v0.6.0"
 
-# 版を記録する前の形式から並ぶ手順の版（v0.3.0 の手順の次に v0.5.0 の手順が並ぶ）
-STEP_VERSIONS = {"v0.3.0", "v0.5.0"}
+# 版を記録する前の形式から並ぶ手順の版（v0.3.0・v0.5.0 の手順の次に v0.6.0 の手順が並ぶ）
+STEP_VERSIONS = {"v0.3.0", "v0.5.0", "v0.6.0"}
 
 # 手順 3（set_default）が失敗する、題名を足す手順の版
 SUMMARY_STEP_VERSION = "v0.3.0"
@@ -32,6 +32,10 @@ VERSION_FILE = "mindstella-version.ini"
 # 渡す題名
 SUMMARY = "要件出しのスキルを設計する"
 
+# 前の版の設定ファイルの名前と、今の設定ファイルの名前
+LEGACY_SETTINGS = "mindmap.yaml"
+SETTINGS = "config.yaml"
+
 # 読めない mindmap.yaml（閉じていないフローの配列）
 BROKEN_SETTINGS = "field: [\n"
 
@@ -41,7 +45,7 @@ NEWER_VERSION = "v99.0.0"
 
 def _read_docs(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの資料の並びを読む。"""
-    return yaml.safe_load((root / "docs.yaml").read_text(encoding="utf-8"))["items"]
+    return yaml.safe_load((root / RECORD_DIR / "docs.yaml").read_text(encoding="utf-8"))["items"]
 
 
 def _mtimes(root: Path) -> dict[str, int]:
@@ -89,9 +93,11 @@ def test_normal_when_plan(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """版を記録する前の形式に v0.3.0・v0.5.0 の手順と値が要るキーを並べる（正常系）。"""
+    """版を記録する前の形式に v0.3.0・v0.5.0・v0.6.0 の手順と値が要るキーを並べる（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file=LEGACY_SETTINGS, top=True
+    )
     before = snapshot_tree(root)
     mtimes = _mtimes(root)
     # 実行
@@ -104,8 +110,10 @@ def test_normal_when_plan(
     assert payload["relation"] == "older"
     assert payload["steps"] != []
     assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
-    assert all(step["destructive"] is False for step in payload["steps"])
-    assert {"file": "mindmap.yaml", "key": "summary"} in [
+    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）だけ
+    assert {step["version"] for step in payload["steps"] if step["destructive"]} == {"v0.6.0"}
+    # 値が要るキーは、全ての手順を当てた後の名前（.mindstella/config.yaml）で返す
+    assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
         {"file": value["file"], "key": value["key"]} for value in payload["needs_values"]
     ]
     assert snapshot_tree(root) == before
@@ -115,8 +123,16 @@ def test_normal_when_plan(
 def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool) -> None:
     """写しを取って v0.3.0 の手順を当て、版のファイルは書かない（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True, "A-2": False}, without_summary=True)
-    before = {item["id"]: item for item in _read_docs(root)}
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True, "A-2": False},
+        without_summary=True,
+        settings_file=LEGACY_SETTINGS,
+        top=True,
+    )
+    before = {
+        item["id"]: item
+        for item in yaml.safe_load((root / "docs.yaml").read_text(encoding="utf-8"))["items"]
+    }
     docs_before = (root / "docs.yaml").read_bytes()
     # 実行
     result = call_tool("migrate", workspace=str(root))
@@ -130,12 +146,18 @@ def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace, call_tool
     assert "done" not in after["A-2"]
     assert after["A-1"]["updated"] == before["A-1"]["updated"]
     assert after["A-2"]["updated"] == before["A-2"]["updated"]
-    assert {"file": "mindmap.yaml", "key": "summary"} in [
+    assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
         {"file": value["file"], "key": value["key"]} for value in payload["needs_values"]
     ]
+    # 設定ファイルの名前が改まって記録のフォルダへ移り、写しには前の名前のファイルが残る
+    assert not (root / LEGACY_SETTINGS).exists()
+    assert not (root / SETTINGS).exists()
+    assert (root / RECORD_DIR / SETTINGS).exists()
+    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
     assert payload["backup"]["kind"] == "copy"
     assert (Path(payload["backup"]["ref"]) / "docs.yaml").read_bytes() == docs_before
-    assert not (root / VERSION_FILE).exists()
+    assert (Path(payload["backup"]["ref"]) / LEGACY_SETTINGS).exists()
+    assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
 def test_normal_when_backup_git(
@@ -145,7 +167,9 @@ def test_normal_when_backup_git(
 ) -> None:
     """git の作業ツリーの中のワークスペースでは、ワークスペースのパスだけをコミットして写しにする（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file=LEGACY_SETTINGS, top=True
+    )
     # ワークスペースの親を作業ツリーにし、外のファイルはどちらもコミットしない
     _init_git(tmp_path)
     (tmp_path / "other.txt").write_text("外のファイル\n", encoding="utf-8")
@@ -171,13 +195,13 @@ def test_normal_when_set(make_legacy_workspace: MakeLegacyWorkspace, call_tool: 
     result = call_tool(
         "migrate",
         workspace=str(root),
-        values=[{"file": "mindmap.yaml", "key": "summary", "value": SUMMARY}],
+        values=[{"file": ".mindstella/config.yaml", "key": "summary", "value": SUMMARY}],
     )
     # 検証
     assert result.is_error is False
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == SUMMARY
-    assert not (root / VERSION_FILE).exists()
+    assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
 def test_normal_when_record(
@@ -191,7 +215,7 @@ def test_normal_when_record(
     # 検証
     assert result.is_error is False
     assert result.data["recorded"] == PLUGIN_VERSION
-    first_line = (root / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
+    first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
     assert first_line == PLUGIN_VERSION
 
 
@@ -217,7 +241,7 @@ def test_normal_when_plan_newer(
     """版が新しいワークスペースでも `plan` はエラーにせず newer を返す（正常系）。"""
     # 準備
     root = _create_current_workspace(tmp_path, call_tool, valid_settings)
-    (root / VERSION_FILE).write_text(f"{NEWER_VERSION}\n", encoding="utf-8")
+    (root / RECORD_DIR / VERSION_FILE).write_text(f"{NEWER_VERSION}\n", encoding="utf-8")
     # 実行
     result = call_tool("migrate", workspace=str(root), plan=True)
     # 検証
@@ -235,7 +259,9 @@ def test_normal_when_backup_ignored(
 ) -> None:
     """git の作業ツリーの中でも、ignore されたファイルを持つワークスペースは複製で写しを取る（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file=LEGACY_SETTINGS, top=True
+    )
     _init_git(tmp_path)
     (tmp_path / ".gitignore").write_text("*\n", encoding="utf-8")
     # 実行
@@ -251,14 +277,14 @@ def test_normal_when_backup_ignored(
 def test_normal_when_field_to_playbooks(
     make_workspace: MakeWorkspace, call_tool: CallTool, valid_settings: dict[str, Any]
 ) -> None:
-    """v0.5.0 の手順で mindmap.yaml の field を playbooks の 1 件の配列へ移す（正常系）。"""
+    """v0.5.0 の手順で前の版の設定ファイル mindmap.yaml の field を playbooks の 1 件の配列へ移す（正常系）。"""
     # 準備
     # 前の版の形式: field を持ち playbooks を持たない設定（キーの並びは playbooks の位置に field を置く）
     settings = {
         ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
         for key, value in {**valid_settings, "target_label": "システム"}.items()
     }
-    root = make_workspace(settings=settings)
+    root = make_workspace(settings=settings, settings_file=LEGACY_SETTINGS, top=True)
     (root / VERSION_FILE).write_text("v0.4.0\n", encoding="utf-8")
     # 実行
     result = call_tool("migrate", workspace=str(root), to_version="v0.5.0")
@@ -266,7 +292,7 @@ def test_normal_when_field_to_playbooks(
     assert result.is_error is False
     steps = result.data["steps"]
     assert [(step["version"], step["op"]) for step in steps] == [("v0.5.0", "call")]
-    moved = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    moved = yaml.safe_load((root / LEGACY_SETTINGS).read_text(encoding="utf-8"))
     assert "field" not in moved
     assert moved["playbooks"] == ["システム開発"]
     assert moved["target_label"] == "システム"
@@ -279,7 +305,7 @@ def test_normal_when_already_current(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """v0.2.0 で作った形に当てても、何も変えずに成功する（正常系）。"""
+    """今の形（config.yaml）に版のファイルが無くても全ての手順を当てて、何も変えずに成功する（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1", status="完成"))
     before = snapshot_tree(root)
@@ -289,6 +315,73 @@ def test_normal_when_already_current(
     # 検証
     assert result.is_error is False
     assert result.data["needs_values"] == []
+    assert snapshot_tree(root) == before
+    assert _mtimes(root) == mtimes
+    assert not (root / LEGACY_SETTINGS).exists()
+
+
+def test_normal_when_rename_settings_file(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """v0.6.0 の手順で mindmap.yaml を config.yaml に改め、直下の記録を .mindstella/ へ移す（正常系）。"""
+    # 準備
+    # 前の版（v0.5.0）の形式: config.yaml を持たず、題名を持つ mindmap.yaml を持つ。記録は全て直下にある
+    root = make_workspace(
+        make_item("D-1", body="D-1.md"),
+        bodies={"D-1.md": "本文\n"},
+        settings_file=LEGACY_SETTINGS,
+        top=True,
+    )
+    (root / VERSION_FILE).write_text("v0.5.0\n", encoding="utf-8")
+    (root / "release" / "資料.md").write_text("資料\n", encoding="utf-8")
+    (root / "preview.html").write_text("<html></html>\n", encoding="utf-8")
+    legacy = {
+        "config": (root / LEGACY_SETTINGS).read_bytes(),
+        "decisions": (root / "decisions.yaml").read_bytes(),
+        "body": (root / "docs" / "D-1.md").read_bytes(),
+        "release": (root / "release" / "資料.md").read_bytes(),
+    }
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    payload = result.data
+    assert payload["workspace_version"] == "v0.5.0"
+    steps = payload["steps"]
+    assert {step["version"] for step in steps} == {"v0.6.0"}
+    assert (steps[0]["op"], steps[0]["destructive"]) == ("rename_file", True)
+    assert all(step["destructive"] for step in steps)
+    # 直下には記録のフォルダだけが残る
+    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
+    records = root / RECORD_DIR
+    assert (records / SETTINGS).read_bytes() == legacy["config"]
+    assert (records / "decisions.yaml").read_bytes() == legacy["decisions"]
+    assert (records / "docs" / "D-1.md").read_bytes() == legacy["body"]
+    assert (records / "release" / "資料.md").read_bytes() == legacy["release"]
+    assert payload["needs_values"] == []
+    assert (records / VERSION_FILE).read_text(encoding="utf-8") == "v0.5.0\n"
+
+
+def test_normal_when_version_file_at_top(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """記録のフォルダに版のファイルが無ければ直下の版のファイルを読み、その版より後の手順だけを並べる（正常系）。"""
+    # 準備
+    root = make_workspace(settings_file=LEGACY_SETTINGS, top=True)
+    (root / VERSION_FILE).write_text("v0.5.0\n", encoding="utf-8")
+    before = snapshot_tree(root)
+    mtimes = _mtimes(root)
+    # 実行
+    result = call_tool("migrate", workspace=str(root), plan=True)
+    # 検証
+    assert result.is_error is False
+    payload = result.data
+    assert payload["workspace_version"] == "v0.5.0"
+    assert payload["relation"] == "older"
+    assert {step["version"] for step in payload["steps"]} == {"v0.6.0"}
     assert snapshot_tree(root) == before
     assert _mtimes(root) == mtimes
 
@@ -302,7 +395,7 @@ def test_error_when_newer(
     """版が新しいワークスペースには手順を当てない（異常系）。"""
     # 準備
     root = _create_current_workspace(tmp_path, call_tool, valid_settings)
-    (root / VERSION_FILE).write_text(f"{NEWER_VERSION}\n", encoding="utf-8")
+    (root / RECORD_DIR / VERSION_FILE).write_text(f"{NEWER_VERSION}\n", encoding="utf-8")
     before = snapshot_tree(root)
     # 実行
     result = call_tool("migrate", workspace=str(root))
@@ -321,7 +414,9 @@ def test_error_when_step_fails(
 ) -> None:
     """手順 1・2 が docs.yaml を書き換えた後に手順 3 が失敗すると、写しから戻して終わる（異常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True, "A-2": False})
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True, "A-2": False}, settings_file=LEGACY_SETTINGS, top=True
+    )
     # 手順 3 が読む mindmap.yaml だけを読めない中身にする
     (root / "mindmap.yaml").write_text(BROKEN_SETTINGS, encoding="utf-8")
     before = snapshot_tree(root)
@@ -334,7 +429,7 @@ def test_error_when_step_fails(
     assert "Traceback" not in result.text
     # 手順 1・2 が書き換えた docs.yaml も含めて、全てのファイルが呼ぶ前と同じ
     assert snapshot_tree(root) == before
-    assert not (root / VERSION_FILE).exists()
+    assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
 def test_error_when_schema_mismatch(
@@ -351,16 +446,16 @@ def test_error_when_schema_mismatch(
     # 検証
     assert result.is_error is True
     assert any(
-        line.startswith("mindmap.yaml: ") and "summary" in line for line in result.text.splitlines()
+        line.startswith("config.yaml: ") and "summary" in line for line in result.text.splitlines()
     )
     assert snapshot_tree(root) == before
-    assert not (root / VERSION_FILE).exists()
+    assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
 def test_error_when_workspace_not_found(
     tmp_path: Path, call_tool: CallTool, snapshot_tree: SnapshotTree
 ) -> None:
-    """mindmap.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
+    """config.yaml も mindmap.yaml も無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()

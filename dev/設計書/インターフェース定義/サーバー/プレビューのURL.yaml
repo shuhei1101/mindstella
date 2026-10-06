@@ -23,7 +23,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`url` が `http://127.0.0.1:` で始まり、`started` が真'
+      - '`url` が `http://127.0.0.1:` で始まって `/mindstella.html` で終わり、`started` が真'
       - '`url` を GET すると 200 が返る'
       - ワークスペースに `preview.html` が無い
     test: test_normal
@@ -48,12 +48,12 @@ flows:
       - '`url` が 1 回目と同じで、`started` が偽'
     test: test_normal_when_called_again
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと配信を立てずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと配信を立てずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -62,13 +62,37 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: preview_url workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
+  - name: 異常系（設定がスキーマに合わない・SchemaMismatchError）
+    summary: '`config.yaml` がスキーマに合わないと、違う箇所を返して配信を立てない'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `display.network_look` を `rainbow` に直接書き換えたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: preview_url workspace
+        IF-->>WS: config.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `config.yaml: display.network_look: ` で始まり、選べる値を含む行がある'
+      - 同じワークスペースでもう一度呼ぶと、配信を立てずに同じエラーになる（配信が立っていない）
+    test: test_error_when_config_invalid
   - name: 異常系（待ち受けを立てられない・ServeFailedError）
     summary: 待ち受けを立てられないとエラーで終わる
     setup:
@@ -92,7 +116,7 @@ flows:
     test: test_error_when_serve_fails
 lead: ワークスペースのプレビューを配る URL を返す。このプロセスでまだ配っていなければ、`127.0.0.1` の空きポートで配信を立てる。
 idempotent: true
-side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの知らせ』と、レビュー中のコメント・書きかけ・まとめて送るの受け付け）を立てる。ワークスペースには書かない
+side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの知らせ』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・書きかけ・まとめて送るの受け付け）を立てる。ワークスペースには書かない
 callers:
   - dev/設計書/インターフェース定義/スキル/話し合いの進行#
 request:
@@ -101,12 +125,12 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ（`.mindstella/` が無く直下に `config.yaml` か `mindmap.yaml` があるフォルダは WorkspaceNotFoundError。移し替えは『記録の形式の移行』）'
 response:
   - name: url
     type: str
-    description: 配信の URL（`http://127.0.0.1:{ポート}/`）
-    example: http://127.0.0.1:43817/
+    description: 配信の画面の URL（`http://127.0.0.1:{ポート}/mindstella.html`）
+    example: http://127.0.0.1:43817/mindstella.html
   - name: workspace
     type: str
     description: 配っているワークスペースの絶対パス
@@ -118,12 +142,15 @@ exceptions:
     condition: 配信の URL を返せた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。配信を立てない
+  - name: SchemaMismatchError
+    condition: 配信を立てる前に `config.yaml` をスキーマと突き合わせて合わない（このプロセスでまだ配っていないワークスペースのときだけ確かめる）
+    notes: 'ツールのエラー。エラーの本文に合わない箇所ごとの `config.yaml: {キーのパス}: {理由}` の行。配信を立てない'
   - name: ServeFailedError
     condition: 待ち受けを立てられない（空きポートが取れない など）
     notes: ツールのエラー。エラーの本文に理由
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -136,6 +163,8 @@ constraints:
     constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで呼び直すと同じ URL を返す。別のプロセスが同じワークスペースを配っていても、このプロセスは別のポートで配る
   - item: 配信を止める時
     constraint: プロセスが終わるとき（『MCP サーバーの起動』の終わり方）。途中で止めるツールは持たない
+  - item: 起動時の検査
+    constraint: 配信を立てる前に `config.yaml` だけをスキーマと突き合わせる（種類ごとの YAML は『記録の取得』が読むたびに確かめる）。通った設定を、配信の「最後に検査に通った設定」の初めの値にする。既に配っているワークスペースでは確かめずに同じ URL を返す
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
 test_file: tests/integration/server/test_preview_url.py

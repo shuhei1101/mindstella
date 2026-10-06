@@ -88,12 +88,12 @@ flows:
       - D-1 の `status`・`answer` が呼ぶ前と同じ
     test: test_normal_when_removed
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -102,7 +102,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: edit_option workspace id D-1 action remove key A
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -277,7 +277,7 @@ flows:
     test: test_error_when_argument_invalid
 lead: 検討事項の案を記号（`key`）で指して、1 つ足す・中身を直す・消す。指さない案と検討事項のほかのキーはそのまま残し、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
 idempotent: false
-side_effects: '`decisions.yaml` のその検討事項の `options` と `updated` を書き換える。値が変わったときは、『項目の更新』と同じく `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML と `changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`decisions.yaml` のその検討事項の `options` と `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『項目の更新』と同じく `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML と `changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -285,7 +285,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -330,7 +330,7 @@ exceptions:
     condition: 書き換えられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: ItemNotFoundError
     condition: 渡した ID の検討事項が無い

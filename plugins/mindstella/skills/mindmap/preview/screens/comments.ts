@@ -263,6 +263,31 @@ namespace MindmapPreview {
     });
   }
 
+  /** 送る帯の先頭に置く、文字を添えない三状態のチェックの箱。押すと、全てチェックしていれば全て外し、それ以外は全てチェックする */
+  function selectAllBox({
+    ids,
+    checked,
+    onChange,
+  }: {
+    ids: string[];
+    checked: Set<string>;
+    onChange: (all: boolean) => void;
+  }): HTMLLabelElement {
+    const count = ids.filter((id) => checked.has(id)).length;
+    const checkbox = h({
+      tag: "input",
+      attrs: {
+        type: "checkbox",
+        checked: count === ids.length,
+        "aria-label": "すべて選ぶ",
+        onchange: () => onChange(count < ids.length),
+      },
+    });
+    // 一部だけチェックしているときの横棒は、属性でなくプロパティで付ける
+    checkbox.indeterminate = count > 0 && count < ids.length;
+    return h({ tag: "label", attrs: { class: "legend-all-check", title: "すべて選ぶ" }, children: [checkbox] });
+  }
+
   /** コメントの一覧を返す */
   export function commentsPanel(props: CommentsPanelProps): HTMLElement {
     const { items, removed, checked, result, on } = props;
@@ -280,11 +305,10 @@ namespace MindmapPreview {
         children: [
           items.length === 0
             ? null
-            : toggleAllBox({
-              label: "すべて選ぶ",
-              shown: new Set(items.filter((item) => checked.has(item.id)).map((item) => item.id)),
-              all: items.map((item) => item.id),
-              onChange: (next) => on.checkAll(next.size > 0),
+            : selectAllBox({
+              ids: items.map((item) => item.id),
+              checked,
+              onChange: on.checkAll,
             }),
           items.length === 0
             ? null

@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Page
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, free_comment
+from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeComment, MakeItem
@@ -225,3 +226,97 @@ def test_tab_marks(
     assert dotted == ["decisions", "tasks", "notes"]
     assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
     assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+
+
+@pytest.mark.parametrize("tab", [key for key in TAB_KEYS if key != "overview"])
+def test_filter_button_on_item_screens(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, tab: str
+) -> None:
+    """項目を並べる画面（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・つながり）に絞り込みのボタンを置く（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url, f"#tab={tab}")
+    # 検証
+    assert page.locator(FILTER_BUTTON).count() == 1
+
+
+def test_filter_button_not_on_overview(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """概要には絞り込みのボタンを置かない（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 検証
+    assert page.locator(FILTER_BUTTON).count() == 0
+
+
+def test_drawer_closes_when_overview_opened(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """絞り込みのドロワーを開いたまま概要のタブへ移ると、ドロワーを閉じ、タスクのタブへ戻っても閉じたまま（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
+    open_drawer(page)
+    # 実行
+    page.click('nav.tabbar a[data-tab="overview"]')
+    page.wait_for_selector(".overview")
+    after_overview = page.locator(DRAWER_OPEN).count()
+    # 実行（概要の後にタスクのタブへ戻る）
+    page.click('nav.tabbar a[data-tab="tasks"]')
+    page.wait_for_selector(".screen.tasks")
+    # 検証
+    assert (after_overview, page.locator(DRAWER_OPEN).count()) == (0, 0)
+
+
+def test_drawer_closes_when_overview_opened_by_history(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """絞り込みのドロワーを開いたまま戻るで概要へ移るとドロワーを閉じ、進むでタスクへ戻ってもドロワーは閉じたまま（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    page.click('nav.tabbar a[data-tab="tasks"]')
+    page.wait_for_selector(".screen.tasks")
+    open_drawer(page)
+    # 実行（戻るで概要へ移る）
+    page.go_back()
+    page.wait_for_selector(".overview")
+    after_back = page.locator(DRAWER_OPEN).count()
+    # 実行（進むでタスクへ戻る）
+    page.go_forward()
+    page.wait_for_selector(".screen.tasks")
+    after_forward = page.locator(DRAWER_OPEN).count()
+    # 検証
+    assert (after_back, after_forward) == (0, 0)
+
+
+def test_settings_button(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """表示の設定のボタンを、ライト / ダークの右・絞り込みの左に置く。押すとパネルを開閉し、開いている間は選んだ見た目にする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    button = page.get_by_role("button", name="表示の設定", exact=True)
+    # 実行
+    order = page.eval_on_selector_all(
+        "header.topbar > button",
+        "buttons => buttons.map((b) => b.dataset.act ?? b.className)",
+    )
+    closed = (
+        button.get_attribute("aria-expanded"),
+        "open" in (button.get_attribute("class") or ""),
+    )
+    button.click()
+    page.wait_for_selector("aside.settings-drawer.open")
+    opened = (
+        button.get_attribute("aria-expanded"),
+        "open" in (button.get_attribute("class") or ""),
+    )
+    # 検証
+    assert order[-4:] == ["top-btn", "settings", "filter", "comments"]
+    assert page.inner_text("header.topbar button.settings-btn .label") == "表示の設定"
+    assert closed == ("false", False)
+    assert opened == ("true", True)

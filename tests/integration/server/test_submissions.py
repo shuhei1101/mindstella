@@ -14,6 +14,7 @@ from .fixture_types import (
     SnapshotTree,
     WriteSubmissions,
 )
+from workspace_fixtures import RECORD_DIR
 
 
 def test_normal(
@@ -66,11 +67,11 @@ def test_normal_when_empty(
     # 検証
     assert result.is_error is False
     assert result.data == {"items": []}
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -92,9 +93,9 @@ def test_error_when_schema_mismatch(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
-    broken = yaml.safe_load((root / "submissions.yaml").read_text(encoding="utf-8"))
+    broken = yaml.safe_load((root / RECORD_DIR / "submissions.yaml").read_text(encoding="utf-8"))
     del broken["items"][0]["body"]
-    (root / "submissions.yaml").write_text(
+    (root / RECORD_DIR / "submissions.yaml").write_text(
         yaml.safe_dump(broken, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
     # 実行

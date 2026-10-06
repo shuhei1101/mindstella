@@ -166,3 +166,177 @@ def test_detail_panel_when_old_set_after_body_edit(
     assert "V-1 の 3 行目の段落" in result["text"]
     assert result["marked"] == 0
     assert result["hits"] == 0
+
+
+# 選んだ時点の後に、答えと編集した人（利用者 → AI）が変わった回
+EDITOR_ENTRY = {"seq": 1, "at": ENTRY_AT, "before": {"answer": None, "updated_by": "user"}}
+
+# 詳細パネルを差分つきで開き、差分の印の数と、編集した人の値が出ているかを調べる
+OPEN_EDITOR_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return {
+        keyMarks: panel.querySelectorAll(".df-key").length,
+        valueMarks: panel.querySelectorAll(".df-kv").length,
+        answerMarked: panel.querySelector(".d-answer.df-key .df-now")?.textContent ?? "",
+        editorShown: (panel.textContent ?? "").includes("user") || (panel.textContent ?? "").includes("ai"),
+    };
+}"""
+
+
+def test_detail_panel_when_diff_editor_only(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """編集した人だけが変わったキーは差分に出さない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item("D-1", answer="新しい答え", updated_by="ai", history=[EDITOR_ENTRY], seq=1)
+        ],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_EDITOR_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["keyMarks"] == 1
+    assert result["valueMarks"] == 1
+    assert "新しい答え" in result["answerMarked"]
+    assert result["editorShown"] is False
+
+
+# 今の本文（5 行目に図のノードの文字を持つフローチャート）
+DIAGRAM_NOW_BODY = "# 図\n\n```mermaid\nflowchart TD\n  A[今の文字] --> B\n```\n"
+
+# 選んだ時点の後に、図のノードの文字を 1 つ変えた回
+DIAGRAM_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {"line": 5, "now": ["  A[今の文字] --> B"], "before": ["  A[前の文字] --> B"]},
+    ],
+}
+
+# `mermaid.render` に渡った記法を `window.renderedSources` に数える包みを被せる
+INSTALL_RENDER_COUNTER_SCRIPT = """() => {
+    window.renderedSources = [];
+    const original = mermaid.render.bind(mermaid);
+    mermaid.render = (id, source) => {
+        window.renderedSources.push(source);
+        return original(id, source);
+    };
+}"""
+
+# 詳細パネルを開いて文書に入れる（差分があれば差分つきで開く）
+OPEN_DIAGRAM_PANEL_SCRIPT = """({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    window.openedPanel?.remove();
+    window.openedPanel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(window.openedPanel);
+}"""
+
+
+def test_detail_panel_when_diff_reuses_current_diagram(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """開いたまま時点を選ぶと、flowchart の図は今の版を描き直さず、前の版も描かずに差分の印を付ける（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[DIAGRAM_ENTRY], seq=1)],
+        bodies={"D-1.md": DIAGRAM_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    load_library("mermaid")
+    preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
+    # 差分なしで開いて、今の版の図を描き終える
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
+    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.evaluate("() => { window.renderedSources.length = 0; }")
+    # 実行
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.wait_for_function("() => document.querySelector('.mermaid svg .df-n-chg') !== null")
+    rendered_sources = preview_page.evaluate("() => window.renderedSources")
+    # 検証
+    assert rendered_sources == []
+
+
+# 今の本文（5 行目にメッセージの文字を持つ sequenceDiagram）と、前の版の図の記法
+SEQUENCE_NOW_BODY = "# 図\n\n```mermaid\nsequenceDiagram\n  A->>B: 今の依頼\n```\n"
+SEQUENCE_BEFORE_SOURCE = "sequenceDiagram\n  A->>B: 前の依頼\n"
+
+# 選んだ時点の後に、メッセージの文字を 1 つ変えた回
+SEQUENCE_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {"line": 5, "now": ["  A->>B: 今の依頼"], "before": ["  A->>B: 前の依頼"]},
+    ],
+}
+
+
+def test_detail_panel_when_diff_renders_before_sequence(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """flowchart でない図は、前の版の図だけを描いて突き合わせる（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[SEQUENCE_ENTRY], seq=1)],
+        bodies={"D-1.md": SEQUENCE_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    load_library("mermaid")
+    preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
+    # 差分なしで開いて、今の版の図を描き終える
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
+    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.evaluate("() => { window.renderedSources.length = 0; }")
+    # 実行
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg .df-t-chg') !== null"
+    )
+    rendered_sources = preview_page.evaluate("() => window.renderedSources")
+    # 検証
+    assert rendered_sources == [SEQUENCE_BEFORE_SOURCE]

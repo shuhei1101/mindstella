@@ -23,6 +23,7 @@ from preview_helpers import (
     select_text_for_pill,
 )
 from workspace_fixtures import (
+    RECORD_DIR,
     REPO_ROOT,
     CallTool,
     MakeItem,
@@ -36,6 +37,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from conftest import Replay
+
+# 前の版（v0.6.0 より前）の設定ファイルの名前と、今の設定ファイルの名前
+LEGACY_SETTINGS_FILE = "mindmap.yaml"
+SETTINGS_FILE = "config.yaml"
 
 # 話し合いの対象・カテゴリー
 TARGET = "家計簿アプリ"
@@ -86,6 +91,10 @@ SETTINGS: dict[str, Any] = {
 }
 
 
+# 取り込みで足すタスクの本文
+TASK_BODY = "経緯: 会話で持ち越した\n終わり方: 比べた結果を残す\n"
+
+
 def _plugin_version() -> str:
     """プラグインの版（plugins/mindstella/version.ini の 1 行目）を返す。"""
     version_file = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
@@ -94,12 +103,12 @@ def _plugin_version() -> str:
 
 def _to_field_settings(root: Path) -> None:
     """前の版の形式にするため、mindmap.yaml の playbooks を、同じ位置の field（分野の名前）に置き換える。"""
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    settings = yaml.safe_load((root / LEGACY_SETTINGS_FILE).read_text(encoding="utf-8"))
     legacy = {
         ("field" if key == "playbooks" else key): ("システム開発" if key == "playbooks" else value)
         for key, value in settings.items()
     }
-    (root / "mindmap.yaml").write_text(
+    (root / LEGACY_SETTINGS_FILE).write_text(
         yaml.safe_dump(legacy, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
 
@@ -160,7 +169,12 @@ def test_normal_when_new_discussion(
                 "op": "add",
                 "kind": "task",
                 "item": _placed(
-                    "保存先の候補を調べる", "構成", kind="調査", status="未着手", **{"for": ["$1"]}
+                    "保存先の候補を調べる",
+                    "構成",
+                    kind="調査",
+                    status="未着手",
+                    body_markdown=TASK_BODY,
+                    **{"for": ["$1"]},
                 ),
             },
             {
@@ -250,18 +264,18 @@ def test_normal_when_new_discussion(
     goal = replay("goal", **ws)
     deliverable = replay("show", **ws, id="A-1")
     replay("clear_release", **ws)
-    (root / "release" / "決定事項.md").write_text(
+    (root / RECORD_DIR / "release" / "決定事項.md").write_text(
         "# 決定事項\n\n- D-1: DB に保存する\n- D-2: テーブルを種類ごとに分ける\n", encoding="utf-8"
     )
-    (root / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    (root / RECORD_DIR / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
     replay(
         "add", **ws, kind="log", item=_log("ゴール判定", ["A-1"], "ゴールに届いたのでリリースした")
     )
     checked = call_tool("check", **ws)
 
     # 検証
-    # mindmap.yaml に、プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
-    settings = read_yaml(root, "mindmap.yaml")
+    # config.yaml に、プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールが入っている
+    settings = read_yaml(root, "config.yaml")
     assert settings["playbooks"] == ["システム開発"]
     assert settings["target_label"] == "システム"
     assert settings["phases"] == SETTINGS["phases"]
@@ -273,6 +287,15 @@ def test_normal_when_new_discussion(
     assert decisions["D-2"]["parent"] == "D-1"
     assert tasks["T-1"]["for"] == ["D-1"]
     assert len(read_yaml(root, "logs.yaml")["items"]) == 5
+    # 取り込みで足したタスクが本文を持ち、show の body_markdown が書いた本文を返す
+    assert replay("show", **ws, id="T-1")["body_markdown"] == TASK_BODY
+    # 足した・直した項目の updated_by が、どれも ai である
+    edited = [
+        item
+        for file_name in ("decisions.yaml", "tasks.yaml", "research.yaml", "docs.yaml", "logs.yaml")
+        for item in read_yaml(root, file_name)["items"]
+    ]
+    assert {item["updated_by"] for item in edited} == {"ai"}
     # ヒアリングで聞いた候補は D-2 だけだった
     assert [candidate["id"] for candidate in candidates] == ["D-2"]
     # リサーチで足した調査が、元の検討事項と related でつながっている
@@ -288,8 +311,8 @@ def test_normal_when_new_discussion(
     assert goal["remaining_decisions"] == []
     assert goal["remaining_deliverables"] == []
     # release/ に、確定した検討事項と納品物の資料が書き出されている
-    assert "D-2" in (root / "release" / "決定事項.md").read_text(encoding="utf-8")
-    assert "支出を DB に記録する" in (root / "release" / "要件定義書.md").read_text(
+    assert "D-2" in (root / RECORD_DIR / "release" / "決定事項.md").read_text(encoding="utf-8")
+    assert "支出を DB に記録する" in (root / RECORD_DIR / "release" / "要件定義書.md").read_text(
         encoding="utf-8"
     )
     # check が参照切れと、YAML と Markdown のずれを 0 件で返す
@@ -300,6 +323,8 @@ def test_normal_when_new_discussion(
     assert records["decisions"] == read_yaml(root, "decisions.yaml")["items"]
     assert records["logs"] == read_yaml(root, "logs.yaml")["items"]
     assert not (root / "preview.html").exists()
+    # ワークスペースの直下には .mindstella/ だけがある
+    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
 
 
 def test_normal_when_resume(
@@ -360,6 +385,8 @@ def test_normal_when_resume(
     assert [entry["id"] for entry in read["changed"]] == ["D-1"]
     assert read["changed"][0]["before"] == {"title": "見直しの問い"}
     assert read["changed"][0]["body_diff"] is not None
+    # 前回読んだ時点からの変更の出力の D-1 に、最後に編集した人 ai が載っている
+    assert read["changed"][0]["updated_by"] == "ai"
     # 読んだ後、AI が最後に読んだ時点が最後の書き換えの通し番号になっており、続けてもう一度読むと変更が 0 件である
     assert changes_after_read["read_seq"] == changes_after_read["last_seq"]
     assert read_again["added"] == []
@@ -380,7 +407,13 @@ def test_normal_when_resume_older_version(
 ) -> None:
     """古い版のワークスペースを移し替えてから、状況を読み、続きの番号で項目を足す（正常系）。"""
     # 準備
-    root = make_legacy_workspace(make_item("D-1"), legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        make_item("D-1"),
+        legacy_docs={"A-1": True},
+        without_summary=True,
+        settings_file=LEGACY_SETTINGS_FILE,
+        top=True,
+    )
     _to_field_settings(root)
     before = snapshot_tree(root)
     ws = {"workspace": str(root)}
@@ -394,7 +427,9 @@ def test_normal_when_resume_older_version(
     call_tool(
         "migrate",
         **ws,
-        values=[{"file": "mindmap.yaml", "key": "summary", "value": SUMMARY_ANSWER}],
+        values=[
+            {"file": f"{RECORD_DIR}/{SETTINGS_FILE}", "key": "summary", "value": SUMMARY_ANSWER}
+        ],
     )
     recorded = call_tool("migrate", **ws, record=True)
     # セットアップ（2 回目）: 版の案内を出さず、状況を読む
@@ -416,18 +451,21 @@ def test_normal_when_resume_older_version(
     plugin_version = (REPO_ROOT / "plugins" / "mindstella" / "version.ini").read_text(
         encoding="utf-8"
     )
-    first_line = (root / "mindstella-version.ini").read_text(encoding="utf-8").splitlines()[0]
+    first_line = (root / RECORD_DIR / "mindstella-version.ini").read_text(encoding="utf-8").splitlines()[0]
     assert first_line == plugin_version.splitlines()[0]
-    # 資料 A-1 が status: 完成で done を持たず、mindmap.yaml の summary が答えた題名である
+    # 資料 A-1 が status: 完成で done を持たず、config.yaml の summary が答えた題名である
     doc = read_yaml(root, "docs.yaml")["items"][0]
     assert doc["status"] == "完成"
     assert "done" not in doc
-    settings = read_yaml(root, "mindmap.yaml")
+    settings = read_yaml(root, SETTINGS_FILE)
     assert settings["summary"] == SUMMARY_ANSWER
-    # mindmap.yaml が field を持たず、playbooks に元の分野のシステム開発の 1 件を持ち、target_label が移し替えの前と同じである
+    # config.yaml が field を持たず、playbooks に元の分野のシステム開発の 1 件を持ち、target_label が移し替えの前と同じである
     assert "field" not in settings
     assert settings["playbooks"] == ["システム開発"]
     assert settings["target_label"] == "システム"
+    # ワークスペースに mindmap.yaml が残っておらず、直下には記録のフォルダだけがある
+    assert not (root / LEGACY_SETTINGS_FILE).exists()
+    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
     # 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
     assert second_plan["relation"] == "same"
     assert status["next"][0]["id"] == "D-1"
@@ -534,18 +572,18 @@ def test_normal_when_scope_widened(
     second_goal = replay("goal", **ws)
     deliverable = replay("show", **ws, id="A-1")
     replay("clear_release", **ws)
-    (root / "release" / "決定事項.md").write_text(
+    (root / RECORD_DIR / "release" / "決定事項.md").write_text(
         "# 決定事項\n\n- D-1: 支出を記録する\n- D-2: 買い物の後に使う\n", encoding="utf-8"
     )
-    (root / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    (root / RECORD_DIR / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
     checked = call_tool("check", **ws)
 
     # 検証
     # 最初の goal の出力が、ゴールが無いことを示す
     assert first_goal["has_goal"] is False
     assert first_goal["reached"] is None
-    # mindmap.yaml の playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・goal が書き換えた値である
-    settings = read_yaml(root, "mindmap.yaml")
+    # config.yaml の playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・goal が書き換えた値である
+    settings = read_yaml(root, "config.yaml")
     assert settings["playbooks"] == ["壁打ち", "システム開発"]
     assert settings["summary"] == "家計簿アプリの要件を決める"
     assert settings["target_label"] == "機能"
@@ -560,13 +598,15 @@ def test_normal_when_scope_widened(
     assert {decisions["D-1"]["category"], decisions["D-2"]["category"]} <= {
         entry["name"] for entry in settings["categories"]
     }
+    # 付け替えた D-1・D-2 の updated_by が ai である
+    assert [decisions[item_id]["updated_by"] for item_id in ("D-1", "D-2")] == ["ai", "ai"]
     # goal.deliverables の納品物が、取り込みで作った資料を doc で指している
     assert settings["goal"]["deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
     # 2 回目の goal の出力が「届いた」である
     assert second_goal["reached"] is True
     # release/ に、確定した検討事項と納品物の資料が書き出されている
-    assert "D-2" in (root / "release" / "決定事項.md").read_text(encoding="utf-8")
-    assert "支出を記録する" in (root / "release" / "要件定義書.md").read_text(encoding="utf-8")
+    assert "D-2" in (root / RECORD_DIR / "release" / "決定事項.md").read_text(encoding="utf-8")
+    assert "支出を記録する" in (root / RECORD_DIR / "release" / "要件定義書.md").read_text(encoding="utf-8")
     # check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
@@ -681,8 +721,8 @@ def test_normal_when_submission_from_preview(
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["A"]
     assert decision["status"] == "決定済み"
     # 会話ログに、D-1 への送信の本文と、A-1 の箇所を添えた送信の本文が残っている
-    assert SUBMISSION_BODY in (root / "docs" / "L-1.md").read_text(encoding="utf-8")
-    location_log = (root / "docs" / "L-2.md").read_text(encoding="utf-8")
+    assert SUBMISSION_BODY in (root / RECORD_DIR / "docs" / "L-1.md").read_text(encoding="utf-8")
+    location_log = (root / RECORD_DIR / "docs" / "L-2.md").read_text(encoding="utf-8")
     assert SUBMISSION_LOCATION_BODY in location_log
     assert SUBMISSION_SENTENCE in location_log
     # チェックを外した項目に紐づかないコメントは送信に無く、コメントの一覧に残っている

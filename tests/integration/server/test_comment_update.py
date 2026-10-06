@@ -9,11 +9,12 @@ import yaml
 
 from .fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
 from .http_helpers import send_json
+from workspace_fixtures import RECORD_DIR
 
 
 def _read_comments(root: Path) -> dict[str, object]:
     """ワークスペースの comments.yaml を読む。"""
-    return yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))
 
 
 def test_normal(
@@ -77,13 +78,13 @@ def test_error_when_body_empty(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = send_json(url, "PATCH", "/api/comments/C-1", {"body": "  "})
     # 検証
     assert result.status == 400
     assert "body" in result.json()["detail"]
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_error_when_origin_mismatch(
@@ -98,7 +99,7 @@ def test_error_when_origin_mismatch(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = send_json(
         url,
@@ -109,7 +110,7 @@ def test_error_when_origin_mismatch(
     )
     # 検証
     assert result.status == 403
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_error_when_comment_not_found(
@@ -124,10 +125,10 @@ def test_error_when_comment_not_found(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = send_json(url, "PATCH", "/api/comments/C-9", {"body": "案 A に決める"})
     # 検証
     assert result.status == 404
     assert "C-9" in result.json()["detail"]
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before

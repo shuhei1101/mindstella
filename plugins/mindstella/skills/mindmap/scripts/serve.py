@@ -1,6 +1,6 @@
 """ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
 
-画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送るを受け付ける。
+画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。
 """
 
 from __future__ import annotations
@@ -36,13 +36,23 @@ from errors import (
     MindmapError,
     SchemaMismatchError,
     ServeFailedError,
+    SettingsInvalidError,
     WorkspaceNotFoundError,
     WriteFailedError,
 )
 from history import touch_opened
-from kinds import BODY_DIR, KINDS, SETTINGS_FILE
+from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
 from locations import location_to_dict
-from store import CHANGES_FILE, NowFn, load_workspace, now_utc, workspace_lock
+from settings_update import update_display
+from store import (
+    CHANGES_FILE,
+    NowFn,
+    build_mismatch_error,
+    check_settings,
+    load_workspace,
+    now_utc,
+    workspace_lock,
+)
 from submissions import SUBMISSIONS_FILE
 
 logger = logging.getLogger(__name__)
@@ -67,6 +77,13 @@ DRAFTS_PATH = "/api/drafts"
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
 
+# 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
+PAGE_PATH = "/mindstella.html"
+
+# 設定の既定の書き換えと、設定の再読み込みのパス
+CONFIG_DISPLAY_PATH = "/api/config/display"
+CONFIG_RELOAD_PATH = "/api/config/reload"
+
 # JSON・HTML・問題の応答の `Content-Type`
 JSON_TYPE = "application/json; charset=utf-8"
 HTML_TYPE = "text/html; charset=utf-8"
@@ -79,6 +96,39 @@ REQUEST_JSON_TYPE = "application/json"
 EVENT_STREAM_TYPE = "text/event-stream"
 
 
+class SettingsHolder:
+    """1 つの配信が持つ、最後に検査に通った `config.yaml` の中身と、再読み込みの回数。"""
+
+    def __init__(self, settings: dict[str, Any]) -> None:
+        """初めの設定を受け取り、回数を 0 にする。"""
+        self._settings = settings
+        # 再読み込みで差し替えた回数。書き換えの印に混ぜ、ファイルが変わらない再読み込みでも知らせる
+        self._revision = 0
+        # 要求ごとのスレッドから触るため、触る間だけ取る鍵
+        self._guard = threading.Lock()
+
+    def current(self) -> dict[str, Any]:
+        """最後に検査に通った設定を返す。"""
+        with self._guard:
+            return self._settings
+
+    def accept(self, settings: dict[str, Any]) -> None:
+        """記録の取得が検査に通した設定に差し替える（回数は進めない）。"""
+        with self._guard:
+            self._settings = settings
+
+    def reload(self, settings: dict[str, Any]) -> None:
+        """再読み込みで設定を差し替え、回数を 1 進める。"""
+        with self._guard:
+            self._settings = settings
+            self._revision += 1
+
+    def revision(self) -> int:
+        """再読み込みの回数を返す。"""
+        with self._guard:
+            return self._revision
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ServeContext:
     """要求の受け口が使う、配っているワークスペースと待ち受けの値。"""
@@ -87,6 +137,8 @@ class ServeContext:
     port: int
     # プロセスの中の書き換えの鍵
     write_lock: threading.Lock
+    # 最後に検査に通った設定
+    settings: SettingsHolder
     # 雛形のフォルダ
     preview_dir: Path = PREVIEW_DIR
 
@@ -98,6 +150,8 @@ class Response:
     status: int
     content_type: str
     body: bytes
+    # 送り直しの宛先（送り直す応答だけが持つ）
+    location: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -105,7 +159,7 @@ class PreviewServer:
     """1 つのワークスペースの待ち受けと、それを動かすスレッド。"""
 
     root: Path
-    # `http://127.0.0.1:{ポート}/`
+    # `http://127.0.0.1:{ポート}/mindstella.html`
     url: str
     httpd: ThreadingHTTPServer
     thread: threading.Thread
@@ -134,7 +188,11 @@ class PreviewRegistry:
             # 立っている: その URL を返す
             if existing is not None:
                 return existing.url, False
-            preview = start_preview_server(key, write_lock=self._write_lock)
+            # 立てる前に config.yaml を検査する（合わなければ配信を立てない）
+            settings, problems = check_settings(key)
+            if problems:
+                raise build_mismatch_error(problems)
+            preview = start_preview_server(key, write_lock=self._write_lock, settings=settings)
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
             return preview.url, True
@@ -156,7 +214,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
 
     def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける。"""
+        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
         if not check_host(self.headers.get("Host"), context.port):
@@ -164,22 +222,28 @@ class PreviewHandler(BaseHTTPRequestHandler):
             return
         path = urlsplit(self.path).path
         if path == "/":
+            # 画面のパスへ送り直す
+            self._reply(redirect_response(PAGE_PATH))
+        elif path == PAGE_PATH:
             self._reply(index_response(context.preview_dir))
         elif path == "/api/records":
-            self._reply(records_response(context.root))
+            self._reply(records_response(context))
         elif path == "/api/events":
-            self._stream(context.root)
+            self._stream(context)
         elif path == COMMENTS_PATH:
             self._reply(comments_response(context.root))
         else:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_POST(self) -> None:
-        """前回開いた日時を返す・レビュー中のコメントを溜める・まとめて送るを処理の関数へ渡す。"""
+        """前回開いた日時を返す・レビュー中のコメントを溜める・まとめて送る・設定の再読み込みを処理の関数へ渡す。"""
         path = self._checked_path()
         if path == OPENED_PATH:
             # 本文を読まずに、前回開いた日時を返して書き換える
             self._reply(opened_response(self.context))
+        elif path == CONFIG_RELOAD_PATH:
+            # 本文を読まずに、設定を読み直す
+            self._reply(reload_response(self.context, origin=self.headers.get("Origin")))
         elif path == COMMENTS_PATH:
             self._write(
                 lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
@@ -192,10 +256,12 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_PUT(self) -> None:
-        """書きかけを保つ要求を受け付けの関数へ渡す。"""
+        """書きかけを保つ・設定の既定を書き換える要求を受け付けの関数へ渡す。"""
         path = self._checked_path()
         if path == DRAFTS_PATH:
             self._write(_saved_draft, HTTPStatus.NO_CONTENT)
+        elif path == CONFIG_DISPLAY_PATH:
+            self._write(update_display, HTTPStatus.OK)
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -278,12 +344,15 @@ class PreviewHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", response.content_type)
         self.send_header("Content-Length", str(len(response.body)))
         self.send_header("Cache-Control", "no-store")
+        # 送り直す応答は宛先を持つ
+        if response.location is not None:
+            self.send_header("Location", response.location)
         self.end_headers()
         # 204 は本文を持たない
         if response.status != HTTPStatus.NO_CONTENT:
             self.wfile.write(response.body)
 
-    def _stream(self, root: Path) -> None:
+    def _stream(self, context: ServeContext) -> None:
         """`200` と `text/event-stream` を書き、画面が閉じるまで書き換えを知らせ続ける。"""
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", EVENT_STREAM_TYPE)
@@ -297,14 +366,23 @@ class PreviewHandler(BaseHTTPRequestHandler):
 
         try:
             self.wfile.flush()
-            stream_events(root, _write)
+            stream_events(
+                context.root,
+                _write,
+                # 再読み込みはファイルが変わらなくても知らせるため、回数を印に混ぜる
+                signature=lambda root: (
+                    f"{workspace_signature(root)}|settings:{context.settings.revision()}"
+                ),
+            )
         except (BrokenPipeError, ConnectionResetError):
             # 見出しを送る前に画面が閉じた
             return
 
 
-def start_preview_server(root: Path, *, write_lock: threading.Lock) -> PreviewServer:
-    """`LISTEN_HOST` の空きポートで待ち受け、デーモンのスレッドで動かし始める。"""
+def start_preview_server(
+    root: Path, *, write_lock: threading.Lock, settings: dict[str, Any]
+) -> PreviewServer:
+    """`LISTEN_HOST` の空きポートで待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
         httpd = ThreadingHTTPServer((LISTEN_HOST, 0), PreviewHandler)
     except OSError as error:
@@ -312,10 +390,15 @@ def start_preview_server(root: Path, *, write_lock: threading.Lock) -> PreviewSe
     httpd.daemon_threads = True
     port = httpd.server_address[1]
     # 要求の受け口が `self.server.context` で引けるように、待ち受けに持たせる
-    setattr(httpd, "context", ServeContext(root=root, port=port, write_lock=write_lock))  # noqa: B010
+    context = ServeContext(
+        root=root, port=port, write_lock=write_lock, settings=SettingsHolder(settings)
+    )
+    setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    return PreviewServer(root=root, url=f"http://{LISTEN_HOST}:{port}/", httpd=httpd, thread=thread)
+    return PreviewServer(
+        root=root, url=f"http://{LISTEN_HOST}:{port}{PAGE_PATH}", httpd=httpd, thread=thread
+    )
 
 
 def check_host(host: str | None, port: int) -> bool:
@@ -349,6 +432,11 @@ def problem_response(status: int, detail: str) -> Response:
     )
 
 
+def redirect_response(location: str) -> Response:
+    """本文を持たない 302 で、location へ送り直す応答を作る。"""
+    return Response(status=HTTPStatus.FOUND, content_type=HTML_TYPE, body=b"", location=location)
+
+
 def index_response(preview_dir: Path) -> Response:
     """雛形に CSS と JavaScript を差し込んだ画面を返す（記録は埋め込まない）。"""
     try:
@@ -360,16 +448,21 @@ def index_response(preview_dir: Path) -> Response:
     return Response(status=HTTPStatus.OK, content_type=HTML_TYPE, body=html.encode("utf-8"))
 
 
-def records_response(root: Path, read: Callable[[Path], dict[str, Any]] = read_records) -> Response:
-    """ワークスペースをその場で読んだ記録の JSON を返す。"""
+def records_response(
+    context: ServeContext, read: Callable[..., dict[str, Any]] = read_records
+) -> Response:
+    """ワークスペースをその場で読んだ記録の JSON を返す。config.yaml が検査に通れば最後に通った設定を差し替え、通らなければ最後に通った設定で返す。"""
     try:
-        data = read(root)
+        data = read(context.root, last_settings=context.settings.current())
     except SchemaMismatchError as error:
         # 読めない・スキーマに合わない: 合わない箇所の行を detail にする
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(error.lines))
     except WorkspaceNotFoundError as error:
-        # 配っている間に mindmap.yaml が無くなった
+        # 配っている間に config.yaml が無くなった
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
+    # config.yaml が検査に通った: 最後に通った設定として控える
+    if data.get("settings_problem") is None:
+        context.settings.accept(data["settings"])
     return Response(
         status=HTTPStatus.OK,
         content_type=JSON_TYPE,
@@ -394,18 +487,41 @@ def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
     )
 
 
+def reload_response(context: ServeContext, *, origin: str | None) -> Response:
+    """config.yaml を検査し、通れば最後に検査に通った設定を差し替えて知らせ、通らなければ違う箇所を返す。"""
+    # 別のサイトからの要求
+    if not check_origin(origin, context.port):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    try:
+        settings, problems = check_settings(context.root)
+    except WorkspaceNotFoundError as error:
+        return error_response(error)
+    # 検査に通らない: 最後に通った設定のまま、合わない箇所を返す
+    if problems:
+        lines = [f"{problem.file}: {problem.key}: {problem.detail}" for problem in problems]
+        return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(lines))
+    # 通った: 差し替えて回数を進める（書き換えの印が変わり、開いている画面へ知らせが届く）
+    context.settings.reload(settings)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps({"settings": settings}, ensure_ascii=False).encode("utf-8"),
+    )
+
+
 def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
     names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE, CHANGES_FILE]
-    # 本文の Markdown（`docs/` の直下）も見る
-    body_dir = root / BODY_DIR
+    # 本文の Markdown（`.mindstella/docs/` の直下）も見る
+    records = records_root(root)
+    body_dir = records / BODY_DIR
     if body_dir.is_dir():
         names.extend(f"{BODY_DIR}/{path.name}" for path in body_dir.glob("*.md"))
     parts: list[str] = []
     for name in sorted(names):
         try:
-            stat = (root / name).stat()
+            stat = (records / name).stat()
         except OSError:
             # 無い（足される・消されると印が変わる）
             parts.append(f"{name}:-")
@@ -525,7 +641,7 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
 def error_response(error: MindmapError) -> Response:
     """ツールのエラーの種類からステータスコードを決めて問題の応答にする。"""
     detail = str(error)
-    if isinstance(error, CommentInvalidError):
+    if isinstance(error, (CommentInvalidError, SettingsInvalidError)):
         return problem_response(HTTPStatus.BAD_REQUEST, detail)
     if isinstance(error, (ItemNotFoundError, CommentNotFoundError)):
         return problem_response(HTTPStatus.NOT_FOUND, detail)

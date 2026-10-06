@@ -19,8 +19,9 @@ from preview_comment_helpers import (
     free_comment,
     read_workspace_yaml,
 )
+from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
-from workspace_fixtures import CallTool, MakeComment, MakeDraft, MakeItem
+from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem
 
 # 一覧の送る帯の要素
 CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
@@ -299,7 +300,7 @@ def test_send_when_stale(
     assert page.locator(f"{_row('C-1')} .row-stale").count() == 0
     review = page.evaluate(REVIEW_COLOR_SCRIPT)
     assert page.eval_on_selector(_row("C-2"), "e => getComputedStyle(e).borderTopColor") == review
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert len(read_workspace_yaml(root, "comments.yaml")["items"]) == 2
 
 
@@ -813,3 +814,41 @@ def test_detail_input_message_is_separate(
         "C-3",
         "C-4",
     ]
+
+
+# 覆われた本文の部品に付けた `inert` の数
+INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
+
+
+def test_exclusive_with_filter_drawer(
+    served_review: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """絞り込みのドロワーとは同時に開かず、どちらかを開くと他方を閉じる。開いている間は覆った範囲の本文の部品を止める（正常系）。"""
+    # 準備（一覧を開く）
+    url, _ = served_review
+    page = open_preview(url, "#tab=decisions&view=table")
+    _open_list(page)
+    page.wait_for_function(f"{INERT_COUNT_SCRIPT} > 0")
+    list_open = (page.locator(DRAWER).count(), page.get_attribute(COMMENTS_BUTTON, "aria-expanded"))
+    # 実行（ドロワーを開くと、一覧が閉じる）
+    open_drawer(page)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
+    page.wait_for_function(f"{INERT_COUNT_SCRIPT} > 0")
+    drawer_open = (
+        page.locator(DRAWER_OPEN).count(),
+        page.get_attribute(COMMENTS_BUTTON, "aria-expanded"),
+        page.get_attribute(FILTER_BUTTON, "aria-expanded"),
+    )
+    # 実行（一覧を開くと、ドロワーが閉じる）
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.wait_for_selector(DRAWER, state="detached")
+    list_again = (page.get_attribute(COMMENTS_BUTTON, "aria-expanded"), page.get_attribute(FILTER_BUTTON, "aria-expanded"))
+    # 実行（一覧を閉じると、止めた部品を戻す）
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
+    page.wait_for_function(f"{INERT_COUNT_SCRIPT} === 0")
+    # 検証
+    assert list_open == (0, "true")
+    assert drawer_open == (1, "false", "true")
+    assert list_again == ("true", "false")

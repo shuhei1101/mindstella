@@ -56,7 +56,7 @@ def test_normal(
         }
     )
     ws = {"workspace": str(root)}
-    before = read_yaml(root, "mindmap.yaml")
+    before = read_yaml(root, "config.yaml")
     # 実行
     replay(
         "update_settings",
@@ -74,7 +74,7 @@ def test_normal(
     )
     checked = call_tool("check", **ws)
     # 検証
-    settings = read_yaml(root, "mindmap.yaml")
+    settings = read_yaml(root, "config.yaml")
     # summary・話し合いの概要・target_label・goal.summary が渡した値である
     assert settings["summary"] == "要件出しのスキル mindmap を設計し直す"
     assert settings["description"] == DESCRIPTION
@@ -119,7 +119,7 @@ def test_normal_when_playbooks_replaced(
     )
     checked = replay("check", **ws)
     # 検証
-    settings = read_yaml(root, "mindmap.yaml")
+    settings = read_yaml(root, "config.yaml")
     # playbooks が壁打ち・システム開発の 2 件で、phases が渡した並びである
     assert settings["playbooks"] == ["壁打ち", "システム開発"]
     assert settings["phases"] == new_phases
@@ -127,6 +127,9 @@ def test_normal_when_playbooks_replaced(
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["phase"] == "目的"
     assert decisions["D-2"]["phase"] == "発散"
+    # 付け替えた D-1 の updated_by が ai で、付け替えていない D-2 は編集した人を持たない
+    assert decisions["D-1"]["updated_by"] == "ai"
+    assert "updated_by" not in decisions["D-2"]
     # goal.phase が要件である
     assert settings["goal"]["phase"] == "要件"
     # 点検が問題を 0 件で返す
@@ -147,8 +150,8 @@ def test_normal_when_goal_removed(
     replay("update_settings", **ws, settings={"goal": None})
     checked = replay("check", **ws)
     # 検証
-    # mindmap.yaml が goal のキーを持たない
-    assert "goal" not in read_yaml(root, "mindmap.yaml")
+    # config.yaml が goal のキーを持たない
+    assert "goal" not in read_yaml(root, "config.yaml")
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked == {"ok": True, "problems": []}
 
@@ -258,7 +261,7 @@ def test_normal_when_targets_remapped(
     pending = replay("pending", **ws)
     checked = call_tool("check", **ws)
     # 検証
-    settings = read_yaml(root, "mindmap.yaml")
+    settings = read_yaml(root, "config.yaml")
     # targets・categories が渡した値である
     assert settings["targets"] == new_targets
     assert settings["categories"] == new_categories
@@ -266,6 +269,8 @@ def test_normal_when_targets_remapped(
     # D-1 の target が アプリ、category が 画面。D-2 の target が 管理画面、category が 運用
     assert (decisions["D-1"]["target"], decisions["D-1"]["category"]) == ("アプリ", "画面")
     assert (decisions["D-2"]["target"], decisions["D-2"]["category"]) == ("管理画面", "運用")
+    # 付け替えた D-1・D-2 の updated_by が ai である
+    assert [decisions[item_id]["updated_by"] for item_id in ("D-1", "D-2")] == ["ai", "ai"]
     # D-1・D-2 が変更履歴を持たず、pending が空を返す
     assert "history" not in decisions["D-1"]
     assert "history" not in decisions["D-2"]
@@ -287,18 +292,56 @@ def test_normal_when_links_and_history_limit(
         settings={key: value for key, value in valid_settings.items() if key != "links"}
     )
     ws = {"workspace": str(root)}
-    before = read_yaml(root, "mindmap.yaml")
+    before = read_yaml(root, "config.yaml")
     links = [{"title": "仕様", "url": "https://example.com/spec"}]
     # 実行
     replay("update_settings", **ws, settings={"links": links, "history_limit": 3})
     checked = call_tool("check", **ws)
     # 検証
-    settings = read_yaml(root, "mindmap.yaml")
+    settings = read_yaml(root, "config.yaml")
     # links が渡した 1 件で、history_limit が 3 である
     assert settings["links"] == links
     assert settings["history_limit"] == 3
     # 題名・プレイブック・フェーズ・対象・カテゴリー・ゴールが呼ぶ前と同じである
     for key in ("summary", "playbooks", "phases", "targets", "categories", "goal"):
+        assert settings[key] == before[key]
+    # ワークスペースの全ての YAML がスキーマに合う
+    assert checked.data["problems"] == []
+
+
+def test_normal_when_display_defaults_changed(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """ネットワークの見た目の既定と表示する種類の既定を書き換える（正常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "history_limit": 5})
+    ws = {"workspace": str(root)}
+    before = read_yaml(root, "config.yaml")
+    display = {
+        "network_look": "starlight",
+        "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"],
+    }
+    # 実行
+    replay("update_settings", **ws, settings={"display": display})
+    checked = call_tool("check", **ws)
+    # 検証
+    settings = read_yaml(root, "config.yaml")
+    # 見た目の既定が starlight で、表示する種類の既定が会話ログを除いた種類である
+    assert settings["display"]["network_look"] == "starlight"
+    assert settings["display"]["visible_kinds"] == [
+        "decisions",
+        "tasks",
+        "research",
+        "docs",
+        "terms",
+        "notes",
+    ]
+    # summary・playbooks・phases・goal・history_limit が呼ぶ前と同じである
+    for key in ("summary", "playbooks", "phases", "goal", "history_limit"):
         assert settings[key] == before[key]
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.data["problems"] == []

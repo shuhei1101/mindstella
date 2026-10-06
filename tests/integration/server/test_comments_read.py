@@ -15,6 +15,7 @@ from .fixture_types import (
     WriteDrafts,
 )
 from .http_helpers import http_request
+from workspace_fixtures import RECORD_DIR
 
 # 読み取りのパス
 COMMENTS_PATH = "/api/comments"
@@ -65,8 +66,8 @@ def test_normal_when_empty(
     # 検証
     assert result.status == 200
     assert result.json() == {"items": [], "drafts": []}
-    assert not (root / "comments.yaml").exists()
-    assert not (root / "drafts.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "drafts.yaml").exists()
 
 
 def test_error_when_schema_mismatch(

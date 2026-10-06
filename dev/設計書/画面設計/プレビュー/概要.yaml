@@ -7,11 +7,11 @@ elements:
       - name: title
         value: プレビューを開く.mindmap-data.settings.summary
       - name: tabs
-        value: 概要・検討事項・タスク・調査・資料・用語集・メモ・会話ログ（件数はプレビューを開く.mindmap-data.{種類} の件数）
+        value: 概要と、表示する種類（個人の上書きか、無ければ記録の取得.settings.display.visible_kinds、それも無ければ全ての種類）の検討事項・タスク・調査・資料・用語集・メモ・会話ログ（件数はプレビューを開く.mindmap-data.{種類} の件数）
       - name: current
         value: overview
       - name: theme
-        value: 端末の保存領域の値（無ければ OS の設定）
+        value: 個人の上書き（端末の保存領域）の値（無ければ OS の設定）
       - name: connection
         value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（プレビューを開く.接続の状態）
       - name: read_at
@@ -24,6 +24,8 @@ elements:
         value: レビュー中のコメントの読み取り.items の件数（溜める・消す・元に戻す・まとめて送るの後に描き直す）
       - name: comments_open
         value: コメントの一覧を開いているか
+      - name: settings_open
+        value: 表示の設定のパネルを開いているか
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目
@@ -37,7 +39,7 @@ elements:
     kind: link
     description: 検討事項の表を状態 = 未決定 × 着手可否 = 着手可能で絞って開く（`#tab=decisions&view=table&f.status=未決定&f.ready=着手可能`）
     label: すべて表示（{件数} 件）
-    visible_when: 次に検討する項目が 1 件以上
+    visible_when: 次に検討する項目が 1 件以上で、表示する種類に検討事項がある
   - name: ゴールまでの進捗
     id: tile-goal
     kind: section
@@ -58,32 +60,32 @@ elements:
     position: ゴールまでの進捗
     description: 資料を納品物で絞ってカードで開く（`#tab=docs&f.deliverable=納品物`）
     label: すべて表示（{件数} 件）
-    visible_when: 納品物が 5 件を超える
+    visible_when: 納品物が 5 件を超え、表示する種類に資料がある
   - name: 要見直し
     id: tile-review
     kind: list
-    description: 状態が要見直しの検討事項の件数と名前。押すと詳細パネルを開く。「すべて表示」で検討事項の表を状態 = 要見直しで絞って開く
+    description: 状態が要見直しの検討事項の件数と名前。押すと詳細パネルを開く。「すべて表示」で検討事項の表を状態 = 要見直しで絞って開く。表示する種類に検討事項が無いときは「すべて表示」だけを外し、タイルは残す
     io: 表示
     source: プレビューを開く.mindmap-data.decisions
     visible_when: 常時（0 件のときは「要見直しの検討事項はありません。」）
   - name: 保留
     id: tile-hold
     kind: list
-    description: 状態が保留の検討事項の件数と名前だけ。待っている前提などの補足の行とタスクは出さない。「すべて表示」で検討事項の表を状態 = 保留で絞って開く
+    description: 状態が保留の検討事項の件数と名前だけ。待っている前提などの補足の行とタスクは出さない。「すべて表示」で検討事項の表を状態 = 保留で絞って開く。表示する種類に検討事項が無いときは「すべて表示」だけを外し、タイルは残す
     io: 表示
     source: プレビューを開く.mindmap-data.decisions
     visible_when: 常時（0 件のときは「保留の検討事項はありません。」）
   - name: 進行中のタスク
     id: tile-running
     kind: list
-    description: 状態が進行中のタスクの件数と名前。「すべて表示」でタスクの表を状態 = 進行中で絞って開く
+    description: 状態が進行中のタスクの件数と名前。「すべて表示」でタスクの表を状態 = 進行中で絞って開く。表示する種類にタスクが無いときは「すべて表示」だけを外し、タイルは残す
     io: 表示
     source: プレビューを開く.mindmap-data.tasks
     visible_when: 常時（0 件のときは「進行中のタスクはありません。」）
   - name: カテゴリー別の進捗
     id: tile-progress
     kind: table
-    description: カテゴリーを行、フェーズを列にした表。セルは決定済み / 全体と棒（対象外・取り下げも決定済みに含める）。セルを押すと検討事項の表をそのカテゴリーとフェーズで絞って開く。行の見出しを押すとカテゴリーだけで絞る
+    description: カテゴリーを行、フェーズを列にした表。セルは決定済み / 全体と棒（対象外・取り下げも決定済みに含める）。セルを押すと検討事項の表をそのカテゴリーとフェーズで絞って開く。行の見出しを押すとカテゴリーだけで絞る。表示する種類に検討事項が無いときは、セルと行の見出しを押せなくし、数と棒は残す
     io: 表示
     source: プレビューを開く.mindmap-data.derived.progress
     visible_when: 常時（そのカテゴリーとフェーズに項目が無いセルは「—」で押せない）
@@ -114,5 +116,5 @@ elements:
     io: 表示
     visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 lead: プレビューを開いたときの既定の画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。
-mock: dev/mock/pages/overview/81/b-phase-progress/index.html
+mock: dev/mock/pages/overview/95/a-keep-tile/index.html
 test_file: tests/integration/preview/test_overview_screen.py

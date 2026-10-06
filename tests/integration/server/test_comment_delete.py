@@ -9,6 +9,7 @@ import yaml
 
 from .fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
 from .http_helpers import http_request
+from workspace_fixtures import RECORD_DIR
 
 
 def test_normal(
@@ -29,7 +30,7 @@ def test_normal(
     assert result.status == 200
     payload = result.json()
     assert (payload["body"], payload["count"]) == ("案 B も見たい", 1)
-    saved = yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))
+    saved = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))
     assert [item["id"] for item in saved["items"]] == ["C-1"]
     assert saved["seq"] == 2
 
@@ -46,7 +47,7 @@ def test_error_when_origin_mismatch(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = http_request(
         url,
@@ -56,7 +57,7 @@ def test_error_when_origin_mismatch(
     )
     # 検証
     assert result.status == 403
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_error_when_comment_not_found(
@@ -71,10 +72,10 @@ def test_error_when_comment_not_found(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行
     result = http_request(url, "/api/comments/C-9", method="DELETE")
     # 検証
     assert result.status == 404
     assert "C-9" in result.json()["detail"]
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before

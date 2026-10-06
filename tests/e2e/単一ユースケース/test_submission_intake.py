@@ -11,6 +11,7 @@ from typing import Any
 
 from conftest import Replay
 from workspace_fixtures import (
+    RECORD_DIR,
     MakeItem,
     MakeSubmission,
     MakeWorkspace,
@@ -70,7 +71,7 @@ def test_normal(
     decision = read_yaml(root, "decisions.yaml")["items"][0]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["A"]
     assert decision["status"] == "決定済み"
-    log_body = (root / "docs" / "L-1.md").read_text(encoding="utf-8")
+    log_body = (root / RECORD_DIR / "docs" / "L-1.md").read_text(encoding="utf-8")
     assert SUBMISSION_BODY in log_body
     assert read_yaml(root, "submissions.yaml")["items"][0]["taken"] is not None
     assert after == {"items": []}
@@ -149,9 +150,9 @@ def test_normal_when_location_and_no_target(
         ("A-1", "A-1の題", SECOND_LINE, "ここは言い換える"),
         (None, None, None, "全体に目を通した"),
     ]
-    first_log = (root / "docs" / "L-1.md").read_text(encoding="utf-8")
+    first_log = (root / RECORD_DIR / "docs" / "L-1.md").read_text(encoding="utf-8")
     assert "2 行目「言い換えたい文」" in first_log
     assert "ここは言い換える" in first_log
-    assert "全体に目を通した" in (root / "docs" / "L-2.md").read_text(encoding="utf-8")
+    assert "全体に目を通した" in (root / RECORD_DIR / "docs" / "L-2.md").read_text(encoding="utf-8")
     assert all(item["taken"] is not None for item in read_yaml(root, "submissions.yaml")["items"])
     assert after == {"items": []}

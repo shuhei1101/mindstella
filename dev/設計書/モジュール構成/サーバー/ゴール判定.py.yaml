@@ -104,7 +104,7 @@ functions:
       2. `asdict` して返す
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`mindmap.yaml` が無い（`load_workspace` から伝わる）'
+        condition: '`config.yaml` が無い（`load_workspace` から伝わる）'
     unit_tests:
       - name: test_run_goal
         case: 正常

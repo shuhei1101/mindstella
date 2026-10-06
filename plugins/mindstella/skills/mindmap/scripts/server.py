@@ -21,7 +21,8 @@ from errors import MindmapError, SchemaMismatchError
 from kinds import Kind
 from query import SearchFilter, parse_attr
 from serve import PreviewRegistry
-from store import LEGACY_HINT, workspace_lock
+from migrator import require_migratable
+from store import LEGACY_HINT, require_workspace, workspace_lock
 
 # MCP サーバーの名前。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる
 SERVER_NAME = "mindstella"
@@ -44,6 +45,7 @@ TOOL_NAMES = (
     "find",
     "show",
     "attrs",
+    "tags",
     "check",
     "goal",
     "migrate",
@@ -89,18 +91,26 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return call_tool(lambda: run(root), write_lock=write_lock)
 
     def write(
-        workspace: str, run: Callable[[Path], dict[str, Any]], *, create: bool = False
+        workspace: str,
+        run: Callable[[Path], dict[str, Any]],
+        *,
+        create: bool = False,
+        require: Callable[[Path], None] = require_workspace,
     ) -> CallToolResult:
         """ワークスペースを書き換えるツールの処理を、書き換えの鍵を取って呼ぶ。"""
         root = resolve_workspace(workspace, cwd)
         return call_tool(
-            lambda: run(root), write_lock=write_lock, lock_root=root, lock_create=create
+            lambda: run(root),
+            write_lock=write_lock,
+            lock_root=root,
+            lock_create=create,
+            lock_require=require,
         )
 
     @server.tool(name="init", description="設定を受け取って空のワークスペースを作る")
     def init(
         workspace: WorkspaceArg,
-        settings: Annotated[dict[str, Any], Field(description="mindmap.yaml の中身")],
+        settings: Annotated[dict[str, Any], Field(description=".mindstella/config.yaml の中身")],
     ) -> CallToolResult:
         # まだ無いフォルダへ書く `init` だけが、フォルダを作る鍵を取る
         return write(workspace, lambda root: commands.run_init(root, settings), create=True)
@@ -275,6 +285,10 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     def attrs(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_attrs)
 
+    @server.tool(name="tags", description="使っているタグと件数・種類を返す")
+    def tags(workspace: WorkspaceArg) -> CallToolResult:
+        return read(workspace, commands.run_tags)
+
     @server.tool(name="check", description="スキーマ違反・参照切れ・本文のずれを洗い出す")
     def check(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_check)
@@ -309,9 +323,10 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
             )
 
         # 並べるだけの `plan` は何も書かないので、鍵を取らない
-        return read(workspace, run) if plan else write(workspace, run)
+        # 書き換える `migrate` は、前の版の設定ファイルだけのフォルダにも鍵を取る
+        return read(workspace, run) if plan else write(workspace, run, require=require_migratable)
 
-    @server.tool(name="clear_release", description="release/ の中身を消す")
+    @server.tool(name="clear_release", description=".mindstella/release/ の中身を消す")
     def clear_release(workspace: WorkspaceArg) -> CallToolResult:
         return write(workspace, commands.run_clear_release)
 
@@ -349,12 +364,15 @@ def call_tool(
     write_lock: threading.Lock,
     lock_root: Path | None = None,
     lock_create: bool = False,
+    lock_require: Callable[[Path], None] = require_workspace,
 ) -> CallToolResult:
     """ツールの処理を呼び、結果を構造化の結果に、エラーをツールのエラーにする。"""
     try:
         if lock_root is not None:
             # 書き換えるツール: 読む前から書き終えるまで鍵を持つ
-            with workspace_lock(lock_root, write_lock, create=lock_create):
+            with workspace_lock(
+                lock_root, write_lock, create=lock_create, require=lock_require
+            ):
                 payload = handler()
         else:
             payload = handler()

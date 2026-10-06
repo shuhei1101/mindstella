@@ -31,12 +31,12 @@ flows:
       - '`next` が D-5'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すとエラーで終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -45,13 +45,37 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: status workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
+  - name: 異常系（版が古いワークスペース・WorkspaceNotFoundError）
+    summary: '`mindmap.yaml` だけを持つフォルダを指すと、移し替えを案内するエラーで終わる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 版が古いワークスペース
+        description: '`mindmap.yaml` と種類ごとの YAML があり、`config.yaml` が無いフォルダ'
+        notes: YAML を直接書いて作る。`migrate` 以外のツールの代表として `status` で確かめる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as status（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: status workspace
+        IF-->>WS: config.yaml は無いが mindmap.yaml がある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `/mindstella:upgrade` がある
+      - フォルダの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_old_settings_file
 lead: 話し合いを再開するときに読む状況（要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補）をまとめて返す。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -61,7 +85,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
 response:
   - name: needs_review[]
     type: list[{id, title}]
@@ -92,8 +116,8 @@ exceptions:
     condition: 状況をまとめられた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
-    notes: ツールのエラー
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。`mindmap.yaml` だけがあるときは、本文で `/mindstella:upgrade` での移し替えを案内する（『MCP サーバーの起動』の制約「ワークスペース」）
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形

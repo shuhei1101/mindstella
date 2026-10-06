@@ -3,12 +3,13 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねるまとめての書き込みと `commit` を、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねるタグの一覧とまとめての書き込みと `commit` を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
-        description: プレイブックがシステム開発で、検討事項を持たないワークスペース
+        description: プレイブックがシステム開発で、検討事項を持たず、タグ `保存` を持つメモ N-1 だけを持つワークスペース
+        notes: '-'
       - name: 再生する書き込み
         description: 決め事を持つ検討事項 D-1（決定済み。案 A・B を持ち、A を採用）、D-1 を `parent` に持つ派生の検討事項 D-2（未決定。案 A・B を持つ）、問いの形にならない D-3（未整理）、D-2 を進めるタスク T-1、会話ログ L-1 を、1 回のまとめての書き込みで渡す
-        notes: どの項目も `target`・`category`・`phase` を持つ。D-2 の `parent` と T-1 の `for` は、同じ呼び出しで先に足す項目を指す
+        notes: どの項目も `target`・`category`・`phase` を持つ。D-2 の `parent` と T-1 の `for` は、同じ呼び出しで先に足す項目を指す。D-1・D-2・T-1 は既にある話題のタグ `保存`、D-3 は `保存` と新しい話題のタグ `通知` を持つ
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -18,7 +19,9 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: 発言（決め事を含む）
-        CC->>CC: 対象・カテゴリー・フェーズに振り分け、並べた進め方ガイドの観点と照らし、検討事項ごとに案を書く
+        CC->>SV: 使っているタグを出す
+        SV-->>CC: タグの一覧
+        CC->>CC: 対象・カテゴリー・フェーズに振り分け、話題のタグを決め、並べた進め方ガイドの観点と照らし、検討事項ごとに案を書く
         CC->>SV: まとめての書き込み（案を持つ検討事項・派生の検討事項・未整理・タスク・会話ログ）
         SV->>WS: スキーマと突き合わせて書く
         CC->>SV: commit（取り込んだ内容の一言の説明）
@@ -33,6 +36,7 @@ scenarios:
       - 'T-1 が `for: [D-2]` を持つ'
       - 会話ログ L-1 がある
       - 足した全ての項目が `target`・`category`・`phase` を持つ
+      - 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と `通知`（1 件）を返す
       - 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。`pending` が空を返す
     test: test_normal
   - name: 正常シナリオ（保留・解除・中止）
@@ -86,7 +90,7 @@ scenarios:
       ```
     expected:
       - '資料 A-1 が `kind: 図` と `related: [D-1]` を持つ'
-      - '`docs/` に A-1 の本文の Markdown がある'
+      - '`.mindstella/docs/` に A-1 の本文の Markdown がある'
       - '`check` が YAML と Markdown のずれを 0 件で返す'
     test: test_normal_when_diagram_kept_as_doc
   - name: 正常シナリオ（脱線した質問）
@@ -96,7 +100,7 @@ scenarios:
       - name: 作成済みのワークスペース
         description: タスクを持たない
       - name: 再生する書き込み
-        description: 言葉の意味を尋ねた質問は用語集 G-1、それ以外の脱線はメモ N-1（タグ `脱線`）。どちらも会話ログと一緒に 1 回のまとめての書き込みで渡す
+        description: 言葉の意味を尋ねた質問は用語集 G-1、それ以外の脱線はメモ N-1（タグ `脱線`。調べた経緯を `body_markdown` で本文にする）。どちらも会話ログと一緒に 1 回のまとめての書き込みで渡す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -111,6 +115,7 @@ scenarios:
     expected:
       - 用語集 G-1 が `meaning` を持つ
       - メモ N-1 がタグ `脱線` を持つ
+      - メモ N-1 が本文を持ち、`.mindstella/docs/` にその Markdown がある
       - タスクが 0 件のままである
     test: test_normal_when_off_topic_question
   - name: 正常シナリオ（納品物の資料を作る）
@@ -140,7 +145,7 @@ scenarios:
     expected:
       - '`goal.deliverables` が「要件定義書」の 1 件だけで、その `doc` が A-1 である'
       - '資料 A-1 が `deliverable: true` を持つ'
-      - '`docs/` の A-1 の本文が、概要・背景・構成の見出しを持つ'
+      - '`.mindstella/docs/` の A-1 の本文が、概要・背景・構成の見出しを持つ'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_deliverable_doc_created
   - name: 正常シナリオ（タスクの成果を資料にする）
@@ -168,7 +173,7 @@ scenarios:
       ```
     expected:
       - T-1 が完了で、`related` に A-1 を持つ
-      - '資料 A-1 が `deliverable: false` を持ち、`docs/` に本文がある'
+      - '資料 A-1 が `deliverable: false` を持ち、`.mindstella/docs/` に本文がある'
       - '`goal.deliverables` が呼ぶ前と同じである'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_task_output_kept_as_doc

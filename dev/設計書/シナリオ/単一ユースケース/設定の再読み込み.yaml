@@ -1,0 +1,79 @@
+title: "設定の再読み込み"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。再読み込みのエンドポイントは HTTP のクライアントで呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が見た目の既定を持たないワークスペース（組み込みの既定の `deep`）
+      - name: 手で直す
+        description: 画面を開いた後に、`config.yaml` の見た目の既定を `dust` に書き換える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant WS as ワークスペース
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        U->>WS: config.yaml を手で直す
+        U->>SV: 設定の再読み込み
+        SV->>WS: config.yaml を読む
+        SV->>SV: スキーマと突き合わせる（通る）
+        SV-->>U: 検査に通った
+        SV-->>P: 書き換えを知らせる
+        P->>SV: 記録と設定を読み直す
+        P-->>P: 上書きを持たない項目に新しい既定を当てる
+      ```
+    expected:
+      - 再読み込みのエンドポイントが、検査に通ったことを返す
+      - 開いている画面で、つながりに渡る見た目が開き直さずに `dust` になる
+      - '`config.yaml` の中身が、手で直したままである'
+    test: test_normal
+  - name: 異常シナリオ（検査に通らない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。再読み込みのエンドポイントと記録の取得は HTTP のクライアントで呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の見た目の既定を `starlight` にしたワークスペース
+      - name: 手で崩す
+        description: 画面を開いた後に、`config.yaml` の見た目の既定を選べる値に無い `rainbow` に書き換える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant WS as ワークスペース
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        U->>WS: config.yaml を手で直す（崩れる）
+        U->>SV: 設定の再読み込み
+        SV->>WS: config.yaml を読む
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>U: 違う箇所（キーと理由）を示すエラー
+        P->>SV: 記録を読む
+        SV-->>P: 最後に検査に通った設定と記録
+      ```
+    expected:
+      - 再読み込みのエンドポイントがエラーを返し、本文に見た目の既定のキーと、選べる値が `glow`・`starlight`・`constellation`・`deep`・`dust` である理由がある
+      - 記録の取得が返す設定の見た目の既定が `starlight` で、違う箇所が添えられている
+      - 開いている画面で、つながりに渡る見た目が `starlight` のままである
+      - '`config.yaml` の中身が、手で崩したままである（サーバーが書き換えていない）'
+    test: test_error_when_check_fails
+lead: 利用者が `config.yaml` を手で直した後、配信の設定の再読み込みのエンドポイントを呼び、検査に通れば開いている画面に新しい既定が当たり、通らなければ最後に検査に通った設定のまま違う箇所が返る単一ユースケース。
+issue: 24
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 手で直した `config.yaml` が合っているかをすぐに確かめられる。直し間違えても、開いている画面が壊れない
+trigger: 利用者が `config.yaml` を手で直し、設定の再読み込みのエンドポイントを呼ぶ
+preconditions:
+  - サーバーがプレビューを配っている
+success_guarantee: 検査に通ったときは、開いている画面のうち上書きを持たない項目が、開き直さずに直した既定になる。
+minimal_guarantee: 検査に通らないときは、配信が最後に検査に通った設定のまま動き続け、違う箇所（キーと理由）を返す。サーバーは `config.yaml` を書き換えない。
+frequency: 利用者が `config.yaml` を手で直したとき
+priority: 低
+notes:
+  E2E の範囲: エンドポイントは HTTP のクライアントで呼ぶ。エンドポイントの名前と形はインターフェース定義設計で決める
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を足す
+test_file: tests/e2e/単一ユースケース/test_config_reload.py

@@ -8,6 +8,7 @@ from pathlib import Path
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 from .history_helpers import DECISION_ITEM, add_item, commit
 from .http_helpers import http_request
+from workspace_fixtures import RECORD_DIR
 
 # 前回開いた日時を持つファイルの名前
 OPENED_FILE = ".mindstella-opened"
@@ -25,7 +26,7 @@ def test_normal(
     commit(call_tool, root, "足す")
     url = serve_preview(root)
     records = {
-        name: (root / name).read_bytes() for name in ("decisions.yaml", "changes.yaml")
+        name: (root / RECORD_DIR / name).read_bytes() for name in ("decisions.yaml", "changes.yaml")
     }
     # 実行
     first = http_request(url, "/api/opened", method="POST")
@@ -35,9 +36,10 @@ def test_normal(
     assert second.status == 200
     assert first.json()["previous"] is None
     assert second.json()["previous"] == first.json()["opened"]
-    assert (root / OPENED_FILE).read_text(encoding="utf-8").splitlines()[0] == second.json()["opened"]
+    opened_text = (root / RECORD_DIR / OPENED_FILE).read_text(encoding="utf-8")
+    assert opened_text.splitlines()[0] == second.json()["opened"]
     for name, content in records.items():
-        assert (root / name).read_bytes() == content
+        assert (root / RECORD_DIR / name).read_bytes() == content
 
 
 def test_error_when_write_fails(
@@ -52,7 +54,7 @@ def test_error_when_write_fails(
     root = make_workspace(make_item("D-1"))
     url = serve_preview(root)
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = http_request(url, "/api/opened", method="POST")
     # 検証

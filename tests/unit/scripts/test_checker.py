@@ -11,6 +11,7 @@ import checker
 import commands
 import store
 from fixture_types import MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
+from workspace_fixtures import RECORD_DIR
 
 
 def _keys(
@@ -49,16 +50,16 @@ def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item:
     problems = checker.check_workspace(workspace)
     # 検証
     assert _keys(problems) == {
-        ("broken_ref", "decisions.yaml", "D-1", "depends_on"),
-        ("schema", "decisions.yaml", "D-2", "items[1].status"),
-        ("orphan_body", "docs/X-1.md", None, None),
-        ("missing_body", "research.yaml", "R-1", "items[0].body"),
+        ("broken_ref", ".mindstella/decisions.yaml", "D-1", "depends_on"),
+        ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
+        ("orphan_body", ".mindstella/docs/X-1.md", None, None),
+        ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
     }
     assert [problem.file for problem in problems] == [
-        "decisions.yaml",
-        "decisions.yaml",
-        "docs/X-1.md",
-        "research.yaml",
+        ".mindstella/decisions.yaml",
+        ".mindstella/decisions.yaml",
+        ".mindstella/docs/X-1.md",
+        ".mindstella/research.yaml",
     ]
 
 
@@ -133,7 +134,7 @@ def test_check_phases(
     problems = checker._check_phases(workspace)
     # 検証
     assert _keys(problems) == {
-        ("unknown_phase", "mindmap.yaml", None, "goal.phase"),
+        ("unknown_phase", "config.yaml", None, "goal.phase"),
         ("unknown_phase", "decisions.yaml", "D-1", "items[0].phase"),
     }
     assert {problem.detail for problem in problems} == {"結論", "発散"}
@@ -273,7 +274,9 @@ def test_check_history_when_body_rewritten(
         make_item("D-1", body="D-1.md"), bodies={"D-1.md": "元の 1 行目\n元の 2 行目\n"}
     )
     commands.run_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
-    (root / "docs" / "D-1.md").write_text("手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8")
+    (root / RECORD_DIR / "docs" / "D-1.md").write_text(
+        "手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8"
+    )
     workspace = store.load_workspace(root)
     # 実行
     problems = checker._check_history(workspace)

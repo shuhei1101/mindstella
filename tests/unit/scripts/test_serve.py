@@ -15,6 +15,7 @@ import pytest
 import yaml
 
 import builder
+import errors
 import serve
 from errors import (
     CommentConflictError,
@@ -29,6 +30,7 @@ from errors import (
 )
 from export_helpers import write_preview_dir
 from fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
+from workspace_fixtures import RECORD_DIR, write_yaml
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
 SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
@@ -65,9 +67,14 @@ def _get_status(url: str) -> int:
         return response.status
 
 
-def _context(root: Path) -> serve.ServeContext:
-    """ワークスペースを配る文脈（待ち受けず、ポートだけ持つ）を作る。"""
-    return serve.ServeContext(root=root, port=PORT, write_lock=threading.Lock())
+def _context(root: Path, settings: dict[str, Any] | None = None) -> serve.ServeContext:
+    """ワークスペースを配る文脈（待ち受けず、ポートだけ持つ）を作る。最後に検査に通った設定は settings（無ければ空）。"""
+    return serve.ServeContext(
+        root=root,
+        port=PORT,
+        write_lock=threading.Lock(),
+        settings=serve.SettingsHolder({} if settings is None else settings),
+    )
 
 
 def _first_opened_now() -> str:
@@ -102,6 +109,35 @@ def test_start(
     assert _port_of(url1) != _port_of(url2)
     assert url1.startswith("http://127.0.0.1:")
     assert url2.startswith("http://127.0.0.1:")
+    assert url1.endswith("/mindstella.html")
+    assert url2.endswith("/mindstella.html")
+
+
+def _start_expecting_mismatch(registry: serve.PreviewRegistry, root: Path) -> list[str]:
+    """start が SchemaMismatchError を送ることを確かめ、その lines を返す。"""
+    with pytest.raises(SchemaMismatchError) as raised:
+        registry.start(root)
+    return raised.value.lines
+
+
+def test_start_when_settings_invalid(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
+) -> None:
+    """config.yaml が合わなければ配信を立てず、直せば立てる（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "display": {"network_look": "rainbow"}})
+    # 実行（合わない間は 2 回とも立てず、直した後の 1 回で立てる）
+    first_lines = _start_expecting_mismatch(registry, root)
+    second_lines = _start_expecting_mismatch(registry, root)
+    write_yaml(
+        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "deep"}}
+    )
+    url, started = registry.start(root)
+    # 検証
+    assert first_lines[0].startswith("config.yaml: display.network_look: ")
+    assert second_lines[0].startswith("config.yaml: display.network_look: ")
+    assert started is True
+    assert url.endswith("/mindstella.html")
 
 
 def test_stop_all(
@@ -123,13 +159,21 @@ def test_start_preview_server(make_workspace: MakeWorkspace, make_item: MakeItem
     # 準備
     root = make_workspace(make_item("D-1"))
     # 実行
-    preview = serve.start_preview_server(root, write_lock=threading.Lock())
+    preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
     try:
         # 検証
         host, port = preview.httpd.server_address[:2]
         assert host == "127.0.0.1"
         assert port != 0
+        assert preview.url.endswith("/mindstella.html")
         assert _get_status(preview.url) == 200
+        # `/` は送り直しを辿らずに、画面のパスへ送り直す 302
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=HTTP_TIMEOUT_SEC)
+        connection.request("GET", "/")
+        redirect = connection.getresponse()
+        assert redirect.status == 302
+        assert redirect.getheader("Location") == "/mindstella.html"
+        connection.close()
     finally:
         preview.stop()
 
@@ -148,7 +192,7 @@ def test_start_preview_server_when_bind_fails(
     monkeypatch.setattr(serve, "ThreadingHTTPServer", _fail)
     # 実行・検証
     with pytest.raises(ServeFailedError):
-        serve.start_preview_server(root, write_lock=threading.Lock())
+        serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
 
 
 @pytest.mark.parametrize(
@@ -234,7 +278,7 @@ def test_records_response(make_workspace: MakeWorkspace, make_item: MakeItem) ->
     # 準備
     root = make_workspace(make_item("D-1"))
     # 実行
-    response = serve.records_response(root)
+    response = serve.records_response(_context(root))
     # 検証
     assert response.status == 200
     assert response.content_type == "application/json; charset=utf-8"
@@ -244,28 +288,58 @@ def test_records_response(make_workspace: MakeWorkspace, make_item: MakeItem) ->
 def test_records_response_when_schema_mismatch(tmp_path: Path) -> None:
     """スキーマに合わなければ 422（正常系）。"""
 
-    def _read(root: Path) -> dict[str, Any]:
+    def _read(root: Path, **kwargs: Any) -> dict[str, Any]:
         """スキーマに合わないエラーを送る。"""
         raise SchemaMismatchError(lines=["decisions.yaml: items[0].status: 理由"])
 
     # 実行
-    response = serve.records_response(tmp_path, read=_read)
+    response = serve.records_response(_context(tmp_path), read=_read)
     # 検証
     assert response.status == 422
     assert json.loads(response.body)["detail"] == "decisions.yaml: items[0].status: 理由"
 
 
 def test_records_response_when_workspace_removed(tmp_path: Path) -> None:
-    """mindmap.yaml が無くなったら 422（正常系）。"""
+    """config.yaml が無くなったら 422（正常系）。"""
 
-    def _read(root: Path) -> dict[str, Any]:
+    def _read(root: Path, **kwargs: Any) -> dict[str, Any]:
         """ワークスペースが無いエラーを送る。"""
         raise WorkspaceNotFoundError("ワークスペースがありません")
 
     # 実行
-    response = serve.records_response(tmp_path, read=_read)
+    response = serve.records_response(_context(tmp_path), read=_read)
     # 検証
     assert response.status == 422
+
+
+def test_records_response_when_settings_changed(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
+) -> None:
+    """通った設定は控え、崩れた設定では控えた設定で返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    context = _context(root, {**valid_settings, "display": {"network_look": "starlight"}})
+    # 実行（通る設定と崩れた設定を、この順に読む）
+    write_yaml(
+        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}}
+    )
+    first = serve.records_response(context)
+    held_after_first = context.settings.current()["display"]["network_look"]
+    write_yaml(
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"network_look": "rainbow"}},
+    )
+    second = serve.records_response(context)
+    # 検証
+    first_payload = json.loads(first.body)
+    second_payload = json.loads(second.body)
+    assert first.status == 200
+    assert first_payload["settings"]["display"]["network_look"] == "dust"
+    assert first_payload["settings_problem"] is None
+    assert held_after_first == "dust"
+    assert second.status == 200
+    assert second_payload["settings"]["display"]["network_look"] == "dust"
+    assert second_payload["settings_problem"][0].startswith("config.yaml: display.network_look: ")
 
 
 @pytest.mark.parametrize(
@@ -291,7 +365,7 @@ def test_workspace_signature(
     root = make_workspace(make_item("D-1"))
     before = serve.workspace_signature(root)
     # 実行
-    (root / file_name).write_text(text, encoding="utf-8")
+    (root / RECORD_DIR / file_name).write_text(text, encoding="utf-8")
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
@@ -321,7 +395,7 @@ def test_workspace_signature_with_changes(
     root = make_workspace(make_item("D-1"))
     before = serve.workspace_signature(root)
     # 実行
-    (root / file_name).write_text(text, encoding="utf-8")
+    (root / RECORD_DIR / file_name).write_text(text, encoding="utf-8")
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
@@ -596,39 +670,58 @@ def test_delete_response(
     assert response.status == expected_status
     payload = json.loads(response.body)
     assert (payload.get("id"), payload.get("count")) == expected_deleted
-    saved = yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    saved = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
     assert [item["id"] for item in saved] == expected_remaining
 
 
 @pytest.mark.parametrize(
-    ("error", "expected_status", "expected_stale"),
+    ("build_error", "expected_status", "expected_stale"),
     [
-        pytest.param(CommentInvalidError("body: 空です"), 400, None, id="invalid"),
-        pytest.param(ItemNotFoundError("項目がありません: D-99"), 404, None, id="item_not_found"),
+        pytest.param(lambda: CommentInvalidError("body: 空です"), 400, None, id="invalid"),
         pytest.param(
-            CommentNotFoundError("コメントがありません: C-9"), 404, None, id="comment_not_found"
+            lambda: errors.SettingsInvalidError("network_look: 選べません"),
+            400,
+            None,
+            id="settings_invalid",
         ),
         pytest.param(
-            CommentConflictError("箇所が合わないコメントがあります", stale=[("C-2", "理由")]),
+            lambda: ItemNotFoundError("項目がありません: D-99"), 404, None, id="item_not_found"
+        ),
+        pytest.param(
+            lambda: CommentNotFoundError("コメントがありません: C-9"),
+            404,
+            None,
+            id="comment_not_found",
+        ),
+        pytest.param(
+            lambda: CommentConflictError(
+                "箇所が合わないコメントがあります", stale=[("C-2", "理由")]
+            ),
             409,
             [{"id": "C-2", "reason": "理由"}],
             id="conflict",
         ),
         pytest.param(
-            SchemaMismatchError(["comments.yaml: items[0]: body がありません"]),
+            lambda: SchemaMismatchError(["comments.yaml: items[0]: body がありません"]),
             422,
             None,
             id="schema_mismatch",
         ),
         pytest.param(
-            WriteFailedError("書き込めませんでした: comments.yaml"), 500, None, id="write"
+            lambda: WriteFailedError("書き込めませんでした: comments.yaml"), 500, None, id="write"
         ),
     ],
 )
 def test_error_response(
-    error: MindmapError, expected_status: int, expected_stale: list[dict[str, str]] | None
+    build_error: Callable[[], MindmapError],
+    expected_status: int,
+    expected_stale: list[dict[str, str]] | None,
 ) -> None:
     """種類ごとのステータスコード（正常系）。"""
+    # 準備
+    error = build_error()
     # 実行
     response = serve.error_response(error)
     # 検証
@@ -636,3 +729,79 @@ def test_error_response(
     assert response.status == expected_status
     assert error.args[0] in payload["detail"]
     assert payload.get("stale") == expected_stale
+
+
+def test_settings_holder() -> None:
+    """accept は回数を変えず、reload だけが進める（正常系）。"""
+    # 準備
+    holder = serve.SettingsHolder({"summary": "a"})
+    # 実行
+    first = (holder.current(), holder.revision())
+    holder.accept({"summary": "b"})
+    second = (holder.current(), holder.revision())
+    holder.reload({"summary": "c"})
+    third = (holder.current(), holder.revision())
+    # 検証
+    assert first == ({"summary": "a"}, 0)
+    assert second == ({"summary": "b"}, 0)
+    assert third == ({"summary": "c"}, 1)
+
+
+@pytest.mark.parametrize(
+    (
+        "network_look",
+        "origin",
+        "expected_status",
+        "expected_look",
+        "expected_held",
+        "expected_revision",
+        "expected_detail",
+    ),
+    [
+        pytest.param("dust", None, 200, "dust", "dust", 1, "", id="passes"),
+        pytest.param(
+            "rainbow",
+            None,
+            422,
+            None,
+            "starlight",
+            0,
+            "config.yaml: display.network_look: ",
+            id="schema_mismatch",
+        ),
+        pytest.param(
+            "dust", "https://attacker.example", 403, None, "starlight", 0, "", id="other_origin"
+        ),
+    ],
+)
+def test_reload_response(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    network_look: str,
+    origin: str | None,
+    expected_status: int,
+    expected_look: str | None,
+    expected_held: str,
+    expected_revision: int,
+    expected_detail: str,
+) -> None:
+    """通れば差し替え、通らなければ前の設定のまま違う箇所を返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    context = _context(root, {**valid_settings, "display": {"network_look": "starlight"}})
+    # 手で直した config.yaml
+    write_yaml(
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"network_look": network_look}},
+    )
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    # 実行
+    response = serve.reload_response(context, origin=origin)
+    # 検証
+    payload = json.loads(response.body)
+    assert response.status == expected_status
+    assert payload.get("settings", {}).get("display", {}).get("network_look") == expected_look
+    assert expected_detail in payload.get("detail", "")
+    assert context.settings.current()["display"]["network_look"] == expected_held
+    assert context.settings.revision() == expected_revision
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

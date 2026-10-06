@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -12,6 +11,7 @@ import history
 import store
 from errors import SchemaMismatchError
 from fixture_types import MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR
 
 # まとめた日時・書き換えた日時
 NOW = "2026-10-02T08:00:00+00:00"
@@ -139,7 +139,7 @@ def test_make_entry() -> None:
     }
     # 実行
     entry = history.make_entry(
-        before_item, after_item, before_body="本文\n", after_body="本文\n", seq=1, at=NOW
+        before_item, after_item, before_body="本文\n", after_body="本文\n", seq=1, at=NOW, by="ai"
     )
     # 検証
     assert entry is not None
@@ -156,10 +156,39 @@ def test_make_entry_when_nothing_changed() -> None:
     after_item = {"id": "D-1", "title": "問い", "updated": NOW}
     # 実行
     entry = history.make_entry(
-        before_item, after_item, before_body="本文\n", after_body="本文\n", seq=1, at=NOW
+        before_item, after_item, before_body="本文\n", after_body="本文\n", seq=1, at=NOW, by="ai"
     )
     # 検証
     assert entry is None
+
+
+@pytest.mark.parametrize(
+    ("before_item", "after_item", "expected"),
+    [
+        pytest.param(
+            {"id": "D-1", "title": "問い", "updated": "2026-10-01T00:00:00+00:00"},
+            {"id": "D-1", "title": "問い", "answer": "a", "updated": NOW, "updated_by": "ai"},
+            {"seq": 1, "at": NOW, "by": "ai", "before": {"answer": None}},
+            id="value_changed",
+        ),
+        pytest.param(
+            {"id": "D-1", "title": "問い", "updated_by": "user"},
+            {"id": "D-1", "title": "問い", "updated": NOW, "updated_by": "ai"},
+            None,
+            id="only_editor_changed",
+        ),
+    ],
+)
+def test_make_entry_records_editor(
+    before_item: dict[str, Any], after_item: dict[str, Any], expected: dict[str, Any] | None
+) -> None:
+    """書き換えた人を持ち、updated_by の違いだけでは作らない（正常系）。"""
+    # 実行
+    entry = history.make_entry(
+        before_item, after_item, before_body="本文\n", after_body="本文\n", seq=1, at=NOW, by="ai"
+    )
+    # 検証
+    assert entry == expected
 
 
 def test_stack_history() -> None:
@@ -309,15 +338,17 @@ def test_pending_view(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     assert sorted(view["changed"][0]["keys"]) == ["answer", "body_markdown", "status"]
 
 
-def test_touch_opened(tmp_path: Path) -> None:
+def test_touch_opened(make_workspace: MakeWorkspace) -> None:
     """前の日時を返して書き換える（正常系）。"""
+    # 準備
+    root = make_workspace()
     # 実行
-    first = history.touch_opened(tmp_path, FIRST_OPENED)
-    second = history.touch_opened(tmp_path, SECOND_OPENED)
+    first = history.touch_opened(root, FIRST_OPENED)
+    second = history.touch_opened(root, SECOND_OPENED)
     # 検証
     assert first is None
     assert second == FIRST_OPENED
-    opened_text = (tmp_path / ".mindstella-opened").read_text(encoding="utf-8")
+    opened_text = (root / RECORD_DIR / ".mindstella-opened").read_text(encoding="utf-8")
     assert opened_text.splitlines()[0] == SECOND_OPENED
 
 
@@ -387,12 +418,16 @@ def test_changes_since(make_workspace: MakeWorkspace, make_item: MakeItem) -> No
     assert result["had_read_point"] is True
     assert result["read_seq"] == 3
     assert result["until_seq"] == 5
-    assert result["added"] == [{"id": "T-1", "kind": "task", "title": "T-1の題"}]
+    assert result["added"] == [
+        {"id": "T-1", "kind": "task", "title": "T-1の題", "updated_by": None}
+    ]
     assert result["changed"] == [
         {
             "id": "D-1",
             "kind": "decision",
             "title": "D-1の題",
+            "updated_by": None,
+            "by": [],
             "before": {"answer": None},
             "body_diff": None,
         }
@@ -436,8 +471,39 @@ def test_changes_since_when_limit_zero(
     # 検証
     assert result["added"] == []
     assert result["changed"] == [
-        {"id": "D-1", "kind": "decision", "title": "D-1の題", "before": None, "body_diff": None}
+        {
+            "id": "D-1",
+            "kind": "decision",
+            "title": "D-1の題",
+            "updated_by": None,
+            "by": [],
+            "before": None,
+            "body_diff": None,
+        }
     ]
+
+
+def test_changes_since_reports_editors(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """読んだ後に利用者と AI が直した項目で、両方を返す（正常系）。"""
+    # 準備
+    entries = [
+        {"seq": 5, "at": NOW, "by": "ai", "before": {"answer": "b"}},
+        {"seq": 4, "at": NOW, "by": "user", "before": {"answer": "a"}},
+        {"seq": 2, "at": NOW, "by": "user", "before": {"answer": None}},
+    ]
+    root = make_workspace(
+        make_item("D-1", answer="c", added_seq=1, seq=5, updated_by="ai", history=entries)
+    )
+    workspace = store.load_workspace(root)
+    changes = {"last_seq": 5, "read_seq": 3, "sets": [], "pending": {"added": [], "changed": []}}
+    # 実行
+    result = history.changes_since(workspace, changes)
+    # 検証
+    assert len(result["changed"]) == 1
+    assert result["changed"][0]["id"] == "D-1"
+    assert result["changed"][0]["updated_by"] == "ai"
+    # seq 2 の回は読んだ時点より前なので数えない
+    assert result["changed"][0]["by"] == ["user", "ai"]
 
 
 def test_mark_read() -> None:

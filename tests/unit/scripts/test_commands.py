@@ -35,6 +35,7 @@ from fixture_types import (
     WriteSubmissions,
 )
 from query import SearchFilter
+from workspace_fixtures import RECORD_DIR
 
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-02T08:00:00+00:00"
@@ -80,8 +81,13 @@ def _make_staged(
 
 def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
     """ワークスペースの YAML を読んで、項目の並びを返す。"""
-    data = yaml.safe_load((root / file_name).read_text(encoding="utf-8"))
+    data = yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))
     return data["items"]
+
+
+def _read_changes(root: Path) -> dict[str, Any]:
+    """ワークスペースの書き換えのまとまり（changes.yaml）を読む。"""
+    return yaml.safe_load((root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8"))
 
 
 class _FakeRegistry:
@@ -94,19 +100,27 @@ class _FakeRegistry:
     def start(self, root: Path) -> tuple[str, bool]:
         """渡されたワークスペースを控えて、決めた URL と今立てたことを返す。"""
         self.started.append(root)
-        return "http://127.0.0.1:1/", True
+        return "http://127.0.0.1:1/mindstella.html", True
 
 
-def test_validate_input_keys() -> None:
+@pytest.mark.parametrize(
+    ("kind", "data"),
+    [
+        pytest.param("decision", {"title": "t", "body_markdown": "b"}, id="decision"),
+        pytest.param("task", {"title": "t", "body_markdown": "b"}, id="task"),
+        pytest.param("note", {"content": "c", "body_markdown": "b"}, id="note"),
+    ],
+)
+def test_validate_input_keys(kind: str, data: dict[str, Any]) -> None:
     """渡せるキーだけなら何もしない（正常系）。"""
     # 実行
-    result = commands.validate_input_keys("decision", {"title": "t", "body_markdown": "b"})
+    result = commands.validate_input_keys(kind, data)
     # 検証
     assert result is None
 
 
 @pytest.mark.parametrize(
-    "key", ["id", "created", "updated", "body", "history", "history_dropped_seq"]
+    "key", ["id", "created", "updated", "updated_by", "body", "history", "history_dropped_seq"]
 )
 def test_validate_input_keys_when_reserved(key: str) -> None:
     """ツールが付けるキーを弾く（異常系）。"""
@@ -114,14 +128,6 @@ def test_validate_input_keys_when_reserved(key: str) -> None:
     with pytest.raises(SchemaMismatchError) as exc_info:
         commands.validate_input_keys("decision", {key: "x"})
     assert key in exc_info.value.lines[0]
-
-
-def test_validate_input_keys_when_body_not_allowed() -> None:
-    """本文を持てない種類への body_markdown を弾く（異常系）。"""
-    # 実行・検証
-    with pytest.raises(SchemaMismatchError) as exc_info:
-        commands.validate_input_keys("task", {"body_markdown": "b"})
-    assert "body_markdown" in exc_info.value.lines[0]
 
 
 def test_merge_changes() -> None:
@@ -204,7 +210,7 @@ def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: P
     # 検証
     assert payload["workspace"] == str(root)
     assert len(payload["files"]) == 11
-    assert (root / "mindstella-version.ini").read_text(
+    assert (root / RECORD_DIR / "mindstella-version.ini").read_text(
         encoding="utf-8"
     ) == f"{plugin_version.splitlines()[0]}\n"
 
@@ -217,13 +223,18 @@ def test_run_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 実行
     payload = commands.run_add(root, "decision", item, now=_fixed_now)
     # 検証
-    assert payload == {"id": "D-2", "file": "decisions.yaml", "body": "docs/D-2.md"}
+    assert payload == {
+        "id": "D-2",
+        "file": ".mindstella/decisions.yaml",
+        "body": ".mindstella/docs/D-2.md",
+    }
     added = _read_items(root, "decisions.yaml")[1]
     assert added["created"] == FIXED_NOW
     assert added["updated"] == FIXED_NOW
+    assert added["updated_by"] == "ai"
     assert added["body"] == "D-2.md"
     assert "body_markdown" not in added
-    assert (root / "docs" / "D-2.md").read_text(encoding="utf-8") == "## 経緯\n"
+    assert (root / RECORD_DIR / "docs" / "D-2.md").read_text(encoding="utf-8") == "## 経緯\n"
 
 
 def test_run_add_when_no_body(make_workspace: MakeWorkspace) -> None:
@@ -234,12 +245,12 @@ def test_run_add_when_no_body(make_workspace: MakeWorkspace) -> None:
     # 実行
     payload = commands.run_add(root, "task", item, now=_fixed_now)
     # 検証
-    assert payload == {"id": "T-1", "file": "tasks.yaml", "body": None}
+    assert payload == {"id": "T-1", "file": ".mindstella/tasks.yaml", "body": None}
     assert "body" not in _read_items(root, "tasks.yaml")[0]
 
 
 def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """キーを置き換えて更新日時を変える（正常系）。"""
+    """キーを置き換えて更新日時と編集した人を変える（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", lead="l", weight="大"))
     # 実行
@@ -247,7 +258,7 @@ def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 検証
     assert payload == {
         "id": "D-1",
-        "file": "decisions.yaml",
+        "file": ".mindstella/decisions.yaml",
         "changed": ["answer", "weight"],
     }
     updated = _read_items(root, "decisions.yaml")[0]
@@ -256,6 +267,7 @@ def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     assert updated["lead"] == "l"
     assert updated["created"] == DEFAULT_TIMESTAMP
     assert updated["updated"] == FIXED_NOW
+    assert updated["updated_by"] == "ai"
 
 
 def test_run_update_stacks_history(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -267,13 +279,13 @@ def test_run_update_stacks_history(make_workspace: MakeWorkspace, make_item: Mak
     # 検証
     stacked = _read_items(root, "decisions.yaml")[0]["history"][0]
     assert stacked["before"] == {"status": "未決定"}
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    changes = _read_changes(root)
     assert changes["pending"]["changed"] == ["D-1"]
     assert changes["last_seq"] == stacked["seq"]
 
 
 def test_stage_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """通し番号を振って足す（正常系）。"""
+    """通し番号と編集した人を付けて足す（正常系）。"""
     # 準備
     staged = _make_staged(make_workspace(make_item("D-1")), 3)
     item = {"title": "問い", "status": "未決定"}
@@ -284,12 +296,26 @@ def test_stage_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     added = new_staged.items["decision"][1]
     assert added["seq"] == 4
     assert added["added_seq"] == 4
+    assert added["updated_by"] == "ai"
     assert new_staged.changes["last_seq"] == 4
     assert new_staged.changes["pending"]["added"] == ["D-2"]
     # 渡した Staged はそのまま
     assert len(staged.items["decision"]) == 1
     assert staged.changes["last_seq"] == 3
     assert staged.touched == frozenset()
+
+
+def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
+    """メモにも本文を付ける（正常系）。"""
+    # 準備
+    staged = _make_staged(make_workspace(), 0)
+    item = {"title": "t", "content": "c", "body_markdown": "b"}
+    # 実行
+    new_staged, _ = commands.stage_add(staged, "note", item, now=_fixed_now)
+    # 検証
+    assert new_staged.items["note"][0]["id"] == "N-1"
+    assert new_staged.items["note"][0]["body"] == "N-1.md"
+    assert new_staged.bodies["N-1.md"].text == "b"
 
 
 def test_stage_update_when_limit_zero(
@@ -307,6 +333,20 @@ def test_stage_update_when_limit_zero(
     assert "history" not in updated
     assert new_staged.changes["last_seq"] == 4
     assert new_staged.changes["pending"]["changed"] == []
+
+
+def test_stage_update_sets_editor(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """編集した人を ai にし、変更履歴の回にも書く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", updated_by="user"))
+    staged = _make_staged(root, 3)
+    # 実行
+    new_staged, _ = commands.stage_update(staged, "D-1", {"answer": "a"}, now=_fixed_now)
+    # 検証
+    updated = new_staged.items["decision"][0]
+    assert updated["updated_by"] == "ai"
+    assert updated["history"][0]["by"] == "ai"
+    assert "updated_by" not in updated["history"][0]["before"]
 
 
 def test_stage_update_when_nothing_changed(
@@ -399,12 +439,12 @@ def test_run_edit_option(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     # 検証
     assert payload == {
         "id": "D-1",
-        "file": "decisions.yaml",
+        "file": ".mindstella/decisions.yaml",
         "options": [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         "changed": True,
     }
     saved = _read_items(root, "decisions.yaml")[0]
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    changes = _read_changes(root)
     assert saved["history"][0]["before"] == {"options": [{"key": "A", "content": "案 A"}]}
     assert saved["seq"] == changes["last_seq"]
     assert saved["history"][0]["seq"] == changes["last_seq"]
@@ -500,10 +540,11 @@ def test_run_changes_since_read(make_workspace: MakeWorkspace, make_item: MakeIt
     # 実行
     payload = commands.run_changes_since_read(root)
     # 検証
-    assert payload["added"] == [{"id": "T-1", "kind": "task", "title": "T-1の題"}]
+    assert payload["added"] == [
+        {"id": "T-1", "kind": "task", "title": "T-1の題", "updated_by": None}
+    ]
     assert payload["until_seq"] == 4
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
-    assert changes["read_seq"] == 4
+    assert _read_changes(root)["read_seq"] == 4
 
 
 def test_run_changes_since_read_when_schema_mismatch(
@@ -523,10 +564,9 @@ def test_run_changes_since_read_when_schema_mismatch(
     # 実行
     commands.run_changes_since_read(root)
     # 検証
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
-    assert changes["read_seq"] == 3
+    assert _read_changes(root)["read_seq"] == 3
     after = snapshot_tree(root)
-    assert after["decisions.yaml"] == before["decisions.yaml"]
+    assert after[".mindstella/decisions.yaml"] == before[".mindstella/decisions.yaml"]
 
 
 def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -548,6 +588,8 @@ def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     options = _read_items(root, "decisions.yaml")[0]["options"]
     assert options[0]["adopted"] is False
     assert options[1]["adopted"] is True
+    adopted = _read_items(root, "decisions.yaml")[0]
+    assert adopted["updated_by"] == "ai"
 
 
 def test_run_adopt_when_not_decision(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -574,8 +616,7 @@ def test_run_commit(make_workspace: MakeWorkspace) -> None:
         "added": ["D-1"],
         "changed": [],
     }
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
-    assert changes["pending"] == {"added": [], "changed": []}
+    assert _read_changes(root)["pending"] == {"added": [], "changed": []}
 
 
 def test_run_commit_when_summary_blank(make_workspace: MakeWorkspace) -> None:
@@ -596,7 +637,7 @@ def test_run_pending_when_empty(make_workspace: MakeWorkspace) -> None:
     payload = commands.run_pending(root)
     # 検証
     assert payload == {"added": [], "changed": []}
-    assert not (root / "changes.yaml").exists()
+    assert not (root / RECORD_DIR / "changes.yaml").exists()
 
 
 def test_run_check(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -730,6 +771,16 @@ def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     assert payload == {"attrs": [{"name": "担当", "count": 1, "kinds": ["decision"]}]}
 
 
+def test_run_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """タグを出力の形にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=["データ"]))
+    # 実行
+    payload = commands.run_tags(root)
+    # 検証
+    assert payload == {"tags": [{"name": "データ", "count": 1, "kinds": ["decision"]}]}
+
+
 def test_run_goal(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """判定を出力の形にする（正常系）。"""
     # 準備
@@ -751,7 +802,9 @@ def test_run_migrate(
 ) -> None:
     """手順を並べて出力の形にする（正常系）。"""
     # 準備
-    root = make_legacy_workspace(legacy_docs={"A-1": True}, without_summary=True)
+    root = make_legacy_workspace(
+        legacy_docs={"A-1": True}, without_summary=True, settings_file="mindmap.yaml", top=True
+    )
     patch_plugin_version("v0.3.0")
     # 実行
     payload = commands.run_migrate(
@@ -781,7 +834,7 @@ def test_run_migrate_when_values(
     # 準備
     root = make_legacy_workspace(without_summary=True)
     patch_plugin_version("v0.3.0")
-    values = [{"file": "mindmap.yaml", "key": "summary", "value": "題名"}]
+    values = [{"file": ".mindstella/config.yaml", "key": "summary", "value": "題名"}]
     # 実行
     payload = commands.run_migrate(
         root, plan=False, record=False, values=values, from_version=None, to_version=None
@@ -789,7 +842,7 @@ def test_run_migrate_when_values(
     # 検証
     assert payload["steps"] == []
     assert payload["needs_values"] == []
-    settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+    settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == "題名"
 
 
@@ -801,7 +854,7 @@ def test_run_migrate_when_values(
         pytest.param(
             {"from_version": "v0.3.0", "to_version": "v0.2.0"}, "to_version", id="reversed"
         ),
-        pytest.param({"values": [{"file": "mindmap.yaml"}]}, "values", id="values_form"),
+        pytest.param({"values": [{"file": "config.yaml"}]}, "values", id="values_form"),
     ],
 )
 def test_run_migrate_when_argument_invalid(
@@ -834,7 +887,7 @@ def test_run_clear_release(make_workspace: MakeWorkspace) -> None:
     """release/ の中を消し、消したものを返す（正常系）。"""
     # 準備
     root = make_workspace()
-    (root / "release" / "古い資料.md").write_text("古い\n", encoding="utf-8")
+    (root / RECORD_DIR / "release" / "古い資料.md").write_text("古い\n", encoding="utf-8")
     # 実行
     payload = commands.run_clear_release(root)
     # 検証
@@ -895,17 +948,33 @@ def test_run_preview_url(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     # 実行
     payload = commands.run_preview_url(root, previews=previews)
     # 検証
-    assert payload == {"url": "http://127.0.0.1:1/", "workspace": str(root), "started": True}
+    assert payload == {
+        "url": "http://127.0.0.1:1/mindstella.html",
+        "workspace": str(root),
+        "started": True,
+    }
     assert previews.started == [root]
 
 
-def test_run_preview_url_when_not_workspace(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("files", "expects_hint"),
+    [
+        pytest.param({}, False, id="empty_folder"),
+        pytest.param({"mindmap.yaml": "field: システム開発\n"}, True, id="legacy_settings_only"),
+    ],
+)
+def test_run_preview_url_when_not_workspace(
+    tmp_path: Path, files: dict[str, str], expects_hint: bool
+) -> None:
     """ワークスペースでなければ配信を立てない（異常系）。"""
     # 準備
+    for file_name, text in files.items():
+        (tmp_path / file_name).write_text(text, encoding="utf-8")
     previews = _FakeRegistry()
     # 実行・検証
-    with pytest.raises(WorkspaceNotFoundError):
+    with pytest.raises(WorkspaceNotFoundError) as exc_info:
         commands.run_preview_url(tmp_path, previews=previews)
+    assert ("/mindstella:upgrade" in "".join(exc_info.value.lines)) is expects_hint
     assert previews.started == []
 
 

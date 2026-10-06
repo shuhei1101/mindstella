@@ -18,16 +18,17 @@ namespace MindmapPreview {
     ["related", "related"],
   ];
 
-  /** 表示する種類の項目を玉に、関連を線にして返す（両端のどちらかが非表示か記録に無い線は含めない） */
+  /** 渡した ID の項目を玉に、関連を線にして返す（両端のどちらかが渡していない項目か記録に無い線は含めない） */
   export function buildGraph({
     index,
-    shownKinds,
+    shownIds,
   }: {
     index: RecordIndex;
-    shownKinds: Set<string>;
+    /** 絞り込みの条件に合う項目の ID */
+    shownIds: Set<string>;
   }): { nodes: GraphNode[]; links: GraphLink[] } {
     const nodes: GraphNode[] = [];
-    for (const [id, { kind }] of index.byId) if (shownKinds.has(kind)) nodes.push({ id, kind });
+    for (const [id, { kind }] of index.byId) if (shownIds.has(id)) nodes.push({ id, kind });
     const shown = new Set(nodes.map((node) => node.id));
     const links: GraphLink[] = [];
     const seen = new Set<string>();
@@ -37,7 +38,7 @@ namespace MindmapPreview {
       for (const [key, type] of LINK_KEYS) {
         for (const target of (item[key] as string[] | undefined) ?? []) {
           const identity = `${type}|${source}|${target}`;
-          // 自分自身へ・非表示や記録に無い項目へ・同じ線の重なりは作らない
+          // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
           if (source === target || !shown.has(target) || seen.has(identity)) continue;
           seen.add(identity);
           links.push({ source, target, type });
@@ -45,6 +46,32 @@ namespace MindmapPreview {
       }
     }
     return { nodes, links };
+  }
+
+  /** 状態を持つ種類（検討事項・タスク・資料）の状態を重ねた並び（つながりの状態の条件の値の順） */
+  const GRAPH_STATUS_ORDER: readonly string[] = [
+    ...new Set([...DECISION_STATUSES, ...TASK_STATUSES, ...DOC_STATUSES]),
+  ];
+
+  /** つながりで絞る条件（種類・状態・タグ）の定義を返す。値は索引の項目（`{kind, item}`）から取る */
+  export function graphConditions(): (ConditionColumn & Pick<Column, "label">)[] {
+    // 行は索引の項目に ID を足したもの。列の定義が行の型を `Row` と受けるので、ここで読み替える
+    const entry = (row: Row): { kind: Kind; item: Item } => row as unknown as { kind: Kind; item: Item };
+    return [
+      {
+        key: "type",
+        label: "種類",
+        order: KIND_KEYS.map((kind) => KIND_LABEL[kind]),
+        get: (row) => KIND_LABEL[entry(row).kind],
+      },
+      {
+        key: "status",
+        label: "状態",
+        order: GRAPH_STATUS_ORDER,
+        get: (row) => entry(row).item.status,
+      },
+      { key: "tags", label: "タグ", get: (row) => entry(row).item.tags ?? [] },
+    ];
   }
 
   // ───── 描く玉と線（位置・向き・拡大を持つ） ─────
@@ -76,7 +103,7 @@ namespace MindmapPreview {
   };
 
   /** 項目の種類 → 色のトークン */
-  const KIND_COLOR_VAR: Record<Kind, string> = {
+  export const KIND_COLOR_VAR: Record<Kind, string> = {
     decisions: "--k-dec",
     tasks: "--k-task",
     research: "--k-res",
@@ -241,28 +268,62 @@ namespace MindmapPreview {
     live?.select(id);
   }
 
-  /** つながりの画面を返す。`selected` は最初に選んでおく項目 */
+  /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
   export function graphScreen({
     index,
     on,
+    filters,
+    drawerOpen,
     selected = null,
+    look = BUILTIN_LOOK,
   }: {
     index: RecordIndex;
-    on: { open: (id: string) => void };
+    on: {
+      open: (id: string) => void;
+      /** 条件を変える（新しい `filters`。ドロワーから） */
+      filter: (filters: Filters) => void;
+      /** 絞り込みのドロワーを閉じる */
+      closeDrawer: () => void;
+    };
+    /** 絞り込みの条件（入口の `FilterState` のつながりの分） */
+    filters: Filters;
+    /** 絞り込みのドロワーを開いているか */
+    drawerOpen: boolean;
     selected?: string | null;
+    look?: NetworkLook;
   }): HTMLElement {
+    // ===== 絞り込み: 条件に合う項目の ID =====
+    const conditions = graphConditions();
+    const rows = [...index.byId].map(([id, entry]) => ({ id, ...entry }));
+    const shownIds = new Set(filterRows({ rows, columns: conditions, filters }).map((row) => row.id));
     // ===== 状態 =====
-    const shownKinds = new Set<string>(KIND_KEYS);
     const canvas = h({ tag: "canvas", attrs: { id: "graph-canvas", class: "g3-wrap", role: "img", "aria-label": "すべての項目のつながり" } });
-    const kindToggles = h({ tag: "div", attrs: { class: "legend", role: "group", "aria-label": "表示する種類" } });
-    // 表示する種類が 1 つも無いときに、枠の中央に出す文
-    const emptyNotice = h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownKinds.size > 0 }, children: ["表示する項目はありません。"] });
+    // 絞り込みの条件に合う項目が 1 件も無いときに、枠の中央に出す文
+    const emptyNotice = h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownIds.size > 0 }, children: ["表示する項目はありません。"] });
+    // 値を選んでいる条件があるときは、キャンバスの上に条件のチップの行を置く
+    const chips =
+      activeConditionCount(filters) > 0
+        ? filterChips({
+            filters,
+            labels: Object.fromEntries(conditions.map((condition) => [condition.key, condition.label])),
+            onFilter: on.filter,
+          })
+        : null;
     const root = h({
       tag: "div",
-      attrs: { class: "screen graph" },
+      attrs: { class: "screen graph", "data-look": look },
       children: [
-        h({ tag: "div", attrs: { class: "map-tools" }, children: [kindToggles] }),
+        chips,
         h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),
+        screenDrawer({
+          drawerOpen,
+          rows,
+          columns: conditions,
+          filters,
+          shown: shownIds.size,
+          onFilter: on.filter,
+          onClose: on.closeDrawer,
+        }),
       ],
     });
     const labelCache = new Map<string, HTMLCanvasElement>();
@@ -317,10 +378,9 @@ namespace MindmapPreview {
       return image;
     };
 
-    /** 玉と線を作り直す（表示する種類が変わったとき） */
+    /** 玉と線を作る（絞り込みの条件に合う項目で） */
     const rebuild = (): void => {
-      emptyNotice.hidden = shownKinds.size > 0;
-      const graph = buildGraph({ index, shownKinds });
+      const graph = buildGraph({ index, shownIds });
       balls = placeBalls(index, graph);
       ballById = new Map(balls.map((ball) => [ball.id, ball]));
       links = graph.links.flatMap((link) => {
@@ -339,49 +399,6 @@ namespace MindmapPreview {
       camera.centerTarget = { x: 0, y: 0, z: 0 };
       birth = performance.now();
       select(current);
-    };
-
-    /** 項目の種類ごとの表示 / 非表示の切り替え（右端にまとめて切り替える箱） */
-    const drawToggles = (): void => {
-      kindToggles.replaceChildren(
-        ...KIND_KEYS.map((kind) =>
-          h({
-            tag: "label",
-            children: [
-              h({
-                tag: "input",
-                attrs: {
-                  type: "checkbox",
-                  value: kind,
-                  "data-act": "gkind",
-                  checked: shownKinds.has(kind),
-                  "aria-label": KIND_LABEL[kind],
-                  onchange: (event: Event) => {
-                    if ((event.target as HTMLInputElement).checked) shownKinds.add(kind);
-                    else shownKinds.delete(kind);
-                    drawToggles();
-                    rebuild();
-                  },
-                },
-              }),
-              h({ tag: "span", attrs: { class: "kdot", style: `background:var(${KIND_COLOR_VAR[kind]})` } }),
-              KIND_LABEL[kind],
-              h({ tag: "span", attrs: { class: "n" }, children: [index.data[kind].length] }),
-            ],
-          }),
-        ),
-        toggleAllBox({
-          label: "すべての種類を表示",
-          shown: shownKinds,
-          all: [...KIND_KEYS],
-          onChange: (next) => {
-            shownKinds.clear();
-            for (const kind of next) shownKinds.add(kind);
-            drawToggles();
-            rebuild();
-          },
-        }),
-      );
     };
 
     /** 項目を選ぶ（その玉へゆっくり寄る）。選ぶのをやめたら、全体を見る位置へ戻す */
@@ -725,7 +742,6 @@ namespace MindmapPreview {
     };
 
     // ===== 起動 =====
-    drawToggles();
     // 文字の書体が読み込まれたら、取っておいた文字の画像を作り直す
     document.fonts?.addEventListener("loadingdone", () => labelCache.clear());
     // テーマが変わったら、色を読み直す

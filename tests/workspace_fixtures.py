@@ -38,6 +38,9 @@ SERVER_EXIT_TIMEOUT_SEC = 5
 # 書き換えるツールが置く排他ロックのファイル（中身は空）。書き込みの前後の比べからは外す
 LOCK_FILE_NAME = ".mindstella.lock"
 
+# ワークスペースの直下に置く、記録を全てまとめるフォルダ（ER 図『ワークスペース』）
+RECORD_DIR = ".mindstella"
+
 # 項目に入れる既定の日時（UTC のタイムゾーン付き ISO 8601）
 DEFAULT_TIMESTAMP = "2026-10-01T00:00:00+00:00"
 
@@ -220,7 +223,7 @@ def call_tool(mcp_server: McpServer) -> CallTool:
 
 @pytest.fixture
 def valid_settings() -> dict[str, Any]:
-    """設定のスキーマに合う設定（mindmap.yaml の中身）を返す。"""
+    """設定のスキーマに合う設定（config.yaml の中身）を返す。"""
     return {
         "summary": "要件出しのスキル mindmap を設計する",
         "playbooks": ["システム開発"],
@@ -280,8 +283,8 @@ def write_submissions() -> WriteSubmissions:
     """ワークスペースに submissions.yaml を書く関数を返す。"""
 
     def _write(root: Path, *submissions: dict[str, Any]) -> None:
-        """渡した送信を並びのまま items に入れて、root の submissions.yaml に書く。"""
-        write_yaml(root / "submissions.yaml", {"items": list(submissions)})
+        """渡した送信を並びのまま items に入れて、root の記録のフォルダの submissions.yaml に書く。"""
+        write_yaml(root / RECORD_DIR / "submissions.yaml", {"items": list(submissions)})
 
     return _write
 
@@ -312,7 +315,8 @@ def write_comments() -> WriteComments:
         """seq と渡したコメントを並びのまま書く。seq を渡さなければコメントの ID の連番の最大にする。"""
         last = max((int(comment["id"].split("-")[1]) for comment in comments), default=0)
         write_yaml(
-            root / "comments.yaml", {"seq": last if seq is None else seq, "items": list(comments)}
+            root / RECORD_DIR / "comments.yaml",
+            {"seq": last if seq is None else seq, "items": list(comments)},
         )
 
     return _write
@@ -336,8 +340,8 @@ def write_drafts() -> WriteDrafts:
     """ワークスペースに drafts.yaml を書く関数を返す。"""
 
     def _write(root: Path, *drafts: dict[str, Any]) -> None:
-        """渡した書きかけを並びのまま items に入れて、root の drafts.yaml に書く。"""
-        write_yaml(root / "drafts.yaml", {"items": list(drafts)})
+        """渡した書きかけを並びのまま items に入れて、root の記録のフォルダの drafts.yaml に書く。"""
+        write_yaml(root / RECORD_DIR / "drafts.yaml", {"items": list(drafts)})
 
     return _write
 
@@ -352,22 +356,30 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         raw_files: dict[str, str] | None = None,
         bodies: dict[str, str] | None = None,
         name: str = "workspace",
+        settings_file: str = "config.yaml",
+        top: bool = False,
     ) -> Path:
-        """項目のある種類の YAML だけを置いたワークスペースを作り、そのフォルダを返す。"""
+        """項目のある種類の YAML だけを置いたワークスペースを作り、そのフォルダを返す。
+
+        記録は直下の `.mindstella/` の下に置く。top を真にすると、v0.6.0 より前の形式として
+        記録を直下に置く。設定のファイル名は settings_file で決める（v0.6.0 より前は mindmap.yaml）。
+        raw_files と bodies のキーは、記録を置くフォルダからの相対パス。
+        """
         root = tmp_path / name
-        (root / "docs").mkdir(parents=True)
-        (root / "release").mkdir()
-        write_yaml(root / "mindmap.yaml", valid_settings if settings is None else settings)
+        base = root if top else root / RECORD_DIR
+        (base / "docs").mkdir(parents=True)
+        (base / "release").mkdir()
+        write_yaml(base / settings_file, valid_settings if settings is None else settings)
         # 項目のある種類だけ、渡した並びのまま 1 つの YAML にまとめる
         for prefix, file_name in KIND_FILES.items():
             kind_items = [item for item in items if item["id"][0] == prefix]
             if kind_items:
-                write_yaml(root / file_name, {"items": kind_items})
+                write_yaml(base / file_name, {"items": kind_items})
         # 壊れた YAML や一番上が配列のファイルなど、そのまま書きたいファイルは上書きする
         for file_name, text in (raw_files or {}).items():
-            (root / file_name).write_text(text, encoding="utf-8")
+            (base / file_name).write_text(text, encoding="utf-8")
         for body_name, text in (bodies or {}).items():
-            (root / "docs" / body_name).write_text(text, encoding="utf-8")
+            (base / "docs" / body_name).write_text(text, encoding="utf-8")
         return root
 
     return _make
@@ -398,17 +410,26 @@ def make_legacy_workspace(
         *items: dict[str, Any],
         legacy_docs: dict[str, bool] | None = None,
         without_summary: bool = False,
+        settings_file: str = "config.yaml",
+        top: bool = False,
     ) -> Path:
-        """items は今の形式の項目、legacy_docs は資料の ID → done。設定の題名は without_summary で外す。"""
+        """items は今の形式の項目、legacy_docs は資料の ID → done。設定の題名は without_summary で外す。
+
+        記録を置く場所と設定のファイル名は make_workspace の top・settings_file と同じ。
+        """
         legacy_items = [
             make_legacy_item(doc_id, done) for doc_id, done in (legacy_docs or {}).items()
         ]
         root = make_workspace(
-            *items, bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items}
+            *items,
+            bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items},
+            settings_file=settings_file,
+            top=top,
         )
+        base = root if top else root / RECORD_DIR
         # 前の形式の資料を docs.yaml に直接書く（今の形式の資料の後ろに並べる）
         if legacy_items:
-            docs_path = root / "docs.yaml"
+            docs_path = base / "docs.yaml"
             current = (
                 yaml.safe_load(docs_path.read_text(encoding="utf-8"))["items"]
                 if docs_path.exists()
@@ -417,9 +438,9 @@ def make_legacy_workspace(
             write_yaml(docs_path, {"items": [*current, *legacy_items]})
         # 題名を持たない設定にする
         if without_summary:
-            settings = yaml.safe_load((root / "mindmap.yaml").read_text(encoding="utf-8"))
+            settings = yaml.safe_load((base / settings_file).read_text(encoding="utf-8"))
             del settings["summary"]
-            write_yaml(root / "mindmap.yaml", settings)
+            write_yaml(base / settings_file, settings)
         return root
 
     return _make

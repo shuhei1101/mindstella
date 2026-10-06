@@ -5,7 +5,7 @@ var MindmapPreview;
     /** 前の値が無いときに出す文字 */
     const NO_VALUE = "（なし）";
     /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
-    const UNDIFFED_KEYS = new Set(["id", "created", "updated", "history", "history_dropped_seq", "body"]);
+    const UNDIFFED_KEYS = new Set(["id", "created", "updated", "updated_by", "history", "history_dropped_seq", "body"]);
     /** 前後を組み立てられない旨・本文の差分を出せない旨の文言 */
     const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
     const NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。";
@@ -580,6 +580,25 @@ var MindmapPreview;
         }
         element.classList.add(element.matches("path") ? `df-e-${mode}` : `df-n-${mode}`);
     }
+    /** 前の版の図を `renderDiagramSvg` で描き、今の版の図と `diffDiagram` で突き合わせる。前の版の図を描けないときと、色を付けない種類・突き合わせを打ち切ったときは null */
+    async function diffByRenderedBefore({ type, beforeSource, afterSvg }) {
+        const beforeSvg = await MindmapPreview.renderDiagramSvg(beforeSource);
+        if (beforeSvg === null)
+            return null;
+        // 前の版の図は、座標を取れるよう画面の外に置いて突き合わせる
+        const offscreen = MindmapPreview.h({
+            tag: "div",
+            attrs: {
+                "aria-hidden": "true",
+                style: `position:absolute;top:0;left:${OFFSCREEN_LEFT_PX}px;width:${OFFSCREEN_WIDTH_PX}px`,
+            },
+            children: [beforeSvg],
+        });
+        document.body.append(offscreen);
+        const diagram = MindmapPreview.diffDiagram(type, beforeSvg, afterSvg);
+        offscreen.remove();
+        return diagram;
+    }
     /** 変わった図に、色・凡例と消したもの・Raw の行ごとの差分を付ける。前の版の図を描けない・色を付けない種類・突き合わせを打ち切ったときは、図の枠に色を付ける */
     async function decorateDiagram({ figure, beforeSource }) {
         const holder = figure.querySelector(".mermaid");
@@ -597,28 +616,15 @@ var MindmapPreview;
         let colored = false;
         let removed = [];
         if (afterSvg !== null && MindmapPreview.COLORED_DIAGRAM_TYPES.includes(type) && beforeSource.trim() !== "") {
-            const beforeSvg = await MindmapPreview.renderDiagramSvg(beforeSource);
-            if (beforeSvg !== null) {
-                // 前の版の図は、座標を取れるよう画面の外に置いて突き合わせる
-                const offscreen = MindmapPreview.h({
-                    tag: "div",
-                    attrs: {
-                        "aria-hidden": "true",
-                        style: `position:absolute;top:0;left:${OFFSCREEN_LEFT_PX}px;width:${OFFSCREEN_WIDTH_PX}px`,
-                    },
-                    children: [beforeSvg],
-                });
-                document.body.append(offscreen);
-                const diagram = MindmapPreview.diffDiagram(type, beforeSvg, afterSvg);
-                offscreen.remove();
-                if (diagram !== null) {
-                    for (const element of diagram.added)
-                        paintDiagramElement({ element, mode: "add" });
-                    for (const element of diagram.changed)
-                        paintDiagramElement({ element, mode: "chg" });
-                    removed = diagram.removed;
-                    colored = true;
-                }
+            // flowchart は前後の記法の解析で突き合わせ、前の版を描かない。null（flowchart でない・解析できない）の図だけ前の版を描く
+            const diagram = (await MindmapPreview.diffDiagramFromSource(type, beforeSource, afterSource, afterSvg)) ?? (await diffByRenderedBefore({ type, beforeSource, afterSvg }));
+            if (diagram !== null) {
+                for (const element of diagram.added)
+                    paintDiagramElement({ element, mode: "add" });
+                for (const element of diagram.changed)
+                    paintDiagramElement({ element, mode: "chg" });
+                removed = diagram.removed;
+                colored = true;
             }
         }
         figure.classList.toggle("df-frame", !colored);
@@ -788,6 +794,7 @@ var MindmapPreview;
                     relation("進める検討事項", item.for ?? []),
                     relation("前提", related.prerequisites),
                     relation("結果", item.result === undefined ? [] : [item.result]),
+                    bodySection("本文"),
                 ],
             });
         }
@@ -812,11 +819,12 @@ var MindmapPreview;
                     labelled("意味", "meaning", item.meaning),
                     listSection("別名", "aliases", item.aliases),
                     listSection("使わない表記", "avoid", item.avoid),
+                    bodySection("本文"),
                 ],
             });
         }
         else if (kind === "notes") {
-            MindmapPreview.append({ parent: body, children: [lead("content", item.content, null)] });
+            MindmapPreview.append({ parent: body, children: [lead("content", item.content, null), bodySection("本文")] });
         }
         else {
             MindmapPreview.append({ parent: body, children: [bodySection("要約")] });

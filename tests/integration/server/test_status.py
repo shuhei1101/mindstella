@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .fixture_types import CallTool, MakeItem, MakeWorkspace
+from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
 def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
@@ -38,7 +38,7 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """mindmap.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
+    """config.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()
@@ -47,3 +47,22 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
     # 検証
     assert result.is_error is True
     assert str(root) in result.text
+
+
+def test_error_when_old_settings_file(
+    tmp_path: Path, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """mindmap.yaml だけがあるフォルダは、移し替えを案内するエラーで終わる（異常系）。"""
+    # 準備
+    root = tmp_path / "old-workspace"
+    root.mkdir()
+    (root / "mindmap.yaml").write_text("field: システム開発\n", encoding="utf-8")
+    (root / "decisions.yaml").write_text("items: []\n", encoding="utf-8")
+    before = snapshot_tree(root)
+    # 実行（migrate 以外のツールの代表として status を呼ぶ）
+    result = call_tool("status", workspace=str(root))
+    # 検証
+    assert result.is_error is True
+    assert str(root) in result.text
+    assert "/mindstella:upgrade" in result.text
+    assert snapshot_tree(root) == before

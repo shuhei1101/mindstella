@@ -115,7 +115,7 @@ status_codes:
   - code: '200'
     condition: 読めた（`comments.yaml`・`drafts.yaml` が無いときはどちらも空）
   - code: '422'
-    condition: '`comments.yaml`・`drafts.yaml` がスキーマに合わないか YAML として読めない、または `mindmap.yaml` が無くなった'
+    condition: '`comments.yaml`・`drafts.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
     notes: '`detail` は『記録の取得』の 422 と同じ形'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:

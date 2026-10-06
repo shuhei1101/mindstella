@@ -84,12 +84,12 @@ flows:
       - D-1 の `before`・`body_diff` が `null`
     test: test_normal_when_history_limit_zero
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: mindmap.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`mindmap.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -98,7 +98,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: changes_since_read workspace
-        IF-->>WS: mindmap.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -143,7 +143,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`mindmap.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
 response:
   - name: had_read_point
     type: bool
@@ -155,8 +155,8 @@ response:
     type: int
     description: 今回記録した `read_seq`（呼んだときの `last_seq`）
   - name: added[]
-    type: list[{id, kind, title}]
-    description: '`added_seq` が `read_seq` より大きい項目。種類の順、同じ種類の中は項目の並びの順'
+    type: list[{id, kind, title, updated_by}]
+    description: '`added_seq` が `read_seq` より大きい項目。種類の順、同じ種類の中は項目の並びの順。`updated_by` は今の編集した人（持たない項目は `null`）'
   - name: changed[].id
     type: str
     description: '`seq` が `read_seq` より大きく、`added` に入らない項目の ID。種類の順、同じ種類の中は項目の並びの順'
@@ -172,12 +172,18 @@ response:
   - name: changed[].body_diff
     type: list[{line, now, before}] | None
     description: 本文が変わったとき、今の本文の行を読んだ時点の本文の行へ戻す差分（形は変更履歴の `body_diff` と同じ）。本文が変わっていないときと、保持する回数が 0 のときは `null`
+  - name: changed[].updated_by
+    type: '"ai" | "user" | None'
+    description: 今の編集した人（最後に書き換えたのが誰か）。持たない項目は `null`
+  - name: changed[].by
+    type: list["ai" | "user"]
+    description: 読んだ時点より後の変更履歴の回を書き換えた人（重なりなし、`user`・`ai` の順）。利用者が直した後に AI が直しても、利用者の編集を見分けられる。`by` を持たない回と、保持する回数が 0 で変更履歴が無いときは空
 exceptions:
   - name: なし（正常終了）
     condition: 読めて、`read_seq` を書けた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `mindmap.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: WriteFailedError
     condition: '`changes.yaml` の一時ファイルの書き込みか置き換えに失敗した'
@@ -193,7 +199,7 @@ constraints:
   - item: 読んでいない回が残ること
     constraint: '`read_seq` があるとき、`read_seq` より大きい `seq` の回は保持する回数を超えても消えない（『項目の更新』の「保持する回数」）ため、読んだ時点の値を必ず組み立てられる'
   - item: 対象
-    constraint: 種類ごとの YAML の項目だけ。設定（`mindmap.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、通し番号も進めない）
+    constraint: 種類ごとの YAML の項目だけ。設定（`config.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、通し番号も進めない）
   - item: 読んだ時点が進むとき
     constraint: このツールを呼んだときだけ。ほかのツールの書き込みは `read_seq` を書き換えない
 test_file: tests/integration/server/test_changes_since_read.py

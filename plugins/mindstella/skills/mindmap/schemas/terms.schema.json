@@ -62,6 +62,9 @@
         "updated": {
           "$ref": "common.schema.json#/$defs/item/properties/updated"
         },
+        "updated_by": {
+          "$ref": "common.schema.json#/$defs/item/properties/updated_by"
+        },
         "history": {
           "$ref": "common.schema.json#/$defs/item/properties/history"
         },
@@ -91,6 +94,11 @@
           "items": {
             "type": "string"
           }
+        },
+        "body": {
+          "type": "string",
+          "description": "`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す",
+          "pattern": "^[^/\\\\]+\\.md$"
         }
       }
     }
