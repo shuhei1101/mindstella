@@ -1244,7 +1244,7 @@ functions:
         summary: 奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める
         condition: '`parametrize`: `scale` 1・`deltaY` -100 / `scale` 1・`deltaY` 100 / `scale` 1.45・`deltaY` -1 / `scale` 0.42・`deltaY` 1 / `scale` 1.5・`deltaY` -1（どれも `point` (0, 0)・`scroll` (0, 0)）'
         mock: なし
-        expected: 1.12 / 1 / 1.12（約 0.893） / 1.5 / 0.4 / 1.5
+        expected: 1.12 / 約 0.893（1÷1.12） / 1.5 / 0.4 / 1.5
       - name: test_wheel_zoom_keeps_point
         case: 正常
         summary: マウスの下の点を残すスクロールの位置を返す
