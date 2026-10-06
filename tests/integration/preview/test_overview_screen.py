@@ -7,6 +7,7 @@ from typing import Any
 from playwright.sync_api import Page
 from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import assert_bands_stay, assert_page_does_not_scroll, region_metrics
 from workspace_fixtures import MakeItem
 
 # 概要のタイルの項目 ID
@@ -332,3 +333,18 @@ def test_visible_kinds_keep_links(
     # 検証
     assert page.locator("#tile-review .t-link").count() == 1
     assert page.locator("#tile-progress button.cell").count() > 0
+
+
+def test_region(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """ページ全体はスクロールせず、タイルは領域の中で縦にスクロールし、帯は見えたまま（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    page.set_viewport_size({"width": 1280, "height": 520})
+    page.wait_for_selector("#tile-next")
+    # 実行
+    metrics = region_metrics(page)
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    assert_bands_stay(page)

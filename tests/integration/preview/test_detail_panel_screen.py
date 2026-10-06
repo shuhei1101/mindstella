@@ -1244,3 +1244,176 @@ def test_selection_entry_when_old_set_after_body_edit(
     assert page.locator(PILL).count() == 0
     # 値（案・キー）の選択は今まで通り出る
     select_text_for_pill(page, 'aside.panel [data-key="answer"]', "答え")
+
+
+# 見出しのリンクと用語・ID の印を確かめる本文（見出し「保存先」「決め方」「決め方」、用語・ID を並べた段落、コードブロック）
+LINKED_BODY = (
+    "## 保存先\n\n"
+    "保存先と AIM と AI と D-3 と `D-5` と D-99 と XD-3 と A-1\n\n"
+    "```\n保存先 D-3\n```\n\n"
+    "## 決め方\n\n"
+    "[決め方](#決め方) と [無い](#無い)\n\n"
+    "## 決め方\n\n"
+    "2 つ目の決め方の段落\n"
+)
+
+
+def _write_linked_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """用語 G-1「保存先」・G-3「AI」、検討事項 D-3・D-5 と、本文を持つ資料 A-1 の配信の URL を返す。"""
+    return write_preview(
+        make_item("A-1"),
+        make_item("D-3"),
+        make_item("D-5"),
+        make_item("G-1", title="保存先", meaning="記録を置く場所"),
+        make_item("G-3", title="AI", meaning="人工知能"),
+        bodies={"A-1.md": LINKED_BODY},
+    )
+
+
+def test_body_heading_links(write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """本文の見出しの右に # のリンクを置き、乗せるまで見えず、乗せると見える。読み上げの名前は「見出し「{見出し}」へのリンク」（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel [data-heading]")
+    # 実行
+    slugs = page.eval_on_selector_all("aside.panel [data-heading]", "h => h.map(x => x.dataset.heading)")
+    labels = page.eval_on_selector_all(
+        "aside.panel [data-heading] .h-link", "l => l.map(x => x.getAttribute('aria-label'))"
+    )
+    link = 'aside.panel [data-heading="保存先"] .h-link'
+    opacity_before = page.eval_on_selector(link, "e => getComputedStyle(e).opacity")
+    page.hover('aside.panel [data-heading="保存先"]')
+    opacity_hover = page.eval_on_selector(link, "e => getComputedStyle(e).opacity")
+    # 検証
+    assert slugs == ["保存先", "決め方", "決め方-1"]
+    assert labels == [
+        "見出し「保存先」へのリンク",
+        "見出し「決め方」へのリンク",
+        "見出し「決め方」へのリンク",
+    ]
+    assert opacity_before == "0"
+    assert opacity_hover == "1"
+
+
+def test_body_heading_link_press(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """見出しの # を押すと、その見出しを指す h をハッシュに置き換え、履歴に積まない。本文の中の `[文言](#見出し)` も同じ見出しへ送り、本文に無い見出しなら何もしない（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel [data-heading]")
+    history_length = page.evaluate("history.length")
+    # 実行（# を押す）
+    page.click('aside.panel [data-heading="決め方-1"] .h-link')
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方-1'")
+    after_hash = page.evaluate("location.hash")
+    # 実行（本文の中のリンク。marked が日本語の href をパーセントエンコードして描く）
+    page.click("aside.panel .md p a:has-text('決め方')")
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 実行（本文に無い見出しへのリンク）
+    hash_before = page.evaluate("location.hash")
+    page.click("aside.panel .md p a:has-text('無い')")
+    page.wait_for_timeout(200)
+    # 検証
+    assert "h=" in after_hash
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == hash_before
+    assert "%E7%84%A1" not in page.evaluate("location.hash")
+
+
+def test_body_term_marks(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """文中の用語だけに印を付け（「保存」に分けず、「AIM」には付けない）、見出しとコードブロックには付けない。印は文字の色を変えず点線の下線で、押すとその用語の詳細へ移り履歴に積む（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel .md a.term")
+    history_length = page.evaluate("history.length")
+    # 実行
+    terms = page.eval_on_selector_all(
+        "aside.panel .md a.term", "a => a.map(x => [x.textContent, x.dataset.id])"
+    )
+    in_heading_or_code = page.locator(
+        "aside.panel .md :is(h2, pre) :is(a.term, a.idref)"
+    ).count()
+    style = page.eval_on_selector(
+        "aside.panel .md a.term",
+        "e => ({line: getComputedStyle(e).textDecorationLine, style: getComputedStyle(e).textDecorationStyle, color: getComputedStyle(e).color, parent: getComputedStyle(e.parentElement).color})",
+    )
+    page.click("aside.panel .md a.term >> nth=0")
+    page.wait_for_function("location.hash.includes('id=G-1')")
+    # 検証
+    assert terms == [["保存先", "G-1"], ["AI", "G-3"]]
+    assert in_heading_or_code == 0
+    assert style["line"] == "underline"
+    assert style["style"] == "dotted"
+    assert style["color"] == style["parent"]
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_id_links(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """文中の記録にある ID だけをリンクにし（インラインコードは中身が ID のときだけ）、記録に無い ID・前後が英数字の ID・開いている項目自身の ID・コードブロックの中には付けない。折り返さず、押すとその項目へ移り履歴に積む（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel .md a.idref")
+    history_length = page.evaluate("history.length")
+    # 実行
+    refs = page.eval_on_selector_all(
+        "aside.panel .md a.idref", "a => a.map(x => [x.textContent, x.dataset.id])"
+    )
+    white_space = page.eval_on_selector("aside.panel .md a.idref", "e => getComputedStyle(e).whiteSpace")
+    in_code_block = page.locator("aside.panel .md pre a").count()
+    page.click('aside.panel .md a.idref[data-id="D-3"]')
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 検証
+    assert refs == [["D-3", "D-3"], ["D-5", "D-5"]]
+    assert white_space == "nowrap"
+    assert in_code_block == 0
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_term_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語の印に乗せるとツールチップで用語・ID・意味を出し、印は aria-describedby でツールチップを指す。印から外れて少し待つと消え、Esc でも消え、ツールチップに乗せている間は消えない（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    mark = "aside.panel .md a.term >> nth=0"
+    page.wait_for_selector("aside.panel .md a.term")
+    described = page.get_attribute(mark, "aria-describedby")
+    # 実行（乗せる）
+    page.hover(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    tip = page.evaluate(
+        """() => {
+            const tip = document.getElementById('term-tip');
+            return {role: tip.getAttribute('role'), head: tip.querySelector('.tt-head').textContent, body: tip.querySelector('.tt-body').textContent};
+        }"""
+    )
+    # 実行（印から外れて待つと消える）
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（フォーカスで出し、Esc で消す）
+    page.focus(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（乗せて、ツールチップへ動かすと消えない）
+    page.hover(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    tip_box = page.locator("#term-tip").bounding_box()
+    assert tip_box is not None
+    page.mouse.move(tip_box["x"] + tip_box["width"] / 2, tip_box["y"] + tip_box["height"] / 2, steps=5)
+    page.wait_for_timeout(400)
+    kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+    # 検証
+    assert described == "term-tip"
+    assert tip == {"role": "tooltip", "head": "保存先G-1", "body": "記録を置く場所"}
+    assert kept is True

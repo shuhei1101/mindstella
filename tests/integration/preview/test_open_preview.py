@@ -549,3 +549,79 @@ def test_normal_when_comment_added_on_graph(
     page.wait_for_function(f"{shown_mark}.includes('3')", timeout=MARK_TIMEOUT_MS)
     assert page.evaluate(f"{shown_mark}.includes('2')") is False
     assert page.get_attribute("#graph-canvas", "data-kept") == "yes"
+
+
+# 見出し「保存先」「決め方」「決め方」の間に、窓に収まらない数の段落を置いた本文
+HEADING_BODY = (
+    "## 保存先\n\n"
+    + "\n\n".join(f"保存先の段落 {number}" for number in range(1, 31))
+    + "\n\n## 決め方\n\n"
+    + "\n\n".join(f"1 つ目の決め方の段落 {number}" for number in range(1, 31))
+    + "\n\n## 決め方\n\n2 つ目の決め方の段落\n"
+)
+
+# 詳細パネルの本文のスクロール領域
+PANEL_BODY = "aside.panel .panel-body"
+
+# 見出しが本文の領域の中で画面に入っているかを返す
+HEADING_IN_VIEW_JS = """(slug) => {
+    const body = document.querySelector('aside.panel .panel-body');
+    const target = document.querySelector(`[data-heading="${slug}"]`);
+    const area = body.getBoundingClientRect();
+    const box = target.getBoundingClientRect();
+    return box.top >= area.top - 1 && box.bottom <= area.bottom + 1;
+}"""
+
+
+def test_normal_when_text_filter_in_hash(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ハッシュの f.~{列} で、その列の値に文字を含む行に絞って開く。文字の中の `|` で分けない。開いた後はハッシュから外れる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("G-1", title="a|b の用語"),
+        make_item("G-2", title="a の用語"),
+        make_item("G-3", title="b の用語"),
+    )
+    # 実行
+    page = open_preview(url, "#tab=terms&f.~title=a|b")
+    # 検証
+    assert _row_ids(page) == ["G-1"]
+    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
+        "用語に「a|b」を含む"
+    ]
+    assert "f." not in page.evaluate("location.hash")
+
+
+def test_normal_when_heading_in_hash(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ハッシュの h が指す本文の見出しまで送って開く。見出しの # を押すと h をその見出しにし、履歴に積まない。本文に無い見出しなら本文の頭で開き、h を外す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": HEADING_BODY})
+    # 実行（2 つ目の「決め方」を指して開く）
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&h=決め方-1")
+    page.wait_for_selector(f"{PANEL_BODY} [data-heading]")
+    page.wait_for_function("document.querySelector('aside.panel .panel-body').scrollTop > 0")
+    in_view = page.evaluate(HEADING_IN_VIEW_JS, "決め方-1")
+    first_not_in_view = page.evaluate(HEADING_IN_VIEW_JS, "保存先")
+    history_length = page.evaluate("history.length")
+    # 実行（1 つ目の「決め方」の # を押す）
+    page.click('aside.panel [data-heading="決め方"] .h-link')
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 検証
+    assert panel_title_of(page) == "A-1の題"
+    assert in_view is True
+    assert first_not_in_view is False
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate(HEADING_IN_VIEW_JS, "決め方") is True
+    # 実行（本文に無い見出しで開き直す）
+    page.goto(f"{url}#tab=docs&view=table&id=A-1&h=無い見出し")
+    page.wait_for_selector(f"{PANEL_BODY} [data-heading]")
+    page.wait_for_function("!new URLSearchParams(location.hash.slice(1)).has('h')")
+    assert page.evaluate(f"document.querySelector('{PANEL_BODY}').scrollTop") == 0
+
+
+def panel_title_of(page: Any) -> str:
+    """詳細パネルのタイトル（項目の題）を返す。"""
+    return page.inner_text("aside.panel .d-title")

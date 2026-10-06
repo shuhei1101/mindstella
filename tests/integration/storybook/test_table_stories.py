@@ -195,3 +195,19 @@ def test_commented_when_narrow(open_story: OpenStory) -> None:
         beside = mark["left"] >= title["right"]
         below = mark["top"] >= title["bottom"]
         assert beside or below
+
+
+def test_text_filtered(open_story: OpenStory) -> None:
+    """用語集で、用語に「移し」を含む行に絞っている。表の上に `用語に「移し」を含む` のチップと「すべて解除」を並べ、× に読み上げの名前を付ける（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-table--text-filtered")
+    # 検証
+    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
+        "用語に「移し」を含む"
+    ]
+    assert page.locator(".chips >> text=すべて解除").count() == 1
+    assert page.locator(".chips .chip button").get_attribute("aria-label") == (
+        "用語に「移し」を含む の条件を解除"
+    )
+    rows = page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
+    assert rows == ["G-1"]

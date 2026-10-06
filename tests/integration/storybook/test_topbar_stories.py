@@ -646,3 +646,14 @@ def test_filter_narrow_gap_when_width(open_story: OpenStory, story_id: str, widt
     measured = page.evaluate(BAR_GAP_SCRIPT)
     # 検証
     assert measured == gap
+
+
+def test_search_key_hint(open_story: OpenStory) -> None:
+    """検索の入口は `aria-keyshortcuts="Control+K Meta+K"` を持ち、右端の kbd にキーの案内（macOS は ⌘K）を出す。読み上げ名は「すべての項目を検索」（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--overview")
+    # 検証
+    trigger = page.locator('button[data-act="search"]')
+    assert trigger.get_attribute("aria-keyshortcuts") == "Control+K Meta+K"
+    assert trigger.get_attribute("aria-label") == "すべての項目を検索"
+    assert trigger.locator("kbd").inner_text() in ("Ctrl+K", "⌘K")

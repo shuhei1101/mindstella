@@ -22,13 +22,22 @@ from preview_drawer_helpers import (
     chip_texts,
     clear_all_chips,
     click_value,
+    close_drawer,
     drawer_groups,
     drawer_head,
+    drawer_text_fields,
     open_drawer,
     remove_chip,
     value_selector,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    NARROW_VIEWPORT,
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    region_metrics,
+)
 from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
@@ -1124,14 +1133,14 @@ def test_drawer_value_is_checkbox(
     structure = page.evaluate(
         """() => ({
             groups: document.querySelectorAll('dialog.drawer fieldset.fd-group > legend').length,
-            checkboxes: [...document.querySelectorAll('dialog.drawer .fd-body input')].every(i => i.type === 'checkbox'),
+            checkboxes: [...document.querySelectorAll('dialog.drawer .fd-opt input')].every(i => i.type === 'checkbox'),
             counts: document.querySelector('dialog.drawer .fd-opt .n').getAttribute('aria-label'),
-            firstFocused: document.activeElement === document.querySelector('dialog.drawer .fd-body input'),
+            firstFocused: document.activeElement === document.querySelector('dialog.drawer .fd-text input'),
         })"""
     )
     selector = value_selector("status", "未決定")
-    # 検証
-    assert structure == {"groups": 6, "checkboxes": True, "counts": "1 件", "firstFocused": True}
+    # 検証（先頭の文字の欄へフォーカスを移す。条件のまとまりは「文字を含む」と値を選ぶ 6 つ）
+    assert structure == {"groups": 7, "checkboxes": True, "counts": "1 件", "firstFocused": True}
     assert page.locator(selector).count() == 1
 
 
@@ -1252,3 +1261,244 @@ def test_comment_marks_when_table(
     assert marks_of(page) == SCREEN_MARKS["decisions"]
     assert page.locator("table.grid tbody tr").count() == 5
     assert page.locator("table.grid tbody tr:has(.row-open ~ .cmk-place .cmk)").count() == 2
+
+
+# 項目を多く持つ検討事項の数（領域の高さを超える数）
+MANY_DECISIONS = 40
+
+# 表示形式ごとの、領域の中でスクロールする枠
+REGION_SCROLLER = {"board": ".board", "table": ".table-wrap", "map": ".map-wrap"}
+
+
+def _write_many_decisions(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """領域の高さを超える数の未決定の検討事項を持つ配信の URL を返す。"""
+    return write_preview(
+        *(
+            make_item(f"D-{number}", status="未決定", title=f"検討事項の題 {number}")
+            for number in range(1, MANY_DECISIONS + 1)
+        )
+    )
+
+
+@pytest.mark.parametrize("view", ["board", "table", "map"])
+def test_region_when_wide(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が広いとき、ページ全体はスクロールせず、帯は見えたままで、ボード・表・マップは領域の高さいっぱいに広がって中でスクロールする（正常系）。"""
+    # 準備
+    url = _write_many_decisions(write_preview, make_item)
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    scroller = REGION_SCROLLER[view]
+    page.wait_for_selector(scroller)
+    # 実行
+    metrics = region_metrics(page, scroller)
+    # 検証
+    assert_page_does_not_scroll(page)
+    # 領域そのものはスクロールせず、枠が領域の底まで広がって中で縦にスクロールする
+    assert metrics["content"]["scrollHeight"] <= metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] > metrics["target"]["clientHeight"]
+    assert metrics["target"]["bottom"] <= metrics["content"]["bottom"]
+    assert_bands_stay(page)
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+def test_region_when_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が狭いとき（ボード・表）、ページ全体はスクロールせず、領域ごと縦にスクロールし、帯は見えたまま（正常系）。"""
+    # 準備
+    url = _write_many_decisions(write_preview, make_item)
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_selector(REGION_SCROLLER[view])
+    # 実行
+    metrics = region_metrics(page, REGION_SCROLLER[view])
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    # 枠の中では縦にスクロールしない（領域がスクロールする）
+    assert metrics["target"]["scrollHeight"] <= metrics["target"]["clientHeight"] + 1
+    assert_bands_stay(page)
+
+
+def test_board_head_stays(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ボードを縦に送っても、列の見出しはボードの上に留まる。列は最も長い列の高さまで伸びる（正常系）。"""
+    # 準備
+    url = write_preview(
+        *(make_item(f"D-{number}", status="未決定") for number in range(1, MANY_DECISIONS + 1)),
+        make_item("D-100", status="保留"),
+    )
+    page = open_preview(url, "#tab=decisions&view=board")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector(".board .card")
+    # 実行（ボードを一番下まで送る）
+    result = page.evaluate(
+        """() => {
+            const board = document.querySelector('.board');
+            board.scrollTop = board.scrollHeight;
+            const boardTop = board.getBoundingClientRect().top;
+            const heads = [...document.querySelectorAll('.board-col h3')].map((h) => h.getBoundingClientRect().top - boardTop);
+            const heights = [...document.querySelectorAll('.board-col')].map((c) => Math.round(c.getBoundingClientRect().height));
+            return {scrolled: board.scrollTop > 0, heads, heights};
+        }"""
+    )
+    # 検証
+    assert result["scrolled"] is True
+    # 全ての列の見出しが、ボードの上端から数 px 以内に留まる
+    assert all(0 <= head <= 8 for head in result["heads"])
+    # 列は最も長い列の高さまで伸びる（カードの少ない列も同じ高さ）
+    assert len(set(result["heights"])) == 1
+
+
+def test_map_middle_labels(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """マップの中間の層のラベルは、カテゴリーが面と線と太字、フェーズが地の色の面と薄い線と小さい文字で、描く要素の class に当たっている（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("#decision-map .map-node.n-category")
+    # 実行
+    styles = page.evaluate(
+        """() => {
+            const read = (selector) => {
+                const style = getComputedStyle(document.querySelector(selector));
+                return {
+                    background: style.backgroundColor,
+                    border: style.borderTopWidth + ' ' + style.borderTopStyle,
+                    weight: Number(style.fontWeight),
+                    size: parseFloat(style.fontSize),
+                };
+            };
+            const probeBackground = (name) => {
+                const element = document.createElement('i');
+                element.style.backgroundColor = `var(${name})`;
+                document.body.append(element);
+                const color = getComputedStyle(element).backgroundColor;
+                element.remove();
+                return color;
+            };
+            return {
+                category: read('#decision-map .n-category'),
+                phase: read('#decision-map .n-phase'),
+                surface: probeBackground('--surface'),
+                bg: probeBackground('--bg'),
+            };
+        }"""
+    )
+    # 検証
+    assert styles["category"]["background"] == styles["surface"]
+    assert styles["category"]["border"] == "1px solid"
+    assert styles["category"]["weight"] >= 600
+    assert styles["phase"]["background"] == styles["bg"]
+    assert styles["phase"]["border"] == "1px solid"
+    # フェーズはカテゴリーより小さい文字
+    assert styles["phase"]["size"] < styles["category"]["size"]
+
+
+def test_drawer_text_fields(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ドロワーの値の条件より上に「文字を含む」の欄（ID・タイトル・前提）を並べ、初めて開くと先頭の欄にフォーカスを移す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    open_drawer(page)
+    # 検証
+    assert drawer_text_fields(page) == [
+        {"key": "id", "label": "ID", "value": ""},
+        {"key": "title", "label": "タイトル", "value": ""},
+        {"key": "depends_on", "label": "前提", "value": ""},
+    ]
+    first_group = page.eval_on_selector(f"{DRAWER} .fd-body > fieldset:first-child", "e => e.className")
+    assert "fd-text" in first_group
+    assert page.eval_on_selector(f"{DRAWER} .fd-text legend", "e => e.textContent") == "文字を含む"
+    assert page.evaluate("document.activeElement === document.querySelector('dialog.drawer .fd-text input')")
+
+
+def test_text_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """文字を入れて打ち終えると、その列の値に文字を含む行に絞り、チップとバッジに出す。値の条件の件数は文字で絞った行で数え、同じ欄の同じ位置にカーソルが残る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table" + ALL_DECISION_STATUSES_HASH)
+    open_drawer(page)
+    all_rows = _table_row_ids(page)
+    # 実行（ID の欄へ文字を打つ）
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "d-2")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    # 検証
+    assert all_rows == ["D-1", "D-2", "D-3", "D-4", "D-5"]
+    assert _table_row_ids(page) == ["D-2"]
+    # 英数字で終わる列名の後には空白を挟む
+    assert chip_texts(page) == [
+        "状態: 要見直し",
+        "状態: 未決定",
+        "状態: 未整理",
+        "状態: 保留",
+        "状態: 決定済み",
+        "状態: 対象外",
+        "状態: 取り下げ",
+        "ID に「d-2」を含む",
+    ]
+    assert drawer_head(page)["count"] == "5 件中 1 件"
+    assert drawer_text_fields(page)[0] == {"key": "id", "label": "ID", "value": "d-2"}
+    # 描き直した後も、打っていた欄にフォーカスとカーソルの位置が残る
+    caret = page.evaluate(
+        """() => {
+            const input = document.querySelector('dialog.drawer input[data-text-key="id"]');
+            return [document.activeElement === input, input.selectionStart];
+        }"""
+    )
+    assert caret == [True, 3]
+    # 値の条件の件数は、文字で絞った行で数える
+    status = {group["label"]: group for group in drawer_groups(page)}["状態"]
+    assert sum(count for _, count, _ in status["values"]) == 1
+
+
+def test_text_filter_chip(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """文字の条件のチップは `{列}に「{文字}」を含む` で、× で解除すると行と欄に戻る。列名が英数字で終わらないときは空白を挟まない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&f.~title=D-3")
+    # 実行
+    chips = chip_texts(page)
+    open_drawer(page)
+    field = drawer_text_fields(page)[1]
+    # ドロワーが覆う範囲のチップを押すため、いったん閉じる
+    close_drawer(page)
+    remove_chip(page, "タイトルに「D-3」を含む")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 5")
+    open_drawer(page)
+    # 検証
+    assert chips == ["タイトルに「D-3」を含む"]
+    assert field == {"key": "title", "label": "タイトル", "value": "D-3"}
+    assert chip_texts(page) == []
+    assert drawer_text_fields(page)[1]["value"] == ""
+
+
+def test_text_filter_when_view_switched(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """文字の条件はマップ・ボード・表で共有し、表示形式を切り替えても保つ。空にすると外れる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&f.~title=D-3")
+    # 実行
+    page.click('[data-view="board"]')
+    page.wait_for_selector(".board .card")
+    board_cards = page.eval_on_selector_all(".board .card", "c => c.map(x => x.dataset.id)")
+    board_chips = chip_texts(page)
+    open_drawer(page)
+    page.fill(f'{DRAWER} input[data-text-key="title"]', "")
+    page.wait_for_function("document.querySelectorAll('.board .card').length > 1")
+    # 検証
+    assert board_cards == ["D-3"]
+    assert board_chips == ["タイトルに「D-3」を含む"]
+    assert all("を含む" not in chip for chip in chip_texts(page))

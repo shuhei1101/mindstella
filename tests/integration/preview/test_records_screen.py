@@ -8,9 +8,13 @@ from preview_drawer_helpers import (
     DRAWER,
     badge_text,
     checked_values,
+    chip_texts,
     click_value,
+    close_drawer,
     drawer_groups,
+    drawer_text_fields,
     open_drawer,
+    remove_chip,
 )
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
@@ -21,6 +25,13 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    NARROW_VIEWPORT,
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    region_metrics,
+)
 from preview_mark_helpers import SCREEN_MARKS, marks_of
 from workspace_fixtures import MakeItem
 
@@ -156,7 +167,8 @@ def test_drawer_per_kind(
     assert notes_state == (["タグ"], None, ["N-1", "N-2"], 1)
     assert badge_text(page) == "1"
     assert checked_values(page, "confidence") == ["高"]
-    assert page.locator(f"{DRAWER} .fd-group").count() == 2
+    # 文字の欄のまとまりを除いた、値を選ぶ条件の数
+    assert page.locator(f"{DRAWER} .fd-group:not(.fd-text)").count() == 2
 
 
 def test_drawer_logs_tags(
@@ -195,3 +207,77 @@ def test_comment_marks(
     # 検証
     assert marks_of(page) == SCREEN_MARKS["research"]
     assert page.get_attribute('table.grid tr[data-id="R-1"] .cmk', "title") == "コメント 1 件"
+
+
+# 項目を多く持つメモの数（領域の高さを超える数）
+MANY_NOTES = 40
+
+
+def test_region_when_wide(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅が広いとき、ページ全体はスクロールせず、帯は見えたままで、表は領域の高さいっぱいに広がって中でスクロールする（正常系）。"""
+    # 準備
+    url = write_preview(*(make_item(f"N-{number}") for number in range(1, MANY_NOTES + 1)))
+    page = open_preview(url, "#tab=notes")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector(".table-wrap")
+    # 実行
+    metrics = region_metrics(page, ".table-wrap")
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] <= metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] > metrics["target"]["clientHeight"]
+    assert_bands_stay(page)
+
+
+def test_region_when_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅が狭いとき、表は領域ごと縦にスクロールし、ページ全体はスクロールせず、帯は見えたまま（正常系）。"""
+    # 準備
+    url = write_preview(*(make_item(f"N-{number}") for number in range(1, MANY_NOTES + 1)))
+    page = open_preview(url, "#tab=notes")
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_selector(".table-wrap")
+    # 実行
+    metrics = region_metrics(page, ".table-wrap")
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] <= metrics["target"]["clientHeight"] + 1
+    assert_bands_stay(page)
+
+
+def test_drawer_text_fields_when_terms(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語集のドロワーに文字の欄（ID・用語・意味・別名・使わない表記）を並べ、用語に文字を入れると表を絞ってチップに出す。× で解除できる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("G-1", title="移し替え", tags=["mindstella"]),
+        make_item("G-2", title="ワークスペース"),
+        make_item("G-3", title="検討事項"),
+    )
+    page = open_preview(url, "#tab=terms")
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    # 実行
+    open_drawer(page)
+    fields = [(field["key"], field["label"]) for field in drawer_text_fields(page)]
+    page.fill(f'{DRAWER} input[data-text-key="title"]', "移し")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    rows = _row_ids(page)
+    chips = chip_texts(page)
+    close_drawer(page)
+    remove_chip(page, "用語に「移し」を含む")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
+    # 検証
+    assert fields == [
+        ("id", "ID"),
+        ("title", "用語"),
+        ("meaning", "意味"),
+        ("aliases", "別名"),
+        ("avoid", "使わない表記"),
+    ]
+    assert rows == ["G-1"]
+    assert chips == ["用語に「移し」を含む"]
