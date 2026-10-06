@@ -289,8 +289,14 @@ namespace MindmapPreview {
     return flavors[type] ?? null;
   }
 
-  /** 図のノード 1 つ・辺 1 本の、突き合わせの材料 */
-  type DiagramPart = { key: string; text: string; element: Element; box?: DOMRect };
+  /** 図のノード 1 つ・辺 1 本の、突き合わせの材料。`name` は消したものの一覧に出す名前（無ければ `text`） */
+  type DiagramPart = { key: string; text: string; name?: string; element: Element; box?: DOMRect };
+
+  /** 前の版の材料。色を付ける要素は今の版だけが持つ */
+  type PreviousPart = Pick<DiagramPart, "key" | "text" | "name">;
+
+  /** 図 1 枚のノードと辺 */
+  type DiagramParts<Part> = { nodes: Map<string, Part>; edges: Part[] };
 
   /** 空白を 1 つにして前後を除く */
   function normalized(text: string | null | undefined): string {
@@ -338,7 +344,7 @@ namespace MindmapPreview {
   }
 
   /** 1 枚の SVG から、ノードと辺の材料を取り出す。同じ端点の辺は出てきた順の番号で分ける */
-  function extractDiagram(root: SVGElement, flavor: DiagramFlavor): { nodes: Map<string, DiagramPart>; edges: DiagramPart[] } {
+  function extractDiagram(root: SVGElement, flavor: DiagramFlavor): DiagramParts<DiagramPart> {
     const prefix = root.id;
     const nodeList: DiagramPart[] = [];
     const edges: { base: string; text: string; element: Element }[] = [];
@@ -367,7 +373,8 @@ namespace MindmapPreview {
       });
     } else {
       for (const node of root.querySelectorAll<SVGGraphicsElement>("g.node")) {
-        nodeList.push({ key: nodeKey(node, prefix), text: normalized(node.textContent), element: node, box: boxOf(node) });
+        // 枠は端点を座標で決める stateDiagram-v2 だけが使う
+        nodeList.push({ key: nodeKey(node, prefix), text: normalized(node.textContent), element: node, box: flavor === "state" ? boxOf(node) : undefined });
       }
       const nodeKeys = new Set(nodeList.map((node) => node.key));
       const labels = new Map<string, Element>();
@@ -397,16 +404,28 @@ namespace MindmapPreview {
   }
 
   /** 辺の鍵 `{元}>{先}#{番号}` を、消したものの一覧に出す名前にする */
-  function edgeName(edge: { key: string; text: string }): string {
-    return edge.text !== "" ? edge.text : edge.key.replace(/#\d+$/, "").replace(">", " → ");
+  function edgeName(edge: PreviousPart): string {
+    const name = edge.name ?? edge.text;
+    return name !== "" ? name : edge.key.replace(/#\d+$/, "").replace(">", " → ");
   }
 
   /** 前後の版で描いた SVG のノード・辺を鍵で突き合わせる。色を付けない種類と、突き合わせを打ち切ったときは null */
   export function diffDiagram(type: string, beforeSvg: SVGElement, afterSvg: SVGElement): DiagramDiff | null {
     const flavor = flavorOf(type);
     if (flavor === null) return null;
-    const previous = extractDiagram(beforeSvg, flavor);
-    const current = extractDiagram(afterSvg, flavor);
+    return compareDiagrams({ flavor, previous: extractDiagram(beforeSvg, flavor), current: extractDiagram(afterSvg, flavor) });
+  }
+
+  /** 前後の版のノード・辺の材料を鍵で突き合わせて、足した・変えた・消したものに分ける。並びの突き合わせを打ち切ったときは null */
+  function compareDiagrams({
+    flavor,
+    previous,
+    current,
+  }: {
+    flavor: DiagramFlavor;
+    previous: DiagramParts<PreviousPart>;
+    current: DiagramParts<DiagramPart>;
+  }): DiagramDiff | null {
     const result: DiagramDiff = { added: [], changed: [], removed: [] };
     for (const [key, node] of current.nodes) {
       const old = previous.nodes.get(key);
@@ -414,7 +433,7 @@ namespace MindmapPreview {
       else if (old.text !== node.text) result.changed.push(node.element);
     }
     for (const [key, node] of previous.nodes) {
-      if (!current.nodes.has(key)) result.removed.push(node.text !== "" ? node.text : key);
+      if (!current.nodes.has(key)) result.removed.push((node.name ?? node.text) !== "" ? (node.name ?? node.text) : key);
     }
     if (flavor === "sequence") {
       // メッセージは並び順で番号が振られるため、端点と文字の並びを行の差分と同じ要領で揃える
@@ -454,5 +473,79 @@ namespace MindmapPreview {
     }
     for (const edge of previous.edges) if (!currentKeys.has(edge.key)) result.removed.push(edgeName(edge));
     return result;
+  }
+
+  /** 解析した flowchart の db のうち、図の差分に使う形（`mermaidAPI` は mermaid の型定義で `@internal` のため、使う形だけを書く） */
+  type ParsedFlowchart = {
+    type: string;
+    db: {
+      getVertices: () => Map<string, { text?: string; labelType?: string }>;
+      getEdges: () => { start: string; end: string; text?: string; labelType?: string }[];
+    };
+  };
+
+  /** 解析した結果の種類（`Diagram.type`）のうち flowchart のもの */
+  const PARSED_FLOWCHART_TYPES: readonly string[] = ["flowchart-v2", "flowchart-elk"];
+
+  /** ラベルを画面に出る文字にそろえる（Markdown の記号と前後の `` ` ``・`<br>`・ほかのタグ・文字参照・`fa:fa-…` を外す） */
+  function displayText({ text, labelType }: { text: string; labelType: string | undefined }): string {
+    let shown = text;
+    if (labelType === "markdown") {
+      shown = shown
+        .replace(/^`|`$/g, "")
+        .replace(/(\*\*|__)(.+?)\1/g, "$2")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/(?<!\w)_(.+?)_(?!\w)/g, "$1");
+    }
+    shown = shown.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]*>/g, "");
+    // 文字参照（`&amp;` など）を戻す
+    const decoder = document.createElement("textarea");
+    decoder.innerHTML = shown;
+    return normalized(decoder.value.replace(/\bfa[bsrl]?:fa-[\w-]+/g, ""));
+  }
+
+  /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と消したものに出す名前）を取り出す。flowchart でないときは null */
+  async function parseFlowchart(source: string): Promise<DiagramParts<PreviousPart> | null> {
+    const parser = mermaid as unknown as { mermaidAPI: { getDiagramFromText: (text: string) => Promise<ParsedFlowchart> } };
+    const parsed = await parser.mermaidAPI.getDiagramFromText(source);
+    if (!PARSED_FLOWCHART_TYPES.includes(parsed.type)) return null;
+    const nodes = new Map<string, PreviousPart>();
+    // SVG のノードの鍵は `flowchart-{id}`（`nodeKey` が描画の id と連番を外した残り）
+    for (const [id, vertex] of parsed.db.getVertices()) {
+      const text = vertex.text ?? id;
+      nodes.set(`flowchart-${id}`, { key: `flowchart-${id}`, text: normalized(text), name: displayText({ text, labelType: vertex.labelType }) });
+    }
+    const counts = new Map<string, number>();
+    const edges = parsed.db.getEdges().map((edge) => {
+      // 辺の鍵は SVG 側（`edgeEnds`）と同じく `flowchart-` を付けない `{始点}>{終点}`
+      const base = `${edge.start}>${edge.end}`;
+      const number = counts.get(base) ?? 0;
+      counts.set(base, number + 1);
+      const text = edge.text ?? "";
+      return { key: `${base}#${number}`, text: normalized(text), name: displayText({ text, labelType: edge.labelType }) };
+    });
+    return { nodes, edges };
+  }
+
+  /** flowchart の図の差分を、前の版を SVG に描かず、前後の記法の解析で突き合わせる。flowchart でない種類と解析できなかったときは null */
+  export async function diffDiagramFromSource(type: string, beforeSource: string, afterSource: string, afterSvg: SVGElement): Promise<DiagramDiff | null> {
+    if (flavorOf(type) !== "flowchart") return null;
+    let previous: DiagramParts<PreviousPart> | null;
+    let parsedNow: DiagramParts<PreviousPart> | null;
+    try {
+      previous = await parseFlowchart(beforeSource);
+      parsedNow = await parseFlowchart(afterSource);
+    } catch {
+      // 解析できない記法（書きかけ）と、版を上げて形が変わった `mermaidAPI`: 前の版を描いて突き合わせる側へ倒す
+      return null;
+    }
+    if (previous === null || parsedNow === null) return null;
+    // 色を付ける要素だけ今の版の SVG から引き、文字は前後とも解析した結果で比べる
+    const drawn = extractDiagram(afterSvg, "flowchart");
+    const nodes = new Map<string, DiagramPart>();
+    for (const [key, node] of drawn.nodes) nodes.set(key, { ...node, text: parsedNow.nodes.get(key)?.text ?? node.text });
+    const nowEdges = new Map(parsedNow.edges.map((edge) => [edge.key, edge.text]));
+    const edges = drawn.edges.map((edge) => ({ ...edge, text: nowEdges.get(edge.key) ?? edge.text }));
+    return compareDiagrams({ flavor: "flowchart", previous, current: { nodes, edges } });
   }
 }
