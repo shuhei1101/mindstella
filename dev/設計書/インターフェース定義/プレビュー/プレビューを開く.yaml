@@ -283,6 +283,28 @@ flows:
       - '1 つ目の「決め方」の # を押した後、URL のハッシュの `h` が `決め方` で、履歴の数が増えていない'
       - '`h=無い見出し` で開き直すと、本文の頭で開き、URL のハッシュに `h` が無い'
     test: test_normal_when_heading_in_hash
+  - name: 正常系（文字の条件がある）
+    summary: ハッシュの f.~{列} で、その列の値に文字を含む行に絞った表を条件のチップ付きで開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 用語 G-1「a|b の用語」・G-2「a の用語」・G-3「b の用語」を持つワークスペース
+        notes: ハッシュは `tab=terms&f.~title=a|b`。文字の中の `|` で分けないことを確かめる値にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: f.~title=a|b のハッシュで開く
+        IF-->>ユーザー: 条件のチップ付きの用語集の表
+      ```
+    expected:
+      - 表の行が G-1 だけ（`a|b` を 1 つの文字として当てる）
+      - チップが「用語に「a|b」を含む」の 1 つ
+      - 開いた後の URL のハッシュに `f.` の引数が無い
+    test: test_normal_when_text_filter_in_hash
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメントを溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `submissions.yaml` に足す（『コメントをまとめて送る』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
