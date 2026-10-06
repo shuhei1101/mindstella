@@ -320,7 +320,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 901px・963px・1100px にして見せる
   - name: FilterDiffOffline
-    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
+    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 901〜1440px では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
     args:
       - name: connection
         value: offline
@@ -339,7 +339,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 1101px・1440px・1441px にして見せる
   - name: FilterDiffOfflineNarrow
-    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰める（幅 480px 以下は 3px のまま）。幅 480px 以下でつながらないうえに差分を出している間は、ツール名の印も隠す。つながっているときと差分を出さないときも、トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
+    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰める（幅 480px 以下は 3px のまま）。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
     args:
       - name: connection
         value: offline
@@ -356,7 +356,52 @@ states:
       - name: diffPoint
         value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
     notes:
-      見せ方: Storybook の画面幅を 390px・480px・481px・616px・900px にして見せる。つながっているときと差分を出さないときは、`connection` を `online`・`diffPoint` を無しに変えて見る
+      見せ方: Storybook の画面幅を 390px・405px・480px・481px・519px・900px にして見せる
+  - name: FilterOfflineNarrow
+    description: 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px・481px・616px・900px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: FilterHistoryNarrow
+    description: 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px・481px・492px・900px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: FilterDiffNarrow
+    description: 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 481〜900px は要素の間隔を 8px に詰め、トップバーもページも横にはみ出さず、札は `5.5em` 以上を取る
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px・481px・900px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
