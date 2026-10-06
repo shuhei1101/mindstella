@@ -230,7 +230,7 @@ const narrowViewport = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 } satisfies Story;
 
-/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰める（幅 480px 以下は 3px のまま）。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、要素の間隔は差分を出している間のどの幅でも 8px にする。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
 export const FilterDiffOfflineNarrow: Story = {
   args: {
     connection: "offline",
@@ -275,7 +275,7 @@ export const FilterHistoryNarrow: Story = {
   ...narrowViewport,
 };
 
-/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 481〜900px は要素の間隔を 8px に詰め、トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。要素の間隔は差分を出している間のどの幅でも 8px にし、トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
 export const FilterDiffNarrow: Story = {
   args: {
     filter: true,
