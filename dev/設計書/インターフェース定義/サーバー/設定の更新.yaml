@@ -401,7 +401,7 @@ response:
     description: 付け替えた項目の ID・付け替えたキー（`phase`・`target`・`category`）・前の値・後の値。種類の順（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）、同じ種類の中は項目の並びの順、同じ項目の中は `phase`・`target`・`category` の順
   - name: files
     type: list[str]
-    description: 書き換えた YAML（ワークスペースからの相対パス）
+    description: 書き換えた YAML（ワークスペースからの相対パス。例 `.mindstella/config.yaml`）
 exceptions:
   - name: なし（正常終了）
     condition: 書き換えられた

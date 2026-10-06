@@ -46,7 +46,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     summary: '`item` で渡させないキー'
-    value: ("id", "created", "updated", "body", "history", "history_dropped_seq", "seq", "added_seq")
+    value: ("id", "created", "updated", "updated_by", "body", "history", "history_dropped_seq", "seq", "added_seq")
   - name: BODY_INPUT_KEY
     title: 本文を渡すキー
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
@@ -83,6 +83,12 @@ constants:
     usecase: 記録の追加と更新
     summary: '`batch` が `$番号` を置き換えるキー'
     value: ("parent", "depends_on", "for", "related", "sources")
+  - name: EDITOR
+    title: 編集した人
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）
+    value: '"ai"'
 functions:
   - name: validate_input_keys
     title: 渡せないキーの確認
@@ -90,7 +96,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の追加と更新
     scope: public
-    summary: ツールが付けるキーと、本文を持てない種類への `body_markdown` を弾く
+    summary: ツールが付けるキーを弾く
     args:
       - name: kind
         type: Kind
@@ -103,34 +109,24 @@ functions:
         passing: positional
         description: ツールの `item`
     process: |-
-      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送る
-      2. `body_markdown` があり、`KINDS[kind].has_body` が偽なら `SchemaMismatchError` を送る
+      1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送る（`body_markdown` はどの種類も渡せる）
     exceptions:
       - name: SchemaMismatchError
-        condition: '`id`・`created`・`updated`・`body` のどれかを持つ'
-      - name: SchemaMismatchError
-        condition: 本文を持てない種類に `body_markdown` を持つ
+        condition: '`RESERVED_KEYS`（`id`・`created`・`updated`・`updated_by`・`body` など）のどれかを持つ'
     unit_tests:
       - name: test_validate_input_keys
         case: 正常
         summary: 渡せるキーだけなら何もしない
-        condition: '`decision` に `{"title": "t", "body_markdown": "b"}`'
+        condition: '`parametrize`: `decision` に `{"title": "t", "body_markdown": "b"}` / `task` に `{"title": "t", "body_markdown": "b"}` / `note` に `{"content": "c", "body_markdown": "b"}`'
         mock: なし
         expected: 例外を送らない
       - name: test_validate_input_keys_when_reserved
         case: 異常
         summary: スクリプトが付けるキーを弾く
-        condition: '`parametrize`: `id` / `created` / `updated` / `body` / `history` / `history_dropped_seq`'
+        condition: '`parametrize`: `id` / `created` / `updated` / `updated_by` / `body` / `history` / `history_dropped_seq`'
         mock: なし
         expected: '`SchemaMismatchError`（`lines` にそのキー）'
         exception: スクリプトが付けるキーを持つ
-      - name: test_validate_input_keys_when_body_not_allowed
-        case: 異常
-        summary: 本文を持てない種類への body_markdown を弾く
-        condition: '`task` に `{"body_markdown": "b"}`'
-        mock: なし
-        expected: '`SchemaMismatchError`（`lines` に `body_markdown`）'
-        exception: 本文を持てない種類に body_markdown を持つ
   - name: merge_changes
     title: 変更の当てはめ
     kind: 関数
@@ -284,13 +280,13 @@ functions:
         summary: 本文つきの検討事項を足す
         condition: D-1 を持つワークスペース、`body_markdown` つきの検討事項。`now` は `2026-10-02T08:00:00+00:00` を返す
         mock: '`now`'
-        expected: '`{id: D-2, file: decisions.yaml, body: docs/D-2.md}`。D-2 の `created`・`updated` がその日時で `body` が `D-2.md`'
+        expected: '`{id: D-2, file: .mindstella/decisions.yaml, body: .mindstella/docs/D-2.md}`。D-2 の `created`・`updated` がその日時で `updated_by` が `ai`、`body` が `D-2.md`'
       - name: test_run_add_when_no_body
         case: 正常
         summary: 本文が無ければ body を付けない
         condition: 空のワークスペースにタスク
         mock: '`now`'
-        expected: '`{id: T-1, file: tasks.yaml, body: null}`。T-1 に `body` のキーが無い'
+        expected: '`{id: T-1, file: .mindstella/tasks.yaml, body: null}`。T-1 に `body` のキーが無い'
   - name: run_update
     title: update の処理
     kind: 関数
@@ -330,10 +326,10 @@ functions:
     unit_tests:
       - name: test_run_update
         case: 正常
-        summary: キーを置き換えて更新日時を変える
+        summary: キーを置き換えて更新日時と編集した人を変える
         condition: 'D-1（`created`・`updated` が `2026-10-01T00:00:00+00:00`）に `{"answer": "a", "weight": null}`。`now` は `2026-10-02T08:00:00+00:00`'
         mock: '`now`'
-        expected: '`changed` が `[answer, weight]`、D-1 の `updated` が `now` の値で `created` はそのまま'
+        expected: '`changed` が `[answer, weight]`、`file` が `.mindstella/decisions.yaml`、D-1 の `updated` が `now` の値で `updated_by` が `ai`、`created` はそのまま'
       - name: test_run_update_stacks_history
         case: 正常
         summary: 変わったキーを変更履歴に積み、まだまとめていない変更に足す
@@ -375,8 +371,8 @@ functions:
     process: |-
       1. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
          - 種類が `decision` でない場合、`ItemNotFoundError` を送る
-      2. 採用を切り替え、`updated` を今の日時にする（`switch_adopted`）
-      3. 変更履歴と通し番号を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ）
+      2. 採用を切り替え、`updated` を今の日時、`updated_by` を `EDITOR` にする（`switch_adopted`）
+      3. 変更履歴と通し番号を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`）
       4. 差し替えた並びと、まとまりが変わったときは新しい記録を書き込む（`save_change`）
     exceptions:
       - name: ItemNotFoundError
@@ -671,9 +667,9 @@ functions:
       - name: test_run_migrate_when_values
         case: 正常
         summary: values の値を入れて並べ直す
-        condition: '手順を当てた後の `summary` を持たないワークスペース、`values=[{file: config.yaml, key: summary, value: 題名}]`'
+        condition: '手順を当てた後の `summary` を持たないワークスペース、`values=[{file: .mindstella/config.yaml, key: summary, value: 題名}]`'
         mock: '`read_plugin_version`（`v0.3.0`）'
-        expected: '`steps` と `needs_values` が空で、`config.yaml` の `summary` が `題名`'
+        expected: '`steps` と `needs_values` が空で、`.mindstella/config.yaml` の `summary` が `題名`'
       - name: test_run_migrate_when_argument_invalid
         case: 異常
         summary: 一緒に使わない引数・版の形の誤り・形の違う values
@@ -1178,7 +1174,7 @@ functions:
       2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
       3. まとめる（`commit_pending`）
          - まとまりが `None` の場合、何も書かずに空の結果を返す
-      4. 新しい記録を `changes.yaml` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを消して `WriteFailedError`）
+      4. 新しい記録を `records_root(root) / CHANGES_FILE` に書く（一時ファイルから `os.replace`。`OSError` は一時ファイルを消して `WriteFailedError`）
     exceptions:
       - name: ArgumentError
         condition: '`summary` が空白だけか 200 文字を超える'
@@ -1264,17 +1260,23 @@ functions:
     process: |-
       1. 渡せないキーを確かめる（`validate_input_keys`）
       2. `staged.items` のその種類で ID を振る（`next_id`）
-      3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`seq`・`added_seq` を末尾に置いた項目を作る
-         - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す
+      3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`EDITOR`）・`seq`・`added_seq` を末尾に置いた項目を作る
+         - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す（どの種類も）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
       5. 末尾に足した並びと、`touched` にその種類を足した `Staged` を返す
     unit_tests:
       - name: test_stage_add
         case: 正常
-        summary: 通し番号を振って足す
+        summary: 通し番号と編集した人を付けて足す
         condition: '`last_seq` 3 の記録と D-1 を持つ `Staged` に検討事項を足す'
         mock: '`now`'
-        expected: 結果の `id` が D-2。D-2 の `seq`・`added_seq` が 4、新しい記録の `last_seq` が 4 で `pending.added` に D-2。渡した `Staged` はそのまま
+        expected: 結果の `id` が D-2。D-2 の `seq`・`added_seq` が 4、`updated_by` が `ai`、新しい記録の `last_seq` が 4 で `pending.added` に D-2。渡した `Staged` はそのまま
+      - name: test_stage_add_when_note_has_body
+        case: 正常
+        summary: メモにも本文を付ける
+        condition: '空の `Staged` に `note` の `{"title": "t", "content": "c", "body_markdown": "b"}`'
+        mock: '`now`'
+        expected: N-1 の `body` が `N-1.md` で、`Staged` の本文の書き込みに `N-1.md` → `b` がある
   - name: stage_update
     title: 更新を当てる
     kind: 関数
@@ -1309,9 +1311,9 @@ functions:
       description: 新しい `Staged` と、`update` の結果 `{id, file, changed}`
     process: |-
       1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`）
-      2. 変更を当てはめ、`updated` を今の日時にする（`merge_changes`）
-         - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る
-      3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1）
+      2. 変更を当てはめ、`updated` を今の日時、`updated_by` を `EDITOR` にする（`merge_changes`）
+         - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（どの種類も）
+      3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `EDITOR`）
          - 変わったものがある場合、通し番号を振り（`advance_seq`）、項目の `seq` をその番号にして、変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は記録のもの）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
       4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
     exceptions:
@@ -1331,6 +1333,12 @@ functions:
         condition: '`answer: a` の D-1 に `{"answer": "a"}`'
         mock: '`now`'
         expected: '`changed` が空で、記録の `last_seq` と D-1 の `seq` が呼ぶ前と同じ'
+      - name: test_stage_update_sets_editor
+        case: 正常
+        summary: 編集した人を ai にし、変更履歴の回にも書く
+        condition: '`updated_by: user` の D-1 に `{"answer": "a"}`。保持する回数は既定'
+        mock: '`now`'
+        expected: D-1 の `updated_by` が `ai`、`history[0].by` が `ai` で、`history[0].before` に `updated_by` が無い
   - name: apply_option_edit
     title: 案の書き換えを当てる
     kind: 関数

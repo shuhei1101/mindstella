@@ -67,7 +67,7 @@ constants:
     title: 送信のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/submissions.py
     usecase: 共通
-    summary: ワークスペースの送信のファイル名（無ければ送信 0 件）
+    summary: ワークスペースの送信のファイル名（`records_root(root)` の下。無ければ送信 0 件）
     value: '"submissions.yaml"'
   - name: SUBMISSIONS_SCHEMA
     title: 送信のスキーマ
