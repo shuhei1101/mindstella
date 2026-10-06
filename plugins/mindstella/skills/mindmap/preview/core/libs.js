@@ -209,6 +209,12 @@ var MindmapPreview;
     let initializedFor = null;
     /** 図の ID を作る連番 */
     let diagramCounter = 0;
+    /** 直前の `renderDiagrams` で描いた・写した図（記法 → mermaid の出力と、その SVG の ID） */
+    let lastDrawn = new Map();
+    /** 図の ID を新しく振る */
+    function nextDiagramId() {
+        return `mindmap-diagram-${(diagramCounter += 1)}`;
+    }
     /** 色の値をトークンから引く */
     function token(name) {
         return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -243,6 +249,8 @@ var MindmapPreview;
                 themeVariables,
             });
             initializedFor = surface;
+            // 古いテーマの色で描いた SVG は使い回さない
+            lastDrawn = new Map();
         }
     }
     /** 記法を mermaid で SVG に描いて返す（画面には出さない）。mermaid が読めていないか、描けないときは null */
@@ -250,7 +258,7 @@ var MindmapPreview;
         if (missingLibraries(["mermaid"]).length > 0)
             return null;
         initializeMermaid();
-        const id = `mindmap-diagram-${(diagramCounter += 1)}`;
+        const id = nextDiagramId();
         try {
             const { svg } = await mermaid.render(id, source);
             const holder = document.createElement("template");
@@ -280,12 +288,19 @@ var MindmapPreview;
             return;
         }
         initializeMermaid();
+        // この呼び出しで描いた・写した図だけを、次の呼び出しのために覚える
+        const drawn = new Map();
         for (const container of containers) {
             const source = container.getAttribute(MindmapPreview.DIAGRAM_SOURCE_ATTR) ?? "";
-            const id = `mindmap-diagram-${(diagramCounter += 1)}`;
+            const id = nextDiagramId();
             try {
-                const { svg } = await mermaid.render(id, source);
+                // 直前に描いた同じ記法の図: 描き直さず、新しい ID に置き換えて写す（同じ図が文書に 2 つあっても ID と参照が重ならない）
+                const reused = lastDrawn.get(source);
+                const svg = reused === undefined
+                    ? (await mermaid.render(id, source)).svg
+                    : reused.svg.replace(new RegExp(`${reused.id}(?![0-9])`, "g"), id);
                 container.innerHTML = svg;
+                drawn.set(source, { svg, id });
             }
             catch {
                 // 描けなかった図: mermaid が body に残した作業用の要素を消し、描けなかったことと原文を入れる
@@ -294,6 +309,7 @@ var MindmapPreview;
                 container.replaceChildren(MindmapPreview.h({ tag: "p", attrs: { class: "md-error" }, children: ["この図は表示できませんでした。原文を表示します。"] }), MindmapPreview.h({ tag: "pre", attrs: { class: "dg-raw" }, children: [source] }));
             }
         }
+        lastDrawn = drawn;
     }
     MindmapPreview.renderDiagrams = renderDiagrams;
 })(MindmapPreview || (MindmapPreview = {}));

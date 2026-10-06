@@ -650,8 +650,8 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .conn svg.icon { color: var(--red-300); }
 /* 接続の状態の短い文言: 広い幅では隠す */
 .conn .conn-short { display: none; }
-/* 検索の入口が欄の形で並ぶ幅（1100px 以下）: トップバーに収まるよう短い文言に切り替え、時刻は title に持つ */
-@media (max-width: 1100px) { .conn .conn-long { display: none; } .conn .conn-short { display: inline; } }
+/* 1440px 以下: トップバーに収まるよう短い文言に切り替え、時刻は title に持つ */
+@media (max-width: 1440px) { .conn .conn-long { display: none; } .conn .conn-short { display: inline; } }
 /* 最も狭い幅（360px 以下）: 印だけを見せてサイト名と重ねない。文言は読み上げにだけ残す */
 @media (max-width: 360px) { .conn .conn-short { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } .conn svg.icon { width: 18px; height: 18px; } }
 
@@ -672,8 +672,10 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 /* 件数が 0 のとき: 塗りを外して目立たせない */
 .comments-btn .count.zero { background: transparent; color: var(--topbar-fg-2); box-shadow: inset 0 0 0 1px var(--topbar-line); }
-/* 狭い幅（900px 以下）: 文字を隠し、印と件数だけにする */
-@media (max-width: 900px) { .comments-btn .label, .filter-btn .label, .settings-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn { padding: 0 8px; } }
+/* 狭い幅（1100px 以下）: 文字を隠し、印と件数だけにする */
+@media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn { padding: 0 8px; } }
+/* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、同じく文字を隠す。詳細度を足さず、480px 以下の余白の指定が効くようにする */
+@media (max-width: 1440px) { :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) .label { display: none; } :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { padding: 0 8px; } }
 
 /* コメントの入力: 添えた箇所（名前・外す ×・選んだ文）の箱 */
 .send-loc { display: grid; gap: 4px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
@@ -827,7 +829,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .hist-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
 .hist-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 選んだ時点の札: 時点の名前と、札を外すボタン */
-.df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 24em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
+.df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 5.5em; max-width: 24em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
 /* 札の時点の名前: 長いときは末尾を省略する */
 .df-chip-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 札を外すボタン */
@@ -836,11 +838,11 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .df-chip button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 札を外すボタンの印 */
 .df-chip button svg.icon { width: 16px; height: 16px; }
-/* 狭い幅（900px 以下）: 検索の入口と同じく変更履歴は印だけにし、札は名前が数文字読める幅を取る。差分の表示の間は、帯の間隔を詰め、ツール名の文字と空きの要素を隠して、札に幅を回す */
-@media (max-width: 900px) {
+/* 狭い幅（1100px 以下）: 検索の入口と同じく変更履歴は印だけにし、札は名前が数文字読める幅を取る。差分の表示の間は、帯の間隔を詰め、ツール名の文字と空きの要素を隠して、札に幅を回す */
+@media (max-width: 1100px) {
   .hist-btn { width: 32px; padding: 0; justify-content: center; }
   .hist-btn .label { display: none; }
-  .df-chip { max-width: 12em; min-width: 5.5em; }
+  .df-chip { max-width: 12em; }
   .search-trigger { flex: none; }
   .topbar:has(.df-chip) { gap: 8px; }
   .topbar:has(.df-chip) .brand { flex: none; }
@@ -848,6 +850,19 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
   .topbar:has(.df-chip) .top-btn { margin-left: auto; }
   /* 表示の設定のボタン: 札の文字の幅を確保するため、余白を詰める */
   .topbar:has(.df-chip) .settings-btn { padding: 0 4px; }
+}
+/* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、上と同じ狭い幅の作りにする */
+@media (max-width: 1440px) {
+  .topbar:has(.conn) .hist-btn { width: 32px; padding: 0; justify-content: center; }
+  .topbar:has(.conn) .hist-btn .label { display: none; }
+  .topbar:has(.conn) .df-chip { max-width: 12em; }
+  .topbar:has(.conn) .search-trigger { flex: none; }
+  .topbar:has(.conn):has(.df-chip) { gap: 8px; }
+  .topbar:has(.conn):has(.df-chip) .brand { flex: none; }
+  .topbar:has(.conn):has(.df-chip) .brand-name, .topbar:has(.conn):has(.df-chip) .spacer { display: none; }
+  .topbar:has(.conn):has(.df-chip) .top-btn { margin-left: auto; }
+  /* 表示の設定のボタン: 札の文字の幅を確保するため、余白を詰める */
+  .topbar:has(.conn):has(.df-chip) .settings-btn { padding: 0 4px; }
 }
 
 /* ===== 変更履歴のモーダル ===== */

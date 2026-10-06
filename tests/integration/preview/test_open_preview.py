@@ -35,6 +35,9 @@ SEND_MESSAGE = "aside.panel form.send .send-msg"
 SEND_BUTTON = "aside.panel form.send button[type=submit]"
 CONNECTION = "header.topbar .conn"
 
+# サーバーにつながらないとき、接続の状態の全文が出る幅（幅 1440px 以下は短い文言になる）
+WIDE_SIZE = {"width": 1441, "height": 900}
+
 # 溜めたコメントを受け付けるパス
 COMMENTS_PATH = "/api/comments"
 
@@ -362,6 +365,7 @@ def test_error_when_server_unreachable(
     server = start_server()
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
+    page.set_viewport_size(WIDE_SIZE)
     open_preview(served.data["url"], "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector("aside.panel.open .d-title")
     # 実行（サーバーの標準入力を閉じて止める）

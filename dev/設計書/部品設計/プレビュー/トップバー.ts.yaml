@@ -52,7 +52,7 @@ args:
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
-    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1100px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
     status: planned
   - name: tabs[].marked
     type: 真偽値
@@ -64,7 +64,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（差分を出さない）
-    description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ
+    description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ。札はどの幅でも `5.5em` 以上を取り、足りない幅は題名の側を縮める
     status: planned
   - name: comments
     type: 真偽値
@@ -169,6 +169,8 @@ states:
         value: offline
       - name: read_at
         value: '2026-10-04T02:21:00+00:00'
+    notes:
+      見せ方: Storybook の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
   - name: OfflineNarrow
     description: 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を `title` に持つ
     args:
@@ -292,7 +294,7 @@ states:
       - name: comment_count
         value: '2'
   - name: FilterNarrow
-    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（幅 900px 以下で同じ）
+    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（幅 1100px 以下で同じ）
     args:
       - name: filter
         value: 'true'
@@ -302,6 +304,40 @@ states:
         value: 'true'
       - name: comment_count
         value: '2'
+  - name: FilterDiffMedium
+    description: 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 900px 以下と同じく、3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に `5.5em` 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は `5.5em` 以上を保ったまま題名の側を縮める
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 901px・963px・1100px にして見せる
+  - name: FilterDiffOffline
+    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
+    notes:
+      見せ方: Storybook の画面幅を 1101px・1440px・1441px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける

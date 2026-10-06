@@ -62,9 +62,15 @@ export const Narrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
-/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す */
+/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す（全文が出る幅 1441px で見せる） */
 export const Offline: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+  parameters: {
+    viewport: {
+      options: { wide: { name: "幅 1441px", styles: { width: "1441px", height: "900px" } } },
+    },
+  },
+  globals: { viewport: { value: "wide", isRotated: false } },
 };
 
 /** 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を title に持つ */
@@ -170,6 +176,36 @@ export const FilterOn: Story = {
 /** 絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする */
 export const FilterOpen: Story = {
   args: { filter: true, filterCount: 2, filterOpen: true, onFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に 5.5em 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は 5.5em 以上を保ったまま題名の側を縮める */
+export const FilterDiffMedium: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+};
+
+/** サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は 5.5em 以上を取る */
+export const FilterDiffOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
 };
 
 /** 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする */
