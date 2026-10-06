@@ -169,6 +169,8 @@ states:
         value: offline
       - name: read_at
         value: '2026-10-04T02:21:00+00:00'
+    notes:
+      見せ方: Storybook の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
   - name: OfflineNarrow
     description: 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を `title` に持つ
     args:
