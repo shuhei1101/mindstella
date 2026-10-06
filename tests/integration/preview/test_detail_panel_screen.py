@@ -8,10 +8,14 @@ import pytest
 from playwright.sync_api import APIResponse, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
+    HANGING_LINES_JS,
     LONG_BODY,
+    LONG_LINE,
+    LONG_LINES_BODY,
     NEW_DECISION,
     SCROLLABLE_REGION_RULE,
     SETTLED_SCROLL_TOP_JS,
+    overflows_horizontally,
 )
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
@@ -34,7 +38,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
-from preview_history_helpers import preselect_diff
+from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
@@ -1179,6 +1183,31 @@ def test_diff_diagram_raw(
     assert raw.locator(".df-line.df-add .df-sign").first.inner_text() == "+"
 
 
+def test_diff_diagram_raw_when_long_line(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示の間の図の Raw は、長い行を折り返して横にあふれず、折り返した続きの行は印の列の下へ回り込まない（正常系）。"""
+    # 準備
+    root = build_long_line_diff_workspace(make_workspace, call_tool, LONG_LINE)
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    _open_diff_panel(page, open_preview, str(served.data["url"]), "V-2")
+    page.wait_for_selector("aside.panel figure.diagram.df-changed", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 実行
+    page.click('aside.panel figure.diagram [data-act="diagram-raw"]')
+    # 検証
+    raw = "aside.panel figure.diagram > .dg-raw.df-raw"
+    assert page.is_visible(raw)
+    assert not overflows_horizontally(page, raw)
+    added = page.evaluate(HANGING_LINES_JS, raw)
+    assert [line["rows"] > 1 for line in added] == [True]
+    assert all(line["clearOfSign"] for line in added)
+    assert axe_rule_results(page, raw, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
 def test_diff_note_when_trimmed(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
@@ -1467,3 +1496,41 @@ def test_body_term_tooltip(
     assert described == "term-tip"
     assert tip == {"role": "tooltip", "head": "保存先G-1", "body": "記録を置く場所"}
     assert kept is True
+
+
+def _open_long_lines(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """長い行を持つコードブロックと、記法に長い行を持つ図を本文に持つ項目を詳細パネルで開く。"""
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md pre:not(.dg-raw)")
+    page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    return page
+
+
+def test_code_block_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文のコードブロックは、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備・実行
+    page = _open_long_lines(write_preview, open_preview, make_item)
+    code = "aside.panel .md pre:not(.dg-raw)"
+    # 検証
+    assert not overflows_horizontally(page, code)
+    assert axe_rule_results(page, code, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+def test_diagram_raw_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """図の Raw は、記法の長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備
+    page = _open_long_lines(write_preview, open_preview, make_item)
+    # 実行
+    page.click('aside.panel button[data-act="diagram-raw"]')
+    # 検証
+    raw = "aside.panel pre.dg-raw"
+    assert page.is_visible(raw)
+    assert not overflows_horizontally(page, raw)
+    assert axe_rule_results(page, raw, SCROLLABLE_REGION_RULE)["violations"] == []

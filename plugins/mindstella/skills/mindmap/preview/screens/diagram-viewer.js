@@ -13,7 +13,7 @@ var MindmapPreview;
     const FIT_MAX_SCALE = 3;
     /** Raw で出す記法。差分の表示の間は記法の行ごとの差分（jsdiff を読めないときと打ち切ったときは、今の記法のまま） */
     function rawElement({ source, before }) {
-        const raw = MindmapPreview.h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true }, children: [source] });
+        const raw = MindmapPreview.h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true, tabindex: "0", role: "region", "aria-label": "図の記法" }, children: [source] });
         if (before === null)
             return raw;
         const parts = MindmapPreview.diffLineParts(before.endsWith("\n") ? before : `${before}\n`, source.endsWith("\n") ? source : `${source}\n`);

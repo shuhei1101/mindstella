@@ -27,7 +27,7 @@ namespace MindmapPreview {
 
   /** Raw で出す記法。差分の表示の間は記法の行ごとの差分（jsdiff を読めないときと打ち切ったときは、今の記法のまま） */
   function rawElement({ source, before }: { source: string; before: string | null }): HTMLElement {
-    const raw = h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true }, children: [source] });
+    const raw = h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true, tabindex: "0", role: "region", "aria-label": "図の記法" }, children: [source] });
     if (before === null) return raw;
     const parts = diffLineParts(before.endsWith("\n") ? before : `${before}\n`, source.endsWith("\n") ? source : `${source}\n`);
     if (parts === null) return raw;

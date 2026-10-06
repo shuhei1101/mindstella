@@ -241,7 +241,7 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
 .md th, .md td { border: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
 .md th { background: var(--surface-2); }
-.md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; }
+.md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-mono); font-size: .92em; }
 .md blockquote { margin: 8px 0; padding: 2px 12px; border-left: 2px solid var(--border); color: var(--text-2); }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
@@ -465,7 +465,7 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .dg-tools .btn { height: 28px; padding: 0 8px; font-size: var(--fs-xs); }
 .dg-tools .icon-btn { width: 28px; height: 28px; }
 .diagram .mermaid { cursor: zoom-in; }
-.dg-raw { margin: 0; background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font: 12px var(--font-mono); }
+.dg-raw { margin: 0; background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font: 12px var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 dialog.viewer { width: min(1200px, calc(100vw - 32px)); height: min(820px, calc(100dvh - 32px)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); overflow: hidden; }
 dialog.viewer[open] { display: flex; flex-direction: column; }
 dialog.viewer::backdrop { background: var(--scrim); }
@@ -1073,10 +1073,10 @@ text.df-t-chg { font-weight: 700 !important; }
 
 /* 行ごとの差分の Raw: 行の面を端まで塗るため、左右の余白を行に持たせる */
 .dg-raw.df-raw { padding: 6px 0; }
-/* 記法の 1 行 */
-.df-raw .df-line { display: block; padding-right: 12px; white-space: pre; }
+/* 記法の 1 行: 折り返した続きの行は記号の幅だけ下げる */
+.df-raw .df-line { display: block; padding-right: 12px; padding-left: 2em; text-indent: -2em; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* 行の頭の記号 */
-.df-raw .df-line .df-sign { display: inline-block; width: 2em; text-align: center; color: var(--text-3); text-decoration: none; }
+.df-raw .df-line .df-sign { display: inline-block; width: 2em; text-indent: 0; text-align: center; color: var(--text-3); text-decoration: none; }
 /* 足した行 */
 .df-raw .df-line.df-add { background: var(--df-add-bg); }
 /* 足した行の記号 */
@@ -1090,6 +1090,8 @@ text.df-t-chg { font-weight: 700 !important; }
 
 /* 図の拡大の Raw: 図の代わりに窓いっぱいに出す */
 .v-raw { flex: 1; margin: 0; border-radius: 0; overflow: auto; }
+/* 図の拡大の Raw のフォーカスの輪郭: 窓の端で切れないよう枠の内側に描く */
+.v-raw:focus-visible { outline-offset: -2px; }
 /* 図の拡大の凡例と消したものの一覧: 窓の下端に置く */
 .v-notes { margin: 0; padding: 8px 12px; }
 /* 色を付けない種類の変わった図の拡大: 描く面の内側に破線の枠を引く */
