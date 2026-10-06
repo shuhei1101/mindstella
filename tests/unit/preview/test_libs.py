@@ -137,6 +137,133 @@ def test_render_diagrams(
     assert broken_source in result[1]["text"]
 
 
+# 図の記法（フローチャート 2 種）
+FLOWCHART_A = "flowchart TD\n  A --> B"
+FLOWCHART_B = "flowchart TD\n  C --> D"
+
+# `mermaid.render` に渡った記法を `window.renderedSources` に数える包みと、図の入れ物 1 つを持つ要素を描く `window.drawDiagram` をページに被せる
+INSTALL_RENDER_PROBE_SCRIPT = """() => {
+    window.renderedSources = [];
+    const original = mermaid.render.bind(mermaid);
+    mermaid.render = (id, source) => {
+        window.renderedSources.push(source);
+        return original(id, source);
+    };
+    window.drawDiagram = async (source) => {
+        const root = document.createElement("div");
+        const container = document.createElement("div");
+        container.setAttribute("data-source", source);
+        root.append(container);
+        document.body.append(root);
+        await MindmapPreview.renderDiagrams(root);
+        return container;
+    };
+}"""
+
+
+def test_render_diagrams_when_same_source_again(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """直前に描いた同じ記法の図は描き直さず、新しい ID で写す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    preview_page.evaluate(INSTALL_RENDER_PROBE_SCRIPT)
+    # 実行
+    result = preview_page.evaluate(
+        """async (source) => {
+            const first = await window.drawDiagram(source);
+            const second = await window.drawDiagram(source);
+            const firstId = first.querySelector("svg").id;
+            const secondSvg = second.querySelector("svg");
+            return {
+                renderCount: window.renderedSources.length,
+                firstId,
+                secondId: secondSvg.id,
+                secondLeaksFirstId: new RegExp(firstId + "(?![0-9])").test(secondSvg.outerHTML),
+            };
+        }""",
+        FLOWCHART_A,
+    )
+    # 検証
+    assert result["renderCount"] == 1
+    assert result["secondId"] != result["firstId"]
+    assert result["secondLeaksFirstId"] is False
+
+
+def test_render_diagrams_when_source_not_in_last_call(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """覚えるのは直前の呼び出しの図だけで、その前の図は描き直す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    preview_page.evaluate(INSTALL_RENDER_PROBE_SCRIPT)
+    # 実行
+    render_count = preview_page.evaluate(
+        """async ({sourceA, sourceB}) => {
+            await window.drawDiagram(sourceA);
+            await window.drawDiagram(sourceB);
+            await window.drawDiagram(sourceA);
+            return window.renderedSources.length;
+        }""",
+        {"sourceA": FLOWCHART_A, "sourceB": FLOWCHART_B},
+    )
+    # 検証
+    assert render_count == 3
+
+
+def test_render_diagrams_when_theme_changed(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """テーマが変わったら、同じ記法の図も描き直す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    preview_page.evaluate(INSTALL_RENDER_PROBE_SCRIPT)
+    # 実行
+    render_count = preview_page.evaluate(
+        """async (source) => {
+            await window.drawDiagram(source);
+            document.documentElement.style.setProperty("--surface", "#102030");
+            await window.drawDiagram(source);
+            return window.renderedSources.length;
+        }""",
+        FLOWCHART_A,
+    )
+    # 検証
+    assert render_count == 2
+
+
+def test_render_diagram_svg(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """記法を SVG の要素にして返し、描けない記法は null を返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    broken_source = "これは図の構文ではない ((("
+    # 実行
+    result = preview_page.evaluate(
+        """async ({source, brokenSource}) => {
+            const bodyChildrenBefore = document.body.children.length;
+            const drawn = await MindmapPreview.renderDiagramSvg(source);
+            const broken = await MindmapPreview.renderDiagramSvg(brokenSource);
+            return {
+                drawnIsSvg: drawn instanceof SVGElement && drawn.localName === "svg",
+                broken,
+                bodyChildrenBefore,
+                bodyChildrenAfter: document.body.children.length,
+            };
+        }""",
+        {"source": FLOWCHART_A, "brokenSource": broken_source},
+    )
+    # 検証
+    assert result["drawnIsSvg"] is True
+    assert result["broken"] is None
+    assert result["bodyChildrenAfter"] == result["bodyChildrenBefore"]
+
+
 # 行の印を確かめる本文。左の数字は本文の行（1 始まり）で、表は見出しの行と区切りの行の次から 1 行ずつ、フェンスのコードはフェンスの次の行を印にする
 LINE_MARK_SOURCE = "\n".join(
     [
