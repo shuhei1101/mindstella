@@ -1,0 +1,46 @@
+# 結合テスト（tests/integration/preview の全件が pass）
+# commit: 5dfdcd5
+# 実行日時: 2026-10-06 23:28:27 JST
+$ pytest tests/integration/preview
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-map-wheel-zoom-board-default
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 290 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  7%]
+...........                                                              [ 11%]
+tests/integration/preview/test_decisions_screen.py ..................... [ 18%]
+....................                                                     [ 25%]
+tests/integration/preview/test_detail_full_screen.py .................   [ 31%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 37%]
+...............................                                          [ 48%]
+tests/integration/preview/test_diagram_viewer_screen.py ........         [ 51%]
+tests/integration/preview/test_docs_screen.py ..................         [ 57%]
+tests/integration/preview/test_graph_screen.py ........                  [ 60%]
+tests/integration/preview/test_history_screen.py ......                  [ 62%]
+tests/integration/preview/test_open_preview.py ..........                [ 65%]
+tests/integration/preview/test_overview_screen.py ................       [ 71%]
+tests/integration/preview/test_records_screen.py .....                   [ 72%]
+tests/integration/preview/test_search_screen.py .....                    [ 74%]
+tests/integration/preview/test_settings_confirm_screen.py .......        [ 76%]
+tests/integration/preview/test_settings_screen.py ..........             [ 80%]
+tests/integration/preview/test_tasks_screen.py ...............           [ 85%]
+tests/integration/preview/test_topbar_screen.py ..............           [ 90%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 91%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 91%]
+tests/integration/preview/test_docs_screen.py .                          [ 91%]
+tests/integration/preview/test_records_screen.py .                       [ 92%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 93%]
+tests/integration/preview/test_decisions_screen.py .                     [ 93%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 93%]
+tests/integration/preview/test_records_screen.py .                       [ 94%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 95%]
+tests/integration/preview/test_decisions_screen.py .                     [ 95%]
+tests/integration/preview/test_records_screen.py .                       [ 95%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 96%]
+tests/integration/preview/test_decisions_screen.py .                     [ 97%]
+tests/integration/preview/test_topbar_screen.py ........                 [100%]
+
+======================= 290 passed in 282.63s (0:04:42) ========================
