@@ -228,7 +228,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枚の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枚より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）'
+    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枠の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枠より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）'
     props:
       - name: index
         type: RecordIndex
@@ -845,9 +845,9 @@ components:
         required: true
         description: 画面の幅が 900px 以下か
       - name: on
-        type: '{select, clear, clearAll, close}'
+        type: '{select, text, clear, clearAll, close}'
         required: true
-        description: 値の選択（`key`・`value`・入れたか）・文字の入力（`key`・`value`。使う側が前後の空白を除いて `~{列}` に入れ替え、空なら外す）・条件の解除（`key`）・すべて解除・閉じる
+        description: 値の選択 `select`（`key`・`value`・入れたか）・文字の入力 `text`（`key`・`value`。使う側が前後の空白を除いて `~{列}` に入れ替え、空なら外す）・条件の解除 `clear`（`key`）・すべて解除 `clearAll`・閉じる `close`
       - name: texts
         type: '{key, label, value}[]'
         required: false
