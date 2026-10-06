@@ -29,7 +29,7 @@ elements:
     visible_when: 検討事項で案を持つ
   - name: 本文
     kind: article
-    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込み、見出しのリンク・用語の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文
+    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込み、見出しのリンク・用語の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文。コードブロックと図の原文（Raw・描けないときの原文・Raw の差分）は、長い行を折り返して本文の幅に収め、横にスクロールさせない
     io: 表示
     source: プレビューを開く.mindmap-data.bodies[{項目の body}]
     visible_when: 項目が `body` を持つ
