@@ -52,7 +52,7 @@ args:
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
-    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1400px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 360px 以下は印だけを見せて文言を読み上げにだけ残す
     status: planned
   - name: tabs[].marked
     type: 真偽値
@@ -318,7 +318,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 901px・963px・1100px にして見せる
   - name: FilterDiffOffline
-    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1400px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
+    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
     args:
       - name: connection
         value: offline
@@ -335,7 +335,7 @@ states:
       - name: diffPoint
         value: '{"name": "フェーズの切り方を見直しに戻す", "sub": "10/04 14:45"}'
     notes:
-      見せ方: Storybook の画面幅を 1101px・1400px・1401px にして見せる
+      見せ方: Storybook の画面幅を 1101px・1440px・1441px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
