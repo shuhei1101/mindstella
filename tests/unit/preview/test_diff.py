@@ -89,6 +89,115 @@ DIFF_DIAGRAM_SCRIPT = """async ({type, before, after}) => {
 }"""
 
 
+# 書き方を変えないノードと辺（`<br>`・Markdown・文字参照・アイコン・`:::class`・辺のラベル・ラベルなし）を持つ flowchart
+NOTATION_BEFORE = (
+    "flowchart TD\n"
+    '  A["一行目<br>二行目"] --> B["`**太字** の文字`"]\n'
+    '  B -->|"はい<br>そう"| C["引用 &quot;記号&quot; &amp; &lt;b&gt;"]\n'
+    '  C --> D["fa:fa-user 人"]\n'
+    "  D --> E[ノード]:::hot\n"
+    "  E --> F[次]\n"
+    "  classDef hot fill:#f99\n"
+)
+# 上の記法のうち、別のノード F の文字だけを変える
+NOTATION_AFTER = NOTATION_BEFORE.replace("F[次]", "F[次を変えた]")
+
+# 同じ端点（A → B）の辺を 2 本持つ flowchart と、片方の辺のラベルだけを変えた後
+TWO_EDGES_BEFORE = "flowchart TD\n  A[判定] -->|はい| B[次]\n  A -->|いいえ| B\n"
+TWO_EDGES_FIRST_CHANGED = "flowchart TD\n  A[判定] -->|はい!| B[次]\n  A -->|いいえ| B\n"
+TWO_EDGES_SECOND_CHANGED = "flowchart TD\n  A[判定] -->|はい| B[次]\n  A -->|いいえ!| B\n"
+
+# ノードの文字を変えた subgraph の前後
+SUBGRAPH_BEFORE = "flowchart TD\n  subgraph S[枠]\n    A[中] --> B[外へ]\n  end\n  B --> C[先]\n"
+SUBGRAPH_AFTER = (
+    "flowchart TD\n  subgraph S[枠]\n    A[中を変えた] --> B[外へ]\n  end\n  B --> C[先]\n"
+)
+
+# 辺とノードを足し消した前後（B → C を消して B → D を足す）
+EDGE_SWAP_BEFORE = "flowchart LR\n  A --> B --> C\n"
+EDGE_SWAP_AFTER = "flowchart LR\n  A --> B --> D\n"
+
+# 形の違うノードの文字を変えた前後
+SHAPES_BEFORE = "flowchart TD\n  A((丸)) --> B{判定}\n  B --> C[(DB)]\n"
+SHAPES_AFTER = "flowchart TD\n  A((丸い)) --> B{判定}\n  B --> C[(DB)]\n"
+
+# `graph` で始まる図の前後
+GRAPH_BEFORE = "graph LR\n  A[一] --> B[二]\n"
+GRAPH_AFTER = "graph LR\n  A[一] --> B[二を変えた]\n"
+
+# Markdown のラベルと `<br>` のラベルのノードを消した前後
+REMOVED_LABELS_BEFORE = 'flowchart TD\n  A[残す]\n  B["`**消す** 方`"]\n  C["上段<br>下段"]\n'
+REMOVED_LABELS_AFTER = "flowchart TD\n  A[残す]\n"
+
+# 書きかけで解析できない flowchart（`A -->` で終わる）
+UNFINISHED_FLOWCHART = "flowchart TD\n  A[開始] -->\n"
+
+# 前の版が flowchart でない組（今の版は flowchart）の前後
+SEQUENCE_TO_FLOWCHART_BEFORE = "sequenceDiagram\n  A->>B: 依頼\n"
+SEQUENCE_TO_FLOWCHART_AFTER = "flowchart TD\n  A[開始] --> B[終了]\n"
+
+# 前の版を描いて `diffDiagram` で突き合わせた結果と、前後の記法から `diffDiagramFromSource` で突き合わせた結果を、
+# 今の版の SVG の中の要素の位置と文字に直して返す（位置は同じ今の版の SVG から数える）
+DIFF_FROM_SOURCE_SCRIPT = """async ({type, before, after}) => {
+    const afterHolder = document.createElement("div");
+    afterHolder.style.cssText = "position:absolute;left:0;width:1200px";
+    document.body.append(afterHolder);
+    const afterSvg = await MindmapPreview.renderDiagramSvg(after);
+    afterHolder.append(afterSvg);
+    const beforeHolder = document.createElement("div");
+    beforeHolder.style.cssText = "position:absolute;left:-10000px;width:1200px";
+    document.body.append(beforeHolder);
+    const beforeSvg = await MindmapPreview.renderDiagramSvg(before);
+    beforeHolder.append(beforeSvg);
+    const all = [...afterSvg.querySelectorAll("*")];
+    const text = (element) => (element.textContent ?? "").replace(/\\s+/g, " ").trim();
+    const marks = (elements) => elements
+        .map((element) => [all.indexOf(element), text(element)])
+        .sort((left, right) => left[0] - right[0]);
+    const shape = (diff) => diff === null ? null : {
+        added: marks(diff.added),
+        changed: marks(diff.changed),
+        removed: [...diff.removed].sort(),
+    };
+    const rendered = shape(MindmapPreview.diffDiagram(type, beforeSvg, afterSvg));
+    const parsed = shape(await MindmapPreview.diffDiagramFromSource(type, before, after, afterSvg));
+    const texts = (pairs) => pairs.map(([, name]) => name);
+    return {
+        rendered,
+        parsed,
+        renderedTexts: {
+            added: texts(rendered.added),
+            changed: texts(rendered.changed),
+            removed: rendered.removed,
+        },
+    };
+}"""
+
+# 前後の記法で `diffDiagramFromSource` を呼び、`null` を返したか例外を投げたかだけを返す
+DIFF_FROM_SOURCE_RESULT_SCRIPT = """async ({type, before, after}) => {
+    const holder = document.createElement("div");
+    document.body.append(holder);
+    const afterSvg = await MindmapPreview.renderDiagramSvg(after);
+    holder.append(afterSvg);
+    try {
+        const diff = await MindmapPreview.diffDiagramFromSource(type, before, after, afterSvg);
+        return {threw: false, isNull: diff === null};
+    } catch (error) {
+        return {threw: true, isNull: false};
+    }
+}"""
+
+# 前後の記法で `diffDiagramFromSource` を呼び、消したノードの名前だけを並べ替えて返す
+DIFF_FROM_SOURCE_REMOVED_SCRIPT = """async ({type, before, after}) => {
+    const holder = document.createElement("div");
+    document.body.append(holder);
+    const afterSvg = await MindmapPreview.renderDiagramSvg(after);
+    holder.append(afterSvg);
+    const diff = await MindmapPreview.diffDiagramFromSource(type, before, after, afterSvg);
+    return diff === null ? null : [...diff.removed].sort();
+}"""
+
+
 def _lines_of(prefix: str) -> str:
     """全ての行が prefix で始まり、行ごとに違う 5000 行の本文を作る。"""
     return "\n".join(f"{prefix} {index}" for index in range(LARGE_LINE_COUNT)) + "\n"
@@ -469,3 +578,152 @@ def test_diff_diagram_when_type_not_colored(
     )
     # 検証
     assert result is None
+
+
+@pytest.mark.parametrize(
+    ("diagram_type", "before", "after", "expected"),
+    [
+        pytest.param(
+            "flowchart",
+            NOTATION_BEFORE,
+            NOTATION_AFTER,
+            {"added": [], "changed": ["次を変えた"], "removed": []},
+            id="notation_unchanged",
+        ),
+        pytest.param(
+            "flowchart",
+            SHAPES_BEFORE,
+            SHAPES_AFTER,
+            {"added": [], "changed": ["丸い"], "removed": []},
+            id="label_changed",
+        ),
+        pytest.param(
+            "flowchart",
+            EDGE_SWAP_BEFORE,
+            EDGE_SWAP_AFTER,
+            {"added": ["", "D"], "changed": [], "removed": ["B → C", "C"]},
+            id="node_and_edge_swapped",
+        ),
+        pytest.param(
+            "flowchart",
+            TWO_EDGES_BEFORE,
+            TWO_EDGES_FIRST_CHANGED,
+            {"added": [], "changed": [""], "removed": []},
+            id="two_edges_first_changed",
+        ),
+        pytest.param(
+            "flowchart",
+            TWO_EDGES_BEFORE,
+            TWO_EDGES_SECOND_CHANGED,
+            {"added": [], "changed": [""], "removed": []},
+            id="two_edges_second_changed",
+        ),
+        pytest.param(
+            "flowchart",
+            SUBGRAPH_BEFORE,
+            SUBGRAPH_AFTER,
+            {"added": [], "changed": ["中を変えた"], "removed": []},
+            id="subgraph",
+        ),
+        pytest.param(
+            "graph",
+            GRAPH_BEFORE,
+            GRAPH_AFTER,
+            {"added": [], "changed": ["二を変えた"], "removed": []},
+            id="graph",
+        ),
+    ],
+)
+def test_diff_diagram_from_source(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    diagram_type: str,
+    before: str,
+    after: str,
+    expected: dict[str, list[str]],
+) -> None:
+    """ラベルの書き方によらず、前の版を描いて突き合わせたときと同じ差分を返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        DIFF_FROM_SOURCE_SCRIPT, {"type": diagram_type, "before": before, "after": after}
+    )
+    # 検証
+    assert result["renderedTexts"] == expected
+    assert result["parsed"] == result["rendered"]
+
+
+def test_diff_diagram_from_source_when_removed_label_marked(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """消したノードの名前は、画面に出る文字にそろえる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    load_library("jsdiff")
+    # 実行
+    removed = preview_page.evaluate(
+        DIFF_FROM_SOURCE_REMOVED_SCRIPT,
+        {"type": "flowchart", "before": REMOVED_LABELS_BEFORE, "after": REMOVED_LABELS_AFTER},
+    )
+    # 検証
+    assert removed == ["上段 下段", "消す 方"]
+
+
+def test_diff_diagram_from_source_when_type_not_flowchart(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """flowchart でない種類は null を返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        DIFF_FROM_SOURCE_RESULT_SCRIPT,
+        {"type": "sequenceDiagram", "before": SEQUENCE_BEFORE, "after": SEQUENCE_AFTER},
+    )
+    # 検証
+    assert result == {"threw": False, "isNull": True}
+
+
+def test_diff_diagram_from_source_when_parse_fails(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """解析できない記法は、例外を外へ出さずに null を返す（異常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        DIFF_FROM_SOURCE_RESULT_SCRIPT,
+        {"type": "flowchart", "before": UNFINISHED_FLOWCHART, "after": FLOWCHART_AFTER},
+    )
+    # 検証
+    assert result == {"threw": False, "isNull": True}
+
+
+def test_diff_diagram_from_source_when_before_not_flowchart(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """前の版が flowchart でない組は、例外を外へ出さずに null を返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("mermaid")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        DIFF_FROM_SOURCE_RESULT_SCRIPT,
+        {
+            "type": "flowchart",
+            "before": SEQUENCE_TO_FLOWCHART_BEFORE,
+            "after": SEQUENCE_TO_FLOWCHART_AFTER,
+        },
+    )
+    # 検証
+    assert result == {"threw": False, "isNull": True}
