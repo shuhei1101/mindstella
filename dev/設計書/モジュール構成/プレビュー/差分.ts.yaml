@@ -360,7 +360,7 @@ functions:
       - name: test_diff_diagram_from_source
         case: 正常
         summary: ラベルの書き方によらず、前の版を描いて突き合わせたときと同じ差分を返す
-        condition: '`parametrize`: 書き方を変えないノード（`<br>`・Markdown・文字参照・アイコン・`:::class`・辺のラベル・ラベルなし）を持ち別のノードの文字を 1 つ変えた前後 / ラベルを変えた前後 / ノードと辺を足し消した前後 / `subgraph` / `graph`。それぞれ前の版を `renderDiagramSvg` で描いて `diffDiagram` にもかける。mermaid・jsdiff は `page.route` で返す'
+        condition: '`parametrize`: 書き方を変えないノード（`<br>`・Markdown・文字参照・アイコン・`:::class`・辺のラベル・ラベルなし）を持ち別のノードの文字を 1 つ変えた前後 / ラベルを変えた前後 / ノードと辺を足し消した前後 / 同じ端点の辺を 2 本持ち、片方の辺のラベルだけを変えた前後（辺の `#{番号}` を `db.getEdges()` の並びと SVG の並びで振っても取り違えないこと） / `subgraph` / `graph`。それぞれ前の版を `renderDiagramSvg` で描いて `diffDiagram` にもかける。mermaid・jsdiff は `page.route` で返す'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`added`・`changed`・`removed` が `diffDiagram` の結果と同じ'
       - name: test_diff_diagram_from_source_when_removed_label_marked
