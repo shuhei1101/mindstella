@@ -73,7 +73,7 @@ export const Offline: Story = {
   globals: { viewport: { value: "wide", isRotated: false } },
 };
 
-/** 幅 390px でサーバーにつながらない。「つながりません」だけを出し、読んだ日時を title に持つ */
+/** 幅 390px でサーバーにつながらない。幅 900px 以下は印だけを見せ、「つながりません」は読み上げにだけ残して、読んだ日時を title に持つ */
 export const OfflineNarrow: Story = {
   args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
   parameters: {
@@ -192,7 +192,7 @@ export const FilterDiffMedium: Story = {
   },
 };
 
-/** サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は 5.5em 以上を取る */
+/** サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない（幅 900px 以下は印だけにする）。札は 5.5em 以上を取る */
 export const FilterDiffOffline: Story = {
   args: {
     connection: "offline",
@@ -217,4 +217,73 @@ export const FilterNarrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+const narrowViewport = {
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+} satisfies Story;
+
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰める（幅 480px 以下は 3px のまま）。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+export const FilterDiffOfflineNarrow: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない */
+export const FilterOfflineNarrow: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない */
+export const FilterHistoryNarrow: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 481〜900px は要素の間隔を 8px に詰め、トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+export const FilterDiffNarrow: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...narrowViewport,
 };
