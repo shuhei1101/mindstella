@@ -21,6 +21,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_mark_helpers import SCREEN_MARKS, marks_of
 from workspace_fixtures import MakeItem
 
 
@@ -181,3 +182,16 @@ def test_drawer_logs_tags(
     assert rows == ["L-1"]
     assert tag_cells == ["脱線"]
     assert chips == ["タグ: 脱線"]
+
+
+def test_comment_marks(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """調査の表の行のタイトルの右に印を出す。コメントの無い行には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=research")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["research"]
+    assert page.get_attribute('table.grid tr[data-id="R-1"] .cmk', "title") == "コメント 1 件"
