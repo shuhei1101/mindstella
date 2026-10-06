@@ -295,7 +295,7 @@ def test_drawer_closes_when_overview_opened_by_history(
 def test_settings_button(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """表示の設定のボタンを、ライト / ダークの右・絞り込みの左に置く。押すとパネルを開閉し、開いている間は選んだ見た目にする（正常系）。"""
+    """表示の設定のボタンを、絞り込みの左・ライト / ダークの左に置く。押すとパネルを開閉し、開いている間は選んだ見た目にする（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table")
@@ -316,7 +316,7 @@ def test_settings_button(
         "open" in (button.get_attribute("class") or ""),
     )
     # 検証
-    assert order[-4:] == ["top-btn", "settings", "filter", "comments"]
+    assert order[-4:] == ["settings", "filter", "comments", "top-btn"]
     assert page.inner_text("header.topbar button.settings-btn .label") == "表示の設定"
     assert closed == ("false", False)
     assert opened == ("true", True)

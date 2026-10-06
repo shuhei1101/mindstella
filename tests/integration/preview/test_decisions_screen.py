@@ -123,6 +123,37 @@ EDGE_POINT_SCRIPT = """() => {
     return { x: point.x, y: point.y };
 }"""
 
+# ホイールの拡大・縮小: 1 回の刻み（奥へ回す deltaY）・手前へ回す deltaY・倍率の上限と下限・刻みの掛け率・回す回数の上限（上限・下限に届く回数より多い）
+WHEEL_IN_DELTA = -100
+WHEEL_OUT_DELTA = 100
+WHEEL_ZOOM_MAX = 1.5
+WHEEL_ZOOM_MIN = 0.4
+WHEEL_FACTOR = 1.12
+WHEEL_MAX_TURNS = 30
+
+# 回す前にマウスの下にあった節の中心が、回した後に動いてよい距離（px。スクロールの位置の丸めの分）
+WHEEL_POINT_TOLERANCE_PX = 2
+
+# 余白の大きさが、土台の幅（整数に丸められる）から求めた値と違ってよい距離（px）
+MARGIN_TOLERANCE_PX = 1
+
+# 回した後、倍率と余白が当たるまで待つ時間（ms）
+WHEEL_SETTLE_MS = 200
+
+# 全体を表示のときの、マップの右と下の余白（px）
+FIT_MARGIN_RIGHT_PX = 240
+
+# マップの倍率（`transform: scale(...)` の数値）を返す
+MAP_SCALE_SCRIPT = """() => Number.parseFloat(document.getElementById("decision-map").style.transform.slice(6))"""
+
+# マップの土台の右の余白（土台の幅 - 木の幅 × 倍率）と、枠の幅
+MAP_MARGIN_SCRIPT = """() => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    const scale = Number.parseFloat(canvas.style.transform.slice(6));
+    return { margin: wrap.firstElementChild.offsetWidth - canvas.offsetWidth * scale, frame: wrap.clientWidth };
+}"""
+
 # マップの枠のスクロールの位置と、拡大の倍率
 MAP_VIEW_SCRIPT = """() => {
     const canvas = document.getElementById("decision-map");
@@ -144,14 +175,17 @@ def _map_item_ids(page: Page) -> list[str]:
 
 
 def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """表示形式の切り替えで、マップ・ボード・表を行き来し、ハッシュの view を置き換える（正常系）。"""
+    """表示形式の切り替えは、view の無いハッシュでボードが押された状態で開き、ボード・マップ・表の順に並び、行き来するとハッシュの view を置き換える（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions")
     history_length = page.evaluate("history.length")
-    assert _view_pressed(page, "map") == "true"
+    assert _view_pressed(page, "board") == "true"
+    assert page.eval_on_selector_all(
+        ".segment button", "buttons => buttons.map(b => b.dataset.view)"
+    ) == ["board", "map", "table"]
     # 実行・検証
-    for view in ("board", "table", "map"):
+    for view in ("map", "table", "board"):
         page.click(f'.segment button[data-view="{view}"]')
         page.wait_for_function(
             f"document.querySelector('.segment button[data-view=\"{view}\"]').getAttribute('aria-pressed') === 'true'"
@@ -240,6 +274,129 @@ def test_map_zoom(write_sample_preview: WriteSamplePreview, open_preview: OpenPr
     page.wait_for_function(
         "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
     )
+
+
+def _open_wheel_map(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> tuple[Page, str]:
+    """サンプルの記録（マップが枠より小さい）をマップで開き、最後の検討事項の節の中心にマウスを置いて、節のセレクターを返す。"""
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.set_viewport_size(DESKTOP_VIEWPORT)
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    node = f'#decision-map button[data-node="{_map_item_ids(page)[-1]}"]'
+    center = _box_center(page, node)
+    page.mouse.move(center["x"], center["y"])
+    return page, node
+
+
+def test_map_wheel_zoom(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """マップの枠の上でホイールを奥へ回すと倍率が 1.12 倍になり、回す前にマウスの下にあった節がマウスの下に残る。ページは動かず、全体を表示の押された状態が外れる（正常系）。"""
+    # 準備
+    page, node = _open_wheel_map(write_sample_preview, open_preview)
+    before = _box_center(page, node)
+    fit_scale = page.evaluate(MAP_SCALE_SCRIPT)
+    assert page.locator(".zoom .btn").get_attribute("aria-pressed") == "true"
+    # 実行
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    # 検証
+    after = _box_center(page, node)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(fit_scale * WHEEL_FACTOR)
+    assert abs(after["x"] - before["x"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert abs(after["y"] - before["y"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert page.evaluate("window.scrollY") == 0
+    assert page.locator(".zoom .btn").get_attribute("aria-pressed") == "false"
+    # マップの枠は、マウスの下の点を残す分だけ送られている
+    view = page.evaluate(MAP_VIEW_SCRIPT)
+    assert view["left"] > 0
+    assert view["top"] > 0
+
+
+def test_map_wheel_zoom_when_repeated(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """奥へ回し続けると倍率は 150% で止まり、手前へ回し続けると 40% で止まる。回している間、節はマウスの下に残り、ページは動かない（正常系）。"""
+    # 準備
+    page, node = _open_wheel_map(write_sample_preview, open_preview)
+    before = _box_center(page, node)
+    # 実行・検証（奥へ）
+    for _ in range(WHEEL_MAX_TURNS):
+        page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(WHEEL_ZOOM_MAX)
+    assert abs(_box_center(page, node)["x"] - before["x"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert abs(_box_center(page, node)["y"] - before["y"]) <= WHEEL_POINT_TOLERANCE_PX
+    # 150% でさらに奥へ回しても、倍率も節の位置も変わらない
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(WHEEL_ZOOM_MAX)
+    assert page.evaluate("window.scrollY") == 0
+    # 実行・検証（手前へ）
+    for _ in range(WHEEL_MAX_TURNS * 2):
+        page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(WHEEL_ZOOM_MIN)
+    assert page.evaluate("window.scrollY") == 0
+
+
+def test_map_wheel_zoom_when_fit_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ホイールで倍率を数値にしたあいだはマップの右に枠の幅の余白を持ち、全体を表示を押すと押された状態と元の余白に戻る（正常系）。"""
+    # 準備
+    page, _ = _open_wheel_map(write_sample_preview, open_preview)
+    fit_before = page.evaluate(MAP_MARGIN_SCRIPT)
+    fit_scale = page.evaluate(MAP_SCALE_SCRIPT)
+    assert fit_before["margin"] == pytest.approx(FIT_MARGIN_RIGHT_PX, abs=MARGIN_TOLERANCE_PX)
+    # 実行・検証（ホイールで数値の倍率にする）
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    zoomed = page.evaluate(MAP_MARGIN_SCRIPT)
+    assert zoomed["margin"] == pytest.approx(zoomed["frame"], abs=MARGIN_TOLERANCE_PX)
+    # 実行・検証（全体を表示に戻す）
+    page.click(".zoom .btn")
+    page.wait_for_function(
+        "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
+    )
+    assert page.evaluate(MAP_MARGIN_SCRIPT)["margin"] == pytest.approx(
+        FIT_MARGIN_RIGHT_PX, abs=MARGIN_TOLERANCE_PX
+    )
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(fit_scale)
+
+
+def test_map_wheel_zoom_when_horizontal(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """横にだけ回した件（deltaY が 0）では倍率を変えない（正常系）。"""
+    # 準備
+    page, _ = _open_wheel_map(write_sample_preview, open_preview)
+    scale_before = page.evaluate(MAP_SCALE_SCRIPT)
+    # 実行
+    page.mouse.wheel(WHEEL_OUT_DELTA, 0)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    # 検証
+    assert page.evaluate(MAP_SCALE_SCRIPT) == scale_before
+    assert page.locator(".zoom .btn").get_attribute("aria-pressed") == "true"
+
+
+def test_map_zoom_buttons_when_wheel_zoomed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """縮小・拡大・全体を表示のボタンはホイールの拡大・縮小の後も残り、押すと倍率を変える（正常系）。"""
+    # 準備
+    page, _ = _open_wheel_map(write_sample_preview, open_preview)
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    scale_before = page.evaluate(MAP_SCALE_SCRIPT)
+    # 実行
+    page.click('.zoom button[aria-label="縮小"]')
+    # 検証
+    assert page.evaluate(MAP_SCALE_SCRIPT) < scale_before
+    assert page.locator('.zoom button[aria-label="拡大"]').count() == 1
+    assert page.locator(".zoom .btn").count() == 1
 
 
 def _open_selected_map(
@@ -685,7 +842,8 @@ def test_filter_button(write_sample_preview: WriteSamplePreview, open_preview: O
     page.click(FILTER_BUTTON)
     page.wait_for_selector(DRAWER, state="detached")
     # 検証
-    assert order[-2:] == ["filter", "comments"]
+    # 右端はライト / ダークのボタン（`data-act` を持たない）
+    assert order[-3:] == ["filter", "comments", None]
     # 開いたときの条件（状態）の 1 つだけにバッジが付く
     assert badge_text(page) == "1"
     assert closed == ["絞り込み（1 つの条件で絞り込み中）", "false", None]
