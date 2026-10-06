@@ -81,6 +81,8 @@ namespace MindmapPreview {
     seq: number;
     /** 書き換えた日時 */
     at: string;
+    /** その回を書き換えた人。このキーを入れる前に積んだ回は持たない */
+    by?: "ai" | "user";
     /** 変わったキー → 書き換える前の値。前に無かったキーは null */
     before: Record<string, unknown>;
     /** 今の本文を前の本文へ戻す行の置き換え（本文が変わったときだけ） */
@@ -119,6 +121,8 @@ namespace MindmapPreview {
     links?: { title: string; url: string }[];
     created: string;
     updated: string;
+    /** 最後に項目を足した・値を変えた人（`ai` か `user`）。このキーを入れる前に書いた項目は持たない */
+    updated_by?: "ai" | "user";
     status?: string;
     lead?: string;
     answer?: string;

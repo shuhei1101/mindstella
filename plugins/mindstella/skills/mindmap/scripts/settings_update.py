@@ -14,7 +14,7 @@ from errors import (
     UnmappedPhaseError,
     UnmappedTargetError,
 )
-from kinds import KINDS, SETTINGS_FILE, Kind
+from kinds import EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root
 from store import (
     WHOLE_PATH,
     Change,
@@ -186,6 +186,7 @@ def remap_phases(
             # 対応がある: フェーズと更新日時を置き換える
             item["phase"] = phase_map[phase]
             item["updated"] = now()
+            item["updated_by"] = EDITOR
             remapped.append(
                 PhaseRemap(
                     id=item["id"], key="phase", from_value=phase, to_value=phase_map[phase]
@@ -265,6 +266,7 @@ def remap_names(
             # 付け替えた項目だけ更新日時を変える
             if renamed:
                 item["updated"] = now()
+                item["updated_by"] = EDITOR
             rows.append(item)
         new_items[kind] = rows
     if unmapped:
@@ -300,7 +302,7 @@ def save_settings(
     temps: list[tuple[Path, Path]] = []
     previous: dict[Path, bytes] = {}
     for file_name, data in targets:
-        path = workspace.root / file_name
+        path = records_root(workspace.root) / file_name
         try:
             previous[path] = path.read_bytes()
             temps.append((write_temp(path, dump_yaml(data)), path))
@@ -319,7 +321,10 @@ def save_settings(
             raise write_failed(path, error) from error
         replaced.append(path)
     # config.yaml を先頭にして返す
-    return [SETTINGS_FILE, *(KINDS[change.kind].file for change in changes)]
+    return [
+        f"{RECORD_DIR}/{name}"
+        for name in (SETTINGS_FILE, *(KINDS[change.kind].file for change in changes))
+    ]
 
 
 def update_settings(

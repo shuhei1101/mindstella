@@ -20,7 +20,7 @@ from errors import (
     WorkspaceNewerError,
     WorkspaceNotFoundError,
 )
-from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE
+from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
 from migration_ops import StepError, apply_step, list_needed_values
 from store import (
     SCHEMA_DIR,
@@ -279,8 +279,12 @@ def _step_failed(
 
 
 def require_migratable(root: Path) -> None:
-    """`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）のどちらかがあるかを確かめ、どちらも無ければ送る。"""
-    if (root / SETTINGS_FILE).is_file() or (root / LEGACY_SETTINGS_FILE).is_file():
+    """`.mindstella/config.yaml`、直下の `config.yaml`・`mindmap.yaml`（前の版の設定ファイル）のどれかがあるかを確かめ、どれも無ければ送る。"""
+    if (
+        (records_root(root) / SETTINGS_FILE).is_file()
+        or (root / SETTINGS_FILE).is_file()
+        or (root / LEGACY_SETTINGS_FILE).is_file()
+    ):
         return
     raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
 

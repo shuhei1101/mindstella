@@ -110,7 +110,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     @server.tool(name="init", description="設定を受け取って空のワークスペースを作る")
     def init(
         workspace: WorkspaceArg,
-        settings: Annotated[dict[str, Any], Field(description="config.yaml の中身")],
+        settings: Annotated[dict[str, Any], Field(description=".mindstella/config.yaml の中身")],
     ) -> CallToolResult:
         # まだ無いフォルダへ書く `init` だけが、フォルダを作る鍵を取る
         return write(workspace, lambda root: commands.run_init(root, settings), create=True)
@@ -326,7 +326,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         # 書き換える `migrate` は、前の版の設定ファイルだけのフォルダにも鍵を取る
         return read(workspace, run) if plan else write(workspace, run, require=require_migratable)
 
-    @server.tool(name="clear_release", description="release/ の中身を消す")
+    @server.tool(name="clear_release", description=".mindstella/release/ の中身を消す")
     def clear_release(workspace: WorkspaceArg) -> CallToolResult:
         return write(workspace, commands.run_clear_release)
 

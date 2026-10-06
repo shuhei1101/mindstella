@@ -21,6 +21,7 @@ from errors import (
     SchemaMismatchError,
     WriteFailedError,
 )
+from kinds import records_root
 from locations import Location, check_location, location_to_dict, parse_location
 from store import (
     SCHEMA_DIR,
@@ -118,7 +119,7 @@ class SentComment:
 
 def load_comments(root: Path) -> CommentFile:
     """`comments.yaml` を読み、スキーマと突き合わせて `CommentFile` にする。"""
-    value = _read_validated(root / COMMENTS_FILE, COMMENTS_SCHEMA)
+    value = _read_validated(records_root(root) / COMMENTS_FILE, COMMENTS_SCHEMA)
     # ファイルが無い
     if value is None:
         return CommentFile(seq=0, items=[])
@@ -137,7 +138,7 @@ def load_comments(root: Path) -> CommentFile:
 
 def load_drafts(root: Path) -> list[Draft]:
     """`drafts.yaml` を読み、スキーマと突き合わせて書きかけの並びにする。"""
-    value = _read_validated(root / DRAFTS_FILE, DRAFTS_SCHEMA)
+    value = _read_validated(records_root(root) / DRAFTS_FILE, DRAFTS_SCHEMA)
     # ファイルが無い
     if value is None:
         return []
@@ -313,7 +314,7 @@ def send_comments(
     if stale:
         raise CommentConflictError(f"箇所が合わないコメントが {len(stale)} 件あります", stale=stale)
 
-    submissions_path = root / SUBMISSIONS_FILE
+    submissions_path = records_root(root) / SUBMISSIONS_FILE
     previous = submissions_path.read_bytes() if submissions_path.exists() else None
     sent = now()
     submissions = append_submissions(root, chosen, now=lambda: sent)
@@ -467,13 +468,16 @@ def _draft_dict(draft: Draft) -> dict[str, Any]:
 def _write_comments(root: Path, seq: int, items: list[ReviewComment]) -> None:
     """`seq` とコメントの並びを `comments.yaml` に書く。"""
     _write_yaml(
-        root / COMMENTS_FILE, {"seq": seq, "items": [_comment_dict(comment) for comment in items]}
+        records_root(root) / COMMENTS_FILE,
+        {"seq": seq, "items": [_comment_dict(comment) for comment in items]},
     )
 
 
 def _write_drafts(root: Path, drafts: list[Draft]) -> None:
     """書きかけの並びを `drafts.yaml` に書く。"""
-    _write_yaml(root / DRAFTS_FILE, {"items": [_draft_dict(draft) for draft in drafts]})
+    _write_yaml(
+        records_root(root) / DRAFTS_FILE, {"items": [_draft_dict(draft) for draft in drafts]}
+    )
 
 
 def _remove_draft(root: Path, target: str | None, loc: Location | None) -> None:
