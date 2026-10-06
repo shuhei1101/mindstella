@@ -107,6 +107,14 @@ TWO_EDGES_BEFORE = "flowchart TD\n  A[判定] -->|はい| B[次]\n  A -->|いい
 TWO_EDGES_FIRST_CHANGED = "flowchart TD\n  A[判定] -->|はい!| B[次]\n  A -->|いいえ| B\n"
 TWO_EDGES_SECOND_CHANGED = "flowchart TD\n  A[判定] -->|はい| B[次]\n  A -->|いいえ!| B\n"
 
+# id に `_` を含むノード（my_node）の辺を持つ flowchart と、別のノードの文字だけを変えた後
+UNDERSCORE_NODE_BEFORE = "flowchart TD\n  my_node --> B[次]\n  B --> C[終]\n"
+UNDERSCORE_NODE_AFTER = "flowchart TD\n  my_node --> B[次]\n  B --> C[終を変えた]\n"
+
+# id を付けた辺（A e1@--> B）を持つ flowchart と、別のノードの文字だけを変えた後
+EDGE_ID_BEFORE = "flowchart TD\n  A e1@--> B[次]\n  B --> C[終]\n"
+EDGE_ID_AFTER = "flowchart TD\n  A e1@--> B[次]\n  B --> C[終を変えた]\n"
+
 # ノードの文字を変えた subgraph の前後
 SUBGRAPH_BEFORE = "flowchart TD\n  subgraph S[枠]\n    A[中] --> B[外へ]\n  end\n  B --> C[先]\n"
 SUBGRAPH_AFTER = (
@@ -617,6 +625,20 @@ def test_diff_diagram_when_type_not_colored(
             TWO_EDGES_SECOND_CHANGED,
             {"added": [], "changed": [""], "removed": []},
             id="two_edges_second_changed",
+        ),
+        pytest.param(
+            "flowchart",
+            UNDERSCORE_NODE_BEFORE,
+            UNDERSCORE_NODE_AFTER,
+            {"added": [], "changed": ["終を変えた"], "removed": []},
+            id="node_id_with_underscore",
+        ),
+        pytest.param(
+            "flowchart",
+            EDGE_ID_BEFORE,
+            EDGE_ID_AFTER,
+            {"added": [], "changed": ["終を変えた"], "removed": []},
+            id="edge_with_id",
         ),
         pytest.param(
             "flowchart",
