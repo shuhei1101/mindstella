@@ -53,6 +53,7 @@ functions:
       7. 設定に無いフェーズを拾う（`_check_phases`）
       8. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
       9. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      10. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜8. の関数は記録のフォルダからの相対パスで拾う）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -65,7 +66,7 @@ functions:
         summary: 4 種類の問題をまとめて返す
         condition: 'D-1 `depends_on: [D-9]`・D-2 `status: 完了`・R-1 `body: R-1.md`（ファイル無し）・`docs/X-1.md`（どこからも指されない）'
         mock: なし
-        expected: '`broken_ref`（D-1・`depends_on`）・`schema`（`items[1].status`）・`orphan_body`（`docs/X-1.md`）・`missing_body`（R-1）を含み、`decisions.yaml` → `docs/X-1.md` → `research.yaml` の順'
+        expected: '`broken_ref`（D-1・`depends_on`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.md` → `.mindstella/research.yaml` の順'
   - name: _check_duplicate_ids
     title: ID の重複の点検
     kind: 関数

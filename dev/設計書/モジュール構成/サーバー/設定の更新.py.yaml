@@ -192,7 +192,7 @@ functions:
       description: 付け替えた種類ごとの変更（付け替えた項目がある種類だけ）・付け替えた項目・`goal.phase` を付け替えた設定
     process: |-
       1. 種類の順（`KINDS`）に、項目の並びを見る
-         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`updated` を今の日時、`updated_by` を `ai` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
+         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`updated` を今の日時、`updated_by` を `EDITOR` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
          - 付け替えた項目がある種類だけ、並び全体を `Change` にする
       2. 設定が `goal` を持ち `goal.phase` が新しい `phases` に無い場合、`phase_map` に対応があれば置き換え、無ければ残るものに `(goal, {フェーズ})` を足す
       3. 残るものが 1 つ以上あれば `UnmappedPhaseError`（残るものを全て）
@@ -395,7 +395,7 @@ functions:
       description: 付け替えた後の種類ごとの項目・付け替えた項目とキー・カテゴリーの `target` を付け替えた設定
     process: |-
       1. 設定の `categories` の `target` が新しい `targets` に無ければ、`target_map` に対応があれば置き換え、無ければ残るものに `(categories[{名前}], target, {名前})` を足す
-      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時、`updated_by` を `ai` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
+      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時、`updated_by` を `EDITOR` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
       3. 残るものが 1 つ以上あれば `UnmappedTargetError`（残るものを全て）
     exceptions:
       - name: UnmappedTargetError

@@ -83,12 +83,6 @@ constants:
     usecase: 記録の追加と更新
     summary: '`batch` が `$番号` を置き換えるキー'
     value: ("parent", "depends_on", "for", "related", "sources")
-  - name: EDITOR
-    title: 編集した人
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: 記録の追加と更新
-    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）
-    value: '"ai"'
 functions:
   - name: validate_input_keys
     title: 渡せないキーの確認

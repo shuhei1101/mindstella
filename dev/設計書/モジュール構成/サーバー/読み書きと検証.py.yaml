@@ -94,7 +94,7 @@ data_models:
         description: 問題の種類
       - name: file
         type: str
-        description: ワークスペースからの相対パス
+        description: 記録のフォルダ（`records_root(root)`）からの相対パス（`decisions.yaml` の形）。点検の結果に返すときは、モジュール構成『点検』の `check_workspace` がワークスペースからの相対パス（`.mindstella/decisions.yaml`）にする
       - name: id
         type: str | None
         description: 問題のある項目の ID
@@ -485,6 +485,12 @@ constants:
     usecase: 共通
     summary: ワークスペースの直下に置く、設定・種類ごとの YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名（ER 図『ワークスペース』）
     value: '".mindstella"'
+  - name: EDITOR
+    title: 編集した人
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
+    value: '"ai"'
 functions:
   - name: kind_of_id
     title: ID の種類
