@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -395,3 +396,84 @@ def test_export(open_story: OpenStory) -> None:
     assert page.get_by_role("button", name="表示の設定", exact=True).count() == 1
     assert page.locator(".comments-btn").count() == 0
     assert page.get_attribute(".settings-btn", "aria-expanded") == "false"
+
+
+# 差分の札の幅の下限（em）。5.5em を、描画の丸めの 0.01em まで許して測る
+CHIP_MIN_WIDTH_EM = 5.49
+
+# `LongTitle` の題名（差分の札と同じ帯に長い題名を置く）
+LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・つながり・詳細パネル）を見本に沿って作るための話し合いの記録"
+
+# Storybook の body が持つ左右の余白を外す（トップバーを画面の幅いっぱいに置く本物の画面と同じ幅で測る）
+NO_BODY_PADDING = "body { padding: 0 !important; }"
+
+# ページとトップバーが横にはみ出さないことと、札の幅（札の文字の大きさに対する倍率）を同じ瞬間に読む
+FIT_SCRIPT = """() => {
+  const bar = document.querySelector('.topbar');
+  const chip = document.querySelector('.df-chip');
+  return {
+    pageFits: document.documentElement.scrollWidth <= innerWidth,
+    barFits: bar.scrollWidth <= bar.clientWidth,
+    chipEm: chip.getBoundingClientRect().width / parseFloat(getComputedStyle(chip).fontSize),
+  };
+}"""
+
+# 狭い幅の作りの区切り（1100px・1440px）の前後と、報告された幅（901px・963px）
+FIT_WIDTHS = [
+    pytest.param(901, id="w901"),
+    pytest.param(963, id="w963"),
+    pytest.param(1100, id="w1100"),
+    pytest.param(1101, id="w1101"),
+    pytest.param(1440, id="w1440"),
+    pytest.param(1441, id="w1441"),
+]
+
+
+def _open_story_at(open_story: OpenStory, story_id: str, width: int) -> Page:
+    """ストーリーを指定の幅で開き、Storybook の body の余白を外して返す。"""
+    page = open_story(story_id)
+    page.set_viewport_size({"width": width, "height": 600})
+    page.wait_for_function(f"innerWidth === {width}")
+    page.add_style_tag(content=NO_BODY_PADDING)
+    page.evaluate("document.fonts.ready")
+    return page
+
+
+@pytest.mark.parametrize("width", FIT_WIDTHS)
+def test_filter_diff_medium_when_width(open_story: OpenStory, width: int) -> None:
+    """絞り込み・表示の設定・コメントのボタンと差分の札を出しても、幅 901〜1441px でページもトップバーも横にはみ出さず、札は 5.5em 以上を取る（正常系）。"""
+    # 準備・実行
+    page = _open_story_at(open_story, "preview-topbar--filter-diff-medium", width)
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["pageFits"]
+    assert measured["barFits"]
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+@pytest.mark.parametrize("width", FIT_WIDTHS)
+def test_filter_diff_offline_when_width(open_story: OpenStory, width: int) -> None:
+    """サーバーにつながらず差分の札を出しても、幅 901〜1441px でページもトップバーも横にはみ出さず、札は 5.5em 以上を取る（正常系）。"""
+    # 準備・実行
+    page = _open_story_at(open_story, "preview-topbar--filter-diff-offline", width)
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["pageFits"]
+    assert measured["barFits"]
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+def test_filter_diff_medium_when_long_title(open_story: OpenStory) -> None:
+    """題名が長くても、幅 1101px で札は 5.5em 以上を取り、足りない幅は題名の側を縮める（正常系）。"""
+    # 準備
+    page = _open_story_at(open_story, "preview-topbar--filter-diff-medium", 1101)
+    page.evaluate(
+        "title => { const e = document.querySelector('.brand-sub'); e.textContent = title; e.title = title; }",
+        LONG_TITLE,
+    )
+    # 実行
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["pageFits"]
+    assert measured["barFits"]
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
