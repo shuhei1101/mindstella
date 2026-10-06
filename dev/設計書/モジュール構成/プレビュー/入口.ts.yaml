@@ -365,5 +365,34 @@ functions:
         condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`diffSel: since` の `Prefs`'
         mock: なし
         expected: '`theme`・`look`・`kinds` が `null`、`columns` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+  - name: commentCounts
+    title: 項目ごとのコメントの件数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目へコメントする
+    kind: 関数
+    scope: public
+    summary: レビュー中のコメントを `target` ごとに数え、項目の ID → 件数の対応を返す。箇所を指すコメントもその項目の件数に数え、`target` が `null` のコメントは数えない。`start` はサーバーにつながって開いたときだけこれで作った対応を各画面の `comments` へ渡し（つながらないで開いたとき・配る書き出しは渡さない）、コメントを溜める・直す・消す・戻す・送る後に対応が変わったときだけ、画面を描き直さずに `refreshCommentMarks`（つながりは `setGraphComments`）で印を差し替える
+    args:
+      - name: items
+        type: ReviewState['items']
+        required: true
+        passing: positional
+        description: レビュー中のコメント（レビュー中のコメントの読み取りの `items`）
+    returns:
+      type: Record<string, number>
+      description: 項目の ID → 件数（1 以上）。件数 0 の項目はキーを持たない
+    unit_tests:
+      - name: test_comment_counts
+        case: 正常
+        summary: 項目ごとに数え、箇所を指すコメントも含め、項目を指さないコメントは数えない
+        condition: D-1 への 1 件・D-1 の本文の箇所を指す 1 件・T-1 への 1 件・`target` が `null` の 1 件
+        mock: なし
+        expected: '`{"D-1": 2, "T-1": 1}`'
+      - name: test_comment_counts_when_empty
+        case: 正常
+        summary: 項目を指すコメントが無ければ空の対応
+        condition: '`parametrize`: `items` が空 / `target` が `null` の 2 件だけ'
+        mock: なし
+        expected: どちらも `{}`
 test_files:
   - tests/unit/preview/test_app.py

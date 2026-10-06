@@ -7,6 +7,7 @@ directory: |-
       view-switch.ts        表示形式の切り替え（部品設計『表示形式の切り替え』）
       topbar.ts             トップバー（部品設計『トップバー』）
       diff-mark.ts          差分の印（部品設計『差分の印』）
+      comment-mark.ts       コメントの印と、画面を描き直さずに印を差し替える処理（部品設計『コメントの印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
       filter-drawer.ts      絞り込みのドロワー（部品設計『絞り込み』）
@@ -178,6 +179,11 @@ components:
         required: false
         default: '{}'
         description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: '{}'
+        description: 項目の ID → レビュー中のコメントの件数。行のタイトルの右、`diffMark` の後ろに `data-comment-target` の場所を置き、件数のある行に `commentMark` を入れる（部品設計『表』の `comments`）
   - name: filterChips
     title: 条件のチップの行
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -250,6 +256,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカード・マップの節点の 2 行目の右端、字下げの一覧の行のタイトルと差分の印の右に `data-comment-target` の場所を置き、表へは `comments` で渡す。マップの項目の節点の大きさは、印の有無によらず 268×48 にする（今は 236×48）
     state:
       - name: keyword
         type: string
@@ -286,6 +297,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
   - name: docsScreen
     title: 資料
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
@@ -313,6 +329,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。資料のカードとボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
   - name: recordsScreen
     title: 記録の表
     container: plugins/mindstella/skills/mindmap/preview/screens/records.ts
@@ -340,6 +361,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。表へ `comments` で渡す
   - name: detailPanel
     title: 詳細パネル
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
@@ -470,6 +496,11 @@ components:
         type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
         required: true
         description: 'つながりの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れる。値ごとの描き分けは #28 が作る'
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`。描いている間は `setGraphComments` で差し替える）。毎コマ、名前を文字 8px 以上で描いた玉のうち件数のある玉に、名前の右端に続けて縦は名前の中央に `commentMark` を置く（キャンバスの上に重ねる層。重なり順は層の中に閉じ、手前の玉ほど上、濃さは名前と同じ）。名前と印が描く枠に収まらない玉と、名前が 8px 未満の玉には置かない
     state:
       - name: camera
         type: '{yaw, pitch, distance, target}'
@@ -838,6 +869,17 @@ components:
         type: '{select, clear, clearAll, close}'
         required: true
         description: 値の選択（`key`・`value`・入れたか）・条件の解除（`key`）・すべて解除・閉じる
+  - name: commentMark
+    title: コメントの印
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・マップの節点・字下げの一覧・表・つながりの名前の横が使う
+    props:
+      - name: count
+        type: number
+        required: true
+        description: レビュー中のコメントの件数（1 以上）
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -1251,6 +1293,56 @@ functions:
         condition: '`parametrize`: `scale` 1・`deltaY` -1・`point` (200, 100)・`scroll` (300, 50) / `scale` 1.5・`deltaY` -1・`point` (200, 100)・`scroll` (300, 50)'
         mock: なし
         expected: '`scale` 1.12・`scroll` (360, 68) / `scale` 1.5・`scroll` (300, 50)（端で倍率が変わらず位置もそのまま）'
+  - name: refreshCommentMarks
+    title: コメントの印の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: コメントを選んで送る
+    kind: 関数
+    scope: public
+    summary: 本文の画面の中の印を置く場所（`data-comment-target` を持つ要素。カード・節点・字下げの一覧の行・表の行が描くときに項目の ID を入れて置く）ごとに、`counts` の件数で `commentMark` を入れ替える。件数が無い場所は空にする。画面を描き直さないので、スクロールの位置・マップの拡大と位置は動かない
+    args:
+      - name: root
+        type: ParentNode
+        required: true
+        passing: keyword
+        description: 本文の画面の要素
+      - name: counts
+        type: Record<string, number>
+        required: true
+        passing: keyword
+        description: 項目の ID → 件数（入口の `commentCounts`）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_refresh_comment_marks
+        case: 正常
+        summary: 件数のある場所に印を入れ、無くなった場所を空にする
+        condition: 'D-1（印 2 件）・D-2（印なし）・T-1（印 1 件）の場所を持つ要素に `counts` `{"D-1": 1, "D-2": 3}` を渡す'
+        mock: なし
+        expected: D-1 の印が 1、D-2 に 3 の印が入り、T-1 の場所が空になる。場所の外の要素とスクロールの位置は変わらない
+      - name: test_comment_mark_label
+        case: 正常
+        summary: 99 を超えると画面は「99+」、読み上げは実数
+        condition: '`parametrize`: `count` 1 / 99 / 100 / 128'
+        mock: なし
+        expected: 画面の数字が 1 / 99 / 99+ / 99+、読み上げの文字と `title` が「コメント 1 件」/「コメント 99 件」/「コメント 100 件」/「コメント 128 件」
+  - name: setGraphComments
+    title: つながりのコメントの件数の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: コメントを選んで送る
+    kind: 関数
+    scope: public
+    summary: 描いているつながりの、名前の横の印に使う件数を差し替える。玉と線と視点は作り直さず、次のコマから新しい件数で印を置く。つながりを描いていないときは何もしない
+    args:
+      - name: counts
+        type: Record<string, number>
+        required: true
+        passing: positional
+        description: 項目の ID → 件数（入口の `commentCounts`）
+    returns:
+      type: void
+      description: なし
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
