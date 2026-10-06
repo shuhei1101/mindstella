@@ -222,6 +222,14 @@ namespace MindmapPreview {
   /** 図の ID を作る連番 */
   let diagramCounter = 0;
 
+  /** 直前の `renderDiagrams` で描いた・写した図（記法 → mermaid の出力と、その SVG の ID） */
+  let lastDrawn = new Map<string, { svg: string; id: string }>();
+
+  /** 図の ID を新しく振る */
+  function nextDiagramId(): string {
+    return `mindmap-diagram-${(diagramCounter += 1)}`;
+  }
+
   /** 色の値をトークンから引く */
   function token(name: string): string {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -259,6 +267,8 @@ namespace MindmapPreview {
         themeVariables,
       });
       initializedFor = surface;
+      // 古いテーマの色で描いた SVG は使い回さない
+      lastDrawn = new Map();
     }
   }
 
@@ -266,7 +276,7 @@ namespace MindmapPreview {
   export async function renderDiagramSvg(source: string): Promise<SVGElement | null> {
     if (missingLibraries(["mermaid"]).length > 0) return null;
     initializeMermaid();
-    const id = `mindmap-diagram-${(diagramCounter += 1)}`;
+    const id = nextDiagramId();
     try {
       const { svg } = await mermaid.render(id, source);
       const holder = document.createElement("template");
@@ -298,12 +308,20 @@ namespace MindmapPreview {
       return;
     }
     initializeMermaid();
+    // この呼び出しで描いた・写した図だけを、次の呼び出しのために覚える
+    const drawn = new Map<string, { svg: string; id: string }>();
     for (const container of containers) {
       const source = container.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
-      const id = `mindmap-diagram-${(diagramCounter += 1)}`;
+      const id = nextDiagramId();
       try {
-        const { svg } = await mermaid.render(id, source);
+        // 直前に描いた同じ記法の図: 描き直さず、新しい ID に置き換えて写す（同じ図が文書に 2 つあっても ID と参照が重ならない）
+        const reused = lastDrawn.get(source);
+        const svg =
+          reused === undefined
+            ? (await mermaid.render(id, source)).svg
+            : reused.svg.replace(new RegExp(`${reused.id}(?![0-9])`, "g"), id);
         container.innerHTML = svg;
+        drawn.set(source, { svg, id });
       } catch {
         // 描けなかった図: mermaid が body に残した作業用の要素を消し、描けなかったことと原文を入れる
         document.getElementById(`d${id}`)?.remove();
@@ -314,5 +332,6 @@ namespace MindmapPreview {
         );
       }
     }
+    lastDrawn = drawn;
   }
 }
