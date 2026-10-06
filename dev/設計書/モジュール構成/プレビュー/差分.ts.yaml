@@ -352,7 +352,7 @@ functions:
       description: flowchart（`flowchart`・`graph`）でない種類と、どちらかの記法を解析できなかったときは `null`（呼び出し元は前の版を描いて `diffDiagram` で突き合わせる）
     process: |-
       1. `type` が `flowchart`・`graph` でなければ `null` を返す
-      2. 前後の記法をそれぞれ `mermaid.mermaidAPI.getDiagramFromText` で解析する。例外を投げたら `null` を返す（`mermaidAPI` は型定義で `@internal` のため、版を上げて形が変わったときも差分を出せる方へ倒す）
+      2. 前後の記法をそれぞれ `mermaid.mermaidAPI.getDiagramFromText` で解析し、前後とも解析した結果の種類（`Diagram.type`）が flowchart（12.1.0 では `flowchart-v2`・`flowchart-elk`）であることを確かめる。違うときと、手順 2〜3 のどこかで例外を投げたときは `null` を返す（`pairDiagrams` は種類の違う図どうしも組にする。`mermaidAPI` は型定義で `@internal` のため、版を上げて形が変わったときも差分を出せる方へ倒す）
       3. 解析した結果の `db.getVertices()` からノードを、鍵 `flowchart-{id}`・文字はラベル（空白を 1 つにして前後を除く）で取る。`db.getEdges()` から辺を、鍵 `{始点}>{終点}#{同じ端点の中の出てきた順}`・文字は辺のラベルで取る
       4. 今の版の SVG から `diffDiagram` と同じ鍵でノードと辺の要素を引き、文字は今の版の解析した結果の文字に置き換える（前後とも解析した結果の文字どうしで比べ、`<br>`・Markdown・文字参照・アイコンの書き方で変えていないノードを変えたと取らない）
       5. `diffDiagram` と同じく `added`・`changed`・`removed` に分ける。`removed` の名前は、ラベルを画面に出る文字にそろえる（Markdown のラベルの記号と前後の `` ` ``・`<br>` を外し、ほかのタグを除き、文字参照を戻し、`fa:fa-…` を除く）
@@ -379,6 +379,12 @@ functions:
         case: 異常
         summary: 解析できない記法は null
         condition: 前の版が書きかけの flowchart（`A -->` で終わる）
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`null`。例外を外へ出さない'
+      - name: test_diff_diagram_from_source_when_before_not_flowchart
+        case: 正常
+        summary: 前の版が flowchart でない組は null
+        condition: 前の版が sequenceDiagram・今の版が flowchart の組
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`null`。例外を外へ出さない'
 test_files:

@@ -29,8 +29,10 @@ used_in:
   - plugins/mindstella/skills/mindmap/scripts/builder.py
 verification:
   state: 済
-  date: '2026-10-02'
-  detail: 'file:// で開いた HTML から jsDelivr の `dist/mermaid.min.js` を下の integrity と `crossorigin="anonymous"` 付きで読み、Chromium で `mermaid.initialize`（`securityLevel: strict`・`theme: base`）の後に `mermaid.render` がフローチャート・シーケンス図・ELK の配置（`layout: elk`）の図を SVG に描くことを確かめた'
+  date: '2026-10-06'
+  detail: 'file:// で開いた HTML から jsDelivr の `dist/mermaid.min.js` を下の integrity と `crossorigin="anonymous"` 付きで読み、Chromium で `mermaid.initialize`（`securityLevel: strict`・`theme: base`）の後に `mermaid.render` がフローチャート・シーケンス図・ELK の配置（`layout: elk`）の図を SVG に描くことを確かめた。
+
+    2026-10-06（PoC #115）: MCP サーバーの `preview_url` が配るプレビュー（同じ min.js を integrity 付きで読む）を Chromium 153 で開き、`window.mermaid` の `mermaidAPI.getDiagramFromText` が flowchart・graph の記法を描かずに解析し、`db.getVertices()` がノードの id とラベル（`text`）の Map、`db.getEdges()` が辺の `start`・`end`・`text` を返すことを確かめた（ノード 50 の flowchart で前後 2 回の解析と突き合わせが 26〜32 ms）。ラベルは記法のまま（`<br>`・Markdown の記号を含む）で返る。解析した図の `type` は flowchart・graph とも `flowchart-v2`。flowchart の db は取り出すたびに `new FlowDB()` で作り直される（`chunks/mermaid.core/chunk-EU5HNXII.mjs` の `createFlowDiagram`）ため、ほかの図の `mermaid.render` と同じ頃に解析しても db を取り合わない'
 license: MIT（商用利用可）。配る書き出しに入れるときは、版・著作権の表示（Copyright (c) 2014 - 2022 Knut Sveidqvist）・MIT の本文・ソースの入手先（https://github.com/mermaid-js/mermaid の `mermaid@{版}` のタグ）を残す。配布ファイルが中に束ねた依存（d3・cytoscape・katex など）の名前・版・ライセンスの本文も配る書き出しに含める。束ねた依存は `plugins/mindstella/skills/mindmap/preview/licenses/mermaid-bundled.txt` に集め、版を上げたら集め直す
 official_url: https://mermaid.js.org/
 selection:
