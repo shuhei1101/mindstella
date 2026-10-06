@@ -84,12 +84,12 @@ flows:
       - D-1 の `before`・`body_diff` が `null`
     test: test_normal_when_history_limit_zero
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すと、何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -98,7 +98,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: changes_since_read workspace
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -143,7 +143,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
 response:
   - name: had_read_point
     type: bool
@@ -177,7 +177,7 @@ exceptions:
     condition: 読めて、`read_seq` を書けた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: WriteFailedError
     condition: '`changes.yaml` の一時ファイルの書き込みか置き換えに失敗した'

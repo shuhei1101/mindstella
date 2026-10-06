@@ -1,5 +1,5 @@
 title: "ER 図: ワークスペース"
-lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。
+lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ワークスペースの直下には画面の `mindstella.html` だけを置き、ほかのファイルとフォルダ（`docs/`・`release/` を含む）は全て記録のフォルダ `.mindstella/` に置く。表の物理名は `mindstella.html` を除き `.mindstella/` からのパス。
 er:
   entities:
     - name: 設定
@@ -63,6 +63,18 @@ er:
       to: 送信
       cardinality: '||--o|'
       label: まとめて送ると移る
+    - from: タスク
+      to: 本文
+      cardinality: '||--o|'
+      label: body
+    - from: 用語集
+      to: 本文
+      cardinality: '||--o|'
+      label: body
+    - from: メモ
+      to: 本文
+      cardinality: '||--o|'
+      label: body
 tables:
   - name: config.yaml
     title: 設定
@@ -195,7 +207,7 @@ tables:
       - name: history
         title: 変更履歴
         type: array
-        description: '`update`・`adopt`・案の書き換えが値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても消さない。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
+        description: '`update`・`adopt`・案の書き換えが値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`by`（その回を書き換えたのが `ai` か `user` か。このキーを入れる前に積んだ回は持たない）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても消さない。無ければ変更履歴 0 回分として扱う。ツールが付け、`add`・`update` の `item` では渡せない'
       - name: history_dropped_seq
         title: 消した変更履歴の通し番号
         type: number
@@ -214,6 +226,11 @@ tables:
         not_null: false
         description: その項目を足したときに振った `changes.yaml` の通し番号。『前回読んだ時点からの変更』が、読んだ時点より後に足した項目と変えた項目を分けるのに使う。このキーを入れる前に足した項目は持たない。ツールが付け、`add`・`update` の `item` では渡せない
         example: '14'
+      - name: updated_by
+        title: 編集した人
+        type: string
+        description: 最後に項目を足した・値を変えたのが AI か利用者か。`ai`（MCP のツールの書き込み）か `user`（画面からの編集）。`updated` を書き換える全ての書き込み（`update_settings` のフェーズ・対象・カテゴリーの付け替えを含む）が一緒に書く。このキーを入れる前に書いた項目は、次に書き換えるまで持たず、編集した人が分からないものとして扱う。ツールが付け、`add`・`update` の `item` では渡せない
+        example: ai
   - name: decisions.yaml
     title: 検討事項
     datastore: YAML
@@ -304,6 +321,11 @@ tables:
         title: 結果
         type: string
         description: 終えたときの結果
+      - name: body
+        title: 本文
+        type: string
+        description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
+        example: T-3.md
   - name: research.yaml
     title: 調査
     datastore: YAML
@@ -386,6 +408,11 @@ tables:
         title: 使わない表記
         type: array
         description: やめた言い方
+      - name: body
+        title: 本文
+        type: string
+        description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
+        example: G-2.md
   - name: notes.yaml
     title: メモ
     datastore: YAML
@@ -399,6 +426,11 @@ tables:
         type: string
         not_null: true
         description: メモの中身
+      - name: body
+        title: 本文
+        type: string
+        description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
+        example: N-4.md
   - name: logs.yaml
     title: 会話ログ
     datastore: YAML
@@ -434,7 +466,7 @@ tables:
     summary: ワークスペースを最後に整えたときのプラグインの版
     scale: 1 行
     access: 全件
-    description: '`init` が作るときに書き、`migrate --record` が移し替えた後に書き換える。無ければ版を記録する前の形式として扱う'
+    description: '`init` が作るときに書き、`migrate --record` が移し替えた後に書き換える。無ければ、ワークスペースの直下の版のファイル（v0.6.0 より前の置き場所）を読み、それも無ければ版を記録する前の形式として扱う'
     columns:
       - name: (1 行目)
         title: 版
@@ -662,3 +694,16 @@ tables:
         auto: 更新日時
         description: UTC のタイムゾーン付き ISO 8601
         example: '2026-10-05T03:00:00+00:00'
+  - name: mindstella.html
+    title: 画面
+    datastore: HTML
+    summary: ワークスペースの直下に置く、記録を中に持つ見るだけの画面
+    scale: 1 ファイル
+    access: 全件
+    description: ワークスペースの直下に置く（この表だけが `.mindstella/` の外）。書くのはサーバーの『画面の書き出し』だけで、利用者は開いて読むだけ。書き換えの知らせ・点検・移し替えの対象にしない
+    columns:
+      - name: (中身)
+        title: 画面の HTML
+        type: string
+        not_null: true
+        description: サーバーが配るプレビューと同じ雛形に、画面の CSS・JavaScript と『記録の取得』と同じ形の記録を差し込んだもの。描画のライブラリと文字は CDN から読む

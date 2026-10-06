@@ -27,12 +27,12 @@ flows:
       - '`attrs` が `担当`（`count: 3`・`kinds: [decision, task]`）と `期限`（`count: 1`・`kinds: [task]`）の 2 件'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すとエラーで終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -41,7 +41,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: attrs workspace
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -57,7 +57,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
 response:
   - name: attrs[].name
     type: str
@@ -73,7 +73,7 @@ exceptions:
     condition: 一覧を作れた（属性が 0 件のときも含む）
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:

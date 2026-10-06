@@ -29,12 +29,12 @@ flows:
       - 'D-2 は `via: []`・`key: depends_on`、D-3 は `via: [D-2]`・`key: parent`、T-1 は `via: [D-2, D-3]`・`key: for`'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すとエラーで終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -43,7 +43,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: impact workspace id D-1
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -81,7 +81,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: id
     type: str
     required: true
@@ -112,7 +112,7 @@ exceptions:
     condition: 洗い出せた（影響を受ける項目が 0 件のときも含む）
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
   - name: ItemNotFoundError
     condition: 渡した ID の項目が無い
