@@ -1357,3 +1357,4 @@ test_files:
   - tests/unit/preview/test_settings_panel.py
   - tests/unit/preview/test_settings_confirm.py
   - tests/unit/preview/test_settings.py
+  - tests/unit/preview/test_comment_mark.py
