@@ -2,3 +2,55 @@ steps:
   - op: rename_file
     from: mindmap.yaml
     to: config.yaml
+  - op: rename_file
+    from: decisions.yaml
+    to: .mindstella/decisions.yaml
+  - op: rename_file
+    from: tasks.yaml
+    to: .mindstella/tasks.yaml
+  - op: rename_file
+    from: research.yaml
+    to: .mindstella/research.yaml
+  - op: rename_file
+    from: docs.yaml
+    to: .mindstella/docs.yaml
+  - op: rename_file
+    from: terms.yaml
+    to: .mindstella/terms.yaml
+  - op: rename_file
+    from: notes.yaml
+    to: .mindstella/notes.yaml
+  - op: rename_file
+    from: logs.yaml
+    to: .mindstella/logs.yaml
+  - op: rename_file
+    from: changes.yaml
+    to: .mindstella/changes.yaml
+  - op: rename_file
+    from: comments.yaml
+    to: .mindstella/comments.yaml
+  - op: rename_file
+    from: drafts.yaml
+    to: .mindstella/drafts.yaml
+  - op: rename_file
+    from: submissions.yaml
+    to: .mindstella/submissions.yaml
+  - op: rename_file
+    from: mindstella-version.ini
+    to: .mindstella/mindstella-version.ini
+  - op: rename_file
+    from: .mindstella-opened
+    to: .mindstella/.mindstella-opened
+  - op: move_dir
+    from: docs
+    to: .mindstella/docs
+  - op: move_dir
+    from: release
+    to: .mindstella/release
+  - op: rename_file
+    from: config.yaml
+    to: .mindstella/config.yaml
+  - op: delete
+    path: preview.html
+  - op: delete
+    path: .mindstella.lock

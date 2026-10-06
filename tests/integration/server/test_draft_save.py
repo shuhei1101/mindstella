@@ -9,6 +9,7 @@ import yaml
 
 from .fixture_types import MakeDraft, MakeItem, MakeWorkspace, WriteDrafts
 from .http_helpers import http_request, send_json
+from workspace_fixtures import RECORD_DIR
 
 # 書きかけの保存のパス
 DRAFTS_PATH = "/api/drafts"
@@ -16,7 +17,7 @@ DRAFTS_PATH = "/api/drafts"
 
 def _read_drafts(root: Path) -> list[dict[str, object]]:
     """ワークスペースの書きかけの並びを読む。"""
-    return yaml.safe_load((root / "drafts.yaml").read_text(encoding="utf-8"))["items"]
+    return yaml.safe_load((root / RECORD_DIR / "drafts.yaml").read_text(encoding="utf-8"))["items"]
 
 
 def test_normal(
@@ -77,7 +78,7 @@ def test_error_when_origin_mismatch(
     )
     # 検証
     assert result.status == 403
-    assert not (root / "drafts.yaml").exists()
+    assert not (root / RECORD_DIR / "drafts.yaml").exists()
 
 
 def test_error_when_target_not_found(
@@ -94,4 +95,4 @@ def test_error_when_target_not_found(
     # 検証
     assert result.status == 404
     assert "D-99" in result.json()["detail"]
-    assert not (root / "drafts.yaml").exists()
+    assert not (root / RECORD_DIR / "drafts.yaml").exists()

@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,18 +53,18 @@ def test_normal_when_reached(
         bodies={"A-1.md": "# 要件定義書\n\n支出を記録する。"},
     )
     # 前回のゴール判定で書き出した資料
-    (root / "release" / "古い資料.md").write_text("前回の資料\n", encoding="utf-8")
+    (root / RECORD_DIR / "release" / "古い資料.md").write_text("前回の資料\n", encoding="utf-8")
     ws = {"workspace": str(root)}
     # 実行
     goal = replay("goal", **ws)
     deliverable = replay("show", **ws, id="A-1")
     # 利用者の確定の後に、スキルが release/ を片付けてから Markdown を書く
     replay("clear_release", **ws)
-    (root / "release" / "決定事項.md").write_text(
+    (root / RECORD_DIR / "release" / "決定事項.md").write_text(
         "# 決定事項\n\n- D-1: 記録する\n- D-2: YAML に残す\n- D-4: コマンドで書く\n",
         encoding="utf-8",
     )
-    (root / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    (root / RECORD_DIR / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
     replay(
         "add",
         **ws,
@@ -77,10 +77,12 @@ def test_normal_when_reached(
     assert goal["remaining_decisions"] == []
     assert goal["remaining_deliverables"] == []
     # release/ に、決まった検討事項の一覧と納品物 A-1 の本文がある
-    assert "D-2" in (root / "release" / "決定事項.md").read_text(encoding="utf-8")
-    assert "支出を記録する" in (root / "release" / "要件定義書.md").read_text(encoding="utf-8")
+    assert "D-2" in (root / RECORD_DIR / "release" / "決定事項.md").read_text(encoding="utf-8")
+    assert "支出を記録する" in (root / RECORD_DIR / "release" / "要件定義書.md").read_text(encoding="utf-8")
     # release/ に前回の古い資料.md が残っていない
-    assert not (root / "release" / "古い資料.md").exists()
+    assert not (root / RECORD_DIR / "release" / "古い資料.md").exists()
+    # ワークスペースの直下に release/ が無い
+    assert not (root / "release").exists()
     # 会話ログが 1 件足されている
     assert [item["id"] for item in read_yaml(root, "logs.yaml")["items"]] == ["L-1"]
 
@@ -108,7 +110,7 @@ def test_normal_when_not_reached(
     assert [decision["id"] for decision in goal["remaining_decisions"]] == ["D-1"]
     assert goal["remaining_deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
     # release/ に何も書かれていない
-    assert list((root / "release").iterdir()) == []
+    assert list((root / RECORD_DIR / "release").iterdir()) == []
 
 
 def test_normal_when_no_goal(
@@ -135,7 +137,7 @@ def test_normal_when_no_goal(
     # 出力の決着していない検討事項に D-1 があり、D-2 が無い
     assert [decision["id"] for decision in goal["remaining_decisions"]] == ["D-1"]
     # release/ に何も書かれていない
-    assert list((root / "release").iterdir()) == []
+    assert list((root / RECORD_DIR / "release").iterdir()) == []
 
 
 def test_normal_when_task_output_doc_missing(
@@ -180,8 +182,8 @@ def test_normal_when_task_output_doc_missing(
     assert [item["id"] for item in done["items"]] == ["T-1"]
     # T-1 が related に A-2 を持ち、A-2 の本文が docs/ にある
     assert read_yaml(root, "tasks.yaml")["items"][0]["related"] == ["A-2"]
-    assert "画面の一覧" in (root / "docs" / "A-2.md").read_text(encoding="utf-8")
+    assert "画面の一覧" in (root / RECORD_DIR / "docs" / "A-2.md").read_text(encoding="utf-8")
     # 書き込みの後の goal の出力が「届いた」のままである
     assert after["reached"] is True
     # release/ に何も書かれていない
-    assert list((root / "release").iterdir()) == []
+    assert list((root / RECORD_DIR / "release").iterdir()) == []

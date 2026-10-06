@@ -192,7 +192,7 @@ functions:
       description: 付け替えた種類ごとの変更（付け替えた項目がある種類だけ）・付け替えた項目・`goal.phase` を付け替えた設定
     process: |-
       1. 種類の順（`KINDS`）に、項目の並びを見る
-         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え `updated` を今の日時にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
+         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`updated` を今の日時、`updated_by` を `EDITOR` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
          - 付け替えた項目がある種類だけ、並び全体を `Change` にする
       2. 設定が `goal` を持ち `goal.phase` が新しい `phases` に無い場合、`phase_map` に対応があれば置き換え、無ければ残るものに `(goal, {フェーズ})` を足す
       3. 残るものが 1 つ以上あれば `UnmappedPhaseError`（残るものを全て）
@@ -238,7 +238,7 @@ functions:
         description: 一緒に書く種類ごとの変更（本文は持たない。空なら設定だけ）
     returns:
       type: list[str]
-      description: 書き換えた YAML（ワークスペースからの相対パス。`config.yaml` が先、続けて `changes` の並び）
+      description: 書き換えた YAML（ワークスペースからの相対パスで `.mindstella/` から始まる。`config.yaml` が先、続けて `changes` の並び）
     process: |-
       1. `changes` の種類のファイルが、書き戻しても中身を失わない形かを確かめる（読み書きと検証の `save_change` の 1. と同じ）
       2. `raw` の設定と `changes` の種類のファイルを差し替えたワークスペースを作り、検証する（`validate_workspace`）
@@ -260,7 +260,7 @@ functions:
         summary: 設定と付け替えた種類を書き、一時ファイルを残さない
         condition: '`phases` を変えた設定と、D-1 の `phase` を変えた検討事項の変更'
         mock: なし
-        expected: 戻り値が `[config.yaml, decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
+        expected: 戻り値が `[.mindstella/config.yaml, .mindstella/decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
       - name: test_save_settings_when_schema_mismatch
         case: 異常
         summary: スキーマに合わない設定は書かない
@@ -343,7 +343,7 @@ functions:
         summary: フェーズを付け替えて設定と種類の YAML を書き、結果を出力の形にする
         condition: 'フェーズ 問い・発散、D-1（問い）、`goal.phase` 問い。`settings` `{"phases": ["目的", "発散"]}`、`phase_map` `{"問い": "目的"}`。`now` は固定の日時'
         mock: '`now`'
-        expected: '`changed` が `[phases, goal]`、`remapped` が `[{id: D-1, from: 問い, to: 目的}]`、`files` が `[config.yaml, decisions.yaml]`。`config.yaml` の `goal.phase` が目的'
+        expected: '`changed` が `[phases, goal]`、`remapped` が `[{id: D-1, from: 問い, to: 目的}]`、`files` が `[.mindstella/config.yaml, .mindstella/decisions.yaml]`。`config.yaml` の `goal.phase` が目的で、D-1 の `updated_by` が `ai`'
       - name: test_update_settings_when_goal_phase_unknown
         case: 異常
         summary: phases を渡さず、phases に無い goal.phase のゴールだけを渡すと何も書かない
@@ -355,7 +355,7 @@ functions:
         summary: 表示の既定を丸ごと置き換え、ほかのキーと項目を変えない
         condition: '`display` を持たない設定のワークスペースに `{"display": {"network_look": "starlight", "visible_kinds": [会話ログを除く 6 種類]}}`。続けて `{"display": {"network_look": "glow"}}` を渡す'
         mock: なし
-        expected: '1 回目の `changed` が `[display]`、`files` が `[config.yaml]`、`config.yaml` の `display` が渡した値で `summary`・`phases`・`history_limit` が呼ぶ前と同じ。2 回目の後は `display` が `{network_look: glow}` だけ（`visible_kinds` を持たない）'
+        expected: '1 回目の `changed` が `[display]`、`files` が `[.mindstella/config.yaml]`、`config.yaml` の `display` が渡した値で `summary`・`phases`・`history_limit` が呼ぶ前と同じ。2 回目の後は `display` が `{network_look: glow}` だけ（`visible_kinds` を持たない）'
   - name: remap_names
     title: 対象とカテゴリーの付け替え
     kind: 関数
@@ -395,7 +395,7 @@ functions:
       description: 付け替えた後の種類ごとの項目・付け替えた項目とキー・カテゴリーの `target` を付け替えた設定
     process: |-
       1. 設定の `categories` の `target` が新しい `targets` に無ければ、`target_map` に対応があれば置き換え、無ければ残るものに `(categories[{名前}], target, {名前})` を足す
-      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
+      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時、`updated_by` を `EDITOR` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
       3. 残るものが 1 つ以上あれば `UnmappedTargetError`（残るものを全て）
     exceptions:
       - name: UnmappedTargetError

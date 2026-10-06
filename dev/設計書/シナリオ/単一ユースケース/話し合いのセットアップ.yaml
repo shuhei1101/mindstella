@@ -7,7 +7,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 空のワークスペースのフォルダ
-        description: まだ `config.yaml` も `mindmap.yaml` も持たないフォルダ
+        description: まだ `.mindstella/config.yaml` も、直下の `config.yaml`・`mindmap.yaml` も持たないフォルダ
         notes: 引数に渡す
       - name: 選んだプレイブック
         description: 利用者がプレイブックをシステム開発だけと答え、進め方ガイドの既定のゴール（インターフェースまで）を選ぶ
@@ -20,12 +20,12 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: config.yaml か mindmap.yaml の有無を見る
+        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無を見る
         CC->>CC: 選んだ進め方ガイドから題名・プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールのたたき台を作る
         CC-->>U: たたき台を示して確認を取る
         U->>CC: 確定する
         CC->>SV: init（決めた設定）
-        SV->>WS: config.yaml と空の YAML を作る
+        SV->>WS: .mindstella/ に config.yaml と空の YAML を作る
         CC-->>U: /mindstella:session で話し合いを続けるよう案内する
       ```
     expected:
@@ -51,7 +51,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: config.yaml か mindmap.yaml の有無を見る
+        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無を見る
         CC->>SV: 版を比べる
         SV-->>CC: ワークスペースの版とプラグインの版が同じ
         CC->>SV: status
@@ -80,7 +80,7 @@ scenarios:
         CC-->>U: ワークスペースのフォルダの指定を求める
       ```
     expected:
-      - '`init` が呼ばれず、どのフォルダにも `config.yaml` が作られていない'
+      - '`init` が呼ばれず、どのフォルダにも `.mindstella/config.yaml` が作られていない'
     notes:
       E2E: 持たない。フォルダの指定を求めるのはモデルの応答で、ツールの呼び出しの再生では作られない
   - name: 異常シナリオ（MCP のツールが使えない）
@@ -90,7 +90,7 @@ scenarios:
       - name: 起動スクリプトを通さずに立ち上げた Claude Code
         description: mindstella の MCP のツールを持たない
       - name: 空のワークスペースのフォルダ
-        description: まだ `config.yaml` も `mindmap.yaml` も持たないフォルダ
+        description: まだ `.mindstella/config.yaml` も、直下の `config.yaml`・`mindmap.yaml` も持たないフォルダ
         notes: 引数に渡す
     flow: |-
       ```mermaid
@@ -124,7 +124,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: config.yaml か mindmap.yaml の有無を見る
+        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無を見る
         CC->>SV: 版を比べる
         SV->>WS: 版のファイルを読む（無い）
         SV-->>CC: ワークスペースの版が古い・当てる手順
@@ -153,7 +153,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: config.yaml か mindmap.yaml の有無を見る
+        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無を見る
         CC->>SV: 版を比べる
         SV->>WS: 版のファイルを読む
         SV-->>CC: ワークスペースの版が新しい
@@ -171,7 +171,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 空のワークスペースのフォルダ
-        description: まだ `config.yaml` も `mindmap.yaml` も持たないフォルダ
+        description: まだ `.mindstella/config.yaml` も、直下の `config.yaml`・`mindmap.yaml` も持たないフォルダ
         notes: 引数に渡す
       - name: 選んだプレイブック
         description: 利用者が壁打ちと調査を選び、ゴールの候補から「決めずに始める」を選ぶ
@@ -189,7 +189,7 @@ scenarios:
         CC-->>U: たたき台とゴールの候補（決めずに始めるを含む）を示して確認を取る
         U->>CC: ゴールを決めずに確定する
         CC->>SV: init（ゴールを持たない設定）
-        SV->>WS: config.yaml と空の YAML を作る
+        SV->>WS: .mindstella/ に config.yaml と空の YAML を作る
         CC-->>U: /mindstella:session で話し合いを続けるよう案内する
       ```
     expected:
@@ -197,6 +197,35 @@ scenarios:
       - 検討事項・タスク・調査・資料・用語集・メモ・会話ログの YAML が空で作られている
     notes:
       E2E: 既存の『ワークスペースの作成』の『正常シナリオ（ゴールを決めずに作る）』が確かめる
+  - name: 正常シナリオ（直下に版を記録した古いワークスペース）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較を、決めた引数で再生する
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: 直下に版を記録したワークスペース
+        description: '`.mindstella/` を持たず、直下に `mindstella-version.ini`（`v0.5.0`）・`mindmap.yaml`・種類ごとの YAML を持つワークスペース'
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:setup {フォルダ}
+        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無を見る
+        CC->>SV: 版を比べる
+        SV->>WS: 直下の版のファイルを読む（v0.5.0）
+        SV-->>CC: ワークスペースの版が古い・当てる手順
+        CC-->>U: 版が古いことを示し、/mindstella:upgrade で移し替えるよう案内して止まる
+      ```
+    expected:
+      - 版の比較が、ワークスペースの版を `v0.5.0`、プラグインより古いと返し、当てる手順が v0.6.0 の手順だけである
+      - '`status` が呼ばれない'
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_normal_when_version_recorded_at_top
 lead: 利用者が起動スクリプトで立ち上げた Claude Code でセットアップのスキル `setup` を呼び、新しいワークスペースを作るか、既存のワークスペースの状況を読んで続きを選ぶ単一ユースケース。
 issue: 4
 primary_actor: 利用者

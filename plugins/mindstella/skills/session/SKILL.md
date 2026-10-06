@@ -13,7 +13,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 - ワークスペースのフォルダ: $ARGUMENTS
   - 空なら、同じ会話で `/mindstella:setup` が渡したフォルダを使う。それも無ければ `/mindstella:setup` を案内して終える
-  - `{ワークスペースのフォルダ}/config.yaml` か `mindmap.yaml` を Read で読めないときは、何も書き込まず `/mindstella:setup` を案内して終える
+  - `{ワークスペースのフォルダ}/.mindstella/config.yaml` か、直下の `config.yaml`・`mindmap.yaml` を Read で読めないときは、何も書き込まず `/mindstella:setup` を案内して終える
 
 ## ステップ
 
@@ -21,7 +21,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 | ステップ | 手順 | 実行する場面 |
 | --- | --- | --- |
-| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/config.yaml` か `mindmap.yaml` を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `changes_since_read` を呼ぶ。`had_read_point` が偽なら何も示さない。`added`・`changed` があれば、前回読んだ後に足された・変わった項目として、ID・タイトル・変わったキーと読んだ時点の値（`before`）を短く示し、話し合いの前提にする。続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`・`loc`）を示す。`loc` を持つ送信には本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` の送信には項目を指さない旨を添える。送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。`loc` を持つ送信はその箇所への意見として、項目を指さない送信は発言と同じく対象を振り分けて記録する。0 件なら取り込みを飛ばす。取り込みの前に `pending` を呼び、空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する | 話し合いの最初の 1 回 |
+| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `changes_since_read` を呼ぶ。`had_read_point` が偽なら何も示さない。`added`・`changed` があれば、前回読んだ後に足された・変わった項目として、ID・タイトル・変わったキーと読んだ時点の値（`before`）を短く示し、話し合いの前提にする。続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`・`loc`）を示す。`loc` を持つ送信には本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` の送信には項目を指さない旨を添える。送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。`loc` を持つ送信はその箇所への意見として、項目を指さない送信は発言と同じく対象を振り分けて記録する。0 件なら取り込みを飛ばす。取り込みの前に `pending` を呼び、空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する | 話し合いの最初の 1 回 |
 | 取り込み | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/取り込み.md` | 利用者が発言した（決め事・問い・やること・保留・中止・図や文書・脱線した質問） |
 | ヒアリング | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ヒアリング.md` | 取り込みの後に前提が揃った未決定がある、または利用者が次に決めることを求めた |
 | リサーチ | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/リサーチ.md` | 外部ライブラリ・外部 API を決める検討事項が積まれた、進め方ガイドの「必ず調べるもの」に当たった、または利用者が調べるよう頼んだ |
@@ -34,7 +34,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は、状況が変わるたびに利用者に確かめずに足し、書き換える。
 利用者に確かめるのは、GitHub への起票などワークスペースの外へ書き込むときだけ。
-設定（`config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す。
+設定（`.mindstella/config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す。
 
 ## ツール
 
@@ -44,7 +44,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 | ツール | 使う引数 |
 | --- | --- |
-| `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`body` は渡さない。本文は `body_markdown`） |
+| `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`updated_by`・`body` は渡さない。本文はどの種類も `body_markdown`） |
 | `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
 | `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`description`・`goal`・`links`・`history_limit` は `null` で消す）・`phase_map`・`target_map`・`category_map`（任意。`phases`・`targets`・`categories` を変えるときだけ、新しい設定に無い古い名前 → 新しい名前の対応） |
 | `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号） |

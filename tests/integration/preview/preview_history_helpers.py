@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 from playwright.sync_api import Page
+from workspace_fixtures import RECORD_DIR
 
 __all__ = [
     "BODY_A1_AFTER",
@@ -118,9 +119,9 @@ def build_history_workspace(
     """実際のツールで、まとまり 2 つ（V-1 で足し、V-2 で直す）と、まとめていない変更を持つワークスペースを作る。"""
     root: Path = make_workspace()
     if history_limit is not None:
-        settings = read_yaml(root / "config.yaml")
+        settings = read_yaml(root / RECORD_DIR / "config.yaml")
         settings["history_limit"] = history_limit
-        (root / "config.yaml").write_text(
+        (root / RECORD_DIR / "config.yaml").write_text(
             yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8"
         )
     workspace = str(root)
@@ -165,11 +166,13 @@ def build_history_workspace(
         _call(call_tool, "update", workspace=workspace, id="T-1", item={"status": "進行中"})
         _call(call_tool, "add", workspace=workspace, kind="note", item={"title": "新しいメモ", "content": "メモ"})
     # まとまりの日時を固定し、前回開いた日時を V-1 と V-2 の間に置く
-    changes = read_yaml(root / "changes.yaml")
+    changes = read_yaml(root / RECORD_DIR / "changes.yaml")
     changes["sets"][1]["at"] = FIRST_SET_AT
     changes["sets"][0]["at"] = SECOND_SET_AT
-    (root / "changes.yaml").write_text(yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    (root / ".mindstella-opened").write_text(f"{OPENED_AT}\n", encoding="utf-8")
+    (root / RECORD_DIR / "changes.yaml").write_text(
+        yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    (root / RECORD_DIR / ".mindstella-opened").write_text(f"{OPENED_AT}\n", encoding="utf-8")
     return root
 
 

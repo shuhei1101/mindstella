@@ -27,7 +27,7 @@ from display_settings_helpers import (
 )
 from playwright.sync_api import BrowserContext, Page
 from preview_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, OpenPreview, ServeWorkspace
-from workspace_fixtures import MakeItem
+from workspace_fixtures import RECORD_DIR, MakeItem
 
 # タブの帯に並ぶ画面の数（概要・つながりと、表示する種類）
 TABS_WITHOUT_TERMS = 8
@@ -56,7 +56,7 @@ def test_normal(
     url, root = serve_workspace(
         make_item("D-1"), make_item("T-1"), make_item("G-1"), settings=valid_settings
     )
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     open_preview(url, "#tab=graph")
     # 実行
     open_settings(page)
@@ -93,7 +93,7 @@ def test_normal(
     assert prefs["kinds"] == [kind for kind in DEFAULT_KINDS if kind != "terms"]
     assert read_prefs(page) == prefs
     # config.yaml の中身が、開く前と同じである
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_normal_when_reset(
@@ -115,7 +115,7 @@ def test_normal_when_reset(
             },
         },
     )
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # ブラウザのライト / ダークはライトにしておく
     context = new_context(color_scheme="light")
     page = context.new_page()
@@ -173,7 +173,7 @@ def test_normal_when_reset(
     assert prefs_after["theme"] is None
     assert prefs_after["columns"] == {}
     # config.yaml の中身が、操作の前と同じである
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_normal_when_current_kind_hidden(

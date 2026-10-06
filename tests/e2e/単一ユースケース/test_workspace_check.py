@@ -30,11 +30,12 @@ def test_normal_when_problems_found(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """参照切れ・本文の無い項目・項目の無い本文を、全て出す（正常系）。"""
+    """参照切れ・本文の無い項目（調査とメモ）・項目の無い本文を、全て出す（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", depends_on=["D-9"]),
         make_item("R-1", body="R-1.md"),
+        make_item("N-1", body="N-1.md"),
         bodies={"X-1.md": "どこからも指されない本文\n"},
     )
     before = snapshot_tree(root)
@@ -48,11 +49,13 @@ def test_normal_when_problems_found(
         (row["kind"], row["file"], row["id"], row["key"]): row for row in payload["problems"]
     }
     assert set(problems) == {
-        ("broken_ref", "decisions.yaml", "D-1", "depends_on"),
-        ("missing_body", "research.yaml", "R-1", "items[0].body"),
-        ("orphan_body", "docs/X-1.md", None, None),
+        ("broken_ref", ".mindstella/decisions.yaml", "D-1", "depends_on"),
+        ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
+        ("missing_body", ".mindstella/notes.yaml", "N-1", "items[0].body"),
+        ("orphan_body", ".mindstella/docs/X-1.md", None, None),
     }
-    assert "D-9" in problems[("broken_ref", "decisions.yaml", "D-1", "depends_on")]["detail"]
+    broken = problems[("broken_ref", ".mindstella/decisions.yaml", "D-1", "depends_on")]
+    assert "D-9" in broken["detail"]
     assert snapshot_tree(root) == before
 
 
@@ -86,8 +89,8 @@ def test_normal_when_unknown_phase(
         if row["kind"] == "unknown_phase"
     }
     assert unknown == {
-        ("decisions.yaml", "D-1", "items[0].phase", "発散"),
-        ("config.yaml", None, "goal.phase", "結論"),
+        (".mindstella/decisions.yaml", "D-1", "items[0].phase", "発散"),
+        (".mindstella/config.yaml", None, "goal.phase", "結論"),
     }
     # ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     assert snapshot_tree(root) == before

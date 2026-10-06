@@ -18,6 +18,7 @@ from preview_helpers import (
     OpenPreview,
 )
 from workspace_fixtures import (
+    RECORD_DIR,
     CallTool,
     MakeComment,
     MakeItem,
@@ -84,7 +85,7 @@ def _open_list(page: Page) -> None:
 
 def _read(root: Path, name: str) -> list[dict[str, Any]]:
     """ワークスペースの YAML の items を読む（ファイルが無ければ 0 件）。"""
-    path = root / name
+    path = root / RECORD_DIR / name
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"] if path.exists() else []
 
 
@@ -267,7 +268,7 @@ def test_error_when_server_unreachable(
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} input.row-check", "cs => cs.map(c => c.checked)"
     ) == [True, True]
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert len(_read(root, "comments.yaml")) == 2
 
 
@@ -295,7 +296,7 @@ def test_error_when_nothing_checked(
     page.locator(f"{_row('C-1')} input.row-check").uncheck()
     # 検証
     assert page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").is_disabled()
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
 
 
 def test_error_when_location_stale(
@@ -329,12 +330,12 @@ def test_error_when_location_stale(
     open_preview(url)
     _open_list(page)
     # 溜めた後に、Claude Code が A-1 の本文を 3 行に書き換えた形にする
-    (root / "docs" / "A-1.md").write_text(SHORT_BODY, encoding="utf-8")
+    (root / RECORD_DIR / "docs" / "A-1.md").write_text(SHORT_BODY, encoding="utf-8")
     # 実行（まとめて送る）
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=RESULT_TIMEOUT_MS)
     # 検証（何も送らず、A-1 への行に理由が出る）
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert len(_read(root, "comments.yaml")) == 2
     assert page.locator(f"{_row('C-1')} .row-stale").count() == 1
     assert page.locator(f"{_row('C-2')} .row-stale").count() == 0

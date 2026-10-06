@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
 from history import CHANGES_FILE, Changes, apply_body_diff, load_changes
-from kinds import BODY_DIR, KINDS, SETTINGS_FILE, kind_of_id
+from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
 from submissions import SUBMISSIONS_FILE, load_submissions
 
@@ -39,8 +40,9 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_phases(workspace),
         *_check_history(workspace),
     ]
-    # ファイル名の順に並べる（sorted は安定なので、同じファイルの中は拾った順を保つ）
-    return sorted(problems, key=lambda problem: problem.file)
+    # ファイル名の順に並べ（sorted は安定なので、同じファイルの中は拾った順を保つ）、ワークスペースからの相対パスにする
+    ordered = sorted(problems, key=lambda problem: problem.file)
+    return [replace(problem, file=f"{RECORD_DIR}/{problem.file}") for problem in ordered]
 
 
 def _check_duplicate_ids(workspace: Workspace) -> list[Problem]:
@@ -126,7 +128,7 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
                         detail=f"本文がありません: {BODY_DIR}/{body}",
                     )
                 )
-    body_dir = workspace.root / BODY_DIR
+    body_dir = records_root(workspace.root) / BODY_DIR
     # どの項目の body にも無い本文は、どこからも指されていない
     for path in sorted(body_dir.glob("*.md")) if body_dir.is_dir() else []:
         if path.name not in referenced:

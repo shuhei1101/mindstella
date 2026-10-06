@@ -37,7 +37,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
     role: DTO
-    summary: 1 種類のファイル・ID の頭の文字・スキーマ・本文と状態の有無
+    summary: 1 種類のファイル・ID の頭の文字・スキーマ・状態の有無（本文はどの種類も持てる）
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
     properties:
       - name: kind
@@ -55,9 +55,6 @@ data_models:
         type: str
         description: '`schemas/` のスキーマのファイル名'
         example: decisions.schema.json
-      - name: has_body
-        type: bool
-        description: 本文（`body`）を持てるか
       - name: settled_statuses
         type: frozenset[str]
         description: 決着とみなす状態。状態を持たない種類は空
@@ -97,7 +94,7 @@ data_models:
         description: 問題の種類
       - name: file
         type: str
-        description: ワークスペースからの相対パス
+        description: 記録のフォルダ（`records_root(root)`）からの相対パス（`decisions.yaml` の形）。点検の結果に返すときは、モジュール構成『点検』の `check_workspace` がワークスペースからの相対パス（`.mindstella/decisions.yaml`）にする
       - name: id
         type: str | None
         description: 問題のある項目の ID
@@ -390,43 +387,43 @@ constants:
     summary: 種類 → 種類の定義。並びは D・T・R・A・G・N・L の順で、一覧を出す並びにも使う
     entries:
       - key: decision
-        value: decisions.yaml / D / decisions.schema.json / 本文あり
+        value: decisions.yaml / D / decisions.schema.json
         description: '決着: 決定済み・対象外・取り下げ'
       - key: task
-        value: tasks.yaml / T / tasks.schema.json / 本文なし
+        value: tasks.yaml / T / tasks.schema.json
         description: '決着: 完了・中止'
       - key: research
-        value: research.yaml / R / research.schema.json / 本文あり
+        value: research.yaml / R / research.schema.json
         description: 状態なし
       - key: doc
-        value: docs.yaml / A / docs.schema.json / 本文あり
+        value: docs.yaml / A / docs.schema.json
         description: 状態なし
       - key: term
-        value: terms.yaml / G / terms.schema.json / 本文なし
+        value: terms.yaml / G / terms.schema.json
         description: 状態なし
       - key: note
-        value: notes.yaml / N / notes.schema.json / 本文なし
+        value: notes.yaml / N / notes.schema.json
         description: 状態なし
       - key: log
-        value: logs.yaml / L / logs.schema.json / 本文あり
+        value: logs.yaml / L / logs.schema.json
         description: 状態なし
   - name: SETTINGS_FILE
     title: 設定のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: ワークスペースの設定のファイル名
+    summary: ワークスペースの設定のファイル名（`records_root(root)` の下）
     value: '"config.yaml"'
   - name: BODY_DIR
     title: 本文のフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: 本文の Markdown を置くフォルダ名
+    summary: 本文の Markdown を置くフォルダ名（`records_root(root)` の下）
     value: '"docs"'
   - name: RELEASE_DIR
     title: リリースのフォルダ名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: ワークスペースの作成
-    summary: ゴール判定で書き出す資料のフォルダ名
+    summary: ゴール判定で書き出す資料のフォルダ名（`records_root(root)` の下）
     value: '"release"'
   - name: SCHEMA_DIR
     title: スキーマのフォルダ
@@ -462,26 +459,38 @@ constants:
     title: 版のファイル
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: ワークスペースの版を持つファイルの名前
+    summary: ワークスペースの版を持つファイルの名前（`records_root(root)` の下。v0.6.0 より前は直下）
     value: '"mindstella-version.ini"'
   - name: LOCK_FILE
     title: 書き換えのロックのファイル
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: プロセスをまたいだ書き換えの排他に使う空のファイルの名前（ER 図『ワークスペース』）
+    summary: プロセスをまたいだ書き換えの排他に使う空のファイルの名前（`records_root(root)` の下。ER 図『ワークスペース』）
     value: '".mindstella.lock"'
   - name: LEGACY_SETTINGS_FILE
     title: 前の版の設定のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 記録の形式の移行
-    summary: v0.6.0 より前の版の設定のファイル名。ワークスペースとしては扱わず、見つけたら移し替えを案内する（`require_workspace`）・作らない（`create_workspace`）・移し替えだけが見分ける（モジュール構成『移行』）
+    summary: v0.6.0 より前の版の設定のファイル名。直下にあってもワークスペースとしては扱わず、見つけたら移し替えを案内する（`require_workspace`）・作らない（`create_workspace`）・移し替えだけが見分ける（モジュール構成『移行』）
     value: '"mindmap.yaml"'
   - name: UPGRADE_HINT
     title: 移し替えの案内
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
-    summary: '`mindmap.yaml` だけがあるフォルダの WorkspaceNotFoundError に続ける 1 行（`{root}` はフォルダの絶対パス）'
-    value: '"ヒント: 前の版の設定ファイル mindmap.yaml があります。/mindstella:upgrade {root} で今の版へ移し替えてください"'
+    summary: 記録のフォルダが無く直下に前の版の設定ファイル（`config.yaml` か `mindmap.yaml`）があるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
+    value: '"ヒント: 前の版の形の記録があります。/mindstella:upgrade {root} で今の版へ移し替えてください"'
+  - name: RECORD_DIR
+    title: 記録のフォルダ名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名（ER 図『ワークスペース』）
+    value: '".mindstella"'
+  - name: EDITOR
+    title: 編集した人
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
+    value: '"ai"'
 functions:
   - name: kind_of_id
     title: ID の種類
@@ -534,12 +543,12 @@ functions:
       description: 読み込んだワークスペース
     process: |-
       1. `root` を絶対パスにし、ワークスペースを確かめる（`require_workspace`）
-      2. 設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に入れる（読む。`_read_yaml`）
+      2. `records_root(root)` の下の設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に入れる（読む。`_read_yaml`）
          - 種類のファイルが無い場合、`{"items": []}` を入れる
          - YAML として読めない場合（設定も含む）、`kind: schema`・`key: (全体)` の問題を `load_problems` に足し、`raw` には入れない
       3. `settings` は設定の値が辞書のときだけその値、それ以外は空にする
       4. `items` は、値が辞書で `items` が配列のときだけその要素のうち辞書のものを取り出し、それ以外は空にする（形の誤りは検証が `raw` から拾う）
-      5. `Workspace` を返す
+      5. `Workspace` を返す（`root` は直下のフォルダのまま）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`root` に `config.yaml` が無い（`require_workspace`）'
@@ -859,7 +868,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの作成
     scope: public
-    summary: 設定を検証してから、設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る
+    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る
     side_effects: フォルダとファイルを作る
     args:
       - name: root
@@ -879,17 +888,17 @@ functions:
         description: 版のファイルに書くプラグインの版（`v0.3.0` の形。入口が `read_plugin_version` で読んで渡す）
     returns:
       type: list[str]
-      description: 作ったファイルとフォルダ（ワークスペースからの相対パス。フォルダは末尾に `/`）
+      description: 作ったファイルとフォルダ（ワークスペースからの相対パスで `.mindstella/` から始まる。フォルダは末尾に `/`）
     process: |-
-      1. `root/config.yaml` か `root/mindmap.yaml`（`LEGACY_SETTINGS_FILE`）があれば `WorkspaceExistsError` を送る（前の版のワークスペースの記録を空の YAML で上書きしない）
+      1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
-      3. フォルダと `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、最後に `config.yaml` を書く（`dump_yaml`）
+      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、最後に `config.yaml` を書く（`dump_yaml`。どれも `records_root(root)` の下）
          - `OSError` が起きた場合、この関数が作ったファイルとフォルダを消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
-        condition: '`root` に `config.yaml` か `mindmap.yaml` が既にある'
-        message: '既にワークスペースがあります: {root}'
+        condition: '`root` に `.mindstella/config.yaml` が既にあるか、直下に `config.yaml` か `mindmap.yaml` がある'
+        message: '既にワークスペースがあります: {root}（直下の設定ファイルのときは `lines` に移し替えの案内）'
       - name: SchemaMismatchError
         condition: 設定が設定のスキーマに合わない
       - name: WriteFailedError
@@ -1120,7 +1129,7 @@ functions:
       description: 消したものの `release/` からのパス（フォルダは末尾に `/`。名前の順）
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
-      2. `root / RELEASE_DIR` を作る（あればそのまま）
+      2. `records_root(root) / RELEASE_DIR` を作る（あればそのまま）
       3. 中の項目を名前の順に消す（シンボリックリンクとファイルは `Path.unlink`、リンクでないフォルダは `shutil.rmtree`。リンク先は消さない）。消したものを戻り値に足す
          - `OSError` が起きた場合、そこで止めて `WriteFailedError` を送る（それまでに消したものは戻さない。次の呼び出しで片付く）
     exceptions:
@@ -1194,10 +1203,10 @@ functions:
       description: 鍵とロックを持っている間だけ返す
     process: |-
       1. `process_lock` を取る
-      2. `create` が真なら `root` を作る（`exist_ok`）。偽なら、ワークスペースを確かめ（`require(root)`）、送られたら何も作らずに伝える（`process_lock` は放す）
-      3. `LOCK_FILE` を追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。開けない（`OSError`）ときは `WriteFailedError` を送る
+      2. `create` が真なら `records_root(root)` を作る（`parents=True`・`exist_ok`）。偽なら、ワークスペースを確かめ（`require(root)`）、送られたら何も作らずに伝える（`process_lock` は放す）
+      3. ロックファイルを追記で開いて `fcntl.flock(LOCK_EX)` で取れるまで待つ。ロックファイルは `records_root(root) / LOCK_FILE`。`require` が `require_migratable` で `records_root(root)` が無い（移す前の形）ときだけ、直下の `root / LOCK_FILE` を使う。開けない（`OSError`）ときは `WriteFailedError` を送る
       4. 呼び出し元の処理を動かす
-      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 で `root` を作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と `root` を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
+      5. 処理が例外で終わったときも、`LOCK_UN` してファイルを閉じ、`process_lock` を放す。2 でフォルダを作っていて、中が `LOCK_FILE` だけのまま例外で終わったときは、`LOCK_FILE` と作ったフォルダ（`records_root(root)` と、無かった `root`）を消してから例外を伝える（インターフェース定義『ワークスペースの作成』の「フォルダが作られていない」）
     unit_tests:
       - name: test_workspace_lock
         case: 正常
@@ -1216,7 +1225,7 @@ functions:
         summary: まだ無いフォルダも作って取る
         condition: '`tmp_path / "ws"`（無い）と `create=True`'
         mock: なし
-        expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'
+        expected: '`tmp_path / "ws" / ".mindstella" / ".mindstella.lock"` がある'
       - name: test_workspace_lock_when_not_workspace
         case: 異常
         summary: ワークスペースでないフォルダには何も作らない
@@ -1295,7 +1304,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: '`config.yaml` があるかを確かめ、無ければ送る。`mindmap.yaml` だけなら移し替えを案内する'
+    summary: '`.mindstella/config.yaml` があるかを確かめ、無ければ送る。直下に前の版の設定ファイルだけがあれば移し替えを案内する'
     args:
       - name: root
         type: Path
@@ -1306,29 +1315,29 @@ functions:
       type: None
       description: '`config.yaml` があれば何も返さない'
     process: |-
-      1. `root / SETTINGS_FILE` がファイルなら戻る
-      2. `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
-      3. どちらも無ければ `WorkspaceNotFoundError` を送る
+      1. `records_root(root) / SETTINGS_FILE` がファイルなら戻る
+      2. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
+      3. どれも無ければ `WorkspaceNotFoundError` を送る
 
-      `load_workspace`・`clear_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは `mindmap.yaml` も通すため呼ばない
+      `load_workspace`・`clear_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
     exceptions:
       - name: WorkspaceNotFoundError
-        condition: '`root` に `config.yaml` が無い'
-        message: 'ワークスペースがありません: {root}（`mindmap.yaml` だけのときは `lines` に移し替えの案内）'
+        condition: '`root` に `.mindstella/config.yaml` が無い'
+        message: 'ワークスペースがありません: {root}（直下に前の版の設定ファイルがあるときは `lines` に移し替えの案内）'
     unit_tests:
       - name: test_require_workspace
         case: 正常
-        summary: config.yaml があれば通す
-        condition: '`config.yaml` を置いた `tmp_path`'
+        summary: .mindstella/config.yaml があれば通す
+        condition: '`.mindstella/config.yaml` を置いた `tmp_path`'
         mock: なし
         expected: 例外にならない
       - name: test_require_workspace_when_missing
         case: 異常
-        summary: 無いフォルダと、前の版の設定だけのフォルダを分けて送る
-        condition: '`parametrize`: 空の `tmp_path` / `mindmap.yaml` だけを置いた `tmp_path`'
+        summary: 無いフォルダと、前の版の形のフォルダを分けて送る
+        condition: '`parametrize`: 空の `tmp_path` / 直下に `mindmap.yaml` だけを置いた `tmp_path` / 直下に `config.yaml` だけを置いた `tmp_path`'
         mock: なし
-        expected: どちらも `WorkspaceNotFoundError`（メッセージに `tmp_path`）。前者は `lines` が空、後者は `lines` が `/mindstella:upgrade {tmp_path}` を含む 1 行
-        exception: config.yaml が無い
+        expected: どれも `WorkspaceNotFoundError`（メッセージに `tmp_path`）。空のフォルダは `lines` が空、ほかの 2 つは `lines` が `/mindstella:upgrade {tmp_path}` を含む 1 行
+        exception: .mindstella/config.yaml が無い
   - name: check_settings
     title: 設定の検査
     kind: 関数
@@ -1403,6 +1412,31 @@ functions:
       1. `_format_path(path)` を返す
 
       分岐を持たないため単体テストを置かず、`_format_path` のテストで確かめる
+  - name: records_root
+    title: 記録のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    scope: public
+    summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`clear_release`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』『ゴール判定』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: Path
+      description: '`root / RECORD_DIR`'
+    process: 1. `root / RECORD_DIR` を返す（フォルダは作らない）
+    unit_tests:
+      - name: test_records_root
+        case: 正常
+        summary: 直下の .mindstella を返す
+        condition: '`tmp_path`'
+        mock: なし
+        expected: '`tmp_path / ".mindstella"`。フォルダは作られていない'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

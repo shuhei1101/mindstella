@@ -97,6 +97,14 @@
           "description": "更新日時。UTC のタイムゾーン付き ISO 8601。スクリプトが付ける",
           "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(\\+00:00|Z)$"
         },
+        "updated_by": {
+          "type": "string",
+          "enum": [
+            "ai",
+            "user"
+          ],
+          "description": "編集した人。最後に項目を足した・値を変えたのが AI（`ai`。MCP のツールの書き込み）か利用者（`user`）か。`updated` と一緒に書き換える。このキーを入れる前に書いた項目は持たない。ツールが付ける"
+        },
         "history": {
           "$ref": "#/$defs/history"
         },
@@ -140,9 +148,17 @@
             "description": "書き換えた日時。UTC のタイムゾーン付き ISO 8601",
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(\\+00:00|Z)$"
           },
+          "by": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "user"
+            ],
+            "description": "その回を書き換えた人（`ai` か `user`）。このキーを入れる前に積んだ回は持たない"
+          },
           "before": {
             "type": "object",
-            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は入れない"
+            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は入れない"
           },
           "body_diff": {
             "type": "array",

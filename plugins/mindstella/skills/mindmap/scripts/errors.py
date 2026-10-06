@@ -13,11 +13,11 @@ class MindmapError(Exception):
 
 
 class WorkspaceNotFoundError(MindmapError):
-    """`config.yaml` が無いフォルダを指した。`mindmap.yaml`（前の版の設定ファイル）だけがあるフォルダでは、`lines` に移し替えの案内を持つ。"""
+    """`.mindstella/config.yaml` が無いフォルダを指した。直下に前の版の設定ファイルだけがあるフォルダでは、`lines` に移し替えの案内を持つ。"""
 
 
 class WorkspaceExistsError(MindmapError):
-    """`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。"""
+    """`.mindstella/config.yaml` か、直下の `config.yaml`・`mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。直下の前の版の設定ファイルでは、`lines` に移し替えの案内を持つ。"""
 
 
 class SchemaMismatchError(MindmapError):

@@ -28,10 +28,12 @@ from kinds import (
     BODY_DIR,
     KINDS,
     LEGACY_SETTINGS_FILE,
+    RECORD_DIR,
     RELEASE_DIR,
     SETTINGS_FILE,
     Kind,
     kind_of_id,
+    records_root,
 )
 from referencing import Registry
 from referencing.jsonschema import DRAFT202012
@@ -57,19 +59,18 @@ WHOLE_PATH = "(全体)"
 # 前の版の形式でスキーマに合わないときに、エラーの最後に続ける 1 行
 LEGACY_HINT = "ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"
 
-# `mindmap.yaml` だけがあるフォルダの WorkspaceNotFoundError に続ける 1 行（`{root}` はフォルダの絶対パス）
+# 記録のフォルダが無く直下に前の版の設定ファイルがあるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
 UPGRADE_HINT = (
-    "ヒント: 前の版の設定ファイル mindmap.yaml があります。"
-    "/mindstella:upgrade {root} で今の版へ移し替えてください"
+    "ヒント: 前の版の形の記録があります。/mindstella:upgrade {root} で今の版へ移し替えてください"
 )
 
-# ワークスペースを最後に整えたときのプラグインの版を持つファイルの名前
+# ワークスペースを最後に整えたときのプラグインの版を持つファイルの名前（`records_root` の下。v0.6.0 より前は直下）
 VERSION_FILE = "mindstella-version.ini"
 
-# プロセスをまたいだ書き換えの排他に使う空のファイルの名前
+# プロセスをまたいだ書き換えの排他に使う空のファイルの名前（`records_root` の下）
 LOCK_FILE = ".mindstella.lock"
 
-# 書き換えのまとまりを持つファイルの名前
+# 書き換えのまとまりを持つファイルの名前（`records_root` の下）
 CHANGES_FILE = "changes.yaml"
 
 # 今の日時（UTC のタイムゾーン付き ISO 8601）を返す関数。テストで決めた日時を注入する
@@ -162,13 +163,14 @@ class BatchChange:
 def load_workspace(root: Path) -> Workspace:
     """設定と 7 種類の YAML を読む。読めないファイルは問題に記録して空として扱う。"""
     root = root.resolve()
-    # config.yaml が無いフォルダはワークスペースではない
+    # .mindstella/config.yaml が無いフォルダはワークスペースではない
     require_workspace(root)
 
+    records = records_root(root)
     raw: dict[str, Any] = {}
     load_problems: list[Problem] = []
     for file_name in [SETTINGS_FILE, *(spec.file for spec in KINDS.values())]:
-        path = root / file_name
+        path = records / file_name
         # 種類のファイルが無い: 項目が 0 件のものとして扱う
         if not path.is_file():
             raw[file_name] = {"items": []}
@@ -198,17 +200,17 @@ def load_workspace(root: Path) -> Workspace:
 
 
 def require_workspace(root: Path) -> None:
-    """`config.yaml` があるかを確かめ、無ければ送る。`mindmap.yaml` だけなら移し替えを案内する。"""
-    # config.yaml がある: ワークスペース
-    if (root / SETTINGS_FILE).is_file():
+    """`.mindstella/config.yaml` があるかを確かめ、無ければ送る。直下に前の版の設定ファイルだけがあれば移し替えを案内する。"""
+    # .mindstella/config.yaml がある: ワークスペース
+    if (records_root(root) / SETTINGS_FILE).is_file():
         return
-    # 前の版の設定ファイルだけがある: 移し替えの案内を添える
-    if (root / LEGACY_SETTINGS_FILE).is_file():
+    # 直下に前の版の設定ファイルだけがある: 移し替えの案内を添える
+    if (root / SETTINGS_FILE).is_file() or (root / LEGACY_SETTINGS_FILE).is_file():
         raise WorkspaceNotFoundError(
             f"ワークスペースがありません: {root}",
             [UPGRADE_HINT.replace("{root}", str(root))],
         )
-    # どちらも無い
+    # どれも無い
     raise WorkspaceNotFoundError(f"ワークスペースがありません: {root}")
 
 
@@ -217,7 +219,7 @@ def check_settings(root: Path) -> tuple[dict[str, Any], list[Problem]]:
     root = root.resolve()
     require_workspace(root)
     try:
-        value = _read_yaml(root / SETTINGS_FILE)
+        value = _read_yaml(records_root(root) / SETTINGS_FILE)
     except yaml.YAMLError as error:
         # YAML として読めない: 空の設定と、全体の問題 1 件を返す
         problem = Problem(
@@ -246,9 +248,9 @@ def check_settings(root: Path) -> tuple[dict[str, Any], list[Problem]]:
     return (value if isinstance(value, dict) else {}), problems
 
 
-def _open_lock_file(root: Path) -> IO[str]:
+def _open_lock_file(lock_dir: Path) -> IO[str]:
     """ロックのファイルを追記で開く。開けなければ書き込めなかったエラーにする。"""
-    lock_path = root / LOCK_FILE
+    lock_path = lock_dir / LOCK_FILE
     try:
         return lock_path.open("a")
     except OSError as error:
@@ -264,17 +266,21 @@ def workspace_lock(
     require: Callable[[Path], None] = require_workspace,
 ) -> Iterator[None]:
     """プロセスの中の鍵とワークスペースの排他ロックをこの順に取り、抜けるときに放す。"""
+    records = records_root(root)
     with process_lock:
-        created = False
+        root_created = records_created = False
         if create:
-            # まだ無いフォルダへ書く `init` のために、フォルダごと作る
-            created = not root.exists()
-            root.mkdir(parents=True, exist_ok=True)
+            # まだ無いフォルダへ書く `init` のために、記録のフォルダごと作る
+            root_created = not root.exists()
+            records_created = not records.exists()
+            records.mkdir(parents=True, exist_ok=True)
         else:
             # ワークスペースでないフォルダには何も作らず止める
             require(root)
+        # 記録のフォルダが無い（移す前の形）ときだけ、直下にロックのファイルを置く
+        lock_dir = records if records.is_dir() else root
         try:
-            with _open_lock_file(root) as stream:
+            with _open_lock_file(lock_dir) as stream:
                 # 別のプロセスが持っている間は、取れるまで待つ
                 fcntl.flock(stream, fcntl.LOCK_EX)
                 try:
@@ -282,10 +288,13 @@ def workspace_lock(
                 finally:
                     fcntl.flock(stream, fcntl.LOCK_UN)
         except BaseException:
-            # この鍵で作ったフォルダに、ロックのファイルしか無いまま失敗したときは、何も作らなかった形に戻す
-            if created and [path.name for path in root.iterdir()] == [LOCK_FILE]:
-                (root / LOCK_FILE).unlink()
-                root.rmdir()
+            # この鍵で作った記録のフォルダに、ロックのファイルしか無いまま失敗したときは、何も作らなかった形に戻す
+            if records_created and [path.name for path in records.iterdir()] == [LOCK_FILE]:
+                (records / LOCK_FILE).unlink()
+                records.rmdir()
+                # 無かった root も、空になったら消す
+                if root_created and not any(root.iterdir()):
+                    root.rmdir()
             raise
 
 
@@ -415,9 +424,10 @@ def save_change(workspace: Workspace, change: Change) -> None:
     if problems:
         raise build_mismatch_error(problems, changed)
 
-    yaml_path = workspace.root / spec.file
-    changes_path = workspace.root / CHANGES_FILE
-    body_path = workspace.root / BODY_DIR / change.body.name if change.body else None
+    records = records_root(workspace.root)
+    yaml_path = records / spec.file
+    changes_path = records / CHANGES_FILE
+    body_path = records / BODY_DIR / change.body.name if change.body else None
     # 置き換える前の中身を控える（無ければ None）
     previous_body = body_path.read_bytes() if body_path and body_path.is_file() else None
     previous_yaml = yaml_path.read_bytes() if yaml_path.is_file() else None
@@ -487,16 +497,16 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
         raise build_mismatch_error(problems, changed)
 
     # 置き換える順（本文 → 種類の YAML → まとまり）に、書く先と中身を並べる
+    records = records_root(workspace.root)
     bodies = {body.name: body for body in change.bodies}
     targets: list[tuple[Path, str]] = [
-        (workspace.root / BODY_DIR / body.name, body.text) for body in bodies.values()
+        (records / BODY_DIR / body.name, body.text) for body in bodies.values()
     ]
     targets.extend(
-        (workspace.root / KINDS[kind].file, dump_yaml({"items": change.items[kind]}))
-        for kind in kinds
+        (records / KINDS[kind].file, dump_yaml({"items": change.items[kind]})) for kind in kinds
     )
     if change.changes is not None:
-        targets.append((workspace.root / CHANGES_FILE, dump_yaml(change.changes)))
+        targets.append((records / CHANGES_FILE, dump_yaml(change.changes)))
     # 置き換える前の中身を控える（無ければ None）
     previous = {path: path.read_bytes() if path.is_file() else None for path, _ in targets}
 
@@ -525,11 +535,17 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
-    """設定を検証してから、設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る。"""
+    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る。"""
     root = root.resolve()
-    # 前の版の設定（mindmap.yaml）しか無いフォルダも、記録を空の YAML で上書きしないために作らない
-    if (root / SETTINGS_FILE).exists() or (root / LEGACY_SETTINGS_FILE).exists():
+    records = records_root(root)
+    if (records / SETTINGS_FILE).exists():
         raise WorkspaceExistsError(f"既にワークスペースがあります: {root}")
+    # 直下に前の版の設定ファイルがあるフォルダも、記録を残したまま空の記録を作らない（移し替えを案内する）
+    if (root / SETTINGS_FILE).exists() or (root / LEGACY_SETTINGS_FILE).exists():
+        raise WorkspaceExistsError(
+            f"既にワークスペースがあります: {root}",
+            [UPGRADE_HINT.replace("{root}", str(root))],
+        )
 
     # 設定と空の 7 種類で検証する（問題があればフォルダも作らない）
     raw: dict[str, Any] = {SETTINGS_FILE: settings}
@@ -549,23 +565,23 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
     created: list[Path] = []
     files: list[str] = []
     try:
-        top_missing = _first_missing_ancestor(root)
-        root.mkdir(parents=True, exist_ok=True)
+        top_missing = _first_missing_ancestor(records)
+        records.mkdir(parents=True, exist_ok=True)
         if top_missing is not None:
             created.append(top_missing)
         for dir_name in (BODY_DIR, RELEASE_DIR):
-            _make_dir(root / dir_name, created)
-            files.append(f"{dir_name}/")
+            _make_dir(records / dir_name, created)
+            files.append(f"{RECORD_DIR}/{dir_name}/")
         for spec in KINDS.values():
-            (root / spec.file).write_text(dump_yaml({"items": []}), encoding="utf-8")
-            created.append(root / spec.file)
-            files.append(spec.file)
-        (root / VERSION_FILE).write_text(f"{version}\n", encoding="utf-8")
-        created.append(root / VERSION_FILE)
-        files.append(VERSION_FILE)
+            (records / spec.file).write_text(dump_yaml({"items": []}), encoding="utf-8")
+            created.append(records / spec.file)
+            files.append(f"{RECORD_DIR}/{spec.file}")
+        (records / VERSION_FILE).write_text(f"{version}\n", encoding="utf-8")
+        created.append(records / VERSION_FILE)
+        files.append(f"{RECORD_DIR}/{VERSION_FILE}")
         # config.yaml は最後に書く（途中で止まってもワークスペースとして扱われない）
-        (root / SETTINGS_FILE).write_text(dump_yaml(settings), encoding="utf-8")
-        files.append(SETTINGS_FILE)
+        (records / SETTINGS_FILE).write_text(dump_yaml(settings), encoding="utf-8")
+        files.append(f"{RECORD_DIR}/{SETTINGS_FILE}")
     except OSError as error:
         _remove_created(created)
         raise write_failed(root, error) from error
@@ -573,12 +589,12 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
 
 
 def clear_release(root: Path) -> list[str]:
-    """`release/` の中のファイルとフォルダを消す（`release/` が無ければ作る）。"""
+    """`.mindstella/release/` の中のファイルとフォルダを消す（`release/` が無ければ作る）。"""
     root = root.resolve()
-    # config.yaml が無いフォルダはワークスペースではない（何も消さない）
+    # .mindstella/config.yaml が無いフォルダはワークスペースではない（何も消さない）
     require_workspace(root)
 
-    release_dir = root / RELEASE_DIR
+    release_dir = records_root(root) / RELEASE_DIR
     removed: list[str] = []
     try:
         release_dir.mkdir(exist_ok=True)
@@ -600,8 +616,8 @@ def clear_release(root: Path) -> list[str]:
 
 
 def read_body(workspace: Workspace, name: str) -> str | None:
-    """`docs/` の本文を読む。ファイルが無いか、名前が `docs/` の外を指すときは None を返す。"""
-    body_dir = (workspace.root / BODY_DIR).resolve()
+    """`.mindstella/docs/` の本文を読む。ファイルが無いか、名前が `docs/` の外を指すときは None を返す。"""
+    body_dir = (records_root(workspace.root) / BODY_DIR).resolve()
     path = (body_dir / name).resolve()
     # docs/ の外を指す名前は読まない
     if not path.is_relative_to(body_dir):

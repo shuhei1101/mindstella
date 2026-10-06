@@ -15,7 +15,7 @@ from typing import Any, Literal, NotRequired, TypedDict
 import yaml
 from errors import ItemNotFoundError, SchemaMismatchError
 from jsonschema import Draft202012Validator
-from kinds import KINDS
+from kinds import KINDS, records_root
 from store import (
     CHANGES_FILE,
     SCHEMA_DIR,
@@ -59,7 +59,7 @@ __all__ = [
 # `SCHEMA_DIR` の下の、`changes.yaml` を検証するスキーマのファイル名
 CHANGES_SCHEMA = "changes.schema.json"
 
-# プレビューを最後に開いた日時を持つファイルの名前
+# プレビューを最後に開いた日時を持つファイルの名前（`records_root` の下）
 OPENED_FILE = ".mindstella-opened"
 
 # `config.yaml` に `history_limit` が無いときの回数
@@ -73,7 +73,7 @@ SUMMARY_MAX_LENGTH = 200
 
 # 変更履歴の `before` に入れない、ツールが付けるキー（本文は `body_diff` で持つ）
 NON_HISTORY_KEYS = frozenset(
-    {"updated", "history", "history_dropped_seq", "seq", "added_seq", "body"}
+    {"updated", "updated_by", "history", "history_dropped_seq", "seq", "added_seq", "body"}
 )
 
 # 前に本文が無かった回の、`before` に入れる本文のキー
@@ -99,6 +99,8 @@ class HistoryEntry(TypedDict):
 
     seq: int
     at: str
+    # その回を書き換えた人。このキーを入れる前に積んだ回は持たない
+    by: NotRequired[Literal["ai", "user"]]
     # 変わったキー → 書き換える前の値。前に無かったキーは `None`
     before: dict[str, Any]
     # 今の本文を前の本文へ戻す行の置き換えの並び（本文が変わったときだけ）
@@ -128,7 +130,7 @@ class Changes(TypedDict):
 
 def load_changes(root: Path) -> Changes:
     """`changes.yaml` を読んでスキーマと突き合わせる。無ければ空の記録を返す。"""
-    path = root / CHANGES_FILE
+    path = records_root(root) / CHANGES_FILE
     # ファイルが無い: まとまり 0 件・まだまとめていない変更なしとして扱う
     if not path.is_file():
         return {"last_seq": 0, "sets": [], "pending": {"added": [], "changed": []}}
@@ -195,6 +197,7 @@ def make_entry(
     after_body: str | None,
     seq: int,
     at: str,
+    by: Literal["ai", "user"],
 ) -> HistoryEntry | None:
     """書き換える前と後の項目と本文を比べ、変わったものがあれば 1 回分を作る。"""
     keys = [
@@ -216,7 +219,7 @@ def make_entry(
     # 変わったキーも本文も無い
     if not before and not body_diff:
         return None
-    entry: HistoryEntry = {"seq": seq, "at": at, "before": before}
+    entry: HistoryEntry = {"seq": seq, "at": at, "by": by, "before": before}
     if body_diff:
         entry["body_diff"] = body_diff
     return entry
@@ -359,7 +362,14 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
         for item in workspace.items[kind]:
             # 読んだ時点より後に足した項目
             if item.get("added_seq", 0) > read_seq:
-                added.append({"id": item["id"], "kind": kind, "title": item["title"]})
+                added.append(
+                    {
+                        "id": item["id"],
+                        "kind": kind,
+                        "title": item["title"],
+                        "updated_by": item.get("updated_by"),
+                    }
+                )
                 continue
             # 読んだ時点より後に変えていない項目
             if item.get("seq", 0) <= read_seq:
@@ -379,6 +389,8 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
                     "id": item["id"],
                     "kind": kind,
                     "title": item["title"],
+                    "updated_by": item.get("updated_by"),
+                    "by": _editors_since(item, read_seq) if limit > 0 else [],
                     "before": before,
                     "body_diff": body_diff,
                 }
@@ -392,6 +404,16 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
     }
 
 
+def _editors_since(item: dict[str, Any], read_seq: int) -> list[str]:
+    """読んだ時点より後の変更履歴の回を書き換えた人を、重なりなく `user`・`ai` の順で返す（`by` を持たない回は数えない）。"""
+    editors = {
+        entry["by"]
+        for entry in item.get("history", [])
+        if entry["seq"] > read_seq and "by" in entry
+    }
+    return [editor for editor in ("user", "ai") if editor in editors]
+
+
 def mark_read(changes: Changes) -> Changes:
     """`read_seq` を `last_seq` にした新しい記録を返す。"""
     return {**changes, "read_seq": changes["last_seq"]}
@@ -399,7 +421,7 @@ def mark_read(changes: Changes) -> Changes:
 
 def touch_opened(root: Path, now: str) -> str | None:
     """前回開いた日時を読み、今の日時に書き換えて、前の日時を返す。"""
-    path = root / OPENED_FILE
+    path = records_root(root) / OPENED_FILE
     previous = _read_opened(path)
     try:
         temp = write_temp(path, f"{now}\n")

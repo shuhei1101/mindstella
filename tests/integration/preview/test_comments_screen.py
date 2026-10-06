@@ -21,7 +21,7 @@ from preview_comment_helpers import (
 )
 from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
-from workspace_fixtures import CallTool, MakeComment, MakeDraft, MakeItem
+from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem
 
 # 一覧の送る帯の要素
 CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
@@ -300,7 +300,7 @@ def test_send_when_stale(
     assert page.locator(f"{_row('C-1')} .row-stale").count() == 0
     review = page.evaluate(REVIEW_COLOR_SCRIPT)
     assert page.eval_on_selector(_row("C-2"), "e => getComputedStyle(e).borderTopColor") == review
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert len(read_workspace_yaml(root, "comments.yaml")["items"]) == 2
 
 

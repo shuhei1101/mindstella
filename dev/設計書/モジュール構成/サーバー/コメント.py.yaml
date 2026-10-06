@@ -26,13 +26,13 @@ constants:
     title: レビュー中のコメントのファイル名
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 共通
-    summary: 無ければ 0 件
+    summary: '`records_root(root)` の下。無ければ 0 件'
     value: '"comments.yaml"'
   - name: DRAFTS_FILE
     title: 書きかけのファイル名
     container: plugins/mindstella/skills/mindmap/scripts/comments.py
     usecase: 共通
-    summary: 無ければ 0 件
+    summary: '`records_root(root)` の下。無ければ 0 件'
     value: '"drafts.yaml"'
   - name: COMMENTS_SCHEMA
     title: レビュー中のコメントのスキーマ

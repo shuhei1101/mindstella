@@ -9,6 +9,7 @@ import pytest
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 from .history_helpers import add_item, commit, read_changes, read_items
+from workspace_fixtures import RECORD_DIR
 
 # 案 A（利点・欠点を持つ）と案 B
 OPTION_A: dict[str, Any] = {
@@ -53,7 +54,7 @@ def test_normal_when_added(decision_workspace, call_tool: CallTool) -> None:
     added = {"key": "B", **option}
     assert result.data == {
         "id": "D-1",
-        "file": "decisions.yaml",
+        "file": ".mindstella/decisions.yaml",
         "options": [OPTION_A, added],
         "changed": True,
     }
@@ -253,7 +254,7 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1", options=[OPTION_A]))
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = call_tool(
         "edit_option",

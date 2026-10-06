@@ -41,7 +41,7 @@ from errors import (
     WriteFailedError,
 )
 from history import touch_opened
-from kinds import BODY_DIR, KINDS, SETTINGS_FILE
+from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
 from locations import location_to_dict
 from settings_update import update_display
 from store import (
@@ -513,14 +513,15 @@ def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
     names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE, CHANGES_FILE]
-    # 本文の Markdown（`docs/` の直下）も見る
-    body_dir = root / BODY_DIR
+    # 本文の Markdown（`.mindstella/docs/` の直下）も見る
+    records = records_root(root)
+    body_dir = records / BODY_DIR
     if body_dir.is_dir():
         names.extend(f"{BODY_DIR}/{path.name}" for path in body_dir.glob("*.md"))
     parts: list[str] = []
     for name in sorted(names):
         try:
-            stat = (root / name).stat()
+            stat = (records / name).stat()
         except OSError:
             # 無い（足される・消されると印が変わる）
             parts.append(f"{name}:-")

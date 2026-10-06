@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # 本文（3 行）と、2 行目を書き換えた本文
 BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
@@ -27,7 +27,7 @@ NEW_DECISION: dict[str, Any] = {
 
 def _read_decisions(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの検討事項の並びを読む。"""
-    return yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"]
+    return yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))["items"]
 
 
 def _stdin(data: dict[str, Any]) -> str:
@@ -62,6 +62,7 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     assert after_add["weight"] == "大"
     # 足しただけの時点では、その項目は変更履歴を持たない
     assert "history" not in after_add
+    assert after_add["updated_by"] == "ai"
     assert updated.is_error is False
     after_update = _read_decisions(root)[0]
     assert after_update["answer"] == "種類ごとに分ける"
@@ -71,6 +72,8 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     # 更新の後、その項目が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
     assert len(after_update["history"]) == 1
     assert after_update["history"][0]["before"] == {"answer": None, "status": "未決定"}
+    assert after_update["history"][0]["by"] == "ai"
+    assert after_update["updated_by"] == "ai"
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.is_error is False
 
@@ -116,7 +119,7 @@ def test_error_when_id_not_found(
 
 def _set_history_limit(root: Path, limit: int) -> None:
     """`config.yaml` に保持する回数を書く。"""
-    path = root / "config.yaml"
+    path = root / RECORD_DIR / "config.yaml"
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
     settings["history_limit"] = limit
     path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -194,7 +197,7 @@ def test_normal_when_changes_committed(make_workspace: MakeWorkspace, call_tool:
     assert [row["id"] for row in first.data["changed"]] == [item_id]
     assert first.data["changed"][0]["keys"] == ["answer"]
     assert committed.data["summary"] == "D-1 を決め、T-1 を積む"
-    changes = yaml.safe_load((root / "changes.yaml").read_text(encoding="utf-8"))
+    changes = yaml.safe_load((root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8"))
     assert [entry["summary"] for entry in changes["sets"]] == ["D-1 を決め、T-1 を積む", "足す"]
     assert changes["sets"][0]["added"] == [task_id]
     assert changes["sets"][0]["changed"] == [item_id]
@@ -235,7 +238,7 @@ def test_normal_when_batched(make_workspace: MakeWorkspace, call_tool: CallTool)
     assert results[0]["result"]["id"] == "D-2"
     assert results[1]["result"]["id"] == "T-1"
     # T-1 が for: [D-2] を持つ
-    tasks = yaml.safe_load((root / "tasks.yaml").read_text(encoding="utf-8"))["items"]
+    tasks = yaml.safe_load((root / RECORD_DIR / "tasks.yaml").read_text(encoding="utf-8"))["items"]
     assert tasks[0]["for"] == ["D-2"]
     # 4 つ目の取得の結果が、直した後の D-1 の答えと状態を持つ
     shown = results[3]["result"]["item"]
@@ -303,3 +306,47 @@ def test_normal_when_unread_history_kept(make_workspace: MakeWorkspace, call_too
     # 3 回目に直した後、変更履歴が 3 回目の 1 回分だけで、history_dropped_seq が消した回の最も大きい通し番号である
     assert len(after_three["history"]) == 1
     assert after_three["history_dropped_seq"] == max(entry["seq"] for entry in after_two["history"])
+
+
+def test_normal_when_body_for_every_kind(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """タスク・用語集・メモにも本文を書き、メモの本文を直して差分を変更履歴に積む（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    task_body = "経緯: 会話で持ち越した\n終わり方: 検証の結果を残す\n"
+    term_body = "由来: 話し合いで決めた\n使い方: 画面の名前に使う\n"
+    note_body = "調べたこと: 用語の由来\n補足: 最初の版\n"
+    note_rewritten = "調べたこと: 用語の由来\n補足: 書き直した\n"
+    items = [
+        ("task", {"title": "調べる", "kind": "調査", "status": "未着手", "body_markdown": task_body}),
+        ("term", {"title": "ワークスペース", "meaning": "話し合いの記録のフォルダ", "body_markdown": term_body}),
+        ("note", {"title": "脱線", "content": "用語の由来を調べた", "body_markdown": note_body}),
+    ]
+    # 実行
+    added = [call_tool("add", **ws, kind=kind, item=item) for kind, item in items]
+    rewritten = call_tool("update", **ws, id="N-1", item={"body_markdown": note_rewritten})
+    shown = {item_id: call_tool("show", **ws, id=item_id) for item_id in ("T-1", "G-1", "N-1")}
+    checked = call_tool("check", **ws)
+    # 検証
+    assert [result.is_error for result in added] == [False, False, False]
+    assert [result.data["id"] for result in added] == ["T-1", "G-1", "N-1"]
+    records = root / RECORD_DIR
+    for item_id, file_name in (("T-1", "tasks.yaml"), ("G-1", "terms.yaml"), ("N-1", "notes.yaml")):
+        item = yaml.safe_load((records / file_name).read_text(encoding="utf-8"))["items"][0]
+        assert item["body"] == f"{item_id}.md"
+        assert item["updated_by"] == "ai"
+        assert (records / "docs" / f"{item_id}.md").is_file()
+    # 表示の body_markdown が、T-1・G-1 は渡した本文、N-1 は直した後の本文である
+    assert shown["T-1"].data["body_markdown"] == task_body
+    assert shown["G-1"].data["body_markdown"] == term_body
+    assert rewritten.is_error is False
+    assert shown["N-1"].data["body_markdown"] == note_rewritten
+    # N-1 が変更履歴を 1 回分持ち、その回が本文の 2 行目の差分を持つ
+    note = yaml.safe_load((records / "notes.yaml").read_text(encoding="utf-8"))["items"][0]
+    assert len(note["history"]) == 1
+    assert note["history"][0]["body_diff"] == [
+        {"line": 2, "now": ["補足: 書き直した"], "before": ["補足: 最初の版"]}
+    ]
+    # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}

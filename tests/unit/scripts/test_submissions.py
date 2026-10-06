@@ -14,6 +14,7 @@ import store
 import submissions
 from errors import SchemaMismatchError, SubmissionNotFoundError, WriteFailedError
 from fixture_types import FailingReplace, MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
+from workspace_fixtures import RECORD_DIR
 
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-04T03:00:00+00:00"
@@ -32,7 +33,7 @@ def _fixed_now() -> str:
 
 def _read_submissions(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの submissions.yaml を読んで、送信の並びを返す。"""
-    data = yaml.safe_load((root / "submissions.yaml").read_text(encoding="utf-8"))
+    data = yaml.safe_load((root / RECORD_DIR / "submissions.yaml").read_text(encoding="utf-8"))
     return data["items"]
 
 
@@ -217,7 +218,7 @@ def test_take_submission_when_already_taken(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1", taken="2026-10-03T00:00:00+00:00"))
-    mtime_before = (root / "submissions.yaml").stat().st_mtime_ns
+    mtime_before = (root / RECORD_DIR / "submissions.yaml").stat().st_mtime_ns
 
     def _unexpected_now() -> str:
         """取り込み済みでは今の日時を引かないので、呼ばれたら失敗させる。"""
@@ -227,7 +228,7 @@ def test_take_submission_when_already_taken(
     result = submissions.take_submission(root, "S-1", now=_unexpected_now)
     # 検証
     assert result == ("2026-10-03T00:00:00+00:00", True)
-    assert (root / "submissions.yaml").stat().st_mtime_ns == mtime_before
+    assert (root / RECORD_DIR / "submissions.yaml").stat().st_mtime_ns == mtime_before
 
 
 def test_take_submission_when_not_found(
@@ -257,12 +258,12 @@ def test_take_submission_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
-    before = (root / "submissions.yaml").read_bytes()
+    before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
     monkeypatch.setattr(submissions.os, "replace", failing_replace("submissions.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         submissions.take_submission(root, "S-1", now=_fixed_now)
-    assert (root / "submissions.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == before
 
 
 def _review_comment(
@@ -339,7 +340,7 @@ def test_append_submissions_when_first(make_workspace: MakeWorkspace, make_item:
     )
     # 検証
     assert [sent.id for sent in result] == ["S-1"]
-    assert (root / "submissions.yaml").is_file()
+    assert (root / RECORD_DIR / "submissions.yaml").is_file()
 
 
 def test_append_submissions_when_already_sent(
@@ -372,10 +373,10 @@ def test_append_submissions_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
-    before = (root / "submissions.yaml").read_bytes()
+    before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
     monkeypatch.setattr(submissions.os, "replace", failing_replace("submissions.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         submissions.append_submissions(root, [_review_comment("C-1", target="D-1")], now=_fixed_now)
-    assert (root / "submissions.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == before
     assert list(root.rglob("*.tmp")) == []

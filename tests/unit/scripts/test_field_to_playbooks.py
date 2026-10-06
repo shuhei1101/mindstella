@@ -39,6 +39,7 @@ def test_migrate(field_to_playbooks: ModuleType, make_workspace: MakeWorkspace) 
             "phases": ["目的", "要件", "構成"],
         },
         settings_file="mindmap.yaml",
+        top=True,
     )
     # 実行
     changed = field_to_playbooks.migrate(root)
@@ -64,6 +65,7 @@ def test_migrate_when_no_field(
             "phases": ["目的", "要件", "構成"],
         },
         settings_file="mindmap.yaml",
+        top=True,
     )
     before = snapshot_tree(root)
     before_mtimes = snapshot_mtimes(root)
@@ -89,6 +91,7 @@ def test_migrate_when_both(
             "phases": ["目的", "要件", "構成"],
         },
         settings_file="mindmap.yaml",
+        top=True,
     )
     before = snapshot_tree(root)
     # 実行・検証
@@ -102,7 +105,7 @@ def test_migrate_when_settings_renamed(
 ) -> None:
     """mindmap.yaml が無ければ何も書かない（正常系）。"""
     # 準備
-    root = make_workspace()
+    root = make_workspace(top=True)
     before = snapshot_tree(root)
     before_mtimes = snapshot_mtimes(root)
     # 実行

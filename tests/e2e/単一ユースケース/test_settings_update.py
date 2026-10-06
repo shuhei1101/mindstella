@@ -127,6 +127,9 @@ def test_normal_when_playbooks_replaced(
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["phase"] == "目的"
     assert decisions["D-2"]["phase"] == "発散"
+    # 付け替えた D-1 の updated_by が ai で、付け替えていない D-2 は編集した人を持たない
+    assert decisions["D-1"]["updated_by"] == "ai"
+    assert "updated_by" not in decisions["D-2"]
     # goal.phase が要件である
     assert settings["goal"]["phase"] == "要件"
     # 点検が問題を 0 件で返す
@@ -266,6 +269,8 @@ def test_normal_when_targets_remapped(
     # D-1 の target が アプリ、category が 画面。D-2 の target が 管理画面、category が 運用
     assert (decisions["D-1"]["target"], decisions["D-1"]["category"]) == ("アプリ", "画面")
     assert (decisions["D-2"]["target"], decisions["D-2"]["category"]) == ("管理画面", "運用")
+    # 付け替えた D-1・D-2 の updated_by が ai である
+    assert [decisions[item_id]["updated_by"] for item_id in ("D-1", "D-2")] == ["ai", "ai"]
     # D-1・D-2 が変更履歴を持たず、pending が空を返す
     assert "history" not in decisions["D-1"]
     assert "history" not in decisions["D-2"]

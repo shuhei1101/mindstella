@@ -21,7 +21,7 @@ from display_settings_helpers import (
 )
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, click_item_ball
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # このファイルから見たリポジトリの直下（tests/e2e/単一ユースケース の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -232,7 +232,7 @@ def test_error_when_schema_mismatch(
     root = make_workspace(make_item("D-1"))
     out = tmp_path / "配る.html"
     assert call_tool("export", workspace=str(root), out=str(out)).is_error is False
-    (root / "decisions.yaml").write_text(
+    (root / RECORD_DIR / "decisions.yaml").write_text(
         yaml.safe_dump({"items": [make_item("D-1", status="完了")]}, allow_unicode=True),
         encoding="utf-8",
     )

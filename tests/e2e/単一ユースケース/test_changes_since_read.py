@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
-from workspace_fixtures import MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR, MakeWorkspace, SnapshotTree
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,7 +29,7 @@ TASK: dict[str, Any] = {"title": "調べる", "kind": "調査", "status": "未�
 
 def _set_history_limit(root: Path, limit: int) -> None:
     """`config.yaml` に保持する回数を書く。"""
-    path = root / "config.yaml"
+    path = root / RECORD_DIR / "config.yaml"
     settings = yaml.safe_load(path.read_text(encoding="utf-8"))
     settings["history_limit"] = limit
     path.write_text(yaml.safe_dump(settings, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -58,12 +58,14 @@ def test_normal(
     second = replay("changes_since_read", **ws)
     # 検証
     # 足した項目が T-1 の 1 件である
-    assert first["added"] == [{"id": "T-1", "kind": "task", "title": "調べる"}]
+    assert first["added"] == [{"id": "T-1", "kind": "task", "title": "調べる", "updated_by": "ai"}]
     # 変えた項目が D-1 の 1 件で、変わったキーが title と本文である
     assert [entry["id"] for entry in first["changed"]] == ["D-1"]
     changed = first["changed"][0]
     # D-1 の title の前の値が、読んだ時点の 問い A である
     assert changed["before"] == {"title": "問い A"}
+    # 足した T-1 と変えた D-1 に、最後に編集した人 ai が載っている
+    assert changed["updated_by"] == "ai"
     # D-1 の本文が 2 行目だけの行の差分で返り、本文の全文を含まない
     assert changed["body_diff"] == [{"line": 2, "now": ["書き換えた 2 行目"], "before": ["2 行目"]}]
     # 読んだ後、AI が最後に読んだ時点が changes.yaml の last_seq と同じである
@@ -74,8 +76,8 @@ def test_normal(
     assert second["changed"] == []
     # 項目の YAML の中身が、読む前と同じである
     after = snapshot_tree(root)
-    assert {name: text for name, text in after.items() if name != "changes.yaml"} == {
-        name: text for name, text in before.items() if name != "changes.yaml"
+    assert {name: text for name, text in after.items() if name != ".mindstella/changes.yaml"} == {
+        name: text for name, text in before.items() if name != ".mindstella/changes.yaml"
     }
 
 

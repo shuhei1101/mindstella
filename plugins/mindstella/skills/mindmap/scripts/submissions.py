@@ -13,6 +13,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from errors import ItemNotFoundError, SchemaMismatchError, SubmissionNotFoundError
+from kinds import records_root
 from store import (
     SCHEMA_DIR,
     WHOLE_PATH,
@@ -80,7 +81,7 @@ class PendingSubmission:
 
 def load_submissions(root: Path) -> list[Submission]:
     """`submissions.yaml` を読み、スキーマと突き合わせて送信の並びにする。"""
-    path = root / SUBMISSIONS_FILE
+    path = records_root(root) / SUBMISSIONS_FILE
     # ファイルが無い: 送信 0 件として扱う
     if not path.is_file():
         return []
@@ -215,7 +216,7 @@ def _title_of(workspace: Workspace, item_id: str | None) -> str | None:
 
 def _write_submissions(root: Path, submissions: list[Submission]) -> None:
     """送信の並びを一時ファイルに書いてから `submissions.yaml` を置き換える。"""
-    path = root / SUBMISSIONS_FILE
+    path = records_root(root) / SUBMISSIONS_FILE
     text = dump_yaml({"items": [_submission_dict(submission) for submission in submissions]})
     try:
         temp = write_temp(path, text)

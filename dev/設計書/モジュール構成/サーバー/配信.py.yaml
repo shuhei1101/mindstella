@@ -592,19 +592,19 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md` を名前の順に並べる（`.mindstella-opened` は見ない）
+      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md` を名前の順に並べる（`.mindstella-opened` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
         case: 正常
         summary: 書き換え・足す・消すで印が変わる
-        condition: '作成済みのワークスペース。`parametrize`: `decisions.yaml` を書き換える / `docs/D-1.md` を足す / `submissions.yaml` を足す / `.mindstella.lock` を足す / `comments.yaml` を足す / `drafts.yaml` を足す'
+        condition: '作成済みのワークスペース。`parametrize`: `.mindstella/decisions.yaml` を書き換える / `.mindstella/docs/D-1.md` を足す / `.mindstella/submissions.yaml` を足す / `.mindstella/.mindstella.lock` を足す / `.mindstella/comments.yaml` を足す / `.mindstella/drafts.yaml` を足す'
         mock: なし
         expected: 前の 3 つは印が変わり、`.mindstella.lock`・`comments.yaml`・`drafts.yaml` は変わらない
       - name: test_workspace_signature_with_changes
         case: 正常
         summary: まとまりは見て、前回開いた日時は見ない
-        condition: '`parametrize`: `changes.yaml` を足す / `.mindstella-opened` を足す'
+        condition: '`parametrize`: `.mindstella/changes.yaml` を足す / `.mindstella/.mindstella-opened` を足す'
         mock: なし
         expected: '`changes.yaml` では印が変わり、`.mindstella-opened` では変わらない'
   - name: stream_events

@@ -37,7 +37,7 @@ namespace MindmapPreview {
   const NO_VALUE = "（なし）";
 
   /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
-  const UNDIFFED_KEYS = new Set(["id", "created", "updated", "history", "history_dropped_seq", "body"]);
+  const UNDIFFED_KEYS = new Set(["id", "created", "updated", "updated_by", "history", "history_dropped_seq", "body"]);
 
   /** 前後を組み立てられない旨・本文の差分を出せない旨の文言 */
   const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
@@ -878,6 +878,7 @@ namespace MindmapPreview {
           relation("進める検討事項", item.for ?? []),
           relation("前提", related.prerequisites),
           relation("結果", item.result === undefined ? [] : [item.result]),
+          bodySection("本文"),
         ],
       });
     } else if (kind === "research") {
@@ -899,10 +900,11 @@ namespace MindmapPreview {
           labelled("意味", "meaning", item.meaning),
           listSection("別名", "aliases", item.aliases),
           listSection("使わない表記", "avoid", item.avoid),
+          bodySection("本文"),
         ],
       });
     } else if (kind === "notes") {
-      append({ parent: body, children: [lead("content", item.content, null)] });
+      append({ parent: body, children: [lead("content", item.content, null), bodySection("本文")] });
     } else {
       append({ parent: body, children: [bodySection("要約")] });
     }

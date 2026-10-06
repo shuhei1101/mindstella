@@ -48,12 +48,12 @@ flows:
       - '`url` が 1 回目と同じで、`started` が偽'
     test: test_normal_when_called_again
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すと配信を立てずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと配信を立てずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -62,7 +62,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: preview_url workspace
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -125,7 +125,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ（`mindmap.yaml` だけのフォルダは WorkspaceNotFoundError。移し替えは『記録の形式の移行』）'
+    constraints: '`.mindstella/config.yaml` があるフォルダ（`.mindstella/` が無く直下に `config.yaml` か `mindmap.yaml` があるフォルダは WorkspaceNotFoundError。移し替えは『記録の形式の移行』）'
 response:
   - name: url
     type: str
@@ -142,7 +142,7 @@ exceptions:
     condition: 配信の URL を返せた
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。配信を立てない
   - name: SchemaMismatchError
     condition: 配信を立てる前に `config.yaml` をスキーマと突き合わせて合わない（このプロセスでまだ配っていないワークスペースのときだけ確かめる）

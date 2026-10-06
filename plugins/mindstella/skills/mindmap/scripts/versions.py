@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal
 
 from errors import SchemaMismatchError
+from kinds import records_root
 from store import VERSION_FILE, write_failed, write_temp
 
 # プラグインの版を持つファイル（このファイルから見た `plugins/mindstella/version.ini`）
@@ -54,8 +55,11 @@ def compare_versions(
 
 
 def read_workspace_version(root: Path) -> Version | None:
-    """`mindstella-version.ini` の 1 行目を版にする。版のファイルが無ければ None を返す。"""
-    path = root / VERSION_FILE
+    """`.mindstella/mindstella-version.ini`（無ければ直下の `mindstella-version.ini`）の 1 行目を版にする。どちらも無ければ None を返す。"""
+    path = records_root(root) / VERSION_FILE
+    # 記録のフォルダに無い: v0.6.0 より前の置き場所（直下）を読む
+    if not path.exists():
+        path = root / VERSION_FILE
     # 版のファイルが無い: 版を記録する前の形式
     if not path.exists():
         return None
@@ -71,8 +75,8 @@ def read_plugin_version(*, path: Path = PLUGIN_VERSION_FILE) -> Version:
 
 
 def write_workspace_version(root: Path, version: Version) -> None:
-    """`mindstella-version.ini` に版を 1 行で書く。"""
-    target = root / VERSION_FILE
+    """`.mindstella/mindstella-version.ini` に版を 1 行で書く。"""
+    target = records_root(root) / VERSION_FILE
     try:
         temp = write_temp(target, f"{version}\n")
     except OSError as error:

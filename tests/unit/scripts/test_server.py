@@ -218,7 +218,8 @@ def test_call_tool_when_unexpected_error() -> None:
 def test_call_tool_when_lock_root(tmp_path: Path) -> None:
     """書き換えるツールは鍵を取って呼ぶ（正常系）。"""
     # 準備
-    (tmp_path / "config.yaml").write_text("", encoding="utf-8")
+    (tmp_path / ".mindstella").mkdir()
+    (tmp_path / ".mindstella" / "config.yaml").write_text("", encoding="utf-8")
     write_lock = threading.Lock()
     locked_in_handler: list[bool] = []
 
@@ -232,7 +233,7 @@ def test_call_tool_when_lock_root(tmp_path: Path) -> None:
     # 検証
     assert locked_in_handler == [True]
     assert write_lock.locked() is False
-    assert (tmp_path / ".mindstella.lock").exists()
+    assert (tmp_path / ".mindstella" / ".mindstella.lock").exists()
 
 
 def test_call_tool_when_lock_require(tmp_path: Path) -> None:

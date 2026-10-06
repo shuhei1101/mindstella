@@ -31,6 +31,7 @@ from fixture_types import (
     WriteDrafts,
     WriteSubmissions,
 )
+from workspace_fixtures import RECORD_DIR
 
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-05T03:00:00+00:00"
@@ -60,12 +61,12 @@ def _unexpected_now() -> str:
 
 def _read_comments(root: Path) -> dict[str, Any]:
     """ワークスペースの comments.yaml を読んで返す。"""
-    return yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))
 
 
 def _read_drafts(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの drafts.yaml の書きかけの並びを返す（ファイルが無ければ空）。"""
-    path = root / "drafts.yaml"
+    path = root / RECORD_DIR / "drafts.yaml"
     if not path.exists():
         return []
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
@@ -73,7 +74,7 @@ def _read_drafts(root: Path) -> list[dict[str, Any]]:
 
 def _read_submissions(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの submissions.yaml の送信の並びを返す。"""
-    data = yaml.safe_load((root / "submissions.yaml").read_text(encoding="utf-8"))
+    data = yaml.safe_load((root / RECORD_DIR / "submissions.yaml").read_text(encoding="utf-8"))
     return data["items"]
 
 
@@ -310,11 +311,11 @@ def test_add_comment_when_rejected(
     # 準備
     root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
     write_comments(root, make_comment("C-1"), seq=3)
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(expected_error):
         comments.add_comment(root, data, now=_fixed_now)
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_add_comment_when_write_fails(
@@ -329,12 +330,12 @@ def test_add_comment_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     monkeypatch.setattr(comments.os, "replace", failing_replace("comments.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         comments.add_comment(root, {"target": "D-1", "body": "本文"}, now=_fixed_now)
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
     assert list(root.rglob("*.tmp")) == []
 
 
@@ -428,11 +429,11 @@ def test_update_comment_when_rejected(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(expected_error):
         comments.update_comment(root, comment_id, data)
-    assert (root / "comments.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_delete_comment(
@@ -531,7 +532,7 @@ def test_save_draft_when_rejected(
     # 実行・検証
     with pytest.raises(expected_error):
         comments.save_draft(root, data, now=_fixed_now)
-    assert not (root / "drafts.yaml").exists()
+    assert not (root / RECORD_DIR / "drafts.yaml").exists()
 
 
 def test_send_comments(
@@ -551,8 +552,8 @@ def test_send_comments(
         make_comment("C-2", target="A-1", loc=LINE2_LOC),
         no_target,
     )
-    decisions_before = (root / "decisions.yaml").read_bytes()
-    docs_before = (root / "docs.yaml").read_bytes()
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    docs_before = (root / RECORD_DIR / "docs.yaml").read_bytes()
     # 実行
     sent, sent_comments = comments.send_comments(root, {"ids": ["C-2", "C-1"]}, now=_fixed_now)
     # 検証
@@ -581,8 +582,8 @@ def test_send_comments(
         },
     ]
     assert [item["id"] for item in _read_comments(root)["items"]] == ["C-3"]
-    assert (root / "decisions.yaml").read_bytes() == decisions_before
-    assert (root / "docs.yaml").read_bytes() == docs_before
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+    assert (root / RECORD_DIR / "docs.yaml").read_bytes() == docs_before
 
 
 @pytest.mark.parametrize(
@@ -606,12 +607,12 @@ def test_send_comments_when_rejected(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1"))
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(expected_error, match=expected_message):
         comments.send_comments(root, data, now=_fixed_now)
-    assert not (root / "submissions.yaml").exists()
-    assert (root / "comments.yaml").read_bytes() == before
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_send_comments_when_stale(
@@ -632,14 +633,14 @@ def test_send_comments_when_stale(
         make_comment("C-2", target="A-1", loc=out_of_range),
         make_comment("C-3", target="D-9"),
     )
-    before = (root / "comments.yaml").read_bytes()
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(CommentConflictError) as exc_info:
         comments.send_comments(root, {"ids": ["C-1", "C-2", "C-3"]}, now=_fixed_now)
     assert [comment_id for comment_id, _reason in exc_info.value.stale] == ["C-2", "C-3"]
     assert all(reason for _comment_id, reason in exc_info.value.stale)
-    assert not (root / "submissions.yaml").exists()
-    assert (root / "comments.yaml").read_bytes() == before
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
 def test_send_comments_when_comments_write_fails(
@@ -657,14 +658,14 @@ def test_send_comments_when_comments_write_fails(
     root = make_workspace(make_item("D-1"))
     write_submissions(root, make_submission("S-1"))
     write_comments(root, make_comment("C-1"))
-    submissions_before = (root / "submissions.yaml").read_bytes()
-    comments_before = (root / "comments.yaml").read_bytes()
+    submissions_before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
+    comments_before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     monkeypatch.setattr(comments.os, "replace", failing_replace("comments.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         comments.send_comments(root, {"ids": ["C-1"]}, now=_fixed_now)
-    assert (root / "submissions.yaml").read_bytes() == submissions_before
-    assert (root / "comments.yaml").read_bytes() == comments_before
+    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == submissions_before
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == comments_before
 
 
 @pytest.mark.parametrize(

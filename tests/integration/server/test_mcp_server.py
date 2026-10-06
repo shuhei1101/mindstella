@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 import yaml
-from workspace_fixtures import McpServer
+from workspace_fixtures import RECORD_DIR, McpServer
 
 from .fixture_types import MakeWorkspace, StartServer
 from .http_helpers import http_request
@@ -141,5 +141,7 @@ def test_normal_when_two_processes_write(
         thread.join()
     # 検証
     assert errors == []
-    items = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"]
+    items = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
     assert [item["id"] for item in items] == [f"D-{number}" for number in range(1, 41)]

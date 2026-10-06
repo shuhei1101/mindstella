@@ -5,4 +5,4 @@ items:
   - page: 続きを再開する.md
     summary: 途中まで進んだ話し合いの状況を読み、続きから進める
   - page: ゴールでリリースする.md
-    summary: ゴールに届いたかを確かめ、確定して release/ に書き出す
+    summary: ゴールに届いたかを確かめ、確定して .mindstella/release/ に書き出す

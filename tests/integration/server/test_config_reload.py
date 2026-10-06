@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from workspace_fixtures import write_yaml
+from workspace_fixtures import RECORD_DIR, write_yaml
 
 from .fixture_types import MakeWorkspace
 from .http_helpers import EventStream, http_request
@@ -29,7 +29,9 @@ def test_normal(
     root = make_workspace()
     url = serve_preview(root)
     stream = open_events(url)
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}})
+    write_yaml(
+        root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}}
+    )
     # 実行
     result = http_request(url, RELOAD_PATH, method="POST")
     # 検証
@@ -49,8 +51,11 @@ def test_error_when_check_fails(
     # 準備
     root = make_workspace(settings={**valid_settings, "display": {"network_look": "starlight"}})
     url = serve_preview(root)
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "rainbow"}})
-    before = (root / "config.yaml").read_bytes()
+    write_yaml(
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"network_look": "rainbow"}},
+    )
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     result = http_request(url, RELOAD_PATH, method="POST")
     # 検証
@@ -62,4 +67,4 @@ def test_error_when_check_fails(
     )
     records = http_request(url, "/api/records").json()
     assert records["settings"]["display"]["network_look"] == "starlight"
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

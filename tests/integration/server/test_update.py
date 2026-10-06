@@ -24,6 +24,7 @@ from .history_helpers import (
     update_item,
     write_settings,
 )
+from workspace_fixtures import RECORD_DIR
 
 # 検討事項 D-1 を足して `commit` した後の `changes.yaml`
 COMMITTED_D1 = (
@@ -38,7 +39,9 @@ BODY_AFTER = "1 行目\n書き換えた 2 行目\n3 行目\n"
 
 def _read_decisions(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの検討事項の並びを読む。"""
-    return yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"]
+    return yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
 
 
 def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
@@ -55,7 +58,7 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert result.is_error is False
     payload = result.data
     assert payload["id"] == "D-1"
-    assert payload["file"] == "decisions.yaml"
+    assert payload["file"] == ".mindstella/decisions.yaml"
     assert payload["changed"] == ["answer", "status", "weight"]
     updated_item = _read_decisions(root)[0]
     assert updated_item["answer"] == "種類ごとに分ける"
@@ -64,7 +67,9 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert updated_item["lead"] == DECISION_ITEM["lead"]
     assert updated_item["created"] == "2026-10-01T00:00:00+00:00"
     assert updated_item["updated"] > updated_item["created"]
+    assert updated_item["updated_by"] == "ai"
     assert len(updated_item["history"]) == 1
+    assert updated_item["history"][0]["by"] == "ai"
     assert updated_item["history"][0]["before"] == {
         "answer": None,
         "status": "未決定",
@@ -99,7 +104,7 @@ def test_normal_when_body_rewritten_over_limit(
     assert entry["body_diff"] == [
         {"line": 2, "now": ["書き換えた 2 行目"], "before": ["2 行目"]},
     ]
-    assert (root / "docs" / "D-1.md").read_text(encoding="utf-8") == BODY_AFTER
+    assert (root / RECORD_DIR / "docs" / "D-1.md").read_text(encoding="utf-8") == BODY_AFTER
     assert item["history_dropped_seq"] == answer_seq
 
 
@@ -199,7 +204,7 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = call_tool("update", workspace=str(root), id="D-1", item={"answer": "a"})
     # 検証
@@ -227,3 +232,25 @@ def test_error_when_legacy_format(
     assert any(line.startswith("docs.yaml: items[0]") for line in lines)
     assert lines[-1] == "ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_task_body_added(call_tool: CallTool, make_workspace: MakeWorkspace) -> None:
+    """本文を持たないタスクに本文を足し、変更履歴に本文の差分を積む（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "task", {"title": "調べる", "kind": "調査", "status": "未着手"})
+    commit(call_tool, root, "足す")
+    body = "経緯: 会話で持ち越した\n終わり方: 検証の結果を残す\n"
+    # 実行
+    result = call_tool("update", workspace=str(root), id="T-1", item={"body_markdown": body})
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["body", "body_markdown"]
+    assert (root / RECORD_DIR / "docs" / "T-1.md").read_text(encoding="utf-8") == body
+    task = read_items(root, "tasks.yaml")[0]
+    assert task["body"] == "T-1.md"
+    assert task["updated_by"] == "ai"
+    assert len(task["history"]) == 1
+    # 前に本文が無かった回は、本文のキーを null で持つ
+    assert task["history"][0]["before"] == {"body": None}

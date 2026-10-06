@@ -82,12 +82,12 @@ flows:
       - '`remaining_decisions` が D-2 だけ、`remaining_deliverables` が空'
     test: test_normal_when_no_goal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すとエラーで終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -96,7 +96,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: goal workspace
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -112,7 +112,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
 response:
   - name: has_goal
     type: bool
@@ -137,7 +137,7 @@ exceptions:
     condition: 判定できた（届いたかどうかによらない）
     notes: 結果を返す
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:

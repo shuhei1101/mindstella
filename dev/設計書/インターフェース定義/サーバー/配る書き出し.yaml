@@ -60,12 +60,12 @@ flows:
       - '`配る.txt` が無い'
     test: test_error_when_out_not_html
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
-    summary: config.yaml が無いフォルダを指すと何も書かずに終わる
+    summary: .mindstella/config.yaml が無いフォルダを指すと何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: 空のフォルダ
-        description: テストごとの一時フォルダ（`config.yaml` が無い）
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
       - name: 書き出す先
         description: 別の一時フォルダの `配る.html`（まだ無い）
     flow: |-
@@ -76,7 +76,7 @@ flows:
         participant WS as フォルダ
 
         クライアント->>IF: export workspace out
-        IF-->>WS: config.yaml が無い
+        IF-->>WS: .mindstella/config.yaml が無い
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -172,7 +172,7 @@ request:
     required: true
     location: argument
     description: ワークスペースのフォルダのパス
-    constraints: '`config.yaml` があるフォルダ'
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: out
     type: str
     required: true
@@ -198,7 +198,7 @@ exceptions:
     condition: '`out` の末尾が `.html` でない'
     notes: ツールのエラー。何も書き込まない
   - name: WorkspaceNotFoundError
-    condition: '`workspace` のフォルダに `config.yaml` が無い'
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: SchemaMismatchError
     condition: ワークスペースのどれかの YAML がスキーマに合わないか、YAML として読めない

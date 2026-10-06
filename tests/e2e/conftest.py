@@ -13,7 +13,7 @@ import pytest
 import yaml
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview, ServeWorkspace
-from workspace_fixtures import CallTool, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeWorkspace
 
 # スキルの手順が連ねるツールの呼び出しを再生する関数（ツールの名前と引数を渡し、結果の JSON を返す）
 type Replay = Callable[..., dict[str, Any]]
@@ -39,7 +39,7 @@ def read_yaml() -> Callable[[Path, str], Any]:
 
     def _read(root: Path, file_name: str) -> Any:
         """ワークスペースの下の YAML を読む。"""
-        return yaml.safe_load((root / file_name).read_text(encoding="utf-8"))
+        return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))
 
     return _read
 

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .fixture_types import CallTool, MakeWorkspace, SnapshotTree
 from .history_helpers import DECISION_ITEM, add_item, commit, update_item
+from workspace_fixtures import RECORD_DIR
 
 # 手で崩した `changes.yaml`（`pending` から `added` を消した）
 BROKEN_CHANGES = "last_seq: 0\nsets: []\npending:\n  changed: []\n"
@@ -45,7 +46,7 @@ def test_normal_when_empty(make_workspace: MakeWorkspace, call_tool: CallTool) -
     assert result.data is not None
     assert result.data["added"] == []
     assert result.data["changed"] == []
-    assert not (root / "changes.yaml").exists()
+    assert not (root / RECORD_DIR / "changes.yaml").exists()
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
