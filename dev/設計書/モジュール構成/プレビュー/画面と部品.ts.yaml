@@ -1343,6 +1343,27 @@ functions:
     returns:
       type: void
       description: なし
+  - name: commentPlace
+    title: コメントの印を置く場所
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: 項目へコメントする
+    kind: 関数
+    scope: public
+    summary: 項目の印を置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・マップの節点・字下げの一覧・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
+    args:
+      - name: id
+        type: string
+        required: true
+        passing: keyword
+        description: 項目の ID
+      - name: count
+        type: number | undefined
+        required: true
+        passing: keyword
+        description: その項目の件数（`comments[id]`。無ければ `undefined`）
+    returns:
+      type: HTMLElement
+      description: 印を置く場所
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
