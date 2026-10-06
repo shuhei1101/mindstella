@@ -54,8 +54,8 @@ body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; 
   .screen :is(.table-slot, .table-block) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   /* 表の枠: 行が少なければ中身の高さ、多ければ残りの高さで止めて中で縦・横にスクロールする */
   .screen .table-wrap { flex: 0 1 auto; min-height: 0; }
-  /* ボード: 残りの高さを持ち、中で縦・横にスクロールする */
-  .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: start; margin-bottom: 0; padding-top: 0; }
+  /* ボード: 残りの高さを持ち、中で縦・横にスクロールする。列は最も長い列の高さまで伸ばし、カードの少ない列の見出しも留める */
+  .screen > .board { flex: 1 1 0; min-height: 0; overflow: auto; align-items: stretch; margin-bottom: 0; padding-top: 0; }
 }
 /* マップを描く幅: 画面を領域の高さいっぱいに広げ、マップの描く領域の中で縦・横にスクロールする */
 @media (min-width: 901px) {
