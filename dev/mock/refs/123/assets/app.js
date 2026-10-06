@@ -605,6 +605,7 @@
     canvas.querySelectorAll("[data-node]").forEach((el) => { if (near.has(el.dataset.node)) el.classList.add("rel"); });
   };
   let lastMapSel, mapTap = null, mapShakeAt = -Infinity;
+  const PANEL_SLIDE_MS = 500;  // 詳細パネルがすべり込む時間（.45s）より少し長く待つ
   /** ロックした節の鍵を赤く震わせる。ネットワークの鍵と同じ動きを毎コマ当て、描き直されても続きから震わせる */
   const shakeMapLock = () => {
     const running = performance.now() - mapShakeAt < SHAKE_MS;
@@ -1618,7 +1619,12 @@
       case "dclose": drawerDlg.close(); break;
       case "dclear": delete fstate(state.tab)[el.dataset.key]; changeFilter(`[data-key="${CSS.escape(el.dataset.key)}"][data-act="dval"]`); break;
       case "dclearall": for (const k of Object.keys(fstate(state.tab))) delete fstate(state.tab)[k]; changeFilter(".fd-body input"); break;
-      case "mdemo": state.demo = el.dataset.v; applyDemo(); lastScreen = ""; history.replaceState(null, "", hashOf()); render(); break;
+      case "mdemo": {
+        state.demo = el.dataset.v; applyDemo(); lastScreen = ""; history.replaceState(null, "", hashOf()); render();
+        // 詳細パネルがすべり込んで本文の幅が決まってから、マップの起点の節を中央へ送り直す
+        if (SCREEN === "decisions") setTimeout(() => { lastMapSel = null; render(); }, PANEL_SLIDE_MS);
+        break;
+      }
       case "mapnode": mapNodeTap(e, el.dataset.id); break;
       case "comments": {
         // 開くときは絞り込みのドロワーを閉じて切り替える
