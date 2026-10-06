@@ -673,6 +673,23 @@ namespace MindmapPreview {
     element.classList.add(element.matches("path") ? `df-e-${mode}` : `df-n-${mode}`);
   }
 
+  // PoC（#115）: 計測と案の切り替え。globalThis.__POC に案の記号（A / D / E）を並べる
+  const pocGlobal = globalThis as unknown as { __POC?: string; __pocT?: Record<string, number>[]; __pocDiff?: unknown[] };
+  function pocHas(letter: string): boolean {
+    return (pocGlobal.__POC ?? "").includes(letter);
+  }
+  function pocMark(name: string, start: number): void {
+    (pocGlobal.__pocT ??= []).push({ [name]: performance.now() - start });
+  }
+  function pocRecord(diagram: DiagramDiff): void {
+    const label = (element: Element): string => `${element.tagName}#${element.id || element.getAttribute("data-id") || ""}:${(element.textContent ?? "").trim()}`;
+    (pocGlobal.__pocDiff ??= []).push({
+      added: diagram.added.map(label),
+      changed: diagram.changed.map(label),
+      removed: diagram.removed,
+    });
+  }
+
   /** 変わった図に、色・凡例と消したもの・Raw の行ごとの差分を付ける。前の版の図を描けない・色を付けない種類・突き合わせを打ち切ったときは、図の枠に色を付ける */
   async function decorateDiagram({ figure, beforeSource }: { figure: HTMLElement; beforeSource: string }): Promise<void> {
     const holder = figure.querySelector<HTMLElement>(".mermaid");
@@ -689,8 +706,21 @@ namespace MindmapPreview {
     const afterSvg = holder?.querySelector<SVGElement>("svg") ?? null;
     let colored = false;
     let removed: string[] = [];
-    if (afterSvg !== null && COLORED_DIAGRAM_TYPES.includes(type) && beforeSource.trim() !== "") {
+    if (afterSvg !== null && COLORED_DIAGRAM_TYPES.includes(type) && beforeSource.trim() !== "" && pocHas("D")) {
+      const tParse = performance.now();
+      const diagram = await diffDiagramParsed(type, beforeSource, afterSvg);
+      pocMark("D_parse_and_diff", tParse);
+      if (diagram !== null) {
+        for (const element of diagram.added) paintDiagramElement({ element, mode: "add" });
+        for (const element of diagram.changed) paintDiagramElement({ element, mode: "chg" });
+        removed = diagram.removed;
+        colored = true;
+        pocRecord(diagram);
+      }
+    } else if (afterSvg !== null && COLORED_DIAGRAM_TYPES.includes(type) && beforeSource.trim() !== "") {
+      const tRender = performance.now();
       const beforeSvg = await renderDiagramSvg(beforeSource);
+      pocMark("before_render", tRender);
       if (beforeSvg !== null) {
         // 前の版の図は、座標を取れるよう画面の外に置いて突き合わせる
         const offscreen = h({
@@ -702,9 +732,12 @@ namespace MindmapPreview {
           children: [beforeSvg],
         });
         document.body.append(offscreen);
+        const tDiff = performance.now();
         const diagram = diffDiagram(type, beforeSvg, afterSvg);
+        pocMark("diff", tDiff);
         offscreen.remove();
         if (diagram !== null) {
+          pocRecord(diagram);
           for (const element of diagram.added) paintDiagramElement({ element, mode: "add" });
           for (const element of diagram.changed) paintDiagramElement({ element, mode: "chg" });
           removed = diagram.removed;
@@ -724,7 +757,11 @@ namespace MindmapPreview {
     const afterFigures = [...root.querySelectorAll<HTMLElement>("figure.diagram")];
     if (afterFigures.length === 0) return;
     const sourceOf = (figure: ParentNode): string => figure.querySelector(`[${DIAGRAM_SOURCE_ATTR}]`)?.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
-    const beforeSources = [...renderMarkdown(before).querySelectorAll("figure.diagram")].map(sourceOf);
+    const tSources = performance.now();
+    const beforeSources = pocHas("A")
+      ? diagramFenceRanges(linesOf(before)).map(({ open, close }) => `${linesOf(before).slice(open, close - 1).join("\n")}\n`)
+      : [...renderMarkdown(before).querySelectorAll("figure.diagram")].map(sourceOf);
+    pocMark("before_sources", tSources);
     const pairs = pairDiagrams({ before: beforeSources, after: afterFigures.map(sourceOf) });
     afterFigures.forEach((figure, position) => {
       const beforeSource = pairs[position];

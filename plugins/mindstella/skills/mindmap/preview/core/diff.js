@@ -288,7 +288,8 @@ var MindmapPreview;
         }
         else {
             for (const node of root.querySelectorAll("g.node")) {
-                nodeList.push({ key: nodeKey(node, prefix), text: normalized(node.textContent), element: node, box: boxOf(node) });
+                const skipBox = (globalThis.__POC ?? "").includes("E") && flavor !== "state";
+                nodeList.push({ key: nodeKey(node, prefix), text: normalized(node.textContent), element: node, box: skipBox ? undefined : boxOf(node) });
             }
             const nodeKeys = new Set(nodeList.map((node) => node.key));
             const labels = new Map();
@@ -326,8 +327,47 @@ var MindmapPreview;
         const flavor = flavorOf(type);
         if (flavor === null)
             return null;
-        const previous = extractDiagram(beforeSvg, flavor);
-        const current = extractDiagram(afterSvg, flavor);
+        return compareDiagrams(flavor, extractDiagram(beforeSvg, flavor), extractDiagram(afterSvg, flavor));
+    }
+    MindmapPreview.diffDiagram = diffDiagram;
+    /** PoC（#115）案 D: 前の版は SVG に描かず、記法を解析した結果からノードと辺の鍵と文字を取り出して突き合わせる（flowchart だけ） */
+    async function diffDiagramParsed(type, beforeSource, afterSvg) {
+        const flavor = flavorOf(type);
+        if (flavor !== "flowchart")
+            return null;
+        const api = mermaid.mermaidAPI;
+        const parts = async (source) => {
+            const parsed = await api.getDiagramFromText(source);
+            const placeholder = afterSvg;
+            const nodes = new Map();
+            // SVG のノードの鍵は `flowchart-{id}`（nodeKey が描画の id と連番を外した残り）
+            for (const [id, vertex] of parsed.db.getVertices())
+                nodes.set(`flowchart-${id}`, { key: `flowchart-${id}`, text: normalized(vertex.text ?? id), element: placeholder });
+            const counts = new Map();
+            const edges = parsed.db.getEdges().map((edge) => {
+                const base = `${edge.start}>${edge.end}`;
+                const number = counts.get(base) ?? 0;
+                counts.set(base, number + 1);
+                return { key: `${base}#${number}`, text: normalized(edge.text ?? ""), element: placeholder };
+            });
+            return { nodes, edges };
+        };
+        const previous = await parts(beforeSource);
+        const drawn = extractDiagram(afterSvg, flavor);
+        if (!(globalThis.__POC ?? "").includes("P"))
+            return compareDiagrams(flavor, previous, drawn);
+        // 案 D'（P）: 今の版も記法を解析し、文字は前後とも解析した結果で比べる。色を付ける要素だけ今の版の SVG から引く
+        const parsedNow = await parts(afterSvg.closest("[data-source]")?.getAttribute("data-source") ?? afterSvg.__source ?? "");
+        const nodes = new Map();
+        for (const [key, node] of drawn.nodes)
+            nodes.set(key, { ...node, text: parsedNow.nodes.get(key)?.text ?? node.text });
+        const nowEdges = new Map(parsedNow.edges.map((edge) => [edge.key, edge.text]));
+        const edges = drawn.edges.map((edge) => ({ ...edge, text: nowEdges.get(edge.key) ?? edge.text }));
+        return compareDiagrams(flavor, previous, { nodes, edges });
+    }
+    MindmapPreview.diffDiagramParsed = diffDiagramParsed;
+    /** 前後の版のノード・辺の材料を鍵で突き合わせる */
+    function compareDiagrams(flavor, previous, current) {
         const result = { added: [], changed: [], removed: [] };
         for (const [key, node] of current.nodes) {
             const old = previous.nodes.get(key);
@@ -388,5 +428,4 @@ var MindmapPreview;
                 result.removed.push(edgeName(edge));
         return result;
     }
-    MindmapPreview.diffDiagram = diffDiagram;
 })(MindmapPreview || (MindmapPreview = {}));

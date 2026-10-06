@@ -1,0 +1,18 @@
+br 一致 {"added": [], "changed": ["g#flowchart-A-0:一行目三行目"], "removed": []}
+markdown 一致 {"added": [], "changed": ["g#flowchart-A-0:太字 の言葉"], "removed": []}
+quoted 一致 {"added": [], "changed": ["g#flowchart-A-0:引用 (括弧) と \"記号\" 改"], "removed": []}
+class 一致 {"added": [], "changed": ["g#flowchart-A-0:ノード 改"], "removed": []}
+edge_label 一致 {"added": ["path#L_A_B_2:"], "changed": ["path#L_A_C_0:"], "removed": []}
+add_remove 一致 {"added": ["g#flowchart-D-2:D", "path#L_B_D_0:"], "changed": [], "removed": ["B → C", "C"]}
+shapes 一致 {"added": [], "changed": ["g#flowchart-A-0:丸い"], "removed": []}
+subgraph 一致 {"added": ["path#L_C_A_0:"], "changed": ["g#flowchart-A-0:中 改"], "removed": []}
+br_same 一致 {"added": [], "changed": ["g#flowchart-B-1:次 改"], "removed": []}
+markdown_same 一致 {"added": [], "changed": ["g#flowchart-B-1:次 改"], "removed": []}
+quoted_same 一致 {"added": [], "changed": ["g#flowchart-B-1:次 改"], "removed": []}
+class_same 一致 {"added": [], "changed": ["g#flowchart-B-1:次 改"], "removed": []}
+edge_label_same 一致 {"added": [], "changed": ["g#flowchart-A-0:判定 改"], "removed": []}
+no_label_same 一致 {"added": [], "changed": ["g#flowchart-C-3:三 改"], "removed": []}
+icon_same 一致 {"added": [], "changed": ["g#flowchart-B-1:次 改"], "removed": []}
+br_removed 不一致 {"rendered": {"added": [], "changed": [], "removed": ["B → C", "消す 方"]}, "parsed": {"added": [], "changed": [], "removed": ["**消す** 方", "B → C"]}, "same": false}
+graph 一致 {"added": [], "changed": ["g#flowchart-B-1:二 改"], "removed": []}
+all 不一致あり
