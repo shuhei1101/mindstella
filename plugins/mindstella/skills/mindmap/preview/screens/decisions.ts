@@ -480,8 +480,11 @@ namespace MindmapPreview {
         mapState.zoom === "fit"
           ? Math.min(1, (wrap.clientWidth - 16) / width, (wrap.clientHeight - 16) / height)
           : mapState.zoom;
-      sizer.style.width = `${width * scale + 240}px`;
-      sizer.style.height = `${height * scale + 160}px`;
+      // 全体を表示は右と下に決まった余白、数値の倍率は枠の幅・高さの分の余白（マップが枠より小さくても、ホイールで拡大した点を残せるだけ送れる）
+      const marginRight = mapState.zoom === "fit" ? 240 : wrap.clientWidth;
+      const marginBottom = mapState.zoom === "fit" ? 160 : wrap.clientHeight;
+      sizer.style.width = `${width * scale + marginRight}px`;
+      sizer.style.height = `${height * scale + marginBottom}px`;
       canvas.style.transform = `scale(${scale})`;
       fitButton.setAttribute("aria-pressed", String(mapState.zoom === "fit"));
     };
