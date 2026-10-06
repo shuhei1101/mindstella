@@ -1225,7 +1225,7 @@ functions:
         summary: まだ無いフォルダも作って取る
         condition: '`tmp_path / "ws"`（無い）と `create=True`'
         mock: なし
-        expected: '`tmp_path / "ws" / ".mindstella.lock"` がある'
+        expected: '`tmp_path / "ws" / ".mindstella" / ".mindstella.lock"` がある'
       - name: test_workspace_lock_when_not_workspace
         case: 異常
         summary: ワークスペースでないフォルダには何も作らない

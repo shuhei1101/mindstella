@@ -260,7 +260,7 @@ functions:
         summary: 設定と付け替えた種類を書き、一時ファイルを残さない
         condition: '`phases` を変えた設定と、D-1 の `phase` を変えた検討事項の変更'
         mock: なし
-        expected: 戻り値が `[config.yaml, decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
+        expected: 戻り値が `[.mindstella/config.yaml, .mindstella/decisions.yaml]`。両方を読むと渡した中身。`.tmp` のファイルが無い
       - name: test_save_settings_when_schema_mismatch
         case: 異常
         summary: スキーマに合わない設定は書かない

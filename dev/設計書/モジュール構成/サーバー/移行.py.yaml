@@ -630,9 +630,9 @@ functions:
       - name: test_set_values
         case: 正常
         summary: 題名を入れ、ほかのキーと並びを変えない
-        condition: '`summary` を持たない `config.yaml` と `[("config.yaml", "summary", "題名")]`'
+        condition: '`summary` を持たない `.mindstella/config.yaml` と `[(".mindstella/config.yaml", "summary", "題名")]`'
         mock: なし
-        expected: '`config.yaml` の `summary` が `題名`、ほかのキーが元の順で同じ。`mindstella-version.ini` が無い'
+        expected: '`.mindstella/config.yaml` の `summary` が `題名`、ほかのキーが元の順で同じ。`.mindstella/mindstella-version.ini` が無い'
       - name: test_set_values_when_write_fails
         case: 異常
         summary: 置き換えられなければ送る
