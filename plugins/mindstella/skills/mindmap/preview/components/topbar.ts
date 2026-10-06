@@ -308,6 +308,9 @@ namespace MindmapPreview {
         diffPoint === null ? null : diffChip({ point: diffPoint, onOff: onDiffOff }),
         // コメントのボタンを右端に置くとき、検索の入口を中央へ寄せる
         comments ? h({ tag: "span", attrs: { class: "spacer" } }) : null,
+        onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
+        filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
+        comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
         h({
           tag: "button",
           attrs: {
@@ -319,9 +322,6 @@ namespace MindmapPreview {
           },
           children: [icon(theme === "dark" ? "sun" : "moon")],
         }),
-        onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
-        filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
-        comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
       ],
     });
     const tabbar = h({
