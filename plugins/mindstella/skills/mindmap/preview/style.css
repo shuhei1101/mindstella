@@ -943,6 +943,31 @@ dialog.hist::backdrop { background: var(--scrim); }
 /* マップの節の印の記号 */
 .n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
 
+/* ===== コメントの印 ===== */
+
+/* 印を置く場所: 自分では箱を作らず、印を置く並びの子として振る舞わせる */
+.cmk-place { display: contents; }
+/* 印: 差分の印と同じ並びに置く。色だけに頼らず、吹き出しの形と数字で示す */
+.cmk { display: inline-flex; align-items: center; gap: 2px; flex: none; height: 18px; padding: 0 6px 0 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; vertical-align: -3px; }
+/* 印の吹き出し */
+.cmk svg.icon { width: 12px; height: 12px; stroke-width: 2; }
+/* カードのメタ情報: 印と ID・状態の高さを揃える */
+.card .c-meta { align-items: center; }
+/* カードの印: メタ情報の並びの右端に寄せる */
+.card .c-meta .cmk { margin-left: auto; }
+/* マップの節の 2 行目: 印と文字の高さを揃える */
+.n-item .r2 { align-items: center; }
+/* マップの節の印: 2 行目の右端に寄せ、節の高さに収まる大きさにする */
+.n-item .r2 .cmk { height: 16px; margin-left: auto; }
+/* 表の行の印: タイトルと差分の印の右に続ける（収まらなければ次の行へ送る） */
+.row-open ~ .cmk-place .cmk { margin-left: 8px; }
+/* 字下げの一覧の行の印: タイトルの右に続け、縮めない */
+.map-outline button .cmk { flex: none; }
+/* つながりの印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す。重なり順は層の中に閉じる */
+.g3-marks { position: absolute; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; pointer-events: none; }
+/* 名前の横に付く印: 位置は描くたびにスクリプトが transform で動かす */
+.cmk.cmk-float { position: absolute; top: 0; left: 0; }
+
 /* ===== 詳細パネルの差分 ===== */
 
 /* 冒頭の帯: 選んだ時点の名前と日時 */

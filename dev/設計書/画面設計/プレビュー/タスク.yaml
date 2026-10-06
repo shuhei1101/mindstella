@@ -71,6 +71,8 @@ elements:
         value: 絞り込みのドロワーの selected（ボードと共有）
       - name: marks
         value: 差分の表示の間、選んだ時点で足した・変えたタスク（記録の取得.changes）
+      - name: comments
+        value: サーバーにつながって開いたとき、タスクの ID → そのタスクを指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target）
     description: タスクの表
     visible_when: 表示形式が表
   - name: ボードの差分の印
@@ -105,6 +107,17 @@ elements:
     kind: region
     description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。表・ボードは幅 721px 以上でこの領域の高さいっぱいに広げ、中で縦・横にスクロールする。それより狭い幅では、この領域ごと縦にスクロールする
     visible_when: 常時
+  - name: ボードのコメントの印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/コメントの印.ts#
+    args:
+      - name: count
+        value: そのタスクを指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target で数える）
+    description: ボードのカードのメタ情報の並びの右端に置く。コメントを溜める・直す・消す・戻す・送ると、スクロールの位置を動かさずに印だけを描き替える。印だけを押す操作は持たない
+    io: 表示
+    visible_when: サーバーにつながって開いていて、そのタスクを指すレビュー中のコメントが 1 件以上あるとき
 lead: タスクをボード（既定）・表で見る画面。
 mock: dev/mock/pages/tasks/126/standard/index.html
 test_file: tests/integration/preview/test_tasks_screen.py
+notes:
+  コメントの印のモック: コメントの印の見本は `dev/mock/pages/tasks/121/standard/index.html`

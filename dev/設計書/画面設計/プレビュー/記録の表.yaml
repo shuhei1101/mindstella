@@ -48,6 +48,8 @@ elements:
         value: 絞り込みのドロワーの selected
       - name: marks
         value: 差分の表示の間、選んだ時点で足した・変えた項目（記録の取得.changes）
+      - name: comments
+        value: サーバーにつながって開いたとき、項目の ID → その項目を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target）
     description: その種類の表。表示形式の切り替えは出さない。表の上に、値の条件と列の文字の条件（`{列}に「{文字}」を含む`）のチップを並べる。列の見出しには絞り込みのボタンを置かない
     visible_when: 常時
   - name: 絞り込みのドロワー
@@ -75,3 +77,5 @@ elements:
 lead: 調査・用語集・メモ・会話ログを表だけで見る画面。種類ごとに同じ画面を使い回す。
 mock: dev/mock/pages/records/126/b-drawer-text/index.html
 test_file: tests/integration/preview/test_records_screen.py
+notes:
+  コメントの印のモック: コメントの印の見本は `dev/mock/pages/records/121/standard/index.html`

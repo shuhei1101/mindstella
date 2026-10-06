@@ -14,8 +14,21 @@ from preview_comment_helpers import (
     select_text_for_pill,
 )
 from preview_drawer_helpers import FILTER_BUTTON, badge_text, checked_values, open_drawer
-from preview_fixture_types import BODY_WITH_DIAGRAM, OpenPreview, WritePreview
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
+from preview_fixture_types import (
+    BODY_WITH_DIAGRAM,
+    OpenPreview,
+    WritePreview,
+    WriteReviewPreview,
+)
+from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
+from workspace_fixtures import (
+    CallTool,
+    MakeComment,
+    MakeItem,
+    MakeWorkspace,
+    StartServer,
+    WriteComments,
+)
 
 # 描画のライブラリの配信元への要求（全て失敗させるときの URL の形）
 LIBRARY_HOST_PATTERN = "https://cdn.jsdelivr.net/**"
@@ -383,3 +396,156 @@ def test_error_when_server_unreachable(
     assert page.inner_text("aside.panel .d-title") == "D-1の題"
     assert "レビューに追加できませんでした" in page.inner_text(SEND_MESSAGE)
     assert page.input_value(SEND_TEXTAREA) == "案 A にする"
+
+
+def test_normal_when_comment_marks_not_shown(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しは、レビュー中のコメントがあっても、ボード・表のどちらにもコメントの印と印を置く場所を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-2", status="未決定"))
+    write_comments(root, make_comment("C-1", target="D-2"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行・検証
+    for view in ("board", "table"):
+        page = open_preview(out.as_uri(), f"#tab=decisions&view={view}")
+        page.wait_for_selector(".board button.card, table.grid tbody tr")
+        assert page.locator("[data-comment-target]").count() == 0
+        assert page.locator(".cmk").count() == 0
+
+
+def _card_marker_script(selector: str) -> str:
+    """要素に目印の値を付け、画面を描き直したかを後で確かめられるようにする JavaScript を返す。"""
+    return f"document.querySelector('{selector}').dataset.kept = 'yes'"
+
+
+def test_normal_when_comment_added(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """詳細パネルからコメントを溜めると、その項目の印だけが描き替わり、画面は描き直さない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=decisions&view=board&id=D-4")
+    page.wait_for_selector("aside.panel.open")
+    assert marks_of(page) == SCREEN_MARKS["decisions"]
+    page.evaluate(_card_marker_script('.board button.card[data-id="D-2"]'))
+    page.evaluate("document.querySelector('.board').scrollLeft = 20")
+    scroll = page.evaluate("document.querySelector('.board').scrollLeft")
+    # 実行
+    page.fill(SEND_TEXTAREA, "期日を決める")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_function(
+        "document.querySelector('.board button.card[data-id=\"D-4\"] .cmk') !== null",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 検証
+    assert marks_of(page) == {**SCREEN_MARKS["decisions"], "D-4": "1"}
+    # 描き直していない（目印とスクロールの位置が残る）
+    assert page.get_attribute('.board button.card[data-id="D-2"]', "data-kept") == "yes"
+    assert page.evaluate("document.querySelector('.board').scrollLeft") == scroll
+
+
+def test_normal_when_comment_removed_and_sent(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """コメントの一覧で消すと件数が減り、全て送ると印が全て消える。どちらも画面は描き直さない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(".board button.card")
+    page.evaluate(_card_marker_script('.board button.card[data-id="D-3"]'))
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    # 実行（C-1 を消すと D-2 の件数が 2 から 1 になる）
+    page.locator(f"{COMMENTS_PANEL} li[data-comment='C-1']").get_by_role(
+        "button", name="D-2 へのコメントを削除"
+    ).click()
+    page.wait_for_function(
+        "document.querySelector('.board button.card[data-id=\"D-2\"] .cmk-n').textContent === '1'",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 検証（消した後）
+    assert marks_of(page) == {"D-2": "1", "D-3": "1"}
+    assert page.get_attribute('.board button.card[data-id="D-3"]', "data-kept") == "yes"
+    # 実行（全て送ると、印を置く場所が空になる）
+    page.click(LIST_SEND_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL} .send-msg.sent", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_function(
+        "document.querySelectorAll('.board .cmk').length === 0", timeout=MARK_TIMEOUT_MS
+    )
+    # 検証（送った後）
+    assert marks_of(page) == {}
+    assert page.locator(".board [data-comment-target]:not(:empty)").count() == 0
+    assert page.get_attribute('.board button.card[data-id="D-3"]', "data-kept") == "yes"
+
+
+# マップの拡大の倍率と、枠のスクロールの位置を返す
+MAP_VIEW_SCRIPT = """() => ({
+    transform: document.getElementById('decision-map').style.transform,
+    left: document.querySelector('.map-wrap').scrollLeft,
+    top: document.querySelector('.map-wrap').scrollTop,
+})"""
+
+# マップの描きが落ち着くまで待つミリ秒
+MAP_SETTLE_MS = 800
+
+
+def test_normal_when_comment_added_on_map(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """マップを開いたままコメントを溜めても、節点の印だけが描き替わり、マップの拡大と位置は変わらない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=decisions&view=map&id=D-4")
+    page.wait_for_selector("aside.panel.open")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    page.wait_for_timeout(MAP_SETTLE_MS)
+    page.evaluate(_card_marker_script('#decision-map .map-node[data-node="D-2"]'))
+    before = page.evaluate(MAP_VIEW_SCRIPT)
+    # 実行
+    page.fill(SEND_TEXTAREA, "期日を決める")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_function(
+        "document.querySelector('#decision-map .map-node[data-node=\"D-4\"] .cmk') !== null",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    page.wait_for_timeout(MAP_SETTLE_MS)
+    # 検証
+    assert marks_of(page, "#decision-map") == {**SCREEN_MARKS["decisions"], "D-4": "1"}
+    assert page.get_attribute('#decision-map .map-node[data-node="D-2"]', "data-kept") == "yes"
+    assert page.evaluate(MAP_VIEW_SCRIPT) == before
+
+
+def test_normal_when_comment_added_on_graph(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """つながりを開いたままコメントを溜めると、キャンバスを作り直さず、次のコマから新しい件数の印を出す（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=graph&id=D-2")
+    page.wait_for_selector("aside.panel.open")
+    shown_mark = (
+        "[...document.querySelectorAll('.g3-marks .cmk')]"
+        ".filter(m => m.style.visibility !== 'hidden')"
+        ".map(m => m.querySelector('.cmk-n').textContent)"
+    )
+    page.wait_for_function(f"{shown_mark}.includes('2')", timeout=MARK_TIMEOUT_MS)
+    page.evaluate("document.getElementById('graph-canvas').dataset.kept = 'yes'")
+    # 実行（選んでいる D-2 に 1 件足すと、印の件数が 2 から 3 になる）
+    page.fill(SEND_TEXTAREA, "期日を決める")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    page.wait_for_function(f"{shown_mark}.includes('3')", timeout=MARK_TIMEOUT_MS)
+    assert page.evaluate(f"{shown_mark}.includes('2')") is False
+    assert page.get_attribute("#graph-canvas", "data-kept") == "yes"

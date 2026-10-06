@@ -99,6 +99,8 @@ elements:
         value: 絞り込みのドロワーの selected（マップ・ボードと共有）
       - name: marks
         value: 差分の表示の間、選んだ時点で足した・変えた検討事項（記録の取得.changes）
+      - name: comments
+        value: サーバーにつながって開いたとき、検討事項の ID → その検討事項を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target）
     description: 検討事項の表。列「着手可否」は、`derived.next` にある未決定は「着手可能」、それ以外の未決定は「前提待ち」、未決定以外は「なし」
     visible_when: 表示形式が表
   - name: 条件に合う検討事項が無い旨
@@ -154,6 +156,17 @@ elements:
     io: 表示
     visible_when: 表示形式がマップで幅 901px 以上
     source: プレビューを開く.mindmap-data.decisions・プレビューを開く.mindmap-data.settings
+  - name: マップ・ボードのコメントの印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/コメントの印.ts#
+    args:
+      - name: count
+        value: その検討事項を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target で数える）
+    description: ボードのカードとマップの節点では 2 行目（メタ情報の並び）の右端、字下げの一覧ではタイトルと差分の印の右に置く。マップの節点の幅は、印の有無によらず全て 268px にする。コメントを溜める・直す・消す・戻す・送ると、マップの拡大と位置・スクロールの位置を動かさずに印だけを描き替える。印だけを押す操作は持たず、カード・節点・行を押すと今と同じく詳細パネルを開く
+    io: 表示
+    visible_when: サーバーにつながって開いていて、その検討事項を指すレビュー中のコメントが 1 件以上あるとき
 lead: 検討事項をボード（既定）・マップ・表で見る画面。
 mock: dev/mock/pages/decisions/126/standard/index.html
 test_file: tests/integration/preview/test_decisions_screen.py
+notes:
+  コメントの印のモック: コメントの印の見本は `dev/mock/pages/decisions/121/standard/index.html`（マップのホイールでの拡大・縮小は持たない）

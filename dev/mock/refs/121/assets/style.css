@@ -1,0 +1,64 @@
+/* 78 のスタイルの上に重ね、差分の印とコメントの印を足す分 */
+
+/* ===== 差分の印（79 の一覧の印と同じ形） ===== */
+
+/* 足した・変わったの色: 状態の色（決定済み・保留）から作る */
+:root {
+  --df-add: var(--st-done);
+  --df-chg: var(--st-hold);
+}
+/* 一覧の印: 文言を付けず印だけにする（変更は塗った丸、新規は +）。名前は読み上げに残す */
+.df-mark { display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; vertical-align: -3px; }
+/* 一覧の印の記号 */
+.df-mark svg.icon { width: 16px; height: 16px; stroke-width: 3; }
+/* 一覧の新規の印（+） */
+.df-mark.df-new { color: var(--df-add); }
+/* 一覧の変更の印（●） */
+.df-mark.df-chg { color: var(--df-chg); }
+/* 一覧の変更の印の記号: 塗った丸 */
+.df-mark.df-chg svg.icon { fill: currentColor; }
+/* マップの節の印: 2 行目の頭に小さく置く */
+.n-item .r2 .df-mark { width: 14px; height: 14px; }
+/* マップの節の印の記号 */
+.n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
+
+/* ===== コメントの印（案 A: 吹き出しの線と件数の小さなピル） ===== */
+
+/* 印: 差分の印と同じ並びに置く。色だけに頼らず、吹き出しの形と数字で示す */
+.cmk { display: inline-flex; align-items: center; gap: 2px; flex: none; height: 18px; padding: 0 6px 0 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; vertical-align: -3px; }
+/* 件数 0 の項目: 置き場所だけを持ち、見せない */
+.cmk[hidden] { display: none; }
+/* 印の吹き出し */
+.cmk svg.icon { width: 12px; height: 12px; stroke-width: 2; }
+/* カードの印: メタ情報の並びの右端に寄せる */
+.card .c-meta .cmk { margin-left: auto; }
+/* カードのメタ情報: 印と ID・状態の高さを揃える */
+.card .c-meta { align-items: center; }
+/* マップの節の 2 行目: 印と文字の高さを揃え、文字は本文の最小の大きさにする */
+.n-item .r2 { align-items: center; font-size: var(--fs-xs); }
+/* マップの節の印: 2 行目の右端に寄せ、節の高さに収まる大きさにする */
+.n-item .r2 .cmk { height: 16px; margin-left: auto; }
+/* 表のタイトルのセル: タイトルの右に差分の印・コメントの印を続ける */
+.row-title > :is(.df-mark, .cmk) { margin-left: 8px; }
+/* 字下げの一覧の行: タイトルの右に差分の印・コメントの印を続け、印は縮めない */
+.map-outline button > :is(.df-mark, .cmk) { flex: none; }
+/* 表の案 B の件数の列: 0 件は控えめに出す */
+.cmk-cell.muted { color: var(--text-3); }
+
+/* ===== コメントの印（案 B: カード・節点の右上の角に件数の丸いバッジを重ねる） ===== */
+
+/* 角に重ねる基準: カード */
+[data-cmshape="b"] .card { position: relative; }
+/* 角のバッジ: 吹き出しを外し、件数だけを塗った丸に入れる */
+[data-cmshape="b"] :is(.card, .n-item) .cmk { position: absolute; top: -7px; right: -7px; justify-content: center; min-width: 20px; height: 20px; margin: 0; padding: 0 5px; border-color: var(--accent); border-radius: 10px; background: var(--accent); color: var(--surface); }
+/* 節点の角のバッジ: 節点の外は切れるので、内側の角に置く */
+[data-cmshape="b"] .n-item .cmk { top: 3px; right: 3px; height: 18px; min-width: 18px; }
+/* 角のバッジの吹き出し: 出さない */
+[data-cmshape="b"] :is(.card, .n-item) .cmk svg.icon { display: none; }
+
+/* ===== つながりの印（玉の名前の横に付いて動く印） ===== */
+
+/* 印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す。印の重なり順は層の中に閉じ、詳細パネルより上に出さない */
+.g3-marks { position: absolute; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; pointer-events: none; }
+/* 名前の横に付く印: 位置は描くたびにスクリプトが transform で動かす */
+.cmk.cmk-float { position: absolute; top: 0; left: 0; }

@@ -7,6 +7,7 @@ directory: |-
       view-switch.ts        表示形式の切り替え（部品設計『表示形式の切り替え』）
       topbar.ts             トップバー（部品設計『トップバー』）
       diff-mark.ts          差分の印（部品設計『差分の印』）
+      comment-mark.ts       コメントの印と、画面を描き直さずに印を差し替える処理（部品設計『コメントの印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
       filter-drawer.ts      絞り込みのドロワー（部品設計『絞り込み』）
@@ -178,6 +179,11 @@ components:
         required: false
         default: '{}'
         description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: '{}'
+        description: 項目の ID → レビュー中のコメントの件数。行のタイトルの右、`diffMark` の後ろに `data-comment-target` の場所を置き、件数のある行に `commentMark` を入れる（部品設計『表』の `comments`）
   - name: filterChips
     title: 条件のチップの行
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -228,7 +234,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枠の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枠より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）'
+    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枠の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枠より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）。マップの項目の節点の大きさは、コメントの印の有無によらず 268×48 にする'
     props:
       - name: index
         type: RecordIndex
@@ -250,6 +256,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカード・マップの節点の 2 行目の右端、字下げの一覧の行のタイトルと差分の印の右に `data-comment-target` の場所を置き、表へは `comments` で渡す
     state:
       - name: keyword
         type: string
@@ -286,6 +297,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
   - name: docsScreen
     title: 資料
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
@@ -313,6 +329,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。資料のカードとボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
   - name: recordsScreen
     title: 記録の表
     container: plugins/mindstella/skills/mindmap/preview/screens/records.ts
@@ -340,6 +361,11 @@ components:
         type: boolean
         required: true
         description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。表へ `comments` で渡す
   - name: detailPanel
     title: 詳細パネル
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
@@ -480,6 +506,11 @@ components:
         type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
         required: true
         description: 'つながりの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れる。値ごとの描き分けは #28 が作る'
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`。描いている間は `setGraphComments` で差し替える）。毎コマ、名前を文字 8px 以上で描いた玉のうち件数のある玉に、名前の右端に続けて縦は名前の中央に `commentMark` を置く（キャンバスの上に重ねる層。重なり順は層の中に閉じ、手前の玉ほど上、濃さは名前と同じ）。名前と印が描く枠に収まらない玉と、名前が 8px 未満の玉には置かない
     state:
       - name: camera
         type: '{yaw, pitch, distance, target}'
@@ -852,6 +883,17 @@ components:
         type: '{key, label, value}[]'
         required: false
         description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない（つながり）
+  - name: commentMark
+    title: コメントの印
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・マップの節点・字下げの一覧・表・つながりの名前の横が使う
+    props:
+      - name: count
+        type: number
+        required: true
+        description: レビュー中のコメントの件数（1 以上）
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -1294,6 +1336,77 @@ functions:
         condition: '`parametrize`: 用語集の列 / 検討事項の列'
         mock: なし
         expected: '`id`・`title`・`meaning`・`aliases`・`avoid`（`tags` を除く） / `id`・`title`・前提の列（状態・カテゴリーなど `filterable` の列を除く）'
+  - name: refreshCommentMarks
+    title: コメントの印の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: コメントを選んで送る
+    kind: 関数
+    scope: public
+    summary: 本文の画面の中の印を置く場所（`data-comment-target` を持つ要素。カード・節点・字下げの一覧の行・表の行が描くときに項目の ID を入れて置く）ごとに、`counts` の件数で `commentMark` を入れ替える。件数が無い場所は空にする。画面を描き直さないので、スクロールの位置・マップの拡大と位置は動かない
+    args:
+      - name: root
+        type: ParentNode
+        required: true
+        passing: keyword
+        description: 本文の画面の要素
+      - name: counts
+        type: Record<string, number>
+        required: true
+        passing: keyword
+        description: 項目の ID → 件数（入口の `commentCounts`）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_refresh_comment_marks
+        case: 正常
+        summary: 件数のある場所に印を入れ、無くなった場所を空にする
+        condition: 'D-1（印 2 件）・D-2（印なし）・T-1（印 1 件）の場所を持つ要素に `counts` `{"D-1": 1, "D-2": 3}` を渡す'
+        mock: なし
+        expected: D-1 の印が 1、D-2 に 3 の印が入り、T-1 の場所が空になる。場所の外の要素とスクロールの位置は変わらない
+      - name: test_comment_mark_label
+        case: 正常
+        summary: 99 を超えると画面は「99+」、読み上げは実数
+        condition: '`parametrize`: `count` 1 / 99 / 100 / 128'
+        mock: なし
+        expected: 画面の数字が 1 / 99 / 99+ / 99+、読み上げの文字と `title` が「コメント 1 件」/「コメント 99 件」/「コメント 100 件」/「コメント 128 件」
+  - name: setGraphComments
+    title: つながりのコメントの件数の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: コメントを選んで送る
+    kind: 関数
+    scope: public
+    summary: 描いているつながりの、名前の横の印に使う件数を差し替える。玉と線と視点は作り直さず、次のコマから新しい件数で印を置く。つながりを描いていないときは何もしない
+    args:
+      - name: counts
+        type: Record<string, number>
+        required: true
+        passing: positional
+        description: 項目の ID → 件数（入口の `commentCounts`）
+    returns:
+      type: void
+      description: なし
+  - name: commentPlace
+    title: コメントの印を置く場所
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: 項目へコメントする
+    kind: 関数
+    scope: public
+    summary: 項目の印を置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・マップの節点・字下げの一覧・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
+    args:
+      - name: id
+        type: string
+        required: true
+        passing: keyword
+        description: 項目の ID
+      - name: count
+        type: number | undefined
+        required: true
+        passing: keyword
+        description: その項目の件数（`comments[id]`。無ければ `undefined`）
+    returns:
+      type: HTMLElement
+      description: 印を置く場所
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
@@ -1308,3 +1421,4 @@ test_files:
   - tests/unit/preview/test_settings_panel.py
   - tests/unit/preview/test_settings_confirm.py
   - tests/unit/preview/test_settings.py
+  - tests/unit/preview/test_comment_mark.py

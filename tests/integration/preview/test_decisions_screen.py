@@ -29,6 +29,7 @@ from preview_drawer_helpers import (
     value_selector,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -49,6 +50,10 @@ NARROW_WIDTH = 800
 
 # 狭い幅の画面の高さ
 NARROW_HEIGHT = 700
+
+# マップの項目の節点の幅と高さ（印の有無によらず同じ）
+MAP_NODE_WIDTH = 268
+MAP_NODE_HEIGHT = 48
 
 # 状態の順（ボードの列の並び）
 DECISION_STATUSES = ["要見直し", "未決定", "保留", "未整理", "決定済み", "対象外", "取り下げ"]
@@ -1156,3 +1161,94 @@ def test_chips(
     assert below_toolbar is True
     assert after_remove == (["状態: 要見直し", "状態: 未決定", "状態: 未整理"], "1")
     assert badge_text(page) is None
+
+
+def test_comment_marks_when_board(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """ボードのカードのメタ情報の右端に、コメントの件数の印を出す。件数 0 の項目には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(".board button.card")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["decisions"]
+    assert page.locator(".board button.card").count() == 4
+    assert page.locator(".board button.card .c-meta .cmk").count() == 2
+    # 印はメタ情報の並びの右端（最後の子）にあり、読み上げと title は実数の件数
+    last = page.eval_on_selector(
+        '.board button.card[data-id="D-2"] .c-meta',
+        "meta => meta.lastElementChild.querySelector('.cmk') !== null",
+    )
+    assert last is True
+    assert page.inner_text('.board button.card[data-id="D-2"] .cmk .sr-only') == "コメント 2 件"
+    assert page.get_attribute('.board button.card[data-id="D-2"] .cmk', "title") == "コメント 2 件"
+    # 印だけを押す操作は持たず、カードを押すと詳細パネルを開く
+    page.click('.board button.card[data-id="D-2"] .cmk')
+    page.wait_for_selector("aside.panel.open")
+    assert page.inner_text("aside.panel .d-title") == "D-2の題"
+
+
+def test_comment_marks_when_map(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """マップの節点は 268×48 で、2 行目の右端に印を出す。印の有無で節点の幅を変えない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    # 検証
+    assert marks_of(page, "#decision-map") == SCREEN_MARKS["decisions"]
+    sizes = page.eval_on_selector_all(
+        "#decision-map .map-node.n-item",
+        "nodes => nodes.map(n => [n.dataset.node, n.offsetWidth, n.offsetHeight])",
+    )
+    assert sorted(sizes) == [
+        ["D-2", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+        ["D-3", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+        ["D-4", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+        ["D-5", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+    ]
+    # 印は 2 行目（メタ情報）の右端にあり、節点の中に収まる
+    inside = page.evaluate(
+        """() => [...document.querySelectorAll('#decision-map .map-node.n-item .r2 .cmk')].every(mark => {
+            const node = mark.closest('.map-node').getBoundingClientRect();
+            const box = mark.getBoundingClientRect();
+            return box.left >= node.left && box.right <= node.right && box.top >= node.top && box.bottom <= node.bottom;
+        })"""
+    )
+    assert inside is True
+    assert page.locator("#decision-map .map-node .r2 .cmk").count() == 2
+
+
+def test_comment_marks_when_outline(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """幅 900px 以下の字下げの一覧は、行のタイトルの右に印を出す（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    # 実行
+    page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
+    page.wait_for_selector(".map-outline button[data-id] .cmk")
+    # 検証
+    assert marks_of(page, ".map-outline") == SCREEN_MARKS["decisions"]
+    last = page.eval_on_selector(
+        '.map-outline button[data-id="D-2"]',
+        "b => b.lastElementChild.matches('.cmk-place') && b.lastElementChild.querySelector('.cmk') !== null",
+    )
+    assert last is True
+
+
+def test_comment_marks_when_table(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """表の行のタイトルの右に印を出す。件数 0 の行には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, f"#tab=decisions&view=table{ALL_DECISION_STATUSES_HASH}")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["decisions"]
+    assert page.locator("table.grid tbody tr").count() == 5
+    assert page.locator("table.grid tbody tr:has(.row-open ~ .cmk-place .cmk)").count() == 2

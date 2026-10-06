@@ -97,6 +97,8 @@ namespace MindmapPreview {
     popover?: TablePopover | null;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡し、当たる行のタイトルの右に印を文言なしで置く */
     marks?: DiffMarks;
+    /** 項目の ID → レビュー中のコメントの件数。渡したとき（サーバーにつながって開いたとき）だけ、当たる行のタイトルの右、差分の印の後ろに印を置く場所を置く */
+    comments?: Record<string, number>;
     on: TableHandlers;
   };
 
@@ -386,7 +388,7 @@ namespace MindmapPreview {
 
   /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
   function buildTable({
-    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on },
+    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, on },
     previous,
   }: {
     props: TableProps;
@@ -576,9 +578,10 @@ namespace MindmapPreview {
         children: [content],
       });
       const mark = markFor({ marks, id: row.id });
-      if (mark === null) return opener;
+      const commentPlaceElement = comments === undefined ? null : commentPlace({ id: row.id, count: comments[row.id] });
+      if (mark === null && commentPlaceElement === null) return opener;
       const fragment = document.createDocumentFragment();
-      fragment.append(opener, mark);
+      fragment.append(...[opener, mark, commentPlaceElement].filter((node) => node !== null));
       return fragment;
     };
     const body =
@@ -836,6 +839,7 @@ namespace MindmapPreview {
     onFilter,
     open,
     marks,
+    comments,
   }: {
     kind: Kind;
     columns: Column[];
@@ -847,6 +851,8 @@ namespace MindmapPreview {
     open: (id: string) => void;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
+    /** 項目の ID → レビュー中のコメントの件数。描き直すたびに読むので、使う側が中身を更新すれば並べ替えなどの描き直しにも反映される */
+    comments?: Record<string, number>;
   }): HTMLElement {
     const state = tableState(kind);
     // 画面を描き直したときは、前のポップオーバーを開いたままにしない
@@ -871,6 +877,7 @@ namespace MindmapPreview {
           hiddenColumns: state.hidden,
           popover: state.popover,
           ...(marks === undefined ? {} : { marks }),
+          ...(comments === undefined ? {} : { comments }),
           on: {
             sort: (key) => {
               // 昇順 → 降順 → 解除
