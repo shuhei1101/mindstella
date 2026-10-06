@@ -22,7 +22,6 @@ flows:
         クライアント->>IF: init workspace（`settings` に設定）
         IF->>IF: 設定をスキーマと突き合わせる
         IF->>WS: .mindstella/ に config.yaml・種類ごとの YAML・mindstella-version.ini・docs/・release/ を作る
-        IF->>WS: 直下に mindstella.html を書く（『画面の書き出し』）
         IF-->>クライアント: JSON（workspace・files）
       ```
     expected:
@@ -31,8 +30,8 @@ flows:
       - '`.mindstella/` の `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` が `items: []` である'
       - '`.mindstella/mindstella-version.ini` の 1 行目が `plugins/mindstella/version.ini` の 1 行目と同じ'
       - '`.mindstella/docs/` と `.mindstella/release/` がある'
-      - 直下にあるのが `.mindstella/` と `mindstella.html` だけで、`mindstella.html` が空の記録を中に持つ
-      - '`files` に作った 8 つの YAML、`mindstella-version.ini`、2 つのフォルダ（どれも `.mindstella/` から始まる）と `mindstella.html` がある'
+      - 直下にあるのが `.mindstella/` だけ
+      - '`files` に作った 8 つの YAML、`mindstella-version.ini` と 2 つのフォルダ（どれも `.mindstella/` から始まる）がある'
     test: test_normal
   - name: 正常系（ゴールを持たない）
     summary: ゴールと概要を持たず、プレイブックを 2 つ並べた設定で作る
@@ -53,7 +52,6 @@ flows:
         クライアント->>IF: init workspace（goal を持たない `settings`）
         IF->>IF: 設定をスキーマと突き合わせる
         IF->>WS: .mindstella/ に config.yaml・種類ごとの YAML・mindstella-version.ini・docs/・release/ を作る
-        IF->>WS: 直下に mindstella.html を書く
         IF-->>クライアント: JSON（workspace・files）
       ```
     expected:
@@ -152,12 +150,12 @@ flows:
     expected:
       - ツールのエラーになる
       - エラーの本文に `/mindstella:upgrade` での移し替えの案内がある
-      - '`.mindstella/` も `mindstella.html` も作られていない'
+      - '`.mindstella/` が作られていない'
       - '`mindmap.yaml` と種類ごとの YAML の中身が呼ぶ前と同じ'
     test: test_error_when_old_settings_file_exists
-lead: 指定したフォルダの `.mindstella/` に、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作り、直下に画面の `mindstella.html` を書く。
+lead: 指定したフォルダの `.mindstella/` に、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作る。
 idempotent: false
-side_effects: 'ワークスペースのフォルダ（無ければ作る）に `.mindstella/` を作り、その中に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る。その後に『画面の書き出し』で直下に `mindstella.html` を書く'
+side_effects: 'ワークスペースのフォルダ（無ければ作る）に `.mindstella/` を作り、その中に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る'
 request:
   - name: workspace
     type: str
@@ -219,10 +217,7 @@ response:
     description: 作ったワークスペースの絶対パス
   - name: files
     type: list[str]
-    description: 作ったファイルとフォルダ（ワークスペースからの相対パス。記録は `.mindstella/` から始まり、画面は `mindstella.html`）
-  - name: screen_error
-    type: str
-    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由（`files` に `mindstella.html` は入らない）
+    description: 作ったファイルとフォルダ（ワークスペースからの相対パス。どれも `.mindstella/` から始まる）
 exceptions:
   - name: なし（正常終了）
     condition: 作成できた

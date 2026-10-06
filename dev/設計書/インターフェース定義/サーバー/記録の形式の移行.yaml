@@ -124,14 +124,12 @@ flows:
         クライアント->>IF: migrate workspace record
         IF-->>WS: 全ての YAML を読み、スキーマと突き合わせる
         IF->>WS: .mindstella/mindstella-version.ini を書く
-        IF->>WS: 直下の mindstella.html を書く（『画面の書き出し』）
         IF-->>クライアント: JSON（recorded）
       ```
     expected:
       - ツールのエラーにならない
       - '`recorded` が `v0.6.0`'
       - '`.mindstella/mindstella-version.ini` の 1 行目が `v0.6.0`'
-      - 直下に `mindstella.html` がある
     test: test_normal_when_record
   - name: 正常系（版が同じ）
     summary: 今の版のワークスペースでは並べる手順が無い
@@ -414,7 +412,7 @@ flows:
     test: test_normal_when_version_file_at_top
 lead: ワークスペースの版とプラグインの版を比べ、間の版の移し替えの手順（`migrations/{版}/steps.yaml`）を版の順に並べる・当てる。値が要るキーを入れ、点検に合えば版のファイルを書き換える。
 idempotent: false
-side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書き、`record` の後に『画面の書き出し』で直下の `mindstella.html` を書く'
+side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 callers:
   - dev/設計書/インターフェース定義/スキル/セットアップ#
@@ -507,9 +505,6 @@ response:
   - name: recorded
     type: str | None
     description: '`record` で書いた版'
-  - name: screen_error
-    type: str
-    description: '`record` の後の『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由'
 exceptions:
   - name: なし（正常終了）
     condition: 並べた・当てた・値を入れた・版を書いた、または当てる手順が無かった

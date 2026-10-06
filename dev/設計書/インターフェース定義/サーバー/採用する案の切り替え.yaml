@@ -150,7 +150,7 @@ flows:
     test: test_error_when_write_fails
 lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外す。
 idempotent: true
-side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated`・`updated_by`（`ai`）を書き換える。採用が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。状態・答えは変えない。書き終えた後に『画面の書き出し』で直下の `mindstella.html` を書き直す'
+side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated`・`updated_by`（`ai`）を書き換える。採用が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。状態・答えは変えない'
 request:
   - name: workspace
     type: str
@@ -181,9 +181,6 @@ response:
   - name: previous
     type: str | None
     description: それまで採用していた案の記号。無ければ `null`
-  - name: screen_error
-    type: str
-    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由
 exceptions:
   - name: なし（正常終了）
     condition: 切り替えた（既にその案が採用のときも含む）

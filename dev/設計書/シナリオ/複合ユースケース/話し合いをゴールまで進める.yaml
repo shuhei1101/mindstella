@@ -45,7 +45,7 @@ scenarios:
       - '`check` が参照切れと、YAML と Markdown のずれを 0 件で返す'
       - サーバーが配るプレビューの記録が、最後の編集を含んでいる
       - ワークスペースに `preview.html` が書き出されていない
-      - ワークスペースの直下には `mindstella.html` と `.mindstella/` だけがあり、`config.yaml`・種類ごとの YAML・`docs/`・`release/` は `.mindstella/` の下にある
+      - ワークスペースの直下には `.mindstella/` だけがあり、`config.yaml`・種類ごとの YAML・`docs/`・`release/` は `.mindstella/` の下にある
     test: test_normal_when_new_discussion
   - name: 正常シナリオ（続きから再開）
     setup:
@@ -211,7 +211,7 @@ trigger: 利用者が起動スクリプトで tmux と Claude Code を立ち上�
 preconditions:
   - プラグイン mindstella がインストールされている
   - tmux が入っている
-success_guarantee: ゴールに届いた検討事項と納品物を利用者が確定し、`.mindstella/release/` にリリースの資料が書き出されている。ワークスペースの YAML はどの時点でもスキーマに合い、サーバーが配るプレビューは最後の編集を表示している。ワークスペースの直下には画面の `mindstella.html` と記録のフォルダ `.mindstella/` だけがある。
+success_guarantee: ゴールに届いた検討事項と納品物を利用者が確定し、`.mindstella/release/` にリリースの資料が書き出されている。ワークスペースの YAML はどの時点でもスキーマに合い、サーバーが配るプレビューは最後の編集を表示している。ワークスペースの直下には記録のフォルダ `.mindstella/` だけがある。
 minimal_guarantee: 途中で話し合いを終えても、それまでに記録した項目と会話ログ、取り込んでいない送信はワークスペースに残り、次に起動スクリプトで立ち上げてセットアップすると続きから再開できる。
 frequency: 1 つの話し合いにつき、セットアップ 1 回と、ゴールまでの数回〜数十回の会話
 priority: 高

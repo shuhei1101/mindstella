@@ -79,7 +79,7 @@ constraints:
     constraint: '`playbooks/{分野}.md` は、`## 最上位の軸の呼び名`・`## カテゴリーの分け方`・`## フェーズと観点`・`## 必ず調べるもの`・`## ゴールの候補`・`## リリースの形` の節をこの並びで持つ。`## ゴールの候補` は `（既定）` を付けた行を 1 つだけ持つ。準備では `config.yaml` の `playbooks` に並んだガイドをすべて読む'
     notes: 資料作り・壁打ちの値は補足の `進め方ガイドの分野`
   - item: 配る書き出し
-    constraint: 利用者が記録を人に渡したいと言ったときだけ、プレビューのステップで書き出す先のパスを利用者に聞き、`export` を `workspace`・`out` で呼ぶ。書き出す先にワークスペースの `.mindstella/` の中と直下の `mindstella.html` を指さない。書き出したら `path` の絶対パスと、ネットにつながらなくても開けて書き込む操作が無いことを示す
+    constraint: 利用者が記録を人に渡したいと言ったときだけ、プレビューのステップで書き出す先のパスを利用者に聞き、`export` を `workspace`・`out` で呼ぶ。書き出す先にワークスペースの `.mindstella/` の中を指さない。書き出したら `path` の絶対パスと、ネットにつながらなくても開けて書き込む操作が無いことを示す
     notes: '`release/` は `clear_release` が中身を消す。インターフェース定義『配る書き出し』（サーバー）'
   - item: 版の比較
     constraint: '準備のステップで `.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を読んだ後に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる'

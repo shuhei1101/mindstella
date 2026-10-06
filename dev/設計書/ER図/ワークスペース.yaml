@@ -1,5 +1,5 @@
 title: "ER 図: ワークスペース"
-lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ワークスペースの直下には画面の `mindstella.html` だけを置き、ほかのファイルとフォルダ（`docs/`・`release/` を含む）は全て記録のフォルダ `.mindstella/` に置く。表の物理名は `mindstella.html` を除き `.mindstella/` からのパス。
+lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。
 er:
   entities:
     - name: 設定
@@ -694,16 +694,3 @@ tables:
         auto: 更新日時
         description: UTC のタイムゾーン付き ISO 8601
         example: '2026-10-05T03:00:00+00:00'
-  - name: mindstella.html
-    title: 画面
-    datastore: HTML
-    summary: ワークスペースの直下に置く、記録を中に持つ見るだけの画面
-    scale: 1 ファイル
-    access: 全件
-    description: ワークスペースの直下に置く（この表だけが `.mindstella/` の外）。書くのはサーバーの『画面の書き出し』だけで、利用者は開いて読むだけ。書き換えの知らせ・点検・移し替えの対象にしない
-    columns:
-      - name: (中身)
-        title: 画面の HTML
-        type: string
-        not_null: true
-        description: サーバーが配るプレビューと同じ雛形に、画面の CSS・JavaScript と『記録の取得』と同じ形の記録を差し込んだもの。描画のライブラリと文字は CDN から読む

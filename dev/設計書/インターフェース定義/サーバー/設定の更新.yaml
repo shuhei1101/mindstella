@@ -333,7 +333,7 @@ flows:
     test: test_error_when_unmapped_category
 lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
-side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える。書き終えた後に『画面の書き出し』で直下の `mindstella.html` を書き直す'
+side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -402,9 +402,6 @@ response:
   - name: files
     type: list[str]
     description: 書き換えた YAML（ワークスペースからの相対パス）
-  - name: screen_error
-    type: str
-    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由
 exceptions:
   - name: なし（正常終了）
     condition: 書き換えられた

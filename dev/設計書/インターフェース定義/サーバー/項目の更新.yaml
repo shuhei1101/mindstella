@@ -24,7 +24,6 @@ flows:
         IF-->>WS: 全ての YAML を読む
         IF->>IF: キーを置き換え、updated と updated_by を変えてスキーマと突き合わせる
         IF->>WS: .mindstella/decisions.yaml を書く
-        IF->>WS: 直下の mindstella.html を書き直す（『画面の書き出し』）
         IF-->>クライアント: JSON（id・file・changed）
       ```
     expected:
@@ -280,7 +279,7 @@ flows:
     test: test_normal_when_task_body_added
 lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。値が変わったときは、書き換える前の値をその項目の変更履歴に 1 回分積む。
 idempotent: false
-side_effects: その項目の種類の YAML を書き換え、項目の `updated` と `updated_by`（`ai`）を書く。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き換え、`body` を `{ID}.md` にする。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。書き終えた後に『画面の書き出し』で直下の `mindstella.html` を書き直す
+side_effects: その項目の種類の YAML を書き換え、項目の `updated` と `updated_by`（`ai`）を書く。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き換え、`body` を `{ID}.md` にする。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
 request:
   - name: workspace
     type: str
@@ -317,9 +316,6 @@ response:
   - name: changed
     type: list[str]
     description: 値が変わった・消えたキーの名前（`updated` は含めない）
-  - name: screen_error
-    type: str
-    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由
 exceptions:
   - name: なし（正常終了）
     condition: 直せた

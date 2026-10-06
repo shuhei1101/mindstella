@@ -97,7 +97,7 @@ flows:
     test: test_error_when_write_fails
 lead: プレビューの表示の設定で「ワークスペースの既定にする」を確かめて保存したとき、見た目の既定と表示する種類の既定を `config.yaml` の `display` に書く。書いたら開いている画面へ知らせる。
 idempotent: true
-side_effects: '`config.yaml` の `display` だけを書き換え、書き換えの知らせを送る。ほかのキーと種類ごとの YAML は書き換えない。書き終えた後に『画面の書き出し』で直下の `mindstella.html` を書き直す（書けなくても応答は成功のまま）'
+side_effects: '`config.yaml` の `display` だけを書き換え、書き換えの知らせを送る。ほかのキーと種類ごとの YAML は書き換えない'
 permissions: 配信の画面からの要求だけ（`Host` と `Origin` を確かめる）。役割での絞り込みは持たない（#25 が入れる）
 exclusivity: ほかの書き込むエンドポイントと同じく、書き換えの鍵（プロセスの中の鍵と `.mindstella.lock`）を取ってから読み書きする
 callers:

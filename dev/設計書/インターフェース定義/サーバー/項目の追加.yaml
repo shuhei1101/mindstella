@@ -23,7 +23,6 @@ flows:
         IF-->>WS: 全ての YAML を読む
         IF->>IF: ID・日時・編集した人・body を付けてスキーマと突き合わせる
         IF->>WS: .mindstella/docs/D-2.md と .mindstella/decisions.yaml を書く
-        IF->>WS: 直下の mindstella.html を書き直す（『画面の書き出し』）
         IF-->>クライアント: JSON（id・file・body）
       ```
     expected:
@@ -165,7 +164,7 @@ flows:
     test: test_normal_when_note_has_body
 lead: '`item` で渡した中身に ID・作成日時・更新日時・編集した人を付けて、種類の YAML に 1 項目足す。本文を渡したときは `.mindstella/docs/{ID}.md` に書く。'
 idempotent: false
-side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。書き終えた後に『画面の書き出し』で直下の `mindstella.html` を書き直す
+side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
 request:
   - name: workspace
     type: str
@@ -224,9 +223,6 @@ response:
     type: str | None
     description: 書いた本文の Markdown（ワークスペースからの相対パス）。本文が無ければ `null`
     example: .mindstella/docs/D-2.md
-  - name: screen_error
-    type: str
-    description: 『画面の書き出し』で直下の `mindstella.html` を書けなかったときだけ持つ。書けなかったパスと理由
 exceptions:
   - name: なし（正常終了）
     condition: 足せた

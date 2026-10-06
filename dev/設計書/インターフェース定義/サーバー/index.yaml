@@ -121,5 +121,3 @@ items:
   - page: 設定の再読み込み.yaml
     summary: 'POST /api/config/reload: 手で直した config.yaml を検査し、通れば配信の設定を差し替える'
     group: プレビューの配信
-  - page: 画面の書き出し.yaml
-    summary: 作成と項目・設定の書き換えの後に、直下の mindstella.html を記録を中に持つ見るだけの画面として書き直す

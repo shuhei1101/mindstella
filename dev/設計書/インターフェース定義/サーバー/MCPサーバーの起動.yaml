@@ -143,7 +143,7 @@ constraints:
   - item: ツールの引数
     constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`init`・`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
   - item: ワークスペース
-    constraint: 全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスはサーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下に書くのは『画面の書き出し』の `mindstella.html` だけ）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する
+    constraint: 全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスはサーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する
   - item: 同時の呼び出し
     constraint: ワークスペースを書き換えるツールと送信の受け付けは、プロセスの中の 1 本の鍵を取った後に、ワークスペースのロックファイル `.mindstella.lock` に `fcntl.flock` の排他ロックを取ってから読み・書く。同じワークスペースを開く別のプロセスとも排他する。ロックは取れるまで待ち、持つプロセスが落ちると OS が外す。読むだけのツールと配信はロックを取らない（書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない）
   - item: 終わり方
@@ -151,8 +151,6 @@ constraints:
   - item: 結果の組み立て
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
-  - item: 画面の書き出し
-    constraint: 項目か設定を書き換えたツール（`init`・`add`・`update`・`adopt`・`edit_option`・`batch`・`update_settings`・`migrate`）は、書き込みの後に『画面の書き出し』で直下の `mindstella.html` を書き直す。画面を書けなかったときは結果を成功のまま返し、`screen_error` に書けなかったパスと理由を入れる
 refs:
   - dev/設計書/外部ライブラリ/mcp#
 notes:
