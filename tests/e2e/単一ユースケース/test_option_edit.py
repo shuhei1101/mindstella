@@ -60,6 +60,8 @@ def test_normal(
     # D-1 の変更履歴が 4 回分で、どの回も options の前の値を持つ
     assert len(item["history"]) == 4
     assert all("options" in entry["before"] for entry in item["history"])
+    # D-1 の updated_by が ai である
+    assert item["updated_by"] == "ai"
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.data["problems"] == []
 

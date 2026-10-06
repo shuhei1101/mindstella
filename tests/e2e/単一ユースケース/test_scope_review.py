@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -136,14 +136,16 @@ def test_normal(
     assert updated["categories"] == NEW_CATEGORIES
     # goal が確定したたたき台の値で、納品物 要件定義書 の doc が A-1 である
     assert updated["goal"] == {**NEW_GOAL, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}
-    # 資料 A-1 が deliverable: true を持ち、docs/ の本文が概要・背景・構成の見出しを持つ
+    # 資料 A-1 が deliverable: true を持ち、.mindstella/docs/ の本文が概要・背景・構成の見出しを持つ
     assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is True
-    body = (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    body = (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
     # D-1 の phase が目的、D-2 の phase が発散である
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["phase"] == "目的"
     assert decisions["D-2"]["phase"] == "発散"
+    # 付け替えた D-1・D-2 の updated_by が ai である
+    assert [decisions[item_id]["updated_by"] for item_id in ("D-1", "D-2")] == ["ai", "ai"]
     # D-1・D-2 の target が 本体、category が 論点 である
     assert [(decisions[item_id]["target"], decisions[item_id]["category"]) for item_id in ("D-1", "D-2")] == [
         ("本体", "論点"),

@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -210,7 +210,7 @@ def test_normal_when_diagram_kept_as_doc(
     assert doc["kind"] == "図"
     assert doc["related"] == ["D-1"]
     # docs/ に A-1 の本文の Markdown がある
-    assert "flowchart TD" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert "flowchart TD" in (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     # check が YAML と Markdown のずれを 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
@@ -238,7 +238,12 @@ def test_normal_when_off_topic_question(
             {
                 "op": "add",
                 "kind": "note",
-                "item": {"title": "他社の例", "content": "他社は DB を使う", "tags": ["脱線"]},
+                "item": {
+                    "title": "他社の例",
+                    "content": "他社は DB を使う",
+                    "tags": ["脱線"],
+                    "body_markdown": "調べたこと: 他社の保存先\n結果: DB を使っている\n",
+                },
             },
             {
                 "op": "add",
@@ -256,6 +261,11 @@ def test_normal_when_off_topic_question(
     note = read_yaml(root, "notes.yaml")["items"][0]
     assert note["id"] == "N-1"
     assert note["tags"] == ["脱線"]
+    # メモ N-1 が本文を持ち、.mindstella/docs/ にその Markdown がある
+    assert note["body"] == "N-1.md"
+    assert "結果: DB を使っている" in (root / RECORD_DIR / "docs" / "N-1.md").read_text(
+        encoding="utf-8"
+    )
     # タスクが 0 件のままである
     assert replay("find", **ws, kind="task")["items"] == []
 
@@ -314,7 +324,7 @@ def test_normal_when_deliverable_doc_created(
     assert doc["deliverable"] is True
     assert doc["status"] == "下書き"
     # docs/ の A-1 の本文が、概要・背景・構成の見出しを持つ
-    body = (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    body = (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
     # check が問題を 0 件で返す
     assert checked == {"ok": True, "problems": []}
@@ -381,7 +391,7 @@ def test_normal_when_task_output_kept_as_doc(
     assert task["related"] == ["A-1"]
     # 資料 A-1 が deliverable: false を持ち、docs/ に本文がある
     assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is False
-    assert "画面の一覧" in (root / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert "画面の一覧" in (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     # goal.deliverables が呼ぶ前と同じである
     assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
     # check が問題を 0 件で返す

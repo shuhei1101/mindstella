@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import REPO_ROOT, CallTool, SnapshotTree
+from workspace_fixtures import RECORD_DIR, REPO_ROOT, CallTool, SnapshotTree
 
 # スキルがセットアップのステップで決める設定
 SETTINGS: dict[str, Any] = {
@@ -39,7 +39,8 @@ KIND_YAML_FILES = (
 def _read_kind_yamls(root: Path) -> dict[str, Any]:
     """7 種類の YAML を、ファイル名 → 読んだ値にして返す。"""
     return {
-        name: yaml.safe_load((root / name).read_text(encoding="utf-8")) for name in KIND_YAML_FILES
+        name: yaml.safe_load((root / RECORD_DIR / name).read_text(encoding="utf-8"))
+        for name in KIND_YAML_FILES
     }
 
 
@@ -52,7 +53,9 @@ def test_normal(tmp_path: Path, call_tool: CallTool) -> None:
     checked = call_tool("check", workspace=str(root))
     # 検証
     assert created.is_error is False
-    assert yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8")) == SETTINGS
+    assert (
+        yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")) == SETTINGS
+    )
     assert _read_kind_yamls(root) == {
         "decisions.yaml": {"items": []},
         "tasks.yaml": {"items": []},
@@ -66,10 +69,12 @@ def test_normal(tmp_path: Path, call_tool: CallTool) -> None:
     plugin_version = (REPO_ROOT / "plugins" / "mindstella" / "version.ini").read_text(
         encoding="utf-8"
     )
-    version_file = (root / "mindstella-version.ini").read_text(encoding="utf-8")
+    version_file = (root / RECORD_DIR / "mindstella-version.ini").read_text(encoding="utf-8")
     assert version_file.splitlines()[0] == plugin_version.splitlines()[0]
-    assert (root / "docs").is_dir()
-    assert (root / "release").is_dir()
+    assert (root / RECORD_DIR / "docs").is_dir()
+    assert (root / RECORD_DIR / "release").is_dir()
+    # 直下に、設定・種類ごとの YAML・docs/・release/・版のファイルが無い
+    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
     # 全ての YAML がスキーマに合う（点検がスキーマ違反を出さない）
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}
@@ -111,9 +116,33 @@ def test_normal_when_without_goal(tmp_path: Path, call_tool: CallTool) -> None:
     checked = call_tool("check", workspace=str(root))
     # 検証
     assert created.is_error is False
-    created_settings = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    created_settings = yaml.safe_load(
+        (root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")
+    )
     assert "goal" not in created_settings
     assert created_settings["playbooks"] == ["壁打ち", "調査"]
     # 全ての YAML がスキーマに合う（点検がスキーマ違反を出さない）
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}
+
+
+def test_error_when_unmigrated_workspace_exists(
+    tmp_path: Path, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """移す前の形のワークスペースのフォルダを渡すと、何も作らず移し替えを案内するエラーになる（異常系）。"""
+    # 準備
+    root = tmp_path / "old-workspace"
+    root.mkdir()
+    (root / "mindmap.yaml").write_text("field: システム開発\n", encoding="utf-8")
+    (root / "decisions.yaml").write_text(
+        "items:\n  - id: D-1\n    title: 前の版の検討事項\n", encoding="utf-8"
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("init", workspace=str(root), settings=SETTINGS)
+    # 検証
+    assert result.is_error is True
+    assert "既にワークスペースがあります" in result.text
+    assert "/mindstella:upgrade" in result.text
+    assert not (root / RECORD_DIR).exists()
+    assert snapshot_tree(root) == before

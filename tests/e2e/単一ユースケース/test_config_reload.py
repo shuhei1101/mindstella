@@ -11,7 +11,7 @@ from typing import Any
 from display_settings_helpers import graph_look
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServeWorkspace, fetch_records, http_call
-from workspace_fixtures import MakeItem, write_yaml
+from workspace_fixtures import RECORD_DIR, MakeItem, write_yaml
 
 # 再読み込みのエンドポイントのパス
 RELOAD_PATH = "/api/config/reload"
@@ -36,8 +36,8 @@ def test_normal(
     open_preview(url, "#tab=graph")
     initial_look = graph_look(page)
     # 画面を開いた後に、config.yaml の見た目の既定を dust に書き換える
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}})
-    edited = (root / "config.yaml").read_bytes()
+    write_yaml(root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "dust"}})
+    edited = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     result = http_call(url, RELOAD_PATH, method="POST")
     page.wait_for_function(
@@ -52,7 +52,7 @@ def test_normal(
     assert initial_look == "deep"
     assert graph_look(page) == "dust"
     # config.yaml の中身が、手で直したままである
-    assert (root / "config.yaml").read_bytes() == edited
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == edited
 
 
 def test_error_when_check_fails(
@@ -70,8 +70,8 @@ def test_error_when_check_fails(
     )
     open_preview(url, "#tab=graph")
     # 画面を開いた後に、config.yaml の見た目の既定を選べる値に無い rainbow に書き換える
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "rainbow"}})
-    broken = (root / "config.yaml").read_bytes()
+    write_yaml(root / RECORD_DIR / "config.yaml", {**valid_settings, "display": {"network_look": "rainbow"}})
+    broken = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     result = http_call(url, RELOAD_PATH, method="POST")
     records = fetch_records(url)
@@ -95,4 +95,4 @@ def test_error_when_check_fails(
     # 開いている画面で、つながりに渡る見た目が starlight のままである
     assert graph_look(page) == "starlight"
     # config.yaml の中身が、手で崩したままである（サーバーが書き換えていない）
-    assert (root / "config.yaml").read_bytes() == broken
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == broken

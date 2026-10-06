@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 from playwright.sync_api import Page
+from workspace_fixtures import RECORD_DIR
 
 __all__ = [
     "CONFIRM",
@@ -127,4 +128,4 @@ def table_headers(page: Page) -> list[str]:
 
 def read_config(root: Path) -> dict[str, Any]:
     """ワークスペースの config.yaml を読む。"""
-    return yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))

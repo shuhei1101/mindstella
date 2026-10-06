@@ -28,7 +28,7 @@ from display_settings_helpers import (
 )
 from playwright.sync_api import BrowserContext, Page
 from preview_helpers import ServeWorkspace
-from workspace_fixtures import MakeItem
+from workspace_fixtures import RECORD_DIR, MakeItem
 
 if TYPE_CHECKING:
     from conftest import LockDirs
@@ -122,7 +122,7 @@ def test_normal_when_cancelled(
     """確かめのモーダルで取り消すと、何も書かずに閉じ、表示の設定のパネルに戻る（正常系）。"""
     # 準備
     url, root = serve_workspace(make_item("D-1"), settings=valid_settings)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     _open_with_override(
         page,
         url,
@@ -145,7 +145,7 @@ def test_normal_when_cancelled(
     # 既定の書き換えの要求がサーバーへ出ていない
     assert sent == []
     # config.yaml の中身が、操作の前と同じである
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_error_when_save_fails(
@@ -168,11 +168,11 @@ def test_error_when_save_fails(
         {"theme": None, "columns": {}, "look": "glow", "kinds": None, "diffSel": None},
     )
     open_settings(page_a)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     look_b_before = graph_look(page_b)
     tabs_b_before = tab_keys(page_b)
-    # 画面を開いた後に、ワークスペースのフォルダを読み取り専用にする
-    lock_dirs(root)
+    # 画面を開いた後に、記録のフォルダを読み取り専用にする
+    lock_dirs(root / RECORD_DIR)
     # 実行
     page_a.click(SAVE_DEFAULT_BUTTON)
     page_a.wait_for_selector(CONFIRM_OPEN)
@@ -186,7 +186,7 @@ def test_error_when_save_fails(
     assert alert.startswith("保存できませんでした。")
     assert str(root) in alert
     # config.yaml の中身が、操作の前と同じである
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     # B の画面の見た目とタブが、操作の前と同じである
     assert graph_look(page_b) == look_b_before == "deep"
     assert tab_keys(page_b) == tabs_b_before

@@ -18,7 +18,7 @@ from preview_helpers import (
     snapshot_records,
     visit_and_close,
 )
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -580,7 +580,7 @@ def test_error_when_previous_version_unavailable(
     replay("update", workspace=ws, id="D-3", item={"status": "要見直し", "body_markdown": BODY_V1})
     replay("commit", workspace=ws, summary="検討事項を直す")
     # ツールを通さずに、本文の全ての行を手で書き換える
-    (root / "docs" / "D-3.md").write_text(HAND_WRITTEN_BODY, encoding="utf-8")
+    (root / RECORD_DIR / "docs" / "D-3.md").write_text(HAND_WRITTEN_BODY, encoding="utf-8")
     open_preview(url, "#tab=decisions&view=table")
     pick_history_point(page, "検討事項を直す")
     # 実行

@@ -26,7 +26,7 @@ from display_settings_helpers import (
 )
 from playwright.sync_api import BrowserContext
 from preview_helpers import ServeWorkspace
-from workspace_fixtures import MakeItem
+from workspace_fixtures import RECORD_DIR, MakeItem
 
 # タブの帯に並ぶ画面の数（概要・つながりと、用語集を除いた 6 種類）
 TABS_WITHOUT_TERMS = 8
@@ -49,7 +49,7 @@ def test_normal(
     url, root = serve_workspace(
         make_item("D-1"), make_item("T-1"), make_item("G-1"), settings=valid_settings
     )
-    records_before = {name: (root / name).read_bytes() for name in RECORD_FILES}
+    records_before = {name: (root / RECORD_DIR / name).read_bytes() for name in RECORD_FILES}
     page_a = new_context().new_page()
     page_b = new_context().new_page()
     # 実行
@@ -103,4 +103,4 @@ def test_normal(
     assert prefs_b["look"] == "dust"
     assert prefs_b["kinds"] is None
     # ワークスペースの記録の項目の YAML の中身が、開く前と同じ
-    assert {name: (root / name).read_bytes() for name in RECORD_FILES} == records_before
+    assert {name: (root / RECORD_DIR / name).read_bytes() for name in RECORD_FILES} == records_before
