@@ -94,7 +94,7 @@
     <!-- つながり: 玉と名前の見本（実際は 3D のキャンバスに描き、名前の横の印だけを HTML で重ねる） -->
     <section class="cat-sec">
       <h2>つながりの玉</h2>
-      <p>どの案も、印は玉の上に出る名前の右に置き、名前を隠さない。案 A は名前が読める大きさ（文字 8px 以上）に近づいたときだけ出す。案 B は玉を指したときと選んだときだけ出す。案 C は案 A に加えて、遠いときは玉の右上の縁に件数を持たない小さな点を打つ。</p>
+      <p>どの案も、印は玉の上に出る名前の右に置き、名前を隠さない。描く枠に収まりきらない印（画面の端にかかる玉）は出さない。案 A は名前が読める大きさ（文字 8px 以上）に近づいたときだけ出す。案 B は玉を指したときと選んだときだけ出す。案 C は案 A に加えて、遠いときは玉の右上の縁に件数を持たない小さな点を打つ。</p>
       <div class="stage">
         <div class="map-frame space space-demo" aria-label="遠いとき（案 C の点。案 A・B は何も出さない）"><span class="ball" style="left: 100px; top: 92px; width: 12px; height: 12px; background: var(--k-task);"></span><span class="ball-dot" style="left: 109px; top: 90px;"></span><span class="ball-name" style="left: 106px; top: 88px; font-size: 11px; opacity: .55;">プレビューのモックを作る</span><span class="ball" style="left: 210px; top: 120px; width: 8px; height: 8px; background: var(--k-dec);"></span><span class="ball-name" style="left: 214px; top: 116px; font-size: 11px; opacity: .55;">steps の本文</span></div>
         <div class="map-frame space space-demo" aria-label="近づいたとき（案 A・C）"><span class="ball" style="left: 80px; top: 92px; width: 28px; height: 28px; background: var(--k-task);"></span><span class="ball-name" style="left: 94px; top: 88px; font-size: 14px;">プレビューのモックを作る<span class="cmk" data-n="3"></span></span><span class="ball" style="left: 220px; top: 140px; width: 18px; height: 18px; background: var(--k-dec);"></span><span class="ball-name" style="left: 229px; top: 136px; font-size: 14px;">steps の本文</span></div>

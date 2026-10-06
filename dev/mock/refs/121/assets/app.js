@@ -851,6 +851,7 @@
     layer.innerHTML = "";
     for (const id of ids) {
       const el = Object.assign(document.createElement("span"), { className: "cmk cmk-float", hidden: true, innerHTML: cmInner(G.cm.get(id)) });
+      el.dataset.gcm = id;
       layer.append(el);
       G.cmEls.set(id, el);
     }
@@ -859,11 +860,16 @@
   const NEAR_FS = 8;  // 近づいたとみなす名前の文字の大きさ（px）。全体を表示した距離では 4.6px
   const CM_DOT = 2.6;  // 案 C の遠いときの点の半径（px）
   // 名前の横の印を、名前に付けて動かす（名前の右に置いて名前を隠さない）。手前の玉の印ほど上に重ね、名前と同じ濃さにする
+  // 描く枠に収まりきらない印は出さない（枠で切れた印は件数を読み違えるため。玉の名前も枠にかかっている）
   const placeGraphMarks = (shown) => {
+    const layer = document.getElementById("g3-marks");
+    const lw = layer.clientWidth, lh = layer.clientHeight;
     for (const [id, el] of G.cmEls) {
       const s = shown.get(id);
       el.hidden = !s;
       if (!s) continue;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      if (s.x < 0 || s.x + w > lw || s.y - h / 2 < 0 || s.y + h / 2 > lh) { el.hidden = true; continue; }
       el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translateY(-50%)`;
       el.style.opacity = s.a.toFixed(2);
       el.style.zIndex = String(Math.round(1000 - s.z));
