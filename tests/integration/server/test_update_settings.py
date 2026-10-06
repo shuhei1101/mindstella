@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import DEFAULT_TIMESTAMP
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 from .history_helpers import add_item, commit, read_changes
@@ -23,7 +23,7 @@ WALL_PHASES = ["問い", "発散", "整理", "絞り込み", "結論"]
 
 def _read_yaml(root: Path, file_name: str) -> Any:
     """ワークスペースの YAML を読む。"""
-    return yaml.safe_load((root / file_name).read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))
 
 
 def _wall_settings(valid_settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
@@ -86,7 +86,7 @@ def test_normal(
     assert result.data == {
         "changed": ["summary", "description", "target_label", "goal"],
         "remapped": [],
-        "files": ["config.yaml"],
+        "files": [".mindstella/config.yaml"],
     }
     settings = _read_yaml(root, "config.yaml")
     assert settings["summary"] == "要件出しのスキル mindmap を設計し直す"
@@ -97,8 +97,8 @@ def test_normal(
         assert settings[key] == settings_before[key]
     # 設定以外のファイルの中身が、呼ぶ前と同じ
     after = snapshot_tree(root)
-    assert {name: text for name, text in after.items() if name != "config.yaml"} == {
-        name: text for name, text in before.items() if name != "config.yaml"
+    assert {name: text for name, text in after.items() if name != ".mindstella/config.yaml"} == {
+        name: text for name, text in before.items() if name != ".mindstella/config.yaml"
     }
 
 
@@ -134,7 +134,11 @@ def test_normal_when_phases_remapped(
             {"id": "D-1", "key": "phase", "from": "問い", "to": "目的"},
             {"id": "T-1", "key": "phase", "from": "整理", "to": "要件"},
         ],
-        "files": ["config.yaml", "decisions.yaml", "tasks.yaml"],
+        "files": [
+            ".mindstella/config.yaml",
+            ".mindstella/decisions.yaml",
+            ".mindstella/tasks.yaml",
+        ],
     }
     decisions = {item["id"]: item for item in _read_yaml(root, "decisions.yaml")["items"]}
     tasks = {item["id"]: item for item in _read_yaml(root, "tasks.yaml")["items"]}
@@ -144,8 +148,10 @@ def test_normal_when_phases_remapped(
     assert _read_yaml(root, "config.yaml")["goal"]["phase"] == "要件"
     # 付け替えた項目だけ updated が書き換えた日時になる
     assert decisions["D-2"]["updated"] == DEFAULT_TIMESTAMP
+    assert "updated_by" not in decisions["D-2"]
     for remapped in (decisions["D-1"], tasks["T-1"]):
         assert remapped["updated"] != DEFAULT_TIMESTAMP
+        assert remapped["updated_by"] == "ai"
         assert datetime.fromisoformat(remapped["updated"]).tzinfo is not None
     # 点検が問題を 0 件で返す
     checked = call_tool("check", workspace=str(root))
@@ -241,7 +247,7 @@ def test_error_when_write_fails(
         make_item("D-1", phase="問い"), settings=_two_phase_settings(valid_settings)
     )
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = call_tool(
         "update_settings",
@@ -348,7 +354,7 @@ def test_normal_when_targets_remapped(
             {"id": "D-1", "key": "target", "from": "本体", "to": "アプリ"},
             {"id": "D-2", "key": "category", "from": "設定", "to": "運用"},
         ],
-        "files": ["config.yaml", "decisions.yaml"],
+        "files": [".mindstella/config.yaml", ".mindstella/decisions.yaml"],
     }
     decisions = {item["id"]: item for item in _read_yaml(root, "decisions.yaml")["items"]}
     assert decisions["D-1"]["target"] == "アプリ"

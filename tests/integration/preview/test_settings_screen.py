@@ -21,7 +21,7 @@ from preview_settings_helpers import (
     tab_keys,
     toggle_kind,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import RECORD_DIR, MakeItem
 
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -107,7 +107,7 @@ def test_look_override(
     """見た目を選ぶと、その場でつながりに当たり、個人の上書きとして端末に残る。config.yaml は書き換えない（正常系）。"""
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     page = open_preview(url, "#tab=graph")
     initial_look = page.get_attribute(".screen.graph", "data-look")
     open_settings(page)
@@ -122,7 +122,7 @@ def test_look_override(
     assert prefs["look"] == "dust"
     assert "この端末で変えている項目" in panel_text(page)
     assert "つながりの見た目" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     # 開き直しても、個人の上書きを使う
     page.reload()
     page.wait_for_selector(".screen.graph", timeout=RENDER_TIMEOUT_MS)
@@ -202,7 +202,7 @@ def test_reset(
     """「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列の上書きを全て外し、ワークスペースの既定の表示に戻す（正常系）。"""
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     page = open_preview(url, "#tab=decisions&view=table")
     page.evaluate("document.documentElement.dataset.theme = 'light'")
     page.click("header.topbar .top-btn")
@@ -226,7 +226,7 @@ def test_reset(
     assert prefs["columns"] == {}
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
     assert page.evaluate("document.activeElement?.dataset.focus ?? null") == "over"
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_workspace_default(

@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
+from workspace_fixtures import RECORD_DIR
 
 # このファイルから見たリポジトリの直下（tests/integration/server の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -194,7 +195,7 @@ def test_error_when_schema_mismatch(
     out = tmp_path / "配る.html"
     assert call_tool("export", workspace=str(root), out=str(out)).is_error is False
     before = out.read_bytes()
-    (root / "decisions.yaml").write_text(
+    (root / RECORD_DIR / "decisions.yaml").write_text(
         yaml.safe_dump({"items": [make_item("D-1", status="完了")]}, allow_unicode=True),
         encoding="utf-8",
     )

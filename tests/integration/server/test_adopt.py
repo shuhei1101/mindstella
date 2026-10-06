@@ -10,6 +10,7 @@ import yaml
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
 from .history_helpers import add_item, commit, read_changes
+from workspace_fixtures import RECORD_DIR
 
 
 @pytest.fixture
@@ -46,7 +47,9 @@ def test_normal(
     # 検証
     assert result.is_error is False
     assert result.data == {"id": "D-1", "adopted": "B", "previous": "A"}
-    adopted = yaml.safe_load((root / "decisions.yaml").read_text(encoding="utf-8"))["items"][0]
+    adopted = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
     assert adopted["options"] == [
         {"key": "A", "content": "種類ごとに分ける", "adopted": False},
         {"key": "B", "content": "1 つにまとめる", "adopted": True},
@@ -140,7 +143,7 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace(make_item("D-1", options=two_options))
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証

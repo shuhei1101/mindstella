@@ -18,6 +18,7 @@ from .fixture_types import (
     WriteDrafts,
 )
 from .http_helpers import http_request, post_json
+from workspace_fixtures import RECORD_DIR
 
 # コメントの受け付けのパス
 COMMENTS_PATH = "/api/comments"
@@ -28,7 +29,7 @@ A_BODY = "1 行目\n- **言い換えたい**文\n3 行目"
 
 def _read_comments(root: Path) -> dict[str, object]:
     """ワークスペースの comments.yaml を読む。"""
-    return yaml.safe_load((root / "comments.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))
 
 
 def test_normal(
@@ -43,7 +44,7 @@ def test_normal(
     root = make_workspace(make_item("D-1"))
     write_drafts(root, make_draft(target="D-1", body="案 A に"))
     url = serve_preview(root)
-    decisions_before = (root / "decisions.yaml").read_bytes()
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
     # 実行
     result = post_json(url, COMMENTS_PATH, {"target": "D-1", "body": "案 A にする"})
     # 検証
@@ -55,10 +56,12 @@ def test_normal(
     assert [(item["id"], item["target"], item["body"]) for item in saved["items"]] == [
         ("C-1", "D-1", "案 A にする")
     ]
-    drafts = yaml.safe_load((root / "drafts.yaml").read_text(encoding="utf-8"))["items"]
+    drafts = yaml.safe_load((root / RECORD_DIR / "drafts.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
     assert [draft for draft in drafts if draft.get("target") == "D-1"] == []
-    assert not (root / "submissions.yaml").exists()
-    assert (root / "decisions.yaml").read_bytes() == decisions_before
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
 
 
 def test_normal_when_body_location(
@@ -139,7 +142,7 @@ def test_error_when_body_empty(
     # 検証
     assert result.status == 400
     assert "body" in result.json()["detail"]
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_error_when_origin_mismatch(
@@ -160,7 +163,7 @@ def test_error_when_origin_mismatch(
     )
     # 検証
     assert result.status == 403
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_error_when_target_not_found(
@@ -177,7 +180,7 @@ def test_error_when_target_not_found(
     # 検証
     assert result.status == 404
     assert "D-99" in result.json()["detail"]
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_error_when_location_stale(
@@ -195,7 +198,7 @@ def test_error_when_location_stale(
     # 検証
     assert result.status == 409
     assert result.json()["detail"] != ""
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_error_when_not_json(
@@ -217,7 +220,7 @@ def test_error_when_not_json(
     )
     # 検証
     assert result.status == 415
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_error_when_write_fails(
@@ -235,7 +238,7 @@ def test_error_when_write_fails(
     write_comments(root, make_comment("C-1"))
     url = serve_preview(root)
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = post_json(url, COMMENTS_PATH, {"target": "D-1", "body": "案 A にする"})
     # 検証

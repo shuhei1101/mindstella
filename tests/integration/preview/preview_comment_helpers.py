@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from workspace_fixtures import RECORD_DIR
 
 __all__ = [
     "COMMENTS_BUTTON",
@@ -98,7 +99,7 @@ def select_text_for_pill(page: Page, selector: str, text: str) -> None:
 
 def read_workspace_yaml(root: Path, name: str) -> dict[str, Any]:
     """ワークスペースの YAML を読む。"""
-    return yaml.safe_load((root / name).read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / name).read_text(encoding="utf-8"))
 
 
 def free_comment(comment: dict[str, Any]) -> dict[str, Any]:

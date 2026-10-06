@@ -36,7 +36,7 @@ from preview_fixture_types import (
 )
 from preview_history_helpers import preselect_diff
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
-from workspace_fixtures import CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
@@ -103,6 +103,37 @@ def test_content(write_sample_preview: WriteSamplePreview, open_preview: OpenPre
         "H3:レビュー中のコメント0",
     ]
     assert page.locator("aside.panel .mermaid svg").count() == 1
+
+
+@pytest.mark.parametrize(
+    ("item_id", "tab", "panel_kind"),
+    [
+        pytest.param("T-1", "tasks", "タスク T-1", id="task"),
+        pytest.param("G-1", "terms", "用語集 G-1", id="term"),
+        pytest.param("N-1", "notes", "メモ N-1", id="note"),
+    ],
+)
+def test_content_when_body_in_other_kinds(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    item_id: str,
+    tab: str,
+    panel_kind: str,
+) -> None:
+    """タスク・用語集・メモの本文も、ほかの種類と同じ本文の節に出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(item_id, body=f"{item_id}.md"),
+        bodies={f"{item_id}.md": "## 経緯\n\n会話で持ち越した\n"},
+    )
+    # 実行
+    page = open_preview(url, f"#tab={tab}&view=table&id={item_id}")
+    page.wait_for_selector("aside.panel.open .detail .md")
+    # 検証
+    assert page.inner_text("aside.panel .panel-kind") == panel_kind
+    assert page.locator("aside.panel .d-sec h3", has_text="本文").count() == 1
+    assert "会話で持ち越した" in page.inner_text("aside.panel .detail .md")
 
 
 def test_related_items(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -369,7 +400,7 @@ def test_comment_input_when_saved(
     assert page.inner_text("aside.panel .d-review .review-body") == "案 A にする"
     saved = read_workspace_yaml(root, "comments.yaml")["items"]
     assert [(item["target"], item["body"]) for item in saved] == [("D-1", "案 A にする")]
-    assert not (root / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
 
 
 def test_comment_input_when_ctrl_enter(
@@ -419,7 +450,7 @@ def test_comment_input_when_body_empty(
     assert page.inner_text(DETAIL_MESSAGE) == "コメントを入れてから追加してください。"
     assert page.get_attribute(DETAIL_TEXTAREA, "aria-invalid") == "true"
     assert page.evaluate("document.activeElement.matches('form.send textarea')") is True
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_comment_input_when_server_refuses(
@@ -463,7 +494,7 @@ def test_comment_input_when_server_refuses(
     )
     assert page.input_value(DETAIL_TEXTAREA) == "案 A にする"
     assert page.get_by_role("button", name="本文を写す").count() == 0
-    assert not (root / "comments.yaml").exists()
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 def test_comment_input_draft(
@@ -532,7 +563,9 @@ def test_comment_input_draft_when_saved_at_once(
     page.wait_for_timeout(DRAFT_WAIT_MS)
     # 検証
     drafts = (
-        read_workspace_yaml(root, "drafts.yaml")["items"] if (root / "drafts.yaml").exists() else []
+        read_workspace_yaml(root, "drafts.yaml")["items"]
+        if (root / RECORD_DIR / "drafts.yaml").exists()
+        else []
     )
     assert [item for item in drafts if item["target"] == "D-1"] == []
     saved = read_workspace_yaml(root, "comments.yaml")["items"]
@@ -1121,7 +1154,7 @@ def test_diff_note_when_body_rewritten(
     """書き換えの後に本文のファイルが直接書き換えられていると、その旨を出して今の本文を差分なしで描き、キーの差分は出す（正常系）。"""
     # 準備
     url, root = write_history_preview()
-    (root / "docs" / "D-1.md").write_text("手で書いた A\n\n手で書いた B\n", encoding="utf-8")
+    (root / RECORD_DIR / "docs" / "D-1.md").write_text("手で書いた A\n\n手で書いた B\n", encoding="utf-8")
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector("aside.panel .df-note")
     # 検証

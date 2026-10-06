@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from workspace_fixtures import write_yaml
+from workspace_fixtures import RECORD_DIR, write_yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace
 from .history_helpers import DECISION_ITEM, add_item, commit, read_items, update_item
@@ -171,8 +171,11 @@ def test_normal_when_config_invalid(
     # 準備
     root = make_workspace(settings={**valid_settings, "display": {"network_look": "starlight"}})
     url = serve_preview(root)
-    write_yaml(root / "config.yaml", {**valid_settings, "display": {"network_look": "rainbow"}})
-    before = (root / "config.yaml").read_bytes()
+    write_yaml(
+        root / RECORD_DIR / "config.yaml",
+        {**valid_settings, "display": {"network_look": "rainbow"}},
+    )
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     result = http_request(url, "/api/records")
     # 検証
@@ -183,4 +186,4 @@ def test_normal_when_config_invalid(
         line.startswith("config.yaml: display.network_look: ")
         for line in records["settings_problem"]
     )
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
 from .history_helpers import add_item, read_changes, update_item, write_settings
+from workspace_fixtures import RECORD_DIR
 
 # 3 行の本文（2 行目だけを書き換える）
 BODY = "1 行目\n2 行目\n3 行目\n"
@@ -36,11 +37,16 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
     assert result.is_error is False
     assert result.data is not None
     assert result.data["had_read_point"] is True
-    assert result.data["added"] == [{"id": "T-1", "kind": "task", "title": "調べる"}]
+    assert result.data["added"] == [
+        {"id": "T-1", "kind": "task", "title": "調べる", "updated_by": "ai"}
+    ]
     assert len(result.data["changed"]) == 1
     changed = result.data["changed"][0]
     assert changed["id"] == "D-1"
     assert changed["before"] == {"title": "問い A"}
+    # 読んだ後の 2 回の書き換えは AI がした
+    assert changed["updated_by"] == "ai"
+    assert changed["by"] == ["ai"]
     # 本文は変えた 2 行目だけの差分で、1 行目・3 行目を含まない
     assert changed["body_diff"] == [{"line": 2, "now": ["書き換えた 2 行目"], "before": ["2 行目"]}]
     # 読んだ後、読んだ時点が last_seq と同じ
@@ -52,8 +58,8 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
     assert again.data["changed"] == []
     # 項目の YAML と本文は書き換えない
     after = snapshot_tree(root)
-    assert {name: text for name, text in after.items() if name != "changes.yaml"} == {
-        name: text for name, text in before.items() if name != "changes.yaml"
+    assert {name: text for name, text in after.items() if name != ".mindstella/changes.yaml"} == {
+        name: text for name, text in before.items() if name != ".mindstella/changes.yaml"
     }
 
 
@@ -108,7 +114,7 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
     # 検証
     assert result.is_error is True
     assert str(root) in result.text
-    assert not (root / "changes.yaml").exists()
+    assert not (root / RECORD_DIR / "changes.yaml").exists()
 
 
 def test_error_when_write_fails(
@@ -124,7 +130,7 @@ def test_error_when_write_fails(
     add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
     read_before = read_changes(root)["read_seq"]
     before = snapshot_tree(root)
-    lock_dirs(root)
+    lock_dirs(root / RECORD_DIR)
     # 実行
     failed = call_tool("changes_since_read", workspace=str(root))
     # 検証
@@ -133,7 +139,7 @@ def test_error_when_write_fails(
     assert "Traceback" not in failed.text
     assert snapshot_tree(root) == before
     # 権限を戻して呼び直すと、同じ変更が返る
-    root.chmod(stat.S_IRWXU)
+    (root / RECORD_DIR).chmod(stat.S_IRWXU)
     assert read_changes(root)["read_seq"] == read_before
     retry = call_tool("changes_since_read", workspace=str(root))
     assert retry.is_error is False

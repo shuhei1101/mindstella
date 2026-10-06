@@ -10,6 +10,7 @@ import yaml
 
 from .fixture_types import LockDirs, MakeWorkspace
 from .http_helpers import EventStream, http_request, send_json
+from workspace_fixtures import RECORD_DIR
 
 # 既定の書き換えのパス
 DISPLAY_PATH = "/api/config/display"
@@ -28,7 +29,7 @@ def _put(url: str, payload: dict[str, Any], **headers: str) -> Any:
 
 def _read_settings(root: Path) -> dict[str, Any]:
     """ワークスペースの config.yaml を読む。"""
-    return yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    return yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
 
 
 def test_normal(
@@ -60,7 +61,7 @@ def test_error_when_value_invalid(
     # 準備
     root = make_workspace()
     url = serve_preview(root)
-    before = (root / "config.yaml").read_bytes()
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     result = _put(url, {"network_look": "rainbow", "visible_kinds": KINDS_WITHOUT_TERMS})
     # 検証
@@ -68,7 +69,7 @@ def test_error_when_value_invalid(
     detail = result.json()["detail"]
     assert "network_look" in detail
     assert "glow" in detail
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
 
 
 def test_error_when_origin_mismatch(
@@ -78,7 +79,7 @@ def test_error_when_origin_mismatch(
     # 準備
     root = make_workspace()
     url = serve_preview(root)
-    before = (root / "config.yaml").read_bytes()
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
     # 実行
     result = _put(
         url,
@@ -87,7 +88,7 @@ def test_error_when_origin_mismatch(
     )
     # 検証
     assert result.status == 403
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
 
 
 def test_error_when_write_fails(
@@ -99,8 +100,8 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace()
     url = serve_preview(root)
-    before = (root / "config.yaml").read_bytes()
-    lock_dirs(root)
+    before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    lock_dirs(root / RECORD_DIR)
     # 実行
     result = _put(url, {"network_look": "glow", "visible_kinds": KINDS_WITHOUT_TERMS})
     # 検証
@@ -108,5 +109,5 @@ def test_error_when_write_fails(
     detail = result.json()["detail"]
     assert str(root) in detail
     assert "Traceback" not in detail
-    assert (root / "config.yaml").read_bytes() == before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
     assert http_request(url, "/api/records").status == 200

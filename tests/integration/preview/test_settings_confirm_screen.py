@@ -18,7 +18,7 @@ from preview_settings_helpers import (
     tab_keys,
     toggle_kind,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import RECORD_DIR, MakeItem
 
 # 既定の保存のボタン
 SAVE_DEFAULT_BUTTON = f"{SETTINGS_PANEL} button:has-text('ワークスペースの既定にする')"
@@ -138,7 +138,7 @@ def test_cancel(
     """「取り消す」と Esc では、何も書かずに閉じて、「ワークスペースの既定にする」へフォーカスを戻す（正常系）。"""
     # 準備
     page, root = _open_changed(write_review_preview, make_item, valid_settings, open_preview)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     sent: list[str] = []
     page.on(
         "request", lambda request: sent.append(request.url) if request.method == "PUT" else None
@@ -158,7 +158,7 @@ def test_cancel(
     assert focus_after_cancel == "ワークスペースの既定にする"
     assert page.locator(SETTINGS_PANEL).count() == 1
     assert sent == []
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_save_fails(
@@ -170,7 +170,7 @@ def test_save_fails(
     """サーバーが断ると、確かめを開いたまま理由を出し、config.yaml と画面の表示は保存の前のままにする。もう一度保存できる（正常系）。"""
     # 準備
     page, root = _open_changed(write_review_preview, make_item, valid_settings, open_preview)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     tabs_before = tab_keys(page)
 
     def _refuse(route: Route) -> None:
@@ -191,7 +191,7 @@ def test_save_fails(
     assert page.get_attribute(ERROR_ALERT, "role") == "alert"
     assert "保存できませんでした。書き込めませんでした: config.yaml" in page.inner_text(ERROR_ALERT)
     assert page.locator(CONFIRM_OPEN).count() == 1
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     assert tab_keys(page) == tabs_before
     # 直したあとの保存は通る
     page.unroute(PUT_PATTERN)
@@ -209,7 +209,7 @@ def test_save_fails_when_offline(
     """サーバーに届かないときは、立ち上げ直して新しい URL で開くよう案内する（正常系）。"""
     # 準備
     page, root = _open_changed(write_review_preview, make_item, valid_settings, open_preview)
-    config_before = (root / "config.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     page.route(PUT_PATTERN, lambda route: route.abort())
     page.click(SAVE_DEFAULT_BUTTON)
     page.wait_for_selector(CONFIRM_OPEN)
@@ -221,7 +221,7 @@ def test_save_fails_when_offline(
         "保存できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、"
         "示された新しい URL で開いてから保存してください。"
     )
-    assert (root / "config.yaml").read_bytes() == config_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
 def test_busy(
