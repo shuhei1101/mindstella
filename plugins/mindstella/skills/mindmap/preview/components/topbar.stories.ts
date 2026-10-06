@@ -219,8 +219,10 @@ export const FilterNarrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
+// 配信の画面のトップバーは余白なしで表示幅いっぱいに出るため、狭い幅のストーリーも余白を付けない
 const narrowViewport = {
   parameters: {
+    layout: "fullscreen",
     viewport: {
       options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
     },
