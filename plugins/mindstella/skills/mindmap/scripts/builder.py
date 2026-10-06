@@ -46,6 +46,7 @@ SCRIPT_FILES = (
     "components/view-switch.js",
     "components/topbar.js",
     "components/diff-mark.js",
+    "components/comment-mark.js",
     "components/history-dialog.js",
     "components/table.js",
     "components/filter-drawer.js",
