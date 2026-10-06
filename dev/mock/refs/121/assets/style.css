@@ -56,9 +56,9 @@
 /* 角のバッジの吹き出し: 出さない */
 [data-cmshape="b"] :is(.card, .n-item) .cmk svg.icon { display: none; }
 
-/* ===== つながりの印（案 A: 玉の右上に付いて動くラベル） ===== */
+/* ===== つながりの印（玉の名前の横に付いて動く印） ===== */
 
-/* 印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す */
-.g3-marks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-/* 玉に付く印: 位置は描くたびにスクリプトが transform で動かす */
+/* 印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す。印の重なり順は層の中に閉じ、詳細パネルより上に出さない */
+.g3-marks { position: absolute; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; pointer-events: none; }
+/* 名前の横に付く印: 位置は描くたびにスクリプトが transform で動かす */
 .cmk.cmk-float { position: absolute; top: 0; left: 0; }
