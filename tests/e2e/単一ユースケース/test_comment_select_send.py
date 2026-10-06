@@ -89,6 +89,23 @@ def _read(root: Path, name: str) -> list[dict[str, Any]]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"] if path.exists() else []
 
 
+# 検討事項のボードを開くハッシュと、ボードの D-1 のカードのコメントの印の読み上げの文字
+BOARD_HASH = "#tab=decisions&view=board"
+D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
+
+
+def _wait_d1_mark(page: Page, spoken: str | None) -> None:
+    """ボードの D-1 のカードの印の読み上げの文字が、渡した文字（印が無いなら None）になるのを待つ。"""
+    page.wait_for_function(
+        """(spoken) => {
+            const mark = document.querySelector('.board button.card[data-id="D-1"] .cmk .sr-only');
+            return (mark === null ? null : mark.textContent) === spoken;
+        }""",
+        arg=spoken,
+        timeout=RESULT_TIMEOUT_MS,
+    )
+
+
 def _without_target(comment: dict[str, Any]) -> dict[str, Any]:
     """向けた項目のキーを持たない（項目を指さない）コメントにする。"""
     return {key: value for key, value in comment.items() if key != "target"}
@@ -117,12 +134,14 @@ def test_normal(
         ),
         bodies={"A-1.md": BODY},
     )
-    open_preview(url)
+    open_preview(url, BOARD_HASH)
     # 実行
     _open_list(page)
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} input.row-check", "cs => cs.map(c => c.checked)"
     ) == [True, True]
+    # 送る前は、ボードの D-1 のカードにコメントの印（件数 1）がある
+    assert page.inner_text(D1_MARK) == "コメント 1 件"
     page.fill(FREE_TEXTAREA, "全体に目を通した")
     page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").click()
     page.wait_for_selector(_row("C-3"), timeout=RESULT_TIMEOUT_MS)
@@ -144,6 +163,9 @@ def test_normal(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
     ) == ["C-3"]
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
+    # 画面を開き直さずに、ボードの D-1 のカードから印が消える
+    _wait_d1_mark(page, None)
+    assert page.locator('.board button.card[data-id="D-1"] .cmk').count() == 0
 
 
 def test_normal_when_jump_to_location(
@@ -205,8 +227,9 @@ def test_normal_when_edit_remove_restore(
             make_comment("C-2", target="D-1", body="案 B も見たい"),
         ),
     )
-    open_preview(url)
+    open_preview(url, BOARD_HASH)
     _open_list(page)
+    assert page.inner_text(D1_MARK) == "コメント 2 件"
     # 実行（書き換える）
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 A に決める")
@@ -218,10 +241,13 @@ def test_normal_when_edit_remove_restore(
     # 実行（消す）
     page.locator(_row("C-2")).get_by_role("button", name="D-1 へのコメントを削除").click()
     page.wait_for_selector(f"{_row('C-2')}.removed", timeout=RESULT_TIMEOUT_MS)
+    # 検証（消した後は、ボードの D-1 のカードの件数が 1）
+    _wait_d1_mark(page, "コメント 1 件")
     # 実行（戻す）
     page.get_by_role("button", name="元に戻す").click()
     page.wait_for_selector(f"{_row('C-2')} button.row-target", timeout=RESULT_TIMEOUT_MS)
-    # 検証
+    # 検証（戻した後は件数が 2）
+    _wait_d1_mark(page, "コメント 2 件")
     assert [(item["id"], item["body"]) for item in _read(root, "comments.yaml")] == [
         ("C-1", "案 A に決める"),
         ("C-2", "案 B も見たい"),
