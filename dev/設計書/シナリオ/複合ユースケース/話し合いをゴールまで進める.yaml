@@ -45,7 +45,8 @@ scenarios:
       - '`check` が参照切れと、YAML と Markdown のずれを 0 件で返す'
       - サーバーが配るプレビューの記録が、最後の編集を含んでいる
       - ワークスペースに `preview.html` が書き出されていない
-      - ワークスペースの直下には `.mindstella/` だけがあり、`config.yaml`・種類ごとの YAML・`docs/`・`release/` は `.mindstella/` の下にある
+      - ワークスペースの直下には `.mindstella/` と `README.md` だけがあり、`config.yaml`・種類ごとの YAML・`docs/`・`release/` は `.mindstella/` の下にある
+      - 直下の `README.md` に、起動スクリプトで立ち上げてプレビューを開く手順がある
     test: test_normal_when_new_discussion
   - name: 正常シナリオ（続きから再開）
     setup:
@@ -109,6 +110,7 @@ scenarios:
       - '`config.yaml` が `field` を持たず、`playbooks` に元の分野のシステム開発の 1 件を持ち、`target_label` が移し替えの前と同じである'
       - ワークスペースに `mindmap.yaml` が残っていない
       - 移し替えの後、`config.yaml`・種類ごとの YAML・`docs/`・`release/`・版のファイルが `.mindstella/` の下にあり、直下に残っていない
+      - 移し替えの後、直下に `README.md` があり、起動スクリプトで立ち上げてプレビューを開く手順がある
       - 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
       - 既存の項目の ID が変わらず、取り込みで足した検討事項が D-2 になっている
       - '`check` が問題を 0 件で返す'
