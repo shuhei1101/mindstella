@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from playwright.sync_api import Page
 
 from .fixture_types import LoadLibrary, LoadPreviewScripts, MakeData, MakeItem
@@ -340,3 +341,84 @@ def test_detail_panel_when_diff_renders_before_sequence(
     rendered_sources = preview_page.evaluate("() => window.renderedSources")
     # 検証
     assert rendered_sources == [SEQUENCE_BEFORE_SOURCE]
+
+
+# 見出し「決め方」を 2 つ持つ本文（2 つの見出しの間に、本文の領域を超える段落を置く）
+HEADING_BODY = (
+    "## 決め方\n\n"
+    + "\n\n".join(f"1 つ目の決め方の段落 {number}" for number in range(1, 13))
+    + "\n\n## 決め方\n\n2 つ目の決め方の段落\n"
+)
+
+# 本文のスクロール領域を 200px に抑えて詳細パネルを開き、2 つ目の「決め方」が領域に入ったかと、見出しを外させる知らせを調べる
+OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
+    // 単体テストでは雛形の CSS を読まないので、本文のスクロール領域だけ作る
+    const style = document.createElement("style");
+    style.textContent = ".panel-body { height: 200px; overflow: auto; }";
+    document.head.append(style);
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const headingCalls = [];
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full: false,
+        on: {
+            open: noop,
+            close: noop,
+            full: noop,
+            back: noop,
+            forward: noop,
+            diagram: noop,
+            heading: (slug) => headingCalls.push(slug),
+        },
+        comment: null,
+        heading,
+    });
+    document.body.append(panel);
+    // 見出しへのスクロールは、文書に入った後の描き直しで付くことがある
+    for (let frame = 0; frame < 2; frame += 1) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    const body = panel.querySelector(".panel-body");
+    const area = body.getBoundingClientRect();
+    const target = panel.querySelector('[data-heading="決め方-1"]');
+    const rect = target === null ? null : target.getBoundingClientRect();
+    return {
+        scrolled: body.scrollTop > 0,
+        inView: rect !== null && rect.top >= area.top && rect.bottom <= area.bottom,
+        nullCalls: headingCalls.filter((slug) => slug === null).length,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("heading", "expected"),
+    [
+        pytest.param(
+            "決め方-1", {"scrolled": True, "inView": True, "nullCalls": 0}, id="heading_in_body"
+        ),
+        pytest.param(
+            "無い", {"scrolled": False, "inView": False, "nullCalls": 1}, id="heading_not_in_body"
+        ),
+    ],
+)
+def test_detail_panel_when_heading(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    heading: str,
+    expected: dict[str, object],
+) -> None:
+    """指した見出しを画面に入れて開く（正常系）。"""
+    # 準備
+    data = make_data(docs=[make_item("A-1")], bodies={"A-1.md": HEADING_BODY})
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading})
+    # 検証
+    assert result == expected

@@ -60,6 +60,49 @@ def test_filter_rows(
     assert ids == expected_ids
 
 
+# 文字の条件の行（G-12 は ID に G-1 を含み、G-4 はタイトルの途中に「シナリオ」を含む）
+TEXT_FILTER_ROWS = [
+    {"id": "G-1", "title": "シナリオの依頼", "tags": ["a"]},
+    {"id": "G-12", "title": "依頼の控え", "tags": ["b"]},
+    {"id": "G-2", "title": "データの移し替え", "tags": ["a"]},
+    {"id": "G-3", "title": "データの移し先", "tags": ["b"]},
+    {"id": "G-4", "title": "古いシナリオ", "tags": []},
+]
+
+
+@pytest.mark.parametrize(
+    ("filters", "expected_ids"),
+    [
+        pytest.param({"~title": ["シナリオ"]}, ["G-1", "G-4"], id="title_contains"),
+        pytest.param({"~id": ["g-1"]}, ["G-1", "G-12"], id="id_contains_case_insensitive"),
+        pytest.param({"~title": ["移し"], "tags": ["a"]}, ["G-2"], id="text_and_value"),
+        pytest.param(
+            {"~nope": ["x"]}, ["G-1", "G-12", "G-2", "G-3", "G-4"], id="unknown_column_ignored"
+        ),
+    ],
+)
+def test_filter_rows_text(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    filters: dict[str, list[str]],
+    expected_ids: list[str],
+) -> None:
+    """文字の条件は含む一致で、値の条件と重ねられる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    ids = preview_page.evaluate(
+        """({rows, filters}) => {
+            // 条件の定義は `key` と値を取る `get` だけを持つ
+            const columns = ["id", "title", "tags"].map((key) => ({key, get: (row) => row[key]}));
+            return MindmapPreview.filterRows({rows, columns, filters}).map((row) => row.id);
+        }""",
+        {"rows": TEXT_FILTER_ROWS, "filters": filters},
+    )
+    # 検証
+    assert ids == expected_ids
+
+
 @pytest.mark.parametrize(
     ("sort", "expected_ids"),
     [
@@ -277,3 +320,58 @@ def test_initial_filters(
     )
     # 検証
     assert filters == expected
+
+
+# 用語集の表の列（`filterable` の列が値で絞る列。数の列は持たない）
+TERMS_COLUMN_SPECS = [
+    {"key": "id"},
+    {"key": "title"},
+    {"key": "meaning"},
+    {"key": "aliases"},
+    {"key": "avoid"},
+    {"key": "tags", "filterable": True},
+]
+
+# 検討事項の表の列
+DECISIONS_COLUMN_SPECS = [
+    {"key": "id"},
+    {"key": "title"},
+    {"key": "status", "filterable": True},
+    {"key": "target", "filterable": True},
+    {"key": "category", "filterable": True},
+    {"key": "phase", "filterable": True},
+    {"key": "weight", "filterable": True},
+    {"key": "ready", "filterable": True},
+    {"key": "depends_on"},
+    {"key": "tags", "filterable": True},
+]
+
+
+@pytest.mark.parametrize(
+    ("specs", "expected_keys"),
+    [
+        pytest.param(
+            TERMS_COLUMN_SPECS, ["id", "title", "meaning", "aliases", "avoid"], id="terms"
+        ),
+        pytest.param(DECISIONS_COLUMN_SPECS, ["id", "title", "depends_on"], id="decisions"),
+    ],
+)
+def test_text_columns(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    specs: list[dict[str, Any]],
+    expected_keys: list[str],
+) -> None:
+    """値を選ぶ列と数の列を除く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    keys = preview_page.evaluate(
+        """(specs) => {
+            const columns = specs.map((spec) => ({...spec, label: spec.key, get: () => ""}));
+            return MindmapPreview.textColumns(columns).map((column) => column.key);
+        }""",
+        specs,
+    )
+    # 検証
+    assert keys == expected_keys
