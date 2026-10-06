@@ -16,7 +16,7 @@ directory: |-
       settings-confirm.ts   既定の保存の確かめ（部品設計『既定の保存の確かめ』）
     screens/
       overview.ts         概要
-      decisions.ts        検討事項（マップ・ボード・表）
+      decisions.ts        検討事項（ボード・マップ・表）
       tasks.ts            タスク（ボード・表）
       docs.ts             資料（カード・ボード・表）
       records.ts          調査・用語集・メモ・会話ログ（表）
@@ -72,7 +72,7 @@ components:
       - name: theme
         type: "'light' | 'dark'"
         required: true
-        description: 今のテーマ
+        description: 今のテーマ。切り替えのボタンはトップバーの右端に置く
       - name: onNavigate
         type: '(key: string) => void'
         required: true
@@ -114,7 +114,7 @@ components:
         type: boolean
         required: false
         default: 'false'
-        description: コメントのボタンを置くか（配る書き出しでは false。置かないときは検索の入口も今の位置のまま）。件数は `commentCount`（99 を超えたら `99+`、読み上げの名前には実際の件数）、一覧を開いているかは `commentsOpen`、押したときは `onComments`
+        description: コメントのボタンを置くか（配る書き出しでは false。置かないときは検索の入口も今の位置のまま）。置くときはテーマの切り替えの左。件数は `commentCount`（99 を超えたら `99+`、読み上げの名前には実際の件数）、一覧を開いているかは `commentsOpen`、押したときは `onComments`
       - name: settingsOpen
         type: boolean
         required: false
@@ -129,7 +129,7 @@ components:
         type: boolean
         required: false
         default: 'false'
-        description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければ右端）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
+        description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければテーマの切り替えの左）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -228,7 +228,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: 画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、マップ・ボード・表に同じ結果を渡す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す
+    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）'
     props:
       - name: index
         type: RecordIndex
@@ -258,7 +258,7 @@ components:
       - name: zoom
         type: number
         initial: 全体が収まる倍率
-        description: マップの倍率
+        description: マップの倍率。縮小・拡大のボタンとホイール（`wheelZoom`）で 0.4〜1.5 の数値にし、「全体を表示」で全体が収まる倍率に戻す
   - name: tasksScreen
     title: タスク
     container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
@@ -1207,6 +1207,50 @@ functions:
         condition: 未決定・タグ a の D-1 と、タグの無い N-1
         mock: なし
         expected: D-1 は `検討事項`・`未決定`・`[a]`、N-1 は `メモ`・状態無し・`[]`
+  - name: wheelZoom
+    title: ホイールでの倍率
+    container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    usecase: 検討事項をマップで辿る
+    kind: 関数
+    scope: public
+    summary: ホイール 1 回で変えた後のマップの倍率と、マウスの下の点を残す枠のスクロールの位置を返す。`deltaY` が負なら 1.12 倍、正なら 1 / 1.12 倍にし、`ZOOM_MIN`（0.4）〜`ZOOM_MAX`（1.5）に収める。スクロールの位置は `(scroll + point) × 新しい倍率 / 今の倍率 − point`（送れる端への収めは、当てたときにブラウザが行う）
+    args:
+      - name: scale
+        type: number
+        required: true
+        passing: keyword
+        description: 今当たっている倍率（「全体を表示」のときはそのときの倍率）
+      - name: deltaY
+        type: number
+        required: true
+        passing: keyword
+        description: '`wheel` の `deltaY`。符号だけを見る'
+      - name: point
+        type: '{x: number, y: number}'
+        required: true
+        passing: keyword
+        description: マウスの位置（枠の左上からの px）
+      - name: scroll
+        type: '{left: number, top: number}'
+        required: true
+        passing: keyword
+        description: 枠の今のスクロールの位置
+    returns:
+      type: '{scale: number, scroll: {left: number, top: number}}'
+      description: 新しい倍率と、枠に当てるスクロールの位置。倍率が範囲の端で変わらないときは、渡したスクロールの位置のまま
+    unit_tests:
+      - name: test_wheel_zoom
+        case: 正常
+        summary: 奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める
+        condition: '`parametrize`: `scale` 1・`deltaY` -100 / `scale` 1・`deltaY` 100 / `scale` 1.45・`deltaY` -1 / `scale` 0.42・`deltaY` 1 / `scale` 1.5・`deltaY` -1（どれも `point` (0, 0)・`scroll` (0, 0)）'
+        mock: なし
+        expected: 1.12 / 1 / 1.12（約 0.893） / 1.5 / 0.4 / 1.5
+      - name: test_wheel_zoom_keeps_point
+        case: 正常
+        summary: マウスの下の点を残すスクロールの位置を返す
+        condition: '`parametrize`: `scale` 1・`deltaY` -1・`point` (200, 100)・`scroll` (300, 50) / `scale` 1.5・`deltaY` -1・`point` (200, 100)・`scroll` (300, 50)'
+        mock: なし
+        expected: '`scale` 1.12・`scroll` (360, 68) / `scale` 1.5・`scroll` (300, 50)（端で倍率が変わらず位置もそのまま）'
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
