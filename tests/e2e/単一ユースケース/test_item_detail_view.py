@@ -23,6 +23,17 @@ flowchart LR
 # 広い幅の画面（詳細パネルが本文を寄せる幅）
 WIDE_SIZE = (1920, 1080)
 
+# 全画面で本文を送れる長さにするために足す段落の数
+FILLER_PARAGRAPHS = 60
+
+# 全画面の本文の上でホイールを回す量（px）
+WHEEL_DELTA_PX = 800
+
+# 本文に mermaid の図と、モーダルの中で送れる長さの段落を持つ Markdown
+LONG_BODY_WITH_DIAGRAM = BODY_WITH_DIAGRAM + "\n".join(
+    f"\n続きの段落 {number}\n" for number in range(1, FILLER_PARAGRAPHS + 1)
+)
+
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
 
@@ -85,10 +96,11 @@ def test_normal(
     url = serve_preview(
         *_decision_records(make_item),
         settings=valid_settings,
-        bodies={"D-3.md": BODY_WITH_DIAGRAM},
+        bodies={"D-3.md": LONG_BODY_WITH_DIAGRAM},
     )
     page = open_preview(url, "#tab=decisions&view=table", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
-    box_script = "(() => { const r = document.querySelector('main#main').getBoundingClientRect(); return [r.left, r.right]; })()"
+    # 本文の中身の枠（表の枠）の左右の位置を測る（外枠 `main#main` は窓の左端から始まるので、寄りを測れない）
+    box_script = "(() => { const r = document.querySelector('.table-wrap').getBoundingClientRect(); return [r.left, r.right]; })()"
     left_before = page.evaluate(box_script)[0]
     # 実行
     page.click('table.grid button.row-open[data-id="D-3"]')
@@ -121,12 +133,34 @@ def test_normal(
     assert left_after < left_before
     assert right_after <= panel_left
     # 「全画面表示」を押し、図の拡大は中身の切り替えで、モーダルが 2 枚重ならない
+    button_style_js = """(selector) => {
+        const style = getComputedStyle(document.querySelector(selector));
+        return [style.color, style.borderTopColor, style.backgroundColor, document.querySelector(selector + ' svg path').getAttribute('d')];
+    }"""
     assert page.get_attribute('aside.panel button[data-act="full"]', "aria-label") == "全画面表示"
+    before_style = page.evaluate(button_style_js, 'aside.panel button[data-act="full"]')
     page.click('aside.panel button[data-act="full"]')
     page.wait_for_selector("dialog.full[open] .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
-    # ラベルは変えず、押された状態（aria-pressed）で全画面を示す
-    assert page.get_attribute('dialog.full button[data-act="full"]', "aria-label") == "全画面表示"
-    assert page.get_attribute('dialog.full button[data-act="full"]', "aria-pressed") == "true"
+    # 全画面の間は縮小のアイコンに替わり、文字色・枠の色・背景色は押す前と同じ。押された状態（aria-pressed）は持たない
+    full_style = page.evaluate(button_style_js, 'dialog.full button[data-act="full"]')
+    assert full_style[:3] == before_style[:3]
+    assert full_style[3] != before_style[3]
+    assert page.get_attribute('dialog.full button[data-act="full"]', "aria-pressed") is None
+    # モーダルの本文の幅が、モーダルの中の左右の余白を除いた幅いっぱいに広がる
+    widths = page.evaluate(
+        """() => {
+            const dialog = document.querySelector('dialog.full').getBoundingClientRect();
+            const body = document.querySelector('dialog.full .panel-body').getBoundingClientRect();
+            return {dialog: dialog.width, body: body.width};
+        }"""
+    )
+    assert widths["body"] >= widths["dialog"] - 2
+    # モーダルの中でホイールを回して本文を下へ送ると、モーダルの中が送られる（後ろの画面へ伝えない CSS は結合テストで確かめる）
+    body_box = page.locator("dialog.full .panel-body").bounding_box()
+    assert body_box is not None
+    page.mouse.move(body_box["x"] + body_box["width"] / 2, body_box["y"] + body_box["height"] / 2)
+    page.mouse.wheel(0, WHEEL_DELTA_PX)
+    page.wait_for_function("document.querySelector('dialog.full .panel-body').scrollTop > 0")
     page.click('dialog.full button[data-act="diagram-zoom"]')
     page.wait_for_selector("dialog.full .full-viewer .v-stage svg")
     assert page.locator("dialog[open]").count() == 1
@@ -194,3 +228,119 @@ def test_error_when_render_library_unavailable(
     raw = page.inner_text("aside.panel .md .md-raw")
     assert "# 要件" in raw
     assert "flowchart LR" in raw
+
+
+# 本文の見出し「決め方」を、詳細パネルを開いたときに画面に入らない位置に置く段落の数
+LINK_FILLER_PARAGRAPHS = 60
+
+# 本文のリンクで移る資料 A-1 の本文（見出し「保存先」「決め方」、リンク・用語・ID を並べた段落、コードブロック）
+LINKED_BODY = (
+    "## 保存先\n\n"
+    "保存先は [決め方](#決め方) で決める。D-3 と `D-5` と D-99 を見る。\n\n"
+    "```\n保存先 D-3\n```\n\n"
+    + "\n\n".join(f"間の段落 {number}" for number in range(1, LINK_FILLER_PARAGRAPHS + 1))
+    + "\n\n## 決め方\n\n決め方の本文\n"
+)
+
+# 本文のスクロール領域
+PANEL_BODY = "aside.panel .panel-body"
+
+
+def _heading_in_view(page: Page, slug: str) -> bool:
+    """見出し（`data-heading`）が、詳細パネルの本文の領域の中で画面に入っているかを返す。"""
+    return page.evaluate(
+        """(slug) => {
+            const area = document.querySelector('aside.panel .panel-body').getBoundingClientRect();
+            const box = document.querySelector(`aside.panel [data-heading="${slug}"]`).getBoundingClientRect();
+            return box.top >= area.top - 1 && box.bottom <= area.bottom + 1;
+        }""",
+        slug,
+    )
+
+
+def test_normal_when_body_links(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """本文の用語の印にカーソルを合わせて意味を読み、見出しのリンクで送り、その URL を開き直し、項目の ID と用語のリンクで移る（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("A-1"),
+        make_item("G-1", title="保存先", meaning="記録を置くフォルダ", body="G-1.md"),
+        make_item("D-3"),
+        make_item("D-5"),
+        settings=valid_settings,
+        bodies={"A-1.md": LINKED_BODY, "G-1.md": "保存先の説明\n"},
+    )
+    # 実行（A-1 の詳細パネルを開く）
+    open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector(f"{PANEL_BODY} [data-heading]")
+    # 検証（用語の印・ID のリンク・見出しのリンク）
+    marks = page.eval_on_selector_all(
+        "aside.panel .md a.term", "a => a.map(x => [x.textContent, x.dataset.id])"
+    )
+    refs = page.eval_on_selector_all(
+        "aside.panel .md a.idref", "a => a.map(x => [x.textContent, x.dataset.id])"
+    )
+    in_code_or_heading = page.locator(
+        "aside.panel .md :is(pre, h2) :is(a.term, a.idref)"
+    ).count()
+    heading_links = page.eval_on_selector_all(
+        "aside.panel [data-heading] .h-link", "l => l.map(x => x.getAttribute('aria-label'))"
+    )
+    # 段落の「保存先」だけに印が付き、見出し「保存先」とコードブロックには付かない。D-99 はリンクでない
+    assert marks == [["保存先", "G-1"]]
+    assert refs == [["D-3", "D-3"], ["D-5", "D-5"]]
+    assert in_code_or_heading == 0
+    assert heading_links == ["見出し「保存先」へのリンク", "見出し「決め方」へのリンク"]
+    # 実行（「保存先」の印にカーソルを合わせる）
+    mark = "aside.panel .md a.term"
+    page.hover(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    assert "記録を置くフォルダ" in page.inner_text("#term-tip")
+    # キーボードでフォーカスしても同じツールチップが出る
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    page.focus(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    assert "記録を置くフォルダ" in page.inner_text("#term-tip")
+    page.keyboard.press("Escape")
+    # 実行（本文の「決め方」のリンクを押す）
+    assert _heading_in_view(page, "決め方") is False
+    content_scroll_before = page.evaluate("document.querySelector('.content').scrollTop")
+    page.click("aside.panel .md p a:has-text('決め方')")
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 検証（詳細パネルの中が送られ、後ろの画面は送られない）
+    assert _heading_in_view(page, "決め方") is True
+    assert page.evaluate("document.querySelector('.content').scrollTop") == content_scroll_before
+    hash_text = page.evaluate("location.hash")
+    assert "tab=docs" in hash_text
+    assert "id=A-1" in hash_text
+    # 実行（「決め方」の見出しのリンクを押す。リンクを押した後の URL のハッシュが見出しを指す）
+    page.click('aside.panel [data-heading="決め方"] .h-link')
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    shared = page.url
+    # 実行（その URL を新しいタブで開く）
+    other = page.context.new_page()
+    other.set_viewport_size({"width": 1280, "height": 800})
+    other.goto(shared)
+    other.wait_for_selector(f"{PANEL_BODY} [data-heading]")
+    other.wait_for_function("document.querySelector('aside.panel .panel-body').scrollTop > 0")
+    # 検証（新しいタブでも、「決め方」が画面に入る位置まで送られて開く）
+    assert _heading_in_view(other, "決め方") is True
+    other.close()
+    # 実行（本文の「D-3」を押す）
+    page.click('aside.panel .md a.idref[data-id="D-3"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-3の題'")
+    assert "id=D-3" in page.evaluate("location.hash")
+    # 実行（戻る操作をし、本文の「保存先」を押す）
+    page.go_back()
+    page.wait_for_selector(f"{PANEL_BODY} a.term")
+    page.click("aside.panel .md a.term")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === '保存先'")
+    # 検証（G-1 の詳細パネルが開き、G-1 の本文の「保存先」には用語の印が付かない）
+    assert "id=G-1" in page.evaluate("location.hash")
+    assert page.locator("aside.panel .md a.term").count() == 0

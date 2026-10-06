@@ -36,6 +36,7 @@ __all__ = [
     "ServePreview",
     "ServeWorkspace",
     "badge_text",
+    "bands_stay_on_top",
     "checked_values",
     "clear_condition",
     "click_item_ball",
@@ -45,6 +46,7 @@ __all__ = [
     "fetch_records",
     "http_call",
     "open_drawer",
+    "page_scroll_overflow",
     "pick_history_point",
     "row_ids",
     "select_text",
@@ -425,3 +427,27 @@ def shown_ball_item_ids(page: Page) -> set[str]:
         page.keyboard.press("Escape")
         page.wait_for_function("!document.querySelector('aside.panel.open')")
     return ids
+
+
+def page_scroll_overflow(page: Page) -> dict[str, int]:
+    """ページ全体が窓からはみ出している縦・横の大きさ（px）と、縦のスクロールの位置を返す。窓に収まっていれば 0。"""
+    return page.evaluate(
+        """() => ({
+            vertical: Math.max(0, document.documentElement.scrollHeight - innerHeight),
+            horizontal: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+            scrollY: Math.round(scrollY),
+        })"""
+    )
+
+
+def bands_stay_on_top(page: Page) -> bool:
+    """本文の領域を一番下まで送った後も、トップバーとタブの帯が窓の上端に見えたままかを返す。"""
+    return page.evaluate(
+        """() => {
+            const content = document.querySelector('.content');
+            content.scrollTop = content.scrollHeight;
+            const topbar = document.querySelector('.topbar').getBoundingClientRect();
+            const tabs = document.querySelector('.tabbar').getBoundingClientRect();
+            return topbar.top === 0 && tabs.top === topbar.bottom && tabs.bottom > tabs.top;
+        }"""
+    )

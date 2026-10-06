@@ -221,7 +221,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`/` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書きを残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書きを残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
     args: []
     returns:
       type: void
@@ -280,6 +280,9 @@ functions:
       13. `hashchange`・`popstate` で 4・5 を繰り返す
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
+      キー操作: 文書の `keydown` で `Ctrl+K`（`metaKey` の `Cmd+K` を含む）を受けたら、入力欄にフォーカスがあっても既定の動作を止め、全体の検索を開く（開いていれば検索の言葉を選び直す）。`/` では開かない
+      画面の作り: '`body` を窓の高さに固定し、トップバーとタブの帯の下に画面ごとの領域（画面設計の「画面の領域」）を 1 つ置く（`style.css`）。ページ全体はスクロールさせず、表・ボード（幅 721px 以上）とマップ（幅 901px 以上）は領域の高さいっぱいに広げて中でスクロールさせ、それより狭い幅では領域ごとスクロールさせる。`100dvh` から帯と余白を引く高さの計算（`.table-wrap`・`.map-wrap`・`.fg-wrap`・`.g3-wrap`）はやめる。詳細パネルの位置（`.panel` の `top`）は帯の下のまま'
+      見出しのハッシュ: '5 で詳細パネルに `Route.heading` を渡す。詳細パネルの `on.heading` では `Route.heading` を書き換え、履歴に積まずにハッシュを置き換える（`navigate`、`push: false`）。項目へ移るときは `heading` を `null` にする'
   - name: formKey
     title: 入力欄のキー
     kind: 関数

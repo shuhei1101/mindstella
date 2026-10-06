@@ -20,6 +20,12 @@ from preview_drawer_helpers import (
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    region_metrics,
+)
 from preview_mark_helpers import MARK_TIMEOUT_MS
 
 # 狭い幅の画面の大きさ（空の旨の文はどの幅でも出す）
@@ -309,3 +315,33 @@ def test_comment_marks_when_edge(
         for mark in sample["marks"]:
             assert canvas["left"] <= mark["left"] and mark["right"] <= canvas["right"]
             assert canvas["top"] <= mark["top"] and mark["bottom"] <= canvas["bottom"]
+
+
+def test_region(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """3D のキャンバスは領域の高さいっぱいに広がり、ページ全体はスクロールせず、帯は見えたまま（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("#graph-canvas")
+    # 実行
+    metrics = region_metrics(page, "#graph-canvas")
+    # 検証
+    assert_page_does_not_scroll(page)
+    # キャンバスの底は領域の底の近くにある（領域の下の余白の分だけ内側）
+    assert metrics["content"]["bottom"] - metrics["target"]["bottom"] <= 80
+    assert metrics["target"]["bottom"] - metrics["target"]["top"] >= 360
+    assert_bands_stay(page)
+
+
+def test_drawer_has_no_text_fields(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """つながりの絞り込みのドロワーには、文字の欄を出さない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    # 実行
+    open_drawer(page)
+    # 検証
+    assert page.locator(f"{DRAWER} .fd-text").count() == 0

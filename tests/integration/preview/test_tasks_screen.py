@@ -15,6 +15,7 @@ from preview_drawer_helpers import (
     close_drawer,
     drawer_groups,
     drawer_head,
+    drawer_text_fields,
     open_drawer,
     remove_chip,
 )
@@ -22,10 +23,21 @@ from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
     OpenPreview,
+    WritePreview,
     WriteReviewPreview,
     WriteSamplePreview,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    BOUNDARY_HEIGHT,
+    NARROW_VIEWPORT,
+    TABLE_BOARD_BOUNDARY_WIDTHS,
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    assert_region_mode,
+    region_metrics,
+)
 from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
@@ -38,6 +50,7 @@ from preview_style_checks import (
     pin_id_column,
     table_cell_backgrounds,
 )
+from workspace_fixtures import MakeItem
 
 
 def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -363,3 +376,129 @@ def test_comment_marks_when_table(
     # 検証
     assert marks_of(page) == SCREEN_MARKS["tasks"]
     assert page.locator("table.grid tbody tr:has(.cmk)").count() == 1
+
+
+# 項目を多く持つタスクの数（領域の高さを超える数）
+MANY_TASKS = 40
+
+# 表示形式ごとの、領域の中でスクロールする枠
+REGION_SCROLLER = {"board": ".board", "table": ".table-wrap"}
+
+
+def _write_many_tasks(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """領域の高さを超える数の未着手のタスクを持つ配信の URL を返す。"""
+    return write_preview(
+        *(make_item(f"T-{number}", status="未着手") for number in range(1, MANY_TASKS + 1))
+    )
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+def test_region_when_wide(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が広いとき、ページ全体はスクロールせず、帯は見えたままで、ボード・表は領域の高さいっぱいに広がって中でスクロールする（正常系）。"""
+    # 準備
+    url = _write_many_tasks(write_preview, make_item)
+    page = open_preview(url, f"#tab=tasks&view={view}")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    scroller = REGION_SCROLLER[view]
+    page.wait_for_selector(scroller)
+    # 実行
+    metrics = region_metrics(page, scroller)
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] <= metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] > metrics["target"]["clientHeight"]
+    assert metrics["target"]["bottom"] <= metrics["content"]["bottom"]
+    assert_bands_stay(page)
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+def test_region_when_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が狭いとき、ページ全体はスクロールせず、領域ごと縦にスクロールし、帯は見えたまま（正常系）。"""
+    # 準備
+    url = _write_many_tasks(write_preview, make_item)
+    page = open_preview(url, f"#tab=tasks&view={view}")
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_selector(REGION_SCROLLER[view])
+    # 実行
+    metrics = region_metrics(page, REGION_SCROLLER[view])
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] <= metrics["target"]["clientHeight"] + 1
+    assert_bands_stay(page)
+
+
+def test_board_head_stays(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ボードを縦に送っても列の見出しはボードの上に留まり、列は最も長い列の高さまで伸びる（正常系）。"""
+    # 準備
+    url = _write_many_tasks(write_preview, make_item)
+    page = open_preview(url, "#tab=tasks&view=board")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector(".board .card")
+    # 実行
+    result = page.evaluate(
+        """() => {
+            const board = document.querySelector('.board');
+            board.scrollTop = board.scrollHeight;
+            const boardTop = board.getBoundingClientRect().top;
+            return {
+                scrolled: board.scrollTop > 0,
+                heads: [...document.querySelectorAll('.board-col h3')].map((h) => h.getBoundingClientRect().top - boardTop),
+                heights: [...document.querySelectorAll('.board-col')].map((c) => Math.round(c.getBoundingClientRect().height)),
+            };
+        }"""
+    )
+    # 検証
+    assert result["scrolled"] is True
+    assert all(0 <= head <= 8 for head in result["heads"])
+    assert len(set(result["heights"])) == 1
+
+
+def test_drawer_text_fields_and_chip(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ドロワーに文字の欄（ID・タイトル・進める検討事項）を並べ、文字を入れるとボードを絞ってチップに出す。× で解除できる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=board")
+    page.wait_for_selector(".board .card")
+    # 実行
+    open_drawer(page)
+    fields = [field["label"] for field in drawer_text_fields(page)]
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "T-1")
+    page.wait_for_function("document.querySelectorAll('.board .card').length === 1")
+    cards = page.eval_on_selector_all(".board .card", "c => c.map(x => x.dataset.id)")
+    chips = chip_texts(page)
+    close_drawer(page)
+    remove_chip(page, "ID に「T-1」を含む")
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 0")
+    # 検証
+    assert fields[:2] == ["ID", "タイトル"]
+    assert cards == ["T-1"]
+    assert chips == ["ID に「T-1」を含む"]
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+@pytest.mark.parametrize(("width", "filled"), TABLE_BOARD_BOUNDARY_WIDTHS)
+def test_region_at_boundary(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    view: str,
+    width: int,
+    filled: bool,
+) -> None:
+    """領域の高さいっぱいに広げる境（721px）の前後の幅で、広げるか領域ごとスクロールするかが切り替わる（正常系）。"""
+    # 準備
+    url = _write_many_tasks(write_preview, make_item)
+    page = open_preview(url, f"#tab=tasks&view={view}")
+    page.set_viewport_size({"width": width, "height": BOUNDARY_HEIGHT})
+    page.wait_for_selector(REGION_SCROLLER[view])
+    # 実行・検証
+    assert_region_mode(page, REGION_SCROLLER[view], filled=filled)

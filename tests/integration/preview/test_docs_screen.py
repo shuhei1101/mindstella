@@ -17,10 +17,21 @@ from preview_drawer_helpers import (
     click_value,
     close_drawer,
     drawer_groups,
+    drawer_text_fields,
     open_drawer,
     remove_chip,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    BOUNDARY_HEIGHT,
+    NARROW_VIEWPORT,
+    TABLE_BOARD_BOUNDARY_WIDTHS,
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    assert_region_mode,
+    region_metrics,
+)
 from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
@@ -444,3 +455,114 @@ def test_comment_marks_when_table(
     # 検証
     assert marks_of(page) == SCREEN_MARKS["docs"]
     assert page.locator("table.grid tbody tr:has(.row-open ~ .cmk-place .cmk)").count() == 2
+
+
+# 項目を多く持つ資料の数（領域の高さを超える数）
+MANY_DOCS = 40
+
+# 表示形式ごとの、領域の中でスクロールする枠
+REGION_SCROLLER = {"board": ".board", "table": ".table-wrap"}
+
+
+def _write_many_docs(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """領域の高さを超える数の下書きの資料を持つ配信の URL を返す。"""
+    return write_preview(
+        *(make_item(f"A-{number}", status="下書き") for number in range(1, MANY_DOCS + 1))
+    )
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+def test_region_when_wide(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が広いとき、ページ全体はスクロールせず、帯は見えたままで、ボード・表は領域の高さいっぱいに広がって中でスクロールする（正常系）。"""
+    # 準備
+    url = _write_many_docs(write_preview, make_item)
+    page = open_preview(url, f"#tab=docs&view={view}")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    scroller = REGION_SCROLLER[view]
+    page.wait_for_selector(scroller)
+    # 実行
+    metrics = region_metrics(page, scroller)
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] <= metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] > metrics["target"]["clientHeight"]
+    assert_bands_stay(page)
+
+
+def test_region_when_cards(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """カードは領域ごと縦にスクロールし、ページ全体はスクロールせず、帯は見えたまま（正常系）。"""
+    # 準備
+    url = _write_many_docs(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=cards")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector(".doc-card")
+    # 実行
+    metrics = region_metrics(page)
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    assert_bands_stay(page)
+
+
+def test_region_when_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅が狭いとき、表は領域ごと縦にスクロールし、ページ全体はスクロールせず、帯は見えたまま（正常系）。"""
+    # 準備
+    url = _write_many_docs(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table")
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_selector(".table-wrap")
+    # 実行
+    metrics = region_metrics(page, ".table-wrap")
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] <= metrics["target"]["clientHeight"] + 1
+    assert_bands_stay(page)
+
+
+def test_drawer_text_fields_and_chip(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ドロワーに文字の欄（ID・タイトル）を並べ、文字を入れるとカードを絞ってチップに出す。× で解除できる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=cards")
+    page.wait_for_selector(".doc-card")
+    # 実行
+    open_drawer(page)
+    labels = [field["label"] for field in drawer_text_fields(page)]
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "A-1")
+    page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
+    chips = chip_texts(page)
+    close_drawer(page)
+    remove_chip(page, "ID に「A-1」を含む")
+    page.wait_for_function("document.querySelectorAll('.chips .chip').length === 0")
+    # 検証
+    assert labels[:2] == ["ID", "タイトル"]
+    assert chips == ["ID に「A-1」を含む"]
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+@pytest.mark.parametrize(("width", "filled"), TABLE_BOARD_BOUNDARY_WIDTHS)
+def test_region_at_boundary(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    view: str,
+    width: int,
+    filled: bool,
+) -> None:
+    """領域の高さいっぱいに広げる境（721px）の前後の幅で、広げるか領域ごとスクロールするかが切り替わる（正常系）。"""
+    # 準備
+    url = _write_many_docs(write_preview, make_item)
+    page = open_preview(url, f"#tab=docs&view={view}")
+    page.set_viewport_size({"width": width, "height": BOUNDARY_HEIGHT})
+    page.wait_for_selector(REGION_SCROLLER[view])
+    # 実行・検証
+    assert_region_mode(page, REGION_SCROLLER[view], filled=filled)

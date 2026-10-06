@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -116,7 +116,7 @@ events:
     value: key（`data-tab`）
     description: 使う側がその画面を開き、URL のハッシュの `tab` を変えて履歴に積む。開いている詳細パネルは閉じない
   - name: 検索を開く
-    when: 検索の入口を押したとき（`/` キーは使う側が受ける）
+    when: 検索の入口を押したとき（`Ctrl+K`・macOS の `Cmd+K` は使う側が受ける）
     description: 使う側が全体の検索を開く
   - name: テーマの切り替え
     when: ライト / ダークのボタンを押したとき
@@ -411,3 +411,4 @@ accessibility:
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す
   - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
+  - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す

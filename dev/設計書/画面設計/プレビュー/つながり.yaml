@@ -73,6 +73,10 @@ elements:
         value: 条件に合う項目の件数
       - name: narrow
         value: 画面の幅が 900px 以下のとき true
+  - name: 画面の領域
+    kind: region
+    description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。3D のキャンバスはこの領域の高さいっぱいに広げる
+    visible_when: 常時
   - name: 名前の横のコメントの印
     kind: label
     component: dev/設計書/部品設計/プレビュー/コメントの印.ts#
@@ -84,7 +88,7 @@ elements:
     io: 表示
     visible_when: サーバーにつながって開いていて、その項目を指すレビュー中のコメントが 1 件以上あり、玉の名前が読める大きさ（文字 8px 以上）で描かれ、名前と印が描く枠に収まるとき。遠いときは何も出さない
 lead: 全種類の項目を関連でつないで 3D で描く画面。タブの帯の右端の入口から開く。
-mock: dev/mock/pages/graph/89/standard/index.html
+mock: dev/mock/pages/graph/126/standard/index.html
 test_file: tests/integration/preview/test_graph_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/graph/121/standard/index.html` の操作列「つながり」の案 A（近づくと名前の横）

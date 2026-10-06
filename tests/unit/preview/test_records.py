@@ -112,6 +112,52 @@ def test_search_items(
 
 
 @pytest.mark.parametrize(
+    ("query", "expected_hits"),
+    [
+        pytest.param(
+            "シナリオの依頼 ",
+            [["G-1", True], ["D-1", False]],
+            id="title_exact_with_trailing_space",
+        ),
+        pytest.param("g-1", [["G-1", True], ["G-12", False]], id="id_exact_case_insensitive"),
+        pytest.param(
+            "依頼",
+            [["D-1", False], ["G-1", False], ["G-12", False]],
+            id="no_exact_kind_order",
+        ),
+    ],
+)
+def test_search_items_exact_first(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+    query: str,
+    expected_hits: list[list[Any]],
+) -> None:
+    """完全に一致する項目を先にする（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", title="シナリオの依頼の受け方")],
+        terms=[
+            make_item("G-1", title="シナリオの依頼"),
+            make_item("G-12", title="依頼の控え"),
+        ],
+    )
+    load_preview_scripts()
+    # 実行
+    found = preview_page.evaluate(
+        """({data, query}) => {
+            const index = MindmapPreview.buildIndex(data);
+            return MindmapPreview.searchItems({query, index}).map((hit) => [hit.id, hit.exact]);
+        }""",
+        {"data": data, "query": query},
+    )
+    # 検証
+    assert found == expected_hits
+
+
+@pytest.mark.parametrize(
     ("loc", "expected"),
     [
         pytest.param({"kind": "body", "start": 3, "end": 3}, "本文 3 行目", id="body_one_line"),

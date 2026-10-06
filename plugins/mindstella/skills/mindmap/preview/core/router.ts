@@ -36,8 +36,10 @@ namespace MindmapPreview {
     id: string | null;
     /** 詳細を全画面で開いているか */
     full: boolean;
-    /** 開いたときの `f.{列}`（書き戻さない） */
+    /** 開いたときの `f.{列}`（書き戻さない）。`~{列}` は文字の条件 */
     filters: Record<string, string[]>;
+    /** 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`id` が無いときは null） */
+    heading: string | null;
   };
 
   /** 画面ごとの既定の表示形式（書いていない画面は表） */
@@ -83,9 +85,13 @@ namespace MindmapPreview {
     const id = requestedId !== null && index.byId.has(requestedId) ? requestedId : null;
     const filters: Record<string, string[]> = {};
     for (const [key, value] of params) {
-      if (key.startsWith("f.")) filters[key.slice(2)] = value.split("|");
+      // `f.~{列}` は文字の条件で、`|` を含んでも分けない
+      if (key.startsWith("f.~")) filters[key.slice(2)] = [value];
+      else if (key.startsWith("f.")) filters[key.slice(2)] = value.split("|");
     }
-    return { tab, view, id, full: id !== null && params.get("full") === "1", filters };
+    const requestedHeading = params.get("h");
+    const heading = id !== null && requestedHeading ? requestedHeading : null;
+    return { tab, view, id, full: id !== null && params.get("full") === "1", filters, heading };
   }
 
   /** `Route` を URL のハッシュにする（既定の値と絞り込みは書かない） */
@@ -95,6 +101,7 @@ namespace MindmapPreview {
     if (route.view !== defaultView(route.tab)) params.set("view", route.view);
     if (route.id !== null) params.set("id", route.id);
     if (route.full) params.set("full", "1");
+    if (route.heading) params.set("h", route.heading);
     const text = params.toString();
     return text === "" ? "" : `#${text}`;
   }

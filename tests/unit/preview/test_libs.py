@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts
+from .fixture_types import LoadLibrary, LoadPreviewScripts, MakeData, MakeItem
 
 # 本文の Markdown（見出し・表・実行される属性を持つ画像・mermaid のコードブロック）
 MARKDOWN_SOURCE = (
@@ -637,3 +637,151 @@ def test_selection_location_when_outside(
     result = preview_page.evaluate(SELECT_OUTSIDE_SCRIPT, how)
     # 検証
     assert result is None
+
+
+def test_heading_slug(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """空白を - にし、同じ文言に番号を続ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    slugs = preview_page.evaluate(
+        """() => {
+            const seen = new Map();
+            return [" 保存先 ", "決め 方", "決め 方", "決め 方"].map(
+                (text) => MindmapPreview.headingSlug({text, seen}),
+            );
+        }"""
+    )
+    # 検証
+    assert slugs == ["保存先", "決め-方", "決め-方-1", "決め-方-2"]
+
+
+# 見出し「保存先」「決め方」「決め方」と、段落の `#見出し` のリンク 2 つ（1 つは本文に無い見出し）
+LINK_HEADINGS_SOURCE = "## 保存先\n\n## 決め方\n\n## 決め方\n\n[決め方](#決め方) と [無い](#無い)\n"
+
+# 見出しに名前と # を付け、押したときに知らせた名前と、押した後の URL のハッシュを調べる
+LINK_HEADINGS_SCRIPT = """(source) => {
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: (slug) => calls.push(slug)});
+    const headings = [...root.querySelectorAll("h1, h2, h3, h4, h5, h6")];
+    const paragraphLinks = [...root.querySelectorAll("p a")];
+    const result = {
+        slugs: headings.map((heading) => heading.getAttribute("data-heading")),
+        hashLinkCounts: headings.map((heading) => heading.querySelectorAll("a").length),
+        paragraphHrefs: paragraphLinks.map((link) => link.getAttribute("href")),
+    };
+    // 2 つ目の「決め方」の見出しの #、段落の `[決め方]`、段落の `[無い]` の順に押す
+    headings[2].querySelector("a").click();
+    paragraphLinks[0].click();
+    paragraphLinks[1].click();
+    return {...result, calls, hash: location.hash};
+}"""
+
+
+def test_link_headings(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """見出しに名前と # を付け、`#見出し` で知らせる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(LINK_HEADINGS_SCRIPT, LINK_HEADINGS_SOURCE)
+    # 検証
+    assert result["slugs"] == ["保存先", "決め方", "決め方-1"]
+    assert result["hashLinkCounts"] == [1, 1, 1]
+    # marked は日本語の href をパーセントエンコードして描く
+    assert result["paragraphHrefs"] == ["#%E6%B1%BA%E3%82%81%E6%96%B9", "#%E7%84%A1%E3%81%84"]
+    assert result["calls"] == ["決め方-1", "決め方"]
+    assert result["hash"] == ""
+
+
+# 本文: 見出し「保存先」、用語・ID を並べた段落、コードブロック
+LINK_BODY_SOURCE = (
+    "## 保存先\n\n保存先と AIM と AI と D-3 と `D-5` と D-99 と XD-3\n\n```\n保存先 D-3\n```\n"
+)
+
+# 本文に印とリンクを付け、段落・見出し・コードブロックの中の印とリンク、押したときの知らせを調べる
+LINK_BODY_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    const pairs = (selector) => [...root.querySelectorAll(selector)].map(
+        (element) => [element.textContent, element.getAttribute("data-id")],
+    );
+    const result = {
+        terms: pairs("p a.term"),
+        refs: pairs("p a.idref"),
+        headingMarks: root.querySelectorAll("h1 .term, h1 .idref, h2 .term, h2 .idref").length,
+        codeBlockMarks: root.querySelectorAll("pre .term, pre .idref").length,
+        allMarks: root.querySelectorAll(".term, .idref").length,
+    };
+    // 印（G-1）とリンク（D-3）を押す。押したとき既定の動作を止めるか（click が取り消された）も見る
+    const press = (element) => !element.dispatchEvent(
+        new MouseEvent("click", {bubbles: true, cancelable: true}),
+    );
+    const termPrevented = result.terms.length > 0 && press(root.querySelector("p a.term"));
+    const refPrevented = result.refs.length > 0 && press(root.querySelector("p a.idref"));
+    return {...result, calls, termPrevented, refPrevented};
+}"""
+
+
+def test_link_body(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """文中の用語と ID だけに印を付ける（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-3"), make_item("D-5")],
+        docs=[make_item("A-1")],
+        terms=[
+            make_item("G-1", title="保存先"),
+            make_item("G-2", title="保存"),
+            make_item("G-3", title="AI"),
+        ],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_SCRIPT, {"data": data, "source": LINK_BODY_SOURCE, "selfId": "A-1"}
+    )
+    # 検証
+    assert result["terms"] == [["保存先", "G-1"], ["AI", "G-3"]]
+    assert result["refs"] == [["D-3", "D-3"], ["D-5", "D-5"]]
+    assert result["headingMarks"] == 0
+    assert result["codeBlockMarks"] == 0
+    assert result["calls"] == ["G-1", "D-3"]
+    assert (result["termPrevented"], result["refPrevented"]) == (True, True)
+
+
+def test_link_body_when_self(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """開いている項目自身には付けない（正常系）。"""
+    # 準備
+    data = make_data(terms=[make_item("G-1", title="保存先")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_SCRIPT, {"data": data, "source": "保存先と G-1\n", "selfId": "G-1"}
+    )
+    # 検証
+    assert result["allMarks"] == 0

@@ -52,38 +52,39 @@ var MindmapPreview;
                 results.replaceChildren(MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する項目はありません。別の条件を試してください。"] }));
                 return;
             }
+            /** 結果 1 件のボタン。完全に一致するまとまりでは、種類を添える */
+            const resultButton = (hit, withKind) => {
+                const item = index.byId.get(hit.id)?.item;
+                return MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "sr-item", type: "button", "data-id": hit.id, onclick: () => on.open(hit.id) },
+                    children: [
+                        MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [hit.id] }),
+                        MindmapPreview.h({
+                            tag: "span",
+                            children: [
+                                MindmapPreview.statusMark(item?.status),
+                                ` ${hit.title}`,
+                                withKind ? MindmapPreview.h({ tag: "span", attrs: { class: "sr-kind" }, children: [MindmapPreview.KIND_LABEL[hit.kind]] }) : null,
+                                MindmapPreview.h({ tag: "br" }),
+                                MindmapPreview.h({ tag: "span", attrs: { class: "sr-sub" }, children: [item === undefined ? "" : summaryOf(item)] }),
+                            ],
+                        }),
+                    ],
+                });
+            };
+            // 完全に一致する項目は種類の見出しより上の「完全に一致」に出し、下の種類のまとまりには重ねない
+            const exact = hits.filter((hit) => hit.exact);
+            const top = exact.length === 0
+                ? []
+                : [MindmapPreview.h({ tag: "h3", attrs: { class: "sr-exact" }, children: ["完全に一致"] }), ...exact.map((hit) => resultButton(hit, true))];
             const groups = MindmapPreview.KIND_KEYS.flatMap((kind) => {
-                const ofKind = hits.filter((hit) => hit.kind === kind);
+                const ofKind = hits.filter((hit) => hit.kind === kind && !hit.exact);
                 return ofKind.length === 0
                     ? []
-                    : [
-                        MindmapPreview.h({ tag: "h3", children: [MindmapPreview.KIND_LABEL[kind]] }),
-                        ...ofKind.map((hit) => {
-                            const item = index.byId.get(hit.id)?.item;
-                            return MindmapPreview.h({
-                                tag: "button",
-                                attrs: { class: "sr-item", type: "button", "data-id": hit.id, onclick: () => on.open(hit.id) },
-                                children: [
-                                    MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [hit.id] }),
-                                    MindmapPreview.h({
-                                        tag: "span",
-                                        children: [
-                                            MindmapPreview.statusMark(item?.status),
-                                            ` ${hit.title}`,
-                                            MindmapPreview.h({ tag: "br" }),
-                                            MindmapPreview.h({
-                                                tag: "span",
-                                                attrs: { class: "sr-sub" },
-                                                children: [item === undefined ? "" : summaryOf(item)],
-                                            }),
-                                        ],
-                                    }),
-                                ],
-                            });
-                        }),
-                    ];
+                    : [MindmapPreview.h({ tag: "h3", children: [MindmapPreview.KIND_LABEL[kind]] }), ...ofKind.map((hit) => resultButton(hit, false))];
             });
-            results.replaceChildren(...groups);
+            results.replaceChildren(...top, ...groups);
         };
         input.addEventListener("input", render);
         // Enter で先頭の結果を開き、↓ で結果へ移る。結果の中は ↑ ↓ で選ぶ

@@ -9,7 +9,7 @@ namespace MindmapPreview {
     /** 全画面か */
     full: boolean;
     on: {
-      /** 項目へ移る（パネルと全画面の中の移動は履歴に積む） */
+      /** 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。パネルと全画面の中の移動は履歴に積む） */
       open: (id: string) => void;
       /** パネルを閉じる */
       close: () => void;
@@ -21,6 +21,8 @@ namespace MindmapPreview {
       forward: () => void;
       /** 図を拡大して見る。差分の表示の間で、その図が変わっていれば前の版の記法を渡す（図の拡大が Raw の差分に使う） */
       diagram: (svg: SVGElement, diff: DiagramViewerDiff | null) => void;
+      /** 本文の見出しへ移った（見出しの名前。本文に無い見出しで開いたときは null）。使う側がハッシュの `h` を、履歴に積まずに置き換える */
+      heading: (heading: string | null) => void;
     };
     /** 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント（溜めた順）。配る書き出しでは null（どちらも置かない） */
     comment: { form: SendFormProps; reviews: ReviewState["items"] } | null;
@@ -28,6 +30,8 @@ namespace MindmapPreview {
     highlight?: Location | null;
     /** 変更履歴で選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の差分を出す */
     diff?: DiffPoint | null;
+    /** 開いたときに本文の中で画面に入れる見出しの名前（`Route.heading`）。本文に無ければ本文の頭で開き、`on.heading` を null で呼ぶ */
+    heading?: string | null;
   };
 
   /** 図の拡大へ渡す、差分の表示の間のその図の前の版の記法 */
@@ -802,6 +806,15 @@ namespace MindmapPreview {
       if (rendered === null) lowerHeadings(root);
       // 古いまとまりを選び、その後に本文を直した: 描いた本文は今の本文の行と合わないので、行の印を外す（選んだ箇所のコメントも示す箇所も今の行に向けない）
       if (source !== index.data.bodies[item.body ?? ""]) withoutLineMarks(root);
+      // 見出しのリンクと、本文の用語・項目の ID の印を付ける
+      linkHeadings({
+        root,
+        onHeading: (slug) => {
+          scrollToHeading({ root, slug });
+          on.heading(slug);
+        },
+      });
+      linkBody({ root, index, selfId: id, onOpen: on.open });
       const drawn = renderDiagrams(root);
       if (diagramBefore !== null) {
         const before = diagramBefore;
@@ -1003,12 +1016,12 @@ namespace MindmapPreview {
             class: "icon-btn panel-full",
             type: "button",
             "data-act": "full",
-            "aria-label": "全画面表示",
-            title: "全画面表示",
-            "aria-pressed": String(full),
+            // 全画面の間は、縮小のアイコンと元に戻す名前にする（色は変えず、押された状態は持たない）
+            "aria-label": full ? "元の大きさに戻す" : "全画面表示",
+            title: full ? "元の大きさに戻す" : "全画面表示",
             onclick: () => on.full(!full),
           },
-          children: [icon("expand")],
+          children: [icon(full ? "shrink" : "expand")],
         }),
         full
           ? null
@@ -1053,6 +1066,88 @@ namespace MindmapPreview {
     }
   }
 
+  /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（本文に無ければ false） */
+  function scrollToHeading({ root, slug }: { root: ParentNode; slug: string }): boolean {
+    const target = root.querySelector(`[data-heading="${CSS.escape(slug)}"]`);
+    if (target === null) return false;
+    target.scrollIntoView({ block: "start" });
+    return true;
+  }
+
+  /** 用語のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
+  const TIP_HIDE_DELAY_MS = 150;
+
+  /** 用語のツールチップを隠す待ちのタイマー */
+  let tipTimer = 0;
+
+  /** 用語のツールチップ（1 つを使い回す。重ねる面の上にも出せるよう、ポップオーバーにする）。ツールチップに乗せている間は消さず、Esc で消す */
+  function termTip(): HTMLElement {
+    const existing = document.getElementById(TERM_TIP_ID);
+    if (existing !== null) return existing;
+    const tip = h({ tag: "div", attrs: { id: TERM_TIP_ID, class: "term-tip", role: "tooltip", popover: "manual" } });
+    tip.addEventListener("mouseenter", () => window.clearTimeout(tipTimer));
+    tip.addEventListener("mouseleave", () => hideTermTip(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") hideTermTip(true);
+    });
+    document.body.append(tip);
+    return tip;
+  }
+
+  /** 用語の印の下（収まらなければ上）にツールチップを出す */
+  function showTermTip({ mark, term }: { mark: Element; term: Item }): void {
+    const tip = termTip();
+    window.clearTimeout(tipTimer);
+    tip.replaceChildren(
+      h({ tag: "span", attrs: { class: "tt-head" }, children: [term.title, h({ tag: "span", attrs: { class: "mono" }, children: [term.id] })] }),
+      h({ tag: "span", attrs: { class: "tt-body" }, children: [term.meaning ?? ""] }),
+    );
+    if (!tip.matches(":popover-open")) tip.showPopover();
+    const gap = 6;
+    const margin = 8;
+    const rect = mark.getBoundingClientRect();
+    const below = innerHeight - rect.bottom - gap - margin >= tip.offsetHeight;
+    tip.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - tip.offsetWidth - margin))}px`;
+    tip.style.top = `${below ? rect.bottom + gap : rect.top - gap - tip.offsetHeight}px`;
+  }
+
+  /** 用語のツールチップを隠す（`now` が偽のときは、少し待ってから） */
+  function hideTermTip(now: boolean): void {
+    window.clearTimeout(tipTimer);
+    const hide = (): void => {
+      const tip = document.getElementById(TERM_TIP_ID);
+      if (tip?.matches(":popover-open") === true) tip.hidePopover();
+    };
+    if (now) hide();
+    else tipTimer = window.setTimeout(hide, TIP_HIDE_DELAY_MS);
+  }
+
+  /** 本文の用語の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける） */
+  function attachTermTips({ root, index }: { root: HTMLElement; index: RecordIndex }): void {
+    /** イベントの先の用語の印と、その用語 */
+    const termOf = (event: Event): { mark: Element; term: Item } | null => {
+      const mark = (event.target as Element).closest?.("a.term") ?? null;
+      const term = index.byId.get(mark?.getAttribute("data-id") ?? "")?.item;
+      return mark === null || term === undefined ? null : { mark, term };
+    };
+    for (const type of ["mouseover", "focusin"]) {
+      root.addEventListener(type, (event) => {
+        const found = termOf(event);
+        if (found !== null) showTermTip(found);
+      });
+    }
+    root.addEventListener("mouseout", (event) => {
+      if (termOf(event) !== null) hideTermTip(false);
+    });
+    root.addEventListener("focusout", (event) => {
+      if (termOf(event) !== null) hideTermTip(true);
+    });
+    // 印を押して項目へ移るときは、ツールチップを残さない
+    root.addEventListener("click", (event) => {
+      if (termOf(event) !== null) hideTermTip(true);
+    });
+  }
+
   /** コメントの一覧から開いたとき、そのコメントの箇所に印の色の地を付け、描いた後にその箇所までスクロールする。合わなければ示さず、項目の先頭を出す */
   function applyHighlight({ root, loc }: { root: ParentNode; loc: Location }): void {
     let hits: Element[] = [];
@@ -1075,7 +1170,7 @@ namespace MindmapPreview {
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
   export function detailPanel(props: DetailProps): HTMLElement {
-    const { id, index, full, on, comment, highlight = null, diff = null } = props;
+    const { id, index, full, on, comment, highlight = null, diff = null, heading = null } = props;
     const kind = index.byId.get(id)?.kind;
     // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
     const body = h({
@@ -1106,6 +1201,13 @@ namespace MindmapPreview {
       root = dialog;
     }
     if (highlight !== null) applyHighlight({ root, loc: highlight });
+    attachTermTips({ root: body, index });
+    // 見出しを指して開いた: 描いた後にその見出しを本文の領域の中で画面に入れる（本文に無ければ、本文の頭で開き、ハッシュから外させる）
+    if (heading !== null) {
+      requestAnimationFrame(() => {
+        if (!scrollToHeading({ root: body, slug: heading })) on.heading(null);
+      });
+    }
     return root;
   }
 }
