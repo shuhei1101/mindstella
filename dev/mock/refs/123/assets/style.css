@@ -1,4 +1,4 @@
-/* 89 のスタイルの上に重ね、ネットワークの見た目の選びと、検討事項のマップの節の鍵を足す分 */
+/* 89 と 95 のスタイルの上に重ね、ネットワークの見た目の選び・検討事項のマップの節の鍵と、表示の設定の種類の行のホバーを足す分 */
 
 /* ネットワークの見た目の選び: キャンバスの右上に重ねる、アイコンの無いドロップダウン。高さはほかの操作部品と揃える */
 .look-pick { position: absolute; top: 12px; right: 12px; z-index: 2; }
@@ -28,3 +28,6 @@ button.n-item.sel, button.n-item.locked { padding-right: 20px; }
 
 /* ロック中に詳細を開いた節: 強調の外でも薄くしない */
 .map-canvas.focusing button.n-item.sel { opacity: 1; }
+
+/* 表示の設定の種類の行のホバー: 面の色が濃くなる分、件数の文字を 1 段濃くして読めるようにする */
+.st-kinds label:hover .n { color: var(--text-2); }
