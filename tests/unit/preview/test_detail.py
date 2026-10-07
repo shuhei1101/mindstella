@@ -692,3 +692,46 @@ def test_detail_panel_when_markdown_values(
         {"key": key, "found": True, "strong": 1, "raw": False} for key in keys
     ]
     assert result["dirty"] is None
+
+
+# 案の値（data-key がキーのパス）の文字と強調の数、値の要素が無いかを調べる
+OPTION_LIST_VALUES_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id}) => {
+    const panel = await openPanel(data, id);
+    const pros = panel.querySelector('[data-key="options[A].pros"]');
+    return {
+        prosText: pros === null ? null : (pros.textContent ?? "").trim(),
+        prosStrong: pros === null ? 0 : pros.querySelectorAll("strong").length,
+        consFound: panel.querySelector('[data-key="options[A].cons"]') !== null,
+    };
+}"""
+)
+
+
+def test_detail_panel_when_option_list_values(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """案のメリット・デメリットが文字列の配列でも、つないで描く（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item(
+                "D-1",
+                status="未決定",
+                options=[{"key": "A", "content": "案 A", "pros": ["速い", "**安い**"], "cons": []}],
+            )
+        ]
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"})
+    # 検証
+    assert result == {"prosText": "速い、安い", "prosStrong": 1, "consFound": False}
