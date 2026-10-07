@@ -91,3 +91,4 @@ preconditions:
   - ワークスペースが今の版の形（`.mindstella/config.yaml` がある）
 success_guarantee: 直下の `README.md` のプレビューの節と起動・接続・スキルのコマンドが、今のプラグインのフォルダ・セッションの名前・配っている URL を指す
 minimal_guarantee: 利用者が書いた `README.md`（自動で書いた印が無いもの）と `.mindstella/` の記録は変えない
+test_file: tests/e2e/単一ユースケース/test_readme_rewrite.py
