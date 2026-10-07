@@ -138,7 +138,7 @@ functions:
       type: bool
       description: 書いたか。利用者が書いた README があって書かなかったら `False`
     process: |-
-      1. `root / README_FILE` がファイルで、1 行目が `README_MARK` でなければ `False` を返す（読めない文字コードのファイルも利用者のものとして扱う）
+      1. `root / README_FILE` がファイルで、1 行目が `README_MARK` でなければ `False` を返す（読めない文字コードのファイルと、読み取りで `OSError` が起きるファイルも利用者のものとして扱う）
       2. 中身を組み立て（README の組み立て。`render_readme`）、同じフォルダの一時ファイルに書いて `os.replace` で置き換え、`True` を返す
          - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
     exceptions:
@@ -161,7 +161,7 @@ functions:
       - name: test_write_readme_when_user_file
         case: 正常
         summary: 印の無い README は書かない
-        condition: '`parametrize`: `# 家計簿アプリの話し合い` の `README.md` / 空の `README.md` / UTF-8 で読めないバイト列の `README.md`'
+        condition: '`parametrize`: `# 家計簿アプリの話し合い` の `README.md` / 空の `README.md` / UTF-8 で読めないバイト列の `README.md` / 権限を 000 にした `README.md`（root で動くときは skip）'
         mock: なし
         expected: どれも `False` で、`README.md` のバイト列が呼ぶ前と同じ
       - name: test_write_readme_when_write_fails
