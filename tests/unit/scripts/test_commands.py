@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -101,6 +102,30 @@ class _FakeRegistry:
         """渡されたワークスペースを控えて、決めた URL と今立てたことを返す。"""
         self.started.append(root)
         return "http://127.0.0.1:1/mindstella.html", True
+
+
+class _SequenceRegistry:
+    """start が、決めた結果を呼ばれた順に 1 つずつ返す偽の配信の台帳。"""
+
+    def __init__(self, *results: tuple[str, bool]) -> None:
+        """start が返す結果を、返す順に受け取る。"""
+        self._results = iter(results)
+
+    def start(self, root: Path) -> tuple[str, bool]:
+        """次の結果を返す。"""
+        return next(self._results)
+
+
+class _UrlRegistry:
+    """url_of が、決めた URL（配っていなければ None）を返す偽の配信の台帳。"""
+
+    def __init__(self, url: str | None) -> None:
+        """url_of が返す URL を受け取る。"""
+        self.url = url
+
+    def url_of(self, root: Path) -> str | None:
+        """決めた URL を返す。"""
+        return self.url
 
 
 @pytest.mark.parametrize(
@@ -209,7 +234,8 @@ def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: P
     payload = commands.run_init(root, valid_settings)
     # 検証
     assert payload["workspace"] == str(root)
-    assert len(payload["files"]) == 11
+    assert len(payload["files"]) == 12
+    assert "README.md" in payload["files"]
     assert (root / RECORD_DIR / "mindstella-version.ini").read_text(
         encoding="utf-8"
     ) == f"{plugin_version.splitlines()[0]}\n"
@@ -976,6 +1002,88 @@ def test_run_preview_url_when_not_workspace(
         commands.run_preview_url(tmp_path, previews=previews)
     assert ("/mindstella:upgrade" in "".join(exc_info.value.lines)) is expects_hint
     assert previews.started == []
+
+
+def test_run_preview_url_when_started(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """立てたときだけ README に URL を書く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url = "http://127.0.0.1:1/mindstella.html"
+    previews = _SequenceRegistry((url, True), (url, False))
+    # 実行（1 回目は立てる。README を消してから、立っている配信を引くだけの 2 回目を呼ぶ）
+    commands.run_preview_url(root, previews=previews)
+    written_after_first = (root / "README.md").read_text(encoding="utf-8")
+    (root / "README.md").unlink()
+    commands.run_preview_url(root, previews=previews)
+    # 検証
+    assert url in written_after_first
+    assert not (root / "README.md").exists()
+
+
+def test_run_preview_url_when_readme_write_fails(
+    make_workspace: MakeWorkspace, make_item: MakeItem, caplog: pytest.LogCaptureFixture
+) -> None:
+    """README を書けなくても URL を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    (root / "README.md").mkdir()
+    previews = _SequenceRegistry(("http://127.0.0.1:1/mindstella.html", True))
+    # 実行
+    with caplog.at_level(logging.WARNING):
+        payload = commands.run_preview_url(root, previews=previews)
+    # 検証
+    assert payload["started"] is True
+    assert [record.levelno for record in caplog.records] == [logging.WARNING]
+
+
+def test_run_readme(make_workspace: MakeWorkspace) -> None:
+    """配っていなければ URL なしで書く（正常系）。"""
+    # 準備
+    root = make_workspace()
+    previews = _UrlRegistry(None)
+    # 実行
+    payload = commands.run_readme(root, previews=previews)
+    # 検証
+    assert payload == {"path": str(root / "README.md"), "written": True, "preview_url": None}
+    text = (root / "README.md").read_text(encoding="utf-8")
+    assert "`/mindstella:session` でプレビューを頼むと URL が表示されます。" in text
+
+
+def test_run_readme_when_serving(make_workspace: MakeWorkspace) -> None:
+    """配っていればその URL を書く（正常系）。"""
+    # 準備
+    root = make_workspace()
+    url = "http://127.0.0.1:1/mindstella.html"
+    previews = _UrlRegistry(url)
+    # 実行
+    payload = commands.run_readme(root, previews=previews)
+    # 検証
+    assert payload["preview_url"] == url
+    assert url in (root / "README.md").read_text(encoding="utf-8")
+
+
+def test_run_readme_when_user_file(make_workspace: MakeWorkspace) -> None:
+    """利用者の README は書かず written を偽にする（正常系）。"""
+    # 準備
+    root = make_workspace()
+    (root / "README.md").write_text("# 家計簿アプリの話し合い\n", encoding="utf-8")
+    before = (root / "README.md").read_bytes()
+    previews = _UrlRegistry(None)
+    # 実行
+    payload = commands.run_readme(root, previews=previews)
+    # 検証
+    assert payload["written"] is False
+    assert (root / "README.md").read_bytes() == before
+
+
+def test_run_readme_when_not_workspace(tmp_path: Path) -> None:
+    """ワークスペースでなければ書かない（異常系）。"""
+    # 準備
+    previews = _UrlRegistry(None)
+    # 実行・検証
+    with pytest.raises(WorkspaceNotFoundError):
+        commands.run_readme(tmp_path, previews=previews)
+    assert not (tmp_path / "README.md").exists()
 
 
 def test_run_submissions(
