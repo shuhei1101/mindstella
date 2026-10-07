@@ -19,6 +19,7 @@ scenarios:
         CC->>SV: フォルダと設定を渡してワークスペースを作る
         SV->>SV: 設定をスキーマと突き合わせる
         SV->>WS: .mindstella/ に設定・空の YAML・docs/・release/・版のファイルを書く
+        SV->>WS: 直下に README.md を書く
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
@@ -27,6 +28,7 @@ scenarios:
       - ワークスペースの `.mindstella/` に `docs/` と `release/` のフォルダがある
       - ワークスペースに `.mindstella/mindstella-version.ini` があり、1 行目がプラグインの版である
       - ワークスペースの直下に、設定・種類ごとの YAML・`docs/`・`release/`・版のファイルが無い
+      - ワークスペースの直下に `README.md` があり、プレビューの開き方の案内がある
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal
   - name: 異常シナリオ（既にワークスペースがある）
@@ -100,6 +102,32 @@ scenarios:
       - '`.mindstella/` が作られていない'
       - ワークスペースの全てのファイルの中身が、作成を呼ぶ前と同じである
     test: test_error_when_unmigrated_workspace_exists
+  - name: 正常シナリオ（README.md が既にある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: README.md を持つフォルダ
+        description: 利用者が書いた `README.md` だけを直下に持ち、`.mindstella/` を持たないフォルダ
+        notes: '`README.md` の中身は `# 家計簿アプリの話し合い`'
+      - name: 設定
+        description: 正常シナリオと同じ設定
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: フォルダと設定を渡してワークスペースを作る
+        SV->>WS: .mindstella/ に設定・空の YAML・docs/・release/・版のファイルを書く
+        SV->>WS: 直下に README.md が既にあることを確かめ、書かない
+        SV-->>CC: 作ったワークスペースのパス
+      ```
+    expected:
+      - 作成のツールがエラーを返さない
+      - ワークスペースに `.mindstella/config.yaml` がある
+      - 直下の `README.md` の中身が、作成を呼ぶ前と同じである
+    test: test_normal_when_readme_exists
 lead: スキルが、1 つの話し合いのフォルダ（ワークスペース）を新しく作る単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
