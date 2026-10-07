@@ -26,7 +26,8 @@ flows:
       - front matter の `name` が `upgrade`、`allowed-tools` が制約の値と一致する
       - 本文の `${CLAUDE_PLUGIN_ROOT}/` で始まるパスが全てリポジトリの中にある
       - 本文が呼ぶツールが全て `allowed-tools` にあり、サーバーのツールの一覧（『MCP サーバーの起動』）にある
-      - 本文のツールの一覧に `migrate`（`plan`・手順を当てる・`values`・`record`）と `check` がある
+      - 本文のツールの一覧に `migrate`（`plan`・手順を当てる・`values`・`record`）と `check`・`edit_option`・`adopt` がある
+      - '本文に、`check` が返した `decision_state` を利用者に確かめてから `edit_option`・`adopt` で直すステップがあり、`record: true` より前にある'
       - 本文が `mindmap.py`・`build`・`check-env` を指さない
       - 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
       - スキルの Markdown に特定の開発基盤の名前が無い
@@ -35,7 +36,7 @@ flows:
 lead: ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替えるスキルの入口と、そのファイルの形。
 callers:
   - dev/設計書/シナリオ/単一ユースケース/ワークスペースの移し替え#
-side_effects: サーバーの MCP のツール `migrate` で写しを取って手順を当て、値を入れ、版のファイルを書き換える。スキルが自分でファイルを書くことはない
+side_effects: サーバーの MCP のツール `migrate` で写しを取って手順を当て、値を入れ、版のファイルを書き換える。案と状態の合わない検討事項は、利用者が確かめた後に `edit_option`・`adopt` で直す。スキルが自分でファイルを書くことはない
 request:
   - name: $ARGUMENTS
     type: str
@@ -55,10 +56,10 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（プラグインを上げた後、ワークスペースの版が古いと案内されたとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, mcp__mindstella__migrate, mcp__mindstella__check`。Bash は許していない'
+    constraint: '`Read, mcp__mindstella__migrate, mcp__mindstella__check, mcp__mindstella__edit_option, mcp__mindstella__adopt`。Bash は許していない'
     notes: 写しの git のコミットとフォルダの複製は `migrate` の中で行うため、git や複製のコマンドを許さない
   - item: ステップ
-    constraint: '上から順に進む。(1) `migrate` を `plan: true` で呼んで版を比べる。`relation` が `same` なら移し替えるものが無いと示して終える。`newer` ならプラグインの更新を案内して止まる。(2) `steps` を版の順に示す。`destructive` が `true` の手順があるときだけ、当ててよいかを確かめる。(3) `migrate` で写しを取って手順を当てる。ツールのエラーなら、本文の失敗した版・手順・理由を示して止まる。(4) `check` で点検し、`needs_values` のキーだけを利用者に聞いて `migrate` の `values` で入れる。(5) `migrate` を `record: true` で呼んで版を書き換える。(6) 移し替えた版と写しの場所を示して `/mindstella:session` を案内する'
+    constraint: '上から順に進む。(1) `migrate` を `plan: true` で呼んで版を比べる。`relation` が `same` なら移し替えるものが無いと示して終える。`newer` ならプラグインの更新を案内して止まる。(2) `steps` を版の順に示す。`destructive` が `true` の手順があるときだけ、当ててよいかを確かめる。(3) `migrate` で写しを取って手順を当てる。ツールのエラーなら、本文の失敗した版・手順・理由を示して止まる。(4) `check` で点検し、`needs_values` のキーだけを利用者に聞いて `migrate` の `values` で入れる。(5) `check` が `decision_state` を返した検討事項を直す。案を持たない検討事項は AI が問いと本文から案のたたき台（未決定なら推奨の印も）を書いて示し、採用した案と状態が合わない検討事項はどう直すかを示して、まとめて利用者に確かめる。確かめた内容で `edit_option`（`add`）と `adopt` を呼ぶ。もう一度 `check` を呼び、問題が残れば示して止まる。(6) `migrate` を `record: true` で呼んで版を書き換える。(7) 移し替えた版と写しの場所を示して `/mindstella:session` を案内する'
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
   - item: スキルの中の名前
