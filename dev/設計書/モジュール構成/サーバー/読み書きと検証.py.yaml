@@ -810,7 +810,7 @@ functions:
          - そのファイルが `load_problems` にある（YAML として読めない）か、`raw` のそのファイルの値が `{"items": items のその種類}` と等しくない（一番上が辞書でない・`items` の横にキーがある・`items` が配列でない・辞書でない要素があるなど、`_extract_items` が落とすものがある）場合、変更を当てる前のワークスペースのそのファイルの問題（`validate_workspace` のうち `file` がそのファイルのもの）を持った `SchemaMismatchError` を送る（何も書かない）
          - 項目の中の値だけが合わない問題はここでは止めない（変更で直せるため。残っていれば 2. で止まる）
       2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
+         - 問題がある場合、書き換える項目の ID（`_written_ids`）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
       3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
       4. 本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
@@ -882,6 +882,12 @@ functions:
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `changes.yaml`）。`decisions.yaml`・`docs/D-1.md`・`changes.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: changes.yaml の置き換えで OSError
+      - name: test_save_change_when_decision_state
+        case: 異常
+        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする
+        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、決まりに合う D-1 の `lead` だけを直した並び / 決まりに合う D-1・D-2 のワークスペースで、D-1 を採用した案の無い決定済みに直した並び'
+        mock: なし
+        expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真（`lines` が D-2 の行） / 偽（`lines` が D-1 の行）
   - name: create_workspace
     title: ワークスペースの作成
     kind: 関数
@@ -1120,7 +1126,7 @@ functions:
         required: false
         default: frozenset()
         passing: keyword
-        description: 書き込むツールが書き換える項目の ID（`save_change`・`save_batch` が、読んだ時点と中身が違う項目の ID を `build_mismatch_error` 経由で渡す）。点検・読み込みは渡さない
+        description: 書き込むツールが書き換える項目の ID（`build_mismatch_error` が渡す）。点検・読み込みは渡さない
     returns:
       type: bool
       description: 前の版の形式から来ていれば真
@@ -1300,7 +1306,7 @@ functions:
     process: |-
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
       2. `raw` の `items` の種類のファイルを全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
+         - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
       3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
       4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換える
@@ -1331,6 +1337,12 @@ functions:
         condition: 検討事項とタスクの並びと本文。`os.replace` を、置き換え先が `tasks.yaml` のときだけ `OSError` を送る関数に差し替える
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `tasks.yaml`）。`decisions.yaml`・`tasks.yaml`・`docs/` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+      - name: test_save_batch_when_decision_state
+        case: 異常
+        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする
+        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、案を持つ未決定の D-3 と T-1 を足した並び / 決まりに合うワークスペースで、案を持たない未決定の D-3 を足した並び'
+        mock: なし
+        expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真 / 偽
   - name: require_workspace
     title: ワークスペースの確かめ
     kind: 関数
@@ -1512,6 +1524,75 @@ functions:
         condition: '`items` の要素に文字列と、`options` が文字列の検討事項'
         mock: なし
         expected: 空の並び
+  - name: build_mismatch_error
+    title: スキーマに合わない例外を作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: public
+    summary: '問題ごとの `{ファイル名}: {キーのパス}: {理由}` の行と、前の版の形式の問題を含むかを持つ `SchemaMismatchError` を作る'
+    args:
+      - name: problems
+        type: list[Problem]
+        required: true
+        passing: positional
+        description: 検証で拾った問題
+      - name: workspace
+        type: Workspace | None
+        required: false
+        default: None
+        passing: positional
+        description: 問題を出したワークスペース。渡すと前の版の形式の問題かも決める
+      - name: written_ids
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 書き込むツールが書き換える項目の ID。`is_legacy_problem` へそのまま渡す
+    returns:
+      type: SchemaMismatchError
+      description: '`lines` に問題ごとの行、`legacy` に前の版の形式の問題を 1 件でも含むか'
+    process: |-
+      1. 問題ごとに `{file}: {key。無ければ (全体)}: {detail}` の行を作る
+      2. `workspace` がある場合、問題のどれかが前の版の形式かを決める（`is_legacy_problem(problem, workspace, written_ids=written_ids)`）。無ければ `legacy` は偽
+    unit_tests:
+      - name: test_build_mismatch_error_when_decision_state
+        case: 正常
+        summary: 書き込む項目だけが案と状態に合わないときは前の版の形式にしない
+        condition: 'D-1 の `kind: decision_state` の問題 1 件とワークスペース。`parametrize`: `written_ids` が `{D-1}` / `written_ids` なし'
+        mock: なし
+        expected: '`legacy` が偽 / 真。どちらも `lines` が `decisions.yaml: items[0].options:` で始まる 1 行'
+  - name: _written_ids
+    title: 書き換える項目の ID
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: internal
+    summary: 読んだ時点の並びと変更後の並びを比べ、足した項目と中身が違う項目の ID を返す
+    args:
+      - name: before
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: 読んだ時点のその種類の並び（`workspace.items[kind]`）
+      - name: after
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: 変更後の並び
+    returns:
+      type: frozenset[str]
+      description: 変更後の並びのうち、読んだ時点に同じ ID の項目が無いか、あっても中身が等しくない項目の ID（`id` が文字列でない項目は含めない）
+    process: |-
+      1. 読んだ時点の並びを ID → 項目の辞書にする
+      2. 変更後の並びの項目ごとに、同じ ID の項目が無いか `!=` なら ID を集める
+    unit_tests:
+      - name: test_written_ids
+        case: 正常
+        summary: 足した項目と直した項目だけを返す
+        condition: 読んだ時点が D-1・D-2、変更後が D-1（そのまま）・D-2（`status` を直した）・D-3（足した）
+        mock: なし
+        expected: '`{D-2, D-3}`'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

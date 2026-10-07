@@ -1092,7 +1092,7 @@ functions:
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
       1. `.mindstella/decisions.yaml` が無い場合、何も書かず空を返す
-      2. `yaml.safe_load` で読み、`items` の辞書の要素を順に見る
+      2. `yaml.safe_load` で読む。一番上が辞書でないか `items` が配列でない場合、何も書かず空を返す（形の崩れは点検の `schema` が拾う）。`items` の辞書の要素を順に見る
       3. `status` が `決定済み` で、`answer` が空でない文字列で、`options` が無いか空の配列の要素に、`options: [{key: A, content: {answer}, adopted: true}]` を置く。検討事項が空でない `reason` を持てば、案に `reason` も入れる
          - それ以外の要素と、要素のほかのキー（`updated`・`history` を含む）は変えない
       4. 1 件も変えなかった場合、何も書かず空を返す
@@ -1121,6 +1121,12 @@ functions:
         condition: '`.mindstella/decisions.yaml` を持たないフォルダ'
         mock: なし
         expected: 戻り値が空で、ファイルが作られていない
+      - name: test_answer_to_adopted_option_when_shape_broken
+        case: 正常
+        summary: 形の崩れた decisions.yaml は何も書かない
+        condition: '`parametrize`: `decisions.yaml` の一番上が配列 / `items` が文字列'
+        mock: なし
+        expected: 戻り値が空、中身と更新日時が呼ぶ前と同じ
 diagrams:
   - name: 全体
     diagram: |-
