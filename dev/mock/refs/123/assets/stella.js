@@ -68,7 +68,7 @@
   /** 明るい星の光条（十字の光の筋）を、焼いた絵を長さに合わせて置いて描く */
   const spikes = (ctx, x, y, len, hex, alpha) => { ctx.globalAlpha = alpha; blit(ctx, ray(hex), x, y, len); };
   /** 注目している線の上を流れる玉の位置（0〜1）を、1 本に 2 つずつ返す */
-  const flows = (e, s) => [0, 0.5].map((off) => ((e.now / FLOW_PERIOD) + off + (s.l.a.length % 7) * 0.13) % 1);
+  const flows = (e, s) => [0, 0.5].map((off) => ((e.now / FLOW_PERIOD) + off + (s.l.s.id.length % 7) * 0.13) % 1);
   /** 線の位置 t の画面座標を返す */
   const at = (s, t) => ({ x: s.from.sx + (s.to.sx - s.from.sx) * t, y: s.from.sy + (s.to.sy - s.from.sy) * t });
   /** 選んだ玉・カーソルを乗せた玉に輪を付ける */
