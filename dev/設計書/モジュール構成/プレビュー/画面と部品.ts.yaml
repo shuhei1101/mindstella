@@ -493,7 +493,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
     usecase: ネットワークを辿る
     kind: 画面
-    summary: 画面設計『ネットワーク』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマ、玉と線の画面の位置・大きさ・濃さを求めて `LookFrame` にまとめ、`drawLook` で `look` の見た目に描かせてから、名前（玉ごとに一度だけ画像にした文字を倍率をかけて置く。PoC の `opt-each-bitmap`。色は `lookLabelColor`）・状態の印・鍵を重ねる。画面の外は描かない。条件が変わったら玉と線を作り直し、見た目が変わっても作り直さない（`setGraphLook`）。条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。キャンバスの上に `filterChips` を、右上に見た目のドロップダウン（`select`。`NETWORK_LOOKS` の順に名前を並べ、`defaultLook` の名前に「（既定）」を添える。読み上げの名前は「ネットワークの見た目」）を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く。注目の起点は `lockedId`、無ければ `selectedId` で、起点へ寄り、起点とつながる玉を強調して線に光を流す。注目の起点があるときだけ、起点とつながる玉の名前の左に状態の印（`statusMark` の SVG か、資料の成果物は `icon("box")` を、状態・成果物・ライト / ダークごとに一度だけ絵にしたもの）を、名前の文字の高さの 8 割で名前と同じ遠近・濃さで描く。鍵は名前の右（名前が 8px 未満なら玉の右上の札の中）に 24 の枠の線画で描き、閉じた鍵は `lockedId` の玉に、開いた鍵はロックしていないときに `selectedId` の玉へカーソルを乗せている間だけ出す。鍵を出す玉は、コメントの印を鍵の右へずらす。玉か余白を押したら、`resolvePress` で 2 回押しを読み替えた項目（余白は `null`）で `on.lock` を呼び、`shake` が返ったら鍵を震わせる（`shakeAt` の量を毎コマ当てる。震えている間に描き直しても始まりの時刻を保つ）。幅 900px 以下では `on.lock` を呼ばず、押した玉の項目を `on.open` で開き、鍵を出さない。キャンバスの読み上げの説明に「L キーで、詳細を開いている項目をロック・解除」を添える
+    summary: '画面設計『ネットワーク』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマ、玉と線の画面の位置・大きさ・濃さを求めて `LookFrame` にまとめ、`drawLook` で `look` の見た目に描かせてから（`reducedMotion` には毎コマ `matchMedia("(prefers-reduced-motion: reduce)")` の結果を入れる。真のときは、操作が止まった後の自動の回転もしない。鍵の震えは止めない）、名前（玉ごとに一度だけ画像にした文字を倍率をかけて置く。PoC の `opt-each-bitmap`。色は `lookLabelColor`）・状態の印・鍵を重ねる。画面の外は描かない。条件が変わったら玉と線を作り直し、見た目が変わっても作り直さない（`setGraphLook`）。条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。キャンバスの上に `filterChips` を、右上に見た目のドロップダウン（`select`。`NETWORK_LOOKS` の順に名前を並べ、`defaultLook` の名前に「（既定）」を添える。読み上げの名前は「ネットワークの見た目」）を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く。注目の起点は `lockedId`、無ければ `selectedId` で、起点へ寄り、起点とつながる玉を強調して線に光を流す。注目の起点があるときだけ、起点とつながる玉の名前の左に状態の印（`statusMark` の SVG か、資料の成果物は `icon("box")` を、状態・成果物・ライト / ダークごとに一度だけ絵にしたもの）を、名前の文字の高さの 8 割で名前と同じ遠近・濃さで描く。鍵は名前の右（名前が 8px 未満なら玉の右上の札の中）に 24 の枠の線画で描き、閉じた鍵は `lockedId` の玉に、開いた鍵はロックしていないときに `selectedId` の玉へカーソルを乗せている間だけ出す。鍵を出す玉は、コメントの印を鍵の右へずらす。玉か余白を押したら、`resolvePress` で 2 回押しを読み替えた項目（余白は `null`）で `on.lock` を呼び、`shake` が返ったら鍵を震わせる（`shakeAt` の量を毎コマ当てる。震えている間に描き直しても始まりの時刻を保つ）。幅 900px 以下では `on.lock` を呼ばず、押した玉の項目を `on.open` で開き、鍵を出さない。キャンバスの読み上げの説明に「L キーで、詳細を開いている項目をロック・解除」を添える'
     props:
       - name: index
         type: RecordIndex
@@ -1446,7 +1446,7 @@ functions:
     usecase: ネットワークを辿る
     kind: 関数
     scope: public
-    summary: '1 コマ分の玉と線を、`look` の見た目で地・線・注目の線を流れる光・星の順に描く（名前・状態の印・鍵・コメントの印は描かない）。見た目ごとの中身は Issue #28 の表と合意済みのモック（`dev/mock/refs/123/assets/stella.js`）。`glow` は今の円に光のにじみを足し、芯は円を塗る。`starlight` は夜に白い芯・色のにじみ・つながりの多い星の光条、昼に 4 方向にとがった星形。`constellation` は回転に合わせて回る天球の経線 12 本・緯線 5 本、星の手前で切った線、選んだ星の照準の輪（目盛りがゆっくり回る）。`deep` は回転に合わせて流れる遠い星・天の川・星雲（`deepSky`）と寄ると視差で動く塵、光のにじむ星と光条、注目の線を尾を引いて流れる彗星と選んだ星から広がる輪、昼は夜明けの空と光沢のある玉。`dust` は無彩色の細かな点と細い線で、注目の起点とつながる星にだけ種類の色を灯す。星のまたたき（周期 1,900ms）と広がる輪（周期 3,600ms）は `now` で自動で動かす。PoC の判定どおり、`starlight`・`deep` の線は両端の色の `midColor` の単色で 1 本ずつ引き、1 本のパスに線分を 2 本以上入れない。`glow` 以外の星のにじみ・芯・光条は `bakeGlow`・`bakeRay` の絵を置くだけにし、毎コマ作るグラデーションは `deep` と `dust` の地の 1 枚だけにする'
+    summary: '1 コマ分の玉と線を、`look` の見た目で地・線・注目の線を流れる光・星の順に描く（名前・状態の印・鍵・コメントの印は描かない）。見た目ごとの中身は Issue #28 の表と合意済みのモック（`dev/mock/refs/123/assets/stella.js`）。`glow` は今の円に光のにじみを足し、芯は円を塗る。`starlight` は夜に白い芯・色のにじみ・つながりの多い星の光条、昼に 4 方向にとがった星形。`constellation` は回転に合わせて回る天球の経線 12 本・緯線 5 本、星の手前で切った線、選んだ星の照準の輪（目盛りがゆっくり回る）。`deep` は回転に合わせて流れる遠い星・天の川・星雲（`deepSky`）と寄ると視差で動く塵、光のにじむ星と光条、注目の線を尾を引いて流れる彗星と選んだ星から広がる輪、昼は夜明けの空と光沢のある玉。`dust` は無彩色の細かな点と細い線で、注目の起点とつながる星にだけ種類の色を灯す。星のまたたき（周期 1,900ms）と広がる輪（周期 3,600ms）は `now` で自動で動かす。`frame.reducedMotion` が真のときは、`now` で自分で動くもの（星のまたたき・広がる輪・注目の線を流れる光と彗星・照準の目盛りの回転）を止め、星はまたたきの中ほどの明るさで、輪は描かず、注目の線は流れる光の代わりに強調した線で描く。PoC の判定どおり、`starlight`・`deep` の線は両端の色の `midColor` の単色で 1 本ずつ引き、1 本のパスに線分を 2 本以上入れない。`glow` 以外の星のにじみ・芯・光条は `bakeGlow`・`bakeRay` の絵を置くだけにし、毎コマ作るグラデーションは `deep` と `dust` の地の 1 枚だけにする'
     args:
       - name: look
         type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
@@ -1454,13 +1454,20 @@ functions:
         passing: keyword
         description: 当てる見た目
       - name: frame
-        type: LookFrame（{context, width, height, dark, colors, now, stars, links, focusLinks, focusId, near, rotate, project, spread}）
+        type: LookFrame（{context, width, height, dark, colors, now, stars, links, focusLinks, focusId, near, rotate, project, spread, reducedMotion}）
         required: true
         passing: keyword
-        description: 1 コマ分の描く材料。`stars` は手前の玉ほど後ろに並べた玉（`{id, kind, degree, x, y, radius, alpha, color, selected, hover, strong, seed}`。`dust` は描いた点の半径を `radius` に書き戻し、名前・鍵をその大きさに合わせて置かせる）、`links` は描く線（`{from, to, type, fromColor, toColor, alpha}`）、`focusLinks` は注目の起点につながる線、`near` は起点とつながる玉の ID、`rotate`・`project` は視点の回転と透視、`spread` は群れのおおよその半径（近い順に 9 割目の玉まで）。`colors` は `tokens.css` から読んだ線・選択の輪・流れる玉の色
+        description: '1 コマ分の描く材料。`stars` は手前の玉ほど後ろに並べた玉（`{id, kind, degree, x, y, radius, alpha, color, selected, hover, strong, seed}`。`dust` は描いた点の半径を `radius` に書き戻し、名前・鍵をその大きさに合わせて置かせる）、`links` は描く線（`{from, to, type, fromColor, toColor, alpha}`）、`focusLinks` は注目の起点につながる線、`near` は起点とつながる玉の ID、`rotate`・`project` は視点の回転と透視、`spread` は群れのおおよその半径（近い順に 9 割目の玉まで）。`colors` は `tokens.css` から読んだ線・選択の輪・流れる玉の色。`reducedMotion` は `prefers-reduced-motion: reduce` が効いているか'
     returns:
       type: void
       description: なし
+    unit_tests:
+      - name: test_draw_look_when_reduced_motion
+        case: 正常
+        summary: 動きを減らす設定では、時刻が進んでも同じ絵を描く
+        condition: '`parametrize`: 5 つの見た目。注目の起点と、それにつながる線を 1 本持つ同じ `frame` を、`reducedMotion: true` で `now` を 0・950・1,800ms に変えて 3 回描く。比べに `reducedMotion: false` で同じく 3 回描く'
+        mock: なし（キャンバスに描いて画素を読む）
+        expected: '`reducedMotion: true` の 3 枚は画素が全て同じ。`reducedMotion: false` の 3 枚は、どの見た目でも 1 枚以上が違う'
   - name: lookLabelColor
     title: 見た目ごとの名前の色
     container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
