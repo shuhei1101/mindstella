@@ -1373,3 +1373,4 @@ test_files:
   - tests/unit/preview/test_router.py
   - tests/unit/preview/test_dom.py
   - tests/unit/preview/test_api.py
+  - tests/unit/preview/test_lock.py
