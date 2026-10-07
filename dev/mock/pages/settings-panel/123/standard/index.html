@@ -26,10 +26,8 @@
 </head>
 <!-- data-initial: ハッシュが無いときに開く状態。data-open: 開いた後にモックが行う操作（settings = 表示の設定のパネルを開く） -->
 <body data-initial="tab=decisions&amp;view=table" data-open="settings">
-  <!-- モック専用の操作列: ロック・コメントの件数・鍵とコメントの印の順の見本の状態（mock.js が入れる）と、パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <!-- モック専用の操作列: パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
   <div class="mockbar" role="group" aria-label="モックの操作">
-    <span>モック</span>
-    <span id="mock-states"></span>
     <span class="spacer"></span>
     <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">settings-panel</a> / <a href="../index.md">123</a> / standard</nav>
   </div>

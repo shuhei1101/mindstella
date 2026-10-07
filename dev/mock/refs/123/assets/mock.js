@@ -23,7 +23,8 @@
   const look = take("look");
   const theme = take("theme");
   const tab = params.get("tab") ?? "overview";
-  const lockKey = tab === "graph" ? "graph" : tab === "decisions" ? "map" : null;
+  // ロックの見本を持つ画面: ネットワークと、検討事項のマップ（表示の設定のパネルを開く見本は持たない）
+  const lockKey = body.dataset.open === "settings" ? null : tab === "graph" ? "graph" : tab === "decisions" ? "map" : null;
 
   // 見た目とライト / ダークは、app.js と同じ個人の上書きへ先に書いておく
   if (LOOKS.includes(look) || ["light", "dark"].includes(theme)) {

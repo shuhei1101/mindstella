@@ -13,7 +13,7 @@
 /* 状態のまとまり: 見出しとボタンを横に並べる */
 .mockbar .mock-group { display: inline-flex; align-items: center; gap: 2px; }
 /* まとまりの見出し */
-.mockbar .mock-label { margin-right: 4px; opacity: .75; }
+.mockbar .mock-label { margin-right: 4px; }
 /* 状態のボタン */
 .mockbar button { padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; background: none; color: inherit; font: inherit; cursor: pointer; }
 /* 選んでいる状態 */
