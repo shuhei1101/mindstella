@@ -220,6 +220,12 @@ constants:
     usecase: ネットワークを辿る
     summary: 鍵が震え始めてから収まるまでの時間（ms。合意済みのモックの値）
     value: '1000'
+  - name: LOCK_QUERY
+    title: ロックを判定する幅
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: ロックを判定する画面の幅のメディアクエリ。幅 900px 以下では詳細が全面に出るため、ネットワークも検討事項のマップもロックしない
+    value: '"(min-width: 901px)"'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -1400,6 +1406,22 @@ functions:
         condition: '`parametrize`: marked の配信元を止める / DOMPurify の配信元を止める。`**強調**` を渡す'
         mock: 描画のライブラリの配信元（`page.route` で 404）
         expected: 戻り値が文字列 `**強調**`
+  - name: isTyping
+    title: 文字の入力欄か
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 要素が文字を入力する欄（`input`・`textarea`・`select`・編集できる要素）かを返す。入口が `L` キーを受けない判定に使う。単体テストは持たず、画面設計『ネットワーク』の結合テストが確かめる
+    args:
+      - name: element
+        type: Element | null
+        required: true
+        passing: positional
+        description: フォーカスのある要素
+    returns:
+      type: boolean
+      description: 文字の入力欄なら true
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

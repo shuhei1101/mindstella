@@ -1635,6 +1635,64 @@ functions:
     returns:
       type: void
       description: なし
+  - name: shownGraphIds
+    title: ネットワークが描く項目
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: '`graphConditions` の条件と `filters` で `filterRows` を通る項目の ID を返す。入口が、ロックした項目を描いているか（効いているロック）の判定に使う。単体テストは持たず、画面設計『ネットワーク』の結合テストが確かめる'
+    args:
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: ネットワークの絞り込みの条件
+    returns:
+      type: Set<string>
+      description: 描く項目の ID
+  - name: setGraphLock
+    title: ネットワークのロックの差し替え
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 描いているネットワークの効いているロックを差し替える。玉・線・視点は作り直さず、中心と強調を新しい注目の起点へ寄せる。ネットワークを描いていないときは何もしない
+    args:
+      - name: id
+        type: string | null
+        required: true
+        passing: positional
+        description: 効いているロック（無ければ `null`）
+    returns:
+      type: void
+      description: なし
+  - name: shownDecisionIds
+    title: マップが描く検討事項
+    container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    usecase: 検討事項をマップで辿る
+    kind: 関数
+    scope: public
+    summary: 検討事項の列の条件と `filters` で `filterRows` を通る検討事項の ID を返す。入口が、ロックした節を描いているか（効いているロック）の判定に使う。単体テストは持たず、画面設計『検討事項』の結合テストが確かめる
+    args:
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 検討事項の絞り込みの条件
+    returns:
+      type: Set<string>
+      description: 描く検討事項の ID
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
