@@ -22,7 +22,7 @@
   };
   const icon = (n) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
-  // ネットワークの見た目: 値・名前・中身の短い説明
+  // ネットワークの見た目: 値・名前・中身の短い説明（上書きの一覧と確かめに名前を出す）
   const LOOKS = [
     { key: "glow", label: "グロウ", note: "玉と流れる光に、やわらかい光のにじみ" },
     { key: "starlight", label: "星の光", note: "白い芯と色の光。明るい星に十字の光条" },
@@ -51,9 +51,6 @@
   };
   const sameSet = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
 
-  // ネットワークの見た目: 5 つの値を名前と短い説明で縦に並べ、ワークスペースの既定に印を付ける
-  const lookField = (m) => `<fieldset class="st-sec"><legend>ネットワークの見た目</legend><div class="st-looks">${LOOKS.map((l) =>
-    `<label class="st-look"><input type="radio" name="${m.p}look" value="${l.key}" data-act="slook" ${m.look === l.key ? "checked" : ""}><span class="st-look-main"><span class="st-look-name">${l.label}${l.key === m.defLook ? '<span class="st-def">既定</span>' : ""}</span><span class="st-look-note">${l.note}</span></span></label>`).join("")}</div></fieldset>`;
   // ライト / ダーク（パネルにも置く案だけ）: 端末に合わせるを含む 3 つのセグメント
   const themeField = (m) => `<fieldset class="st-sec"><legend>ライト / ダーク</legend><div class="st-seg">${THEMES.map(([v, l]) =>
     `<label><input type="radio" name="${m.p}theme" value="${v}" data-act="stheme" ${m.theme === v ? "checked" : ""}><span>${l}</span></label>`).join("")}</div></fieldset>`;
@@ -94,7 +91,7 @@
   const MSG_ICON = { ok: "check", info: "sliders", warn: "alert" };
 
   /**
-   * 表示の設定のパネルの中身（見出しの帯と本文）を返す。
+   * 表示の設定のパネルの中身（見出しの帯と本文）を返す。見た目はネットワークのドロップダウンで選び、パネルには選びを置かない。
    * m: p（id と name の頭）・look・defLook・shown・defShown・counts・theme・showTheme・overrides・save（button / sections / none）・ws・msg・nostore
    */
   const panelHtml = (m) => {
@@ -104,7 +101,6 @@
       <div class="st-wrap">
         ${m.nostore ? `<p class="st-note" role="alert">${icon("alert")}<span>この端末に保存できません。選んだ表示は、このページを開いている間だけ当たります。</span></p>` : ""}
         ${sections ? `<p class="st-part">この端末</p>` : ""}
-        ${lookField(m)}
         ${m.showTheme ? themeField(m) : ""}
         ${kindsField(m)}
         ${resetBlock(m)}

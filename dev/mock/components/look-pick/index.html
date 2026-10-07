@@ -57,20 +57,22 @@
   <script>
     addEventListener("DOMContentLoaded", () => {
       const LOOKS = [["glow", "グロウ"], ["starlight", "星の光"], ["constellation", "星図"], ["deep", "深宇宙"], ["dust", "星屑"]];
-      const pick = (cur, cls, size) => `<label class="look-pick ${cls}"><span class="sr-only">ネットワークの見た目</span><select${size ? ` size="${size}"` : ""}>${LOOKS.map(([k, l]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
-      // [見出し, 説明, 台のクラス, 選んでいる見た目, 選びのクラス, 一覧の行数]
+      // def: ワークスペースの既定の見た目。選択肢の名前に「既定」を添える
+      const pick = (cur, cls, size, def = "deep") => `<label class="look-pick ${cls}"><span class="sr-only">ネットワークの見た目</span><select${size ? ` size="${size}"` : ""}>${LOOKS.map(([k, l]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${l}${k === def ? "（既定）" : ""}</option>`).join("")}</select></label>`;
+      // [見出し, 説明, 台のクラス, 選んでいる見た目, 選びのクラス, 一覧の行数, ワークスペースの既定の見た目]
       const DEMOS = [
-        ["既定（深宇宙・ダーク）", "キャンバスの右上に、アイコンの無いドロップダウンを置く。どの地の上でも面の色で塗って読めるようにする。", "deep-dark", "deep", "", 0],
+        ["既定（深宇宙・ダーク）", "キャンバスの右上に、アイコンの無いドロップダウンを置く。どの地の上でも面の色で塗って読めるようにする。ワークスペースの既定の見た目には「既定」を添える。", "deep-dark", "deep", "", 0],
         ["深宇宙・ライト", "昼の地でも同じ形・同じ高さで置く。", "deep-light", "deep", "", 0],
         ["グロウ・ライト", "グロウ・星の光・星図はプレビューの地の上に描く。", "light", "glow", "", 0],
         ["星屑・ダーク", "星屑は自分で無彩色の地を塗る。", "dust-dark", "dust", "", 0],
         ["ホバー", "枠の色を濃くする。", "light", "deep", "is-hover", 0],
         ["フォーカス", "キーボードで移ったときに印の色の枠を出す。", "light", "deep", "is-focus", 0],
-        ["開いている", "5 つの見た目を名前で並べる。選ぶと表示の設定のパネルと同じ個人の上書きを書き、その場で描き方が変わる。", "light tall", "starlight", "", 5],
+        ["開いている", "5 つの見た目を名前で並べる。選ぶと個人の上書きを書き、その場で描き方が変わる。見た目はここだけで選ぶ。", "light tall", "starlight", "", 5],
+        ["ワークスペースの既定が別の見た目", "既定が星の光のワークスペース。「既定」は星の光に付く。", "light tall", "dust", "", 5, "starlight"],
         ["狭い幅（390px）", "枠の右上に同じ大きさで置く。", "deep-dark narrow", "deep", "", 0],
       ];
-      document.getElementById("catalog").innerHTML = DEMOS.map(([h, p, stage, cur, cls, size]) =>
-        `<section class="cat-sec"><h2>${h}</h2><p>${p}</p><div class="stage ${stage}">${pick(cur, cls, size)}</div></section>`).join("");
+      document.getElementById("catalog").innerHTML = DEMOS.map(([h, p, stage, cur, cls, size, def]) =>
+        `<section class="cat-sec"><h2>${h}</h2><p>${p}</p><div class="stage ${stage}">${pick(cur, cls, size, def)}</div></section>`).join("");
     });
   </script>
 </body>

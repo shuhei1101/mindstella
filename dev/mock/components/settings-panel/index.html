@@ -62,15 +62,15 @@
       const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false };
       const PANELS = [
         ["開いた直後（ワークスペースの既定のまま）", "上書きが無い。既定に戻すとワークスペースの既定にするのボタンを出さず、そのことを文言で示す。", {}],
-        ["この端末で変えている（推奨の案 A）", "上書きを持つ項目を並べ、既定に戻すで 4 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { look: "dust", defLook: "starlight", defShown: without("notes"), overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"] }],
+        ["この端末で変えている（推奨の案 A）", "ネットワークのドロップダウンで選んだ見た目も含めて上書きを持つ項目を並べ、既定に戻すで 4 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { look: "dust", defLook: "starlight", defShown: without("notes"), overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"] }],
         ["表示する種類を一部外した", "すべてのチェックを途中の印にし、選んだ数を出す。概要とネットワークは常に出す行にする。", { shown: without("terms", "logs"), overrides: ["表示する種類"] }],
         ["保存した直後", "今の選びが既定と同じになり、ボタンの代わりにそのことと保存した知らせを出す。", { look: "glow", defLook: "glow", overrides: ["ネットワークの見た目"], msg: { kind: "ok", text: "ワークスペースの既定にしました（10/05 14:20）。" } }],
         ["他の人が保存した既定が届いた", "上書きを持たない項目に新しい既定を当て、パネルにも知らせを残す（画面の下の知らせは消える）。", { look: "starlight", defLook: "starlight", shown: without("logs"), defShown: without("logs"), msg: { kind: "info", text: "ワークスペースの既定が変わりました（10/05 14:22）。" } }],
         ["端末に保存できない", "選んだ表示は当てるが、開いている間だけであることを先頭に出す。", { nostore: true, look: "glow", overrides: ["ネットワークの見た目"] }],
-        ["配る書き出し", "見た目・表示する種類はその端末の上書きとして変えられる。ワークスペースの既定にするは出さない。", { save: "none", look: "glow", overrides: ["ネットワークの見た目"] }],
+        ["配る書き出し", "表示する種類はその端末の上書きとして変えられる。ワークスペースの既定にするは出さない。", { save: "none", look: "glow", overrides: ["ネットワークの見た目"] }],
         ["案 B: ライト / ダークもパネルに置く", "トップバーの切り替えと同じ選びを、端末に合わせるを含む 3 つのセグメントで並べる。", { showTheme: true, theme: "dark", overrides: ["ライト / ダーク"] }],
         ["案 B: ワークスペースの既定を別の区画で選ぶ", "この端末の区画とワークスペースの既定の区画を分け、既定は保存するまで画面に当てない。", { save: "sections", ws: { look: "starlight", shown: without("logs") } }],
-        ["ホバー・キーボードのフォーカス", "見た目の行のホバーは面の色、フォーカスは印の色の輪。", { hover: true }],
+        ["ホバー・キーボードのフォーカス", "種類の行のホバーは面の色、フォーカスは印の色の輪。", { hover: true }],
         ["狭い幅（390px）", "画面の幅いっぱいに出す。行の高さと押せる的は変えない。", { narrow: true, look: "dust", defLook: "starlight", overrides: ["ネットワークの見た目", "表示する種類"], shown: without("notes") }],
       ];
       const CONFIRMS = [
@@ -92,9 +92,9 @@
       });
       document.getElementById("catalog").innerHTML = html;
       S.markMixed(document);
-      // ホバー・フォーカスの見本: 見た目の 2 行目にホバー、表示する種類の 1 つにフォーカスの輪
+      // ホバー・フォーカスの見本: 表示する種類の 1 行にホバー、別の 1 つにフォーカスの輪
       const hv = document.querySelector('[data-demo="9"]');
-      hv.querySelectorAll(".st-look")[1].classList.add("is-hover");
+      hv.querySelector('[data-act=skind][value="decisions"]').closest("label").classList.add("is-hover");
       hv.querySelector('[data-act=skind][value="tasks"]').classList.add("is-focus");
     });
   </script>

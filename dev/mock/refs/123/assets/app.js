@@ -954,11 +954,16 @@
     lockIcon(ctx, sx, y, LOCK_SIZE * (1 + SHAKE_GROW * decay), locked, color, locked ? 0.95 : 0.45, wave * SHAKE_SWING * decay);
   };
 
-  // ===== ネットワークの見た目: 個人の上書き（表示の設定のパネルと同じ保存領域）に持つ =====
+  // ===== ネットワークの見た目: キャンバスのドロップダウンだけで選び、個人の上書き（表示の設定のパネルと同じ保存領域）に持つ =====
   const LOOK_KEY = "mindstella.mock123.prefs.normal";
+  const LOOK_CONFIG_KEY = "mindstella.mock123.config.normal";
   const BUILTIN_LOOK = "deep";
-  const readLookPrefs = () => { try { return JSON.parse(localStorage.getItem(LOOK_KEY)) || {}; } catch { return {}; } };
-  const lookOf = () => (readLookPrefs().look in window.STELLA.styles ? readLookPrefs().look : BUILTIN_LOOK);
+  const readStore = (key) => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } };
+  const readLookPrefs = () => readStore(LOOK_KEY);
+  /** ワークスペースの既定の見た目（config.yaml に無ければ組み込みの既定） */
+  const defLook = () => (readStore(LOOK_CONFIG_KEY).look in window.STELLA.styles ? readStore(LOOK_CONFIG_KEY).look : BUILTIN_LOOK);
+  /** 今当てる見た目（個人の上書きがあればそれ、無ければワークスペースの既定） */
+  const lookOf = () => (readLookPrefs().look in window.STELLA.styles ? readLookPrefs().look : defLook());
   let look = lookOf();
   /** 見た目を選び直したら、個人の上書きに書き、画面の data-look に当てる */
   const setLook = (v) => {
@@ -970,7 +975,7 @@
     document.querySelector(".map-frame.space")?.setAttribute("data-look", v);
   };
   // 表示の設定のパネル（別の画面）で選び直したら、開いているネットワークにも当てる
-  addEventListener("storage", (e) => { if (e.key === LOOK_KEY) { look = lookOf(); render(); } });
+  addEventListener("storage", (e) => { if (e.key === LOOK_KEY || e.key === LOOK_CONFIG_KEY) { look = lookOf(); lastScreen = ""; render(); } });
 
   const drawGraph3 = () => {
     const cv = document.getElementById("fg3");
@@ -1161,8 +1166,8 @@
   const kdot = (k) => `<span class="kdot" style="background:var(${KIND_VAR[k]})"></span>`;
   const renderGraphTab = () => {
     const shown = graphRows().filter((r) => passes("graph", r));
-    const looks = Object.entries(window.STELLA.styles).map(([k, v]) => `<option value="${k}" ${look === k ? "selected" : ""}>${v.label}</option>`).join("");
-    // 見た目の選び: キャンバスの右上に、アイコンの無いドロップダウンを置く（表示の設定のパネルと同じ個人の上書きを書く）
+    const looks = Object.entries(window.STELLA.styles).map(([k, v]) => `<option value="${k}" ${look === k ? "selected" : ""}>${v.label}${k === defLook() ? "（既定）" : ""}</option>`).join("");
+    // 見た目の選び: キャンバスの右上に、アイコンの無いドロップダウンを置く。選ぶと個人の上書きを書き、ワークスペースの既定の見た目には「既定」を添える
     return `${renderChips("graph")}
       <div class="map-frame space" data-look="${look}">${shown.length ? "" : `<p class="empty map-empty">表示する項目はありません。</p>`}<canvas class="g3-wrap" id="fg3" role="img" aria-label="すべての項目のネットワーク"></canvas>
         <label class="look-pick"><span class="sr-only">ネットワークの見た目</span><select data-act="glook">${looks}</select></label></div>`;

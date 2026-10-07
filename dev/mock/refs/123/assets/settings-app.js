@@ -1934,7 +1934,6 @@
       savePrefs(); render(); openPop(document.querySelector('[data-act="cols"]'), colsPop(el.dataset.kind));
     }
     // 表示の設定: 選んだ値はこの端末の上書きとして残し、その場で画面に当てる
-    if (a === "slook") { prefs.look = el.value; savePrefs(); smsg = null; applySettings(); }
     if (a === "skind" || a === "skindall") {
       const s = shownKinds();
       if (a === "skindall") for (const k of KIND_KEYS) el.checked ? s.add(k) : s.delete(k);
