@@ -56,6 +56,12 @@ NEW_TARGET = "アプリ"
 # 会話の日付
 TODAY = "2026-10-02"
 
+# 範囲の見直しの前に足す検討事項の案
+SCOPE_OPTIONS = [
+    {"key": "A", "content": "支出を記録する", "recommended": True},
+    {"key": "B", "content": "予算を立てる"},
+]
+
 # 画面から送る回答の本文と、送る先の検討事項の案
 SUBMISSION_BODY = "案 A にする"
 SUBMISSION_OPTIONS = [
@@ -166,6 +172,10 @@ def test_normal_when_new_discussion(
                     status="未決定",
                     parent="$1",
                     depends_on=["$1"],
+                    options=[
+                        {"key": "A", "content": "種類ごとに分ける", "recommended": True},
+                        {"key": "B", "content": "1 つにまとめる"},
+                    ],
                 ),
             },
             {
@@ -187,9 +197,13 @@ def test_normal_when_new_discussion(
             },
         ],
     )
-    # ヒアリング: 前提が揃った未決定を聞いて、答えを記録する
+    added_decisions = read_yaml(root, "decisions.yaml")["items"]
+    # ヒアリング: 前提が揃った未決定を聞いて、選ばれた案を採用し、答えと理由を記録する
     candidates = replay("next", **ws)["candidates"]
-    replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "種類ごとに分ける"})
+    replay("adopt", **ws, id="D-2", key="A")
+    replay(
+        "update", **ws, id="D-2", item={"answer": "種類ごとに分ける", "reason": "探しやすい"}
+    )
     replay("add", **ws, kind="log", item=_log("ヒアリング", ["D-2"], "ファイル分けを決めた"))
     # 取り込み: D-1 に案 B を、案の書き換えで足す
     replay(
@@ -299,6 +313,11 @@ def test_normal_when_new_discussion(
         for item in read_yaml(root, file_name)["items"]
     ]
     assert {item["updated_by"] for item in edited} == {"ai"}
+    # 足した検討事項がどれも案を 1 つ以上持ち、未決定で足した D-2 が推奨の印を 1 つ持つ
+    assert all(item["options"] for item in added_decisions)
+    assert [
+        option["key"] for option in added_decisions[1]["options"] if option.get("recommended")
+    ] == ["A"]
     # ヒアリングで聞いた候補は D-2 だけだった
     assert [candidate["id"] for candidate in candidates] == ["D-2"]
     # リサーチで足した調査が、元の検討事項と related でつながっている
@@ -309,6 +328,10 @@ def test_normal_when_new_discussion(
     assert [item["id"] for item in affected] == ["D-2", "T-1"]
     assert decisions["D-2"]["status"] == "決定済み"
     assert tasks["T-2"]["status"] == "完了"
+    # ヒアリングで答えた D-2 が、採用した案 A を 1 つだけ持って決定済みである
+    assert [option["key"] for option in decisions["D-2"]["options"] if option.get("adopted")] == [
+        "A"
+    ]
     # goal の出力が「届いた」である
     assert goal["reached"] is True
     assert goal["remaining_decisions"] == []
@@ -370,7 +393,15 @@ def test_normal_when_resume(
         "batch",
         **ws,
         operations=[
-            {"op": "add", "kind": "decision", "item": {"title": "続きで出た問い", "status": "未決定"}},
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": {
+                    "title": "続きで出た問い",
+                    "status": "未決定",
+                    "options": [{"key": "A", "content": "案 A", "recommended": True}],
+                },
+            },
             {
                 "op": "add",
                 "kind": "task",
@@ -414,8 +445,9 @@ def test_normal_when_resume_older_version(
 ) -> None:
     """古い版のワークスペースを移し替えてから、状況を読み、続きの番号で項目を足す（正常系）。"""
     # 準備
+    decided = make_item("D-1", status="決定済み", answer="YAML に保存する", reason="手で読める")
     root = make_legacy_workspace(
-        make_item("D-1"),
+        {key: value for key, value in decided.items() if key != "options"},
         legacy_docs={"A-1": True},
         without_summary=True,
         settings_file=LEGACY_SETTINGS_FILE,
@@ -447,7 +479,14 @@ def test_normal_when_resume_older_version(
     replay("readme", **ws)
     # 取り込み: 続きの番号で検討事項を足す
     added = replay(
-        "add", **ws, kind="decision", item={"title": "続きで出た問い", "status": "未決定"}
+        "add",
+        **ws,
+        kind="decision",
+        item={
+            "title": "続きで出た問い",
+            "status": "未決定",
+            "options": [{"key": "A", "content": "案 A", "recommended": True}],
+        },
     )
     checked = call_tool("check", **ws)
     # 検証
@@ -480,7 +519,14 @@ def test_normal_when_resume_older_version(
     assert_readme_commands(root, (root / "README.md").read_text(encoding="utf-8"))
     # 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
     assert second_plan["relation"] == "same"
-    assert status["next"][0]["id"] == "D-1"
+    # D-1 が移し替えの前の answer を内容、reason を理由にした採用した案を 1 つ持ち、決定済みのままである
+    decision = read_yaml(root, "decisions.yaml")["items"][0]
+    assert decision["status"] == "決定済み"
+    assert decision["options"] == [
+        {"key": "A", "content": "YAML に保存する", "reason": "手で読める", "adopted": True}
+    ]
+    # 決定済みの D-1 は次の候補に上がらない
+    assert status["next"] == []
     # 既存の項目の ID が変わらず、取り込みで足した検討事項が D-2 になっている
     assert added["id"] == "D-2"
     ids = [item["id"] for item in read_yaml(root, "decisions.yaml")["items"]]
@@ -527,12 +573,19 @@ def test_normal_when_scope_widened(
         },
     )
     # 取り込み: 問いと発散の検討事項を積む（発散のものは アイデア のカテゴリーに置く）
-    replay("add", **ws, kind="decision", item=_placed("何を作るか", "問い", status="未決定"))
     replay(
         "add",
         **ws,
         kind="decision",
-        item=_placed("使う場面の案", "発散", status="未決定", category=IDEA_CATEGORY),
+        item=_placed("何を作るか", "問い", status="未決定", options=SCOPE_OPTIONS),
+    )
+    replay(
+        "add",
+        **ws,
+        kind="decision",
+        item=_placed(
+            "使う場面の案", "発散", status="未決定", category=IDEA_CATEGORY, options=SCOPE_OPTIONS
+        ),
     )
     # ゴール判定: ゴールが無いことを示す
     first_goal = replay("goal", **ws)
@@ -576,9 +629,11 @@ def test_normal_when_scope_widened(
         **ws,
         settings={"goal": {**new_goal, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}},
     )
-    # 取り込み: ゴールのフェーズまでの検討事項を決定済みにし、納品物の資料を完成にする
-    replay("update", **ws, id="D-1", item={"status": "決定済み", "answer": "支出を記録する"})
-    replay("update", **ws, id="D-2", item={"status": "決定済み", "answer": "買い物の後に使う"})
+    # 取り込み: ゴールのフェーズまでの検討事項の案を採用して決定済みにし、納品物の資料を完成にする
+    replay("adopt", **ws, id="D-1", key="A")
+    replay("adopt", **ws, id="D-2", key="A")
+    replay("update", **ws, id="D-1", item={"answer": "支出を記録する"})
+    replay("update", **ws, id="D-2", item={"answer": "買い物の後に使う"})
     replay("update", **ws, id="A-1", item={"status": "完成"})
     # ゴール判定: 届いたかを確かめ、確定の後に release/ へ書き出す
     second_goal = replay("goal", **ws)
@@ -612,6 +667,10 @@ def test_normal_when_scope_widened(
     }
     # 付け替えた D-1・D-2 の updated_by が ai である
     assert [decisions[item_id]["updated_by"] for item_id in ("D-1", "D-2")] == ["ai", "ai"]
+    # D-1・D-2 が採用した案を 1 つ持って決定済みである
+    for item_id in ("D-1", "D-2"):
+        assert decisions[item_id]["status"] == "決定済み"
+        assert [o["key"] for o in decisions[item_id]["options"] if o.get("adopted")] == ["A"]
     # goal.deliverables の納品物が、取り込みで作った資料を doc で指している
     assert settings["goal"]["deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
     # 2 回目の goal の出力が「届いた」である

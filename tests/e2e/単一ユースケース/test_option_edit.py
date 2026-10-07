@@ -146,3 +146,62 @@ def test_error_when_adopted_option_removed(
     assert read_yaml(root, "decisions.yaml")["items"][0]["options"] == options
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_recommendation_moved(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """案 B に推奨の印を立て、案 A の印を外す（正常系）。"""
+    # 準備
+    options = [{**OPTION_A, "recommended": True}, OPTION_B]
+    root = make_workspace(make_item("D-1", status="未決定", options=options))
+    # 実行
+    replay(
+        "edit_option",
+        workspace=str(root),
+        id="D-1",
+        action="update",
+        key="B",
+        option={"recommended": True},
+    )
+    # 検証
+    item = read_yaml(root, "decisions.yaml")["items"][0]
+    # D-1 の案 B だけが推奨の印を持ち、案 A は持たない
+    assert item["options"][1]["recommended"] is True
+    assert "recommended" not in item["options"][0]
+    # 案 A・B の content と並びが元のままである
+    assert [(option["key"], option["content"]) for option in item["options"]] == [
+        ("A", OPTION_A["content"]),
+        ("B", OPTION_B["content"]),
+    ]
+    # D-1 の状態が未決定のままで、どの案も採用でない
+    assert item["status"] == "未決定"
+    assert all("adopted" not in option for option in item["options"])
+    # D-1 の変更履歴が 1 回分で、options の前の値（案 A の推奨の印）を持つ
+    assert len(item["history"]) == 1
+    assert item["history"][0]["before"]["options"] == options
+
+
+def test_error_when_last_option_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """未決定の検討事項の最後の案を消すと、案を 1 つ以上残すよう示すエラーになり、何も書き換えない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="未決定", options=[OPTION_A]))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("edit_option", workspace=str(root), id="D-1", action="remove", key="A")
+    # 検証
+    # 案を書き換えるツールがエラーを返し、本文に D-1 と記号 A と、案を 1 つ以上残す旨がある
+    assert result.is_error is True
+    assert "D-1" in result.text
+    assert "A" in result.text
+    assert "1 つ以上" in result.text
+    # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    assert snapshot_tree(root) == before

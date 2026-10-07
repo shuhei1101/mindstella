@@ -8,10 +8,12 @@ flows:
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` したワークスペース
+        description: 案 A を持つ未決定の検討事項 D-1 を足して `commit` したワークスペース
+        notes: '-'
       - name: operations
-        description: '検討事項を足す → `for: ["$1"]` のタスクを足す → D-1 の `answer`・`status` を直す → D-1 を取得する'
+        description: '検討事項を足す → `for: ["$1"]` のタスクを足す → D-1 の `reason`・`status` を直す → D-1 を取得する'
         notes: リクエスト例のとおり
     flow: |-
       ```mermaid
@@ -30,7 +32,7 @@ flows:
       - ツールのエラーにならない
       - '`results` が 4 件で、`op` が `add`・`add`・`update`・`show` の順'
       - 1 件目の `id` が D-2、2 件目の `id` が T-1 で、T-1 の `for` が `[D-2]`
-      - 4 件目の `item` が直した後の D-1 の `answer`・`status` を持つ
+      - 4 件目の `item` が直した後の D-1 の `reason`・`status` を持つ
       - D-1 が `history` を 1 回分持ち、D-2・T-1・D-1 の `seq` がどれも違い、最も大きいものが `changes.yaml` の `last_seq` と同じ
       - '`changes.yaml` の `pending.added` が `[D-2, T-1]`、`pending.changed` が `[D-1]`'
     test: test_normal
@@ -208,7 +210,7 @@ request_example: |-
     "operations": [
       {"op": "add", "kind": "decision", "item": {"title": "記録の単位", "target": "アプリ", "category": "データ", "phase": "要件", "status": "未決定", "options": [{"key": "A", "content": "1 日ごと"}]}},
       {"op": "add", "kind": "task", "item": {"title": "記録の単位を調べる", "kind": "調査", "status": "未着手", "for": ["$1"]}},
-      {"op": "update", "id": "D-1", "item": {"answer": "月ごとに分ける", "status": "決定済み"}},
+      {"op": "update", "id": "D-1", "item": {"reason": "記録の単位が決まるまで待つ", "status": "保留"}},
       {"op": "show", "id": "D-1"}
     ]
   }
@@ -249,7 +251,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 操作の当て方
-    constraint: 全ての操作をメモリの上のワークスペースに並べた順に当ててから、全ての YAML を 1 回だけスキーマと突き合わせて書く。ID・日時・通し番号・変更履歴の付け方は『項目の追加』『項目の更新』と同じで、操作ごとに振る
+    constraint: 全ての操作をメモリの上のワークスペースに並べた順に当ててから、全ての YAML を 1 回だけスキーマと、検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml。合わないときも SchemaMismatchError）と突き合わせて書く。途中の操作の後の形は問わない（案を書いてから状態を変える順に並べなくてよい）。ID・日時・通し番号・変更履歴の付け方は『項目の追加』『項目の更新』と同じで、操作ごとに振る
   - item: 参照の置き換え
     constraint: 参照のキー（`parent`・`depends_on`・`for`・`related`・`sources`）の値だけを置き換える。値全体が `$` と数字だけの文字列を、その番号の `add` で振った ID にする。ほかのキーの文字列はそのまま書く
   - item: 操作の数

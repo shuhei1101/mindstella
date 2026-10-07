@@ -257,7 +257,7 @@ tables:
       - name: options
         title: 案
         type: array
-        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`reason`。`adopted` が真の案は 0 か 1 つ
+        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案の印）・`reason`。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
       - name: weight
         title: 影響度
         type: string
@@ -284,6 +284,16 @@ tables:
         title: 経緯
         type: array
         description: 決めた会話ログの ID（`L-`）
+    description: |-
+      案と状態の決まり（書き込むツールと読み込みの検証、点検が見る）:
+
+      | 決まり | 合わないときの理由の行 |
+      | --- | --- |
+      | `未整理`・`対象外`・`取り下げ` を除く状態は、`options` を 1 つ以上持つ | `{ID} は状態 {状態} のため案を 1 つ以上持つ（options に案を書く）` |
+      | `決定済み` は、`adopted` が真の案を 1 つ持つ | `{ID} は決定済みなのに採用した案を持たない（adopt で案を採用する）` |
+      | `adopted` が真の案を持つ検討事項は `未決定` にしない（方針転換で `要見直し` にした検討事項は、前に採用した案を持ったままでよい） | `{ID} は採用した案 {記号} を持つのに未決定（adopt で決定済みにするか、採用を外す）` |
+
+      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options か status}: {理由}` の形で返す。
   - name: tasks.yaml
     title: タスク
     datastore: YAML

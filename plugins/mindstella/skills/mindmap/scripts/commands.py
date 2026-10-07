@@ -15,6 +15,7 @@ from errors import (
     AdoptedOptionError,
     ArgumentError,
     ItemNotFoundError,
+    LastOptionError,
     MindmapError,
     OptionExistsError,
     OptionNotFoundError,
@@ -45,6 +46,7 @@ from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
     CHANGES_FILE,
+    OPTIONS_OPTIONAL_STATUSES,
     BatchChange,
     BodyWrite,
     Change,
@@ -97,7 +99,10 @@ ITEM_NAME = "item"
 VALUE_KEYS = ("file", "key", "value")
 
 # `edit_option` の `option` に渡せるキー
-OPTION_KEYS = ("content", "pros", "cons", "note", "reason")
+OPTION_KEYS = ("content", "pros", "cons", "note", "reason", "recommended")
+
+# 検討事項の案を採用したときに入る状態
+DECIDED_STATUS = "決定済み"
 
 # `batch` が `$番号` を置き換えるキー
 REF_KEYS = ("parent", "depends_on", "for", "related", "sources")
@@ -162,7 +167,7 @@ def merge_changes(
 
 
 def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str | None]:
-    """指定した記号の案だけを採用にした新しい項目と、それまで採用していた案の記号を返す。"""
+    """指定した記号の案だけを採用にし、状態を決定済みにした新しい項目と、それまで採用していた案の記号を返す。"""
     options = [option for option in item.get("options") or [] if isinstance(option, dict)]
     keys = [str(option.get("key")) for option in options]
     # 検討事項がその記号の案を持たない
@@ -173,7 +178,7 @@ def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str 
         (str(option["key"]) for option in options if option.get("adopted") is True), None
     )
     switched = [{**option, "adopted": str(option.get("key")) == key} for option in options]
-    return {**item, "options": switched}, previous
+    return {**item, "options": switched, "status": DECIDED_STATUS}, previous
 
 
 def run_init(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
@@ -206,7 +211,8 @@ def apply_option_edit(
         # 同じ記号の案が既にある
         if position is not None:
             raise OptionExistsError(f"{prefix}: 同じ記号の案が既にあります")
-        return [*options, {"key": key, **(option or {})}]
+        added = [*options, {"key": key, **(option or {})}]
+        return _apply_recommended(added, key, option or {})
     # 直す・消すは、その記号の案が要る
     if position is None:
         raise OptionNotFoundError(f"{prefix}: その記号の案がありません")
@@ -218,13 +224,34 @@ def apply_option_edit(
                 edited.pop(name, None)
             else:
                 edited[name] = value
-        return options
+        return _apply_recommended(options, key, option or {})
     # 採用している案は消せない
     if options[position].get("adopted") is True:
         raise AdoptedOptionError(
             f"{prefix}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください"
         )
+    # 案を必須にする状態の検討事項は、最後の案を消せない
+    status = item.get("status")
+    if len(options) == 1 and status not in OPTIONS_OPTIONAL_STATUSES:
+        raise LastOptionError(
+            f"{prefix}: 状態 {status} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください"
+        )
     del options[position]
+    return options
+
+
+def _apply_recommended(
+    options: list[dict[str, Any]], key: str, option: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """`option` が推奨の印を持つとき、印を立てる（ほかの案の印は外す）か、外した案のキーを消す。"""
+    # 推奨の印を渡していない
+    if "recommended" not in option:
+        return options
+    marked = option["recommended"] is True
+    for entry in options:
+        # 印を立てるときは指した案以外の、外すときは指した案の、印のキーを消す
+        if marked != (entry.get("key") == key):
+            entry.pop("recommended", None)
     return options
 
 
@@ -376,6 +403,7 @@ def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[
     if ref.kind != "decision":
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
     switched, previous = switch_adopted(ref.item, key)
+    previous_status = ref.item["status"]
     switched["updated"] = now()
     switched["updated_by"] = EDITOR
     # 本文は変えないので、前後の本文は同じ（読まない）
@@ -393,7 +421,13 @@ def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[
         workspace,
         Change(kind="decision", items=items, changes=dict(noted) if noted != record else None),
     )
-    return {"id": item_id, "adopted": key, "previous": previous}
+    return {
+        "id": item_id,
+        "adopted": key,
+        "previous": previous,
+        "status": DECIDED_STATUS,
+        "previous_status": previous_status,
+    }
 
 
 def run_edit_option(

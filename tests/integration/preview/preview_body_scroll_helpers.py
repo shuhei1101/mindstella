@@ -40,6 +40,7 @@ NEW_DECISION = {
     "category": "データ構造",
     "phase": "要件",
     "status": "未決定",
+    "options": [{"key": "A", "content": "案 A"}],
 }
 
 # 窓の幅より長い 1 行（空白を含まず、単語の途中でも折り返さないと収まらない）

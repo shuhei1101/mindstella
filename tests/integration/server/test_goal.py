@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from workspace_fixtures import ADOPTED_OPTIONS
+
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 
@@ -29,7 +31,7 @@ def test_normal_when_reached(
     """ゴールのフェーズまでが決着し納品物が揃っていれば、届いたと返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-1", phase="目的", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("D-2", phase="要件", status="対象外"),
         make_item("D-3", phase="要件", status="取り下げ"),
         make_item("D-4", phase="構成", status="未決定"),
@@ -64,7 +66,7 @@ def test_normal_when_not_reached(
     root = make_workspace(
         make_item("D-1", phase="目的", status="未決定"),
         make_item("D-2", phase="要件", status="要見直し"),
-        make_item("D-3", phase="要件", status="決定済み"),
+        make_item("D-3", phase="要件", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("A-1", deliverable=True, status="確認中"),
         settings=_goal_settings(
             valid_settings,
@@ -101,7 +103,7 @@ def test_normal_when_no_goal(
         "phases": ["目的", "要件", "構成"],
     }
     root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-1", phase="目的", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("D-2", phase="構成", status="未決定"),
         settings=settings,
     )

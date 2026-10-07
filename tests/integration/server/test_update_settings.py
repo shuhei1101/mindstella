@@ -10,7 +10,7 @@ import yaml
 from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
-from .history_helpers import add_item, commit, read_changes
+from .history_helpers import OPTIONS, add_item, commit, read_changes
 
 # 話し合いの概要（ゴールと一緒に外すテストで使う）
 DESCRIPTION = (
@@ -318,13 +318,25 @@ def test_normal_when_targets_remapped(
         call_tool,
         root,
         "decision",
-        {"title": "画面の問い", "status": "未決定", "target": "本体", "category": "画面"},
+        {
+            "title": "画面の問い",
+            "status": "未決定",
+            "options": OPTIONS,
+            "target": "本体",
+            "category": "画面",
+        },
     )
     add_item(
         call_tool,
         root,
         "decision",
-        {"title": "設定の問い", "status": "未決定", "target": "管理画面", "category": "設定"},
+        {
+            "title": "設定の問い",
+            "status": "未決定",
+            "options": OPTIONS,
+            "target": "管理画面",
+            "category": "設定",
+        },
     )
     commit(call_tool, root, "足す")
     changes_before = read_changes(root)

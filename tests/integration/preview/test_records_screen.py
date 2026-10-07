@@ -36,7 +36,7 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
-from workspace_fixtures import MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 
 @pytest.mark.parametrize(
@@ -98,7 +98,7 @@ def test_notes_id_button_size(
     """メモの表の「関連」の列の ID のボタンは、見えている枠が縦横 24px 以上である（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="決定済み"),
+        make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("N-1", related=["D-1"]),
     )
     page = open_preview(url, "#tab=notes")

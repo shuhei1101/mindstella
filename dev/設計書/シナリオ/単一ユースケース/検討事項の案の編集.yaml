@@ -104,6 +104,52 @@ scenarios:
       - D-1 の案が A・B のままで、A が採用されたままである
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_adopted_option_removed
+  - name: 正常シナリオ（推奨の印を付け替える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A・B を持ち A に推奨の印を持つ未決定の検討事項 D-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の案 B に推奨の印を立てる
+        SV->>SV: 案 B に印を立て、ほかの案の印を外し、変更履歴を積んでスキーマと突き合わせる
+        SV->>WS: decisions.yaml に書く
+        SV-->>CC: 書き換えた後の案の並び
+      ```
+    expected:
+      - D-1 の案 B だけが推奨の印を持ち、案 A は持たない
+      - 案 A・B の `content` と並びが元のままである
+      - D-1 の状態が未決定のままで、どの案も採用でない
+      - D-1 の変更履歴が 1 回分で、`options` の前の値（案 A の推奨の印）を持つ
+    test: test_normal_when_recommendation_moved
+  - name: 異常シナリオ（最後の案を消す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A だけを持つ未決定の検討事項 D-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の案 A を消す
+        SV->>WS: D-1 を読み、案 A が最後の案である
+        SV-->>CC: 案を 1 つ以上残すよう示すエラー
+      ```
+    expected:
+      - 案を書き換えるツールがエラーを返す
+      - エラーの本文に、D-1 と記号 `A` と、案を 1 つ以上残す旨がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_last_option_removed
 lead: スキルが、検討事項の案を記号で指して 1 つずつ足す・中身を直す・消す単一ユースケース。案の配列を丸ごと渡さず、指さない案はそのまま残る。
 issue: 45
 primary_actor: スキルの手順を実行する Claude Code
@@ -115,10 +161,10 @@ preconditions:
   - ワークスペースが作成済みで、案を書き換える検討事項がある
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
 success_guarantee: 指した案だけが足され・直され・消され、指さない案と検討事項の他のキーは元のまま残る。書き換えのたびに、検討事項の変更履歴に案の前の値が 1 回分積まれる。
-minimal_guarantee: 同じ記号の案を足す・無い記号の案を直す・採用している案を消す書き換えでは、どのファイルも書き換えない。
+minimal_guarantee: 同じ記号の案を足す・無い記号の案を直す・採用している案・最後の案を消す書き換えでは、どのファイルも書き換えない。
 frequency: 話し合いの中で案が出た・直したとき
 priority: 中
 notes:
   E2E の範囲: MCP サーバーを立て、MCP のクライアントで案を書き換えるツールを呼んでワークスペースの状態を確かめる。ツールの名前と引数はインターフェース定義設計で決める
-  採用している案: '採用している案を消すには、先に『採用する案の切り替え』で採用を他の案へ移す。採用と状態の連動は #86 が扱うため、このツールは採用の印と状態を書き換えない'
+  採用している案: '採用している案を消すには、先に『採用する案の切り替え』で採用を他の案へ移す。このツールは採用の印と状態を書き換えない。採用は『採用する案の切り替え』が状態とともに書き換える'
 test_file: tests/e2e/単一ユースケース/test_option_edit.py

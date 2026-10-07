@@ -22,7 +22,9 @@ if TYPE_CHECKING:
     from conftest import RunClaude
 
 # front matter の allowed-tools の値
-UPGRADE_ALLOWED_TOOLS = "Read, mcp__mindstella__migrate, mcp__mindstella__check"
+UPGRADE_ALLOWED_TOOLS = (
+    "Read, mcp__mindstella__migrate, mcp__mindstella__check, mcp__mindstella__batch"
+)
 
 # 本文のツールの表に並ぶ migrate の呼び方（版を比べる・手順を当てる・値を入れる・版を書き換える）
 MIGRATE_CALLS = ["plan: true", "values", "record: true"]
@@ -44,11 +46,15 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 本文の ${CLAUDE_PLUGIN_ROOT}/ で始まるパスが全てリポジトリの中にある
     assert missing_plugin_paths(texts) == []
     # 本文が呼ぶツールが全て allowed-tools にあり、サーバーのツールの一覧にある
-    assert tools_listed_in(texts) == ["migrate", "check"]
+    assert tools_listed_in(texts) == ["migrate", "check", "batch"]
     assert set(allowed_mcp_tools(front_matter)) <= set(SERVER_TOOL_NAMES)
-    # 本文のツールの一覧に migrate（plan・手順を当てる・values・record）と check がある
+    # 本文のツールの一覧に migrate（plan・手順を当てる・values・record）と check・batch がある
     assert [call for call in MIGRATE_CALLS if f"`{call}`" not in body] == []
     assert "| `migrate`（手順を当てる） | `workspace` |" in body
+    assert "| `batch` |" in body
+    # decision_state を利用者に確かめてから batch 1 回で直すステップが、record: true より前にある
+    assert "`decision_state`" in body
+    assert body.index("`batch` 1 回") < body.index("`record: true`")
     # 本文が mindmap.py・build・check-env を指さない
     assert mentions_old_mode(texts) == []
     # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある

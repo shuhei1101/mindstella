@@ -153,6 +153,16 @@ var MindmapPreview;
         const element = node instanceof Element ? node : node.parentElement;
         return element?.closest(`[${MindmapPreview.VALUE_KEY_ATTR}]`) ?? null;
     }
+    /** 項目の文字列の値の Markdown を無害化した要素にする。marked か DOMPurify が読めないときは文字のまま返す（知らせは本文の描画が出す） */
+    function renderValue(source) {
+        if (missingLibraries(["marked", "DOMPurify"]).length > 0)
+            return source;
+        const root = MindmapPreview.h({ tag: "div", attrs: { class: "md md-value" } });
+        // 描いた HTML は無害化してから差し込む（記録は利用者のもの）。行の印は付けず、mermaid のコードブロックも図にしない
+        root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false }));
+        return root;
+    }
+    MindmapPreview.renderValue = renderValue;
     /** 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える */
     function renderMarkdown(source) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "md" } });

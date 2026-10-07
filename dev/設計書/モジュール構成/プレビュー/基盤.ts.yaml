@@ -1248,6 +1248,39 @@ functions:
         condition: '`selfId` が G-1 で、本文に「保存先」と「G-1」'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 「保存先」にも「G-1」にも印・リンクが無い
+  - name: renderValue
+    title: 値を描く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 項目の文字列の値の Markdown を無害化した要素にする。marked か DOMPurify が読めないときは文字のまま返す
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 値の文字列
+    returns:
+      type: HTMLElement | string
+      description: '`class="md md-value"` の要素。読めないときは渡した文字列'
+    process: |-
+      1. marked・DOMPurify が読めたか確かめる（`missingLibraries`）
+         - 読めていない場合、渡した文字列をそのまま返す（知らせは出さない。本文の `renderMarkdown` が出す）
+      2. `marked.parse` した HTML を `DOMPurify.sanitize` して要素に入れる（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
+    unit_tests:
+      - name: test_render_value
+        case: 正常
+        summary: 値の Markdown を描き、スクリプトを動かさない
+        condition: '`**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>` と箇条書き 2 行を渡す'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`strong` と `li` 2 つを持つ `.md-value` の要素。`onerror` と `script` が無く、`window.__x` が未定義。どの要素も `data-line-start` を持たない'
+      - name: test_render_value_when_library_missing
+        case: 正常
+        summary: ライブラリが読めなければ文字のまま返す
+        condition: '`parametrize`: marked の配信元を止める / DOMPurify の配信元を止める。`**強調**` を渡す'
+        mock: 描画のライブラリの配信元（`page.route` で 404）
+        expected: 戻り値が文字列 `**強調**`
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

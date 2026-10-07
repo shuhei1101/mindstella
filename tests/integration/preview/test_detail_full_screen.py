@@ -21,7 +21,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
-from workspace_fixtures import CallTool, MakeComment, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -70,6 +70,46 @@ def test_open_and_restore(
     page.wait_for_selector("aside.panel.open")
     assert page.locator("dialog.full").count() == 0
     assert "full=" not in page.evaluate("location.hash")
+
+
+def test_content(write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """全画面にも、背景・推奨の印・採用した案と理由・文字列の値の描画をパネルと同じに出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "D-1",
+            status="未決定",
+            lead="**背景**の説明",
+            options=[
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+        ),
+        make_item(
+            "D-2",
+            status="決定済み",
+            answer="**決めた**",
+            reason="探しやすい",
+            options=ADOPTED_OPTIONS,
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    # 実行（推奨の印と背景）
+    _open_full(page)
+    # 検証
+    assert page.inner_text("dialog.full .d-lead") == "背景の説明"
+    assert page.locator("dialog.full .d-lead strong").count() == 1
+    assert page.locator("dialog.full .opt .rec-badge").inner_text() == "推奨"
+    # 実行（採用した案と理由）
+    page.click('dialog.full button[data-act="full"]')
+    page.wait_for_selector("aside.panel.open")
+    open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
+    page.wait_for_selector("dialog.full[open] .d-sec")
+    # 検証
+    titles = page.eval_on_selector_all("dialog.full .d-sec h3", "hs => hs.map(h => h.textContent)")
+    assert titles[:2] == ["案", "採用した案と理由"]
+    assert page.locator("dialog.full .d-answer strong").count() == 1
+    assert page.locator("dialog.full .rec-badge").count() == 0
 
 
 def test_restore_by_escape(
@@ -191,8 +231,8 @@ def test_comment_input_keeps_location(
     # 準備
     url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.click(PILL)
     # 実行
     _open_full(page)
@@ -230,7 +270,7 @@ def test_selection_entry(
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open] .md")
     # 実行
-    select_text_for_pill(page, "dialog.full .md", "言い換えたい文")
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "言い換えたい文")
     # 検証
     assert page.locator(f"dialog.full {PILL}").count() == 1
     page.click(PILL)
@@ -473,8 +513,8 @@ def test_body_heading_link(
     # 検証
     assert page.evaluate("document.querySelector('dialog.full .panel-body').scrollTop") > 0
     assert "full=1" in page.evaluate("location.hash")
-    assert page.locator("dialog.full .md a.term").count() == 1
-    assert page.locator('dialog.full .md a.idref[data-id="D-3"]').count() == 1
+    assert page.locator("dialog.full .md:not(.md-value) a.term").count() == 1
+    assert page.locator('dialog.full .md:not(.md-value) a.idref[data-id="D-3"]').count() == 1
 
 
 def test_code_block_and_diagram_raw_when_long_line(
@@ -488,7 +528,7 @@ def test_code_block_and_diagram_raw_when_long_line(
     # 実行
     page.click('dialog.full button[data-act="diagram-raw"]')
     # 検証
-    for selector in ("dialog.full .md pre:not(.dg-raw)", "dialog.full pre.dg-raw"):
+    for selector in ("dialog.full .md:not(.md-value) pre:not(.dg-raw)", "dialog.full pre.dg-raw"):
         assert page.is_visible(selector)
         assert not overflows_horizontally(page, selector)
         assert axe_rule_results(page, selector, SCROLLABLE_REGION_RULE)["violations"] == []
