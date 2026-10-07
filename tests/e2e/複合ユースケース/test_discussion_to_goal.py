@@ -22,6 +22,7 @@ from preview_helpers import (
     fetch_records,
     select_text_for_pill,
 )
+from readme_helpers import assert_readme_commands, preview_section
 from workspace_fixtures import (
     RECORD_DIR,
     REPO_ROOT,
@@ -137,6 +138,8 @@ def test_normal_when_new_discussion(
     # 実行
     # セットアップ: 新しいワークスペースを作る
     replay("init", **ws, settings=SETTINGS)
+    # セッションの準備: 直下の README を書き直す
+    replay("readme", **ws)
     # 取り込み: 決め事・派生の検討事項・タスク・会話ログを、1 回のまとめての書き込みで積む
     replay(
         "batch",
@@ -323,8 +326,12 @@ def test_normal_when_new_discussion(
     assert records["decisions"] == read_yaml(root, "decisions.yaml")["items"]
     assert records["logs"] == read_yaml(root, "logs.yaml")["items"]
     assert not (root / "preview.html").exists()
-    # ワークスペースの直下には .mindstella/ だけがある
-    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
+    # ワークスペースの直下には .mindstella/ と README.md だけがある
+    assert sorted(path.name for path in root.iterdir()) == [RECORD_DIR, "README.md"]
+    # 直下の README.md に、起動・接続のコマンドとスキルの呼び方の一覧があり、プレビューの節が示した URL である
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert_readme_commands(root, readme)
+    assert preview_section(readme).splitlines()[1] == preview_url
 
 
 def test_normal_when_resume(
@@ -432,9 +439,12 @@ def test_normal_when_resume_older_version(
         ],
     )
     recorded = call_tool("migrate", **ws, record=True)
+    top_after_migration = sorted(path.name for path in root.iterdir())
     # セットアップ（2 回目）: 版の案内を出さず、状況を読む
     second_plan = replay("migrate", **ws, plan=True)
     status = replay("status", **ws)
+    # セッションの準備: 直下の README を書く
+    replay("readme", **ws)
     # 取り込み: 続きの番号で検討事項を足す
     added = replay(
         "add", **ws, kind="decision", item={"title": "続きで出た問い", "status": "未決定"}
@@ -465,7 +475,9 @@ def test_normal_when_resume_older_version(
     assert settings["target_label"] == "システム"
     # ワークスペースに mindmap.yaml が残っておらず、直下には記録のフォルダだけがある
     assert not (root / LEGACY_SETTINGS_FILE).exists()
-    assert [path.name for path in root.iterdir()] == [RECORD_DIR]
+    assert top_after_migration == [RECORD_DIR]
+    # session の準備の後、直下に README.md があり、このフォルダの起動・接続のコマンドとスキルの呼び方の一覧がある
+    assert_readme_commands(root, (root / "README.md").read_text(encoding="utf-8"))
     # 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
     assert second_plan["relation"] == "same"
     assert status["next"][0]["id"] == "D-1"

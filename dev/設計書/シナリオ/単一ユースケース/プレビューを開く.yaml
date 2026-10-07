@@ -16,6 +16,7 @@ scenarios:
 
         U->>CC: 記録を見たい
         CC->>SV: プレビューの URL
+        SV->>SV: 配信を立て、直下の README.md のプレビューの節を URL にして書き直す
         SV-->>CC: 127.0.0.1 の URL
         CC-->>U: URL を示し、ブラウザで開くよう案内する
         U->>P: URL を開く
@@ -27,6 +28,7 @@ scenarios:
       - URL が `127.0.0.1` の `/mindstella.html` を指す
       - 開いた画面に D-1 がある
       - ワークスペースに `preview.html` が無い
+      - 直下の `README.md` のプレビューの節が、示した URL である
     test: test_normal
   - name: 正常シナリオ（記録を書き換える）
     setup:

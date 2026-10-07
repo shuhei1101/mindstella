@@ -121,6 +121,29 @@ classes:
             condition: 1 つ立ててから `stop_all`
             mock: なし
             expected: その URL への `GET /` が `ConnectionRefusedError`
+      - name: url_of
+        title: 配っている URL
+        kind: メソッド
+        summary: そのワークスペースを配っていれば画面の URL を、配っていなければ `None` を返す（配信を立てない）
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+        returns:
+          type: str | None
+          description: 配信の画面の URL。台帳に無ければ `None`
+        process: |-
+          1. `_guard` を取り、`_servers` を `root.resolve()` で引いて URL を返す
+             - 無い場合、`None` を返す
+        unit_tests:
+          - name: test_url_of
+            case: 正常
+            summary: 立てたワークスペースだけ URL を返す
+            condition: 作成済みのワークスペース 2 つ。一つ目だけ `start` する
+            mock: なし（本物の待ち受け。後で `stop_all`）
+            expected: 一つ目は `start` が返した URL、二つ目は `None`。台帳の配信が 1 つのまま
   - name: PreviewServer
     title: 配信
     container: plugins/mindstella/skills/mindmap/scripts/serve.py

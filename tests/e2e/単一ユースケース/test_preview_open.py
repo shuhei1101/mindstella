@@ -9,6 +9,7 @@ from typing import Any
 
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, row_ids
+from readme_helpers import preview_section
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # 書き換えが画面に出るまで待つ上限ミリ秒
@@ -48,6 +49,9 @@ def test_normal(
     assert url.endswith(PAGE_PATH)
     assert row_ids(page) == ["D-1"]
     assert not (root / "preview.html").exists()
+    # 直下の README.md のプレビューの節が、示した URL である
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert preview_section(readme).splitlines()[1] == url
 
 
 def test_normal_when_rewritten(
