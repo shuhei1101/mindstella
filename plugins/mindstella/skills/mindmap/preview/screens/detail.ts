@@ -155,6 +155,12 @@ namespace MindmapPreview {
     return String(value);
   }
 
+  /** 案の値（文字列か文字列の配列）を、Markdown で描く 1 つの文字列にする。配列は「、」でつなぐ。空なら undefined */
+  function optionText(value: string | string[] | undefined): string | undefined {
+    if (Array.isArray(value)) return value.length === 0 ? undefined : value.join("、");
+    return value;
+  }
+
   /** 選んだ時点の前の版と後の版で値が変わったキーと、その見せ方 */
   type KeyDiffs = {
     /** そのキーの値が変わったか */
@@ -266,16 +272,17 @@ namespace MindmapPreview {
           const result = optionResult(option);
           const recommended = option.recommended === true && !decided;
           const rows: [string, "pros" | "cons" | "note" | "reason", string | undefined][] = [
-            ["メリット", "pros", option.pros],
-            ["デメリット", "cons", option.cons],
+            ["メリット", "pros", optionText(option.pros)],
+            ["デメリット", "cons", optionText(option.cons)],
             ["備考", "note", option.note],
             ["理由", "reason", option.reason],
           ];
           // 前の値と違う値は前の値と今の値を並べる。前に無かった案は全ての値を足した印にする
-          const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && before?.[field] !== undefined));
+          const beforeOf = (field: "pros" | "cons" | "note" | "reason"): string | undefined => optionText(before?.[field]);
+          const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && beforeOf(field) !== undefined));
           const valueOf = (field: "pros" | "cons" | "note" | "reason", value: string | undefined): Child =>
-            compare && before?.[field] !== value
-              ? keyDiff({ was: before?.[field] ?? null, now: value ?? null })
+            compare && beforeOf(field) !== value
+              ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null })
               : markdownValue(value);
           const resultChild: Child =
             compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;

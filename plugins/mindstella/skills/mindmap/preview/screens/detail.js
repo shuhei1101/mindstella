@@ -104,6 +104,12 @@ var MindmapPreview;
             return value.length === 0 ? null : value.join("、");
         return String(value);
     }
+    /** 案の値（文字列か文字列の配列）を、Markdown で描く 1 つの文字列にする。配列は「、」でつなぐ。空なら undefined */
+    function optionText(value) {
+        if (Array.isArray(value))
+            return value.length === 0 ? undefined : value.join("、");
+        return value;
+    }
     /** 前の版と後の版を比べ、値が変わったキー（ツールが付けるキーと本文の名前を除く）の見せ方を返す */
     function keyDiffs(before, after) {
         const left = { ...before };
@@ -183,15 +189,16 @@ var MindmapPreview;
                     const result = optionResult(option);
                     const recommended = option.recommended === true && !decided;
                     const rows = [
-                        ["メリット", "pros", option.pros],
-                        ["デメリット", "cons", option.cons],
+                        ["メリット", "pros", optionText(option.pros)],
+                        ["デメリット", "cons", optionText(option.cons)],
                         ["備考", "note", option.note],
                         ["理由", "reason", option.reason],
                     ];
                     // 前の値と違う値は前の値と今の値を並べる。前に無かった案は全ての値を足した印にする
-                    const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && before?.[field] !== undefined));
-                    const valueOf = (field, value) => compare && before?.[field] !== value
-                        ? keyDiff({ was: before?.[field] ?? null, now: value ?? null })
+                    const beforeOf = (field) => optionText(before?.[field]);
+                    const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && beforeOf(field) !== undefined));
+                    const valueOf = (field, value) => compare && beforeOf(field) !== value
+                        ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null })
                         : markdownValue(value);
                     const resultChild = compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;
                     return MindmapPreview.h({

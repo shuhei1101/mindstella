@@ -58,8 +58,8 @@ namespace MindmapPreview {
   export type Option = {
     key: string;
     content: string;
-    pros?: string;
-    cons?: string;
+    pros?: string | string[];
+    cons?: string | string[];
     note?: string;
     adopted?: boolean;
     /** AI が推す案の印 */
