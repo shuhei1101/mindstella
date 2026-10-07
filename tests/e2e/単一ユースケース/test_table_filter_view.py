@@ -11,9 +11,11 @@ from preview_helpers import (
     OpenPreview,
     ServePreview,
     badge_text,
+    bands_stay_on_top,
     close_drawer,
     drawer_counts,
     open_drawer,
+    page_scroll_overflow,
     row_ids,
     toggle_value,
 )
@@ -121,6 +123,9 @@ def test_normal(
     )
     assert pressed == ["title"]
     assert abs(_table_scroll_top(page) - scrolled) <= SCROLL_TOLERANCE_PX
+    # 表を下へ送っても、帯が見えたままで、ページ全体の縦のスクロールの位置は 0
+    assert page_scroll_overflow(page)["scrollY"] == 0
+    assert bands_stay_on_top(page) is True
     left_before = page.evaluate(
         "document.querySelector('table.grid tbody tr td[data-col=\"1\"]').getBoundingClientRect().left"
     )
@@ -200,7 +205,7 @@ def test_normal_when_topic_tags(
     page.wait_for_selector("table.grid")
     # 実行・検証（開く: 種類・状態・タグの条件があり、どの値も選ばれていない）
     open_drawer(page)
-    labels = page.eval_on_selector_all(f"{DRAWER} .fd-group legend", "ls => ls.map(l => l.childNodes[0].textContent)")
+    labels = page.eval_on_selector_all(f"{DRAWER} .fd-group:not(.fd-text) legend", "ls => ls.map(l => l.childNodes[0].textContent)")
     assert labels[:3] == ["種類", "状態", "タグ"]
     assert page.locator(f"{DRAWER} input:checked").count() == 0
     assert badge_text(page) is None
@@ -221,3 +226,48 @@ def test_normal_when_topic_tags(
     cards = page.eval_on_selector_all(".board .card", "cards => cards.map(c => c.dataset.id)")
     assert sorted(cards) == ["T-1", "T-3"]
     assert badge_text(page) == "2"
+
+
+def test_normal_when_text_condition(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """用語集の表で、絞り込みのドロワーの用語の欄と ID の欄に文字を入れて、その列の値に文字を含む行に絞る（正常系）。"""
+    # 準備（G-12 は ID に「G-1」を含むが G-1 とは別の項目）
+    url = serve_preview(
+        make_item("G-1", title="シナリオの依頼"),
+        make_item("G-2", title="シナリオ"),
+        make_item("G-3", title="タスクの担当"),
+        make_item("G-12", title="レビュー"),
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=terms&view=table")
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    # 列の見出しに絞り込みのボタンが無く、表の上に絞り込みのボタンが 1 つある
+    assert page.locator('button[data-popover^="filter:"]').count() == 0
+    assert page.locator(FILTER_BUTTON).count() == 1
+    # 実行（ドロワーで用語の列に「シナリオ」を入れる）
+    open_drawer(page)
+    page.fill(f'{DRAWER} input[data-text-key="title"]', "シナリオ")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
+    by_title = row_ids(page)
+    chips = page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)")
+    badge = badge_text(page)
+    # 実行（用語の列の条件を解除し、ID の列に「g-1」を入れる）
+    page.fill(f'{DRAWER} input[data-text-key="title"]', "")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 4")
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "g-1")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
+    by_id = row_ids(page)
+    close_drawer(page)
+    # 検証
+    assert by_title == ["G-1", "G-2"]
+    assert chips == ["用語に「シナリオ」を含む"]
+    assert badge == "1"
+    # 大文字・小文字を区別せず含む行に絞る
+    assert by_id == ["G-1", "G-12"]
+    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
+        "ID に「g-1」を含む"
+    ]

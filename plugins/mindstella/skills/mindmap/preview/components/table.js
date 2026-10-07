@@ -20,18 +20,31 @@ var MindmapPreview;
         }
         return a.localeCompare(b, "ja");
     }
-    /** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる） */
+    /** 文字の条件のキー（`~{列}`）の頭 */
+    MindmapPreview.TEXT_FILTER_PREFIX = "~";
+    /** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる）。`~{列}` は文字の条件で、その列の値のどれかが文字を含む行に当てる（大文字・小文字を区別しない） */
     function filterRows({ rows, columns, filters, }) {
         const active = Object.entries(filters).filter(([, values]) => values.length > 0);
         return rows.filter((row) => active.every(([key, wanted]) => {
-            const column = columns.find((candidate) => candidate.key === key);
+            const isText = key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX);
+            const columnKey = isText ? key.slice(MindmapPreview.TEXT_FILTER_PREFIX.length) : key;
+            const column = columns.find((candidate) => candidate.key === columnKey);
             // 知らない列の条件は無視する
             if (column === undefined)
                 return true;
-            return valuesOf(column, row).some((value) => wanted.includes(value));
+            const values = valuesOf(column, row);
+            if (!isText)
+                return values.some((value) => wanted.includes(value));
+            const needles = wanted.map((text) => text.toLowerCase());
+            return values.some((value) => needles.some((needle) => value.toLowerCase().includes(needle)));
         }));
     }
     MindmapPreview.filterRows = filterRows;
+    /** 表の列のうち、絞り込みのドロワーに文字の欄を出す列（値を選ぶ列と数の列を除く。列の順のまま） */
+    function textColumns(columns) {
+        return columns.filter((column) => column.filterable !== true && column.num !== true);
+    }
+    MindmapPreview.textColumns = textColumns;
     /** 列の値で行を並べ替える（元の配列は変えない。同じ値は元の順） */
     function sortRows({ rows, columns, sort, }) {
         if (sort === null)
@@ -163,6 +176,33 @@ var MindmapPreview;
     function filterChips({ filters, labels, onFilter, }) {
         const items = [];
         for (const [key, values] of Object.entries(filters)) {
+            // 文字の条件（`~{列}`）は、列の名前に「文字を含む」の文言を続けたチップにする
+            if (key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX)) {
+                const columnKey = key.slice(MindmapPreview.TEXT_FILTER_PREFIX.length);
+                const name = labels[columnKey] ?? columnKey;
+                // 英数字で終わる列名の後ろには空白を挟む（「ID に」のように読めるように）
+                const joint = /[A-Za-z0-9]$/.test(name) ? " " : "";
+                for (const value of values) {
+                    const text = `${name}${joint}に「${value}」を含む`;
+                    items.push(MindmapPreview.h({
+                        tag: "span",
+                        attrs: { class: "chip" },
+                        children: [
+                            text,
+                            MindmapPreview.h({
+                                tag: "button",
+                                attrs: {
+                                    type: "button",
+                                    "aria-label": `${text} の条件を解除`,
+                                    onclick: () => onFilter(withoutKey(filters, key)),
+                                },
+                                children: [MindmapPreview.icon("x")],
+                            }),
+                        ],
+                    }));
+                }
+                continue;
+            }
             const label = labels[key] ?? key;
             for (const value of values) {
                 items.push(MindmapPreview.h({
@@ -198,7 +238,7 @@ var MindmapPreview;
     }
     MindmapPreview.filterChips = filterChips;
     /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
-    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on }, previous, }) {
+    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, on }, previous, }) {
         const hidden = new Set(hiddenColumns ?? columns.filter((column) => column.hidden).map((column) => column.key));
         const visible = columns.filter((column) => !hidden.has(column.key));
         // 固定する列の数（左端から pinTo の列まで）
@@ -372,10 +412,11 @@ var MindmapPreview;
                 children: [content],
             });
             const mark = MindmapPreview.markFor({ marks, id: row.id });
-            if (mark === null)
+            const commentPlaceElement = comments === undefined ? null : MindmapPreview.commentPlace({ id: row.id, count: comments[row.id] });
+            if (mark === null && commentPlaceElement === null)
                 return opener;
             const fragment = document.createDocumentFragment();
-            fragment.append(opener, mark);
+            fragment.append(...[opener, mark, commentPlaceElement].filter((node) => node !== null));
             return fragment;
         };
         const body = shownRows.length > 0
@@ -591,7 +632,7 @@ var MindmapPreview;
     }
     MindmapPreview.tableState = tableState;
     /** 状態を持つ表を返す。並べ替え・列・ピン留めの操作は自分で描き直し、表示する列とピン留めは端末に残す。絞り込みの条件は画面から受け、チップで変えたときは `onFilter` に新しい条件を渡す */
-    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, }) {
+    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, comments, }) {
         const state = tableState(kind);
         // 画面を描き直したときは、前のポップオーバーを開いたままにしない
         state.popover = null;
@@ -615,6 +656,7 @@ var MindmapPreview;
                     hiddenColumns: state.hidden,
                     popover: state.popover,
                     ...(marks === undefined ? {} : { marks }),
+                    ...(comments === undefined ? {} : { comments }),
                     on: {
                         sort: (key) => {
                             // 昇順 → 降順 → 解除

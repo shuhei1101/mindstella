@@ -1,0 +1,90 @@
+/* PR #126 で足す・変える部品のスタイル。base.css（develop の style.css の写し）の後に読む。画面の作りは layout.css */
+
+/* ===== 検討事項のマップ: 中間の層（カテゴリー・フェーズ）のラベル ===== */
+
+/* カテゴリーのラベル: 面と線を持たせ、枝の線の上でも読めるようにする */
+.map-node.n-category { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+/* フェーズのラベル: 地の色の面と薄い線で、カテゴリーより一段控えめにする */
+.map-node.n-phase { background: var(--bg); border: 1px solid var(--border-soft); color: var(--text-2); font-size: var(--fs-xs); }
+
+/* ===== 全体の検索 ===== */
+
+/* 完全に一致のまとまりの見出し: 種類の見出しと同じ形で、先頭に置く */
+.search-results h3.sr-exact { color: var(--text); }
+/* 完全に一致の結果に添える種類 */
+.sr-item .sr-kind { margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
+/* 完全に一致のまとまりと種類のまとまりの境 */
+.search-results h3.sr-exact ~ h3:not(.sr-exact) { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+/* 結果の ID: 折り返さない */
+.sr-item > .mono { flex: none; white-space: nowrap; }
+/* トップバーの検索の入口のキーの案内: 2 文字以上でも詰まらない幅 */
+.search-trigger kbd { white-space: nowrap; }
+
+/* ===== 表の絞り込み: 列の文字の条件 ===== */
+
+/* 文字の条件のチップ: 値の条件のチップと同じ形 */
+.chip.chip-text { font-family: inherit; }
+/* B 案: ドロワーの文字の欄のまとまり */
+.fd-text .fd-text-row { clear: both; display: grid; grid-template-columns: 7em 1fr; align-items: center; gap: 8px; margin-top: 6px; }
+/* B 案: 文字の欄の列名 */
+.fd-text .fd-text-row label { font-size: var(--fs-small); color: var(--text-2); }
+/* B 案: 文字の欄 */
+.fd-text input[type="search"] { height: var(--control-h); min-width: 0; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; }
+/* B 案: 文字の欄のフォーカス */
+.fd-text input[type="search"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* A 案: 列の見出しの絞り込みのボタン（並べ替えのボタンの右、固定のボタンの左） */
+.th-tool.tfilter { opacity: .55; }
+/* A 案: 見出しに乗せたとき・絞り込み中は濃く出す */
+th:hover .th-tool.tfilter, th:focus-within .th-tool.tfilter, .th-tool.tfilter[aria-pressed="true"] { opacity: 1; }
+/* A 案: 列の文字を入れるポップオーバー */
+.pop .tf-pop { display: grid; gap: 6px; padding: 2px; }
+/* A 案: ポップオーバーの文字の欄 */
+.pop .tf-pop input[type="search"] { height: var(--control-h); margin: 0 4px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; }
+/* A 案: ポップオーバーの下端のボタンの並び */
+.pop .tf-pop .pop-foot { align-items: center; }
+
+/* ===== 本文: 見出しのリンク・用語の印・項目の ID のリンク ===== */
+
+/* 見出しのリンク: 見出しの右に置き、乗せたとき・フォーカスしたときに出す */
+.md .h-link { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 4px; vertical-align: middle; border-radius: 3px; color: var(--text-3); opacity: 0; }
+/* 見出しのリンクのアイコン */
+.md .h-link .icon { width: 14px; height: 14px; }
+/* 見出しに乗せた・リンクにフォーカスした */
+.md :is(h1, h2, h3, h4, h5, h6):hover .h-link, .md .h-link:focus-visible { opacity: 1; }
+/* 見出しのリンクに乗せた */
+.md .h-link:hover { color: var(--accent); background: var(--hover); }
+/* 乗せる操作が無い端末: 見出しのリンクを常に出す */
+@media (hover: none) { .md .h-link { opacity: 1; } }
+/* 見出しへ移ったとき: 帯の下に少し空けて止める */
+.md [data-heading] { scroll-margin-top: 12px; }
+/* 用語の印: 文字の色は変えず、点線の下線で示す */
+.md a.term { color: inherit; text-decoration: underline dotted var(--text-3); text-decoration-thickness: 1.5px; text-underline-offset: 4px; cursor: pointer; }
+/* 用語の印に乗せた・フォーカスした */
+.md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--accent); background: var(--accent-weak); border-radius: 2px; }
+/* 項目の ID のリンク: 等幅の印の色の文字と下線 */
+.md a.idref { white-space: nowrap; font-family: var(--font-mono); font-size: .92em; color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+/* 項目の ID のリンクに乗せた */
+.md a.idref:hover { text-decoration-color: var(--accent); }
+/* インラインコードの中の ID のリンク: コードの字の大きさのまま */
+.md code a.idref { font-size: inherit; }
+/* 用語のツールチップ: 本文に重ねる面（影つき）。用語と ID を 1 行目、意味を続けて出す */
+.term-tip { position: fixed; inset: auto; margin: 0; max-width: min(360px, calc(100vw - 16px)); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); font-size: var(--fs-small); line-height: 1.55; }
+/* ツールチップの 1 行目（用語と ID） */
+.term-tip .tt-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-weight: 700; }
+/* ツールチップの ID */
+.term-tip .tt-head .mono { color: var(--text-3); font-weight: 400; font-size: var(--fs-xs); }
+/* ツールチップの意味 */
+.term-tip .tt-body { display: block; color: var(--text-2); }
+
+/* ===== 詳細の全画面 ===== */
+
+/* 全画面のモーダル: 周りの余白を 32px にし、今より一回り大きくする */
+dialog.full { width: calc(100vw - 64px); max-width: 1600px; height: calc(100dvh - 64px); max-height: none; }
+/* 全画面の本文: 幅の上限を外し、モーダルの幅いっぱいにする。中のスクロールを後ろの画面へ渡さない */
+dialog.full .panel-body { max-width: none; overscroll-behavior: contain; }
+/* 全画面の下端の入力: 本文と同じ幅 */
+dialog.full .send.send-footer { max-width: none; }
+/* 全画面を開いている間: 後ろの領域のスクロールを止める */
+body:has(dialog.full[open]) .content { overflow: hidden; }
+/* 狭い幅の全画面: 余白を 8px にする */
+@media (max-width: 720px) { dialog.full { width: calc(100vw - 16px); height: calc(100dvh - 16px); } }

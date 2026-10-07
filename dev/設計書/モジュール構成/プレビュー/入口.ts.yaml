@@ -221,7 +221,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`/` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書きを残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書きを残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
     args: []
     returns:
       type: void
@@ -280,6 +280,9 @@ functions:
       13. `hashchange`・`popstate` で 4・5 を繰り返す
     notes:
       確かめ方: 単体テストは持たない。インターフェース定義『プレビューを開く』の結合テストがこの流れを確かめる
+      キー操作: 文書の `keydown` で `Ctrl+K`（`metaKey` の `Cmd+K` を含む）を受けたら、入力欄にフォーカスがあっても既定の動作を止め、全体の検索を開く（開いていれば検索の言葉を選び直す）。`/` では開かない
+      画面の作り: '`body` を窓の高さに固定し、トップバーとタブの帯の下に画面ごとの領域（画面設計の「画面の領域」）を 1 つ置く（`style.css`）。ページ全体はスクロールさせず、表・ボード（幅 721px 以上）とマップ（幅 901px 以上）は領域の高さいっぱいに広げて中でスクロールさせ、それより狭い幅では領域ごとスクロールさせる。`100dvh` から帯と余白を引く高さの計算（`.table-wrap`・`.map-wrap`・`.fg-wrap`・`.g3-wrap`）はやめる。詳細パネルの位置（`.panel` の `top`）は帯の下のまま'
+      見出しのハッシュ: '5 で詳細パネルに `Route.heading` を渡す。詳細パネルの `on.heading` では `Route.heading` を書き換え、履歴に積まずにハッシュを置き換える（`navigate`、`push: false`）。項目へ移るときは `heading` を `null` にする'
   - name: formKey
     title: 入力欄のキー
     kind: 関数
@@ -365,5 +368,34 @@ functions:
         condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`diffSel: since` の `Prefs`'
         mock: なし
         expected: '`theme`・`look`・`kinds` が `null`、`columns` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+  - name: commentCounts
+    title: 項目ごとのコメントの件数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目へコメントする
+    kind: 関数
+    scope: public
+    summary: レビュー中のコメントを `target` ごとに数え、項目の ID → 件数の対応を返す。箇所を指すコメントもその項目の件数に数え、`target` が `null` のコメントは数えない。`start` はサーバーにつながって開いたときだけこれで作った対応を各画面の `comments` へ渡し（つながらないで開いたとき・配る書き出しは渡さない）、コメントを溜める・直す・消す・戻す・送る後に対応が変わったときだけ、画面を描き直さずに `refreshCommentMarks`（つながりは `setGraphComments`）で印を差し替える
+    args:
+      - name: items
+        type: ReviewState['items']
+        required: true
+        passing: positional
+        description: レビュー中のコメント（レビュー中のコメントの読み取りの `items`）
+    returns:
+      type: Record<string, number>
+      description: 項目の ID → 件数（1 以上）。件数 0 の項目はキーを持たない
+    unit_tests:
+      - name: test_comment_counts
+        case: 正常
+        summary: 項目ごとに数え、箇所を指すコメントも含め、項目を指さないコメントは数えない
+        condition: D-1 への 1 件・D-1 の本文の箇所を指す 1 件・T-1 への 1 件・`target` が `null` の 1 件
+        mock: なし
+        expected: '`{"D-1": 2, "T-1": 1}`'
+      - name: test_comment_counts_when_empty
+        case: 正常
+        summary: 項目を指すコメントが無ければ空の対応
+        condition: '`parametrize`: `items` が空 / `target` が `null` の 2 件だけ'
+        mock: なし
+        expected: どちらも `{}`
 test_files:
   - tests/unit/preview/test_app.py

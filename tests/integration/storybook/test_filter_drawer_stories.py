@@ -13,8 +13,8 @@ NARROW_SIZE = {"width": 390, "height": 844}
 # 広い幅でのドロワーの幅（ピクセル）
 DRAWER_WIDTH_PX = 420
 
-# ドロワーの条件の並び（見出し・選んだ数の文言・「解除」の読み上げ名・値ごとの `[値, 件数, チェック, 薄い]`）を読む
-GROUPS_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .fd-group')].map((group) => ({
+# ドロワーの値を選ぶ条件の並び（文字の欄のまとまりは含めない。見出し・選んだ数の文言・「解除」の読み上げ名・値ごとの `[値, 件数, チェック, 薄い]`）を読む
+GROUPS_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .fd-group:not(.fd-text)')].map((group) => ({
     label: group.querySelector('legend').childNodes[0].textContent,
     sel: group.querySelector('.fd-sel')?.textContent ?? null,
     clear: group.querySelector('.fd-clear')?.getAttribute('aria-label') ?? null,
@@ -202,3 +202,33 @@ def test_narrow(open_story: OpenStory) -> None:
     )
     assert page.eval_on_selector("dialog.drawer", "d => d.classList.contains('narrow')") is True
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_text_conditions(open_story: OpenStory) -> None:
+    """用語集で、用語の欄に「移し」を入れている。値の条件より上に「文字を含む」と 5 つの欄を並べ、見出しの右は「6 件中 1 件」。タグの件数は文字で絞った 1 件で数える（正常系）。"""
+    # 準備・実行
+    page = _open_drawer(open_story, "preview-filterdrawer--text-conditions")
+    # 検証
+    fieldsets = page.eval_on_selector_all(
+        "dialog.drawer .fd-body > fieldset", "f => f.map(x => x.querySelector('legend').childNodes[0].textContent)"
+    )
+    assert fieldsets == ["文字を含む", "タグ"]
+    fields = page.eval_on_selector_all(
+        "dialog.drawer .fd-text input",
+        "i => i.map(x => [x.dataset.textKey, document.querySelector(`label[for='${x.id}']`).textContent, x.value])",
+    )
+    assert fields == [
+        ["id", "ID", ""],
+        ["title", "用語", "移し"],
+        ["meaning", "意味", ""],
+        ["aliases", "別名", ""],
+        ["avoid", "使わない表記", ""],
+    ]
+    assert page.inner_text("dialog.drawer .fd-count") == "6 件中 1 件"
+    assert _groups(page)[0]["values"] == [["mindstella", 1, False, False]]
+    # 初めて開くと、先頭の文字の欄にフォーカスを移す
+    assert page.evaluate(
+        "document.activeElement === document.querySelector('dialog.drawer .fd-text input')"
+    )
+    # 欄は列の名前の label を持ち、まとまりは fieldset と legend で組む
+    assert page.locator("dialog.drawer fieldset.fd-text > legend").inner_text() == "文字を含む"

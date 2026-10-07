@@ -8,10 +8,14 @@ import pytest
 from playwright.sync_api import APIResponse, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
+    HANGING_LINES_JS,
     LONG_BODY,
+    LONG_LINE,
+    LONG_LINES_BODY,
     NEW_DECISION,
     SCROLLABLE_REGION_RULE,
     SETTLED_SCROLL_TOP_JS,
+    overflows_horizontally,
 )
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
@@ -34,7 +38,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
-from preview_history_helpers import preselect_diff
+from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
@@ -252,6 +256,56 @@ def test_side_by_side_when_wide(
     assert page.evaluate("document.body.classList.contains('panel-open')")
     after = page.evaluate("document.querySelector('main#main').getBoundingClientRect().width")
     assert after < before
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "frame", "item", "width"),
+    [
+        pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1280, id="table_1280"),
+        pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1440, id="table_1440"),
+        pytest.param("#tab=decisions&view=table", ".table-wrap", "D-2", 1920, id="table_1920"),
+        pytest.param("#tab=decisions&view=map", ".map-wrap", "D-2", 1440, id="map_1440"),
+        pytest.param("#tab=docs&view=table", ".table-wrap", "A-1", 1920, id="docs_wide_1920"),
+    ],
+)
+def test_side_by_side_moves_content_left(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    hash_text: str,
+    frame: str,
+    item: str,
+    width: int,
+) -> None:
+    """窓が本文の幅の上限（1320px）より広くても、パネルを開くと本文の中身の枠が左の余白（32px）まで寄り、パネルに重ならない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, hash_text)
+    page.set_viewport_size({"width": width, "height": 800})
+    page.wait_for_selector(frame)
+    box_js = f"""() => {{
+        const box = document.querySelector('{frame}').getBoundingClientRect();
+        return {{left: box.left, right: box.right}};
+    }}"""
+    before = page.evaluate(box_js)
+    # 実行
+    if frame == ".map-wrap":
+        page.click(f'#decision-map button[data-node="{item}"]')
+    else:
+        page.click(f'table.grid button.row-open[data-id="{item}"]')
+    page.wait_for_selector("aside.panel.open")
+    # パネルがすべり込んで、窓の右端に着くまで待つ（動きの間は位置が動く）
+    page.wait_for_function(
+        "Math.abs(document.querySelector('aside.panel').getBoundingClientRect().right - innerWidth) < 1"
+    )
+    after = page.evaluate(box_js)
+    panel_left = page.evaluate("document.querySelector('aside.panel').getBoundingClientRect().left")
+    # 検証
+    assert after["left"] == 32
+    assert after["left"] <= before["left"]
+    assert after["right"] <= panel_left
+    # 本文の幅の上限より広い窓では、開く前に中央にあった枠が、開いた後は左へ寄る
+    if width > 1320 + 64:
+        assert after["left"] < before["left"]
 
 
 def test_overlay_when_narrow(
@@ -1129,6 +1183,31 @@ def test_diff_diagram_raw(
     assert raw.locator(".df-line.df-add .df-sign").first.inner_text() == "+"
 
 
+def test_diff_diagram_raw_when_long_line(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示の間の図の Raw は、長い行を折り返して横にあふれず、折り返した続きの行は印の列の下へ回り込まない（正常系）。"""
+    # 準備
+    root = build_long_line_diff_workspace(make_workspace, call_tool, LONG_LINE)
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    _open_diff_panel(page, open_preview, str(served.data["url"]), "V-2")
+    page.wait_for_selector("aside.panel figure.diagram.df-changed", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 実行
+    page.click('aside.panel figure.diagram [data-act="diagram-raw"]')
+    # 検証
+    raw = "aside.panel figure.diagram > .dg-raw.df-raw"
+    assert page.is_visible(raw)
+    assert not overflows_horizontally(page, raw)
+    added = page.evaluate(HANGING_LINES_JS, raw)
+    assert [line["rows"] > 1 for line in added] == [True]
+    assert all(line["clearOfSign"] for line in added)
+    assert axe_rule_results(page, raw, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
 def test_diff_note_when_trimmed(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
@@ -1244,3 +1323,214 @@ def test_selection_entry_when_old_set_after_body_edit(
     assert page.locator(PILL).count() == 0
     # 値（案・キー）の選択は今まで通り出る
     select_text_for_pill(page, 'aside.panel [data-key="answer"]', "答え")
+
+
+# 見出しのリンクと用語・ID の印を確かめる本文（見出し「保存先」「決め方」「決め方」、用語・ID を並べた段落、コードブロック）
+LINKED_BODY = (
+    "## 保存先\n\n"
+    "保存先と AIM と AI と D-3 と `D-5` と D-99 と XD-3 と A-1\n\n"
+    "```\n保存先 D-3\n```\n\n"
+    "## 決め方\n\n"
+    "[決め方](#決め方) と [無い](#無い)\n\n"
+    "## 決め方\n\n"
+    "2 つ目の決め方の段落\n"
+)
+
+
+def _write_linked_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """用語 G-1「保存先」・G-3「AI」、検討事項 D-3・D-5 と、本文を持つ資料 A-1 の配信の URL を返す。"""
+    return write_preview(
+        make_item("A-1"),
+        make_item("D-3"),
+        make_item("D-5"),
+        make_item("G-1", title="保存先", meaning="記録を置く場所"),
+        make_item("G-3", title="AI", meaning="人工知能"),
+        bodies={"A-1.md": LINKED_BODY},
+    )
+
+
+def test_body_heading_links(write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """本文の見出しの右に # のリンクを置き、乗せるまで見えず、乗せると見える。読み上げの名前は「見出し「{見出し}」へのリンク」（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel [data-heading]")
+    # 実行
+    slugs = page.eval_on_selector_all("aside.panel [data-heading]", "h => h.map(x => x.dataset.heading)")
+    labels = page.eval_on_selector_all(
+        "aside.panel [data-heading] .h-link", "l => l.map(x => x.getAttribute('aria-label'))"
+    )
+    link = 'aside.panel [data-heading="保存先"] .h-link'
+    opacity_before = page.eval_on_selector(link, "e => getComputedStyle(e).opacity")
+    page.hover('aside.panel [data-heading="保存先"]')
+    opacity_hover = page.eval_on_selector(link, "e => getComputedStyle(e).opacity")
+    # 検証
+    assert slugs == ["保存先", "決め方", "決め方-1"]
+    assert labels == [
+        "見出し「保存先」へのリンク",
+        "見出し「決め方」へのリンク",
+        "見出し「決め方」へのリンク",
+    ]
+    assert opacity_before == "0"
+    assert opacity_hover == "1"
+
+
+def test_body_heading_link_press(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """見出しの # を押すと、その見出しを指す h をハッシュに置き換え、履歴に積まない。本文の中の `[文言](#見出し)` も同じ見出しへ送り、本文に無い見出しなら何もしない（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel [data-heading]")
+    history_length = page.evaluate("history.length")
+    # 実行（# を押す）
+    page.click('aside.panel [data-heading="決め方-1"] .h-link')
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方-1'")
+    after_hash = page.evaluate("location.hash")
+    # 実行（本文の中のリンク。marked が日本語の href をパーセントエンコードして描く）
+    page.click("aside.panel .md p a:has-text('決め方')")
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 実行（本文に無い見出しへのリンク）
+    hash_before = page.evaluate("location.hash")
+    page.click("aside.panel .md p a:has-text('無い')")
+    page.wait_for_timeout(200)
+    # 検証
+    assert "h=" in after_hash
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == hash_before
+    assert "%E7%84%A1" not in page.evaluate("location.hash")
+
+
+def test_body_term_marks(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """文中の用語だけに印を付け（「保存」に分けず、「AIM」には付けない）、見出しとコードブロックには付けない。印は文字の色を変えず点線の下線で、押すとその用語の詳細へ移り履歴に積む（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel .md a.term")
+    history_length = page.evaluate("history.length")
+    # 実行
+    terms = page.eval_on_selector_all(
+        "aside.panel .md a.term", "a => a.map(x => [x.textContent, x.dataset.id])"
+    )
+    in_heading_or_code = page.locator(
+        "aside.panel .md :is(h2, pre) :is(a.term, a.idref)"
+    ).count()
+    style = page.eval_on_selector(
+        "aside.panel .md a.term",
+        "e => ({line: getComputedStyle(e).textDecorationLine, style: getComputedStyle(e).textDecorationStyle, color: getComputedStyle(e).color, parent: getComputedStyle(e.parentElement).color})",
+    )
+    page.click("aside.panel .md a.term >> nth=0")
+    page.wait_for_function("location.hash.includes('id=G-1')")
+    # 検証
+    assert terms == [["保存先", "G-1"], ["AI", "G-3"]]
+    assert in_heading_or_code == 0
+    assert style["line"] == "underline"
+    assert style["style"] == "dotted"
+    assert style["color"] == style["parent"]
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_id_links(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """文中の記録にある ID だけをリンクにし（インラインコードは中身が ID のときだけ）、記録に無い ID・前後が英数字の ID・開いている項目自身の ID・コードブロックの中には付けない。折り返さず、押すとその項目へ移り履歴に積む（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel .md a.idref")
+    history_length = page.evaluate("history.length")
+    # 実行
+    refs = page.eval_on_selector_all(
+        "aside.panel .md a.idref", "a => a.map(x => [x.textContent, x.dataset.id])"
+    )
+    white_space = page.eval_on_selector("aside.panel .md a.idref", "e => getComputedStyle(e).whiteSpace")
+    in_code_block = page.locator("aside.panel .md pre a").count()
+    page.click('aside.panel .md a.idref[data-id="D-3"]')
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 検証
+    assert refs == [["D-3", "D-3"], ["D-5", "D-5"]]
+    assert white_space == "nowrap"
+    assert in_code_block == 0
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_term_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語の印に乗せるとツールチップで用語・ID・意味を出し、印は aria-describedby でツールチップを指す。印から外れて少し待つと消え、Esc でも消え、ツールチップに乗せている間は消えない（正常系）。"""
+    # 準備
+    url = _write_linked_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    mark = "aside.panel .md a.term >> nth=0"
+    page.wait_for_selector("aside.panel .md a.term")
+    described = page.get_attribute(mark, "aria-describedby")
+    # 実行（乗せる）
+    page.hover(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    tip = page.evaluate(
+        """() => {
+            const tip = document.getElementById('term-tip');
+            return {role: tip.getAttribute('role'), head: tip.querySelector('.tt-head').textContent, body: tip.querySelector('.tt-body').textContent};
+        }"""
+    )
+    # 実行（印から外れて待つと消える）
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（フォーカスで出し、Esc で消す）
+    page.focus(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（乗せて、ツールチップへ動かすと消えない）
+    page.hover(mark)
+    page.wait_for_selector("#term-tip:popover-open")
+    tip_box = page.locator("#term-tip").bounding_box()
+    assert tip_box is not None
+    page.mouse.move(tip_box["x"] + tip_box["width"] / 2, tip_box["y"] + tip_box["height"] / 2, steps=5)
+    page.wait_for_timeout(400)
+    kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+    # 検証
+    assert described == "term-tip"
+    assert tip == {"role": "tooltip", "head": "保存先G-1", "body": "記録を置く場所"}
+    assert kept is True
+
+
+def _open_long_lines(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """長い行を持つコードブロックと、記法に長い行を持つ図を本文に持つ項目を詳細パネルで開く。"""
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md pre:not(.dg-raw)")
+    page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    return page
+
+
+def test_code_block_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文のコードブロックは、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備・実行
+    page = _open_long_lines(write_preview, open_preview, make_item)
+    code = "aside.panel .md pre:not(.dg-raw)"
+    # 検証
+    assert not overflows_horizontally(page, code)
+    assert axe_rule_results(page, code, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+def test_diagram_raw_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """図の Raw は、記法の長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備
+    page = _open_long_lines(write_preview, open_preview, make_item)
+    # 実行
+    page.click('aside.panel button[data-act="diagram-raw"]')
+    # 検証
+    raw = "aside.panel pre.dg-raw"
+    assert page.is_visible(raw)
+    assert not overflows_horizontally(page, raw)
+    assert axe_rule_results(page, raw, SCROLLABLE_REGION_RULE)["violations"] == []

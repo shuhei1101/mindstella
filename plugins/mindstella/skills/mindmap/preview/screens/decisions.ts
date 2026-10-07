@@ -43,7 +43,7 @@ namespace MindmapPreview {
     target: [130, 40],
     category: [150, 34],
     phase: [118, 26],
-    item: [236, 48],
+    item: [268, 48],
   };
 
   /** 設定に無い対象・カテゴリー・フェーズに付ける名前 */
@@ -212,6 +212,7 @@ namespace MindmapPreview {
     selected,
     open,
     marks,
+    comments,
   }: {
     laid: MapGraph;
     canvas: HTMLElement;
@@ -219,6 +220,8 @@ namespace MindmapPreview {
     open: (id: string) => void;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks | undefined;
+    /** 項目の ID → レビュー中のコメントの件数。渡したとき、節点の 2 行目の右端に印を置く場所を置く */
+    comments?: Record<string, number> | undefined;
   }): void {
     const positions = new Map(laid.children.map((node) => [node.id, node]));
     const parentOf = new Map(laid.edges.map((edge) => [edge.targets[0], edge.sources[0]]));
@@ -317,6 +320,7 @@ namespace MindmapPreview {
               h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
               h({ tag: "span", children: [item.status ?? ""] }),
               item.weight === undefined ? null : h({ tag: "span", children: [`影響度 ${item.weight}`] }),
+              comments === undefined ? null : commentPlace({ id: item.id, count: comments[item.id] }),
             ],
           }),
         ],
@@ -334,6 +338,7 @@ namespace MindmapPreview {
     decisions,
     open,
     marks,
+    comments,
   }: {
     index: RecordIndex;
     /** 絞り込みの条件に合う検討事項 */
@@ -341,6 +346,8 @@ namespace MindmapPreview {
     open: (id: string) => void;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks | undefined;
+    /** 項目の ID → レビュー中のコメントの件数。渡したとき、タイトルと差分の印の右に印を置く場所を置く */
+    comments?: Record<string, number> | undefined;
   }): HTMLElement {
     const tree = buildDecisionTree({ index, decisions });
     const nodeOf = new Map(tree.children.map((node) => [node.id, node]));
@@ -358,7 +365,12 @@ namespace MindmapPreview {
           ? h({
             tag: "button",
             attrs: { type: "button", "data-id": node.id, onclick: () => open(node.id) },
-            children: [statusMark(node.item.status), h({ tag: "span", children: [node.label] }), markFor({ marks, id: node.id })],
+            children: [
+              statusMark(node.item.status),
+              h({ tag: "span", children: [node.label] }),
+              markFor({ marks, id: node.id }),
+              comments === undefined ? null : commentPlace({ id: node.id, count: comments[node.id] }),
+            ],
           })
           : h({ tag: "div", attrs: { class: `o-${node.kind}` }, children: [node.label] });
       const below = childrenOf.get(node.id) ?? [];
@@ -419,7 +431,7 @@ namespace MindmapPreview {
 
   /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
   function mapView(
-    { index, route, on, marks }: DecisionsScreenProps,
+    { index, route, on, marks, comments }: DecisionsScreenProps,
     {
       shown,
       chips,
@@ -454,7 +466,7 @@ namespace MindmapPreview {
       },
       children: ["全体を表示"],
     });
-    let outlineElement = outline({ index, decisions: shown, open: on.open, marks });
+    let outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments });
     let current: MapGraph | null = null;
     /** キーワードに当たった検討事項か */
     const isHit = (item: Item): boolean =>
@@ -495,13 +507,13 @@ namespace MindmapPreview {
 
     /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
     const draw = async (): Promise<void> => {
-      outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks })));
+      outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments })));
       if (missingLibraries(["elkjs"]).length > 0) return;
       const key = shown.map((item) => item.id).join(",");
       const graph = buildDecisionTree({ index, decisions: shown });
       emptyNotice.hidden = graph.children.length > 0;
       current = await layoutOf(graph, key);
-      drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks });
+      drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks, comments });
       applyZoom();
       const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
       const scale = shownScale();
@@ -695,7 +707,7 @@ namespace MindmapPreview {
 
   /** 検討事項の画面を返す */
   export function decisionsScreen(props: DecisionsScreenProps): HTMLElement {
-    const { index, route, on, marks, filters, drawerOpen } = props;
+    const { index, route, on, marks, comments, filters, drawerOpen } = props;
     const columns = decisionColumns({ index, open: on.open });
     // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.decisions, columns, filters }) as Item[];
@@ -713,6 +725,7 @@ namespace MindmapPreview {
         drawerOpen,
         rows: index.data.decisions,
         columns: columns.filter((column) => column.filterable === true),
+        textColumns: textColumns(columns),
         filters,
         shown: shown.length,
         hit,
@@ -756,6 +769,7 @@ namespace MindmapPreview {
                 links: item.depends_on ?? [],
                 open: on.open,
                 mark: marks?.[item.id],
+                comments,
               }),
             emptyText: "検討事項はありません。",
           }),
@@ -776,6 +790,7 @@ namespace MindmapPreview {
           onFilter: on.filter,
           open: on.open,
           marks,
+          ...(comments === undefined ? {} : { comments }),
         }),
         makeDrawer(),
       ],

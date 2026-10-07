@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import pytest
 from playwright.sync_api import Page
 from preview_drawer_helpers import (
     DRAWER,
@@ -17,6 +20,13 @@ from preview_drawer_helpers import (
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    region_metrics,
+)
+from preview_mark_helpers import MARK_TIMEOUT_MS
 
 # 狭い幅の画面の大きさ（空の旨の文はどの幅でも出す）
 NARROW_WIDTH = 800
@@ -196,3 +206,142 @@ def test_look(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevie
     page.wait_for_function(HAS_DRAWING_SCRIPT)
     # 検証
     assert page.get_attribute(".screen.graph", "data-look") == "deep"
+
+
+# 描いている名前の横の印のうち、見せているものの画面の数字と外形を、キャンバスの外形とともに返す（隠している印は含めない）
+VISIBLE_MARKS_SCRIPT = """() => {
+    const canvas = document.getElementById('graph-canvas').getBoundingClientRect();
+    const marks = [...document.querySelectorAll('.g3-marks .cmk')]
+        .filter(mark => mark.style.visibility !== 'hidden')
+        .map(mark => {
+            const box = mark.getBoundingClientRect();
+            return {count: mark.querySelector('.cmk-n').textContent, left: box.left, top: box.top, right: box.right, bottom: box.bottom};
+        });
+    return {canvas: {left: canvas.left, top: canvas.top, right: canvas.right, bottom: canvas.bottom}, marks};
+}"""
+
+# 近づく前の、全体を表示した距離で印が出ないことを確かめる待ち（ミリ秒。玉が広がる 1.4 秒より長く）
+FIT_SETTLE_MS = 2_500
+
+# 近づいた後に視点が寄り終わるまで待つミリ秒
+ZOOM_SETTLE_MS = 700
+
+# 回して視点を変える回数と、1 回に動かす横の量（px）、動かし始める点（キャンバスの上の点）
+EDGE_SAMPLES = 8
+EDGE_DRAG_DX = 40
+EDGE_DRAG_START = {"x": 120, "y": 300}
+
+
+def _visible_marks(page: Page) -> dict[str, Any]:
+    """見せている名前の横の印を、キャンバスの外形とともに返す。"""
+    result: dict[str, Any] = page.evaluate(VISIBLE_MARKS_SCRIPT)
+    return result
+
+
+def test_comment_marks_when_far(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """全体を表示した距離では、名前が読める大きさにならないので印を出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    page.wait_for_timeout(FIT_SETTLE_MS)
+    # 検証
+    assert _visible_marks(page)["marks"] == []
+    assert page.get_attribute("#graph-canvas", "role") == "img"
+
+
+def test_comment_marks_when_near(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """名前が読める大きさまで寄ると、件数のある玉の名前の右に印を出し、印はキャンバスに収まる。印だけを押す操作は持たない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=graph&id=D-2")
+    page.wait_for_function(
+        "[...document.querySelectorAll('.g3-marks .cmk')].some(m => m.style.visibility !== 'hidden')",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 検証
+    shown = _visible_marks(page)
+    canvas = shown["canvas"]
+    # 選んだ玉の件数 2 の印が出て、出た印はどれも件数のある項目のもの（1 件か 2 件）
+    assert "2" in [mark["count"] for mark in shown["marks"]]
+    assert {mark["count"] for mark in shown["marks"]} <= {"1", "2"}
+    for mark in shown["marks"]:
+        assert canvas["left"] <= mark["left"] and mark["right"] <= canvas["right"]
+        assert canvas["top"] <= mark["top"] and mark["bottom"] <= canvas["bottom"]
+    # 印を重ねる層は押下をキャンバスへ通す
+    assert page.eval_on_selector(".g3-marks", "e => getComputedStyle(e).pointerEvents") == "none"
+    assert page.locator(".g3-marks button, .g3-marks a").count() == 0
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [
+        pytest.param(None, id="desktop"),
+        pytest.param({"width": 390, "height": 844}, id="phone"),
+    ],
+)
+def test_comment_marks_when_edge(
+    write_commented_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    viewport: dict[str, int] | None,
+) -> None:
+    """寄ったまま回して縁に玉がかかっても、見せている印はどれもキャンバスに収まる（正常系）。"""
+    # 準備（件数のある項目を選び、名前が読める大きさまで寄せる。狭い幅では周りの玉が縁にかかる）
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=graph&id=D-2")
+    if viewport is not None:
+        page.set_viewport_size(viewport)
+    page.wait_for_function(
+        "[...document.querySelectorAll('.g3-marks .cmk')].some(m => m.style.visibility !== 'hidden')",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 実行（寄ったまま回し、視点を変えるたびに出ている印を集める）
+    seen: list[dict[str, Any]] = []
+    for step in range(EDGE_SAMPLES):
+        page.mouse.move(EDGE_DRAG_START["x"], EDGE_DRAG_START["y"])
+        page.mouse.down()
+        page.mouse.move(EDGE_DRAG_START["x"] + EDGE_DRAG_DX * (step + 1), EDGE_DRAG_START["y"], steps=5)
+        page.mouse.up()
+        page.wait_for_timeout(ZOOM_SETTLE_MS)
+        seen.append(_visible_marks(page))
+    # 検証（見せている印は、どの視点でも描く枠がキャンバスに収まる）
+    assert any(sample["marks"] for sample in seen)
+    for sample in seen:
+        canvas = sample["canvas"]
+        for mark in sample["marks"]:
+            assert canvas["left"] <= mark["left"] and mark["right"] <= canvas["right"]
+            assert canvas["top"] <= mark["top"] and mark["bottom"] <= canvas["bottom"]
+
+
+def test_region(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """3D のキャンバスは領域の高さいっぱいに広がり、ページ全体はスクロールせず、帯は見えたまま（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("#graph-canvas")
+    # 実行
+    metrics = region_metrics(page, "#graph-canvas")
+    # 検証
+    assert_page_does_not_scroll(page)
+    # キャンバスの底は領域の底の近くにある（領域の下の余白の分だけ内側）
+    assert metrics["content"]["bottom"] - metrics["target"]["bottom"] <= 80
+    assert metrics["target"]["bottom"] - metrics["target"]["top"] >= 360
+    assert_bands_stay(page)
+
+
+def test_drawer_has_no_text_fields(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """つながりの絞り込みのドロワーには、文字の欄を出さない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    # 実行
+    open_drawer(page)
+    # 検証
+    assert page.locator(f"{DRAWER} .fd-text").count() == 0

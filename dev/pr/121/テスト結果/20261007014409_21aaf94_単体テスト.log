@@ -1,0 +1,1399 @@
+$ pytest tests/unit -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-comment-marks
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 828 items
+
+tests/unit/preview/test_api.py::test_fetch_records[chromium] PASSED      [  0%]
+tests/unit/preview/test_api.py::test_fetch_records_when_failed[chromium-unreachable] PASSED [  0%]
+tests/unit/preview/test_api.py::test_call_api[chromium-post_created] PASSED [  0%]
+tests/unit/preview/test_api.py::test_call_api_when_failed[chromium-conflict_with_stale] PASSED [  0%]
+tests/unit/preview/test_api.py::test_comment_api[chromium-read] PASSED   [  0%]
+tests/unit/preview/test_api.py::test_put_display[chromium-saved] PASSED  [  0%]
+tests/unit/preview/test_api.py::test_subscribe_events[chromium] PASSED   [  0%]
+tests/unit/preview/test_api.py::test_post_opened[chromium-ok] PASSED     [  0%]
+tests/unit/preview/test_app.py::test_read_embedded_data[chromium] PASSED [  1%]
+tests/unit/preview/test_app.py::test_read_embedded_data_when_empty[chromium] PASSED [  1%]
+tests/unit/preview/test_app.py::test_read_embedded_data_when_missing[chromium] PASSED [  1%]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-dark] PASSED    [  1%]
+tests/unit/preview/test_app.py::test_save_prefs[chromium-working_storage] PASSED [  1%]
+tests/unit/preview/test_app.py::test_form_key[chromium-same_target] PASSED [  1%]
+tests/unit/preview/test_app.py::test_resolve_display[chromium-no_override_no_default] PASSED [  1%]
+tests/unit/preview/test_app.py::test_clear_overrides[chromium] PASSED    [  1%]
+tests/unit/preview/test_app.py::test_comment_counts[chromium] FAILED     [  2%]
+tests/unit/preview/test_app.py::test_comment_counts_when_empty[chromium-no_items] FAILED [  2%]
+tests/unit/preview/test_comment_mark.py::test_refresh_comment_marks[chromium] FAILED [  2%]
+tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-one] FAILED [  2%]
+tests/unit/preview/test_comments_panel.py::test_comments_panel[chromium] PASSED [  2%]
+tests/unit/preview/test_comments_panel.py::test_comments_panel_when_empty[chromium] PASSED [  2%]
+tests/unit/preview/test_comments_panel.py::test_comments_panel_when_send_disabled[chromium-nothing_checked] PASSED [  2%]
+tests/unit/preview/test_decisions.py::test_build_decision_tree[chromium] PASSED [  2%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-zoom_in] PASSED [  3%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom_keeps_point[chromium-point_kept] PASSED [  3%]
+tests/unit/preview/test_detail.py::test_detail_panel_when_diff_highlight[chromium] PASSED [  3%]
+tests/unit/preview/test_detail.py::test_detail_panel_when_old_set_after_body_edit[chromium] PASSED [  3%]
+tests/unit/preview/test_detail.py::test_detail_panel_when_diff_editor_only[chromium] PASSED [  3%]
+tests/unit/preview/test_detail.py::test_detail_panel_when_diff_reuses_current_diagram[chromium] PASSED [  3%]
+tests/unit/preview/test_detail.py::test_detail_panel_when_diff_renders_before_sequence[chromium] PASSED [  3%]
+tests/unit/preview/test_diff.py::test_resolve_diff_point[chromium-old_set] PASSED [  3%]
+tests/unit/preview/test_diff.py::test_build_versions[chromium] PASSED    [  3%]
+tests/unit/preview/test_diff.py::test_build_versions_when_trimmed[chromium] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_build_versions_when_body_rewritten[chromium] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_build_versions_when_dropped_in_range[chromium-dropped_in_range] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_diff_line_parts[chromium] PASSED   [  4%]
+tests/unit/preview/test_diff.py::test_diff_line_parts_when_timeout[chromium] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_place_removed_blocks[chromium-middle_paragraph] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_place_removed_blocks_when_table_row[chromium] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_diff_diagram[chromium-flowchart] PASSED [  4%]
+tests/unit/preview/test_diff.py::test_diff_diagram_when_type_not_colored[chromium] PASSED [  5%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-notation_unchanged] PASSED [  5%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source_when_removed_label_marked[chromium] PASSED [  5%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source_when_type_not_flowchart[chromium] PASSED [  5%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source_when_parse_fails[chromium] PASSED [  5%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source_when_before_not_flowchart[chromium] PASSED [  5%]
+tests/unit/preview/test_docs.py::test_order_docs[chromium] PASSED        [  5%]
+tests/unit/preview/test_dom.py::test_h[chromium] PASSED                  [  5%]
+tests/unit/preview/test_dom.py::test_append[chromium] PASSED             [  6%]
+tests/unit/preview/test_dom.py::test_icon[chromium] PASSED               [  6%]
+tests/unit/preview/test_dom.py::test_status_mark[chromium-decided] PASSED [  6%]
+tests/unit/preview/test_dom.py::test_status_badge[chromium-open] PASSED  [  6%]
+tests/unit/preview/test_dom.py::test_impact_badge[chromium-large] PASSED [  6%]
+tests/unit/preview/test_dom.py::test_tag_list[chromium-two_tags] PASSED  [  6%]
+tests/unit/preview/test_dom.py::test_deliverable_badge[chromium] PASSED  [  6%]
+tests/unit/preview/test_dom.py::test_empty_note[chromium] PASSED         [  6%]
+tests/unit/preview/test_dom.py::test_enable_drag_scroll[chromium-background] PASSED [  7%]
+tests/unit/preview/test_dom.py::test_enable_drag_scroll_when_pressed[chromium-background_still] PASSED [  7%]
+tests/unit/preview/test_dom.py::test_mark_selected[chromium-item] PASSED [  7%]
+tests/unit/preview/test_dom.py::test_inert_behind[chromium] PASSED       [  7%]
+tests/unit/preview/test_dom.py::test_inert_behind_when_redrawn[chromium] PASSED [  7%]
+tests/unit/preview/test_graph.py::test_build_graph[chromium] PASSED      [  7%]
+tests/unit/preview/test_graph.py::test_graph_conditions[chromium] PASSED [  7%]
+tests/unit/preview/test_libs.py::test_missing_libraries[chromium] PASSED [  7%]
+tests/unit/preview/test_libs.py::test_library_notice[chromium] PASSED    [  7%]
+tests/unit/preview/test_libs.py::test_render_markdown[chromium] PASSED   [  8%]
+tests/unit/preview/test_libs.py::test_render_markdown_when_library_missing[chromium] PASSED [  8%]
+tests/unit/preview/test_libs.py::test_render_diagrams[chromium] PASSED   [  8%]
+tests/unit/preview/test_libs.py::test_render_diagrams_when_same_source_again[chromium] PASSED [  8%]
+tests/unit/preview/test_libs.py::test_render_diagrams_when_source_not_in_last_call[chromium] PASSED [  8%]
+tests/unit/preview/test_libs.py::test_render_diagrams_when_theme_changed[chromium] PASSED [  8%]
+tests/unit/preview/test_libs.py::test_render_diagram_svg[chromium] PASSED [  8%]
+tests/unit/preview/test_libs.py::test_render_markdown_when_line_marks[chromium] PASSED [  8%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-heading] PASSED [  9%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-empty] PASSED [  9%]
+tests/unit/preview/test_overview.py::test_overview_screen_when_kinds_hidden[chromium-all_kinds] PASSED [  9%]
+tests/unit/preview/test_records.py::test_build_index[chromium] PASSED    [  9%]
+tests/unit/preview/test_records.py::test_related_items[chromium] PASSED  [  9%]
+tests/unit/preview/test_records.py::test_search_items[chromium-id_case_insensitive] PASSED [  9%]
+tests/unit/preview/test_records.py::test_location_label[chromium-body_one_line] PASSED [  9%]
+tests/unit/preview/test_router.py::test_parse_hash[chromium-empty] PASSED [  9%]
+tests/unit/preview/test_router.py::test_to_hash[chromium-defaults] PASSED [ 10%]
+tests/unit/preview/test_router.py::test_navigate[chromium-push] PASSED   [ 10%]
+tests/unit/preview/test_selection_comment.py::test_selection_comment_position[chromium-middle] PASSED [ 10%]
+tests/unit/preview/test_selection_comment.py::test_selection_comment_keys[chromium] PASSED [ 10%]
+tests/unit/preview/test_send_form.py::test_send_form[chromium-saving] PASSED [ 10%]
+tests/unit/preview/test_send_form.py::test_send_form_when_location_and_no_target[chromium-location] PASSED [ 10%]
+tests/unit/preview/test_send_form.py::test_send_form_when_ctrl_enter[chromium-idle] PASSED [ 10%]
+tests/unit/preview/test_send_form.py::test_format_jst[chromium-same_day] PASSED [ 10%]
+tests/unit/preview/test_settings.py::test_settings_drawer[chromium] PASSED [ 10%]
+tests/unit/preview/test_settings_confirm.py::test_settings_confirm[chromium-look_changed] PASSED [ 11%]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-no_override_same_as_default] PASSED [ 11%]
+tests/unit/preview/test_settings_panel.py::test_settings_panel_when_kinds_changed[chromium] PASSED [ 11%]
+tests/unit/preview/test_table.py::test_filter_rows[chromium-any_in_column] PASSED [ 11%]
+tests/unit/preview/test_table.py::test_sort_rows[chromium-title_asc] PASSED [ 11%]
+tests/unit/preview/test_table.py::test_filter_counts[chromium] PASSED    [ 11%]
+tests/unit/preview/test_table.py::test_drawer_groups[chromium] PASSED    [ 11%]
+tests/unit/preview/test_table.py::test_drawer_groups_when_no_values[chromium] PASSED [ 11%]
+tests/unit/preview/test_table.py::test_drawer_groups_when_hit[chromium] PASSED [ 12%]
+tests/unit/preview/test_table.py::test_active_condition_count[chromium-empty] PASSED [ 12%]
+tests/unit/preview/test_table.py::test_initial_filters[chromium-decisions_default] PASSED [ 12%]
+tests/unit/preview/test_tasks.py::test_board_columns[chromium] PASSED    [ 12%]
+tests/unit/preview/test_tasks.py::test_board_columns_when_status_filter[chromium-status_condition] PASSED [ 12%]
+tests/unit/preview/test_api.py::test_fetch_records_when_failed[chromium-invalid] PASSED [ 12%]
+tests/unit/preview/test_api.py::test_call_api[chromium-put_no_content] PASSED [ 12%]
+tests/unit/preview/test_api.py::test_call_api_when_failed[chromium-body_not_json] PASSED [ 12%]
+tests/unit/preview/test_api.py::test_comment_api[chromium-add] PASSED    [ 13%]
+tests/unit/preview/test_api.py::test_put_display[chromium-write_failed] PASSED [ 13%]
+tests/unit/preview/test_api.py::test_post_opened[chromium-server_error] PASSED [ 13%]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-broken_json] PASSED [ 13%]
+tests/unit/preview/test_app.py::test_save_prefs[chromium-setitem_throws] PASSED [ 13%]
+tests/unit/preview/test_app.py::test_form_key[chromium-location_differs] PASSED [ 13%]
+tests/unit/preview/test_app.py::test_resolve_display[chromium-workspace_default] PASSED [ 13%]
+tests/unit/preview/test_app.py::test_comment_counts_when_empty[chromium-only_untargeted] FAILED [ 13%]
+tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-ninety_nine] FAILED [ 14%]
+tests/unit/preview/test_comments_panel.py::test_comments_panel_when_send_disabled[chromium-sending] PASSED [ 14%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-zoom_out] PASSED [ 14%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom_keeps_point[chromium-unchanged_at_max] PASSED [ 14%]
+tests/unit/preview/test_diff.py::test_resolve_diff_point[chromium-since] PASSED [ 14%]
+tests/unit/preview/test_diff.py::test_build_versions_when_dropped_in_range[chromium-dropped_before_range] PASSED [ 14%]
+tests/unit/preview/test_diff.py::test_place_removed_blocks[chromium-last_paragraph] PASSED [ 14%]
+tests/unit/preview/test_diff.py::test_diff_diagram[chromium-sequence] PASSED [ 14%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-label_changed] PASSED [ 14%]
+tests/unit/preview/test_dom.py::test_status_mark[chromium-needs_review] PASSED [ 15%]
+tests/unit/preview/test_dom.py::test_status_badge[chromium-undefined] PASSED [ 15%]
+tests/unit/preview/test_dom.py::test_impact_badge[chromium-medium] PASSED [ 15%]
+tests/unit/preview/test_dom.py::test_tag_list[chromium-undefined] PASSED [ 15%]
+tests/unit/preview/test_dom.py::test_enable_drag_scroll[chromium-button] PASSED [ 15%]
+tests/unit/preview/test_dom.py::test_enable_drag_scroll_when_pressed[chromium-background_within_slop] PASSED [ 15%]
+tests/unit/preview/test_dom.py::test_mark_selected[chromium-closed] PASSED [ 15%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-paragraph] PASSED [ 15%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-header_band] PASSED [ 16%]
+tests/unit/preview/test_overview.py::test_overview_screen_when_kinds_hidden[chromium-kinds_hidden] PASSED [ 16%]
+tests/unit/preview/test_records.py::test_search_items[chromium-body_only] PASSED [ 16%]
+tests/unit/preview/test_records.py::test_location_label[chromium-body_range] PASSED [ 16%]
+tests/unit/preview/test_router.py::test_parse_hash[chromium-filters] PASSED [ 16%]
+tests/unit/preview/test_router.py::test_to_hash[chromium-full_with_filters] PASSED [ 16%]
+tests/unit/preview/test_router.py::test_navigate[chromium-replace] PASSED [ 16%]
+tests/unit/preview/test_selection_comment.py::test_selection_comment_position[chromium-near_bottom] PASSED [ 16%]
+tests/unit/preview/test_send_form.py::test_send_form[chromium-saved] PASSED [ 17%]
+tests/unit/preview/test_send_form.py::test_send_form_when_location_and_no_target[chromium-no_target] PASSED [ 17%]
+tests/unit/preview/test_send_form.py::test_send_form_when_ctrl_enter[chromium-saving] PASSED [ 17%]
+tests/unit/preview/test_send_form.py::test_format_jst[chromium-next_day] PASSED [ 17%]
+tests/unit/preview/test_settings_confirm.py::test_settings_confirm[chromium-busy] PASSED [ 17%]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-overridden] PASSED [ 17%]
+tests/unit/preview/test_table.py::test_filter_rows[chromium-all_columns] PASSED [ 17%]
+tests/unit/preview/test_table.py::test_sort_rows[chromium-order_desc] PASSED [ 17%]
+tests/unit/preview/test_table.py::test_active_condition_count[chromium-two_conditions] PASSED [ 17%]
+tests/unit/preview/test_table.py::test_initial_filters[chromium-decisions_hash] PASSED [ 18%]
+tests/unit/preview/test_tasks.py::test_board_columns_when_status_filter[chromium-no_status_condition] PASSED [ 18%]
+tests/unit/preview/test_api.py::test_call_api[chromium-delete_without_body] PASSED [ 18%]
+tests/unit/preview/test_api.py::test_call_api_when_failed[chromium-unreachable] PASSED [ 18%]
+tests/unit/preview/test_api.py::test_comment_api[chromium-update] PASSED [ 18%]
+tests/unit/preview/test_api.py::test_post_opened[chromium-unreachable] PASSED [ 18%]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-storage_throws] PASSED [ 18%]
+tests/unit/preview/test_app.py::test_form_key[chromium-key_order_differs] PASSED [ 18%]
+tests/unit/preview/test_app.py::test_resolve_display[chromium-override_look_theme_columns] PASSED [ 19%]
+tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-hundred] FAILED [ 19%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-clamped_at_max] PASSED [ 19%]
+tests/unit/preview/test_diff.py::test_diff_diagram[chromium-class] PASSED [ 19%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-node_and_edge_swapped] PASSED [ 19%]
+tests/unit/preview/test_dom.py::test_status_mark[chromium-completed] PASSED [ 19%]
+tests/unit/preview/test_dom.py::test_impact_badge[chromium-small] PASSED [ 19%]
+tests/unit/preview/test_dom.py::test_enable_drag_scroll_when_pressed[chromium-background_over_slop] PASSED [ 19%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-loose_item] PASSED [ 20%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-related_items] PASSED [ 20%]
+tests/unit/preview/test_records.py::test_search_items[chromium-only_one_word] PASSED [ 20%]
+tests/unit/preview/test_records.py::test_location_label[chromium-option_value] PASSED [ 20%]
+tests/unit/preview/test_router.py::test_parse_hash[chromium-unknown_tab] PASSED [ 20%]
+tests/unit/preview/test_router.py::test_to_hash[chromium-decisions_board] PASSED [ 20%]
+tests/unit/preview/test_selection_comment.py::test_selection_comment_position[chromium-right_edge_narrow] PASSED [ 20%]
+tests/unit/preview/test_send_form.py::test_send_form[chromium-empty] PASSED [ 20%]
+tests/unit/preview/test_send_form.py::test_send_form_when_location_and_no_target[chromium-no_target_collapsed] PASSED [ 21%]
+tests/unit/preview/test_settings_confirm.py::test_settings_confirm[chromium-error] PASSED [ 21%]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-export_cannot_save] PASSED [ 21%]
+tests/unit/preview/test_table.py::test_filter_rows[chromium-array_value] PASSED [ 21%]
+tests/unit/preview/test_table.py::test_sort_rows[chromium-none] PASSED   [ 21%]
+tests/unit/preview/test_table.py::test_active_condition_count[chromium-no_value_selected] PASSED [ 21%]
+tests/unit/preview/test_table.py::test_initial_filters[chromium-tasks_default] PASSED [ 21%]
+tests/unit/preview/test_api.py::test_comment_api[chromium-remove] PASSED [ 21%]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-unknown_look_and_kinds] PASSED [ 21%]
+tests/unit/preview/test_app.py::test_form_key[chromium-no_target] PASSED [ 22%]
+tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-over_hundred] FAILED [ 22%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-clamped_at_min] PASSED [ 22%]
+tests/unit/preview/test_diff.py::test_diff_diagram[chromium-er] PASSED   [ 22%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-two_edges_first_changed] PASSED [ 22%]
+tests/unit/preview/test_dom.py::test_status_mark[chromium-unknown] PASSED [ 22%]
+tests/unit/preview/test_dom.py::test_impact_badge[chromium-unknown] PASSED [ 22%]
+tests/unit/preview/test_dom.py::test_enable_drag_scroll_when_pressed[chromium-button_still] PASSED [ 22%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-ordered] PASSED [ 23%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-diagram_svg] PASSED [ 23%]
+tests/unit/preview/test_records.py::test_search_items[chromium-blank] PASSED [ 23%]
+tests/unit/preview/test_records.py::test_location_label[chromium-unknown_key] PASSED [ 23%]
+tests/unit/preview/test_router.py::test_parse_hash[chromium-unknown_id] PASSED [ 23%]
+tests/unit/preview/test_router.py::test_to_hash[chromium-decisions_map] PASSED [ 23%]
+tests/unit/preview/test_send_form.py::test_send_form[chromium-failed_unreachable] PASSED [ 23%]
+tests/unit/preview/test_settings_panel.py::test_settings_panel[chromium-override_same_as_default] PASSED [ 23%]
+tests/unit/preview/test_table.py::test_filter_rows[chromium-no_filter] PASSED [ 24%]
+tests/unit/preview/test_api.py::test_comment_api[chromium-save_draft] PASSED [ 24%]
+tests/unit/preview/test_app.py::test_load_prefs[chromium-look_and_kinds] PASSED [ 24%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-stays_at_max] PASSED [ 24%]
+tests/unit/preview/test_diff.py::test_diff_diagram[chromium-state] PASSED [ 24%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-two_edges_second_changed] PASSED [ 24%]
+tests/unit/preview/test_dom.py::test_status_mark[chromium-undefined] PASSED [ 24%]
+tests/unit/preview/test_dom.py::test_impact_badge[chromium-undefined] PASSED [ 24%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-nested] PASSED [ 25%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-diagram_raw] PASSED [ 25%]
+tests/unit/preview/test_router.py::test_parse_hash[chromium-unknown_view] PASSED [ 25%]
+tests/unit/preview/test_send_form.py::test_send_form[chromium-failed_detail] PASSED [ 25%]
+tests/unit/preview/test_api.py::test_comment_api[chromium-send] PASSED   [ 25%]
+tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-stays_below_min] PASSED [ 25%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-node_id_with_underscore] PASSED [ 25%]
+tests/unit/preview/test_dom.py::test_impact_badge[chromium-large_labeled] PASSED [ 25%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-quote] PASSED [ 25%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-body_to_value] PASSED [ 26%]
+tests/unit/preview/test_router.py::test_parse_hash[chromium-docs_board] PASSED [ 26%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-edge_with_id] PASSED [ 26%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-table_cell] PASSED [ 26%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-removed_part] PASSED [ 26%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-subgraph] PASSED [ 26%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-table_header] PASSED [ 26%]
+tests/unit/preview/test_libs.py::test_selection_location_when_outside[chromium-removed_to_current] PASSED [ 26%]
+tests/unit/preview/test_diff.py::test_diff_diagram_from_source[chromium-graph] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-code] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-item_code] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-bold] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-link_code_escape] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-soft_break] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-hard_space] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-hard_slash] PASSED [ 27%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-duplicate_first] PASSED [ 28%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-duplicate_second] PASSED [ 28%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-paragraph_to_list] PASSED [ 28%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-across_diagram] PASSED [ 28%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-value] PASSED [ 28%]
+tests/unit/preview/test_libs.py::test_selection_location[chromium-after_removed] PASSED [ 28%]
+tests/unit/scripts/test_backup.py::test_take_backup_when_not_git PASSED  [ 28%]
+tests/unit/scripts/test_backup.py::test_take_backup_when_git PASSED      [ 28%]
+tests/unit/scripts/test_backup.py::test_take_backup_when_ignored PASSED  [ 28%]
+tests/unit/scripts/test_backup.py::test_take_backup_when_copy_exists PASSED [ 29%]
+tests/unit/scripts/test_backup.py::test_restore_backup_when_copy PASSED  [ 29%]
+tests/unit/scripts/test_backup.py::test_restore_backup_when_git PASSED   [ 29%]
+tests/unit/scripts/test_builder.py::test_read_records PASSED             [ 29%]
+tests/unit/scripts/test_builder.py::test_read_records_when_schema_mismatch PASSED [ 29%]
+tests/unit/scripts/test_builder.py::test_read_records_when_settings_invalid[with_last_settings] PASSED [ 29%]
+tests/unit/scripts/test_builder.py::test_read_records_when_settings_invalid[without_last_settings] PASSED [ 29%]
+tests/unit/scripts/test_builder.py::test_collect_preview_data PASSED     [ 29%]
+tests/unit/scripts/test_builder.py::test_collect_preview_data_with_changes PASSED [ 30%]
+tests/unit/scripts/test_builder.py::test_escape_for_script PASSED        [ 30%]
+tests/unit/scripts/test_builder.py::test_embed_data PASSED               [ 30%]
+tests/unit/scripts/test_builder.py::test_embed_data_when_element_count_wrong[none] PASSED [ 30%]
+tests/unit/scripts/test_builder.py::test_embed_data_when_element_count_wrong[two] PASSED [ 30%]
+tests/unit/scripts/test_builder.py::test_assemble_template PASSED        [ 30%]
+tests/unit/scripts/test_builder.py::test_assemble_template_when_closing_tag[style] PASSED [ 30%]
+tests/unit/scripts/test_builder.py::test_assemble_template_when_closing_tag[script] PASSED [ 30%]
+tests/unit/scripts/test_builder.py::test_assemble_template_when_slot_count_wrong[style_slot_none] PASSED [ 31%]
+tests/unit/scripts/test_builder.py::test_assemble_template_when_slot_count_wrong[script_slot_two] PASSED [ 31%]
+tests/unit/scripts/test_builder.py::test_derive_preview_values PASSED    [ 31%]
+tests/unit/scripts/test_builder.py::test_derive_preview_values_when_no_goal PASSED [ 31%]
+tests/unit/scripts/test_builder.py::test_replace_file PASSED             [ 31%]
+tests/unit/scripts/test_builder.py::test_replace_file_when_parent_missing PASSED [ 31%]
+tests/unit/scripts/test_builder.py::test_export_preview PASSED           [ 31%]
+tests/unit/scripts/test_builder.py::test_export_preview_when_schema_mismatch PASSED [ 31%]
+tests/unit/scripts/test_builder.py::test_export_preview_when_download_fails PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_export_preview_when_out_dir_missing PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_validate_export_out PASSED      [ 32%]
+tests/unit/scripts/test_builder.py::test_validate_export_out_when_invalid PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_list_external_scripts PASSED    [ 32%]
+tests/unit/scripts/test_builder.py::test_list_external_scripts_when_invalid[start_none] PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_list_external_scripts_when_invalid[end_two] PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_list_external_scripts_when_invalid[end_first] PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_list_external_scripts_when_invalid[integrity_missing] PASSED [ 32%]
+tests/unit/scripts/test_builder.py::test_list_external_scripts_when_invalid[version_missing] PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_template_matches_vendor_libraries PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_fetch_url PASSED                [ 33%]
+tests/unit/scripts/test_builder.py::test_fetch_url_when_unreachable[closed_port] PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_fetch_url_when_unreachable[not_found] PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_fetch_url_when_unreachable[no_content] PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_integrity_mismatch PASSED [ 33%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[dist_closing] PASSED [ 34%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[dist_opening] PASSED [ 34%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[license] PASSED [ 34%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[bundled] PASSED [ 34%]
+tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_library_unknown PASSED [ 34%]
+tests/unit/scripts/test_builder.py::test_format_licenses PASSED          [ 34%]
+tests/unit/scripts/test_check_env.py::test_run_check_env PASSED          [ 34%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_venv_missing PASSED [ 34%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_python_old[old_version] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_python_old[unreadable] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_package_missing PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_old_syntax PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_base_python_old[venv_missing] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_run_check_env_when_base_python_old[python_old] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_parse_version[release] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_parse_version[release_candidate] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_parse_version[two_parts] PASSED [ 35%]
+tests/unit/scripts/test_check_env.py::test_build_install_command[create] PASSED [ 36%]
+tests/unit/scripts/test_check_env.py::test_build_install_command[recreate] PASSED [ 36%]
+tests/unit/scripts/test_check_env.py::test_build_install_command[install_only] PASSED [ 36%]
+tests/unit/scripts/test_check_env.py::test_build_install_command_when_none_missing PASSED [ 36%]
+tests/unit/scripts/test_check_env.py::test_default_venv_dir PASSED       [ 36%]
+tests/unit/scripts/test_check_env.py::test_venv_python_path[posix] PASSED [ 36%]
+tests/unit/scripts/test_check_env.py::test_venv_python_path[windows] PASSED [ 36%]
+tests/unit/scripts/test_check_env.py::test_probe_venv PASSED             [ 36%]
+tests/unit/scripts/test_check_env.py::test_probe_venv_when_failed[os_error] PASSED [ 37%]
+tests/unit/scripts/test_check_env.py::test_probe_venv_when_failed[exit_code_1] PASSED [ 37%]
+tests/unit/scripts/test_check_env.py::test_probe_venv_when_failed[not_json] PASSED [ 37%]
+tests/unit/scripts/test_check_env.py::test_main PASSED                   [ 37%]
+tests/unit/scripts/test_check_env.py::test_main_when_dependency_missing PASSED [ 37%]
+tests/unit/scripts/test_checker.py::test_check_workspace PASSED          [ 37%]
+tests/unit/scripts/test_checker.py::test_check_workspace_when_problems PASSED [ 37%]
+tests/unit/scripts/test_checker.py::test_check_duplicate_ids PASSED      [ 37%]
+tests/unit/scripts/test_checker.py::test_check_refs_when_missing PASSED  [ 38%]
+tests/unit/scripts/test_checker.py::test_check_refs_when_no_goal PASSED  [ 38%]
+tests/unit/scripts/test_checker.py::test_check_phases PASSED             [ 38%]
+tests/unit/scripts/test_checker.py::test_check_phases_when_no_goal PASSED [ 38%]
+tests/unit/scripts/test_checker.py::test_check_refs_when_wrong_kind PASSED [ 38%]
+tests/unit/scripts/test_checker.py::test_check_refs_when_related_any_kind PASSED [ 38%]
+tests/unit/scripts/test_checker.py::test_check_bodies PASSED             [ 38%]
+tests/unit/scripts/test_checker.py::test_check_submissions PASSED        [ 38%]
+tests/unit/scripts/test_checker.py::test_check_submissions_when_invalid PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_submissions_when_missing PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_history_when_body_rewritten PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_history_when_broken_ref PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_comments[comments_body_removed] PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_comments[drafts_unreadable] PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_comments[target_removed] PASSED [ 39%]
+tests/unit/scripts/test_checker.py::test_check_comments[no_files] PASSED [ 39%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys[decision] PASSED [ 39%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys[task] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys[note] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[id] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[created] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[updated] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[updated_by] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[body] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[history] PASSED [ 40%]
+tests/unit/scripts/test_commands.py::test_validate_input_keys_when_reserved[history_dropped_seq] PASSED [ 41%]
+tests/unit/scripts/test_commands.py::test_merge_changes PASSED           [ 41%]
+tests/unit/scripts/test_commands.py::test_switch_adopted PASSED          [ 41%]
+tests/unit/scripts/test_commands.py::test_switch_adopted_when_none_adopted PASSED [ 41%]
+tests/unit/scripts/test_commands.py::test_switch_adopted_when_option_missing PASSED [ 41%]
+tests/unit/scripts/test_commands.py::test_run_init PASSED                [ 41%]
+tests/unit/scripts/test_commands.py::test_run_add PASSED                 [ 41%]
+tests/unit/scripts/test_commands.py::test_run_add_when_no_body PASSED    [ 41%]
+tests/unit/scripts/test_commands.py::test_run_update PASSED              [ 42%]
+tests/unit/scripts/test_commands.py::test_run_update_stacks_history PASSED [ 42%]
+tests/unit/scripts/test_commands.py::test_stage_add PASSED               [ 42%]
+tests/unit/scripts/test_commands.py::test_stage_add_when_note_has_body PASSED [ 42%]
+tests/unit/scripts/test_commands.py::test_stage_update_when_limit_zero PASSED [ 42%]
+tests/unit/scripts/test_commands.py::test_stage_update_sets_editor PASSED [ 42%]
+tests/unit/scripts/test_commands.py::test_stage_update_when_nothing_changed PASSED [ 42%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit[add] PASSED  [ 42%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit[update] PASSED [ 42%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit[remove] PASSED [ 43%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit_when_rejected[key_exists] PASSED [ 43%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit_when_rejected[key_not_found] PASSED [ 43%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit_when_rejected[adopted] PASSED [ 43%]
+tests/unit/scripts/test_commands.py::test_apply_option_edit_when_rejected[adopted_in_option] PASSED [ 43%]
+tests/unit/scripts/test_commands.py::test_run_edit_option PASSED         [ 43%]
+tests/unit/scripts/test_commands.py::test_resolve_refs PASSED            [ 43%]
+tests/unit/scripts/test_commands.py::test_resolve_refs_when_unknown PASSED [ 43%]
+tests/unit/scripts/test_commands.py::test_run_batch PASSED               [ 44%]
+tests/unit/scripts/test_commands.py::test_run_batch_when_operation_fails PASSED [ 44%]
+tests/unit/scripts/test_commands.py::test_run_changes_since_read PASSED  [ 44%]
+tests/unit/scripts/test_commands.py::test_run_changes_since_read_when_schema_mismatch PASSED [ 44%]
+tests/unit/scripts/test_commands.py::test_run_adopt PASSED               [ 44%]
+tests/unit/scripts/test_commands.py::test_run_adopt_when_not_decision PASSED [ 44%]
+tests/unit/scripts/test_commands.py::test_run_commit PASSED              [ 44%]
+tests/unit/scripts/test_commands.py::test_run_commit_when_summary_blank PASSED [ 44%]
+tests/unit/scripts/test_commands.py::test_run_pending_when_empty PASSED  [ 45%]
+tests/unit/scripts/test_commands.py::test_run_check PASSED               [ 45%]
+tests/unit/scripts/test_commands.py::test_run_check_when_problems PASSED [ 45%]
+tests/unit/scripts/test_commands.py::test_run_check_when_legacy_format PASSED [ 45%]
+tests/unit/scripts/test_commands.py::test_run_impact PASSED              [ 45%]
+tests/unit/scripts/test_commands.py::test_run_next PASSED                [ 45%]
+tests/unit/scripts/test_commands.py::test_run_next_when_limit_invalid PASSED [ 45%]
+tests/unit/scripts/test_commands.py::test_run_status PASSED              [ 45%]
+tests/unit/scripts/test_commands.py::test_run_find PASSED                [ 46%]
+tests/unit/scripts/test_commands.py::test_run_show PASSED                [ 46%]
+tests/unit/scripts/test_commands.py::test_run_attrs PASSED               [ 46%]
+tests/unit/scripts/test_commands.py::test_run_tags PASSED                [ 46%]
+tests/unit/scripts/test_commands.py::test_run_goal PASSED                [ 46%]
+tests/unit/scripts/test_commands.py::test_run_migrate PASSED             [ 46%]
+tests/unit/scripts/test_commands.py::test_run_migrate_when_values PASSED [ 46%]
+tests/unit/scripts/test_commands.py::test_run_migrate_when_argument_invalid[plan_and_record] PASSED [ 46%]
+tests/unit/scripts/test_commands.py::test_run_migrate_when_argument_invalid[version_form] PASSED [ 46%]
+tests/unit/scripts/test_commands.py::test_run_migrate_when_argument_invalid[reversed] PASSED [ 47%]
+tests/unit/scripts/test_commands.py::test_run_migrate_when_argument_invalid[values_form] PASSED [ 47%]
+tests/unit/scripts/test_commands.py::test_run_clear_release PASSED       [ 47%]
+tests/unit/scripts/test_commands.py::test_run_export PASSED              [ 47%]
+tests/unit/scripts/test_commands.py::test_run_export_when_out_invalid PASSED [ 47%]
+tests/unit/scripts/test_commands.py::test_run_preview_url PASSED         [ 47%]
+tests/unit/scripts/test_commands.py::test_run_preview_url_when_not_workspace[empty_folder] PASSED [ 47%]
+tests/unit/scripts/test_commands.py::test_run_preview_url_when_not_workspace[legacy_settings_only] PASSED [ 47%]
+tests/unit/scripts/test_commands.py::test_run_submissions PASSED         [ 48%]
+tests/unit/scripts/test_commands.py::test_run_take_submission PASSED     [ 48%]
+tests/unit/scripts/test_comments.py::test_load_comments PASSED           [ 48%]
+tests/unit/scripts/test_comments.py::test_load_comments_when_missing PASSED [ 48%]
+tests/unit/scripts/test_comments.py::test_load_comments_when_invalid[unreadable] PASSED [ 48%]
+tests/unit/scripts/test_comments.py::test_load_comments_when_invalid[body_removed] PASSED [ 48%]
+tests/unit/scripts/test_comments.py::test_load_drafts[with_and_without_target] PASSED [ 48%]
+tests/unit/scripts/test_comments.py::test_load_drafts[missing] PASSED    [ 48%]
+tests/unit/scripts/test_comments.py::test_list_review PASSED             [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment PASSED             [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_location_and_no_target[location] PASSED [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_location_and_no_target[no_target] PASSED [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_restore PASSED [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[target_missing] PASSED [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[location_stale] PASSED [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[restore_existing_id] PASSED [ 49%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_rejected[restore_beyond_seq] PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_add_comment_when_write_fails PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_update_comment[body] PASSED    [ 50%]
+tests/unit/scripts/test_comments.py::test_update_comment[detach_location] PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_update_comment_when_rejected[empty] PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_update_comment_when_rejected[blank_body] PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_update_comment_when_rejected[loc_not_null] PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_update_comment_when_rejected[not_found] PASSED [ 50%]
+tests/unit/scripts/test_comments.py::test_delete_comment PASSED          [ 50%]
+tests/unit/scripts/test_comments.py::test_delete_comment_when_not_found PASSED [ 51%]
+tests/unit/scripts/test_comments.py::test_save_draft PASSED              [ 51%]
+tests/unit/scripts/test_comments.py::test_save_draft_when_empty PASSED   [ 51%]
+tests/unit/scripts/test_comments.py::test_save_draft_when_rejected[body_missing] PASSED [ 51%]
+tests/unit/scripts/test_comments.py::test_save_draft_when_rejected[body_too_long] PASSED [ 51%]
+tests/unit/scripts/test_comments.py::test_save_draft_when_rejected[loc_without_target] PASSED [ 51%]
+tests/unit/scripts/test_comments.py::test_save_draft_when_rejected[target_missing] PASSED [ 51%]
+tests/unit/scripts/test_comments.py::test_send_comments PASSED           [ 51%]
+tests/unit/scripts/test_comments.py::test_send_comments_when_rejected[empty] PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_send_comments_when_rejected[duplicated] PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_send_comments_when_rejected[not_found] PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_send_comments_when_stale PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_send_comments_when_comments_write_fails PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[body_missing] PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[body_blank] PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[body_too_long] PASSED [ 52%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[body_not_string] PASSED [ 53%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[target_not_string] PASSED [ 53%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[loc_without_target] PASSED [ 53%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[id_without_created] PASSED [ 53%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_invalid[id_wrong_form] PASSED [ 53%]
+tests/unit/scripts/test_comments.py::test_parse_comment_input_when_boundary PASSED [ 53%]
+tests/unit/scripts/test_field_to_playbooks.py::test_migrate PASSED       [ 53%]
+tests/unit/scripts/test_field_to_playbooks.py::test_migrate_when_no_field PASSED [ 53%]
+tests/unit/scripts/test_field_to_playbooks.py::test_migrate_when_both PASSED [ 53%]
+tests/unit/scripts/test_field_to_playbooks.py::test_migrate_when_settings_renamed PASSED [ 54%]
+tests/unit/scripts/test_graph.py::test_build_reverse_edges PASSED        [ 54%]
+tests/unit/scripts/test_graph.py::test_trace_impact PASSED               [ 54%]
+tests/unit/scripts/test_graph.py::test_trace_impact_when_cycle PASSED    [ 54%]
+tests/unit/scripts/test_graph.py::test_is_settled[decision_settled] PASSED [ 54%]
+tests/unit/scripts/test_graph.py::test_is_settled[decision_on_hold] PASSED [ 54%]
+tests/unit/scripts/test_graph.py::test_is_settled[task_cancelled] PASSED [ 54%]
+tests/unit/scripts/test_graph.py::test_is_settled[task_in_progress] PASSED [ 54%]
+tests/unit/scripts/test_graph.py::test_is_settled_when_missing PASSED    [ 55%]
+tests/unit/scripts/test_graph.py::test_count_followers PASSED            [ 55%]
+tests/unit/scripts/test_graph.py::test_list_next_candidates PASSED       [ 55%]
+tests/unit/scripts/test_graph.py::test_list_next_candidates_when_phase_unknown PASSED [ 55%]
+tests/unit/scripts/test_graph.py::test_list_next_candidates_when_limited PASSED [ 55%]
+tests/unit/scripts/test_graph.py::test_summarize_status PASSED           [ 55%]
+tests/unit/scripts/test_graph.py::test_judge_goal PASSED                 [ 55%]
+tests/unit/scripts/test_graph.py::test_judge_goal_when_remaining PASSED  [ 55%]
+tests/unit/scripts/test_graph.py::test_judge_goal_when_goal_phase_unknown PASSED [ 56%]
+tests/unit/scripts/test_graph.py::test_judge_goal_when_no_goal PASSED    [ 56%]
+tests/unit/scripts/test_history.py::test_load_changes_when_missing PASSED [ 56%]
+tests/unit/scripts/test_history.py::test_load_changes_when_schema_mismatch PASSED [ 56%]
+tests/unit/scripts/test_history.py::test_history_limit[missing] PASSED   [ 56%]
+tests/unit/scripts/test_history.py::test_history_limit[zero] PASSED      [ 56%]
+tests/unit/scripts/test_history.py::test_history_limit[three] PASSED     [ 56%]
+tests/unit/scripts/test_history.py::test_diff_body PASSED                [ 56%]
+tests/unit/scripts/test_history.py::test_diff_body_when_large_rewrite PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_apply_body_diff_when_text_rewritten PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_make_entry PASSED               [ 57%]
+tests/unit/scripts/test_history.py::test_make_entry_when_nothing_changed PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_make_entry_records_editor[value_changed] PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_make_entry_records_editor[only_editor_changed] PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_stack_history PASSED            [ 57%]
+tests/unit/scripts/test_history.py::test_stack_history_when_not_dropped PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_stack_history_when_limit_zero PASSED [ 57%]
+tests/unit/scripts/test_history.py::test_stack_history_keeps_unread PASSED [ 58%]
+tests/unit/scripts/test_history.py::test_note_pending PASSED             [ 58%]
+tests/unit/scripts/test_history.py::test_commit_pending PASSED           [ 58%]
+tests/unit/scripts/test_history.py::test_commit_pending_when_empty PASSED [ 58%]
+tests/unit/scripts/test_history.py::test_pending_view PASSED             [ 58%]
+tests/unit/scripts/test_history.py::test_touch_opened PASSED             [ 58%]
+tests/unit/scripts/test_history.py::test_advance_seq PASSED              [ 58%]
+tests/unit/scripts/test_history.py::test_values_at_read PASSED           [ 58%]
+tests/unit/scripts/test_history.py::test_values_at_read_when_changed_back PASSED [ 59%]
+tests/unit/scripts/test_history.py::test_changes_since PASSED            [ 59%]
+tests/unit/scripts/test_history.py::test_changes_since_when_no_read_point PASSED [ 59%]
+tests/unit/scripts/test_history.py::test_changes_since_when_limit_zero PASSED [ 59%]
+tests/unit/scripts/test_history.py::test_changes_since_reports_editors PASSED [ 59%]
+tests/unit/scripts/test_history.py::test_mark_read PASSED                [ 59%]
+tests/unit/scripts/test_kinds.py::test_kind_of_id_when_known_prefix[decision] PASSED [ 59%]
+tests/unit/scripts/test_kinds.py::test_kind_of_id_when_known_prefix[log] PASSED [ 59%]
+tests/unit/scripts/test_kinds.py::test_kind_of_id_when_unknown[unknown_prefix] PASSED [ 60%]
+tests/unit/scripts/test_kinds.py::test_kind_of_id_when_unknown[no_number] PASSED [ 60%]
+tests/unit/scripts/test_kinds.py::test_kind_of_id_when_unknown[not_digits] PASSED [ 60%]
+tests/unit/scripts/test_kinds.py::test_kind_of_id_when_unknown[lowercase] PASSED [ 60%]
+tests/unit/scripts/test_kinds.py::test_records_root PASSED               [ 60%]
+tests/unit/scripts/test_launch.py::test_find_plugin_dir PASSED           [ 60%]
+tests/unit/scripts/test_launch.py::test_find_plugin_dir_when_missing PASSED [ 60%]
+tests/unit/scripts/test_launch.py::test_session_name PASSED              [ 60%]
+tests/unit/scripts/test_launch.py::test_session_name_when_same_name_elsewhere PASSED [ 60%]
+tests/unit/scripts/test_launch.py::test_write_mcp_config PASSED          [ 61%]
+tests/unit/scripts/test_launch.py::test_run_launch PASSED                [ 61%]
+tests/unit/scripts/test_launch.py::test_run_launch_when_plugin_missing PASSED [ 61%]
+tests/unit/scripts/test_launch.py::test_run_launch_when_listing_invalid[not_json] PASSED [ 61%]
+tests/unit/scripts/test_launch.py::test_run_launch_when_listing_invalid[not_array] PASSED [ 61%]
+tests/unit/scripts/test_locations.py::test_parse_location[body] PASSED   [ 61%]
+tests/unit/scripts/test_locations.py::test_parse_location[value] PASSED  [ 61%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[not_object] PASSED [ 61%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[kind_unknown] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[end_missing] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[start_after_end] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[start_bool] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[key_missing] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[text_blank] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_parse_location_when_invalid[text_long] PASSED [ 62%]
+tests/unit/scripts/test_locations.py::test_location_to_dict PASSED       [ 62%]
+tests/unit/scripts/test_locations.py::test_check_location[list_and_bold] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[soft_break] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[table_row] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[link] PASSED   [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[link_in_sentence] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[image_in_sentence] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[character_reference] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[option_value] PASSED [ 63%]
+tests/unit/scripts/test_locations.py::test_check_location[title_value] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[past_last_line] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[text_missing] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[no_body] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_check_location_when_stale[key_missing] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_value_at[title] PASSED        [ 64%]
+tests/unit/scripts/test_locations.py::test_value_at[option_value] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_value_at[option_missing] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_value_at[through_string] PASSED [ 64%]
+tests/unit/scripts/test_locations.py::test_normalize_selected PASSED     [ 65%]
+tests/unit/scripts/test_locations.py::test_normalize_source[list_marker] PASSED [ 65%]
+tests/unit/scripts/test_locations.py::test_normalize_source[table_separator] PASSED [ 65%]
+tests/unit/scripts/test_locations.py::test_normalize_source[fence] PASSED [ 65%]
+tests/unit/scripts/test_locations.py::test_normalize_source[image] PASSED [ 65%]
+tests/unit/scripts/test_locations.py::test_normalize_source[link] PASSED [ 65%]
+tests/unit/scripts/test_locations.py::test_normalize_source[character_reference] PASSED [ 65%]
+tests/unit/scripts/test_migration_coverage.py::test_schema_changes_have_migration PASSED [ 65%]
+tests/unit/scripts/test_migration_coverage.py::test_plugin_version_not_behind_release_version PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_key PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_key_missing PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_key_conflict PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_map_values PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_set_default_ask PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[set_default] PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[rename_key] PASSED [ 66%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[map_values] PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_set_default_value PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file[move] PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file[destination_exists] PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file_into_record_dir[file] PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file_into_record_dir[dir] PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_delete_missing PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_call PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_apply_step_when_unreadable PASSED [ 67%]
+tests/unit/scripts/test_migration_ops.py::test_describe_step[rename_key] PASSED [ 68%]
+tests/unit/scripts/test_migration_ops.py::test_describe_step[map_values] PASSED [ 68%]
+tests/unit/scripts/test_migration_ops.py::test_describe_step[set_default_ask] PASSED [ 68%]
+tests/unit/scripts/test_migration_ops.py::test_list_needed_values[missing] PASSED [ 68%]
+tests/unit/scripts/test_migration_ops.py::test_list_needed_values[present] PASSED [ 68%]
+tests/unit/scripts/test_migrator.py::test_list_versions PASSED           [ 68%]
+tests/unit/scripts/test_migrator.py::test_load_steps PASSED              [ 68%]
+tests/unit/scripts/test_migrator.py::test_load_steps_when_v0_5_0 PASSED  [ 68%]
+tests/unit/scripts/test_migrator.py::test_load_steps_when_invalid PASSED [ 69%]
+tests/unit/scripts/test_migrator.py::test_plan_migration PASSED          [ 69%]
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_same PASSED [ 69%]
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_newer PASSED [ 69%]
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_workspace_missing PASSED [ 69%]
+tests/unit/scripts/test_migrator.py::test_plan_migration_when_settings_renamed PASSED [ 69%]
+tests/unit/scripts/test_migrator.py::test_apply_migration PASSED         [ 69%]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_already_current PASSED [ 69%]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_newer PASSED [ 70%]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_step_fails PASSED [ 70%]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_restore_fails PASSED [ 70%]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_settings_renamed PASSED [ 70%]
+tests/unit/scripts/test_migrator.py::test_apply_migration_when_config_current PASSED [ 70%]
+tests/unit/scripts/test_migrator.py::test_set_values PASSED              [ 70%]
+tests/unit/scripts/test_migrator.py::test_set_values_when_write_fails PASSED [ 70%]
+tests/unit/scripts/test_migrator.py::test_record_version PASSED          [ 70%]
+tests/unit/scripts/test_migrator.py::test_record_version_when_schema_mismatch PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_require_migratable[record_config_yaml_only] PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_require_migratable[top_config_yaml_only] PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_require_migratable[legacy_mindmap_yaml_only] PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_require_migratable[neither] PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_renamed_file[renamed_later] PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_renamed_file[no_later_steps] PASSED [ 71%]
+tests/unit/scripts/test_migrator.py::test_renamed_file[moved_later] PASSED [ 71%]
+tests/unit/scripts/test_query.py::test_search_items_when_text_and_attr PASSED [ 71%]
+tests/unit/scripts/test_query.py::test_search_items_when_nested_text PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[kind] PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[status] PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[tag] PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[target] PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[category] PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_fields[phase] PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_search_items_when_no_filter PASSED [ 72%]
+tests/unit/scripts/test_query.py::test_contains_text[nested_value] PASSED [ 73%]
+tests/unit/scripts/test_query.py::test_contains_text[dict_key] PASSED    [ 73%]
+tests/unit/scripts/test_query.py::test_contains_text[number] PASSED      [ 73%]
+tests/unit/scripts/test_query.py::test_parse_attr[name_and_value] PASSED [ 73%]
+tests/unit/scripts/test_query.py::test_parse_attr[name_only] PASSED      [ 73%]
+tests/unit/scripts/test_query.py::test_parse_attr[value_with_equal] PASSED [ 73%]
+tests/unit/scripts/test_query.py::test_show_item PASSED                  [ 73%]
+tests/unit/scripts/test_query.py::test_show_item_when_body_missing PASSED [ 73%]
+tests/unit/scripts/test_query.py::test_list_referrers PASSED             [ 74%]
+tests/unit/scripts/test_query.py::test_list_attrs PASSED                 [ 74%]
+tests/unit/scripts/test_query.py::test_list_attrs_when_none PASSED       [ 74%]
+tests/unit/scripts/test_query.py::test_list_tags PASSED                  [ 74%]
+tests/unit/scripts/test_query.py::test_list_tags_when_duplicated PASSED  [ 74%]
+tests/unit/scripts/test_query.py::test_list_tags_when_none PASSED        [ 74%]
+tests/unit/scripts/test_serve.py::test_start PASSED                      [ 74%]
+tests/unit/scripts/test_serve.py::test_start_when_settings_invalid PASSED [ 74%]
+tests/unit/scripts/test_serve.py::test_stop_all PASSED                   [ 75%]
+tests/unit/scripts/test_serve.py::test_start_preview_server PASSED       [ 75%]
+tests/unit/scripts/test_serve.py::test_start_preview_server_when_bind_fails PASSED [ 75%]
+tests/unit/scripts/test_serve.py::test_check_host[loopback] PASSED       [ 75%]
+tests/unit/scripts/test_serve.py::test_check_host[localhost_uppercase] PASSED [ 75%]
+tests/unit/scripts/test_serve.py::test_check_host[other_port] PASSED     [ 75%]
+tests/unit/scripts/test_serve.py::test_check_host[other_name] PASSED     [ 75%]
+tests/unit/scripts/test_serve.py::test_check_host[missing] PASSED        [ 75%]
+tests/unit/scripts/test_serve.py::test_check_origin[missing] PASSED      [ 75%]
+tests/unit/scripts/test_serve.py::test_check_origin[loopback] PASSED     [ 76%]
+tests/unit/scripts/test_serve.py::test_check_origin[localhost] PASSED    [ 76%]
+tests/unit/scripts/test_serve.py::test_check_origin[other_site] PASSED   [ 76%]
+tests/unit/scripts/test_serve.py::test_check_origin[other_port] PASSED   [ 76%]
+tests/unit/scripts/test_serve.py::test_problem_response PASSED           [ 76%]
+tests/unit/scripts/test_serve.py::test_index_response PASSED             [ 76%]
+tests/unit/scripts/test_serve.py::test_index_response_when_template_invalid PASSED [ 76%]
+tests/unit/scripts/test_serve.py::test_records_response PASSED           [ 76%]
+tests/unit/scripts/test_serve.py::test_records_response_when_schema_mismatch PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_records_response_when_workspace_removed PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_records_response_when_settings_changed PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_workspace_signature[rewrite_yaml] PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_workspace_signature[add_body] PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_workspace_signature[add_submissions] PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_workspace_signature[add_comments] PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_workspace_signature[add_drafts] PASSED [ 77%]
+tests/unit/scripts/test_serve.py::test_workspace_signature[add_lock_file] PASSED [ 78%]
+tests/unit/scripts/test_serve.py::test_workspace_signature_with_changes[add_changes] PASSED [ 78%]
+tests/unit/scripts/test_serve.py::test_workspace_signature_with_changes[add_opened] PASSED [ 78%]
+tests/unit/scripts/test_serve.py::test_stream_events PASSED              [ 78%]
+tests/unit/scripts/test_serve.py::test_stream_events_when_idle PASSED    [ 78%]
+tests/unit/scripts/test_serve.py::test_comments_response[comments_and_drafts] PASSED [ 78%]
+tests/unit/scripts/test_serve.py::test_comments_response[no_files] PASSED [ 78%]
+tests/unit/scripts/test_serve.py::test_comments_response_when_invalid PASSED [ 78%]
+tests/unit/scripts/test_serve.py::test_write_response[created] PASSED    [ 78%]
+tests/unit/scripts/test_serve.py::test_write_response[no_content] PASSED [ 79%]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[content_type] PASSED [ 79%]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[origin] PASSED [ 79%]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[not_object] PASSED [ 79%]
+tests/unit/scripts/test_serve.py::test_write_response_when_rejected[not_json] PASSED [ 79%]
+tests/unit/scripts/test_serve.py::test_opened_response PASSED            [ 79%]
+tests/unit/scripts/test_serve.py::test_opened_response_when_write_fails PASSED [ 79%]
+tests/unit/scripts/test_serve.py::test_delete_response[deleted] PASSED   [ 79%]
+tests/unit/scripts/test_serve.py::test_delete_response[origin] PASSED    [ 80%]
+tests/unit/scripts/test_serve.py::test_delete_response[not_found] PASSED [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[invalid] PASSED    [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[settings_invalid] PASSED [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[item_not_found] PASSED [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[comment_not_found] PASSED [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[conflict] PASSED   [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[schema_mismatch] PASSED [ 80%]
+tests/unit/scripts/test_serve.py::test_error_response[write] PASSED      [ 81%]
+tests/unit/scripts/test_serve.py::test_settings_holder PASSED            [ 81%]
+tests/unit/scripts/test_serve.py::test_reload_response[passes] PASSED    [ 81%]
+tests/unit/scripts/test_serve.py::test_reload_response[schema_mismatch] PASSED [ 81%]
+tests/unit/scripts/test_serve.py::test_reload_response[other_origin] PASSED [ 81%]
+tests/unit/scripts/test_server.py::test_main PASSED                      [ 81%]
+tests/unit/scripts/test_server.py::test_main_when_server_raises PASSED   [ 81%]
+tests/unit/scripts/test_server.py::test_build_server PASSED              [ 81%]
+tests/unit/scripts/test_server.py::test_build_server_when_relative_workspace PASSED [ 82%]
+tests/unit/scripts/test_server.py::test_call_tool PASSED                 [ 82%]
+tests/unit/scripts/test_server.py::test_call_tool_when_mindmap_error PASSED [ 82%]
+tests/unit/scripts/test_server.py::test_call_tool_when_unexpected_error PASSED [ 82%]
+tests/unit/scripts/test_server.py::test_call_tool_when_lock_root PASSED  [ 82%]
+tests/unit/scripts/test_server.py::test_call_tool_when_lock_require PASSED [ 82%]
+tests/unit/scripts/test_server.py::test_ok_result PASSED                 [ 82%]
+tests/unit/scripts/test_server.py::test_error_result PASSED              [ 82%]
+tests/unit/scripts/test_server.py::test_error_result_when_legacy_format PASSED [ 82%]
+tests/unit/scripts/test_server.py::test_resolve_workspace[relative] PASSED [ 83%]
+tests/unit/scripts/test_server.py::test_resolve_workspace[home] PASSED   [ 83%]
+tests/unit/scripts/test_server.py::test_resolve_workspace[absolute] PASSED [ 83%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input PASSED [ 83%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_key[empty] PASSED [ 83%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_key[not_editable_key] PASSED [ 83%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_key[required_key_null] PASSED [ 83%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_phase_map[without_phases] PASSED [ 83%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_phase_map[key_in_new_phases] PASSED [ 84%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_phase_map[key_not_in_current_phases] PASSED [ 84%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_phase_map[value_not_in_new_phases] PASSED [ 84%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_target_map[without_targets] PASSED [ 84%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_target_map[key_in_new_targets] PASSED [ 84%]
+tests/unit/scripts/test_settings_update.py::test_validate_settings_input_when_bad_target_map[value_not_in_new_targets] PASSED [ 84%]
+tests/unit/scripts/test_settings_update.py::test_merge_settings PASSED   [ 84%]
+tests/unit/scripts/test_settings_update.py::test_remap_phases PASSED     [ 84%]
+tests/unit/scripts/test_settings_update.py::test_remap_phases_when_unmapped PASSED [ 85%]
+tests/unit/scripts/test_settings_update.py::test_save_settings PASSED    [ 85%]
+tests/unit/scripts/test_settings_update.py::test_save_settings_when_schema_mismatch PASSED [ 85%]
+tests/unit/scripts/test_settings_update.py::test_save_settings_when_replace_fails PASSED [ 85%]
+tests/unit/scripts/test_settings_update.py::test_update_settings PASSED  [ 85%]
+tests/unit/scripts/test_settings_update.py::test_update_settings_when_goal_phase_unknown PASSED [ 85%]
+tests/unit/scripts/test_settings_update.py::test_update_settings_when_display PASSED [ 85%]
+tests/unit/scripts/test_settings_update.py::test_remap_names PASSED      [ 85%]
+tests/unit/scripts/test_settings_update.py::test_remap_names_when_unmapped PASSED [ 85%]
+tests/unit/scripts/test_settings_update.py::test_update_display PASSED   [ 86%]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[unknown_look] PASSED [ 86%]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[no_look] PASSED [ 86%]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[duplicate_kinds] PASSED [ 86%]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[unknown_kind] PASSED [ 86%]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_body_invalid[kinds_string] PASSED [ 86%]
+tests/unit/scripts/test_settings_update.py::test_update_display_when_settings_broken PASSED [ 86%]
+tests/unit/scripts/test_store.py::test_load_workspace PASSED             [ 86%]
+tests/unit/scripts/test_store.py::test_load_workspace_when_yaml_broken PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_load_workspace_when_settings_missing PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_load_workspace_when_top_level_list PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_load_workspace_when_settings_broken PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_validate_workspace PASSED         [ 87%]
+tests/unit/scripts/test_store.py::test_validate_workspace_when_status_invalid PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_validate_workspace_when_common_key_invalid PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_validate_workspace_when_load_problem PASSED [ 87%]
+tests/unit/scripts/test_store.py::test_validate_workspace_when_top_level_invalid[top_level_list] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_validate_workspace_when_top_level_invalid[extra_key] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[settings] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[legacy_doc] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[decision] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[broken_ref] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_is_legacy_problem[settings_with_field] PASSED [ 88%]
+tests/unit/scripts/test_store.py::test_load_validators[settings] PASSED  [ 88%]
+tests/unit/scripts/test_store.py::test_load_validators[decisions] PASSED [ 89%]
+tests/unit/scripts/test_store.py::test_load_validators[tasks] PASSED     [ 89%]
+tests/unit/scripts/test_store.py::test_load_validators[research] PASSED  [ 89%]
+tests/unit/scripts/test_store.py::test_load_validators[docs] PASSED      [ 89%]
+tests/unit/scripts/test_store.py::test_load_validators[terms] PASSED     [ 89%]
+tests/unit/scripts/test_store.py::test_load_validators[notes] PASSED     [ 89%]
+tests/unit/scripts/test_store.py::test_load_validators[logs] PASSED      [ 89%]
+tests/unit/scripts/test_store.py::test_find_item PASSED                  [ 89%]
+tests/unit/scripts/test_store.py::test_find_item_when_unknown_prefix PASSED [ 89%]
+tests/unit/scripts/test_store.py::test_find_item_when_id_missing PASSED  [ 90%]
+tests/unit/scripts/test_store.py::test_next_id PASSED                    [ 90%]
+tests/unit/scripts/test_store.py::test_next_id_when_empty PASSED         [ 90%]
+tests/unit/scripts/test_store.py::test_save_change PASSED                [ 90%]
+tests/unit/scripts/test_store.py::test_save_change_when_schema_mismatch PASSED [ 90%]
+tests/unit/scripts/test_store.py::test_save_change_when_temp_write_fails PASSED [ 90%]
+tests/unit/scripts/test_store.py::test_save_change_when_yaml_replace_fails_with_previous_body PASSED [ 90%]
+tests/unit/scripts/test_store.py::test_save_change_when_yaml_replace_fails_without_previous_body PASSED [ 90%]
+tests/unit/scripts/test_store.py::test_save_change_when_changes_replace_fails PASSED [ 91%]
+tests/unit/scripts/test_store.py::test_save_batch PASSED                 [ 91%]
+tests/unit/scripts/test_store.py::test_save_batch_when_schema_mismatch PASSED [ 91%]
+tests/unit/scripts/test_store.py::test_save_batch_when_replace_fails PASSED [ 91%]
+tests/unit/scripts/test_store.py::test_create_workspace PASSED           [ 91%]
+tests/unit/scripts/test_store.py::test_create_workspace_when_exists[record_config] PASSED [ 91%]
+tests/unit/scripts/test_store.py::test_create_workspace_when_exists[top_config_yaml] PASSED [ 91%]
+tests/unit/scripts/test_store.py::test_create_workspace_when_exists[legacy_mindmap_yaml] PASSED [ 91%]
+tests/unit/scripts/test_store.py::test_create_workspace_when_settings_invalid PASSED [ 92%]
+tests/unit/scripts/test_store.py::test_create_workspace_when_write_fails PASSED [ 92%]
+tests/unit/scripts/test_store.py::test_clear_release PASSED              [ 92%]
+tests/unit/scripts/test_store.py::test_clear_release_when_release_dir_missing PASSED [ 92%]
+tests/unit/scripts/test_store.py::test_clear_release_when_workspace_missing PASSED [ 92%]
+tests/unit/scripts/test_store.py::test_clear_release_when_remove_fails PASSED [ 92%]
+tests/unit/scripts/test_store.py::test_read_body PASSED                  [ 92%]
+tests/unit/scripts/test_store.py::test_read_body_when_missing PASSED     [ 92%]
+tests/unit/scripts/test_store.py::test_read_body_when_outside PASSED     [ 92%]
+tests/unit/scripts/test_store.py::test_dump_yaml PASSED                  [ 93%]
+tests/unit/scripts/test_store.py::test_format_path[nested] PASSED        [ 93%]
+tests/unit/scripts/test_store.py::test_format_path[empty] PASSED         [ 93%]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[top_level_list] PASSED [ 93%]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[extra_key] PASSED [ 93%]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[string_element] PASSED [ 93%]
+tests/unit/scripts/test_store.py::test_save_change_when_file_shape_broken[yaml_unreadable] PASSED [ 93%]
+tests/unit/scripts/test_store.py::test_save_change_when_item_value_fixed PASSED [ 93%]
+tests/unit/scripts/test_store.py::test_write_temp_when_mode[copy_from_target] PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_write_temp_when_mode[from_umask] PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock PASSED             [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock_when_raises PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock_when_folder_missing PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock_when_not_workspace[empty_folder] PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock_when_not_workspace[missing_folder] PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock_when_require_given[require_migratable] PASSED [ 94%]
+tests/unit/scripts/test_store.py::test_workspace_lock_when_require_given[default] PASSED [ 95%]
+tests/unit/scripts/test_store.py::test_require_workspace PASSED          [ 95%]
+tests/unit/scripts/test_store.py::test_require_workspace_when_missing[empty_folder] PASSED [ 95%]
+tests/unit/scripts/test_store.py::test_require_workspace_when_missing[legacy_settings_only] PASSED [ 95%]
+tests/unit/scripts/test_store.py::test_require_workspace_when_missing[top_config_only] PASSED [ 95%]
+tests/unit/scripts/test_store.py::test_check_settings PASSED             [ 95%]
+tests/unit/scripts/test_store.py::test_check_settings_when_invalid[unknown_look] PASSED [ 95%]
+tests/unit/scripts/test_store.py::test_check_settings_when_invalid[duplicate_kinds] PASSED [ 95%]
+tests/unit/scripts/test_store.py::test_check_settings_when_invalid[broken_yaml] PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_load_submissions PASSED     [ 96%]
+tests/unit/scripts/test_submissions.py::test_load_submissions_when_missing PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_load_submissions_when_invalid[unreadable] PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_load_submissions_when_invalid[body_removed] PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_load_submissions_when_previous_version PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_list_pending_submissions PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_list_pending_submissions_when_target_removed PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_list_pending_submissions_when_location_and_no_target PASSED [ 96%]
+tests/unit/scripts/test_submissions.py::test_take_submission PASSED      [ 97%]
+tests/unit/scripts/test_submissions.py::test_take_submission_when_already_taken PASSED [ 97%]
+tests/unit/scripts/test_submissions.py::test_take_submission_when_not_found PASSED [ 97%]
+tests/unit/scripts/test_submissions.py::test_take_submission_when_write_fails PASSED [ 97%]
+tests/unit/scripts/test_submissions.py::test_append_submissions PASSED   [ 97%]
+tests/unit/scripts/test_submissions.py::test_append_submissions_when_first PASSED [ 97%]
+tests/unit/scripts/test_submissions.py::test_append_submissions_when_already_sent PASSED [ 97%]
+tests/unit/scripts/test_submissions.py::test_append_submissions_when_write_fails PASSED [ 97%]
+tests/unit/scripts/test_versions.py::test_parse_release_version PASSED   [ 98%]
+tests/unit/scripts/test_versions.py::test_parse_release_version_when_invalid[no_prefix] PASSED [ 98%]
+tests/unit/scripts/test_versions.py::test_parse_release_version_when_invalid[two_parts] PASSED [ 98%]
+tests/unit/scripts/test_versions.py::test_parse_release_version_when_invalid[suffix] PASSED [ 98%]
+tests/unit/scripts/test_versions.py::test_parse_release_version_when_invalid[empty] PASSED [ 98%]
+tests/unit/scripts/test_versions.py::test_compare_versions[unrecorded] PASSED [ 98%]
+tests/unit/scripts/test_versions.py::test_compare_versions[older] PASSED [ 98%]
+tests/unit/scripts/test_versions.py::test_compare_versions[same] PASSED  [ 98%]
+tests/unit/scripts/test_versions.py::test_compare_versions[newer] PASSED [ 99%]
+tests/unit/scripts/test_versions.py::test_read_workspace_version PASSED  [ 99%]
+tests/unit/scripts/test_versions.py::test_read_workspace_version_when_missing PASSED [ 99%]
+tests/unit/scripts/test_versions.py::test_read_workspace_version_when_invalid PASSED [ 99%]
+tests/unit/scripts/test_versions.py::test_read_workspace_version_when_at_top[top_only] PASSED [ 99%]
+tests/unit/scripts/test_versions.py::test_read_workspace_version_when_at_top[record_wins] PASSED [ 99%]
+tests/unit/scripts/test_versions.py::test_read_plugin_version PASSED     [ 99%]
+tests/unit/scripts/test_versions.py::test_write_workspace_version PASSED [ 99%]
+tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails PASSED [100%]
+
+=================================== FAILURES ===================================
+________________________ test_comment_counts[chromium] _________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0b928a40>
+
+    def test_comment_counts(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+        """項目ごとに数え、箇所を指すコメントも含め、項目を指さないコメントは数えない（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        items = [COMMENT_ON_D1, COMMENT_ON_D1_BODY, COMMENT_ON_T1, COMMENT_ON_NOTHING]
+        # 実行
+>       counts = preview_page.evaluate("""(items) => MindmapPreview.commentCounts(items)""", items)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_app.py:363: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0b9037e0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentCounts is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:27)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+______________ test_comment_counts_when_empty[chromium-no_items] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0b89f380>
+items = []
+
+    @pytest.mark.parametrize(
+        "items",
+        [
+            pytest.param([], id="no_items"),
+            pytest.param(
+                [COMMENT_ON_NOTHING, {**COMMENT_ON_NOTHING, "id": "C-5"}], id="only_untargeted"
+            ),
+        ],
+    )
+    def test_comment_counts_when_empty(
+        preview_page: Page, load_preview_scripts: LoadPreviewScripts, items: list[dict[str, Any]]
+    ) -> None:
+        """項目を指すコメントが無ければ空の対応を返す（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+>       counts = preview_page.evaluate("""(items) => MindmapPreview.commentCounts(items)""", items)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_app.py:384: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0ba03ce0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentCounts is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:27)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+_____________________ test_refresh_comment_marks[chromium] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0b8f3a60>
+
+    def test_refresh_comment_marks(
+        preview_page: Page, load_preview_scripts: LoadPreviewScripts
+    ) -> None:
+        """件数のある場所に印を入れ、無くなった場所を空にする。場所の外とスクロールの位置は変えない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        preview_page.set_content(MARK_SCREEN_HTML)
+        preview_page.evaluate("""() => { document.getElementById("screen").scrollTop = 30; }""")
+        outside_before = preview_page.evaluate("""() => document.getElementById("outside").outerHTML""")
+        # 実行
+>       preview_page.evaluate(
+            """() => MindmapPreview.refreshCommentMarks({
+                root: document.getElementById("screen"),
+                counts: {"D-1": 1, "D-2": 3},
+            })"""
+        )
+
+tests/unit/preview/test_comment_mark.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0b8f1440>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.refreshCommentMarks is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________________ test_comment_mark_label[chromium-one] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0af42c00>
+count = 1, shown = '1', spoken = 'コメント 1 件'
+
+    @pytest.mark.parametrize(
+        ("count", "shown", "spoken"),
+        [
+            pytest.param(1, "1", "コメント 1 件", id="one"),
+            pytest.param(99, "99", "コメント 99 件", id="ninety_nine"),
+            pytest.param(100, "99+", "コメント 100 件", id="hundred"),
+            pytest.param(128, "99+", "コメント 128 件", id="over_hundred"),
+        ],
+    )
+    def test_comment_mark_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        count: int,
+        shown: str,
+        spoken: str,
+    ) -> None:
+        """99 を超えると画面は「99+」、読み上げは実数（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       mark = preview_page.evaluate(
+            """(count) => {
+                const element = MindmapPreview.commentMark({count});
+                return {
+                    shown: element.querySelector(".cmk-n").textContent,
+                    spoken: element.querySelector(".sr-only").textContent,
+                    title: element.title,
+                };
+            }""",
+            count,
+        )
+
+tests/unit/preview/test_comment_mark.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0af41ee0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentMark is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:2:44)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+___________ test_comment_counts_when_empty[chromium-only_untargeted] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0a0dbc40>
+items = [{'id': 'C-4', 'target': None, 'target_title': None, 'loc': None, ...}, {'id': 'C-5', 'target': None, 'target_title': None, 'loc': None, ...}]
+
+    @pytest.mark.parametrize(
+        "items",
+        [
+            pytest.param([], id="no_items"),
+            pytest.param(
+                [COMMENT_ON_NOTHING, {**COMMENT_ON_NOTHING, "id": "C-5"}], id="only_untargeted"
+            ),
+        ],
+    )
+    def test_comment_counts_when_empty(
+        preview_page: Page, load_preview_scripts: LoadPreviewScripts, items: list[dict[str, Any]]
+    ) -> None:
+        """項目を指すコメントが無ければ空の対応を返す（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+>       counts = preview_page.evaluate("""(items) => MindmapPreview.commentCounts(items)""", items)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_app.py:384: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe09eb5bc0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentCounts is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:27)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+________________ test_comment_mark_label[chromium-ninety_nine] _________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0a0d94e0>
+count = 99, shown = '99', spoken = 'コメント 99 件'
+
+    @pytest.mark.parametrize(
+        ("count", "shown", "spoken"),
+        [
+            pytest.param(1, "1", "コメント 1 件", id="one"),
+            pytest.param(99, "99", "コメント 99 件", id="ninety_nine"),
+            pytest.param(100, "99+", "コメント 100 件", id="hundred"),
+            pytest.param(128, "99+", "コメント 128 件", id="over_hundred"),
+        ],
+    )
+    def test_comment_mark_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        count: int,
+        shown: str,
+        spoken: str,
+    ) -> None:
+        """99 を超えると画面は「99+」、読み上げは実数（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       mark = preview_page.evaluate(
+            """(count) => {
+                const element = MindmapPreview.commentMark({count});
+                return {
+                    shown: element.querySelector(".cmk-n").textContent,
+                    spoken: element.querySelector(".sr-only").textContent,
+                    title: element.title,
+                };
+            }""",
+            count,
+        )
+
+tests/unit/preview/test_comment_mark.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0b91b380>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentMark is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:2:44)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+__________________ test_comment_mark_label[chromium-hundred] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0a699e40>
+count = 100, shown = '99+', spoken = 'コメント 100 件'
+
+    @pytest.mark.parametrize(
+        ("count", "shown", "spoken"),
+        [
+            pytest.param(1, "1", "コメント 1 件", id="one"),
+            pytest.param(99, "99", "コメント 99 件", id="ninety_nine"),
+            pytest.param(100, "99+", "コメント 100 件", id="hundred"),
+            pytest.param(128, "99+", "コメント 128 件", id="over_hundred"),
+        ],
+    )
+    def test_comment_mark_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        count: int,
+        shown: str,
+        spoken: str,
+    ) -> None:
+        """99 を超えると画面は「99+」、読み上げは実数（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       mark = preview_page.evaluate(
+            """(count) => {
+                const element = MindmapPreview.commentMark({count});
+                return {
+                    shown: element.querySelector(".cmk-n").textContent,
+                    spoken: element.querySelector(".sr-only").textContent,
+                    title: element.title,
+                };
+            }""",
+            count,
+        )
+
+tests/unit/preview/test_comment_mark.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0a6d2c00>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentMark is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:2:44)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+________________ test_comment_mark_label[chromium-over_hundred] ________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x79fe0afd6de0>
+count = 128, shown = '99+', spoken = 'コメント 128 件'
+
+    @pytest.mark.parametrize(
+        ("count", "shown", "spoken"),
+        [
+            pytest.param(1, "1", "コメント 1 件", id="one"),
+            pytest.param(99, "99", "コメント 99 件", id="ninety_nine"),
+            pytest.param(100, "99+", "コメント 100 件", id="hundred"),
+            pytest.param(128, "99+", "コメント 128 件", id="over_hundred"),
+        ],
+    )
+    def test_comment_mark_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        count: int,
+        shown: str,
+        spoken: str,
+    ) -> None:
+        """99 を超えると画面は「99+」、読み上げは実数（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       mark = preview_page.evaluate(
+            """(count) => {
+                const element = MindmapPreview.commentMark({count});
+                return {
+                    shown: element.querySelector(".cmk-n").textContent,
+                    spoken: element.querySelector(".sr-only").textContent,
+                    title: element.title,
+                };
+            }""",
+            count,
+        )
+
+tests/unit/preview/test_comment_mark.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x79fe0bcf52b0>
+cb = <function Channel.send.<locals>.<lambda> at 0x79fe0afd6f20>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.commentMark is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:2:44)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_app.py::test_comment_counts[chromium] - playwr...
+FAILED tests/unit/preview/test_app.py::test_comment_counts_when_empty[chromium-no_items]
+FAILED tests/unit/preview/test_comment_mark.py::test_refresh_comment_marks[chromium]
+FAILED tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-one]
+FAILED tests/unit/preview/test_app.py::test_comment_counts_when_empty[chromium-only_untargeted]
+FAILED tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-ninety_nine]
+FAILED tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-hundred]
+FAILED tests/unit/preview/test_comment_mark.py::test_comment_mark_label[chromium-over_hundred]
+================== 8 failed, 820 passed in 233.74s (0:03:53) ===================

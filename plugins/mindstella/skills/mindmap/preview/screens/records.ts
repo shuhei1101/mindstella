@@ -12,6 +12,7 @@ namespace MindmapPreview {
     filters,
     drawerOpen,
     marks,
+    comments,
   }: {
     index: RecordIndex;
     route: Route;
@@ -28,6 +29,8 @@ namespace MindmapPreview {
     drawerOpen: boolean;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
+    /** 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。サーバーにつながって開いたときだけ渡し、印を置く場所をカードと表に置く */
+    comments?: Record<string, number>;
   }): HTMLElement {
     const kind = route.tab as RecordKind;
     const common = commonColumns(index.data.settings);
@@ -102,11 +105,13 @@ namespace MindmapPreview {
           onFilter: on.filter,
           open: on.open,
           marks,
+          ...(comments === undefined ? {} : { comments }),
         }),
         screenDrawer({
           drawerOpen,
           rows: index.data[kind],
           columns: columns.filter((column) => column.filterable === true),
+          textColumns: textColumns(columns),
           filters,
           shown: shown.length,
           onFilter: on.filter,

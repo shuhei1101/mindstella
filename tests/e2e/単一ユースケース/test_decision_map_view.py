@@ -12,10 +12,12 @@ from preview_helpers import (
     OpenPreview,
     ServePreview,
     badge_text,
+    bands_stay_on_top,
     checked_values,
     clear_condition,
     close_drawer,
     open_drawer,
+    page_scroll_overflow,
     row_ids,
     toggle_value,
 )
@@ -171,6 +173,17 @@ def test_normal(
     page.click('.segment button[data-view="map"]')
     page.wait_for_selector("#decision-map button.n-item")
     assert _map_item_ids(page) == ["D-3", "D-5"]
+    # カテゴリー・フェーズのラベルが背景の面と枠を持つ（枝の線がラベルの文字の上に重ならない）
+    labels = page.evaluate(
+        """() => ['n-category', 'n-phase'].map((name) => {
+            const style = getComputedStyle(document.querySelector(`#decision-map .${name}`));
+            return {name, background: style.backgroundColor, border: parseFloat(style.borderTopWidth)};
+        })"""
+    )
+    assert all(label["border"] > 0 and label["background"] != "rgba(0, 0, 0, 0)" for label in labels)
+    # ページ全体に縦スクロールが無く、トップバーとタブの帯が画面の上に見えている
+    assert page_scroll_overflow(page)["vertical"] == 0
+    assert bands_stay_on_top(page) is True
     # 開いた直後から、ドロワーの状態で要見直し・未決定が選ばれ、絞り込みのボタンに件数のバッジが付いている
     open_drawer(page)
     assert checked_values(page, "status") == DEFAULT_CHECKED_STATUSES

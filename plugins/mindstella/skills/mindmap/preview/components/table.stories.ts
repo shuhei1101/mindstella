@@ -105,9 +105,43 @@ export const Marked: Story = {
   },
 };
 
+/** コメントを書いた行。タイトルの右に差分の印、その後ろにコメントの印を置き、印の無い行は変わらない */
+export const Commented: Story = {
+  args: {
+    rows: [
+      ...rows,
+      { id: "D-5", title: "変更履歴に持たせる回数の既定", conf: "中", status: "決定済み" },
+      { id: "D-37", title: "差分の表示から抜ける操作の置き場所", conf: "高", status: "未決定" },
+    ],
+    marks: { "D-5": "changed" },
+    comments: { "D-5": 1, "D-37": 12 },
+  },
+};
+
 /** 表示する列のポップオーバーを開いている。タイトルの列は外せない */
 export const ColumnsPopover: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole("button", { name: "表示する列" }));
+  },
+};
+
+/** 用語集で、用語に「移し」を含む行に絞っている。表の上に `用語に「移し」を含む` のチップと「すべて解除」を並べる */
+export const TextFiltered: Story = {
+  args: {
+    kind: "terms",
+    columns: [
+      { key: "id", label: "ID", get: (row) => row.id, nowrap: true },
+      { key: "title", label: "用語", fixed: true, get: (row) => (row as SampleRow).title },
+      { key: "meaning", label: "意味", get: (row) => String(row["meaning"] ?? "") },
+      { key: "aliases", label: "別名", get: (row) => (row["aliases"] as string[] | undefined) ?? [] },
+      { key: "avoid", label: "使わない表記", get: (row) => (row["avoid"] as string[] | undefined) ?? [] },
+      { key: "tags", label: "タグ", filterable: true, get: (row) => (row["tags"] as string[] | undefined) ?? [] },
+    ],
+    rows: [
+      { id: "G-1", title: "移し替え", meaning: "ワークスペースを今の版へ直すこと", aliases: ["マイグレーション"], avoid: [], tags: ["mindstella"] },
+      { id: "G-2", title: "ワークスペース", meaning: "話し合いの記録を置くフォルダ", aliases: [], avoid: [], tags: ["mindstella"] },
+      { id: "G-3", title: "検討事項", meaning: "決めたいこと", aliases: [], avoid: [], tags: [] },
+    ],
+    filters: { "~title": ["移し"] },
   },
 };

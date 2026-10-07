@@ -288,6 +288,22 @@ namespace MindmapPreview {
     ]);
   }
 
+  /** レビュー中のコメントを `target` ごとに数え、項目の ID → 件数を返す（箇所を指すコメントもその項目に数え、項目を指さないコメントと件数 0 の項目は含めない） */
+  export function commentCounts(items: ReviewState["items"]): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      if (item.target === null) continue;
+      counts[item.target] = (counts[item.target] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /** 2 つの件数の対応が同じか */
+  function sameCounts(a: Record<string, number>, b: Record<string, number>): boolean {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+  }
+
   /** 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
   export function start(): void {
     let embedded: MindmapData | null;
@@ -386,6 +402,8 @@ namespace MindmapPreview {
     document.body.prepend(top, main);
     let route = visibleRoute(parseHash({ hash: location.hash, index }));
     let fullViewer: HTMLElement | null = null;
+    /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
+    let shownHeading: { id: string; heading: string } | null = null;
     const filterState: FilterState = { byTab: {}, drawerOpen: false };
 
     // ===== 移動 =====
@@ -405,7 +423,7 @@ namespace MindmapPreview {
     /** 項目を開く。パネル・全画面の中の移動は履歴に積み、見てきた項目を行き来できるようにする */
     const openItem = (id: string, inPanel: boolean): void => {
       flushDrafts();
-      const next: Route = { ...route, id, filters: {} };
+      const next: Route = { ...route, id, filters: {}, heading: null };
       const trail = history.state as Trail | null;
       if (inPanel && route.id !== null) {
         // 今いる履歴にも先の項目を持たせ、戻った後に「→」で進めるようにする
@@ -429,7 +447,7 @@ namespace MindmapPreview {
         history.back();
         return;
       }
-      route = { ...route, id: null, full: false, filters: {} };
+      route = { ...route, id: null, full: false, filters: {}, heading: null };
       navigate({ route, push: false });
       render({ screen: route.tab === "decisions" && route.view === "map" });
     };
@@ -440,7 +458,7 @@ namespace MindmapPreview {
       if (kind === undefined) return;
       // 表示しない種類の項目は、概要の上の詳細パネルで開く
       const tab: Tab = resolved.kinds.has(kind) ? kind : "overview";
-      go({ tab, view: defaultView(tab), id, full: false, filters: {} }, tab !== route.tab);
+      go({ tab, view: defaultView(tab), id, full: false, filters: {}, heading: null }, tab !== route.tab);
     };
 
     // ===== 描く =====
@@ -497,6 +515,8 @@ namespace MindmapPreview {
         closeDrawer,
       };
       const marks = marksOf(point);
+      // サーバーにつながって開いたときだけ、項目ごとのコメントの件数を渡す（配る書き出しは印を出さない）
+      const comments = serverMode ? commentsNow : undefined;
       const filters = filterState.byTab[route.tab] ?? {};
       const { drawerOpen } = filterState;
       switch (route.tab) {
@@ -508,11 +528,11 @@ namespace MindmapPreview {
             visibleKinds: resolved.kinds,
           });
         case "decisions":
-          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, filters, drawerOpen, marks });
+          return decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, filters, drawerOpen, marks, comments });
         case "tasks":
-          return tasksScreen({ index, route, on, filters, drawerOpen, marks });
+          return tasksScreen({ index, route, on, filters, drawerOpen, marks, comments });
         case "docs":
-          return docsScreen({ index, route, on, filters, drawerOpen, marks });
+          return docsScreen({ index, route, on, filters, drawerOpen, marks, comments });
         case "graph":
           return graphScreen({
             index,
@@ -521,6 +541,7 @@ namespace MindmapPreview {
             drawerOpen,
             selected: route.id,
             look: resolved.look,
+            comments,
           });
         default:
           return recordsScreen({
@@ -530,6 +551,7 @@ namespace MindmapPreview {
             filters,
             drawerOpen,
             marks,
+            comments,
           });
       }
     };
@@ -588,13 +610,22 @@ namespace MindmapPreview {
           back: () => history.back(),
           forward: () => history.forward(),
           diagram: showDiagram,
+          // 本文の見出しへ移った: ハッシュの `h` を、履歴に積まずに置き換える
+          heading: (heading) => {
+            route = { ...route, heading };
+            shownHeading = heading === null || route.id === null ? null : { id: route.id, heading };
+            navigate({ route: { ...route, filters: {} }, push: false });
+          },
         },
         comment: serverMode
           ? { form: formProps(route.id), reviews: comment.review.items.filter((item) => item.target === route.id) }
           : null,
         highlight: openedLocation(),
         diff: point,
+        // 開いたときにだけ見出しを画面に入れる
+        heading: shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading,
       });
+      shownHeading = route.heading === null ? null : { id: route.id, heading: route.heading };
       if (route.full) {
         existing?.classList.remove("open");
         fullDialog?.remove();
@@ -762,6 +793,19 @@ namespace MindmapPreview {
     let formRedrawing = false;
     /** チェックした状態で入れるのは、初めて読んだコメントだけ */
     const knownIds = new Set<string>();
+
+    /** 各画面へ渡す項目の ID → コメントの件数。画面は描き直すたびにこれを読むので、件数が変わったときは同じ物の中身を入れ替える */
+    const commentsNow: Record<string, number> = {};
+
+    /** レビュー中のコメントの件数が変わっていれば、画面を描き直さずに印だけを差し替える（つながりは次のコマから） */
+    const syncCommentMarks = (): void => {
+      const next = commentCounts(comment.review.items);
+      if (sameCounts(commentsNow, next)) return;
+      for (const key of Object.keys(commentsNow)) delete commentsNow[key];
+      Object.assign(commentsNow, next);
+      refreshCommentMarks({ root: main, counts: commentsNow });
+      setGraphComments(commentsNow);
+    };
     /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
     const draftTimers = new Map<string, number>();
 
@@ -771,6 +815,7 @@ namespace MindmapPreview {
     /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ書きかけの箇所を入力に添える */
     const applyReview = (review: ReviewState, first: boolean): void => {
       comment.review = review;
+      syncCommentMarks();
       for (const item of review.items) {
         if (knownIds.has(item.id)) continue;
         knownIds.add(item.id);
@@ -1471,7 +1516,7 @@ namespace MindmapPreview {
       document.title = `${data.settings.summary} | mindstella`;
       // 開いていた項目が消えた: 詳細パネルを閉じる
       if (route.id !== null && !index.byId.has(route.id)) {
-        route = { ...route, id: null, full: false, filters: {} };
+        route = { ...route, id: null, full: false, filters: {}, heading: null };
         navigate({ route, push: false });
       }
       redrawKeepingState();
@@ -1481,10 +1526,12 @@ namespace MindmapPreview {
 
     // ===== 操作と履歴 =====
     document.addEventListener("keydown", (event) => {
-      const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? "");
-      if (event.key === "/" && !typing && document.querySelector("dialog[open]:not(.drawer)") === null) {
+      // Ctrl+K（macOS は Cmd+K）で全体の検索を開く。入力欄に入力中でも開き、開いているときは検索の言葉を選び直す
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        openSearch();
+        const opened = document.querySelector<HTMLInputElement>("dialog.search input");
+        if (opened !== null) opened.select();
+        else openSearch();
       }
       // Esc: 重ねる面が無いときは、詳細パネルを閉じる
       if (

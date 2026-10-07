@@ -1,5 +1,5 @@
 title: 表
-lead: 項目の一覧の表。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件のチップを並べる。絞り込みの条件は部品『絞り込み』で選び、表は受け取った条件で行を絞る。表示する列の選択と初期設定に戻すのポップオーバーを持つ。
+lead: 項目の一覧の表。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件（値と列の文字）のチップを並べる。絞り込みの条件は部品『絞り込み』で選び、表は受け取った条件で行を絞る。表示する列の選択と初期設定に戻すのポップオーバーを持つ。
 implementation: plugins/mindstella/skills/mindmap/preview/components/table.ts#MindmapPreview.table
 story: Preview/Table
 test_file: tests/integration/storybook/test_table_stories.py
@@ -12,7 +12,7 @@ args:
   - name: columns
     type: オブジェクトの配列
     required: true
-    description: 列の定義。並びが列の並び
+    description: 列の定義。並びが列の並び。`filterable` が偽で数でない列は、絞り込みのドロワーの文字の欄で絞れる
   - name: columns[].key
     type: 文字列
     required: true
@@ -49,7 +49,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（絞り込まない）
-    description: 列の `key` → 選んだ値の配列。絞り込みのドロワーで選んだ条件をそのまま受ける。同じ列の中はどれかに合う行、列どうしは全てに合う行を出し、値を 1 つも選んでいない列では絞らない
+    description: 列の `key` → 選んだ値の配列。絞り込みのドロワーで選んだ条件をそのまま受ける。同じ列の中はどれかに合う行、列どうしは全てに合う行を出し、値を 1 つも選んでいない列では絞らない。`~{列}` のキーは文字の条件で、その列の値に文字を含む行を出す（大文字・小文字を区別しない）
   - name: pinTo
     type: 文字列
     required: false
@@ -65,6 +65,12 @@ args:
     required: false
     default: なし（印を出さない）
     description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、当たる行のタイトルの右に部品『差分の印』を文言なしで置く
+    status: planned
+  - name: comments
+    type: オブジェクト
+    required: false
+    default: なし（印を出さない）
+    description: 項目の ID → レビュー中のコメントの件数（1 以上）。サーバーにつながって開いたときだけ渡され、当たる行のタイトルの右、差分の印の後ろに部品『コメントの印』を置く。収まらなければ次の行へ送る
     status: planned
 events:
   - name: 並べ替え
@@ -131,9 +137,26 @@ states:
     args:
       - name: marks
         value: '{"D-5": "changed", "D-37": "new"}'
+  - name: TextFiltered
+    description: 用語集で、用語に「移し」を含む行に絞っている。表の上に「用語に「移し」を含む」のチップと「すべて解除」を並べる。英数字で終わる列名（ID）は「ID に「G-」を含む」のように空白を挟む。列の見出しに絞り込みのボタンを出さない
+    args:
+      - name: kind
+        value: terms
+      - name: columns
+        value: 用語集の列（`id`・`title` の `label` が「用語」・`meaning`・`aliases`・`avoid`・`tags`）
+      - name: filters
+        value: '{"~title": ["移し"]}'
+  - name: Commented
+    description: コメントを書いた行。タイトルの右に差分の印、その後ろにコメントの印を置き、印の無い行は変わらない
+    args:
+      - name: marks
+        value: '{"D-5": "changed"}'
+      - name: comments
+        value: '{"D-5": 1, "D-37": 12}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
   - 'チップの × に `{列}: {値} の条件を解除` の読み上げ名を付ける'
   - 行のタイトルは `button` 要素にし、キーボードで詳細を開ける
   - 操作してもスクロールの位置を保つ
+  - 文字の条件のチップの × に `{列}に「{文字}」を含む の条件を解除` の読み上げ名を付ける

@@ -115,6 +115,10 @@ elements:
     description: 次に検討する項目・要見直し・保留・進行中のタスクのタイルの各行で、項目のタイトルの横に文言なしで置く
     io: 表示
     visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
+  - name: 画面の領域
+    kind: region
+    description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。タイルはこの領域の中で縦にスクロールする
+    visible_when: 常時
 lead: プレビューを開いたときの既定の画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。
-mock: dev/mock/pages/overview/95/a-keep-tile/index.html
+mock: dev/mock/pages/overview/126/standard/index.html
 test_file: tests/integration/preview/test_overview_screen.py

@@ -97,6 +97,8 @@ namespace MindmapPreview {
     popover?: TablePopover | null;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡し、当たる行のタイトルの右に印を文言なしで置く */
     marks?: DiffMarks;
+    /** 項目の ID → レビュー中のコメントの件数。渡したとき（サーバーにつながって開いたとき）だけ、当たる行のタイトルの右、差分の印の後ろに印を置く場所を置く */
+    comments?: Record<string, number>;
     on: TableHandlers;
   };
 
@@ -119,7 +121,10 @@ namespace MindmapPreview {
     return a.localeCompare(b, "ja");
   }
 
-  /** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる） */
+  /** 文字の条件のキー（`~{列}`）の頭 */
+  export const TEXT_FILTER_PREFIX = "~";
+
+  /** 条件ごとに合う行を返す（条件の中はどれかに当たればよく、条件の間は全てに当たる）。`~{列}` は文字の条件で、その列の値のどれかが文字を含む行に当てる（大文字・小文字を区別しない） */
   export function filterRows({
     rows,
     columns,
@@ -132,12 +137,22 @@ namespace MindmapPreview {
     const active = Object.entries(filters).filter(([, values]) => values.length > 0);
     return rows.filter((row) =>
       active.every(([key, wanted]) => {
-        const column = columns.find((candidate) => candidate.key === key);
+        const isText = key.startsWith(TEXT_FILTER_PREFIX);
+        const columnKey = isText ? key.slice(TEXT_FILTER_PREFIX.length) : key;
+        const column = columns.find((candidate) => candidate.key === columnKey);
         // 知らない列の条件は無視する
         if (column === undefined) return true;
-        return valuesOf(column, row).some((value) => wanted.includes(value));
+        const values = valuesOf(column, row);
+        if (!isText) return values.some((value) => wanted.includes(value));
+        const needles = wanted.map((text) => text.toLowerCase());
+        return values.some((value) => needles.some((needle) => value.toLowerCase().includes(needle)));
       }),
     );
+  }
+
+  /** 表の列のうち、絞り込みのドロワーに文字の欄を出す列（値を選ぶ列と数の列を除く。列の順のまま） */
+  export function textColumns(columns: Column[]): Column[] {
+    return columns.filter((column) => column.filterable !== true && column.num !== true);
   }
 
   /** 列の値で行を並べ替える（元の配列は変えない。同じ値は元の順） */
@@ -304,6 +319,35 @@ namespace MindmapPreview {
   }): HTMLElement {
     const items: HTMLElement[] = [];
     for (const [key, values] of Object.entries(filters)) {
+      // 文字の条件（`~{列}`）は、列の名前に「文字を含む」の文言を続けたチップにする
+      if (key.startsWith(TEXT_FILTER_PREFIX)) {
+        const columnKey = key.slice(TEXT_FILTER_PREFIX.length);
+        const name = labels[columnKey] ?? columnKey;
+        // 英数字で終わる列名の後ろには空白を挟む（「ID に」のように読めるように）
+        const joint = /[A-Za-z0-9]$/.test(name) ? " " : "";
+        for (const value of values) {
+          const text = `${name}${joint}に「${value}」を含む`;
+          items.push(
+            h({
+              tag: "span",
+              attrs: { class: "chip" },
+              children: [
+                text,
+                h({
+                  tag: "button",
+                  attrs: {
+                    type: "button",
+                    "aria-label": `${text} の条件を解除`,
+                    onclick: () => onFilter(withoutKey(filters, key)),
+                  },
+                  children: [icon("x")],
+                }),
+              ],
+            }),
+          );
+        }
+        continue;
+      }
       const label = labels[key] ?? key;
       for (const value of values) {
         items.push(
@@ -344,7 +388,7 @@ namespace MindmapPreview {
 
   /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
   function buildTable({
-    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, on },
+    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, on },
     previous,
   }: {
     props: TableProps;
@@ -534,9 +578,10 @@ namespace MindmapPreview {
         children: [content],
       });
       const mark = markFor({ marks, id: row.id });
-      if (mark === null) return opener;
+      const commentPlaceElement = comments === undefined ? null : commentPlace({ id: row.id, count: comments[row.id] });
+      if (mark === null && commentPlaceElement === null) return opener;
       const fragment = document.createDocumentFragment();
-      fragment.append(opener, mark);
+      fragment.append(...[opener, mark, commentPlaceElement].filter((node) => node !== null));
       return fragment;
     };
     const body =
@@ -794,6 +839,7 @@ namespace MindmapPreview {
     onFilter,
     open,
     marks,
+    comments,
   }: {
     kind: Kind;
     columns: Column[];
@@ -805,6 +851,8 @@ namespace MindmapPreview {
     open: (id: string) => void;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks;
+    /** 項目の ID → レビュー中のコメントの件数。描き直すたびに読むので、使う側が中身を更新すれば並べ替えなどの描き直しにも反映される */
+    comments?: Record<string, number>;
   }): HTMLElement {
     const state = tableState(kind);
     // 画面を描き直したときは、前のポップオーバーを開いたままにしない
@@ -829,6 +877,7 @@ namespace MindmapPreview {
           hiddenColumns: state.hidden,
           popover: state.popover,
           ...(marks === undefined ? {} : { marks }),
+          ...(comments === undefined ? {} : { comments }),
           on: {
             sort: (key) => {
               // 昇順 → 降順 → 解除

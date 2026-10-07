@@ -21,6 +21,43 @@ RESEARCH_COLUMNS = {"research": {"hidden": ["tags"], "pinTo": None}}
 # `</script>` を JSON のエスケープ（バックスラッシュに続けて u003c・u003e）で持つ埋め込みの JSON
 ESCAPED_JSON = '{"text": "\\u003c/script\\u003e"}'
 
+# レビュー中のコメントを溜めた日時
+CREATED = "2026-10-05T03:00:00+00:00"
+
+# レビュー中のコメント（D-1 への 1 件・D-1 の本文の箇所を指す 1 件・T-1 への 1 件・項目を指さない 1 件）
+COMMENT_ON_D1 = {
+    "id": "C-1",
+    "target": "D-1",
+    "target_title": "問い",
+    "loc": None,
+    "body": "案 A にする",
+    "created": CREATED,
+}
+COMMENT_ON_D1_BODY = {
+    "id": "C-2",
+    "target": "D-1",
+    "target_title": "問い",
+    "loc": {"kind": "body", "start": 5, "end": 5, "text": "五行目"},
+    "body": "ここは言い換える",
+    "created": CREATED,
+}
+COMMENT_ON_T1 = {
+    "id": "C-3",
+    "target": "T-1",
+    "target_title": "作業",
+    "loc": None,
+    "body": "期日を決める",
+    "created": CREATED,
+}
+COMMENT_ON_NOTHING = {
+    "id": "C-4",
+    "target": None,
+    "target_title": None,
+    "loc": None,
+    "body": "全体に目を通した",
+    "created": CREATED,
+}
+
 
 def test_read_embedded_data(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """要素の JSON を読む（正常系）。"""
@@ -315,3 +352,35 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "diffSel": "since",
     }
     assert result["original"] == prefs
+
+
+def test_comment_counts(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """項目ごとに数え、箇所を指すコメントも含め、項目を指さないコメントは数えない（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    items = [COMMENT_ON_D1, COMMENT_ON_D1_BODY, COMMENT_ON_T1, COMMENT_ON_NOTHING]
+    # 実行
+    counts = preview_page.evaluate("""(items) => MindmapPreview.commentCounts(items)""", items)
+    # 検証
+    assert counts == {"D-1": 2, "T-1": 1}
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        pytest.param([], id="no_items"),
+        pytest.param(
+            [COMMENT_ON_NOTHING, {**COMMENT_ON_NOTHING, "id": "C-5"}], id="only_untargeted"
+        ),
+    ],
+)
+def test_comment_counts_when_empty(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, items: list[dict[str, Any]]
+) -> None:
+    """項目を指すコメントが無ければ空の対応を返す（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    counts = preview_page.evaluate("""(items) => MindmapPreview.commentCounts(items)""", items)
+    # 検証
+    assert counts == {}

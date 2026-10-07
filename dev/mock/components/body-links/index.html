@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗 -->
+  <meta name="color-scheme" content="light dark">
+  <title>本文のリンク | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、今のプレビューのスタイル（develop の style.css の写し）と、PR #126 の部品のスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/126/assets/base.css">
+  <link rel="stylesheet" href="../../refs/126/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台: 詳細パネルの本文の面 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 16px 20px; background: var(--surface); }
+    /* 台を横に並べる: 収まらなければ折り返す */
+    .stages { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    /* 台に添える見本の名前 */
+    .stage-name { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-xs); }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; max-width: 100%; box-sizing: border-box; }
+    /* 見本の中の本文の最初: 台の上の余白を詰める */
+    .stage .md > :first-child { margin-top: 0; }
+    /* 見本の中の本文の最後: 台の下の余白を詰める */
+    .stage .md > :last-child { margin-bottom: 0; }
+    /* 状態を見せるための見本のクラス: 見出しに乗せた */
+    .md .is-hover .h-link { opacity: 1; }
+    /* 状態を見せるための見本のクラス: 用語に乗せた */
+    .md a.term.is-hover { text-decoration-color: var(--accent); background: var(--accent-weak); border-radius: 2px; }
+    /* 状態を見せるための見本のクラス: ID のリンクに乗せた */
+    .md a.idref.is-hover { text-decoration-color: var(--accent); }
+    /* 状態を見せるための見本のクラス: キーボードのフォーカス */
+    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1 !important; }
+    /* ツールチップの見本: 重ねずに流れに置く */
+    .term-tip.is-static { position: static; display: block; margin-top: 6px; pointer-events: auto; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / body-links</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">本文のリンク</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">詳細パネルと詳細の全画面の本文（Markdown）に付ける、見出しのリンク・用語の印・項目の ID のリンク。コードブロックと図には付けない。</p>
+
+    <!-- 見出しのリンク -->
+    <section class="cat-sec">
+      <h2>見出しのリンク</h2>
+      <p>見出しの右に # のリンクを置き、見出しに乗せる・リンクにフォーカスすると出す。乗せる操作が無い端末では常に出す。押すとその見出しまでスクロールし、URL のハッシュをその見出しを指す形（<code>h={見出し}</code>）に書き換える（履歴には積まない）。本文の中の <code>[文言](#見出し)</code> のリンクも、その見出しまでスクロールする。</p>
+      <div class="stages">
+        <div class="stage"><p class="stage-name">通常</p><div class="md"><h3 data-md-level="2" data-heading="決まったこと">決まったこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
+        <div class="stage"><p class="stage-name">見出しに乗せた</p><div class="md"><h3 data-md-level="2" data-heading="決まったこと" class="is-hover">決まったこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
+        <div class="stage"><p class="stage-name">リンクにキーボードのフォーカス</p><div class="md"><h3 data-md-level="2" data-heading="決まったこと">決まったこと<a class="h-link is-focus" href="#tab=docs&amp;id=A-1&amp;h=決まったこと" aria-label="見出し「決まったこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>手順はプラグインが持ち、形式を変えた版ごとに足す。</p></div></div>
+        <div class="stage"><p class="stage-name">本文の中の見出しへのリンク</p><div class="md"><p>当て方は<a href="#コマンド">コマンド</a>の節にまとめた。</p></div></div>
+      </div>
+    </section>
+
+    <!-- 用語の印 -->
+    <section class="cat-sec">
+      <h2>用語の印</h2>
+      <p>本文に用語集の用語（用語の項目のタイトル）が出てきたら、文字の色は変えず点線の下線を引く。乗せる・フォーカスすると、用語と ID・意味のツールチップを出し、押すとその用語の詳細を開く。長い用語から順に当て、用語の項目自身の本文ではその用語に付けない。</p>
+      <div class="stages">
+        <div class="stage"><p class="stage-name">通常</p><div class="md"><p>作った<a class="term" href="#tab=docs&amp;id=G-2" aria-describedby="tip-1">ワークスペース</a>を壊さずに、今の形へ<a class="term" href="#tab=docs&amp;id=G-5" aria-describedby="tip-1">移し替え</a>る。</p></div></div>
+        <div class="stage"><p class="stage-name">乗せた（ツールチップ）</p><div class="md"><p>作った<a class="term is-hover" href="#tab=docs&amp;id=G-2" aria-describedby="tip-1">ワークスペース</a>を壊さずに、今の形へ移し替える。</p></div><div class="term-tip is-static" id="tip-1" role="tooltip"><span class="tt-head">ワークスペース<span class="mono">G-2</span></span><span class="tt-body">1 つの話し合いの記録を置くフォルダ。設定・各項目の YAML・画面の HTML を持つ</span></div></div>
+        <div class="stage"><p class="stage-name">キーボードのフォーカス</p><div class="md"><p>作った<a class="term is-focus" href="#tab=docs&amp;id=G-2" aria-describedby="tip-2">ワークスペース</a>を壊さずに整える。</p></div><div class="term-tip is-static" id="tip-2" role="tooltip"><span class="tt-head">ワークスペース<span class="mono">G-2</span></span><span class="tt-body">1 つの話し合いの記録を置くフォルダ。設定・各項目の YAML・画面の HTML を持つ</span></div></div>
+        <div class="stage"><p class="stage-name">用語の項目自身の本文（G-5 移し替え）</p><div class="md"><p>移し替えは、プラグインの版を上げたときに<a class="term" href="#tab=terms&amp;id=G-2" aria-describedby="tip-1">ワークスペース</a>を整えること。</p></div></div>
+      </div>
+    </section>
+
+    <!-- 項目の ID のリンク -->
+    <section class="cat-sec">
+      <h2>項目の ID のリンク</h2>
+      <p>記録にある項目の ID（<code>D-15</code> など）は、等幅の印の色の文字と下線のリンクにし、押すとその項目の詳細を開く。インラインコードは、中身がちょうど ID か用語のときだけ付ける。記録に無い ID と、開いている項目自身の ID はそのままにする。</p>
+      <div class="stages">
+        <div class="stage"><p class="stage-name">文中</p><div class="md"><p>作ったワークスペースを壊さずに整えられるようにする（<a class="idref" href="#tab=docs&amp;id=D-1">D-1</a>）。</p></div></div>
+        <div class="stage"><p class="stage-name">インラインコードの中</p><div class="md"><p>手順に書ける操作は <code><a class="idref" href="#tab=docs&amp;id=D-15">D-15</a></code> で決めた。</p></div></div>
+        <div class="stage"><p class="stage-name">乗せた</p><div class="md"><p>当てるコマンドは（<a class="idref is-hover" href="#tab=docs&amp;id=D-16">D-16</a>）。</p></div></div>
+        <div class="stage"><p class="stage-name">記録に無い ID</p><div class="md"><p>前の話し合いの D-999 は、この記録に無い。</p></div></div>
+      </div>
+    </section>
+
+    <!-- 付けない所 -->
+    <section class="cat-sec">
+      <h2>付けない所</h2>
+      <p>コードブロックと図（mermaid）の中の用語・ID、見出しの中の用語、パスや識別子の一部（<code>mindstella-version.ini</code> の mindstella など）には付けない。英数字だけの用語は語の切れ目でだけ当てる。見出しの中の ID はリンクにする。</p>
+      <div class="stage"><div class="md"><h3 data-md-level="2" data-heading="ワークスペースの版（D-2）">ワークスペースの版（<a class="idref" href="#tab=docs&amp;id=D-2">D-2</a>）<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=ワークスペースの版（D-2）" aria-label="見出し「ワークスペースの版（D-2）」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><pre><code># ワークスペースの移し替え（D-11）
+migrations/v0.3.0/steps.yaml</code></pre><p>直下に <code>mindstella-version.ini</code> を置く。</p></div></div>
+    </section>
+
+    <!-- 狭い幅 -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>詳細パネルが画面幅いっぱいになる幅でも同じ印にする。乗せる操作の無い端末では見出しのリンクを常に出す。</p>
+      <div class="stage narrow"><div class="md"><h3 data-md-level="2" data-heading="やりたいこと" class="is-hover">やりたいこと<a class="h-link" href="#tab=docs&amp;id=A-1&amp;h=やりたいこと" aria-label="見出し「やりたいこと」へのリンク"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg></a></h3><p>プラグインの版を上げても、作った<a class="term" href="#tab=docs&amp;id=G-2" aria-describedby="tip-1">ワークスペース</a>を壊さずに今の形へ整えられるようにする（<a class="idref" href="#tab=docs&amp;id=D-1">D-1</a>）。今の <code>migrate</code> は版を持たず、データの形から前の形式を推し量っている。</p></div></div>
+    </section>
+  </main>
+</body>
+</html>
