@@ -1,4 +1,4 @@
-"""graph/graph.ts（つながり）の単体テスト。"""
+"""graph/graph.ts（ネットワーク）の単体テスト。"""
 
 from __future__ import annotations
 

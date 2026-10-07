@@ -294,7 +294,7 @@ def test_form_key(
                 "kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
                 "defaultLook": "starlight",
                 "defaultKinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
-                "overrides": ["つながりの見た目", "ライト / ダーク", "表の列（調査）"],
+                "overrides": ["ネットワークの見た目", "ライト / ダーク", "表の列（調査）"],
             },
             id="override_look_theme_columns",
         ),
