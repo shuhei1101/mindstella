@@ -41,6 +41,7 @@ TOOL_NAMES = [
     "clear_release",
     "export",
     "preview_url",
+    "readme",
     "submissions",
     "take_submission",
 ]
