@@ -101,7 +101,7 @@ def write_readme(
 ) -> bool:
     """直下に `README.md` が無いか、自動で書いた印で始まるときだけ、今の値で書いて真を返す。"""
     path = root / README_FILE
-    # 印の無い README は利用者のもの: 書かない（UTF-8 で読めないファイルも利用者のものとして扱う）
+    # 印の無い README は利用者のもの: 書かない（UTF-8 で読めないファイルも、権限が無く読めないファイルも利用者のものとして扱う）
     if path.is_file() and not _is_generated(path):
         return False
     text = render_readme(root, plugin_dir=plugin_dir, preview_url=preview_url)
@@ -120,9 +120,9 @@ def write_readme(
 
 
 def _is_generated(path: Path) -> bool:
-    """README の 1 行目が `README_MARK` か（読めない文字コードや空のファイルは偽）。"""
+    """README の 1 行目が `README_MARK` か（読めない文字コード・読み取りの権限が無い・空のファイルは偽）。"""
     try:
         first_line = path.read_text(encoding="utf-8").partition("\n")[0]
-    except UnicodeDecodeError:
+    except (UnicodeDecodeError, OSError):
         return False
     return first_line == README_MARK
