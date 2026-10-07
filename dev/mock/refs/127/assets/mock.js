@@ -27,6 +27,17 @@
     }, 50);
   };
 
+  // 撮影用: クエリの `mark` に渡した CSS セレクタの要素に赤枠を付ける（撮影の枠はモーダルの上に重ならないため、モーダルの中の要素はこちらで示す）
+  const mark = new URLSearchParams(location.search).get("mark");
+  if (mark !== null) {
+    const timer = setInterval(() => {
+      const targets = document.querySelectorAll(mark);
+      if (targets.length === 0) return;
+      clearInterval(timer);
+      for (const target of targets) target.classList.add("mock-mark");
+    }, 100);
+  }
+
   whenDrawn(() => {
     // ドロワーを開いた見本
     if (body.dataset.open === "drawer") document.querySelector("[data-act='filter']")?.click();

@@ -50,3 +50,6 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .rec-line { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; color: var(--text-2); font-size: var(--fs-small); }
 .rec-line svg.icon { width: 14px; height: 14px; color: var(--accent); }
 .rec-line b { color: var(--text); }
+
+/* ===== 撮影用の赤枠（モック専用。クエリの mark で付ける） ===== */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
