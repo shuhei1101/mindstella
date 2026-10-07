@@ -1,7 +1,7 @@
 // URL のハッシュの読み書きと履歴。画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形で持つ。
 
 namespace MindmapPreview {
-  /** 画面（タブとつながり） */
+  /** 画面（タブとネットワーク） */
   export type Tab =
     | "overview"
     | "decisions"
@@ -13,7 +13,7 @@ namespace MindmapPreview {
     | "logs"
     | "graph";
 
-  /** タブの帯に並べる画面（つながりは帯の右端に別に置く） */
+  /** タブの帯に並べる画面（ネットワークは帯の右端に別に置く） */
   export const TAB_KEYS: readonly Tab[] = [
     "overview",
     "decisions",

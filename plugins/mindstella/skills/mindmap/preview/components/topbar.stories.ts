@@ -38,14 +38,14 @@ type Story = StoryObj<MindmapPreview.TopbarProps>;
 /** 概要を開いている。開いている画面のタブに印の色の下線 */
 export const Overview: Story = { args: { current: "overview" } };
 
-/** つながりを開いている。つながりの入口だけを選んだ見た目にする */
+/** ネットワークを開いている。ネットワークの入口だけを選んだ見た目にする */
 export const Graph: Story = { args: { current: "graph" } };
 
 /** 題名が長い。1 行で末尾を省略し、検索の入口とテーマの切り替えを押し出さない */
 export const LongTitle: Story = {
   args: {
     title:
-      "プレビューの画面（概要・検討事項・タスク・資料・つながり・詳細パネル）を見本に沿って作るための話し合いの記録",
+      "プレビューの画面（概要・検討事項・タスク・資料・ネットワーク・詳細パネル）を見本に沿って作るための話し合いの記録",
   },
 };
 
@@ -146,7 +146,7 @@ export const CommentsNarrow: Story = {
 /** 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
 export const SettingsOpen: Story = { args: { comments: true, commentCount: 3, settingsOpen: true } };
 
-/** 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す */
+/** 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とネットワークの入口は残す */
 export const KindsHidden: Story = {
   args: {
     comments: true,

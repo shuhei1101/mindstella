@@ -455,7 +455,7 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .map-canvas.focusing .edge-dep.rel { animation-duration: 2s; }
 .flow-dot { fill: var(--accent); }
 
-/* ===== つながり（3D） ===== */
+/* ===== ネットワーク（3D） ===== */
 .kdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
 
@@ -482,7 +482,7 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 @media (min-width: 721px) { .board { cursor: grab; } .board.dragging { cursor: grabbing; user-select: none; } }
 
 
-/* ===== つながりの地: ライトは紙のような明るい地、ダークは深い灰色。どちらにも細かなざらつき ===== */
+/* ===== ネットワークの地: ライトは紙のような明るい地、ダークは深い灰色。どちらにも細かなざらつき ===== */
 .map-frame.space { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border-soft);
   background-color: var(--g-bg);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"), radial-gradient(ellipse at 50% 45%, var(--g-bg-center) 0%, var(--g-bg) 70%); }
@@ -492,7 +492,7 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 .panel { transform: translateX(102%); visibility: hidden; transition: transform .45s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .45s; }
 .panel.open { transform: none; visibility: visible; transition: transform .45s cubic-bezier(.22, .8, .24, 1); }
 
-/* ===== つながりの入口: タブの帯の右端に、ほかのタブと分けて置く ===== */
+/* ===== ネットワークの入口: タブの帯の右端に、ほかのタブと分けて置く ===== */
 .tab-gap { flex: 1; min-width: 16px; }
 .tab-special { gap: 6px; margin: 6px 0; height: calc(var(--tab-h) - 12px); padding: 0 14px; border: 1px solid var(--border); border-radius: var(--radius); }
 .tab-special svg.icon { color: var(--accent); }
@@ -518,7 +518,7 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 .checklist button { padding: 0; border: 0; background: none; text-align: left; color: var(--text); }
 .checklist button:hover { color: var(--accent); }
 
-/* ダークのつながりの地: 墨色に淡い光のにじみ */
+/* ダークのネットワークの地: 墨色に淡い光のにじみ */
 :root[data-theme="dark"] .map-frame.space { background-image: radial-gradient(40% 50% at 50% 45%, var(--g-glow), transparent 70%), radial-gradient(ellipse at 50% 50%, var(--g-bg-center) 0%, var(--g-bg) 75%); }
 
 /* 表示形式の切り替えは、どのタブでも同じ幅・同じ位置にする（切り替えでちらつかないように） */
@@ -963,7 +963,7 @@ dialog.hist::backdrop { background: var(--scrim); }
 .row-open ~ .cmk-place .cmk { margin-left: 8px; }
 /* 字下げの一覧の行の印: タイトルの右に続け、縮めない */
 .map-outline button .cmk { flex: none; }
-/* つながりの印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す。重なり順は層の中に閉じる */
+/* ネットワークの印を重ねる層: キャンバスと同じ大きさで重ね、押下はキャンバスへ通す。重なり順は層の中に閉じる */
 .g3-marks { position: absolute; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; pointer-events: none; }
 /* 名前の横に付く印: 位置は描くたびにスクリプトが transform で動かす */
 .cmk.cmk-float { position: absolute; top: 0; left: 0; }
@@ -1144,25 +1144,6 @@ dialog.confirm h2 { margin: 0 0 8px; font-size: var(--fs-h2); }
 /* パネルの中の部品のフォーカス: 印の色の輪 */
 .st-wrap input:focus-visible, .st-wrap select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* つながりの見た目: 面の上に 5 つを縦に並べ、行の境を薄い線で区切る */
-.st-looks { display: grid; background: var(--surface); border-radius: var(--radius); }
-/* 見た目の 1 行: ラジオと、名前・短い説明 */
-.st-look { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); cursor: pointer; }
-.st-look:last-child { border-bottom: 0; }
-.st-look:hover { background: var(--hover); }
-/* 選んでいる見た目: 印の色の薄い面 */
-.st-look:has(input:checked) { background: var(--row-selected); }
-/* ラジオを名前の 1 行目に揃える */
-.st-look input { margin-top: 3px; }
-/* 名前と短い説明を縦に積む */
-.st-look-main { display: grid; gap: 2px; min-width: 0; }
-/* 見た目の名前と、ワークスペースの既定の印 */
-.st-look-name { display: flex; align-items: center; gap: 8px; font-weight: 500; }
-/* 見た目の短い説明 */
-.st-look-note { color: var(--text-2); font-size: var(--fs-small); }
-/* ワークスペースの既定の印: 小さな枠の札 */
-.st-def { padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); font-weight: 400; line-height: 18px; }
-
 /* ライト / ダーク（パネルにも置く案）: 3 つのセグメント */
 .st-seg { display: flex; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 /* セグメントの 1 つ: ラジオを全面に重ねて押せる的にする */
@@ -1196,7 +1177,7 @@ dialog.confirm h2 { margin: 0 0 8px; font-size: var(--fs-h2); }
 .st-kinds .n { color: var(--text-3); font-size: var(--fs-small); }
 /* まとめて選ぶ行: 見出し行と同じ面 */
 .st-all { background: var(--thead-bg); border-radius: var(--radius) var(--radius) 0 0; }
-/* 常に出す行（概要・つながり）: 押せないことを、チェックの箱を持たない形と文言で示す */
+/* 常に出す行（概要・ネットワーク）: 押せないことを、チェックの箱を持たない形と文言で示す */
 .st-always { color: var(--text-2); }
 /* 常に出す行のチェックの位置: チェックの箱と同じ幅を取り、印だけを置く */
 .st-always-box { display: inline-grid; flex: none; place-items: center; width: 13px; }
@@ -1353,11 +1334,11 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 
 /* ===== 画面の作り: ページを窓の高さに収め、帯の下の領域の中でスクロールする ===== */
 
-/* つながりの画面: 領域の高さいっぱいに広げる（低すぎる窓では領域ごとスクロールする） */
+/* ネットワークの画面: 領域の高さいっぱいに広げる（低すぎる窓では領域ごとスクロールする） */
 .content > .screen.graph { flex: 1 1 0; min-height: 360px; }
-/* つながりの枠: 残りの高さを持つ */
+/* ネットワークの枠: 残りの高さを持つ */
 .screen.graph .map-frame { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-/* つながりの描く領域: 枠の高さいっぱいに広げる */
+/* ネットワークの描く領域: 枠の高さいっぱいに広げる */
 .screen .g3-wrap { flex: 1 1 0; height: auto; min-height: 0; }
 /* マップの入れ物の道具の行・チップ: 縮めない */
 .map-view-root > * { flex-shrink: 0; }
@@ -1447,3 +1428,27 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 body:has(dialog.full[open]) .content { overflow: hidden; }
 /* 狭い幅の全画面: 余白を 8px にする */
 @media (max-width: 720px) { dialog.full { width: calc(100vw - 16px); height: calc(100dvh - 16px); } }
+
+/* ネットワークの見た目の選び: キャンバスの右上に重ねる、アイコンの無いドロップダウン。高さはほかの操作部品と揃える */
+.look-pick { position: absolute; top: 12px; right: 12px; z-index: 2; }
+/* 見た目の選びの本体: どの見た目の地の上でも読めるよう、面の色で塗る */
+.look-pick select { height: var(--control-h); padding: 0 28px 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background-color: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); cursor: pointer; }
+.look-pick select:hover { border-color: var(--text-3); }
+.look-pick select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 検討事項のマップの鍵: 節の右上の内側に置く。ふだんは隠す */
+button.n-item .lk { position: absolute; top: 3px; right: 4px; display: none; color: var(--text-3); }
+/* 鍵の大きさ: 節の名前の文字より小さくする */
+button.n-item .lk svg.icon { width: 12px; height: 12px; }
+/* 開いた鍵: ロックしていない間、詳細を開いている節にカーソルを乗せたときだけ出す */
+.map-canvas:not(.has-lock) button.n-item.sel:hover .lk { display: inline-flex; }
+/* 閉じた鍵: ロックした節にいつも出す */
+button.n-item.locked .lk { display: inline-flex; color: var(--accent); }
+/* ロックした節の枠: 詳細を開いている節と同じ色で、ロックしていることを示す */
+button.n-item.locked { border-color: var(--accent); }
+/* 鍵を出す節の 1 行目: 名前が鍵の下に入らないよう、右を空ける（2 行目の右端のコメントの印は動かさない） */
+button.n-item.sel .r1, button.n-item.locked .r1 { padding-right: 10px; }
+/* ロック中に詳細を開いた節: 強調の外でも薄くしない */
+.map-canvas.focusing button.n-item.sel { opacity: 1; }
+/* 表示の設定の種類の行のホバー: 面の色が濃くなる分、件数の文字を 1 段濃くして読めるようにする */
+.st-kinds label:hover .n { color: var(--text-2); }

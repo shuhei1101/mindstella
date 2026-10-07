@@ -1,8 +1,8 @@
 "use strict";
-// 表示の設定の中身。つながりの見た目と表示する種類を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。
+// 表示の設定の中身。表示する種類を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 選べるつながりの見た目（見た目ごとの描き分けは別の作業が作る） */
+    /** 選べるネットワークの見た目 */
     MindmapPreview.NETWORK_LOOKS = [
         { key: "glow", label: "グロウ", note: "玉と流れる光に、やわらかい光のにじみ" },
         { key: "starlight", label: "星の光", note: "白い芯と色の光。明るい星に十字の光条" },
@@ -46,53 +46,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** つながりの見た目の選び（5 つを名前と短い説明で縦に並べ、ワークスペースの既定に札を付ける） */
-    function lookField({ look, defaultLook, on }) {
-        return MindmapPreview.h({
-            tag: "fieldset",
-            attrs: { class: "st-sec" },
-            children: [
-                MindmapPreview.h({ tag: "legend", children: ["つながりの見た目"] }),
-                MindmapPreview.h({
-                    tag: "div",
-                    attrs: { class: "st-looks" },
-                    children: MindmapPreview.NETWORK_LOOKS.map((option) => MindmapPreview.h({
-                        tag: "label",
-                        attrs: { class: "st-look" },
-                        children: [
-                            MindmapPreview.h({
-                                tag: "input",
-                                attrs: {
-                                    type: "radio",
-                                    name: "settings-look",
-                                    value: option.key,
-                                    checked: look === option.key,
-                                    "data-focus": `look:${option.key}`,
-                                    onchange: () => on.look(option.key),
-                                },
-                            }),
-                            MindmapPreview.h({
-                                tag: "span",
-                                attrs: { class: "st-look-main" },
-                                children: [
-                                    MindmapPreview.h({
-                                        tag: "span",
-                                        attrs: { class: "st-look-name" },
-                                        children: [
-                                            option.label,
-                                            option.key === defaultLook ? MindmapPreview.h({ tag: "span", attrs: { class: "st-def" }, children: ["既定"] }) : null,
-                                        ],
-                                    }),
-                                    MindmapPreview.h({ tag: "span", attrs: { class: "st-look-note" }, children: [option.note] }),
-                                ],
-                            }),
-                        ],
-                    })),
-                }),
-            ],
-        });
-    }
-    /** 概要・つながりの行（常に出す。チェックの箱を持たない） */
+    /** 概要・ネットワークの行（常に出す。チェックの箱を持たない） */
     function alwaysRow({ iconName, label }) {
         return MindmapPreview.h({
             tag: "li",
@@ -105,7 +59,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要とつながりは常に出す行） */
+    /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要とネットワークは常に出す行） */
     function kindsField({ kinds, counts, on }) {
         const shownCount = MindmapPreview.KIND_KEYS.filter((kind) => kinds.has(kind)).length;
         const allBox = MindmapPreview.h({
@@ -175,7 +129,7 @@ var MindmapPreview;
                                 }),
                             ],
                         })),
-                        alwaysRow({ iconName: "orbit", label: "つながり" }),
+                        alwaysRow({ iconName: "network", label: "ネットワーク" }),
                     ],
                 }),
             ],
@@ -259,7 +213,6 @@ var MindmapPreview;
             attrs: { class: "st-wrap" },
             children: [
                 storageOk ? null : storageNote(),
-                lookField(props),
                 kindsField(props),
                 resetBlock(props),
                 canSave ? saveBlock(props) : null,

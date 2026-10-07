@@ -177,7 +177,7 @@
       "properties": {
         "network_look": {
           "type": "string",
-          "description": "つながりの見た目。無ければ `deep`",
+          "description": "ネットワークの見た目。無ければ `deep`",
           "enum": [
             "glow",
             "starlight",
@@ -188,7 +188,7 @@
         },
         "visible_kinds": {
           "type": "array",
-          "description": "プレビューのタブに出す種類。無ければ全ての種類。概要とつながりは常に出す",
+          "description": "プレビューのタブに出す種類。無ければ全ての種類。概要とネットワークは常に出す",
           "uniqueItems": true,
           "items": {
             "type": "string",

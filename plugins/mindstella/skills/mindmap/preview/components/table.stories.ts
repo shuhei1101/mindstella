@@ -32,7 +32,7 @@ const columns: MindmapPreview.Column[] = [
 /** 表の行 */
 const rows: SampleRow[] = [
   { id: "D-1", title: "プレビューの画面の分け方", conf: "高", status: "決定済み" },
-  { id: "D-2", title: "つながりで扱う項目の数の上限", conf: "中", status: "未決定" },
+  { id: "D-2", title: "ネットワークで扱う項目の数の上限", conf: "中", status: "未決定" },
   { id: "D-3", title: "資料の状態の値", conf: "高", status: "要見直し" },
   { id: "D-4", title: "デザインスタイルの選び方", conf: "低", status: "保留" },
 ];

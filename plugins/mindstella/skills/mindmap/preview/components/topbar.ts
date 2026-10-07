@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -27,13 +27,13 @@ namespace MindmapPreview {
   export type TopbarProps = {
     /** 話し合いの題名（`config.yaml` の `summary`）。1 行で末尾を省略し、全文を `title` 属性に持たせる */
     title: string;
-    /** タブの帯に並べる画面（概要と、表示する種類。つながりは含めない） */
+    /** タブの帯に並べる画面（概要と、表示する種類。ネットワークは含めない） */
     tabs: TopbarTab[];
     /** 開いている画面 */
     current: Tab;
     /** 今のライト / ダーク */
     theme: Theme;
-    /** タブかつながりの入口を押したとき（開いている詳細パネルは閉じない） */
+    /** タブかネットワークの入口を押したとき（開いている詳細パネルは閉じない） */
     onNavigate: (key: Tab) => void;
     /** 検索の入口を押したとき（`/` キーは使う側が受ける） */
     onSearch: () => void;
@@ -331,7 +331,7 @@ namespace MindmapPreview {
       children: [
         ...tabs.map((tab) => tabLink(tab, current, onNavigate)),
         h({ tag: "span", attrs: { class: "tab-gap" } }),
-        tabLink({ key: "graph", label: "つながり", icon: "orbit" }, current, onNavigate, "tab-special"),
+        tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
       ],
     });
     return h({ tag: "div", attrs: { class: "top" }, children: [bar, tabbar] });
