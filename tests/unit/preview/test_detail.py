@@ -136,7 +136,7 @@ OPEN_OLD_SET_PANEL_SCRIPT = """async ({data, point, highlight}) => {
     return {
         marked: panel.querySelectorAll(".md [data-line-start]").length,
         hits: panel.querySelectorAll(".loc-hit").length,
-        text: panel.querySelector(".md")?.textContent ?? "",
+        text: panel.querySelector(".md:not(.md-value)")?.textContent ?? "",
     };
 }"""
 
@@ -467,7 +467,7 @@ async ({data}) => {
             position(panel.querySelector('[data-key="lead"]')),
             position(panel.querySelector(".opt")),
             position(heading ?? null),
-            position(panel.querySelector(".md")),
+            position(panel.querySelector(".md:not(.md-value)")),
         ],
         decided: heading === undefined
             ? []
