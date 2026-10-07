@@ -22,6 +22,7 @@ flows:
         クライアント->>IF: init workspace（`settings` に設定）
         IF->>IF: 設定をスキーマと突き合わせる
         IF->>WS: .mindstella/ に config.yaml・種類ごとの YAML・mindstella-version.ini・docs/・release/ を作る
+        IF->>WS: 直下に README.md を書く
         IF-->>クライアント: JSON（workspace・files）
       ```
     expected:
@@ -30,8 +31,9 @@ flows:
       - '`.mindstella/` の `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml` が `items: []` である'
       - '`.mindstella/mindstella-version.ini` の 1 行目が `plugins/mindstella/version.ini` の 1 行目と同じ'
       - '`.mindstella/docs/` と `.mindstella/release/` がある'
-      - 直下にあるのが `.mindstella/` だけ
-      - '`files` に作った 8 つの YAML、`mindstella-version.ini` と 2 つのフォルダ（どれも `.mindstella/` から始まる）がある'
+      - 直下にあるのが `.mindstella/` と `README.md` だけ
+      - '`README.md` の中身が、制約「README の中身」の雛形と同じ'
+      - '`files` に作った 8 つの YAML、`mindstella-version.ini` と 2 つのフォルダ（どれも `.mindstella/` から始まる）と `README.md` がある'
     test: test_normal
   - name: 正常系（ゴールを持たない）
     summary: ゴールと概要を持たず、プレイブックを 2 つ並べた設定で作る
@@ -81,6 +83,7 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
       - フォルダの全てのファイルの中身が呼ぶ前と同じ
+      - 直下のファイルとフォルダの並びが呼ぶ前と同じ
     test: test_error_when_workspace_exists
   - name: 異常系（設定がスキーマに合わない・SchemaMismatchError）
     summary: フェーズが無い設定では作らず、フォルダも作らない
@@ -151,11 +154,39 @@ flows:
       - ツールのエラーになる
       - エラーの本文に `/mindstella:upgrade` での移し替えの案内がある
       - '`.mindstella/` が作られていない'
+      - 直下に `README.md` が作られていない
       - '`mindmap.yaml` と種類ごとの YAML の中身が呼ぶ前と同じ'
     test: test_error_when_old_settings_file_exists
-lead: 指定したフォルダの `.mindstella/` に、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作る。
+  - name: 正常系（README.md が既にある）
+    summary: 利用者の `README.md` を直下に持つフォルダに作ると、`README.md` を書き換えずに作る
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: ワークスペースの場所
+        description: テストごとの一時フォルダの下の、`README.md`（中身は `# 家計簿アプリの話し合い`）だけを持つフォルダ
+      - name: 設定
+        description: リクエスト例の設定
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as init（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: init workspace（`settings` に設定）
+        IF->>WS: .mindstella/ に config.yaml・種類ごとの YAML・mindstella-version.ini・docs/・release/ を作る
+        IF-->>WS: 直下に README.md がある（書かない）
+        IF-->>クライアント: JSON（workspace・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`.mindstella/config.yaml` がある'
+      - '`README.md` の中身が呼ぶ前と同じ'
+      - '`files` に `README.md` が無い'
+    test: test_normal_when_readme_exists
+lead: 指定したフォルダの `.mindstella/` に、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作る。直下にはプレビューの開き方を案内する `README.md` を書く。
 idempotent: false
-side_effects: 'ワークスペースのフォルダ（無ければ作る）に `.mindstella/` を作り、その中に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る'
+side_effects: 'ワークスペースのフォルダ（無ければ作る）に `.mindstella/` を作り、その中に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る。直下に `README.md` が無ければ書く'
 request:
   - name: workspace
     type: str
@@ -217,7 +248,7 @@ response:
     description: 作ったワークスペースの絶対パス
   - name: files
     type: list[str]
-    description: 作ったファイルとフォルダ（ワークスペースからの相対パス。どれも `.mindstella/` から始まる）
+    description: 作ったファイルとフォルダ（ワークスペースからの相対パス）。`README.md` はこの呼び出しで書いたときだけ載せ、ほかはどれも `.mindstella/` から始まる
 exceptions:
   - name: なし（正常終了）
     condition: 作成できた
@@ -230,7 +261,7 @@ exceptions:
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
   - name: WriteFailedError
     condition: フォルダ・ファイルを作る途中で書き込めなかった（権限が無い・ほかのプロセスが開いている など）
-    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。作ったものを消し、`config.yaml` は残さない
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。作ったもの（この呼び出しで書いた `README.md` を含む）を消し、`config.yaml` は残さない。前からあったファイルは消さない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける（キーのパスは `items[0].status` の形）。'
 constraints:
   - item: 結果の形
@@ -239,5 +270,7 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない'
+  - item: README の中身
+    constraint: プラグインが持つ雛形をそのまま書く（設定やパスを埋め込まない）。雛形は、このフォルダが mindstella の記録で `.mindstella/` を手で開かずプレビューで読むこと、起動スクリプトでこのフォルダを立ち上げ `/mindstella:session` にプレビューを頼むと URL が示されることの要約と、公開ドキュメント『プレビューを見る』（`https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html`）へのリンクだけを持つ。直下に `README.md` が既にあれば書かない。`README.md` はどのツールも読まず、ワークスペースの見分けに使わない
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_init.py

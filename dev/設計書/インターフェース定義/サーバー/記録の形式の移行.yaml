@@ -25,8 +25,8 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`workspace_version` が `null`、`plugin_version` が `v0.6.0`、`relation` が `older`'
-      - '`steps` の版が `v0.3.0`・`v0.5.0`・`v0.6.0` で、`destructive` が v0.6.0 の手順（`mindmap.yaml` → `config.yaml` の改名、`.mindstella/` へ移す `rename_file`・`move_dir`、`delete`）だけ `true`'
+      - '`workspace_version` が `null`、`plugin_version` がプラグインの版、`relation` が `older`'
+      - '`steps` の版が `v0.3.0`・`v0.5.0`・`v0.6.0`・README を置く版で、`destructive` が v0.6.0 の手順（`mindmap.yaml` → `config.yaml` の改名、`.mindstella/` へ移す `rename_file`・`move_dir`、`delete`）だけ `true`'
       - '`needs_values` に `.mindstella/config.yaml` の `summary` がある（全ての手順を当てた後の名前で返す）'
       - ワークスペースの全てのファイルの中身と更新日時が呼ぶ前と同じ
     test: test_normal_when_plan
@@ -210,7 +210,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: '版のファイルを持たず、`summary` を持つ `.mindstella/config.yaml`（直下に `mindmap.yaml`・`config.yaml` は無い）と、資料 A-1（`status: 完成`）を持つ、git の作業ツリーではないワークスペース'
+        description: '版のファイルを持たず、`summary` を持つ `.mindstella/config.yaml`（直下に `mindmap.yaml`・`config.yaml` は無い）と、資料 A-1（`status: 完成`）と、直下の `README.md` を持つ、git の作業ツリーではないワークスペース'
         notes: 当て直し（手順を当てた後、版を書く前に止めたワークスペース）も同じ形になる
     flow: |-
       ```mermaid
@@ -281,8 +281,9 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`workspace_version` が `v0.5.0` で、`steps` が v0.6.0 の手順だけ。先頭が `rename_file`（`mindmap.yaml` → `config.yaml`）で、どれも `destructive: true`'
+      - '`workspace_version` が `v0.5.0` で、`steps` が v0.6.0 と README を置く版の手順だけ。先頭が `rename_file`（`mindmap.yaml` → `config.yaml`）で、v0.6.0 の手順はどれも `destructive: true`'
       - 直下に `mindmap.yaml`・`config.yaml`・`decisions.yaml`・`docs/`・`release/`・`preview.html`・版のファイルが無い
+      - 直下に `README.md` がある
       - '`.mindstella/config.yaml` の中身が呼ぶ前の `mindmap.yaml` と同じで、`.mindstella/decisions.yaml`・`.mindstella/docs/D-1.md`・`.mindstella/release/資料.md` の中身が呼ぶ前と同じ'
       - '`needs_values` が空'
       - '`.mindstella/mindstella-version.ini` が `v0.5.0` のまま'
@@ -407,9 +408,36 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`workspace_version` が `v0.5.0`、`relation` が `older`'
-      - '`steps` の版が全て `v0.6.0` で、v0.3.0・v0.5.0 の手順を含まない'
+      - '`steps` の版が `v0.6.0` と README を置く版だけで、v0.3.0・v0.5.0 の手順を含まない'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_version_file_at_top
+  - name: 正常系（README を置く）
+    summary: 直下に README.md が無いワークスペースには雛形を書き、利用者の README.md があれば変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`.mindstella/mindstella-version.ini` が `v0.6.0` で、直下に `.mindstella/` だけを持つ、git の作業ツリーではないワークスペース'
+        notes: '`parametrize`: 直下に `README.md` が無い / 利用者の `README.md`（中身は `# 家計簿アプリの話し合い`）がある'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace
+        IF->>WS: 写しを取る
+        IF->>WS: README を置く版の手順を当てる（直下に README.md が無ければ書く）
+        IF-->>クライアント: JSON（steps・needs_values は空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 並んだ手順が README を置く版の `call`（`workspace_readme`）だけで、`destructive` が偽
+      - README.md が無かったとき、直下の `README.md` の中身が『ワークスペースの作成』の雛形と同じ
+      - README.md があったとき、直下の `README.md` の中身が呼ぶ前と同じ
+      - '`.mindstella/` の中身と更新日時が呼ぶ前と同じ'
+    test: test_normal_when_readme_placed
 lead: ワークスペースの版とプラグインの版を比べ、間の版の移し替えの手順（`migrations/{版}/steps.yaml`）を版の順に並べる・当てる。値が要るキーを入れ、点検に合えば版のファイルを書き換える。
 idempotent: false
 side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
@@ -563,6 +591,8 @@ constraints:
     constraint: このツールだけは `.mindstella/config.yaml`、直下の `config.yaml`、直下の `mindmap.yaml` のどれかがあればワークスペースとして扱う（ほかのツールは `.mindstella/config.yaml` だけ）。`.mindstella/` が無い移す前の形では、直下の `.mindstella.lock` で排他ロックを取る（v0.6.0 の手順がそのファイルを消す）
   - item: 版の読み取り
     constraint: ワークスペースの版は `.mindstella/mindstella-version.ini` の 1 行目。無ければ直下の `mindstella-version.ini`（v0.6.0 より前の置き場所）を読み、どちらも無ければ版を記録する前の形式。両方あるときは `.mindstella/` の方を読む
+  - item: README を置く版の手順
+    constraint: この変更を入れる版のフォルダ（`migrations/v{版}/`。版はリリースで決まる）に置く `call`（`workspace_readme`）の 1 手順。直下に `README.md` が無ければ、『ワークスペースの作成』の制約「README の中身」と同じ雛形を書く。あれば中身を変えない。破壊的な操作ではない
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]
