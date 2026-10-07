@@ -13,7 +13,7 @@ from preview_helpers import (
     open_drawer,
     row_ids,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # ゴールまでのタイルが、納品物を全て出す上限の件数
 DELIVERABLE_LIMIT = 5
@@ -182,7 +182,7 @@ def test_normal_when_no_goal(
         "phases": ["目的", "要件"],
     }
     url = serve_preview(
-        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-1", phase="目的", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("D-2", phase="要件", status="未決定"),
         settings=settings,
     )

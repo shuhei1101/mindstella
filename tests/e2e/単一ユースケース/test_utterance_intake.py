@@ -77,7 +77,8 @@ def test_normal(
                     "title": "ファイルの分け方",
                     "status": "未決定",
                     "parent": "$1",
-                    "options": OPTIONS,
+                    # 未決定で足すので、推奨する案 A に推奨の印を付ける
+                    "options": [{**OPTIONS[0], "recommended": True}, OPTIONS[1]],
                     "tags": [TOPIC_TAG],
                     **PLACE,
                 },
@@ -124,12 +125,14 @@ def test_normal(
     # D-1 が案を持ち、A だけが adopted: true である
     assert [option["key"] for option in decisions["D-1"]["options"]] == ["A", "B"]
     assert [option.get("adopted", False) for option in decisions["D-1"]["options"]] == [True, False]
-    # D-2 が parent: D-1 と案を持ち、未決定である
+    # D-2 が parent: D-1 と案を持ち、未決定で、案 A だけが推奨の印を持つ
     assert decisions["D-2"]["parent"] == "D-1"
     assert [option["key"] for option in decisions["D-2"]["options"]] == ["A", "B"]
     assert decisions["D-2"]["status"] == "未決定"
-    # D-3 が未整理である
+    assert [option.get("recommended") for option in decisions["D-2"]["options"]] == [True, None]
+    # D-3 が未整理で、案を持たない
     assert decisions["D-3"]["status"] == "未整理"
+    assert "options" not in decisions["D-3"]
     # T-1 が for: [D-2] を持つ
     assert tasks[0]["id"] == "T-1"
     assert tasks[0]["for"] == ["D-2"]

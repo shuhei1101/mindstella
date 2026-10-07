@@ -18,7 +18,7 @@ from preview_helpers import (
     shown_ball_item_ids,
     toggle_value,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # ドロワーの種類の値の並び（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）
 KIND_LABELS = ["検討事項", "タスク", "調査", "資料", "用語集", "メモ", "会話ログ"]
@@ -41,7 +41,7 @@ DOT_COLORS_SCRIPT = """() => [...document.querySelectorAll('dialog.drawer .fd-gr
 def _records(make_item: MakeItem) -> list[dict[str, Any]]:
     """7 種類の項目を 1 件以上ずつ。D-3 は前提 D-1・進めるタスク T-2・関連 R-1 とつながる。"""
     return [
-        make_item("D-1", status="決定済み"),
+        make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("D-3", status="要見直し", depends_on=["D-1"], related=["R-1"]),
         make_item("T-2", status="進行中", **{"for": ["D-3"]}),
         make_item("R-1", question="何を調べたか"),
@@ -151,7 +151,7 @@ def test_normal_when_filtered(
     """ドロワーのタグで話題を選び、状態を足して、両方の条件に合う項目の玉だけにする（正常系）。"""
     # 準備
     url = serve_preview(
-        make_item("D-1", status="決定済み", tags=["保存"]),
+        make_item("D-1", status="決定済み", tags=["保存"], options=ADOPTED_OPTIONS),
         make_item("D-3", status="要見直し", tags=["保存"], depends_on=["D-1"], related=["R-1"]),
         make_item("T-2", status="進行中", tags=["通知"], **{"for": ["D-3"]}),
         make_item("R-1", question="何を調べたか"),
