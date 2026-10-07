@@ -263,3 +263,4 @@ refs:
   - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/シナリオ/単一ユースケース/READMEの書き直し#
+test_file: tests/integration/server/test_readme.py
