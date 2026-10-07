@@ -55,7 +55,7 @@ def test_normal(
         ".board section.board-col",
         """cols => cols.map(c => [
             c.getAttribute('aria-label'),
-            c.querySelector('h3 .n').textContent,
+            c.querySelector('h2 .n').textContent,
             [...c.querySelectorAll('.card')].map(k => k.dataset.id),
         ])""",
     )

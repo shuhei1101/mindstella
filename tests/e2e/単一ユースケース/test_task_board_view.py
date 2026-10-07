@@ -81,7 +81,7 @@ def _column_counts(page: Page) -> dict[str, int]:
     """ボードの列の見出しの件数を、状態ごとに返す。"""
     return page.eval_on_selector_all(
         ".board section.board-col",
-        "cols => Object.fromEntries(cols.map(c => [c.getAttribute('aria-label'), Number(c.querySelector('h3 .n').textContent)]))",
+        "cols => Object.fromEntries(cols.map(c => [c.getAttribute('aria-label'), Number(c.querySelector('h2 .n').textContent)]))",
     )
 
 

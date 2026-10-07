@@ -83,6 +83,28 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     assert page.inner_text("aside.panel .d-title") == "T-1の題"
 
 
+def test_board_heading_level(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ボードの列の見出しは、画面の見出し h1 の 1 段下の h2 で、h3 の列の見出しは残らない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks")
+    # 実行
+    heading_tags = page.eval_on_selector_all(
+        "main h1, main .board-col h2",
+        "heads => heads.map(h => [h.tagName, h.closest('.board-col')?.getAttribute('aria-label') ?? null])",
+    )
+    labels = page.eval_on_selector_all(
+        ".board section.board-col", "cols => cols.map(c => c.getAttribute('aria-label'))"
+    )
+    h3_count = page.eval_on_selector_all("main .board-col h3", "heads => heads.length")
+    # 検証
+    assert page.inner_text("main h1") == "タスク"
+    assert heading_tags == [["H1", None]] + [["H2", label] for label in labels]
+    assert h3_count == 0
+
+
 def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """表示形式の切り替えは ボード・表 の 2 つで、既定はボード。表に切り替えると行を並べる（正常系）。"""
     # 準備
@@ -449,7 +471,7 @@ def test_board_head_stays(
             const boardTop = board.getBoundingClientRect().top;
             return {
                 scrolled: board.scrollTop > 0,
-                heads: [...document.querySelectorAll('.board-col h3')].map((h) => h.getBoundingClientRect().top - boardTop),
+                heads: [...document.querySelectorAll('.board-col h2')].map((h) => h.getBoundingClientRect().top - boardTop),
                 heights: [...document.querySelectorAll('.board-col')].map((c) => Math.round(c.getBoundingClientRect().height)),
             };
         }"""

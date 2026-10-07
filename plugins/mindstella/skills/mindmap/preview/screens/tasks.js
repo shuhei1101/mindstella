@@ -65,7 +65,7 @@ var MindmapPreview;
                     attrs: { class: "board-col", "aria-label": status },
                     children: [
                         MindmapPreview.h({
-                            tag: "h3",
+                            tag: "h2",
                             children: [
                                 MindmapPreview.statusMark(status),
                                 status,
