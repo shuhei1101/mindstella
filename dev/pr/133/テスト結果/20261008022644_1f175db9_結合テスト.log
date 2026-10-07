@@ -1,0 +1,56 @@
+$ python3 -m pytest tests/integration/preview
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-search-heading-level
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 401 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  5%]
+...........                                                              [  8%]
+tests/integration/preview/test_decisions_screen.py ..................... [ 13%]
+..................................                                       [ 21%]
+tests/integration/preview/test_detail_full_screen.py ................... [ 26%]
+....                                                                     [ 27%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 32%]
+................................................                         [ 44%]
+tests/integration/preview/test_diagram_viewer_screen.py .............    [ 47%]
+tests/integration/preview/test_docs_screen.py .......................... [ 53%]
+                                                                         [ 53%]
+tests/integration/preview/test_graph_screen.py .............             [ 57%]
+tests/integration/preview/test_history_screen.py ......                  [ 58%]
+tests/integration/preview/test_open_preview.py .................         [ 62%]
+tests/integration/preview/test_overview_screen.py .................      [ 67%]
+tests/integration/preview/test_records_screen.py ..........              [ 69%]
+tests/integration/preview/test_search_screen.py ...........              [ 72%]
+tests/integration/preview/test_settings_confirm_screen.py .......        [ 74%]
+tests/integration/preview/test_settings_screen.py ..........             [ 76%]
+tests/integration/preview/test_tasks_screen.py .......................   [ 82%]
+tests/integration/preview/test_topbar_screen.py ..............           [ 85%]
+tests/integration/preview/test_decisions_screen.py .....                 [ 87%]
+tests/integration/preview/test_detail_panel_screen.py ....               [ 88%]
+tests/integration/preview/test_docs_screen.py ....                       [ 89%]
+tests/integration/preview/test_graph_screen.py .                         [ 89%]
+tests/integration/preview/test_records_screen.py ..                      [ 89%]
+tests/integration/preview/test_tasks_screen.py ...                       [ 90%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 91%]
+tests/integration/preview/test_decisions_screen.py ...                   [ 92%]
+tests/integration/preview/test_detail_panel_screen.py ....               [ 93%]
+tests/integration/preview/test_docs_screen.py .                          [ 93%]
+tests/integration/preview/test_records_screen.py .                       [ 93%]
+tests/integration/preview/test_tasks_screen.py .                         [ 93%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 94%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 95%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [ 95%]
+tests/integration/preview/test_docs_screen.py .                          [ 95%]
+tests/integration/preview/test_records_screen.py .                       [ 96%]
+tests/integration/preview/test_tasks_screen.py .                         [ 96%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 97%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 97%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 97%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 98%]
+tests/integration/preview/test_decisions_screen.py .                     [ 98%]
+tests/integration/preview/test_topbar_screen.py .....                    [100%]
+
+======================= 401 passed in 532.10s (0:08:52) ========================
