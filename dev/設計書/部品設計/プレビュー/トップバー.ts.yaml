@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -11,7 +11,7 @@ args:
   - name: tabs
     type: オブジェクトの配列
     required: true
-    description: タブの帯に並べる画面（概要と、表示する種類の検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。表示しない種類は使う側が外して渡す。概要は常に含める。つながりは含めない（入口は常に出す）
+    description: タブの帯に並べる画面（概要と、表示する種類の検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。表示しない種類は使う側が外して渡す。概要は常に含める。ネットワークは含めない（入口は常に出す）
   - name: tabs[].key
     type: 列挙
     required: true
@@ -95,7 +95,7 @@ args:
   - name: filter
     type: 真偽値
     default: 'false'
-    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・つながり）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする
+    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・ネットワーク）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする
     status: planned
   - name: filter_count
     type: 整数
@@ -112,7 +112,7 @@ args:
     status: planned
 events:
   - name: 画面を移る
-    when: タブかつながりの入口を押したとき
+    when: タブかネットワークの入口を押したとき
     value: key（`data-tab`）
     description: 使う側がその画面を開き、URL のハッシュの `tab` を変えて履歴に積む。開いている詳細パネルは閉じない
   - name: 検索を開く
@@ -144,7 +144,7 @@ states:
       - name: current
         value: overview
   - name: Graph
-    description: つながりを開いている。つながりの入口だけを選んだ見た目にする
+    description: ネットワークを開いている。ネットワークの入口だけを選んだ見た目にする
     args:
       - name: current
         value: graph
@@ -247,7 +247,7 @@ states:
       - name: settings_open
         value: 'true'
   - name: KindsHidden
-    description: 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す
+    description: 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とネットワークの入口は残す
     args:
       - name: tabs
         value: タスク・資料を除いた並び

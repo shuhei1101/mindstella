@@ -42,7 +42,7 @@ args:
   - name: groups[].key
     type: 文字列
     required: true
-    description: 条件の識別子（表の列の `key`。つながりの種類は `type`）。URL のハッシュの `f.{列}` と同じ値
+    description: 条件の識別子（表の列の `key`。ネットワークの種類は `type`）。URL のハッシュの `f.{列}` と同じ値
     status: planned
   - name: groups[].label
     type: 文字列
