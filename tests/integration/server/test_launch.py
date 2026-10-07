@@ -42,7 +42,7 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
         script=Path(mindstella["args"][0]),
     )
     try:
-        assert len(server.list_tools()) == 25
+        assert len(server.list_tools()) == 26
     finally:
         server.stop()
     assert f"tmux attach-session -t ={name}" in result.stdout
