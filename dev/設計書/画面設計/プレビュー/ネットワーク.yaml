@@ -130,5 +130,3 @@ mock: dev/mock/pages/graph/123/standard/index.html
 test_file: tests/integration/preview/test_graph_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/graph/121/standard/index.html` の操作列「つながり」の案 A（近づくと名前の横）。鍵との並びと 5 つの見た目での出方は `dev/mock/pages/graph/123/standard/index.html`
-  ロックを保つ範囲: 要件.md の `未確定`「ロックを保つ範囲」は、推奨の A（ページを開いている間だけ保つ）で書いている
-  ロックのキー: ロックにキーボードで届く道は、レビューの推奨の A（`L` のキー操作を足す）で書いている。キーの割り当てと読み上げの文言はユーザーの確認を経て決める
