@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shlex
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,11 +23,23 @@ SERVING_URL = "http://127.0.0.1:43817/mindstella.html"
 # コマンドの節の見出し・短い説明・bash のコードブロックの 3 つ組
 COMMAND_PATTERN = re.compile(r"\*\*(.+?):\*\*\n\n(.+?)\n\n```bash\n(.+?)\n```")
 
-# 利用者が書いた README.md の中身（自動で書いた印が無い 3 通り）
+# 読める README.md の権限
+READABLE_MODE = 0o644
+
+# 利用者が書いた README.md の中身と権限（自動で書いた印が無い 4 通り）
 USER_READMES = [
-    pytest.param("# 家計簿アプリの話し合い\n".encode(), id="user_text"),
-    pytest.param(b"", id="empty"),
-    pytest.param(b"\xff\xfe\xfa", id="not_utf8"),
+    pytest.param("# 家計簿アプリの話し合い\n".encode(), READABLE_MODE, id="user_text"),
+    pytest.param(b"", READABLE_MODE, id="empty"),
+    pytest.param(b"\xff\xfe\xfa", READABLE_MODE, id="not_utf8"),
+    pytest.param(
+        "# 読めない README\n".encode(),
+        0o000,
+        id="unreadable",
+        marks=pytest.mark.skipif(
+            sys.platform == "win32" or os.geteuid() == 0,
+            reason="権限のビットは Windows と root では読み取りを止めない",
+        ),
+    ),
 ]
 
 
@@ -133,16 +147,19 @@ def test_write_readme_when_generated(tmp_path: Path) -> None:
     assert url in text
 
 
-@pytest.mark.parametrize("content", USER_READMES)
-def test_write_readme_when_user_file(tmp_path: Path, content: bytes) -> None:
+@pytest.mark.parametrize(("content", "mode"), USER_READMES)
+def test_write_readme_when_user_file(tmp_path: Path, content: bytes, mode: int) -> None:
     """印の無い README は書かない（正常系）。"""
     # 準備
-    (tmp_path / "README.md").write_bytes(content)
+    path = tmp_path / "README.md"
+    path.write_bytes(content)
+    path.chmod(mode)
     # 実行
     written = readme.write_readme(tmp_path, plugin_dir=Path("/p"))
-    # 検証
+    # 検証（中身を比べるため、読める権限に戻してから読む）
+    path.chmod(READABLE_MODE)
     assert written is False
-    assert (tmp_path / "README.md").read_bytes() == content
+    assert path.read_bytes() == content
 
 
 def test_write_readme_when_write_fails(tmp_path: Path) -> None:
