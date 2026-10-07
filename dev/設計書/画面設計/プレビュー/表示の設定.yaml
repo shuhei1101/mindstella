@@ -44,6 +44,6 @@ elements:
     source: 書き換えの知らせ・記録の取得.settings.display
     visible_when: サーバーの配信で、他の人の保存・`update_settings`・設定の再読み込みで既定が変わってから 6 秒の間
 lead: 表示する種類を、この端末だけの個人の上書きとして変える。ネットワークの見た目はネットワークのドロップダウンで選び、このパネルではこの端末で変えている項目・既定に戻す・ワークスペースの既定にするの対象としてだけ扱う。トップバーの表示の設定のボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧とは片方だけを開き、右の詳細パネルは開いたままにする。
-mock: dev/mock/pages/settings-panel/95/a-default-button/index.html
+mock: dev/mock/pages/settings-panel/123/standard/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
 test_file: tests/integration/preview/test_settings_screen.py
