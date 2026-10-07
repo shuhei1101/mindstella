@@ -592,7 +592,7 @@ constraints:
   - item: 版の読み取り
     constraint: ワークスペースの版は `.mindstella/mindstella-version.ini` の 1 行目。無ければ直下の `mindstella-version.ini`（v0.6.0 より前の置き場所）を読み、どちらも無ければ版を記録する前の形式。両方あるときは `.mindstella/` の方を読む
   - item: README を置く版の手順
-    constraint: この変更を入れる版のフォルダ（`migrations/v{版}/`。版はリリースで決まる）に置く `call`（`workspace_readme`）の 1 手順。直下に `README.md` が無ければ、『ワークスペースの作成』の制約「README の中身」と同じ雛形を書く。あれば中身を変えない。破壊的な操作ではない
+    constraint: README を置く版は `v0.7.0`（タグ済みの `v0.6.0` の次。`plugins/mindstella/version.ini` も `v0.7.0` に上げる）。`migrations/v0.7.0/steps.yaml` は `call`（`workspace_readme`）の 1 手順。直下に `README.md` が無ければ、『ワークスペースの作成』の制約「README の中身」と同じ雛形を書く。あれば中身を変えない。破壊的な操作ではない
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]
