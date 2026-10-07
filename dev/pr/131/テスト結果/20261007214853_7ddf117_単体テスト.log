@@ -1,3 +1,4 @@
+$ pytest tests/unit/preview -v
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-board-heading-level
@@ -263,4 +264,4 @@ tests/unit/preview/test_libs.py::test_selection_location[chromium-across_diagram
 tests/unit/preview/test_libs.py::test_selection_location[chromium-value] PASSED [ 99%]
 tests/unit/preview/test_libs.py::test_selection_location[chromium-after_removed] PASSED [100%]
 
-======================= 256 passed in 232.53s (0:03:52) ========================
+======================= 256 passed in 262.74s (0:04:22) ========================
