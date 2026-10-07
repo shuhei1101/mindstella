@@ -77,12 +77,12 @@ var MindmapPreview;
             const exact = hits.filter((hit) => hit.exact);
             const top = exact.length === 0
                 ? []
-                : [MindmapPreview.h({ tag: "h3", attrs: { class: "sr-exact" }, children: ["完全に一致"] }), ...exact.map((hit) => resultButton(hit, true))];
+                : [MindmapPreview.h({ tag: "h2", attrs: { class: "sr-exact" }, children: ["完全に一致"] }), ...exact.map((hit) => resultButton(hit, true))];
             const groups = MindmapPreview.KIND_KEYS.flatMap((kind) => {
                 const ofKind = hits.filter((hit) => hit.kind === kind && !hit.exact);
                 return ofKind.length === 0
                     ? []
-                    : [MindmapPreview.h({ tag: "h3", children: [MindmapPreview.KIND_LABEL[kind]] }), ...ofKind.map((hit) => resultButton(hit, false))];
+                    : [MindmapPreview.h({ tag: "h2", children: [MindmapPreview.KIND_LABEL[kind]] }), ...ofKind.map((hit) => resultButton(hit, false))];
             });
             results.replaceChildren(...top, ...groups);
         };
