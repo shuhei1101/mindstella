@@ -42,6 +42,7 @@ flows:
       - '`steps/取り込み.md` が `batch` を呼ぶ'
       - '`steps/取り込み.md` が `tags` を呼ぶ'
       - 本文が準備で `readme` を `changes_since_read` より前に呼ぶ
+      - 本文に、`readme` がエラーを返しても準備を続けて `changes_since_read` を呼ぶ分岐がある
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
@@ -132,7 +133,7 @@ constraints:
   - item: 全ての種類の本文
     constraint: 取り込みのステップは、タスク・用語集・メモにも経緯や補足があれば `body_markdown` で本文を書く（脱線で調べたことはメモの本文に残す）。どの種類に何を本文に書くかは取り込みの手順の表が決める
   - item: README の書き直し
-    constraint: 準備のステップで版の比較が `same` のとき、`changes_since_read` より前に `readme` を呼ぶ。`written` が偽（利用者が書いた README）でも利用者には示さずに続ける
+    constraint: 準備のステップで版の比較が `same` のとき、`changes_since_read` より前に `readme` を呼ぶ。`written` が偽（利用者が書いた README）でも利用者には示さずに続ける。`readme` がツールのエラーを返しても、エラーの本文を利用者に短く示して準備を続ける（`changes_since_read` へ進む）
     notes: 単一ユースケース『README の書き直し』、インターフェース定義『README の書き出し』（サーバー）
 refs:
   - dev/設計書/外部ライブラリ/claude-code#

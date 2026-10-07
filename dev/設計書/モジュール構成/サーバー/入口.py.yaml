@@ -816,7 +816,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission`・`readme` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
