@@ -27,7 +27,8 @@ directory: |-
       search.ts           全体の検索
       diagram-viewer.ts   図の拡大
     graph/
-      graph.ts            つながり（3D）。見本の作りを関数に分けて整える
+      looks.ts            ネットワークの 5 つの見た目の描き方と、一度だけ焼く絵（光の玉・光条・深宇宙の空）
+      graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
   `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。
@@ -189,7 +190,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: '選んでいる値を 1 つずつ `{列}: {値}` のチップに、文字の条件（`~{列}`）を `{列}に「{文字}」を含む` のチップ（英数字で終わる列名の後は空白を挟む）にし、× と「すべて解除」で条件の解除を知らせる行を返す。表と、表以外の表示形式（マップ・ボード・カード・つながり）のツールバーの下で同じものを使う。条件が無いときは中身の無い行を返す'
+    summary: '選んでいる値を 1 つずつ `{列}: {値}` のチップに、文字の条件（`~{列}`）を `{列}に「{文字}」を含む` のチップ（英数字で終わる列名の後は空白を挟む）にし、× と「すべて解除」で条件の解除を知らせる行を返す。表と、表以外の表示形式（マップ・ボード・カード・ネットワーク）のツールバーの下で同じものを使う。条件が無いときは中身の無い行を返す'
     props:
       - name: filters
         type: Record<string, string[]>
@@ -234,7 +235,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
     usecase: 検討事項をマップで辿る
     kind: 画面
-    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付け、押されたとき `route.id` があれば `on.clear` を呼ぶ。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枠の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枠より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）。マップの項目の節点の大きさは、コメントの印の有無によらず 268×48 にする'
+    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付ける（押したときの扱いは下のロック）。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枠の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枠より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）。マップの項目の節点の大きさは、コメントの印の有無によらず 268×48 にする。マップの検討事項の節を押したら、`resolvePress` で 2 回押しを読み替えた項目で `on.lock` を呼び、マップの余白を押したら `null` で呼ぶ（`blank` のときは入口が詳細パネルの「閉じる」と同じ処理をする）。`shake` が返ったら `shakeKeyElement` で節の鍵を震わせる。節の 1 行目の右端に鍵の場所を置き、閉じた鍵は `lockedId` の節に、開いた鍵はロックしていないときに `route.id` の節へカーソルを乗せている間だけ出す（CSS の `:hover`）。ロック中は `lockedId` の節を中央へ送る起点にし、`route.id` の節は強調の外でも薄くしない。幅 900px 以下（字下げの一覧）では `on.lock` を呼ばず、鍵を出さない'
     props:
       - name: index
         type: RecordIndex
@@ -245,9 +246,9 @@ components:
         required: true
         description: 表示形式と絞り込み
       - name: on
-        type: '{open, view, clear, filter, closeDrawer}'
+        type: '{open, view, clear, filter, closeDrawer, lock}'
         required: true
-        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）・条件を変える（新しい `filters`。ドロワーと表のチップから）・ドロワーを閉じる
+        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）・条件を変える（新しい `filters`。ドロワーと表のチップから）・ドロワーを閉じる・マップの節か余白を押した（押した項目の ID か `null`。入口が `lockTap` で判定し、`LockAction` を返す）
       - name: filters
         type: Record<string, string[]>
         required: true
@@ -261,6 +262,10 @@ components:
         required: false
         default: なし（印を出さない）
         description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカード・マップの節点の 2 行目の右端、字下げの一覧の行のタイトルと差分の印の右に `data-comment-target` の場所を置き、表へは `comments` で渡す
+      - name: lockedId
+        type: string | null
+        required: true
+        description: ロックしている検討事項（入口の `LockState.map`）。マップの節に閉じた鍵を出す
     state:
       - name: keyword
         type: string
@@ -270,6 +275,10 @@ components:
         type: number
         initial: 全体が収まる倍率
         description: マップの倍率。縮小・拡大のボタンとホイール（`wheelZoom`）で 0.4〜1.5 の数値にし、「全体を表示」で全体が収まる倍率に戻す
+      - name: lastPress
+        type: '{time, x, y, id} | null'
+        initial: 'null'
+        description: マップで前に押した時刻・位置・項目（`resolvePress` に渡す）
   - name: tasksScreen
     title: タスク
     container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
@@ -480,24 +489,24 @@ components:
         default: 'null'
         description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分（`diffLineParts`）を出す。`diffLineParts` が `null` のときは Raw に今の記法を差分なしで出す
   - name: graphScreen
-    title: つながり
+    title: ネットワーク
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
-    usecase: つながりを辿る
+    usecase: ネットワークを辿る
     kind: 画面
-    summary: 画面設計『つながり』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマの描画は玉ごとに一度だけ画像にした文字を倍率をかけて置く（PoC の `opt-each-bitmap`）。画面の外は描かない。条件が変わったら玉と線を作り直し、条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。キャンバスの上に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    summary: 画面設計『ネットワーク』をキャンバスに描く。`graphConditions` の条件と `filters` で項目を絞り（`filterRows`）、玉と線はその ID で作った `buildGraph`。種類の帯は出さない。毎コマ、玉と線の画面の位置・大きさ・濃さを求めて `LookFrame` にまとめ、`drawLook` で `look` の見た目に描かせてから、名前（玉ごとに一度だけ画像にした文字を倍率をかけて置く。PoC の `opt-each-bitmap`。色は `lookLabelColor`）・状態の印・鍵を重ねる。画面の外は描かない。条件が変わったら玉と線を作り直し、見た目が変わっても作り直さない（`setGraphLook`）。条件に合う項目が 1 件も無いときは、枠の中央に空の旨を出す。キャンバスの上に `filterChips` を、右上に見た目のドロップダウン（`select`。`NETWORK_LOOKS` の順に名前を並べ、`defaultLook` の名前に「（既定）」を添える。読み上げの名前は「ネットワークの見た目」）を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く。注目の起点は `lockedId`、無ければ `selectedId` で、起点へ寄り、起点とつながる玉を強調して線に光を流す。注目の起点があるときだけ、起点とつながる玉の名前の左に状態の印（`statusMark` の SVG か、資料の成果物は `icon("box")` を、状態・成果物・ライト / ダークごとに一度だけ絵にしたもの）を、名前の文字の高さの 8 割で名前と同じ遠近・濃さで描く。鍵は名前の右（名前が 8px 未満なら玉の右上の札の中）に 24 の枠の線画で描き、閉じた鍵は `lockedId` の玉に、開いた鍵はロックしていないときに `selectedId` の玉へカーソルを乗せている間だけ出す。鍵を出す玉は、コメントの印を鍵の右へずらす。玉か余白を押したら、`resolvePress` で 2 回押しを読み替えた項目（余白は `null`）で `on.lock` を呼び、`shake` が返ったら鍵を震わせる（`shakeAt` の量を毎コマ当てる。震えている間に描き直しても始まりの時刻を保つ）。幅 900px 以下では `on.lock` を呼ばず、押した玉の項目を `on.open` で開き、鍵を出さない。キャンバスの読み上げの説明に「L キーで、詳細を開いている項目をロック・解除」を添える
     props:
       - name: index
         type: RecordIndex
         required: true
         description: 索引
       - name: on
-        type: '{open, filter, closeDrawer}'
+        type: '{open, filter, closeDrawer, lock, look}'
         required: true
-        description: 玉を押して項目を開く・条件を変える（新しい `filters`）・ドロワーを閉じる
+        description: 玉を押して項目を開く（幅 900px 以下）・条件を変える（新しい `filters`）・ドロワーを閉じる・玉か余白を押した（押した項目の ID か `null`。入口が `lockTap` で判定し、`LockAction` を返す）・見た目のドロップダウンで選んだ（見た目の値）
       - name: filters
         type: Record<string, string[]>
         required: true
-        description: 絞り込みの条件（入口の `FilterState` のつながりの分）
+        description: 絞り込みの条件（入口の `FilterState` のネットワークの分）
       - name: drawerOpen
         type: boolean
         required: true
@@ -505,12 +514,24 @@ components:
       - name: look
         type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
         required: true
-        description: 'つながりの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れる。値ごとの描き分けは #28 が作る'
+        description: '今当てているネットワークの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れて `drawLook` に渡し、見た目のドロップダウンで選んでいる値にする'
       - name: comments
         type: Record<string, number>
         required: false
         default: なし（印を出さない）
         description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`。描いている間は `setGraphComments` で差し替える）。毎コマ、名前を文字 8px 以上で描いた玉のうち件数のある玉に、名前の右端に続けて縦は名前の中央に `commentMark` を置く（キャンバスの上に重ねる層。重なり順は層の中に閉じ、手前の玉ほど上、濃さは名前と同じ）。名前と印が描く枠に収まらない玉と、名前が 8px 未満の玉には置かない
+      - name: defaultLook
+        type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
+        required: true
+        description: ワークスペースの既定の見た目（`resolveDisplay`）。見た目のドロップダウンで、この見た目の名前に「（既定）」を添える
+      - name: selectedId
+        type: string | null
+        required: true
+        description: 詳細パネルで開いている項目（`Route.id`）。ロックしていなければ注目の起点にする
+      - name: lockedId
+        type: string | null
+        required: true
+        description: ロックしている項目（入口の `LockState.graph`）。注目の起点にし、閉じた鍵を出す
     state:
       - name: camera
         type: '{yaw, pitch, distance, target}'
@@ -520,6 +541,18 @@ components:
         type: Map<string, HTMLCanvasElement>
         initial: 空
         description: 玉・太さ・色ごとに描いた文字の画像
+      - name: lastPress
+        type: '{time, x, y, id} | null'
+        initial: 'null'
+        description: 前に押した時刻・位置・項目（`resolvePress` に渡す。押すたびに置き換える）
+      - name: shakeStart
+        type: number
+        initial: -Infinity
+        description: 鍵が震え始めた時刻（`SHAKE_MS` を過ぎたら震えを当てない）
+      - name: markCache
+        type: Map<string, HTMLImageElement>
+        initial: 空
+        description: 状態・成果物・ライト / ダークごとに絵にした状態の印
   - name: sendForm
     title: コメントの入力
     container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
@@ -726,16 +759,16 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
     usecase: 表示の設定を変える
-    summary: 部品設計『表示の設定』の引数を受け、見た目を選ぶ・表示する種類を変える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目の名前と短い説明は部品の中の定数に持つ。「すべて」は `toggleAllBox` と同じく途中の印を持つ。描き直しても操作していた部品にフォーカスを戻す
+    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目は選ばせず、`look`・`defaultLook` は「ワークスペースの既定にする」を出すかの比較にだけ使う。「すべて」は `toggleAllBox` と同じく途中の印を持つ。描き直しても操作していた部品にフォーカスを戻す
     props:
       - name: look
         type: string
         required: true
-        description: 当てている見た目
+        description: 当てているネットワークの見た目（パネルには出さず、`defaultLook` と比べる）
       - name: defaultLook
         type: string
         required: true
-        description: ワークスペースの既定の見た目（「既定」の札）
+        description: ワークスペースの既定の見た目（パネルには出さず、`look` と比べる）
       - name: kinds
         type: Set<string>
         required: true
@@ -767,22 +800,22 @@ components:
         default: 'true'
         description: 偽のとき先頭に「この端末に保存できません。…」（`role="alert"`）
       - name: on
-        type: '{look, kinds, reset, save, close}'
+        type: '{kinds, reset, save, close}'
         required: true
-        description: 見た目を選ぶ（値）・表示する種類を変える（変えた後の並び）・既定に戻す・ワークスペースの既定にする・閉じる
+        description: 表示する種類を変える（変えた後の並び）・既定に戻す・ワークスペースの既定にする・閉じる
     unit_tests:
       - name: test_settings_panel
         case: 正常
         summary: 上書きの有無と既定との違いで、既定に戻すと保存のボタンを出し分ける
         condition: '`parametrize`: `overrides` が空で既定と同じ / `look: dust`・`defaultLook: starlight`・`overrides` 2 件 / 同じで `canSave: false` / `look`・`kinds` が既定と同じで `overrides` が「ライト / ダーク」'
         mock: なし（DOM を作って見る）
-        expected: 「ワークスペースの既定のまま表示しています。」と「今の選びはワークスペースの既定と同じです。」でボタンが無い / 「既定に戻す」と「ワークスペースの既定にする」があり、星の光の行に「既定」の札 / 「既定に戻す」だけがある / 「既定に戻す」があり、保存のボタンの代わりに「今の選びは…同じです。」
+        expected: 「ワークスペースの既定のまま表示しています。」と「今の選びはワークスペースの既定と同じです。」でボタンが無い / 「既定に戻す」と「ワークスペースの既定にする」があり、見た目のラジオボタンが無い / 「既定に戻す」だけがある / 「既定に戻す」があり、保存のボタンの代わりに「今の選びは…同じです。」
       - name: test_settings_panel_when_kinds_changed
         case: 正常
         summary: 種類のチェックと「すべて」で変えた後の並びを知らせる
         condition: 用語集と会話ログを除く 5 種類。タスクのチェックを外し、次に「すべて」を押す
         mock: '`on.kinds`'
-        expected: 「すべて」が `indeterminate` で `5/7`。`on.kinds` がタスクを除いた 4 種類、続けて 7 種類で呼ばれる。概要とつながりの行はチェックボックスを持たない
+        expected: 「すべて」が `indeterminate` で `5/7`。`on.kinds` がタスクを除いた 4 種類、続けて 7 種類で呼ばれる。概要とネットワークの行はチェックボックスを持たない
   - name: settingsConfirm
     title: 既定の保存の確かめ
     kind: コンポーネント
@@ -882,13 +915,13 @@ components:
       - name: texts
         type: '{key, label, value}[]'
         required: false
-        description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない（つながり）
+        description: 文字の欄。画面は表の列を `textColumns` に通して組み、`value` は `selected` の `~{列}` の文字。画面は `drawerGroups` に文字の条件で絞った行を渡し、値の件数をその行で数える。省くと文字の欄を出さない（ネットワーク）
   - name: commentMark
     title: コメントの印
     container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
     usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・マップの節点・字下げの一覧・表・つながりの名前の横が使う
+    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・マップの節点・字下げの一覧・表・ネットワークの名前の横が使う
     props:
       - name: count
         type: number
@@ -912,7 +945,7 @@ functions:
         type: '{key, get}[]'
         required: true
         passing: keyword
-        description: 条件の定義（表の列か、つながりの `graphConditions`）
+        description: 条件の定義（表の列か、ネットワークの `graphConditions`）
       - name: filters
         type: Record<string, string[]>
         required: true
@@ -1096,10 +1129,10 @@ functions:
         mock: なし
         expected: 節に D-1 とその対象・カテゴリー A・フェーズがあり、D-2 とカテゴリー B が無い
   - name: buildGraph
-    title: つながりの玉と線
+    title: ネットワークの玉と線
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
-    usecase: つながりを辿る
+    usecase: ネットワークを辿る
     scope: public
     summary: 渡した ID の項目を玉に、その間の関連（依存・関連・根拠・進めるタスク）を線にして返す
     args:
@@ -1253,12 +1286,12 @@ functions:
         mock: なし
         expected: '状態 4 つ / `{phase: [要件]}`（状態の既定を含まない） / `{}`'
   - name: graphConditions
-    title: つながりの条件
+    title: ネットワークの条件
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
-    usecase: つながりを辿る
+    usecase: ネットワークを辿る
     scope: public
-    summary: つながりで絞る条件（種類・状態・タグ）の定義を返す
+    summary: ネットワークで絞る条件（種類・状態・タグ）の定義を返す
     returns:
       type: '{key, label, get, order?}[]'
       description: '`type`（項目の種類の名前。検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`。`get` は索引の項目（`{kind, item}`）から値を取る'
@@ -1371,12 +1404,12 @@ functions:
         mock: なし
         expected: 画面の数字が 1 / 99 / 99+ / 99+、読み上げの文字と `title` が「コメント 1 件」/「コメント 99 件」/「コメント 100 件」/「コメント 128 件」
   - name: setGraphComments
-    title: つながりのコメントの件数の差し替え
+    title: ネットワークのコメントの件数の差し替え
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
     usecase: コメントを選んで送る
     kind: 関数
     scope: public
-    summary: 描いているつながりの、名前の横の印に使う件数を差し替える。玉と線と視点は作り直さず、次のコマから新しい件数で印を置く。つながりを描いていないときは何もしない
+    summary: 描いているネットワークの、名前の横の印に使う件数を差し替える。玉と線と視点は作り直さず、次のコマから新しい件数で印を置く。ネットワークを描いていないときは何もしない
     args:
       - name: counts
         type: Record<string, number>
@@ -1407,6 +1440,170 @@ functions:
     returns:
       type: HTMLElement
       description: 印を置く場所
+  - name: drawLook
+    title: 見た目ごとの描き方
+    container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: '1 コマ分の玉と線を、`look` の見た目で地・線・注目の線を流れる光・星の順に描く（名前・状態の印・鍵・コメントの印は描かない）。見た目ごとの中身は Issue #28 の表と合意済みのモック（`dev/mock/refs/123/assets/stella.js`）。`glow` は今の円に光のにじみを足し、芯は円を塗る。`starlight` は夜に白い芯・色のにじみ・つながりの多い星の光条、昼に 4 方向にとがった星形。`constellation` は回転に合わせて回る天球の経線 12 本・緯線 5 本、星の手前で切った線、選んだ星の照準の輪（目盛りがゆっくり回る）。`deep` は回転に合わせて流れる遠い星・天の川・星雲（`deepSky`）と寄ると視差で動く塵、光のにじむ星と光条、注目の線を尾を引いて流れる彗星と選んだ星から広がる輪、昼は夜明けの空と光沢のある玉。`dust` は無彩色の細かな点と細い線で、注目の起点とつながる星にだけ種類の色を灯す。星のまたたき（周期 1,900ms）と広がる輪（周期 3,600ms）は `now` で自動で動かす。PoC の判定どおり、`starlight`・`deep` の線は両端の色の `midColor` の単色で 1 本ずつ引き、1 本のパスに線分を 2 本以上入れない。`glow` 以外の星のにじみ・芯・光条は `bakeGlow`・`bakeRay` の絵を置くだけにし、毎コマ作るグラデーションは `deep` と `dust` の地の 1 枚だけにする'
+    args:
+      - name: look
+        type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
+        required: true
+        passing: keyword
+        description: 当てる見た目
+      - name: frame
+        type: LookFrame（{context, width, height, dark, colors, now, stars, links, focusLinks, focusId, near, rotate, project, spread}）
+        required: true
+        passing: keyword
+        description: 1 コマ分の描く材料。`stars` は手前の玉ほど後ろに並べた玉（`{id, kind, degree, x, y, radius, alpha, color, selected, hover, strong, seed}`。`dust` は描いた点の半径を `radius` に書き戻し、名前・鍵をその大きさに合わせて置かせる）、`links` は描く線（`{from, to, type, fromColor, toColor, alpha}`）、`focusLinks` は注目の起点につながる線、`near` は起点とつながる玉の ID、`rotate`・`project` は視点の回転と透視、`spread` は群れのおおよその半径（近い順に 9 割目の玉まで）。`colors` は `tokens.css` から読んだ線・選択の輪・流れる玉の色
+    returns:
+      type: void
+      description: なし
+  - name: lookLabelColor
+    title: 見た目ごとの名前の色
+    container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 名前の文字の色を返す。`deep` の夜は `#dfe6ff`（星空になじむ青白）、`dust` は夜 `#c9ced6`・昼 `#2a2f36`（無彩色）、ほかは `fallback`
+    args:
+      - name: look
+        type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
+        required: true
+        passing: keyword
+        description: 当てている見た目
+      - name: dark
+        type: boolean
+        required: true
+        passing: keyword
+        description: ダークか
+      - name: fallback
+        type: string
+        required: true
+        passing: keyword
+        description: '`tokens.css` の名前の色'
+    returns:
+      type: string
+      description: 文字の色
+    unit_tests:
+      - name: test_look_label_color
+        case: 正常
+        summary: 見た目とライト / ダークで名前の色を読み分ける
+        condition: '`parametrize`: `deep`・ダーク / `deep`・ライト / `dust`・ダーク / `dust`・ライト / `glow`・ダーク（`fallback` は `#111111`）'
+        mock: なし
+        expected: '`#dfe6ff` / `#111111` / `#c9ced6` / `#2a2f36` / `#111111`'
+  - name: midColor
+    title: 線の色
+    container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 両端の星の色（`#rrggbb`）の、成分ごとの平均を四捨五入した色を返す。`starlight`・`deep` の線を 1 本の単色で引くのに使う
+    args:
+      - name: from
+        type: string
+        required: true
+        passing: keyword
+        description: 始まりの星の色
+      - name: to
+        type: string
+        required: true
+        passing: keyword
+        description: 終わりの星の色
+    returns:
+      type: string
+      description: '`#rrggbb`'
+    unit_tests:
+      - name: test_mid_color
+        case: 正常
+        summary: 成分ごとの平均を四捨五入する
+        condition: '`parametrize`: `#000000`・`#ffffff` / `#ff0000`・`#0000ff` / `#123456`・`#123456`'
+        mock: なし
+        expected: '`#808080` / `#800080` / `#123456`'
+  - name: bakeGlow
+    title: 光の玉の絵
+    container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 中心が明るく外へ薄れる光の玉を、一辺 128px のキャンバスに放射状のグラデーション（減衰 `(1 − t)^falloff` を 12 段で近似）で描いて返す。色と減衰ごとに一度だけ作り、2 回目からは同じキャンバスを返す
+    args:
+      - name: color
+        type: string
+        required: true
+        passing: keyword
+        description: '`#rrggbb`'
+      - name: falloff
+        type: number
+        required: true
+        passing: keyword
+        description: 外へ薄れる速さ（大きいほど芯が締まる）
+    returns:
+      type: HTMLCanvasElement
+      description: 光の玉の絵
+    unit_tests:
+      - name: test_bake_glow
+        case: 正常
+        summary: 色と減衰ごとに一度だけ作る
+        condition: '`#2dd4bf`・2 を 2 回、`#2dd4bf`・1.4 を 1 回'
+        mock: '`document.createElement` を数える'
+        expected: 1 回目と 2 回目が同じキャンバス（一辺 128）で、作ったのは 2 枚
+  - name: bakeRay
+    title: 光条の絵
+    container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 十字の光の筋（太さ 3px、中央が濃く両端へ消える）を一辺 128px のキャンバスに描いて返す。色ごとに一度だけ作る。毎コマは長さに合わせて置くだけにする
+    args:
+      - name: color
+        type: string
+        required: true
+        passing: positional
+        description: '`#rrggbb`'
+    returns:
+      type: HTMLCanvasElement
+      description: 光条の絵
+  - name: deepSky
+    title: 深宇宙の空
+    container: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 深宇宙の空の素材を、種を決めた乱数で一度だけ作って返す（2 回目からは同じもの）。遠い星 900 個（暗い星ほど多い）、傾けた大円に寄せた天の川の星 1,600 個、色のにじみ 14 個を重ねた一辺 512px の星雲の絵 4 枚（正四面体の 4 方向に貼り、どちらを向いても 1 枚は見える）
+    args: []
+    returns:
+      type: '{stars: {x, y, z, magnitude, color, seed, band}[], nebulae: {image, direction, scale}[]}'
+      description: 星の向き（単位ベクトル）・明るさ・色と、星雲の絵と貼る向き
+  - name: setGraphLook
+    title: ネットワークの見た目の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 描いているネットワークの見た目を差し替える。キャンバスの入れ物の `data-look` とドロップダウンの値を変え、玉・線・視点・選んだ項目・ロックは作り直さず、次のコマからその見た目で描く。ネットワークを描いていないときは何もしない
+    args:
+      - name: look
+        type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
+        required: true
+        passing: positional
+        description: 当てる見た目
+    returns:
+      type: void
+      description: なし
+  - name: shakeGraphKey
+    title: ネットワークの鍵の震え
+    container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 描いているネットワークの閉じた鍵を震わせる（`L` キーで `shake` になったときに入口が呼ぶ。玉や余白を押したときは画面の中で同じ処理をする）。震えの始まりを今にし、毎コマ `shakeAt` の量で鍵を左右へずらし、上を軸に傾け、大きくして赤く光らせる（色はライトで `--red-700`、ダークで `--red-300`）。CSS のアニメーションを使わないので `prefers-reduced-motion` でも止まらない。ネットワークを描いていないときは何もしない
+    args: []
+    returns:
+      type: void
+      description: なし
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py

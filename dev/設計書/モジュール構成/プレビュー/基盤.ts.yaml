@@ -11,6 +11,7 @@ directory: |-
       libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
       router.ts      URL のハッシュの読み書きと履歴
       api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る）
+      lock.ts        ロック（注目の起点を 1 つの項目に留める）の押下の判定・2 回押しの読み替えと、鍵の震えの量・要素の鍵の震え（ネットワークと検討事項のマップで共通）
   ```
 
   全ての `.ts` は import / export を持たない script で、`namespace MindmapPreview` の下に関数を置く。読んだだけでは DOM に触らない。
@@ -201,6 +202,24 @@ constants:
     usecase: 検討事項をマップで辿る
     summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）
     value: '5'
+  - name: DOUBLE_TAP_MS
+    title: 2 回押しとみなす間隔
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: 前に押してからこの時間（ms）未満に押した 2 回目を、前に押した項目への 2 回押しとみなす（合意済みのモックの値）
+    value: '450'
+  - name: DOUBLE_TAP_PX
+    title: 2 回押しとみなす位置のずれ
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: 前に押した位置からの距離（px）がこの値未満の 2 回目を、2 回押しとみなす（合意済みのモックの値）
+    value: '24'
+  - name: SHAKE_MS
+    title: 鍵の震えの長さ
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: 鍵が震え始めてから収まるまでの時間（ms。合意済みのモックの値）
+    value: '1000'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -1248,6 +1267,106 @@ functions:
         condition: '`selfId` が G-1 で、本文に「保存先」と「G-1」'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 「保存先」にも「G-1」にも印・リンクが無い
+  - name: lockTap
+    title: ロックの押下の判定
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: '押した項目（余白なら `null`）・詳細を開いている項目・ロックしている項目から、すること（`LockAction`）と押した後のロックを返す。ネットワークと検討事項のマップで同じ規則を使い、ロックは持たない（入口が `LockState` に持つ）。ロックしていないとき: 余白は `blank`、詳細を開いている項目は `lock`（その項目をロック）、それ以外は `open`。ロック中: ロックした項目は、その詳細を開いていれば `unlock`、開いていなければ `open`（詳細をロックした項目へ戻す）。余白と詳細を開いている別の項目は `shake`、それ以外は `open`。`L` キーは `pressed` に詳細を開いている項目を渡して同じ規則で判定する'
+    args:
+      - name: locked
+        type: string | null
+        required: true
+        passing: keyword
+        description: ロックしている項目
+      - name: pressed
+        type: string | null
+        required: true
+        passing: keyword
+        description: 押した項目（`resolvePress` で読み替えた後）。余白は `null`
+      - name: open
+        type: string | null
+        required: true
+        passing: keyword
+        description: 詳細パネルで開いている項目
+    returns:
+      type: '{action: LockAction, locked: string | null}'
+      description: "`LockAction` は `'lock' | 'unlock' | 'open' | 'shake' | 'blank'`。`locked` は押した後のロック"
+    unit_tests:
+      - name: test_lock_tap
+        case: 正常
+        summary: ロックの有無・押した項目・開いている項目ですることを読み分ける
+        condition: '`parametrize`（`locked`・`pressed`・`open`）: `null`・D-1・D-1 / `null`・D-2・D-1 / `null`・`null`・D-1 / D-1・D-1・D-1 / D-1・D-1・D-2 / D-1・D-2・D-2 / D-1・`null`・D-2 / D-1・D-3・D-2'
+        mock: なし
+        expected: '`lock`・D-1 / `open`・`null` / `blank`・`null` / `unlock`・`null` / `open`・D-1 / `shake`・D-1 / `shake`・D-1 / `open`・D-1'
+  - name: resolvePress
+    title: 2 回押しの読み替え
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 今の押下が、前の押下から `DOUBLE_TAP_MS` 未満かつ `DOUBLE_TAP_PX` 未満の位置なら、前に押した項目を押したものとして返す（詳細が開いて枠がずれた・描き直しで節が消えた位置を押しても、前に押した項目への 2 回押しにする）。それ以外は今押した項目を返す。前の押下は呼ぶ側が押すたびに今の押下で置き換える
+    args:
+      - name: last
+        type: '{time: number, x: number, y: number, id: string | null} | null'
+        required: true
+        passing: keyword
+        description: 前の押下（時刻は `performance.now()`、位置は画面の px）。まだ押していなければ `null`
+      - name: press
+        type: '{time: number, x: number, y: number, id: string | null}'
+        required: true
+        passing: keyword
+        description: 今の押下。`id` は押した位置の項目（余白は `null`）
+    returns:
+      type: string | null
+      description: 押したものとして扱う項目
+    unit_tests:
+      - name: test_resolve_press
+        case: 正常
+        summary: 間隔と位置のずれが両方満たすときだけ前の項目に読み替える
+        condition: '`parametrize`（`last` は時刻 1000・(100, 100)・D-1。`press` は項目 D-2）: 時刻 1449・(123, 100) / 時刻 1450・(100, 100) / 時刻 1100・(124, 100) / 時刻 1100・(100, 100) で `id` が `null` / `last` が `null`'
+        mock: なし
+        expected: D-1 / D-2 / D-2 / D-1 / D-2
+  - name: shakeAt
+    title: 鍵の震えの量
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 震え始めてからの時間から、収まり具合 `decay`（`1 − elapsed / SHAKE_MS`。1 → 0）と振れ `wave`（`sin(elapsed / SHAKE_MS × 2π × 5)`。5 往復）を返す。ネットワークの鍵とマップの節の鍵が同じ値を使い、左右のずれ（`wave × 6px × decay`）・上を軸にした傾き（`wave × 0.45rad × decay`）・大きさ（`1 + 0.45 × decay` 倍）・赤い光のにじみ（`4px × decay`）にする
+    args:
+      - name: elapsed
+        type: number
+        required: true
+        passing: positional
+        description: 震え始めてからの時間（ms。0 以上 `SHAKE_MS` 未満）
+    returns:
+      type: '{decay: number, wave: number}'
+      description: 収まり具合と振れ（−1〜1）
+    unit_tests:
+      - name: test_shake_at
+        case: 正常
+        summary: 始めは振れなく最も大きく、半分で半分に収まる
+        condition: '`parametrize`: 0 / 50 / 500'
+        mock: なし
+        expected: '`decay` 1・`wave` 0 / `decay` 0.95・`wave` 1 / `decay` 0.5・`wave` 約 0'
+  - name: shakeKeyElement
+    title: 要素の鍵の震え
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: 検討事項をマップで辿る
+    kind: 関数
+    scope: public
+    summary: '要素の鍵（検討事項のマップの節の鍵）を震わせる。`requestAnimationFrame` で毎コマ `find` が返す今の鍵へ `shakeAt` の量を `style`（`transform-origin: 50% 0` の `translateX`・`rotate`・`scale`、`color`、`filter: drop-shadow`）で当て、`SHAKE_MS` を過ぎたら `style` を外す。色はライトで `--red-700`、ダークで `--red-300`。CSS のアニメーションを使わないので `prefers-reduced-motion` でも止まらない。震えている間に呼ばれたら、始まりの時刻を今にして続きから震わせる（描き直しで鍵の要素が作り直されても途切れない）。単体テストは持たず、画面設計『検討事項』の結合テストが確かめる'
+    args:
+      - name: find
+        type: () => HTMLElement | null
+        required: true
+        passing: positional
+        description: 今描いている鍵の要素を引く関数（無ければ `null`。そのコマは飛ばす）
+    returns:
+      type: void
+      description: なし
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
