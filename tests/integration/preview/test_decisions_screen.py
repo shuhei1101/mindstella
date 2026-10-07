@@ -215,6 +215,28 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
     assert page.inner_text("main h1") == "検討事項"
 
 
+def test_board_heading_level(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ボードの列の見出しは、画面の見出し h1 の 1 段下の h2 で、h3 の列の見出しは残らない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions")
+    # 実行
+    heading_tags = page.eval_on_selector_all(
+        "main h1, main .board-col h2",
+        "heads => heads.map(h => [h.tagName, h.closest('.board-col')?.getAttribute('aria-label') ?? null])",
+    )
+    labels = page.eval_on_selector_all(
+        ".board section.board-col", "cols => cols.map(c => c.getAttribute('aria-label'))"
+    )
+    h3_count = page.eval_on_selector_all("main .board-col h3", "heads => heads.length")
+    # 検証
+    assert page.inner_text("main h1") == "検討事項"
+    assert heading_tags == [["H1", None]] + [["H2", label] for label in labels]
+    assert h3_count == 0
+
+
 def test_map(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """対象 → カテゴリー → フェーズ → 検討事項の木をマップに描き、項目を押すと詳細パネルを開く（正常系）。"""
     # 準備
@@ -1344,7 +1366,7 @@ def test_board_head_stays(
             const board = document.querySelector('.board');
             board.scrollTop = board.scrollHeight;
             const boardTop = board.getBoundingClientRect().top;
-            const heads = [...document.querySelectorAll('.board-col h3')].map((h) => h.getBoundingClientRect().top - boardTop);
+            const heads = [...document.querySelectorAll('.board-col h2')].map((h) => h.getBoundingClientRect().top - boardTop);
             const heights = [...document.querySelectorAll('.board-col')].map((c) => Math.round(c.getBoundingClientRect().height));
             return {scrolled: board.scrollTop > 0, heads, heights};
         }"""

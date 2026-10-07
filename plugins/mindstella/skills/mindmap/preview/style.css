@@ -166,8 +166,8 @@ th:hover .th-tool.pin, th:focus-within .th-tool.pin, .th-tool.pin[aria-pressed="
 
 /* ===== ボード ===== */
 .board { display: grid; grid-template-columns: repeat(var(--cols), minmax(240px, 1fr)); gap: 16px; overflow-x: auto; padding: 8px 8px 8px; margin-inline: -8px; }
-.board-col h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--text); font-size: var(--fs-small); position: sticky; top: 0; z-index: 1; background: var(--bg); padding-top: 4px; box-shadow: 0 10px 0 var(--bg); }
-.board-col h3 .n { font-family: var(--font-mono); color: var(--text-3); font-weight: 400; }
+.board-col h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--text); font-size: var(--fs-small); position: sticky; top: 0; z-index: 1; background: var(--bg); padding-top: 4px; box-shadow: 0 10px 0 var(--bg); }
+.board-col h2 .n { font-family: var(--font-mono); color: var(--text-3); font-weight: 400; }
 .card { display: block; width: 100%; text-align: left; padding: 12px; margin-bottom: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .card:hover { border-color: var(--accent); }
 .card .c-ttl { font-weight: 600; line-height: 1.45; }
