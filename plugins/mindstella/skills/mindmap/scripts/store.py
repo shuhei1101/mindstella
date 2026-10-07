@@ -35,6 +35,7 @@ from kinds import (
     kind_of_id,
     records_root,
 )
+from readme import README_FILE, write_readme
 from referencing import Registry
 from referencing.jsonschema import DRAFT202012
 
@@ -535,7 +536,7 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
-    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る。"""
+    """設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作り、直下に README を書く。"""
     root = root.resolve()
     records = records_root(root)
     if (records / SETTINGS_FILE).exists():
@@ -579,12 +580,24 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
         (records / VERSION_FILE).write_text(f"{version}\n", encoding="utf-8")
         created.append(records / VERSION_FILE)
         files.append(f"{RECORD_DIR}/{VERSION_FILE}")
+        # 直下の README は、前からあったものを失敗のときに消さないよう、無かったときだけ作ったものに数える
+        readme_existed = (root / README_FILE).exists()
+        readme_written = write_readme(root)
+        if readme_written and not readme_existed:
+            created.append(root / README_FILE)
         # config.yaml は最後に書く（途中で止まってもワークスペースとして扱われない）
         (records / SETTINGS_FILE).write_text(dump_yaml(settings), encoding="utf-8")
         files.append(f"{RECORD_DIR}/{SETTINGS_FILE}")
+    except WriteFailedError:
+        # README を書けなかった: 作ったものを消してそのまま送る
+        _remove_created(created)
+        raise
     except OSError as error:
         _remove_created(created)
         raise write_failed(root, error) from error
+    # README は、この呼び出しで書いたときだけ末尾に載せる（利用者が書いたものは載せない）
+    if readme_written:
+        files.append(README_FILE)
     return files
 
 

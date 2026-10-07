@@ -52,6 +52,7 @@ TOOL_NAMES = (
     "clear_release",
     "export",
     "preview_url",
+    "readme",
     "submissions",
     "take_submission",
 )
@@ -343,6 +344,13 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def preview_url(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_preview_url(root, previews=previews))
+
+    @server.tool(
+        name="readme",
+        description="直下の README.md を、起動・接続のコマンドと配っているプレビューの URL で書き直す",
+    )
+    def readme(workspace: WorkspaceArg) -> CallToolResult:
+        return read(workspace, lambda root: commands.run_readme(root, previews=previews))
 
     @server.tool(name="submissions", description="取り込んでいない送信を送った順に返す")
     def submissions(workspace: WorkspaceArg) -> CallToolResult:
