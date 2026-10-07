@@ -127,6 +127,10 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
             category="データ構造",
             target="mindmap",
             answer="種類ごとに分ける",
+            options=[
+                {"key": "A", "content": "種類ごとに分ける", "adopted": True},
+                {"key": "B", "content": "1 つにまとめる"},
+            ],
         ),
         make_item(
             "D-2",
@@ -137,6 +141,10 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
             depends_on=["D-1"],
             weight="大",
             lead="キーをどう持つか",
+            options=[
+                {"key": "A", "content": "キーを種類ごとに持つ"},
+                {"key": "B", "content": "キーを 1 つにまとめる"},
+            ],
         ),
         make_item(
             "D-3",

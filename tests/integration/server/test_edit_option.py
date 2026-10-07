@@ -112,6 +112,30 @@ def test_normal_when_removed(decision_workspace, call_tool: CallTool) -> None:
     assert item["answer"] == "A に決めた"
 
 
+def test_normal_when_recommendation_moved(decision_workspace, call_tool: CallTool) -> None:
+    """案 B に推奨の印を立て、案 A の印を外す（正常系）。"""
+    # 準備
+    root = decision_workspace([{**OPTION_A, "recommended": True}, OPTION_B])
+    # 実行
+    result = call_tool(
+        "edit_option",
+        workspace=str(root),
+        id="D-1",
+        action="update",
+        key="B",
+        option={"recommended": True},
+    )
+    # 検証
+    assert result.is_error is False
+    item = read_items(root, "decisions.yaml")[0]
+    assert item["options"] == [OPTION_A, {**OPTION_B, "recommended": True}]
+    assert "recommended" not in item["options"][0]
+    assert item["status"] == "未決定"
+    assert all("adopted" not in option for option in item["options"])
+    assert len(item["history"]) == 1
+    assert item["history"][0]["before"]["options"] == [{**OPTION_A, "recommended": True}, OPTION_B]
+
+
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """config.yaml が無いフォルダを指すと、何も書かずに終わる（異常系）。"""
     # 準備
@@ -294,4 +318,25 @@ def test_error_when_argument_invalid(
     assert result.is_error is True
     assert result.text.startswith("エラー: 引数の誤り: option:")
     assert "adopted" in result.text
+    assert snapshot_tree(root) == before
+
+
+def test_error_when_last_option_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """案を必須にする状態の検討事項の最後の案は消さず、案を残すよう示す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="未決定", options=[OPTION_A]))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("edit_option", workspace=str(root), id="D-1", action="remove", key="A")
+    # 検証
+    assert result.is_error is True
+    assert "D-1" in result.text
+    assert "A" in result.text
+    assert "1 つ以上" in result.text
+    assert "add" in result.text
     assert snapshot_tree(root) == before

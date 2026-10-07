@@ -232,13 +232,25 @@ def test_normal_when_targets_remapped(
         "add",
         **ws,
         kind="decision",
-        item={"title": "画面の問い", "status": "未決定", "target": "本体", "category": "画面"},
+        item={
+            "title": "画面の問い",
+            "status": "未決定",
+            "options": [{"key": "A", "content": "案 A"}],
+            "target": "本体",
+            "category": "画面",
+        },
     )
     replay(
         "add",
         **ws,
         kind="decision",
-        item={"title": "設定の問い", "status": "未決定", "target": "管理画面", "category": "設定"},
+        item={
+            "title": "設定の問い",
+            "status": "未決定",
+            "options": [{"key": "A", "content": "案 A"}],
+            "target": "管理画面",
+            "category": "設定",
+        },
     )
     replay("commit", **ws, summary="足す")
     new_targets = [

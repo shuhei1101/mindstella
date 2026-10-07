@@ -7,7 +7,7 @@ from typing import Any
 
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview
-from workspace_fixtures import MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # 本文に mermaid の図を 1 つ持つ Markdown
 BODY_WITH_DIAGRAM = """# 要件
@@ -40,6 +40,9 @@ DIAGRAM_TIMEOUT_MS = 20_000
 # 全画面の外側（後ろの幕）を押す位置
 BACKDROP_POINT = (4, 4)
 
+# Markdown で書いた値（強調とリストを持つ）
+MARKDOWN_VALUE = "**強調**した文\n\n- 箇条書き"
+
 # 本文のスクリプトが実行されたときに残す印
 SCRIPT_BODY = """<script>window.__bodyScriptRan = true</script>
 
@@ -59,17 +62,26 @@ def _related(page: Page) -> dict[str, list[str]]:
 
 
 def _decision_records(make_item: MakeItem) -> list[dict[str, Any]]:
-    """案・前提・後続・進めるタスク・関連・参照元・図つきの本文を持つ検討事項 D-3 と、つながる項目を返す。"""
+    """案・前提・後続・進めるタスク・関連・参照元・図つきの本文と Markdown の背景・答え・理由を持つ検討事項 D-3 と、つながる項目を返す。"""
     return [
-        make_item("D-1", status="決定済み", answer="種類ごとに分ける"),
+        make_item("D-1", status="決定済み", answer="種類ごとに分ける", options=ADOPTED_OPTIONS),
         make_item(
             "D-3",
             status="要見直し",
+            lead=MARKDOWN_VALUE,
+            answer=MARKDOWN_VALUE,
+            reason=MARKDOWN_VALUE,
             depends_on=["D-1"],
             related=["R-1"],
             body="D-3.md",
             options=[
-                {"key": "A", "content": "表で見せる", "adopted": True, "reason": "並べやすい"},
+                {
+                    "key": "A",
+                    "content": "表で見せる",
+                    "pros": MARKDOWN_VALUE,
+                    "adopted": True,
+                    "reason": "並べやすい",
+                },
                 {
                     "key": "B",
                     "content": "カードで見せる",
@@ -113,6 +125,19 @@ def test_normal(
     assert [row[:2] for row in options] == [["A", "採用"], ["B", "不採用"]]
     assert options[0][2] < options[1][2]
     assert options[1][3] is True
+    # 検証（並び）: タイトル → 背景 → 案 → 採用した案と理由 → 本文の順に並ぶ
+    order = page.evaluate(
+        """() => [...document.querySelectorAll('aside.panel .d-title, aside.panel .d-lead, aside.panel .d-sec h3')]
+            .map(e => e.classList.contains('d-title') ? 'タイトル' : e.classList.contains('d-lead') ? '背景' : e.textContent)
+            .filter(t => ['タイトル', '背景', '案', '採用した案と理由', '本文'].includes(t))"""
+    )
+    assert order == ["タイトル", "背景", "案", "採用した案と理由", "本文"]
+    # 検証（Markdown）: 背景・答え・理由と案 A のメリットが、強調とリストとして描かれる
+    drawn = page.eval_on_selector_all(
+        "aside.panel .md-value",
+        "els => els.map(e => [e.querySelectorAll('strong').length, e.querySelectorAll('li').length])",
+    )
+    assert drawn.count([1, 1]) == 4
     # 検証（関係）
     related = _related(page)
     assert related["前提"] == ["D-1"]
@@ -183,6 +208,49 @@ def test_normal(
         "document.querySelector('aside.panel .d-title')?.textContent === 'D-3の題'"
     )
     assert "id=D-3" in page.evaluate("location.hash")
+
+
+def test_normal_when_recommendation_shown(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """未決定の検討事項の詳細パネルで、推奨の案だけに推奨の印が出て、背景が Markdown で描かれる（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item(
+            "D-7",
+            status="未決定",
+            lead="**背景**を読んで選ぶ",
+            options=[
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+        ),
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    page.click('table.grid button.row-open[data-id="D-7"]')
+    page.wait_for_selector("aside.panel.open .opt")
+    # 検証
+    # 案 B のカードだけが推奨の印を持ち、案 A・B のどちらも採用・不採用の表示を持たない
+    marks = page.eval_on_selector_all(
+        "aside.panel .opt",
+        """opts => opts.map(o => [
+          o.querySelector('.key').textContent,
+          o.querySelector('.o-head .rec-badge')?.textContent ?? null,
+          o.querySelector('.res')?.textContent ?? null,
+        ])""",
+    )
+    assert marks == [["A", None, None], ["B", "推奨", None]]
+    assert page.locator("aside.panel .opt.adopted, aside.panel .opt.rejected").count() == 0
+    # 背景の Markdown が強調として描かれる
+    assert page.inner_text("aside.panel .d-lead strong") == "背景"
+    # 採用した案と理由の節が出ない
+    titles = page.eval_on_selector_all("aside.panel .d-sec h3", "hs => hs.map(h => h.textContent)")
+    assert "採用した案と理由" not in titles
 
 
 def test_error_when_body_has_script(

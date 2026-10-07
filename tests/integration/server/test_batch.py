@@ -28,7 +28,7 @@ NORMAL_OPERATIONS: list[dict[str, Any]] = [
         "kind": "task",
         "item": {"title": "記録の単位を調べる", "kind": "調査", "status": "未着手", "for": ["$1"]},
     },
-    {"op": "update", "id": "D-1", "item": {"answer": "月ごとに分ける", "status": "決定済み"}},
+    {"op": "update", "id": "D-1", "item": {"reason": "記録の単位が決まるまで待つ", "status": "保留"}},
     {"op": "show", "id": "D-1"},
 ]
 
@@ -39,7 +39,12 @@ def test_normal(
     """追加・先の追加を指す追加・更新・取得を 1 回で当てる（正常系）。"""
     # 準備
     root = make_workspace()
-    add_item(call_tool, root, "decision", {"title": "最初の問い", "status": "未決定"})
+    add_item(
+        call_tool,
+        root,
+        "decision",
+        {"title": "最初の問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]},
+    )
     commit(call_tool, root, "足す")
     # 実行
     result = call_tool("batch", workspace=str(root), operations=NORMAL_OPERATIONS)
@@ -51,8 +56,8 @@ def test_normal(
     assert results[0]["result"]["id"] == "D-2"
     assert results[1]["result"]["id"] == "T-1"
     shown = results[3]["result"]["item"]
-    assert shown["answer"] == "月ごとに分ける"
-    assert shown["status"] == "決定済み"
+    assert shown["reason"] == "記録の単位が決まるまで待つ"
+    assert shown["status"] == "保留"
     task = read_items(root, "tasks.yaml")[0]
     assert task["for"] == ["D-2"]
     decisions = {item["id"]: item for item in read_items(root, "decisions.yaml")}

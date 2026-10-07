@@ -21,7 +21,12 @@ BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
 BODY_AFTER = "1 行目\n書き換えた 2 行目\n3 行目\n"
 
 # 足す検討事項の中身
-DECISION: dict[str, Any] = {"title": "問い A", "status": "未決定", "body_markdown": BODY_BEFORE}
+DECISION: dict[str, Any] = {
+    "title": "問い A",
+    "status": "未決定",
+    "options": [{"key": "A", "content": "案 A"}],
+    "body_markdown": BODY_BEFORE,
+}
 
 # 足すタスクの中身
 TASK: dict[str, Any] = {"title": "調べる", "kind": "調査", "status": "未着手"}

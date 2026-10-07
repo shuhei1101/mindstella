@@ -145,3 +145,46 @@ def test_normal_when_unknown_phase(
         (".mindstella/config.yaml", None, "goal.phase", "結論"),
     }
     assert snapshot_tree(root) == before
+
+
+def _without_options(item: dict[str, Any]) -> dict[str, Any]:
+    """案のキーを持たない検討事項にする。"""
+    return {key: value for key, value in item.items() if key != "options"}
+
+
+def test_normal_when_options_and_status_mismatch(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """案を持たない・採用した案を持たない決定済み・採用した案を持つ未決定を拾い、案が要らない状態は拾わない（正常系）。"""
+    # 準備
+    option_a = {"key": "A", "content": "案 A"}
+    option_b = {"key": "B", "content": "案 B"}
+    root = make_workspace(
+        _without_options(make_item("D-1", status="未決定")),
+        make_item("D-2", status="決定済み", options=[option_a, option_b]),
+        make_item("D-3", status="未決定", options=[{**option_a, "adopted": True}, option_b]),
+        _without_options(make_item("D-4", status="未整理")),
+        _without_options(make_item("D-5", status="対象外")),
+        _without_options(make_item("D-6", status="取り下げ")),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    problems = result.data["problems"]
+    assert [(row["kind"], row["id"], row["key"]) for row in problems] == [
+        ("decision_state", "D-1", "items[0].options"),
+        ("decision_state", "D-2", "items[1].options"),
+        ("decision_state", "D-3", "items[2].status"),
+    ]
+    assert "options に案を書く" in problems[0]["detail"]
+    assert "adopt" in problems[1]["detail"]
+    assert "未決定" in problems[2]["detail"]
+    assert "A" in problems[2]["detail"]
+    assert snapshot_tree(root) == before

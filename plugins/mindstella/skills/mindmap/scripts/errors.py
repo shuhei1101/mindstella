@@ -70,6 +70,10 @@ class AdoptedOptionError(MindmapError):
     """`edit_option` の `remove` で、採用している案を指した。"""
 
 
+class LastOptionError(MindmapError):
+    """`edit_option` の `remove` で、案を必須にする状態の検討事項の最後の案を指した。"""
+
+
 class WriteFailedError(MindmapError):
     """ファイルの書き込み・置き換えで OSError が起きた。"""
 

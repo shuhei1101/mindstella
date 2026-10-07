@@ -44,7 +44,7 @@ functions:
       type: list[Problem]
       description: 問題の並び（無ければ空）
     process: |-
-      1. スキーマ違反を拾う（ワークスペースの検証。`validate_workspace`）
+      1. スキーマ違反と、案と状態の決まりに合わない検討事項を拾う（ワークスペースの検証。`validate_workspace`）
       2. ID の重複を拾う（`_check_duplicate_ids`）
       3. 参照切れを拾う（`_check_refs`）
       4. 本文のずれを拾う（`_check_bodies`）
@@ -67,6 +67,12 @@ functions:
         condition: 'D-1 `depends_on: [D-9]`・D-2 `status: 完了`・R-1 `body: R-1.md`（ファイル無し）・`docs/X-1.md`（どこからも指されない）'
         mock: なし
         expected: '`broken_ref`（D-1・`depends_on`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.md` → `.mindstella/research.yaml` の順'
+      - name: test_check_workspace_when_decision_state
+        case: 正常
+        summary: 案と状態の合わない検討事項を拾い、必須でない状態は拾わない
+        condition: 案を持たない未決定の D-1 と、案を持たない未整理の D-2 を持つワークスペース
+        mock: なし
+        expected: '`kind: decision_state` の問題が D-1 の 1 件だけで、`file` が `.mindstella/decisions.yaml`'
   - name: _check_duplicate_ids
     title: ID の重複の点検
     kind: 関数

@@ -32,6 +32,10 @@ COMMITTED_D1 = (
     "  until_seq: 0\n  added: [D-1]\n  changed: []\npending:\n  added: []\n  changed: []\n"
 )
 
+# 検討事項 D-1 の案
+OPTION_A: dict[str, Any] = {"key": "A", "content": "種類ごとに分ける"}
+OPTION_B: dict[str, Any] = {"key": "B", "content": "1 つにまとめる"}
+
 # 本文（3 行）と、2 行目を書き換えた本文
 BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
 BODY_AFTER = "1 行目\n書き換えた 2 行目\n3 行目\n"
@@ -48,10 +52,21 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     """検討事項の答えと状態を直し、不要になったキーを消して、変更履歴を 1 回分積む（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", status="未決定", lead=DECISION_ITEM["lead"], weight="大"),
+        make_item(
+            "D-1",
+            status="未決定",
+            lead=DECISION_ITEM["lead"],
+            weight="大",
+            options=[OPTION_A, OPTION_B],
+        ),
         raw_files={"changes.yaml": COMMITTED_D1},
     )
-    item = {"answer": "種類ごとに分ける", "status": "決定済み", "weight": None}
+    item = {
+        "answer": "種類ごとに分ける",
+        "status": "決定済み",
+        "options": [{**OPTION_A, "adopted": True}, OPTION_B],
+        "weight": None,
+    }
     # 実行
     result = call_tool("update", workspace=str(root), id="D-1", item=item)
     # 検証
@@ -59,10 +74,11 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     payload = result.data
     assert payload["id"] == "D-1"
     assert payload["file"] == ".mindstella/decisions.yaml"
-    assert payload["changed"] == ["answer", "status", "weight"]
+    assert payload["changed"] == ["answer", "status", "options", "weight"]
     updated_item = _read_decisions(root)[0]
     assert updated_item["answer"] == "種類ごとに分ける"
     assert updated_item["status"] == "決定済み"
+    assert updated_item["options"] == item["options"]
     assert "weight" not in updated_item
     assert updated_item["lead"] == DECISION_ITEM["lead"]
     assert updated_item["created"] == "2026-10-01T00:00:00+00:00"
@@ -73,6 +89,7 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     assert updated_item["history"][0]["before"] == {
         "answer": None,
         "status": "未決定",
+        "options": [OPTION_A, OPTION_B],
         "weight": "大",
     }
     changes = read_changes(root)
@@ -135,11 +152,11 @@ def test_normal_when_limit_zero(make_workspace: MakeWorkspace, call_tool: CallTo
     assert "history" in _read_decisions(root)[0]
     write_settings(root, history_limit=0)
     # 実行
-    result = call_tool("update", workspace=str(root), id="D-1", item={"status": "決定済み"})
+    result = call_tool("update", workspace=str(root), id="D-1", item={"status": "保留"})
     # 検証
     assert result.is_error is False
     item = _read_decisions(root)[0]
-    assert item["status"] == "決定済み"
+    assert item["status"] == "保留"
     assert "history" not in item
     assert read_changes(root)["pending"]["changed"] == []
 
@@ -254,3 +271,24 @@ def test_normal_when_task_body_added(call_tool: CallTool, make_workspace: MakeWo
     assert len(task["history"]) == 1
     # 前に本文が無かった回は、本文のキーを null で持つ
     assert task["history"][0]["before"] == {"body": None}
+
+
+def test_error_when_decided_without_adoption(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """採用した案を持たないまま決定済みには直さず、adopt で採用する直し方を返す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="未決定", options=[OPTION_A, OPTION_B]))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("update", workspace=str(root), id="D-1", item={"status": "決定済み"})
+    # 検証
+    assert result.is_error is True
+    assert any(
+        line.startswith("decisions.yaml: items[0].options:") and "D-1" in line and "adopt" in line
+        for line in result.text.splitlines()
+    )
+    assert snapshot_tree(root) == before

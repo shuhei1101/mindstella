@@ -90,6 +90,28 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
     assert page.inner_text("main h1") == "資料"
 
 
+def test_board_heading_level(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ボードの列の見出しは、画面の見出し h1 の 1 段下の h2 で、h3 の列の見出しは残らない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs&view=board")
+    # 実行
+    heading_tags = page.eval_on_selector_all(
+        "main h1, main .board-col h2",
+        "heads => heads.map(h => [h.tagName, h.closest('.board-col')?.getAttribute('aria-label') ?? null])",
+    )
+    labels = page.eval_on_selector_all(
+        ".board section.board-col", "cols => cols.map(c => c.getAttribute('aria-label'))"
+    )
+    h3_count = page.eval_on_selector_all("main .board-col h3", "heads => heads.length")
+    # 検証
+    assert page.inner_text("main h1") == "資料"
+    assert heading_tags == [["H1", None]] + [["H2", label] for label in labels]
+    assert h3_count == 0
+
+
 def test_card_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """ドロワーで値を選ぶとカードが絞られてバッジとチップが付き、条件の「解除」で戻る。ツールバーに絞り込みのボタンを出さない（正常系）。"""
     # 準備
@@ -150,7 +172,7 @@ def _board_columns(page) -> list[list[Any]]:
         ".board section.board-col",
         """cols => cols.map(c => [
             c.getAttribute('aria-label'),
-            c.querySelector('h3 .n').textContent,
+            c.querySelector('h2 .n').textContent,
             [...c.querySelectorAll('.card')].map(k => k.dataset.id),
         ])""",
     )

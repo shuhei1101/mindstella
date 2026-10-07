@@ -28,7 +28,7 @@ def test_normal(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """前提が揃った未決定を、案を持たせて聞いて選ばれた案を採用し、依存していた問いが次の候補に上がる（正常系）。"""
+    """前提が揃った未決定に推奨の印を記録してから聞き、選ばれた案を採用して答えと理由を書き、依存していた問いが次の候補に上がる（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", options=OPTIONS),
@@ -38,27 +38,15 @@ def test_normal(
     ws = {"workspace": str(root)}
     # 実行
     before = replay("next", **ws)["candidates"]
-    # 利用者が選んだ案を adopted: true にして、決定済みにする
-    replay(
-        "update",
-        **ws,
-        id="D-1",
-        item={
-            "status": "決定済み",
-            "answer": "YAML",
-            "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
-        },
-    )
-    replay(
-        "update",
-        **ws,
-        id="D-2",
-        item={
-            "status": "決定済み",
-            "answer": "種類ごとに分ける",
-            "options": [OPTIONS[0], {**OPTIONS[1], "adopted": True}],
-        },
-    )
+    # 聞く前に、D-1・D-2 の推奨する案 A に推奨の印を立てる
+    replay("edit_option", **ws, id="D-1", action="update", key="A", option={"recommended": True})
+    replay("edit_option", **ws, id="D-2", action="update", key="A", option={"recommended": True})
+    asked = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
+    # 利用者が選んだ案（D-1 は案 A、D-2 は案 B）を採用して決定済みにし、答えと理由を書く
+    replay("adopt", **ws, id="D-1", key="A")
+    replay("adopt", **ws, id="D-2", key="B")
+    replay("update", **ws, id="D-1", item={"answer": "YAML", "reason": "手で読める"})
+    replay("update", **ws, id="D-2", item={"answer": "種類ごとに分ける", "reason": "探しやすい"})
     replay(
         "add",
         **ws,
@@ -70,11 +58,19 @@ def test_normal(
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     # next の候補に D-1・D-2 があり、D-3 が無い
     assert [candidate["id"] for candidate in before] == ["D-1", "D-2"]
-    # D-1・D-2 が決定済みで answer を持つ
-    assert [decisions["D-1"]["status"], decisions["D-1"]["answer"]] == ["決定済み", "YAML"]
-    assert [decisions["D-2"]["status"], decisions["D-2"]["answer"]] == [
+    # 聞く前に、D-1・D-2 は案 A だけが推奨の印を持つ
+    for item_id in ("D-1", "D-2"):
+        assert [option.get("recommended") for option in asked[item_id]["options"]] == [True, None]
+    # D-1・D-2 が決定済みで answer と reason を持つ
+    assert [decisions["D-1"]["status"], decisions["D-1"]["answer"], decisions["D-1"]["reason"]] == [
+        "決定済み",
+        "YAML",
+        "手で読める",
+    ]
+    assert [decisions["D-2"]["status"], decisions["D-2"]["answer"], decisions["D-2"]["reason"]] == [
         "決定済み",
         "種類ごとに分ける",
+        "探しやすい",
     ]
     # D-1 は案 A、D-2 は案 B だけが adopted: true である
     assert [o["key"] for o in decisions["D-1"]["options"] if o.get("adopted")] == ["A"]

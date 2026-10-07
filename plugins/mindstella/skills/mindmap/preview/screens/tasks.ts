@@ -128,7 +128,7 @@ namespace MindmapPreview {
             attrs: { class: "board-col", "aria-label": status },
             children: [
               h({
-                tag: "h3",
+                tag: "h2",
                 children: [
                   statusMark(status),
                   status,

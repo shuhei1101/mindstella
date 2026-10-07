@@ -47,8 +47,8 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`updated_by`・`body` は渡さない。本文はどの種類も `body_markdown`） |
 | `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
 | `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`description`・`goal`・`links`・`history_limit` は `null` で消す）・`phase_map`・`target_map`・`category_map`（任意。`phases`・`targets`・`categories` を変えるときだけ、新しい設定に無い古い名前 → 新しい名前の対応） |
-| `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号） |
-| `edit_option` | `workspace`・`id`（検討事項）・`action`（`add`・`update`・`remove`）・`key`（案の記号）・`option`（`add`・`update` の案の中身のオブジェクト。`content`・`pros`・`cons`・`note`・`reason`。`update` で消すキーは `null`。`remove` では渡さない） |
+| `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号）。状態が `決定済み` になる |
+| `edit_option` | `workspace`・`id`（検討事項）・`action`（`add`・`update`・`remove`）・`key`（案の記号）・`option`（`add`・`update` の案の中身のオブジェクト。`content`・`pros`・`cons`・`note`・`reason`・`recommended`。`recommended: true` で推奨の印を立てる（ほかの案の印は外れる）。`update` で消すキーは `null`。`remove` では渡さない） |
 | `batch` | `workspace`・`operations`（操作の配列。要素は `op`（`add`・`update`・`show`）と、`add` は `kind`・`item`、`update` は `id`・`item`、`show` は `id`。同じ呼び出しで先に足した項目は `$番号`（`add` の番号、1 始まり）で指す） |
 | `changes_since_read` | `workspace` |
 | `commit` | `workspace`・`summary`（このまとまりで何をしたかの一言の説明。1〜200 文字） |
