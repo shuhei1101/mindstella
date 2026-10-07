@@ -113,6 +113,24 @@ def test_start(
     assert url2.endswith("/mindstella.html")
 
 
+def test_url_of(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """立てたワークスペースだけ URL を返す（正常系）。"""
+    # 準備
+    first = make_workspace(make_item("D-1"), name="first")
+    second = make_workspace(make_item("D-1"), name="second")
+    url, _started = registry.start(first)
+    # 実行
+    first_url = registry.url_of(first)
+    second_url = registry.url_of(second)
+    # 検証
+    assert first_url == url
+    assert second_url is None
+    # url_of は配信を立てないので、台帳の配信は 1 つのまま
+    assert len(registry._servers) == 1
+
+
 def _start_expecting_mismatch(registry: serve.PreviewRegistry, root: Path) -> list[str]:
     """start が SchemaMismatchError を送ることを確かめ、その lines を返す。"""
     with pytest.raises(SchemaMismatchError) as raised:

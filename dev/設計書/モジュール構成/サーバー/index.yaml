@@ -31,3 +31,5 @@ items:
     summary: レビュー中のコメントと書きかけの読み書き・まとめて送る
   - page: 箇所.py.yaml
     summary: コメントが指す箇所の形と、今の項目に合うかの確かめ
+  - page: ワークスペースのREADME.py.yaml
+    summary: 直下の README.md の中身の組み立て・書くかの判定・書き込み

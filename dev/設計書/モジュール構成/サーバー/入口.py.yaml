@@ -24,6 +24,7 @@ diagrams:
         class ビルド
         class 移行
         class 設定の更新
+        class ワークスペースのREADME
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
@@ -36,6 +37,7 @@ diagrams:
         ツールの処理 --> ビルド
         ツールの処理 --> 移行
         ツールの処理 --> 設定の更新 : update_settings
+        ツールの処理 --> ワークスペースのREADME : readme・preview_url
         配信 --> ビルド : 雛形と記録
         配信 --> コメント : /api/comments・/api/drafts
         コメント --> 送信 : まとめて送る
@@ -64,7 +66,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -231,7 +233,7 @@ functions:
         summary: 作ったワークスペースとファイルを返す
         condition: まだ無い `tmp_path / "ws"` と正しい設定の辞書
         mock: なし
-        expected: '`workspace` が絶対パス、`files` が 11 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じ版'
+        expected: '`workspace` が絶対パス、`files` が 12 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ・`README.md`）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じ版'
   - name: run_add
     title: add の処理
     kind: 関数
@@ -814,7 +816,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -999,7 +1001,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: プレビューを開く
     scope: public
-    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、画面の URL を返す。初めて立てるときは `config.yaml` を検査する
+    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、画面の URL を返す。初めて立てるときは `config.yaml` を検査し、立てた後に直下の README を書き直す
     args:
       - name: root
         type: Path
@@ -1017,6 +1019,9 @@ functions:
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
       2. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
+      3. この呼び出しで立てたときだけ、直下の README を URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
+         - `WriteFailedError` が起きた場合、送り直さずに続ける
+           - `[WARNING]` README を書けなかった（パス、理由）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い（`mindmap.yaml` だけなら移し替えの案内を持つ）'
@@ -1036,6 +1041,18 @@ functions:
         mock: '`previews`'
         expected: '`WorkspaceNotFoundError`（後者は `lines` に `/mindstella:upgrade`）。`start` が呼ばれない'
         exception: config.yaml が無い
+      - name: test_run_preview_url_when_started
+        case: 正常
+        summary: 立てたときだけ README に URL を書く
+        condition: 作成済みのワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。1 回目の後に `README.md` を消して 2 回目を呼ぶ
+        mock: '`previews`'
+        expected: 1 回目の後、`README.md` が `url` を含む。2 回目の後、`README.md` が無いまま
+      - name: test_run_preview_url_when_readme_write_fails
+        case: 正常
+        summary: README を書けなくても URL を返す
+        condition: 作成済みのワークスペースの `README.md` を消して同じ名前のフォルダを作る。偽の台帳の `start` が `(url, True)` を返す
+        mock: '`previews`'
+        expected: '例外が上がらず `started: true` の結果が返る。ログに WARNING が 1 件ある'
   - name: run_submissions
     title: submissions の処理
     kind: 関数
@@ -1608,6 +1625,63 @@ functions:
         condition: タグ `データ` の D-1
         mock: なし
         expected: '`{tags: [{name: データ, count: 1, kinds: [decision]}]}`'
+  - name: run_readme
+    title: readme の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: README の書き直し
+    scope: public
+    summary: ワークスペースを確かめ、直下の README を今の値と配っている URL で書き直す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: injected
+        description: 配信の台帳
+    returns:
+      type: dict[str, Any]
+      description: '`{path, written, preview_url}`'
+    process: |-
+      1. ワークスペースを確かめる（`require_workspace`）
+      2. 配っている URL を引く（`PreviewRegistry.url_of`。配っていなければ `None`）
+      3. README を書く（README の書き込み。`write_readme(root, preview_url=url)`）
+      4. `path` に `root / README_FILE`、`written` に書いたか、`preview_url` に引いた URL を入れて返す
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い（`mindmap.yaml` だけなら移し替えの案内を持つ）'
+      - name: WriteFailedError
+        condition: '`README.md` を書けない（`write_readme` から伝わる）'
+    unit_tests:
+      - name: test_run_readme
+        case: 正常
+        summary: 配っていなければ URL なしで書く
+        condition: 作成済みのワークスペースの `README.md` を消す。`previews` は `url_of` が `None` を返す偽の台帳
+        mock: '`previews`'
+        expected: '`{path: {絶対パス}/README.md, written: true, preview_url: null}`。`README.md` が `PREVIEW_HINT` を含む'
+      - name: test_run_readme_when_serving
+        case: 正常
+        summary: 配っていればその URL を書く
+        condition: 作成済みのワークスペース。偽の台帳の `url_of` が `http://127.0.0.1:1/mindstella.html` を返す
+        mock: '`previews`'
+        expected: '`preview_url` がその URL で、`README.md` がその URL を含む'
+      - name: test_run_readme_when_user_file
+        case: 正常
+        summary: 利用者の README は書かず written を偽にする
+        condition: 作成済みのワークスペースの `README.md` を `# 家計簿アプリの話し合い` に置き換える
+        mock: '`previews`'
+        expected: '`written` が偽で、`README.md` の中身が呼ぶ前と同じ'
+      - name: test_run_readme_when_not_workspace
+        case: 異常
+        summary: ワークスペースでなければ書かない
+        condition: 空の `tmp_path`
+        mock: '`previews`'
+        expected: '`WorkspaceNotFoundError`。`tmp_path` に `README.md` が無い'
+        exception: config.yaml が無い
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

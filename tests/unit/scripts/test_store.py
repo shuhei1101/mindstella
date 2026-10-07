@@ -555,8 +555,9 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
     # 実行
     files = store.create_workspace(root, valid_settings, version="v0.3.0")
     # 検証
-    assert len(files) == 11
+    assert len(files) == 12
     assert set(files) == {
+        "README.md",
         ".mindstella/config.yaml",
         ".mindstella/decisions.yaml",
         ".mindstella/tasks.yaml",
@@ -572,8 +573,10 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
     records = root / RECORD_DIR
     assert yaml.safe_load((records / "config.yaml").read_text(encoding="utf-8")) == valid_settings
     assert (records / "mindstella-version.ini").read_text(encoding="utf-8") == "v0.3.0\n"
-    # 直下には記録のフォルダだけが並ぶ
-    assert [path.name for path in root.iterdir()] == [".mindstella"]
+    # 直下には記録のフォルダと、自動で書いた印で始まる README だけが並ぶ
+    assert sorted(path.name for path in root.iterdir()) == [".mindstella", "README.md"]
+    first_line = (root / "README.md").read_text(encoding="utf-8").splitlines()[0]
+    assert first_line == "<!-- mindstella:readme -->"
 
 
 # 前の版の設定ファイル（mindmap.yaml）と検討事項 D-1 だけを持つフォルダの中身
@@ -643,6 +646,34 @@ def test_create_workspace_when_write_fails(
     with pytest.raises(WriteFailedError):
         store.create_workspace(root, valid_settings, version="v0.3.0")
     assert not root.exists()
+
+
+def test_create_workspace_when_user_readme_exists(
+    tmp_path: Path, valid_settings: dict[str, Any]
+) -> None:
+    """利用者の README があるフォルダには README を書かずに作る（正常系）。"""
+    # 準備
+    (tmp_path / "README.md").write_text("# 家計簿アプリの話し合い\n", encoding="utf-8")
+    before = (tmp_path / "README.md").read_bytes()
+    # 実行
+    files = store.create_workspace(tmp_path, valid_settings, version="v0.3.0")
+    # 検証
+    assert "README.md" not in files
+    assert (tmp_path / RECORD_DIR / "config.yaml").is_file()
+    assert (tmp_path / "README.md").read_bytes() == before
+
+
+def test_create_workspace_when_readme_write_fails(
+    tmp_path: Path, valid_settings: dict[str, Any]
+) -> None:
+    """README を書けなければ作ったものを消す（異常系）。"""
+    # 準備
+    (tmp_path / "README.md").mkdir()
+    # 実行・検証
+    with pytest.raises(WriteFailedError):
+        store.create_workspace(tmp_path, valid_settings, version="v0.3.0")
+    assert not (tmp_path / RECORD_DIR).exists()
+    assert (tmp_path / "README.md").is_dir()
 
 
 def test_clear_release(make_workspace: MakeWorkspace) -> None:
