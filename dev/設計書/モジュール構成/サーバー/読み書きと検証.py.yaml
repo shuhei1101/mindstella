@@ -90,7 +90,7 @@ data_models:
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。点検の出力の `problems[]` と同じキーを持ち、`dataclasses.asdict` で JSON にする。'
     properties:
       - name: kind
-        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase"]
+        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase", "stale_history", "decision_state"]
         description: 問題の種類
       - name: file
         type: str
@@ -379,6 +379,13 @@ classes:
     summary: '既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。配信は 400 にする。メッセージは `{キー}: {理由}`（選べる値を含む）'
     kind: クラス
     inherits: MindmapError
+  - name: LastOptionError
+    title: 最後の案
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '案を必須にする状態の検討事項の最後の案を消そうとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
+    kind: クラス
+    inherits: MindmapError
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -491,6 +498,12 @@ constants:
     usecase: 共通
     summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
     value: '"ai"'
+  - name: OPTIONS_OPTIONAL_STATUSES
+    title: 案を持たなくてよい状態
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    summary: 案（`options`）を持たなくてよい検討事項の状態（ER 図『ワークスペース』の decisions.yaml の案と状態の決まり）
+    value: frozenset({"未整理", "対象外", "取り下げ"})
 functions:
   - name: kind_of_id
     title: ID の種類
@@ -595,7 +608,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: 設定と 7 種類をスキーマと突き合わせ、合わない箇所を問題の並びにする
+    summary: 設定と 7 種類をスキーマと、検討事項を案と状態の決まりと突き合わせ、合わない箇所を問題の並びにする
     args:
       - name: workspace
         type: Workspace
@@ -604,13 +617,14 @@ functions:
         description: 検証するワークスペース
     returns:
       type: list[Problem]
-      description: '`load_problems` とスキーマ違反（どれも `kind: schema`）。ファイル名の順、同じファイルの中はキーのパスの順'
+      description: '`load_problems` とスキーマ違反（`kind: schema`）と案と状態の決まりに合わない検討事項（`kind: decision_state`）。ファイル名の順、同じファイルの中はキーのパスの順'
     process: |-
       1. スキーマの検証器を作る（検証器の用意。`load_validators`）
       2. `raw` の値をそのまま、ファイルに対応するスキーマと突き合わせ、`iter_errors` のエラーごとに問題を作る（一番上の形の誤りもここで拾う）
          - キーのパスは `absolute_path` を `items[0].status` の形にする（`_format_path`。一番上は `(全体)`）
          - パスが `items[{n}]` を含み、その要素が `id` を持つ場合、その `id` を問題の `id` に入れる
-      3. `load_problems` と合わせて並べて返す
+      3. `raw` に `decisions.yaml` があれば、`check_decision_rules` の問題を足す（キーのパスの順に並べる）
+      4. `load_problems` と合わせて並べて返す
     unit_tests:
       - name: test_validate_workspace
         case: 正常
@@ -642,6 +656,12 @@ functions:
         condition: '`parametrize`: `decisions.yaml` が一番上の配列 / `decisions.yaml` が `items` の横に `extra` のキーを持つ'
         mock: なし
         expected: '`file: decisions.yaml`・`kind: schema` の問題があり、`key` が `(全体)`'
+      - name: test_validate_workspace_when_decision_state
+        case: 正常
+        summary: 案と状態の決まりに合わない検討事項も問題に含める
+        condition: スキーマに合い、案を持たない未決定の D-1 を持つワークスペース
+        mock: なし
+        expected: '`file: decisions.yaml`・`key: items[0].options`・`id: D-1`・`kind: decision_state` の 1 件'
   - name: load_validators
     title: 検証器の用意
     kind: 関数
@@ -1083,7 +1103,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1095,14 +1115,21 @@ functions:
         required: true
         passing: positional
         description: 問題を出したワークスペース
+      - name: written_ids
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 書き込むツールが書き換える項目の ID（`save_change`・`save_batch` が、読んだ時点と中身が違う項目の ID を `build_mismatch_error` 経由で渡す）。点検・読み込みは渡さない
     returns:
       type: bool
       description: 前の版の形式から来ていれば真
     process: |-
-      1. `kind` が `schema` でない場合、偽を返す
-      2. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
-      3. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
-      4. それ以外は偽
+      1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
+      2. `kind` が `schema` でない場合、偽を返す
+      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
+      4. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
+      5. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
@@ -1110,6 +1137,12 @@ functions:
         condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 真
+      - name: test_is_legacy_problem_when_decision_state
+        case: 正常
+        summary: 書き込む項目以外の案と状態の合わない検討事項だけを前の版の形式とする
+        condition: 'D-1 の `kind: decision_state` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}` / `written_ids` が `{D-2}`'
+        mock: なし
+        expected: 真 / 偽 / 真
   - name: clear_release
     title: リリースの片付け
     kind: 関数
@@ -1437,6 +1470,48 @@ functions:
         condition: '`tmp_path`'
         mock: なし
         expected: '`tmp_path / ".mindstella"`。フォルダは作られていない'
+  - name: check_decision_rules
+    title: 案と状態の決まりの検証
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 検討事項の並びを、案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）と突き合わせ、合わない決まりごとに問題にする
+    args:
+      - name: decisions
+        type: Any
+        required: true
+        passing: positional
+        description: '`raw` の `decisions.yaml` の値（形が崩れていてもよい）'
+    returns:
+      type: list[Problem]
+      description: '`kind: decision_state`・`file: decisions.yaml` の問題。項目の並びの順、同じ項目の中は ER 図の決まりの順'
+    process: |-
+      1. 値から `items` の要素を取り出す（`_extract_items`）。辞書でない要素と、`status`・`options` の型がスキーマに合わない要素は飛ばす（スキーマの検証が拾う）
+      2. 要素ごとに、`options` の要素のうち `adopted` が真の案を引く
+      3. 状態が `OPTIONS_OPTIONAL_STATUSES` に無く、`options` が無いか空の場合、`key: items[{n}].options`・`detail` は ER 図の 1 つ目の理由の行
+      4. 状態が `決定済み` で、採用した案が無い場合、`key: items[{n}].options`・`detail` は ER 図の 2 つ目の理由の行
+      5. 状態が `未決定` で、採用した案がある場合、`key: items[{n}].status`・`detail` は ER 図の 3 つ目の理由の行（記号は採用した案の `key`）
+      6. `id` は要素の `id`（無ければ `None`）
+    unit_tests:
+      - name: test_check_decision_rules
+        case: 正常
+        summary: 決まりに合う検討事項は問題 0 件
+        condition: '`parametrize`: 案を持つ未決定 / 案 A を採用した決定済み / 案 A を採用した要見直し / 案を持たない未整理・対象外・取り下げ'
+        mock: なし
+        expected: 空の並び
+      - name: test_check_decision_rules_when_mismatch
+        case: 正常
+        summary: 合わない決まりを 1 件ずつ拾う
+        condition: '案を持たない未決定の D-1（`options: []`）、案 A・B を持ち採用した案を持たない決定済みの D-2、案 A を採用した未決定の D-3'
+        mock: なし
+        expected: 3 件で、`id`・`key` が D-1 の `items[0].options`・D-2 の `items[1].options`・D-3 の `items[2].status`。D-3 の `detail` に `A` と `未決定` を含む
+      - name: test_check_decision_rules_when_malformed
+        case: 正常
+        summary: 形の崩れた要素は飛ばす
+        condition: '`items` の要素に文字列と、`options` が文字列の検討事項'
+        mock: なし
+        expected: 空の並び
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

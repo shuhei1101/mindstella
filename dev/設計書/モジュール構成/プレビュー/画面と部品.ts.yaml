@@ -371,7 +371,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
     props:
       - name: id
         type: string
@@ -444,6 +444,24 @@ components:
         condition: '`parametrize`: 本文に見出し「決め方」を 2 つ持つ A-1 を `heading` が `決め方-1` で開く / `heading` が `無い` で開く'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 2 つ目の「決め方」が本文のスクロール領域の中で画面に入る / 本文の頭で開き `on.heading` が `null` で呼ばれる
+      - name: test_detail_panel_when_decision_order
+        case: 正常
+        summary: 検討事項を 背景 → 案 → 採用した案と理由 → 本文 の順に描く
+        condition: '`lead`・案 A（採用）・B（`adopted: false`）・C（`adopted` なし）・`answer`・`reason`・本文を持つ決定済みの D-1 を開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`data-key` が `lead` の要素、案の節、見出し「採用した案と理由」の節（`answer`・`reason`）、本文の節がこの順に並ぶ。案 A に「採用」、B に「不採用」が出て、C にはどちらも出ない'
+      - name: test_detail_panel_when_recommended
+        case: 正常
+        summary: 採用した案が無いときだけ、推奨の案に推奨のバッジを出す
+        condition: '`parametrize`: 案 A・B（B に `recommended: true`）を持つ未決定の D-1 / 案 A（採用）・B（`recommended: true`）を持つ決定済みの D-2 / `recommended` を持つ案が無い未決定の D-3'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 案 B のカードの見出しに「推奨」のバッジが 1 つだけ出て「採用した案と理由」の節が無い / バッジが出ず案 A に「採用」が出る / バッジが出ない
+      - name: test_detail_panel_when_markdown_values
+        case: 正常
+        summary: 文字列の値を Markdown で描き、キーのパスを保つ
+        condition: '`parametrize`: `lead`・`answer`・`reason`・案 A の `pros` に `**強調**` を持つ D-1 / `reason` の T-1 / `question`・`conclusion` の R-1 / `meaning` の G-1 / `content` に `**強調** <img src=x onerror="window.__x=1">` を持つ N-1'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: どの値も `data-key` がそのキーのパス（案は `options[A].pros`）の要素の中に `strong` を持ち、`**` の文字が出ない。N-1 で `window.__x` が未定義
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts

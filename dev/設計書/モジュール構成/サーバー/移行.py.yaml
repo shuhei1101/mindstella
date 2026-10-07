@@ -14,6 +14,10 @@ directory: |-
             field_to_playbooks.py      設定の `field` を `playbooks` の 1 件の配列へ移す変換
         v0.6.0/
           steps.yaml                   v0.5.0 の形式 → v0.6.0 の手順（設定ファイルの名前を改め、記録を `.mindstella/` へ移す）
+        v0.7.0/
+          steps.yaml                   v0.6.0 の形式 → v0.7.0 の手順
+          scripts/
+            answer_to_adopted_option.py  決定済みの検討事項の答えから採用した案を作る変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -646,7 +650,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/migrator.py
     usecase: 記録の形式の移行
     scope: public
-    summary: ワークスペースを点検し、スキーマに合えば版のファイルを書く
+    summary: ワークスペースを点検し、スキーマと案と状態の決まりに合えば版のファイルを書く
     side_effects: '`mindstella-version.ini` を書く'
     args:
       - name: root
@@ -687,6 +691,12 @@ functions:
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `summary`）。`mindstella-version.ini` が無い'
         exception: スキーマに合わない
+      - name: test_record_version_when_decision_state
+        case: 異常
+        summary: 案と状態の合わない検討事項が残っていれば書かない
+        condition: 案を持たない未決定の D-1 を持つワークスペース
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `decisions.yaml: items[0].options:` で始まる行）。版のファイルが呼ぶ前と同じ'
   - name: apply_step
     title: 手順を 1 つ当てる
     kind: 関数
@@ -1064,6 +1074,53 @@ functions:
         condition: '`parametrize`: `mindmap.yaml` と v0.6.0 の手順の並び / `mindmap.yaml` と空の並び / `docs.yaml` と v0.6.0 の手順の並び'
         mock: なし
         expected: '`.mindstella/config.yaml` / `mindmap.yaml` / `.mindstella/docs.yaml`'
+  - name: answer_to_adopted_option.migrate
+    title: 決定済みの答えから採用した案を作る移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.7.0 の `call`（`answer_to_adopted_option`）が呼ぶ変換（関数名は `migrate`）。`決定済み` で `answer` を持ち案を持たない検討事項に、答えから採用した案を 1 つ作る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `.mindstella/decisions.yaml` が無い場合、何も書かず空を返す
+      2. `yaml.safe_load` で読み、`items` の辞書の要素を順に見る
+      3. `status` が `決定済み` で、`answer` が空でない文字列で、`options` が無いか空の配列の要素に、`options: [{key: A, content: {answer}, adopted: true}]` を置く。検討事項が空でない `reason` を持てば、案に `reason` も入れる
+         - それ以外の要素と、要素のほかのキー（`updated`・`history` を含む）は変えない
+      4. 1 件も変えなかった場合、何も書かず空を返す
+      5. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
+      6. `[.mindstella/decisions.yaml]` を返す
+    exceptions:
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_answer_to_adopted_option
+        case: 正常
+        summary: 決定済みで答えを持ち案を持たない検討事項にだけ採用した案を作る
+        condition: '`answer`・`reason` を持ち案を持たない決定済みの D-1、`answer` を持ち `options: []` の決定済みの D-2（`reason` なし）、案を持たない未決定の D-3、案 A（採用）を持つ決定済みの D-4、`answer` を持たない決定済みの D-5'
+        mock: なし
+        expected: '戻り値が `[.mindstella/decisions.yaml]`。D-1 の `options` が `key: A`・`content` が `answer`・`reason` が `reason`・`adopted: true` の 1 件、D-2 の案は `reason` を持たない。D-3・D-4・D-5 と、D-1・D-2 のほかのキーが呼ぶ前と同じ。`.tmp` のファイルが無い'
+      - name: test_answer_to_adopted_option_when_applied_twice
+        case: 正常
+        summary: もう一度当てても何も書かない
+        condition: 1 回当てた後のワークスペース
+        mock: なし
+        expected: 戻り値が空、中身と更新日時が呼ぶ前と同じ
+      - name: test_answer_to_adopted_option_when_no_file
+        case: 正常
+        summary: decisions.yaml が無ければ何も書かない
+        condition: '`.mindstella/decisions.yaml` を持たないフォルダ'
+        mock: なし
+        expected: 戻り値が空で、ファイルが作られていない
 diagrams:
   - name: 全体
     diagram: |-
@@ -1103,6 +1160,7 @@ notes:
   開発側の点検: '`tests/unit/scripts/test_migration_coverage.py` に置く。`v*` のタグを版の順に並べた先頭（最新のタグ）の `plugins/mindstella/skills/mindmap/schemas/` と今の `schemas/` を比べ（`git show {タグ}:{パス}`。`migration-steps.schema.json` は比べない）、タグの時点にあったスキーマのファイルが消えたか中身が変わったのに `list_versions` に「最新のタグより新しく、プラグインの版以下」の版が無ければ落とす（`test_schema_changes_have_migration`）。足したスキーマのファイルは、無ければ空として読むため比べない（`submissions.schema.json`。確認ログ『送信とロックファイルの置き場所』）。タグが 1 つも無い clone では skip する。あわせて、プラグインの版がリポジトリの直下の `version.ini` の版より前でないことを確かめる（`test_plugin_version_not_behind_release_version`）。hotfix のタグは直下の `version.ini` もプラグインの版も動かさないため、最新のタグとは比べない'
   分野をプレイブックの配列へ移す手順: '`migrations/v0.5.0/steps.yaml` は `call`（`script: field_to_playbooks`）の 1 つだけを並べる。`scripts/field_to_playbooks.py` が `migrate(root)` を持つ。設定のスキーマを変えるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.5.0` にする（開発側の点検が、最新のタグより新しくプラグインの版以下の手順を求める）。'
   設定ファイルの名前を改める手順: '`migrations/v0.6.0/steps.yaml` はインターフェース定義『記録の形式の移行』の制約「v0.6.0 の手順」の順に並べる（どれも `destructive: true`）。(1) `rename_file`（`mindmap.yaml` → `config.yaml`）。(2) `decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml`・`changes.yaml`・`comments.yaml`・`drafts.yaml`・`submissions.yaml`・`mindstella-version.ini`・`.mindstella-opened` を 1 つずつ `rename_file` で `.mindstella/{同じ名前}` へ。(3) `docs`・`release` を `move_dir` で `.mindstella/docs`・`.mindstella/release` へ。(4) `rename_file`（`config.yaml` → `.mindstella/config.yaml`）。(5) `preview.html`・`.mindstella.lock` を `delete`。`scripts/` は使わないので置かない。設定のスキーマと記録の置き場所が変わるため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.6.0` にする。v0.3.0・v0.5.0 の手順と `field_to_playbooks.py` は移す前に当たるため直下の `mindmap.yaml`・`docs.yaml` を指したままにし、今の形（`.mindstella/config.yaml`）のワークスペースに当てたときは対象が無いため飛ばす（`apply_step`・`migrate`）'
+  決定済みの答えから採用した案を作る手順: '`migrations/v0.7.0/steps.yaml` は `call`（`script: answer_to_adopted_option`）の 1 つだけを並べる（`destructive` は持たない）。`scripts/answer_to_adopted_option.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_answer_to_adopted_option.py` に置く。`schemas/decisions.schema.json` の案に `recommended`（真偽値。真の案は 0 か 1 つ。`adopted` の `contains` と `allOf` で並べる）を足すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.7.0` にする。状態ごとの案の要否と、採用した案と状態の組は、スキーマではなく読み書きと検証の `check_decision_rules` が見る'
 test_files:
   - tests/unit/scripts/test_versions.py
   - tests/unit/scripts/test_migrator.py

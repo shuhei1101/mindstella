@@ -76,7 +76,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 検討事項の案の編集
     summary: '`edit_option` の `option` に渡せるキー'
-    value: ("content", "pros", "cons", "note", "reason")
+    value: ("content", "pros", "cons", "note", "reason", "recommended")
   - name: REF_KEYS
     title: 参照のキー
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
@@ -159,7 +159,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 採用する案の切り替え
     scope: public
-    summary: 指定した記号の案だけを採用にした新しい項目を返す
+    summary: 指定した記号の案だけを採用にし、状態を `決定済み` にした新しい項目を返す
     args:
       - name: item
         type: dict[str, Any]
@@ -177,7 +177,7 @@ functions:
     process: |-
       1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送る
       2. それまで `adopted` が真だった最初の案の記号を控える
-      3. 指定した案の `adopted` を真、ほかを偽にした新しい項目を返す
+      3. 指定した案の `adopted` を真、ほかを偽にし、`status` を `決定済み` にした新しい項目を返す（`answer`・案の `recommended` は変えない）
     exceptions:
       - name: OptionNotFoundError
         condition: 検討事項がその記号の案を持たない（`options` が無いときも含む）
@@ -202,6 +202,12 @@ functions:
         mock: なし
         expected: '`OptionNotFoundError`（メッセージに `Z`・`A`・`B`）'
         exception: その記号の案を持たない
+      - name: test_switch_adopted_when_undecided
+        case: 正常
+        summary: どの状態からも決定済みにし、推奨の印は残す
+        condition: '`parametrize`: 状態が `未決定` / `要見直し` / `保留` で、案 A・B を持ち B に `recommended: true` を持つ検討事項に `key: B`'
+        mock: なし
+        expected: '`status` が `決定済み`、案 B だけが `adopted` が真で `recommended` が真のまま。渡した項目は変わらない'
   - name: run_init
     title: init の処理
     kind: 関数
@@ -336,7 +342,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 採用する案の切り替え
     scope: public
-    summary: 検討事項の採用する案を切り替えて書き込む
+    summary: 検討事項の採用する案を切り替え、状態を `決定済み` にして書き込む
     args:
       - name: root
         type: Path
@@ -361,7 +367,7 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: dict[str, Any]
-      description: '`{id, adopted, previous}`'
+      description: '`{id, adopted, previous, status, previous_status}`（`status` は `決定済み`、`previous_status` は切り替える前の状態）'
     process: |-
       1. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
          - 種類が `decision` でない場合、`ItemNotFoundError` を送る
@@ -386,6 +392,12 @@ functions:
         mock: なし
         expected: '`ItemNotFoundError`（メッセージに `T-1`）'
         exception: ID が検討事項でない
+      - name: test_run_adopt_when_undecided
+        case: 正常
+        summary: 未決定の検討事項を採用で決定済みにし、前の状態を変更履歴に積む
+        condition: '案 A・B を持つ未決定の D-1 を持つワークスペースに `key: B`'
+        mock: なし
+        expected: '戻り値が `status: 決定済み`・`previous_status: 未決定`・`previous: None`。D-1 の `history` の 1 回分の `before` が `status: 未決定` と、どの案も採用でない `options` を持つ'
   - name: run_check
     title: check の処理
     kind: 関数
@@ -404,7 +416,7 @@ functions:
       description: '`{ok, problems}`'
     process: |-
       1. ワークスペースを読み、点検する（`load_workspace`、`check_workspace`）
-      2. 前の版の形式の問題（`is_legacy_problem`）は、`detail` に続けて `（/mindstella:upgrade で今の形式に移せます）` を足す
+      2. 前の版の形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（/mindstella:upgrade で今の形式に移せます）` を足す
       3. 問題が無ければ `ok: true`、あれば `ok: false` を返す
     unit_tests:
       - name: test_run_check
@@ -425,6 +437,12 @@ functions:
         condition: 'A-1（`done: true`）を YAML で直接書いたワークスペース'
         mock: なし
         expected: '`ok: false`。A-1 の問題の `detail` が `（/mindstella:upgrade で今の形式に移せます）` で終わる'
+      - name: test_run_check_when_decision_state
+        case: 正常
+        summary: 案と状態の合わない検討事項に /mindstella:upgrade を案内する
+        condition: 案を持たない未決定の D-1 を直接書いたワークスペース
+        mock: なし
+        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が `/mindstella:upgrade` を含む'
   - name: run_impact
     title: impact の処理
     kind: 関数
@@ -1369,7 +1387,8 @@ functions:
       2. `add` の場合、同じ記号の案があれば `OptionExistsError`。無ければ `{key, **option}` を末尾に足す
       3. `update`・`remove` の場合、その記号の案が無ければ `OptionNotFoundError`
          - `update` はその案に `option` を当てる（値が `None` のキーは消す）
-         - `remove` はその案が `adopted` なら `AdoptedOptionError`、そうでなければ抜く
+         - `remove` はその案が `adopted` なら `AdoptedOptionError`、その案が最後の案で検討事項の状態が `OPTIONS_OPTIONAL_STATUSES` に無ければ `LastOptionError`、そうでなければ抜く
+      4. `add`・`update` で `option` の `recommended` が真の場合、ほかの案の `recommended` のキーを消す。偽の場合、その案の `recommended` のキーを消す（印を外した案はキーを持たない）
     exceptions:
       - name: ArgumentError
         condition: '`option` の渡し方が合わない'
@@ -1383,6 +1402,9 @@ functions:
       - name: AdoptedOptionError
         condition: '`remove` で採用している案を指した'
         message: '{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください'
+      - name: LastOptionError
+        condition: '`remove` で、案を必須にする状態の検討事項の最後の案を指した'
+        message: '{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください'
     unit_tests:
       - name: test_apply_option_edit
         case: 正常
@@ -1396,6 +1418,18 @@ functions:
         condition: '案 A（採用）・B。`parametrize`: `add` B / `update` Z / `remove` A / `update` B に `{"adopted": true}`'
         mock: なし
         expected: '`OptionExistsError` / `OptionNotFoundError` / `AdoptedOptionError` / `ArgumentError`'
+      - name: test_apply_option_edit_when_recommended
+        case: 正常
+        summary: 推奨の印を 1 つに付け替え、外した案はキーを持たない
+        condition: '案 A（`recommended: true`）・B を持つ未決定の検討事項。`parametrize`: `update` で B に `recommended: true` / `update` で A に `recommended: false` / `add` で C に `recommended: true`'
+        mock: なし
+        expected: B だけが `recommended` を持つ / どの案も `recommended` を持たない / C だけが `recommended` を持つ。どれも `content` と並びは変わらない
+      - name: test_apply_option_edit_when_last_option
+        case: 異常
+        summary: 案を必須にする状態の最後の案は消さず、必須でない状態では消せる
+        condition: '案 A だけを持つ検討事項に `remove`。`parametrize`: 状態が `未決定` / `未整理`'
+        mock: なし
+        expected: '`LastOptionError`（メッセージに ID・`A`・`未決定`） / 空の並び'
   - name: run_edit_option
     title: edit_option の処理
     kind: 関数
