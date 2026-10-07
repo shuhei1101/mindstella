@@ -77,7 +77,11 @@ def test_normal_when_undecided_adopted(
     option_b = {"key": "B", "content": "1 つにまとめる", "recommended": True}
     root = make_workspace(
         make_item("D-1", status="未決定", answer="仮の答え", options=[option_a, option_b]),
-        make_item("D-2", status="要見直し", options=[{**option_a, "adopted": True}, option_b]),
+        make_item(
+            "D-2",
+            status="要見直し",
+            options=[{**option_a, "adopted": True}, {**option_b, "adopted": False}],
+        ),
     )
     commit(call_tool, root, "足す")
     # 実行
