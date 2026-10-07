@@ -88,7 +88,7 @@ def test_normal(
     assert page.get_attribute('.segment button[data-view="table"]', "aria-pressed") == "true"
     assert _row_ids(page) == ["D-1", "D-3"]
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
-    assert page.locator("aside.panel .md h4").count() == 1
+    assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     # 同じ URL を開き直すと同じ画面と項目が開く
     page.reload()
@@ -191,7 +191,7 @@ def test_normal_when_exported_offline(
     assert page.locator('[role="alert"]').count() == 0
     assert page.locator('#decision-map button[data-node="D-3"]').count() == 1
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
-    assert page.locator("aside.panel .md h4").count() == 1
+    assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     # コメントのボタン・入力・選んだ箇所の入口が無く、接続の状態も出ていない
     assert page.locator(COMMENTS_BUTTON).count() == 0
@@ -199,7 +199,7 @@ def test_normal_when_exported_offline(
     assert page.locator(SEND_TEXTAREA).count() == 0
     assert page.locator(SEND_BUTTON).count() == 0
     assert page.locator(CONNECTION).count() == 0
-    select_text(page, "aside.panel .md", "本文の段落")
+    select_text(page, "aside.panel .md:not(.md-value)", "本文の段落")
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     assert page.locator(PILL).count() == 0
 
@@ -218,12 +218,12 @@ def test_error_when_library_unavailable(
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
     open_preview(url, "#tab=decisions&view=map&id=D-3")
-    page.wait_for_selector("aside.panel.open .md .lib-error")
+    page.wait_for_selector("aside.panel.open .md:not(.md-value) .lib-error")
     # 検証
     map_notice = page.inner_text("main .lib-error[role=alert]")
     assert "読み込めなかったライブラリ: elkjs" in map_notice
     assert "通信を確認して、ページを再読み込みしてください。" in map_notice
-    body_notice = page.inner_text("aside.panel .md .lib-error[role=alert]")
+    body_notice = page.inner_text("aside.panel .md:not(.md-value) .lib-error[role=alert]")
     assert "読み込めなかったライブラリ" in body_notice
     for name in ("marked", "DOMPurify", "mermaid"):
         assert name in body_notice
@@ -259,6 +259,7 @@ def test_normal_when_rewritten(
         "category": "データ構造",
         "phase": "要件",
         "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
     }
     # 実行
     added = call_tool("add", workspace=str(root), kind="decision", item=new_decision)
@@ -289,9 +290,9 @@ def test_normal_when_sent(
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     open_preview(served.data["url"], "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
     # 実行（本文の 2 行目の文を選ぶと、近くに入口が出る）
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     # 実行（入口を押し、箇所を添えて溜める）
     page.click(PILL)
     # 検証（箇所を添えた入力）
@@ -328,7 +329,7 @@ def test_normal_when_sent(
     # 検証（入口は Esc で閉じる）
     # 送った後の記録の読み直しと描き直しが終わってから選ぶ（遅れて描き直されると、選んだ範囲と入口が外れる）
     page.wait_for_timeout(SELECTION_SETTLE_MS)
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.focus(PILL)
     page.keyboard.press("Escape")
     assert page.locator(PILL).count() == 0

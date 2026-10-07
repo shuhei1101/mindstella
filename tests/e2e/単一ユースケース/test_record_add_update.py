@@ -13,6 +13,12 @@ from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, Sn
 BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
 BODY_AFTER = "1 行目\n書き換えた 2 行目\n3 行目\n"
 
+# スキルが足す検討事項の案（A が推奨）
+NEW_OPTIONS: list[dict[str, Any]] = [
+    {"key": "A", "content": "種類ごとに分ける", "recommended": True},
+    {"key": "B", "content": "1 つにまとめる"},
+]
+
 # スキルが足す検討事項の中身
 NEW_DECISION: dict[str, Any] = {
     "title": "YAML のキーをどう分けるか",
@@ -22,6 +28,7 @@ NEW_DECISION: dict[str, Any] = {
     "status": "未決定",
     "lead": "種類ごとにキーを分けるかを決める。",
     "weight": "大",
+    "options": NEW_OPTIONS,
 }
 
 
@@ -36,7 +43,7 @@ def _stdin(data: dict[str, Any]) -> str:
 
 
 def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
-    """検討事項を足し、その答えと状態を直す（正常系）。"""
+    """検討事項を足し、その答えと状態を直して案 A を採用にする（正常系）。"""
     # 準備
     root = make_workspace()
     # 実行
@@ -47,7 +54,11 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
         "update",
         workspace=str(root),
         id=item_id,
-        item={"answer": "種類ごとに分ける", "status": "決定済み"},
+        item={
+            "answer": "種類ごとに分ける",
+            "status": "決定済み",
+            "options": [{**NEW_OPTIONS[0], "adopted": True}, NEW_OPTIONS[1]],
+        },
     )
     checked = call_tool("check", workspace=str(root))
     # 検証
@@ -60,6 +71,9 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     assert after_add["phase"] == "要件"
     assert after_add["lead"] == "種類ごとにキーを分けるかを決める。"
     assert after_add["weight"] == "大"
+    # 足した項目が案 A・B を持ち、案 A だけが推奨の印を持つ
+    assert after_add["options"] == NEW_OPTIONS
+    assert [option.get("recommended") for option in after_add["options"]] == [True, None]
     # 足しただけの時点では、その項目は変更履歴を持たない
     assert "history" not in after_add
     assert after_add["updated_by"] == "ai"
@@ -67,11 +81,17 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     after_update = _read_decisions(root)[0]
     assert after_update["answer"] == "種類ごとに分ける"
     assert after_update["status"] == "決定済み"
+    # 更新の後、決定済みで、案 A だけが採用である
+    assert [option.get("adopted") for option in after_update["options"]] == [True, None]
     assert after_update["created"] == after_add["created"]
     assert after_update["updated"] >= after_add["updated"]
     # 更新の後、その項目が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
     assert len(after_update["history"]) == 1
-    assert after_update["history"][0]["before"] == {"answer": None, "status": "未決定"}
+    assert after_update["history"][0]["before"] == {
+        "answer": None,
+        "status": "未決定",
+        "options": NEW_OPTIONS,
+    }
     assert after_update["history"][0]["by"] == "ai"
     assert after_update["updated_by"] == "ai"
     # ワークスペースの全ての YAML がスキーマに合う
@@ -223,7 +243,7 @@ def test_normal_when_batched(make_workspace: MakeWorkspace, call_tool: CallTool)
             "kind": "task",
             "item": {"title": "記録の単位を調べる", "kind": "調査", "status": "未着手", "for": ["$1"]},
         },
-        {"op": "update", "id": "D-1", "item": {"answer": "月ごとに分ける", "status": "決定済み"}},
+        {"op": "update", "id": "D-1", "item": {"reason": "記録の単位が決まるまで待つ", "status": "保留"}},
         {"op": "show", "id": "D-1"},
     ]
     # 実行
@@ -240,14 +260,14 @@ def test_normal_when_batched(make_workspace: MakeWorkspace, call_tool: CallTool)
     # T-1 が for: [D-2] を持つ
     tasks = yaml.safe_load((root / RECORD_DIR / "tasks.yaml").read_text(encoding="utf-8"))["items"]
     assert tasks[0]["for"] == ["D-2"]
-    # 4 つ目の取得の結果が、直した後の D-1 の答えと状態を持つ
+    # 4 つ目の取得の結果が、直した後の D-1 の理由と状態を持つ
     shown = results[3]["result"]["item"]
-    assert shown["answer"] == "月ごとに分ける"
-    assert shown["status"] == "決定済み"
-    # D-1 が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
+    assert shown["reason"] == "記録の単位が決まるまで待つ"
+    assert shown["status"] == "保留"
+    # D-1 が変更履歴を 1 回分持ち、直す前の理由と状態が入っている
     decision = _read_decisions(root)[0]
     assert len(decision["history"]) == 1
-    assert decision["history"][0]["before"] == {"answer": None, "status": "未決定"}
+    assert decision["history"][0]["before"] == {"reason": None, "status": "未決定"}
     # pending が D-2・T-1（足した）と D-1（変えた）を返す
     assert [row["id"] for row in pending.data["added"]] == ["D-2", "T-1"]
     assert [row["id"] for row in pending.data["changed"]] == ["D-1"]
@@ -350,3 +370,76 @@ def test_normal_when_body_for_every_kind(make_workspace: MakeWorkspace, call_too
     # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}
+
+
+def test_normal_when_unsorted_without_options(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """案を持たない未整理の検討事項を足し、案を持たないまま取り下げにする（正常系）。"""
+    # 準備
+    root = make_workspace()
+    item = {"title": "あとで整理する問い", "status": "未整理"}
+    # 実行
+    added = call_tool("add", workspace=str(root), kind="decision", item=item)
+    after_add = _read_decisions(root)[0]
+    withdrawn = call_tool(
+        "update", workspace=str(root), id=added.data["id"], item={"status": "取り下げ"}
+    )
+    after_update = _read_decisions(root)[0]
+    checked = call_tool("check", workspace=str(root))
+    # 検証
+    assert added.is_error is False
+    assert after_add["status"] == "未整理"
+    assert "options" not in after_add
+    assert withdrawn.is_error is False
+    assert after_update["status"] == "取り下げ"
+    assert "options" not in after_update
+    # ワークスペースの全ての YAML がスキーマに合う
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}
+
+
+def test_error_when_options_missing(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """案を持たない未決定の検討事項は足さず、案を書く直し方を示すエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    item = {key: value for key, value in NEW_DECISION.items() if key != "options"}
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
+    # 検証
+    assert result.is_error is True
+    assert "options" in result.text
+    assert "options に案を書く" in result.text
+    assert snapshot_tree(root) == before
+
+
+def test_error_when_adoption_and_status_mismatch(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """採用した案を持たないまま決定済みにする更新と、採用した案を持つ未決定の追加は、どちらもエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace()
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    item_id = added.data["id"]
+    before = snapshot_tree(root)
+    adopted_undecided = {
+        **NEW_DECISION,
+        "title": "採用済みの問い",
+        "options": [{**NEW_OPTIONS[0], "adopted": True}, NEW_OPTIONS[1]],
+    }
+    # 実行
+    updated = call_tool(
+        "update", workspace=str(root), id=item_id, item={"status": "決定済み"}
+    )
+    appended = call_tool("add", workspace=str(root), kind="decision", item=adopted_undecided)
+    # 検証
+    assert updated.is_error is True
+    assert item_id in updated.text
+    assert "adopt" in updated.text
+    assert appended.is_error is True
+    assert "未決定" in appended.text
+    assert "A" in appended.text
+    assert snapshot_tree(root) == before

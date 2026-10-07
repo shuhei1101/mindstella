@@ -21,7 +21,7 @@ from preview_helpers import (
     row_ids,
     toggle_value,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # マップを広い幅で出す画面の幅（px）
 WIDE_WIDTH = 1280
@@ -104,6 +104,7 @@ def _decisions(make_item: MakeItem) -> list[dict[str, Any]]:
             category="データ構造",
             phase="目的",
             answer="種類ごとに分ける",
+            options=ADOPTED_OPTIONS,
         ),
         make_item(
             "D-3",
@@ -434,7 +435,14 @@ def test_normal_when_status_condition_cleared(
     # 準備（D-1 だけが 1 つ目のフェーズ、D-3・D-5 は 2 つ目のフェーズに属する）
     place: dict[str, Any] = {"target": "mindmap", "category": "データ構造"}
     url = serve_preview(
-        make_item("D-1", status="決定済み", phase="目的", answer="種類ごとに分ける", **place),
+        make_item(
+            "D-1",
+            status="決定済み",
+            phase="目的",
+            answer="種類ごとに分ける",
+            options=ADOPTED_OPTIONS,
+            **place,
+        ),
         make_item("D-3", status="要見直し", phase="要件", depends_on=["D-1"], **place),
         make_item("D-5", status="未決定", phase="要件", depends_on=["D-3"], **place),
         settings=_settings(valid_settings),

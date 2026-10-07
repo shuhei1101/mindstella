@@ -785,3 +785,68 @@ def test_link_body_when_self(
     )
     # 検証
     assert result["allMarks"] == 0
+
+
+# 値の Markdown（強調・実行される属性を持つ画像・スクリプト・箇条書き 2 行）
+VALUE_MARKDOWN = '**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>\n\n- 項目 1\n- 項目 2\n'
+
+
+def test_render_value(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """値の Markdown を描き、スクリプトを動かさない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        """async (source) => {
+            const element = MindmapPreview.renderValue(source);
+            document.body.append(element);
+            // 差し込んだ後に走る属性・スクリプトがあれば、ここで動く
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            return {
+                isElement: typeof element !== "string",
+                className: element.className,
+                strong: element.querySelectorAll("strong").length,
+                items: element.querySelectorAll("li").length,
+                html: element.innerHTML,
+                marked: element.querySelectorAll("[data-line-start]").length,
+                dirty: window.__x,
+            };
+        }""",
+        VALUE_MARKDOWN,
+    )
+    # 検証
+    assert result["isElement"] is True
+    assert "md-value" in result["className"].split()
+    assert result["strong"] == 1
+    assert result["items"] == 2
+    assert "onerror" not in result["html"]
+    assert "<script" not in result["html"]
+    assert result["marked"] == 0
+    assert result["dirty"] is None
+
+
+@pytest.mark.parametrize(
+    "present_library",
+    [
+        pytest.param("DOMPurify", id="marked_missing"),
+        pytest.param("marked", id="dompurify_missing"),
+    ],
+)
+def test_render_value_when_library_missing(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    present_library: str,
+) -> None:
+    """ライブラリが読めなければ文字のまま返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library(present_library)
+    # 実行
+    result = preview_page.evaluate("(source) => MindmapPreview.renderValue(source)", "**強調**")
+    # 検証
+    assert result == "**強調**"

@@ -40,7 +40,7 @@ from preview_fixture_types import (
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
-from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
@@ -90,9 +90,10 @@ def test_content(write_sample_preview: WriteSamplePreview, open_preview: OpenPre
     assert page.get_attribute("aside.panel .detail .st", "data-st") == "要見直し"
     options = page.eval_on_selector_all(
         "aside.panel .opt",
-        "opts => opts.map(o => [o.querySelector('.key').textContent, o.querySelector('.res').textContent, o.classList.contains('adopted')])",
+        "opts => opts.map(o => [o.querySelector('.key').textContent, o.querySelector('.res')?.textContent ?? null, o.classList.contains('adopted')])",
     )
-    assert options == [["A", "採用", True], ["B", "検討中", False]]
+    # 採用でも不採用でもない案には、結果の印を出さない
+    assert options == [["A", "採用", True], ["B", None, False]]
     # 本文の見出しはパネルの節の見出し（h3）より下の段
     headings = page.eval_on_selector_all(
         "aside.panel .detail h2, aside.panel .detail h3, aside.panel .detail h4, aside.panel .detail h5",
@@ -107,6 +108,241 @@ def test_content(write_sample_preview: WriteSamplePreview, open_preview: OpenPre
         "H3:レビュー中のコメント0",
     ]
     assert page.locator("aside.panel .mermaid svg").count() == 1
+
+
+# Markdown で書いた値（太字・コード・箇条書きを持つ）
+MARKDOWN_VALUE = "**太字**と`コード`\n\n- 箇条書き"
+
+
+def _section_titles(page: Page) -> list[str]:
+    """パネルの節の見出しを上から並べて返す。"""
+    return page.eval_on_selector_all("aside.panel .d-sec h3", "hs => hs.map(h => h.textContent)")
+
+
+def test_lead_before_options(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """背景（問い）をタイトルの下・案の節の前に出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    # 検証
+    order = page.evaluate(
+        """() => {
+          const lead = document.querySelector('aside.panel .d-lead');
+          const title = document.querySelector('aside.panel .d-title');
+          const options = [...document.querySelectorAll('aside.panel .d-sec')]
+            .find(section => section.querySelector('h3').textContent === '案');
+          const after = (a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+          return [lead.textContent.trim(), after(title, lead), after(lead, options)];
+        }"""
+    )
+    assert order == ["キーをどう持つか", True, True]
+
+
+def test_recommended_mark(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """どの案も採用でないとき、推奨の案の見出しの右に星と「推奨」のバッジを出し、ほかの案には出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "D-1",
+            status="未決定",
+            options=[
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+        )
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .opt")
+    # 検証
+    marks = page.eval_on_selector_all(
+        "aside.panel .opt",
+        """opts => opts.map(o => [
+          o.querySelector('.key').textContent,
+          o.querySelector('.o-head .rec-badge')?.textContent ?? null,
+          o.classList.contains('recommended'),
+          o.querySelector('.res')?.textContent ?? null,
+        ])""",
+    )
+    assert marks == [["A", None, False, None], ["B", "推奨", True, None]]
+    assert page.locator("aside.panel .opt .rec-badge svg").count() == 1
+
+
+def test_recommended_mark_when_adopted(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """採用した案があれば、推奨の印は出さず、採用の印だけを出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "D-1",
+            status="決定済み",
+            options=[
+                {"key": "A", "content": "案 A", "adopted": True},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+        )
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .opt")
+    # 検証
+    assert page.locator("aside.panel .rec-badge").count() == 0
+    assert page.locator("aside.panel .opt.adopted .res").inner_text() == "採用"
+
+
+def test_adopted_section(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """決定内容と理由を「採用した案と理由」の節に、案の後・本文の前に並べる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "D-1",
+            status="決定済み",
+            answer="種類ごとに分ける",
+            reason="探しやすい",
+            options=ADOPTED_OPTIONS,
+            body="D-1.md",
+        ),
+        bodies={"D-1.md": "## 経緯\n\n本文の段落\n"},
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    # 検証
+    assert _section_titles(page) == ["案", "採用した案と理由", "本文", "レビュー中のコメント0"]
+    rows = page.eval_on_selector_all(
+        "aside.panel .d-sec:has(h3:text-is('採用した案と理由')) .d-answer",
+        "rows => rows.map(r => [r.querySelector('b').textContent, r.querySelector('.d-value').textContent.trim()])",
+    )
+    assert rows == [["決定内容", "種類ごとに分ける"], ["理由", "探しやすい"]]
+
+
+@pytest.mark.parametrize(
+    ("values", "labels"),
+    [
+        pytest.param({"answer": "種類ごとに分ける"}, ["決定内容"], id="answer_only"),
+        pytest.param({"reason": "探しやすい"}, ["理由"], id="reason_only"),
+        pytest.param({}, [], id="none"),
+    ],
+)
+def test_adopted_section_when_partial(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    values: dict[str, str],
+    labels: list[str],
+) -> None:
+    """決定内容と理由は値のあるものだけを並べ、どちらも無ければ節ごと出さない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS, **values))
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .opt")
+    # 検証
+    rows = page.eval_on_selector_all(
+        "aside.panel .d-sec:has(h3:text-is('採用した案と理由')) .d-answer b",
+        "bs => bs.map(b => b.textContent)",
+    )
+    assert rows == labels
+    assert ("採用した案と理由" in _section_titles(page)) is (labels != [])
+
+
+def test_value_markdown(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """検討事項の文字列の値（背景・決定内容・理由・案の各値）を Markdown で描き、配列の値は「、」でつなぐ（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "D-1",
+            status="決定済み",
+            lead=MARKDOWN_VALUE,
+            answer=MARKDOWN_VALUE,
+            reason=MARKDOWN_VALUE,
+            options=[
+                {
+                    "key": "A",
+                    "content": MARKDOWN_VALUE,
+                    "pros": MARKDOWN_VALUE,
+                    "cons": ["一つ目", "二つ目"],
+                    "note": MARKDOWN_VALUE,
+                    "reason": MARKDOWN_VALUE,
+                    "adopted": True,
+                }
+            ],
+        )
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .opt")
+    # 検証
+    drawn = page.eval_on_selector_all(
+        "aside.panel .md-value",
+        "els => els.map(e => [e.querySelectorAll('strong').length, e.querySelectorAll('code').length, e.querySelectorAll('li').length])",
+    )
+    assert drawn.count([1, 1, 1]) == 7
+    assert drawn.count([0, 0, 0]) == 1
+    assert page.inner_text('aside.panel dd[data-key="options[A].cons"]') == "一つ目、二つ目"
+    # 値の要素は、本文と違い行の印を持たない
+    assert page.locator("aside.panel .md-value [data-line-start]").count() == 0
+
+
+@pytest.mark.parametrize(
+    ("item_id", "tab", "values"),
+    [
+        pytest.param("T-1", "tasks", {"reason": MARKDOWN_VALUE}, id="task_reason"),
+        pytest.param(
+            "R-1",
+            "research",
+            {"question": MARKDOWN_VALUE, "conclusion": MARKDOWN_VALUE},
+            id="research",
+        ),
+        pytest.param("G-1", "terms", {"meaning": MARKDOWN_VALUE}, id="term_meaning"),
+        pytest.param("N-1", "notes", {"content": MARKDOWN_VALUE}, id="note_content"),
+    ],
+)
+def test_value_markdown_when_other_kinds(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    item_id: str,
+    tab: str,
+    values: dict[str, str],
+) -> None:
+    """タスクの理由・調査の問いと結論・用語の意味・メモの中身も Markdown で描く（正常系）。"""
+    # 準備
+    url = write_preview(make_item(item_id, **values))
+    # 実行
+    page = open_preview(url, f"#tab={tab}&view=table&id={item_id}")
+    page.wait_for_selector("aside.panel .md-value")
+    # 検証
+    drawn = page.eval_on_selector_all(
+        "aside.panel .md-value",
+        "els => els.map(e => [e.querySelectorAll('strong').length, e.querySelectorAll('code').length, e.querySelectorAll('li').length])",
+    )
+    assert drawn == [[1, 1, 1]] * len(values)
+
+
+def test_value_markdown_when_library_unavailable(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """marked か DOMPurify を読めないときは、値を文字のまま出す（異常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", status="未決定", lead="**太字**", options=[{"key": "A", "content": "案 A"}]))
+    page.route("https://cdn.jsdelivr.net/**", lambda route: route.abort())
+    # 実行
+    open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .d-lead")
+    # 検証
+    assert page.inner_text("aside.panel .d-lead") == "**太字**"
+    assert page.locator("aside.panel .d-lead strong").count() == 0
 
 
 @pytest.mark.parametrize(
@@ -133,11 +369,11 @@ def test_content_when_body_in_other_kinds(
     )
     # 実行
     page = open_preview(url, f"#tab={tab}&view=table&id={item_id}")
-    page.wait_for_selector("aside.panel.open .detail .md")
+    page.wait_for_selector("aside.panel.open .detail .md:not(.md-value)")
     # 検証
     assert page.inner_text("aside.panel .panel-kind") == panel_kind
     assert page.locator("aside.panel .d-sec h3", has_text="本文").count() == 1
-    assert "会話で持ち越した" in page.inner_text("aside.panel .detail .md")
+    assert "会話で持ち越した" in page.inner_text("aside.panel .detail .md:not(.md-value)")
 
 
 def test_related_items(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -154,7 +390,7 @@ def test_related_items(write_sample_preview: WriteSamplePreview, open_preview: O
         "document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'"
     )
     # 検証
-    assert sections == ["前提", "後続の項目", "関連タスク", "レビュー中のコメント0"]
+    assert sections == ["案", "前提", "後続の項目", "関連タスク", "レビュー中のコメント0"]
     assert "id=D-1" in page.evaluate("location.hash")
 
 
@@ -164,8 +400,8 @@ def test_referenced_by(
     """関連で指している項目から、参照元の節で指されている項目を開ける（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="決定済み"),
-        make_item("D-2", status="決定済み", related=["D-1"]),
+        make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
+        make_item("D-2", status="決定済み", options=ADOPTED_OPTIONS, related=["D-1"]),
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     # 実行
@@ -640,8 +876,8 @@ def test_comment_input_draft_when_saved_with_location(
         drafts=(make_draft(target="A-1", body="項目への書きかけ"),),
     )
     page = open_preview(url, "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.click(PILL)
     page.fill(DETAIL_TEXTAREA, "ここは言い換える")
     # 実行
@@ -721,10 +957,10 @@ def test_selection_entry_when_body(
     # 準備
     url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
     history_length = page.evaluate("history.length")
     # 実行
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.get_by_role("button", name="選んだ箇所にコメント").click()
     # 検証
     assert page.locator(PILL).count() == 0
@@ -772,8 +1008,8 @@ def test_selection_entry_when_closed_by_escape(
     # 準備
     url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.focus(PILL)
     # 実行
     page.keyboard.press("Escape")
@@ -809,11 +1045,11 @@ def test_highlight_location(
     page.wait_for_selector(COMMENTS_PANEL)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
-    page.wait_for_selector("aside.panel.open .md .loc-hit")
+    page.wait_for_selector("aside.panel.open .md:not(.md-value) .loc-hit")
     # 検証
-    assert page.inner_text("aside.panel .md .loc-hit") == "最初の文 言い換えたい文 最後の文"
+    assert page.inner_text("aside.panel .md:not(.md-value) .loc-hit") == "最初の文 言い換えたい文 最後の文"
     assert page.eval_on_selector(
-        "aside.panel .md .loc-hit", "e => getComputedStyle(e).backgroundColor"
+        "aside.panel .md:not(.md-value) .loc-hit", "e => getComputedStyle(e).backgroundColor"
     ) != "rgba(0, 0, 0, 0)"
     # 別の項目へ移ると示す箇所を消す
     page.evaluate("location.hash = '#tab=decisions&id=D-1'")
@@ -881,7 +1117,7 @@ def test_highlight_location_when_mismatched(
     page.wait_for_selector(COMMENTS_PANEL)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
-    page.wait_for_selector("aside.panel.open .md")
+    page.wait_for_selector("aside.panel.open .md:not(.md-value)")
     # 検証
     assert page.locator(".loc-hit").count() == 0
     assert page.eval_on_selector("aside.panel .panel-body", "e => e.scrollTop") == 0
@@ -1069,7 +1305,7 @@ def test_diff_new_badge(
     badge = page.locator("aside.panel .d-title .df-badge.df-new")
     assert badge.inner_text() == "新規"
     assert page.locator("aside.panel .df-kv").count() == 0
-    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     # 変えただけの項目（V-2 の D-1）には札を置かない
     page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
     page.reload()
@@ -1113,28 +1349,28 @@ def test_diff_body(
     # 準備・実行
     url, _ = write_history_preview()
     _open_diff_panel(page, open_preview, url, "V-2")
-    page.wait_for_selector("aside.panel .md ins.df-blk")
+    page.wait_for_selector("aside.panel .md:not(.md-value) ins.df-blk")
     # 検証
-    added = page.inner_text("aside.panel .md ins.df-blk")
-    removed = page.inner_text("aside.panel .md del.df-blk")
+    added = page.inner_text("aside.panel .md:not(.md-value) ins.df-blk")
+    removed = page.inner_text("aside.panel .md:not(.md-value) del.df-blk")
     assert "新しい段落を足しました。" in added
     assert "次の段落を消します。" in removed
     # 足した塊・消した塊の頭に記号と、読み上げの名前がある
-    assert page.inner_text("aside.panel .md ins.df-blk > .df-sign") == "+"
-    assert page.inner_text("aside.panel .md del.df-blk > .df-sign") == "−"
+    assert page.inner_text("aside.panel .md:not(.md-value) ins.df-blk > .df-sign") == "+"
+    assert page.inner_text("aside.panel .md:not(.md-value) del.df-blk > .df-sign") == "−"
     # 表は行ごとに印を付ける
-    assert "7" in page.inner_text("aside.panel .md tr.df-add")
-    assert "3" in page.inner_text("aside.panel .md tr.df-del")
-    assert page.locator("aside.panel .md tr.df-add").count() == 1
-    assert page.locator("aside.panel .md tr.df-del").count() == 1
+    assert "7" in page.inner_text("aside.panel .md:not(.md-value) tr.df-add")
+    assert "3" in page.inner_text("aside.panel .md:not(.md-value) tr.df-del")
+    assert page.locator("aside.panel .md:not(.md-value) tr.df-add").count() == 1
+    assert page.locator("aside.panel .md:not(.md-value) tr.df-del").count() == 1
     # 変えていない段落は印の外で、今の本文の行（1・14 行目の段落など）を持つ
     unchanged = page.eval_on_selector_all(
-        "aside.panel .md > p[data-line-start]", "ps => ps.map(p => [p.dataset.lineStart, p.textContent])"
+        "aside.panel .md:not(.md-value) > p[data-line-start]", "ps => ps.map(p => [p.dataset.lineStart, p.textContent])"
     )
     assert ["3", "最初の段落です。"] in unchanged or ["3", "最初の段落です。"] in [
         [line, text] for line, text in unchanged
     ]
-    assert page.locator("aside.panel .md del.df-blk [data-line-start]").count() == 0
+    assert page.locator("aside.panel .md:not(.md-value) del.df-blk [data-line-start]").count() == 0
 
 
 def test_diff_diagram(
@@ -1218,7 +1454,7 @@ def test_diff_note_when_trimmed(
     # 検証
     assert page.inner_text("aside.panel .df-note") == NOTE_TRIMMED
     assert page.locator("aside.panel .df-kv").count() == 0
-    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     # 印は付く
     page.goto(f"{url}#tab=decisions&view=table")
     page.wait_for_selector("table.grid tbody tr")
@@ -1238,8 +1474,8 @@ def test_diff_note_when_body_rewritten(
     page.wait_for_selector("aside.panel .df-note")
     # 検証
     assert page.inner_text("aside.panel .df-note") == NOTE_BODY_UNAVAILABLE
-    assert "手で書いた A" in page.inner_text("aside.panel .md")
-    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert "手で書いた A" in page.inner_text("aside.panel .md:not(.md-value)")
+    assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     assert page.locator('aside.panel [data-key="status"] .df-kv').count() == 1
 
 
@@ -1265,7 +1501,7 @@ def test_diff_note_when_body_too_large(
     page.wait_for_selector("aside.panel .df-note", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
     # 検証
     assert page.inner_text("aside.panel .df-note") == NOTE_BODY_TOO_LARGE
-    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
+    assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     assert page.locator("aside.panel .df-kv").count() >= 1
 
 
@@ -1282,8 +1518,8 @@ def test_diff_note_when_library_unavailable(
     notice = page.inner_text("aside.panel .lib-error[role=alert]")
     assert "本文と図の差分を表示できません。読み込めなかったライブラリ: jsdiff" in notice
     assert "通信を確認して、ページを再読み込みしてください。" in notice
-    assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
-    assert "最初の段落です。" in page.inner_text("aside.panel .md")
+    assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
+    assert "最初の段落です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert page.locator('aside.panel [data-key="status"] .df-kv').count() == 1
     assert page.locator("aside.panel figure.diagram.df-changed").count() == 0
 
@@ -1295,15 +1531,16 @@ def test_selection_entry_when_diff(
     # 準備
     url, _ = write_history_preview()
     _open_diff_panel(page, open_preview, url, "V-2")
-    page.wait_for_selector("aside.panel .md del.df-blk")
+    page.wait_for_selector("aside.panel .md:not(.md-value) del.df-blk")
     # 実行（変えていない段落を選ぶ）
-    select_text_for_pill(page, "aside.panel .md", "最初の段落です。")
+    page.locator("aside.panel .md:not(.md-value)").scroll_into_view_if_needed()
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "最初の段落です。")
     page.click(PILL)
     # 検証（今の本文の 3 行目）
     assert page.inner_text("aside.panel .send-loc-name") == "本文 3 行目"
     # 消した部分を含む選択では出さない
     page.keyboard.press("Escape")
-    select_text(page, "aside.panel .md del.df-blk", "次の段落を消します。")
+    select_text(page, "aside.panel .md:not(.md-value) del.df-blk", "次の段落を消します。")
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     assert page.locator(PILL).count() == 0
 
@@ -1315,10 +1552,10 @@ def test_selection_entry_when_old_set_after_body_edit(
     # 準備（D-2 は V-2 の後にも本文を直している）
     url, _ = write_history_preview()
     _open_diff_panel(page, open_preview, url, "V-2", "#tab=decisions&view=table&id=D-2")
-    page.wait_for_selector("aside.panel .md")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
     # 検証
-    assert page.locator("aside.panel .md [data-line-start]").count() == 0
-    select_text(page, "aside.panel .md", "1 行目の段落")
+    assert page.locator("aside.panel .md:not(.md-value) [data-line-start]").count() == 0
+    select_text(page, "aside.panel .md:not(.md-value)", "1 行目の段落")
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     assert page.locator(PILL).count() == 0
     # 値（案・キー）の選択は今まで通り出る
@@ -1389,11 +1626,11 @@ def test_body_heading_link_press(
     page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方-1'")
     after_hash = page.evaluate("location.hash")
     # 実行（本文の中のリンク。marked が日本語の href をパーセントエンコードして描く）
-    page.click("aside.panel .md p a:has-text('決め方')")
+    page.click("aside.panel .md:not(.md-value) p a:has-text('決め方')")
     page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
     # 実行（本文に無い見出しへのリンク）
     hash_before = page.evaluate("location.hash")
-    page.click("aside.panel .md p a:has-text('無い')")
+    page.click("aside.panel .md:not(.md-value) p a:has-text('無い')")
     page.wait_for_timeout(200)
     # 検証
     assert "h=" in after_hash
@@ -1409,20 +1646,20 @@ def test_body_term_marks(
     # 準備
     url = _write_linked_preview(write_preview, make_item)
     page = open_preview(url, "#tab=docs&view=table&id=A-1")
-    page.wait_for_selector("aside.panel .md a.term")
+    page.wait_for_selector("aside.panel .md:not(.md-value) a.term")
     history_length = page.evaluate("history.length")
     # 実行
     terms = page.eval_on_selector_all(
-        "aside.panel .md a.term", "a => a.map(x => [x.textContent, x.dataset.id])"
+        "aside.panel .md:not(.md-value) a.term", "a => a.map(x => [x.textContent, x.dataset.id])"
     )
     in_heading_or_code = page.locator(
-        "aside.panel .md :is(h2, pre) :is(a.term, a.idref)"
+        "aside.panel .md:not(.md-value) :is(h2, pre) :is(a.term, a.idref)"
     ).count()
     style = page.eval_on_selector(
-        "aside.panel .md a.term",
+        "aside.panel .md:not(.md-value) a.term",
         "e => ({line: getComputedStyle(e).textDecorationLine, style: getComputedStyle(e).textDecorationStyle, color: getComputedStyle(e).color, parent: getComputedStyle(e.parentElement).color})",
     )
-    page.click("aside.panel .md a.term >> nth=0")
+    page.click("aside.panel .md:not(.md-value) a.term >> nth=0")
     page.wait_for_function("location.hash.includes('id=G-1')")
     # 検証
     assert terms == [["保存先", "G-1"], ["AI", "G-3"]]
@@ -1440,15 +1677,15 @@ def test_body_id_links(
     # 準備
     url = _write_linked_preview(write_preview, make_item)
     page = open_preview(url, "#tab=docs&view=table&id=A-1")
-    page.wait_for_selector("aside.panel .md a.idref")
+    page.wait_for_selector("aside.panel .md:not(.md-value) a.idref")
     history_length = page.evaluate("history.length")
     # 実行
     refs = page.eval_on_selector_all(
-        "aside.panel .md a.idref", "a => a.map(x => [x.textContent, x.dataset.id])"
+        "aside.panel .md:not(.md-value) a.idref", "a => a.map(x => [x.textContent, x.dataset.id])"
     )
-    white_space = page.eval_on_selector("aside.panel .md a.idref", "e => getComputedStyle(e).whiteSpace")
-    in_code_block = page.locator("aside.panel .md pre a").count()
-    page.click('aside.panel .md a.idref[data-id="D-3"]')
+    white_space = page.eval_on_selector("aside.panel .md:not(.md-value) a.idref", "e => getComputedStyle(e).whiteSpace")
+    in_code_block = page.locator("aside.panel .md:not(.md-value) pre a").count()
+    page.click('aside.panel .md:not(.md-value) a.idref[data-id="D-3"]')
     page.wait_for_function("location.hash.includes('id=D-3')")
     # 検証
     assert refs == [["D-3", "D-3"], ["D-5", "D-5"]]
@@ -1464,8 +1701,8 @@ def test_body_term_tooltip(
     # 準備
     url = _write_linked_preview(write_preview, make_item)
     page = open_preview(url, "#tab=docs&view=table&id=A-1")
-    mark = "aside.panel .md a.term >> nth=0"
-    page.wait_for_selector("aside.panel .md a.term")
+    mark = "aside.panel .md:not(.md-value) a.term >> nth=0"
+    page.wait_for_selector("aside.panel .md:not(.md-value) a.term")
     described = page.get_attribute(mark, "aria-describedby")
     # 実行（乗せる）
     page.hover(mark)
@@ -1504,7 +1741,7 @@ def _open_long_lines(
     """長い行を持つコードブロックと、記法に長い行を持つ図を本文に持つ項目を詳細パネルで開く。"""
     url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md pre:not(.dg-raw)")
+    page.wait_for_selector("aside.panel .md:not(.md-value) pre:not(.dg-raw)")
     page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     return page
 
@@ -1515,7 +1752,7 @@ def test_code_block_when_long_line(
     """本文のコードブロックは、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
     # 準備・実行
     page = _open_long_lines(write_preview, open_preview, make_item)
-    code = "aside.panel .md pre:not(.dg-raw)"
+    code = "aside.panel .md:not(.md-value) pre:not(.dg-raw)"
     # 検証
     assert not overflows_horizontally(page, code)
     assert axe_rule_results(page, code, SCROLLABLE_REGION_RULE)["violations"] == []

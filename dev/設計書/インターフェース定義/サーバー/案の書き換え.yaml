@@ -66,7 +66,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A・B・C を持ち A を採用した検討事項 D-1 を足して `commit` したワークスペース
+        description: 案 A・B・C を持ち A を採用した決定済みの検討事項 D-1 を足して `commit` したワークスペース
       - name: 引数
         description: '`action: remove`、`key: B`'
     flow: |-
@@ -275,7 +275,61 @@ flows:
       - 'エラーの本文が `エラー: 引数の誤り: option:` で始まり、`adopted` を含む'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_argument_invalid
-lead: 検討事項の案を記号（`key`）で指して、1 つ足す・中身を直す・消す。指さない案と検討事項のほかのキーはそのまま残し、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
+  - name: 正常系（推奨の印を付け替える）
+    summary: 案 B に推奨の印を立て、案 A の印を外す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B を持ち A に推奨の印を持つ未決定の検討事項 D-1 を足して `commit` したワークスペース
+      - name: 引数
+        description: '`action: update`、`key: B`、`option` に `recommended: true`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action update key B（recommended: true）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 案 B に印を立て、案 A の印を外し、変更履歴を積んでスキーマと突き合わせる
+        IF->>WS: decisions.yaml と changes.yaml を書く
+        IF-->>クライアント: JSON（options・changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 案 B の `recommended` が真で、案 A が `recommended` のキーを持たない
+      - 案 A・B の `content` と並びが呼ぶ前と同じ
+      - D-1 の `status` が `未決定` のままで、どの案も `adopted` を持たない
+      - D-1 が `history` を 1 回分持ち、`before.options` で案 A の `recommended` が真
+    test: test_normal_when_recommendation_moved
+  - name: 異常系（最後の案を消す・LastOptionError）
+    summary: 案を必須にする状態の検討事項の最後の案は消さず、案を残すよう示す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A だけを持つ未決定の検討事項 D-1 を持つワークスペース
+      - name: 引数
+        description: '`action: remove`、`key: A`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as edit_option（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: edit_option workspace id D-1 action remove key A
+        IF-->>WS: 案 A が未決定の D-1 の最後の案である
+        IF-->>クライアント: ツールのエラー（案を 1 つ以上残す旨）
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `D-1`、`A`、案を 1 つ以上残す旨がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_last_option_removed
+lead: 検討事項の案を記号（`key`）で指して、1 つ足す・中身と推奨の印を直す・消す。指さない案と検討事項のほかのキーはそのまま残し（推奨の印を立てたときはほかの案の印を外す）、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
 idempotent: false
 side_effects: '`decisions.yaml` のその検討事項の `options` と `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『項目の更新』と同じく `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML と `changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
@@ -310,8 +364,8 @@ request:
     default: なし（`remove` のとき）
     location: argument
     description: '`add` では足す案の中身。`update` では置き換えるキーと値で、渡したキーだけを置き換え、値が `null` のキーは消す'
-    constraints: キーは `content`・`pros`・`cons`・`note`・`reason` だけ（`key` は引数の `key`、`adopted` は『採用する案の切り替え』が持つ）。`add`・`update` では必ず渡し、`remove` では渡さない
-    example: '{"content": "種類ごとに分ける", "pros": "探しやすい"}'
+    constraints: キーは `content`・`pros`・`cons`・`note`・`reason`・`recommended` だけ（`key` は引数の `key`、`adopted` は『採用する案の切り替え』が持つ）。`recommended` は `true` で印を立て、`false` か `null` で印を外す。`add`・`update` では必ず渡し、`remove` では渡さない
+    example: '{"content": "種類ごとに分ける", "pros": "探しやすい", "recommended": true}'
 response:
   - name: id
     type: str
@@ -353,6 +407,9 @@ exceptions:
   - name: 引数の誤り
     condition: '`id` が `D-` で始まらない、`add`・`update` で `option` を渡さない、`remove` で `option` を渡した、または `option` が `key`・`adopted` を持つ'
     notes: ツールのエラー。何も書き込まない
+  - name: LastOptionError
+    condition: '`remove` で、指した案がその検討事項の最後の案で、状態が `未整理`・`対象外`・`取り下げ` のどれでもない'
+    notes: ツールのエラー。エラーの本文に ID と記号と、案を 1 つ以上残す旨（先に `add` で別の案を足す案内）。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。案の記号のエラーは `エラー: {ID} の案 {記号}: {理由}` にする。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 結果の形
@@ -362,9 +419,11 @@ constraints:
   - item: 案の並び
     constraint: '`add` は末尾に足す。`update` はその案の位置のまま直し、`remove` はその案だけを抜く。ほかの案の中身と並びは変えない'
   - item: 採用と状態
-    constraint: '案の `adopted` と検討事項の `status`・`answer` は書き換えない（採用は『採用する案の切り替え』が持ち、採用と状態の連動は #86 が扱う）'
+    constraint: '案の `adopted` と検討事項の `status`・`answer` は書き換えない（採用と状態は『採用する案の切り替え』が書き換える）。`未整理`・`対象外`・`取り下げ` を除く状態の検討事項は、案を 1 つ以上残す'
   - item: 変更履歴
     constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は `options`（書き換える前の案の並びの全体）
   - item: 部分成功
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる
+  - item: 推奨の印
+    constraint: '`recommended` が真の案は 0 か 1 つ。`option` に `recommended: true` を渡すと、その案に印を立ててほかの案の `recommended` のキーを消す。印を外した案は `recommended` のキーを持たない'
 test_file: tests/integration/server/test_edit_option.py

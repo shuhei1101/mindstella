@@ -7,7 +7,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
-        description: 検討事項 D-3（案 A を採用・案 B を不採用と理由、前提 D-1・後続 D-5、進めるタスク T-2、関連 R-1、本文の Markdown に mermaid の図を 1 つ）。メモ N-1 が D-3 を `related` で指す
+        description: 検討事項 D-3（背景 `lead`・答え `answer`・理由 `reason` はそれぞれ強調とリストを含む Markdown、案 A を採用・案 B を不採用と理由、前提 D-1・後続 D-5、進めるタスク T-2、関連 R-1、本文の Markdown に mermaid の図を 1 つ）。メモ N-1 が D-3 を `related` で指す
       - name: 配信
         description: 記録を配っているサーバー。表示の幅は 1920px
     flow: |-
@@ -33,6 +33,8 @@ scenarios:
       ```
     expected:
       - D-3 の詳細パネルに、案 A（採用）と案 B（不採用と理由）のカードが縦に並ぶ
+      - D-3 の詳細パネルが、タイトル → 背景 → 案 → 採用した案と理由（答え・理由）→ 本文の順に並ぶ
+      - 背景・答え・理由と案の各値の Markdown が、強調とリストとして描かれる
       - 前提に D-1、後続に D-5、関連タスクに T-2、関連に R-1、参照元に N-1 が出る
       - 本文の Markdown が描かれ、mermaid の図が図として出て、図に「拡大表示」「Raw」「コピー」がある
       - 幅 1920px では、パネルを開いている間、本文がパネルの分だけ寄る
@@ -135,6 +137,31 @@ scenarios:
       - 「D-3」を押すと D-3 の詳細パネルが開き、URL のハッシュが D-3 を指す
       - 「保存先」を押すと G-1 の詳細パネルが開き、G-1 の本文の「保存先」には用語の印が付かない
     test: test_normal_when_body_links
+  - name: 正常シナリオ（未決定の検討事項の推奨を読む）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-7（背景 `lead` は強調を含む Markdown、案 A・B を持ち、B に推奨の印、どの案も採用でない）
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 検討事項の表で D-7 を押す
+        P-->>U: D-7 の詳細パネル（背景・推奨の印の付いた案）
+      ```
+    expected:
+      - D-7 の詳細パネルに、案 B のカードだけに推奨の印が出る
+      - 案 A・B のカードが、どちらも採用・不採用の表示を持たない
+      - 背景の Markdown が強調として描かれる
+      - 採用した案と理由の節が出ない
+    test: test_normal_when_recommendation_shown
 lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読む単一ユースケース。
 issue: 5
 primary_actor: 利用者

@@ -36,6 +36,24 @@ def test_check_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     assert problems == []
 
 
+def test_check_workspace_when_decision_state(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """案と状態の合わない検討事項を拾い、必須でない状態は拾わない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", options=[]),
+        make_item("D-2", status="未整理", options=[]),
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker.check_workspace(workspace)
+    # 検証
+    assert _keys(problems) == {
+        ("decision_state", ".mindstella/decisions.yaml", "D-1", "items[0].options")
+    }
+
+
 def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """4 種類の問題をまとめて返す（正常系）。"""
     # 準備
@@ -315,6 +333,8 @@ def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item:
         ("broken_ref", "changes.yaml", "sets[0].changed")
     ]
     assert "D-9" in problems[0].detail
+
+
 @pytest.mark.parametrize(
     ("raw_files", "expected_files"),
     [

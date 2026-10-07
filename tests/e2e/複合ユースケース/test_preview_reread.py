@@ -12,7 +12,13 @@ from preview_helpers import (
     snapshot_records,
     visit_and_close,
 )
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import (
+    ADOPTED_OPTIONS,
+    CallTool,
+    MakeItem,
+    MakeWorkspace,
+    SnapshotTree,
+)
 
 if TYPE_CHECKING:
     from conftest import Replay
@@ -55,6 +61,7 @@ NEW_DECISION: dict[str, Any] = {
     "status": "未決定",
     "lead": "後から足した問い",
     "weight": "大",
+    "options": [{"key": "A", "content": "案 A"}],
     "target": "mindmap",
     "category": "データ構造",
     "phase": "構成",
@@ -87,7 +94,14 @@ def _records(make_item: MakeItem) -> list[dict[str, Any]]:
     """
     placed: dict[str, Any] = {"target": "mindmap"}
     return [
-        make_item("D-1", status="決定済み", category="データ構造", phase="目的", **placed),
+        make_item(
+            "D-1",
+            status="決定済み",
+            category="データ構造",
+            phase="目的",
+            options=ADOPTED_OPTIONS,
+            **placed,
+        ),
         make_item(
             "D-3",
             status="未決定",

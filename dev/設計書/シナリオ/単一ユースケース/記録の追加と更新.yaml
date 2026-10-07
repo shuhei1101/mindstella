@@ -7,8 +7,8 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 検討事項の中身
-        description: タイトル・対象・カテゴリー・フェーズ・状態・問いの説明・影響度
-        notes: 状態 `未決定`、影響度 `大`
+        description: タイトル・対象・カテゴリー・フェーズ・状態・問いの説明・影響度・案
+        notes: 状態 `未決定`、影響度 `大`、案 A・B（推奨の印は A）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -20,7 +20,7 @@ scenarios:
         SV->>SV: ID・作成日・更新日を付け、スキーマと突き合わせる
         SV->>WS: decisions.yaml に書く
         SV-->>CC: 振った ID
-        CC->>SV: その ID の答えと状態を直す
+        CC->>SV: その ID の答えと状態を直し、案 A を採用にする
         SV->>SV: 更新日を変え、スキーマと突き合わせる
         SV->>WS: decisions.yaml に書く
         SV-->>CC: 直した ID
@@ -28,7 +28,9 @@ scenarios:
     expected:
       - 追加が返した ID が `D-` で始まる
       - '`.mindstella/decisions.yaml` にその ID の項目が 1 件あり、足したタイトル・対象・カテゴリー・フェーズ・問いの説明・影響度を持つ'
+      - 足した項目が案 A・B を持ち、案 A だけが推奨の印を持つ
       - 更新の後、その項目の答えと状態が直した値になっている
+      - 更新の後、その項目が決定済みで、案 A だけが採用である
       - その項目の作成日が追加のときの値のまま、更新日が記録されている
       - 足した時点と更新の後のどちらでも、その項目の `updated_by` が `ai` である
       - ワークスペースの全ての YAML がスキーマに合う
@@ -276,6 +278,83 @@ scenarios:
       - T-1・G-1・N-1 の `updated_by` が `ai` である
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_body_for_every_kind
+  - name: 正常シナリオ（未整理の検討事項を案を持たずに足す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませた、項目を持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 案を持たない未整理の検討事項 D-1 を足す
+        SV->>SV: 未整理は案の必須の対象でないことを確かめ、スキーマと突き合わせる
+        SV->>WS: decisions.yaml に書く
+        CC->>SV: D-1 を、案を持たないまま取り下げにする
+        SV->>WS: decisions.yaml に書く
+      ```
+    expected:
+      - D-1 が足され、案を持たない
+      - D-1 が取り下げで、案を持たない
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_unsorted_without_options
+  - name: 異常シナリオ（案を持たない検討事項を足す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませた、項目を持たないワークスペース
+      - name: 検討事項の中身
+        description: 案を持たない未決定の検討事項
+        notes: '`options` を渡さない'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 案を持たない未決定の検討事項を足す
+        SV->>SV: 案の必須の対象の状態で、案が無い
+        SV-->>CC: 案が無いことと直し方を示すエラー
+      ```
+    expected:
+      - 追加のツールがエラーを返す
+      - エラーの本文に、キー `options` と、案を 1 つ以上書く直し方がある
+      - ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
+    test: test_error_when_options_missing
+  - name: 異常シナリオ（採用と状態が合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、案 A・B を持つ未決定の検討事項 D-1 を足したワークスペース
+      - name: 書き込み
+        description: D-1 を採用した案を持たないまま決定済みに直す更新と、案 A を採用にしたまま未決定で足す追加
+        notes: 2 回に分けて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 を、採用した案を持たないまま決定済みに直す
+        SV->>SV: 決定済みが採用した案を持たない
+        SV-->>CC: 採用した案が無いことを示すエラー
+        CC->>SV: 案 A を採用にした未決定の検討事項を足す
+        SV->>SV: 採用した案を持つのに未決定である
+        SV-->>CC: 採用と状態が合わないことを示すエラー
+      ```
+    expected:
+      - 更新のツールがエラーを返し、本文に D-1 と、`adopt` で案を採用する直し方がある
+      - 追加のツールがエラーを返し、本文に状態 `未決定` と採用した案 `A` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_adoption_and_status_mismatch
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -290,3 +369,4 @@ minimal_guarantee: スキーマに合わない書き込み・存在しない ID 
 test_file: tests/e2e/単一ユースケース/test_record_add_update.py
 notes:
   読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、今までどおり超えた古い回を消す（正常シナリオ（保持する回数を超えて直す）はこの形）。保持する回数が 0 のときは、今までどおり積まない
+  検討事項の案: 検討事項は、`未整理`・`対象外`・`取り下げ` を除く状態で案を 1 つ以上持つ。`決定済み` は採用した案を 1 つ持ち、採用した案を持つ検討事項は `未決定` にならない。セットアップで足す検討事項もこの形で作る

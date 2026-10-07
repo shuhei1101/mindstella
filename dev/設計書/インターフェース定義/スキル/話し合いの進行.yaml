@@ -41,6 +41,8 @@ flows:
       - 本文が準備で `changes_since_read` を `submissions` より前に呼ぶ
       - '`steps/取り込み.md` が `batch` を呼ぶ'
       - '`steps/取り込み.md` が `tags` を呼ぶ'
+      - '`steps/取り込み.md` と `references/質問の書式.md` が `recommended` を指す'
+      - '`steps/ヒアリング.md` が `edit_option` と `adopt` を呼ぶ'
       - 本文が準備で `readme` を `changes_since_read` より前に呼ぶ
       - 本文に、`readme` がエラーを返しても準備を続けて `changes_since_read` を呼ぶ分岐がある
     test: test_normal
@@ -108,7 +110,7 @@ constraints:
     constraint: SKILL.md の `## 記録の書き方` に、記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は状況が変わるたびに利用者に確かめずに足し、書き換えることと、確かめるのはワークスペースの外へ書き込むときだけであることを書く。設定（`config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す
     notes: 全てのステップに効くため、準備で必ず読まれる SKILL.md に置く
   - item: 検討事項の案
-    constraint: '取り込みで検討事項を足すときに、案（`options` の `key`・`content`・`pros`・`cons`）を書いて足す。決まったこととして足すときは、選ばれた案を `adopted: true` にする。既にある検討事項の案を足す・直す・消すときは `edit_option` を使い、`update` で案の配列を丸ごと渡さない。採用している案を消すときは、先に `adopt` で採用を移す。ヒアリングは検討事項が持つ案を案の表に出し、案の無い検討事項は案を書き足してから聞く'
+    constraint: '検討事項は ER 図『ワークスペース』の案と状態の決まりに合わせて書く。取り込みでは、`未整理` を除く状態の検討事項を必ず案（`options` の `key`・`content`・`pros`・`cons`）を書いて足し、未決定なら AI が推す案に `recommended: true` を付ける。決まったこととして足すときは、選ばれた案を `adopted: true` にして状態を `決定済み` にする。問いの形にならない未整理は案を持たずに足し、未決定へ変えるときに案を書く。既にある検討事項の案と推奨の印を足す・直す・消すときは `edit_option` を使い、`update` で案の配列を丸ごと渡さない。採用している案を消すときは、先に `adopt` で採用を移す。ヒアリングは、聞く前に `edit_option` で推奨の印を案の表の `推奨:` と揃え、答えを受けたら `adopt` で採用して `update` で `answer`・`reason` を書く。方針転換では `adopt` が状態を `決定済み` にすることを前提にし、`answer` だけを `update` で直す'
     notes: 単一ユースケース『発言の取り込み』『ヒアリング』
   - item: 納品物の資料
     constraint: 'ゴールの納品物のうち `doc` を持たないものがあれば、取り込み（範囲の見直しで納品物を足したときはその後）で、概要・背景・最終的な構成を先に置いた本文の資料（`deliverable: true`・`status: 下書き`）を `add` で足し、`update_settings` で納品物の `doc` から指す。以降は決まったことに合わせて本文を `update` で書き足す'

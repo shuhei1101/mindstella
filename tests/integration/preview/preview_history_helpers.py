@@ -130,6 +130,10 @@ def build_history_workspace(
         "title": "キーを種類ごとに分けるか",
         "status": "未決定",
         "answer": "旧い答え",
+        "options": [
+            {"key": "A", "content": "種類ごとに分ける"},
+            {"key": "B", "content": "1 つにまとめる"},
+        ],
         "weight": "大",
         "category": "データ構造",
         "phase": "要件",
@@ -157,7 +161,15 @@ def build_history_workspace(
         "update",
         workspace=workspace,
         id="D-1",
-        item={"status": "決定済み", "answer": "新しい答え", "body_markdown": BODY_D1_AFTER},
+        item={
+            "status": "決定済み",
+            "answer": "新しい答え",
+            "options": [
+                {"key": "A", "content": "種類ごとに分ける", "adopted": True},
+                {"key": "B", "content": "1 つにまとめる"},
+            ],
+            "body_markdown": BODY_D1_AFTER,
+        },
     )
     _call(call_tool, "update", workspace=workspace, id="D-2", item={"body_markdown": BODY_D2_V2})
     _call(call_tool, "update", workspace=workspace, id="A-1", item={"body_markdown": BODY_A1_AFTER})
@@ -206,6 +218,7 @@ def build_long_line_diff_workspace(make_workspace: Any, call_tool: Any, long_lin
     decision = {
         "title": "長い行を足す問い",
         "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
         "weight": "大",
         "category": "データ構造",
         "phase": "要件",

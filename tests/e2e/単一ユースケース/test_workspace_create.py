@@ -102,7 +102,7 @@ def test_error_when_workspace_exists(
         "add",
         workspace=str(root),
         kind="decision",
-        item={"title": "最初の問い", "status": "未決定"},
+        item={"title": "最初の問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]},
     )
     before = snapshot_tree(root)
     top_before = _list_top(root)

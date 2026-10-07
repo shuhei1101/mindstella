@@ -72,6 +72,7 @@ NEW_DECISION: dict[str, Any] = {
     "status": "未決定",
     "lead": "後から足した問い",
     "weight": "大",
+    "options": [{"key": "A", "content": "案 A"}],
     **PLACE,
 }
 

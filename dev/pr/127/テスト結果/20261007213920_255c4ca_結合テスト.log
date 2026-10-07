@@ -1,0 +1,1629 @@
+$ python3 -m pytest tests/integration -v -n 3
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/8384c37c-ca27-47f8-ac41-5ec7c9217e97/scratchpad/venv/bin/python
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-decision-required-options-recommend
+configfile: pytest.ini
+plugins: anyio-4.15.1, xdist-3.8.0, base-url-2.1.0, playwright-0.9.0
+created: 3/3 workers
+3 workers [808 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/preview/test_decisions_screen.py::test_drawer_close[chromium] 
+tests/integration/plugin/test_marketplace_registration.py::test_normal 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input[chromium] 
+[gw2] [  0%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_saved[chromium] 
+[gw1] [  0%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_close[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_clear[chromium] 
+[gw0] [  0%] PASSED tests/integration/plugin/test_marketplace_registration.py::test_normal 
+tests/integration/plugin/test_plugin_loading.py::test_normal 
+[gw2] [  0%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_saved[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_ctrl_enter[chromium] 
+[gw2] [  0%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_ctrl_enter[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_body_empty[chromium] 
+[gw1] [  0%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_clear[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_tags[chromium] 
+[gw1] [  0%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_tags[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_zero_value[chromium] 
+[gw2] [  0%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_body_empty[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_server_refuses[chromium] 
+[gw1] [  1%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_zero_value[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_keyword_hits[chromium] 
+[gw1] [  1%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_keyword_hits[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_hash_filter[chromium] 
+[gw2] [  1%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_when_server_refuses[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft[chromium] 
+[gw1] [  1%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_hash_filter[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_when_narrow[chromium] 
+[gw1] [  1%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_when_narrow[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_value_is_checkbox[chromium] 
+[gw2] [  1%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_closed[chromium] 
+[gw1] [  1%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_value_is_checkbox[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_chips[chromium-map] 
+[gw0] [  1%] PASSED tests/integration/plugin/test_plugin_loading.py::test_normal 
+tests/integration/preview/test_comments_screen.py::test_heading[chromium] 
+[gw2] [  2%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_closed[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_saved_at_once[chromium] 
+[gw1] [  2%] PASSED tests/integration/preview/test_decisions_screen.py::test_chips[chromium-map] 
+tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_board[chromium] 
+[gw1] [  2%] PASSED tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_board[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_map[chromium] 
+[gw1] [  2%] PASSED tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_map[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_outline[chromium] 
+[gw1] [  2%] PASSED tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_outline[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_table[chromium] 
+[gw0] [  2%] PASSED tests/integration/preview/test_comments_screen.py::test_heading[chromium] 
+tests/integration/preview/test_comments_screen.py::test_close[chromium] 
+[gw1] [  2%] PASSED tests/integration/preview/test_decisions_screen.py::test_comment_marks_when_table[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_region_when_wide[chromium-board] 
+[gw1] [  2%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_when_wide[chromium-board] 
+tests/integration/preview/test_decisions_screen.py::test_region_when_narrow[chromium-board] 
+[gw0] [  3%] PASSED tests/integration/preview/test_comments_screen.py::test_close[chromium] 
+tests/integration/preview/test_comments_screen.py::test_close_when_detail_open[chromium] 
+[gw2] [  3%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_saved_at_once[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_saved_with_location[chromium] 
+[gw1] [  3%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_when_narrow[chromium-board] 
+tests/integration/preview/test_decisions_screen.py::test_board_head_stays[chromium] 
+[gw0] [  3%] PASSED tests/integration/preview/test_comments_screen.py::test_close_when_detail_open[chromium] 
+tests/integration/preview/test_comments_screen.py::test_toggle_all[chromium] 
+[gw1] [  3%] PASSED tests/integration/preview/test_decisions_screen.py::test_board_head_stays[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_middle_labels[chromium] 
+[gw1] [  3%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_middle_labels[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_text_fields[chromium] 
+[gw0] [  3%] PASSED tests/integration/preview/test_comments_screen.py::test_toggle_all[chromium] 
+tests/integration/preview/test_comments_screen.py::test_selected_count[chromium] 
+[gw1] [  3%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_text_fields[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_text_filter[chromium] 
+[gw2] [  4%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_comment_input_draft_when_saved_with_location[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_review_comments[chromium] 
+[gw2] [  4%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_review_comments[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_review_comments_when_empty[chromium] 
+[gw0] [  4%] PASSED tests/integration/preview/test_comments_screen.py::test_selected_count[chromium] 
+tests/integration/preview/test_comments_screen.py::test_send[chromium] 
+[gw1] [  4%] PASSED tests/integration/preview/test_decisions_screen.py::test_text_filter[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_text_filter_chip[chromium] 
+[gw2] [  4%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_review_comments_when_empty[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_body[chromium] 
+[gw0] [  4%] PASSED tests/integration/preview/test_comments_screen.py::test_send[chromium] 
+tests/integration/preview/test_comments_screen.py::test_send_when_sending[chromium] 
+[gw1] [  4%] PASSED tests/integration/preview/test_decisions_screen.py::test_text_filter_chip[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_text_filter_when_view_switched[chromium] 
+[gw2] [  4%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_body[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_value[chromium] 
+[gw1] [  5%] PASSED tests/integration/preview/test_decisions_screen.py::test_text_filter_when_view_switched[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-board-720-False] 
+[gw2] [  5%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_value[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_outside_body[chromium] 
+[gw0] [  5%] PASSED tests/integration/preview/test_comments_screen.py::test_send_when_sending[chromium] 
+tests/integration/preview/test_comments_screen.py::test_send_when_nothing_checked[chromium] 
+[gw1] [  5%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-board-720-False] 
+tests/integration/preview/test_detail_full_screen.py::test_open_and_restore[chromium] 
+[gw2] [  5%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_outside_body[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_closed_by_escape[chromium] 
+[gw0] [  5%] PASSED tests/integration/preview/test_comments_screen.py::test_send_when_nothing_checked[chromium] 
+tests/integration/preview/test_comments_screen.py::test_send_when_stale[chromium] 
+[gw1] [  5%] PASSED tests/integration/preview/test_detail_full_screen.py::test_open_and_restore[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_content[chromium] 
+[gw2] [  5%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_closed_by_escape[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_highlight_location[chromium] 
+[gw0] [  6%] PASSED tests/integration/preview/test_comments_screen.py::test_send_when_stale[chromium] 
+tests/integration/preview/test_comments_screen.py::test_send_when_unreachable[chromium] 
+[gw1] [  6%] PASSED tests/integration/preview/test_detail_full_screen.py::test_content[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_restore_by_escape[chromium] 
+[gw1] [  6%] PASSED tests/integration/preview/test_detail_full_screen.py::test_restore_by_escape[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_restore_by_backdrop[chromium] 
+[gw2] [  6%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_highlight_location[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_highlight_location_when_value[chromium] 
+[gw0] [  6%] PASSED tests/integration/preview/test_comments_screen.py::test_send_when_unreachable[chromium] 
+tests/integration/preview/test_comments_screen.py::test_send_when_server_refuses[chromium] 
+[gw1] [  6%] PASSED tests/integration/preview/test_detail_full_screen.py::test_restore_by_backdrop[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_navigate_inside[chromium] 
+[gw2] [  6%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_highlight_location_when_value[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_highlight_location_when_mismatched[chromium] 
+[gw1] [  6%] PASSED tests/integration/preview/test_detail_full_screen.py::test_navigate_inside[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_diagram_zoom_switches_content[chromium] 
+[gw0] [  7%] PASSED tests/integration/preview/test_comments_screen.py::test_send_when_server_refuses[chromium] 
+tests/integration/preview/test_comments_screen.py::test_rows_order[chromium] 
+[gw2] [  7%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_highlight_location_when_mismatched[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_scroll_region_attributes[chromium] 
+[gw0] [  7%] PASSED tests/integration/preview/test_comments_screen.py::test_rows_order[chromium] 
+tests/integration/preview/test_comments_screen.py::test_row_check[chromium] 
+[gw1] [  7%] PASSED tests/integration/preview/test_detail_full_screen.py::test_diagram_zoom_switches_content[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_id_button_size[chromium] 
+[gw2] [  7%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_scroll_region_attributes[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_scroll_by_keyboard[chromium] 
+[gw1] [  7%] PASSED tests/integration/preview/test_detail_full_screen.py::test_id_button_size[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_comment_input[chromium] 
+[gw0] [  7%] PASSED tests/integration/preview/test_comments_screen.py::test_row_check[chromium] 
+tests/integration/preview/test_comments_screen.py::test_row_target[chromium] 
+[gw2] [  7%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_scroll_by_keyboard[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_scroll_region_when_axe[chromium] 
+[gw1] [  8%] PASSED tests/integration/preview/test_detail_full_screen.py::test_comment_input[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_comment_input_keeps_location[chromium] 
+[gw0] [  8%] PASSED tests/integration/preview/test_comments_screen.py::test_row_target[chromium] 
+tests/integration/preview/test_comments_screen.py::test_row_target_when_not_pointing[chromium] 
+[gw2] [  8%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_scroll_region_when_axe[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_focus_outline_inside[chromium] 
+[gw0] [  8%] PASSED tests/integration/preview/test_comments_screen.py::test_row_target_when_not_pointing[chromium] 
+tests/integration/preview/test_comments_screen.py::test_row_target_when_gone[chromium] 
+[gw1] [  8%] PASSED tests/integration/preview/test_detail_full_screen.py::test_comment_input_keeps_location[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_review_comments[chromium] 
+[gw2] [  8%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_focus_outline_inside[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_focus_when_redrawn[chromium] 
+[gw0] [  8%] PASSED tests/integration/preview/test_comments_screen.py::test_row_target_when_gone[chromium] 
+tests/integration/preview/test_comments_screen.py::test_row_location[chromium] 
+[gw1] [  8%] PASSED tests/integration/preview/test_detail_full_screen.py::test_review_comments[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_selection_entry[chromium] 
+[gw0] [  9%] PASSED tests/integration/preview/test_comments_screen.py::test_row_location[chromium] 
+[gw1] [  9%] PASSED tests/integration/preview/test_detail_full_screen.py::test_selection_entry[chromium] 
+tests/integration/preview/test_comments_screen.py::test_row_body[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_selection_entry_when_diagram_zoomed[chromium] 
+[gw2] [  9%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_focus_when_redrawn[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_escape_closes_panel[chromium] 
+[gw0] [  9%] PASSED tests/integration/preview/test_comments_screen.py::test_row_body[chromium] 
+tests/integration/preview/test_comments_screen.py::test_edit[chromium] 
+[gw2] [  9%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_escape_closes_panel[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_head[chromium] 
+[gw1] [  9%] PASSED tests/integration/preview/test_detail_full_screen.py::test_selection_entry_when_diagram_zoomed[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_scroll_region_attributes[chromium] 
+[gw0] [  9%] PASSED tests/integration/preview/test_comments_screen.py::test_edit[chromium] 
+tests/integration/preview/test_comments_screen.py::test_edit_when_body_empty[chromium] 
+[gw1] [  9%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_scroll_region_attributes[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_scroll_by_keyboard[chromium] 
+[gw1] [ 10%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_scroll_by_keyboard[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_scroll_region_when_axe[chromium] 
+[gw0] [ 10%] PASSED tests/integration/preview/test_comments_screen.py::test_edit_when_body_empty[chromium] 
+tests/integration/preview/test_comments_screen.py::test_edit_when_server_refuses[chromium] 
+[gw2] [ 10%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_head[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_new_badge[chromium] 
+[gw1] [ 10%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_scroll_region_when_axe[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_focus_outline_inside[chromium] 
+[gw1] [ 10%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_focus_outline_inside[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_focus_when_redrawn[chromium] 
+[gw0] [ 10%] PASSED tests/integration/preview/test_comments_screen.py::test_edit_when_server_refuses[chromium] 
+tests/integration/preview/test_comments_screen.py::test_edit_when_cancelled[chromium] 
+[gw2] [ 10%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_new_badge[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_keys[chromium] 
+[gw0] [ 10%] PASSED tests/integration/preview/test_comments_screen.py::test_edit_when_cancelled[chromium] 
+tests/integration/preview/test_comments_screen.py::test_remove_and_restore[chromium] 
+[gw1] [ 11%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_focus_when_redrawn[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_escape_returns_to_panel[chromium] 
+[gw0] [ 11%] PASSED tests/integration/preview/test_comments_screen.py::test_remove_and_restore[chromium] 
+tests/integration/preview/test_comments_screen.py::test_restore_when_list_closed[chromium] 
+[gw2] [ 11%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_keys[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_body[chromium] 
+[gw1] [ 11%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_escape_returns_to_panel[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_size[chromium] 
+[gw0] [ 11%] PASSED tests/integration/preview/test_comments_screen.py::test_restore_when_list_closed[chromium] 
+tests/integration/preview/test_comments_screen.py::test_stale_reason_and_detach[chromium] 
+[gw2] [ 11%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_body[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_diagram[chromium] 
+[gw1] [ 11%] PASSED tests/integration/preview/test_detail_full_screen.py::test_size[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_fills_width[chromium] 
+[gw0] [ 11%] PASSED tests/integration/preview/test_comments_screen.py::test_stale_reason_and_detach[chromium] 
+tests/integration/preview/test_comments_screen.py::test_stale_reason_when_target_gone[chromium] 
+[gw0] [ 12%] PASSED tests/integration/preview/test_comments_screen.py::test_stale_reason_when_target_gone[chromium] 
+tests/integration/preview/test_comments_screen.py::test_empty[chromium] 
+[gw2] [ 12%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_diagram[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_diagram_raw[chromium] 
+[gw1] [ 12%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_fills_width[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_restore_button_icon[chromium] 
+[gw0] [ 12%] PASSED tests/integration/preview/test_comments_screen.py::test_empty[chromium] 
+tests/integration/preview/test_comments_screen.py::test_free_input[chromium] 
+[gw0] [ 12%] PASSED tests/integration/preview/test_comments_screen.py::test_free_input[chromium] 
+tests/integration/preview/test_comments_screen.py::test_free_input_when_narrow[chromium] 
+[gw1] [ 12%] PASSED tests/integration/preview/test_detail_full_screen.py::test_restore_button_icon[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_body_heading_link[chromium] 
+[gw2] [ 12%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_diagram_raw[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_diagram_raw_when_long_line[chromium] 
+[gw0] [ 12%] PASSED tests/integration/preview/test_comments_screen.py::test_free_input_when_narrow[chromium] 
+tests/integration/preview/test_comments_screen.py::test_free_input_when_draft_exists[chromium] 
+[gw1] [ 12%] PASSED tests/integration/preview/test_detail_full_screen.py::test_body_heading_link[chromium] 
+tests/integration/preview/test_detail_full_screen.py::test_code_block_and_diagram_raw_when_long_line[chromium] 
+[gw0] [ 13%] PASSED tests/integration/preview/test_comments_screen.py::test_free_input_when_draft_exists[chromium] 
+tests/integration/preview/test_comments_screen.py::test_narrow_width[chromium] 
+[gw2] [ 13%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_diagram_raw_when_long_line[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_trimmed[chromium] 
+[gw1] [ 13%] PASSED tests/integration/preview/test_detail_full_screen.py::test_code_block_and_diagram_raw_when_long_line[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_content[chromium] 
+[gw1] [ 13%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_content[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_lead_before_options[chromium] 
+[gw2] [ 13%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_trimmed[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_body_rewritten[chromium] 
+[gw1] [ 13%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_lead_before_options[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_recommended_mark[chromium] 
+[gw0] [ 13%] PASSED tests/integration/preview/test_comments_screen.py::test_narrow_width[chromium] 
+tests/integration/preview/test_comments_screen.py::test_detail_input_message_is_separate[chromium] 
+[gw1] [ 13%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_recommended_mark[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_recommended_mark_when_adopted[chromium] 
+[gw2] [ 14%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_body_rewritten[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_body_too_large[chromium] 
+[gw1] [ 14%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_recommended_mark_when_adopted[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_adopted_section[chromium] 
+[gw1] [ 14%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_adopted_section[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_adopted_section_when_partial[chromium-answer_only] 
+[gw0] [ 14%] PASSED tests/integration/preview/test_comments_screen.py::test_detail_input_message_is_separate[chromium] 
+tests/integration/preview/test_comments_screen.py::test_exclusive_with_filter_drawer[chromium] 
+[gw1] [ 14%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_adopted_section_when_partial[chromium-answer_only] 
+tests/integration/preview/test_detail_panel_screen.py::test_value_markdown[chromium] 
+[gw1] [ 14%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_value_markdown[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-task_reason] 
+[gw0] [ 14%] PASSED tests/integration/preview/test_comments_screen.py::test_exclusive_with_filter_drawer[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_view_switch[chromium] 
+[gw1] [ 14%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-task_reason] 
+tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_library_unavailable[chromium] 
+[gw2] [ 15%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_body_too_large[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_library_unavailable[chromium] 
+[gw0] [ 15%] PASSED tests/integration/preview/test_decisions_screen.py::test_view_switch[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map[chromium] 
+[gw1] [ 15%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_library_unavailable[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_content_when_body_in_other_kinds[chromium-task] 
+[gw1] [ 15%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_content_when_body_in_other_kinds[chromium-task] 
+tests/integration/preview/test_detail_panel_screen.py::test_related_items[chromium] 
+[gw0] [ 15%] PASSED tests/integration/preview/test_decisions_screen.py::test_map[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_drawer_status[chromium] 
+[gw2] [ 15%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diff_note_when_library_unavailable[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_diff[chromium] 
+[gw1] [ 15%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_related_items[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_referenced_by[chromium] 
+[gw0] [ 15%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_drawer_status[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_keyword[chromium] 
+[gw0] [ 16%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_keyword[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_zoom[chromium] 
+[gw1] [ 16%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_referenced_by[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_back_and_forward[chromium] 
+[gw2] [ 16%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_diff[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_old_set_after_body_edit[chromium] 
+[gw0] [ 16%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_zoom[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom[chromium] 
+[gw0] [ 16%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_repeated[chromium] 
+[gw1] [ 16%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_back_and_forward[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selected_row[chromium] 
+[gw2] [ 16%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selection_entry_when_old_set_after_body_edit[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_heading_links[chromium] 
+[gw1] [ 16%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selected_row[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_close[chromium] 
+[gw2] [ 17%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_heading_links[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_heading_link_press[chromium] 
+[gw1] [ 17%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_close[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_when_wide[chromium] 
+[gw1] [ 17%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_when_wide[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-table_1280] 
+[gw2] [ 17%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_heading_link_press[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_term_marks[chromium] 
+[gw0] [ 17%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_repeated[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_zoomed_out_after_scrolled[chromium] 
+[gw1] [ 17%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-table_1280] 
+tests/integration/preview/test_detail_panel_screen.py::test_overlay_when_narrow[chromium] 
+[gw2] [ 17%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_term_marks[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_id_links[chromium] 
+[gw0] [ 17%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_zoomed_out_after_scrolled[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_fit_pressed[chromium] 
+[gw1] [ 18%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_overlay_when_narrow[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diagram_raw[chromium] 
+[gw0] [ 18%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_fit_pressed[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_horizontal[chromium] 
+[gw2] [ 18%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_id_links[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_body_term_tooltip[chromium] 
+[gw0] [ 18%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_wheel_zoom_when_horizontal[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_zoom_buttons_when_wheel_zoomed[chromium] 
+[gw1] [ 18%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diagram_raw[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_content_transition[chromium] 
+[gw1] [ 18%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_content_transition[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_selected_row_hover[chromium] 
+[gw0] [ 18%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_zoom_buttons_when_wheel_zoomed[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-blank] 
+[gw2] [ 18%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_body_term_tooltip[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_code_block_when_long_line[chromium] 
+[gw1] [ 19%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_selected_row_hover[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_id_button_size[chromium] 
+[gw0] [ 19%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-blank] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_dragged[chromium] 
+[gw1] [ 19%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_id_button_size[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_filter_from_url[chromium] 
+[gw2] [ 19%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_code_block_when_long_line[chromium] 
+tests/integration/preview/test_detail_panel_screen.py::test_diagram_raw_when_long_line[chromium] 
+[gw0] [ 19%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_dragged[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_nothing_selected[chromium] 
+[gw1] [ 19%] PASSED tests/integration/preview/test_docs_screen.py::test_board_filter_from_url[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_edge_gap[chromium] 
+[gw2] [ 19%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_diagram_raw_when_long_line[chromium] 
+[gw1] [ 19%] PASSED tests/integration/preview/test_docs_screen.py::test_board_edge_gap[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_columns_when_narrow[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_open_and_close[chromium] 
+[gw0] [ 20%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_nothing_selected[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_zoomed[chromium] 
+[gw1] [ 20%] PASSED tests/integration/preview/test_docs_screen.py::test_board_columns_when_narrow[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_columns_when_wide[chromium] 
+[gw1] [ 20%] PASSED tests/integration/preview/test_docs_screen.py::test_board_columns_when_wide[chromium] 
+tests/integration/preview/test_docs_screen.py::test_table_cell_surface[chromium] 
+[gw2] [ 20%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_open_and_close[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_close_by_escape[chromium] 
+[gw1] [ 20%] PASSED tests/integration/preview/test_docs_screen.py::test_table_cell_surface[chromium] 
+tests/integration/preview/test_docs_screen.py::test_diff_marks_when_cards_and_board[chromium] 
+[gw2] [ 20%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_close_by_escape[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_zoom[chromium] 
+[gw0] [ 20%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press_when_zoomed[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_when_narrow[chromium] 
+[gw1] [ 20%] PASSED tests/integration/preview/test_docs_screen.py::test_diff_marks_when_cards_and_board[chromium] 
+tests/integration/preview/test_docs_screen.py::test_diff_marks_when_table[chromium] 
+[gw0] [ 21%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_when_narrow[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_board[chromium] 
+[gw2] [ 21%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_zoom[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_text_selectable[chromium] 
+[gw1] [ 21%] PASSED tests/integration/preview/test_docs_screen.py::test_diff_marks_when_table[chromium] 
+tests/integration/preview/test_docs_screen.py::test_chips[chromium-cards] 
+[gw0] [ 21%] PASSED tests/integration/preview/test_decisions_screen.py::test_board[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_table_ready_column_when_waiting[chromium] 
+[gw0] [ 21%] PASSED tests/integration/preview/test_decisions_screen.py::test_table_ready_column_when_waiting[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_table_ready_column[chromium] 
+[gw2] [ 21%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_text_selectable[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_raw[chromium] 
+[gw1] [ 21%] PASSED tests/integration/preview/test_docs_screen.py::test_chips[chromium-cards] 
+tests/integration/preview/test_docs_screen.py::test_comment_marks_when_cards[chromium-cards] 
+[gw0] [ 21%] PASSED tests/integration/preview/test_decisions_screen.py::test_table_ready_column[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_no_match_note[chromium] 
+[gw1] [ 22%] PASSED tests/integration/preview/test_docs_screen.py::test_comment_marks_when_cards[chromium-cards] 
+tests/integration/preview/test_docs_screen.py::test_comment_marks_when_table[chromium] 
+[gw2] [ 22%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_raw[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_diff[chromium] 
+[gw0] [ 22%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_no_match_note[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_item_id_size[chromium] 
+[gw1] [ 22%] PASSED tests/integration/preview/test_docs_screen.py::test_comment_marks_when_table[chromium] 
+tests/integration/preview/test_docs_screen.py::test_region_when_wide[chromium-board] 
+[gw0] [ 22%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_item_id_size[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_board_edge_gap[chromium] 
+[gw1] [ 22%] PASSED tests/integration/preview/test_docs_screen.py::test_region_when_wide[chromium-board] 
+tests/integration/preview/test_docs_screen.py::test_region_when_cards[chromium] 
+[gw0] [ 22%] PASSED tests/integration/preview/test_decisions_screen.py::test_board_edge_gap[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_board_columns_when_narrow[chromium] 
+[gw1] [ 22%] PASSED tests/integration/preview/test_docs_screen.py::test_region_when_cards[chromium] 
+tests/integration/preview/test_docs_screen.py::test_region_when_narrow[chromium] 
+[gw2] [ 23%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_diff[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_diff_when_frame[chromium] 
+[gw0] [ 23%] PASSED tests/integration/preview/test_decisions_screen.py::test_board_columns_when_narrow[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_board_columns_when_wide[chromium] 
+[gw1] [ 23%] PASSED tests/integration/preview/test_docs_screen.py::test_region_when_narrow[chromium] 
+tests/integration/preview/test_docs_screen.py::test_drawer_text_fields_and_chip[chromium] 
+[gw0] [ 23%] PASSED tests/integration/preview/test_decisions_screen.py::test_board_columns_when_wide[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_table_cell_surface[chromium] 
+[gw0] [ 23%] PASSED tests/integration/preview/test_decisions_screen.py::test_table_cell_surface[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_table_id_button_size[chromium] 
+[gw1] [ 23%] PASSED tests/integration/preview/test_docs_screen.py::test_drawer_text_fields_and_chip[chromium] 
+tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-720-False-board] 
+[gw2] [ 23%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_diff_when_frame[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_diff_raw[chromium] 
+[gw0] [ 23%] PASSED tests/integration/preview/test_decisions_screen.py::test_table_id_button_size[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_diff_marks_when_table[chromium] 
+[gw1] [ 24%] PASSED tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-720-False-board] 
+tests/integration/preview/test_graph_screen.py::test_canvas[chromium] 
+[gw1] [ 24%] PASSED tests/integration/preview/test_graph_screen.py::test_canvas[chromium] 
+tests/integration/preview/test_graph_screen.py::test_drawer_type[chromium] 
+[gw0] [ 24%] PASSED tests/integration/preview/test_decisions_screen.py::test_diff_marks_when_table[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_diff_marks_when_board[chromium] 
+[gw1] [ 24%] PASSED tests/integration/preview/test_graph_screen.py::test_drawer_type[chromium] 
+tests/integration/preview/test_graph_screen.py::test_drawer_status[chromium] 
+[gw2] [ 24%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_diff_raw[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_raw_region_when_long_line[chromium] 
+[gw0] [ 24%] PASSED tests/integration/preview/test_decisions_screen.py::test_diff_marks_when_board[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_diff_marks_when_map[chromium] 
+[gw1] [ 24%] PASSED tests/integration/preview/test_graph_screen.py::test_drawer_status[chromium] 
+tests/integration/preview/test_graph_screen.py::test_open_item_from_hash[chromium] 
+[gw2] [ 24%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_raw_region_when_long_line[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_raw_scroll_by_keyboard[chromium] 
+[gw1] [ 25%] PASSED tests/integration/preview/test_graph_screen.py::test_open_item_from_hash[chromium] 
+tests/integration/preview/test_graph_screen.py::test_no_match_note[chromium] 
+[gw0] [ 25%] PASSED tests/integration/preview/test_decisions_screen.py::test_diff_marks_when_map[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_filter_button[chromium] 
+[gw1] [ 25%] PASSED tests/integration/preview/test_graph_screen.py::test_no_match_note[chromium] 
+tests/integration/preview/test_graph_screen.py::test_topbar_history[chromium] 
+[gw0] [ 25%] PASSED tests/integration/preview/test_decisions_screen.py::test_filter_button[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_default[chromium] 
+[gw2] [ 25%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_raw_scroll_by_keyboard[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_raw_focus_outline_inside[chromium] 
+[gw0] [ 25%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_default[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_drawer_keeps_when_view_switched[chromium] 
+[gw1] [ 25%] PASSED tests/integration/preview/test_graph_screen.py::test_topbar_history[chromium] 
+tests/integration/preview/test_graph_screen.py::test_chips[chromium] 
+[gw2] [ 25%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_raw_focus_outline_inside[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_raw_region_when_axe[chromium] 
+[gw1] [ 25%] PASSED tests/integration/preview/test_graph_screen.py::test_chips[chromium] 
+tests/integration/preview/test_graph_screen.py::test_look[chromium] 
+[gw0] [ 26%] PASSED tests/integration/preview/test_decisions_screen.py::test_drawer_keeps_when_view_switched[chromium] 
+tests/integration/preview/test_settings_screen.py::test_workspace_default[chromium] 
+[gw1] [ 26%] PASSED tests/integration/preview/test_graph_screen.py::test_look[chromium] 
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_far[chromium] 
+[gw2] [ 26%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_raw_region_when_axe[chromium] 
+tests/integration/preview/test_diagram_viewer_screen.py::test_diff_raw_when_long_line[chromium] 
+[gw0] [ 26%] PASSED tests/integration/preview/test_settings_screen.py::test_workspace_default[chromium] 
+tests/integration/preview/test_settings_screen.py::test_exclusive_panels[chromium] 
+[gw0] [ 26%] PASSED tests/integration/preview/test_settings_screen.py::test_exclusive_panels[chromium] 
+tests/integration/preview/test_settings_screen.py::test_keeps_detail_panel[chromium] 
+[gw2] [ 26%] PASSED tests/integration/preview/test_diagram_viewer_screen.py::test_diff_raw_when_long_line[chromium] 
+tests/integration/preview/test_docs_screen.py::test_cards[chromium] 
+[gw0] [ 26%] PASSED tests/integration/preview/test_settings_screen.py::test_keeps_detail_panel[chromium] 
+tests/integration/preview/test_settings_screen.py::test_narrow[chromium] 
+[gw2] [ 26%] PASSED tests/integration/preview/test_docs_screen.py::test_cards[chromium] 
+tests/integration/preview/test_docs_screen.py::test_view_switch[chromium] 
+[gw1] [ 27%] PASSED tests/integration/preview/test_graph_screen.py::test_comment_marks_when_far[chromium] 
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_near[chromium] 
+[gw2] [ 27%] PASSED tests/integration/preview/test_docs_screen.py::test_view_switch[chromium] 
+tests/integration/preview/test_docs_screen.py::test_card_filter[chromium] 
+[gw0] [ 27%] PASSED tests/integration/preview/test_settings_screen.py::test_narrow[chromium] 
+tests/integration/preview/test_settings_screen.py::test_defaults_changed_by_other[chromium] 
+[gw2] [ 27%] PASSED tests/integration/preview/test_docs_screen.py::test_card_filter[chromium] 
+tests/integration/preview/test_docs_screen.py::test_card_filter_clear_all[chromium] 
+[gw1] [ 27%] PASSED tests/integration/preview/test_graph_screen.py::test_comment_marks_when_near[chromium] 
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_edge[chromium-desktop] 
+[gw2] [ 27%] PASSED tests/integration/preview/test_docs_screen.py::test_card_filter_clear_all[chromium] 
+tests/integration/preview/test_docs_screen.py::test_drawer[chromium] 
+[gw2] [ 27%] PASSED tests/integration/preview/test_docs_screen.py::test_drawer[chromium] 
+tests/integration/preview/test_docs_screen.py::test_view_switch_to_board[chromium] 
+[gw2] [ 27%] PASSED tests/integration/preview/test_docs_screen.py::test_view_switch_to_board[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board[chromium] 
+[gw2] [ 28%] PASSED tests/integration/preview/test_docs_screen.py::test_board[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_order[chromium] 
+[gw2] [ 28%] PASSED tests/integration/preview/test_docs_screen.py::test_board_order[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_open_detail[chromium] 
+[gw2] [ 28%] PASSED tests/integration/preview/test_docs_screen.py::test_board_open_detail[chromium] 
+tests/integration/preview/test_docs_screen.py::test_board_filter[chromium] 
+[gw2] [ 28%] PASSED tests/integration/preview/test_docs_screen.py::test_board_filter[chromium] 
+tests/integration/storybook/test_settings_confirm_stories.py::test_narrow[chromium] 
+[gw2] [ 28%] PASSED tests/integration/storybook/test_settings_confirm_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_default[chromium] 
+[gw2] [ 28%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_default[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_overridden[chromium] 
+[gw0] [ 28%] PASSED tests/integration/preview/test_settings_screen.py::test_defaults_changed_by_other[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board[chromium] 
+[gw2] [ 28%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_overridden[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_some_kinds_hidden[chromium] 
+[gw0] [ 29%] PASSED tests/integration/preview/test_tasks_screen.py::test_board[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_view_switch[chromium] 
+[gw1] [ 29%] PASSED tests/integration/preview/test_graph_screen.py::test_comment_marks_when_edge[chromium-desktop] 
+tests/integration/preview/test_graph_screen.py::test_region[chromium] 
+[gw2] [ 29%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_some_kinds_hidden[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_saved[chromium] 
+[gw0] [ 29%] PASSED tests/integration/preview/test_tasks_screen.py::test_view_switch[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_table[chromium] 
+[gw2] [ 29%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_saved[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_defaults_arrived[chromium] 
+[gw1] [ 29%] PASSED tests/integration/preview/test_graph_screen.py::test_region[chromium] 
+tests/integration/preview/test_graph_screen.py::test_drawer_has_no_text_fields[chromium] 
+[gw2] [ 29%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_defaults_arrived[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_no_storage[chromium] 
+[gw0] [ 29%] PASSED tests/integration/preview/test_tasks_screen.py::test_table[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board_edge_gap[chromium] 
+[gw1] [ 30%] PASSED tests/integration/preview/test_graph_screen.py::test_drawer_has_no_text_fields[chromium] 
+tests/integration/preview/test_history_screen.py::test_list[chromium] 
+[gw2] [ 30%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_no_storage[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_export[chromium] 
+[gw0] [ 30%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_edge_gap[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board_columns_when_narrow[chromium] 
+[gw2] [ 30%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_export[chromium] 
+tests/integration/storybook/test_settings_panel_stories.py::test_narrow[chromium] 
+[gw0] [ 30%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_columns_when_narrow[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board_columns_when_wide[chromium] 
+[gw1] [ 30%] PASSED tests/integration/preview/test_history_screen.py::test_list[chromium] 
+tests/integration/preview/test_history_screen.py::test_list_when_no_pending[chromium] 
+[gw0] [ 30%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_columns_when_wide[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_table_cell_surface[chromium] 
+[gw2] [ 30%] PASSED tests/integration/storybook/test_settings_panel_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_table_stories.py::test_default[chromium] 
+[gw0] [ 31%] PASSED tests/integration/preview/test_tasks_screen.py::test_table_cell_surface[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_table_id_button_size[chromium] 
+[gw1] [ 31%] PASSED tests/integration/preview/test_history_screen.py::test_list_when_no_pending[chromium] 
+tests/integration/preview/test_history_screen.py::test_pick[chromium] 
+[gw2] [ 31%] PASSED tests/integration/storybook/test_table_stories.py::test_default[chromium] 
+tests/integration/storybook/test_table_stories.py::test_sorted_asc[chromium] 
+[gw0] [ 31%] PASSED tests/integration/preview/test_tasks_screen.py::test_table_id_button_size[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_diff_marks_when_board[chromium] 
+[gw2] [ 31%] PASSED tests/integration/storybook/test_table_stories.py::test_sorted_asc[chromium] 
+tests/integration/storybook/test_table_stories.py::test_sorted_desc[chromium] 
+[gw2] [ 31%] PASSED tests/integration/storybook/test_table_stories.py::test_sorted_desc[chromium] 
+tests/integration/storybook/test_table_stories.py::test_filtered[chromium] 
+[gw1] [ 31%] PASSED tests/integration/preview/test_history_screen.py::test_pick[chromium] 
+tests/integration/preview/test_history_screen.py::test_pick_off[chromium] 
+[gw2] [ 31%] PASSED tests/integration/storybook/test_table_stories.py::test_filtered[chromium] 
+tests/integration/storybook/test_table_stories.py::test_pinned[chromium] 
+[gw0] [ 32%] PASSED tests/integration/preview/test_tasks_screen.py::test_diff_marks_when_board[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_diff_marks_when_table[chromium] 
+[gw2] [ 32%] PASSED tests/integration/storybook/test_table_stories.py::test_pinned[chromium] 
+tests/integration/storybook/test_table_stories.py::test_long_title[chromium] 
+[gw1] [ 32%] PASSED tests/integration/preview/test_history_screen.py::test_pick_off[chromium] 
+tests/integration/preview/test_history_screen.py::test_close[chromium] 
+[gw2] [ 32%] PASSED tests/integration/storybook/test_table_stories.py::test_long_title[chromium] 
+tests/integration/storybook/test_table_stories.py::test_no_match[chromium] 
+[gw2] [ 32%] PASSED tests/integration/storybook/test_table_stories.py::test_no_match[chromium] 
+tests/integration/storybook/test_table_stories.py::test_columns_popover[chromium] 
+[gw0] [ 32%] PASSED tests/integration/preview/test_tasks_screen.py::test_diff_marks_when_table[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_drawer[chromium] 
+[gw2] [ 32%] PASSED tests/integration/storybook/test_table_stories.py::test_columns_popover[chromium] 
+tests/integration/storybook/test_table_stories.py::test_marked[chromium] 
+[gw0] [ 32%] PASSED tests/integration/preview/test_tasks_screen.py::test_drawer[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board_filter[chromium] 
+[gw2] [ 33%] PASSED tests/integration/storybook/test_table_stories.py::test_marked[chromium] 
+tests/integration/storybook/test_table_stories.py::test_commented[chromium] 
+[gw1] [ 33%] PASSED tests/integration/preview/test_history_screen.py::test_close[chromium] 
+tests/integration/preview/test_history_screen.py::test_selection_kept_when_reloaded_and_rewritten[chromium] 
+[gw2] [ 33%] PASSED tests/integration/storybook/test_table_stories.py::test_commented[chromium] 
+tests/integration/storybook/test_table_stories.py::test_commented_when_narrow[chromium] 
+[gw0] [ 33%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_filter[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board_filter_when_nothing_selected[chromium] 
+[gw2] [ 33%] PASSED tests/integration/storybook/test_table_stories.py::test_commented_when_narrow[chromium] 
+tests/integration/storybook/test_table_stories.py::test_text_filtered[chromium] 
+[gw2] [ 33%] PASSED tests/integration/storybook/test_table_stories.py::test_text_filtered[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_overview[chromium] 
+[gw0] [ 33%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_filter_when_nothing_selected[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_table_filter[chromium] 
+[gw2] [ 33%] PASSED tests/integration/storybook/test_topbar_stories.py::test_overview[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_graph[chromium] 
+[gw1] [ 34%] PASSED tests/integration/preview/test_history_screen.py::test_selection_kept_when_reloaded_and_rewritten[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal[chromium] 
+[gw2] [ 34%] PASSED tests/integration/storybook/test_topbar_stories.py::test_graph[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_long_title[chromium] 
+[gw0] [ 34%] PASSED tests/integration/preview/test_tasks_screen.py::test_table_filter[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_board_chips[chromium] 
+[gw2] [ 34%] PASSED tests/integration/storybook/test_topbar_stories.py::test_long_title[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_dark[chromium] 
+[gw1] [ 34%] PASSED tests/integration/preview/test_open_preview.py::test_normal[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_no_hash[chromium] 
+[gw2] [ 34%] PASSED tests/integration/storybook/test_topbar_stories.py::test_dark[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_narrow[chromium] 
+[gw1] [ 34%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_no_hash[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_filter_in_hash[chromium] 
+[gw2] [ 34%] PASSED tests/integration/storybook/test_topbar_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_offline[chromium] 
+[gw0] [ 35%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_chips[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_comment_marks_when_board[chromium] 
+[gw2] [ 35%] PASSED tests/integration/storybook/test_topbar_stories.py::test_offline[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_offline_narrow[chromium] 
+[gw1] [ 35%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_filter_in_hash[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_item_not_found[chromium] 
+[gw0] [ 35%] PASSED tests/integration/preview/test_tasks_screen.py::test_comment_marks_when_board[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_comment_marks_when_table[chromium] 
+[gw2] [ 35%] PASSED tests/integration/storybook/test_topbar_stories.py::test_offline_narrow[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_comments[chromium] 
+[gw2] [ 35%] PASSED tests/integration/storybook/test_topbar_stories.py::test_comments[chromium] 
+[gw1] [ 35%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_item_not_found[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_comments_zero[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_exported_offline[chromium] 
+[gw0] [ 35%] PASSED tests/integration/preview/test_tasks_screen.py::test_comment_marks_when_table[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_region_when_wide[chromium-board] 
+[gw2] [ 36%] PASSED tests/integration/storybook/test_topbar_stories.py::test_comments_zero[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_comments_many[chromium] 
+[gw0] [ 36%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_when_wide[chromium-board] 
+tests/integration/preview/test_tasks_screen.py::test_region_when_narrow[chromium-board] 
+[gw2] [ 36%] PASSED tests/integration/storybook/test_topbar_stories.py::test_comments_many[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_comments_open[chromium] 
+[gw0] [ 36%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_when_narrow[chromium-board] 
+tests/integration/preview/test_tasks_screen.py::test_board_head_stays[chromium] 
+[gw2] [ 36%] PASSED tests/integration/storybook/test_topbar_stories.py::test_comments_open[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_comments_narrow[chromium] 
+[gw1] [ 36%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_exported_offline[chromium] 
+tests/integration/preview/test_open_preview.py::test_error_when_library_unavailable[chromium] 
+[gw2] [ 36%] PASSED tests/integration/storybook/test_topbar_stories.py::test_comments_narrow[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-filter_on] 
+[gw0] [ 36%] PASSED tests/integration/preview/test_tasks_screen.py::test_board_head_stays[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_drawer_text_fields_and_chip[chromium] 
+[gw2] [ 37%] PASSED tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-filter_on] 
+tests/integration/storybook/test_topbar_stories.py::test_filter[chromium] 
+[gw1] [ 37%] PASSED tests/integration/preview/test_open_preview.py::test_error_when_library_unavailable[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_rewritten[chromium] 
+[gw2] [ 37%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_on[chromium] 
+[gw0] [ 37%] PASSED tests/integration/preview/test_tasks_screen.py::test_drawer_text_fields_and_chip[chromium] 
+tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-720-False-board] 
+[gw2] [ 37%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_on[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_open[chromium] 
+[gw1] [ 37%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_rewritten[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_sent[chromium] 
+[gw0] [ 37%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-720-False-board] 
+tests/integration/preview/test_topbar_screen.py::test_tabs[chromium] 
+[gw2] [ 37%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_open[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow[chromium] 
+[gw0] [ 37%] PASSED tests/integration/preview/test_topbar_screen.py::test_tabs[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_tab_keeps_detail_panel[chromium] 
+[gw2] [ 38%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_diff_on[chromium] 
+[gw2] [ 38%] PASSED tests/integration/storybook/test_topbar_stories.py::test_diff_on[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_diff_on_narrow[chromium] 
+[gw1] [ 38%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_sent[chromium] 
+tests/integration/preview/test_open_preview.py::test_error_when_body_empty[chromium] 
+[gw0] [ 38%] PASSED tests/integration/preview/test_topbar_screen.py::test_tab_keeps_detail_panel[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_theme_is_kept[chromium] 
+[gw2] [ 38%] PASSED tests/integration/storybook/test_topbar_stories.py::test_diff_on_narrow[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_settings_open[chromium] 
+[gw2] [ 38%] PASSED tests/integration/storybook/test_topbar_stories.py::test_settings_open[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_kinds_hidden[chromium] 
+[gw0] [ 38%] PASSED tests/integration/preview/test_topbar_screen.py::test_theme_is_kept[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-overview] 
+[gw2] [ 38%] PASSED tests/integration/storybook/test_topbar_stories.py::test_kinds_hidden[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_export[chromium] 
+[gw1] [ 39%] PASSED tests/integration/preview/test_open_preview.py::test_error_when_body_empty[chromium] 
+tests/integration/preview/test_open_preview.py::test_error_when_server_unreachable[chromium] 
+[gw2] [ 39%] PASSED tests/integration/storybook/test_topbar_stories.py::test_export[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w901] 
+[gw0] [ 39%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-overview] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button_when_zero[chromium] 
+[gw2] [ 39%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w901] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w901] 
+[gw0] [ 39%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button_when_zero[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-overview] 
+[gw2] [ 39%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w901] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_long_title[chromium] 
+[gw2] [ 39%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_long_title[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w390] 
+[gw0] [ 39%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-overview] 
+tests/integration/preview/test_topbar_screen.py::test_history_button_when_diff_off[chromium] 
+[gw1] [ 40%] PASSED tests/integration/preview/test_open_preview.py::test_error_when_server_unreachable[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_marks_not_shown[chromium] 
+[gw2] [ 40%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w390] 
+[gw2] [ 40%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w390] 
+[gw1] [ 40%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_comment_marks_not_shown[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_added[chromium] 
+[gw0] [ 40%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_when_diff_off[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_diff_off_by_chip[chromium] 
+[gw2] [ 40%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w390] 
+[gw2] [ 40%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w390] 
+[gw0] [ 40%] PASSED tests/integration/preview/test_topbar_screen.py::test_diff_off_by_chip[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_tab_marks[chromium] 
+[gw2] [ 41%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_search_key_hint[chromium] 
+[gw2] [ 41%] PASSED tests/integration/storybook/test_topbar_stories.py::test_search_key_hint[chromium] 
+tests/integration/storybook/test_view_switch_stories.py::test_states[chromium-decisions] 
+[gw1] [ 41%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_comment_added[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_removed_and_sent[chromium] 
+[gw2] [ 41%] PASSED tests/integration/storybook/test_view_switch_stories.py::test_states[chromium-decisions] 
+tests/integration/storybook/test_view_switch_stories.py::test_same_left_position_across_states[chromium] 
+[gw0] [ 41%] PASSED tests/integration/preview/test_topbar_screen.py::test_tab_marks[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-decisions] 
+[gw2] [ 41%] PASSED tests/integration/storybook/test_view_switch_stories.py::test_same_left_position_across_states[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-target_node] 
+[gw1] [ 41%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_comment_removed_and_sent[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_added_on_map[chromium] 
+[gw0] [ 41%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-decisions] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_not_on_overview[chromium] 
+[gw2] [ 42%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-target_node] 
+tests/integration/preview/test_decisions_screen.py::test_chips[chromium-board] 
+[gw0] [ 42%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_not_on_overview[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_drawer_closes_when_overview_opened[chromium] 
+[gw2] [ 42%] PASSED tests/integration/preview/test_decisions_screen.py::test_chips[chromium-board] 
+tests/integration/preview/test_decisions_screen.py::test_region_when_wide[chromium-table] 
+[gw0] [ 42%] PASSED tests/integration/preview/test_topbar_screen.py::test_drawer_closes_when_overview_opened[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_drawer_closes_when_overview_opened_by_history[chromium] 
+[gw2] [ 42%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_when_wide[chromium-table] 
+tests/integration/preview/test_decisions_screen.py::test_region_when_narrow[chromium-table] 
+[gw0] [ 42%] PASSED tests/integration/preview/test_topbar_screen.py::test_drawer_closes_when_overview_opened_by_history[chromium] 
+tests/integration/preview/test_topbar_screen.py::test_settings_button[chromium] 
+[gw1] [ 42%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_comment_added_on_map[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_added_on_graph[chromium] 
+[gw0] [ 42%] PASSED tests/integration/preview/test_topbar_screen.py::test_settings_button[chromium] 
+tests/integration/storybook/test_comment_mark_stories.py::test_states[chromium-one] 
+[gw2] [ 43%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_when_narrow[chromium-table] 
+tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-board-721-True] 
+[gw0] [ 43%] PASSED tests/integration/storybook/test_comment_mark_stories.py::test_states[chromium-one] 
+tests/integration/storybook/test_comment_mark_stories.py::test_accessibility[chromium] 
+[gw2] [ 43%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-board-721-True] 
+tests/integration/preview/test_detail_panel_screen.py::test_adopted_section_when_partial[chromium-reason_only] 
+[gw2] [ 43%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_adopted_section_when_partial[chromium-reason_only] 
+tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-research] 
+[gw0] [ 43%] PASSED tests/integration/storybook/test_comment_mark_stories.py::test_accessibility[chromium] 
+tests/integration/storybook/test_diff_mark_stories.py::test_new[chromium] 
+[gw1] [ 43%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_comment_added_on_graph[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_text_filter_in_hash[chromium] 
+[gw0] [ 43%] PASSED tests/integration/storybook/test_diff_mark_stories.py::test_new[chromium] 
+tests/integration/storybook/test_diff_mark_stories.py::test_changed[chromium] 
+[gw2] [ 43%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-research] 
+tests/integration/preview/test_detail_panel_screen.py::test_content_when_body_in_other_kinds[chromium-term] 
+[gw1] [ 44%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_text_filter_in_hash[chromium] 
+tests/integration/preview/test_open_preview.py::test_normal_when_heading_in_hash[chromium] 
+[gw0] [ 44%] PASSED tests/integration/storybook/test_diff_mark_stories.py::test_changed[chromium] 
+tests/integration/storybook/test_diff_mark_stories.py::test_new_labeled[chromium] 
+[gw2] [ 44%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_content_when_body_in_other_kinds[chromium-term] 
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-table_1440] 
+[gw0] [ 44%] PASSED tests/integration/storybook/test_diff_mark_stories.py::test_new_labeled[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_default[chromium] 
+[gw0] [ 44%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_default[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_selected[chromium] 
+[gw1] [ 44%] PASSED tests/integration/preview/test_open_preview.py::test_normal_when_heading_in_hash[chromium] 
+tests/integration/preview/test_overview_screen.py::test_tiles_are_laid_out[chromium] 
+[gw2] [ 44%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-table_1440] 
+tests/integration/preview/test_docs_screen.py::test_chips[chromium-board] 
+[gw1] [ 44%] PASSED tests/integration/preview/test_overview_screen.py::test_tiles_are_laid_out[chromium] 
+[gw0] [ 45%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_selected[chromium] 
+tests/integration/preview/test_overview_screen.py::test_next_tile[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_zero_value[chromium] 
+[gw1] [ 45%] PASSED tests/integration/preview/test_overview_screen.py::test_next_tile[chromium] 
+tests/integration/preview/test_overview_screen.py::test_next_tile_show_all[chromium] 
+[gw0] [ 45%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_zero_value[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_long_tag[chromium] 
+[gw2] [ 45%] PASSED tests/integration/preview/test_docs_screen.py::test_chips[chromium-board] 
+tests/integration/preview/test_docs_screen.py::test_comment_marks_when_cards[chromium-board] 
+[gw1] [ 45%] PASSED tests/integration/preview/test_overview_screen.py::test_next_tile_show_all[chromium] 
+[gw0] [ 45%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_long_tag[chromium] 
+tests/integration/preview/test_overview_screen.py::test_next_tile_when_nothing_to_discuss[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_keyword_hits[chromium] 
+[gw2] [ 45%] PASSED tests/integration/preview/test_docs_screen.py::test_comment_marks_when_cards[chromium-board] 
+tests/integration/preview/test_docs_screen.py::test_region_when_wide[chromium-table] 
+[gw1] [ 45%] PASSED tests/integration/preview/test_overview_screen.py::test_next_tile_when_nothing_to_discuss[chromium] 
+tests/integration/preview/test_overview_screen.py::test_goal_tile[chromium] 
+[gw0] [ 46%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_keyword_hits[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_no_match[chromium] 
+[gw2] [ 46%] PASSED tests/integration/preview/test_docs_screen.py::test_region_when_wide[chromium-table] 
+tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-720-False-table] 
+[gw0] [ 46%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_no_match[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_narrow[chromium] 
+[gw1] [ 46%] PASSED tests/integration/preview/test_overview_screen.py::test_goal_tile[chromium] 
+tests/integration/preview/test_overview_screen.py::test_goal_tile_when_no_goal[chromium] 
+[gw2] [ 46%] PASSED tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-720-False-table] 
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_edge[chromium-phone] 
+[gw1] [ 46%] PASSED tests/integration/preview/test_overview_screen.py::test_goal_tile_when_no_goal[chromium] 
+tests/integration/preview/test_overview_screen.py::test_description[chromium] 
+[gw0] [ 46%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_filter_drawer_stories.py::test_text_conditions[chromium] 
+[gw1] [ 46%] PASSED tests/integration/preview/test_overview_screen.py::test_description[chromium] 
+tests/integration/preview/test_overview_screen.py::test_description_when_missing[chromium] 
+[gw0] [ 47%] PASSED tests/integration/storybook/test_filter_drawer_stories.py::test_text_conditions[chromium] 
+tests/integration/storybook/test_history_dialog_stories.py::test_since_selected[chromium] 
+[gw1] [ 47%] PASSED tests/integration/preview/test_overview_screen.py::test_description_when_missing[chromium] 
+tests/integration/preview/test_overview_screen.py::test_small_tiles[chromium] 
+[gw0] [ 47%] PASSED tests/integration/storybook/test_history_dialog_stories.py::test_since_selected[chromium] 
+tests/integration/storybook/test_history_dialog_stories.py::test_off[chromium] 
+[gw0] [ 47%] PASSED tests/integration/storybook/test_history_dialog_stories.py::test_off[chromium] 
+tests/integration/storybook/test_history_dialog_stories.py::test_no_pending[chromium] 
+[gw1] [ 47%] PASSED tests/integration/preview/test_overview_screen.py::test_small_tiles[chromium] 
+tests/integration/preview/test_overview_screen.py::test_small_tiles_show_all[chromium] 
+[gw0] [ 47%] PASSED tests/integration/storybook/test_history_dialog_stories.py::test_no_pending[chromium] 
+tests/integration/storybook/test_history_dialog_stories.py::test_long_name[chromium] 
+[gw1] [ 47%] PASSED tests/integration/preview/test_overview_screen.py::test_small_tiles_show_all[chromium] 
+tests/integration/preview/test_overview_screen.py::test_small_tiles_when_empty[chromium] 
+[gw0] [ 47%] PASSED tests/integration/storybook/test_history_dialog_stories.py::test_long_name[chromium] 
+tests/integration/storybook/test_history_dialog_stories.py::test_narrow[chromium] 
+[gw1] [ 48%] PASSED tests/integration/preview/test_overview_screen.py::test_small_tiles_when_empty[chromium] 
+tests/integration/preview/test_overview_screen.py::test_progress_tile[chromium] 
+[gw0] [ 48%] PASSED tests/integration/storybook/test_history_dialog_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_selection_comment_stories.py::test_below[chromium] 
+[gw0] [ 48%] PASSED tests/integration/storybook/test_selection_comment_stories.py::test_below[chromium] 
+tests/integration/storybook/test_selection_comment_stories.py::test_hover[chromium] 
+[gw1] [ 48%] PASSED tests/integration/preview/test_overview_screen.py::test_progress_tile[chromium] 
+tests/integration/preview/test_overview_screen.py::test_progress_tile_category_link[chromium] 
+[gw0] [ 48%] PASSED tests/integration/storybook/test_selection_comment_stories.py::test_hover[chromium] 
+tests/integration/storybook/test_selection_comment_stories.py::test_focus[chromium] 
+[gw1] [ 48%] PASSED tests/integration/preview/test_overview_screen.py::test_progress_tile_category_link[chromium] 
+tests/integration/preview/test_overview_screen.py::test_diff_marks[chromium] 
+[gw0] [ 48%] PASSED tests/integration/storybook/test_selection_comment_stories.py::test_focus[chromium] 
+tests/integration/storybook/test_selection_comment_stories.py::test_above[chromium] 
+[gw0] [ 48%] PASSED tests/integration/storybook/test_selection_comment_stories.py::test_above[chromium] 
+tests/integration/storybook/test_selection_comment_stories.py::test_narrow[chromium] 
+[gw0] [ 49%] PASSED tests/integration/storybook/test_selection_comment_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_idle[chromium] 
+[gw1] [ 49%] PASSED tests/integration/preview/test_overview_screen.py::test_diff_marks[chromium] 
+tests/integration/preview/test_overview_screen.py::test_hidden_kinds_keep_tiles[chromium] 
+[gw0] [ 49%] PASSED tests/integration/storybook/test_send_form_stories.py::test_idle[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_typing[chromium] 
+[gw0] [ 49%] PASSED tests/integration/storybook/test_send_form_stories.py::test_typing[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_with_body_location[chromium] 
+[gw1] [ 49%] PASSED tests/integration/preview/test_overview_screen.py::test_hidden_kinds_keep_tiles[chromium] 
+tests/integration/preview/test_overview_screen.py::test_visible_kinds_keep_links[chromium] 
+[gw2] [ 49%] PASSED tests/integration/preview/test_graph_screen.py::test_comment_marks_when_edge[chromium-phone] 
+tests/integration/preview/test_records_screen.py::test_table[chromium-terms] 
+[gw0] [ 49%] PASSED tests/integration/storybook/test_send_form_stories.py::test_with_body_location[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_with_value_location[chromium] 
+[gw1] [ 49%] PASSED tests/integration/preview/test_overview_screen.py::test_visible_kinds_keep_links[chromium] 
+tests/integration/preview/test_overview_screen.py::test_region[chromium] 
+[gw0] [ 50%] PASSED tests/integration/storybook/test_send_form_stories.py::test_with_value_location[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_saving[chromium] 
+[gw2] [ 50%] PASSED tests/integration/preview/test_records_screen.py::test_table[chromium-terms] 
+tests/integration/preview/test_records_screen.py::test_region_at_boundary[chromium-721-True] 
+[gw1] [ 50%] PASSED tests/integration/preview/test_overview_screen.py::test_region[chromium] 
+tests/integration/preview/test_records_screen.py::test_table[chromium-research] 
+[gw2] [ 50%] PASSED tests/integration/preview/test_records_screen.py::test_region_at_boundary[chromium-721-True] 
+tests/integration/preview/test_tasks_screen.py::test_region_when_wide[chromium-table] 
+[gw1] [ 50%] PASSED tests/integration/preview/test_records_screen.py::test_table[chromium-research] 
+tests/integration/preview/test_records_screen.py::test_notes_id_button_size[chromium] 
+[gw2] [ 50%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_when_wide[chromium-table] 
+tests/integration/preview/test_tasks_screen.py::test_region_when_narrow[chromium-table] 
+[gw1] [ 50%] PASSED tests/integration/preview/test_records_screen.py::test_notes_id_button_size[chromium] 
+tests/integration/preview/test_records_screen.py::test_diff_marks[chromium] 
+[gw0] [ 50%] PASSED tests/integration/storybook/test_send_form_stories.py::test_saving[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_saved[chromium] 
+[gw2] [ 50%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_when_narrow[chromium-table] 
+tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-720-False-table] 
+[gw0] [ 51%] PASSED tests/integration/storybook/test_send_form_stories.py::test_saved[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_empty[chromium] 
+[gw2] [ 51%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-720-False-table] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-decisions] 
+[gw1] [ 51%] PASSED tests/integration/preview/test_records_screen.py::test_diff_marks[chromium] 
+tests/integration/preview/test_records_screen.py::test_drawer_per_kind[chromium] 
+[gw0] [ 51%] PASSED tests/integration/storybook/test_send_form_stories.py::test_empty[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_failed_unreachable[chromium] 
+[gw2] [ 51%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-decisions] 
+tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-decisions] 
+[gw0] [ 51%] PASSED tests/integration/storybook/test_send_form_stories.py::test_failed_unreachable[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_failed_detail[chromium] 
+[gw1] [ 51%] PASSED tests/integration/preview/test_records_screen.py::test_drawer_per_kind[chromium] 
+tests/integration/preview/test_records_screen.py::test_drawer_logs_tags[chromium] 
+[gw0] [ 51%] PASSED tests/integration/storybook/test_send_form_stories.py::test_failed_detail[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_long[chromium] 
+[gw0] [ 52%] PASSED tests/integration/storybook/test_send_form_stories.py::test_long[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_no_target[chromium] 
+[gw1] [ 52%] PASSED tests/integration/preview/test_records_screen.py::test_drawer_logs_tags[chromium] 
+tests/integration/preview/test_records_screen.py::test_comment_marks[chromium] 
+[gw0] [ 52%] PASSED tests/integration/storybook/test_send_form_stories.py::test_no_target[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_narrow[chromium] 
+[gw2] [ 52%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-decisions] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-tasks] 
+[gw1] [ 52%] PASSED tests/integration/preview/test_records_screen.py::test_comment_marks[chromium] 
+tests/integration/preview/test_records_screen.py::test_region_when_wide[chromium] 
+[gw0] [ 52%] PASSED tests/integration/storybook/test_send_form_stories.py::test_narrow[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_no_target_collapsed[chromium] 
+[gw2] [ 52%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-tasks] 
+tests/integration/storybook/test_comment_mark_stories.py::test_states[chromium-two_digits] 
+[gw0] [ 52%] PASSED tests/integration/storybook/test_send_form_stories.py::test_no_target_collapsed[chromium] 
+tests/integration/storybook/test_send_form_stories.py::test_no_target_expanded[chromium] 
+[gw1] [ 53%] PASSED tests/integration/preview/test_records_screen.py::test_region_when_wide[chromium] 
+[gw2] [ 53%] PASSED tests/integration/storybook/test_comment_mark_stories.py::test_states[chromium-two_digits] 
+tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-filter_open] 
+tests/integration/preview/test_records_screen.py::test_region_when_narrow[chromium] 
+[gw0] [ 53%] PASSED tests/integration/storybook/test_send_form_stories.py::test_no_target_expanded[chromium] 
+tests/integration/storybook/test_settings_confirm_stories.py::test_both_changed[chromium] 
+[gw2] [ 53%] PASSED tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-filter_open] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w963] 
+[gw1] [ 53%] PASSED tests/integration/preview/test_records_screen.py::test_region_when_narrow[chromium] 
+tests/integration/preview/test_records_screen.py::test_drawer_text_fields_when_terms[chromium] 
+[gw0] [ 53%] PASSED tests/integration/storybook/test_settings_confirm_stories.py::test_both_changed[chromium] 
+tests/integration/storybook/test_settings_confirm_stories.py::test_one_unchanged[chromium] 
+[gw2] [ 53%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w963] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w963] 
+[gw0] [ 53%] PASSED tests/integration/storybook/test_settings_confirm_stories.py::test_one_unchanged[chromium] 
+tests/integration/storybook/test_settings_confirm_stories.py::test_busy[chromium] 
+[gw2] [ 54%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w963] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w405] 
+[gw1] [ 54%] PASSED tests/integration/preview/test_records_screen.py::test_drawer_text_fields_when_terms[chromium] 
+tests/integration/preview/test_records_screen.py::test_region_at_boundary[chromium-720-False] 
+[gw0] [ 54%] PASSED tests/integration/storybook/test_settings_confirm_stories.py::test_busy[chromium] 
+tests/integration/storybook/test_settings_confirm_stories.py::test_error_read_only[chromium] 
+[gw2] [ 54%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w405] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w405] 
+[gw0] [ 54%] PASSED tests/integration/storybook/test_settings_confirm_stories.py::test_error_read_only[chromium] 
+[gw1] [ 54%] PASSED tests/integration/preview/test_records_screen.py::test_region_at_boundary[chromium-720-False] 
+tests/integration/storybook/test_settings_confirm_stories.py::test_error_offline[chromium] 
+tests/integration/preview/test_search_screen.py::test_open_by_ctrl_k_and_trigger[chromium] 
+[gw2] [ 54%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w405] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w405] 
+[gw0] [ 54%] PASSED tests/integration/storybook/test_settings_confirm_stories.py::test_error_offline[chromium] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-edge] 
+[gw1] [ 55%] PASSED tests/integration/preview/test_search_screen.py::test_open_by_ctrl_k_and_trigger[chromium] 
+tests/integration/preview/test_search_screen.py::test_search_by_id_title_and_body[chromium] 
+[gw2] [ 55%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w405] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w405] 
+[gw0] [ 55%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-edge] 
+tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-map-900-False] 
+[gw2] [ 55%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w405] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w405] 
+[gw1] [ 55%] PASSED tests/integration/preview/test_search_screen.py::test_search_by_id_title_and_body[chromium] 
+tests/integration/preview/test_search_screen.py::test_open_result[chromium] 
+[gw2] [ 55%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w405] 
+tests/integration/storybook/test_view_switch_stories.py::test_states[chromium-tasks] 
+[gw0] [ 55%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-map-900-False] 
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-docs_wide_1920] 
+[gw1] [ 55%] PASSED tests/integration/preview/test_search_screen.py::test_open_result[chromium] 
+tests/integration/preview/test_search_screen.py::test_open_result_by_keyboard[chromium] 
+[gw2] [ 56%] PASSED tests/integration/storybook/test_view_switch_stories.py::test_states[chromium-tasks] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-category_node] 
+[gw1] [ 56%] PASSED tests/integration/preview/test_search_screen.py::test_open_result_by_keyboard[chromium] 
+tests/integration/preview/test_search_screen.py::test_close[chromium] 
+[gw2] [ 56%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-category_node] 
+tests/integration/preview/test_decisions_screen.py::test_region_when_wide[chromium-map] 
+[gw0] [ 56%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-docs_wide_1920] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-records] 
+[gw1] [ 56%] PASSED tests/integration/preview/test_search_screen.py::test_close[chromium] 
+tests/integration/preview/test_search_screen.py::test_slash_does_not_open[chromium] 
+[gw2] [ 56%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_when_wide[chromium-map] 
+tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-table-720-False] 
+[gw0] [ 56%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-records] 
+tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-notes] 
+[gw1] [ 56%] PASSED tests/integration/preview/test_search_screen.py::test_slash_does_not_open[chromium] 
+tests/integration/preview/test_search_screen.py::test_open_by_ctrl_k_when_typing[chromium] 
+[gw2] [ 57%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-table-720-False] 
+tests/integration/preview/test_detail_panel_screen.py::test_adopted_section_when_partial[chromium-none] 
+[gw2] [ 57%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_adopted_section_when_partial[chromium-none] 
+tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-term_meaning] 
+[gw1] [ 57%] PASSED tests/integration/preview/test_search_screen.py::test_open_by_ctrl_k_when_typing[chromium] 
+tests/integration/preview/test_search_screen.py::test_trigger_key_hint[chromium] 
+[gw0] [ 57%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-notes] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-terms] 
+[gw2] [ 57%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-term_meaning] 
+tests/integration/preview/test_detail_panel_screen.py::test_content_when_body_in_other_kinds[chromium-note] 
+[gw1] [ 57%] PASSED tests/integration/preview/test_search_screen.py::test_trigger_key_hint[chromium] 
+tests/integration/preview/test_search_screen.py::test_exact_match_first[chromium] 
+[gw0] [ 57%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-terms] 
+tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-diff_on_narrow] 
+[gw2] [ 57%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_content_when_body_in_other_kinds[chromium-note] 
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-table_1920] 
+[gw1] [ 58%] PASSED tests/integration/preview/test_search_screen.py::test_exact_match_first[chromium] 
+tests/integration/preview/test_search_screen.py::test_exact_match_by_id[chromium] 
+[gw0] [ 58%] PASSED tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-diff_on_narrow] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1440] 
+[gw1] [ 58%] PASSED tests/integration/preview/test_search_screen.py::test_exact_match_by_id[chromium] 
+tests/integration/preview/test_settings_confirm_screen.py::test_open[chromium] 
+[gw0] [ 58%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1440] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1440] 
+[gw2] [ 58%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-table_1920] 
+tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-721-True-board] 
+[gw0] [ 58%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1440] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w519] 
+[gw2] [ 58%] PASSED tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-721-True-board] 
+tests/integration/preview/test_records_screen.py::test_table[chromium-notes] 
+[gw1] [ 58%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_open[chromium] 
+tests/integration/preview/test_settings_confirm_screen.py::test_unchanged_item[chromium] 
+[gw0] [ 59%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w519] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w519] 
+[gw0] [ 59%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w519] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w519] 
+[gw2] [ 59%] PASSED tests/integration/preview/test_records_screen.py::test_table[chromium-notes] 
+tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-721-True-board] 
+[gw0] [ 59%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w519] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w519] 
+[gw1] [ 59%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_unchanged_item[chromium] 
+tests/integration/preview/test_settings_confirm_screen.py::test_save[chromium] 
+[gw2] [ 59%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-721-True-board] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-tasks] 
+[gw0] [ 59%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w519] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w519] 
+[gw2] [ 59%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-tasks] 
+tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-tasks] 
+[gw0] [ 60%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w519] 
+tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-map-901-True] 
+[gw0] [ 60%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-map-901-True] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-graph] 
+[gw2] [ 60%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-tasks] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-research] 
+[gw0] [ 60%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-graph] 
+tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-graph] 
+[gw2] [ 60%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-research] 
+tests/integration/storybook/test_comment_mark_stories.py::test_states[chromium-overflow] 
+[gw1] [ 60%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_save[chromium] 
+tests/integration/preview/test_settings_confirm_screen.py::test_cancel[chromium] 
+[gw2] [ 60%] PASSED tests/integration/storybook/test_comment_mark_stories.py::test_states[chromium-overflow] 
+tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-settings_open] 
+[gw0] [ 60%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-graph] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-notes] 
+[gw2] [ 61%] PASSED tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-settings_open] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1100] 
+[gw1] [ 61%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_cancel[chromium] 
+[gw2] [ 61%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1100] 
+tests/integration/preview/test_settings_confirm_screen.py::test_save_fails[chromium] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1100] 
+[gw0] [ 61%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-notes] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1441] 
+[gw2] [ 61%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1100] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w480] 
+[gw0] [ 61%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1441] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1441] 
+[gw2] [ 61%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w480] 
+[gw0] [ 61%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1441] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w900] 
+[gw1] [ 62%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_save_fails[chromium] 
+tests/integration/preview/test_settings_confirm_screen.py::test_save_fails_when_offline[chromium] 
+[gw2] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w480] 
+[gw0] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w900] 
+[gw2] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w480] 
+[gw2] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w480] 
+[gw0] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w900] 
+[gw1] [ 62%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_save_fails_when_offline[chromium] 
+tests/integration/preview/test_settings_confirm_screen.py::test_busy[chromium] 
+[gw2] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w480] 
+tests/integration/storybook/test_view_switch_stories.py::test_states[chromium-docs] 
+[gw0] [ 62%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w900] 
+[gw2] [ 63%] PASSED tests/integration/storybook/test_view_switch_stories.py::test_states[chromium-docs] 
+tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-phase_node] 
+[gw0] [ 63%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w900] 
+[gw1] [ 63%] PASSED tests/integration/preview/test_settings_confirm_screen.py::test_busy[chromium] 
+tests/integration/preview/test_settings_screen.py::test_open_and_close[chromium] 
+[gw0] [ 63%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w900] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-logs] 
+[gw2] [ 63%] PASSED tests/integration/preview/test_decisions_screen.py::test_map_background_press[chromium-phase_node] 
+tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-table-721-True] 
+[gw0] [ 63%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-logs] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w390] 
+[gw2] [ 63%] PASSED tests/integration/preview/test_decisions_screen.py::test_region_at_boundary[chromium-table-721-True] 
+tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-note_content] 
+[gw0] [ 63%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w390] 
+[gw1] [ 64%] PASSED tests/integration/preview/test_settings_screen.py::test_open_and_close[chromium] 
+tests/integration/preview/test_settings_screen.py::test_look_override[chromium] 
+[gw2] [ 64%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_value_markdown_when_other_kinds[chromium-note_content] 
+tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-map_1440] 
+[gw0] [ 64%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w390] 
+[gw0] [ 64%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w390] 
+[gw1] [ 64%] PASSED tests/integration/preview/test_settings_screen.py::test_look_override[chromium] 
+tests/integration/preview/test_settings_screen.py::test_kinds_override[chromium] 
+[gw0] [ 64%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w390] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-graph] 
+[gw2] [ 64%] PASSED tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-map_1440] 
+tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-721-True-table] 
+[gw0] [ 64%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-graph] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w480] 
+[gw2] [ 65%] PASSED tests/integration/preview/test_docs_screen.py::test_region_at_boundary[chromium-721-True-table] 
+tests/integration/preview/test_records_screen.py::test_table[chromium-logs] 
+[gw0] [ 65%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w480] 
+[gw1] [ 65%] PASSED tests/integration/preview/test_settings_screen.py::test_kinds_override[chromium] 
+tests/integration/preview/test_settings_screen.py::test_kinds_override_moves_to_overview[chromium] 
+[gw2] [ 65%] PASSED tests/integration/preview/test_records_screen.py::test_table[chromium-logs] 
+tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-721-True-table] 
+[gw0] [ 65%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w480] 
+[gw0] [ 65%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w480] 
+[gw2] [ 65%] PASSED tests/integration/preview/test_tasks_screen.py::test_region_at_boundary[chromium-721-True-table] 
+tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-docs] 
+[gw1] [ 65%] PASSED tests/integration/preview/test_settings_screen.py::test_kinds_override_moves_to_overview[chromium] 
+tests/integration/preview/test_settings_screen.py::test_reset[chromium] 
+[gw0] [ 66%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w480] 
+tests/integration/server/test_add.py::test_normal 
+[gw0] [ 66%] PASSED tests/integration/server/test_add.py::test_normal 
+tests/integration/server/test_add.py::test_error_when_workspace_not_found 
+[gw0] [ 66%] PASSED tests/integration/server/test_add.py::test_error_when_workspace_not_found 
+tests/integration/server/test_add.py::test_error_when_schema_mismatch 
+[gw0] [ 66%] PASSED tests/integration/server/test_add.py::test_error_when_schema_mismatch 
+tests/integration/server/test_add.py::test_error_when_write_fails 
+[gw0] [ 66%] PASSED tests/integration/server/test_add.py::test_error_when_write_fails 
+tests/integration/server/test_add.py::test_error_when_file_shape_broken 
+[gw0] [ 66%] PASSED tests/integration/server/test_add.py::test_error_when_file_shape_broken 
+[gw2] [ 66%] PASSED tests/integration/preview/test_topbar_screen.py::test_comments_button[chromium-docs] 
+tests/integration/server/test_add.py::test_normal_when_note_has_body 
+tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-docs] 
+[gw0] [ 66%] PASSED tests/integration/server/test_add.py::test_normal_when_note_has_body 
+tests/integration/server/test_add.py::test_normal_when_unsorted_without_options 
+[gw0] [ 67%] PASSED tests/integration/server/test_add.py::test_normal_when_unsorted_without_options 
+tests/integration/server/test_add.py::test_error_when_options_missing 
+[gw0] [ 67%] PASSED tests/integration/server/test_add.py::test_error_when_options_missing 
+tests/integration/server/test_add.py::test_error_when_adopted_but_undecided 
+[gw0] [ 67%] PASSED tests/integration/server/test_add.py::test_error_when_adopted_but_undecided 
+tests/integration/server/test_adopt.py::test_normal 
+[gw0] [ 67%] PASSED tests/integration/server/test_adopt.py::test_normal 
+tests/integration/server/test_adopt.py::test_normal_when_undecided_adopted 
+[gw0] [ 67%] PASSED tests/integration/server/test_adopt.py::test_normal_when_undecided_adopted 
+tests/integration/server/test_adopt.py::test_error_when_workspace_not_found 
+[gw0] [ 67%] PASSED tests/integration/server/test_adopt.py::test_error_when_workspace_not_found 
+tests/integration/server/test_adopt.py::test_error_when_id_not_found 
+[gw0] [ 67%] PASSED tests/integration/server/test_adopt.py::test_error_when_id_not_found 
+tests/integration/server/test_comment_add.py::test_error_when_write_fails 
+[gw0] [ 67%] PASSED tests/integration/server/test_comment_add.py::test_error_when_write_fails 
+tests/integration/server/test_comment_delete.py::test_normal 
+[gw0] [ 68%] PASSED tests/integration/server/test_comment_delete.py::test_normal 
+tests/integration/server/test_comment_delete.py::test_error_when_origin_mismatch 
+[gw0] [ 68%] PASSED tests/integration/server/test_comment_delete.py::test_error_when_origin_mismatch 
+tests/integration/server/test_comment_delete.py::test_error_when_comment_not_found 
+[gw0] [ 68%] PASSED tests/integration/server/test_comment_delete.py::test_error_when_comment_not_found 
+tests/integration/server/test_comment_update.py::test_normal 
+[gw0] [ 68%] PASSED tests/integration/server/test_comment_update.py::test_normal 
+tests/integration/server/test_comment_update.py::test_normal_when_remove_location 
+[gw0] [ 68%] PASSED tests/integration/server/test_comment_update.py::test_normal_when_remove_location 
+tests/integration/server/test_comment_update.py::test_error_when_body_empty 
+[gw1] [ 68%] PASSED tests/integration/preview/test_settings_screen.py::test_reset[chromium] 
+tests/integration/server/test_adopt.py::test_error_when_option_not_found 
+[gw1] [ 68%] PASSED tests/integration/server/test_adopt.py::test_error_when_option_not_found 
+[gw0] [ 68%] PASSED tests/integration/server/test_comment_update.py::test_error_when_body_empty 
+tests/integration/server/test_adopt.py::test_error_when_schema_mismatch 
+tests/integration/server/test_comment_update.py::test_error_when_origin_mismatch 
+[gw0] [ 69%] PASSED tests/integration/server/test_comment_update.py::test_error_when_origin_mismatch 
+[gw1] [ 69%] PASSED tests/integration/server/test_adopt.py::test_error_when_schema_mismatch 
+tests/integration/server/test_comment_update.py::test_error_when_comment_not_found 
+tests/integration/server/test_adopt.py::test_error_when_write_fails 
+[gw1] [ 69%] PASSED tests/integration/server/test_adopt.py::test_error_when_write_fails 
+tests/integration/server/test_attrs.py::test_normal 
+[gw1] [ 69%] PASSED tests/integration/server/test_attrs.py::test_normal 
+tests/integration/server/test_attrs.py::test_error_when_workspace_not_found 
+[gw1] [ 69%] PASSED tests/integration/server/test_attrs.py::test_error_when_workspace_not_found 
+tests/integration/server/test_batch.py::test_normal 
+[gw0] [ 69%] PASSED tests/integration/server/test_comment_update.py::test_error_when_comment_not_found 
+tests/integration/server/test_comments_read.py::test_normal 
+[gw0] [ 69%] PASSED tests/integration/server/test_comments_read.py::test_normal 
+tests/integration/server/test_comments_read.py::test_normal_when_empty 
+[gw1] [ 69%] PASSED tests/integration/server/test_batch.py::test_normal 
+tests/integration/server/test_batch.py::test_error_when_workspace_not_found 
+[gw1] [ 70%] PASSED tests/integration/server/test_batch.py::test_error_when_workspace_not_found 
+tests/integration/server/test_batch.py::test_error_when_id_not_found 
+[gw1] [ 70%] PASSED tests/integration/server/test_batch.py::test_error_when_id_not_found 
+tests/integration/server/test_batch.py::test_error_when_schema_mismatch 
+[gw0] [ 70%] PASSED tests/integration/server/test_comments_read.py::test_normal_when_empty 
+tests/integration/server/test_comments_read.py::test_error_when_schema_mismatch 
+[gw1] [ 70%] PASSED tests/integration/server/test_batch.py::test_error_when_schema_mismatch 
+tests/integration/server/test_batch.py::test_error_when_write_fails 
+[gw1] [ 70%] PASSED tests/integration/server/test_batch.py::test_error_when_write_fails 
+tests/integration/server/test_batch.py::test_error_when_argument_invalid 
+[gw1] [ 70%] PASSED tests/integration/server/test_batch.py::test_error_when_argument_invalid 
+tests/integration/server/test_changes_since_read.py::test_normal 
+[gw0] [ 70%] PASSED tests/integration/server/test_comments_read.py::test_error_when_schema_mismatch 
+tests/integration/server/test_comments_send.py::test_normal 
+[gw0] [ 70%] PASSED tests/integration/server/test_comments_send.py::test_normal 
+tests/integration/server/test_comments_send.py::test_error_when_ids_empty 
+[gw0] [ 71%] PASSED tests/integration/server/test_comments_send.py::test_error_when_ids_empty 
+tests/integration/server/test_comments_send.py::test_error_when_origin_mismatch 
+[gw0] [ 71%] PASSED tests/integration/server/test_comments_send.py::test_error_when_origin_mismatch 
+tests/integration/server/test_comments_send.py::test_error_when_comment_not_found 
+[gw2] [ 71%] PASSED tests/integration/preview/test_topbar_screen.py::test_history_button_on_every_screen[chromium-docs] 
+tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-docs] 
+[gw1] [ 71%] PASSED tests/integration/server/test_changes_since_read.py::test_normal 
+[gw0] [ 71%] PASSED tests/integration/server/test_comments_send.py::test_error_when_comment_not_found 
+tests/integration/server/test_comments_send.py::test_error_when_location_stale 
+tests/integration/server/test_changes_since_read.py::test_normal_when_no_read_point 
+[gw0] [ 71%] PASSED tests/integration/server/test_comments_send.py::test_error_when_location_stale 
+tests/integration/server/test_comments_send.py::test_error_when_not_json 
+[gw1] [ 71%] PASSED tests/integration/server/test_changes_since_read.py::test_normal_when_no_read_point 
+[gw0] [ 71%] PASSED tests/integration/server/test_comments_send.py::test_error_when_not_json 
+tests/integration/server/test_changes_since_read.py::test_normal_when_history_limit_zero 
+tests/integration/server/test_comments_send.py::test_error_when_write_fails 
+[gw0] [ 72%] PASSED tests/integration/server/test_comments_send.py::test_error_when_write_fails 
+tests/integration/server/test_commit.py::test_normal 
+[gw1] [ 72%] PASSED tests/integration/server/test_changes_since_read.py::test_normal_when_history_limit_zero 
+tests/integration/server/test_changes_since_read.py::test_error_when_workspace_not_found 
+[gw1] [ 72%] PASSED tests/integration/server/test_changes_since_read.py::test_error_when_workspace_not_found 
+tests/integration/server/test_changes_since_read.py::test_error_when_write_fails 
+[gw0] [ 72%] PASSED tests/integration/server/test_commit.py::test_normal 
+tests/integration/server/test_commit.py::test_normal_when_nothing_pending 
+[gw1] [ 72%] PASSED tests/integration/server/test_changes_since_read.py::test_error_when_write_fails 
+tests/integration/server/test_check.py::test_normal_when_clean 
+[gw0] [ 72%] PASSED tests/integration/server/test_commit.py::test_normal_when_nothing_pending 
+tests/integration/server/test_commit.py::test_error_when_summary_empty 
+[gw1] [ 72%] PASSED tests/integration/server/test_check.py::test_normal_when_clean 
+tests/integration/server/test_check.py::test_normal_when_problems_found 
+[gw0] [ 72%] PASSED tests/integration/server/test_commit.py::test_error_when_summary_empty 
+tests/integration/server/test_commit.py::test_error_when_workspace_not_found 
+[gw0] [ 73%] PASSED tests/integration/server/test_commit.py::test_error_when_workspace_not_found 
+tests/integration/server/test_commit.py::test_error_when_schema_mismatch 
+[gw0] [ 73%] PASSED tests/integration/server/test_commit.py::test_error_when_schema_mismatch 
+tests/integration/server/test_commit.py::test_error_when_write_fails 
+[gw1] [ 73%] PASSED tests/integration/server/test_check.py::test_normal_when_problems_found 
+tests/integration/server/test_check.py::test_error_when_workspace_not_found 
+[gw1] [ 73%] PASSED tests/integration/server/test_check.py::test_error_when_workspace_not_found 
+tests/integration/server/test_check.py::test_normal_when_history_stale 
+[gw0] [ 73%] PASSED tests/integration/server/test_commit.py::test_error_when_write_fails 
+tests/integration/server/test_config_display.py::test_normal 
+[gw1] [ 73%] PASSED tests/integration/server/test_check.py::test_normal_when_history_stale 
+tests/integration/server/test_check.py::test_normal_when_unknown_phase 
+[gw1] [ 73%] PASSED tests/integration/server/test_check.py::test_normal_when_unknown_phase 
+tests/integration/server/test_check.py::test_normal_when_options_and_status_mismatch 
+[gw2] [ 73%] PASSED tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-docs] 
+tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-comments_narrow] 
+[gw1] [ 74%] PASSED tests/integration/server/test_check.py::test_normal_when_options_and_status_mismatch 
+tests/integration/server/test_check_env.py::test_normal 
+[gw0] [ 74%] PASSED tests/integration/server/test_config_display.py::test_normal 
+tests/integration/server/test_config_display.py::test_error_when_value_invalid 
+[gw0] [ 74%] PASSED tests/integration/server/test_config_display.py::test_error_when_value_invalid 
+tests/integration/server/test_config_display.py::test_error_when_origin_mismatch 
+[gw0] [ 74%] PASSED tests/integration/server/test_config_display.py::test_error_when_origin_mismatch 
+tests/integration/server/test_config_display.py::test_error_when_write_fails 
+[gw0] [ 74%] PASSED tests/integration/server/test_config_display.py::test_error_when_write_fails 
+tests/integration/server/test_config_reload.py::test_normal 
+[gw2] [ 74%] PASSED tests/integration/storybook/test_topbar_stories.py::test_no_overflow_when_narrow[chromium-comments_narrow] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1101] 
+[gw0] [ 74%] PASSED tests/integration/server/test_config_reload.py::test_normal 
+tests/integration/server/test_config_reload.py::test_error_when_check_fails 
+[gw1] [ 74%] PASSED tests/integration/server/test_check_env.py::test_normal 
+[gw0] [ 75%] PASSED tests/integration/server/test_config_reload.py::test_error_when_check_fails 
+tests/integration/server/test_check_env.py::test_error_when_venv_missing 
+tests/integration/server/test_draft_save.py::test_normal 
+[gw0] [ 75%] PASSED tests/integration/server/test_draft_save.py::test_normal 
+tests/integration/server/test_draft_save.py::test_normal_when_empty_body 
+[gw0] [ 75%] PASSED tests/integration/server/test_draft_save.py::test_normal_when_empty_body 
+[gw2] [ 75%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_medium_when_width[chromium-w1101] 
+tests/integration/server/test_draft_save.py::test_error_when_origin_mismatch 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1101] 
+[gw0] [ 75%] PASSED tests/integration/server/test_draft_save.py::test_error_when_origin_mismatch 
+tests/integration/server/test_draft_save.py::test_error_when_target_not_found 
+[gw0] [ 75%] PASSED tests/integration/server/test_draft_save.py::test_error_when_target_not_found 
+tests/integration/server/test_edit_option.py::test_normal_when_added 
+[gw0] [ 75%] PASSED tests/integration/server/test_edit_option.py::test_normal_when_added 
+tests/integration/server/test_edit_option.py::test_normal_when_updated 
+[gw2] [ 75%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_when_width[chromium-w1101] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w481] 
+[gw0] [ 75%] PASSED tests/integration/server/test_edit_option.py::test_normal_when_updated 
+tests/integration/server/test_edit_option.py::test_normal_when_removed 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_normal_when_removed 
+tests/integration/server/test_edit_option.py::test_normal_when_recommendation_moved 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_normal_when_recommendation_moved 
+tests/integration/server/test_edit_option.py::test_error_when_workspace_not_found 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_error_when_workspace_not_found 
+tests/integration/server/test_edit_option.py::test_error_when_id_not_found 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_error_when_id_not_found 
+tests/integration/server/test_edit_option.py::test_error_when_key_exists 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_error_when_key_exists 
+tests/integration/server/test_edit_option.py::test_error_when_key_not_found 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_error_when_key_not_found 
+tests/integration/server/test_edit_option.py::test_error_when_adopted_option_removed 
+[gw0] [ 76%] PASSED tests/integration/server/test_edit_option.py::test_error_when_adopted_option_removed 
+tests/integration/server/test_edit_option.py::test_error_when_schema_mismatch 
+[gw2] [ 76%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-offline-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w481] 
+[gw0] [ 77%] PASSED tests/integration/server/test_edit_option.py::test_error_when_schema_mismatch 
+tests/integration/server/test_edit_option.py::test_error_when_write_fails 
+[gw0] [ 77%] PASSED tests/integration/server/test_edit_option.py::test_error_when_write_fails 
+tests/integration/server/test_edit_option.py::test_error_when_argument_invalid 
+[gw0] [ 77%] PASSED tests/integration/server/test_edit_option.py::test_error_when_argument_invalid 
+tests/integration/server/test_edit_option.py::test_error_when_last_option_removed 
+[gw0] [ 77%] PASSED tests/integration/server/test_edit_option.py::test_error_when_last_option_removed 
+tests/integration/server/test_events.py::test_normal 
+[gw0] [ 77%] PASSED tests/integration/server/test_events.py::test_normal 
+tests/integration/server/test_events.py::test_normal_when_other_process_writes 
+[gw2] [ 77%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-offline-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w481] 
+[gw2] [ 77%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-diff-offline-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w481] 
+[gw2] [ 77%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_diff_offline_narrow_brand_when_width[chromium-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w481] 
+[gw2] [ 78%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-offline-narrow-w481] 
+tests/integration/server/test_init.py::test_normal_when_readme_exists 
+[gw2] [ 78%] PASSED tests/integration/server/test_init.py::test_normal_when_readme_exists 
+tests/integration/server/test_init.py::test_error_when_workspace_exists 
+[gw2] [ 78%] PASSED tests/integration/server/test_init.py::test_error_when_workspace_exists 
+tests/integration/server/test_init.py::test_error_when_settings_mismatch 
+[gw2] [ 78%] PASSED tests/integration/server/test_init.py::test_error_when_settings_mismatch 
+tests/integration/server/test_init.py::test_error_when_write_fails 
+[gw2] [ 78%] PASSED tests/integration/server/test_init.py::test_error_when_write_fails 
+tests/integration/server/test_init.py::test_error_when_old_settings_file_exists 
+[gw2] [ 78%] PASSED tests/integration/server/test_init.py::test_error_when_old_settings_file_exists 
+tests/integration/server/test_launch.py::test_normal 
+[gw0] [ 78%] PASSED tests/integration/server/test_events.py::test_normal_when_other_process_writes 
+tests/integration/server/test_events.py::test_normal_when_unchanged 
+[gw1] [ 78%] PASSED tests/integration/server/test_check_env.py::test_error_when_venv_missing 
+tests/integration/server/test_check_env.py::test_error_when_python_too_old 
+[gw1] [ 79%] SKIPPED tests/integration/server/test_check_env.py::test_error_when_python_too_old 
+tests/integration/server/test_check_env.py::test_error_when_dependency_missing 
+[gw0] [ 79%] PASSED tests/integration/server/test_events.py::test_normal_when_unchanged 
+tests/integration/server/test_export.py::test_normal 
+[gw2] [ 79%] PASSED tests/integration/server/test_launch.py::test_normal 
+tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded 
+[gw1] [ 79%] PASSED tests/integration/server/test_check_env.py::test_error_when_dependency_missing 
+tests/integration/server/test_check_env.py::test_error_when_base_python_too_old 
+[gw1] [ 79%] SKIPPED tests/integration/server/test_check_env.py::test_error_when_base_python_too_old 
+tests/integration/server/test_clear_release.py::test_normal 
+[gw1] [ 79%] PASSED tests/integration/server/test_clear_release.py::test_normal 
+tests/integration/server/test_clear_release.py::test_normal_when_release_dir_missing 
+[gw1] [ 79%] PASSED tests/integration/server/test_clear_release.py::test_normal_when_release_dir_missing 
+tests/integration/server/test_clear_release.py::test_error_when_workspace_not_found 
+[gw1] [ 79%] PASSED tests/integration/server/test_clear_release.py::test_error_when_workspace_not_found 
+tests/integration/server/test_clear_release.py::test_error_when_remove_fails 
+[gw1] [ 80%] PASSED tests/integration/server/test_clear_release.py::test_error_when_remove_fails 
+tests/integration/server/test_comment_add.py::test_normal 
+[gw1] [ 80%] PASSED tests/integration/server/test_comment_add.py::test_normal 
+tests/integration/server/test_comment_add.py::test_normal_when_body_location 
+[gw1] [ 80%] PASSED tests/integration/server/test_comment_add.py::test_normal_when_body_location 
+tests/integration/server/test_comment_add.py::test_normal_when_no_target 
+[gw1] [ 80%] PASSED tests/integration/server/test_comment_add.py::test_normal_when_no_target 
+tests/integration/server/test_comment_add.py::test_normal_when_restore 
+[gw1] [ 80%] PASSED tests/integration/server/test_comment_add.py::test_normal_when_restore 
+tests/integration/server/test_comment_add.py::test_error_when_body_empty 
+[gw1] [ 80%] PASSED tests/integration/server/test_comment_add.py::test_error_when_body_empty 
+tests/integration/server/test_comment_add.py::test_error_when_origin_mismatch 
+[gw0] [ 80%] PASSED tests/integration/server/test_export.py::test_normal 
+tests/integration/server/test_export.py::test_error_when_out_not_html 
+[gw0] [ 80%] PASSED tests/integration/server/test_export.py::test_error_when_out_not_html 
+tests/integration/server/test_export.py::test_error_when_workspace_not_found 
+[gw0] [ 81%] PASSED tests/integration/server/test_export.py::test_error_when_workspace_not_found 
+tests/integration/server/test_export.py::test_error_when_schema_mismatch 
+[gw1] [ 81%] PASSED tests/integration/server/test_comment_add.py::test_error_when_origin_mismatch 
+tests/integration/server/test_comment_add.py::test_error_when_target_not_found 
+[gw1] [ 81%] PASSED tests/integration/server/test_comment_add.py::test_error_when_target_not_found 
+tests/integration/server/test_comment_add.py::test_error_when_location_stale 
+[gw1] [ 81%] PASSED tests/integration/server/test_comment_add.py::test_error_when_location_stale 
+tests/integration/server/test_comment_add.py::test_error_when_not_json 
+[gw1] [ 81%] PASSED tests/integration/server/test_comment_add.py::test_error_when_not_json 
+tests/integration/server/test_migrate.py::test_normal_when_set 
+[gw1] [ 81%] PASSED tests/integration/server/test_migrate.py::test_normal_when_set 
+tests/integration/server/test_migrate.py::test_normal_when_record 
+[gw1] [ 81%] PASSED tests/integration/server/test_migrate.py::test_normal_when_record 
+tests/integration/server/test_migrate.py::test_normal_when_same 
+[gw1] [ 81%] PASSED tests/integration/server/test_migrate.py::test_normal_when_same 
+tests/integration/server/test_migrate.py::test_normal_when_plan_newer 
+[gw1] [ 82%] PASSED tests/integration/server/test_migrate.py::test_normal_when_plan_newer 
+tests/integration/server/test_migrate.py::test_normal_when_backup_ignored 
+[gw0] [ 82%] PASSED tests/integration/server/test_export.py::test_error_when_schema_mismatch 
+tests/integration/server/test_export.py::test_error_when_out_dir_missing 
+[gw1] [ 82%] PASSED tests/integration/server/test_migrate.py::test_normal_when_backup_ignored 
+tests/integration/server/test_migrate.py::test_normal_when_field_to_playbooks 
+[gw1] [ 82%] PASSED tests/integration/server/test_migrate.py::test_normal_when_field_to_playbooks 
+tests/integration/server/test_migrate.py::test_normal_when_already_current 
+[gw1] [ 82%] PASSED tests/integration/server/test_migrate.py::test_normal_when_already_current 
+tests/integration/server/test_migrate.py::test_normal_when_rename_settings_file 
+[gw1] [ 82%] PASSED tests/integration/server/test_migrate.py::test_normal_when_rename_settings_file 
+tests/integration/server/test_migrate.py::test_normal_when_version_file_at_top 
+[gw1] [ 82%] PASSED tests/integration/server/test_migrate.py::test_normal_when_version_file_at_top 
+tests/integration/server/test_migrate.py::test_normal_when_answer_to_option 
+[gw0] [ 82%] PASSED tests/integration/server/test_export.py::test_error_when_out_dir_missing 
+tests/integration/server/test_export.py::test_error_when_download_fails 
+[gw1] [ 83%] PASSED tests/integration/server/test_migrate.py::test_normal_when_answer_to_option 
+tests/integration/server/test_migrate.py::test_error_when_newer 
+[gw1] [ 83%] PASSED tests/integration/server/test_migrate.py::test_error_when_newer 
+tests/integration/server/test_migrate.py::test_error_when_step_fails 
+[gw1] [ 83%] PASSED tests/integration/server/test_migrate.py::test_error_when_step_fails 
+tests/integration/server/test_migrate.py::test_error_when_schema_mismatch 
+[gw1] [ 83%] PASSED tests/integration/server/test_migrate.py::test_error_when_schema_mismatch 
+tests/integration/server/test_migrate.py::test_error_when_workspace_not_found 
+[gw1] [ 83%] PASSED tests/integration/server/test_migrate.py::test_error_when_workspace_not_found 
+tests/integration/server/test_next.py::test_normal 
+[gw1] [ 83%] PASSED tests/integration/server/test_next.py::test_normal 
+tests/integration/server/test_next.py::test_normal_when_limited 
+[gw1] [ 83%] PASSED tests/integration/server/test_next.py::test_normal_when_limited 
+tests/integration/server/test_next.py::test_error_when_workspace_not_found 
+[gw1] [ 83%] PASSED tests/integration/server/test_next.py::test_error_when_workspace_not_found 
+tests/integration/server/test_opened.py::test_normal 
+[gw1] [ 84%] PASSED tests/integration/server/test_opened.py::test_normal 
+tests/integration/server/test_opened.py::test_error_when_write_fails 
+[gw1] [ 84%] PASSED tests/integration/server/test_opened.py::test_error_when_write_fails 
+tests/integration/server/test_pending.py::test_normal 
+[gw1] [ 84%] PASSED tests/integration/server/test_pending.py::test_normal 
+tests/integration/server/test_pending.py::test_normal_when_empty 
+[gw1] [ 84%] PASSED tests/integration/server/test_pending.py::test_normal_when_empty 
+tests/integration/server/test_pending.py::test_error_when_workspace_not_found 
+[gw1] [ 84%] PASSED tests/integration/server/test_pending.py::test_error_when_workspace_not_found 
+tests/integration/server/test_pending.py::test_error_when_schema_mismatch 
+[gw1] [ 84%] PASSED tests/integration/server/test_pending.py::test_error_when_schema_mismatch 
+tests/integration/server/test_preview_serve.py::test_normal 
+[gw1] [ 84%] PASSED tests/integration/server/test_preview_serve.py::test_normal 
+tests/integration/server/test_preview_serve.py::test_normal_when_root 
+[gw1] [ 84%] PASSED tests/integration/server/test_preview_serve.py::test_normal_when_root 
+tests/integration/server/test_preview_serve.py::test_error_when_host_mismatch 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_serve.py::test_error_when_host_mismatch 
+tests/integration/server/test_preview_serve.py::test_error_when_path_unknown 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_serve.py::test_error_when_path_unknown 
+tests/integration/server/test_preview_url.py::test_normal 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_url.py::test_normal 
+tests/integration/server/test_preview_url.py::test_normal_when_user_readme_exists 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_url.py::test_normal_when_user_readme_exists 
+tests/integration/server/test_preview_url.py::test_normal_when_called_again 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_url.py::test_normal_when_called_again 
+tests/integration/server/test_preview_url.py::test_error_when_workspace_not_found 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_url.py::test_error_when_workspace_not_found 
+tests/integration/server/test_preview_url.py::test_error_when_config_invalid 
+[gw1] [ 85%] PASSED tests/integration/server/test_preview_url.py::test_error_when_config_invalid 
+tests/integration/server/test_preview_url.py::test_error_when_serve_fails 
+[gw2] [ 85%] PASSED tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded 
+tests/integration/server/test_launch.py::test_normal_when_session_exists 
+[gw1] [ 86%] PASSED tests/integration/server/test_preview_url.py::test_error_when_serve_fails 
+tests/integration/server/test_readme.py::test_normal 
+[gw1] [ 86%] PASSED tests/integration/server/test_readme.py::test_normal 
+tests/integration/server/test_readme.py::test_normal_when_serving 
+[gw1] [ 86%] PASSED tests/integration/server/test_readme.py::test_normal_when_serving 
+tests/integration/server/test_readme.py::test_normal_when_generated_readme_exists 
+[gw1] [ 86%] PASSED tests/integration/server/test_readme.py::test_normal_when_generated_readme_exists 
+tests/integration/server/test_readme.py::test_normal_when_user_readme_exists 
+[gw1] [ 86%] PASSED tests/integration/server/test_readme.py::test_normal_when_user_readme_exists 
+tests/integration/server/test_readme.py::test_error_when_workspace_not_found 
+[gw1] [ 86%] PASSED tests/integration/server/test_readme.py::test_error_when_workspace_not_found 
+tests/integration/server/test_readme.py::test_error_when_write_fails 
+[gw1] [ 86%] PASSED tests/integration/server/test_readme.py::test_error_when_write_fails 
+tests/integration/server/test_records.py::test_normal 
+[gw1] [ 86%] PASSED tests/integration/server/test_records.py::test_normal 
+tests/integration/server/test_records.py::test_normal_when_history 
+[gw1] [ 87%] PASSED tests/integration/server/test_records.py::test_normal_when_history 
+tests/integration/server/test_records.py::test_normal_when_no_goal 
+[gw1] [ 87%] PASSED tests/integration/server/test_records.py::test_normal_when_no_goal 
+tests/integration/server/test_records.py::test_normal_when_rewritten 
+[gw2] [ 87%] PASSED tests/integration/server/test_launch.py::test_normal_when_session_exists 
+tests/integration/server/test_launch.py::test_error_when_dependency_missing 
+[gw1] [ 87%] PASSED tests/integration/server/test_records.py::test_normal_when_rewritten 
+tests/integration/server/test_records.py::test_error_when_schema_mismatch 
+[gw1] [ 87%] PASSED tests/integration/server/test_records.py::test_error_when_schema_mismatch 
+tests/integration/server/test_records.py::test_normal_when_config_invalid 
+[gw2] [ 87%] PASSED tests/integration/server/test_launch.py::test_error_when_dependency_missing 
+tests/integration/server/test_launch.py::test_error_when_tmux_missing 
+[gw1] [ 87%] PASSED tests/integration/server/test_records.py::test_normal_when_config_invalid 
+tests/integration/server/test_show.py::test_normal 
+[gw1] [ 87%] PASSED tests/integration/server/test_show.py::test_normal 
+tests/integration/server/test_show.py::test_error_when_workspace_not_found 
+[gw1] [ 87%] PASSED tests/integration/server/test_show.py::test_error_when_workspace_not_found 
+tests/integration/server/test_show.py::test_error_when_id_not_found 
+[gw1] [ 88%] PASSED tests/integration/server/test_show.py::test_error_when_id_not_found 
+tests/integration/server/test_status.py::test_normal 
+[gw1] [ 88%] PASSED tests/integration/server/test_status.py::test_normal 
+tests/integration/server/test_status.py::test_error_when_workspace_not_found 
+[gw1] [ 88%] PASSED tests/integration/server/test_status.py::test_error_when_workspace_not_found 
+tests/integration/server/test_status.py::test_error_when_old_settings_file 
+[gw1] [ 88%] PASSED tests/integration/server/test_status.py::test_error_when_old_settings_file 
+tests/integration/server/test_submissions.py::test_normal 
+[gw1] [ 88%] PASSED tests/integration/server/test_submissions.py::test_normal 
+tests/integration/server/test_submissions.py::test_normal_when_empty 
+[gw1] [ 88%] PASSED tests/integration/server/test_submissions.py::test_normal_when_empty 
+tests/integration/server/test_submissions.py::test_error_when_workspace_not_found 
+[gw1] [ 88%] PASSED tests/integration/server/test_submissions.py::test_error_when_workspace_not_found 
+tests/integration/server/test_submissions.py::test_error_when_schema_mismatch 
+[gw1] [ 88%] PASSED tests/integration/server/test_submissions.py::test_error_when_schema_mismatch 
+tests/integration/server/test_tags.py::test_normal 
+[gw1] [ 89%] PASSED tests/integration/server/test_tags.py::test_normal 
+tests/integration/server/test_tags.py::test_normal_when_no_tags 
+[gw1] [ 89%] PASSED tests/integration/server/test_tags.py::test_normal_when_no_tags 
+tests/integration/server/test_tags.py::test_error_when_workspace_not_found 
+[gw1] [ 89%] PASSED tests/integration/server/test_tags.py::test_error_when_workspace_not_found 
+tests/integration/server/test_take_submission.py::test_normal 
+[gw1] [ 89%] PASSED tests/integration/server/test_take_submission.py::test_normal 
+tests/integration/server/test_take_submission.py::test_normal_when_already_taken 
+[gw1] [ 89%] PASSED tests/integration/server/test_take_submission.py::test_normal_when_already_taken 
+tests/integration/server/test_take_submission.py::test_error_when_workspace_not_found 
+[gw1] [ 89%] PASSED tests/integration/server/test_take_submission.py::test_error_when_workspace_not_found 
+tests/integration/server/test_take_submission.py::test_error_when_submission_not_found 
+[gw1] [ 89%] PASSED tests/integration/server/test_take_submission.py::test_error_when_submission_not_found 
+tests/integration/server/test_take_submission.py::test_error_when_write_fails 
+[gw1] [ 89%] PASSED tests/integration/server/test_take_submission.py::test_error_when_write_fails 
+tests/integration/server/test_update.py::test_normal 
+[gw1] [ 90%] PASSED tests/integration/server/test_update.py::test_normal 
+[gw2] [ 90%] PASSED tests/integration/server/test_launch.py::test_error_when_tmux_missing 
+tests/integration/server/test_update.py::test_normal_when_body_rewritten_over_limit 
+tests/integration/server/test_launch.py::test_error_when_claude_missing 
+[gw1] [ 90%] PASSED tests/integration/server/test_update.py::test_normal_when_body_rewritten_over_limit 
+tests/integration/server/test_update.py::test_normal_when_nothing_changed 
+[gw2] [ 90%] PASSED tests/integration/server/test_launch.py::test_error_when_claude_missing 
+tests/integration/server/test_launch.py::test_error_when_plugin_not_installed 
+[gw1] [ 90%] PASSED tests/integration/server/test_update.py::test_normal_when_nothing_changed 
+tests/integration/server/test_update.py::test_normal_when_limit_zero 
+[gw1] [ 90%] PASSED tests/integration/server/test_update.py::test_normal_when_limit_zero 
+tests/integration/server/test_update.py::test_error_when_workspace_not_found 
+[gw1] [ 90%] PASSED tests/integration/server/test_update.py::test_error_when_workspace_not_found 
+tests/integration/server/test_update.py::test_error_when_id_not_found 
+[gw1] [ 90%] PASSED tests/integration/server/test_update.py::test_error_when_id_not_found 
+tests/integration/server/test_update.py::test_error_when_schema_mismatch 
+[gw1] [ 91%] PASSED tests/integration/server/test_update.py::test_error_when_schema_mismatch 
+tests/integration/server/test_update.py::test_error_when_write_fails 
+[gw1] [ 91%] PASSED tests/integration/server/test_update.py::test_error_when_write_fails 
+tests/integration/server/test_update.py::test_error_when_legacy_format 
+[gw1] [ 91%] PASSED tests/integration/server/test_update.py::test_error_when_legacy_format 
+tests/integration/server/test_update.py::test_normal_when_task_body_added 
+[gw2] [ 91%] PASSED tests/integration/server/test_launch.py::test_error_when_plugin_not_installed 
+tests/integration/server/test_launch.py::test_error_when_folder_missing 
+[gw1] [ 91%] PASSED tests/integration/server/test_update.py::test_normal_when_task_body_added 
+tests/integration/server/test_update.py::test_error_when_decided_without_adoption 
+[gw2] [ 91%] PASSED tests/integration/server/test_launch.py::test_error_when_folder_missing 
+tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere 
+[gw1] [ 91%] PASSED tests/integration/server/test_update.py::test_error_when_decided_without_adoption 
+tests/integration/server/test_update_settings.py::test_normal 
+[gw1] [ 91%] PASSED tests/integration/server/test_update_settings.py::test_normal 
+tests/integration/server/test_update_settings.py::test_normal_when_phases_remapped 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_normal_when_phases_remapped 
+tests/integration/server/test_update_settings.py::test_normal_when_goal_removed 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_normal_when_goal_removed 
+tests/integration/server/test_update_settings.py::test_error_when_workspace_not_found 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_error_when_workspace_not_found 
+tests/integration/server/test_update_settings.py::test_error_when_unmapped_phase 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_error_when_unmapped_phase 
+tests/integration/server/test_update_settings.py::test_error_when_schema_mismatch 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_error_when_schema_mismatch 
+tests/integration/server/test_update_settings.py::test_error_when_write_fails 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_error_when_write_fails 
+tests/integration/server/test_update_settings.py::test_error_when_bad_argument 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_error_when_bad_argument 
+tests/integration/server/test_update_settings.py::test_normal_when_targets_remapped 
+[gw1] [ 92%] PASSED tests/integration/server/test_update_settings.py::test_normal_when_targets_remapped 
+tests/integration/server/test_update_settings.py::test_normal_when_links_and_history_limit 
+[gw1] [ 93%] PASSED tests/integration/server/test_update_settings.py::test_normal_when_links_and_history_limit 
+tests/integration/server/test_update_settings.py::test_error_when_unmapped_category 
+[gw1] [ 93%] PASSED tests/integration/server/test_update_settings.py::test_error_when_unmapped_category 
+tests/integration/server/test_update_settings.py::test_normal_when_display 
+[gw1] [ 93%] PASSED tests/integration/server/test_update_settings.py::test_normal_when_display 
+tests/integration/skill/test_session.py::test_normal 
+[gw2] [ 93%] PASSED tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere 
+tests/integration/server/test_mcp_server.py::test_normal 
+[gw1] [ 93%] PASSED tests/integration/skill/test_session.py::test_normal 
+tests/integration/skill/test_setup.py::test_normal 
+[gw2] [ 93%] PASSED tests/integration/server/test_mcp_server.py::test_normal 
+tests/integration/server/test_mcp_server.py::test_normal_when_tool_fails 
+[gw1] [ 93%] PASSED tests/integration/skill/test_setup.py::test_normal 
+tests/integration/skill/test_upgrade.py::test_normal 
+[gw2] [ 93%] PASSED tests/integration/server/test_mcp_server.py::test_normal_when_tool_fails 
+tests/integration/server/test_mcp_server.py::test_normal_when_argument_missing 
+[gw1] [ 94%] PASSED tests/integration/skill/test_upgrade.py::test_normal 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w481] 
+[gw1] [ 94%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w481] 
+[gw2] [ 94%] PASSED tests/integration/server/test_mcp_server.py::test_normal_when_argument_missing 
+tests/integration/server/test_mcp_server.py::test_normal_when_stdin_closed 
+[gw1] [ 94%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w481] 
+[gw1] [ 94%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w481] 
+[gw1] [ 94%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w616] 
+[gw1] [ 94%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w616] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w900] 
+[gw2] [ 94%] PASSED tests/integration/server/test_mcp_server.py::test_normal_when_stdin_closed 
+tests/integration/server/test_mcp_server.py::test_normal_when_two_processes_write 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_chip_when_width[chromium-filter-diff-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w616] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w616] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w616] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w616] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w900] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-offline-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w900] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_offline_icon_only_when_width[chromium-filter-offline-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w900] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-offline-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w390] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w390] 
+[gw1] [ 95%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w480] 
+[gw1] [ 96%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w480] 
+[gw1] [ 96%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w481] 
+[gw1] [ 96%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w481] 
+[gw2] [ 96%] PASSED tests/integration/server/test_mcp_server.py::test_normal_when_two_processes_write 
+[gw1] [ 96%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w492] 
+tests/integration/server/test_migrate.py::test_normal_when_plan 
+[gw2] [ 96%] PASSED tests/integration/server/test_migrate.py::test_normal_when_plan 
+tests/integration/server/test_migrate.py::test_normal_when_apply 
+[gw2] [ 96%] PASSED tests/integration/server/test_migrate.py::test_normal_when_apply 
+tests/integration/server/test_migrate.py::test_normal_when_backup_git 
+[gw1] [ 96%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w492] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w492] 
+[gw2] [ 97%] PASSED tests/integration/server/test_migrate.py::test_normal_when_backup_git 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w900] 
+[gw1] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w492] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w900] 
+[gw2] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-history-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w390] 
+[gw1] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-history-narrow-w900] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w390] 
+[gw2] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w480] 
+[gw1] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w390] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w480] 
+[gw2] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w481] 
+[gw1] [ 97%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w480] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w481] 
+[gw2] [ 98%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w900] 
+[gw1] [ 98%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w481] 
+tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w900] 
+[gw2] [ 98%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w900] 
+[gw1] [ 98%] PASSED tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w900] 
+[gw0] [ 98%] PASSED tests/integration/server/test_export.py::test_error_when_download_fails 
+tests/integration/server/test_find.py::test_normal 
+[gw0] [ 98%] PASSED tests/integration/server/test_find.py::test_normal 
+tests/integration/server/test_find.py::test_normal_when_nested_text 
+[gw0] [ 98%] PASSED tests/integration/server/test_find.py::test_normal_when_nested_text 
+tests/integration/server/test_find.py::test_error_when_workspace_not_found 
+[gw0] [ 98%] PASSED tests/integration/server/test_find.py::test_error_when_workspace_not_found 
+tests/integration/server/test_goal.py::test_normal_when_reached 
+[gw0] [ 99%] PASSED tests/integration/server/test_goal.py::test_normal_when_reached 
+tests/integration/server/test_goal.py::test_normal_when_not_reached 
+[gw0] [ 99%] PASSED tests/integration/server/test_goal.py::test_normal_when_not_reached 
+tests/integration/server/test_goal.py::test_normal_when_no_goal 
+[gw0] [ 99%] PASSED tests/integration/server/test_goal.py::test_normal_when_no_goal 
+tests/integration/server/test_goal.py::test_error_when_workspace_not_found 
+[gw0] [ 99%] PASSED tests/integration/server/test_goal.py::test_error_when_workspace_not_found 
+tests/integration/server/test_impact.py::test_normal 
+[gw0] [ 99%] PASSED tests/integration/server/test_impact.py::test_normal 
+tests/integration/server/test_impact.py::test_error_when_workspace_not_found 
+[gw0] [ 99%] PASSED tests/integration/server/test_impact.py::test_error_when_workspace_not_found 
+tests/integration/server/test_impact.py::test_error_when_id_not_found 
+[gw0] [ 99%] PASSED tests/integration/server/test_impact.py::test_error_when_id_not_found 
+tests/integration/server/test_init.py::test_normal 
+[gw0] [ 99%] PASSED tests/integration/server/test_init.py::test_normal 
+tests/integration/server/test_init.py::test_normal_when_no_goal 
+[gw0] [100%] PASSED tests/integration/server/test_init.py::test_normal_when_no_goal 
+
+================== 806 passed, 2 skipped in 225.92s (0:03:45) ==================

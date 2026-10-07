@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import RECORD_DIR, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,10 +42,18 @@ def test_normal_when_reached(
     """ゴールに届いたら、確定の後に決まった検討事項と納品物を release/ に書き出す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み", answer="記録する"),
-        make_item("D-2", phase="要件", status="決定済み", answer="YAML に残す"),
+        make_item("D-1", phase="目的", status="決定済み", answer="記録する", options=ADOPTED_OPTIONS),
+        make_item(
+            "D-2", phase="要件", status="決定済み", answer="YAML に残す", options=ADOPTED_OPTIONS
+        ),
         make_item("D-3", phase="構成", status="対象外"),
-        make_item("D-4", phase="インターフェース", status="決定済み", answer="コマンドで書く"),
+        make_item(
+            "D-4",
+            phase="インターフェース",
+            status="決定済み",
+            answer="コマンドで書く",
+            options=ADOPTED_OPTIONS,
+        ),
         # ゴールより後ろのフェーズは判定に入らない
         make_item("D-9", phase="コンテンツ", status="未決定"),
         make_item("A-1", deliverable=True, status="完成"),
@@ -124,7 +132,7 @@ def test_normal_when_no_goal(
     settings = {key: value for key, value in valid_settings.items() if key != "goal"}
     root = make_workspace(
         make_item("D-1", phase="目的", status="未決定"),
-        make_item("D-2", phase="要件", status="決定済み"),
+        make_item("D-2", phase="要件", status="決定済み", options=ADOPTED_OPTIONS),
         settings=settings,
     )
     ws = {"workspace": str(root)}
@@ -150,7 +158,7 @@ def test_normal_when_task_output_doc_missing(
     """ゴールに届いた後、完了した作業のタスクに成果の資料が無ければ資料を足して結ぶ（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み", answer="記録する"),
+        make_item("D-1", phase="目的", status="決定済み", answer="記録する", options=ADOPTED_OPTIONS),
         make_item("A-1", deliverable=True, status="完成"),
         make_item("T-1", status="完了", result="画面の一覧をまとめた"),
         settings=_goal_settings(valid_settings),

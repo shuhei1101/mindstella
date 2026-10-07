@@ -5,7 +5,7 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。手順が連ねる `adopt`・`impact`・`update`・`add` を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
-        description: 案 A・B を持ち A を採用した決定済みの D-1、D-1 に `depends_on` で依存する決定済みの D-2、D-2 に依存する決定済みの D-3
+        description: 案 A・B を持ち A を採用した決定済みの D-1、D-1 に `depends_on` で依存する決定済みの D-2、D-2 に依存する決定済みの D-3（D-2・D-3 はどちらも案 A を採用）
       - name: 再生する書き込み
         description: D-1 の採用を B に切り替え、`impact` が返した D-2・D-3 を要見直しにし、それぞれの見直しのタスク T-1・T-2 を積む。D-1 の `answer` を B の内容だけに直す
     flow: |-
@@ -26,7 +26,8 @@ scenarios:
         CC-->>U: 要見直しにした項目とタスクを示す
       ```
     expected:
-      - D-2・D-3 が要見直しである
+      - D-1 が決定済みのままで、案 B だけが採用である
+      - D-2・D-3 が、採用した案 A を持ったまま要見直しである
       - 'T-1・T-2 がそれぞれ `for: [D-2]`・`for: [D-3]` を持つ'
       - D-1 の `answer` に A の内容が残っていない
     test: test_normal

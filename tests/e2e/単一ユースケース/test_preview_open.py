@@ -25,6 +25,7 @@ NEW_DECISION = {
     "category": "データ構造",
     "phase": "要件",
     "status": "未決定",
+    "options": [{"key": "A", "content": "案 A"}],
 }
 
 
