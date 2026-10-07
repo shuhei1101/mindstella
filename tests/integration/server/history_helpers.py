@@ -10,12 +10,16 @@ import yaml
 from .fixture_types import CallTool
 from workspace_fixtures import RECORD_DIR
 
+# 案を必須にする状態の検討事項に付ける案
+OPTIONS: list[dict[str, Any]] = [{"key": "A", "content": "案 A"}]
+
 # 検討事項として足す問い
 DECISION_ITEM: dict[str, Any] = {
     "title": "キーを種類ごとに分けるか",
     "status": "未決定",
     "lead": "キーを種類ごとに分けるか",
     "weight": "大",
+    "options": [{"key": "A", "content": "種類ごとに分ける"}, {"key": "B", "content": "1 つにまとめる"}],
 }
 
 

@@ -132,6 +132,16 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert "`tags`" in capture_step
     assert capture_step.index("`tags`") < capture_step.index("`batch`")
     assert "話題には使わない" in capture_step
+    # steps/取り込み.md と references/質問の書式.md が recommended を指す
+    question_format = (SKILLS_DIR / "mindmap" / "references" / "質問の書式.md").read_text(
+        encoding="utf-8"
+    )
+    assert "recommended" in capture_step
+    assert "recommended" in question_format
+    # steps/ヒアリング.md が edit_option と adopt を呼ぶ
+    hearing_step = (SKILLS_DIR / "session" / "steps" / "ヒアリング.md").read_text(encoding="utf-8")
+    assert "`edit_option`" in hearing_step
+    assert "`adopt`" in hearing_step
     # 取り込み・ヒアリング・リサーチ・方針転換のステップが commit を呼ぶ
     for step_file in COMMIT_STEP_FILES:
         step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")

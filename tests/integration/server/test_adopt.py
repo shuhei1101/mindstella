@@ -46,7 +46,13 @@ def test_normal(
     result = call_tool("adopt", workspace=str(root), id="D-1", key="B")
     # 検証
     assert result.is_error is False
-    assert result.data == {"id": "D-1", "adopted": "B", "previous": "A"}
+    assert result.data == {
+        "id": "D-1",
+        "adopted": "B",
+        "previous": "A",
+        "status": "決定済み",
+        "previous_status": "決定済み",
+    }
     adopted = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
         "items"
     ][0]
@@ -58,7 +64,60 @@ def test_normal(
     assert adopted["answer"] == "案 A に決めた"
     assert len(adopted["history"]) == 1
     assert adopted["history"][0]["before"]["options"] == two_options
+    assert "status" not in adopted["history"][0]["before"]
     assert read_changes(root)["pending"]["changed"] == ["D-1"]
+
+
+def test_normal_when_undecided_adopted(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """未決定と要見直しの検討事項の案を採用すると、どちらも決定済みになる（正常系）。"""
+    # 準備
+    option_a = {"key": "A", "content": "種類ごとに分ける"}
+    option_b = {"key": "B", "content": "1 つにまとめる", "recommended": True}
+    root = make_workspace(
+        make_item("D-1", status="未決定", answer="仮の答え", options=[option_a, option_b]),
+        make_item("D-2", status="要見直し", options=[{**option_a, "adopted": True}, option_b]),
+    )
+    commit(call_tool, root, "足す")
+    # 実行
+    first = call_tool("adopt", workspace=str(root), id="D-1", key="B")
+    second = call_tool("adopt", workspace=str(root), id="D-2", key="A")
+    # 検証
+    assert first.is_error is False
+    assert first.data == {
+        "id": "D-1",
+        "adopted": "B",
+        "previous": None,
+        "status": "決定済み",
+        "previous_status": "未決定",
+    }
+    assert second.is_error is False
+    assert second.data == {
+        "id": "D-2",
+        "adopted": "A",
+        "previous": "A",
+        "status": "決定済み",
+        "previous_status": "要見直し",
+    }
+    decided, reviewed = (
+        yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))["items"]
+    )
+    # 未決定だった D-1: 案 B だけが採用で、推奨の印と答えは残り、変更履歴は状態と案の並びを持つ
+    assert decided["status"] == "決定済み"
+    assert decided["options"] == [
+        {**option_a, "adopted": False},
+        {**option_b, "adopted": True},
+    ]
+    assert decided["answer"] == "仮の答え"
+    assert decided["history"][0]["before"] == {
+        "status": "未決定",
+        "options": [option_a, option_b],
+    }
+    # 要見直しだった D-2: 案 A が採用のまま、変更履歴は状態だけを持つ
+    assert reviewed["status"] == "決定済み"
+    assert [option.get("adopted") for option in reviewed["options"]] == [True, False]
+    assert reviewed["history"][0]["before"] == {"status": "要見直し"}
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:

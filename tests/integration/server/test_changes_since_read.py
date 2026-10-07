@@ -6,7 +6,7 @@ import stat
 from pathlib import Path
 
 from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
-from .history_helpers import add_item, read_changes, update_item, write_settings
+from .history_helpers import OPTIONS, add_item, read_changes, update_item, write_settings
 from workspace_fixtures import RECORD_DIR
 
 # 3 行の本文（2 行目だけを書き換える）
@@ -22,7 +22,7 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
         call_tool,
         root,
         "decision",
-        {"title": "問い A", "status": "未決定", "body_markdown": BODY},
+        {"title": "問い A", "status": "未決定", "options": OPTIONS, "body_markdown": BODY},
     )
     first = call_tool("changes_since_read", workspace=str(root))
     assert first.is_error is False
@@ -67,7 +67,7 @@ def test_normal_when_no_read_point(make_workspace: MakeWorkspace, call_tool: Cal
     """読んだ時点が無ければ差分を返さず、今の last_seq を記録する（正常系）。"""
     # 準備
     root = make_workspace()
-    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
+    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
     update_item(call_tool, root, "D-1", {"answer": "答え"})
     # 実行
     result = call_tool("changes_since_read", workspace=str(root))
@@ -87,7 +87,7 @@ def test_normal_when_history_limit_zero(make_workspace: MakeWorkspace, call_tool
     # 準備
     root = make_workspace()
     write_settings(root, history_limit=0)
-    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
+    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
     call_tool("changes_since_read", workspace=str(root))
     update_item(call_tool, root, "D-1", {"answer": "答え"})
     add_item(call_tool, root, "task", {"title": "調べる", "kind": "調査", "status": "未着手"})
@@ -127,7 +127,7 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace()
     call_tool("changes_since_read", workspace=str(root))
-    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
+    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
     read_before = read_changes(root)["read_seq"]
     before = snapshot_tree(root)
     lock_dirs(root / RECORD_DIR)

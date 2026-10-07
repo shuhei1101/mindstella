@@ -56,6 +56,9 @@ KIND_FILES = {
     "L": "logs.yaml",
 }
 
+# 決定済みの検討事項に付ける、案 A を採用した案
+ADOPTED_OPTIONS: list[dict[str, Any]] = [{"key": "A", "content": "案 A", "adopted": True}]
+
 # ID の頭の文字 → スキーマが必須にしているキーの既定値
 KIND_DEFAULTS: dict[str, dict[str, Any]] = {
     "D": {"status": "未決定", "options": [{"key": "A", "content": "案 A"}]},

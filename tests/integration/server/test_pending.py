@@ -18,7 +18,7 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
     root = make_workspace()
     decision_id = add_item(call_tool, root, "decision", DECISION_ITEM)
     commit(call_tool, root, "足す")
-    update_item(call_tool, root, decision_id, {"answer": "種類ごとに分ける", "status": "決定済み"})
+    update_item(call_tool, root, decision_id, {"answer": "種類ごとに分ける", "reason": "探しやすい"})
     task_id = add_item(call_tool, root, "task", {"title": "決める", "kind": "作業", "status": "未着手"})
     before = snapshot_tree(root)
     # 実行
@@ -31,7 +31,7 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
     changed = result.data["changed"][0]
     assert changed["id"] == decision_id
     assert changed["title"] == DECISION_ITEM["title"]
-    assert sorted(changed["keys"]) == ["answer", "status"]
+    assert sorted(changed["keys"]) == ["answer", "reason"]
     assert snapshot_tree(root) == before
 
 
