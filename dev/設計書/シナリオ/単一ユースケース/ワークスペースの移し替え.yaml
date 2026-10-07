@@ -196,6 +196,9 @@ scenarios:
       - name: 直下に版を記録したワークスペース
         description: '直下に `mindstella-version.ini`（`v0.5.0`）・`mindmap.yaml`・種類ごとの YAML・`docs/` を持ち、`mindmap.yaml` が `playbooks: [システム開発]` と `summary` を持ち、本文を持つ検討事項 D-1 を持つワークスペース'
         notes: v0.5.0 のプラグインで作った形。YAML を直接書いて作る。直下の版のファイルを読み外すと「版を記録する前の形式」と扱われ、v0.3.0・v0.5.0 の手順がもう一度当たる
+      - name: 利用者の README
+        description: 同じワークスペースの直下に、利用者が書いた `README.md` を置く
+        notes: '`README.md` の中身は `# 家計簿アプリの話し合い`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -224,7 +227,7 @@ scenarios:
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版で、直下に版のファイルが残っていない
       - '`config.yaml` の `playbooks`・`summary` と D-1 の中身・本文が、呼ぶ前と同じである'
       - 種類ごとの YAML・`docs/` が `.mindstella/` の下にあり、直下に `mindmap.yaml`・`config.yaml` が残っていない
-      - 直下に `README.md` がある
+      - 直下の `README.md` の中身が、移し替える前と同じである
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_version_recorded_at_top
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
