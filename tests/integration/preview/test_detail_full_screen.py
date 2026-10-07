@@ -6,9 +6,11 @@ from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
     LONG_BODY,
+    LONG_LINES_BODY,
     NEW_DECISION,
     SCROLLABLE_REGION_RULE,
     SETTLED_SCROLL_TOP_JS,
+    overflows_horizontally,
 )
 from preview_comment_helpers import PILL, THREE_LINE_BODY, UPDATE_TIMEOUT_MS, select_text_for_pill
 from preview_fixture_types import (
@@ -473,3 +475,20 @@ def test_body_heading_link(
     assert "full=1" in page.evaluate("location.hash")
     assert page.locator("dialog.full .md a.term").count() == 1
     assert page.locator('dialog.full .md a.idref[data-id="D-3"]').count() == 1
+
+
+def test_code_block_and_diagram_raw_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、本文のコードブロックと図の Raw は、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 実行
+    page.click('dialog.full button[data-act="diagram-raw"]')
+    # 検証
+    for selector in ("dialog.full .md pre:not(.dg-raw)", "dialog.full pre.dg-raw"):
+        assert page.is_visible(selector)
+        assert not overflows_horizontally(page, selector)
+        assert axe_rule_results(page, selector, SCROLLABLE_REGION_RULE)["violations"] == []

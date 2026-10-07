@@ -18,6 +18,13 @@ elements:
     description: 上の帯に置き、押すと図の代わりに記法を出す。差分の表示の間は、記法の行ごとに足した行（+）と消した行（−）を印つきで出す。jsdiff を読めないときと記法の行の差分を打ち切ったときは、今の記法を差分なしで出す。押した状態を `aria-pressed` で伝える
     label: Raw
     visible_when: 常時
+  - name: 記法
+    kind: region
+    description: Raw で図の代わりに出す記法の枠。長い行を折り返して窓の幅に収め、横にスクロールさせない。差分の表示の間の行は、折り返した続きを印（+ / −）の幅だけ下げて、印の列の下へ回り込ませない。窓の高さで縦にスクロールし、Tab の順で上の帯のボタンの後に入り、フォーカスしたら上下の矢印・PageUp / PageDown・Home / End で送る。読み上げの名前は「図の記法」で、フォーカスの輪郭は全画面で共通の輪郭の色と太さで、枠の内側に描く
+    io: 表示
+    visible_when: Raw を押している間
+    reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
+    status: implemented
 lead: 本文の図を大きく見る。詳細パネルからはモーダルで開き、詳細の全画面からは全画面の中身を切り替える。
 mock: dev/mock/pages/diagram-viewer/21/standard/index.html
 test_file: tests/integration/preview/test_diagram_viewer_screen.py

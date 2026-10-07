@@ -5,8 +5,23 @@ from __future__ import annotations
 import re
 
 from playwright.sync_api import Page
-from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
-from preview_history_helpers import preselect_diff
+from preview_a11y_checks import axe_rule_results
+from preview_body_scroll_helpers import (
+    HANGING_LINES_JS,
+    LONG_LINE,
+    LONG_LINES_BODY,
+    SCROLLABLE_REGION_RULE,
+    TALL_DIAGRAM_BODY,
+    overflows_horizontally,
+)
+from preview_fixture_types import (
+    OpenPreview,
+    WritePreview,
+    WriteReviewPreview,
+    WriteSamplePreview,
+)
+from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 # 図を描き終わるまで待つ上限ミリ秒
 DIAGRAM_TIMEOUT_MS = 20_000
@@ -16,6 +31,10 @@ WHEEL_DELTA = -300
 
 # 図の上の位置（モーダルの中央）
 DIAGRAM_POINT = (640, 400)
+
+# 記法の枠と、Tab で記法の枠の前に来る上の帯の最後のボタン
+VIEWER_RAW = "dialog.viewer .v-raw"
+VIEWER_BAR_LAST_BUTTON = 'dialog.viewer button[data-act="diagram-close"]'
 
 
 def _open_viewer(write_sample_preview, open_preview) -> Page:
@@ -206,3 +225,115 @@ def test_diff_raw(
     assert any("処理を変えた" in text for text in raw.locator(".df-line.df-add").all_inner_texts())
     assert any("終了" in text for text in raw.locator(".df-line.df-del").all_inner_texts())
     assert page.get_attribute('dialog.viewer button[data-act="viewer-raw"]', "aria-pressed") == "true"
+
+
+# ─── 記法の枠 ───
+
+
+def _open_raw(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, body: str
+) -> Page:
+    """`body` の図の拡大を開いて Raw を押し、記法の枠が出るのを待つ。"""
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    page.click('aside.panel button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.viewer[open] .v-stage svg")
+    page.click('dialog.viewer button[data-act="viewer-raw"]')
+    page.wait_for_selector(VIEWER_RAW, state="visible")
+    return page
+
+
+def test_raw_region_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """記法の枠は、フォーカスでき、読み上げの名前「図の記法」の領域になり、長い行を折り返して横にあふれない（正常系）。"""
+    # 準備・実行
+    page = _open_raw(write_preview, open_preview, make_item, LONG_LINES_BODY)
+    # 検証
+    assert page.get_attribute(VIEWER_RAW, "tabindex") == "0"
+    assert page.get_attribute(VIEWER_RAW, "role") == "region"
+    assert page.get_attribute(VIEWER_RAW, "aria-label") == "図の記法"
+    assert LONG_LINE in page.inner_text(VIEWER_RAW).replace("\n", "")
+    assert not overflows_horizontally(page, VIEWER_RAW)
+
+
+def test_raw_scroll_by_keyboard(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """上の帯のボタンの後の Tab で記法の枠にフォーカスが移り、矢印下・PageDown・End・Home で記法が送れる（正常系）。"""
+    # 準備
+    page = _open_raw(write_preview, open_preview, make_item, TALL_DIAGRAM_BODY)
+    assert page.eval_on_selector(VIEWER_RAW, "e => e.scrollHeight > e.clientHeight")
+    page.locator(VIEWER_BAR_LAST_BUTTON).focus()
+    # 実行・検証
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement?.matches('dialog.viewer .v-raw')")
+    page.keyboard.press("ArrowDown")
+    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop > 0")
+    page.keyboard.press("PageDown")
+    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop > 100")
+    page.keyboard.press("End")
+    page.wait_for_function(
+        "(e => e.scrollTop + e.clientHeight >= e.scrollHeight - 1)(document.querySelector('dialog.viewer .v-raw'))"
+    )
+    page.keyboard.press("Home")
+    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop === 0")
+
+
+def test_raw_focus_outline_inside(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """記法の枠にフォーカスしたとき、輪郭は枠の内側に描く（正常系）。"""
+    # 準備
+    page = _open_raw(write_preview, open_preview, make_item, TALL_DIAGRAM_BODY)
+    page.locator(VIEWER_BAR_LAST_BUTTON).focus()
+    # 実行
+    page.keyboard.press("Tab")
+    # 検証
+    outline = page.eval_on_selector(
+        VIEWER_RAW, "e => { const s = getComputedStyle(e); return [s.outlineOffset, s.outlineStyle]; }"
+    )
+    assert outline == ["-2px", "solid"]
+
+
+def test_raw_region_when_axe(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """axe の `scrollable-region-focusable` に、縦にあふれる記法の枠が当たらない（正常系）。"""
+    # 準備
+    page = _open_raw(write_preview, open_preview, make_item, TALL_DIAGRAM_BODY)
+    assert page.eval_on_selector(VIEWER_RAW, "e => e.scrollHeight > e.clientHeight")
+    # 実行
+    result = axe_rule_results(page, "dialog.viewer", SCROLLABLE_REGION_RULE)
+    # 検証（規則が記法の枠に当たったうえで、通る）
+    assert result["violations"] == []
+    assert len(result["passes"]) == 1
+
+
+def test_diff_raw_when_long_line(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示の間の記法の枠は、長い行を折り返して横にあふれず、折り返した続きの行は印の列の下へ回り込まない（正常系）。"""
+    # 準備
+    root = build_long_line_diff_workspace(make_workspace, call_tool, LONG_LINE)
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    preselect_diff(page, "V-2")
+    open_preview(str(served.data["url"]), "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel figure.diagram.df-colored", timeout=DIAGRAM_TIMEOUT_MS)
+    page.click('aside.panel button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.viewer[open] .v-stage svg")
+    # 実行
+    page.click('dialog.viewer button[data-act="viewer-raw"]')
+    # 検証
+    raw = "dialog.viewer .v-raw.df-raw"
+    assert page.is_visible(raw)
+    assert not overflows_horizontally(page, raw)
+    added = page.evaluate(HANGING_LINES_JS, raw)
+    assert [line["rows"] > 1 for line in added] == [True]
+    assert all(line["clearOfSign"] for line in added)
+    assert axe_rule_results(page, "dialog.viewer", SCROLLABLE_REGION_RULE)["violations"] == []
