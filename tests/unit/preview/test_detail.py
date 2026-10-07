@@ -422,3 +422,273 @@ def test_detail_panel_when_heading(
     result = preview_page.evaluate(OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading})
     # 検証
     assert result == expected
+
+
+# 詳細パネルを開いて文書に差し込む関数（描いた後の描き直しを 1 フレーム待つ）
+OPEN_PANEL_FUNCTION = """const openPanel = async (data, id) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return panel;
+};"""
+
+# 検討事項の中身の並びと、案の採用・不採用の表示を調べる
+DECISION_ORDER_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data}) => {
+    const panel = await openPanel(data, "D-1");
+    const detail = panel.querySelector(".detail");
+    // 中身の直下の子のうち、印を含むものの位置
+    const position = (element) => {
+        let node = element;
+        while (node !== null && node.parentElement !== detail) node = node.parentElement;
+        return node === null ? -1 : [...detail.children].indexOf(node);
+    };
+    const heading = [...panel.querySelectorAll("h3")].find(
+        (element) => (element.textContent ?? "").trim() === "採用した案と理由",
+    );
+    const results = [...panel.querySelectorAll(".opt")].map((option) => ({
+        key: option.querySelector(".key")?.textContent ?? "",
+        result: (option.querySelector(".res")?.textContent ?? "").trim(),
+    }));
+    return {
+        positions: [
+            position(panel.querySelector('[data-key="lead"]')),
+            position(panel.querySelector(".opt")),
+            position(heading ?? null),
+            position(panel.querySelector(".md")),
+        ],
+        decided: heading === undefined
+            ? []
+            : [...heading.parentElement.querySelectorAll("[data-key]")].map((element) => element.getAttribute("data-key")),
+        results,
+    };
+}"""
+)
+
+
+def test_detail_panel_when_decision_order(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """検討事項を 背景 → 案 → 採用した案と理由 → 本文 の順に描く（正常系）。"""
+    # 準備
+    decision = make_item(
+        "D-1",
+        status="決定済み",
+        lead="何を決めるか",
+        answer="月ごとに分ける",
+        reason="探しやすい",
+        body="D-1.md",
+        options=[
+            {"key": "A", "content": "案 A", "adopted": True},
+            {"key": "B", "content": "案 B", "adopted": False},
+            {"key": "C", "content": "案 C"},
+        ],
+    )
+    data = make_data(decisions=[decision], bodies={"D-1.md": "本文の段落\n"})
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(DECISION_ORDER_SCRIPT, {"data": data})
+    # 検証
+    positions = result["positions"]
+    assert -1 not in positions
+    assert positions == sorted(set(positions))
+    assert result["decided"] == ["answer", "reason"]
+    assert result["results"] == [
+        {"key": "A", "result": "採用"},
+        {"key": "B", "result": "不採用"},
+        {"key": "C", "result": ""},
+    ]
+
+
+# 推奨の印を持つ案の記号と、採用した案と理由の節の有無、案ごとの結果の表示を調べる
+RECOMMENDED_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id}) => {
+    const panel = await openPanel(data, id);
+    const headings = [...panel.querySelectorAll("h3")].map((element) => (element.textContent ?? "").trim());
+    const options = [...panel.querySelectorAll(".opt")];
+    return {
+        recommended: options
+            .filter((option) => (option.querySelector(".o-head")?.textContent ?? "").includes("推奨"))
+            .map((option) => option.querySelector(".key")?.textContent ?? ""),
+        stars: panel.querySelectorAll(".opt .o-head svg").length,
+        hasDecidedSection: headings.includes("採用した案と理由"),
+        results: options.map((option) => (option.querySelector(".res")?.textContent ?? "").trim()),
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "status", "options", "expected"),
+    [
+        pytest.param(
+            "D-1",
+            "未決定",
+            [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B", "recommended": True}],
+            {"recommended": ["B"], "stars": 1, "hasDecidedSection": False, "results": ["", ""]},
+            id="undecided_with_recommended",
+        ),
+        pytest.param(
+            "D-2",
+            "決定済み",
+            [
+                {"key": "A", "content": "案 A", "adopted": True},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+            {
+                "recommended": [],
+                "stars": 0,
+                "hasDecidedSection": False,
+                "results": ["採用", ""],
+            },
+            id="decided_hides_recommended",
+        ),
+        pytest.param(
+            "D-3",
+            "未決定",
+            [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+            {"recommended": [], "stars": 0, "hasDecidedSection": False, "results": ["", ""]},
+            id="undecided_without_recommended",
+        ),
+    ],
+)
+def test_detail_panel_when_recommended(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    status: str,
+    options: list[dict[str, object]],
+    expected: dict[str, object],
+) -> None:
+    """採用した案が無いときだけ、推奨の案に推奨のバッジを出す（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item(item_id, status=status, options=options)])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(RECOMMENDED_SCRIPT, {"data": data, "id": item_id})
+    # 検証
+    assert result == expected
+
+
+# 値の要素（data-key がキーのパス）の中の強調と、Markdown の記号の残りを調べる
+MARKDOWN_VALUES_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id, keys}) => {
+    const panel = await openPanel(data, id);
+    return {
+        values: keys.map((key) => {
+            const element = panel.querySelector(`[data-key="${key}"]`);
+            return {
+                key,
+                found: element !== null,
+                strong: element === null ? 0 : element.querySelectorAll("strong").length,
+                raw: element === null ? false : (element.textContent ?? "").includes("**"),
+            };
+        }),
+        dirty: window.__x,
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "kinds", "keys"),
+    [
+        pytest.param(
+            "D-1",
+            {
+                "decisions": [
+                    {
+                        "id": "D-1",
+                        "status": "決定済み",
+                        "lead": "**強調**",
+                        "answer": "**強調**",
+                        "reason": "**強調**",
+                        "options": [
+                            {"key": "A", "content": "案 A", "pros": "**強調**", "adopted": True}
+                        ],
+                    }
+                ]
+            },
+            ["lead", "answer", "reason", "options[A].pros"],
+            id="decision",
+        ),
+        pytest.param(
+            "T-1", {"tasks": [{"id": "T-1", "reason": "**強調**"}]}, ["reason"], id="task"
+        ),
+        pytest.param(
+            "R-1",
+            {"research": [{"id": "R-1", "question": "**強調**", "conclusion": "**強調**"}]},
+            ["question", "conclusion"],
+            id="research",
+        ),
+        pytest.param(
+            "G-1", {"terms": [{"id": "G-1", "meaning": "**強調**"}]}, ["meaning"], id="term"
+        ),
+        pytest.param(
+            "N-1",
+            {"notes": [{"id": "N-1", "content": '**強調** <img src=x onerror="window.__x=1">'}]},
+            ["content"],
+            id="note",
+        ),
+    ],
+)
+def test_detail_panel_when_markdown_values(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    kinds: dict[str, list[dict[str, object]]],
+    keys: list[str],
+) -> None:
+    """文字列の値を Markdown で描き、キーのパスを保つ（正常系）。"""
+    # 準備
+    data = make_data(
+        **{
+            kind: [
+                make_item(item["id"], **{k: v for k, v in item.items() if k != "id"})
+                for item in items
+            ]
+            for kind, items in kinds.items()
+        }
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        MARKDOWN_VALUES_SCRIPT, {"data": data, "id": item_id, "keys": keys}
+    )
+    # 検証
+    assert result["values"] == [
+        {"key": key, "found": True, "strong": 1, "raw": False} for key in keys
+    ]
+    assert result["dirty"] is None

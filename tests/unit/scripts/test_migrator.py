@@ -448,6 +448,22 @@ def test_record_version_when_schema_mismatch(
     assert not (root / RECORD_DIR / VERSION_FILE).exists()
 
 
+def test_record_version_when_decision_state(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """案と状態の合わない検討事項が残っていれば書かない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=[]))
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        migrator.record_version(root, to_version=V030)
+    assert any(
+        line.startswith("decisions.yaml: items[0].options:") for line in exc_info.value.lines
+    )
+    assert snapshot_tree(root) == before
+
+
 @pytest.mark.parametrize(
     ("files", "expectation"),
     [

@@ -1021,3 +1021,254 @@ def test_check_settings_when_invalid(
     # 検証
     assert expected_key in [problem.key for problem in problems]
     assert {problem.file for problem in problems} == {"config.yaml"}
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        pytest.param(
+            [{"id": "D-1", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}],
+            id="undecided_with_options",
+        ),
+        pytest.param(
+            [
+                {
+                    "id": "D-1",
+                    "status": "決定済み",
+                    "options": [
+                        {"key": "A", "content": "案 A", "adopted": True},
+                        {"key": "B", "content": "案 B"},
+                    ],
+                }
+            ],
+            id="decided_with_adopted",
+        ),
+        pytest.param(
+            [
+                {
+                    "id": "D-1",
+                    "status": "要見直し",
+                    "options": [{"key": "A", "content": "案 A", "adopted": True}],
+                }
+            ],
+            id="review_with_adopted",
+        ),
+        pytest.param(
+            [
+                {"id": "D-1", "status": "未整理"},
+                {"id": "D-2", "status": "対象外", "options": []},
+                {"id": "D-3", "status": "取り下げ"},
+            ],
+            id="optional_statuses_without_options",
+        ),
+    ],
+)
+def test_check_decision_rules(items: list[dict[str, Any]]) -> None:
+    """決まりに合う検討事項は問題 0 件（正常系）。"""
+    # 実行
+    problems = store.check_decision_rules({"items": items})
+    # 検証
+    assert problems == []
+
+
+def test_check_decision_rules_when_mismatch() -> None:
+    """合わない決まりを 1 件ずつ拾う（正常系）。"""
+    # 準備
+    decisions = {
+        "items": [
+            {"id": "D-1", "status": "未決定", "options": []},
+            {
+                "id": "D-2",
+                "status": "決定済み",
+                "options": [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+            },
+            {
+                "id": "D-3",
+                "status": "未決定",
+                "options": [{"key": "A", "content": "案 A", "adopted": True}],
+            },
+        ]
+    }
+    # 実行
+    problems = store.check_decision_rules(decisions)
+    # 検証
+    assert [(problem.id, problem.key) for problem in problems] == [
+        ("D-1", "items[0].options"),
+        ("D-2", "items[1].options"),
+        ("D-3", "items[2].status"),
+    ]
+    assert {(problem.kind, problem.file) for problem in problems} == {
+        ("decision_state", "decisions.yaml")
+    }
+    assert "A" in problems[2].detail
+    assert "未決定" in problems[2].detail
+
+
+def test_check_decision_rules_when_malformed() -> None:
+    """形の崩れた要素は飛ばす（正常系）。"""
+    # 準備
+    decisions = {"items": ["文字列", {"id": "D-1", "status": "未決定", "options": "文字列"}]}
+    # 実行
+    problems = store.check_decision_rules(decisions)
+    # 検証
+    assert problems == []
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_legacy"),
+    [
+        pytest.param({"written_ids": frozenset({"D-1"})}, False, id="written"),
+        pytest.param({}, True, id="not_written"),
+    ],
+)
+def test_build_mismatch_error_when_decision_state(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    kwargs: dict[str, Any],
+    expected_legacy: bool,
+) -> None:
+    """書き込む項目だけが案と状態に合わないときは前の版の形式にしない（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1")))
+    problem = store.Problem(
+        kind="decision_state",
+        file="decisions.yaml",
+        id="D-1",
+        key="items[0].options",
+        detail="D-1 は状態 未決定 のため案を 1 つ以上持つ（options に案を書く）",
+    )
+    # 実行
+    error = store.build_mismatch_error([problem], workspace, **kwargs)
+    # 検証
+    assert error.legacy is expected_legacy
+    assert len(error.lines) == 1
+    assert error.lines[0].startswith("decisions.yaml: items[0].options:")
+
+
+def test_written_ids(make_item: MakeItem) -> None:
+    """足した項目と直した項目だけを返す（正常系）。"""
+    # 準備
+    before = [make_item("D-1"), make_item("D-2")]
+    after = [make_item("D-1"), make_item("D-2", status="保留"), make_item("D-3")]
+    # 実行
+    written = store._written_ids(before, after)
+    # 検証
+    assert written == frozenset({"D-2", "D-3"})
+
+
+def test_validate_workspace_when_decision_state(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """案と状態の決まりに合わない検討事項も問題に含める（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1", options=[])))
+    # 実行
+    problems = store.validate_workspace(workspace)
+    # 検証
+    assert len(problems) == 1
+    problem = problems[0]
+    assert problem.kind == "decision_state"
+    assert problem.file == "decisions.yaml"
+    assert problem.key == "items[0].options"
+    assert problem.id == "D-1"
+
+
+@pytest.mark.parametrize(
+    ("kept_d2", "changed_d1", "expected_legacy", "expected_id"),
+    [
+        pytest.param({"options": []}, {"lead": "直した"}, True, "D-2", id="other_item_mismatch"),
+        pytest.param({}, {"status": "決定済み"}, False, "D-1", id="written_item_mismatch"),
+    ],
+)
+def test_save_change_when_decision_state(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    snapshot_tree: SnapshotTree,
+    kept_d2: dict[str, Any],
+    changed_d1: dict[str, Any],
+    expected_legacy: bool,
+    expected_id: str,
+) -> None:
+    """書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-2", **kept_d2))
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    change = store.Change(
+        kind="decision", items=[make_item("D-1", **changed_d1), make_item("D-2", **kept_d2)]
+    )
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        store.save_change(workspace, change)
+    assert exc_info.value.legacy is expected_legacy
+    assert all(expected_id in line for line in exc_info.value.lines)
+    assert snapshot_tree(root) == before
+
+
+@pytest.mark.parametrize(
+    ("kept_d2", "added_d3", "expected_legacy", "expected_id"),
+    [
+        pytest.param({"options": []}, {}, True, "D-2", id="other_item_mismatch"),
+        pytest.param({}, {"options": []}, False, "D-3", id="written_item_mismatch"),
+    ],
+)
+def test_save_batch_when_decision_state(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    snapshot_tree: SnapshotTree,
+    kept_d2: dict[str, Any],
+    added_d3: dict[str, Any],
+    expected_legacy: bool,
+    expected_id: str,
+) -> None:
+    """書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-2", **kept_d2))
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    change = store.BatchChange(
+        items={
+            "decision": [
+                make_item("D-1"),
+                make_item("D-2", **kept_d2),
+                make_item("D-3", **added_d3),
+            ],
+            "task": [make_item("T-1")],
+        }
+    )
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        store.save_batch(workspace, change)
+    assert exc_info.value.legacy is expected_legacy
+    assert all(expected_id in line for line in exc_info.value.lines)
+    assert snapshot_tree(root) == before
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        pytest.param({}, True, id="no_written_ids"),
+        pytest.param({"written_ids": frozenset({"D-1"})}, False, id="written"),
+        pytest.param({"written_ids": frozenset({"D-2"})}, True, id="other_written"),
+    ],
+)
+def test_is_legacy_problem_when_decision_state(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    kwargs: dict[str, Any],
+    expected: bool,
+) -> None:
+    """書き込む項目以外の案と状態の合わない検討事項だけを前の版の形式とする（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1", options=[])))
+    problem = store.Problem(
+        kind="decision_state",
+        file="decisions.yaml",
+        id="D-1",
+        key="items[0].options",
+        detail="D-1 は状態 未決定 のため案を 1 つ以上持つ（options に案を書く）",
+    )
+    # 実行
+    result = store.is_legacy_problem(problem, workspace, **kwargs)
+    # 検証
+    assert result is expected

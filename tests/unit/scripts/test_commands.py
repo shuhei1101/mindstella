@@ -200,6 +200,31 @@ def test_switch_adopted_when_option_missing() -> None:
     assert "B" in message
 
 
+@pytest.mark.parametrize("status", ["未決定", "要見直し", "保留"])
+def test_switch_adopted_when_undecided(status: str) -> None:
+    """どの状態からも決定済みにし、推奨の印は残す（正常系）。"""
+    # 準備
+    item = {
+        "id": "D-1",
+        "status": status,
+        "options": [
+            {"key": "A", "content": "案 A"},
+            {"key": "B", "content": "案 B", "recommended": True},
+        ],
+    }
+    # 実行
+    switched, previous = commands.switch_adopted(item, "B")
+    # 検証
+    assert switched["status"] == "決定済み"
+    assert switched["options"] == [
+        {"key": "A", "content": "案 A", "adopted": False},
+        {"key": "B", "content": "案 B", "recommended": True, "adopted": True},
+    ]
+    assert previous is None
+    assert item["status"] == status
+    assert item["options"][1] == {"key": "B", "content": "案 B", "recommended": True}
+
+
 def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: Path) -> None:
     """作ったワークスペースとファイルを返す（正常系）。"""
     # 準備
@@ -219,7 +244,12 @@ def test_run_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """本文つきの検討事項を足す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    item = {"title": "問い", "status": "未決定", "body_markdown": "## 経緯\n"}
+    item = {
+        "title": "問い",
+        "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
+        "body_markdown": "## 経緯\n",
+    }
     # 実行
     payload = commands.run_add(root, "decision", item, now=_fixed_now)
     # 検証
@@ -275,7 +305,7 @@ def test_run_update_stacks_history(make_workspace: MakeWorkspace, make_item: Mak
     # 準備
     root = make_workspace(make_item("D-1", status="未決定"))
     # 実行
-    commands.run_update(root, "D-1", {"status": "決定済み"}, now=_fixed_now)
+    commands.run_update(root, "D-1", {"status": "保留"}, now=_fixed_now)
     # 検証
     stacked = _read_items(root, "decisions.yaml")[0]["history"][0]
     assert stacked["before"] == {"status": "未決定"}
@@ -428,14 +458,85 @@ def test_apply_option_edit_when_rejected(
         commands.apply_option_edit(item, action, key, option)
 
 
+@pytest.mark.parametrize(
+    ("action", "key", "option", "expected"),
+    [
+        pytest.param(
+            "update",
+            "B",
+            {"recommended": True},
+            [
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+            id="move_to_b",
+        ),
+        pytest.param(
+            "update",
+            "A",
+            {"recommended": False},
+            [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+            id="clear",
+        ),
+        pytest.param(
+            "add",
+            "C",
+            {"content": "案 C", "recommended": True},
+            [
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B"},
+                {"key": "C", "content": "案 C", "recommended": True},
+            ],
+            id="add_recommended",
+        ),
+    ],
+)
+def test_apply_option_edit_when_recommended(
+    make_item: MakeItem,
+    action: str,
+    key: str,
+    option: dict[str, Any],
+    expected: list[dict[str, Any]],
+) -> None:
+    """推奨の印を 1 つに付け替え、外した案はキーを持たない（正常系）。"""
+    # 準備
+    item = make_item(
+        "D-1",
+        options=[
+            {"key": "A", "content": "案 A", "recommended": True},
+            {"key": "B", "content": "案 B"},
+        ],
+    )
+    # 実行
+    options = commands.apply_option_edit(item, action, key, option)
+    # 検証
+    assert options == expected
+
+
+@pytest.mark.parametrize(
+    "status",
+    [pytest.param("未決定", id="required"), pytest.param("未整理", id="optional")],
+)
+def test_apply_option_edit_when_last_option(make_item: MakeItem, status: str) -> None:
+    """案を必須にする状態の最後の案は消さず、必須でない状態では消せる（異常系）。"""
+    # 準備
+    item = make_item("D-1", status=status, options=[{"key": "A", "content": "案 A"}])
+    # 実行・検証
+    if status == "未決定":
+        with pytest.raises(errors.LastOptionError, match="D-1") as exc_info:
+            commands.apply_option_edit(item, "remove", "A", None)
+        assert "A" in str(exc_info.value)
+        assert "未決定" in str(exc_info.value)
+    else:
+        assert commands.apply_option_edit(item, "remove", "A", None) == []
+
+
 def test_run_edit_option(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """案を足して変更履歴と通し番号を付ける（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=[{"key": "A", "content": "案 A"}]))
     # 実行
-    payload = commands.run_edit_option(
-        root, "D-1", "add", "B", {"content": "案 B"}, now=_fixed_now
-    )
+    payload = commands.run_edit_option(root, "D-1", "add", "B", {"content": "案 B"}, now=_fixed_now)
     # 検証
     assert payload == {
         "id": "D-1",
@@ -476,13 +577,21 @@ def test_run_batch(
     # 準備
     root = make_workspace(make_item("D-1"))
     operations = [
-        {"op": "add", "kind": "decision", "item": {"title": "記録の単位", "status": "未決定"}},
+        {
+            "op": "add",
+            "kind": "decision",
+            "item": {
+                "title": "記録の単位",
+                "status": "未決定",
+                "options": [{"key": "A", "content": "月ごと", "recommended": True}],
+            },
+        },
         {
             "op": "add",
             "kind": "task",
             "item": {"title": "調べる", "kind": "調査", "status": "未着手", "for": ["$1"]},
         },
-        {"op": "update", "id": "D-1", "item": {"answer": "月ごと", "status": "決定済み"}},
+        {"op": "update", "id": "D-1", "item": {"reason": "単位が決まるまで待つ", "status": "保留"}},
         {"op": "show", "id": "D-1"},
     ]
     # commands が書き込みに使う save_batch の呼び出しを数える（書き込み自体は本物に任せる）
@@ -502,9 +611,9 @@ def test_run_batch(
     assert [result["op"] for result in results] == ["add", "add", "update", "show"]
     assert results[0]["result"]["id"] == "D-2"
     assert results[1]["result"]["id"] == "T-1"
-    assert results[2]["result"]["changed"] == ["answer", "status"]
-    assert results[3]["result"]["item"]["answer"] == "月ごと"
-    assert results[3]["result"]["item"]["status"] == "決定済み"
+    assert results[2]["result"]["changed"] == ["reason", "status"]
+    assert results[3]["result"]["item"]["reason"] == "単位が決まるまで待つ"
+    assert results[3]["result"]["item"]["status"] == "保留"
     assert _read_items(root, "tasks.yaml")[0]["for"] == ["D-2"]
     assert len(calls) == 1
 
@@ -517,7 +626,15 @@ def test_run_batch_when_operation_fails(
     root = make_workspace(make_item("D-1"))
     before = snapshot_tree(root)
     operations = [
-        {"op": "add", "kind": "decision", "item": {"title": "問い", "status": "未決定"}},
+        {
+            "op": "add",
+            "kind": "decision",
+            "item": {
+                "title": "問い",
+                "status": "未決定",
+                "options": [{"key": "A", "content": "案 A"}],
+            },
+        },
         {"op": "update", "id": "D-9", "item": {"answer": "a"}},
     ]
     # 実行・検証
@@ -575,6 +692,7 @@ def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     root = make_workspace(
         make_item(
             "D-1",
+            status="決定済み",
             options=[
                 {"key": "A", "content": "案 A", "adopted": True},
                 {"key": "B", "content": "案 B", "adopted": False},
@@ -584,7 +702,13 @@ def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 実行
     payload = commands.run_adopt(root, "D-1", "B", now=_fixed_now)
     # 検証
-    assert payload == {"id": "D-1", "adopted": "B", "previous": "A"}
+    assert payload == {
+        "id": "D-1",
+        "adopted": "B",
+        "previous": "A",
+        "status": "決定済み",
+        "previous_status": "決定済み",
+    }
     options = _read_items(root, "decisions.yaml")[0]["options"]
     assert options[0]["adopted"] is False
     assert options[1]["adopted"] is True
@@ -601,11 +725,41 @@ def test_run_adopt_when_not_decision(make_workspace: MakeWorkspace, make_item: M
         commands.run_adopt(root, "T-1", "A", now=_fixed_now)
 
 
+def test_run_adopt_when_undecided(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """未決定の検討事項を採用で決定済みにし、前の状態を変更履歴に積む（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1",
+            options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+        )
+    )
+    # 実行
+    payload = commands.run_adopt(root, "D-1", "B", now=_fixed_now)
+    # 検証
+    assert payload == {
+        "id": "D-1",
+        "adopted": "B",
+        "previous": None,
+        "status": "決定済み",
+        "previous_status": "未決定",
+    }
+    saved = _read_items(root, "decisions.yaml")[0]
+    assert saved["status"] == "決定済み"
+    before = saved["history"][0]["before"]
+    assert before["status"] == "未決定"
+    assert before["options"] == [
+        {"key": "A", "content": "案 A"},
+        {"key": "B", "content": "案 B"},
+    ]
+
+
 def test_run_commit(make_workspace: MakeWorkspace) -> None:
     """まだまとめていない変更をまとめる（正常系）。"""
     # 準備
     root = make_workspace()
-    commands.run_add(root, "decision", {"title": "問い", "status": "未決定"}, now=_fixed_now)
+    item = {"title": "問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}
+    commands.run_add(root, "decision", item, now=_fixed_now)
     # 実行
     payload = commands.run_commit(root, "  足す ", now=_fixed_now)
     # 検証
@@ -674,6 +828,20 @@ def test_run_check_when_legacy_format(make_legacy_workspace: MakeLegacyWorkspace
     assert all(
         detail.endswith("（/mindstella:upgrade で今の形式に移せます）") for detail in details
     )
+
+
+def test_run_check_when_decision_state(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """案と状態の合わない検討事項に /mindstella:upgrade を案内する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=[]))
+    # 実行
+    payload = commands.run_check(root)
+    # 検証
+    assert payload["ok"] is False
+    problem = next(row for row in payload["problems"] if row["kind"] == "decision_state")
+    assert problem["file"] == ".mindstella/decisions.yaml"
+    assert problem["key"] == "items[0].options"
+    assert "/mindstella:upgrade" in problem["detail"]
 
 
 def test_run_impact(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

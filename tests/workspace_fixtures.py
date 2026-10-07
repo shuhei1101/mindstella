@@ -5,6 +5,7 @@ fixture は `tests/conftest.py` が読み込み、`tests/` の下の全てのテ
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import subprocess
@@ -57,7 +58,7 @@ KIND_FILES = {
 
 # ID の頭の文字 → スキーマが必須にしているキーの既定値
 KIND_DEFAULTS: dict[str, dict[str, Any]] = {
-    "D": {"status": "未決定"},
+    "D": {"status": "未決定", "options": [{"key": "A", "content": "案 A"}]},
     "T": {"kind": "作業", "status": "未着手"},
     "R": {"question": "何を調べたか"},
     "A": {"kind": "図", "deliverable": False, "status": "下書き"},
@@ -247,7 +248,8 @@ def make_item() -> MakeItem:
     def _make(item_id: str, **overrides: Any) -> dict[str, Any]:
         """ID・題・種類ごとの必須のキーに、渡したキーを重ねて日時を足した項目を返す。"""
         item: dict[str, Any] = {"id": item_id, "title": f"{item_id}の題"}
-        item.update(KIND_DEFAULTS[item_id[0]])
+        # 案の配列などの入れ子は、項目どうしで共有しないよう写してから入れる
+        item.update(copy.deepcopy(KIND_DEFAULTS[item_id[0]]))
         # 資料は本文が必須なので、ID に揃えたファイル名を既定にする
         if item_id[0] == "A":
             item["body"] = f"{item_id}.md"
