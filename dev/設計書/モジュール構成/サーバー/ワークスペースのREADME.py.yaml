@@ -173,3 +173,5 @@ functions:
         exception: README.md を書けない
 notes:
   依存の向き: '`readme.py` は `launch.py`（`session_name`）と `errors.py` だけを読み、`store.py`・`serve.py` を読まない。配っている URL は呼ぶ側（`commands.py`）が台帳から引いて渡す。'
+test_files:
+  - tests/unit/scripts/test_readme.py
