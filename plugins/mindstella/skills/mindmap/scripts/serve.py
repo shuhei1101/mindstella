@@ -197,6 +197,12 @@ class PreviewRegistry:
             logger.info("配信を立てた: %s %s", key, preview.url)
             return preview.url, True
 
+    def url_of(self, root: Path) -> str | None:
+        """そのワークスペースを配っていれば画面の URL を、配っていなければ None を返す（配信は立てない）。"""
+        with self._guard:
+            preview = self._servers.get(root.resolve())
+        return None if preview is None else preview.url
+
     def stop_all(self) -> None:
         """立てた配信を全て止め、台帳を空にする。"""
         with self._guard:

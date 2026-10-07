@@ -43,6 +43,8 @@ flows:
       - '`steps/取り込み.md` が `tags` を呼ぶ'
       - '`steps/取り込み.md` と `references/質問の書式.md` が `recommended` を指す'
       - '`steps/ヒアリング.md` が `edit_option` と `adopt` を呼ぶ'
+      - 本文が準備で `readme` を `changes_since_read` より前に呼ぶ
+      - 本文に、`readme` がエラーを返しても準備を続けて `changes_since_read` を呼ぶ分岐がある
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
@@ -69,7 +71,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で、`config.yaml` は `update_settings` で書く。`release/` の Markdown の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -132,6 +134,9 @@ constraints:
     constraint: 手順が Read で読む設定と YAML、リリースの資料を書き出す先は、全て `{ワークスペースのフォルダ}/.mindstella/` の下を指す（`.mindstella/config.yaml`・`.mindstella/decisions.yaml`・`.mindstella/release/`）。進め方ガイドの「リリースの形」も `.mindstella/release/` を指す
   - item: 全ての種類の本文
     constraint: 取り込みのステップは、タスク・用語集・メモにも経緯や補足があれば `body_markdown` で本文を書く（脱線で調べたことはメモの本文に残す）。どの種類に何を本文に書くかは取り込みの手順の表が決める
+  - item: README の書き直し
+    constraint: 準備のステップで版の比較が `same` のとき、`changes_since_read` より前に `readme` を呼ぶ。`written` が偽（利用者が書いた README）でも利用者には示さずに続ける。`readme` がツールのエラーを返しても、エラーの本文を利用者に短く示して準備を続ける（`changes_since_read` へ進む）
+    notes: 単一ユースケース『README の書き直し』、インターフェース定義『README の書き出し』（サーバー）
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

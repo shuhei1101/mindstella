@@ -894,7 +894,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの作成
     scope: public
-    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る
+    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作り、直下に README を書く
     side_effects: フォルダとファイルを作る
     args:
       - name: root
@@ -914,13 +914,13 @@ functions:
         description: 版のファイルに書くプラグインの版（`v0.3.0` の形。入口が `read_plugin_version` で読んで渡す）
     returns:
       type: list[str]
-      description: 作ったファイルとフォルダ（ワークスペースからの相対パスで `.mindstella/` から始まる。フォルダは末尾に `/`）
+      description: 作ったファイルとフォルダ（ワークスペースからの相対パス。フォルダは末尾に `/`）。`README.md` はこの呼び出しで書いたときだけ末尾に載せ、ほかは `.mindstella/` から始まる
     process: |-
       1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
-      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、最後に `config.yaml` を書く（`dump_yaml`。どれも `records_root(root)` の下）
-         - `OSError` が起きた場合、この関数が作ったファイルとフォルダを消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
+      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README のほかはどれも `records_root(root)` の下）
+         - `OSError` か README の `WriteFailedError` が起きた場合、この関数が作ったファイルとフォルダ（この呼び出しで書いた README を含む。前からあった README は消さない）を消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
         condition: '`root` に `.mindstella/config.yaml` が既にあるか、直下に `config.yaml` か `mindmap.yaml` がある'
@@ -936,7 +936,7 @@ functions:
         summary: まだ無いフォルダにワークスペースを作る
         condition: '`tmp_path / "ws"`（無い）と正しい設定、`version="v0.3.0"`'
         mock: なし
-        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`
+        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`・`README.md`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`。直下の `README.md` の 1 行目が `README_MARK`
       - name: test_create_workspace_when_exists
         case: 異常
         summary: config.yaml か mindmap.yaml があるフォルダには作らない
@@ -957,6 +957,19 @@ functions:
         condition: '`dump_yaml` で作った文字列を書く処理を、`logs.yaml` のときだけ `OSError` を送るように `Path.write_text` を差し替える。`tmp_path / "ws"`（無い）'
         mock: '`Path.write_text`（monkeypatch）'
         expected: '`WriteFailedError`。`tmp_path / "ws"` が無い'
+        exception: 作る途中で OSError
+      - name: test_create_workspace_when_user_readme_exists
+        case: 正常
+        summary: 利用者の README があるフォルダには README を書かずに作る
+        condition: '`# 家計簿アプリの話し合い` の `README.md` だけを置いた `tmp_path` と正しい設定'
+        mock: なし
+        expected: 戻り値に `README.md` が無く、`.mindstella/config.yaml` がある。`README.md` の中身が呼ぶ前と同じ
+      - name: test_create_workspace_when_readme_write_fails
+        case: 異常
+        summary: README を書けなければ作ったものを消す
+        condition: '`README.md` という名前のフォルダだけを置いた `tmp_path` と正しい設定'
+        mock: なし
+        expected: '`WriteFailedError`。`.mindstella/` が無く、`README.md` のフォルダが残っている'
         exception: 作る途中で OSError
   - name: read_body
     title: 本文の読み込み

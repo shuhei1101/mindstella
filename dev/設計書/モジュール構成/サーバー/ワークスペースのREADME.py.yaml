@@ -1,0 +1,177 @@
+title: "サーバー / ワークスペースの README"
+lead: ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL の一覧）を組み立てて書く。`init`・`readme`・`preview_url` の 3 つのツールが同じ関数で書く。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    readme.py   直下の README.md の中身の組み立て・書くかの判定・書き込み
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class ツールの処理
+        class 読み書きと検証
+        class ワークスペースのREADME
+        class 起動
+        ツールの処理 --> ワークスペースのREADME : readme・preview_url
+        読み書きと検証 --> ワークスペースのREADME : create_workspace
+        ワークスペースのREADME --> 起動 : セッションの名前
+      ```
+constants:
+  - name: README_FILE
+    title: README のファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: ワークスペースの直下に書くファイルの名前
+    value: '"README.md"'
+  - name: README_MARK
+    title: 自動で書いた印
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: サーバーが書いた README の 1 行目。この行で始まる README だけを書き直す
+    value: '"<!-- mindstella:readme -->"'
+  - name: PLUGIN_DIR
+    title: プラグインのフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: 動いているサーバーのプラグインのフォルダ（起動のコマンドに使う）
+    value: Path(__file__).resolve().parents[3]
+  - name: LAUNCH_SCRIPT
+    title: 起動スクリプトの場所
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: プラグインのフォルダからの起動スクリプトのパス
+    value: '"bin/mindstella"'
+  - name: PREVIEW_HINT
+    title: 配っていないときの文面
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: プレビューの節に、URL の代わりに書く行
+    value: '"`/mindstella:session` でプレビューを頼むと URL が表示されます。"'
+  - name: DOC_LINKS
+    title: ドキュメントのリンク
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: ドキュメントの節に並べる題名と URL
+    value: (("プレビューを見る", "https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html"), ("起動スクリプトで立ち上げる", "https://shuhei1101.github.io/mindstella/使い方/セットアップ手順/起動スクリプトで立ち上げる.html"))
+functions:
+  - name: render_readme
+    title: README の組み立て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    scope: public
+    summary: インターフェース定義『README の書き出し』の制約「README の中身」の形の Markdown を作る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: plugin_dir
+        type: Path
+        required: true
+        passing: keyword
+        description: プラグインのフォルダ
+      - name: preview_url
+        type: str | None
+        required: true
+        passing: keyword
+        description: 配っているプレビューの URL。配っていなければ `None`
+    returns:
+      type: str
+      description: 1 行目が `README_MARK` で、末尾が改行の Markdown
+    process: |-
+      1. `root` を `resolve()` し、フォルダ名を見出しに、絶対パスを `shlex.quote` で引用してコマンドに使う
+      2. プレビューの節に `preview_url` を書く
+         - `None` の場合、`PREVIEW_HINT` を書く
+      3. コマンドの節に、起動（`{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`。どちらも `shlex.quote`）・接続（`tmux attach-session -t ={セッションの名前}`。`session_name`を `shlex.quote`）・セッション・セットアップ・アップグレード（`/mindstella:session`・`/mindstella:setup`・`/mindstella:upgrade` と絶対パス）をこの順に、太字の見出し・短い説明・`bash` のコードブロックで書く
+      4. ドキュメントの節に `DOC_LINKS` を箇条書きのリンクで書く
+    unit_tests:
+      - name: test_render_readme
+        case: 正常
+        summary: 配っていないときの一覧を作る
+        condition: '`root=tmp_path / "家計簿アプリ"`、`plugin_dir=Path("/p/mindstella/0.7.0")`、`preview_url=None`'
+        mock: なし
+        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。節が `## プレビュー` → `## コマンド` → `## ドキュメント` の順で、プレビューの節が `PREVIEW_HINT` で `http://127.0.0.1` を含まない。コマンドの節に `**起動:**`・`**接続:**`・`**セッション:**`・`**セットアップ:**`・`**アップグレード:**` がこの順にあり、それぞれの後ろの `bash` のコードブロックが起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `session_name(root)`）・3 つのスキルの呼び方。`DOC_LINKS` の 2 つの URL がある
+      - name: test_render_readme_when_serving
+        case: 正常
+        summary: 配っているときは URL を書く
+        condition: '`preview_url="http://127.0.0.1:43817/mindstella.html"`'
+        mock: なし
+        expected: プレビューの節にその URL があり、`PREVIEW_HINT` が無い
+      - name: test_render_readme_when_path_has_space
+        case: 正常
+        summary: 空白を含むパスを引用する
+        condition: '`root=tmp_path / "my notes"`、`plugin_dir=Path("/p/my plugins/mindstella")`'
+        mock: なし
+        expected: 起動のコードブロックのコマンドを `shlex.split` すると、起動スクリプトのパスと絶対パスの 2 つになる
+  - name: write_readme
+    title: README の書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    scope: public
+    summary: 直下に `README.md` が無いか、自動で書いた印で始まるときだけ、今の値で書く
+    side_effects: ワークスペースの直下の `README.md` を書く
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ（あるフォルダ）
+      - name: preview_url
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: 配っているプレビューの URL
+      - name: plugin_dir
+        type: Path
+        required: false
+        default: PLUGIN_DIR
+        passing: keyword
+        description: プラグインのフォルダ（テストで差し替える）
+    returns:
+      type: bool
+      description: 書いたか。利用者が書いた README があって書かなかったら `False`
+    process: |-
+      1. `root / README_FILE` がファイルで、1 行目が `README_MARK` でなければ `False` を返す（読めない文字コードのファイルと、読み取りで `OSError` が起きるファイルも利用者のものとして扱う）
+      2. 中身を組み立て（README の組み立て。`render_readme`）、同じフォルダの一時ファイルに書いて `os.replace` で置き換え、`True` を返す
+         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
+    exceptions:
+      - name: WriteFailedError
+        condition: '`README.md` を書けない（同じ名前のフォルダがある・権限が無い など）'
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_write_readme
+        case: 正常
+        summary: README が無ければ書く
+        condition: 空の `tmp_path`、`plugin_dir=Path("/p")`
+        mock: なし
+        expected: '`True`。`README.md` の中身が `render_readme(tmp_path, plugin_dir=Path("/p"), preview_url=None)` と同じで、フォルダに一時ファイルが残っていない'
+      - name: test_write_readme_when_generated
+        case: 正常
+        summary: 印で始まる README は書き直す
+        condition: '`README_MARK` と `古い中身` の 2 行の `README.md`。`preview_url="http://127.0.0.1:1/mindstella.html"`'
+        mock: なし
+        expected: '`True`。`README.md` が `古い中身` を含まず、その URL を含む'
+      - name: test_write_readme_when_user_file
+        case: 正常
+        summary: 印の無い README は書かない
+        condition: '`parametrize`: `# 家計簿アプリの話し合い` の `README.md` / 空の `README.md` / UTF-8 で読めないバイト列の `README.md` / 権限を 000 にした `README.md`（root で動くときは skip）'
+        mock: なし
+        expected: どれも `False` で、`README.md` のバイト列が呼ぶ前と同じ
+      - name: test_write_readme_when_write_fails
+        case: 異常
+        summary: 書けなければ WriteFailedError
+        condition: '`tmp_path / "README.md"` をフォルダとして作る'
+        mock: なし
+        expected: '`WriteFailedError`（メッセージに `README.md` のパス）。フォルダに一時ファイルが残っていない'
+        exception: README.md を書けない
+notes:
+  依存の向き: '`readme.py` は `launch.py`（`session_name`）と `errors.py` だけを読み、`store.py`・`serve.py` を読まない。配っている URL は呼ぶ側（`commands.py`）が台帳から引いて渡す。'
+test_files:
+  - tests/unit/scripts/test_readme.py

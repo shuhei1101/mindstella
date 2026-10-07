@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import asdict, dataclass, replace
@@ -19,6 +20,7 @@ from errors import (
     OptionExistsError,
     OptionNotFoundError,
     SchemaMismatchError,
+    WriteFailedError,
 )
 from graph import judge_goal, list_next_candidates, summarize_status, trace_impact
 from history import (
@@ -39,6 +41,7 @@ from kinds import EDITOR, KINDS, RECORD_DIR, Kind, records_root
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
 from query import SearchFilter, list_attrs, list_tags, search_items, show_item
+from readme import README_FILE, write_readme
 from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
@@ -67,6 +70,8 @@ from store import (
 )
 from submissions import list_pending_submissions, take_submission
 from versions import Version, parse_release_version, read_plugin_version
+
+logger = logging.getLogger(__name__)
 
 # 前の版の形式の問題の詳細に続ける案内
 MIGRATE_HINT = "（/mindstella:upgrade で今の形式に移せます）"
@@ -657,10 +662,25 @@ def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
 
 
 def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
-    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。"""
+    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。立てたときは直下の README にも URL を書く。"""
     require_workspace(root)
     url, started = previews.start(root)
+    # この呼び出しで立てたときだけ、README のプレビューの節を URL にする
+    if started:
+        try:
+            write_readme(root, preview_url=url)
+        except WriteFailedError as error:
+            # README を書けなくても配信は止めず、URL を返す
+            logger.warning("README を書けなかった: %s", error)
     return {"url": url, "workspace": str(root), "started": started}
+
+
+def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
+    """ワークスペースを確かめ、直下の README を今の値と配っている URL で書き直す。"""
+    require_workspace(root)
+    url = previews.url_of(root)
+    written = write_readme(root, preview_url=url)
+    return {"path": str(root / README_FILE), "written": written, "preview_url": url}
 
 
 def run_submissions(root: Path) -> dict[str, Any]:

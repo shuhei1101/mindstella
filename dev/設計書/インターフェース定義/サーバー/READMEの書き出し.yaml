@@ -1,0 +1,266 @@
+title: "README の書き出し"
+entry:
+  kind: mcp_tool
+  value: '`readme`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__readme`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: README.md が無ければ、コマンドの一覧を書く（配っていないのでプレビューは URL を持たない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` を消したワークスペース（フォルダ名は `家計簿アプリ`）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as readme（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: readme workspace
+        IF-->>WS: 直下に README.md が無い
+        IF->>WS: 直下に README.md を書く
+        IF-->>クライアント: JSON（path・written: true・preview_url: null）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`written` が真で、`preview_url` が `null`'
+      - '`README.md` の 1 行目が `<!-- mindstella:readme -->`'
+      - '`README.md` の中身が、制約「README の中身」の形に、サーバーのプラグインのフォルダ・ワークスペースの絶対パス・セッションの名前を埋めたものと同じ（プレビューは配っていないときの文面）'
+      - 接続のコマンドのセッションの名前が `mindstella-家計簿アプリ-{ワークスペースの絶対パスの SHA-256 の先頭 6 桁}`
+      - '`.mindstella/` の全てのファイルの中身が呼ぶ前と同じ'
+    test: test_normal
+  - name: 正常系（配信中）
+    summary: このプロセスがワークスペースを配っていれば、プレビューの節にその URL を書く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース。同じプロセスで `preview_url` を 1 回呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as readme（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: readme workspace
+        IF->>IF: このプロセスの配信の URL を引く
+        IF->>WS: 直下の README.md を書き直す
+        IF-->>クライアント: JSON（path・written: true・preview_url）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`preview_url` が `preview_url` のツールが返した `url` と同じ'
+      - '`README.md` のプレビューの節にその URL がある'
+    test: test_normal_when_serving
+  - name: 正常系（自動で書いた README がある）
+    summary: 1 行目に自動で書いた印がある README.md は、今の値で書き直す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` の起動のコマンドを `/old/plugins/mindstella/0.6.0/bin/mindstella` に書き換えたワークスペース（1 行目の印は残す）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as readme（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: readme workspace
+        IF-->>WS: README.md の 1 行目が印
+        IF->>WS: README.md を書き直す
+        IF-->>クライアント: JSON（written: true）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`written` が真'
+      - '`README.md` が `/old/plugins/mindstella/0.6.0` を含まず、起動のコマンドがサーバーのプラグインのフォルダを指す'
+    test: test_normal_when_generated_readme_exists
+  - name: 正常系（利用者が書いた README がある）
+    summary: 自動で書いた印が無い README.md は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` を `# 家計簿アプリの話し合い` だけに置き換えたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as readme（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: readme workspace
+        IF-->>WS: README.md の 1 行目が印でない
+        IF-->>クライアント: JSON（written: false）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`written` が偽'
+      - '`README.md` の中身と更新日時が呼ぶ前と同じ'
+    test: test_normal_when_user_readme_exists
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すと、README を書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as readme（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: readme workspace
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+      - フォルダに `README.md` が作られていない
+    test: test_error_when_workspace_not_found
+  - name: 異常系（書けない・WriteFailedError）
+    summary: 直下に README.md を書けなければエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` を消して同じ名前のフォルダを作ったワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as readme（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: readme workspace
+        IF->>WS: README.md を書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `README.md` のパスがある
+      - 直下の `README.md` のフォルダと `.mindstella/` の中身が呼ぶ前と同じ
+    test: test_error_when_write_fails
+lead: ワークスペースの直下の `README.md` を、このフォルダの起動・接続のコマンド、スキルの呼び方、配っているプレビューの URL の一覧に書き直す。利用者が書いた `README.md` は書き換えない。
+idempotent: true
+side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いた印のとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+response:
+  - name: path
+    type: str
+    description: 直下の `README.md` の絶対パス
+  - name: written
+    type: bool
+    description: この呼び出しで書いたか。利用者が書いた `README.md`（自動で書いた印が無い）があれば偽
+  - name: preview_url
+    type: str | None
+    description: README に書いたプレビューの URL。このプロセスがワークスペースを配っていなければ `null`
+    example: http://127.0.0.1:43817/mindstella.html
+exceptions:
+  - name: なし（正常終了）
+    condition: 書いた、または利用者が書いた `README.md` があって書かなかった
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書かない
+  - name: WriteFailedError
+    condition: '`README.md` を書けない（同じ名前のフォルダがある・権限が無い など）'
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。前からあったファイルを残す
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: README の中身
+    constraint: |-
+      1 行目に自動で書いた印 `<!-- mindstella:readme -->` を置き、次の形の Markdown を続ける。`{…}` を埋め、コマンドに埋めるパスは `shlex.quote` で引用する。節はプレビュー → コマンド → ドキュメントの順。プレビューの節は、配っていれば URL の行、配っていなければ「`/mindstella:session` でプレビューを頼むと URL が表示されます。」の行にする。コマンドは 1 つごとに、太字の見出し・短い説明・`bash` のコードブロックの 3 つで書く
+
+      ~~~markdown
+      <!-- mindstella:readme -->
+      # {フォルダ名}
+
+      mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。
+      このファイルは `/mindstella:session` を始めるたびに書き直されます。
+
+      ## プレビュー
+
+      {URL}
+
+      URL は起動のたびに変わります。
+
+      ## コマンド
+
+      **起動:**
+
+      このフォルダで Claude Code を立ち上げます。
+
+      ```bash
+      {プラグインのフォルダ}/bin/mindstella {ワークスペースの絶対パス}
+      ```
+
+      **接続:**
+
+      立ち上げ済みのセッションにつなぎ直します。
+
+      ```bash
+      tmux attach-session -t ={セッションの名前}
+      ```
+
+      **セッション:**
+
+      立ち上げた Claude Code で、話し合いを進めます。
+
+      ```bash
+      /mindstella:session {ワークスペースの絶対パス}
+      ```
+
+      **セットアップ:**
+
+      立ち上げた Claude Code で、状況を確かめて話し合いを始めます。
+
+      ```bash
+      /mindstella:setup {ワークスペースの絶対パス}
+      ```
+
+      **アップグレード:**
+
+      プラグインを上げた後、記録を今の版へ移し替えます。
+
+      ```bash
+      /mindstella:upgrade {ワークスペースの絶対パス}
+      ```
+
+      ## ドキュメント
+
+      - [プレビューを見る](https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html)
+      - [起動スクリプトで立ち上げる](https://shuhei1101.github.io/mindstella/使い方/セットアップ手順/起動スクリプトで立ち上げる.html)
+      ~~~
+  - item: 埋める値
+    constraint: プラグインのフォルダは、動いている `server.py`（`{プラグインのフォルダ}/skills/mindmap/scripts/server.py`）から 3 つ上のフォルダ。セッションの名前は『起動スクリプト』のレスポンス「tmux のセッション」と同じ規則（`mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` を `-` に置き換え、ハッシュはシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁）。ワークスペースの絶対パスもシンボリックリンクを解いたもの。URL はこのプロセスがワークスペースを配っている配信の URL（『プレビューの URL』の `url`）
+  - item: 書くかの判定
+    constraint: 直下に `README.md` が無いか、1 行目が `<!-- mindstella:readme -->` のときだけ書く。それ以外は利用者が書いたものとして書かない。`README.md` はこの判定のほかにどのツールも読まず、ワークスペースの見分けに使わない
+  - item: 書き方
+    constraint: 一時ファイルに書いてから `os.replace` で置き換える。中身が同じでも書き直す（`written` は真）
+  - item: 同じ書き方を使うツール
+    constraint: 『ワークスペースの作成』（`init`）と『プレビューの URL』（配信を立てたとき）も、この制約の中身・判定・書き方で直下の `README.md` を書く
+exclusivity: README の書き込みは、`readme`・`preview_url` のどちらからでもワークスペースの排他ロックを取らない（`init` は作成のロックの中で書く）。一時ファイルから `os.replace` で置き換えるため、同時に書かれても壊れたファイルにならず、後から置き換えた方の中身が残る
+refs:
+  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+  - dev/設計書/シナリオ/単一ユースケース/READMEの書き直し#
+test_file: tests/integration/server/test_readme.py
