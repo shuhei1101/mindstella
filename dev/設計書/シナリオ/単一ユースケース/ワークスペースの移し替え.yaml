@@ -20,7 +20,7 @@ scenarios:
         U->>CC: /mindstella:upgrade {フォルダ}
         CC->>SV: 版を比べ、当てる手順を並べる
         SV->>WS: 版のファイルを読む（無い）
-        SV-->>CC: 版を記録する前の形式 → プラグインの版の手順（mindmap.yaml を config.yaml へ改め、直下のファイルとフォルダを .mindstella/ へ移す破壊的な操作と、直下に README.md を置く手順を含む）
+        SV-->>CC: 版を記録する前の形式 → プラグインの版の手順（mindmap.yaml を config.yaml へ改め、直下のファイルとフォルダを .mindstella/ へ移す破壊的な操作を含む）
         CC-->>U: 当てる手順の一覧を示し、破壊的な操作を当ててよいか確かめる
         U->>CC: 当ててよい
         CC->>SV: 写しを取って手順を当てる
@@ -41,12 +41,10 @@ scenarios:
       - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である'
       - 並べた手順に、`mindmap.yaml` を `config.yaml` へ改める `rename_file` が破壊的な操作の印つきである
       - 並べた手順に、直下のファイルとフォルダを `.mindstella/` へ移す手順が、破壊的な操作の印つきである
-      - 並べた手順に、直下に `README.md` を置く手順がある
       - '`docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たず、`updated` が呼ぶ前と同じである'
       - '`config.yaml` の `summary` が答えた題名である'
       - ワークスペースに `mindmap.yaml` が無く、`.mindstella/config.yaml` がある
       - 種類ごとの YAML・`docs/`・`release/` が `.mindstella/` の下にあり、直下に残っていない
-      - 直下に `README.md` があり、プレビューの開き方の案内がある
       - 資料 A-1・A-2 の本文が、移し替える前と同じ中身で `.mindstella/docs/` にある
       - '`config.yaml` が `field` を持たず、`playbooks` が `[システム開発]` で、`target_label` が `システム` のままである'
       - '`check` が問題を 0 件で返す'
@@ -196,9 +194,6 @@ scenarios:
       - name: 直下に版を記録したワークスペース
         description: '直下に `mindstella-version.ini`（`v0.5.0`）・`mindmap.yaml`・種類ごとの YAML・`docs/` を持ち、`mindmap.yaml` が `playbooks: [システム開発]` と `summary` を持ち、本文を持つ検討事項 D-1 を持つワークスペース'
         notes: v0.5.0 のプラグインで作った形。YAML を直接書いて作る。直下の版のファイルを読み外すと「版を記録する前の形式」と扱われ、v0.3.0・v0.5.0 の手順がもう一度当たる
-      - name: 利用者の README
-        description: 同じワークスペースの直下に、利用者が書いた `README.md` を置く
-        notes: '`README.md` の中身は `# 家計簿アプリの話し合い`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -223,11 +218,10 @@ scenarios:
         CC-->>U: 移し替えた版を示し、/mindstella:session で続けるよう案内する
       ```
     expected:
-      - 版の比較が、ワークスペースの版 `v0.5.0` からプラグインの版への移し替えを返し、並べた手順が v0.6.0 と、直下に `README.md` を置く版の手順だけである
+      - 版の比較が、ワークスペースの版 `v0.5.0` からプラグインの版への移し替えを返し、並べた手順が v0.6.0 の手順だけである
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版で、直下に版のファイルが残っていない
       - '`config.yaml` の `playbooks`・`summary` と D-1 の中身・本文が、呼ぶ前と同じである'
       - 種類ごとの YAML・`docs/` が `.mindstella/` の下にあり、直下に `mindmap.yaml`・`config.yaml` が残っていない
-      - 直下の `README.md` の中身が、移し替える前と同じである
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_version_recorded_at_top
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。

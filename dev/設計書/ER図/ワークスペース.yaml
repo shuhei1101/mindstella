@@ -1,5 +1,5 @@
 title: "ER 図: ワークスペース"
-lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/` のほかに、プレビューの開き方を案内する `README.md` を置く（記録ではなく、どのツールも読まない）。
+lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いた印を確かめるほかにどのツールも読まない）。
 er:
   entities:
     - name: 設定

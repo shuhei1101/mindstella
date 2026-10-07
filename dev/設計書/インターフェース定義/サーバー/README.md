@@ -48,5 +48,6 @@
 | 読む | [前回読んだ時点からの変更](./前回読んだ時点からの変更.yaml) | changes_since_read: AI が前回読んだ時点より後に足した・変えた項目を返し、読んだ時点を進める |
 | プレビューの配信 | [設定の既定の書き換え](./設定の既定の書き換え.yaml) | PUT /api/config/display: 見た目の既定と表示する種類の既定を config.yaml に書く |
 | プレビューの配信 | [設定の再読み込み](./設定の再読み込み.yaml) | POST /api/config/reload: 手で直した config.yaml を検査し、通れば配信の設定を差し替える |
+| 作る | [READMEの書き出し](./READMEの書き出し.yaml) | readme: 直下の README.md を起動・接続・スキル・プレビューの一覧に書き直す |
 
 <!-- /table -->

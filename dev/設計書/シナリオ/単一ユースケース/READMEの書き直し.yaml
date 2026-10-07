@@ -1,0 +1,93 @@
+title: "README の書き直し"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、session の準備の README の書き直しと、プレビューの URL の取得を MCP のクライアントで呼ぶ
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` の起動の行を、別の版のプラグインのフォルダ（`/old/plugins/mindstella/0.6.0`）に書き換えたワークスペース
+        notes: プラグインを上げた後のワークスペースと同じ形
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: README を書き直す
+        SV->>WS: 直下の README.md の 1 行目に自動で書いた印があることを確かめる
+        SV->>WS: 今のプラグインのフォルダ・セッションの名前で一覧を書き直す（プレビューは URL を持たない）
+        SV-->>CC: 書いた README のパス
+        CC->>SV: プレビューの URL
+        SV->>SV: 配信を立てる
+        SV->>WS: プレビューの行を URL にして書き直す
+        SV-->>CC: 127.0.0.1 の URL
+      ```
+    expected:
+      - README の書き直しの後、起動の行が `{サーバーのプラグインのフォルダ}/bin/mindstella {ワークスペースの絶対パス}` で、`/old/plugins/mindstella/0.6.0` を含まない
+      - 接続の行のセッションの名前が、起動スクリプトがこのフォルダで立てるセッションの名前と同じである
+      - セッション・セットアップ・アップグレードの行が、ワークスペースの絶対パスを渡すスキルの呼び方である
+      - プレビューの URL を頼む前は、プレビューの行が URL を持たず、`/mindstella:session` でプレビューを頼む案内である
+      - プレビューの URL を頼んだ後、プレビューの行が返った URL である
+      - '`.mindstella/` の全てのファイルの中身が、呼ぶ前と同じである'
+    test: test_normal
+  - name: 正常シナリオ（README が無い）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` を消したワークスペース
+        notes: この機能を入れる前の版で作り、移し替えたワークスペースと同じ形
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: README を書き直す
+        SV->>WS: 直下に README.md が無い
+        SV->>WS: 一覧を書く
+        SV-->>CC: 書いた README のパス
+      ```
+    expected:
+      - 直下に `README.md` があり、1 行目が自動で書いた印である
+      - 起動・接続・セッション・セットアップ・アップグレード・プレビューの行がある
+    test: test_normal_when_readme_missing
+  - name: 正常シナリオ（利用者が書いた README がある）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: make_workspace
+        description: 作成を済ませ、直下の `README.md` を利用者が書いた中身に置き換えたワークスペース
+        notes: '`README.md` の中身は `# 家計簿アプリの話し合い`（自動で書いた印が無い）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: README を書き直す
+        SV->>WS: 直下の README.md に自動で書いた印が無い
+        SV-->>CC: 書かなかったこと
+        CC->>SV: プレビューの URL
+        SV->>SV: 配信を立てる
+        SV-->>CC: 127.0.0.1 の URL（README は書かない）
+      ```
+    expected:
+      - README の書き直しの結果が、書かなかったことを示す
+      - README の書き直しとプレビューの URL の後も、直下の `README.md` の中身が呼ぶ前と同じである
+      - プレビューの URL がエラーにならず、`127.0.0.1` の `/mindstella.html` を指す
+    test: test_normal_when_user_readme_exists
+lead: 話し合いを始めるときとプレビューを配り始めたときに、サーバーがワークスペースの直下の `README.md` を、今のプラグインのフォルダ・tmux のセッション・プレビューの URL を使ったコマンドの一覧に書き直す単一ユースケース。
+issue: 103
+primary_actor: スキル session の手順を実行する Claude Code
+stakeholders:
+  - name: 利用者
+    interest: フォルダを開いたときに、そのまま叩ける起動・接続のコマンドと、今のプレビューの URL が分かる
+trigger: '`/mindstella:session` の準備で版の比較が同じだったとき。プレビューの URL を頼まれて配信を立てたとき'
+preconditions:
+  - ワークスペースが今の版の形（`.mindstella/config.yaml` がある）
+success_guarantee: 直下の `README.md` の起動・接続・スキル・プレビューの行が、今のプラグインのフォルダ・セッションの名前・配っている URL を指す
+minimal_guarantee: 利用者が書いた `README.md`（自動で書いた印が無いもの）と `.mindstella/` の記録は変えない

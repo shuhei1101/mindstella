@@ -32,7 +32,7 @@ flows:
       - '`.mindstella/mindstella-version.ini` の 1 行目が `plugins/mindstella/version.ini` の 1 行目と同じ'
       - '`.mindstella/docs/` と `.mindstella/release/` がある'
       - 直下にあるのが `.mindstella/` と `README.md` だけ
-      - '`README.md` の中身が、制約「README の中身」の雛形と同じ'
+      - '`README.md` の中身が、『README の書き出し』の制約「README の中身」の形に、サーバーのプラグインのフォルダ・ワークスペースの絶対パス・セッションの名前を埋めたものと同じ（プレビューは配っていないときの文面）'
       - '`files` に作った 8 つの YAML、`mindstella-version.ini` と 2 つのフォルダ（どれも `.mindstella/` から始まる）と `README.md` がある'
     test: test_normal
   - name: 正常系（ゴールを持たない）
@@ -175,7 +175,7 @@ flows:
 
         クライアント->>IF: init workspace（`settings` に設定）
         IF->>WS: .mindstella/ に config.yaml・種類ごとの YAML・mindstella-version.ini・docs/・release/ を作る
-        IF-->>WS: 直下に README.md がある（書かない）
+        IF-->>WS: 直下に自動で書いた印の無い README.md がある（書かない）
         IF-->>クライアント: JSON（workspace・files）
       ```
     expected:
@@ -184,9 +184,9 @@ flows:
       - '`README.md` の中身が呼ぶ前と同じ'
       - '`files` に `README.md` が無い'
     test: test_normal_when_readme_exists
-lead: 指定したフォルダの `.mindstella/` に、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作る。直下にはプレビューの開き方を案内する `README.md` を書く。
+lead: 指定したフォルダの `.mindstella/` に、`settings` で渡した設定を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` を作る。直下には、このフォルダの起動・接続のコマンドとスキルの呼び方を一覧にした `README.md` を書く。
 idempotent: false
-side_effects: 'ワークスペースのフォルダ（無ければ作る）に `.mindstella/` を作り、その中に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る。直下に `README.md` が無ければ書く'
+side_effects: 'ワークスペースのフォルダ（無ければ作る）に `.mindstella/` を作り、その中に `config.yaml` と 7 つの種類ごとの YAML（`items: []`）と `mindstella-version.ini` を書き、`docs/`・`release/` を作る。直下の `README.md` を『README の書き出し』の制約「書くかの判定」で書く'
 request:
   - name: workspace
     type: str
@@ -271,6 +271,6 @@ constraints:
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。コメントは残らない'
   - item: README の中身
-    constraint: プラグインが持つ雛形をそのまま書く（設定やパスを埋め込まない）。雛形は、このフォルダが mindstella の記録で `.mindstella/` を手で開かずプレビューで読むこと、起動スクリプトでこのフォルダを立ち上げ `/mindstella:session` にプレビューを頼むと URL が示されることの要約と、公開ドキュメント『プレビューを見る』（`https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html`）へのリンクだけを持つ。直下に `README.md` が既にあれば書かない。`README.md` はどのツールも読まず、ワークスペースの見分けに使わない
+    constraint: 『README の書き出し』の制約「README の中身」「埋める値」「書くかの判定」「書き方」のとおり。作るときは配信が立っていないため、プレビューの節は配っていないときの文面になる
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_init.py

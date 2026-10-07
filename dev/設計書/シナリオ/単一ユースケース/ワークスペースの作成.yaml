@@ -19,7 +19,7 @@ scenarios:
         CC->>SV: フォルダと設定を渡してワークスペースを作る
         SV->>SV: 設定をスキーマと突き合わせる
         SV->>WS: .mindstella/ に設定・空の YAML・docs/・release/・版のファイルを書く
-        SV->>WS: 直下に README.md を書く
+        SV->>WS: 直下に README.md（コマンドの一覧）を書く
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
@@ -28,7 +28,7 @@ scenarios:
       - ワークスペースの `.mindstella/` に `docs/` と `release/` のフォルダがある
       - ワークスペースに `.mindstella/mindstella-version.ini` があり、1 行目がプラグインの版である
       - ワークスペースの直下に、設定・種類ごとの YAML・`docs/`・`release/`・版のファイルが無い
-      - ワークスペースの直下に `README.md` があり、プレビューの開き方の案内がある
+      - ワークスペースの直下に `README.md` があり、このフォルダの起動・接続のコマンドとスキルの呼び方の一覧がある
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal
   - name: 異常シナリオ（既にワークスペースがある）
@@ -122,7 +122,7 @@ scenarios:
 
         CC->>SV: フォルダと設定を渡してワークスペースを作る
         SV->>WS: .mindstella/ に設定・空の YAML・docs/・release/・版のファイルを書く
-        SV->>WS: 直下に README.md が既にあることを確かめ、書かない
+        SV->>WS: 直下に、自動で書いた印の無い README.md があることを確かめ、書かない
         SV-->>CC: 作ったワークスペースのパス
       ```
     expected:
