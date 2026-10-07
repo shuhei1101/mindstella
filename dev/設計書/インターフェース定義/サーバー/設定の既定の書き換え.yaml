@@ -131,7 +131,7 @@ request:
     required: true
     location: body
     description: 表示する種類の既定
-    constraints: 重複しない。空の配列も許す（概要とつながりだけを出す）
+    constraints: 重複しない。空の配列も許す（概要とネットワークだけを出す）
 request_example: |-
   ```json
   {"network_look": "glow", "visible_kinds": ["decisions", "tasks", "research", "docs", "notes", "logs"]}
