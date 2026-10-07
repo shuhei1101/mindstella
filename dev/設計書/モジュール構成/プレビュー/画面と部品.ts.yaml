@@ -265,7 +265,7 @@ components:
       - name: lockedId
         type: string | null
         required: true
-        description: ロックしている検討事項（入口の `LockState.map`）。マップの節に閉じた鍵を出す
+        description: 効いているロック（入口の `LockState.map` の検討事項を描いていればその ID、絞り込みで描いていなければ `null`）。マップの節に閉じた鍵を出す
     state:
       - name: keyword
         type: string
@@ -531,7 +531,7 @@ components:
       - name: lockedId
         type: string | null
         required: true
-        description: ロックしている項目（入口の `LockState.graph`）。注目の起点にし、閉じた鍵を出す
+        description: 効いているロック（入口の `LockState.graph` の項目を描いていればその ID、絞り込みで描いていなければ `null`）。注目の起点にし、閉じた鍵を出す
     state:
       - name: camera
         type: '{yaw, pitch, distance, target}'
