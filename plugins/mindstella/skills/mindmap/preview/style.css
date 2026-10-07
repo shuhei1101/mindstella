@@ -277,7 +277,7 @@ dialog.search::backdrop { background: var(--scrim); }
 .search-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--border); }
 .search-head input { flex: 1; height: 36px; border: 0; background: none; font-size: 16px; outline: none; }
 .search-results { max-height: 60vh; overflow: auto; padding: 6px; }
-.search-results h3 { margin: 10px 8px 4px; font-size: var(--fs-xs); color: var(--text-2); }
+.search-results h2 { margin: 10px 8px 4px; font-size: var(--fs-xs); color: var(--text-2); }
 .sr-item { display: flex; gap: 10px; align-items: baseline; width: 100%; padding: 8px; border: 0; background: none; border-radius: 3px; text-align: left; }
 .sr-item:hover, .sr-item:focus-visible { background: var(--hover); }
 .sr-item .sr-sub { color: var(--text-2); font-size: var(--fs-xs); }
@@ -1402,11 +1402,11 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 /* ===== 全体の検索 ===== */
 
 /* 完全に一致のまとまりの見出し: 種類の見出しと同じ形で、先頭に置く */
-.search-results h3.sr-exact { color: var(--text); }
+.search-results h2.sr-exact { color: var(--text); }
 /* 完全に一致の結果に添える種類 */
 .sr-item .sr-kind { margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
 /* 完全に一致のまとまりと種類のまとまりの境 */
-.search-results h3.sr-exact ~ h3:not(.sr-exact) { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+.search-results h2.sr-exact ~ h2:not(.sr-exact) { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
 /* 結果の ID: 折り返さない */
 .sr-item > .mono { flex: none; white-space: nowrap; }
 /* トップバーの検索の入口のキーの案内: 2 文字以上でも詰まらない幅 */
