@@ -7709,6 +7709,8 @@ var MindmapPreview;
             const lockedId = lockOf("graph");
             const keyView = views.find((view) => view.n.id === (lockedId !== null && ballById.has(lockedId) ? lockedId : current)) ?? null;
             const keyClosed = keyView !== null && keyView.n.id === lockedId;
+            // 鍵を出すか: 閉じた鍵はロック中いつも、開いた鍵は詳細を開いている玉にカーソルを乗せたときだけ
+            const keyShown = keyView !== null && (keyClosed || hover === keyView.n.id || window.MOCK123?.demo === "open");
             /** 鍵とコメントの印の順（A: 名前・鍵・コメントの印 / B: 名前・コメントの印・鍵）。モックで見比べるために切り替える */
             const keyFirst = (window.MOCK123?.order ?? "A") === "A";
             /** 鍵の中心（名前が出ない距離では、玉の右上の札） */
@@ -7752,8 +7754,8 @@ var MindmapPreview;
                 const count = commentCounts[ball.id] ?? 0;
                 const hasComment = count > 0 && fontSize >= COMMENT_MARK_MIN_FONT;
                 const slot = hasComment ? markSlotOf(ball.id, count) : null;
-                const keyHere = view === keyView;
-                // A は名前のすぐ右に鍵、その右にコメントの印。B は名前のすぐ右にコメントの印、その右に鍵
+                const keyHere = view === keyView && keyShown;
+                // A は名前のすぐ右に鍵、その右にコメントの印。B は名前のすぐ右にコメントの印、その右に鍵。鍵を出さないときは鍵の幅を空けない
                 const keyWidth = keyHere ? KEY_GAP + KEY_SIZE : 0;
                 const left = nameRight + (keyFirst ? keyWidth : 0) + COMMENT_MARK_GAP;
                 if (keyHere) {
@@ -7780,8 +7782,7 @@ var MindmapPreview;
             if (keyView !== null) {
                 // 名前が出ていない遠い距離では、玉の右上に札に入れて置く
                 const spot = keySpot ?? { x: keyView.p.sx + keyView.rad * 0.8 + 8, y: keyView.p.sy - keyView.rad * 0.8 - 8, badge: true, alpha: 1 };
-                const shown = keyClosed || hover === keyView.n.id || window.MOCK123?.demo === "open";
-                if (shown) {
+                if (keyShown) {
                     // 外れない操作をされた直後は、赤くして左右に震わせ、だんだん収める
                     const elapsed = now - shakeStart;
                     const shaking = keyClosed && elapsed < SHAKE_MS;
