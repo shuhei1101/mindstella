@@ -73,6 +73,9 @@ LOCK_FILE = ".mindstella.lock"
 # 書き換えのまとまりを持つファイルの名前（`records_root` の下）
 CHANGES_FILE = "changes.yaml"
 
+# 案（`options`）を持たなくてよい検討事項の状態
+OPTIONS_OPTIONAL_STATUSES = frozenset({"未整理", "対象外", "取り下げ"})
+
 # 今の日時（UTC のタイムゾーン付き ISO 8601）を返す関数。テストで決めた日時を注入する
 type NowFn = Callable[[], str]
 
@@ -89,6 +92,7 @@ class Problem:
         "orphan_body",
         "unknown_phase",
         "stale_history",
+        "decision_state",
     ]
     # ワークスペースからの相対パス
     file: str
@@ -322,8 +326,89 @@ def validate_workspace(workspace: Workspace) -> list[Problem]:
                 detail=error.message,
             )
             entries.append((file_name, _path_order(path), problem))
+    # 検討事項の案と状態の決まりは、スキーマでは見られないのでここで足す
+    decisions_file = KINDS["decision"].file
+    if decisions_file in workspace.raw:
+        for index, name, problem in _decision_rule_hits(workspace.raw[decisions_file]):
+            entries.append((decisions_file, _path_order(["items", index, name]), problem))
     entries.sort(key=lambda entry: (entry[0], entry[1]))
     return [problem for _, _, problem in entries]
+
+
+def check_decision_rules(decisions: Any) -> list[Problem]:
+    """検討事項の並びを案と状態の決まりと突き合わせ、合わない決まりごとに問題にする。"""
+    return [problem for _, _, problem in _decision_rule_hits(decisions)]
+
+
+def _decision_rule_hits(decisions: Any) -> list[tuple[int, str, Problem]]:
+    """案と状態の決まりに合わない問題を、項目の位置・問題のキー（`options` か `status`）つきで返す。"""
+    # 一番上が辞書で `items` が配列のときだけ見る（形の誤りはスキーマの検証が拾う）
+    if not isinstance(decisions, dict) or not isinstance(decisions.get("items"), list):
+        return []
+    problems: list[tuple[int, str, Problem]] = []
+    for index, item in enumerate(decisions["items"]):
+        # 辞書でない要素と、状態・案の型がスキーマに合わない要素は、スキーマの検証が拾う
+        if not isinstance(item, dict):
+            continue
+        status = item.get("status")
+        options = item.get("options", [])
+        if not isinstance(status, str) or not isinstance(options, list):
+            continue
+        item_id = item.get("id") if isinstance(item.get("id"), str) else None
+        label = item_id or f"items[{index}]"
+        adopted = [
+            option
+            for option in options
+            if isinstance(option, dict) and option.get("adopted") is True
+        ]
+        # 案を持たなくてよい状態以外は、案を 1 つ以上持つ
+        if status not in OPTIONS_OPTIONAL_STATUSES and not options:
+            problems.append(
+                (
+                    index,
+                    "options",
+                    _decision_problem(
+                        item_id,
+                        f"items[{index}].options",
+                        f"{label} は状態 {status} のため案を 1 つ以上持つ（options に案を書く）",
+                    ),
+                )
+            )
+        # 決定済みは、採用した案を持つ
+        if status == "決定済み" and not adopted:
+            problems.append(
+                (
+                    index,
+                    "options",
+                    _decision_problem(
+                        item_id,
+                        f"items[{index}].options",
+                        f"{label} は決定済みなのに採用した案を持たない（adopt で案を採用する）",
+                    ),
+                )
+            )
+        # 採用した案を持つ検討事項は、未決定にしない
+        if status == "未決定" and adopted:
+            problems.append(
+                (
+                    index,
+                    "status",
+                    _decision_problem(
+                        item_id,
+                        f"items[{index}].status",
+                        f"{label} は採用した案 {adopted[0].get('key')} を持つのに未決定"
+                        "（adopt で決定済みにするか、採用を外す）",
+                    ),
+                )
+            )
+    return problems
+
+
+def _decision_problem(item_id: str | None, key: str, detail: str) -> Problem:
+    """案と状態の決まりに合わない問題 1 件を作る。"""
+    return Problem(
+        kind="decision_state", file=KINDS["decision"].file, id=item_id, key=key, detail=detail
+    )
 
 
 def _load_registry() -> Registry:
@@ -378,18 +463,28 @@ def now_utc() -> str:
 
 
 def build_mismatch_error(
-    problems: list[Problem], workspace: Workspace | None = None
+    problems: list[Problem],
+    workspace: Workspace | None = None,
+    *,
+    written_ids: frozenset[str] = frozenset(),
 ) -> SchemaMismatchError:
     """問題ごとの `{ファイル名}: {キーのパス}: {理由}` の行を持つ例外を作る。workspace を渡すと前の版の形式の問題かも決める。"""
     lines = [
         f"{problem.file}: {problem.key or WHOLE_PATH}: {problem.detail}" for problem in problems
     ]
-    legacy = workspace is not None and any(is_legacy_problem(p, workspace) for p in problems)
+    legacy = workspace is not None and any(
+        is_legacy_problem(p, workspace, written_ids=written_ids) for p in problems
+    )
     return SchemaMismatchError(lines, legacy=legacy)
 
 
-def is_legacy_problem(problem: Problem, workspace: Workspace) -> bool:
-    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）から来ているかを返す。"""
+def is_legacy_problem(
+    problem: Problem, workspace: Workspace, *, written_ids: frozenset[str] = frozenset()
+) -> bool:
+    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す。"""
+    # 案と状態の合わない検討事項は、書き込む項目のものでなければ前の版の形式から来ている
+    if problem.kind == "decision_state":
+        return problem.id not in written_ids
     # スキーマ違反以外（参照切れなど）は前の版の形式のせいではない
     if problem.kind != "schema":
         return False
@@ -422,7 +517,8 @@ def save_change(workspace: Workspace, change: Change) -> None:
     changed = replace(workspace, raw=changed_raw)
     problems = validate_workspace(changed)
     if problems:
-        raise build_mismatch_error(problems, changed)
+        written_ids = _written_ids(workspace.items[change.kind], change.items)
+        raise build_mismatch_error(problems, changed, written_ids=written_ids)
 
     records = records_root(workspace.root)
     yaml_path = records / spec.file
@@ -494,7 +590,10 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
     changed = replace(workspace, raw=changed_raw)
     problems = validate_workspace(changed)
     if problems:
-        raise build_mismatch_error(problems, changed)
+        written_ids = frozenset().union(
+            *(_written_ids(workspace.items[kind], change.items[kind]) for kind in kinds)
+        )
+        raise build_mismatch_error(problems, changed, written_ids=written_ids)
 
     # 置き換える順（本文 → 種類の YAML → まとまり）に、書く先と中身を並べる
     records = records_root(workspace.root)
@@ -651,6 +750,17 @@ def _extract_items(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, dict) or not isinstance(value.get("items"), list):
         return []
     return [item for item in value["items"] if isinstance(item, dict)]
+
+
+def _written_ids(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> frozenset[str]:
+    """読んだ時点の並びと変更後の並びを比べ、足した項目と中身が違う項目の ID を返す。"""
+    before_by_id = {item.get("id"): item for item in before}
+    return frozenset(
+        item["id"]
+        for item in after
+        if isinstance(item.get("id"), str)
+        and (item["id"] not in before_by_id or before_by_id[item["id"]] != item)
+    )
 
 
 def _item_id_at(value: Any, path: list[str | int]) -> str | None:

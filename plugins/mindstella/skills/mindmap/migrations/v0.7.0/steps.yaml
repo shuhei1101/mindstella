@@ -1,0 +1,3 @@
+steps:
+  - op: call
+    script: answer_to_adopted_option

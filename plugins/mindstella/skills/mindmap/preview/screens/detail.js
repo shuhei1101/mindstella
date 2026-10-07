@@ -58,6 +58,14 @@ var MindmapPreview;
     function valueSpan(key, children) {
         return MindmapPreview.h({ tag: "span", attrs: { [MindmapPreview.VALUE_KEY_ATTR]: key }, children });
     }
+    /** 文字列の値を Markdown で描く（値が無ければ何も描かない。ライブラリを読めないときは文字のまま） */
+    function markdownValue(value) {
+        return value === undefined ? undefined : MindmapPreview.renderValue(value);
+    }
+    /** Markdown で描く値の入れ物。選んだ箇所のコメント・示す箇所・キーの差分が、キーのパスで値を指せるようにする */
+    function valueBlock(key, children) {
+        return MindmapPreview.h({ tag: "div", attrs: { class: "d-value", [MindmapPreview.VALUE_KEY_ATTR]: key }, children });
+    }
     /** 読み上げにだけ残す文字 */
     function srOnly(text) {
         return MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: [text] });
@@ -155,22 +163,25 @@ var MindmapPreview;
             children: [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [text] })],
         });
     }
-    /** 案の採用の状態の名前 */
+    /** 案の採用の状態の名前（採用でも不採用でもない案は null） */
     function optionResult(option) {
         if (option === undefined)
             return null;
-        return option.adopted === true ? "採用" : option.adopted === false ? "不採用" : "検討中";
+        return option.adopted === true ? "採用" : option.adopted === false ? "不採用" : null;
     }
-    /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由を出す）。previous があれば、変わった値に前の値を並べる */
+    /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由、採用した案が無いときは推奨の印を出す）。previous があれば、変わった値に前の値を並べる */
     function optionCards(options, previous) {
         const compare = previous !== null;
         const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
+        // 採用した案があれば採用の表示を優先し、推奨の印は出さない
+        const decided = options.some((option) => option.adopted === true);
         return MindmapPreview.h({
             tag: "div",
             children: [
                 ...options.map((option) => {
                     const before = previous?.find((entry) => entry.key === option.key);
-                    const result = optionResult(option) ?? "検討中";
+                    const result = optionResult(option);
+                    const recommended = option.recommended === true && !decided;
                     const rows = [
                         ["メリット", "pros", option.pros],
                         ["デメリット", "cons", option.cons],
@@ -179,12 +190,14 @@ var MindmapPreview;
                     ];
                     // 前の値と違う値は前の値と今の値を並べる。前に無かった案は全ての値を足した印にする
                     const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && before?.[field] !== undefined));
-                    const valueOf = (field, value) => compare && before?.[field] !== value ? keyDiff({ was: before?.[field] ?? null, now: value ?? null }) : value;
+                    const valueOf = (field, value) => compare && before?.[field] !== value
+                        ? keyDiff({ was: before?.[field] ?? null, now: value ?? null })
+                        : markdownValue(value);
                     const resultChild = compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;
                     return MindmapPreview.h({
                         tag: "div",
                         attrs: {
-                            class: `opt${option.adopted === true ? " adopted" : option.adopted === false ? " rejected" : ""}`,
+                            class: `opt${option.adopted === true ? " adopted" : option.adopted === false ? " rejected" : ""}${recommended ? " recommended" : ""}`,
                         },
                         children: [
                             MindmapPreview.h({
@@ -192,10 +205,13 @@ var MindmapPreview;
                                 attrs: { class: "o-head" },
                                 children: [
                                     MindmapPreview.h({ tag: "span", attrs: { class: "key" }, children: [option.key] }),
-                                    valueSpan(`options[${option.key}].content`, [
-                                        compare && before?.content !== option.content ? keyDiff({ was: before?.content ?? null, now: option.content }) : option.content,
+                                    valueBlock(`options[${option.key}].content`, [
+                                        compare && before?.content !== option.content
+                                            ? keyDiff({ was: before?.content ?? null, now: option.content })
+                                            : markdownValue(option.content),
                                     ]),
-                                    MindmapPreview.h({ tag: "span", attrs: { class: "res" }, children: [resultChild] }),
+                                    recommended ? MindmapPreview.h({ tag: "span", attrs: { class: "rec-badge" }, children: [MindmapPreview.icon("star"), "推奨"] }) : null,
+                                    resultChild === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "res" }, children: [resultChild] }),
                                 ],
                             }),
                             shown.length > 0
@@ -668,14 +684,18 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 attrs: { class: changed ? "d-answer df-key" : "d-answer" },
-                children: [MindmapPreview.h({ tag: "b", children: [label] }), valueSpan(key, [textOf(key, value)])],
+                children: [MindmapPreview.h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue(value)])],
             });
         };
         /** 見出しの下の 1 段落 */
         const lead = (key, value, className) => {
             if ((value === undefined || value === "") && keys?.has(key) !== true)
                 return null;
-            return MindmapPreview.h({ tag: "p", attrs: { class: className, [MindmapPreview.VALUE_KEY_ATTR]: key }, children: [textOf(key, value)] });
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: className, [MindmapPreview.VALUE_KEY_ATTR]: key },
+                children: [keys?.has(key) === true ? textOf(key, value) : markdownValue(value)],
+            });
         };
         /** 本文の節。本文の図を描き、図の道具（拡大・Raw・コピー）を動かす。差分の表示の間は、本文と図の差分を重ねる */
         const bodySection = (label) => {
@@ -752,6 +772,15 @@ var MindmapPreview;
             content.append(...(notice === null ? [] : [notice]), root);
             return section(label, content);
         };
+        /** 採用した案と理由の節（決定内容・理由のどちらかがあるときだけ） */
+        const adoptedSection = () => {
+            const rows = [labelled("決定内容", "answer", item.answer), labelled("理由", "reason", item.reason)].filter((row) => row !== null);
+            if (rows.length === 0)
+                return null;
+            const content = document.createDocumentFragment();
+            content.append(...rows);
+            return section("採用した案と理由", content);
+        };
         /** 関係する項目の節（1 件以上あるときだけ） */
         const relation = (label, ids) => ids.length === 0 ? null : section(label, itemList(index, ids, on.open));
         /** タグなどの一覧の節。値が変わっていれば、前の値と今の値を並べる */
@@ -784,9 +813,8 @@ var MindmapPreview;
                 parent: body,
                 children: [
                     lead("lead", item.lead, "d-lead"),
-                    labelled("決定内容", "answer", item.answer),
-                    labelled("理由", "reason", item.reason),
                     (item.options ?? []).length > 0 || previous !== null ? section("案", optionCards(item.options ?? [], previous)) : null,
+                    adoptedSection(),
                     bodySection("本文"),
                     relation("前提", related.prerequisites),
                     relation("後続の項目", related.successors),

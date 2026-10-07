@@ -100,7 +100,7 @@
         },
         "options": {
           "type": "array",
-          "description": "案。採用する案（`adopted` が真）は 0 か 1 つ",
+          "description": "案。採用する案（`adopted` が真）と推奨の案（`recommended` が真）は、それぞれ 0 か 1 つ。`未整理`・`対象外`・`取り下げ` のほかの状態では 1 つ以上要る（状態との決まりは書き込むツールと点検が見る）",
           "items": {
             "type": "object",
             "description": "検討事項の案 1 つ",
@@ -155,6 +155,10 @@
                 "type": "boolean",
                 "description": "採用する案か。真の案は 0 か 1 つ"
               },
+              "recommended": {
+                "type": "boolean",
+                "description": "AI が推す案か。真の案は 0 か 1 つ"
+              },
               "reason": {
                 "type": "string",
                 "description": "採用した・しなかった理由"
@@ -173,7 +177,24 @@
             }
           },
           "minContains": 0,
-          "maxContains": 1
+          "maxContains": 1,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "recommended"
+                ],
+                "properties": {
+                  "recommended": {
+                    "const": true
+                  }
+                }
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
         },
         "weight": {
           "type": "string",

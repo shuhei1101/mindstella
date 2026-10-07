@@ -165,7 +165,9 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
             ),
         )
 
-    @server.tool(name="adopt", description="検討事項の採用する案を 1 つに切り替える")
+    @server.tool(
+        name="adopt", description="検討事項の採用する案を 1 つに切り替え、状態を決定済みにする"
+    )
     def adopt(
         workspace: WorkspaceArg,
         id: ItemIdArg,  # noqa: A002
@@ -175,7 +177,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="edit_option",
-        description="検討事項の案を記号で指して、1 つ足す・中身を直す・消す。指さない案はそのまま残る",
+        description="検討事項の案を記号で指して、1 つ足す・中身と推奨の印を直す・消す。指さない案はそのまま残る",
     )
     def edit_option(
         workspace: WorkspaceArg,
@@ -188,7 +190,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         option: Annotated[
             dict[str, Any] | None,
             Field(
-                description="add・update の案の中身（content・pros・cons・note・reason）。update は null のキーを消す。remove では渡さない"
+                description="add・update の案の中身（content・pros・cons・note・reason・recommended）。recommended は true で推奨の印を立て（ほかの案の印は外れる）、false か null で外す。update は null のキーを消す。remove では渡さない"
             ),
         ] = None,
     ) -> CallToolResult:

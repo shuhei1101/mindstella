@@ -229,6 +229,21 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .opt dl { display: grid; grid-template-columns: 6em 1fr; gap: 2px 10px; margin: 6px 0 0; font-size: var(--fs-small); }
 .opt dt { color: var(--text-3); }
 .opt dd { margin: 0; }
+/* 見出しの行: 案の内容が複数行になっても、記号・印を 1 行目に揃える */
+.opt .o-head { align-items: flex-start; }
+.opt .o-head .d-value { flex: 1 1 auto; min-width: 0; }
+.opt .o-head :is(.key, .res, .rec-badge) { flex: none; line-height: 1.7; }
+.opt dd .md-value { line-height: 1.6; }
+/* 推奨の印: 印の色の線と文字のバッジ。採用の印（印の色の文字と枠のカード）とは、カードの枠を変えないことで見分ける */
+.rec-badge { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px; border: 1px solid var(--accent-line); border-radius: var(--radius); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.rec-badge svg.icon { width: 12px; height: 12px; }
+/* Markdown で描く値の入れ物: 先頭と末尾の段落の余白を詰め、周りの行の高さに揃える */
+.md-value { font-size: inherit; line-height: 1.7; }
+.md-value > :first-child { margin-top: 0; }
+.md-value > :last-child { margin-bottom: 0; }
+.md-value :is(p, ul, ol) { margin: 6px 0; }
+.md-value :is(ul, ol) { padding-left: 1.4em; }
+.d-lead .md-value { color: var(--text-2); }
 .md { font-size: var(--fs-small); line-height: 1.8; }
 /* 本文の見出し: 段を下げて差し込んでも、元の段の大きさと余白で見せる */
 .md [data-md-level] { font-weight: 700; }

@@ -105,6 +105,16 @@ namespace MindmapPreview {
     return h({ tag: "span", attrs: { [VALUE_KEY_ATTR]: key }, children });
   }
 
+  /** 文字列の値を Markdown で描く（値が無ければ何も描かない。ライブラリを読めないときは文字のまま） */
+  function markdownValue(value: string | undefined): Child {
+    return value === undefined ? undefined : renderValue(value);
+  }
+
+  /** Markdown で描く値の入れ物。選んだ箇所のコメント・示す箇所・キーの差分が、キーのパスで値を指せるようにする */
+  function valueBlock(key: string, children: Child[]): HTMLElement {
+    return h({ tag: "div", attrs: { class: "d-value", [VALUE_KEY_ATTR]: key }, children });
+  }
+
   /** 読み上げにだけ残す文字 */
   function srOnly(text: string): HTMLElement {
     return h({ tag: "span", attrs: { class: "sr-only" }, children: [text] });
@@ -236,22 +246,25 @@ namespace MindmapPreview {
     });
   }
 
-  /** 案の採用の状態の名前 */
+  /** 案の採用の状態の名前（採用でも不採用でもない案は null） */
   function optionResult(option: Option | undefined): string | null {
     if (option === undefined) return null;
-    return option.adopted === true ? "採用" : option.adopted === false ? "不採用" : "検討中";
+    return option.adopted === true ? "採用" : option.adopted === false ? "不採用" : null;
   }
 
-  /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由を出す）。previous があれば、変わった値に前の値を並べる */
+  /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由、採用した案が無いときは推奨の印を出す）。previous があれば、変わった値に前の値を並べる */
   function optionCards(options: Option[], previous: Option[] | null): HTMLElement {
     const compare = previous !== null;
     const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
+    // 採用した案があれば採用の表示を優先し、推奨の印は出さない
+    const decided = options.some((option) => option.adopted === true);
     return h({
       tag: "div",
       children: [
         ...options.map((option) => {
           const before = previous?.find((entry) => entry.key === option.key);
-          const result = optionResult(option) ?? "検討中";
+          const result = optionResult(option);
+          const recommended = option.recommended === true && !decided;
           const rows: [string, "pros" | "cons" | "note" | "reason", string | undefined][] = [
             ["メリット", "pros", option.pros],
             ["デメリット", "cons", option.cons],
@@ -261,13 +274,15 @@ namespace MindmapPreview {
           // 前の値と違う値は前の値と今の値を並べる。前に無かった案は全ての値を足した印にする
           const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && before?.[field] !== undefined));
           const valueOf = (field: "pros" | "cons" | "note" | "reason", value: string | undefined): Child =>
-            compare && before?.[field] !== value ? keyDiff({ was: before?.[field] ?? null, now: value ?? null }) : value;
+            compare && before?.[field] !== value
+              ? keyDiff({ was: before?.[field] ?? null, now: value ?? null })
+              : markdownValue(value);
           const resultChild: Child =
             compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;
           return h({
             tag: "div",
             attrs: {
-              class: `opt${option.adopted === true ? " adopted" : option.adopted === false ? " rejected" : ""}`,
+              class: `opt${option.adopted === true ? " adopted" : option.adopted === false ? " rejected" : ""}${recommended ? " recommended" : ""}`,
             },
             children: [
               h({
@@ -275,10 +290,13 @@ namespace MindmapPreview {
                 attrs: { class: "o-head" },
                 children: [
                   h({ tag: "span", attrs: { class: "key" }, children: [option.key] }),
-                  valueSpan(`options[${option.key}].content`, [
-                    compare && before?.content !== option.content ? keyDiff({ was: before?.content ?? null, now: option.content }) : option.content,
+                  valueBlock(`options[${option.key}].content`, [
+                    compare && before?.content !== option.content
+                      ? keyDiff({ was: before?.content ?? null, now: option.content })
+                      : markdownValue(option.content),
                   ]),
-                  h({ tag: "span", attrs: { class: "res" }, children: [resultChild] }),
+                  recommended ? h({ tag: "span", attrs: { class: "rec-badge" }, children: [icon("star"), "推奨"] }) : null,
+                  resultChild === null ? null : h({ tag: "span", attrs: { class: "res" }, children: [resultChild] }),
                 ],
               }),
               shown.length > 0
@@ -774,13 +792,17 @@ namespace MindmapPreview {
       return h({
         tag: "div",
         attrs: { class: changed ? "d-answer df-key" : "d-answer" },
-        children: [h({ tag: "b", children: [label] }), valueSpan(key, [textOf(key, value)])],
+        children: [h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue(value)])],
       });
     };
     /** 見出しの下の 1 段落 */
     const lead = (key: string, value: string | undefined, className: string | null): HTMLElement | null => {
       if ((value === undefined || value === "") && keys?.has(key) !== true) return null;
-      return h({ tag: "p", attrs: { class: className, [VALUE_KEY_ATTR]: key }, children: [textOf(key, value)] });
+      return h({
+        tag: "div",
+        attrs: { class: className, [VALUE_KEY_ATTR]: key },
+        children: [keys?.has(key) === true ? textOf(key, value) : markdownValue(value)],
+      });
     };
     /** 本文の節。本文の図を描き、図の道具（拡大・Raw・コピー）を動かす。差分の表示の間は、本文と図の差分を重ねる */
     const bodySection = (label: string): HTMLElement | null => {
@@ -847,6 +869,16 @@ namespace MindmapPreview {
       content.append(...(notice === null ? [] : [notice]), root);
       return section(label, content);
     };
+    /** 採用した案と理由の節（決定内容・理由のどちらかがあるときだけ） */
+    const adoptedSection = (): HTMLElement | null => {
+      const rows = [labelled("決定内容", "answer", item.answer), labelled("理由", "reason", item.reason)].filter(
+        (row) => row !== null,
+      );
+      if (rows.length === 0) return null;
+      const content = document.createDocumentFragment();
+      content.append(...rows);
+      return section("採用した案と理由", content);
+    };
     /** 関係する項目の節（1 件以上あるときだけ） */
     const relation = (label: string, ids: string[]): HTMLElement | null =>
       ids.length === 0 ? null : section(label, itemList(index, ids, on.open));
@@ -880,9 +912,8 @@ namespace MindmapPreview {
         parent: body,
         children: [
           lead("lead", item.lead, "d-lead"),
-          labelled("決定内容", "answer", item.answer),
-          labelled("理由", "reason", item.reason),
           (item.options ?? []).length > 0 || previous !== null ? section("案", optionCards(item.options ?? [], previous)) : null,
+          adoptedSection(),
           bodySection("本文"),
           relation("前提", related.prerequisites),
           relation("後続の項目", related.successors),

@@ -62,6 +62,8 @@ namespace MindmapPreview {
     cons?: string;
     note?: string;
     adopted?: boolean;
+    /** AI が推す案の印 */
+    recommended?: boolean;
     reason?: string;
   };
 
