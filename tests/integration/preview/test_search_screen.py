@@ -216,7 +216,7 @@ def test_exact_match_by_id(
 def test_result_headings_when_axe(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """結果を出したモーダルの見出しは、axe の `heading-order` に当たらず、段が飛ばない（正常系）。"""
+    """結果を出したモーダルの見出しは全て `h2` で、axe の `heading-order` に当たらない（正常系）。"""
     # 準備
     url = write_preview(
         make_item("D-1", title="シナリオの依頼の受け方"),
@@ -227,9 +227,12 @@ def test_result_headings_when_axe(
     page.wait_for_selector(f"{DIALOG}[open]")
     page.fill(f"{DIALOG} input", "シナリオの依頼")
     page.wait_for_selector(f"{DIALOG} .sr-item")
-    assert page.locator(f"{DIALOG} h2").count() == 2
     # 実行
+    tags = page.eval_on_selector_all(
+        f"{DIALOG} :is(h1, h2, h3, h4, h5, h6)", "h => h.map(x => x.tagName)"
+    )
     result = axe_rule_results(page, DIALOG, HEADING_ORDER_RULE)
-    # 検証（規則が見出しに当たったうえで、通る）
+    # 検証（見出しは「完全に一致」と種類名の 2 本が全て h2。規則が見出しに当たったうえで、通る）
+    assert tags == ["H2", "H2"]
     assert result["violations"] == []
     assert len(result["passes"]) == 2
