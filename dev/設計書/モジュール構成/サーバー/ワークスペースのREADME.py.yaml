@@ -36,7 +36,7 @@ constants:
     title: プラグインのフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
-    summary: 動いているサーバーのプラグインのフォルダ（起動の行のコマンドに使う）
+    summary: 動いているサーバーのプラグインのフォルダ（起動のコマンドに使う）
     value: Path(__file__).resolve().parents[3]
   - name: LAUNCH_SCRIPT
     title: 起動スクリプトの場所
@@ -85,9 +85,9 @@ functions:
       description: 1 行目が `README_MARK` で、末尾が改行の Markdown
     process: |-
       1. `root` を `resolve()` し、フォルダ名を見出しに、絶対パスを `shlex.quote` で引用してコマンドに使う
-      2. 起動の行に `{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`（どちらも `shlex.quote`）、接続の行に `tmux attach-session -t ={セッションの名前}`（`session_name`。`shlex.quote`）、セッション・セットアップ・アップグレードの行に `/mindstella:session`・`/mindstella:setup`・`/mindstella:upgrade` と絶対パスを書く
-      3. プレビューの節に `preview_url` を書く
+      2. プレビューの節に `preview_url` を書く
          - `None` の場合、`PREVIEW_HINT` を書く
+      3. コマンドの節に、起動（`{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`。どちらも `shlex.quote`）・接続（`tmux attach-session -t ={セッションの名前}`。`session_name`を `shlex.quote`）・セッション・セットアップ・アップグレード（`/mindstella:session`・`/mindstella:setup`・`/mindstella:upgrade` と絶対パス）をこの順に、太字の見出し・短い説明・`bash` のコードブロックで書く
       4. ドキュメントの節に `DOC_LINKS` を箇条書きのリンクで書く
     unit_tests:
       - name: test_render_readme
@@ -95,7 +95,7 @@ functions:
         summary: 配っていないときの一覧を作る
         condition: '`root=tmp_path / "家計簿アプリ"`、`plugin_dir=Path("/p/mindstella/0.7.0")`、`preview_url=None`'
         mock: なし
-        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。表に 起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `session_name(root)`）・セッション・セットアップ・アップグレードの 5 行がこの並びである。プレビューの節が `PREVIEW_HINT` で、`http://127.0.0.1` を含まない。`DOC_LINKS` の 2 つの URL がある
+        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。節が `## プレビュー` → `## コマンド` → `## ドキュメント` の順で、プレビューの節が `PREVIEW_HINT` で `http://127.0.0.1` を含まない。コマンドの節に `**起動:**`・`**接続:**`・`**セッション:**`・`**セットアップ:**`・`**アップグレード:**` がこの順にあり、それぞれの後ろの `bash` のコードブロックが起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `session_name(root)`）・3 つのスキルの呼び方。`DOC_LINKS` の 2 つの URL がある
       - name: test_render_readme_when_serving
         case: 正常
         summary: 配っているときは URL を書く
@@ -107,7 +107,7 @@ functions:
         summary: 空白を含むパスを引用する
         condition: '`root=tmp_path / "my notes"`、`plugin_dir=Path("/p/my plugins/mindstella")`'
         mock: なし
-        expected: 起動の行のコマンドを `shlex.split` すると、起動スクリプトのパスと絶対パスの 2 つになる
+        expected: 起動のコードブロックのコマンドを `shlex.split` すると、起動スクリプトのパスと絶対パスの 2 つになる
   - name: write_readme
     title: README の書き込み
     kind: 関数

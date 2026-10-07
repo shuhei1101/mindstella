@@ -46,7 +46,7 @@ scenarios:
       - サーバーが配るプレビューの記録が、最後の編集を含んでいる
       - ワークスペースに `preview.html` が書き出されていない
       - ワークスペースの直下には `.mindstella/` と `README.md` だけがあり、`config.yaml`・種類ごとの YAML・`docs/`・`release/` は `.mindstella/` の下にある
-      - 直下の `README.md` に、このフォルダの起動・接続のコマンドとスキルの呼び方の一覧があり、プレビューの行がプレビューを開くで示した URL である
+      - 直下の `README.md` に、このフォルダの起動・接続のコマンドとスキルの呼び方の一覧があり、プレビューの節がプレビューを開くで示した URL である
     test: test_normal_when_new_discussion
   - name: 正常シナリオ（続きから再開）
     setup:
