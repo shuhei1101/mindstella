@@ -85,6 +85,29 @@ flows:
       - ステータスが 404
       - 本文に `config.yaml` の中身が無い
     test: test_error_when_path_unknown
+  - name: 正常系（許可したホスト名）
+    summary: 許可したホスト名の `Host` は、入口のポートを問わず画面を返す
+    setup:
+      - name: Mock
+        description: なし（`MINDSTELLA_ALLOWED_HOSTS` を `preview.example.test` にして MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`Host: preview.example.test` と `Host: PREVIEW.example.test:8443` の 2 回つなぐ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /mindstella.html
+
+        クライアント->>IF: GET /mindstella.html（Host: preview.example.test）
+        IF-->>クライアント: 200、HTML
+        クライアント->>IF: GET /mindstella.html（Host: PREVIEW.example.test:8443）
+        IF-->>クライアント: 200、HTML
+      ```
+    expected:
+      - どちらもステータスが 200 で、`Content-Type` が `text/html; charset=utf-8`
+      - '`Host: other.example.test` でつなぐと 403'
+    test: test_normal_when_host_allowed
 lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/mindstella.html` で返す。`/` は `/mindstella.html` へ送り直す。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
@@ -96,7 +119,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+    constraints: '`127.0.0.1:{ポート}`・`localhost:{ポート}` か、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの（制約「接続先の確かめ」）'
 response:
   - name: 本文
     type: text/html
@@ -111,7 +134,7 @@ status_codes:
     condition: '`/` を開いた'
     notes: '`Location: /mindstella.html`'
   - code: '403'
-    condition: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` のどちらでもない'
+    condition: '`Host` が制約「接続先の確かめ」に合わない'
     notes: 本文は返さない
   - code: '404'
     condition: '`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts`・`/api/config/display`・`/api/config/reload` 以外のパス'
@@ -121,13 +144,15 @@ constraints:
     constraint: '`127.0.0.1` だけ（『プレビューの URL』）'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
   - item: 接続先の確かめ
-    constraint: 全てのパスで `Host` を確かめ、合わなければ 403 を返す（別のサイトがこの端末の名前を名乗って配信を読む DNS の付け替えを防ぐ）
+    constraint: '全てのパスで `Host` を確かめ、合わなければ 403 を返す（別のサイトがこの端末の名前を名乗って配信を読む DNS の付け替えを防ぐ）。受けるのは `127.0.0.1:{ポート}`・`localhost:{ポート}` と、ポートを外したホスト名の部分が許可するホスト名（『設定: サーバー』の `MINDSTELLA_ALLOWED_HOSTS`）のどれかと同じもの。比べるときは大文字と小文字を区別しない。許可するホスト名は入口のポートを問わない（トンネル・リバースプロキシが転送したものしか `127.0.0.1` に届かないため）'
   - item: 差し込みの安全
     constraint: 差し込む CSS・JavaScript が `</style>`・`</script>` を含むときは、同梱の雛形の誤りとして 500 を返す
   - item: 読み込むファイル
     constraint: 返す HTML は、描画のライブラリを jsDelivr から、文字を Google Fonts から読む（雛形が持つ）。ローカルのファイルは指さない
   - item: 通信
     constraint: 配信は外へ通信しない
+  - item: 送り元の確かめ
+    constraint: 書き込むエンドポイントは、`Origin` が付いていれば確かめ、合わなければ 403 を返す（別のサイトのページからの書き込みを防ぐ）。受けるのは `http://127.0.0.1:{ポート}`・`http://localhost:{ポート}` と、スキームが `https` か `http` で、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの。`Origin` が無い要求（HTTP のクライアントからの要求）は通す
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import signal
 import threading
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -111,6 +112,26 @@ def _spy_stop_all(monkeypatch: pytest.MonkeyPatch) -> list[serve.PreviewRegistry
     return stopped
 
 
+@pytest.fixture(autouse=True)
+def _restore_sigterm_handler() -> Iterator[None]:
+    """main が置く SIGTERM の受け口を、テストの後に元へ戻す。"""
+    original = signal.getsignal(signal.SIGTERM)
+    yield
+    signal.signal(signal.SIGTERM, original)
+
+
+class _FakeRegistry:
+    """stop_all が呼ばれたことを、順序つきの入れ物へ控える偽の配信の台帳。"""
+
+    def __init__(self, events: list[str]) -> None:
+        """出来事を控える入れ物を受け取る。"""
+        self._events = events
+
+    def stop_all(self) -> None:
+        """止めずに、呼ばれたことだけを控える。"""
+        self._events.append("stop_all")
+
+
 def test_main(monkeypatch: pytest.MonkeyPatch) -> None:
     """サーバーが戻ったら配信を止めて 0（正常系）。"""
     # 準備
@@ -146,6 +167,47 @@ def test_main_when_server_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(RuntimeError, match="サーバーが落ちました"):
         server.main(build=_build)
     assert stopped == [received["previews"]]
+
+
+def test_main_when_external_access_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    """環境変数の外から見る設定を台帳へ渡す（正常系）。"""
+    # 準備
+    _spy_stop_all(monkeypatch)
+    received: dict[str, Any] = {}
+
+    def _build(**kwargs: Any) -> _FakeServer:
+        """渡された previews を控えて、すぐ戻る偽のサーバーを返す。"""
+        received.update(kwargs)
+        return _FakeServer()
+
+    # 実行
+    server.main(build=_build, environ={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"})
+    # 検証
+    assert received["previews"]._external.allowed_hosts == frozenset({"preview.example.test"})
+
+
+def test_install_sigterm_handler(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SIGTERM で配信を止めて、os._exit で終わる（正常系）。"""
+    # 準備（プロセスを終えないよう os._exit を、記録を書き出さないよう logging.shutdown を差し替える）
+    events: list[str] = []
+    exit_codes: list[int] = []
+    registry = _FakeRegistry(events)
+
+    def _exit(code: int) -> None:
+        """終えずに、順序と受け取ったコードだけを控える。"""
+        events.append("exit")
+        exit_codes.append(code)
+
+    monkeypatch.setattr(server.os, "_exit", _exit)
+    monkeypatch.setattr(server.logging, "shutdown", lambda *args, **kwargs: None)
+    server.install_sigterm_handler(registry)  # type: ignore[arg-type]
+    handler = signal.getsignal(signal.SIGTERM)
+    assert callable(handler)
+    # 実行
+    handler(signal.SIGTERM, None)
+    # 検証
+    assert events == ["stop_all", "exit"]
+    assert exit_codes == [0]
 
 
 def test_build_server(tmp_path: Path) -> None:

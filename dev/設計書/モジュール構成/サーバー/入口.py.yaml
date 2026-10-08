@@ -772,7 +772,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: MCP サーバーを組み立てて stdio で動かし、標準入力が閉じたら配信を止めて終える
+    summary: MCP サーバーを組み立てて stdio で動かし、標準入力が閉じるか SIGTERM を受けたら、終了時のフックを呼んで配信を止めて終える
     description: 末尾で `sys.exit(main())`。
     side_effects: 標準入力・標準出力で MCP をやり取りし、記録を標準エラーに書く
     args:
@@ -782,15 +782,22 @@ functions:
         default: build_server
         passing: injected
         description: MCP サーバーを組み立てる関数
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: injected
+        description: 外から見る設定を読む環境変数
     returns:
       type: int
       description: 終了コード（標準入力が閉じて終えたら 0）
     process: |-
       1. `logging` の出力先を標準エラーにする
-      2. プロセスの中の書き換えの鍵（`threading.Lock()`）と配信の台帳（`PreviewRegistry`）を作る
-      3. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
-      4. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`）
-      5. 0 を返す
+      2. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. SIGTERM の受け口を置く（`install_sigterm_handler`）
+      4. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
+      5. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
+      6. 0 を返す
     unit_tests:
       - name: test_main
         case: 正常
@@ -804,6 +811,12 @@ functions:
         condition: '`run` が `RuntimeError` を送る偽のサーバー'
         mock: '`build`'
         expected: '`RuntimeError` が伝わり、`previews.stop_all` が呼ばれている'
+      - name: test_main_when_external_access_set
+        case: 正常
+        summary: 環境変数の外から見る設定を台帳へ渡す
+        condition: '`environ={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}`、`build` を `run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
+        mock: '`build`'
+        expected: 控えた `previews` の外から見る設定の `allowed_hosts` が `{"preview.example.test"}`
   - name: build_server
     title: サーバーの組み立て
     kind: 関数
@@ -1716,6 +1729,35 @@ functions:
         mock: '`previews`'
         expected: '`WorkspaceNotFoundError`。`tmp_path` に `README.md` が無い'
         exception: config.yaml が無い
+  - name: install_sigterm_handler
+    title: SIGTERM の受け口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: SIGTERM を受けたら配信の台帳を止めて終わる受け口を置く（Claude Code は標準入力を閉じずに SIGTERM を送る。インターフェース定義『MCP サーバーの起動』の補足）
+    side_effects: プロセスの SIGTERM の受け口を差し替える
+    args:
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: positional
+        description: 止める配信の台帳
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. `signal.signal(signal.SIGTERM, 受け口)` で受け口を置く
+      2. 受け口は、`previews.stop_all()` を呼び、記録を書き出して（`logging.shutdown`）、`os._exit(0)` で終える
+         - `[INFO]` SIGTERM を受けて配信を止めた
+         - `SystemExit` では終えない。標準入力が開いたままだと、MCP の SDK が標準入力を読む anyio の作業スレッド（daemon でない）をインタープリタの終わりが待ち続け、プロセスが残る
+    unit_tests:
+      - name: test_install_sigterm_handler
+        case: 正常
+        summary: SIGTERM で配信を止めて終わる
+        condition: 偽の台帳を渡して置き、`signal.getsignal(signal.SIGTERM)` で引いた受け口を `(signal.SIGTERM, None)` で呼ぶ。後で元の受け口に戻す
+        mock: 台帳（`stop_all` を記録する偽）、`os._exit`（`server` モジュールの参照を monkeypatch し、受け取ったコードを記録する）
+        expected: '`stop_all` が 1 回呼ばれた後に `os._exit` が 0 で 1 回呼ばれている'
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

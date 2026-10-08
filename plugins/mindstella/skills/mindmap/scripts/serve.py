@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import json
 import logging
+import shlex
+import subprocess
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -57,8 +59,16 @@ from submissions import SUBMISSIONS_FILE
 
 logger = logging.getLogger(__name__)
 
-# 待ち受けのアドレス（ポートは 0 で OS に選ばせる）
+# 待ち受けのアドレス（ポートは `config.yaml` の `preview.port` があればそれ、無ければ 0 で OS に選ばせる）
 LISTEN_HOST = "127.0.0.1"
+
+# 許可するホスト名・起動時のフック・終了時のフックを読む環境変数の名前
+ALLOWED_HOSTS_ENV = "MINDSTELLA_ALLOWED_HOSTS"
+START_HOOK_ENV = "MINDSTELLA_PREVIEW_START_HOOK"
+STOP_HOOK_ENV = "MINDSTELLA_PREVIEW_STOP_HOOK"
+
+# `Origin` で許可するホスト名を受けるスキーム
+ORIGIN_SCHEMES = ("https", "http")
 
 # 書き換えの印を作り直す間隔（秒）
 POLL_INTERVAL_SEC = 0.25
@@ -141,6 +151,20 @@ class ServeContext:
     settings: SettingsHolder
     # 雛形のフォルダ
     preview_dir: Path = PREVIEW_DIR
+    # 許可するホスト名（`check_host`・`check_origin` に渡す）
+    allowed_hosts: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAccess:
+    """環境変数から読んだ、許可するホスト名と起動時・終了時のフック。どれも無ければ今と同じ動きになる。"""
+
+    # 許可するホスト名（小文字）
+    allowed_hosts: frozenset[str] = frozenset()
+    # 起動時のフックのコマンドと引数（空なら呼ばない）
+    start_hook: tuple[str, ...] = ()
+    # 終了時のフックのコマンドと引数（空なら呼ばない）
+    stop_hook: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -163,6 +187,8 @@ class PreviewServer:
     url: str
     httpd: ThreadingHTTPServer
     thread: threading.Thread
+    # 待ち受けのポート（フックへ渡す）
+    port: int
 
     def stop(self) -> None:
         """待ち受けを止めて閉じる（つながっている書き換えの知らせは、書き込みが失敗して終わる）。"""
@@ -173,12 +199,13 @@ class PreviewServer:
 class PreviewRegistry:
     """このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、終わるときに全て止める。"""
 
-    def __init__(self, write_lock: threading.Lock) -> None:
-        """ツールと共有する書き換えの鍵を受け取り、空の台帳を作る。"""
+    def __init__(self, write_lock: threading.Lock, *, external: ExternalAccess | None = None) -> None:
+        """ツールと共有する書き換えの鍵と外から見る設定（無ければ空）を受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
-        # `_servers` を触る間だけ取る鍵
-        self._guard = threading.Lock()
+        self._external = ExternalAccess() if external is None else external
+        # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
+        self._guard = threading.RLock()
 
     def start(self, root: Path) -> tuple[str, bool]:
         """そのワークスペースの配信を立て、URL と今立てたかを返す。立っていればその URL を返す。"""
@@ -192,9 +219,18 @@ class PreviewRegistry:
             settings, problems = check_settings(key)
             if problems:
                 raise build_mismatch_error(problems)
-            preview = start_preview_server(key, write_lock=self._write_lock, settings=settings)
+            preview = start_preview_server(
+                key,
+                write_lock=self._write_lock,
+                settings=settings,
+                port=settings.get("preview", {}).get("port", 0),
+                allowed_hosts=self._external.allowed_hosts,
+            )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
+            # 立てた直後に起動時のフックを呼ぶ
+            if self._external.start_hook:
+                run_hook(self._external.start_hook, preview.port, key.name)
             return preview.url, True
 
     def url_of(self, root: Path) -> str | None:
@@ -204,11 +240,17 @@ class PreviewRegistry:
         return None if preview is None else preview.url
 
     def stop_all(self) -> None:
-        """立てた配信を全て止め、台帳を空にする。"""
+        """立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
+        # 鍵の中では台帳を空にして配信を手元に取るだけにし、フックと停止は鍵の外で呼ぶ
         with self._guard:
-            for preview in self._servers.values():
-                preview.stop()
-            self._servers.clear()
+            taken = list(self._servers.values())
+            self._servers = {}
+        # 配信を止める前に、終了時のフックを全て立てる
+        if self._external.stop_hook:
+            for preview in taken:
+                run_hook(self._external.stop_hook, preview.port, preview.root.name)
+        for preview in taken:
+            preview.stop()
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
@@ -223,7 +265,9 @@ class PreviewHandler(BaseHTTPRequestHandler):
         """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
-        if not check_host(self.headers.get("Host"), context.port):
+        if not check_host(
+            self.headers.get("Host"), context.port, allowed_hosts=context.allowed_hosts
+        ):
             self._reply(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
             return
         path = urlsplit(self.path).path
@@ -303,7 +347,9 @@ class PreviewHandler(BaseHTTPRequestHandler):
     def _checked_path(self) -> str | None:
         """`Host` を確かめて要求のパスを返す。接続先が合わなければ 403 を書いて None を返す。"""
         # 接続先が合わない
-        if not check_host(self.headers.get("Host"), self.context.port):
+        if not check_host(
+            self.headers.get("Host"), self.context.port, allowed_hosts=self.context.allowed_hosts
+        ):
             self._reply(problem_response(HTTPStatus.FORBIDDEN, "接続先が合いません"))
             return None
         return urlsplit(self.path).path
@@ -386,41 +432,119 @@ class PreviewHandler(BaseHTTPRequestHandler):
 
 
 def start_preview_server(
-    root: Path, *, write_lock: threading.Lock, settings: dict[str, Any]
+    root: Path,
+    *,
+    write_lock: threading.Lock,
+    settings: dict[str, Any],
+    port: int = 0,
+    allowed_hosts: frozenset[str] = frozenset(),
 ) -> PreviewServer:
-    """`LISTEN_HOST` の空きポートで待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
+    """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
-        httpd = ThreadingHTTPServer((LISTEN_HOST, 0), PreviewHandler)
+        httpd = ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)
     except OSError as error:
-        raise ServeFailedError(f"プレビューの配信を立てられません: {error}") from error
+        raise ServeFailedError(
+            f"プレビューの配信を立てられません（ポート {port}）: {error}"
+        ) from error
     httpd.daemon_threads = True
-    port = httpd.server_address[1]
+    bound_port = httpd.server_address[1]
     # 要求の受け口が `self.server.context` で引けるように、待ち受けに持たせる
     context = ServeContext(
-        root=root, port=port, write_lock=write_lock, settings=SettingsHolder(settings)
+        root=root,
+        port=bound_port,
+        write_lock=write_lock,
+        settings=SettingsHolder(settings),
+        allowed_hosts=allowed_hosts,
     )
     setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     return PreviewServer(
-        root=root, url=f"http://{LISTEN_HOST}:{port}{PAGE_PATH}", httpd=httpd, thread=thread
+        root=root,
+        url=f"http://{LISTEN_HOST}:{bound_port}{PAGE_PATH}",
+        httpd=httpd,
+        thread=thread,
+        port=bound_port,
     )
 
 
-def check_host(host: str | None, port: int) -> bool:
-    """`Host` が `127.0.0.1:{ポート}` か `localhost:{ポート}` かを返す。"""
+def host_part(value: str) -> str:
+    """`Host` か `Origin` の `netloc` から、末尾の `:{数字}` を外して小文字にしたホスト名を返す。"""
+    head, separator, tail = value.rpartition(":")
+    # 最後の `:` より後ろが全て数字: ポートを外す
+    if separator and tail.isdigit():
+        value = head
+    return value.lower()
+
+
+def check_host(host: str | None, port: int, *, allowed_hosts: frozenset[str]) -> bool:
+    """`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` か、ポートを外したホスト名が許可するホスト名かを返す。"""
     # 無い: 合わない
     if host is None:
         return False
-    return host.lower() in {f"{LISTEN_HOST}:{port}", f"localhost:{port}"}
+    if host.lower() in {f"{LISTEN_HOST}:{port}", f"localhost:{port}"}:
+        return True
+    return host_part(host) in allowed_hosts
 
 
-def check_origin(origin: str | None, port: int) -> bool:
-    """`Origin` が無いか、配信の URL と同じかを返す。"""
+def check_origin(origin: str | None, port: int, *, allowed_hosts: frozenset[str]) -> bool:
+    """`Origin` が無いか、配信の URL と同じか、許可するホスト名の https / http かを返す。"""
     # 無い（同じ送り元からの要求など）: 通す
     if origin is None:
         return True
-    return origin in {f"http://{LISTEN_HOST}:{port}", f"http://localhost:{port}"}
+    if origin in {f"http://{LISTEN_HOST}:{port}", f"http://localhost:{port}"}:
+        return True
+    try:
+        parts = urlsplit(origin)
+    except ValueError:
+        # URL として分けられない送り元は合わない
+        return False
+    return parts.scheme in ORIGIN_SCHEMES and host_part(parts.netloc) in allowed_hosts
+
+
+def load_external_access(environ: Mapping[str, str]) -> ExternalAccess:
+    """環境変数から許可するホスト名とフックを読み、`ExternalAccess` を返す。"""
+    allowed: set[str] = set()
+    for element in environ.get(ALLOWED_HOSTS_ENV, "").split(","):
+        name = element.strip().lower()
+        # 空の要素は捨てる
+        if not name:
+            continue
+        # スキーム・ポート・パスを含む要素は、ホスト名として使えない
+        if ":" in name or "/" in name:
+            logger.warning("許可するホスト名に使えない値を外した: %s", name)
+            continue
+        allowed.add(name)
+    return ExternalAccess(
+        allowed_hosts=frozenset(allowed),
+        start_hook=_split_hook(environ, START_HOOK_ENV),
+        stop_hook=_split_hook(environ, STOP_HOOK_ENV),
+    )
+
+
+def _split_hook(environ: Mapping[str, str], key: str) -> tuple[str, ...]:
+    """環境変数 key のフックのコマンドをシェルの書き方で分ける。分けられなければ空にする。"""
+    try:
+        return tuple(shlex.split(environ.get(key, "")))
+    except ValueError as error:
+        logger.warning("フックのコマンドを分けられない: %s（%s）", key, error)
+        return ()
+
+
+def run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
+    """フックのコマンドの末尾にポートとワークスペースの名前を足し、新しいセッションで立てて終わりを待たずに返す。"""
+    try:
+        subprocess.Popen(
+            [*command, str(port), name],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as error:
+        logger.warning("フックを立てられない: %s（%s）", command, error)
+        return False
+    return True
 
 
 def problem_response(status: int, detail: str) -> Response:
@@ -496,7 +620,7 @@ def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
 def reload_response(context: ServeContext, *, origin: str | None) -> Response:
     """config.yaml を検査し、通れば最後に検査に通った設定を差し替えて知らせ、通らなければ違う箇所を返す。"""
     # 別のサイトからの要求
-    if not check_origin(origin, context.port):
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
         return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
     try:
         settings, problems = check_settings(context.root)
@@ -594,7 +718,7 @@ def write_response(
             HTTPStatus.UNSUPPORTED_MEDIA_TYPE, f"{REQUEST_JSON_TYPE} で送ってください"
         )
     # 別のサイトからの書き込み
-    if not check_origin(origin, context.port):
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
         return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
     try:
         data = json.loads(body.decode("utf-8"))
@@ -622,7 +746,7 @@ def write_response(
 def delete_response(context: ServeContext, *, origin: str | None, comment_id: str) -> Response:
     """送り元を確かめ、書き換えの鍵を取ってコメントを消し、消した中身を返す。"""
     # 別のサイトからの書き込み
-    if not check_origin(origin, context.port):
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
         return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
     try:
         with workspace_lock(context.root, context.write_lock):

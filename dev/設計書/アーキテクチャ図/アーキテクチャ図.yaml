@@ -127,7 +127,7 @@ subsystems:
     scope: server
     role: 起動スクリプトで tmux と Claude Code を立ち上げ、1 つのプロセスで MCP のツール（ワークスペースの YAML の読み書き・検索・影響の洗い出し・点検・配る書き出し・送信の取り込み）と、プレビューの配信・送信の受け付けを持つ
     runtime: Python 3（起動スクリプトは bash）
-    runs_on: 利用者の端末（起動スクリプトで立てた Claude Code が stdio で立てる。配信は `127.0.0.1` の空きポート）
+    runs_on: 利用者の端末（起動スクリプトで立てた Claude Code が stdio で立てる。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート）
     status: planned
 external_systems:
   - name: Claude Code

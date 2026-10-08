@@ -232,6 +232,27 @@ flows:
       - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
       - '`comments.yaml` の中身が溜める前と同じ'
     test: test_error_when_write_fails
+  - name: 正常系（許可したホスト名の送り元）
+    summary: 許可したホスト名の `Host` と `Origin` の送り元から、コメントを足せる
+    setup:
+      - name: Mock
+        description: なし（`MINDSTELLA_ALLOWED_HOSTS` を `preview.example.test` にして MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`Host: preview.example.test` と `Origin: https://preview.example.test` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments
+
+        クライアント->>IF: POST（Host: preview.example.test、Origin: https://preview.example.test）
+        IF-->>クライアント: 201
+      ```
+    expected:
+      - ステータスが 201
+      - '`Origin: https://other.example.test` で送ると 403 で、コメントが増えない'
+    test: test_normal_when_origin_allowed
 lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送らずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
 idempotent: false
 side_effects: '`comments.yaml` に 1 件足し（無ければ作る）、同じ向けた先（`target` と `loc`）の書きかけを `drafts.yaml` から消す。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -243,7 +264,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
   - name: Content-Type
     type: str
     required: true
@@ -256,7 +277,7 @@ request:
     default: なし（確かめない）
     location: header
     description: ブラウザが付ける送り元
-    constraints: 付いていれば `http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
   - name: target
     type: str
     required: false
@@ -351,7 +372,7 @@ status_codes:
     condition: 本文が JSON のオブジェクトでない・`body` が無いか空白だけか 10000 文字を超える・`loc` の形が崩れている（`target` が無い、`kind` に合うキーが無い など）・リクエストの本文が 128KiB を超える
     notes: 何も書かない
   - code: '403'
-    condition: '`Origin` が配信の URL と違う'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
     notes: 何も書かない
   - code: '404'
     condition: '`target` の項目がワークスペースに無い'
