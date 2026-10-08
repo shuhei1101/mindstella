@@ -6,9 +6,11 @@
 
 import json
 import logging
+import os
+import signal
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -20,7 +22,7 @@ import commands
 from errors import MindmapError, SchemaMismatchError
 from kinds import Kind
 from query import SearchFilter, parse_attr
-from serve import PreviewRegistry
+from serve import PreviewRegistry, load_external_access
 from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
 
@@ -67,19 +69,35 @@ type ItemIdArg = Annotated[str, Field(description="項目の ID（例 D-1）")]
 logger = logging.getLogger(__name__)
 
 
-def main(build: Callable[..., MCPServer] | None = None) -> int:
-    """MCP サーバーを組み立てて stdio で動かし、標準入力が閉じたら配信を止めて終える。"""
+def main(
+    build: Callable[..., MCPServer] | None = None, *, environ: Mapping[str, str] | None = None
+) -> int:
+    """MCP サーバーを組み立てて stdio で動かし、標準入力が閉じるか SIGTERM を受けたら、終了時のフックを呼んで配信を止めて終える。"""
     # 標準出力は MCP が使うので、記録は標準エラーへ書く
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     write_lock = threading.Lock()
-    previews = PreviewRegistry(write_lock)
+    external = load_external_access(os.environ if environ is None else environ)
+    previews = PreviewRegistry(write_lock, external=external)
+    install_sigterm_handler(previews)
     server = (build or build_server)(previews=previews, write_lock=write_lock, cwd=Path.cwd())
     try:
         server.run("stdio")
     finally:
-        # run が例外で戻ったときも、立てた配信を止める
+        # run が例外で戻ったときも、立てた配信を止める（終了時のフックもここで呼ぶ）
         previews.stop_all()
     return 0
+
+
+def install_sigterm_handler(previews: PreviewRegistry) -> None:
+    """SIGTERM を受けたら配信の台帳を止めて終わる受け口を置く（Claude Code は標準入力を閉じずに SIGTERM を送る）。"""
+
+    def _handle(signum: int, frame: object) -> None:
+        """配信を止めてから、終了コード 0 で終わる。"""
+        previews.stop_all()
+        logger.info("SIGTERM を受けて配信を止めた")
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, _handle)
 
 
 def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: Path) -> MCPServer:
