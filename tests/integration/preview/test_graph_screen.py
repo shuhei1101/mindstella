@@ -18,7 +18,7 @@ from preview_drawer_helpers import (
     open_drawer,
     remove_chip,
 )
-from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import (
     WIDE_VIEWPORT,
@@ -47,7 +47,6 @@ from preview_network_helpers import (
     status_marks,
 )
 from preview_settings_helpers import LOOK_SELECT, pick_look, read_prefs
-from workspace_fixtures import MakeItem
 
 # 狭い幅の画面の大きさ（空の旨の文はどの幅でも出す）
 NARROW_WIDTH = 800
