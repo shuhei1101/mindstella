@@ -161,8 +161,9 @@ classes:
           type: None
           description: '-'
         process: |-
-          1. `_guard` を取り、台帳の配信ごとに、`_external.stop_hook` があれば配信のポートとワークスペースのフォルダの名前を渡してフックを呼び（`run_hook`）、`PreviewServer.stop` を呼ぶ
-          2. 台帳を空にする（2 回目の呼び出しではフックも `stop` も呼ばれない）
+          1. `_guard` を取り、`_external.stop_hook` があれば、台帳の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。配信を止める前に全て立てる）
+          2. 台帳の配信ごとに `PreviewServer.stop` を呼ぶ
+          3. 台帳を空にする（2 回目の呼び出しではフックも `stop` も呼ばれない）
         unit_tests:
           - name: test_stop_all
             case: 正常
@@ -537,10 +538,9 @@ functions:
         description: 待ち受けのポート
       - name: allowed_hosts
         type: frozenset[str]
-        required: false
-        default: frozenset()
+        required: true
         passing: keyword
-        description: 許可するホスト名（小文字）
+        description: 許可するホスト名（小文字）。呼ぶ側は `ServeContext.allowed_hosts` を渡す
     returns:
       type: bool
       description: 合うか
@@ -552,7 +552,7 @@ functions:
       - name: test_check_host
         case: 正常
         summary: 端末の中の名前と同じポートだけ通す
-        condition: '`parametrize`: `127.0.0.1:5000` / `LOCALHOST:5000` / `127.0.0.1:5001` / `attacker.example:5000` / `None`。`port=5000`'
+        condition: '`parametrize`: `127.0.0.1:5000` / `LOCALHOST:5000` / `127.0.0.1:5001` / `attacker.example:5000` / `None`。`port=5000`、`allowed_hosts=frozenset()`'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 偽
       - name: test_check_host_when_allowed
@@ -581,10 +581,9 @@ functions:
         description: 待ち受けのポート
       - name: allowed_hosts
         type: frozenset[str]
-        required: false
-        default: frozenset()
+        required: true
         passing: keyword
-        description: 許可するホスト名（小文字）
+        description: 許可するホスト名（小文字）。呼ぶ側は `ServeContext.allowed_hosts` を渡す
     returns:
       type: bool
       description: 合うか（無いときは真）
@@ -596,7 +595,7 @@ functions:
       - name: test_check_origin
         case: 正常
         summary: 無いか配信と同じ送り元だけ通す
-        condition: '`parametrize`: `None` / `http://127.0.0.1:5000` / `http://localhost:5000` / `https://attacker.example` / `http://127.0.0.1:5001`。`port=5000`'
+        condition: '`parametrize`: `None` / `http://127.0.0.1:5000` / `http://localhost:5000` / `https://attacker.example` / `http://127.0.0.1:5001`。`port=5000`、`allowed_hosts=frozenset()`'
         mock: なし
         expected: 真 / 真 / 真 / 偽 / 偽
       - name: test_check_origin_when_allowed
