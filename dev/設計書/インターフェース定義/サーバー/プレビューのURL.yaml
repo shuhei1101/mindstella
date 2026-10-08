@@ -142,6 +142,81 @@ flows:
       - '`started` が真'
       - '`README.md` の中身と更新日時が呼ぶ前と同じ'
     test: test_normal_when_user_readme_exists
+  - name: 正常系（ポートを固定する）
+    summary: '`config.yaml` の `preview.port` のポートで配信を立てる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` に `preview.port` を書いたワークスペース
+        notes: ポートはテストの中で空きポートを 1 つ取って閉じ、その番号を書く
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+        participant P as プレビューの配信
+
+        クライアント->>IF: preview_url workspace
+        IF->>P: 127.0.0.1 の preview.port で立てる
+        IF-->>クライアント: JSON（url・started: true）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`url` が `http://127.0.0.1:{preview.port}/mindstella.html`'
+      - '`url` を GET すると 200 が返る'
+    test: test_normal_when_port_fixed
+  - name: 異常系（固定したポートが使われている・ServeFailedError）
+    summary: '`preview.port` のポートを別のプロセスが使っていると、配信を立てずフックも呼ばずに終わる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 使われているポート
+        description: テストが `127.0.0.1` で待ち受けたままにしたポートを、`config.yaml` の `preview.port` に書いたワークスペース
+      - name: 起動時のフック
+        description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ書き足すコマンド'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+
+        クライアント->>IF: preview_url workspace
+        IF->>IF: preview.port で待ち受けられない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: ` で始まり、そのポートの番号を含む'
+      - 先に待ち受けていたソケットがそのままつながる
+      - フックの書き足すファイルが無い
+    test: test_error_when_port_in_use
+  - name: 正常系（起動時のフック）
+    summary: 配信を立てたときだけ、起動時のフックをポートとワークスペースの名前を足して呼ぶ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 起動時のフック
+        description: '`MINDSTELLA_PREVIEW_START_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンド'
+        notes: '`preview_url` を 2 回呼ぶ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+        participant HK as 起動時のフック
+
+        クライアント->>IF: preview_url workspace
+        IF->>HK: {コマンド} {ポート} {フォルダの名前}
+        IF-->>クライアント: JSON（url・started: true）
+        クライアント->>IF: preview_url workspace
+        IF-->>クライアント: JSON（同じ url・started: false）
+      ```
+    expected:
+      - フックの書き足すファイルに 1 行だけあり、`url` のポートとワークスペースのフォルダの名前が並ぶ
+      - '`MINDSTELLA_PREVIEW_START_HOOK` を存在しないコマンドにしても、ツールのエラーにならず `url` を返す'
+    test: test_normal_when_start_hook_set
 lead: ワークスペースのプレビューを配る URL を返す。このプロセスでまだ配っていなければ、`127.0.0.1` の空きポートで配信を立てる。
 idempotent: true
 side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの知らせ』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・書きかけ・まとめて送るの受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
@@ -176,8 +251,8 @@ exceptions:
     condition: 配信を立てる前に `config.yaml` をスキーマと突き合わせて合わない（このプロセスでまだ配っていないワークスペースのときだけ確かめる）
     notes: 'ツールのエラー。エラーの本文に合わない箇所ごとの `config.yaml: {キーのパス}: {理由}` の行。配信を立てない'
   - name: ServeFailedError
-    condition: 待ち受けを立てられない（空きポートが取れない など）
-    notes: ツールのエラー。エラーの本文に理由
+    condition: 待ち受けを立てられない（空きポートが取れない、`preview.port` のポートを別のプロセスが使っている など）
+    notes: ツールのエラー。エラーの本文に理由とポート。起動時のフックは呼ばない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 結果の形
@@ -185,7 +260,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 待ち受け
-    constraint: '`127.0.0.1` だけ。ポートは OS に選ばせる（ポート 0 で待ち受ける）'
+    constraint: '`127.0.0.1` だけ。ポートは、`config.yaml` の `preview.port` があればそのポート、無ければ OS に選ばせる（ポート 0 で待ち受ける）'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
   - item: 配信の数
     constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで呼び直すと同じ URL を返す。別のプロセスが同じワークスペースを配っていても、このプロセスは別のポートで配る
@@ -195,6 +270,9 @@ constraints:
     constraint: 配信を立てる前に `config.yaml` だけをスキーマと突き合わせる（種類ごとの YAML は『記録の取得』が読むたびに確かめる）。通った設定を、配信の「最後に検査に通った設定」の初めの値にする。既に配っているワークスペースでは確かめずに同じ URL を返す
   - item: README の書き直し
     constraint: 配信を立てた呼び出し（`started` が真）だけ、配信を立てた後に『README の書き出し』の制約「README の中身」「埋める値」「書くかの判定」「書き方」で直下の `README.md` を書き直す。書けなくても配信は止めず、標準エラーに記録して URL を返す
+  - item: 起動時のフック
+    constraint: '配信を立てた呼び出し（`started` が真）だけ、配信を立てた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾にポートとワークスペースのフォルダの名前を引数で足して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
+    decided_by: dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#constraints[終わり方]
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
 test_file: tests/integration/server/test_preview_url.py

@@ -174,7 +174,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
   - name: Content-Type
     type: str
     required: true
@@ -187,7 +187,7 @@ request:
     default: なし（確かめない）
     location: header
     description: ブラウザが付ける送り元
-    constraints: 付いていれば `http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
   - name: ids
     type: list[str]
     required: true
@@ -220,7 +220,7 @@ status_codes:
     condition: 本文が JSON のオブジェクトでない・`ids` が無いか空・重なりがある・リクエストの本文が 128KiB を超える
     notes: 何も書かない
   - code: '403'
-    condition: '`Origin` が配信の URL と違う'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
     notes: 何も書かない
   - code: '404'
     condition: '`ids` のどれかがレビュー中のコメントに無い'
@@ -249,7 +249,7 @@ constraints:
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400。ID だけを送るため、送れる件数は溜める件数の規模（ER 図の `comments.yaml`）より大きい
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
   - item: 送り元の確かめ
-    constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば配信の URL と同じかを確かめる（別のサイトのページからの書き込みを防ぐ）'
+    constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば『プレビューの配信』の制約「送り元の確かめ」で確かめる（別のサイトのページからの書き込みを防ぐ）'
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスの `take_submission` やコメントの書き換えと重なっても、どちらの書き換えも失わず、送信の ID も重ならない
   - item: 待ち受け

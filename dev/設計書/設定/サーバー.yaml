@@ -28,3 +28,60 @@ settings:
     visibility: user
     refs:
       - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - key: MINDSTELLA_ALLOWED_HOSTS
+    title: 許可するホスト名
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（`127.0.0.1` と `localhost` だけを受ける）
+    description: プレビューの配信が `Host` と `Origin` で受ける外のホスト名。トンネル・リバースプロキシの内側で、端末の外から開くときに設定する。起動スクリプトが、設定されていれば MCP の設定の `mcpServers.mindstella.env` に書いて MCP サーバーへ渡す
+    missing: 外のホスト名を受けない（今と同じ動き）
+    env_var: MINDSTELLA_ALLOWED_HOSTS
+    reload: restart
+    allowed: ホスト名をカンマで区切ったもの（例 `preview.example.com,notes.example.com`）。前後の空白は外し、大文字と小文字を区別しない。スキーム・ポート・`/` を含む要素と空の要素は使わず、MCP サーバーが立つときに標準エラーへ記録する
+    reason: 待ち受けは `127.0.0.1` のままで、外から開く画面の認証は外の入口に任せる。端末ごとに決まる値のため、ワークスペースの `config.yaml` には置かない
+    status: planned
+    visibility: user
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
+      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+    introduced:
+      pr: 155
+  - key: MINDSTELLA_PREVIEW_START_HOOK
+    title: 配信を立てたときのフック
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（何も呼ばない）
+    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で足して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。起動スクリプトが、設定されていれば MCP の設定の `mcpServers.mindstella.env` に書いて渡す
+    missing: 呼ばない
+    env_var: MINDSTELLA_PREVIEW_START_HOOK
+    reload: restart
+    allowed: シェルの書き方で区切ったコマンドと引数（`shlex.split` で分け、シェルを通さずに呼ぶ）
+    reason: コマンドを動かす値のため、ワークスペースと一緒に他の端末へ渡る `config.yaml` には置かない
+    status: planned
+    visibility: user
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+    introduced:
+      pr: 155
+  - key: MINDSTELLA_PREVIEW_STOP_HOOK
+    title: 配信を止めるときのフック
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（何も呼ばない）
+    description: MCP サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で足して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を消すのに使う。起動スクリプトが、設定されていれば MCP の設定の `mcpServers.mindstella.env` に書いて渡す
+    missing: 呼ばない
+    env_var: MINDSTELLA_PREVIEW_STOP_HOOK
+    reload: restart
+    allowed: '`MINDSTELLA_PREVIEW_START_HOOK` と同じ'
+    reason: '`MINDSTELLA_PREVIEW_START_HOOK` と同じ'
+    status: planned
+    visibility: user
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+    introduced:
+      pr: 155
