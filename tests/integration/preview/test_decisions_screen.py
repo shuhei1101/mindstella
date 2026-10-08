@@ -179,6 +179,23 @@ MAP_VIEW_SCRIPT = """() => {
     return { left: wrap.scrollLeft, top: wrap.scrollTop, transform: canvas.style.transform };
 }"""
 
+# 鍵の震えが収まるまで待つ時間（ms。震えは約 1 秒）と、震え始めを確かめるまでの時間
+SHAKE_DONE_MS = 1_800
+SHAKE_EARLY_MS = 120
+
+# 素早い 2 回押しにする、続けて押す間隔（ms。450ms 未満）
+QUICK_PRESS_GAP_MS = 80
+
+# 節の鍵（閉じた鍵はロックした節だけ、開いた鍵は詳細を開いている節にカーソルを乗せたときだけ表示する）
+LOCKED_NODE = "#decision-map button.n-item.locked"
+KEY = "#decision-map button.n-item .lk"
+
+# 節の鍵が表示されている（`display` が `none` でない）節の ID を返す
+SHOWN_KEYS_SCRIPT = """() => [...document.querySelectorAll('#decision-map button.n-item')]
+    .filter(node => getComputedStyle(node.querySelector('.lk')).display !== 'none')
+    .map(node => node.dataset.node)"""
+
+
 
 def _view_pressed(page: Page, view: str) -> str | None:
     """表示形式の切り替えで、その形式のボタンが押されているかを返す。"""
@@ -592,6 +609,268 @@ def test_map_background_press_when_zoomed(
     page.wait_for_timeout(PRESS_SETTLE_MS)
     # 検証
     assert page.evaluate(MAP_VIEW_SCRIPT) == before
+
+
+def _node_point(page: Page, item_id: str) -> dict[str, float]:
+    """マップの項目の節の中心（画面上の座標）を返す。"""
+    return _box_center(page, f'#decision-map button.n-item[data-node="{item_id}"]')
+
+
+def _press_node(page: Page, item_id: str) -> None:
+    """マップの項目の節を押して離し、マウスを節から離す。"""
+    _press_at(page, _node_point(page, item_id))
+    page.mouse.move(0, 0)
+
+
+def _locked_ids(page: Page) -> list[str]:
+    """ロックした節の ID を返す。"""
+    ids: list[str] = page.eval_on_selector_all(LOCKED_NODE, "nodes => nodes.map(n => n.dataset.node)")
+    return ids
+
+
+def _shown_keys(page: Page) -> list[str]:
+    """鍵を表示している節の ID を返す。"""
+    ids: list[str] = page.evaluate(SHOWN_KEYS_SCRIPT)
+    return ids
+
+
+def test_map_lock_when_open_item_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """詳細を開いている節を押すとロックして閉じた鍵を出し、もう一度押すとロックを外す。どちらも詳細は開いたまま（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    shown_before = _shown_keys(page)
+    # 実行（ロックする）
+    _press_node(page, "D-2")
+    page.wait_for_selector(f'{LOCKED_NODE}[data-node="D-2"]')
+    locked = (_locked_ids(page), _shown_keys(page), page.evaluate("location.hash"))
+    # 実行（ロックを外す）
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE, state="detached")
+    # 検証
+    assert shown_before == []
+    assert locked == (["D-2"], ["D-2"], "#tab=decisions&view=map&id=D-2")
+    assert page.locator(f"{KEY} svg.icon").count() == 4
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-2"
+    assert page.locator("aside.panel.open").count() == 1
+
+
+def test_map_open_when_other_item_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックしていないとき、ほかの節を押すと詳細をその項目に切り替える。ロックはしない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    # 実行
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert _locked_ids(page) == []
+
+
+def test_map_lock_keeps_node_when_other_opened(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロック中にほかの節を押すと、詳細だけをその項目に切り替える。ロックした節は閉じた鍵を保ち、押した節には選んだ印だけが付く（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    # 実行
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert _locked_ids(page) == ["D-2"]
+    assert _shown_keys(page) == ["D-2"]
+    assert page.eval_on_selector_all(
+        "#decision-map button.n-item.sel", "nodes => nodes.map(n => n.dataset.node)"
+    ) == ["D-3"]
+    assert page.evaluate("document.getElementById('decision-map').classList.contains('has-lock')")
+
+
+def test_map_return_to_locked_when_locked_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロック中にほかの項目を開いているとき、ロックした節を押すと、詳細をロックした項目に戻すだけにする。ロックは外さない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 実行
+    _press_node(page, "D-2")
+    page.wait_for_function("location.hash.includes('id=D-2')")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "D-2の題"
+    assert _locked_ids(page) == ["D-2"]
+
+
+def test_map_shake_when_blank_pressed_while_locked(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックした項目の詳細を開いているときに余白を押すと、ロック・詳細・表示を変えず、閉じた鍵を約 1 秒震わせる。震えは赤く、収まると元の見た目に戻る（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    point = _blank_point(page)
+    quiet = page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')")
+    # 実行
+    _press_at(page, point)
+    page.mouse.move(0, 0)
+    page.wait_for_timeout(SHAKE_EARLY_MS)
+    shaking = page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')")
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    # 検証
+    assert quiet is None
+    assert shaking is not None
+    assert "rotate(" in shaking
+    assert "transform-origin: 50% 0" in shaking
+    assert page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')") is None
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-2"
+    assert _locked_ids(page) == ["D-2"]
+    assert page.locator("aside.panel.open").count() == 1
+
+
+def test_map_shake_when_same_other_item_pressed_while_locked(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロック中に開いている別の項目の節をもう一度押すと、何も変えず、鍵を震わせる（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    # 実行
+    _press_node(page, "D-3")
+    page.wait_for_timeout(SHAKE_EARLY_MS)
+    shaking = page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')")
+    # 検証
+    assert shaking is not None
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-3"
+    assert _locked_ids(page) == ["D-2"]
+
+
+def test_map_open_key_when_hovered(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックしていないとき、開いた鍵は詳細を開いている節にカーソルを乗せたときだけ出す。押しても何も起きない鍵なので、乗せただけでは詳細もロックも変えない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    page.mouse.move(0, 0)
+    away = _shown_keys(page)
+    # 実行
+    page.mouse.move(_node_point(page, "D-2")["x"], _node_point(page, "D-2")["y"])
+    page.wait_for_function("document.querySelector('#decision-map button.n-item.sel:hover') !== null")
+    hovered = _shown_keys(page)
+    page.mouse.move(_node_point(page, "D-3")["x"], _node_point(page, "D-3")["y"])
+    page.wait_for_function("document.querySelector('#decision-map button.n-item.sel:hover') === null")
+    other_hovered = _shown_keys(page)
+    # 検証
+    assert away == []
+    assert hovered == ["D-2"]
+    assert other_hovered == []
+    assert _locked_ids(page) == []
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-2"
+
+
+def test_map_lock_stays_when_detail_closed_and_tab_moved(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックは詳細を閉じても、タブを行き来しても残り、閉じた鍵を出し続ける。ネットワークのロックとは別に持つ（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    # 実行（詳細を閉じる）
+    page.keyboard.press("Escape")
+    page.wait_for_selector("aside.panel.open", state="detached")
+    after_close = (_locked_ids(page), _shown_keys(page))
+    # 実行（ネットワークへ移って戻る）
+    page.click('nav.tabbar a[data-tab="graph"]')
+    page.wait_for_selector("#graph-canvas")
+    page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="map"]')
+    page.wait_for_selector(LOCKED_NODE)
+    # 検証
+    assert after_close == (["D-2"], ["D-2"])
+    assert _locked_ids(page) == ["D-2"]
+    assert _shown_keys(page) == ["D-2"]
+
+
+def test_map_lock_when_quick_double_press(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """何も選んでいないとき、同じ節を素早く 2 回押すと、1 回目で詳細が開いて枠がずれても、その節への 2 回押しとしてロックする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    point = _node_point(page, "D-3")
+    # 実行
+    page.mouse.move(point["x"], point["y"])
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_timeout(QUICK_PRESS_GAP_MS)
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_selector(LOCKED_NODE)
+    # 検証
+    assert _locked_ids(page) == ["D-3"]
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-3"
+
+
+def test_map_lock_when_narrow(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """幅 900px 以下の字下げの一覧ではロックしない。押した項目を開くだけで、鍵も出さない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
+    page.wait_for_selector("nav.map-outline", state="visible")
+    # 実行（開いている項目をもう一度押しても、ロックしない）
+    page.click('nav.map-outline button[data-id="D-3"]')
+    page.wait_for_selector("aside.panel.open")
+    page.click('nav.map-outline button[data-id="D-3"]', force=True)
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    # 検証
+    assert page.locator(LOCKED_NODE).count() == 0
+    assert page.locator("nav.map-outline .lk").count() == 0
+
+
+def test_map_key_does_not_overlap_comment_mark(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """節の鍵は 1 行目の右端、コメントの印は 2 行目の右端に置き、重ならない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=map&id=D-2")
+    page.wait_for_function(SELECTED_MAP_SCRIPT)
+    # 実行
+    _press_node(page, "D-2")
+    page.wait_for_selector(f'{LOCKED_NODE}[data-node="D-2"]')
+    boxes = page.evaluate(
+        """() => {
+            const node = document.querySelector('#decision-map button.n-item.locked');
+            const key = node.querySelector('.lk').getBoundingClientRect();
+            const mark = node.querySelector('.r2 .cmk').getBoundingClientRect();
+            const frame = node.getBoundingClientRect();
+            return {
+                apart: key.bottom <= mark.top || key.right <= mark.left || mark.right <= key.left,
+                keyInside: key.left >= frame.left && key.right <= frame.right && key.top >= frame.top && key.bottom <= frame.bottom,
+                keyOnFirstRow: key.top < frame.top + frame.height / 2,
+            };
+        }"""
+    )
+    # 検証
+    assert boxes == {"apart": True, "keyInside": True, "keyOnFirstRow": True}
 
 
 def test_map_when_narrow(

@@ -40,6 +40,7 @@ def test_both_changed(open_story: OpenStory) -> None:
     labelled = page.get_attribute(DIALOG, "aria-labelledby")
     assert page.inner_text(f"#{labelled}") == "ワークスペースの既定を書き換えますか"
     rows = _rows(page)
+    assert "ネットワークの見た目" in rows[0]
     assert "星の光" in rows[0]
     assert "星屑" in rows[0]
     assert "メモを表示しない" in rows[1]

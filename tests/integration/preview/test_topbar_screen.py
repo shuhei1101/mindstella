@@ -10,7 +10,7 @@ from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePr
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from workspace_fixtures import MakeComment, MakeItem
 
-# タブの帯に並ぶ画面の並び（つながりは右端）
+# タブの帯に並ぶ画面の並び（ネットワークは右端）
 TAB_KEYS = [
     "overview",
     "decisions",
@@ -232,7 +232,7 @@ def test_tab_marks(
 def test_filter_button_on_item_screens(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, tab: str
 ) -> None:
-    """項目を並べる画面（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・つながり）に絞り込みのボタンを置く（正常系）。"""
+    """項目を並べる画面（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・ネットワーク）に絞り込みのボタンを置く（正常系）。"""
     # 準備・実行
     url = write_sample_preview()
     page = open_preview(url, f"#tab={tab}")

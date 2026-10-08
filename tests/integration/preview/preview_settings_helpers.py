@@ -13,11 +13,13 @@ __all__ = [
     "CONFIRM",
     "CONFIRM_OPEN",
     "DEFAULT_KINDS",
+    "LOOK_SELECT",
     "SETTINGS_BUTTON",
     "SETTINGS_PANEL",
     "SETTINGS_PANEL_OPEN",
     "open_settings",
     "panel_text",
+    "pick_look",
     "read_config",
     "read_prefs",
     "tab_keys",
@@ -30,6 +32,9 @@ SETTINGS_BUTTON = "header.topbar button.settings-btn"
 # 表示の設定のパネル（開いているときだけ `open` のクラスを持つ）
 SETTINGS_PANEL = "aside.settings-drawer"
 SETTINGS_PANEL_OPEN = f"{SETTINGS_PANEL}.open"
+
+# ネットワークのキャンバスの右上に重ねる、見た目のドロップダウン
+LOOK_SELECT = ".screen.graph .look-pick select"
 
 # 既定の保存の確かめ（開いているときだけ `open` 属性を持つ）
 CONFIRM = "dialog.sconfirm"
@@ -51,13 +56,21 @@ def open_settings(page: Page) -> None:
     page.wait_for_selector(SETTINGS_PANEL_OPEN)
 
 
+def pick_look(page: Page, value: str) -> None:
+    """ネットワークの見た目のドロップダウンで、見た目を選ぶ（値は glow・starlight・constellation・deep・dust）。"""
+    page.select_option(LOOK_SELECT, value)
+    page.wait_for_function(
+        "value => document.querySelector('.screen.graph')?.dataset.look === value", arg=value
+    )
+
+
 def read_prefs(page: Page) -> dict[str, Any] | None:
     """端末の保存領域に残した個人の上書きを読む（残していなければ None）。"""
     return page.evaluate(_PREFS_SCRIPT)
 
 
 def tab_keys(page: Page) -> list[str]:
-    """タブの帯に並ぶ画面の並びを返す（つながりは右端）。"""
+    """タブの帯に並ぶ画面の並びを返す（ネットワークは右端）。"""
     return page.evaluate(_TABS_SCRIPT)
 
 

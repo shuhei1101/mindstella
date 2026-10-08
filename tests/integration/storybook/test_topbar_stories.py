@@ -58,12 +58,18 @@ def test_overview(open_story: OpenStory) -> None:
 
 
 def test_graph(open_story: OpenStory) -> None:
-    """つながりを開いている。つながりの入口だけを選んだ見た目にする（正常系）。"""
+    """ネットワークを開いている。ネットワークの入口だけを選んだ見た目にし、名前を「ネットワーク」、アイコンを星座の形にする（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--graph")
     # 検証
     assert page.evaluate(CURRENT_SCRIPT) == ["graph"]
     assert page.locator("nav.tabbar a.tab-special").count() == 1
+    entry = page.locator("nav.tabbar a.tab-special")
+    assert entry.inner_text().strip() == "ネットワーク"
+    assert entry.get_attribute("aria-current") == "page"
+    # アイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形（円 4 つ・線の組 1 つ・十字の星 1 つ）
+    assert entry.locator("svg.icon circle").count() == 4
+    assert entry.locator("svg.icon path").count() == 2
 
 
 def test_long_title(open_story: OpenStory) -> None:
@@ -405,7 +411,7 @@ def test_settings_open(open_story: OpenStory) -> None:
 
 
 def test_kinds_hidden(open_story: OpenStory) -> None:
-    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す（正常系）。"""
+    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とネットワークの入口は残す（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--kinds-hidden")
     # 検証
@@ -435,7 +441,7 @@ def test_export(open_story: OpenStory) -> None:
 CHIP_MIN_WIDTH_EM = 5.49
 
 # `LongTitle` の題名（差分の札と同じ帯に長い題名を置く）
-LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・つながり・詳細パネル）を見本に沿って作るための話し合いの記録"
+LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・ネットワーク・詳細パネル）を見本に沿って作るための話し合いの記録"
 
 # Storybook の body が持つ左右の余白を外す（トップバーを画面の幅いっぱいに置く本物の画面と同じ幅で測る）
 NO_BODY_PADDING = "body { padding: 0 !important; }"
