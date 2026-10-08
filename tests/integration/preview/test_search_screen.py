@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
+from preview_a11y_checks import axe_rule_results
 from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
 from workspace_fixtures import MakeItem
 
 # 検索のダイアログ
 DIALOG = "dialog.search"
+
+# 見出しの段が飛んでいないかを確かめる axe の規則
+HEADING_ORDER_RULE = "heading-order"
 
 
 def _result_ids(page: Page) -> list[str]:
@@ -174,7 +178,7 @@ def test_exact_match_first(
     page.fill(f"{DIALOG} input", "シナリオの依頼")
     page.wait_for_selector(f"{DIALOG} .sr-item")
     # 検証
-    headings = page.eval_on_selector_all(f"{DIALOG} h3", "h => h.map(x => x.textContent)")
+    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
     assert headings == ["完全に一致", "検討事項"]
     assert _result_ids(page) == ["G-1", "D-1"]
     # 完全に一致の結果には、種類を添える
@@ -200,10 +204,35 @@ def test_exact_match_by_id(
     page.fill(f"{DIALOG} input", "g-1")
     page.wait_for_selector(f"{DIALOG} .sr-item")
     # 検証
-    headings = page.eval_on_selector_all(f"{DIALOG} h3", "h => h.map(x => x.textContent)")
+    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
     assert headings == ["完全に一致", "用語集"]
     assert _result_ids(page) == ["G-1", "G-12"]
     white_space = page.eval_on_selector(
         f'{DIALOG} .sr-item[data-id="G-1"] > .mono', "e => getComputedStyle(e).whiteSpace"
     )
     assert white_space == "nowrap"
+
+
+def test_result_headings_when_axe(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """結果を出したモーダルの見出しは全て `h2` で、axe の `heading-order` に当たらない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="シナリオの依頼の受け方"),
+        make_item("G-1", title="シナリオの依頼"),
+    )
+    page = open_preview(url)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    page.fill(f"{DIALOG} input", "シナリオの依頼")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 実行
+    tags = page.eval_on_selector_all(
+        f"{DIALOG} :is(h1, h2, h3, h4, h5, h6)", "h => h.map(x => x.tagName)"
+    )
+    result = axe_rule_results(page, DIALOG, HEADING_ORDER_RULE)
+    # 検証（見出しは「完全に一致」と種類名の 2 本が全て h2。規則が見出しに当たったうえで、通る）
+    assert tags == ["H2", "H2"]
+    assert result["violations"] == []
+    assert len(result["passes"]) == 2

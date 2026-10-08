@@ -105,7 +105,7 @@ def test_normal_when_exact_match(
     page.fill(f"{DIALOG} input", "シナリオの依頼 ")
     page.wait_for_selector(f"{DIALOG} .sr-item")
     # 検証
-    headings = page.eval_on_selector_all(f"{DIALOG} h3", "h => h.map(x => x.textContent)")
+    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
     ids = page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
     assert headings == ["完全に一致", "検討事項", "資料"]
     # G-1 が一番上で、その下の用語集のまとまりには重ねて出ない。D-1・A-1 はそれぞれの種類の見出しの下にある
