@@ -114,9 +114,41 @@ flows:
       - どちらの `add` もツールのエラーにならない
       - '`decisions.yaml` に 40 件あり、ID が `D-1`〜`D-40` で重ならない'
     test: test_normal_when_two_processes_write
+  - name: 正常系（SIGTERM で終わる）
+    summary: SIGTERM を受けると、終了時のフックを呼び、配信を止めて終わる
+    setup:
+      - name: Mock
+        description: なし（テストを動かす Python で MCP サーバーを子プロセスとして立て、MCP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 終了時のフック
+        description: '`MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンド'
+      - name: 開いたままの標準入力
+        description: SIGTERM を送るとき、子プロセスの標準入力を閉じずにおく（Claude Code の終わらせ方と同じ）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as MCP サーバー（mindstella）
+        participant HK as 終了時のフック
+        participant P as プレビューの配信
+
+        クライアント->>IF: preview_url
+        IF->>P: 立てる
+        IF-->>クライアント: URL
+        クライアント->>IF: SIGTERM
+        IF->>HK: {コマンド} {ポート} {フォルダの名前}（待たない）
+        IF->>P: 止める
+        IF-->>クライアント: プロセスが終わる
+      ```
+    expected:
+      - サーバーのプロセスが 5 秒以内に終わる
+      - 返った URL へつなぐと、つながらない
+      - フックの書き足すファイルに 1 行だけあり、URL のポートとワークスペースのフォルダの名前が並ぶ
+    test: test_normal_when_sigterm
 lead: Claude Code が起動スクリプトの MCP の設定から立てる mindstella の MCP サーバー。ワークスペースを読み書きするツールと、プレビューの配信を 1 つのプロセスで持つ。
 idempotent: true
-side_effects: 立てただけでは何も書かない。プレビューの配信は『プレビューの URL』が呼ばれたときに立てる。Claude Code が標準入力を閉じると、配信を止めてプロセスを終える
+side_effects: 立てただけでは何も書かない。プレビューの配信は『プレビューの URL』が呼ばれたときに立てる。Claude Code が標準入力を閉じるか SIGTERM を送ると、終了時のフックを呼び、配信を止めてプロセスを終える
 response:
   - name: サーバーの名前
     type: str
@@ -132,8 +164,8 @@ response:
     description: '実行時のエラーと引数の誤り。本文に `エラー: {内容}` の行を出し、各ツールのエラーの形の行を続ける。トレースバックを含めない'
 exceptions:
   - name: なし（正常終了）
-    condition: Claude Code が標準入力を閉じた
-    notes: 立てたプレビューの配信を止めてから終わる
+    condition: Claude Code が標準入力を閉じたか、SIGTERM を送った
+    notes: 終了時のフックを呼び、立てたプレビューの配信を止めてから終わる
 error_format: 'ツールのエラーは、本文（`content` の text）に `エラー: {内容}` の行を出す。ツールが確かめる引数の誤り（一緒に使わない引数を渡した・値の形が違う）は `エラー: 引数の誤り: {引数の名前}: {理由}` にする。要る引数が無い・型が違うときは、ツールを呼ぶ前に SDK が入力のスキーマで弾き、本文は SDK の文言（`Error executing tool {ツール}:` に続けて引数の名前と理由）になる。サーバーの記録は標準エラーにだけ書く（標準出力は MCP が使う）'
 constraints:
   - item: 通り道
@@ -147,7 +179,7 @@ constraints:
   - item: 同時の呼び出し
     constraint: ワークスペースを書き換えるツールと送信の受け付けは、プロセスの中の 1 本の鍵を取った後に、ワークスペースのロックファイル `.mindstella.lock` に `fcntl.flock` の排他ロックを取ってから読み・書く。同じワークスペースを開く別のプロセスとも排他する。ロックは取れるまで待ち、持つプロセスが落ちると OS が外す。読むだけのツールと配信はロックを取らない（書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない）
   - item: 終わり方
-    constraint: Claude Code を閉じると標準入力が閉じ、プレビューの配信を止めてプロセスを終える。プロセスは残らない
+    constraint: Claude Code を閉じると、標準入力が閉じるか SIGTERM が届く。どちらでも、立てた配信ごとに終了時のフック（`MINDSTELLA_PREVIEW_STOP_HOOK`）を起動時と同じポートとワークスペースのフォルダの名前を足して呼び、配信を止めてプロセスを終える。終了時のフックは 1 つの配信に 1 回だけ呼ぶ。フックのコマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない（立てられないときは標準エラーに記録して続ける）。MCP サーバーのプロセスは残らない
   - item: 結果の組み立て
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
@@ -155,6 +187,7 @@ refs:
   - dev/設計書/外部ライブラリ/mcp#
 notes:
   1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、Claude Code を閉じたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
+  Claude Code の終わらせ方: Claude Code 2.1.294 で、`/exit`（tmux の中の対話）と `claude -p` の終わりのどちらも、標準入力を閉じずに SIGTERM を送り、約 0.3〜0.4 秒後にプロセスが消えることを確かめた（2026-10-08）。tmux のセッションが閉じると同じプロセスグループの子も消え、新しいセッションで立てた子は残る。そのため終了時のフックは SIGTERM でも呼び、新しいセッションで立てて終わりを待たない
 callers:
   - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
 test_file: tests/integration/server/test_mcp_server.py

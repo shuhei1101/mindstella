@@ -159,7 +159,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
 response:
   - name: settings
     type: dict

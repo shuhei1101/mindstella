@@ -5,6 +5,8 @@
 # 環境変数:
 #   MINDSTELLA_VENV    MCP サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
 #   CLAUDE_CONFIG_DIR  あれば、Claude Code の設定のフォルダとして tmux のセッションへ渡す
+#   MINDSTELLA_ALLOWED_HOSTS / MINDSTELLA_PREVIEW_START_HOOK / MINDSTELLA_PREVIEW_STOP_HOOK
+#                      あれば、launch.py が MCP の設定の env に書いて MCP サーバーへ渡す
 # 終了コード: 0 正常 / 1 実行時のエラー / 2 引数の誤り
 set -euo pipefail
 

@@ -79,7 +79,7 @@ tables:
   - name: config.yaml
     title: 設定
     datastore: YAML
-    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定
+    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポート
     scale: 1 件
     access: 全件
     columns:
@@ -144,6 +144,11 @@ tables:
         type: object
         description: 任意。プレビューのワークスペースの既定。`network_look`（つながりの見た目。`glow`・`starlight`・`constellation`・`deep`・`dust` のどれか。無ければ `deep`）と `visible_kinds`（表示する種類。`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の重複しない配列。無ければ全ての種類）を持つ。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と画面の『設定の既定の書き換え』が書く
         example: '{network_look: deep, visible_kinds: [decisions, tasks, research, docs, terms, notes, logs]}'
+      - name: preview
+        title: プレビューの配信
+        type: object
+        description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を開き直して立て直すと効く）
+        example: '{port: 47800}'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
