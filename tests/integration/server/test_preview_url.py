@@ -5,15 +5,22 @@ from __future__ import annotations
 import os
 import socket
 import textwrap
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from external_access_helpers import (
+    HOOK_SETTLE_SEC,
+    free_port,
+    read_hook_lines,
+    read_settled_hook_lines,
+    recording_hook,
+)
 from workspace_fixtures import SERVER_SCRIPT
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
-from .hook_helpers import read_hook_lines, read_settled_hook_lines, recording_hook
-from .http_helpers import free_port, http_request
+from .http_helpers import http_request
 from .readme_helpers import section_of
 
 # 待ち受けを立てる処理を、OSError を送る偽に差し替えてからサーバーを動かすスクリプトの中身
@@ -208,7 +215,8 @@ def test_error_when_port_in_use(
         # 先に待ち受けていたソケットが、そのままつながる
         with socket.create_connection(("127.0.0.1", port), timeout=1):
             pass
-    assert read_settled_hook_lines(record, count=1) == []
+    # フックが呼ばれるなら届くはずの間だけ待ち、記録が作られていないことを確かめる
+    time.sleep(HOOK_SETTLE_SEC)
     assert not record.exists()
 
 

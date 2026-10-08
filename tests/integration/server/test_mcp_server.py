@@ -9,10 +9,10 @@ from typing import Any
 
 import pytest
 import yaml
+from external_access_helpers import read_hook_lines, read_settled_hook_lines, recording_hook
 from workspace_fixtures import RECORD_DIR, McpServer
 
 from .fixture_types import MakeWorkspace, StartServer
-from .hook_helpers import read_hook_lines, read_settled_hook_lines, recording_hook
 from .http_helpers import http_request
 
 # サーバーが名乗る名前
