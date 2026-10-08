@@ -121,15 +121,15 @@ def _restore_sigterm_handler() -> Iterator[None]:
 
 
 class _FakeRegistry:
-    """stop_all が呼ばれた回数を控える偽の配信の台帳。"""
+    """stop_all が呼ばれたことを、順序つきの入れ物へ控える偽の配信の台帳。"""
 
-    def __init__(self) -> None:
-        """呼ばれた回数を 0 にする。"""
-        self.stop_all_calls = 0
+    def __init__(self, events: list[str]) -> None:
+        """出来事を控える入れ物を受け取る。"""
+        self._events = events
 
     def stop_all(self) -> None:
-        """止めずに、呼ばれた回数だけ進める。"""
-        self.stop_all_calls += 1
+        """止めずに、呼ばれたことだけを控える。"""
+        self._events.append("stop_all")
 
 
 def test_main(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -186,18 +186,28 @@ def test_main_when_external_access_set(monkeypatch: pytest.MonkeyPatch) -> None:
     assert received["previews"]._external.allowed_hosts == frozenset({"preview.example.test"})
 
 
-def test_install_sigterm_handler() -> None:
-    """SIGTERM で配信を止めて終わる（正常系）。"""
-    # 準備
-    registry = _FakeRegistry()
+def test_install_sigterm_handler(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SIGTERM で配信を止めて、os._exit で終わる（正常系）。"""
+    # 準備（プロセスを終えないよう os._exit を、記録を書き出さないよう logging.shutdown を差し替える）
+    events: list[str] = []
+    exit_codes: list[int] = []
+    registry = _FakeRegistry(events)
+
+    def _exit(code: int) -> None:
+        """終えずに、順序と受け取ったコードだけを控える。"""
+        events.append("exit")
+        exit_codes.append(code)
+
+    monkeypatch.setattr(server.os, "_exit", _exit)
+    monkeypatch.setattr(server.logging, "shutdown", lambda *args, **kwargs: None)
     server.install_sigterm_handler(registry)  # type: ignore[arg-type]
     handler = signal.getsignal(signal.SIGTERM)
     assert callable(handler)
-    # 実行・検証
-    with pytest.raises(SystemExit) as raised:
-        handler(signal.SIGTERM, None)
-    assert raised.value.code == 0
-    assert registry.stop_all_calls == 1
+    # 実行
+    handler(signal.SIGTERM, None)
+    # 検証
+    assert events == ["stop_all", "exit"]
+    assert exit_codes == [0]
 
 
 def test_build_server(tmp_path: Path) -> None:

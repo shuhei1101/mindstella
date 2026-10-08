@@ -287,6 +287,36 @@ def test_stop_all_when_stop_hook_set(
     ]
 
 
+def test_stop_all_when_reentered(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """止めている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない（正常系）。"""
+    # 準備（鍵が戻らない実装でも後片付けで止まらないよう、後片付けの fixture を使わずテスト自身で止める）
+    registry = serve.PreviewRegistry(
+        threading.Lock(), external=serve.ExternalAccess(stop_hook=("hook",))
+    )
+    url, _started = registry.start(make_workspace(make_item("D-1")))
+    calls: list[tuple[tuple[str, ...], int, str]] = []
+
+    def _run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
+        """引数を控え、フックの中から同じ台帳の stop_all を呼び直す。"""
+        calls.append((command, port, name))
+        registry.stop_all()
+        return True
+
+    monkeypatch.setattr(serve, "run_hook", _run_hook)
+    # 実行（鍵を持ったまま呼び直すと戻らないので、戻らないことを失敗にできるよう別スレッドで呼ぶ）
+    runner = threading.Thread(target=registry.stop_all, daemon=True)
+    runner.start()
+    runner.join(timeout=HTTP_TIMEOUT_SEC)
+    # 検証
+    assert not runner.is_alive()
+    assert len(calls) == 1
+    connection = http.client.HTTPConnection("127.0.0.1", _port_of(url), timeout=HTTP_TIMEOUT_SEC)
+    with pytest.raises(ConnectionRefusedError):
+        connection.request("GET", "/")
+
+
 def test_start_preview_server(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """127.0.0.1 だけで待ち受ける（正常系）。"""
     # 準備
