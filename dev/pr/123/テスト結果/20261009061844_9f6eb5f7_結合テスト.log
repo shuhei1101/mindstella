@@ -1,6 +1,7 @@
 $ pytest tests/integration/preview tests/integration/storybook
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+cachedir: .pytest_cache
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-network-stella
 configfile: pytest.ini
 plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
@@ -634,12 +635,13 @@ tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_
 tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w900] PASSED [ 99%]
 tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w900] PASSED [100%]
 
-======================= 626 passed in 852.23s (0:14:12) ========================
+======================= 626 passed in 856.78s (0:14:16) ========================
 exit=0
 
 $ pytest tests/integration/server/test_config_display.py
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+cachedir: .pytest_cache
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-network-stella
 configfile: pytest.ini
 plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
@@ -651,5 +653,5 @@ tests/integration/server/test_config_display.py::test_error_when_value_invalid P
 tests/integration/server/test_config_display.py::test_error_when_origin_mismatch PASSED [ 75%]
 tests/integration/server/test_config_display.py::test_error_when_write_fails PASSED [100%]
 
-============================== 4 passed in 5.90s ===============================
+============================== 4 passed in 6.00s ===============================
 exit=0
