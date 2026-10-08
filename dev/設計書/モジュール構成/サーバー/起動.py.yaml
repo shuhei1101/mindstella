@@ -101,6 +101,12 @@ constants:
     usecase: 起動スクリプトで立ち上げる
     summary: セッションの名前に付ける、絶対パスの SHA-256 の 16 進の先頭の桁数（インターフェース定義『起動スクリプト』）
     value: '6'
+  - name: EXTERNAL_ENV_KEYS
+    title: MCP サーバーへ渡す環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: プレビューを外から見る
+    summary: 起動スクリプトが MCP の設定の `env` に書く環境変数の名前（設定『サーバー』。`serve.py` の同じ名前の定数と合わせる）
+    value: ("MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK")
 functions:
   - name: main
     title: 依存の確認の入口
@@ -494,12 +500,20 @@ functions:
         default: None
         passing: keyword
         description: 一時フォルダを作る場所（`None` なら OS の既定。テストで `tmp_path` を渡す）
+      - name: env
+        type: Mapping[str, str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: MCP サーバーへ渡す環境変数（`external_env` の結果）
     returns:
       type: Path
       description: 書いた `mcp.json` の絶対パス
     process: |-
       1. `tempfile.mkdtemp(prefix="mindstella-", dir=temp_root)` でフォルダを作る
-      2. `{"mcpServers": {"mindstella": {"command": str(python_path), "args": [str(plugin_dir / SERVER_SCRIPT)]}}}` を `mcp.json` に書く
+      2. `{"mcpServers": {"mindstella": {"command": str(python_path), "args": [str(plugin_dir / SERVER_SCRIPT)]}}}` を作る
+         - `env` が空でない場合、`mcpServers.mindstella.env` にその辞書を入れる
+      3. `mcp.json` に書く
     unit_tests:
       - name: test_write_mcp_config
         case: 正常
@@ -507,6 +521,12 @@ functions:
         condition: '`python_path=/v/bin/python`・`plugin_dir=/p/0.0.2`・`temp_root=tmp_path`'
         mock: なし
         expected: '`tmp_path` の下の `mindstella-*/mcp.json`。中身の `mcpServers.mindstella` が `command: /v/bin/python`・`args: [/p/0.0.2/skills/mindmap/scripts/server.py]`'
+      - name: test_write_mcp_config_when_env_set
+        case: 正常
+        summary: 渡す環境変数があれば env に書き、無ければ env を持たない
+        condition: '`parametrize`: `env={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}` / `env={}`。`temp_root=tmp_path`'
+        mock: なし
+        expected: '`mcpServers.mindstella.env` が `{"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}` / `mcpServers.mindstella` が `env` を持たない'
   - name: run_launch
     title: 起動の手助けの入口
     kind: 関数
@@ -529,6 +549,12 @@ functions:
         default: sys.stdin
         passing: keyword
         description: プラグインの一覧の JSON を読む先
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: keyword
+        description: MCP サーバーへ渡す値を読む環境変数
     returns:
       type: int
       description: 終了コード（0 正常 / 1 プラグインが無い・一覧を読めない / 2 引数の誤りは argparse が終える）
@@ -537,7 +563,7 @@ functions:
          - 読めないか配列でない場合、標準エラーに `[mindstella] エラー: claude plugin list --json の出力を読めません` を出して 1 を返す
       2. プラグインのフォルダを引く（`find_plugin_dir`）
          - `PluginNotInstalledError` を捕まえた場合、標準エラーに `[mindstella] エラー: {メッセージ}` とインストールの手順を案内する行を出して 1 を返す
-      3. セッションの名前を作り（`session_name`）、MCP の設定を書く（`write_mcp_config`）
+      3. セッションの名前を作り（`session_name`）、`external_env(environ)` を `env` に渡して MCP の設定を書く（`write_mcp_config`）
       4. 標準出力に、プラグインのフォルダ・セッションの名前・MCP の設定のパスを 1 行ずつこの順で出し、 0 を返す（起動スクリプトが `read` で 1 行ずつ受ける）
     unit_tests:
       - name: test_run_launch
@@ -558,6 +584,30 @@ functions:
         condition: '`parametrize`: 標準入力が `{` / `{}`'
         mock: なし
         expected: '1 を返し、標準エラーが `[mindstella] エラー: ` で始まる'
+  - name: external_env
+    title: 渡す環境変数の抜き出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: '`EXTERNAL_ENV_KEYS` のうち、空でない値が設定されているものだけを返す'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 呼び出し元の環境変数
+    returns:
+      type: dict[str, str]
+      description: 名前 → 値（無ければ空）
+    process: 1. `EXTERNAL_ENV_KEYS` の順に、`environ` の値が空でないものだけをそのままの値で集めて返す
+    unit_tests:
+      - name: test_external_env
+        case: 正常
+        summary: 設定されているキーだけを返す
+        condition: '`{"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test", "MINDSTELLA_PREVIEW_START_HOOK": "", "PATH": "/bin"}`'
+        mock: なし
+        expected: '`{"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}`'
 diagrams:
   - name: 全体
     diagram: |-

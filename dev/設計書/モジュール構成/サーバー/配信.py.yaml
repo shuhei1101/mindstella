@@ -16,7 +16,11 @@ diagrams:
         class 要求の受け口
         class ビルド
         class コメント
+        class 外から見る設定
+        class フックの呼び出し
         配信の台帳 --> 配信 : ワークスペースごとに 1 つ
+        配信の台帳 --> 外から見る設定
+        配信の台帳 --> フックの呼び出し : 立てたとき・止めるとき
         配信 --> 要求の受け口
         要求の受け口 --> ビルド : 雛形・記録
         要求の受け口 --> コメント : /api/comments・/api/drafts
@@ -26,7 +30,7 @@ constants:
     title: 待ち受けのアドレス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
-    summary: 非機能要件の「待ち受けの範囲」。ポートは 0 で OS に選ばせる
+    summary: 非機能要件の「待ち受けの範囲」。ポートは `config.yaml` の `preview.port` があればそれ、無ければ 0 で OS に選ばせる
     value: '"127.0.0.1"'
   - name: POLL_INTERVAL_SEC
     title: 書き換えを見る間隔
@@ -52,13 +56,31 @@ constants:
     usecase: プレビューを開く
     summary: 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
     value: '"/mindstella.html"'
+  - name: ALLOWED_HOSTS_ENV
+    title: 許可するホスト名の環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    summary: 許可するホスト名を読む環境変数の名前（設定『サーバー』）
+    value: '"MINDSTELLA_ALLOWED_HOSTS"'
+  - name: START_HOOK_ENV
+    title: 起動時のフックの環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    summary: 配信を立てたときのフックを読む環境変数の名前（設定『サーバー』）
+    value: '"MINDSTELLA_PREVIEW_START_HOOK"'
+  - name: STOP_HOOK_ENV
+    title: 終了時のフックの環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    summary: 配信を止めるときのフックを読む環境変数の名前（設定『サーバー』）
+    value: '"MINDSTELLA_PREVIEW_STOP_HOOK"'
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で受け取る（`PreviewRegistry(write_lock)`）
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）
     kind: クラス
     properties:
       - name: _servers
@@ -73,6 +95,10 @@ classes:
         type: threading.Lock
         access: 内部 (_)
         description: '`_servers` を触る間だけ取る鍵'
+      - name: _external
+        type: ExternalAccess
+        access: 内部 (_)
+        description: 外から見る設定（許可するホスト名を配信へ渡し、フックを呼ぶ）
     methods:
       - name: start
         title: 配信を立てる
@@ -88,11 +114,13 @@ classes:
           type: tuple[str, bool]
           description: 配信の画面の URL（`http://127.0.0.1:{ポート}/mindstella.html`）と、この呼び出しで立てたか
         process: |-
-          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない）
+          1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
              - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
-          3. 読んだ設定を初めの値にして配信を立て（`start_preview_server`）`_servers` に入れ、URL と `True` を返す
+          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
              - `[INFO]` 配信を立てた（ワークスペース、URL）
+          4. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
+          5. URL と `True` を返す
         unit_tests:
           - name: test_start
             case: 正常
@@ -106,14 +134,35 @@ classes:
             condition: '`display.network_look` を `rainbow` にしたワークスペースで 2 回 `start` し、`deep` に直してもう 1 回 `start` する'
             mock: なし（本物の待ち受け。後で `stop_all`）
             expected: '1・2 回目は `SchemaMismatchError`（`lines` に `config.yaml: display.network_look: ` で始まる行）で台帳が空。3 回目は `(url, True)`'
+          - name: test_start_when_port_fixed
+            case: 正常
+            summary: preview.port のポートで立てる
+            condition: '`config.yaml` の `preview.port` に、テストの中で取って閉じた空きポートを書いたワークスペース'
+            mock: なし（本物の待ち受け。後で `stop_all`）
+            expected: '`url` が `http://127.0.0.1:{そのポート}/mindstella.html`'
+          - name: test_start_when_start_hook_set
+            case: 正常
+            summary: 立てたときだけ起動時のフックを呼ぶ
+            condition: '`external=ExternalAccess(start_hook=("hook",))` で作り、同じワークスペースを 2 回 `start` する'
+            mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
+            expected: '`run_hook` が 1 回だけ、`(("hook",), {配信のポート}, {フォルダの名前})` で呼ばれる'
+          - name: test_start_when_port_in_use
+            case: 異常
+            summary: preview.port が使われていれば ServeFailedError でフックを呼ばない
+            condition: テストが `127.0.0.1` で待ち受けたままのポートを `preview.port` に書き、`external=ExternalAccess(start_hook=("hook",))` で `start` する
+            mock: '`run_hook`（呼ばれたかを記録する）'
+            expected: '`ServeFailedError` で、台帳が空、`run_hook` が呼ばれていない'
+            exception: 待ち受けを立てられない
       - name: stop_all
         title: 全ての配信を止める
         kind: メソッド
-        summary: 立てた配信を全て止め、台帳を空にする
+        summary: 立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない
         returns:
           type: None
           description: '-'
-        process: 1. `_guard` を取り、台帳の配信ごとに `PreviewServer.stop` を呼んで空にする
+        process: |-
+          1. `_guard` を取り、台帳の配信ごとに、`_external.stop_hook` があれば配信のポートとワークスペースのフォルダの名前を渡してフックを呼び（`run_hook`）、`PreviewServer.stop` を呼ぶ
+          2. 台帳を空にする（2 回目の呼び出しではフックも `stop` も呼ばれない）
         unit_tests:
           - name: test_stop_all
             case: 正常
@@ -121,6 +170,12 @@ classes:
             condition: 1 つ立ててから `stop_all`
             mock: なし
             expected: その URL への `GET /` が `ConnectionRefusedError`
+          - name: test_stop_all_when_stop_hook_set
+            case: 正常
+            summary: 配信ごとに 1 回だけ終了時のフックを呼ぶ
+            condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り、ワークスペース 2 つを `start` してから `stop_all` を 2 回呼ぶ'
+            mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
+            expected: '`run_hook` が 2 回だけ、それぞれの配信のポートとフォルダの名前で呼ばれる'
       - name: url_of
         title: 配っている URL
         kind: メソッド
@@ -164,6 +219,9 @@ classes:
       - name: thread
         type: threading.Thread
         description: '`serve_forever` を動かすデーモンのスレッド'
+      - name: port
+        type: int
+        description: 待ち受けのポート（フックへ渡す）
     methods:
       - name: stop
         title: 配信を止める
@@ -357,6 +415,10 @@ data_models:
         type: Path
         default: PREVIEW_DIR
         description: 雛形のフォルダ
+      - name: allowed_hosts
+        type: frozenset[str]
+        default: frozenset()
+        description: 許可するホスト名（`check_host`・`check_origin` に渡す）
   - name: Response
     title: 応答
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -373,6 +435,25 @@ data_models:
       - name: body
         type: bytes
         description: 本文
+  - name: ExternalAccess
+    title: 外から見る設定
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    role: DTO
+    summary: 環境変数から読んだ、許可するホスト名と起動時・終了時のフック。`@dataclass(frozen=True, slots=True, kw_only=True)`。どの値も無いときは空の既定値（`ExternalAccess()`）で、今と同じ動きになる
+    properties:
+      - name: allowed_hosts
+        type: frozenset[str]
+        default: frozenset()
+        description: 許可するホスト名（小文字）
+      - name: start_hook
+        type: tuple[str, ...]
+        default: ()
+        description: 起動時のフックのコマンドと引数（空なら呼ばない）
+      - name: stop_hook
+        type: tuple[str, ...]
+        default: ()
+        description: 終了時のフックのコマンドと引数（空なら呼ばない）
 functions:
   - name: start_preview_server
     title: 待ち受けの立ち上げ
@@ -380,7 +461,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     scope: public
-    summary: '`LISTEN_HOST` の空きポートで待ち受け、デーモンのスレッドで動かし始める'
+    summary: '`LISTEN_HOST` の渡したポート（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める'
     side_effects: ソケットを開き、スレッドを立てる
     args:
       - name: root
@@ -398,18 +479,30 @@ functions:
         required: true
         passing: keyword
         description: 立てる前に検査に通った設定（`SettingsHolder` の初めの値）
+      - name: port
+        type: int
+        required: false
+        default: '0'
+        passing: keyword
+        description: 待ち受けるポート。0 は OS に選ばせる
+      - name: allowed_hosts
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 許可するホスト名（`ServeContext` に持たせる）
     returns:
       type: PreviewServer
       description: 立てた配信
     process: |-
-      1. `ThreadingHTTPServer((LISTEN_HOST, 0), PreviewHandler)` を作り、`daemon_threads` を真にする
+      1. `ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)` を作り、`daemon_threads` を真にする
          - `OSError` が起きた場合、`ServeFailedError` を送る
-      2. 割り当てられたポートと `SettingsHolder(settings)` で `ServeContext` を作り、待ち受けの `context` に持たせる
-      3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` の `PreviewServer` を返す
+      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts` で `ServeContext` を作り、待ち受けの `context` に持たせる
+      3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` とポートを持つ `PreviewServer` を返す
     exceptions:
       - name: ServeFailedError
         condition: 待ち受けを立てられない（`OSError`）
-        message: 'プレビューの配信を立てられません: {理由}'
+        message: 'プレビューの配信を立てられません（ポート {port}）: {理由}'
     unit_tests:
       - name: test_start_preview_server
         case: 正常
@@ -430,7 +523,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     scope: public
-    summary: '`Host` が `127.0.0.1:{ポート}` か `localhost:{ポート}` かを返す（別のサイトの名前をこの端末に向ける DNS の付け替えを防ぐ）'
+    summary: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` か、ポートを外したホスト名の部分が許可するホスト名のどれかと同じかを返す（別のサイトの名前をこの端末に向ける DNS の付け替えを防ぐ）'
     args:
       - name: host
         type: str | None
@@ -442,10 +535,19 @@ functions:
         required: true
         passing: positional
         description: 待ち受けのポート
+      - name: allowed_hosts
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 許可するホスト名（小文字）
     returns:
       type: bool
       description: 合うか
-    process: 1. `host` が `127.0.0.1:{port}`・`localhost:{port}` のどちらかと等しいかを返す（英字の大小を区別しない。`None` は偽）
+    process: |-
+      1. `None` は偽
+      2. 小文字にした `host` が `127.0.0.1:{port}`・`localhost:{port}` のどちらかと等しければ真
+      3. ポートを外したホスト名の部分（`host_part`）が `allowed_hosts` にあれば真、無ければ偽
     unit_tests:
       - name: test_check_host
         case: 正常
@@ -453,13 +555,19 @@ functions:
         condition: '`parametrize`: `127.0.0.1:5000` / `LOCALHOST:5000` / `127.0.0.1:5001` / `attacker.example:5000` / `None`。`port=5000`'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 偽
+      - name: test_check_host_when_allowed
+        case: 正常
+        summary: 許可したホスト名はポートを問わず通す
+        condition: '`parametrize`: `preview.example.test` / `PREVIEW.example.test:8443` / `other.example.test` / `preview.example.test.attacker.example`。`port=5000`、`allowed_hosts=frozenset({"preview.example.test"})`'
+        mock: なし
+        expected: 真 / 真 / 偽 / 偽
   - name: check_origin
     title: 送り元の確かめ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 共通
     scope: public
-    summary: '`Origin` が無いか、配信の URL（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`）と同じかを返す'
+    summary: '`Origin` が無いか、配信の URL（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`）と同じか、スキームが `https`・`http` でポートを外したホスト名が許可するホスト名のどれかと同じかを返す'
     args:
       - name: origin
         type: str | None
@@ -471,10 +579,19 @@ functions:
         required: true
         passing: positional
         description: 待ち受けのポート
+      - name: allowed_hosts
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 許可するホスト名（小文字）
     returns:
       type: bool
       description: 合うか（無いときは真）
-    process: 1. `None` なら真、それ以外は 2 つの URL のどちらかと等しいかを返す
+    process: |-
+      1. `None` なら真
+      2. 2 つの URL のどちらかと等しければ真
+      3. `urlsplit` で分け、スキームが `https`・`http` で、`netloc` のポートを外したホスト名の部分（`host_part`）が `allowed_hosts` にあれば真、無ければ偽
     unit_tests:
       - name: test_check_origin
         case: 正常
@@ -482,6 +599,12 @@ functions:
         condition: '`parametrize`: `None` / `http://127.0.0.1:5000` / `http://localhost:5000` / `https://attacker.example` / `http://127.0.0.1:5001`。`port=5000`'
         mock: なし
         expected: 真 / 真 / 真 / 偽 / 偽
+      - name: test_check_origin_when_allowed
+        case: 正常
+        summary: 許可したホスト名の https / http の送り元を通す
+        condition: '`parametrize`: `https://preview.example.test` / `http://preview.example.test:8443` / `ftp://preview.example.test` / `https://other.example.test`。`port=5000`、`allowed_hosts=frozenset({"preview.example.test"})`'
+        mock: なし
+        expected: 真 / 真 / 偽 / 偽
   - name: problem_response
     title: 問題の応答
     kind: 関数
@@ -930,5 +1053,120 @@ functions:
         condition: '`display.network_look: starlight` の設定で作った文脈。`parametrize`: `config.yaml` を `dust` にして `Origin` 無し / `rainbow` にして `Origin` 無し / `dust` にして `Origin: https://attacker.example`'
         mock: なし
         expected: '200 で `settings.display.network_look` が `dust`、控えが `dust` で `revision` が 1 / 422 で `detail` に `config.yaml: display.network_look: `、控えが `starlight` で `revision` が 0 / 403 で控えが `starlight`。どれも `config.yaml` を書き換えていない'
+  - name: host_part
+    title: ホスト名の部分
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: '`Host` か `Origin` の `netloc` から、末尾の `:{数字}` を外して小文字にしたホスト名を返す'
+    args:
+      - name: value
+        type: str
+        required: true
+        passing: positional
+        description: '`host` か `host:port`'
+    returns:
+      type: str
+      description: 小文字のホスト名
+    process: |-
+      1. 最後の `:` より後ろが全て数字なら、その `:` から後ろを外す
+      2. 小文字にして返す
+    unit_tests:
+      - name: test_host_part
+        case: 正常
+        summary: 末尾のポートだけを外して小文字にする
+        condition: '`parametrize`: `Preview.Example.test:8443` / `preview.example.test` / `preview.example.test:` '
+        mock: なし
+        expected: '`preview.example.test` / `preview.example.test` / `preview.example.test:`'
+  - name: load_external_access
+    title: 外から見る設定の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: 環境変数から許可するホスト名とフックを読み、`ExternalAccess` を返す
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 読む環境変数（`os.environ`）
+    returns:
+      type: ExternalAccess
+      description: 外から見る設定（どれも無ければ空の既定値）
+    process: |-
+      1. `ALLOWED_HOSTS_ENV` をカンマで分け、前後の空白を外して小文字にする
+         - 空の要素は捨てる
+         - `:`・`/` を含む要素は捨てる
+           - `[WARNING]` 許可するホスト名に使えない値を外した（値）
+      2. `START_HOOK_ENV`・`STOP_HOOK_ENV` を `shlex.split` で分ける
+         - 分けられない（`ValueError`）場合、その値は空にする
+           - `[WARNING]` フックのコマンドを分けられない（環境変数の名前、理由）
+      3. 3 つの値で `ExternalAccess` を返す
+    unit_tests:
+      - name: test_load_external_access
+        case: 正常
+        summary: 3 つの環境変数を読み分ける
+        condition: '`{ALLOWED_HOSTS_ENV: " Preview.example.test , ,https://x.example,a.example:443 ", START_HOOK_ENV: "pub add", STOP_HOOK_ENV: "pub rm"}`'
+        mock: なし
+        expected: '`allowed_hosts` が `{"preview.example.test"}`、`start_hook` が `("pub", "add")`、`stop_hook` が `("pub", "rm")`'
+      - name: test_load_external_access_when_empty
+        case: 正常
+        summary: どれも無ければ空の既定値
+        condition: 空の辞書
+        mock: なし
+        expected: '`ExternalAccess()` と等しい'
+      - name: test_load_external_access_when_hook_unparsable
+        case: 異常
+        summary: 分けられないフックは空にする
+        condition: '`{START_HOOK_ENV: "pub \"add"}`（閉じない引用符）'
+        mock: なし
+        expected: '`start_hook` が `()` で、例外を送らない'
+  - name: run_hook
+    title: フックの呼び出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: フックのコマンドの末尾にポートとワークスペースの名前を足し、新しいセッションで立てて終わりを待たずに返す
+    side_effects: 子プロセスを立てる
+    args:
+      - name: command
+        type: tuple[str, ...]
+        required: true
+        passing: positional
+        description: フックのコマンドと引数（空でない）
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 配信のポート
+      - name: name
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダの名前
+    returns:
+      type: bool
+      description: 立てられたか
+    process: |-
+      1. `subprocess.Popen([*command, str(port), name], start_new_session=True, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL)` で立てる（シェルを通さない・終わりを待たない）
+         - `OSError` が起きた場合、偽を返す
+           - `[WARNING]` フックを立てられない（コマンド、理由）
+      2. 真を返す
+    unit_tests:
+      - name: test_run_hook
+        case: 正常
+        summary: 末尾にポートと名前を足して立てる
+        condition: "`command=(sys.executable, \"-c\", \"import sys,pathlib; pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]))\", {一時ファイル})`、`port=47800`、`name=\"家計簿\"`"
+        mock: なし（本物の子プロセス）
+        expected: 真を返し、待つと一時ファイルの中身が `47800 家計簿`
+      - name: test_run_hook_when_command_missing
+        case: 異常
+        summary: コマンドが無ければ偽で例外を送らない
+        condition: '`command=("mindstella-no-such-command",)`'
+        mock: なし
+        expected: 偽
 test_files:
   - tests/unit/scripts/test_serve.py
