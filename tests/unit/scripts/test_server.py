@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import signal
 import threading
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -111,6 +112,26 @@ def _spy_stop_all(monkeypatch: pytest.MonkeyPatch) -> list[serve.PreviewRegistry
     return stopped
 
 
+@pytest.fixture(autouse=True)
+def _restore_sigterm_handler() -> Iterator[None]:
+    """main が置く SIGTERM の受け口を、テストの後に元へ戻す。"""
+    original = signal.getsignal(signal.SIGTERM)
+    yield
+    signal.signal(signal.SIGTERM, original)
+
+
+class _FakeRegistry:
+    """stop_all が呼ばれた回数を控える偽の配信の台帳。"""
+
+    def __init__(self) -> None:
+        """呼ばれた回数を 0 にする。"""
+        self.stop_all_calls = 0
+
+    def stop_all(self) -> None:
+        """止めずに、呼ばれた回数だけ進める。"""
+        self.stop_all_calls += 1
+
+
 def test_main(monkeypatch: pytest.MonkeyPatch) -> None:
     """サーバーが戻ったら配信を止めて 0（正常系）。"""
     # 準備
@@ -146,6 +167,37 @@ def test_main_when_server_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(RuntimeError, match="サーバーが落ちました"):
         server.main(build=_build)
     assert stopped == [received["previews"]]
+
+
+def test_main_when_external_access_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    """環境変数の外から見る設定を台帳へ渡す（正常系）。"""
+    # 準備
+    _spy_stop_all(monkeypatch)
+    received: dict[str, Any] = {}
+
+    def _build(**kwargs: Any) -> _FakeServer:
+        """渡された previews を控えて、すぐ戻る偽のサーバーを返す。"""
+        received.update(kwargs)
+        return _FakeServer()
+
+    # 実行
+    server.main(build=_build, environ={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"})
+    # 検証
+    assert received["previews"]._external.allowed_hosts == frozenset({"preview.example.test"})
+
+
+def test_install_sigterm_handler() -> None:
+    """SIGTERM で配信を止めて終わる（正常系）。"""
+    # 準備
+    registry = _FakeRegistry()
+    server.install_sigterm_handler(registry)  # type: ignore[arg-type]
+    handler = signal.getsignal(signal.SIGTERM)
+    assert callable(handler)
+    # 実行・検証
+    with pytest.raises(SystemExit) as raised:
+        handler(signal.SIGTERM, None)
+    assert raised.value.code == 0
+    assert registry.stop_all_calls == 1
 
 
 def test_build_server(tmp_path: Path) -> None:
