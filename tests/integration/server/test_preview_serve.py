@@ -6,8 +6,12 @@ from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .fixture_types import MakeItem, MakeWorkspace
+from .fixture_types import MakeItem, MakeWorkspace, StartServer
 from .http_helpers import http_request
+
+# 許可するホスト名を渡す環境変数と、許可するホスト名
+ALLOWED_HOSTS_ENV = "MINDSTELLA_ALLOWED_HOSTS"
+ALLOWED_HOST = "preview.example.test"
 
 # 画面のパス
 PAGE_PATH = "/mindstella.html"
@@ -81,3 +85,23 @@ def test_error_when_path_unknown(
     # 検証
     assert result.status == 404
     assert SETTINGS_MARK not in result.text
+
+
+def test_normal_when_host_allowed(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer
+) -> None:
+    """許可したホスト名の Host は、入口のポートを問わず画面を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    server = start_server(extra_env={ALLOWED_HOSTS_ENV: ALLOWED_HOST})
+    url = server.call("preview_url", workspace=str(root)).data["url"]
+    # 実行
+    plain = http_request(url, PAGE_PATH, headers={"Host": ALLOWED_HOST})
+    with_port = http_request(url, PAGE_PATH, headers={"Host": "PREVIEW.example.test:8443"})
+    other = http_request(url, PAGE_PATH, headers={"Host": "other.example.test"})
+    # 検証
+    for result in (plain, with_port):
+        assert result.status == 200
+        assert result.headers["content-type"] == "text/html; charset=utf-8"
+    assert other.status == 403
+    assert "<html" not in other.text.lower()

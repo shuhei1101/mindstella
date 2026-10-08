@@ -14,6 +14,7 @@ from .fixture_types import (
     MakeItem,
     MakeWorkspace,
     SnapshotTree,
+    StartServer,
     WriteComments,
     WriteDrafts,
 )
@@ -22,6 +23,10 @@ from workspace_fixtures import RECORD_DIR
 
 # コメントの受け付けのパス
 COMMENTS_PATH = "/api/comments"
+
+# 許可するホスト名を渡す環境変数と、許可するホスト名
+ALLOWED_HOSTS_ENV = "MINDSTELLA_ALLOWED_HOSTS"
+ALLOWED_HOST = "preview.example.test"
 
 # 資料 A-1 の本文（2 行目は書式の記号を持つ）
 A_BODY = "1 行目\n- **言い換えたい**文\n3 行目"
@@ -164,6 +169,34 @@ def test_error_when_origin_mismatch(
     # 検証
     assert result.status == 403
     assert not (root / RECORD_DIR / "comments.yaml").exists()
+
+
+def test_normal_when_origin_allowed(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer
+) -> None:
+    """許可したホスト名の Host と Origin の送り元から、コメントを足せる（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    server = start_server(extra_env={ALLOWED_HOSTS_ENV: ALLOWED_HOST})
+    url = server.call("preview_url", workspace=str(root)).data["url"]
+    # 実行
+    allowed = post_json(
+        url,
+        COMMENTS_PATH,
+        {"target": "D-1", "body": "案 A にする"},
+        headers={"Host": ALLOWED_HOST, "Origin": f"https://{ALLOWED_HOST}"},
+    )
+    other = post_json(
+        url,
+        COMMENTS_PATH,
+        {"target": "D-1", "body": "別のサイトから"},
+        headers={"Host": ALLOWED_HOST, "Origin": "https://other.example.test"},
+    )
+    # 検証
+    assert allowed.status == 201
+    assert other.status == 403
+    saved = _read_comments(root)
+    assert [(item["id"], item["body"]) for item in saved["items"]] == [("C-1", "案 A にする")]
 
 
 def test_error_when_target_not_found(

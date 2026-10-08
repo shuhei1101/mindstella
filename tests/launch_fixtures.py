@@ -82,8 +82,8 @@ class LaunchSandbox:
         """`PATH` のフォルダから外部コマンドを外す（無い場合の流れを作る）。"""
         (self.tools_dir / name).unlink()
 
-    def env(self, venv: Path | None) -> dict[str, str]:
-        """起動スクリプトに渡す環境変数。`PATH` はこのフォルダだけにする。"""
+    def env(self, venv: Path | None, extra_env: dict[str, str] | None = None) -> dict[str, str]:
+        """起動スクリプトに渡す環境変数。`PATH` はこのフォルダだけにし、extra_env があれば足す。"""
         env = {
             "PATH": str(self.tools_dir),
             "HOME": str(self.root),
@@ -94,7 +94,7 @@ class LaunchSandbox:
         }
         if venv is not None:
             env["MINDSTELLA_VENV"] = str(venv)
-        return env
+        return {**env, **(extra_env or {})}
 
     def launch(
         self,
@@ -102,11 +102,12 @@ class LaunchSandbox:
         venv: Path | None,
         script: Path = PLUGIN_DIR / "bin" / "mindstella",
         cwd: Path | None = None,
+        extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """起動スクリプトを標準出力が端末でない形で動かす。終了コードが 0 以外でも例外にしない。"""
         return subprocess.run(
             [str(script), *args],
-            env=self.env(venv),
+            env=self.env(venv, extra_env),
             cwd=cwd or self.root,
             capture_output=True,
             text=True,

@@ -17,6 +17,13 @@ HTTP_TIMEOUT_SEC = 10
 MIN_READ_TIMEOUT_SEC = 0.05
 
 
+def free_port() -> int:
+    """127.0.0.1 の空きポートを 1 つ取って閉じ、その番号を返す。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
 @dataclass(frozen=True)
 class HttpResult:
     """HTTP の応答。ヘッダー名は小文字で引く。"""
