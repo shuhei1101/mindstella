@@ -23,8 +23,10 @@ __all__ = [
     "canvas_hash",
     "changed_pixels",
     "click_at",
+    "install_key_spy",
     "install_status_mark_spy",
     "is_moving",
+    "key_draws",
     "nearest_ball",
     "other_ball",
     "remember_pixels",
@@ -140,6 +142,51 @@ _MARKS_SCRIPT = """() => {
     return last >= current - 2 ? window.__statusMarks.filter((mark) => mark.frame === last) : [];
 }"""
 
+# 鍵は `Path2D` の線で描く。`Path2D` に元の文字列を持たせ、`stroke` へ渡された鍵の線（閉じた鍵・開いた鍵の輪）と、
+# 札の円（半径 KEY_SIZE * 0.85）を、コマごとに控える
+_KEY_SPY_SCRIPT = """() => {
+    const LOCK = 'M7 11V7a5 5 0 0 1 10 0v4';
+    const UNLOCK = 'M7 11V7a5 5 0 0 1 9.9-1';
+    window.__keyFrame = 0;
+    window.__keyDraws = [];
+    window.__keyBadges = [];
+    const tick = () => { window.__keyFrame++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    const Original = window.Path2D;
+    window.Path2D = class extends Original {
+        constructor(d) { super(d); this.__d = d; }
+    };
+    const proto = CanvasRenderingContext2D.prototype;
+    const stroke = proto.stroke;
+    proto.stroke = function (path) {
+        if (path && (path.__d === LOCK || path.__d === UNLOCK)) {
+            const t = this.getTransform();
+            window.__keyDraws.push({
+                frame: window.__keyFrame, closed: path.__d === LOCK, left: t.e, top: t.f, size: t.a * 24,
+                alpha: this.globalAlpha, ratio: window.devicePixelRatio,
+            });
+        }
+        return stroke.apply(this, arguments);
+    };
+    const arc = proto.arc;
+    proto.arc = function (x, y, r) {
+        if (Math.abs(r - 10.2) < 0.01) window.__keyBadges.push({frame: window.__keyFrame});
+        return arc.apply(this, arguments);
+    };
+}"""
+
+# 鍵を描いた最後のコマの鍵を返す（直近のコマで描いていなければ空）。左・上・一辺は CSS ピクセル
+_KEY_DRAWS_SCRIPT = """() => {
+    const draws = window.__keyDraws;
+    const last = Math.max(0, ...draws.map((draw) => draw.frame));
+    if (draws.length === 0 || last < window.__keyFrame - 2) return [];
+    const badge = window.__keyBadges.some((item) => item.frame === last);
+    return draws.filter((draw) => draw.frame === last).map((draw) => ({
+        closed: draw.closed, left: draw.left / draw.ratio, top: draw.top / draw.ratio, size: draw.size / draw.ratio,
+        alpha: draw.alpha, badge,
+    }));
+}"""
+
 # 取っておいた画素と今の画素で、違う画素の数を返す
 _CHANGED_SCRIPT = """([name, region, tolerance]) => {
     const canvas = document.getElementById('graph-canvas');
@@ -156,6 +203,17 @@ _CHANGED_SCRIPT = """([name, region, tolerance]) => {
     }
     return changed;
 }"""
+
+
+def install_key_spy(page: Page) -> None:
+    """鍵を描いた線を控える仕掛けを、ページを開く前に入れる。"""
+    page.add_init_script(f"({_KEY_SPY_SCRIPT})()")
+
+
+def key_draws(page: Page) -> list[dict[str, Any]]:
+    """直近のコマで描いた鍵（閉じているか・左・上・一辺・濃さ・札の中か）を返す。描いていなければ空。"""
+    draws: list[dict[str, Any]] = page.evaluate(_KEY_DRAWS_SCRIPT)
+    return draws
 
 
 def install_status_mark_spy(page: Page) -> None:

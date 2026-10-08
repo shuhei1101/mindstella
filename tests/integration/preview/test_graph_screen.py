@@ -30,12 +30,15 @@ from preview_mark_helpers import MARK_TIMEOUT_MS
 from preview_network_helpers import (
     ball_at,
     blank_point,
+    ball_centers,
     canvas_center,
     canvas_hash,
     changed_pixels,
     click_at,
+    install_key_spy,
     install_status_mark_spy,
     is_moving,
+    key_draws,
     nearest_ball,
     other_ball,
     remember_pixels,
@@ -942,3 +945,183 @@ def test_comment_marks_when_each_look(
     for mark in shown["marks"]:
         assert canvas["left"] <= mark["left"] and mark["right"] <= canvas["right"]
         assert canvas["top"] <= mark["top"] and mark["bottom"] <= canvas["bottom"]
+
+
+# 鍵の幅（12px）と、名前・鍵の間の隙間（3px）。鍵を出すとき、コメントの印がこの分だけ右へずれる
+KEY_WIDTH_PX = 12
+KEY_GAP_PX = 3
+
+# 名前の右端とコメントの印の間の隙間（px）
+MARK_GAP_PX = 4
+
+# 位置を比べるときに許す差（px）
+POSITION_TOLERANCE_PX = 1
+
+# カーソルを動かしてから、開いた鍵が出入りするのを待つミリ秒
+HOVER_SETTLE_MS = 600
+
+# 全体を見る距離より遠くへ離れるホイールの量（1 回で最も遠い距離に届く）
+WHEEL_OUT_DELTA = 1_000
+
+# D-2 のコメントの印（件数 2）の左端を返す。見せている印だけを引く
+MARK_LEFT_SCRIPT = """() => {
+    const mark = [...document.querySelectorAll('.g3-marks .cmk')]
+        .find((item) => item.style.visibility !== 'hidden' && item.querySelector('.cmk-n').textContent === '2');
+    if (mark === undefined) return null;
+    return Number.parseFloat(/translate\\(([-\\d.]+)px/.exec(mark.style.transform)[1]);
+}"""
+
+
+def _open_spied(open_preview: OpenPreview, url: str, hash_text: str, page: Page) -> Page:
+    """鍵の記録を入れ、動きを減らす設定で項目を開いたネットワークを、画が静止するまで待って返す。"""
+    _reduce_motion(page)
+    install_key_spy(page)
+    opened = open_preview(url, hash_text)
+    opened.wait_for_selector("aside.panel.open")
+    opened.mouse.move(*blank_point(opened))
+    settle(opened)
+    return opened
+
+
+def test_lock_when_quick_double_press(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """何も選んでいないとき、ある玉を素早く同じ位置で 2 回押すと、1 回目で詳細が開いてキャンバスが縮んでも、その項目への 2 回押しとしてロックする（正常系）。"""
+    # 準備
+    _reduce_motion(page)
+    install_key_spy(page)
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    page.mouse.move(*blank_point(page))
+    settle(page)
+    # 詳細が開いてキャンバスが縮んでも押した位置がキャンバスに残るよう、左寄りの玉を選ぶ
+    x, y = min(ball_centers(page), key=lambda center: center[0])
+    # 実行（動かさずに続けて 2 回押す）
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.up()
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_function("location.hash.includes('id=')")
+    page.mouse.move(*blank_point(page))
+    settle(page)
+    draws = key_draws(page)
+    # 検証
+    assert len(draws) == 1
+    assert draws[0]["closed"] is True
+    assert page.locator("aside.panel.open").count() == 1
+
+
+def test_open_key_when_hovered(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """ロックしていないとき、開いた鍵は詳細を開いている玉にカーソルを乗せたときだけ出す。ほかの玉に乗せても出さず、ロック中は閉じた鍵だけを出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = _open_spied(open_preview, url, "#tab=graph&id=D-2", page)
+    cx, cy = canvas_center(page)
+    other = other_ball(page)
+    away = key_draws(page)
+    # 実行（開いている玉に乗せる → ほかの玉に乗せる → 外す）
+    page.mouse.move(cx, cy)
+    page.wait_for_timeout(HOVER_SETTLE_MS)
+    on_open = key_draws(page)
+    page.mouse.move(*other)
+    page.wait_for_timeout(HOVER_SETTLE_MS)
+    on_other = key_draws(page)
+    page.mouse.move(*blank_point(page))
+    page.wait_for_timeout(HOVER_SETTLE_MS)
+    left = key_draws(page)
+    # 実行（ロックしてから乗せる）
+    page.keyboard.press("l")
+    settle(page)
+    locked_away = key_draws(page)
+    page.mouse.move(cx, cy)
+    page.wait_for_timeout(HOVER_SETTLE_MS)
+    locked_on = key_draws(page)
+    # 検証
+    assert away == []
+    assert [draw["closed"] for draw in on_open] == [False]
+    assert on_other == []
+    assert left == []
+    assert [draw["closed"] for draw in locked_away] == [True]
+    assert [draw["closed"] for draw in locked_on] == [True]
+
+
+def test_key_sits_between_name_and_comment_mark(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """名前・鍵・コメントの印の順に並べ、鍵を出すときだけ鍵の幅と隙間の分だけ印を右へずらす（正常系）。"""
+    # 準備
+    _reduce_motion(page)
+    install_key_spy(page)
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=graph&id=D-2")
+    page.wait_for_function(
+        "[...document.querySelectorAll('.g3-marks .cmk')].some(m => m.style.visibility !== 'hidden')",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    page.mouse.move(*blank_point(page))
+    settle(page)
+    without_key = page.evaluate(MARK_LEFT_SCRIPT)
+    no_key_drawn = key_draws(page)
+    # 実行
+    page.keyboard.press("l")
+    settle(page)
+    with_key = page.evaluate(MARK_LEFT_SCRIPT)
+    draws = key_draws(page)
+    # 検証
+    assert no_key_drawn == []
+    assert without_key is not None and with_key is not None
+    assert len(draws) == 1 and draws[0]["closed"] is True
+    shift = KEY_WIDTH_PX + KEY_GAP_PX
+    assert abs((with_key - without_key) - shift) <= POSITION_TOLERANCE_PX
+    # 名前の右端は、鍵が無いときの印の左端から隙間を引いた所。鍵はそこから隙間をあけて置き、印は鍵の右に続く
+    name_right = without_key - MARK_GAP_PX
+    assert abs(draws[0]["left"] - (name_right + KEY_GAP_PX)) <= POSITION_TOLERANCE_PX
+    assert draws[0]["left"] + draws[0]["size"] <= with_key + POSITION_TOLERANCE_PX
+
+
+def test_key_badge_when_far(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """名前が出ない遠い距離では、閉じた鍵を玉の右上の札の中に出す。名前が出る距離では札を使わない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = _open_spied(open_preview, url, "#tab=graph&id=D-2", page)
+    page.keyboard.press("l")
+    settle(page)
+    near = key_draws(page)
+    # 実行（最も遠い距離まで離れる）
+    page.mouse.move(*blank_point(page))
+    page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    settle(page)
+    far = key_draws(page)
+    # 検証
+    assert [(draw["closed"], draw["badge"]) for draw in near] == [(True, False)]
+    assert [(draw["closed"], draw["badge"]) for draw in far] == [(True, True)]
+
+
+def test_lock_key_ignored_when_select_focused(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """入力欄（見た目のドロップダウン）にフォーカスがあるときは、`L` キーを受けない。フォーカスを外すと受ける（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = _open_spied(open_preview, url, "#tab=graph&id=D-2", page)
+    page.focus(LOOK_SELECT)
+    # 実行（ドロップダウンにフォーカスがある）
+    page.keyboard.press("l")
+    settle(page)
+    while_focused = key_draws(page)
+    look = page.eval_on_selector(LOOK_SELECT, "select => select.value")
+    # 実行（フォーカスを外す）
+    page.evaluate("document.activeElement.blur()")
+    page.keyboard.press("l")
+    settle(page)
+    after_blur = key_draws(page)
+    # 検証
+    assert while_focused == []
+    assert look == "deep"
+    assert [draw["closed"] for draw in after_blur] == [True]
