@@ -111,3 +111,4 @@ priority: 中
 notes:
   E2E の範囲: 外の入口そのもの（トンネル・リバースプロキシのサービス）と、その認証は確かめない。許可していないホスト名と `Origin` を断ることは、インターフェース定義の結合テストが確かめる
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を足す
+test_file: tests/e2e/単一ユースケース/test_preview_external_access.py
