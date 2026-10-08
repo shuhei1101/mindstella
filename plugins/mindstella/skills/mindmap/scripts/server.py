@@ -92,10 +92,12 @@ def install_sigterm_handler(previews: PreviewRegistry) -> None:
     """SIGTERM を受けたら配信の台帳を止めて終わる受け口を置く（Claude Code は標準入力を閉じずに SIGTERM を送る）。"""
 
     def _handle(signum: int, frame: object) -> None:
-        """配信を止めてから、終了コード 0 で終わる。"""
+        """配信を止め、記録を書き出してから、終了コード 0 で終わる。"""
         previews.stop_all()
         logger.info("SIGTERM を受けて配信を止めた")
-        raise SystemExit(0)
+        logging.shutdown()
+        # SystemExit では終えない。標準入力が開いたままだと、MCP の SDK が標準入力を読む作業スレッド（daemon でない）をインタープリタの終わりが待ち続け、プロセスが残る
+        os._exit(0)
 
     signal.signal(signal.SIGTERM, _handle)
 

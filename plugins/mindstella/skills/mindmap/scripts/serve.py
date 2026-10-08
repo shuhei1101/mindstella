@@ -204,8 +204,8 @@ class PreviewRegistry:
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
-        # `_servers` を触る間だけ取る鍵
-        self._guard = threading.Lock()
+        # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
+        self._guard = threading.RLock()
 
     def start(self, root: Path) -> tuple[str, bool]:
         """そのワークスペースの配信を立て、URL と今立てたかを返す。立っていればその URL を返す。"""
@@ -241,14 +241,16 @@ class PreviewRegistry:
 
     def stop_all(self) -> None:
         """立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
+        # 鍵の中では台帳を空にして配信を手元に取るだけにし、フックと停止は鍵の外で呼ぶ
         with self._guard:
-            # 配信を止める前に、終了時のフックを全て立てる
-            if self._external.stop_hook:
-                for preview in self._servers.values():
-                    run_hook(self._external.stop_hook, preview.port, preview.root.name)
-            for preview in self._servers.values():
-                preview.stop()
-            self._servers.clear()
+            taken = list(self._servers.values())
+            self._servers = {}
+        # 配信を止める前に、終了時のフックを全て立てる
+        if self._external.stop_hook:
+            for preview in taken:
+                run_hook(self._external.stop_hook, preview.port, preview.root.name)
+        for preview in taken:
+            preview.stop()
 
 
 class PreviewHandler(BaseHTTPRequestHandler):
