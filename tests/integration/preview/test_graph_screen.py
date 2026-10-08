@@ -28,6 +28,7 @@ from preview_layout_helpers import (
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS
 from preview_network_helpers import (
+    CANVAS,
     ball_at,
     blank_point,
     ball_centers,
@@ -974,6 +975,10 @@ MARK_LEFT_SCRIPT = """() => {
 }"""
 
 
+# キャンバスの幅が、引数の幅より縮んだか（詳細パネルが開いて枠が狭まったか）
+CANVAS_SHRUNK_SCRIPT = """(before) => document.getElementById('graph-canvas').getBoundingClientRect().width < before"""
+
+
 def _open_spied(open_preview: OpenPreview, url: str, hash_text: str, page: Page) -> Page:
     """鍵の記録を入れ、動きを減らす設定で項目を開いたネットワークを、画が静止するまで待って返す。"""
     _reduce_motion(page)
@@ -988,7 +993,7 @@ def _open_spied(open_preview: OpenPreview, url: str, hash_text: str, page: Page)
 def test_lock_when_quick_double_press(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """何も選んでいないとき、ある玉を素早く同じ位置で 2 回押すと、1 回目で詳細が開いてキャンバスが縮んでも、その項目への 2 回押しとしてロックする（正常系）。"""
+    """何も選んでいないとき、ある玉を素早く同じ位置で 2 回押すと、1 回目で詳細が開いてキャンバスが縮み 2 回目の位置にもう玉が無くても、その項目への 2 回押しとしてロックする（正常系）。"""
     # 準備
     _reduce_motion(page)
     install_key_spy(page)
@@ -999,17 +1004,18 @@ def test_lock_when_quick_double_press(
     settle(page)
     # 詳細が開いてキャンバスが縮んでも押した位置がキャンバスに残るよう、左寄りの玉を選ぶ
     x, y = min(ball_centers(page), key=lambda center: center[0])
-    # 実行（動かさずに続けて 2 回押す）
-    page.mouse.move(x, y)
-    page.mouse.down()
-    page.mouse.up()
-    page.mouse.down()
-    page.mouse.up()
+    width_before = page.locator(CANVAS).evaluate("(canvas) => canvas.getBoundingClientRect().width")
+    # 実行（1 回目を押し、詳細が開いてキャンバスが縮むのを待ち、玉が無くなった同じ位置をもう一度押す）
+    click_at(page, x, y)
+    page.wait_for_function(CANVAS_SHRUNK_SCRIPT, arg=width_before)
+    ball_after_shrink = ball_at(page, x, y)
+    click_at(page, x, y)
     page.wait_for_function("location.hash.includes('id=')")
     page.mouse.move(*blank_point(page))
     settle(page)
     draws = key_draws(page)
     # 検証
+    assert ball_after_shrink is False
     assert len(draws) == 1
     assert draws[0]["closed"] is True
     assert page.locator("aside.panel.open").count() == 1
