@@ -436,6 +436,8 @@ def test_look_dropdown_when_narrow(
     url = write_sample_preview()
     page = open_preview(url, "#tab=graph")
     page.wait_for_function(HAS_DRAWING_SCRIPT)
+    # 文字の幅が書体の読み込みで変わるので、読み終わってから測る
+    page.evaluate("document.fonts.ready.then(() => true)")
     sizes: list[tuple[float, float]] = []
     corners: list[tuple[bool, bool]] = []
     # 実行（幅を変えながら、大きさと隅の位置を控える）
