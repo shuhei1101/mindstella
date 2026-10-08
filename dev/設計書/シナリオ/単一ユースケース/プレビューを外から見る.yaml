@@ -1,0 +1,113 @@
+title: "プレビューを外から見る"
+scenarios:
+  - name: 正常シナリオ（ポートを固定して外のホスト名で開く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する。外の入口の代わりに、外のホスト名の `Host` と `Origin` を付けて配信のポートへ渡す転送を置き、その転送を通して実際のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 外から見る設定
+        description: 待ち受けのポートの固定と、許可するホスト名
+        notes: ポートはテストごとに選んだ空きポート、ホスト名は `preview.example.test`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant GW as 外の入口
+        participant P as プレビュー（ブラウザ）
+
+        U->>CC: 記録を見たい
+        CC->>SV: プレビューの URL
+        SV->>SV: 127.0.0.1 の設定したポートで配信を立てる
+        SV-->>CC: 127.0.0.1 の URL
+        CC-->>U: URL を示す
+        U->>P: 外のホスト名の URL を開く
+        P->>GW: 外のホスト名で要求する
+        GW->>SV: 設定したポートへ渡す（Host は外のホスト名）
+        SV-->>P: 画面とワークスペースの記録
+        P-->>U: 概要
+        U->>P: D-1 にコメントを書いて送る
+        P->>GW: 送信（Origin は外のホスト名）
+        GW->>SV: 送信を渡す
+        SV-->>P: 受け付けた
+      ```
+    expected:
+      - 配信の待ち受けが `127.0.0.1` の、設定したポートである
+      - 外のホスト名で開いた画面に D-1 がある
+      - 送ったコメントが、ワークスペースの送信に残る
+    test: test_normal_when_port_fixed
+  - name: 正常シナリオ（フックで外の入口へ登録と削除をする）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生し、終わりに Claude Code を閉じる代わりに MCP サーバーの標準入力を閉じる
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 外から見る設定
+        description: 許可するホスト名と、起動時と終了時のフック
+        notes: フックは、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンド
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant HK as フック
+
+        U->>CC: 記録を見たい
+        CC->>SV: プレビューの URL
+        SV->>SV: 127.0.0.1 の空きポートで配信を立てる
+        SV->>HK: 起動時のフック（ポート・ワークスペースの名前）
+        SV-->>CC: 127.0.0.1 の URL
+        U->>CC: Claude Code を閉じる
+        CC->>SV: 標準入力を閉じる
+        SV->>SV: 配信を止める
+        SV->>HK: 終了時のフック（ポート・ワークスペースの名前）
+      ```
+    expected:
+      - 起動時のフックが 1 回、配信のポートとワークスペースのフォルダの名前を受け取って呼ばれている
+      - 終了時のフックが 1 回、起動時と同じポートとワークスペースの名前を受け取って呼ばれている
+      - MCP サーバーのプロセスが残っていない
+    test: test_normal_when_hooks_set
+  - name: 異常シナリオ（固定したポートが使われている）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 使われているポート
+        description: テストが先に `127.0.0.1` で待ち受けたポートを、待ち受けのポートとして設定する。起動時のフックも設定する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+
+        U->>CC: 記録を見たい
+        CC->>SV: プレビューの URL
+        SV->>SV: 設定したポートで待ち受けられない
+        SV-->>CC: 待ち受けを立てられない理由を示すエラー
+        CC-->>U: 理由を示し、ポートの設定を直すよう案内する
+      ```
+    expected:
+      - プレビューの URL の取得がエラーを返し、本文に待ち受けを立てられない理由がある
+      - 設定したポートを先に待ち受けていた側が、そのまま待ち受けている
+      - 起動時のフックが呼ばれていない
+    test: test_error_when_port_in_use
+lead: 利用者が、待ち受けのポート・許可するホスト名・起動と終了のフックを設定し、トンネル・リバースプロキシなど外の入口の内側で、端末の外から開いたプレビューで記録を読み、コメントを送る単一ユースケース。
+issue: 138
+primary_actor: 利用者
+trigger: 利用者が、外の入口のホスト名でプレビューを開く
+preconditions:
+  - ワークスペースが作成済みである
+  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
+  - 外の入口（トンネル・リバースプロキシ）が、外のホスト名への要求を `127.0.0.1` の配信のポートへ渡す。外から開く画面の認証は外の入口が持つ
+success_guarantee: 外の入口のホスト名で開いた画面に今の記録が出て、コメントを送れる。設定したフックが、配信を立てたときと止めるときに、ポートとワークスペースの名前を受け取って呼ばれる。
+minimal_guarantee: 配信は `127.0.0.1` だけで待ち受ける。許可していないホスト名からの要求には画面も記録も返さず、書き込みも受けない。
+frequency: 話し合いを始めるたびに 1 回
+priority: 中
+notes:
+  E2E の範囲: 外の入口そのもの（トンネル・リバースプロキシのサービス）と、その認証は確かめない。許可していないホスト名と `Origin` を断ることは、インターフェース定義の結合テストが確かめる
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` を足す
