@@ -14,7 +14,6 @@ from display_settings_helpers import (
     DEFAULT_KINDS,
     KINDS_WITHOUT_TERMS,
     SAVE_DEFAULT_BUTTON,
-    SETTINGS_PANEL,
     graph_look,
     open_in,
     open_settings,
@@ -28,7 +27,7 @@ from playwright.sync_api import BrowserContext
 from preview_helpers import ServeWorkspace
 from workspace_fixtures import RECORD_DIR, MakeItem
 
-# タブの帯に並ぶ画面の数（概要・つながりと、用語集を除いた 6 種類）
+# タブの帯に並ぶ画面の数（概要・ネットワークと、用語集を除いた 6 種類）
 TABS_WITHOUT_TERMS = 8
 
 # 保存の結果と、他の人の画面への反映を待つ上限ミリ秒
@@ -53,11 +52,10 @@ def test_normal(
     page_a = new_context().new_page()
     page_b = new_context().new_page()
     # 実行
-    # 利用者 A がプレビューの URL を開き、表示の設定で見た目を glow にし、表示する種類から用語集を外す
+    # 利用者 A がプレビューの URL を開き、ネットワークのドロップダウンで見た目を glow にし、表示の設定で表示する種類から用語集を外す
     open_in(page_a, url, "#tab=graph")
+    pick_look(page_a, "glow")
     open_settings(page_a)
-    pick_look(page_a, "グロウ")
-    page_a.wait_for_selector(f'{SETTINGS_PANEL} input[value="glow"]:checked')
     toggle_kind(page_a, "用語集")
     page_a.wait_for_function(
         f"document.querySelectorAll('nav.tabbar a').length === {TABS_WITHOUT_TERMS}"
@@ -66,10 +64,8 @@ def test_normal(
     open_in(page_b, url, "#tab=graph")
     look_b_opened = graph_look(page_b)
     tabs_b_opened = tab_keys(page_b)
-    # B が表示の設定で見た目を dust にする
-    open_settings(page_b)
-    pick_look(page_b, "星屑")
-    page_b.wait_for_selector(f'{SETTINGS_PANEL} input[value="dust"]:checked')
+    # B がネットワークのドロップダウンで見た目を dust にする
+    pick_look(page_b, "dust")
     # A がワークスペースの既定にする操作で、今の選びを保存する
     page_a.click(SAVE_DEFAULT_BUTTON)
     page_a.wait_for_selector(CONFIRM_OPEN)

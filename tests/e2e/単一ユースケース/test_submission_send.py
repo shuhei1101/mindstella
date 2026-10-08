@@ -54,13 +54,13 @@ MARKS_SCRIPT = """(root) => Object.fromEntries(
         .map((place) => [place.dataset.commentTarget, place.querySelector('.cmk .sr-only').textContent])
 )"""
 
-# つながりの、見せている名前の横の印の読み上げの文字を全て返す
+# ネットワークの、見せている名前の横の印の読み上げの文字を全て返す
 GRAPH_MARKS_SCRIPT = """() => [...document.querySelectorAll('.g3-marks .cmk')]
     .filter((mark) => mark.style.visibility !== 'hidden')
     .map((mark) => mark.querySelector('.sr-only').textContent)
     .sort()"""
 
-# つながりの、見せている印のうち、キャンバスの中央から横・縦に [dx, dy] px 以内にある印の読み上げの文字を返す（選んで寄った玉は中央に来る）
+# ネットワークの、見せている印のうち、キャンバスの中央から横・縦に [dx, dy] px 以内にある印の読み上げの文字を返す（選んで寄った玉は中央に来る）
 CENTER_MARKS_SCRIPT = """([dx, dy]) => {
     const canvas = document.getElementById('graph-canvas').getBoundingClientRect();
     const cx = canvas.left + canvas.width / 2;
@@ -231,7 +231,7 @@ def test_normal_when_marks_shown_in_lists(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """コメントを書いた項目に、ボード・マップ・表・つながりで件数の印が出る（正常系）。"""
+    """コメントを書いた項目に、ボード・マップ・表・ネットワークで件数の印が出る（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", body="D-1.md"),
@@ -274,7 +274,7 @@ def test_normal_when_marks_shown_in_lists(
     page.click('.segment button[data-view="table"]')
     page.wait_for_selector("table.grid tbody tr")
     assert page.evaluate(MARKS_SCRIPT, "table.grid") == {"A-1": "コメント 1 件"}
-    # 実行・検証（つながり。全体を表示した距離では、どの玉にも印が出ない）
+    # 実行・検証（ネットワーク。全体を表示した距離では、どの玉にも印が出ない）
     page.click('nav.tabbar a[data-tab="graph"]')
     page.wait_for_selector("#graph-canvas")
     page.wait_for_timeout(FIT_SETTLE_MS)

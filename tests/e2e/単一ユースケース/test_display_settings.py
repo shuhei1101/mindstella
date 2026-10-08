@@ -1,7 +1,7 @@
-"""表示の設定を変える（利用者がトップバーから表示の設定のパネルを開き、見た目と表示する種類を自分の端末だけで変え、既定に戻す）の E2E テスト。
+"""表示の設定を変える（利用者がネットワークのドロップダウンで見た目を、トップバーの表示の設定のパネルで表示する種類を自分の端末だけで変え、既定に戻す）の E2E テスト。
 
 起動スクリプトの代わりに MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。
-見た目ごとの描き分けは確かめず、つながりの画面に渡った見た目の値だけを確かめる。
+見た目ごとの描き分けは確かめず、ネットワークの画面に渡った見た目の値だけを確かめる。
 """
 
 from __future__ import annotations
@@ -11,13 +11,16 @@ from typing import Any
 
 from display_settings_helpers import (
     DEFAULT_KINDS,
+    LOOK_SELECT,
     RENDER_TIMEOUT_MS,
     SETTINGS_PANEL,
     SETTINGS_PANEL_OPEN,
     checked_kind_count,
     graph_look,
+    look_dropdown,
     open_in,
     open_settings,
+    overrides_text,
     pick_look,
     read_prefs,
     seed_prefs,
@@ -29,7 +32,7 @@ from playwright.sync_api import BrowserContext, Page
 from preview_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, OpenPreview, ServeWorkspace
 from workspace_fixtures import RECORD_DIR, MakeItem
 
-# タブの帯に並ぶ画面の数（概要・つながりと、表示する種類）
+# タブの帯に並ぶ画面の数（概要・ネットワークと、表示する種類）
 TABS_WITHOUT_TERMS = 8
 TABS_WITHOUT_NOTES = 8
 
@@ -51,20 +54,24 @@ def test_normal(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """見た目で glow を選び、表示する種類から用語集を外すと、その場で画面に当たり、端末に残って読み込み直しても保たれる（正常系）。"""
+    """ネットワークのドロップダウンで見た目に glow を選び、表示の設定で表示する種類から用語集を外すと、その場で画面に当たり、端末に残って読み込み直しても保たれる（正常系）。"""
     # 準備
     url, root = serve_workspace(
         make_item("D-1"), make_item("T-1"), make_item("G-1"), settings=valid_settings
     )
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     open_preview(url, "#tab=graph")
+    page.wait_for_selector(LOOK_SELECT)
     # 実行
-    open_settings(page)
     initial_look = graph_look(page)
-    deep_checked = page.locator(f'{SETTINGS_PANEL} input[value="deep"]').is_checked()
+    initial_dropdown = look_dropdown(page)
+    pick_look(page, "glow")
+    open_settings(page)
+    look_pickers_in_panel = page.locator(
+        f"{SETTINGS_PANEL} .st-look, {SETTINGS_PANEL} input[type=radio]"
+    ).count()
     initial_kinds = checked_kind_count(page)
-    pick_look(page, "グロウ")
-    page.wait_for_selector(f'{SETTINGS_PANEL} input[value="glow"]:checked')
+    overrides_before_toggle = overrides_text(page)
     toggle_kind(page, "用語集")
     page.wait_for_function(
         f"document.querySelectorAll('nav.tabbar a').length === {TABS_WITHOUT_TERMS}"
@@ -74,19 +81,28 @@ def test_normal(
     page.reload()
     page.wait_for_selector(".screen.graph", timeout=RENDER_TIMEOUT_MS)
     # 検証
-    # パネルを開いた直後、見た目が deep で、全ての種類に印が付いている
+    # ネットワークを開いた直後、見た目のドロップダウンが deep を選んでいて、その選択肢に「既定」が添えられている
     assert initial_look == "deep"
-    assert deep_checked is True
+    assert initial_dropdown["selected"] == "deep"
+    assert initial_dropdown["labels"]["deep"].endswith("（既定）")
+    other_labels = [
+        label for value, label in initial_dropdown["labels"].items() if value != "deep"
+    ]
+    assert not any(label.endswith("（既定）") for label in other_labels)
+    # 表示の設定のパネルに見た目を選ぶ要素が無く、全ての種類に印が付いていて、この端末で変えている項目に「ネットワークの見た目」がある
+    assert look_pickers_in_panel == 0
     assert initial_kinds == len(DEFAULT_KINDS)
-    # 用語集を外した直後と、読み込み直した後のどちらも、トップバーに用語集のタブが無く、概要とつながりのタブはある
+    assert "ネットワークの見た目" in overrides_before_toggle
+    # 用語集を外した直後と、読み込み直した後のどちらも、トップバーに用語集のタブが無く、概要とネットワークのタブはある
     assert "terms" not in tabs_after_toggle
     assert tabs_after_toggle[0] == "overview"
     assert tabs_after_toggle[-1] == "graph"
     assert "terms" not in tab_keys(page)
     assert tab_keys(page)[0] == "overview"
     assert tab_keys(page)[-1] == "graph"
-    # 読み込み直した後、つながりの画面に渡る見た目が glow である
+    # 読み込み直した後、ネットワークの画面に渡る見た目が glow で、見た目のドロップダウンが glow を選んでいる
     assert graph_look(page) == "glow"
+    assert look_dropdown(page)["selected"] == "glow"
     # 端末の保存領域に、見た目 glow と、用語集を除いた表示する種類が残っている
     assert prefs is not None
     assert prefs["look"] == "glow"
@@ -137,7 +153,7 @@ def test_normal_when_reset(
     theme_before = page.evaluate("document.documentElement.dataset.theme")
     # 実行
     open_settings(page)
-    dust_checked = page.locator(f'{SETTINGS_PANEL} input[value="dust"]').is_checked()
+    overrides_before = overrides_text(page)
     kinds_before = checked_kind_count(page)
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     page.wait_for_function(
@@ -153,12 +169,13 @@ def test_normal_when_reset(
     page.wait_for_selector("table.grid", timeout=RENDER_TIMEOUT_MS)
     headers_after = table_headers(page)
     # 検証
-    # 上書きが効いている状態から始まる（見た目 dust・全ての種類に印・ダーク・隠した列）
-    assert dust_checked is True
+    # 上書きが効いている状態から始まる（全ての種類に印・この端末で変えている項目に見た目・表示する種類・ライト / ダーク・表の列がある・ダーク・隠した列）
+    for name in ("ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列"):
+        assert name in overrides_before
     assert kinds_before == len(DEFAULT_KINDS)
     assert theme_before == OVERRIDE_THEME
     assert HIDDEN_COLUMN_LABEL not in headers_before
-    # つながりの画面に渡る見た目が starlight である
+    # ネットワークの画面に渡る見た目が starlight である
     assert look_after == "starlight"
     # トップバーにメモのタブが無い
     assert "notes" not in tabs_after_reset

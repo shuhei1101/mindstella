@@ -1,4 +1,4 @@
-"""プレビューで記録を読み返す（変更履歴から時点を選び、概要から項目の詳細を開き、つながりで関係を読み、URL に残す）の E2E テスト。"""
+"""プレビューで記録を読み返す（変更履歴から時点を選び、概要から項目の詳細を開き、ネットワークで関係を読み、URL に残す）の E2E テスト。"""
 
 from __future__ import annotations
 
@@ -134,7 +134,7 @@ def test_normal(
     snapshot_tree: SnapshotTree,
     page: Page,
 ) -> None:
-    """変更履歴から書き換えのまとまりを選び、概要の要見直しから D-3 の詳細を開き、つながりで D-3 を押して、終えた URL を開き直す（正常系）。"""
+    """変更履歴から書き換えのまとまりを選び、概要の要見直しから D-3 の詳細を開き、ネットワークで D-3 を押して、終えた URL を開き直す（正常系）。"""
     # 準備（プレビューを一度開いて閉じた後に、D-3 の状態と本文を書き換え、D-6 を足して 1 つのまとまりにする）
     root = make_workspace(
         *_records(make_item),
@@ -159,7 +159,7 @@ def test_normal(
     page.click('#tile-review button[data-id="D-3"]')
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
-    # 実行（つながりを開く。開いている詳細パネルは閉じない）
+    # 実行（ネットワークを開く。開いている詳細パネルは閉じない）
     page.click('nav.tabbar a[data-tab="graph"]')
     page.wait_for_selector("#graph-canvas")
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
@@ -168,7 +168,7 @@ def test_normal(
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     final_url = page.url
-    # 検証（終えたときの URL を新しいタブで開くと、つながりの画面と D-3 の詳細パネルが開く）
+    # 検証（終えたときの URL を新しいタブで開くと、ネットワークの画面と D-3 の詳細パネルが開く）
     reopened = page.context.new_page()
     reopened.goto(final_url)
     reopened.wait_for_selector("main#main > *", state="attached", timeout=RENDER_TIMEOUT_MS)
