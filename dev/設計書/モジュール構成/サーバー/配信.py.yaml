@@ -74,6 +74,12 @@ constants:
     usecase: プレビューを外から見る
     summary: 配信を止めるときのフックを読む環境変数の名前（設定『サーバー』）
     value: '"MINDSTELLA_PREVIEW_STOP_HOOK"'
+  - name: ORIGIN_SCHEMES
+    title: 許可するホスト名の送り元のスキーム
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: プレビューを外から見る
+    summary: '`Origin` で許可するホスト名を受けるスキーム（`check_origin`）'
+    value: ("https", "http")
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
@@ -92,7 +98,7 @@ classes:
         access: 内部 (_)
         description: ツールと共有するプロセスの中の書き換えの鍵（コメントの受け付けが取る）
       - name: _guard
-        type: threading.Lock
+        type: threading.RLock
         access: 内部 (_)
         description: '`_servers` を触る間だけ取る鍵'
       - name: _external
@@ -161,9 +167,9 @@ classes:
           type: None
           description: '-'
         process: |-
-          1. `_guard` を取り、`_external.stop_hook` があれば、台帳の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。配信を止める前に全て立てる）
-          2. 台帳の配信ごとに `PreviewServer.stop` を呼ぶ
-          3. 台帳を空にする（2 回目の呼び出しではフックも `stop` も呼ばれない）
+          1. `_guard` を取り、台帳を空の辞書と入れ替えて、入れ替える前の配信を手元に取る（2 回目の呼び出しでは手元が空で、フックも `stop` も呼ばれない）
+          2. `_guard` を放してから、`_external.stop_hook` があれば、手元の配信ごとに配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`。配信を止める前に全て立てる）
+          3. 手元の配信ごとに `PreviewServer.stop` を呼ぶ
         unit_tests:
           - name: test_stop_all
             case: 正常
@@ -177,6 +183,12 @@ classes:
             condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り、ワークスペース 2 つを `start` してから `stop_all` を 2 回呼ぶ'
             mock: '`run_hook`（`serve` モジュールの参照を monkeypatch し、受け取った引数を記録する）'
             expected: '`run_hook` が 2 回だけ、それぞれの配信のポートとフォルダの名前で呼ばれる'
+          - name: test_stop_all_when_reentered
+            case: 正常
+            summary: 止めている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない
+            condition: '`external=ExternalAccess(stop_hook=("hook",))` で作り 1 つ立てる。差し替えた `run_hook` の中で同じ台帳の `stop_all` を呼ぶ'
+            mock: '`run_hook`（受け取った引数を記録し、中で `stop_all` を呼ぶ）'
+            expected: '`stop_all` が戻り、`run_hook` が 1 回だけ呼ばれ、その URL への `GET /` が `ConnectionRefusedError`'
       - name: url_of
         title: 配っている URL
         kind: メソッド
@@ -590,7 +602,7 @@ functions:
     process: |-
       1. `None` なら真
       2. 2 つの URL のどちらかと等しければ真
-      3. `urlsplit` で分け、スキームが `https`・`http` で、`netloc` のポートを外したホスト名の部分（`host_part`）が `allowed_hosts` にあれば真、無ければ偽
+      3. `urlsplit` で分け、スキームが `ORIGIN_SCHEMES` のどれかで、`netloc` のポートを外したホスト名の部分（`host_part`）が `allowed_hosts` にあれば真、無ければ偽
     unit_tests:
       - name: test_check_origin
         case: 正常

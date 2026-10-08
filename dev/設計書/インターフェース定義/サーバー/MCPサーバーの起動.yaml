@@ -123,6 +123,8 @@ flows:
         description: 作成を済ませたワークスペース
       - name: 終了時のフック
         description: '`MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンド'
+      - name: 開いたままの標準入力
+        description: SIGTERM を送るとき、子プロセスの標準入力を閉じずにおく（Claude Code の終わらせ方と同じ）
     flow: |-
       ```mermaid
       sequenceDiagram

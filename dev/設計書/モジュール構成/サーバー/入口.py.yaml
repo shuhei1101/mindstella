@@ -1748,15 +1748,16 @@ functions:
       description: '-'
     process: |-
       1. `signal.signal(signal.SIGTERM, 受け口)` で受け口を置く
-      2. 受け口は、`previews.stop_all()` を呼んでから `SystemExit(0)` を送る
+      2. 受け口は、`previews.stop_all()` を呼び、記録を書き出して（`logging.shutdown`）、`os._exit(0)` で終える
          - `[INFO]` SIGTERM を受けて配信を止めた
+         - `SystemExit` では終えない。標準入力が開いたままだと、MCP の SDK が標準入力を読む anyio の作業スレッド（daemon でない）をインタープリタの終わりが待ち続け、プロセスが残る
     unit_tests:
       - name: test_install_sigterm_handler
         case: 正常
         summary: SIGTERM で配信を止めて終わる
         condition: 偽の台帳を渡して置き、`signal.getsignal(signal.SIGTERM)` で引いた受け口を `(signal.SIGTERM, None)` で呼ぶ。後で元の受け口に戻す
-        mock: 台帳（`stop_all` を記録する偽）
-        expected: '`SystemExit`（コード 0）を送り、`stop_all` が 1 回呼ばれている'
+        mock: 台帳（`stop_all` を記録する偽）、`os._exit`（`server` モジュールの参照を monkeypatch し、受け取ったコードを記録する）
+        expected: '`stop_all` が 1 回呼ばれた後に `os._exit` が 0 で 1 回呼ばれている'
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く
