@@ -24,7 +24,7 @@ args:
   - name: items
     type: オブジェクトの配列
     required: true
-    description: 消した項目。消した順に並べ、その並びで出す。1 件以上を渡す（0 件のとき使う側は帯を置かない）
+    description: 消した項目。渡した並びで出す。1 件以上を渡す（0 件のとき使う側は帯を置かない）
     status: planned
   - name: items[].id
     type: 文字列

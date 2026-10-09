@@ -73,7 +73,7 @@ elements:
         value: 差分の表示の間、選んだ時点で足した・変えた資料（記録の取得.changes）
       - name: comments
         value: サーバーにつながって開いたとき、資料の ID → その資料を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target）
-    description: 資料の表
+    description: 資料の表。取り下げた資料（`withdrawn` が真）の行は、差分の表示によらずタイトルの右に取り下げの札を置き、行の文字を薄くする（部品設計『表』の `rows`）
     visible_when: 表示形式が表
   - name: ボード
     kind: board
@@ -122,8 +122,29 @@ elements:
     description: 資料のカードとボードのカードのメタ情報の並びの右端に置く。コメントを溜める・直す・消す・戻す・送ると、スクロールの位置を動かさずに印だけを描き替える。印だけを押す操作は持たない
     io: 表示
     visible_when: サーバーにつながって開いていて、その資料を指すレビュー中のコメントが 1 件以上あるとき
+  - name: 消した項目の帯
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/消した項目の帯.ts#
+    args:
+      - name: items
+        value: 選んだ時点で消した項目（記録の取得.changes の removed）のうち、種類が doc のものの id・title を ID の順に並べたもの。合わせた範囲で足して消した項目も含む
+    position: ツールバー・条件のチップの下、カード・ボード・表の上
+    description: 選んだ時点で消した資料を並べる。表示形式と絞り込みの条件によらず同じ帯を出す。項目は押せず、詳細パネルを開かない
+    io: 表示
+    source: 記録の取得.changes
+    visible_when: 差分の表示の間で、選んだ時点で資料を 1 件以上消したとき
+    status: planned
+  - name: カード・ボードの取り下げの札
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
+    description: 資料のカードとボードのカードのタイトルの右、差分の印より前に置き、カードの文字を薄くする。押すと詳細を開くのはほかのカードと同じ
+    io: 表示
+    source: プレビューを開く.mindmap-data.docs[].withdrawn
+    visible_when: その資料の `withdrawn` が真のとき（差分の表示によらない）
+    status: planned
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/126/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/docs/121/standard/index.html`
+  消した項目と取り下げのモック: 消した項目の帯と取り下げの札の見本は `dev/mock/pages/docs/179/b-band/index.html`

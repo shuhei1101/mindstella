@@ -177,8 +177,21 @@ elements:
     description: 注目の起点を 1 つの検討事項の節に留める。押したときの規則・素早い 2 回押しの扱い・鍵を震わせる場面は、画面設計『ネットワーク』の「ロックの操作」と同じにする（2 回目は、描き直しで節が消えた位置を押しても前に押した節への 2 回押しとして扱う）。ロックはネットワークとは別に持ち、ページを開いている間だけ保ってタブを行き来しても残す
     io: 入力
     visible_when: 表示形式がマップで幅 901px 以上。幅 900px 以下の字下げの一覧ではロックしない
+  - name: 消した項目の帯
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/消した項目の帯.ts#
+    args:
+      - name: items
+        value: 選んだ時点で消した項目（記録の取得.changes の removed）のうち、種類が decision のものの id・title を ID の順に並べたもの。合わせた範囲で足して消した項目も含む
+    position: ツールバー・条件のチップの下、マップ（幅 900px 以下は字下げの一覧）・ボード・表の上
+    description: 選んだ時点で消した検討事項を並べる。表示形式と絞り込みの条件によらず同じ帯を出す。項目は押せず、詳細パネルを開かず、マップの節にもしない
+    io: 表示
+    source: 記録の取得.changes
+    visible_when: 差分の表示の間で、選んだ時点で検討事項を 1 件以上消したとき
+    status: planned
 lead: 検討事項をボード（既定）・マップ・表で見る画面。
 mock: dev/mock/pages/decisions/123/standard/index.html
 test_file: tests/integration/preview/test_decisions_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/decisions/121/standard/index.html`（マップのホイールでの拡大・縮小は持たない）
+  消した項目のモック: 消した項目の帯の見本は `dev/mock/pages/decisions/179/b-band/index.html`
