@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from playwright.sync_api import Page
 
@@ -735,3 +737,126 @@ def test_detail_panel_when_option_list_values(
     result = preview_page.evaluate(OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"})
     # 検証
     assert result == {"prosText": "速い、安い", "prosStrong": 1, "consFound": False}
+
+
+# 取り下げた理由
+WITHDRAWN_REASON = "別の調査で足りた"
+
+# 選んだ時点の後に、取り下げと理由を足した回（前は両方とも無かった）
+WITHDRAW_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"withdrawn": None, "reason": None},
+}
+
+# 詳細パネルを開き（point があれば差分つきで）、題の札・取り下げた理由の節・キーの一覧の取り下げの行を調べる
+OPEN_WITHDRAWN_PANEL_SCRIPT = """async ({data, id, point, reasonText}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set([id])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const reasonSection = [...panel.querySelectorAll("section.d-sec")].find(
+        (section) => section.querySelector("h3")?.textContent === "取り下げた理由"
+    );
+    const withdrawnLabel = [...panel.querySelectorAll("dl.d-meta dt")].find(
+        (label) => label.textContent === "取り下げ"
+    );
+    return {
+        titleBadge: (panel.querySelector(".d-title .wd-badge")?.textContent ?? "").includes("取り下げ"),
+        reasonSection: reasonSection !== undefined,
+        reasonShown: (reasonSection?.textContent ?? "").includes(reasonText),
+        reasonAdded: reasonSection?.querySelector(".df-now") != null,
+        metaRow: withdrawnLabel !== undefined,
+        metaBadgeAdded: withdrawnLabel?.nextElementSibling?.querySelector(".df-now .wd-badge") != null,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("item_id", "point", "expected"),
+    [
+        pytest.param(
+            "R-1",
+            None,
+            {
+                "titleBadge": True,
+                "reasonSection": True,
+                "reasonShown": True,
+                "reasonAdded": False,
+                "metaRow": False,
+                "metaBadgeAdded": False,
+            },
+            id="withdrawn_without_diff",
+        ),
+        pytest.param(
+            "R-1",
+            DIFF_POINT,
+            {
+                "titleBadge": True,
+                "reasonSection": True,
+                "reasonShown": True,
+                "reasonAdded": True,
+                "metaRow": True,
+                "metaBadgeAdded": True,
+            },
+            id="withdrawn_in_range",
+        ),
+        pytest.param(
+            "R-2",
+            None,
+            {
+                "titleBadge": False,
+                "reasonSection": False,
+                "reasonShown": False,
+                "reasonAdded": False,
+                "metaRow": False,
+                "metaBadgeAdded": False,
+            },
+            id="not_withdrawn",
+        ),
+    ],
+)
+def test_detail_panel_when_withdrawn(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    point: dict[str, Any] | None,
+    expected: dict[str, bool],
+) -> None:
+    """取り下げた項目の題に札を置き、理由を節に出す（正常系）。"""
+    # 準備
+    data = make_data(
+        research=[
+            make_item(
+                "R-1",
+                withdrawn=True,
+                reason=WITHDRAWN_REASON,
+                history=[WITHDRAW_ENTRY],
+                seq=1,
+            ),
+            make_item("R-2"),
+        ]
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_WITHDRAWN_PANEL_SCRIPT,
+        {"data": data, "id": item_id, "point": point, "reasonText": WITHDRAWN_REASON},
+    )
+    # 検証
+    assert result == expected

@@ -375,3 +375,56 @@ def test_text_columns(
     )
     # 検証
     assert keys == expected_keys
+
+
+def test_table_when_withdrawn(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """取り下げた行だけに札を差分の印より前に置き、文字を薄くする（正常系）。"""
+    # 準備
+    rows = [
+        {"id": "R-1", "title": "取り下げた調査", "withdrawn": True},
+        {"id": "R-2", "title": "残した調査"},
+    ]
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """({rows, marks}) => {
+            const noop = () => {};
+            const columns = [
+                {key: "id", label: "ID", get: (row) => row.id},
+                {key: "title", label: "タイトル", fixed: true, get: (row) => row.title},
+            ];
+            const element = MindmapPreview.table({
+                kind: "research",
+                columns,
+                rows,
+                marks,
+                on: {sort: noop, filter: noop, pin: noop, columns: noop, reset: noop, open: noop},
+            });
+            document.body.append(element);
+            // 行のタイトルのセルの中身を、並びの種類にする
+            const kindOf = (child) =>
+                child.classList.contains("row-open")
+                    ? "title"
+                    : child.classList.contains("wd-badge")
+                      ? "withdrawn"
+                      : child.classList.contains("df-mark")
+                        ? "diff"
+                        : "other";
+            const summarize = (id) => {
+                const row = element.querySelector(`tr[data-id="${id}"]`);
+                const titleCell = row.querySelector('td[data-col="1"]');
+                return {
+                    order: [...titleCell.children].map(kindOf),
+                    badgeText: titleCell.querySelector(".wd-badge")?.textContent ?? null,
+                    dimmed: row.classList.contains("is-withdrawn"),
+                };
+            };
+            return {withdrawn: summarize("R-1"), kept: summarize("R-2")};
+        }""",
+        {"rows": rows, "marks": {"R-1": "changed"}},
+    )
+    # 検証
+    assert result["withdrawn"]["order"] == ["title", "withdrawn", "diff"]
+    assert "取り下げ" in result["withdrawn"]["badgeText"]
+    assert result["withdrawn"]["dimmed"] is True
+    assert result["kept"] == {"order": ["title"], "badgeText": None, "dimmed": False}
