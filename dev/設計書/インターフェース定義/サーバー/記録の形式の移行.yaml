@@ -4,7 +4,7 @@ entry:
   value: '`migrate`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__migrate`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系（手順を並べる）
-    summary: 版を記録する前の形式のワークスペースで、v0.3.0・v0.5.0・v0.6.0 の手順と値が要るキーを返す
+    summary: 版を記録する前の形式のワークスペースで、プラグインの版までの手順と値が要るキーを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -25,13 +25,13 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`workspace_version` が `null`、`plugin_version` が `v0.7.0`、`relation` が `older`'
-      - '`steps` の版が `v0.3.0`・`v0.5.0`・`v0.6.0`・`v0.7.0` で、`destructive` が v0.6.0 の手順（`mindmap.yaml` → `config.yaml` の改名、`.mindstella/` へ移す `rename_file`・`move_dir`、`delete`）だけ `true`'
+      - '`workspace_version` が `null`、`plugin_version` がプラグインの版（`version.ini` の 1 行目）、`relation` が `older`'
+      - '`steps` の版の集まりが、`migrations/` にある版のうちプラグインの版までの版の集まりと一致し、`destructive` が v0.6.0 の手順（`mindmap.yaml` → `config.yaml` の改名、`.mindstella/` へ移す `rename_file`・`move_dir`、`delete`）だけ `true`'
       - '`needs_values` に `.mindstella/config.yaml` の `summary` がある（全ての手順を当てた後の名前で返す）'
       - ワークスペースの全てのファイルの中身と更新日時が呼ぶ前と同じ
     test: test_normal_when_plan
   - name: 正常系（手順を当てる）
-    summary: 写しを取って v0.3.0・v0.5.0・v0.6.0 の手順を当て、版のファイルは書かない
+    summary: 写しを取ってプラグインの版までの手順を当て、版のファイルは書かない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -46,7 +46,7 @@ flows:
 
         クライアント->>IF: migrate workspace
         IF->>WS: 隣のフォルダへ複製する
-        IF->>WS: v0.3.0・v0.5.0・v0.6.0 の手順を並びの順に当てる
+        IF->>WS: プラグインの版までの手順を並びの順に当てる
         IF-->>クライアント: JSON（steps・needs_values・backup）
       ```
     expected:
@@ -128,8 +128,8 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`recorded` が `v0.7.0`'
-      - '`.mindstella/mindstella-version.ini` の 1 行目が `v0.7.0`'
+      - '`recorded` がプラグインの版（`version.ini` の 1 行目）'
+      - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版'
     test: test_normal_when_record
   - name: 正常系（版が同じ）
     summary: 今の版のワークスペースでは並べる手順が無い
@@ -409,7 +409,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`workspace_version` が `v0.5.0`、`relation` が `older`'
-      - '`steps` の版が `v0.6.0` と `v0.7.0` だけで、v0.3.0・v0.5.0 の手順を含まない'
+      - '`steps` の版の集まりが、`migrations/` にある版のうち `v0.5.0` より新しくプラグインの版までの版の集まりと一致し、v0.3.0・v0.5.0 の手順を含まない'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_version_file_at_top
   - name: 正常系（決定済みの答えから採用した案を作る）
@@ -420,6 +420,8 @@ flows:
       - name: make_workspace
         description: '`.mindstella/mindstella-version.ini` が `v0.6.0` で、`answer`・`reason` を持ち案を持たない決定済みの D-1、案を持たない未決定の D-2、案 A（採用）を持つ決定済みの D-3 を持つ、git の作業ツリーではないワークスペース'
         notes: YAML を直接書いて作る
+      - name: to_version
+        description: '`v0.7.0` を渡す'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -427,7 +429,7 @@ flows:
         participant IF as migrate（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: migrate workspace
+        クライアント->>IF: migrate workspace to_version v0.7.0
         IF-->>WS: 版のファイルを読む（v0.6.0）
         IF->>WS: 隣のフォルダへ複製する
         IF->>WS: v0.7.0 の手順（answer_to_adopted_option）を当てる
