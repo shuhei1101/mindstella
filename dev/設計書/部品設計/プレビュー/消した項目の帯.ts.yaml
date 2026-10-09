@@ -1,0 +1,44 @@
+title: "消した項目の帯"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/removed-band.ts#MindmapPreview.removedBand"
+story: "Preview/RemovedBand"
+states:
+  - name: One
+    description: 1 件。見出し「消した項目」と件数 1 の右に、消した印・ID・タイトルを 1 つ並べる
+    args:
+      - name: items
+        value: '[{"id": "N-6", "title": "ゴールを後から変える・足す・無しで始める"}]'
+  - name: ManyLongTitles
+    description: 3 件で長いタイトルを含む。項目を横に並べて折り返し、タイトルは途中で切らずに折り返す
+    args:
+      - name: items
+        value: '[{"id": "D-53", "title": "差分の印の色を、項目の種類ごとに変えるか"}, {"id": "D-54", "title": "変更履歴のモーダルを時系列の一覧にして、未読の印を付け、読んだ時点から後の書き換えだけを数えるか"}, {"id": "D-55", "title": "印の凡例を置くか"}]'
+  - name: Narrow
+    description: 幅 390px。見出しの下に項目を折り返す
+    args:
+      - name: items
+        value: '[{"id": "N-6", "title": "ゴールを後から変える・足す・無しで始める"}, {"id": "N-7", "title": "読み返したい点をメモする"}]'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+lead: 差分の表示の間、選んだ時点で消したその種類の項目を、一覧（マップ・ボード・カード・表）の上に消した印・ID・消したときのタイトルで並べる帯。消した項目は中身が残らないため、押せる要素にしない。
+args:
+  - name: items
+    type: オブジェクトの配列
+    required: true
+    description: 消した項目。消した順に並べ、その並びで出す。1 件以上を渡す（0 件のとき使う側は帯を置かない）
+    status: planned
+  - name: items[].id
+    type: 文字列
+    required: true
+    description: 消した項目の ID。等幅の文字で出す
+    status: planned
+  - name: items[].title
+    type: 文字列
+    required: true
+    description: 消したときのタイトル。途中で切らずに折り返す
+    status: planned
+uses:
+  - component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    how: 各項目の頭に `kind` を `removed` にして置く
+accessibility:
+  - 帯は `section` にし、「この時点で消した項目」を読み上げ名にする
+  - 項目は `ul` の `li` にし、ボタン・リンクにしない（キーボードの移動先にしない）
