@@ -290,5 +290,4 @@ refs:
   - dev/設計書/シナリオ/単一ユースケース/起動スクリプトの登録#
   - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
   - dev/設計書/外部ライブラリ/claude-code#
-notes:
-  対応テストファイル: '`tests/integration/skill/test_register.py`（結合テスト作成で作り、`test_file` に書く）'
+test_file: tests/integration/skill/test_register.py
