@@ -24,6 +24,7 @@ diagrams:
         class ビルド
         class 移行
         class 設定の更新
+        class ワークスペースのREADME
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
@@ -36,6 +37,7 @@ diagrams:
         ツールの処理 --> ビルド
         ツールの処理 --> 移行
         ツールの処理 --> 設定の更新 : update_settings
+        ツールの処理 --> ワークスペースのREADME : readme・preview_url
         配信 --> ビルド : 雛形と記録
         配信 --> コメント : /api/comments・/api/drafts
         コメント --> 送信 : まとめて送る
@@ -64,7 +66,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "submissions", "take_submission")
+    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -76,7 +78,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 検討事項の案の編集
     summary: '`edit_option` の `option` に渡せるキー'
-    value: ("content", "pros", "cons", "note", "reason")
+    value: ("content", "pros", "cons", "note", "reason", "recommended")
   - name: REF_KEYS
     title: 参照のキー
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
@@ -159,7 +161,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 採用する案の切り替え
     scope: public
-    summary: 指定した記号の案だけを採用にした新しい項目を返す
+    summary: 指定した記号の案だけを採用にし、状態を `決定済み` にした新しい項目を返す
     args:
       - name: item
         type: dict[str, Any]
@@ -177,7 +179,7 @@ functions:
     process: |-
       1. `options` にその記号の案が無ければ `OptionNotFoundError`（持っている記号の一覧つき）を送る
       2. それまで `adopted` が真だった最初の案の記号を控える
-      3. 指定した案の `adopted` を真、ほかを偽にした新しい項目を返す
+      3. 指定した案の `adopted` を真、ほかを偽にし、`status` を `決定済み` にした新しい項目を返す（`answer`・案の `recommended` は変えない）
     exceptions:
       - name: OptionNotFoundError
         condition: 検討事項がその記号の案を持たない（`options` が無いときも含む）
@@ -202,6 +204,12 @@ functions:
         mock: なし
         expected: '`OptionNotFoundError`（メッセージに `Z`・`A`・`B`）'
         exception: その記号の案を持たない
+      - name: test_switch_adopted_when_undecided
+        case: 正常
+        summary: どの状態からも決定済みにし、推奨の印は残す
+        condition: '`parametrize`: 状態が `未決定` / `要見直し` / `保留` で、案 A・B を持ち B に `recommended: true` を持つ検討事項に `key: B`'
+        mock: なし
+        expected: '`status` が `決定済み`、案 B だけが `adopted` が真で `recommended` が真のまま。渡した項目は変わらない'
   - name: run_init
     title: init の処理
     kind: 関数
@@ -231,7 +239,7 @@ functions:
         summary: 作ったワークスペースとファイルを返す
         condition: まだ無い `tmp_path / "ws"` と正しい設定の辞書
         mock: なし
-        expected: '`workspace` が絶対パス、`files` が 11 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じ版'
+        expected: '`workspace` が絶対パス、`files` が 12 件（8 つの YAML・`mindstella-version.ini`・2 つのフォルダ・`README.md`）、`mindstella-version.ini` が `plugins/mindstella/version.ini` と同じ版'
   - name: run_add
     title: add の処理
     kind: 関数
@@ -336,7 +344,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 採用する案の切り替え
     scope: public
-    summary: 検討事項の採用する案を切り替えて書き込む
+    summary: 検討事項の採用する案を切り替え、状態を `決定済み` にして書き込む
     args:
       - name: root
         type: Path
@@ -361,7 +369,7 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: dict[str, Any]
-      description: '`{id, adopted, previous}`'
+      description: '`{id, adopted, previous, status, previous_status}`（`status` は `決定済み`、`previous_status` は切り替える前の状態）'
     process: |-
       1. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
          - 種類が `decision` でない場合、`ItemNotFoundError` を送る
@@ -386,6 +394,12 @@ functions:
         mock: なし
         expected: '`ItemNotFoundError`（メッセージに `T-1`）'
         exception: ID が検討事項でない
+      - name: test_run_adopt_when_undecided
+        case: 正常
+        summary: 未決定の検討事項を採用で決定済みにし、前の状態を変更履歴に積む
+        condition: '案 A・B を持つ未決定の D-1 を持つワークスペースに `key: B`'
+        mock: なし
+        expected: '戻り値が `status: 決定済み`・`previous_status: 未決定`・`previous: None`。D-1 の `history` の 1 回分の `before` が `status: 未決定` と、どの案も採用でない `options` を持つ'
   - name: run_check
     title: check の処理
     kind: 関数
@@ -404,7 +418,7 @@ functions:
       description: '`{ok, problems}`'
     process: |-
       1. ワークスペースを読み、点検する（`load_workspace`、`check_workspace`）
-      2. 前の版の形式の問題（`is_legacy_problem`）は、`detail` に続けて `（/mindstella:upgrade で今の形式に移せます）` を足す
+      2. 前の版の形式の問題（`is_legacy_problem`。`written_ids` は渡さないので、`decision_state` の問題は全て当たる）は、`detail` に続けて `（/mindstella:upgrade で今の形式に移せます）` を足す
       3. 問題が無ければ `ok: true`、あれば `ok: false` を返す
     unit_tests:
       - name: test_run_check
@@ -425,6 +439,12 @@ functions:
         condition: 'A-1（`done: true`）を YAML で直接書いたワークスペース'
         mock: なし
         expected: '`ok: false`。A-1 の問題の `detail` が `（/mindstella:upgrade で今の形式に移せます）` で終わる'
+      - name: test_run_check_when_decision_state
+        case: 正常
+        summary: 案と状態の合わない検討事項に /mindstella:upgrade を案内する
+        condition: 案を持たない未決定の D-1 を直接書いたワークスペース
+        mock: なし
+        expected: '`ok` が偽で、`kind: decision_state`・`file: .mindstella/decisions.yaml`・`key: items[0].options` の問題の `detail` が `/mindstella:upgrade` を含む'
   - name: run_impact
     title: impact の処理
     kind: 関数
@@ -752,7 +772,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: MCP サーバーを組み立てて stdio で動かし、標準入力が閉じたら配信を止めて終える
+    summary: MCP サーバーを組み立てて stdio で動かし、標準入力が閉じるか SIGTERM を受けたら、終了時のフックを呼んで配信を止めて終える
     description: 末尾で `sys.exit(main())`。
     side_effects: 標準入力・標準出力で MCP をやり取りし、記録を標準エラーに書く
     args:
@@ -762,15 +782,22 @@ functions:
         default: build_server
         passing: injected
         description: MCP サーバーを組み立てる関数
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: injected
+        description: 外から見る設定を読む環境変数
     returns:
       type: int
       description: 終了コード（標準入力が閉じて終えたら 0）
     process: |-
       1. `logging` の出力先を標準エラーにする
-      2. プロセスの中の書き換えの鍵（`threading.Lock()`）と配信の台帳（`PreviewRegistry`）を作る
-      3. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
-      4. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`）
-      5. 0 を返す
+      2. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. SIGTERM の受け口を置く（`install_sigterm_handler`）
+      4. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
+      5. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
+      6. 0 を返す
     unit_tests:
       - name: test_main
         case: 正常
@@ -784,6 +811,12 @@ functions:
         condition: '`run` が `RuntimeError` を送る偽のサーバー'
         mock: '`build`'
         expected: '`RuntimeError` が伝わり、`previews.stop_all` が呼ばれている'
+      - name: test_main_when_external_access_set
+        case: 正常
+        summary: 環境変数の外から見る設定を台帳へ渡す
+        condition: '`environ={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}`、`build` を `run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
+        mock: '`build`'
+        expected: 控えた `previews` の外から見る設定の `allowed_hosts` が `{"preview.example.test"}`
   - name: build_server
     title: サーバーの組み立て
     kind: 関数
@@ -814,7 +847,7 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -999,7 +1032,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: プレビューを開く
     scope: public
-    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、画面の URL を返す。初めて立てるときは `config.yaml` を検査する
+    summary: ワークスペースを確かめて配信を立て（立っていればそのまま）、画面の URL を返す。初めて立てるときは `config.yaml` を検査し、立てた後に直下の README を書き直す
     args:
       - name: root
         type: Path
@@ -1017,6 +1050,9 @@ functions:
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
       2. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
+      3. この呼び出しで立てたときだけ、直下の README を URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
+         - `WriteFailedError` が起きた場合、送り直さずに続ける
+           - `[WARNING]` README を書けなかった（パス、理由）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い（`mindmap.yaml` だけなら移し替えの案内を持つ）'
@@ -1036,6 +1072,18 @@ functions:
         mock: '`previews`'
         expected: '`WorkspaceNotFoundError`（後者は `lines` に `/mindstella:upgrade`）。`start` が呼ばれない'
         exception: config.yaml が無い
+      - name: test_run_preview_url_when_started
+        case: 正常
+        summary: 立てたときだけ README に URL を書く
+        condition: 作成済みのワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。1 回目の後に `README.md` を消して 2 回目を呼ぶ
+        mock: '`previews`'
+        expected: 1 回目の後、`README.md` が `url` を含む。2 回目の後、`README.md` が無いまま
+      - name: test_run_preview_url_when_readme_write_fails
+        case: 正常
+        summary: README を書けなくても URL を返す
+        condition: 作成済みのワークスペースの `README.md` を消して同じ名前のフォルダを作る。偽の台帳の `start` が `(url, True)` を返す
+        mock: '`previews`'
+        expected: '例外が上がらず `started: true` の結果が返る。ログに WARNING が 1 件ある'
   - name: run_submissions
     title: submissions の処理
     kind: 関数
@@ -1162,7 +1210,7 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: dict[str, Any]
-      description: '`{id, at, summary, added, changed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed` が空）'
+      description: '`{id, at, summary, added, changed, removed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed`・`removed` が空。`removed` はまとまりの `removed` を `{id, kind, title}` にしたもの）'
     process: |-
       1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送る
       2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
@@ -1253,7 +1301,7 @@ functions:
       description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
     process: |-
       1. 渡せないキーを確かめる（`validate_input_keys`）
-      2. `staged.items` のその種類で ID を振る（`next_id`）
+      2. `staged.items` のその種類で ID を振る（`next_id`。`taken` に消した項目の記録（`removed_items`）の ID を渡す）
       3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`EDITOR`）・`seq`・`added_seq` を末尾に置いた項目を作る
          - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す（どの種類も）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
@@ -1271,6 +1319,12 @@ functions:
         condition: '空の `Staged` に `note` の `{"title": "t", "content": "c", "body_markdown": "b"}`'
         mock: '`now`'
         expected: N-1 の `body` が `N-1.md` で、`Staged` の本文の書き込みに `N-1.md` → `b` がある
+      - name: test_stage_add_skips_removed_id
+        case: 正常
+        summary: 消した ID を振らない
+        condition: N-1 を持ち、記録の `pending.removed` に N-2 を持つ `Staged` にメモを足す
+        mock: '`now`'
+        expected: 結果の `id` が N-3
   - name: stage_update
     title: 更新を当てる
     kind: 関数
@@ -1369,7 +1423,8 @@ functions:
       2. `add` の場合、同じ記号の案があれば `OptionExistsError`。無ければ `{key, **option}` を末尾に足す
       3. `update`・`remove` の場合、その記号の案が無ければ `OptionNotFoundError`
          - `update` はその案に `option` を当てる（値が `None` のキーは消す）
-         - `remove` はその案が `adopted` なら `AdoptedOptionError`、そうでなければ抜く
+         - `remove` はその案が `adopted` なら `AdoptedOptionError`、その案が最後の案で検討事項の状態が `OPTIONS_OPTIONAL_STATUSES` に無ければ `LastOptionError`、そうでなければ抜く
+      4. `add`・`update` で `option` の `recommended` が真の場合、ほかの案の `recommended` のキーを消す。偽の場合、その案の `recommended` のキーを消す（印を外した案はキーを持たない）
     exceptions:
       - name: ArgumentError
         condition: '`option` の渡し方が合わない'
@@ -1383,6 +1438,9 @@ functions:
       - name: AdoptedOptionError
         condition: '`remove` で採用している案を指した'
         message: '{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください'
+      - name: LastOptionError
+        condition: '`remove` で、案を必須にする状態の検討事項の最後の案を指した'
+        message: '{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください'
     unit_tests:
       - name: test_apply_option_edit
         case: 正常
@@ -1396,6 +1454,18 @@ functions:
         condition: '案 A（採用）・B。`parametrize`: `add` B / `update` Z / `remove` A / `update` B に `{"adopted": true}`'
         mock: なし
         expected: '`OptionExistsError` / `OptionNotFoundError` / `AdoptedOptionError` / `ArgumentError`'
+      - name: test_apply_option_edit_when_recommended
+        case: 正常
+        summary: 推奨の印を 1 つに付け替え、外した案はキーを持たない
+        condition: '案 A（`recommended: true`）・B を持つ未決定の検討事項。`parametrize`: `update` で B に `recommended: true` / `update` で A に `recommended: false` / `add` で C に `recommended: true`'
+        mock: なし
+        expected: B だけが `recommended` を持つ / どの案も `recommended` を持たない / C だけが `recommended` を持つ。どれも `content` と並びは変わらない
+      - name: test_apply_option_edit_when_last_option
+        case: 異常
+        summary: 案を必須にする状態の最後の案は消さず、必須でない状態では消せる
+        condition: '案 A だけを持つ検討事項に `remove`。`parametrize`: 状態が `未決定` / `未整理`'
+        mock: なし
+        expected: '`LastOptionError`（メッセージに ID・`A`・`未決定`） / 空の並び'
   - name: run_edit_option
     title: edit_option の処理
     kind: 関数
@@ -1608,6 +1678,152 @@ functions:
         condition: タグ `データ` の D-1
         mock: なし
         expected: '`{tags: [{name: データ, count: 1, kinds: [decision]}]}`'
+  - name: run_readme
+    title: readme の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: README の書き直し
+    scope: public
+    summary: ワークスペースを確かめ、直下の README を今の値と配っている URL で書き直す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: injected
+        description: 配信の台帳
+    returns:
+      type: dict[str, Any]
+      description: '`{path, written, preview_url}`'
+    process: |-
+      1. ワークスペースを確かめる（`require_workspace`）
+      2. 配っている URL を引く（`PreviewRegistry.url_of`。配っていなければ `None`）
+      3. README を書く（README の書き込み。`write_readme(root, preview_url=url)`）
+      4. `path` に `root / README_FILE`、`written` に書いたか、`preview_url` に引いた URL を入れて返す
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い（`mindmap.yaml` だけなら移し替えの案内を持つ）'
+      - name: WriteFailedError
+        condition: '`README.md` を書けない（`write_readme` から伝わる）'
+    unit_tests:
+      - name: test_run_readme
+        case: 正常
+        summary: 配っていなければ URL なしで書く
+        condition: 作成済みのワークスペースの `README.md` を消す。`previews` は `url_of` が `None` を返す偽の台帳
+        mock: '`previews`'
+        expected: '`{path: {絶対パス}/README.md, written: true, preview_url: null}`。`README.md` が `PREVIEW_HINT` を含む'
+      - name: test_run_readme_when_serving
+        case: 正常
+        summary: 配っていればその URL を書く
+        condition: 作成済みのワークスペース。偽の台帳の `url_of` が `http://127.0.0.1:1/mindstella.html` を返す
+        mock: '`previews`'
+        expected: '`preview_url` がその URL で、`README.md` がその URL を含む'
+      - name: test_run_readme_when_user_file
+        case: 正常
+        summary: 利用者の README は書かず written を偽にする
+        condition: 作成済みのワークスペースの `README.md` を `# 家計簿アプリの話し合い` に置き換える
+        mock: '`previews`'
+        expected: '`written` が偽で、`README.md` の中身が呼ぶ前と同じ'
+      - name: test_run_readme_when_not_workspace
+        case: 異常
+        summary: ワークスペースでなければ書かない
+        condition: 空の `tmp_path`
+        mock: '`previews`'
+        expected: '`WorkspaceNotFoundError`。`tmp_path` に `README.md` が無い'
+        exception: config.yaml が無い
+  - name: install_sigterm_handler
+    title: SIGTERM の受け口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: プレビューを外から見る
+    scope: public
+    summary: SIGTERM を受けたら配信の台帳を止めて終わる受け口を置く（Claude Code は標準入力を閉じずに SIGTERM を送る。インターフェース定義『MCP サーバーの起動』の補足）
+    side_effects: プロセスの SIGTERM の受け口を差し替える
+    args:
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: positional
+        description: 止める配信の台帳
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. `signal.signal(signal.SIGTERM, 受け口)` で受け口を置く
+      2. 受け口は、`previews.stop_all()` を呼び、記録を書き出して（`logging.shutdown`）、`os._exit(0)` で終える
+         - `[INFO]` SIGTERM を受けて配信を止めた
+         - `SystemExit` では終えない。標準入力が開いたままだと、MCP の SDK が標準入力を読む anyio の作業スレッド（daemon でない）をインタープリタの終わりが待ち続け、プロセスが残る
+    unit_tests:
+      - name: test_install_sigterm_handler
+        case: 正常
+        summary: SIGTERM で配信を止めて終わる
+        condition: 偽の台帳を渡して置き、`signal.getsignal(signal.SIGTERM)` で引いた受け口を `(signal.SIGTERM, None)` で呼ぶ。後で元の受け口に戻す
+        mock: 台帳（`stop_all` を記録する偽）、`os._exit`（`server` モジュールの参照を monkeypatch し、受け取ったコードを記録する）
+        expected: '`stop_all` が 1 回呼ばれた後に `os._exit` が 0 で 1 回呼ばれている'
+  - name: run_remove
+    title: remove の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の削除と取り下げ
+    scope: public
+    summary: 1 項目を種類の YAML と本文から消し、消した項目をまだまとめていない変更に記録する
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+    returns:
+      type: dict[str, Any]
+      description: '`{id, kind, title, file, body_removed}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 消す項目を引く（`find_item`。無ければ `ItemNotFoundError`）
+      3. 指している記録を探す（`find_referrers`）
+         - 1 件以上ある場合、`ItemReferencedError`（`lines` にその行）を送る（何も書かない）
+      4. 通し番号を振り（`advance_seq`）、`{id, kind, title, seq, added_seq}`（`added_seq` を持たなければ 0）を消した項目として記録する（`note_removed`）
+      5. その種類の並びから項目を除き、本文を持ち `docs/` にそのファイルがあれば `removed_bodies` に入れて書き込む（`save_batch`）
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い'
+        message: 'ワークスペースがありません: {パス}'
+      - name: ItemNotFoundError
+        condition: 渡した ID の項目が無い
+        message: '{ID} がありません'
+      - name: ItemReferencedError
+        condition: ほかの記録がその項目を指している
+        message: '{ID} はほかの記録が指しているため消せません'
+      - name: WriteFailedError
+        condition: 書き込みか置き換え、本文の削除に失敗した
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_run_remove
+        case: 正常
+        summary: 項目と本文を消し、消した項目を記録する
+        condition: 本文を持つ N-1・N-2 を足して `commit` したワークスペースで N-2 を消す
+        mock: なし
+        expected: '結果が `{id: N-2, kind: note, file: .mindstella/notes.yaml, body_removed: true}` と消したときのタイトル。`notes.yaml` に N-2 が無く `docs/N-2.md` が無い。`changes.yaml` の `pending.removed` が N-2 で `seq` が `last_seq`'
+      - name: test_run_remove_when_referenced
+        case: 異常
+        summary: ほかの記録が指していれば消さない
+        condition: 'D-2 が `depends_on: [D-1]` のワークスペースで D-1 を消す'
+        mock: なし
+        expected: '`ItemReferencedError`（`lines` に `decisions.yaml: D-2: depends_on`）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+      - name: test_run_remove_when_not_found
+        case: 異常
+        summary: 無い ID は消さない
+        condition: N-1 だけのワークスペースで N-9 を消す
+        mock: なし
+        expected: '`ItemNotFoundError`（メッセージに `N-9`）'
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

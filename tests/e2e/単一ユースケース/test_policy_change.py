@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,8 +38,8 @@ def test_normal(
                 {"key": "B", "content": NEW_CONTENT},
             ],
         ),
-        make_item("D-2", status="決定済み", depends_on=["D-1"]),
-        make_item("D-3", status="決定済み", depends_on=["D-2"]),
+        make_item("D-2", status="決定済み", depends_on=["D-1"], options=ADOPTED_OPTIONS),
+        make_item("D-3", status="決定済み", depends_on=["D-2"], options=ADOPTED_OPTIONS),
     )
     ws = {"workspace": str(root)}
     # 実行
@@ -70,9 +70,13 @@ def test_normal(
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = {item["id"]: item for item in read_yaml(root, "tasks.yaml")["items"]}
     assert [item["id"] for item in affected] == ["D-2", "D-3"]
-    # D-2・D-3 が要見直しである
-    assert decisions["D-2"]["status"] == "要見直し"
-    assert decisions["D-3"]["status"] == "要見直し"
+    # D-1 が決定済みのままで、案 B だけが採用である
+    assert decisions["D-1"]["status"] == "決定済み"
+    assert [option.get("adopted") for option in decisions["D-1"]["options"]] == [False, True]
+    # D-2・D-3 が、採用した案 A を持ったまま要見直しである
+    for item_id in ("D-2", "D-3"):
+        assert decisions[item_id]["status"] == "要見直し"
+        assert decisions[item_id]["options"] == ADOPTED_OPTIONS
     # T-1・T-2 がそれぞれ for: [D-2]・for: [D-3] を持つ
     assert tasks["T-1"]["for"] == ["D-2"]
     assert tasks["T-2"]["for"] == ["D-3"]

@@ -24,17 +24,20 @@ BACKGROUND_SCRIPT = "e => getComputedStyle(e).backgroundColor"
 # 検索の入口が中央に寄っているとみなす左右の余白の差（ピクセル）
 CENTER_TOLERANCE_PX = 2
 
-# コメントのボタン・テーマの切り替え・検索の入口・題名の左右の位置を同じ瞬間に読む
+# コメントのボタン・テーマの切り替え・検索の入口・題名・右のボタンの群（表示の設定・絞り込み・コメントのうち一番左のもの）の左右の位置を同じ瞬間に読む
 TOPBAR_BOXES_SCRIPT = """() => {
   const box = (selector) => {
     const r = document.querySelector(selector).getBoundingClientRect();
     return { left: r.left, right: r.right };
   };
+  const group = [...document.querySelectorAll('.settings-btn, .filter-btn, .comments-btn')]
+    .map((e) => e.getBoundingClientRect().left);
   return {
     comments: box('.comments-btn'),
     theme: box('.top-btn'),
     search: box('.search-trigger'),
     brand: box('.brand-sub'),
+    group: { left: Math.min(...group) },
   };
 }"""
 
@@ -55,12 +58,18 @@ def test_overview(open_story: OpenStory) -> None:
 
 
 def test_graph(open_story: OpenStory) -> None:
-    """つながりを開いている。つながりの入口だけを選んだ見た目にする（正常系）。"""
+    """ネットワークを開いている。ネットワークの入口だけを選んだ見た目にし、名前を「ネットワーク」、アイコンを星座の形にする（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--graph")
     # 検証
     assert page.evaluate(CURRENT_SCRIPT) == ["graph"]
     assert page.locator("nav.tabbar a.tab-special").count() == 1
+    entry = page.locator("nav.tabbar a.tab-special")
+    assert entry.inner_text().strip() == "ネットワーク"
+    assert entry.get_attribute("aria-current") == "page"
+    # アイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形（円 4 つ・線の組 1 つ・十字の星 1 つ）
+    assert entry.locator("svg.icon circle").count() == 4
+    assert entry.locator("svg.icon path").count() == 2
 
 
 def test_long_title(open_story: OpenStory) -> None:
@@ -143,7 +152,7 @@ def test_offline_narrow(open_story: OpenStory) -> None:
 
 
 def test_comments(open_story: OpenStory) -> None:
-    """コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す（正常系）。"""
+    """コメントのボタンをライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--comments")
     # 検証
@@ -153,12 +162,12 @@ def test_comments(open_story: OpenStory) -> None:
     assert button.locator(".label").inner_text() == "コメント"
     assert button.locator(".count").inner_text() == "3"
     assert page.eval_on_selector(".comments-btn .count", BACKGROUND_SCRIPT) != TRANSPARENT
-    # コメントのボタンが右端、その左にテーマの切り替え（位置は同じ瞬間にまとめて読む）
+    # テーマの切り替えが右端、その左にコメントのボタン（位置は同じ瞬間にまとめて読む）
     boxes = page.evaluate(TOPBAR_BOXES_SCRIPT)
-    assert boxes["theme"]["right"] <= boxes["comments"]["left"]
-    # 検索の入口は、題名の右端とテーマの切り替えの左端の中央に寄る
+    assert boxes["comments"]["right"] <= boxes["theme"]["left"]
+    # 検索の入口は、題名の右端と右のボタンの群の左端の中央に寄る
     gap_before = boxes["search"]["left"] - boxes["brand"]["right"]
-    gap_after = boxes["theme"]["left"] - boxes["search"]["right"]
+    gap_after = boxes["group"]["left"] - boxes["search"]["right"]
     assert abs(gap_before - gap_after) <= CENTER_TOLERANCE_PX
 
 
@@ -243,7 +252,7 @@ FILTER_BUTTON = "[data-act='filter']"
 
 
 def test_filter(open_story: OpenStory) -> None:
-    """絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない（正常系）。"""
+    """絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない。ライト / ダークの切り替えは右端に置く（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--filter")
     # 検証
@@ -255,6 +264,9 @@ def test_filter(open_story: OpenStory) -> None:
     filter_box = page.locator(FILTER_BUTTON).bounding_box()
     comments_box = page.locator(".comments-btn").bounding_box()
     assert filter_box["x"] + filter_box["width"] <= comments_box["x"]
+    # ライト / ダークの切り替えは右端で、コメントのボタンの右にある
+    theme_box = page.locator(".top-btn").bounding_box()
+    assert comments_box["x"] + comments_box["width"] <= theme_box["x"]
 
 
 def test_filter_on(open_story: OpenStory) -> None:
@@ -297,7 +309,7 @@ def test_filter_narrow(open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
-# 帯の子の左右の位置（ツール名・検索の入口・変更履歴・札・テーマの切り替え・コメント）を同じ瞬間に読む
+# 帯の子の左右の位置（ツール名・検索の入口・変更履歴・札・コメント・テーマの切り替え）を同じ瞬間に読む
 DIFF_BOXES_SCRIPT = """() => {
   const box = (selector) => {
     const element = document.querySelector(selector);
@@ -359,10 +371,10 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
     assert page.inner_text(".comments-btn .count") == "3"
     assert page.get_attribute(".hist-btn", "aria-label") == "変更履歴"
     # 帯の子が左から順に並び、重ならず、画面の中に収まる
-    order = ["brand", "search", "history", "chip", "theme", "comments"]
+    order = ["brand", "search", "history", "chip", "comments", "theme"]
     for left, right in zip(order, order[1:], strict=False):
         assert boxes[left]["right"] <= boxes[right]["left"], (left, right)
-    assert boxes["comments"]["right"] <= boxes["page"]["width"]
+    assert boxes["theme"]["right"] <= boxes["page"]["width"]
     assert boxes["page"]["scroll"] <= boxes["page"]["width"]
     # 札の名前は末尾を省略しても数文字が読め、× は札の中にある
     assert boxes["chipText"]["right"] - boxes["chipText"]["left"] >= MIN_CHIP_TEXT_PX
@@ -390,12 +402,16 @@ def test_settings_open(open_story: OpenStory) -> None:
         " c: document.querySelector('.comments-btn').getBoundingClientRect().left})"
     )
     assert boxes["s"] <= boxes["c"]
+    # ライト / ダークの切り替えは右端で、コメントのボタンの右にある
+    theme = page.locator(".top-btn").bounding_box()
+    comments_box = page.locator(".comments-btn").bounding_box()
+    assert comments_box["x"] + comments_box["width"] <= theme["x"]
     # 文書に無い要素を指す `aria-controls` を付けない
     assert button.get_attribute("aria-controls") is None
 
 
 def test_kinds_hidden(open_story: OpenStory) -> None:
-    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す（正常系）。"""
+    """表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とネットワークの入口は残す（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--kinds-hidden")
     # 検証
@@ -404,20 +420,28 @@ def test_kinds_hidden(open_story: OpenStory) -> None:
 
 
 def test_export(open_story: OpenStory) -> None:
-    """配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない（正常系）。"""
+    """配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない。ライト / ダークの切り替えは表示の設定の右の右端に置く（正常系）。"""
     # 準備・実行
     page = open_story("preview-topbar--export")
     # 検証
     assert page.get_by_role("button", name="表示の設定", exact=True).count() == 1
     assert page.locator(".comments-btn").count() == 0
     assert page.get_attribute(".settings-btn", "aria-expanded") == "false"
+    # ライト / ダークの切り替えは表示の設定の右で、右端にある
+    settings_box = page.locator(".settings-btn").bounding_box()
+    theme_box = page.locator(".top-btn").bounding_box()
+    assert settings_box["x"] + settings_box["width"] <= theme_box["x"]
+    last = page.eval_on_selector_all(
+        "header.topbar > *", "items => items[items.length - 1].classList.contains('top-btn')"
+    )
+    assert last is True
 
 
 # 差分の札の幅の下限（em）。5.5em を、描画の丸めの 0.01em まで許して測る
 CHIP_MIN_WIDTH_EM = 5.49
 
 # `LongTitle` の題名（差分の札と同じ帯に長い題名を置く）
-LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・つながり・詳細パネル）を見本に沿って作るための話し合いの記録"
+LONG_TITLE = "プレビューの画面（概要・検討事項・タスク・資料・ネットワーク・詳細パネル）を見本に沿って作るための話し合いの記録"
 
 # Storybook の body が持つ左右の余白を外す（トップバーを画面の幅いっぱいに置く本物の画面と同じ幅で測る）
 NO_BODY_PADDING = "body { padding: 0 !important; }"
@@ -628,3 +652,14 @@ def test_filter_narrow_gap_when_width(open_story: OpenStory, story_id: str, widt
     measured = page.evaluate(BAR_GAP_SCRIPT)
     # 検証
     assert measured == gap
+
+
+def test_search_key_hint(open_story: OpenStory) -> None:
+    """検索の入口は `aria-keyshortcuts="Control+K Meta+K"` を持ち、右端の kbd にキーの案内（macOS は ⌘K）を出す。読み上げ名は「すべての項目を検索」（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--overview")
+    # 検証
+    trigger = page.locator('button[data-act="search"]')
+    assert trigger.get_attribute("aria-keyshortcuts") == "Control+K Meta+K"
+    assert trigger.get_attribute("aria-label") == "すべての項目を検索"
+    assert trigger.locator("kbd").inner_text() in ("Ctrl+K", "⌘K")

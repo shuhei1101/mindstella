@@ -9,7 +9,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from launch_fixtures import PLUGIN_DIR, LaunchSandbox, copy_plugin, read_mcp_config, session_name
+from launch_fixtures import (
+    PLUGIN_DIR,
+    LaunchSandbox,
+    copy_plugin,
+    read_mcp_config,
+    read_tool_names,
+    session_name,
+)
 from workspace_fixtures import McpServer
 
 from .fixture_types import MakeVenv
@@ -34,18 +41,43 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     assert mindstella["command"] == str(ready_venv / "bin" / "python")
     assert mindstella["args"] == [str(PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py")]
     assert started[0].with_suffix(".config").read_text(encoding="utf-8") == str(sandbox.config_dir)
-    # その MCP の設定どおりにサーバーを立ててつなぐと、ツールの一覧が返る
+    # その MCP の設定どおりにサーバーを立ててつなぐと、そのサーバーが登録するツールの一覧が返る
+    server_script = Path(mindstella["args"][0])
     server = McpServer(
         python=mindstella["command"],
         env={**os.environ, "PYTHONUTF8": "1"},
         cwd=folder,
-        script=Path(mindstella["args"][0]),
+        script=server_script,
     )
     try:
-        assert len(server.list_tools()) == 25
+        assert [tool["name"] for tool in server.list_tools()] == read_tool_names(server_script)
     finally:
         server.stop()
     assert f"tmux attach-session -t ={name}" in result.stdout
+
+
+def test_normal_when_external_settings(sandbox: LaunchSandbox, ready_venv: Path) -> None:
+    """設定されている外から見る環境変数だけを MCP の設定の env に書く（正常系）。"""
+    # 準備
+    external = {
+        "MINDSTELLA_ALLOWED_HOSTS": "preview.example.test",
+        "MINDSTELLA_PREVIEW_START_HOOK": "pub add",
+    }
+    # 実行
+    with_env = sandbox.launch("家計簿アプリ", venv=ready_venv, extra_env=external)
+    without_env = sandbox.launch("別の話し合い", venv=ready_venv)
+    # 検証
+    assert with_env.returncode == 0, with_env.stderr
+    assert without_env.returncode == 0, without_env.stderr
+    started = sandbox.wait_started(2)
+    assert len(started) == 2
+    configs = {
+        path: read_mcp_config(path)["mcpServers"]["mindstella"] for path in started
+    }
+    with_config = [config for config in configs.values() if "env" in config]
+    without_config = [config for config in configs.values() if "env" not in config]
+    assert [config["env"] for config in with_config] == [external]
+    assert len(without_config) == 1
 
 
 def test_normal_when_plugin_upgraded(

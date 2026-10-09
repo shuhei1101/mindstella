@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import os
@@ -82,8 +83,8 @@ class LaunchSandbox:
         """`PATH` のフォルダから外部コマンドを外す（無い場合の流れを作る）。"""
         (self.tools_dir / name).unlink()
 
-    def env(self, venv: Path | None) -> dict[str, str]:
-        """起動スクリプトに渡す環境変数。`PATH` はこのフォルダだけにする。"""
+    def env(self, venv: Path | None, extra_env: dict[str, str] | None = None) -> dict[str, str]:
+        """起動スクリプトに渡す環境変数。`PATH` はこのフォルダだけにし、extra_env があれば足す。"""
         env = {
             "PATH": str(self.tools_dir),
             "HOME": str(self.root),
@@ -94,7 +95,7 @@ class LaunchSandbox:
         }
         if venv is not None:
             env["MINDSTELLA_VENV"] = str(venv)
-        return env
+        return {**env, **(extra_env or {})}
 
     def launch(
         self,
@@ -102,11 +103,12 @@ class LaunchSandbox:
         venv: Path | None,
         script: Path = PLUGIN_DIR / "bin" / "mindstella",
         cwd: Path | None = None,
+        extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
         """起動スクリプトを標準出力が端末でない形で動かす。終了コードが 0 以外でも例外にしない。"""
         return subprocess.run(
             [str(script), *args],
-            env=self.env(venv),
+            env=self.env(venv, extra_env),
             cwd=cwd or self.root,
             capture_output=True,
             text=True,
@@ -224,3 +226,18 @@ def read_mcp_config(args_file: Path) -> dict[str, Any]:
     args = args_file.read_text(encoding="utf-8").splitlines()
     assert args[0] == "--mcp-config"
     return json.loads(Path(args[1]).read_text(encoding="utf-8"))
+
+
+def read_tool_names(server_script: Path) -> list[str]:
+    """サーバーのスクリプトが登録するツールの名前の並び（`TOOL_NAMES`）を、読み込まずに読む。"""
+    tree = ast.parse(server_script.read_text(encoding="utf-8"))
+    for node in tree.body:
+        # `TOOL_NAMES = (...)` の代入だけを拾う
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "TOOL_NAMES"
+        ):
+            return list(ast.literal_eval(node.value))
+    raise AssertionError(f"{server_script} に TOOL_NAMES が無い")

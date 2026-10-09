@@ -123,7 +123,7 @@ request:
     required: true
     location: header
     description: ブラウザが付ける接続先
-    constraints: '`127.0.0.1:{ポート}` か `localhost:{ポート}`'
+    constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
   - name: Content-Type
     type: str
     required: true
@@ -136,7 +136,7 @@ request:
     default: なし（確かめない）
     location: header
     description: ブラウザが付ける送り元
-    constraints: 付いていれば `http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
   - name: id
     type: str
     required: true
@@ -175,7 +175,7 @@ status_codes:
     condition: 本文が JSON のオブジェクトでない・`body` も `loc` も無い・`body` が空白だけか 10000 文字を超える・`loc` が `null` 以外
     notes: 何も書かない
   - code: '403'
-    condition: '`Origin` が配信の URL と違う'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
     notes: 何も書かない
   - code: '404'
     condition: '`id` のコメントがレビュー中に無い'

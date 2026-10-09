@@ -9,8 +9,10 @@ from preview_helpers import (
     OpenPreview,
     ServePreview,
     badge_text,
+    bands_stay_on_top,
     close_drawer,
     open_drawer,
+    page_scroll_overflow,
     row_ids,
     toggle_value,
 )
@@ -79,7 +81,7 @@ def _column_counts(page: Page) -> dict[str, int]:
     """ボードの列の見出しの件数を、状態ごとに返す。"""
     return page.eval_on_selector_all(
         ".board section.board-col",
-        "cols => Object.fromEntries(cols.map(c => [c.getAttribute('aria-label'), Number(c.querySelector('h3 .n').textContent)]))",
+        "cols => Object.fromEntries(cols.map(c => [c.getAttribute('aria-label'), Number(c.querySelector('h2 .n').textContent)]))",
     )
 
 
@@ -116,3 +118,74 @@ def test_normal_when_filtered(
     assert both == {"未着手": [], "進行中": ["T-2"], "保留": [], "完了": [], "中止": []}
     assert counts == {"未着手": 0, "進行中": 1, "保留": 0, "完了": 0, "中止": 0}
     assert badge_text(page) == "2"
+
+
+# 未着手の列が画面の高さに収まらない件数
+OVERFLOW_TASK_COUNT = 40
+
+# 5 列が幅に収まらず、横にも送る表示の幅（px）と高さ（px）
+OVERFLOW_WIDTH = 768
+OVERFLOW_HEIGHT = 800
+
+# ボードの上でホイールを回す量（px）
+WHEEL_DELTA_PX = 600
+
+
+def test_normal_when_overflowing(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """未着手の列が画面の高さに収まらず、5 列が幅にも収まらないとき、ボードは帯の下の領域の中で縦にも横にも送れ、ページ全体はスクロールしない（正常系）。"""
+    # 準備
+    url = serve_preview(
+        *(make_item(f"T-{number}", status="未着手") for number in range(1, OVERFLOW_TASK_COUNT + 1)),
+        make_item("T-41", status="進行中"),
+        make_item("T-42", status="保留"),
+        make_item("T-43", status="完了"),
+        make_item("T-44", status="中止"),
+        settings=valid_settings,
+    )
+    # 実行（タスクのタブを開く）
+    page = open_preview(url, "#tab=tasks", width=OVERFLOW_WIDTH, height=OVERFLOW_HEIGHT)
+    page.wait_for_selector(".board .card")
+    before = page_scroll_overflow(page)
+    # 検証（開いた直後、ページ全体に縦・横ともスクロールが無い）
+    assert before["vertical"] == 0
+    assert before["horizontal"] == 0
+    # 実行（ボードの上でホイールを回して下へ送る）
+    box = page.locator(".board").bounding_box()
+    assert box is not None
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.wheel(0, WHEEL_DELTA_PX)
+    page.wait_for_function("document.querySelector('.board').scrollTop > 0")
+    after_wheel = page_scroll_overflow(page)
+    # 検証（ボードの中だけを送り、帯が見えたままで、ページ全体の縦のスクロールの位置は 0）
+    assert after_wheel["scrollY"] == 0
+    assert bands_stay_on_top(page) is True
+    # 実行（ボードを右端まで横に送る）
+    page.evaluate("document.querySelector('.board').scrollLeft = document.querySelector('.board').scrollWidth")
+    page.wait_for_function(
+        "document.querySelector('.board').scrollLeft > 0"
+    )
+    # 検証（ボードの中を縦と横に送れ、横に送ると中止の列が画面に入る）
+    scroll = page.evaluate(
+        """() => {
+            const board = document.querySelector('.board');
+            const last = document.querySelector('.board section.board-col[aria-label="中止"]').getBoundingClientRect();
+            return {
+                vertical: board.scrollHeight > board.clientHeight,
+                horizontal: board.scrollWidth > board.clientWidth,
+                lastInView: last.left >= 0 && last.right <= innerWidth,
+            };
+        }"""
+    )
+    assert scroll == {"vertical": True, "horizontal": True, "lastInView": True}
+    assert page_scroll_overflow(page)["scrollY"] == 0
+    # 実行（最後のカード T-40 を押す。未着手の列は左端にあるので、ボードを左端へ戻して押す）
+    page.evaluate("document.querySelector('.board').scrollLeft = 0")
+    page.click('.board button.card[data-id="T-40"]')
+    # 検証
+    page.wait_for_selector("aside.panel.open")
+    assert page.inner_text("aside.panel .d-title") == "T-40の題"

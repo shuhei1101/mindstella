@@ -192,7 +192,7 @@ scenarios:
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 直下に版を記録したワークスペース
-        description: '直下に `mindstella-version.ini`（`v0.5.0`）・`mindmap.yaml`・種類ごとの YAML・`docs/` を持ち、`mindmap.yaml` が `playbooks: [システム開発]` と `summary` を持ち、本文を持つ検討事項 D-1 を持つワークスペース'
+        description: '直下に `mindstella-version.ini`（`v0.5.0`）・`mindmap.yaml`・種類ごとの YAML・`docs/` を持ち、`mindmap.yaml` が `playbooks: [システム開発]` と `summary` を持ち、本文と案 A・B を持つ未決定の検討事項 D-1 を持つワークスペース'
         notes: v0.5.0 のプラグインで作った形。YAML を直接書いて作る。直下の版のファイルを読み外すと「版を記録する前の形式」と扱われ、v0.3.0・v0.5.0 の手順がもう一度当たる
     flow: |-
       ```mermaid
@@ -206,11 +206,11 @@ scenarios:
         CC->>SV: 版を比べ、当てる手順を並べる
         SV->>WS: .mindstella/ の版のファイルを読む（無い）
         SV->>WS: 直下の版のファイルを読む（v0.5.0）
-        SV-->>CC: v0.5.0 → プラグインの版の手順（v0.6.0 の手順だけ）
+        SV-->>CC: v0.5.0 → プラグインの版の手順（v0.5.0 より新しくプラグインの版までの手順）
         CC-->>U: 当てる手順の一覧を示し、破壊的な操作を当ててよいか確かめる
         U->>CC: 当ててよい
         CC->>SV: 写しを取って手順を当てる
-        SV->>WS: 写しを取り、v0.6.0 の手順を当てる
+        SV->>WS: 写しを取り、v0.5.0 より新しくプラグインの版までの手順を当てる
         CC->>SV: check
         SV-->>CC: 問題 0 件
         CC->>SV: 版を書き換える
@@ -218,12 +218,57 @@ scenarios:
         CC-->>U: 移し替えた版を示し、/mindstella:session で続けるよう案内する
       ```
     expected:
-      - 版の比較が、ワークスペースの版 `v0.5.0` からプラグインの版への移し替えを返し、並べた手順が v0.6.0 の手順だけである
+      - 版の比較が、ワークスペースの版 `v0.5.0` からプラグインの版への移し替えを返し、並べた手順の版が、`migrations/` にある版のうち `v0.5.0` より新しくプラグインの版（`version.ini`）までの版の集まりと一致する（v0.6.0 の手順を含む）
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版で、直下に版のファイルが残っていない
       - '`config.yaml` の `playbooks`・`summary` と D-1 の中身・本文が、呼ぶ前と同じである'
       - 種類ごとの YAML・`docs/` が `.mindstella/` の下にあり、直下に `mindmap.yaml`・`config.yaml` が残っていない
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_version_recorded_at_top
+  - name: 正常シナリオ（案を持たない検討事項を直す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・`batch`・版の書き換えを、決めた引数で順に再生する
+        notes: '-'
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+        notes: '-'
+      - name: v0.6.0 のワークスペース
+        description: '`.mindstella/mindstella-version.ini` が `v0.6.0` で、`answer` と `reason` を持ち案を持たない決定済みの D-1、案を持たない未決定の D-2、案を持たない未整理の D-3、案 A を採用した未決定の D-4 を持つワークスペース'
+        notes: YAML を直接書いて作る
+      - name: 再生する確かめ
+        description: '`check` が挙げた D-2 には AI が案 A・B のたたき台（A に推奨の印）を書いて示し、利用者がそのまま書いてよいと答える。D-4 は利用者が案 A で決まっていると答える'
+        notes: '`batch` 1 回で、D-2 は `update` で案 A・B を書き、D-4 は `update` で状態を決定済みにする'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:upgrade {フォルダ}
+        CC->>SV: 版を比べ、当てる手順を並べる
+        SV-->>CC: v0.6.0 → プラグインの版の手順（v0.6.0 より新しくプラグインの版までの手順。v0.7.0 の手順を含む）
+        CC->>SV: 写しを取って手順を当てる
+        SV->>WS: 写しを取り、決定済みで答えを持つ D-1 に答えから採用した案を作る
+        CC->>SV: check
+        SV-->>CC: D-2 が案を持たない・D-4 が採用した案を持つのに未決定
+        CC-->>U: D-2 の案のたたき台と、D-4 の扱いを示して確かめる
+        U->>CC: D-2 はそのまま書く・D-4 は案 A で決まっている
+        CC->>SV: batch（D-2 に案 A・B を書き、D-4 を決定済みにする）
+        CC->>SV: check
+        SV-->>CC: 問題 0 件
+        CC->>SV: 版を書き換える
+        SV->>WS: .mindstella/mindstella-version.ini を書く
+      ```
+    expected:
+      - D-1 が案を 1 つだけ持ち、その案が採用で、`content` が移し替えの前の `answer`、`reason` が移し替えの前の `reason` であり、D-1 は決定済みのままである
+      - D-2 が案 A・B を持ち、案 A だけが推奨の印を持ち、未決定のままである
+      - D-3 が案を持たない未整理のままである
+      - D-4 が決定済みで、案 A だけが採用である
+      - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
+      - 最後の `check` が問題を 0 件で返す
+    test: test_normal_when_options_filled
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者
@@ -241,4 +286,5 @@ notes:
   E2E の範囲: E2E はモデルを呼ばず、スキルの手順が連ねるツールの呼び出しの並びを再生してワークスペースの状態を確かめる。手順の一覧の示し方・破壊的な操作を当てる前の確認・案内の文面はモデルの応答で、確かめない。破壊的な操作の印は、`mindmap.yaml` を `config.yaml` へ改める手順で確かめる
   スキルの呼び名: 移し替えのスキルは `upgrade`（`/mindstella:upgrade`）
   対応テストファイル: '`tests/e2e/単一ユースケース/test_workspace_upgrade.py`。E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` へ移す'
+  案を持たない検討事項: v0.7.0 の手順は、`決定済み` で `answer` を持ち案を持たない検討事項に、`answer` を内容・`reason` を理由にした採用した案を 1 つ作る。ほかの案と状態の合わない検討事項は、点検の後に移し替えのスキルが AI の書いたたたき台を利用者に確かめてから、`batch` 1 回でまとめて直す（書き込むツールはワークスペース全体を案と状態の決まりと突き合わせるため、1 件ずつは直せない）
 test_file: tests/e2e/単一ユースケース/test_workspace_upgrade.py

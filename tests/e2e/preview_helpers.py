@@ -36,16 +36,25 @@ __all__ = [
     "ServePreview",
     "ServeWorkspace",
     "badge_text",
+    "bands_stay_on_top",
+    "canvas_center",
+    "center_ball",
     "checked_values",
     "clear_condition",
     "click_item_ball",
     "close_drawer",
+    "closed_keys",
     "count_balls",
     "drawer_counts",
     "fetch_records",
     "http_call",
+    "install_closed_key_spy",
     "open_drawer",
+    "page_scroll_overflow",
     "pick_history_point",
+    "press_ball_keeping_detail",
+    "press_blank",
+    "press_center_ball",
     "row_ids",
     "select_text",
     "select_text_for_pill",
@@ -53,6 +62,8 @@ __all__ = [
     "snapshot_records",
     "toggle_value",
     "visit_and_close",
+    "wait_camera_still",
+    "wait_closed_key",
 ]
 
 type ServePreview = Callable[..., str]
@@ -107,7 +118,7 @@ SELECT_TEXT_SCRIPT = """([selector, text]) => {
   return false;
 }"""
 
-# つながりのキャンバスの上を調べる間隔（px）。玉の当たりの半径（12px 前後）より細かくして、玉を取りこぼさない
+# ネットワークのキャンバスの上を調べる間隔（px）。玉の当たりの半径（12px 前後）より細かくして、玉を取りこぼさない
 BALL_SCAN_STEP = 4
 
 # 近い位置を同じ玉とみなす距離（px）
@@ -337,11 +348,11 @@ def _settled_ball_centers(page: Page) -> list[tuple[float, float]]:
         if still and current:
             return current
         previous = current
-    raise AssertionError("つながりのカメラが止まりませんでした")
+    raise AssertionError("ネットワークのカメラが止まりませんでした")
 
 
 def _turn_camera(page: Page) -> None:
-    """つながりのキャンバスを横にドラッグして、玉を見る向きを変える（玉の上から始めても、押しではなくドラッグになる）。"""
+    """ネットワークのキャンバスを横にドラッグして、玉を見る向きを変える（玉の上から始めても、押しではなくドラッグになる）。"""
     box = page.locator("#graph-canvas").bounding_box()
     assert box is not None
     x = box["x"] + box["width"] / 2
@@ -378,7 +389,7 @@ def _click_ball_in_view(page: Page, item_id: str) -> bool:
 
 
 def click_item_ball(page: Page, item_id: str) -> None:
-    """つながりのキャンバスで、指定した項目の玉を探して押す（玉の位置は画面に出ないので、押して開いた詳細で確かめる）。
+    """ネットワークのキャンバスで、指定した項目の玉を探して押す（玉の位置は画面に出ないので、押して開いた詳細で確かめる）。
 
     他の玉に隠れて見つからないときは、キャンバスをドラッグして向きを変え、カメラが止まってから探し直す。
     詳細パネルが開いたままだと、押した玉が開いている項目と同じかを見分けられず、カメラもその項目へ寄っているので、
@@ -393,16 +404,16 @@ def click_item_ball(page: Page, item_id: str) -> None:
             _turn_camera(page)
         if _click_ball_in_view(page, item_id):
             return
-    raise AssertionError(f"つながりに {item_id} の玉が見つかりませんでした")
+    raise AssertionError(f"ネットワークに {item_id} の玉が見つかりませんでした")
 
 
 def count_balls(page: Page) -> int:
-    """つながりのキャンバスに出ている玉の数を返す（近い玉どうしは 1 つに数える）。"""
+    """ネットワークのキャンバスに出ている玉の数を返す（近い玉どうしは 1 つに数える）。"""
     return len(_find_ball_centers(page))
 
 
 def shown_ball_item_ids(page: Page) -> set[str]:
-    """つながりのキャンバスに出ている玉を順に押し、開いた詳細から項目の ID を集めて返す。
+    """ネットワークのキャンバスに出ている玉を順に押し、開いた詳細から項目の ID を集めて返す。
 
     押すとカメラがその玉へ寄るので、押すたびに閉じて、カメラが止まるのを待ってから次の玉を探す。
     """
@@ -425,3 +436,160 @@ def shown_ball_item_ids(page: Page) -> set[str]:
         page.keyboard.press("Escape")
         page.wait_for_function("!document.querySelector('aside.panel.open')")
     return ids
+
+
+# 閉じた鍵は `Path2D` の線で描く。`Path2D` に元の文字列を持たせ、`stroke` へ渡された閉じた鍵の線を、コマごとに控える
+CLOSED_KEY_SPY_SCRIPT = """() => {
+    const LOCK = 'M7 11V7a5 5 0 0 1 10 0v4';
+    window.__keyFrame = 0;
+    window.__closedKeys = [];
+    const tick = () => { window.__keyFrame++; requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    const Original = window.Path2D;
+    window.Path2D = class extends Original {
+        constructor(d) { super(d); this.__d = d; }
+    };
+    const proto = CanvasRenderingContext2D.prototype;
+    const stroke = proto.stroke;
+    proto.stroke = function (path) {
+        if (path && path.__d === LOCK) {
+            const t = this.getTransform();
+            window.__closedKeys.push({frame: window.__keyFrame, left: t.e, top: t.f, ratio: window.devicePixelRatio});
+            if (window.__closedKeys.length > 200) window.__closedKeys.splice(0, window.__closedKeys.length - 200);
+        }
+        return stroke.apply(this, arguments);
+    };
+}"""
+
+# 閉じた鍵を描いた最後のコマの鍵（左・上。CSS ピクセル）を返す。直近のコマで描いていなければ空
+CLOSED_KEYS_SCRIPT = """() => {
+    const draws = window.__closedKeys;
+    const last = Math.max(0, ...draws.map((draw) => draw.frame));
+    if (draws.length === 0 || last < window.__keyFrame - 2) return [];
+    return draws.filter((draw) => draw.frame === last).map((draw) => [draw.left / draw.ratio, draw.top / draw.ratio]);
+}"""
+
+# 閉じた鍵を直近のコマで描いている
+CLOSED_KEY_SHOWN_SCRIPT = """() => window.__closedKeys.some((draw) => draw.frame >= window.__keyFrame - 2)"""
+
+# 続けて押した 2 回を素早い 2 回押し（450ms 未満・24px 未満）と見なされないよう、押した後に置く待ち（ミリ秒）
+PRESS_GAP_MS = 500
+
+# キャンバスの中心にある玉と見なす、中心からの距離（px。縦と横の距離の和）
+CENTER_BALL_DISTANCE = 30
+
+# 余白の点を探すとき、キャンバスの隅から内へ入る余白（px。右上の見た目のドロップダウンを避けて隅の 3 点を試す）
+BLANK_MARGIN = 24
+
+
+def install_closed_key_spy(page: Page) -> None:
+    """閉じた鍵を描いた線を控える仕掛けを、ページを開く前に入れる。"""
+    page.add_init_script(f"({CLOSED_KEY_SPY_SCRIPT})()")
+
+
+def closed_keys(page: Page) -> list[tuple[float, float]]:
+    """直近のコマで描いている閉じた鍵の位置（左・上。CSS ピクセル）を返す。ロックしていなければ空。"""
+    keys: list[list[float]] = page.evaluate(CLOSED_KEYS_SCRIPT)
+    return [(left, top) for left, top in keys]
+
+
+def wait_closed_key(page: Page, *, shown: bool) -> None:
+    """閉じた鍵が出る（`shown` が True）か、消える（False）のを待つ。"""
+    page.wait_for_function(f"{'' if shown else '!'}({CLOSED_KEY_SHOWN_SCRIPT})()")
+
+
+def wait_camera_still(page: Page) -> None:
+    """ネットワークのカメラが止まる（玉の位置が走査 2 回で動かなくなる）まで待つ。"""
+    _settled_ball_centers(page)
+
+
+def canvas_center(page: Page) -> tuple[float, float]:
+    """ネットワークのキャンバスの中心（画面の座標）を返す。項目を選ぶと、その玉が中心へ寄る。"""
+    box = page.locator("#graph-canvas").bounding_box()
+    assert box is not None
+    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+
+def _press_at(page: Page, x: float, y: float) -> None:
+    """画面の点を押して離し、素早い 2 回押しと見なされないよう待つ。"""
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_timeout(PRESS_GAP_MS)
+
+
+def center_ball(page: Page) -> tuple[float, float]:
+    """カメラが止まってから、キャンバスの中心にある玉（選んだ項目かロックした項目）の位置を返す。無ければ失敗する。"""
+    cx, cy = canvas_center(page)
+    centers = _settled_ball_centers(page)
+    x, y = min(centers, key=lambda center: abs(center[0] - cx) + abs(center[1] - cy))
+    assert abs(x - cx) + abs(y - cy) <= CENTER_BALL_DISTANCE, "キャンバスの中心に玉がありません"
+    return x, y
+
+
+def press_center_ball(page: Page) -> None:
+    """キャンバスの中心にある玉（選んだ項目かロックした項目）を押す。"""
+    _press_at(page, *center_ball(page))
+
+
+def press_ball_keeping_detail(page: Page, item_id: str) -> tuple[float, float]:
+    """詳細パネルを閉じずに、中心の玉以外の玉を順に押し、指定した項目の詳細が開いたらその玉の位置を返す。
+
+    ロック中はカメラが動かないので、押した玉の位置は押した後も変わらない。
+    見つからないときは、キャンバスをドラッグして向きを変え、カメラが止まってから探し直す。
+    """
+    for turn in range(BALL_MAX_TURNS + 1):
+        if turn > 0:
+            _turn_camera(page)
+        cx, cy = canvas_center(page)
+        others = [
+            center
+            for center in _settled_ball_centers(page)
+            if abs(center[0] - cx) + abs(center[1] - cy) > CENTER_BALL_DISTANCE
+        ]
+        for x, y in others:
+            _press_at(page, x, y)
+            if page.locator("aside.panel.open .panel-kind .mono").inner_text() == item_id:
+                return x, y
+    raise AssertionError(f"ネットワークに {item_id} の玉が見つかりませんでした")
+
+
+def press_blank(page: Page) -> None:
+    """キャンバスの隅のうち玉に当たらない点を押す。"""
+    box = page.locator("#graph-canvas").bounding_box()
+    assert box is not None
+    corners = [
+        (box["x"] + BLANK_MARGIN, box["y"] + box["height"] - BLANK_MARGIN),
+        (box["x"] + box["width"] - BLANK_MARGIN, box["y"] + box["height"] - BLANK_MARGIN),
+        (box["x"] + BLANK_MARGIN, box["y"] + BLANK_MARGIN),
+    ]
+    for x, y in corners:
+        page.mouse.move(x, y)
+        if page.evaluate("document.getElementById('graph-canvas').style.cursor") != "pointer":
+            _press_at(page, x, y)
+            return
+    raise AssertionError("余白の点が見つかりません")
+
+
+def page_scroll_overflow(page: Page) -> dict[str, int]:
+    """ページ全体が窓からはみ出している縦・横の大きさ（px）と、縦のスクロールの位置を返す。窓に収まっていれば 0。"""
+    return page.evaluate(
+        """() => ({
+            vertical: Math.max(0, document.documentElement.scrollHeight - innerHeight),
+            horizontal: Math.max(0, document.documentElement.scrollWidth - innerWidth),
+            scrollY: Math.round(scrollY),
+        })"""
+    )
+
+
+def bands_stay_on_top(page: Page) -> bool:
+    """本文の領域を一番下まで送った後も、トップバーとタブの帯が窓の上端に見えたままかを返す。"""
+    return page.evaluate(
+        """() => {
+            const content = document.querySelector('.content');
+            content.scrollTop = content.scrollHeight;
+            const topbar = document.querySelector('.topbar').getBoundingClientRect();
+            const tabs = document.querySelector('.tabbar').getBoundingClientRect();
+            return topbar.top === 0 && tabs.top === topbar.bottom && tabs.bottom > tabs.top;
+        }"""
+    )

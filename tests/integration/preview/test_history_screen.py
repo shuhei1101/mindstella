@@ -169,7 +169,11 @@ def test_selection_kept_when_reloaded_and_rewritten(
         "add",
         workspace=str(root),
         kind="decision",
-        item={"title": "後から足した問い", "status": "未決定"},
+        item={
+            "title": "後から足した問い",
+            "status": "未決定",
+            "options": [{"key": "A", "content": "案 A"}],
+        },
     )
     assert result.is_error is False, result.text
     page.wait_for_selector("table.grid tbody tr[data-id='D-3']", timeout=REDRAW_TIMEOUT_MS)

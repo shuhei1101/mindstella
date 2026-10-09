@@ -18,6 +18,7 @@ __all__ = [
     "HISTORY_SELS",
     "assert_topbar_history",
     "build_history_workspace",
+    "build_long_line_diff_workspace",
     "preselect_diff",
     "read_yaml",
 ]
@@ -129,6 +130,10 @@ def build_history_workspace(
         "title": "キーを種類ごとに分けるか",
         "status": "未決定",
         "answer": "旧い答え",
+        "options": [
+            {"key": "A", "content": "種類ごとに分ける"},
+            {"key": "B", "content": "1 つにまとめる"},
+        ],
         "weight": "大",
         "category": "データ構造",
         "phase": "要件",
@@ -156,7 +161,15 @@ def build_history_workspace(
         "update",
         workspace=workspace,
         id="D-1",
-        item={"status": "決定済み", "answer": "新しい答え", "body_markdown": BODY_D1_AFTER},
+        item={
+            "status": "決定済み",
+            "answer": "新しい答え",
+            "options": [
+                {"key": "A", "content": "種類ごとに分ける", "adopted": True},
+                {"key": "B", "content": "1 つにまとめる"},
+            ],
+            "body_markdown": BODY_D1_AFTER,
+        },
     )
     _call(call_tool, "update", workspace=workspace, id="D-2", item={"body_markdown": BODY_D2_V2})
     _call(call_tool, "update", workspace=workspace, id="A-1", item={"body_markdown": BODY_A1_AFTER})
@@ -196,3 +209,25 @@ def assert_topbar_history(page: Page) -> None:
     assert history_box is not None
     assert chip_box is not None
     assert history_box["x"] + history_box["width"] <= chip_box["x"]
+
+
+def build_long_line_diff_workspace(make_workspace: Any, call_tool: Any, long_line: str) -> Path:
+    """実際のツールで、図に長い行を 1 行足したまとまり V-2 を持つ検討事項 D-1 のワークスペースを作る。"""
+    root: Path = make_workspace()
+    workspace = str(root)
+    decision = {
+        "title": "長い行を足す問い",
+        "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
+        "weight": "大",
+        "category": "データ構造",
+        "phase": "要件",
+        "target": "mindmap",
+    }
+    before = "# 概要\n\n```mermaid\nflowchart LR\n  A --> B\n```\n"
+    after = f"# 概要\n\n```mermaid\nflowchart LR\n  A --> B\n  B --> C[{long_line}]\n```\n"
+    _call(call_tool, "add", workspace=workspace, kind="decision", item={**decision, "body_markdown": before})
+    _call(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
+    _call(call_tool, "update", workspace=workspace, id="D-1", item={"body_markdown": after})
+    _call(call_tool, "commit", workspace=workspace, summary="長い行を足す")
+    return root

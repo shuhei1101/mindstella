@@ -5,10 +5,14 @@ fixture は `tests/conftest.py` が読み込み、`tests/` の下の全てのテ
 
 from __future__ import annotations
 
+import copy
 import json
 import os
+import re
 import subprocess
 import sys
+import threading
+from collections import deque
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +39,12 @@ MCP_PROTOCOL_VERSION = "2025-06-18"
 # サーバーが標準入力を閉じられてから終わるまで待つ上限秒数
 SERVER_EXIT_TIMEOUT_SEC = 5
 
+# サーバーの標準エラーのうち、失敗の報告に残す直近の行数（残りは読み捨てる）
+STDERR_KEEP_LINES = 200
+
+# 標準エラーを読み切るのを待つ上限秒数
+STDERR_JOIN_TIMEOUT_SEC = 1
+
 # 書き換えるツールが置く排他ロックのファイル（中身は空）。書き込みの前後の比べからは外す
 LOCK_FILE_NAME = ".mindstella.lock"
 
@@ -55,9 +65,12 @@ KIND_FILES = {
     "L": "logs.yaml",
 }
 
+# 決定済みの検討事項に付ける、案 A を採用した案
+ADOPTED_OPTIONS: list[dict[str, Any]] = [{"key": "A", "content": "案 A", "adopted": True}]
+
 # ID の頭の文字 → スキーマが必須にしているキーの既定値
 KIND_DEFAULTS: dict[str, dict[str, Any]] = {
-    "D": {"status": "未決定"},
+    "D": {"status": "未決定", "options": [{"key": "A", "content": "案 A"}]},
     "T": {"kind": "作業", "status": "未着手"},
     "R": {"question": "何を調べたか"},
     "A": {"kind": "図", "deliverable": False, "status": "下書き"},
@@ -109,6 +122,10 @@ class McpServer:
             env=env,
             cwd=cwd,
         )
+        # 標準エラーのパイプは満杯になるとサーバーの書き込みが止まり、応答が返らなくなる。別のスレッドで読み続ける
+        self._stderr_lines: deque[str] = deque(maxlen=STDERR_KEEP_LINES)
+        self._stderr_reader = threading.Thread(target=self._drain_stderr, daemon=True)
+        self._stderr_reader.start()
         initialized = self._request(
             "initialize",
             {
@@ -119,6 +136,18 @@ class McpServer:
         )
         self.server_name: str = initialized["serverInfo"]["name"]
         self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+    def _drain_stderr(self) -> None:
+        """サーバーの標準エラーを終わりまで読み、直近の行だけを残す。"""
+        assert self.process.stderr is not None
+        for line in self.process.stderr:
+            self._stderr_lines.append(line)
+
+    def stderr_text(self) -> str:
+        """サーバーが標準エラーへ書いた直近の行を返す（サーバーが終わっていれば読み切ってから）。"""
+        if self.process.poll() is not None:
+            self._stderr_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
+        return "".join(self._stderr_lines)
 
     def _send(self, message: dict[str, Any]) -> None:
         """JSON-RPC の 1 通を、標準入力へ 1 行で書く。"""
@@ -132,9 +161,7 @@ class McpServer:
         self._next_id += 1
         self._send({"jsonrpc": "2.0", "id": self._next_id, "method": method, "params": params})
         line = self.process.stdout.readline()
-        assert line, (
-            f"サーバーが応答せずに終わりました: {self.process.stderr.read() if self.process.stderr else ''}"
-        )
+        assert line, f"サーバーが応答せずに終わりました: {self.stderr_text()}"
         response = json.loads(line)
         assert response["id"] == self._next_id
         return response["result"]
@@ -172,6 +199,8 @@ class McpServer:
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()
+        # 標準エラーは読むスレッドが終わりまで読むので、読み切ってから閉じる
+        self._stderr_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
         for stream in (self.process.stdout, self.process.stderr):
             if stream is not None:
                 stream.close()
@@ -247,7 +276,8 @@ def make_item() -> MakeItem:
     def _make(item_id: str, **overrides: Any) -> dict[str, Any]:
         """ID・題・種類ごとの必須のキーに、渡したキーを重ねて日時を足した項目を返す。"""
         item: dict[str, Any] = {"id": item_id, "title": f"{item_id}の題"}
-        item.update(KIND_DEFAULTS[item_id[0]])
+        # 案の配列などの入れ子は、項目どうしで共有しないよう写してから入れる
+        item.update(copy.deepcopy(KIND_DEFAULTS[item_id[0]]))
         # 資料は本文が必須なので、ID に揃えたファイル名を既定にする
         if item_id[0] == "A":
             item["body"] = f"{item_id}.md"
@@ -497,3 +527,32 @@ def make_venv(tmp_path: Path) -> MakeVenv:
 def write_yaml(path: Path, data: Any) -> None:
     """日本語をそのままにして、キーの並びを保って YAML を書く。"""
     path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def plugin_version() -> str:
+    """プラグインの版（`plugins/mindstella/version.ini` の 1 行目）を返す。"""
+    path = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
+    return path.read_text(encoding="utf-8").splitlines()[0]
+
+
+# 移し替えの手順の版のフォルダの名前（`v{major}.{minor}.{patch}`）
+STEP_VERSION_PATTERN = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    """`v0.5.0` の形の版を、大小を比べられる数の並びにする。"""
+    return tuple(int(part) for part in version.removeprefix("v").split("."))
+
+
+def step_versions_after(version: str | None) -> set[str]:
+    """`version` より新しく、プラグインの版までの移し替えの手順の版の集まりを返す。`None` は全ての版。"""
+    migrations = REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "migrations"
+    plugin = _version_key(plugin_version())
+    return {
+        folder.name
+        for folder in migrations.iterdir()
+        if folder.is_dir()
+        and STEP_VERSION_PATTERN.fullmatch(folder.name)
+        and (version is None or _version_key(version) < _version_key(folder.name))
+        and _version_key(folder.name) <= plugin
+    }

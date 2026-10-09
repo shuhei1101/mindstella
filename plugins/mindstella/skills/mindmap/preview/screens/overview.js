@@ -16,7 +16,7 @@ var MindmapPreview;
     }
     /** 絞った表へ移る `Route`（画面の既定の表示形式で開く） */
     function tableRoute(tab, filters, view = "table") {
-        return { tab, view, id: null, full: false, filters };
+        return { tab, view, id: null, full: false, filters, heading: null };
     }
     /** 「すべて表示（N 件）」のボタン */
     function showAll(count, onClick) {

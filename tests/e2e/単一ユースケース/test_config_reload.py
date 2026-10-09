@@ -48,7 +48,7 @@ def test_normal(
     # 再読み込みのエンドポイントが、検査に通ったことを返す
     assert result.status == 200
     assert result.json()["settings"]["display"]["network_look"] == "dust"
-    # 開いている画面で、つながりに渡る見た目が開き直さずに dust になる
+    # 開いている画面で、ネットワークに渡る見た目が開き直さずに dust になる
     assert initial_look == "deep"
     assert graph_look(page) == "dust"
     # config.yaml の中身が、手で直したままである
@@ -92,7 +92,7 @@ def test_error_when_check_fails(
         line.startswith("config.yaml: display.network_look: ")
         for line in records["settings_problem"]
     )
-    # 開いている画面で、つながりに渡る見た目が starlight のままである
+    # 開いている画面で、ネットワークに渡る見た目が starlight のままである
     assert graph_look(page) == "starlight"
     # config.yaml の中身が、手で崩したままである（サーバーが書き換えていない）
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == broken

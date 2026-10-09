@@ -6,9 +6,11 @@
 
 import json
 import logging
+import os
+import signal
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -20,7 +22,7 @@ import commands
 from errors import MindmapError, SchemaMismatchError
 from kinds import Kind
 from query import SearchFilter, parse_attr
-from serve import PreviewRegistry
+from serve import PreviewRegistry, load_external_access
 from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
 
@@ -32,6 +34,7 @@ TOOL_NAMES = (
     "init",
     "add",
     "update",
+    "remove",
     "update_settings",
     "adopt",
     "edit_option",
@@ -52,6 +55,7 @@ TOOL_NAMES = (
     "clear_release",
     "export",
     "preview_url",
+    "readme",
     "submissions",
     "take_submission",
 )
@@ -66,19 +70,37 @@ type ItemIdArg = Annotated[str, Field(description="項目の ID（例 D-1）")]
 logger = logging.getLogger(__name__)
 
 
-def main(build: Callable[..., MCPServer] | None = None) -> int:
-    """MCP サーバーを組み立てて stdio で動かし、標準入力が閉じたら配信を止めて終える。"""
+def main(
+    build: Callable[..., MCPServer] | None = None, *, environ: Mapping[str, str] | None = None
+) -> int:
+    """MCP サーバーを組み立てて stdio で動かし、標準入力が閉じるか SIGTERM を受けたら、終了時のフックを呼んで配信を止めて終える。"""
     # 標準出力は MCP が使うので、記録は標準エラーへ書く
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     write_lock = threading.Lock()
-    previews = PreviewRegistry(write_lock)
+    external = load_external_access(os.environ if environ is None else environ)
+    previews = PreviewRegistry(write_lock, external=external)
+    install_sigterm_handler(previews)
     server = (build or build_server)(previews=previews, write_lock=write_lock, cwd=Path.cwd())
     try:
         server.run("stdio")
     finally:
-        # run が例外で戻ったときも、立てた配信を止める
+        # run が例外で戻ったときも、立てた配信を止める（終了時のフックもここで呼ぶ）
         previews.stop_all()
     return 0
+
+
+def install_sigterm_handler(previews: PreviewRegistry) -> None:
+    """SIGTERM を受けたら配信の台帳を止めて終わる受け口を置く（Claude Code は標準入力を閉じずに SIGTERM を送る）。"""
+
+    def _handle(signum: int, frame: object) -> None:
+        """配信を止め、記録を書き出してから、終了コード 0 で終わる。"""
+        previews.stop_all()
+        logger.info("SIGTERM を受けて配信を止めた")
+        logging.shutdown()
+        # SystemExit では終えない。標準入力が開いたままだと、MCP の SDK が標準入力を読む作業スレッド（daemon でない）をインタープリタの終わりが待ち続け、プロセスが残る
+        os._exit(0)
+
+    signal.signal(signal.SIGTERM, _handle)
 
 
 def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: Path) -> MCPServer:
@@ -132,6 +154,16 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return write(workspace, lambda root: commands.run_update(root, id, item))
 
     @server.tool(
+        name="remove",
+        description="項目 1 つを消す（本文も消し、消した項目をまだまとめていない変更に残す）。ほかの記録が指している項目は消さずにエラーにする。やめた項目を残すときは update で取り下げる",
+    )
+    def remove(
+        workspace: WorkspaceArg,
+        id: ItemIdArg,  # noqa: A002
+    ) -> CallToolResult:
+        return write(workspace, lambda root: commands.run_remove(root, id))
+
+    @server.tool(
         name="update_settings",
         description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする",
     )
@@ -165,7 +197,9 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
             ),
         )
 
-    @server.tool(name="adopt", description="検討事項の採用する案を 1 つに切り替える")
+    @server.tool(
+        name="adopt", description="検討事項の採用する案を 1 つに切り替え、状態を決定済みにする"
+    )
     def adopt(
         workspace: WorkspaceArg,
         id: ItemIdArg,  # noqa: A002
@@ -175,7 +209,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="edit_option",
-        description="検討事項の案を記号で指して、1 つ足す・中身を直す・消す。指さない案はそのまま残る",
+        description="検討事項の案を記号で指して、1 つ足す・中身と推奨の印を直す・消す。指さない案はそのまま残る",
     )
     def edit_option(
         workspace: WorkspaceArg,
@@ -188,7 +222,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         option: Annotated[
             dict[str, Any] | None,
             Field(
-                description="add・update の案の中身（content・pros・cons・note・reason）。update は null のキーを消す。remove では渡さない"
+                description="add・update の案の中身（content・pros・cons・note・reason・recommended）。recommended は true で推奨の印を立て（ほかの案の印は外れる）、false か null で外す。update は null のキーを消す。remove では渡さない"
             ),
         ] = None,
     ) -> CallToolResult:
@@ -231,7 +265,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return write(workspace, lambda root: commands.run_commit(root, summary))
 
     @server.tool(
-        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー）を返す"
+        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を返す"
     )
     def pending(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_pending)
@@ -343,6 +377,13 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def preview_url(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_preview_url(root, previews=previews))
+
+    @server.tool(
+        name="readme",
+        description="直下の README.md を、起動・接続のコマンドと配っているプレビューの URL で書き直す",
+    )
+    def readme(workspace: WorkspaceArg) -> CallToolResult:
+        return read(workspace, lambda root: commands.run_readme(root, previews=previews))
 
     @server.tool(name="submissions", description="取り込んでいない送信を送った順に返す")
     def submissions(workspace: WorkspaceArg) -> CallToolResult:

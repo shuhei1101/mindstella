@@ -25,7 +25,7 @@ elements:
       - name: counts
         value: プレビューを開く.mindmap-data.{種類} の件数
       - name: overrides
-        value: 個人の上書きが持つ項目（見た目・表示する種類・ライト / ダーク・種類ごとの表の列）の名前
+        value: 個人の上書きが持つ項目（ネットワークの見た目・表示する種類・ライト / ダーク・種類ごとの表の列）の名前
       - name: can_save
         value: サーバーの配信では true、配る書き出しでは false
       - name: message
@@ -33,7 +33,7 @@ elements:
       - name: storage_available
         value: 端末の保存領域に書けるか
     position: 本文
-    description: 見た目・表示する種類を選ぶと、その場で個人の上書きとして端末の保存領域に残し、画面に当てる（サーバーへは送らない）。開いている画面の種類を外したときは概要へ移し、履歴は置き換える。「既定に戻す」で個人の上書きを全て外す。「ワークスペースの既定にする」で『既定の保存の確かめ』を開く
+    description: 表示する種類を選ぶと、その場で個人の上書きとして端末の保存領域に残し、画面に当てる（サーバーへは送らない）。開いている画面の種類を外したときは概要へ移し、履歴は置き換える。「既定に戻す」で個人の上書き（ネットワークの見た目を含む）を全て外す。「ワークスペースの既定にする」で『既定の保存の確かめ』を開く
     io: 入力
   - name: 既定が変わった知らせ
     kind: label
@@ -43,7 +43,7 @@ elements:
     io: 表示
     source: 書き換えの知らせ・記録の取得.settings.display
     visible_when: サーバーの配信で、他の人の保存・`update_settings`・設定の再読み込みで既定が変わってから 6 秒の間
-lead: つながりの見た目と表示する種類を、この端末だけの個人の上書きとして変える。トップバーの表示の設定のボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧とは片方だけを開き、右の詳細パネルは開いたままにする。
-mock: dev/mock/pages/settings-panel/95/a-default-button/index.html
+lead: 表示する種類を、この端末だけの個人の上書きとして変える。ネットワークの見た目はネットワークのドロップダウンで選び、このパネルではこの端末で変えている項目・既定に戻す・ワークスペースの既定にするの対象としてだけ扱う。トップバーの表示の設定のボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧とは片方だけを開き、右の詳細パネルは開いたままにする。
+mock: dev/mock/pages/settings-panel/123/standard/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
 test_file: tests/integration/preview/test_settings_screen.py

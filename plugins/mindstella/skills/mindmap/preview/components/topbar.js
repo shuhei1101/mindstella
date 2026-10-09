@@ -1,5 +1,5 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 件数の表示を揺らさない上限 */
@@ -189,12 +189,13 @@ var MindmapPreview;
                         type: "button",
                         "data-act": "search",
                         "aria-label": "すべての項目を検索",
+                        "aria-keyshortcuts": "Control+K Meta+K",
                         onclick: () => onSearch(),
                     },
                     children: [
                         MindmapPreview.icon("search"),
                         MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["すべての項目を検索"] }),
-                        MindmapPreview.h({ tag: "kbd", children: ["/"] }),
+                        MindmapPreview.h({ tag: "kbd", children: [/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K"] }),
                     ],
                 }),
                 onHistory === undefined ? null : historyButton(onHistory),
@@ -202,6 +203,9 @@ var MindmapPreview;
                 diffPoint === null ? null : diffChip({ point: diffPoint, onOff: onDiffOff }),
                 // コメントのボタンを右端に置くとき、検索の入口を中央へ寄せる
                 comments ? MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }) : null,
+                onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
+                filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
+                comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
@@ -213,9 +217,6 @@ var MindmapPreview;
                     },
                     children: [MindmapPreview.icon(theme === "dark" ? "sun" : "moon")],
                 }),
-                onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
-                filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
-                comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
             ],
         });
         const tabbar = MindmapPreview.h({
@@ -224,7 +225,7 @@ var MindmapPreview;
             children: [
                 ...tabs.map((tab) => tabLink(tab, current, onNavigate)),
                 MindmapPreview.h({ tag: "span", attrs: { class: "tab-gap" } }),
-                tabLink({ key: "graph", label: "つながり", icon: "orbit" }, current, onNavigate, "tab-special"),
+                tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
             ],
         });
         return MindmapPreview.h({ tag: "div", attrs: { class: "top" }, children: [bar, tabbar] });

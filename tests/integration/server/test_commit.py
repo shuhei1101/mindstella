@@ -11,6 +11,7 @@ from .history_helpers import (
     commit,
     read_changes,
     read_items,
+    remove_item,
     update_item,
 )
 from workspace_fixtures import RECORD_DIR
@@ -135,3 +136,26 @@ def test_error_when_write_fails(
     assert result.text.startswith("エラー: ")
     assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_item_removed(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """消した項目だけがあるときも、まとまりを 1 つ足す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "note", {"title": "メモ", "content": "中身"})
+    add_item(call_tool, root, "note", {"title": "重複したメモ", "content": "中身"})
+    commit(call_tool, root, "足す")
+    remove_item(call_tool, root, "N-2")
+    # 実行
+    result = call_tool("commit", workspace=str(root), summary="重複した N-2 を消す")
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["id"] == "V-2"
+    assert result.data["removed"] == [{"id": "N-2", "kind": "note", "title": "重複したメモ"}]
+    changes = read_changes(root)
+    assert [entry["id"] for entry in changes["sets"][0]["removed"]] == ["N-2"]
+    pending = changes["pending"]
+    assert pending["added"] == []
+    assert pending["changed"] == []
+    assert pending.get("removed", []) == []

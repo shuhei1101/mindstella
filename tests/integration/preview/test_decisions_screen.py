@@ -22,13 +22,27 @@ from preview_drawer_helpers import (
     chip_texts,
     clear_all_chips,
     click_value,
+    close_drawer,
     drawer_groups,
     drawer_head,
+    drawer_text_fields,
     open_drawer,
     remove_chip,
     value_selector,
 )
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_layout_helpers import (
+    BOUNDARY_HEIGHT,
+    MAP_BOUNDARY_WIDTHS,
+    NARROW_VIEWPORT,
+    TABLE_BOARD_BOUNDARY_WIDTHS,
+    WIDE_VIEWPORT,
+    assert_bands_stay,
+    assert_page_does_not_scroll,
+    assert_region_mode,
+    region_metrics,
+)
+from preview_mark_helpers import SCREEN_MARKS, marks_of
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -49,6 +63,10 @@ NARROW_WIDTH = 800
 
 # 狭い幅の画面の高さ
 NARROW_HEIGHT = 700
+
+# マップの項目の節点の幅と高さ（印の有無によらず同じ）
+MAP_NODE_WIDTH = 268
+MAP_NODE_HEIGHT = 48
 
 # 状態の順（ボードの列の並び）
 DECISION_STATUSES = ["要見直し", "未決定", "保留", "未整理", "決定済み", "対象外", "取り下げ"]
@@ -123,12 +141,60 @@ EDGE_POINT_SCRIPT = """() => {
     return { x: point.x, y: point.y };
 }"""
 
+# ホイールの拡大・縮小: 1 回の刻み（奥へ回す deltaY）・手前へ回す deltaY・倍率の上限と下限・刻みの掛け率・回す回数の上限（上限・下限に届く回数より多い）
+WHEEL_IN_DELTA = -100
+WHEEL_OUT_DELTA = 100
+WHEEL_ZOOM_MAX = 1.5
+WHEEL_ZOOM_MIN = 0.4
+WHEEL_FACTOR = 1.12
+WHEEL_MAX_TURNS = 30
+
+# 回す前にマウスの下にあった節の中心が、回した後に動いてよい距離（px。スクロールの位置の丸めの分）
+WHEEL_POINT_TOLERANCE_PX = 2
+
+# 余白の大きさが、土台の幅（整数に丸められる）から求めた値と違ってよい距離（px）
+MARGIN_TOLERANCE_PX = 1
+
+# 回した後、倍率と余白が当たるまで待つ時間（ms）
+WHEEL_SETTLE_MS = 200
+
+# 全体を表示のときの、マップの右と下の余白（px）
+FIT_MARGIN_RIGHT_PX = 240
+
+# マップの倍率（`transform: scale(...)` の数値）を返す
+MAP_SCALE_SCRIPT = """() => Number.parseFloat(document.getElementById("decision-map").style.transform.slice(6))"""
+
+# マップの土台の右の余白（土台の幅 - 木の幅 × 倍率）と、枠の幅
+MAP_MARGIN_SCRIPT = """() => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    const scale = Number.parseFloat(canvas.style.transform.slice(6));
+    return { margin: wrap.firstElementChild.offsetWidth - canvas.offsetWidth * scale, frame: wrap.clientWidth };
+}"""
+
 # マップの枠のスクロールの位置と、拡大の倍率
 MAP_VIEW_SCRIPT = """() => {
     const canvas = document.getElementById("decision-map");
     const wrap = canvas.closest(".map-wrap");
     return { left: wrap.scrollLeft, top: wrap.scrollTop, transform: canvas.style.transform };
 }"""
+
+# 鍵の震えが収まるまで待つ時間（ms。震えは約 1 秒）と、震え始めを確かめるまでの時間
+SHAKE_DONE_MS = 1_800
+SHAKE_EARLY_MS = 120
+
+# 素早い 2 回押しにする、続けて押す間隔（ms。450ms 未満）
+QUICK_PRESS_GAP_MS = 80
+
+# 節の鍵（閉じた鍵はロックした節だけ、開いた鍵は詳細を開いている節にカーソルを乗せたときだけ表示する）
+LOCKED_NODE = "#decision-map button.n-item.locked"
+KEY = "#decision-map button.n-item .lk"
+
+# 節の鍵が表示されている（`display` が `none` でない）節の ID を返す
+SHOWN_KEYS_SCRIPT = """() => [...document.querySelectorAll('#decision-map button.n-item')]
+    .filter(node => getComputedStyle(node.querySelector('.lk')).display !== 'none')
+    .map(node => node.dataset.node)"""
+
 
 
 def _view_pressed(page: Page, view: str) -> str | None:
@@ -144,14 +210,17 @@ def _map_item_ids(page: Page) -> list[str]:
 
 
 def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """表示形式の切り替えで、マップ・ボード・表を行き来し、ハッシュの view を置き換える（正常系）。"""
+    """表示形式の切り替えは、view の無いハッシュでボードが押された状態で開き、ボード・マップ・表の順に並び、行き来するとハッシュの view を置き換える（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions")
     history_length = page.evaluate("history.length")
-    assert _view_pressed(page, "map") == "true"
+    assert _view_pressed(page, "board") == "true"
+    assert page.eval_on_selector_all(
+        ".segment button", "buttons => buttons.map(b => b.dataset.view)"
+    ) == ["board", "map", "table"]
     # 実行・検証
-    for view in ("board", "table", "map"):
+    for view in ("map", "table", "board"):
         page.click(f'.segment button[data-view="{view}"]')
         page.wait_for_function(
             f"document.querySelector('.segment button[data-view=\"{view}\"]').getAttribute('aria-pressed') === 'true'"
@@ -161,6 +230,28 @@ def test_view_switch(write_sample_preview: WriteSamplePreview, open_preview: Ope
     assert page.evaluate("history.length") == history_length
     # 画面の名前が h1
     assert page.inner_text("main h1") == "検討事項"
+
+
+def test_board_heading_level(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ボードの列の見出しは、画面の見出し h1 の 1 段下の h2 で、h3 の列の見出しは残らない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions")
+    # 実行
+    heading_tags = page.eval_on_selector_all(
+        "main h1, main .board-col h2",
+        "heads => heads.map(h => [h.tagName, h.closest('.board-col')?.getAttribute('aria-label') ?? null])",
+    )
+    labels = page.eval_on_selector_all(
+        ".board section.board-col", "cols => cols.map(c => c.getAttribute('aria-label'))"
+    )
+    h3_count = page.eval_on_selector_all("main .board-col h3", "heads => heads.length")
+    # 検証
+    assert page.inner_text("main h1") == "検討事項"
+    assert heading_tags == [["H1", None]] + [["H2", label] for label in labels]
+    assert h3_count == 0
 
 
 def test_map(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -240,6 +331,153 @@ def test_map_zoom(write_sample_preview: WriteSamplePreview, open_preview: OpenPr
     page.wait_for_function(
         "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
     )
+
+
+def _open_wheel_map(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> tuple[Page, str]:
+    """サンプルの記録（マップが枠より小さい）をマップで開き、最後の検討事項の節の中心にマウスを置いて、節のセレクターを返す。"""
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.set_viewport_size(DESKTOP_VIEWPORT)
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    node = f'#decision-map button[data-node="{_map_item_ids(page)[-1]}"]'
+    center = _box_center(page, node)
+    page.mouse.move(center["x"], center["y"])
+    return page, node
+
+
+def test_map_wheel_zoom(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """マップの枠の上でホイールを奥へ回すと倍率が 1.12 倍になり、回す前にマウスの下にあった節がマウスの下に残る。ページは動かず、全体を表示の押された状態が外れる（正常系）。"""
+    # 準備
+    page, node = _open_wheel_map(write_sample_preview, open_preview)
+    before = _box_center(page, node)
+    fit_scale = page.evaluate(MAP_SCALE_SCRIPT)
+    assert page.locator(".zoom .btn").get_attribute("aria-pressed") == "true"
+    # 実行
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    # 検証
+    after = _box_center(page, node)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(fit_scale * WHEEL_FACTOR)
+    assert abs(after["x"] - before["x"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert abs(after["y"] - before["y"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert page.evaluate("window.scrollY") == 0
+    assert page.locator(".zoom .btn").get_attribute("aria-pressed") == "false"
+    # マップの枠は、マウスの下の点を残す分だけ送られている
+    view = page.evaluate(MAP_VIEW_SCRIPT)
+    assert view["left"] > 0
+    assert view["top"] > 0
+
+
+def test_map_wheel_zoom_when_repeated(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """奥へ回し続けると倍率は 150% で止まり、手前へ回し続けると 40% で止まる。回している間、節はマウスの下に残り、ページは動かない（正常系）。"""
+    # 準備
+    page, node = _open_wheel_map(write_sample_preview, open_preview)
+    before = _box_center(page, node)
+    # 実行・検証（奥へ）
+    for _ in range(WHEEL_MAX_TURNS):
+        page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(WHEEL_ZOOM_MAX)
+    assert abs(_box_center(page, node)["x"] - before["x"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert abs(_box_center(page, node)["y"] - before["y"]) <= WHEEL_POINT_TOLERANCE_PX
+    # 150% でさらに奥へ回しても、倍率も節の位置も変わらない
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(WHEEL_ZOOM_MAX)
+    assert page.evaluate("window.scrollY") == 0
+    # 実行・検証（手前へ）
+    for _ in range(WHEEL_MAX_TURNS * 2):
+        page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(WHEEL_ZOOM_MIN)
+    assert page.evaluate("window.scrollY") == 0
+
+
+def test_map_wheel_zoom_when_zoomed_out_after_scrolled(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """拡大で枠を送った後に手前へ 1 回回しても、回す前にマウスの下にあった節がマウスの下に残る（正常系）。"""
+    # 準備（奥へ 1 回回して、枠のスクロールの位置が 0 より大きい状態にする）
+    page, node = _open_wheel_map(write_sample_preview, open_preview)
+    before = _box_center(page, node)
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    zoomed_in = page.evaluate(MAP_VIEW_SCRIPT)
+    assert zoomed_in["left"] > 0
+    assert zoomed_in["top"] > 0
+    zoomed_scale = page.evaluate(MAP_SCALE_SCRIPT)
+    # 実行
+    page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    # 検証
+    after = _box_center(page, node)
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(zoomed_scale / WHEEL_FACTOR)
+    assert abs(after["x"] - before["x"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert abs(after["y"] - before["y"]) <= WHEEL_POINT_TOLERANCE_PX
+    assert page.evaluate("window.scrollY") == 0
+
+
+def test_map_wheel_zoom_when_fit_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ホイールで倍率を数値にしたあいだはマップの右に枠の幅の余白を持ち、全体を表示を押すと押された状態と元の余白に戻る（正常系）。"""
+    # 準備
+    page, _ = _open_wheel_map(write_sample_preview, open_preview)
+    fit_before = page.evaluate(MAP_MARGIN_SCRIPT)
+    fit_scale = page.evaluate(MAP_SCALE_SCRIPT)
+    assert fit_before["margin"] == pytest.approx(FIT_MARGIN_RIGHT_PX, abs=MARGIN_TOLERANCE_PX)
+    # 実行・検証（ホイールで数値の倍率にする）
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    zoomed = page.evaluate(MAP_MARGIN_SCRIPT)
+    assert zoomed["margin"] == pytest.approx(zoomed["frame"], abs=MARGIN_TOLERANCE_PX)
+    # 実行・検証（全体を表示に戻す）
+    page.click(".zoom .btn")
+    page.wait_for_function(
+        "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
+    )
+    assert page.evaluate(MAP_MARGIN_SCRIPT)["margin"] == pytest.approx(
+        FIT_MARGIN_RIGHT_PX, abs=MARGIN_TOLERANCE_PX
+    )
+    assert page.evaluate(MAP_SCALE_SCRIPT) == pytest.approx(fit_scale)
+
+
+def test_map_wheel_zoom_when_horizontal(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """横にだけ回した件（deltaY が 0）では倍率を変えない（正常系）。"""
+    # 準備
+    page, _ = _open_wheel_map(write_sample_preview, open_preview)
+    scale_before = page.evaluate(MAP_SCALE_SCRIPT)
+    # 実行
+    page.mouse.wheel(WHEEL_OUT_DELTA, 0)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    # 検証
+    assert page.evaluate(MAP_SCALE_SCRIPT) == scale_before
+    assert page.locator(".zoom .btn").get_attribute("aria-pressed") == "true"
+
+
+def test_map_zoom_buttons_when_wheel_zoomed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """縮小・拡大・全体を表示のボタンはホイールの拡大・縮小の後も残り、押すと倍率を変える（正常系）。"""
+    # 準備
+    page, _ = _open_wheel_map(write_sample_preview, open_preview)
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    scale_before = page.evaluate(MAP_SCALE_SCRIPT)
+    # 実行
+    page.click('.zoom button[aria-label="縮小"]')
+    # 検証
+    assert page.evaluate(MAP_SCALE_SCRIPT) < scale_before
+    assert page.locator('.zoom button[aria-label="拡大"]').count() == 1
+    assert page.locator(".zoom .btn").count() == 1
 
 
 def _open_selected_map(
@@ -371,6 +609,268 @@ def test_map_background_press_when_zoomed(
     page.wait_for_timeout(PRESS_SETTLE_MS)
     # 検証
     assert page.evaluate(MAP_VIEW_SCRIPT) == before
+
+
+def _node_point(page: Page, item_id: str) -> dict[str, float]:
+    """マップの項目の節の中心（画面上の座標）を返す。"""
+    return _box_center(page, f'#decision-map button.n-item[data-node="{item_id}"]')
+
+
+def _press_node(page: Page, item_id: str) -> None:
+    """マップの項目の節を押して離し、マウスを節から離す。"""
+    _press_at(page, _node_point(page, item_id))
+    page.mouse.move(0, 0)
+
+
+def _locked_ids(page: Page) -> list[str]:
+    """ロックした節の ID を返す。"""
+    ids: list[str] = page.eval_on_selector_all(LOCKED_NODE, "nodes => nodes.map(n => n.dataset.node)")
+    return ids
+
+
+def _shown_keys(page: Page) -> list[str]:
+    """鍵を表示している節の ID を返す。"""
+    ids: list[str] = page.evaluate(SHOWN_KEYS_SCRIPT)
+    return ids
+
+
+def test_map_lock_when_open_item_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """詳細を開いている節を押すとロックして閉じた鍵を出し、もう一度押すとロックを外す。どちらも詳細は開いたまま（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    shown_before = _shown_keys(page)
+    # 実行（ロックする）
+    _press_node(page, "D-2")
+    page.wait_for_selector(f'{LOCKED_NODE}[data-node="D-2"]')
+    locked = (_locked_ids(page), _shown_keys(page), page.evaluate("location.hash"))
+    # 実行（ロックを外す）
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE, state="detached")
+    # 検証
+    assert shown_before == []
+    assert locked == (["D-2"], ["D-2"], "#tab=decisions&view=map&id=D-2")
+    assert page.locator(f"{KEY} svg.icon").count() == 4
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-2"
+    assert page.locator("aside.panel.open").count() == 1
+
+
+def test_map_open_when_other_item_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックしていないとき、ほかの節を押すと詳細をその項目に切り替える。ロックはしない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    # 実行
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert _locked_ids(page) == []
+
+
+def test_map_lock_keeps_node_when_other_opened(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロック中にほかの節を押すと、詳細だけをその項目に切り替える。ロックした節は閉じた鍵を保ち、押した節には選んだ印だけが付く（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    # 実行
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert _locked_ids(page) == ["D-2"]
+    assert _shown_keys(page) == ["D-2"]
+    assert page.eval_on_selector_all(
+        "#decision-map button.n-item.sel", "nodes => nodes.map(n => n.dataset.node)"
+    ) == ["D-3"]
+    assert page.evaluate("document.getElementById('decision-map').classList.contains('has-lock')")
+
+
+def test_map_return_to_locked_when_locked_pressed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロック中にほかの項目を開いているとき、ロックした節を押すと、詳細をロックした項目に戻すだけにする。ロックは外さない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    # 実行
+    _press_node(page, "D-2")
+    page.wait_for_function("location.hash.includes('id=D-2')")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "D-2の題"
+    assert _locked_ids(page) == ["D-2"]
+
+
+def test_map_shake_when_blank_pressed_while_locked(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックした項目の詳細を開いているときに余白を押すと、ロック・詳細・表示を変えず、閉じた鍵を約 1 秒震わせる。震えは赤く、収まると元の見た目に戻る（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    point = _blank_point(page)
+    quiet = page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')")
+    # 実行
+    _press_at(page, point)
+    page.mouse.move(0, 0)
+    page.wait_for_timeout(SHAKE_EARLY_MS)
+    shaking = page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')")
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    # 検証
+    assert quiet is None
+    assert shaking is not None
+    assert "rotate(" in shaking
+    assert "transform-origin: 50% 0" in shaking
+    assert page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')") is None
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-2"
+    assert _locked_ids(page) == ["D-2"]
+    assert page.locator("aside.panel.open").count() == 1
+
+
+def test_map_shake_when_same_other_item_pressed_while_locked(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロック中に開いている別の項目の節をもう一度押すと、何も変えず、鍵を震わせる（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    _press_node(page, "D-3")
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    # 実行
+    _press_node(page, "D-3")
+    page.wait_for_timeout(SHAKE_EARLY_MS)
+    shaking = page.eval_on_selector(f"{LOCKED_NODE} .lk", "key => key.getAttribute('style')")
+    # 検証
+    assert shaking is not None
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-3"
+    assert _locked_ids(page) == ["D-2"]
+
+
+def test_map_open_key_when_hovered(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックしていないとき、開いた鍵は詳細を開いている節にカーソルを乗せたときだけ出す。押しても何も起きない鍵なので、乗せただけでは詳細もロックも変えない（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    page.mouse.move(0, 0)
+    away = _shown_keys(page)
+    # 実行
+    page.mouse.move(_node_point(page, "D-2")["x"], _node_point(page, "D-2")["y"])
+    page.wait_for_function("document.querySelector('#decision-map button.n-item.sel:hover') !== null")
+    hovered = _shown_keys(page)
+    page.mouse.move(_node_point(page, "D-3")["x"], _node_point(page, "D-3")["y"])
+    page.wait_for_function("document.querySelector('#decision-map button.n-item.sel:hover') === null")
+    other_hovered = _shown_keys(page)
+    # 検証
+    assert away == []
+    assert hovered == ["D-2"]
+    assert other_hovered == []
+    assert _locked_ids(page) == []
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-2"
+
+
+def test_map_lock_stays_when_detail_closed_and_tab_moved(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ロックは詳細を閉じても、タブを行き来しても残り、閉じた鍵を出し続ける。ネットワークのロックとは別に持つ（正常系）。"""
+    # 準備
+    page = _open_selected_map(write_sample_preview, open_preview)
+    _press_node(page, "D-2")
+    page.wait_for_selector(LOCKED_NODE)
+    # 実行（詳細を閉じる）
+    page.keyboard.press("Escape")
+    page.wait_for_selector("aside.panel.open", state="detached")
+    after_close = (_locked_ids(page), _shown_keys(page))
+    # 実行（ネットワークへ移って戻る）
+    page.click('nav.tabbar a[data-tab="graph"]')
+    page.wait_for_selector("#graph-canvas")
+    page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="map"]')
+    page.wait_for_selector(LOCKED_NODE)
+    # 検証
+    assert after_close == (["D-2"], ["D-2"])
+    assert _locked_ids(page) == ["D-2"]
+    assert _shown_keys(page) == ["D-2"]
+
+
+def test_map_lock_when_quick_double_press(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """何も選んでいないとき、同じ節を素早く 2 回押すと、1 回目で詳細が開いて枠がずれても、その節への 2 回押しとしてロックする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    point = _node_point(page, "D-3")
+    # 実行
+    page.mouse.move(point["x"], point["y"])
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_timeout(QUICK_PRESS_GAP_MS)
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_selector(LOCKED_NODE)
+    # 検証
+    assert _locked_ids(page) == ["D-3"]
+    assert page.evaluate("location.hash") == "#tab=decisions&view=map&id=D-3"
+
+
+def test_map_lock_when_narrow(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """幅 900px 以下の字下げの一覧ではロックしない。押した項目を開くだけで、鍵も出さない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
+    page.wait_for_selector("nav.map-outline", state="visible")
+    # 実行（開いている項目をもう一度押しても、ロックしない）
+    page.click('nav.map-outline button[data-id="D-3"]')
+    page.wait_for_selector("aside.panel.open")
+    page.click('nav.map-outline button[data-id="D-3"]', force=True)
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    # 検証
+    assert page.locator(LOCKED_NODE).count() == 0
+    assert page.locator("nav.map-outline .lk").count() == 0
+
+
+def test_map_key_does_not_overlap_comment_mark(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """節の鍵は 1 行目の右端、コメントの印は 2 行目の右端に置き、重ならない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=map&id=D-2")
+    page.wait_for_function(SELECTED_MAP_SCRIPT)
+    # 実行
+    _press_node(page, "D-2")
+    page.wait_for_selector(f'{LOCKED_NODE}[data-node="D-2"]')
+    boxes = page.evaluate(
+        """() => {
+            const node = document.querySelector('#decision-map button.n-item.locked');
+            const key = node.querySelector('.lk').getBoundingClientRect();
+            const mark = node.querySelector('.r2 .cmk').getBoundingClientRect();
+            const frame = node.getBoundingClientRect();
+            return {
+                apart: key.bottom <= mark.top || key.right <= mark.left || mark.right <= key.left,
+                keyInside: key.left >= frame.left && key.right <= frame.right && key.top >= frame.top && key.bottom <= frame.bottom,
+                keyOnFirstRow: key.top < frame.top + frame.height / 2,
+            };
+        }"""
+    )
+    # 検証
+    assert boxes == {"apart": True, "keyInside": True, "keyOnFirstRow": True}
 
 
 def test_map_when_narrow(
@@ -685,7 +1185,8 @@ def test_filter_button(write_sample_preview: WriteSamplePreview, open_preview: O
     page.click(FILTER_BUTTON)
     page.wait_for_selector(DRAWER, state="detached")
     # 検証
-    assert order[-2:] == ["filter", "comments"]
+    # 右端はライト / ダークのボタン（`data-act` を持たない）
+    assert order[-3:] == ["filter", "comments", None]
     # 開いたときの条件（状態）の 1 つだけにバッジが付く
     assert badge_text(page) == "1"
     assert closed == ["絞り込み（1 つの条件で絞り込み中）", "false", None]
@@ -937,14 +1438,14 @@ def test_drawer_value_is_checkbox(
     structure = page.evaluate(
         """() => ({
             groups: document.querySelectorAll('dialog.drawer fieldset.fd-group > legend').length,
-            checkboxes: [...document.querySelectorAll('dialog.drawer .fd-body input')].every(i => i.type === 'checkbox'),
+            checkboxes: [...document.querySelectorAll('dialog.drawer .fd-opt input')].every(i => i.type === 'checkbox'),
             counts: document.querySelector('dialog.drawer .fd-opt .n').getAttribute('aria-label'),
-            firstFocused: document.activeElement === document.querySelector('dialog.drawer .fd-body input'),
+            firstFocused: document.activeElement === document.querySelector('dialog.drawer .fd-text input'),
         })"""
     )
     selector = value_selector("status", "未決定")
-    # 検証
-    assert structure == {"groups": 6, "checkboxes": True, "counts": "1 件", "firstFocused": True}
+    # 検証（先頭の文字の欄へフォーカスを移す。条件のまとまりは「文字を含む」と値を選ぶ 6 つ）
+    assert structure == {"groups": 7, "checkboxes": True, "counts": "1 件", "firstFocused": True}
     assert page.locator(selector).count() == 1
 
 
@@ -974,3 +1475,365 @@ def test_chips(
     assert below_toolbar is True
     assert after_remove == (["状態: 要見直し", "状態: 未決定", "状態: 未整理"], "1")
     assert badge_text(page) is None
+
+
+def test_comment_marks_when_board(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """ボードのカードのメタ情報の右端に、コメントの件数の印を出す。件数 0 の項目には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(".board button.card")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["decisions"]
+    assert page.locator(".board button.card").count() == 4
+    assert page.locator(".board button.card .c-meta .cmk").count() == 2
+    # 印はメタ情報の並びの右端（最後の子）にあり、読み上げと title は実数の件数
+    last = page.eval_on_selector(
+        '.board button.card[data-id="D-2"] .c-meta',
+        "meta => meta.lastElementChild.querySelector('.cmk') !== null",
+    )
+    assert last is True
+    assert page.inner_text('.board button.card[data-id="D-2"] .cmk .sr-only') == "コメント 2 件"
+    assert page.get_attribute('.board button.card[data-id="D-2"] .cmk', "title") == "コメント 2 件"
+    # 印だけを押す操作は持たず、カードを押すと詳細パネルを開く
+    page.click('.board button.card[data-id="D-2"] .cmk')
+    page.wait_for_selector("aside.panel.open")
+    assert page.inner_text("aside.panel .d-title") == "D-2の題"
+
+
+def test_comment_marks_when_map(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """マップの節点は 268×48 で、2 行目の右端に印を出す。印の有無で節点の幅を変えない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    # 検証
+    assert marks_of(page, "#decision-map") == SCREEN_MARKS["decisions"]
+    sizes = page.eval_on_selector_all(
+        "#decision-map .map-node.n-item",
+        "nodes => nodes.map(n => [n.dataset.node, n.offsetWidth, n.offsetHeight])",
+    )
+    assert sorted(sizes) == [
+        ["D-2", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+        ["D-3", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+        ["D-4", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+        ["D-5", MAP_NODE_WIDTH, MAP_NODE_HEIGHT],
+    ]
+    # 印は 2 行目（メタ情報）の右端にあり、節点の中に収まる
+    inside = page.evaluate(
+        """() => [...document.querySelectorAll('#decision-map .map-node.n-item .r2 .cmk')].every(mark => {
+            const node = mark.closest('.map-node').getBoundingClientRect();
+            const box = mark.getBoundingClientRect();
+            return box.left >= node.left && box.right <= node.right && box.top >= node.top && box.bottom <= node.bottom;
+        })"""
+    )
+    assert inside is True
+    assert page.locator("#decision-map .map-node .r2 .cmk").count() == 2
+
+
+def test_comment_marks_when_outline(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """幅 900px 以下の字下げの一覧は、行のタイトルの右に印を出す（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    # 実行
+    page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
+    page.wait_for_selector(".map-outline button[data-id] .cmk")
+    # 検証
+    assert marks_of(page, ".map-outline") == SCREEN_MARKS["decisions"]
+    last = page.eval_on_selector(
+        '.map-outline button[data-id="D-2"]',
+        "b => b.lastElementChild.matches('.cmk-place') && b.lastElementChild.querySelector('.cmk') !== null",
+    )
+    assert last is True
+
+
+def test_comment_marks_when_table(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """表の行のタイトルの右に印を出す。件数 0 の行には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_commented_preview()
+    page = open_preview(url, f"#tab=decisions&view=table{ALL_DECISION_STATUSES_HASH}")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    assert marks_of(page) == SCREEN_MARKS["decisions"]
+    assert page.locator("table.grid tbody tr").count() == 5
+    assert page.locator("table.grid tbody tr:has(.row-open ~ .cmk-place .cmk)").count() == 2
+
+
+# 項目を多く持つ検討事項の数（領域の高さを超える数）
+MANY_DECISIONS = 40
+
+# 表示形式ごとの、領域の中でスクロールする枠
+REGION_SCROLLER = {"board": ".board", "table": ".table-wrap", "map": ".map-wrap"}
+
+
+def _write_many_decisions(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """領域の高さを超える数の未決定の検討事項を持つ配信の URL を返す。"""
+    return write_preview(
+        *(
+            make_item(f"D-{number}", status="未決定", title=f"検討事項の題 {number}")
+            for number in range(1, MANY_DECISIONS + 1)
+        )
+    )
+
+
+@pytest.mark.parametrize("view", ["board", "table", "map"])
+def test_region_when_wide(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が広いとき、ページ全体はスクロールせず、帯は見えたままで、ボード・表・マップは領域の高さいっぱいに広がって中でスクロールする（正常系）。"""
+    # 準備
+    url = _write_many_decisions(write_preview, make_item)
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    scroller = REGION_SCROLLER[view]
+    page.wait_for_selector(scroller)
+    # 実行
+    metrics = region_metrics(page, scroller)
+    # 検証
+    assert_page_does_not_scroll(page)
+    # 領域そのものはスクロールせず、枠が領域の底まで広がって中で縦にスクロールする
+    assert metrics["content"]["scrollHeight"] <= metrics["content"]["clientHeight"]
+    assert metrics["target"]["scrollHeight"] > metrics["target"]["clientHeight"]
+    assert metrics["target"]["bottom"] <= metrics["content"]["bottom"]
+    assert_bands_stay(page)
+
+
+@pytest.mark.parametrize("view", ["board", "table"])
+def test_region_when_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, view: str
+) -> None:
+    """幅が狭いとき（ボード・表）、ページ全体はスクロールせず、領域ごと縦にスクロールし、帯は見えたまま（正常系）。"""
+    # 準備
+    url = _write_many_decisions(write_preview, make_item)
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_selector(REGION_SCROLLER[view])
+    # 実行
+    metrics = region_metrics(page, REGION_SCROLLER[view])
+    # 検証
+    assert_page_does_not_scroll(page)
+    assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+    # 枠の中では縦にスクロールしない（領域がスクロールする）
+    assert metrics["target"]["scrollHeight"] <= metrics["target"]["clientHeight"] + 1
+    assert_bands_stay(page)
+
+
+def test_board_head_stays(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ボードを縦に送っても、列の見出しはボードの上に留まる。列は最も長い列の高さまで伸びる（正常系）。"""
+    # 準備
+    url = write_preview(
+        *(make_item(f"D-{number}", status="未決定") for number in range(1, MANY_DECISIONS + 1)),
+        make_item("D-100", status="保留"),
+    )
+    page = open_preview(url, "#tab=decisions&view=board")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector(".board .card")
+    # 実行（ボードを一番下まで送る）
+    result = page.evaluate(
+        """() => {
+            const board = document.querySelector('.board');
+            board.scrollTop = board.scrollHeight;
+            const boardTop = board.getBoundingClientRect().top;
+            const heads = [...document.querySelectorAll('.board-col h2')].map((h) => h.getBoundingClientRect().top - boardTop);
+            const heights = [...document.querySelectorAll('.board-col')].map((c) => Math.round(c.getBoundingClientRect().height));
+            return {scrolled: board.scrollTop > 0, heads, heights};
+        }"""
+    )
+    # 検証
+    assert result["scrolled"] is True
+    # 全ての列の見出しが、ボードの上端から数 px 以内に留まる
+    assert all(0 <= head <= 8 for head in result["heads"])
+    # 列は最も長い列の高さまで伸びる（カードの少ない列も同じ高さ）
+    assert len(set(result["heights"])) == 1
+
+
+def test_map_middle_labels(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """マップの中間の層のラベルは、カテゴリーが面と線と太字、フェーズが地の色の面と薄い線と小さい文字で、描く要素の class に当たっている（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("#decision-map .map-node.n-category")
+    # 実行
+    styles = page.evaluate(
+        """() => {
+            const read = (selector) => {
+                const style = getComputedStyle(document.querySelector(selector));
+                return {
+                    background: style.backgroundColor,
+                    border: style.borderTopWidth + ' ' + style.borderTopStyle,
+                    weight: Number(style.fontWeight),
+                    size: parseFloat(style.fontSize),
+                };
+            };
+            const probeBackground = (name) => {
+                const element = document.createElement('i');
+                element.style.backgroundColor = `var(${name})`;
+                document.body.append(element);
+                const color = getComputedStyle(element).backgroundColor;
+                element.remove();
+                return color;
+            };
+            return {
+                category: read('#decision-map .n-category'),
+                phase: read('#decision-map .n-phase'),
+                surface: probeBackground('--surface'),
+                bg: probeBackground('--bg'),
+            };
+        }"""
+    )
+    # 検証
+    assert styles["category"]["background"] == styles["surface"]
+    assert styles["category"]["border"] == "1px solid"
+    assert styles["category"]["weight"] >= 600
+    assert styles["phase"]["background"] == styles["bg"]
+    assert styles["phase"]["border"] == "1px solid"
+    # フェーズはカテゴリーより小さい文字
+    assert styles["phase"]["size"] < styles["category"]["size"]
+
+
+def test_drawer_text_fields(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ドロワーの値の条件より上に「文字を含む」の欄（ID・タイトル・前提）を並べ、初めて開くと先頭の欄にフォーカスを移す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    open_drawer(page)
+    # 検証
+    assert drawer_text_fields(page) == [
+        {"key": "id", "label": "ID", "value": ""},
+        {"key": "title", "label": "タイトル", "value": ""},
+        {"key": "depends_on", "label": "前提", "value": ""},
+    ]
+    first_group = page.eval_on_selector(f"{DRAWER} .fd-body > fieldset:first-child", "e => e.className")
+    assert "fd-text" in first_group
+    assert page.eval_on_selector(f"{DRAWER} .fd-text legend", "e => e.textContent") == "文字を含む"
+    assert page.evaluate("document.activeElement === document.querySelector('dialog.drawer .fd-text input')")
+
+
+def test_text_filter(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """文字を入れて打ち終えると、その列の値に文字を含む行に絞り、チップとバッジに出す。値の条件の件数は文字で絞った行で数え、同じ欄の同じ位置にカーソルが残る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table" + ALL_DECISION_STATUSES_HASH)
+    open_drawer(page)
+    all_rows = _table_row_ids(page)
+    # 実行（ID の欄へ文字を打つ）
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "d-2")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    # 検証
+    assert all_rows == ["D-1", "D-2", "D-3", "D-4", "D-5"]
+    assert _table_row_ids(page) == ["D-2"]
+    # 英数字で終わる列名の後には空白を挟む
+    assert chip_texts(page) == [
+        "状態: 要見直し",
+        "状態: 未決定",
+        "状態: 未整理",
+        "状態: 保留",
+        "状態: 決定済み",
+        "状態: 対象外",
+        "状態: 取り下げ",
+        "ID に「d-2」を含む",
+    ]
+    assert drawer_head(page)["count"] == "5 件中 1 件"
+    assert drawer_text_fields(page)[0] == {"key": "id", "label": "ID", "value": "d-2"}
+    # 描き直した後も、打っていた欄にフォーカスとカーソルの位置が残る
+    caret = page.evaluate(
+        """() => {
+            const input = document.querySelector('dialog.drawer input[data-text-key="id"]');
+            return [document.activeElement === input, input.selectionStart];
+        }"""
+    )
+    assert caret == [True, 3]
+    # 値の条件の件数は、文字で絞った行で数える
+    status = {group["label"]: group for group in drawer_groups(page)}["状態"]
+    assert sum(count for _, count, _ in status["values"]) == 1
+
+
+def test_text_filter_chip(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """文字の条件のチップは `{列}に「{文字}」を含む` で、× で解除すると行と欄に戻る。列名が英数字で終わらないときは空白を挟まない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&f.~title=D-3")
+    # 実行
+    chips = chip_texts(page)
+    open_drawer(page)
+    field = drawer_text_fields(page)[1]
+    # ドロワーが覆う範囲のチップを押すため、いったん閉じる
+    close_drawer(page)
+    remove_chip(page, "タイトルに「D-3」を含む")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 5")
+    open_drawer(page)
+    # 検証
+    assert chips == ["タイトルに「D-3」を含む"]
+    assert field == {"key": "title", "label": "タイトル", "value": "D-3"}
+    assert chip_texts(page) == []
+    assert drawer_text_fields(page)[1]["value"] == ""
+
+
+def test_text_filter_when_view_switched(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """文字の条件はマップ・ボード・表で共有し、表示形式を切り替えても保つ。空にすると外れる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&f.~title=D-3")
+    # 実行
+    page.click('[data-view="board"]')
+    page.wait_for_selector(".board .card")
+    board_cards = page.eval_on_selector_all(".board .card", "c => c.map(x => x.dataset.id)")
+    board_chips = chip_texts(page)
+    open_drawer(page)
+    page.fill(f'{DRAWER} input[data-text-key="title"]', "")
+    page.wait_for_function("document.querySelectorAll('.board .card').length > 1")
+    # 検証
+    assert board_cards == ["D-3"]
+    assert board_chips == ["タイトルに「D-3」を含む"]
+    assert all("を含む" not in chip for chip in chip_texts(page))
+
+
+@pytest.mark.parametrize(("view", "width", "filled"), [
+    *[(view, width, filled) for view in ("board", "table") for width, filled in TABLE_BOARD_BOUNDARY_WIDTHS],
+    *[("map", width, filled) for width, filled in MAP_BOUNDARY_WIDTHS],
+])
+def test_region_at_boundary(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    view: str,
+    width: int,
+    filled: bool,
+) -> None:
+    """領域の高さいっぱいに広げる境（表・ボードは 721px、マップは 901px）の前後の幅で、広げるか領域ごとスクロールするかが切り替わる（正常系）。"""
+    # 準備
+    url = _write_many_decisions(write_preview, make_item)
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.set_viewport_size({"width": width, "height": BOUNDARY_HEIGHT})
+    # マップは 900px 以下だと字下げの一覧になるので、そのときは領域を指す
+    selector = REGION_SCROLLER[view] if filled or view != "map" else ".map-outline"
+    page.wait_for_selector(selector)
+    # 実行・検証
+    if view == "map" and not filled:
+        metrics = region_metrics(page)
+        assert_page_does_not_scroll(page)
+        assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
+        assert_bands_stay(page)
+    else:
+        assert_region_mode(page, selector, filled=filled)

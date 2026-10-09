@@ -9,10 +9,60 @@
     "sets",
     "pending"
   ],
+  "$defs": {
+    "removed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "seq",
+          "added_seq"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "消した項目の ID",
+            "pattern": "^[A-Z]-[0-9]+$"
+          },
+          "kind": {
+            "type": "string",
+            "description": "消した項目の種類",
+            "enum": [
+              "decision",
+              "task",
+              "research",
+              "doc",
+              "term",
+              "note",
+              "log"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "消したときのタイトル"
+          },
+          "seq": {
+            "type": "integer",
+            "description": "消したときに振った通し番号",
+            "minimum": 0
+          },
+          "added_seq": {
+            "type": "integer",
+            "description": "消した項目が持っていた `added_seq`。持たなければ 0",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
   "properties": {
     "last_seq": {
       "type": "integer",
-      "description": "最後に振った通し番号。変更履歴を積むとき・項目を足すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す",
+      "description": "最後に振った通し番号。変更履歴を積むとき・項目を足すとき・項目を消すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す",
       "minimum": 0
     },
     "sets": {
@@ -65,6 +115,10 @@
               "type": "string",
               "pattern": "^[A-Z]-[0-9]+$"
             }
+          },
+          "removed": {
+            "$ref": "#/$defs/removed",
+            "description": "消した項目。消した項目が無いまとまりはキーを持たない"
           }
         }
       }
@@ -93,6 +147,10 @@
             "type": "string",
             "pattern": "^[A-Z]-[0-9]+$"
           }
+        },
+        "removed": {
+          "$ref": "#/$defs/removed",
+          "description": "消した項目（消した順）。無ければ消した項目なしとして扱う"
         }
       }
     },

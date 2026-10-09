@@ -1,10 +1,10 @@
-// 表示の設定の中身。つながりの見た目と表示する種類を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。
+// 表示の設定の中身。表示する種類を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 
 namespace MindmapPreview {
-  /** つながりの見た目 1 つ（値・画面に出す名前・短い説明） */
+  /** ネットワークの見た目 1 つ（値・画面に出す名前・短い説明） */
   export type NetworkLookOption = { key: NetworkLook; label: string; note: string };
 
-  /** 選べるつながりの見た目（見た目ごとの描き分けは別の作業が作る） */
+  /** 選べるネットワークの見た目 */
   export const NETWORK_LOOKS: readonly NetworkLookOption[] = [
     { key: "glow", label: "グロウ", note: "玉と流れる光に、やわらかい光のにじみ" },
     { key: "starlight", label: "星の光", note: "白い芯と色の光。明るい星に十字の光条" },
@@ -26,9 +26,9 @@ namespace MindmapPreview {
 
   /** 表示の設定の中身の引数 */
   export type SettingsPanelProps = {
-    /** 今当てているつながりの見た目 */
+    /** 今当てているネットワークの見た目（パネルには出さず、`defaultLook` と比べる） */
     look: string;
-    /** ワークスペースの既定の見た目（その行に「既定」の札を付ける） */
+    /** ワークスペースの既定の見た目（パネルには出さず、`look` と比べる） */
     defaultLook: string;
     /** 今当てている表示する種類 */
     kinds: Set<string>;
@@ -45,8 +45,6 @@ namespace MindmapPreview {
     /** 端末の保存領域に書けるか。偽のとき先頭にその旨を出す */
     storageOk?: boolean;
     on: {
-      /** 見た目を選んだとき（値を渡す） */
-      look: (look: string) => void;
       /** 表示する種類を変えたとき（変えた後の並びを渡す） */
       kinds: (kinds: string[]) => void;
       /** 「既定に戻す」を押したとき */
@@ -91,56 +89,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** つながりの見た目の選び（5 つを名前と短い説明で縦に並べ、ワークスペースの既定に札を付ける） */
-  function lookField({ look, defaultLook, on }: SettingsPanelProps): HTMLElement {
-    return h({
-      tag: "fieldset",
-      attrs: { class: "st-sec" },
-      children: [
-        h({ tag: "legend", children: ["つながりの見た目"] }),
-        h({
-          tag: "div",
-          attrs: { class: "st-looks" },
-          children: NETWORK_LOOKS.map((option) =>
-            h({
-              tag: "label",
-              attrs: { class: "st-look" },
-              children: [
-                h({
-                  tag: "input",
-                  attrs: {
-                    type: "radio",
-                    name: "settings-look",
-                    value: option.key,
-                    checked: look === option.key,
-                    "data-focus": `look:${option.key}`,
-                    onchange: () => on.look(option.key),
-                  },
-                }),
-                h({
-                  tag: "span",
-                  attrs: { class: "st-look-main" },
-                  children: [
-                    h({
-                      tag: "span",
-                      attrs: { class: "st-look-name" },
-                      children: [
-                        option.label,
-                        option.key === defaultLook ? h({ tag: "span", attrs: { class: "st-def" }, children: ["既定"] }) : null,
-                      ],
-                    }),
-                    h({ tag: "span", attrs: { class: "st-look-note" }, children: [option.note] }),
-                  ],
-                }),
-              ],
-            }),
-          ),
-        }),
-      ],
-    });
-  }
-
-  /** 概要・つながりの行（常に出す。チェックの箱を持たない） */
+  /** 概要・ネットワークの行（常に出す。チェックの箱を持たない） */
   function alwaysRow({ iconName, label }: { iconName: IconName; label: string }): HTMLElement {
     return h({
       tag: "li",
@@ -154,7 +103,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要とつながりは常に出す行） */
+  /** 表示する種類の選び（先頭にまとめて選ぶチェック、概要とネットワークは常に出す行） */
   function kindsField({ kinds, counts, on }: SettingsPanelProps): HTMLElement {
     const shownCount = KIND_KEYS.filter((kind) => kinds.has(kind)).length;
     const allBox = h({
@@ -224,7 +173,7 @@ namespace MindmapPreview {
                 ],
               }),
             ),
-            alwaysRow({ iconName: "orbit", label: "つながり" }),
+            alwaysRow({ iconName: "network", label: "ネットワーク" }),
           ],
         }),
       ],
@@ -312,7 +261,6 @@ namespace MindmapPreview {
       attrs: { class: "st-wrap" },
       children: [
         storageOk ? null : storageNote(),
-        lookField(props),
         kindsField(props),
         resetBlock(props),
         canSave ? saveBlock(props) : null,

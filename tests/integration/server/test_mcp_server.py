@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import signal
 import threading
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
+from external_access_helpers import read_hook_lines, read_settled_hook_lines, recording_hook
 from workspace_fixtures import RECORD_DIR, McpServer
 
 from .fixture_types import MakeWorkspace, StartServer
@@ -21,6 +23,7 @@ TOOL_NAMES = [
     "init",
     "add",
     "update",
+    "remove",
     "update_settings",
     "adopt",
     "edit_option",
@@ -41,9 +44,13 @@ TOOL_NAMES = [
     "clear_release",
     "export",
     "preview_url",
+    "readme",
     "submissions",
     "take_submission",
 ]
+
+# 終了時のフックを渡す環境変数
+STOP_HOOK_ENV = "MINDSTELLA_PREVIEW_STOP_HOOK"
 
 # 2 つのプロセスがそれぞれ足す検討事項の件数
 ADDS_PER_PROCESS = 20
@@ -55,6 +62,7 @@ NEW_DECISION: dict[str, Any] = {
     "category": "データ構造",
     "phase": "要件",
     "status": "未決定",
+    "options": [{"key": "A", "content": "案 A"}],
 }
 
 
@@ -119,6 +127,27 @@ def test_normal_when_stdin_closed(make_workspace: MakeWorkspace, start_server: S
     assert exit_code == 0
     with pytest.raises(OSError, match=r"."):
         http_request(url)
+
+
+def test_normal_when_sigterm(
+    tmp_path: Path, make_workspace: MakeWorkspace, start_server: StartServer
+) -> None:
+    """SIGTERM を受けると、終了時のフックを呼び、配信を止めて終わる（正常系）。"""
+    # 準備
+    root = make_workspace(name="家計簿")
+    record = tmp_path / "stop-hook.txt"
+    server = start_server(extra_env={STOP_HOOK_ENV: recording_hook(record)})
+    url = server.call("preview_url", workspace=str(root)).data["url"]
+    port = int(url.split(":")[2].split("/")[0])
+    # 実行（標準入力は閉じずに SIGTERM だけを送る。Claude Code の終わらせ方と同じ）
+    server.process.send_signal(signal.SIGTERM)
+    exit_code = server.wait_exit()
+    # 検証
+    assert exit_code == 0
+    with pytest.raises(OSError, match=r"."):
+        http_request(url)
+    assert read_settled_hook_lines(record) == [f"{port} 家計簿"]
+    assert read_hook_lines(record) == [f"{port} 家計簿"]
 
 
 def test_normal_when_two_processes_write(

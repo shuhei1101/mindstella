@@ -45,6 +45,7 @@ SERVER_TOOL_NAMES = [
     "init",
     "add",
     "update",
+    "remove",
     "update_settings",
     "adopt",
     "edit_option",
@@ -65,6 +66,7 @@ SERVER_TOOL_NAMES = [
     "clear_release",
     "export",
     "preview_url",
+    "readme",
     "submissions",
     "take_submission",
 ]

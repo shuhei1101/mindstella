@@ -10,8 +10,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -20,6 +22,13 @@ PLUGIN_ID = "mindstella@mindstella"
 
 # プラグインのフォルダからの MCP サーバーの入口の相対パス
 SERVER_SCRIPT = "skills/mindmap/scripts/server.py"
+
+# MCP の設定の `env` に書く環境変数の名前（`serve.py` の同じ名前の定数と合わせる）
+EXTERNAL_ENV_KEYS = (
+    "MINDSTELLA_ALLOWED_HOSTS",
+    "MINDSTELLA_PREVIEW_START_HOOK",
+    "MINDSTELLA_PREVIEW_STOP_HOOK",
+)
 
 # tmux のセッションの名前の頭
 SESSION_PREFIX = "mindstella-"
@@ -59,23 +68,38 @@ def session_name(folder: Path) -> str:
     return f"{SESSION_PREFIX}{name}-{digest}"
 
 
-def write_mcp_config(python_path: Path, plugin_dir: Path, *, temp_root: Path | None = None) -> Path:
-    """この起動だけの MCP の設定を一時フォルダに書き、そのパスを返す。"""
+def external_env(environ: Mapping[str, str]) -> dict[str, str]:
+    """`EXTERNAL_ENV_KEYS` のうち、空でない値が設定されているものだけを返す。"""
+    return {key: environ[key] for key in EXTERNAL_ENV_KEYS if environ.get(key)}
+
+
+def write_mcp_config(
+    python_path: Path,
+    plugin_dir: Path,
+    *,
+    temp_root: Path | None = None,
+    env: Mapping[str, str] | None = None,
+) -> Path:
+    """この起動だけの MCP の設定を一時フォルダに書き、そのパスを返す。env が空でなければ MCP サーバーへ渡す環境変数にする。"""
     config_dir = Path(tempfile.mkdtemp(prefix=SESSION_PREFIX, dir=temp_root))
-    config = {
-        "mcpServers": {
-            "mindstella": {
-                "command": str(python_path),
-                "args": [str(plugin_dir / SERVER_SCRIPT)],
-            }
-        }
+    server_config: dict[str, Any] = {
+        "command": str(python_path),
+        "args": [str(plugin_dir / SERVER_SCRIPT)],
     }
+    if env:
+        server_config["env"] = dict(env)
+    config = {"mcpServers": {"mindstella": server_config}}
     path = config_dir / "mcp.json"
     path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
 
 
-def run_launch(argv: list[str] | None = None, *, stdin: TextIO | None = None) -> int:
+def run_launch(
+    argv: list[str] | None = None,
+    *,
+    stdin: TextIO | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> int:
     """標準入力のプラグインの一覧から、3 つの値を作って標準出力に 1 行ずつ出す。"""
     parser = argparse.ArgumentParser(description="起動スクリプトの手助け")
     parser.add_argument("--python", type=Path, required=True, help="MCP サーバーを動かす Python")
@@ -102,7 +126,9 @@ def run_launch(argv: list[str] | None = None, *, stdin: TextIO | None = None) ->
         return 1
 
     name = session_name(args.folder)
-    config = write_mcp_config(args.python, plugin_dir)
+    config = write_mcp_config(
+        args.python, plugin_dir, env=external_env(os.environ if environ is None else environ)
+    )
     # 起動スクリプトが `read` で 1 行ずつ受ける
     print(plugin_dir)
     print(name)

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from workspace_fixtures import RECORD_DIR, write_yaml
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, write_yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace
 from .history_helpers import DECISION_ITEM, add_item, commit, read_items, update_item
@@ -98,7 +98,7 @@ def test_normal_when_no_goal(
         "phases": ["目的", "要件"],
     }
     root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み"),
+        make_item("D-1", phase="目的", status="決定済み", options=ADOPTED_OPTIONS),
         make_item("D-2", phase="要件", status="未決定"),
         settings=settings,
     )
@@ -136,6 +136,7 @@ def test_normal_when_rewritten(
         "category": "データ構造",
         "phase": "要件",
         "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
     }
     # 実行
     added = call_tool("add", workspace=str(root), kind="decision", item=new_decision)

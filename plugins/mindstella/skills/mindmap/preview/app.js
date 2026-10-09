@@ -34,9 +34,9 @@ var MindmapPreview;
     function tabLabel(key) {
         return key === "overview" ? "概要" : MindmapPreview.KIND_LABEL[key];
     }
-    /** 画面の名前（つながりは種類のタブに無いので、ここで持つ） */
+    /** 画面の名前（ネットワークは種類のタブに無いので、ここで持つ） */
     function screenName(tab) {
-        return tab === "graph" ? "つながり" : tabLabel(tab);
+        return tab === "graph" ? "ネットワーク" : tabLabel(tab);
     }
     /** `mindmap-data` の要素の中身を `JSON.parse` して返す。中身が空なら（サーバーの配信）null */
     function readEmbeddedData(doc) {
@@ -97,7 +97,7 @@ var MindmapPreview;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
         // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列の順に並べる
         const overrides = [
-            ...(prefs.look === null ? [] : ["つながりの見た目"]),
+            ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
             ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
@@ -199,6 +199,22 @@ var MindmapPreview;
             ...[...point.changed].map((id) => [id, "changed"]),
         ]);
     }
+    /** レビュー中のコメントを `target` ごとに数え、項目の ID → 件数を返す（箇所を指すコメントもその項目に数え、項目を指さないコメントと件数 0 の項目は含めない） */
+    function commentCounts(items) {
+        const counts = {};
+        for (const item of items) {
+            if (item.target === null)
+                continue;
+            counts[item.target] = (counts[item.target] ?? 0) + 1;
+        }
+        return counts;
+    }
+    MindmapPreview.commentCounts = commentCounts;
+    /** 2 つの件数の対応が同じか */
+    function sameCounts(a, b) {
+        const keys = Object.keys(a);
+        return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+    }
     /** 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
     function start() {
         let embedded;
@@ -293,7 +309,10 @@ var MindmapPreview;
         document.body.prepend(top, main);
         let route = visibleRoute(MindmapPreview.parseHash({ hash: location.hash, index }));
         let fullViewer = null;
+        /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
+        let shownHeading = null;
         const filterState = { byTab: {}, drawerOpen: false };
+        const lockState = { graph: null, map: null };
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
         const isNarrow = () => matchMedia(NARROW_QUERY).matches;
@@ -308,7 +327,7 @@ var MindmapPreview;
         /** 項目を開く。パネル・全画面の中の移動は履歴に積み、見てきた項目を行き来できるようにする */
         const openItem = (id, inPanel) => {
             flushDrafts();
-            const next = { ...route, id, filters: {} };
+            const next = { ...route, id, filters: {}, heading: null };
             const trail = history.state;
             if (inPanel && route.id !== null) {
                 // 今いる履歴にも先の項目を持たせ、戻った後に「→」で進めるようにする
@@ -331,7 +350,7 @@ var MindmapPreview;
                 history.back();
                 return;
             }
-            route = { ...route, id: null, full: false, filters: {} };
+            route = { ...route, id: null, full: false, filters: {}, heading: null };
             MindmapPreview.navigate({ route, push: false });
             render({ screen: route.tab === "decisions" && route.view === "map" });
         };
@@ -342,7 +361,43 @@ var MindmapPreview;
                 return;
             // 表示しない種類の項目は、概要の上の詳細パネルで開く
             const tab = resolved.kinds.has(kind) ? kind : "overview";
-            go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {} }, tab !== route.tab);
+            go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {}, heading: null }, tab !== route.tab);
+        };
+        // ===== ロック =====
+        /** 効いているロック。画面ごとの `LockState` の項目が、その画面の絞り込みの条件を通る（描いている）ときだけその ID、通らないときは null（`LockState` は残し、条件を戻して描かれたらまたロック中に戻る） */
+        const effectiveLock = (key) => {
+            const id = lockState[key];
+            if (id === null)
+                return null;
+            const shown = key === "graph"
+                ? MindmapPreview.shownGraphIds({ index, filters: filterState.byTab["graph"] ?? {} })
+                : MindmapPreview.shownDecisionIds({ index, filters: filterState.byTab["decisions"] ?? {} });
+            return shown.has(id) ? id : null;
+        };
+        /** 玉か節（余白なら null）を押した、または `L` キーを押した。`lockTap` で判定し、`lock`・`unlock` のときだけ `LockState` を変えて画面に反映する。`open` は詳細を切り替え、`blank` は詳細を閉じて全体の表示へ戻し、`shake` は何も変えない（画面が鍵を震わせる） */
+        const lockPress = ({ key, pressed }) => {
+            const result = MindmapPreview.lockTap({ locked: effectiveLock(key), pressed, open: route.id });
+            if (result.action === "lock" || result.action === "unlock") {
+                lockState[key] = result.locked;
+                // ネットワークは視点を保ったまま中心と強調を寄せ、マップは詳細パネルをそのままに描き直す
+                if (key === "graph")
+                    MindmapPreview.setGraphLock(effectiveLock("graph"));
+                else
+                    redrawKeepingState();
+            }
+            else if (result.action === "open" && pressed !== null) {
+                openItem(pressed, false);
+            }
+            else if (result.action === "blank" && route.id !== null) {
+                closeDetail();
+            }
+            return result.action;
+        };
+        /** ネットワークの見た目のドロップダウンで選んだ値を個人の上書きに残す（ネットワークは作り直さず、次のコマから当てる） */
+        const changeLook = (value) => {
+            prefs.look = value;
+            changePrefs({ redrawMain: false });
+            MindmapPreview.setGraphLook(resolved.look);
         };
         // ===== 描く =====
         /** トップバーとタブの帯 */
@@ -395,6 +450,8 @@ var MindmapPreview;
                 closeDrawer,
             };
             const marks = marksOf(point);
+            // サーバーにつながって開いたときだけ、項目ごとのコメントの件数を渡す（配る書き出しは印を出さない）
+            const comments = serverMode ? commentsNow : undefined;
             const filters = filterState.byTab[route.tab] ?? {};
             const { drawerOpen } = filterState;
             switch (route.tab) {
@@ -406,19 +463,37 @@ var MindmapPreview;
                         visibleKinds: resolved.kinds,
                     });
                 case "decisions":
-                    return MindmapPreview.decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, filters, drawerOpen, marks });
+                    return MindmapPreview.decisionsScreen({
+                        index,
+                        route,
+                        on: { ...on, clear: closeDetail, lock: (id) => lockPress({ key: "map", pressed: id }) },
+                        lockedId: effectiveLock("map"),
+                        filters,
+                        drawerOpen,
+                        marks,
+                        comments,
+                    });
                 case "tasks":
-                    return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks });
+                    return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks, comments });
                 case "docs":
-                    return MindmapPreview.docsScreen({ index, route, on, filters, drawerOpen, marks });
+                    return MindmapPreview.docsScreen({ index, route, on, filters, drawerOpen, marks, comments });
                 case "graph":
                     return MindmapPreview.graphScreen({
                         index,
-                        on: { open: on.open, filter: changeFilters, closeDrawer },
+                        on: {
+                            open: on.open,
+                            filter: changeFilters,
+                            closeDrawer,
+                            lock: (id) => lockPress({ key: "graph", pressed: id }),
+                            look: changeLook,
+                        },
                         filters,
                         drawerOpen,
-                        selected: route.id,
+                        selectedId: route.id,
+                        lockedId: effectiveLock("graph"),
                         look: resolved.look,
+                        defaultLook: resolved.defaultLook,
+                        comments,
                     });
                 default:
                     return MindmapPreview.recordsScreen({
@@ -428,6 +503,7 @@ var MindmapPreview;
                         filters,
                         drawerOpen,
                         marks,
+                        comments,
                     });
             }
         };
@@ -483,13 +559,22 @@ var MindmapPreview;
                     back: () => history.back(),
                     forward: () => history.forward(),
                     diagram: showDiagram,
+                    // 本文の見出しへ移った: ハッシュの `h` を、履歴に積まずに置き換える
+                    heading: (heading) => {
+                        route = { ...route, heading };
+                        shownHeading = heading === null || route.id === null ? null : { id: route.id, heading };
+                        MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
+                    },
                 },
                 comment: serverMode
                     ? { form: formProps(route.id), reviews: comment.review.items.filter((item) => item.target === route.id) }
                     : null,
                 highlight: openedLocation(),
                 diff: point,
+                // 開いたときにだけ見出しを画面に入れる
+                heading: shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading,
             });
+            shownHeading = route.heading === null ? null : { id: route.id, heading: route.heading };
             if (route.full) {
                 existing?.classList.remove("open");
                 fullDialog?.remove();
@@ -652,6 +737,19 @@ var MindmapPreview;
         let formRedrawing = false;
         /** チェックした状態で入れるのは、初めて読んだコメントだけ */
         const knownIds = new Set();
+        /** 各画面へ渡す項目の ID → コメントの件数。画面は描き直すたびにこれを読むので、件数が変わったときは同じ物の中身を入れ替える */
+        const commentsNow = {};
+        /** レビュー中のコメントの件数が変わっていれば、画面を描き直さずに印だけを差し替える（つながりは次のコマから） */
+        const syncCommentMarks = () => {
+            const next = commentCounts(comment.review.items);
+            if (sameCounts(commentsNow, next))
+                return;
+            for (const key of Object.keys(commentsNow))
+                delete commentsNow[key];
+            Object.assign(commentsNow, next);
+            MindmapPreview.refreshCommentMarks({ root: main, counts: commentsNow });
+            MindmapPreview.setGraphComments(commentsNow);
+        };
         /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
         const draftTimers = new Map();
         /** 幅 720px 以下か（項目を指さない入力を畳む幅） */
@@ -659,6 +757,7 @@ var MindmapPreview;
         /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ書きかけの箇所を入力に添える */
         const applyReview = (review, first) => {
             comment.review = review;
+            syncCommentMarks();
             for (const item of review.items) {
                 if (knownIds.has(item.id))
                     continue;
@@ -1164,10 +1263,6 @@ var MindmapPreview;
             message: display.message,
             storageOk: display.storageOk,
             on: {
-                look: (value) => {
-                    prefs.look = value;
-                    changePrefs({ redrawMain: true });
-                },
                 kinds: (kinds) => {
                     prefs.kinds = kinds;
                     changePrefs({ redrawMain: true });
@@ -1333,6 +1428,11 @@ var MindmapPreview;
             const previousDisplay = data.settings.display;
             data = result.data;
             index = MindmapPreview.buildIndex(data);
+            // ロックした項目が無くなっていれば、ロックを外す
+            if (lockState.graph !== null && !index.byId.has(lockState.graph))
+                lockState.graph = null;
+            if (lockState.map !== null && index.byId.get(lockState.map)?.kind !== "decisions")
+                lockState.map = null;
             // 表示の既定が変わった: 上書きを持たない項目に新しい既定を当て、知らせる（自分が既定にした直後の知らせは出さない）
             if (display.savedDisplay !== null && sameDisplay(display.savedDisplay, data.settings.display)) {
                 display.savedDisplay = null;
@@ -1354,7 +1454,7 @@ var MindmapPreview;
             document.title = `${data.settings.summary} | mindstella`;
             // 開いていた項目が消えた: 詳細パネルを閉じる
             if (route.id !== null && !index.byId.has(route.id)) {
-                route = { ...route, id: null, full: false, filters: {} };
+                route = { ...route, id: null, full: false, filters: {}, heading: null };
                 MindmapPreview.navigate({ route, push: false });
             }
             redrawKeepingState();
@@ -1363,10 +1463,29 @@ var MindmapPreview;
         };
         // ===== 操作と履歴 =====
         document.addEventListener("keydown", (event) => {
-            const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName ?? "");
-            if (event.key === "/" && !typing && document.querySelector("dialog[open]:not(.drawer)") === null) {
+            // L: ネットワークで、詳細を開いている項目をもう一度押したのと同じ規則でロックを付け外しする。修飾キーがあるとき・変換中・入力欄にフォーカスがあるとき・重ねる面を開いているときは受けない
+            if (event.key.toLowerCase() === "l" &&
+                !event.ctrlKey &&
+                !event.altKey &&
+                !event.metaKey &&
+                !event.isComposing &&
+                !MindmapPreview.isTyping(document.activeElement) &&
+                document.querySelector("dialog[open]") === null &&
+                document.querySelector(":popover-open") === null &&
+                matchMedia(MindmapPreview.LOCK_QUERY).matches &&
+                route.tab === "graph" &&
+                route.id !== null) {
+                if (lockPress({ key: "graph", pressed: route.id }) === "shake")
+                    MindmapPreview.shakeGraphKey();
+            }
+            // Ctrl+K（macOS は Cmd+K）で全体の検索を開く。入力欄に入力中でも開き、開いているときは検索の言葉を選び直す
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
                 event.preventDefault();
-                openSearch();
+                const opened = document.querySelector("dialog.search input");
+                if (opened !== null)
+                    opened.select();
+                else
+                    openSearch();
             }
             // Esc: 重ねる面が無いときは、詳細パネルを閉じる
             if (event.key === "Escape" &&

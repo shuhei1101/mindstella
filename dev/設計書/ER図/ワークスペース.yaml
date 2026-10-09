@@ -1,5 +1,5 @@
 title: "ER 図: ワークスペース"
-lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。
+lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いた印を確かめるほかにどのツールも読まない）。
 er:
   entities:
     - name: 設定
@@ -79,7 +79,7 @@ tables:
   - name: config.yaml
     title: 設定
     datastore: YAML
-    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定
+    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポート
     scale: 1 件
     access: 全件
     columns:
@@ -142,8 +142,13 @@ tables:
       - name: display
         title: 表示の既定
         type: object
-        description: 任意。プレビューのワークスペースの既定。`network_look`（つながりの見た目。`glow`・`starlight`・`constellation`・`deep`・`dust` のどれか。無ければ `deep`）と `visible_kinds`（表示する種類。`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の重複しない配列。無ければ全ての種類）を持つ。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と画面の『設定の既定の書き換え』が書く
+        description: 任意。プレビューのワークスペースの既定。`network_look`（ネットワークの見た目。`glow`・`starlight`・`constellation`・`deep`・`dust` のどれか。無ければ `deep`）と `visible_kinds`（表示する種類。`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の重複しない配列。無ければ全ての種類）を持つ。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と画面の『設定の既定の書き換え』が書く
         example: '{network_look: deep, visible_kinds: [decisions, tasks, research, docs, terms, notes, logs]}'
+      - name: preview
+        title: プレビューの配信
+        type: object
+        description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を開き直して立て直すと効く）
+        example: '{port: 47800}'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
@@ -257,7 +262,7 @@ tables:
       - name: options
         title: 案
         type: array
-        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`reason`。`adopted` が真の案は 0 か 1 つ
+        description: 要素は `key`（記号）・`content`・`pros`・`cons`・`note`・`adopted`（真偽値）・`recommended`（真偽値。AI が推す案の印）・`reason`。`adopted` が真の案と `recommended` が真の案は、それぞれ 0 か 1 つ。状態との決まりはこの表の説明
       - name: weight
         title: 影響度
         type: string
@@ -284,6 +289,16 @@ tables:
         title: 経緯
         type: array
         description: 決めた会話ログの ID（`L-`）
+    description: |-
+      案と状態の決まり（書き込むツールと読み込みの検証、点検が見る）:
+
+      | 決まり | 合わないときの理由の行 |
+      | --- | --- |
+      | `未整理`・`対象外`・`取り下げ` を除く状態は、`options` を 1 つ以上持つ | `{ID} は状態 {状態} のため案を 1 つ以上持つ（options に案を書く）` |
+      | `決定済み` は、`adopted` が真の案を 1 つ持つ | `{ID} は決定済みなのに採用した案を持たない（adopt で案を採用する）` |
+      | `adopted` が真の案を持つ検討事項は `未決定` にしない（方針転換で `要見直し` にした検討事項は、前に採用した案を持ったままでよい） | `{ID} は採用した案 {記号} を持つのに未決定（adopt で決定済みにするか、採用を外す）` |
+
+      理由の行は、スキーマに合わない箇所と同じ `decisions.yaml: items[{番号}].{options か status}: {理由}` の形で返す。
   - name: tasks.yaml
     title: タスク
     datastore: YAML
@@ -356,6 +371,14 @@ tables:
         title: 本文
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）'
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: docs.yaml
     title: 資料
     datastore: YAML
@@ -387,6 +410,14 @@ tables:
         type: string
         not_null: true
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）'
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: terms.yaml
     title: 用語集
     datastore: YAML
@@ -413,6 +444,14 @@ tables:
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
         example: G-2.md
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: notes.yaml
     title: メモ
     datastore: YAML
@@ -431,6 +470,14 @@ tables:
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
         example: N-4.md
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: logs.yaml
     title: 会話ログ
     datastore: YAML
@@ -450,6 +497,14 @@ tables:
         title: 本文
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。`related` はこの会話で更新した項目'
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: docs/{ID}.md
     title: 本文
     datastore: Markdown
@@ -549,23 +604,23 @@ tables:
     growth: ステップごとに `commit` で 1 件足す
     deletion: 消さない
     access: 全件
-    description: '`add`・`update`・`adopt` が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`add`・`update` の対象にしない'
+    description: '`add`・`update`・`adopt`・`remove` が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`sets[].removed`・`pending.removed` は消した項目のただ 1 つの記録で、新しい ID を振るときに消した ID を避けるのにも使う。`add`・`update` の対象にしない'
     columns:
       - name: last_seq
         title: 最後の通し番号
         type: number
         not_null: true
-        description: 最後に振った通し番号。変更履歴を積むとき・項目を足すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す
+        description: 最後に振った通し番号。変更履歴を積むとき・項目を足すとき・項目を消すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す
       - name: sets
         title: まとまり
         type: array
         not_null: true
-        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）
+        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）・`removed`（消した項目。要素は `pending.removed` と同じ形。消した項目が無いまとまりはキーを持たない）
       - name: pending
         title: まだまとめていない変更
         type: object
         not_null: true
-        description: '`added`・`changed`（書き換えた順の ID）。保持する回数が 0 の書き換えは `changed` に入れない'
+        description: '`added`・`changed`（書き換えた順の ID）と `removed`（消した順。要素は `id`・`kind`（種類）・`title`（消したときのタイトル）・`seq`（消したときに振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0））。`removed` は任意で、無ければ消した項目なしとして扱う。保持する回数が 0 の書き換えは `changed` に入れない。最後のまとまりより後に足して消した項目は `added` から除き、`removed` に記録する'
       - name: read_seq
         title: AI が最後に読んだ時点
         type: number

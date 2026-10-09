@@ -6,9 +6,11 @@ from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
     LONG_BODY,
+    LONG_LINES_BODY,
     NEW_DECISION,
     SCROLLABLE_REGION_RULE,
     SETTLED_SCROLL_TOP_JS,
+    overflows_horizontally,
 )
 from preview_comment_helpers import PILL, THREE_LINE_BODY, UPDATE_TIMEOUT_MS, select_text_for_pill
 from preview_fixture_types import (
@@ -19,7 +21,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
-from workspace_fixtures import CallTool, MakeComment, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -51,14 +53,14 @@ def test_open_and_restore(
     history_length = page.evaluate("history.length")
     panel_button = 'aside.panel button[data-act="full"]'
     assert page.get_attribute(panel_button, "aria-label") == "全画面表示"
-    assert page.get_attribute(panel_button, "aria-pressed") == "false"
+    assert page.get_attribute(panel_button, "aria-pressed") is None
     # 実行
     _open_full(page)
     # 検証
-    # ラベルは変えず、押された状態で全画面を示す
+    # 全画面の間は読み上げ名を「元の大きさに戻す」にし、押された状態は持たない
     full_button = 'dialog.full button[data-act="full"]'
-    assert page.get_attribute(full_button, "aria-label") == "全画面表示"
-    assert page.get_attribute(full_button, "aria-pressed") == "true"
+    assert page.get_attribute(full_button, "aria-label") == "元の大きさに戻す"
+    assert page.get_attribute(full_button, "aria-pressed") is None
     assert "full=1" in page.evaluate("location.hash")
     assert page.evaluate("history.length") == history_length
     assert page.inner_text("dialog.full .d-title") == "D-2の題"
@@ -68,6 +70,46 @@ def test_open_and_restore(
     page.wait_for_selector("aside.panel.open")
     assert page.locator("dialog.full").count() == 0
     assert "full=" not in page.evaluate("location.hash")
+
+
+def test_content(write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """全画面にも、背景・推奨の印・採用した案と理由・文字列の値の描画をパネルと同じに出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "D-1",
+            status="未決定",
+            lead="**背景**の説明",
+            options=[
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+        ),
+        make_item(
+            "D-2",
+            status="決定済み",
+            answer="**決めた**",
+            reason="探しやすい",
+            options=ADOPTED_OPTIONS,
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    # 実行（推奨の印と背景）
+    _open_full(page)
+    # 検証
+    assert page.inner_text("dialog.full .d-lead") == "背景の説明"
+    assert page.locator("dialog.full .d-lead strong").count() == 1
+    assert page.locator("dialog.full .opt .rec-badge").inner_text() == "推奨"
+    # 実行（採用した案と理由）
+    page.click('dialog.full button[data-act="full"]')
+    page.wait_for_selector("aside.panel.open")
+    open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
+    page.wait_for_selector("dialog.full[open] .d-sec")
+    # 検証
+    titles = page.eval_on_selector_all("dialog.full .d-sec h3", "hs => hs.map(h => h.textContent)")
+    assert titles[:2] == ["案", "採用した案と理由"]
+    assert page.locator("dialog.full .d-answer strong").count() == 1
+    assert page.locator("dialog.full .rec-badge").count() == 0
 
 
 def test_restore_by_escape(
@@ -189,8 +231,8 @@ def test_comment_input_keeps_location(
     # 準備
     url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.click(PILL)
     # 実行
     _open_full(page)
@@ -228,7 +270,7 @@ def test_selection_entry(
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
     page.wait_for_selector("dialog.full[open] .md")
     # 実行
-    select_text_for_pill(page, "dialog.full .md", "言い換えたい文")
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "言い換えたい文")
     # 検証
     assert page.locator(f"dialog.full {PILL}").count() == 1
     page.click(PILL)
@@ -370,3 +412,123 @@ def test_body_escape_returns_to_panel(
     page.wait_for_selector("aside.panel.open")
     assert page.locator("dialog.full").count() == 0
     assert "id=A-1" in page.evaluate("location.hash")
+
+
+def test_size(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """モーダルは窓から 32px 内側で、幅の上限は 1600px。幅 720px 以下は 8px 内側にする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    box_js = """() => {
+        const box = document.querySelector('dialog.full').getBoundingClientRect();
+        return {left: box.left, top: box.top, width: box.width, height: box.height, innerWidth, innerHeight};
+    }"""
+    results = {}
+    # 実行
+    for name, size in {
+        "normal": {"width": 1280, "height": 800},
+        "wide": {"width": 2000, "height": 900},
+        "narrow": {"width": 600, "height": 800},
+    }.items():
+        page.set_viewport_size(size)
+        _open_full(page)
+        results[name] = page.evaluate(box_js)
+        page.click('dialog.full button[data-act="full"]')
+        page.wait_for_selector("aside.panel.open")
+    # 検証
+    normal, wide, narrow = results["normal"], results["wide"], results["narrow"]
+    assert (normal["left"], normal["top"]) == (32, 32)
+    assert normal["width"] == normal["innerWidth"] - 64
+    assert normal["height"] == normal["innerHeight"] - 64
+    assert wide["width"] == 1600
+    assert (narrow["left"], narrow["top"]) == (8, 8)
+    assert narrow["width"] == narrow["innerWidth"] - 16
+    assert narrow["height"] == narrow["innerHeight"] - 16
+
+
+def test_body_fills_width(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """本文の領域と下端の入力は、幅の上限を外してモーダルの幅いっぱいに広げ、モーダルの中のスクロールを後ろへ伝えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.set_viewport_size({"width": 1600, "height": 800})
+    # 実行
+    _open_full(page)
+    sizes = page.evaluate(
+        """() => ({
+            dialog: document.querySelector('dialog.full').getBoundingClientRect().width,
+            body: document.querySelector('dialog.full .panel-body').getBoundingClientRect().width,
+            footer: document.querySelector('dialog.full .send-footer').getBoundingClientRect().width,
+            overscroll: getComputedStyle(document.querySelector('dialog.full .panel-body')).overscrollBehaviorY,
+            behindOverflow: getComputedStyle(document.querySelector('.content')).overflowY,
+        })"""
+    )
+    # 検証
+    assert sizes["body"] >= sizes["dialog"] - 2
+    assert sizes["footer"] >= sizes["dialog"] - 2
+    assert sizes["overscroll"] == "contain"
+    # 開いている間、後ろの領域のスクロールを止める
+    assert sizes["behindOverflow"] == "hidden"
+
+
+def test_restore_button_icon(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """全画面の間のボタンは縮小のアイコンに替わり、ボタンの色は詳細パネルのときと同じで変えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    read_js = """(selector) => {
+        const button = document.querySelector(selector);
+        return {path: button.querySelector('svg path').getAttribute('d'), color: getComputedStyle(button).color, background: getComputedStyle(button).backgroundColor};
+    }"""
+    panel = page.evaluate(read_js, 'aside.panel button[data-act="full"]')
+    # 実行
+    _open_full(page)
+    full = page.evaluate(read_js, 'dialog.full button[data-act="full"]')
+    # 検証
+    assert full["path"] != panel["path"]
+    assert (full["color"], full["background"]) == (panel["color"], panel["background"])
+
+
+def test_body_heading_link(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面の本文でも、見出しの # を押すと本文の領域の中でその見出しまで送り、ハッシュの h を置き換える。用語の印と ID のリンクも出す（正常系）。"""
+    # 準備
+    body = "## 保存先\n\n" + "\n\n".join(f"段落 {n}" for n in range(1, 40)) + "\n\n## 決め方\n\n用語の保存先と D-3\n"
+    url = write_preview(
+        make_item("A-1"),
+        make_item("D-3"),
+        make_item("G-1", title="保存先"),
+        bodies={"A-1.md": body},
+    )
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&full=1")
+    page.wait_for_selector("dialog.full [data-heading]")
+    # 実行
+    page.click('dialog.full [data-heading="決め方"] .h-link')
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 検証
+    assert page.evaluate("document.querySelector('dialog.full .panel-body').scrollTop") > 0
+    assert "full=1" in page.evaluate("location.hash")
+    assert page.locator("dialog.full .md:not(.md-value) a.term").count() == 1
+    assert page.locator('dialog.full .md:not(.md-value) a.idref[data-id="D-3"]').count() == 1
+
+
+def test_code_block_and_diagram_raw_when_long_line(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、本文のコードブロックと図の Raw は、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 実行
+    page.click('dialog.full button[data-act="diagram-raw"]')
+    # 検証
+    for selector in ("dialog.full .md:not(.md-value) pre:not(.dg-raw)", "dialog.full pre.dg-raw"):
+        assert page.is_visible(selector)
+        assert not overflows_horizontally(page, selector)
+        assert axe_rule_results(page, selector, SCROLLABLE_REGION_RULE)["violations"] == []

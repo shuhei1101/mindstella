@@ -52,7 +52,7 @@
   /* 検索で当たった語の地 */
   --yellow-200: #fde68a;
   --yellow-900: #5c4a12;
-  /* つながりの種類の色（ライト / ダーク） */
+  /* ネットワークの種類の色（ライト / ダーク） */
   --kind-dec-light: #3f8f7c;
   --kind-dec-dark: #7ee0c3;
   --kind-task-light: #5b7fc9;
@@ -135,7 +135,7 @@
   --k-term: var(--kind-term-light);
   --k-note: var(--kind-note-light);
   --k-log: var(--kind-log-light);
-  /* つながりの地: 紙のような明るい地にざらつき */
+  /* ネットワークの地: 紙のような明るい地にざらつき */
   --g-label: #2a2f36;
   --g-line: rgba(30, 60, 55, .3);
   --g-dot: #2f8a74;
@@ -190,7 +190,7 @@
     --k-term: var(--kind-term-dark);
     --k-note: var(--kind-note-dark);
     --k-log: var(--kind-log-dark);
-    /* つながりの地: 墨色に淡い光のにじみ */
+    /* ネットワークの地: 墨色に淡い光のにじみ */
     --g-label: #e3e6ea;
     --g-line: rgba(190, 230, 220, .3);
     --g-dot: #a0f0d7;

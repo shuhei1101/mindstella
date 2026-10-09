@@ -1,0 +1,32 @@
+title: "コメントの印"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts#MindmapPreview.commentMark"
+story: "Preview/CommentMark"
+states:
+  - name: One
+    description: 1 件。吹き出しの線と「1」
+    args:
+      - name: count
+        value: '1'
+  - name: TwoDigits
+    description: 2 桁。吹き出しの線と「12」
+    args:
+      - name: count
+        value: '12'
+  - name: Overflow
+    description: 100 件以上。画面には「99+」、読み上げは「コメント 128 件」
+    args:
+      - name: count
+        value: '128'
+lead: レビュー中のコメントを書いた項目に、吹き出しの線のアイコンと件数の小さなピルを出す。ボード・カード・マップの節点・字下げの一覧・表・ネットワークの名前の横が同じ形を使う。
+args:
+  - name: count
+    type: 整数
+    required: true
+    choices: 1 以上
+    description: その項目へのレビュー中のコメントの件数。99 を超えると画面には「99+」と出し、読み上げは実数で読む。件数 0 の項目には使う側が部品を置かない
+    status: planned
+accessibility:
+  - 吹き出しと数字は `aria-hidden` にし、「コメント {件数} 件」を読み上げにだけ残す文字と `title` を持つ（件数は 99 を超えても実数）
+  - 押す操作を持たず、フォーカスも受けない。置いたカード・行・節点を押すと詳細パネルが開く
+  - 置いたカード・行・節点がホバー・フォーカス・選んでいる状態になっても、印の色は変えない
+test_file: tests/integration/storybook/test_comment_mark_stories.py

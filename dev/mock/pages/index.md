@@ -9,7 +9,7 @@
 | [tasks](./tasks/index.md) | タスク | [21 / standard](./tasks/21/standard/index.html) |
 | [docs](./docs/index.md) | 資料 | [21 / standard](./docs/21/standard/index.html) |
 | [records](./records/index.md) | 調査・用語集・メモ・会話ログ | [21 / standard](./records/21/standard/index.html) |
-| [graph](./graph/index.md) | つながり | [21 / standard](./graph/21/standard/index.html) |
+| [graph](./graph/index.md) | ネットワーク | [21 / standard](./graph/21/standard/index.html) |
 | [detail-panel](./detail-panel/index.md) | 詳細パネル | [21 / standard](./detail-panel/21/standard/index.html) |
 | [detail-full](./detail-full/index.md) | 詳細の全画面 | [21 / standard](./detail-full/21/standard/index.html) |
 | [comments](./comments/index.md) | コメントの一覧 | - |

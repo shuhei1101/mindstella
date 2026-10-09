@@ -41,6 +41,10 @@ flows:
       - 本文が準備で `changes_since_read` を `submissions` より前に呼ぶ
       - '`steps/取り込み.md` が `batch` を呼ぶ'
       - '`steps/取り込み.md` が `tags` を呼ぶ'
+      - '`steps/取り込み.md` と `references/質問の書式.md` が `recommended` を指す'
+      - '`steps/ヒアリング.md` が `edit_option` と `adopt` を呼ぶ'
+      - 本文が準備で `readme` を `changes_since_read` より前に呼ぶ
+      - 本文に、`readme` がエラーを返しても準備を続けて `changes_since_read` を呼ぶ分岐がある
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
@@ -67,7 +71,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で、`config.yaml` は `update_settings` で書く。`release/` の Markdown の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -106,7 +110,7 @@ constraints:
     constraint: SKILL.md の `## 記録の書き方` に、記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は状況が変わるたびに利用者に確かめずに足し、書き換えることと、確かめるのはワークスペースの外へ書き込むときだけであることを書く。設定（`config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す
     notes: 全てのステップに効くため、準備で必ず読まれる SKILL.md に置く
   - item: 検討事項の案
-    constraint: '取り込みで検討事項を足すときに、案（`options` の `key`・`content`・`pros`・`cons`）を書いて足す。決まったこととして足すときは、選ばれた案を `adopted: true` にする。既にある検討事項の案を足す・直す・消すときは `edit_option` を使い、`update` で案の配列を丸ごと渡さない。採用している案を消すときは、先に `adopt` で採用を移す。ヒアリングは検討事項が持つ案を案の表に出し、案の無い検討事項は案を書き足してから聞く'
+    constraint: '検討事項は ER 図『ワークスペース』の案と状態の決まりに合わせて書く。取り込みでは、`未整理` を除く状態の検討事項を必ず案（`options` の `key`・`content`・`pros`・`cons`）を書いて足し、未決定なら AI が推す案に `recommended: true` を付ける。決まったこととして足すときは、選ばれた案を `adopted: true` にして状態を `決定済み` にする。問いの形にならない未整理は案を持たずに足し、未決定へ変えるときに案を書く。既にある検討事項の案と推奨の印を足す・直す・消すときは `edit_option` を使い、`update` で案の配列を丸ごと渡さない。採用している案を消すときは、先に `adopt` で採用を移す。ヒアリングは、聞く前に `edit_option` で推奨の印を案の表の `推奨:` と揃え、答えを受けたら `adopt` で採用して `update` で `answer`・`reason` を書く。方針転換では `adopt` が状態を `決定済み` にすることを前提にし、`answer` だけを `update` で直す'
     notes: 単一ユースケース『発言の取り込み』『ヒアリング』
   - item: 納品物の資料
     constraint: 'ゴールの納品物のうち `doc` を持たないものがあれば、取り込み（範囲の見直しで納品物を足したときはその後）で、概要・背景・最終的な構成を先に置いた本文の資料（`deliverable: true`・`status: 下書き`）を `add` で足し、`update_settings` で納品物の `doc` から指す。以降は決まったことに合わせて本文を `update` で書き足す'
@@ -130,6 +134,12 @@ constraints:
     constraint: 手順が Read で読む設定と YAML、リリースの資料を書き出す先は、全て `{ワークスペースのフォルダ}/.mindstella/` の下を指す（`.mindstella/config.yaml`・`.mindstella/decisions.yaml`・`.mindstella/release/`）。進め方ガイドの「リリースの形」も `.mindstella/release/` を指す
   - item: 全ての種類の本文
     constraint: 取り込みのステップは、タスク・用語集・メモにも経緯や補足があれば `body_markdown` で本文を書く（脱線で調べたことはメモの本文に残す）。どの種類に何を本文に書くかは取り込みの手順の表が決める
+  - item: README の書き直し
+    constraint: 準備のステップで版の比較が `same` のとき、`changes_since_read` より前に `readme` を呼ぶ。`written` が偽（利用者が書いた README）でも利用者には示さずに続ける。`readme` がツールのエラーを返しても、エラーの本文を利用者に短く示して準備を続ける（`changes_since_read` へ進む）
+    notes: 単一ユースケース『README の書き直し』、インターフェース定義『README の書き出し』（サーバー）
+  - item: やめる・消す
+    constraint: '利用者がやめると言った項目は消さずに取り下げる。検討事項は `update` で状態を `対象外` か `取り下げ`、タスクは `中止` にし、調査・資料・用語集・メモ・会話ログは `update` で `withdrawn: true` を書く。どの種類も `reason` を書く。誤って足した・重複した項目だけを `remove` で消す。消す前に、消す項目と消すと戻せないことを利用者に示して確かめ、許しを得てから呼ぶ。ほかの項目が指しているときは、指している側の参照を先に `update` で付け替えるか外してから消す'
+    notes: 単一ユースケース『発言の取り込み』『記録の削除と取り下げ』、インターフェース定義『項目の削除』
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

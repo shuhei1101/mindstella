@@ -58,10 +58,12 @@ namespace MindmapPreview {
   export type Option = {
     key: string;
     content: string;
-    pros?: string;
-    cons?: string;
+    pros?: string | string[];
+    cons?: string | string[];
     note?: string;
     adopted?: boolean;
+    /** AI が推す案の印 */
+    recommended?: boolean;
     reason?: string;
   };
 
@@ -170,12 +172,12 @@ namespace MindmapPreview {
     display?: DisplayDefaults;
   };
 
-  /** つながりの見た目の値 */
+  /** ネットワークの見た目の値 */
   export type NetworkLook = "glow" | "starlight" | "constellation" | "deep" | "dust";
 
   /** ワークスペースの表示の既定（`config.yaml` の `display`） */
   export type DisplayDefaults = {
-    /** つながりの見た目。無ければ `deep` */
+    /** ネットワークの見た目。無ければ `deep` */
     network_look?: NetworkLook;
     /** 表示する種類。無ければ全ての種類 */
     visible_kinds?: Kind[];
@@ -300,8 +302,8 @@ namespace MindmapPreview {
     };
   }
 
-  /** 全体の検索の 1 件 */
-  export type SearchHit = { id: string; kind: Kind; title: string };
+  /** 全体の検索の 1 件（`exact` は ID かタイトルが言葉と完全に一致するか） */
+  export type SearchHit = { id: string; kind: Kind; title: string; exact: boolean };
 
   /** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
   function searchableText(item: Item, bodies: Record<string, string>): string {
@@ -316,9 +318,10 @@ namespace MindmapPreview {
     return parts.join("\n").toLowerCase();
   }
 
-  /** 空白で区切った語を全て含む項目を返す（大文字・小文字を区別しない） */
+  /** 空白で区切った語を全て含む項目を、ID かタイトルが言葉と完全に一致する項目を先にして返す（大文字・小文字と前後の空白を区別しない） */
   export function searchItems({ query, index }: { query: string; index: RecordIndex }): SearchHit[] {
-    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const whole = query.trim().toLowerCase();
+    const terms = whole.split(/\s+/).filter(Boolean);
     // 言葉が空なら何も探さない
     if (terms.length === 0) return [];
     const hits: SearchHit[] = [];
@@ -327,11 +330,13 @@ namespace MindmapPreview {
       for (const item of items) {
         const text = searchableText(item, index.data.bodies);
         if (terms.every((term) => text.includes(term))) {
-          hits.push({ id: item.id, kind, title: item.title });
+          const exact = item.id.toLowerCase() === whole || item.title.trim().toLowerCase() === whole;
+          hits.push({ id: item.id, kind, title: item.title, exact });
         }
       }
     }
-    return hits;
+    // 完全に一致する項目を先にする（それぞれ今の種類の順・連番の順のまま）
+    return [...hits.filter((hit) => hit.exact), ...hits.filter((hit) => !hit.exact)];
   }
 
   /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */

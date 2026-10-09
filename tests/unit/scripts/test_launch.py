@@ -96,6 +96,45 @@ def test_write_mcp_config(tmp_path: Path) -> None:
     }
 
 
+@pytest.mark.parametrize(
+    ("env", "expected_env"),
+    [
+        pytest.param(
+            {"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"},
+            {"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"},
+            id="env_set",
+        ),
+        pytest.param({}, None, id="env_empty"),
+    ],
+)
+def test_write_mcp_config_when_env_set(
+    tmp_path: Path, env: dict[str, str], expected_env: dict[str, str] | None
+) -> None:
+    """渡す環境変数があれば env に書き、無ければ env を持たない（正常系）。"""
+    # 実行
+    config = launch.write_mcp_config(
+        Path("/v/bin/python"), Path("/p/0.0.2"), temp_root=tmp_path, env=env
+    )
+    # 検証
+    server_config = json.loads(config.read_text(encoding="utf-8"))["mcpServers"]["mindstella"]
+    assert server_config.get("env") == expected_env
+    assert ("env" in server_config) is (expected_env is not None)
+
+
+def test_external_env() -> None:
+    """設定されているキーだけを返す（正常系）。"""
+    # 準備
+    environ = {
+        "MINDSTELLA_ALLOWED_HOSTS": "preview.example.test",
+        "MINDSTELLA_PREVIEW_START_HOOK": "",
+        "PATH": "/bin",
+    }
+    # 実行
+    result = launch.external_env(environ)
+    # 検証
+    assert result == {"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}
+
+
 def test_run_launch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

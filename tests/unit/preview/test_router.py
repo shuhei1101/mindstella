@@ -11,9 +11,9 @@ from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
 
 
 @pytest.mark.parametrize(
-    ("hash_text", "tab", "view", "item_id", "full", "filters"),
+    ("hash_text", "tab", "view", "item_id", "full", "filters", "heading"),
     [
-        pytest.param("", "overview", "table", None, False, {}, id="empty"),
+        pytest.param("", "overview", "table", None, False, {}, None, id="empty"),
         pytest.param(
             "#tab=decisions&view=table&id=D-1&f.status=要見直し|保留",
             "decisions",
@@ -21,16 +21,51 @@ from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
             "D-1",
             False,
             {"status": ["要見直し", "保留"]},
+            None,
             id="filters",
         ),
         pytest.param(
-            "#tab=nope&view=cards", "overview", "table", None, False, {}, id="unknown_tab"
+            "#tab=nope&view=cards", "overview", "table", None, False, {}, None, id="unknown_tab"
         ),
         pytest.param(
-            "#tab=decisions&id=D-99&full=1", "decisions", "map", None, False, {}, id="unknown_id"
+            "#tab=decisions&id=D-99&full=1",
+            "decisions",
+            "board",
+            None,
+            False,
+            {},
+            None,
+            id="unknown_id",
         ),
-        pytest.param("#tab=tasks&view=map", "tasks", "board", None, False, {}, id="unknown_view"),
-        pytest.param("#tab=docs&view=board", "docs", "board", None, False, {}, id="docs_board"),
+        pytest.param(
+            "#tab=tasks&view=map", "tasks", "board", None, False, {}, None, id="unknown_view"
+        ),
+        pytest.param(
+            "#tab=docs&view=board", "docs", "board", None, False, {}, None, id="docs_board"
+        ),
+        pytest.param(
+            "#tab=docs&id=A-1&h=決め方-1",
+            "docs",
+            "cards",
+            "A-1",
+            False,
+            {},
+            "決め方-1",
+            id="heading_with_id",
+        ),
+        pytest.param(
+            "#tab=docs&h=決め方", "docs", "cards", None, False, {}, None, id="heading_without_id"
+        ),
+        pytest.param(
+            "#tab=terms&f.~title=a|b",
+            "terms",
+            "table",
+            None,
+            False,
+            {"~title": ["a|b"]},
+            None,
+            id="text_filter_not_split",
+        ),
     ],
 )
 def test_parse_hash(
@@ -44,10 +79,11 @@ def test_parse_hash(
     item_id: str | None,
     full: bool,
     filters: dict[str, list[str]],
+    heading: str | None,
 ) -> None:
     """既定と誤った値を扱う（正常系）。"""
     # 準備
-    data = make_data(decisions=[make_item("D-1")])
+    data = make_data(decisions=[make_item("D-1")], docs=[make_item("A-1")])
     load_preview_scripts()
     # 実行
     route = preview_page.evaluate(
@@ -63,6 +99,7 @@ def test_parse_hash(
     assert route["id"] == item_id
     assert route["full"] is full
     assert route["filters"] == filters
+    assert route["heading"] == heading
 
 
 @pytest.mark.parametrize(
@@ -84,6 +121,16 @@ def test_parse_hash(
             "#tab=decisions&view=table&id=D-1&full=1",
             id="full_with_filters",
         ),
+        pytest.param(
+            {"tab": "decisions", "view": "board", "id": None, "full": False, "filters": {}},
+            "#tab=decisions",
+            id="decisions_board",
+        ),
+        pytest.param(
+            {"tab": "decisions", "view": "map", "id": None, "full": False, "filters": {}},
+            "#tab=decisions&view=map",
+            id="decisions_map",
+        ),
     ],
 )
 def test_to_hash(
@@ -99,6 +146,34 @@ def test_to_hash(
     hash_text = preview_page.evaluate("(route) => MindmapPreview.toHash(route)", route)
     # 検証
     assert hash_text == expected
+
+
+def test_to_hash_heading(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """見出しを `h` に書く（正常系）。"""
+    # 準備
+    route = {
+        "tab": "docs",
+        "view": "cards",
+        "id": "A-1",
+        "full": False,
+        "filters": {},
+        "heading": "決め方-1",
+    }
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """(route) => {
+            const hash = MindmapPreview.toHash(route);
+            // 日本語はパーセントエンコードされるので、URLSearchParams で読み戻して比べる
+            return {
+                head: hash.slice(0, 1),
+                params: Object.fromEntries(new URLSearchParams(hash.slice(1))),
+            };
+        }""",
+        route,
+    )
+    # 検証
+    assert result == {"head": "#", "params": {"tab": "docs", "id": "A-1", "h": "決め方-1"}}
 
 
 @pytest.mark.parametrize(

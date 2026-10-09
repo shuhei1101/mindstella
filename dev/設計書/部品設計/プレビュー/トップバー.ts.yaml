@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -11,7 +11,7 @@ args:
   - name: tabs
     type: オブジェクトの配列
     required: true
-    description: タブの帯に並べる画面（概要と、表示する種類の検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。表示しない種類は使う側が外して渡す。概要は常に含める。つながりは含めない（入口は常に出す）
+    description: タブの帯に並べる画面（概要と、表示する種類の検討事項・タスク・調査・資料・用語集・メモ・会話ログ）。表示しない種類は使う側が外して渡す。概要は常に含める。ネットワークは含めない（入口は常に出す）
   - name: tabs[].key
     type: 列挙
     required: true
@@ -40,7 +40,7 @@ args:
     type: 列挙
     required: true
     choices: light・dark
-    description: 今のライト / ダーク
+    description: 今のライト / ダーク。ライト / ダークの切り替えのボタンは、トップバーの右端に置く
   - name: connection
     type: 列挙
     required: false
@@ -70,7 +70,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはトップバーの右端に置き、全体の検索の入口を中央へ寄せる
+    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる
     status: planned
   - name: comment_count
     type: 整数
@@ -95,7 +95,7 @@ args:
   - name: filter
     type: 真偽値
     default: 'false'
-    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・つながり）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときは右端）に置き、どちらのパネルにも覆われないようにする
+    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・ネットワーク）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする
     status: planned
   - name: filter_count
     type: 整数
@@ -112,11 +112,11 @@ args:
     status: planned
 events:
   - name: 画面を移る
-    when: タブかつながりの入口を押したとき
+    when: タブかネットワークの入口を押したとき
     value: key（`data-tab`）
     description: 使う側がその画面を開き、URL のハッシュの `tab` を変えて履歴に積む。開いている詳細パネルは閉じない
   - name: 検索を開く
-    when: 検索の入口を押したとき（`/` キーは使う側が受ける）
+    when: 検索の入口を押したとき（`Ctrl+K`・macOS の `Cmd+K` は使う側が受ける）
     description: 使う側が全体の検索を開く
   - name: テーマの切り替え
     when: ライト / ダークのボタンを押したとき
@@ -144,7 +144,7 @@ states:
       - name: current
         value: overview
   - name: Graph
-    description: つながりを開いている。つながりの入口だけを選んだ見た目にする
+    description: ネットワークを開いている。ネットワークの入口だけを選んだ見た目にする
     args:
       - name: current
         value: graph
@@ -199,7 +199,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
   - name: Comments
-    description: コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す
+    description: コメントのボタンをライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す
     args:
       - name: comments
         value: 'true'
@@ -247,7 +247,7 @@ states:
       - name: settings_open
         value: 'true'
   - name: KindsHidden
-    description: 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とつながりの入口は残す
+    description: 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とネットワークの入口は残す
     args:
       - name: tabs
         value: タスク・資料を除いた並び
@@ -256,7 +256,7 @@ states:
       - name: comment_count
         value: '3'
   - name: Export
-    description: 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない
+    description: 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない。ライト / ダークの切り替えは表示の設定の右で、右端にある
     args:
       - name: comments
         value: 'false'
@@ -411,3 +411,4 @@ accessibility:
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、一覧を開いているかを `aria-expanded` で示す
   - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
+  - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す

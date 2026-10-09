@@ -20,6 +20,7 @@ NEW_DECISION: dict[str, Any] = {
     "lead": "種類ごとにキーを分けるかを決める。",
     "weight": "大",
     "depends_on": ["D-1"],
+    "options": [{"key": "A", "content": "種類ごとに分ける"}],
     "body_markdown": "## 経緯\n\n種類ごとに分ける案を考えた。\n",
 }
 
@@ -57,6 +58,7 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
         "lead": "種類ごとにキーを分けるかを決める。",
         "weight": "大",
         "depends_on": ["D-1"],
+        "options": [{"key": "A", "content": "種類ごとに分ける"}],
         "updated_by": "ai",
         "body": "D-2.md",
     }
@@ -168,3 +170,70 @@ def test_normal_when_note_has_body(make_workspace: MakeWorkspace, call_tool: Cal
     assert (root / RECORD_DIR / "docs" / "N-1.md").read_text(encoding="utf-8") == item[
         "body_markdown"
     ]
+
+
+def test_normal_when_unsorted_without_options(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """案を必須にする状態でない未整理は、案を持たずに足せる（正常系）。"""
+    # 準備
+    root = make_workspace()
+    item = {"title": "あとで整理する問い", "status": "未整理"}
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["id"] == "D-1"
+    added = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
+    assert added["status"] == "未整理"
+    assert "options" not in added
+
+
+def test_error_when_options_missing(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """案を必須にする状態の検討事項を案なしで足すと、足さずに直し方を返す（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    item = {"title": "案の無い問い", "status": "未決定"}
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
+    # 検証
+    assert result.is_error is True
+    assert any(
+        line.startswith("decisions.yaml: items[0].options:")
+        and "D-1" in line
+        and "options に案を書く" in line
+        for line in result.text.splitlines()
+    )
+    assert snapshot_tree(root) == before
+
+
+def test_error_when_adopted_but_undecided(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """採用した案を持つのに未決定の検討事項は足さない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    item = {
+        "title": "採用済みの問い",
+        "status": "未決定",
+        "options": [
+            {"key": "A", "content": "種類ごとに分ける", "adopted": True},
+            {"key": "B", "content": "1 つにまとめる"},
+        ],
+    }
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
+    # 検証
+    assert result.is_error is True
+    assert any(
+        line.startswith("decisions.yaml: items[0].status:") and "未決定" in line and "A" in line
+        for line in result.text.splitlines()
+    )
+    assert snapshot_tree(root) == before

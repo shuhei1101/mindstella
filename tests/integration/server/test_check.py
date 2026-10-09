@@ -13,7 +13,7 @@ from .fixture_types import (
     SnapshotTree,
     WriteSubmissions,
 )
-from .history_helpers import DECISION_ITEM, add_item, commit, update_item
+from .history_helpers import DECISION_ITEM, add_item, commit, remove_item, update_item
 from workspace_fixtures import RECORD_DIR
 
 
@@ -145,3 +145,69 @@ def test_normal_when_unknown_phase(
         (".mindstella/config.yaml", None, "goal.phase", "結論"),
     }
     assert snapshot_tree(root) == before
+
+
+def _without_options(item: dict[str, Any]) -> dict[str, Any]:
+    """案のキーを持たない検討事項にする。"""
+    return {key: value for key, value in item.items() if key != "options"}
+
+
+def test_normal_when_options_and_status_mismatch(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """案を持たない・採用した案を持たない決定済み・採用した案を持つ未決定を拾い、案が要らない状態は拾わない（正常系）。"""
+    # 準備
+    option_a = {"key": "A", "content": "案 A"}
+    option_b = {"key": "B", "content": "案 B"}
+    root = make_workspace(
+        _without_options(make_item("D-1", status="未決定")),
+        make_item("D-2", status="決定済み", options=[option_a, option_b]),
+        make_item("D-3", status="未決定", options=[{**option_a, "adopted": True}, option_b]),
+        _without_options(make_item("D-4", status="未整理")),
+        _without_options(make_item("D-5", status="対象外")),
+        _without_options(make_item("D-6", status="取り下げ")),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    problems = result.data["problems"]
+    assert [(row["kind"], row["id"], row["key"]) for row in problems] == [
+        ("decision_state", "D-1", "items[0].options"),
+        ("decision_state", "D-2", "items[1].options"),
+        ("decision_state", "D-3", "items[2].status"),
+    ]
+    assert "options に案を書く" in problems[0]["detail"]
+    assert "adopt" in problems[1]["detail"]
+    assert "未決定" in problems[2]["detail"]
+    assert "A" in problems[2]["detail"]
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_removed_item_in_change_set(
+    make_workspace: MakeWorkspace,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+    call_tool: CallTool,
+) -> None:
+    """過去のまとまりと取り込み済みの送信が消した項目を指していても、参照切れにしない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "note", {"title": "メモ", "content": "中身"})
+    commit(call_tool, root, "足す")
+    write_submissions(
+        root, make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00")
+    )
+    remove_item(call_tool, root, "N-1")
+    commit(call_tool, root, "消す")
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data == {"ok": True, "problems": []}

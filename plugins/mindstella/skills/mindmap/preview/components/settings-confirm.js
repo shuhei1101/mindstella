@@ -55,7 +55,7 @@ var MindmapPreview;
                     tag: "dl",
                     attrs: { class: "sc-list" },
                     children: [
-                        confirmRow({ label: "つながりの見た目", from: MindmapPreview.lookLabel(from.look), to: MindmapPreview.lookLabel(to.look) }),
+                        confirmRow({ label: "ネットワークの見た目", from: MindmapPreview.lookLabel(from.look), to: MindmapPreview.lookLabel(to.look) }),
                         confirmRow({ label: "表示する種類", from: kindsText(from.kinds), to: kindsText(to.kinds) }),
                     ],
                 }),

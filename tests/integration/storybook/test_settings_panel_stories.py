@@ -11,16 +11,6 @@ NARROW_SIZE = {"width": 390, "height": 844}
 # 表示の設定のパネルの外側
 PANEL = "aside.settings-drawer"
 
-# 5 つの見た目の名前（並びの順）
-LOOK_LABELS = ["グロウ", "星の光", "星図", "深宇宙", "星屑"]
-
-# 見た目の行の名前・チェック・「既定」の札を読む
-_LOOKS_SCRIPT = """() => [...document.querySelectorAll('.st-look')].map((row) => ({
-    name: row.querySelector('.st-look-name').childNodes[0].textContent,
-    checked: row.querySelector('input').checked,
-    isDefault: row.querySelector('.st-def') !== null,
-}))"""
-
 # 種類の行（チェックの箱を持つ行）の名前・チェック・件数を読む
 _KINDS_SCRIPT = """() => [...document.querySelectorAll('.st-kinds li:not(.st-all):not(.st-always)')].map((row) => ({
     name: row.querySelector('.st-k-label').textContent,
@@ -46,15 +36,14 @@ def test_default(open_story: OpenStory) -> None:
     # 検証
     assert page.inner_text(f"{PANEL} h2") == "表示の設定"
     assert page.get_attribute(PANEL, "aria-label") == "表示の設定"
-    looks = page.evaluate(_LOOKS_SCRIPT)
-    assert [look["name"] for look in looks] == LOOK_LABELS
-    assert [look["checked"] for look in looks] == [False, False, False, True, False]
-    assert [look["isDefault"] for look in looks] == [False, False, False, True, False]
+    # 見た目はネットワークのドロップダウンで選ぶので、パネルには選びを出さない
+    assert page.locator(f"{PANEL} .st-look").count() == 0
+    assert page.locator(f"{PANEL} input[type=radio]").count() == 0
     assert _buttons(page) == []
     text = page.inner_text(f"{PANEL} .st-wrap")
     assert "ワークスペースの既定のまま表示しています。" in text
     assert "今の選びはワークスペースの既定と同じです。" in text
-    # 概要とつながりは、チェックの箱を持たない常に表示の行
+    # 概要とネットワークは、チェックの箱を持たない常に表示の行
     assert page.locator(".st-always").count() == 2
     assert page.locator(".st-always input").count() == 0
     assert page.locator(".st-all input").evaluate("box => box.checked") is True
@@ -68,11 +57,10 @@ def test_overridden(open_story: OpenStory) -> None:
     # 検証
     over = page.inner_text(f"{PANEL} .st-over")
     assert "この端末で変えている項目" in over
-    assert "つながりの見た目・表示する種類・ライト / ダーク・表の列（調査）" in over
+    assert "ネットワークの見た目・表示する種類・ライト / ダーク・表の列（調査）" in over
     assert _buttons(page) == ["既定に戻す", "ワークスペースの既定にする"]
-    looks = page.evaluate(_LOOKS_SCRIPT)
-    assert [look["checked"] for look in looks] == [False, False, False, False, True]
-    assert [look["isDefault"] for look in looks] == [False, True, False, False, False]
+    # 見た目を上書きしていても、パネルには見た目の選びを出さない
+    assert page.locator(f"{PANEL} .st-look").count() == 0
     assert page.get_attribute(f"{PANEL} .st-save button", "aria-haspopup") == "dialog"
     # 保存のボタンは、線で区切った下に置く
     assert (
@@ -114,8 +102,7 @@ def test_defaults_arrived(open_story: OpenStory) -> None:
     message = page.locator(f"{PANEL} .st-msg")
     assert message.inner_text() == "ワークスペースの既定が変わりました（10/05 14:22）。"
     assert message.get_attribute("class") == "st-msg info"
-    looks = page.evaluate(_LOOKS_SCRIPT)
-    assert [look["checked"] for look in looks] == [False, True, False, False, False]
+    assert page.locator(f"{PANEL} .st-look").count() == 0
     assert _buttons(page) == []
 
 
@@ -143,7 +130,7 @@ def test_export(open_story: OpenStory) -> None:
     # 検証
     assert _buttons(page) == ["既定に戻す"]
     assert page.locator(f"{PANEL} .st-save").count() == 0
-    assert page.locator(f"{PANEL} .st-look input").count() == 5
+    assert page.locator(f"{PANEL} .st-look").count() == 0
     assert page.locator(f"{PANEL} .st-kinds input").count() == 8
 
 

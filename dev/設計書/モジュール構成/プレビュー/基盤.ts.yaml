@@ -11,6 +11,7 @@ directory: |-
       libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
       router.ts      URL のハッシュの読み書きと履歴
       api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る）
+      lock.ts        ロック（注目の起点を 1 つの項目に留める）の押下の判定・2 回押しの読み替えと、鍵の震えの量・要素の鍵の震え（ネットワークと検討事項のマップで共通）
   ```
 
   全ての `.ts` は import / export を持たない script で、`namespace MindmapPreview` の下に関数を置く。読んだだけでは DOM に触らない。
@@ -55,6 +56,9 @@ data_models:
       - name: filters
         type: Record<string, string[]>
         description: 開いたときの `f.{列}`。どの表示形式でも、入口が絞り込みのドロワーの条件として受ける（`initialFilters`。書き戻さない）
+      - name: heading
+        type: string | null
+        description: 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`headingSlug` の形）。`id` が無いときは `null`
   - name: FetchResult
     title: 記録の取得の結果
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -135,7 +139,7 @@ constants:
     summary: '`tab` → 既定の `view`'
     entries:
       - key: decisions
-        value: map
+        value: board
       - key: tasks
         value: board
       - key: docs
@@ -149,7 +153,7 @@ constants:
     summary: '`tab` → 切り替えられる `view` の並び'
     entries:
       - key: decisions
-        value: '["map", "board", "table"]'
+        value: '["board", "map", "table"]'
       - key: tasks
         value: '["board", "table"]'
       - key: docs
@@ -198,6 +202,30 @@ constants:
     usecase: 検討事項をマップで辿る
     summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）
     value: '5'
+  - name: DOUBLE_TAP_MS
+    title: 2 回押しとみなす間隔
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: 前に押してからこの時間（ms）未満に押した 2 回目を、前に押した項目への 2 回押しとみなす（合意済みのモックの値）
+    value: '450'
+  - name: DOUBLE_TAP_PX
+    title: 2 回押しとみなす位置のずれ
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: 前に押した位置からの距離（px）がこの値未満の 2 回目を、2 回押しとみなす（合意済みのモックの値）
+    value: '24'
+  - name: SHAKE_MS
+    title: 鍵の震えの長さ
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: 鍵が震え始めてから収まるまでの時間（ms。合意済みのモックの値）
+    value: '1000'
+  - name: LOCK_QUERY
+    title: ロックを判定する幅
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    summary: ロックを判定する画面の幅のメディアクエリ。幅 900px 以下では詳細が全面に出るため、ネットワークも検討事項のマップもロックしない
+    value: '"(min-width: 901px)"'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -260,7 +288,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/records.ts
     usecase: 項目を検索する
     scope: public
-    summary: 空白で区切った語を全て含む項目を返す
+    summary: 空白で区切った語を全て含む項目を、完全に一致する項目を先にして返す
     args:
       - name: query
         type: string
@@ -273,8 +301,8 @@ functions:
         passing: keyword
         description: 索引
     returns:
-      type: '{id, kind, title}[]'
-      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。大文字・小文字を区別しない。種類の順 → 連番の順。言葉が空なら空
+      type: '{id, kind, title, exact}[]'
+      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。大文字・小文字を区別しない。`exact` は ID かタイトルが言葉と完全に一致するか（大文字・小文字と前後の空白を区別しない）。`exact` が真の項目を先に、それぞれ種類の順 → 連番の順。言葉が空なら空
     unit_tests:
       - name: test_search_items
         case: 正常
@@ -282,6 +310,12 @@ functions:
         condition: '`parametrize`: `"d-1"` / 本文にだけある語 / 2 語のうち 1 語だけ含む項目 / 空白だけ'
         mock: なし
         expected: D-1 / その項目 / 返らない / 空
+      - name: test_search_items_exact_first
+        case: 正常
+        summary: 完全に一致する項目を先にする
+        condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」に 「シナリオの依頼 」（末尾に空白） / `"g-1"` / どれにも一致しない語「依頼」'
+        mock: なし
+        expected: G-1（`exact` 真）→ D-1（偽） / G-1 が先頭で `exact` 真、G-12 などは偽 / 全て `exact` 偽で種類の順
   - name: missingLibraries
     title: 読めなかったライブラリ
     kind: 関数
@@ -448,15 +482,15 @@ functions:
     process: |-
       1. `#` の後ろを `URLSearchParams` で読む
       2. `tab` が画面の値でなければ `overview`、`view` が `VIEWS_OF` に無ければ `DEFAULT_VIEW`
-      3. `id` が記録に無ければ `null`。`full` は `id` があり `1` のときだけ真
-      4. `f.` で始まるキーを `filters` に、値を `|` で分けて入れる
+      3. `id` が記録に無ければ `null`。`full` は `id` があり `1` のときだけ真。`heading` は `id` があるときの `h`（空なら `null`）
+      4. `f.` で始まるキーを `filters` に入れる。`f.~{列}` は文字の条件で、値を分けず 1 つの配列にする。それ以外は値を `|` で分ける
     unit_tests:
       - name: test_parse_hash
         case: 正常
         summary: 既定と誤った値を扱う
-        condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board`'
+        condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board` / `#tab=docs&id=A-1&h=決め方-1` / `#tab=docs&h=決め方` / `#tab=terms&f.~title=a|b`'
         mock: なし
-        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・map・null・full 偽 / tasks・board / docs・board'
+        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board / docs・A-1・`heading` が `決め方-1` / `id` が `null` で `heading` も `null` / `{"~title": ["a|b"]}`'
   - name: toHash
     title: ハッシュを作る
     kind: 関数
@@ -472,14 +506,20 @@ functions:
         description: 画面の場所
     returns:
       type: string
-      description: '`#tab=...&view=...&id=...&full=1` の形。全て既定なら空文字'
+      description: '`#tab=...&view=...&id=...&full=1&h=...` の形（`h` は `heading` があるときだけ）。全て既定なら空文字'
     unit_tests:
       - name: test_to_hash
         case: 正常
         summary: 既定の値を書かない
-        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり'
+        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり / 検討事項のボード / 検討事項のマップ'
         mock: なし
-        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない）
+        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない） / `#tab=decisions`（既定の `board` は書かない） / `#tab=decisions&view=map`
+      - name: test_to_hash_heading
+        case: 正常
+        summary: 見出しを `h` に書く
+        condition: 資料のカードで A-1 を開き、`heading` が `決め方-1`
+        mock: なし
+        expected: '`#tab=docs&id=A-1&h=決め方-1`（`URLSearchParams` で読み戻すと同じ値）'
   - name: navigate
     title: 画面を移る
     kind: 関数
@@ -1124,9 +1164,268 @@ functions:
         condition: 正しいフローチャートと、構文の誤った記法をそれぞれ渡す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 1 つ目は `svg` の要素、2 つ目は `null` で、`body` に作業用の要素が残らない
+  - name: headingSlug
+    title: 見出しを指す名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 見出しの文言から、ハッシュの `h` と本文の `#見出し` で指す名前を作る
+    args:
+      - name: text
+        type: string
+        required: true
+        passing: keyword
+        description: 見出しの文言
+      - name: seen
+        type: Map<string, number>
+        required: true
+        passing: keyword
+        description: 同じ本文でこれまでに作った名前 → 出た回数。呼ぶたびに書き換える
+    returns:
+      type: string
+      description: 前後の空白を除き、間の空白の並びを `-` 1 つにした形。同じ形の 2 つ目から `-1`・`-2` を続ける
+    unit_tests:
+      - name: test_heading_slug
+        case: 正常
+        summary: 空白を - にし、同じ文言に番号を続ける
+        condition: 同じ `seen` で「 保存先 」「決め 方」「決め 方」「決め 方」の順に呼ぶ
+        mock: なし
+        expected: '`保存先` / `決め-方` / `決め-方-1` / `決め-方-2`'
+  - name: linkHeadings
+    title: 本文の見出しのリンク
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: '描いた本文の見出しに、見出しを指す名前と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする'
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        passing: keyword
+        description: '`renderMarkdown` が描いた本文'
+      - name: onHeading
+        type: '(slug: string) => void'
+        required: true
+        passing: keyword
+        description: '# か `#見出し` のリンクを押したときに、その見出しの名前を知らせる（使う側が送ってハッシュの `h` を置き換える）'
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. 本文の見出し（h1〜h6）を頭から順に、文言を `headingSlug`（本文 1 つで 1 つの `seen`）で名前にして `data-heading` に持たせる
+      2. 見出しの右に、読み上げの名前「見出し「{見出し}」へのリンク」の # の `a` を置き、押したら既定の動作を止めて `onHeading` を呼ぶ
+      3. 本文の中の `href` が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻し（marked は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。押したら既定の動作を止め、同じ名前の見出しがあれば `onHeading` を呼ぶ。無ければ何もしない（URL のハッシュを `#{文字}` に替えさせない）
+    unit_tests:
+      - name: test_link_headings
+        case: 正常
+        summary: '見出しに名前と # を付け、`#見出し` で知らせる'
+        condition: 見出し「保存先」「決め方」「決め方」と段落の `[決め方](#決め方)`・`[無い](#無い)` を描いた本文（marked が描いた `href` はパーセントエンコードされた日本語）。#・段落の 2 つのリンクを押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`data-heading` が `保存先`・`決め方`・`決め方-1`。見出しごとに # が 1 つ。押すと `onHeading` にその名前が渡り、`[決め方]`（`href` はエンコードされた `#決め方`）は `決め方`、`[無い]` は呼ばず、URL のハッシュも変わらない'
+  - name: linkBody
+    title: 本文の用語と項目の ID の印
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 描いた本文の文中の、用語集の用語を印に、記録にある項目の ID をリンクにする
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        passing: keyword
+        description: '`renderMarkdown` が描いた本文（`linkHeadings` の後）'
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引（用語は `data.terms` のタイトル、ID は `byId`）
+      - name: selfId
+        type: string
+        required: true
+        passing: keyword
+        description: 開いている項目の ID（その項目自身の ID と、用語ならその用語には付けない）
+      - name: onOpen
+        type: '(id: string) => void'
+        required: true
+        passing: keyword
+        description: 印かリンクを押したときにその項目の ID を知らせる（使う側が詳細へ移り、履歴に積む）
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. 本文の文字のノードをたどる。`pre`・図の入れ物・`a`・h1〜h6 の中は飛ばす。インラインコード（`pre` の外の `code`）は、中身がちょうど用語か記録にある ID のときだけ `code` ごと当てる
+      2. 用語は長いものから順に当て、英数字だけの用語は前後が英数字でないときだけ当てる。出てくる全ての箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id`・`aria-describedby` でツールチップを指す）で包む
+      3. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものは当てない
+      4. 包んだ要素を押したら既定の動作を止めて `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
+    unit_tests:
+      - name: test_link_body
+        case: 正常
+        summary: 文中の用語と ID だけに印を付ける
+        condition: 用語 G-1「保存先」・G-2「保存」・G-3「AI」、検討事項 D-3・D-5 の索引。本文に見出し「保存先」、段落「保存先と AIM と AI と D-3 と `D-5` と D-99 と XD-3」、コードブロック「保存先 D-3」。`selfId` は A-1
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 段落の「保存先」が G-1 の印（「保存」に分けない）、「AI」だけが G-3 の印（「AIM」には付かない）。D-3 と `D-5` が ID のリンクで、D-99・XD-3 はリンクでない。見出しとコードブロックには印もリンクも無い。印を押すと `onOpen` に G-1、リンクを押すと D-3
+      - name: test_link_body_when_self
+        case: 正常
+        summary: 開いている項目自身には付けない
+        condition: '`selfId` が G-1 で、本文に「保存先」と「G-1」'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「保存先」にも「G-1」にも印・リンクが無い
+  - name: lockTap
+    title: ロックの押下の判定
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: '押した項目（余白なら `null`）・詳細を開いている項目・ロックしている項目から、すること（`LockAction`）と押した後のロックを返す。ネットワークと検討事項のマップで同じ規則を使い、ロックは持たない（入口が `LockState` に持つ）。ロックしていないとき: 余白は `blank`、詳細を開いている項目は `lock`（その項目をロック）、それ以外は `open`。ロック中: ロックした項目は、その詳細を開いていれば `unlock`、開いていなければ `open`（詳細をロックした項目へ戻す）。余白と詳細を開いている別の項目は `shake`、それ以外は `open`。`L` キーは `pressed` に詳細を開いている項目を渡して同じ規則で判定する'
+    args:
+      - name: locked
+        type: string | null
+        required: true
+        passing: keyword
+        description: ロックしている項目
+      - name: pressed
+        type: string | null
+        required: true
+        passing: keyword
+        description: 押した項目（`resolvePress` で読み替えた後）。余白は `null`
+      - name: open
+        type: string | null
+        required: true
+        passing: keyword
+        description: 詳細パネルで開いている項目
+    returns:
+      type: '{action: LockAction, locked: string | null}'
+      description: "`LockAction` は `'lock' | 'unlock' | 'open' | 'shake' | 'blank'`。`locked` は押した後のロック"
+    unit_tests:
+      - name: test_lock_tap
+        case: 正常
+        summary: ロックの有無・押した項目・開いている項目ですることを読み分ける
+        condition: '`parametrize`（`locked`・`pressed`・`open`）: `null`・D-1・D-1 / `null`・D-2・D-1 / `null`・`null`・D-1 / D-1・D-1・D-1 / D-1・D-1・D-2 / D-1・D-2・D-2 / D-1・`null`・D-2 / D-1・D-3・D-2'
+        mock: なし
+        expected: '`lock`・D-1 / `open`・`null` / `blank`・`null` / `unlock`・`null` / `open`・D-1 / `shake`・D-1 / `shake`・D-1 / `open`・D-1'
+  - name: resolvePress
+    title: 2 回押しの読み替え
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 今の押下が、前の押下から `DOUBLE_TAP_MS` 未満かつ `DOUBLE_TAP_PX` 未満の位置なら、前に押した項目を押したものとして返す（詳細が開いて枠がずれた・描き直しで節が消えた位置を押しても、前に押した項目への 2 回押しにする）。それ以外は今押した項目を返す。前の押下は呼ぶ側が押すたびに今の押下で置き換える
+    args:
+      - name: last
+        type: '{time: number, x: number, y: number, id: string | null} | null'
+        required: true
+        passing: keyword
+        description: 前の押下（時刻は `performance.now()`、位置は画面の px）。まだ押していなければ `null`
+      - name: press
+        type: '{time: number, x: number, y: number, id: string | null}'
+        required: true
+        passing: keyword
+        description: 今の押下。`id` は押した位置の項目（余白は `null`）
+    returns:
+      type: string | null
+      description: 押したものとして扱う項目
+    unit_tests:
+      - name: test_resolve_press
+        case: 正常
+        summary: 間隔と位置のずれが両方満たすときだけ前の項目に読み替える
+        condition: '`parametrize`（`last` は時刻 1000・(100, 100)・D-1。`press` は項目 D-2）: 時刻 1449・(123, 100) / 時刻 1450・(100, 100) / 時刻 1100・(124, 100) / 時刻 1100・(100, 100) で `id` が `null` / `last` が `null`'
+        mock: なし
+        expected: D-1 / D-2 / D-2 / D-1 / D-2
+  - name: shakeAt
+    title: 鍵の震えの量
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 震え始めてからの時間から、収まり具合 `decay`（`1 − elapsed / SHAKE_MS`。1 → 0）と振れ `wave`（`sin(elapsed / SHAKE_MS × 2π × 5)`。5 往復）を返す。ネットワークの鍵とマップの節の鍵が同じ値を使い、左右のずれ（`wave × 6px × decay`）・上を軸にした傾き（`wave × 0.45rad × decay`）・大きさ（`1 + 0.45 × decay` 倍）・赤い光のにじみ（`4px × decay`）にする
+    args:
+      - name: elapsed
+        type: number
+        required: true
+        passing: positional
+        description: 震え始めてからの時間（ms。0 以上 `SHAKE_MS` 未満）
+    returns:
+      type: '{decay: number, wave: number}'
+      description: 収まり具合と振れ（−1〜1）
+    unit_tests:
+      - name: test_shake_at
+        case: 正常
+        summary: 始めは振れなく最も大きく、半分で半分に収まる
+        condition: '`parametrize`: 0 / 50 / 500'
+        mock: なし
+        expected: '`decay` 1・`wave` 0 / `decay` 0.95・`wave` 1 / `decay` 0.5・`wave` 約 0'
+  - name: shakeKeyElement
+    title: 要素の鍵の震え
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: 検討事項をマップで辿る
+    kind: 関数
+    scope: public
+    summary: '要素の鍵（検討事項のマップの節の鍵）を震わせる。`requestAnimationFrame` で毎コマ `find` が返す今の鍵へ `shakeAt` の量を `style`（`transform-origin: 50% 0` の `translateX`・`rotate`・`scale`、`color`、`filter: drop-shadow`）で当て、`SHAKE_MS` を過ぎたら `style` を外す。色はライトで `--red-700`、ダークで `--red-300`。CSS のアニメーションを使わないので `prefers-reduced-motion` でも止まらない。震えている間に呼ばれたら、始まりの時刻を今にして続きから震わせる（描き直しで鍵の要素が作り直されても途切れない）。単体テストは持たず、画面設計『検討事項』の結合テストが確かめる'
+    args:
+      - name: find
+        type: () => HTMLElement | null
+        required: true
+        passing: positional
+        description: 今描いている鍵の要素を引く関数（無ければ `null`。そのコマは飛ばす）
+    returns:
+      type: void
+      description: なし
+  - name: renderValue
+    title: 値を描く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 項目の文字列の値の Markdown を無害化した要素にする。marked か DOMPurify が読めないときは文字のまま返す
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 値の文字列
+    returns:
+      type: HTMLElement | string
+      description: '`class="md md-value"` の要素。読めないときは渡した文字列'
+    process: |-
+      1. marked・DOMPurify が読めたか確かめる（`missingLibraries`）
+         - 読めていない場合、渡した文字列をそのまま返す（知らせは出さない。本文の `renderMarkdown` が出す）
+      2. `marked.parse` した HTML を `DOMPurify.sanitize` して要素に入れる（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
+    unit_tests:
+      - name: test_render_value
+        case: 正常
+        summary: 値の Markdown を描き、スクリプトを動かさない
+        condition: '`**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>` と箇条書き 2 行を渡す'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`strong` と `li` 2 つを持つ `.md-value` の要素。`onerror` と `script` が無く、`window.__x` が未定義。どの要素も `data-line-start` を持たない'
+      - name: test_render_value_when_library_missing
+        case: 正常
+        summary: ライブラリが読めなければ文字のまま返す
+        condition: '`parametrize`: marked の配信元を止める / DOMPurify の配信元を止める。`**強調**` を渡す'
+        mock: 描画のライブラリの配信元（`page.route` で 404）
+        expected: 戻り値が文字列 `**強調**`
+  - name: isTyping
+    title: 文字の入力欄か
+    container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    usecase: ネットワークを辿る
+    kind: 関数
+    scope: public
+    summary: 要素が文字を入力する欄（`input`・`textarea`・`select`・編集できる要素）かを返す。入口が `L` キーを受けない判定に使う。単体テストは持たず、画面設計『ネットワーク』の結合テストが確かめる
+    args:
+      - name: element
+        type: Element | null
+        required: true
+        passing: positional
+        description: フォーカスのある要素
+    returns:
+      type: boolean
+      description: 文字の入力欄なら true
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
   - tests/unit/preview/test_router.py
   - tests/unit/preview/test_dom.py
   - tests/unit/preview/test_api.py
+  - tests/unit/preview/test_lock.py

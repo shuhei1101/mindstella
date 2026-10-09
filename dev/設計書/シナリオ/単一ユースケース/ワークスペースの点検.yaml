@@ -7,7 +7,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 整った記録
-        description: D-2 が D-1 に依存し、D-1 の本文が `.mindstella/docs/` にある検討事項
+        description: D-2 が D-1 に依存し、D-1 の本文が `.mindstella/docs/` にある検討事項。D-1 は案 A を採用した決定済み、D-2 は案 A・B を持つ未決定
         notes: '`depends_on: [D-1]`'
     flow: |-
       ```mermaid
@@ -81,7 +81,63 @@ scenarios:
       - 出力に、`goal.phase` の `結論` が設定の `phases` に無い旨がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_unknown_phase
-lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズを洗い出す単一ユースケース。
+  - name: 正常シナリオ（検討事項の案と状態が合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 合わない検討事項
+        description: 案を持たない未決定の D-1、採用した案を持たない決定済みの D-2、案 A を採用した未決定の D-3
+        notes: YAML を直接書いて作る
+      - name: 必須の対象でない検討事項
+        description: 案を持たない未整理の D-4・対象外の D-5・取り下げの D-6
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML を読む
+        SV-->>CC: 案と状態の合わない検討事項の一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、D-1 が案を持たない旨がある
+      - 出力に、D-2 が決定済みなのに採用した案を持たない旨がある
+      - 出力に、D-3 が採用した案を持つのに未決定である旨がある
+      - 出力に D-4・D-5・D-6 が無い
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_options_and_status_mismatch
+  - name: 正常シナリオ（消した項目がまとまりに残る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 消した項目
+        description: メモ N-1 を足して `commit` し、N-1 を消してもう一度 `commit` した記録
+        notes: 1 つ目のまとまりの `added` が N-1 を持ち、N-1 は今の notes.yaml に無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML と changes.yaml を読む
+        SV->>SV: まとまりが指す ID のうち、消した項目として記録された ID を参照切れから外す
+        SV-->>CC: 問題が無い
+      ```
+    expected:
+      - 点検のツールが成功を返す
+      - 出力に、問題が無い旨がある
+    test: test_normal_when_removed_item_in_change_set
+lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:

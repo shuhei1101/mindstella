@@ -162,6 +162,15 @@ namespace MindmapPreview {
     return element?.closest(`[${VALUE_KEY_ATTR}]`) ?? null;
   }
 
+  /** 項目の文字列の値の Markdown を無害化した要素にする。marked か DOMPurify が読めないときは文字のまま返す（知らせは本文の描画が出す） */
+  export function renderValue(source: string): HTMLElement | string {
+    if (missingLibraries(["marked", "DOMPurify"]).length > 0) return source;
+    const root = h({ tag: "div", attrs: { class: "md md-value" } });
+    // 描いた HTML は無害化してから差し込む（記録は利用者のもの）。行の印は付けず、mermaid のコードブロックも図にしない
+    root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false }));
+    return root;
+  }
+
   /** 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える */
   export function renderMarkdown(source: string): HTMLElement {
     const root = h({ tag: "div", attrs: { class: "md" } });
@@ -215,6 +224,138 @@ namespace MindmapPreview {
     }
     return root;
   }
+
+  /** 見出しの文言から、見出しを指す名前を作る（前後の空白を除き、間の空白の並びを `-` 1 つにする。同じ名前の 2 つ目から `-1`・`-2` を続ける）。`seen` は同じ本文でこれまでに作った名前 → 出た回数で、呼ぶたびに書き換える */
+  export function headingSlug({ text, seen }: { text: string; seen: Map<string, number> }): string {
+    const base = text.trim().replace(/\s+/g, "-");
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    return count === 0 ? base : `${base}-${count}`;
+  }
+
+  /** 今のハッシュの `id`・`h` を替えた URL のハッシュ（キーボードとリンクのコピーで使うリンク先。押したときは使う側の移動に替える） */
+  function hashWith({ id, heading }: { id?: string; heading: string | null }): string {
+    const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+    if (id !== undefined) params.set("id", id);
+    if (heading === null) params.delete("h");
+    else params.set("h", heading);
+    return `#${params.toString()}`;
+  }
+
+  /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする。押したときは既定の動作を止め、見出しの名前を `onHeading` に知らせる */
+  export function linkHeadings({ root, onHeading }: { root: HTMLElement; onHeading: (slug: string) => void }): void {
+    // 本文の中の `[文言](#見出し)` のリンク（# のリンクを足す前の分）。同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
+    const bodyLinks = [...root.querySelectorAll<HTMLAnchorElement>("a[href^='#']")];
+    const seen = new Map<string, number>();
+    for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
+      const text = heading.textContent ?? "";
+      const slug = headingSlug({ text, seen });
+      heading.dataset["heading"] = slug;
+      heading.append(
+        h({
+          tag: "a",
+          attrs: {
+            class: "h-link",
+            href: hashWith({ heading: slug }),
+            "aria-label": `見出し「${text.trim()}」へのリンク`,
+            onclick: (event: Event) => {
+              event.preventDefault();
+              onHeading(slug);
+            },
+          },
+          children: [icon("hash")],
+        }),
+      );
+    }
+    for (const link of bodyLinks) {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const raw = (link.getAttribute("href") ?? "").slice(1);
+        let decoded = raw;
+        try {
+          decoded = decodeURIComponent(raw);
+        } catch {
+          // 戻せない文字列は、そのまま見出しの名前として探す
+        }
+        const slug = headingSlug({ text: decoded, seen: new Map() });
+        if (root.querySelector(`[data-heading="${CSS.escape(slug)}"]`) !== null) onHeading(slug);
+      });
+    }
+  }
+
+  /** 英数字と記号だけの用語か（ファイル名・識別子の一部に当てないよう、語の切れ目でだけ当てる） */
+  const ASCII_TERM = /^[!-~ ]+$/;
+
+  /** 描いた本文の文中の、用語集の用語を印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど用語か ID のときだけ当てる。押したときは既定の動作を止め、その項目の ID を `onOpen` に知らせる */
+  export function linkBody({
+    root,
+    index,
+    selfId,
+    onOpen,
+  }: {
+    root: HTMLElement;
+    index: RecordIndex;
+    selfId: string;
+    onOpen: (id: string) => void;
+  }): void {
+    // 項目自身の用語と、タイトルが空の用語には付けない。長い用語から順に当てる
+    const terms = index.data.terms
+      .filter((term) => term.id !== selfId && term.title.trim() !== "")
+      .sort((a, b) => b.title.length - a.title.length);
+    const byTitle = new Map(terms.map((term) => [term.title, term]));
+    const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const termPattern = (title: string): string =>
+      ASCII_TERM.test(title) ? `(?<![A-Za-z0-9_.-])${escape(title)}(?![A-Za-z0-9_-])` : escape(title);
+    // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い用語の順
+    const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...terms.map((term) => termPattern(term.title))].join("|"), "g");
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) =>
+        node.parentElement?.closest("pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6") !== null
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT,
+    });
+    const nodes: Text[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+    for (const node of nodes) {
+      const text = node.textContent ?? "";
+      // インラインコードは、中身がちょうど用語か ID のときだけ（パスや識別子の一部には付けない）
+      const inCode = node.parentElement?.closest("code") !== null;
+      const parts: (Node | string)[] = [];
+      let last = 0;
+      for (const match of text.matchAll(pattern)) {
+        const word = match[0];
+        const term = byTitle.get(word);
+        const isId = term === undefined;
+        // 記録に無い ID・項目自身の ID・コードの一部は、そのままにする
+        if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word)) continue;
+        const target = isId ? word : term.id;
+        parts.push(
+          text.slice(last, match.index),
+          h({
+            tag: "a",
+            attrs: {
+              class: isId ? "idref" : "term",
+              href: hashWith({ id: target, heading: null }),
+              "data-id": target,
+              "aria-describedby": isId ? null : TERM_TIP_ID,
+              onclick: (event: Event) => {
+                event.preventDefault();
+                onOpen(target);
+              },
+            },
+            children: [word],
+          }),
+        );
+        last = (match.index ?? 0) + word.length;
+      }
+      if (parts.length === 0) continue;
+      parts.push(text.slice(last));
+      node.replaceWith(...parts.filter((part) => part !== ""));
+    }
+  }
+
+  /** 用語のツールチップの要素の id（用語の印の `aria-describedby` が指す） */
+  export const TERM_TIP_ID = "term-tip";
 
   /** mermaid を初期化したときの、地の色（変わったら初期化し直す） */
   let initializedFor: string | null = null;

@@ -162,6 +162,79 @@ flows:
       - '`id` が `N-1`、`body` が `.mindstella/docs/N-1.md`'
       - N-1 の `body` が `N-1.md` で、`.mindstella/docs/N-1.md` の中身が渡した `body_markdown` と同じ
     test: test_normal_when_note_has_body
+  - name: 正常系（未整理の検討事項を案を持たずに足す）
+    summary: 案を必須にする状態でない未整理は、案を持たずに足せる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 項目を持たないワークスペース
+      - name: item
+        description: 状態 `未整理` で `options` を持たない検討事項
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: add workspace kind decision（未整理・案なし）
+        IF->>IF: スキーマと案と状態の決まりに合う
+        IF->>WS: decisions.yaml を書く
+        IF-->>クライアント: JSON（id: D-1）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - D-1 が `未整理` で `options` のキーを持たない
+    test: test_normal_when_unsorted_without_options
+  - name: 異常系（案を持たない検討事項・SchemaMismatchError）
+    summary: 案を必須にする状態の検討事項を案なしで足すと、足さずに直し方を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 項目を持たないワークスペース
+      - name: item
+        description: 状態 `未決定` で `options` を持たない検討事項
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+
+        クライアント->>IF: add workspace kind decision（未決定・案なし）
+        IF->>IF: 案と状態の決まりに合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `decisions.yaml: items[0].options:` で始まり、`D-1` と `options に案を書く` を含む行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_options_missing
+  - name: 異常系（採用した案を持つ未決定・SchemaMismatchError）
+    summary: 採用した案を持つのに未決定の検討事項は足さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 項目を持たないワークスペース
+      - name: item
+        description: '状態 `未決定` で、案 A（`adopted: true`）と案 B を持つ検討事項'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+
+        クライアント->>IF: add workspace kind decision（未決定・案 A を採用）
+        IF->>IF: 案と状態の決まりに合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `decisions.yaml: items[0].status:` で始まり、`未決定` と採用した案 `A` を含む行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_adopted_but_undecided
 lead: '`item` で渡した中身に ID・作成日時・更新日時・編集した人を付けて、種類の YAML に 1 項目足す。本文を渡したときは `.mindstella/docs/{ID}.md` に書く。'
 idempotent: false
 side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
@@ -202,6 +275,10 @@ request_example: |-
       "phase": "要件",
       "status": "未決定",
       "lead": "種類ごとにキーを分けるかを決める。",
+      "options": [
+        {"key": "A", "content": "種類ごとに分ける", "pros": "探しやすい", "recommended": true},
+        {"key": "B", "content": "1 つにまとめる", "cons": "大きくなる"}
+      ],
       "weight": "大",
       "depends_on": [
         "D-1"
@@ -236,16 +313,16 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えた本文は消し、どのファイルも書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける（キーのパスは `items[0].status` の形）。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける（キーのパスは `items[0].status` の形）。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・足す項目以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 検証の範囲
-    constraint: 足した後のワークスペースの全ての YAML をスキーマと突き合わせる。参照先の ID があるかは確かめない（点検が持つ）
+    constraint: 足した後のワークスペースの全ての YAML をスキーマと、検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）と突き合わせる。決まりに合わないときも SchemaMismatchError で返す。参照先の ID があるかは確かめない（点検が持つ）
   - item: ID の振り方
-    constraint: その種類の連番の最大 + 1（項目が無ければ 1）
+    constraint: その種類の連番の最大 + 1（項目が無ければ 1）。最大は、今ある項目と `changes.yaml` の `sets[].removed`・`pending.removed` にあるその種類の ID から取り、消した ID を振り直さない
   - item: 日時
     constraint: '`created`・`updated` は UTC のタイムゾーン付き ISO 8601（秒まで）。`updated_by` は `ai`'
   - item: YAML の書き方

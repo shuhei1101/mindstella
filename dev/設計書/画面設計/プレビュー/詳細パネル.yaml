@@ -15,7 +15,7 @@ elements:
   - name: 全画面表示
     kind: button
     position: 見出し
-    description: 詳細の全画面を開く（履歴に積まない）。ラベルとアイコンは全画面の中でも変えず、全画面の中では押された状態（`aria-pressed`）で出す
+    description: 詳細の全画面を開く（履歴に積まない）。全画面の中では、画面設計『詳細の全画面』の「元の大きさに戻す」に替わる
     label: 全画面表示
   - name: 閉じる
     kind: button
@@ -23,13 +23,13 @@ elements:
     description: パネルを閉じる。Esc でも閉じる。検討事項のマップでは、余白を押しても閉じる
   - name: 案
     kind: list
-    description: 検討事項の案をカードの縦並びで出し、採用 / 不採用と理由を出す
+    description: 背景の後に、検討事項の案をカードの縦並びで出す。カードの見出しに記号と内容、その下にメリット・デメリット・備考・理由を出し、値は文字列の値の描画で描く。採用した案に「採用」、`adopted` が偽の案に「不採用」を出し、どちらでもない案には何も出さない
     io: 表示
     source: プレビューを開く.mindmap-data.decisions[].options
     visible_when: 検討事項で案を持つ
   - name: 本文
     kind: article
-    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込む。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文
+    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込み、見出しのリンク・用語の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文。コードブロックと図の原文（Raw・描けないときの原文・Raw の差分）は、長い行を折り返して本文の幅に収め、横にスクロールさせない
     io: 表示
     source: プレビューを開く.mindmap-data.bodies[{項目の body}]
     visible_when: 項目が `body` を持つ
@@ -111,7 +111,7 @@ elements:
     visible_when: 差分の表示の間で、本文のその図の記法が選んだ時点で変わったとき
   - name: 図の Raw の差分
     kind: label
-    description: 図の Raw で、記法の行ごとに足した行（+）と消した行（−）を印つきで出す。記法の行の差分を打ち切ったときは、今の記法を差分なしで出す
+    description: 図の Raw で、記法の行ごとに足した行（+）と消した行（−）を印つきで出す。記法の行の差分を打ち切ったときは、今の記法を差分なしで出す。長い行の折り返した続きは印の幅だけ下げて、印の列の下へ回り込ませない
     io: 表示
     visible_when: 差分の表示の間で、jsdiff を読めていて、図の Raw を押していて、その図の記法が変わったとき
   - name: 前後を組み立てられない旨
@@ -152,13 +152,13 @@ elements:
     args:
       - name: anchor
         value: 選んだ範囲の端の矩形
-    position: 本文・案 > 選んだ範囲の近く
+    position: 本文・値 > 選んだ範囲の近く
     description: 本文の文章か項目の値（案の中の値を含む）を選び終えたときに出す。本文は元の行の印から行の範囲を、値は描いた要素のキーのパスを求める（『プレビューを開く』の選んだ箇所の対応づけ）。押すと入口を閉じ、コメントの入力に箇所を添えて入力欄へフォーカスを移す。履歴に積まない
     visible_when: サーバーの配信で、選んだ範囲が空でなく、始まりと終わりがどちらも本文か同じ値の中にあるとき（見出しの帯・関係する項目・図・レビュー中のコメント・入力を含む選択と、差分の表示の間の消した部分を含む選択、古いまとまりを選んでいてその後に本文を直した項目の本文の選択では出さない）
     status: planned
   - name: 示す箇所
     kind: highlight
-    position: 本文・案
+    position: 本文・値
     description: コメントの一覧の行から開いたとき、そのコメントの箇所（本文はその行の範囲のブロック、値はそのキーの要素）までスクロールし、印の色の地で示す。別の項目へ移るかパネルを閉じると消す。箇所が今の本文に合わなければ示さず、項目の先頭を出す
     io: 表示
     visible_when: コメントの一覧から箇所を持つコメントの行を押して開いたとき
@@ -166,11 +166,70 @@ elements:
   - name: 本文のスクロール領域
     kind: region
     position: 見出しと下端の間
-    description: 案・本文・関係する項目・レビュー中のコメントを入れ、見出しと下端の間だけを縦にスクロールする。Tab の順で見出しのボタンの後・中の要素の前に入り、フォーカスしたら矢印・PageUp / PageDown・Home / End・Space で送る。中にフォーカスできる要素が無い項目でもキーボードで送れる。読み上げの名前は「詳細の本文」で、フォーカスの輪郭は全画面で共通の輪郭の色と太さで、領域の内側に描く。フォーカスがあるときに描き直したら、描き直した後のこの領域へフォーカスを戻し、スクロールの位置も保つ
+    description: 背景・案・採用した案と理由・本文・関係する項目・レビュー中のコメントを入れ、見出しと下端の間だけを縦にスクロールする。Tab の順で見出しのボタンの後・中の要素の前に入り、フォーカスしたら矢印・PageUp / PageDown・Home / End・Space で送る。中にフォーカスできる要素が無い項目でもキーボードで送れる。読み上げの名前は「詳細の本文」で、フォーカスの輪郭は全画面で共通の輪郭の色と太さで、領域の内側に描く。フォーカスがあるときに描き直したら、描き直した後のこの領域へフォーカスを戻し、スクロールの位置も保つ
     io: 表示
     visible_when: 常時
     reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
     status: planned
+  - name: 見出しのリンク
+    kind: link
+    position: 本文 > 見出しの右
+    description: '本文の見出しを指す #。乗せる・フォーカスで出す（乗せる操作の無い端末は常に出す）。押すと本文の中でその見出しまで送り、URL のハッシュの `h` をその見出しにする（履歴に積まない）。本文の中の `[文言](#見出し)` のリンクも同じく、その見出しまで送る。読み上げの名前は「見出し「{見出し}」へのリンク」'
+    label: '#'
+    visible_when: 本文に見出しがあるとき
+  - name: 用語の印
+    kind: link
+    position: 本文 > 文中
+    description: 本文の文中（コードブロック・図・リンク・見出しの外。インラインコードは中身がちょうど用語のときだけ）に出てくる用語集の用語（用語の項目のタイトル）を、文字の色を変えない点線の下線で示す。出てくる全ての箇所に付け、長い用語から順に当て、英数字の用語は語の切れ目でだけ当てる。用語の項目自身の本文の中のその用語には付けない。押すとその用語の詳細へ移り、履歴に積む
+    visible_when: 本文に用語集の用語が出てくるとき
+    source: プレビューを開く.mindmap-data.terms
+  - name: 用語のツールチップ
+    kind: tooltip
+    position: 用語の印の下（収まらなければ上）
+    description: 用語の印に乗せる・フォーカスすると、用語・ID・意味を出す。ツールチップに乗せている間は消さず、Esc で消す。印から外れて 150 ミリ秒たつと消す（その間にツールチップへ乗せれば消さない）。用語の印は `aria-describedby` でツールチップを指す
+    io: 表示
+    visible_when: 用語の印に乗せる・フォーカスしている間
+    source: プレビューを開く.mindmap-data.terms[].meaning
+  - name: 項目の ID のリンク
+    kind: link
+    position: 本文 > 文中
+    description: 本文の文中（コードブロック・図・リンクの外。インラインコードは中身がちょうど ID のときだけ）に出てくる、記録にある項目の ID を、等幅の印の色の文字と下線のリンクにする（折り返さない）。記録に無い ID と、開いている項目自身の ID はリンクにしない。押すとその項目の詳細へ移り、履歴に積む
+    visible_when: 本文に記録にある項目の ID が出てくるとき
+    source: プレビューを開く.mindmap-data
+  - name: 背景
+    kind: label
+    position: タイトルの下
+    description: 検討事項のリード（何を決めるか）を出す。値は文字列の値の描画で描く
+    io: 表示
+    visible_when: 検討事項が `lead` を持つ
+    source: プレビューを開く.mindmap-data.decisions[].lead
+    status: planned
+  - name: 推奨の印
+    kind: label
+    position: 案 > 推奨の案のカードの見出しの右
+    description: AI が推す案のカードに、星のアイコンと「推奨」の枠線のバッジを出す
+    label: 推奨
+    io: 表示
+    visible_when: 推奨の印を持つ案があり、どの案も採用でないとき
+    source: プレビューを開く.mindmap-data.decisions[].options[].recommended
+    status: planned
+  - name: 採用した案と理由
+    kind: section
+    position: 案の後・本文の前
+    description: 見出し「採用した案と理由」の節に、「決定内容」（`answer`）と「理由」（`reason`）を値のあるものだけ並べる。値は文字列の値の描画で描く
+    label: 採用した案と理由
+    io: 表示
+    visible_when: 検討事項が `answer`・`reason` のどちらかを持つ
+    source: プレビューを開く.mindmap-data.decisions[].answer・reason
+    status: planned
+  - name: 文字列の値の描画
+    kind: label
+    position: 背景・案・採用した案と理由と、ほかの種類の値
+    description: 詳細に出す文字列の値（検討事項の `lead`・`answer`・`reason`・案の各値、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）を、本文と同じく marked で描き DOMPurify で無害化して差し込む。値の要素はキーのパスを持ち、選んだ箇所のコメント・示す箇所・キーの差分が指せる。marked か DOMPurify を読めないときは文字のまま出す。差分の表示の間で変わった値は、キーの差分で前の値と今の値を文字で並べる
+    io: 表示
+    visible_when: 項目がその値を持つ
+    source: プレビューを開く.mindmap-data
+    status: planned
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
-mock: dev/mock/pages/detail-panel/78/a-footer-quote/index.html
+mock: dev/mock/pages/detail-panel/127/a-badge/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py

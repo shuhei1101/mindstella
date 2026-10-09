@@ -90,7 +90,7 @@ data_models:
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。点検の出力の `problems[]` と同じキーを持ち、`dataclasses.asdict` で JSON にする。'
     properties:
       - name: kind
-        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase"]
+        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase", "stale_history", "decision_state"]
         description: 問題の種類
       - name: file
         type: str
@@ -163,7 +163,7 @@ data_models:
     usecase: 記録の追加と更新
     role: DTO
     summary: 複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`edit_option`・`batch` が使う。'
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`remove`・`edit_option`・`batch` が使う。'
     properties:
       - name: items
         type: dict[Kind, list[dict[str, Any]]]
@@ -176,6 +176,10 @@ data_models:
         type: Changes | None
         default: None
         description: 一緒に書く `changes.yaml` の新しい中身。変えないときは `None`
+      - name: removed_bodies
+        type: list[str]
+        default: '[]'
+        description: 書き換えた後に消す `docs/` の本文のファイル名（`remove` が使う）
 enums:
   - name: Kind
     title: 種類
@@ -379,6 +383,20 @@ classes:
     summary: '既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。配信は 400 にする。メッセージは `{キー}: {理由}`（選べる値を含む）'
     kind: クラス
     inherits: MindmapError
+  - name: LastOptionError
+    title: 最後の案
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '案を必須にする状態の検討事項の最後の案を消そうとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
+    kind: クラス
+    inherits: MindmapError
+  - name: ItemReferencedError
+    title: ほかの記録が指している
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の削除と取り下げ
+    summary: '消そうとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
+    kind: クラス
+    inherits: MindmapError
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -491,6 +509,12 @@ constants:
     usecase: 共通
     summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
     value: '"ai"'
+  - name: OPTIONS_OPTIONAL_STATUSES
+    title: 案を持たなくてよい状態
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    summary: 案（`options`）を持たなくてよい検討事項の状態（ER 図『ワークスペース』の decisions.yaml の案と状態の決まり）
+    value: frozenset({"未整理", "対象外", "取り下げ"})
 functions:
   - name: kind_of_id
     title: ID の種類
@@ -595,7 +619,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: 設定と 7 種類をスキーマと突き合わせ、合わない箇所を問題の並びにする
+    summary: 設定と 7 種類をスキーマと、検討事項を案と状態の決まりと突き合わせ、合わない箇所を問題の並びにする
     args:
       - name: workspace
         type: Workspace
@@ -604,13 +628,14 @@ functions:
         description: 検証するワークスペース
     returns:
       type: list[Problem]
-      description: '`load_problems` とスキーマ違反（どれも `kind: schema`）。ファイル名の順、同じファイルの中はキーのパスの順'
+      description: '`load_problems` とスキーマ違反（`kind: schema`）と案と状態の決まりに合わない検討事項（`kind: decision_state`）。ファイル名の順、同じファイルの中はキーのパスの順'
     process: |-
       1. スキーマの検証器を作る（検証器の用意。`load_validators`）
       2. `raw` の値をそのまま、ファイルに対応するスキーマと突き合わせ、`iter_errors` のエラーごとに問題を作る（一番上の形の誤りもここで拾う）
          - キーのパスは `absolute_path` を `items[0].status` の形にする（`_format_path`。一番上は `(全体)`）
          - パスが `items[{n}]` を含み、その要素が `id` を持つ場合、その `id` を問題の `id` に入れる
-      3. `load_problems` と合わせて並べて返す
+      3. `raw` に `decisions.yaml` があれば、`check_decision_rules` の問題を足す（キーのパスの順に並べる）
+      4. `load_problems` と合わせて並べて返す
     unit_tests:
       - name: test_validate_workspace
         case: 正常
@@ -642,6 +667,12 @@ functions:
         condition: '`parametrize`: `decisions.yaml` が一番上の配列 / `decisions.yaml` が `items` の横に `extra` のキーを持つ'
         mock: なし
         expected: '`file: decisions.yaml`・`kind: schema` の問題があり、`key` が `(全体)`'
+      - name: test_validate_workspace_when_decision_state
+        case: 正常
+        summary: 案と状態の決まりに合わない検討事項も問題に含める
+        condition: スキーマに合い、案を持たない未決定の D-1 を持つワークスペース
+        mock: なし
+        expected: '`file: decisions.yaml`・`key: items[0].options`・`id: D-1`・`kind: decision_state` の 1 件'
   - name: load_validators
     title: 検証器の用意
     kind: 関数
@@ -722,7 +753,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の追加と更新
     scope: public
-    summary: その種類の連番の最大 + 1 の ID を返す
+    summary: その種類の連番の最大 + 1 の ID を返す（消した ID を振り直さない）
     args:
       - name: workspace
         type: Workspace
@@ -734,11 +765,17 @@ functions:
         required: true
         passing: positional
         description: 種類
+      - name: taken
+        type: Iterable[str]
+        required: false
+        default: ()
+        passing: keyword
+        description: 今の項目に無いが振らない ID（消した項目の ID）
     returns:
       type: str
       description: '`{頭の文字}-{連番}`'
     process: |-
-      1. その種類の項目の `id` のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
+      1. その種類の項目の `id` と `taken` のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
       2. 最大 + 1 で ID を作って返す
     unit_tests:
       - name: test_next_id
@@ -753,6 +790,12 @@ functions:
         condition: タスクが 0 件
         mock: なし
         expected: '`T-1`'
+      - name: test_next_id_skips_taken
+        case: 正常
+        summary: 消した ID を振り直さない
+        condition: N-1 だけを持ち、`taken` に `N-2`・`D-5`
+        mock: なし
+        expected: '`N-3`（ほかの種類の `D-5` は見ない）'
   - name: now_utc
     title: 今の日時
     kind: 関数
@@ -790,7 +833,7 @@ functions:
          - そのファイルが `load_problems` にある（YAML として読めない）か、`raw` のそのファイルの値が `{"items": items のその種類}` と等しくない（一番上が辞書でない・`items` の横にキーがある・`items` が配列でない・辞書でない要素があるなど、`_extract_items` が落とすものがある）場合、変更を当てる前のワークスペースのそのファイルの問題（`validate_workspace` のうち `file` がそのファイルのもの）を持った `SchemaMismatchError` を送る（何も書かない）
          - 項目の中の値だけが合わない問題はここでは止めない（変更で直せるため。残っていれば 2. で止まる）
       2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
+         - 問題がある場合、書き換える項目の ID（`_written_ids`）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
       3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
       4. 本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
@@ -862,13 +905,19 @@ functions:
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `changes.yaml`）。`decisions.yaml`・`docs/D-1.md`・`changes.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
         exception: changes.yaml の置き換えで OSError
+      - name: test_save_change_when_decision_state
+        case: 異常
+        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする
+        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、決まりに合う D-1 の `lead` だけを直した並び / 決まりに合う D-1・D-2 のワークスペースで、D-1 を採用した案の無い決定済みに直した並び'
+        mock: なし
+        expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真（`lines` が D-2 の行） / 偽（`lines` が D-1 の行）
   - name: create_workspace
     title: ワークスペースの作成
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: ワークスペースの作成
     scope: public
-    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作る
+    summary: 設定を検証してから、`.mindstella/` に設定・空の 7 種類の YAML・版のファイル・`docs/`・`release/` を作り、直下に README を書く
     side_effects: フォルダとファイルを作る
     args:
       - name: root
@@ -888,13 +937,13 @@ functions:
         description: 版のファイルに書くプラグインの版（`v0.3.0` の形。入口が `read_plugin_version` で読んで渡す）
     returns:
       type: list[str]
-      description: 作ったファイルとフォルダ（ワークスペースからの相対パスで `.mindstella/` から始まる。フォルダは末尾に `/`）
+      description: 作ったファイルとフォルダ（ワークスペースからの相対パス。フォルダは末尾に `/`）。`README.md` はこの呼び出しで書いたときだけ末尾に載せ、ほかは `.mindstella/` から始まる
     process: |-
       1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
-      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、最後に `config.yaml` を書く（`dump_yaml`。どれも `records_root(root)` の下）
-         - `OSError` が起きた場合、この関数が作ったファイルとフォルダを消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
+      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README のほかはどれも `records_root(root)` の下）
+         - `OSError` か README の `WriteFailedError` が起きた場合、この関数が作ったファイルとフォルダ（この呼び出しで書いた README を含む。前からあった README は消さない）を消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
         condition: '`root` に `.mindstella/config.yaml` が既にあるか、直下に `config.yaml` か `mindmap.yaml` がある'
@@ -910,7 +959,7 @@ functions:
         summary: まだ無いフォルダにワークスペースを作る
         condition: '`tmp_path / "ws"`（無い）と正しい設定、`version="v0.3.0"`'
         mock: なし
-        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`
+        expected: 戻り値が 8 つの YAMLと `mindstella-version.ini`・`docs/`・`release/`・`README.md`。`config.yaml` を読むと渡した設定。`mindstella-version.ini` が `v0.3.0\n`。直下の `README.md` の 1 行目が `README_MARK`
       - name: test_create_workspace_when_exists
         case: 異常
         summary: config.yaml か mindmap.yaml があるフォルダには作らない
@@ -931,6 +980,19 @@ functions:
         condition: '`dump_yaml` で作った文字列を書く処理を、`logs.yaml` のときだけ `OSError` を送るように `Path.write_text` を差し替える。`tmp_path / "ws"`（無い）'
         mock: '`Path.write_text`（monkeypatch）'
         expected: '`WriteFailedError`。`tmp_path / "ws"` が無い'
+        exception: 作る途中で OSError
+      - name: test_create_workspace_when_user_readme_exists
+        case: 正常
+        summary: 利用者の README があるフォルダには README を書かずに作る
+        condition: '`# 家計簿アプリの話し合い` の `README.md` だけを置いた `tmp_path` と正しい設定'
+        mock: なし
+        expected: 戻り値に `README.md` が無く、`.mindstella/config.yaml` がある。`README.md` の中身が呼ぶ前と同じ
+      - name: test_create_workspace_when_readme_write_fails
+        case: 異常
+        summary: README を書けなければ作ったものを消す
+        condition: '`README.md` という名前のフォルダだけを置いた `tmp_path` と正しい設定'
+        mock: なし
+        expected: '`WriteFailedError`。`.mindstella/` が無く、`README.md` のフォルダが残っている'
         exception: 作る途中で OSError
   - name: read_body
     title: 本文の読み込み
@@ -1083,7 +1145,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1095,14 +1157,21 @@ functions:
         required: true
         passing: positional
         description: 問題を出したワークスペース
+      - name: written_ids
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 書き込むツールが書き換える項目の ID（`build_mismatch_error` が渡す）。点検・読み込みは渡さない
     returns:
       type: bool
       description: 前の版の形式から来ていれば真
     process: |-
-      1. `kind` が `schema` でない場合、偽を返す
-      2. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
-      3. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
-      4. それ以外は偽
+      1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
+      2. `kind` が `schema` でない場合、偽を返す
+      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
+      4. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
+      5. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
@@ -1110,6 +1179,12 @@ functions:
         condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 真
+      - name: test_is_legacy_problem_when_decision_state
+        case: 正常
+        summary: 書き込む項目以外の案と状態の合わない検討事項だけを前の版の形式とする
+        condition: 'D-1 の `kind: decision_state` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}` / `written_ids` が `{D-2}`'
+        mock: なし
+        expected: 真 / 偽 / 真
   - name: clear_release
     title: リリースの片付け
     kind: 関数
@@ -1252,7 +1327,7 @@ functions:
     usecase: 記録の追加と更新
     scope: public
     summary: 複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
-    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換える
+    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換え、`removed_bodies` の本文を消す
     args:
       - name: workspace
         type: Workspace
@@ -1267,11 +1342,11 @@ functions:
     process: |-
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
       2. `raw` の `items` の種類のファイルを全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
-         - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
-      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）
+         - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
+      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換える
-         - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
+      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
+         - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
@@ -1298,6 +1373,24 @@ functions:
         condition: 検討事項とタスクの並びと本文。`os.replace` を、置き換え先が `tasks.yaml` のときだけ `OSError` を送る関数に差し替える
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `tasks.yaml`）。`decisions.yaml`・`tasks.yaml`・`docs/` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+      - name: test_save_batch_when_decision_state
+        case: 異常
+        summary: 書き換える項目以外の案と状態の合わない検討事項があるときだけ、前の版の形式とする
+        condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、案を持つ未決定の D-3 と T-1 を足した並び / 決まりに合うワークスペースで、案を持たない未決定の D-3 を足した並び'
+        mock: なし
+        expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真 / 偽
+      - name: test_save_batch_removes_bodies
+        case: 正常
+        summary: 書き換えた後に消す本文を消す
+        condition: N-2 を除いたメモの並び、`removed_bodies` に `N-2.md`（`docs/N-2.md` がある）
+        mock: なし
+        expected: '`notes.yaml` に N-2 が無く、`docs/N-2.md` が無い'
+      - name: test_save_batch_when_body_removal_fails
+        case: 異常
+        summary: 本文を消せなければ、置き換えたファイルを戻す
+        condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.md`。本文を消す関数を `OSError` を送る関数に差し替える
+        mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
+        expected: '`WriteFailedError`（メッセージに `N-2.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.md` が呼ぶ前と同じ'
   - name: require_workspace
     title: ワークスペースの確かめ
     kind: 関数
@@ -1437,6 +1530,117 @@ functions:
         condition: '`tmp_path`'
         mock: なし
         expected: '`tmp_path / ".mindstella"`。フォルダは作られていない'
+  - name: check_decision_rules
+    title: 案と状態の決まりの検証
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 検討事項の並びを、案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）と突き合わせ、合わない決まりごとに問題にする
+    args:
+      - name: decisions
+        type: Any
+        required: true
+        passing: positional
+        description: '`raw` の `decisions.yaml` の値（形が崩れていてもよい）'
+    returns:
+      type: list[Problem]
+      description: '`kind: decision_state`・`file: decisions.yaml` の問題。項目の並びの順、同じ項目の中は ER 図の決まりの順'
+    process: |-
+      1. 値から `items` の要素を取り出す（`_extract_items`）。辞書でない要素と、`status`・`options` の型がスキーマに合わない要素は飛ばす（スキーマの検証が拾う）
+      2. 要素ごとに、`options` の要素のうち `adopted` が真の案を引く
+      3. 状態が `OPTIONS_OPTIONAL_STATUSES` に無く、`options` が無いか空の場合、`key: items[{n}].options`・`detail` は ER 図の 1 つ目の理由の行
+      4. 状態が `決定済み` で、採用した案が無い場合、`key: items[{n}].options`・`detail` は ER 図の 2 つ目の理由の行
+      5. 状態が `未決定` で、採用した案がある場合、`key: items[{n}].status`・`detail` は ER 図の 3 つ目の理由の行（記号は採用した案の `key`）
+      6. `id` は要素の `id`（無ければ `None`）
+    unit_tests:
+      - name: test_check_decision_rules
+        case: 正常
+        summary: 決まりに合う検討事項は問題 0 件
+        condition: '`parametrize`: 案を持つ未決定 / 案 A を採用した決定済み / 案 A を採用した要見直し / 案を持たない未整理・対象外・取り下げ'
+        mock: なし
+        expected: 空の並び
+      - name: test_check_decision_rules_when_mismatch
+        case: 正常
+        summary: 合わない決まりを 1 件ずつ拾う
+        condition: '案を持たない未決定の D-1（`options: []`）、案 A・B を持ち採用した案を持たない決定済みの D-2、案 A を採用した未決定の D-3'
+        mock: なし
+        expected: 3 件で、`id`・`key` が D-1 の `items[0].options`・D-2 の `items[1].options`・D-3 の `items[2].status`。D-3 の `detail` に `A` と `未決定` を含む
+      - name: test_check_decision_rules_when_malformed
+        case: 正常
+        summary: 形の崩れた要素は飛ばす
+        condition: '`items` の要素に文字列と、`options` が文字列の検討事項'
+        mock: なし
+        expected: 空の並び
+  - name: build_mismatch_error
+    title: スキーマに合わない例外を作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: public
+    summary: '問題ごとの `{ファイル名}: {キーのパス}: {理由}` の行と、前の版の形式の問題を含むかを持つ `SchemaMismatchError` を作る'
+    args:
+      - name: problems
+        type: list[Problem]
+        required: true
+        passing: positional
+        description: 検証で拾った問題
+      - name: workspace
+        type: Workspace | None
+        required: false
+        default: None
+        passing: positional
+        description: 問題を出したワークスペース。渡すと前の版の形式の問題かも決める
+      - name: written_ids
+        type: frozenset[str]
+        required: false
+        default: frozenset()
+        passing: keyword
+        description: 書き込むツールが書き換える項目の ID。`is_legacy_problem` へそのまま渡す
+    returns:
+      type: SchemaMismatchError
+      description: '`lines` に問題ごとの行、`legacy` に前の版の形式の問題を 1 件でも含むか'
+    process: |-
+      1. 問題ごとに `{file}: {key。無ければ (全体)}: {detail}` の行を作る
+      2. `workspace` がある場合、問題のどれかが前の版の形式かを決める（`is_legacy_problem(problem, workspace, written_ids=written_ids)`）。無ければ `legacy` は偽
+    unit_tests:
+      - name: test_build_mismatch_error_when_decision_state
+        case: 正常
+        summary: 書き込む項目だけが案と状態に合わないときは前の版の形式にしない
+        condition: 'D-1 の `kind: decision_state` の問題 1 件とワークスペース。`parametrize`: `written_ids` が `{D-1}` / `written_ids` なし'
+        mock: なし
+        expected: '`legacy` が偽 / 真。どちらも `lines` が `decisions.yaml: items[0].options:` で始まる 1 行'
+  - name: _written_ids
+    title: 書き換える項目の ID
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: internal
+    summary: 読んだ時点の並びと変更後の並びを比べ、足した項目と中身が違う項目の ID を返す
+    args:
+      - name: before
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: 読んだ時点のその種類の並び（`workspace.items[kind]`）
+      - name: after
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: 変更後の並び
+    returns:
+      type: frozenset[str]
+      description: 変更後の並びのうち、読んだ時点に同じ ID の項目が無いか、あっても中身が等しくない項目の ID（`id` が文字列でない項目は含めない）
+    process: |-
+      1. 読んだ時点の並びを ID → 項目の辞書にする
+      2. 変更後の並びの項目ごとに、同じ ID の項目が無いか `!=` なら ID を集める
+    unit_tests:
+      - name: test_written_ids
+        case: 正常
+        summary: 足した項目と直した項目だけを返す
+        condition: 読んだ時点が D-1・D-2、変更後が D-1（そのまま）・D-2（`status` を直した）・D-3（足した）
+        mock: なし
+        expected: '`{D-2, D-3}`'
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

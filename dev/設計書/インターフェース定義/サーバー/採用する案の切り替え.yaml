@@ -4,12 +4,12 @@ entry:
   value: '`adopt`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__adopt`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
-    summary: 案 A から案 B へ採用を切り替える
+    summary: 決定済みの検討事項の採用を案 A から案 B へ切り替える
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A（採用）と案 B を持つ検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
+        description: 案 A（採用）と案 B を持つ決定済みの検討事項 D-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -19,16 +19,16 @@ flows:
 
         クライアント->>IF: adopt workspace id D-1 key B
         IF-->>WS: 全ての YAML を読む
-        IF->>IF: 案 B だけを採用にしてスキーマと突き合わせる
+        IF->>IF: 案 B だけを採用にし、状態を決定済みにしてスキーマと突き合わせる
         IF->>WS: decisions.yaml を書く
-        IF-->>クライアント: JSON（adopted: B、previous: A）
+        IF-->>クライアント: JSON（adopted: B、previous: A、status: 決定済み、previous_status: 決定済み）
       ```
     expected:
       - ツールのエラーにならない
-      - '`adopted` が `B`、`previous` が `A`'
+      - '`adopted` が `B`、`previous` が `A`、`status` と `previous_status` が `決定済み`'
       - D-1 の案 B の `adopted` が真、案 A の `adopted` が偽
-      - D-1 の `status`・`answer` が呼ぶ前と同じ
-      - D-1 が `history` を 1 回分持ち、`before.options` で案 A の `adopted` が真、案 B の `adopted` が偽
+      - D-1 の `status` が `決定済み` のままで、`answer` が呼ぶ前と同じ
+      - D-1 が `history` を 1 回分持ち、`before.options` で案 A の `adopted` が真、案 B の `adopted` が偽で、`before` が `status` を持たない
       - '`changes.yaml` の `pending.changed` に D-1 がある'
     test: test_normal
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
@@ -82,7 +82,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 案 A（採用）と案 B を持つ検討事項 D-1 を持つワークスペース
+        description: 案 A（採用）と案 B を持つ決定済みの検討事項 D-1 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -148,9 +148,41 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_write_fails
-lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外す。
+  - name: 正常系（未決定の検討事項の案を採用する）
+    summary: 未決定と要見直しの検討事項の案を採用すると、どちらも決定済みになる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 案 A・B を持ち B に推奨の印を持つ未決定の D-1 と、案 A を採用した要見直しの D-2 を足して `commit` したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as adopt（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: adopt workspace id D-1 key B
+        IF->>IF: 案 B を採用にし、状態を決定済みにする
+        IF->>WS: decisions.yaml を書く
+        IF-->>クライアント: JSON（adopted: B、previous: null、status: 決定済み、previous_status: 未決定）
+        クライアント->>IF: adopt workspace id D-2 key A
+        IF->>IF: 案 A を採用にしたまま、状態を決定済みにする
+        IF->>WS: decisions.yaml を書く
+        IF-->>クライアント: JSON（adopted: A、previous: A、status: 決定済み、previous_status: 要見直し）
+      ```
+    expected:
+      - どちらの呼び出しもツールのエラーにならない
+      - D-1 が `決定済み` で、案 B だけが採用で、案 B の推奨の印が残っている
+      - 'D-1 の `history` の 1 回分の `before` が `status: 未決定` と、どの案も採用でない `options` を持つ'
+      - D-1 の `answer` が呼ぶ前と同じ
+      - D-2 が `決定済み` で、案 A だけが採用である
+      - 'D-2 の `history` の 1 回分の `before` が `status: 要見直し` だけを持ち、`options` を持たない'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_undecided_adopted
+lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外して、状態を `決定済み` にする。
 idempotent: true
-side_effects: '`decisions.yaml` のその検討事項の `options[].adopted` と `updated`・`updated_by`（`ai`）を書き換える。採用が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。状態・答えは変えない'
+side_effects: '`decisions.yaml` のその検討事項の `options[].adopted`・`status` と `updated`・`updated_by`（`ai`）を書き換える。採用か状態が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『項目の更新』と同じ積み方・書く順）。答え（`answer`）・推奨の印（`options[].recommended`）は変えない'
 request:
   - name: workspace
     type: str
@@ -181,9 +213,15 @@ response:
   - name: previous
     type: str | None
     description: それまで採用していた案の記号。無ければ `null`
+  - name: status
+    type: Literal['決定済み']
+    description: 切り替えた後の状態
+  - name: previous_status
+    type: str
+    description: 切り替える前の状態
 exceptions:
   - name: なし（正常終了）
-    condition: 切り替えた（既にその案が採用のときも含む）
+    condition: 切り替えた（既にその案が採用で決定済みのときも含む）
     notes: 結果を返す
   - name: WorkspaceNotFoundError
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
@@ -200,7 +238,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。何も書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・切り替える検討事項以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -211,6 +249,8 @@ constraints:
   - item: 影響の洗い出し
     constraint: しない（影響は `impact`、要見直しにするかはスキルの手順が決める）
   - item: 変更履歴
-    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は `options`（切り替える前の案の並びの全体）。既にその案が採用のときは積まない
+    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は値が変わったキー（`options` は切り替える前の案の並びの全体、`status` は切り替える前の状態）。既にその案が採用で決定済みのときは積まない
+  - item: 採用と状態
+    constraint: 切り替えた後の状態は、切り替える前の状態によらず `決定済み`（未決定・要見直し・保留から決定済みにする）。`answer` は書き換えない（答えはスキルの手順が『項目の更新』で書く）
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_adopt.py

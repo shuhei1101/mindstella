@@ -9,6 +9,7 @@ import yaml
 from workspace_fixtures import RECORD_DIR, REPO_ROOT
 
 from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
+from .readme_helpers import README_MARK, expected_readme
 
 # 作られる 7 種類の YAML のファイル名
 KIND_YAML_FILES = (
@@ -61,11 +62,24 @@ def test_normal(tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, A
     payload = result.data
     assert payload["workspace"] == str(root)
     assert set(payload["files"]) == {
-        f".mindstella/{name}"
-        for name in ("config.yaml", *KIND_YAML_FILES, "mindstella-version.ini", "docs/", "release/")
+        *(
+            f".mindstella/{name}"
+            for name in (
+                "config.yaml",
+                *KIND_YAML_FILES,
+                "mindstella-version.ini",
+                "docs/",
+                "release/",
+            )
+        ),
+        "README.md",
     }
-    # 直下にあるのは記録のフォルダだけ
-    assert [path.name for path in root.iterdir()] == [".mindstella"]
+    # 直下にあるのは記録のフォルダと README だけ
+    assert sorted(path.name for path in root.iterdir()) == [".mindstella", "README.md"]
+    # README は、配っていないときの文面で、プラグインのフォルダ・絶対パス・セッションの名前を埋めた一覧
+    readme_text = (root / "README.md").read_text(encoding="utf-8")
+    assert readme_text.splitlines()[0] == README_MARK
+    assert readme_text == expected_readme(root)
 
 
 def test_normal_when_no_goal(
@@ -93,6 +107,25 @@ def test_normal_when_no_goal(
     checked = call_tool("check", workspace=str(root))
     assert checked.data is not None
     assert checked.data["problems"] == []
+
+
+def test_normal_when_readme_exists(
+    tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, Any]
+) -> None:
+    """利用者の README.md を直下に持つフォルダに作ると、README.md を書き換えずに作る（正常系）。"""
+    # 準備
+    root = tmp_path / "new-workspace"
+    root.mkdir()
+    (root / "README.md").write_text("# 家計簿アプリの話し合い\n", encoding="utf-8")
+    content_before = (root / "README.md").read_bytes()
+    # 実行
+    result = call_tool("init", workspace=str(root), settings=valid_settings)
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert (root / "README.md").read_bytes() == content_before
+    assert "README.md" not in result.data["files"]
+    assert (root / RECORD_DIR / "config.yaml").is_file()
 
 
 def test_error_when_workspace_exists(
@@ -172,4 +205,5 @@ def test_error_when_old_settings_file_exists(
     assert str(root) in result.text
     assert "/mindstella:upgrade" in result.text
     assert not (root / RECORD_DIR).exists()
+    assert not (root / "README.md").exists()
     assert snapshot_tree(root) == before

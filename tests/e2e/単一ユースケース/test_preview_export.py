@@ -137,7 +137,7 @@ def test_normal(
     tmp_path: Path,
     valid_settings: dict[str, Any],
 ) -> None:
-    """記録を人に渡すために書き出し、通信を止めたブラウザで開いて本文・図・マップ・つながりを読む（正常系）。"""
+    """記録を人に渡すために書き出し、通信を止めたブラウザで開いて本文・図・マップ・ネットワークを読む（正常系）。"""
     # 準備
     # ワークスペースの既定は、見た目が starlight で、表示する種類から用語集を外す
     settings = {
@@ -179,8 +179,9 @@ def test_normal(
     open_preview(out.as_uri())
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
     assert page.locator(ALERT_SELECTOR).count() == 0
-    # 検討事項のマップに D-1 と D-2 が描かれる
+    # 検討事項のタブはボードで開くので、表示形式の切り替えでマップに切り替えると、マップに D-1 と D-2 が描かれる
     page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="map"]')
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
     map_ids = page.eval_on_selector_all(
         "#decision-map .map-node.n-item", "nodes => nodes.map(n => n.dataset.node).sort()"
@@ -196,14 +197,14 @@ def test_normal(
     assert page.locator("aside.panel .mermaid svg").count() == 1
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
     assert page.locator(ALERT_SELECTOR).count() == 0
-    # つながりに玉が描かれる（D-1 の玉を押すと、詳細パネルに D-1 が開く）
+    # ネットワークに玉が描かれる（D-1 の玉を押すと、詳細パネルに D-1 が開く）
     page.click('nav.tabbar a[data-tab="graph"]')
     page.wait_for_selector("#graph-canvas")
     click_item_ball(page, "D-1")
     assert page.inner_text("aside.panel .d-title") == "D-1の題"
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)
     assert page.locator(ALERT_SELECTOR).count() == 0
-    # トップバーに用語集のタブが無く、つながりに渡る見た目が starlight である
+    # トップバーに用語集のタブが無く、ネットワークに渡る見た目が starlight である
     assert "terms" not in tab_keys(page)
     assert graph_look(page) == DEFAULT_LOOK
     # トップバーの表示の設定でパネルが開き、「ワークスペースの既定にする」が無い

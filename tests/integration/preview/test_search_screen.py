@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
-from preview_fixture_types import OpenPreview, WriteSamplePreview
+from preview_a11y_checks import axe_rule_results
+from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
+from workspace_fixtures import MakeItem
 
 # 検索のダイアログ
 DIALOG = "dialog.search"
+
+# 見出しの段が飛んでいないかを確かめる axe の規則
+HEADING_ORDER_RULE = "heading-order"
 
 
 def _result_ids(page: Page) -> list[str]:
@@ -14,15 +19,15 @@ def _result_ids(page: Page) -> list[str]:
     return page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
 
 
-def test_open_by_slash_and_trigger(
+def test_open_by_ctrl_k_and_trigger(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
-    """`/` キーとトップバーの入口で開き、検索の言葉の欄に入力できる（正常系）。"""
+    """`Ctrl+K` とトップバーの入口で開き、検索の言葉の欄に入力できる（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url)
     # 実行・検証
-    page.keyboard.press("/")
+    page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")
     assert page.evaluate(f"document.activeElement === document.querySelector('{DIALOG} input')")
     page.keyboard.press("Escape")
@@ -38,7 +43,7 @@ def test_search_by_id_title_and_body(
     # 準備
     url = write_sample_preview()
     page = open_preview(url)
-    page.keyboard.press("/")
+    page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")
     # 実行・検証（ID）
     page.fill(f"{DIALOG} input", "d-3")
@@ -59,7 +64,7 @@ def test_open_result(write_sample_preview: WriteSamplePreview, open_preview: Ope
     # 準備
     url = write_sample_preview()
     page = open_preview(url)
-    page.keyboard.press("/")
+    page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")
     page.fill(f"{DIALOG} input", "T-1")
     page.wait_for_selector(f"{DIALOG} .sr-item")
@@ -79,7 +84,7 @@ def test_open_result_by_keyboard(
     # 準備
     url = write_sample_preview()
     page = open_preview(url)
-    page.keyboard.press("/")
+    page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")
     page.fill(f"{DIALOG} input", "の題")
     page.wait_for_selector(f"{DIALOG} .sr-item")
@@ -99,11 +104,135 @@ def test_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     url = write_sample_preview()
     page = open_preview(url)
     # 実行・検証
-    page.keyboard.press("/")
+    page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")
     page.click(f'{DIALOG} button[aria-label="検索を閉じる"]')
     page.wait_for_function(f"!document.querySelector('{DIALOG}')")
-    page.keyboard.press("/")
+    page.keyboard.press("Control+K")
     page.wait_for_selector(f"{DIALOG}[open]")
     page.mouse.click(4, 4)
     page.wait_for_function(f"!document.querySelector('{DIALOG}')")
+
+
+def test_slash_does_not_open(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """`/` では開かない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 実行
+    page.keyboard.press("/")
+    page.wait_for_timeout(300)
+    # 検証
+    assert page.locator(DIALOG).count() == 0
+
+
+def test_open_by_ctrl_k_when_typing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """入力欄で文字を入れている間も `Ctrl+K` で開く。開いている間にもう一度押すと、言葉を選び直す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.fill("input[aria-label='タイトルで強調するキーワード']", "題")
+    # 実行・検証（入力中に開く）
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    # 検索の言葉を入れてから、もう一度押すと選び直す
+    page.fill(f"{DIALOG} input", "d-3")
+    page.keyboard.press("Control+K")
+    assert page.locator(DIALOG).count() == 1
+    selected = page.evaluate(
+        f"(() => {{ const i = document.querySelector('{DIALOG} input'); return i.value.slice(i.selectionStart, i.selectionEnd); }})()"
+    )
+    assert selected == "d-3"
+
+
+def test_trigger_key_hint(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """検索の入口に、キーの案内と `aria-keyshortcuts` を持つ（正常系）。"""
+    # 準備・実行
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 検証
+    trigger = 'button[data-act="search"]'
+    assert page.get_attribute(trigger, "aria-keyshortcuts") == "Control+K Meta+K"
+    assert page.inner_text(f"{trigger} kbd") in ("Ctrl+K", "⌘K")
+
+
+def test_exact_match_first(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ID かタイトルが言葉と完全に一致する項目は、種類の見出しより上の「完全に一致」に出し、下の種類のまとまりには重ねない。Enter で開くのは完全に一致する項目（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="シナリオの依頼の受け方"),
+        make_item("G-1", title="シナリオの依頼"),
+    )
+    page = open_preview(url)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    # 実行
+    page.fill(f"{DIALOG} input", "シナリオの依頼")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 検証
+    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
+    assert headings == ["完全に一致", "検討事項"]
+    assert _result_ids(page) == ["G-1", "D-1"]
+    # 完全に一致の結果には、種類を添える
+    assert page.inner_text(f'{DIALOG} .sr-item[data-id="G-1"] .sr-kind') == "用語集"
+    assert page.locator(f'{DIALOG} .sr-item[data-id="D-1"] .sr-kind').count() == 0
+    # 先頭の結果が完全に一致する項目なので、Enter で開く
+    page.keyboard.press("Enter")
+    page.wait_for_selector("aside.panel.open")
+    assert "id=G-1" in page.evaluate("location.hash")
+
+
+def test_exact_match_by_id(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ID の完全一致は大文字・小文字を区別せず、ID が前方一致するだけの項目は重ねない。ID は折り返さない（正常系）。"""
+    # 準備
+    items = [make_item("G-1"), make_item("G-12")]
+    url = write_preview(*items)
+    page = open_preview(url)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    # 実行
+    page.fill(f"{DIALOG} input", "g-1")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 検証
+    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
+    assert headings == ["完全に一致", "用語集"]
+    assert _result_ids(page) == ["G-1", "G-12"]
+    white_space = page.eval_on_selector(
+        f'{DIALOG} .sr-item[data-id="G-1"] > .mono', "e => getComputedStyle(e).whiteSpace"
+    )
+    assert white_space == "nowrap"
+
+
+def test_result_headings_when_axe(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """結果を出したモーダルの見出しは全て `h2` で、axe の `heading-order` に当たらない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="シナリオの依頼の受け方"),
+        make_item("G-1", title="シナリオの依頼"),
+    )
+    page = open_preview(url)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    page.fill(f"{DIALOG} input", "シナリオの依頼")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 実行
+    tags = page.eval_on_selector_all(
+        f"{DIALOG} :is(h1, h2, h3, h4, h5, h6)", "h => h.map(x => x.tagName)"
+    )
+    result = axe_rule_results(page, DIALOG, HEADING_ORDER_RULE)
+    # 検証（見出しは「完全に一致」と種類名の 2 本が全て h2。規則が見出しに当たったうえで、通る）
+    assert tags == ["H2", "H2"]
+    assert result["violations"] == []
+    assert len(result["passes"]) == 2

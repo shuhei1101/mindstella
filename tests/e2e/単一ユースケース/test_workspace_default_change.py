@@ -1,7 +1,7 @@
 """ワークスペースの既定を変える（利用者が今の選びを config.yaml の既定として保存し、上書きを持たない他の画面に効かせる）の E2E テスト。
 
 起動スクリプトの代わりに MCP サーバーを立て、サーバーが配るプレビューを、端末の保存領域を共有しない 2 つのブラウザのコンテキスト（A と B）で開く。
-見た目ごとの描き分けは確かめず、つながりの画面に渡った見た目の値だけを確かめる。
+見た目ごとの描き分けは確かめず、ネットワークの画面に渡った見た目の値だけを確かめる。
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from workspace_fixtures import RECORD_DIR, MakeItem
 if TYPE_CHECKING:
     from conftest import LockDirs
 
-# タブの帯に並ぶ画面の数（概要・つながりと、用語集を除いた 6 種類）
+# タブの帯に並ぶ画面の数（概要・ネットワークと、用語集を除いた 6 種類）
 TABS_WITHOUT_TERMS = 8
 
 # 保存の結果を待つ上限ミリ秒
@@ -41,7 +41,7 @@ SAVE_TIMEOUT_MS = 10_000
 
 
 def _open_with_override(page: Page, url: str, prefs: dict[str, Any]) -> Page:
-    """つながりの画面を開き、端末の保存領域に個人の上書きを置いて読み込み直す。"""
+    """ネットワークの画面を開き、端末の保存領域に個人の上書きを置いて読み込み直す。"""
     open_in(page, url, "#tab=graph")
     seed_prefs(page, prefs)
     page.reload()
@@ -101,7 +101,7 @@ def test_normal(
     assert config["display"]["visible_kinds"] == KINDS_WITHOUT_TERMS
     # config.yaml のそのほかのキーが、操作の前と同じである
     assert {key: value for key, value in config.items() if key != "display"} == config_before
-    # B の画面が、開き直さずに用語集のタブを外し、つながりに渡る見た目が glow になる
+    # B の画面が、開き直さずに用語集のタブを外し、ネットワークに渡る見た目が glow になる
     assert initial_look_b == "deep"
     assert "terms" in initial_tabs_b
     assert "terms" not in tab_keys(page_b)

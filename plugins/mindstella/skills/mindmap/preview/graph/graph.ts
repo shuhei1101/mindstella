@@ -1,13 +1,13 @@
-// つながり。全種類の項目を、関連（依存・関連・根拠・進めるタスク）でつないで 3D で描く。ライブラリを使わず、平たい円をキャンバスへ透視で描く。
+// ネットワーク。全種類の項目を、関連（依存・関連・根拠・進めるタスク）でつないで 3D で描く。ライブラリを使わず、星をキャンバスへ透視で描く。見た目ごとの描き方は looks.ts、ロックの判定は core/lock.ts が持つ。
 
 namespace MindmapPreview {
   /** 線の種類 */
   export type LinkType = "depends" | "related" | "source" | "for";
 
-  /** つながりの玉 */
+  /** ネットワークの玉 */
   export type GraphNode = { id: string; kind: Kind };
 
-  /** つながりの線（`source` が指す側、`target` が指される側） */
+  /** ネットワークの線（`source` が指す側、`target` が指される側） */
   export type GraphLink = { source: string; target: string; type: LinkType };
 
   /** 項目が別の項目を指すキー → 線の種類 */
@@ -48,12 +48,18 @@ namespace MindmapPreview {
     return { nodes, links };
   }
 
-  /** 状態を持つ種類（検討事項・タスク・資料）の状態を重ねた並び（つながりの状態の条件の値の順） */
+  /** 状態を持つ種類（検討事項・タスク・資料）の状態を重ねた並び（ネットワークの状態の条件の値の順） */
   const GRAPH_STATUS_ORDER: readonly string[] = [
     ...new Set([...DECISION_STATUSES, ...TASK_STATUSES, ...DOC_STATUSES]),
   ];
 
-  /** つながりで絞る条件（種類・状態・タグ）の定義を返す。値は索引の項目（`{kind, item}`）から取る */
+  /** 絞り込みの条件に合う項目の ID（ネットワークが描く玉。ロックした項目を描いているかの判定にも使う） */
+  export function shownGraphIds({ index, filters }: { index: RecordIndex; filters: Filters }): Set<string> {
+    const rows = [...index.byId].map(([id, entry]) => ({ id, ...entry }));
+    return new Set(filterRows({ rows, columns: graphConditions(), filters }).map((row) => row.id));
+  }
+
+  /** ネットワークで絞る条件（種類・状態・タグ）の定義を返す。値は索引の項目（`{kind, item}`）から取る */
   export function graphConditions(): (ConditionColumn & Pick<Column, "label">)[] {
     // 行は索引の項目に ID を足したもの。列の定義が行の型を `Row` と受けるので、ここで読み替える
     const entry = (row: Row): { kind: Kind; item: Item } => row as unknown as { kind: Kind; item: Item };
@@ -76,9 +82,6 @@ namespace MindmapPreview {
 
   // ───── 描く玉と線（位置・向き・拡大を持つ） ─────
 
-  /** 3 次元の位置 */
-  type Vec3 = { x: number; y: number; z: number };
-
   /** 力で整えた玉 */
   type Ball = GraphNode &
     Vec3 & {
@@ -92,15 +95,9 @@ namespace MindmapPreview {
       home: Vec3;
       /** 注目していない玉を沈める度合い（1 が通常） */
       fade: number;
+      /** またたきの位相（0〜1） */
+      seed: number;
     };
-
-  /** 線の種類ごとの見た目（実線・点線・破線・一点鎖線） */
-  const LINK_DASH: Record<LinkType, number[]> = {
-    depends: [],
-    related: [1.5, 3],
-    source: [6, 4],
-    for: [10, 3, 2, 3],
-  };
 
   /** 項目の種類 → 色のトークン */
   export const KIND_COLOR_VAR: Record<Kind, string> = {
@@ -128,9 +125,6 @@ namespace MindmapPreview {
 
   /** 毎コマ、目標へ寄せる割合 */
   const PULL_EASE = 0.03;
-
-  /** 透視の基準の長さ */
-  const FOCAL = 700;
 
   /** 操作が止まってから自動で回り始めるまでの時間（ms） */
   const IDLE_BEFORE_ROTATE_MS = 2500;
@@ -183,6 +177,7 @@ namespace MindmapPreview {
         radius: 4,
         home: { x, y, z },
         fade: 1,
+        seed: hashUnit(node.id),
       };
     });
     const byId = new Map(balls.map((ball) => [ball.id, ball]));
@@ -260,44 +255,188 @@ namespace MindmapPreview {
     return x > -margin && y > -margin && x < width + margin && y < height + margin;
   }
 
-  /** 開いているつながりの画面（外から玉を選ぶ・色を変えるために覚える） */
-  let live: { select: (id: string | null) => void; refreshColors: () => void } | null = null;
+  /** 名前の横の印を出す、名前の文字の大きさの下限（px。これより小さい名前の玉には出さない） */
+  const COMMENT_MARK_MIN_FONT = 8;
 
-  /** 詳細パネルで開いた項目を、つながりの画面でも選んだ状態にする（画面を開いていなければ何もしない） */
+  /** 名前の右端と印の間の隙間（px） */
+  const COMMENT_MARK_GAP = 4;
+
+  /** 玉の名前の横に置いた印（重ねる層に 1 つずつ持つ） */
+  type MarkSlot = { element: HTMLElement; count: number; width: number; height: number; visible: boolean };
+
+  /** 鍵の一辺（px） */
+  const KEY_SIZE = 12;
+
+  /** 名前と鍵の間の隙間（px） */
+  const KEY_GAP = 3;
+
+  /** 状態の印の大きさ（名前の文字の高さに対する割合） */
+  const STATUS_MARK_SCALE = 0.8;
+
+  /** 状態の印と名前の間（名前の文字の高さに対する割合） */
+  const STATUS_MARK_GAP = 0.4;
+
+  /** 鍵の線画（24 の枠）: 閉じた鍵と開いた鍵の輪の部分 */
+  const LOCK_PATH = new Path2D("M7 11V7a5 5 0 0 1 10 0v4");
+  const UNLOCK_PATH = new Path2D("M7 11V7a5 5 0 0 1 9.9-1");
+
+  /** 鍵のマーク（24 の枠の線画）を、中心と一辺を指定してキャンバスに描く。振れは鍵の上端を軸にする */
+  function drawKeyIcon({
+    context,
+    x,
+    y,
+    size,
+    closed,
+    color,
+    alpha,
+    swing,
+  }: {
+    context: CanvasRenderingContext2D;
+    x: number;
+    y: number;
+    size: number;
+    closed: boolean;
+    color: string;
+    alpha: number;
+    swing: number;
+  }): void {
+    context.save();
+    context.setLineDash([]);
+    context.globalAlpha = alpha;
+    context.strokeStyle = color;
+    context.lineWidth = 2;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.translate(x, y - size / 2);
+    context.rotate(swing);
+    context.translate(-size / 2, 0);
+    context.scale(size / 24, size / 24);
+    context.beginPath();
+    context.roundRect(3, 11, 18, 11, 2);
+    context.stroke();
+    context.stroke(closed ? LOCK_PATH : UNLOCK_PATH);
+    context.restore();
+  }
+
+  /** 状態の印（一覧と同じ SVG）と資料の成果物の箱を、今の配色で絵にして取っておく（テーマごと） */
+  const statusImages = new Map<string, HTMLImageElement>();
+
+  /** 項目の状態の印の絵を返す。読み込み中は null */
+  function statusImage({ item, ringColor }: { item: Item; ringColor: string }): HTMLImageElement | null {
+    const theme = document.documentElement.dataset["theme"] ?? "";
+    const deliverable = item.deliverable === true;
+    const cacheKey = `${deliverable ? "deliverable" : (item.status ?? "")}|${theme}`;
+    if (!statusImages.has(cacheKey)) {
+      const source = deliverable ? icon("box") : statusMark(item.status);
+      if (source === null) return null;
+      source.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      source.setAttribute("width", "24");
+      source.setAttribute("height", "24");
+      if (deliverable) {
+        source.setAttribute("fill", "none");
+        source.setAttribute("stroke", ringColor);
+        source.setAttribute("stroke-width", "2.2");
+        source.setAttribute("stroke-linecap", "round");
+        source.setAttribute("stroke-linejoin", "round");
+      } else {
+        source.setAttribute("viewBox", "-1 -1 12 12");
+      }
+      // CSS の色の変数は絵の中では効かないので、今の値に置き換える
+      const style = getComputedStyle(document.documentElement);
+      const text = source.outerHTML.replace(/var\((--[\w-]+)\)/g, (_, name: string) => style.getPropertyValue(name).trim());
+      const image = new Image();
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`;
+      statusImages.set(cacheKey, image);
+    }
+    const image = statusImages.get(cacheKey);
+    return image !== undefined && image.complete && image.naturalWidth > 0 ? image : null;
+  }
+
+  /** 開いているネットワークの画面（外から玉を選ぶ・色を変える・コメントの件数・見た目・ロックを差し替える・鍵を震わせるために覚える） */
+  let live: {
+    select: (id: string | null) => void;
+    refreshColors: () => void;
+    setComments: (counts: Record<string, number>) => void;
+    setLook: (look: NetworkLook) => void;
+    setLock: (id: string | null) => void;
+    shake: () => void;
+  } | null = null;
+
+  /** 詳細パネルで開いた項目を、ネットワークでも選んだ状態にする（画面を開いていなければ何もしない） */
   export function selectGraphItem(id: string | null): void {
     live?.select(id);
   }
 
-  /** つながりの画面を返す。`selected` は最初に選んでおく項目、`look` はつながりの見た目（値ごとの描き分けは別の作業が作る） */
+  /** 描いているネットワークの、名前の横の印に使う件数を差し替える（玉と線と視点は作り直さず、次のコマから新しい件数で印を置く。描いていなければ何もしない） */
+  export function setGraphComments(counts: Record<string, number>): void {
+    live?.setComments(counts);
+  }
+
+  /** 描いているネットワークの見た目を差し替える（玉・線・視点・選んだ項目・ロックは作り直さず、次のコマからその見た目で描く。描いていなければ何もしない） */
+  export function setGraphLook(look: NetworkLook): void {
+    live?.setLook(look);
+  }
+
+  /** 描いているネットワークのロックを差し替える（玉・線・視点は作り直さず、中心と強調を新しい注目の起点へ寄せる。描いていなければ何もしない） */
+  export function setGraphLock(id: string | null): void {
+    live?.setLock(id);
+  }
+
+  /** 描いているネットワークの閉じた鍵を震わせる（`L` キーで `shake` になったときに入口が呼ぶ。玉や余白を押したときは画面の中で同じ処理をする） */
+  export function shakeGraphKey(): void {
+    live?.shake();
+  }
+
+  /** ネットワークの画面を返す。`selectedId` は詳細パネルで開いている項目、`lockedId` は効いているロック（注目の起点にする）、`look` は今当てている見た目、`defaultLook` はワークスペースの既定の見た目 */
   export function graphScreen({
     index,
     on,
     filters,
     drawerOpen,
-    selected = null,
-    look = BUILTIN_LOOK,
+    selectedId,
+    lockedId,
+    look,
+    defaultLook,
+    comments,
   }: {
     index: RecordIndex;
     on: {
+      /** 玉を押して項目を開く（幅 900px 以下） */
       open: (id: string) => void;
       /** 条件を変える（新しい `filters`。ドロワーから） */
       filter: (filters: Filters) => void;
       /** 絞り込みのドロワーを閉じる */
       closeDrawer: () => void;
+      /** 玉か余白を押した（押した項目の ID か `null`）。入口が `lockTap` で判定して `LockAction` を返す */
+      lock: (id: string | null) => LockAction;
+      /** 見た目のドロップダウンで選んだ */
+      look: (look: NetworkLook) => void;
     };
-    /** 絞り込みの条件（入口の `FilterState` のつながりの分） */
+    /** 絞り込みの条件（入口の `FilterState` のネットワークの分） */
     filters: Filters;
     /** 絞り込みのドロワーを開いているか */
     drawerOpen: boolean;
-    selected?: string | null;
-    look?: NetworkLook;
+    selectedId: string | null;
+    lockedId: string | null;
+    look: NetworkLook;
+    defaultLook: NetworkLook;
+    /** 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`。描いている間は `setGraphComments` で差し替える）。渡したときだけ、名前を文字 8px 以上で描いた玉のうち件数のある玉の名前の右に印を重ねる */
+    comments?: Record<string, number> | undefined;
   }): HTMLElement {
     // ===== 絞り込み: 条件に合う項目の ID =====
     const conditions = graphConditions();
     const rows = [...index.byId].map(([id, entry]) => ({ id, ...entry }));
-    const shownIds = new Set(filterRows({ rows, columns: conditions, filters }).map((row) => row.id));
+    const shownIds = shownGraphIds({ index, filters });
     // ===== 状態 =====
-    const canvas = h({ tag: "canvas", attrs: { id: "graph-canvas", class: "g3-wrap", role: "img", "aria-label": "すべての項目のつながり" } });
+    const canvas = h({
+      tag: "canvas",
+      attrs: {
+        id: "graph-canvas",
+        class: "g3-wrap",
+        role: "img",
+        "aria-label": "すべての項目のネットワーク。L キーで、詳細を開いている項目をロック・解除",
+      },
+    });
     // 絞り込みの条件に合う項目が 1 件も無いときに、枠の中央に出す文
     const emptyNotice = h({ tag: "p", attrs: { class: "empty map-empty", hidden: shownIds.size > 0 }, children: ["表示する項目はありません。"] });
     // 値を選んでいる条件があるときは、キャンバスの上に条件のチップの行を置く
@@ -309,12 +448,38 @@ namespace MindmapPreview {
             onFilter: on.filter,
           })
         : null;
+    // 名前の横のコメントの印を重ねる層（キャンバスと同じ大きさで、押下はキャンバスへ通す）
+    const markLayer = h({ tag: "div", attrs: { class: "g3-marks" } });
+    // 今当てている見た目。キャンバスの右上の、アイコンの無いドロップダウンで選ぶ（ワークスペースの既定の見た目に「（既定）」を添える）
+    let lookNow = look;
+    const lookSelect = h({
+      tag: "select",
+      attrs: {
+        onchange: (event: Event) => {
+          const value = (event.target as HTMLSelectElement).value as NetworkLook;
+          setLook(value);
+          on.look(value);
+        },
+      },
+      children: NETWORK_LOOKS.map((option) =>
+        h({
+          tag: "option",
+          attrs: { value: option.key, selected: option.key === look },
+          children: [option.key === defaultLook ? `${option.label}（既定）` : option.label],
+        }),
+      ),
+    });
+    const lookPick = h({
+      tag: "label",
+      attrs: { class: "look-pick" },
+      children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["ネットワークの見た目"] }), lookSelect],
+    });
     const root = h({
       tag: "div",
       attrs: { class: "screen graph", "data-look": look },
       children: [
         chips,
-        h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas] }),
+        h({ tag: "div", attrs: { class: "map-frame space" }, children: [emptyNotice, canvas, comments === undefined ? null : markLayer, lookPick] }),
         screenDrawer({
           drawerOpen,
           rows,
@@ -328,9 +493,15 @@ namespace MindmapPreview {
     });
     const labelCache = new Map<string, HTMLCanvasElement>();
     let colors = readColors();
+    /** 名前の横のコメントの印に使う件数 */
+    let commentCounts: Record<string, number> = comments ?? {};
+    /** 玉の ID → 名前の横に置いた印 */
+    const markSlots = new Map<string, MarkSlot>();
     let balls: Ball[] = [];
     let ballById = new Map<string, Ball>();
     let links: { s: Ball; t: Ball; type: LinkType }[] = [];
+    /** 群れのおおよその半径（近い順に 9 割目の玉まで） */
+    let reach = 40;
     // 回転は「目標」と「今」を分け、今を目標へ毎コマ少しずつ寄せる（動き出しも止まり際もなめらかにする）
     const camera = {
       yaw: 0.6,
@@ -345,15 +516,28 @@ namespace MindmapPreview {
       center: { x: 0, y: 0, z: 0 },
       centerTarget: { x: 0, y: 0, z: 0 },
     };
-    let focus: string | null = selected;
+    /** ロックの判定をする幅か（幅 900px 以下では詳細が全面に出るので、ロックしない） */
+    const wide = matchMedia(LOCK_QUERY);
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+    /** 効いているロック（絞り込みで描いていなければ null）。画面を作ったときの値から `setGraphLock` で差し替える */
+    let locked: string | null = lockedId;
+    let focus: string | null = selectedId;
     let hover: string | null = null;
-    let current: string | null = selected;
+    /** 詳細パネルで開いている項目 */
+    let current: string | null = selectedId;
     let lastInput = 0;
     let birth = performance.now();
     let projected = new Map<string, { sx: number; sy: number; f: number; z: number }>();
     let width = 0;
     let height = 0;
     let dpr = 1;
+    /** 鍵が震え始めた時刻 */
+    let shakeStart = Number.NEGATIVE_INFINITY;
+    /** 直前に押した位置と項目（素早い 2 回目を、詳細が開いて枠がずれても同じ玉への 2 回押しとして扱う） */
+    let lastPress: Press | null = null;
+
+    /** 注目の起点: ロックした項目（ロックを判定する幅で、描いている玉のとき）。ロックしていなければ、渡した項目 */
+    const anchorOf = (id: string | null): string | null => (wide.matches && locked !== null && ballById.has(locked) ? locked : id);
 
     /** 玉・太さ・色ごとに、文字を 1 回だけ画像に描いて取っておく */
     const labelImage = (ball: Ball, bold: boolean, color: string): HTMLCanvasElement => {
@@ -378,6 +562,27 @@ namespace MindmapPreview {
       return image;
     };
 
+    /** 玉の名前の横の印を返す。件数が変わっていれば作り直す（大きさは作ったときに 1 回だけ測る） */
+    const markSlotOf = (id: string, count: number): MarkSlot => {
+      const slot = markSlots.get(id);
+      if (slot !== undefined && slot.count === count) return slot;
+      slot?.element.remove();
+      const element = commentMark({ count });
+      element.classList.add("cmk-float");
+      element.style.visibility = "hidden";
+      markLayer.append(element);
+      const made = { element, count, width: element.offsetWidth, height: element.offsetHeight, visible: false };
+      markSlots.set(id, made);
+      return made;
+    };
+
+    /** 印を見せる・隠す（変わったときだけ触る） */
+    const showMark = ({ slot, visible }: { slot: MarkSlot; visible: boolean }): void => {
+      if (slot.visible === visible) return;
+      slot.visible = visible;
+      slot.element.style.visibility = visible ? "" : "hidden";
+    };
+
     /** 玉と線を作る（絞り込みの条件に合う項目で） */
     const rebuild = (): void => {
       const graph = buildGraph({ index, shownIds });
@@ -391,7 +596,7 @@ namespace MindmapPreview {
       settle(balls, links);
       // 全体が枠に収まる距離（外れた玉に引っぱられないよう、近い順に 9 割目の玉までの半径を使う）
       const radii = balls.map((ball) => Math.hypot(ball.x, ball.y, ball.z)).sort((a, b) => a - b);
-      const reach = Math.max(40, radii[Math.floor(radii.length * 0.9)] ?? 40);
+      reach = Math.max(40, radii[Math.floor(radii.length * 0.9)] ?? 40);
       const box = Math.max(1, Math.min(canvas.clientWidth || 600, canvas.clientHeight || 460));
       camera.fit = ((FOCAL * reach) / (box * 0.42) + reach * 0.4) * 0.72;
       camera.distance = camera.distanceTarget = camera.fit;
@@ -401,13 +606,23 @@ namespace MindmapPreview {
       select(current);
     };
 
-    /** 項目を選ぶ（その玉へゆっくり寄る）。選ぶのをやめたら、全体を見る位置へ戻す */
+    /** 項目を選ぶ（その玉へゆっくり寄る）。ロック中は、ほかの項目を開いても中心と強調をロックした項目に留める。選ぶのをやめたら、全体を見る位置へ戻す */
     const select = (id: string | null): void => {
       current = id;
-      const ball = id === null ? undefined : ballById.get(id);
+      const anchor = anchorOf(id);
+      const ball = anchor === null ? undefined : ballById.get(anchor);
       focus = ball?.id ?? hover;
       camera.distanceTarget = ball === undefined ? camera.fit : camera.fit * 0.38;
       if (ball === undefined) camera.centerTarget = { x: 0, y: 0, z: 0 };
+    };
+
+    /** 見た目を差し替える（玉・線・視点・選んだ項目・ロックは作り直さない） */
+    const setLook = (next: NetworkLook): void => {
+      lookNow = next;
+      root.dataset["look"] = next;
+      lookSelect.value = next;
+      // 名前の色は見た目ごとに変わる
+      labelCache.clear();
     };
 
     // ===== 投影 =====
@@ -426,6 +641,17 @@ namespace MindmapPreview {
       const z2 = cy * sinPitch + z1 * cosPitch;
       const f = FOCAL / (z2 + camera.distance);
       return { sx: width / 2 + x1 * f, sy: height / 2 + y1 * f, f, z: z2 };
+    };
+
+    /** 視点の回転だけをかける（中心を引かない。無限に遠い星の向きに使う） */
+    const rotate = (point: Vec3): Vec3 => {
+      const cosYaw = Math.cos(camera.yaw);
+      const sinYaw = Math.sin(camera.yaw);
+      const cosPitch = Math.cos(camera.pitch);
+      const sinPitch = Math.sin(camera.pitch);
+      const x1 = point.x * cosYaw - point.z * sinYaw;
+      const z1 = point.x * sinYaw + point.z * cosYaw;
+      return { x: x1, y: point.y * cosPitch - z1 * sinPitch, z: point.y * sinPitch + z1 * cosPitch };
     };
 
     /** 画面のずれを、今の向きで世界の座標のずれに戻す */
@@ -450,8 +676,8 @@ namespace MindmapPreview {
       for (const ball of balls) {
         const p = projected.get(ball.id);
         if (p === undefined || p.z + camera.distance <= 10) continue;
-        const reach = Math.max(8, radiusOf(ball, p.f)) + 4;
-        if (Math.hypot(p.sx - x, p.sy - y) < reach && p.z < bestDepth) {
+        const reachOf = Math.max(8, radiusOf(ball, p.f)) + 4;
+        if (Math.hypot(p.sx - x, p.sy - y) < reachOf && p.z < bestDepth) {
           best = ball;
           bestDepth = p.z;
         }
@@ -489,24 +715,33 @@ namespace MindmapPreview {
       const id = target?.id ?? null;
       if (id !== hover) {
         hover = id;
-        if (current === null) focus = id;
+        if (anchorOf(current) === null) focus = id;
       }
       canvas.style.cursor = id === null ? "grab" : "pointer";
     });
     canvas.addEventListener("pointerleave", () => {
       if (drag === null && hover !== null) {
         hover = null;
-        if (current === null) focus = null;
+        if (anchorOf(current) === null) focus = null;
       }
     });
     canvas.addEventListener("pointerup", (event) => {
       const rect = canvas.getBoundingClientRect();
-      // ほとんど動かさずに離した: 玉を押した
+      // ほとんど動かさずに離した: 玉か余白を押した
       if (drag !== null && moved < 5) {
-        const target = hitTest(event.clientX - rect.left, event.clientY - rect.top);
-        if (target !== null) {
-          select(target.id);
-          on.open(target.id);
+        const hit = hitTest(event.clientX - rect.left, event.clientY - rect.top);
+        if (!wide.matches) {
+          // 幅 900px 以下ではロックせず、押した玉の項目を開く
+          if (hit !== null) {
+            select(hit.id);
+            on.open(hit.id);
+          }
+        } else {
+          // 押した玉（余白なら null）で、ロックの付け外し・詳細の切り替え・鍵の震えを決める。素早い 2 回目は前に押した玉への 2 回押しにする
+          const press: Press = { time: performance.now(), x: event.clientX, y: event.clientY, id: hit?.id ?? null };
+          const pressed = resolvePress({ last: lastPress, press });
+          lastPress = press;
+          if (on.lock(pressed) === "shake") shakeStart = press.time;
         }
       }
       // 止めてから離したときは滑らせない
@@ -523,7 +758,7 @@ namespace MindmapPreview {
         const my = event.clientY - rect.top - height / 2;
         const old = camera.distanceTarget;
         const next = Math.max(camera.fit * 0.15, Math.min(camera.fit * 2.5, old * Math.exp(event.deltaY * 0.0016)));
-        if (current === null) {
+        if (anchorOf(current) === null) {
           const f = FOCAL / old;
           const shift = screenToWorld((mx / f) * (1 - next / old), (my / f) * (1 - next / old));
           camera.centerTarget = {
@@ -544,13 +779,13 @@ namespace MindmapPreview {
             z: (camera.centerTarget.z * limit) / length,
           };
         }
-        if (next >= camera.fit * 0.95 && current === null) camera.centerTarget = { x: 0, y: 0, z: 0 };
+        if (next >= camera.fit * 0.95 && anchorOf(current) === null) camera.centerTarget = { x: 0, y: 0, z: 0 };
       },
       { passive: false },
     );
     // 背景のダブルクリックで、全体を見る位置へ戻す
     canvas.addEventListener("dblclick", () => {
-      if (current !== null) return;
+      if (anchorOf(current) !== null) return;
       camera.centerTarget = { x: 0, y: 0, z: 0 };
       camera.distanceTarget = camera.fit;
     });
@@ -593,6 +828,52 @@ namespace MindmapPreview {
       }
     };
 
+    /** 1 コマ分の線（画面に入るものだけ）を、奥行きの濃さと沈み具合つきで `LookLink` にする */
+    const buildLinkViews = ({ ease }: { ease: number }): LookLink[] => {
+      const views: LookLink[] = [];
+      for (const link of links) {
+        const a = projected.get(link.s.id);
+        const b = projected.get(link.t.id);
+        if (a === undefined || b === undefined) continue;
+        if (a.z + camera.distance <= 10 || b.z + camera.distance <= 10) continue;
+        if ((a.sx < 0 && b.sx < 0) || (a.sx > width && b.sx > width) || (a.sy < 0 && b.sy < 0) || (a.sy > height && b.sy > height)) continue;
+        const depth = Math.max(0, Math.min(1, 1.25 - ((a.z + b.z) / 2 + camera.distance) / (camera.distance * 2.2)));
+        views.push({
+          from: { x: a.sx, y: a.sy, radius: radiusOf(link.s, a.f) * ease },
+          to: { x: b.sx, y: b.sy, radius: radiusOf(link.t, b.f) * ease },
+          type: link.type,
+          fromColor: colors.kind[link.s.kind],
+          toColor: colors.kind[link.t.kind],
+          alpha: depth * Math.min(link.s.fade, link.t.fade),
+        });
+      }
+      return views;
+    };
+
+    /** 注目している項目とつながる線（この上を光が流れる） */
+    const buildFocusLinks = ({ focused, ease }: { focused: string | null; ease: number }): LookLink[] => {
+      const views: LookLink[] = [];
+      const focusedBall = focused === null ? undefined : ballById.get(focused);
+      const from = focused === null ? undefined : projected.get(focused);
+      if (focusedBall === undefined || from === undefined) return views;
+      for (const link of links) {
+        if (link.s.id !== focusedBall.id && link.t.id !== focusedBall.id) continue;
+        const other = link.s.id === focusedBall.id ? link.t : link.s;
+        const to = projected.get(other.id);
+        if (to === undefined) continue;
+        if (from.z + camera.distance <= 10 || to.z + camera.distance <= 10) continue;
+        views.push({
+          from: { x: from.sx, y: from.sy, radius: radiusOf(focusedBall, from.f) * ease },
+          to: { x: to.sx, y: to.sy, radius: radiusOf(other, to.f) * ease },
+          type: link.type,
+          fromColor: colors.kind[focusedBall.kind],
+          toColor: colors.kind[other.kind],
+          alpha: 1,
+        });
+      }
+      return views;
+    };
+
     const frame = (now: number): void => {
       // 画面から外れたら止める
       if (!canvas.isConnected) {
@@ -601,18 +882,20 @@ namespace MindmapPreview {
       }
       requestAnimationFrame(frame);
       if (document.hidden || width === 0) return;
+      const reduced = reducedMotion.matches;
       pullNear();
-      // 離した後の滑りと、何もしていないときのごくゆっくりした自動の回転
+      // 離した後の滑りと、何もしていないときのごくゆっくりした自動の回転（動きを減らす設定では回さない）
       if (drag === null) {
         camera.yawTarget += camera.yawSpeed;
         camera.pitchTarget = Math.max(-1.3, Math.min(1.3, camera.pitchTarget + camera.pitchSpeed));
         camera.yawSpeed *= 0.955;
         camera.pitchSpeed *= 0.93;
-        if (now - lastInput > IDLE_BEFORE_ROTATE_MS && hover === null) camera.yawTarget += AUTO_ROTATE_STEP;
+        if (!reduced && now - lastInput > IDLE_BEFORE_ROTATE_MS && hover === null) camera.yawTarget += AUTO_ROTATE_STEP;
       }
       camera.yaw += (camera.yawTarget - camera.yaw) * 0.07;
       camera.pitch += (camera.pitchTarget - camera.pitch) * 0.07;
-      const selectedBall = current === null ? undefined : ballById.get(current);
+      const anchorNow = anchorOf(current);
+      const selectedBall = anchorNow === null ? undefined : ballById.get(anchorNow);
       if (selectedBall !== undefined) {
         camera.centerTarget = { x: selectedBall.x, y: selectedBall.y, z: selectedBall.z };
       }
@@ -633,6 +916,7 @@ namespace MindmapPreview {
         }
       }
       const baseK = baseScale();
+      const dark = document.documentElement.dataset["theme"] === "dark";
 
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.clearRect(0, 0, width, height);
@@ -646,99 +930,174 @@ namespace MindmapPreview {
           }),
         ]),
       );
-      // つながる玉どうしを、ごく薄い線で結ぶ（遠いほど薄い）。画面の外の線は描かない
-      context.lineWidth = 0.9;
-      context.strokeStyle = colors.line;
-      for (const link of links) {
-        const a = projected.get(link.s.id);
-        const b = projected.get(link.t.id);
-        if (a === undefined || b === undefined) continue;
-        if (a.z + camera.distance <= 10 || b.z + camera.distance <= 10) continue;
-        if ((a.sx < 0 && b.sx < 0) || (a.sx > width && b.sx > width) || (a.sy < 0 && b.sy < 0) || (a.sy > height && b.sy > height)) continue;
-        const depth = Math.max(0, Math.min(1, 1.25 - ((a.z + b.z) / 2 + camera.distance) / (camera.distance * 2.2)));
-        context.setLineDash(LINK_DASH[link.type]);
-        context.globalAlpha = 0.32 * depth * Math.min(link.s.fade, link.t.fade);
-        context.beginPath();
-        context.moveTo(a.sx, a.sy);
-        context.lineTo(b.sx, b.sy);
-        context.stroke();
-      }
-      // 注目している項目とつながる線と、そこを流れる小さな玉（注目している項目から外へ、ゆっくり）
-      if (focused !== null) {
-        const from = projected.get(focused);
-        for (const link of links) {
-          if (link.s.id !== focused && link.t.id !== focused) continue;
-          const to = projected.get(link.s.id === focused ? link.t.id : link.s.id);
-          if (from === undefined || to === undefined) continue;
-          if (from.z + camera.distance <= 10 || to.z + camera.distance <= 10) continue;
-          context.globalAlpha = 1;
-          context.strokeStyle = colors.line;
-          context.lineWidth = 1.3;
-          context.setLineDash(LINK_DASH[link.type]);
-          context.beginPath();
-          context.moveTo(from.sx, from.sy);
-          context.lineTo(to.sx, to.sy);
-          context.stroke();
-          context.setLineDash([]);
-          for (const offset of [0, 0.5]) {
-            const t = (now / 4200 + offset + (link.s.id.length % 7) * 0.13) % 1;
-            context.globalAlpha = 0.9 * Math.sin(Math.PI * t);
-            context.fillStyle = colors.dot;
-            context.beginPath();
-            context.arc(from.sx + (to.sx - from.sx) * t, from.sy + (to.sy - from.sy) * t, 1.8, 0, Math.PI * 2);
-            context.fill();
-          }
-        }
-      }
-      context.setLineDash([]);
-      // 奥から順に描く。遠いほど小さく薄く、注目しているときはつながらないものを沈める
-      const order = [...balls].sort(
-        (a, b) => (projected.get(b.id)?.z ?? 0) - (projected.get(a.id)?.z ?? 0),
-      );
-      for (const ball of order) {
+      // 玉: 奥から順に、大きさ・濃さ・沈み具合を計算して見た目の描き方へ渡す。遠いほど小さく薄く、注目しているときはつながらないものを沈める（詳細を開いている項目は沈めない）
+      const order = [...balls].sort((a, b) => (projected.get(b.id)?.z ?? 0) - (projected.get(a.id)?.z ?? 0));
+      const views: { ball: Ball; star: LookStar; depth: number; close: number; rank: number }[] = [];
+      for (const [rank, ball] of order.entries()) {
         const p = projected.get(ball.id);
         if (p === undefined || p.z + camera.distance <= 10) continue;
         const r0 = radiusOf(ball, p.f);
-        // 画面の外の玉は描かない
-        if (!onScreen(p.sx, p.sy, width, height, r0 + 40) || r0 > Math.max(width, height)) continue;
+        // 画面の外の玉は描かない（光のにじみの分だけ余白を広く取る）
+        if (!onScreen(p.sx, p.sy, width, height, r0 * 6 + 40) || r0 > Math.max(width, height)) continue;
         const depth = Math.max(0.15, Math.min(1, 1.25 - (p.z + camera.distance) / (camera.distance * 2.2)));
-        ball.fade += ((focused !== null && !near.has(ball.id) ? 0.18 : 1) - ball.fade) * 0.03;
-        const radius = Math.max(1.2, r0 * ease);
+        ball.fade += ((focused !== null && !near.has(ball.id) && ball.id !== current ? 0.18 : 1) - ball.fade) * 0.03;
         // 手前に来すぎた玉は薄くして、奥を隠さないようにする
         const close = Math.min(1, Math.max(0, ((p.z + camera.distance) / camera.distance - 0.08) / 0.2));
         if (close <= 0.02) continue;
-        context.globalAlpha = (0.35 + 0.55 * depth) * ball.fade * close;
-        context.fillStyle = colors.kind[ball.kind];
-        context.beginPath();
-        context.arc(p.sx, p.sy, radius, 0, Math.PI * 2);
-        context.fill();
-        const marked = ball.id === current || ball.id === hover;
-        if (marked) {
-          context.globalAlpha = 0.9;
-          context.strokeStyle = colors.ring;
-          context.lineWidth = 1.5;
-          context.beginPath();
-          context.arc(p.sx, p.sy, radius + 4, 0, Math.PI * 2);
-          context.stroke();
-        }
+        views.push({
+          ball,
+          depth,
+          close,
+          rank,
+          star: {
+            id: ball.id,
+            kind: ball.kind,
+            degree: ball.degree,
+            x: p.sx,
+            y: p.sy,
+            radius: Math.max(1.2, r0 * ease),
+            alpha: (0.35 + 0.55 * depth) * ball.fade * close,
+            color: colors.kind[ball.kind],
+            selected: ball.id === current,
+            hover: ball.id === hover,
+            strong: near.has(ball.id) || ball.id === hover,
+            seed: ball.seed,
+          },
+        });
+      }
+      const lookFrame: LookFrame = {
+        context,
+        width,
+        height,
+        dark,
+        colors: { line: colors.line, ring: colors.ring, dot: colors.dot },
+        now,
+        stars: views.map((view) => view.star),
+        links: buildLinkViews({ ease }),
+        focusLinks: buildFocusLinks({ focused, ease }),
+        focusId: focused,
+        near,
+        rotate,
+        project: (point) => {
+          const q = project(point);
+          return { x: q.sx, y: q.sy, depth: q.z + camera.distance, scale: q.f };
+        },
+        spread: reach,
+        reducedMotion: reduced,
+      };
+      drawLook({ look: lookNow, frame: lookFrame });
+      context.globalCompositeOperation = "source-over";
+      context.setLineDash([]);
+      // 鍵を置く玉: ロックした項目。ロックしていなければ、詳細を開いている項目
+      const lockedNow = anchorOf(null);
+      const keyView = wide.matches ? (views.find((view) => view.ball.id === (lockedNow ?? current)) ?? null) : null;
+      const keyClosed = keyView !== null && keyView.ball.id === lockedNow;
+      // 鍵を出すか: 閉じた鍵はロック中いつも、開いた鍵は詳細を開いている玉にカーソルを乗せたときだけ
+      const keyShown = keyView !== null && (keyClosed || hover === keyView.ball.id);
+      /** 鍵の中心（名前が出ない距離では、玉の右上の札） */
+      let keySpot: { x: number; y: number; badge: boolean; alpha: number } | null = null;
+      /** このコマに印を置いた玉 */
+      const markedBalls = new Set<string>();
+      for (const view of views) {
+        const { ball, depth, close, rank, star } = view;
+        const { x, y, radius } = star;
+        const marked = star.selected || star.hover;
         // 名前: 玉と同じ倍率で大きさが変わる（玉の幅に英字 6 文字ほど）。いつもは薄く、注目している項目とつながる項目ははっきり出す
-        const strong = near.has(ball.id) || ball.id === hover;
-        const scale = p.f / baseK;
+        const scale = (projected.get(ball.id)?.f ?? baseK) / baseK;
         const fontSize = 4.6 * scale;
-        const alpha =
-          (strong ? 0.85 : 0.42 * ball.fade) * depth ** 1.4 * Math.max(0, Math.min(1, (fontSize - 3.5) / 2.5));
-        if (alpha > 0.03 && ease > 0.9 && onScreen(p.sx, p.sy - radius, width, height, 400)) {
-          const color = ball.id === current ? colors.ring : colors.label;
-          // 毎コマ文字を作らず、画像に倍率をかけて置く
-          const image = labelImage(ball, marked, color);
-          const k = (dpr * fontSize) / 10 / LABEL_RESOLUTION;
-          context.globalAlpha = alpha * close;
-          context.setTransform(k, 0, 0, k, dpr * p.sx, dpr * (p.sy - radius - 3 * scale));
-          context.drawImage(image, -image.width / 2, -image.height);
-          context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const alpha = (star.strong ? 0.85 : 0.42 * ball.fade) * depth ** 1.4 * Math.max(0, Math.min(1, (fontSize - 3.5) / 2.5));
+        if (!(alpha > 0.03 && ease > 0.9 && onScreen(x, y - radius, width, height, 400))) continue;
+        const color = star.selected ? colors.ring : lookLabelColor({ look: lookNow, dark, fallback: colors.label });
+        // 毎コマ文字を作らず、画像に倍率をかけて置く
+        const image = labelImage(ball, marked, color);
+        const k = (dpr * fontSize) / 10 / LABEL_RESOLUTION;
+        const nameBottom = y - radius * (LABEL_LIFT[lookNow] ?? 1) - 3 * scale;
+        context.globalAlpha = alpha * close;
+        context.setTransform(k, 0, 0, k, dpr * x, dpr * nameBottom);
+        context.drawImage(image, -image.width / 2, -image.height);
+        context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const nameWidth = (image.width / LABEL_RESOLUTION) * (fontSize / 10);
+        const nameHeight = LABEL_HEIGHT * (fontSize / 10);
+        const nameCenterY = nameBottom - nameHeight / 2;
+        const nameRight = x + nameWidth / 2;
+        // 状態の印: 注目しているときだけ、起点とつながる項目の名前の左に、名前と同じ濃さで置く（資料の成果物は箱）
+        const item = index.byId.get(ball.id)?.item;
+        if (selectedBall !== undefined && near.has(ball.id) && item !== undefined) {
+          const statusMarkImage = statusImage({ item, ringColor: colors.ring });
+          if (statusMarkImage !== null) {
+            const size = fontSize * STATUS_MARK_SCALE;
+            context.globalAlpha = alpha * close;
+            context.drawImage(statusMarkImage, x - nameWidth / 2 - fontSize * STATUS_MARK_GAP - size, nameCenterY - size / 2, size, size);
+          }
+        }
+        // コメントの印: 名前を文字 8px 以上で描いた、件数のある玉に、名前と同じ濃さで置く。名前・鍵・コメントの印の順で、鍵を出すときだけ鍵の幅を空ける
+        const count = commentCounts[ball.id] ?? 0;
+        const slot = count > 0 && fontSize >= COMMENT_MARK_MIN_FONT ? markSlotOf(ball.id, count) : null;
+        const keyHere = view === keyView && keyShown;
+        const left = nameRight + (keyHere ? KEY_GAP + KEY_SIZE : 0) + COMMENT_MARK_GAP;
+        if (keyHere) keySpot = { x: nameRight + KEY_GAP + KEY_SIZE / 2, y: nameCenterY, badge: false, alpha: alpha * close };
+        if (slot !== null) {
+          const top = nameCenterY - slot.height / 2;
+          // 名前と印が描く枠（上端は名前か印の高いほう、下端は低いほう）が、キャンバスに収まるときだけ置く
+          const frameTop = Math.min(top, nameCenterY - nameHeight / 2);
+          const frameBottom = Math.max(top + slot.height, nameCenterY + nameHeight / 2);
+          const fits = x - nameWidth / 2 >= 0 && left + slot.width <= width && frameTop >= 0 && frameBottom <= height;
+          if (fits) {
+            slot.element.style.transform = `translate(${left}px, ${top}px)`;
+            slot.element.style.opacity = String(alpha * close);
+            // 手前の玉ほど上に重ねる（重なり順は層の中に閉じる）
+            slot.element.style.zIndex = String(rank + 1);
+            showMark({ slot, visible: true });
+            markedBalls.add(ball.id);
+          }
         }
       }
+      // 鍵: 閉じた鍵はロック中いつも、開いた鍵は詳細を開いている玉にカーソルを乗せたときだけ出す。押しても何も起きない
+      if (keyView !== null && keyShown) {
+        // 名前が出ていない遠い距離では、玉の右上に札に入れて置く
+        const spot = keySpot ?? { x: keyView.star.x + keyView.star.radius * 0.8 + 8, y: keyView.star.y - keyView.star.radius * 0.8 - 8, badge: true, alpha: 1 };
+        // 外れない操作をされた直後は、赤くして左右に震わせ、だんだん収める（CSS のアニメーションに頼らず毎コマ当てるので、動きを減らす設定でも止めない）
+        const elapsed = now - shakeStart;
+        const shaking = keyClosed && elapsed < SHAKE_MS;
+        const { decay, wave } = shaking ? shakeAt(elapsed) : { decay: 0, wave: 0 };
+        const keyX = spot.x + wave * SHAKE_SHIFT * decay;
+        const red = shakeColor();
+        const keyColor = shaking ? red : keyClosed ? colors.ring : colors.label;
+        if (shaking) {
+          context.globalAlpha = 0.55 * decay;
+          context.drawImage(bakeGlow({ color: red, falloff: 2 }), keyX - 22, spot.y - 22, 44, 44);
+        }
+        if (spot.badge) {
+          context.globalAlpha = keyClosed ? 0.95 : 0.6;
+          context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim();
+          context.beginPath();
+          context.arc(keyX, spot.y, KEY_SIZE * 0.85, 0, Math.PI * 2);
+          context.fill();
+          context.strokeStyle = keyColor;
+          context.lineWidth = 1;
+          context.stroke();
+        }
+        drawKeyIcon({
+          context,
+          x: keyX,
+          y: spot.y,
+          size: KEY_SIZE * (1 + SHAKE_GROW * decay),
+          closed: keyClosed,
+          color: keyColor,
+          alpha: keyClosed ? 0.95 : 0.45,
+          swing: wave * SHAKE_SWING * decay,
+        });
+      }
       context.globalAlpha = 1;
+      // このコマに置かなかった印は隠し、件数が無くなった玉の印は外す
+      for (const [id, slot] of markSlots) {
+        if (markedBalls.has(id)) continue;
+        showMark({ slot, visible: false });
+        if ((commentCounts[id] ?? 0) === 0) {
+          slot.element.remove();
+          markSlots.delete(id);
+        }
+      }
     };
 
     // ===== 起動 =====
@@ -753,7 +1112,22 @@ namespace MindmapPreview {
       attributes: true,
       attributeFilter: ["data-theme"],
     });
-    live = { select, refreshColors };
+    live = {
+      select,
+      refreshColors,
+      setComments: (counts) => {
+        // 渡していない（配る書き出しなど）ときは印を置かない
+        if (comments !== undefined) commentCounts = counts;
+      },
+      setLook,
+      setLock: (id) => {
+        locked = id;
+        select(current);
+      },
+      shake: () => {
+        shakeStart = performance.now();
+      },
+    };
     // 枠の大きさが決まってから玉を置き、描き始める
     const start = new ResizeObserver(() => {
       if (canvas.clientWidth === 0) return;

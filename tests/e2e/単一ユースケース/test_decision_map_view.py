@@ -12,14 +12,16 @@ from preview_helpers import (
     OpenPreview,
     ServePreview,
     badge_text,
+    bands_stay_on_top,
     checked_values,
     clear_condition,
     close_drawer,
     open_drawer,
+    page_scroll_overflow,
     row_ids,
     toggle_value,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # マップを広い幅で出す画面の幅（px）
 WIDE_WIDTH = 1280
@@ -102,6 +104,7 @@ def _decisions(make_item: MakeItem) -> list[dict[str, Any]]:
             category="データ構造",
             phase="目的",
             answer="種類ごとに分ける",
+            options=ADOPTED_OPTIONS,
         ),
         make_item(
             "D-3",
@@ -137,6 +140,13 @@ def _segment_boxes(page: Page) -> list[list[float]]:
     )
 
 
+def _segment_views(page: Page) -> list[str]:
+    """表示形式の切り替えのボタンの形式を並びのまま返す。"""
+    return page.eval_on_selector_all(
+        ".segment button", "buttons => buttons.map(b => b.dataset.view)"
+    )
+
+
 def _opacity(page: Page, selector: str) -> float:
     """要素の見た目の不透明度を返す。"""
     return float(
@@ -152,13 +162,29 @@ def test_normal(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """マップで状態を絞り、項目を押して枝と依存を辿り、ボード・表に切り替える（正常系）。"""
+    """検討事項をボードで開き、マップに切り替えて状態を絞り、項目を押して枝と依存を辿り、ボード・表に切り替える（正常系）。"""
     # 準備
     url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
-    # 実行・検証（マップ）
-    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    # 実行・検証（開いた直後はボード。表示形式の切り替えはボード・マップ・表の順で、ボードが押されている）
+    page = open_preview(url, "#tab=decisions", width=WIDE_WIDTH)
+    page.wait_for_selector(".board")
+    assert _segment_views(page) == ["board", "map", "table"]
+    assert page.get_attribute('.segment button[data-view="board"]', "aria-pressed") == "true"
+    # 実行・検証（マップに切り替える）
+    page.click('.segment button[data-view="map"]')
     page.wait_for_selector("#decision-map button.n-item")
     assert _map_item_ids(page) == ["D-3", "D-5"]
+    # カテゴリー・フェーズのラベルが背景の面と枠を持つ（枝の線がラベルの文字の上に重ならない）
+    labels = page.evaluate(
+        """() => ['n-category', 'n-phase'].map((name) => {
+            const style = getComputedStyle(document.querySelector(`#decision-map .${name}`));
+            return {name, background: style.backgroundColor, border: parseFloat(style.borderTopWidth)};
+        })"""
+    )
+    assert all(label["border"] > 0 and label["background"] != "rgba(0, 0, 0, 0)" for label in labels)
+    # ページ全体に縦スクロールが無く、トップバーとタブの帯が画面の上に見えている
+    assert page_scroll_overflow(page)["vertical"] == 0
+    assert bands_stay_on_top(page) is True
     # 開いた直後から、ドロワーの状態で要見直し・未決定が選ばれ、絞り込みのボタンに件数のバッジが付いている
     open_drawer(page)
     assert checked_values(page, "status") == DEFAULT_CHECKED_STATUSES
@@ -184,6 +210,7 @@ def test_normal(
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     hash_text = page.evaluate("location.hash")
     assert "tab=decisions" in hash_text
+    assert "view=map" in hash_text
     assert "id=D-3" in hash_text
     # 切り替えのボタンの位置と幅が、マップ・ボード・表で変わらない
     boxes = {"map": _segment_boxes(page)}
@@ -217,6 +244,107 @@ def test_normal(
         }"""
     )
     assert ready == "前提待ち"
+
+
+# ホイールを奥へ・手前へ回す 1 件の deltaY
+WHEEL_IN_DELTA = -100
+WHEEL_OUT_DELTA = 100
+
+# 倍率の上限と下限（`transform: scale(...)` の数値）
+WHEEL_ZOOM_MAX = 1.5
+WHEEL_ZOOM_MIN = 0.4
+
+# 上限・下限に届くのに足りる、ホイールを回す回数
+WHEEL_MAX_TURNS = 40
+
+# 回す前にマウスの下にあった節の中心が、回した後に動いてよい距離（px。スクロールの位置の丸めの分）
+WHEEL_POINT_TOLERANCE_PX = 2
+
+# ホイールを回してから、倍率とスクロールの位置が当たるまで待つ時間（ms）
+WHEEL_SETTLE_MS = 200
+
+# 「全体を表示」で木が枠に収まる余白（px。木の全体が枠より大きく出ない）
+FIT_FRAME_MARGIN_PX = 16
+
+# マップの倍率（`transform: scale(...)` の数値）を返す
+MAP_SCALE_SCRIPT = """() => Number.parseFloat(document.getElementById("decision-map").style.transform.slice(6))"""
+
+# マップの枠のスクロールの位置を返す
+MAP_SCROLL_SCRIPT = """() => {
+    const wrap = document.getElementById("decision-map").closest(".map-wrap");
+    return [wrap.scrollLeft, wrap.scrollTop];
+}"""
+
+# 木の全体が枠に収まっているか（拡大後の木の大きさが枠の内側の大きさ以下）
+MAP_FITS_SCRIPT = """(margin) => {
+    const canvas = document.getElementById("decision-map");
+    const wrap = canvas.closest(".map-wrap");
+    const box = canvas.getBoundingClientRect();
+    return box.width <= wrap.clientWidth - margin + 1 && box.height <= wrap.clientHeight - margin + 1;
+}"""
+
+
+def _center(page: Page, selector: str) -> tuple[float, float]:
+    """要素の中心の画面上の座標を返す。"""
+    box = page.locator(selector).bounding_box()
+    assert box is not None
+    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+
+def _scale(page: Page) -> float:
+    """マップに当たっている倍率を返す。"""
+    return float(page.evaluate(MAP_SCALE_SCRIPT))
+
+
+def test_normal_when_wheel_zoomed(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """マップの節の上でホイールを回すと、節をマウスの下に残したまま 150% まで拡大し、40% まで縮小して止まり、全体を表示で枠に収める（正常系）。"""
+    # 準備
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions", width=WIDE_WIDTH)
+    page.click('.segment button[data-view="map"]')
+    page.wait_for_selector("#decision-map button.n-item")
+    node = '#decision-map button[data-node="D-3"]'
+    fit = page.locator(".zoom .btn")
+    assert fit.get_attribute("aria-pressed") == "true"
+    fit_scale = _scale(page)
+    before = _center(page, node)
+    scroll_y = page.evaluate("window.scrollY")
+    page.mouse.move(*before)
+    # 実行・検証（奥へ 1 回回す）
+    page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert _scale(page) > fit_scale
+    assert _center(page, node) == pytest.approx(before, abs=WHEEL_POINT_TOLERANCE_PX)
+    assert fit.get_attribute("aria-pressed") == "false"
+    # マップの枠のスクロールの位置が、マウスの下の点を残す分だけ変わり、ページ全体は動かない
+    assert page.evaluate(MAP_SCROLL_SCRIPT) != [0, 0]
+    assert page.evaluate("window.scrollY") == scroll_y
+    # 実行・検証（奥へ回し続けると 150% で止まる。回している間、節はマウスの下に残る）
+    for _ in range(WHEEL_MAX_TURNS):
+        page.mouse.wheel(0, WHEEL_IN_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert _scale(page) == pytest.approx(WHEEL_ZOOM_MAX)
+    assert _center(page, node) == pytest.approx(before, abs=WHEEL_POINT_TOLERANCE_PX)
+    assert page.evaluate("window.scrollY") == scroll_y
+    # 実行・検証（手前へ回し続けると 40% で止まる）
+    for _ in range(WHEEL_MAX_TURNS * 2):
+        page.mouse.wheel(0, WHEEL_OUT_DELTA)
+    page.wait_for_timeout(WHEEL_SETTLE_MS)
+    assert _scale(page) == pytest.approx(WHEEL_ZOOM_MIN)
+    assert fit.get_attribute("aria-pressed") == "false"
+    assert page.evaluate("window.scrollY") == scroll_y
+    # 実行・検証（「全体を表示」を押すと、押された状態になり、木の全体が枠に収まる）
+    fit.click()
+    page.wait_for_function(
+        "document.querySelector('.zoom .btn').getAttribute('aria-pressed') === 'true'"
+    )
+    assert _scale(page) == pytest.approx(fit_scale)
+    assert page.evaluate(MAP_FITS_SCRIPT, FIT_FRAME_MARGIN_PX) is True
 
 
 def test_normal_when_keyword(
@@ -307,7 +435,14 @@ def test_normal_when_status_condition_cleared(
     # 準備（D-1 だけが 1 つ目のフェーズ、D-3・D-5 は 2 つ目のフェーズに属する）
     place: dict[str, Any] = {"target": "mindmap", "category": "データ構造"}
     url = serve_preview(
-        make_item("D-1", status="決定済み", phase="目的", answer="種類ごとに分ける", **place),
+        make_item(
+            "D-1",
+            status="決定済み",
+            phase="目的",
+            answer="種類ごとに分ける",
+            options=ADOPTED_OPTIONS,
+            **place,
+        ),
         make_item("D-3", status="要見直し", phase="要件", depends_on=["D-1"], **place),
         make_item("D-5", status="未決定", phase="要件", depends_on=["D-3"], **place),
         settings=_settings(valid_settings),
@@ -487,3 +622,95 @@ def test_normal_when_background_pressed(
     assert _map_scroll(page) == pytest.approx(
         _smaller_of_each(scroll_before_press, scroll_limits), abs=SCROLL_TOLERANCE_PX
     )
+
+
+# ロックの鍵の震えが収まるまで待つ時間（ms。震えは約 1 秒）
+SHAKE_DONE_MS = 1_500
+
+# ロックした節（閉じた鍵を出す）と、鍵を表示している節の ID を返す
+LOCKED_NODE = "#decision-map button.n-item.locked"
+SHOWN_KEYS_SCRIPT = """() => [...document.querySelectorAll('#decision-map button.n-item')]
+    .filter(node => getComputedStyle(node.querySelector('.lk')).display !== 'none')
+    .map(node => node.dataset.node)"""
+
+
+def _locked_ids(page: Page) -> list[str]:
+    """ロックした節の ID を返す。"""
+    ids: list[str] = page.eval_on_selector_all(
+        LOCKED_NODE, "nodes => nodes.map(n => n.dataset.node)"
+    )
+    return ids
+
+
+def _shown_key_ids(page: Page) -> list[str]:
+    """鍵を表示している節の ID を返す。"""
+    ids: list[str] = page.evaluate(SHOWN_KEYS_SCRIPT)
+    return ids
+
+
+def _panel_title(page: Page) -> str:
+    """詳細パネルの題を返す。"""
+    return page.inner_text("aside.panel .d-title")
+
+
+def test_normal_when_locked(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """開いている節をもう一度押してロックし、ほかの節を開いても強調はロックした節のまま、余白を押しても表示を変えず、ロックした節を二度押してロックを外す（正常系）。"""
+    # 準備
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page.wait_for_selector("#decision-map button.n-item")
+    # ドロワーの状態で決定済みも選んで D-1 を出し、D-3 の前提の依存の線が描かれるようにする
+    open_drawer(page)
+    toggle_value(page, "status", "決定済み")
+    page.wait_for_selector('#decision-map button[data-node="D-1"]')
+    close_drawer(page)
+    # 実行・検証（D-3 を押すと、D-3 の枝と依存を強調し、詳細パネルを開く。まだロックしない）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector("#decision-map.focusing")
+    page.wait_for_selector("aside.panel.open")
+    assert _panel_title(page) == "D-3の題"
+    assert _locked_ids(page) == []
+    # 実行・検証（D-3 をもう一度押すと、D-3 をロックして節に閉じた鍵を出す）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector(f'{LOCKED_NODE}[data-node="D-3"]')
+    assert _shown_key_ids(page) == ["D-3"]
+    assert _panel_title(page) == "D-3の題"
+    # 実行・検証（D-5 を押すと、詳細パネルは D-5 に替わり、強調はロックした D-3 のまま。D-5 の節は薄くならない）
+    page.click('#decision-map button[data-node="D-5"]')
+    page.wait_for_function("location.hash.includes('id=D-5')")
+    page.wait_for_selector("aside.panel.open")
+    assert _panel_title(page) == "D-5の題"
+    assert _locked_ids(page) == ["D-3"]
+    related = page.eval_on_selector_all(
+        "#decision-map button.n-item.rel", "nodes => nodes.map(n => n.dataset.node)"
+    )
+    assert sorted(related) == ["D-1", "D-3", "D-5"]
+    assert page.locator("#decision-map .edge-tree.rel").count() == TREE_EDGES_TO_ROOT
+    assert page.locator("#decision-map .edge-dep.rel").count() == DEPENDENCY_EDGES
+    page.wait_for_function(
+        "getComputedStyle(document.querySelector('#decision-map [data-node=\"D-5\"]')).opacity === '1'"
+    )
+    # 実行・検証（余白を押しても、詳細パネルは D-5 のまま、ロックは D-3 のまま。URL のハッシュは D-5 を指す）
+    blank = _blank_point(page)
+    page.mouse.move(blank["x"], blank["y"])
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    assert page.is_visible("aside.panel.open")
+    assert _panel_title(page) == "D-5の題"
+    assert _locked_ids(page) == ["D-3"]
+    assert "id=D-5" in page.evaluate("location.hash")
+    # 実行・検証（D-3 を押すと詳細パネルが D-3 に戻り、ロックは D-3 のまま）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    assert _panel_title(page) == "D-3の題"
+    assert _locked_ids(page) == ["D-3"]
+    # 実行・検証（D-3 をもう一度押すと、ロックが外れる）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector(LOCKED_NODE, state="detached")
+    assert _panel_title(page) == "D-3の題"

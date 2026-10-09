@@ -6,7 +6,14 @@ import stat
 from pathlib import Path
 
 from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
-from .history_helpers import add_item, read_changes, update_item, write_settings
+from .history_helpers import (
+    OPTIONS,
+    add_item,
+    read_changes,
+    remove_item,
+    update_item,
+    write_settings,
+)
 from workspace_fixtures import RECORD_DIR
 
 # 3 行の本文（2 行目だけを書き換える）
@@ -22,7 +29,7 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tre
         call_tool,
         root,
         "decision",
-        {"title": "問い A", "status": "未決定", "body_markdown": BODY},
+        {"title": "問い A", "status": "未決定", "options": OPTIONS, "body_markdown": BODY},
     )
     first = call_tool("changes_since_read", workspace=str(root))
     assert first.is_error is False
@@ -67,7 +74,7 @@ def test_normal_when_no_read_point(make_workspace: MakeWorkspace, call_tool: Cal
     """読んだ時点が無ければ差分を返さず、今の last_seq を記録する（正常系）。"""
     # 準備
     root = make_workspace()
-    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
+    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
     update_item(call_tool, root, "D-1", {"answer": "答え"})
     # 実行
     result = call_tool("changes_since_read", workspace=str(root))
@@ -87,7 +94,7 @@ def test_normal_when_history_limit_zero(make_workspace: MakeWorkspace, call_tool
     # 準備
     root = make_workspace()
     write_settings(root, history_limit=0)
-    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
+    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
     call_tool("changes_since_read", workspace=str(root))
     update_item(call_tool, root, "D-1", {"answer": "答え"})
     add_item(call_tool, root, "task", {"title": "調べる", "kind": "調査", "status": "未着手"})
@@ -127,7 +134,7 @@ def test_error_when_write_fails(
     # 準備
     root = make_workspace()
     call_tool("changes_since_read", workspace=str(root))
-    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定"})
+    add_item(call_tool, root, "decision", {"title": "問い", "status": "未決定", "options": OPTIONS})
     read_before = read_changes(root)["read_seq"]
     before = snapshot_tree(root)
     lock_dirs(root / RECORD_DIR)
@@ -145,3 +152,31 @@ def test_error_when_write_fails(
     assert retry.is_error is False
     assert retry.data is not None
     assert [entry["id"] for entry in retry.data["added"]] == ["D-1"]
+
+
+def test_normal_when_item_removed(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """読んだ時点に有って後で消した項目だけを、消した項目として返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "note", {"title": "メモ", "content": "中身"})
+    add_item(call_tool, root, "note", {"title": "重複したメモ", "content": "中身"})
+    first = call_tool("changes_since_read", workspace=str(root))
+    assert first.is_error is False
+    remove_item(call_tool, root, "N-2")
+    add_item(call_tool, root, "note", {"title": "読んだ後に足すメモ", "content": "中身"})
+    remove_item(call_tool, root, "N-3")
+    # 実行
+    result = call_tool("changes_since_read", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["removed"] == [{"id": "N-2", "kind": "note", "title": "重複したメモ"}]
+    # 読んだ後に足して消した N-3 は、どこにも出ない
+    returned = [
+        entry["id"]
+        for key in ("added", "changed", "removed")
+        for entry in result.data[key]
+    ]
+    assert "N-3" not in returned
+    changes = read_changes(root)
+    assert changes["read_seq"] == changes["last_seq"]

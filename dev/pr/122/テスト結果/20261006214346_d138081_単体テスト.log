@@ -1,0 +1,894 @@
+# 単体テスト（新しく足した・直した Red の 11 件以外が全 pass）
+# commit: d138081
+# 実行日時: 2026-10-06 21:43:46 JST
+$ pytest tests/unit/preview
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-map-wheel-zoom-board-default
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 229 items
+
+tests/unit/preview/test_api.py ........                                  [  3%]
+tests/unit/preview/test_app.py ........                                  [  6%]
+tests/unit/preview/test_comments_panel.py ...                            [  8%]
+tests/unit/preview/test_decisions.py .FF                                 [  9%]
+tests/unit/preview/test_detail.py .....                                  [ 11%]
+tests/unit/preview/test_diff.py ................                         [ 18%]
+tests/unit/preview/test_docs.py .                                        [ 19%]
+tests/unit/preview/test_dom.py ..............                            [ 25%]
+tests/unit/preview/test_graph.py ..                                      [ 26%]
+tests/unit/preview/test_libs.py ............                             [ 31%]
+tests/unit/preview/test_overview.py .                                    [ 31%]
+tests/unit/preview/test_records.py ....                                  [ 33%]
+tests/unit/preview/test_router.py ...                                    [ 34%]
+tests/unit/preview/test_selection_comment.py ..                          [ 35%]
+tests/unit/preview/test_send_form.py ....                                [ 37%]
+tests/unit/preview/test_settings.py .                                    [ 37%]
+tests/unit/preview/test_settings_confirm.py .                            [ 38%]
+tests/unit/preview/test_settings_panel.py ..                             [ 39%]
+tests/unit/preview/test_table.py ........                                [ 42%]
+tests/unit/preview/test_tasks.py ..                                      [ 43%]
+tests/unit/preview/test_api.py ......                                    [ 46%]
+tests/unit/preview/test_app.py ....                                      [ 48%]
+tests/unit/preview/test_comments_panel.py .                              [ 48%]
+tests/unit/preview/test_decisions.py FF                                  [ 49%]
+tests/unit/preview/test_diff.py .....                                    [ 51%]
+tests/unit/preview/test_dom.py .......                                   [ 54%]
+tests/unit/preview/test_libs.py ..                                       [ 55%]
+tests/unit/preview/test_overview.py .                                    [ 55%]
+tests/unit/preview/test_records.py ..                                    [ 56%]
+tests/unit/preview/test_router.py ...                                    [ 58%]
+tests/unit/preview/test_selection_comment.py .                           [ 58%]
+tests/unit/preview/test_send_form.py ....                                [ 60%]
+tests/unit/preview/test_settings_confirm.py .                            [ 60%]
+tests/unit/preview/test_settings_panel.py .                              [ 61%]
+tests/unit/preview/test_table.py ....                                    [ 62%]
+tests/unit/preview/test_tasks.py .                                       [ 63%]
+tests/unit/preview/test_api.py ....                                      [ 65%]
+tests/unit/preview/test_app.py ...                                       [ 66%]
+tests/unit/preview/test_decisions.py F                                   [ 66%]
+tests/unit/preview/test_diff.py ..                                       [ 67%]
+tests/unit/preview/test_dom.py ...                                       [ 68%]
+tests/unit/preview/test_libs.py ..                                       [ 69%]
+tests/unit/preview/test_records.py ..                                    [ 70%]
+tests/unit/preview/test_router.py .F                                     [ 71%]
+tests/unit/preview/test_selection_comment.py .                           [ 72%]
+tests/unit/preview/test_send_form.py ..                                  [ 72%]
+tests/unit/preview/test_settings_confirm.py .                            [ 73%]
+tests/unit/preview/test_settings_panel.py .                              [ 73%]
+tests/unit/preview/test_table.py ....                                    [ 75%]
+tests/unit/preview/test_api.py .                                         [ 75%]
+tests/unit/preview/test_app.py ..                                        [ 76%]
+tests/unit/preview/test_decisions.py F                                   [ 77%]
+tests/unit/preview/test_diff.py ..                                       [ 78%]
+tests/unit/preview/test_dom.py ...                                       [ 79%]
+tests/unit/preview/test_libs.py ..                                       [ 80%]
+tests/unit/preview/test_records.py ..                                    [ 81%]
+tests/unit/preview/test_router.py FF                                     [ 82%]
+tests/unit/preview/test_send_form.py .                                   [ 82%]
+tests/unit/preview/test_settings_panel.py .                              [ 82%]
+tests/unit/preview/test_table.py .                                       [ 83%]
+tests/unit/preview/test_api.py .                                         [ 83%]
+tests/unit/preview/test_app.py .                                         [ 84%]
+tests/unit/preview/test_decisions.py F                                   [ 84%]
+tests/unit/preview/test_diff.py ..                                       [ 85%]
+tests/unit/preview/test_dom.py ..                                        [ 86%]
+tests/unit/preview/test_libs.py ..                                       [ 87%]
+tests/unit/preview/test_router.py .                                      [ 87%]
+tests/unit/preview/test_send_form.py .                                   [ 88%]
+tests/unit/preview/test_api.py .                                         [ 88%]
+tests/unit/preview/test_decisions.py F                                   [ 89%]
+tests/unit/preview/test_diff.py .                                        [ 89%]
+tests/unit/preview/test_dom.py .                                         [ 89%]
+tests/unit/preview/test_libs.py ..                                       [ 90%]
+tests/unit/preview/test_router.py .                                      [ 91%]
+tests/unit/preview/test_diff.py .                                        [ 91%]
+tests/unit/preview/test_libs.py ..                                       [ 92%]
+tests/unit/preview/test_diff.py .                                        [ 93%]
+tests/unit/preview/test_libs.py ..                                       [ 93%]
+tests/unit/preview/test_diff.py .                                        [ 94%]
+tests/unit/preview/test_libs.py .............                            [100%]
+
+=================================== FAILURES ===================================
+______________________ test_wheel_zoom[chromium-zoom_in] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4ae77600>
+scale = 1, delta_y = -100, expected_scale = 1.12
+
+    @pytest.mark.parametrize(
+        ("scale", "delta_y", "expected_scale"),
+        [
+            pytest.param(1, -100, 1.12, id="zoom_in"),
+            pytest.param(1, 100, 1 / 1.12, id="zoom_out"),
+            pytest.param(1.45, -1, 1.5, id="clamped_at_max"),
+            pytest.param(0.42, 1, 0.4, id="clamped_at_min"),
+            pytest.param(1.5, -1, 1.5, id="stays_at_max"),
+            pytest.param(0.3, 1, 0.3, id="stays_below_min"),
+        ],
+    )
+    def test_wheel_zoom(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        delta_y: float,
+        expected_scale: float,
+    ) -> None:
+        """奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale, deltaY}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY,
+                point: {x: 0, y: 0},
+                scroll: {left: 0, top: 0},
+            })""",
+            {"scale": scale, "deltaY": delta_y},
+        )
+
+tests/unit/preview/test_decisions.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a4ae74040>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+_______________ test_wheel_zoom_keeps_point[chromium-point_kept] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4ae83a60>
+scale = 1, expected_scale = 1.12, expected_scroll = {'left': 360, 'top': 68}
+
+    @pytest.mark.parametrize(
+        ("scale", "expected_scale", "expected_scroll"),
+        [
+            pytest.param(1, 1.12, {"left": 360, "top": 68}, id="point_kept"),
+            pytest.param(1.5, 1.5, {"left": 300, "top": 50}, id="unchanged_at_max"),
+        ],
+    )
+    def test_wheel_zoom_keeps_point(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        expected_scale: float,
+        expected_scroll: dict[str, float],
+    ) -> None:
+        """マウスの下の点を残すスクロールの位置を返す（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY: -1,
+                point: {x: 200, y: 100},
+                scroll: {left: 300, top: 50},
+            })""",
+            {"scale": scale},
+        )
+
+tests/unit/preview/test_decisions.py:117: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a4b7fdda0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:29)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+______________________ test_wheel_zoom[chromium-zoom_out] ______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4abc85e0>
+scale = 1, delta_y = 100, expected_scale = 0.8928571428571428
+
+    @pytest.mark.parametrize(
+        ("scale", "delta_y", "expected_scale"),
+        [
+            pytest.param(1, -100, 1.12, id="zoom_in"),
+            pytest.param(1, 100, 1 / 1.12, id="zoom_out"),
+            pytest.param(1.45, -1, 1.5, id="clamped_at_max"),
+            pytest.param(0.42, 1, 0.4, id="clamped_at_min"),
+            pytest.param(1.5, -1, 1.5, id="stays_at_max"),
+            pytest.param(0.3, 1, 0.3, id="stays_below_min"),
+        ],
+    )
+    def test_wheel_zoom(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        delta_y: float,
+        expected_scale: float,
+    ) -> None:
+        """奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale, deltaY}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY,
+                point: {x: 0, y: 0},
+                scroll: {left: 0, top: 0},
+            })""",
+            {"scale": scale, "deltaY": delta_y},
+        )
+
+tests/unit/preview/test_decisions.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a4abc9760>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________ test_wheel_zoom_keeps_point[chromium-unchanged_at_max] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a49ffe340>
+scale = 1.5, expected_scale = 1.5, expected_scroll = {'left': 300, 'top': 50}
+
+    @pytest.mark.parametrize(
+        ("scale", "expected_scale", "expected_scroll"),
+        [
+            pytest.param(1, 1.12, {"left": 360, "top": 68}, id="point_kept"),
+            pytest.param(1.5, 1.5, {"left": 300, "top": 50}, id="unchanged_at_max"),
+        ],
+    )
+    def test_wheel_zoom_keeps_point(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        expected_scale: float,
+        expected_scroll: dict[str, float],
+    ) -> None:
+        """マウスの下の点を残すスクロールの位置を返す（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY: -1,
+                point: {x: 200, y: 100},
+                scroll: {left: 300, top: 50},
+            })""",
+            {"scale": scale},
+        )
+
+tests/unit/preview/test_decisions.py:117: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a4a024720>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:29)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+___________________ test_wheel_zoom[chromium-clamped_at_max] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4abe0040>
+scale = 1.45, delta_y = -1, expected_scale = 1.5
+
+    @pytest.mark.parametrize(
+        ("scale", "delta_y", "expected_scale"),
+        [
+            pytest.param(1, -100, 1.12, id="zoom_in"),
+            pytest.param(1, 100, 1 / 1.12, id="zoom_out"),
+            pytest.param(1.45, -1, 1.5, id="clamped_at_max"),
+            pytest.param(0.42, 1, 0.4, id="clamped_at_min"),
+            pytest.param(1.5, -1, 1.5, id="stays_at_max"),
+            pytest.param(0.3, 1, 0.3, id="stays_below_min"),
+        ],
+    )
+    def test_wheel_zoom(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        delta_y: float,
+        expected_scale: float,
+    ) -> None:
+        """奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale, deltaY}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY,
+                point: {x: 0, y: 0},
+                scroll: {left: 0, top: 0},
+            })""",
+            {"scale": scale, "deltaY": delta_y},
+        )
+
+tests/unit/preview/test_decisions.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a49ffcea0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________________ test_to_hash[chromium-decisions_board] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4ab45f80>
+route = {'tab': 'decisions', 'view': 'board', 'id': None, 'full': False, ...}
+expected = '#tab=decisions'
+
+    @pytest.mark.parametrize(
+        ("route", "expected"),
+        [
+            pytest.param(
+                {"tab": "overview", "view": "table", "id": None, "full": False, "filters": {}},
+                "",
+                id="defaults",
+            ),
+            pytest.param(
+                {
+                    "tab": "decisions",
+                    "view": "table",
+                    "id": "D-1",
+                    "full": True,
+                    "filters": {"status": ["未決定"]},
+                },
+                "#tab=decisions&view=table&id=D-1&full=1",
+                id="full_with_filters",
+            ),
+            pytest.param(
+                {"tab": "decisions", "view": "board", "id": None, "full": False, "filters": {}},
+                "#tab=decisions",
+                id="decisions_board",
+            ),
+            pytest.param(
+                {"tab": "decisions", "view": "map", "id": None, "full": False, "filters": {}},
+                "#tab=decisions&view=map",
+                id="decisions_map",
+            ),
+        ],
+    )
+    def test_to_hash(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        route: dict[str, Any],
+        expected: str,
+    ) -> None:
+        """既定の値を書かない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        hash_text = preview_page.evaluate("(route) => MindmapPreview.toHash(route)", route)
+        # 検証
+>       assert hash_text == expected
+E       AssertionError: assert '#tab=decisions&view=board' == '#tab=decisions'
+E         
+E         - #tab=decisions
+E         + #tab=decisions&view=board
+
+tests/unit/preview/test_router.py:111: AssertionError
+___________________ test_wheel_zoom[chromium-clamped_at_min] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4b7fff60>
+scale = 0.42, delta_y = 1, expected_scale = 0.4
+
+    @pytest.mark.parametrize(
+        ("scale", "delta_y", "expected_scale"),
+        [
+            pytest.param(1, -100, 1.12, id="zoom_in"),
+            pytest.param(1, 100, 1 / 1.12, id="zoom_out"),
+            pytest.param(1.45, -1, 1.5, id="clamped_at_max"),
+            pytest.param(0.42, 1, 0.4, id="clamped_at_min"),
+            pytest.param(1.5, -1, 1.5, id="stays_at_max"),
+            pytest.param(0.3, 1, 0.3, id="stays_below_min"),
+        ],
+    )
+    def test_wheel_zoom(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        delta_y: float,
+        expected_scale: float,
+    ) -> None:
+        """奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale, deltaY}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY,
+                point: {x: 0, y: 0},
+                scroll: {left: 0, top: 0},
+            })""",
+            {"scale": scale, "deltaY": delta_y},
+        )
+
+tests/unit/preview/test_decisions.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a4b7e4ea0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+_____________________ test_parse_hash[chromium-unknown_id] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4ae28c20>
+make_data = <function make_data.<locals>._make at 0x7c0a49f6e660>
+make_item = <function make_item.<locals>._make at 0x7c0a49f6fb00>
+hash_text = '#tab=decisions&id=D-99&full=1', tab = 'decisions', view = 'board'
+item_id = None, full = False, filters = {}
+
+    @pytest.mark.parametrize(
+        ("hash_text", "tab", "view", "item_id", "full", "filters"),
+        [
+            pytest.param("", "overview", "table", None, False, {}, id="empty"),
+            pytest.param(
+                "#tab=decisions&view=table&id=D-1&f.status=要見直し|保留",
+                "decisions",
+                "table",
+                "D-1",
+                False,
+                {"status": ["要見直し", "保留"]},
+                id="filters",
+            ),
+            pytest.param(
+                "#tab=nope&view=cards", "overview", "table", None, False, {}, id="unknown_tab"
+            ),
+            pytest.param(
+                "#tab=decisions&id=D-99&full=1", "decisions", "board", None, False, {}, id="unknown_id"
+            ),
+            pytest.param("#tab=tasks&view=map", "tasks", "board", None, False, {}, id="unknown_view"),
+            pytest.param("#tab=docs&view=board", "docs", "board", None, False, {}, id="docs_board"),
+        ],
+    )
+    def test_parse_hash(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        make_data: MakeData,
+        make_item: MakeItem,
+        hash_text: str,
+        tab: str,
+        view: str,
+        item_id: str | None,
+        full: bool,
+        filters: dict[str, list[str]],
+    ) -> None:
+        """既定と誤った値を扱う（正常系）。"""
+        # 準備
+        data = make_data(decisions=[make_item("D-1")])
+        load_preview_scripts()
+        # 実行
+        route = preview_page.evaluate(
+            """({data, hash}) => {
+                const index = MindmapPreview.buildIndex(data);
+                return MindmapPreview.parseHash({hash, index});
+            }""",
+            {"data": data, "hash": hash_text},
+        )
+        # 検証
+        assert route["tab"] == tab
+>       assert route["view"] == view
+E       AssertionError: assert 'map' == 'board'
+E         
+E         - board
+E         + map
+
+tests/unit/preview/test_router.py:62: AssertionError
+_____________________ test_to_hash[chromium-decisions_map] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4ae52020>
+route = {'tab': 'decisions', 'view': 'map', 'id': None, 'full': False, ...}
+expected = '#tab=decisions&view=map'
+
+    @pytest.mark.parametrize(
+        ("route", "expected"),
+        [
+            pytest.param(
+                {"tab": "overview", "view": "table", "id": None, "full": False, "filters": {}},
+                "",
+                id="defaults",
+            ),
+            pytest.param(
+                {
+                    "tab": "decisions",
+                    "view": "table",
+                    "id": "D-1",
+                    "full": True,
+                    "filters": {"status": ["未決定"]},
+                },
+                "#tab=decisions&view=table&id=D-1&full=1",
+                id="full_with_filters",
+            ),
+            pytest.param(
+                {"tab": "decisions", "view": "board", "id": None, "full": False, "filters": {}},
+                "#tab=decisions",
+                id="decisions_board",
+            ),
+            pytest.param(
+                {"tab": "decisions", "view": "map", "id": None, "full": False, "filters": {}},
+                "#tab=decisions&view=map",
+                id="decisions_map",
+            ),
+        ],
+    )
+    def test_to_hash(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        route: dict[str, Any],
+        expected: str,
+    ) -> None:
+        """既定の値を書かない（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        hash_text = preview_page.evaluate("(route) => MindmapPreview.toHash(route)", route)
+        # 検証
+>       assert hash_text == expected
+E       AssertionError: assert '#tab=decisions' == '#tab=decisions&view=map'
+E         
+E         - #tab=decisions&view=map
+E         ?               ---------
+E         + #tab=decisions
+
+tests/unit/preview/test_router.py:111: AssertionError
+____________________ test_wheel_zoom[chromium-stays_at_max] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a4aba6980>
+scale = 1.5, delta_y = -1, expected_scale = 1.5
+
+    @pytest.mark.parametrize(
+        ("scale", "delta_y", "expected_scale"),
+        [
+            pytest.param(1, -100, 1.12, id="zoom_in"),
+            pytest.param(1, 100, 1 / 1.12, id="zoom_out"),
+            pytest.param(1.45, -1, 1.5, id="clamped_at_max"),
+            pytest.param(0.42, 1, 0.4, id="clamped_at_min"),
+            pytest.param(1.5, -1, 1.5, id="stays_at_max"),
+            pytest.param(0.3, 1, 0.3, id="stays_below_min"),
+        ],
+    )
+    def test_wheel_zoom(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        delta_y: float,
+        expected_scale: float,
+    ) -> None:
+        """奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale, deltaY}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY,
+                point: {x: 0, y: 0},
+                scroll: {left: 0, top: 0},
+            })""",
+            {"scale": scale, "deltaY": delta_y},
+        )
+
+tests/unit/preview/test_decisions.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a49f6fb00>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+__________________ test_wheel_zoom[chromium-stays_below_min] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x7c0a49e17600>
+scale = 0.3, delta_y = 1, expected_scale = 0.3
+
+    @pytest.mark.parametrize(
+        ("scale", "delta_y", "expected_scale"),
+        [
+            pytest.param(1, -100, 1.12, id="zoom_in"),
+            pytest.param(1, 100, 1 / 1.12, id="zoom_out"),
+            pytest.param(1.45, -1, 1.5, id="clamped_at_max"),
+            pytest.param(0.42, 1, 0.4, id="clamped_at_min"),
+            pytest.param(1.5, -1, 1.5, id="stays_at_max"),
+            pytest.param(0.3, 1, 0.3, id="stays_below_min"),
+        ],
+    )
+    def test_wheel_zoom(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        scale: float,
+        delta_y: float,
+        expected_scale: float,
+    ) -> None:
+        """奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """({scale, deltaY}) => MindmapPreview.wheelZoom({
+                scale,
+                deltaY,
+                point: {x: 0, y: 0},
+                scroll: {left: 0, top: 0},
+            })""",
+            {"scale": scale, "deltaY": delta_y},
+        )
+
+tests/unit/preview/test_decisions.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x7c0a4ba69370>
+cb = <function Channel.send.<locals>.<lambda> at 0x7c0a49e176a0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.wheelZoom is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:37)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-zoom_in]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom_keeps_point[chromium-point_kept]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-zoom_out]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom_keeps_point[chromium-unchanged_at_max]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-clamped_at_max]
+FAILED tests/unit/preview/test_router.py::test_to_hash[chromium-decisions_board]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-clamped_at_min]
+FAILED tests/unit/preview/test_router.py::test_parse_hash[chromium-unknown_id]
+FAILED tests/unit/preview/test_router.py::test_to_hash[chromium-decisions_map]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-stays_at_max]
+FAILED tests/unit/preview/test_decisions.py::test_wheel_zoom[chromium-stays_below_min]
+================== 11 failed, 218 passed in 148.17s (0:02:28) ==================

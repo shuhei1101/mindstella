@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import asdict, dataclass, replace
@@ -9,20 +10,24 @@ from pathlib import Path
 from typing import Any, Literal
 
 from builder import export_preview, validate_export_out
-from checker import check_workspace
+from checker import check_workspace, find_referrers
 from errors import (
     AdoptedOptionError,
     ArgumentError,
     ItemNotFoundError,
+    ItemReferencedError,
+    LastOptionError,
     MindmapError,
     OptionExistsError,
     OptionNotFoundError,
     SchemaMismatchError,
+    WriteFailedError,
 )
 from graph import judge_goal, list_next_candidates, summarize_status, trace_impact
 from history import (
     SUMMARY_MAX_LENGTH,
     Changes,
+    RemovedItem,
     advance_seq,
     changes_since,
     commit_pending,
@@ -31,17 +36,21 @@ from history import (
     make_entry,
     mark_read,
     note_pending,
+    note_removed,
     pending_view,
+    removed_items,
     stack_history,
 )
 from kinds import EDITOR, KINDS, RECORD_DIR, Kind, records_root
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
 from query import SearchFilter, list_attrs, list_tags, search_items, show_item
+from readme import README_FILE, write_readme
 from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
     CHANGES_FILE,
+    OPTIONS_OPTIONAL_STATUSES,
     BatchChange,
     BodyWrite,
     Change,
@@ -65,6 +74,8 @@ from store import (
 )
 from submissions import list_pending_submissions, take_submission
 from versions import Version, parse_release_version, read_plugin_version
+
+logger = logging.getLogger(__name__)
 
 # 前の版の形式の問題の詳細に続ける案内
 MIGRATE_HINT = "（/mindstella:upgrade で今の形式に移せます）"
@@ -92,7 +103,10 @@ ITEM_NAME = "item"
 VALUE_KEYS = ("file", "key", "value")
 
 # `edit_option` の `option` に渡せるキー
-OPTION_KEYS = ("content", "pros", "cons", "note", "reason")
+OPTION_KEYS = ("content", "pros", "cons", "note", "reason", "recommended")
+
+# 検討事項の案を採用したときに入る状態
+DECIDED_STATUS = "決定済み"
 
 # `batch` が `$番号` を置き換えるキー
 REF_KEYS = ("parent", "depends_on", "for", "related", "sources")
@@ -157,7 +171,7 @@ def merge_changes(
 
 
 def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str | None]:
-    """指定した記号の案だけを採用にした新しい項目と、それまで採用していた案の記号を返す。"""
+    """指定した記号の案だけを採用にし、状態を決定済みにした新しい項目と、それまで採用していた案の記号を返す。"""
     options = [option for option in item.get("options") or [] if isinstance(option, dict)]
     keys = [str(option.get("key")) for option in options]
     # 検討事項がその記号の案を持たない
@@ -168,7 +182,7 @@ def switch_adopted(item: dict[str, Any], key: str) -> tuple[dict[str, Any], str 
         (str(option["key"]) for option in options if option.get("adopted") is True), None
     )
     switched = [{**option, "adopted": str(option.get("key")) == key} for option in options]
-    return {**item, "options": switched}, previous
+    return {**item, "options": switched, "status": DECIDED_STATUS}, previous
 
 
 def run_init(root: Path, settings: dict[str, Any]) -> dict[str, Any]:
@@ -201,7 +215,8 @@ def apply_option_edit(
         # 同じ記号の案が既にある
         if position is not None:
             raise OptionExistsError(f"{prefix}: 同じ記号の案が既にあります")
-        return [*options, {"key": key, **(option or {})}]
+        added = [*options, {"key": key, **(option or {})}]
+        return _apply_recommended(added, key, option or {})
     # 直す・消すは、その記号の案が要る
     if position is None:
         raise OptionNotFoundError(f"{prefix}: その記号の案がありません")
@@ -213,13 +228,34 @@ def apply_option_edit(
                 edited.pop(name, None)
             else:
                 edited[name] = value
-        return options
+        return _apply_recommended(options, key, option or {})
     # 採用している案は消せない
     if options[position].get("adopted") is True:
         raise AdoptedOptionError(
             f"{prefix}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください"
         )
+    # 案を必須にする状態の検討事項は、最後の案を消せない
+    status = item.get("status")
+    if len(options) == 1 and status not in OPTIONS_OPTIONAL_STATUSES:
+        raise LastOptionError(
+            f"{prefix}: 状態 {status} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください"
+        )
     del options[position]
+    return options
+
+
+def _apply_recommended(
+    options: list[dict[str, Any]], key: str, option: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """`option` が推奨の印を持つとき、印を立てる（ほかの案の印は外す）か、外した案のキーを消す。"""
+    # 推奨の印を渡していない
+    if "recommended" not in option:
+        return options
+    marked = option["recommended"] is True
+    for entry in options:
+        # 印を立てるときは指した案以外の、外すときは指した案の、印のキーを消す
+        if marked != (entry.get("key") == key):
+            entry.pop("recommended", None)
     return options
 
 
@@ -243,7 +279,12 @@ def stage_add(
 ) -> tuple[Staged, dict[str, Any]]:
     """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
     validate_input_keys(kind, item)
-    item_id = next_id(replace(staged.workspace, items=staged.items), kind)
+    # 消した項目の ID は振り直さない
+    item_id = next_id(
+        replace(staged.workspace, items=staged.items),
+        kind,
+        taken=[removed["id"] for removed in removed_items(staged.changes)],
+    )
     timestamp = now()
     record, seq = advance_seq(staged.changes)
     # id を先頭に、created・updated・updated_by・seq・added_seq を末尾に置く
@@ -349,6 +390,44 @@ def run_update(
     return result
 
 
+def run_remove(root: Path, item_id: str) -> dict[str, Any]:
+    """1 項目を種類の YAML と本文から消し、消した項目をまだまとめていない変更に記録する。"""
+    staged = _start_staged(root)
+    ref = find_item(staged.workspace, item_id)
+    referrers = find_referrers(staged.workspace, item_id)
+    # ほかの記録が指している: 何も書かずに、指している記録を返す
+    if referrers:
+        raise ItemReferencedError(f"{item_id} はほかの記録が指しているため消せません", referrers)
+    record, seq = advance_seq(staged.changes)
+    removed: RemovedItem = {
+        "id": item_id,
+        "kind": ref.kind,
+        "title": ref.item["title"],
+        "seq": seq,
+        "added_seq": ref.item.get("added_seq", 0),
+    }
+    record = note_removed(record, removed)
+    rows = [row for index, row in enumerate(staged.items[ref.kind]) if index != ref.index]
+    name = ref.item.get("body")
+    # 本文を持ち、`docs/` にそのファイルがあるときだけ、本文も消す
+    body_removed = isinstance(name, str) and read_body(staged.workspace, name) is not None
+    save_batch(
+        staged.workspace,
+        BatchChange(
+            items={ref.kind: rows},
+            changes=dict(record),
+            removed_bodies=[name] if body_removed and isinstance(name, str) else [],
+        ),
+    )
+    return {
+        "id": item_id,
+        "kind": ref.kind,
+        "title": removed["title"],
+        "file": f"{RECORD_DIR}/{KINDS[ref.kind].file}",
+        "body_removed": body_removed,
+    }
+
+
 def run_update_settings(
     root: Path,
     settings: dict[str, Any],
@@ -371,6 +450,7 @@ def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[
     if ref.kind != "decision":
         raise ItemNotFoundError(f"検討事項がありません: {item_id}")
     switched, previous = switch_adopted(ref.item, key)
+    previous_status = ref.item["status"]
     switched["updated"] = now()
     switched["updated_by"] = EDITOR
     # 本文は変えないので、前後の本文は同じ（読まない）
@@ -388,7 +468,13 @@ def run_adopt(root: Path, item_id: str, key: str, now: NowFn = now_utc) -> dict[
         workspace,
         Change(kind="decision", items=items, changes=dict(noted) if noted != record else None),
     )
-    return {"id": item_id, "adopted": key, "previous": previous}
+    return {
+        "id": item_id,
+        "adopted": key,
+        "previous": previous,
+        "status": DECIDED_STATUS,
+        "previous_status": previous_status,
+    }
 
 
 def run_edit_option(
@@ -490,7 +576,14 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
     committed, change_set = commit_pending(load_changes(root), text, now())
     # まとめる書き換えが無い: 何も書かない
     if change_set is None:
-        return {"id": None, "at": None, "summary": None, "added": [], "changed": []}
+        return {
+            "id": None,
+            "at": None,
+            "summary": None,
+            "added": [],
+            "changed": [],
+            "removed": [],
+        }
     _write_changes(root, committed)
     return {
         "id": change_set["id"],
@@ -498,6 +591,10 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
         "summary": change_set["summary"],
         "added": change_set["added"],
         "changed": change_set["changed"],
+        "removed": [
+            {"id": removed["id"], "kind": removed["kind"], "title": removed["title"]}
+            for removed in change_set.get("removed", [])
+        ],
     }
 
 
@@ -623,10 +720,25 @@ def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
 
 
 def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
-    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。"""
+    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。立てたときは直下の README にも URL を書く。"""
     require_workspace(root)
     url, started = previews.start(root)
+    # この呼び出しで立てたときだけ、README のプレビューの節を URL にする
+    if started:
+        try:
+            write_readme(root, preview_url=url)
+        except WriteFailedError as error:
+            # README を書けなくても配信は止めず、URL を返す
+            logger.warning("README を書けなかった: %s", error)
     return {"url": url, "workspace": str(root), "started": started}
+
+
+def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
+    """ワークスペースを確かめ、直下の README を今の値と配っている URL で書き直す。"""
+    require_workspace(root)
+    url = previews.url_of(root)
+    written = write_readme(root, preview_url=url)
+    return {"path": str(root / README_FILE), "written": written, "preview_url": url}
 
 
 def run_submissions(root: Path) -> dict[str, Any]:

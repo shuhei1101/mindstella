@@ -250,6 +250,29 @@ flows:
       - 標準出力のつなぐコマンドが `個人/家計簿アプリ` のセッションを指す
       - 標準エラーに既にセッションがある旨が無い
     test: test_normal_when_same_folder_name_elsewhere
+  - name: 正常系（外から見る設定を渡す）
+    summary: 設定されている外から見る環境変数だけを MCP の設定の env に書く
+    setup:
+      - name: Mock
+        description: '`tmux`・`claude` を、受け取った引数を記録する偽のコマンドに差し替える（正常系と同じ）'
+      - name: 環境変数
+        description: '`MINDSTELLA_ALLOWED_HOSTS` と `MINDSTELLA_PREVIEW_START_HOOK` だけを設定する'
+        notes: '`MINDSTELLA_ALLOWED_HOSTS=preview.example.test`、`MINDSTELLA_PREVIEW_START_HOOK=pub add`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 利用者
+        participant IF as 起動スクリプト
+        participant FS as MCP の設定
+
+        利用者->>IF: mindstella {フォルダ}
+        IF->>FS: mcpServers.mindstella.env に 2 つの値を書く
+        IF-->>利用者: セッションを立てる
+      ```
+    expected:
+      - MCP の設定の `mcpServers.mindstella.env` が `MINDSTELLA_ALLOWED_HOSTS` と `MINDSTELLA_PREVIEW_START_HOOK` の 2 つだけで、値が設定したものと同じ
+      - どれも設定しないと、`mcpServers.mindstella` が `env` を持たない
+    test: test_normal_when_external_settings
 lead: 依存を確かめ、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を立ち上げ、そのセッションへつなぐ。
 idempotent: false
 side_effects: この起動だけの MCP の設定（`{一時フォルダ}/mindstella-{ランダム}/mcp.json`）を書き、tmux のセッションを 1 つ立てる。ワークスペースのフォルダが無ければ作る。ワークスペースの中は書かない
@@ -277,6 +300,24 @@ request:
     location: argument
     description: 環境変数。Claude Code の設定のフォルダ。あれば tmux のセッションへ `new-session -e` で渡す
     notes: tmux のサーバーが先に立っていると、呼び出し元の環境変数はセッションへ渡らない
+  - name: MINDSTELLA_ALLOWED_HOSTS
+    type: str
+    required: false
+    default: なし（MCP の設定に書かない）
+    description: '環境変数。プレビューの配信が受ける外のホスト名（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
+    status: planned
+  - name: MINDSTELLA_PREVIEW_START_HOOK
+    type: str
+    required: false
+    default: なし（MCP の設定に書かない）
+    description: '環境変数。配信を立てたときのフック（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
+    status: planned
+  - name: MINDSTELLA_PREVIEW_STOP_HOOK
+    type: str
+    required: false
+    default: なし（MCP の設定に書かない）
+    description: '環境変数。配信を止めるときのフック（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
+    status: planned
 response:
   - name: tmux のセッション
     type: tmux のセッション
@@ -325,6 +366,8 @@ constraints:
   - item: セッションの指し方
     constraint: tmux の `-t` には頭に `=` を付けた名前（`-t =mindstella-{フォルダ名}-{ハッシュ}`）を渡し、完全に一致するセッションだけを指す
     notes: '`=` が無いと tmux は名前の前方一致でも当て、別のワークスペースのセッションを指す（tmux 3.4 で確かめた）'
+  - item: MCP サーバーへ渡す環境変数
+    constraint: '`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` のうち、呼び出し元で空でない値が設定されているものだけを、MCP の設定の `mcpServers.mindstella.env` に書く（無ければ `env` を持たない）。tmux のサーバーが先に立っていても MCP サーバーにだけ届き、Claude Code の全体の環境へは入れない。同じ名前のセッションが既にあってつなぐだけのときは、新しい値は効かない（セッションの Claude Code を閉じて立ち上げ直すと効く）'
 refs:
   - dev/設計書/インターフェース定義/サーバー/依存の確認#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

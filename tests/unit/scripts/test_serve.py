@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import http.client
 import json
+import socket
+import sys
 import threading
+import time
 import urllib.request
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -52,6 +55,42 @@ def registry() -> Iterator[serve.PreviewRegistry]:
     created = serve.PreviewRegistry(threading.Lock())
     yield created
     created.stop_all()
+
+
+@pytest.fixture
+def make_registry() -> Iterator[Callable[[serve.ExternalAccess], serve.PreviewRegistry]]:
+    """外から見る設定つきの配信の台帳を作る関数を返し、使い終わったら作った台帳の配信を全て止める。"""
+    created: list[serve.PreviewRegistry] = []
+
+    def _make(external: serve.ExternalAccess) -> serve.PreviewRegistry:
+        """external を渡した台帳を作って控える。"""
+        registry = serve.PreviewRegistry(threading.Lock(), external=external)
+        created.append(registry)
+        return registry
+
+    yield _make
+    for registry in created:
+        registry.stop_all()
+
+
+def _free_port() -> int:
+    """127.0.0.1 の空きポートを 1 つ取って閉じ、その番号を返す。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+def _record_hook_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[tuple[str, ...], int, str]]:
+    """serve.run_hook を、呼ばれた引数を控えて真を返す関数に差し替え、控える入れ物を返す。"""
+    calls: list[tuple[tuple[str, ...], int, str]] = []
+
+    def _run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
+        """フックを立てずに、渡された引数だけを控える。"""
+        calls.append((command, port, name))
+        return True
+
+    monkeypatch.setattr(serve, "run_hook", _run_hook)
+    return calls
 
 
 def _port_of(url: str) -> int:
@@ -113,6 +152,24 @@ def test_start(
     assert url2.endswith("/mindstella.html")
 
 
+def test_url_of(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """立てたワークスペースだけ URL を返す（正常系）。"""
+    # 準備
+    first = make_workspace(make_item("D-1"), name="first")
+    second = make_workspace(make_item("D-1"), name="second")
+    url, _started = registry.start(first)
+    # 実行
+    first_url = registry.url_of(first)
+    second_url = registry.url_of(second)
+    # 検証
+    assert first_url == url
+    assert second_url is None
+    # url_of は配信を立てないので、台帳の配信は 1 つのまま
+    assert len(registry._servers) == 1
+
+
 def _start_expecting_mismatch(registry: serve.PreviewRegistry, root: Path) -> list[str]:
     """start が SchemaMismatchError を送ることを確かめ、その lines を返す。"""
     with pytest.raises(SchemaMismatchError) as raised:
@@ -140,6 +197,60 @@ def test_start_when_settings_invalid(
     assert url.endswith("/mindstella.html")
 
 
+def test_start_when_port_fixed(
+    registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
+) -> None:
+    """preview.port のポートで立てる（正常系）。"""
+    # 準備
+    port = _free_port()
+    root = make_workspace(settings={**valid_settings, "preview": {"port": port}})
+    # 実行
+    url, started = registry.start(root)
+    # 検証
+    assert started is True
+    assert url == f"http://127.0.0.1:{port}/mindstella.html"
+
+
+def test_start_when_start_hook_set(
+    make_registry: Callable[[serve.ExternalAccess], serve.PreviewRegistry],
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """立てたときだけ起動時のフックを呼ぶ（正常系）。"""
+    # 準備
+    calls = _record_hook_calls(monkeypatch)
+    registry = make_registry(serve.ExternalAccess(start_hook=("hook",)))
+    root = make_workspace(make_item("D-1"), name="家計簿")
+    # 実行（2 回目は立て済みなので呼ばれない）
+    url, _started = registry.start(root)
+    registry.start(root)
+    # 検証
+    assert calls == [(("hook",), _port_of(url), "家計簿")]
+
+
+def test_start_when_port_in_use(
+    make_registry: Callable[[serve.ExternalAccess], serve.PreviewRegistry],
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """preview.port が使われていれば ServeFailedError でフックを呼ばない（異常系）。"""
+    # 準備
+    calls = _record_hook_calls(monkeypatch)
+    registry = make_registry(serve.ExternalAccess(start_hook=("hook",)))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupier:
+        occupier.bind(("127.0.0.1", 0))
+        occupier.listen()
+        port = int(occupier.getsockname()[1])
+        root = make_workspace(settings={**valid_settings, "preview": {"port": port}})
+        # 実行・検証
+        with pytest.raises(ServeFailedError):
+            registry.start(root)
+    assert registry._servers == {}
+    assert calls == []
+
+
 def test_stop_all(
     registry: serve.PreviewRegistry, make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
@@ -149,6 +260,58 @@ def test_stop_all(
     # 実行
     registry.stop_all()
     # 検証
+    connection = http.client.HTTPConnection("127.0.0.1", _port_of(url), timeout=HTTP_TIMEOUT_SEC)
+    with pytest.raises(ConnectionRefusedError):
+        connection.request("GET", "/")
+
+
+def test_stop_all_when_stop_hook_set(
+    make_registry: Callable[[serve.ExternalAccess], serve.PreviewRegistry],
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """配信ごとに 1 回だけ終了時のフックを呼ぶ（正常系）。"""
+    # 準備
+    calls = _record_hook_calls(monkeypatch)
+    registry = make_registry(serve.ExternalAccess(stop_hook=("hook",)))
+    url1, _started1 = registry.start(make_workspace(make_item("D-1"), name="first"))
+    url2, _started2 = registry.start(make_workspace(make_item("D-1"), name="second"))
+    # 実行（2 回目は台帳が空なので何もしない）
+    registry.stop_all()
+    registry.stop_all()
+    # 検証
+    assert sorted(calls, key=lambda call: call[2]) == [
+        (("hook",), _port_of(url1), "first"),
+        (("hook",), _port_of(url2), "second"),
+    ]
+
+
+def test_stop_all_when_reentered(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """止めている途中に同じスレッドから呼ばれても止まらず、フックを重ねて呼ばない（正常系）。"""
+    # 準備（鍵が戻らない実装でも後片付けで止まらないよう、後片付けの fixture を使わずテスト自身で止める）
+    registry = serve.PreviewRegistry(
+        threading.Lock(), external=serve.ExternalAccess(stop_hook=("hook",))
+    )
+    url, _started = registry.start(make_workspace(make_item("D-1")))
+    calls: list[tuple[tuple[str, ...], int, str]] = []
+
+    def _run_hook(command: tuple[str, ...], port: int, name: str) -> bool:
+        """引数を控え、フックの中から同じ台帳の stop_all を呼び直す。"""
+        calls.append((command, port, name))
+        registry.stop_all()
+        return True
+
+    monkeypatch.setattr(serve, "run_hook", _run_hook)
+    # 実行（鍵を持ったまま呼び直すと戻らないので、戻らないことを失敗にできるよう別スレッドで呼ぶ）
+    runner = threading.Thread(target=registry.stop_all, daemon=True)
+    runner.start()
+    runner.join(timeout=HTTP_TIMEOUT_SEC)
+    # 検証
+    assert not runner.is_alive()
+    assert len(calls) == 1
     connection = http.client.HTTPConnection("127.0.0.1", _port_of(url), timeout=HTTP_TIMEOUT_SEC)
     with pytest.raises(ConnectionRefusedError):
         connection.request("GET", "/")
@@ -208,7 +371,24 @@ def test_start_preview_server_when_bind_fails(
 def test_check_host(host: str | None, expected: bool) -> None:
     """端末の中の名前と同じポートだけ通す（正常系）。"""
     # 実行
-    result = serve.check_host(host, PORT)
+    result = serve.check_host(host, PORT, allowed_hosts=frozenset())
+    # 検証
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("host", "expected"),
+    [
+        pytest.param("preview.example.test", True, id="allowed"),
+        pytest.param("PREVIEW.example.test:8443", True, id="allowed_uppercase_with_port"),
+        pytest.param("other.example.test", False, id="other_name"),
+        pytest.param("preview.example.test.attacker.example", False, id="longer_name"),
+    ],
+)
+def test_check_host_when_allowed(host: str, expected: bool) -> None:
+    """許可したホスト名はポートを問わず通す（正常系）。"""
+    # 実行
+    result = serve.check_host(host, PORT, allowed_hosts=frozenset({"preview.example.test"}))
     # 検証
     assert result is expected
 
@@ -226,9 +406,110 @@ def test_check_host(host: str | None, expected: bool) -> None:
 def test_check_origin(origin: str | None, expected: bool) -> None:
     """無いか配信と同じ送り元だけ通す（正常系）。"""
     # 実行
-    result = serve.check_origin(origin, PORT)
+    result = serve.check_origin(origin, PORT, allowed_hosts=frozenset())
     # 検証
     assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("origin", "expected"),
+    [
+        pytest.param("https://preview.example.test", True, id="https"),
+        pytest.param("http://preview.example.test:8443", True, id="http_with_port"),
+        pytest.param("ftp://preview.example.test", False, id="other_scheme"),
+        pytest.param("https://other.example.test", False, id="other_name"),
+    ],
+)
+def test_check_origin_when_allowed(origin: str, expected: bool) -> None:
+    """許可したホスト名の https / http の送り元を通す（正常系）。"""
+    # 実行
+    result = serve.check_origin(origin, PORT, allowed_hosts=frozenset({"preview.example.test"}))
+    # 検証
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        pytest.param("Preview.Example.test:8443", "preview.example.test", id="port_removed"),
+        pytest.param("preview.example.test", "preview.example.test", id="no_port"),
+        pytest.param("preview.example.test:", "preview.example.test:", id="empty_port_kept"),
+    ],
+)
+def test_host_part(value: str, expected: str) -> None:
+    """末尾のポートだけを外して小文字にする（正常系）。"""
+    # 実行
+    result = serve.host_part(value)
+    # 検証
+    assert result == expected
+
+
+def test_load_external_access() -> None:
+    """3 つの環境変数を読み分ける（正常系）。"""
+    # 準備
+    environ = {
+        "MINDSTELLA_ALLOWED_HOSTS": " Preview.example.test , ,https://x.example,a.example:443 ",
+        "MINDSTELLA_PREVIEW_START_HOOK": "pub add",
+        "MINDSTELLA_PREVIEW_STOP_HOOK": "pub rm",
+    }
+    # 実行
+    result = serve.load_external_access(environ)
+    # 検証（空の要素と、`:`・`/` を含む要素は捨てる）
+    assert result.allowed_hosts == frozenset({"preview.example.test"})
+    assert result.start_hook == ("pub", "add")
+    assert result.stop_hook == ("pub", "rm")
+
+
+def test_load_external_access_when_empty() -> None:
+    """どれも無ければ空の既定値（正常系）。"""
+    # 実行
+    result = serve.load_external_access({})
+    # 検証
+    assert result == serve.ExternalAccess()
+
+
+def test_load_external_access_when_hook_unparsable() -> None:
+    """分けられないフックは空にする（異常系）。"""
+    # 実行（閉じない引用符は例外を送らず、空にする）
+    result = serve.load_external_access({"MINDSTELLA_PREVIEW_START_HOOK": 'pub "add'})
+    # 検証
+    assert result.start_hook == ()
+
+
+def _read_when_written(path: Path) -> str:
+    """子プロセスが path に書き終えるのを上限秒数まで待ち、書かれた中身を返す。"""
+    deadline = time.monotonic() + HTTP_TIMEOUT_SEC
+    while time.monotonic() < deadline:
+        if path.exists() and path.read_text(encoding="utf-8"):
+            return path.read_text(encoding="utf-8")
+        time.sleep(0.05)
+    raise AssertionError(f"子プロセスが {path} に書きませんでした")
+
+
+def test_run_hook(tmp_path: Path) -> None:
+    """末尾にポートと名前を足して立てる（正常系）。"""
+    # 準備
+    written = tmp_path / "written.txt"
+    command = (
+        sys.executable,
+        "-c",
+        "import sys,pathlib; "
+        "pathlib.Path(sys.argv[1]).write_text(' '.join(sys.argv[2:]), encoding='utf-8')",
+        str(written),
+    )
+    # 実行
+    started = serve.run_hook(command, 47800, "家計簿")
+    # 検証（終わりは待たないので、書かれるのを待つ）
+    assert started is True
+    assert _read_when_written(written) == "47800 家計簿"
+
+
+def test_run_hook_when_command_missing() -> None:
+    """コマンドが無ければ偽で例外を送らない（異常系）。"""
+    # 実行
+    started = serve.run_hook(("mindstella-no-such-command",), 47800, "家計簿")
+    # 検証
+    assert started is False
 
 
 def test_problem_response() -> None:

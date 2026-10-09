@@ -15,7 +15,7 @@ from typing import Any, Literal, NotRequired, TypedDict
 import yaml
 from errors import ItemNotFoundError, SchemaMismatchError
 from jsonschema import Draft202012Validator
-from kinds import KINDS, records_root
+from kinds import KINDS, Kind, records_root
 from store import (
     CHANGES_FILE,
     SCHEMA_DIR,
@@ -40,6 +40,8 @@ __all__ = [
     "ChangeSet",
     "Changes",
     "HistoryEntry",
+    "Pending",
+    "RemovedItem",
     "advance_seq",
     "apply_body_diff",
     "changes_since",
@@ -50,7 +52,9 @@ __all__ = [
     "make_entry",
     "mark_read",
     "note_pending",
+    "note_removed",
     "pending_view",
+    "removed_items",
     "stack_history",
     "touch_opened",
     "values_at_read",
@@ -107,6 +111,21 @@ class HistoryEntry(TypedDict):
     body_diff: NotRequired[list[BodyDiffHunk]]
 
 
+class RemovedItem(TypedDict):
+    """`changes.yaml` の `pending.removed`・`sets[].removed` の 1 要素。"""
+
+    # 消した項目の ID
+    id: str
+    # 消した項目の種類
+    kind: Kind
+    # 消したときのタイトル
+    title: str
+    # 消したときに振った通し番号
+    seq: int
+    # 消した項目が持っていた `added_seq`（持たなければ 0）
+    added_seq: int
+
+
 class ChangeSet(TypedDict):
     """`changes.yaml` の `sets` の 1 要素。"""
 
@@ -116,6 +135,19 @@ class ChangeSet(TypedDict):
     until_seq: int
     added: list[str]
     changed: list[str]
+    # 消した項目。消した項目が無いまとまりはキーを持たない
+    removed: NotRequired[list[RemovedItem]]
+
+
+class Pending(TypedDict):
+    """`changes.yaml` の `pending`。"""
+
+    # 足した項目の ID（書き換えた順）
+    added: list[str]
+    # 変えた項目の ID（書き換えた順。足した項目は入れない）
+    changed: list[str]
+    # 消した項目（消した順）。無ければ消した項目なし
+    removed: NotRequired[list[RemovedItem]]
 
 
 class Changes(TypedDict):
@@ -123,7 +155,7 @@ class Changes(TypedDict):
 
     last_seq: int
     sets: list[ChangeSet]
-    pending: dict[Literal["added", "changed"], list[str]]
+    pending: Pending
     # AI が最後に読んだ時点。`changes_since_read` を一度も呼んでいなければキーが無い
     read_seq: NotRequired[int]
 
@@ -258,12 +290,42 @@ def note_pending(
     changes: Changes, item_id: str, kind: Literal["added", "changed"]
 ) -> Changes:
     """まだまとめていない変更に ID を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
-    pending = {key: list(ids) for key, ids in changes["pending"].items()}
+    # 消した項目の記録はそのまま引き継ぐ
+    pending: Pending = {
+        **changes["pending"],
+        "added": list(changes["pending"]["added"]),
+        "changed": list(changes["pending"]["changed"]),
+    }
     # 足した項目は、変えても changed に入れない。同じ ID は二度足さない
     already = item_id in pending["added"] or (kind == "changed" and item_id in pending["changed"])
     if not already:
         pending[kind].append(item_id)
     return {**changes, "pending": pending}
+
+
+def note_removed(changes: Changes, removed: RemovedItem) -> Changes:
+    """`pending.added`・`pending.changed` から消した ID を除き、`pending.removed` の末尾に消した項目を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
+    pending = changes["pending"]
+    return {
+        **changes,
+        "pending": {
+            "added": [item_id for item_id in pending["added"] if item_id != removed["id"]],
+            "changed": [item_id for item_id in pending["changed"] if item_id != removed["id"]],
+            # まとめる前に足した項目も、消した ID を振り直さないために記録する
+            "removed": [*pending.get("removed", []), removed],
+        },
+    }
+
+
+def removed_items(changes: Changes) -> list[RemovedItem]:
+    """`sets[].removed` と `pending.removed` の記録を、消した順（`seq` の小さい順）に並べて返す。"""
+    collected = [
+        removed
+        for change_set in changes["sets"]
+        for removed in change_set.get("removed", [])
+    ]
+    collected.extend(changes["pending"].get("removed", []))
+    return sorted(collected, key=lambda removed: removed["seq"])
 
 
 def advance_seq(changes: Changes) -> tuple[Changes, int]:
@@ -275,8 +337,9 @@ def advance_seq(changes: Changes) -> tuple[Changes, int]:
 def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, ChangeSet | None]:
     """まだまとめていない変更を 1 つのまとまりにした新しい記録と、足したまとまりを返す。"""
     pending = changes["pending"]
+    pending_removed = pending.get("removed", [])
     # まとめるものが無い
-    if not pending["added"] and not pending["changed"]:
+    if not pending["added"] and not pending["changed"] and not pending_removed:
         return changes, None
     numbers = [int(entry["id"].removeprefix(SET_ID_PREFIX)) for entry in changes["sets"]]
     change_set: ChangeSet = {
@@ -287,6 +350,9 @@ def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, Ch
         "added": list(pending["added"]),
         "changed": list(pending["changed"]),
     }
+    # 消した項目があるときだけ、まとまりに写す
+    if pending_removed:
+        change_set["removed"] = list(pending_removed)
     committed: Changes = {
         **changes,
         "sets": [change_set, *changes["sets"]],
@@ -296,7 +362,7 @@ def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, Ch
 
 
 def pending_view(workspace: Workspace, changes: Changes) -> dict[str, Any]:
-    """まだまとめていない項目を、タイトルと変えたキーつきで返す（`pending` のツールの結果の形）。"""
+    """まだまとめていない項目を、タイトルと変えたキーつきで返し、消した項目も並べる（`pending` のツールの結果の形）。"""
     sets = changes["sets"]
     # 最後のまとまりより後の変更履歴だけが、まだまとめていない分
     floor = sets[0]["until_seq"] if sets else 0
@@ -315,7 +381,11 @@ def pending_view(workspace: Workspace, changes: Changes) -> dict[str, Any]:
             if "body_diff" in entry:
                 keys.append(BODY_MARKDOWN_KEY)
         changed.append({"id": item_id, "title": item["title"], "keys": list(dict.fromkeys(keys))})
-    return {"added": added, "changed": changed}
+    removed = [
+        {"id": entry["id"], "kind": entry["kind"], "title": entry["title"]}
+        for entry in changes["pending"].get("removed", [])
+    ]
+    return {"added": added, "changed": changed, "removed": removed}
 
 
 def values_at_read(
@@ -344,7 +414,7 @@ def values_at_read(
 
 
 def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
-    """AI が最後に読んだ時点より後に足した・変えた項目を、`changes_since_read` の結果の形に並べる。"""
+    """AI が最後に読んだ時点より後に足した・変えた・消した項目を、`changes_since_read` の結果の形に並べる。"""
     read_seq = changes.get("read_seq")
     # 読んだ時点の記録が無い: 差分を返さない
     if read_seq is None:
@@ -354,6 +424,7 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
             "until_seq": changes["last_seq"],
             "added": [],
             "changed": [],
+            "removed": [],
         }
     limit = history_limit(workspace.settings)
     added: list[dict[str, Any]] = []
@@ -395,12 +466,19 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
                     "body_diff": body_diff,
                 }
             )
+    # 読んだ時点に有って、後で消した項目（読んだ後に足して消した項目は、読んだ時点にも今にも無いので返さない）
+    removed = [
+        {"id": entry["id"], "kind": entry["kind"], "title": entry["title"]}
+        for entry in removed_items(changes)
+        if entry["seq"] > read_seq and entry["added_seq"] <= read_seq
+    ]
     return {
         "had_read_point": True,
         "read_seq": read_seq,
         "until_seq": changes["last_seq"],
         "added": added,
         "changed": changed,
+        "removed": removed,
     }
 
 

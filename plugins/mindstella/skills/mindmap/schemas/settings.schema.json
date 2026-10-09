@@ -177,7 +177,7 @@
       "properties": {
         "network_look": {
           "type": "string",
-          "description": "つながりの見た目。無ければ `deep`",
+          "description": "ネットワークの見た目。無ければ `deep`",
           "enum": [
             "glow",
             "starlight",
@@ -188,7 +188,7 @@
         },
         "visible_kinds": {
           "type": "array",
-          "description": "プレビューのタブに出す種類。無ければ全ての種類。概要とつながりは常に出す",
+          "description": "プレビューのタブに出す種類。無ければ全ての種類。概要とネットワークは常に出す",
           "uniqueItems": true,
           "items": {
             "type": "string",
@@ -202,6 +202,19 @@
               "logs"
             ]
           }
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "description": "プレビューの配信。配信を立てるときだけ読み、設定の再読み込みでは待ち受けを変えない",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "integer",
+          "description": "配信が `127.0.0.1` で待ち受けるポート。無ければ OS が選んだ空きポート。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く",
+          "minimum": 1,
+          "maximum": 65535
         }
       }
     }

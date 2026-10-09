@@ -12,12 +12,13 @@ import pytest
 import yaml
 from workspace_fixtures import (
     RECORD_DIR,
-    REPO_ROOT,
     CallTool,
     MakeItem,
     MakeLegacyWorkspace,
     MakeWorkspace,
     SnapshotTree,
+    plugin_version,
+    step_versions_after,
 )
 
 # ワークスペースの版を持つファイルの名前
@@ -35,18 +36,15 @@ FIRST_STEP_VERSION = "v0.3.0"
 # 設定ファイルの名前を改める手順の版
 RENAME_STEP_VERSION = "v0.6.0"
 
+# 案を持たない決定済みの検討事項に、答えから採用した案を作る手順の版
+OPTION_STEP_VERSION = "v0.7.0"
+
 # 前の版（v0.6.0 より前）の設定ファイルの名前と、今の設定ファイルの名前
 LEGACY_SETTINGS = "mindmap.yaml"
 SETTINGS = "config.yaml"
 
 # 手順が読めない docs.yaml（閉じていないフローの配列）
 BROKEN_DOCS = "items: [\n"
-
-
-def _plugin_version() -> str:
-    """プラグインの版（`plugins/mindstella/version.ini` の 1 行目）を返す。"""
-    path = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
-    return path.read_text(encoding="utf-8").splitlines()[0]
 
 
 def _read_docs(root: Path) -> list[dict[str, Any]]:
@@ -138,7 +136,7 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     assert recorded.is_error is False
     # mindstella-version.ini の 1 行目がプラグインの版である
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
-    assert first_line == _plugin_version()
+    assert first_line == plugin_version()
     # docs.yaml の A-1 が status: 完成、A-2 が status: 下書きで、どちらも done を持たず、updated が呼ぶ前と同じである
     docs = {item["id"]: item for item in _read_docs(root)}
     assert docs["A-1"]["status"] == "完成"
@@ -282,10 +280,14 @@ def test_normal_when_version_recorded_at_top(
     make_item: MakeItem,
     call_tool: CallTool,
 ) -> None:
-    """直下に版を記録したワークスペースを、v0.6.0 の手順だけで今の版へ移し替える（正常系）。"""
+    """直下に版を記録したワークスペースを、プラグインの版までの手順で今の版へ移し替える（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="D-1.md"),
+        make_item(
+            "D-1",
+            body="D-1.md",
+            options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+        ),
         bodies={"D-1.md": "本文\n"},
         settings_file=LEGACY_SETTINGS,
         top=True,
@@ -302,12 +304,13 @@ def test_normal_when_version_recorded_at_top(
     # 検証
     assert plan.is_error is False
     assert plan.data["workspace_version"] == "v0.5.0"
-    assert {step["version"] for step in plan.data["steps"]} == {RENAME_STEP_VERSION}
+    # 並べた手順が v0.5.0 より新しくプラグインの版までの手順だけである
+    assert {step["version"] for step in plan.data["steps"]} == step_versions_after("v0.5.0")
     assert applied.is_error is False
     assert recorded.is_error is False
     # 移し替えの後、.mindstella/ の版のファイルの 1 行目がプラグインの版で、直下に版のファイルが残っていない
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
-    assert first_line == _plugin_version()
+    assert first_line == plugin_version()
     assert not (root / VERSION_FILE).exists()
     # 設定と D-1 の中身・本文が、呼ぶ前と同じである
     assert (root / RECORD_DIR / SETTINGS).read_bytes() == legacy_settings
@@ -315,5 +318,95 @@ def test_normal_when_version_recorded_at_top(
     assert (root / RECORD_DIR / "docs" / "D-1.md").read_text(encoding="utf-8") == "本文\n"
     # 直下に mindmap.yaml・config.yaml が残っていない
     assert [path.name for path in root.iterdir()] == [RECORD_DIR]
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}
+
+
+def _without_options(item: dict[str, Any]) -> dict[str, Any]:
+    """案のキーを持たない検討事項にする。"""
+    return {key: value for key, value in item.items() if key != "options"}
+
+
+def test_normal_when_options_filled(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """案を持たない検討事項を、答えから案を作る手順と、確かめた内容の batch で直して今の版へ移し替える（正常系）。"""
+    # 準備
+    answer = "種類ごとに分ける"
+    reason = "探しやすい"
+    drafted_options = [
+        {"key": "A", "content": "種類ごとに分ける", "recommended": True},
+        {"key": "B", "content": "1 つにまとめる"},
+    ]
+    root = make_workspace(
+        _without_options(make_item("D-1", status="決定済み", answer=answer, reason=reason)),
+        _without_options(make_item("D-2", status="未決定")),
+        _without_options(make_item("D-3", status="未整理")),
+        make_item(
+            "D-4",
+            status="未決定",
+            options=[{"key": "A", "content": "案 A", "adopted": True}, {"key": "B", "content": "案 B"}],
+        ),
+    )
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.6.0\n", encoding="utf-8")
+    ws = {"workspace": str(root)}
+    # 実行
+    # 版を比べ、当てる手順を並べる
+    plan = call_tool("migrate", **ws, plan=True)
+    # 写しを取って手順を当てる
+    applied = call_tool("migrate", **ws)
+    # 点検し、手順で直らなかった検討事項を挙げさせる
+    checked_before_batch = call_tool("check", **ws)
+    # 確かめた内容（D-2 に案 A・B を書く・D-4 を決定済みにする）を 1 回でまとめて書く
+    batched = call_tool(
+        "batch",
+        **ws,
+        operations=[
+            {"op": "update", "id": "D-2", "item": {"options": drafted_options}},
+            {"op": "update", "id": "D-4", "item": {"status": "決定済み"}},
+        ],
+    )
+    checked = call_tool("check", **ws)
+    # 版を書き換える
+    recorded = call_tool("migrate", **ws, record=True)
+    # 検証
+    assert plan.is_error is False
+    # 並べた手順が v0.6.0 より新しくプラグインの版までの手順だけで、v0.7.0 の手順を含む
+    steps = {step["version"] for step in plan.data["steps"]}
+    assert steps == step_versions_after("v0.6.0")
+    assert OPTION_STEP_VERSION in steps
+    assert applied.is_error is False
+    # 手順の後の点検が、D-2 が案を持たない旨と、D-4 が採用した案を持つのに未決定である旨だけを返す
+    assert checked_before_batch.is_error is False
+    assert [(row["kind"], row["id"]) for row in checked_before_batch.data["problems"]] == [
+        ("decision_state", "D-2"),
+        ("decision_state", "D-4"),
+    ]
+    assert batched.is_error is False, batched.text
+    assert recorded.is_error is False
+    decisions = {
+        item["id"]: item
+        for item in yaml.safe_load(
+            (root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8")
+        )["items"]
+    }
+    # D-1 が案を 1 つだけ持ち、その案が採用で、content が答え・reason が理由で、決定済みのままである
+    assert decisions["D-1"]["options"] == [
+        {"key": "A", "content": answer, "reason": reason, "adopted": True}
+    ]
+    assert decisions["D-1"]["status"] == "決定済み"
+    # D-2 が案 A・B を持ち、案 A だけが推奨の印を持ち、未決定のままである
+    assert decisions["D-2"]["options"] == drafted_options
+    assert decisions["D-2"]["status"] == "未決定"
+    # D-3 が案を持たない未整理のままである
+    assert "options" not in decisions["D-3"]
+    assert decisions["D-3"]["status"] == "未整理"
+    # D-4 が決定済みで、案 A だけが採用である
+    assert decisions["D-4"]["status"] == "決定済み"
+    assert [option.get("adopted") for option in decisions["D-4"]["options"]] == [True, None]
+    # 移し替えの後、.mindstella/mindstella-version.ini の 1 行目がプラグインの版である
+    first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
+    assert first_line == plugin_version()
+    # 最後の check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}

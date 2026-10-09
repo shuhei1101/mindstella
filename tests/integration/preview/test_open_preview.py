@@ -14,8 +14,22 @@ from preview_comment_helpers import (
     select_text_for_pill,
 )
 from preview_drawer_helpers import FILTER_BUTTON, badge_text, checked_values, open_drawer
-from preview_fixture_types import BODY_WITH_DIAGRAM, OpenPreview, WritePreview
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, StartServer
+from preview_fixture_types import (
+    BODY_WITH_DIAGRAM,
+    OpenPreview,
+    WritePreview,
+    WriteReviewPreview,
+)
+from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
+from preview_network_helpers import ball_at, canvas_center
+from workspace_fixtures import (
+    CallTool,
+    MakeComment,
+    MakeItem,
+    MakeWorkspace,
+    StartServer,
+    WriteComments,
+)
 
 # 描画のライブラリの配信元への要求（全て失敗させるときの URL の形）
 LIBRARY_HOST_PATTERN = "https://cdn.jsdelivr.net/**"
@@ -25,6 +39,9 @@ DIAGRAM_TIMEOUT_MS = 20_000
 
 # 書き換えや接続の切れが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
+
+# タブを移ったネットワークで、選んだ項目の玉が中心へ寄り終わるまで待つミリ秒
+TAB_MOVE_SETTLE_MS = 5_000
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -75,7 +92,7 @@ def test_normal(
     assert page.get_attribute('.segment button[data-view="table"]', "aria-pressed") == "true"
     assert _row_ids(page) == ["D-1", "D-3"]
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
-    assert page.locator("aside.panel .md h4").count() == 1
+    assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     # 同じ URL を開き直すと同じ画面と項目が開く
     page.reload()
@@ -130,6 +147,35 @@ def test_normal_when_filter_in_hash(
     assert "f." not in page.evaluate("location.hash")
 
 
+def test_normal_when_tab_moved_with_item(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """詳細パネルに項目を開いたままタブの帯でネットワークへ移ると、その項目を選んだネットワークを開く。戻ると検討事項と詳細パネルに戻る（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-3"))
+    page = open_preview(url, "#tab=decisions&id=D-3")
+    page.wait_for_selector("aside.panel.open")
+    # 実行（タブの帯のネットワークを押す）
+    page.click('nav.tabbar a[data-tab="graph"]')
+    page.wait_for_selector("#graph-canvas")
+    page.wait_for_timeout(TAB_MOVE_SETTLE_MS)
+    moved_hash = page.evaluate("location.hash")
+    moved_panel = page.inner_text("aside.panel .d-title")
+    selected_at_center = ball_at(page, *canvas_center(page))
+    # 実行（ブラウザの戻る）
+    page.go_back()
+    page.wait_for_selector("#decision-map, table.grid, .board")
+    # 検証
+    assert moved_hash == "#tab=graph&id=D-3"
+    assert page.get_attribute('nav.tabbar a[data-tab="graph"]', "aria-current") is None
+    assert moved_panel == "D-3の題"
+    # 選んだ項目の玉が中心へ寄る
+    assert selected_at_center is True
+    assert page.evaluate("location.hash") == "#tab=decisions&id=D-3"
+    assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+
+
 def test_normal_when_item_not_found(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
@@ -140,7 +186,7 @@ def test_normal_when_item_not_found(
     page = open_preview(url, "#tab=decisions&id=D-99")
     # 検証
     assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
-    assert page.get_attribute('.segment button[data-view="map"]', "aria-pressed") == "true"
+    assert page.get_attribute('.segment button[data-view="board"]', "aria-pressed") == "true"
     assert page.locator("aside.panel").count() == 0
     assert "id=" not in page.evaluate("location.hash")
 
@@ -171,14 +217,14 @@ def test_normal_when_exported_offline(
 
     page.route(_is_not_file_url, _block)
     # 実行
-    open_preview(out.as_uri(), "#tab=decisions&id=D-3")
+    open_preview(out.as_uri(), "#tab=decisions&view=map&id=D-3")
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
     # 検証
     assert blocked == []
     assert page.locator('[role="alert"]').count() == 0
     assert page.locator('#decision-map button[data-node="D-3"]').count() == 1
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
-    assert page.locator("aside.panel .md h4").count() == 1
+    assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     # コメントのボタン・入力・選んだ箇所の入口が無く、接続の状態も出ていない
     assert page.locator(COMMENTS_BUTTON).count() == 0
@@ -186,7 +232,7 @@ def test_normal_when_exported_offline(
     assert page.locator(SEND_TEXTAREA).count() == 0
     assert page.locator(SEND_BUTTON).count() == 0
     assert page.locator(CONNECTION).count() == 0
-    select_text(page, "aside.panel .md", "本文の段落")
+    select_text(page, "aside.panel .md:not(.md-value)", "本文の段落")
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     assert page.locator(PILL).count() == 0
 
@@ -204,13 +250,13 @@ def test_error_when_library_unavailable(
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
-    open_preview(url, "#tab=decisions&id=D-3")
-    page.wait_for_selector("aside.panel.open .md .lib-error")
+    open_preview(url, "#tab=decisions&view=map&id=D-3")
+    page.wait_for_selector("aside.panel.open .md:not(.md-value) .lib-error")
     # 検証
     map_notice = page.inner_text("main .lib-error[role=alert]")
     assert "読み込めなかったライブラリ: elkjs" in map_notice
     assert "通信を確認して、ページを再読み込みしてください。" in map_notice
-    body_notice = page.inner_text("aside.panel .md .lib-error[role=alert]")
+    body_notice = page.inner_text("aside.panel .md:not(.md-value) .lib-error[role=alert]")
     assert "読み込めなかったライブラリ" in body_notice
     for name in ("marked", "DOMPurify", "mermaid"):
         assert name in body_notice
@@ -246,6 +292,7 @@ def test_normal_when_rewritten(
         "category": "データ構造",
         "phase": "要件",
         "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
     }
     # 実行
     added = call_tool("add", workspace=str(root), kind="decision", item=new_decision)
@@ -276,9 +323,9 @@ def test_normal_when_sent(
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     open_preview(served.data["url"], "#tab=docs&id=A-1")
-    page.wait_for_selector("aside.panel .md")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
     # 実行（本文の 2 行目の文を選ぶと、近くに入口が出る）
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     # 実行（入口を押し、箇所を添えて溜める）
     page.click(PILL)
     # 検証（箇所を添えた入力）
@@ -313,7 +360,9 @@ def test_normal_when_sent(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
     assert page.locator(f"{COMMENTS_PANEL} .comments-list li").count() == 0
     # 検証（入口は Esc で閉じる）
-    select_text_for_pill(page, "aside.panel .md", "言い換えたい文")
+    # 送った後の記録の読み直しと描き直しが終わってから選ぶ（遅れて描き直されると、選んだ範囲と入口が外れる）
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
     page.focus(PILL)
     page.keyboard.press("Escape")
     assert page.locator(PILL).count() == 0
@@ -383,3 +432,232 @@ def test_error_when_server_unreachable(
     assert page.inner_text("aside.panel .d-title") == "D-1の題"
     assert "レビューに追加できませんでした" in page.inner_text(SEND_MESSAGE)
     assert page.input_value(SEND_TEXTAREA) == "案 A にする"
+
+
+def test_normal_when_comment_marks_not_shown(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しは、レビュー中のコメントがあっても、ボード・表のどちらにもコメントの印と印を置く場所を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-2", status="未決定"))
+    write_comments(root, make_comment("C-1", target="D-2"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行・検証
+    for view in ("board", "table"):
+        page = open_preview(out.as_uri(), f"#tab=decisions&view={view}")
+        page.wait_for_selector(".board button.card, table.grid tbody tr")
+        assert page.locator("[data-comment-target]").count() == 0
+        assert page.locator(".cmk").count() == 0
+
+
+def _card_marker_script(selector: str) -> str:
+    """要素に目印の値を付け、画面を描き直したかを後で確かめられるようにする JavaScript を返す。"""
+    return f"document.querySelector('{selector}').dataset.kept = 'yes'"
+
+
+def test_normal_when_comment_added(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """詳細パネルからコメントを溜めると、その項目の印だけが描き替わり、画面は描き直さない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=decisions&view=board&id=D-4")
+    page.wait_for_selector("aside.panel.open")
+    assert marks_of(page) == SCREEN_MARKS["decisions"]
+    page.evaluate(_card_marker_script('.board button.card[data-id="D-2"]'))
+    page.evaluate("document.querySelector('.board').scrollLeft = 20")
+    scroll = page.evaluate("document.querySelector('.board').scrollLeft")
+    # 実行
+    page.fill(SEND_TEXTAREA, "期日を決める")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_function(
+        "document.querySelector('.board button.card[data-id=\"D-4\"] .cmk') !== null",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 検証
+    assert marks_of(page) == {**SCREEN_MARKS["decisions"], "D-4": "1"}
+    # 描き直していない（目印とスクロールの位置が残る）
+    assert page.get_attribute('.board button.card[data-id="D-2"]', "data-kept") == "yes"
+    assert page.evaluate("document.querySelector('.board').scrollLeft") == scroll
+
+
+def test_normal_when_comment_removed_and_sent(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """コメントの一覧で消すと件数が減り、全て送ると印が全て消える。どちらも画面は描き直さない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(".board button.card")
+    page.evaluate(_card_marker_script('.board button.card[data-id="D-3"]'))
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    # 実行（C-1 を消すと D-2 の件数が 2 から 1 になる）
+    page.locator(f"{COMMENTS_PANEL} li[data-comment='C-1']").get_by_role(
+        "button", name="D-2 へのコメントを削除"
+    ).click()
+    page.wait_for_function(
+        "document.querySelector('.board button.card[data-id=\"D-2\"] .cmk-n').textContent === '1'",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 検証（消した後）
+    assert marks_of(page) == {"D-2": "1", "D-3": "1"}
+    assert page.get_attribute('.board button.card[data-id="D-3"]', "data-kept") == "yes"
+    # 実行（全て送ると、印を置く場所が空になる）
+    page.click(LIST_SEND_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL} .send-msg.sent", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_function(
+        "document.querySelectorAll('.board .cmk').length === 0", timeout=MARK_TIMEOUT_MS
+    )
+    # 検証（送った後）
+    assert marks_of(page) == {}
+    assert page.locator(".board [data-comment-target]:not(:empty)").count() == 0
+    assert page.get_attribute('.board button.card[data-id="D-3"]', "data-kept") == "yes"
+
+
+# マップの拡大の倍率と、枠のスクロールの位置を返す
+MAP_VIEW_SCRIPT = """() => ({
+    transform: document.getElementById('decision-map').style.transform,
+    left: document.querySelector('.map-wrap').scrollLeft,
+    top: document.querySelector('.map-wrap').scrollTop,
+})"""
+
+# マップの描きが落ち着くまで待つミリ秒
+MAP_SETTLE_MS = 800
+
+
+def test_normal_when_comment_added_on_map(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """マップを開いたままコメントを溜めても、節点の印だけが描き替わり、マップの拡大と位置は変わらない（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=decisions&view=map&id=D-4")
+    page.wait_for_selector("aside.panel.open")
+    page.wait_for_selector("#decision-map .map-node.n-item")
+    page.wait_for_timeout(MAP_SETTLE_MS)
+    page.evaluate(_card_marker_script('#decision-map .map-node[data-node="D-2"]'))
+    before = page.evaluate(MAP_VIEW_SCRIPT)
+    # 実行
+    page.fill(SEND_TEXTAREA, "期日を決める")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_function(
+        "document.querySelector('#decision-map .map-node[data-node=\"D-4\"] .cmk') !== null",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    page.wait_for_timeout(MAP_SETTLE_MS)
+    # 検証
+    assert marks_of(page, "#decision-map") == {**SCREEN_MARKS["decisions"], "D-4": "1"}
+    assert page.get_attribute('#decision-map .map-node[data-node="D-2"]', "data-kept") == "yes"
+    assert page.evaluate(MAP_VIEW_SCRIPT) == before
+
+
+def test_normal_when_comment_added_on_graph(
+    write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
+) -> None:
+    """ネットワークを開いたままコメントを溜めると、キャンバスを作り直さず、次のコマから新しい件数の印を出す（正常系）。"""
+    # 準備
+    url, _ = write_commented_preview()
+    open_preview(url, "#tab=graph&id=D-2")
+    page.wait_for_selector("aside.panel.open")
+    shown_mark = (
+        "[...document.querySelectorAll('.g3-marks .cmk')]"
+        ".filter(m => m.style.visibility !== 'hidden')"
+        ".map(m => m.querySelector('.cmk-n').textContent)"
+    )
+    page.wait_for_function(f"{shown_mark}.includes('2')", timeout=MARK_TIMEOUT_MS)
+    page.evaluate("document.getElementById('graph-canvas').dataset.kept = 'yes'")
+    # 実行（選んでいる D-2 に 1 件足すと、印の件数が 2 から 3 になる）
+    page.fill(SEND_TEXTAREA, "期日を決める")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    page.wait_for_function(f"{shown_mark}.includes('3')", timeout=MARK_TIMEOUT_MS)
+    assert page.evaluate(f"{shown_mark}.includes('2')") is False
+    assert page.get_attribute("#graph-canvas", "data-kept") == "yes"
+
+
+# 見出し「保存先」「決め方」「決め方」の間に、窓に収まらない数の段落を置いた本文
+HEADING_BODY = (
+    "## 保存先\n\n"
+    + "\n\n".join(f"保存先の段落 {number}" for number in range(1, 31))
+    + "\n\n## 決め方\n\n"
+    + "\n\n".join(f"1 つ目の決め方の段落 {number}" for number in range(1, 31))
+    + "\n\n## 決め方\n\n2 つ目の決め方の段落\n"
+)
+
+# 詳細パネルの本文のスクロール領域
+PANEL_BODY = "aside.panel .panel-body"
+
+# 見出しが本文の領域の中で画面に入っているかを返す
+HEADING_IN_VIEW_JS = """(slug) => {
+    const body = document.querySelector('aside.panel .panel-body');
+    const target = document.querySelector(`[data-heading="${slug}"]`);
+    const area = body.getBoundingClientRect();
+    const box = target.getBoundingClientRect();
+    return box.top >= area.top - 1 && box.bottom <= area.bottom + 1;
+}"""
+
+
+def test_normal_when_text_filter_in_hash(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ハッシュの f.~{列} で、その列の値に文字を含む行に絞って開く。文字の中の `|` で分けない。開いた後はハッシュから外れる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("G-1", title="a|b の用語"),
+        make_item("G-2", title="a の用語"),
+        make_item("G-3", title="b の用語"),
+    )
+    # 実行
+    page = open_preview(url, "#tab=terms&f.~title=a|b")
+    # 検証
+    assert _row_ids(page) == ["G-1"]
+    assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
+        "用語に「a|b」を含む"
+    ]
+    assert "f." not in page.evaluate("location.hash")
+
+
+def test_normal_when_heading_in_hash(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ハッシュの h が指す本文の見出しまで送って開く。見出しの # を押すと h をその見出しにし、履歴に積まない。本文に無い見出しなら本文の頭で開き、h を外す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": HEADING_BODY})
+    # 実行（2 つ目の「決め方」を指して開く）
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&h=決め方-1")
+    page.wait_for_selector(f"{PANEL_BODY} [data-heading]")
+    page.wait_for_function("document.querySelector('aside.panel .panel-body').scrollTop > 0")
+    in_view = page.evaluate(HEADING_IN_VIEW_JS, "決め方-1")
+    first_not_in_view = page.evaluate(HEADING_IN_VIEW_JS, "保存先")
+    history_length = page.evaluate("history.length")
+    # 実行（1 つ目の「決め方」の # を押す）
+    page.click('aside.panel [data-heading="決め方"] .h-link')
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 検証
+    assert panel_title_of(page) == "A-1の題"
+    assert in_view is True
+    assert first_not_in_view is False
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate(HEADING_IN_VIEW_JS, "決め方") is True
+    # 実行（本文に無い見出しで開き直す）
+    page.goto(f"{url}#tab=docs&view=table&id=A-1&h=無い見出し")
+    page.wait_for_selector(f"{PANEL_BODY} [data-heading]")
+    page.wait_for_function("!new URLSearchParams(location.hash.slice(1)).has('h')")
+    assert page.evaluate(f"document.querySelector('{PANEL_BODY}').scrollTop") == 0
+
+
+def panel_title_of(page: Any) -> str:
+    """詳細パネルのタイトル（項目の題）を返す。"""
+    return page.inner_text("aside.panel .d-title")
