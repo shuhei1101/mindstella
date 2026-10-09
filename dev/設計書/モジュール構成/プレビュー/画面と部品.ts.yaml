@@ -297,7 +297,7 @@ components:
       - name: test_decisions_screen_when_removed
         case: 正常
         summary: 消した検討事項を、表示形式と絞り込みによらず一覧の上の帯に出す
-        condition: '`removed` に D-53。`parametrize`: マップ（幅 1280px）/ ボード / 表 / ボードで `filters` が `{"status": ["決定"]}`'
+        condition: '`removed` に D-53。`parametrize`: マップ（幅 1280px）/ ボード / 表 / ボードで `filters` が `{"status": ["決定済み"]}`'
         mock: なし（DOM を作って見る）
         expected: どれも一覧（マップの枠・ボード・表）の前に「消した項目」の帯が 1 つあり D-53 を持つ。マップの節にもボードの列にも D-53 が無い
   - name: tasksScreen
