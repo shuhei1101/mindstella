@@ -119,7 +119,7 @@ primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 話し合いをするときだけ mindstella の MCP のツールが載り、ほかの作業のコンテキストを太らせない。依存が足りなければ何をすればよいかが分かる
-trigger: 利用者が起動スクリプトにワークスペースのフォルダを渡して叩く
+trigger: 利用者が起動スクリプト（『起動スクリプトの登録』で登録した alias を含む）にワークスペースのフォルダを渡して叩く
 preconditions:
   - プラグイン mindstella がインストールされている
 success_guarantee: tmux のセッションの中で Claude Code が立ち、mindstella の MCP のツールが使える。MCP サーバーは、インストールしたプラグインの今の版のフォルダから立つ。
