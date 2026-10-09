@@ -264,6 +264,9 @@ exceptions:
   - name: UnknownAccountError
     condition: '`remove-account` の `--name` が登録に無い'
     notes: 終了コード 1。何も書かず、`error` に登録済みのアカウントの名前を入れる
+  - name: 登録を読めない
+    condition: '`registration.json` を JSON として読めない'
+    notes: 終了コード 1。何も書かず、`error` に読めないファイルのパスを入れる
 constraints:
   - item: 書く先
     constraint: 登録は `{XDG_CONFIG_HOME か ~/.config}/mindstella/registration.json`（登録の中身）と、そこから作る `shell.sh`（alias と `export`）に書く。ログインシェルの設定ファイルには `# >>> mindstella >>>` と `# <<< mindstella <<<` で囲んだ `shell.sh` を読み込む 1 行だけを足す
@@ -277,7 +280,7 @@ constraints:
   - item: 環境変数
     constraint: 登録した環境変数を `shell.sh` に `export` で書く。値はシェルの単引用符で囲む
   - item: 書き方
-    constraint: 書く前に書き込めるかを全てのファイルで確かめ、各ファイルは同じフォルダの一時ファイルに書いてから置き換える。途中で失敗しても、書きかけのファイルを残さない
+    constraint: 書く前に書き込めるかを全てのファイルで確かめ、各ファイルは同じフォルダの一時ファイルに書いてから置き換える。途中で失敗しても、書きかけのファイルを残さない。書く先がシンボリックリンクなら、リンクを残してリンク先を書き換える
   - item: 依存
     constraint: システムの `python3`（3.8 以上）の標準ライブラリだけ。mindstella の仮想環境・MCP のサーバー・`claude` を呼ばない
     notes: MCP の無い状態（起動スクリプトで立ち上げる前）でも動かすため（#10 でユーザーが決めた）

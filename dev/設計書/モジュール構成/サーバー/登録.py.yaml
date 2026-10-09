@@ -151,6 +151,7 @@ functions:
       4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを消し `remove_rc_block`）まとめて書く（`write_files`）
       5. その後の登録を `build_report` で標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
          - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` は印の範囲の中に `render_shell` の行をそのまま入れたもの
+         - `read_registration` が `json.JSONDecodeError` を送った場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
     exceptions:
       - name: NotWritableError
         condition: 設定ファイルか登録の置き場所に書き込めない（捕まえて 1）
@@ -161,6 +162,9 @@ functions:
       - name: UnknownAccountError
         condition: '`remove-account` の名前が登録に無い（捕まえて 1）'
         message: 'アカウント {名前} は登録されていません（登録済み: {名前の並び}）'
+      - name: json.JSONDecodeError
+        condition: '`registration.json` を JSON として読めない（捕まえて 1）'
+        message: '{registration.json のパス} を読めません'
     unit_tests:
       - name: test_main_when_invalid_args
         case: 異常
@@ -189,6 +193,13 @@ functions:
         condition: '`register.py` を `ast.parse(..., feature_version=(3, 8))` で読み、先頭の文を見る'
         mock: なし
         expected: '`SyntaxError` にならず、docstring の次の文が `from __future__ import annotations`'
+      - name: test_main_when_registration_broken
+        case: 異常
+        summary: registration.json が壊れていれば何も書かず 1
+        condition: '登録の置き場所に中身 `{` の `registration.json` を置いた `tmp_path`。`parametrize`: `show` / `set --env MINDSTELLA_ALLOWED_HOSTS=a`'
+        mock: なし
+        expected: 1 を返し、標準出力の JSON の `error` に `registration.json` のパス。ファイルの中身が呼ぶ前と同じ
+        exception: json.JSONDecodeError
   - name: registration_dir
     title: 登録の置き場所
     kind: 関数
@@ -484,9 +495,10 @@ functions:
       type: None
       description: '-'
     process: |-
-      1. 全てのファイルについて、あればそのファイルと親のフォルダ、無ければあるところまでの親のフォルダに書き込めるかを `os.access` で確かめる
+      1. 書く先が既にあるシンボリックリンクなら、`os.path.realpath` で解いたリンク先を書く先にする（リンクはそのまま残し、リンク先の中身を書き換える）
+      2. 全ての書く先について、あればそのファイルと親のフォルダ、無ければあるところまでの親のフォルダに書き込めるかを `os.access` で確かめる
          - 書き込めないものがあれば、何も書かずに `NotWritableError` を送る
-      2. 中身のあるファイルは、同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば消す
+      3. 中身のある書く先は、書く先と同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば消す
          - 途中で `OSError` が起きたら、書きかけの一時ファイルを消してから `NotWritableError` にして送る（`raise ... from`）
     exceptions:
       - name: NotWritableError
@@ -496,9 +508,9 @@ functions:
       - name: test_write_files
         case: 正常
         summary: 書く・消す・フォルダを作る
-        condition: '`tmp_path` に既にある `a`（`None`）、まだ無い `sub/b`（`x`）、既にある `c`（`y`）'
+        condition: '`tmp_path` に既にある `a`（`None`）、まだ無い `sub/b`（`x`）、既にある `c`（`y`）、`dotfiles/rc` を指すシンボリックリンク `d`（`z`）'
         mock: なし
-        expected: '`a` が無く、`sub/b` が `x`、`c` が `y`。`tmp_path` に一時ファイルが残っていない'
+        expected: '`a` が無く、`sub/b` が `x`、`c` が `y`。`d` はシンボリックリンクのままで、`dotfiles/rc` の中身が `z`。`tmp_path` に一時ファイルが残っていない'
       - name: test_write_files_when_not_writable
         case: 異常
         summary: 1 つでも書けなければ何も書かない
