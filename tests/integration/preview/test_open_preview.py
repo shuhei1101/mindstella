@@ -13,7 +13,13 @@ from preview_comment_helpers import (
     select_text,
     select_text_for_pill,
 )
-from preview_drawer_helpers import FILTER_BUTTON, badge_text, checked_values, open_drawer
+from preview_drawer_helpers import (
+    FILTER_BUTTON,
+    badge_text,
+    checked_values,
+    click_value,
+    open_drawer,
+)
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     OpenPreview,
@@ -22,6 +28,7 @@ from preview_fixture_types import (
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
 from preview_network_helpers import ball_at, canvas_center
+from preview_saved_filter_helpers import read_saved_filters, reload_preview
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -235,6 +242,38 @@ def test_normal_when_exported_offline(
     select_text(page, "aside.panel .md:not(.md-value)", "本文の段落")
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     assert page.locator(PILL).count() == 0
+
+
+def test_normal_when_exported_filter_changed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しは、絞り込みの条件を変えても端末に残さず、読み込み直すと画面の既定の条件で開く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1", status="進行中"), make_item("T-2", status="完了"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    page = open_preview(out.as_uri(), "#tab=tasks&view=table")
+    open_drawer(page)
+    click_value(page, "status", "進行中")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    rows_filtered = _row_ids(page)
+    # 実行
+    reload_preview(page)
+    saved = read_saved_filters(page) or {}
+    rows_reloaded = _row_ids(page)
+    badge_reloaded = badge_text(page)
+    open_drawer(page)
+    # 検証
+    assert rows_filtered == ["T-1"]
+    assert rows_reloaded == ["T-1", "T-2"]
+    assert badge_reloaded is None
+    assert checked_values(page, "status") == []
+    assert saved.get("tasks") is None
 
 
 def test_error_when_library_unavailable(
