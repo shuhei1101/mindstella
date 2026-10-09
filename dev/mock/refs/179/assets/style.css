@@ -69,6 +69,8 @@ tr.rm-row .rm-ttl + .df-mark { margin-left: 8px; }
 .wd-badge + .df-mark { margin-left: 6px; }
 .d-title .wd-badge { height: 22px; margin-left: 12px; vertical-align: 4px; }
 .d-meta dd .wd-badge { vertical-align: 0; }
+/* キーの差分の今の値（色の面）の上では、札の文字を本文の色にしてコントラストを保つ */
+.df-now .wd-badge { color: var(--text); }
 /* 案 A: 取り下げた項目の行・カードの文字を薄くする（--text-3 も面の上で 4.5:1 以上） */
 body:not([data-wd="strike"]) table.grid tr.wd-row td, body:not([data-wd="strike"]) tr.wd-row .row-open { color: var(--text-3); }
 body:not([data-wd="strike"]) .card.wd-card :is(.c-ttl, .c-meta, .doc-kind) { color: var(--text-3); }
