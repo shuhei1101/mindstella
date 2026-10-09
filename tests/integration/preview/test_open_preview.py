@@ -28,7 +28,7 @@ from preview_fixture_types import (
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
 from preview_network_helpers import ball_at, canvas_center
-from preview_saved_filter_helpers import read_saved_filters, reload_preview
+from preview_saved_filter_helpers import read_saved_filters, reload_preview, seed_saved_filters
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -274,6 +274,32 @@ def test_normal_when_exported_filter_changed(
     assert badge_reloaded is None
     assert checked_values(page, "status") == []
     assert saved.get("tasks") is None
+
+
+def test_normal_when_exported_with_saved_filter(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しは、端末の個人の上書きに絞り込みの条件があっても当てず、画面の既定の条件で開く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1", status="進行中"), make_item("T-2", status="完了"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    page = open_preview(out.as_uri(), "#tab=tasks&view=table")
+    seed_saved_filters(page, {"tasks": {"status": ["進行中"]}})
+    # 実行
+    reload_preview(page)
+    rows = _row_ids(page)
+    badge = badge_text(page)
+    open_drawer(page)
+    # 検証
+    assert rows == ["T-1", "T-2"]
+    assert badge is None
+    assert checked_values(page, "status") == []
 
 
 def test_error_when_library_unavailable(
