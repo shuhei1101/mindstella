@@ -143,17 +143,46 @@ scenarios:
       - 登録のスクリプトが 0 以外の終了コードで終わり、書き込めない理由と、手で書けば同じ登録になる行を返す
       - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
     test: test_error_when_not_writable
+  - name: 正常シナリオ（アカウントごとの alias を足す）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。偽の起動スクリプトは、受け取った引数に加えて `CLAUDE_CONFIG_DIR` の値もファイルに書く
+      - name: 登録済みのホーム
+        description: 正常シナリオの登録（alias `mindstella`）を済ませたホームのフォルダ
+      - name: 足すアカウント
+        description: 利用者が、名前 `sub1` で Claude Code の設定のフォルダ `~/.claude-sub1` を登録すると答える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SH as シェルの設定
+
+        U->>CC: /mindstella:setup で、アカウントを足したいと伝える
+        CC-->>U: アカウントの名前と設定のフォルダを尋ねる
+        U->>CC: sub1 と ~/.claude-sub1
+        CC->>RS: アカウントの alias を登録する
+        RS->>SH: mindstella-sub1 を書く
+        CC-->>U: 新しいシェルで mindstella-sub1 {フォルダ} を叩くよう案内する
+      ```
+    expected:
+      - 新しく開いた bash で `mindstella-sub1 {フォルダ}` を叩くと、起動スクリプトが `{フォルダ}` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、起動スクリプトは alias から `CLAUDE_CONFIG_DIR` を受け取らない（シェルの既定のアカウントのまま）
+      - シェルの設定に、`mindstella` と `mindstella-sub1` の登録が 1 つずつしかない
+      - 利用者が書いた `~/.bashrc` の行がそのまま残っている
+    test: test_normal_when_account_added
 lead: 利用者が、起動スクリプトで立ち上げていない Claude Code でセットアップのスキル `setup` を呼び、起動スクリプトを呼ぶ alias と、起動スクリプトが読む環境変数を、スキルの配下のスクリプトでシェルの設定に登録する単一ユースケース。
 issue: 10
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 起動スクリプトのパスを毎回引かずに、短い名前で話し合いを立ち上げられる。外から見る設定などの環境変数を毎回打たずに済む。自分で書いたシェルの設定は変わらない
-trigger: 利用者が、起動スクリプトで立ち上げていない Claude Code で `/mindstella:setup` を呼ぶ（未登録なら登録を持ちかけられる）。または `/mindstella:setup` で登録を変えたい・外したいと伝える
+trigger: 利用者が、起動スクリプトで立ち上げていない Claude Code で `/mindstella:setup` を呼ぶ（未登録なら登録を持ちかけられる）。または `/mindstella:setup` で登録を変えたい・外したい・アカウントを足したいと伝える
 preconditions:
   - プラグイン mindstella がインストールされている
   - システムの `bash` と `python3` がある（mindstella の仮想環境と MCP のツールは要らない）
-success_guarantee: 新しく開いたシェルで、alias `mindstella` にワークスペースのフォルダを渡すと、インストールしたプラグインの今の版の起動スクリプトが立ち上がり、登録した環境変数が入っている。登録し直しても、登録の行は重ならない。
+success_guarantee: 新しく開いたシェルで、alias `mindstella` にワークスペースのフォルダを渡すと、インストールしたプラグインの今の版の起動スクリプトが立ち上がり、登録した環境変数が入っている。アカウントを登録したときは、alias `mindstella-{アカウントの名前}` がそのアカウントの Claude Code の設定のフォルダで立ち上げる。登録し直しても、登録の行は重ならない。
 minimal_guarantee: シェルの設定に書き込めないときは、どのファイルも書き換えずに、理由と手で書く行を示して止まる。利用者が書いたシェルの設定の行と、ワークスペースは書き換えない。
 frequency: プラグインを入れた後に 1 回と、環境変数を変えたいとき
 priority: 中
