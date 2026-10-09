@@ -189,6 +189,13 @@ functions:
         mock: なし
         expected: 1 を返し、`error` に `fish`、`manual_lines` に `MARK_BEGIN` と `mindstella()` の行。`tmp_path` の中にファイルが無い
         exception: UnsupportedShellError
+      - name: test_main_when_remove_not_writable
+        case: 異常
+        summary: remove で書き込めなければ手で書く行を返さず 1
+        condition: '`set` で登録した `tmp_path` の `~/.bashrc` を読み取りだけにして `remove`。root では飛ばす'
+        mock: なし
+        expected: 1 を返し、`error` に `~/.bashrc` のパスがあり、`manual_lines` を持たない。ファイルの中身が呼ぶ前と同じ
+        exception: NotWritableError
       - name: test_main_when_old_syntax
         case: 正常
         summary: 登録のスクリプトが Python 3.8 の構文で読め、型注釈を実行時に評価しない
