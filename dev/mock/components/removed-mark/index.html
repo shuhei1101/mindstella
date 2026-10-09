@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>消した項目の部品 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル（develop の style.css の写しに #179 の分を重ねる） -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/179/assets/base.css">
+  <link rel="stylesheet" href="../../refs/179/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: auto; }
+    /* 台の中では帯を流れに置く */
+    .stage .topbar, .stage .tabbar { position: static; }
+    /* 詳細パネルの中身を置く台: パネルと同じ幅と面 */
+    .stage.panelish { max-width: var(--panel-w); background: var(--surface); padding: 22px 24px; }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; max-width: 100%; }
+    /* 狭い幅の見本: 画面幅 900px 以下のときと同じ置き方にする */
+    .stage.narrow .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; }
+    .stage.narrow .search-trigger .label, .stage.narrow .search-trigger kbd, .stage.narrow .brand-sub, .stage.narrow .hist-btn .label { display: none; }
+    .stage.narrow .hist-btn { width: 32px; padding: 0; justify-content: center; }
+    .stage.narrow .df-chip { max-width: 7.5em; }
+    /* 部品を横に並べる列 */
+    .row-items { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+    /* 台の中の表: 画面の表と同じ面と枠 */
+    .stage table.grid {{ width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); border-collapse: separate; border-spacing: 0; }}
+    /* 台の中のボード: 列を流れに置く */
+    .stage .board {{ --cols: 2; margin: 0; }}
+    /* 案の見出し（A・B） */
+    .case-t {{ margin: 0 0 6px; color: var(--text-2); font-size: var(--fs-small); font-weight: 600; }}
+    /* 状態を見せるための見本のクラス */
+    .is-hover { background: var(--topbar-hover) !important; color: var(--topbar-fg) !important; }
+    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* 一覧の行のホバーの見本: 面の色だけを変える */
+    .hist-item.is-hover { background: var(--hover) !important; color: var(--text) !important; }
+  </style>
+</head>
+<body>
+  <main class="content" style="overflow: auto;">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / removed-mark</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">消した項目の部品</h1>
+    <section class="cat-sec">
+      <h2>消した印（一覧）</h2>
+      <p>新規（+）・変更（●）と同じ大きさで、消した項目は差分の色の赤の太い − にする。名前「消した」は読み上げと title に残す。</p>
+      <div class="stage"><div class="row-items"><span class="df-mark df-new" title="新規"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="sr-only">新規</span></span><span class="df-mark df-chg" title="変更"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg><span class="sr-only">変更</span></span><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B: 一覧の上の「消した項目」の帯（1 件）</h2>
+      <p>差分の表示の間、選んだ時点で消した項目を持つ種類の画面だけに出す。ID と消したときのタイトルを並べ、押せる要素にしない（詳細パネルは開かない）。</p>
+      <div class="stage"><section class="rm-band" aria-label="この時点で消した項目"><h2 class="rm-band-t">消した項目<span class="n mono">1</span></h2><ul class="rm-list"><li class="rm-item"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">N-6</span><span class="rm-ttl">ゴールを後から変える・足す・無しで始める</span></li></ul></section></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B: 帯（3 件・長いタイトル）</h2>
+      <p>項目は横に並べて折り返し、タイトルは途中で切らずに折り返す。</p>
+      <div class="stage"><section class="rm-band" aria-label="この時点で消した項目"><h2 class="rm-band-t">消した項目<span class="n mono">3</span></h2><ul class="rm-list"><li class="rm-item"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">D-53</span><span class="rm-ttl">差分の印の色を、項目の種類ごとに変えるか</span></li><li class="rm-item"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">D-54</span><span class="rm-ttl">変更履歴のモーダルを時系列の一覧にして、未読の印を付け、読んだ時点から後の書き換えだけを数えるか</span></li><li class="rm-item"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">D-55</span><span class="rm-ttl">印の凡例を置くか</span></li></ul></section></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B: 帯（狭い幅 390px）</h2>
+      <p>見出しの下に項目を折り返す。</p>
+      <div class="stage narrow"><section class="rm-band" aria-label="この時点で消した項目"><h2 class="rm-band-t">消した項目<span class="n mono">2</span></h2><ul class="rm-list"><li class="rm-item"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">N-6</span><span class="rm-ttl">ゴールを後から変える・足す・無しで始める</span></li><li class="rm-item"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">N-7</span><span class="rm-ttl">読み返したい点をメモする</span></li></ul></section></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 A: 表の末尾の行</h2>
+      <p>並べ替え・絞り込みの対象にせず、表の最後に置く。押せないのでホバーの面を乗せない。</p>
+      <div class="stage"><table class="grid"><thead><tr><th>ID</th><th>タイトル</th><th>内容</th></tr></thead><tbody><tr class=""><td><span class="mono">N-5</span></td><td><button class="row-open" type="button">納品物の資料が前提と経緯しか無い</button></td><td>画面で見ると、資料の中身（本文）がほとんど無い。</td></tr><tr class="rm-row"><td><span class="mono">N-6</span></td><td><span class="rm-ttl">ゴールを後から変える・足す・無しで始める</span><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span></td><td></td></tr></tbody></table></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 A: カードとボードの列</h2>
+      <p>カードは破線の枠にして地の面を外す。ボードは状態を持たないため、右端に「消した項目」の列を足す（マップには置き場所が無い）。</p>
+      <div class="stage"><div class="board" style="--cols: 2;"><section class="board-col"><h2><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4.5" fill="var(--st-done)"/></svg>完成<span class="n">1</span></h2><button class="card doc-card" type="button"><span class="c-ttl">スキルと画面の改善の Issue 一覧</span><span class="c-meta"><span class="mono">A-2</span></span></button></section><section class="board-col rm-col"><h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>消した項目<span class="n">1</span></h2><div class="card rm-card"><span class="c-ttl rm-ttl">差分の表示の操作の手引き（下書き）</span><span class="c-meta"><span class="df-mark df-del" title="消した"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg><span class="sr-only">消した</span></span><span class="mono">A-10</span></span></div></section></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>タブの点（消した項目だけを持つ種類）</h2>
+      <p>消した項目だけを持つ種類のタブにも、新規・変更と同じ点を付ける。件数は今ある項目の数のまま変えない（メモは 5 件のまま）。</p>
+      <div class="stage"><nav class="tabbar" aria-label="項目の種類（差分の表示の間）"><a class="tab" href="#"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/><path d="M8 10.5h5"/></svg>調査<span class="count">2</span><span class="df-dot"><span class="sr-only">新規・変更・消した項目があります</span></span></a><a class="tab" href="#" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v12l-4 4H5Z"/><path d="M15 20v-4h4"/></svg>メモ<span class="count">5</span><span class="df-dot"><span class="sr-only">新規・変更・消した項目があります</span></span></a></nav></div>
+    </section>
+    <section class="cat-sec">
+      <h2>変更履歴の時点の件数</h2>
+      <p>時点の件数に消した項目を含める。足して同じ範囲で消した項目は 1 件として数える（前回開いてから: 足して消した N-7 の 1 件）。</p>
+      <div class="stage"><dialog class="hist" open style="position: static; margin: 0;"><ul class="hist-list"><li><button class="hist-item" type="button"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">前回開いてから</span><span class="hist-sub">10/07 09:00 より後</span></span><span class="hist-n mono">1 件</span></button></li><li><button class="hist-item" type="button"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">足したメモを消す</span><span class="hist-sub">10/07 12:00</span></span><span class="hist-n mono">1 件</span></button></li><li><button class="hist-item" type="button" aria-current="true"><span class="hist-check" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="hist-main"><span class="hist-name">重複と不要な調査を片付ける</span><span class="hist-sub">10/06 17:00</span></span><span class="hist-n mono">2 件</span></button></li><li><button class="hist-item" type="button"><span class="hist-check" aria-hidden="true"></span><span class="hist-main"><span class="hist-name">検討事項・タスク・資料を整理する</span><span class="hist-sub">10/06 12:00</span></span><span class="hist-n mono">4 件</span></button></li></ul></dialog></div>
+    </section>
+  </main>
+</body>
+</html>
