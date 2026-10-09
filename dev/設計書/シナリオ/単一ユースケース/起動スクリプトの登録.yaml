@@ -146,7 +146,7 @@ scenarios:
   - name: 正常シナリオ（アカウントごとの alias を足す）
     setup:
       - name: Mock
-        description: 正常シナリオと同じ。偽の起動スクリプトは、受け取った引数に加えて `CLAUDE_CONFIG_DIR` の値もファイルに書く
+        description: 正常シナリオと同じ。ただし偽の Claude Code は、受け取った `CLAUDE_CONFIG_DIR` ごとに別の `installPath` を返す（既定のアカウントと `~/.claude-sub1` で別の版のフォルダ）。どちらのフォルダの偽の起動スクリプトも、自分のフォルダ・受け取った引数・`CLAUDE_CONFIG_DIR` の値をファイルに書く
       - name: 登録済みのホーム
         description: 正常シナリオの登録（alias `mindstella`）を済ませたホームのフォルダ
       - name: 足すアカウント
@@ -167,8 +167,8 @@ scenarios:
         CC-->>U: 新しいシェルで mindstella-sub1 {フォルダ} を叩くよう案内する
       ```
     expected:
-      - 新しく開いた bash で `mindstella-sub1 {フォルダ}` を叩くと、起動スクリプトが `{フォルダ}` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る
-      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、起動スクリプトは alias から `CLAUDE_CONFIG_DIR` を受け取らない（シェルの既定のアカウントのまま）
+      - 新しく開いた bash で `mindstella-sub1 {フォルダ}` を叩くと、`~/.claude-sub1` で引いた `installPath` の版の起動スクリプトが `{フォルダ}` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、既定のアカウントで引いた `installPath` の版の起動スクリプトが立ち上がり、alias から `CLAUDE_CONFIG_DIR` を受け取らない（シェルの既定のアカウントのまま）
       - シェルの設定に、`mindstella` と `mindstella-sub1` の登録が 1 つずつしかない
       - 利用者が書いた `~/.bashrc` の行がそのまま残っている
     test: test_normal_when_account_added
