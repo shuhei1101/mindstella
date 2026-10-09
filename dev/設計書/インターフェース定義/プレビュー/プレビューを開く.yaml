@@ -330,6 +330,31 @@ flows:
       - 詳細パネルに D-3 が開いたままで、ネットワークが D-3 を選んだ項目として示す
       - 戻るを押すと、ハッシュが `tab=decisions&id=D-3` に戻り、検討事項と D-3 の詳細パネルが開く
     test: test_normal_when_tab_moved_with_item
+  - name: 正常系（配る書き出しで絞り込みを変える）
+    summary: 配る書き出しでは、絞り込みの条件を変えても端末に残さず、読み込み直すと画面の既定の条件で開く
+    setup:
+      - name: Mock
+        description: なし
+      - name: exported_html
+        description: 状態が進行中のタスクと完了のタスクを持つワークスペースから `export` で書き出した HTML
+        notes: ハッシュは `tab=tasks&view=table`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as 配る書き出し
+
+        ユーザー->>IF: #tab=tasks&view=table で開く
+        ユーザー->>IF: 絞り込みのドロワーで状態の「進行中」を選ぶ
+        IF-->>ユーザー: 進行中のタスクだけの表
+        ユーザー->>IF: 読み込み直す
+        IF-->>ユーザー: 画面の既定の条件の表
+      ```
+    expected:
+      - 読み込み直した後の表が、全てのタスクを並べている
+      - 読み込み直した後の絞り込みのドロワーで、どの値も選ばれていない
+      - '`localStorage` の個人の上書きに、タスクの画面の絞り込みの条件が無い（`filters` が無いか、`tasks` を持たない）'
+    test: test_normal_when_exported_filter_changed
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメントを溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `submissions.yaml` に足す（『コメントをまとめて送る』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
