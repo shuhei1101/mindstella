@@ -3,7 +3,8 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。スキルの手順が連ねる登録のスクリプトの呼び出しを、決めた引数で再生する。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返し、立ち上げられたら受け取った引数をファイルに書く偽のコマンドに差し替える
+        description: モデルを呼ばない。スキルの手順が連ねる登録のスクリプトの呼び出しを、決めた引数で再生する。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返す偽のコマンドに差し替える。`installPath` の版のフォルダの `bin/mindstella` を、受け取った引数をファイルに書く偽のスクリプトに差し替える
+        notes: 本物の起動スクリプトの先（依存の確認・tmux・MCP の設定）は『起動スクリプトで立ち上げる』が確かめる
       - name: ホームのフォルダ
         description: テストごとの空の一時フォルダを `HOME` にする。ログインシェルは bash で、`~/.bashrc` に利用者が書いた行を 1 行持つ
         notes: 利用者のシェルの設定に触れない
@@ -32,7 +33,7 @@ scenarios:
       ```
     expected:
       - 新しく開いた bash で `mindstella` が定義され、`MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com` になっている
-      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、`installPath` の版の起動スクリプトが立ち上がり、偽の Claude Code に `{フォルダ}` のセッションの MCP の設定が渡る
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、`installPath` の版の起動スクリプトが `{フォルダ}` を受け取る
       - 利用者が書いた `~/.bashrc` の行がそのまま残っている
       - ワークスペースのフォルダに何も書かれていない
     test: test_normal
@@ -52,7 +53,7 @@ scenarios:
         participant RS as 登録のスクリプト
         participant SH as シェルの設定
 
-        U->>CC: /mindstella:setup
+        U->>CC: /mindstella:setup で、起動スクリプトの登録を変えたいと伝える
         CC->>RS: 登録を読む
         RS-->>CC: 登録済みの alias と環境変数
         CC-->>U: 登録済みの値を示し、変えるものを尋ねる
@@ -104,7 +105,7 @@ scenarios:
         participant RS as 登録のスクリプト
         participant SH as シェルの設定
 
-        U->>CC: 起動スクリプトの登録を外したい
+        U->>CC: /mindstella:setup で、起動スクリプトの登録を外したいと伝える
         CC->>RS: 登録を外す
         RS->>SH: mindstella の登録だけを消す
         CC-->>U: 新しいシェルから効くことを案内する
@@ -128,7 +129,11 @@ scenarios:
         participant RS as 登録のスクリプト
         participant SH as シェルの設定
 
-        U->>CC: 起動スクリプトを登録する
+        U->>CC: /mindstella:setup {フォルダ}
+        CC->>RS: 登録を読む
+        RS-->>CC: 未登録
+        CC-->>U: 起動スクリプトの登録を持ちかける
+        U->>CC: 登録する
         CC->>RS: alias と環境変数を登録する
         RS->>SH: 書き込めない
         RS-->>CC: 書き込めない理由と手で書く行
@@ -144,7 +149,7 @@ primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 起動スクリプトのパスを毎回引かずに、短い名前で話し合いを立ち上げられる。外から見る設定などの環境変数を毎回打たずに済む。自分で書いたシェルの設定は変わらない
-trigger: 利用者が、起動スクリプトで立ち上げていない Claude Code で `/mindstella:setup` を呼ぶ
+trigger: 利用者が、起動スクリプトで立ち上げていない Claude Code で `/mindstella:setup` を呼ぶ（未登録なら登録を持ちかけられる）。または `/mindstella:setup` で登録を変えたい・外したいと伝える
 preconditions:
   - プラグイン mindstella がインストールされている
   - システムの `bash` と `python3` がある（mindstella の仮想環境と MCP のツールは要らない）
