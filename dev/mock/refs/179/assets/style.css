@@ -53,7 +53,7 @@ table.grid tr.rm-row td { color: var(--text-2); }
 table.grid tr.rm-row:hover td { background: none; }
 tr.rm-row .rm-ttl + .df-mark { margin-left: 8px; }
 /* カード: 中身が残っていないことを、破線の枠と地の面を外して示す */
-.card.rm-card { background: none; border-style: dashed; cursor: default; }
+.card.rm-card { position: relative; background: none; border-style: dashed; cursor: default; }
 .card.rm-card:hover { border-color: var(--border); box-shadow: none; }
 .card.rm-card .c-ttl { font-weight: 500; }
 /* カードの並び: 行の高さに伸ばさず、中身の高さにする */
