@@ -28,6 +28,23 @@ def _path_hash(path: Path) -> str:
     return hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:HASH_DIGITS]
 
 
+def _account_hash(folder: Path, config_dir: Path | None) -> str:
+    """フォルダの絶対パスに、設定のフォルダがあれば改行と絶対パスをつないだ文字列の SHA-256 の先頭 6 桁を返す。"""
+    text = str(folder.resolve())
+    # 設定のフォルダ（アカウント）があるときは、改行を挟んでつなぐ
+    if config_dir is not None:
+        text += "\n" + str(config_dir.resolve())
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:HASH_DIGITS]
+
+
+def _config_dir_environ(tmp_path: Path, name: str | None) -> tuple[Path | None, dict[str, str]]:
+    """設定のフォルダと、それを CLAUDE_CONFIG_DIR に入れた環境変数を返す（name が None なら空文字を入れる）。"""
+    # 設定のフォルダが空なら、環境変数は空文字で渡し、名前にも入れない
+    if name is None:
+        return None, {"CLAUDE_CONFIG_DIR": ""}
+    return tmp_path / name, {"CLAUDE_CONFIG_DIR": str(tmp_path / name)}
+
+
 def _use_temp_root(monkeypatch: pytest.MonkeyPatch, temp_root: Path) -> None:
     """MCP の設定を書く一時フォルダの場所を temp_root にした write_mcp_config に差し替える。"""
     monkeypatch.setattr(
@@ -76,6 +93,21 @@ def test_session_name_when_same_name_elsewhere(
     # 検証
     assert work_name != private_name
     assert relative_name == work_name
+
+
+def test_session_name_when_config_dir(tmp_path: Path) -> None:
+    """同じフォルダでも設定のフォルダが違えば別の名前（正常系）。"""
+    # 準備
+    folder = tmp_path / "家計簿アプリ"
+    # 実行
+    without_config = launch.session_name(folder)
+    for_sub1 = launch.session_name(folder, config_dir=tmp_path / ".claude-sub1")
+    for_sub2 = launch.session_name(folder, config_dir=tmp_path / ".claude-sub2")
+    # 検証
+    assert len({without_config, for_sub1, for_sub2}) == 3
+    assert without_config == f"mindstella-家計簿アプリ-{_path_hash(folder)}"
+    assert for_sub1 == f"mindstella-家計簿アプリ-{_account_hash(folder, tmp_path / '.claude-sub1')}"
+    assert for_sub2.startswith("mindstella-家計簿アプリ-")
 
 
 def test_write_mcp_config(tmp_path: Path) -> None:
@@ -159,6 +191,37 @@ def test_run_launch(
         f"mindstella-家計簿アプリ-{_path_hash(folder)}",
         str(configs[0]),
     ]
+
+
+@pytest.mark.parametrize(
+    "config_dir_name",
+    [
+        pytest.param(".claude-sub1", id="config_dir_set"),
+        pytest.param(None, id="config_dir_empty"),
+    ],
+)
+def test_run_launch_when_config_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    config_dir_name: str | None,
+) -> None:
+    """CLAUDE_CONFIG_DIR があればセッションの名前に入れる（正常系）。"""
+    # 準備
+    folder = tmp_path / "家計簿アプリ"
+    temp_root = tmp_path / "temp"
+    temp_root.mkdir()
+    _use_temp_root(monkeypatch, temp_root)
+    stdin = io.StringIO(json.dumps([OTHER_PLUGIN, MINDSTELLA_PLUGIN]))
+    config_dir, environ = _config_dir_environ(tmp_path, config_dir_name)
+    # 実行
+    exit_code = launch.run_launch(
+        ["--python", "/v/bin/python", "--folder", str(folder)], stdin=stdin, environ=environ
+    )
+    # 検証
+    assert exit_code == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[1] == f"mindstella-家計簿アプリ-{_account_hash(folder, config_dir)}"
 
 
 def test_run_launch_when_plugin_missing(
