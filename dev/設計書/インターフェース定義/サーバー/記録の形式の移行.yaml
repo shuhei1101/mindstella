@@ -51,11 +51,11 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たず、`updated` が呼ぶ前と同じ'
-      - ワークスペースに `mindmap.yaml` が無く、`config.yaml` が `mindmap.yaml` の中身（`field` を `playbooks` に移した後）を持つ
-      - '`needs_values` に `config.yaml` の `summary` がある'
+      - '`.mindstella/docs.yaml` の A-1 が `status: 完成`、A-2 が `status: 下書き` で、どちらも `done` を持たず、`updated` が呼ぶ前と同じ'
+      - 直下に `mindmap.yaml`・`config.yaml` が無く、`.mindstella/config.yaml` が `mindmap.yaml` の中身（`field` を `playbooks` に移した後）を持つ
+      - '`needs_values` に `.mindstella/config.yaml` の `summary` がある'
       - '`backup.kind` が `copy` で、`backup.ref` のフォルダに呼ぶ前の `docs.yaml` と `mindmap.yaml` がある'
-      - '`mindstella-version.ini` が無いまま'
+      - '`.mindstella/mindstella-version.ini` が無いまま'
     test: test_normal_when_apply
   - name: 正常系（写しを git のコミットで取る）
     summary: git の作業ツリーの中のワークスペースでは、ワークスペースのパスだけをコミットして写しにする
@@ -337,7 +337,7 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文が `エラー: v0.3.0 の手順 3（set_default）: ` で始まり、`mindmap.yaml` がある'
       - 手順 1・2 が書き換えた `docs.yaml` を含め、ワークスペースの全てのファイルの中身が呼ぶ前と同じ
-      - '`mindstella-version.ini` が無いまま'
+      - '`.mindstella/mindstella-version.ini` が無いまま'
     test: test_error_when_step_fails
   - name: 異常系（点検に合わない・SchemaMismatchError）
     summary: 値が要るキーが無いままでは版を書かない
@@ -345,7 +345,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 手順を当てた後の、`summary` を持たない `config.yaml` のワークスペース
+        description: 手順を当てた後の、`summary` を持たない `.mindstella/config.yaml` のワークスペース
         notes: '`record` に `true` を渡す'
     flow: |-
       ```mermaid
@@ -361,7 +361,7 @@ flows:
     expected:
       - ツールのエラーになる
       - 'エラーの本文に `config.yaml: ` で始まり `summary` を含む行がある'
-      - '`mindstella-version.ini` が無いまま'
+      - '`.mindstella/mindstella-version.ini` が無いまま'
     test: test_error_when_schema_mismatch
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: '`.mindstella/config.yaml` も、直下の `config.yaml`・`mindmap.yaml` も無いフォルダを指すと何も書かずに終わる'
