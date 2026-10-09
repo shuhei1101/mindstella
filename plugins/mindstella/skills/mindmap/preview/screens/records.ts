@@ -13,6 +13,7 @@ namespace MindmapPreview {
     drawerOpen,
     marks,
     comments,
+    removed = [],
   }: {
     index: RecordIndex;
     route: Route;
@@ -31,6 +32,8 @@ namespace MindmapPreview {
     marks?: DiffMarks;
     /** 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。サーバーにつながって開いたときだけ渡し、印を置く場所をカードと表に置く */
     comments?: Record<string, number>;
+    /** 選んだ時点で消したこの種類の項目（入口が `removedOf` で引く）。空でなければ表の上に帯を置く。`filters` で絞らない */
+    removed?: RemovedItem[];
   }): HTMLElement {
     const kind = route.tab as RecordKind;
     const common = commonColumns(index.data.settings);
@@ -97,6 +100,7 @@ namespace MindmapPreview {
       tag: "div",
       attrs: { class: "screen records" },
       children: [
+        removedBand({ items: removed }),
         managedTable({
           kind,
           columns,

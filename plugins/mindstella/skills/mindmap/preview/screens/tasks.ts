@@ -24,6 +24,8 @@ namespace MindmapPreview {
     marks?: DiffMarks;
     /** 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。サーバーにつながって開いたときだけ渡し、印を置く場所をカードと表に置く */
     comments?: Record<string, number>;
+    /** 選んだ時点で消したこの種類の項目（入口が `removedOf` で引く）。空でなければ一覧の上に帯を置く。`filters` で絞らない */
+    removed?: RemovedItem[];
   };
 
   /** 状態の並びの順に、状態ごとの項目を返す（項目が 0 件の列も返す。列の中は連番の順）。`excluded` は状態の条件で外した列 */
@@ -160,7 +162,7 @@ namespace MindmapPreview {
   }
 
   /** タスクの画面を返す */
-  export function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }: ScreenProps): HTMLElement {
+  export function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
     const common = commonColumns(index.data.settings);
     const columns: Column[] = [
       common.id,
@@ -233,6 +235,7 @@ namespace MindmapPreview {
           on.view,
         ),
         chips,
+        removedBand({ items: removed }),
         content,
         screenDrawer({
           drawerOpen,

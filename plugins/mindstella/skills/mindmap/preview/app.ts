@@ -271,12 +271,13 @@ namespace MindmapPreview {
 
   /** 変更履歴のモーダルに、差分を出さない行と、まだまとめていない変更・前回開いてから・まとまりの行を新しい順に並べる */
   function historyPoints({ changes, since }: { changes: Changes; since: string }): HistoryPoint[] {
-    /** その時点で足した・変えた項目の数 */
+    /** その時点で足した・変えた・消した項目の数（合わせた範囲で足して消した項目は、消した項目として 1 件に数える） */
     const countOf = (sel: string): number => {
       const point = resolveDiffPoint(changes, sel, since);
-      return point === null ? 0 : point.added.size + point.changed.size;
+      return point === null ? 0 : point.added.size + point.changed.size + point.removed.size;
     };
-    const hasPending = changes.pending.added.length + changes.pending.changed.length > 0;
+    const hasPending =
+      changes.pending.added.length + changes.pending.changed.length + (changes.pending.removed ?? []).length > 0;
     return [
       { sel: "", name: "差分を出さない（今の内容）", sub: "印と差分を出さずに今の内容だけを読む" },
       ...(hasPending
@@ -517,8 +518,11 @@ namespace MindmapPreview {
             label: tabLabel(key as Exclude<Tab, "graph">),
             icon: TAB_ICON[key as Exclude<Tab, "graph">],
             count: key === "overview" ? undefined : data[key as Kind].length,
-            // 差分の表示の間、新規・変更の項目を持つ種類のタブに点を重ねる
-            marked: key !== "overview" && marks !== undefined && data[key as Kind].some((item) => marks[item.id] !== undefined),
+            // 差分の表示の間、新規・変更・消した項目を持つ種類のタブに点を重ねる
+            marked:
+              key !== "overview" &&
+              ((marks !== undefined && data[key as Kind].some((item) => marks[item.id] !== undefined)) ||
+                removedOf(point, key as Kind).length > 0),
           })),
           current: route.tab,
           theme,
@@ -563,6 +567,8 @@ namespace MindmapPreview {
       const comments = serverMode ? commentsNow : undefined;
       const filters = filterState.byTab[route.tab] ?? {};
       const { drawerOpen } = filterState;
+      // 選んだ時点で消した、この画面の種類の項目
+      const removed = removedOf(point, route.tab as Kind);
       switch (route.tab) {
         case "overview":
           return overviewScreen({
@@ -581,11 +587,12 @@ namespace MindmapPreview {
             drawerOpen,
             marks,
             comments,
+            removed,
           });
         case "tasks":
-          return tasksScreen({ index, route, on, filters, drawerOpen, marks, comments });
+          return tasksScreen({ index, route, on, filters, drawerOpen, marks, comments, removed });
         case "docs":
-          return docsScreen({ index, route, on, filters, drawerOpen, marks, comments });
+          return docsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed });
         case "graph":
           return graphScreen({
             index,
@@ -613,6 +620,7 @@ namespace MindmapPreview {
             drawerOpen,
             marks,
             comments,
+            removed,
           });
       }
     };

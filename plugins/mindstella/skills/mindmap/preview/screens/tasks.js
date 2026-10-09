@@ -96,7 +96,7 @@ var MindmapPreview;
     }
     MindmapPreview.toolbar = toolbar;
     /** タスクの画面を返す */
-    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }) {
+    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
         const columns = [
             common.id,
@@ -162,6 +162,7 @@ var MindmapPreview;
                     { key: "table", label: "表" },
                 ], route, on.view),
                 chips,
+                MindmapPreview.removedBand({ items: removed }),
                 content,
                 MindmapPreview.screenDrawer({
                     drawerOpen,

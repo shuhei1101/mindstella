@@ -305,7 +305,7 @@ var MindmapPreview;
     }
     MindmapPreview.wheelZoom = wheelZoom;
     /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
-    function mapView({ index, route, on, marks, comments, lockedId }, { shown, chips, makeDrawer, }) {
+    function mapView({ index, route, on, marks, comments, lockedId, removed = [] }, { shown, chips, makeDrawer, }) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "map-view-root" } });
         const frame = MindmapPreview.h({ tag: "div", attrs: { class: "map-frame" } });
         // 絞り込みの条件に合う検討事項が無いときに、マップの枠の中央に出す文
@@ -519,6 +519,7 @@ var MindmapPreview;
                 toolbarElement,
                 chips,
                 notice,
+                MindmapPreview.removedBand({ items: removed }),
                 frame,
                 zoomBar,
                 outlineElement,
@@ -581,7 +582,7 @@ var MindmapPreview;
     MindmapPreview.shownDecisionIds = shownDecisionIds;
     /** 検討事項の画面を返す */
     function decisionsScreen(props) {
-        const { index, route, on, marks, comments, filters, drawerOpen } = props;
+        const { index, route, on, marks, comments, filters, drawerOpen, removed = [] } = props;
         const columns = decisionColumns({ index, open: on.open });
         // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.decisions, columns, filters });
@@ -623,6 +624,7 @@ var MindmapPreview;
                 children: [
                     toolbarElement,
                     chips,
+                    MindmapPreview.removedBand({ items: removed }),
                     MindmapPreview.board({
                         columns: MindmapPreview.boardColumns({
                             items: shown,
@@ -649,6 +651,7 @@ var MindmapPreview;
             attrs: { class: "screen decisions" },
             children: [
                 toolbarElement,
+                MindmapPreview.removedBand({ items: removed }),
                 MindmapPreview.managedTable({
                     kind: "decisions",
                     columns,

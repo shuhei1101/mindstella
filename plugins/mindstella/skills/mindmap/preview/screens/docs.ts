@@ -13,7 +13,7 @@ namespace MindmapPreview {
   const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
 
   /** 資料の画面を返す */
-  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen }: ScreenProps): HTMLElement {
+  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
     const common = commonColumns(index.data.settings);
     const columns: Column[] = [
       common.id,
@@ -63,6 +63,7 @@ namespace MindmapPreview {
         attrs: { class: "screen docs" },
         children: [
           toolbarElement,
+          removedBand({ items: removed }),
           managedTable({
             kind: "docs",
             columns,
@@ -108,7 +109,11 @@ namespace MindmapPreview {
                   )
                 : [h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
           });
-    return h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, chips, content, drawer] });
+    return h({
+      tag: "div",
+      attrs: { class: "screen docs" },
+      children: [toolbarElement, chips, removedBand({ items: removed }), content, drawer],
+    });
   }
 
   /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
@@ -132,7 +137,7 @@ namespace MindmapPreview {
     return h({
       tag: "button",
       attrs: {
-        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}`,
+        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}`,
         type: "button",
         "data-id": doc.id,
         onclick: () => open(doc.id),
@@ -145,6 +150,8 @@ namespace MindmapPreview {
           children: [icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? ""],
         }),
         h({ tag: "span", attrs: { class: "c-ttl" }, children: [doc.title] }),
+        // 取り下げた資料は、差分の表示によらず差分の印より前に札を置く
+        doc.withdrawn === true ? withdrawnBadge() : null,
         h({
           tag: "span",
           attrs: { class: "c-meta" },

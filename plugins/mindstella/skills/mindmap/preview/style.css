@@ -958,6 +958,58 @@ dialog.hist::backdrop { background: var(--scrim); }
 /* マップの節の印の記号 */
 .n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
 
+/* ===== 消した印・消した項目の帯 ===== */
+
+/* 一覧の消した印（−）: 差分の色の赤 */
+.df-mark.df-del { color: var(--df-del); }
+/* 消した印の札: 赤の枠と面 */
+.df-badge.df-del { border-color: var(--df-del); background: var(--df-del-bg); }
+/* 消した印の札の記号 */
+.df-badge.df-del svg.icon { color: var(--df-del); }
+/* 消した項目の帯: 表・カードと同じ面に置き、中の項目は押せない */
+.rm-band { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 10px; padding: 8px 14px; background: var(--surface); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 帯の見出し: 「消した項目」と件数 */
+.rm-band-t { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-small); font-weight: 600; color: var(--text-2); white-space: nowrap; }
+/* 帯の見出しの件数 */
+.rm-band-t .n { color: var(--text-3); font-weight: 400; }
+/* 消した項目の並び: 印・ID・消したときのタイトル */
+.rm-list { display: flex; flex-wrap: wrap; gap: 4px 18px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+/* 消した項目 1 件 */
+.rm-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+/* 消した項目の ID */
+.rm-item .mono { color: var(--text-2); }
+/* 消したときのタイトル: 長いものは途中で切らずに折り返す */
+.rm-ttl { color: var(--text-2); overflow-wrap: anywhere; }
+/* マップ: 道具の行とマップの枠の間に置く */
+.map-view-root > .rm-band { margin-bottom: 10px; }
+
+/* ===== 取り下げの札 ===== */
+
+/* 取り下げの札: 状態の「取り下げ」と同じ印と文言を、枠の札にしてタイトルの右に置く */
+.wd-badge { display: inline-flex; align-items: center; gap: 5px; flex: none; height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: 1px; }
+/* 表の行のタイトルの右: ボタンとの間を空ける */
+.row-open + .wd-badge { margin-left: 8px; }
+/* 札の右の差分の印: 札との間を空ける */
+.wd-badge + .df-mark { margin-left: 6px; }
+/* 詳細パネルの題の右の札: 題の大きさに合わせる */
+.d-title .wd-badge, .wd-badge.wd-large { height: 22px; margin-left: 12px; vertical-align: 4px; }
+/* キーの一覧の札 */
+.d-meta dd .wd-badge { vertical-align: 0; }
+/* キーの差分の今の値（色の面）の上では、札の文字を本文の色にしてコントラストを保つ */
+.df-now .wd-badge { color: var(--text); }
+/* 資料のカード: 札があるときだけ、題と札を 1 行目に並べ、ほかは全幅に置く */
+.doc-card:has(> .wd-badge) { grid-template-columns: minmax(0, max-content) auto 1fr; column-gap: 8px; }
+/* 札のある資料のカードの中身: 全幅 */
+.doc-card:has(> .wd-badge) > * { grid-column: 1 / -1; }
+/* 札のある資料のカードの題: 1 列目 */
+.doc-card:has(> .wd-badge) > .c-ttl { grid-column: 1; }
+/* 札のある資料のカードの札: 題の右の 2 列目 */
+.doc-card:has(> .wd-badge) > .wd-badge { grid-column: 2; align-self: start; }
+/* 取り下げた項目の表の行の文字を薄くする（--text-3 も面の上で 4.5:1 以上） */
+table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var(--text-3); }
+/* 取り下げた資料のカードの文字を薄くする */
+.card.is-withdrawn :is(.c-ttl, .c-meta, .doc-kind) { color: var(--text-3); }
+
 /* ===== コメントの印 ===== */
 
 /* 印を置く場所: 自分では箱を作らず、印を置く並びの子として振る舞わせる */
