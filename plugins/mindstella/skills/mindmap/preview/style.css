@@ -975,9 +975,11 @@ dialog.hist::backdrop { background: var(--scrim); }
 /* 消した項目の並び: 印・ID・消したときのタイトル */
 .rm-list { display: flex; flex-wrap: wrap; gap: 4px 18px; min-width: 0; margin: 0; padding: 0; list-style: none; }
 /* 消した項目 1 件 */
-.rm-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
-/* 消した項目の ID */
-.rm-item .mono { color: var(--text-2); }
+.rm-item { display: inline-flex; align-items: flex-start; gap: 6px; min-width: 0; max-width: 100%; }
+/* 消した項目の印: 折り返したタイトルの 1 行目に揃える */
+.rm-item .df-mark { margin-top: 1px; }
+/* 消した項目の ID: 縮めず折り返さない */
+.rm-item .mono { flex: none; color: var(--text-2); white-space: nowrap; }
 /* 消したときのタイトル: 長いものは途中で切らずに折り返す */
 .rm-ttl { color: var(--text-2); overflow-wrap: anywhere; }
 /* マップ: 道具の行とマップの枠の間に置く */

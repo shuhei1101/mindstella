@@ -821,7 +821,7 @@ namespace MindmapPreview {
       );
     };
     /** 見出しの下の 1 段落 */
-    const lead =(key: string, value: string | undefined, className: string | null): HTMLElement | null => {
+    const lead = (key: string, value: string | undefined, className: string | null): HTMLElement | null => {
       if ((value === undefined || value === "") && keys?.has(key) !== true) return null;
       return h({
         tag: "div",
