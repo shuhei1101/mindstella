@@ -11,6 +11,7 @@ from workspace_fixtures import (
     MakeLegacyWorkspace,
     MakeWorkspace,
     SnapshotTree,
+    step_versions_after,
 )
 
 # ワークスペースの版を持つファイルの名前
@@ -84,11 +85,11 @@ def test_normal_when_version_recorded_at_top(
     # 手順が連ねるのは版の比較までで、status は呼ばない
     plan = call_tool("migrate", workspace=str(root), plan=True)
     # 検証
-    # 版の比較が、ワークスペースの版を v0.5.0、プラグインより古いと返し、当てる手順が v0.6.0 の手順だけである
+    # 版の比較が、ワークスペースの版を v0.5.0、プラグインより古いと返し、当てる手順が v0.5.0 より新しくプラグインの版までの手順である
     assert plan.is_error is False
     payload = plan.data
     assert payload["workspace_version"] == "v0.5.0"
     assert payload["relation"] == "older"
-    assert {step["version"] for step in payload["steps"]} == {"v0.6.0"}
+    assert {step["version"] for step in payload["steps"]} == step_versions_after("v0.5.0")
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before

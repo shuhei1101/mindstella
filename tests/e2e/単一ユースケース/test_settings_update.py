@@ -286,7 +286,7 @@ def test_normal_when_targets_remapped(
     # D-1・D-2 が変更履歴を持たず、pending が空を返す
     assert "history" not in decisions["D-1"]
     assert "history" not in decisions["D-2"]
-    assert pending == {"added": [], "changed": []}
+    assert pending == {"added": [], "changed": [], "removed": []}
     # 点検が問題を 0 件で返す
     assert checked.data["problems"] == []
 
