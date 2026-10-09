@@ -406,6 +406,7 @@ def test_render_shell(register: ModuleType, tmp_path: Path, shell: str) -> None:
     ("text", "expected_lines", "unchanged"),
     [
         pytest.param(USER_LINE, [USER_LINE, *RC_BLOCK], False, id="no_trailing_newline"),
+        pytest.param(f"{USER_LINE}\n", [USER_LINE, "", *RC_BLOCK], False, id="trailing_newline"),
         pytest.param("", RC_BLOCK, False, id="empty"),
         pytest.param(
             f"{USER_LINE}\n" + "\n".join(RC_BLOCK) + "\n",
