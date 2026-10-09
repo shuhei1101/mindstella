@@ -322,7 +322,7 @@ constraints:
   - item: 検証の範囲
     constraint: 足した後のワークスペースの全ての YAML をスキーマと、検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）と突き合わせる。決まりに合わないときも SchemaMismatchError で返す。参照先の ID があるかは確かめない（点検が持つ）
   - item: ID の振り方
-    constraint: その種類の連番の最大 + 1（項目が無ければ 1）
+    constraint: その種類の連番の最大 + 1（項目が無ければ 1）。最大は、今ある項目と `changes.yaml` の `sets[].removed`・`pending.removed` にあるその種類の ID から取り、消した ID を振り直さない
   - item: 日時
     constraint: '`created`・`updated` は UTC のタイムゾーン付き ISO 8601（秒まで）。`updated_by` は `ai`'
   - item: YAML の書き方

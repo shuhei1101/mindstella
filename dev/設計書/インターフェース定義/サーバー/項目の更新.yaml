@@ -310,6 +310,38 @@ flows:
       - 'エラーの本文に `decisions.yaml: items[0].options:` で始まり、`D-1` と `adopt` を含む行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_decided_without_adoption
+  - name: 正常系（メモを取り下げる）
+    summary: 状態を持たない種類は、取り下げの印と理由を書いて取り下げる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
+        notes: '-'
+      - name: item
+        description: 取り下げの印と理由
+        notes: '`{"withdrawn": true, "reason": "話題をやめた"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update workspace id N-1（withdrawn・reason）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: スキーマと突き合わせ、変更履歴を積む
+        IF->>WS: notes.yaml・changes.yaml を書く
+        IF-->>クライアント: JSON（changed: withdrawn・reason）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 'N-1 が `withdrawn: true` と `reason` を持ち、`notes.yaml` に残る'
+      - '`changed` が `withdrawn`・`reason`'
+      - 'N-1 の `history` の先頭の `before` が `{withdrawn: null, reason: null}`'
+      - '`changes.yaml` の `pending.changed` が `[N-1]`'
+    test: test_normal_when_note_withdrawn
 lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。値が変わったときは、書き換える前の値をその項目の変更履歴に 1 回分積む。
 idempotent: false
 side_effects: その項目の種類の YAML を書き換え、項目の `updated` と `updated_by`（`ai`）を書く。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き換え、`body` を `{ID}.md` にする。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える

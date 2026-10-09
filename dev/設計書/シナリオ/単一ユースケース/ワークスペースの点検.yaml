@@ -112,6 +112,31 @@ scenarios:
       - 出力に D-4・D-5・D-6 が無い
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_options_and_status_mismatch
+  - name: 正常シナリオ（消した項目がまとまりに残る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 消した項目
+        description: メモ N-1 を足して `commit` し、N-1 を消してもう一度 `commit` した記録
+        notes: 1 つ目のまとまりの `added` が N-1 を持ち、N-1 は今の notes.yaml に無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML と changes.yaml を読む
+        SV->>SV: まとまりが指す ID のうち、消した項目として記録された ID を参照切れから外す
+        SV-->>CC: 問題が無い
+      ```
+    expected:
+      - 点検のツールが成功を返す
+      - 出力に、問題が無い旨がある
+    test: test_normal_when_removed_item_in_change_set
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

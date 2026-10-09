@@ -10,11 +10,12 @@ from pathlib import Path
 from typing import Any, Literal
 
 from builder import export_preview, validate_export_out
-from checker import check_workspace
+from checker import check_workspace, find_referrers
 from errors import (
     AdoptedOptionError,
     ArgumentError,
     ItemNotFoundError,
+    ItemReferencedError,
     LastOptionError,
     MindmapError,
     OptionExistsError,
@@ -26,6 +27,7 @@ from graph import judge_goal, list_next_candidates, summarize_status, trace_impa
 from history import (
     SUMMARY_MAX_LENGTH,
     Changes,
+    RemovedItem,
     advance_seq,
     changes_since,
     commit_pending,
@@ -34,7 +36,9 @@ from history import (
     make_entry,
     mark_read,
     note_pending,
+    note_removed,
     pending_view,
+    removed_items,
     stack_history,
 )
 from kinds import EDITOR, KINDS, RECORD_DIR, Kind, records_root
@@ -275,7 +279,12 @@ def stage_add(
 ) -> tuple[Staged, dict[str, Any]]:
     """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
     validate_input_keys(kind, item)
-    item_id = next_id(replace(staged.workspace, items=staged.items), kind)
+    # 消した項目の ID は振り直さない
+    item_id = next_id(
+        replace(staged.workspace, items=staged.items),
+        kind,
+        taken=[removed["id"] for removed in removed_items(staged.changes)],
+    )
     timestamp = now()
     record, seq = advance_seq(staged.changes)
     # id を先頭に、created・updated・updated_by・seq・added_seq を末尾に置く
@@ -379,6 +388,44 @@ def run_update(
     new_staged, result = stage_update(staged, item_id, item, now)
     save_batch(staged.workspace, _batch_of(new_staged, staged.changes))
     return result
+
+
+def run_remove(root: Path, item_id: str) -> dict[str, Any]:
+    """1 項目を種類の YAML と本文から消し、消した項目をまだまとめていない変更に記録する。"""
+    staged = _start_staged(root)
+    ref = find_item(staged.workspace, item_id)
+    referrers = find_referrers(staged.workspace, item_id)
+    # ほかの記録が指している: 何も書かずに、指している記録を返す
+    if referrers:
+        raise ItemReferencedError(f"{item_id} はほかの記録が指しているため消せません", referrers)
+    record, seq = advance_seq(staged.changes)
+    removed: RemovedItem = {
+        "id": item_id,
+        "kind": ref.kind,
+        "title": ref.item["title"],
+        "seq": seq,
+        "added_seq": ref.item.get("added_seq", 0),
+    }
+    record = note_removed(record, removed)
+    rows = [row for index, row in enumerate(staged.items[ref.kind]) if index != ref.index]
+    name = ref.item.get("body")
+    # 本文を持ち、`docs/` にそのファイルがあるときだけ、本文も消す
+    body_removed = isinstance(name, str) and read_body(staged.workspace, name) is not None
+    save_batch(
+        staged.workspace,
+        BatchChange(
+            items={ref.kind: rows},
+            changes=dict(record),
+            removed_bodies=[name] if body_removed and isinstance(name, str) else [],
+        ),
+    )
+    return {
+        "id": item_id,
+        "kind": ref.kind,
+        "title": removed["title"],
+        "file": f"{RECORD_DIR}/{KINDS[ref.kind].file}",
+        "body_removed": body_removed,
+    }
 
 
 def run_update_settings(
@@ -529,7 +576,14 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
     committed, change_set = commit_pending(load_changes(root), text, now())
     # まとめる書き換えが無い: 何も書かない
     if change_set is None:
-        return {"id": None, "at": None, "summary": None, "added": [], "changed": []}
+        return {
+            "id": None,
+            "at": None,
+            "summary": None,
+            "added": [],
+            "changed": [],
+            "removed": [],
+        }
     _write_changes(root, committed)
     return {
         "id": change_set["id"],
@@ -537,6 +591,10 @@ def run_commit(root: Path, summary: str, now: NowFn = now_utc) -> dict[str, Any]
         "summary": change_set["summary"],
         "added": change_set["added"],
         "changed": change_set["changed"],
+        "removed": [
+            {"id": removed["id"], "kind": removed["kind"], "title": removed["title"]}
+            for removed in change_set.get("removed", [])
+        ],
     }
 
 

@@ -139,3 +139,36 @@ def test_normal_when_history_limit_zero(
     assert result["changed"][0]["body_diff"] is None
     # D-1 が変更履歴を持たない
     assert "history" not in read_yaml(root, "decisions.yaml")["items"][0]
+
+
+def test_normal_when_item_removed(
+    make_workspace: MakeWorkspace,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """読んだ時点に有って後で消した項目だけを、消した項目として読む（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    replay("add", **ws, kind="note", item={"title": "メモ", "content": "中身"})
+    replay("add", **ws, kind="note", item={"title": "重複したメモ", "content": "中身"})
+    # 前回読んだ時点を記録する
+    replay("changes_since_read", **ws)
+    # 読んだ後の書き換え: N-2 を消し、メモ N-3 を足してから消す
+    replay("remove", **ws, id="N-2")
+    replay("add", **ws, kind="note", item={"title": "読んだ後に足すメモ", "content": "中身"})
+    replay("remove", **ws, id="N-3")
+    # 実行
+    result = replay("changes_since_read", **ws)
+    # 検証
+    # 消した項目が N-2 の 1 件で、種類 note と消したときのタイトルを持つ
+    assert result["removed"] == [{"id": "N-2", "kind": "note", "title": "重複したメモ"}]
+    # 足した項目・変えた項目・消した項目のどれにも N-3 が無い
+    returned = [entry["id"] for key in ("added", "changed", "removed") for entry in result[key]]
+    assert "N-3" not in returned
+    # 足した項目・変えた項目が 0 件である
+    assert result["added"] == []
+    assert result["changed"] == []
+    # 読んだ後、AI が最後に読んだ時点が changes.yaml の last_seq と同じである
+    changes = read_yaml(root, "changes.yaml")
+    assert changes["read_seq"] == changes["last_seq"]

@@ -140,3 +140,26 @@ def test_normal_when_options_and_status_mismatch(
     assert "採用した案 A を持つのに未決定" in problems[2]["detail"]
     # ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_removed_item_in_change_set(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """過去のまとまりが消した項目の ID を持っていても、参照切れにしない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    for tool, arguments in (
+        ("add", {"kind": "note", "item": {"title": "メモ", "content": "中身"}}),
+        ("commit", {"summary": "メモを足す"}),
+        ("remove", {"id": "N-1"}),
+        ("commit", {"summary": "メモを消す"}),
+    ):
+        step = call_tool(tool, **ws, **arguments)
+        assert step.is_error is False, step.text
+    # 実行
+    result = call_tool("check", **ws)
+    # 検証
+    # 点検のツールが成功を返し、問題が無い旨がある
+    assert result.is_error is False
+    assert result.data == {"ok": True, "problems": []}

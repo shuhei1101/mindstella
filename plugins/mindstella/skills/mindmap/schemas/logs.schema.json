@@ -86,6 +86,14 @@
           "type": "string",
           "description": "`docs/` の本文の Markdown のファイル名（`{ID}.md`）",
           "pattern": "^[^/\\\\]+\\.md$"
+        },
+        "withdrawn": {
+          "type": "boolean",
+          "description": "やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない"
+        },
+        "reason": {
+          "type": "string",
+          "description": "取り下げた理由"
         }
       }
     }

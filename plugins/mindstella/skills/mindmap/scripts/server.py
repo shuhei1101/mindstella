@@ -34,6 +34,7 @@ TOOL_NAMES = (
     "init",
     "add",
     "update",
+    "remove",
     "update_settings",
     "adopt",
     "edit_option",
@@ -153,6 +154,16 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return write(workspace, lambda root: commands.run_update(root, id, item))
 
     @server.tool(
+        name="remove",
+        description="項目 1 つを消す（本文も消し、消した項目をまだまとめていない変更に残す）。ほかの記録が指している項目は消さずにエラーにする。やめた項目を残すときは update で取り下げる",
+    )
+    def remove(
+        workspace: WorkspaceArg,
+        id: ItemIdArg,  # noqa: A002
+    ) -> CallToolResult:
+        return write(workspace, lambda root: commands.run_remove(root, id))
+
+    @server.tool(
         name="update_settings",
         description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする",
     )
@@ -254,7 +265,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return write(workspace, lambda root: commands.run_commit(root, summary))
 
     @server.tool(
-        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー）を返す"
+        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を返す"
     )
     def pending(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_pending)

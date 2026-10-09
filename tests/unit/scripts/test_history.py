@@ -37,6 +37,26 @@ def _empty_changes() -> dict[str, Any]:
     return {"last_seq": 0, "sets": [], "pending": {"added": [], "changed": []}}
 
 
+def _removed(item_id: str, seq: int, added_seq: int, title: str = "重複したメモ") -> dict[str, Any]:
+    """消した項目の記録（changes.yaml の removed の 1 要素）を作る。種類は ID の頭の文字から決める。"""
+    kinds = {
+        "D": "decision",
+        "T": "task",
+        "R": "research",
+        "A": "doc",
+        "G": "term",
+        "N": "note",
+        "L": "log",
+    }
+    return {
+        "id": item_id,
+        "kind": kinds[item_id[0]],
+        "title": title,
+        "seq": seq,
+        "added_seq": added_seq,
+    }
+
+
 def _markdown_of(prefix: str) -> str:
     """3 行に 1 行が空行の 5000 行の Markdown を作る（空行でない行は prefix で始まる）。"""
     lines = [
@@ -300,6 +320,26 @@ def test_commit_pending_when_empty() -> None:
     assert committed == changes
 
 
+def test_commit_pending_when_only_removed() -> None:
+    """消した項目だけでもまとまりにする（正常系）。"""
+    # 準備
+    removed = _removed("N-2", seq=3, added_seq=2)
+    changes = {
+        "last_seq": 3,
+        "sets": [],
+        "pending": {"added": [], "changed": [], "removed": [removed]},
+    }
+    # 実行
+    committed, change_set = history.commit_pending(changes, "重複した N-2 を消す", NOW)
+    # 検証
+    assert change_set is not None
+    assert change_set["removed"] == [removed]
+    assert committed["sets"][0] == change_set
+    assert committed["pending"]["added"] == []
+    assert committed["pending"]["changed"] == []
+    assert committed["pending"].get("removed", []) == []
+
+
 def test_pending_view(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """変えたキーをまとめて返す（正常系）。"""
     # 準備
@@ -336,6 +376,23 @@ def test_pending_view(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     assert view["changed"][0]["id"] == "D-1"
     assert view["changed"][0]["title"] == "D-1の題"
     assert sorted(view["changed"][0]["keys"]) == ["answer", "body_markdown", "status"]
+
+
+def test_pending_view_when_removed(make_workspace: MakeWorkspace) -> None:
+    """消した項目を removed で返す（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace())
+    changes = {
+        "last_seq": 3,
+        "sets": [],
+        "pending": {"added": [], "changed": [], "removed": [_removed("N-2", seq=3, added_seq=2)]},
+    }
+    # 実行
+    view = history.pending_view(workspace, changes)
+    # 検証
+    assert view["removed"] == [{"id": "N-2", "kind": "note", "title": "重複したメモ"}]
+    assert view["added"] == []
+    assert view["changed"] == []
 
 
 def test_touch_opened(make_workspace: MakeWorkspace) -> None:
@@ -452,6 +509,7 @@ def test_changes_since_when_no_read_point(
         "until_seq": 2,
         "added": [],
         "changed": [],
+        "removed": [],
     }
 
 
@@ -504,6 +562,94 @@ def test_changes_since_reports_editors(make_workspace: MakeWorkspace, make_item:
     assert result["changed"][0]["updated_by"] == "ai"
     # seq 2 の回は読んだ時点より前なので数えない
     assert result["changed"][0]["by"] == ["user", "ai"]
+
+
+def test_changes_since_when_removed(make_workspace: MakeWorkspace) -> None:
+    """読んだ時点に有って後で消した項目だけを返す（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace())
+    changes = {
+        "last_seq": 6,
+        "read_seq": 3,
+        "sets": [
+            {
+                "id": "V-1",
+                "at": NOW,
+                "summary": "最初",
+                "until_seq": 2,
+                "added": [],
+                "changed": [],
+                "removed": [_removed("N-1", seq=2, added_seq=1)],
+            }
+        ],
+        "pending": {
+            "added": [],
+            "changed": [],
+            "removed": [_removed("N-2", seq=4, added_seq=2), _removed("N-3", seq=6, added_seq=5)],
+        },
+    }
+    # 実行
+    result = history.changes_since(workspace, changes)
+    # 検証
+    # N-1 は読む前に消した、N-3 は読んだ後に足して消したので返さない
+    assert result["removed"] == [{"id": "N-2", "kind": "note", "title": "重複したメモ"}]
+
+
+def test_note_removed() -> None:
+    """変えた項目を消すと changed から除き removed に足す（正常系）。"""
+    # 準備
+    changes = {
+        "last_seq": 5,
+        "sets": [],
+        "pending": {"added": [], "changed": ["D-1", "D-2"]},
+    }
+    removed = _removed("D-1", seq=5, added_seq=1, title="D-1の題")
+    # 実行
+    noted = history.note_removed(changes, removed)
+    # 検証
+    assert noted["pending"]["changed"] == ["D-2"]
+    assert noted["pending"]["removed"] == [removed]
+    # 渡した記録は書き換えない
+    assert changes["pending"] == {"added": [], "changed": ["D-1", "D-2"]}
+
+
+def test_note_removed_when_added_since_commit() -> None:
+    """まとめる前に足した項目も removed に記録する（正常系）。"""
+    # 準備
+    changes = {"last_seq": 1, "sets": [], "pending": {"added": ["N-1"], "changed": []}}
+    removed = _removed("N-1", seq=2, added_seq=1)
+    # 実行
+    noted = history.note_removed(changes, removed)
+    # 検証
+    assert noted["pending"]["added"] == []
+    assert noted["pending"]["removed"] == [removed]
+
+
+def test_removed_items() -> None:
+    """まとまりとまだまとめていない変更の記録を消した順に返す（正常系）。"""
+    # 準備
+    first = _removed("N-1", seq=3, added_seq=1)
+    second = _removed("N-2", seq=5, added_seq=2)
+    changes = {
+        "last_seq": 5,
+        "sets": [
+            {
+                "id": "V-2",
+                "at": NOW,
+                "summary": "消す",
+                "until_seq": 4,
+                "added": [],
+                "changed": [],
+                "removed": [first],
+            },
+            {"id": "V-1", "at": NOW, "summary": "最初", "until_seq": 2, "added": [], "changed": []},
+        ],
+        "pending": {"added": [], "changed": [], "removed": [second]},
+    }
+    # 実行
+    items = history.removed_items(changes)
+    # 検証
+    assert items == [first, second]
 
 
 def test_mark_read() -> None:

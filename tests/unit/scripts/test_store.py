@@ -332,6 +332,17 @@ def test_next_id_when_empty(make_workspace, make_item) -> None:
     assert item_id == "T-1"
 
 
+def test_next_id_skips_taken(make_workspace, make_item) -> None:
+    """消した ID を振り直さない（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("N-1")))
+    # 実行
+    item_id = store.next_id(workspace, "note", taken=["N-2", "D-5"])
+    # 検証
+    # ほかの種類の D-5 は見ない
+    assert item_id == "N-3"
+
+
 def test_save_change(make_workspace, make_item, snapshot_tree) -> None:
     """項目の並びと本文を書き、一時ファイルを残さない（正常系）。"""
     # 準備
@@ -543,6 +554,58 @@ def test_save_batch_when_replace_fails(
     monkeypatch.setattr(store.os, "replace", failing_replace("tasks.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError, match=r"tasks\.yaml"):
+        store.save_batch(workspace, change)
+    assert snapshot_tree(root) == before
+    assert list(root.rglob("*.tmp")) == []
+
+
+def test_save_batch_removes_bodies(make_workspace, make_item) -> None:
+    """書き換えた後に消す本文を消す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("N-1"),
+        make_item("N-2", body="N-2.md"),
+        bodies={"N-2.md": "消す本文\n"},
+    )
+    workspace = store.load_workspace(root)
+    change = store.BatchChange(items={"note": [make_item("N-1")]}, removed_bodies=["N-2.md"])
+    # 実行
+    store.save_batch(workspace, change)
+    # 検証
+    records = root / RECORD_DIR
+    assert yaml.safe_load((records / "notes.yaml").read_text(encoding="utf-8")) == {
+        "items": [make_item("N-1")]
+    }
+    assert not (records / "docs" / "N-2.md").exists()
+
+
+def test_save_batch_when_body_removal_fails(
+    make_workspace, make_item, snapshot_tree, failing_unlink
+) -> None:
+    """本文を消せなければ、置き換えたファイルを戻す（異常系）。"""
+    # 準備
+    changes = {"last_seq": 2, "sets": [], "pending": {"added": [], "changed": []}}
+    root = make_workspace(
+        make_item("N-1"),
+        make_item("N-2", body="N-2.md"),
+        bodies={"N-2.md": "消す本文\n"},
+        raw_files={"changes.yaml": yaml.safe_dump(changes, sort_keys=False)},
+    )
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    removed = {"id": "N-2", "kind": "note", "title": "N-2の題", "seq": 3, "added_seq": 2}
+    change = store.BatchChange(
+        items={"note": [make_item("N-1")]},
+        changes={
+            "last_seq": 3,
+            "sets": [],
+            "pending": {"added": [], "changed": [], "removed": [removed]},
+        },
+        removed_bodies=["N-2.md"],
+    )
+    failing_unlink("N-2.md")
+    # 実行・検証
+    with pytest.raises(WriteFailedError, match=r"N-2\.md"):
         store.save_batch(workspace, change)
     assert snapshot_tree(root) == before
     assert list(root.rglob("*.tmp")) == []

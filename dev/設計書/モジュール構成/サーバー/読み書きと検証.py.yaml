@@ -163,7 +163,7 @@ data_models:
     usecase: 記録の追加と更新
     role: DTO
     summary: 複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`edit_option`・`batch` が使う。'
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`remove`・`edit_option`・`batch` が使う。'
     properties:
       - name: items
         type: dict[Kind, list[dict[str, Any]]]
@@ -176,6 +176,10 @@ data_models:
         type: Changes | None
         default: None
         description: 一緒に書く `changes.yaml` の新しい中身。変えないときは `None`
+      - name: removed_bodies
+        type: list[str]
+        default: '[]'
+        description: 書き換えた後に消す `docs/` の本文のファイル名（`remove` が使う）
 enums:
   - name: Kind
     title: 種類
@@ -384,6 +388,13 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 検討事項の案の編集
     summary: '案を必須にする状態の検討事項の最後の案を消そうとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
+    kind: クラス
+    inherits: MindmapError
+  - name: ItemReferencedError
+    title: ほかの記録が指している
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の削除と取り下げ
+    summary: '消そうとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
     kind: クラス
     inherits: MindmapError
 constants:
@@ -742,7 +753,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の追加と更新
     scope: public
-    summary: その種類の連番の最大 + 1 の ID を返す
+    summary: その種類の連番の最大 + 1 の ID を返す（消した ID を振り直さない）
     args:
       - name: workspace
         type: Workspace
@@ -754,11 +765,17 @@ functions:
         required: true
         passing: positional
         description: 種類
+      - name: taken
+        type: Iterable[str]
+        required: false
+        default: ()
+        passing: keyword
+        description: 今の項目に無いが振らない ID（消した項目の ID）
     returns:
       type: str
       description: '`{頭の文字}-{連番}`'
     process: |-
-      1. その種類の項目の `id` のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
+      1. その種類の項目の `id` と `taken` のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
       2. 最大 + 1 で ID を作って返す
     unit_tests:
       - name: test_next_id
@@ -773,6 +790,12 @@ functions:
         condition: タスクが 0 件
         mock: なし
         expected: '`T-1`'
+      - name: test_next_id_skips_taken
+        case: 正常
+        summary: 消した ID を振り直さない
+        condition: N-1 だけを持ち、`taken` に `N-2`・`D-5`
+        mock: なし
+        expected: '`N-3`（ほかの種類の `D-5` は見ない）'
   - name: now_utc
     title: 今の日時
     kind: 関数
@@ -1304,7 +1327,7 @@ functions:
     usecase: 記録の追加と更新
     scope: public
     summary: 複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない
-    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換える
+    side_effects: 種類の YAML と `docs/{ID}.md` と `changes.yaml` を置き換え、`removed_bodies` の本文を消す
     args:
       - name: workspace
         type: Workspace
@@ -1320,10 +1343,10 @@ functions:
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
       2. `raw` の `items` の種類のファイルを全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
          - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
-      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）
+      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換える
-         - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
+      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
+         - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
@@ -1356,6 +1379,18 @@ functions:
         condition: '`parametrize`: 案を持たない未決定の D-2 が残るワークスペースで、案を持つ未決定の D-3 と T-1 を足した並び / 決まりに合うワークスペースで、案を持たない未決定の D-3 を足した並び'
         mock: なし
         expected: どちらも `SchemaMismatchError` でファイルは呼ぶ前と同じ。`legacy` が真 / 偽
+      - name: test_save_batch_removes_bodies
+        case: 正常
+        summary: 書き換えた後に消す本文を消す
+        condition: N-2 を除いたメモの並び、`removed_bodies` に `N-2.md`（`docs/N-2.md` がある）
+        mock: なし
+        expected: '`notes.yaml` に N-2 が無く、`docs/N-2.md` が無い'
+      - name: test_save_batch_when_body_removal_fails
+        case: 異常
+        summary: 本文を消せなければ、置き換えたファイルを戻す
+        condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.md`。本文を消す関数を `OSError` を送る関数に差し替える
+        mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
+        expected: '`WriteFailedError`（メッセージに `N-2.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.md` が呼ぶ前と同じ'
   - name: require_workspace
     title: ワークスペースの確かめ
     kind: 関数

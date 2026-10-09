@@ -93,7 +93,32 @@ flows:
       - ツールのエラーになる
       - 'エラーの本文に `changes.yaml: pending` で始まる行がある'
     test: test_error_when_schema_mismatch
-lead: 最後のまとまりより後に足した項目と、変えた項目・変えたキーを返す。読むだけで、まとめない。
+  - name: 正常系（消した項目がある）
+    summary: まとめた後に消した項目を、ID・種類・消したときのタイトルで返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1・N-2 を足して `commit` し、`remove` で N-2 を消したワークスペース
+        notes: N-2 のタイトルは `重複したメモ`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as pending（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: pending workspace
+        IF-->>WS: changes.yaml と種類ごとの YAML を読む
+        IF-->>クライアント: JSON（added・changed・removed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`removed` が N-2 の 1 件で、`kind` が `note`、`title` が `重複したメモ`'
+      - '`added`・`changed` が空'
+    test: test_normal_when_item_removed
+lead: 最後のまとまりより後に足した項目と、変えた項目・変えたキーと、消した項目を返す。読むだけで、まとめない。
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
@@ -124,6 +149,15 @@ response:
     type: list[str]
     description: 最後のまとまりより後に変えたキーの名前。変更履歴の `before` のキーと、本文を変えたときの `body_markdown` を、つなげて重なりを除いたもの
     example: '["answer", "status"]'
+  - name: removed[].id
+    type: str
+    description: 最後のまとまりより後に消した項目の ID（その間に足して消した項目も含む。その項目は `added` には入らない）
+  - name: removed[].kind
+    type: str
+    description: 消した項目の種類
+  - name: removed[].title
+    type: str
+    description: 消したときのタイトル
 exceptions:
   - name: なし（正常終了）
     condition: 一覧を作れた（空のときも含む。`changes.yaml` が無ければ空）
@@ -141,7 +175,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 返す項目
-    constraint: '`changes.yaml` の `pending` の `added`・`changed` の ID。変えたキーは、その項目の変更履歴のうち `seq` が最後のまとまりの `until_seq` より大きいものから取る。保持する回数を超えて消えた分のキーは返らない'
+    constraint: '`changes.yaml` の `pending` の `added`・`changed` の ID と、`removed` の ID・種類・タイトル。変えたキーは、その項目の変更履歴のうち `seq` が最後のまとまりの `until_seq` より大きいものから取る。保持する回数を超えて消えた分のキーは返らない。`removed` が無い `changes.yaml`（この機能を入れる前の版）は、消した項目を空で返す'
   - item: 並び
     constraint: '`pending` に入った順（書き換えた順）'
   - item: 件数

@@ -13,7 +13,7 @@ from .fixture_types import (
     SnapshotTree,
     WriteSubmissions,
 )
-from .history_helpers import DECISION_ITEM, add_item, commit, update_item
+from .history_helpers import DECISION_ITEM, add_item, commit, remove_item, update_item
 from workspace_fixtures import RECORD_DIR
 
 
@@ -188,3 +188,26 @@ def test_normal_when_options_and_status_mismatch(
     assert "未決定" in problems[2]["detail"]
     assert "A" in problems[2]["detail"]
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_removed_item_in_change_set(
+    make_workspace: MakeWorkspace,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+    call_tool: CallTool,
+) -> None:
+    """過去のまとまりと取り込み済みの送信が消した項目を指していても、参照切れにしない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "note", {"title": "メモ", "content": "中身"})
+    commit(call_tool, root, "足す")
+    write_submissions(
+        root, make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00")
+    )
+    remove_item(call_tool, root, "N-1")
+    commit(call_tool, root, "消す")
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data == {"ok": True, "problems": []}
