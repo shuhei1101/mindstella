@@ -42,6 +42,9 @@ def test_normal(
     kept = read_yaml(root, "notes.yaml")["items"][0]
     # 実行
     removed = replay("remove", **ws, id="N-2")
+    # 消した直後の記録の状態を控える（この後にメモを足すため、ここで読む）
+    notes_after_remove = read_yaml(root, "notes.yaml")["items"]
+    body_removed = not (root / RECORD_DIR / "docs" / "N-2.md").exists()
     pending = replay("pending", **ws)
     committed = replay("commit", **ws, summary="重複した N-2 を消す")
     added = replay("add", **ws, kind="note", item={"title": "次のメモ", "content": "中身"})
@@ -50,9 +53,9 @@ def test_normal(
     # 消すツールが N-2 を返す
     assert removed["id"] == "N-2"
     # notes.yaml に N-2 が無く、N-1 は消す前のまま残る
-    assert read_yaml(root, "notes.yaml")["items"] == [kept]
+    assert notes_after_remove == [kept]
     # .mindstella/docs/ に N-2 の本文が無い
-    assert not (root / RECORD_DIR / "docs" / "N-2.md").exists()
+    assert body_removed
     # pending が、消した項目として N-2 の ID・種類・消したときのタイトルを返す
     assert pending["removed"] == [{"id": "N-2", "kind": "note", "title": DUPLICATE_TITLE}]
     # commit の後、増えたまとまりが消した項目に N-2 を持ち、pending が空を返す
