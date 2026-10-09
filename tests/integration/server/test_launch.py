@@ -9,7 +9,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from launch_fixtures import PLUGIN_DIR, LaunchSandbox, copy_plugin, read_mcp_config, session_name
+from launch_fixtures import (
+    PLUGIN_DIR,
+    LaunchSandbox,
+    copy_plugin,
+    read_mcp_config,
+    read_tool_names,
+    session_name,
+)
 from workspace_fixtures import McpServer
 
 from .fixture_types import MakeVenv
@@ -34,15 +41,16 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     assert mindstella["command"] == str(ready_venv / "bin" / "python")
     assert mindstella["args"] == [str(PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py")]
     assert started[0].with_suffix(".config").read_text(encoding="utf-8") == str(sandbox.config_dir)
-    # その MCP の設定どおりにサーバーを立ててつなぐと、ツールの一覧が返る
+    # その MCP の設定どおりにサーバーを立ててつなぐと、そのサーバーが登録するツールの一覧が返る
+    server_script = Path(mindstella["args"][0])
     server = McpServer(
         python=mindstella["command"],
         env={**os.environ, "PYTHONUTF8": "1"},
         cwd=folder,
-        script=Path(mindstella["args"][0]),
+        script=server_script,
     )
     try:
-        assert len(server.list_tools()) == 26
+        assert [tool["name"] for tool in server.list_tools()] == read_tool_names(server_script)
     finally:
         server.stop()
     assert f"tmux attach-session -t ={name}" in result.stdout
