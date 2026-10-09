@@ -251,7 +251,7 @@ def test_normal(
     assert "書き換えた段落です。" in added
     assert "最初の段落です。" in removed
     assert "消す段落です。" in removed
-    assert "残す段落です。" in page.inner_text("aside.panel .md")
+    assert "残す段落です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert "残す段落です。" not in added + removed
     # 検証（図は、ラベルを変えたノードにだけ変わった色が付き、ほかのノードと辺には付かない）
     figure = page.locator("aside.panel figure.diagram.df-colored")
@@ -283,7 +283,7 @@ def test_normal(
     # 検証（印と差分が消え、D-3 の本文は今の内容だけになる）
     assert page.locator(".df-mark").count() == 0
     assert page.locator("nav.tabbar .df-dot").count() == 0
-    body = page.inner_text("aside.panel .md")
+    body = page.inner_text("aside.panel .md:not(.md-value)")
     assert "書き換えた段落です。" in body
     assert "消す段落です。" not in body
     # 検証（ワークスペースの YAML と本文の中身が、開く前と同じ）
@@ -524,7 +524,7 @@ def test_normal_when_history_limit_zero(
     # 検証（差分の印が無く、今の本文だけが出る）
     assert page.locator("aside.panel .df-kv").count() == 0
     assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
-    assert "1 回目に書き換えた本文です。" in page.inner_text("aside.panel .md")
+    assert "1 回目に書き換えた本文です。" in page.inner_text("aside.panel .md:not(.md-value)")
 
 
 def test_normal_when_change_set_history_trimmed(
@@ -559,7 +559,7 @@ def test_normal_when_change_set_history_trimmed(
     page.wait_for_selector("aside.panel .df-note")
     # 検証（今の本文を出し、そのまとまりの差分を出せない旨が出る）
     assert page.inner_text("aside.panel .df-note") == NOTE_TRIMMED
-    assert "2 回目に書き換えた本文です。" in page.inner_text("aside.panel .md")
+    assert "2 回目に書き換えた本文です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
 
 
@@ -589,7 +589,7 @@ def test_error_when_previous_version_unavailable(
     page.wait_for_selector("aside.panel .df-note")
     # 検証（今の本文を差分の印なしで描き、本文の差分を出せない旨が出る）
     assert page.inner_text("aside.panel .df-note") == NOTE_BODY_UNAVAILABLE
-    assert "手で書いた A" in page.inner_text("aside.panel .md")
+    assert "手で書いた A" in page.inner_text("aside.panel .md:not(.md-value)")
     assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
     # 検証（状態の前の値と今の値は、本文と関係なく見分けられる）
     status = page.locator('aside.panel [data-key="status"] .df-kv')
@@ -632,7 +632,7 @@ def test_normal_when_since_history_dropped(
     page.wait_for_selector("aside.panel .df-note")
     # 検証（今の本文を出し、前後を組み立てられない旨が出る。2 回目だけの差分は出ない）
     assert page.inner_text("aside.panel .df-note") == NOTE_TRIMMED
-    assert "2 回目に書き換えた本文です。" in page.inner_text("aside.panel .md")
+    assert "2 回目に書き換えた本文です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert page.locator("aside.panel .md ins.df-blk, aside.panel .md del.df-blk").count() == 0
     # 実行（D-4 の詳細パネルを開く）
     page.keyboard.press("Escape")
