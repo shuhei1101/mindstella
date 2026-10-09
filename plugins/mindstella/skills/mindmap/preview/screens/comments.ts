@@ -54,6 +54,9 @@ namespace MindmapPreview {
     };
   };
 
+  /** コメントの本文の長さの上限（サーバーが受け付ける文字数と同じ） */
+  export const COMMENT_BODY_MAX_LENGTH = 10000;
+
   /** 詳細パネルが行の修正・削除・元に戻すのために受け取る引数（コールバックはコメントの一覧と同じ形） */
   export type ReviewEditProps = {
     /** その項目へのコメントのうち、消したもの（元の場所に「元に戻す」を出す） */
@@ -143,6 +146,7 @@ namespace MindmapPreview {
       attrs: {
         name: "body",
         rows: 2,
+        maxlength: COMMENT_BODY_MAX_LENGTH,
         "aria-label": `${item.id} へのコメントの本文`,
         "data-focus": `${focus}edit:${item.id}`,
         onkeydown: (event) => {

@@ -2,6 +2,8 @@
 // コメントの一覧。見ている画面に重ねて左から出すパネルに、レビュー中のコメントを並べ、チェックしたものだけをまとめて送る。
 var MindmapPreview;
 (function (MindmapPreview) {
+    /** コメントの本文の長さの上限（サーバーが受け付ける文字数と同じ） */
+    MindmapPreview.COMMENT_BODY_MAX_LENGTH = 10000;
     /** コメントの ID の連番 */
     function commentNumber(id) {
         return Number(id.replace(/^\D+-/, ""));
@@ -59,6 +61,7 @@ var MindmapPreview;
             attrs: {
                 name: "body",
                 rows: 2,
+                maxlength: MindmapPreview.COMMENT_BODY_MAX_LENGTH,
                 "aria-label": `${item.id} へのコメントの本文`,
                 "data-focus": `${focus}edit:${item.id}`,
                 onkeydown: (event) => {
