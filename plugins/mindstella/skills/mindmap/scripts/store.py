@@ -163,6 +163,8 @@ class BatchChange:
     bodies: list[BodyWrite] = field(default_factory=list)
     # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
     changes: dict[str, Any] | None = None
+    # 書き換えた後に消す `docs/` の本文のファイル名
+    removed_bodies: list[str] = field(default_factory=list)
 
 
 def load_workspace(root: Path) -> Workspace:
@@ -448,11 +450,11 @@ def find_item(workspace: Workspace, item_id: str) -> ItemRef:
     raise ItemNotFoundError(f"項目がありません: {item_id}")
 
 
-def next_id(workspace: Workspace, kind: Kind) -> str:
-    """その種類の連番の最大 + 1 の ID を返す。"""
+def next_id(workspace: Workspace, kind: Kind, *, taken: Iterable[str] = ()) -> str:
+    """その種類の連番の最大 + 1 の ID を返す（`taken` の ID も最大に数え、消した ID を振り直さない）。"""
     numbers = [
         int(item_id.split("-", 1)[1])
-        for item_id in (item.get("id") for item in workspace.items[kind])
+        for item_id in (*(item.get("id") for item in workspace.items[kind]), *taken)
         if isinstance(item_id, str) and kind_of_id(item_id) == kind
     ]
     return f"{KINDS[kind].prefix}-{max(numbers, default=0) + 1}"
@@ -609,6 +611,9 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
         targets.append((records / CHANGES_FILE, dump_yaml(change.changes)))
     # 置き換える前の中身を控える（無ければ None）
     previous = {path: path.read_bytes() if path.is_file() else None for path, _ in targets}
+    # 消す本文の中身も控える（無ければ消さずに飛ばす）
+    removed_paths = [records / BODY_DIR / name for name in change.removed_bodies]
+    removed_previous = {path: path.read_bytes() for path in removed_paths if path.is_file()}
 
     # 一時ファイルを先に全て書く
     temps: list[Path] = []
@@ -632,6 +637,22 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
             _remove_files(temps)
             raise write_failed(path, error) from error
         replaced.append(path)
+
+    # 最後に消す本文を消す: 失敗したら、置き換えたファイルと消した本文を控えに戻す
+    removed_done: list[Path] = []
+    for path in removed_paths:
+        # 消す本文が無い: 飛ばす
+        if path not in removed_previous:
+            continue
+        try:
+            path.unlink()
+        except OSError as error:
+            for done in reversed(replaced):
+                _restore_file(done, previous[done])
+            for done in removed_done:
+                done.write_bytes(removed_previous[done])
+            raise write_failed(path, error) from error
+        removed_done.append(path)
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:

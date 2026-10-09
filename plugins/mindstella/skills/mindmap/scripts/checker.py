@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
-from history import CHANGES_FILE, Changes, apply_body_diff, load_changes
+from history import CHANGES_FILE, Changes, apply_body_diff, load_changes, removed_items
 from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
 from submissions import SUBMISSIONS_FILE, load_submissions
@@ -43,6 +44,50 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
     # ファイル名の順に並べ（sorted は安定なので、同じファイルの中は拾った順を保つ）、ワークスペースからの相対パスにする
     ordered = sorted(problems, key=lambda problem: problem.file)
     return [replace(problem, file=f"{RECORD_DIR}/{problem.file}") for problem in ordered]
+
+
+def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
+    """1 項目を指している記録を `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行で返す（読むだけ）。"""
+    lines: list[str] = []
+    # 種類の順に、ほかの項目の参照のキーが指しているものを拾う
+    for kind, spec in KINDS.items():
+        for item in workspace.items[kind]:
+            # 自分自身の参照は、消えるので指しているうちに入れない
+            if item.get("id") == item_id:
+                continue
+            for rule_kind, key in REF_RULES:
+                if rule_kind == kind and item_id in as_ids(item.get(key)):
+                    lines.append(f"{spec.file}: {item.get('id')}: {key}")
+    # 設定の納品物の資料が指している
+    for index, deliverable in enumerate(_deliverables(workspace.settings)):
+        if item_id in as_ids(deliverable.get("doc")):
+            lines.append(f"{SETTINGS_FILE}: goal.deliverables[{index}].doc: doc")
+    # レビュー中のコメントと書きかけが向けている
+    lines.extend(
+        f"{COMMENTS_FILE}: {comment.id}: target"
+        for comment in load_comments(workspace.root).items
+        if comment.target == item_id
+    )
+    lines.extend(
+        f"{DRAFTS_FILE}: items[{index}]: target"
+        for index, draft in enumerate(load_drafts(workspace.root))
+        if draft.target == item_id
+    )
+    # 取り込んでいない送信が向けている（取り込み済みは記録として残るので拾わない）
+    lines.extend(
+        f"{SUBMISSIONS_FILE}: {submission.id}: target"
+        for submission in load_submissions(workspace.root)
+        if submission.taken is None and submission.target == item_id
+    )
+    return lines
+
+
+def _removed_ids(root: Path) -> set[str]:
+    """`changes.yaml` に記録した、消した項目の ID を返す。読めない `changes.yaml` は、消した項目なしとして扱う（その問題は履歴の点検が返す）。"""
+    try:
+        return {removed["id"] for removed in removed_items(load_changes(root))}
+    except SchemaMismatchError:
+        return set()
 
 
 def _check_duplicate_ids(workspace: Workspace) -> list[Problem]:
@@ -238,9 +283,13 @@ def _check_submissions(workspace: Workspace) -> list[Problem]:
             for line in error.lines
         ]
     problems: list[Problem] = []
+    removed_ids = _removed_ids(workspace.root)
     for submission in submissions:
         # 項目に紐づかない送信は確かめるものが無い
         if submission.target is None:
+            continue
+        # 取り込み済みの送信が消した項目を指す: 記録として残るので拾わない
+        if submission.taken is not None and submission.target in removed_ids:
             continue
         try:
             find_item(workspace, submission.target)
@@ -284,6 +333,8 @@ def _check_history(workspace: Workspace) -> list[Problem]:
 def _missing_change_refs(workspace: Workspace, changes: Changes) -> list[Problem]:
     """まとまりと、まだまとめていない変更が指す ID のうち、項目が無いものを `broken_ref` にする。"""
     existing = {item.get("id") for kind in KINDS for item in workspace.items[kind]}
+    # 消した項目の ID は、項目が無くても参照切れにしない
+    existing.update(removed["id"] for removed in removed_items(changes))
     groups = [
         *(
             (change_set["id"], f"sets[{index}].{key}", change_set[key])
