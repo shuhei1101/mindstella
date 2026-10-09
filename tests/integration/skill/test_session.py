@@ -35,6 +35,7 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
     for name in (
         "add",
         "update",
+        "remove",
         "update_settings",
         "adopt",
         "edit_option",
