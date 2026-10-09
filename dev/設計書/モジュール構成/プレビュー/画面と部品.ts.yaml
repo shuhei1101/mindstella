@@ -380,7 +380,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に `reviewEditForm`、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
     props:
       - name: id
         type: string
@@ -401,7 +401,7 @@ components:
       - name: comment
         type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
-        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editError: string | null, editBody: string | null, on: {edit, saveEdit, cancelEdit, remove, restore}}`（`removed` はその項目への消したコメントだけ。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
+        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editingIn: 'list' | 'detail', editError: string | null, editBody: string | null, on: {edit, saveEdit, cancelEdit, remove, restore}}`（`removed` はその項目への消したコメントだけ。`editingIn` は修正を始めた場所。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
       - name: highlight
         type: Location | null
         required: false
@@ -489,6 +489,12 @@ components:
         condition: '`full: true`、`edit.editing` を C-1 で開き、入力欄で Esc を押す'
         mock: '`on.full`・`edit.on.cancelEdit`'
         expected: '`edit.on.cancelEdit` が 1 回呼ばれ、`on.full` が呼ばれず、`dialog` が開いたまま'
+      - name: test_detail_panel_when_review_editing_in_list
+        case: 正常
+        summary: コメントの一覧で書き換えている行は、詳細パネルでは本文だけで描く
+        condition: D-1 への C-1 を `reviews`、`edit.editing` を C-1、`edit.editingIn` を `'list'` で開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: C-1 の行に入力欄・「キャンセル」「修正」が無く、本文が出て、読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタンが無い
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -707,7 +713,7 @@ components:
       - name: editing
         type: string | null
         required: true
-        description: 本文を書き換えているコメントの ID（詳細パネルと共に 1 つ）
+        description: 本文を書き換えているコメントの ID（詳細パネルと共に 1 つ）。入力欄は `editingIn` が `'list'` のときだけ描き、`'detail'` のときはその行を本文だけで描いて「修正」「削除」を出さない
       - name: stale
         type: Map<string, string>
         required: true
@@ -742,6 +748,11 @@ components:
         required: false
         default: 'null'
         description: 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文）
+      - name: editingIn
+        type: "'list' | 'detail'"
+        required: false
+        default: "'list'"
+        description: "`editing` の修正を始めた場所（詳細パネルで始めたら `'detail'`）"
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -761,6 +772,12 @@ components:
         condition: '`parametrize`: チェックが 0 件 / `result.kind` が `sending`'
         mock: '`on.send`'
         expected: まとめて送るが `disabled` で、押しても `on.send` が呼ばれない。前者は「送るコメントにチェックを付けてください。」
+      - name: test_comments_panel_when_editing_in_detail
+        case: 正常
+        summary: 詳細パネルで書き換えている行は、一覧では本文だけで描く
+        condition: C-1（D-1）を `editing`、`editingIn` を `'detail'` で描く
+        mock: なし
+        expected: C-1 の行に入力欄・「キャンセル」「修正」が無く、本文が出て、読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタンが無い
   - name: diffMark
     title: 差分の印
     container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
