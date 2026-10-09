@@ -22,7 +22,7 @@ directory: |-
       docs.ts             資料（カード・ボード・表）
       records.ts          調査・用語集・メモ・会話ログ（表）
       detail.ts           詳細パネルと詳細の全画面
-      comments.ts         コメントの一覧（左から出すパネル）
+      comments.ts         コメントの一覧（左から出すパネル）と、詳細パネルと共に使うレビュー中のコメントの行の修正・削除・書き換え・消した行
       settings.ts         表示の設定（左から出すパネル）と既定の保存の確かめ・既定が変わった知らせ
       search.ts           全体の検索
       diagram-viewer.ts   図の拡大
@@ -380,7 +380,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に `reviewEditForm`、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
     props:
       - name: id
         type: string
@@ -399,9 +399,9 @@ components:
         required: true
         description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）
       - name: comment
-        type: "{form: SendFormProps, reviews: ReviewState['items']} | null"
+        type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
-        description: 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント。配る書き出しでは `null`（どちらも置かず、選んだ箇所の入口も出さない）
+        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editError: string | null, editBody: string | null, on: {edit, saveEdit, cancelEdit, remove, restore}}`（`removed` はその項目への消したコメントだけ。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
       - name: highlight
         type: Location | null
         required: false
@@ -477,6 +477,18 @@ components:
         condition: 案 A の `pros` が `["速い", "**安い**"]`、`cons` が `[]` の未決定の D-1 を開く
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`data-key` が `options[A].pros` の要素の文字が `速い、安い` で `strong` を 1 つ持つ。`options[A].cons` の要素が無い'
+      - name: test_detail_panel_when_review_rows
+        case: 正常
+        summary: レビュー中のコメントの行に修正・削除を置き、書き換えている行と消した行を元の場所に描く
+        condition: D-1 への C-1・C-3 を `reviews`、C-2 を `edit.removed`、`edit.editing` を C-3 で開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 行が C-1・C-2・C-3 の順で、C-1 に読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタン。C-2 は「コメントを削除しました。」と「元に戻す」。C-3 は入力欄と「キャンセル」「修正」で、修正・削除のボタンが無い。見出しの件数が 2。どのボタンの `data-focus` も `detail-` で始まる
+      - name: test_detail_panel_when_review_escape_in_full
+        case: 正常
+        summary: 全画面で書き換えの入力欄の Esc は、書き換えだけを捨てて全画面を閉じない
+        condition: '`full: true`、`edit.editing` を C-1 で開き、入力欄で Esc を押す'
+        mock: '`on.full`・`edit.on.cancelEdit`'
+        expected: '`edit.on.cancelEdit` が 1 回呼ばれ、`on.full` が呼ばれず、`dialog` が開いたまま'
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -678,7 +690,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: コメントを選んで送る
     kind: 画面
-    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）。描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
+    summary: 画面設計『コメントの一覧』を左から出すパネルとして描く。送る帯・行・削除した行の「元に戻す」・箇所が合わない理由・空の状態・下端の項目を指さない入力（`sendForm`）を持ち、操作はコールバックで入口に知らせる。行の「修正」「削除」は `reviewRowActions`、書き換えている行の本文は `reviewEditForm`、消した行は `removedReviewRow` で描く（`focus` の接頭辞は空）。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）。描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
     props:
       - name: items
         type: ReviewState['items']
@@ -695,7 +707,7 @@ components:
       - name: editing
         type: string | null
         required: true
-        description: 本文を直しているコメントの ID
+        description: 本文を書き換えているコメントの ID（詳細パネルと共に 1 つ）
       - name: stale
         type: Map<string, string>
         required: true
@@ -719,7 +731,17 @@ components:
       - name: on
         type: '{close, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc}'
         required: true
-        description: 閉じる・チェック・すべて選ぶ・まとめて送る・行の項目を開く・直す・直しを送る・やめる・削除・元に戻す・箇所を外す
+        description: 閉じる・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す
+      - name: editError
+        type: string | null
+        required: false
+        default: 'null'
+        description: 本文を直せなかった理由
+      - name: editBody
+        type: string | null
+        required: false
+        default: 'null'
+        description: 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文）
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -951,6 +973,98 @@ components:
         type: number
         required: true
         description: レビュー中のコメントの件数（1 以上）
+  - name: reviewRowActions
+    title: 行の修正と削除
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: レビュー中のコメントの行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」のアイコンのボタン（`icon-btn`）を返す。読み上げの名前は「{向けた項目の ID} へのコメントを修正 / 削除」（項目を指さないコメントは「項目を指さないコメントを修正 / 削除」）、`title` は「修正」「削除」。`data-focus` は `{focus}edit-open:{ID}` と `{focus}remove:{ID}`。コメントの一覧と詳細パネルが使う
+    props:
+      - name: item
+        type: ReviewItem
+        required: true
+        description: 行のコメント
+      - name: focus
+        type: string
+        required: true
+        description: '`data-focus` の接頭辞（コメントの一覧は空、詳細パネルは `detail-`）。一覧と詳細パネルを同時に開いていても、描き直した後のフォーカスの戻し先を分ける'
+      - name: on
+        type: '{edit, remove}'
+        required: true
+        description: 修正（コメントの ID）・削除（コメントの ID）
+    unit_tests:
+      - name: test_review_row_actions
+        case: 正常
+        summary: 読み上げの名前と `title` と `data-focus` を付けて、押すと ID を知らせる
+        condition: '`parametrize`: D-1 へのコメント C-1 を `focus: "detail-"` で / 項目を指さないコメント C-2 を `focus: ""` で描き、2 つのボタンを押す'
+        mock: '`on.edit`・`on.remove`'
+        expected: 読み上げの名前が「D-1 へのコメントを修正」「D-1 へのコメントを削除」、`data-focus` が `detail-edit-open:C-1`・`detail-remove:C-1` / 「項目を指さないコメントを修正」「項目を指さないコメントを削除」、`data-focus` が `edit-open:C-2`・`remove:C-2`。どちらも `title` が「修正」「削除」で、`on.edit`・`on.remove` がその ID で 1 回ずつ
+  - name: reviewEditForm
+    title: 本文の書き換え
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 行の本文をその場で書き換える入力欄（`maxlength` 10000）と「キャンセル」「修正」の `form` を返す。「修正」で中身が空白だけなら送らず「コメントを入れてから直してください。」を出して入力欄を `aria-invalid="true"` にし、それ以外は `on.saveEdit` を呼ぶ。理由は `role="alert"` と印のアイコンで出す。入力欄の Esc は `preventDefault` と `stopPropagation` をしてから `on.cancelEdit` を呼ぶ（詳細の全画面の `dialog` の `cancel` を起こさない）。入力欄の `data-focus` は `{focus}edit:{ID}`。描いた後に入力欄へフォーカスを移すのは使う側。コメントの一覧と詳細パネルが使う
+    props:
+      - name: item
+        type: ReviewItem
+        required: true
+        description: 書き換えるコメント
+      - name: body
+        type: string | null
+        required: true
+        description: 入力欄に入れる中身（直せなかったときの書き換えていた中身。`null` なら元の本文）
+      - name: error
+        type: string | null
+        required: true
+        description: 直せなかった理由（`null` なら出さない）
+      - name: focus
+        type: string
+        required: true
+        description: '`data-focus` の接頭辞（`reviewRowActions` と同じ）'
+      - name: on
+        type: '{saveEdit, cancelEdit}'
+        required: true
+        description: 書き換えを送る（コメントの ID と中身）・書き換えを捨てる
+    unit_tests:
+      - name: test_review_edit_form
+        case: 正常
+        summary: 文言と、送る・捨てる
+        condition: '`parametrize`: 中身を「案 A に決める」にして「修正」を押す / 「キャンセル」を押す / 入力欄で Esc を押す'
+        mock: '`on.saveEdit`・`on.cancelEdit`'
+        expected: ボタンが「キャンセル」「修正」の順。`on.saveEdit` が C-1 と「案 A に決める」で 1 回 / `on.cancelEdit` が 1 回 / `on.cancelEdit` が 1 回で Esc の `keydown` の `defaultPrevented` が真
+      - name: test_review_edit_form_when_blank_or_error
+        case: 異常
+        summary: 空白だけは送らず、直せなかった理由と中身を出す
+        condition: '`parametrize`: 中身を空白だけにして「修正」を押す / `body: "案 A に決める"`・`error: "サーバーが止まっています。立ち上げ直してから直してください。"` で描く'
+        mock: '`on.saveEdit`'
+        expected: '`on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出て入力欄が `aria-invalid="true"` / 入力欄の中身が「案 A に決める」で、理由が `role="alert"` の要素に出る'
+  - name: removedReviewRow
+    title: 消した行
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 消したコメントの元の場所に置く点線の枠の行（`li.row.removed`）を返す。「コメントを削除しました。」（`role="status"`）と、戻す印の「元に戻す」のボタン（`data-focus` は `{focus}restore:{ID}`）を持つ。コメントの一覧と詳細パネルが使う
+    props:
+      - name: item
+        type: ReviewItem
+        required: true
+        description: 消したコメント
+      - name: focus
+        type: string
+        required: true
+        description: '`data-focus` の接頭辞（`reviewRowActions` と同じ）'
+      - name: on
+        type: '{restore}'
+        required: true
+        description: 元に戻す（コメントの ID）
+    unit_tests:
+      - name: test_removed_review_row
+        case: 正常
+        summary: 消した旨と元に戻すを出し、押すと ID を知らせる
+        condition: 'C-2 を `focus: "detail-"` で描き、「元に戻す」を押す'
+        mock: '`on.restore`'
+        expected: 「コメントを削除しました。」が `role="status"` の要素に出て、「元に戻す」の `data-focus` が `detail-restore:C-2`。`on.restore` が C-2 で 1 回
 functions:
   - name: filterRows
     title: 行の絞り込み

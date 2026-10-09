@@ -52,7 +52,7 @@ data_models:
         description: コメントの一覧でチェックしたコメントの ID（読んだときと溜めたときに足す）
       - name: removed
         type: ReviewState['items']
-        description: 一覧を開いている間に消したコメント（閉じるかまとめて送ると空にする）
+        description: コメントの一覧か詳細パネルで消したコメント（一覧と詳細パネルで同じものを見る。一覧を閉じるかまとめて送ると空にする。一覧を開いていない間は、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
       - name: stale
         type: Map<string, string>
         description: 箇所が合わないコメントの ID → 理由（箇所を外す・削除・次に送るで消す）
@@ -308,6 +308,7 @@ functions:
       キー操作: 文書の `keydown` で `Ctrl+K`（`metaKey` の `Cmd+K` を含む）を受けたら、入力欄にフォーカスがあっても既定の動作を止め、全体の検索を開く（開いていれば検索の言葉を選び直す）。`/` では開かない
       画面の作り: '`body` を窓の高さに固定し、トップバーとタブの帯の下に画面ごとの領域（画面設計の「画面の領域」）を 1 つ置く（`style.css`）。ページ全体はスクロールさせず、表・ボード（幅 721px 以上）とマップ（幅 901px 以上）は領域の高さいっぱいに広げて中でスクロールさせ、それより狭い幅では領域ごとスクロールさせる。`100dvh` から帯と余白を引く高さの計算（`.table-wrap`・`.map-wrap`・`.fg-wrap`・`.g3-wrap`）はやめる。詳細パネルの位置（`.panel` の `top`）は帯の下のまま'
       見出しのハッシュ: '5 で詳細パネルに `Route.heading` を渡す。詳細パネルの `on.heading` では `Route.heading` を書き換え、履歴に積まずにハッシュを置き換える（`navigate`、`push: false`）。項目へ移るときは `heading` を `null` にする'
+      詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
   - name: formKey
     title: 入力欄のキー
     kind: 関数
