@@ -446,7 +446,7 @@ functions:
       type: RemovedItem[]
       description: その種類の消した項目。`point` が `null` のときは空
     process: |-
-      1. `point.removed` のうち `REMOVED_KIND_TAB[kind]` が `kind` のものを取り出す
+      1. `point.removed` のうち、`REMOVED_KIND_TAB[消した項目の kind]` が引数の `kind` と等しいものを取り出す
       2. `compareIds` で ID の順に並べる
     unit_tests:
       - name: test_removed_of
