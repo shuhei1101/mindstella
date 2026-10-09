@@ -138,6 +138,29 @@ def test_main_when_unsupported_shell(
     assert snapshot_tree(tmp_path) == {}
 
 
+@pytest.mark.skipif(RUNNING_AS_ROOT, reason="root は権限を外しても書けます")
+def test_main_when_remove_not_writable(
+    register: ModuleType,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """remove で書き込めないとき、手で書く行は返さず error だけを返して 1（異常系）。"""
+    # 準備
+    _run_main(register, ["set"], tmp_path, capsys)
+    rc_file = tmp_path / ".bashrc"
+    rc_file.chmod(0o444)
+    before = snapshot_tree(tmp_path)
+    # 実行
+    code, report = _run_main(register, ["remove"], tmp_path, capsys)
+    # 検証
+    assert code == 1
+    assert report is not None
+    assert str(rc_file) in report["error"]
+    assert "manual_lines" not in report
+    assert snapshot_tree(tmp_path) == before
+
+
 def test_main_when_old_syntax(setup_scripts_dir: Path) -> None:
     """登録のスクリプトが Python 3.8 の構文で読め、型注釈を実行時に評価しない（正常系）。"""
     # 準備
@@ -209,19 +232,40 @@ def test_registration_dir(register: ModuleType, environ: dict[str, str], expecte
 
 
 @pytest.mark.parametrize(
-    ("shell", "system", "expected"),
+    ("shell", "system", "home_files", "expected"),
     [
-        pytest.param("/bin/bash", "Linux", Path("/h/.bashrc"), id="bash_linux"),
-        pytest.param("/bin/bash", "Darwin", Path("/h/.bash_profile"), id="bash_darwin"),
-        pytest.param("/bin/zsh", "Darwin", Path("/h/.zshrc"), id="zsh_darwin"),
+        pytest.param("/bin/bash", "Linux", None, "/h/.bashrc", id="bash_linux"),
+        pytest.param("/bin/bash", "Darwin", None, "/h/.bash_profile", id="bash_darwin"),
+        pytest.param("/bin/zsh", "Darwin", None, "/h/.zshrc", id="zsh_darwin"),
+        pytest.param(
+            "/bin/bash", "Darwin", [".profile"], "{home}/.profile", id="bash_darwin_profile_only"
+        ),
+        pytest.param(
+            "/bin/bash",
+            "Darwin",
+            [".bash_login", ".profile"],
+            "{home}/.bash_login",
+            id="bash_darwin_login_and_profile",
+        ),
     ],
 )
-def test_rc_file_path(register: ModuleType, shell: str, system: str, expected: Path) -> None:
-    """シェルと OS で分ける（正常系）。"""
+def test_rc_file_path(
+    register: ModuleType,
+    tmp_path: Path,
+    shell: str,
+    system: str,
+    home_files: list[str] | None,
+    expected: str,
+) -> None:
+    """シェルと OS で分け、macOS の bash は既にあるログインシェルの設定ファイルを選ぶ（正常系）。"""
+    # 準備（ファイルを置く行は tmp_path を HOME にし、置かない行は存在しない /h を HOME にする）
+    home = "/h" if home_files is None else str(tmp_path)
+    for name in home_files or []:
+        (tmp_path / name).write_text("", encoding="utf-8")
     # 実行
-    result = register.rc_file_path({"HOME": "/h", "SHELL": shell}, system=system)
+    result = register.rc_file_path({"HOME": home, "SHELL": shell}, system=system)
     # 検証
-    assert result == expected
+    assert result == Path(expected.format(home=tmp_path))
 
 
 @pytest.mark.parametrize(

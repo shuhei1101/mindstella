@@ -171,7 +171,8 @@ def test_run_launch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """3 つの値を 1 行ずつ出す（正常系）。"""
-    # 準備
+    # 準備（テストを流すシェルの CLAUDE_CONFIG_DIR で名前が変わらないよう外す）
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     folder = tmp_path / "家計簿アプリ"
     temp_root = tmp_path / "temp"
     temp_root.mkdir()

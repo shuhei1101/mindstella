@@ -111,8 +111,12 @@ def rc_file_path(environ: Mapping[str, str], *, system: str) -> Path:
     name = shell.rsplit("/", 1)[-1]
     home = Path(environ["HOME"])
     if name == "bash":
-        # macOS のターミナルは bash をログインシェルで開き、~/.bashrc を読まない
-        return home / (".bash_profile" if system == "Darwin" else ".bashrc")
+        if system != "Darwin":
+            return home / ".bashrc"
+        # macOS のターミナルは bash をログインシェルで開き、~/.bashrc を読まず、次の 3 つのうち最初にある 1 つだけを読む
+        candidates = [home / ".bash_profile", home / ".bash_login", home / ".profile"]
+        # どれも無ければ ~/.bash_profile を作る（既にあるものを置き去りにしない）
+        return next((path for path in candidates if path.exists()), candidates[0])
     if name == "zsh":
         return home / ".zshrc"
     raise UnsupportedShellError(shell)
@@ -349,9 +353,12 @@ def _absolute_dir(text: str, environ: Mapping[str, str]) -> Path:
     return Path(os.path.abspath(text))
 
 
-def _manual_lines(registration: Registration) -> list[str]:
-    """手でログインシェルの設定ファイルに書けば同じ登録になる行（印の範囲と alias の定義）を返す。"""
-    return [MARK_BEGIN, *render_shell(registration).splitlines(), MARK_END]
+def _manual_lines(registration: Registration, command: str) -> dict[str, list[str]]:
+    """手でログインシェルの設定ファイルに書けば同じ登録になる行（印の範囲と alias の定義）を、`manual_lines` のキーつきで返す。`remove` のときは持たない。"""
+    # 外したい利用者に登録の行を示すと案内が逆になる
+    if command == "remove":
+        return {}
+    return {"manual_lines": [MARK_BEGIN, *render_shell(registration).splitlines(), MARK_END]}
 
 
 def _print_json(value: dict[str, Any]) -> None:
@@ -410,7 +417,7 @@ def main(
     try:
         rc_file = rc_file_path(environ, system=system)
     except UnsupportedShellError as error:
-        _print_json({"error": str(error), "manual_lines": _manual_lines(updated or empty)})
+        _print_json({"error": str(error), **_manual_lines(updated or empty, args.command)})
         return 1
 
     # show は何も書かない
@@ -434,7 +441,7 @@ def main(
         try:
             write_files(contents)
         except NotWritableError as error:
-            _print_json({"error": str(error), "manual_lines": _manual_lines(updated or empty)})
+            _print_json({"error": str(error), **_manual_lines(updated or empty, args.command)})
             return 1
 
     _print_json(build_report(updated, rc_file=rc_file, shell_file=shell_file))
