@@ -1005,4 +1005,4 @@ tests/unit/scripts/test_versions.py::test_read_plugin_version PASSED     [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version PASSED [ 99%]
 tests/unit/scripts/test_versions.py::test_write_workspace_version_when_write_fails PASSED [100%]
 
-======================= 996 passed in 322.81s (0:05:22) ========================
+======================= 996 passed in 298.61s (0:04:58) ========================
