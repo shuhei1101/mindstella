@@ -1,0 +1,21 @@
+$ pytest tests/integration/server/test_launch.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/15e60edd-972d-480d-b788-a443b3599761/scratchpad/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/test-server-launch-tool-list
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 10 items
+
+tests/integration/server/test_launch.py::test_normal PASSED              [ 10%]
+tests/integration/server/test_launch.py::test_normal_when_external_settings PASSED [ 20%]
+tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded PASSED [ 30%]
+tests/integration/server/test_launch.py::test_normal_when_session_exists PASSED [ 40%]
+tests/integration/server/test_launch.py::test_error_when_dependency_missing PASSED [ 50%]
+tests/integration/server/test_launch.py::test_error_when_tmux_missing PASSED [ 60%]
+tests/integration/server/test_launch.py::test_error_when_claude_missing PASSED [ 70%]
+tests/integration/server/test_launch.py::test_error_when_plugin_not_installed PASSED [ 80%]
+tests/integration/server/test_launch.py::test_error_when_folder_missing PASSED [ 90%]
+tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere PASSED [100%]
+
+============================= 10 passed in 10.53s ==============================

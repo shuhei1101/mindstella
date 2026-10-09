@@ -9,11 +9,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from launch_fixtures import PLUGIN_DIR, LaunchSandbox, copy_plugin, read_mcp_config, session_name
+from launch_fixtures import (
+    PLUGIN_DIR,
+    LaunchSandbox,
+    copy_plugin,
+    read_mcp_config,
+    read_tool_names,
+    session_name,
+)
 from workspace_fixtures import MakeVenv, McpServer
-
-# MCP サーバーが返す mindstella のツールの数
-TOOL_COUNT = 25
 
 
 def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
@@ -34,15 +38,16 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     mindstella = read_mcp_config(started[0])["mcpServers"]["mindstella"]
     assert mindstella["command"] == str(ready_venv / "bin" / "python")
     assert mindstella["args"] == [str(PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py")]
-    # その設定どおりに MCP サーバーを立てると、mindstella のツールの一覧が返る
+    # その設定どおりに MCP サーバーを立てると、そのサーバーが登録する mindstella のツールの一覧が返る
+    server_script = Path(mindstella["args"][0])
     server = McpServer(
         python=mindstella["command"],
         env={**os.environ, "PYTHONUTF8": "1"},
         cwd=folder,
-        script=Path(mindstella["args"][0]),
+        script=server_script,
     )
     try:
-        assert len(server.list_tools()) == TOOL_COUNT
+        assert [tool["name"] for tool in server.list_tools()] == read_tool_names(server_script)
     finally:
         server.stop()
     # Claude Code に設定のフォルダの CLAUDE_CONFIG_DIR が渡る
