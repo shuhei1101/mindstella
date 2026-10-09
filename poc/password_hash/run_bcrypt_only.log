@@ -1,0 +1,16 @@
+{
+  "scheme": "bcrypt",
+  "switched_to_bcrypt": true,
+  "prefix": "2b",
+  "good_password_ok": true,
+  "bad_password_rejected": true,
+  "measure": {
+    "verify_sec_max": 0.18746927799656987,
+    "verify_sec_min": 0.1817713670025114,
+    "peak_rss_increase_kib": 0
+  },
+  "mixed_verify": {
+    "user-argon2id": "照合できない（argon2-cffi が無い）",
+    "user-bcrypt": true
+  }
+}

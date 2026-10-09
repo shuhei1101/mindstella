@@ -1,0 +1,23 @@
+macosx_11_0_arm64 argon2-cffi-bindings ok argon2_cffi_bindings-26.1.0-cp310-abi3-macosx_11_0_arm64.whl
+macosx_11_0_arm64 cffi ok cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl
+macosx_11_0_arm64 bcrypt ok bcrypt-5.0.0-cp39-abi3-macosx_10_12_universal2.whl
+macosx_10_13_x86_64 argon2-cffi-bindings ok argon2_cffi_bindings-25.1.0-cp39-abi3-macosx_10_9_x86_64.whl
+macosx_10_13_x86_64 cffi ok cffi-2.0.0-cp312-cp312-macosx_10_13_x86_64.whl
+macosx_10_13_x86_64 bcrypt ok bcrypt-5.0.0-cp39-abi3-macosx_10_12_universal2.whl
+macosx_10_15_x86_64 argon2-cffi-bindings ok argon2_cffi_bindings-25.1.0-cp39-abi3-macosx_10_9_x86_64.whl
+macosx_10_15_x86_64 cffi ok cffi-2.1.1-cp312-cp312-macosx_10_15_x86_64.whl
+macosx_10_15_x86_64 bcrypt ok bcrypt-5.0.0-cp39-abi3-macosx_10_12_universal2.whl
+macosx_13_0_x86_64 argon2-cffi-bindings ok argon2_cffi_bindings-25.1.0-cp39-abi3-macosx_10_9_x86_64.whl
+macosx_13_0_x86_64 cffi ok cffi-2.1.1-cp312-cp312-macosx_10_15_x86_64.whl
+macosx_13_0_x86_64 bcrypt ok bcrypt-5.0.0-cp39-abi3-macosx_10_12_universal2.whl
+win_amd64 argon2-cffi-bindings ok argon2_cffi_bindings-26.1.0-cp310-abi3-win_amd64.whl
+win_amd64 cffi ok cffi-2.1.1-cp312-cp312-win_amd64.whl
+win_amd64 bcrypt ok bcrypt-5.0.0-cp39-abi3-win_amd64.whl
+manylinux_2_28_x86_64 argon2-cffi-bindings ok argon2_cffi_bindings-26.1.0-cp310-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
+manylinux_2_28_x86_64 cffi ok cffi-2.0.0b1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+manylinux_2_28_x86_64 bcrypt ok bcrypt-5.0.0-cp39-abi3-manylinux_2_28_x86_64.whl
+manylinux_2_28_aarch64 argon2-cffi-bindings ok argon2_cffi_bindings-26.1.0-cp310-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl
+manylinux_2_28_aarch64 cffi ok cffi-2.0.0b1-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl
+manylinux_2_28_aarch64 bcrypt ok bcrypt-5.0.0-cp39-abi3-manylinux_2_28_aarch64.whl
+manylinux_2_17_armv7l argon2-cffi-bindings NG
+manylinux_2_17_armv7l bcrypt NG

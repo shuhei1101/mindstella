@@ -1,0 +1,50 @@
+== 
+{
+  "scheme": "argon2id",
+  "switched_to_bcrypt": false,
+  "prefix": "argon2id",
+  "good_password_ok": true,
+  "bad_password_rejected": true,
+  "measure": {
+    "verify_sec_max": 0.040131810994353145,
+    "verify_sec_min": 0.03492761300003622,
+    "peak_rss_increase_kib": 66104
+  },
+  "mixed_verify": {
+    "user-argon2id": true
+  }
+}
+== --block-argon2
+{
+  "scheme": "bcrypt",
+  "switched_to_bcrypt": true,
+  "prefix": "2b",
+  "good_password_ok": true,
+  "bad_password_rejected": true,
+  "measure": {
+    "verify_sec_max": 0.18374971799494233,
+    "verify_sec_min": 0.18142850000003818,
+    "peak_rss_increase_kib": 0
+  },
+  "mixed_verify": {
+    "user-argon2id": "照合できない（argon2-cffi が無い）",
+    "user-bcrypt": true
+  }
+}
+== 
+{
+  "scheme": "argon2id",
+  "switched_to_bcrypt": false,
+  "prefix": "argon2id",
+  "good_password_ok": true,
+  "bad_password_rejected": true,
+  "measure": {
+    "verify_sec_max": 0.039288920001126826,
+    "verify_sec_min": 0.03261799398751464,
+    "peak_rss_increase_kib": 66304
+  },
+  "mixed_verify": {
+    "user-argon2id": true,
+    "user-bcrypt": true
+  }
+}
