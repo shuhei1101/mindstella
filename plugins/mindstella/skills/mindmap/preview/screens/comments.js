@@ -6,6 +6,7 @@ var MindmapPreview;
     function commentNumber(id) {
         return Number(id.replace(/^\D+-/, ""));
     }
+    MindmapPreview.commentNumber = commentNumber;
     /** 送った結果の文言（印と文）。結果が無いときは null */
     function outcomeContent({ result, checkedCount }) {
         if (result === null) {
@@ -51,25 +52,27 @@ var MindmapPreview;
             children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.target] }), MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [title] })],
         });
     }
-    /** 本文をその場で直す入力欄と「やめる」「直す」 */
-    function editForm(item, props) {
+    /** 本文をその場で書き換える入力欄と「キャンセル」「修正」（コメントの一覧と詳細パネルが使う） */
+    function reviewEditForm({ item, body, error, focus, on, }) {
         const field = MindmapPreview.h({
             tag: "textarea",
             attrs: {
                 name: "body",
                 rows: 2,
                 "aria-label": `${item.id} へのコメントの本文`,
-                "data-focus": `edit:${item.id}`,
+                "data-focus": `${focus}edit:${item.id}`,
                 onkeydown: (event) => {
                     if (event.key === "Escape") {
+                        // 詳細の全画面の `dialog` の `cancel` を起こさない
+                        event.preventDefault();
                         event.stopPropagation();
-                        props.on.cancelEdit();
+                        on.cancelEdit();
                     }
                 },
             },
-            children: [props.editBody ?? item.body],
+            children: [body ?? item.body],
         });
-        const message = MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: props.editError ? [MindmapPreview.icon("alert"), props.editError] : [] });
+        const message = MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: error ? [MindmapPreview.icon("alert"), error] : [] });
         return MindmapPreview.h({
             tag: "form",
             attrs: {
@@ -79,11 +82,12 @@ var MindmapPreview;
                     event.preventDefault();
                     // 空白だけは送らない
                     if (field.value.trim() === "") {
+                        field.setAttribute("aria-invalid", "true");
                         message.replaceChildren(MindmapPreview.icon("alert"), "コメントを入れてから直してください。");
                         field.focus();
                         return;
                     }
-                    props.on.saveEdit(item.id, field.value);
+                    on.saveEdit(item.id, field.value);
                 },
             },
             children: [
@@ -93,13 +97,65 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "row-edit-actions" },
                     children: [
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: props.on.cancelEdit }, children: ["やめる"] }),
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["直す"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["修正"] }),
                     ],
                 }),
             ],
         });
     }
+    MindmapPreview.reviewEditForm = reviewEditForm;
+    /** 行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」（コメントの一覧と詳細パネルが使う） */
+    function reviewRowActions({ item, focus, on, }) {
+        const label = item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "row-actions" },
+            children: [
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: {
+                        class: "icon-btn",
+                        type: "button",
+                        "aria-label": `${label}を修正`,
+                        title: "修正",
+                        "data-focus": `${focus}edit-open:${item.id}`,
+                        onclick: () => on.edit(item.id),
+                    },
+                    children: [MindmapPreview.icon("edit")],
+                }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: {
+                        class: "icon-btn",
+                        type: "button",
+                        "aria-label": `${label}を削除`,
+                        title: "削除",
+                        "data-focus": `${focus}remove:${item.id}`,
+                        onclick: () => on.remove(item.id),
+                    },
+                    children: [MindmapPreview.icon("trash")],
+                }),
+            ],
+        });
+    }
+    MindmapPreview.reviewRowActions = reviewRowActions;
+    /** 消した行（元の場所に「コメントを削除しました。」と「元に戻す」を出す。コメントの一覧と詳細パネルが使う） */
+    function removedReviewRow({ item, focus, on, }) {
+        return MindmapPreview.h({
+            tag: "li",
+            attrs: { class: "row removed", "data-comment": item.id },
+            children: [
+                MindmapPreview.h({ tag: "span", attrs: { class: "removed-msg", role: "status" }, children: ["コメントを削除しました。"] }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "btn ghost", type: "button", "data-focus": `${focus}restore:${item.id}`, onclick: () => on.restore(item.id) },
+                    children: [MindmapPreview.icon("undo"), "元に戻す"],
+                }),
+            ],
+        });
+    }
+    MindmapPreview.removedReviewRow = removedReviewRow;
     /** コメントの行 */
     function commentRow(item, props) {
         const reason = props.stale.get(item.id);
@@ -137,7 +193,15 @@ var MindmapPreview;
                                     MindmapPreview.h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
                                 ],
                             }),
-                        props.editing === item.id ? editForm(item, props) : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                        props.editing === item.id
+                            ? reviewEditForm({
+                                item,
+                                body: props.editBody ?? null,
+                                error: props.editError ?? null,
+                                focus: "",
+                                on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
+                            })
+                            : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
                         reason === undefined
                             ? null
                             : MindmapPreview.h({
@@ -158,51 +222,7 @@ var MindmapPreview;
                             }),
                     ],
                 }),
-                MindmapPreview.h({
-                    tag: "div",
-                    attrs: { class: "row-actions" },
-                    children: [
-                        MindmapPreview.h({
-                            tag: "button",
-                            attrs: {
-                                class: "icon-btn",
-                                type: "button",
-                                "aria-label": `${label}を直す`,
-                                title: "直す",
-                                "data-focus": `edit-open:${item.id}`,
-                                onclick: () => props.on.edit(item.id),
-                            },
-                            children: [MindmapPreview.icon("edit")],
-                        }),
-                        MindmapPreview.h({
-                            tag: "button",
-                            attrs: {
-                                class: "icon-btn",
-                                type: "button",
-                                "aria-label": `${label}を削除`,
-                                title: "削除",
-                                "data-focus": `remove:${item.id}`,
-                                onclick: () => props.on.remove(item.id),
-                            },
-                            children: [MindmapPreview.icon("trash")],
-                        }),
-                    ],
-                }),
-            ],
-        });
-    }
-    /** 削除した行（元の場所に「コメントを削除しました。」と「元に戻す」を出す） */
-    function removedRow(item, props) {
-        return MindmapPreview.h({
-            tag: "li",
-            attrs: { class: "row removed", "data-comment": item.id },
-            children: [
-                MindmapPreview.h({ tag: "span", attrs: { class: "removed-msg" }, children: ["コメントを削除しました。"] }),
-                MindmapPreview.h({
-                    tag: "button",
-                    attrs: { class: "btn ghost", type: "button", "data-focus": `restore:${item.id}`, onclick: () => props.on.restore(item.id) },
-                    children: [MindmapPreview.icon("undo"), "元に戻す"],
-                }),
+                reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
             ],
         });
     }
@@ -291,7 +311,7 @@ var MindmapPreview;
                             : MindmapPreview.h({
                                 tag: "ul",
                                 attrs: { class: "comments-list" },
-                                children: rows.map(({ item, gone }) => (gone ? removedRow(item, props) : commentRow(item, props))),
+                                children: rows.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : commentRow(item, props))),
                             }),
                     ],
                 }),

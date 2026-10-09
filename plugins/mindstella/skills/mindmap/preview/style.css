@@ -733,6 +733,18 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .review-list li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 /* 最後の行: 下の線を引かない */
 .review-list li:last-child { border-bottom: 0; }
+/* 詳細パネルの行: 中身と行の操作の 2 列。操作は 1 行目の高さに揃える */
+.review-list li.review-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: start; }
+/* 行の中身: 箇所と本文（書き換えているときは入力）を縦に積む */
+.review-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+/* 書き換えている行: 入力を行の幅いっぱいに使う */
+.review-list li.review-row.editing { grid-template-columns: minmax(0, 1fr); }
+/* 詳細パネルの行の操作: 本文の 1 行目の高さに揃える */
+.review-list .row-actions { margin-top: -4px; }
+/* 詳細パネルの消した行: 文言と元に戻すを 1 行に並べ、点線の枠で消えたことを示す */
+.review-list li.row.removed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; margin: 6px 0; padding: 6px 6px 6px 12px; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius); }
+/* 消した行の次の行: 区切り線の重なりを避ける */
+.review-list li.row.removed + li { border-top: 0; }
 /* レビュー中のコメントの箇所: 名前と選んだ文を縦に積む */
 .review-loc { display: grid; gap: 4px; padding: 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
 /* レビュー中のコメントの本文: 改行を保ち、長い URL も折り返す */
@@ -802,6 +814,8 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 本文を直す入力欄: コメントの入力欄と同じ見た目 */
 .row-edit textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(10lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .row-edit textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 空白だけで修正しようとしたとき: 入力欄の枠を赤くする */
+.row-edit textarea[aria-invalid="true"] { border-color: var(--st-review); }
 /* 直せなかった理由 */
 .row-edit .send-msg { min-height: 0; padding-top: 0; }
 .row-edit .send-msg:empty { display: none; }

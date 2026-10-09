@@ -647,6 +647,16 @@ namespace MindmapPreview {
       closePill();
       document.body.classList.toggle("panel-open", route.id !== null && !route.full);
       markSelected(route.id);
+      // 別の項目へ移るかパネルを閉じた: コメントの一覧を開いていない間は、詳細パネルで消した行と書き換えを捨てる
+      if (route.id !== detailShown) {
+        detailShown = route.id;
+        if (!comment.listOpen) {
+          comment.removed = [];
+          editing = null;
+          editError = null;
+          editBody = null;
+        }
+      }
       // 開いている項目が無い: パネルも全画面も閉じる
       if (route.id === null) {
         flushDrafts();
@@ -679,7 +689,17 @@ namespace MindmapPreview {
           },
         },
         comment: serverMode
-          ? { form: formProps(route.id), reviews: comment.review.items.filter((item) => item.target === route.id) }
+          ? {
+            form: formProps(route.id),
+            reviews: comment.review.items.filter((item) => item.target === route.id),
+            edit: {
+              removed: comment.removed.filter((item) => item.target === route.id),
+              editing,
+              editError,
+              editBody,
+              on: reviewRowHandlers(REVIEW_FOCUS),
+            },
+          }
           : null,
         highlight: openedLocation(),
         diff: point,
@@ -849,6 +869,8 @@ namespace MindmapPreview {
     let editing: string | null = null;
     let editError: string | null = null;
     let editBody: string | null = null;
+    /** 詳細パネルが今出している項目（別の項目へ移ったか閉じたかを知るため） */
+    let detailShown: string | null = null;
     let freeFocused = false;
     /** 入力欄を差し替えている間か（外した入力欄の blur を受けないため） */
     let formRedrawing = false;
@@ -1108,21 +1130,7 @@ namespace MindmapPreview {
           },
           send: () => void sendChecked(),
           open: openRow,
-          edit: (id) => {
-            editing = id;
-            editError = null;
-            editBody = null;
-            renderComments();
-          },
-          saveEdit: (id, body) => void saveEdit(id, body),
-          cancelEdit: () => {
-            editing = null;
-            editError = null;
-            editBody = null;
-            renderComments();
-          },
-          remove: (id) => void removeComment(id),
-          restore: (id) => void restoreComment(id),
+          ...reviewRowHandlers(""),
           unloc: (id) => void detachLocation(id),
         },
       });
@@ -1199,20 +1207,22 @@ namespace MindmapPreview {
       refreshComments();
     };
 
-    /** 行の本文を直す */
-    const saveEdit = async (id: string, body: string): Promise<void> => {
+    /** 行の本文を直す。`toDetail` は詳細パネルから直したときに、描き直した後のフォーカスを移す先を渡す */
+    const saveEdit = async (id: string, body: string, toDetail: (key: string) => void): Promise<void> => {
       const result = await api.update(id, { body });
       if (!result.ok) {
         // 断られた・届かない: 入力を残して理由を出す
         editError = result.detail ?? "サーバーが止まっています。立ち上げ直してから直してください。";
         editBody = body;
-        renderComments();
+        refreshComments();
+        toDetail(`edit:${id}`);
         return;
       }
       editing = null;
       editError = null;
       editBody = null;
       await reloadAndRefresh();
+      toDetail(`edit-open:${id}`);
     };
 
     /** 行を消す（確認は挟まず、元の場所に「元に戻す」を出す） */
@@ -1239,6 +1249,39 @@ namespace MindmapPreview {
       });
       if (result.ok) comment.removed = comment.removed.filter((entry) => entry.id !== id);
       await reloadAndRefresh();
+    };
+
+    /** 詳細パネルの中の部品へフォーカスを移す（全画面のときは全画面の中） */
+    const focusDetail = (key: string): void => {
+      const host = route.full ? "dialog.full" : "aside.panel";
+      document.querySelector<HTMLElement>(`${host} [data-focus="${key}"]`)?.focus();
+    };
+
+    /** 行の修正・書き換えを送る・キャンセル・削除・元に戻す。コメントの一覧（接頭辞は空）と詳細パネル（`detail-`）で同じ処理を使い、詳細パネルのときだけ、描き直した後のフォーカスを移す */
+    const reviewRowHandlers = (focus: string): ReviewEditProps["on"] => {
+      const toDetail = (key: string): void => {
+        if (focus !== "") focusDetail(`${focus}${key}`);
+      };
+      return {
+        edit: (id) => {
+          editing = id;
+          editError = null;
+          editBody = null;
+          refreshComments();
+          toDetail(`edit:${id}`);
+        },
+        saveEdit: (id, body) => void saveEdit(id, body, toDetail),
+        cancelEdit: () => {
+          const canceled = editing;
+          editing = null;
+          editError = null;
+          editBody = null;
+          refreshComments();
+          if (canceled !== null) toDetail(`edit-open:${canceled}`);
+        },
+        remove: (id) => void removeComment(id).then(() => toDetail(`restore:${id}`)),
+        restore: (id) => void restoreComment(id).then(() => toDetail(`edit-open:${id}`)),
+      };
     };
 
     /** 箇所が合わないコメントから箇所を外し、項目へのコメントにする */

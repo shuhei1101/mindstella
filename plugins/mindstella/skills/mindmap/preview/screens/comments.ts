@@ -54,8 +54,27 @@ namespace MindmapPreview {
     };
   };
 
+  /** 詳細パネルが行の修正・削除・元に戻すのために受け取る引数（コールバックはコメントの一覧と同じ形） */
+  export type ReviewEditProps = {
+    /** その項目へのコメントのうち、消したもの（元の場所に「元に戻す」を出す） */
+    removed: ReviewItem[];
+    /** 本文を書き換えているコメントの ID（一覧と詳細パネルで 1 つ） */
+    editing: string | null;
+    /** 本文を直せなかった理由 */
+    editError: string | null;
+    /** 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文） */
+    editBody: string | null;
+    on: {
+      edit: (id: string) => void;
+      saveEdit: (id: string, body: string) => void;
+      cancelEdit: () => void;
+      remove: (id: string) => void;
+      restore: (id: string) => void;
+    };
+  };
+
   /** コメントの ID の連番 */
-  function commentNumber(id: string): number {
+  export function commentNumber(id: string): number {
     return Number(id.replace(/^\D+-/, ""));
   }
 
@@ -105,25 +124,39 @@ namespace MindmapPreview {
     });
   }
 
-  /** 本文をその場で直す入力欄と「やめる」「直す」 */
-  function editForm(item: ReviewItem, props: CommentsPanelProps): HTMLElement {
+  /** 本文をその場で書き換える入力欄と「キャンセル」「修正」（コメントの一覧と詳細パネルが使う） */
+  export function reviewEditForm({
+    item,
+    body,
+    error,
+    focus,
+    on,
+  }: {
+    item: ReviewItem;
+    body: string | null;
+    error: string | null;
+    focus: string;
+    on: { saveEdit: (id: string, body: string) => void; cancelEdit: () => void };
+  }): HTMLElement {
     const field = h({
       tag: "textarea",
       attrs: {
         name: "body",
         rows: 2,
         "aria-label": `${item.id} へのコメントの本文`,
-        "data-focus": `edit:${item.id}`,
+        "data-focus": `${focus}edit:${item.id}`,
         onkeydown: (event) => {
           if ((event as KeyboardEvent).key === "Escape") {
+            // 詳細の全画面の `dialog` の `cancel` を起こさない
+            event.preventDefault();
             event.stopPropagation();
-            props.on.cancelEdit();
+            on.cancelEdit();
           }
         },
       },
-      children: [props.editBody ?? item.body],
+      children: [body ?? item.body],
     });
-    const message = h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: props.editError ? [icon("alert"), props.editError] : [] });
+    const message = h({ tag: "p", attrs: { class: "send-msg failed", role: "alert" }, children: error ? [icon("alert"), error] : [] });
     return h({
       tag: "form",
       attrs: {
@@ -133,11 +166,12 @@ namespace MindmapPreview {
           event.preventDefault();
           // 空白だけは送らない
           if (field.value.trim() === "") {
+            field.setAttribute("aria-invalid", "true");
             message.replaceChildren(icon("alert"), "コメントを入れてから直してください。");
             field.focus();
             return;
           }
-          props.on.saveEdit(item.id, field.value);
+          on.saveEdit(item.id, field.value);
         },
       },
       children: [
@@ -147,9 +181,76 @@ namespace MindmapPreview {
           tag: "div",
           attrs: { class: "row-edit-actions" },
           children: [
-            h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: props.on.cancelEdit }, children: ["やめる"] }),
-            h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["直す"] }),
+            h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
+            h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["修正"] }),
           ],
+        }),
+      ],
+    });
+  }
+
+  /** 行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」（コメントの一覧と詳細パネルが使う） */
+  export function reviewRowActions({
+    item,
+    focus,
+    on,
+  }: {
+    item: ReviewItem;
+    focus: string;
+    on: { edit: (id: string) => void; remove: (id: string) => void };
+  }): HTMLElement {
+    const label = item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
+    return h({
+      tag: "div",
+      attrs: { class: "row-actions" },
+      children: [
+        h({
+          tag: "button",
+          attrs: {
+            class: "icon-btn",
+            type: "button",
+            "aria-label": `${label}を修正`,
+            title: "修正",
+            "data-focus": `${focus}edit-open:${item.id}`,
+            onclick: () => on.edit(item.id),
+          },
+          children: [icon("edit")],
+        }),
+        h({
+          tag: "button",
+          attrs: {
+            class: "icon-btn",
+            type: "button",
+            "aria-label": `${label}を削除`,
+            title: "削除",
+            "data-focus": `${focus}remove:${item.id}`,
+            onclick: () => on.remove(item.id),
+          },
+          children: [icon("trash")],
+        }),
+      ],
+    });
+  }
+
+  /** 消した行（元の場所に「コメントを削除しました。」と「元に戻す」を出す。コメントの一覧と詳細パネルが使う） */
+  export function removedReviewRow({
+    item,
+    focus,
+    on,
+  }: {
+    item: ReviewItem;
+    focus: string;
+    on: { restore: (id: string) => void };
+  }): HTMLElement {
+    return h({
+      tag: "li",
+      attrs: { class: "row removed", "data-comment": item.id },
+      children: [
+        h({ tag: "span", attrs: { class: "removed-msg", role: "status" }, children: ["コメントを削除しました。"] }),
+        h({
+          tag: "button",
+          attrs: { class: "btn ghost", type: "button", "data-focus": `${focus}restore:${item.id}`, onclick: () => on.restore(item.id) },
+          children: [icon("undo"), "元に戻す"],
         }),
       ],
     });
@@ -192,7 +293,15 @@ namespace MindmapPreview {
                   h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
                 ],
               }),
-            props.editing === item.id ? editForm(item, props) : h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+            props.editing === item.id
+              ? reviewEditForm({
+                item,
+                body: props.editBody ?? null,
+                error: props.editError ?? null,
+                focus: "",
+                on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
+              })
+              : h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
             reason === undefined
               ? null
               : h({
@@ -213,52 +322,7 @@ namespace MindmapPreview {
               }),
           ],
         }),
-        h({
-          tag: "div",
-          attrs: { class: "row-actions" },
-          children: [
-            h({
-              tag: "button",
-              attrs: {
-                class: "icon-btn",
-                type: "button",
-                "aria-label": `${label}を直す`,
-                title: "直す",
-                "data-focus": `edit-open:${item.id}`,
-                onclick: () => props.on.edit(item.id),
-              },
-              children: [icon("edit")],
-            }),
-            h({
-              tag: "button",
-              attrs: {
-                class: "icon-btn",
-                type: "button",
-                "aria-label": `${label}を削除`,
-                title: "削除",
-                "data-focus": `remove:${item.id}`,
-                onclick: () => props.on.remove(item.id),
-              },
-              children: [icon("trash")],
-            }),
-          ],
-        }),
-      ],
-    });
-  }
-
-  /** 削除した行（元の場所に「コメントを削除しました。」と「元に戻す」を出す） */
-  function removedRow(item: ReviewItem, props: CommentsPanelProps): HTMLElement {
-    return h({
-      tag: "li",
-      attrs: { class: "row removed", "data-comment": item.id },
-      children: [
-        h({ tag: "span", attrs: { class: "removed-msg" }, children: ["コメントを削除しました。"] }),
-        h({
-          tag: "button",
-          attrs: { class: "btn ghost", type: "button", "data-focus": `restore:${item.id}`, onclick: () => props.on.restore(item.id) },
-          children: [icon("undo"), "元に戻す"],
-        }),
+        reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
       ],
     });
   }
@@ -359,7 +423,7 @@ namespace MindmapPreview {
               : h({
                 tag: "ul",
                 attrs: { class: "comments-list" },
-                children: rows.map(({ item, gone }) => (gone ? removedRow(item, props) : commentRow(item, props))),
+                children: rows.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : commentRow(item, props))),
               }),
           ],
         }),
