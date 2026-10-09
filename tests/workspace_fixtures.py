@@ -526,3 +526,27 @@ def make_venv(tmp_path: Path) -> MakeVenv:
 def write_yaml(path: Path, data: Any) -> None:
     """日本語をそのままにして、キーの並びを保って YAML を書く。"""
     path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def plugin_version() -> str:
+    """プラグインの版（`plugins/mindstella/version.ini` の 1 行目）を返す。"""
+    path = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
+    return path.read_text(encoding="utf-8").splitlines()[0]
+
+
+def _version_key(version: str) -> tuple[int, ...]:
+    """`v0.5.0` の形の版を、大小を比べられる数の並びにする。"""
+    return tuple(int(part) for part in version.removeprefix("v").split("."))
+
+
+def step_versions_after(version: str | None) -> set[str]:
+    """`version` より新しく、プラグインの版までの移し替えの手順の版の集まりを返す。`None` は全ての版。"""
+    migrations = REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "migrations"
+    plugin = _version_key(plugin_version())
+    return {
+        folder.name
+        for folder in migrations.iterdir()
+        if folder.is_dir()
+        and (version is None or _version_key(version) < _version_key(folder.name))
+        and _version_key(folder.name) <= plugin
+    }
