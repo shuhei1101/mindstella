@@ -63,7 +63,7 @@ def _submission_now() -> str:
 
 
 def _make_staged(
-    root: Path, last_seq: int, pending: dict[str, list[str]] | None = None
+    root: Path, last_seq: int, pending: dict[str, Any] | None = None
 ) -> commands.Staged:
     """ワークスペースを読み、last_seq の記録を持つ、まだ何も当てていない Staged を作る。"""
     workspace = store.load_workspace(root)
@@ -305,6 +305,76 @@ def test_run_add_when_no_body(make_workspace: MakeWorkspace) -> None:
     assert "body" not in _read_items(root, "tasks.yaml")[0]
 
 
+def test_run_remove(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """項目と本文を消し、消した項目を記録する（正常系）。"""
+    # 準備
+    changes = {
+        "last_seq": 2,
+        "sets": [
+            {
+                "id": "V-1",
+                "at": FIXED_NOW,
+                "summary": "足す",
+                "until_seq": 2,
+                "added": ["N-1", "N-2"],
+                "changed": [],
+            }
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    root = make_workspace(
+        make_item("N-1", body="N-1.md", added_seq=1, seq=1),
+        make_item("N-2", title="重複したメモ", body="N-2.md", added_seq=2, seq=2),
+        bodies={"N-1.md": "残す本文\n", "N-2.md": "消す本文\n"},
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
+    )
+    # 実行
+    payload = commands.run_remove(root, "N-2")
+    # 検証
+    assert payload == {
+        "id": "N-2",
+        "kind": "note",
+        "title": "重複したメモ",
+        "file": ".mindstella/notes.yaml",
+        "body_removed": True,
+    }
+    assert [item["id"] for item in _read_items(root, "notes.yaml")] == ["N-1"]
+    assert (root / RECORD_DIR / "docs" / "N-1.md").exists()
+    assert not (root / RECORD_DIR / "docs" / "N-2.md").exists()
+    recorded = _read_changes(root)
+    assert recorded["last_seq"] == 3
+    assert recorded["pending"]["removed"] == [
+        {"id": "N-2", "kind": "note", "title": "重複したメモ", "seq": 3, "added_seq": 2}
+    ]
+
+
+def test_run_remove_when_referenced(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """ほかの記録が指していれば消さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-2", depends_on=["D-1"]))
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(errors.ItemReferencedError) as exc_info:
+        commands.run_remove(root, "D-1")
+    assert exc_info.value.lines == ["decisions.yaml: D-2: depends_on"]
+    assert snapshot_tree(root) == before
+
+
+def test_run_remove_when_not_found(
+    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
+) -> None:
+    """無い ID は消さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"))
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(ItemNotFoundError, match="N-9"):
+        commands.run_remove(root, "N-9")
+    assert snapshot_tree(root) == before
+
+
 def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """キーを置き換えて更新日時と編集した人を変える（正常系）。"""
     # 準備
@@ -372,6 +442,19 @@ def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
     assert new_staged.items["note"][0]["id"] == "N-1"
     assert new_staged.items["note"][0]["body"] == "N-1.md"
     assert new_staged.bodies["N-1.md"].text == "b"
+
+
+def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """消した ID を振らない（正常系）。"""
+    # 準備
+    removed = {"id": "N-2", "kind": "note", "title": "消したメモ", "seq": 2, "added_seq": 1}
+    pending = {"added": [], "changed": [], "removed": [removed]}
+    staged = _make_staged(make_workspace(make_item("N-1")), 2, pending)
+    item = {"title": "t", "content": "c"}
+    # 実行
+    _, result = commands.stage_add(staged, "note", item, now=_fixed_now)
+    # 検証
+    assert result["id"] == "N-3"
 
 
 def test_stage_update_when_limit_zero(

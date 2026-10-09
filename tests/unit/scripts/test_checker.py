@@ -10,7 +10,14 @@ import yaml
 import checker
 import commands
 import store
-from fixture_types import MakeItem, MakeSubmission, MakeWorkspace, WriteSubmissions
+from fixture_types import (
+    MakeComment,
+    MakeItem,
+    MakeSubmission,
+    MakeWorkspace,
+    WriteComments,
+    WriteSubmissions,
+)
 from workspace_fixtures import RECORD_DIR
 
 
@@ -250,6 +257,35 @@ def test_check_submissions(
     assert "D-8" in problems[0].detail
 
 
+def test_check_submissions_when_target_removed(
+    make_workspace: MakeWorkspace,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """取り込み済みの送信が消した項目を指しても拾わない（正常系）。"""
+    # 準備
+    changes = {
+        "last_seq": 2,
+        "sets": [],
+        "pending": {
+            "added": [],
+            "changed": [],
+            "removed": [
+                {"id": "N-1", "kind": "note", "title": "メモ", "seq": 2, "added_seq": 1}
+            ],
+        },
+    }
+    root = make_workspace(
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)}
+    )
+    write_submissions(root, make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00"))
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_submissions(workspace)
+    # 検証
+    assert problems == []
+
+
 def test_check_submissions_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """崩れた送信のファイルは schema にする（正常系）。"""
     # 準備
@@ -333,6 +369,94 @@ def test_check_history_when_broken_ref(make_workspace: MakeWorkspace, make_item:
         ("broken_ref", "changes.yaml", "sets[0].changed")
     ]
     assert "D-9" in problems[0].detail
+
+
+def test_check_history_when_item_removed(make_workspace: MakeWorkspace) -> None:
+    """消した項目の ID を参照切れにしない（正常系）。"""
+    # 準備
+    removed = {"id": "N-1", "kind": "note", "title": "メモ", "seq": 3, "added_seq": 1}
+    changes = {
+        "last_seq": 3,
+        "sets": [
+            {
+                "id": "V-2",
+                "at": "2026-10-02T08:00:00+00:00",
+                "summary": "消す",
+                "until_seq": 3,
+                "added": [],
+                "changed": [],
+                "removed": [removed],
+            },
+            {
+                "id": "V-1",
+                "at": "2026-10-01T08:00:00+00:00",
+                "summary": "足す",
+                "until_seq": 1,
+                "added": ["N-1"],
+                "changed": [],
+            },
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    root = make_workspace(
+        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)}
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_history(workspace)
+    # 検証
+    assert problems == []
+
+
+def test_find_referrers(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    valid_settings: dict[str, Any],
+) -> None:
+    """項目・納品物・コメントが指すのを拾う（正常系）。"""
+    # 準備
+    settings = {
+        **valid_settings,
+        "goal": {**valid_settings["goal"], "deliverables": [{"title": "仕様", "doc": "A-1"}]},
+    }
+    root = make_workspace(
+        make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"]),
+        make_item("T-1", **{"for": ["D-1"]}),
+        make_item("A-1"),
+        settings=settings,
+    )
+    write_comments(root, make_comment("C-1", target="A-1"))
+    workspace = store.load_workspace(root)
+    # 実行
+    decision_lines = checker.find_referrers(workspace, "D-1")
+    doc_lines = checker.find_referrers(workspace, "A-1")
+    # 検証
+    assert decision_lines == ["decisions.yaml: D-2: depends_on", "tasks.yaml: T-1: for"]
+    assert doc_lines == ["config.yaml: goal.deliverables[0].doc: doc", "comments.yaml: C-1: target"]
+
+
+def test_find_referrers_ignores_taken_submission(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+) -> None:
+    """取り込み済みの送信は拾わない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"))
+    write_submissions(
+        root,
+        make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00"),
+        make_submission("S-2", target="N-1"),
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    lines = checker.find_referrers(workspace, "N-1")
+    # 検証
+    assert lines == ["submissions.yaml: S-2: target"]
 
 
 @pytest.mark.parametrize(
