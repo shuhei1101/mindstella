@@ -183,7 +183,7 @@ namespace MindmapPreview {
     rows: Row[];
     /** ドロワーの条件にする列（`filterable` の列） */
     columns: (ConditionColumn & Pick<Column, "label">)[];
-    /** 文字の欄を出す列（`textColumns` の結果）。つながりは渡さない */
+    /** 文字の欄を出す列（`textColumns` の結果）。ネットワークは渡さない */
     textColumns?: Column[];
     filters: Filters;
     /** 今の条件に合う行の件数 */

@@ -15,14 +15,17 @@ __all__ = [
     "DEFAULT_KINDS",
     "ERROR_ALERT",
     "KINDS_WITHOUT_TERMS",
+    "LOOK_SELECT",
     "SAVE_DEFAULT_BUTTON",
     "SETTINGS_BUTTON",
     "SETTINGS_PANEL",
     "SETTINGS_PANEL_OPEN",
     "checked_kind_count",
     "graph_look",
+    "look_dropdown",
     "open_in",
     "open_settings",
+    "overrides_text",
     "pick_look",
     "read_config",
     "read_prefs",
@@ -41,6 +44,9 @@ SETTINGS_BUTTON = "header.topbar button.settings-btn"
 # 表示の設定のパネル（開いているときだけ `open` のクラスを持つ）
 SETTINGS_PANEL = "aside.settings-drawer"
 SETTINGS_PANEL_OPEN = f"{SETTINGS_PANEL}.open"
+
+# ネットワークのキャンバスの右上に重ねる、見た目のドロップダウン
+LOOK_SELECT = ".screen.graph .look-pick select"
 
 # 既定の保存の確かめ（開いているときだけ `open` 属性を持つ）
 CONFIRM = "dialog.sconfirm"
@@ -67,6 +73,15 @@ _SEED_PREFS_SCRIPT = "prefs => localStorage.setItem('mindmap-preview', JSON.stri
 # タブの帯に並ぶ画面の並びを読む
 _TABS_SCRIPT = "[...document.querySelectorAll('nav.tabbar a')].map((a) => a.dataset.tab)"
 
+# 見た目のドロップダウンの選んでいる値と、選択肢の値ごとの表示の名前を読む
+_LOOK_DROPDOWN_SCRIPT = """() => {
+    const select = document.querySelector('.screen.graph .look-pick select');
+    return {
+        selected: select.value,
+        labels: Object.fromEntries([...select.options].map((option) => [option.value, option.textContent])),
+    };
+}"""
+
 # 表のヘッダーの並びを読む
 _HEADERS_SCRIPT = "buttons => buttons.map(b => b.textContent)"
 
@@ -86,9 +101,22 @@ def open_settings(page: Page) -> None:
     page.wait_for_selector(SETTINGS_PANEL_OPEN)
 
 
-def pick_look(page: Page, label: str) -> None:
-    """表示の設定のパネルで、見た目を名前の行で選ぶ。"""
-    page.locator(f"{SETTINGS_PANEL} .st-look", has_text=label).locator("input").click()
+def pick_look(page: Page, value: str) -> None:
+    """ネットワークの見た目のドロップダウンで、見た目を選ぶ（値は glow・starlight・constellation・deep・dust）。"""
+    page.select_option(LOOK_SELECT, value)
+    page.wait_for_function(
+        "value => document.querySelector('.screen.graph')?.dataset.look === value", arg=value
+    )
+
+
+def look_dropdown(page: Page) -> dict[str, Any]:
+    """見た目のドロップダウンの選んでいる値（`selected`）と、選択肢の値ごとの表示の名前（`labels`）を返す。"""
+    return page.evaluate(_LOOK_DROPDOWN_SCRIPT)
+
+
+def overrides_text(page: Page) -> str:
+    """表示の設定のパネルの「この端末で変えている項目」の文字を返す。上書きが無ければ旨の文を返す。"""
+    return page.inner_text(f"{SETTINGS_PANEL} .st-over")
 
 
 def toggle_kind(page: Page, label: str) -> None:
@@ -112,12 +140,12 @@ def seed_prefs(page: Page, prefs: dict[str, Any]) -> None:
 
 
 def tab_keys(page: Page) -> list[str]:
-    """タブの帯に並ぶ画面の並びを返す（つながりは右端）。"""
+    """タブの帯に並ぶ画面の並びを返す（ネットワークは右端）。"""
     return page.evaluate(_TABS_SCRIPT)
 
 
 def graph_look(page: Page) -> str | None:
-    """つながりの画面に渡っている見た目を返す。"""
+    """ネットワークの画面に渡っている見た目を返す。"""
     return page.get_attribute(".screen.graph", "data-look")
 
 

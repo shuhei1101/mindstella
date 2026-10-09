@@ -21,6 +21,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
+from preview_network_helpers import ball_at, canvas_center
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -38,6 +39,9 @@ DIAGRAM_TIMEOUT_MS = 20_000
 
 # 書き換えや接続の切れが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
+
+# タブを移ったネットワークで、選んだ項目の玉が中心へ寄り終わるまで待つミリ秒
+TAB_MOVE_SETTLE_MS = 5_000
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -141,6 +145,35 @@ def test_normal_when_filter_in_hash(
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr').length === 3")
     assert _row_ids(page) == ["D-1", "D-3", "D-4"]
     assert "f." not in page.evaluate("location.hash")
+
+
+def test_normal_when_tab_moved_with_item(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """詳細パネルに項目を開いたままタブの帯でネットワークへ移ると、その項目を選んだネットワークを開く。戻ると検討事項と詳細パネルに戻る（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-3"))
+    page = open_preview(url, "#tab=decisions&id=D-3")
+    page.wait_for_selector("aside.panel.open")
+    # 実行（タブの帯のネットワークを押す）
+    page.click('nav.tabbar a[data-tab="graph"]')
+    page.wait_for_selector("#graph-canvas")
+    page.wait_for_timeout(TAB_MOVE_SETTLE_MS)
+    moved_hash = page.evaluate("location.hash")
+    moved_panel = page.inner_text("aside.panel .d-title")
+    selected_at_center = ball_at(page, *canvas_center(page))
+    # 実行（ブラウザの戻る）
+    page.go_back()
+    page.wait_for_selector("#decision-map, table.grid, .board")
+    # 検証
+    assert moved_hash == "#tab=graph&id=D-3"
+    assert page.get_attribute('nav.tabbar a[data-tab="graph"]', "aria-current") is None
+    assert moved_panel == "D-3の題"
+    # 選んだ項目の玉が中心へ寄る
+    assert selected_at_center is True
+    assert page.evaluate("location.hash") == "#tab=decisions&id=D-3"
+    assert page.get_attribute('nav.tabbar a[data-tab="decisions"]', "aria-current") == "page"
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
 
 
 def test_normal_when_item_not_found(
@@ -532,7 +565,7 @@ def test_normal_when_comment_added_on_map(
 def test_normal_when_comment_added_on_graph(
     write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
 ) -> None:
-    """つながりを開いたままコメントを溜めると、キャンバスを作り直さず、次のコマから新しい件数の印を出す（正常系）。"""
+    """ネットワークを開いたままコメントを溜めると、キャンバスを作り直さず、次のコマから新しい件数の印を出す（正常系）。"""
     # 準備
     url, _ = write_commented_preview()
     open_preview(url, "#tab=graph&id=D-2")

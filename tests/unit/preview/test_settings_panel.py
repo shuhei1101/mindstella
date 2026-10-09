@@ -43,7 +43,6 @@ PANEL_SCRIPT = """(args) => {
         message: null,
         storageOk: true,
         on: {
-            look: (value) => calls.push(["look", value]),
             kinds: (value) => calls.push(["kinds", [...value].sort()]),
             reset: () => calls.push(["reset"]),
             save: () => calls.push(["save"]),
@@ -56,12 +55,6 @@ PANEL_SCRIPT = """(args) => {
     const rowText = (input) =>
         (input.closest("label") ?? input.closest("li") ?? input.parentElement).textContent +
         (input.getAttribute("aria-label") ?? "");
-    // 「既定」の札（文字がちょうど「既定」の末端の要素）を持つ行か
-    const hasDefaultBadge = (input) =>
-        [...(input.closest("label") ?? input.closest("li") ?? input.parentElement).querySelectorAll("*")].some(
-            (element) => element.children.length === 0 && element.textContent.trim() === "既定"
-        );
-    const looks = ["グロウ", "星の光", "星図", "深宇宙", "星屑"];
     const radios = [...panel.querySelectorAll('input[type="radio"]')];
     const checkboxes = [...panel.querySelectorAll('input[type="checkbox"]')];
     const findCheckbox = (name) => checkboxes.find((box) => rowText(box).includes(name));
@@ -69,13 +62,10 @@ PANEL_SCRIPT = """(args) => {
     const result = {
         text: panel.textContent,
         buttons: [...panel.querySelectorAll("button")].map((button) => button.textContent.trim()),
-        defaultLooks: looks.filter((name) =>
-            radios.some((radio) => rowText(radio).includes(name) && hasDefaultBadge(radio))
-        ),
         radioCount: radios.length,
         checkboxCount: checkboxes.length,
         alwaysShownCheckboxes: checkboxes.filter((box) =>
-            ["概要", "つながり"].some((name) => rowText(box).includes(name))
+            ["概要", "ネットワーク"].some((name) => rowText(box).includes(name))
         ).length,
         allBoxIndeterminate: findCheckbox("すべて")?.indeterminate ?? null,
     };
@@ -103,7 +93,7 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize(
-    ("args", "expected_buttons", "absent_buttons", "expected_texts", "expected_default_looks"),
+    ("args", "expected_buttons", "absent_buttons", "expected_texts"),
     [
         pytest.param(
             {},
@@ -113,7 +103,6 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
                 "ワークスペースの既定のまま表示しています。",
                 "今の選びはワークスペースの既定と同じです。",
             ],
-            ["深宇宙"],
             id="no_override_same_as_default",
         ),
         pytest.param(
@@ -121,12 +110,11 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
                 "look": "dust",
                 "defaultLook": "starlight",
                 "defaultKinds": KINDS_WITHOUT_NOTES,
-                "overrides": ["つながりの見た目", "表示する種類"],
+                "overrides": ["ネットワークの見た目", "表示する種類"],
             },
             ["既定に戻す", "ワークスペースの既定にする"],
             [],
-            ["この端末で変えている項目", "つながりの見た目・表示する種類"],
-            ["星の光"],
+            ["この端末で変えている項目", "ネットワークの見た目・表示する種類"],
             id="overridden",
         ),
         pytest.param(
@@ -134,13 +122,12 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
                 "look": "dust",
                 "defaultLook": "starlight",
                 "defaultKinds": KINDS_WITHOUT_NOTES,
-                "overrides": ["つながりの見た目", "表示する種類"],
+                "overrides": ["ネットワークの見た目", "表示する種類"],
                 "canSave": False,
             },
             ["既定に戻す"],
             ["ワークスペースの既定にする"],
-            ["つながりの見た目・表示する種類"],
-            ["星の光"],
+            ["ネットワークの見た目・表示する種類"],
             id="export_cannot_save",
         ),
         pytest.param(
@@ -148,7 +135,6 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
             ["既定に戻す"],
             ["ワークスペースの既定にする"],
             ["今の選びはワークスペースの既定と同じです。"],
-            ["深宇宙"],
             id="override_same_as_default",
         ),
     ],
@@ -160,7 +146,6 @@ def test_settings_panel(
     expected_buttons: list[str],
     absent_buttons: list[str],
     expected_texts: list[str],
-    expected_default_looks: list[str],
 ) -> None:
     """上書きの有無と既定との違いで、既定に戻すと保存のボタンを出し分ける（正常系）。"""
     # 準備
@@ -171,8 +156,7 @@ def test_settings_panel(
     assert all(label in observed["buttons"] for label in expected_buttons)
     assert all(label not in observed["buttons"] for label in absent_buttons)
     assert all(text in observed["text"] for text in expected_texts)
-    assert observed["defaultLooks"] == expected_default_looks
-    assert observed["radioCount"] == 5
+    assert observed["radioCount"] == 0
 
 
 def test_settings_panel_when_kinds_changed(

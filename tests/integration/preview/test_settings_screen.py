@@ -1,4 +1,4 @@
-"""画面設計『表示の設定』（左から出すパネル。見た目・表示する種類・既定に戻す・既定が変わった知らせ）の結合テスト。"""
+"""画面設計『表示の設定』（左から出すパネル。表示する種類・既定に戻す・既定が変わった知らせ。見た目はネットワークのドロップダウンで選ぶ）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -11,11 +11,13 @@ from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_settings_helpers import (
     DEFAULT_KINDS,
+    LOOK_SELECT,
     SETTINGS_BUTTON,
     SETTINGS_PANEL,
     SETTINGS_PANEL_OPEN,
     open_settings,
     panel_text,
+    pick_look,
     read_config,
     read_prefs,
     tab_keys,
@@ -104,16 +106,15 @@ def test_look_override(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """見た目を選ぶと、その場でつながりに当たり、個人の上書きとして端末に残る。config.yaml は書き換えない（正常系）。"""
+    """見た目はネットワークのドロップダウンで選び、その場でネットワークに当たり、個人の上書きとして端末に残る。パネルは見た目を選ばせず、変えている項目に出す。config.yaml は書き換えない（正常系）。"""
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
     page = open_preview(url, "#tab=graph")
     initial_look = page.get_attribute(".screen.graph", "data-look")
-    open_settings(page)
     # 実行
-    page.locator(f"{SETTINGS_PANEL} .st-look", has_text="星屑").locator("input").click()
-    page.wait_for_selector(f'{SETTINGS_PANEL} input[value="dust"]:checked')
+    pick_look(page, "dust")
+    open_settings(page)
     # 検証
     assert initial_look == "deep"
     assert page.get_attribute(".screen.graph", "data-look") == "dust"
@@ -121,12 +122,16 @@ def test_look_override(
     assert prefs is not None
     assert prefs["look"] == "dust"
     assert "この端末で変えている項目" in panel_text(page)
-    assert "つながりの見た目" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert "ネットワークの見た目" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # パネルには見た目の選びを置かない
+    assert page.locator(f"{SETTINGS_PANEL} .st-look").count() == 0
+    assert page.locator(f"{SETTINGS_PANEL} input[type=radio]").count() == 0
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
     # 開き直しても、個人の上書きを使う
     page.reload()
     page.wait_for_selector(".screen.graph", timeout=RENDER_TIMEOUT_MS)
     assert page.get_attribute(".screen.graph", "data-look") == "dust"
+    assert page.eval_on_selector(LOOK_SELECT, "select => select.value") == "dust"
 
 
 def test_kinds_override(
@@ -135,7 +140,7 @@ def test_kinds_override(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """表示する種類を外すと、その種類のタブをトップバーから外す。概要とつながりは常に出す（正常系）。"""
+    """表示する種類を外すと、その種類のタブをトップバーから外す。概要とネットワークは常に出す（正常系）。"""
     # 準備
     url, _ = _preview(write_review_preview, make_item, valid_settings)
     page = open_preview(url)
@@ -160,7 +165,7 @@ def test_kinds_override(
     assert prefs is not None
     assert prefs["kinds"] == KINDS_WITHOUT_TERMS_LOGS
     assert "5/7" in panel_text(page)
-    # 概要とつながりの行はチェックの箱を持たない
+    # 概要とネットワークの行はチェックの箱を持たない
     assert page.locator(f"{SETTINGS_PANEL} .st-always input").count() == 0
     # 「すべて」で全ての種類に戻す
     page.locator(f"{SETTINGS_PANEL} .st-all input").click()
@@ -203,11 +208,11 @@ def test_reset(
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
     config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
-    page = open_preview(url, "#tab=decisions&view=table")
+    page = open_preview(url, "#tab=graph")
+    pick_look(page, "glow")
     page.evaluate("document.documentElement.dataset.theme = 'light'")
     page.click("header.topbar .top-btn")
     open_settings(page)
-    page.locator(f"{SETTINGS_PANEL} .st-look", has_text="グロウ").locator("input").click()
     toggle_kind(page, "メモ")
     page.wait_for_selector(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     overridden_text = page.inner_text(f"{SETTINGS_PANEL} .st-over")
@@ -215,7 +220,7 @@ def test_reset(
     page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
     page.wait_for_function("document.querySelectorAll('nav.tabbar a').length === 9")
     # 検証
-    assert "つながりの見た目" in overridden_text
+    assert "ネットワークの見た目" in overridden_text
     assert "表示する種類" in overridden_text
     assert "ライト / ダーク" in overridden_text
     prefs = read_prefs(page)
@@ -226,6 +231,8 @@ def test_reset(
     assert prefs["columns"] == {}
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
     assert page.evaluate("document.activeElement?.dataset.focus ?? null") == "over"
+    # 見た目もワークスペースの既定（深宇宙）に戻る
+    assert page.get_attribute(".screen.graph", "data-look") == "deep"
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 
 
@@ -235,7 +242,7 @@ def test_workspace_default(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """上書きが無い項目には config.yaml の既定を使い、既定の見た目に「既定」の札を付ける。上書きが無ければ既定のままの旨を出す（正常系）。"""
+    """上書きが無い項目には config.yaml の既定を使い、ドロップダウンの既定の見た目の選択肢に「（既定）」を添える。上書きが無ければ既定のままの旨を出す（正常系）。"""
     # 準備
     url, _ = _preview(
         write_review_preview,
@@ -258,10 +265,20 @@ def test_workspace_default(
         "notes",
         "graph",
     ]
-    badge = page.locator(f"{SETTINGS_PANEL} .st-look", has_text="既定")
-    assert badge.count() == 1
-    assert "星の光" in badge.inner_text()
-    assert page.locator(f'{SETTINGS_PANEL} input[value="starlight"]').is_checked()
+    options = page.eval_on_selector_all(
+        f"{LOOK_SELECT} option", "items => items.map(o => [o.value, o.textContent])"
+    )
+    assert options == [
+        ["glow", "グロウ"],
+        ["starlight", "星の光（既定）"],
+        ["constellation", "星図"],
+        ["deep", "深宇宙"],
+        ["dust", "星屑"],
+    ]
+    assert page.eval_on_selector(LOOK_SELECT, "select => select.value") == "starlight"
+    # パネルは見た目の選びを持たない
+    assert page.locator(f"{SETTINGS_PANEL} .st-look").count() == 0
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
     assert read_prefs(page) is None or read_prefs(page) == {
         "theme": None,
         "columns": {},
@@ -378,9 +395,9 @@ def test_defaults_changed_by_other(
     # 準備
     url, root = _preview(write_review_preview, make_item, valid_settings)
     page = open_preview(url, "#tab=graph")
-    open_settings(page)
     # 見た目を個人の上書きにしておく（新しい既定が当たらない項目）
-    page.locator(f"{SETTINGS_PANEL} .st-look", has_text="星屑").locator("input").click()
+    pick_look(page, "dust")
+    open_settings(page)
     # 実行（別のブラウザの代わりに、配信の既定の書き換えを直接呼ぶ）
     response = page.request.put(
         f"{url.rsplit('/', 1)[0]}/api/config/display",

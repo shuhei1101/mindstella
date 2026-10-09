@@ -43,6 +43,7 @@ SCRIPT_FILES = (
     "core/diff.js",
     "core/router.js",
     "core/api.js",
+    "core/lock.js",
     "components/view-switch.js",
     "components/topbar.js",
     "components/diff-mark.js",
@@ -64,6 +65,7 @@ SCRIPT_FILES = (
     "screens/settings.js",
     "screens/search.js",
     "screens/diagram-viewer.js",
+    "graph/looks.js",
     "graph/graph.js",
     "app.js",
 )

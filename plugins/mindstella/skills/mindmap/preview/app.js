@@ -34,9 +34,9 @@ var MindmapPreview;
     function tabLabel(key) {
         return key === "overview" ? "概要" : MindmapPreview.KIND_LABEL[key];
     }
-    /** 画面の名前（つながりは種類のタブに無いので、ここで持つ） */
+    /** 画面の名前（ネットワークは種類のタブに無いので、ここで持つ） */
     function screenName(tab) {
-        return tab === "graph" ? "つながり" : tabLabel(tab);
+        return tab === "graph" ? "ネットワーク" : tabLabel(tab);
     }
     /** `mindmap-data` の要素の中身を `JSON.parse` して返す。中身が空なら（サーバーの配信）null */
     function readEmbeddedData(doc) {
@@ -97,7 +97,7 @@ var MindmapPreview;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
         // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列の順に並べる
         const overrides = [
-            ...(prefs.look === null ? [] : ["つながりの見た目"]),
+            ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
             ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
@@ -312,6 +312,7 @@ var MindmapPreview;
         /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
         let shownHeading = null;
         const filterState = { byTab: {}, drawerOpen: false };
+        const lockState = { graph: null, map: null };
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
         const isNarrow = () => matchMedia(NARROW_QUERY).matches;
@@ -361,6 +362,42 @@ var MindmapPreview;
             // 表示しない種類の項目は、概要の上の詳細パネルで開く
             const tab = resolved.kinds.has(kind) ? kind : "overview";
             go({ tab, view: MindmapPreview.defaultView(tab), id, full: false, filters: {}, heading: null }, tab !== route.tab);
+        };
+        // ===== ロック =====
+        /** 効いているロック。画面ごとの `LockState` の項目が、その画面の絞り込みの条件を通る（描いている）ときだけその ID、通らないときは null（`LockState` は残し、条件を戻して描かれたらまたロック中に戻る） */
+        const effectiveLock = (key) => {
+            const id = lockState[key];
+            if (id === null)
+                return null;
+            const shown = key === "graph"
+                ? MindmapPreview.shownGraphIds({ index, filters: filterState.byTab["graph"] ?? {} })
+                : MindmapPreview.shownDecisionIds({ index, filters: filterState.byTab["decisions"] ?? {} });
+            return shown.has(id) ? id : null;
+        };
+        /** 玉か節（余白なら null）を押した、または `L` キーを押した。`lockTap` で判定し、`lock`・`unlock` のときだけ `LockState` を変えて画面に反映する。`open` は詳細を切り替え、`blank` は詳細を閉じて全体の表示へ戻し、`shake` は何も変えない（画面が鍵を震わせる） */
+        const lockPress = ({ key, pressed }) => {
+            const result = MindmapPreview.lockTap({ locked: effectiveLock(key), pressed, open: route.id });
+            if (result.action === "lock" || result.action === "unlock") {
+                lockState[key] = result.locked;
+                // ネットワークは視点を保ったまま中心と強調を寄せ、マップは詳細パネルをそのままに描き直す
+                if (key === "graph")
+                    MindmapPreview.setGraphLock(effectiveLock("graph"));
+                else
+                    redrawKeepingState();
+            }
+            else if (result.action === "open" && pressed !== null) {
+                openItem(pressed, false);
+            }
+            else if (result.action === "blank" && route.id !== null) {
+                closeDetail();
+            }
+            return result.action;
+        };
+        /** ネットワークの見た目のドロップダウンで選んだ値を個人の上書きに残す（ネットワークは作り直さず、次のコマから当てる） */
+        const changeLook = (value) => {
+            prefs.look = value;
+            changePrefs({ redrawMain: false });
+            MindmapPreview.setGraphLook(resolved.look);
         };
         // ===== 描く =====
         /** トップバーとタブの帯 */
@@ -426,7 +463,16 @@ var MindmapPreview;
                         visibleKinds: resolved.kinds,
                     });
                 case "decisions":
-                    return MindmapPreview.decisionsScreen({ index, route, on: { ...on, clear: closeDetail }, filters, drawerOpen, marks, comments });
+                    return MindmapPreview.decisionsScreen({
+                        index,
+                        route,
+                        on: { ...on, clear: closeDetail, lock: (id) => lockPress({ key: "map", pressed: id }) },
+                        lockedId: effectiveLock("map"),
+                        filters,
+                        drawerOpen,
+                        marks,
+                        comments,
+                    });
                 case "tasks":
                     return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks, comments });
                 case "docs":
@@ -434,11 +480,19 @@ var MindmapPreview;
                 case "graph":
                     return MindmapPreview.graphScreen({
                         index,
-                        on: { open: on.open, filter: changeFilters, closeDrawer },
+                        on: {
+                            open: on.open,
+                            filter: changeFilters,
+                            closeDrawer,
+                            lock: (id) => lockPress({ key: "graph", pressed: id }),
+                            look: changeLook,
+                        },
                         filters,
                         drawerOpen,
-                        selected: route.id,
+                        selectedId: route.id,
+                        lockedId: effectiveLock("graph"),
                         look: resolved.look,
+                        defaultLook: resolved.defaultLook,
                         comments,
                     });
                 default:
@@ -1209,10 +1263,6 @@ var MindmapPreview;
             message: display.message,
             storageOk: display.storageOk,
             on: {
-                look: (value) => {
-                    prefs.look = value;
-                    changePrefs({ redrawMain: true });
-                },
                 kinds: (kinds) => {
                     prefs.kinds = kinds;
                     changePrefs({ redrawMain: true });
@@ -1378,6 +1428,11 @@ var MindmapPreview;
             const previousDisplay = data.settings.display;
             data = result.data;
             index = MindmapPreview.buildIndex(data);
+            // ロックした項目が無くなっていれば、ロックを外す
+            if (lockState.graph !== null && !index.byId.has(lockState.graph))
+                lockState.graph = null;
+            if (lockState.map !== null && index.byId.get(lockState.map)?.kind !== "decisions")
+                lockState.map = null;
             // 表示の既定が変わった: 上書きを持たない項目に新しい既定を当て、知らせる（自分が既定にした直後の知らせは出さない）
             if (display.savedDisplay !== null && sameDisplay(display.savedDisplay, data.settings.display)) {
                 display.savedDisplay = null;
@@ -1408,6 +1463,21 @@ var MindmapPreview;
         };
         // ===== 操作と履歴 =====
         document.addEventListener("keydown", (event) => {
+            // L: ネットワークで、詳細を開いている項目をもう一度押したのと同じ規則でロックを付け外しする。修飾キーがあるとき・変換中・入力欄にフォーカスがあるとき・重ねる面を開いているときは受けない
+            if (event.key.toLowerCase() === "l" &&
+                !event.ctrlKey &&
+                !event.altKey &&
+                !event.metaKey &&
+                !event.isComposing &&
+                !MindmapPreview.isTyping(document.activeElement) &&
+                document.querySelector("dialog[open]") === null &&
+                document.querySelector(":popover-open") === null &&
+                matchMedia(MindmapPreview.LOCK_QUERY).matches &&
+                route.tab === "graph" &&
+                route.id !== null) {
+                if (lockPress({ key: "graph", pressed: route.id }) === "shake")
+                    MindmapPreview.shakeGraphKey();
+            }
             // Ctrl+K（macOS は Cmd+K）で全体の検索を開く。入力欄に入力中でも開き、開いているときは検索の言葉を選び直す
             if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
                 event.preventDefault();

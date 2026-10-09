@@ -34,7 +34,7 @@ requirements:
     source_kind: 制限なし
     value: Chrome と Edge の最新版（PC）。スマートフォンは閲覧できれば足りる
     rationale: コーディング規約『対応ブラウザ』の既定（PC は Chrome と Edge、スマートフォンは閲覧できれば足りる）に従う。使う描画のライブラリ（marked・DOMPurify・elkjs・mermaid）は jsDelivr の配布物を file:// で開いた Chromium で動かして確かめ、性能は Chrome 154 で測った。Edge・Firefox・Safari の実機では確かめていない
-    measurement: '実機での確認: Chrome と Edge で `preview.html` を file:// で開き、概要から詳細パネルとつながりまでの操作を最後まで済ませる'
+    measurement: '実機での確認: Chrome と Edge で `preview.html` を file:// で開き、概要から詳細パネルとネットワークまでの操作を最後まで済ませる'
   - name: 画面サイズ
     english_name: screen_size
     category: 動作環境
@@ -49,7 +49,7 @@ requirements:
     external_constraint: 制限なし
     source_kind: 制限なし
     value: マウスとキーボード（PC）。スマートフォンは閲覧できれば足りる
-    rationale: つながりの回転・拡大・玉への寄せ（カーソルを乗せる）と、マップ・図の移動（背景のドラッグ）はマウスの操作を前提にする。押せるものはボタンかリンクにし、全ての操作にキーボードで届く。タッチでの回転・拡大は対象にしない
+    rationale: ネットワークの回転・拡大・玉への寄せ（カーソルを乗せる）と、マップ・図の移動（背景のドラッグ）はマウスの操作を前提にする。押せるものはボタンかリンクにし、全ての操作にキーボードで届く。タッチでの回転・拡大は対象にしない
     measurement: '実機での確認: PC で、マウスで全ての操作を済ませ、続けてキーボードだけで項目を開く・閉じる・切り替える操作を済ませる'
   - name: 通信
     english_name: network
@@ -58,7 +58,7 @@ requirements:
     source_kind: 制限なし
     value: 'サーバーが配るプレビューを開くブラウザは、配信（`127.0.0.1`）と jsDelivr（描画のライブラリ）・Google Fonts（文字）へ HTTPS で届くこと。配る書き出しを開くのは通信しない。サーバーは `export` が書き出すときだけ jsDelivr へ HTTPS で届くこと（1 回の要求で接続と 1 回の読み取りをそれぞれ 30 秒まで待ち、取れなければ何も書かずにエラーで終える）。それ以外のツールと配信は外へ通信しない'
     rationale: サーバーの仕事はワークスペースのファイルの読み書きと端末の中への配信で、`export` だけが書き出すときに配布ファイルとライセンスの本文を jsDelivr から取る（ユーザーの決定。リポジトリには同梱しない）。サーバーが配るプレビューの描画のライブラリは jsDelivr から、文字は Google Fonts から読むと決めている（アーキテクチャ図の制約）。届かないときは、読めなかったライブラリの名前を画面に出す（インターフェース定義『プレビューを開く』の異常系）。配る書き出しは描画のライブラリを中に持つため、開くときに通信せず、読めなかったライブラリの知らせは出ない（インターフェース定義『配る書き出し』）
-  - name: つながりで扱う項目の数
+  - name: ネットワークで扱う項目の数
     english_name: graph_item_count
     category: 性能
     external_constraint: 制限なし
@@ -69,7 +69,7 @@ requirements:
     rationale: ユーザーが推奨案で決めた。1000 件は PoC で測った最大の件数で、1000 件まで全 60 条件（拡大・縮小・回転・押下）で、落ちたコマ・1 コマの処理時間・長いタスクの基準を満たした（https://github.com/shuhei1101/mindmap/pull/23）
     measurement: 'PoC と同じ条件で測る: 項目 1000 件・表示の幅 1280×800 と 1920×1080・画素の倍率 1 と 2・操作は拡大・縮小・回転・押下の各 5 秒'
     overflow: 1000 件を超えても件数で切らず全て描く。そのときの 1 コマの時間とメモリは確かめていない
-  - name: つながりの落ちたコマの割合
+  - name: ネットワークの落ちたコマの割合
     english_name: graph_dropped_frames
     category: 性能
     external_constraint: 画面の 1 コマの間隔（60Hz で約 16.7ms）
@@ -79,7 +79,7 @@ requirements:
     unit: '%以下（25ms を超えたコマの割合）'
     rationale: 1000 件の PoC の成功条件。採用した描き方（文字を一度だけ画像に描き、毎コマは画像を置く）で最大 0.9%。測った端末は Windows・Chrome 154・Ryzen 7 9800X3D・RTX 5070・画面 143Hz で、それより低い性能の端末は確かめていない。143Hz の画面では 25ms は 3 コマ分に当たるため、間隔の中央値の 1.5 倍を超えたコマも数えた。そちらは最大 1.6%（600 件の押下）で、1% をわずかに超える条件が 600 件以上に数件ある
     measurement: PoC と同じ条件で、操作中の各コマの間隔を測り、25ms を超えたコマの割合を求める
-  - name: つながりの 1 コマの処理時間
+  - name: ネットワークの 1 コマの処理時間
     english_name: graph_frame_time
     category: 性能
     external_constraint: 画面の 1 コマの間隔（60Hz で約 16.7ms）
@@ -89,14 +89,14 @@ requirements:
     unit: ms（1 コマの処理時間の p95 の上限）
     rationale: 1000 件の PoC の成功条件（JavaScript の側の処理時間）。採用した描き方で最大 5.0ms、長いタスクは 0 回だった。測った端末は Windows・Chrome 154・Ryzen 7 9800X3D・RTX 5070・画面 143Hz で、それより低い性能の端末は確かめていない
     measurement: PoC と同じ条件で、1 コマの JavaScript の処理時間を測り、p95 を求める。同じ条件で長いタスクが 0 回であることも見る
-  - name: つながりで使うメモリ
+  - name: ネットワークで使うメモリ
     english_name: graph_memory
     category: 性能
     external_constraint: 制限なし
     source_kind: PC 性能
     source: https://github.com/shuhei1101/mindmap/pull/23
     value: 2GB 以上の空きメモリ
-    rationale: 1000 件の PoC で、ブラウザ全体の私用メモリは最大 1,462MB（表示の幅 1920×1080 の押下）。安全率 20%（規約『資源の値の決め方』の既定）を足して 1,754MB とし、切りよく 2GB にする。ブラウザ全体はタブ 1 枚にブラウザ本体と描画の支援（GPU）のプロセスを含む値。PoC の画面にはつながり以外が無いため、本番の表や本文の分は含まない。JavaScript のヒープは 1000 件でも 6MB 以下で、重さの元はブラウザの描画の側（キャンバスと文字の画像）にある。測った端末は Windows・Chrome 154・Ryzen 7 9800X3D・RTX 5070・画面 143Hz
+    rationale: 1000 件の PoC で、ブラウザ全体の私用メモリは最大 1,462MB（表示の幅 1920×1080 の押下）。安全率 20%（規約『資源の値の決め方』の既定）を足して 1,754MB とし、切りよく 2GB にする。ブラウザ全体はタブ 1 枚にブラウザ本体と描画の支援（GPU）のプロセスを含む値。PoC の画面にはネットワーク以外が無いため、本番の表や本文の分は含まない。JavaScript のヒープは 1000 件でも 6MB 以下で、重さの元はブラウザの描画の側（キャンバスと文字の画像）にある。測った端末は Windows・Chrome 154・Ryzen 7 9800X3D・RTX 5070・画面 143Hz
     measurement: PoC と同じ条件で、操作の直後のブラウザ全体の私用メモリを測る
     breakdown:
       - part: 1000 件の最大

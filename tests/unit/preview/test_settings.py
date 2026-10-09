@@ -23,7 +23,6 @@ DRAWER_SCRIPT = """(kinds) => {
         message: null,
         storageOk: true,
         on: {
-            look: () => {},
             kinds: () => {},
             reset: () => {},
             save: () => {},

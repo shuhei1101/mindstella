@@ -160,11 +160,14 @@ namespace MindmapPreview {
     zoom: number | "fit";
     scroll: { left: number; top: number } | null;
     selected: string | null;
+    /** 前に押した節（素早い 2 回目を、描き直しで節が消えた位置を押しても、前に押した節への 2 回押しとして扱う） */
+    lastPress: Press | null;
   } = {
     keyword: "",
     zoom: "fit",
     scroll: null,
     selected: null,
+    lastPress: null,
   };
 
   /** 配置の結果（絞り込みの条件に合う検討事項の組み合わせごと） */
@@ -205,19 +208,24 @@ namespace MindmapPreview {
     return element;
   }
 
-  /** 木の節と枝を、配置された座標で描く。選んだ項目の根までの枝と依存の線を強調し、ほかを薄くする */
+  /** 木の節と枝を、配置された座標で描く。注目の起点（ロックした節、ロックしていなければ詳細を開いている節）の根までの枝と依存の線を強調し、ほかを薄くする */
   function drawMap({
     laid,
     canvas,
     selected,
-    open,
+    lockedId,
+    press,
     marks,
     comments,
   }: {
     laid: MapGraph;
     canvas: HTMLElement;
+    /** 詳細パネルで開いている項目 */
     selected: string | null;
-    open: (id: string) => void;
+    /** 効いているロック（絞り込みで描いていなければ null） */
+    lockedId: string | null;
+    /** 節を押した（押した節の ID と、押したイベント） */
+    press: (id: string, event: MouseEvent) => void;
     /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
     marks?: DiffMarks | undefined;
     /** 項目の ID → レビュー中のコメントの件数。渡したとき、節点の 2 行目の右端に印を置く場所を置く */
@@ -225,6 +233,10 @@ namespace MindmapPreview {
   }): void {
     const positions = new Map(laid.children.map((node) => [node.id, node]));
     const parentOf = new Map(laid.edges.map((edge) => [edge.targets[0], edge.sources[0]]));
+    // 強調の起点はロックした節。ロックしていなければ、詳細を開いている節
+    const opened = selected;
+    const lockedHere = lockedId !== null && positions.has(lockedId);
+    if (lockedHere) selected = lockedId;
     // 選んだ項目から根までの節
     const chain = new Set<string>();
     for (let id = selected; id !== null && id !== undefined; id = parentOf.get(id) ?? null) chain.add(id);
@@ -296,14 +308,20 @@ namespace MindmapPreview {
       return h({
         tag: "button",
         attrs: {
-          class: `map-node n-item${selected === item.id ? " sel" : ""}${hit ? " hit" : ""}${rel}`,
+          class: `map-node n-item${opened === item.id ? " sel" : ""}${lockedHere && lockedId === item.id ? " locked" : ""}${hit ? " hit" : ""}${rel}`,
           type: "button",
           "data-node": item.id,
           style,
           title: `${item.title}（${item.status ?? ""}）`,
-          onclick: () => open(item.id),
+          onclick: (event: Event) => press(item.id, event as MouseEvent),
         },
         children: [
+          // 鍵は節の右上の内側に置く。開いた鍵は詳細を開いている節にカーソルを乗せたときだけ、閉じた鍵はロック中いつも出す（出し分けは CSS）
+          h({
+            tag: "span",
+            attrs: { class: "lk", "aria-hidden": "true" },
+            children: [icon(lockedHere && lockedId === item.id ? "lock" : "unlock")],
+          }),
           h({
             tag: "span",
             attrs: { class: "r1" },
@@ -327,6 +345,8 @@ namespace MindmapPreview {
       });
     });
     canvas.classList.toggle("focusing", selected !== null);
+    // ロック中は、開いた鍵を出さない
+    canvas.classList.toggle("has-lock", lockedHere);
     canvas.style.width = `${laid.width ?? 0}px`;
     canvas.style.height = `${laid.height ?? 0}px`;
     canvas.replaceChildren(edgeSvg, ...nodes);
@@ -426,12 +446,16 @@ namespace MindmapPreview {
     on: ScreenProps["on"] & {
       /** 選びを外す（詳細パネルの「閉じる」と同じ） */
       clear: () => void;
+      /** マップの節か余白を押した（押した節の ID か `null`）。入口が `lockTap` で判定して `LockAction` を返す */
+      lock: (id: string | null) => LockAction;
     };
+    /** 効いているロック（入口の `LockState.map` の検討事項を描いていればその ID、絞り込みで描いていなければ `null`）。マップの節に閉じた鍵を出す */
+    lockedId: string | null;
   };
 
   /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
   function mapView(
-    { index, route, on, marks, comments }: DecisionsScreenProps,
+    { index, route, on, marks, comments, lockedId }: DecisionsScreenProps,
     {
       shown,
       chips,
@@ -505,7 +529,26 @@ namespace MindmapPreview {
     const shownScale = (): number =>
       mapState.zoom === "fit" ? Number.parseFloat(canvas.style.transform.slice(6)) : mapState.zoom;
 
-    /** 配置を求めて、マップを描く。選んだ項目が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
+    /** 効いているロック（幅 900px 以下では詳細が全面に出るので、ロックしない） */
+    const lockedNow = (): string | null => (matchMedia(LOCK_QUERY).matches ? lockedId : null);
+
+    /** ロックした節の鍵（描き直しても今の要素を引く） */
+    const lockedKey = (): HTMLElement | null => canvas.querySelector<HTMLElement>(".n-item.locked .lk");
+
+    /** 節（余白なら `null`）を押した。素早い 2 回目は、描き直しで節が消えた位置でも前に押した節への 2 回押しとして、ネットワークと同じ規則で入口へ渡す */
+    const press = (hit: string | null, event: { clientX: number; clientY: number }): void => {
+      // 幅 900px 以下の字下げの一覧ではロックせず、節を開く
+      if (!matchMedia(LOCK_QUERY).matches) {
+        if (hit !== null) on.open(hit);
+        return;
+      }
+      const pressInfo: Press = { time: performance.now(), x: event.clientX, y: event.clientY, id: hit };
+      const pressed = resolvePress({ last: mapState.lastPress, press: pressInfo });
+      mapState.lastPress = pressInfo;
+      if (on.lock(pressed) === "shake") shakeKeyElement(lockedKey);
+    };
+
+    /** 配置を求めて、マップを描く。注目の起点（ロックした節、ロックしていなければ詳細を開いている節）が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
     const draw = async (): Promise<void> => {
       outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments })));
       if (missingLibraries(["elkjs"]).length > 0) return;
@@ -513,11 +556,14 @@ namespace MindmapPreview {
       const graph = buildDecisionTree({ index, decisions: shown });
       emptyNotice.hidden = graph.children.length > 0;
       current = await layoutOf(graph, key);
-      drawMap({ laid: current, canvas, selected: route.id, open: on.open, marks, comments });
+      drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments });
       applyZoom();
-      const node = route.id === null ? undefined : current.children.find((n) => n.id === route.id);
+      // 中央へ送る節は、ロックした節。ロックしていなければ詳細を開いている節（ロック中にほかの節を開いても送り直さない）
+      const locked = lockedNow();
+      const anchorId = locked !== null && current.children.some((n) => n.id === locked) ? locked : route.id;
+      const node = anchorId === null ? undefined : current.children.find((n) => n.id === anchorId);
       const scale = shownScale();
-      if (node !== undefined && route.id !== mapState.selected) {
+      if (node !== undefined && anchorId !== mapState.selected) {
         wrap.scrollTo({
           left: ((node.x ?? 0) + node.width / 2) * scale - wrap.clientWidth / 2,
           top: ((node.y ?? 0) + node.height / 2) * scale - wrap.clientHeight / 2,
@@ -525,7 +571,7 @@ namespace MindmapPreview {
       } else if (mapState.scroll !== null) {
         wrap.scrollTo(mapState.scroll);
       }
-      mapState.selected = route.id;
+      mapState.selected = anchorId;
     };
 
     // ===== 道具の行 =====
@@ -625,10 +671,8 @@ namespace MindmapPreview {
       },
       { passive: false },
     );
-    // 余白を押したときは、選んでいる項目があるときだけ選びを外す
-    enableDragScroll(wrap, () => {
-      if (route.id !== null) on.clear();
-    });
+    // 余白を押したとき: 押した節が描き直しで消えた位置への素早い 2 回目は、その節への 2 回押しとして扱う。ロックの規則で、全体の表示へ戻す（`blank`）か鍵を震わせる
+    enableDragScroll(wrap, (event) => press(null, event));
 
     // elkjs が読めない: 知らせを出し、表示形式を表に切り替えると読めることを伝える
     const notice =
@@ -703,6 +747,12 @@ namespace MindmapPreview {
       },
       common.tags,
     ];
+  }
+
+  /** 絞り込みの条件に合う検討事項の ID（マップが描く節。ロックした節を描いているかの判定にも使う） */
+  export function shownDecisionIds({ index, filters }: { index: RecordIndex; filters: Filters }): Set<string> {
+    const columns = decisionColumns({ index, open: () => undefined });
+    return new Set(filterRows({ rows: index.data.decisions, columns, filters }).map((row) => row.id));
   }
 
   /** 検討事項の画面を返す */

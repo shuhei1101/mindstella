@@ -2,7 +2,7 @@
 // URL のハッシュの読み書きと履歴。画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形で持つ。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** タブの帯に並べる画面（つながりは帯の右端に別に置く） */
+    /** タブの帯に並べる画面（ネットワークは帯の右端に別に置く） */
     MindmapPreview.TAB_KEYS = [
         "overview",
         "decisions",

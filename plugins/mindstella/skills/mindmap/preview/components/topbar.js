@@ -1,5 +1,5 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端につながりの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 件数の表示を揺らさない上限 */
@@ -225,7 +225,7 @@ var MindmapPreview;
             children: [
                 ...tabs.map((tab) => tabLink(tab, current, onNavigate)),
                 MindmapPreview.h({ tag: "span", attrs: { class: "tab-gap" } }),
-                tabLink({ key: "graph", label: "つながり", icon: "orbit" }, current, onNavigate, "tab-special"),
+                tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
             ],
         });
         return MindmapPreview.h({ tag: "div", attrs: { class: "top" }, children: [bar, tabbar] });

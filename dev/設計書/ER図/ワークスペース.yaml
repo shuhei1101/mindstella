@@ -142,7 +142,7 @@ tables:
       - name: display
         title: 表示の既定
         type: object
-        description: 任意。プレビューのワークスペースの既定。`network_look`（つながりの見た目。`glow`・`starlight`・`constellation`・`deep`・`dust` のどれか。無ければ `deep`）と `visible_kinds`（表示する種類。`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の重複しない配列。無ければ全ての種類）を持つ。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と画面の『設定の既定の書き換え』が書く
+        description: 任意。プレビューのワークスペースの既定。`network_look`（ネットワークの見た目。`glow`・`starlight`・`constellation`・`deep`・`dust` のどれか。無ければ `deep`）と `visible_kinds`（表示する種類。`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs` の重複しない配列。無ければ全ての種類）を持つ。利用者の個人の上書き（ブラウザの `localStorage`）が無い項目に使う。`update_settings` と画面の『設定の既定の書き換え』が書く
         example: '{network_look: deep, visible_kinds: [decisions, tasks, research, docs, terms, notes, logs]}'
       - name: preview
         title: プレビューの配信

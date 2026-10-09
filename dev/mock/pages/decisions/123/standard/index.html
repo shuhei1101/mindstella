@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>検討事項 | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル（窓の高さに収めた領域・コメントの印を含む） -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足す・変える部品のスタイル（見た目の選び・マップの節の鍵・種類の行のホバー）と、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/123/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+<!-- data-initial: ハッシュが無いときに開く状態。data-open: 開いた後にモックが行う操作（settings = 表示の設定のパネルを開く） -->
+<body data-initial="tab=decisions&amp;view=map">
+  <!-- モック専用の操作列: ロック・コメントの件数・鍵とコメントの印の順の見本の状態（mock.js が入れる）と、パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span>モック</span>
+    <span id="mock-states"></span>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">decisions</a> / <a href="../index.md">123</a> / standard</nav>
+  </div>
+
+  <!-- 起動の前に見本の状態を作る → 見本の記録を埋め込み先へ入れる → ネットワークの 5 つの見た目の描き方 → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/123/assets/mock.js"></script>
+  <script src="../../../../refs/126/assets/data.js"></script>
+  <script src="../../../../refs/123/assets/stella.js"></script>
+  <script src="../../../../refs/123/assets/app.js"></script>
+</body>
+</html>

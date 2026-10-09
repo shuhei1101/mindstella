@@ -13,6 +13,7 @@ from preview_settings_helpers import (
     SETTINGS_PANEL,
     open_settings,
     panel_text,
+    pick_look,
     read_config,
     read_prefs,
     tab_keys,
@@ -39,13 +40,13 @@ def _open_changed(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> tuple[Page, Path]:
-    """見た目を星屑・用語集を外した選びにして表示の設定を開いたページと、ワークスペースのフォルダを返す。"""
+    """見た目（ネットワークのドロップダウン）を星屑・用語集（表示の設定のパネル）を外した選びにして表示の設定を開いたページと、ワークスペースのフォルダを返す。"""
     url, root = write_review_preview(
         make_item("D-1"), make_item("G-1"), make_item("N-1"), settings=valid_settings
     )
     page = open_preview(url, "#tab=graph")
+    pick_look(page, "dust")
     open_settings(page)
-    page.locator(f"{SETTINGS_PANEL} .st-look", has_text="星屑").locator("input").click()
     toggle_kind(page, "用語集")
     page.wait_for_selector(SAVE_DEFAULT_BUTTON)
     return page, root
@@ -85,8 +86,8 @@ def test_unchanged_item(
     # 準備
     url, _ = write_review_preview(make_item("D-1"), settings=valid_settings)
     page = open_preview(url, "#tab=graph")
+    pick_look(page, "glow")
     open_settings(page)
-    page.locator(f"{SETTINGS_PANEL} .st-look", has_text="グロウ").locator("input").click()
     # 実行
     page.click(SAVE_DEFAULT_BUTTON)
     page.wait_for_selector(CONFIRM_OPEN)

@@ -1,22 +1,35 @@
-"""つながりを辿る（3D のつながりで玉を押して詳細を開き、ドロワーで種類・状態・タグを絞る）の E2E テスト。"""
+"""ネットワークを辿る（3D のネットワークで玉を押して詳細を開き、ドロワーで種類・状態・タグを絞り、注目の起点の項目をロックして辿る）の E2E テスト。
+
+見た目の描き分け・状態の印・鍵の震えの見え方はキャンバスの中の絵なので確かめず、画面設計の結合テストが確かめる。
+"""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
+import pytest
 from playwright.sync_api import Page
 from preview_helpers import (
     DRAWER,
     OpenPreview,
     ServePreview,
     badge_text,
+    center_ball,
     checked_values,
     clear_condition,
     click_item_ball,
     close_drawer,
+    closed_keys,
+    install_closed_key_spy,
     open_drawer,
+    press_ball_keeping_detail,
+    press_blank,
+    press_center_ball,
     shown_ball_item_ids,
     toggle_value,
+    wait_camera_still,
+    wait_closed_key,
 )
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
@@ -79,7 +92,7 @@ def test_normal(
     colors = page.evaluate(DOT_COLORS_SCRIPT)
     assert len(set(colors)) == len(KIND_LABELS)
     close_drawer(page)
-    # D-3 の玉を押すと、詳細パネルに D-3 が開き、URL のハッシュがつながりと D-3 を指す
+    # D-3 の玉を押すと、詳細パネルに D-3 が開き、URL のハッシュがネットワークと D-3 を指す
     click_item_ball(page, "D-3")
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
@@ -178,3 +191,120 @@ def test_normal_when_filtered(
     # ドロワーの状態に、並んでいる項目の状態が出る
     assert statuses == ["要見直し", "決定済み", "進行中"]
     assert decided_ids == {"D-1"}
+
+
+# 閉じた鍵の位置を比べるときに許す差（px。カメラが止まっていれば動かない）
+KEY_POSITION_TOLERANCE_PX = 3
+
+# 鍵の震えが収まるまで待つ時間（ms。震えは約 1 秒）
+SHAKE_DONE_MS = 1_500
+
+
+def _panel_title(page: Page) -> str:
+    """詳細パネルの題を返す。"""
+    return page.inner_text("aside.panel .d-title")
+
+
+def _only_closed_key(page: Page) -> tuple[float, float]:
+    """カメラが止まってから、描いている閉じた鍵が 1 つだけであることを確かめて、その位置を返す。"""
+    wait_camera_still(page)
+    keys = closed_keys(page)
+    assert len(keys) == 1
+    return keys[0]
+
+
+def test_normal_when_locked(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """D-3 をロックして辿り、T-2 を開いても中心と強調は D-3 のまま、余白や開いた T-2 の二度押しでは鍵が震えるだけで、概要から戻ってもロックは残り、D-3 の二度押しでロックを外す（正常系）。"""
+    # 準備（動きを減らす設定にして、カメラが自動で回らないようにする）
+    page.emulate_media(reduced_motion="reduce")
+    install_closed_key_spy(page)
+    url = serve_preview(
+        *_records(make_item), settings=valid_settings, bodies={"A-1.md": "資料の本文\n"}
+    )
+    open_preview(url, "#tab=graph")
+    page.wait_for_selector("#graph-canvas")
+    # 実行・検証（D-3 の玉を押すと、D-3 の詳細パネルが開く。まだロックしない）
+    click_item_ball(page, "D-3")
+    wait_camera_still(page)
+    assert _panel_title(page) == "D-3の題"
+    assert closed_keys(page) == []
+    # 実行・検証（D-3 の玉をもう一度押すと、D-3 をロックして閉じた鍵を出し、詳細パネルは D-3 のまま）
+    press_center_ball(page)
+    wait_closed_key(page, shown=True)
+    locked_key = _only_closed_key(page)
+    assert _panel_title(page) == "D-3の題"
+    # 実行・検証（T-2 の玉を押すと、詳細パネルは T-2 に替わり、中心と閉じた鍵はロックした D-3 のまま）
+    t2_x, t2_y = press_ball_keeping_detail(page, "T-2")
+    assert "id=T-2" in page.evaluate("location.hash")
+    assert _only_closed_key(page) == pytest.approx(locked_key, abs=KEY_POSITION_TOLERANCE_PX)
+    # 実行・検証（T-2 の玉をもう一度押しても、鍵が震えるだけで、ロックも詳細パネルも変わらない）
+    page.mouse.move(t2_x, t2_y)
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    assert _panel_title(page) == "T-2の題"
+    assert _only_closed_key(page) == pytest.approx(locked_key, abs=KEY_POSITION_TOLERANCE_PX)
+    # 実行・検証（余白を押しても、鍵が震えるだけで、詳細パネルは T-2 のまま開いている）
+    press_blank(page)
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    assert page.is_visible("aside.panel.open")
+    assert _panel_title(page) == "T-2の題"
+    assert _only_closed_key(page) == pytest.approx(locked_key, abs=KEY_POSITION_TOLERANCE_PX)
+    # 実行・検証（概要のタブへ移ってネットワークのタブへ戻っても、閉じた鍵が残る）
+    page.click('nav.tabbar a[data-tab="overview"]')
+    page.wait_for_selector(".overview")
+    page.click('nav.tabbar a[data-tab="graph"]')
+    page.wait_for_selector("#graph-canvas")
+    wait_closed_key(page, shown=True)
+    _only_closed_key(page)
+    # 実行・検証（中心の玉 = ロックした D-3 を押すと、詳細パネルが D-3 に戻り、ロックは残る）
+    press_center_ball(page)
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    assert _panel_title(page) == "D-3の題"
+    _only_closed_key(page)
+    # 実行・検証（D-3 をもう一度押すと、ロックが外れて閉じた鍵が消え、詳細パネルは D-3 のまま）
+    press_center_ball(page)
+    wait_closed_key(page, shown=False)
+    assert _panel_title(page) == "D-3の題"
+
+
+def test_normal_when_opened_with_detail(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """検討事項で D-3 の詳細を開いたままタブの帯のネットワークへ移ると、詳細パネルは D-3 のまま開き、ネットワークも D-3 を選んだ項目として示す（正常系）。"""
+    # 準備
+    page.emulate_media(reduced_motion="reduce")
+    url = serve_preview(
+        *_records(make_item), settings=valid_settings, bodies={"A-1.md": "資料の本文\n"}
+    )
+    open_preview(url, "#tab=decisions")
+    # 実行（検討事項のボードで D-3 を押し、詳細パネルを開く）
+    page.click('.board .card[data-id="D-3"]')
+    page.wait_for_selector("aside.panel.open")
+    # 実行（タブの帯のネットワークを押す）
+    page.click('nav.tabbar a[data-tab="graph"]')
+    page.wait_for_selector("#graph-canvas")
+    center_ball(page)
+    # 検証
+    # 詳細パネルに D-3 が開いたままで、ネットワークが D-3 を選んだ項目として示す（D-3 の玉がキャンバスの中心にある）
+    assert page.is_visible("aside.panel.open")
+    assert _panel_title(page) == "D-3の題"
+    # URL のハッシュがネットワークと D-3 を指す
+    hash_text = page.evaluate("location.hash")
+    assert "tab=graph" in hash_text
+    assert "id=D-3" in hash_text
+    # 詳細パネルにネットワークへ移るボタンが無い
+    moves = page.locator("aside.panel button, aside.panel a").filter(
+        has_text=re.compile("ネットワーク|つながり")
+    )
+    assert moves.count() == 0

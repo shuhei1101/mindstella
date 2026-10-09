@@ -10,6 +10,8 @@ import json
 import os
 import subprocess
 import sys
+import threading
+from collections import deque
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +37,12 @@ MCP_PROTOCOL_VERSION = "2025-06-18"
 
 # サーバーが標準入力を閉じられてから終わるまで待つ上限秒数
 SERVER_EXIT_TIMEOUT_SEC = 5
+
+# サーバーの標準エラーのうち、失敗の報告に残す直近の行数（残りは読み捨てる）
+STDERR_KEEP_LINES = 200
+
+# 標準エラーを読み切るのを待つ上限秒数
+STDERR_JOIN_TIMEOUT_SEC = 1
 
 # 書き換えるツールが置く排他ロックのファイル（中身は空）。書き込みの前後の比べからは外す
 LOCK_FILE_NAME = ".mindstella.lock"
@@ -113,6 +121,10 @@ class McpServer:
             env=env,
             cwd=cwd,
         )
+        # 標準エラーのパイプは満杯になるとサーバーの書き込みが止まり、応答が返らなくなる。別のスレッドで読み続ける
+        self._stderr_lines: deque[str] = deque(maxlen=STDERR_KEEP_LINES)
+        self._stderr_reader = threading.Thread(target=self._drain_stderr, daemon=True)
+        self._stderr_reader.start()
         initialized = self._request(
             "initialize",
             {
@@ -123,6 +135,18 @@ class McpServer:
         )
         self.server_name: str = initialized["serverInfo"]["name"]
         self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+    def _drain_stderr(self) -> None:
+        """サーバーの標準エラーを終わりまで読み、直近の行だけを残す。"""
+        assert self.process.stderr is not None
+        for line in self.process.stderr:
+            self._stderr_lines.append(line)
+
+    def stderr_text(self) -> str:
+        """サーバーが標準エラーへ書いた直近の行を返す（サーバーが終わっていれば読み切ってから）。"""
+        if self.process.poll() is not None:
+            self._stderr_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
+        return "".join(self._stderr_lines)
 
     def _send(self, message: dict[str, Any]) -> None:
         """JSON-RPC の 1 通を、標準入力へ 1 行で書く。"""
@@ -136,9 +160,7 @@ class McpServer:
         self._next_id += 1
         self._send({"jsonrpc": "2.0", "id": self._next_id, "method": method, "params": params})
         line = self.process.stdout.readline()
-        assert line, (
-            f"サーバーが応答せずに終わりました: {self.process.stderr.read() if self.process.stderr else ''}"
-        )
+        assert line, f"サーバーが応答せずに終わりました: {self.stderr_text()}"
         response = json.loads(line)
         assert response["id"] == self._next_id
         return response["result"]
@@ -176,6 +198,8 @@ class McpServer:
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()
+        # 標準エラーは読むスレッドが終わりまで読むので、読み切ってから閉じる
+        self._stderr_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
         for stream in (self.process.stdout, self.process.stderr):
             if stream is not None:
                 stream.close()

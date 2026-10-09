@@ -28,7 +28,7 @@ const meta = {
     counts: COUNTS,
     overrides: [],
     canSave: true,
-    on: { look: fn(), kinds: fn(), reset: fn(), save: fn(), close: fn() },
+    on: { kinds: fn(), reset: fn(), save: fn(), close: fn() },
   },
 } satisfies Meta<MindmapPreview.SettingsPanelProps>;
 
@@ -45,7 +45,7 @@ export const Overridden: Story = {
     look: "dust",
     defaultLook: "starlight",
     defaultKinds: KINDS_WITHOUT_NOTES,
-    overrides: ["つながりの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"],
+    overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"],
   },
 };
 
@@ -62,7 +62,7 @@ export const Saved: Story = {
   args: {
     look: "glow",
     defaultLook: "glow",
-    overrides: ["つながりの見た目"],
+    overrides: ["ネットワークの見た目"],
     message: { kind: "ok", text: "ワークスペースの既定にしました（10/05 14:20）。" },
   },
 };
@@ -78,17 +78,17 @@ export const DefaultsArrived: Story = {
 
 /** 端末の保存領域に書けない。選んだ表示は当てるが、開いている間だけであることを先頭に出す */
 export const NoStorage: Story = {
-  args: { storageOk: false, look: "glow", overrides: ["つながりの見た目"] },
+  args: { storageOk: false, look: "glow", overrides: ["ネットワークの見た目"] },
 };
 
 /** 配る書き出し。見た目・表示する種類は変えられ、「ワークスペースの既定にする」は出さない */
 export const Export: Story = {
-  args: { canSave: false, look: "glow", overrides: ["つながりの見た目"] },
+  args: { canSave: false, look: "glow", overrides: ["ネットワークの見た目"] },
 };
 
 /** 幅 390px。画面の幅いっぱいに出し、行の高さと押せる的は変えない */
 export const Narrow: Story = {
-  args: { look: "dust", defaultLook: "starlight", overrides: ["つながりの見た目", "表示する種類"] },
+  args: { look: "dust", defaultLook: "starlight", overrides: ["ネットワークの見た目", "表示する種類"] },
   parameters: {
     viewport: {
       options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },

@@ -622,3 +622,95 @@ def test_normal_when_background_pressed(
     assert _map_scroll(page) == pytest.approx(
         _smaller_of_each(scroll_before_press, scroll_limits), abs=SCROLL_TOLERANCE_PX
     )
+
+
+# ロックの鍵の震えが収まるまで待つ時間（ms。震えは約 1 秒）
+SHAKE_DONE_MS = 1_500
+
+# ロックした節（閉じた鍵を出す）と、鍵を表示している節の ID を返す
+LOCKED_NODE = "#decision-map button.n-item.locked"
+SHOWN_KEYS_SCRIPT = """() => [...document.querySelectorAll('#decision-map button.n-item')]
+    .filter(node => getComputedStyle(node.querySelector('.lk')).display !== 'none')
+    .map(node => node.dataset.node)"""
+
+
+def _locked_ids(page: Page) -> list[str]:
+    """ロックした節の ID を返す。"""
+    ids: list[str] = page.eval_on_selector_all(
+        LOCKED_NODE, "nodes => nodes.map(n => n.dataset.node)"
+    )
+    return ids
+
+
+def _shown_key_ids(page: Page) -> list[str]:
+    """鍵を表示している節の ID を返す。"""
+    ids: list[str] = page.evaluate(SHOWN_KEYS_SCRIPT)
+    return ids
+
+
+def _panel_title(page: Page) -> str:
+    """詳細パネルの題を返す。"""
+    return page.inner_text("aside.panel .d-title")
+
+
+def test_normal_when_locked(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """開いている節をもう一度押してロックし、ほかの節を開いても強調はロックした節のまま、余白を押しても表示を変えず、ロックした節を二度押してロックを外す（正常系）。"""
+    # 準備
+    url = serve_preview(*_decisions(make_item), settings=_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions&view=map", width=WIDE_WIDTH)
+    page.wait_for_selector("#decision-map button.n-item")
+    # ドロワーの状態で決定済みも選んで D-1 を出し、D-3 の前提の依存の線が描かれるようにする
+    open_drawer(page)
+    toggle_value(page, "status", "決定済み")
+    page.wait_for_selector('#decision-map button[data-node="D-1"]')
+    close_drawer(page)
+    # 実行・検証（D-3 を押すと、D-3 の枝と依存を強調し、詳細パネルを開く。まだロックしない）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector("#decision-map.focusing")
+    page.wait_for_selector("aside.panel.open")
+    assert _panel_title(page) == "D-3の題"
+    assert _locked_ids(page) == []
+    # 実行・検証（D-3 をもう一度押すと、D-3 をロックして節に閉じた鍵を出す）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector(f'{LOCKED_NODE}[data-node="D-3"]')
+    assert _shown_key_ids(page) == ["D-3"]
+    assert _panel_title(page) == "D-3の題"
+    # 実行・検証（D-5 を押すと、詳細パネルは D-5 に替わり、強調はロックした D-3 のまま。D-5 の節は薄くならない）
+    page.click('#decision-map button[data-node="D-5"]')
+    page.wait_for_function("location.hash.includes('id=D-5')")
+    page.wait_for_selector("aside.panel.open")
+    assert _panel_title(page) == "D-5の題"
+    assert _locked_ids(page) == ["D-3"]
+    related = page.eval_on_selector_all(
+        "#decision-map button.n-item.rel", "nodes => nodes.map(n => n.dataset.node)"
+    )
+    assert sorted(related) == ["D-1", "D-3", "D-5"]
+    assert page.locator("#decision-map .edge-tree.rel").count() == TREE_EDGES_TO_ROOT
+    assert page.locator("#decision-map .edge-dep.rel").count() == DEPENDENCY_EDGES
+    page.wait_for_function(
+        "getComputedStyle(document.querySelector('#decision-map [data-node=\"D-5\"]')).opacity === '1'"
+    )
+    # 実行・検証（余白を押しても、詳細パネルは D-5 のまま、ロックは D-3 のまま。URL のハッシュは D-5 を指す）
+    blank = _blank_point(page)
+    page.mouse.move(blank["x"], blank["y"])
+    page.mouse.down()
+    page.mouse.up()
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    assert page.is_visible("aside.panel.open")
+    assert _panel_title(page) == "D-5の題"
+    assert _locked_ids(page) == ["D-3"]
+    assert "id=D-5" in page.evaluate("location.hash")
+    # 実行・検証（D-3 を押すと詳細パネルが D-3 に戻り、ロックは D-3 のまま）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_function("location.hash.includes('id=D-3')")
+    assert _panel_title(page) == "D-3の題"
+    assert _locked_ids(page) == ["D-3"]
+    # 実行・検証（D-3 をもう一度押すと、ロックが外れる）
+    page.click('#decision-map button[data-node="D-3"]')
+    page.wait_for_selector(LOCKED_NODE, state="detached")
+    assert _panel_title(page) == "D-3の題"
