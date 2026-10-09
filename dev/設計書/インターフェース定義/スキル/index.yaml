@@ -7,3 +7,5 @@ items:
     summary: '/mindstella:session: 取り込み・ヒアリング・リサーチ・方針転換・プレビュー・ゴール判定を回す'
   - page: ワークスペースの移し替え.yaml
     summary: '/mindstella:upgrade: ワークスペースの版とプラグインの版を比べ、版ごとの手順で今の版へ移し替える'
+  - page: 起動スクリプトの登録.yaml
+    summary: 'register.py: 起動スクリプトを呼ぶ mindstella・mindstella-{名前} と環境変数を、ログインシェルの設定に登録・読み返し・外す'
