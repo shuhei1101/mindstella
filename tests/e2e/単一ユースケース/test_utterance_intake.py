@@ -166,7 +166,7 @@ def test_normal(
     assert len(changes["sets"]) == 1
     assert changes["sets"][0]["summary"] == INTAKE_SUMMARY
     assert changes["sets"][0]["added"] == ["D-1", "D-2", "D-3", "T-1", "L-1"]
-    assert pending == {"added": [], "changed": []}
+    assert pending == {"added": [], "changed": [], "removed": []}
 
 
 def test_normal_when_diagram_kept_as_doc(
