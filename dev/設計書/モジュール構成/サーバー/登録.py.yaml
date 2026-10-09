@@ -1,5 +1,7 @@
 title: "サーバー / 登録"
 lead: セットアップのスキルが Bash で呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。
+test_files:
+  - tests/unit/scripts/test_register.py
 directory: |-
   ```
   plugins/mindstella/skills/setup/scripts/
