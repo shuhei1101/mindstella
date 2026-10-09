@@ -75,6 +75,9 @@ data_models:
       - name: changed
         type: list[str]
         description: 変えた項目の ID
+      - name: removed
+        type: NotRequired[list[RemovedItem]]
+        description: 消した項目。消した項目が無いまとまりはキーを持たない
   - name: Changes
     title: まとまりの記録
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -85,16 +88,56 @@ data_models:
     properties:
       - name: last_seq
         type: int
-        description: 最後に振った通し番号（変更履歴を積むとき・項目を足すとき・保持する回数が 0 で値を変えるときに進む）
+        description: 最後に振った通し番号（変更履歴を積むとき・項目を足すとき・項目を消すとき・保持する回数が 0 で値を変えるときに進む）
       - name: sets
         type: list[ChangeSet]
         description: 新しい順のまとまり
       - name: pending
-        type: dict[Literal['added', 'changed'], list[str]]
-        description: まだまとめていない項目の ID
+        type: Pending
+        description: まだまとめていない変更。`added`・`changed`（項目の ID）と、任意の `removed`（`list[RemovedItem]`。無ければ消した項目なし）を持つ `TypedDict`
       - name: read_seq
         type: NotRequired[int]
         description: AI が最後に読んだ時点。`changes_since_read` を一度も呼んでいなければキーが無い
+  - name: RemovedItem
+    title: 消した項目の記録
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の削除と取り下げ
+    role: DTO
+    summary: '`changes.yaml` の `pending.removed`・`sets[].removed` の 1 要素'
+    description: '`TypedDict`。'
+    properties:
+      - name: id
+        type: str
+        description: 消した項目の ID
+      - name: kind
+        type: Kind
+        description: 消した項目の種類
+      - name: title
+        type: str
+        description: 消したときのタイトル
+      - name: seq
+        type: int
+        description: 消したときに振った通し番号
+      - name: added_seq
+        type: int
+        description: 消した項目が持っていた `added_seq`（持たなければ 0）
+  - name: Pending
+    title: まだまとめていない変更
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    role: DTO
+    summary: '`changes.yaml` の `pending`'
+    description: '`TypedDict`。'
+    properties:
+      - name: added
+        type: list[str]
+        description: 足した項目の ID（書き換えた順）
+      - name: changed
+        type: list[str]
+        description: 変えた項目の ID（書き換えた順。足した項目は入れない）
+      - name: removed
+        type: NotRequired[list[RemovedItem]]
+        description: 消した項目（消した順）。無ければ消した項目なし
 constants:
   - name: CHANGES_FILE
     title: まとまりのファイル名
@@ -452,8 +495,9 @@ functions:
       type: tuple[Changes, ChangeSet | None]
       description: まだまとめていない変更が空なら `(changes, None)`
     process: |-
-      1. `pending.added` も `pending.changed` も空なら `(changes, None)` を返す
+      1. `pending.added`・`pending.changed`・`pending.removed` が全て空なら `(changes, None)` を返す
       2. ID を `SET_ID_PREFIX` + （`sets` の連番の最大 + 1）にし、`until_seq` を `last_seq` にしたまとまりを `sets` の先頭に置き、`pending` を空にする
+         - `pending.removed` が空でない場合だけ、まとまりに `removed` として写す
     unit_tests:
       - name: test_commit_pending
         case: 正常
@@ -467,6 +511,12 @@ functions:
         condition: '`pending` が空'
         mock: なし
         expected: まとまりが `None` で、記録が渡したものと等しい
+      - name: test_commit_pending_when_only_removed
+        case: 正常
+        summary: 消した項目だけでもまとまりにする
+        condition: '`pending` が `added: []`・`changed: []`・`removed: [N-2 の記録]`'
+        mock: なし
+        expected: まとまりの `removed` が N-2 の 1 件、新しい記録の `pending` の `added`・`changed`・`removed` が空
   - name: pending_view
     title: まだまとめていない変更を並べる
     kind: 関数
@@ -487,10 +537,11 @@ functions:
         description: 今の記録
     returns:
       type: dict[str, Any]
-      description: '`{added: [{id, title}], changed: [{id, title, keys}]}`'
+      description: '`{added: [{id, title}], changed: [{id, title, keys}], removed: [{id, kind, title}]}`'
     process: |-
       1. `added`・`changed` の ID ごとに項目を引く（`find_item`）
       2. `changed` の項目は、`history` のうち `seq` が `sets` の先頭の `until_seq`（無ければ 0）より大きいものの `before` のキーと、`body_diff` を持つときの `body_markdown` を、重なりを除いて出てきた順に並べる
+      3. `pending.removed`（無ければ空）を `{id, kind, title}` にして `removed` に並べる
     unit_tests:
       - name: test_pending_view
         case: 正常
@@ -498,6 +549,12 @@ functions:
         condition: 'D-1 が `before: {answer, status}` と `body_diff` を持つ 2 回分の `history`（どちらも最後のまとまりより後）、T-1 が `added`'
         mock: なし
         expected: '`added` が T-1 とそのタイトル、`changed` が D-1 で `keys` が `answer`・`status`・`body_markdown`'
+      - name: test_pending_view_when_removed
+        case: 正常
+        summary: 消した項目を removed で返す
+        condition: '`pending.removed` に N-2（`kind: note`・`title: 重複したメモ`）、`pending.added`・`pending.changed` が空'
+        mock: なし
+        expected: '`removed` が `[{id: N-2, kind: note, title: 重複したメモ}]`、`added`・`changed` が空'
   - name: touch_opened
     title: 前回開いた日時を書き換える
     kind: 関数
@@ -622,14 +679,15 @@ functions:
         description: 今の記録
     returns:
       type: dict[str, Any]
-      description: '`{had_read_point, read_seq, until_seq, added, changed}`（インターフェース定義『前回読んだ時点からの変更』のレスポンス）'
+      description: '`{had_read_point, read_seq, until_seq, added, changed, removed}`（インターフェース定義『前回読んだ時点からの変更』のレスポンス）'
     process: |-
-      1. `read_seq` が無ければ `{had_read_point: False, read_seq: None, until_seq: last_seq, added: [], changed: []}` を返す
+      1. `read_seq` が無ければ `{had_read_point: False, read_seq: None, until_seq: last_seq, added: [], changed: [], removed: []}` を返す
       2. 種類の順（`KINDS`）、項目の並びの順に見る
          - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title, updated_by}` で足す（`updated_by` を持たなければ `None`）
          - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None`、`by` を空にして `changed` に足す。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に足す
          - `changed` の要素は `updated_by`（今の値。無ければ `None`）と、`by`（`seq` が `read_seq` より大きい変更履歴の回の `by` を重なりなく `user`・`ai` の順で並べたもの。`by` を持たない回は数えない）を持つ
-      3. `until_seq` を `last_seq` にして返す
+      3. 消した項目の記録（`removed_items`）のうち、`seq` が `read_seq` より大きく `added_seq` が `read_seq` 以下のものを `{id, kind, title}` にして `removed` に並べる
+      4. `until_seq` を `last_seq` にして返す
     unit_tests:
       - name: test_changes_since
         case: 正常
@@ -642,7 +700,7 @@ functions:
         summary: 読んだ時点が無ければ差分を返さない
         condition: '`read_seq` を持たない記録と、変更履歴を持つ D-1'
         mock: なし
-        expected: '`had_read_point` が偽、`read_seq` が `None`、`added`・`changed` が空'
+        expected: '`had_read_point` が偽、`read_seq` が `None`、`added`・`changed`・`removed` が空'
       - name: test_changes_since_when_limit_zero
         case: 正常
         summary: 保持する回数が 0 なら前の値を組み立てない
@@ -655,6 +713,12 @@ functions:
         condition: '`read_seq` 3。D-1 が `updated_by: ai` で、`history` に `seq` 5（`by: ai`）・4（`by: user`）・2（`by: user`）の回を持つ'
         mock: なし
         expected: '`changed` の D-1 が `updated_by: ai`、`by: [user, ai]`（`seq` 2 の回は数えない）'
+      - name: test_changes_since_when_removed
+        case: 正常
+        summary: 読んだ時点に有って後で消した項目だけを返す
+        condition: '`read_seq` 3。`pending.removed` に N-2（`added_seq` 2・`seq` 4）・N-3（`added_seq` 5・`seq` 6）、`sets[0].removed` に N-1（`added_seq` 1・`seq` 2）'
+        mock: なし
+        expected: '`removed` が N-2 の 1 件（N-1 は読む前に消した、N-3 は読んだ後に足して消した）'
   - name: mark_read
     title: 読んだ時点を進める
     kind: 関数
@@ -679,5 +743,66 @@ functions:
         condition: '`last_seq` 7 で `read_seq` を持たない記録'
         mock: なし
         expected: 新しい記録の `read_seq` が 7。渡した記録は `read_seq` を持たないまま
+  - name: note_removed
+    title: 消した項目を記録する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の削除と取り下げ
+    scope: public
+    summary: '`pending.added`・`pending.changed` から ID を除き、`pending.removed` の末尾に消した項目を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）'
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 今の記録
+      - name: removed
+        type: RemovedItem
+        required: true
+        passing: positional
+        description: 消した項目の記録
+    returns:
+      type: Changes
+      description: 新しい記録
+    process: |-
+      1. `pending.added`・`pending.changed` から `removed.id` を除く
+      2. `pending.removed`（無ければ空）の末尾に `removed` を足す（`pending.added` にあった項目も足す）
+    unit_tests:
+      - name: test_note_removed
+        case: 正常
+        summary: 変えた項目を消すと changed から除き removed に足す
+        condition: '`pending.changed` が `[D-1, D-2]` の記録に D-1 の記録（`seq` 5・`added_seq` 1）'
+        mock: なし
+        expected: '`pending.changed` が `[D-2]`、`pending.removed` が D-1 の 1 件。渡した記録はそのまま'
+      - name: test_note_removed_when_added_since_commit
+        case: 正常
+        summary: まとめる前に足した項目も removed に記録する
+        condition: '`pending.added` が `[N-1]` の記録に N-1 の記録'
+        mock: なし
+        expected: '`pending.added` が空、`pending.removed` が N-1 の 1 件'
+  - name: removed_items
+    title: 消した項目の記録を並べる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の削除と取り下げ
+    scope: public
+    summary: '`sets[].removed` と `pending.removed` の記録を、消した順（`seq` の小さい順）に並べて返す'
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 今の記録
+    returns:
+      type: list[RemovedItem]
+      description: 消した項目の記録（無ければ空）
+    process: 1. 全てのまとまりの `removed` と `pending.removed` を集め、`seq` の小さい順に並べる（キーが無いまとまりは飛ばす）
+    unit_tests:
+      - name: test_removed_items
+        case: 正常
+        summary: まとまりとまだまとめていない変更の記録を消した順に返す
+        condition: '`sets[0].removed` に N-1（`seq` 3）、`removed` を持たない `sets[1]`、`pending.removed` に N-2（`seq` 5）'
+        mock: なし
+        expected: N-1・N-2 の順の 2 件
 test_files:
   - tests/unit/scripts/test_history.py

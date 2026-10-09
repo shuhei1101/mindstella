@@ -1,0 +1,126 @@
+title: "記録の削除と取り下げ"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、本文を持つメモ N-1・N-2 を足して `commit` したワークスペース（保持する回数は既定の 5）
+        notes: N-2 は N-1 と同じ中身を重ねて足した重複
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: N-2 を消す
+        SV->>WS: N-2 を指す記録が無いことを確かめる
+        SV->>WS: notes.yaml から N-2 を、docs/ から N-2 の本文を消す
+        SV->>WS: まだまとめていない変更に、消した N-2 の ID・種類・タイトルを積む
+        SV-->>CC: 消した項目の ID
+        CC->>SV: pending
+        SV-->>CC: 消した項目に N-2
+        CC->>SV: commit（重複した N-2 を消す）
+        SV->>WS: まとまりを書く
+        CC->>SV: メモを 1 件足す
+        SV-->>CC: 足した項目の ID
+      ```
+    expected:
+      - 消すツールが N-2 を返す
+      - '`.mindstella/notes.yaml` に N-2 が無く、N-1 は消す前のまま残る'
+      - '`.mindstella/docs/` に N-2 の本文の Markdown が無い'
+      - '`pending` が、消した項目として N-2 の ID・種類 `note`・消したときのタイトルを返す'
+      - '`commit` の後、増えたまとまりが消した項目に N-2 を持ち、`pending` が空を返す'
+      - 消した後に足したメモの ID が N-3 である
+      - '`check` が問題を 0 件で返す'
+    test: test_normal
+  - name: 正常シナリオ（取り下げる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、調査 R-1 と、R-1 を `related` で指す検討事項 D-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: R-1 を取り下げる（理由を添える）
+        SV->>WS: R-1 に取り下げの印と理由を書き、変更履歴を 1 回分積む
+        SV-->>CC: 取り下げた項目
+      ```
+    expected:
+      - '`.mindstella/research.yaml` に R-1 が残り、取り下げの印と渡した理由を持つ'
+      - R-1 の変更履歴が、取り下げる前の値を 1 回分持つ
+      - D-1 の `related` が R-1 を指したままである
+      - '`pending` が、変えた項目として R-1 を返す'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_withdrawn
+    notes:
+      状態を持つ種類: '検討事項は状態 `取り下げ`・`対象外`、タスクは状態 `中止` で取り下げる。状態を持たない調査・資料・用語集・メモ・会話ログは、`update` で `withdrawn: true` と `reason` を書く'
+  - name: 異常シナリオ（ほかの記録が指している）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 と、D-1 に依存する検討事項 D-2 を足したワークスペース
+        notes: 'D-2 が `depends_on: [D-1]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 を消す
+        SV->>WS: D-1 を指す記録を探す
+        SV-->>CC: エラー（D-1 を指している D-2 の depends_on）
+      ```
+    expected:
+      - 消すツールがエラーを返す
+      - エラーの本文に、D-1 を指している D-2 とキー `depends_on` がある
+      - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+    test: test_error_when_referenced
+    notes:
+      指す側: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`、ゴールの納品物の `doc`、コメント・送信の向け先が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
+  - name: 異常シナリオ（存在しない ID を消す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、メモ N-1 を足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+
+        CC->>SV: N-9 を消す
+        SV-->>CC: エラー（N-9 が無い）
+      ```
+    expected:
+      - 消すツールがエラーを返す
+      - エラーの本文に、渡した ID `N-9` がある
+      - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+    test: test_error_when_item_missing
+lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
+issue: 96
+primary_actor: スキルの手順を実行する Claude Code
+stakeholders:
+  - name: 利用者
+    interest: やめた検討の経緯は後から読み返せ、誤って足した記録は残らない。消した記録を指したままの項目が残らない
+trigger: 話し合いの中で、利用者がやめると言った項目か、誤って足した・重複した項目が見つかる
+preconditions:
+  - ワークスペースが作成済みである
+  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
+success_guarantee: 取り下げた項目は取り下げの印と理由を持って残り、消した項目は種類の YAML と本文の Markdown から無くなる。消した項目は、まだまとめていない変更・書き換えのまとまり・前回読んだ時点からの差分に、ID・種類・消したときのタイトルで残る。消した ID は、後から足す項目に振られない。
+minimal_guarantee: ほかの記録が指している項目・無い ID を消そうとしたときは、どのファイルも書き換えない。
+frequency: 話し合いで項目をやめる・誤りに気付くたび
+priority: 中
+notes:
+  E2E の範囲: MCP サーバーを立て、MCP のクライアントで `remove`・`update`・`pending`・`commit`・`check`・`add` を呼んで、結果とワークスペースの状態を確かめる
+  消すか取り下げるか: やめた項目は経緯として読み返すため取り下げで残し、消すのは誤って足した・重複した項目に限る。消した項目の中身は戻せない
+test_file: tests/e2e/単一ユースケース/test_record_remove_withdraw.py

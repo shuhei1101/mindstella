@@ -292,3 +292,27 @@ def test_error_when_decided_without_adoption(
         for line in result.text.splitlines()
     )
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_note_withdrawn(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """状態を持たない種類は、取り下げの印と理由を書いて取り下げる（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "note", {"title": "メモ", "content": "中身"})
+    commit(call_tool, root, "足す")
+    # 実行
+    result = call_tool(
+        "update",
+        workspace=str(root),
+        id="N-1",
+        item={"withdrawn": True, "reason": "話題をやめた"},
+    )
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["withdrawn", "reason"]
+    note = read_items(root, "notes.yaml")[0]
+    assert note["withdrawn"] is True
+    assert note["reason"] == "話題をやめた"
+    assert note["history"][0]["before"] == {"withdrawn": None, "reason": None}
+    assert read_changes(root)["pending"]["changed"] == ["N-1"]

@@ -177,6 +177,68 @@ scenarios:
       - '`goal.deliverables` が呼ぶ前と同じである'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_task_output_kept_as_doc
+  - name: 正常シナリオ（誤って足した項目を消す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる書き込みと消すツール・`commit` を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: '検討事項 D-1・D-2 を持ち、D-2 は D-1 と同じ問いを重ねて足した重複。タスク T-1 が `for: [D-2]` で D-2 を指す'
+      - name: 再生する書き込み
+        description: T-1 の `for` を D-1 に付け替え、会話ログと一緒に 1 回のまとめての書き込みで渡してから、D-2 を消して `commit` する
+        notes: 消す前に、利用者へ消す項目を示して確かめる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（D-2 は D-1 と同じ。消してよい）
+        CC-->>U: 消す項目 D-2 と、消すと戻せないことを示して確かめる
+        U->>CC: 消してよい
+        CC->>SV: まとめての書き込み（T-1 の for を D-1 に付け替える・会話ログを足す）
+        SV->>WS: 書く
+        CC->>SV: D-2 を消す
+        SV->>WS: decisions.yaml から D-2 を消す
+        CC->>SV: commit（重複した D-2 を消す）
+        CC-->>U: 消した項目と付け替えた参照を短く示す
+      ```
+    expected:
+      - '`.mindstella/decisions.yaml` に D-2 が無く、D-1 が残る'
+      - 'T-1 が `for: [D-1]` を持つ'
+      - 会話ログが 1 件足されている
+      - 増えたまとまりが、変えた項目に T-1、消した項目に D-2 を持つ
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_mistaken_item_removed
+  - name: 正常シナリオ（やめたメモを取り下げる）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる取り下げるツールと書き込み・`commit` を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: メモ N-1 を持つ
+      - name: 再生する書き込み
+        description: N-1 を理由つきで取り下げ、会話ログを足して `commit` する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（N-1 の話はもうやめる）
+        CC->>SV: N-1 を取り下げる（理由を添える）
+        SV->>WS: N-1 に取り下げの印と理由を書く
+        CC->>SV: 会話ログを足す
+        CC->>SV: commit（N-1 を取り下げる）
+        CC-->>U: 取り下げた項目を短く示す
+      ```
+    expected:
+      - '`.mindstella/notes.yaml` に N-1 が残り、取り下げの印と理由を持つ'
+      - 会話ログが 1 件足されている
+      - 増えたまとまりが、変えた項目に N-1 を持ち、消した項目を持たない
+    test: test_normal_when_note_withdrawn
 lead: 話し合いを進めるスキル `session` が、利用者の発言を対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む単一ユースケース。
 issue: 4
 primary_actor: 利用者

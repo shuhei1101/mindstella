@@ -45,6 +45,7 @@ SERVER_TOOL_NAMES = [
     "init",
     "add",
     "update",
+    "remove",
     "update_settings",
     "adopt",
     "edit_option",

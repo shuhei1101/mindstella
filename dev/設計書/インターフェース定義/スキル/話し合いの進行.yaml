@@ -71,7 +71,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で、`config.yaml` は `update_settings` で書く。`release/` の Markdown の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -137,6 +137,9 @@ constraints:
   - item: README の書き直し
     constraint: 準備のステップで版の比較が `same` のとき、`changes_since_read` より前に `readme` を呼ぶ。`written` が偽（利用者が書いた README）でも利用者には示さずに続ける。`readme` がツールのエラーを返しても、エラーの本文を利用者に短く示して準備を続ける（`changes_since_read` へ進む）
     notes: 単一ユースケース『README の書き直し』、インターフェース定義『README の書き出し』（サーバー）
+  - item: やめる・消す
+    constraint: '利用者がやめると言った項目は消さずに取り下げる。検討事項は `update` で状態を `対象外` か `取り下げ`、タスクは `中止` にし、調査・資料・用語集・メモ・会話ログは `update` で `withdrawn: true` を書く。どの種類も `reason` を書く。誤って足した・重複した項目だけを `remove` で消す。消す前に、消す項目と消すと戻せないことを利用者に示して確かめ、許しを得てから呼ぶ。ほかの項目が指しているときは、指している側の参照を先に `update` で付け替えるか外してから消す'
+    notes: 単一ユースケース『発言の取り込み』『記録の削除と取り下げ』、インターフェース定義『項目の削除』
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

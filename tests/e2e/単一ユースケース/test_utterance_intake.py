@@ -399,3 +399,74 @@ def test_normal_when_task_output_kept_as_doc(
     assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
     # check が問題を 0 件で返す
     assert checked == {"ok": True, "problems": []}
+
+
+def test_normal_when_mistaken_item_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """誤って足した検討事項を、指している参照を付け替えてから消す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"), make_item("D-2"), make_item("T-1", **{"for": ["D-2"]})
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    # 消す前に利用者へ確かめた後の、手順が連ねる書き込みを再生する
+    replay(
+        "batch",
+        **ws,
+        operations=[
+            {"op": "update", "id": "T-1", "item": {"for": ["D-1"]}},
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "重複した D-2 を消す", "date": TODAY, "related": ["T-1"]},
+            },
+        ],
+    )
+    replay("remove", **ws, id="D-2")
+    replay("commit", **ws, summary="重複した D-2 を消す")
+    # 検証
+    # decisions.yaml に D-2 が無く、D-1 が残る
+    assert [item["id"] for item in read_yaml(root, "decisions.yaml")["items"]] == ["D-1"]
+    # T-1 が for: [D-1] を持つ
+    assert read_yaml(root, "tasks.yaml")["items"][0]["for"] == ["D-1"]
+    # 会話ログが 1 件足されている
+    assert len(read_yaml(root, "logs.yaml")["items"]) == 1
+    # 増えたまとまりが、変えた項目に T-1、消した項目に D-2 を持つ
+    change_set = read_yaml(root, "changes.yaml")["sets"][0]
+    assert change_set["changed"] == ["T-1"]
+    assert [entry["id"] for entry in change_set["removed"]] == ["D-2"]
+    # check が問題を 0 件で返す
+    assert replay("check", **ws) == {"ok": True, "problems": []}
+
+
+def test_normal_when_note_withdrawn(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """やめたメモを消さずに、取り下げの印と理由を書いて残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"))
+    ws = {"workspace": str(root)}
+    # 実行
+    replay("update", **ws, id="N-1", item={"withdrawn": True, "reason": "この話はやめた"})
+    replay("add", **ws, kind="log", item={"title": "N-1 を取り下げる", "date": TODAY})
+    replay("commit", **ws, summary="N-1 を取り下げる")
+    # 検証
+    # notes.yaml に N-1 が残り、取り下げの印と理由を持つ
+    note = read_yaml(root, "notes.yaml")["items"][0]
+    assert note["id"] == "N-1"
+    assert note["withdrawn"] is True
+    assert note["reason"] == "この話はやめた"
+    # 会話ログが 1 件足されている
+    assert len(read_yaml(root, "logs.yaml")["items"]) == 1
+    # 増えたまとまりが、変えた項目に N-1 を持ち、消した項目を持たない
+    change_set = read_yaml(root, "changes.yaml")["sets"][0]
+    assert change_set["changed"] == ["N-1"]
+    assert "removed" not in change_set

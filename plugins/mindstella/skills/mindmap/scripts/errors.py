@@ -74,6 +74,10 @@ class LastOptionError(MindmapError):
     """`edit_option` の `remove` で、案を必須にする状態の検討事項の最後の案を指した。"""
 
 
+class ItemReferencedError(MindmapError):
+    """消そうとした項目をほかの記録が指している。`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行を持つ。"""
+
+
 class WriteFailedError(MindmapError):
     """ファイルの書き込み・置き換えで OSError が起きた。"""
 

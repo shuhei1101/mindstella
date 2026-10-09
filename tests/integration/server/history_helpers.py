@@ -45,6 +45,14 @@ def update_item(call_tool: CallTool, root: Path, item_id: str, item: dict[str, A
     assert result.is_error is False, result.text
 
 
+def remove_item(call_tool: CallTool, root: Path, item_id: str) -> dict[str, Any]:
+    """`remove` で項目を消した結果を返す。エラーならテストを止める。"""
+    result = call_tool("remove", workspace=str(root), id=item_id)
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    return result.data
+
+
 def read_changes(root: Path) -> dict[str, Any]:
     """`changes.yaml` を読む。"""
     return yaml.safe_load((root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8"))
