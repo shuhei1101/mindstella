@@ -49,6 +49,12 @@ claude plugin install mindstella@mindstella
 ```
 
 `{プラグインのフォルダ}` は、`claude plugin list --json` の `mindstella@mindstella` の `installPath`。
+`/mindstella:setup` で起動スクリプトを登録すると、新しいシェルで alias から叩ける。環境変数も登録でき、Claude Code のアカウントごとの alias `mindstella-{アカウントの名前}` も足せる。
+
+```bash
+mindstella {ワークスペースのフォルダ}
+```
+
 起動スクリプト以外で立ち上げた Claude Code には、MCP のツールが載らない。
 
 | やりたいこと | 呼び方 |
