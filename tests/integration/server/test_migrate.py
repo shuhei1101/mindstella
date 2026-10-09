@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import LOCK_FILE_NAME, RECORD_DIR
+from workspace_fixtures import LOCK_FILE_NAME, RECORD_DIR, plugin_version, step_versions_after
 
 from .fixture_types import (
     CallTool,
@@ -18,10 +18,10 @@ from .fixture_types import (
 )
 
 # プラグインの版（plugins/mindstella/version.ini の 1 行目）
-PLUGIN_VERSION = "v0.7.0"
+PLUGIN_VERSION = plugin_version()
 
-# 版を記録する前の形式から並ぶ手順の版（v0.3.0・v0.5.0・v0.6.0 の手順の次に v0.7.0 の手順が並ぶ）
-STEP_VERSIONS = {"v0.3.0", "v0.5.0", "v0.6.0", "v0.7.0"}
+# 版を記録する前の形式から並ぶ手順の版（migrations/ の全ての手順の版）
+STEP_VERSIONS = step_versions_after(None)
 
 # 手順 3（set_default）が失敗する、題名を足す手順の版
 SUMMARY_STEP_VERSION = "v0.3.0"
@@ -93,7 +93,7 @@ def test_normal_when_plan(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """版を記録する前の形式に v0.3.0・v0.5.0・v0.6.0・v0.7.0 の手順と値が要るキーを並べる（正常系）。"""
+    """版を記録する前の形式にプラグインの版までの手順と値が要るキーを並べる（正常系）。"""
     # 準備
     root = make_legacy_workspace(
         legacy_docs={"A-1": True}, without_summary=True, settings_file=LEGACY_SETTINGS, top=True
@@ -121,7 +121,7 @@ def test_normal_when_plan(
 
 
 def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool) -> None:
-    """写しを取って v0.3.0 の手順を当て、版のファイルは書かない（正常系）。"""
+    """写しを取ってプラグインの版までの手順を当て、版のファイルは書かない（正常系）。"""
     # 準備
     root = make_legacy_workspace(
         legacy_docs={"A-1": True, "A-2": False},
@@ -381,7 +381,7 @@ def test_normal_when_version_file_at_top(
     payload = result.data
     assert payload["workspace_version"] == "v0.5.0"
     assert payload["relation"] == "older"
-    assert {step["version"] for step in payload["steps"]} == {"v0.6.0", "v0.7.0"}
+    assert {step["version"] for step in payload["steps"]} == step_versions_after("v0.5.0")
     assert snapshot_tree(root) == before
     assert _mtimes(root) == mtimes
 
@@ -412,7 +412,7 @@ def test_normal_when_answer_to_option(
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.6.0\n", encoding="utf-8")
     before = _read_decisions(root)
     # 実行
-    result = call_tool("migrate", workspace=str(root))
+    result = call_tool("migrate", workspace=str(root), to_version="v0.7.0")
     # 検証
     assert result.is_error is False
     assert result.data is not None
@@ -428,7 +428,7 @@ def test_normal_when_answer_to_option(
     assert after[1:] == before[1:]
     assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == "v0.6.0\n"
     # もう一度当てても、案は 1 件のまま
-    again = call_tool("migrate", workspace=str(root))
+    again = call_tool("migrate", workspace=str(root), to_version="v0.7.0")
     assert again.is_error is False
     assert len(_read_decisions(root)[0]["options"]) == 1
 
