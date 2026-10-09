@@ -5435,10 +5435,10 @@ var MindmapPreview;
         }
         return MindmapPreview.h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
     }
-    // 190: 行ごとに「直す」「削除」を置き、直している行は入力欄と「やめる」「直す」、消した行は「コメントを削除しました。」と「元に戻す」にする。
+    // 190: 行ごとに「修正」「削除」を置き、直している行は入力欄と「キャンセル」「修正」、消した行は「コメントを削除しました。」と「元に戻す」にする。
     // 操作の振る舞いと文言はコメントの一覧の行（comments.ts の editForm・commentRow・removedRow）と揃える。
-    // 「直す」「削除」の見え方は body の data-actions で切り替える（always = A 常に出すアイコン / reveal = B 行に乗せた・フォーカスしたときに出すアイコン / text = C 本文の下の文字のボタン）
-    /** 190: レビュー中のコメントの行の本文を直す入力欄と「やめる」「直す」 */
+    // 「修正」「削除」の見え方は body の data-actions で切り替える（always = A 常に出すアイコン / reveal = B 行に乗せた・フォーカスしたときに出すアイコン / text = C 本文の下の文字のボタン）
+    /** 190: レビュー中のコメントの行の本文を直す入力欄と「キャンセル」「修正」 */
     function reviewEditForm(item, review) {
         const field = MindmapPreview.h({
             tag: "textarea",
@@ -5484,14 +5484,14 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "row-edit-actions" },
                     children: [
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", "data-focus": `d-cancel:${item.id}`, onclick: review.on.cancelEdit }, children: ["やめる"] }),
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["直す"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", "data-focus": `d-cancel:${item.id}`, onclick: review.on.cancelEdit }, children: ["キャンセル"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["修正"] }),
                     ],
                 }),
             ],
         });
     }
-    /** 190: 行の「直す」「削除」（C は文字のボタン、A・B はアイコンのボタン） */
+    /** 190: 行の「修正」「削除」（C は文字のボタン、A・B はアイコンのボタン） */
     function reviewActions(item, review) {
         const label = `${item.target} へのコメント`;
         const text = document.body.dataset.actions === "text";
@@ -5511,7 +5511,7 @@ var MindmapPreview;
             tag: "div",
             attrs: { class: "review-actions" },
             children: [
-                button("edit-open", "直す", "edit", () => review.on.edit(item.id)),
+                button("edit-open", "修正", "edit", () => review.on.edit(item.id)),
                 button("remove", "削除", "trash", () => review.on.remove(item.id)),
             ],
         });
@@ -5570,7 +5570,7 @@ var MindmapPreview;
                                                 : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
                                         ],
                                     }),
-                                    // 直している行には「直す」「削除」を出さない（入力欄の「やめる」「直す」と並べない）
+                                    // 直している行には「修正」「削除」を出さない（入力欄の「キャンセル」「修正」と並べない）
                                     review.editing === item.id ? null : reviewActions(item, review),
                                 ],
                             })),
@@ -6468,7 +6468,7 @@ var MindmapPreview;
             children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.target] }), MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [title] })],
         });
     }
-    /** 本文をその場で直す入力欄と「やめる」「直す」 */
+    /** 本文をその場で直す入力欄と「キャンセル」「修正」（190: 詳細パネルと揃えて「やめる」「直す」から改めた） */
     function editForm(item, props) {
         const field = MindmapPreview.h({
             tag: "textarea",
@@ -6510,8 +6510,8 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "row-edit-actions" },
                     children: [
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: props.on.cancelEdit }, children: ["やめる"] }),
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["直す"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: props.on.cancelEdit }, children: ["キャンセル"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["修正"] }),
                     ],
                 }),
             ],
@@ -6584,8 +6584,8 @@ var MindmapPreview;
                             attrs: {
                                 class: "icon-btn",
                                 type: "button",
-                                "aria-label": `${label}を直す`,
-                                title: "直す",
+                                "aria-label": `${label}を修正`,
+                                title: "修正",
                                 "data-focus": `edit-open:${item.id}`,
                                 onclick: () => props.on.edit(item.id),
                             },
