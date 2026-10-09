@@ -121,5 +121,6 @@ minimal_guarantee: ほかの記録が指している項目・無い ID を消そ
 frequency: 話し合いで項目をやめる・誤りに気付くたび
 priority: 中
 notes:
-  E2E の範囲: MCP サーバーを立て、MCP のクライアントで `remove`・`update`・`pending`・`commit`・`check`・`add` を呼んで、結果とワークスペースの状態を確かめる。対応テストファイルは E2E テスト作成で `tests/e2e/単一ユースケース/test_item_removal.py` として作る
+  E2E の範囲: MCP サーバーを立て、MCP のクライアントで `remove`・`update`・`pending`・`commit`・`check`・`add` を呼んで、結果とワークスペースの状態を確かめる
   消すか取り下げるか: やめた項目は経緯として読み返すため取り下げで残し、消すのは誤って足した・重複した項目に限る。消した項目の中身は戻せない
+test_file: tests/e2e/単一ユースケース/test_record_remove_withdraw.py
