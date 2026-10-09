@@ -237,7 +237,7 @@ elements:
       - name: large
         value: 'true'
     position: タイトル > 納品物の印・新規の札の右
-    description: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置き、タイトルの文字を薄くする
+    description: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く。タイトルの文字は薄くしない（薄くするのは表の行とカード）
     io: 表示
     source: プレビューを開く.id の項目の withdrawn
     visible_when: 開いた項目の `withdrawn` が真のとき（差分の表示によらない）
