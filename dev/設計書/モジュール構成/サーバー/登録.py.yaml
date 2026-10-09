@@ -1,0 +1,541 @@
+title: "サーバー / 登録"
+lead: セットアップのスキルが Bash で呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。
+directory: |-
+  ```
+  plugins/mindstella/skills/setup/scripts/
+    register.py   登録のスクリプト（システムの python3 で起動。Python 3.8 で読める構文と標準ライブラリだけ。形はインターフェース定義『起動スクリプトの登録』）
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      classDiagram
+        direction LR
+        class 入口
+        class 登録の読み書き
+        class 登録の組み替え
+        class 書く中身の組み立て
+        class まとめた書き込み
+        入口 --> 登録の読み書き
+        入口 --> 登録の組み替え
+        入口 --> 書く中身の組み立て
+        入口 --> まとめた書き込み
+data_models:
+  - name: Registration
+    title: 登録
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    role: DTO
+    summary: '`registration.json` に残す登録の中身（`TypedDict`）。`shell.sh` はここから作る'
+    properties:
+      - name: env
+        type: dict[str, str]
+        description: 登録した環境変数（キーは `ENV_KEYS` のどれか）
+      - name: accounts
+        type: list[dict[str, str]]
+        description: アカウントごとの `{name, config_dir}`（`config_dir` は絶対パス）。名前の順
+classes:
+  - name: NotWritableError
+    title: 書き込めない
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: ログインシェルの設定ファイルか登録の置き場所に書き込めない。`main` が `error` と `manual_lines` を標準出力に出して終了コード 1 にする
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: path
+        type: Path
+        description: 書き込めないファイルかフォルダ
+  - name: UnsupportedShellError
+    title: 扱えないシェル
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: '`SHELL` の末尾の名前が `bash`・`zsh` のどちらでもない。`main` が `error` と、bash の形の `manual_lines` を出して終了コード 1 にする'
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: shell
+        type: str
+        description: '`SHELL` の値'
+  - name: UnknownAccountError
+    title: 知らないアカウント
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: '`remove-account` の名前が登録に無い。`main` が登録済みの名前を `error` に入れて終了コード 1 にする'
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: known
+        type: list[str]
+        description: 登録済みのアカウントの名前
+constants:
+  - name: ENV_KEYS
+    title: 登録できる環境変数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: '`--env`・`--unset-env` で受けるキー（設定『サーバー』の環境変数。`shell.sh` にはこの順で書く）'
+    value: ("MINDSTELLA_VENV", "MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK")
+  - name: ALIAS_NAME
+    title: alias の名前
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: 既定のアカウントで立ち上げる alias。アカウントごとの alias は `{ALIAS_NAME}-{名前}`（確認ログの決定）
+    value: '"mindstella"'
+  - name: ACCOUNT_NAME_PATTERN
+    title: アカウントの名前の形
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: 英小文字・数字・`-` の 1〜32 文字で、英小文字か数字で始まる
+    value: r"^[a-z0-9][a-z0-9-]{0,31}$"
+  - name: MARK_BEGIN
+    title: 印の始まり
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: ログインシェルの設定ファイルに足す範囲の頭の行
+    value: '"# >>> mindstella >>>"'
+  - name: MARK_END
+    title: 印の終わり
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: ログインシェルの設定ファイルに足す範囲の尾の行
+    value: '"# <<< mindstella <<<"'
+  - name: PLUGIN_ID
+    title: プラグインの識別子
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    summary: alias が `claude plugin list --json` の要素の `id` で引く値（`launch.py` の同じ名前の定数と合わせる。仮想環境の外で動くため import しない）
+    value: '"mindstella@mindstella"'
+notes:
+  構文: '`register.py` は先頭に `from __future__ import annotations` を置き、Python 3.8 で読める構文と標準ライブラリだけで書く（MCP の無い状態で、システムの `python3` で起動するため。`check_env.py` と同じ）。正常系と書き込めないときの流れは、インターフェース定義『起動スクリプトの登録』の結合テストが確かめる'
+functions:
+  - name: main
+    title: 登録の入口
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: サブコマンドを解釈して登録を読む・書く・外し、その後の登録を JSON で標準出力に出して終了コードを返す
+    description: 末尾で `sys.exit(main())`。
+    side_effects: '`set`・`add-account`・`remove-account`・`remove` で登録の置き場所とログインシェルの設定ファイルを書く（`write_files`）。標準出力・標準エラーに書く'
+    args:
+      - name: argv
+        type: list[str] | None
+        required: false
+        default: None
+        passing: positional
+        description: 引数（`None` なら `sys.argv[1:]`）
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: keyword
+        description: '`HOME`・`XDG_CONFIG_HOME`・`SHELL` を読む環境変数'
+      - name: system
+        type: str
+        required: false
+        default: platform.system()
+        passing: keyword
+        description: OS の名前（`Darwin` で bash の設定ファイルを分ける）
+    returns:
+      type: int
+      description: 終了コード（0 正常 / 1 実行時のエラー / 2 引数の誤り）
+    process: |-
+      1. サブコマンドとオプションを argparse で解釈する（知らないサブコマンドは argparse が 2 で終える）
+         - `--env` が `KEY=VALUE` の形でない、キーが `ENV_KEYS` に無い、値が改行を含む、`--unset-env` が `ENV_KEYS` に無い、`--name` が `ACCOUNT_NAME_PATTERN` に合わない、`add-account` に `--name` か `--config-dir` が無い、`remove-account` に `--name` が無い場合、使い方と理由を標準エラーに出して 2 を返す（何も書かない）
+      2. 登録の置き場所（`registration_dir`）とログインシェルの設定ファイル（`rc_file_path`）を決め、今の登録を読む（`read_registration`）
+      3. サブコマンドごとに次をする
+         - `show`: 何も書かない
+         - `set`: 登録が無ければ空の登録から `apply_set` で組み替える
+         - `add-account`: 登録が無ければ空の登録から `apply_add_account` で組み替える（`--config-dir` は `expanduser` して絶対パスにする）
+         - `remove-account`: `apply_remove_account` で組み替える
+         - `remove`: 登録を `None` にする
+      4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを消し `remove_rc_block`）まとめて書く（`write_files`）
+      5. その後の登録を `build_report` で標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
+         - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` は印の範囲の中に `render_shell` の行をそのまま入れたもの
+    exceptions:
+      - name: NotWritableError
+        condition: 設定ファイルか登録の置き場所に書き込めない（捕まえて 1）
+        message: '{パス} に書き込めません'
+      - name: UnsupportedShellError
+        condition: '`SHELL` が bash・zsh でない（捕まえて 1）'
+        message: シェル {SHELL} には登録できません。bash か zsh で呼んでください
+      - name: UnknownAccountError
+        condition: '`remove-account` の名前が登録に無い（捕まえて 1）'
+        message: 'アカウント {名前} は登録されていません（登録済み: {名前の並び}）'
+    unit_tests:
+      - name: test_main_when_invalid_args
+        case: 異常
+        summary: 引数の誤りは何も書かず 2
+        condition: '`parametrize`: `set --env PATH=/tmp` / `set --env MINDSTELLA_VENV` / `add-account --name Sub1 --config-dir /c` / `add-account --name sub1` / `remove-account`。`HOME` は空の `tmp_path`'
+        mock: なし
+        expected: 2 を返し、`tmp_path` の中にファイルが無い
+        exception: 引数の誤り
+      - name: test_main_when_unknown_account
+        case: 異常
+        summary: 登録に無いアカウントを外すと 1
+        condition: '`set` で登録した `tmp_path` で `remove-account --name sub9`'
+        mock: なし
+        expected: 1 を返し、`error` に `sub9`。ファイルの中身が呼ぶ前と同じ
+        exception: UnknownAccountError
+      - name: test_main_when_unsupported_shell
+        case: 異常
+        summary: bash・zsh でなければ手で書く行を返して 1
+        condition: '`SHELL=/usr/bin/fish` で `set`'
+        mock: なし
+        expected: 1 を返し、`error` に `fish`、`manual_lines` に `MARK_BEGIN` と `mindstella()` の行。`tmp_path` の中にファイルが無い
+        exception: UnsupportedShellError
+      - name: test_main_when_old_syntax
+        case: 正常
+        summary: 登録のスクリプトが Python 3.8 の構文で読め、型注釈を実行時に評価しない
+        condition: '`register.py` を `ast.parse(..., feature_version=(3, 8))` で読み、先頭の文を見る'
+        mock: なし
+        expected: '`SyntaxError` にならず、docstring の次の文が `from __future__ import annotations`'
+  - name: registration_dir
+    title: 登録の置き場所
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: '`registration.json` と `shell.sh` を置くフォルダを返す'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+    returns:
+      type: Path
+      description: '`{XDG_CONFIG_HOME}/mindstella`。`XDG_CONFIG_HOME` が無いか空なら `{HOME}/.config/mindstella`'
+    unit_tests:
+      - name: test_registration_dir
+        case: 正常
+        summary: XDG_CONFIG_HOME を優先する
+        condition: '`parametrize`: `{HOME: /h}` / `{HOME: /h, XDG_CONFIG_HOME: /x}` / `{HOME: /h, XDG_CONFIG_HOME: ""}`'
+        mock: なし
+        expected: '`/h/.config/mindstella` / `/x/mindstella` / `/h/.config/mindstella`'
+  - name: rc_file_path
+    title: ログインシェルの設定ファイル
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: '`SHELL` と OS から、印の範囲を足す設定ファイルを決める'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数（`HOME`・`SHELL`）
+      - name: system
+        type: str
+        required: true
+        passing: keyword
+        description: OS の名前
+    returns:
+      type: Path
+      description: bash は `~/.bashrc`（`system` が `Darwin` なら `~/.bash_profile`）、zsh は `~/.zshrc`
+    process: |-
+      1. `SHELL` の末尾の名前を取り、上のとおりに分ける
+         - どちらでもない場合、`UnsupportedShellError` を送る
+    exceptions:
+      - name: UnsupportedShellError
+        condition: '`SHELL` の末尾の名前が `bash`・`zsh` でない'
+        message: シェル {SHELL} には登録できません。bash か zsh で呼んでください
+    unit_tests:
+      - name: test_rc_file_path
+        case: 正常
+        summary: シェルと OS で分ける
+        condition: '`parametrize`: `/bin/bash` と `Linux` / `/bin/bash` と `Darwin` / `/bin/zsh` と `Darwin`。`HOME=/h`'
+        mock: なし
+        expected: '`/h/.bashrc` / `/h/.bash_profile` / `/h/.zshrc`'
+      - name: test_rc_file_path_when_unsupported
+        case: 異常
+        summary: bash・zsh でなければ UnsupportedShellError
+        condition: '`parametrize`: `SHELL=/usr/bin/fish` / `SHELL` が無い'
+        mock: なし
+        expected: '`UnsupportedShellError`'
+        exception: bash・zsh でない
+  - name: read_registration
+    title: 登録を読む
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: 登録の置き場所の `registration.json` を読む。無ければ `None`（読めない JSON は `json.JSONDecodeError` をそのまま送る）
+    args:
+      - name: directory
+        type: Path
+        required: true
+        passing: positional
+        description: 登録の置き場所
+    returns:
+      type: Registration | None
+      description: 登録。ファイルが無ければ `None`
+    unit_tests:
+      - name: test_read_registration
+        case: 正常
+        summary: 書いた登録を読み、無ければ None
+        condition: '`parametrize`: `env` と `accounts` を持つ `registration.json` を置いた `tmp_path` / 空の `tmp_path`'
+        mock: なし
+        expected: 書いた値 / `None`
+  - name: apply_set
+    title: 環境変数を書き換える
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: 渡したキーだけを書き換え・外した登録を返す（渡した登録は変えない）
+    args:
+      - name: registration
+        type: Registration
+        required: true
+        passing: positional
+        description: 今の登録
+      - name: updates
+        type: dict[str, str]
+        required: true
+        passing: keyword
+        description: '`--env` のキー → 値'
+      - name: removals
+        type: list[str]
+        required: true
+        passing: keyword
+        description: '`--unset-env` のキー'
+    returns:
+      type: Registration
+      description: 書き換えた登録（`accounts` はそのまま）
+    unit_tests:
+      - name: test_apply_set
+        case: 正常
+        summary: 渡したキーだけを書き換える
+        condition: '`env` が `MINDSTELLA_ALLOWED_HOSTS=a`・`MINDSTELLA_VENV=/v` の登録に、`updates={MINDSTELLA_ALLOWED_HOSTS: b}`・`removals=[MINDSTELLA_VENV]`'
+        mock: なし
+        expected: '`env` が `{MINDSTELLA_ALLOWED_HOSTS: b}`。渡した登録が変わっていない'
+  - name: apply_add_account
+    title: アカウントを足す
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: アカウントを足した登録を返す。同じ名前があれば設定のフォルダを書き換える
+    args:
+      - name: registration
+        type: Registration
+        required: true
+        passing: positional
+        description: 今の登録
+      - name: name
+        type: str
+        required: true
+        passing: keyword
+        description: アカウントの名前
+      - name: config_dir
+        type: Path
+        required: true
+        passing: keyword
+        description: そのアカウントの設定のフォルダ（絶対パス）
+    returns:
+      type: Registration
+      description: '`accounts` を名前の順に並べた登録'
+    unit_tests:
+      - name: test_apply_add_account
+        case: 正常
+        summary: 足す・書き換える
+        condition: '`parametrize`: `sub2` だけの登録に `sub1`・`/c1` / `sub1`・`/c1` の登録に `sub1`・`/c9`'
+        mock: なし
+        expected: '`accounts` が `sub1`・`sub2` の順 / `sub1` が 1 件だけで `config_dir` が `/c9`'
+  - name: apply_remove_account
+    title: アカウントを外す
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: アカウントを外した登録を返す
+    args:
+      - name: registration
+        type: Registration | None
+        required: true
+        passing: positional
+        description: 今の登録
+      - name: name
+        type: str
+        required: true
+        passing: keyword
+        description: アカウントの名前
+    returns:
+      type: Registration
+      description: そのアカウントを除いた写し
+    process: |-
+      1. `registration` が `None` か、`accounts` に `name` が無ければ `UnknownAccountError` を送る
+      2. そのアカウントを除いた写しを返す
+    exceptions:
+      - name: UnknownAccountError
+        condition: 登録が無いか、`name` のアカウントが無い
+        message: 'アカウント {名前} は登録されていません（登録済み: {名前の並び}）'
+    unit_tests:
+      - name: test_apply_remove_account
+        case: 正常
+        summary: そのアカウントだけを外す
+        condition: '`sub1`・`sub2` の登録から `sub1`'
+        mock: なし
+        expected: '`accounts` が `sub2` だけ'
+      - name: test_apply_remove_account_when_unknown
+        case: 異常
+        summary: 無いアカウントは UnknownAccountError
+        condition: '`parametrize`: `sub1` の登録から `sub9` / `None` から `sub1`'
+        mock: なし
+        expected: '`UnknownAccountError`（`known` が `[sub1]` / `[]`）'
+        exception: アカウントが無い
+  - name: render_shell
+    title: shell.sh の中身
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: 登録から `shell.sh` の中身（`export` と alias の関数）を作る。bash と zsh のどちらでも読める書き方だけを使う
+    args:
+      - name: registration
+        type: Registration
+        required: true
+        passing: positional
+        description: 登録
+    returns:
+      type: str
+      description: '`shell.sh` の中身（末尾に改行）'
+    process: |-
+      1. `ENV_KEYS` の順に、登録した環境変数を `export {KEY}='{値}'` で書く（値の `'` は `'\''` に置き換える）
+      2. 内部の関数 `_mindstella_run` を書く。第 1 引数（設定のフォルダ。空なら既定のアカウント）を取り出し、空でなければ `CLAUDE_CONFIG_DIR="$1"` を前に置いて `command claude plugin list --json` を走らせ、その出力を `python3 -c` で読んで `PLUGIN_ID` の `installPath` を引く。引けなければ `[mindstella] エラー: プラグイン mindstella@mindstella の場所を引けません` を標準エラーに出して 1 を返す。引けたら同じ `CLAUDE_CONFIG_DIR` を前に置いて `"{installPath}/bin/mindstella" "$@"` を走らせる（利用者のシェルの `CLAUDE_CONFIG_DIR` は変えない）
+      3. `{ALIAS_NAME}() { _mindstella_run '' "$@"; }` と、アカウントごとに `{ALIAS_NAME}-{名前}() { _mindstella_run '{config_dir}' "$@"; }` を書く
+    unit_tests:
+      - name: test_render_shell
+        case: 正常
+        summary: export と alias を書き、bash と zsh で読める
+        condition: "`env` が `MINDSTELLA_ALLOWED_HOSTS=it's.example`、`accounts` が `sub1`・`/c1` の登録。書いた中身を `bash -n` と（入っていれば）`zsh -n` にかける"
+        mock: なし
+        expected: "`export MINDSTELLA_ALLOWED_HOSTS='it'\\''s.example'`・`mindstella()`・`mindstella-sub1()` の行があり、`/c1` を渡す。構文の確かめがどちらも 0 で終わる"
+  - name: add_rc_block
+    title: 印の範囲を足す
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: 設定ファイルの中身に、`shell.sh` を読み込む印の範囲が無ければ末尾に足す
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 設定ファイルの今の中身（ファイルが無ければ空）
+      - name: shell_file
+        type: Path
+        required: true
+        passing: keyword
+        description: '`shell.sh` の絶対パス'
+    returns:
+      type: str
+      description: 足した中身。`MARK_BEGIN` の行が既にあれば `text` のまま
+    process: |-
+      1. `MARK_BEGIN` の行があれば `text` をそのまま返す
+      2. 空でなく末尾が改行でなければ改行を足し、`MARK_BEGIN`・`[ -f '{shell_file}' ] && . '{shell_file}'`・`MARK_END` の 3 行を足す
+    unit_tests:
+      - name: test_add_rc_block
+        case: 正常
+        summary: 無ければ足し、あれば重ねない
+        condition: '`parametrize`: `export EDITOR=vim`（末尾の改行なし） / 空 / 既に印の範囲を持つ中身'
+        mock: なし
+        expected: '`export EDITOR=vim` の行の後に 3 行 / 3 行だけ / 渡した中身と同じ'
+  - name: remove_rc_block
+    title: 印の範囲を消す
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: 設定ファイルの中身から、`MARK_BEGIN` から `MARK_END` までの行を消す。範囲の外の行は 1 字も変えず、`add_rc_block` が足した改行も戻す
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 設定ファイルの今の中身
+    returns:
+      type: str
+      description: 消した中身。範囲が無ければ `text` のまま
+    unit_tests:
+      - name: test_remove_rc_block
+        case: 正常
+        summary: add_rc_block で足した範囲を消すと元に戻る
+        condition: '`parametrize`: `export EDITOR=vim\n` に `add_rc_block` した中身 / `export EDITOR=vim`（末尾の改行なし）に `add_rc_block` した中身 / 範囲を持たない中身'
+        mock: なし
+        expected: '`export EDITOR=vim\n` / `export EDITOR=vim` / 渡した中身と同じ'
+  - name: write_files
+    title: まとめて書く
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: ファイルごとの中身を、全て書けると確かめてから書く。中身が `None` のファイルは消す
+    side_effects: 渡したファイルを書き換える・消す。登録の置き場所のフォルダが無ければ作る
+    args:
+      - name: contents
+        type: dict[Path, str | None]
+        required: true
+        passing: positional
+        description: ファイル → 書く中身（`None` は消す）
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. 全てのファイルについて、あればそのファイルと親のフォルダ、無ければあるところまでの親のフォルダに書き込めるかを `os.access` で確かめる
+         - 書き込めないものがあれば、何も書かずに `NotWritableError` を送る
+      2. 中身のあるファイルは、同じフォルダの一時ファイルに書いてから `os.replace` で置き換える（既にあれば元のファイルの権限を写す）。`None` のファイルはあれば消す
+         - 途中で `OSError` が起きたら、書きかけの一時ファイルを消してから `NotWritableError` にして送る（`raise ... from`）
+    exceptions:
+      - name: NotWritableError
+        condition: どれかのファイルか親のフォルダに書き込めない
+        message: '{パス} に書き込めません'
+    unit_tests:
+      - name: test_write_files
+        case: 正常
+        summary: 書く・消す・フォルダを作る
+        condition: '`tmp_path` に既にある `a`（`None`）、まだ無い `sub/b`（`x`）、既にある `c`（`y`）'
+        mock: なし
+        expected: '`a` が無く、`sub/b` が `x`、`c` が `y`。`tmp_path` に一時ファイルが残っていない'
+      - name: test_write_files_when_not_writable
+        case: 異常
+        summary: 1 つでも書けなければ何も書かない
+        condition: 読み取りだけにした `ro`（`x`）とまだ無い `new`（`y`）。root では飛ばす
+        mock: なし
+        expected: '`NotWritableError`（`path` が `ro`）。`new` が無く、`ro` の中身が変わっていない'
+        exception: 書き込めない
+  - name: build_report
+    title: 出す登録
+    kind: 関数
+    container: plugins/mindstella/skills/setup/scripts/register.py
+    usecase: 起動スクリプトの登録
+    scope: public
+    summary: 登録から、標準出力に出す JSON（インターフェース定義『起動スクリプトの登録』のレスポンス）を作る
+    args:
+      - name: registration
+        type: Registration | None
+        required: true
+        passing: positional
+        description: 登録
+      - name: rc_file
+        type: Path
+        required: true
+        passing: keyword
+        description: ログインシェルの設定ファイル
+      - name: shell_file
+        type: Path
+        required: true
+        passing: keyword
+        description: '`shell.sh`'
+    returns:
+      type: dict
+      description: '`registered`・`rc_file`・`shell_file`・`env`・`accounts`・`aliases`'
+    unit_tests:
+      - name: test_build_report
+        case: 正常
+        summary: 登録の有無で registered と aliases を分ける
+        condition: '`parametrize`: `sub1` を持つ登録 / `None`'
+        mock: なし
+        expected: '`registered: true`、`aliases: [mindstella, mindstella-sub1]` / `registered: false`、`env: {}`、`accounts: []`、`aliases: []`'
