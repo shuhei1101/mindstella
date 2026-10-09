@@ -29,7 +29,7 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     # 検証
     assert result.returncode == 0, result.stderr
     # tmux に、ワークスペースのフォルダを開いたセッションがある
-    name = session_name(folder)
+    name = session_name(folder, sandbox.config_dir)
     assert sandbox.sessions() == [name]
     assert sandbox.session_path(name) == folder.resolve()
     # Claude Code に MCP の設定が渡り、起動コマンドが installPath の版のフォルダのサーバーを指す
