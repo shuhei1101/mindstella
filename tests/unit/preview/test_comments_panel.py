@@ -462,3 +462,52 @@ def test_removed_review_row(
         "rowClass": "row removed",
         "restored": ["C-2"],
     }
+
+
+# 詳細パネルで書き換えている行を一覧に描き、その行の修正に関わるボタンと入力欄と本文を集める
+EDITING_IN_DETAIL_SCRIPT = """(args) => {
+    const noop = () => {};
+    const panel = MindmapPreview.commentsPanel({
+        items: args.items,
+        removed: [],
+        checked: new Set(),
+        editing: args.editing,
+        editingIn: args.editingIn,
+        stale: new Map(),
+        result: null,
+        selected: null,
+        titleOf: (id) => (id === "D-1" ? "問い" : null),
+        free: {
+            target: null, body: "", status: "idle",
+            on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
+        },
+        on: {
+            close: noop, check: noop, checkAll: noop, open: noop, edit: noop, saveEdit: noop,
+            cancelEdit: noop, remove: noop, restore: noop, unloc: noop, send: noop,
+        },
+    });
+    document.body.append(panel);
+    const row = panel.querySelector("li[data-comment='C-1']");
+    const labelOf = (button) => button.getAttribute("aria-label") ?? button.textContent.trim();
+    const editNames = ["D-1 へのコメントを修正", "D-1 へのコメントを削除", "キャンセル", "修正"];
+    return {
+        editButtons: [...row.querySelectorAll("button")].map(labelOf).filter((name) => editNames.includes(name)),
+        hasField: row.querySelector("textarea") !== null,
+        body: row.querySelector(".review-body")?.textContent ?? null,
+    };
+}"""
+
+
+def test_comments_panel_when_editing_in_detail(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """詳細パネルで書き換えている行は、一覧では本文だけで描く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(
+        EDITING_IN_DETAIL_SCRIPT,
+        {"items": [ITEM_1], "editing": "C-1", "editingIn": "detail"},
+    )
+    # 検証
+    assert observed == {"editButtons": [], "hasField": False, "body": "案 A にする"}

@@ -837,7 +837,7 @@ def _review_item(item_id: str, body: str) -> dict[str, object]:
 
 
 # 詳細パネルに渡す、下端の入力欄とレビュー中のコメントと行の操作の引数を作り、文書に置く関数
-OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, full, calls}) => {
+OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls}) => {
     const index = MindmapPreview.buildIndex(data);
     const noop = () => {};
     const count = (name) => () => { calls[name] += 1; };
@@ -858,6 +858,7 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
             edit: {
                 removed,
                 editing,
+                editingIn,
                 editError: null,
                 editBody: null,
                 on: {
@@ -879,9 +880,9 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
 REVIEW_ROWS_SCRIPT = (
     OPEN_REVIEW_PANEL_FUNCTION
     + """
-async ({data, reviews, removed, editing}) => {
+async ({data, reviews, removed, editing, editingIn}) => {
     const calls = {full: 0, cancelEdit: 0};
-    const panel = await openReviewPanel({data, reviews, removed, editing, full: false, calls});
+    const panel = await openReviewPanel({data, reviews, removed, editing, editingIn, full: false, calls});
     const section = panel.querySelector(".d-review");
     const labelOf = (button) => button.getAttribute("aria-label") ?? button.textContent.trim();
     return {
@@ -890,6 +891,7 @@ async ({data, reviews, removed, editing}) => {
             buttons: [...row.querySelectorAll("button")].map(labelOf),
             status: [...row.querySelectorAll('[role="status"]')].map((status) => status.textContent.trim()),
             hasField: row.querySelector("textarea") !== null,
+            body: row.querySelector(".review-body")?.textContent ?? null,
         })),
         focuses: [...section.querySelectorAll("[data-focus]")].map((element) => element.getAttribute("data-focus")),
     };
@@ -930,13 +932,20 @@ def test_detail_panel_when_review_rows(
             "buttons": ["D-1 へのコメントを修正", "D-1 へのコメントを削除"],
             "status": [],
             "hasField": False,
+            "body": "案 A にする",
         },
         {
             "buttons": ["元に戻す"],
             "status": ["コメントを削除しました。"],
             "hasField": False,
+            "body": None,
         },
-        {"buttons": ["キャンセル", "修正"], "status": [], "hasField": True},
+        {
+            "buttons": ["キャンセル", "修正"],
+            "status": [],
+            "hasField": True,
+            "body": None,
+        },
     ]
     assert result["focuses"] == [
         "detail-edit-open:C-1",
@@ -993,3 +1002,33 @@ def test_detail_panel_when_review_escape_in_full(
         "calls": {"full": 0, "cancelEdit": 1},
         "open": True,
     }
+
+
+def test_detail_panel_when_review_editing_in_list(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """コメントの一覧で書き換えている行は、詳細パネルでは本文だけで描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ROWS_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-1", "案 A にする")],
+            "removed": [],
+            "editing": "C-1",
+            "editingIn": "list",
+        },
+    )
+    # 検証
+    assert result["rows"] == [
+        {"buttons": [], "status": [], "hasField": False, "body": "案 A にする"}
+    ]
