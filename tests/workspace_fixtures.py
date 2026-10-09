@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -534,6 +535,10 @@ def plugin_version() -> str:
     return path.read_text(encoding="utf-8").splitlines()[0]
 
 
+# 移し替えの手順の版のフォルダの名前（`v{major}.{minor}.{patch}`）
+STEP_VERSION_PATTERN = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
+
+
 def _version_key(version: str) -> tuple[int, ...]:
     """`v0.5.0` の形の版を、大小を比べられる数の並びにする。"""
     return tuple(int(part) for part in version.removeprefix("v").split("."))
@@ -547,6 +552,7 @@ def step_versions_after(version: str | None) -> set[str]:
         folder.name
         for folder in migrations.iterdir()
         if folder.is_dir()
+        and STEP_VERSION_PATTERN.fullmatch(folder.name)
         and (version is None or _version_key(version) < _version_key(folder.name))
         and _version_key(folder.name) <= plugin
     }

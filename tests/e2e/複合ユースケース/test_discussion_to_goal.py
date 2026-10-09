@@ -25,13 +25,13 @@ from preview_helpers import (
 from readme_helpers import assert_readme_commands, preview_section
 from workspace_fixtures import (
     RECORD_DIR,
-    REPO_ROOT,
     CallTool,
     MakeItem,
     MakeLegacyWorkspace,
     MakeWorkspace,
     SnapshotTree,
     StartServer,
+    plugin_version,
 )
 
 if TYPE_CHECKING:
@@ -100,12 +100,6 @@ SETTINGS: dict[str, Any] = {
 
 # 取り込みで足すタスクの本文
 TASK_BODY = "経緯: 会話で持ち越した\n終わり方: 比べた結果を残す\n"
-
-
-def _plugin_version() -> str:
-    """プラグインの版（plugins/mindstella/version.ini の 1 行目）を返す。"""
-    version_file = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
-    return version_file.read_text(encoding="utf-8").splitlines()[0]
 
 
 def _to_field_settings(root: Path) -> None:
@@ -497,11 +491,8 @@ def test_normal_when_resume_older_version(
     assert checked_before_set.data["ok"] is False
     assert recorded.is_error is False
     # 移し替えの後、mindstella-version.ini の 1 行目がプラグインの版である
-    plugin_version = (REPO_ROOT / "plugins" / "mindstella" / "version.ini").read_text(
-        encoding="utf-8"
-    )
     first_line = (root / RECORD_DIR / "mindstella-version.ini").read_text(encoding="utf-8").splitlines()[0]
-    assert first_line == plugin_version.splitlines()[0]
+    assert first_line == plugin_version()
     # 資料 A-1 が status: 完成で done を持たず、config.yaml の summary が答えた題名である
     doc = read_yaml(root, "docs.yaml")["items"][0]
     assert doc["status"] == "完成"
@@ -698,7 +689,7 @@ def test_normal_when_submission_from_preview(
         make_item("D-1", title="見せ方", options=SUBMISSION_OPTIONS),
         make_item("A-1"),
         bodies={"A-1.md": SUBMISSION_DOC_BODY},
-        raw_files={"mindstella-version.ini": f"{_plugin_version()}\n"},
+        raw_files={"mindstella-version.ini": f"{plugin_version()}\n"},
     )
     ws = {"workspace": str(root)}
     first_server = start_server()

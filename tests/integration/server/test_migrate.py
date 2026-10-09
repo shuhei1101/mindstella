@@ -121,7 +121,7 @@ def test_normal_when_plan(
 
 
 def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool) -> None:
-    """写しを取って v0.3.0 の手順を当て、版のファイルは書かない（正常系）。"""
+    """写しを取ってプラグインの版までの手順を当て、版のファイルは書かない（正常系）。"""
     # 準備
     root = make_legacy_workspace(
         legacy_docs={"A-1": True, "A-2": False},

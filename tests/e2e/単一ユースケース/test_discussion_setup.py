@@ -7,11 +7,11 @@ from __future__ import annotations
 
 from workspace_fixtures import (
     RECORD_DIR,
-    REPO_ROOT,
     CallTool,
     MakeLegacyWorkspace,
     MakeWorkspace,
     SnapshotTree,
+    step_versions_after,
 )
 
 # ワークスペースの版を持つファイルの名前
@@ -22,31 +22,6 @@ NEWER_VERSION = "v99.0.0"
 
 # 前の版（v0.6.0 より前）の設定ファイルの名前
 LEGACY_SETTINGS = "mindmap.yaml"
-
-
-def _plugin_version() -> str:
-    """プラグインの版（`plugins/mindstella/version.ini` の 1 行目）を返す。"""
-    path = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
-    return path.read_text(encoding="utf-8").splitlines()[0]
-
-
-def _version_key(version: str) -> tuple[int, ...]:
-    """`v0.5.0` の形の版を、大小を比べられる数の並びにする。"""
-    return tuple(int(part) for part in version.removeprefix("v").split("."))
-
-
-def _step_versions_after(version: str) -> set[str]:
-    """`version` より新しく、プラグインの版までの移し替えの手順の版の集まりを返す。"""
-    migrations = (
-        REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "migrations"
-    )
-    plugin = _version_key(_plugin_version())
-    return {
-        folder.name
-        for folder in migrations.iterdir()
-        if folder.is_dir()
-        and _version_key(version) < _version_key(folder.name) <= plugin
-    }
 
 
 def test_normal_when_older_version(
@@ -115,8 +90,6 @@ def test_normal_when_version_recorded_at_top(
     payload = plan.data
     assert payload["workspace_version"] == "v0.5.0"
     assert payload["relation"] == "older"
-    assert {step["version"] for step in payload["steps"]} == _step_versions_after(
-        "v0.5.0"
-    )
+    assert {step["version"] for step in payload["steps"]} == step_versions_after("v0.5.0")
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
