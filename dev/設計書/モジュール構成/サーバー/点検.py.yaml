@@ -188,6 +188,7 @@ functions:
       1. 送信を読む（送信の読み込み。`load_submissions`）
          - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `submissions.yaml`、`id` は `null`）にして返す
       2. `target` を持つ送信ごとに、その項目が無ければ `broken_ref`（`id` は送信の ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
+         - 取り込み済みの送信で、`target` が消した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない
     unit_tests:
       - name: test_check_submissions
         case: 正常
@@ -205,6 +206,12 @@ functions:
         case: 正常
         summary: 送信のファイルが無ければ問題 0 件
         condition: '`submissions.yaml` が無いワークスペース'
+        mock: なし
+        expected: 空の並び
+      - name: test_check_submissions_when_target_removed
+        case: 正常
+        summary: 取り込み済みの送信が消した項目を指しても拾わない
+        condition: 取り込み済みの S-1（N-1）と、`changes.yaml` の `pending.removed` に N-1 の記録。N-1 は無い
         mock: なし
         expected: 空の並び
   - name: _check_phases
@@ -284,7 +291,7 @@ functions:
     process: |-
       1. `changes.yaml` を読む（`load_changes`）
          - `SchemaMismatchError` の場合、`lines` を `schema`（`file: changes.yaml`）の問題にして、参照切れは確かめない
-      2. `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed` の ID が無ければ `broken_ref`（`file: changes.yaml`、`key` は `sets[0].added` の形）にする
+      2. `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed` の ID が無く、消した項目の記録（`removed_items`）にも無ければ `broken_ref`（`file: changes.yaml`、`key` は `sets[0].added` の形）にする
       3. 本文を持ち `history` を持つ項目ごとに、今の本文へ `history` を新しいものから順に当てる（`apply_body_diff`）
          - `None` を返した要素で止め、`stale_history`（`key: history[{位置}].body_diff`、`detail` にその回より前の本文の差分を出せないこと）にする
     unit_tests:
@@ -300,5 +307,50 @@ functions:
         condition: '`sets[0].changed` に D-9（無い）を持つ `changes.yaml`'
         mock: なし
         expected: '`broken_ref`（`changes.yaml`・`sets[0].changed`・`D-9`）'
+      - name: test_check_history_when_item_removed
+        case: 正常
+        summary: 消した項目の ID を参照切れにしない
+        condition: '`sets[1].added` に N-1、`sets[0].removed` に N-1 の記録を持ち、N-1 が無いワークスペース'
+        mock: なし
+        expected: 問題が 0 件
+  - name: find_referrers
+    title: 指している記録を探す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: 記録の削除と取り下げ
+    scope: public
+    summary: 1 項目を指している記録を、エラーの行の形で返す（読むだけ）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: 消す項目の ID
+    returns:
+      type: list[str]
+      description: '`{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行（指している記録が無ければ空）'
+    process: |-
+      1. 種類の順に、`REF_RULES` のキーで `item_id` を指すほかの項目を拾う（`{種類のファイル}: {指している項目の ID}: {キー}`）
+      2. 設定の納品物の `doc` が指していれば拾う（`config.yaml: goal.deliverables[{番号}].doc: doc`）
+      3. レビュー中のコメント・書きかけの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、書きかけは `drafts.yaml: items[{番号}]: target`）
+      4. 取り込んでいない送信（`taken` を持たない）の `target` が指していれば拾う（`load_submissions`。`submissions.yaml: {送信の ID}: target`）
+    unit_tests:
+      - name: test_find_referrers
+        case: 正常
+        summary: 項目・納品物・コメント・取り込んでいない送信が指すのを拾う
+        condition: D-1 を D-2 の `depends_on` と T-1 の `for` が指し、A-1 を納品物の `doc` とコメント C-1 が指す。D-1 と A-1 でそれぞれ呼ぶ
+        mock: なし
+        expected: 'D-1 は `decisions.yaml: D-2: depends_on` と `tasks.yaml: T-1: for`、A-1 は `config.yaml: goal.deliverables[0].doc: doc` と `comments.yaml: C-1: target`'
+      - name: test_find_referrers_ignores_taken_submission
+        case: 正常
+        summary: 取り込み済みの送信は拾わない
+        condition: N-1 を取り込み済みの S-1 と取り込んでいない S-2 が指す
+        mock: なし
+        expected: '`submissions.yaml: S-2: target` の 1 行だけ'
 test_files:
   - tests/unit/scripts/test_checker.py

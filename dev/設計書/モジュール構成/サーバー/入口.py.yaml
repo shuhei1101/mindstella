@@ -66,7 +66,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "submissions", "take_submission")
+    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "submissions", "take_submission")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -1210,7 +1210,7 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: dict[str, Any]
-      description: '`{id, at, summary, added, changed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed` が空）'
+      description: '`{id, at, summary, added, changed, removed}`（まとめなかったときは `id`・`at`・`summary` が `None`、`added`・`changed`・`removed` が空。`removed` はまとまりの `removed` を `{id, kind, title}` にしたもの）'
     process: |-
       1. 前後の空白を除いた `summary` が空か `SUMMARY_MAX_LENGTH` を超えれば `ArgumentError`（`summary`）を送る
       2. ワークスペースを確かめる（`require_workspace`）。まとまりを読む（`load_changes`）
@@ -1301,7 +1301,7 @@ functions:
       description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
     process: |-
       1. 渡せないキーを確かめる（`validate_input_keys`）
-      2. `staged.items` のその種類で ID を振る（`next_id`）
+      2. `staged.items` のその種類で ID を振る（`next_id`。`taken` に消した項目の記録（`removed_items`）の ID を渡す）
       3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`EDITOR`）・`seq`・`added_seq` を末尾に置いた項目を作る
          - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す（どの種類も）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
@@ -1319,6 +1319,12 @@ functions:
         condition: '空の `Staged` に `note` の `{"title": "t", "content": "c", "body_markdown": "b"}`'
         mock: '`now`'
         expected: N-1 の `body` が `N-1.md` で、`Staged` の本文の書き込みに `N-1.md` → `b` がある
+      - name: test_stage_add_skips_removed_id
+        case: 正常
+        summary: 消した ID を振らない
+        condition: N-1 を持ち、記録の `pending.removed` に N-2 を持つ `Staged` にメモを足す
+        mock: '`now`'
+        expected: 結果の `id` が N-3
   - name: stage_update
     title: 更新を当てる
     kind: 関数
@@ -1758,6 +1764,66 @@ functions:
         condition: 偽の台帳を渡して置き、`signal.getsignal(signal.SIGTERM)` で引いた受け口を `(signal.SIGTERM, None)` で呼ぶ。後で元の受け口に戻す
         mock: 台帳（`stop_all` を記録する偽）、`os._exit`（`server` モジュールの参照を monkeypatch し、受け取ったコードを記録する）
         expected: '`stop_all` が 1 回呼ばれた後に `os._exit` が 0 で 1 回呼ばれている'
+  - name: run_remove
+    title: remove の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の削除と取り下げ
+    scope: public
+    summary: 1 項目を種類の YAML と本文から消し、消した項目をまだまとめていない変更に記録する
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+    returns:
+      type: dict[str, Any]
+      description: '`{id, kind, title, file, body_removed}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、`load_changes`）
+      2. 消す項目を引く（`find_item`。無ければ `ItemNotFoundError`）
+      3. 指している記録を探す（`find_referrers`）
+         - 1 件以上ある場合、`ItemReferencedError`（`lines` にその行）を送る（何も書かない）
+      4. 通し番号を振り（`advance_seq`）、`{id, kind, title, seq, added_seq}`（`added_seq` を持たなければ 0）を消した項目として記録する（`note_removed`）
+      5. その種類の並びから項目を除き、本文を持ち `docs/` にそのファイルがあれば `removed_bodies` に入れて書き込む（`save_batch`）
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い'
+        message: 'ワークスペースがありません: {パス}'
+      - name: ItemNotFoundError
+        condition: 渡した ID の項目が無い
+        message: '{ID} がありません'
+      - name: ItemReferencedError
+        condition: ほかの記録がその項目を指している
+        message: '{ID} はほかの記録が指しているため消せません'
+      - name: WriteFailedError
+        condition: 書き込みか置き換え、本文の削除に失敗した
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_run_remove
+        case: 正常
+        summary: 項目と本文を消し、消した項目を記録する
+        condition: 本文を持つ N-1・N-2 を足して `commit` したワークスペースで N-2 を消す
+        mock: なし
+        expected: '結果が `{id: N-2, kind: note, file: .mindstella/notes.yaml, body_removed: true}` と消したときのタイトル。`notes.yaml` に N-2 が無く `docs/N-2.md` が無い。`changes.yaml` の `pending.removed` が N-2 で `seq` が `last_seq`'
+      - name: test_run_remove_when_referenced
+        case: 異常
+        summary: ほかの記録が指していれば消さない
+        condition: 'D-2 が `depends_on: [D-1]` のワークスペースで D-1 を消す'
+        mock: なし
+        expected: '`ItemReferencedError`（`lines` に `decisions.yaml: D-2: depends_on`）。ワークスペースの全てのファイルが呼ぶ前と同じ'
+      - name: test_run_remove_when_not_found
+        case: 異常
+        summary: 無い ID は消さない
+        condition: N-1 だけのワークスペースで N-9 を消す
+        mock: なし
+        expected: '`ItemNotFoundError`（メッセージに `N-9`）'
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く
