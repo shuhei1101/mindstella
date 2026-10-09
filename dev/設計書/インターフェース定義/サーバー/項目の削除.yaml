@@ -1,0 +1,290 @@
+title: "項目の削除"
+entry:
+  kind: mcp_tool
+  value: '`remove`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__remove`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: まとめた後の重複したメモを消し、まだまとめていない変更に消した項目を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 本文を持つメモ N-1・N-2 を足して `commit` したワークスペース（保持する回数は既定の 5）
+        notes: N-2 のタイトルは `重複したメモ`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id N-2
+        IF-->>WS: 全ての YAML・changes.yaml・comments.yaml・drafts.yaml・submissions.yaml を読む
+        IF->>IF: N-2 を指す記録が無いことを確かめる
+        IF->>WS: notes.yaml・changes.yaml を書き、docs/N-2.md を消す
+        IF-->>クライアント: JSON（id・kind・title・file・body_removed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 結果の `id` が `N-2`、`kind` が `note`、`title` が `重複したメモ`、`file` が `.mindstella/notes.yaml`、`body_removed` が真
+      - '`.mindstella/notes.yaml` に N-2 が無く、N-1 が呼ぶ前と同じ'
+      - '`.mindstella/docs/N-2.md` が無い'
+      - '`changes.yaml` の `pending.removed` が N-2 の 1 件で、`kind` が `note`、`title` が `重複したメモ`、`seq` が `last_seq` と同じ'
+      - '`changes.yaml` の `pending.added`・`pending.changed` が空'
+    test: test_normal
+  - name: 正常系（まとめる前に足した項目を消す）
+    summary: 最後のまとまりより後に足した項目を消すと、まだまとめていない変更に何も残らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1 を足して、`commit` していないワークスペース
+        notes: '`pending.added` が `[N-1]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id N-1
+        IF-->>WS: 全ての YAML と changes.yaml を読む
+        IF->>IF: N-1 を pending.added から除き、removed には足さない
+        IF->>WS: notes.yaml・changes.yaml を書く
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`.mindstella/notes.yaml` に N-1 が無い'
+      - '`changes.yaml` の `pending` の `added`・`changed`・`removed` が空'
+    test: test_normal_when_added_since_last_commit
+  - name: 正常系（取り込み済みの送信だけが指している）
+    summary: 取り込み済みの送信が向けた項目は消せる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1 と、N-1 へ向けた取り込み済みの送信 S-1 を持つワークスペース
+        notes: S-1 が `taken` を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id N-1
+        IF-->>WS: 全ての YAML と submissions.yaml を読む
+        IF->>IF: 指しているのは取り込み済みの送信だけ
+        IF->>WS: notes.yaml・changes.yaml を書く
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`.mindstella/notes.yaml` に N-1 が無い'
+      - '`submissions.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_only_taken_submission_refers
+  - name: 異常系（ほかの項目が指している・ItemReferencedError）
+    summary: ほかの項目が指している項目は消さず、指している記録を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 検討事項 D-1、D-1 に依存する検討事項 D-2、D-1 を `for` で指すタスク T-1 を持つワークスペース
+        notes: 'D-2 が `depends_on: [D-1]`、T-1 が `for: [D-1]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id D-1
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: D-2 の depends_on と T-1 の for が D-1 を指している
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文の 1 行目が `エラー: D-1 はほかの記録が指しているため消せません`'
+      - 'エラーの本文に `decisions.yaml: D-2: depends_on` と `tasks.yaml: T-1: for` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_referenced
+  - name: 異常系（納品物・コメントが指している・ItemReferencedError）
+    summary: ゴールの納品物の資料と、レビュー中のコメントが向けた項目は消さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: ゴールの納品物の `doc` が資料 A-1 を指し、`comments.yaml` に A-1 へ向けたコメントを 1 件持つワークスペース
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id A-1
+        IF-->>WS: config.yaml・全ての YAML・comments.yaml を読む
+        IF->>IF: 納品物とコメントが A-1 を指している
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `config.yaml: goal.deliverables[0].doc` の行と、`comments.yaml` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_referenced_by_deliverable_and_comment
+  - name: 異常系（ID が無い・ItemNotFoundError）
+    summary: 存在しない ID は消さず、渡した ID を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1 だけを持つワークスペース
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id N-9
+        IF-->>WS: N-9 が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `N-9` がある
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_id_not_found
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すと、何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: remove workspace id N-1
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは何も消さず、エラーの行を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 本文を持つメモ N-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id N-1
+        IF-->>WS: 全ての YAML を読む
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ（`docs/N-1.md` も残る）
+    test: test_error_when_write_fails
+lead: ID で指した 1 項目を、種類の YAML と本文の Markdown から消し、消した項目の ID・種類・タイトルを `changes.yaml` のまだまとめていない変更に残す。ほかの記録が指している項目は消さない。
+idempotent: false
+side_effects: その項目の種類の YAML から項目を消し、本文を持っていれば `.mindstella/docs/{ID}.md` を消す。`changes.yaml` の `last_seq` を 1 進め、`pending.removed` に消した項目を足し、`pending.added`・`pending.changed` からその ID を除く。YAML・`changes.yaml` の一時ファイルを書き終えてから、YAML → `changes.yaml` の順に `os.replace` で置き換え、最後に本文を消す
+exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: id
+    type: str
+    required: true
+    location: argument
+    description: 消す項目の ID。頭の文字で書き換える YAML が決まる
+    example: N-2
+response:
+  - name: id
+    type: str
+    description: 消した項目の ID
+  - name: kind
+    type: str
+    description: 消した項目の種類（`note` など）
+  - name: title
+    type: str
+    description: 消したときのタイトル
+  - name: file
+    type: str
+    description: 書き換えた YAML（ワークスペースからの相対パス。例 `.mindstella/notes.yaml`）
+  - name: body_removed
+    type: bool
+    description: 本文の Markdown を消したか（本文を持たない項目は偽）
+exceptions:
+  - name: なし（正常終了）
+    condition: 消せた
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: ItemNotFoundError
+    condition: 渡した ID の項目が無い（頭の文字がどの種類にも当たらないときも含む）
+    notes: ツールのエラー。エラーの本文に渡した ID。何も書き込まない
+  - name: ItemReferencedError
+    condition: ほかの記録がその項目を指している（制約「指している記録」）
+    notes: ツールのエラー。指している記録ごとに 1 行。何も書き込まない
+  - name: WriteFailedError
+    condition: 一時ファイルの書き込みか置き換え、本文の削除に失敗した
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたものを前の中身に戻し、どのファイルも書き換えない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。指している記録があるときは、`エラー: {ID} はほかの記録が指しているため消せません` の行の後に、指している記録ごとに `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行を続ける。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 指している記録
+    constraint: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`（点検の参照の決まりと同じキー）、`config.yaml` の `goal.deliverables[].doc`、`comments.yaml`・`drafts.yaml` の `target`、取り込んでいない送信（`submissions.yaml` の `taken` が無い送信）の `target`。取り込み済みの送信は記録として残し、指していても消せる
+  - item: 消した項目の記録
+    constraint: '`changes.yaml` の `pending.removed` の末尾に `id`・`kind`・`title`（消したときのタイトル）・`seq`（このツールで振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0）を足す。形は ER 図『ワークスペース』の changes.yaml'
+  - item: まだまとめていない変更
+    constraint: 消す ID を `pending.added`・`pending.changed` から除く。`pending.added` にあった（最後のまとまりより後に足した）項目は `pending.removed` にも足さず、まとめる前に足して消した項目はまとまりに残さない
+  - item: 通し番号
+    constraint: '`changes.yaml` の `last_seq` を 1 進め、その番号を `pending.removed` の `seq` にする。保持する回数が 0 のときも進める'
+  - item: 消した ID
+    constraint: 消した ID は、後から足す項目に振らない（『項目の追加』の「ID の振り方」）
+  - item: 本文
+    constraint: 項目が `body` を持つときは `.mindstella/docs/{body}` を消す。ファイルが無ければ消さずに続ける（`body_removed` は偽）
+  - item: 取り下げ
+    constraint: 'このツールは項目を消すだけ。やめた項目を残したまま取り下げるのは『項目の更新』で、検討事項は状態 `取り下げ`・`対象外`、タスクは状態 `中止`、調査・資料・用語集・メモ・会話ログは `withdrawn: true` と `reason` を書く'
+  - item: 部分成功
+    constraint: 起こさない。置き換える前に種類の YAML と `changes.yaml` の前の中身を控え、どちらかの置き換えか本文の削除に失敗したら、置き換えたものを控えに戻してからツールのエラーで終わる（残った一時ファイルも消す）

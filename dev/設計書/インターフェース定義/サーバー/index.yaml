@@ -124,3 +124,5 @@ items:
   - page: READMEの書き出し.yaml
     summary: 'readme: 直下の README.md を起動・接続・スキル・プレビューの一覧に書き直す'
     group: 作る
+  - page: 項目の削除.yaml
+    summary: 'remove: 1 項目を消し、消した項目をまだまとめていない変更に残す'

@@ -371,6 +371,14 @@ tables:
         title: 本文
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）'
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: docs.yaml
     title: 資料
     datastore: YAML
@@ -402,6 +410,14 @@ tables:
         type: string
         not_null: true
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）'
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: terms.yaml
     title: 用語集
     datastore: YAML
@@ -428,6 +444,14 @@ tables:
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
         example: G-2.md
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: notes.yaml
     title: メモ
     datastore: YAML
@@ -446,6 +470,14 @@ tables:
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す'
         example: N-4.md
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: logs.yaml
     title: 会話ログ
     datastore: YAML
@@ -465,6 +497,14 @@ tables:
         title: 本文
         type: string
         description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）。`related` はこの会話で更新した項目'
+      - name: withdrawn
+        title: 取り下げ
+        type: boolean
+        description: やめた項目を記録に残したまま取り下げた印。取り下げていなければキーを持たない
+      - name: reason
+        title: 理由
+        type: string
+        description: 取り下げた理由
   - name: docs/{ID}.md
     title: 本文
     datastore: Markdown
@@ -564,23 +604,23 @@ tables:
     growth: ステップごとに `commit` で 1 件足す
     deletion: 消さない
     access: 全件
-    description: '`add`・`update`・`adopt` が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`add`・`update` の対象にしない'
+    description: '`add`・`update`・`adopt`・`remove` が初めて書き換えたときにサーバーが作り、無ければまとまり 0 件・まだまとめていない変更なしとして扱う。まとまりに入る項目の変更履歴は、1 つ前のまとまりの `until_seq` より大きく、そのまとまりの `until_seq` 以下の `seq` を持つもの。`sets[].removed`・`pending.removed` は消した項目のただ 1 つの記録で、新しい ID を振るときに消した ID を避けるのにも使う。`add`・`update` の対象にしない'
     columns:
       - name: last_seq
         title: 最後の通し番号
         type: number
         not_null: true
-        description: 最後に振った通し番号。変更履歴を積むとき・項目を足すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す
+        description: 最後に振った通し番号。変更履歴を積むとき・項目を足すとき・項目を消すとき・保持する回数が 0 で変更履歴を積まずに値を変えるときに 1 足す
       - name: sets
         title: まとまり
         type: array
         not_null: true
-        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）
+        description: 新しい順。要素は `id`（`V-` + 連番）・`at`（まとめた日時）・`summary`（一言の説明）・`until_seq`（まとめたときの `last_seq`）・`added`（足した項目の ID）・`changed`（変えた項目の ID。足した項目は入れない）・`removed`（消した項目。要素は `pending.removed` と同じ形。消した項目が無いまとまりはキーを持たない）
       - name: pending
         title: まだまとめていない変更
         type: object
         not_null: true
-        description: '`added`・`changed`（書き換えた順の ID）。保持する回数が 0 の書き換えは `changed` に入れない'
+        description: '`added`・`changed`（書き換えた順の ID）と `removed`（消した順。要素は `id`・`kind`（種類）・`title`（消したときのタイトル）・`seq`（消したときに振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0））。`removed` は任意で、無ければ消した項目なしとして扱う。保持する回数が 0 の書き換えは `changed` に入れない。最後のまとまりより後に足して消した項目は `added` から除き、`removed` にも入れない'
       - name: read_seq
         title: AI が最後に読んだ時点
         type: number

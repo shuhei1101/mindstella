@@ -145,6 +145,35 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - '`changes.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
+  - name: 正常系（消した項目をまとめる）
+    summary: 消した項目だけがあるときも、まとまりを 1 つ足す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1・N-2 を足して `commit` し、`remove` で N-2 を消したワークスペース
+        notes: '-'
+      - name: summary
+        description: 一言の説明
+        notes: '`重複した N-2 を消す`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary
+        IF-->>WS: changes.yaml を読む
+        IF->>WS: sets の先頭に removed を持つまとまりを足し、pending を空にする
+        IF-->>クライアント: JSON（id・at・summary・added・changed・removed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 結果の `id` が空でなく、`removed` が N-2 の 1 件
+      - '`changes.yaml` の `sets` の先頭が `removed` に N-2 を持ち、`pending` の `added`・`changed`・`removed` が空'
+    test: test_normal_when_item_removed
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'
@@ -181,6 +210,9 @@ response:
   - name: changed
     type: list[str]
     description: このまとまりで変えた項目の ID（足した項目は含めない）
+  - name: removed
+    type: list[{id, kind, title}]
+    description: このまとまりで消した項目（ID・種類・消したときのタイトル）
 exceptions:
   - name: なし（正常終了）
     condition: まとめた（まだまとめていない書き換えが無く、何も足さなかったときも含む）
@@ -206,7 +238,7 @@ constraints:
   - item: まとまりの ID
     constraint: '`V-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
   - item: まとまりの中身
-    constraint: '`changes.yaml` の `pending` の `added`・`changed` をそのまま写し、`until_seq` に `last_seq` を書く。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
+    constraint: '`changes.yaml` の `pending` の `added`・`changed`・`removed` をそのまま写し、`until_seq` に `last_seq` を書く。`removed` が空のときはまとまりに `removed` のキーを置かない。`added`・`changed`・`removed` が全て空のときだけ、まだまとめていない書き換えが無いとみなす。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
   - item: まだまとめていない書き換えが無いとき
     constraint: '`pending` の `added`・`changed` がどちらも空なら、まとまりを足さず、`changes.yaml` も書かない'
   - item: まとまりの保持

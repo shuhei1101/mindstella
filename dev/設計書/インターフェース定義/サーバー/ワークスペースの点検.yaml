@@ -154,6 +154,31 @@ flows:
       - D-4・D-5・D-6 の問題が無い
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_options_and_status_mismatch
+  - name: 正常系（消した項目がまとまりに残る）
+    summary: 過去のまとまりと取り込み済みの送信が消した項目を指していても、参照切れにしない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: メモ N-1 を足して `commit` し、N-1 へ向けた送信 S-1 を取り込み済みにしてから、`remove` で N-1 を消してもう一度 `commit` したワークスペース
+        notes: 1 つ目のまとまりの `added` と S-1 の `target` が N-1 を指す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: 全ての YAML・changes.yaml・submissions.yaml を読む
+        IF->>IF: 消した項目の記録にある N-1 を参照切れから外す
+        IF-->>クライアント: JSON（ok が真）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`ok` が真で、`problems` が空'
+    test: test_normal_when_removed_item_in_change_set
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の Markdown のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）
@@ -202,7 +227,7 @@ constraints:
   - item: 点検するファイル
     constraint: '`config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`（無ければ送信 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）・`docs/`'
   - item: 参照切れを確かめるキー
-    constraint: '`depends_on`・`parent`・`for`・`related`・`sources` と設定の `goal.deliverables[].doc`、送信の `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、キーが決めた種類でない ID（`parent` が `D-` 以外など）を `broken_ref` にする。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
+    constraint: '`depends_on`・`parent`・`for`・`related`・`sources` と設定の `goal.deliverables[].doc`、送信の `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、キーが決めた種類でない ID（`parent` が `D-` 以外など）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み済みの送信の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（『項目の削除』で消した項目）は参照切れにしない。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
   - item: 本文のずれ
     constraint: '`body` が指す `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md` を `orphan_body` にする'
   - item: 問題の並び
