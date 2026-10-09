@@ -446,14 +446,14 @@ functions:
       description: 足した中身。`MARK_BEGIN` の行が既にあれば `text` のまま
     process: |-
       1. `MARK_BEGIN` の行があれば `text` をそのまま返す
-      2. 空でなく末尾が改行でなければ改行を足し、`MARK_BEGIN`・`[ -f '{shell_file}' ] && . '{shell_file}'`・`MARK_END` の 3 行を足す
+      2. 空でなければ、末尾の改行の有無によらず改行を 1 つ足し、`MARK_BEGIN`・`[ -f '{shell_file}' ] && . '{shell_file}'`・`MARK_END` の 3 行を足す（末尾が改行なら、印の前に空行が 1 つ入る）
     unit_tests:
       - name: test_add_rc_block
         case: 正常
         summary: 無ければ足し、あれば重ねない
-        condition: '`parametrize`: `export EDITOR=vim`（末尾の改行なし） / 空 / 既に印の範囲を持つ中身'
+        condition: '`parametrize`: `export EDITOR=vim`（末尾の改行なし） / `export EDITOR=vim\n` / 空 / 既に印の範囲を持つ中身'
         mock: なし
-        expected: '`export EDITOR=vim` の行の後に 3 行 / 3 行だけ / 渡した中身と同じ'
+        expected: '`export EDITOR=vim` の行の後に 3 行 / `export EDITOR=vim` の行と空行の後に 3 行 / 3 行だけ / 渡した中身と同じ'
   - name: remove_rc_block
     title: 印の範囲を消す
     kind: 関数
@@ -470,6 +470,9 @@ functions:
     returns:
       type: str
       description: 消した中身。範囲が無ければ `text` のまま
+    process: |-
+      1. `MARK_BEGIN` の行が無ければ `text` をそのまま返す
+      2. `MARK_BEGIN` の行から `MARK_END` の行の末尾の改行までを消し、`MARK_BEGIN` の直前に改行があればその 1 つも消す（`add_rc_block` が足した改行）
     unit_tests:
       - name: test_remove_rc_block
         case: 正常
