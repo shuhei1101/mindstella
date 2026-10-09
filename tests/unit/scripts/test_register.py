@@ -19,6 +19,14 @@ from fixture_types import SnapshotTree
 # 印の範囲の外にある、利用者が書いた行
 USER_LINE = "export EDITOR=vim"
 
+# 設定ファイルに足す印の範囲（印の 2 行と、shell.sh を読み込む 1 行）
+RC_SHELL_FILE = Path("/h/.config/mindstella/shell.sh")
+RC_BLOCK = [
+    "# >>> mindstella >>>",
+    "[ -f '/h/.config/mindstella/shell.sh' ] && . '/h/.config/mindstella/shell.sh'",
+    "# <<< mindstella <<<",
+]
+
 # 登録のスクリプトが読む Python の最も古い版（構文を確かめる版）
 OLDEST_PYTHON = (3, 8)
 
@@ -395,63 +403,60 @@ def test_render_shell(register: ModuleType, tmp_path: Path, shell: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("text", "expected_lines", "unchanged"),
     [
-        pytest.param(USER_LINE, id="no_trailing_newline"),
-        pytest.param("", id="empty"),
+        pytest.param(USER_LINE, [USER_LINE, *RC_BLOCK], False, id="no_trailing_newline"),
+        pytest.param("", RC_BLOCK, False, id="empty"),
+        pytest.param(
+            f"{USER_LINE}\n" + "\n".join(RC_BLOCK) + "\n",
+            [USER_LINE, *RC_BLOCK],
+            True,
+            id="already_added",
+        ),
     ],
 )
-def test_add_rc_block(register: ModuleType, text: str) -> None:
-    """無ければ足す（正常系）。"""
-    # 準備
-    shell_file = Path("/h/.config/mindstella/shell.sh")
+def test_add_rc_block(
+    register: ModuleType, text: str, expected_lines: list[str], unchanged: bool
+) -> None:
+    """無ければ足し、あれば重ねない（正常系）。"""
     # 実行
-    result = register.add_rc_block(text, shell_file=shell_file)
-    # 検証（利用者の行の後に、印と読み込む 1 行だけの 3 行を足す）
-    block = [
-        register.MARK_BEGIN,
-        "[ -f '/h/.config/mindstella/shell.sh' ] && . '/h/.config/mindstella/shell.sh'",
-        register.MARK_END,
-    ]
-    assert result.splitlines() == [*text.splitlines(), *block]
+    result = register.add_rc_block(text, shell_file=RC_SHELL_FILE)
+    # 検証（利用者の行の後に、印と読み込む 1 行だけの 3 行を足す。既にあれば渡した中身と同じ）
+    assert result.splitlines() == expected_lines
+    assert (result == text) is unchanged
 
 
-def test_add_rc_block_when_already_added(register: ModuleType) -> None:
-    """既に印の範囲があれば重ねない（正常系）。"""
-    # 準備
-    shell_file = Path("/h/.config/mindstella/shell.sh")
-    added = register.add_rc_block(f"{USER_LINE}\n", shell_file=shell_file)
-    # 実行
-    result = register.add_rc_block(added, shell_file=shell_file)
-    # 検証
-    assert result == added
+def _prepare_rc_text(register: ModuleType, original: str, *, add_block: bool) -> str:
+    """add_block なら original に add_rc_block で印の範囲を足した中身を、そうでなければ original を返す。"""
+    # 範囲を持たない中身を渡すときは足さない
+    if not add_block:
+        return original
+    return register.add_rc_block(original, shell_file=RC_SHELL_FILE)
 
 
 @pytest.mark.parametrize(
-    "text",
+    ("original", "add_block", "expected"),
     [
-        pytest.param(f"{USER_LINE}\n", id="trailing_newline"),
-        pytest.param(USER_LINE, id="no_trailing_newline"),
+        pytest.param(f"{USER_LINE}\n", True, f"{USER_LINE}\n", id="trailing_newline"),
+        pytest.param(USER_LINE, True, USER_LINE, id="no_trailing_newline"),
+        pytest.param(
+            f"{USER_LINE}\nalias ll='ls -l'\n",
+            False,
+            f"{USER_LINE}\nalias ll='ls -l'\n",
+            id="no_block",
+        ),
     ],
 )
-def test_remove_rc_block(register: ModuleType, text: str) -> None:
-    """add_rc_block で足した範囲を消すと元に戻る（正常系）。"""
+def test_remove_rc_block(
+    register: ModuleType, original: str, add_block: bool, expected: str
+) -> None:
+    """add_rc_block で足した範囲を消すと元に戻り、範囲を持たない中身はそのまま返す（正常系）。"""
     # 準備
-    added = register.add_rc_block(text, shell_file=Path("/h/.config/mindstella/shell.sh"))
-    # 実行
-    result = register.remove_rc_block(added)
-    # 検証
-    assert result == text
-
-
-def test_remove_rc_block_when_no_block(register: ModuleType) -> None:
-    """範囲を持たない中身はそのまま返す（正常系）。"""
-    # 準備
-    text = f"{USER_LINE}\nalias ll='ls -l'\n"
+    text = _prepare_rc_text(register, original, add_block=add_block)
     # 実行
     result = register.remove_rc_block(text)
     # 検証
-    assert result == text
+    assert result == expected
 
 
 def test_write_files(register: ModuleType, tmp_path: Path) -> None:
