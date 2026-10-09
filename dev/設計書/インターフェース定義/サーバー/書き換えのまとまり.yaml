@@ -238,9 +238,9 @@ constraints:
   - item: まとまりの ID
     constraint: '`V-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
   - item: まとまりの中身
-    constraint: '`changes.yaml` の `pending` の `added`・`changed`・`removed` をそのまま写し、`until_seq` に `last_seq` を書く。`removed` が空のときはまとまりに `removed` のキーを置かない。`added`・`changed`・`removed` が全て空のときだけ、まだまとめていない書き換えが無いとみなす。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
+    constraint: '`changes.yaml` の `pending` の `added`・`changed`・`removed` をそのまま写し、`until_seq` に `last_seq` を書く。`removed` が空のときはまとまりに `removed` のキーを置かない。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
   - item: まだまとめていない書き換えが無いとき
-    constraint: '`pending` の `added`・`changed` がどちらも空なら、まとまりを足さず、`changes.yaml` も書かない'
+    constraint: '`pending` の `added`・`changed`・`removed` が全て空なら、まとまりを足さず、`changes.yaml` も書かない'
   - item: まとまりの保持
     constraint: 消さない（保持する回数は項目の変更履歴だけにかかる）
   - item: 巻き戻し

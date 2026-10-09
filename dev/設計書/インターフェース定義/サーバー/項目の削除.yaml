@@ -34,7 +34,7 @@ flows:
       - '`changes.yaml` の `pending.added`・`pending.changed` が空'
     test: test_normal
   - name: 正常系（まとめる前に足した項目を消す）
-    summary: 最後のまとまりより後に足した項目を消すと、まだまとめていない変更に何も残らない
+    summary: 最後のまとまりより後に足した項目を消すと、足した項目から除き、消した項目に記録する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -51,14 +51,17 @@ flows:
 
         クライアント->>IF: remove workspace id N-1
         IF-->>WS: 全ての YAML と changes.yaml を読む
-        IF->>IF: N-1 を pending.added から除き、removed には足さない
+        IF->>IF: N-1 を pending.added から除き、pending.removed に足す
         IF->>WS: notes.yaml・changes.yaml を書く
         IF-->>クライアント: JSON
+        クライアント->>IF: add workspace kind note
+        IF-->>クライアント: JSON（id: N-2）
       ```
     expected:
       - ツールのエラーにならない
       - '`.mindstella/notes.yaml` に N-1 が無い'
-      - '`changes.yaml` の `pending` の `added`・`changed`・`removed` が空'
+      - '`changes.yaml` の `pending.added`・`pending.changed` が空で、`pending.removed` が N-1 の 1 件で `added_seq` を持つ'
+      - 消した後に足したメモの ID が N-2 である（N-1 を振り直さない）
     test: test_normal_when_added_since_last_commit
   - name: 正常系（取り込み済みの送信だけが指している）
     summary: 取り込み済みの送信が向けた項目は消せる
@@ -277,7 +280,7 @@ constraints:
   - item: 消した項目の記録
     constraint: '`changes.yaml` の `pending.removed` の末尾に `id`・`kind`・`title`（消したときのタイトル）・`seq`（このツールで振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0）を足す。形は ER 図『ワークスペース』の changes.yaml'
   - item: まだまとめていない変更
-    constraint: 消す ID を `pending.added`・`pending.changed` から除く。`pending.added` にあった（最後のまとまりより後に足した）項目は `pending.removed` にも足さず、まとめる前に足して消した項目はまとまりに残さない
+    constraint: 消す ID を `pending.added`・`pending.changed` から除く。最後のまとまりより後に足した項目も含め、消した項目は毎回 `pending.removed` に記録する（消した ID を振り直さないためと、AI が読んだ後に消えたことを『前回読んだ時点からの変更』で返すため）
   - item: 通し番号
     constraint: '`changes.yaml` の `last_seq` を 1 進め、その番号を `pending.removed` の `seq` にする。保持する回数が 0 のときも進める'
   - item: 消した ID

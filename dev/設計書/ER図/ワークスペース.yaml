@@ -620,7 +620,7 @@ tables:
         title: まだまとめていない変更
         type: object
         not_null: true
-        description: '`added`・`changed`（書き換えた順の ID）と `removed`（消した順。要素は `id`・`kind`（種類）・`title`（消したときのタイトル）・`seq`（消したときに振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0））。`removed` は任意で、無ければ消した項目なしとして扱う。保持する回数が 0 の書き換えは `changed` に入れない。最後のまとまりより後に足して消した項目は `added` から除き、`removed` にも入れない'
+        description: '`added`・`changed`（書き換えた順の ID）と `removed`（消した順。要素は `id`・`kind`（種類）・`title`（消したときのタイトル）・`seq`（消したときに振った通し番号）・`added_seq`（消した項目が持っていた `added_seq`。持たなければ 0））。`removed` は任意で、無ければ消した項目なしとして扱う。保持する回数が 0 の書き換えは `changed` に入れない。最後のまとまりより後に足して消した項目は `added` から除き、`removed` に記録する'
       - name: read_seq
         title: AI が最後に読んだ時点
         type: number

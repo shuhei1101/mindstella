@@ -126,3 +126,4 @@ items:
     group: 作る
   - page: 項目の削除.yaml
     summary: 'remove: 1 項目を消し、消した項目をまだまとめていない変更に残す'
+    group: 書く

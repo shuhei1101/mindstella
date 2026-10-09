@@ -151,7 +151,7 @@ response:
     example: '["answer", "status"]'
   - name: removed[].id
     type: str
-    description: 消した項目の ID（最後のまとまりより後に足して消した項目は入らない）
+    description: 最後のまとまりより後に消した項目の ID（その間に足して消した項目も含む。その項目は `added` には入らない）
   - name: removed[].kind
     type: str
     description: 消した項目の種類
