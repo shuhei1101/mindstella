@@ -291,3 +291,4 @@ constraints:
     constraint: 'このツールは項目を消すだけ。やめた項目を残したまま取り下げるのは『項目の更新』で、検討事項は状態 `取り下げ`・`対象外`、タスクは状態 `中止`、調査・資料・用語集・メモ・会話ログは `withdrawn: true` と `reason` を書く'
   - item: 部分成功
     constraint: 起こさない。置き換える前に種類の YAML と `changes.yaml` の前の中身を控え、どちらかの置き換えか本文の削除に失敗したら、置き換えたものを控えに戻してからツールのエラーで終わる（残った一時ファイルも消す）
+test_file: tests/integration/server/test_remove.py
