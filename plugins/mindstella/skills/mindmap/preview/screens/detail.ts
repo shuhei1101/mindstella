@@ -397,6 +397,8 @@ namespace MindmapPreview {
             children: rows.map(({ item, gone }) => {
               if (gone) return removedReviewRow({ item, focus: REVIEW_FOCUS, on: { restore: edit.on.restore } });
               const editing = edit.editing === item.id;
+              // 入力欄は修正を始めた場所だけに描く。コメントの一覧で始めた行は、ここでは本文だけにして「修正」「削除」も出さない
+              const editingHere = editing && edit.editingIn === "detail";
               return h({
                 tag: "li",
                 attrs: { class: `review-row${editing ? " editing" : ""}`, "data-comment": item.id },
@@ -415,7 +417,7 @@ namespace MindmapPreview {
                             h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
                           ],
                         }),
-                      editing
+                      editingHere
                         ? reviewEditForm({
                           item,
                           body: edit.editBody,

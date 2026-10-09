@@ -29,6 +29,8 @@ namespace MindmapPreview {
     editError?: string | null;
     /** 本文を直せなかったとき、入力欄に残す直していた中身（無ければ元の本文） */
     editBody?: string | null;
+    /** `editing` の修正を始めた場所（既定は一覧）。詳細パネルで始めたときは、その行を本文だけで描いて「修正」「削除」を出さない */
+    editingIn?: EditingIn;
     /** 箇所が合わないコメントの ID → 理由 */
     stale: Map<string, string>;
     result: SendOutcome | null;
@@ -57,12 +59,17 @@ namespace MindmapPreview {
   /** コメントの本文の長さの上限（サーバーが受け付ける文字数と同じ） */
   export const COMMENT_BODY_MAX_LENGTH = 10000;
 
+  /** 本文の書き換えを始めた場所（入力欄はその場所だけに描き、もう一方は本文だけで描く） */
+  export type EditingIn = "list" | "detail";
+
   /** 詳細パネルが行の修正・削除・元に戻すのために受け取る引数（コールバックはコメントの一覧と同じ形） */
   export type ReviewEditProps = {
     /** その項目へのコメントのうち、消したもの（元の場所に「元に戻す」を出す） */
     removed: ReviewItem[];
     /** 本文を書き換えているコメントの ID（一覧と詳細パネルで 1 つ） */
     editing: string | null;
+    /** `editing` の修正を始めた場所 */
+    editingIn: EditingIn;
     /** 本文を直せなかった理由 */
     editError: string | null;
     /** 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文） */
@@ -264,6 +271,9 @@ namespace MindmapPreview {
   function commentRow(item: ReviewItem, props: CommentsPanelProps): HTMLElement {
     const reason = props.stale.get(item.id);
     const label = item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
+    // 詳細パネルで書き換えている行は、入力欄を出さず、「修正」「削除」も出さない
+    const editingInDetail = props.editing === item.id && props.editingIn === "detail";
+    const editingInList = props.editing === item.id && !editingInDetail;
     return h({
       tag: "li",
       attrs: {
@@ -297,7 +307,7 @@ namespace MindmapPreview {
                   h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
                 ],
               }),
-            props.editing === item.id
+            editingInList
               ? reviewEditForm({
                 item,
                 body: props.editBody ?? null,
@@ -326,7 +336,7 @@ namespace MindmapPreview {
               }),
           ],
         }),
-        reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
+        editingInDetail ? null : reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
       ],
     });
   }

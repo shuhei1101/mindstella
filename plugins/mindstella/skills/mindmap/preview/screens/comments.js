@@ -163,6 +163,9 @@ var MindmapPreview;
     function commentRow(item, props) {
         const reason = props.stale.get(item.id);
         const label = item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
+        // 詳細パネルで書き換えている行は、入力欄を出さず、「修正」「削除」も出さない
+        const editingInDetail = props.editing === item.id && props.editingIn === "detail";
+        const editingInList = props.editing === item.id && !editingInDetail;
         return MindmapPreview.h({
             tag: "li",
             attrs: {
@@ -196,7 +199,7 @@ var MindmapPreview;
                                     MindmapPreview.h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
                                 ],
                             }),
-                        props.editing === item.id
+                        editingInList
                             ? reviewEditForm({
                                 item,
                                 body: props.editBody ?? null,
@@ -225,7 +228,7 @@ var MindmapPreview;
                             }),
                     ],
                 }),
-                reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
+                editingInDetail ? null : reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
             ],
         });
     }

@@ -583,6 +583,7 @@ var MindmapPreview;
                         edit: {
                             removed: comment.removed.filter((item) => item.target === route.id),
                             editing,
+                            editingIn,
                             editError,
                             editBody,
                             on: reviewRowHandlers(MindmapPreview.REVIEW_FOCUS),
@@ -750,6 +751,8 @@ var MindmapPreview;
         /** まとめて送った結果・本文を直している行・直せなかった理由・項目を指さない入力にフォーカスがあるか */
         let outcome = null;
         let editing = null;
+        /** `editing` の修正を始めた場所（入力欄はその場所だけに描く） */
+        let editingIn = "list";
         let editError = null;
         let editBody = null;
         /** 詳細パネルが今出している項目（別の項目へ移ったか閉じたかを知るため） */
@@ -988,6 +991,7 @@ var MindmapPreview;
                 removed: comment.removed,
                 checked: comment.checked,
                 editing,
+                editingIn,
                 editError,
                 editBody,
                 stale: comment.stale,
@@ -1057,12 +1061,22 @@ var MindmapPreview;
             renderTop();
             renderComments();
         };
+        /** 一覧で始めた書き換えを捨てる（一覧を閉じると、詳細パネルの行が本文だけのまま残るため）。捨てたかを返す */
+        const discardListEdit = () => {
+            if (editing === null || editingIn !== "list")
+                return false;
+            editing = null;
+            editError = null;
+            editBody = null;
+            return true;
+        };
         /** コメントの一覧を閉じる */
         const closeList = () => {
             flushDrafts();
             comment.listOpen = false;
             comment.opened = null;
             comment.removed = [];
+            discardListEdit();
             renderTop();
             renderComments();
             renderDetail();
@@ -1142,6 +1156,7 @@ var MindmapPreview;
             return {
                 edit: (id) => {
                     editing = id;
+                    editingIn = focus === "" ? "list" : "detail";
                     editError = null;
                     editBody = null;
                     refreshComments();
@@ -1357,6 +1372,8 @@ var MindmapPreview;
                 comment.opened = null;
                 comment.removed = [];
                 renderComments();
+                if (discardListEdit())
+                    renderDetail();
             }
             display.open = true;
             if (filterState.drawerOpen) {
