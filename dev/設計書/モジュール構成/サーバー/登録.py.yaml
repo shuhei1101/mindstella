@@ -152,7 +152,7 @@ functions:
          - `remove`: 登録を `None` にする
       4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを消し `remove_rc_block`）まとめて書く（`write_files`）
       5. その後の登録を `build_report` で標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
-         - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` は印の範囲の中に `render_shell` の行をそのまま入れたもの
+         - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` は印の範囲の中に `render_shell` の行をそのまま入れたもの（`remove` のときは持たせない）
          - `read_registration` が `json.JSONDecodeError` を送った場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
     exceptions:
       - name: NotWritableError
@@ -245,7 +245,7 @@ functions:
         description: OS の名前
     returns:
       type: Path
-      description: bash は `~/.bashrc`（`system` が `Darwin` なら `~/.bash_profile`）、zsh は `~/.zshrc`
+      description: bash は `~/.bashrc`（`system` が `Darwin` なら `~/.bash_profile`・`~/.bash_login`・`~/.profile` のうち最初にあるもの、どれも無ければ `~/.bash_profile`）、zsh は `~/.zshrc`
     process: |-
       1. `SHELL` の末尾の名前を取り、上のとおりに分ける
          - どちらでもない場合、`UnsupportedShellError` を送る
@@ -257,9 +257,9 @@ functions:
       - name: test_rc_file_path
         case: 正常
         summary: シェルと OS で分ける
-        condition: '`parametrize`: `/bin/bash` と `Linux` / `/bin/bash` と `Darwin` / `/bin/zsh` と `Darwin`。`HOME=/h`'
+        condition: '`parametrize`: `/bin/bash` と `Linux` / `/bin/bash` と `Darwin` / `/bin/zsh` と `Darwin`（どれも `HOME=/h`） / `/bin/bash` と `Darwin` で `.profile` だけがある `HOME`（`tmp_path`） / `/bin/bash` と `Darwin` で `.bash_login` と `.profile` がある `HOME`（`tmp_path`）'
         mock: なし
-        expected: '`/h/.bashrc` / `/h/.bash_profile` / `/h/.zshrc`'
+        expected: '`/h/.bashrc` / `/h/.bash_profile` / `/h/.zshrc` / `{HOME}/.profile` / `{HOME}/.bash_login`'
       - name: test_rc_file_path_when_unsupported
         case: 異常
         summary: bash・zsh でなければ UnsupportedShellError

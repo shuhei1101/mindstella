@@ -219,7 +219,7 @@ request:
     type: str
     required: true
     location: argument
-    description: 環境変数。末尾の名前が `bash` なら `~/.bashrc`（macOS では `~/.bash_profile`。macOS のターミナルは bash をログインシェルで開き `~/.bashrc` を読まない）、`zsh` なら `~/.zshrc` をログインシェルの設定ファイルにする
+    description: 環境変数。末尾の名前が `bash` なら `~/.bashrc`（macOS では `~/.bash_profile`・`~/.bash_login`・`~/.profile` のうち最初にあるもの、どれも無ければ `~/.bash_profile`。macOS のターミナルは bash をログインシェルで開き、`~/.bashrc` を読まず、この 3 つのうち最初に見つかった 1 つだけを読む）、`zsh` なら `~/.zshrc` をログインシェルの設定ファイルにする
 response:
   - name: registered
     type: bool
@@ -247,7 +247,7 @@ response:
     description: 失敗したときの理由。成功したときは持たない
   - name: manual_lines
     type: list[str] | None
-    description: 書き込めなかったとき、利用者が手でログインシェルの設定ファイルに書けば同じ登録になる行（印の範囲と alias `mindstella` の定義）。成功したときは持たない
+    description: 書き込めなかったとき、利用者が手でログインシェルの設定ファイルに書けば同じ登録になる行（印の範囲と alias `mindstella` の定義）。成功したときと、`remove` のときは持たない
 exceptions:
   - name: なし（正常終了）
     condition: 登録を読んだ・書いた・外した
