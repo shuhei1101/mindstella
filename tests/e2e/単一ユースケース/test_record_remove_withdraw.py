@@ -47,6 +47,9 @@ def test_normal(
     body_removed = not (root / RECORD_DIR / "docs" / "N-2.md").exists()
     pending = replay("pending", **ws)
     committed = replay("commit", **ws, summary="重複した N-2 を消す")
+    # まとめた直後の記録の状態を控える（この後にメモを足すため、ここで読む）
+    sets_after_commit = read_yaml(root, "changes.yaml")["sets"]
+    pending_after_commit = replay("pending", **ws)
     added = replay("add", **ws, kind="note", item={"title": "次のメモ", "content": "中身"})
     checked = replay("check", **ws)
     # 検証
@@ -60,9 +63,8 @@ def test_normal(
     assert pending["removed"] == [{"id": "N-2", "kind": "note", "title": DUPLICATE_TITLE}]
     # commit の後、増えたまとまりが消した項目に N-2 を持ち、pending が空を返す
     assert committed["removed"] == [{"id": "N-2", "kind": "note", "title": DUPLICATE_TITLE}]
-    sets = read_yaml(root, "changes.yaml")["sets"]
-    assert [entry["id"] for entry in sets[0]["removed"]] == ["N-2"]
-    assert replay("pending", **ws) == {"added": [], "changed": [], "removed": []}
+    assert [entry["id"] for entry in sets_after_commit[0]["removed"]] == ["N-2"]
+    assert pending_after_commit == {"added": [], "changed": [], "removed": []}
     # 消した後に足したメモの ID が N-3 である
     assert added["id"] == "N-3"
     # check が問題を 0 件で返す
