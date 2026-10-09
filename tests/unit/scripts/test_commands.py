@@ -878,6 +878,7 @@ def test_run_commit(make_workspace: MakeWorkspace) -> None:
         "summary": "足す",
         "added": ["D-1"],
         "changed": [],
+        "removed": [],
     }
     assert _read_changes(root)["pending"] == {"added": [], "changed": []}
 
@@ -899,7 +900,7 @@ def test_run_pending_when_empty(make_workspace: MakeWorkspace) -> None:
     # 実行
     payload = commands.run_pending(root)
     # 検証
-    assert payload == {"added": [], "changed": []}
+    assert payload == {"added": [], "changed": [], "removed": []}
     assert not (root / RECORD_DIR / "changes.yaml").exists()
 
 
