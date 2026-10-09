@@ -133,13 +133,38 @@ var MindmapPreview;
         return Object.values(filters).filter((values) => values.length > 0).length;
     }
     MindmapPreview.activeConditionCount = activeConditionCount;
-    /** 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ画面の既定 */
-    function initialFilters(tab, fromHash) {
+    /** 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ端末に残した条件、それも無ければ画面の既定 */
+    function initialFilters(tab, fromHash, saved) {
         if (Object.keys(fromHash).length > 0)
             return { ...fromHash };
+        // 残した条件は、全て外した状態（空）でも画面の既定に戻さない
+        if (saved !== null)
+            return { ...saved };
         return tab === "decisions" ? { status: [...DEFAULT_DECISION_STATUSES] } : {};
     }
     MindmapPreview.initialFilters = initialFilters;
+    /** 端末に残した条件から、今の記録のどの行にも無い値を外す。文字の条件（`~{列}`）はそのまま残し、知らない列の条件は外す（渡した条件は変えない） */
+    function pruneFilters({ rows, columns, saved, }) {
+        const pruned = {};
+        for (const [key, values] of Object.entries(saved)) {
+            // 文字の条件は記録の値ではないので、そのまま写す
+            if (key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX)) {
+                pruned[key] = [...values];
+                continue;
+            }
+            const column = columns.find((candidate) => candidate.key === key);
+            // 知らない列の条件は外す
+            if (column === undefined)
+                continue;
+            const present = new Set(rows.flatMap((row) => valuesOf(column, row)));
+            const kept = values.filter((value) => present.has(value));
+            // 値が 1 つも残らない列はキーごと外す
+            if (kept.length > 0)
+                pruned[key] = kept;
+        }
+        return pruned;
+    }
+    MindmapPreview.pruneFilters = pruneFilters;
     /** ポップオーバーを開いた元のボタンの上か下に置く（収まる側に開き、どちらも収まらないときは広い側で高さを抑える） */
     function positionPopover(pop, anchor) {
         const gap = 6;

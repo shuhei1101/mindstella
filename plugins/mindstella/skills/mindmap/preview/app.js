@@ -57,7 +57,7 @@ var MindmapPreview;
     MindmapPreview.readEmbeddedData = readEmbeddedData;
     /** 既定の設定 */
     function defaultPrefs() {
-        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null };
+        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {} };
     }
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
@@ -73,6 +73,9 @@ var MindmapPreview;
             const kinds = MindmapPreview.KIND_KEYS;
             if (!Array.isArray(parsed.kinds) || !parsed.kinds.every((kind) => kinds.includes(kind)))
                 parsed.kinds = null;
+            // 画面ごとの条件が値の配列の対応でないときは、残した条件を使わない
+            if (!isFiltersByTab(parsed.filters))
+                parsed.filters = {};
             return parsed;
         }
         catch {
@@ -80,6 +83,27 @@ var MindmapPreview;
         }
     }
     MindmapPreview.loadPrefs = loadPrefs;
+    /** 画面ごとの絞り込みの条件として読めるか（画面のキーごとに、条件のキー → 文字の配列の対応） */
+    function isFiltersByTab(value) {
+        if (typeof value !== "object" || value === null || Array.isArray(value))
+            return false;
+        return Object.values(value).every((filters) => typeof filters === "object" &&
+            filters !== null &&
+            !Array.isArray(filters) &&
+            Object.values(filters).every((values) => Array.isArray(values) && values.every((v) => typeof v === "string")));
+    }
+    /** 絞り込みの条件が同じか（値の並びと、値の無い条件は区別しない） */
+    function sameFilters(a, b) {
+        const normal = (filters) => JSON.stringify(Object.entries(filters)
+            .filter(([, values]) => values.length > 0)
+            .map(([key, values]) => [key, [...values].sort()])
+            .sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
+        return normal(a) === normal(b);
+    }
+    /** 絞り込みの条件を端末に残す画面（種類のタブとネットワーク。概要は絞り込みを持たない。読み込み順によらないよう、呼ばれたときに作る） */
+    function filterTabs() {
+        return [...MindmapPreview.KIND_KEYS, "graph"];
+    }
     /** 設定を端末の保存領域に残し、書けたかを返す。保存領域が例外を送るときは偽を返す（開いている間だけ設定を保つ） */
     function savePrefs({ storage, prefs }) {
         try {
@@ -95,12 +119,13 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列の順に並べる
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込みの順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
             ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
+            ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
         ];
         return {
             look: prefs.look ?? defaultLook,
@@ -111,9 +136,9 @@ var MindmapPreview;
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
-        return { ...prefs, theme: null, look: null, kinds: null, columns: {} };
+        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {} };
     }
     MindmapPreview.clearOverrides = clearOverrides;
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
@@ -517,12 +542,38 @@ var MindmapPreview;
             if (route.tab === "graph")
                 MindmapPreview.selectGraphItem(route.id);
         };
-        /** 今の画面の絞り込みを用意する。ハッシュの `f.{列}` があればそれだけを（開き直したときも）、無く初めて開く画面なら既定を入れ、ハッシュの分は一度だけ使う。概要には絞り込みのドロワーを置かないので閉じる（タブを押したときも、戻る・進むで移ったときも通る） */
+        /** 画面の絞り込みの条件の定義と行（残した条件を今の記録で刈り込むのに使う）。概要は絞り込みを持たないので null */
+        const filterSource = (tab) => {
+            const open = () => undefined;
+            switch (tab) {
+                case "overview":
+                    return null;
+                case "graph":
+                    return { rows: [...index.byId].map(([id, entry]) => ({ id, ...entry })), columns: MindmapPreview.graphConditions() };
+                case "decisions":
+                    return { rows: index.data.decisions, columns: MindmapPreview.decisionColumns({ index, open }) };
+                case "tasks":
+                    return { rows: index.data.tasks, columns: MindmapPreview.taskColumns({ index, open }) };
+                case "docs":
+                    return { rows: index.data.docs, columns: MindmapPreview.docColumns(index) };
+                default:
+                    return { rows: index.data[tab], columns: MindmapPreview.recordColumns({ index, kind: tab, open }) };
+            }
+        };
+        /** サーバーの配信で残した、その画面の条件を今の記録で刈り込んだもの。残した条件が無い画面と、配る書き出しは null */
+        const savedFilters = (tab) => {
+            const saved = prefs.filters[tab];
+            const source = filterSource(tab);
+            if (!serverMode || saved === undefined || source === null)
+                return null;
+            return MindmapPreview.pruneFilters({ ...source, saved });
+        };
+        /** 今の画面の絞り込みを用意する。ハッシュの `f.{列}` があればそれだけを（開き直したときも）、無く初めて開く画面なら端末に残した条件か既定を入れ、ハッシュの分は一度だけ使う。概要には絞り込みのドロワーを置かないので閉じる（タブを押したときも、戻る・進むで移ったときも通る） */
         const prepareFilters = () => {
             if (route.tab === "overview")
                 filterState.drawerOpen = false;
             if (Object.keys(route.filters).length > 0 || filterState.byTab[route.tab] === undefined) {
-                filterState.byTab[route.tab] = MindmapPreview.initialFilters(route.tab, route.filters);
+                filterState.byTab[route.tab] = MindmapPreview.initialFilters(route.tab, route.filters, savedFilters(route.tab));
             }
             route = { ...route, filters: {} };
         };
@@ -642,6 +693,14 @@ var MindmapPreview;
         /** 画面の条件を変えて描き直す（ドロワーは開いたまま） */
         const changeFilters = (next) => {
             filterState.byTab[route.tab] = next;
+            // サーバーの配信では、条件を変えるたびに端末へ残す（表示の設定の「この端末で変えている項目」も合わせる）
+            if (serverMode) {
+                prefs.filters[route.tab] = { ...next };
+                display.storageOk = persist();
+                resolved = resolveDisplay(prefs, data.settings.display);
+                if (display.open)
+                    renderSettings();
+            }
             redrawKeepingState();
         };
         /** 絞り込みのドロワーを閉じ、絞り込みのボタンへフォーカスを戻す */
@@ -1268,9 +1327,11 @@ var MindmapPreview;
                     changePrefs({ redrawMain: true });
                 },
                 reset: () => {
-                    // 見た目・表示する種類・ライト / ダーク・表の列を全て外し、ワークスペースの既定の表示に戻す
+                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を全て外し、ワークスペースの既定の表示に戻す
                     Object.assign(prefs, clearOverrides(prefs));
                     MindmapPreview.clearTablePrefs();
+                    // 開いている画面は、画面の既定の条件で開き直す
+                    filterState.byTab = {};
                     theme = systemTheme();
                     document.documentElement.dataset["theme"] = theme;
                     changePrefs({ redrawMain: true });
