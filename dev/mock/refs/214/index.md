@@ -11,12 +11,12 @@ A-13「保存の知らせの見た目」は本文が Markdown で、見出し・
 
 | 画面 | 中身 |
 | --- | --- |
-| [docs](../../pages/docs/214/index.md) | 資料のカード・ボード・表の HTML の資料のバッジと形式の列（採用は案 A 種類の右） |
+| [docs](../../pages/docs/214/index.md) | 資料のカード・ボード・表の形式のバッジ（MD / HTML）と形式の列（採用は案 A 種類の右） |
 | [detail-panel](../../pages/detail-panel/214/index.md) | ヘッダーの形式のバッジ・HTML の本文の枠・枠の中で選んだ箇所のコメントの入口・スクリプトを含む本文・Markdown の中の html のコードブロック。HTML の本文の差分の見せ方（採用は案 C 描いた結果に印） |
 | [detail-full](../../pages/detail-full/214/index.md) | 詳細の全画面での同じ表示と差分の見せ方 |
 | [search](../../pages/search/214/index.md) | 全体の検索で HTML の本文を描いた文で当てる |
 
 | 部品 | 中身 |
 | --- | --- |
-| [body-format-badge](../../components/body-format-badge/index.html) | 本文の形式のバッジ（HTML の資料だけ・ほかの札と並べたとき・カード・ボード・表の列・詳細のヘッダー・ホバーとフォーカス・狭い幅） |
+| [body-format-badge](../../components/body-format-badge/index.html) | 本文の形式のバッジ（MD・HTML・ほかの札と並べたとき・カード・ボード・表の列・詳細のヘッダー・ホバーとフォーカス・狭い幅） |
 | [html-body-frame](../../components/html-body-frame/index.html) | HTML の本文の枠（描いた本文・<style> が漏れない・描く前・スクリプトを含む本文・Markdown の中の html のコードブロック・差分の描いた結果の印と原文の差分・差分を出せない・狭い幅） |

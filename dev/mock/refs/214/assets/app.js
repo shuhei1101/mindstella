@@ -924,7 +924,9 @@ var MindmapPreview;
 // ===== 214: HTML の本文（本文の形式・行の印・枠・枠の中の選択） =====
 (function (MindmapPreview) {
     /** 本文の形式の名前（本文のファイルの拡張子で決まる） */
-    const FORMAT_LABEL = { md: "Markdown", html: "HTML" };
+    const FORMAT_LABEL = { md: "MD", html: "HTML" };
+    /** 本文の形式の読み上げ・ツールチップの名前 */
+    const FORMAT_NAME = { md: "Markdown", html: "HTML" };
     /** 本文を持つ項目の、本文の形式（本文が無ければ null） */
     function bodyFormat(item) {
         const name = item.body ?? "";
@@ -943,14 +945,14 @@ var MindmapPreview;
         return format === null ? "" : FORMAT_LABEL[format];
     }
     MindmapPreview.bodyFormatLabel = bodyFormatLabel;
-    /** 本文の形式のバッジ。HTML の本文を持つ資料だけに付け、Markdown・本文の無い項目は null */
+    /** 本文の形式のバッジ（MD / HTML）。本文の無い項目は null */
     function bodyFormatBadge(item) {
         const format = bodyFormat(item);
-        if (format !== "html")
+        if (format === null)
             return null;
         return MindmapPreview.h({
             tag: "span",
-            attrs: { class: `fmt-badge fmt-${format}`, title: `本文の形式: ${FORMAT_LABEL[format]}` },
+            attrs: { class: `fmt-badge fmt-${format}`, title: `本文の形式: ${FORMAT_NAME[format]}` },
             children: [FORMAT_LABEL[format]],
         });
     }
@@ -5340,7 +5342,7 @@ var MindmapPreview;
                 label: "形式",
                 nowrap: true,
                 filterable: true,
-                order: ["Markdown", "HTML"],
+                order: ["MD", "HTML"],
                 priority: 2,
                 get: (row) => MindmapPreview.bodyFormatLabel(row),
                 cell: (row) => MindmapPreview.bodyFormatBadge(row) ?? MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
