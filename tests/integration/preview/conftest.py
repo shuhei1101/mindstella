@@ -20,6 +20,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_removed_helpers import build_removed_workspace
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -107,6 +108,23 @@ def write_history_preview(make_workspace: MakeWorkspace, call_tool: CallTool) ->
         root = build_history_workspace(
             make_workspace, call_tool, pending=pending, history_limit=history_limit
         )
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_removed_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """消した項目と取り下げた項目を持つワークスペース（まとまり V-1・V-2 とまだまとめていない消した項目）を作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで消した・取り下げた記録を積んだワークスペースを作って配信を立てる。"""
+        root = build_removed_workspace(make_workspace, make_item, call_tool)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

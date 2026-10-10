@@ -94,7 +94,7 @@ elements:
     visible_when: 差分の表示の間で、開いた項目がその時点で足されたとき
   - name: キーの差分
     kind: label
-    description: 変わったキー（状態・答え・案 など）の前の値と今の値を並べる。前の値は消した色の面と取り消し線、今の値は足した色の面と下線。状態のキーだけは面を塗らず、取り消し線・下線と矢印で示す。前に無かったキーは今の値だけを足した印で出す
+    description: 変わったキー（状態・答え・案 など）の前の値と今の値を並べる。前の値は消した色の面と取り消し線、今の値は足した色の面と下線。状態のキーだけは面を塗らず、取り消し線・下線と矢印で示す。前に無かったキーは今の値だけを足した印で出す。`withdrawn` はキーの一覧に値を出さず（取り下げの札が示す）、選んだ時点で変わったときだけ「取り下げ」の行に前後を並べ、真の値を取り下げの札で出す
     io: 表示
     source: 記録の取得.{種類}[].history から組み立てた前の値
     visible_when: 差分の表示の間で、そのキーが選んだ時点で変わったとき
@@ -225,10 +225,31 @@ elements:
   - name: 文字列の値の描画
     kind: label
     position: 背景・案・採用した案と理由と、ほかの種類の値
-    description: 詳細に出す文字列の値（検討事項の `lead`・`answer`・`reason`・案の各値、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）を、本文と同じく marked で描き DOMPurify で無害化して差し込む。値の要素はキーのパスを持ち、選んだ箇所のコメント・示す箇所・キーの差分が指せる。marked か DOMPurify を読めないときは文字のまま出す。差分の表示の間で変わった値は、キーの差分で前の値と今の値を文字で並べる
+    description: 詳細に出す文字列の値（検討事項の `lead`・`answer`・`reason`・案の各値、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`、調査・資料・用語集・メモ・会話ログの取り下げた理由 `reason`）を、本文と同じく marked で描き DOMPurify で無害化して差し込む。値の要素はキーのパスを持ち、選んだ箇所のコメント・示す箇所・キーの差分が指せる。marked か DOMPurify を読めないときは文字のまま出す。差分の表示の間で変わった値は、キーの差分で前の値と今の値を文字で並べる
     io: 表示
     visible_when: 項目がその値を持つ
     source: プレビューを開く.mindmap-data
+    status: planned
+  - name: 取り下げの札
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
+    args:
+      - name: large
+        value: 'true'
+    position: タイトル > 納品物の印・新規の札の右
+    description: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く。タイトルの文字は薄くしない（薄くするのは表の行とカード）
+    io: 表示
+    source: プレビューを開く.id の項目の withdrawn
+    visible_when: 開いた項目の `withdrawn` が真のとき（差分の表示によらない）
+    status: planned
+  - name: 取り下げた理由
+    kind: section
+    position: タイトルの下のキーの一覧の後
+    description: 見出し「取り下げた理由」の節に、取り下げた理由 `reason` を出す。値は文字列の値の描画で描く。差分の表示で選んだ時点に取り下げたときは、キーの差分と同じく前の値（なし）と今の値を並べる。検討事項・タスクの `reason` はこの節に出さない（採用した案と理由・タスクの理由が持つ）
+    label: 取り下げた理由
+    io: 表示
+    source: プレビューを開く.mindmap-data.{research・docs・terms・notes・logs}[].reason
+    visible_when: 調査・資料・用語集・メモ・会話ログが `reason` を持つか、差分の表示で `reason` が選んだ時点に変わったとき
     status: planned
   - name: 行の修正
     kind: button
@@ -262,3 +283,5 @@ elements:
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/190/a-always/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
+notes:
+  取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`

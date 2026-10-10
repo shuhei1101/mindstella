@@ -34,7 +34,7 @@ var MindmapPreview;
                     ? MindmapPreview.h({
                         tag: "span",
                         attrs: { class: "df-dot" },
-                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更の項目があります"] })],
+                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更・消した項目があります"] })],
                     })
                     : null,
             ],

@@ -455,7 +455,7 @@ namespace MindmapPreview {
 
   /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
   function mapView(
-    { index, route, on, marks, comments, lockedId }: DecisionsScreenProps,
+    { index, route, on, marks, comments, lockedId, removed = [] }: DecisionsScreenProps,
     {
       shown,
       chips,
@@ -694,6 +694,7 @@ namespace MindmapPreview {
         toolbarElement,
         chips,
         notice,
+        removedBand({ items: removed }),
         frame,
         zoomBar,
         outlineElement,
@@ -757,7 +758,7 @@ namespace MindmapPreview {
 
   /** 検討事項の画面を返す */
   export function decisionsScreen(props: DecisionsScreenProps): HTMLElement {
-    const { index, route, on, marks, comments, filters, drawerOpen } = props;
+    const { index, route, on, marks, comments, filters, drawerOpen, removed = [] } = props;
     const columns = decisionColumns({ index, open: on.open });
     // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.decisions, columns, filters }) as Item[];
@@ -805,6 +806,7 @@ namespace MindmapPreview {
         children: [
           toolbarElement,
           chips,
+          removedBand({ items: removed }),
           board({
             columns: boardColumns({
               items: shown,
@@ -832,6 +834,7 @@ namespace MindmapPreview {
       attrs: { class: "screen decisions" },
       children: [
         toolbarElement,
+        removedBand({ items: removed }),
         managedTable({
           kind: "decisions",
           columns,

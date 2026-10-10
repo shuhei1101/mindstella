@@ -14,6 +14,9 @@ FIRST_SET_AT = "2026-10-01T09:00:00+00:00"
 SINCE = "2026-10-02T00:00:00+00:00"
 SECOND_SET_AT = "2026-10-03T09:00:00+00:00"
 
+# 消した項目を持つまとまりの日時（V-1 より後・「前回開いてから」の始まりより前）
+REMOVED_SET_AT = "2026-10-01T18:00:00+00:00"
+
 # 変更履歴の 1 回分に入れる日時
 ENTRY_AT = "2026-10-03T09:00:00+00:00"
 
@@ -272,6 +275,198 @@ def test_resolve_diff_point(
     )
     # 検証
     assert result == expected
+
+
+# 消した項目を持つ記録の `changes`（新しい順）。V-1 と V-3 は `removed` を持たない
+REMOVED_CHANGES = {
+    "last_seq": 4,
+    "sets": [
+        {
+            "id": "V-4",
+            "at": SECOND_SET_AT,
+            "summary": "消す",
+            "until_seq": 4,
+            "added": [],
+            "changed": [],
+            "removed": [{"id": "N-7", "kind": "note", "title": "足してすぐ消したメモ"}],
+        },
+        {
+            "id": "V-3",
+            "at": SECOND_SET_AT,
+            "summary": "足す",
+            "until_seq": 3,
+            "added": ["N-7"],
+            "changed": [],
+        },
+        {
+            "id": "V-2",
+            "at": REMOVED_SET_AT,
+            "summary": "変えて消す",
+            "until_seq": 2,
+            "added": [],
+            "changed": ["R-1"],
+            "removed": [{"id": "N-6", "kind": "note", "title": "消したメモ"}],
+        },
+        {
+            "id": "V-1",
+            "at": FIRST_SET_AT,
+            "summary": "最初",
+            "until_seq": 1,
+            "added": [],
+            "changed": ["A-1"],
+        },
+    ],
+    "pending": {"added": [], "changed": []},
+}
+
+
+@pytest.mark.parametrize(
+    ("sel", "expected"),
+    [
+        pytest.param(
+            "V-2",
+            {
+                "added": [],
+                "changed": ["R-1"],
+                "removed": [{"id": "N-6", "kind": "note", "title": "消したメモ"}],
+            },
+            id="set_with_removed",
+        ),
+        pytest.param(
+            "since",
+            {
+                "added": [],
+                "changed": [],
+                "removed": [{"id": "N-7", "kind": "note", "title": "足してすぐ消したメモ"}],
+            },
+            id="since_added_then_removed",
+        ),
+    ],
+)
+def test_resolve_diff_point_when_removed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    sel: str,
+    expected: dict[str, Any],
+) -> None:
+    """消した項目を持ち、合わせた範囲で足して消した項目は新規にしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, sel, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, sel, since);
+            return {
+                added: [...point.added].sort(),
+                changed: [...point.changed].sort(),
+                removed: [...point.removed.values()].map(({id, kind, title}) => ({id, kind, title})),
+            };
+        }""",
+        [REMOVED_CHANGES, sel, SINCE],
+    )
+    # 検証
+    assert result == expected
+
+
+def test_resolve_diff_point_when_pending_removed_only(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """消した項目だけのまだまとめていない変更も時点になる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    changes = {
+        "last_seq": 1,
+        "sets": [],
+        "pending": {
+            "added": [],
+            "changed": [],
+            "removed": [{"id": "N-2", "kind": "note", "title": "消したメモ"}],
+        },
+    }
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, "pending", since);
+            if (point === null) return null;
+            return {
+                added: [...point.added],
+                changed: [...point.changed],
+                removed: [...point.removed.values()].map(({id, kind, title}) => ({id, kind, title})),
+            };
+        }""",
+        [changes, SINCE],
+    )
+    # 検証
+    assert result == {
+        "added": [],
+        "changed": [],
+        "removed": [{"id": "N-2", "kind": "note", "title": "消したメモ"}],
+    }
+
+
+@pytest.mark.parametrize(
+    ("kind", "point", "expected_ids"),
+    [
+        pytest.param(
+            "notes",
+            {
+                "removed": [
+                    {"id": "N-10", "kind": "note", "title": "十番目のメモ"},
+                    {"id": "D-53", "kind": "decision", "title": "消した検討事項"},
+                    {"id": "N-6", "kind": "note", "title": "六番目のメモ"},
+                ]
+            },
+            ["N-6", "N-10"],
+            id="notes",
+        ),
+        pytest.param(
+            "tasks",
+            {
+                "removed": [
+                    {"id": "N-10", "kind": "note", "title": "十番目のメモ"},
+                    {"id": "D-53", "kind": "decision", "title": "消した検討事項"},
+                    {"id": "N-6", "kind": "note", "title": "六番目のメモ"},
+                ]
+            },
+            [],
+            id="no_removed_of_kind",
+        ),
+        pytest.param("notes", None, [], id="no_point"),
+    ],
+)
+def test_removed_of(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    kind: str,
+    point: dict[str, Any] | None,
+    expected_ids: list[str],
+) -> None:
+    """画面の種類の消した項目だけを ID の順に返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    ids = preview_page.evaluate(
+        """({kind, point}) => {
+            // 時点は、消した項目を渡した並びのまま持つ Map として組む
+            const diffPoint =
+                point === null
+                    ? null
+                    : {
+                        sel: "pending",
+                        name: "まだまとめていない変更",
+                        sub: "",
+                        added: new Set(),
+                        changed: new Set(),
+                        fromSeq: 0,
+                        untilSeq: null,
+                        removed: new Map(point.removed.map((item) => [item.id, item])),
+                    };
+            return MindmapPreview.removedOf({point: diffPoint, kind}).map((item) => item.id);
+        }""",
+        {"kind": kind, "point": point},
+    )
+    # 検証
+    assert ids == expected_ids
 
 
 def test_build_versions(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:

@@ -118,7 +118,7 @@ var MindmapPreview;
     }
     MindmapPreview.taskColumns = taskColumns;
     /** タスクの画面を返す */
-    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }) {
+    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }) {
         const columns = taskColumns({ index, open: on.open });
         // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.tasks, columns, filters });
@@ -167,6 +167,7 @@ var MindmapPreview;
                     { key: "table", label: "表" },
                 ], route, on.view),
                 chips,
+                MindmapPreview.removedBand({ items: removed }),
                 content,
                 MindmapPreview.screenDrawer({
                     drawerOpen,

@@ -9,14 +9,25 @@ namespace MindmapPreview {
     name: string;
     /** 日時（JST）。「前回開いてから」は `{日時} より後` */
     sub: string;
-    /** 新規の印を付ける ID */
+    /** 新規の印を付ける ID（`removed` にある ID は入れない） */
     added: Set<string>;
-    /** 変更の印を付ける ID（`added` にある ID は入れない） */
+    /** 変更の印を付ける ID（`added`・`removed` にある ID は入れない） */
     changed: Set<string>;
     /** この時点の変更履歴の始まりの `seq`（これより大きい `seq` を戻す） */
     fromSeq: number;
     /** この時点の終わりの `seq`。null は今まで（`since`・`pending`） */
     untilSeq: number | null;
+    /** 消した項目（ID → 消した項目）。まとまり・`pending` の `removed` を合わせたもの */
+    removed: Map<string, RemovedItem>;
+  };
+
+  /** 選んだ時点で消した項目 1 件 */
+  export type RemovedItem = {
+    id: string;
+    /** 消した項目の種類（サーバーの種類の名前） */
+    kind: "decision" | "task" | "research" | "doc" | "term" | "note" | "log";
+    /** 消したときのタイトル */
+    title: string;
   };
 
   /** 選んだ時点の前と後の項目・本文と、組み立てられなかったこと */
@@ -77,6 +88,17 @@ namespace MindmapPreview {
     "stateDiagram-v2",
   ];
 
+  /** 消した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
+  export const REMOVED_KIND_TAB: Record<RemovedItem["kind"], Kind> = {
+    decision: "decisions",
+    task: "tasks",
+    research: "research",
+    doc: "docs",
+    term: "terms",
+    note: "notes",
+    log: "logs",
+  };
+
   /** 「まだまとめていない変更」の名前と補足 */
   const PENDING_NAME = "まだまとめていない変更";
   const PENDING_SUB = "AI がまだ区切っていない書き換え";
@@ -96,14 +118,27 @@ namespace MindmapPreview {
     sel: string;
     name: string;
     sub: string;
-    groups: { added: string[]; changed: string[] }[];
+    groups: { added: string[]; changed: string[]; removed?: RemovedItem[] }[];
     fromSeq: number;
     untilSeq: number | null;
   }): DiffPoint {
-    const added = new Set(groups.flatMap((group) => group.added));
+    // `removed` を持たないまとまりは、何も足さない
+    const removed = new Map(groups.flatMap((group) => group.removed ?? []).map((item) => [item.id, item]));
+    // 合わせた範囲で足して消した項目は、消した項目としてだけ出す
+    const added = new Set(groups.flatMap((group) => group.added).filter((id) => !removed.has(id)));
     // 足した項目は、変えても変更の印にしない
-    const changed = new Set(groups.flatMap((group) => group.changed).filter((id) => !added.has(id)));
-    return { sel, name, sub, added, changed, fromSeq, untilSeq };
+    const changed = new Set(
+      groups.flatMap((group) => group.changed).filter((id) => !added.has(id) && !removed.has(id)),
+    );
+    return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
+  }
+
+  /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
+  export function removedOf({ point, kind }: { point: DiffPoint | null; kind: Kind }): RemovedItem[] {
+    if (point === null) return [];
+    return [...point.removed.values()]
+      .filter((item) => REMOVED_KIND_TAB[item.kind] === kind)
+      .sort((a, b) => compareIds(a.id, b.id));
   }
 
   /** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないときは null */
@@ -114,7 +149,8 @@ namespace MindmapPreview {
     const latestSeq = sets[0]?.until_seq ?? 0;
     if (sel === "pending") {
       // まだまとめていない変更が無い
-      if (changes.pending.added.length === 0 && changes.pending.changed.length === 0) return null;
+      const pending = changes.pending;
+      if (pending.added.length === 0 && pending.changed.length === 0 && (pending.removed ?? []).length === 0) return null;
       return buildPoint({ sel, name: PENDING_NAME, sub: PENDING_SUB, groups: [changes.pending], fromSeq: latestSeq, untilSeq: null });
     }
     if (sel === "since") {

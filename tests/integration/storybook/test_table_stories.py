@@ -211,3 +211,39 @@ def test_text_filtered(open_story: OpenStory) -> None:
     )
     rows = page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
     assert rows == ["G-1"]
+
+
+# 行の文字の色（タイトルのボタンと、ほかのセル）を読む
+ROW_COLORS_SCRIPT = """(id) => ({
+    title: getComputedStyle(document.querySelector(`table.grid tr[data-id="${id}"] .row-open`)).color,
+    cell: getComputedStyle(document.querySelector(`table.grid tr[data-id="${id}"] td:nth-child(3)`)).color,
+})"""
+
+# ホバーした行のセルの背景色を読む
+HOVER_BACKGROUND_SCRIPT = (
+    "(id) => getComputedStyle(document.querySelector(`table.grid tr[data-id=\"${id}\"] td:nth-child(3)`)).backgroundColor"
+)
+
+
+def test_withdrawn(open_story: OpenStory) -> None:
+    """取り下げた行。タイトルの右に取り下げの札、その後ろに差分の印を置き、行の文字を薄くする。取り下げていない行は変わらず、ホバーの見せ方は同じ（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-table--withdrawn")
+    # 検証
+    row = 'table.grid tbody tr[data-id="R-1"]'
+    assert page.locator(f"{row} .row-open + .wd-badge + .df-mark.df-chg").count() == 1
+    assert page.locator(f"{row} .wd-badge").inner_text() == "取り下げ"
+    assert "is-withdrawn" in str(page.get_attribute(row, "class"))
+    # 取り下げていない行には札も印も付かず、薄くもしない
+    assert page.locator('table.grid tbody tr:not([data-id="R-1"]) .wd-badge').count() == 0
+    assert page.locator('table.grid tbody tr:not([data-id="R-1"]).is-withdrawn').count() == 0
+    # 文字は取り下げていない行より薄い
+    normal_colors = page.evaluate(ROW_COLORS_SCRIPT, "D-1")
+    withdrawn_colors = page.evaluate(ROW_COLORS_SCRIPT, "R-1")
+    assert withdrawn_colors["title"] != normal_colors["title"]
+    assert withdrawn_colors["cell"] != normal_colors["cell"]
+    # ホバーの見せ方はほかの行と同じ
+    page.hover('table.grid tbody tr[data-id="D-1"]')
+    normal_hover = page.evaluate(HOVER_BACKGROUND_SCRIPT, "D-1")
+    page.hover(row)
+    assert page.evaluate(HOVER_BACKGROUND_SCRIPT, "R-1") == normal_hover

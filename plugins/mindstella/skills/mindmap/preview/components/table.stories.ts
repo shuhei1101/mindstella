@@ -118,6 +118,17 @@ export const Commented: Story = {
   },
 };
 
+/** 取り下げた行。タイトルの右に取り下げの札、その後ろに差分の印を置き、行の文字を薄くする。取り下げていない行は変わらない。ホバー・フォーカスの見せ方はほかの行と同じ */
+export const Withdrawn: Story = {
+  args: {
+    rows: [
+      ...rows,
+      { id: "R-1", title: "別の調査で足りた調査", conf: "中", status: "決定済み", withdrawn: true },
+    ],
+    marks: { "R-1": "changed" },
+  },
+};
+
 /** 表示する列のポップオーバーを開いている。タイトルの列は外せない */
 export const ColumnsPopover: Story = {
   play: async ({ canvasElement }) => {

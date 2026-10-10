@@ -1,0 +1,83 @@
+/* PR #179 で足す部品（消した印・消した項目の帯と行とカードと列・取り下げの印）と、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { font-weight: 700; border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+
+/* ===== 消した印: 赤（差分の色の --df-del）の太い − ===== */
+
+/* 一覧の印（記号だけ） */
+.df-mark.df-del { color: var(--df-del); }
+/* 札（記号と文言） */
+.df-badge.df-del { border-color: var(--df-del); background: var(--df-del-bg); }
+.df-badge.df-del svg.icon { color: var(--df-del); }
+
+/* ===== 案 B: 一覧の上の「消した項目」の帯 ===== */
+
+/* 帯: 表・カードと同じ面に置き、中の項目は押せない */
+.rm-band { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 10px; padding: 8px 14px; background: var(--surface); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 帯の見出し: 「消した項目」と件数 */
+.rm-band-t { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-small); font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.rm-band-t .n { color: var(--text-3); font-weight: 400; }
+/* 消した項目の並び: 印・ID・消したときのタイトル */
+.rm-list { display: flex; flex-wrap: wrap; gap: 4px 18px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.rm-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.rm-item .mono { color: var(--text-2); }
+.rm-ttl { color: var(--text-2); overflow-wrap: anywhere; }
+/* マップ: 道具の行とマップの枠の間に置く */
+.map-view-root > .rm-band { margin-bottom: 10px; }
+
+/* ===== 案 A: 一覧の末尾の、消した項目の行・カード・列 ===== */
+
+/* 表の行: 押せないので、ホバーの面を乗せない */
+table.grid tr.rm-row td { color: var(--text-2); }
+table.grid tr.rm-row:hover td { background: none; }
+tr.rm-row .rm-ttl + .df-mark { margin-left: 8px; }
+/* カード: 中身が残っていないことを、破線の枠と地の面を外して示す */
+.card.rm-card { position: relative; background: none; border-style: dashed; cursor: default; }
+.card.rm-card:hover { border-color: var(--border); box-shadow: none; }
+.card.rm-card .c-ttl { font-weight: 500; }
+/* カードの並び: 行の高さに伸ばさず、中身の高さにする */
+.doc-grid > .rm-card { align-self: start; }
+/* ボードの「消した項目」の列: 見出しの印を消した印と同じ色にする */
+.rm-col h2 svg.icon { width: 14px; height: 14px; stroke-width: 3; color: var(--df-del); }
+
+/* ===== 取り下げの印 ===== */
+
+/* 案 A: 状態の「取り下げ」と同じ印と文言を、枠の札にしてタイトルの右に置く */
+.wd-badge { display: inline-flex; align-items: center; gap: 5px; flex: none; height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: 1px; }
+.row-open + .wd-badge, .c-ttl > .wd-badge { margin-left: 8px; }
+.wd-badge + .df-mark { margin-left: 6px; }
+.d-title .wd-badge { height: 22px; margin-left: 12px; vertical-align: 4px; }
+.d-meta dd .wd-badge { vertical-align: 0; }
+/* キーの差分の今の値（色の面）の上では、札の文字を本文の色にしてコントラストを保つ */
+.df-now .wd-badge { color: var(--text); }
+/* 案 A: 取り下げた項目の行・カードの文字を薄くする（--text-3 も面の上で 4.5:1 以上） */
+body:not([data-wd="strike"]) table.grid tr.wd-row td, body:not([data-wd="strike"]) tr.wd-row .row-open { color: var(--text-3); }
+body:not([data-wd="strike"]) .card.wd-card :is(.c-ttl, .c-meta, .doc-kind) { color: var(--text-3); }
+/* 案 B: 札を見せず（読み上げには残す）、タイトルに取り消し線を引く */
+body[data-wd="strike"] .wd-badge { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+body[data-wd="strike"] .d-meta dd .wd-badge { position: static; width: auto; height: 20px; padding: 0 6px; overflow: visible; clip: auto; border: 1px solid var(--border); }
+body[data-wd="strike"] :is(tr.wd-row .row-open, .card.wd-card .c-ttl, .d-title.wd-title) { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+
+/* ===== 撮影用の赤枠（モック専用。クエリの mark で付ける） ===== */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }

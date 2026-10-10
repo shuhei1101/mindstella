@@ -116,8 +116,21 @@ elements:
     description: ボードのカードのメタ情報の並びの右端に置く。コメントを溜める・直す・消す・戻す・送ると、スクロールの位置を動かさずに印だけを描き替える。印だけを押す操作は持たない
     io: 表示
     visible_when: サーバーにつながって開いていて、そのタスクを指すレビュー中のコメントが 1 件以上あるとき
+  - name: 消した項目の帯
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/消した項目の帯.ts#
+    args:
+      - name: items
+        value: 選んだ時点で消した項目（記録の取得.changes の removed）のうち、種類が task のものの id・title を ID の順に並べたもの。合わせた範囲で足して消した項目も含む
+    position: ツールバー・条件のチップの下、ボード・表の上
+    description: 選んだ時点で消したタスクを並べる。表示形式と絞り込みの条件によらず同じ帯を出す。項目は押せず、詳細パネルを開かない
+    io: 表示
+    source: 記録の取得.changes
+    visible_when: 差分の表示の間で、選んだ時点でタスクを 1 件以上消したとき
+    status: planned
 lead: タスクをボード（既定）・表で見る画面。
 mock: dev/mock/pages/tasks/126/standard/index.html
 test_file: tests/integration/preview/test_tasks_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/tasks/121/standard/index.html`
+  消した項目のモック: 消した項目の帯の見本は `dev/mock/pages/tasks/179/b-band/index.html`
