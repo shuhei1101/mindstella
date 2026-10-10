@@ -1,0 +1,68 @@
+# 実行したコマンド
+python3 -m pytest tests/integration/preview/test_graph_screen.py -v -p no:cacheprovider
+# コミット: d2b1983c2a5cabaa418f4f9314b60812071006d4
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-graph-quick-double-press-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 54 items
+
+tests/integration/preview/test_graph_screen.py::test_canvas[chromium] PASSED [  1%]
+tests/integration/preview/test_graph_screen.py::test_drawer_type[chromium] PASSED [  3%]
+tests/integration/preview/test_graph_screen.py::test_drawer_status[chromium] PASSED [  5%]
+tests/integration/preview/test_graph_screen.py::test_open_item_from_hash[chromium] PASSED [  7%]
+tests/integration/preview/test_graph_screen.py::test_no_match_note[chromium] PASSED [  9%]
+tests/integration/preview/test_graph_screen.py::test_topbar_history[chromium] PASSED [ 11%]
+tests/integration/preview/test_graph_screen.py::test_chips[chromium] PASSED [ 12%]
+tests/integration/preview/test_graph_screen.py::test_look[chromium] PASSED [ 14%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_far[chromium] PASSED [ 16%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_near[chromium] PASSED [ 18%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_edge[chromium-desktop] PASSED [ 20%]
+tests/integration/preview/test_graph_screen.py::test_region[chromium] PASSED [ 22%]
+tests/integration/preview/test_graph_screen.py::test_drawer_has_no_text_fields[chromium] PASSED [ 24%]
+tests/integration/preview/test_graph_screen.py::test_look_dropdown[chromium] PASSED [ 25%]
+tests/integration/preview/test_graph_screen.py::test_look_dropdown_when_narrow[chromium] PASSED [ 27%]
+tests/integration/preview/test_graph_screen.py::test_look_pick[chromium] PASSED [ 29%]
+tests/integration/preview/test_graph_screen.py::test_looks_differ[chromium] PASSED [ 31%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_reduced[chromium-glow] PASSED [ 33%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_not_reduced[chromium-glow] PASSED [ 35%]
+tests/integration/preview/test_graph_screen.py::test_motion_follows_setting[chromium] PASSED [ 37%]
+tests/integration/preview/test_graph_screen.py::test_lock_toggle[chromium] PASSED [ 38%]
+tests/integration/preview/test_graph_screen.py::test_lock_holds_when_other_pressed[chromium] PASSED [ 40%]
+tests/integration/preview/test_graph_screen.py::test_lock_keeps_center_when_other_opened_and_pressed_again[chromium] PASSED [ 42%]
+tests/integration/preview/test_graph_screen.py::test_lock_shake_when_blank_pressed[chromium] PASSED [ 44%]
+tests/integration/preview/test_graph_screen.py::test_blank_press_when_unlocked[chromium] PASSED [ 46%]
+tests/integration/preview/test_graph_screen.py::test_open_other_when_unlocked[chromium] PASSED [ 48%]
+tests/integration/preview/test_graph_screen.py::test_lock_key_shortcut[chromium] PASSED [ 50%]
+tests/integration/preview/test_graph_screen.py::test_lock_key_shake_when_other_opened[chromium] PASSED [ 51%]
+tests/integration/preview/test_graph_screen.py::test_lock_key_ignored[chromium] PASSED [ 53%]
+tests/integration/preview/test_graph_screen.py::test_lock_stays_when_tab_moved[chromium] PASSED [ 55%]
+tests/integration/preview/test_graph_screen.py::test_lock_when_narrow[chromium] PASSED [ 57%]
+tests/integration/preview/test_graph_screen.py::test_status_marks[chromium] PASSED [ 59%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_each_look[chromium-glow] PASSED [ 61%]
+tests/integration/preview/test_graph_screen.py::test_lock_when_quick_double_press[chromium] PASSED [ 62%]
+tests/integration/preview/test_graph_screen.py::test_open_key_when_hovered[chromium] PASSED [ 64%]
+tests/integration/preview/test_graph_screen.py::test_key_sits_between_name_and_comment_mark[chromium] PASSED [ 66%]
+tests/integration/preview/test_graph_screen.py::test_key_badge_when_far[chromium] PASSED [ 68%]
+tests/integration/preview/test_graph_screen.py::test_lock_key_ignored_when_select_focused[chromium] PASSED [ 70%]
+tests/integration/preview/test_graph_screen.py::test_drawer_saved_filter[chromium] PASSED [ 72%]
+tests/integration/preview/test_graph_screen.py::test_drawer_saved_filter_when_hash_filter[chromium] PASSED [ 74%]
+tests/integration/preview/test_graph_screen.py::test_drawer_saved_filter_when_value_missing[chromium] PASSED [ 75%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_edge[chromium-phone] PASSED [ 77%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_reduced[chromium-starlight] PASSED [ 79%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_not_reduced[chromium-starlight] PASSED [ 81%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_each_look[chromium-starlight] PASSED [ 83%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_reduced[chromium-constellation] PASSED [ 85%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_not_reduced[chromium-constellation] PASSED [ 87%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_each_look[chromium-constellation] PASSED [ 88%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_reduced[chromium-deep] PASSED [ 90%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_not_reduced[chromium-deep] PASSED [ 92%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_each_look[chromium-deep] PASSED [ 94%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_reduced[chromium-dust] PASSED [ 96%]
+tests/integration/preview/test_graph_screen.py::test_motion_when_not_reduced[chromium-dust] PASSED [ 98%]
+tests/integration/preview/test_graph_screen.py::test_comment_marks_when_each_look[chromium-dust] PASSED [100%]
+
+======================== 54 passed in 350.50s (0:05:50) ========================
