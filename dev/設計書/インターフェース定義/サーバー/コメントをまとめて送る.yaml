@@ -189,11 +189,11 @@ flows:
         IF->>TM: load-buffer → paste-buffer -p → send-keys Enter
         TM->>CC: 1 回の入力
         CC->>JL: user の行を書き足す
-        IF-->>JL: 書き足された行に S-1・S-2・S-3 がある
+        IF-->>JL: 書き足された行に入力した文字列がある
         IF-->>クライアント: 201、entered: true
     expected:
       - ステータスが 201 で、`entered` が `true`
-      - '会話の記録に user の行が 1 件だけ增え、その本文が `[mindstella] プレビューから送信が 3 件届きました。` で始まり、`- S-1 → D-1: 案 A にする`・`- S-2 → A-1（本文の 2 行目「言い換えたい文」）: ここは言い換える`・`- S-3 → 項目なし: ` で始まり 2 行目を空白 2 つで続ける行をこの順に持つ'
+      - 会話の記録に user の行が 1 件だけ增え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。` である
       - '`submissions.yaml` の S-1〜S-3 がどれも `taken: null`（取り込み済みにするのは Claude Code が記録した後）'
       - 応答が送ってから 0.5 秒以内に返る
     test: test_normal_when_entered_to_claude_code
@@ -358,13 +358,13 @@ constraints:
   - item: 入力の時点
     constraint: '`submissions.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。入力と確かめはプロセスの中の 1 本の入力の鍵で順に行い、同時に送られた 2 回の入力を重ねない'
   - item: 入力する文字列
-    constraint: '1 行目を `[mindstella] プレビューから送信が {件数} 件届きました。取り込んでいない送信の一覧で読み直して記録し、取り込み済みにしてください。` とし、続けて送信ごとに `- {送信の ID} → {向けた項目}: {本文}` の行を足した送信の ID の小さい順に並べる。向けた項目が無ければ `項目なし`、箇所があれば項目の後ろに `（本文の {start}〜{end} 行目「{text}」）` か `（値 {key}「{text}」）` を添える（`start` と `end` が同じなら `{start} 行目`）。本文の 2 行目からは頭に空白 2 つを付ける'
-    notes: 単一ユースケース『コメントを選んで送る』『送信の取り込み』。Claude Code は文字列の中身を記録に使わず、送信の ID で読み直す（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）
+    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。読み直してください。` の 1 行だけを入力する。送信の ID・向けた項目・箇所・本文は入れない'
+    notes: 'ユーザーが決めた文面（PR #201 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分ける印で、Claude Code は取り込んでいない送信の一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
   - item: 入力のやり方
     constraint: 文字列を `tmux load-buffer -b {名前の付いたバッファ} -` へ標準入力で渡し、`tmux paste-buffer -p -d -b {同じバッファ} -t {TMUX_PANE}` でブラケットペーストとして貼り、待たずに `tmux send-keys -t {TMUX_PANE} Enter` で確定する。ペインの状態（打ちかけ・選択の表示）は見ない
     notes: 'ブラケットペーストにしないと本文の改行で途中確定する。貼ってから `Enter` までの待ちは 0ms で確定することを PoC で確かめた。打ちかけとつながる・選択の表示で失われるのは利用者が tmux で気づいて直す（PR #201 の確認ログ）'
   - item: 届いたかの確かめ
-    constraint: '貼る前に、会話の記録のフォルダ（`{CLAUDE_CONFIG_DIR、無ければ ~/.claude}/projects/{サーバーの起動時の作業フォルダの絶対パスの英数字以外を - にした名前}`）の各 jsonl の大きさを控える。`Enter` の後、50ms ごとに控えより後ろへ書き足された行を読み、次のどちらかがあれば `entered: true` にする。① `type` が `user` で、`cwd` がサーバーの起動時の作業フォルダと一致し、本文に足した送信の ID が全て入った行（入力を待っていたとき）。② `type` が `queue-operation`・`operation` が `enqueue` の行（Claude Code が処理中で、入力が待ち行列に入ったとき。この行は本文も `cwd` も持たない）。上限までにどちらも無ければ `entered: false` にする。会話の ID（`CLAUDE_CODE_SESSION_ID`）は `/clear`・`/resume` で変わるため使わない'
+    constraint: '貼る前に、会話の記録のフォルダ（`{CLAUDE_CONFIG_DIR、無ければ ~/.claude}/projects/{サーバーの起動時の作業フォルダの絶対パスの英数字以外を - にした名前}`）の各 jsonl の大きさを控える。`Enter` の後、50ms ごとに控えより後ろへ書き足された行を読み、次のどちらかがあれば `entered: true` にする。① `type` が `user` で、`cwd` がサーバーの起動時の作業フォルダと一致し、本文に入力した文字列が入った行（入力を待っていたとき。打ちかけとつながったときも含む）。② `type` が `queue-operation`・`operation` が `enqueue` の行（Claude Code が処理中で、入力が待ち行列に入ったとき。この行は本文も `cwd` も持たない）。上限までにどちらも無ければ `entered: false` にする。会話の ID（`CLAUDE_CODE_SESSION_ID`）は `/clear`・`/resume` で変わるため使わない'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
     notes: Claude Code 2.1.296 で確かめた（2026-10-10）。入力を待っているときは貼ってから約 0.13 秒で user の行が書かれ、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる。選択の表示で失われたときはどちらも書かれない。新しい会話は最初の user の行まで jsonl を作らないため、控えに無いファイルは大きさ 0 から読む。同じ作業フォルダで別の Claude Code を並べて動かしていると、別の会話に入ったものも届いたと数える
   - item: 入力の上限

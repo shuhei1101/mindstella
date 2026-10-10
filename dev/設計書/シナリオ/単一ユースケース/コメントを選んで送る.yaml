@@ -202,7 +202,6 @@ scenarios:
       - name: レビュー中のコメント
         description: D-1 への「案 A にする」と、項目に紐づかない 2 行の「全体に目を通した」の 2 件
     flow: |-
-      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -214,16 +213,15 @@ scenarios:
         U->>P: 2 件をまとめて送る
         P->>SV: 送る
         SV->>WS: 2 件を取り込んでいない送信に足し、レビュー中から外す
-        SV->>TM: 送信の ID・向けた項目・本文を並べた文字列を Claude Code のペインへ貼って確定する
+        SV->>TM: 「ユーザーからのコメントが 2 件届きました」の 1 行を Claude Code のペインへ貼って確定する
         TM->>CC: 1 回の入力
         CC->>CC: 会話の記録へ書く
-        SV->>SV: 会話の記録に 2 件の ID が入ったことを確かめる
+        SV->>SV: 会話の記録に入力した文字列が入ったことを確かめる
         SV-->>P: 受け付けた（Claude Code へ入力した）
         P-->>U: 送って Claude Code へ入力したこと
-      ```
     expected:
       - 取り込んでいない送信が 2 件ある
-      - 会話の記録に user のメッセージが 1 件だけ増え、その中に 2 件の送信の ID・「案 A にする」・2 行の「全体に目を通した」がある
+      - 会話の記録に user のメッセージが 1 件だけ増え、その中身が `[mindstella] ユーザーからのコメントが 2 件届きました。読み直してください。` である
       - 送った結果に、Claude Code へ入力したことが出る
       - 2 件とも取り込み済みになっていない（取り込み済みにするのは Claude Code が記録した後）
     test: test_normal_when_entered_to_claude_code
