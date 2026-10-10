@@ -6562,6 +6562,8 @@ var MindmapPreview;
         tip.classList.toggle("is-multi", multi);
         tip.style.height = "";
         tip.style.maxHeight = "";
+        tip.style.top = "";
+        tip.style.bottom = "";
         tip.scrollTop = 0;
         if (multi) {
             tip.replaceChildren(...multiTipContent(entries));
@@ -6585,12 +6587,15 @@ var MindmapPreview;
         const above = spaceAbove >= tip.offsetHeight || (spaceBelow < tip.offsetHeight && spaceAbove >= spaceBelow);
         const room = above ? spaceAbove : spaceBelow;
         if (tip.offsetHeight > room) {
-            tip.style.height = "";
             tip.style.maxHeight = `${room}px`;
+            // 絞り込みの入力を持つときは、縮めた高さで固定する（絞り込んでも大きさを変えない）
+            tip.style.height = tip.querySelector(".tt-filter") === null ? "" : `${room}px`;
         }
         tip.classList.toggle("is-below", !above);
         tip.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - tip.offsetWidth - margin))}px`;
-        tip.style.top = `${above ? rect.top - gap - tip.offsetHeight : rect.bottom + gap}px`;
+        // 上に出すときは下端を印に留める（中身が減っても印から離れない）
+        tip.style.top = above ? "auto" : `${rect.bottom + gap}px`;
+        tip.style.bottom = above ? `${innerHeight - rect.top + gap}px` : "auto";
     }
     /** 用語のツールチップを隠す（`now` が偽のときは、少し待ってから） */
     function hideTermTip(now) {
