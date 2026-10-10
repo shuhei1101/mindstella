@@ -1,6 +1,7 @@
-// 見本の記録: #179 の見本に、本文を HTML で持つ資料（A-11・A-12）と、A-11 の HTML の本文を書き換えたまとまり（V-5）を足したもの
+// 見本の記録: #179 の見本に、本文を HTML で持つ資料（A-11・A-12）と html のコードブロックを持つ Markdown の資料（A-13）と、A-11 の HTML の本文を書き換えたまとまり（V-5）を足したもの
 // A-11: <style> で body・p・* の色と余白を塗り、見出し・段落・図（svg）・表を持つ。V-5 で「画面の流れ」の 2 つ目の段落を書き換えた
 // A-12: <script>・onerror の <img>・onclick のボタンを持つ（動けば body の data-ran に印を残す）
+// A-13: 本文は Markdown で、見出し・段落の間に言語指定 html のコードブロック（<style> で p を塗り、段落・svg・<script> を持つ）を 1 つ持つ
 (() => {
   const data = {
  "settings": {
@@ -2585,6 +2586,20 @@
    "body": "A-12.html",
    "created": "2026-10-05T03:00:00+00:00",
    "updated": "2026-10-05T03:00:00+00:00"
+  },
+  {
+   "id": "A-13",
+   "title": "保存の知らせの見た目（html のコードブロックを含む Markdown）",
+   "target": "スキルと画面",
+   "kind": "文書",
+   "deliverable": false,
+   "status": "下書き",
+   "tags": [
+    "画面"
+   ],
+   "body": "A-13.md",
+   "created": "2026-10-06T03:00:00+00:00",
+   "updated": "2026-10-06T03:00:00+00:00"
   }
  ],
  "terms": [
@@ -3032,7 +3047,8 @@
   "L-11.md": "## 話したこと\n\n- 起票したのは #43 の書き換えと #44〜#50 の 7 件。7 件分をまとめた A-2 しかなかったので、Issue ごとの資料 A-3〜A-9 に分けた。A-2 は一覧にし、納品物から外した\n- 起票する Issue 1 件に資料 1 件、と決めた（D-52）\n\n## 残しておきたい言葉\n\n> 立てたイシューの元資料みたいなのは、全部ここにあるべきじゃないのかな",
   "L-12.md": "## 話したこと\n\n- D-52 の「Issue 1 件に資料 1 件」は具体に寄りすぎ。Issue を使わない人もいる\n- 本当の問題は、タスクの成果に対して納品物を書き忘れたこと。成果は 1 件ずつ資料にし、タスクの完了前とゴール判定で 1 対 1 かを確かめる、に直した\n- T-4 に、作った資料を related で結んだ\n\n## 残しておきたい言葉\n\n> 納品物の書き忘れがあり得るから、そういうのがないように",
   "A-11.html": "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない -->\n<style>\n  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }\n  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 \"Noto Sans JP\", sans-serif; }\n  p { margin: 0 0 12px !important; letter-spacing: .02em; }\n  h1 { font-size: 22px; margin-bottom: 4px; }\n  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }\n  .lead { color: #6b6455 !important; }\n  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }\n  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }\n  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }\n  th { background: #efe6d2 !important; }\n  svg { max-width: 100%; height: auto; }\n  svg text { font: 12px \"Noto Sans JP\", sans-serif; fill: #2b2a26; }\n</style>\n</head>\n<body>\n<h1>設定のパネルの画面の流れ</h1>\n<p class=\"lead\">表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、\n1 画面ずつ並べたモック。</p>\n\n<h2>画面の流れ</h2>\n<p class=\"flow\" data-step=\"1\">トップバーの歯車を押すと、右から設定のパネルが開く。</p>\n<p class=\"flow\" data-step=\"2\">パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。</p>\n<p class=\"flow\" data-step=\"3\">「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。</p>\n\n<svg viewBox=\"0 0 560 96\" width=\"560\" height=\"96\" role=\"img\" aria-label=\"パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ\">\n  <rect x=\"4\" y=\"20\" width=\"150\" height=\"52\" rx=\"8\" fill=\"#fffdf7\" stroke=\"#b9a676\"/>\n  <text x=\"79\" y=\"51\" text-anchor=\"middle\">パネルを開く</text>\n  <path d=\"M158 46h44\" stroke=\"#8a7a52\" stroke-width=\"2\" marker-end=\"url(#a)\"/>\n  <rect x=\"206\" y=\"20\" width=\"150\" height=\"52\" rx=\"8\" fill=\"#fffdf7\" stroke=\"#b9a676\"/>\n  <text x=\"281\" y=\"51\" text-anchor=\"middle\">種類を切り替える</text>\n  <path d=\"M360 46h44\" stroke=\"#8a7a52\" stroke-width=\"2\" marker-end=\"url(#a)\"/>\n  <rect x=\"408\" y=\"20\" width=\"148\" height=\"52\" rx=\"8\" fill=\"#efe6d2\" stroke=\"#8a7a52\"/>\n  <text x=\"482\" y=\"51\" text-anchor=\"middle\">既定として保存</text>\n  <defs><marker id=\"a\" viewBox=\"0 0 8 8\" refX=\"7\" refY=\"4\" markerWidth=\"8\" markerHeight=\"8\" orient=\"auto\"><path d=\"M0 0l8 4-8 4z\" fill=\"#8a7a52\"/></marker></defs>\n</svg>\n\n<h2>画面ごとの要素</h2>\n<table>\n  <thead><tr><th>画面</th><th>置くもの</th><th>押したとき</th></tr></thead>\n  <tbody>\n    <tr><td>設定のパネル</td><td>表示する種類・ネットワークの見た目・既定として保存</td><td>切り替えはすぐ画面に出る</td></tr>\n    <tr><td>確かめのダイアログ</td><td>変わる既定の一覧・保存する・やめる</td><td>保存するとワークスペースの既定に書く</td></tr>\n    <tr><td>保存の知らせ</td><td>保存した既定の件数</td><td>数秒で消える</td></tr>\n  </tbody>\n</table>\n\n<h2>決めていないこと</h2>\n<p>既定として保存した後に、個人の上書きを消すかどうか。\n消さないと、保存した既定が自分の画面には出ないように見える。</p>\n<p>確かめのダイアログで、変わらない既定まで並べるかどうか。\n並べると一覧が長くなり、変わる既定が埋もれる。</p>\n</body>\n</html>\n",
-  "A-12.html": "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<style>\n  body { margin: 0; padding: 20px 24px; font: 15px/1.7 sans-serif; }\n  .card { padding: 12px 16px; border: 1px solid #ccd; border-radius: 8px; }\n</style>\n<!-- 動けば題と本文を書き換える -->\n<script>\n  document.title = \"動いた\";\n  window.parent.document.body.dataset.ran = \"script\";\n</script>\n</head>\n<body>\n<h1>保存のボタンの見本</h1>\n<p>押すと保存の知らせが出るボタンと、読み込めなかったときの画像の見本。</p>\n<div class=\"card\">\n  <img src=\"missing.png\" width=\"120\" height=\"72\" alt=\"画面の写し\" onerror=\"window.parent.document.body.dataset.ran = 'onerror'\">\n  <p><button type=\"button\" onclick=\"window.parent.document.body.dataset.ran = 'onclick'\">保存する</button></p>\n</div>\n</body>\n</html>\n"
+  "A-12.html": "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<style>\n  body { margin: 0; padding: 20px 24px; font: 15px/1.7 sans-serif; }\n  .card { padding: 12px 16px; border: 1px solid #ccd; border-radius: 8px; }\n</style>\n<!-- 動けば題と本文を書き換える -->\n<script>\n  document.title = \"動いた\";\n  window.parent.document.body.dataset.ran = \"script\";\n</script>\n</head>\n<body>\n<h1>保存のボタンの見本</h1>\n<p>押すと保存の知らせが出るボタンと、読み込めなかったときの画像の見本。</p>\n<div class=\"card\">\n  <img src=\"missing.png\" width=\"120\" height=\"72\" alt=\"画面の写し\" onerror=\"window.parent.document.body.dataset.ran = 'onerror'\">\n  <p><button type=\"button\" onclick=\"window.parent.document.body.dataset.ran = 'onclick'\">保存する</button></p>\n</div>\n</body>\n</html>\n",
+  "A-13.md": "# 保存の知らせの見た目\n\n保存したときに画面の右下に出す知らせの見本。文言と色は下の HTML のとおりにする。\n\n```html\n<style>\n  p { color: #b42318; margin: 0 0 8px; }\n  .toast { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: #1f2328; width: max-content; }\n  .toast p { color: #fff; margin: 0; }\n</style>\n<p>既定として保存した直後に、数秒だけ出す。</p>\n<div class=\"toast\">\n  <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" role=\"img\" aria-label=\"保存した\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"#2da44e\"/><path d=\"m7 12 3 3 7-7\" stroke=\"#fff\" stroke-width=\"2.5\" fill=\"none\"/></svg>\n  <p>既定を 3 件保存しました</p>\n</div>\n<script>window.parent.document.body.dataset.ran = \"code-block\";</script>\n```\n\n## 決めていないこと\n\n知らせを出す長さ（3 秒か 5 秒か）と、押して閉じられるようにするか。\n"
  },
  "changes": {
   "last_seq": 36,

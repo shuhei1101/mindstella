@@ -683,6 +683,12 @@ var MindmapPreview;
             });
             (code.closest("pre") ?? code).replaceWith(figure);
         }
+        // 214: 言語指定 html のコードブロックは、HTML の本文と同じ枠（スクリプトを動かさない・<style> を閉じ込める）に描く。行の印は付けない（コードブロック全体で本文の 1 か所）
+        for (const code of root.querySelectorAll("code.language-html")) {
+            const frame = MindmapPreview.htmlFrame({ source: code.textContent ?? "", lined: false, label: "コードブロックの HTML" });
+            frame.classList.add("html-block");
+            (code.closest("pre") ?? code).replaceWith(frame);
+        }
         return root;
     }
     MindmapPreview.renderMarkdown = renderMarkdown;
@@ -937,10 +943,10 @@ var MindmapPreview;
         return format === null ? "" : FORMAT_LABEL[format];
     }
     MindmapPreview.bodyFormatLabel = bodyFormatLabel;
-    /** 本文の形式のバッジ（文言で形式を示す）。本文が無い項目は null */
+    /** 本文の形式のバッジ。HTML の本文を持つ資料だけに付け、Markdown・本文の無い項目は null */
     function bodyFormatBadge(item) {
         const format = bodyFormat(item);
-        if (format === null)
+        if (format !== "html")
             return null;
         return MindmapPreview.h({
             tag: "span",
@@ -1088,7 +1094,7 @@ var MindmapPreview;
             frame.contentWindow?.getSelection()?.removeAllRanges();
     });
     /** HTML の本文を描く枠。スクリプトを動かさず（sandbox に allow-scripts を付けない）、高さを中身に合わせる。`lined` は今の本文で、選んだ箇所のコメントの入口を出す */
-    function htmlFrame({ source, lined, label }) {
+    function htmlFrame({ source, lined, label, onLoad = null }) {
         const frame = MindmapPreview.h({
             tag: "iframe",
             attrs: {
@@ -1116,6 +1122,7 @@ var MindmapPreview;
             new ResizeObserver(() => {
                 frame.style.height = `${doc.documentElement.scrollHeight + frame.offsetHeight - frame.clientHeight}px`;
             }).observe(doc.documentElement);
+            onLoad?.(doc);
         });
         frame.srcdoc = lined ? annotateHtmlLines(source) : source;
         return frame;
@@ -6319,7 +6326,105 @@ var MindmapPreview;
         });
         return MindmapPreview.h({ tag: "div", attrs: { class: "html-side" }, children: [pane("変える前", before), pane("変えた後", after)] });
     }
-    /** HTML の本文の節の中身。差分の表示の間は、モックの案（raw = A 原文の行、side = B 並べる）で前後を見せる */
+    /** 変えた後の本文の行（1 始まり）のうち、足した行と、消した行と入れ替えた行（変えた行） */
+    function changedLines(parts) {
+        const added = new Set();
+        const changed = new Set();
+        let line = 0;
+        parts.forEach((part, position) => {
+            if (part.kind === "removed")
+                return;
+            const replaced = part.kind === "added" && (parts[position - 1]?.kind === "removed" || parts[position + 1]?.kind === "removed");
+            for (const text of part.lines) {
+                line += 1;
+                // 空行だけの足しは要素の間の空きで、どの要素も変えたことにしない
+                if (part.kind === "added" && text.trim() !== "")
+                    (replaced ? changed : added).add(line);
+            }
+        });
+        return { added, changed };
+    }
+    /** 枠の文書の中で、行を含む最も内側の要素（html・head・body は除く） */
+    function innermostAt({ doc, line }) {
+        let found = null;
+        for (const element of doc.body.querySelectorAll(`[${MindmapPreview.LINE_ATTR}]`)) {
+            const start = Number(element.getAttribute(MindmapPreview.LINE_ATTR));
+            const end = start + (element.outerHTML.split("\n").length - 1);
+            if (start <= line && line <= end)
+                found = element;
+        }
+        return found;
+    }
+    /** 描いた結果の上で、変わった行を含む要素に枠と地の色の印を付ける（色は画面の差分の色を枠の文書へ写す） */
+    function markRendered({ doc, lines }) {
+        const css = getComputedStyle(document.documentElement);
+        const color = (name) => css.getPropertyValue(name).trim();
+        const style = doc.createElement("style");
+        style.textContent = `[data-df="add"]{outline:2px solid ${color("--df-add")} !important;outline-offset:2px;background-color:${color("--df-add-bg")} !important}`
+            + `[data-df="chg"]{outline:2px dashed ${color("--df-chg")} !important;outline-offset:2px;background-color:${color("--df-chg-bg")} !important}`;
+        doc.head.append(style);
+        for (const [mark, set] of [["add", lines.added], ["chg", lines.changed]]) {
+            for (const line of set)
+                innermostAt({ doc, line })?.setAttribute("data-df", mark);
+        }
+    }
+    /** 案 C: 変えた後の描いた結果に印を付け、「原文の差分」で案 A の原文の行の差分に切り替える。差分を計算しきれなかったら null */
+    function htmlMarkedDiff({ before, after, lined }) {
+        const parts = MindmapPreview.diffLineParts(before, after);
+        if (parts === null)
+            return null;
+        const lines = changedLines(parts);
+        const removedOnly = parts.some((part, position) => part.kind === "removed" && parts[position - 1]?.kind !== "added" && parts[position + 1]?.kind !== "added");
+        const rendered = MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "html-marked" },
+            children: [MindmapPreview.htmlFrame({ source: after, lined, label: "本文（HTML）", onLoad: (doc) => markRendered({ doc, lines }) })],
+        });
+        const raw = htmlRawDiff({ before, after });
+        raw.hidden = true;
+        const legend = MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "df-legend" },
+            children: [
+                MindmapPreview.h({ tag: "span", attrs: { class: "df-lg df-lg-add" }, children: [MindmapPreview.h({ tag: "i", attrs: { "aria-hidden": "true" } }), "足した"] }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "df-lg df-lg-chg" }, children: [MindmapPreview.h({ tag: "i", attrs: { "aria-hidden": "true" } }), "変わった"] }),
+                removedOnly ? MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["消した箇所は原文の差分で見られます"] }) : null,
+            ],
+        });
+        /** 描いた結果と原文の差分を切り替えるボタン */
+        const toggle = (label, showRaw) => MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                type: "button",
+                "aria-pressed": String(!showRaw),
+                onclick: (event) => {
+                    for (const button of event.currentTarget.parentElement.children)
+                        button.setAttribute("aria-pressed", String(button === event.currentTarget));
+                    raw.hidden = !showRaw;
+                    rendered.hidden = showRaw;
+                    legend.hidden = showRaw;
+                },
+            },
+            children: [label],
+        });
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "html-diff-c" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "html-diff-bar" },
+                    children: [
+                        MindmapPreview.h({ tag: "div", attrs: { class: "segment", role: "group", "aria-label": "本文の差分の見せ方" }, children: [toggle("描いた結果", false), toggle("原文の差分", true)] }),
+                        legend,
+                    ],
+                }),
+                rendered,
+                raw,
+            ],
+        });
+    }
+    /** HTML の本文の節の中身。差分の表示の間は、モックの案（marks = C 描いた結果に印、raw = A 原文の行、side = B 並べる）で前後を見せる */
     function htmlBodyContent({ source, current, versions }) {
         const content = document.createDocumentFragment();
         if (versions !== null && versions.before !== null && !versions.trimmed) {
@@ -6330,9 +6435,12 @@ var MindmapPreview;
                 content.append(noteBox(NOTE_BODY_UNAVAILABLE));
             }
             else if (versions.beforeBody !== source) {
-                const shown = document.body.dataset.htmldiff === "side"
-                    ? htmlSideBySide({ before: versions.beforeBody, after: source })
-                    : htmlRawDiff({ before: versions.beforeBody, after: source });
+                const mode = document.body.dataset.htmldiff;
+                const shown = mode === "marks"
+                    ? htmlMarkedDiff({ before: versions.beforeBody, after: source, lined: source === current })
+                    : mode === "side"
+                        ? htmlSideBySide({ before: versions.beforeBody, after: source })
+                        : htmlRawDiff({ before: versions.beforeBody, after: source });
                 if (shown !== null) {
                     content.append(shown);
                     return content;
