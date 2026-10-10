@@ -362,7 +362,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 本文
-        description: 資料 A-1 に渡す 3 行の HTML の本文と、2 行目を書き換えた HTML の本文と、形式を替えるときの 2 行の Markdown の本文
+        description: 資料 A-1 を足すときの 2 行の Markdown の本文と、形式を HTML に替えるときの 3 行の HTML の本文と、2 行目を書き換えた HTML の本文と、形式を Markdown に戻すときの 2 行の Markdown の本文
         notes: HTML の本文 `<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>`。書き換えは 2 行目を `<p>絞り込みの画面</p>` にする
     flow: |-
       sequenceDiagram
@@ -370,8 +370,10 @@ scenarios:
         participant SV as サーバー
         participant WS as ワークスペース
 
-        CC->>SV: HTML の本文を渡して資料 A-1 を足す
-        SV->>WS: docs.yaml と .mindstella/docs/ の HTML の本文を書く
+        CC->>SV: Markdown の本文を渡して資料 A-1 を足す
+        SV->>WS: docs.yaml と .mindstella/docs/ の Markdown の本文を書く
+        CC->>SV: HTML の本文を渡して A-1 を直す
+        SV->>WS: docs.yaml と HTML の本文を書き、Markdown の本文を消す
         CC->>SV: A-1 の HTML の本文の 2 行目を直す
         SV->>SV: 本文の差分を変更履歴に積む
         SV->>WS: docs.yaml と HTML の本文を書く
@@ -382,10 +384,10 @@ scenarios:
         CC->>SV: A-1 を表示する
         SV-->>CC: 中身と Markdown の本文と形式
     expected:
-      - 足した直後の A-1 の本文が HTML の形式で、`.mindstella/docs/` に渡した HTML の本文がある
+      - HTML に替えた後、A-1 の本文が HTML の形式になり、`.mindstella/docs/` に渡した HTML の本文があり、A-1 の Markdown の本文が残らない
       - 1 回目の表示が、書き換えた後の HTML の本文と HTML の形式を返す
-      - A-1 の変更履歴の 1 回目が、HTML の本文の 2 行目の差分を持つ
-      - Markdown に替えた後、A-1 の本文が Markdown の形式になり、`.mindstella/docs/` に A-1 の HTML の本文が残らない
+      - A-1 の変更履歴が、HTML の本文の 2 行目の差分を持つ回を持つ
+      - Markdown に戻した後、A-1 の本文が Markdown の形式になり、`.mindstella/docs/` に A-1 の HTML の本文が残らない
       - 2 回目の表示が、渡した Markdown の本文と Markdown の形式を返す
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_doc_body_html
