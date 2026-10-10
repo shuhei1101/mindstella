@@ -46,6 +46,12 @@ from preview_network_helpers import (
     settle,
     status_marks,
 )
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from preview_settings_helpers import LOOK_SELECT, pick_look, read_prefs
 
 # 狭い幅の画面の大きさ（空の旨の文はどの幅でも出す）
@@ -1132,3 +1138,61 @@ def test_lock_key_ignored_when_select_focused(
     assert while_focused == []
     assert look == "deep"
     assert [draw["closed"] for draw in after_blur] == [True]
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直してもその条件でドロワーを開き玉を絞る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    click_value(page, "type", "会話ログ")
+    page.wait_for_function("document.querySelector('dialog.drawer .fd-count').textContent === '14 件中 1 件'")
+    # 実行
+    reload_preview(page)
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {"graph": {"type": ["会話ログ"]}}
+    assert checked_values(page, "type") == ["会話ログ"]
+    assert badge_text(page) == "1"
+    assert drawer_head(page)["count"] == "14 件中 1 件"
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    seed_saved_filters(page, {"graph": {"type": ["会話ログ"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=graph&f.type=メモ")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    # 検証
+    assert checked_values(page, "type") == ["メモ"]
+    assert badge_text(page) == "1"
+    assert read_saved_filters(page) == {"graph": {"type": ["会話ログ"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（項目の種類に「存在しない種類」は無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    seed_saved_filters(page, {"graph": {"type": ["会話ログ", "存在しない種類"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    # 検証
+    assert checked_values(page, "type") == ["会話ログ"]
+    assert badge_text(page) == "1"
+    assert drawer_head(page)["count"] == "14 件中 1 件"

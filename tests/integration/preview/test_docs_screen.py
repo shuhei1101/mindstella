@@ -33,6 +33,12 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -588,3 +594,58 @@ def test_region_at_boundary(
     page.wait_for_selector(REGION_SCROLLER[view])
     # 実行・検証
     assert_region_mode(page, REGION_SCROLLER[view], filled=filled)
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直してもその条件でドロワーとカードを開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    open_drawer(page)
+    click_value(page, "status", "完成")
+    page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {"docs": {"status": ["完成"]}}
+    assert _card_ids(page) == ["A-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["完成"]
+    assert chip_texts(page) == ["状態: 完成"]
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    seed_saved_filters(page, {"docs": {"status": ["下書き"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=docs&f.status=完成")
+    open_drawer(page)
+    # 検証
+    assert _card_ids(page) == ["A-1"]
+    assert checked_values(page, "status") == ["完成"]
+    assert read_saved_filters(page) == {"docs": {"status": ["下書き"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（資料に確認中の状態のものは無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    seed_saved_filters(page, {"docs": {"status": ["完成", "確認中"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _card_ids(page) == ["A-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["完成"]

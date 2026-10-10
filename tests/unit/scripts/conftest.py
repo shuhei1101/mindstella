@@ -23,14 +23,24 @@ SCRIPTS_DIR = (
     / "scripts"
 )
 
+# セットアップのスキルのスクリプト（登録の register.py）のフォルダ
+SETUP_SCRIPTS_DIR = SCRIPTS_DIR.parents[1] / "setup" / "scripts"
+
 # スクリプトはパッケージとして入れず、同じフォルダの名前（import store など）で読む
 sys.path.insert(0, str(SCRIPTS_DIR))
+sys.path.insert(0, str(SETUP_SCRIPTS_DIR))
 
 
 @pytest.fixture
 def scripts_dir() -> Path:
     """スクリプトのフォルダ（plugins/mindstella/skills/mindmap/scripts）を返す。"""
     return SCRIPTS_DIR
+
+
+@pytest.fixture
+def setup_scripts_dir() -> Path:
+    """セットアップのスキルのスクリプトのフォルダ（plugins/mindstella/skills/setup/scripts）を返す。"""
+    return SETUP_SCRIPTS_DIR
 
 
 @pytest.fixture

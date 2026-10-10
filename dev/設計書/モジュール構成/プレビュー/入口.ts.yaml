@@ -15,7 +15,7 @@ data_models:
     title: 端末に残す設定
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
-    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列は個人の上書きで、無い（`null`・種類のキーが無い）項目はワークスペースの既定に従う（`resolveDisplay`）'
+    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件は個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
     properties:
       - name: theme
         type: "'light' | 'dark' | null"
@@ -32,6 +32,9 @@ data_models:
       - name: diffSel
         type: string | null
         description: 変更履歴で選んだ時点（`since`・`pending`・まとまりの ID）。`null` は差分を出さない。個人の上書きではなく、「既定に戻す」でも消さない
+      - name: filters
+        type: Record<string, Record<string, string[]>>
+        description: サーバーの配信で残した、画面（記録の表は種類）ごとの絞り込みの条件（`FilterState.byTab` と同じ形）。画面のキーが無ければ画面の既定の条件で開く。配る書き出しでは読まず書かない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -87,11 +90,11 @@ data_models:
     title: 絞り込みの状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目を表で絞り込む
-    summary: 開いている間だけ持つ絞り込みの状態。表示形式の切り替え・描き直し・書き換えの知らせでも保ち、端末には残さない
+    summary: 開いている間の絞り込みの状態。表示形式の切り替え・描き直し・書き換えの知らせでも保つ。サーバーの配信では、条件を変えるたびに `Prefs.filters` へ写して端末に残す
     properties:
       - name: byTab
         type: Record<string, Record<string, string[]>>
-        description: 画面（記録の表は種類）ごとの絞り込み。初めて開いた画面は `initialFilters` で入れる
+        description: 画面（記録の表は種類）ごとの絞り込み。初めて開いた画面は `initialFilters` で入れる（サーバーの配信では `Prefs.filters` の分を `pruneFilters` にかけて渡す）
       - name: drawerOpen
         type: boolean
         description: 絞り込みのドロワーを開いているか。コメントの一覧（`CommentState.listOpen`）・表示の設定のパネル（`DisplayState.open`）と同時に真にしない
@@ -179,7 +182,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`）を返し、選べない値の `look`・`kinds` はその項目だけ `null` にする'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`）を返し、選べない値の `look`・`kinds` と、画面ごとの条件が値の配列の対応でない `filters` はその項目だけ既定にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -194,9 +197,9 @@ functions:
       - name: test_load_prefs
         case: 正常
         summary: 残した設定を読み、読めなければ既定
-        condition: '`parametrize`: `theme: dark` を残した / 値が壊れた JSON / `getItem` が例外を送る保存領域 / `look: rainbow` と `kinds: [decisions, graph]` を残した / `look: dust` と `kinds: [tasks]` を残した（前の版が残した `theme`・`columns` だけの値もそのまま読める）'
+        condition: '`parametrize`: `theme: dark` を残した / 値が壊れた JSON / `getItem` が例外を送る保存領域 / `look: rainbow` と `kinds: [decisions, graph]` を残した / `look: dust` と `kinds: [tasks]` を残した（前の版が残した `theme`・`columns` だけの値もそのまま読める） / `filters: {tasks: {status: [未着手]}}` を残した / `filters: [1]` を残した'
         mock: 保存領域（引数で渡す）
-        expected: '`dark` / 既定 / 既定 / `look` と `kinds` が `null` / `look` が `dust`、`kinds` が `[tasks]`'
+        expected: '`dark` / 既定 / 既定 / `look` と `kinds` が `null` / `look` が `dust`、`kinds` が `[tasks]`（`filters` は `{}`） / `filters` が `{tasks: {status: [未着手]}}` / `filters` が `{}`'
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
@@ -233,7 +236,7 @@ functions:
     usecase: 共通
     scope: public
     summary: 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ
-    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書きを残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
+    side_effects: '`document.body` に画面を描く。`hashchange`・`popstate`・`keydown`（`Ctrl+K`・`Cmd+K` で検索・Esc）・`selectionchange`・`pointerup` を受ける。端末の保存領域に個人の上書き（サーバーの配信では画面ごとの絞り込みの条件も）を残す。サーバーの配信では `GET /api/records` と `GET /api/comments` を読み、`GET /api/events` につなぎ、コメント・書きかけ・既定の書き換えの API へ送る'
     args: []
     returns:
       type: void
@@ -249,7 +252,7 @@ functions:
          - 「前回開いてから」の始まりを決める。`SINCE_KEY` が sessionStorage にあればそれを使う。無ければ、サーバーの配信では `postOpened`、配る書き出しでは `localStorage` の `opened` を読んで今の日時に書き換え、`null` ならタブを開いた日時にして `SINCE_KEY` に残す
          - 選んだ時点を引く（`resolveDiffPoint`。`Prefs.diffSel` と始まり）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）
-      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
          - 絞り込みのドロワー・コメントの一覧・表示の設定のパネルのどれかを開いているときは、描いた後に前の `inertBehind` が返した解除を呼んでから、開いているパネルで `inertBehind` を呼び直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）
       6. コメントの入力のコールバックを次で扱う
@@ -270,7 +273,7 @@ functions:
          - 一覧を開くときは、絞り込みのドロワーと表示の設定のパネルを閉じる（`drawerOpen`・`DisplayState.open` を偽）
       9. 絞り込みのコールバックを次で扱う（どれも履歴に積まない）
          - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧と表示の設定のパネルを閉じる
-         - 画面の「条件を変える」では `FilterState.byTab` のその画面の分を置き換え、トップバーと画面を描き直す（ドロワーは開いたまま）
+         - 画面の「条件を変える」では `FilterState.byTab` のその画面の分を置き換え、トップバーと画面を描き直す（ドロワーは開いたまま）。サーバーの配信では、`Prefs.filters` のその画面の分も同じ条件に置き換えて残す（`savePrefs`。結果を `DisplayState.storageOk` に入れる。表示の設定を開いていれば描き直す）
          - 画面の「ドロワーを閉じる」では `drawerOpen` を偽にして描き直し、トップバーの絞り込みのボタンへフォーカスを戻す
          - 概要へ移ったときは `drawerOpen` を偽にする
       10. 変更履歴のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
@@ -280,7 +283,7 @@ functions:
          - トップバーの表示の設定のボタンで `DisplayState.open` を入れ替える。開くときはコメントの一覧と絞り込みのドロワーを閉じ（`listOpen`・`drawerOpen` を偽）、詳細パネルは開いたままにする。閉じる（×・Esc。詳細パネルを開いていれば Esc は詳細パネルを先に閉じる）ときはトップバーのボタンにフォーカスを戻す
          - 「表示する種類を変える」では `Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 をやり直す。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
          - ネットワークの見た目のドロップダウンの「見た目を選ぶ」では `Prefs.look` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直してネットワークを作り直さずに `setGraphLook` で差し替える。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
-         - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、3 と 5 をやり直す。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
+         - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、`FilterState.byTab` を空にして、3 と 5 をやり直す（開いている画面は画面の既定の条件で開き直る）。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
          - 「ワークスペースの既定にする」では `DisplayState.confirm` を `{busy: false, error: null}` にして確かめを開く（`settingsConfirm`。`from` は既定、`to` は今当てている値）
          - 確かめの「保存する」では `busy` にして送る（`putDisplay`）。200 なら確かめを閉じ、返った `display` を記録の `settings.display` と `savedDisplay` に入れ、`message` を「ワークスペースの既定にしました（{MM/DD HH:mm}）。」にして 3 と 5 をやり直す（個人の上書きはそのまま残す）。断られたら `error` に「保存できませんでした。{detail}」、届かないなら立ち上げ直しの案内を入れて確かめを描き直す（画面設計『既定の保存の確かめ』の文言）
          - 確かめの「取り消す」と Esc（`busy` の間は受けない）では確かめを閉じ、「ワークスペースの既定にする」にフォーカスを戻す
@@ -358,25 +361,26 @@ functions:
         description: 記録の `settings.display`（配る書き出しは埋め込みの値）
     returns:
       type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[]}'
-      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」の順）
+      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」の順）
     process: |-
       1. 既定を決める（`display.network_look` が無ければ `deep`、`display.visible_kinds` が無ければ 7 つの種類全て）
       2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる
       3. `prefs.look`・`prefs.kinds`・`prefs.theme` が `null` でない項目と、`prefs.columns` の種類ごとに「表の列（{種類の名前}）」を `overrides` に並べる
+      4. `prefs.filters` の画面ごとに、条件が画面の既定（`initialFilters(画面, {}, null)`）と違えば「絞り込み（{画面の名前}）」を `overrides` に並べる（記録の表は種類の名前）
     unit_tests:
       - name: test_resolve_display
         case: 正常
         summary: 上書き → ワークスペースの既定 → 組み込みの既定の順に項目ごとに読み分ける
-        condition: '`parametrize`: 上書きも既定も無い / 既定が `starlight`・メモを除く 6 種類で上書きが無い / 同じ既定で `look: dust`・`theme: dark`・`columns.research` の上書き'
+        condition: '`parametrize`: 上書きも既定も無い / 既定が `starlight`・メモを除く 6 種類で上書きが無い / 同じ既定で `look: dust`・`theme: dark`・`columns.research` の上書き / `filters` が `{tasks: {status: [未着手]}, decisions: {status: [要見直し, 未決定, 未整理, 保留]}}`'
         mock: なし
-        expected: '`deep`・7 種類・`overrides` が空 / `starlight`・6 種類・`overrides` が空 / `look` が `dust`、`kinds` が 6 種類、`defaultLook` が `starlight`、`overrides` が「ネットワークの見た目」・「ライト / ダーク」・「表の列（調査）」'
+        expected: '`deep`・7 種類・`overrides` が空 / `starlight`・6 種類・`overrides` が空 / `look` が `dust`、`kinds` が 6 種類、`defaultLook` が `starlight`、`overrides` が「ネットワークの見た目」・「ライト / ダーク」・「表の列（調査）」 / `overrides` が「絞り込み（タスク）」だけ（検討事項は画面の既定と同じなので並べない）'
   - name: clearOverrides
     title: 個人の上書きを外す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
     scope: public
-    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列を外した `Prefs` を返す（`diffSel` は残す）
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を外した `Prefs` を返す（`diffSel` は残す）
     args:
       - name: prefs
         type: Prefs
@@ -385,15 +389,15 @@ functions:
         description: 今の端末の設定
     returns:
       type: Prefs
-      description: '`theme`・`look`・`kinds` を `null`、`columns` を空にした写し'
-    process: 1. `prefs` を写し、上の 4 項目を外して返す（渡した `prefs` は変えない）
+      description: '`theme`・`look`・`kinds` を `null`、`columns`・`filters` を空にした写し'
+    process: 1. `prefs` を写し、上の 5 項目を外して返す（渡した `prefs` は変えない）
     unit_tests:
       - name: test_clear_overrides
         case: 正常
         summary: 上書きだけを外し、差分の時点は残す
-        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`diffSel: since` の `Prefs`'
+        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`diffSel: since` の `Prefs`'
         mock: なし
-        expected: '`theme`・`look`・`kinds` が `null`、`columns` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+        expected: '`theme`・`look`・`kinds` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
   - name: commentCounts
     title: 項目ごとのコメントの件数
     container: plugins/mindstella/skills/mindmap/preview/app.ts

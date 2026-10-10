@@ -1418,7 +1418,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     scope: public
-    summary: 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ画面の既定
+    summary: 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ端末に残した条件、それも無ければ画面の既定
     args:
       - name: tab
         type: Route['tab']
@@ -1430,16 +1430,21 @@ functions:
         required: true
         passing: positional
         description: ハッシュの絞り込み（`Route.filters`）
+      - name: saved
+        type: Record<string, string[]> | null
+        required: true
+        passing: positional
+        description: 端末に残したその画面の条件（`Prefs.filters` の分を `pruneFilters` にかけた値）。配る書き出しと、残した条件の無い画面は `null`
     returns:
       type: Record<string, string[]>
       description: '絞り込み。検討事項の既定は `{status: [要見直し, 未決定, 未整理, 保留]}`、ほかの画面は `{}`'
     unit_tests:
       - name: test_initial_filters
         case: 正常
-        summary: ハッシュがあれば既定に代えて使う
-        condition: '`parametrize`: decisions と `{}` / decisions と `{phase: [要件]}` / tasks と `{}`'
+        summary: ハッシュ → 残した条件 → 画面の既定の順に使う
+        condition: '`parametrize`: decisions・`{}`・`null` / decisions・`{phase: [要件]}`・`{status: [保留]}` / tasks・`{}`・`null` / decisions・`{}`・`{}` / tasks・`{}`・`{status: [未着手]}`'
         mock: なし
-        expected: '状態 4 つ / `{phase: [要件]}`（状態の既定を含まない） / `{}`'
+        expected: '状態 4 つ / `{phase: [要件]}`（状態の既定も残した条件も含まない） / `{}` / `{}`（全て外して残した条件は既定に戻さない） / `{status: [未着手]}`'
   - name: graphConditions
     title: ネットワークの条件
     kind: 関数
@@ -1824,6 +1829,43 @@ functions:
     returns:
       type: Set<string>
       description: 描く検討事項の ID
+  - name: pruneFilters
+    title: 残した条件の刈り込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 端末に残した条件から、今の記録のどの行にも無い値を外す。文字の条件（`~{列}`）はそのまま残し、知らない列の条件は外す
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: その画面の今の行
+      - name: columns
+        type: '{key, get}[]'
+        required: true
+        passing: keyword
+        description: 条件の定義（`filterRows` と同じ。表の列か、ネットワークの `graphConditions`）
+      - name: saved
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 残した条件
+    returns:
+      type: Record<string, string[]>
+      description: 今の記録にある値だけの条件。値が 1 つも残らない列はキーごと外す（渡した `saved` は変えない）
+    process: |-
+      1. `saved` のキーごとに見る。`~` で始まるキーはそのまま写す
+      2. `columns` に無いキーは外す
+      3. それ以外は、`rows` のその列の値（`get`。配列は要素ごと）に現れる値だけを残し、残らなければキーごと外す
+    unit_tests:
+      - name: test_prune_filters
+        case: 正常
+        summary: 記録に無い値だけを外す
+        condition: '状態が未着手・完了、タグが `[a]` の行。`parametrize`: `{status: [未着手, 保留]}` / `{tags: [b]}` / `{"~title": ["x"], nope: [y]}` / `{}`'
+        mock: なし
+        expected: '`{status: [未着手]}` / `{}` / `{"~title": ["x"]}` / `{}`。渡した `saved` が変わっていない'
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py

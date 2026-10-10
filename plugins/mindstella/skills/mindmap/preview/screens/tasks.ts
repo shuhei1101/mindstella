@@ -159,10 +159,10 @@ namespace MindmapPreview {
     });
   }
 
-  /** タスクの画面を返す */
-  export function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }: ScreenProps): HTMLElement {
+  /** タスクの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+  export function taskColumns({ index, open }: { index: RecordIndex; open: (id: string) => void }): Column[] {
     const common = commonColumns(index.data.settings);
-    const columns: Column[] = [
+    return [
       common.id,
       common.title(),
       common.status(TASK_STATUSES),
@@ -172,13 +172,18 @@ namespace MindmapPreview {
         label: "進める検討事項",
         priority: 3,
         get: (row) => rowTexts(row, "for"),
-        cell: (row) => idLinksCell(rowTexts(row, "for"), on.open),
+        cell: (row) => idLinksCell(rowTexts(row, "for"), open),
       },
       common.target,
       common.category,
       common.phase,
       common.tags,
     ];
+  }
+
+  /** タスクの画面を返す */
+  export function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }: ScreenProps): HTMLElement {
+    const columns = taskColumns({ index, open: on.open });
     // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.tasks, columns, filters }) as Item[];
     // ボードでは、ツールバーの下に条件のチップの行を置く（表は表の上に持つ）
