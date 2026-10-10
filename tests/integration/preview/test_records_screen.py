@@ -173,6 +173,7 @@ def test_removed_band_when_filtered(
     open_drawer(page)
     page.fill(f'{DRAWER} input[data-text-key="title"]', "一致しない文字")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 0")
+    close_drawer(page)
     # 検証
     assert page.locator("table.grid tbody tr[data-id]").count() == 0
     assert_removed_band(page, REMOVED_IN_V2_BY_TAB["research"])
