@@ -1,5 +1,5 @@
 // develop のプレビューのスクリプト（tsc が生成した .js を build の順につないだもの）に、PR #219 の変更を当てたもの。
-// 当てた箇所には「219:」のコメントを付けた。モックの見本の切り替え（body の data-click・data-filter）を読む箇所には「219 モック:」のコメントを付けた。
+// 当てた箇所には「219:」のコメントを付けた。
 "use strict";
 // 画面が共通で使う要素の組み立てと、アイコン・状態の印。
 var MindmapPreview;
@@ -807,8 +807,7 @@ var MindmapPreview;
                         "aria-describedby": isId ? null : MindmapPreview.TERM_TIP_ID,
                         onclick: (event) => {
                             event.preventDefault();
-                            // 219 モック: 案 A（body の data-click="first"）は、資料・調査にも一致した印も先頭の項目へ移る
-                            if (isId || termsOnly || document.body.dataset["click"] === "first")
+                            if (isId || termsOnly)
                                 onOpen(target);
                         },
                     },
@@ -6514,9 +6513,7 @@ var MindmapPreview;
             ],
         }));
         const empty = MindmapPreview.h({ tag: "p", attrs: { class: "tt-empty", hidden: true }, children: [] });
-        // 219 モック: 案 B（body の data-filter="always"）は、資料・調査が 1 件でも一致したら出す
-        const withFilter = entries.length >= TIP_FILTER_MIN || document.body.dataset["filter"] === "always";
-        if (!withFilter)
+        if (entries.length < TIP_FILTER_MIN)
             return lists;
         const count = MindmapPreview.h({ tag: "span", attrs: { class: "tt-count", "aria-live": "polite" }, children: [`${entries.length} 件`] });
         const input = MindmapPreview.h({ tag: "input", attrs: { id: "tt-filter-input", type: "search", placeholder: "タイトル・説明", autocomplete: "off" } });
@@ -6531,6 +6528,8 @@ var MindmapPreview;
                     inGroup += hit ? 1 : 0;
                 }
                 group.hidden = inGroup === 0;
+                // 種類の見出しの件数は、残った件数にする
+                group.querySelector(".tt-n").textContent = String(inGroup);
                 shown += inGroup;
             }
             count.textContent = words.length === 0 ? `${entries.length} 件` : `${entries.length} 件中 ${shown} 件`;
@@ -6562,6 +6561,7 @@ var MindmapPreview;
         const multi = entries.some((entry) => entry.kind !== "terms");
         tip.classList.toggle("is-multi", multi);
         tip.style.height = "";
+        tip.style.maxHeight = "";
         tip.scrollTop = 0;
         if (multi) {
             tip.replaceChildren(...multiTipContent(entries));
@@ -6579,9 +6579,18 @@ var MindmapPreview;
         const gap = 6;
         const margin = 8;
         const rect = mark.getBoundingClientRect();
-        const below = innerHeight - rect.bottom - gap - margin >= tip.offsetHeight;
+        // 219: 印の上に出す。上に収まらなければ下に出し、上下どちらにも収まらなければ広い側に出してその高さに縮める（中をスクロールする）
+        const spaceAbove = rect.top - gap - margin;
+        const spaceBelow = innerHeight - rect.bottom - gap - margin;
+        const above = spaceAbove >= tip.offsetHeight || (spaceBelow < tip.offsetHeight && spaceAbove >= spaceBelow);
+        const room = above ? spaceAbove : spaceBelow;
+        if (tip.offsetHeight > room) {
+            tip.style.height = "";
+            tip.style.maxHeight = `${room}px`;
+        }
+        tip.classList.toggle("is-below", !above);
         tip.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - tip.offsetWidth - margin))}px`;
-        tip.style.top = `${below ? rect.bottom + gap : Math.max(margin, rect.top - gap - tip.offsetHeight)}px`;
+        tip.style.top = `${above ? rect.top - gap - tip.offsetHeight : rect.bottom + gap}px`;
     }
     /** 用語のツールチップを隠す（`now` が偽のときは、少し待ってから） */
     function hideTermTip(now) {
@@ -6646,8 +6655,8 @@ var MindmapPreview;
             const found = markOf(event);
             if (found === null)
                 return;
-            // 219: 資料・調査にも一致した印は、押すとツールチップを残す（移る先は中のリンクで選ぶ）。219 モック: 案 A は先頭の項目へ移る
-            if (found.multi && document.body.dataset["click"] !== "first") {
+            // 219: 資料・調査にも一致した印は、押すとツールチップを残す（移る先は中のリンクで選ぶ）
+            if (found.multi) {
                 showTermTip({ ...found, root, onOpen });
                 tipState.pinned = true;
                 return;

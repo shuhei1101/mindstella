@@ -1,11 +1,7 @@
-// モックの操作。app.js の起動の前にハッシュを整え、案（押したときの動き・絞り込みの入力を出す条件）を body に移し、描いた後にモック専用の操作列を一番上へ戻し、見本の状態（ツールチップを出す・絞り込む）を作る
+// モックの操作。app.js の起動の前にハッシュを整え、描いた後にモック専用の操作列を一番上へ戻し、見本の状態（ツールチップを出す・絞り込む）を作る
 (() => {
   const body = document.body;
   const params = new URLSearchParams(location.search);
-
-  // 案: クエリの click（first = A 先頭へ移る / pin = B ツールチップを残す）と filter（count = A 件数で出す / always = B 常に出す）
-  body.dataset.click = params.get("click") ?? "pin";
-  body.dataset.filter = params.get("filter") ?? "count";
 
   // ハッシュが無いときは、その画面の見本の状態で開く
   if (location.hash === "" && body.dataset.initial) {
@@ -19,7 +15,7 @@
   };
   new MutationObserver(keepBarOnTop).observe(body, { childList: true });
 
-  // 操作列のリンクは、クエリ（案と見本）とハッシュ（開いている項目）を組み替えて移る
+  // 操作列のリンクは、クエリ（見本）とハッシュ（開いている項目）を組み替えて移る
   for (const link of document.querySelectorAll(".mockbar a[data-set]")) {
     const next = new URLSearchParams(location.search);
     for (const pair of link.dataset.set.split("&")) {
@@ -27,11 +23,11 @@
       if (value === "") next.delete(key);
       else next.set(key, value);
     }
-    // 開いている案・見本を選択中にする
+    // 開いている見本を選択中にする
     if (link.dataset.set.split("&").every((pair) => {
       const [key, value] = pair.split("=");
-      return (params.get(key) ?? { click: "pin", filter: "count" }[key] ?? "") === value;
-    })) link.setAttribute("aria-current", "true");
+      return (params.get(key) ?? "") === value;
+    }) && (link.dataset.hash ?? "") === location.hash.replace(/^#/, "")) link.setAttribute("aria-current", "true");
     const hash = link.dataset.hash ?? location.hash.replace(/^#/, "");
     link.href = `?${next.toString()}#${hash}`;
   }
@@ -46,12 +42,18 @@
     }, 50);
   };
 
-  // 見本: クエリの tip の語の印に乗せたツールチップを出し、pin で押して残し、q で絞り込む。mark に渡した CSS セレクタの要素に撮影用の赤枠を付ける
+  // 見本: クエリの tip の語の印に乗せたツールチップを出し、edge で最初の印を詳細の本文の領域の上端へ送ってから出し、pin で押して残し、q で絞り込む。mark に渡した CSS セレクタの要素に撮影用の赤枠を付ける
   const word = params.get("tip");
   if (word !== null) {
     waitFor(".md a.term", () => {
-      const mark = [...document.querySelectorAll(".md a.term")].find((node) => node.textContent === word);
+      // 印は本文の最後のもの（edge のときは最初のもの）を使う
+      const marks = [...document.querySelectorAll(".md a.term")].filter((node) => node.textContent === word);
+      const mark = params.get("edge") !== null ? marks[0] : marks.at(-1);
       if (mark === undefined) return;
+      if (params.get("edge") !== null) {
+        const region = mark.closest(".panel-body");
+        region.scrollTop += mark.getBoundingClientRect().top - region.getBoundingClientRect().top - 12;
+      }
       mark.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       if (params.get("pin") !== null) mark.click();
       const query = params.get("q");
