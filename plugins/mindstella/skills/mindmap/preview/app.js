@@ -413,7 +413,7 @@ var MindmapPreview;
                     // 差分の表示の間、新規・変更・消した項目を持つ種類のタブに点を重ねる
                     marked: key !== "overview" &&
                         ((marks !== undefined && data[key].some((item) => marks[item.id] !== undefined)) ||
-                            MindmapPreview.removedOf(point, key).length > 0),
+                            MindmapPreview.removedOf({ point, kind: key }).length > 0),
                 })),
                 current: route.tab,
                 theme,
@@ -457,7 +457,7 @@ var MindmapPreview;
             const filters = filterState.byTab[route.tab] ?? {};
             const { drawerOpen } = filterState;
             // 選んだ時点で消した、この画面の種類の項目
-            const removed = MindmapPreview.removedOf(point, route.tab);
+            const removed = MindmapPreview.removedOf({ point, kind: route.tab });
             switch (route.tab) {
                 case "overview":
                     return MindmapPreview.overviewScreen({

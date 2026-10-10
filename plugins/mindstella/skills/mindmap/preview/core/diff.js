@@ -41,7 +41,7 @@ var MindmapPreview;
         return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
     }
     /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
-    function removedOf(point, kind) {
+    function removedOf({ point, kind }) {
         if (point === null)
             return [];
         return [...point.removed.values()]

@@ -461,7 +461,7 @@ def test_removed_of(
                         untilSeq: null,
                         removed: new Map(point.removed.map((item) => [item.id, item])),
                     };
-            return MindmapPreview.removedOf(diffPoint, kind).map((item) => item.id);
+            return MindmapPreview.removedOf({point: diffPoint, kind}).map((item) => item.id);
         }""",
         {"kind": kind, "point": point},
     )

@@ -522,7 +522,7 @@ namespace MindmapPreview {
             marked:
               key !== "overview" &&
               ((marks !== undefined && data[key as Kind].some((item) => marks[item.id] !== undefined)) ||
-                removedOf(point, key as Kind).length > 0),
+                removedOf({ point, kind: key as Kind }).length > 0),
           })),
           current: route.tab,
           theme,
@@ -568,7 +568,7 @@ namespace MindmapPreview {
       const filters = filterState.byTab[route.tab] ?? {};
       const { drawerOpen } = filterState;
       // 選んだ時点で消した、この画面の種類の項目
-      const removed = removedOf(point, route.tab as Kind);
+      const removed = removedOf({ point, kind: route.tab as Kind });
       switch (route.tab) {
         case "overview":
           return overviewScreen({

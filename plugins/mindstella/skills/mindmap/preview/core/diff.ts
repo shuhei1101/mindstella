@@ -134,7 +134,7 @@ namespace MindmapPreview {
   }
 
   /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
-  export function removedOf(point: DiffPoint | null, kind: Kind): RemovedItem[] {
+  export function removedOf({ point, kind }: { point: DiffPoint | null; kind: Kind }): RemovedItem[] {
     if (point === null) return [];
     return [...point.removed.values()]
       .filter((item) => REMOVED_KIND_TAB[item.kind] === kind)
