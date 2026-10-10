@@ -34,11 +34,13 @@
     .stage-name { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-xs); }
     /* 狭い幅の見本: 390px の画面のツールチップの幅（画面の幅 − 16px）にする */
     .stage.narrow { width: 390px; padding: 16px 8px; }
-    .stage.narrow .term-tip.is-multi { width: 374px; }
+    .stage.narrow .term-tip.is-multi { width: 100%; }
     /* 見本の中の本文の段落 */
     .stage .md > p { margin: 0; }
     /* 見本のツールチップ: 重ねずに流れに置く */
     .term-tip.is-static { position: static; display: block; margin-top: 6px; }
+    /* 台の中の見本のツールチップ: 台の幅を超えない */
+    .stage .term-tip.is-multi { max-width: 100%; }
     /* 状態を見せるための見本のクラス: 印に乗せた */
     .md a.term.is-hover { text-decoration-color: var(--accent); background: var(--accent-weak); border-radius: 2px; }
     /* 状態を見せるための見本のクラス: リンクに乗せた */

@@ -6552,8 +6552,8 @@ var MindmapPreview;
         if (tipState.mark === mark && tip.matches(":popover-open"))
             return;
         tipState = { mark, root, pinned: false, onOpen };
-        // 219: 全画面のモーダルの中の印は、ツールチップをモーダルの中に置く（モーダルの外は操作できない）
-        const host = mark.closest("dialog") ?? document.body;
+        // 219: ツールチップを印のある詳細パネル・全画面のモーダルの中に置く（モーダルの外は操作できない。中の入力・リンクを詳細の領域に含める）
+        const host = mark.closest("dialog, aside") ?? document.body;
         if (tip.parentElement !== host) {
             if (tip.matches(":popover-open"))
                 tip.hidePopover();
