@@ -1,0 +1,7 @@
+# detail-full / 190
+
+| 案 | 説明 |
+| --- | --- |
+| [a-always](./a-always/index.html) <span class="badge ok">採用</span> | 行の右上に「修正」「削除」のアイコンを常に出す（コメントの一覧の行と同じ置き方） |
+| [b-reveal](./b-reveal/index.html) | A と同じ置き場所で、行に乗せた・行の中にフォーカスがあるときだけ出す（タッチの端末と幅 720px 以下は常に出す） |
+| [c-text](./c-text/index.html) | 本文の下に、アイコンと文字の「修正」「削除」のボタンを常に出す |

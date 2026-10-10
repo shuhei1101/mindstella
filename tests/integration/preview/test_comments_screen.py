@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 from playwright.sync_api import Page, Route
@@ -17,7 +15,9 @@ from preview_comment_helpers import (
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     free_comment,
+    fulfill_problem,
     read_workspace_yaml,
+    review_row,
 )
 from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
@@ -55,18 +55,10 @@ def _open_list(page: Page) -> None:
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
 
 
-def _problem(status: int, detail: str) -> dict[str, Any]:
-    """`application/problem+json` で返す理由の本文（RFC 9457）を作る。"""
-    return {"type": "about:blank", "title": "error", "status": status, "detail": detail}
-
-
-def _fulfill_problem(route: Route, status: int, detail: str) -> None:
-    """要求に、理由つきのエラーで答える。"""
-    route.fulfill(
-        status=status,
-        content_type="application/problem+json",
-        body=json.dumps(_problem(status, detail), ensure_ascii=False),
-    )
+def _open_row_in_detail(page: Page, comment_id: str) -> None:
+    """一覧の行の向けた項目を押して、一覧を開いたまま詳細パネルを開く。"""
+    page.click(f"{_row(comment_id)} button.row-target")
+    page.wait_for_selector("aside.panel.open")
 
 
 @pytest.fixture
@@ -332,7 +324,7 @@ def test_send_when_server_refuses(
     url, _ = served_review
     page.route(
         "**/api/comments/send",
-        lambda route: _fulfill_problem(route, 500, "submissions.yaml を書けません"),
+        lambda route: fulfill_problem(route, 500, "submissions.yaml を書けません"),
     )
     open_preview(url)
     _open_list(page)
@@ -479,17 +471,17 @@ def test_row_body(
 
 
 def test_edit(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """「直す」で行の本文を入力欄に切り替え、直して送ると本文に戻す（正常系）。"""
+    """「修正」で行の本文を入力欄に切り替え、直して「修正」を押すと本文に戻す（正常系）。"""
     # 準備
     url, root = served_review
     page = open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     field = f"{_row('C-1')} form.row-edit textarea"
     assert page.input_value(field) == "案 A にする"
     page.fill(field, "案 B にする")
     # 実行
-    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
+    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
         "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
@@ -513,10 +505,10 @@ def test_edit_when_body_empty(
     )
     open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "   ")
     # 実行
-    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
+    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     # 検証
     assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "コメントを入れてから直してください。"
     assert patches == []
@@ -532,17 +524,17 @@ def test_edit_when_server_refuses(
     page.route(
         "**/api/comments/C-1",
         lambda route: (
-            _fulfill_problem(route, 500, "comments.yaml を書けません")
+            fulfill_problem(route, 500, "comments.yaml を書けません")
             if route.request.method == "PATCH"
             else route.continue_()
         ),
     )
     open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 B にする")
     # 実行
-    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
+    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_selector(f"{_row('C-1')} form.row-edit .send-msg svg.icon", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "comments.yaml を書けません"
@@ -552,20 +544,159 @@ def test_edit_when_server_refuses(
 def test_edit_when_cancelled(
     served_review: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """「やめる」と Esc で書き換えを捨てる。Esc では一覧を閉じない（正常系）。"""
+    """「キャンセル」と Esc で書き換えを捨てる。Esc では一覧を閉じない（正常系）。"""
     # 準備
     url, root = served_review
     page = open_preview(url)
     _open_list(page)
-    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
-    # 実行・検証（やめる）
-    page.get_by_role("button", name="やめる").click()
+    # 実行・検証（キャンセル）
+    page.get_by_role("button", name="キャンセル").click()
     assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
     # Esc
-    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
     page.press(f"{_row('C-1')} form.row-edit textarea", "Escape")
+    assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_edit_when_started_in_detail(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """詳細パネルで書き換えている行は、一覧では本文だけを出して入力欄も「修正」「削除」も出さない（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url)
+    _open_list(page)
+    _open_row_in_detail(page, "C-1")
+    # 実行
+    page.locator(review_row("aside.panel", "C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')} form.row-edit")
+    # 検証
+    assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
+    assert page.locator(f"{_row('C-1')} .row-actions").count() == 0
+    assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
+    assert page.locator(f"{_row('C-2')} .row-actions").count() == 1
+
+
+def test_edit_when_started_in_list(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """一覧で書き換えている行は、詳細パネルでは本文だけを出して入力欄も「修正」「削除」も出さない（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url)
+    _open_list(page)
+    _open_row_in_detail(page, "C-1")
+    # 実行
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.wait_for_selector(f"{_row('C-1')} form.row-edit")
+    # 検証
+    detail_row = review_row("aside.panel", "C-1")
+    assert page.locator(f"{detail_row} form.row-edit").count() == 0
+    assert page.locator(f"{detail_row} .row-actions").count() == 0
+    assert page.inner_text(f"{detail_row} .review-body") == "案 A にする"
+    assert page.locator(f"{review_row('aside.panel', 'C-2')} .row-actions").count() == 1
+
+
+def test_edit_when_started_in_detail_while_editing_in_list(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """一覧で書き換えている間に詳細パネルで別の行の「修正」を押すと、一覧の書き換えを捨てる（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url)
+    _open_list(page)
+    _open_row_in_detail(page, "C-1")
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
+    # 実行
+    page.locator(review_row("aside.panel", "C-2")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-2')} form.row-edit")
+    # 検証
+    assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
+    assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
+    assert page.locator(f"{_row('C-1')} .row-actions").count() == 1
+    assert page.locator(f"{_row('C-2')} form.row-edit").count() == 0
+    assert page.locator(f"{_row('C-2')} .row-actions").count() == 0
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_edit_when_started_in_list_while_editing_in_detail(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """詳細パネルで書き換えている間に一覧で別の行の「修正」を押すと、詳細パネルの書き換えを捨てる（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url)
+    _open_list(page)
+    _open_row_in_detail(page, "C-1")
+    page.locator(review_row("aside.panel", "C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.fill(f"{review_row('aside.panel', 'C-1')} form.row-edit textarea", "捨てる")
+    # 実行
+    page.locator(_row("C-2")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.wait_for_selector(f"{_row('C-2')} form.row-edit")
+    # 検証
+    detail_row = review_row("aside.panel", "C-1")
+    assert page.locator(f"{detail_row} form.row-edit").count() == 0
+    assert page.inner_text(f"{detail_row} .review-body") == "案 A にする"
+    assert page.locator(f"{detail_row} .row-actions").count() == 1
+    assert page.locator(f"{review_row('aside.panel', 'C-2')} form.row-edit").count() == 0
+    assert page.locator(f"{review_row('aside.panel', 'C-2')} .row-actions").count() == 0
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_edit_when_list_closed(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """一覧を閉じると、一覧で始めた書き換えを捨て、詳細パネルの行に「修正」「削除」を戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url)
+    _open_list(page)
+    _open_row_in_detail(page, "C-1")
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
+    # 実行
+    page.get_by_role("button", name="コメントの一覧を閉じる").click()
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    # 検証
+    detail_row = review_row("aside.panel", "C-1")
+    assert page.locator(f"{detail_row} form.row-edit").count() == 0
+    assert page.locator(f"{detail_row} .row-actions").count() == 1
+    assert page.inner_text(f"{detail_row} .review-body") == "案 A にする"
+    _open_list(page)
+    assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
+    assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+@pytest.mark.parametrize(
+    "leave_selector",
+    [
+        pytest.param("aside.panel button[data-act='close']", id="close_panel"),
+        pytest.param(f"{COMMENTS_PANEL} li[data-comment='C-3'] button.row-target", id="move_to_other_item"),
+    ],
+)
+def test_edit_when_detail_left(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, leave_selector: str
+) -> None:
+    """詳細パネルで書き換えを始めた後に別の項目へ移るかパネルを閉じると、書き換えを捨て、一覧の本文だけの行を元の行に戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url)
+    _open_list(page)
+    _open_row_in_detail(page, "C-1")
+    page.locator(review_row("aside.panel", "C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.fill(f"{review_row('aside.panel', 'C-1')} form.row-edit textarea", "捨てる")
+    # 実行
+    page.click(leave_selector)
+    page.wait_for_selector(f"{_row('C-1')} .row-actions")
+    # 検証
+    assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
     assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
