@@ -282,6 +282,23 @@ def test_load_validators(schema_name: str) -> None:
     Draft202012Validator.check_schema(validators[schema_name].schema)
 
 
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        pytest.param("A-1.md", "markdown", id="markdown"),
+        pytest.param("A-1.html", "html", id="html"),
+        pytest.param(None, None, id="no_body"),
+        pytest.param("A-1.txt", None, id="unknown_extension"),
+    ],
+)
+def test_body_format(name: str | None, expected: str | None) -> None:
+    """拡張子から形式を決める（正常系）。"""
+    # 実行
+    result = store.body_format(name)
+    # 検証
+    assert result == expected
+
+
 def test_find_item(make_workspace, make_item) -> None:
     """ID の項目と位置を返す（正常系）。"""
     # 準備

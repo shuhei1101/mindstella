@@ -850,3 +850,287 @@ def test_render_value_when_library_missing(
     result = preview_page.evaluate("(source) => MindmapPreview.renderValue(source)", "**強調**")
     # 検証
     assert result == "**強調**"
+
+
+# html のコードブロックを 1 つ持つ本文（見出しは 1 行目、前の段落は 3 行目、コードブロックは 5〜7 行目、後の段落は 9 行目）
+HTML_CODE_BLOCK_SOURCE = (
+    "# 見出し\n\n前の段落\n\n```html\n<p>a</p><script>x()</script>\n```\n\n後の段落\n"
+)
+
+
+def test_render_markdown_when_html_code_block(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """html のコードブロックを枠の入れ物にし、前後は今までどおり描く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            const marks = (selector) =>
+                [...root.querySelectorAll(selector)].map((e) => e.getAttribute("data-line-start"));
+            const blocks = root.querySelectorAll(".html-block");
+            return {
+                blockCount: blocks.length,
+                blockSource: blocks.length > 0 ? blocks[0].getAttribute("data-source") : null,
+                blockMark: blocks.length > 0 ? blocks[0].getAttribute("data-line-start") : null,
+                preCount: root.querySelectorAll("pre").length,
+                heading: marks("h1"),
+                paragraph: marks("p"),
+            };
+        }""",
+        HTML_CODE_BLOCK_SOURCE,
+    )
+    # 検証
+    assert result["blockCount"] == 1
+    assert "<p>a</p><script>x()</script>" in result["blockSource"]
+    assert result["blockMark"] == "5"
+    assert result["preCount"] == 0
+    assert result["heading"] == ["1"]
+    assert result["paragraph"] == ["3", "9"]
+
+
+# 選んだ箇所を求める HTML の本文の原文（左の数字は行。サーバーの行の印を足す前）
+HTML_SAMPLE_SOURCE = "\n".join(
+    [
+        "<!doctype html>",  # 1
+        '<html><head><meta charset="utf-8">',  # 2
+        "<style>",  # 3
+        "  * { margin: 40px !important; }",  # 4
+        "  body, p { color: rgb(255, 0, 0) !important; }",  # 5
+        "  p > a { color: rgb(0, 255, 0) !important; }",  # 6
+        "</style>",  # 7
+        '<script>var s = "<p>x</p>"; if (1 < 2) { s += "<p>y</p>"; }</script>',  # 8
+        "</head>",  # 9
+        "<body>",  # 10
+        "<!-- <p>コメントの中の段落</p> -->",  # 11
+        '<h1 id="h">見出しの文</h1>',  # 12
+        '<p title="a>b">一行目の文',  # 13
+        "二行目の文</p>",  # 14
+        "<div",  # 15
+        '  class="multi">複数行の開きタグの文</div>',  # 16
+        "<ul>",  # 17
+        "  <li>項目いち",  # 18
+        "  <li>項目に<ul><li>入れ子の項目</li></ul>",  # 19
+        "</ul>",  # 20
+        "<table>",  # 21
+        "  <tr><td>表のいち</td><td>表のに</td></tr>",  # 22
+        "  <tr><td>表のさん</td><td>表のよん</td></tr>",  # 23
+        "</table>",  # 24
+        "<p>改行の<br>",  # 25
+        "あとの文</p>",  # 26
+        "<p>省いた閉じタグの段落",  # 27
+        "<p>次の段落 &amp; 文字参照</p>",  # 28
+        "<section><div><p>深い入れ子の文</p></div></section>",  # 29
+        '<p><a href="#">リンクの文</a></p>',  # 30
+        '<button id="click">押す</button>',  # 31
+        '<img src="data:,">',  # 32
+        '<p id="tail">最後の文</p>',  # 33
+        "</body></html>",  # 34
+    ]
+)
+
+# 上の原文に、サーバーの `mark_lines` と同じ形（開きタグのタグ名の直後に、中身が始まる行の印）を足したもの
+HTML_SAMPLE_MARKED = "\n".join(
+    [
+        "<!doctype html>",
+        '<html><head><meta charset="utf-8">',
+        "<style>",
+        "  * { margin: 40px !important; }",
+        "  body, p { color: rgb(255, 0, 0) !important; }",
+        "  p > a { color: rgb(0, 255, 0) !important; }",
+        "</style>",
+        '<script>var s = "<p>x</p>"; if (1 < 2) { s += "<p>y</p>"; }</script>',
+        "</head>",
+        "<body>",
+        "<!-- <p>コメントの中の段落</p> -->",
+        '<h1 data-line="12" id="h">見出しの文</h1>',
+        '<p data-line="13" title="a>b">一行目の文',
+        "二行目の文</p>",
+        '<div data-line="16"',
+        '  class="multi">複数行の開きタグの文</div>',
+        '<ul data-line="17">',
+        '  <li data-line="18">項目いち',
+        '  <li data-line="19">項目に<ul data-line="19"><li data-line="19">入れ子の項目</li></ul>',
+        "</ul>",
+        '<table data-line="21">',
+        '  <tr data-line="22"><td data-line="22">表のいち</td><td data-line="22">表のに</td></tr>',
+        '  <tr data-line="23"><td data-line="23">表のさん</td><td data-line="23">表のよん</td></tr>',
+        "</table>",
+        '<p data-line="25">改行の<br data-line="25">',
+        "あとの文</p>",
+        '<p data-line="27">省いた閉じタグの段落',
+        '<p data-line="28">次の段落 &amp; 文字参照</p>',
+        '<section data-line="29"><div data-line="29"><p data-line="29">深い入れ子の文</p></div></section>',
+        '<p data-line="30"><a data-line="30" href="#">リンクの文</a></p>',
+        '<button data-line="31" id="click">押す</button>',
+        '<img data-line="32" src="data:,">',
+        '<p data-line="33" id="tail">最後の文</p>',
+        "</body></html>",
+    ]
+)
+
+# 選び始めの文の頭から、選び終わりの文の終わりまでを選び、箇所の行の範囲を返す
+SELECT_HTML_SCRIPT = """([marked, source, startText, endText]) => {
+    const doc = new DOMParser().parseFromString(marked, "text/html");
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const startNode = nodes.find((node) => node.data.includes(startText));
+    const startOffset = startNode.data.indexOf(startText);
+    const endNode = nodes
+        .slice(nodes.indexOf(startNode))
+        .find((node) => node.data.includes(endText));
+    const endOffset =
+        endNode.data.indexOf(endText, endNode === startNode ? startOffset : 0) + endText.length;
+    const range = doc.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    const location = MindmapPreview.htmlSelectionLocation(range, source);
+    return location === null ? null : {kind: location.kind, start: location.start, end: location.end};
+}"""
+
+# PoC #215 の 12 ケース: (見本の中の選び方, 期待する行の範囲)
+HTML_POC_CASES = [
+    pytest.param("見出しの文", "見出しの文", 12, 12, id="heading"),
+    pytest.param("一行目の文", "一行目の文", 13, 13, id="paragraph_first_line"),
+    pytest.param("二行目の文", "二行目の文", 14, 14, id="paragraph_second_line"),
+    pytest.param("一行目の文", "二行目の文", 13, 14, id="paragraph_across_lines"),
+    pytest.param("複数行の開きタグの文", "複数行の開きタグの文", 16, 16, id="multi_line_tag"),
+    pytest.param("項目いち", "項目いち", 18, 18, id="omitted_end_tag_item"),
+    pytest.param("入れ子の項目", "入れ子の項目", 19, 19, id="nested_item"),
+    pytest.param("項目いち", "入れ子の項目", 18, 19, id="across_items"),
+    pytest.param("表のさん", "表のよん", 23, 23, id="table_row"),
+    pytest.param("あとの文", "あとの文", 26, 26, id="after_line_break"),
+    pytest.param("見出しの文", "二行目の文", 12, 14, id="across_blocks"),
+    pytest.param("最後の文", "最後の文", 33, 33, id="after_comment_and_script"),
+]
+
+
+@pytest.mark.parametrize(("start_text", "end_text", "start", "end"), HTML_POC_CASES)
+def test_html_selection_location(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    start_text: str,
+    end_text: str,
+    start: int,
+    end: int,
+) -> None:
+    """選んだ端を元の HTML の行にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        SELECT_HTML_SCRIPT, [HTML_SAMPLE_MARKED, HTML_SAMPLE_SOURCE, start_text, end_text]
+    )
+    # 検証
+    assert result == {"kind": "body", "start": start, "end": end}
+
+
+@pytest.mark.parametrize(
+    ("source", "marked", "start_text", "end_text", "start", "end"),
+    [
+        pytest.param(
+            '<p><span><span\nclass="x">中の文</span></span>\n三行目の文</p>',
+            '<p data-line="1"><span data-line="1"><span data-line="2"\n'
+            'class="x">中の文</span></span>\n三行目の文</p>',
+            "三行目の文",
+            "三行目の文",
+            3,
+            3,
+            id="after_nested_multi_line_tag",
+        ),
+        pytest.param(
+            "<p>a<br>別の文</p>",
+            '<p data-line="1">a<br data-line="1">別の文</p>',
+            "別の文",
+            "別の文",
+            1,
+            1,
+            id="after_br",
+        ),
+        pytest.param(
+            "<pre>\nコードの文\n</pre>",
+            '<pre data-line="1">\nコードの文\n</pre>',
+            "コードの文",
+            "コードの文",
+            2,
+            2,
+            id="after_pre_line_break",
+        ),
+        pytest.param(
+            "<div>前の文\n<!-- 一行目\n二行目 -->\n後の文</div>",
+            '<div data-line="1">前の文\n<!-- 一行目\n二行目 -->\n後の文</div>',
+            "後の文",
+            "後の文",
+            4,
+            4,
+            id="after_multi_line_comment",
+        ),
+    ],
+)
+def test_html_selection_location_when_line_shifts(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    source: str,
+    marked: str,
+    start_text: str,
+    end_text: str,
+    start: int,
+    end: int,
+) -> None:
+    """改行の数え方が分かれる選び方でも、元の HTML の行にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(SELECT_HTML_SCRIPT, [marked, source, start_text, end_text])
+    # 検証
+    assert result == {"kind": "body", "start": start, "end": end}
+
+
+# 印を持つ要素より前の文を持つ HTML の本文の原文と、行の印を足したもの
+HTML_OUTSIDE_SOURCE = "文頭の文\n<p>段落</p>\n<p>次の段落</p>"
+HTML_OUTSIDE_MARKED = '文頭の文\n<p data-line="2">段落</p>\n<p data-line="3">次の段落</p>'
+
+# 選び方を指す記述から範囲を作って、htmlSelectionLocation の結果を返す
+SELECT_HTML_OUTSIDE_SCRIPT = """([marked, source, how]) => {
+    const doc = new DOMParser().parseFromString(marked, "text/html");
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const range = doc.createRange();
+    if (how.kind === "collapsed") {
+        range.setStart(doc.querySelector("p").firstChild, 1);
+        range.collapse(true);
+    } else if (how.kind === "whitespace") {
+        range.selectNodeContents(nodes.find((node) => node.data.length > 0 && node.data.trim() === ""));
+    } else {
+        range.selectNodeContents(nodes.find((node) => node.data.includes(how.text)));
+    }
+    return MindmapPreview.htmlSelectionLocation(range, source);
+}"""
+
+
+@pytest.mark.parametrize(
+    "how",
+    [
+        pytest.param({"kind": "collapsed"}, id="empty"),
+        pytest.param({"kind": "whitespace"}, id="blank_only"),
+        pytest.param({"kind": "text", "text": "文頭の文"}, id="before_first_mark"),
+    ],
+)
+def test_html_selection_location_when_outside(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, how: dict[str, str]
+) -> None:
+    """印の無い範囲と空の選択は null（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        SELECT_HTML_OUTSIDE_SCRIPT, [HTML_OUTSIDE_MARKED, HTML_OUTSIDE_SOURCE, how]
+    )
+    # 検証
+    assert result is None

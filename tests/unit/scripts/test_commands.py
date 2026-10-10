@@ -12,6 +12,7 @@ import yaml
 import builder
 import commands
 import errors
+import history
 import store
 from errors import (
     ArgumentError,
@@ -134,12 +135,13 @@ class _UrlRegistry:
         pytest.param("decision", {"title": "t", "body_markdown": "b"}, id="decision"),
         pytest.param("task", {"title": "t", "body_markdown": "b"}, id="task"),
         pytest.param("note", {"content": "c", "body_markdown": "b"}, id="note"),
+        pytest.param("doc", {"title": "t", "body_html": "<p>a</p>"}, id="doc_html_body"),
     ],
 )
 def test_validate_input_keys(kind: str, data: dict[str, Any]) -> None:
     """渡せるキーだけなら何もしない（正常系）。"""
     # 実行
-    result = commands.validate_input_keys(kind, data)
+    result = commands.validate_input_keys(kind, data, index=0)
     # 検証
     assert result is None
 
@@ -151,8 +153,37 @@ def test_validate_input_keys_when_reserved(key: str) -> None:
     """ツールが付けるキーを弾く（異常系）。"""
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
-        commands.validate_input_keys("decision", {key: "x"})
+        commands.validate_input_keys("decision", {key: "x"}, index=0)
     assert key in exc_info.value.lines[0]
+
+
+@pytest.mark.parametrize(
+    ("kind", "data", "index", "expected_line"),
+    [
+        pytest.param(
+            "task",
+            {"title": "t", "body_html": "<p>a</p>"},
+            0,
+            "tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる",
+            id="not_doc",
+        ),
+        pytest.param(
+            "doc",
+            {"title": "t", "body_markdown": "a", "body_html": "<p>a</p>"},
+            2,
+            "docs.yaml: items[2].body_html: body_markdown と body_html は一緒に渡せない",
+            id="both_bodies",
+        ),
+    ],
+)
+def test_validate_input_keys_when_html_body(
+    kind: str, data: dict[str, Any], index: int, expected_line: str
+) -> None:
+    """資料以外の body_html と、本文の両方の指定を弾く（異常系）。"""
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        commands.validate_input_keys(kind, data, index=index)
+    assert exc_info.value.lines == [expected_line]
 
 
 def test_merge_changes() -> None:
@@ -444,6 +475,22 @@ def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
     assert new_staged.bodies["N-1.md"].text == "b"
 
 
+def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None:
+    """資料の HTML の本文を `{ID}.html` の書き込みにする（正常系）。"""
+    # 準備
+    staged = _make_staged(make_workspace(), 0)
+    item = {"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}
+    # 実行
+    new_staged, result = commands.stage_add(staged, "doc", item, now=_fixed_now)
+    # 検証
+    added = new_staged.items["doc"][0]
+    assert added["id"] == "A-1"
+    assert added["body"] == "A-1.html"
+    assert "body_html" not in added
+    assert new_staged.bodies["A-1.html"].text == "<p>a</p>"
+    assert result["body"] == ".mindstella/docs/A-1.html"
+
+
 def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """消した ID を振らない（正常系）。"""
     # 準備
@@ -501,6 +548,34 @@ def test_stage_update_when_nothing_changed(
     assert result["changed"] == []
     assert new_staged.changes["last_seq"] == 3
     assert new_staged.items["decision"][0]["seq"] == 2
+
+
+def test_stage_update_when_body_format_changed(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.md"), bodies={"A-1.md": "a\nb\n"})
+    staged = _make_staged(root, 3)
+    # 実行（Markdown から HTML へ）
+    to_html, to_html_result = commands.stage_update(
+        staged, "A-1", {"body_html": "<p>a</p>\n"}, now=_fixed_now
+    )
+    # 検証
+    html_item = to_html.items["doc"][0]
+    assert html_item["body"] == "A-1.html"
+    assert "A-1.html" in to_html.bodies
+    assert to_html.removed_bodies == ["A-1.md"]
+    assert to_html_result["changed"] == ["body", "body_html"]
+    entry = html_item["history"][0]
+    assert entry["before"]["body"] == "A-1.md"
+    assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\nb\n"
+    # 実行（続けて HTML から Markdown へ）
+    to_markdown, _ = commands.stage_update(to_html, "A-1", {"body_markdown": "a\n"}, now=_fixed_now)
+    # 検証
+    assert to_markdown.items["doc"][0]["body"] == "A-1.md"
+    assert to_markdown.removed_bodies == ["A-1.html"]
+    assert "A-1.html" not in to_markdown.bodies
 
 
 @pytest.mark.parametrize(

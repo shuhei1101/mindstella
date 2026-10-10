@@ -155,13 +155,33 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "notes",
         "logs",
         "bodies",
+        "marked_bodies",
         "changes",
         "derived",
         "built_at",
         "settings_problem",
     }
     assert data["bodies"] == {"A-1.md": "資料の本文\n"}
+    assert data["marked_bodies"] == {}
     assert data["settings_problem"] is None
+
+
+def test_collect_preview_data_with_html_body(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """HTML の本文は原文を bodies に、行の印つきを marked_bodies に入れる（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1"),
+        make_item("A-2", body="A-2.html"),
+        bodies={"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
+    # 検証
+    assert data["bodies"] == {"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"}
+    assert data["marked_bodies"] == {"A-2.html": '<p data-line="1">a</p>'}
 
 
 def test_collect_preview_data_with_changes(
