@@ -59,3 +59,8 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
   /* 列を選ぶボタン（案 B） */
   .cols-btn { gap: 4px; padding: 0 6px; }
 }
+/* 最も狭い幅: ボタンが 1 つ増えて横に溢れるため、トップバーのツール名の文字を隠してロゴの印だけにする */
+@media (max-width: 360px) {
+  /* 列を選ぶボタンを置いたトップバーのツール名 */
+  .topbar:has(.cols-btn) .brand-name { display: none; }
+}
