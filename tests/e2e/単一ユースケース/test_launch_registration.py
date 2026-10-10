@@ -139,7 +139,8 @@ def test_normal_when_unregistered(registered: RegistrationSandbox) -> None:
     # 検証
     assert result.returncode == 0, result.stderr
     # 新しく開いた bash で、alias が定義されておらず、MINDSTELLA_ で始まる環境変数が無い
-    assert registered.bash("type mindstella").returncode != 0
+    # 見るのは登録が書く関数の定義（PATH にインストール済みのプラグインの bin/mindstella があっても左右されない）
+    assert registered.bash("declare -F mindstella").returncode != 0
     environment = registered.bash("printenv").stdout.splitlines()
     assert [line for line in environment if line.startswith("MINDSTELLA_")] == []
     # 利用者が書いた行がそのまま残っている
