@@ -19,6 +19,7 @@ from mcp.types import CallToolResult, TextContent
 from pydantic import Field
 
 import commands
+from claude_input import load_input_target
 from errors import MindmapError, SchemaMismatchError
 from kinds import Kind
 from query import SearchFilter, parse_attr
@@ -77,8 +78,11 @@ def main(
     # 標準出力は MCP が使うので、記録は標準エラーへ書く
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
     write_lock = threading.Lock()
-    external = load_external_access(os.environ if environ is None else environ)
-    previews = PreviewRegistry(write_lock, external=external)
+    source = os.environ if environ is None else environ
+    external = load_external_access(source)
+    # Claude Code から受け継いだ tmux のペインと会話の記録の場所（tmux の外なら入力しない）
+    input_target = load_input_target(source, Path.cwd())
+    previews = PreviewRegistry(write_lock, external=external, input_target=input_target)
     install_sigterm_handler(previews)
     server = (build or build_server)(previews=previews, write_lock=write_lock, cwd=Path.cwd())
     try:
