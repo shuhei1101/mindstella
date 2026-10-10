@@ -54,6 +54,8 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
 /* 凡例の行の余白を切り替えの行に揃える */
 .html-diff-bar .df-legend { margin: 0; }
+/* 切り替えで隠した側（描いた結果・原文の差分・凡例）は、display を持つ部品でも出さない */
+.html-diff-c [hidden] { display: none; }
 
 /* 案 A: 原文の行の差分（図の Raw の差分と同じ行の印） */
 .html-diff { display: grid; gap: 6px; }
