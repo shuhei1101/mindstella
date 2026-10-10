@@ -96,7 +96,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文を HTML で持ち、段落の文に「画面の流れ」を含む資料 A-1 と、本文を Markdown で持ち、言語指定 `html` のコードブロックの段落の文に「画面の流れ」を含む資料 A-2 と、どれにも「画面の流れ」と「data-step」を含まないタスク T-1
-        notes: A-1 と A-2 のコードブロックの段落は `<p class="flow" data-step="1">` のように属性を持ち、`data-step` は描いた文には出さない。A-2 のコードブロックの外の Markdown には「画面の流れ」も「data-step」も書かない
+        notes: A-1 の段落と A-2 のコードブロックの段落は `<p class="flow" data-step="1">` のように属性を持ち、`data-step` は描いた文には出さない。A-2 のコードブロックの外の Markdown には「画面の流れ」も「data-step」も書かない
       - name: 配信
         description: 記録を配っているサーバー
     flow: |
