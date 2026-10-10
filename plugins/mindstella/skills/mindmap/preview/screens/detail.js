@@ -4,6 +4,8 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 前の値が無いときに出す文字 */
     const NO_VALUE = "（なし）";
+    /** 詳細パネルのレビュー中のコメントの行の `data-focus` の接頭辞（コメントの一覧と同時に開いても、描き直した後のフォーカスの戻し先を分ける） */
+    MindmapPreview.REVIEW_FOCUS = "detail-";
     /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
     const UNDIFFED_KEYS = new Set(["id", "created", "updated", "updated_by", "history", "history_dropped_seq", "body"]);
     /** 前後を組み立てられない旨・本文の差分を出せない旨の文言 */
@@ -288,8 +290,10 @@ var MindmapPreview;
         }
         return MindmapPreview.h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
     }
-    /** この項目へのレビュー中のコメントの節（読むだけ。直す・消す・チェックはコメントの一覧で行う） */
-    function reviewSection(items) {
+    /** この項目へのレビュー中のコメントの節（各行の右上の「修正」「削除」で、その場で直す・消す・戻す。チェックとまとめて送るはコメントの一覧で行う） */
+    function reviewSection({ items, edit }) {
+        // 消した行は元の場所（溜めた順）に「元に戻す」と共に残す
+        const rows = [...items.map((item) => ({ item, gone: false })), ...edit.removed.map((item) => ({ item, gone: true }))].sort((a, b) => MindmapPreview.commentNumber(a.item.id) - MindmapPreview.commentNumber(b.item.id));
         return MindmapPreview.h({
             tag: "section",
             attrs: { class: "d-sec d-review" },
@@ -298,27 +302,51 @@ var MindmapPreview;
                     tag: "h3",
                     children: ["レビュー中のコメント", MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [items.length] })],
                 }),
-                items.length === 0
+                rows.length === 0
                     ? MindmapPreview.emptyNote("レビュー中のコメントはありません。")
                     : MindmapPreview.h({
                         tag: "ul",
                         attrs: { class: "d-list review-list" },
-                        children: items.map((comment) => MindmapPreview.h({
-                            tag: "li",
-                            children: [
-                                comment.loc === null
-                                    ? null
-                                    : MindmapPreview.h({
+                        children: rows.map(({ item, gone }) => {
+                            if (gone)
+                                return MindmapPreview.removedReviewRow({ item, focus: MindmapPreview.REVIEW_FOCUS, on: { restore: edit.on.restore } });
+                            const editing = edit.editing === item.id;
+                            // 入力欄は修正を始めた場所だけに描く。コメントの一覧で始めた行は、ここでは本文だけにして「修正」「削除」も出さない
+                            const editingHere = editing && edit.editingIn === "detail";
+                            return MindmapPreview.h({
+                                tag: "li",
+                                attrs: { class: `review-row${editing ? " editing" : ""}`, "data-comment": item.id },
+                                children: [
+                                    MindmapPreview.h({
                                         tag: "div",
-                                        attrs: { class: "review-loc" },
+                                        attrs: { class: "review-main" },
                                         children: [
-                                            MindmapPreview.h({ tag: "span", attrs: { class: "review-loc-name" }, children: [MindmapPreview.locationLabel(comment.loc)] }),
-                                            MindmapPreview.h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [comment.loc.text] }),
+                                            item.loc === null
+                                                ? null
+                                                : MindmapPreview.h({
+                                                    tag: "div",
+                                                    attrs: { class: "review-loc" },
+                                                    children: [
+                                                        MindmapPreview.h({ tag: "span", attrs: { class: "review-loc-name" }, children: [MindmapPreview.locationLabel(item.loc)] }),
+                                                        MindmapPreview.h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
+                                                    ],
+                                                }),
+                                            editingHere
+                                                ? MindmapPreview.reviewEditForm({
+                                                    item,
+                                                    body: edit.editBody,
+                                                    error: edit.editError,
+                                                    focus: MindmapPreview.REVIEW_FOCUS,
+                                                    on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit },
+                                                })
+                                                : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
                                         ],
                                     }),
-                                MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [comment.body] }),
-                            ],
-                        })),
+                                    // 書き換えている行には「修正」「削除」を出さない（入力欄の「キャンセル」「修正」と並べない）
+                                    editing ? null : MindmapPreview.reviewRowActions({ item, focus: MindmapPreview.REVIEW_FOCUS, on: { edit: edit.on.edit, remove: edit.on.remove } }),
+                                ],
+                            });
+                        }),
                     }),
             ],
         });
@@ -680,7 +708,7 @@ var MindmapPreview;
         });
     }
     /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-    function detailBody({ id, index, on, reviews, view }) {
+    function detailBody({ id, index, on, review, view }) {
         const entry = index.byId.get(id);
         const body = MindmapPreview.h({ tag: "div", attrs: { class: "detail" } });
         if (entry === undefined)
@@ -921,7 +949,7 @@ var MindmapPreview;
             children: [
                 relation(kind === "logs" ? "更新した項目" : "関連", related.related),
                 relation("参照元", related.referencedBy),
-                reviews === null ? null : reviewSection(reviews),
+                review === null ? null : reviewSection(review),
             ],
         });
         return body;
@@ -1133,7 +1161,7 @@ var MindmapPreview;
         const body = MindmapPreview.h({
             tag: "div",
             attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
-            children: [detailBody({ id, index, on, reviews: comment === null ? null : comment.reviews, view: resolveDiffView({ id, index, diff }) })],
+            children: [detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }) })],
         });
         const head = detailHead(props);
         // 見出しと下端の入力の間の本文だけをスクロールする

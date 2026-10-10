@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 import yaml
+from launch_registration_helpers import BASHRC_USER_LINE, RegistrationSandbox
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview, ServeWorkspace
 from workspace_fixtures import RECORD_DIR, CallTool, MakeWorkspace
@@ -69,6 +70,20 @@ def lock_dirs() -> Iterator[LockDirs]:
     # 一時フォルダを片付けられるよう、権限を戻す
     for path in locked:
         path.chmod(stat.S_IRWXU)
+
+
+@pytest.fixture
+def registration_sandbox(tmp_path: Path) -> RegistrationSandbox:
+    """空のホームのフォルダ（`~/.bashrc` に利用者の行を 1 行持つ）と、偽の `claude`・起動スクリプトを置く場所を作る。"""
+    home = tmp_path / "home"
+    tools_dir = tmp_path / "tools"
+    records_dir = tmp_path / "records"
+    for folder in (home, tools_dir, records_dir):
+        folder.mkdir()
+    (home / ".bashrc").write_text(f"{BASHRC_USER_LINE}\n", encoding="utf-8")
+    return RegistrationSandbox(
+        root=tmp_path, home=home, tools_dir=tools_dir, records_dir=records_dir
+    )
 
 
 # 画面が描き終わるまで待つ上限ミリ秒

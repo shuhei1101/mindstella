@@ -9,11 +9,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from launch_fixtures import PLUGIN_DIR, LaunchSandbox, copy_plugin, read_mcp_config, session_name
+from launch_fixtures import (
+    PLUGIN_DIR,
+    LaunchSandbox,
+    copy_plugin,
+    read_mcp_config,
+    read_tool_names,
+    session_name,
+)
 from workspace_fixtures import MakeVenv, McpServer
-
-# MCP サーバーが返す mindstella のツールの数
-TOOL_COUNT = 25
 
 
 def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
@@ -25,7 +29,7 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     # 検証
     assert result.returncode == 0, result.stderr
     # tmux に、ワークスペースのフォルダを開いたセッションがある
-    name = session_name(folder)
+    name = session_name(folder, sandbox.config_dir)
     assert sandbox.sessions() == [name]
     assert sandbox.session_path(name) == folder.resolve()
     # Claude Code に MCP の設定が渡り、起動コマンドが installPath の版のフォルダのサーバーを指す
@@ -34,15 +38,16 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     mindstella = read_mcp_config(started[0])["mcpServers"]["mindstella"]
     assert mindstella["command"] == str(ready_venv / "bin" / "python")
     assert mindstella["args"] == [str(PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py")]
-    # その設定どおりに MCP サーバーを立てると、mindstella のツールの一覧が返る
+    # その設定どおりに MCP サーバーを立てると、そのサーバーが登録する mindstella のツールの一覧が返る
+    server_script = Path(mindstella["args"][0])
     server = McpServer(
         python=mindstella["command"],
         env={**os.environ, "PYTHONUTF8": "1"},
         cwd=folder,
-        script=Path(mindstella["args"][0]),
+        script=server_script,
     )
     try:
-        assert len(server.list_tools()) == TOOL_COUNT
+        assert [tool["name"] for tool in server.list_tools()] == read_tool_names(server_script)
     finally:
         server.stop()
     # Claude Code に設定のフォルダの CLAUDE_CONFIG_DIR が渡る
@@ -92,3 +97,40 @@ def test_error_when_tmux_missing(sandbox: LaunchSandbox, ready_venv: Path) -> No
     assert result.returncode != 0
     assert "tmux" in result.stderr
     assert sandbox.started() == []
+
+
+def test_normal_when_another_account(
+    sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
+) -> None:
+    """同じフォルダでも別のアカウント（`CLAUDE_CONFIG_DIR`）で開けば、別の名前のセッションを立て、先にあったセッションは立ち上げ直さない（正常系）。"""
+    # 準備
+    folder = sandbox.root / "家計簿アプリ"
+    sub1 = tmp_path / "claude-sub1"
+    sub1.mkdir()
+    # `CLAUDE_CONFIG_DIR` を渡さずに立てたセッションが 1 つある
+    first = sandbox.launch("家計簿アプリ", venv=ready_venv, with_config=False)
+    assert first.returncode == 0, first.stderr
+    before = sandbox.wait_started()
+    assert len(before) == 1
+    # 実行
+    result = sandbox.launch(
+        "家計簿アプリ", venv=ready_venv, extra_env={"CLAUDE_CONFIG_DIR": str(sub1)}
+    )
+    # 検証
+    assert result.returncode == 0, result.stderr
+    # tmux に、同じフォルダを開いたセッションが 2 つあり、名前が違う
+    first_name = session_name(folder)
+    sub1_name = session_name(folder, sub1)
+    assert first_name != sub1_name
+    assert sorted(sandbox.sessions()) == sorted([first_name, sub1_name])
+    assert sandbox.session_path(first_name) == folder.resolve()
+    assert sandbox.session_path(sub1_name) == folder.resolve()
+    # 新しいセッションの Claude Code に別のアカウントの設定のフォルダが渡る
+    started = sandbox.wait_started(2)
+    assert len(started) == 2
+    added = [path for path in started if path not in before]
+    assert len(added) == 1
+    assert added[0].with_suffix(".config").read_text(encoding="utf-8") == str(sub1)
+    # 先にあったセッションは立ち上げ直されていない
+    assert before[0] in started
+    assert before[0].with_suffix(".config").read_text(encoding="utf-8") == ""

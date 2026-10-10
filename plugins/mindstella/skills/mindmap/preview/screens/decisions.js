@@ -574,6 +574,7 @@ var MindmapPreview;
             common.tags,
         ];
     }
+    MindmapPreview.decisionColumns = decisionColumns;
     /** 絞り込みの条件に合う検討事項の ID（マップが描く節。ロックした節を描いているかの判定にも使う） */
     function shownDecisionIds({ index, filters }) {
         const columns = decisionColumns({ index, open: () => undefined });

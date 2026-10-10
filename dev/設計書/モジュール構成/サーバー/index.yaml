@@ -33,3 +33,5 @@ items:
     summary: コメントが指す箇所の形と、今の項目に合うかの確かめ
   - page: ワークスペースのREADME.py.yaml
     summary: 直下の README.md の中身の組み立て・書くかの判定・書き込み
+  - page: 登録.py.yaml
+    summary: 起動スクリプトを呼ぶ alias と環境変数の登録・読み返し・外す

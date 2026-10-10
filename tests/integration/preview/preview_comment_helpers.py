@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 import yaml
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Route
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from workspace_fixtures import RECORD_DIR
 
@@ -19,13 +20,17 @@ __all__ = [
     "DRAFT_WAIT_MS",
     "FREE_FORM",
     "FREE_TEXTAREA",
+    "PANEL_REVIEW",
     "PILL",
     "THREE_LINE_BODY",
     "UPDATE_TIMEOUT_MS",
     "free_comment",
+    "fulfill_problem",
     "read_workspace_yaml",
+    "review_row",
     "select_text",
     "select_text_for_pill",
+    "wait_until_focused",
 ]
 
 # 3 行の段落を持つ資料の本文（2 行目が選ぶ文）
@@ -49,6 +54,9 @@ DETAIL_MESSAGE = "aside.panel form.send .send-msg"
 # コメントの一覧の下端の、項目を指さないコメントの入力とその入力欄
 FREE_FORM = f"{COMMENTS_PANEL} .comments-free form.send"
 FREE_TEXTAREA = f"{FREE_FORM} textarea"
+
+# 詳細パネルの「レビュー中のコメント」の節
+PANEL_REVIEW = "aside.panel .d-review"
 
 # 選んだ箇所のコメントの入口
 PILL = "button.selection-comment"
@@ -95,6 +103,30 @@ def select_text_for_pill(page: Page, selector: str, text: str) -> None:
             continue
         return
     raise AssertionError(f"選んだ後に入口が出ませんでした: {selector} / {text}")
+
+
+def fulfill_problem(route: Route, status: int, detail: str) -> None:
+    """要求に、理由つきのエラー（`application/problem+json`、RFC 9457）で答える。"""
+    problem = {"type": "about:blank", "title": "error", "status": status, "detail": detail}
+    route.fulfill(
+        status=status,
+        content_type="application/problem+json",
+        body=json.dumps(problem, ensure_ascii=False),
+    )
+
+
+def review_row(host: str, comment_id: str) -> str:
+    """host（パネル・全画面・コメントの一覧）の中の、コメントの行の選択子を返す。"""
+    return f"{host} li[data-comment='{comment_id}']"
+
+
+def wait_until_focused(page: Page, selector: str) -> None:
+    """selector に当たる要素へフォーカスが移るのを待つ。"""
+    page.wait_for_function(
+        "selector => document.activeElement === document.querySelector(selector)",
+        arg=selector,
+        timeout=UPDATE_TIMEOUT_MS,
+    )
 
 
 def read_workspace_yaml(root: Path, name: str) -> dict[str, Any]:

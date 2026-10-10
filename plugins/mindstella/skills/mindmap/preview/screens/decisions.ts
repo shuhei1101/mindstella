@@ -710,7 +710,7 @@ namespace MindmapPreview {
   }
 
   /** 検討事項の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
-  function decisionColumns({ index, open }: { index: RecordIndex; open: (id: string) => void }): Column[] {
+  export function decisionColumns({ index, open }: { index: RecordIndex; open: (id: string) => void }): Column[] {
     const common = commonColumns(index.data.settings);
     return [
       common.id,

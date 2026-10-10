@@ -9,7 +9,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from launch_fixtures import PLUGIN_DIR, LaunchSandbox, copy_plugin, read_mcp_config, session_name
+from launch_fixtures import (
+    PLUGIN_DIR,
+    LaunchSandbox,
+    copy_plugin,
+    read_mcp_config,
+    read_tool_names,
+    session_name,
+)
 from workspace_fixtures import McpServer
 
 from .fixture_types import MakeVenv
@@ -24,7 +31,8 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     # 検証
     assert result.returncode == 0, result.stderr
     assert folder.is_dir()
-    name = session_name(folder)
+    # セッションの名前のハッシュは、フォルダと渡した設定のフォルダ（アカウント）から作る
+    name = session_name(folder, sandbox.config_dir)
     assert sandbox.sessions() == [name]
     assert sandbox.session_path(name) == folder.resolve()
     started = sandbox.wait_started()
@@ -34,15 +42,16 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     assert mindstella["command"] == str(ready_venv / "bin" / "python")
     assert mindstella["args"] == [str(PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py")]
     assert started[0].with_suffix(".config").read_text(encoding="utf-8") == str(sandbox.config_dir)
-    # その MCP の設定どおりにサーバーを立ててつなぐと、ツールの一覧が返る
+    # その MCP の設定どおりにサーバーを立ててつなぐと、そのサーバーが登録するツールの一覧が返る
+    server_script = Path(mindstella["args"][0])
     server = McpServer(
         python=mindstella["command"],
         env={**os.environ, "PYTHONUTF8": "1"},
         cwd=folder,
-        script=Path(mindstella["args"][0]),
+        script=server_script,
     )
     try:
-        assert len(server.list_tools()) == 27
+        assert [tool["name"] for tool in server.list_tools()] == read_tool_names(server_script)
     finally:
         server.stop()
     assert f"tmux attach-session -t ={name}" in result.stdout
@@ -183,10 +192,42 @@ def test_normal_when_same_folder_name_elsewhere(sandbox: LaunchSandbox, ready_ve
     result = sandbox.launch("個人/家計簿アプリ", venv=ready_venv)
     # 検証
     assert result.returncode == 0, result.stderr
-    assert sorted(sandbox.sessions()) == sorted(
-        [session_name(work_folder), session_name(personal_folder)]
+    work_name = session_name(work_folder, sandbox.config_dir)
+    personal_name = session_name(personal_folder, sandbox.config_dir)
+    assert sorted(sandbox.sessions()) == sorted([work_name, personal_name])
+    assert sandbox.session_path(work_name) == work_folder.resolve()
+    assert sandbox.session_path(personal_name) == personal_folder.resolve()
+    assert f"tmux attach-session -t ={personal_name}" in result.stdout
+    assert "既にある" not in result.stderr
+
+
+def test_normal_when_another_account(
+    sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
+) -> None:
+    """同じフォルダでも別のアカウント（`CLAUDE_CONFIG_DIR`）で開けば、別のセッションを立てる（正常系）。"""
+    # 準備
+    folder = sandbox.root / "家計簿アプリ"
+    sub1 = tmp_path / "claude-sub1"
+    sub1.mkdir()
+    first = sandbox.launch("家計簿アプリ", venv=ready_venv, with_config=False)
+    assert first.returncode == 0, first.stderr
+    before = sandbox.wait_started()
+    assert len(before) == 1
+    # 実行
+    result = sandbox.launch(
+        "家計簿アプリ", venv=ready_venv, extra_env={"CLAUDE_CONFIG_DIR": str(sub1)}
     )
-    assert sandbox.session_path(session_name(work_folder)) == work_folder.resolve()
-    assert sandbox.session_path(session_name(personal_folder)) == personal_folder.resolve()
-    assert f"tmux attach-session -t ={session_name(personal_folder)}" in result.stdout
+    # 検証
+    assert result.returncode == 0, result.stderr
+    first_name = session_name(folder)
+    sub1_name = session_name(folder, sub1)
+    assert first_name != sub1_name
+    assert sorted(sandbox.sessions()) == sorted([first_name, sub1_name])
+    started = sandbox.wait_started(2)
+    assert len(started) == 2
+    added = [path for path in started if path not in before]
+    assert len(added) == 1
+    assert added[0].with_suffix(".config").read_text(encoding="utf-8") == str(sub1)
+    assert before[0].with_suffix(".config").read_text(encoding="utf-8") == ""
+    assert f"tmux attach-session -t ={sub1_name}" in result.stdout
     assert "既にある" not in result.stderr

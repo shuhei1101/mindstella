@@ -12,12 +12,13 @@ import pytest
 import yaml
 from workspace_fixtures import (
     RECORD_DIR,
-    REPO_ROOT,
     CallTool,
     MakeItem,
     MakeLegacyWorkspace,
     MakeWorkspace,
     SnapshotTree,
+    plugin_version,
+    step_versions_after,
 )
 
 # ワークスペースの版を持つファイルの名前
@@ -44,12 +45,6 @@ SETTINGS = "config.yaml"
 
 # 手順が読めない docs.yaml（閉じていないフローの配列）
 BROKEN_DOCS = "items: [\n"
-
-
-def _plugin_version() -> str:
-    """プラグインの版（`plugins/mindstella/version.ini` の 1 行目）を返す。"""
-    path = REPO_ROOT / "plugins" / "mindstella" / "version.ini"
-    return path.read_text(encoding="utf-8").splitlines()[0]
 
 
 def _read_docs(root: Path) -> list[dict[str, Any]]:
@@ -141,7 +136,7 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     assert recorded.is_error is False
     # mindstella-version.ini の 1 行目がプラグインの版である
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
-    assert first_line == _plugin_version()
+    assert first_line == plugin_version()
     # docs.yaml の A-1 が status: 完成、A-2 が status: 下書きで、どちらも done を持たず、updated が呼ぶ前と同じである
     docs = {item["id"]: item for item in _read_docs(root)}
     assert docs["A-1"]["status"] == "完成"
@@ -285,7 +280,7 @@ def test_normal_when_version_recorded_at_top(
     make_item: MakeItem,
     call_tool: CallTool,
 ) -> None:
-    """直下に版を記録したワークスペースを、v0.6.0 と v0.7.0 の手順で今の版へ移し替える（正常系）。"""
+    """直下に版を記録したワークスペースを、プラグインの版までの手順で今の版へ移し替える（正常系）。"""
     # 準備
     root = make_workspace(
         make_item(
@@ -309,16 +304,13 @@ def test_normal_when_version_recorded_at_top(
     # 検証
     assert plan.is_error is False
     assert plan.data["workspace_version"] == "v0.5.0"
-    # 並べた手順が v0.6.0 と v0.7.0 の手順だけである
-    assert {step["version"] for step in plan.data["steps"]} == {
-        RENAME_STEP_VERSION,
-        OPTION_STEP_VERSION,
-    }
+    # 並べた手順が v0.5.0 より新しくプラグインの版までの手順だけである
+    assert {step["version"] for step in plan.data["steps"]} == step_versions_after("v0.5.0")
     assert applied.is_error is False
     assert recorded.is_error is False
     # 移し替えの後、.mindstella/ の版のファイルの 1 行目がプラグインの版で、直下に版のファイルが残っていない
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
-    assert first_line == _plugin_version()
+    assert first_line == plugin_version()
     assert not (root / VERSION_FILE).exists()
     # 設定と D-1 の中身・本文が、呼ぶ前と同じである
     assert (root / RECORD_DIR / SETTINGS).read_bytes() == legacy_settings
@@ -379,8 +371,10 @@ def test_normal_when_options_filled(
     recorded = call_tool("migrate", **ws, record=True)
     # 検証
     assert plan.is_error is False
-    # 並べた手順が v0.7.0 の手順だけである
-    assert [step["version"] for step in plan.data["steps"]] == [OPTION_STEP_VERSION]
+    # 並べた手順が v0.6.0 より新しくプラグインの版までの手順だけで、v0.7.0 の手順を含む
+    steps = {step["version"] for step in plan.data["steps"]}
+    assert steps == step_versions_after("v0.6.0")
+    assert OPTION_STEP_VERSION in steps
     assert applied.is_error is False
     # 手順の後の点検が、D-2 が案を持たない旨と、D-4 が採用した案を持つのに未決定である旨だけを返す
     assert checked_before_batch.is_error is False
@@ -412,7 +406,7 @@ def test_normal_when_options_filled(
     assert [option.get("adopted") for option in decisions["D-4"]["options"]] == [True, None]
     # 移し替えの後、.mindstella/mindstella-version.ini の 1 行目がプラグインの版である
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
-    assert first_line == _plugin_version()
+    assert first_line == plugin_version()
     # 最後の check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}

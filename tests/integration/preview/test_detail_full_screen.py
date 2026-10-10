@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
@@ -12,7 +14,15 @@ from preview_body_scroll_helpers import (
     SETTLED_SCROLL_TOP_JS,
     overflows_horizontally,
 )
-from preview_comment_helpers import PILL, THREE_LINE_BODY, UPDATE_TIMEOUT_MS, select_text_for_pill
+from preview_comment_helpers import (
+    PILL,
+    THREE_LINE_BODY,
+    UPDATE_TIMEOUT_MS,
+    read_workspace_yaml,
+    review_row,
+    select_text_for_pill,
+    wait_until_focused,
+)
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -37,6 +47,13 @@ FULL_HEAD_LAST_BUTTON = "dialog.full .panel-head button:not([disabled])"
 
 # 全画面のモーダルの外側（後ろの幕）を押す位置（画面の左上の隅）
 BACKDROP_POINT = (4, 4)
+
+# 全画面の中のレビュー中のコメントの節
+FULL_REVIEW = "dialog.full .d-review"
+
+# D-1 へのコメントの行の「修正」「削除」の読み上げの名前
+ROW_EDIT_NAME = "D-1 へのコメントを修正"
+ROW_REMOVE_NAME = "D-1 へのコメントを削除"
 
 
 def _open_full(page: Page) -> None:
@@ -249,18 +266,95 @@ def test_review_comments(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """全画面にも、その項目へのレビュー中のコメントを読むだけの形で出す（正常系）。"""
+    """全画面にも、その項目へのレビュー中のコメントを行ごとの「修正」「削除」つきで出す（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"), comments=(make_comment("C-1", target="D-1", body="案 A にする"),)
     )
     # 実行
     page = open_preview(url, "#tab=decisions&id=D-1&full=1")
-    page.wait_for_selector("dialog.full[open] .d-review")
+    page.wait_for_selector(f"{FULL_REVIEW}")
     # 検証
-    assert page.inner_text("dialog.full .d-review h3") == "レビュー中のコメント1"
-    assert page.inner_text("dialog.full .d-review .review-body") == "案 A にする"
-    assert page.locator("dialog.full .d-review button").count() == 0
+    assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント1"
+    assert page.inner_text(f"{FULL_REVIEW} .review-body") == "案 A にする"
+    assert page.eval_on_selector_all(
+        f"{FULL_REVIEW} li .row-actions button", "buttons => buttons.map(b => [b.getAttribute('aria-label'), b.title])"
+    ) == [["D-1 へのコメントを修正", "修正"], ["D-1 へのコメントを削除", "削除"]]
+    assert page.locator(f"{FULL_REVIEW} input").count() == 0
+
+
+def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """全画面でも「修正」で行の本文を直し、200 なら本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    row = review_row("dialog.full", "C-1")
+    page.locator(row).get_by_role("button", name=ROW_EDIT_NAME, exact=True).click()
+    field = f"{row} form.row-edit textarea"
+    page.wait_for_selector(field)
+    page.fill(field, "案 B にする")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    page.wait_for_function(
+        "document.querySelector(\"dialog.full li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 B にする"
+    wait_until_focused(page, f"{row} button[title='修正']")
+
+
+def test_review_row_edit_when_escaped(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """書き換えの入力欄での Esc は書き換えだけを捨て、全画面を閉じない。もう一度 Esc で全画面を閉じる（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    row = review_row("dialog.full", "C-1")
+    page.locator(row).get_by_role("button", name=ROW_EDIT_NAME, exact=True).click()
+    field = f"{row} form.row-edit textarea"
+    page.wait_for_selector(field)
+    page.fill(field, "捨てる")
+    # 実行
+    page.press(field, "Escape")
+    # 検証
+    assert page.inner_text(f"{row} .review-body") == "案 A にする"
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert page.locator("dialog.full[open]").count() == 1
+    wait_until_focused(page, f"{row} button[title='修正']")
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+    # 実行（書き換えていないときの Esc）
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_function("!document.querySelector('dialog.full[open]')")
+
+
+def test_review_row_remove_and_restore(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """全画面でも「削除」で確認を挟まず消して「元に戻す」を出し、「元に戻す」で元の場所へ戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    row = review_row("dialog.full", "C-1")
+    # 実行（消す）
+    page.locator(row).get_by_role("button", name=ROW_REMOVE_NAME, exact=True).click()
+    page.wait_for_selector(f"{row}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（消す）
+    assert page.locator("dialog[open]:not(.full)").count() == 0
+    assert page.inner_text(f"{row} .removed-msg") == "コメントを削除しました。"
+    assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント1"
+    wait_until_focused(page, f"{row} button")
+    assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == ["C-2", "C-3"]
+    # 実行（戻す）
+    page.locator(f"{row}.removed").get_by_role("button", name="元に戻す").click()
+    page.wait_for_selector(f"{row} .review-body", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（戻す）
+    assert page.eval_on_selector_all(f"{FULL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == ["C-1", "C-2"]
+    assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント2"
+    wait_until_focused(page, f"{row} button[title='修正']")
 
 
 def test_selection_entry(

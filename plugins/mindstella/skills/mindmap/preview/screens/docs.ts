@@ -12,10 +12,10 @@ namespace MindmapPreview {
   /** 納品物の列の値 */
   const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
 
-  /** 資料の画面を返す */
-  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
+  /** 資料の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+  export function docColumns(index: RecordIndex): Column[] {
     const common = commonColumns(index.data.settings);
-    const columns: Column[] = [
+    return [
       common.id,
       common.title(),
       {
@@ -36,6 +36,11 @@ namespace MindmapPreview {
       common.phase,
       common.tags,
     ];
+  }
+
+  /** 資料の画面を返す */
+  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
+    const columns = docColumns(index);
     const toolbarElement = toolbar(
       [
         { key: "cards", label: "カード" },

@@ -84,6 +84,10 @@ ZOOM_SETTLE_MS = 3_000
 # 全体を表示した距離で、印が出ないことを確かめるまで待つミリ秒（玉が広がる時間より長く）
 FIT_SETTLE_MS = 2_500
 
+# 詳細パネルのレビュー中のコメントの行と、D-1 のカードのコメントの印の読み上げの文字
+REVIEW_ROW = "aside.panel .d-review li[data-comment='{id}']"
+D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
+
 # 画面に結果が出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
 
@@ -292,3 +296,72 @@ def test_normal_when_marks_shown_in_lists(
         assert page.evaluate(CENTER_MARKS_SCRIPT, CENTER_WINDOW) == spoken, item_id
     # コメントのボタンの件数は、項目を指さないコメントを含めた 5 件
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "5"
+
+
+def _wait_d1_mark(page: Page, spoken: str) -> None:
+    """ボードの D-1 のカードの印の読み上げの文字が、渡した文字になるのを待つ。"""
+    page.wait_for_function(
+        "([selector, spoken]) => document.querySelector(selector)?.textContent === spoken",
+        arg=[D1_MARK, spoken],
+        timeout=RESULT_TIMEOUT_MS,
+    )
+
+
+def test_normal_when_edit_remove_restore_in_detail(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """詳細パネルのレビュー中のコメントで本文を直し、別のコメントを消して戻すと、2 件が残り、開き直しても同じ 2 件が出る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=OPTIONS))
+    write_comments(
+        root,
+        make_comment("C-1", target="D-1", body="案 A にする"),
+        make_comment("C-2", target="D-1", body="案 B も見たい"),
+    )
+    decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], BOARD_HASH)
+    page.click('.board button.card[data-id="D-1"]')
+    page.wait_for_selector(REVIEW_ROW.format(id="C-1"))
+    # 実行（書き換える）
+    page.locator(REVIEW_ROW.format(id="C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    page.fill(f"{REVIEW_ROW.format(id='C-1')} form.row-edit textarea", "案 A に決める")
+    page.locator(f"{REVIEW_ROW.format(id='C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    page.wait_for_function(
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 A に決める'",
+        timeout=RESULT_TIMEOUT_MS,
+    )
+    # 実行（消す）
+    page.locator(REVIEW_ROW.format(id="C-2")).get_by_role("button", name="D-1 へのコメントを削除").click()
+    page.wait_for_selector(f"{REVIEW_ROW.format(id='C-2')}.removed", timeout=RESULT_TIMEOUT_MS)
+    # 検証（消した後は、コメントのボタンとボードの D-1 のカードの件数が 1）
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
+    _wait_d1_mark(page, "コメント 1 件")
+    # 実行（戻す）
+    page.locator(f"{REVIEW_ROW.format(id='C-2')}.removed").get_by_role("button", name="元に戻す").click()
+    page.wait_for_selector(f"{REVIEW_ROW.format(id='C-2')} .review-body", timeout=RESULT_TIMEOUT_MS)
+    # 検証（戻した後は件数が 2。コメントの一覧は開いていない）
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
+    _wait_d1_mark(page, "コメント 2 件")
+    assert page.locator("aside.comments-panel.open").count() == 0
+    assert page.eval_on_selector_all(
+        "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
+    ) == ["案 A に決める", "案 B も見たい"]
+    assert [(item["id"], item["body"]) for item in _read_comments(root)] == [
+        ("C-1", "案 A に決める"),
+        ("C-2", "案 B も見たい"),
+    ]
+    # 開き直しても、D-1 の詳細パネルに同じ 2 件が出る
+    page.reload()
+    page.wait_for_selector(REVIEW_ROW.format(id="C-2"))
+    assert page.eval_on_selector_all(
+        "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
+    ) == ["案 A に決める", "案 B も見たい"]
+    assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before

@@ -221,7 +221,7 @@ def test_normal_when_changes_committed(make_workspace: MakeWorkspace, call_tool:
     assert [entry["summary"] for entry in changes["sets"]] == ["D-1 を決め、T-1 を積む", "足す"]
     assert changes["sets"][0]["added"] == [task_id]
     assert changes["sets"][0]["changed"] == [item_id]
-    assert second.data == {"added": [], "changed": []}
+    assert second.data == {"added": [], "changed": [], "removed": []}
     # 書き換えは `commit` を呼ぶ前からワークスペースに書かれている
     assert _read_decisions(root)[0]["answer"] == "種類ごとに分ける"
 

@@ -91,7 +91,7 @@ elements:
     description: 画面設計『検討事項』の絞り込みのドロワーと同じ出し方（列の文字の欄を含む）で、ボード・表で 1 つの条件を共有する
     io: 入力
     visible_when: トップバーの絞り込みのボタンを押したとき
-    initial_value: どの値も選んでいない。URL のハッシュに `f.{列}` があるときはその条件で開く
+    initial_value: どの値も選んでいない。サーバーの配信でこの画面の残した条件があればその条件（今の記録に無い値は外す）。URL のハッシュに `f.{列}` があるときはその条件で開き、残した条件を書き換えない
     args:
       - name: groups
         value: 種類（kind）・状態（status。印は status）・タグ（tags）・対象（target）・カテゴリー（category）・フェーズ（phase）

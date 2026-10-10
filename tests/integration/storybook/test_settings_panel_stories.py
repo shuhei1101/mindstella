@@ -51,13 +51,15 @@ def test_default(open_story: OpenStory) -> None:
 
 
 def test_overridden(open_story: OpenStory) -> None:
-    """この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く（正常系）。"""
+    """この端末で変えている。上書きを持つ 5 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く（正常系）。"""
     # 準備・実行
     page = _open(open_story, "overridden")
     # 検証
     over = page.inner_text(f"{PANEL} .st-over")
     assert "この端末で変えている項目" in over
-    assert "ネットワークの見た目・表示する種類・ライト / ダーク・表の列（調査）" in over
+    assert (
+        "ネットワークの見た目・表示する種類・ライト / ダーク・表の列（調査）・絞り込み（タスク）" in over
+    )
     assert _buttons(page) == ["既定に戻す", "ワークスペースの既定にする"]
     # 見た目を上書きしていても、パネルには見た目の選びを出さない
     assert page.locator(f"{PANEL} .st-look").count() == 0

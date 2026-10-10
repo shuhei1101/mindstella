@@ -2,16 +2,15 @@
 // 調査・用語集・メモ・会話ログ。種類ごとの列を持つ表だけを出す。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
-    function recordsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed = [], }) {
-        const kind = route.tab;
+    /** 調査・用語集・メモ・会話ログの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+    function recordColumns({ index, kind, open, }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
         const related = (label) => ({
             key: "related",
             label,
             priority: 3,
             get: (row) => MindmapPreview.rowTexts(row, "related"),
-            cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "related"), on.open),
+            cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "related"), open),
         });
         const columnsOf = {
             research: [
@@ -62,7 +61,13 @@ var MindmapPreview;
                 related("更新した項目"),
             ],
         };
-        const columns = columnsOf[kind];
+        return columnsOf[kind];
+    }
+    MindmapPreview.recordColumns = recordColumns;
+    /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
+    function recordsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed = [], }) {
+        const kind = route.tab;
+        const columns = recordColumns({ index, kind, open: on.open });
         // 絞り込みの条件に合う項目を表に渡す
         const shown = MindmapPreview.filterRows({ rows: index.data[kind], columns, filters });
         return MindmapPreview.h({

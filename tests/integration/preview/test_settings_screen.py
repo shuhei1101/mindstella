@@ -7,7 +7,15 @@ from typing import Any
 
 from playwright.sync_api import Page
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL
-from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
+from preview_drawer_helpers import (
+    DRAWER_OPEN,
+    FILTER_BUTTON,
+    badge_text,
+    checked_values,
+    click_value,
+    close_drawer,
+    open_drawer,
+)
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_settings_helpers import (
     DEFAULT_KINDS,
@@ -40,6 +48,11 @@ INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
 
 # 既定が変わった知らせが画面の下に出てから消えるまでの余裕の上限ミリ秒（画面は 6 秒出す）
 NOTICE_GONE_MS = 9_000
+
+# 絞り込みのドロワーの状態の条件で、「未決定」のチェックが `checked` のとおりになるのを待つ式
+UNDECIDED_CHECKED_SCRIPT = """checked => document.querySelector(
+    'dialog.drawer input[data-key="status"][value="未決定"]'
+)?.checked === checked"""
 
 
 def _preview(
@@ -424,3 +437,82 @@ def test_defaults_changed_by_other(
     assert read_config(root)["display"]["network_look"] == "glow"
     # 知らせは 6 秒で消える
     page.wait_for_selector(".stoast", state="detached", timeout=NOTICE_GONE_MS)
+
+
+def test_filter_override(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """サーバーの配信で残した条件が画面の既定の条件と違う画面を、「この端末で変えている項目」に「絞り込み（{画面}）」で並べる（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=tasks&view=table")
+    open_drawer(page)
+    click_value(page, "status", "未着手")
+    page.wait_for_function("document.querySelector('[data-act=filter] .fbadge')?.textContent === '1'")
+    close_drawer(page)
+    # 実行
+    open_settings(page)
+    # 検証
+    assert "絞り込み（タスク）" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.locator(f"{SETTINGS_PANEL} button:has-text('既定に戻す')").count() == 1
+
+
+def test_filter_override_when_same_as_default(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """残した条件が画面の既定の条件と同じ画面は、変えている項目に並べない（正常系）。"""
+    # 準備（検討事項の既定の状態の条件から、1 つ外して戻す）
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "status", "未決定")
+    page.wait_for_function(UNDECIDED_CHECKED_SCRIPT, arg=False)
+    click_value(page, "status", "未決定")
+    page.wait_for_function(UNDECIDED_CHECKED_SCRIPT, arg=True)
+    close_drawer(page)
+    # 実行
+    open_settings(page)
+    # 検証
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert "絞り込み" not in panel_text(page)
+    assert page.locator(f"{SETTINGS_PANEL} button:has-text('既定に戻す')").count() == 0
+
+
+def test_reset_filters(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """「既定に戻す」で残した絞り込みの条件も外し、開いている画面を画面の既定の条件で描き直す（正常系）。"""
+    # 準備（検討事項の既定の状態の条件から 1 つ外して残す）
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "status", "未決定")
+    page.wait_for_function(UNDECIDED_CHECKED_SCRIPT, arg=False)
+    close_drawer(page)
+    open_settings(page)
+    overridden_text = page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_function(
+        "document.querySelector('aside.settings-drawer').textContent.includes('ワークスペースの既定のまま表示しています。')"
+    )
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    open_drawer(page)
+    # 検証
+    assert "絞り込み（検討事項）" in overridden_text
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["filters"] == {}
+    # 記録の検討事項は未決定だけなので、ドロワーに並ぶ状態も未決定だけで、外していたチェックが戻る
+    assert checked_values(page, "status") == ["未決定"]
+    assert badge_text(page) == "1"

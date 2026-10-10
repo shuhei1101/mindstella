@@ -2,47 +2,25 @@
 
 namespace MindmapPreview {
   /** 表だけを持つ画面の種類 */
-  type RecordKind = "research" | "terms" | "notes" | "logs";
+  export type RecordKind = "research" | "terms" | "notes" | "logs";
 
-  /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
-  export function recordsScreen({
+  /** 調査・用語集・メモ・会話ログの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+  export function recordColumns({
     index,
-    route,
-    on,
-    filters,
-    drawerOpen,
-    marks,
-    comments,
-    removed = [],
+    kind,
+    open,
   }: {
     index: RecordIndex;
-    route: Route;
-    on: {
-      open: (id: string) => void;
-      /** 条件を変える（新しい `filters`。ドロワーと表のチップから） */
-      filter: (filters: Filters) => void;
-      /** 絞り込みのドロワーを閉じる */
-      closeDrawer: () => void;
-    };
-    /** 絞り込みの条件（入口の `FilterState` のこの種類の分） */
-    filters: Filters;
-    /** 絞り込みのドロワーを開いているか */
-    drawerOpen: boolean;
-    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
-    marks?: DiffMarks;
-    /** 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。サーバーにつながって開いたときだけ渡し、印を置く場所をカードと表に置く */
-    comments?: Record<string, number>;
-    /** 選んだ時点で消したこの種類の項目（入口が `removedOf` で引く）。空でなければ表の上に帯を置く。`filters` で絞らない */
-    removed?: RemovedItem[];
-  }): HTMLElement {
-    const kind = route.tab as RecordKind;
+    kind: RecordKind;
+    open: (id: string) => void;
+  }): Column[] {
     const common = commonColumns(index.data.settings);
     const related = (label: string): Column => ({
       key: "related",
       label,
       priority: 3,
       get: (row) => rowTexts(row, "related"),
-      cell: (row) => idLinksCell(rowTexts(row, "related"), on.open),
+      cell: (row) => idLinksCell(rowTexts(row, "related"), open),
     });
     const columnsOf: Record<RecordKind, Column[]> = {
       research: [
@@ -93,7 +71,42 @@ namespace MindmapPreview {
         related("更新した項目"),
       ],
     };
-    const columns = columnsOf[kind];
+    return columnsOf[kind];
+  }
+
+  /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
+  export function recordsScreen({
+    index,
+    route,
+    on,
+    filters,
+    drawerOpen,
+    marks,
+    comments,
+    removed = [],
+  }: {
+    index: RecordIndex;
+    route: Route;
+    on: {
+      open: (id: string) => void;
+      /** 条件を変える（新しい `filters`。ドロワーと表のチップから） */
+      filter: (filters: Filters) => void;
+      /** 絞り込みのドロワーを閉じる */
+      closeDrawer: () => void;
+    };
+    /** 絞り込みの条件（入口の `FilterState` のこの種類の分） */
+    filters: Filters;
+    /** 絞り込みのドロワーを開いているか */
+    drawerOpen: boolean;
+    /** 項目の ID → 差分の印。差分の表示の間だけ渡す */
+    marks?: DiffMarks;
+    /** 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。サーバーにつながって開いたときだけ渡し、印を置く場所をカードと表に置く */
+    comments?: Record<string, number>;
+    /** 選んだ時点で消したこの種類の項目（入口が `removedOf` で引く）。空でなければ表の上に帯を置く。`filters` で絞らない */
+    removed?: RemovedItem[];
+  }): HTMLElement {
+    const kind = route.tab as RecordKind;
+    const columns = recordColumns({ index, kind, open: on.open });
     // 絞り込みの条件に合う項目を表に渡す
     const shown = filterRows({ rows: index.data[kind], columns, filters });
     return h({
