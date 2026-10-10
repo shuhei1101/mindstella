@@ -191,7 +191,7 @@ scenarios:
   - name: 正常シナリオ（Claude Code へ入力する）
     setup:
       - name: Mock
-        description: モデルを呼ばない。Claude Code の代わりに、貼られた文字列を 1 件の user のメッセージとして会話の記録（jsonl）へ書く偽のコマンドを tmux のペインで動かし、そのペインの環境（`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`・`CLAUDE_CODE_SESSION_ID`）で MCP サーバーを立てる。サーバーが配るプレビューを実際のブラウザで開く
+        description: モデルを呼ばない。Claude Code の代わりに、貼られた文字列を 1 件の user のメッセージ（`cwd` はワークスペースのフォルダ）として、設定のフォルダの `projects` の下の作業フォルダに当たるフォルダの会話の記録（jsonl）へ書く偽のコマンドを tmux のペインで動かし、そのペインの環境（`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`）で MCP サーバーを立てる。サーバーが配るプレビューを実際のブラウザで開く
       - name: tmux
         description: テストごとに専用のソケットで立てた tmux のサーバー
         notes: 利用者の tmux のセッションに触れない
