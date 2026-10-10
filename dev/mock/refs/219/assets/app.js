@@ -6234,8 +6234,8 @@ var MindmapPreview;
                     lead("question", item.question, "d-lead"),
                     // 219: 説明とエイリアス（用語の意味・別名と同じ出し方）
                     labelled("説明", "description", item.description),
-                    listSection("エイリアス", "aliases", item.aliases),
                     labelled("結論", "conclusion", item.conclusion),
+                    listSection("エイリアス", "aliases", item.aliases),
                     listSection("調査の観点", "angles", item.angles),
                     bodySection("本文"),
                 ],
