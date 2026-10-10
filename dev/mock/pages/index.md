@@ -15,5 +15,5 @@
 | [comments](./comments/index.md) | コメントの一覧 | - |
 | [settings-panel](./settings-panel/index.md) | 表示の設定 | - |
 | [settings-save-confirm](./settings-save-confirm/index.md) | ワークスペースの既定の確かめ | - |
-| [search](./search/index.md) | 全体の検索 | [21 / standard](./search/21/standard/index.html) |
+| [search](./search/index.md) | 全体の検索 | [216 / a-by-tier](./search/216/a-by-tier/index.html) |
 | [diagram-viewer](./diagram-viewer/index.md) | 図の拡大 | [21 / standard](./diagram-viewer/21/standard/index.html) |
