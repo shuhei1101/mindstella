@@ -1,0 +1,1 @@
+# ネットワークの画面の結合テスト test_lock_when_quick_double_press を、玉の配置によらず pass させる
