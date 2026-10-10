@@ -316,7 +316,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._write(
                 lambda root, data: _sent_body(*send_comments(root, data)),
                 HTTPStatus.CREATED,
-                after=lambda body: entered_body(self.context, body),
+                after=lambda body: _entered_body(self.context, body),
             )
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
@@ -832,7 +832,7 @@ def _sent_body(sent: str, items: list[SentComment]) -> dict[str, Any]:
     return {"sent": sent, "items": [asdict(item) for item in items]}
 
 
-def entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
+def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
     """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
     target = context.input_target
     # 送り先が無い: 入力しない
