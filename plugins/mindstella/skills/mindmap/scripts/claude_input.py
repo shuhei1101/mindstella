@@ -111,7 +111,9 @@ def find_delivery(folders: list[Path], sizes: dict[Path, int], *, cwd: Path, tex
             continue
         for path in folder.glob("*.jsonl"):
             # 控えの後ろから読む（控えに無いファイルは大きさ 0 から）。書きかけの行（最後の改行より後ろ）は読まない
-            appended = path.read_bytes()[sizes.get(path, 0) :]
+            with path.open("rb") as stream:
+                stream.seek(sizes.get(path, 0))
+                appended = stream.read()
             complete = appended[: appended.rfind(b"\n") + 1]
             for line in complete.splitlines():
                 try:
