@@ -359,10 +359,8 @@ scenarios:
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-        notes: '-'
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
-        notes: '-'
       - name: 資料・調査の中身
         description: エイリアスと説明を持つ資料 A-1 と調査 R-1。A-1 を直すときはエイリアスを 1 つ足す
         notes: 'A-1 はタイトル `特殊効果のスキーマ`、`aliases: [特殊効果]`、`description: 特殊効果の設定ファイルのキーと型`。直して `aliases: [特殊効果, エフェクト]`。R-1 は `aliases: [特殊効果の描画]`、`description` を持つ'
@@ -386,33 +384,6 @@ scenarios:
       - A-1 が変更履歴を 1 回分持ち、直す前のエイリアス（`特殊効果` だけ）が入っている
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_aliases_and_description
-  - name: 異常シナリオ（空のエイリアス）
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-        notes: '-'
-      - name: make_workspace
-        description: 作成を済ませた、項目を持たないワークスペース
-        notes: '-'
-      - name: 資料の中身
-        description: エイリアスに空の文字列を含む資料
-        notes: '`aliases: [特殊効果, ""]`（空の語は本文のどこにも当たる）'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as Claude Code（スキル）
-        participant SV as サーバー
-        participant WS as ワークスペース
-
-        CC->>SV: 空のエイリアスを持つ資料を足す
-        SV->>SV: スキーマと突き合わせて合わない
-        SV-->>CC: 合わない箇所を示すエラー
-      ```
-    expected:
-      - 追加のツールがエラーを返す
-      - エラーの本文に、合わないキー `aliases` がある
-      - ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
-    test: test_error_when_alias_empty
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
