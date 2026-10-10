@@ -113,13 +113,41 @@ scenarios:
       - 出力に、tmux が無い旨がある
       - Claude Code が立ち上がっていない
     test: test_error_when_tmux_missing
+  - name: 正常シナリオ（同じフォルダを別のアカウントで開く）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ偽の Claude Code
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー。同じワークスペースのフォルダを、`CLAUDE_CONFIG_DIR` を渡さずに立てたセッションが 1 つある
+      - name: 設定のフォルダ
+        description: '`CLAUDE_CONFIG_DIR` に別のアカウントの設定のフォルダを渡して叩く'
+        notes: '`~/.claude-sub1`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant LS as 起動スクリプト
+        participant TM as tmux
+
+        U->>LS: CLAUDE_CONFIG_DIR=~/.claude-sub1 起動スクリプト {フォルダ}
+        LS->>TM: フォルダとアカウントで決まる名前のセッションがあるか
+        TM-->>LS: 無い
+        LS->>TM: 新しいセッションを立てる（設定のフォルダを渡す）
+      ```
+    expected:
+      - tmux に、同じフォルダを開いたセッションが 2 つあり、名前が違う
+      - 新しいセッションの Claude Code に `CLAUDE_CONFIG_DIR=~/.claude-sub1` が渡る
+      - 先にあったセッションは立ち上げ直されていない
+    test: test_normal_when_another_account
 lead: 利用者が起動スクリプトにワークスペースのフォルダを渡し、依存を確かめてから、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を立ち上げる単一ユースケース。
 issue: 67
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 話し合いをするときだけ mindstella の MCP のツールが載り、ほかの作業のコンテキストを太らせない。依存が足りなければ何をすればよいかが分かる
-trigger: 利用者が起動スクリプトにワークスペースのフォルダを渡して叩く
+trigger: 利用者が起動スクリプト（『起動スクリプトの登録』で登録した alias、アカウントごとの alias を含む）にワークスペースのフォルダを渡して叩く
 preconditions:
   - プラグイン mindstella がインストールされている
 success_guarantee: tmux のセッションの中で Claude Code が立ち、mindstella の MCP のツールが使える。MCP サーバーは、インストールしたプラグインの今の版のフォルダから立つ。

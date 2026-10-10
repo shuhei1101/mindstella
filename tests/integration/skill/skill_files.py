@@ -74,6 +74,9 @@ SERVER_TOOL_NAMES = [
 # Claude Code の中のツールの名前の頭（`mcp__{サーバーの名前}__{ツール}`）
 MCP_TOOL_PREFIX = "mcp__mindstella__"
 
+# 本文のツールの表を持つ節の見出し
+TOOL_SECTION_HEAD = "## ツール\n"
+
 # 本文のツールの表の行（行の頭の `ツール名` を取る）
 TOOL_ROW_PATTERN = re.compile(r"^\| `([a-z_]+)`", re.MULTILINE)
 
@@ -130,10 +133,14 @@ def missing_plugin_paths(texts: list[str]) -> list[str]:
 
 
 def tools_listed_in(texts: list[str]) -> list[str]:
-    """本文のツールの表の行の頭にあるツールの名前を、重ならないように並びのまま返す。"""
+    """本文の `## ツール` の節にある表の行の頭のツールの名前を、重ならないように並びのまま返す。"""
     found: list[str] = []
     for text in texts:
-        for name in TOOL_ROW_PATTERN.findall(text):
+        # 節の見出しの次の行から、次の `## ` の見出しの手前までを取る（節が無い本文は飛ばす）
+        if TOOL_SECTION_HEAD not in text:
+            continue
+        section = text.split(TOOL_SECTION_HEAD, 1)[1].split("\n## ", 1)[0]
+        for name in TOOL_ROW_PATTERN.findall(section):
             if name not in found:
                 found.append(name)
     return found

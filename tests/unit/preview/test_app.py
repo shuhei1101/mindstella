@@ -10,10 +10,21 @@ from playwright.sync_api import Page
 from .fixture_types import LoadPreviewScripts
 
 # 既定の設定
-DEFAULT_PREFS = {"theme": None, "columns": {}, "look": None, "kinds": None, "diffSel": None}
+DEFAULT_PREFS = {
+    "theme": None,
+    "columns": {},
+    "look": None,
+    "kinds": None,
+    "diffSel": None,
+    "filters": {},
+}
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
 ALL_KINDS = ["decisions", "docs", "logs", "notes", "research", "tasks", "terms"]
+
+# 絞り込みの条件の上書き（タスクは状態を未着手だけにし、検討事項は画面の既定の条件のまま）
+TASKS_FILTERS = {"status": ["未着手"]}
+DECISIONS_DEFAULT_FILTERS = {"status": ["要見直し", "未決定", "未整理", "保留"]}
 
 # 表の列の上書き（調査の表の列）
 RESEARCH_COLUMNS = {"research": {"hidden": ["tags"], "pinTo": None}}
@@ -137,6 +148,12 @@ def test_read_embedded_data_when_missing(
             {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
             id="look_and_kinds",
         ),
+        pytest.param(
+            '{"filters": {"tasks": {"status": ["未着手"]}}}',
+            {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+            id="filters",
+        ),
+        pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
     ],
 )
 def test_load_prefs(
@@ -173,6 +190,7 @@ SAVED_PREFS = {
     "look": "dust",
     "kinds": ["tasks"],
     "diffSel": None,
+    "filters": {"tasks": TASKS_FILTERS},
 }
 
 
@@ -257,7 +275,7 @@ def test_form_key(
     ("prefs", "display", "expected"),
     [
         pytest.param(
-            {"theme": None, "columns": {}, "look": None, "kinds": None},
+            {"theme": None, "columns": {}, "look": None, "kinds": None, "filters": {}},
             None,
             {
                 "look": "deep",
@@ -269,7 +287,7 @@ def test_form_key(
             id="no_override_no_default",
         ),
         pytest.param(
-            {"theme": None, "columns": {}, "look": None, "kinds": None},
+            {"theme": None, "columns": {}, "look": None, "kinds": None, "filters": {}},
             {
                 "network_look": "starlight",
                 "visible_kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
@@ -284,7 +302,13 @@ def test_form_key(
             id="workspace_default",
         ),
         pytest.param(
-            {"theme": "dark", "columns": RESEARCH_COLUMNS, "look": "dust", "kinds": None},
+            {
+                "theme": "dark",
+                "columns": RESEARCH_COLUMNS,
+                "look": "dust",
+                "kinds": None,
+                "filters": {},
+            },
             {
                 "network_look": "starlight",
                 "visible_kinds": ["decisions", "docs", "logs", "research", "tasks", "terms"],
@@ -297,6 +321,24 @@ def test_form_key(
                 "overrides": ["ネットワークの見た目", "ライト / ダーク", "表の列（調査）"],
             },
             id="override_look_theme_columns",
+        ),
+        pytest.param(
+            {
+                "theme": None,
+                "columns": {},
+                "look": None,
+                "kinds": None,
+                "filters": {"tasks": TASKS_FILTERS, "decisions": DECISIONS_DEFAULT_FILTERS},
+            },
+            None,
+            {
+                "look": "deep",
+                "kinds": ALL_KINDS,
+                "defaultLook": "deep",
+                "defaultKinds": ALL_KINDS,
+                "overrides": ["絞り込み（タスク）"],
+            },
+            id="override_filters",
         ),
     ],
 )
@@ -338,6 +380,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "look": "dust",
         "kinds": ["tasks"],
         "diffSel": "since",
+        "filters": {"tasks": TASKS_FILTERS},
     }
     # 実行
     result = preview_page.evaluate(
@@ -350,6 +393,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "look": None,
         "kinds": None,
         "diffSel": "since",
+        "filters": {},
     }
     assert result["original"] == prefs
 

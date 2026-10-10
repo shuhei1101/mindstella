@@ -95,10 +95,10 @@ var MindmapPreview;
         });
     }
     MindmapPreview.toolbar = toolbar;
-    /** タスクの画面を返す */
-    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }) {
+    /** タスクの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+    function taskColumns({ index, open }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
-        const columns = [
+        return [
             common.id,
             common.title(),
             common.status(MindmapPreview.TASK_STATUSES),
@@ -108,13 +108,18 @@ var MindmapPreview;
                 label: "進める検討事項",
                 priority: 3,
                 get: (row) => MindmapPreview.rowTexts(row, "for"),
-                cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "for"), on.open),
+                cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "for"), open),
             },
             common.target,
             common.category,
             common.phase,
             common.tags,
         ];
+    }
+    MindmapPreview.taskColumns = taskColumns;
+    /** タスクの画面を返す */
+    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen }) {
+        const columns = taskColumns({ index, open: on.open });
         // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.tasks, columns, filters });
         // ボードでは、ツールバーの下に条件のチップの行を置く（表は表の上に持つ）

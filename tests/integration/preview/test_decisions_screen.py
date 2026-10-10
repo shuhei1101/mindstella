@@ -14,6 +14,7 @@ from preview_fixture_types import (
 )
 from preview_drawer_helpers import (
     ALL_DECISION_STATUSES_HASH,
+    DEFAULT_DECISION_STATUSES,
     DRAWER,
     DRAWER_OPEN,
     FILTER_BUTTON,
@@ -43,6 +44,12 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -1837,3 +1844,103 @@ def test_region_at_boundary(
         assert_bands_stay(page)
     else:
         assert_region_mode(page, selector, filled=filled)
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直しても開いたときの既定に代えてその条件でドロワーと表を開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "phase", "要件")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {
+        "decisions": {"status": DEFAULT_DECISION_STATUSES, "phase": ["要件"]}
+    }
+    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert badge_text(page) == "2"
+    # サンプルの検討事項に未整理は無いので、残した状態の条件から外して開く
+    assert checked_values(page, "status") == ["要見直し", "未決定", "保留"]
+    assert checked_values(page, "phase") == ["要件"]
+
+
+def test_drawer_saved_filter_when_all_cleared(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """条件を全て外して残したときは、読み込み直しても開いたときの既定の条件に戻さず、何も選んでいない状態で開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    page.click(f"{DRAWER} button[aria-label='状態の条件を解除']")
+    page.wait_for_function("!document.querySelector('[data-act=filter] .fbadge')")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["D-1", "D-2", "D-3", "D-4", "D-5"]
+    assert badge_text(page) is None
+    assert checked_values(page, "status") == []
+
+
+def test_drawer_saved_filter_when_text_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """列の文字の欄に入れた条件も端末へ残し、読み込み直しても欄に文字が入ったまま、その文字で絞って開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "d-2")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {
+        "decisions": {"status": DEFAULT_DECISION_STATUSES, "~id": ["d-2"]}
+    }
+    assert _table_row_ids(page) == ["D-2"]
+    assert drawer_text_fields(page)[0] == {"key": "id", "label": "ID", "value": "d-2"}
+    assert "ID に「d-2」を含む" in chip_texts(page)
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    seed_saved_filters(page, {"decisions": {"status": ["未決定"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=decisions&view=table&f.phase=要件")
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert checked_values(page, "phase") == ["要件"]
+    assert checked_values(page, "status") == []
+    assert read_saved_filters(page) == {"decisions": {"status": ["未決定"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（検討事項に取り下げの状態は無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    seed_saved_filters(page, {"decisions": {"status": ["未決定", "取り下げ"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["D-2", "D-5"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["未決定"]

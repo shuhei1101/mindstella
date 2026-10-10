@@ -36,6 +36,12 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 
@@ -302,3 +308,84 @@ def test_region_at_boundary(
     page.wait_for_selector(".table-wrap")
     # 実行・検証
     assert_region_mode(page, ".table-wrap", filled=filled)
+
+
+def _write_research_and_notes(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """確度が高の調査 R-1 と低の調査 R-2、メモ N-1・N-2 を持つワークスペースを配る。"""
+    return write_preview(
+        make_item("R-1", confidence="高"),
+        make_item("R-2", confidence="低"),
+        make_item("N-1"),
+        make_item("N-2"),
+    )
+
+
+def test_drawer_saved_filter(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """サーバーの配信では、条件を変えるたびに種類ごとに端末へ残し、読み込み直してもその条件でドロワーと表を開く（正常系）。"""
+    # 準備
+    url = _write_research_and_notes(write_preview, make_item)
+    page = open_preview(url, "#tab=research")
+    open_drawer(page)
+    click_value(page, "confidence", "高")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {"research": {"confidence": ["高"]}}
+    assert _row_ids(page) == ["R-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "confidence") == ["高"]
+    assert chip_texts(page) == ["確度: 高"]
+
+
+def test_drawer_saved_filter_when_other_kind(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """調査で残した条件は、別の種類（メモ）を開いたときに持ち越さない（正常系）。"""
+    # 準備
+    url = _write_research_and_notes(write_preview, make_item)
+    page = open_preview(url, "#tab=research")
+    seed_saved_filters(page, {"research": {"confidence": ["高"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=notes")
+    open_drawer(page)
+    # 検証
+    assert _row_ids(page) == ["N-1", "N-2"]
+    assert badge_text(page) is None
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = _write_research_and_notes(write_preview, make_item)
+    page = open_preview(url, "#tab=research")
+    seed_saved_filters(page, {"research": {"confidence": ["高"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=research&f.confidence=低")
+    open_drawer(page)
+    # 検証
+    assert _row_ids(page) == ["R-2"]
+    assert checked_values(page, "confidence") == ["低"]
+    assert read_saved_filters(page) == {"research": {"confidence": ["高"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（調査に確度が中のものは無く、`unknown` という列も無い）
+    url = _write_research_and_notes(write_preview, make_item)
+    page = open_preview(url, "#tab=research")
+    seed_saved_filters(page, {"research": {"confidence": ["高", "中"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _row_ids(page) == ["R-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "confidence") == ["高"]

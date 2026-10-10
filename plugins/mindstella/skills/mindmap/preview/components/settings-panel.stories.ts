@@ -39,13 +39,13 @@ type Story = StoryObj<MindmapPreview.SettingsPanelProps>;
 /** 開いた直後（ワークスペースの既定のまま）。「既定に戻す」と「ワークスペースの既定にする」を出さず、そのことを文言で示す */
 export const Default: Story = {};
 
-/** この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く */
+/** この端末で変えている。上書きを持つ 5 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く */
 export const Overridden: Story = {
   args: {
     look: "dust",
     defaultLook: "starlight",
     defaultKinds: KINDS_WITHOUT_NOTES,
-    overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"],
+    overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）", "絞り込み（タスク）"],
   },
 };
 

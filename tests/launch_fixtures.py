@@ -83,16 +83,27 @@ class LaunchSandbox:
         """`PATH` のフォルダから外部コマンドを外す（無い場合の流れを作る）。"""
         (self.tools_dir / name).unlink()
 
-    def env(self, venv: Path | None, extra_env: dict[str, str] | None = None) -> dict[str, str]:
-        """起動スクリプトに渡す環境変数。`PATH` はこのフォルダだけにし、extra_env があれば足す。"""
+    def env(
+        self,
+        venv: Path | None,
+        extra_env: dict[str, str] | None = None,
+        *,
+        with_config: bool = True,
+    ) -> dict[str, str]:
+        """起動スクリプトに渡す環境変数。`PATH` はこのフォルダだけにし、extra_env があれば足す。
+
+        with_config が偽なら `CLAUDE_CONFIG_DIR` を渡さない（extra_env で渡したものは残る）。
+        """
         env = {
             "PATH": str(self.tools_dir),
             "HOME": str(self.root),
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
             "TMUX_TMPDIR": str(self.tmux_tmpdir),
-            "CLAUDE_CONFIG_DIR": str(self.config_dir),
         }
+        # 設定のフォルダ（アカウント）を渡すか
+        if with_config:
+            env["CLAUDE_CONFIG_DIR"] = str(self.config_dir)
         if venv is not None:
             env["MINDSTELLA_VENV"] = str(venv)
         return {**env, **(extra_env or {})}
@@ -104,11 +115,12 @@ class LaunchSandbox:
         script: Path = PLUGIN_DIR / "bin" / "mindstella",
         cwd: Path | None = None,
         extra_env: dict[str, str] | None = None,
+        with_config: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         """起動スクリプトを標準出力が端末でない形で動かす。終了コードが 0 以外でも例外にしない。"""
         return subprocess.run(
             [str(script), *args],
-            env=self.env(venv, extra_env),
+            env=self.env(venv, extra_env, with_config=with_config),
             cwd=cwd or self.root,
             capture_output=True,
             text=True,
@@ -165,9 +177,13 @@ class LaunchSandbox:
         return self.started()
 
 
-def session_name(folder: Path) -> str:
-    """フォルダの絶対パスの SHA-256 の先頭 6 桁から、セッションの名前を作る。"""
-    digest = hashlib.sha256(str(folder.resolve()).encode("utf-8")).hexdigest()[:HASH_DIGITS]
+def session_name(folder: Path, config_dir: Path | None = None) -> str:
+    """フォルダの絶対パス（と、あれば設定のフォルダの絶対パス）の SHA-256 の先頭 6 桁から、セッションの名前を作る。"""
+    hashed = str(folder.resolve())
+    # 設定のフォルダ（アカウント）があれば、改行を挟んでつなぐ
+    if config_dir is not None:
+        hashed += "\n" + str(config_dir.resolve())
+    digest = hashlib.sha256(hashed.encode("utf-8")).hexdigest()[:HASH_DIGITS]
     return f"{SESSION_PREFIX}{folder.name}-{digest}"
 
 
