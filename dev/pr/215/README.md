@@ -1,0 +1,1 @@
+# PoC: HTML の本文を sandbox の iframe に描き、選んだ箇所を原文の行にする
