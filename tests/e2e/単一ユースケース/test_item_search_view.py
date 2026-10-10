@@ -123,13 +123,13 @@ def test_normal_when_title_match_in_later_kind(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """タイトルに言葉を含む資料が、決定内容にだけ言葉を含む検討事項より前に出て、Enter で資料を開く（正常系）。"""
+    """タイトルに言葉を含む資料が、本文にだけ言葉を含む検討事項より前に出て、Enter で資料を開く（正常系）。"""
     # 準備
     url = serve_preview(
-        make_item("D-1", answer="保存先は共有のフォルダにする"),
+        make_item("D-1", body="D-1.md"),
         make_item("A-2", title="保存先の決め方"),
         settings=valid_settings,
-        bodies={"A-2.md": "本文\n"},
+        bodies={"D-1.md": "保存先は共有のフォルダにする\n", "A-2.md": "本文\n"},
     )
     page = open_preview(url)
     # 実行
