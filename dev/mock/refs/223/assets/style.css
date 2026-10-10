@@ -1,0 +1,61 @@
+/* PR #223 で変える表の列を選ぶボタンの置き場所（案 A 表の上の帯 / 案 B トップバー）と、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+
+/* ===== 案 A: 表の上の帯の右端 ===== */
+
+/* 表の上の帯: 条件のチップを左、列を選ぶボタンを右端に並べ、表との間に余白を取る */
+.table-toolbar { flex: none; display: flex; align-items: flex-start; gap: 8px 12px; margin-bottom: 12px; }
+/* 帯の条件のチップ: 残りの幅を取り、行の高さをボタンに揃える。帯の下の余白は帯が持つ */
+.table-toolbar .chips { flex: 1; min-height: var(--control-h); margin-bottom: 0; }
+/* 列を選ぶボタン（案 A）: 帯の右端で縮めない */
+.table-toolbar .cols-btn-table { flex: none; }
+/* 狭い幅: 列を選ぶボタンの文言を隠してアイコンだけにする（読み上げ名は残る） */
+@media (max-width: 720px) {
+  /* 列を選ぶボタン（案 A）の文言 */
+  .table-toolbar .cols-btn-table .lbl { display: none; }
+  /* 列を選ぶボタン（案 A）: アイコンだけの幅に詰める */
+  .table-toolbar .cols-btn-table { padding: 0 8px; }
+}
+
+/* ===== 案 B: トップバーの絞り込みのボタンの隣 ===== */
+
+/* 表の上の帯（案 B）: ボタンをトップバーへ移したので、条件のチップが無い間は帯ごと出さない */
+.table-toolbar:has(> .chips:only-child:empty) { display: none; }
+/* 列を選ぶボタン（案 B）: トップバーの絞り込みのボタンと同じ見た目 */
+.cols-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.cols-btn:hover { background: var(--topbar-hover); }
+.cols-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+/* 中くらいの幅: 絞り込みのボタンと同じく文言を隠す */
+@media (max-width: 1100px) {
+  /* 列を選ぶボタン（案 B）の文言 */
+  .cols-btn .label { display: none; }
+  /* 列を選ぶボタン（案 B）: アイコンだけの幅に詰める */
+  .cols-btn { padding: 0 8px; }
+}
+/* 狭い幅: 絞り込みのボタンと同じく余白を詰める */
+@media (max-width: 480px) {
+  /* 列を選ぶボタン（案 B） */
+  .cols-btn { gap: 4px; padding: 0 6px; }
+}

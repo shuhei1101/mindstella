@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗 -->
+  <meta name="color-scheme" content="light dark">
+  <title>表の列を選ぶボタン | mindmap 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと今のプレビューのスタイルと、この PR で変える列を選ぶボタンのスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/223/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    /* 台の中ではトップバーを流れに置く */
+    .stage .topbar { position: static; }
+    /* 台の中のトップバーの下の表: 画面の本文と同じく間を空ける */
+    .stage .topbar + .table-block { margin-top: 16px; }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; max-width: 100%; }
+    /* 狭い幅の見本: 画面幅が狭いときと同じく、ボタンの文言を隠してアイコンだけにする */
+    .stage.narrow :is(.cols-btn-table .lbl, .topbar .label) { display: none; }
+    /* 狭い幅の見本のボタン: アイコンだけの幅に詰める */
+    .stage.narrow :is(.cols-btn-table, .cols-btn, .filter-btn, .settings-btn) { padding: 0 8px; }
+    /* 狭い幅の見本のトップバー: 間隔と余白を詰める */
+    .stage.narrow .topbar { gap: 8px; padding: 0 12px; }
+    /* 状態を見せるための見本のクラス */
+    .is-hover { background: var(--hover) !important; }
+    /* トップバーのホバーの見本 */
+    .topbar .is-hover { background: var(--topbar-hover) !important; }
+    /* フォーカスの見本 */
+    .is-focus { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / columns-button</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">表の列を選ぶボタン</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">表に出す列を選ぶポップオーバーを開くボタン。今の「表示する列」を、列のアイコンと短い名詞の文言にし、表の上端に付けずに置く。置き場所は案 A（表の上の帯の右端・推奨）と案 B（トップバーの絞り込みのボタンの隣）、文言は案 A「列の表示」（推奨）と案 B「列」。</p>
+    <section class="cat-sec">
+      <h2>案A: 表の上の帯の右端（絞っていない・推奨）</h2>
+      <p>条件のチップの行の右端に置き、行と表の間に 12px の余白を取る。文言は案 A「列の表示」（推奨）。読み上げ名も同じ文言。</p>
+      <div class="stage"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案A: 絞り込み中</h2>
+      <p>条件のチップと「すべて解除」を左に、ボタンを同じ行の右端に置く。チップが増えて折り返してもボタンは右上に留まる。</p>
+      <div class="stage"><div class="table-block"><div class="table-toolbar"><div class="chips"><span class="chip">確度: 高<button type="button" aria-label="確度: 高 の条件を解除"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span><button class="btn ghost" type="button">すべて解除</button></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案A: 文言の案 B「列」</h2>
+      <p>文言だけを「列」にしたもの。列を足す・並べ替えるボタンとも読める。</p>
+      <div class="stage"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案A: ホバー・フォーカス</h2>
+      <p>ホバーは面の色、キーボードのフォーカスは印の色の輪。</p>
+      <div class="stage"><div style="display:grid;gap:12px"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table is-hover" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table is-focus" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案A: ポップオーバーを開いている</h2>
+      <p>ポップオーバーの題をボタンと同じ「列の表示」にする。中身（列の付け外し・タイトルは外せない・初期設定に戻す）は変えない。</p>
+      <div class="stage"><div class="table-block"><div class="table-toolbar"><div class="chips"></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="pop" style="position: static; display: block; width: 260px; margin: 8px 0 0 auto;"><p class="pop-title">列の表示</p><label><input type="checkbox" checked>ID</label><label><input type="checkbox" checked disabled>タイトル</label><label><input type="checkbox" checked>確度</label><label><input type="checkbox">タグ</label><div class="pop-foot"><button class="btn ghost" type="button">列・並べ替え・固定を初期設定に戻す</button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案A: 狭い幅（720px 以下・390px）</h2>
+      <p>文言を隠してアイコンだけにする。読み上げ名「列の表示」は残す。</p>
+      <div class="stage narrow"><div class="table-block"><div class="table-toolbar"><div class="chips"><span class="chip">確度: 高<button type="button" aria-label="確度: 高 の条件を解除"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span><button class="btn ghost" type="button">すべて解除</button></div><button class="btn cols-btn-table" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="lbl">列の表示</span></button></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案B: トップバーの絞り込みのボタンの隣</h2>
+      <p>絞り込みのボタンと同じ枠の見た目で、その右に置く。表の上の帯はチップが無い間は出さない。</p>
+      <div class="stage"><header class="topbar"><span class="brand"><span class="brand-name">mindstella</span></span><span class="spacer"></span><button class="settings-btn" type="button" aria-label="表示の設定"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" aria-label="絞り込み"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/></svg><span class="label">絞り込み</span></button><button class="cols-btn" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="label">列の表示</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header><div class="table-block"><div class="table-toolbar"><div class="chips"></div></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案B: 絞り込み中・文言の案 B「列」</h2>
+      <p>絞り込みの件数のバッジと並ぶ。表の上にはチップの行だけが残る。</p>
+      <div class="stage"><header class="topbar"><span class="brand"><span class="brand-name">mindstella</span></span><span class="spacer"></span><button class="settings-btn" type="button" aria-label="表示の設定"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" aria-label="絞り込み（1 つの条件で絞り込み中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/></svg><span class="label">絞り込み</span><span class="fbadge" aria-hidden="true">1</span></button><button class="cols-btn" type="button" data-popover="columns" aria-label="列"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="label">列</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header><div class="table-block"><div class="table-toolbar"><div class="chips"><span class="chip">確度: 高<button type="button" aria-label="確度: 高 の条件を解除"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span><button class="btn ghost" type="button">すべて解除</button></div></div><div class="table-wrap"><table class="grid"><thead><tr><th scope="col">ID</th><th scope="col">タイトル</th><th scope="col">確度</th></tr></thead><tbody><tr><td><span class="mono">R-1</span></td><td><button class="row-open" type="button">表の列を選ぶボタンの呼び名</button></td><td>高</td></tr><tr><td><span class="mono">R-2</span></td><td><button class="row-open" type="button">ポップオーバーの位置を自前で決めるか</button></td><td>低</td></tr><tr><td><span class="mono">R-3</span></td><td><button class="row-open" type="button">列の選びを端末に残す場所</button></td><td>高</td></tr></tbody></table></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案B: ホバー・フォーカス</h2>
+      <p>トップバーのほかのボタンと同じ。</p>
+      <div class="stage"><div style="display:grid;gap:12px"><header class="topbar"><span class="brand"><span class="brand-name">mindstella</span></span><span class="spacer"></span><button class="settings-btn" type="button" aria-label="表示の設定"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" aria-label="絞り込み"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/></svg><span class="label">絞り込み</span></button><button class="cols-btn is-hover" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="label">列の表示</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header><header class="topbar"><span class="brand"><span class="brand-name">mindstella</span></span><span class="spacer"></span><button class="settings-btn" type="button" aria-label="表示の設定"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" aria-label="絞り込み"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/></svg><span class="label">絞り込み</span></button><button class="cols-btn is-focus" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="label">列の表示</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案B: 表を出していない表示形式（ボード・マップ・カード）</h2>
+      <p>押しても何も変わらないので、ボタンを出さない。表に切り替えると絞り込みの隣に出る。</p>
+      <div class="stage"><header class="topbar"><span class="brand"><span class="brand-name">mindstella</span></span><span class="spacer"></span><button class="settings-btn" type="button" aria-label="表示の設定"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" aria-label="絞り込み"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/></svg><span class="label">絞り込み</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案B: 狭い幅（1100px 以下・390px）</h2>
+      <p>絞り込みのボタンと同じく文言を隠してアイコンだけにする。</p>
+      <div class="stage narrow"><header class="topbar"><span class="brand"><span class="brand-name">mindstella</span></span><span class="spacer"></span><button class="settings-btn" type="button" aria-label="表示の設定"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" aria-label="絞り込み（1 つの条件で絞り込み中）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"/></svg><span class="label">絞り込み</span><span class="fbadge" aria-hidden="true">1</span></button><button class="cols-btn" type="button" data-popover="columns" aria-label="列の表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/></svg><span class="label">列の表示</span></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header></div>
+    </section>
+  </main>
+</body>
+</html>
