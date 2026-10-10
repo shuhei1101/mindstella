@@ -92,6 +92,29 @@
     }
   });
 
+  // 撮影用: クエリの `sel` に渡した文を、HTML の本文の枠の中で選んだ状態にする（枠の中はマウスの操作を撮影の手順で送れないため）
+  const sel = query.get("sel");
+  if (sel !== null) {
+    const timer = setInterval(() => {
+      const frame = document.querySelector("iframe.html-frame[data-lined]");
+      const doc = frame?.contentDocument;
+      if (doc === null || doc === undefined || doc.readyState !== "complete" || frame.style.height === "") return;
+      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        const at = node.textContent.indexOf(sel);
+        if (at < 0) continue;
+        clearInterval(timer);
+        node.parentElement.scrollIntoView({ block: "center" });
+        const range = doc.createRange();
+        range.setStart(node, at);
+        range.setEnd(node, at + sel.length);
+        frame.contentWindow.getSelection().removeAllRanges();
+        frame.contentWindow.getSelection().addRange(range);
+        return;
+      }
+    }, 100);
+  }
+
   // 撮影用: クエリの `mark` に渡した CSS セレクタの要素に赤枠を付ける（撮影の枠はモーダルの上に重ならないため、モーダルの中の要素はこちらで示す）
   const mark = query.get("mark");
   if (mark !== null) {

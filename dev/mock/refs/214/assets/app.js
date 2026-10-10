@@ -1111,7 +1111,8 @@ var MindmapPreview;
                     });
                 }
             }
-            // 高さを描いた中身に合わせる（中身が変わっても追う）。枠の線の分を足し、枠の中にスクロールの帯を出さない
+            // 高さを描いた中身に合わせる（中身が変わっても追う）。枠の線の分を足し、枠の中に縦のスクロールの帯を出さない
+            doc.documentElement.style.overflowY = "hidden";
             new ResizeObserver(() => {
                 frame.style.height = `${doc.documentElement.scrollHeight + frame.offsetHeight - frame.clientHeight}px`;
             }).observe(doc.documentElement);
