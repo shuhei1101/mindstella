@@ -39,6 +39,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
@@ -1771,3 +1772,119 @@ def test_diagram_raw_when_long_line(
     assert page.is_visible(raw)
     assert not overflows_horizontally(page, raw)
     assert axe_rule_results(page, raw, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+# 取り下げた項目を開くハッシュと、取り下げていない同じ種類の項目を開くハッシュ（種類ごと）
+WITHDRAWN_HASHES = [
+    pytest.param("#tab=research&id=R-2", "#tab=research&id=R-1", "R-2", id="research"),
+    pytest.param("#tab=docs&view=table&id=A-2", "#tab=docs&view=table&id=A-1", "A-2", id="docs"),
+    pytest.param("#tab=terms&id=G-2", "#tab=terms&id=G-1", "G-2", id="terms"),
+    pytest.param("#tab=notes&id=N-2", "#tab=notes&id=N-1", "N-2", id="notes"),
+    pytest.param("#tab=logs&id=L-2", "#tab=logs&id=L-1", "L-2", id="logs"),
+]
+
+# 見出しと取り下げた理由の節の並びを読む（題・キーの一覧・節の見出しの順）
+PANEL_ORDER_JS = """() => [...document.querySelectorAll('aside.panel .detail > :is(h2.d-title, dl.d-meta, section.d-sec)')]
+    .map(e => e.tagName === 'SECTION' ? e.querySelector('h3').textContent : e.className)"""
+
+
+@pytest.mark.parametrize(("withdrawn_hash", "normal_hash", "item_id"), WITHDRAWN_HASHES)
+def test_withdrawn_badge(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    withdrawn_hash: str,
+    normal_hash: str,
+    item_id: str,
+) -> None:
+    """取り下げた項目は、差分の表示によらず題の右に大きい取り下げの札を置き（題の文字は薄くしない）、キーの一覧には取り下げの値を出さず、「取り下げた理由」の節に理由を出す。取り下げていない項目には出さない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, None)
+    open_preview(url, withdrawn_hash)
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 検証
+    badge = page.locator(f"aside.panel .d-title {WITHDRAWN_BADGE}.wd-large")
+    assert badge.count() == 1
+    assert badge.inner_text() == "取り下げ"
+    assert page.evaluate(
+        "(() => { const t = document.querySelector('aside.panel .d-title'); const r = document.createRange(); r.selectNodeContents(t.firstChild);"
+        " return t.querySelector('.wd-badge').getBoundingClientRect().left >= r.getBoundingClientRect().right; })()"
+    )
+    # キーの一覧に「取り下げ」の行は無く、理由は題・キーの一覧の後の節に出す
+    assert "取り下げ" not in page.eval_on_selector_all("aside.panel .d-meta dt", "dts => dts.map(d => d.textContent)")
+    order = page.evaluate(PANEL_ORDER_JS)
+    assert order.index("取り下げた理由") > order.index("d-meta")
+    reason = page.locator('aside.panel section.d-sec:has(> h3:text-is("取り下げた理由")) [data-key="reason"]')
+    assert reason.inner_text() == WITHDRAWN_REASONS[item_id]
+    # 題の文字の色は、取り下げていない項目と同じ
+    withdrawn_color = page.eval_on_selector("aside.panel .d-title", "e => getComputedStyle(e).color")
+    # 取り下げていない項目には札も節も出さない
+    open_preview(url, normal_hash)
+    page.reload()
+    page.wait_for_selector("aside.panel.open .d-title")
+    assert page.locator(f"aside.panel {WITHDRAWN_BADGE}").count() == 0
+    assert page.locator('aside.panel section.d-sec > h3:text-is("取り下げた理由")').count() == 0
+    assert page.eval_on_selector("aside.panel .d-title", "e => getComputedStyle(e).color") == withdrawn_color
+
+
+def test_withdrawn_reason_when_decision_and_task(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """検討事項とタスクの `reason` は、「取り下げた理由」の節ではなく今の節（採用した案と理由・理由）に出し、取り下げの札を置かない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS, reason="採用の理由"),
+        make_item("T-1", status="中止", reason="タスクの理由"),
+    )
+    # 実行・検証（検討事項）
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    headings = page.eval_on_selector_all("aside.panel h3", "hs => hs.map(h => h.textContent)")
+    assert "採用した案と理由" in headings
+    assert "取り下げた理由" not in headings
+    assert page.locator(f"aside.panel {WITHDRAWN_BADGE}").count() == 0
+    # 実行・検証（タスク）
+    open_preview(url, "#tab=tasks&id=T-1")
+    page.reload()
+    page.wait_for_selector("aside.panel.open .d-title")
+    assert page.locator("aside.panel b", has_text="理由").count() == 1
+    assert "タスクの理由" in page.inner_text("aside.panel .panel-body")
+    assert page.locator('aside.panel h3:text-is("取り下げた理由")').count() == 0
+    assert page.locator(f"aside.panel {WITHDRAWN_BADGE}").count() == 0
+
+
+def test_diff_withdrawn(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """選んだ時点で取り下げたときは、「取り下げ」の行に前の値（なし）と今の値（取り下げの札）を並べ、「取り下げた理由」の節にも前の値（なし）と今の値を並べる（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    _open_diff_panel(page, open_preview, url, "V-1", "#tab=research&id=R-2")
+    # 検証
+    row = page.locator("aside.panel .d-meta dt.df-key", has_text="取り下げ")
+    assert row.count() == 1
+    value = page.locator("aside.panel .d-meta dd.df-key .df-kv")
+    assert value.locator("del.df-was").inner_text().endswith("（なし）")
+    assert value.locator(f"ins.df-now {WITHDRAWN_BADGE}").inner_text() == "取り下げ"
+    reason = page.locator('aside.panel [data-key="reason"] .df-kv')
+    assert reason.locator("del.df-was").inner_text().endswith("（なし）")
+    assert reason.locator("ins.df-now").inner_text().endswith(WITHDRAWN_REASONS["R-2"])
+    # 題の右の札は、差分の表示でも同じ
+    assert page.locator(f"aside.panel .d-title {WITHDRAWN_BADGE}.wd-large").count() == 1
+
+
+def test_diff_withdrawn_when_unchanged(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """取り下げが選んだ時点より前だったときは、「取り下げ」の行を出さず、理由の節に差分を出さず、題の右の札だけを置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=research&id=R-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 検証
+    assert page.locator(f"aside.panel .d-title {WITHDRAWN_BADGE}.wd-large").count() == 1
+    assert page.locator("aside.panel .d-meta dt.df-key").count() == 0
+    assert page.locator('aside.panel [data-key="reason"] .df-kv').count() == 0
+    assert page.locator('aside.panel [data-key="reason"]').inner_text() == WITHDRAWN_REASONS["R-2"]

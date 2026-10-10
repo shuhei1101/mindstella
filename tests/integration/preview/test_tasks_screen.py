@@ -39,6 +39,12 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_PENDING_BY_TAB,
+    assert_band_above,
+    assert_removed_band,
+)
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -249,6 +255,70 @@ def test_diff_marks_when_table(
     page.reload()
     page.wait_for_selector("table.grid tbody tr")
     assert page.locator("table.grid .df-mark").count() == 0
+
+
+@pytest.mark.parametrize(
+    ("view", "below"),
+    [
+        pytest.param("board", ".board", id="board"),
+        pytest.param("table", "table.grid", id="table"),
+    ],
+)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    view: str,
+    below: str,
+) -> None:
+    """差分の表示の間、選んだ時点で消したタスクを、表示形式によらず一覧の上の帯に並べる。押せず、カードにも行にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, f"#tab=tasks&view={view}")
+    page.wait_for_selector(below)
+    # 検証
+    assert_removed_band(page, REMOVED_IN_PENDING_BY_TAB["tasks"])
+    assert_band_above(page, below)
+    assert page.locator('[data-id="T-2"]').count() == 0
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """絞り込みの条件で表の行が 0 件になっても、消したタスクは絞り込まず帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, "#tab=tasks&view=table&f.status=中止")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_PENDING_BY_TAB["tasks"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("V-2", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点でタスクを消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator(BAND).count() == 0
 
 
 def _board_columns(page: Page) -> list[list[object]]:

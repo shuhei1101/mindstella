@@ -21,6 +21,8 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import preselect_diff
+from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
@@ -532,3 +534,40 @@ def test_code_block_and_diagram_raw_when_long_line(
         assert page.is_visible(selector)
         assert not overflows_horizontally(page, selector)
         assert axe_rule_results(page, selector, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+def test_withdrawn(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """取り下げた項目の全画面にも、題の右の取り下げの札と「取り下げた理由」の節をパネルと同じに出す（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    preselect_diff(page, None)
+    open_preview(url, "#tab=research&id=R-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 実行
+    _open_full(page)
+    # 検証
+    assert page.locator(f"dialog.full .d-title {WITHDRAWN_BADGE}.wd-large").inner_text() == "取り下げ"
+    assert "取り下げ" not in page.eval_on_selector_all("dialog.full .d-meta dt", "dts => dts.map(d => d.textContent)")
+    reason = page.locator('dialog.full section.d-sec:has(> h3:text-is("取り下げた理由")) [data-key="reason"]')
+    assert reason.inner_text() == WITHDRAWN_REASONS["R-2"]
+
+
+def test_diff_withdrawn(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面にも、選んだ時点で取り下げたことを「取り下げ」の行と「取り下げた理由」の節の前後で並べる（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=research&id=R-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 実行
+    _open_full(page)
+    # 検証
+    row = page.locator("dialog.full .d-meta dd.df-key .df-kv")
+    assert row.locator("del.df-was").inner_text().endswith("（なし）")
+    assert row.locator(f"ins.df-now {WITHDRAWN_BADGE}").inner_text() == "取り下げ"
+    reason = page.locator('dialog.full [data-key="reason"] .df-kv')
+    assert reason.locator("ins.df-now").inner_text().endswith(WITHDRAWN_REASONS["R-2"])

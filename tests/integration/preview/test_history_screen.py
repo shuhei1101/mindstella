@@ -6,6 +6,7 @@ from playwright.sync_api import Page
 from preview_drawer_helpers import ALL_DECISION_STATUSES_HASH
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_history_helpers import preselect_diff
+from preview_removed_helpers import BAND, REMOVED_IN_V2_BY_TAB, assert_removed_band
 from workspace_fixtures import CallTool
 
 # 変更履歴のモーダルと、時点の行
@@ -72,6 +73,45 @@ def test_list_when_no_pending(
     _open_dialog(page)
     # 検証
     assert [row["sel"] for row in page.evaluate(ROWS_JS)] == ["", "since", "V-2", "V-1"]
+
+
+def test_list_when_removed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """時点の件数に消した項目も数える。消した項目だけのまだまとめていない変更の行も出し、合わせた範囲で足して消した項目は消した項目として 1 件に数える（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    _open_dialog(page)
+    # 検証
+    rows = page.evaluate(ROWS_JS)
+    assert [row["sel"] for row in rows] == ["", "pending", "since", "V-2", "V-1"]
+    # まだまとめていない変更: タスクを 1 件消しただけ
+    # V-2: 7 件を消した。V-1: 2 件を足して（検討事項とメモ）5 件を取り下げた
+    # 前回開いてから: 足した検討事項 D-4 を後で消したので、足した 2 件のうち消した 1 件を消した項目の 1 件に数える（7 + 1 の消した 8 件、足した 1 件、取り下げた 5 件）
+    assert [row["n"] for row in rows] == [None, "1 件", "14 件", "7 件", "7 件"]
+
+
+def test_pick_when_removed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """消した項目を持つ時点を選ぶと、モーダルを閉じ、どの画面もその時点で消した項目の帯を付けて描き直す（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    assert page.locator(BAND).count() == 0
+    _open_dialog(page)
+    # 実行
+    page.click(f"{ROW}[data-sel='V-2']")
+    # 検証
+    page.wait_for_selector(BAND, timeout=REDRAW_TIMEOUT_MS)
+    assert page.locator(f"{DIALOG}[open]").count() == 0
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+    # 差分を出さない行を選ぶと、帯も外す
+    _open_dialog(page)
+    page.click(f"{ROW}[data-sel='']")
+    page.wait_for_selector(BAND, state="detached", timeout=REDRAW_TIMEOUT_MS)
 
 
 def test_pick(write_history_preview: WriteReviewPreview, open_preview: OpenPreview) -> None:
