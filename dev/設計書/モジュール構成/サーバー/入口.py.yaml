@@ -85,6 +85,15 @@ constants:
     usecase: 記録の追加と更新
     summary: '`batch` が `$番号` を置き換えるキー'
     value: ("parent", "depends_on", "for", "related", "sources")
+  - name: HTML_BODY_INPUT_KEY
+    title: HTML の本文を渡すキー
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 記録の追加と更新
+    summary: '`item` で資料の HTML の本文を渡すキー（YAML には残さない）'
+    value: '"body_html"'
+    status: planned
+    introduced:
+      pr: 214
 functions:
   - name: validate_input_keys
     title: 渡せないキーの確認
@@ -104,8 +113,16 @@ functions:
         required: true
         passing: positional
         description: ツールの `item`
+      - name: index
+        type: int
+        required: true
+        passing: keyword
+        description: エラーの行の `items[{番号}]` に使う、その種類の並びの中の位置（足すときは末尾の位置、直すときはその項目の位置）
     process: |-
       1. `RESERVED_KEYS` のキーがあれば `SchemaMismatchError`（`item: {キー}: ツールが付けるキーです`）を送る（`body_markdown` はどの種類も渡せる）
+      2. `HTML_BODY_INPUT_KEY` がある場合
+         - `kind` が `doc` でなければ `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`）を送る
+         - `BODY_INPUT_KEY` もあれば `SchemaMismatchError`（`{種類のファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない`）を送る
     exceptions:
       - name: SchemaMismatchError
         condition: '`RESERVED_KEYS`（`id`・`created`・`updated`・`updated_by`・`body` など）のどれかを持つ'
@@ -123,6 +140,12 @@ functions:
         mock: なし
         expected: '`SchemaMismatchError`（`lines` にそのキー）'
         exception: スクリプトが付けるキーを持つ
+      - name: test_validate_input_keys_when_html_body
+        case: 異常
+        summary: 資料以外の `body_html` と、本文の両方の指定を弾く
+        condition: '`parametrize`: `task` に `{"title": "t", "body_html": "<p>a</p>"}`（`index` 0） / `doc` に `{"title": "t", "body_markdown": "a", "body_html": "<p>a</p>"}`（`index` 2）'
+        expected: 'どちらも `SchemaMismatchError`。行が順に `tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる` / `docs.yaml: items[2].body_html: body_markdown と body_html は一緒に渡せない`。`doc` に `body_html` だけを渡すと何も送らない'
+        mock: なし
   - name: merge_changes
     title: 変更の当てはめ
     kind: 関数
@@ -1300,10 +1323,11 @@ functions:
       type: tuple[Staged, dict[str, Any]]
       description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
     process: |-
-      1. 渡せないキーを確かめる（`validate_input_keys`）
+      1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）
       2. `staged.items` のその種類で ID を振る（`next_id`。`taken` に消した項目の記録（`removed_items`）の ID を渡す）
       3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`EDITOR`）・`seq`・`added_seq` を末尾に置いた項目を作る
          - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す（どの種類も）
+         - `body_html` がある場合、項目の `body` を `{ID}.html` にし、本文の書き込みを足す（資料だけ）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
       5. 末尾に足した並びと、`touched` にその種類を足した `Staged` を返す
     unit_tests:
@@ -1325,6 +1349,12 @@ functions:
         condition: N-1 を持ち、記録の `pending.removed` に N-2 を持つ `Staged` にメモを足す
         mock: '`now`'
         expected: 結果の `id` が N-3
+      - name: test_stage_add_when_doc_has_html_body
+        case: 正常
+        summary: 資料の HTML の本文を `{ID}.html` の書き込みにする
+        condition: '空の `Staged` に `doc` の `{"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}`'
+        expected: 項目の `body` が `A-1.html` で `body_html` のキーを持たず、`bodies` に `A-1.html` → `<p>a</p>`、結果の `body` が `.mindstella/docs/A-1.html`
+        mock: なし
   - name: stage_update
     title: 更新を当てる
     kind: 関数
@@ -1358,9 +1388,12 @@ functions:
       type: tuple[Staged, dict[str, Any]]
       description: 新しい `Staged` と、`update` の結果 `{id, file, changed}`
     process: |-
-      1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`）
+      1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`。`index` はその項目の位置）
       2. 変更を当てはめ、`updated` を今の日時、`updated_by` を `EDITOR` にする（`merge_changes`）
          - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（どの種類も）
+         - `body_html` がある場合、`body` を `{ID}.html` にし、本文の書き込みを作る（資料だけ）
+         - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
+         - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
       3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `EDITOR`）
          - 変わったものがある場合、通し番号を振り（`advance_seq`）、項目の `seq` をその番号にして、変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は記録のもの）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
       4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
@@ -1387,6 +1420,12 @@ functions:
         condition: '`updated_by: user` の D-1 に `{"answer": "a"}`。保持する回数は既定'
         mock: '`now`'
         expected: D-1 の `updated_by` が `ai`、`history[0].by` が `ai` で、`history[0].before` に `updated_by` が無い
+      - name: test_stage_update_when_body_format_changed
+        case: 正常
+        summary: 形式を替えると前の形式の本文を消す書き込みにし、前の `body` を変更履歴に積む
+        condition: '`body: A-1.md`（本文 `a\nb\n`）の資料 A-1 に `{"body_html": "<p>a</p>\n"}`。保持する回数は既定。続けて同じ `Staged` で `{"body_markdown": "a\n"}`'
+        expected: '1 回目: A-1 の `body` が `A-1.html`、`bodies` に `A-1.html`、`removed_bodies` が `["A-1.md"]`、`changed` が `body`・`body_html`、`history` の先頭の `before.body` が `A-1.md` で `body_diff` を今の本文に当てると `a\nb\n`。2 回目: `body` が `A-1.md`、`removed_bodies` が `["A-1.html"]` で `bodies` に `A-1.html` が無い'
+        mock: なし
   - name: apply_option_edit
     title: 案の書き換えを当てる
     kind: 関数
@@ -1854,3 +1893,7 @@ data_models:
       - name: changes
         type: Changes
         description: 当てた後のまとまりの記録
+      - name: removed_bodies
+        type: list[str]
+        description: 書き込んだ後に消す `docs/` の本文のファイル名（形式を替えた資料の前の形式の本文）。`save_batch` の `BatchChange.removed_bodies` に渡す
+        default: '[]'

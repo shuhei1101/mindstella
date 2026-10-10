@@ -112,10 +112,10 @@ functions:
         description: '`config.yaml` がスキーマに合わないときの合わない箇所の行（`read_records` だけが渡す）'
     returns:
       type: dict[str, Any]
-      description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`changes`・`derived`・`built_at`・`settings_problem`'
+      description: '`settings`・`decisions` など種類ごと（ファイル名から `.yaml` を落としたキー）・`bodies`・`marked_bodies`・`changes`・`derived`・`built_at`・`settings_problem`'
     process: |-
       1. 種類ごとの `items` をファイル名から `.yaml` を落としたキーで入れる（項目の `history` もそのまま入る）
-      2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）
+      2. 項目の `body` が指す本文を読んで `bodies` に入れる（本文の読み込み。`read_body`。読めないものは入れない）。形式が `html` の本文は、行の印を足したもの（`mark_lines`）を `marked_bodies` にも入れる
       3. まとまりを読んで `changes` に入れる（`load_changes`）
       4. 画面に出す値を計算して `derived` に入れる（`derive_preview_values`）
       5. `settings_problem` を入れる（渡されなければ `null`。配る書き出しも同じキーを持つ）
@@ -132,6 +132,12 @@ functions:
         condition: '`history` を持つ D-1 と、`sets` を 1 つ持つ `changes.yaml`'
         mock: なし
         expected: '`changes` が `changes.yaml` と同じで、`decisions` の D-1 が `history` を持つ'
+      - name: test_collect_preview_data_with_html_body
+        case: 正常
+        summary: HTML の本文は原文を `bodies` に、行の印つきを `marked_bodies` に入れる
+        condition: 'A-1（`body: A-1.md`）・A-2（`body: A-2.html`、本文 `<p>a</p>`）'
+        expected: '`bodies` が `A-1.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1">a</p>` だけを持つ'
+        mock: なし
   - name: escape_for_script
     title: 埋め込みのエスケープ
     kind: 関数

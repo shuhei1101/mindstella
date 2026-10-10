@@ -138,7 +138,7 @@ functions:
       1. `body` の場合
          - 項目の `body` の本文を読む（`read_body`。無ければ `{ID} は本文を持ちません` を返す）
          - 改行で分け、`end` が行数を超えれば `{ID} の本文は {行数} 行しかありません` を返す
-         - `start`〜`end` 行をつないだものを元の文にする（`normalize_source`）
+         - 形式（`body_format`）が `markdown` なら `start`〜`end` 行をつないだものを元の文にする（`normalize_source`）。`html` ならその行の範囲の描いた文（`text_of_lines`）を元の文にする（`normalize_selected`）
       2. `value` の場合
          - キーのパスで値を引く（`value_at`。無ければ `{ID} にキー {key} がありません` を返す）
          - 配列は要素を改行でつなぎ、それ以外は文字列にして元の文にする（`normalize_selected`）
@@ -156,6 +156,12 @@ functions:
         condition: '`parametrize`: 3 行の本文で `end: 5` / 1 行目に無い文 / 本文を持たない項目で `body` / 無いキー `options[Z].cons`'
         mock: なし
         expected: どれも空でない文字列（順に `3 行`・`1〜1 行目`・`本文を持ちません`・`options[Z].cons` を含む）
+      - name: test_check_location_when_html_body
+        case: 正常
+        summary: HTML の本文はタグを外した描いた文と照らす
+        condition: '`body: A-1.html` で 1・2 行目が `<style>p { color: red }</style>` とコメント、4 行目が `<p>言い<b>換え</b>たい文</p>` の資料。`parametrize`: 4〜4 行で「言い換えたい文」 / 1〜1 行で「color」 / 4〜4 行で「書き直した文」'
+        expected: 順に `None` / 空でない文字列 / 空でない文字列（`4〜4 行目` を含む）
+        mock: なし
   - name: value_at
     title: キーのパスの値
     kind: 関数

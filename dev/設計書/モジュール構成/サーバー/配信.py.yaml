@@ -749,7 +749,7 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md` を名前の順に並べる（`.mindstella-opened` は見ない）
+      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md`・`*.html` を名前の順に並べる（`.mindstella-opened` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
@@ -764,6 +764,12 @@ functions:
         condition: '`parametrize`: `.mindstella/changes.yaml` を足す / `.mindstella/.mindstella-opened` を足す'
         mock: なし
         expected: '`changes.yaml` では印が変わり、`.mindstella-opened` では変わらない'
+      - name: test_workspace_signature_with_html_body
+        case: 正常
+        summary: HTML の本文の書き換えでも印が変わる
+        condition: '`docs/A-1.html` を持つワークスペース。`parametrize`: `docs/A-1.html` を書き換える / `docs/A-2.html` を足す'
+        expected: どちらも書き換えの前と後で印が違う
+        mock: なし
   - name: stream_events
     title: 書き換えの知らせ
     kind: 関数

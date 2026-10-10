@@ -350,7 +350,7 @@ functions:
       description: 変わったものが無ければ `None`
     process: |-
       1. `updated`・`updated_by`・`history`・`history_dropped_seq`・`body` を除いたキーの和を取り、値が違うキーを `before` にする（前に無いキーは `None`）
-      2. 前の本文があり後の本文と違う場合、`body_diff` を作る（`diff_body`）。前に本文が無い場合は `before.body` を `None` にする
+      2. 前の本文があり後の本文と違う場合、`body_diff` を作る（`diff_body`）。前に本文が無い場合は `before.body` を `None` にする。前の `body` と後の `body` がどちらもあり名前が違う（資料の本文の形式を替えた）場合は `before.body` を前の名前にする
       3. `before` も `body_diff` も無ければ `None` を返す
       4. `seq`・`at`・`by`・`before`（とあれば `body_diff`）を持つ 1 回分を返す
     unit_tests:
@@ -372,6 +372,12 @@ functions:
         condition: '`parametrize`: `answer` を変え `by="ai"` / `updated_by` だけが `user` → `ai` に変わった項目で `by="ai"`'
         mock: なし
         expected: 前者は `by` が `ai` で `before` に `answer` だけ。後者は `None`
+      - name: test_make_entry_when_body_format_changed
+        case: 正常
+        summary: 本文の形式を替えた回は前の `body` を `before` に入れる
+        condition: '前の項目 `body: A-1.md`・本文 `a\n`、後の項目 `body: A-1.html`・本文 `<p>a</p>\n`'
+        expected: '`before` が `{body: A-1.md}` で、`body_diff` を後の本文に当てると `a\n`'
+        mock: なし
   - name: stack_history
     title: 変更履歴を積む
     kind: 関数

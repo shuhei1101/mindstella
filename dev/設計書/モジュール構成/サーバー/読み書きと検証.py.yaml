@@ -131,10 +131,10 @@ data_models:
     properties:
       - name: name
         type: str
-        description: '`docs/` の中のファイル名（`{ID}.md`）'
+        description: '`docs/` の中のファイル名（`{ID}.md`、資料の HTML の本文は `{ID}.html`）'
       - name: text
         type: str
-        description: 本文の Markdown
+        description: 本文（Markdown か HTML）
   - name: Change
     title: 書き込みの変更
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -1641,6 +1641,37 @@ functions:
         condition: 読んだ時点が D-1・D-2、変更後が D-1（そのまま）・D-2（`status` を直した）・D-3（足した）
         mock: なし
         expected: '`{D-2, D-3}`'
+  - name: body_format
+    title: 本文の形式
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    kind: 関数
+    scope: public
+    summary: 本文のファイル名の拡張子から形式を返す
+    status: planned
+    introduced:
+      pr: 214
+    args:
+      - name: name
+        type: str | None
+        required: true
+        passing: positional
+        description: 項目の `body`
+    returns:
+      type: Literal['markdown', 'html'] | None
+      description: '`.html` で終われば `html`、`.md` で終われば `markdown`、`None` かそれ以外は `None`'
+    process: |-
+      1. `name` が文字列でなければ `None` を返す
+      2. 拡張子が `.html` なら `html`、`.md` なら `markdown`、それ以外は `None` を返す
+    unit_tests:
+      - name: test_body_format
+        case: 正常
+        summary: 拡張子から形式を決める
+        condition: '`parametrize`: `A-1.md` / `A-1.html` / `None` / `A-1.txt`'
+        expected: '`markdown` / `html` / `None` / `None`'
+        mock: なし
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py
+notes:
+  HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'
