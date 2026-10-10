@@ -99,3 +99,5 @@ functions:
         condition: '`parametrize`: 4 行目 `<p>言い<b>換え</b>たい文</p>` で 4〜4 / `<style>p{}</style>` の行 / コメントの行 / `&amp;` を含む行 / 範囲の外の行'
         expected: 順に `言い換えたい文` / 空 / 空 / `&` を含む / 範囲の外の文を含まない
         mock: なし
+test_files:
+  - tests/unit/scripts/test_html_body.py
