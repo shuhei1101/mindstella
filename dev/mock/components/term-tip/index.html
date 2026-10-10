@@ -18,8 +18,10 @@
   <style>
     /* カタログの面: 今のプレビューの全画面の固定を外し、縦に流す */
     html, body { height: auto; overflow: visible; }
+    /* カタログの面: 今のプレビューの画面の土台の並べ方を外す */
+    body { display: block; min-width: 0; }
     /* カタログの本文 */
-    .catalog { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+    .catalog { box-sizing: border-box; width: 100%; max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
     /* カタログの節: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
     /* カタログの節の見出し */
