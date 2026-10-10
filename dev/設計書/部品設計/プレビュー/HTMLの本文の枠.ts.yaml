@@ -1,0 +1,71 @@
+title: "HTMLの本文の枠"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/html-body-frame.ts#MindmapPreview.htmlBodyFrame"
+story: "Preview/HtmlBodyFrame"
+states:
+  - name: Rendered
+    description: 見出し・段落・表・`<svg>` の図を持つ本文。枠の高さが中身に合い、枠の中にスクロールの帯が出ない。地は白で、ダークでも資料の色のまま
+  - name: StyleIsolated
+    description: 本文の `<style>` が `*`・`body`・`p` の色と余白を `!important` で塗っても、枠の外の見本の段落・見出しは変わらない
+  - name: Loading
+    description: 描く前。枠は 120px の高さを取り、描いた後に中身の高さへ伸びる
+    screenshot: false
+  - name: WithScripts
+    description: '`<script>`・`onerror` の画像・`onclick` のボタンを持つ本文。見出し・段落は描き、ボタンを押しても何も起きない'
+  - name: CodeBlock
+    description: Markdown の中の `html` のコードブロック。行の印を持たず、枠の中で選んでも「選び終えた」を知らせない
+    args:
+      - name: selectable
+        value: 'false'
+      - name: label
+        value: html のコードブロック
+  - name: DiffMarks
+    description: 2 つ目の段落を変え、4 つ目の段落を足した本文。変えた段落に破線、足した段落に実線の印を付け、ほかの段落には付けない
+    args:
+      - name: marks
+        value: '{"added": [5], "changed": [3]}'
+  - name: Narrow
+    description: 幅 390px。本文の図・表が枠の幅に収まる
+    notes:
+      見せ方: Storybook の画面幅を 390px にする
+lead: HTML の本文と Markdown の中の `html` のコードブロックを、スクリプトを動かさない枠（`sandbox="allow-same-origin"` の iframe の `srcdoc`）に描く。枠の高さは描いた中身に合わせ、枠の中で選んだ文を元の HTML の行の範囲にして使う側へ知らせる。
+status: planned
+args:
+  - name: source
+    type: 文字列
+    required: true
+    description: 描く HTML。資料の本文は記録の `marked_bodies`（行の印つき）、`html` のコードブロックはその中身をそのまま渡す
+    status: planned
+  - name: selectable
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: 真のとき、枠の中で選んだ文を行の範囲にして「選び終えた」で知らせる。`html` のコードブロックと配る書き出しでは偽
+    status: planned
+  - name: label
+    type: 文字列
+    required: false
+    default: 本文（HTML）
+    description: 枠の読み上げの名前（iframe の `title`）
+    status: planned
+  - name: marks
+    type: オブジェクト
+    required: false
+    default: なし（印を付けない）
+    description: '差分の印を付ける原文の行（`{added: number[], changed: number[]}`）。行を含む最も内側の `data-line` を持つ要素に、足したは実線、変わったは破線の枠と地の色を付ける'
+    status: planned
+events:
+  - name: 選び終えた
+    when: '`selectable` が真で、枠の文書の `pointerup`・`selectionchange` の後に空でない選択があるとき'
+    value: '`{start, end, text, rects}`。`start`・`end` は元の HTML の行（インターフェース定義『プレビューを開く』の制約「選んだ箇所の対応づけ」の数え方）、`text` は選んだ描いた文、`rects` は選択の最初と最後の矩形に枠の位置を足した親の画面の座標'
+    description: 使う側が『選んだ箇所のコメントの入口』を `rects` の近くに出し、押されたら `start`・`end`・`text` を箇所にする
+  - name: 選びを外した
+    when: '`selectable` が真で、枠の中の選択が空になったとき'
+    description: 使う側が入口を閉じる
+accessibility:
+  - 枠は `title` に `label` を持ち、読み上げで本文の枠と分かる
+  - 差分の印は色だけでなく、線の形（足した = 実線、変わった = 破線）でも分ける
+refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
+notes:
+  モック: '`dev/mock/components/html-body-frame/`'
