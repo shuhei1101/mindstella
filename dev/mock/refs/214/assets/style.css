@@ -40,8 +40,8 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 
 /* ===== HTML の本文の枠: 資料が自分で持つ見た目の紙として、詳細の地と分ける ===== */
 
-/* 枠: 幅いっぱい。高さは描いた中身に合わせる（スクリプトが height を入れる）。地は白にして、ダークでも資料の色のまま読む */
-iframe.html-frame { display: block; width: 100%; min-height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; }
+/* 枠: 幅いっぱい。描く前は 120px で、描いた後は中身の高さに合わせる（スクリプトが height を入れる）。地は白にして、ダークでも資料の色のまま読む */
+iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; }
 
 /* ===== HTML の本文の差分 ===== */
 
