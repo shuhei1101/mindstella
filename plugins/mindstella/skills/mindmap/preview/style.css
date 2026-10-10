@@ -1535,3 +1535,42 @@ button.n-item.sel .r1, button.n-item.locked .r1 { padding-right: 10px; }
 .map-canvas.focusing button.n-item.sel { opacity: 1; }
 /* 表示の設定の種類の行のホバー: 面の色が濃くなる分、件数の文字を 1 段濃くして読めるようにする */
 .st-kinds label:hover .n { color: var(--text-2); }
+
+/* ===== 本文の形式の札: 形式の名前を等幅の文字で出す（色だけで分けない） ===== */
+
+/* 札: 取り下げの札と同じ高さ・枠。文字は等幅にして、状態の札・取り下げの札と見分ける */
+.fmt-badge { display: inline-flex; align-items: center; flex: none; height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-3); font: 600 11px/1 var(--font-mono); letter-spacing: .02em; white-space: nowrap; vertical-align: 1px; }
+/* HTML: 地の面を敷き、文字を一段濃くする（見た目のある資料を一覧で拾いやすくする） */
+.fmt-badge.fmt-html { border-color: var(--text-3); background: var(--surface-2); color: var(--text-2); }
+/* カードの種類の右: 種類の色（印の色）を引き継がない */
+.doc-kind .fmt-badge { margin-left: 2px; }
+/* 詳細のヘッダー: 種類と ID の右 */
+.panel-head .fmt-badge { margin-left: 2px; }
+/* 取り下げた資料のカード: 札も薄くする */
+.card.is-withdrawn .fmt-badge { color: var(--text-3); }
+
+/* ===== HTML の本文の枠: 資料が自分で持つ見た目の紙として、詳細の地と分ける ===== */
+
+/* 枠: 幅いっぱい。描く前は 120px で、描いた後は中身の高さに合わせる（スクリプトが height を入れる）。地は白にして、ダークでも資料の色のまま読む */
+iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; }
+/* Markdown の中の html のコードブロックの枠: 前後の段落との間を空ける */
+.md .html-block { margin: 12px 0; }
+/* 差分の表示の間、変わった html のコードブロックは枠に描かず原文に印を付けて出す */
+.md pre.html-block-src { margin: 12px 0; }
+
+/* ===== HTML の本文の差分 ===== */
+
+/* 見せ方の切り替えと凡例の行を持つ、描いた結果と原文の差分の入れ物 */
+.html-diff-c { display: grid; gap: 8px; }
+/* 切り替えの行: 切り替えの右に凡例を置き、狭い幅では折り返す */
+.html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* 凡例の行の余白を切り替えの行に揃える */
+.html-diff-bar .df-legend { margin: 0; }
+/* 切り替えで隠した側（描いた結果・原文の差分・凡例）は、display を持つ部品でも出さない */
+.html-diff-c [hidden], .html-diff[hidden] { display: none; }
+/* 原文の行の差分 */
+.html-diff { display: grid; gap: 6px; }
+/* 原文の差分の見出し: 描いた結果ではなく原文であることを示す */
+.html-diff-head { margin: 0; color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
+/* 変わっていない行を畳んだ行 */
+.df-raw .df-line.df-skip { padding-left: 2em; text-indent: 0; color: var(--text-3); font-family: var(--font-sans); font-size: var(--fs-xs); }

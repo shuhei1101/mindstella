@@ -216,6 +216,8 @@ namespace MindmapPreview {
       if (key === "body") {
         // 本文を初めて足した回: 前は本文が無い
         if (value === null) body = "";
+        // 資料の本文の形式を替えた回: 前の形式のファイル名に戻す
+        else if (typeof value === "string") item["body"] = value;
         continue;
       }
       if (value === null) delete item[key];

@@ -9,6 +9,13 @@ var MindmapPreview;
     MindmapPreview.orderDocs = orderDocs;
     /** 納品物の列の値 */
     const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
+    /** 形式の列の値（札の文言と同じ） */
+    const BODY_FORMAT_VALUES = ["MD", "HTML"];
+    /** 形式の列の値。`body` の拡張子から決め、本文を持たなければ空にする */
+    function bodyFormatLabel(body) {
+        const format = MindmapPreview.bodyFormatOf(typeof body === "string" ? body : undefined);
+        return format === null ? "" : format === "html" ? "HTML" : "MD";
+    }
     /** 資料の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
     function docColumns(index) {
         const common = MindmapPreview.commonColumns(index.data.settings);
@@ -27,6 +34,17 @@ var MindmapPreview;
             },
             common.status(MindmapPreview.DOC_STATUSES),
             common.text("kind", "種類", { filterable: true, nowrap: true, priority: 2 }),
+            {
+                key: "body_format",
+                label: "形式",
+                nowrap: true,
+                filterable: true,
+                order: BODY_FORMAT_VALUES,
+                priority: 2,
+                get: (row) => bodyFormatLabel(row["body"]),
+                cell: (row) => MindmapPreview.bodyFormatBadgeOf(typeof row["body"] === "string" ? row["body"] : undefined) ??
+                    MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
+            },
             common.target,
             common.category,
             common.phase,
@@ -123,7 +141,7 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "span",
                     attrs: { class: "doc-kind" },
-                    children: [MindmapPreview.icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? ""],
+                    children: [MindmapPreview.icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? "", MindmapPreview.bodyFormatBadgeOf(doc.body)],
                 }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "c-ttl" }, children: [doc.title] }),
                 // 取り下げた資料は、差分の表示によらず差分の印より前に札を置く
