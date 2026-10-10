@@ -616,7 +616,7 @@ functions:
         description: ID
     returns:
       type: dict[str, Any]
-      description: '`{item, kind, body_markdown, referenced_by}`'
+      description: '`{item, kind, body_markdown, body_html, body_format, referenced_by}`'
     process: 1. ワークスペースを読み、まとめる（`load_workspace`、`show_item`）
     unit_tests:
       - name: test_run_show
@@ -624,7 +624,7 @@ functions:
         summary: 1 件を出力の形にする
         condition: D-1 で `D-1`
         mock: なし
-        expected: '`item`・`kind`・`body_markdown`・`referenced_by` のキーを持つ'
+        expected: '`item`・`kind`・`body_markdown`・`body_html`・`body_format`・`referenced_by` のキーを持つ'
   - name: run_attrs
     title: attrs の処理
     kind: 関数
