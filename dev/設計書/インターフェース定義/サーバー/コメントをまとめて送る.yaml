@@ -7,7 +7,7 @@ flows:
     summary: チェックしたコメントだけを送信へ移し、残りはレビュー中に残す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る。MCP サーバーの環境から `TMUX`・`TMUX_PANE` を外す）
       - name: make_workspace
         description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目を指す「ここは言い換える」）・C-3（項目を指さない「全体に目を通した」）を持ち、`submissions.yaml` を持たないワークスペース
         notes: '`ids` は `["C-2", "C-1"]`'
@@ -26,7 +26,7 @@ flows:
         IF-->>クライアント: 201、JSON（sent・items）
       ```
     expected:
-      - ステータスが 201 で、`items` が C-1 → S-1、C-2 → S-2 の順
+      - ステータスが 201 で、`items` が C-1 → S-1、C-2 → S-2 の順で、`entered` が `false`（tmux の外のため）
       - '`submissions.yaml` の S-1 が `target: D-1`・`body: 案 A にする` で `loc` を持たず、S-2 が `target: A-1` と本文の 2 行目の `loc` を持ち、どちらも `taken: null`'
       - '`comments.yaml` に C-3 だけが残る'
       - '`decisions.yaml`・`docs.yaml` の中身が送る前と同じ'
@@ -163,9 +163,105 @@ flows:
       - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
       - '`submissions.yaml`・`comments.yaml` の中身が送る前と同じ'
     test: test_error_when_write_fails
-lead: コメントの一覧でチェックしたレビュー中のコメントを受け、全てを取り込んでいない送信として `submissions.yaml` に足してから、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。
+  - name: 正常系（Claude Code へ入力する）
+    summary: tmux の中で立てたとき、足した送信を Claude Code のペインへ 1 回の入力として貼り、会話の記録で確かめる
+    setup:
+      - name: Mock
+        description: Claude Code の代わりに、貼られて確定した文字列を 1 件の user の行（`cwd` は自分の作業フォルダ）として、`CLAUDE_CONFIG_DIR` の `projects` の下の作業フォルダに当たるフォルダの jsonl へ書き足す偽のコマンドを tmux のペインで動かす。そのペインの `TMUX`・`TMUX_PANE` と、テストの一時フォルダの `CLAUDE_CONFIG_DIR` を渡して MCP サーバーを立て、`preview_url` が返した URL へ HTTP のクライアントで送る
+      - name: tmux
+        description: テストごとに専用のソケット（`-L`）で立てた tmux のサーバー。後片付けは `kill-session -t` で名前を指して落とす
+        notes: 利用者の tmux のセッションに触れない
+      - name: make_workspace
+        description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目の「言い換えたい文」を指す「ここは言い換える」）・C-3（項目を指さない 2 行の「全体に目を通した」）を持つワークスペース。偽のコマンドと MCP サーバーの作業フォルダにする
+        notes: '`ids` は `["C-1", "C-2", "C-3"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+        participant TM as tmux
+        participant CC as Claude Code（偽のコマンド）
+        participant JL as 会話の記録
+
+        クライアント->>IF: POST {ids: [C-1, C-2, C-3]}
+        IF->>WS: submissions.yaml に 3 件足し、comments.yaml から消す
+        IF->>JL: jsonl の大きさを控える
+        IF->>TM: load-buffer → paste-buffer -p → send-keys Enter
+        TM->>CC: 1 回の入力
+        CC->>JL: user の行を書き足す
+        IF-->>JL: 書き足された行に入力した文字列がある
+        IF-->>クライアント: 201、entered: true
+      ```
+    expected:
+      - ステータスが 201 で、`entered` が `true`
+      - 会話の記録に user の行が 1 件だけ增え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。` である
+      - '`submissions.yaml` の S-1〜S-3 がどれも `taken: null`（取り込み済みにするのは Claude Code が記録した後）'
+      - 応答が送ってから 0.5 秒以内に返る
+    test: test_normal_when_entered_to_claude_code
+  - name: 正常系（処理中で待ち行列に入る）
+    summary: Claude Code が処理中で入力が待ち行列に入ったときも、入力したと返す
+    setup:
+      - name: Mock
+        description: '貼られて確定したとき、user の行を書かずに `{"type": "queue-operation", "operation": "enqueue"}` の行だけを jsonl へ書き足す偽のコマンドを tmux のペインで動かす。ほかは正常系（Claude Code へ入力する）と同じ'
+      - name: tmux
+        description: 正常系（Claude Code へ入力する）と同じ
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）を持つワークスペース
+        notes: '`ids` は `["C-1"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant TM as tmux
+        participant CC as Claude Code（偽のコマンド）
+        participant JL as 会話の記録
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>TM: 貼って Enter
+        TM->>CC: 入力
+        CC->>JL: queue-operation enqueue を書き足す
+        IF-->>クライアント: 201、entered: true
+      ```
+    expected:
+      - ステータスが 201 で、`entered` が `true`
+      - '`submissions.yaml` に S-1 が `taken: null` である'
+    test: test_normal_when_queued
+  - name: 正常系（入力が会話に入らない）
+    summary: 上限までに会話の記録に入らなければ、送信を残したまま入力できなかったと返す
+    setup:
+      - name: Mock
+        description: 貼られても jsonl へ何も書かない偽のコマンドを tmux のペインで動かす（選択の表示で入力が失われた形）。ほかは正常系（Claude Code へ入力する）と同じ
+      - name: tmux
+        description: 正常系（Claude Code へ入力する）と同じ
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）を持つワークスペース
+        notes: '`ids` は `["C-1"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+        participant TM as tmux
+        participant JL as 会話の記録
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>WS: submissions.yaml に足し、comments.yaml から消す
+        IF->>TM: 貼って Enter
+        IF-->>JL: 0.5 秒まで書き足されない
+        IF-->>クライアント: 201、entered: false
+      ```
+    expected:
+      - ステータスが 201 で、`entered` が `false`
+      - '`submissions.yaml` に S-1 が `taken: null` であり、`comments.yaml` が空である'
+      - 応答が送ってから 1 秒以内に返る
+      - MCP サーバーの標準エラーに、入力できなかった理由の行がある
+    test: test_normal_when_not_entered
+lead: コメントの一覧でチェックしたレビュー中のコメントを受け、全てを取り込んでいない送信として `submissions.yaml` に足してから、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。足した後、tmux の中で立てた Claude Code なら、足した送信を Claude Code のペインへ 1 回の入力として貼り、会話の記録に入ったかを確かめて応答に載せる。
 idempotent: false
-side_effects: '`submissions.yaml` に送った件数を足し（無ければ作る）、`comments.yaml` からそのコメントを消す。どちらも一時ファイルから `os.replace` で置き換え、`submissions.yaml` を先に書く。ほかのファイルは書き換えない'
+side_effects: '`submissions.yaml` に送った件数を足し（無ければ作る）、`comments.yaml` からそのコメントを消す。どちらも一時ファイルから `os.replace` で置き換え、`submissions.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送り先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
 callers:
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
 request:
@@ -213,6 +309,11 @@ response:
     type: str
     description: 振った送信の ID（`S-{連番}`）
     example: S-3
+  - name: entered
+    type: bool
+    description: 足した送信を Claude Code へ入力し、会話の記録に入った（または処理中の待ち行列に入った）と確かめたか。送り先のペインが無い・tmux が失敗した・上限までに確かめられなかったときは `false`
+    example: 'true'
+    notes: '`false` でも送信は残っており、話し合いの取り込みで拾われる'
 status_codes:
   - code: '201'
     condition: 全て送った
@@ -257,7 +358,26 @@ constraints:
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
   - item: 二重に送らない
     constraint: 同じ `comment` の送信が既にあるコメントは足さず、その送信の ID を `items[].submission` に返してレビュー中から外す（`submissions.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
+  - item: 送り先
+    constraint: 'MCP サーバーが起動時に Claude Code から受け継いだ `TMUX_PANE` のペインへ、`TMUX` が指す tmux のサーバーで入力する（『MCP サーバーの起動』の制約「受け継ぐ環境変数」）。どちらかが空なら tmux を呼ばずに `entered: false` にする'
+    notes: '要件の送り先の決め方の案 A。MCP の設定の `env` は親の環境へ足され、`TMUX`・`TMUX_PANE` を消さないことを PoC で確かめた（PR #201 のサーバー.md の PoC 結果）'
+  - item: 入力の時点
+    constraint: '`submissions.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。入力と確かめはプロセスの中の 1 本の入力の鍵で順に行い、同時に送られた 2 回の入力を重ねない'
+  - item: 入力する文字列
+    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。読み直してください。` の 1 行だけを入力する。送信の ID・向けた項目・箇所・本文は入れない'
+    notes: 'ユーザーが決めた文面（PR #201 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分ける印で、Claude Code は取り込んでいない送信の一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
+  - item: 入力のやり方
+    constraint: 文字列を `tmux load-buffer -b {名前の付いたバッファ} -` へ標準入力で渡し、`tmux paste-buffer -p -d -b {同じバッファ} -t {TMUX_PANE}` でブラケットペーストとして貼り、待たずに `tmux send-keys -t {TMUX_PANE} Enter` で確定する。ペインの状態（打ちかけ・選択の表示）は見ない
+    notes: 'ブラケットペーストにしないと本文の改行で途中確定する。貼ってから `Enter` までの待ちは 0ms で確定することを PoC で確かめた。打ちかけとつながる・選択の表示で失われるのは利用者が tmux で気づいて直す（PR #201 の確認ログ）'
+  - item: 届いたかの確かめ
+    constraint: '貼る前に、会話の記録のフォルダの各 jsonl の大きさを控える。会話の記録のフォルダは `{CLAUDE_CONFIG_DIR、無ければ ~/.claude}/projects` の下で、サーバーの起動時の作業フォルダの絶対パスを UTF-16 の単位で英数字以外を `-` にした名前が 200 文字以下ならその名前のフォルダ、超えるなら名前の先頭 200 文字に `-` を続けた文字列で始まるフォルダの全てにする（Claude Code が末尾に足すパスのハッシュは作らない）。`Enter` の後、50ms ごとに控えより後ろへ書き足された行を読み、次のどちらかがあれば `entered: true` にする。① `type` が `user` で、`cwd` がサーバーの起動時の作業フォルダと一致し、本文に入力した文字列が入った行（入力を待っていたとき。打ちかけとつながったときも含む）。② `type` が `queue-operation`・`operation` が `enqueue` の行（Claude Code が処理中で、入力が待ち行列に入ったとき。この行は本文も `cwd` も持たない）。上限までにどちらも無ければ `entered: false` にする。会話の ID（`CLAUDE_CODE_SESSION_ID`）は `/clear`・`/resume` で変わるため使わない'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
+    notes: Claude Code 2.1.296 で確かめた（2026-10-10）。入力を待っているときは貼ってから約 0.13 秒で user の行が書かれ、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる。選択の表示で失われたときはどちらも書かれない。新しい会話は最初の user の行まで jsonl を作らないため、控えに無いファイルは大きさ 0 から読む。同じ作業フォルダで別の Claude Code を並べて動かしていると、別の会話に入ったものも届いたと数える
+  - item: 入力の上限
+    constraint: 'tmux の 3 つのコマンドと届いたかの確かめを合わせて、貼り始めてから 0.5 秒で打ち切る。各 tmux のコマンドの待ちは、その時点の残り時間を超えない。tmux が終了コード 0 以外を返したか時間内に終わらないときは、残りのコマンドを呼ばずに `entered: false` にする。どの場合も理由を標準エラーに記録する'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
 refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
 test_file: tests/integration/server/test_comments_send.py
+notes: {}

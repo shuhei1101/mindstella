@@ -1004,7 +1004,7 @@ functions:
         description: 要求を送る関数
     returns:
       type: '{read, add, update, remove, saveDraft, send}'
-      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`、`send(ids)` は `POST api/comments/send` を呼ぶ'
+      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`、`send(ids)` は `POST api/comments/send` を呼ぶ。`send` の成功の本文は `{sent, items: {comment, submission}[], entered}`'
     process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す
     unit_tests:
       - name: test_comment_api

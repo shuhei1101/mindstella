@@ -161,7 +161,7 @@ namespace MindmapPreview {
         ),
       saveDraft: (draft: object) => callApi<null>("PUT", API_PATHS.drafts, draft, fetchFn),
       send: (ids: string[]) =>
-        callApi<{ sent: string; items: { comment: string; submission: string }[] }>(
+        callApi<{ sent: string; items: { comment: string; submission: string }[]; entered: boolean }>(
           "POST",
           API_PATHS.commentsSend,
           { ids },

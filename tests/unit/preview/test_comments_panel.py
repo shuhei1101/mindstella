@@ -106,7 +106,19 @@ PANEL_SCRIPT = """(args) => {
                 element.closest("button") === null
         ),
         hasInput: panel.querySelector("textarea") !== null,
+        sentStatusText: null,
+        sentStatusIcon: null,
+        checkIcon: MindmapPreview.icon("check").innerHTML,
+        alertIcon: MindmapPreview.icon("alert").innerHTML,
     };
+    const sentStatus = [...panel.querySelectorAll('[role="status"]')].find(
+        (status) => status.textContent.includes("件を送り")
+    );
+    if (sentStatus !== undefined) {
+        result.sentStatusText = sentStatus.textContent.trim();
+        const sentIcon = sentStatus.querySelector("svg.icon");
+        result.sentStatusIcon = sentIcon === null ? null : sentIcon.innerHTML;
+    }
     if (sendButton !== undefined) sendButton.click();
     result.sentCalls = sent.length;
     return result;
@@ -183,6 +195,47 @@ def test_comments_panel_when_send_disabled(
     assert observed["sendDisabled"] is True
     assert observed["sentCalls"] == 0
     assert expected_text in observed["text"]
+
+
+@pytest.mark.parametrize(
+    ("entered", "expected_icon", "expected_text"),
+    [
+        pytest.param(
+            True,
+            "checkIcon",
+            "2 件を送り、Claude Code に入力しました（12:04）。",
+            id="entered",
+        ),
+        pytest.param(
+            False,
+            "alertIcon",
+            "2 件を送りましたが、Claude Code には入力できませんでした（12:04）。"
+            "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。",
+            id="not_entered",
+        ),
+    ],
+)
+def test_comments_panel_when_sent(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    entered: bool,
+    expected_icon: str,
+    expected_text: str,
+) -> None:
+    """送れた結果を Claude Code へ入力したかで出し分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    result = {
+        "kind": "sent",
+        "count": 2,
+        "at": "2026-10-10T03:04:00+00:00",
+        "entered": entered,
+    }
+    # 実行
+    observed = _observe(preview_page, checked=["C-1"], result=result)
+    # 検証
+    assert expected_text in observed["sentStatusText"]
+    assert observed["sentStatusIcon"] == observed[expected_icon]
 
 
 # 部品の戻り値（要素・要素の配列・DocumentFragment のどれでも）を文書に置いて、その入れ物を返す関数
