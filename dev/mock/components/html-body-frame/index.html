@@ -425,7 +425,7 @@
         const fit = () => {
           const doc = frame.contentDocument;
           doc.documentElement.style.overflowY = "hidden";
-          new ResizeObserver(() => { frame.style.height = `${doc.documentElement.scrollHeight + frame.offsetHeight - frame.clientHeight}px`; }).observe(doc.documentElement);
+          new ResizeObserver(() => { frame.style.height = `${Math.ceil(doc.documentElement.getBoundingClientRect().height) + frame.offsetHeight - frame.clientHeight}px`; }).observe(doc.documentElement);
         };
         if (frame.contentDocument?.readyState === "complete" && frame.contentDocument.body?.childElementCount) fit();
         else frame.addEventListener("load", fit);
