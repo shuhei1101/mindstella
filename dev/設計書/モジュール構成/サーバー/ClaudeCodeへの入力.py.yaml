@@ -403,3 +403,5 @@ functions:
         condition: 2 つのスレッドから同じ送り先で呼ぶ。`run` は呼ばれている間に他方の `run` が始まっていないかを控える
         mock: '`run`・`clock`・`sleep`'
         expected: 一方の 3 つのコマンドの間に他方のコマンドが入らない
+test_files:
+  - tests/unit/scripts/test_claude_input.py
