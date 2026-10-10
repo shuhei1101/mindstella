@@ -183,6 +183,9 @@ constraints:
   - item: 結果の組み立て
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
+  - item: 受け継ぐ環境変数
+    constraint: Claude Code から受け継いだ `TMUX`（tmux のサーバーのソケット）・`TMUX_PANE`（Claude Code が動くペイン）・`CLAUDE_CONFIG_DIR`（会話の記録を引く設定のフォルダ。無ければ `~/.claude`）と、起動時の作業フォルダを、起動したときの値のまま持ち続ける。『コメントをまとめて送る』が Claude Code へ入力する送り先と、届いたかを確かめる会話の記録に使う。`TMUX` か `TMUX_PANE` が空なら tmux の外で立てたものとして扱う
+    notes: 'MCP の設定の `env` は親の環境へ足され、これらを消さない（PR #201 の PoC）。テストで MCP サーバーを立てるときは、tmux への入力を確かめるフロー以外で `TMUX`・`TMUX_PANE` を外す（テストを動かすペインへ貼らないため）'
 refs:
   - dev/設計書/外部ライブラリ/mcp#
 notes:

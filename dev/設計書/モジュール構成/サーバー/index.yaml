@@ -35,5 +35,7 @@ items:
     summary: 直下の README.md の中身の組み立て・書くかの判定・書き込み
   - page: 登録.py.yaml
     summary: 起動スクリプトを呼ぶ alias と環境変数の登録・読み返し・外す
+  - page: ClaudeCodeへの入力.py.yaml
+    summary: まとめて送った後に Claude Code のペインへ貼り、会話の記録で届いたかを確かめる
   - page: HTMLの本文.py.yaml
     summary: HTML の本文の行の印と、行の範囲の描いた文

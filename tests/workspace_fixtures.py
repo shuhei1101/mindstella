@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 from collections import deque
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,6 +29,9 @@ REPO_ROOT = Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
 SERVER_SCRIPT = (
     REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "server.py"
 )
+
+# MCP サーバーが送り先に使う、tmux のサーバーとペインを指す環境変数の名前
+TMUX_ENV_NAMES = ("TMUX", "TMUX_PANE")
 
 # 子プロセス 1 回を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 120
@@ -93,6 +96,11 @@ type MakeLegacyItem = Callable[[str, bool], dict[str, Any]]
 type MakeLegacyWorkspace = Callable[..., Path]
 type SnapshotTree = Callable[[Path], dict[str, bytes]]
 type MakeVenv = Callable[..., Path]
+
+
+def _without_tmux(environ: Mapping[str, str]) -> dict[str, str]:
+    """tmux のペインを指す環境変数を外した環境変数を返す（テストを流すペインへ、サーバーが入力しないため）。"""
+    return {key: value for key, value in environ.items() if key not in TMUX_ENV_NAMES}
 
 
 @dataclass(frozen=True)
@@ -210,7 +218,7 @@ class McpServer:
 def start_server(tmp_path: Path) -> Iterator[StartServer]:
     """MCP サーバーを子プロセスとして立てる関数を返し、テストの後で全て止める。"""
     # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    base_env = {**os.environ, "PYTHONUTF8": "1"}
+    base_env = {**_without_tmux(os.environ), "PYTHONUTF8": "1"}
     started: list[McpServer] = []
 
     def _start(
@@ -237,7 +245,7 @@ def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
     """テスト全体で共有する MCP サーバーを 1 つ立てて返す（立ち上げに数秒かかるため）。"""
     server = McpServer(
         python=sys.executable,
-        env={**os.environ, "PYTHONUTF8": "1"},
+        env={**_without_tmux(os.environ), "PYTHONUTF8": "1"},
         cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
     )
     yield server

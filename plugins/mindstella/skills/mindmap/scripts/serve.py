@@ -1,6 +1,7 @@
 """ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
 
 画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。
+まとめて送った後は Claude Code へ入力する。
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 from builder import PREVIEW_DIR, assemble_template, read_records
+from claude_input import InputTarget, enter_to_claude
 from comments import (
     ReviewComment,
     SentComment,
@@ -153,6 +155,8 @@ class ServeContext:
     preview_dir: Path = PREVIEW_DIR
     # 許可するホスト名（`check_host`・`check_origin` に渡す）
     allowed_hosts: frozenset[str] = frozenset()
+    # Claude Code への入力の送り先（None ならまとめて送った後に入力しない）
+    input_target: InputTarget | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -199,11 +203,19 @@ class PreviewServer:
 class PreviewRegistry:
     """このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、終わるときに全て止める。"""
 
-    def __init__(self, write_lock: threading.Lock, *, external: ExternalAccess | None = None) -> None:
-        """ツールと共有する書き換えの鍵と外から見る設定（無ければ空）を受け取り、空の台帳を作る。"""
+    def __init__(
+        self,
+        write_lock: threading.Lock,
+        *,
+        external: ExternalAccess | None = None,
+        input_target: InputTarget | None = None,
+    ) -> None:
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と Claude Code への入力の送り先（無ければ入力しない）を受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
+        # 立てる配信へ渡す送り先（プロセスに 1 つで、入力の鍵を共有する）
+        self._input_target = input_target
         # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
@@ -225,6 +237,7 @@ class PreviewRegistry:
                 settings=settings,
                 port=settings.get("preview", {}).get("port", 0),
                 allowed_hosts=self._external.allowed_hosts,
+                input_target=self._input_target,
             )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
@@ -299,8 +312,11 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
             )
         elif path == SEND_PATH:
+            # 書き換えの鍵を外した後に、足した送信を Claude Code へ入力する
             self._write(
-                lambda root, data: _sent_body(*send_comments(root, data)), HTTPStatus.CREATED
+                lambda root, data: _sent_body(*send_comments(root, data)),
+                HTTPStatus.CREATED,
+                after=lambda body: _entered_body(self.context, body),
             )
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
@@ -355,9 +371,13 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return urlsplit(self.path).path
 
     def _write(
-        self, handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None], status: int
+        self,
+        handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+        status: int,
+        *,
+        after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     ) -> None:
-        """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答を書く。"""
+        """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答を書く。after は鍵を外した後に呼ぶ処理。"""
         length = self._content_length()
         # 長さが無いか、上限を超える: 本文を読まずに断る
         if length is None or length > MAX_REQUEST_BYTES:
@@ -376,6 +396,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 body=self.rfile.read(length),
                 handle=handle,
                 status=status,
+                after=after,
             )
         )
 
@@ -438,6 +459,7 @@ def start_preview_server(
     settings: dict[str, Any],
     port: int = 0,
     allowed_hosts: frozenset[str] = frozenset(),
+    input_target: InputTarget | None = None,
 ) -> PreviewServer:
     """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
@@ -455,6 +477,7 @@ def start_preview_server(
         write_lock=write_lock,
         settings=SettingsHolder(settings),
         allowed_hosts=allowed_hosts,
+        input_target=input_target,
     )
     setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -709,8 +732,9 @@ def write_response(
     body: bytes,
     handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
     status: int,
+    after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> Response:
-    """本文の形と送り元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す。"""
+    """本文の形と送り元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す。after があれば、鍵を外した後に結果を渡して呼び、返った値を応答の本文にする。"""
     media_type = (content_type or "").split(";")[0].strip().lower()
     # JSON でない
     if media_type != REQUEST_JSON_TYPE:
@@ -734,6 +758,9 @@ def write_response(
             result = handle(context.root, data)
     except MindmapError as error:
         return error_response(error)
+    # 鍵を外した後の処理がある: 結果を渡して、返った値を応答の本文にする
+    if after is not None and result is not None:
+        result = after(result)
     return Response(
         status=status,
         content_type=JSON_TYPE,
@@ -803,6 +830,14 @@ def _added_body(comment: ReviewComment, count: int) -> dict[str, Any]:
 def _sent_body(sent: str, items: list[SentComment]) -> dict[str, Any]:
     """まとめて送った応答の本文を作る。"""
     return {"sent": sent, "items": [asdict(item) for item in items]}
+
+
+def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
+    """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
+    target = context.input_target
+    # 送り先が無い: 入力しない
+    entered = False if target is None else enter_to_claude(target, len(body["items"]))
+    return {**body, "entered": entered}
 
 
 def _updated_body(comment: ReviewComment) -> dict[str, Any]:

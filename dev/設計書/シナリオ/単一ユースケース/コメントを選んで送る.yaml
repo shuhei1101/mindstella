@@ -38,6 +38,7 @@ scenarios:
       - レビュー中のコメントが項目に紐づかない「全体に目を通した」の 1 件だけである
       - コメントの一覧に 1 件が残り、コメントのボタンの件数が 1 である
       - 画面を開き直さずに、検討事項のボードの D-1 のカードからコメントの印が消える
+      - 送った結果に、Claude Code へ入力しなかったことが出る（tmux の外で立てた MCP サーバーのため）
     test: test_normal
   - name: 正常シナリオ（一覧から元の箇所へ移る）
     setup:
@@ -187,6 +188,78 @@ scenarios:
       - A-1 への行に、箇所が本文に合わない理由が出る
       - 箇所を外して送り直すと、取り込んでいない送信が 2 件になり、A-1 への送信は箇所を持たない
     test: test_error_when_location_stale
+  - name: 正常シナリオ（Claude Code へ入力する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。Claude Code の代わりに、貼られた文字列を 1 件の user のメッセージ（`cwd` はワークスペースのフォルダ）として、設定のフォルダの `projects` の下の作業フォルダに当たるフォルダの会話の記録（jsonl）へ書く偽のコマンドを tmux のペインで動かし、そのペインの環境（`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`）で MCP サーバーを立てる。サーバーが配るプレビューを実際のブラウザで開く
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー
+        notes: 利用者の tmux のセッションに触れない
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: レビュー中のコメント
+        description: D-1 への「案 A にする」と、項目に紐づかない 2 行の「全体に目を通した」の 2 件
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant TM as tmux
+        participant CC as Claude Code（偽のコマンド）
+
+        U->>P: 2 件をまとめて送る
+        P->>SV: 送る
+        SV->>WS: 2 件を取り込んでいない送信に足し、レビュー中から外す
+        SV->>TM: 「ユーザーからのコメントが 2 件届きました」の 1 行を Claude Code のペインへ貼って確定する
+        TM->>CC: 1 回の入力
+        CC->>CC: 会話の記録へ書く
+        SV->>SV: 会話の記録に入力した文字列が入ったことを確かめる
+        SV-->>P: 受け付けた（Claude Code へ入力した）
+        P-->>U: 送って Claude Code へ入力したこと
+      ```
+    expected:
+      - 取り込んでいない送信が 2 件ある
+      - 会話の記録に user のメッセージが 1 件だけ増え、その中身が `[mindstella] ユーザーからのコメントが 2 件届きました。読み直してください。` である
+      - 送った結果に、Claude Code へ入力したことが出る
+      - 2 件とも取り込み済みになっていない（取り込み済みにするのは Claude Code が記録した後）
+    test: test_normal_when_entered_to_claude_code
+  - name: 異常シナリオ（入力が会話に入らない）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。貼られた文字列を受けても会話の記録へ何も書かない偽のコマンドを tmux のペインで動かし、そのペインの環境で MCP サーバーを立てる。サーバーが配るプレビューを実際のブラウザで開く
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー
+        notes: 利用者の tmux のセッションに触れない
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: レビュー中のコメント
+        description: 未決定の検討事項 D-1 への「案 A にする」の 1 件
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant TM as tmux
+        participant CC as Claude Code（偽のコマンド）
+
+        U->>P: まとめて送る
+        P->>SV: 送る
+        SV->>SV: 送信に足し、レビュー中から外す
+        SV->>TM: 文字列を貼って確定する
+        TM->>CC: 入力
+        SV->>SV: 待つ上限までに会話の記録へ ID が入らない
+        SV-->>P: 受け付けた（Claude Code へは入力できなかった）
+        P-->>U: 送信は残したが Claude Code へ入力できなかったこと
+      ```
+    expected:
+      - 取り込んでいない送信が 1 件あり、レビュー中のコメントが 0 件である
+      - 送った結果に、送信は残したが Claude Code へ入力できなかったことが出る
+    test: test_error_when_not_entered
   - name: 正常シナリオ（HTML の本文を指すコメントを送る）
     setup:
       - name: Mock
@@ -242,7 +315,7 @@ scenarios:
       - 取り込んでいない送信が 0 件で、A-1 へのコメントがレビュー中に残る
       - A-1 への行に、箇所が本文に合わない理由が出る
     test: test_error_when_html_body_location_stale
-lead: 利用者が、コメントの一覧でレビュー中のコメントを確かめ、直し・消し・項目に紐づかないコメントを足して、チェックしたものだけをまとめて送る単一ユースケース。コメントは単一ユースケース『項目へコメントする』『選んだ箇所へコメントする』で溜める。
+lead: 利用者が、コメントの一覧でレビュー中のコメントを確かめ、直し・消し・項目に紐づかないコメントを足して、チェックしたものだけをまとめて送る単一ユースケース。送った送信は、起動スクリプトが立てた tmux のセッションの Claude Code へすぐに入力する。コメントは単一ユースケース『項目へコメントする』『選んだ箇所へコメントする』で溜める。
 issue: 13
 primary_actor: 利用者
 stakeholders:
@@ -251,8 +324,8 @@ stakeholders:
 trigger: 利用者がコメントのボタンを押す
 preconditions:
   - ワークスペースに記録があり、サーバーがプレビューを配っている
-success_guarantee: チェックしたレビュー中のコメントが、向けた項目・箇所・本文のまま取り込んでいない送信になり、レビュー中から外れる。チェックしなかったものはレビュー中に残る。
-minimal_guarantee: 送れなかったときは、どのコメントも送信にせずレビュー中に残し、送れなかったことを出す。
+success_guarantee: チェックしたレビュー中のコメントが、向けた項目・箇所・本文のまま取り込んでいない送信になり、レビュー中から外れる。チェックしなかったものはレビュー中に残る。tmux の中で立てた Claude Code なら、送った送信が 1 回の入力として会話に入り、画面に入力したことが出る。
+minimal_guarantee: 送れなかったときは、どのコメントも送信にせずレビュー中に残し、送れなかったことを出す。Claude Code へ入力できなかったときも送信は残し、入力できなかったことを出して、話し合いの取り込みに任せる。
 frequency: プレビューを読み終えるたびに 1 回
 priority: 高
 notes:
@@ -260,4 +333,6 @@ notes:
   まとめて送るときの一部の失敗: チェックしたものは全て送るか、何も送らないかのどちらかにする。一部だけ送った状態にはしない
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
   箇所が合わなくなったコメント: 溜めた後に本文や値が書き換わり、箇所が合わなくなったコメントは送らない。一覧のその行に理由を出し、利用者が箇所を外すか消すまで、チェックしたものはどれも送らない
+  Claude Code への入力: 入力欄に打ちかけがあるときや選択の表示が出ているときも、ペインの状態を見ずに貼って確定する。打ちかけとつながったり選択の表示で失われたりしたときは、利用者が tmux のセッションで気づいて直す。入力した文字列の取り込みは単一ユースケース『送信の取り込み』が持つ
+  送った結果の文言: 入力したときと入力できなかったときの文言はモック作成で決める
 test_file: tests/e2e/単一ユースケース/test_comment_select_send.py

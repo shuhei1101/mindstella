@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from claude_pane_fixtures import StartClaudePane
 from playwright.sync_api import Page
 from preview_helpers import (
     COMMENTS_BUTTON,
@@ -156,6 +157,10 @@ def test_normal(
     ]
     assert submissions[1]["loc"] == SECOND_LINE
     assert all(item["taken"] is None for item in submissions)
+    # tmux の外で立てた MCP サーバーなので、Claude Code へ入力しなかったことが出る
+    assert page.inner_text(BAND_RESULT).startswith(
+        "2 件を送りましたが、Claude Code には入力できませんでした（"
+    )
     assert [(item.get("target"), item["body"]) for item in _read(root, "comments.yaml")] == [
         (None, "全体に目を通した")
     ]
@@ -379,3 +384,81 @@ def test_error_when_location_stale(
         ("D-1", "案 A にする"),
     ]
     assert submissions[0].get("loc") is None
+
+
+def _serve_with_pane(root: Path, start_server: StartServer, pane_env: dict[str, str]) -> str:
+    """偽の Claude Code のペインを送り先にした MCP サーバーを立て、ワークスペースの配信の URL を返す。"""
+    server = start_server(extra_env=pane_env, cwd=root)
+    served = server.call("preview_url", workspace=str(root))
+    assert served.data is not None
+    return str(served.data["url"])
+
+
+def test_normal_when_entered_to_claude_code(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """tmux の中で立てた Claude Code のペインへ、送った件数の 1 行が 1 回の入力として入り、画面に入力したことが出る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(
+        root,
+        make_comment("C-1", target="D-1", body="案 A にする"),
+        _without_target(make_comment("C-2", body="全体に目を通した\n2 行目")),
+    )
+    pane = start_claude_pane(mode="user", cwd=root)
+    open_preview(_serve_with_pane(root, start_server, pane.env), BOARD_HASH)
+    _open_list(page)
+    # 実行
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    # 検証
+    submissions = _read(root, "submissions.yaml")
+    assert [(item.get("target"), item["body"]) for item in submissions] == [
+        ("D-1", "案 A にする"),
+        (None, "全体に目を通した\n2 行目"),
+    ]
+    lines = pane.lines()
+    assert len(lines) == 1
+    assert (
+        '"content": "[mindstella] ユーザーからのコメントが 2 件届きました。読み直してください。"'
+        in lines[0]
+    )
+    assert page.inner_text(BAND_RESULT).startswith("2 件を送り、Claude Code に入力しました（")
+    # 取り込み済みにするのは Claude Code が記録した後
+    assert all(item["taken"] is None for item in submissions)
+
+
+def test_error_when_not_entered(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """上限までに会話の記録へ入らなければ、送信は残したまま Claude Code へ入力できなかったことが出る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
+    pane = start_claude_pane(mode="silent", cwd=root)
+    open_preview(_serve_with_pane(root, start_server, pane.env), BOARD_HASH)
+    _open_list(page)
+    # 実行
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    # 検証
+    assert [item["body"] for item in _read(root, "submissions.yaml")] == ["案 A にする"]
+    assert _read(root, "comments.yaml") == []
+    assert page.inner_text(BAND_RESULT).startswith(
+        "1 件を送りましたが、Claude Code には入力できませんでした（"
+    )
+    assert pane.lines() == []

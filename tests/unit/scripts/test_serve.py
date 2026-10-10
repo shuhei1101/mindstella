@@ -891,6 +891,70 @@ def test_write_response_when_rejected(
     assert calls == []
 
 
+def _handle_succeeding(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
+    """処理が成功したとして、本文を返す。"""
+    return {"ok": True}
+
+
+def _handle_conflicting(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
+    """箇所が合わないとして、CommentConflictError を送る。"""
+    raise CommentConflictError("箇所が合いません")
+
+
+@pytest.mark.parametrize(
+    (
+        "handle",
+        "expected_status",
+        "expected_entered",
+        "expected_after_bodies",
+        "expected_lock_free",
+    ),
+    [
+        pytest.param(_handle_succeeding, 201, True, [{"ok": True}], [True], id="succeeded"),
+        pytest.param(_handle_conflicting, 409, False, [], [], id="conflict"),
+    ],
+)
+def test_write_response_when_after(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+    expected_status: int,
+    expected_entered: bool,
+    expected_after_bodies: list[dict[str, Any]],
+    expected_lock_free: list[bool],
+) -> None:
+    """鍵を外した後に after を呼び、その結果を返す（正常系）。"""
+    # 準備
+    context = _context(make_workspace(make_item("D-1")))
+    after_bodies: list[dict[str, Any]] = []
+    lock_free: list[bool] = []
+
+    def _after(body: dict[str, Any]) -> dict[str, Any]:
+        """呼ばれたときに書き換えの鍵が取れるかと受けた本文を控え、entered を足した本文を返す。"""
+        acquired = context.write_lock.acquire(blocking=False)
+        lock_free.append(acquired)
+        if acquired:
+            context.write_lock.release()
+        after_bodies.append(body)
+        return {**body, "entered": True}
+
+    # 実行
+    response = serve.write_response(
+        context,
+        content_type="application/json",
+        origin=None,
+        body=_post_body(a=1),
+        handle=handle,
+        status=201,
+        after=_after,
+    )
+    # 検証
+    assert response.status == expected_status
+    assert (b'"entered": true' in response.body) is expected_entered
+    assert after_bodies == expected_after_bodies
+    assert lock_free == expected_lock_free
+
+
 def test_opened_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """2 回目は 1 回目の日時を返す（正常系）。"""
     # 準備

@@ -51,6 +51,10 @@ catalogs:
       - name: skills/{スキル名}/
         kind: フォルダ
         purpose: プラグインが同梱するスキルを置く
+      - name: '{設定のフォルダ}/projects/{作業フォルダ}/{会話の ID}.jsonl'
+        kind: ファイル
+        purpose: '会話の記録。1 行 1 件の JSON で、利用者の入力は `type: user`（`cwd` と `message.content` を持つ）、処理中に待ち行列へ入った入力は `type: queue-operation`・`operation: enqueue`（本文も `cwd` も持たない）の行になる'
+        description: '`{設定のフォルダ}` は `CLAUDE_CONFIG_DIR`、無ければ `~/.claude`。`{作業フォルダ}` は Claude Code を立てたフォルダの絶対パスを UTF-16 の単位で英数字以外を `-` にした名前（日本語の名前のフォルダは同じ名前へ寄り得る。サロゲートペアの文字は `--` になる）。名前が 200 文字を超えると、先頭 200 文字に `-{パスのハッシュ}` を足した名前になる（ハッシュは Claude Code の内部の関数で作り、外からは作れない）。会話の ID は `/clear`・`/resume` で変わり、新しい会話は最初の user の行までファイルを作らない。入力を待っているときは確定から約 0.13 秒で user の行が、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる（2.1.296 で確かめた。公開された形ではなく、版で変わり得る）'
   - name: スキル
     version: 2.1.287
     entries:

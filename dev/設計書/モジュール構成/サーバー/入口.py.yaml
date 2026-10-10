@@ -17,6 +17,7 @@ diagrams:
         class 配信
         class 送信
         class コメント
+        class Claude Codeへの入力
         class 読み書きと検証
         class 検索
         class 依存と影響
@@ -28,6 +29,7 @@ diagrams:
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
+        入口 --> Claude Codeへの入力 : 起動時に送り先を読む
         ツールの処理 --> 配信 : preview_url
         ツールの処理 --> 送信
         ツールの処理 --> 読み書きと検証
@@ -40,6 +42,7 @@ diagrams:
         ツールの処理 --> ワークスペースのREADME : readme・preview_url
         配信 --> ビルド : 雛形と記録
         配信 --> コメント : /api/comments・/api/drafts
+        配信 --> Claude Codeへの入力 : まとめて送った後
         コメント --> 送信 : まとめて送る
       ```
 constants:
@@ -810,13 +813,13 @@ functions:
         required: false
         default: os.environ
         passing: injected
-        description: 外から見る設定を読む環境変数
+        description: 外から見る設定と Claude Code への入力の送り先を読む環境変数
     returns:
       type: int
       description: 終了コード（標準入力が閉じて終えたら 0）
     process: |-
       1. `logging` の出力先を標準エラーにする
-      2. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）を渡した配信の台帳（`PreviewRegistry`）を作る
+      2. プロセスの中の書き換えの鍵（`threading.Lock()`）、外から見る設定（`load_external_access(environ)`）、Claude Code への入力の送り先（`load_input_target(environ, Path.cwd())`）を渡した配信の台帳（`PreviewRegistry`）を作る
       3. SIGTERM の受け口を置く（`install_sigterm_handler`）
       4. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
       5. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
@@ -840,6 +843,12 @@ functions:
         condition: '`environ={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}`、`build` を `run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
         mock: '`build`'
         expected: 控えた `previews` の外から見る設定の `allowed_hosts` が `{"preview.example.test"}`
+      - name: test_main_when_inside_tmux
+        case: 正常
+        summary: 受け継いだ送り先を台帳へ渡す
+        condition: '`environ={"TMUX": "/s,1,0", "TMUX_PANE": "%3", "CLAUDE_CONFIG_DIR": "{tmp}/cfg"}`、`build` を `run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
+        mock: '`build`'
+        expected: 控えた `previews` の送り先の `socket` が `/s,1,0`、`pane` が `%3`、`config_dir` が `{tmp}/cfg`、`cwd` が今の作業フォルダ
   - name: build_server
     title: サーバーの組み立て
     kind: 関数

@@ -13,6 +13,8 @@ namespace MindmapPreview {
     at?: string;
     /** サーバーが返した理由（届かなかったときは無い） */
     detail?: string | null;
+    /** 送った送信を Claude Code へ入力し、会話の記録に入ったか（`sent` だけが持つ） */
+    entered?: boolean;
   };
 
   /** コメントの一覧の引数 */
@@ -99,7 +101,20 @@ namespace MindmapPreview {
     }
     if (result.kind === "sent") {
       const time = result.at === undefined ? "" : formatJst(result.at).slice(-5);
-      return [icon("check"), h({ tag: "span", children: [`${result.count ?? 0} 件を送りました（${time}）。`] })];
+      const count = result.count ?? 0;
+      // Claude Code に入力できなかった: 送った内容は残り、次の話し合いの取り込みに任せる
+      if (result.entered !== true) {
+        return [
+          icon("alert"),
+          h({
+            tag: "span",
+            children: [
+              `${count} 件を送りましたが、Claude Code には入力できませんでした（${time}）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。`,
+            ],
+          }),
+        ];
+      }
+      return [icon("check"), h({ tag: "span", children: [`${count} 件を送り、Claude Code に入力しました（${time}）。`] })];
     }
     if (result.kind === "stale") {
       return [icon("alert"), h({ tag: "span", children: [`送れませんでした。箇所が合わないコメントが ${result.count ?? 0} 件あります。`] })];

@@ -1,5 +1,5 @@
 title: "サーバー / 配信"
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。ビルド（雛形と記録）とコメントと設定の更新と読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。まとめて送った後は Claude Code へ入力する。ビルド（雛形と記録）とコメントと Claude Code への入力と設定の更新と読み書きと検証に依存する。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
@@ -16,6 +16,7 @@ diagrams:
         class 要求の受け口
         class ビルド
         class コメント
+        class Claude Codeへの入力
         class 外から見る設定
         class フックの呼び出し
         配信の台帳 --> 配信 : ワークスペースごとに 1 つ
@@ -24,6 +25,7 @@ diagrams:
         配信 --> 要求の受け口
         要求の受け口 --> ビルド : 雛形・記録
         要求の受け口 --> コメント : /api/comments・/api/drafts
+        要求の受け口 --> Claude Codeへの入力 : まとめて送った後
       ```
 constants:
   - name: LISTEN_HOST
@@ -86,7 +88,7 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定と Claude Code への入力の送り先をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess(), input_target=None)`）
     kind: クラス
     properties:
       - name: _servers
@@ -105,6 +107,10 @@ classes:
         type: ExternalAccess
         access: 内部 (_)
         description: 外から見る設定（許可するホスト名を配信へ渡し、フックを呼ぶ）
+      - name: _input_target
+        type: InputTarget | None
+        access: 内部 (_)
+        description: Claude Code への入力の送り先（立てる配信へ渡す。プロセスに 1 つで、入力の鍵を共有する）
     methods:
       - name: start
         title: 配信を立てる
@@ -123,7 +129,7 @@ classes:
           1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
              - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
-          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
+          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_target` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
              - `[INFO]` 配信を立てた（ワークスペース、URL）
           4. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
           5. URL と `True` を返す
@@ -286,6 +292,7 @@ classes:
              - `/api/opened` の場合、本文を読まずに前回開いた日時を返す（`opened_response`）
              - `/api/config/reload` の場合、本文を読まずに設定を読み直す（`reload_response`）
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
+             - `/api/comments/send` は、`context.input_target` があれば `enter_to_claude(context.input_target, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった取り込んでいない送信も含む）
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
           4. 本文を読み、受け付ける（`write_response`。成功は 201）
       - name: log_message
@@ -432,6 +439,10 @@ data_models:
         type: frozenset[str]
         default: frozenset()
         description: 許可するホスト名（`check_host`・`check_origin` に渡す）
+      - name: input_target
+        type: InputTarget | None
+        default: None
+        description: Claude Code への入力の送り先（モジュール構成『ClaudeCodeへの入力』）。`None` ならまとめて送った後に入力しない
   - name: Response
     title: 応答
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -504,13 +515,19 @@ functions:
         default: frozenset()
         passing: keyword
         description: 許可するホスト名（`ServeContext` に持たせる）
+      - name: input_target
+        type: InputTarget | None
+        required: false
+        default: None
+        passing: keyword
+        description: Claude Code への入力の送り先（`ServeContext` に持たせる）
     returns:
       type: PreviewServer
       description: 立てた配信
     process: |-
       1. `ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)` を作り、`daemon_threads` を真にする
          - `OSError` が起きた場合、`ServeFailedError` を送る
-      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts` で `ServeContext` を作り、待ち受けの `context` に持たせる
+      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_target` で `ServeContext` を作り、待ち受けの `context` に持たせる
       3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` とポートを持つ `PreviewServer` を返す
     exceptions:
       - name: ServeFailedError
@@ -901,6 +918,12 @@ functions:
         required: true
         passing: keyword
         description: 成功のステータスコード（201・200・204）
+      - name: after
+        type: Callable[[dict[str, Any]], dict[str, Any]] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 書き換えの鍵を外した後、`handle` が返した本文を受けて応答の本文を返す処理（まとめて送るの Claude Code への入力）。`handle` が `MindmapError` を送ったときは呼ばない
     returns:
       type: Response
       description: 成功の応答か、問題の応答
@@ -911,7 +934,8 @@ functions:
          - 読めないかオブジェクトでなければ 400 を返す
       4. 書き換えの鍵を取って（`workspace_lock`）`handle` を呼ぶ
          - `MindmapError` の場合、`error_response` の応答を返す
-      5. `status` で返す（204 は本文を持たない。それ以外は `ensure_ascii=False` の JSON）
+      5. `after` があれば、鍵を外した後に `handle` の結果を渡して呼び、返った値を応答の本文にする
+      6. `status` で返す（204 は本文を持たない。それ以外は `ensure_ascii=False` の JSON）
     unit_tests:
       - name: test_write_response
         case: 正常
@@ -925,6 +949,12 @@ functions:
         condition: '`parametrize`: `text/plain` / `Origin: https://attacker.example` / 本文 `[1]` / 本文 `{`'
         mock: '`handle`'
         expected: 415 / 403 / 400 / 400。`handle` が呼ばれない
+      - name: test_write_response_when_after
+        case: 正常
+        summary: 鍵を外した後に after を呼び、その結果を返す
+        condition: '`handle` は `{"ok": true}` を返す。`after` は呼ばれたときに書き換えの鍵が取れるか（`write_lock.acquire(blocking=False)`）を控え、`{**body, "entered": true}` を返す。`parametrize`: `handle` が成功 / `handle` が `CommentConflictError` を送る'
+        mock: '`handle`・`after`'
+        expected: '前者は 201 で本文 `{"ok": true, "entered": true}`、`after` の中で鍵が取れた。後者は 409 で `after` が呼ばれない'
   - name: delete_response
     title: コメントを消す受け付け
     kind: 関数

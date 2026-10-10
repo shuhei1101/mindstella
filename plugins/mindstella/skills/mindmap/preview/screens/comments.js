@@ -20,7 +20,20 @@ var MindmapPreview;
         }
         if (result.kind === "sent") {
             const time = result.at === undefined ? "" : MindmapPreview.formatJst(result.at).slice(-5);
-            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [`${result.count ?? 0} 件を送りました（${time}）。`] })];
+            const count = result.count ?? 0;
+            // Claude Code に入力できなかった: 送った内容は残り、次の話し合いの取り込みに任せる
+            if (result.entered !== true) {
+                return [
+                    MindmapPreview.icon("alert"),
+                    MindmapPreview.h({
+                        tag: "span",
+                        children: [
+                            `${count} 件を送りましたが、Claude Code には入力できませんでした（${time}）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。`,
+                        ],
+                    }),
+                ];
+            }
+            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [`${count} 件を送り、Claude Code に入力しました（${time}）。`] })];
         }
         if (result.kind === "stale") {
             return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [`送れませんでした。箇所が合わないコメントが ${result.count ?? 0} 件あります。`] })];

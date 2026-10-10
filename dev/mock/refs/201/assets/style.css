@@ -1,0 +1,8 @@
+/* 送信だけを残して Claude Code へ入力できなかった: 本文の色の文字 */
+.cm-msg.noinput { color: var(--text); }
+/* 入力できなかったときの印: 保留の色にし、送れなかったときの赤と分ける */
+.cm-msg.noinput svg.icon { color: var(--st-hold); }
+/* 2 行に分ける案: 送った行と、Claude Code へ入力したかの行を縦に並べる */
+.cm-msg-lines { display: grid; gap: 2px; }
+/* 2 行目: Claude Code へ入力したかの行 */
+.cm-msg-sub { color: var(--text-2); }
