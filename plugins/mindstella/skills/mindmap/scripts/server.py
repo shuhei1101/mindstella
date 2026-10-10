@@ -145,7 +145,12 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     def add(
         workspace: WorkspaceArg,
         kind: Annotated[Kind, Field(description="足す項目の種類")],
-        item: Annotated[dict[str, Any], Field(description="項目の中身。本文は body_markdown")],
+        item: Annotated[
+            dict[str, Any],
+            Field(
+                description="項目の中身。本文は body_markdown（資料だけ body_html で HTML の本文も書ける）"
+            ),
+        ],
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_add(root, kind, item))
 

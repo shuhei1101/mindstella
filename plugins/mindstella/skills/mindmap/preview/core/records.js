@@ -109,6 +109,36 @@ var MindmapPreview;
     MindmapPreview.relatedItems = relatedItems;
     /** 全体の検索の段の順 */
     const SEARCH_TIERS = [1, 2, 3];
+    /** 項目の `body` の拡張子から本文の形式を返す（`body` を持たないか、知らない拡張子なら `null`） */
+    function bodyFormatOf(body) {
+        if (body === undefined)
+            return null;
+        if (body.endsWith(".html"))
+            return "html";
+        if (body.endsWith(".md"))
+            return "md";
+        return null;
+    }
+    MindmapPreview.bodyFormatOf = bodyFormatOf;
+    /** 描いた文に出ない中身を持つ要素 */
+    const HIDDEN_TEXT_SELECTOR = "style, script, template, title";
+    /** HTML をスクリプトを動かさずに解析し、`style`・`script`・`template`・`title` の中身とコメントを除いた描いた文を返す */
+    function htmlText(source) {
+        const doc = new DOMParser().parseFromString(source, "text/html");
+        for (const hidden of doc.querySelectorAll(HIDDEN_TEXT_SELECTOR))
+            hidden.remove();
+        return doc.documentElement.textContent ?? "";
+    }
+    MindmapPreview.htmlText = htmlText;
+    /** Markdown の本文の中の言語指定 `html` のコードブロック（フェンスは ``` か ~~~） */
+    const HTML_FENCE = /^(```|~~~)html[^\n]*\n([\s\S]*?)^\1[ \t]*$/gm;
+    /** 検索で当てる本文の文。HTML の本文と Markdown の `html` のコードブロックは、タグではなく描いた文にする */
+    function searchableBody(body, bodies) {
+        const text = bodies[body ?? ""] ?? "";
+        if (bodyFormatOf(body) === "html")
+            return htmlText(text);
+        return text.replace(HTML_FENCE, (_block, _fence, code) => htmlText(code));
+    }
     /** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
     function searchableText(item, bodies) {
         const parts = [];
@@ -121,7 +151,7 @@ var MindmapPreview;
                         parts.push(element);
             }
         }
-        parts.push(bodies[item.body ?? ""] ?? "");
+        parts.push(searchableBody(item.body, bodies));
         return parts.join("\n").toLowerCase();
     }
     /** 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す（大文字・小文字と前後の空白を区別しない） */

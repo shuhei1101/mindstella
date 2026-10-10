@@ -260,6 +260,61 @@ scenarios:
       - 取り込んでいない送信が 1 件あり、レビュー中のコメントが 0 件である
       - 送った結果に、送信は残したが Claude Code へ入力できなかったことが出る
     test: test_error_when_not_entered
+  - name: 正常シナリオ（HTML の本文を指すコメントを送る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持ち、原文の 4 行目に `<p>言い<b>換え</b>たい文</p>` を持つ資料 A-1
+        notes: 4 行目より前に `<style>` とコメントを置く
+      - name: レビュー中のコメント
+        description: A-1 の本文の 4 行目を指し、選んだ文が「言い換えたい文」の 1 件
+        notes: 選んだ文は `<b>` のタグをまたぐ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: A-1 へのコメントをチェックして送る
+        P->>SV: 送る
+        SV->>SV: 箇所を HTML の本文の 4 行目の描いた文と照らす
+        SV-->>P: 受け付けた
+    expected:
+      - 取り込んでいない送信が 1 件あり、A-1 の本文の 4 行目と選んだ文「言い換えたい文」の箇所を持つ
+      - レビュー中のコメントが 0 件である
+    test: test_normal_when_html_body_location
+  - name: 異常シナリオ（HTML の本文の箇所が合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持ち、原文の 4 行目に `<p>言い<b>換え</b>たい文</p>` を持つ資料 A-1
+      - name: レビュー中のコメント
+        description: A-1 の本文の 4 行目を指し、選んだ文が「言い換えたい文」の 1 件
+        notes: 溜めた後に A-1 の HTML の本文の 4 行目を `<p>書き直した文</p>` に書き換える
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: A-1 へのコメントをチェックして送る
+        P->>SV: 送る
+        SV-->>P: A-1 へのコメントの箇所が本文に合わない（何も送っていない）
+        P-->>U: A-1 への行に、箇所が合わない理由を出す
+    expected:
+      - 取り込んでいない送信が 0 件で、A-1 へのコメントがレビュー中に残る
+      - A-1 への行に、箇所が本文に合わない理由が出る
+    test: test_error_when_html_body_location_stale
 lead: 利用者が、コメントの一覧でレビュー中のコメントを確かめ、直し・消し・項目に紐づかないコメントを足して、チェックしたものだけをまとめて送る単一ユースケース。送った送信は、起動スクリプトが立てた tmux のセッションの Claude Code へすぐに入力する。コメントは単一ユースケース『項目へコメントする』『選んだ箇所へコメントする』で溜める。
 issue: 13
 primary_actor: 利用者

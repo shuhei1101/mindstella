@@ -355,6 +355,66 @@ scenarios:
       - 追加のツールがエラーを返し、本文に状態 `未決定` と採用した案 `A` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_adoption_and_status_mismatch
+  - name: 正常シナリオ（資料の本文を HTML で書く）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませた、項目を持たないワークスペース
+      - name: 本文
+        description: 資料 A-1 を足すときの 2 行の Markdown の本文と、形式を HTML に替えるときの 3 行の HTML の本文と、2 行目を書き換えた HTML の本文と、形式を Markdown に戻すときの 2 行の Markdown の本文
+        notes: HTML の本文 `<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>`。書き換えは 2 行目を `<p>絞り込みの画面</p>` にする
+    flow: |-
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: Markdown の本文を渡して資料 A-1 を足す
+        SV->>WS: docs.yaml と .mindstella/docs/ の Markdown の本文を書く
+        CC->>SV: HTML の本文を渡して A-1 を直す
+        SV->>WS: docs.yaml と HTML の本文を書き、Markdown の本文を消す
+        CC->>SV: A-1 の HTML の本文の 2 行目を直す
+        SV->>SV: 本文の差分を変更履歴に積む
+        SV->>WS: docs.yaml と HTML の本文を書く
+        CC->>SV: A-1 を表示する
+        SV-->>CC: 中身と HTML の本文と形式
+        CC->>SV: Markdown の本文を渡して A-1 を直す
+        SV->>WS: docs.yaml と Markdown の本文を書き、HTML の本文を消す
+        CC->>SV: A-1 を表示する
+        SV-->>CC: 中身と Markdown の本文と形式
+    expected:
+      - HTML に替えた後、A-1 の本文が HTML の形式になり、`.mindstella/docs/` に渡した HTML の本文があり、A-1 の Markdown の本文が残らない
+      - 1 回目の表示が、書き換えた後の HTML の本文と HTML の形式を返す
+      - A-1 の変更履歴が、HTML の本文の 2 行目の差分を持つ回を持つ
+      - Markdown に戻した後、A-1 の本文が Markdown の形式になり、`.mindstella/docs/` に A-1 の HTML の本文が残らない
+      - 2 回目の表示が、渡した Markdown の本文と Markdown の形式を返す
+      - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    test: test_normal_when_doc_body_html
+    notes:
+      本文の形式の持ち方: 形式は `body` のファイル名の拡張子（`{ID}.md` / `{ID}.html`）で表し、HTML の本文は `item` の `body_html` で渡す（インターフェース定義『項目の追加』『項目の更新』）
+  - name: 異常シナリオ（資料以外に HTML の本文を渡す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませた、タスク T-1 を持つワークスペース
+      - name: 本文
+        description: タスクを足すときと T-1 を直すときに渡す HTML の本文
+    flow: |-
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: HTML の本文を渡してタスクを足す
+        SV-->>CC: 資料だけが HTML の本文を持てる旨のエラー
+        CC->>SV: HTML の本文を渡して T-1 を直す
+        SV-->>CC: 資料だけが HTML の本文を持てる旨のエラー
+    expected:
+      - どちらの呼び出しも、資料だけが HTML の本文を持てる旨のエラーを返す
+      - tasks.yaml と `.mindstella/docs/` が呼ぶ前と同じである
+    test: test_error_when_html_body_for_non_doc
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -364,7 +424,7 @@ stakeholders:
 trigger: スキルが取り込みのステップで、発言を記録する項目に振り分け終える
 preconditions:
   - ワークスペースが作成済みである
-success_guarantee: 足した項目に種類の頭の文字の ID と作成日・更新日が付き、直した項目の更新日が変わり、足した・直した項目の編集した人が `ai` になり、ワークスペースの全ての YAML がスキーマに合う。どの種類の項目も本文を持てる。
+success_guarantee: 足した項目に種類の頭の文字の ID と作成日・更新日が付き、直した項目の更新日が変わり、足した・直した項目の編集した人が `ai` になり、ワークスペースの全ての YAML がスキーマに合う。どの種類の項目も本文を持て、資料は本文を Markdown か HTML のどちらかで持てる。
 minimal_guarantee: スキーマに合わない書き込み・存在しない ID への書き込みでは、どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_record_add_update.py
 notes:

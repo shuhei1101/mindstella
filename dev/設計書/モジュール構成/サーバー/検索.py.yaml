@@ -181,10 +181,10 @@ functions:
         description: ID
     returns:
       type: dict[str, Any]
-      description: '`{item, kind, body_markdown, referenced_by}`'
+      description: '`{item, kind, body_markdown, body_html, body_format, referenced_by}`'
     process: |-
       1. 項目を引く（項目の引き当て。`find_item`）
-      2. `body` があれば本文を読む（本文の読み込み。`read_body`）
+      2. `body` があれば本文を読み（本文の読み込み。`read_body`）、形式（`body_format`）が `markdown` なら `body_markdown`、`html` なら `body_html` に入れる（もう片方は `None`）
       3. 参照元を引く（`list_referrers`）
     exceptions:
       - name: ItemNotFoundError
@@ -202,6 +202,12 @@ functions:
         condition: '`body` を持たない D-1'
         mock: なし
         expected: '`body_markdown` が `None`'
+      - name: test_show_item_when_html_body
+        case: 正常
+        summary: HTML の本文は `body_html` と形式で返す
+        condition: 'A-1（`body: A-1.html`、`docs/A-1.html` あり）'
+        expected: '`body_html` がファイルの中身、`body_format` が `html`、`body_markdown` が `None`'
+        mock: なし
   - name: list_referrers
     title: 参照元の一覧
     kind: 関数

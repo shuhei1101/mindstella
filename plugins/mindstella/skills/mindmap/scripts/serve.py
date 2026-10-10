@@ -666,11 +666,15 @@ def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
     names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE, CHANGES_FILE]
-    # 本文の Markdown（`.mindstella/docs/` の直下）も見る
+    # 本文の Markdown と HTML（`.mindstella/docs/` の直下）も見る
     records = records_root(root)
     body_dir = records / BODY_DIR
     if body_dir.is_dir():
-        names.extend(f"{BODY_DIR}/{path.name}" for path in body_dir.glob("*.md"))
+        names.extend(
+            f"{BODY_DIR}/{path.name}"
+            for pattern in ("*.md", "*.html")
+            for path in body_dir.glob(pattern)
+        )
     parts: list[str] = []
     for name in sorted(names):
         try:

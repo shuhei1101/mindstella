@@ -26,5 +26,6 @@
 | [ワークスペースのREADME.py](./ワークスペースのREADME.py.yaml) | 直下の README.md の中身の組み立て・書くかの判定・書き込み |
 | [登録.py](./登録.py.yaml) | 起動スクリプトを呼ぶ alias と環境変数の登録・読み返し・外す |
 | [ClaudeCodeへの入力.py](./ClaudeCodeへの入力.py.yaml) | まとめて送った後に Claude Code のペインへ貼り、会話の記録で届いたかを確かめる |
+| [HTMLの本文.py](./HTMLの本文.py.yaml) | HTML の本文の行の印と、行の範囲の描いた文 |
 
 <!-- /table -->

@@ -69,6 +69,28 @@ flows:
     expected:
       - 'つないでから 2 秒の間に `event: changed` が届かない'
     test: test_normal_when_unchanged
+  - name: 正常系（HTML の本文だけが変わる）
+    summary: YAML を書き換えずに HTML の本文のファイルだけが変わっても知らせる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 本文を HTML（`docs/A-1.html`）で持つ資料 A-1 を持つワークスペース
+        notes: つないだ後に `docs/A-1.html` の中身を直接書き換える（`docs.yaml` は書き換えない）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/events
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/events
+        クライアント->>WS: docs/A-1.html を書き換える
+        IF-->>クライアント: event: changed
+      ```
+    expected:
+      - '`docs/A-1.html` を書き換えてから 1 秒以内に `event: changed` が届く'
+    test: test_normal_when_html_body_rewritten
 lead: 配信しているワークスペースのファイルが書き換わったら、開いている画面へ Server-Sent Events で知らせる。画面は知らせを受けて『記録の取得』を読み直す。
 idempotent: true
 side_effects: なし（読むだけ。接続ごとにワークスペースのファイルの更新日時を見続ける）
@@ -99,7 +121,7 @@ response_notes: |-
   > つながりが切れたら、ブラウザの EventSource が自分でつなぎ直す。サーバーが止まっている間は画面に「サーバーにつながりません」と出し、前に読んだ記録で描き続ける（『プレビューを開く』）。
 constraints:
   - item: 見るファイル
-    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から描き直す）'
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から描き直す）'
   - item: 見る間隔
     constraint: 250ms ごとに書き換えの印を作り直し、前と違えば知らせる
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]

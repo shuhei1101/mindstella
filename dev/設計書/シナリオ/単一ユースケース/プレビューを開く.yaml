@@ -83,6 +83,32 @@ scenarios:
       - 配信の待ち受けが立っていない
       - '`config.yaml` の中身が、呼ぶ前と同じである'
     test: test_error_when_config_invalid
+  - name: 正常シナリオ（HTML の本文を書き換える）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、プレビューは実際のブラウザで開いておく
+      - name: 作成済みのワークスペース
+        description: 本文を HTML で持ち、段落「一覧の画面」を持つ資料 A-1
+      - name: 開いている画面
+        description: 資料のタブと A-1 の詳細パネル
+      - name: 書き換え
+        description: '`.mindstella/docs/` の A-1 の HTML の本文のファイルを、段落「絞り込みの画面」を持つ中身に書き換える'
+        notes: docs.yaml は書き換えない（本文のファイルだけが変わる）
+    flow: |-
+      sequenceDiagram
+        participant WS as ワークスペース
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        WS-->>SV: A-1 の HTML の本文のファイルが変わる
+        SV->>SV: 書き換えを見つける
+        SV-->>P: 書き換えを知らせる
+        P->>SV: 記録を読み直す
+        P-->>P: 開いている画面を描き直す
+    expected:
+      - 再読み込みの操作をせずに、A-1 の詳細パネルの本文が書き換えた後の HTML（「絞り込みの画面」）で描かれ、「一覧の画面」が消える
+      - 描き直した後も、開いていた画面と URL のハッシュが変わらない
+    test: test_normal_when_html_body_rewritten
 lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。'
 issue: 4
 primary_actor: 利用者

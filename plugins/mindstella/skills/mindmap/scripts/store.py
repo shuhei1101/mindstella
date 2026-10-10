@@ -135,9 +135,9 @@ class ItemRef:
 class BodyWrite:
     """`docs/` に書く 1 つの本文。"""
 
-    # `docs/` の中のファイル名（`{ID}.md`）
+    # `docs/` の中のファイル名（`{ID}.md`、資料の HTML の本文は `{ID}.html`）
     name: str
-    # 本文の Markdown
+    # 本文（Markdown か HTML）
     text: str
 
 
@@ -758,6 +758,18 @@ def read_body(workspace: Workspace, name: str) -> str | None:
     if not path.is_file():
         return None
     return path.read_text(encoding="utf-8")
+
+
+def body_format(name: str | None) -> Literal["markdown", "html"] | None:
+    """本文のファイル名の拡張子から形式を返す（`body` を持たないか、知らない拡張子なら None）。"""
+    # 文字列でない: 本文を持たない
+    if not isinstance(name, str):
+        return None
+    if name.endswith(".html"):
+        return "html"
+    if name.endswith(".md"):
+        return "markdown"
+    return None
 
 
 def as_ids(value: Any) -> list[str]:

@@ -64,7 +64,7 @@ elements:
       - name: kind
         value: docs
       - name: columns
-        value: ID・タイトル（外せない）・納品物（deliverable、絞れる）・状態（絞れる）・種類（絞れる）・対象（絞れる）・カテゴリー（絞れる）・フェーズ（絞れる）・タグ（絞れる）
+        value: ID・タイトル（外せない）・納品物（deliverable、絞れる）・状態（絞れる）・種類（絞れる）・形式（`body` の拡張子から `MD` / `HTML`、絞れる）・対象（絞れる）・カテゴリー（絞れる）・フェーズ（絞れる）・タグ（絞れる）
       - name: rows
         value: プレビューを開く.mindmap-data.docs
       - name: filters
@@ -142,9 +142,24 @@ elements:
     source: プレビューを開く.mindmap-data.docs[].withdrawn
     visible_when: その資料の `withdrawn` が真のとき（差分の表示によらない）
     status: planned
+  - name: カード・ボードの形式の札
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/本文の形式の札.ts#
+    args:
+      - name: format
+        value: 資料の `body` が `.html` で終われば `html`、それ以外は `md`
+    position: 資料のカード・ボードのカード > 種類の右
+    description: 資料のカードとボードのカードで、種類の右に本文の形式を示す。幅 390px でカードが 1 列になっても種類の右に収める。カードのホバー・フォーカスで札の見た目を変えない
+    io: 表示
+    source: プレビューを開く.mindmap-data.docs[].body
+    visible_when: 資料が `body` を持つ
+    status: implemented
+    introduced:
+      pr: 214
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/126/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/docs/121/standard/index.html`
   消した項目と取り下げのモック: 消した項目の帯と取り下げの札の見本は `dev/mock/pages/docs/179/b-band/index.html`
+  形式の札のモック: カード・ボードの形式の札と表の形式の列の見本は `dev/mock/pages/docs/214/a-kind/index.html`（種類の右に置く案 A を採用）

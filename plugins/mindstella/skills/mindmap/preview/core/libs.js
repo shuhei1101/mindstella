@@ -32,6 +32,12 @@ var MindmapPreview;
     // ─── 本文の行の印 ───
     /** 本文のブロックの要素が持つ、元の Markdown の先頭の行（1 始まり）の属性 */
     MindmapPreview.LINE_ATTR = "data-line-start";
+    /** Markdown の中の `html` のコードブロックを置き換えた、HTML の本文の枠の入れ物の class */
+    MindmapPreview.HTML_BLOCK_CLASS = "html-block";
+    /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
+    MindmapPreview.HTML_LINE_ATTR = "data-line";
+    /** 開きタグの直後の改行を、解析のときに取り除く要素 */
+    const LEADING_NEWLINE_TAGS = ["PRE", "TEXTAREA", "LISTING"];
     /** 項目の値を描いた要素が持つ、項目のキーのパスの属性 */
     MindmapPreview.VALUE_KEY_ATTR = "data-key";
     /** 改行の数を返す */
@@ -148,6 +154,65 @@ var MindmapPreview;
         };
     }
     MindmapPreview.selectionLocation = selectionLocation;
+    /** 文書の順で端より前にある、行の印（`data-line`）を持つ要素のうち最も後のものを返す（無ければ null） */
+    function htmlLineElement({ doc, node, offset }) {
+        const probe = doc.createRange();
+        probe.setStart(node, offset);
+        probe.collapse(true);
+        let found = null;
+        for (const element of doc.querySelectorAll(`[${MindmapPreview.HTML_LINE_ATTR}]`)) {
+            // 要素の先頭が端より前（端と同じ位置を含む）にあるものだけが候補
+            if (probe.comparePoint(element, 0) > 0)
+                break;
+            found = element;
+        }
+        return found;
+    }
+    /** 行の印を持つ要素の開きタグの直後から端までにある改行（文とコメントの中の改行。`br` は数えない）の数を返す */
+    function htmlLinesBefore({ element, node, offset }) {
+        const range = element.ownerDocument.createRange();
+        range.setStart(element, 0);
+        range.setEnd(node, offset);
+        const fragment = range.cloneContents();
+        let count = countNewlines(fragment.textContent ?? "");
+        // コメントは textContent に入らないので、中の改行を足す
+        const walker = element.ownerDocument.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
+        while (walker.nextNode())
+            count += countNewlines(walker.currentNode.data);
+        return count;
+    }
+    /** `pre`・`textarea`・`listing` の開きタグの直後に改行があるとき 1（その改行は解析のときに取り除かれる）を返す */
+    function leadingNewlineBefore({ element, source }) {
+        if (!LEADING_NEWLINE_TAGS.includes(element.tagName))
+            return 0;
+        const line = source.split("\n")[Number(element.getAttribute(MindmapPreview.HTML_LINE_ATTR)) - 1] ?? "";
+        return /<(?:pre|textarea|listing)\b[^>]*>\r?$/i.test(line) ? 1 : 0;
+    }
+    /** HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする。空の選択・端より前に行の印を持つ要素が無い選択は null */
+    function htmlSelectionLocation(range, source) {
+        if (range.collapsed)
+            return null;
+        const text = range.toString().trim();
+        // 文が空白だけ
+        if (text === "")
+            return null;
+        const doc = range.startContainer.ownerDocument ?? range.startContainer;
+        const startElement = htmlLineElement({ doc, node: range.startContainer, offset: range.startOffset });
+        const endElement = htmlLineElement({ doc, node: range.endContainer, offset: range.endOffset });
+        // 端より前に行の印を持つ要素が無い
+        if (startElement === null || endElement === null)
+            return null;
+        const lineOfBoundary = (element, node, offset) => Number(element.getAttribute(MindmapPreview.HTML_LINE_ATTR)) +
+            htmlLinesBefore({ element, node, offset }) +
+            leadingNewlineBefore({ element, source });
+        return {
+            kind: "body",
+            start: lineOfBoundary(startElement, range.startContainer, range.startOffset),
+            end: lineOfBoundary(endElement, range.endContainer, range.endOffset),
+            text,
+        };
+    }
+    MindmapPreview.htmlSelectionLocation = htmlSelectionLocation;
     /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
     function keyElement(node) {
         const element = node instanceof Element ? node : node.parentElement;
@@ -211,6 +276,18 @@ var MindmapPreview;
                 ],
             });
             (code.closest("pre") ?? code).replaceWith(figure);
+        }
+        // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面）
+        for (const code of root.querySelectorAll("code.language-html")) {
+            const pre = code.closest("pre") ?? code;
+            const block = MindmapPreview.h({
+                tag: "div",
+                attrs: { class: MindmapPreview.HTML_BLOCK_CLASS, [MindmapPreview.DIAGRAM_SOURCE_ATTR]: code.textContent ?? "" },
+            });
+            const line = pre.getAttribute(MindmapPreview.LINE_ATTR);
+            if (line !== null)
+                block.setAttribute(MindmapPreview.LINE_ATTR, line);
+            pre.replaceWith(block);
         }
         return root;
     }

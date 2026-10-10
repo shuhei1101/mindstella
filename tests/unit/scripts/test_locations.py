@@ -205,6 +205,37 @@ def test_check_location_when_stale(
     assert expected_in_reason in result
 
 
+# HTML の本文の箇所を確かめる資料の本文（1 行目が style、2 行目がコメント、4 行目が段落）
+HTML_BODY = "<style>p { color: red }</style>\n<!-- メモ -->\n\n<p>言い<b>換え</b>たい文</p>\n"
+
+
+@pytest.mark.parametrize(
+    ("location", "matches", "expected_in_reason"),
+    [
+        pytest.param(_body_location(4, 4, "言い換えたい文"), True, "", id="rendered_text"),
+        pytest.param(_body_location(1, 1, "color"), False, "1〜1 行目", id="hidden_style"),
+        pytest.param(_body_location(4, 4, "書き直した文"), False, "4〜4 行目", id="text_missing"),
+    ],
+)
+def test_check_location_when_html_body(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    location: locations.Location,
+    matches: bool,
+    expected_in_reason: str,
+) -> None:
+    """HTML の本文はタグを外した描いた文と照らす（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    workspace = store.load_workspace(root)
+    item = store.find_item(workspace, "A-1").item
+    # 実行
+    result = locations.check_location(workspace, item, location)
+    # 検証
+    assert (result is None) is matches
+    assert expected_in_reason in (result or "")
+
+
 @pytest.mark.parametrize(
     ("key", "expected"),
     [

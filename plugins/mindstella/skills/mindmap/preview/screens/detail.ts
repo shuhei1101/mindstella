@@ -23,6 +23,8 @@ namespace MindmapPreview {
       diagram: (svg: SVGElement, diff: DiagramViewerDiff | null) => void;
       /** 本文の見出しへ移った（見出しの名前。本文に無い見出しで開いたときは null）。使う側がハッシュの `h` を、履歴に積まずに置き換える */
       heading: (heading: string | null) => void;
+      /** HTML の本文の枠で文を選び終えた・選びを外した。使う側が選んだ箇所のコメントの入口を出す・閉じる */
+      frame?: { select: (selection: HtmlFrameSelection) => void; clear: () => void };
     };
     /** 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント（溜めた順）と、行の修正・削除・元に戻すの引数。配る書き出しでは null（どれも置かない） */
     comment: { form: SendFormProps; reviews: ReviewState["items"]; edit: ReviewEditProps } | null;
@@ -818,6 +820,25 @@ namespace MindmapPreview {
     view: DiffView | null;
   };
 
+  /** 資料の HTML の本文の枠が持つ属性（コメントの一覧から開いたとき、示す箇所を求める枠を引く） */
+  const HTML_BODY_ATTR = "data-html-body";
+
+  /** Markdown の本文の中の `html` のコードブロックの入れ物を、枠に置き換える。差分の表示の間の足した・消した部分は、枠に描かず原文に印を付けたまま出す */
+  function drawHtmlBlocks(root: HTMLElement): void {
+    for (const block of root.querySelectorAll<HTMLElement>(`.${HTML_BLOCK_CLASS}`)) {
+      const source = block.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
+      if (block.closest(".df-blk") !== null) {
+        block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src" }, children: [source] }));
+      } else {
+        const frame = htmlBodyFrame({ source, selectable: false, label: "html のコードブロック" });
+        frame.classList.add(HTML_BLOCK_CLASS);
+        const line = block.getAttribute(LINE_ATTR);
+        if (line !== null) frame.setAttribute(LINE_ATTR, line);
+        block.replaceWith(frame);
+      }
+    }
+  }
+
   /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
   function detailBody({ id, index, on, review, view }: BodyProps): HTMLElement {
     const entry = index.byId.get(id);
@@ -861,6 +882,7 @@ namespace MindmapPreview {
     const bodySection = (label: string): HTMLElement | null => {
       const source = view?.body ?? index.data.bodies[item.body ?? ""];
       if (source === undefined) return null;
+      if (bodyFormatOf(item.body) === "html") return htmlBodySection({ label, source });
       let rendered: HTMLElement | null = null;
       let notice: HTMLElement | null = null;
       let diagramBefore: string | null = null;
@@ -890,6 +912,7 @@ namespace MindmapPreview {
         },
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
+      drawHtmlBlocks(root);
       const drawn = renderDiagrams(root);
       if (diagramBefore !== null) {
         const before = diagramBefore;
@@ -921,6 +944,44 @@ namespace MindmapPreview {
       const content = document.createDocumentFragment();
       content.append(...(notice === null ? [] : [notice]), root);
       return section(label, content);
+    };
+    /** HTML の本文の節。本文を枠に描く。差分の表示の間は、描いた結果の上の印と原文の差分で前後を見せる */
+    const htmlBodySection = ({ label, source }: { label: string; source: string }): HTMLElement => {
+      const current = index.data.bodies[entry.item.body ?? ""];
+      const marked = index.data.marked_bodies?.[entry.item.body ?? ""];
+      // 選んだ時点が今の本文のとき、行の印つきの HTML を使う（古いまとまりを選び、その後に本文を直したときは、今の行と合わない）
+      const lined = source === current && marked !== undefined;
+      const drawn = lined ? marked : source;
+      let notice: HTMLElement | null = null;
+      let content: HTMLElement | null = null;
+      const versions = view?.versions ?? null;
+      if (versions !== null && versions.before !== null && !versions.trimmed) {
+        if (missingLibraries(["jsdiff"]).length > 0) {
+          notice = libraryNotice({ names: ["jsdiff"], what: "本文の差分" });
+        } else if (versions.beforeBody === null) {
+          notice = noteBox(NOTE_BODY_UNAVAILABLE);
+        } else if (versions.beforeBody !== source) {
+          content = htmlBodyDiff({
+            before: versions.beforeBody,
+            after: source,
+            marked: drawn,
+            beforeFormat: bodyFormatOf(versions.before.body) === "md" ? "md" : "html",
+          });
+          if (content === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
+        }
+      }
+      const frame =
+        content ??
+        htmlBodyFrame({
+          source: drawn,
+          // 配る書き出しと、今の本文の行と合わない本文では、選んだ箇所のコメントの入口を出さない
+          selectable: review !== null && lined,
+          ...(on.frame === undefined ? {} : { on: { select: on.frame.select, clear: on.frame.clear } }),
+        });
+      if (frame instanceof HTMLIFrameElement) frame.setAttribute(HTML_BODY_ATTR, "");
+      const wrapped = document.createDocumentFragment();
+      wrapped.append(...(notice === null ? [] : [notice]), frame);
+      return section(label, wrapped);
     };
     /** 採用した案と理由の節（決定内容・理由のどちらかがあるときだけ） */
     const adoptedSection = (): HTMLElement | null => {
@@ -1094,6 +1155,7 @@ namespace MindmapPreview {
             h({ tag: "span", attrs: { class: "mono" }, children: [id] }),
           ],
         }),
+        entry?.kind === "docs" ? bodyFormatBadgeOf(entry.item.body) : null,
         h({ tag: "span", attrs: { class: "spacer" } }),
         arrow("前の項目へ戻る", "←", position <= 0, on.back),
         arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
@@ -1243,6 +1305,12 @@ namespace MindmapPreview {
     } else {
       const start = loc.start ?? 0;
       const end = loc.end ?? start;
+      // HTML の本文: 枠の中で、始まりの行を含む最も内側の要素を示す
+      const frame = root.querySelector<HTMLIFrameElement>(`iframe[${HTML_BODY_ATTR}]`);
+      if (frame !== null) {
+        highlightFrameLine({ frame, line: start, scroller: root.querySelector<HTMLElement>(".panel-body") });
+        return;
+      }
       const blocks = [...root.querySelectorAll(`.md [${LINE_ATTR}]`)];
       const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
       // 始まりの行を含む（始まりの行以前で最も後ろの）ブロックから、終わりの行までのブロック

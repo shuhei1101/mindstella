@@ -1,0 +1,80 @@
+/* PR #214 で足す部品（本文の形式のバッジ・HTML の本文の枠・HTML の本文の差分）と、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { font-weight: 700; border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+/* 撮影用の赤枠（クエリの mark） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
+
+/* ===== 本文の形式のバッジ: 形式の名前を等幅の文字で出す（色だけで分けない） ===== */
+
+/* バッジ: 取り下げの札と同じ高さ・枠。文字は等幅にして、状態の札・取り下げの札と見分ける */
+.fmt-badge { display: inline-flex; align-items: center; flex: none; height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-3); font: 600 11px/1 var(--font-mono); letter-spacing: .02em; white-space: nowrap; vertical-align: 1px; }
+/* HTML: 地の面を敷き、文字を一段濃くする（見た目のある資料を一覧で拾いやすくする） */
+.fmt-badge.fmt-html { border-color: var(--text-3); background: var(--surface-2); color: var(--text-2); }
+/* カードの種類の右（案 A）: 種類の色（印の色）を引き継がない */
+.doc-kind .fmt-badge { margin-left: 2px; font-weight: 600; }
+/* 詳細のヘッダー: 種類と ID の右 */
+.panel-head .fmt-badge { margin-left: 2px; }
+/* 取り下げた資料のカード: バッジも薄くする */
+.card.is-withdrawn .fmt-badge { color: var(--text-3); }
+
+/* ===== HTML の本文の枠: 資料が自分で持つ見た目の紙として、詳細の地と分ける ===== */
+
+/* 枠: 幅いっぱい。描く前は 120px で、描いた後は中身の高さに合わせる（スクリプトが height を入れる）。地は白にして、ダークでも資料の色のまま読む */
+iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; }
+
+/* Markdown の中の html のコードブロックの枠: 前後の段落との間を空ける */
+.md iframe.html-block { margin: 12px 0; }
+
+/* ===== HTML の本文の差分 ===== */
+
+/* 案 C: 見せ方の切り替えと凡例の行 */
+.html-diff-c { display: grid; gap: 8px; }
+/* 切り替えの行: 切り替えの右に凡例を置き、狭い幅では折り返す */
+.html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* 凡例の行の余白を切り替えの行に揃える */
+.html-diff-bar .df-legend { margin: 0; }
+/* 切り替えで隠した側（描いた結果・原文の差分・凡例）は、display を持つ部品でも出さない */
+.html-diff-c [hidden] { display: none; }
+
+/* 案 A: 原文の行の差分（図の Raw の差分と同じ行の印） */
+.html-diff { display: grid; gap: 6px; }
+/* 原文の差分の見出し: 描いた結果ではなく原文であることを示す */
+.html-diff-head { margin: 0; color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
+/* 変わっていない行を畳んだ行 */
+.df-raw .df-line.df-skip { padding-left: 2em; text-indent: 0; color: var(--text-3); font-family: var(--font-sans); font-size: var(--fs-xs); }
+
+/* 案 B: 変える前と後の描いた結果を並べる（詳細パネルでは縦、広い全画面では横） */
+.html-side { display: grid; gap: 12px; }
+/* 全画面の広い幅: 横に 2 つ並べる */
+@media (min-width: 1100px) {
+  dialog.full .html-side { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+/* 前と後の 1 つ */
+.html-side-pane { display: grid; gap: 6px; min-width: 0; margin: 0; }
+/* 前と後の見出し */
+.html-side-pane figcaption { color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; }
+/* 変える前の枠: 消した側の色の枠 */
+.html-side-pane:first-child iframe.html-frame { border-color: var(--df-del); }
+/* 変えた後の枠: 足した側の色の枠 */
+.html-side-pane:last-child iframe.html-frame { border-color: var(--df-add); }

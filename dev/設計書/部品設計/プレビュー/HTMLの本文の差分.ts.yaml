@@ -1,0 +1,53 @@
+title: "HTMLの本文の差分"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/html-body-diff.ts#MindmapPreview.htmlBodyDiff"
+story: "Preview/HtmlBodyDiff"
+states:
+  - name: Rendered
+    description: 既定。描いた結果で、変えた 2 つ目の段落に「変わった」の印。上に「描いた結果」「原文の差分」の切り替えと、「足した」「変わった」の凡例
+  - name: RawDiff
+    description: 「原文の差分」に切り替えた。消した行と足した行を記号と色で出し、変わっていない長い並びは前後 3 行を残して「変わっていない {数} 行」に畳む
+    notes:
+      見せ方: ストーリーの play で「原文の差分」を押す
+  - name: RemovedOnly
+    description: 段落を消しただけ。描いた結果には印を付けられないため、凡例に「消した箇所は原文の差分で見られます」を添える
+  - name: FromMarkdown
+    description: 選んだ時点の本文が Markdown。切り替えを出さず、原文の差分だけを出す
+    args:
+      - name: beforeFormat
+        value: md
+lead: 差分の表示の間、HTML の本文を描いた結果の上で変わった行を含む要素に印を付け、「原文の差分」に切り替えると原文の行の差分を出す。
+status: implemented
+args:
+  - name: before
+    type: 文字列
+    required: true
+    description: 選んだ時点の本文の原文（`body_diff` で組み立てたもの）
+    status: implemented
+  - name: after
+    type: 文字列
+    required: true
+    description: 今の本文の原文（記録の `bodies`）
+    status: implemented
+  - name: marked
+    type: 文字列
+    required: true
+    description: 今の本文の行の印つきの HTML（記録の `marked_bodies`）
+    status: implemented
+  - name: beforeFormat
+    type: 列挙
+    required: false
+    default: html
+    choices: md・html
+    description: 選んだ時点の本文の形式。`md`（形式を替えた）のときは描いた結果の印と切り替えを出さず、原文の差分だけを出す
+    status: implemented
+uses:
+  - component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
+    how: 描いた結果を `marked` と `marks`（足した行・変えた行）で描き、`selectable` は `false` で渡す（差分の表示の間は選んだ箇所のコメントの入口を出さない）
+accessibility:
+  - 切り替えは 2 つのボタンの組（`role="group"`、読み上げの名前「本文の差分の見せ方」）で、選んでいる方を `aria-pressed` で示す
+  - 原文の差分の足した・消した行は、色に加えて `+` / `−` の記号と読み上げの文字（「追加:」「削除:」）で分ける
+refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - dev/設計書/部品設計/プレビュー/差分の印.ts#
+notes:
+  モック: '`dev/mock/components/html-body-frame/` の「差分の表示」と `dev/mock/pages/detail-panel/214/c-marks/`（採用した案 C）'

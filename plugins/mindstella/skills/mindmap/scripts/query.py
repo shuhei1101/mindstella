@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from kinds import KINDS, Kind, id_number
-from store import Workspace, as_ids, find_item, read_body
+from store import Workspace, as_ids, body_format, find_item, read_body
 
 # 参照元として拾うキーとその並び
 REFERENCE_KEYS = ("depends_on", "parent", "for", "related", "sources")
@@ -66,12 +66,15 @@ def show_item(workspace: Workspace, item_id: str) -> dict[str, Any]:
     """1 項目の全てのキー・種類・本文・参照元をまとめる。"""
     ref = find_item(workspace, item_id)
     body_name = ref.item.get("body")
-    # body があるときだけ本文を読む
-    body_markdown = read_body(workspace, body_name) if isinstance(body_name, str) else None
+    # body があるときだけ本文を読み、形式に合う側に入れる
+    text = read_body(workspace, body_name) if isinstance(body_name, str) else None
+    body_kind = body_format(body_name)
     return {
         "item": ref.item,
         "kind": ref.kind,
-        "body_markdown": body_markdown,
+        "body_markdown": text if body_kind == "markdown" else None,
+        "body_html": text if body_kind == "html" else None,
+        "body_format": body_kind,
         "referenced_by": list_referrers(workspace, item_id),
     }
 

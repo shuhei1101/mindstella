@@ -455,5 +455,40 @@ functions:
         condition: '`removed` に N-10・D-53・N-6 をこの順に持つ時点。`parametrize`: `notes` / `tasks` / `point` が `null`'
         mock: なし
         expected: N-6・N-10 の順 / 空 / 空
+  - name: htmlChangedLines
+    title: HTML の本文の変わった行
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    kind: 関数
+    scope: public
+    summary: 前後の HTML の原文を行ごとに比べ、今の本文で足した行・変えた行と、消しただけの箇所があるかを返す（部品『HTMLの本文の差分』が使う）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: before
+        type: string
+        required: true
+        passing: positional
+        description: 選んだ時点の本文の原文
+      - name: after
+        type: string
+        required: true
+        passing: positional
+        description: 今の本文の原文
+    returns:
+      type: '{added: number[], changed: number[], removedOnly: boolean} | null'
+      description: '`added` は足した行、`changed` は消した行と入れ替えた行（どちらも今の本文の 1 始まりの行。空行だけを足した行は入れない）、`removedOnly` は足した行と隣り合わない消した行があるか。差分を打ち切ったら `null`'
+    process: |-
+      1. 行ごとに比べる（`diffLineParts`。`null` なら `null` を返す）
+      2. 並びを順にたどり、消した並びに隣る足した並びの行を `changed`、それ以外の足した行を `added` に入れる（空白だけの行は入れない）
+      3. 足した並びに隣らない消した並びがあれば `removedOnly` を真にする
+    unit_tests:
+      - name: test_html_changed_lines
+        case: 正常
+        summary: 足した行・変えた行・消しただけの箇所を分ける
+        condition: '段落 3 つを 1 行ずつ持つ本文。`parametrize`: 2 つ目を書き換える / 4 つ目を足す / 2 つ目を消す / 段落の間に空行だけを足す'
+        expected: '`changed: [2]` / `added: [4]` / `removedOnly` が真で `added`・`changed` が空 / どれも空で `removedOnly` が偽'
+        mock: jsdiff はリポジトリの外部ライブラリの設計書の版を読む
 test_files:
   - tests/unit/preview/test_diff.py

@@ -235,9 +235,86 @@ flows:
       - 'エラーの本文に `decisions.yaml: items[0].status:` で始まり、`未決定` と採用した案 `A` を含む行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_adopted_but_undecided
-lead: '`item` で渡した中身に ID・作成日時・更新日時・編集した人を付けて、種類の YAML に 1 項目足す。本文を渡したときは `.mindstella/docs/{ID}.md` に書く。'
+  - name: 正常系（資料の本文を HTML で書く）
+    summary: 資料の本文を HTML で渡すと、`{ID}.html` に書いて `body` から指す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 項目を持たないワークスペース
+      - name: item
+        description: '`title`・`kind`・`status` と `body_html` を持つ資料'
+        notes: '`{"title": "画面のモック", "kind": "モック", "status": "下書き", "body_html": "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: add workspace kind doc（body_html つき）
+        IF-->>WS: 全ての YAML を読む
+        IF->>WS: .mindstella/docs/A-1.html と .mindstella/docs.yaml を書く
+        IF-->>クライアント: JSON（id・file・body）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`id` が `A-1`、`body` が `.mindstella/docs/A-1.html`'
+      - A-1 の `body` が `A-1.html` で、`.mindstella/docs/A-1.html` の中身が渡した `body_html` と同じ
+      - '`.mindstella/docs/A-1.md` が無く、`.mindstella/docs.yaml` に `body_html` のキーが無い'
+    test: test_normal_when_doc_body_html
+  - name: 異常系（資料以外に HTML の本文を渡す・SchemaMismatchError）
+    summary: 資料以外の種類に `body_html` を渡すと、足さずに資料だけが持てる旨を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 項目を持たないワークスペース
+      - name: item
+        description: '`body_html` を持つタスク'
+        notes: '`{"title": "画面を描く", "kind": "作業", "status": "未着手", "body_html": "<p>一覧の画面</p>"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+
+        クライアント->>IF: add workspace kind task（body_html つき）
+        IF->>IF: 資料以外が HTML の本文を持つ
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、`docs/` にファイルが増えていない
+    test: test_error_when_html_body_for_non_doc
+  - name: 異常系（本文を Markdown と HTML の両方で渡す・SchemaMismatchError）
+    summary: 資料に `body_markdown` と `body_html` を両方渡すと、足さずに一緒に渡せない旨を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 項目を持たないワークスペース
+      - name: item
+        description: '`body_markdown` と `body_html` を両方持つ資料'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+
+        クライアント->>IF: add workspace kind doc（body_markdown と body_html）
+        IF->>IF: 本文が 2 つある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `docs.yaml: items[0].body_html: body_markdown と body_html は一緒に渡せない` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、`docs/` にファイルが増えていない
+    test: test_error_when_both_bodies
+lead: '`item` で渡した中身に ID・作成日時・更新日時・編集した人を付けて、種類の YAML に 1 項目足す。本文を渡したときは `.mindstella/docs/{ID}.md`（資料の HTML の本文は `.mindstella/docs/{ID}.html`）に書く。'
 idempotent: false
-side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
+side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。`body_html` を渡したときは `.mindstella/docs/{ID}.html` を書き、項目の `body` を `{ID}.html` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
 request:
   - name: workspace
     type: str
@@ -262,7 +339,14 @@ request:
     default: なし（本文を書かない）
     location: argument
     description: 本文の Markdown。YAML には残らず、`.mindstella/docs/{ID}.md` に書かれる
-    constraints: どの種類も持てる。資料は必須
+    constraints: どの種類も持てる。資料は `body_markdown` か `body_html` のどちらか 1 つが必須で、両方は渡せない
+  - name: item.body_html
+    type: str
+    required: false
+    default: なし（本文を HTML で書かない）
+    location: argument
+    description: 本文の HTML。YAML には残らず、`.mindstella/docs/{ID}.html` に書かれる。サーバーは中身を解釈・実行せず、そのまま書く
+    constraints: 資料（`kind` が `doc`）だけが持てる。`body_markdown` と一緒には渡せない
 request_example: |-
   ```json
   {
@@ -298,7 +382,7 @@ response:
     example: .mindstella/decisions.yaml
   - name: body
     type: str | None
-    description: 書いた本文の Markdown（ワークスペースからの相対パス）。本文が無ければ `null`
+    description: 書いた本文（Markdown か HTML）のファイル（ワークスペースからの相対パス）。本文が無ければ `null`
     example: .mindstella/docs/D-2.md
 exceptions:
   - name: なし（正常終了）
@@ -308,7 +392,7 @@ exceptions:
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
   - name: SchemaMismatchError
-    condition: 足した後のワークスペースのどれかの YAML がスキーマに合わない（ツールが付けるキーを渡したときも含む）
+    condition: 足した後のワークスペースのどれかの YAML がスキーマに合わない（ツールが付けるキーを渡したときも含む）。資料以外に `body_html` を渡した・`body_markdown` と `body_html` を両方渡したときも含む
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
@@ -333,5 +417,8 @@ constraints:
     constraint: 積まない（足した項目は `history` を持たない）。新規の印は `changes.yaml` の `pending.added`・`sets[].added` から取る
   - item: 通し番号
     constraint: '`changes.yaml` の `last_seq` + 1 を項目の `seq` と `added_seq` に入れ、`last_seq` をその番号にする（『前回読んだ時点からの変更』が読んだ時点より後に足した項目を引く）'
+  - item: 本文の形式
+    constraint: '本文の形式は `body` のファイル名の拡張子で表す（`{ID}.md` は Markdown、`{ID}.html` は HTML）。資料以外に `body_html` を渡したときは `{ファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`、両方を渡したときは `{ファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない` の行で SchemaMismatchError にする'
+    notes: 要件の『本文の形式の持ち方』の案 A。キーを足さないため、今の Markdown の資料は移し替えずに読める
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_add.py

@@ -1,0 +1,103 @@
+title: "サーバー / HTMLの本文"
+lead: 資料の HTML の本文の開きタグに原文の行の印を足す処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    html_body.py   HTML の本文の行の印と、行の範囲の描いた文
+  ```
+constants:
+  - name: LINE_ATTR
+    title: 行の印の属性
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    summary: 開きタグに足す行の印の属性の名前。Markdown の本文の描画と同じ名前
+    value: '"data-line"'
+    usecase: 選んだ箇所へコメントする
+    status: implemented
+  - name: HIDDEN_TEXT_TAGS
+    title: 描いた文に出ない中身を持つ要素
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    summary: 中身の文を描いた文に入れない要素
+    value: frozenset({"style", "script", "template", "title"})
+    usecase: 選んだ箇所へコメントする
+    status: implemented
+  - name: UNMARKED_TAGS
+    title: 行の印を足さない要素
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    summary: 文書の外枠と描いた文を持たない要素。`HIDDEN_TEXT_TAGS` を含む
+    value: frozenset({"html", "head", "body", "meta", "link", "base"}) | HIDDEN_TEXT_TAGS
+    usecase: 選んだ箇所へコメントする
+    status: implemented
+functions:
+  - name: mark_lines
+    title: 行の印を足す
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    usecase: 選んだ箇所へコメントする
+    kind: 関数
+    scope: public
+    summary: 開きタグのタグ名の直後に、中身が始まる原文の行の印を足した HTML を返す
+    status: implemented
+    args:
+      - name: source
+        type: str
+        required: true
+        passing: positional
+        description: HTML の本文の原文
+    returns:
+      type: str
+      description: 行の印を足した HTML。印の他は原文のままで、行の並びも変えない
+    process: |-
+      1. 原文の各行の先頭の位置を控え、`HTMLParser`（`convert_charrefs=True`）で読む
+      2. 開きタグと空要素ごとに、`getpos()` の行・列からタグの先頭の位置を、`get_starttag_text()` の改行の数からタグが閉じた行を求める（`UNMARKED_TAGS` は飛ばす）
+      3. タグ名の直後に ` data-line="{行}"` を差し込んだ文字列を返す
+    unit_tests:
+      - name: test_mark_lines
+        case: 正常
+        summary: 開きタグに中身が始まる行の印を足す
+        condition: '`parametrize`: 1 行の `<p>` / 2 行にまたがる開きタグ `<p\n class="a">` / コメントの中の `<p>` / `<style>` の中の `a > b` / 属性値の `>` / `<br/>` / 閉じタグを省いた `<li>`'
+        expected: 順に 1 行目 / 2 行目（タグが閉じた行）/ 印を足さない / 印を足さない / 属性の後ろでなくタグ名の直後に足す / 足す / それぞれの `<li>` に足す
+        mock: なし
+      - name: test_mark_lines_when_unmarked
+        case: 正常
+        summary: 文書の外枠と描いた文を持たない要素には足さず、印を消すと原文に戻る
+        condition: '`<!doctype html>`・`<html>`・`<head>`・`<meta>`・`<title>`・`<style>`・`<body>`・`<script>` と段落を持つ文書'
+        expected: '`<p` だけに印があり、` data-line="{数}"` を取り除くと原文と同じ'
+        mock: なし
+  - name: text_of_lines
+    title: 行の範囲の描いた文
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    usecase: 選んだ箇所へコメントする
+    kind: 関数
+    scope: public
+    summary: 原文の `start`〜`end` 行にある、描いた文に出る文をつないで返す
+    status: implemented
+    args:
+      - name: source
+        type: str
+        required: true
+        passing: positional
+        description: HTML の本文の原文
+      - name: start
+        type: int
+        required: true
+        passing: positional
+        description: 始めの行（1 始まり）
+      - name: end
+        type: int
+        required: true
+        passing: positional
+        description: 終わりの行
+    returns:
+      type: str
+      description: その行の範囲の文の断片を改行でつないだもの（タグとコメントを外し、`HIDDEN_TEXT_TAGS` の中身を除き、文字参照を文字に戻したもの）
+    process: |-
+      1. `HTMLParser` で読み、`HIDDEN_TEXT_TAGS` の外の `handle_data` の断片を、断片の先頭の行つきで控える
+      2. 断片を改行で分け、行が `start`〜`end` に入るものだけを改行でつなぐ
+    unit_tests:
+      - name: test_text_of_lines
+        case: 正常
+        summary: タグをまたぐ文をつなぎ、隠れた中身と範囲の外を外す
+        condition: '`parametrize`: 4 行目 `<p>言い<b>換え</b>たい文</p>` で 4〜4 / `<style>p{}</style>` の行 / コメントの行 / `&amp;` を含む行 / 範囲の外の行'
+        expected: 順に `言い換えたい文` / 空 / 空 / `&` を含む / 範囲の外の文を含まない
+        mock: なし
+test_files:
+  - tests/unit/scripts/test_html_body.py

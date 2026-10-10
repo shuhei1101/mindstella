@@ -302,7 +302,7 @@ functions:
         description: 索引
     returns:
       type: '{id, kind, title, tier}[]'
-      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。大文字・小文字を区別しない。`tier` は段で、`1` は ID かタイトルが言葉と完全に一致（大文字・小文字と前後の空白を区別しない）、`2` はタイトルが語を全て含む、`3` はそれ以外。`tier` の順 → 種類の順 → 連番の順。言葉が空なら空
+      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。本文が HTML のものと、Markdown の本文の言語指定 `html` のコードブロックは、描いた文（`htmlText`）で当てる。大文字・小文字を区別しない。`tier` は段で、`1` は ID かタイトルが言葉と完全に一致（大文字・小文字と前後の空白を区別しない）、`2` はタイトルが語を全て含む、`3` はそれ以外。`tier` の順 → 種類の順 → 連番の順。言葉が空なら空
     unit_tests:
       - name: test_search_items
         case: 正常
@@ -316,6 +316,12 @@ functions:
         condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」・本文にだけ「シナリオの依頼」を含む資料 A-1 に「シナリオの依頼 」（末尾に空白） / `"g-1"` / 決定内容にだけ「保存先」を含む検討事項 D-1・タイトルに「保存先」を含む資料 A-2 に「保存先」 / 2 語「シナリオ 受け方」'
         mock: なし
         expected: G-1（`tier` 1）→ D-1（2）→ A-1（3） / G-1 が先頭で `tier` 1、G-12 などは 1 でない / A-2（2）→ D-1（3）で種類の順より段が先 / D-1 が `tier` 2（語がタイトルに全てある）
+      - name: test_search_items_when_html
+        case: 正常
+        summary: HTML の本文と html のコードブロックを描いた文で当てる
+        condition: '本文 `<p class="flow" data-step="1">画面の流れ</p>` の資料 A-1（`A-1.html`）と、同じ中身を言語指定 `html` のコードブロックに持つ資料 A-2（`A-2.md`）。`parametrize`: `画面の流れ` / `data-step` / `flow`'
+        expected: A-1・A-2 / 返らない / 返らない
+        mock: なし
   - name: missingLibraries
     title: 読めなかったライブラリ
     kind: 関数
@@ -373,7 +379,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える
+    summary: 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換える
     args:
       - name: source
         type: string
@@ -389,6 +395,7 @@ functions:
       2. `marked.lexer` の token に先頭の行から `raw` の改行を足し進めた行を持たせ（リストの項目と引用は中の token にも）、見出し・段落・コード・リストの項目・表の行の最初の開きタグに `data-line-start` を付けて HTML にする（`marked.Renderer` を包む。段落を持つ項目は中の段落に任せ、mermaid のコードには付けない。フェンスのコードは次の行、表は見出しの行と区切りの行の次から 1 行ずつ。PoC #80 の方式）
       3. `DOMPurify.sanitize`（`data-line-start` を残す）して要素に入れる
       4. `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に置き換える（描くのは `renderDiagrams`）
+      5. `language-html` のコードブロックを、原文を `data-source` に持ち元の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に置き換える（描くのは詳細の画面が部品『HTMLの本文の枠』で、`selectable` は偽）
     unit_tests:
       - name: test_render_markdown
         case: 正常
@@ -408,6 +415,12 @@ functions:
         condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・表・フェンスのコード・mermaid のコードブロックを持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`h1` の `data-line-start` が 1、段落が 3、表の各行とコードが PoC #80 の対応づけどおり。図の入れ物には付かない。`data-line-start` を除いた HTML が印を付けないときと同じ'
+      - name: test_render_markdown_when_html_code_block
+        case: 正常
+        summary: html のコードブロックを枠の入れ物にし、前後は今までどおり描く
+        condition: 見出し・段落の間に、`<p>a</p><script>x()</script>` を持つ言語指定 `html` のコードブロックを 1 つ持つ本文
+        expected: '`.html-block` が 1 つで `data-source` に原文、`pre` にコードとしては出ない。見出し・段落の `data-line-start` はコードブロックが無いときと同じ数え方'
+        mock: 描画のライブラリの配信元（`page.route`）
   - name: renderDiagrams
     title: 図を描く
     kind: 関数
@@ -1422,6 +1435,103 @@ functions:
     returns:
       type: boolean
       description: 文字の入力欄なら true
+  - name: bodyFormatOf
+    title: 本文の形式
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 資料を読む
+    kind: 関数
+    scope: public
+    summary: 項目の `body` の拡張子から本文の形式を返す（形式の札・表の形式の列・詳細の描き分けが使う）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: body
+        type: string | undefined
+        required: true
+        passing: positional
+        description: 項目の `body`
+    returns:
+      type: "'md' | 'html' | null"
+      description: '`.html` で終われば `html`、`.md` で終われば `md`、それ以外と `undefined` は `null`'
+    unit_tests:
+      - name: test_body_format_of
+        case: 正常
+        summary: 拡張子から形式を決める
+        condition: '`parametrize`: `A-1.md` / `A-1.html` / `undefined`'
+        expected: '`md` / `html` / `null`'
+        mock: なし
+  - name: htmlText
+    title: HTML の描いた文
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 項目を検索する
+    kind: 関数
+    scope: public
+    summary: HTML をスクリプトを動かさずに解析し、描いた文だけを返す（全体の検索が当てる文）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: HTML の本文か `html` のコードブロックの原文
+    returns:
+      type: string
+      description: '`style`・`script`・`template`・`title` の中身とコメントを除いた文書の文'
+    process: |-
+      1. `DOMParser` で `text/html` として解析する（スクリプトは動かない）
+      2. `style`・`script`・`template`・`title` を取り除き、文書の `textContent` を返す
+    unit_tests:
+      - name: test_html_text
+        case: 正常
+        summary: タグ・属性・隠れた中身を外した文を返す
+        condition: '`<style>p{}</style><!-- メモ --><p class="flow" data-step="1">画面の流れ</p><script>x()</script>`'
+        expected: '`画面の流れ` を含み、`flow`・`data-step`・`p{}`・`メモ`・`x()` を含まない'
+        mock: なし
+  - name: htmlSelectionLocation
+    title: HTML の本文で選んだ範囲の箇所
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 選んだ箇所へコメントする
+    kind: 関数
+    scope: public
+    summary: HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする（部品『HTMLの本文の枠』の「選び終えた」が使う）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: range
+        type: Range
+        required: true
+        passing: positional
+        description: 枠の文書の中の選んだ範囲
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 本文の原文（`<pre>`・`<textarea>`・`<listing>` の開きタグの直後に改行があるかを確かめる）
+    returns:
+      type: Location | null
+      description: '`{kind: body, start, end, text}`（`text` は `range.toString()` の前後の空白を除いたもの）。空の選択・端より前に `data-line` を持つ要素が無い選択は `null`'
+    process: |-
+      1. 空の選択か、文が空白だけなら `null`
+      2. 始点と終点それぞれについて、文書の順で端より前にある `data-line` を持つ要素のうち最も後のものを引く（無ければ `null`）
+      3. その要素の開きタグの直後から端までの文とコメントの中の改行の数を、その要素の `data-line` に足す（`<br>` は数えない）。その要素が `pre`・`textarea`・`listing` で、原文のその行の開きタグの直後に改行があれば 1 を足す
+      4. `{kind: body, start, end, text}` を返す
+    unit_tests:
+      - name: test_html_selection_location
+        case: 正常
+        summary: 選んだ端を元の HTML の行にする
+        condition: 'PoC #215 の 12 ケースと、`parametrize`: 入れ子の `<span` が 2 行にまたがった後の 3 行目の文 / `<p>a<br>別の文</p>` の `別の文` / `<pre>` の直後の改行の次の行の文 / 前に複数行のコメントを持つ段落の文'
+        expected: 各ケースの元の行の範囲。順に 3 / 段落の行（`<br>` を数えない）/ `<pre>` の次の行 / 段落の行
+        mock: なし（印を足した HTML はサーバーの `mark_lines` と同じ形をテストの中で作る）
+      - name: test_html_selection_location_when_outside
+        case: 正常
+        summary: 印の無い範囲と空の選択は null
+        condition: '`parametrize`: 空の選択 / 空白だけの選択 / 印を持つ要素より前の `body` 直下の文'
+        expected: どれも `null`
+        mock: なし
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

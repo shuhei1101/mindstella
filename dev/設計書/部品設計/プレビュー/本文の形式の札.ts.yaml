@@ -1,0 +1,33 @@
+title: "本文の形式の札"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/body-format-badge.ts#MindmapPreview.bodyFormatBadge"
+story: "Preview/BodyFormatBadge"
+states:
+  - name: Markdown
+    description: Markdown の資料。地を敷かず、細い枠と `MD` の文字
+    args:
+      - name: format
+        value: md
+  - name: Html
+    description: HTML の資料。地の面を敷いた `HTML` の文字
+    args:
+      - name: format
+        value: html
+  - name: BesideOtherBadges
+    description: 種類・状態の札（完成）・取り下げの札・納品物の印と並べ、等幅の文字と地で見分けられることを見せる
+    args:
+      - name: format
+        value: html
+lead: 資料のカード・ボードのカードと詳細のヘッダーで、種類の右に置く本文の形式の札。Markdown の資料は `MD`、HTML の資料は `HTML` を等幅の文字で出し、HTML は地の面を敷いて一覧で拾いやすくする。
+status: implemented
+args:
+  - name: format
+    type: 列挙
+    required: true
+    choices: md・html
+    description: 本文の形式。資料の `body` の拡張子（`.md` / `.html`）から使う側が決める。`html` のコードブロックを含む Markdown の資料は `md`
+    status: implemented
+accessibility:
+  - 形式は `MD` / `HTML` の文字で伝え、色だけに頼らない
+  - '`title` に「本文は Markdown」「本文は HTML」を持ち、略語だけにしない'
+notes:
+  モック: '`dev/mock/components/body-format-badge/`（種類の右に置く案 A を採用）'

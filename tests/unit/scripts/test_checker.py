@@ -232,6 +232,24 @@ def test_check_bodies(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     }
 
 
+def test_check_bodies_when_html(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """HTML の本文も本文のずれの対象にする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2", body="A-2.html"),
+        bodies={"A-2.html": "<p>本文</p>\n", "A-9.html": "<p>どこからも指されない本文</p>\n"},
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_bodies(workspace)
+    # 検証
+    assert _keys(problems) == {
+        ("missing_body", "docs.yaml", "A-1", "items[0].body"),
+        ("orphan_body", "docs/A-9.html", None, None),
+    }
+
+
 def test_check_submissions(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,

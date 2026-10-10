@@ -8,7 +8,8 @@ from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
 from errors import CommentInvalidError
-from store import Workspace, read_body
+from html_body import text_of_lines
+from store import Workspace, body_format, read_body
 from submissions import MAX_BODY_CHARS
 
 # 比べる前に、選んだ文と元の文の両方から外す Markdown の書式の記号
@@ -99,7 +100,11 @@ def check_location(workspace: Workspace, item: dict[str, Any], location: Locatio
         # 行の範囲が本文に収まらない
         if location.end is None or location.start is None or location.end > len(lines):
             return f"{item_id} の本文は {len(lines)} 行しかありません"
-        source = normalize_source("\n".join(lines[location.start - 1 : location.end]))
+        # Markdown は行の範囲の書式を外した文、HTML は行の範囲の描いた文を元の文にする
+        if body_format(name) == "html":
+            source = normalize_selected(text_of_lines(text, location.start, location.end))
+        else:
+            source = normalize_source("\n".join(lines[location.start - 1 : location.end]))
         where = f"本文の {location.start}〜{location.end} 行目"
     else:
         value = value_at(item, location.key or "")

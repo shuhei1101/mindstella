@@ -72,6 +72,29 @@ flows:
       - ツールのエラーになる
       - エラーの本文に `D-9` がある
     test: test_error_when_id_not_found
+  - name: 正常系（HTML の本文）
+    summary: 本文を HTML で持つ資料は、HTML の原文と形式を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 本文を HTML（`docs/A-1.html`）で持つ資料 A-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as show（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: show workspace id A-1
+        IF-->>WS: 全ての YAML と docs/A-1.html を読む
+        IF-->>クライアント: JSON（item・body_html・body_format）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`body_html` が `docs/A-1.html` の中身と同じで、行の印（`data-line`）を含まない'
+      - '`body_format` が `html`、`body_markdown` が `null`'
+    test: test_normal_when_html_body
 lead: ID で指した 1 項目の全てのキーと本文、その項目を参照している項目を返す。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -97,13 +120,20 @@ response:
     description: 種類（`decision` など）
   - name: body_markdown
     type: str | None
-    description: '`docs/` の本文。`body` を持たないか、指す Markdown が無いときは `null`'
+    description: '`docs/` の Markdown の本文。`body` を持たないか、本文が HTML か、指す Markdown が無いときは `null`'
   - name: referenced_by[].id
     type: str
     description: この項目を参照している項目の ID（種類の順、連番の小さい順）
   - name: referenced_by[].key
     type: '"depends_on" | "parent" | "for" | "related" | "sources"'
     description: 参照しているキー。同じ項目が複数のキーで参照していればキーごとに行を分ける
+  - name: body_html
+    type: str | None
+    description: '`docs/` の HTML の本文（書いたままの原文）。本文が HTML でないか、指す HTML が無いときは `null`'
+  - name: body_format
+    type: '"markdown" | "html" | None'
+    description: 本文の形式。`body` の拡張子（`.md` / `.html`）から決める。`body` を持たないときは `null`
+    notes: スキルはリリースの資料を書き出すとき、この値で書き出すファイルの拡張子を決める
 exceptions:
   - name: なし（正常終了）
     condition: 表示できた

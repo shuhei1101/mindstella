@@ -153,7 +153,7 @@ def _check_refs(workspace: Workspace) -> list[Problem]:
 
 
 def _check_bodies(workspace: Workspace) -> list[Problem]:
-    """指す本文が無い項目と、どこからも指されない `docs/*.md` を拾う。"""
+    """指す本文が無い項目と、どこからも指されない `docs/*.md`・`docs/*.html` を拾う。"""
     problems: list[Problem] = []
     referenced: set[str] = set()
     for kind, spec in KINDS.items():
@@ -175,7 +175,8 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
                 )
     body_dir = records_root(workspace.root) / BODY_DIR
     # どの項目の body にも無い本文は、どこからも指されていない
-    for path in sorted(body_dir.glob("*.md")) if body_dir.is_dir() else []:
+    paths = [*body_dir.glob("*.md"), *body_dir.glob("*.html")] if body_dir.is_dir() else []
+    for path in sorted(paths):
         if path.name not in referenced:
             problems.append(
                 Problem(

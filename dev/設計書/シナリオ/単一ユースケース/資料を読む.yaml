@@ -38,6 +38,34 @@ scenarios:
       - 絞り込んだ後のカードは A-2 だけで、条件のチップに種類 = 仕様書があり、絞り込みのボタンに件数のバッジが付く
       - 詳細パネルに A-2 の本文が、見出しと表に描かれて出る
     test: test_normal
+  - name: 正常シナリオ（本文の形式のバッジ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: '本文を Markdown で持つ資料 A-1（種類: 仕様書）と、本文を HTML で持つ資料 A-2（種類: モック）'
+        notes: A-2 の本文は見出しと段落を持つ HTML
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料のタブを開く
+        P-->>U: 形式のバッジを付けたカード
+        U->>P: 表示形式をボードに切り替える
+        P-->>U: 形式のバッジを付けたボード
+        U->>P: 表示形式を表に切り替える
+        P-->>U: 形式のバッジを付けた表
+    expected:
+      - カード・ボード・表のどれでも、A-2 に HTML のバッジ、A-1 に MD のバッジが出る（表は「形式」の列に HTML / MD）
+      - バッジは色だけでなく文言で形式を示す
+    test: test_normal_when_body_format_badge
+    notes:
+      バッジの文言と位置: モック作成で決め、画面設計に書く
 lead: 利用者が、資料を納品物を先頭にしたカードで見て、状態の列のボードに切り替え、絞り込み、カードから本文を開く単一ユースケース。
 issue: 5
 primary_actor: 利用者

@@ -239,6 +239,30 @@ scenarios:
       - 会話ログが 1 件足されている
       - 増えたまとまりが、変えた項目に N-1 を持ち、消した項目を持たない
     test: test_normal_when_note_withdrawn
+  - name: 正常シナリオ（見た目のある資料を HTML で残す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込み（本文は HTML）を、決めた引数で再生する
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 再生する書き込み
+        description: '会話で求められた画面のモックを HTML の本文にした資料 A-1（`kind`: モック、`related: [D-1]`）と会話ログを、1 回のまとめての書き込みで渡す'
+    flow: |-
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 画面のモックを作ってほしいという発言
+        CC->>SV: まとめての書き込み（資料 A-1、本文は HTML・会話ログ）
+        SV->>WS: docs.yaml と docs/ の HTML の本文と logs.yaml を書く
+        CC-->>U: プレビューで開く場所を示す
+    expected:
+      - '資料 A-1 が `kind: モック` と `related: [D-1]` を持ち、本文が HTML の形式である'
+      - '`.mindstella/docs/` に A-1 の本文の HTML がある'
+      - '`check` が YAML と本文のずれを 0 件で返す'
+    test: test_normal_when_visual_doc_kept_as_html
 lead: 話し合いを進めるスキル `session` が、利用者の発言を対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む単一ユースケース。
 issue: 4
 primary_actor: 利用者

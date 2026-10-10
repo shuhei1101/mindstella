@@ -27,3 +27,9 @@ items:
     summary: 差分の表示の間、選んだ時点で消した項目を一覧の上に消した印・ID・タイトルで並べる帯
   - page: 取り下げの札.ts.yaml
     summary: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く、枠付きの × と「取り下げ」の札
+  - page: 本文の形式の札.ts.yaml
+    summary: 資料の種類の右に置く、本文の形式を `MD` / `HTML` で示す札
+  - page: HTMLの本文の枠.ts.yaml
+    summary: HTML の本文と `html` のコードブロックを、スクリプトを動かさない枠に描く
+  - page: HTMLの本文の差分.ts.yaml
+    summary: HTML の本文の差分を、描いた結果の印と原文の差分で切り替えて見せる
