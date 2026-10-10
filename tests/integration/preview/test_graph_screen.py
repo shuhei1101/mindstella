@@ -36,6 +36,7 @@ from preview_network_helpers import (
     canvas_hash,
     changed_pixels,
     click_at,
+    free_point_near,
     install_key_spy,
     install_status_mark_spy,
     is_moving,
@@ -983,6 +984,9 @@ MARK_LEFT_SCRIPT = """() => {
 # キャンバスの幅が、引数の幅より縮んだか（詳細パネルが開いて枠が狭まったか）
 CANVAS_SHRUNK_SCRIPT = """(before) => document.getElementById('graph-canvas').getBoundingClientRect().width < before"""
 
+# 2 回目をずらしてよい距離（px）。素早い 2 回押しとして扱う距離の上限（24px）より小さくする
+QUICK_PRESS_RANGE_PX = 20
+
 
 def _open_spied(open_preview: OpenPreview, url: str, hash_text: str, page: Page) -> Page:
     """鍵の記録を入れ、動きを減らす設定で項目を開いたネットワークを、画が静止するまで待って返す。"""
@@ -1010,11 +1014,12 @@ def test_lock_when_quick_double_press(
     # 詳細が開いてキャンバスが縮んでも押した位置がキャンバスに残るよう、左寄りの玉を選ぶ
     x, y = min(ball_centers(page), key=lambda center: center[0])
     width_before = page.locator(CANVAS).evaluate("(canvas) => canvas.getBoundingClientRect().width")
-    # 実行（1 回目を押し、詳細が開いてキャンバスが縮むのを待ち、玉が無くなった同じ位置をもう一度押す）
+    # 実行（1 回目を押し、詳細が開いてキャンバスが縮むのを待ち、縮んだ後に玉が残る配置でも、1 回目の近くで玉に当たらない点をもう一度押す）
     click_at(page, x, y)
     page.wait_for_function(CANVAS_SHRUNK_SCRIPT, arg=width_before)
-    ball_after_shrink = ball_at(page, x, y)
-    click_at(page, x, y)
+    second_x, second_y = free_point_near(page, x, y, QUICK_PRESS_RANGE_PX)
+    ball_after_shrink = ball_at(page, second_x, second_y)
+    click_at(page, second_x, second_y)
     page.wait_for_function("location.hash.includes('id=')")
     page.mouse.move(*blank_point(page))
     settle(page)
