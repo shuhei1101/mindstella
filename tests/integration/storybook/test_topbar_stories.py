@@ -354,7 +354,7 @@ def test_diff_on(open_story: OpenStory) -> None:
     )
     assert dotted == ["decisions", "docs"]
     assert page.inner_text("nav.tabbar a[data-tab='decisions'] .count") == "12"
-    assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更・消した項目があります"
 
 
 def test_diff_on_narrow(open_story: OpenStory) -> None:

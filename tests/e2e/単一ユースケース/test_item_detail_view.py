@@ -412,3 +412,33 @@ def test_normal_when_body_links(
     # 検証（G-1 の詳細パネルが開き、G-1 の本文の「保存先」には用語の印が付かない）
     assert "id=G-1" in page.evaluate("location.hash")
     assert page.locator("aside.panel .md a.term").count() == 0
+
+
+def test_normal_when_withdrawn(
+    serve_preview: ServePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """取り下げた資料の表の行に取り下げの印が付き、詳細パネルに取り下げの印と理由が出る。取り下げていない資料には出ない（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("A-1", status="完成", kind="仕様書", withdrawn=True, reason="別の資料にまとめた"),
+        make_item("A-2", status="完成", kind="仕様書"),
+        bodies={"A-1.md": "# 取り下げた資料\n", "A-2.md": "# 残す資料\n"},
+    )
+    # 実行（資料の表を開く）
+    page = open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証（A-1 に取り下げの印が付き、A-2 には付かない）
+    assert page.locator('table.grid tbody tr[data-id="A-1"] .row-open + .wd-badge').count() == 1
+    assert page.locator('table.grid tbody tr[data-id="A-2"] .wd-badge').count() == 0
+    # 実行（A-1 を押す）
+    page.click('table.grid button.row-open[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 検証（取り下げの印と理由が出る）
+    assert page.inner_text("aside.panel .d-title .wd-badge") == "取り下げ"
+    assert page.inner_text('aside.panel [data-key="reason"]') == "別の資料にまとめた"
+    # 実行（A-2 を押す）
+    page.click('table.grid button.row-open[data-id="A-2"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
+    # 検証（取り下げの印も理由も出ない）
+    assert page.locator("aside.panel .wd-badge").count() == 0
+    assert page.locator('aside.panel [data-key="reason"]').count() == 0

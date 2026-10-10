@@ -33,6 +33,13 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_V2_BY_TAB,
+    WITHDRAWN_BADGE,
+    assert_band_above,
+    assert_removed_band,
+)
 from preview_saved_filter_helpers import (
     read_saved_filters,
     reload_preview,
@@ -415,6 +422,155 @@ def test_diff_marks_when_table(
     page.wait_for_selector("table.grid tbody tr")
     # 検証
     assert page.locator('table.grid tbody tr[data-id="A-1"] .row-open + .df-mark.df-chg').count() == 1
+
+
+@pytest.mark.parametrize(
+    ("view", "below"),
+    [
+        pytest.param("cards", ".doc-grid", id="cards"),
+        pytest.param("board", ".board", id="board"),
+        pytest.param("table", "table.grid", id="table"),
+    ],
+)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    view: str,
+    below: str,
+) -> None:
+    """差分の表示の間、選んだ時点で消した資料を、表示形式によらず一覧の上の帯に並べる。押せず、カードにも行にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector(below)
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["docs"])
+    assert_band_above(page, below)
+    assert page.locator('[data-id="A-3"]').count() == 0
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """絞り込みの条件で表の行が 0 件になっても、消した資料は絞り込まず帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&view=table&f.status=完成")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["docs"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("pending", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点で資料を消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=docs&view=cards")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    assert page.locator(BAND).count() == 0
+
+
+# 資料のカードの、題の右の札と、札が差分の印より前にあるかを調べる（戻り値は [札が題の右の同じ行か, 札が差分の印より前か]）
+CARD_BADGE_SCRIPT = """(id) => {
+    const card = document.querySelector(`.doc-card[data-id="${id}"]`);
+    const title = card.querySelector('.c-ttl').getBoundingClientRect();
+    const badge = card.querySelector('.wd-badge');
+    const box = badge.getBoundingClientRect();
+    const mark = card.querySelector('.df-mark');
+    return [
+        box.left >= title.right && box.top < title.bottom && box.bottom > title.top,
+        mark === null || (badge.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    ];
+}"""
+
+# 資料のカードの題・種類・メタ情報の文字の色を読む
+CARD_COLORS_SCRIPT = """(id) => Object.fromEntries(['.c-ttl', '.c-meta', '.doc-kind'].map(
+    selector => [selector, getComputedStyle(document.querySelector(`.doc-card[data-id="${id}"] ${selector}`)).color]
+))"""
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_withdrawn_badge_when_cards_and_board(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, view: str
+) -> None:
+    """取り下げた資料のカードは、差分の表示によらずタイトルの右に取り下げの札を置いて文字を薄くし、押すと詳細を開く。取り下げていないカードは変えない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, None)
+    open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    withdrawn = page.locator('.doc-card[data-id="A-2"]')
+    assert withdrawn.locator(WITHDRAWN_BADGE).count() == 1
+    assert withdrawn.locator(WITHDRAWN_BADGE).inner_text() == "取り下げ"
+    assert "is-withdrawn" in str(withdrawn.get_attribute("class"))
+    assert page.evaluate(CARD_BADGE_SCRIPT, "A-2")[0] is True
+    assert page.locator('.doc-card[data-id="A-1"]').locator(WITHDRAWN_BADGE).count() == 0
+    assert "is-withdrawn" not in str(page.get_attribute('.doc-card[data-id="A-1"]', "class"))
+    # 取り下げたカードの文字は、取り下げていないカードより薄い
+    normal_colors = page.evaluate(CARD_COLORS_SCRIPT, "A-1")
+    withdrawn_colors = page.evaluate(CARD_COLORS_SCRIPT, "A-2")
+    assert all(withdrawn_colors[key] != normal_colors[key] for key in normal_colors)
+    # 押すと詳細を開く
+    withdrawn.click()
+    page.wait_for_selector("aside.panel.open .d-title")
+    assert page.inner_text("aside.panel .d-title").startswith("A-2の題")
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_withdrawn_badge_when_cards_and_board_with_diff(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, view: str
+) -> None:
+    """差分の表示で取り下げた資料に変更の印が付くとき、取り下げの札は差分の印より前に置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    assert page.locator('.doc-card[data-id="A-2"] .df-mark.df-chg').count() == 1
+    assert page.evaluate(CARD_BADGE_SCRIPT, "A-2") == [True, True]
+
+
+def test_withdrawn_badge_when_table(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """取り下げた資料の表の行は、差分の表示によらずタイトルの右に取り下げの札を置き、文字を薄くする。差分の印は札の後ろに置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    row = 'table.grid tbody tr[data-id="A-2"]'
+    assert page.locator(f"{row} .row-open + .wd-badge + .df-mark.df-chg").count() == 1
+    assert "is-withdrawn" in str(page.get_attribute(row, "class"))
+    normal = 'table.grid tbody tr[data-id="A-1"]'
+    assert page.locator(f"{normal} .wd-badge").count() == 0
+    assert "is-withdrawn" not in str(page.get_attribute(normal, "class"))
+    color_script = "e => getComputedStyle(e).color"
+    assert page.eval_on_selector(f"{row} .row-open", color_script) != page.eval_on_selector(
+        f"{normal} .row-open", color_script
+    )
 
 
 @pytest.mark.parametrize("view", ["cards", "board"])

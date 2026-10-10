@@ -65,7 +65,7 @@ var MindmapPreview;
     }
     MindmapPreview.recordColumns = recordColumns;
     /** 調査・用語集・メモ・会話ログの画面を返す。種類は `route.tab` で決まる */
-    function recordsScreen({ index, route, on, filters, drawerOpen, marks, comments, }) {
+    function recordsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed = [], }) {
         const kind = route.tab;
         const columns = recordColumns({ index, kind, open: on.open });
         // 絞り込みの条件に合う項目を表に渡す
@@ -74,6 +74,7 @@ var MindmapPreview;
             tag: "div",
             attrs: { class: "screen records" },
             children: [
+                MindmapPreview.removedBand({ items: removed }),
                 MindmapPreview.managedTable({
                     kind,
                     columns,

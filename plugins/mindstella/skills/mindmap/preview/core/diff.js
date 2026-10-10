@@ -15,6 +15,16 @@ var MindmapPreview;
         "erDiagram",
         "stateDiagram-v2",
     ];
+    /** 消した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
+    MindmapPreview.REMOVED_KIND_TAB = {
+        decision: "decisions",
+        task: "tasks",
+        research: "research",
+        doc: "docs",
+        term: "terms",
+        note: "notes",
+        log: "logs",
+    };
     /** 「まだまとめていない変更」の名前と補足 */
     const PENDING_NAME = "まだまとめていない変更";
     const PENDING_SUB = "AI がまだ区切っていない書き換え";
@@ -22,11 +32,23 @@ var MindmapPreview;
     const SINCE_NAME = "前回開いてから";
     /** 選んだ時点の名前・補足・印・範囲から、時点を組み立てる */
     function buildPoint({ sel, name, sub, groups, fromSeq, untilSeq, }) {
-        const added = new Set(groups.flatMap((group) => group.added));
+        // `removed` を持たないまとまりは、何も足さない
+        const removed = new Map(groups.flatMap((group) => group.removed ?? []).map((item) => [item.id, item]));
+        // 合わせた範囲で足して消した項目は、消した項目としてだけ出す
+        const added = new Set(groups.flatMap((group) => group.added).filter((id) => !removed.has(id)));
         // 足した項目は、変えても変更の印にしない
-        const changed = new Set(groups.flatMap((group) => group.changed).filter((id) => !added.has(id)));
-        return { sel, name, sub, added, changed, fromSeq, untilSeq };
+        const changed = new Set(groups.flatMap((group) => group.changed).filter((id) => !added.has(id) && !removed.has(id)));
+        return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
     }
+    /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
+    function removedOf({ point, kind }) {
+        if (point === null)
+            return [];
+        return [...point.removed.values()]
+            .filter((item) => MindmapPreview.REMOVED_KIND_TAB[item.kind] === kind)
+            .sort((a, b) => MindmapPreview.compareIds(a.id, b.id));
+    }
+    MindmapPreview.removedOf = removedOf;
     /** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないときは null */
     function resolveDiffPoint(changes, sel, since) {
         if (sel === null)
@@ -36,7 +58,8 @@ var MindmapPreview;
         const latestSeq = sets[0]?.until_seq ?? 0;
         if (sel === "pending") {
             // まだまとめていない変更が無い
-            if (changes.pending.added.length === 0 && changes.pending.changed.length === 0)
+            const pending = changes.pending;
+            if (pending.added.length === 0 && pending.changed.length === 0 && (pending.removed ?? []).length === 0)
                 return null;
             return buildPoint({ sel, name: PENDING_NAME, sub: PENDING_SUB, groups: [changes.pending], fromSeq: latestSeq, untilSeq: null });
         }

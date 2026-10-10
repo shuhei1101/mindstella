@@ -162,6 +162,32 @@ scenarios:
       - 背景の Markdown が強調として描かれる
       - 採用した案と理由の節が出ない
     test: test_normal_when_recommendation_shown
+  - name: 正常シナリオ（取り下げた項目を読む）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: '資料 A-1（`withdrawn: true`、`reason`「別の資料にまとめた」）と、取り下げていない資料 A-2'
+      - name: 配信
+        description: 記録を配っているサーバー。差分の表示は出していない（既定）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料の表を開く
+        P-->>U: A-1 に取り下げの印を付けた表
+        U->>P: A-1 を押す
+        P-->>U: 取り下げの印と理由を出した詳細パネル
+      ```
+    expected:
+      - 資料の表で、A-1 に取り下げの印が付き、A-2 には付かない
+      - A-1 の詳細パネルに、取り下げの印と理由「別の資料にまとめた」が出る
+      - A-2 の詳細パネルには取り下げの印も理由も出ない
+    test: test_normal_when_withdrawn
   - name: 正常シナリオ（HTML の資料を読む）
     setup:
       - name: Mock

@@ -601,17 +601,19 @@ namespace MindmapPreview {
       const content =
         column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");
       if (column.fixed !== true) return content;
-      // タイトルの列は、押すと詳細を開くボタンにし、差分の印があれば右に置く
+      // タイトルの列は、押すと詳細を開くボタンにし、取り下げの札・差分の印があれば右に置く
       const opener = h({
         tag: "button",
         attrs: { class: "row-open", type: "button", "data-id": row.id, onclick: () => on.open(row.id) },
         children: [content],
       });
+      // 取り下げた行は、差分の表示によらず差分の印より前に札を置く
+      const badge = row["withdrawn"] === true ? withdrawnBadge() : null;
       const mark = markFor({ marks, id: row.id });
       const commentPlaceElement = comments === undefined ? null : commentPlace({ id: row.id, count: comments[row.id] });
-      if (mark === null && commentPlaceElement === null) return opener;
+      if (badge === null && mark === null && commentPlaceElement === null) return opener;
       const fragment = document.createDocumentFragment();
-      fragment.append(...[opener, mark, commentPlaceElement].filter((node) => node !== null));
+      fragment.append(...[opener, badge, mark, commentPlaceElement].filter((node) => node !== null));
       return fragment;
     };
     const body =
@@ -619,7 +621,13 @@ namespace MindmapPreview {
         ? shownRows.map((row) =>
             h({
               tag: "tr",
-              attrs: { "data-id": row.id, class: row.id === currentSelection() ? "selected" : "" },
+              attrs: {
+                "data-id": row.id,
+                // 取り下げた行は文字を薄くする
+                class: [row.id === currentSelection() ? "selected" : "", row["withdrawn"] === true ? "is-withdrawn" : ""]
+                  .join(" ")
+                  .trim(),
+              },
               children: [
                 ...visible.map((column, position) =>
                   h({

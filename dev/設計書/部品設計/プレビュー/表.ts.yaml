@@ -39,7 +39,7 @@ args:
   - name: rows
     type: オブジェクトの配列
     required: true
-    description: 行にする項目（埋め込みのデータの項目そのもの）
+    description: 行にする項目（埋め込みのデータの項目そのもの）。`withdrawn` が真の行は、差分の表示によらずタイトルの右、差分の印より前に部品『取り下げの札』を置き、行の文字を薄くする
   - name: sort
     type: オブジェクト
     required: false
@@ -153,6 +153,11 @@ states:
         value: '{"D-5": "changed"}'
       - name: comments
         value: '{"D-5": 1, "D-37": 12}'
+  - name: Withdrawn
+    description: 取り下げた行。タイトルの右に取り下げの札、その後ろに差分の印を置き、行の文字を薄くする。取り下げていない行は変わらない。ホバー・フォーカスの見せ方はほかの行と同じ
+    args:
+      - name: marks
+        value: '{"R-1": "changed"}'
 accessibility:
   - 並べ替え中の列の見出しに `aria-sort`（ascending・descending）を付け、ほかは `none`
   - ピン留めのボタンは `aria-pressed` で押した状態を伝え、`{列}まで固定` の読み上げ名を付ける
