@@ -75,6 +75,12 @@ constants:
     usecase: コメントを選んで送る
     summary: '`CLAUDE_CONFIG_DIR` が空のときの Claude Code の設定のフォルダ'
     value: Path.home() / ".claude"
+  - name: TRANSCRIPT_NAME_MAX
+    title: 会話の記録のフォルダ名の上限
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を足す。外部ライブラリ『claude-code』）
+    value: '200'
 functions:
   - name: load_input_target
     title: 送り先の読み込み
@@ -114,11 +120,11 @@ functions:
         condition: '`parametrize`: 空の辞書 / `{TMUX: "", TMUX_PANE: "", CLAUDE_CONFIG_DIR: ""}`'
         mock: なし
         expected: '`socket`・`pane` が `None`、`config_dir` が `DEFAULT_CONFIG_DIR`'
-  - name: transcript_dir
+  - name: transcript_dirs
     title: 会話の記録のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
-    summary: 作業フォルダに当たる会話の記録のフォルダのパスを返す（無くてもよい）
+    summary: 作業フォルダに当たる会話の記録のフォルダを、Claude Code と同じ名前の作り方で引く
     kind: 関数
     scope: public
     args:
@@ -128,18 +134,26 @@ functions:
         passing: positional
         description: 送り先
     returns:
-      type: Path
-      description: '`{config_dir}/projects/{cwd の英数字以外を - にした名前}`'
+      type: list[Path]
+      description: 名前が `TRANSCRIPT_NAME_MAX` 文字以下なら `[{config_dir}/projects/{名前}]`（無くてもよい）、超えるなら `projects` の直下で `{先頭 TRANSCRIPT_NAME_MAX 文字}-` で始まるフォルダの全て（無ければ空）
     process: |-
-      1. `str(target.cwd)` の英数字以外の文字を全て `-` に置き換える（`re.sub(r"[^A-Za-z0-9]", "-", …)`）
-      2. `target.config_dir / "projects" / {置き換えた名前}` を返す
+      1. `str(target.cwd)` を UTF-16 の単位で見て、英数字（`A-Za-z0-9`）以外の単位を 1 つずつ `-` に置き換えた名前を作る（サロゲートペアの文字は `--` になる。Claude Code の JavaScript の `replace(/[^a-zA-Z0-9]/g, "-")` と同じ）
+      2. 名前が `TRANSCRIPT_NAME_MAX` 文字以下なら、`target.config_dir / "projects" / {名前}` だけを返す
+      3. 超えるなら、`target.config_dir / "projects"` の直下で、名前が `{名前の先頭 TRANSCRIPT_NAME_MAX 文字}-` で始まるフォルダを全て返す（Claude Code は末尾にパスのハッシュを足すが、そのハッシュは作らず、取り違えは `find_delivery` が行の `cwd` で除く）
+         - `projects` が無ければ空を返す
     unit_tests:
-      - name: test_transcript_dir
+      - name: test_transcript_dirs
         case: 正常
-        summary: 英数字以外を - にする
-        condition: '`cwd` が `/home/u/repo/my_ws.v2`、`config_dir` が `/c`'
+        summary: 英数字以外を - にした名前のフォルダ
+        condition: '`parametrize`: `cwd` が `/home/u/repo/my_ws.v2` / `/home/u/話し合い`（日本語 4 文字）/ `/home/u/a😀b`（サロゲートペアの文字）。`config_dir` は `/c`'
         mock: なし
-        expected: '`/c/projects/-home-u-repo-my-ws-v2`'
+        expected: '`[/c/projects/-home-u-repo-my-ws-v2]` / `[/c/projects/-home-u-----]` / `[/c/projects/-home-u-a--b]`'
+      - name: test_transcript_dirs_when_long
+        case: 正常
+        summary: 名前が上限を超えると先頭で始まるフォルダを全て引く
+        condition: '置き換えた名前が 230 文字になる `cwd`。`projects` に `{先頭 200 文字}-abc`・`{先頭 200 文字}-def`・`{先頭 199 文字}x-ghi` のフォルダを置く。`parametrize`: この配置 / `projects` が無い'
+        mock: なし
+        expected: 前者は初めの 2 つのフォルダだけ（並びは問わない）。後者は `[]`
   - name: input_text
     title: 入力する文字列
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
@@ -168,32 +182,32 @@ functions:
     title: 会話の記録の大きさの控え
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
-    summary: フォルダの直下の各 jsonl の大きさを控える
+    summary: フォルダごとに直下の各 jsonl の大きさを控える
     kind: 関数
     scope: public
     args:
-      - name: folder
-        type: Path
+      - name: folders
+        type: list[Path]
         required: true
         passing: positional
-        description: 会話の記録のフォルダ
+        description: 会話の記録のフォルダ（`transcript_dirs`）
     returns:
       type: dict[Path, int]
-      description: jsonl のパス → バイト数。フォルダが無ければ空
+      description: jsonl のパス → バイト数。無いフォルダは飛ばす
     process: |-
-      1. フォルダが無ければ空の辞書を返す
-      2. 直下の `*.jsonl` ごとに `stat().st_size` を控えて返す
+      1. フォルダごとに、無ければ飛ばし、直下の `*.jsonl` の `stat().st_size` を控える
+      2. 控えた辞書を返す
     unit_tests:
       - name: test_snapshot_sizes
         case: 正常
         summary: jsonl だけの大きさを控える
-        condition: '`a.jsonl`（10 バイト）・`b.jsonl`（0 バイト）・`c.txt` を置いたフォルダ'
+        condition: フォルダ 1 に `a.jsonl`（10 バイト）・`c.txt`、フォルダ 2 に `b.jsonl`（0 バイト）を置き、2 つを渡す
         mock: なし
-        expected: '`{a.jsonl: 10, b.jsonl: 0}`'
+        expected: '`{フォルダ 1/a.jsonl: 10, フォルダ 2/b.jsonl: 0}`'
       - name: test_snapshot_sizes_when_missing
         case: 正常
-        summary: フォルダが無ければ空
-        condition: 無いパス
+        summary: 無いフォルダは飛ばす
+        condition: '`parametrize`: 無いパス 1 つ / 空のリスト'
         mock: なし
         expected: '`{}`'
   - name: find_delivery
@@ -204,11 +218,11 @@ functions:
     kind: 関数
     scope: public
     args:
-      - name: folder
-        type: Path
+      - name: folders
+        type: list[Path]
         required: true
         passing: positional
-        description: 会話の記録のフォルダ
+        description: 会話の記録のフォルダ（`transcript_dirs`）
       - name: sizes
         type: dict[Path, int]
         required: true
@@ -228,7 +242,7 @@ functions:
       type: bool
       description: 次のどちらかの行があれば真。① `type` が `user`・`cwd` が作業フォルダと一致し、本文（`message.content` の文字列か、`text` の要素の文字列）に `text` を含む ② `type` が `queue-operation`・`operation` が `enqueue`
     process: |-
-      1. フォルダの直下の `*.jsonl` ごとに、控えの大きさ（控えに無いファイルは 0）から後ろを読む
+      1. フォルダごとに直下の `*.jsonl` を、控えの大きさ（控えに無いファイルは 0）から後ろを読む（無いフォルダは飛ばす）
          - 最後の改行より後ろ（書きかけの行）は読まない
       2. 行ごとに JSON として読み、① か ② に当たれば真を返す
          - JSON として読めない行は飛ばす
@@ -351,11 +365,11 @@ functions:
       1. `target.socket` か `target.pane` が `None` なら偽を返す（tmux を呼ばない）
          - `[INFO]` tmux の外で立てたため Claude Code へ入力しない
       2. `target.lock` を取り、以降を鍵の中で行う
-      3. `transcript_dir` のフォルダで `snapshot_sizes` を控え、`deadline` を `clock() + INPUT_DEADLINE_SEC` にする
+      3. `transcript_dirs` のフォルダで `snapshot_sizes` を控え、`deadline` を `clock() + INPUT_DEADLINE_SEC` にする
       4. `paste_to_pane(target, input_text(count), deadline=deadline)` を呼ぶ
          - 理由が返った場合、偽を返す
            - `[WARNING]` Claude Code へ入力できない（理由）
-      5. `deadline` まで、`find_delivery` が真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って読み直す
+      5. `deadline` まで、`transcript_dirs` を引き直して `find_delivery` を呼び、真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って読み直す（名前が上限を超えるとき、新しい会話のフォルダが貼った後に作られても拾う）
       6. 偽を返す
          - `[WARNING]` Claude Code の会話の記録に入力が入らない（`INPUT_DEADLINE_SEC` 秒）
     unit_tests:
