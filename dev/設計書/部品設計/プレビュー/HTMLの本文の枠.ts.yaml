@@ -28,31 +28,31 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にする
 lead: HTML の本文と Markdown の中の `html` のコードブロックを、スクリプトを動かさない枠（`sandbox="allow-same-origin"` の iframe の `srcdoc`）に描く。枠の高さは描いた中身に合わせ、枠の中で選んだ文を元の HTML の行の範囲にして使う側へ知らせる。
-status: planned
+status: implemented
 args:
   - name: source
     type: 文字列
     required: true
     description: 描く HTML。資料の本文は記録の `marked_bodies`（行の印つき）、`html` のコードブロックはその中身をそのまま渡す
-    status: planned
+    status: implemented
   - name: selectable
     type: 真偽値
     required: false
     default: 'true'
     description: 真のとき、枠の中で選んだ文を行の範囲にして「選び終えた」で知らせる。`html` のコードブロックと配る書き出しでは偽
-    status: planned
+    status: implemented
   - name: label
     type: 文字列
     required: false
     default: 本文（HTML）
     description: 枠の読み上げの名前（iframe の `title`）
-    status: planned
+    status: implemented
   - name: marks
     type: オブジェクト
     required: false
     default: なし（印を付けない）
     description: '差分の印を付ける原文の行（`{added: number[], changed: number[]}`）。行を含む最も内側の `data-line` を持つ要素に、足したは実線、変わったは破線の枠と地の色を付ける'
-    status: planned
+    status: implemented
 events:
   - name: 選び終えた
     when: '`selectable` が真で、枠の文書の `pointerup`・`selectionchange` の後に空でない選択があるとき'

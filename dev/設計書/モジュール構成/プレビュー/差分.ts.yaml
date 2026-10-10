@@ -462,7 +462,7 @@ functions:
     kind: 関数
     scope: public
     summary: 前後の HTML の原文を行ごとに比べ、今の本文で足した行・変えた行と、消しただけの箇所があるかを返す（部品『HTMLの本文の差分』が使う）
-    status: planned
+    status: implemented
     introduced:
       pr: 214
     args:

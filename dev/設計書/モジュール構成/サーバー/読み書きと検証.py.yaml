@@ -1648,7 +1648,7 @@ functions:
     kind: 関数
     scope: public
     summary: 本文のファイル名の拡張子から形式を返す
-    status: planned
+    status: implemented
     introduced:
       pr: 214
     args:

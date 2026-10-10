@@ -16,30 +16,30 @@ states:
       - name: beforeFormat
         value: md
 lead: 差分の表示の間、HTML の本文を描いた結果の上で変わった行を含む要素に印を付け、「原文の差分」に切り替えると原文の行の差分を出す。
-status: planned
+status: implemented
 args:
   - name: before
     type: 文字列
     required: true
     description: 選んだ時点の本文の原文（`body_diff` で組み立てたもの）
-    status: planned
+    status: implemented
   - name: after
     type: 文字列
     required: true
     description: 今の本文の原文（記録の `bodies`）
-    status: planned
+    status: implemented
   - name: marked
     type: 文字列
     required: true
     description: 今の本文の行の印つきの HTML（記録の `marked_bodies`）
-    status: planned
+    status: implemented
   - name: beforeFormat
     type: 列挙
     required: false
     default: html
     choices: md・html
     description: 選んだ時点の本文の形式。`md`（形式を替えた）のときは描いた結果の印と切り替えを出さず、原文の差分だけを出す
-    status: planned
+    status: implemented
 uses:
   - component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
     how: 描いた結果を `marked` と `marks`（足した行・変えた行）で描き、`selectable` は `false` で渡す（差分の表示の間は選んだ箇所のコメントの入口を出さない）

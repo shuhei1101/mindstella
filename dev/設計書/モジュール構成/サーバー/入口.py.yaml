@@ -94,7 +94,7 @@ constants:
     usecase: 記録の追加と更新
     summary: '`item` で資料の HTML の本文を渡すキー（YAML には残さない）'
     value: '"body_html"'
-    status: planned
+    status: implemented
     introduced:
       pr: 214
 functions:

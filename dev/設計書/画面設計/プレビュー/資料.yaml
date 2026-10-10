@@ -153,7 +153,7 @@ elements:
     io: 表示
     source: プレビューを開く.mindmap-data.docs[].body
     visible_when: 資料が `body` を持つ
-    status: planned
+    status: implemented
     introduced:
       pr: 214
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。

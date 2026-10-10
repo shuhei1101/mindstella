@@ -1442,7 +1442,7 @@ functions:
     kind: 関数
     scope: public
     summary: 項目の `body` の拡張子から本文の形式を返す（形式の札・表の形式の列・詳細の描き分けが使う）
-    status: planned
+    status: implemented
     introduced:
       pr: 214
     args:
@@ -1468,7 +1468,7 @@ functions:
     kind: 関数
     scope: public
     summary: HTML をスクリプトを動かさずに解析し、描いた文だけを返す（全体の検索が当てる文）
-    status: planned
+    status: implemented
     introduced:
       pr: 214
     args:
@@ -1497,7 +1497,7 @@ functions:
     kind: 関数
     scope: public
     summary: HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする（部品『HTMLの本文の枠』の「選び終えた」が使う）
-    status: planned
+    status: implemented
     introduced:
       pr: 214
     args:

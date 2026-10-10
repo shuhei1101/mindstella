@@ -18,14 +18,14 @@ states:
       - name: format
         value: html
 lead: 資料のカード・ボードのカードと詳細のヘッダーで、種類の右に置く本文の形式の札。Markdown の資料は `MD`、HTML の資料は `HTML` を等幅の文字で出し、HTML は地の面を敷いて一覧で拾いやすくする。
-status: planned
+status: implemented
 args:
   - name: format
     type: 列挙
     required: true
     choices: md・html
     description: 本文の形式。資料の `body` の拡張子（`.md` / `.html`）から使う側が決める。`html` のコードブロックを含む Markdown の資料は `md`
-    status: planned
+    status: implemented
 accessibility:
   - 形式は `MD` / `HTML` の文字で伝え、色だけに頼らない
   - '`title` に「本文は Markdown」「本文は HTML」を持ち、略語だけにしない'

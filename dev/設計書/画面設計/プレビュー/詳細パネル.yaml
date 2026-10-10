@@ -291,7 +291,7 @@ elements:
     io: 表示
     source: プレビューを開く.id の項目の body
     visible_when: 資料で `body` を持つ
-    status: planned
+    status: implemented
     introduced:
       pr: 214
   - name: HTML の本文
@@ -309,7 +309,7 @@ elements:
     io: 表示
     source: 記録の取得.marked_bodies[{項目の body}]
     visible_when: 資料の `body` が `.html` で終わる（差分の表示の間で本文が変わったときは「HTML の本文の差分」が代わる）
-    status: planned
+    status: implemented
     introduced:
       pr: 214
   - name: html のコードブロック
@@ -327,7 +327,7 @@ elements:
     io: 表示
     source: 記録の取得.bodies[{項目の body}] の言語指定 `html` のコードブロック
     visible_when: Markdown の本文が言語指定 `html` のコードブロックを持つ
-    status: planned
+    status: implemented
     introduced:
       pr: 214
   - name: HTML の本文の差分
@@ -347,7 +347,7 @@ elements:
     io: 表示
     source: 記録の取得.bodies・marked_bodies と、history の body_diff から組み立てた前の本文
     visible_when: 差分の表示の間で、HTML の本文が選んだ時点で変わったとき
-    status: planned
+    status: implemented
     introduced:
       pr: 214
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。

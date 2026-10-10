@@ -12,21 +12,21 @@ constants:
     summary: 開きタグに足す行の印の属性の名前。Markdown の本文の描画と同じ名前
     value: '"data-line"'
     usecase: 選んだ箇所へコメントする
-    status: planned
+    status: implemented
   - name: HIDDEN_TEXT_TAGS
     title: 描いた文に出ない中身を持つ要素
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
     summary: 中身の文を描いた文に入れない要素
     value: frozenset({"style", "script", "template", "title"})
     usecase: 選んだ箇所へコメントする
-    status: planned
+    status: implemented
   - name: UNMARKED_TAGS
     title: 行の印を足さない要素
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
     summary: 文書の外枠と描いた文を持たない要素。`HIDDEN_TEXT_TAGS` を含む
     value: frozenset({"html", "head", "body", "meta", "link", "base"}) | HIDDEN_TEXT_TAGS
     usecase: 選んだ箇所へコメントする
-    status: planned
+    status: implemented
 functions:
   - name: mark_lines
     title: 行の印を足す
@@ -35,7 +35,7 @@ functions:
     kind: 関数
     scope: public
     summary: 開きタグのタグ名の直後に、中身が始まる原文の行の印を足した HTML を返す
-    status: planned
+    status: implemented
     args:
       - name: source
         type: str
@@ -69,7 +69,7 @@ functions:
     kind: 関数
     scope: public
     summary: 原文の `start`〜`end` 行にある、描いた文に出る文をつないで返す
-    status: planned
+    status: implemented
     args:
       - name: source
         type: str
