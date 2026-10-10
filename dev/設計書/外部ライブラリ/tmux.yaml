@@ -32,6 +32,7 @@ dependency_scope: 必須
 adoption: 採用
 used_in:
   - plugins/mindstella/bin/mindstella
+  - plugins/mindstella/skills/mindmap/scripts/claude_input.py
 upstream: tmux/tmux
 verification:
   state: 済

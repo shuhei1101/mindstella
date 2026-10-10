@@ -1,0 +1,391 @@
+title: "サーバー / ClaudeCodeへの入力"
+lead: まとめて送った後に、MCP サーバーが受け継いだ `TMUX_PANE` のペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux を子プロセスで呼び、会話の記録（jsonl）を読む。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    claude_input.py   送り先の読み込み・入力する文字列・tmux への貼り付け・会話の記録での確かめ
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class Claude Codeへの入力
+        class 送り先
+        class tmuxへの貼り付け
+        class 会話の記録での確かめ
+        Claude Codeへの入力 --> 送り先 : 入力の鍵を取る
+        Claude Codeへの入力 --> tmuxへの貼り付け
+        Claude Codeへの入力 --> 会話の記録での確かめ
+      ```
+data_models:
+  - name: InputTarget
+    title: 送り先
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    role: 長期保持のランタイム状態
+    summary: MCP サーバーが起動時に Claude Code から受け継いだ送り先と会話の記録の場所と、入力の鍵。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    description: プロセスに 1 つだけ作り、配信の台帳からワークスペースごとの配信へ渡す。`lock` はプロセスの中の 1 本の入力の鍵で、同時に送られた 2 回の入力と確かめを重ねない。
+    properties:
+      - name: socket
+        type: str | None
+        description: '`TMUX`（tmux のサーバーのソケット）。空なら `None`'
+      - name: pane
+        type: str | None
+        description: '`TMUX_PANE`（Claude Code が動くペイン）。空なら `None`'
+      - name: config_dir
+        type: Path
+        description: '`CLAUDE_CONFIG_DIR`。空なら `~/.claude`'
+      - name: cwd
+        type: Path
+        description: サーバーの起動時の作業フォルダ（絶対パス）
+      - name: lock
+        type: threading.Lock
+        default: threading.Lock()
+        description: 入力の鍵（`field(default_factory=threading.Lock)`）
+constants:
+  - name: INPUT_TEMPLATE
+    title: 入力する文字列の雛形
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: '`{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分ける印'
+    value: '"[mindstella] ユーザーからのコメントが {count} 件届きました。読み直してください。"'
+  - name: INPUT_DEADLINE_SEC
+    title: 入力を確かめる上限
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 貼り始めてから tmux の 3 つのコマンドと届いたかの確かめを打ち切るまでの秒数（非機能要件『ClaudeCodeへの入力を確かめる上限』）
+    value: '0.5'
+  - name: DELIVERY_POLL_SEC
+    title: 会話の記録を読む間隔
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: '`Enter` の後、書き足された行を読み直す間隔の秒数'
+    value: '0.05'
+  - name: PASTE_BUFFER
+    title: 貼り付けに使うバッファ
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: '`load-buffer` と `paste-buffer` で使う名前の付いたバッファ（利用者のバッファを書き換えない）'
+    value: '"mindstella-input"'
+  - name: DEFAULT_CONFIG_DIR
+    title: 既定の設定のフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: '`CLAUDE_CONFIG_DIR` が空のときの Claude Code の設定のフォルダ'
+    value: Path.home() / ".claude"
+functions:
+  - name: load_input_target
+    title: 送り先の読み込み
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 環境変数と起動時の作業フォルダから `InputTarget` を作る
+    kind: 関数
+    scope: public
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 読む環境変数（`os.environ`）
+      - name: cwd
+        type: Path
+        required: true
+        passing: positional
+        description: サーバーの起動時の作業フォルダ
+    returns:
+      type: InputTarget
+      description: 送り先（tmux の外なら `socket` か `pane` が `None`）
+    process: |-
+      1. `TMUX`・`TMUX_PANE` を読み、空文字列か無ければ `None` にする
+      2. `CLAUDE_CONFIG_DIR` が空でなければそのパス、空なら `DEFAULT_CONFIG_DIR` にする
+      3. `cwd.resolve()` と合わせて `InputTarget` を返す
+    unit_tests:
+      - name: test_load_input_target
+        case: 正常
+        summary: 3 つの環境変数と作業フォルダを持つ
+        condition: '`{TMUX: "/tmp/tmux-1000/default,1,0", TMUX_PANE: "%3", CLAUDE_CONFIG_DIR: "{tmp}/cfg"}`、`cwd` は `tmp_path`'
+        mock: なし
+        expected: '`socket` が `/tmp/tmux-1000/default,1,0`、`pane` が `%3`、`config_dir` が `{tmp}/cfg`、`cwd` が `tmp_path.resolve()`'
+      - name: test_load_input_target_when_outside_tmux
+        case: 正常
+        summary: tmux の外では送り先が無く、設定のフォルダは既定
+        condition: '`parametrize`: 空の辞書 / `{TMUX: "", TMUX_PANE: "", CLAUDE_CONFIG_DIR: ""}`'
+        mock: なし
+        expected: '`socket`・`pane` が `None`、`config_dir` が `DEFAULT_CONFIG_DIR`'
+  - name: transcript_dir
+    title: 会話の記録のフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 作業フォルダに当たる会話の記録のフォルダのパスを返す（無くてもよい）
+    kind: 関数
+    scope: public
+    args:
+      - name: target
+        type: InputTarget
+        required: true
+        passing: positional
+        description: 送り先
+    returns:
+      type: Path
+      description: '`{config_dir}/projects/{cwd の英数字以外を - にした名前}`'
+    process: |-
+      1. `str(target.cwd)` の英数字以外の文字を全て `-` に置き換える（`re.sub(r"[^A-Za-z0-9]", "-", …)`）
+      2. `target.config_dir / "projects" / {置き換えた名前}` を返す
+    unit_tests:
+      - name: test_transcript_dir
+        case: 正常
+        summary: 英数字以外を - にする
+        condition: '`cwd` が `/home/u/repo/my_ws.v2`、`config_dir` が `/c`'
+        mock: なし
+        expected: '`/c/projects/-home-u-repo-my-ws-v2`'
+  - name: input_text
+    title: 入力する文字列
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 件数を入れた `INPUT_TEMPLATE` を返す
+    kind: 関数
+    scope: public
+    args:
+      - name: count
+        type: int
+        required: true
+        passing: positional
+        description: 届いた件数（まとめて送った応答の `items` の件数）
+    returns:
+      type: str
+      description: 改行を含まない 1 行
+    process: 1. `INPUT_TEMPLATE.format(count=count)` を返す
+    unit_tests:
+      - name: test_input_text
+        case: 正常
+        summary: 件数を入れた 1 行
+        condition: '`count=3`'
+        mock: なし
+        expected: '`[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。`'
+  - name: snapshot_sizes
+    title: 会話の記録の大きさの控え
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: フォルダの直下の各 jsonl の大きさを控える
+    kind: 関数
+    scope: public
+    args:
+      - name: folder
+        type: Path
+        required: true
+        passing: positional
+        description: 会話の記録のフォルダ
+    returns:
+      type: dict[Path, int]
+      description: jsonl のパス → バイト数。フォルダが無ければ空
+    process: |-
+      1. フォルダが無ければ空の辞書を返す
+      2. 直下の `*.jsonl` ごとに `stat().st_size` を控えて返す
+    unit_tests:
+      - name: test_snapshot_sizes
+        case: 正常
+        summary: jsonl だけの大きさを控える
+        condition: '`a.jsonl`（10 バイト）・`b.jsonl`（0 バイト）・`c.txt` を置いたフォルダ'
+        mock: なし
+        expected: '`{a.jsonl: 10, b.jsonl: 0}`'
+      - name: test_snapshot_sizes_when_missing
+        case: 正常
+        summary: フォルダが無ければ空
+        condition: 無いパス
+        mock: なし
+        expected: '`{}`'
+  - name: find_delivery
+    title: 届いたかの判定
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 控えより後ろへ書き足された行に、入力が会話か待ち行列に入った印があるかを返す
+    kind: 関数
+    scope: public
+    args:
+      - name: folder
+        type: Path
+        required: true
+        passing: positional
+        description: 会話の記録のフォルダ
+      - name: sizes
+        type: dict[Path, int]
+        required: true
+        passing: positional
+        description: 貼る前に控えた大きさ（`snapshot_sizes`）
+      - name: cwd
+        type: Path
+        required: true
+        passing: keyword
+        description: サーバーの起動時の作業フォルダ
+      - name: text
+        type: str
+        required: true
+        passing: keyword
+        description: 入力した文字列
+    returns:
+      type: bool
+      description: 次のどちらかの行があれば真。① `type` が `user`・`cwd` が作業フォルダと一致し、本文（`message.content` の文字列か、`text` の要素の文字列）に `text` を含む ② `type` が `queue-operation`・`operation` が `enqueue`
+    process: |-
+      1. フォルダの直下の `*.jsonl` ごとに、控えの大きさ（控えに無いファイルは 0）から後ろを読む
+         - 最後の改行より後ろ（書きかけの行）は読まない
+      2. 行ごとに JSON として読み、① か ② に当たれば真を返す
+         - JSON として読めない行は飛ばす
+      3. どれにも当たらなければ偽を返す
+    unit_tests:
+      - name: test_find_delivery
+        case: 正常
+        summary: 会話か待ち行列に入った行を届いたと数える
+        condition: '`parametrize`: 控えの後ろに `cwd` が一致し本文に `text` を含む user の行（`content` が文字列）/ 同じ（`content` が `[{type: text, text: …}]`）/ `{type: queue-operation, operation: enqueue}` の行 / 控えに無い新しい jsonl に user の行'
+        mock: なし
+        expected: どれも真
+      - name: test_find_delivery_when_not_found
+        case: 正常
+        summary: 当たらない行だけなら届いていない
+        condition: '`parametrize`: 控えより前にだけ当たる行がある / `cwd` が違う user の行 / 本文に `text` を含まない user の行 / `operation` が `dequeue` の行 / 改行で終わらない書きかけの当たる行 / 読めない行だけ / フォルダが無い'
+        mock: なし
+        expected: どれも偽
+  - name: paste_to_pane
+    title: tmux への貼り付け
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 文字列をブラケットペーストでペインへ貼り、`Enter` で確定する。失敗の理由を返す
+    kind: 関数
+    scope: public
+    side_effects: tmux の名前の付いたバッファへ書き、ペインへ貼ってキーを送る
+    args:
+      - name: target
+        type: InputTarget
+        required: true
+        passing: positional
+        description: 送り先（`socket`・`pane` が空でない）
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 貼る文字列
+      - name: deadline
+        type: float
+        required: true
+        passing: keyword
+        description: 打ち切る時刻（`clock` の値）
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: コマンドを呼ぶ関数
+      - name: clock
+        type: Callable[[], float]
+        required: false
+        default: time.monotonic
+        passing: injected
+        description: 今の時刻
+    returns:
+      type: str | None
+      description: '成功なら `None`、失敗なら理由（`{コマンド}: 終了コード {n}` / `{コマンド}: 時間内に終わらない` / `{コマンド}: {OSError}` / `時間切れ`）'
+    process: |-
+      1. 環境変数 `TMUX` を `target.socket` にした環境で、次を順に呼ぶ（引数は配列、シェルを通さない。`timeout` はその時点の `deadline - clock()`）
+         - `tmux load-buffer -b PASTE_BUFFER -`（標準入力に `text` を UTF-8 で渡す）
+         - `tmux paste-buffer -p -d -b PASTE_BUFFER -t {pane}`
+         - `tmux send-keys -t {pane} Enter`
+      2. 呼ぶ前に残り時間が 0 以下なら、残りを呼ばずに `時間切れ` を返す
+      3. 終了コードが 0 以外・`subprocess.TimeoutExpired`・`OSError` なら、残りを呼ばずに理由を返す
+      4. `None` を返す
+    unit_tests:
+      - name: test_paste_to_pane
+        case: 正常
+        summary: 3 つのコマンドを順に呼ぶ
+        condition: '`socket` が `/s,1,0`、`pane` が `%3`、`text` が `x`。`run` は全て終了コード 0 を返す'
+        mock: '`run`・`clock`'
+        expected: '`None` を返し、`run` が `["tmux", "load-buffer", "-b", "mindstella-input", "-"]`（`input` が `b"x"`）・`["tmux", "paste-buffer", "-p", "-d", "-b", "mindstella-input", "-t", "%3"]`・`["tmux", "send-keys", "-t", "%3", "Enter"]` の順に、`env["TMUX"]` が `/s,1,0` で呼ばれる'
+      - name: test_paste_to_pane_when_failed
+        case: 異常
+        summary: 失敗したら残りを呼ばずに理由を返す
+        condition: '`parametrize`: `paste-buffer` が終了コード 1 / `load-buffer` が `TimeoutExpired` / `load-buffer` が `OSError` / 呼ぶ前に `clock` が `deadline` を過ぎている'
+        mock: '`run`・`clock`'
+        expected: 理由の文字列を返し、失敗したコマンドの後ろ（最後の条件では全て）が呼ばれない
+  - name: enter_to_claude
+    title: Claude Code への入力
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由を記録する
+    kind: 関数
+    scope: public
+    thread_safe: true
+    side_effects: tmux のペインへ貼る。会話の記録を読む
+    args:
+      - name: target
+        type: InputTarget
+        required: true
+        passing: positional
+        description: 送り先
+      - name: count
+        type: int
+        required: true
+        passing: positional
+        description: 届いた件数
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: コマンドを呼ぶ関数（`paste_to_pane` へ渡す）
+      - name: clock
+        type: Callable[[], float]
+        required: false
+        default: time.monotonic
+        passing: injected
+        description: 今の時刻
+      - name: sleep
+        type: Callable[[float], None]
+        required: false
+        default: time.sleep
+        passing: injected
+        description: 待つ関数
+    returns:
+      type: bool
+      description: 会話の記録に入った（または待ち行列に入った）と確かめたか（応答の `entered`）
+    process: |-
+      1. `target.socket` か `target.pane` が `None` なら偽を返す（tmux を呼ばない）
+         - `[INFO]` tmux の外で立てたため Claude Code へ入力しない
+      2. `target.lock` を取り、以降を鍵の中で行う
+      3. `transcript_dir` のフォルダで `snapshot_sizes` を控え、`deadline` を `clock() + INPUT_DEADLINE_SEC` にする
+      4. `paste_to_pane(target, input_text(count), deadline=deadline)` を呼ぶ
+         - 理由が返った場合、偽を返す
+           - `[WARNING]` Claude Code へ入力できない（理由）
+      5. `deadline` まで、`find_delivery` が真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って読み直す
+      6. 偽を返す
+         - `[WARNING]` Claude Code の会話の記録に入力が入らない（`INPUT_DEADLINE_SEC` 秒）
+    unit_tests:
+      - name: test_enter_to_claude
+        case: 正常
+        summary: 貼った後に会話の記録に入れば真
+        condition: '`pane`・`socket` を持つ送り先。`run` は終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を書き足す'
+        mock: '`run`・`clock`・`sleep`'
+        expected: 真を返し、`load-buffer` の標準入力が `input_text(2)`（`count=2`）
+      - name: test_enter_to_claude_when_outside_tmux
+        case: 正常
+        summary: 送り先が無ければ tmux を呼ばずに偽
+        condition: '`parametrize`: `pane` が `None` / `socket` が `None`'
+        mock: '`run`'
+        expected: 偽を返し、`run` が呼ばれない
+      - name: test_enter_to_claude_when_paste_failed
+        case: 異常
+        summary: 貼れなければ偽と理由の記録
+        condition: '`run` が `paste-buffer` で終了コード 1 を返す'
+        mock: '`run`・`clock`・`sleep`'
+        expected: 偽を返し、`WARNING` の記録に `paste-buffer` を含む理由がある。会話の記録を読み直さない（`sleep` が呼ばれない）
+      - name: test_enter_to_claude_when_not_delivered
+        case: 正常
+        summary: 上限までに入らなければ偽
+        condition: '`run` は全て終了コード 0 を返し、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
+        mock: '`run`・`clock`・`sleep`'
+        expected: 偽を返し、`sleep` に渡した秒の合計が `INPUT_DEADLINE_SEC` を超えない。`WARNING` の記録がある
+      - name: test_enter_to_claude_when_concurrent
+        case: 正常
+        summary: 同時の入力を重ねない
+        condition: 2 つのスレッドから同じ送り先で呼ぶ。`run` は呼ばれている間に他方の `run` が始まっていないかを控える
+        mock: '`run`・`clock`・`sleep`'
+        expected: 一方の 3 つのコマンドの間に他方のコマンドが入らない
