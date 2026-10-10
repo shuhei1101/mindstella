@@ -647,14 +647,21 @@ namespace MindmapPreview {
       closePill();
       document.body.classList.toggle("panel-open", route.id !== null && !route.full);
       markSelected(route.id);
-      // 別の項目へ移るかパネルを閉じた: コメントの一覧を開いていない間は、詳細パネルで消した行と書き換えを捨てる
+      // 別の項目へ移るかパネルを閉じた: 詳細パネルで始めた書き換えは、一覧を開いていても捨てる（入力欄の無い一覧の行に「修正」「削除」の無い行を残さない）。一覧を開いていない間は、消した行と書き換えをすべて捨てる
       if (route.id !== detailShown) {
         detailShown = route.id;
+        const hadEdit = editing !== null;
         if (!comment.listOpen) {
           comment.removed = [];
           editing = null;
+        } else if (editingIn === "detail") {
+          editing = null;
+        }
+        if (editing === null) {
           editError = null;
           editBody = null;
+          // 一覧を開いていれば、本文だけで残っていた行を直す
+          if (hadEdit && comment.listOpen) renderComments();
         }
       }
       // 開いている項目が無い: パネルも全画面も閉じる
