@@ -915,7 +915,8 @@ def _handle_conflicting(root: Path, data: dict[str, Any]) -> dict[str, Any] | No
     ],
 )
 def test_write_response_when_after(
-    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
     handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
     expected_status: int,
     expected_entered: bool,
@@ -924,7 +925,7 @@ def test_write_response_when_after(
 ) -> None:
     """鍵を外した後に after を呼び、その結果を返す（正常系）。"""
     # 準備
-    context = _context(tmp_path)
+    context = _context(make_workspace(make_item("D-1")))
     after_bodies: list[dict[str, Any]] = []
     lock_free: list[bool] = []
 
