@@ -42,7 +42,7 @@ args:
     status: planned
 uses:
   - component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
-    how: 描いた結果を `marked` と `marks`（足した行・変えた行）で描く
+    how: 描いた結果を `marked` と `marks`（足した行・変えた行）で描き、`selectable` は `false` で渡す（差分の表示の間は選んだ箇所のコメントの入口を出さない）
 accessibility:
   - 切り替えは 2 つのボタンの組（`role="group"`、読み上げの名前「本文の差分の見せ方」）で、選んでいる方を `aria-pressed` で示す
   - 原文の差分の足した・消した行は、色に加えて `+` / `−` の記号と読み上げの文字（「追加:」「削除:」）で分ける

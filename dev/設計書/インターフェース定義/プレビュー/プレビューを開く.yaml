@@ -586,7 +586,7 @@ request:
     required: false
     default: なし（入口を出さない）
     description: 詳細パネル・詳細の全画面で、本文の文か項目の値を選んだ範囲。本文は元の Markdown か HTML の行の範囲に、値はキーのパスに対応づけて箇所にする
-    constraints: 本文と値の外・空の選択・Markdown の中の `html` のコードブロックを描いた枠の中の選択では入口を出さない
+    constraints: 本文と値の外・空の選択・Markdown の中の `html` のコードブロックを描いた枠の中の選択・差分の表示の間の HTML の本文の中の選択では入口を出さない
     notes: 利用者の操作。サーバーの配信でだけ受ける
   - name: h
     type: str
