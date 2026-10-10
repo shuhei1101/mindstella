@@ -66,7 +66,12 @@ def test_detail_panel_when_diff_highlight(
 ) -> None:
     """差分の表示の間も、消した部分の後ろの箇所を今の行のブロックで示す（正常系）。"""
     # 準備
-    entry = {"seq": 1, "at": ENTRY_AT, "before": {}, "body_diff": REMOVED_PARAGRAPHS_DIFF}
+    entry = {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": REMOVED_PARAGRAPHS_DIFF,
+    }
     data = make_data(
         decisions=[make_item("D-1", body="D-1.md", history=[entry])],
         bodies={"D-1.md": NOW_BODY},
@@ -78,7 +83,8 @@ def test_detail_panel_when_diff_highlight(
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
-        OPEN_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "highlight": highlight}
+        OPEN_DIFF_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "highlight": highlight},
     )
     # 検証
     assert result["hits"] == [{"line": "3", "text": "今の 3 行目の段落"}]
@@ -104,7 +110,11 @@ OLD_SET_HISTORY = [
         "at": ENTRY_AT,
         "before": {},
         "body_diff": [
-            {"line": 3, "now": ["V-1 の 3 行目の段落"], "before": ["元の 3 行目の段落"]},
+            {
+                "line": 3,
+                "now": ["V-1 の 3 行目の段落"],
+                "before": ["元の 3 行目の段落"],
+            },
         ],
     },
 ]
@@ -161,7 +171,8 @@ def test_detail_panel_when_old_set_after_body_edit(
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
-        OPEN_OLD_SET_PANEL_SCRIPT, {"data": data, "point": OLD_SET_POINT, "highlight": highlight}
+        OPEN_OLD_SET_PANEL_SCRIPT,
+        {"data": data, "point": OLD_SET_POINT, "highlight": highlight},
     )
     # 検証
     assert "V-1 の 3 行目の段落" in result["text"]
@@ -170,7 +181,11 @@ def test_detail_panel_when_old_set_after_body_edit(
 
 
 # 選んだ時点の後に、答えと編集した人（利用者 → AI）が変わった回
-EDITOR_ENTRY = {"seq": 1, "at": ENTRY_AT, "before": {"answer": None, "updated_by": "user"}}
+EDITOR_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"answer": None, "updated_by": "user"},
+}
 
 # 詳細パネルを差分つきで開き、差分の印の数と、編集した人の値が出ているかを調べる
 OPEN_EDITOR_PANEL_SCRIPT = """async ({data, point}) => {
@@ -207,7 +222,13 @@ def test_detail_panel_when_diff_editor_only(
     # 準備
     data = make_data(
         decisions=[
-            make_item("D-1", answer="新しい答え", updated_by="ai", history=[EDITOR_ENTRY], seq=1)
+            make_item(
+                "D-1",
+                answer="新しい答え",
+                updated_by="ai",
+                history=[EDITOR_ENTRY],
+                seq=1,
+            )
         ],
     )
     load_preview_scripts()
@@ -215,7 +236,9 @@ def test_detail_panel_when_diff_editor_only(
     load_library("DOMPurify")
     load_library("jsdiff")
     # 実行
-    result = preview_page.evaluate(OPEN_EDITOR_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    result = preview_page.evaluate(
+        OPEN_EDITOR_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
     # 検証
     assert result["keyMarks"] == 1
     assert result["valueMarks"] == 1
@@ -285,11 +308,17 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
     # 差分なしで開いて、今の版の図を描き終える
     preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
-    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg') !== null"
+    )
     preview_page.evaluate("() => { window.renderedSources.length = 0; }")
     # 実行
-    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
-    preview_page.wait_for_function("() => document.querySelector('.mermaid svg .df-n-chg') !== null")
+    preview_page.evaluate(
+        OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg .df-n-chg') !== null"
+    )
     rendered_sources = preview_page.evaluate("() => window.renderedSources")
     # 検証
     assert rendered_sources == []
@@ -331,10 +360,14 @@ def test_detail_panel_when_diff_renders_before_sequence(
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
     # 差分なしで開いて、今の版の図を描き終える
     preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
-    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg') !== null"
+    )
     preview_page.evaluate("() => { window.renderedSources.length = 0; }")
     # 実行
-    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.evaluate(
+        OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
     preview_page.wait_for_function(
         "() => document.querySelector('.mermaid svg .df-t-chg') !== null"
     )
@@ -396,10 +429,14 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
     ("heading", "expected"),
     [
         pytest.param(
-            "決め方-1", {"scrolled": True, "inView": True, "nullCalls": 0}, id="heading_in_body"
+            "決め方-1",
+            {"scrolled": True, "inView": True, "nullCalls": 0},
+            id="heading_in_body",
         ),
         pytest.param(
-            "無い", {"scrolled": False, "inView": False, "nullCalls": 1}, id="heading_not_in_body"
+            "無い",
+            {"scrolled": False, "inView": False, "nullCalls": 1},
+            id="heading_not_in_body",
         ),
     ],
 )
@@ -419,7 +456,9 @@ def test_detail_panel_when_heading(
     load_library("marked")
     load_library("DOMPurify")
     # 実行
-    result = preview_page.evaluate(OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading})
+    result = preview_page.evaluate(
+        OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading}
+    )
     # 検証
     assert result == expected
 
@@ -544,8 +583,16 @@ async ({data, id}) => {
         pytest.param(
             "D-1",
             "未決定",
-            [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B", "recommended": True}],
-            {"recommended": ["B"], "stars": 1, "hasDecidedSection": False, "results": ["", ""]},
+            [
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+            {
+                "recommended": ["B"],
+                "stars": 1,
+                "hasDecidedSection": False,
+                "results": ["", ""],
+            },
             id="undecided_with_recommended",
         ),
         pytest.param(
@@ -567,7 +614,12 @@ async ({data, id}) => {
             "D-3",
             "未決定",
             [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
-            {"recommended": [], "stars": 0, "hasDecidedSection": False, "results": ["", ""]},
+            {
+                "recommended": [],
+                "stars": 0,
+                "hasDecidedSection": False,
+                "results": ["", ""],
+            },
             id="undecided_without_recommended",
         ),
     ],
@@ -631,7 +683,12 @@ async ({data, id, keys}) => {
                         "answer": "**強調**",
                         "reason": "**強調**",
                         "options": [
-                            {"key": "A", "content": "案 A", "pros": "**強調**", "adopted": True}
+                            {
+                                "key": "A",
+                                "content": "案 A",
+                                "pros": "**強調**",
+                                "adopted": True,
+                            }
                         ],
                     }
                 ]
@@ -640,20 +697,37 @@ async ({data, id, keys}) => {
             id="decision",
         ),
         pytest.param(
-            "T-1", {"tasks": [{"id": "T-1", "reason": "**強調**"}]}, ["reason"], id="task"
+            "T-1",
+            {"tasks": [{"id": "T-1", "reason": "**強調**"}]},
+            ["reason"],
+            id="task",
         ),
         pytest.param(
             "R-1",
-            {"research": [{"id": "R-1", "question": "**強調**", "conclusion": "**強調**"}]},
+            {
+                "research": [
+                    {"id": "R-1", "question": "**強調**", "conclusion": "**強調**"}
+                ]
+            },
             ["question", "conclusion"],
             id="research",
         ),
         pytest.param(
-            "G-1", {"terms": [{"id": "G-1", "meaning": "**強調**"}]}, ["meaning"], id="term"
+            "G-1",
+            {"terms": [{"id": "G-1", "meaning": "**強調**"}]},
+            ["meaning"],
+            id="term",
         ),
         pytest.param(
             "N-1",
-            {"notes": [{"id": "N-1", "content": '**強調** <img src=x onerror="window.__x=1">'}]},
+            {
+                "notes": [
+                    {
+                        "id": "N-1",
+                        "content": '**強調** <img src=x onerror="window.__x=1">',
+                    }
+                ]
+            },
             ["content"],
             id="note",
         ),
@@ -724,7 +798,14 @@ def test_detail_panel_when_option_list_values(
             make_item(
                 "D-1",
                 status="未決定",
-                options=[{"key": "A", "content": "案 A", "pros": ["速い", "**安い**"], "cons": []}],
+                options=[
+                    {
+                        "key": "A",
+                        "content": "案 A",
+                        "pros": ["速い", "**安い**"],
+                        "cons": [],
+                    }
+                ],
             )
         ]
     )
@@ -732,6 +813,222 @@ def test_detail_panel_when_option_list_values(
     load_library("marked")
     load_library("DOMPurify")
     # 実行
-    result = preview_page.evaluate(OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"})
+    result = preview_page.evaluate(
+        OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"}
+    )
     # 検証
     assert result == {"prosText": "速い、安い", "prosStrong": 1, "consFound": False}
+
+
+# レビュー中のコメントの溜めた日時
+REVIEW_CREATED = "2026-10-05T03:00:00+00:00"
+
+
+def _review_item(item_id: str, body: str) -> dict[str, object]:
+    """D-1 へのレビュー中のコメントを返す。"""
+    return {
+        "id": item_id,
+        "target": "D-1",
+        "target_title": "問い",
+        "loc": None,
+        "body": body,
+        "created": REVIEW_CREATED,
+    }
+
+
+# 詳細パネルに渡す、下端の入力欄とレビュー中のコメントと行の操作の引数を作り、文書に置く関数
+OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const count = (name) => () => { calls[name] += 1; };
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full,
+        on: {
+            open: noop, close: noop, full: count("full"), back: noop, forward: noop, diagram: noop,
+            heading: noop,
+        },
+        comment: {
+            form: {
+                target: "D-1",
+                on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
+            },
+            reviews,
+            edit: {
+                removed,
+                editing,
+                editingIn,
+                editError: null,
+                editBody: null,
+                on: {
+                    edit: noop, saveEdit: noop, cancelEdit: count("cancelEdit"), remove: noop,
+                    restore: noop,
+                },
+            },
+        },
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    if (full) panel.showModal();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return panel;
+};"""
+
+# レビュー中のコメントの節の行を、順に調べる
+REVIEW_ROWS_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews, removed, editing, editingIn}) => {
+    const calls = {full: 0, cancelEdit: 0};
+    const panel = await openReviewPanel({data, reviews, removed, editing, editingIn, full: false, calls});
+    const section = panel.querySelector(".d-review");
+    const labelOf = (button) => button.getAttribute("aria-label") ?? button.textContent.trim();
+    return {
+        count: section.querySelector("h3 .count").textContent.trim(),
+        rows: [...section.querySelectorAll("li")].map((row) => ({
+            buttons: [...row.querySelectorAll("button")].map(labelOf),
+            status: [...row.querySelectorAll('[role="status"]')].map((status) => status.textContent.trim()),
+            hasField: row.querySelector("textarea") !== null,
+            body: row.querySelector(".review-body")?.textContent ?? null,
+        })),
+        focuses: [...section.querySelectorAll("[data-focus]")].map((element) => element.getAttribute("data-focus")),
+    };
+}"""
+)
+
+
+def test_detail_panel_when_review_rows(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """レビュー中のコメントの行に修正・削除を置き、書き換えている行と消した行を元の場所に描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ROWS_SCRIPT,
+        {
+            "data": data,
+            "reviews": [
+                _review_item("C-1", "案 A にする"),
+                _review_item("C-3", "案 B も見たい"),
+            ],
+            "removed": [_review_item("C-2", "消したコメント")],
+            "editing": "C-3",
+        },
+    )
+    # 検証
+    assert result["count"] == "2"
+    assert result["rows"] == [
+        {
+            "buttons": ["D-1 へのコメントを修正", "D-1 へのコメントを削除"],
+            "status": [],
+            "hasField": False,
+            "body": "案 A にする",
+        },
+        {
+            "buttons": ["元に戻す"],
+            "status": ["コメントを削除しました。"],
+            "hasField": False,
+            "body": None,
+        },
+        {
+            "buttons": ["キャンセル", "修正"],
+            "status": [],
+            "hasField": True,
+            "body": None,
+        },
+    ]
+    assert result["focuses"] == [
+        "detail-edit-open:C-1",
+        "detail-remove:C-1",
+        "detail-restore:C-2",
+        "detail-edit:C-3",
+    ]
+
+
+# 全画面で書き換えの入力欄にフォーカスして Esc を押す前の用意（押した後の結果は別に読む）
+OPEN_FULL_EDIT_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews}) => {
+    window.__calls = {full: 0, cancelEdit: 0};
+    window.__panel = await openReviewPanel({
+        data, reviews, removed: [], editing: "C-1", full: true, calls: window.__calls,
+    });
+    const field = window.__panel.querySelector(".d-review textarea");
+    if (field !== null) field.focus();
+    return field !== null;
+}"""
+)
+
+# Esc を押した後の、呼ばれた回数と全画面の開き具合
+READ_FULL_EDIT_SCRIPT = """() => ({
+    calls: window.__calls,
+    open: window.__panel.open,
+})"""
+
+
+def test_detail_panel_when_review_escape_in_full(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全画面で書き換えの入力欄の Esc は、書き換えだけを捨てて全画面を閉じない（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    has_field = preview_page.evaluate(
+        OPEN_FULL_EDIT_SCRIPT,
+        {"data": data, "reviews": [_review_item("C-1", "案 A にする")]},
+    )
+    # 実行
+    preview_page.keyboard.press("Escape")
+    # 検証
+    assert has_field is True
+    assert preview_page.evaluate(READ_FULL_EDIT_SCRIPT) == {
+        "calls": {"full": 0, "cancelEdit": 1},
+        "open": True,
+    }
+
+
+def test_detail_panel_when_review_editing_in_list(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """コメントの一覧で書き換えている行は、詳細パネルでは本文だけで描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ROWS_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-1", "案 A にする")],
+            "removed": [],
+            "editing": "C-1",
+            "editingIn": "list",
+        },
+    )
+    # 検証
+    assert result["rows"] == [
+        {"buttons": [], "status": [], "hasField": False, "body": "案 A にする"}
+    ]

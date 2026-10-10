@@ -83,6 +83,22 @@ def write_review_preview(
 
 
 @pytest.fixture
+def served_review_rows(
+    write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment
+) -> tuple[str, Path]:
+    """D-1 へのコメント 2 件（C-1・C-2）と D-2 へのコメント 1 件（C-3）を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        make_item("D-2"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+            make_comment("C-3", target="D-2", body="別の項目へのコメント"),
+        ),
+    )
+
+
+@pytest.fixture
 def write_history_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
     """変更履歴つきのワークスペース（まとまり V-1・V-2 とまとめていない変更）を作り、配信の URL とフォルダを返す関数を返す。"""
 

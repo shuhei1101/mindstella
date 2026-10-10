@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import Any
 
 import pytest
-from playwright.sync_api import APIResponse, Page, Route
+from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
@@ -23,12 +25,16 @@ from preview_comment_helpers import (
     DETAIL_MESSAGE,
     DETAIL_TEXTAREA,
     DRAFT_WAIT_MS,
+    PANEL_REVIEW,
     PILL,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
+    fulfill_problem,
     read_workspace_yaml,
+    review_row,
     select_text,
     select_text_for_pill,
+    wait_until_focused,
 )
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
@@ -39,6 +45,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from preview_mark_helpers import MARK_TIMEOUT_MS, marks_of
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
@@ -64,6 +71,27 @@ DIAGRAM_TIMEOUT_MS = 20_000
 PANEL_BODY = "aside.panel .panel-body"
 PANEL_HEAD_LAST_BUTTON = "aside.panel .panel-head button:not([disabled])"
 
+# D-1 へのコメントの行の「修正」「削除」の読み上げの名前
+ROW_EDIT_NAME = "D-1 へのコメントを修正"
+ROW_REMOVE_NAME = "D-1 へのコメントを削除"
+
+# 行の右上の操作が、行の右上の隅から離れてよい上限（px）
+ROW_CORNER_TOLERANCE_PX = 24
+
+# パネルの動きが終わってから、行の右上の隅と「修正」「削除」の組の隅との隙間（px）を返す
+ROW_CORNER_GAPS_JS = """async (selector) => {
+    await Promise.all(document.getAnimations().map(animation => animation.finished));
+    const row = document.querySelector(selector).getBoundingClientRect();
+    const actions = document.querySelector(`${selector} .row-actions`).getBoundingClientRect();
+    return { right: row.right - actions.right, top: actions.top - row.top };
+}"""
+
+# 書き換えの入力欄が、行の本文の幅から欠けてよい上限（px）
+FIELD_WIDTH_TOLERANCE_PX = 2
+
+# 行の操作のアイコンを、行ごとに並びのまま読む
+ROW_ICONS_JS = "row => [...row.querySelectorAll('.row-actions button svg')].map(svg => svg.innerHTML)"
+
 
 def _hold_post_response(route: Route, held: list[tuple[Route, APIResponse]]) -> None:
     """溜める POST はサーバーへ流して応答を控え（画面へは返さない）、GET はそのまま流す。"""
@@ -71,6 +99,28 @@ def _hold_post_response(route: Route, held: list[tuple[Route, APIResponse]]) -> 
         held.append((route, route.fetch()))
     else:
         route.continue_()
+
+
+def _row_button(page: Page, comment_id: str, name: str) -> Locator:
+    """詳細パネルのコメントの行の中の、読み上げの名前が name のボタンを返す。"""
+    return page.locator(review_row("aside.panel", comment_id)).get_by_role("button", name=name, exact=True)
+
+
+def _open_detail_from_list(page: Page, comment_id: str) -> None:
+    """コメントの一覧を開き、行の向けた項目を押して、一覧を開いたまま詳細パネルを開く。"""
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.click(f"{review_row(COMMENTS_PANEL, comment_id)} button.row-target")
+    page.wait_for_selector("aside.panel.open")
+
+
+def _start_edit(page: Page, comment_id: str, body: str) -> str:
+    """行の「修正」を押して書き換えの入力欄に body を入れ、その入力欄の選択子を返す。"""
+    _row_button(page, comment_id, ROW_EDIT_NAME).click()
+    field = f"{review_row('aside.panel', comment_id)} form.row-edit textarea"
+    page.wait_for_selector(field)
+    page.fill(field, body)
+    return field
 
 
 def _panel_title(page: Page) -> str:
@@ -903,7 +953,7 @@ def test_review_comments(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """その項目へのレビュー中のコメントを溜めた順に、箇所（名前と選んだ文）と本文つきで読むだけの形で並べる（正常系）。"""
+    """その項目へのレビュー中のコメントを溜めた順に、箇所（名前と選んだ文）と本文つきで並べ、行ごとに「修正」「削除」を置く（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"),
@@ -930,8 +980,15 @@ def test_review_comments(
         [None, None, "案 A にする"],
         ["案 C のデメリット", "表の密度が下がる", "ここは別の言い方にしたい"],
     ]
-    # 読むだけ（直す・消す・チェックを持たない）
-    assert page.locator("aside.panel .d-review button, aside.panel .d-review input").count() == 0
+    # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送るは一覧で行う）
+    assert page.eval_on_selector_all(
+        "aside.panel .d-review li",
+        "rows => rows.map(r => [...r.querySelectorAll('.row-actions button')].map(b => [b.getAttribute('aria-label'), b.title]))",
+    ) == [
+        [["D-1 へのコメントを修正", "修正"], ["D-1 へのコメントを削除", "削除"]],
+        [["D-1 へのコメントを修正", "修正"], ["D-1 へのコメントを削除", "削除"]],
+    ]
+    assert page.locator("aside.panel .d-review input").count() == 0
     # レビュー中のコメントは関係する項目の後に出る
     sections = page.eval_on_selector_all("aside.panel .d-sec h3", "hs => hs.map(h => h.firstChild.textContent)")
     assert sections[-1] == "レビュー中のコメント"
@@ -948,6 +1005,549 @@ def test_review_comments_when_empty(
     # 検証
     assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント0"
     assert "レビュー中のコメントはありません。" in page.inner_text("aside.panel .d-review")
+
+
+def test_review_row_actions_at_top_right(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """各行の右上に「修正」「削除」のボタンを、乗せなくても見える形で常に置く（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 検証
+    row = review_row("aside.panel", "C-1")
+    gaps = page.evaluate(ROW_CORNER_GAPS_JS, row)
+    assert gaps["right"] <= ROW_CORNER_TOLERANCE_PX
+    assert gaps["top"] <= ROW_CORNER_TOLERANCE_PX
+    assert _row_button(page, "C-1", ROW_EDIT_NAME).is_visible() is True
+    assert _row_button(page, "C-1", ROW_REMOVE_NAME).is_visible() is True
+
+
+def test_review_row_edit_button(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """行の「修正」は鉛筆の印だけのボタンで、読み上げの名前は「{項目の ID} へのコメントを修正」、`title` は「修正」にする（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 検証
+    button = _row_button(page, "C-1", ROW_EDIT_NAME)
+    assert button.get_attribute("title") == "修正"
+    assert button.locator("svg").count() == 1
+    assert button.inner_text() == ""
+
+
+def test_review_row_remove_button(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """行の「削除」はごみ箱の印だけのボタンで、読み上げの名前は「{項目の ID} へのコメントを削除」、`title` は「削除」にする（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 検証
+    button = _row_button(page, "C-1", ROW_REMOVE_NAME)
+    assert button.get_attribute("title") == "削除"
+    assert button.locator("svg").count() == 1
+    assert button.inner_text() == ""
+
+
+def test_review_row_actions_same_icons_as_list(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """行の「修正」「削除」は、コメントの一覧の行と同じアイコンにする（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url)
+    # 実行
+    _open_detail_from_list(page, "C-1")
+    # 検証
+    in_detail = page.eval_on_selector(review_row("aside.panel", "C-1"), ROW_ICONS_JS)
+    in_list = page.eval_on_selector(review_row(COMMENTS_PANEL, "C-1"), ROW_ICONS_JS)
+    assert len(in_detail) == 2
+    assert in_detail == in_list
+
+
+def test_review_row_edit_start(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """「修正」で行の本文を行の幅いっぱいの入力欄に切り替えて入力欄へフォーカスを移し、その行には「修正」「削除」を出さない（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    # 実行
+    _row_button(page, "C-1", ROW_EDIT_NAME).click()
+    # 検証
+    field = f"{row} form.row-edit textarea"
+    wait_until_focused(page, field)
+    assert page.input_value(field) == "案 A にする"
+    assert page.locator(f"{row} .review-body").count() == 0
+    assert page.locator(f"{row} .row-actions").count() == 0
+    assert page.locator(f"{review_row('aside.panel', 'C-2')} .row-actions").count() == 1
+    field_box = page.locator(field).bounding_box()
+    main_box = page.locator(f"{row} .review-main").bounding_box()
+    assert field_box is not None
+    assert main_box is not None
+    assert main_box["width"] - field_box["width"] <= FIELD_WIDTH_TOLERANCE_PX
+
+
+def test_review_row_remove(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """「削除」で確認を挟まず消し、行を「コメントを削除しました。」と「元に戻す」に置き換えて「元に戻す」へフォーカスを移す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    # 実行
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{row}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.locator("dialog[open]").count() == 0
+    assert page.inner_text(f"{row} .removed-msg") == "コメントを削除しました。"
+    assert page.get_attribute(f"{row} .removed-msg", "role") == "status"
+    wait_until_focused(page, f"{row} button")
+    assert page.get_by_role("button", name="元に戻す").count() == 1
+    assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == ["C-2", "C-3"]
+
+
+def test_review_row_remove_updates_counts(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """削除した後、見出しの件数とトップバーのコメントのボタンの件数を、消した行を数えずに描き直し、消した行は溜めた順の元の場所に残す（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 実行
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.inner_text(f"{PANEL_REVIEW} h3") == "レビュー中のコメント1"
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
+    assert page.eval_on_selector_all(
+        f"{PANEL_REVIEW} li", "rows => rows.map(r => [r.dataset.comment, r.classList.contains('removed')])"
+    ) == [["C-1", True], ["C-2", False]]
+
+
+def test_review_row_remove_updates_mark(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """削除した後、本文の領域のコメントの印の件数を描き直す（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    assert marks_of(page) == {"D-1": "2", "D-2": "1"}
+    # 実行
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_function(
+        "document.querySelector(\"main#main [data-comment-target='D-1'] .cmk-n\")?.textContent === '1'",
+        timeout=MARK_TIMEOUT_MS,
+    )
+    # 検証
+    assert marks_of(page) == {"D-1": "1", "D-2": "1"}
+
+
+def test_review_row_remove_when_list_open(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """コメントの一覧を開いているときは、詳細パネルで消した行を一覧も同じ消した行に描き直す（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url)
+    _open_detail_from_list(page, "C-1")
+    # 実行
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    in_list = review_row(COMMENTS_PANEL, "C-1")
+    page.wait_for_selector(f"{in_list}.removed")
+    assert page.inner_text(f"{in_list} .removed-msg") == "コメントを削除しました。"
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
+
+
+def test_review_row_edit(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """「修正」で `PATCH /api/comments/{id}` へ `body` だけを送り、200 なら本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    sent: list[Any] = []
+    page.on(
+        "request",
+        lambda request: sent.append(request.post_data_json) if request.method == "PATCH" else None,
+    )
+    row = review_row("aside.panel", "C-1")
+    _start_edit(page, "C-1", "案 B にする")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    page.wait_for_function(
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert sent == [{"body": "案 B にする"}]
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 B にする"
+    wait_until_focused(page, f"{row} button[title='修正']")
+
+
+def test_review_row_edit_when_body_empty(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """空白だけの本文は送らず、入力欄を要見直しにして「コメントを入れてから直してください。」を出す（異常系）。"""
+    # 準備
+    url, root = served_review_rows
+    patches: list[str] = []
+    page.on(
+        "request",
+        lambda request: patches.append(request.url) if request.method == "PATCH" else None,
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "   ")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    # 検証
+    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.get_attribute(f"{row} form.row-edit .send-msg", "role") == "alert"
+    assert page.get_attribute(field, "aria-invalid") == "true"
+    assert patches == []
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_review_row_edit_when_server_refuses(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """サーバーが断ったときは、入力を残してエラーの `detail` を印のアイコンと共に出す（異常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page.route(
+        "**/api/comments/C-1",
+        lambda route: (
+            fulfill_problem(route, 500, "comments.yaml を書けません")
+            if route.request.method == "PATCH"
+            else route.continue_()
+        ),
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "案 B にする")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    page.wait_for_selector(f"{row} form.row-edit .send-msg svg.icon", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.inner_text(f"{row} form.row-edit .send-msg") == "comments.yaml を書けません"
+    assert page.input_value(field) == "案 B にする"
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_review_row_edit_when_unreachable(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """サーバーに届かないときは、入力を残して「サーバーが止まっています。立ち上げ直してから直してください。」を出す（異常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page.route(
+        "**/api/comments/C-1",
+        lambda route: route.abort() if route.request.method == "PATCH" else route.continue_(),
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "案 B にする")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    page.wait_for_selector(f"{row} form.row-edit .send-msg svg.icon", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert (
+        page.inner_text(f"{row} form.row-edit .send-msg")
+        == "サーバーが止まっています。立ち上げ直してから直してください。"
+    )
+    assert page.input_value(field) == "案 B にする"
+
+
+def test_review_row_edit_when_cancelled(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """「キャンセル」で書き換えを捨てて本文に戻し、「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    _start_edit(page, "C-1", "捨てる")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="キャンセル").click()
+    # 検証
+    assert page.inner_text(f"{row} .review-body") == "案 A にする"
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    wait_until_focused(page, f"{row} button[title='修正']")
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_review_row_edit_when_escaped(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """入力欄の Esc で書き換えを捨てて本文に戻し、「行の修正」へフォーカスを戻す。Esc ではパネルを閉じない（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "捨てる")
+    # 実行
+    page.press(field, "Escape")
+    # 検証
+    assert page.inner_text(f"{row} .review-body") == "案 A にする"
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    wait_until_focused(page, f"{row} button[title='修正']")
+    assert page.locator("aside.panel.open").count() == 1
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_review_row_edit_when_other_row_started(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """別の行の「修正」を押すと、前の書き換えを捨てる。書き換える行は 1 行だけ（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    _start_edit(page, "C-1", "捨てる")
+    # 実行
+    _row_button(page, "C-2", ROW_EDIT_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-2')} form.row-edit")
+    # 検証
+    assert page.locator(f"{review_row('aside.panel', 'C-1')} form.row-edit").count() == 0
+    assert page.inner_text(f"{review_row('aside.panel', 'C-1')} .review-body") == "案 A にする"
+    assert page.locator(f"{PANEL_REVIEW} form.row-edit").count() == 1
+
+
+def test_review_row_edit_max_length(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """書き換えの入力欄の最大長は 10000 文字にする（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 実行
+    field = _start_edit(page, "C-1", "案 A にする")
+    # 検証
+    assert page.get_attribute(field, "maxlength") == "10000"
+
+
+def test_review_row_restore(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """「元に戻す」で消した中身を同じ ID と日時で元の場所に戻し、戻した行の「行の修正」へフォーカスを移す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    created = read_workspace_yaml(root, "comments.yaml")["items"][0]["created"]
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{row}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 実行
+    page.locator(f"{row}.removed").get_by_role("button", name="元に戻す").click()
+    page.wait_for_selector(f"{row} .review-body", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.inner_text(f"{row} .review-body") == "案 A にする"
+    assert page.eval_on_selector_all(f"{PANEL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == [
+        "C-1",
+        "C-2",
+    ]
+    assert page.inner_text(f"{PANEL_REVIEW} h3") == "レビュー中のコメント2"
+    restored = read_workspace_yaml(root, "comments.yaml")["items"][0]
+    assert (restored["id"], restored["created"]) == ("C-1", created)
+    wait_until_focused(page, f"{row} button[title='修正']")
+
+
+def test_review_row_restore_when_moved(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """コメントの一覧を開いていないとき、別の項目へ移ると消した行の「元に戻す」を出さなくなる（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 実行
+    page.evaluate("location.hash = '#tab=decisions&id=D-2'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    page.evaluate("location.hash = '#tab=decisions&id=D-1'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    # 検証
+    assert page.get_by_role("button", name="元に戻す").count() == 0
+    assert page.locator(f"{PANEL_REVIEW} li[data-comment='C-1']").count() == 0
+
+
+def test_review_row_restore_when_panel_closed(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """コメントの一覧を開いていないとき、パネルを閉じると消した行の「元に戻す」を出さなくなる（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 実行
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.evaluate("location.hash = '#tab=decisions&id=D-1'")
+    page.wait_for_selector("aside.panel.open")
+    # 検証
+    assert page.get_by_role("button", name="元に戻す").count() == 0
+    assert page.locator(f"{PANEL_REVIEW} li[data-comment='C-1']").count() == 0
+
+
+def test_review_row_restore_when_restored_in_list(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """コメントの一覧を開いている間は一覧と同じ消した行を見て、一覧の「元に戻す」で戻すと詳細パネルの行も戻る（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url)
+    _open_detail_from_list(page, "C-1")
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    in_list = review_row(COMMENTS_PANEL, "C-1")
+    page.wait_for_selector(f"{in_list}.removed")
+    # 実行
+    page.locator(f"{in_list}.removed").get_by_role("button", name="元に戻す").click()
+    # 検証
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')} .review-body", timeout=UPDATE_TIMEOUT_MS)
+    assert page.inner_text(f"{review_row('aside.panel', 'C-1')} .review-body") == "案 A にする"
+    assert page.locator(f"{review_row('aside.panel', 'C-1')}.removed").count() == 0
+
+
+def test_review_row_restore_when_list_closed(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """コメントの一覧を閉じた時点で、詳細パネルの消した行も一覧と一緒に消える（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url)
+    _open_detail_from_list(page, "C-1")
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 実行
+    page.get_by_role("button", name="コメントの一覧を閉じる").click()
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    # 検証
+    assert page.get_by_role("button", name="元に戻す").count() == 0
+    assert page.locator(f"{PANEL_REVIEW} li[data-comment='C-1']").count() == 0
+
+
+def test_review_row_keyboard(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """キーボードだけで、行を直す・消す・戻すまで届く（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    # 実行（直す）
+    _row_button(page, "C-1", ROW_EDIT_NAME).focus()
+    page.keyboard.press("Enter")
+    wait_until_focused(page, f"{row} form.row-edit textarea")
+    page.keyboard.press("Control+A")
+    page.keyboard.type("案 B にする")
+    page.keyboard.press("Tab")
+    page.keyboard.press("Tab")
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    wait_until_focused(page, f"{row} button[title='修正']")
+    # 実行（消す）
+    page.keyboard.press("Tab")
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{row}.removed", timeout=UPDATE_TIMEOUT_MS)
+    wait_until_focused(page, f"{row} button")
+    # 実行（戻す）
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"{row} .review-body", timeout=UPDATE_TIMEOUT_MS)
+    wait_until_focused(page, f"{row} button[title='修正']")
+    # 検証
+    items = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert [(item["id"], item["body"]) for item in items] == [
+        ("C-1", "案 B にする"),
+        ("C-2", "案 B も見たい"),
+        ("C-3", "別の項目へのコメント"),
+    ]
+
+
+def test_review_row_remove_keeps_input(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """行を消して描き直しても、コメントの入力欄の書きかけを保つ（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.fill(DETAIL_TEXTAREA, "書きかけ")
+    # 実行
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.input_value(DETAIL_TEXTAREA) == "書きかけ"
+
+
+def test_review_row_remove_keeps_scroll(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """行を消して描き直しても、本文のスクロール領域のスクロールの位置を保つ（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("A-1"),
+        bodies={"A-1.md": LONG_BODY},
+        comments=(
+            make_comment("C-1", target="A-1", body="1 件目"),
+            make_comment("C-2", target="A-1", body="2 件目"),
+        ),
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    button = _row_button(page, "C-1", "A-1 へのコメントを削除")
+    button.scroll_into_view_if_needed()
+    scrolled = page.evaluate(SETTLED_SCROLL_TOP_JS, PANEL_BODY)
+    # 実行
+    button.click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert scrolled > 0
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, PANEL_BODY) == scrolled
+
+
+def test_selection_entry_when_in_review_comments(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """レビュー中のコメントの本文を選んでも、選んだ箇所のコメントの入口を出さない（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 実行
+    select_text(page, f"{review_row('aside.panel', 'C-1')} .review-body", "案 A にする")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert page.locator(PILL).count() == 0
+
+
+def test_selection_entry_when_in_review_edit(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """行の書き換えの入力欄の文を選んでも、選んだ箇所のコメントの入口を出さない（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    field = _start_edit(page, "C-1", "案 A にする")
+    # 実行
+    page.locator(field).select_text()
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert page.locator(PILL).count() == 0
 
 
 def test_selection_entry_when_body(

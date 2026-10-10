@@ -231,9 +231,9 @@ def test_normal_when_edit_remove_restore(
     _open_list(page)
     assert page.inner_text(D1_MARK) == "コメント 2 件"
     # 実行（書き換える）
-    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを直す").click()
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 A に決める")
-    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="直す").click()
+    page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
         "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent === '案 A に決める'",
         timeout=RESULT_TIMEOUT_MS,
