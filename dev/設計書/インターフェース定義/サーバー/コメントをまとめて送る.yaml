@@ -175,6 +175,7 @@ flows:
         description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目の「言い換えたい文」を指す「ここは言い換える」）・C-3（項目を指さない 2 行の「全体に目を通した」）を持つワークスペース。偽のコマンドと MCP サーバーの作業フォルダにする
         notes: '`ids` は `["C-1", "C-2", "C-3"]`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/comments/send
@@ -191,6 +192,7 @@ flows:
         CC->>JL: user の行を書き足す
         IF-->>JL: 書き足された行に入力した文字列がある
         IF-->>クライアント: 201、entered: true
+      ```
     expected:
       - ステータスが 201 で、`entered` が `true`
       - 会話の記録に user の行が 1 件だけ增え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。` である
@@ -208,6 +210,7 @@ flows:
         description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）を持つワークスペース
         notes: '`ids` は `["C-1"]`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/comments/send
@@ -220,6 +223,7 @@ flows:
         TM->>CC: 入力
         CC->>JL: queue-operation enqueue を書き足す
         IF-->>クライアント: 201、entered: true
+      ```
     expected:
       - ステータスが 201 で、`entered` が `true`
       - '`submissions.yaml` に S-1 が `taken: null` である'
@@ -235,6 +239,7 @@ flows:
         description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）を持つワークスペース
         notes: '`ids` は `["C-1"]`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/comments/send
@@ -247,6 +252,7 @@ flows:
         IF->>TM: 貼って Enter
         IF-->>JL: 0.5 秒まで書き足されない
         IF-->>クライアント: 201、entered: false
+      ```
     expected:
       - ステータスが 201 で、`entered` が `false`
       - '`submissions.yaml` に S-1 が `taken: null` であり、`comments.yaml` が空である'

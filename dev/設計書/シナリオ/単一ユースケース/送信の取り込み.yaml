@@ -99,6 +99,7 @@ scenarios:
         description: 単一ユースケース『コメントを選んで送る』でサーバーが会話へ入力した `[mindstella] ユーザーからのコメントが 1 件届きました。読み直してください。`
         notes: 送信の中身は入力に含まれず、取り込んでいない送信の一覧で読む
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant SV as サーバー
         participant CC as Claude Code（session）
@@ -112,6 +113,7 @@ scenarios:
         CC->>SV: add（会話ログ）
         CC->>SV: S-1 を取り込み済みにする
         SV->>WS: 書く
+      ```
     expected:
       - D-1 の採用する案が A で、決定済みである
       - 会話ログに S-1 の本文がある

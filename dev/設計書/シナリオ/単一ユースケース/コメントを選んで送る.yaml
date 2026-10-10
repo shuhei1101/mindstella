@@ -202,6 +202,7 @@ scenarios:
       - name: レビュー中のコメント
         description: D-1 への「案 A にする」と、項目に紐づかない 2 行の「全体に目を通した」の 2 件
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -219,6 +220,7 @@ scenarios:
         SV->>SV: 会話の記録に入力した文字列が入ったことを確かめる
         SV-->>P: 受け付けた（Claude Code へ入力した）
         P-->>U: 送って Claude Code へ入力したこと
+      ```
     expected:
       - 取り込んでいない送信が 2 件ある
       - 会話の記録に user のメッセージが 1 件だけ増え、その中身が `[mindstella] ユーザーからのコメントが 2 件届きました。読み直してください。` である
