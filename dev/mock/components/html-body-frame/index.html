@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>HTML の本文の枠 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、画面のモックと同じスタイル（develop の style.css の写しに #214 の分を重ねる） -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../refs/214/assets/base.css">
+  <link rel="stylesheet" href="../../refs/214/assets/style.css">
+  <style>
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: auto; }
+    /* 詳細パネルの中身を置く台: パネルと同じ幅と面 */
+    .panelish { max-width: var(--panel-w); background: var(--surface); padding: 22px 24px; }
+    /* 部品を横に並べる列 */
+    .row-items { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+    /* 案の見出し（A・B） */
+    .case-t { margin: 0 0 6px; color: var(--text-2); font-size: var(--fs-small); font-weight: 600; }
+    /* 台の中の表: 画面の表と同じ面と枠 */
+    .stage table.grid { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); border-collapse: separate; border-spacing: 0; }
+    /* 台の中のボードの列: 流れに置く */
+    .stage .board-col { width: 300px; }
+    /* 状態を見せるための見本のクラス */
+    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .card.is-hover { border-color: var(--accent); }
+    /* 本文の外の見本: 枠の外の段落が本文の <style> で変わらないことを見せる */
+    .outside { margin: 0 0 10px; }
+  </style>
+</head>
+<body>
+  <main class="content" style="overflow: auto;">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / html-body-frame</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">HTML の本文の枠</h1>
+    <section class="cat-sec">
+      <h2>描いた本文</h2>
+      <p>詳細の本文の節に、スクリプトを動かさない枠（sandbox に allow-scripts を付けない）で描く。枠の高さは描いた中身に合わせ、枠の中にスクロールの帯を出さない。地は白にして、ダークでも資料の色のまま読む。</p>
+      <p class="case-t">詳細パネルの幅</p><div class="stage"><div class="panelish"><iframe class="html-frame" sandbox="allow-same-origin" title="本文（HTML）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>本文の &lt;style&gt; が外へ漏れない</h2>
+      <p>本文は * ・ body ・ p の色と余白を !important で塗っているが、枠の外の段落・見出しは変わらない。</p>
+      <p class="case-t">枠の外の段落と並べたとき</p><div class="stage"><div class="panelish"><p class="outside">枠の外の段落（詳細パネルの文字の色と余白のまま）</p><iframe class="html-frame" sandbox="allow-same-origin" title="本文（HTML）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>描く前（読み込み中）</h2>
+      <p>枠は描く前から 120px の高さを取り、描いた後に中身の高さへ伸びる。</p>
+      <p class="case-t">srcdoc を読み込む前</p><div class="stage"><div class="panelish"><iframe class="html-frame" sandbox="allow-same-origin" title="本文（HTML）" data-keep></iframe></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>スクリプトを含む本文</h2>
+      <p>&lt;script&gt;・onerror の画像・onclick のボタンを持つ本文。見出し・段落は描き、スクリプトとイベントの属性は動かさない（ボタンを押しても何も起きない）。</p>
+      <p class="case-t">A-12</p><div class="stage"><div class="panelish"><iframe class="html-frame" sandbox="allow-same-origin" title="本文（HTML）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;style&gt;
+  body { margin: 0; padding: 20px 24px; font: 15px/1.7 sans-serif; }
+  .card { padding: 12px 16px; border: 1px solid #ccd; border-radius: 8px; }
+&lt;/style&gt;
+&lt;!-- 動けば題と本文を書き換える --&gt;
+&lt;script&gt;
+  document.title = &quot;動いた&quot;;
+  window.parent.document.body.dataset.ran = &quot;script&quot;;
+&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;保存のボタンの見本&lt;/h1&gt;
+&lt;p&gt;押すと保存の知らせが出るボタンと、読み込めなかったときの画像の見本。&lt;/p&gt;
+&lt;div class=&quot;card&quot;&gt;
+  &lt;img src=&quot;missing.png&quot; width=&quot;120&quot; height=&quot;72&quot; alt=&quot;画面の写し&quot; onerror=&quot;window.parent.document.body.dataset.ran = &#x27;onerror&#x27;&quot;&gt;
+  &lt;p&gt;&lt;button type=&quot;button&quot; onclick=&quot;window.parent.document.body.dataset.ran = &#x27;onclick&#x27;&quot;&gt;保存する&lt;/button&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>差分の表示（V-5 で 2 つ目の段落を書き換えた）</h2>
+      <p>変更履歴・前回からの差分で、HTML の本文の差分をどう見せるか。</p>
+      <p class="case-t">案 A 原文の行の差分（推奨）</p><div class="stage"><div class="panelish"><div class="html-diff"><p class="html-diff-head">HTML の原文の差分</p><pre class="dg-raw df-raw"><span class="df-line df-skip">変わっていない 24 行</span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span></span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span>&lt;h2&gt;画面の流れ&lt;/h2&gt;</span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span>&lt;p class="flow" data-step="1"&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;</span><span class="df-line df-del"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除: </span>&lt;p class="flow" data-step="2"&gt;パネルで表示する種類を選び、「適用」を押すとタブとタイルが変わる。&lt;/p&gt;</span><span class="df-line df-add"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加: </span>&lt;p class="flow" data-step="2"&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;</span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span>&lt;p class="flow" data-step="3"&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;</span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span></span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span>&lt;svg viewBox="0 0 560 96" width="560" height="96" role="img" aria-label="パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ"&gt;</span><span class="df-line df-skip">変わっていない 28 行</span></pre></div></div></div><p class="case-t" style="margin-top: 12px;">案 B 前後の描いた結果を並べる（詳細パネルは縦）</p><div class="stage"><div class="panelish"><div class="html-side"><figure class="html-side-pane"><figcaption>変える前</figcaption><iframe class="html-frame" sandbox="allow-same-origin" title="本文（変える前）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を選び、「適用」を押すとタブとタイルが変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></figure><figure class="html-side-pane"><figcaption>変えた後</figcaption><iframe class="html-frame" sandbox="allow-same-origin" title="本文（変えた後）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></figure></div></div></div><p class="case-t" style="margin-top: 12px;">案 B 前後の描いた結果を並べる（全画面の広い幅は横）</p><div class="stage"><div class="html-side" style="grid-template-columns: 1fr 1fr; align-items: start; background: var(--surface); padding: 22px 24px;"><figure class="html-side-pane"><figcaption>変える前</figcaption><iframe class="html-frame" sandbox="allow-same-origin" title="本文（変える前）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を選び、「適用」を押すとタブとタイルが変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></figure><figure class="html-side-pane"><figcaption>変えた後</figcaption><iframe class="html-frame" sandbox="allow-same-origin" title="本文（変えた後）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></figure></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>差分を出せない</h2>
+      <p>書き換えの後に本文のファイルが直接書き換えられた・差分を計算しきれないときは、Markdown の本文と同じ知らせを出し、今の本文を描く。</p>
+      <p class="case-t">本文のファイルが直接書き換えられた</p><div class="stage"><div class="panelish"><p class="df-note" role="note"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。</span></p><iframe class="html-frame" sandbox="allow-same-origin" title="本文（HTML）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>詳細パネルが画面いっぱいになる幅でも、本文の図・表は枠の幅に収まる。</p>
+      <p class="case-t">詳細パネル（狭い幅）</p><div class="stage"><div class="panelish" style="width: 358px; padding: 16px;"><iframe class="html-frame" sandbox="allow-same-origin" title="本文（HTML）" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;ja&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;!-- 資料の見た目: 生成りの地に墨の文字。本文の外には効かない --&gt;
+&lt;style&gt;
+  * { margin: 0; box-sizing: border-box; color: #2b2a26 !important; }
+  body { padding: 24px 28px 32px; background: #f7f3ea !important; font: 15px/1.8 &quot;Noto Sans JP&quot;, sans-serif; }
+  p { margin: 0 0 12px !important; letter-spacing: .02em; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 2px solid #c9b98f; }
+  .lead { color: #6b6455 !important; }
+  .flow { padding: 8px 12px; background: #fffdf7 !important; border: 1px solid #e3d8bd; border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 14px; }
+  th, td { padding: 6px 10px; border: 1px solid #d9cdb0; text-align: left; }
+  th { background: #efe6d2 !important; }
+  svg { max-width: 100%; height: auto; }
+  svg text { font: 12px &quot;Noto Sans JP&quot;, sans-serif; fill: #2b2a26; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;設定のパネルの画面の流れ&lt;/h1&gt;
+&lt;p class=&quot;lead&quot;&gt;表示の設定のパネルを開いてから、既定として保存するまでの画面の流れを、
+1 画面ずつ並べたモック。&lt;/p&gt;
+
+&lt;h2&gt;画面の流れ&lt;/h2&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;1&quot;&gt;トップバーの歯車を押すと、右から設定のパネルが開く。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;2&quot;&gt;パネルで表示する種類を切り替えると、タブとタイルがすぐに変わる。&lt;/p&gt;
+&lt;p class=&quot;flow&quot; data-step=&quot;3&quot;&gt;「既定として保存」を押すと、確かめのダイアログを挟んでワークスペースの既定に書く。&lt;/p&gt;
+
+&lt;svg viewBox=&quot;0 0 560 96&quot; width=&quot;560&quot; height=&quot;96&quot; role=&quot;img&quot; aria-label=&quot;パネルを開く、種類を切り替える、既定として保存するの順に進む画面の流れ&quot;&gt;
+  &lt;rect x=&quot;4&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;79&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;パネルを開く&lt;/text&gt;
+  &lt;path d=&quot;M158 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;206&quot; y=&quot;20&quot; width=&quot;150&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#fffdf7&quot; stroke=&quot;#b9a676&quot;/&gt;
+  &lt;text x=&quot;281&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;種類を切り替える&lt;/text&gt;
+  &lt;path d=&quot;M360 46h44&quot; stroke=&quot;#8a7a52&quot; stroke-width=&quot;2&quot; marker-end=&quot;url(#a)&quot;/&gt;
+  &lt;rect x=&quot;408&quot; y=&quot;20&quot; width=&quot;148&quot; height=&quot;52&quot; rx=&quot;8&quot; fill=&quot;#efe6d2&quot; stroke=&quot;#8a7a52&quot;/&gt;
+  &lt;text x=&quot;482&quot; y=&quot;51&quot; text-anchor=&quot;middle&quot;&gt;既定として保存&lt;/text&gt;
+  &lt;defs&gt;&lt;marker id=&quot;a&quot; viewBox=&quot;0 0 8 8&quot; refX=&quot;7&quot; refY=&quot;4&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M0 0l8 4-8 4z&quot; fill=&quot;#8a7a52&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;/svg&gt;
+
+&lt;h2&gt;画面ごとの要素&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;&lt;tr&gt;&lt;th&gt;画面&lt;/th&gt;&lt;th&gt;置くもの&lt;/th&gt;&lt;th&gt;押したとき&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;td&gt;設定のパネル&lt;/td&gt;&lt;td&gt;表示する種類・ネットワークの見た目・既定として保存&lt;/td&gt;&lt;td&gt;切り替えはすぐ画面に出る&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;確かめのダイアログ&lt;/td&gt;&lt;td&gt;変わる既定の一覧・保存する・やめる&lt;/td&gt;&lt;td&gt;保存するとワークスペースの既定に書く&lt;/td&gt;&lt;/tr&gt;
+    &lt;tr&gt;&lt;td&gt;保存の知らせ&lt;/td&gt;&lt;td&gt;保存した既定の件数&lt;/td&gt;&lt;td&gt;数秒で消える&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2&gt;決めていないこと&lt;/h2&gt;
+&lt;p&gt;既定として保存した後に、個人の上書きを消すかどうか。
+消さないと、保存した既定が自分の画面には出ないように見える。&lt;/p&gt;
+&lt;p&gt;確かめのダイアログで、変わらない既定まで並べるかどうか。
+並べると一覧が長くなり、変わる既定が埋もれる。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe></div></div>
+    </section>
+    <!-- 枠の高さ: 画面のモックと同じく、描いた中身の高さに合わせる（読み込み中の見本は srcdoc を持たないので伸びない） -->
+    <script>
+      for (const frame of document.querySelectorAll("iframe.html-frame:not([data-keep])")) {
+        const fit = () => {
+          const doc = frame.contentDocument;
+          new ResizeObserver(() => { frame.style.height = `${doc.documentElement.scrollHeight}px`; }).observe(doc.documentElement);
+        };
+        if (frame.contentDocument?.readyState === "complete" && frame.contentDocument.body?.childElementCount) fit();
+        else frame.addEventListener("load", fit);
+      }
+    </script>
+  </main>
+</body>
+</html>

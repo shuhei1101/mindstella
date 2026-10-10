@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>資料 | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル（develop の style.css の写し） -->
+  <link rel="stylesheet" href="../../../../refs/214/assets/base.css">
+  <!-- この PR で足す部品のスタイル（本文の形式のバッジ・HTML の本文の枠と差分）と、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/214/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+<!-- data-initial: ハッシュが無いときに開く状態。data-diff: クエリの diff が無いときに選ぶ時点。data-badge: カードの形式のバッジの置き場所の案（kind = A 種類の右、meta = B ID の右） -->
+<body data-initial="tab=docs&amp;view=cards" data-diff="none" data-badge="kind">
+  <!-- モック専用の操作列: 同じ階層の案・表示形式・時点・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <a data-case href="../a-kind/index.html" aria-current="page">案A 種類の右（推奨）</a>
+    <a data-case href="../b-meta/index.html">案B ID の右</a>
+    <span class="label">表示:</span>
+    <a href="#tab=docs&amp;view=cards">カード</a>
+    <a href="#tab=docs&amp;view=board">ボード</a>
+    <a href="#tab=docs&amp;view=table">表</a>
+    <span class="label">時点:</span>
+    <a data-set="diff=none">差分を出さない</a>
+    <a data-set="diff=V-5">画面の流れのモックを直す（A-11 の HTML を書き換えた）</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">docs</a> / <a href="../index.md">214</a> / a-kind</nav>
+  </div>
+
+  <!-- 起動の前に時点・ハッシュを整える → 見本の記録を埋め込み先へ入れる → サーバーの代わり（記録とコメント） → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/214/assets/mock.js"></script>
+  <script src="../../../../refs/214/assets/data.js"></script>
+  <script src="../../../../refs/214/assets/mock-server.js"></script>
+  <script src="../../../../refs/214/assets/app.js"></script>
+</body>
+</html>
