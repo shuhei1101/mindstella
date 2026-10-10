@@ -1175,7 +1175,7 @@
   // 201: 送った時刻は時と分だけを出す
   const hhmm = (d) => new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(d);
   // 201: 送った結果の文言の案。入力できなかったときは、送信が残っていて次の話し合いの始めに取り込まれることを添える
-  const LATER = "送ったコメントは残っていて、次に話し合いを始めたときに取り込まれます。";
+  const LATER = "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。";
   const SENT_MSG = {
     a: {
       sent: (n, t) => `${icon("check")}<span>${n} 件を送り、Claude Code に入力しました（${t}）。</span>`,
