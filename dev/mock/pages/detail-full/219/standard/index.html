@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>詳細の全画面 | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で変える本文の印のツールチップのスタイルと、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/219/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+<!-- data-initial: ハッシュが無いときに開く状態（本文に「特殊効果」「エフェクト」を持つ資料 A-1） -->
+<body data-initial="tab=docs&amp;id=A-1&amp;full=1">
+  <!-- モック専用の操作列: 見本の状態・画面の切り替え・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span class="label">見本:</span>
+    <a href="#" data-set="tip=&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">A-1 の本文</a>
+    <a href="#" data-set="tip=特殊効果&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">特殊効果に乗せた</a>
+    <a href="#" data-set="tip=特殊効果&amp;pin=&amp;q=&amp;scroll=1&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">末尾までスクロール</a>
+    <a href="#" data-set="tip=特殊効果&amp;pin=1&amp;q=炎&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">「炎」で絞り込んだ</a>
+    <a href="#" data-set="tip=特殊効果&amp;pin=1&amp;q=雷&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">該当なし</a>
+    <a href="#" data-set="tip=特殊効果&amp;pin=&amp;q=&amp;scroll=&amp;edge=1" data-hash="tab=docs&amp;id=A-1&amp;full=1">上に収まらない</a>
+    <a href="#" data-set="tip=エフェクト&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">エフェクトに乗せた</a>
+    <a href="#" data-set="tip=ワークスペース&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-1&amp;full=1">用語だけの印</a>
+    <a href="#" data-set="tip=特殊効果&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-2&amp;full=1">A-2 の本文</a>
+    <a href="#" data-set="tip=&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=docs&amp;id=A-3&amp;full=1">A-3 の詳細</a>
+    <a href="#" data-set="tip=&amp;pin=&amp;q=&amp;scroll=&amp;edge=" data-hash="tab=research&amp;id=R-1&amp;full=1">R-1 の詳細</a>
+    <span class="label">画面:</span>
+    <a href="../../../detail-panel/219/standard/index.html">詳細パネル</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">detail-full</a> / <a href="../index.md">219</a> / standard</nav>
+  </div>
+
+  <!-- 起動の前にハッシュを整える → #127 の見本の記録を埋め込み先へ入れる → このシナリオの記録に書き換える → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/219/assets/mock.js"></script>
+  <script src="../../../../refs/127/assets/data.js"></script>
+  <script src="../../../../refs/219/assets/data.js"></script>
+  <script src="../../../../refs/219/assets/app.js"></script>
+</body>
+</html>

@@ -74,7 +74,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 再生する書き込み
-        description: '会話で出した Mermaid の図を本文にした資料 A-1（`kind`: 図、`related: [D-1]`）と会話ログを、1 回のまとめての書き込みで渡す'
+        description: '会話で出した Mermaid の図を本文にした資料 A-1（`kind`: 図、`related: [D-1]`、エイリアス・説明を持つ）と会話ログを、1 回のまとめての書き込みで渡す'
+        notes: 'A-1 はタイトル `画面遷移図`、`aliases: [画面遷移, 遷移図]`、`description: ログインから設定までの画面の移り方`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -90,6 +91,7 @@ scenarios:
       ```
     expected:
       - '資料 A-1 が `kind: 図` と `related: [D-1]` を持つ'
+      - 資料 A-1 が渡したエイリアス（`画面遷移`・`遷移図`）と説明を持つ
       - '`.mindstella/docs/` に A-1 の本文の Markdown がある'
       - '`check` が YAML と Markdown のずれを 0 件で返す'
     test: test_normal_when_diagram_kept_as_doc
