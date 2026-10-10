@@ -77,17 +77,45 @@ scenarios:
         U->>P: 検討事項のマップのキーワードの入力欄にフォーカスしたまま Ctrl+K を押す
         P-->>U: 全体の検索
         U->>P: 「シナリオの依頼 」を入れる（末尾に空白）
-        P-->>U: 一番上に G-1、その下に種類ごとの D-1・A-1
+        P-->>U: G-1・D-1・A-1 の順の結果
         U->>P: Enter を押す
         P-->>U: 用語集のタブと G-1 の詳細パネル
       ```
     expected:
       - 入力欄にフォーカスがあっても、Ctrl+K で全体の検索が開く
-      - 結果の一番上に G-1 があり、検討事項・資料の種類の見出しより上にある
-      - G-1 は、その下の用語集のまとまりに重ねて出ない
-      - D-1 と A-1 は、それぞれ検討事項・資料の見出しの下にある
+      - 結果の先頭が、タイトルが完全に一致する G-1 である
+      - 結果の並びで、タイトルが言葉を含む D-1 が、本文にだけ言葉を含む A-1 より前にある
       - Enter を押した後、検索が閉じ、用語集のタブと G-1 の詳細パネルが開く
     test: test_normal_when_exact_match
+  - name: 正常シナリオ（タイトルに当たる項目が後の種類にある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文にだけ「保存先」を含む検討事項 D-1、タイトルに「保存先」を含む資料 A-2
+        notes: 種類の順では検討事項が資料より前に来る組み合わせ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: Ctrl+K を押す
+        P-->>U: 全体の検索
+        U->>P: 「保存先」を入れる
+        P-->>U: A-2・D-1 の順の結果
+        U->>P: Enter を押す
+        P-->>U: 資料のタブと A-2 の詳細パネル
+      ```
+    expected:
+      - 結果に A-2 と D-1 がある
+      - 結果の並びで、タイトルに言葉を含む A-2 が、本文にだけ言葉を含む D-1 より前にある
+      - Enter を押した後、検索が閉じ、資料のタブと A-2 の詳細パネルが開く
+    test: test_normal_when_title_match_in_later_kind
   - name: 正常シナリオ（HTML の本文で当てる）
     setup:
       - name: Mock
