@@ -97,3 +97,40 @@ def test_error_when_tmux_missing(sandbox: LaunchSandbox, ready_venv: Path) -> No
     assert result.returncode != 0
     assert "tmux" in result.stderr
     assert sandbox.started() == []
+
+
+def test_normal_when_another_account(
+    sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
+) -> None:
+    """同じフォルダでも別のアカウント（`CLAUDE_CONFIG_DIR`）で開けば、別の名前のセッションを立て、先にあったセッションは立ち上げ直さない（正常系）。"""
+    # 準備
+    folder = sandbox.root / "家計簿アプリ"
+    sub1 = tmp_path / "claude-sub1"
+    sub1.mkdir()
+    # `CLAUDE_CONFIG_DIR` を渡さずに立てたセッションが 1 つある
+    first = sandbox.launch("家計簿アプリ", venv=ready_venv, with_config=False)
+    assert first.returncode == 0, first.stderr
+    before = sandbox.wait_started()
+    assert len(before) == 1
+    # 実行
+    result = sandbox.launch(
+        "家計簿アプリ", venv=ready_venv, extra_env={"CLAUDE_CONFIG_DIR": str(sub1)}
+    )
+    # 検証
+    assert result.returncode == 0, result.stderr
+    # tmux に、同じフォルダを開いたセッションが 2 つあり、名前が違う
+    first_name = session_name(folder)
+    sub1_name = session_name(folder, sub1)
+    assert first_name != sub1_name
+    assert sorted(sandbox.sessions()) == sorted([first_name, sub1_name])
+    assert sandbox.session_path(first_name) == folder.resolve()
+    assert sandbox.session_path(sub1_name) == folder.resolve()
+    # 新しいセッションの Claude Code に別のアカウントの設定のフォルダが渡る
+    started = sandbox.wait_started(2)
+    assert len(started) == 2
+    added = [path for path in started if path not in before]
+    assert len(added) == 1
+    assert added[0].with_suffix(".config").read_text(encoding="utf-8") == str(sub1)
+    # 先にあったセッションは立ち上げ直されていない
+    assert before[0] in started
+    assert before[0].with_suffix(".config").read_text(encoding="utf-8") == ""
