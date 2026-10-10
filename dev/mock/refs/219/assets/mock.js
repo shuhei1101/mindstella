@@ -45,7 +45,8 @@
   // 見本: クエリの tip の語の印に乗せたツールチップを出し、edge で最初の印を詳細の本文の領域の上端へ送ってから出し、pin で押して残し、q で絞り込む。mark に渡した CSS セレクタの要素に撮影用の赤枠を付ける
   const word = params.get("tip");
   if (word !== null) {
-    waitFor(".md a.term", () => {
+    // 詳細パネルが滑り込み終わってから出す（動いている間は印の位置が定まらない）
+    waitFor(".md a.term", () => setTimeout(() => {
       // 印は本文の最後のもの（edge のときは最初のもの）を使う
       const marks = [...document.querySelectorAll(".md a.term")].filter((node) => node.textContent === word);
       const mark = params.get("edge") !== null ? marks[0] : marks.at(-1);
@@ -66,7 +67,7 @@
         const tip = document.getElementById("term-tip");
         tip.scrollTop = tip.scrollHeight;
       }
-    });
+    }, 500));
   }
   const markSelector = params.get("mark");
   if (markSelector !== null) waitFor(markSelector, () => {
