@@ -435,12 +435,12 @@ functions:
       - name: point
         type: DiffPoint | null
         required: true
-        passing: positional
+        passing: keyword
         description: 選んだ時点
       - name: kind
         type: Kind
         required: true
-        passing: positional
+        passing: keyword
         description: 画面の種類
     returns:
       type: RemovedItem[]
