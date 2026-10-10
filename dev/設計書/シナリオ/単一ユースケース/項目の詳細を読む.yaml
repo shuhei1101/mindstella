@@ -162,6 +162,59 @@ scenarios:
       - 背景の Markdown が強調として描かれる
       - 採用した案と理由の節が出ない
     test: test_normal_when_recommendation_shown
+  - name: 正常シナリオ（HTML の資料を読む）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持つ資料 A-1。本文は `<style>` で `body`・`p`・`*` の色と余白を塗り、見出し・段落・表・`<svg>` の図を持つ
+        notes: 本文の高さは詳細パネルの高さより大きくする
+      - name: 配信
+        description: 記録を配っているサーバー。表示の幅は 1920px
+    flow: |-
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料のカードで A-1 を押す
+        P-->>U: A-1 の詳細パネル（本文の HTML を描いた結果）
+        U->>P: 「全画面表示」を押す
+        P-->>U: 本文の HTML を描いた結果を持つモーダル
+        U->>P: モーダルの外側を押す
+        P-->>U: A-1 の詳細パネル
+    expected:
+      - 詳細パネルのヘッダーに HTML のバッジが出る
+      - 本文の見出し・段落・表・図が、HTML を描いた結果で出る
+      - 本文の `<style>` が、詳細パネルのタイトル・トップバー・資料のカードの色と余白を変えない
+      - 本文の枠の高さが描いた中身に合い、本文の枠の中にスクロールの帯が出ない
+      - 全画面表示のモーダルでも、本文が同じく描かれる
+    test: test_normal_when_html_doc
+  - name: 異常シナリオ（HTML の本文にスクリプトを含む）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持ち、`<script>`・`onerror` 属性を持つ `<img>`・`onclick` 属性を持つボタンを含む資料 A-1
+        notes: どれも実行されるとページの変数に印を残す中身にする
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: A-1 の詳細パネルを開く
+        P-->>U: スクリプトを動かさずに描いた本文
+        U->>P: 本文のボタンを押す
+        P-->>U: 何も起きない
+    expected:
+      - プレビューのページの変数にも、本文を描いた文書の変数にも印が残らない（本文のスクリプトとイベントの属性が実行されていない）
+      - 本文の見出し・段落は描かれて出る
+    test: test_error_when_html_body_has_script
 lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読む単一ユースケース。
 issue: 5
 primary_actor: 利用者

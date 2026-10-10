@@ -88,6 +88,30 @@ scenarios:
       - D-1 と A-1 は、それぞれ検討事項・資料の見出しの下にある
       - Enter を押した後、検索が閉じ、用語集のタブと G-1 の詳細パネルが開く
     test: test_normal_when_exact_match
+  - name: 正常シナリオ（HTML の本文で当てる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持ち、段落の文に「画面の流れ」を含む資料 A-1 と、どれにも「画面の流れ」と「data-step」を含まないタスク T-1
+        notes: A-1 の段落は `<p class="flow" data-step="1">` のように属性を持ち、`data-step` は本文の描いた文には出さない
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: Ctrl+K を押し、「画面の流れ」を入れる
+        P-->>U: A-1 の結果
+        U->>P: 入力を「data-step」に替える
+        P-->>U: 該当なし
+    expected:
+      - 「画面の流れ」の結果に A-1 があり、T-1 は無い
+      - 「data-step」の結果が 0 件で、該当なしが出る（本文のタグ・属性には当てない）
+    test: test_normal_when_html_body_matched
 lead: 利用者が、トップバーの全体の検索で全ての種類の項目を ID・タイトル・本文で探し、結果からその項目のタブと詳細を開く単一ユースケース。
 issue: 5
 primary_actor: 利用者
