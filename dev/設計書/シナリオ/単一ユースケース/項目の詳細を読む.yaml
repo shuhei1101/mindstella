@@ -241,6 +241,31 @@ scenarios:
       - プレビューのページの変数にも、本文を描いた文書の変数にも印が残らない（本文のスクリプトとイベントの属性が実行されていない）
       - 本文の見出し・段落は描かれて出る
     test: test_error_when_html_body_has_script
+  - name: 正常シナリオ（Markdown の中の html のコードブロックを読む）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1。本文は見出し・段落の間に言語指定 `html` のコードブロックを 1 つ持ち、その HTML は `<style>` で `p` の色を塗り、段落と `<svg>` の図・`<script>` を持つ
+        notes: '`<script>` は実行されるとページの変数に印を残す中身にする'
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料のカードで A-1 を押す
+        P-->>U: Markdown の本文の中に、コードブロックの HTML を描いた結果を持つ詳細パネル
+    expected:
+      - コードブロックの位置に、HTML を描いた段落と図が出る（コードのまま出ない）
+      - コードブロックの前後の Markdown の見出し・段落は、今までどおり描かれる
+      - コードブロックの `<style>` が、前後の Markdown の段落・詳細パネル・トップバーの色を変えない
+      - プレビューのページの変数にも、描いた文書の変数にも印が残らない（コードブロックのスクリプトが実行されていない）
+      - 詳細パネルのヘッダーに HTML のバッジは出ない
+    test: test_normal_when_html_code_block
 lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読む単一ユースケース。
 issue: 5
 primary_actor: 利用者
