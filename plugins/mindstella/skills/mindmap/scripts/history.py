@@ -248,6 +248,10 @@ def make_entry(
         before[BODY_KEY] = None
     elif before_body is not None and after_body is not None and before_body != after_body:
         body_diff = diff_body(before_body, after_body)
+    # 前後の body の名前が違う（資料の本文の形式を替えた）回は、前の名前を持つ
+    before_name = before_item.get(BODY_KEY)
+    if before_name is not None and after_item.get(BODY_KEY) not in (None, before_name):
+        before[BODY_KEY] = before_name
     # 変わったキーも本文も無い
     if not before and not body_diff:
         return None

@@ -45,7 +45,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 | ツール | 使う引数 |
 | --- | --- |
-| `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`updated_by`・`body` は渡さない。本文はどの種類も `body_markdown`） |
+| `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`updated_by`・`body` は渡さない。本文はどの種類も `body_markdown`。資料は `body_html` で HTML の本文も書ける） |
 | `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
 | `remove` | `workspace`・`id`（消す項目。ほかの記録が指しているとエラーで、指している記録の行が返る） |
 | `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`description`・`goal`・`links`・`history_limit` は `null` で消す）・`phase_map`・`target_map`・`category_map`（任意。`phases`・`targets`・`categories` を変えるときだけ、新しい設定に無い古い名前 → 新しい名前の対応） |

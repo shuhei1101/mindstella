@@ -100,8 +100,8 @@
         },
         "body": {
           "type": "string",
-          "description": "`docs/` の本文の Markdown のファイル名（`{ID}.md`）",
-          "pattern": "^[^/\\\\]+\\.md$"
+          "description": "`docs/` の本文のファイル名。Markdown は `{ID}.md`、HTML は `{ID}.html`",
+          "pattern": "^[^/\\\\]+\\.(md|html)$"
         },
         "withdrawn": {
           "type": "boolean",
