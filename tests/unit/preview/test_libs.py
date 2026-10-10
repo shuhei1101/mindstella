@@ -993,86 +993,74 @@ SELECT_HTML_SCRIPT = """([marked, source, startText, endText]) => {
     return location === null ? null : {kind: location.kind, start: location.start, end: location.end};
 }"""
 
-# PoC #215 の 12 ケース: (見本の中の選び方, 期待する行の範囲)
+# PoC #215 の 12 ケース: (見本の中の選び方, 期待する行の範囲)。原文と行の印つきは見本のもの
 HTML_POC_CASES = [
-    pytest.param("見出しの文", "見出しの文", 12, 12, id="heading"),
-    pytest.param("一行目の文", "一行目の文", 13, 13, id="paragraph_first_line"),
-    pytest.param("二行目の文", "二行目の文", 14, 14, id="paragraph_second_line"),
-    pytest.param("一行目の文", "二行目の文", 13, 14, id="paragraph_across_lines"),
-    pytest.param("複数行の開きタグの文", "複数行の開きタグの文", 16, 16, id="multi_line_tag"),
-    pytest.param("項目いち", "項目いち", 18, 18, id="omitted_end_tag_item"),
-    pytest.param("入れ子の項目", "入れ子の項目", 19, 19, id="nested_item"),
-    pytest.param("項目いち", "入れ子の項目", 18, 19, id="across_items"),
-    pytest.param("表のさん", "表のよん", 23, 23, id="table_row"),
-    pytest.param("あとの文", "あとの文", 26, 26, id="after_line_break"),
-    pytest.param("見出しの文", "二行目の文", 12, 14, id="across_blocks"),
-    pytest.param("最後の文", "最後の文", 33, 33, id="after_comment_and_script"),
+    pytest.param(
+        HTML_SAMPLE_SOURCE, HTML_SAMPLE_MARKED, start_text, end_text, start, end, id=case_id
+    )
+    for case_id, start_text, end_text, start, end in [
+        ("heading", "見出しの文", "見出しの文", 12, 12),
+        ("paragraph_first_line", "一行目の文", "一行目の文", 13, 13),
+        ("paragraph_second_line", "二行目の文", "二行目の文", 14, 14),
+        ("paragraph_across_lines", "一行目の文", "二行目の文", 13, 14),
+        ("multi_line_tag", "複数行の開きタグの文", "複数行の開きタグの文", 16, 16),
+        ("omitted_end_tag_item", "項目いち", "項目いち", 18, 18),
+        ("nested_item", "入れ子の項目", "入れ子の項目", 19, 19),
+        ("across_items", "項目いち", "入れ子の項目", 18, 19),
+        ("table_row", "表のさん", "表のよん", 23, 23),
+        ("after_line_break", "あとの文", "あとの文", 26, 26),
+        ("across_blocks", "見出しの文", "二行目の文", 12, 14),
+        ("after_comment_and_script", "最後の文", "最後の文", 33, 33),
+    ]
 ]
 
-
-@pytest.mark.parametrize(("start_text", "end_text", "start", "end"), HTML_POC_CASES)
-def test_html_selection_location(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    start_text: str,
-    end_text: str,
-    start: int,
-    end: int,
-) -> None:
-    """選んだ端を元の HTML の行にする（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    result = preview_page.evaluate(
-        SELECT_HTML_SCRIPT, [HTML_SAMPLE_MARKED, HTML_SAMPLE_SOURCE, start_text, end_text]
-    )
-    # 検証
-    assert result == {"kind": "body", "start": start, "end": end}
+# 改行の数え方が分かれる選び方（入れ子の複数行のタグの後・`<br>` の後・`<pre>` の直後の改行の後・複数行のコメントの後）
+HTML_LINE_SHIFT_CASES = [
+    pytest.param(
+        '<p><span><span\nclass="x">中の文</span></span>\n三行目の文</p>',
+        '<p data-line="1"><span data-line="1"><span data-line="2"\n'
+        'class="x">中の文</span></span>\n三行目の文</p>',
+        "三行目の文",
+        "三行目の文",
+        3,
+        3,
+        id="after_nested_multi_line_tag",
+    ),
+    pytest.param(
+        "<p>a<br>別の文</p>",
+        '<p data-line="1">a<br data-line="1">別の文</p>',
+        "別の文",
+        "別の文",
+        1,
+        1,
+        id="after_br",
+    ),
+    pytest.param(
+        "<pre>\nコードの文\n</pre>",
+        '<pre data-line="1">\nコードの文\n</pre>',
+        "コードの文",
+        "コードの文",
+        2,
+        2,
+        id="after_pre_line_break",
+    ),
+    pytest.param(
+        "<div>前の文\n<!-- 一行目\n二行目 -->\n後の文</div>",
+        '<div data-line="1">前の文\n<!-- 一行目\n二行目 -->\n後の文</div>',
+        "後の文",
+        "後の文",
+        4,
+        4,
+        id="after_multi_line_comment",
+    ),
+]
 
 
 @pytest.mark.parametrize(
     ("source", "marked", "start_text", "end_text", "start", "end"),
-    [
-        pytest.param(
-            '<p><span><span\nclass="x">中の文</span></span>\n三行目の文</p>',
-            '<p data-line="1"><span data-line="1"><span data-line="2"\n'
-            'class="x">中の文</span></span>\n三行目の文</p>',
-            "三行目の文",
-            "三行目の文",
-            3,
-            3,
-            id="after_nested_multi_line_tag",
-        ),
-        pytest.param(
-            "<p>a<br>別の文</p>",
-            '<p data-line="1">a<br data-line="1">別の文</p>',
-            "別の文",
-            "別の文",
-            1,
-            1,
-            id="after_br",
-        ),
-        pytest.param(
-            "<pre>\nコードの文\n</pre>",
-            '<pre data-line="1">\nコードの文\n</pre>',
-            "コードの文",
-            "コードの文",
-            2,
-            2,
-            id="after_pre_line_break",
-        ),
-        pytest.param(
-            "<div>前の文\n<!-- 一行目\n二行目 -->\n後の文</div>",
-            '<div data-line="1">前の文\n<!-- 一行目\n二行目 -->\n後の文</div>',
-            "後の文",
-            "後の文",
-            4,
-            4,
-            id="after_multi_line_comment",
-        ),
-    ],
+    [*HTML_POC_CASES, *HTML_LINE_SHIFT_CASES],
 )
-def test_html_selection_location_when_line_shifts(
+def test_html_selection_location(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     source: str,
@@ -1082,7 +1070,7 @@ def test_html_selection_location_when_line_shifts(
     start: int,
     end: int,
 ) -> None:
-    """改行の数え方が分かれる選び方でも、元の HTML の行にする（正常系）。"""
+    """選んだ端を元の HTML の行にする（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
