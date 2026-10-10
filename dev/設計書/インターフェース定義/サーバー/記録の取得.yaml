@@ -148,6 +148,32 @@ flows:
       - '`settings.display.network_look` が `starlight`'
       - '`settings_problem` に `config.yaml: display.network_look: ` で始まる行がある'
     test: test_normal_when_config_invalid
+  - name: 正常系（HTML の本文がある）
+    summary: HTML の本文は原文を `bodies` に、行の印を足したものを `marked_bodies` に返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 本文を Markdown で持つ資料 A-1 と、本文を HTML で持つ資料 A-2 を持つワークスペース
+        notes: 'A-2 の本文は 1 行目が `<!doctype html>`、2 行目が `<style>p { color: red; }</style>`、3・4 行目にまたがる開きタグ `<p\n  class="lead">一覧の画面</p>`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/records
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF->>IF: HTML の本文に行の印を足す
+        IF-->>クライアント: 200、JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`bodies` の `A-1.md`・`A-2.html` がそれぞれのファイルの中身と同じ'
+      - '`marked_bodies` が `A-2.html` だけを持ち、`<p` の直後に ` data-line="4"` がある'
+      - '`marked_bodies` の `A-2.html` の `<style>` に `data-line` が無く、`data-line` を取り除くと `bodies` の `A-2.html` と同じ'
+    test: test_normal_when_html_body
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -169,7 +195,7 @@ response:
     description: 種類ごとの YAML の `items` の中身（キー名はファイル名から `.yaml` を落としたもの）
   - name: bodies
     type: dict[str, str]
-    description: '`docs/` のファイル名 → 本文の Markdown（項目の `body` が指すものだけ）'
+    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。Markdown は `{ID}.md`、HTML は `{ID}.html` のキーで、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
   - name: built_at
     type: str
     description: 読んだ日時（UTC のタイムゾーン付き ISO 8601）。画面はつながらないときに「{日時} に読んだ記録」と出す
@@ -188,6 +214,10 @@ response:
   - name: settings_problem
     type: list[str] | None
     description: '`config.yaml` がスキーマに合わないとき、合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。合うときは `null`。画面は表示を変えず、設定を直すよう知らせる'
+  - name: marked_bodies
+    type: dict[str, str]
+    description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行の印（`data-line`）を足した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分の印を付ける要素を決める。HTML の本文が無ければ `{}`'
+    notes: 印の足し方は制約「行の印」
 response_notes: |-
   > [!NOTE]
   > 配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。送信（`submissions.yaml`）は返さない。
@@ -209,6 +239,9 @@ constraints:
     constraint: ツールは YAML を一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
   - item: 設定の読み方
     constraint: 呼ばれるたびに `config.yaml` を読み、スキーマに合えば配信の「最後に検査に通った設定」をその値に差し替える。合わなければ差し替えず、最後に検査に通った設定を `settings` に、合わない箇所を `settings_problem` に入れて 200 を返す
+  - item: 行の印
+    constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{行}"` を足す。行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には足さない。印の他は原文を変えず、行の並びも保つ
+    notes: PoC（#215）で、コメントの中のタグ・`<style>` / `<script>` の中の `<` `>`・属性値の `>`・複数行の開きタグ・閉じタグを省いた `<p>` / `<li>` を含む 12 ケースで確かめた
 refs:
   - dev/設計書/インターフェース定義/サーバー/次の候補#
   - dev/設計書/インターフェース定義/サーバー/ゴール判定#

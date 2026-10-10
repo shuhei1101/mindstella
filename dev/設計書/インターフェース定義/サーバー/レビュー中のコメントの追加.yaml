@@ -253,6 +253,32 @@ flows:
       - ステータスが 201
       - '`Origin: https://other.example.test` で送ると 403 で、コメントが増えない'
     test: test_normal_when_origin_allowed
+  - name: 正常系（HTML の本文の箇所）
+    summary: HTML の本文の文を選んだコメントを、タグを外した文と照らして溜める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: '本文の 1・2 行目は `<style>` とコメント、4 行目は `<p>言い<b>換え</b>たい文</p>`。`loc` は `{kind: body, start: 4, end: 4, text: 言い換えたい文}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {target: A-1, loc: 本文の 4 行目, body}
+        IF-->>WS: A-1 の HTML の本文を読む
+        IF->>IF: タグを外して 4 行目に選んだ文がある
+        IF->>WS: comments.yaml に足す
+        IF-->>クライアント: 201
+      ```
+    expected:
+      - ステータスが 201
+      - '`comments.yaml` のそのコメントが、渡した `loc` をそのまま持つ'
+      - 同じ本文で `loc.text` を `p { color` にして送ると、`<style>` の中身は当てないため 409
+    test: test_normal_when_html_body_location
 lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送らずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
 idempotent: false
 side_effects: '`comments.yaml` に 1 件足し（無ければ作る）、同じ向けた先（`target` と `loc`）の書きかけを `drafts.yaml` から消す。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -298,7 +324,7 @@ request:
     type: int
     required: false
     location: body
-    description: '`body` のとき。選んだ範囲の始めの本文の Markdown の行（1 始まり）'
+    description: '`body` のとき。選んだ範囲の始めの本文の原文（Markdown か HTML）の行（1 始まり）'
     constraints: '`kind` が `body` のとき必須。1 以上'
     example: '2'
   - name: loc.end
@@ -394,7 +420,7 @@ constraints:
   - item: 書く中身
     constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`body`（前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。ER 図『ワークスペース』の `comments.yaml`'
   - item: 箇所の確かめ
-    constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。『コメントをまとめて送る』も同じ確かめ方を使う
+    constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。Markdown の本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。HTML の本文の元の文は、`html.parser.HTMLParser` で原文を読んだときの文の断片のうち、その行の範囲にあるものをつなぐ（タグとコメントを外し、`style`・`script`・`template`・`title` の中身を除き、文字参照を文字に戻す）。『コメントをまとめて送る』も同じ確かめ方を使う
   - item: 書きかけ
     constraint: 溜めたら、同じ `target` と `loc` の書きかけを `drafts.yaml` から消す（元に戻すときは消さない）
   - item: 本文の上限

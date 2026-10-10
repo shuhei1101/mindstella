@@ -392,7 +392,7 @@ scenarios:
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_doc_body_html
     notes:
-      本文の形式の持ち方: 形式の表し方と入力のキーはインターフェース定義設計で決める（要件の『本文の形式の持ち方』）
+      本文の形式の持ち方: 形式は `body` のファイル名の拡張子（`{ID}.md` / `{ID}.html`）で表し、HTML の本文は `item` の `body_html` で渡す（インターフェース定義『項目の追加』『項目の更新』）
   - name: 異常シナリオ（資料以外に HTML の本文を渡す）
     setup:
       - name: Mock

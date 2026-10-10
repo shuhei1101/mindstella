@@ -409,7 +409,9 @@ tables:
         title: 本文
         type: string
         not_null: true
-        description: '`docs/` の本文の Markdown のファイル名（`{ID}.md`）'
+        description: '`docs/` の本文のファイル名。拡張子で本文の形式を表し、Markdown は `{ID}.md`、HTML は `{ID}.html`。どちらか 1 つだけを指す'
+        check: '`/`・`\` を含まず `.md` か `.html` で終わる（ほかの種類の `body` は `.md` だけ）'
+        example: A-3.html
       - name: withdrawn
         title: 取り下げ
         type: boolean
@@ -749,3 +751,13 @@ tables:
         auto: 更新日時
         description: UTC のタイムゾーン付き ISO 8601
         example: '2026-10-05T03:00:00+00:00'
+  - name: docs/{ID}.html
+    title: HTML の本文
+    datastore: HTML
+    summary: 資料の HTML の本文。メタデータは持たず、`docs.yaml` の `body` から指される
+    access: ファイル名で引く
+    columns:
+      - name: (本文)
+        title: 本文
+        type: string
+        description: HTML の本文（文書全体でも断片でもよい）。書き込みは `add` / `update` の `body_html` が行い、ファイル名は項目の ID に揃える。サーバーは中身を解釈・実行せず、画面はスクリプトを動かさない枠に描く。同じ項目の `{ID}.md` とは並んで持たない

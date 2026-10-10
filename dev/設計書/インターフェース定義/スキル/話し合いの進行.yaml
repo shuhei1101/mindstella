@@ -45,11 +45,13 @@ flows:
       - '`steps/ヒアリング.md` が `edit_option` と `adopt` を呼ぶ'
       - 本文が準備で `readme` を `changes_since_read` より前に呼ぶ
       - 本文に、`readme` がエラーを返しても準備を続けて `changes_since_read` を呼ぶ分岐がある
+      - '`steps/取り込み.md` が `body_html` を指す'
+      - '`steps/ゴール判定.md` が `body_format` を指し、`playbooks/資料作り.md` の `## リリースの形` が `.html` を指す'
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
   - dev/設計書/シナリオ/複合ユースケース/話し合いをゴールまで進める#
-side_effects: サーバーの MCP の書き込むツールでワークスペースの YAML を書き換える。準備で取り込んだ送信を `take_submission` で取り込み済みにする。リリースの資料（`.mindstella/release/`）はスキルが Markdown を書き、そのとき利用者に書き込みの確認が出る。リリースの資料を書く前に `clear_release` で `.mindstella/release/` の中身を消す。リサーチではサブエージェントが Web を調べる。配る書き出しを頼まれたときは `export` で、利用者が示したパスへ HTML を書き出す
+side_effects: サーバーの MCP の書き込むツールでワークスペースの YAML を書き換える。準備で取り込んだ送信を `take_submission` で取り込み済みにする。リリースの資料（`.mindstella/release/`）はスキルが Markdown（本文を HTML で持つ納品物は HTML）で書き、そのとき利用者に書き込みの確認が出る。リリースの資料を書く前に `clear_release` で `.mindstella/release/` の中身を消す。リサーチではサブエージェントが Web を調べる。配る書き出しを頼まれたときは `export` で、利用者が示したパスへ HTML を書き出す
 request:
   - name: $ARGUMENTS
     type: str
@@ -72,7 +74,7 @@ constraints:
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
     constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`submissions`・`take_submission`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
-    notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown` で、`config.yaml` は `update_settings` で書く。`release/` の Markdown の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
+    notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown`（資料の HTML の本文は `body_html`）で、`config.yaml` は `update_settings` で書く。`release/` の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
   - item: リサーチの確認
@@ -89,7 +91,7 @@ constraints:
     constraint: '準備のステップで `.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を読んだ後に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる'
     notes: インターフェース定義『記録の形式の移行』（サーバー）
   - item: ツールの呼び出し
-    constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。項目の中身は `add`・`update` の `item` に JSON のオブジェクトで渡し、`docs/` の本文はその `body_markdown` で書く。スクリプトを Bash で起動しない。書き換えはサーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない
+    constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。項目の中身は `add`・`update` の `item` に JSON のオブジェクトで渡し、`docs/` の本文はその `body_markdown`（資料の HTML の本文は `body_html`）で書く。スクリプトを Bash で起動しない。書き換えはサーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない
     notes: インターフェース定義『MCP サーバーの起動』『書き換えの知らせ』
   - item: MCP のツールが使えないとき
     constraint: 準備の最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる
@@ -140,6 +142,9 @@ constraints:
   - item: やめる・消す
     constraint: '利用者がやめると言った項目は消さずに取り下げる。検討事項は `update` で状態を `対象外` か `取り下げ`、タスクは `中止` にし、調査・資料・用語集・メモ・会話ログは `update` で `withdrawn: true` を書く。どの種類も `reason` を書く。誤って足した・重複した項目だけを `remove` で消す。消す前に、消す項目と消すと戻せないことを利用者に示して確かめ、許しを得てから呼ぶ。ほかの項目が指しているときは、指している側の参照を先に `update` で付け替えるか外してから消す'
     notes: 単一ユースケース『発言の取り込み』『記録の削除と取り下げ』、インターフェース定義『項目の削除』
+  - item: 資料の本文の形式
+    constraint: 取り込みのステップは、資料の主な中身がモック・図のような見た目のあるものなら本文を HTML で `body_html` に、文章が主なら Markdown で `body_markdown` に書く。資料以外の種類の本文は Markdown だけ。ゴール判定で納品物を書き出すときは、`show` の `body_format` が `html` の資料を `{納品物のタイトル}.html` に `body_html` のまま書き、それ以外は今までどおり Markdown で書く
+    notes: 'HTML の書き方の決まり・共通の部品は #213 の範囲。単一ユースケース『発言の取り込み』『ゴール判定』'
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

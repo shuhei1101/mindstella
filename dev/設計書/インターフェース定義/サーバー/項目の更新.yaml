@@ -342,9 +342,63 @@ flows:
       - 'N-1 の `history` の先頭の `before` が `{withdrawn: null, reason: null}`'
       - '`changes.yaml` の `pending.changed` が `[N-1]`'
     test: test_normal_when_note_withdrawn
+  - name: 正常系（資料の本文の形式を替える）
+    summary: Markdown の本文を持つ資料に HTML の本文を渡すと、`{ID}.html` を書いて `{ID}.md` を消し、前の形式を変更履歴に積む
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 2 行の Markdown の本文を持つ資料 A-1 を足して `commit` したワークスペース（保持する回数は既定の 5）
+      - name: item
+        description: 3 行の HTML の本文
+        notes: '`{"body_html": "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>\n"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update workspace id A-1（body_html）
+        IF-->>WS: 全ての YAML と docs/A-1.md を読む
+        IF->>IF: body を A-1.html にし、前の body と本文の差分を積む
+        IF->>WS: docs/A-1.html・docs.yaml・changes.yaml を書き、docs/A-1.md を消す
+        IF-->>クライアント: JSON（changed: body・body_html）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - A-1 の `body` が `A-1.html` で、`.mindstella/docs/A-1.html` の中身が渡した `body_html` と同じ
+      - '`.mindstella/docs/A-1.md` が無い'
+      - 'A-1 の `history` の先頭の `before` が `{body: A-1.md}` で、`body_diff` を今の本文に当てると書き換える前の Markdown の本文になる'
+      - '`changed` が `body`・`body_html`'
+    test: test_normal_when_body_format_changed
+  - name: 異常系（資料以外に HTML の本文を渡す・SchemaMismatchError）
+    summary: 資料以外の項目に `body_html` を渡すと、直さずに資料だけが持てる旨を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 本文を持たないタスク T-1 を持つワークスペース
+      - name: item
+        description: '`{"body_html": "<p>一覧の画面</p>"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update（MCP のツール）
+
+        クライアント->>IF: update workspace id T-1（body_html）
+        IF->>IF: 資料以外が HTML の本文を持つ
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、`docs/` にファイルが増えていない
+    test: test_error_when_html_body_for_non_doc
 lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。値が変わったときは、書き換える前の値をその項目の変更履歴に 1 回分積む。
 idempotent: false
-side_effects: その項目の種類の YAML を書き換え、項目の `updated` と `updated_by`（`ai`）を書く。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き換え、`body` を `{ID}.md` にする。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
+side_effects: その項目の種類の YAML を書き換え、項目の `updated` と `updated_by`（`ai`）を書く。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を、`body_html` を渡したときは `.mindstella/docs/{ID}.html` を書き換え、`body` をそのファイル名にする。本文の形式が変わったときは、前の形式の本文のファイルを消す。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換え、最後に前の形式の本文を消す
 request:
   - name: workspace
     type: str
@@ -370,7 +424,14 @@ request:
     default: なし（本文を変えない）
     location: argument
     description: 本文の Markdown。`.mindstella/docs/{ID}.md` をこの内容で置き換える（無ければ作る）
-    constraints: どの種類も持てる
+    constraints: どの種類も持てる。`body_html` と一緒には渡せない。HTML の本文を持つ資料に渡すと、本文を Markdown に替えて `{ID}.html` を消す
+  - name: item.body_html
+    type: str
+    required: false
+    default: なし（本文を変えない）
+    location: argument
+    description: 本文の HTML。`.mindstella/docs/{ID}.html` をこの内容で置き換える（無ければ作る）。サーバーは中身を解釈・実行せず、そのまま書く
+    constraints: 資料だけが持てる。`body_markdown` と一緒には渡せない。Markdown の本文を持つ資料に渡すと、本文を HTML に替えて `{ID}.md` を消す
 response:
   - name: id
     type: str
@@ -392,7 +453,7 @@ exceptions:
     condition: 渡した ID の項目が無い（頭の文字がどの種類にも当たらないときも含む）
     notes: ツールのエラー。エラーの本文に渡した ID。何も書き込まない
   - name: SchemaMismatchError
-    condition: 直した後のワークスペースのどれかの YAML がスキーマに合わない（ツールが付けるキーを渡したときも含む）
+    condition: 直した後のワークスペースのどれかの YAML がスキーマに合わない（ツールが付けるキーを渡したときも含む）。資料以外に `body_html` を渡した・`body_markdown` と `body_html` を両方渡したときも含む
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
@@ -421,5 +482,7 @@ constraints:
     constraint: 積んだとき、`changes.yaml` の `pending.changed` に ID を足す。既に `pending.added`・`pending.changed` にある ID は足さない。`changes.yaml` が無ければ作る
   - item: 通し番号
     constraint: 値が変わったとき、項目の `seq` をその書き換えで振った番号にする（変更履歴を積むときはその回の `seq`。保持する回数が 0 で積まないときも `changes.yaml` の `last_seq` を 1 進めてその番号を入れる）。変わったものが無ければ進めない
+  - item: 本文の形式
+    constraint: 形式の表し方と、資料以外に `body_html` を渡した・両方を渡したときのエラーの行は『項目の追加』と同じ。形式を替えた書き換えは、変更履歴の `before` に前の `body`（例 `A-1.md`）を入れ、`body_diff` を新しい形式の本文の行を前の形式の本文の行へ戻す差分にする。前の形式の本文のファイルは、YAML と `changes.yaml` を置き換えた後に消す。消せなかったときは WriteFailedError にし、置き換えたものを控えに戻す（新しい形式の本文は消す）
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_update.py
