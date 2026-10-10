@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  * { margin: 40px !important; }
+  body, p { color: rgb(255, 0, 0) !important; background: rgb(0, 0, 255) !important; }
+  p > a { color: rgb(0, 255, 0) !important; }
+</style>
+<script>window.parent.__leak = (window.parent.__leak || 0) + 1; if (1 < 2) { var s = "<p>x</p>"; }</script>
+</head>
+<body>
+<!-- <p>コメントの中の段落</p> -->
+<h1 id="h">見出しの文</h1>
+<p title="a>b">一行目の文
+二行目の文</p>
+<div
+  class="multi">複数行の開きタグの文</div>
+<ul>
+  <li>項目いち
+  <li>項目に<ul><li>入れ子の項目</li></ul>
+</ul>
+<table>
+  <tr><td>表のいち</td><td>表のに</td></tr>
+  <tr><td>表のさん</td><td>表のよん</td></tr>
+</table>
+<p>改行の<br>
+あとの文</p>
+<p>省いた閉じタグの段落
+<p>次の段落 &amp; 文字参照</p>
+<section><div><p>深い入れ子の文</p></div></section>
+<p><a href="#">リンクの文</a></p>
+<button id="click" onclick="window.parent.__leak = (window.parent.__leak || 0) + 1">押す</button>
+<img src="data:," onerror="window.parent.__leak = (window.parent.__leak || 0) + 1">
+<p id="tail">最後の文</p>
+</body></html>

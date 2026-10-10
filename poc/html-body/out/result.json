@@ -1,0 +1,485 @@
+{
+  "browser": {
+    "name": "chromium",
+    "version": "151.0.7922.34",
+    "pids": 4
+  },
+  "http": {
+    "css": {
+      "ok": true,
+      "measured": {
+        "color": "rgb(17, 17, 17)",
+        "margin": "8px",
+        "bodyBg": "rgb(255, 255, 255)",
+        "bodyColor": "rgb(17, 17, 17)"
+      }
+    },
+    "scripts": {
+      "ok": true,
+      "measured": {
+        "parent": 0,
+        "frame": 0
+      }
+    },
+    "events": {
+      "ok": true,
+      "measured": {
+        "pointerup": 1,
+        "selectionchange": 5
+      },
+      "location": {
+        "start": 33,
+        "end": 33,
+        "text": "最後の文"
+      }
+    },
+    "cases": {
+      "lines_ok": 12,
+      "server_ok": 12,
+      "total": 12,
+      "negatives_rejected": 2,
+      "cases": [
+        {
+          "name": "見出し",
+          "expected": [
+            12,
+            12
+          ],
+          "got": [
+            12,
+            12
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "段落の一行目",
+          "expected": [
+            13,
+            13
+          ],
+          "got": [
+            13,
+            13
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "段落の二行目",
+          "expected": [
+            14,
+            14
+          ],
+          "got": [
+            14,
+            14
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "段落の二行をまたぐ",
+          "expected": [
+            13,
+            14
+          ],
+          "got": [
+            13,
+            14
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "複数行の開きタグ",
+          "expected": [
+            16,
+            16
+          ],
+          "got": [
+            16,
+            16
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "閉じタグを省いた項目",
+          "expected": [
+            18,
+            18
+          ],
+          "got": [
+            18,
+            18
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "入れ子の項目",
+          "expected": [
+            19,
+            19
+          ],
+          "got": [
+            19,
+            19
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "項目をまたぐ",
+          "expected": [
+            18,
+            19
+          ],
+          "got": [
+            18,
+            19
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "表の行",
+          "expected": [
+            23,
+            23
+          ],
+          "got": [
+            23,
+            23
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "改行の後",
+          "expected": [
+            26,
+            26
+          ],
+          "got": [
+            26,
+            26
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "ブロックをまたぐ",
+          "expected": [
+            12,
+            14
+          ],
+          "got": [
+            12,
+            14
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "コメント・スクリプトより後",
+          "expected": [
+            33,
+            33
+          ],
+          "got": [
+            33,
+            33
+          ],
+          "line_ok": true,
+          "server_ok": true
+        }
+      ],
+      "negatives": [
+        {
+          "name": "コメントの中の文",
+          "matched": false
+        },
+        {
+          "name": "スクリプトの中の文字列",
+          "matched": false
+        }
+      ]
+    },
+    "rect_panel": {
+      "ok": true,
+      "diff_px": 0,
+      "computed": {
+        "left": 136,
+        "top": 680
+      },
+      "expected": {
+        "left": 136,
+        "top": 680
+      }
+    },
+    "rect_dialog": {
+      "ok": true,
+      "diff_px": 0,
+      "computed": {
+        "left": 410,
+        "top": 1091
+      },
+      "expected": {
+        "left": 410,
+        "top": 1091
+      }
+    },
+    "height": {
+      "ok": true,
+      "before_px": 0,
+      "after_px": 0
+    }
+  },
+  "file": {
+    "css": {
+      "ok": true,
+      "measured": {
+        "color": "rgb(17, 17, 17)",
+        "margin": "8px",
+        "bodyBg": "rgb(255, 255, 255)",
+        "bodyColor": "rgb(17, 17, 17)"
+      }
+    },
+    "scripts": {
+      "ok": true,
+      "measured": {
+        "parent": 0,
+        "frame": 0
+      }
+    },
+    "events": {
+      "ok": true,
+      "measured": {
+        "pointerup": 1,
+        "selectionchange": 4
+      },
+      "location": {
+        "start": 33,
+        "end": 33,
+        "text": "最後の文"
+      }
+    },
+    "cases": {
+      "lines_ok": 12,
+      "server_ok": 12,
+      "total": 12,
+      "negatives_rejected": 2,
+      "cases": [
+        {
+          "name": "見出し",
+          "expected": [
+            12,
+            12
+          ],
+          "got": [
+            12,
+            12
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "段落の一行目",
+          "expected": [
+            13,
+            13
+          ],
+          "got": [
+            13,
+            13
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "段落の二行目",
+          "expected": [
+            14,
+            14
+          ],
+          "got": [
+            14,
+            14
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "段落の二行をまたぐ",
+          "expected": [
+            13,
+            14
+          ],
+          "got": [
+            13,
+            14
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "複数行の開きタグ",
+          "expected": [
+            16,
+            16
+          ],
+          "got": [
+            16,
+            16
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "閉じタグを省いた項目",
+          "expected": [
+            18,
+            18
+          ],
+          "got": [
+            18,
+            18
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "入れ子の項目",
+          "expected": [
+            19,
+            19
+          ],
+          "got": [
+            19,
+            19
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "項目をまたぐ",
+          "expected": [
+            18,
+            19
+          ],
+          "got": [
+            18,
+            19
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "表の行",
+          "expected": [
+            23,
+            23
+          ],
+          "got": [
+            23,
+            23
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "改行の後",
+          "expected": [
+            26,
+            26
+          ],
+          "got": [
+            26,
+            26
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "ブロックをまたぐ",
+          "expected": [
+            12,
+            14
+          ],
+          "got": [
+            12,
+            14
+          ],
+          "line_ok": true,
+          "server_ok": true
+        },
+        {
+          "name": "コメント・スクリプトより後",
+          "expected": [
+            33,
+            33
+          ],
+          "got": [
+            33,
+            33
+          ],
+          "line_ok": true,
+          "server_ok": true
+        }
+      ],
+      "negatives": [
+        {
+          "name": "コメントの中の文",
+          "matched": false
+        },
+        {
+          "name": "スクリプトの中の文字列",
+          "matched": false
+        }
+      ]
+    },
+    "rect_panel": {
+      "ok": true,
+      "diff_px": 0,
+      "computed": {
+        "left": 136,
+        "top": 680
+      },
+      "expected": {
+        "left": 136,
+        "top": 680
+      }
+    },
+    "rect_dialog": {
+      "ok": true,
+      "diff_px": 0,
+      "computed": {
+        "left": 410,
+        "top": 1091
+      },
+      "expected": {
+        "left": 410,
+        "top": 1091
+      }
+    },
+    "height": {
+      "ok": true,
+      "before_px": 0,
+      "after_px": 0
+    }
+  },
+  "memory": {
+    "doc_bytes": 313269,
+    "before": {
+      "private_mb": 117.0703125,
+      "heap_mb": 1.3985557556152344
+    },
+    "after": {
+      "private_mb": 161.02734375,
+      "heap_mb": 1.9558601379394531
+    },
+    "delta_private_mb": 43.95703125
+  }
+}
