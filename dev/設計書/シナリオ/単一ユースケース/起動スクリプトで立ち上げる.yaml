@@ -1,4 +1,4 @@
-title: ""
+title: "起動スクリプトで立ち上げる"
 scenarios:
   - name: 正常シナリオ
     setup:
