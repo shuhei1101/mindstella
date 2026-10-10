@@ -61,7 +61,7 @@ scenarios:
         U->>P: 表示形式を表に切り替える
         P-->>U: 形式のバッジを付けた表
     expected:
-      - カード・ボード・表のどれでも、A-2 に HTML のバッジが出て、A-1 には形式のバッジが出ない
+      - カード・ボード・表のどれでも、A-2 に HTML のバッジ、A-1 に MD のバッジが出る（表は「形式」の列に HTML / MD）
       - バッジは色だけでなく文言で形式を示す
     test: test_normal_when_body_format_badge
     notes:
