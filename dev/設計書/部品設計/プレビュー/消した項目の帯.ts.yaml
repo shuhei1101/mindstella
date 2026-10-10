@@ -42,3 +42,4 @@ uses:
 accessibility:
   - 帯は `section` にし、「この時点で消した項目」を読み上げ名にする
   - 項目は `ul` の `li` にし、ボタン・リンクにしない（キーボードの移動先にしない）
+test_file: tests/integration/storybook/test_removed_band_stories.py

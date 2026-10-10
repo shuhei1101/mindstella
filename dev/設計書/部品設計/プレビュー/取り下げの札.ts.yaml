@@ -22,3 +22,4 @@ args:
 accessibility:
   - × の印は `aria-hidden` にし、「取り下げ」の文字で伝える
   - 色だけに頼らず、枠と文言で状態の札と消した印から見分ける
+test_file: tests/integration/storybook/test_withdrawn_badge_stories.py
