@@ -86,7 +86,7 @@ def test_normal_when_exact_match(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
 ) -> None:
-    """入力欄にフォーカスしたままでも Ctrl+K で開き、ID かタイトルが言葉と完全に一致する項目を種類の見出しより上に出し、Enter で開く（正常系）。"""
+    """入力欄にフォーカスしたままでも Ctrl+K で開き、タイトルが言葉と完全に一致する項目を先頭に、タイトルに言葉を含む項目を本文にだけ含む項目より前に出し、Enter で先頭を開く（正常系）。"""
     # 準備
     url = serve_preview(
         make_item("G-1", title="シナリオの依頼"),
@@ -107,11 +107,41 @@ def test_normal_when_exact_match(
     # 検証
     headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
     ids = page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
-    assert headings == ["完全に一致", "検討事項", "資料"]
-    # G-1 が一番上で、その下の用語集のまとまりには重ねて出ない。D-1・A-1 はそれぞれの種類の見出しの下にある
+    assert headings == ["完全に一致", "タイトルに一致", "ほかの所に一致"]
+    # G-1（完全に一致）→ D-1（タイトルに一致）→ A-1（本文にだけ一致）
     assert ids == ["G-1", "D-1", "A-1"]
     page.keyboard.press("Enter")
     page.wait_for_selector("aside.panel.open")
     assert page.locator(DIALOG).count() == 0
     assert page.get_attribute('nav.tabbar a[data-tab="terms"]', "aria-current") == "page"
     assert "id=G-1" in page.evaluate("location.hash")
+
+
+def test_normal_when_title_match_in_later_kind(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """タイトルに言葉を含む資料が、本文にだけ言葉を含む検討事項より前に出て、Enter で資料を開く（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("D-1", body="D-1.md"),
+        make_item("A-2", title="保存先の決め方"),
+        settings=valid_settings,
+        bodies={"D-1.md": "保存先は共有のフォルダにする\n", "A-2.md": "本文\n"},
+    )
+    page = open_preview(url)
+    # 実行
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    page.fill(f"{DIALOG} input", "保存先")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 検証（検討事項が資料より前の種類の順でも、タイトルに一致する A-2 が先）
+    ids = page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
+    assert ids == ["A-2", "D-1"]
+    page.keyboard.press("Enter")
+    page.wait_for_selector("aside.panel.open")
+    assert page.locator(DIALOG).count() == 0
+    assert page.get_attribute('nav.tabbar a[data-tab="docs"]', "aria-current") == "page"
+    assert "id=A-2" in page.evaluate("location.hash")

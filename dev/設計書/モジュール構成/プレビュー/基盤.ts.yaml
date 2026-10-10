@@ -288,7 +288,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/records.ts
     usecase: 項目を検索する
     scope: public
-    summary: 空白で区切った語を全て含む項目を、完全に一致する項目を先にして返す
+    summary: 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す
     args:
       - name: query
         type: string
@@ -301,8 +301,8 @@ functions:
         passing: keyword
         description: 索引
     returns:
-      type: '{id, kind, title, exact}[]'
-      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。大文字・小文字を区別しない。`exact` は ID かタイトルが言葉と完全に一致するか（大文字・小文字と前後の空白を区別しない）。`exact` が真の項目を先に、それぞれ種類の順 → 連番の順。言葉が空なら空
+      type: '{id, kind, title, tier}[]'
+      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。大文字・小文字を区別しない。`tier` は段で、`1` は ID かタイトルが言葉と完全に一致（大文字・小文字と前後の空白を区別しない）、`2` はタイトルが語を全て含む、`3` はそれ以外。`tier` の順 → 種類の順 → 連番の順。言葉が空なら空
     unit_tests:
       - name: test_search_items
         case: 正常
@@ -310,12 +310,12 @@ functions:
         condition: '`parametrize`: `"d-1"` / 本文にだけある語 / 2 語のうち 1 語だけ含む項目 / 空白だけ'
         mock: なし
         expected: D-1 / その項目 / 返らない / 空
-      - name: test_search_items_exact_first
+      - name: test_search_items_tier_order
         case: 正常
-        summary: 完全に一致する項目を先にする
-        condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」に 「シナリオの依頼 」（末尾に空白） / `"g-1"` / どれにも一致しない語「依頼」'
+        summary: 段の順に並べる
+        condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」・本文にだけ「シナリオの依頼」を含む資料 A-1 に「シナリオの依頼 」（末尾に空白） / `"g-1"` / 決定内容にだけ「保存先」を含む検討事項 D-1・タイトルに「保存先」を含む資料 A-2 に「保存先」 / 2 語「シナリオ 受け方」'
         mock: なし
-        expected: G-1（`exact` 真）→ D-1（偽） / G-1 が先頭で `exact` 真、G-12 などは偽 / 全て `exact` 偽で種類の順
+        expected: G-1（`tier` 1）→ D-1（2）→ A-1（3） / G-1 が先頭で `tier` 1、G-12 などは 1 でない / A-2（2）→ D-1（3）で種類の順より段が先 / D-1 が `tier` 2（語がタイトルに全てある）
   - name: missingLibraries
     title: 読めなかったライブラリ
     kind: 関数

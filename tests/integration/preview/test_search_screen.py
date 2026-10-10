@@ -14,6 +14,11 @@ DIALOG = "dialog.search"
 HEADING_ORDER_RULE = "heading-order"
 
 
+def _headings(page: Page) -> list[str]:
+    """結果の見出しを並びのまま返す。"""
+    return page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
+
+
 def _result_ids(page: Page) -> list[str]:
     """当たった項目の ID を並びのまま返す。"""
     return page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
@@ -165,7 +170,7 @@ def test_trigger_key_hint(
 def test_exact_match_first(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """ID かタイトルが言葉と完全に一致する項目は、種類の見出しより上の「完全に一致」に出し、下の種類のまとまりには重ねない。Enter で開くのは完全に一致する項目（正常系）。"""
+    """ID かタイトルが言葉と完全に一致する項目は、見出し「完全に一致」の下に出し、ほかの段には重ねない。結果ごとに種類の札を添え、Enter で開くのは完全に一致する項目（正常系）。"""
     # 準備
     url = write_preview(
         make_item("D-1", title="シナリオの依頼の受け方"),
@@ -178,12 +183,11 @@ def test_exact_match_first(
     page.fill(f"{DIALOG} input", "シナリオの依頼")
     page.wait_for_selector(f"{DIALOG} .sr-item")
     # 検証
-    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
-    assert headings == ["完全に一致", "検討事項"]
+    assert _headings(page) == ["完全に一致", "タイトルに一致"]
     assert _result_ids(page) == ["G-1", "D-1"]
-    # 完全に一致の結果には、種類を添える
+    # 全ての結果に、種類を添える
     assert page.inner_text(f'{DIALOG} .sr-item[data-id="G-1"] .sr-kind') == "用語集"
-    assert page.locator(f'{DIALOG} .sr-item[data-id="D-1"] .sr-kind').count() == 0
+    assert page.inner_text(f'{DIALOG} .sr-item[data-id="D-1"] .sr-kind') == "検討事項"
     # 先頭の結果が完全に一致する項目なので、Enter で開く
     page.keyboard.press("Enter")
     page.wait_for_selector("aside.panel.open")
@@ -193,7 +197,7 @@ def test_exact_match_first(
 def test_exact_match_by_id(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """ID の完全一致は大文字・小文字を区別せず、ID が前方一致するだけの項目は重ねない。ID は折り返さない（正常系）。"""
+    """ID の完全一致は大文字・小文字を区別せず、ID が前方一致するだけの項目は完全に一致の段に重ねない。ID は折り返さない（正常系）。"""
     # 準備
     items = [make_item("G-1"), make_item("G-12")]
     url = write_preview(*items)
@@ -204,13 +208,33 @@ def test_exact_match_by_id(
     page.fill(f"{DIALOG} input", "g-1")
     page.wait_for_selector(f"{DIALOG} .sr-item")
     # 検証
-    headings = page.eval_on_selector_all(f"{DIALOG} h2", "h => h.map(x => x.textContent)")
-    assert headings == ["完全に一致", "用語集"]
+    assert _headings(page) == ["完全に一致", "タイトルに一致"]
     assert _result_ids(page) == ["G-1", "G-12"]
     white_space = page.eval_on_selector(
         f'{DIALOG} .sr-item[data-id="G-1"] > .mono', "e => getComputedStyle(e).whiteSpace"
     )
     assert white_space == "nowrap"
+
+
+def test_result_tiers(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """タイトルに一致した項目は、本文だけに一致した項目より上の段に出る。当たった項目の無い段の見出しは出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", answer="保存先は共有のフォルダにする"),
+        make_item("A-2", title="保存先の決め方"),
+        bodies={"A-2.md": "本文\n"},
+    )
+    page = open_preview(url)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    # 実行
+    page.fill(f"{DIALOG} input", "保存先")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 検証（検討事項より資料が後の種類の順でも、段が先。完全に一致の段は出さない）
+    assert _headings(page) == ["タイトルに一致", "ほかの所に一致"]
+    assert _result_ids(page) == ["A-2", "D-1"]
 
 
 def test_result_headings_when_axe(
@@ -232,7 +256,7 @@ def test_result_headings_when_axe(
         f"{DIALOG} :is(h1, h2, h3, h4, h5, h6)", "h => h.map(x => x.tagName)"
     )
     result = axe_rule_results(page, DIALOG, HEADING_ORDER_RULE)
-    # 検証（見出しは「完全に一致」と種類名の 2 本が全て h2。規則が見出しに当たったうえで、通る）
+    # 検証（見出しは「完全に一致」と「タイトルに一致」の 2 本が全て h2。規則が見出しに当たったうえで、通る）
     assert tags == ["H2", "H2"]
     assert result["violations"] == []
     assert len(result["passes"]) == 2

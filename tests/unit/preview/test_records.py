@@ -112,44 +112,79 @@ def test_search_items(
 
 
 @pytest.mark.parametrize(
-    ("query", "expected_hits"),
+    ("kinds", "bodies", "query", "expected_hits"),
     [
         pytest.param(
+            {
+                "decisions": [("D-1", {"title": "シナリオの依頼の受け方"})],
+                "terms": [("G-1", {"title": "シナリオの依頼"})],
+                "docs": [("A-1", {})],
+            },
+            {"A-1.md": "シナリオの依頼の話\n"},
             "シナリオの依頼 ",
-            [["G-1", True], ["D-1", False]],
-            id="title_exact_with_trailing_space",
+            [["G-1", 1], ["D-1", 2], ["A-1", 3]],
+            id="title_exact_then_title_part_then_other",
         ),
-        pytest.param("g-1", [["G-1", True], ["G-12", False]], id="id_exact_case_insensitive"),
         pytest.param(
-            "依頼",
-            [["D-1", False], ["G-1", False], ["G-12", False]],
-            id="no_exact_kind_order",
+            {
+                "terms": [
+                    ("G-1", {"title": "シナリオの依頼"}),
+                    ("G-12", {"title": "依頼の控え"}),
+                ],
+            },
+            {},
+            "g-1",
+            [["G-1", 1], ["G-12", 3]],
+            id="id_exact_case_insensitive",
+        ),
+        pytest.param(
+            {
+                "decisions": [("D-1", {"answer": "保存先は共有のフォルダにする"})],
+                "docs": [("A-2", {"title": "保存先の決め方"})],
+            },
+            {"A-2.md": "本文\n"},
+            "保存先",
+            [["A-2", 2], ["D-1", 3]],
+            id="tier_before_kind_order",
+        ),
+        pytest.param(
+            {
+                "decisions": [("D-1", {"title": "シナリオの依頼の受け方"})],
+                "terms": [("G-1", {"title": "シナリオの依頼"})],
+                "docs": [("A-1", {})],
+            },
+            {"A-1.md": "シナリオの依頼の話\n"},
+            "シナリオ 受け方",
+            [["D-1", 2]],
+            id="all_words_in_title",
         ),
     ],
 )
-def test_search_items_exact_first(
+def test_search_items_tier_order(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     make_data: MakeData,
     make_item: MakeItem,
+    kinds: dict[str, list[tuple[str, dict[str, Any]]]],
+    bodies: dict[str, str],
     query: str,
     expected_hits: list[list[Any]],
 ) -> None:
-    """完全に一致する項目を先にする（正常系）。"""
+    """段の順に並べる（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", title="シナリオの依頼の受け方")],
-        terms=[
-            make_item("G-1", title="シナリオの依頼"),
-            make_item("G-12", title="依頼の控え"),
-        ],
+        bodies=bodies,
+        **{
+            kind: [make_item(item_id, **overrides) for item_id, overrides in specs]
+            for kind, specs in kinds.items()
+        },
     )
     load_preview_scripts()
     # 実行
     found = preview_page.evaluate(
         """({data, query}) => {
             const index = MindmapPreview.buildIndex(data);
-            return MindmapPreview.searchItems({query, index}).map((hit) => [hit.id, hit.exact]);
+            return MindmapPreview.searchItems({query, index}).map((hit) => [hit.id, hit.tier]);
         }""",
         {"data": data, "query": query},
     )
