@@ -107,6 +107,8 @@ var MindmapPreview;
         };
     }
     MindmapPreview.relatedItems = relatedItems;
+    /** 全体の検索の段の順 */
+    const SEARCH_TIERS = [1, 2, 3];
     /** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
     function searchableText(item, bodies) {
         const parts = [];
@@ -122,7 +124,7 @@ var MindmapPreview;
         parts.push(bodies[item.body ?? ""] ?? "");
         return parts.join("\n").toLowerCase();
     }
-    /** 空白で区切った語を全て含む項目を、ID かタイトルが言葉と完全に一致する項目を先にして返す（大文字・小文字と前後の空白を区別しない） */
+    /** 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す（大文字・小文字と前後の空白を区別しない） */
     function searchItems({ query, index }) {
         const whole = query.trim().toLowerCase();
         const terms = whole.split(/\s+/).filter(Boolean);
@@ -135,13 +137,15 @@ var MindmapPreview;
             for (const item of items) {
                 const text = searchableText(item, index.data.bodies);
                 if (terms.every((term) => text.includes(term))) {
-                    const exact = item.id.toLowerCase() === whole || item.title.trim().toLowerCase() === whole;
-                    hits.push({ id: item.id, kind, title: item.title, exact });
+                    const title = item.title.trim().toLowerCase();
+                    const exact = item.id.toLowerCase() === whole || title === whole;
+                    const tier = exact ? 1 : terms.every((term) => title.includes(term)) ? 2 : 3;
+                    hits.push({ id: item.id, kind, title: item.title, tier });
                 }
             }
         }
-        // 完全に一致する項目を先にする（それぞれ今の種類の順・連番の順のまま）
-        return [...hits.filter((hit) => hit.exact), ...hits.filter((hit) => !hit.exact)];
+        // 段の順にする（段の中は種類の順・連番の順のまま）
+        return SEARCH_TIERS.flatMap((tier) => hits.filter((hit) => hit.tier === tier));
     }
     MindmapPreview.searchItems = searchItems;
     /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */

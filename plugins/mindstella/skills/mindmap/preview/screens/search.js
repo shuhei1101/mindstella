@@ -2,6 +2,8 @@
 // 全体の検索。ID・タイトル・本文で、全種類の項目を探すモーダル。
 var MindmapPreview;
 (function (MindmapPreview) {
+    /** 段ごとの見出し */
+    const TIER_LABEL = { 1: "完全に一致", 2: "タイトルに一致", 3: "ほかの所に一致" };
     /** 結果 1 件に添える、項目の要約 */
     function summaryOf(item) {
         return item.answer ?? item.conclusion ?? item.meaning ?? item.content ?? item.lead ?? "";
@@ -52,8 +54,8 @@ var MindmapPreview;
                 results.replaceChildren(MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する項目はありません。別の条件を試してください。"] }));
                 return;
             }
-            /** 結果 1 件のボタン。完全に一致するまとまりでは、種類を添える */
-            const resultButton = (hit, withKind) => {
+            /** 結果 1 件のボタン。種類の札を添える */
+            const resultButton = (hit) => {
                 const item = index.byId.get(hit.id)?.item;
                 return MindmapPreview.h({
                     tag: "button",
@@ -65,7 +67,7 @@ var MindmapPreview;
                             children: [
                                 MindmapPreview.statusMark(item?.status),
                                 ` ${hit.title}`,
-                                withKind ? MindmapPreview.h({ tag: "span", attrs: { class: "sr-kind" }, children: [MindmapPreview.KIND_LABEL[hit.kind]] }) : null,
+                                MindmapPreview.h({ tag: "span", attrs: { class: "sr-kind" }, children: [MindmapPreview.KIND_LABEL[hit.kind]] }),
                                 MindmapPreview.h({ tag: "br" }),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "sr-sub" }, children: [item === undefined ? "" : summaryOf(item)] }),
                             ],
@@ -73,18 +75,14 @@ var MindmapPreview;
                     ],
                 });
             };
-            // 完全に一致する項目は種類の見出しより上の「完全に一致」に出し、下の種類のまとまりには重ねない
-            const exact = hits.filter((hit) => hit.exact);
-            const top = exact.length === 0
-                ? []
-                : [MindmapPreview.h({ tag: "h2", attrs: { class: "sr-exact" }, children: ["完全に一致"] }), ...exact.map((hit) => resultButton(hit, true))];
-            const groups = MindmapPreview.KIND_KEYS.flatMap((kind) => {
-                const ofKind = hits.filter((hit) => hit.kind === kind && !hit.exact);
-                return ofKind.length === 0
+            // 段ごとの見出しの下に並べる（当たった項目の無い段の見出しは出さない）
+            const tiers = [1, 2, 3].flatMap((tier) => {
+                const ofTier = hits.filter((hit) => hit.tier === tier);
+                return ofTier.length === 0
                     ? []
-                    : [MindmapPreview.h({ tag: "h2", children: [MindmapPreview.KIND_LABEL[kind]] }), ...ofKind.map((hit) => resultButton(hit, false))];
+                    : [MindmapPreview.h({ tag: "h2", attrs: { class: "sr-tier" }, children: [TIER_LABEL[tier]] }), ...ofTier.map(resultButton)];
             });
-            results.replaceChildren(...top, ...groups);
+            results.replaceChildren(...tiers);
         };
         input.addEventListener("input", render);
         // Enter で先頭の結果を開き、↓ で結果へ移る。結果の中は ↑ ↓ で選ぶ

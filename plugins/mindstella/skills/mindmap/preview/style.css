@@ -1450,12 +1450,12 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 
 /* ===== 全体の検索 ===== */
 
-/* 完全に一致のまとまりの見出し: 種類の見出しと同じ形で、先頭に置く */
-.search-results h2.sr-exact { color: var(--text); }
-/* 完全に一致の結果に添える種類 */
+/* 段の見出し: 先頭の段から順に置く */
+.search-results h2.sr-tier { color: var(--text); }
+/* 結果に添える種類 */
 .sr-item .sr-kind { margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
-/* 完全に一致のまとまりと種類のまとまりの境 */
-.search-results h2.sr-exact ~ h2:not(.sr-exact) { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+/* 段と段の境 */
+.search-results h2.sr-tier ~ h2.sr-tier { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
 /* 結果の ID: 折り返さない */
 .sr-item > .mono { flex: none; white-space: nowrap; }
 /* トップバーの検索の入口のキーの案内: 2 文字以上でも詰まらない幅 */
