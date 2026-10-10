@@ -7,6 +7,8 @@ directory: |-
       view-switch.ts        表示形式の切り替え（部品設計『表示形式の切り替え』）
       topbar.ts             トップバー（部品設計『トップバー』）
       diff-mark.ts          差分の印（部品設計『差分の印』）
+      removed-band.ts       消した項目の帯（部品設計『消した項目の帯』）
+      withdrawn-badge.ts    取り下げの札（部品設計『取り下げの札』）
       comment-mark.ts       コメントの印と、画面を描き直さずに印を差し替える処理（部品設計『コメントの印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
@@ -101,7 +103,7 @@ components:
         type: '{name, sub} | null'
         required: false
         default: 'null'
-        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ねる
+        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ね、読み上げに「新規・変更・消した項目があります」を残す
       - name: onHistory
         type: () => void
         required: false
@@ -151,7 +153,7 @@ components:
       - name: rows
         type: object[]
         required: true
-        description: 行にする項目
+        description: 行にする項目。`withdrawn` が真の行は、差分の表示によらずタイトルの右、`diffMark` より前に `withdrawnBadge` を置き、行の文字を薄くする（部品設計『表』の `rows`）
       - name: sort
         type: '{key, dir} | null'
         required: false
@@ -185,6 +187,13 @@ components:
         required: false
         default: '{}'
         description: 項目の ID → レビュー中のコメントの件数。行のタイトルの右、`diffMark` の後ろに `data-comment-target` の場所を置き、件数のある行に `commentMark` を入れる（部品設計『表』の `comments`）
+    unit_tests:
+      - name: test_table_when_withdrawn
+        case: 正常
+        summary: 取り下げた行だけに札を差分の印より前に置き、文字を薄くする
+        condition: '`withdrawn: true` の R-1 と、`withdrawn` を持たない R-2 の行。`marks` が `{"R-1": "changed"}`'
+        mock: なし（DOM を作って見る）
+        expected: R-1 の行のタイトルの右に取り下げの札、その後ろに変更の印が並び、行が薄い文字の class を持つ。R-2 の行は札も薄い文字の class も持たない
   - name: filterChips
     title: 条件のチップの行
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -266,6 +275,11 @@ components:
         type: string | null
         required: true
         description: 効いているロック（入口の `LockState.map` の検討事項を描いていればその ID、絞り込みで描いていなければ `null`）。マップの節に閉じた鍵を出す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消した検討事項（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、マップの枠（幅 900px 以下は字下げの一覧）・ボード・表の上に `removedBand` を置く。`filters` で絞らず、マップの木（`buildDecisionTree`）にも入れない
     state:
       - name: keyword
         type: string
@@ -279,6 +293,13 @@ components:
         type: '{time, x, y, id} | null'
         initial: 'null'
         description: マップで前に押した時刻・位置・項目（`resolvePress` に渡す）
+    unit_tests:
+      - name: test_decisions_screen_when_removed
+        case: 正常
+        summary: 消した検討事項を、表示形式と絞り込みによらず一覧の上の帯に出す
+        condition: '`removed` に D-53。`parametrize`: マップ（幅 1280px）/ ボード / 表 / ボードで `filters` が `{"status": ["決定済み"]}`'
+        mock: なし（DOM を作って見る）
+        expected: どれも一覧（マップの枠・ボード・表）の前に「消した項目」の帯が 1 つあり D-53 を持つ。マップの節にもボードの列にも D-53 が無い
   - name: tasksScreen
     title: タスク
     container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
@@ -311,12 +332,17 @@ components:
         required: false
         default: なし（印を出さない）
         description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消したタスク（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、ボード・表の上に `removedBand` を置く。`filters` で絞らない
   - name: docsScreen
     title: 資料
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
     usecase: 資料を読む
     kind: 画面
-    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。ツールバーに絞り込みのボタンとポップオーバーを置かない。カード・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。`withdrawn` が真の資料のカードとボードのカードは、差分の表示によらずタイトルの右、差分の印より前に `withdrawnBadge` を置き、カードの文字を薄くする。ツールバーに絞り込みのボタンとポップオーバーを置かない。カード・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
@@ -343,6 +369,18 @@ components:
         required: false
         default: なし（印を出さない）
         description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。資料のカードとボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消した資料（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、カード・ボード・表の上に `removedBand` を置く。`filters` で絞らない
+    unit_tests:
+      - name: test_docs_screen_when_withdrawn
+        case: 正常
+        summary: 取り下げた資料のカードに、差分の表示によらず札を置く
+        condition: '`withdrawn: true` の A-9 と `withdrawn` を持たない A-1。`parametrize`: カード / ボード。どちらも `marks` を渡さない'
+        mock: なし（DOM を作って見る）
+        expected: A-9 のカードのタイトルの右に取り下げの札があり、カードが薄い文字の class を持つ。A-1 のカードはどちらも持たない
   - name: recordsScreen
     title: 記録の表
     container: plugins/mindstella/skills/mindmap/preview/screens/records.ts
@@ -375,12 +413,17 @@ components:
         required: false
         default: なし（印を出さない）
         description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。表へ `comments` で渡す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消したその種類の項目（入口が `removedOf` で引く）。空でなければ表の上に `removedBand` を置く。`filters` で絞らない
   - name: detailPanel
     title: 詳細パネル
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。用語の印に乗せる・フォーカスすると、使い回す 1 つのツールチップ（`role="tooltip"`・`popover="manual"`）を印の下（収まらなければ上）に出し、用語・ID・意味を入れる。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない）、Esc でも隠す。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない'
     props:
       - name: id
         type: string
@@ -411,7 +454,7 @@ components:
         type: DiffPoint | null
         required: false
         default: 'null'
-        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagramFromSource` / `diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、flowchart の図は `diffDiagramFromSource` で前後の記法を解析して突き合わせ、前の版の図を描かない。`diffDiagramFromSource` が `null` を返した図（flowchart でない・解析できない）だけ、前の版の図を `renderDiagramSvg` で描いて `diffDiagram` で突き合わせる。'
+        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagramFromSource` / `diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。`withdrawn` は選んだ時点で変わったときだけキーの一覧の「取り下げ」の行に前後を並べ、真の値を `withdrawnBadge` で出す。調査・資料・用語集・メモ・会話ログの `reason` の前後は「取り下げた理由」の節に並べる。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、flowchart の図は `diffDiagramFromSource` で前後の記法を解析して突き合わせ、前の版の図を描かない。`diffDiagramFromSource` が `null` を返した図（flowchart でない・解析できない）だけ、前の版の図を `renderDiagramSvg` で描いて `diffDiagram` で突き合わせる。'
       - name: heading
         type: string | null
         required: false
@@ -495,6 +538,12 @@ components:
         condition: D-1 への C-1 を `reviews`、`edit.editing` を C-1、`edit.editingIn` を `'list'` で開く
         mock: 描画のライブラリの配信元（`page.route`）
         expected: C-1 の行に入力欄・「キャンセル」「修正」が無く、本文が出て、読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタンが無い
+      - name: test_detail_panel_when_withdrawn
+        case: 正常
+        summary: 取り下げた項目の題に札を置き、理由を節に出す
+        condition: '`parametrize`: `withdrawn: true`・`reason`「別の調査で足りた」の R-1 を `diff` なしで開く / 同じ R-1 を、選んだ時点で `withdrawn`・`reason` を足した `diff` つきで開く / `withdrawn` を持たない R-2 を開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 題の右に取り下げの札があり、見出し「取り下げた理由」の節に理由が出て、キーの一覧に「取り下げ」の行が無い / 加えてキーの一覧の「取り下げ」の行に今の値の取り下げの札が足した印で出て、「取り下げた理由」の節に足した印の理由が出る / 札も節も無い
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -783,12 +832,12 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
     usecase: 前回からの差分を見る
     kind: コンポーネント
-    summary: 部品設計『差分の印』の引数を受け、新規（+）か変更（●）の印を返す。表・ボード・カード・マップ・概要のタイル・詳細パネルが使う
+    summary: 部品設計『差分の印』の引数を受け、新規（+）・変更（●）・消した（−）の印を返す。表・ボード・カード・マップ・概要のタイル・詳細パネルが新規と変更を、`removedBand` が消したを使う
     props:
       - name: kind
-        type: "'new' | 'changed'"
+        type: "'new' | 'changed' | 'removed'"
         required: true
-        description: 新規か変更か
+        description: 新規か変更か消したか
       - name: labeled
         type: boolean
         required: false
@@ -804,7 +853,7 @@ components:
       - name: points
         type: '{sel, name, sub, count?}[]'
         required: true
-        description: 並べる時点
+        description: 並べる時点。`count` はその時点の `DiffPoint` の `added`・`changed`・`removed` の件数の和
       - name: current
         type: string
         required: true
@@ -1082,6 +1131,29 @@ components:
         condition: 'C-2 を `focus: "detail-"` で描き、「元に戻す」を押す'
         mock: '`on.restore`'
         expected: 「コメントを削除しました。」が `role="status"` の要素に出て、「元に戻す」の `data-focus` が `detail-restore:C-2`。`on.restore` が C-2 で 1 回
+  - name: removedBand
+    title: 消した項目の帯
+    container: plugins/mindstella/skills/mindmap/preview/components/removed-band.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『消した項目の帯』の引数を受け、見出し「消した項目」と件数の下に、`diffMark`（`removed`）・ID・タイトルを `ul` の `li` で並べた `section` を返す。項目はボタン・リンクにしない。`items` が空なら `null` を返す
+    props:
+      - name: items
+        type: RemovedItem[]
+        required: true
+        description: 消した項目（`removedOf` の戻り値）。渡した並びで出す
+  - name: withdrawnBadge
+    title: 取り下げの札
+    container: plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.ts
+    usecase: 項目の詳細を読む
+    kind: コンポーネント
+    summary: 部品設計『取り下げの札』の引数を受け、検討事項の状態「取り下げ」と同じ × の印（`statusMark("取り下げ")`。`aria-hidden`）と文言「取り下げ」に枠を付けた札を返す。表の行・資料のカードとボードのカード・詳細パネルの題が使う
+    props:
+      - name: large
+        type: boolean
+        required: false
+        default: 'false'
+        description: 詳細パネルの題の大きさにするか
 functions:
   - name: filterRows
     title: 行の絞り込み

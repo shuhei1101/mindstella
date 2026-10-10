@@ -101,6 +101,8 @@ namespace MindmapPreview {
     until_seq: number;
     added: string[];
     changed: string[];
+    /** 消した項目。何も消していないまとまりは持たない */
+    removed?: RemovedItem[];
   };
 
   /** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
@@ -108,7 +110,7 @@ namespace MindmapPreview {
     last_seq: number;
     /** 新しい順 */
     sets: ChangeSet[];
-    pending: { added: string[]; changed: string[] };
+    pending: { added: string[]; changed: string[]; removed?: RemovedItem[] };
   };
 
   /** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
@@ -143,6 +145,8 @@ namespace MindmapPreview {
     confidence?: string;
     angles?: string[];
     deliverable?: boolean;
+    /** 取り下げた調査・資料・用語集・メモ・会話ログは真。取り下げた理由は `reason` */
+    withdrawn?: boolean;
     meaning?: string;
     aliases?: string[];
     avoid?: string[];

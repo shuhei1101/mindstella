@@ -44,6 +44,12 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_V2_BY_TAB,
+    assert_band_above,
+    assert_removed_band,
+)
 from preview_saved_filter_helpers import (
     read_saved_filters,
     reload_preview,
@@ -1162,6 +1168,88 @@ def test_diff_marks_when_map(
     )
     assert sorted(outlined) == ["D-2"]
     assert_topbar_history(page)
+
+
+@pytest.mark.parametrize(
+    ("view", "below"),
+    [
+        pytest.param("table", "table.grid", id="table"),
+        pytest.param("board", ".board", id="board"),
+        pytest.param("map", "#decision-map", id="map"),
+    ],
+)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    view: str,
+    below: str,
+) -> None:
+    """差分の表示の間、選んだ時点で消した検討事項を、表示形式によらず一覧の上の帯に ID の順で並べる。押せず、マップの節にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, f"#tab=decisions&view={view}")
+    page.wait_for_selector(below)
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+    assert_band_above(page, below)
+    # 消した検討事項は、マップの節・ボードのカード・表の行にしない
+    assert page.locator('[data-node="D-3"], [data-node="D-4"], [data-id="D-3"], [data-id="D-4"]').count() == 0
+
+
+def test_removed_band_when_outline(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """マップが幅 900px 以下の字下げの一覧になっても、同じ帯を一覧の上に置く（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=map")
+    # 実行
+    page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
+    page.wait_for_selector(".map-outline")
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+    assert_band_above(page, ".map-outline")
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """絞り込みの条件で一覧の行が 0 件になっても、消した項目は絞り込まず全て帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=table&f.status=対象外")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("pending", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点で検討事項を消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator(BAND).count() == 0
 
 
 def _table_row_ids(page: Page) -> list[str]:

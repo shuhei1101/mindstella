@@ -36,6 +36,13 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_V2_BY_TAB,
+    WITHDRAWN_BADGE,
+    assert_band_above,
+    assert_removed_band,
+)
 from preview_saved_filter_helpers import (
     read_saved_filters,
     reload_preview,
@@ -130,6 +137,122 @@ def test_diff_marks(
     assert mark.get_attribute("title") == "新規"
     assert page.locator('nav.tabbar a[data-tab="notes"] .df-dot').count() == 1
     assert_topbar_history(page)
+
+
+# 種類の画面ごとの、取り下げていない項目・取り下げた項目・消した項目の ID
+RECORD_IDS = {
+    "research": ("R-1", "R-2", "R-3"),
+    "terms": ("G-1", "G-2", "G-3"),
+    "notes": ("N-1", "N-2", "N-3"),
+    "logs": ("L-1", "L-2", "L-3"),
+}
+
+# 4 つの種類の画面
+RECORD_TABS = [pytest.param(tab, id=tab) for tab in RECORD_IDS]
+
+
+@pytest.mark.parametrize("tab", RECORD_TABS)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, tab: str
+) -> None:
+    """差分の表示の間、選んだ時点で消したその種類の項目を、表の上の帯に並べる。押せず、行にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, f"#tab={tab}")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB[tab])
+    assert_band_above(page, "table.grid")
+    assert page.locator(f'[data-id="{RECORD_IDS[tab][2]}"]').count() == 0
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """文字の条件で表の行が 0 件になっても、消した項目は絞り込まず帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=research")
+    page.wait_for_selector("table.grid")
+    open_drawer(page)
+    page.fill(f'{DRAWER} input[data-text-key="title"]', "一致しない文字")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 0")
+    close_drawer(page)
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["research"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("pending", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点でその種類の項目を消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=research")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator(BAND).count() == 0
+
+
+@pytest.mark.parametrize("tab", RECORD_TABS)
+def test_withdrawn_badge(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, tab: str
+) -> None:
+    """取り下げた項目の行は、差分を出していなくてもタイトルの右に取り下げの札を置き、文字を薄くする。取り下げていない行は変えない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, None)
+    open_preview(url, f"#tab={tab}")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    normal_id, withdrawn_id, _ = RECORD_IDS[tab]
+    row = f'table.grid tbody tr[data-id="{withdrawn_id}"]'
+    normal = f'table.grid tbody tr[data-id="{normal_id}"]'
+    badge = page.locator(f"{row} .row-open + {WITHDRAWN_BADGE}")
+    assert badge.count() == 1
+    assert badge.inner_text() == "取り下げ"
+    assert "is-withdrawn" in str(page.get_attribute(row, "class"))
+    assert page.locator(f"{normal} {WITHDRAWN_BADGE}").count() == 0
+    assert "is-withdrawn" not in str(page.get_attribute(normal, "class"))
+    # 取り下げた行の文字は、取り下げていない行より薄い
+    color_script = "e => getComputedStyle(e).color"
+    assert page.eval_on_selector(f"{row} .row-open", color_script) != page.eval_on_selector(
+        f"{normal} .row-open", color_script
+    )
+    assert page.eval_on_selector(f"{row} td", color_script) != page.eval_on_selector(
+        f"{normal} td", color_script
+    )
+
+
+@pytest.mark.parametrize("tab", RECORD_TABS)
+def test_withdrawn_badge_with_diff(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, tab: str
+) -> None:
+    """差分の表示で取り下げた項目に変更の印が付くとき、取り下げの札は差分の印より前に置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, f"#tab={tab}")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    withdrawn_id = RECORD_IDS[tab][1]
+    row = f'table.grid tbody tr[data-id="{withdrawn_id}"]'
+    assert page.locator(f"{row} .row-open + .wd-badge + .df-mark.df-chg").count() == 1
 
 
 def _row_ids(page: Page) -> list[str]:

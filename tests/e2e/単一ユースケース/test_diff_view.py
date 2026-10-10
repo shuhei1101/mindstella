@@ -42,6 +42,18 @@ WHEN_PATTERN = re.compile(r"\d{2}/\d{2} \d{2}:\d{2}")
 MARK_CHANGED = "df-mark df-chg"
 MARK_NEW = "df-mark df-new"
 
+# 消した項目の帯の項目と、取り下げの札
+REMOVED_ITEMS = "section.rm-band li.rm-item"
+WITHDRAWN_BADGE = ".wd-badge"
+
+# 消した項目を押した後、詳細パネルが開かないことを確かめるまで待つミリ秒
+PRESS_SETTLE_MS = 400
+
+# 消した項目の帯の項目（ID・消したときのタイトル）を上から読む
+REMOVED_ITEMS_SCRIPT = """items => items.map(
+    i => [i.dataset.removedId, i.querySelector('.rm-ttl').textContent]
+)"""
+
 # モーダルの行の時点の識別子・名前・日時・件数を上から読む
 ROWS_SCRIPT = """() => [...document.querySelectorAll('dialog.hist .hist-item')].map(row => ({
     sel: row.dataset.sel,
@@ -643,3 +655,113 @@ def test_normal_when_since_history_dropped(
     added, removed = _block_texts(page)
     assert "1 回目に書き換えた本文です。" in added
     assert "最初の本文です。" in removed
+
+
+def _removed_items(page: Page) -> list[list[str]]:
+    """画面の消した項目の帯の項目を、ID・消したときのタイトルで上から返す（帯が無ければ空）。"""
+    items: list[list[str]] = page.eval_on_selector_all(REMOVED_ITEMS, REMOVED_ITEMS_SCRIPT)
+    return items
+
+
+def test_normal_when_removed_and_withdrawn(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """変更履歴から選んだまとまりで、消したメモが消した印で出て、取り下げた調査に変更と取り下げの印が付き、詳細パネルで取り下げと理由を読む（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("N-1", title="残すメモ", content="同じ中身"),
+        make_item("N-2", title="重複したメモ", content="同じ中身"),
+        make_item("R-1", title="不要な調査"),
+        make_item("R-2", title="続ける調査"),
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("remove", workspace=ws, id="N-2")
+    replay("update", workspace=ws, id="R-1", item={"withdrawn": True, "reason": "別の調査で足りた"})
+    replay("commit", workspace=ws, summary="重複と不要な調査を片付ける")
+    open_preview(url, "#tab=overview")
+    # 実行・検証（一覧のまとまりの件数は、変えた R-1 と消した N-2 の 2）
+    rows = _read_rows(page)
+    assert [row["n"] for row in rows if row["name"] == "重複と不要な調査を片付ける"] == ["2 件"]
+    # 実行（まとまりを選ぶ）
+    pick_history_point(page, "重複と不要な調査を片付ける")
+    # 検証（メモと調査のタブに印が付き、メモのタブの件数は N-1 の 1 件のまま）
+    assert _marked_tabs(page) == ["research", "notes"]
+    assert page.evaluate(TAB_COUNTS_SCRIPT)["notes"] == "1"
+    # 実行（メモの画面を開く）
+    page.click('nav.tabbar a[data-tab="notes"]')
+    page.wait_for_selector(TABLE_ROWS)
+    # 検証（消した N-2 が ID・消したときのタイトルと消した印で出て、N-1 には印が無い）
+    assert _removed_items(page) == [["N-2", "重複したメモ"]]
+    assert page.locator(f"{REMOVED_ITEMS} .df-mark.df-del").count() == 1
+    assert _row_marks(page) == {"N-1": None}
+    # 実行（消した N-2 を押す）
+    page.locator(REMOVED_ITEMS).click()
+    page.wait_for_timeout(PRESS_SETTLE_MS)
+    # 検証（詳細パネルは開かない）
+    assert page.locator("aside.panel.open").count() == 0
+    # 実行（調査の画面を開く）
+    page.click('nav.tabbar a[data-tab="research"]')
+    page.wait_for_selector(TABLE_ROWS)
+    # 検証（R-1 に取り下げの印と変更の印が付き、R-2 には印が無い）
+    assert page.locator(
+        'table.grid tbody tr[data-id="R-1"] .row-open + .wd-badge + .df-mark.df-chg'
+    ).count() == 1
+    assert page.locator('table.grid tbody tr[data-id="R-2"] .df-mark, table.grid tbody tr[data-id="R-2"] .wd-badge').count() == 0
+    # 実行（R-1 を押す）
+    page.click('table.grid button.row-open[data-id="R-1"]')
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 検証（取り下げの印と理由が出て、キーの差分で取り下げと理由が足した印で出る）
+    assert page.locator(f"aside.panel .d-title {WITHDRAWN_BADGE}").inner_text() == "取り下げ"
+    assert page.locator('aside.panel [data-key="reason"] ins.df-now').inner_text().endswith(
+        "別の調査で足りた"
+    )
+    assert page.locator(f"aside.panel .d-meta dd.df-key ins.df-now {WITHDRAWN_BADGE}").count() == 1
+    # 実行（差分の表示から抜ける）
+    page.get_by_role("button", name="差分の表示をやめる").click()
+    page.wait_for_selector(".df-chip", state="detached", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（R-1 の変更の印は消え、取り下げの印は残る）
+    assert page.locator(".df-mark").count() == 0
+    assert page.locator(f'table.grid tbody tr[data-id="R-1"] {WITHDRAWN_BADGE}').count() == 1
+    # 実行（メモの画面を開く）
+    page.click('nav.tabbar a[data-tab="notes"]')
+    page.wait_for_selector(TABLE_ROWS)
+    # 検証（N-2 は画面から消える）
+    assert _removed_items(page) == []
+
+
+def test_normal_when_added_then_removed_since(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """「前回開いてから」の範囲で足して消したメモは、新規ではなく消した項目として出る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1", title="残すメモ"))
+    ws = str(root)
+    url = _serve(call_tool, root)
+    visit_and_close(page, url)
+    replay("add", workspace=ws, kind="note", item={"title": "足すメモ", "content": "メモ"})
+    replay("commit", workspace=ws, summary="メモを足す")
+    replay("remove", workspace=ws, id="N-2")
+    replay("commit", workspace=ws, summary="足したメモを消す")
+    open_preview(url, "#tab=notes")
+    # 実行・検証（「前回開いてから」の件数は、消した N-2 の 1）
+    rows = _read_rows(page)
+    assert [row["n"] for row in rows if row["sel"] == "since"] == ["1 件"]
+    # 実行（「前回開いてから」を選ぶ）
+    pick_history_point(page, "前回開いてから")
+    page.wait_for_selector(TABLE_ROWS)
+    # 検証（N-2 が消した印で出て、新規の印の付いた項目は無く、N-1 にも印が無い）
+    assert _removed_items(page) == [["N-2", "足すメモ"]]
+    assert page.locator(f"{REMOVED_ITEMS} .df-mark.df-del").count() == 1
+    assert page.locator(".df-mark.df-new").count() == 0
+    assert _row_marks(page) == {"N-1": None}

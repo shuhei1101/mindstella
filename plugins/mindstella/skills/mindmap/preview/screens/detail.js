@@ -266,15 +266,22 @@ var MindmapPreview;
             ["確度", "confidence", item.confidence],
             ["日付", "date", item.date],
             ["更新日", "updated", item.updated],
+            // 取り下げは値をここに出さず（題の右の札が示す）、差分の表示で変わったときだけ前後を並べる
+            ["取り下げ", "withdrawn", undefined],
         ];
         const rows = pairs.flatMap(([label, key, value]) => {
             const changed = diff?.has(key) === true;
             // 値が無く、変わってもいないキーは出さない
             if ((value === undefined || value === "") && !changed)
                 return [];
+            const shown = diff === null
+                ? value
+                : key === "withdrawn"
+                    ? diff.show(key, (flag) => (flag === true ? MindmapPreview.withdrawnBadge() : null))
+                    : diff.show(key);
             return [
                 MindmapPreview.h({ tag: "dt", attrs: { class: changed ? "df-key" : null }, children: [label] }),
-                MindmapPreview.h({ tag: "dd", attrs: { class: changed ? "df-key" : null }, children: [diff === null ? value : diff.show(key)] }),
+                MindmapPreview.h({ tag: "dd", attrs: { class: changed ? "df-key" : null }, children: [shown] }),
             ];
         });
         const tagsChanged = diff?.has("tags") === true;
@@ -722,6 +729,15 @@ var MindmapPreview;
                 children: [MindmapPreview.h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue(value)])],
             });
         };
+        /** 取り下げた理由の節（検討事項・タスクの `reason` は別の節が持つ）。値が変わっていれば、前の値と今の値を並べる */
+        const withdrawnReason = () => {
+            if (kind === "decisions" || kind === "tasks")
+                return null;
+            const changed = keys?.has("reason") === true;
+            if ((item.reason === undefined || item.reason === "") && !changed)
+                return null;
+            return section("取り下げた理由", valueBlock("reason", [changed ? textOf("reason", item.reason) : markdownValue(item.reason)]));
+        };
         /** 見出しの下の 1 段落 */
         const lead = (key, value, className) => {
             if ((value === undefined || value === "") && keys?.has(key) !== true)
@@ -837,9 +853,12 @@ var MindmapPreview;
                         keys?.has("title") === true ? keys.show("title") : item.title,
                         item.deliverable === true ? MindmapPreview.deliverableBadge() : null,
                         view?.kind === "new" ? MindmapPreview.diffMark({ kind: "new", labeled: true }) : null,
+                        // 取り下げた項目は、差分の表示によらず題の右に札を置く
+                        item.withdrawn === true ? MindmapPreview.withdrawnBadge({ large: true }) : null,
                     ],
                 }),
                 metaList({ item, settings: index.data.settings, diff: keys }),
+                withdrawnReason(),
             ],
         });
         if (kind === "decisions") {

@@ -8,6 +8,7 @@ from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, free_commen
 from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
+from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
 from workspace_fixtures import MakeComment, MakeItem
 
 # タブの帯に並ぶ画面の並び（ネットワークは右端）
@@ -213,7 +214,7 @@ def test_diff_off_by_chip(
 def test_tab_marks(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """差分の表示の間、新規・変更の項目を持つ種類のタブにだけ点を付け、件数は残す（正常系）。"""
+    """差分の表示の間、新規・変更・消した項目を持つ種類のタブにだけ点を付け、件数は残す（正常系）。"""
     # 準備・実行
     url, _ = write_history_preview()
     preselect_diff(page, "pending")
@@ -225,7 +226,42 @@ def test_tab_marks(
     )
     assert dotted == ["decisions", "tasks", "notes"]
     assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
-    assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更・消した項目があります"
+
+
+def test_tab_marks_when_only_removed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """選んだ時点で新規・変更の項目が無く、消した項目だけを持つ種類のタブにも点を付け、消した項目を含めた件数にしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector(".df-chip")
+    # 検証（まだまとめていない変更: タスク T-2 を消しただけ）
+    dotted = page.eval_on_selector_all(
+        "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
+    )
+    assert dotted == ["tasks"]
+    assert page.locator('nav.tabbar a[data-tab="tasks"] .df-dot .sr-only').inner_text() == "新規・変更・消した項目があります"
+    # タブの件数は今ある項目の数（消した T-2 は含めない）
+    assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
+
+
+def test_tab_marks_when_removed_and_changed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """消した項目だけの種類（検討事項）にも、消した項目を持たない種類（タスク）を除いて点を付ける（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector(".df-chip")
+    # 検証（まとまり V-2: 各種類の項目を消した。タスクは消していない）
+    dotted = page.eval_on_selector_all(
+        "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
+    )
+    assert dotted == list(REMOVED_IN_V2_BY_TAB)
 
 
 @pytest.mark.parametrize("tab", [key for key in TAB_KEYS if key != "overview"])
