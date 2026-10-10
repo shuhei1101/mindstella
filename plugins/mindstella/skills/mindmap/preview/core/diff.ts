@@ -270,6 +270,36 @@ namespace MindmapPreview {
     }));
   }
 
+  /** HTML の本文の差分: 今の本文で足した行と変えた行（今の本文の 1 始まりの行）と、消しただけの箇所があるか */
+  export type HtmlChangedLines = { added: number[]; changed: number[]; removedOnly: boolean };
+
+  /** 前後の HTML の原文を行ごとに比べ、足した行・変えた行（消した行と入れ替えた行）と、足した行と隣り合わない消した行があるかを返す。差分を打ち切ったら null */
+  export function htmlChangedLines(before: string, after: string): HtmlChangedLines | null {
+    const parts = diffLineParts(before, after);
+    if (parts === null) return null;
+    const added: number[] = [];
+    const changed: number[] = [];
+    let removedOnly = false;
+    let nowLine = 0;
+    parts.forEach((part, position) => {
+      const neighbors = [parts[position - 1]?.kind, parts[position + 1]?.kind];
+      if (part.kind === "removed") {
+        // 足した並びに隣らない消した並びは、描いた結果に印を付けられない
+        if (!neighbors.includes("added")) removedOnly = true;
+        return;
+      }
+      if (part.kind === "added") {
+        // 消した並びに隣る足した並びは変えた行、それ以外は足した行（空白だけの行は入れない）
+        const target = neighbors.includes("removed") ? changed : added;
+        part.lines.forEach((line, offset) => {
+          if (line.trim() !== "") target.push(nowLine + offset + 1);
+        });
+      }
+      nowLine += part.lines.length;
+    });
+    return { added, changed, removedOnly };
+  }
+
   /** 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す */
   export function placeRemovedBlocks(parts: LinePart[]): RemovedBlock[] {
     const blocks: RemovedBlock[] = [];

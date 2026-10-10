@@ -210,6 +210,8 @@ namespace MindmapPreview {
   export type MindmapData = Record<Kind, Item[]> & {
     settings: Settings;
     bodies: Record<string, string>;
+    /** HTML の本文（`bodies` のうち `.html`）の、開きタグに原文の行の印（`data-line`）を足したもの。HTML の本文が無ければ `{}` */
+    marked_bodies?: Record<string, string>;
     /** 書き換えのまとまりと、まだまとめていない変更 */
     changes: Changes;
     derived: Derived;
@@ -315,6 +317,34 @@ namespace MindmapPreview {
   /** 全体の検索の段の順 */
   const SEARCH_TIERS: SearchTier[] = [1, 2, 3];
 
+  /** 項目の `body` の拡張子から本文の形式を返す（`body` を持たないか、知らない拡張子なら `null`） */
+  export function bodyFormatOf(body: string | undefined): "md" | "html" | null {
+    if (body === undefined) return null;
+    if (body.endsWith(".html")) return "html";
+    if (body.endsWith(".md")) return "md";
+    return null;
+  }
+
+  /** 描いた文に出ない中身を持つ要素 */
+  const HIDDEN_TEXT_SELECTOR = "style, script, template, title";
+
+  /** HTML をスクリプトを動かさずに解析し、`style`・`script`・`template`・`title` の中身とコメントを除いた描いた文を返す */
+  export function htmlText(source: string): string {
+    const doc = new DOMParser().parseFromString(source, "text/html");
+    for (const hidden of doc.querySelectorAll(HIDDEN_TEXT_SELECTOR)) hidden.remove();
+    return doc.documentElement.textContent ?? "";
+  }
+
+  /** Markdown の本文の中の言語指定 `html` のコードブロック（フェンスは ``` か ~~~） */
+  const HTML_FENCE = /^(```|~~~)html[^\n]*\n([\s\S]*?)^\1[ \t]*$/gm;
+
+  /** 検索で当てる本文の文。HTML の本文と Markdown の `html` のコードブロックは、タグではなく描いた文にする */
+  function searchableBody(body: string | undefined, bodies: Record<string, string>): string {
+    const text = bodies[body ?? ""] ?? "";
+    if (bodyFormatOf(body) === "html") return htmlText(text);
+    return text.replace(HTML_FENCE, (_block, _fence, code: string) => htmlText(code));
+  }
+
   /** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
   function searchableText(item: Item, bodies: Record<string, string>): string {
     const parts: string[] = [];
@@ -324,7 +354,7 @@ namespace MindmapPreview {
         for (const element of value) if (typeof element === "string") parts.push(element);
       }
     }
-    parts.push(bodies[item.body ?? ""] ?? "");
+    parts.push(searchableBody(item.body, bodies));
     return parts.join("\n").toLowerCase();
   }
 
