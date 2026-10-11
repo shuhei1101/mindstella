@@ -842,7 +842,10 @@ namespace MindmapPreview {
     const descriptionSection = (): HTMLElement | null => {
       const changed = keys?.has("description") === true;
       if ((item.description === undefined || item.description === "") && !changed) return null;
-      return section("説明", valueBlock("description", [changed ? textOf("description", item.description) : markdownValue(item.description)]));
+      const described = section("説明", valueBlock("description", [changed ? textOf("description", item.description) : markdownValue(item.description)]));
+      // 見た目は結論と同じ、灰色の面に小さな名前を添えた形
+      described.classList.add("d-answer");
+      return described;
     };
     /** 取り下げた理由の節（検討事項・タスクの `reason` は別の節が持つ）。値が変わっていれば、前の値と今の値を並べる */
     const withdrawnReason = (): HTMLElement | null => {
