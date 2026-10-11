@@ -39,13 +39,13 @@ namespace MindmapPreview {
     return marked.replace(/ data-line="\d+"/g, "");
   }
 
-  /** 枠の文書の中で、行を含む最も内側の行の印を持つ要素（無ければ null） */
+  /** 枠の文書の中で、行を含む最も内側の行の印を持つ要素（無ければ null）。要素の範囲は、その行から、文書の順で次に始まる行の印を持つ要素の行の手前まで */
   function innermostAt({ doc, line }: { doc: Document; line: number }): Element | null {
     let found: Element | null = null;
     for (const element of doc.body.querySelectorAll(`[${HTML_LINE_ATTR}]`)) {
-      const start = Number(element.getAttribute(HTML_LINE_ATTR));
-      const end = start + (element.outerHTML.split("\n").length - 1);
-      if (start <= line && line <= end) found = element;
+      // 文書の順で行の印は小さい順に並ぶので、行より後に始まる要素に着いたら終える
+      if (Number(element.getAttribute(HTML_LINE_ATTR)) > line) break;
+      found = element;
     }
     return found;
   }
