@@ -16,11 +16,13 @@ var MindmapPreview;
         const raw = MindmapPreview.h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true, tabindex: "0", role: "region", "aria-label": "図の記法" }, children: [source] });
         if (before === null)
             return raw;
+        // 語の差分は、行の差分を呼んでからこの時間の内に収める
+        const deadline = performance.now() + MindmapPreview.LINE_DIFF_TIMEOUT_MS;
         const parts = MindmapPreview.diffLineParts(before.endsWith("\n") ? before : `${before}\n`, source.endsWith("\n") ? source : `${source}\n`);
         if (parts === null)
             return raw;
         raw.classList.add("df-raw");
-        raw.replaceChildren(...MindmapPreview.rawDiffLines(parts));
+        raw.replaceChildren(...MindmapPreview.rawDiffLines({ parts, deadline }));
         return raw;
     }
     /** 図の拡大の中身（道具の行と、図を置く窓）を返す。モーダルか全画面の中に入れて使う */

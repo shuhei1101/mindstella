@@ -1159,6 +1159,289 @@ def test_detail_panel_when_withdrawn(
     assert result == expected
 
 
+# 詳細パネルを差分つきで開き、本文の差分の語の面（`span.df-word`）を、足した面（add）・消した面（del）と文字に直して調べる。
+# 本文の囲み（足した塊 `ins.df-blk`・消した塊 `del.df-blk`）ごと、用語の印と項目の ID のリンクごと、表の行（`tr.df-row`）ごとに分けて返す
+OPEN_WORD_DIFF_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const wordMarks = (root) => [...root.querySelectorAll("span.df-word")].map((word) => ({
+        kind: word.classList.contains("df-add") ? "add" : word.classList.contains("df-del") ? "del" : "none",
+        text: word.textContent,
+    }));
+    const body = panel.querySelector(".md:not(.md-value)");
+    const blocks = [...body.querySelectorAll("ins.df-blk, del.df-blk")].map((block) => ({
+        tag: block.tagName.toLowerCase(),
+        paragraph: block.querySelector("p")?.textContent ?? null,
+        words: wordMarks(block),
+    }));
+    const added = body.querySelector("ins.df-blk p");
+    const links = added === null ? null : {
+        terms: [...added.querySelectorAll("a.term")].map((link) => link.textContent),
+        refs: [...added.querySelectorAll("a.idref")].map((link) => link.getAttribute("data-id")),
+        wordsInLinks: added.querySelectorAll("a span.df-word, span.df-word a").length,
+    };
+    const rows = [...body.querySelectorAll("tr.df-row")].map((row) => ({
+        op: row.classList.contains("df-add") ? "add" : "del",
+        words: wordMarks(row),
+        signs: row.querySelectorAll(".df-sign").length,
+        signsInsideWords: [...row.querySelectorAll(".df-sign, .sr-only")]
+            .filter((sign) => sign.closest("span.df-word") !== null).length,
+    }));
+    return {blocks, words: wordMarks(body), links, rows};
+}"""
+
+
+def _body_entry(*, line: int, now: list[str], before: list[str]) -> dict[str, Any]:
+    """本文の `body_diff` を 1 つ持つ変更履歴の 1 回分を返す。"""
+    return {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": [{"line": line, "now": now, "before": before}],
+    }
+
+
+# 書き換える段落（1 つ目）・変えない段落（2 つ目）・消す段落（3 つ目）を持つ本文の今と、変えた回
+WORD_BODY_NOW = "要件は今週までに決める。\n\n変えない段落\n"
+WORD_BODY_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {
+            "line": 1,
+            "now": ["要件は今週までに決める。"],
+            "before": ["要件は来週までに決める。"],
+        },
+        {"line": 4, "now": [], "before": ["", "消す段落"]},
+    ],
+}
+
+
+def test_detail_panel_when_diff_inline_words(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """書き換えた段落の変わった語だけを囲み、消しただけの段落は囲まない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[WORD_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": WORD_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["blocks"] == [
+        {
+            "tag": "del",
+            "paragraph": "要件は来週までに決める。",
+            "words": [{"kind": "del", "text": "来週"}],
+        },
+        {
+            "tag": "ins",
+            "paragraph": "要件は今週までに決める。",
+            "words": [{"kind": "add", "text": "今週"}],
+        },
+        {"tag": "del", "paragraph": "消す段落", "words": []},
+    ]
+    # 変えない 2 つ目の段落にも、語の面は付かない
+    assert result["words"] == [
+        {"kind": "del", "text": "来週"},
+        {"kind": "add", "text": "今週"},
+    ]
+
+
+# 1 つ目の段落を消し、続く 2 つ目の段落の語を書き換えた本文の今と、変えた回（消した行 3 行・足した行 1 行）
+UNPAIRED_BODY_NOW = "要件は今週までに決める。\n"
+UNPAIRED_BODY_ENTRY = _body_entry(
+    line=1,
+    now=["要件は今週までに決める。"],
+    before=["消す段落", "", "要件は来週までに決める。"],
+)
+
+
+def test_detail_panel_when_diff_lines_unpaired(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """行の数が揃わない書き換えは語の面を付けない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[UNPAIRED_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": UNPAIRED_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["words"] == []
+    # 行の印は今までどおり
+    assert [block["tag"] for block in result["blocks"]] == ["del", "ins"]
+
+
+# 用語集の用語「要件」
+TERM_TITLE = "要件"
+
+# 用語と項目 D-2 の ID を含む段落の語を書き換えた本文の今と、変えた回
+LINKS_BODY_NOW = "要件は D-2 と今週までに決める。\n"
+LINKS_BODY_ENTRY = _body_entry(
+    line=1,
+    now=["要件は D-2 と今週までに決める。"],
+    before=["要件は D-2 と来週までに決める。"],
+)
+
+
+def test_detail_panel_when_diff_inline_words_keep_links(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """語の面を付けても、本文の用語の印と項目の ID のリンクは分けない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item("D-1", body="D-1.md", history=[LINKS_BODY_ENTRY], seq=1),
+            make_item("D-2"),
+        ],
+        terms=[make_item("G-1", title=TERM_TITLE)],
+        bodies={"D-1.md": LINKS_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["links"] == {
+        "terms": [TERM_TITLE],
+        "refs": ["D-2"],
+        "wordsInLinks": 0,
+    }
+    assert result["words"] == [
+        {"kind": "del", "text": "来週"},
+        {"kind": "add", "text": "今週"},
+    ]
+    added = [block for block in result["blocks"] if block["tag"] == "ins"]
+    assert [block["words"] for block in added] == [[{"kind": "add", "text": "今週"}]]
+
+
+# 本文の表の本体の行を書き換えた本文（見出し・区切り・1 行の表）の今と、変えた回
+TABLE_BODY_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
+TABLE_BODY_ENTRY = _body_entry(line=3, now=["| D-1 | 今週 |"], before=["| D-1 | 来週 |"])
+
+
+def test_detail_panel_when_diff_inline_words_in_table_row(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """表の行の対では、行の印を除いて比べ、書き換えたセルの語だけを囲む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[TABLE_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": TABLE_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["rows"] == [
+        {
+            "op": "del",
+            "words": [{"kind": "del", "text": "来週"}],
+            "signs": 1,
+            "signsInsideWords": 0,
+        },
+        {
+            "op": "add",
+            "words": [{"kind": "add", "text": "今週"}],
+            "signs": 1,
+            "signsInsideWords": 0,
+        },
+    ]
+
+
+# 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
+RAW_BODY_NOW = "# 図\n\n```mermaid\nflowchart TD\n  A[設計を決める] --> B\n```\n"
+RAW_BODY_ENTRY = _body_entry(
+    line=5, now=["  A[設計を決める] --> B"], before=["  A[仕様を決める] --> B"]
+)
+
+# 図の Raw の行（消した行・足した行・変えない行）ごとの語の面を調べる
+RAW_LINE_WORDS_SCRIPT = """() => [...document.querySelectorAll("pre.dg-raw.df-raw .df-line")].map((line) => ({
+    op: line.classList.contains("df-add") ? "add" : line.classList.contains("df-del") ? "del" : "same",
+    words: [...line.querySelectorAll("span.df-word")].map((word) => ({
+        kind: word.classList.contains("df-add") ? "add" : word.classList.contains("df-del") ? "del" : "none",
+        text: word.textContent,
+    })),
+}))"""
+
+
+def test_detail_panel_when_diff_raw_inline_words(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """図の Raw の変えた行の対に、変わった語だけの面を付ける（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[RAW_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": RAW_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    load_library("mermaid")
+    # 実行
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.wait_for_function("() => document.querySelector('pre.dg-raw.df-raw') !== null")
+    preview_page.click("button[data-act='diagram-raw']")
+    lines = preview_page.evaluate(RAW_LINE_WORDS_SCRIPT)
+    # 検証
+    # 語の面を持つ行は、消した行と足した行の 2 つだけ
+    words_by_op = {line["op"]: line["words"] for line in lines if line["words"]}
+    assert words_by_op == {
+        "del": [{"kind": "del", "text": "仕様"}],
+        "add": [{"kind": "add", "text": "設計"}],
+    }
+    assert sum(1 for line in lines if line["words"]) == len(words_by_op)
+
+
 # 資料・調査の説明とエイリアスの節の位置と中身、キーの一覧の行を調べる（markers の見出しとキーの要素を、中身の直下の子の位置で返す）
 DESCRIPTION_ALIASES_SCRIPT = (
     OPEN_PANEL_FUNCTION
