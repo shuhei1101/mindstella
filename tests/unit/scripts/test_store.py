@@ -1285,6 +1285,41 @@ def test_validate_workspace_when_decision_state(
 
 
 @pytest.mark.parametrize(
+    ("docs_extra", "research_extra", "expected"),
+    [
+        pytest.param(
+            {"aliases": ["特殊効果"], "description": "演出の説明"},
+            {"aliases": ["特殊効果"], "description": "調査の説明"},
+            [],
+            id="with_aliases_and_description",
+        ),
+        pytest.param({}, {}, [], id="without_aliases_and_description"),
+        pytest.param(
+            {"aliases": ["特殊効果", ""]},
+            {},
+            [("docs.yaml", "items[0].aliases[1]")],
+            id="empty_alias",
+        ),
+    ],
+)
+def test_validate_workspace_when_aliases(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    docs_extra: dict[str, Any],
+    research_extra: dict[str, Any],
+    expected: list[tuple[str, str]],
+) -> None:
+    """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", **docs_extra), make_item("R-1", **research_extra))
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = store.validate_workspace(workspace)
+    # 検証
+    assert [(problem.file, problem.key) for problem in problems] == expected
+
+
+@pytest.mark.parametrize(
     ("kept_d2", "changed_d1", "expected_legacy", "expected_id"),
     [
         pytest.param({"options": []}, {"lead": "直した"}, True, "D-2", id="other_item_mismatch"),

@@ -1,4 +1,4 @@
-"""開発側の点検：ワークスペースの形（スキーマ）を変えた PR が、版を上げて移し替えの手順を足しているか。
+"""開発側の点検：ワークスペースの形（スキーマ）を変えた PR（任意のキーを足すだけの変更を除く）が、版を上げて移し替えの手順を足しているか。
 
 今のワークスペースがそのまま読める変更は、手順の代わりに `migrations/no-steps.yaml` に変えたスキーマの中身のハッシュを載せて通す。
 
@@ -8,8 +8,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -65,13 +67,45 @@ def _schema_names_at(tag: Version) -> set[str]:
     return {Path(name).name for name in listed if Path(name).name != STEPS_SCHEMA_NAME}
 
 
+def _without_added_optional_keys(*, tagged: Any, current: Any) -> Any:
+    """今のスキーマから、タグの時点に無かった任意のキー（`properties` に増えて `required` に入っていないもの）を除いて返す。"""
+    # 入れ子のオブジェクト: キーごとに、タグの時点の同じ場所と比べる
+    if isinstance(tagged, dict) and isinstance(current, dict):
+        required = set(current.get("required", []))
+        result: dict[str, Any] = {}
+        for key, value in current.items():
+            tagged_properties = tagged.get("properties")
+            if key == "properties" and isinstance(value, dict) and isinstance(tagged_properties, dict):
+                # 増えたキーのうち、任意のものは除く（必須のものは残し、差として見える）
+                result[key] = {
+                    name: _without_added_optional_keys(tagged=tagged_properties.get(name), current=sub)
+                    for name, sub in value.items()
+                    if name in tagged_properties or name in required
+                }
+            else:
+                result[key] = _without_added_optional_keys(tagged=tagged.get(key), current=value)
+        return result
+    # 同じ長さの配列: 要素ごとに比べる
+    if isinstance(tagged, list) and isinstance(current, list) and len(tagged) == len(current):
+        return [
+            _without_added_optional_keys(tagged=before, current=after)
+            for before, after in zip(tagged, current, strict=True)
+        ]
+    return current
+
+
+def _schema_change_needs_migration(*, tagged: dict[str, Any], current: dict[str, Any]) -> bool:
+    """タグの時点のスキーマから今のスキーマへの違いが、任意のキーを足しただけに限られなければ真を返す。"""
+    return _without_added_optional_keys(tagged=tagged, current=current) != tagged
+
+
 def _schema_hash(text: str) -> str:
     """スキーマの中身（UTF-8 の文字列）の SHA-256 を 16 進で返す。"""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _changed_schemas_since(tag: Version) -> tuple[list[str], list[str]]:
-    """タグの時点にあったスキーマのうち、消えたものと中身が変わったものの名前を返す（足したファイルは比べない）。"""
+    """タグの時点にあったスキーマのうち、消えたものと、任意のキーを足しただけでない違いがあるものの名前を返す（足したファイルは比べない）。"""
     current_dir = REPO_ROOT / SCHEMA_RELATIVE_DIR
     removed: list[str] = []
     changed: list[str] = []
@@ -80,9 +114,11 @@ def _changed_schemas_since(tag: Version) -> tuple[list[str], list[str]]:
         if not (current_dir / name).exists():
             removed.append(name)
             continue
-        # タグの時点にあったファイルの中身の違い
+        # タグの時点にあったファイルの中身の違い（任意のキーを足しただけなら、既存のワークスペースがそのまま通るので変わりとしない）
         shown = _git("show", f"{tag}:{SCHEMA_RELATIVE_DIR}/{name}")
-        if shown.stdout != (current_dir / name).read_text(encoding="utf-8"):
+        tagged_schema = json.loads(shown.stdout)
+        current_schema = json.loads((current_dir / name).read_text(encoding="utf-8"))
+        if _schema_change_needs_migration(tagged=tagged_schema, current=current_schema):
             changed.append(name)
     return removed, changed
 
@@ -105,7 +141,7 @@ def _unlisted_schemas(changed: list[str]) -> list[str]:
 
 
 def test_schema_changes_have_migration() -> None:
-    """最新のタグからスキーマが変わったら、手順の要らない変更の一覧に今の中身で載るか、タグより新しくプラグインの版以下の手順がある（正常系）。"""
+    """最新のタグからスキーマが任意のキーの追加より大きく変わったら、手順の要らない変更の一覧に今の中身で載るか、タグより新しくプラグインの版以下の手順がある（正常系）。"""
     # 準備
     latest = _latest_tag()
     if latest is None:
@@ -134,3 +170,89 @@ def test_plugin_version_not_behind_release_version() -> None:
     plugin_version = versions.read_plugin_version()
     # 検証
     assert plugin_version >= release_version
+
+
+# 項目の形のスキーマ（`items` の中に `properties` と `required` を持つ）
+BASE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {"id": {"type": "string"}, "title": {"type": "string"}},
+                "additionalProperties": False,
+            },
+        }
+    },
+}
+
+
+def _with_item_schema(**changes: Any) -> dict[str, Any]:
+    """BASE_SCHEMA の `items` の中の項目のスキーマに、渡した値を重ねた写しを返す。"""
+    schema = json.loads(json.dumps(BASE_SCHEMA))
+    schema["properties"]["items"]["items"].update(changes)
+    return schema
+
+
+@pytest.mark.parametrize(
+    ("current", "expected"),
+    [
+        pytest.param(BASE_SCHEMA, False, id="same"),
+        pytest.param(
+            _with_item_schema(
+                properties={
+                    "id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                }
+            ),
+            False,
+            id="optional_key_added",
+        ),
+        pytest.param(
+            _with_item_schema(
+                required=["id", "kind"],
+                properties={
+                    "id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "kind": {"type": "string"},
+                },
+            ),
+            True,
+            id="required_key_added",
+        ),
+        pytest.param(
+            _with_item_schema(properties={"id": {"type": "integer"}, "title": {"type": "string"}}),
+            True,
+            id="key_type_changed",
+        ),
+        pytest.param(
+            _with_item_schema(properties={"id": {"type": "string"}}),
+            True,
+            id="key_removed",
+        ),
+        pytest.param(_with_item_schema(additionalProperties=True), True, id="additional_changed"),
+        pytest.param(
+            _with_item_schema(
+                properties={
+                    "id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "aliases": {"type": "array"},
+                },
+                additionalProperties=True,
+            ),
+            True,
+            id="optional_key_added_with_other_change",
+        ),
+    ],
+)
+def test_schema_change_needs_migration(current: dict[str, Any], expected: bool) -> None:
+    """任意のキーを足しただけの違いは手順を求めず、それ以外の違いは求める（正常系）。"""
+    # 準備
+    tagged = BASE_SCHEMA
+    # 実行
+    result = _schema_change_needs_migration(tagged=tagged, current=current)
+    # 検証
+    assert result is expected

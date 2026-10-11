@@ -1,0 +1,3 @@
+$ pytest tests/integration/storybook/test_table_stories.py
+..............                                                           [100%]
+14 passed in 17.27s

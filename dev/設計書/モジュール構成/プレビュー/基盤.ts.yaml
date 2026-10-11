@@ -1238,12 +1238,12 @@ functions:
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`data-heading` が `保存先`・`決め方`・`決め方-1`。見出しごとに # が 1 つ。押すと `onHeading` にその名前が渡り、`[決め方]`（`href` はエンコードされた `#決め方`）は `決め方`、`[無い]` は呼ばず、URL のハッシュも変わらない'
   - name: linkBody
-    title: 本文の用語と項目の ID の印
+    title: 本文の印と項目の ID のリンク
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 描いた本文の文中の、用語集の用語を印に、記録にある項目の ID をリンクにする
+    summary: 描いた本文の文中の、用語集の用語と資料・調査のエイリアスを本文の印に、記録にある項目の ID をリンクにする
     args:
       - name: root
         type: HTMLElement
@@ -1254,25 +1254,26 @@ functions:
         type: RecordIndex
         required: true
         passing: keyword
-        description: 索引（用語は `data.terms` のタイトル、ID は `byId`）
+        description: 索引（用語は `data.terms` のタイトル、資料・調査は `data.docs`・`data.research` の `aliases`、ID は `byId`）
       - name: selfId
         type: string
         required: true
         passing: keyword
-        description: 開いている項目の ID（その項目自身の ID と、用語ならその用語には付けない）
+        description: 開いている項目の ID（その項目自身の ID にはリンクを付けず、その項目は印に当てる項目に含めない）
       - name: onOpen
         type: '(id: string) => void'
         required: true
         passing: keyword
-        description: 印かリンクを押したときにその項目の ID を知らせる（使う側が詳細へ移り、履歴に積む）
+        description: ID のリンクと、用語だけに一致した印を押したときにその項目の ID を知らせる（使う側が詳細へ移り、履歴に積む）。資料・調査にも一致した印では呼ばない
     returns:
       type: void
       description: '-'
     process: |-
-      1. 本文の文字のノードをたどる。`pre`・図の入れ物・`a`・h1〜h6 の中は飛ばす。インラインコード（`pre` の外の `code`）は、中身がちょうど用語か記録にある ID のときだけ `code` ごと当てる
-      2. 用語は長いものから順に当て、英数字だけの用語は前後が英数字でないときだけ当てる。出てくる全ての箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id`・`aria-describedby` でツールチップを指す）で包む
-      3. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものは当てない
-      4. 包んだ要素を押したら既定の動作を止めて `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
+      1. 印に当てる語 → 一致した項目の ID の対応を作る。用語はタイトル、資料・調査は `aliases` の各語を、前後の空白を落として用語 → 資料 → 調査の順に積む。`selfId` の項目、`withdrawn` が真の資料・調査、空の語は積まない。同じ項目の同じ語は 1 つにまとめる
+      2. 本文の文字のノードをたどる。`pre`・図の入れ物・`a`・h1〜h6 の中は飛ばす。インラインコード（`pre` の外の `code`）は、中身がちょうど語か記録にある ID のときだけ `code` ごと当てる
+      3. 語は長いものから順に当て、英数字だけの語は前後が英数字でないときだけ当てる。出てくる全ての箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id` に先頭の項目・`data-ids` に一致した全ての項目を空白区切りで）で包む。用語だけに一致した印は `aria-describedby`、資料・調査にも一致した印は `aria-details` でツールチップを指す
+      4. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものと `selfId` は当てない
+      5. 包んだ要素を押したら既定の動作を止める。ID のリンクと用語だけに一致した印は `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
     unit_tests:
       - name: test_link_body
         case: 正常
@@ -1286,6 +1287,12 @@ functions:
         condition: '`selfId` が G-1 で、本文に「保存先」と「G-1」'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 「保存先」にも「G-1」にも印・リンクが無い
+      - name: test_link_body_when_aliases
+        case: 正常
+        summary: 資料・調査のエイリアスにも印を付け、同じ語の項目を 1 つの印にまとめる
+        condition: '用語 G-1「特殊効果」、エイリアス「特殊効果」を持つ資料 A-2・調査 R-1、エイリアス「エフェクト」を持つ資料 A-2、エイリアス「特殊効果」を持つ取り下げた資料 A-8 と、エイリアス「古い語」だけを持つ取り下げた資料 A-9 の索引。本文の段落「特殊効果とエフェクトと古い語」。`parametrize`: `selfId` が A-1 / A-2'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「特殊効果」の印の `data-ids` が `G-1 A-2 R-1`、「エフェクト」が `A-2` で `aria-details` を持ち、「古い語」には印が無い。「特殊効果」の印を押しても `onOpen` が呼ばれない / `data-ids` が `G-1 R-1` で、「エフェクト」には印が無い
   - name: lockTap
     title: ロックの押下の判定
     container: plugins/mindstella/skills/mindmap/preview/core/lock.ts

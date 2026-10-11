@@ -1157,3 +1157,243 @@ def test_detail_panel_when_withdrawn(
     )
     # 検証
     assert result == expected
+
+
+# 資料・調査の説明とエイリアスの節の位置と中身、キーの一覧の行を調べる（markers の見出しとキーの要素を、中身の直下の子の位置で返す）
+DESCRIPTION_ALIASES_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id, markers}) => {
+    const panel = await openPanel(data, id);
+    const detail = panel.querySelector(".detail");
+    const position = (element) => {
+        let node = element;
+        while (node !== null && node.parentElement !== detail) node = node.parentElement;
+        return node === null ? -1 : [...detail.children].indexOf(node);
+    };
+    const find = (marker) => marker.heading !== undefined
+        ? [...panel.querySelectorAll("h3")].find((element) => (element.textContent ?? "").trim() === marker.heading) ?? null
+        : panel.querySelector(`[data-key="${marker.key}"]`);
+    const descriptionSection = find({heading: "説明"});
+    const aliasSection = find({heading: "エイリアス"});
+    return {
+        positions: markers.map((marker) => position(find(marker))),
+        descriptionKeyed: descriptionSection?.parentElement.querySelector('[data-key="description"]') != null,
+        tags: [...(aliasSection?.parentElement.querySelectorAll(".tag") ?? [])].map((tag) => tag.textContent),
+        metaLabels: [...panel.querySelectorAll("dl.d-meta dt")].map((label) => label.textContent),
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "markers", "present", "tags"),
+    [
+        pytest.param(
+            "A-1",
+            [{"heading": "説明"}, {"heading": "エイリアス"}, {"heading": "本文"}],
+            True,
+            ["特殊効果", "エフェクト"],
+            id="docs",
+        ),
+        pytest.param(
+            "R-1",
+            [
+                {"key": "question"},
+                {"heading": "説明"},
+                {"key": "conclusion"},
+                {"heading": "エイリアス"},
+                {"heading": "調査の観点"},
+            ],
+            True,
+            ["特殊効果", "エフェクト"],
+            id="research",
+        ),
+        pytest.param("A-2", [{"heading": "説明"}, {"heading": "エイリアス"}], False, [], id="neither"),
+    ],
+)
+def test_detail_panel_when_description_aliases(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    markers: list[dict[str, str]],
+    present: bool,
+    tags: list[str],
+) -> None:
+    """資料・調査の説明とエイリアスを決めた位置の節に出す（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[
+            make_item("A-1", description="演出の説明", aliases=["特殊効果", "エフェクト"]),
+            make_item("A-2"),
+        ],
+        research=[
+            make_item(
+                "R-1",
+                question="何を調べたか",
+                description="調査の説明",
+                conclusion="調べた結論",
+                aliases=["特殊効果", "エフェクト"],
+                angles=["観点 1"],
+            )
+        ],
+        bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        DESCRIPTION_ALIASES_SCRIPT, {"data": data, "id": item_id, "markers": markers}
+    )
+    # 検証
+    assert (-1 not in result["positions"]) == present
+    assert (result["positions"] == sorted(set(result["positions"]))) == present
+    assert result["descriptionKeyed"] == present
+    assert result["tags"] == tags
+    assert not {"description", "aliases", "説明", "エイリアス"} & set(result["metaLabels"])
+
+
+# 本文に印を持つ A-1 を開く（用語 G-1「特殊効果」・G-2「保存先」と、エイリアス「特殊効果」を持つ資料 A-2・調査 R-1）。on.open は呼ばれた ID を window.__calls に積む
+OPEN_ALIAS_TIP_FUNCTION = """const openAliasTip = async ({data, full}) => {
+    window.__calls = {open: [], full: 0};
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full,
+        on: {
+            open: (id) => window.__calls.open.push(id),
+            close: noop,
+            full: () => { window.__calls.full += 1; },
+            back: noop, forward: noop, diagram: noop, heading: noop,
+        },
+        comment: null,
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    // 全画面は開き、横のパネルは画面と同じく open を付けて見せる
+    if (full) panel.showModal();
+    else panel.classList.add("open");
+    window.__panel = panel;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+};"""
+
+
+OPEN_ALIAS_TIP_SCRIPT = OPEN_ALIAS_TIP_FUNCTION + "\n(args) => openAliasTip(args)"
+
+
+def _alias_tip_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
+    """本文に「特殊効果」と「保存先」を持つ A-1 と、それらに一致する用語・資料・調査を持つ埋め込みのデータを返す。"""
+    return make_data(
+        terms=[
+            make_item("G-1", title="特殊効果", meaning="演出の用語"),
+            make_item("G-2", title="保存先", meaning="置き場所の用語"),
+        ],
+        docs=[
+            make_item("A-1", body="A-1.md"),
+            make_item("A-2", title="効果の資料", aliases=["特殊効果"], description="資料の説明"),
+        ],
+        research=[make_item("R-1", title="効果の調査", aliases=["特殊効果"])],
+        bodies={"A-1.md": "特殊効果と保存先\n"},
+    )
+
+
+def test_detail_panel_when_alias_tip(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """資料・調査にも一致した印は押すとツールチップを残し、中のリンクで移る（正常系）。"""
+    # 準備
+    data = _alias_tip_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    preview_page.evaluate(
+        OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False}
+    )
+    links = preview_page.locator("a.tt-link")
+    mark = preview_page.locator("a.term", has_text="特殊効果")
+    # 実行
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown = links.evaluate_all("(items) => items.map((item) => item.getAttribute('data-id'))")
+    mark.click()
+    # ポインターを印から外し、隠す待ち（150 ミリ秒）より長く待つ
+    preview_page.mouse.move(1, 1)
+    preview_page.wait_for_timeout(400)
+    pinned = links.first.is_visible()
+    after_pin = preview_page.evaluate("() => window.__calls.open")
+    links.filter(has_text="効果の資料").click()
+    links.first.wait_for(state="hidden")
+    after_link = preview_page.evaluate("() => window.__calls.open")
+    preview_page.locator("a.term", has_text="保存先").click()
+    after_term = preview_page.evaluate("() => window.__calls.open")
+    # 押して残したまま、詳細パネルを描き直す（古いパネルとその中のツールチップが文書から外れる）
+    mark.click()
+    preview_page.evaluate("() => window.__panel.remove()")
+    preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
+    preview_page.mouse.move(1, 1)
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown_after_redraw = links.evaluate_all("(items) => items.map((item) => item.getAttribute('data-id'))")
+    # 検証
+    assert shown == ["G-1", "A-2", "R-1"]
+    assert (pinned, after_pin) == (True, [])
+    assert after_link == ["A-2"]
+    assert after_term == ["A-2", "G-2"]
+    assert shown_after_redraw == ["G-1", "A-2", "R-1"]
+
+
+# 全画面でツールチップの中にフォーカスを移して Esc を押した後の、フォーカスの場所・ツールチップの見え方・知らせた回数と全画面の開き具合
+READ_ALIAS_TIP_STATE_SCRIPT = """() => ({
+    active: document.activeElement?.matches("a.term") ? "mark" : document.activeElement?.className ?? "",
+    full: window.__calls.full,
+    open: window.__panel.open,
+})"""
+
+
+def test_detail_panel_when_alias_tip_escape_in_full(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全画面でツールチップの中にフォーカスがあるときの Esc は、ツールチップだけを閉じて印へ戻す（正常系）。"""
+    # 準備
+    data = _alias_tip_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    preview_page.evaluate(
+        OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": True}
+    )
+    links = preview_page.locator("a.tt-link")
+    preview_page.locator("a.term", has_text="特殊効果").focus()
+    links.first.wait_for(state="visible")
+    # 印から Tab で中の最初のリンクへ移す
+    preview_page.keyboard.press("Tab")
+    in_link = preview_page.evaluate("() => document.activeElement?.matches('a.tt-link') === true")
+    # 実行
+    preview_page.keyboard.press("Escape")
+    links.first.wait_for(state="hidden")
+    # 検証
+    assert in_link is True
+    assert preview_page.evaluate(READ_ALIAS_TIP_STATE_SCRIPT) == {
+        "active": "mark",
+        "full": 0,
+        "open": True,
+    }

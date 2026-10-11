@@ -6,6 +6,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
+from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
 from preview_body_scroll_helpers import (
     LONG_BODY,
     LONG_LINES_BODY,
@@ -515,6 +516,67 @@ def test_body_escape_returns_to_panel(
     page.wait_for_selector("aside.panel.open")
     assert page.locator("dialog.full").count() == 0
     assert "id=A-1" in page.evaluate("location.hash")
+
+
+def test_body_alias_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文の印のツールチップはモーダルの中に置き、その中のタイトルを押すと全画面のままその項目へ移って履歴に積む（正常系）。"""
+    # 準備
+    url = write_alias_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&full=1")
+    page.wait_for_selector(f"{FULL_MARKS}")
+    history_length = page.evaluate("history.length")
+    # 実行
+    page.hover(f"{FULL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    in_modal = page.evaluate("document.getElementById('term-tip').closest('dialog.full') !== null")
+    page.click(f'{TIP} a.tt-link[data-id="A-2"]')
+    # 検証
+    page.wait_for_function(
+        "document.querySelector('dialog.full .d-title')?.textContent === '特殊効果のスキーマ'"
+    )
+    assert in_modal is True
+    assert page.locator("dialog.full[open]").count() == 1
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_alias_tooltip_when_escaped(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ツールチップを出している間の Esc はツールチップだけを閉じ、全画面を閉じない。次の Esc で元の大きさ（詳細パネル）に戻る。ツールチップの中にフォーカスがあるときの Esc は、フォーカスを印へ戻す（正常系）。"""
+    # 準備
+    url = write_alias_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&full=1")
+    page.wait_for_selector(f"{FULL_MARKS}")
+    mixed = f"{FULL_MARKS} >> nth=0"
+    # 実行（乗せて出し、Esc）
+    page.hover(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    still_full = page.locator("dialog.full[open]").count()
+    full_hash = page.evaluate("location.hash.includes('full=1')")
+    # 実行（フォーカスして中のリンクへ移り、Esc）
+    page.mouse.move(2, 2)
+    page.focus(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    page.keyboard.press("Tab")
+    in_link = page.evaluate("document.activeElement.matches('#term-tip a.tt-link')")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    back_on_mark = page.evaluate("document.activeElement.matches('dialog.full a.term')")
+    still_full_after_link = page.locator("dialog.full[open]").count()
+    # 実行（ツールチップが無いときの Esc で、全画面を元の大きさに戻す）
+    page.keyboard.press("Escape")
+    # 検証
+    assert still_full == 1
+    assert full_hash is True
+    assert in_link is True
+    assert back_on_mark is True
+    assert still_full_after_link == 1
+    page.wait_for_selector("aside.panel.open")
+    assert page.locator("dialog.full").count() == 0
 
 
 def test_size(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:

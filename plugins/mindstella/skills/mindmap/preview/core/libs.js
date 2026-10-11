@@ -311,6 +311,7 @@ var MindmapPreview;
             params.set("h", heading);
         return `#${params.toString()}`;
     }
+    MindmapPreview.hashWith = hashWith;
     /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする。押したときは既定の動作を止め、見出しの名前を `onHeading` に知らせる */
     function linkHeadings({ root, onHeading }) {
         // 本文の中の `[文言](#見出し)` のリンク（# のリンクを足す前の分）。同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
@@ -354,17 +355,29 @@ var MindmapPreview;
     MindmapPreview.linkHeadings = linkHeadings;
     /** 英数字と記号だけの用語か（ファイル名・識別子の一部に当てないよう、語の切れ目でだけ当てる） */
     const ASCII_TERM = /^[!-~ ]+$/;
-    /** 描いた本文の文中の、用語集の用語を印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど用語か ID のときだけ当てる。押したときは既定の動作を止め、その項目の ID を `onOpen` に知らせる */
+    /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
+    MindmapPreview.MARK_KINDS = ["terms", "docs", "research"];
+    /** 描いた本文の文中の、用語集の用語と資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語だけに一致した印はその項目の ID を `onOpen` に知らせる（資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
     function linkBody({ root, index, selfId, onOpen, }) {
-        // 項目自身の用語と、タイトルが空の用語には付けない。長い用語から順に当てる
-        const terms = index.data.terms
-            .filter((term) => term.id !== selfId && term.title.trim() !== "")
-            .sort((a, b) => b.title.length - a.title.length);
-        const byTitle = new Map(terms.map((term) => [term.title, term]));
+        // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
+        const byWord = new Map();
+        for (const kind of MindmapPreview.MARK_KINDS) {
+            for (const item of index.data[kind]) {
+                if (item.id === selfId || (kind !== "terms" && item.withdrawn === true))
+                    continue;
+                const words = kind === "terms" ? [item.title] : (item.aliases ?? []);
+                // 同じ項目の同じ語は 1 つにまとめる
+                for (const word of new Set(words.map((value) => value.trim()).filter((value) => value !== ""))) {
+                    byWord.set(word, [...(byWord.get(word) ?? []), item.id]);
+                }
+            }
+        }
+        // 長い語から順に当てる
+        const words = [...byWord.keys()].sort((a, b) => b.length - a.length);
         const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const termPattern = (title) => ASCII_TERM.test(title) ? `(?<![A-Za-z0-9_.-])${escape(title)}(?![A-Za-z0-9_-])` : escape(title);
-        // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い用語の順
-        const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...terms.map((term) => termPattern(term.title))].join("|"), "g");
+        // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い語の順
+        const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...words.map((word) => termPattern(word))].join("|"), "g");
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
             acceptNode: (node) => node.parentElement?.closest("pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6") !== null
                 ? NodeFilter.FILTER_REJECT
@@ -375,28 +388,33 @@ var MindmapPreview;
             nodes.push(node);
         for (const node of nodes) {
             const text = node.textContent ?? "";
-            // インラインコードは、中身がちょうど用語か ID のときだけ（パスや識別子の一部には付けない）
+            // インラインコードは、中身がちょうど語か ID のときだけ（パスや識別子の一部には付けない）
             const inCode = node.parentElement?.closest("code") !== null;
             const parts = [];
             let last = 0;
             for (const match of text.matchAll(pattern)) {
                 const word = match[0];
-                const term = byTitle.get(word);
-                const isId = term === undefined;
+                const ids = byWord.get(word);
+                const isId = ids === undefined;
                 // 記録に無い ID・項目自身の ID・コードの一部は、そのままにする
                 if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word))
                     continue;
-                const target = isId ? word : term.id;
+                const target = isId ? word : ids[0];
+                // 資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
+                const withDocs = !isId && ids.some((id) => index.byId.get(id)?.kind !== "terms");
                 parts.push(text.slice(last, match.index), MindmapPreview.h({
                     tag: "a",
                     attrs: {
                         class: isId ? "idref" : "term",
                         href: hashWith({ id: target, heading: null }),
                         "data-id": target,
-                        "aria-describedby": isId ? null : MindmapPreview.TERM_TIP_ID,
+                        "data-ids": isId ? null : ids.join(" "),
+                        "aria-describedby": isId || withDocs ? null : MindmapPreview.TERM_TIP_ID,
+                        "aria-details": withDocs ? MindmapPreview.TERM_TIP_ID : null,
                         onclick: (event) => {
                             event.preventDefault();
-                            onOpen(target);
+                            if (isId || !withDocs)
+                                onOpen(target);
                         },
                     },
                     children: [word],

@@ -379,6 +379,16 @@ tables:
         title: 理由
         type: string
         description: 取り下げた理由
+      - name: aliases
+        title: エイリアス
+        type: array
+        description: 任意。本文で一致させる語（空でない文字列）の配列。プレビューは本文の語がこれに一致すると、用語と同じツールチップにこの項目を出す。タグ（`tags`）とは別のキー。無ければ一致させる語を持たない
+        example: '[特殊効果の描画]'
+      - name: description
+        title: 説明
+        type: string
+        description: 任意。タイトルだけでは中身が分からないときに、中身を表す短い文。プレビューのツールチップと詳細に出す
+        example: ノードを 1〜8 個重ねたときのフレームレートの測り方と結果
   - name: docs.yaml
     title: 資料
     datastore: YAML
@@ -420,6 +430,16 @@ tables:
         title: 理由
         type: string
         description: 取り下げた理由
+      - name: aliases
+        title: エイリアス
+        type: array
+        description: 任意。本文で一致させる語（空でない文字列）の配列。プレビューは本文の語がこれに一致すると、用語と同じツールチップにこの項目を出す。タグ（`tags`）とは別のキー。無ければ一致させる語を持たない
+        example: '[特殊効果]'
+      - name: description
+        title: 説明
+        type: string
+        description: 任意。タイトルだけでは中身が分からないときに、中身を表す短い文。プレビューのツールチップと詳細に出す
+        example: 特殊効果の設定ファイルのキーと型
   - name: terms.yaml
     title: 用語集
     datastore: YAML

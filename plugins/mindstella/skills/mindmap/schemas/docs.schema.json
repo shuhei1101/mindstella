@@ -98,6 +98,18 @@
           ],
           "description": "資料の状態。納品物は `完成` でできたとみなす"
         },
+        "aliases": {
+          "type": "array",
+          "description": "本文で一致させる語。プレビューは本文の語がこれに一致すると、用語と同じツールチップにこの資料を出す。タグ（`tags`）とは別のキー",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "タイトルだけでは中身が分からないときの短い説明。ツールチップと詳細に出す"
+        },
         "body": {
           "type": "string",
           "description": "`docs/` の本文のファイル名。Markdown は `{ID}.md`、HTML は `{ID}.html`",

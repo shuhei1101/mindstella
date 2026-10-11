@@ -442,3 +442,249 @@ def test_normal_when_withdrawn(
     # 検証（取り下げの印も理由も出ない）
     assert page.locator("aside.panel .wd-badge").count() == 0
     assert page.locator('aside.panel [data-key="reason"]').count() == 0
+
+
+# 本文の語に一致する資料・調査のエイリアスと、もう 1 つのエイリアス
+ALIAS_WORD = "特殊効果"
+OTHER_ALIAS_WORD = "エフェクト"
+
+# 「特殊効果」に一致する資料 A-2～A-7 のうち、A-4 から後の資料の番号
+EXTRA_DOC_NUMBERS = range(4, 8)
+
+# A-1 の本文で、印の段落の前と後に置く段落の数（本文を送れる長さにし、印を画面の中ほどへ置けるようにする）
+ALIAS_BODY_FILLER = 20
+
+# A-1 の本文: 「特殊効果」と「エフェクト」を持つ段落を、語を持たない段落ではさむ
+ALIAS_BODY = (
+    "".join(f"段落 {number}\n\n" for number in range(ALIAS_BODY_FILLER))
+    + "特殊効果とエフェクトを重ねる\n\n"
+    + "".join(f"続きの段落 {number}\n\n" for number in range(ALIAS_BODY_FILLER))
+)
+
+# 本文の印・ツールチップ（開いている間）の選び方
+BODY_MARKS = "aside.panel .md:not(.md-value) p a.term"
+TIP = "#term-tip"
+TIP_OPEN = "#term-tip:popover-open"
+
+# ツールチップの最大の高さ（px）と、中を送るホイールの量・回数
+TIP_MAX_HEIGHT_PX = 360
+TIP_WHEEL_DELTA_PX = 600
+TIP_WHEEL_TIMES = 6
+
+# 高さに余裕のある画面（上に出す 360px のツールチップが印の上に収まる高さ）
+TALL_SIZE = (1280, 1000)
+
+# ツールチップの中身（種類ごとの見出し・項目のリンクと文・絞り込みの入力・区切り線）を読む
+READ_TIP_SCRIPT = """() => {
+    const tip = document.getElementById('term-tip');
+    return {
+        kinds: [...tip.querySelectorAll('.tt-kind')].map((e) => e.textContent),
+        links: [...tip.querySelectorAll('a.tt-link')].map((a) => [a.dataset.id, a.textContent]),
+        bodies: [...tip.querySelectorAll('.tt-item')].map((li) => [
+            li.querySelector('a.tt-link').dataset.id,
+            li.querySelector('.tt-body')?.textContent ?? null,
+        ]),
+        inputs: tip.querySelectorAll('input, textarea, [role="searchbox"]').length,
+        groupLine: getComputedStyle(tip.querySelectorAll('.tt-group')[1]).borderTopWidth,
+    };
+}"""
+
+
+def _alias_records(make_item: MakeItem) -> list[dict[str, Any]]:
+    """用語 G-1・エイリアスを持たない資料 A-1・「特殊効果」に一致する資料 A-2～A-7 と調査 R-1・取り下げた資料 A-8 を返す。"""
+    extra_docs = [
+        make_item(
+            f"A-{number}",
+            title=f"追加の資料 {number}",
+            aliases=[ALIAS_WORD],
+            description=f"追加の資料 {number} の説明",
+        )
+        for number in EXTRA_DOC_NUMBERS
+    ]
+    return [
+        make_item("G-1", title=ALIAS_WORD, meaning="画面に重ねる演出"),
+        make_item("A-1"),
+        make_item(
+            "A-2",
+            title="特殊効果のスキーマ",
+            aliases=[ALIAS_WORD, OTHER_ALIAS_WORD],
+            description="特殊効果の設定ファイルのキーと型",
+        ),
+        make_item(
+            "A-3", title="炎ノード", aliases=[ALIAS_WORD], description="炎の見た目を決めるノード"
+        ),
+        *extra_docs,
+        make_item(
+            "A-8",
+            title="古い資料",
+            aliases=[ALIAS_WORD],
+            withdrawn=True,
+            reason="別の資料にまとめた",
+        ),
+        make_item(
+            "R-1",
+            title="特殊効果を重ねたときの描画の負荷",
+            aliases=[ALIAS_WORD],
+            description="ノードを 1〜8 個重ねたときの測り方と結果",
+        ),
+    ]
+
+
+def _alias_bodies() -> dict[str, str]:
+    """A-1 は印を持つ長い本文、A-2 は「特殊効果」を持つ本文、ほかの資料は語を持たない本文にする。"""
+    bodies = {f"A-{number}.md": f"資料 A-{number} の本文\n" for number in range(2, 9)}
+    bodies["A-1.md"] = ALIAS_BODY
+    bodies["A-2.md"] = "特殊効果を重ねる\n"
+    return bodies
+
+
+def _tip_ids(page: Page) -> list[str]:
+    """開いているツールチップに並ぶ項目の ID を返す。"""
+    return page.eval_on_selector_all(f"{TIP} a.tt-link", "links => links.map(a => a.dataset.id)")
+
+
+def _wheel_through_tip(page: Page) -> None:
+    """ツールチップの真ん中にカーソルを置き、ホイールを回して中を末尾まで送る。"""
+    box = page.locator(TIP).bounding_box()
+    assert box is not None
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    for _ in range(TIP_WHEEL_TIMES):
+        page.mouse.wheel(0, TIP_WHEEL_DELTA_PX)
+        page.wait_for_timeout(60)
+    page.wait_for_timeout(300)
+
+
+def _section_text(page: Page, heading: str) -> str:
+    """詳細パネルの見出し付きの節の文字を返す。"""
+    return page.inner_text(f"aside.panel .d-sec:has(h3:text-is('{heading}'))")
+
+
+def test_normal_when_aliases_matched(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """本文の語に一致した資料・調査をツールチップで読み、押して残して中を送り、リンクで詳細へ移る。キーボードでも同じツールチップを読める（正常系）。"""
+    # 準備
+    url = serve_preview(
+        *_alias_records(make_item), settings=valid_settings, bodies=_alias_bodies()
+    )
+    page = open_preview(url, "#tab=docs&view=table&id=A-1", width=TALL_SIZE[0], height=TALL_SIZE[1])
+    page.wait_for_selector(BODY_MARKS)
+    hash_before = page.evaluate("location.hash")
+    # 実行（A-1 の本文の印）
+    marks = page.eval_on_selector_all(
+        BODY_MARKS,
+        "a => a.map(x => [x.textContent, x.dataset.ids, getComputedStyle(x).textDecorationLine, getComputedStyle(x).textDecorationStyle])",
+    )
+    # 印を画面の中ほどへ送り、「エフェクト」に乗せる
+    page.locator(BODY_MARKS).first.evaluate("e => e.scrollIntoView({block: 'center'})")
+    page.hover(f"{BODY_MARKS} >> nth=1")
+    page.wait_for_selector(TIP_OPEN)
+    other_ids = _tip_ids(page)
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（「特殊効果」の印に乗せる）
+    mark = f"{BODY_MARKS} >> nth=0"
+    page.hover(mark)
+    page.wait_for_selector(TIP_OPEN)
+    page.wait_for_timeout(200)
+    tip = page.evaluate(READ_TIP_SCRIPT)
+    placement = page.evaluate(
+        """() => {
+            const m = document.querySelector('aside.panel .md a.term').getBoundingClientRect();
+            const t = document.getElementById('term-tip');
+            return {
+                above: t.getBoundingClientRect().bottom <= m.top,
+                height: Math.round(t.getBoundingClientRect().height),
+                scrollable: t.scrollHeight > t.clientHeight,
+            };
+        }"""
+    )
+    # 実行（押して、印から外してもツールチップを残し、中を送る）
+    page.click(mark)
+    page.mouse.move(2, 2)
+    page.wait_for_timeout(400)
+    kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+    body_top_before = page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop")
+    _wheel_through_tip(page)
+    scrolled = page.evaluate(
+        """() => {
+            const t = document.getElementById('term-tip');
+            const last = [...t.querySelectorAll('a.tt-link')].at(-1).getBoundingClientRect();
+            const box = t.getBoundingClientRect();
+            return {
+                id: [...t.querySelectorAll('a.tt-link')].at(-1).dataset.id,
+                inside: last.bottom <= box.bottom + 1 && last.top >= box.top,
+                bodyTop: document.querySelector('aside.panel .panel-body').scrollTop,
+            };
+        }"""
+    )
+    # 検証（印とツールチップ）
+    # 「特殊効果」と「エフェクト」に点線の印が付く。「特殊効果」の印は取り下げた A-8 を含まない 8 件にまとまる
+    assert marks == [
+        ["特殊効果", "G-1 A-2 A-3 A-4 A-5 A-6 A-7 R-1", "underline", "dotted"],
+        ["エフェクト", "A-2", "underline", "dotted"],
+    ]
+    assert other_ids == ["A-2"]
+    # 用語 → 資料 → 調査の順に、種類ごとの見出しと区切り線で並び、全項目のタイトルが詳細へのリンクになる
+    assert tip["kinds"] == ["用語 1", "資料 6", "調査 1"]
+    assert tip["links"] == [
+        ["G-1", "特殊効果"],
+        ["A-2", "特殊効果のスキーマ"],
+        ["A-3", "炎ノード"],
+        ["A-4", "追加の資料 4"],
+        ["A-5", "追加の資料 5"],
+        ["A-6", "追加の資料 6"],
+        ["A-7", "追加の資料 7"],
+        ["R-1", "特殊効果を重ねたときの描画の負荷"],
+    ]
+    # G-1 は意味、資料・調査は説明を持つ。絞り込みの入力は無い
+    assert tip["bodies"] == [
+        ["G-1", "画面に重ねる演出"],
+        ["A-2", "特殊効果の設定ファイルのキーと型"],
+        ["A-3", "炎の見た目を決めるノード"],
+        ["A-4", "追加の資料 4 の説明"],
+        ["A-5", "追加の資料 5 の説明"],
+        ["A-6", "追加の資料 6 の説明"],
+        ["A-7", "追加の資料 7 の説明"],
+        ["R-1", "ノードを 1〜8 個重ねたときの測り方と結果"],
+    ]
+    assert tip["inputs"] == 0
+    assert tip["groupLine"] == "1px"
+    # 印の上に出て、高さが上限で止まり、中を送れる
+    assert placement == {"above": True, "height": TIP_MAX_HEIGHT_PX, "scrollable": True}
+    # 押しても詳細へ移らず、印から外してもツールチップが出たままになる
+    assert page.evaluate("location.hash") == hash_before
+    assert kept is True
+    # 中を送ると末尾の R-1 が画面に入り、後ろの本文は送られない
+    assert scrolled == {"id": "R-1", "inside": True, "bodyTop": body_top_before}
+    # 実行（A-3 のリンクを押す）
+    page.click(f'{TIP} a.tt-link[data-id="A-3"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === '炎ノード'")
+    # 検証（A-3 の詳細）
+    assert "id=A-3" in page.evaluate("location.hash")
+    assert "炎の見た目を決めるノード" in _section_text(page, "説明")
+    assert page.eval_on_selector_all(
+        "aside.panel .d-sec:has(h3:text-is('エイリアス')) .tag", "t => t.map(x => x.textContent)"
+    ) == [ALIAS_WORD]
+    # 実行（A-2 の詳細を開き、本文の「特殊効果」にキーボードでフォーカスする）
+    page.goto(f"{url}#tab=docs&view=table&id=A-2")
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent === '特殊効果のスキーマ'"
+    )
+    page.wait_for_selector(BODY_MARKS)
+    page.focus(BODY_MARKS)
+    page.wait_for_selector(TIP_OPEN)
+    own_excluded_ids = _tip_ids(page)
+    # 実行（Tab でツールチップの中へ移り、Esc を押す）
+    page.keyboard.press("Tab")
+    first_link = page.evaluate("document.activeElement.dataset.id")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    after_escape = page.evaluate("document.activeElement.textContent")
+    # 検証（A-2 の本文のツールチップ）
+    assert own_excluded_ids == ["G-1", "A-3", "A-4", "A-5", "A-6", "A-7", "R-1"]
+    assert first_link == "G-1"
+    assert after_escape == ALIAS_WORD
