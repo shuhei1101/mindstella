@@ -42,7 +42,7 @@
     }, 50);
   };
 
-  // 見本: クエリの tip の語の印に乗せたツールチップを出し、edge で最初の印を詳細の本文の領域の上端へ送ってから出し、pin で押して残し、q で絞り込む。mark に渡した CSS セレクタの要素に撮影用の赤枠を付ける
+  // 見本: クエリの tip の語の印に乗せたツールチップを出し、edge で最初の印を詳細の本文の領域の上端へ送ってから出し、pin で押して残す。mark に渡した CSS セレクタの要素に撮影用の赤枠を付ける
   const word = params.get("tip");
   if (word !== null) {
     // 詳細パネルが滑り込み終わってから出す（動いている間は印の位置が定まらない）
@@ -57,12 +57,6 @@
       }
       mark.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
       if (params.get("pin") !== null) mark.click();
-      const query = params.get("q");
-      const input = document.querySelector("#term-tip input");
-      if (query !== null && input !== null) {
-        input.value = query;
-        input.dispatchEvent(new Event("input"));
-      }
       if (params.get("scroll") !== null) {
         const tip = document.getElementById("term-tip");
         tip.scrollTop = tip.scrollHeight;

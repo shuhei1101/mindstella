@@ -6407,8 +6407,6 @@ var MindmapPreview;
     const TIP_HIDE_DELAY_MS = 150;
     /** 用語のツールチップを隠す待ちのタイマー */
     let tipTimer = 0;
-    /** 219: 絞り込みの入力を出す、一致した項目の件数 */
-    const TIP_FILTER_MIN = 6;
     /** 219: ツールチップの種類の見出し */
     const TIP_KIND_LABELS = { terms: "用語", docs: "資料", research: "調査" };
     /** 219: ツールチップを出している印・その本文・押して残しているか・項目へ移る先 */
@@ -6416,7 +6414,7 @@ var MindmapPreview;
     /** 219: Esc で閉じて印へフォーカスを戻すとき、その印のフォーカスでツールチップを出し直さない */
     let refocused = null;
     /** 219: 要素の中のフォーカスできる要素 */
-    const focusablesIn = (element) => [...element.querySelectorAll("a[href], button, input, [tabindex]:not([tabindex='-1'])")].filter((node) => !node.closest("[hidden]"));
+    const focusablesIn = (element) => [...element.querySelectorAll("a[href], button, [tabindex]:not([tabindex='-1'])")].filter((node) => !node.closest("[hidden]"));
     /** 用語のツールチップ（1 つを使い回す。重ねる面の上にも出せるよう、ポップオーバーにする）。ツールチップに乗せている間は消さず、Esc で消す */
     function termTip() {
         const existing = document.getElementById(MindmapPreview.TERM_TIP_ID);
@@ -6494,14 +6492,14 @@ var MindmapPreview;
             : item.title;
         return MindmapPreview.h({
             tag: "li",
-            attrs: { class: "tt-item", "data-text": `${item.title}\n${text ?? ""}`.toLowerCase() },
+            attrs: { class: "tt-item" },
             children: [
                 MindmapPreview.h({ tag: "span", attrs: { class: "tt-head" }, children: [title, MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.id] })] }),
                 text === undefined || text === "" ? null : MindmapPreview.h({ tag: "span", attrs: { class: "tt-body" }, children: [text] }),
             ],
         });
     }
-    /** 219: 用語と資料・調査に一致したツールチップの中身。種類ごとの見出しと区切り線で分け、件数が多ければ絞り込みの入力を先頭に置く */
+    /** 219: 用語と資料・調査に一致したツールチップの中身。種類ごとの見出しと区切り線で分ける */
     function multiTipContent(entries) {
         const groups = MindmapPreview.MARK_KINDS.map((kind) => ({ kind, entries: entries.filter((entry) => entry.kind === kind) })).filter((group) => group.entries.length > 0);
         const lists = groups.map((group) => MindmapPreview.h({
@@ -6512,46 +6510,17 @@ var MindmapPreview;
                 MindmapPreview.h({ tag: "ul", attrs: { class: "tt-items", "aria-labelledby": `tt-kind-${group.kind}` }, children: group.entries.map((entry) => tipItem({ entry, linked: true })) }),
             ],
         }));
-        const empty = MindmapPreview.h({ tag: "p", attrs: { class: "tt-empty", hidden: true }, children: [] });
-        if (entries.length < TIP_FILTER_MIN)
-            return lists;
-        const count = MindmapPreview.h({ tag: "span", attrs: { class: "tt-count", "aria-live": "polite" }, children: [`${entries.length} 件`] });
-        const input = MindmapPreview.h({ tag: "input", attrs: { id: "tt-filter-input", type: "search", placeholder: "タイトル・説明", autocomplete: "off" } });
-        input.addEventListener("input", () => {
-            const words = input.value.trim().toLowerCase().split(/\s+/).filter((word) => word !== "");
-            let shown = 0;
-            for (const group of lists) {
-                let inGroup = 0;
-                for (const li of group.querySelectorAll(".tt-item")) {
-                    const hit = words.every((word) => (li.getAttribute("data-text") ?? "").includes(word));
-                    li.hidden = !hit;
-                    inGroup += hit ? 1 : 0;
-                }
-                group.hidden = inGroup === 0;
-                // 種類の見出しの件数は、残った件数にする
-                group.querySelector(".tt-n").textContent = String(inGroup);
-                shown += inGroup;
-            }
-            count.textContent = words.length === 0 ? `${entries.length} 件` : `${entries.length} 件中 ${shown} 件`;
-            empty.hidden = shown > 0;
-            empty.textContent = `「${input.value.trim()}」をタイトル・説明に含む項目はありません`;
-        });
-        const filter = MindmapPreview.h({
-            tag: "div",
-            attrs: { class: "tt-filter" },
-            children: [MindmapPreview.h({ tag: "label", attrs: { for: "tt-filter-input" }, children: ["絞り込み"] }), input, count],
-        });
-        return [filter, ...lists, empty];
+        return lists;
     }
     /** 用語の印の下（収まらなければ上）にツールチップを出す */
     function showTermTip({ mark, root, entries, onOpen }) {
         const tip = termTip();
         window.clearTimeout(tipTimer);
-        // 219: 同じ印のツールチップは出し直さない（絞り込みの入力・中のスクロールを保つ）
+        // 219: 同じ印のツールチップは出し直さない（中のスクロールを保つ）
         if (tipState.mark === mark && tip.matches(":popover-open"))
             return;
         tipState = { mark, root, pinned: false, onOpen };
-        // 219: ツールチップを印のある詳細パネル・全画面のモーダルの中に置く（モーダルの外は操作できない。中の入力・リンクを詳細の領域に含める）
+        // 219: ツールチップを印のある詳細パネル・全画面のモーダルの中に置く（モーダルの外は操作できない。中のリンクを詳細の領域に含める）
         const host = mark.closest("dialog, aside") ?? document.body;
         if (tip.parentElement !== host) {
             if (tip.matches(":popover-open"))
@@ -6575,9 +6544,6 @@ var MindmapPreview;
         }
         if (!tip.matches(":popover-open"))
             tip.showPopover();
-        // 219: 絞り込んでもツールチップの大きさを変えない
-        if (tip.querySelector(".tt-filter") !== null)
-            tip.style.height = `${tip.offsetHeight}px`;
         const gap = 6;
         const margin = 8;
         const rect = mark.getBoundingClientRect();
@@ -6588,12 +6554,10 @@ var MindmapPreview;
         const room = above ? spaceAbove : spaceBelow;
         if (tip.offsetHeight > room) {
             tip.style.maxHeight = `${room}px`;
-            // 絞り込みの入力を持つときは、縮めた高さで固定する（絞り込んでも大きさを変えない）
-            tip.style.height = tip.querySelector(".tt-filter") === null ? "" : `${room}px`;
         }
         tip.classList.toggle("is-below", !above);
         tip.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - tip.offsetWidth - margin))}px`;
-        // 上に出すときは下端を印に留める（中身が減っても印から離れない）
+        // 上に出すときは下端を印に留める
         tip.style.top = above ? "auto" : `${rect.bottom + gap}px`;
         tip.style.bottom = above ? `${innerHeight - rect.top + gap}px` : "auto";
     }
@@ -6644,7 +6608,7 @@ var MindmapPreview;
             if (markOf(event) !== null && !(to instanceof Node && tip?.contains(to) === true))
                 hideTermTip(true);
         });
-        // 219: 資料・調査にも一致した印から Tab で、ツールチップの中の最初の入力・リンクへ移る
+        // 219: 資料・調査にも一致した印から Tab で、ツールチップの中の最初のリンクへ移る
         root.addEventListener("keydown", (event) => {
             const found = markOf(event);
             const tip = document.getElementById(MindmapPreview.TERM_TIP_ID);
