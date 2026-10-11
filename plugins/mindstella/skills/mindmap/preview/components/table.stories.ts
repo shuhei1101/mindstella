@@ -132,7 +132,7 @@ export const Withdrawn: Story = {
 /** 表示する列のポップオーバーを開いている。タイトルの列は外せない */
 export const ColumnsPopover: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button", { name: "表示する列" }));
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "列の表示" }));
   },
 };
 

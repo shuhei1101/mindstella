@@ -321,7 +321,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 children: [
-                    popoverTitle("表示する列"),
+                    popoverTitle("列の表示"),
                     ...boxes,
                     MindmapPreview.h({
                         tag: "div",
@@ -361,15 +361,15 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
-                        class: "btn",
+                        class: "btn cols-btn-table",
                         type: "button",
                         "data-popover": "columns",
-                        "aria-label": "表示する列",
+                        "aria-label": "列の表示",
                         onclick: openPopover,
                     },
                     children: [
                         MindmapPreview.icon("cols"),
-                        MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["表示する列"] }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["列の表示"] }),
                     ],
                 }),
             ],

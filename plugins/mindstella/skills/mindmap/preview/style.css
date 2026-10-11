@@ -129,6 +129,12 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 /* 条件のチップの行は、無いときも高さを取っておく（表が上下に動かないように） */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 28px; margin-bottom: 8px; }
 .chips .hint { color: var(--text-3); font-size: var(--fs-xs); }
+/* 表の上の帯: 条件のチップを左、列の表示のボタンを右端に並べ、表との間に 12px の余白を取る */
+.table-toolbar { flex: none; display: flex; align-items: flex-start; gap: 8px 12px; margin-bottom: 12px; }
+/* 帯の条件のチップ: 残りの幅を取り、行の高さをボタンに揃える。帯の下の余白は帯が持つ */
+.table-toolbar .chips { flex: 1; min-height: var(--control-h); margin-bottom: 0; }
+/* 列の表示のボタン: 帯の右端で縮めない */
+.table-toolbar .cols-btn-table { flex: none; }
 .chip { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 2px 0 8px; border: 1px solid var(--accent-line); border-radius: 3px; background: var(--accent-weak); color: var(--text); font-size: var(--fs-xs); }
 .chip button { display: inline-grid; place-items: center; width: 20px; height: 20px; border: 0; background: none; color: var(--text-2); border-radius: 2px; }
 .chip button:hover { color: var(--text); background: var(--accent-line); }
@@ -304,6 +310,10 @@ dialog.search::backdrop { background: var(--scrim); }
   table.grid thead th { position: static; }
   .th-tool.pin { display: none; }
   .toolbar .btn .lbl { display: none; }
+  /* 列の表示のボタンの文言: 隠してアイコンだけにする（読み上げ名は残る） */
+  .table-toolbar .cols-btn-table .lbl { display: none; }
+  /* 列の表示のボタン: アイコンだけの幅に詰める */
+  .table-toolbar .cols-btn-table { padding: 0 8px; }
   .toolbar .grow { max-width: none; flex-basis: 100%; }
   .board { grid-template-columns: 1fr; }
 }
