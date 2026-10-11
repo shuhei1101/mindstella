@@ -16,6 +16,32 @@ catalogs:
       - name: Diff.diffArrays
         kind: 関数
         purpose: sequenceDiagram のメッセージの並びを前後で揃える。`timeout` を渡し、打ち切ったら `undefined` を返す
+      - name: Diff.diffWords
+        kind: 関数
+        purpose: 変えた行の対の前後の文字を語の単位で比べ、変わった語を出す。`intlSegmenter` に `Intl.Segmenter` の語の単位を渡し、`timeout` を渡して打ち切ったら `undefined` を返す
+        params:
+          - name: oldStr
+            type: string
+            required: true
+            description: 前の文字
+          - name: newStr
+            type: string
+            required: true
+            description: 今の文字
+          - name: options.intlSegmenter
+            type: Intl.Segmenter
+            required: false
+            description: 語の区切りに使う分け方。`granularity` が `word` のものを渡す
+            notes: 渡さないと、日本語のように空白を持たない文は 1 文字ずつ比べる
+          - name: options.timeout
+            type: number
+            required: false
+            description: 打ち切るまでの時間（ミリ秒）
+            notes: 打ち切ったら戻り値が `undefined`
+        returns:
+          - name: '-'
+            type: '{value: string, added: boolean, removed: boolean}[] | undefined'
+            description: 同じ・足した・消した部分の並び。打ち切ったら `undefined`
 lead: 2 つの文字列・配列を比べ、同じ部分・足した部分・消した部分の並びを返す JavaScript のライブラリ（npm の `diff`）。
 purl: pkg:npm/diff
 dependency_scope: 必須
