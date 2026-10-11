@@ -1,0 +1,9 @@
+# 今のワークスペースがそのまま読める変更（スキーマを広げるだけなど）で、移し替えの手順を足さないスキーマの一覧
+# 開発側の点検は、最新のタグから変わったスキーマがここに今の中身の SHA-256 で載っていれば手順を求めない
+# sha256 は、スキーマのファイルを UTF-8 の文字列として読み（改行は LF）、その UTF-8 のバイト列から取る
+- schema: docs.schema.json
+  sha256: 7fc56474801ececb8365313302313aa0b272165cfcb44df8c7a308117f9272e1
+  reason: body の pattern を `.md` だけから `.md` と `.html` に広げた。Markdown の資料はそのまま読める
+- schema: common.schema.json
+  sha256: 46d2db520b36886f083463b487aab251984fe1e7e6de163710999b8e08f463e7
+  reason: history[].before の説明に、本文の形式を替えた回だけ body を入れることを足した。形は変わらない
