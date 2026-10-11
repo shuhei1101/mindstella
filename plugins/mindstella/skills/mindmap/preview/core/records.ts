@@ -148,7 +148,10 @@ namespace MindmapPreview {
     /** 取り下げた調査・資料・用語集・メモ・会話ログは真。取り下げた理由は `reason` */
     withdrawn?: boolean;
     meaning?: string;
+    /** 用語の別名・資料と調査の本文で一致させる語（エイリアス） */
     aliases?: string[];
+    /** 資料と調査のタイトルだけでは分からない中身の短い説明 */
+    description?: string;
     avoid?: string[];
     content?: string;
     date?: string;

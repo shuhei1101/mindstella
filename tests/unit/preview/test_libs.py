@@ -787,6 +787,78 @@ def test_link_body_when_self(
     assert result["allMarks"] == 0
 
 
+# 資料・調査のエイリアスに一致した語に印を付け、印の項目・ツールチップの指し方・押したときの知らせを調べる
+LINK_BODY_ALIASES_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    const marks = [...root.querySelectorAll("p a.term")].map((element) => ({
+        text: element.textContent,
+        ids: element.getAttribute("data-ids"),
+        hasDetails: element.hasAttribute("aria-details"),
+    }));
+    // 最初の印（「特殊効果」）を押す
+    root.querySelector("p a.term")?.dispatchEvent(
+        new MouseEvent("click", {bubbles: true, cancelable: true}),
+    );
+    return {marks, calls};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("self_id", "expected_marks"),
+    [
+        pytest.param(
+            "A-1",
+            [
+                {"text": "特殊効果", "ids": "G-1 A-2 R-1", "hasDetails": True},
+                {"text": "エフェクト", "ids": "A-2", "hasDetails": True},
+            ],
+            id="other_item_open",
+        ),
+        pytest.param(
+            "A-2",
+            [{"text": "特殊効果", "ids": "G-1 R-1", "hasDetails": True}],
+            id="self_in_aliases",
+        ),
+    ],
+)
+def test_link_body_when_aliases(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    self_id: str,
+    expected_marks: list[dict[str, Any]],
+) -> None:
+    """資料・調査のエイリアスにも印を付け、同じ語の項目を 1 つの印にまとめる（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[make_item("G-1", title="特殊効果")],
+        docs=[
+            make_item("A-2", aliases=["特殊効果", "エフェクト"]),
+            make_item("A-8", aliases=["特殊効果"], withdrawn=True),
+            make_item("A-9", aliases=["古い語"], withdrawn=True),
+        ],
+        research=[make_item("R-1", aliases=["特殊効果"])],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_ALIASES_SCRIPT,
+        {"data": data, "source": "特殊効果とエフェクトと古い語\n", "selfId": self_id},
+    )
+    # 検証
+    assert result["marks"] == expected_marks
+    assert result["calls"] == []
+
+
 # 値の Markdown（強調・実行される属性を持つ画像・スクリプト・箇条書き 2 行）
 VALUE_MARKDOWN = '**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>\n\n- 項目 1\n- 項目 2\n'
 

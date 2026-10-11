@@ -15,7 +15,7 @@ import pytest
 import yaml
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, MakeData
+from .fixture_types import LoadLibrary, LoadPreviewScripts, LoadPreviewStyles, MakeData
 
 # このファイルから見たリポジトリの直下（tests/unit/preview の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -23,6 +23,9 @@ REPO_ROOT = Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
 
 # tsc が生成した `.js` を置くフォルダ
 PREVIEW_DIR = REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "preview"
+
+# 画面に当てる CSS（読む順）
+STYLE_FILES = ("tokens.css", "style.css")
 
 # 描画のライブラリの外部ライブラリの設計書を置くフォルダ
 LIBRARY_DESIGN_DIR = REPO_ROOT / "dev" / "設計書" / "外部ライブラリ"
@@ -109,6 +112,18 @@ def load_library(preview_page: Page) -> LoadLibrary:
             url, lambda route: route.fulfill(body=body, content_type="application/javascript")
         )
         preview_page.add_script_tag(url=url)
+
+    return _load
+
+
+@pytest.fixture
+def load_preview_styles(preview_page: Page) -> LoadPreviewStyles:
+    """プレビューの CSS（tokens.css・style.css）をページに読む関数を返す。"""
+
+    def _load() -> None:
+        """位置・大きさ・表示を CSS が決める部品を調べるテストで、画面と同じ CSS を当てる。"""
+        for name in STYLE_FILES:
+            preview_page.add_style_tag(path=str(PREVIEW_DIR / name))
 
     return _load
 
