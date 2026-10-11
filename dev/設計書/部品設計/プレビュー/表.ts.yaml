@@ -1,5 +1,5 @@
 title: 表
-lead: 項目の一覧の表。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件（値と列の文字）のチップを並べる。絞り込みの条件は部品『絞り込み』で選び、表は受け取った条件で行を絞る。表示する列の選択と初期設定に戻すのポップオーバーを持つ。
+lead: 項目の一覧の表。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件（値と列の文字）のチップを並べる。絞り込みの条件は部品『絞り込み』で選び、表は受け取った条件で行を絞る。チップの行の右端の「列の表示」のボタンから、列の付け外しと初期設定に戻すのポップオーバーを開く。
 implementation: plugins/mindstella/skills/mindmap/preview/components/table.ts#MindmapPreview.table
 story: Preview/Table
 test_file: tests/integration/storybook/test_table_stories.py
@@ -30,7 +30,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 表示する列から外せないか（タイトルの列）
+    description: 列の表示で外せないか（タイトルの列）
   - name: columns[].hidden
     type: 真偽値
     required: false
@@ -85,12 +85,12 @@ events:
     when: 見出しのピンのボタンを押したとき
     value: key（`data-pin`）
     description: 使う側が押した列までを固定する。固定中の列をもう一度押すと外す
-  - name: 表示する列
-    when: 表示する列のポップオーバーで列を付け外ししたとき
+  - name: 列の表示
+    when: 列の表示のポップオーバーで列を付け外ししたとき
     value: hiddenColumns
     description: 使う側が端末の保存領域に残す
   - name: 初期設定に戻す
-    when: 表示する列のポップオーバーで初期設定に戻すを押したとき
+    when: 列の表示のポップオーバーで初期設定に戻すを押したとき
     description: 使う側が列・並べ替え・固定を戻す
   - name: 詳細を開く
     when: 行のタイトルを押したとき
@@ -98,7 +98,7 @@ events:
     description: 使う側が詳細パネルを開く
 states:
   - name: Default
-    description: 通常。並べ替えの印は見出しにホバーかフォーカスしたときだけ出す
+    description: 通常。並べ替えの印は見出しにホバーかフォーカスしたときだけ出す。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける
   - name: SortedAsc
     description: タイトルで昇順。向きの矢印を出し、`aria-sort="ascending"`
     args:
@@ -129,9 +129,9 @@ states:
       - name: pinTo
         value: id
   - name: ColumnsPopover
-    description: 表示する列のポップオーバーを開いている。タイトルの列は外せない
+    description: 列の表示のポップオーバーを開いている。題は「列の表示」。タイトルの列は外せない
     notes:
-      見せ方: "`play` で表示する列のボタンを押して開く"
+      見せ方: "`play` で「列の表示」のボタンを押して開く"
   - name: Marked
     description: 差分の表示の間。変えた行のタイトルの右に ●、足した行に + を置き、印の無い行は変わらない
     args:
@@ -165,3 +165,4 @@ accessibility:
   - 行のタイトルは `button` 要素にし、キーボードで詳細を開ける
   - 操作してもスクロールの位置を保つ
   - 文字の条件のチップの × に `{列}に「{文字}」を含む の条件を解除` の読み上げ名を付ける
+  - 列の表示のボタンに「列の表示」の読み上げ名を付け、幅 720px 以下で文言を隠してアイコンだけにしても読み上げ名は残す

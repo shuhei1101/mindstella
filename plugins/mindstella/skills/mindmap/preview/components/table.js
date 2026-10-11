@@ -273,7 +273,7 @@ var MindmapPreview;
         const root = previous ?? MindmapPreview.h({ tag: "div", attrs: { class: "table-block", "data-kind": kind } });
         const wrap = previous?.querySelector(".table-wrap") ??
             MindmapPreview.h({ tag: "div", attrs: { class: "table-wrap" } });
-        // ===== 条件のチップと、表示する列のボタン =====
+        // ===== 条件のチップと、列の表示のボタン =====
         const chipsRow = filterChips({
             filters,
             labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
@@ -296,7 +296,7 @@ var MindmapPreview;
             if (anchor !== null)
                 positionPopover(pop, anchor);
         };
-        /** 表示する列のポップオーバーの中身 */
+        /** 列の表示のポップオーバーの中身 */
         const columnsPopoverBody = () => {
             const boxes = columns.map((column) => MindmapPreview.h({
                 tag: "label",
@@ -321,7 +321,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 children: [
-                    popoverTitle("表示する列"),
+                    popoverTitle("列の表示"),
                     ...boxes,
                     MindmapPreview.h({
                         tag: "div",
@@ -361,15 +361,15 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
-                        class: "btn",
+                        class: "btn cols-btn-table",
                         type: "button",
                         "data-popover": "columns",
-                        "aria-label": "表示する列",
+                        "aria-label": "列の表示",
                         onclick: openPopover,
                     },
                     children: [
                         MindmapPreview.icon("cols"),
-                        MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["表示する列"] }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["列の表示"] }),
                     ],
                 }),
             ],
