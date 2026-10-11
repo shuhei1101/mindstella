@@ -792,19 +792,14 @@ namespace MindmapPreview {
   /** 記法の行ごとの差分を、足した行（+）・消した行（−）の印つきの行にする。変えた行の対は、変わった語を濃い面で囲む（`deadline` は、行の差分を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足した時刻） */
   export function rawDiffLines({ parts, deadline }: { parts: LinePart[]; deadline: number }): HTMLElement[] {
     const op = { added: "add", removed: "del", same: "same" } as const;
-    // 対の行ごとの語の差分（`parts` の添え字 → 行ごと）
+    // 対の行ごとの語の差分（`parts` の添え字 → 行ごと）。対の行ごとに 1 回だけ比べ、消した側と足した側に同じ結果を使う
     const inlines = new Map<number, (InlineDiff | null)[]>();
     for (const { removed, added } of pairedParts(parts)) {
       const removedLines = parts[removed]?.lines ?? [];
       const addedLines = parts[added]?.lines ?? [];
-      inlines.set(
-        removed,
-        removedLines.map((text, offset) => diffInline(text, addedLines[offset] ?? "", deadline)),
-      );
-      inlines.set(
-        added,
-        addedLines.map((text, offset) => diffInline(removedLines[offset] ?? "", text, deadline)),
-      );
+      const compared = removedLines.map((text, offset) => diffInline(text, addedLines[offset] ?? "", deadline));
+      inlines.set(removed, compared);
+      inlines.set(added, compared);
     }
     return parts.flatMap((part, position) =>
       part.lines.map((text, offset) => {
