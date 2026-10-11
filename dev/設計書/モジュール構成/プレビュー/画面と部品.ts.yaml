@@ -2022,3 +2022,4 @@ test_files:
   - tests/unit/preview/test_settings.py
   - tests/unit/preview/test_comment_mark.py
   - tests/unit/preview/test_looks.py
+  - tests/unit/preview/test_term_tip.py
