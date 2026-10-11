@@ -838,6 +838,12 @@ namespace MindmapPreview {
         children: [h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue(value)])],
       });
     };
+    /** 資料・調査の説明の節（値があるとき、または値が変わったときだけ）。値が変わっていれば、前の値と今の値を並べる */
+    const descriptionSection = (): HTMLElement | null => {
+      const changed = keys?.has("description") === true;
+      if ((item.description === undefined || item.description === "") && !changed) return null;
+      return section("説明", valueBlock("description", [changed ? textOf("description", item.description) : markdownValue(item.description)]));
+    };
     /** 取り下げた理由の節（検討事項・タスクの `reason` は別の節が持つ）。値が変わっていれば、前の値と今の値を並べる */
     const withdrawnReason = (): HTMLElement | null => {
       if (kind === "decisions" || kind === "tasks") return null;
@@ -993,13 +999,15 @@ namespace MindmapPreview {
         parent: body,
         children: [
           lead("question", item.question, "d-lead"),
+          descriptionSection(),
           labelled("結論", "conclusion", item.conclusion),
+          listSection("エイリアス", "aliases", item.aliases),
           listSection("調査の観点", "angles", item.angles),
           bodySection("本文"),
         ],
       });
     } else if (kind === "docs") {
-      append({ parent: body, children: [bodySection("本文")] });
+      append({ parent: body, children: [descriptionSection(), listSection("エイリアス", "aliases", item.aliases), bodySection("本文")] });
     } else if (kind === "terms") {
       append({
         parent: body,
@@ -1161,77 +1169,147 @@ namespace MindmapPreview {
     return true;
   }
 
-  /** 用語のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
+  /** 本文の印のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
   const TIP_HIDE_DELAY_MS = 150;
 
-  /** 用語のツールチップを隠す待ちのタイマー */
+  /** ツールチップを隠す待ちのタイマー */
   let tipTimer = 0;
 
-  /** 用語のツールチップ（1 つを使い回す。重ねる面の上にも出せるよう、ポップオーバーにする）。ツールチップに乗せている間は消さず、Esc で消す */
-  function termTip(): HTMLElement {
-    const existing = document.getElementById(TERM_TIP_ID);
-    if (existing !== null) return existing;
-    const tip = h({ tag: "div", attrs: { id: TERM_TIP_ID, class: "term-tip", role: "tooltip", popover: "manual" } });
-    tip.addEventListener("mouseenter", () => window.clearTimeout(tipTimer));
-    tip.addEventListener("mouseleave", () => hideTermTip(false));
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") hideTermTip(true);
-    });
-    document.body.append(tip);
-    return tip;
+  /** 今出している（出していた）ツールチップの印と、押して残しているか */
+  let tipState: { mark: HTMLElement; pinned: boolean } | null = null;
+
+  /** Esc で閉じて印へフォーカスを戻すとき、その印のフォーカスでツールチップを出し直さない */
+  let refocused: Element | null = null;
+
+  /** 今のツールチップの要素（使い回す 1 つ。隠していても文書に残る） */
+  function currentTip(): HTMLElement | null {
+    return document.getElementById(TERM_TIP_ID);
   }
 
-  /** 用語の印の下（収まらなければ上）にツールチップを出す */
-  function showTermTip({ mark, term }: { mark: Element; term: Item }): void {
-    const tip = termTip();
-    window.clearTimeout(tipTimer);
-    tip.replaceChildren(
-      h({ tag: "span", attrs: { class: "tt-head" }, children: [term.title, h({ tag: "span", attrs: { class: "mono" }, children: [term.id] })] }),
-      h({ tag: "span", attrs: { class: "tt-body" }, children: [term.meaning ?? ""] }),
-    );
-    if (!tip.matches(":popover-open")) tip.showPopover();
-    const gap = 6;
-    const margin = 8;
-    const rect = mark.getBoundingClientRect();
-    const below = innerHeight - rect.bottom - gap - margin >= tip.offsetHeight;
-    tip.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - tip.offsetWidth - margin))}px`;
-    tip.style.top = `${below ? rect.bottom + gap : rect.top - gap - tip.offsetHeight}px`;
-  }
-
-  /** 用語のツールチップを隠す（`now` が偽のときは、少し待ってから） */
+  /** ツールチップを隠す（`now` が偽のときは、少し待ってから） */
   function hideTermTip(now: boolean): void {
     window.clearTimeout(tipTimer);
     const hide = (): void => {
-      const tip = document.getElementById(TERM_TIP_ID);
+      const tip = currentTip();
       if (tip?.matches(":popover-open") === true) tip.hidePopover();
+      tipState = null;
     };
     if (now) hide();
     else tipTimer = window.setTimeout(hide, TIP_HIDE_DELAY_MS);
   }
 
-  /** 本文の用語の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける） */
-  function attachTermTips({ root, index }: { root: HTMLElement; index: RecordIndex }): void {
-    /** イベントの先の用語の印と、その用語 */
-    const termOf = (event: Event): { mark: Element; term: Item } | null => {
-      const mark = (event.target as Element).closest?.("a.term") ?? null;
-      const term = index.byId.get(mark?.getAttribute("data-id") ?? "")?.item;
-      return mark === null || term === undefined ? null : { mark, term };
-    };
-    for (const type of ["mouseover", "focusin"]) {
-      root.addEventListener(type, (event) => {
-        const found = termOf(event);
-        if (found !== null) showTermTip(found);
-      });
+  /** 印の上に、一致した項目のツールチップを出す。重ねる面の上にも出せるよう、印のある詳細パネル・全画面のモーダルの中に置く（モーダルの外は操作できない） */
+  function showTermTip({
+    mark,
+    entries,
+    pinned,
+    onOpen,
+  }: {
+    mark: HTMLElement;
+    entries: TermTipEntry[];
+    pinned: boolean;
+    onOpen: (id: string) => void;
+  }): void {
+    window.clearTimeout(tipTimer);
+    const previous = currentTip();
+    // 同じ印を同じ出し方で出しているときは出し直さない（中のスクロールを保つ）
+    if (tipState?.mark === mark && tipState.pinned === pinned && previous?.matches(":popover-open") === true) return;
+    if (previous !== null) {
+      if (previous.matches(":popover-open")) previous.hidePopover();
+      previous.remove();
     }
+    const tip = termTip({
+      entries,
+      anchor: mark,
+      pinned,
+      on: {
+        open: (id) => {
+          hideTermTip(true);
+          onOpen(id);
+        },
+        close: () => hideTermTip(true),
+      },
+    });
+    // ツールチップに乗せている間は消さない。押して残した間は、外れても消さない
+    tip.addEventListener("mouseenter", () => window.clearTimeout(tipTimer));
+    tip.addEventListener("mouseleave", () => {
+      if (!pinned) hideTermTip(false);
+    });
+    (mark.closest("dialog, aside") ?? document.body).append(tip);
+    tip.showPopover();
+    tipState = { mark, pinned };
+  }
+
+  /** Esc でツールチップを隠す。中にフォーカスがあれば印へ戻し、全画面の Esc（元の大きさに戻す）を起こさない */
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      const tip = currentTip();
+      // 詳細パネルが出したツールチップだけを対象にする
+      if (event.key !== "Escape" || tipState === null || tip?.matches(":popover-open") !== true) return;
+      const back = tip.contains(document.activeElement) ? tipState.mark : null;
+      event.preventDefault();
+      event.stopPropagation();
+      hideTermTip(true);
+      refocused = back;
+      back?.focus();
+      refocused = null;
+    },
+    true,
+  );
+
+  /** 本文の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける）。資料・調査にも一致した印は、押すとツールチップを残し、Tab で中へ移れる */
+  function attachTermTips({ root, index, onOpen }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void }): void {
+    /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。資料・調査を含むか */
+    const markOf = (event: Event): { mark: HTMLElement; entries: TermTipEntry[]; multi: boolean } | null => {
+      const mark = (event.target as Element).closest?.<HTMLElement>("a.term") ?? null;
+      if (mark === null) return null;
+      const ids = (mark.getAttribute("data-ids") ?? mark.getAttribute("data-id") ?? "").split(" ");
+      const entries = ids.flatMap((id) => {
+        const found = index.byId.get(id);
+        return found === undefined ? [] : [{ kind: found.kind as TermTipEntry["kind"], item: found.item }];
+      });
+      return entries.length === 0 ? null : { mark, entries, multi: entries.some((entry) => entry.kind !== "terms") };
+    };
+    root.addEventListener("mouseover", (event) => {
+      const found = markOf(event);
+      // 押して残している間は、ほかの印に乗せても替えない
+      if (found !== null && tipState?.pinned !== true) showTermTip({ ...found, pinned: false, onOpen });
+    });
+    root.addEventListener("focusin", (event) => {
+      const found = markOf(event);
+      if (found !== null && found.mark !== refocused) showTermTip({ ...found, pinned: false, onOpen });
+    });
     root.addEventListener("mouseout", (event) => {
-      if (termOf(event) !== null) hideTermTip(false);
+      if (markOf(event) !== null && tipState?.pinned !== true) hideTermTip(false);
     });
     root.addEventListener("focusout", (event) => {
-      if (termOf(event) !== null) hideTermTip(true);
+      const to = (event as FocusEvent).relatedTarget;
+      // ツールチップの中へ移るときは残す。押して残している間は、フォーカスの行き先が無い（余白を押した）ときも残す
+      if (markOf(event) === null || (to instanceof Node && currentTip()?.contains(to) === true)) return;
+      if (to === null && tipState?.pinned === true) return;
+      hideTermTip(true);
     });
-    // 印を押して項目へ移るときは、ツールチップを残さない
+    // 資料・調査にも一致した印から Tab で、ツールチップの中の最初のリンクへ移る
+    root.addEventListener("keydown", (event) => {
+      const found = markOf(event);
+      const tip = currentTip();
+      if (event.key !== "Tab" || event.shiftKey || found === null || !found.multi || tip?.matches(":popover-open") !== true) return;
+      const first = tip.querySelector<HTMLElement>("a[href]");
+      if (first === null) return;
+      event.preventDefault();
+      first.focus();
+    });
     root.addEventListener("click", (event) => {
-      if (termOf(event) !== null) hideTermTip(true);
+      const found = markOf(event);
+      if (found === null) return;
+      // 資料・調査にも一致した印は、押すとツールチップを残す（移る先は中のリンクで選ぶ）
+      if (found.multi) {
+        showTermTip({ ...found, pinned: true, onOpen });
+        return;
+      }
+      // 用語だけに一致した印を押して項目へ移るときは、ツールチップを残さない
+      hideTermTip(true);
     });
   }
 
@@ -1288,7 +1366,7 @@ namespace MindmapPreview {
       root = dialog;
     }
     if (highlight !== null) applyHighlight({ root, loc: highlight });
-    attachTermTips({ root: body, index });
+    attachTermTips({ root: body, index, onOpen: on.open });
     // 見出しを指して開いた: 描いた後にその見出しを本文の領域の中で画面に入れる（本文に無ければ、本文の頭で開き、ハッシュから外させる）
     if (heading !== null) {
       requestAnimationFrame(() => {
