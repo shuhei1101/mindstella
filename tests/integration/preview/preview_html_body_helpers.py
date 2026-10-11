@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 
 from playwright.sync_api import Frame, Page
 
@@ -13,8 +13,9 @@ __all__ = [
     "LEAKING_HTML_BODY",
     "MARKED_FRAME",
     "FRAME_SETTLE_MS",
+    "FrameFit",
     "drag_select_in_frame",
-    "frame_height_gap",
+    "frame_fit",
     "frame_of",
     "leak_counts",
     "select_in_frame",
@@ -22,6 +23,15 @@ __all__ = [
     "text_rect_in_page",
     "wait_frame_rendered",
 ]
+
+
+class FrameFit(TypedDict):
+    """枠の高さと中身の下端（px）、時間を置いた後の枠の高さ。"""
+
+    height: float
+    bottom: float
+    later_height: float
+
 
 # 詳細パネルの HTML の本文の枠
 BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
@@ -124,14 +134,17 @@ TEXT_RECT_SCRIPT = """([selector, text]) => {
   return null;
 }"""
 
-# 枠の高さと、中の文書の高さの差（px）を返す。中の文書の高さは、枠の高さに引きずられない値（ルート要素の高さに、その上下の余白を足す）で測る
-HEIGHT_GAP_SCRIPT = """(selector) => {
+# 枠の高さと、枠の中の最後の要素の下端（px）を返す
+FRAME_METRICS_SCRIPT = """(selector) => {
   const frame = document.querySelector(selector);
-  const root = frame.contentDocument.documentElement;
-  const style = frame.contentWindow.getComputedStyle(root);
-  const height = root.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
-  return Math.abs(frame.clientHeight - height);
+  const bottoms = [...frame.contentDocument.body.querySelectorAll('*')].map(
+    (element) => element.getBoundingClientRect().bottom
+  );
+  return { height: frame.clientHeight, bottom: Math.max(...bottoms) };
 }"""
+
+# 枠の高さが伸び続けないかを確かめるために、置く間隔のミリ秒
+FRAME_LATER_MS = 1_500
 
 # 画面に残る印（本文のスクリプトが動くと立つ変数）を、親の画面と枠の中で数える
 LEAK_SCRIPT = """(selector) => {
@@ -198,9 +211,12 @@ def drag_select_in_frame(page: Page, selector: str, text: str) -> None:
     mouse("mouseReleased", end_x, 0, clickCount=1)
 
 
-def frame_height_gap(page: Page, selector: str) -> float:
-    """枠の高さと中の文書の高さの差（px）を返す。"""
-    return float(page.evaluate(HEIGHT_GAP_SCRIPT, selector))
+def frame_fit(page: Page, selector: str) -> FrameFit:
+    """枠の高さと枠の中の最後の要素の下端を測り、時間を置いて枠の高さを測り直して返す。"""
+    metrics = page.evaluate(FRAME_METRICS_SCRIPT, selector)
+    page.wait_for_timeout(FRAME_LATER_MS)
+    later = page.evaluate(FRAME_METRICS_SCRIPT, selector)
+    return {"height": metrics["height"], "bottom": metrics["bottom"], "later_height": later["height"]}
 
 
 def leak_counts(page: Page, selector: str) -> dict[str, int]:

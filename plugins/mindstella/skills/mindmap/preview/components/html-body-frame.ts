@@ -34,18 +34,22 @@ namespace MindmapPreview {
   /** 差分の印を付けた要素が持つ属性 */
   const MARK_ATTR = "data-df";
 
-  /** 行の印（` data-line="n"`）を外して、原文に戻す */
+  /** 要素が閉じる元の HTML の行（1 始まり）の属性。サーバーが足す */
+  const HTML_LINE_END_ATTR = "data-line-end";
+
+  /** 行の印（` data-line="n"`・` data-line-end="n"`）を外して、原文に戻す */
   function withoutHtmlLineMarks(marked: string): string {
-    return marked.replace(/ data-line="\d+"/g, "");
+    return marked.replace(/ data-line(?:-end)?="\d+"/g, "");
   }
 
-  /** 枠の文書の中で、行を含む最も内側の行の印を持つ要素（無ければ null）。要素の範囲は、その行から、文書の順で次に始まる行の印を持つ要素の行の手前まで */
+  /** 枠の文書の中で、行を含む最も内側の行の印を持つ要素（無ければ null）。要素の範囲は、始まりの行（`data-line`）から終わりの行（`data-line-end`）まで。範囲に行を含む要素のうち、文書の順で最後のもの */
   function innermostAt({ doc, line }: { doc: Document; line: number }): Element | null {
     let found: Element | null = null;
     for (const element of doc.body.querySelectorAll(`[${HTML_LINE_ATTR}]`)) {
-      // 文書の順で行の印は小さい順に並ぶので、行より後に始まる要素に着いたら終える
+      // 文書の順で始まりの行は小さい順に並ぶので、行より後に始まる要素に着いたら終える
       if (Number(element.getAttribute(HTML_LINE_ATTR)) > line) break;
-      found = element;
+      // 行より前に閉じた要素は、行を含まない
+      if (Number(element.getAttribute(HTML_LINE_END_ATTR)) >= line) found = element;
     }
     return found;
   }
@@ -119,16 +123,14 @@ namespace MindmapPreview {
     const original = selectable ? withoutHtmlLineMarks(source) : source;
     frame.addEventListener("load", () => {
       const doc = frame.contentDocument;
-      const win = frame.contentWindow;
-      if (doc === null || win === null) return;
+      if (doc === null) return;
       frame.setAttribute(RENDERED_ATTR, "");
-      // 高さを描いた中身に合わせる（中身が変わっても追う）。ルート要素の高さに、その上下の余白と枠の線の分を足し、枠の中に縦のスクロールの帯を出さない（`scrollHeight` は枠の高さを下回らないので使わない）
+      // 高さを描いた中身に合わせる（中身が変わっても追う）。測る間だけ枠の高さを 0 にし（本文が `100%`・`vh` で枠の高さを基準にしても、枠が伸び続けない）、ルート要素の `scrollHeight` に枠の線の分を足す。枠の中に縦のスクロールの帯を出さない
       const root = doc.documentElement;
       root.style.overflowY = "hidden";
       new ResizeObserver(() => {
-        const style = win.getComputedStyle(root);
-        const margin = parseFloat(style.marginTop) + parseFloat(style.marginBottom);
-        frame.style.height = `${root.getBoundingClientRect().height + margin + frame.offsetHeight - frame.clientHeight}px`;
+        frame.style.height = "0px";
+        frame.style.height = `${root.scrollHeight + frame.offsetHeight - frame.clientHeight}px`;
       }).observe(root);
       if (marks !== undefined) paintMarks({ doc, marks });
       if (!selectable) return;

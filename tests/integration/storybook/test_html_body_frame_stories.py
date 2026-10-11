@@ -3,25 +3,22 @@
 from __future__ import annotations
 
 from storybook_fixture_types import OpenStory
-from storybook_frame_helpers import FRAME_SELECTOR, FRAME_SETTLE_MS, frame_of, wait_frame_rendered
+from storybook_frame_helpers import (
+    FRAME_SELECTOR,
+    FRAME_SETTLE_MS,
+    frame_fit,
+    frame_of,
+    wait_frame_rendered,
+)
 
 # 描く前の枠の高さ
 LOADING_HEIGHT = "120px"
 
-# 枠の高さと中の文書の高さの差の上限（px）
-HEIGHT_GAP_PX = 1
+# 描く前の枠の高さ（px の数値）
+LOADING_HEIGHT_PX = 120
 
 # 幅の狭い画面の幅と高さ
 NARROW_VIEWPORT = {"width": 390, "height": 844}
-
-# 枠の中の文書の高さと枠の高さの差を返す。中の文書の高さは、枠の高さに引きずられない値（ルート要素の高さに、その上下の余白を足す）で測る
-HEIGHT_GAP_SCRIPT = """() => {
-    const frame = document.querySelector('iframe.html-frame');
-    const root = frame.contentDocument.documentElement;
-    const style = frame.contentWindow.getComputedStyle(root);
-    const height = root.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
-    return Math.abs(frame.clientHeight - height);
-}"""
 
 # 枠の中の文書が横にはみ出していないかを返す
 OVERFLOWS_X_SCRIPT = """() => {
@@ -64,7 +61,9 @@ def test_rendered(open_story: OpenStory) -> None:
     assert frame.locator("h1").inner_text() == "画面の流れ"
     assert frame.locator("table").count() == 1
     assert frame.locator("svg").count() == 1
-    assert page.evaluate(HEIGHT_GAP_SCRIPT) <= HEIGHT_GAP_PX
+    fit = frame_fit(page)
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]
     assert frame.evaluate("document.documentElement.style.overflowY") == "hidden"
     # 地は白で、資料の色のまま
     assert page.eval_on_selector(FRAME_SELECTOR, "e => getComputedStyle(e).backgroundColor") == "rgb(255, 255, 255)"
@@ -126,13 +125,18 @@ def test_with_scripts(open_story: OpenStory) -> None:
 
 
 def test_code_block(open_story: OpenStory) -> None:
-    """`html` のコードブロックは、枠の中で選んでも「選び終えた」を知らせない（正常系）。"""
+    """`html` のコードブロックは、枠の中で選んでも「選び終えた」を知らせず、短い本文では枠が縮む（正常系）。"""
     # 準備・実行
     page = open_story("preview-htmlbodyframe--code-block")
     wait_frame_rendered(page)
     # 検証
     assert page.get_attribute(FRAME_SELECTOR, "title") == "html のコードブロック"
     assert frame_of(page).locator("p").inner_text() == "コードブロックの HTML"
+    # 描く前の 120px より短い本文なので、枠が縮み、中身が切れず、伸び続けない
+    fit = frame_fit(page)
+    assert fit["height"] < LOADING_HEIGHT_PX
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]
     source = '<p data-line="1">選ぶ文</p>'
     assert page.evaluate(SELECT_NOTICE_SCRIPT, [False, source]) == 0
     # 選べる枠なら、同じ操作で知らせる
@@ -165,4 +169,17 @@ def test_narrow(open_story: OpenStory) -> None:
     wait_frame_rendered(page)
     # 検証
     assert page.evaluate(OVERFLOWS_X_SCRIPT) is False
-    assert page.evaluate(HEIGHT_GAP_SCRIPT) <= HEIGHT_GAP_PX
+    fit = frame_fit(page)
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]
+
+
+def test_viewport_relative(open_story: OpenStory) -> None:
+    """本文が枠の高さを基準にする CSS（`100%`・`vh`）を持っても、枠は伸び続けず、中身が切れない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-htmlbodyframe--viewport-relative")
+    wait_frame_rendered(page)
+    # 検証
+    fit = frame_fit(page)
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 import html_body
@@ -25,6 +27,9 @@ DOCUMENT_WITH_FRAME = (
 # 1 行目が style、2 行目がコメント、4 行目が段落の文書
 STYLE_COMMENT_PARAGRAPH = "<style>p{}</style>\n<!-- メモ -->\n\n<p>言い<b>換え</b>たい文</p>\n"
 
+# 開きタグの名前と、そこに足した終わりの行の印
+END_MARK = re.compile(r'<(\w+) data-line="\d+" data-line-end="(\d+)"')
+
 # 段落を 1 行ずつ持つ文書
 THREE_PARAGRAPHS = "<p>一</p>\n<p>二</p>\n<p>三</p>\n"
 
@@ -37,19 +42,25 @@ def _squash(text: str) -> str:
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        pytest.param("<p>a</p>", '<p data-line="1">a</p>', id="single_line"),
+        pytest.param("<p>a</p>", '<p data-line="1" data-line-end="1">a</p>', id="single_line"),
         pytest.param(
-            '<p\n class="a">b</p>', '<p data-line="2"\n class="a">b</p>', id="multi_line_tag"
+            '<p\n class="a">b</p>',
+            '<p data-line="2" data-line-end="2"\n class="a">b</p>',
+            id="multi_line_tag",
         ),
         pytest.param("<!-- <p>x</p> -->", "<!-- <p>x</p> -->", id="in_comment"),
         pytest.param("<style>a > b {}</style>", "<style>a > b {}</style>", id="in_style"),
         pytest.param(
-            '<a title="x>y">t</a>', '<a data-line="1" title="x>y">t</a>', id="gt_in_attribute"
+            '<a title="x>y">t</a>',
+            '<a data-line="1" data-line-end="1" title="x>y">t</a>',
+            id="gt_in_attribute",
         ),
-        pytest.param("a<br/>b", 'a<br data-line="1"/>b', id="void_element"),
+        pytest.param("a<br/>b", 'a<br data-line="1" data-line-end="1"/>b', id="void_element"),
         pytest.param(
             "<ul>\n<li>a\n<li>b\n</ul>",
-            '<ul data-line="1">\n<li data-line="2">a\n<li data-line="3">b\n</ul>',
+            '<ul data-line="1" data-line-end="4">\n'
+            '<li data-line="2" data-line-end="4">a\n'
+            '<li data-line="3" data-line-end="4">b\n</ul>',
             id="omitted_end_tag",
         ),
     ],
@@ -67,9 +78,34 @@ def test_mark_lines_when_unmarked() -> None:
     # 実行
     marked = html_body.mark_lines(DOCUMENT_WITH_FRAME)
     # 検証
-    assert marked.count("data-line") == 1
-    assert '<p data-line="9">a</p>' in marked
-    assert marked.replace(' data-line="9"', "") == DOCUMENT_WITH_FRAME
+    assert marked.count("data-line=") == 1
+    assert marked.count("data-line-end=") == 1
+    assert '<p data-line="9" data-line-end="9">a</p>' in marked
+    assert marked.replace(' data-line="9" data-line-end="9"', "") == DOCUMENT_WITH_FRAME
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        pytest.param(
+            "<section>\n<h2>見出し</h2>\n節の文\n</section>",
+            {"section": 4, "h2": 2},
+            id="closed_element",
+        ),
+        pytest.param("<ul>\n<li>a\n<li>b\n</ul>", {"li": 4}, id="omitted_end_tag"),
+        pytest.param("<p>a<br>\nb</p>", {"br": 1, "p": 2}, id="void_element"),
+        pytest.param("<div>\n<p>a", {"div": 2, "p": 2}, id="unclosed_element"),
+    ],
+)
+def test_mark_lines_when_end_line(source: str, expected: dict[str, int]) -> None:
+    """要素が閉じる行の印を足す（正常系）。"""
+    # 実行
+    marked = html_body.mark_lines(source)
+    # 検証
+    ends = {
+        tag: {int(end) for name, end in END_MARK.findall(marked) if name == tag} for tag in expected
+    }
+    assert ends == {tag: {end} for tag, end in expected.items()}
 
 
 @pytest.mark.parametrize(

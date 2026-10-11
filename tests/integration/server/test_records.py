@@ -218,9 +218,9 @@ def test_normal_when_html_body(
     assert records["bodies"]["A-2.html"] == html_body
     assert list(records["marked_bodies"]) == ["A-2.html"]
     marked = records["marked_bodies"]["A-2.html"]
-    # 複数行にまたがる開きタグの印は、中身が始まる行（開きタグが閉じる行）
-    assert '<p data-line="4"' in marked
+    # 複数行にまたがる開きタグの印は、中身が始まる行（開きタグが閉じる行）と、閉じタグが始まる行
+    assert '<p data-line="4" data-line-end="4"' in marked
     # `<style>` の中には行の印を足さない
     assert "<style>p { color: red; }</style>" in marked
     # 行の印を取り除くと原文に戻る
-    assert re.sub(r' data-line="\d+"', "", marked) == html_body
+    assert re.sub(r' data-line(?:-end)?="\d+"', "", marked) == html_body

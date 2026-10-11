@@ -40,7 +40,7 @@ from preview_html_body_helpers import (
     BODY_FRAME,
     BODY_WITH_HTML_CODE_BLOCK,
     FRAME_SETTLE_MS,
-    frame_height_gap,
+    frame_fit,
     frame_of,
     select_in_frame,
     wait_frame_rendered,
@@ -2547,7 +2547,9 @@ def test_html_body(
     # 検証
     assert page.locator("aside.panel .md:not(.md-value)").count() == 0
     assert frame_of(page, BODY_FRAME).locator("h1").inner_text() == "画面のモック"
-    assert frame_height_gap(page, BODY_FRAME) <= 1
+    fit = frame_fit(page, BODY_FRAME)
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]
 
 
 def test_html_code_block(

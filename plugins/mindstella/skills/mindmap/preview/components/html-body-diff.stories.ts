@@ -10,17 +10,17 @@ const AFTER = ["<h1>画面の流れ</h1>", "<p>一つ目の段落</p>", "<p>書�
 
 /** 今の本文の行の印つきの HTML */
 const MARKED = [
-  '<h1 data-line="1">画面の流れ</h1>',
-  '<p data-line="2">一つ目の段落</p>',
-  '<p data-line="3">書き換えた二つ目の段落</p>',
-  '<p data-line="4">三つ目の段落</p>',
+  '<h1 data-line="1" data-line-end="1">画面の流れ</h1>',
+  '<p data-line="2" data-line-end="2">一つ目の段落</p>',
+  '<p data-line="3" data-line-end="3">書き換えた二つ目の段落</p>',
+  '<p data-line="4" data-line-end="4">三つ目の段落</p>',
 ].join("\n");
 
 /** 2 つ目の段落を消した今の本文 */
 const REMOVED = ["<h1>画面の流れ</h1>", "<p>一つ目の段落</p>", "<p>三つ目の段落</p>"].join("\n");
 
 /** 消した今の本文の行の印つきの HTML */
-const REMOVED_MARKED = ['<h1 data-line="1">画面の流れ</h1>', '<p data-line="2">一つ目の段落</p>', '<p data-line="3">三つ目の段落</p>'].join("\n");
+const REMOVED_MARKED = ['<h1 data-line="1" data-line-end="1">画面の流れ</h1>', '<p data-line="2" data-line-end="2">一つ目の段落</p>', '<p data-line="3" data-line-end="3">三つ目の段落</p>'].join("\n");
 
 const meta = {
   title: "Preview/HtmlBodyDiff",

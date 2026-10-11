@@ -31,7 +31,7 @@ from preview_html_body_helpers import (
     LEAKING_HTML_BODY,
     MARKED_FRAME,
     drag_select_in_frame,
-    frame_height_gap,
+    frame_fit,
     frame_of,
     leak_counts,
     select_in_frame,
@@ -782,10 +782,26 @@ THREE_PARAGRAPH_HTML_REWRITTEN = (
     "<p>1 つ目の段落</p>\n<p>書き直した 2 つ目の段落</p>\n<p>3 つ目の段落</p>\n"
 )
 
-# 複数行にまたがる開きタグ（`<b` の次の行で閉じる）を中に持つ段落と、その後ろの行を書き換えた本文
-MULTILINE_TAG_HTML = '<div>\n<p>見出し <b\n   class="k">強調</b>\n続きの文</p>\n</div>\n'
-MULTILINE_TAG_HTML_REWRITTEN = (
-    '<div>\n<p>見出し <b\n   class="k">強調</b>\n書き直した続きの文</p>\n</div>\n'
+# 複数行にまたがる開きタグ（`<b` の次の行で閉じる）を中に持つ段落（1〜5 行目）と、小見出しの後ろに地の文を持つ節（6〜9 行目）。書き換えるのは 4 行目と 8 行目
+CLOSED_ELEMENT_HTML = (
+    "<div>\n"
+    '<p>見出し <b\n   class="k">強調</b>\n'
+    "続きの文</p>\n"
+    "</div>\n"
+    "<section>\n"
+    "<h2>小見出し</h2>\n"
+    "節の文\n"
+    "</section>\n"
+)
+CLOSED_ELEMENT_HTML_REWRITTEN = (
+    "<div>\n"
+    '<p>見出し <b\n   class="k">強調</b>\n'
+    "書き直した続きの文</p>\n"
+    "</div>\n"
+    "<section>\n"
+    "<h2>小見出し</h2>\n"
+    "書き直した節の文\n"
+    "</section>\n"
 )
 
 # 差分の印と、凡例の「変わった」の印
@@ -823,7 +839,9 @@ def test_normal_when_html_body(
     assert frame.locator("svg").count() == 1
     assert leak_counts(page, BODY_FRAME) == {"parent": 0, "frame": 0}
     assert style_snapshot(page, [PANEL_TITLE, TOPBAR]) == before
-    assert frame_height_gap(page, BODY_FRAME) <= 1
+    fit = frame_fit(page, BODY_FRAME)
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]
 
 
 def test_normal_when_html_body_commented(
@@ -918,13 +936,13 @@ def test_normal_when_html_body_diff(
     assert frame_of(page, BODY_FRAME).locator("[data-df]").count() == 0
 
 
-def test_normal_when_html_body_diff_with_multiline_tag(
+def test_normal_when_html_body_diff_after_closed_element(
     make_workspace: MakeWorkspace,
     call_tool: CallTool,
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """複数行にまたがる開きタグを中に持つ要素の後ろの行を書き換えると、差分の印は外側の要素ではなく内側の要素に付く（正常系）。"""
+    """中の要素が閉じた後の行を書き換えると、差分の印を閉じた要素ではなく、その行を含む要素に付ける（正常系）。"""
     # 準備
     root = make_workspace()
     workspace = str(root)
@@ -933,12 +951,12 @@ def test_normal_when_html_body_diff_with_multiline_tag(
         "kind": "モック",
         "status": "下書き",
         "deliverable": False,
-        "body_html": MULTILINE_TAG_HTML,
+        "body_html": CLOSED_ELEMENT_HTML,
     }
     assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
     assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
     updated = call_tool(
-        "update", workspace=workspace, id="A-1", item={"body_html": MULTILINE_TAG_HTML_REWRITTEN}
+        "update", workspace=workspace, id="A-1", item={"body_html": CLOSED_ELEMENT_HTML_REWRITTEN}
     )
     assert updated.is_error is False
     assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
@@ -951,7 +969,7 @@ def test_normal_when_html_body_diff_with_multiline_tag(
     marked = frame_of(page, MARKED_FRAME).eval_on_selector_all(
         "[data-df]", "els => els.map(e => [e.tagName, e.dataset.df])"
     )
-    assert marked == [["B", "chg"]]
+    assert marked == [["P", "chg"], ["SECTION", "chg"]]
 
 
 def test_normal_when_html_code_block(

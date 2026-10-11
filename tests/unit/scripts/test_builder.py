@@ -181,7 +181,7 @@ def test_collect_preview_data_with_html_body(
     data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
     # 検証
     assert data["bodies"] == {"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"}
-    assert data["marked_bodies"] == {"A-2.html": '<p data-line="1">a</p>'}
+    assert data["marked_bodies"] == {"A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
 
 
 def test_collect_preview_data_with_changes(
