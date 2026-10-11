@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, MakeData, MakeItem
+from .fixture_types import LoadLibrary, LoadPreviewScripts, LoadPreviewStyles, MakeData, MakeItem
 
 # 変更履歴の 1 回分の日時
 ENTRY_AT = "2026-10-03T09:00:00+00:00"
@@ -1680,3 +1680,219 @@ def test_detail_panel_when_alias_tip_escape_in_full(
         "full": 0,
         "open": True,
     }
+
+
+# 見出しのタイトル（`.panel-title`）を調べる関数の集まり。`openHeadTitle` が項目を開き（開いていた詳細は外す）、`readHeadTitle` が今の見出しのタイトルの状態を読み、`scrollBody` が本文のスクロール領域を送って見出しのタイトルの出し入れが済むまで待つ
+HEAD_TITLE_FUNCTIONS = """
+// 描画と、見張りが返す結果の反映を待つコマ数
+const SETTLE_FRAMES = 3;
+// 出し入れが済むのを待つ上限（ミリ秒）
+const SCROLL_WAIT_MS = 1000;
+const frames = (count) => new Promise((resolve) => {
+    const tick = (left) => (left === 0 ? resolve() : requestAnimationFrame(() => tick(left - 1)));
+    tick(count);
+});
+const openHeadTitle = async ({data, id, full}) => {
+    window.__panel?.remove();
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop},
+        comment: null,
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    // 全画面は開き、横のパネルは画面と同じく open を付けて見せる
+    if (full) panel.showModal();
+    else panel.classList.add("open");
+    window.__panel = panel;
+    await frames(SETTLE_FRAMES);
+};
+const readHeadTitle = () => {
+    const title = window.__panel.querySelector(".panel-title");
+    if (title === null) return null;
+    return {
+        shown: title.classList.contains("is-shown"),
+        text: title.textContent,
+        title: title.getAttribute("title"),
+        ariaHidden: title.getAttribute("aria-hidden"),
+        visibility: getComputedStyle(title).visibility,
+    };
+};
+const scrollBody = async (position) => {
+    const body = window.__panel.querySelector(".panel-body");
+    body.scrollTop = position === "end" ? body.scrollHeight : 0;
+    const deadline = performance.now() + SCROLL_WAIT_MS;
+    // 見張りの結果は次のコマ以降に届くので、出し入れが済む（end なら出る・top なら隠れる）まで待つ
+    while (performance.now() < deadline) {
+        const title = window.__panel.querySelector(".panel-title");
+        if (title !== null && title.classList.contains("is-shown") === (position === "end")) break;
+        await frames(1);
+    }
+};"""
+
+
+# 本文の頭 → 本文のスクロール領域の下端 → 頭へ戻す の順に、見出しのタイトルの状態を読む。本文の高さは、スクロール領域の高さの何倍かも返す
+HEAD_TITLE_ON_SCROLL_SCRIPT = (
+    HEAD_TITLE_FUNCTIONS
+    + """
+async ({data, id}) => {
+    await openHeadTitle({data, id, full: false});
+    const body = window.__panel.querySelector(".panel-body");
+    const bodyRatio = body.scrollHeight / body.clientHeight;
+    const top = readHeadTitle();
+    await scrollBody("end");
+    const end = readHeadTitle();
+    await scrollBody("top");
+    const back = readHeadTitle();
+    return {bodyRatio, top, end, back};
+}"""
+)
+
+# 見出しのタイトルを確かめる資料のタイトル（見出しの帯の幅に収まらない長さ）
+HEAD_TITLE_LONG_TITLE = (
+    "話し合いの進め方の手引き（セットアップからヒアリング・リサーチ・方針転換を経て"
+    "ゴール判定でリリースするまでの流れと、各段で記録に残すことの一覧）"
+)
+
+# 本文の高さを、本文のスクロール領域の高さの 3 倍以上にする段落の数
+HEAD_TITLE_LONG_BODY_PARAGRAPHS = 200
+
+
+def _head_title_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
+    """本文の長い資料 A-1（長いタイトル）と、本文の短い資料 A-2 を持つ埋め込みのデータを返す。"""
+    long_body = "\n\n".join(f"{number} 番目の段落" for number in range(HEAD_TITLE_LONG_BODY_PARAGRAPHS))
+    return make_data(
+        docs=[
+            make_item("A-1", title=HEAD_TITLE_LONG_TITLE),
+            make_item("A-2", title="短い本文の資料"),
+        ],
+        bodies={"A-1.md": long_body, "A-2.md": "短い段落\n"},
+    )
+
+
+def test_detail_panel_when_head_title_on_scroll(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルを出す（正常系）。"""
+    # 準備
+    data = _head_title_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(HEAD_TITLE_ON_SCROLL_SCRIPT, {"data": data, "id": "A-1"})
+    # 検証
+    # どの時点にも見出しのタイトルがある
+    assert None not in (result["top"], result["end"], result["back"])
+    # 本文はスクロール領域の高さの 3 倍以上ある
+    assert result["bodyRatio"] >= 3
+    # 本文の頭: タイトルは隠れ、場所は取ったまま。文字は全文を持ち、読み上げからは外す
+    assert result["top"] == {
+        "shown": False,
+        "text": HEAD_TITLE_LONG_TITLE,
+        "title": HEAD_TITLE_LONG_TITLE,
+        "ariaHidden": "true",
+        "visibility": "hidden",
+    }
+    # 本文の下端: 本文の先頭のタイトルが上へ外れ、見出しのタイトルが出る
+    assert result["end"]["shown"] is True
+    assert result["end"]["visibility"] == "visible"
+    # 頭へ戻す: 隠れる
+    assert result["back"]["shown"] is False
+
+
+# 本文の長い A-1 を開いて本文を送り、本文の短い A-2、本文の頭のままの A-1 の順に開き直して、開き直した直後の見出しのタイトルを読む
+HEAD_TITLE_RERENDER_SCRIPT = (
+    HEAD_TITLE_FUNCTIONS
+    + """
+async ({data}) => {
+    await openHeadTitle({data, id: "A-1", full: false});
+    await scrollBody("end");
+    const scrolled = readHeadTitle();
+    await openHeadTitle({data, id: "A-2", full: false});
+    const short = readHeadTitle();
+    await openHeadTitle({data, id: "A-1", full: false});
+    const reopened = readHeadTitle();
+    return {scrolled, short, reopened};
+}"""
+)
+
+
+def test_detail_panel_when_head_title_rerender(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """描き直した後も、今の項目の本文の先頭のタイトルだけを見張る（正常系）。"""
+    # 準備
+    data = _head_title_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(HEAD_TITLE_RERENDER_SCRIPT, {"data": data})
+    # 検証
+    # どの時点にも見出しのタイトルがある
+    assert None not in (result["scrolled"], result["short"], result["reopened"])
+    # 開き直す前: 送った A-1 は見出しのタイトルが出ている
+    assert result["scrolled"]["shown"] is True
+    # A-2 を開き直した直後: A-2 のタイトルで、出ていない
+    assert (result["short"]["text"], result["short"]["shown"]) == ("短い本文の資料", False)
+    # 本文の頭のまま A-1 を開き直した直後: 前の見張りが残らず、出ていない
+    assert (result["reopened"]["text"], result["reopened"]["shown"]) == (HEAD_TITLE_LONG_TITLE, False)
+
+
+# 全画面で本文の長い A-1 を開き、送る前と、モーダルの本文のスクロール領域を下端まで送った後の見出しのタイトルを読む
+HEAD_TITLE_FULL_SCRIPT = (
+    HEAD_TITLE_FUNCTIONS
+    + """
+async ({data}) => {
+    await openHeadTitle({data, id: "A-1", full: true});
+    const before = readHeadTitle();
+    await scrollBody("end");
+    const after = readHeadTitle();
+    return {before, after, inDialog: window.__panel.matches("dialog") && window.__panel.open};
+}"""
+)
+
+
+def test_detail_panel_when_head_title_full(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全画面でも、本文を送ったときだけ見出しのタイトルを出す（正常系）。"""
+    # 準備
+    data = _head_title_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(HEAD_TITLE_FULL_SCRIPT, {"data": data})
+    # 検証
+    # 送る前も送った後も見出しのタイトルがある
+    assert None not in (result["before"], result["after"])
+    # 開いているのは全画面の dialog
+    assert result["inDialog"] is True
+    # 送る前は出ず、送った後は dialog の中の見出しのタイトルが出る
+    assert result["before"]["shown"] is False
+    assert result["after"]["shown"] is True
