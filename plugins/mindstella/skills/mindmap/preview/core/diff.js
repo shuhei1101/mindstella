@@ -128,6 +128,9 @@ var MindmapPreview;
                 // 本文を初めて足した回: 前は本文が無い
                 if (value === null)
                     body = "";
+                // 資料の本文の形式を替えた回: 前の形式のファイル名に戻す
+                else if (typeof value === "string")
+                    item["body"] = value;
                 continue;
             }
             if (value === null)
@@ -188,6 +191,36 @@ var MindmapPreview;
         }));
     }
     MindmapPreview.diffLineParts = diffLineParts;
+    /** 前後の HTML の原文を行ごとに比べ、足した行・変えた行（消した行と入れ替えた行）と、足した行と隣り合わない消した行があるかを返す。差分を打ち切ったら null */
+    function htmlChangedLines(before, after) {
+        const parts = diffLineParts(before, after);
+        if (parts === null)
+            return null;
+        const added = [];
+        const changed = [];
+        let removedOnly = false;
+        let nowLine = 0;
+        parts.forEach((part, position) => {
+            const neighbors = [parts[position - 1]?.kind, parts[position + 1]?.kind];
+            if (part.kind === "removed") {
+                // 足した並びに隣らない消した並びは、描いた結果に印を付けられない
+                if (!neighbors.includes("added"))
+                    removedOnly = true;
+                return;
+            }
+            if (part.kind === "added") {
+                // 消した並びに隣る足した並びは変えた行、それ以外は足した行（空白だけの行は入れない）
+                const target = neighbors.includes("removed") ? changed : added;
+                part.lines.forEach((line, offset) => {
+                    if (line.trim() !== "")
+                        target.push(nowLine + offset + 1);
+                });
+            }
+            nowLine += part.lines.length;
+        });
+        return { added, changed, removedOnly };
+    }
+    MindmapPreview.htmlChangedLines = htmlChangedLines;
     /** 行の差分のうち、消した行のすぐ後に同じ行の数の足した行が続くところを、変えた行の対にして返す（`parts` の添え字の並び。前から 1 行ずつが対になる） */
     function pairedParts(parts) {
         const pairs = [];

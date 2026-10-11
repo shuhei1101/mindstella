@@ -161,6 +161,34 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、取れなかった URL を含み、トレースバックを含まない'
       - '`配る.html` の中身が呼ぶ前と同じ'
     test: test_error_when_download_fails
+  - name: 正常系（HTML の本文を埋め込む）
+    summary: HTML の本文も、原文と行の印を足したものを埋め込みのデータに入れる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて MCP のクライアントでツールを呼び、描画のライブラリの配布ファイルとライセンスの本文は jsDelivr から取る）
+      - name: make_workspace
+        description: 本文を HTML で持ち、`<style>` と `<script>` と段落を持つ資料 A-1 を持つワークスペース
+      - name: 書き出す先
+        description: ワークスペースの外の一時フォルダの `配る.html`（まだ無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as export（MCP のツール）
+        participant WS as ワークスペース
+        participant OUT as 書き出す先
+
+        クライアント->>IF: export workspace out
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF->>IF: HTML の本文に行の印を足し、雛形にデータを入れる
+        IF->>OUT: HTML を書く
+        IF-->>クライアント: JSON（path）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`bodies` の `A-1.html` が本文のファイルと同じで、`marked_bodies` の `A-1.html` が『記録の取得』と同じ'
+      - '`配る.html` の中の `</script>` の数が、雛形の数にライセンスの表示の要素の 1 つを足した数（本文の `</script>` で要素が閉じていない）'
+    test: test_normal_when_html_body
 lead: ワークスペースの記録を、画面と描画のライブラリまで中に持つ見るだけの 1 枚の HTML にして、指定したパスへ書き出す。ワークスペースもサーバーもネットも持たない人へ配るために使う。
 idempotent: true
 side_effects: '`out` のファイルを、同じフォルダの一時ファイルから `os.replace` で置き換える。ワークスペースは読むだけ。プレビューの配信は立てず、ブラウザも開かない。描画のライブラリの配布ファイルとライセンスの本文を jsDelivr から取る'
@@ -224,7 +252,7 @@ constraints:
   - item: 見るだけ
     constraint: 画面の JavaScript はサーバーが配るものと同じものを差し込む。記録を埋め込みのデータから読み、コメントのボタン・一覧・入力・選んだ箇所の入口と書き換えの知らせの購読を出さない
   - item: 通信
-    constraint: ツールは、雛形の描画のライブラリの `<script src>` の URL（jsDelivr、版を固定）と、ライブラリのライセンスの本文の URL（同じ版）を取るときだけ通信する。取った配布ファイルは雛形の `integrity`（sha384）と突き合わせ、合わなければ書き出さない。書き出した HTML は通信しない
+    constraint: ツールは、雛形の描画のライブラリの `<script src>` の URL（jsDelivr、版を固定）と、ライブラリのライセンスの本文の URL（同じ版）を取るときだけ通信する。取った配布ファイルは雛形の `integrity`（sha384）と突き合わせ、合わなければ書き出さない。書き出した HTML は通信しない。ただし、HTML の本文が外の画像・CSS を指すときは、描くときにブラウザがその URL を読みに行き、ネットにつながらない端末では読めないまま描く（ツールは本文の中身を書き換えない）
   - item: 待ちの上限
     constraint: 1 回の要求で、接続と 1 回の読み取りをそれぞれ 30 秒まで待つ。取り直さず、届かなければ `DownloadFailedError` で終える
     notes: jsDelivr から 4 つの配布ファイル（最大 5.5MB）とライセンスの本文を取る時間の実測は 1 件あたり最大 0.65 秒（2026-10-03、手元の回線）。待ちは読み取り 1 回ごとに効くので、遅い回線で全体が長くなっても途切れない限り止めない。取り直しは利用者が `export` を呼び直す

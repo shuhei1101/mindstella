@@ -38,6 +38,15 @@ namespace MindmapPreview {
   /** 本文のブロックの要素が持つ、元の Markdown の先頭の行（1 始まり）の属性 */
   export const LINE_ATTR = "data-line-start";
 
+  /** Markdown の中の `html` のコードブロックを置き換えた、HTML の本文の枠の入れ物の class */
+  export const HTML_BLOCK_CLASS = "html-block";
+
+  /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
+  export const HTML_LINE_ATTR = "data-line";
+
+  /** 開きタグの直後の改行を、解析のときに取り除く要素 */
+  const LEADING_NEWLINE_TAGS = ["PRE", "TEXTAREA", "LISTING"];
+
   /** 項目の値を描いた要素が持つ、項目のキーのパスの属性 */
   export const VALUE_KEY_ATTR = "data-key";
 
@@ -156,6 +165,63 @@ namespace MindmapPreview {
     };
   }
 
+  /** 文書の順で端より前にある、行の印（`data-line`）を持つ要素のうち最も後のものを返す（無ければ null） */
+  function htmlLineElement({ doc, node, offset }: { doc: Document; node: Node; offset: number }): Element | null {
+    const probe = doc.createRange();
+    probe.setStart(node, offset);
+    probe.collapse(true);
+    let found: Element | null = null;
+    for (const element of doc.querySelectorAll(`[${HTML_LINE_ATTR}]`)) {
+      // 要素の先頭が端より前（端と同じ位置を含む）にあるものだけが候補
+      if (probe.comparePoint(element, 0) > 0) break;
+      found = element;
+    }
+    return found;
+  }
+
+  /** 行の印を持つ要素の開きタグの直後から端までにある改行（文とコメントの中の改行。`br` は数えない）の数を返す */
+  function htmlLinesBefore({ element, node, offset }: { element: Element; node: Node; offset: number }): number {
+    const range = element.ownerDocument.createRange();
+    range.setStart(element, 0);
+    range.setEnd(node, offset);
+    const fragment = range.cloneContents();
+    let count = countNewlines(fragment.textContent ?? "");
+    // コメントは textContent に入らないので、中の改行を足す
+    const walker = element.ownerDocument.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
+    while (walker.nextNode()) count += countNewlines((walker.currentNode as Comment).data);
+    return count;
+  }
+
+  /** `pre`・`textarea`・`listing` の開きタグの直後に改行があるとき 1（その改行は解析のときに取り除かれる）を返す */
+  function leadingNewlineBefore({ element, source }: { element: Element; source: string }): number {
+    if (!LEADING_NEWLINE_TAGS.includes(element.tagName)) return 0;
+    const line = source.split("\n")[Number(element.getAttribute(HTML_LINE_ATTR)) - 1] ?? "";
+    return /<(?:pre|textarea|listing)\b[^>]*>\r?$/i.test(line) ? 1 : 0;
+  }
+
+  /** HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする。空の選択・端より前に行の印を持つ要素が無い選択は null */
+  export function htmlSelectionLocation(range: Range, source: string): Location | null {
+    if (range.collapsed) return null;
+    const text = range.toString().trim();
+    // 文が空白だけ
+    if (text === "") return null;
+    const doc = range.startContainer.ownerDocument ?? (range.startContainer as Document);
+    const startElement = htmlLineElement({ doc, node: range.startContainer, offset: range.startOffset });
+    const endElement = htmlLineElement({ doc, node: range.endContainer, offset: range.endOffset });
+    // 端より前に行の印を持つ要素が無い
+    if (startElement === null || endElement === null) return null;
+    const lineOfBoundary = (element: Element, node: Node, offset: number): number =>
+      Number(element.getAttribute(HTML_LINE_ATTR)) +
+      htmlLinesBefore({ element, node, offset }) +
+      leadingNewlineBefore({ element, source });
+    return {
+      kind: "body",
+      start: lineOfBoundary(startElement, range.startContainer, range.startOffset),
+      end: lineOfBoundary(endElement, range.endContainer, range.endOffset),
+      text,
+    };
+  }
+
   /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
   function keyElement(node: Node): Element | null {
     const element = node instanceof Element ? node : node.parentElement;
@@ -221,6 +287,17 @@ namespace MindmapPreview {
         ],
       });
       (code.closest("pre") ?? code).replaceWith(figure);
+    }
+    // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面）
+    for (const code of root.querySelectorAll("code.language-html")) {
+      const pre = code.closest("pre") ?? code;
+      const block = h({
+        tag: "div",
+        attrs: { class: HTML_BLOCK_CLASS, [DIAGRAM_SOURCE_ATTR]: code.textContent ?? "" },
+      });
+      const line = pre.getAttribute(LINE_ATTR);
+      if (line !== null) block.setAttribute(LINE_ATTR, line);
+      pre.replaceWith(block);
     }
     return root;
   }

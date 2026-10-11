@@ -260,3 +260,32 @@ def test_result_headings_when_axe(
     assert tags == ["H2", "H2"]
     assert result["violations"] == []
     assert len(result["passes"]) == 2
+
+
+# 「画面の流れ」を段落の文に持つ HTML の本文（`data-step` は描いた文に出ない）
+FLOW_HTML_BODY = '<p class="flow" data-step="1">画面の流れを決める</p>\n'
+
+# html のコードブロックの段落の文に「画面の流れ」を持つ Markdown の本文（コードブロックの外には書かない）
+FLOW_MARKDOWN_BODY = '# 概要\n\n```html\n<p class="flow" data-step="1">画面の流れを描く</p>\n```\n'
+
+
+def test_search_by_html_body(write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """HTML の本文と html のコードブロックを、タグ・属性を除いた描いた文で探す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        make_item("T-1"),
+        bodies={"A-1.html": FLOW_HTML_BODY, "A-2.md": FLOW_MARKDOWN_BODY},
+    )
+    page = open_preview(url)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    # 実行・検証（描いた文に当たる）
+    page.fill(f"{DIALOG} input", "画面の流れ")
+    page.wait_for_function(f"document.querySelectorAll('{DIALOG} .sr-item').length === 2")
+    assert sorted(_result_ids(page)) == ["A-1", "A-2"]
+    # 実行・検証（タグの属性には当たらない）
+    page.fill(f"{DIALOG} input", "data-step")
+    page.wait_for_function(f"document.querySelectorAll('{DIALOG} .sr-item').length === 0")
+    assert "該当する項目はありません" in page.inner_text(DIALOG)

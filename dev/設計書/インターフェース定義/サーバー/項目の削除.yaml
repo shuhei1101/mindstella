@@ -218,9 +218,33 @@ flows:
       - 'エラーの本文が `エラー: ` で始まり、トレースバックを含まない'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ（`docs/N-1.md` も残る）
     test: test_error_when_write_fails
-lead: ID で指した 1 項目を、種類の YAML と本文の Markdown から消し、消した項目の ID・種類・タイトルを `changes.yaml` のまだまとめていない変更に残す。ほかの記録が指している項目は消さない。
+  - name: 正常系（HTML の本文を持つ資料を消す）
+    summary: 本文を HTML で持つ資料を消すと、HTML の本文のファイルも消す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 本文を HTML（`docs/A-1.html`）で持つ資料 A-1 を足して `commit` したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as remove（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: remove workspace id A-1
+        IF-->>WS: 全ての YAML を読む
+        IF->>WS: docs.yaml・changes.yaml を書き、docs/A-1.html を消す
+        IF-->>クライアント: JSON（body_removed: true）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`body_removed` が真'
+      - '`.mindstella/docs/A-1.html` が無く、`docs.yaml` に A-1 が無い'
+    test: test_normal_when_html_body_removed
+lead: ID で指した 1 項目を、種類の YAML と本文のファイル（Markdown か HTML）から消し、消した項目の ID・種類・タイトルを `changes.yaml` のまだまとめていない変更に残す。ほかの記録が指している項目は消さない。
 idempotent: false
-side_effects: その項目の種類の YAML から項目を消し、本文を持っていれば `.mindstella/docs/{ID}.md` を消す。`changes.yaml` の `last_seq` を 1 進め、`pending.removed` に消した項目を足し、`pending.added`・`pending.changed` からその ID を除く。YAML・`changes.yaml` の一時ファイルを書き終えてから、YAML → `changes.yaml` の順に `os.replace` で置き換え、最後に本文を消す
+side_effects: その項目の種類の YAML から項目を消し、本文を持っていれば `body` が指す `.mindstella/docs/{ID}.md` か `.mindstella/docs/{ID}.html` を消す。`changes.yaml` の `last_seq` を 1 進め、`pending.removed` に消した項目を足し、`pending.added`・`pending.changed` からその ID を除く。YAML・`changes.yaml` の一時ファイルを書き終えてから、YAML → `changes.yaml` の順に `os.replace` で置き換え、最後に本文を消す
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 callers:
   - dev/設計書/インターフェース定義/スキル/話し合いの進行#
@@ -252,7 +276,7 @@ response:
     description: 書き換えた YAML（ワークスペースからの相対パス。例 `.mindstella/notes.yaml`）
   - name: body_removed
     type: bool
-    description: 本文の Markdown を消したか（本文を持たない項目は偽）
+    description: 本文のファイル（Markdown か HTML）を消したか（本文を持たない項目は偽）
 exceptions:
   - name: なし（正常終了）
     condition: 消せた

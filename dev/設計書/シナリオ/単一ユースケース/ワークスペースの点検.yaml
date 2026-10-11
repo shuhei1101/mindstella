@@ -137,6 +137,29 @@ scenarios:
       - 点検のツールが成功を返す
       - 出力に、問題が無い旨がある
     test: test_normal_when_removed_item_in_change_set
+  - name: 正常シナリオ（HTML の本文にずれがある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持つ資料 A-1 と、本文を HTML で持つ資料 A-2
+        notes: A-1 の本文のファイルを消し、どの資料からも指されない HTML の本文のファイル `A-9` を `.mindstella/docs/` に置く
+    flow: |-
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 点検する
+        SV->>WS: 全ての YAML と .mindstella/docs/ を読む
+        SV-->>CC: 問題の一覧
+    expected:
+      - A-1 の「指す本文が無い」問題が 1 件ある
+      - '`A-9` の HTML の本文の「どこからも指されない」問題が 1 件ある'
+      - A-2 には問題が無い
+    test: test_normal_when_html_body_problems_found
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

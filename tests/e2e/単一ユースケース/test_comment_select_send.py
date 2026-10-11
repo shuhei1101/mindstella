@@ -462,3 +462,81 @@ def test_error_when_not_entered(
         "1 件を送りましたが、Claude Code には入力できませんでした（"
     )
     assert pane.lines() == []
+
+
+# 4 行目より前に `<style>` とコメントを置き、4 行目に `<b>` のタグをまたぐ文を持つ HTML の本文と、4 行目を書き換えた本文
+HTML_BODY = "<style>p { color: red; }</style>\n<!-- 下書き -->\n\n<p>言い<b>換え</b>たい文</p>\n"
+HTML_BODY_REWRITTEN = "<style>p { color: red; }</style>\n<!-- 下書き -->\n\n<p>書き直した文</p>\n"
+
+# 4 行目を指す箇所（選んだ文は `<b>` のタグをまたぐ）
+HTML_FOURTH_LINE = {"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"}
+
+
+def test_normal_when_html_body_location(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """HTML の本文の 4 行目を指すコメントをチェックして送ると、箇所を持つ送信になる（正常系）。"""
+    # 準備
+    url, root = _serve(
+        make_workspace,
+        call_tool,
+        write_comments,
+        make_item("A-1", body="A-1.html"),
+        comments=(
+            make_comment("C-1", target="A-1", body="ここは言い換える", loc=HTML_FOURTH_LINE),
+        ),
+        bodies={"A-1.html": HTML_BODY},
+    )
+    open_preview(url, BOARD_HASH)
+    _open_list(page)
+    # 実行
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    # 検証
+    submissions = _read(root, "submissions.yaml")
+    assert [(item["target"], item["body"]) for item in submissions] == [
+        ("A-1", "ここは言い換える")
+    ]
+    assert submissions[0]["loc"] == HTML_FOURTH_LINE
+    assert submissions[0]["taken"] is None
+    assert _read(root, "comments.yaml") == []
+
+
+def test_error_when_html_body_location_stale(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """溜めた後に HTML の本文の 4 行目が書き換わって選んだ文が無くなると、何も送らず理由を出す（異常系）。"""
+    # 準備
+    url, root = _serve(
+        make_workspace,
+        call_tool,
+        write_comments,
+        make_item("A-1", body="A-1.html"),
+        comments=(
+            make_comment("C-1", target="A-1", body="ここは言い換える", loc=HTML_FOURTH_LINE),
+        ),
+        bodies={"A-1.html": HTML_BODY},
+    )
+    open_preview(url, BOARD_HASH)
+    _open_list(page)
+    # 溜めた後に、Claude Code が A-1 の HTML の本文の 4 行目を書き換えた形にする
+    (root / RECORD_DIR / "docs" / "A-1.html").write_text(HTML_BODY_REWRITTEN, encoding="utf-8")
+    # 実行
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=RESULT_TIMEOUT_MS)
+    # 検証（何も送らず、A-1 へのコメントがレビュー中に残り、A-1 への行に理由が出る）
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert [item["id"] for item in _read(root, "comments.yaml")] == ["C-1"]
+    assert page.locator(f"{_row('C-1')} .row-stale").count() == 1

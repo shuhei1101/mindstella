@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -96,6 +96,15 @@ RESERVED_KEYS = (
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
 BODY_INPUT_KEY = "body_markdown"
 
+# `item` で資料の HTML の本文を渡すキー（YAML には残さない）
+HTML_BODY_INPUT_KEY = "body_html"
+
+# HTML の本文を持てる種類
+HTML_BODY_KIND: Kind = "doc"
+
+# `item` で渡す本文のキー（どちらも YAML には残さない）
+BODY_INPUT_KEYS = (BODY_INPUT_KEY, HTML_BODY_INPUT_KEY)
+
 # 項目の中身のエラーの行に付けるファイル名の代わり
 ITEM_NAME = "item"
 
@@ -142,13 +151,26 @@ class Staged:
     bodies: dict[str, BodyWrite]
     # 当てた後のまとまりの記録
     changes: Changes
+    # 書き込んだ後に消す `docs/` の本文のファイル名（形式を替えた資料の前の形式の本文）
+    removed_bodies: list[str] = field(default_factory=list)
 
 
-def validate_input_keys(kind: Kind, data: dict[str, Any]) -> None:
-    """ツールが付けるキーを弾く（`body_markdown` はどの種類も渡せる）。"""
+def validate_input_keys(kind: Kind, data: dict[str, Any], *, index: int) -> None:
+    """ツールが付けるキーと、資料以外の `body_html`・両方の本文を弾く（`body_markdown` はどの種類も渡せる）。"""
     lines = [f"{ITEM_NAME}: {key}: ツールが付けるキーです" for key in RESERVED_KEYS if key in data]
     if lines:
         raise SchemaMismatchError(lines)
+    if HTML_BODY_INPUT_KEY not in data:
+        return
+    where = f"{KINDS[kind].file}: items[{index}].{HTML_BODY_INPUT_KEY}"
+    # 資料以外は HTML の本文を持てない
+    if kind != HTML_BODY_KIND:
+        raise SchemaMismatchError([f"{where}: 資料だけが HTML の本文を持てる"])
+    # 本文は Markdown か HTML のどちらか 1 つ
+    if BODY_INPUT_KEY in data:
+        raise SchemaMismatchError(
+            [f"{where}: {BODY_INPUT_KEY} と {HTML_BODY_INPUT_KEY} は一緒に渡せない"]
+        )
 
 
 def merge_changes(
@@ -278,7 +300,7 @@ def stage_add(
     staged: Staged, kind: Kind, item: dict[str, Any], now: NowFn = now_utc
 ) -> tuple[Staged, dict[str, Any]]:
     """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
-    validate_input_keys(kind, item)
+    validate_input_keys(kind, item, index=len(staged.items[kind]))
     # 消した項目の ID は振り直さない
     item_id = next_id(
         replace(staged.workspace, items=staged.items),
@@ -289,10 +311,10 @@ def stage_add(
     record, seq = advance_seq(staged.changes)
     # id を先頭に、created・updated・updated_by・seq・added_seq を末尾に置く
     added: dict[str, Any] = {"id": item_id}
-    added.update({key: value for key, value in item.items() if key != BODY_INPUT_KEY})
+    added.update({key: value for key, value in item.items() if key not in BODY_INPUT_KEYS})
     body = _body_write(item_id, item)
     bodies = dict(staged.bodies)
-    # 本文を渡したときだけ（どの種類も）、項目の body を `{ID}.md` にして本文の書き込みを足す
+    # 本文を渡したときだけ、項目の body を `{ID}.md`（資料の HTML は `{ID}.html`）にして本文の書き込みを足す
     if body is not None:
         added["body"] = body.name
         bodies[body.name] = body
@@ -328,26 +350,35 @@ def stage_update(
     """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。"""
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
-    validate_input_keys(ref.kind, item)
-    changes = {key: value for key, value in item.items() if key != BODY_INPUT_KEY}
+    validate_input_keys(ref.kind, item, index=ref.index)
+    changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
     merged["updated_by"] = EDITOR
     body = _body_write(item_id, item)
-    # 本文を渡したときは body を `{ID}.md` にする（changed に入れるのは値が変わったときだけ）
+    previous_name = ref.item.get("body")
+    bodies = dict(staged.bodies)
+    removed_bodies = list(staged.removed_bodies)
+    # 本文を渡したときは body を `{ID}.md` か `{ID}.html` にする（changed に入れるのは値が変わったときだけ）
     if body is not None and merged.get("body") != body.name:
         merged["body"] = body.name
         changed.append("body")
+        # 前の body があり名前が違う（形式を替えた）: 前の形式の本文を消す書き込みにする
+        if isinstance(previous_name, str):
+            bodies.pop(previous_name, None)
+            removed_bodies.append(previous_name)
+    # 新しい名前の本文を書くので、消す本文には入れない
+    if body is not None:
+        removed_bodies = [name for name in removed_bodies if name != body.name]
     # 書き換える前の本文（同じ呼び出しで先に書いた本文があればそれ）
-    previous_name = ref.item.get("body")
     previous_body = (
         staged.bodies[previous_name].text
         if isinstance(previous_name, str) and previous_name in staged.bodies
         else _read_item_body(workspace, ref.item)
     )
-    # 本文の中身が変わったときは、`body_markdown` も changed に入れる
+    # 本文の中身が変わったときは、渡した本文のキー（`body_markdown` か `body_html`）も changed に入れる
     if body is not None and body.text != previous_body:
-        changed.append(BODY_INPUT_KEY)
+        changed.append(HTML_BODY_INPUT_KEY if body.name.endswith(".html") else BODY_INPUT_KEY)
     merged, record = _stack_changes(
         workspace,
         staged.changes,
@@ -362,8 +393,9 @@ def stage_update(
         staged,
         items={**staged.items, ref.kind: rows},
         touched=staged.touched | {ref.kind},
-        bodies={**staged.bodies, **({body.name: body} if body is not None else {})},
+        bodies={**bodies, **({body.name: body} if body is not None else {})},
         changes=record,
+        removed_bodies=removed_bodies,
     )
     return new_staged, {
         "id": item_id,
@@ -811,6 +843,7 @@ def _batch_of(staged: Staged, original: Changes) -> BatchChange:
         items={kind: staged.items[kind] for kind in KINDS if kind in staged.touched},
         bodies=list(staged.bodies.values()),
         changes=dict(staged.changes) if staged.changes != original else None,
+        removed_bodies=list(staged.removed_bodies),
     )
 
 
@@ -848,7 +881,8 @@ def _show_staged(staged: Staged, item_id: str) -> dict[str, Any]:
     name = shown["item"].get("body")
     # 同じ呼び出しで先に書いた本文は、ファイルより新しい
     if isinstance(name, str) and name in staged.bodies:
-        shown["body_markdown"] = staged.bodies[name].text
+        key = "body_html" if shown["body_format"] == "html" else "body_markdown"
+        shown[key] = staged.bodies[name].text
     return shown
 
 
@@ -889,12 +923,15 @@ def _write_changes(root: Path, record: Changes) -> None:
 
 
 def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:
-    """`item` に `body_markdown` があれば、`docs/{ID}.md` に書く本文にする。"""
-    text = item.get(BODY_INPUT_KEY)
+    """`item` の `body_markdown` を `docs/{ID}.md`、`body_html` を `docs/{ID}.html` に書く本文にする。"""
+    markdown = item.get(BODY_INPUT_KEY)
+    html = item.get(HTML_BODY_INPUT_KEY)
+    if markdown is not None:
+        return BodyWrite(name=f"{item_id}.md", text=str(markdown))
+    if html is not None:
+        return BodyWrite(name=f"{item_id}.html", text=str(html))
     # 本文を渡していない
-    if text is None:
-        return None
-    return BodyWrite(name=f"{item_id}.md", text=str(text))
+    return None
 
 
 def _parse_version(argument: str, text: str | None) -> Version | None:

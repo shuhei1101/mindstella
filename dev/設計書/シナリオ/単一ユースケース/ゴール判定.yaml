@@ -109,6 +109,35 @@ scenarios:
       - 書き込みの後の `goal` の出力が「届いた」のままである
       - '`.mindstella/release/` に何も書かれていない'
     test: test_normal_when_task_output_doc_missing
+  - name: 正常シナリオ（納品物が HTML の資料）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる `goal`・`show`・`clear-release`・`.mindstella/release/` への書き出し・`add`（会話ログ）を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: 'ゴールのフェーズまでの検討事項が全て決定済みで、ゴールの `deliverables` に、本文を Markdown で持つ資料 A-1 と本文を HTML で持つ資料 A-2（タイトル: 画面のモック）があり、どちらも `status: 完成`'
+      - name: 利用者の返答
+        description: 示した検討事項と納品物を確定する
+    flow: |-
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: goal
+        SV-->>CC: 届いた（残り 0 件）
+        CC-->>U: 決まった検討事項と納品物を示して確定を求める
+        U->>CC: 確定する
+        CC->>SV: show（納品物の本文と形式）
+        CC->>SV: clear-release
+        CC->>WS: .mindstella/release/ にリリースの資料を書き出す
+        CC->>SV: add（会話ログ）
+        CC-->>U: .mindstella/release/ のファイルを示す
+    expected:
+      - '`.mindstella/release/` に、A-1 の本文が `{納品物のタイトル}.md` である'
+      - '`.mindstella/release/` に、A-2 の本文が `画面のモック.html` で、HTML のままある'
+      - 会話ログが 1 件足されている
+    test: test_normal_when_html_deliverable
 lead: '`session` が、ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って `.mindstella/release/` にリリースの資料を書き出す単一ユースケース。'
 issue: 4
 primary_actor: 利用者
@@ -125,7 +154,7 @@ success_guarantee: ゴールに届いたときだけ、利用者の確定の後�
 frequency: 話し合いの終わりに 1〜数回
 priority: 高
 notes:
-  リリースの形: '`.mindstella/release/` に書き出す資料の形は進め方ガイドの「リリースの形」が決める。書き出しはスキルが Markdown を書く。書き出す前に `clear-release` で `.mindstella/release/` の中身を消し、最新の確定版の一式だけを置く（版はフォルダで切らない）'
+  リリースの形: '`.mindstella/release/` に書き出す資料の形は進め方ガイドの「リリースの形」が決める。書き出しはスキルが Markdown を書き、本文を HTML で持つ納品物は HTML のまま書く。書き出す前に `clear-release` で `.mindstella/release/` の中身を消し、最新の確定版の一式だけを置く（版はフォルダで切らない）'
   ゴールに届いたかの判定: 'MCP のツール `goal` が判定する。ゴールのフェーズまでの検討事項が全て決定済みか対象外・取り下げで、ゴールの `deliverables` の資料が全て `status: 完成` のときに届いたとする。ゴールが無いときは判定せず、全フェーズの決着していない検討事項を返す。引数と出力の形はインターフェース定義設計で決める'
   タスクの成果と資料: '`goal` が届いたと返した後、確定を取る前に AI が完了した作業・検証のタスクを読み、成果と資料が 1 対 1 で揃っているかを確かめる。欠けていれば資料を足してから確定を取る。調査のタスクは成果を調査の記録に書くため除く。`goal` の判定は変えない'
   検討事項の案: セットアップの検討事項は、単一ユースケース『記録の追加と更新』の補足「検討事項の案」の形で作る

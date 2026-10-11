@@ -9,6 +9,9 @@ directory: |-
       diff-mark.ts          差分の印（部品設計『差分の印』）
       removed-band.ts       消した項目の帯（部品設計『消した項目の帯』）
       withdrawn-badge.ts    取り下げの札（部品設計『取り下げの札』）
+      body-format-badge.ts  本文の形式の札（部品設計『本文の形式の札』）
+      html-body-frame.ts    HTML の本文の枠（部品設計『HTMLの本文の枠』）
+      html-body-diff.ts     HTML の本文の差分（部品設計『HTMLの本文の差分』）
       comment-mark.ts       コメントの印と、画面を描き直さずに印を差し替える処理（部品設計『コメントの印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）

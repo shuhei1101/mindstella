@@ -20,6 +20,7 @@ import store
 from errors import ArgumentError, DownloadFailedError
 from graph import is_settled, judge_goal, list_next_candidates
 from history import load_changes
+from html_body import mark_lines
 from kinds import KINDS, SETTINGS_FILE
 from store import NowFn, Workspace, now_utc
 
@@ -58,6 +59,9 @@ SCRIPT_FILES = (
     "components/term-tip.js",
     "components/settings-panel.js",
     "components/settings-confirm.js",
+    "components/body-format-badge.js",
+    "components/html-body-frame.js",
+    "components/html-body-diff.js",
     "screens/overview.js",
     "screens/decisions.js",
     "screens/tasks.js",
@@ -232,6 +236,7 @@ def collect_preview_data(
         data[spec.file.removesuffix(".yaml")] = workspace.items[kind]
     # 項目の body が指す本文だけを集める（読めないものは入れない）
     bodies: dict[str, str] = {}
+    marked_bodies: dict[str, str] = {}
     for kind in KINDS:
         for item in workspace.items[kind]:
             body = item.get("body")
@@ -240,7 +245,11 @@ def collect_preview_data(
             text = store.read_body(workspace, body)
             if text is not None:
                 bodies[body] = text
+                # HTML の本文は、開きタグに原文の行の印を足したものも渡す
+                if store.body_format(body) == "html":
+                    marked_bodies[body] = mark_lines(text)
     data["bodies"] = bodies
+    data["marked_bodies"] = marked_bodies
     # 書き換えのまとまり（項目の `history` は項目のまま入っている）
     data["changes"] = load_changes(workspace.root)
     data["derived"] = derive_preview_values(workspace)

@@ -774,3 +774,83 @@ def test_normal_when_added_then_removed_since(
     assert page.locator(f"{REMOVED_ITEMS} .df-mark.df-del").count() == 1
     assert page.locator(".df-mark.df-new").count() == 0
     assert _row_marks(page) == {"N-1": None}
+
+
+# 段落 3 つを 1 行ずつ持つ HTML の本文と、2 つ目の段落を書き換えた本文
+HTML_BODY_BEFORE = "<p>1 つ目の段落</p>\n<p>2 つ目の段落</p>\n<p>3 つ目の段落</p>\n"
+HTML_BODY_AFTER = "<p>1 つ目の段落</p>\n<p>書き直した 2 つ目の段落</p>\n<p>3 つ目の段落</p>\n"
+
+# 詳細パネルの HTML の本文の枠と、差分の表示の間に描いた結果を入れる枠
+HTML_BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
+HTML_MARKED_FRAME = "aside.panel .html-marked iframe.html-frame"
+
+# 枠の描き終わり・高さ合わせが済むまで待つミリ秒
+FRAME_SETTLE_MS = 400
+
+# 段落の文と、その段落が持つ（または含まれる）差分の印の種類を返す
+PARAGRAPH_MARKS_SCRIPT = "ps => ps.map(p => [p.textContent, p.closest('[data-df]')?.dataset.df ?? null])"
+
+
+def _wait_frame_rendered(page: Page, selector: str) -> None:
+    """枠が描き終わり、高さ合わせが済むまで待つ。"""
+    page.wait_for_selector(f"{selector}[data-rendered]", state="attached", timeout=DIAGRAM_TIMEOUT_MS)
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+
+
+def test_normal_when_html_body_changed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    snapshot_tree: SnapshotTree,
+    page: Page,
+) -> None:
+    """HTML の本文の 2 つ目の段落を書き換えると、描いた本文の上で変わった段落に印を付け、「原文の差分」で原文の行の差分に切り替える（正常系）。"""
+    # 準備（本文を HTML で持ち、段落 3 つを 1 行ずつ持つ資料 A-1 の、2 つ目の段落を書き換えて 1 つのまとまりにする）
+    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY_BEFORE})
+    ws = str(root)
+    url = _serve(call_tool, root)
+    visit_and_close(page, url)
+    replay("update", workspace=ws, id="A-1", item={"body_html": HTML_BODY_AFTER})
+    replay("commit", workspace=ws, summary="段落を書き直す")
+    before = snapshot_records(snapshot_tree(root))
+    # 実行（変更履歴から書き換えのまとまりを選ぶ）
+    open_preview(url, "#tab=overview")
+    pick_history_point(page, "前回開いてから")
+    # 検証（資料のタブに印が付き、A-1 に変更の印が付く）
+    assert _marked_tabs(page) == ["docs"]
+    page.click('nav.tabbar a[data-tab="docs"]')
+    page.wait_for_selector(".doc-card")
+    assert page.locator('.doc-card[data-id="A-1"] .df-mark.df-chg').count() == 1
+    # 実行（資料のタブで A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    _wait_frame_rendered(page, HTML_MARKED_FRAME)
+    # 検証（描いた本文の上で、書き換えた 2 つ目の段落だけに変更の印が付く）
+    marked = page.frame_locator(HTML_MARKED_FRAME).locator("p").evaluate_all(PARAGRAPH_MARKS_SCRIPT)
+    assert marked == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 実行（「原文の差分」に切り替える）
+    page.get_by_role("button", name="原文の差分").click()
+    # 検証（2 つ目の段落の原文の行が、消した行と足した行で出る）
+    removed = page.inner_text("aside.panel .df-raw .df-line.df-del")
+    added = page.inner_text("aside.panel .df-raw .df-line.df-add")
+    assert "<p>2 つ目の段落</p>" in removed
+    assert "<p>書き直した 2 つ目の段落</p>" in added
+    # 実行（差分の表示から抜ける）
+    page.get_by_role("button", name="差分の表示をやめる").click()
+    _wait_frame_rendered(page, HTML_BODY_FRAME)
+    # 検証（A-1 の本文は、今の HTML を描いた結果だけになる）
+    now = page.frame_locator(HTML_BODY_FRAME)
+    assert now.locator("[data-df]").count() == 0
+    assert now.locator("p").all_inner_texts() == [
+        "1 つ目の段落",
+        "書き直した 2 つ目の段落",
+        "3 つ目の段落",
+    ]
+    assert page.locator("aside.panel .html-marked").count() == 0
+    # ワークスペースの YAML と本文の中身が、開く前と同じ
+    assert snapshot_records(snapshot_tree(root)) == before

@@ -31,6 +31,11 @@ ALLOWED_HOST = "preview.example.test"
 # 資料 A-1 の本文（2 行目は書式の記号を持つ）
 A_BODY = "1 行目\n- **言い換えたい**文\n3 行目"
 
+# HTML で書いた資料 A-1 の本文（4 行目はタグで文が分かれる）
+A_HTML_BODY = (
+    "<style>p { color: red; }</style>\n<!-- 下書き -->\n\n<p>言い<b>換え</b>たい文</p>\n"
+)
+
 
 def _read_comments(root: Path) -> dict[str, object]:
     """ワークスペースの comments.yaml を読む。"""
@@ -67,6 +72,32 @@ def test_normal(
     assert [draft for draft in drafts if draft.get("target") == "D-1"] == []
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+def test_normal_when_html_body_location(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """HTML の本文の文を選んだコメントを、タグを外した文と照らして溜める（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": A_HTML_BODY})
+    url = serve_preview(root)
+    loc = {"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"}
+    # 実行
+    created = post_json(
+        url, COMMENTS_PATH, {"target": "A-1", "loc": loc, "body": "ここは言い換える"}
+    )
+    in_style = post_json(
+        url,
+        COMMENTS_PATH,
+        {"target": "A-1", "loc": {**loc, "start": 1, "end": 1, "text": "p { color"}, "body": "色"},
+    )
+    # 検証
+    assert created.status == 201
+    assert _read_comments(root)["items"][0]["loc"] == loc
+    # `<style>` の中身は当てない
+    assert in_style.status == 409
 
 
 def test_normal_when_body_location(

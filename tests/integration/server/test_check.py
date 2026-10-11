@@ -211,3 +211,28 @@ def test_normal_when_removed_item_in_change_set(
     # 検証
     assert result.is_error is False
     assert result.data == {"ok": True, "problems": []}
+
+
+def test_normal_when_html_body_problems_found(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """HTML の本文も、指す本文が無い・どこからも指されないの対象にする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2", body="A-2.html"),
+        bodies={
+            "A-2.html": "<p>詳細の画面</p>\n",
+            "A-9.html": "<p>どの項目も指さない画面</p>\n",
+        },
+    )
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    assert _problem_keys(result.data["problems"]) == {
+        ("missing_body", ".mindstella/docs.yaml", "A-1", "items[0].body"),
+        ("orphan_body", ".mindstella/docs/A-9.html", None, None),
+    }

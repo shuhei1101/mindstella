@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import yaml
+from playwright.sync_api import Page
+
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -20,16 +23,34 @@ from preview_drawer_helpers import (
     click_value,
     open_drawer,
 )
+from preview_html_body_helpers import (
+    BODY_FRAME,
+    BODY_WITH_HTML_CODE_BLOCK,
+    BODY_WITHOUT_HTML_CODE_BLOCK,
+    FRAME_SETTLE_MS,
+    LEAKING_HTML_BODY,
+    MARKED_FRAME,
+    drag_select_in_frame,
+    frame_fit,
+    frame_of,
+    leak_counts,
+    select_in_frame,
+    style_snapshot,
+    text_rect_in_page,
+    wait_frame_rendered,
+)
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     OpenPreview,
     WritePreview,
     WriteReviewPreview,
 )
+from preview_history_helpers import preselect_diff
 from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
 from preview_network_helpers import ball_at, canvas_center
 from preview_saved_filter_helpers import read_saved_filters, reload_preview, seed_saved_filters
 from workspace_fixtures import (
+    RECORD_DIR,
     CallTool,
     MakeComment,
     MakeItem,
@@ -726,3 +747,295 @@ def test_normal_when_heading_in_hash(
 def panel_title_of(page: Any) -> str:
     """詳細パネルのタイトル（項目の題）を返す。"""
     return page.inner_text("aside.panel .d-title")
+
+
+# 詳細パネルのタイトル・トップバー（本文を描く前後で色と余白を比べる要素）
+PANEL_TITLE = "aside.panel .d-title"
+TOPBAR = "header.topbar"
+
+# 詳細パネルの本文の前後の段落（Markdown）
+MARKDOWN_PARAGRAPHS = "aside.panel .md:not(.md-value) > p"
+
+# 段落より前にコメントと `<style>` を置き、5〜6 行目に 2 行にまたがる段落を持つ HTML の本文
+COMMENT_HTML_BODY = (
+    "<!-- 下書き -->\n"
+    "<style>p { color: rgb(51, 51, 51); }</style>\n"
+    "<h1>画面のモック</h1>\n"
+    "\n"
+    "<p>前置きの文\n"
+    "言い換えたい文</p>\n"
+)
+
+# 行がずれやすい文を持つ HTML の本文（1〜3 行目は入れ子の複数行の開きタグ、4 行目は `<br>`、5・6 行目は `<pre>`）
+LINE_EDGE_HTML_BODY = (
+    "<p>前置き <span\n"
+    '  class="x">強調</span>\n'
+    "言い換えたい文</p>\n"
+    "<p>a<br>別の文</p>\n"
+    "<pre>\n"
+    "整形した文</pre>\n"
+)
+
+# 段落 3 つを 1 行ずつ持つ HTML の本文と、2 つ目の段落を書き換えた本文
+THREE_PARAGRAPH_HTML = "<p>1 つ目の段落</p>\n<p>2 つ目の段落</p>\n<p>3 つ目の段落</p>\n"
+THREE_PARAGRAPH_HTML_REWRITTEN = (
+    "<p>1 つ目の段落</p>\n<p>書き直した 2 つ目の段落</p>\n<p>3 つ目の段落</p>\n"
+)
+
+# 複数行にまたがる開きタグ（`<b` の次の行で閉じる）を中に持つ段落（1〜5 行目）と、小見出しの後ろに地の文を持つ節（6〜9 行目）。書き換えるのは 4 行目と 8 行目
+CLOSED_ELEMENT_HTML = (
+    "<div>\n"
+    '<p>見出し <b\n   class="k">強調</b>\n'
+    "続きの文</p>\n"
+    "</div>\n"
+    "<section>\n"
+    "<h2>小見出し</h2>\n"
+    "節の文\n"
+    "</section>\n"
+)
+CLOSED_ELEMENT_HTML_REWRITTEN = (
+    "<div>\n"
+    '<p>見出し <b\n   class="k">強調</b>\n'
+    "書き直した続きの文</p>\n"
+    "</div>\n"
+    "<section>\n"
+    "<h2>小見出し</h2>\n"
+    "書き直した節の文\n"
+    "</section>\n"
+)
+
+# 差分の印と、凡例の「変わった」の印
+CHANGED_MARK_SELECTOR = '[data-df="chg"]'
+
+# 時点を外すボタンと、「原文の差分」の切り替え
+RAW_DIFF_BUTTON = "原文の差分"
+DIFF_OFF_BUTTON = "差分の表示をやめる"
+
+
+def test_normal_when_html_body(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """HTML の本文をスクリプトを動かさない枠に描き、本文の CSS を画面へ漏らさない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        bodies={"A-1.html": LEAKING_HTML_BODY, "A-2.md": "資料の本文\n"},
+    )
+    # 描く前の見本として、Markdown の本文の資料のタイトルとトップバーを測る
+    page = open_preview(url, "#tab=docs&id=A-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    before = style_snapshot(page, [PANEL_TITLE, TOPBAR])
+    # 実行
+    page.evaluate("location.hash = '#tab=docs&id=A-1'")
+    wait_frame_rendered(page, BODY_FRAME)
+    frame = frame_of(page, BODY_FRAME)
+    frame.click("#click")
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証
+    assert page.get_attribute(BODY_FRAME, "sandbox") == "allow-same-origin"
+    assert frame.locator("h1").count() == 1
+    assert frame.locator("table").count() == 1
+    assert frame.locator("svg").count() == 1
+    assert leak_counts(page, BODY_FRAME) == {"parent": 0, "frame": 0}
+    assert style_snapshot(page, [PANEL_TITLE, TOPBAR]) == before
+    fit = frame_fit(page, BODY_FRAME)
+    assert fit["bottom"] <= fit["height"]
+    assert fit["later_height"] == fit["height"]
+
+
+def test_normal_when_html_body_commented(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """枠の中で選んだ文を元の HTML の行の範囲にして、箇所を添えたコメントを溜める（正常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": COMMENT_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    # 実行
+    drag_select_in_frame(page, BODY_FRAME, "言い換えたい文")
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    rect = text_rect_in_page(page, BODY_FRAME, "言い換えたい文")
+    pill_box = page.locator(PILL).bounding_box()
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証（入口の位置: 選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    assert pill_box is not None
+    gap = max(
+        rect["top"] - (pill_box["y"] + pill_box["height"]),
+        pill_box["y"] - (rect["top"] + rect["height"]),
+        0,
+    )
+    assert gap <= rect["height"]
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"
+    assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
+    # 実行（溜める）
+    page.fill(SEND_TEXTAREA, "ここは言い換える")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（溜めたコメント）
+    saved = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))
+    assert [item["loc"] for item in saved["items"]] == [
+        {"kind": "body", "start": 6, "end": 6, "text": "言い換えたい文"}
+    ]
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
+
+
+def test_normal_when_html_body_diff(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """時点を選ぶと描いた本文の変わった要素に印を付け、「原文の差分」で原文の行の差分に切り替える（正常系）。"""
+    # 準備
+    root = make_workspace()
+    workspace = str(root)
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_html": THREE_PARAGRAPH_HTML,
+    }
+    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
+    updated = call_tool(
+        "update", workspace=workspace, id="A-1", item={"body_html": THREE_PARAGRAPH_HTML_REWRITTEN}
+    )
+    assert updated.is_error is False
+    assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
+    url = str(call_tool("preview_url", workspace=workspace).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, MARKED_FRAME)
+    frame = frame_of(page, MARKED_FRAME)
+    # 検証（描いた本文: 2 つ目の段落だけに「変わった」の印が付く）
+    marked = frame.eval_on_selector_all(
+        "p", "ps => ps.map(p => [p.textContent, p.closest('[data-df]')?.dataset.df ?? null])"
+    )
+    assert marked == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 実行（原文の差分）
+    page.get_by_role("button", name=RAW_DIFF_BUTTON).click()
+    # 検証（原文の差分: 2 つ目の段落の原文の行が、消した行と足した行で出る）
+    removed = page.inner_text("aside.panel .df-raw .df-line.df-del")
+    added = page.inner_text("aside.panel .df-raw .df-line.df-add")
+    assert "<p>2 つ目の段落</p>" in removed
+    assert "<p>書き直した 2 つ目の段落</p>" in added
+    assert "data-line" not in page.inner_text("aside.panel .df-raw")
+    # 実行（時点を外す）
+    page.get_by_role("button", name=DIFF_OFF_BUTTON).click()
+    wait_frame_rendered(page, BODY_FRAME)
+    # 検証
+    assert frame_of(page, BODY_FRAME).locator("[data-df]").count() == 0
+
+
+def test_normal_when_html_body_diff_after_closed_element(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """中の要素が閉じた後の行を書き換えると、差分の印を閉じた要素ではなく、その行を含む要素に付ける（正常系）。"""
+    # 準備
+    root = make_workspace()
+    workspace = str(root)
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_html": CLOSED_ELEMENT_HTML,
+    }
+    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
+    updated = call_tool(
+        "update", workspace=workspace, id="A-1", item={"body_html": CLOSED_ELEMENT_HTML_REWRITTEN}
+    )
+    assert updated.is_error is False
+    assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
+    url = str(call_tool("preview_url", workspace=workspace).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, MARKED_FRAME)
+    # 検証
+    marked = frame_of(page, MARKED_FRAME).eval_on_selector_all(
+        "[data-df]", "els => els.map(e => [e.tagName, e.dataset.df])"
+    )
+    assert marked == [["P", "chg"], ["SECTION", "chg"]]
+
+
+def test_normal_when_html_code_block(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+) -> None:
+    """Markdown の本文の中の html のコードブロックを、コードではなくスクリプトを動かさない枠に描く（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1"),
+        make_item("A-2"),
+        bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK, "A-2.md": BODY_WITHOUT_HTML_CODE_BLOCK},
+    )
+    # 描く前の見本として、コードブロックの無い本文の前後の段落の色を測る
+    page = open_preview(url, "#tab=docs&id=A-2")
+    page.wait_for_selector(MARKDOWN_PARAGRAPHS)
+    before = page.eval_on_selector_all(
+        MARKDOWN_PARAGRAPHS, "ps => ps.map(p => [getComputedStyle(p).color, getComputedStyle(p).margin])"
+    )
+    # 実行
+    page.evaluate("location.hash = '#tab=docs&id=A-1'")
+    code_frame = "aside.panel .md iframe.html-frame"
+    wait_frame_rendered(page, code_frame)
+    # 実行（枠の中の文を選ぶ）
+    select_in_frame(page, code_frame, "枠の中の段落", "枠の中の段落")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert page.get_attribute(code_frame, "sandbox") == "allow-same-origin"
+    assert page.locator("aside.panel .md pre code").count() == 0
+    assert frame_of(page, code_frame).locator("p").inner_text() == "枠の中の段落"
+    assert leak_counts(page, code_frame) == {"parent": 0, "frame": 0}
+    after = page.eval_on_selector_all(
+        MARKDOWN_PARAGRAPHS, "ps => ps.map(p => [getComputedStyle(p).color, getComputedStyle(p).margin])"
+    )
+    assert after == before
+    assert page.locator(PILL).count() == 0
+
+
+def test_normal_when_html_body_line_edge_cases(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """入れ子の複数行の開きタグの後・`<br>` の後・`<pre>` の中の文を選んでも、元の HTML の行にして箇所を添える（正常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": LINE_EDGE_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    # 実行（複数行の開きタグの後の文を選び、コメントを溜める）
+    select_in_frame(page, BODY_FRAME, "言い換えたい文", "言い換えたい文")
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    page.fill(SEND_TEXTAREA, "ここは言い換える")
+    page.click(SEND_BUTTON)
+    page.wait_for_selector(f"{SEND_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    saved = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))
+    assert [(item["loc"]["start"], item["loc"]["end"]) for item in saved["items"]] == [(3, 3)]
+    # 実行・検証（`<br>` の後の文: `<br>` を数えない）
+    select_in_frame(page, BODY_FRAME, "別の文", "別の文")
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 4 行目"
+    # 実行・検証（`<pre>` の中の文）
+    select_in_frame(page, BODY_FRAME, "整形した文", "整形した文")
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"

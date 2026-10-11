@@ -479,3 +479,58 @@ def test_normal_when_note_withdrawn(
     change_set = read_yaml(root, "changes.yaml")["sets"][0]
     assert change_set["changed"] == ["N-1"]
     assert "removed" not in change_set
+
+
+# 会話で求められた画面のモックを HTML で書いた本文
+MOCK_BODY_HTML = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"
+
+
+def test_normal_when_visual_doc_kept_as_html(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """会話で求められた画面のモックを、本文が HTML の資料に残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    ws = {"workspace": str(root)}
+    # 実行
+    # 資料と会話ログを、1 回のまとめての書き込みで渡す（本文は HTML）
+    replay(
+        "batch",
+        **ws,
+        operations=[
+            {
+                "op": "add",
+                "kind": "doc",
+                "item": {
+                    "title": "画面のモック",
+                    "kind": "モック",
+                    "deliverable": False,
+                    "status": "下書き",
+                    "related": ["D-1"],
+                    "body_html": MOCK_BODY_HTML,
+                },
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "モックを出した", "date": TODAY, "related": ["$1"]},
+            },
+        ],
+    )
+    checked = call_tool("check", **ws)
+    # 検証
+    doc = read_yaml(root, "docs.yaml")["items"][0]
+    # 資料 A-1 が kind: モック と related: [D-1] を持ち、本文が HTML の形式である
+    assert doc["id"] == "A-1"
+    assert doc["kind"] == "モック"
+    assert doc["related"] == ["D-1"]
+    assert doc["body"] == "A-1.html"
+    # docs/ に A-1 の本文の HTML がある
+    assert (root / RECORD_DIR / "docs" / "A-1.html").read_text(encoding="utf-8") == MOCK_BODY_HTML
+    # check が YAML と本文のずれを 0 件で返す
+    assert checked.is_error is False
+    assert checked.data["problems"] == []

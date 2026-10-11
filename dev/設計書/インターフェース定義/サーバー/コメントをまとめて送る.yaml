@@ -259,6 +259,30 @@ flows:
       - 応答が送ってから 1 秒以内に返る
       - MCP サーバーの標準エラーに、入力できなかった理由の行がある
     test: test_normal_when_not_entered
+  - name: 異常系（HTML の本文の箇所が合わない・409）
+    summary: HTML の本文が書き換わって選んだ文が無くなったコメントがあれば、どれも送らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 本文を HTML で持ち 4 行目が `<p>言い<b>換え</b>たい文</p>` の資料 A-1 と、A-1 の本文の 4 行目と「言い換えたい文」を指すレビュー中のコメント C-1 を持つワークスペース
+        notes: C-1 を溜めた後に A-1 の 4 行目を `<p>書き直した文</p>` に書き換えた形。`ids` は `["C-1"]`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF-->>WS: コメントと A-1 の HTML の本文を読む
+        IF->>IF: 4 行目の描いた文に選んだ文が無い
+        IF-->>クライアント: 409（stale: C-1）
+      ```
+    expected:
+      - ステータスが 409 で、`stale` が C-1 の 1 件
+      - '`submissions.yaml`・`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_html_body_location_stale
 lead: コメントの一覧でチェックしたレビュー中のコメントを受け、全てを取り込んでいない送信として `submissions.yaml` に足してから、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。足した後、tmux の中で立てた Claude Code なら、足した送信を Claude Code のペインへ 1 回の入力として貼り、会話の記録に入ったかを確かめて応答に載せる。
 idempotent: false
 side_effects: '`submissions.yaml` に送った件数を足し（無ければ作る）、`comments.yaml` からそのコメントを消す。どちらも一時ファイルから `os.replace` で置き換え、`submissions.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送り先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
