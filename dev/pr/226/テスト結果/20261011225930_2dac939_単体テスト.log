@@ -1,6 +1,6 @@
 # 単体テスト（全件 pass）
-# commit: 0714b5a
-# 実行日時: 2026-10-11 22:41:05 JST
+# commit: 2dac939
+# 実行日時: 2026-10-11 22:59:30 JST
 $ pytest tests/unit/preview
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
@@ -123,4 +123,4 @@ tests/unit/preview/test_libs.py .                                        [ 96%]
 tests/unit/preview/test_router.py .                                      [ 96%]
 tests/unit/preview/test_libs.py ............                             [100%]
 
-======================= 364 passed in 305.46s (0:05:05) ========================
+======================= 364 passed in 247.56s (0:04:07) ========================
