@@ -195,7 +195,7 @@ elements:
       - name: entries
         value: 印の語に一致した項目（プレビューを開く.mindmap-data の terms・docs・research から。開いている項目自身と取り下げた資料・調査を除く）
       - name: anchor
-        value: 本文の印の矩形
+        value: 本文の印の要素
   - name: 項目の ID のリンク
     kind: link
     position: 本文 > 文中

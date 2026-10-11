@@ -1191,9 +1191,9 @@ components:
         required: true
         description: 一致した項目（部品設計『本文の印のツールチップ』の `entries`）
       - name: anchor
-        type: DOMRect
+        type: HTMLElement
         required: true
-        description: 印の矩形
+        description: 本文の印の要素。置き場所は `anchor.getBoundingClientRect()` で決め、フォーカスの戻し先にする。「本文の印の次の要素」は、`anchor` を含む本文（`anchor.closest(".md")`）の中のフォーカスできる要素の並びで `anchor` の次に当たるもの（無ければ `anchor`）
       - name: pinned
         type: boolean
         required: false
