@@ -53,7 +53,7 @@ used_in:
 verification:
   state: 済
   date: '2026-10-05'
-  detail: 'PoC #83 で 9.0.0 を HTML に埋め込み、本文 5000 行の差分が 10〜16ms だった。採用の反映で Node.js 24.14.0 に入れた 9.0.0 で打ち切りを確かめた: 全ての行を書き換えた 5000 行の前後は、`timeout` 無しで 2197ms かかり、`diffLines` に `timeout: 50` を渡すと 52ms で `undefined` を返した。1 行だけ変えた 5000 行は 0.9ms。`diffArrays` も 3000 要素の全て違う配列で `timeout: 20` で 21ms で `undefined` を返した。jsDelivr の `dist/diff.min.js` の sha384 が npm の同じファイルと一致し、UMD でグローバルの `Diff` に入ることを確かめた'
+  detail: 'PoC #83 で 9.0.0 を HTML に埋め込み、本文 5000 行の差分が 10〜16ms だった。採用の反映で Node.js 24.14.0 に入れた 9.0.0 で打ち切りを確かめた: 全ての行を書き換えた 5000 行の前後は、`timeout` 無しで 2197ms かかり、`diffLines` に `timeout: 50` を渡すと 52ms で `undefined` を返した。1 行だけ変えた 5000 行は 0.9ms。`diffArrays` も 3000 要素の全て違う配列で `timeout: 20` で 21ms で `undefined` を返した。jsDelivr の `dist/diff.min.js` の sha384 が npm の同じファイルと一致し、UMD でグローバルの `Diff` に入ることを確かめた。#226 のレビューで Node.js の 9.0.0 と `Intl.Segmenter("ja", {granularity: "word"})` で `diffWords` を確かめた: `要件は来週までに決める。` → `要件は今週までに決める。` は `来週` → `今週` の語の単位で返り、`intlSegmenter` を渡さないと `来` → `今` の 1 文字単位で返る。`timeout: 1` では 200〜20000 文字の全て違う対で `undefined` を返すまで 3〜10ms かかった（語の区切りは `timeout` の外で先に行い、20000 文字では区切りだけで 4.8ms）。`diffInline` は 1 回の呼び出しで `deadline` をこの分だけ越えうる'
 license: BSD-3-Clause（商用利用可）。配る書き出しに入れるときは、版・著作権の表示（Copyright (c) 2009-2015, Kevin Decker）・BSD-3-Clause の本文を残す
 official_url: https://github.com/kpdecker/jsdiff
 selection:
