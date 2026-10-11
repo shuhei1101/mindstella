@@ -140,7 +140,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・表示する列・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
     description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
