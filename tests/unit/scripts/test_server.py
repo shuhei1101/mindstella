@@ -187,6 +187,28 @@ def test_main_when_external_access_set(monkeypatch: pytest.MonkeyPatch) -> None:
     assert received["previews"]._external.allowed_hosts == frozenset({"preview.example.test"})
 
 
+def test_main_when_inside_tmux(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """受け継いだ送り先を台帳へ渡す（正常系）。"""
+    # 準備
+    _spy_stop_all(monkeypatch)
+    received: dict[str, Any] = {}
+
+    def _build(**kwargs: Any) -> _FakeServer:
+        """渡された previews を控えて、すぐ戻る偽のサーバーを返す。"""
+        received.update(kwargs)
+        return _FakeServer()
+
+    environ = {"TMUX": "/s,1,0", "TMUX_PANE": "%3", "CLAUDE_CONFIG_DIR": str(tmp_path / "cfg")}
+    # 実行
+    server.main(build=_build, environ=environ)
+    # 検証
+    target = received["previews"]._input_target
+    assert target.socket == "/s,1,0"
+    assert target.pane == "%3"
+    assert target.config_dir == tmp_path / "cfg"
+    assert target.cwd == Path.cwd().resolve()
+
+
 def test_install_sigterm_handler(monkeypatch: pytest.MonkeyPatch) -> None:
     """SIGTERM で配信を止めて、os._exit で終わる（正常系）。"""
     # 準備（プロセスを終えないよう os._exit を、記録を書き出さないよう logging.shutdown を差し替える）

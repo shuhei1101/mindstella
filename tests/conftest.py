@@ -9,6 +9,9 @@ from pathlib import Path
 
 import pytest
 
+# 偽の Claude Code を動かす tmux のペインを立てる fixture
+from claude_pane_fixtures import start_claude_pane  # noqa: F401
+
 # 起動スクリプトを隔離して動かす fixture
 from launch_fixtures import ready_venv, sandbox  # noqa: F401
 

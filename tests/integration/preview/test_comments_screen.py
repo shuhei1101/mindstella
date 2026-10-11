@@ -21,7 +21,17 @@ from preview_comment_helpers import (
 )
 from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
-from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem
+from claude_pane_fixtures import StartClaudePane
+from workspace_fixtures import (
+    RECORD_DIR,
+    CallTool,
+    MakeComment,
+    MakeDraft,
+    MakeItem,
+    MakeWorkspace,
+    StartServer,
+    WriteComments,
+)
 
 # 一覧の送る帯の要素
 CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
@@ -193,7 +203,13 @@ def test_send(
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert page.get_attribute(BAND_RESULT, "role") == "status"
-    assert page.inner_text(BAND_RESULT).startswith("2 件を送りました（")
+    # tmux の外で立てたサーバーなので、入力できなかったと出す
+    assert page.inner_text(BAND_RESULT).startswith(
+        "2 件を送りましたが、Claude Code には入力できませんでした（"
+    )
+    assert page.inner_text(BAND_RESULT).endswith(
+        "送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。"
+    )
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
     ) == ["C-3"]
@@ -205,6 +221,36 @@ def test_send(
         ("A-1", "ここは言い換える"),
     ]
     assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == ["C-3"]
+
+
+def test_send_when_entered(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """tmux の中で立てたサーバーなら、送った結果に Claude Code へ入力したことを出す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
+    pane = start_claude_pane(mode="user", cwd=root)
+    server = start_server(extra_env=pane.env, cwd=root)
+    opened = server.call("preview_url", workspace=str(root))
+    assert opened.data is not None
+    page = open_preview(str(opened.data["url"]))
+    _open_list(page)
+    send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
+    # 実行
+    send.click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.get_attribute(BAND_RESULT, "role") == "status"
+    assert page.inner_text(BAND_RESULT).startswith("1 件を送り、Claude Code に入力しました（")
+    assert len(pane.lines()) == 1
 
 
 def test_send_when_sending(

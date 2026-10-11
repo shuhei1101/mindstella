@@ -768,9 +768,9 @@ components:
         required: true
         description: 箇所が合わないコメントの ID → 理由
       - name: result
-        type: "{kind: 'sending' | 'sent' | 'failed' | 'stale', count?, at?, detail?} | null"
+        type: "{kind: 'sending' | 'sent' | 'failed' | 'stale', count?, at?, detail?, entered?} | null"
         required: true
-        description: まとめて送った結果（送った結果の文言は画面設計どおり）
+        description: まとめて送った結果（送った結果の文言は画面設計どおり。`sent` は `entered` が真なら確かめの印と「Claude Code に入力しました」の文、偽なら注意の印と「Claude Code には入力できませんでした」の文にする）
       - name: selected
         type: string | null
         required: true
@@ -827,6 +827,12 @@ components:
         condition: C-1（D-1）を `editing`、`editingIn` を `'detail'` で描く
         mock: なし
         expected: C-1 の行に入力欄・「キャンセル」「修正」が無く、本文が出て、読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタンが無い
+      - name: test_comments_panel_when_sent
+        case: 正常
+        summary: 送れた結果を Claude Code へ入力したかで出し分ける
+        condition: "C-1 をチェックし、`result` を `{kind: 'sent', count: 2, at: '2026-10-10T03:04:00+00:00', entered}` で描く。`parametrize`: `entered` が `true` / `false`"
+        mock: なし
+        expected: 送った結果（`role="status"`）が、前者は確かめの印と「2 件を送り、Claude Code に入力しました（12:04）。」、後者は注意の印と「2 件を送りましたが、Claude Code には入力できませんでした（12:04）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。」
   - name: diffMark
     title: 差分の印
     container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts

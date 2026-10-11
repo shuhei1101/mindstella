@@ -1402,7 +1402,7 @@ namespace MindmapPreview {
       if (result.ok && result.data !== null) {
         comment.removed = [];
         comment.stale = new Map();
-        outcome = { kind: "sent", count: ids.length, at: result.data.sent };
+        outcome = { kind: "sent", count: ids.length, at: result.data.sent, entered: result.data.entered };
       } else if (!result.ok && result.status === 409) {
         comment.stale = new Map(result.stale.map((entry) => [entry.id, entry.reason]));
         outcome = { kind: "stale", count: result.stale.length };
