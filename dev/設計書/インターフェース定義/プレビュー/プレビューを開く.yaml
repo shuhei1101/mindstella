@@ -512,6 +512,25 @@ flows:
       - 「別の文」を選ぶと入力に「本文 4 行目」が添えられる（`<br>` を数えない）
       - 「整形した文」を選ぶと入力に「本文 6 行目」が添えられる
     test: test_normal_when_html_body_line_edge_cases
+  - name: 正常系（HTML の本文の差分・複数行の開きタグの後の行）
+    summary: 複数行にまたがる開きタグを中に持つ要素の後ろの行を書き換えると、差分の印を外側の要素ではなく、その行を持つ内側の要素に付ける
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開く）
+      - name: make_workspace
+        description: '`<div>` の中に、2〜3 行目にまたがる開きタグ `<b` を持ち 4 行目を「続きの文」で閉じる段落を置いた HTML の本文の資料 A-1 を足して `commit` し、`update` で 4 行目を「書き直した続きの文」に書き換えて `commit`（説明「直す」）したワークスペース'
+        notes: ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: 変更履歴で「直す」を選ぶ
+        IF->>IF: 変わった 4 行目を持つ最も内側の要素を探す
+        IF-->>ユーザー: 内側の要素に印を付けた描いた本文
+    expected:
+      - 描いた本文で `data-df` を持つ要素が、`chg` の 1 つだけで、外側の `<div>` には印が無い
+    test: test_normal_when_html_body_diff_with_multiline_tag
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメントを溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `submissions.yaml` に足す（『コメントをまとめて送る』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
