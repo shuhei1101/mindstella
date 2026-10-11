@@ -517,3 +517,98 @@ def test_normal_when_aliases_and_description(
     # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
+
+
+# 資料 A-1 を足すときの Markdown の本文と、形式を替えるときの HTML の本文・2 行目を書き換えた HTML の本文、Markdown に戻すときの本文
+DOC_BODY_MARKDOWN = "# 画面のモック\n一覧の画面\n"
+DOC_BODY_HTML = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>"
+DOC_BODY_HTML_REWRITTEN = "<h1>画面のモック</h1>\n<p>絞り込みの画面</p>\n<p>詳細の画面</p>"
+DOC_BODY_MARKDOWN_AGAIN = "# 画面のモック\n詳細の画面\n"
+
+# スキルが足す資料 A-1 の中身（本文を除く）
+VISUAL_DOC: dict[str, Any] = {
+    "title": "画面のモック",
+    "kind": "モック",
+    "deliverable": False,
+    "status": "下書き",
+}
+
+
+def test_normal_when_doc_body_html(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """資料の本文を Markdown で足し、HTML に替えて 2 行目を直し、Markdown に戻す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    docs_dir = root / RECORD_DIR / "docs"
+    # 実行
+    added = call_tool("add", **ws, kind="doc", item={**VISUAL_DOC, "body_markdown": DOC_BODY_MARKDOWN})
+    to_html = call_tool("update", **ws, id="A-1", item={"body_html": DOC_BODY_HTML})
+    after_html = read_yaml(root, "docs.yaml")["items"][0]
+    html_files = sorted(path.name for path in docs_dir.iterdir())
+    html_text = (docs_dir / "A-1.html").read_text(encoding="utf-8")
+    rewritten = call_tool("update", **ws, id="A-1", item={"body_html": DOC_BODY_HTML_REWRITTEN})
+    shown_html = call_tool("show", **ws, id="A-1")
+    history = read_yaml(root, "docs.yaml")["items"][0]["history"]
+    to_markdown = call_tool("update", **ws, id="A-1", item={"body_markdown": DOC_BODY_MARKDOWN_AGAIN})
+    after_markdown = read_yaml(root, "docs.yaml")["items"][0]
+    markdown_files = sorted(path.name for path in docs_dir.iterdir())
+    shown_markdown = call_tool("show", **ws, id="A-1")
+    checked = call_tool("check", **ws)
+    # 検証（HTML に替えた後）
+    assert added.is_error is False, added.text
+    assert to_html.is_error is False, to_html.text
+    assert after_html["body"] == "A-1.html"
+    assert html_files == ["A-1.html"]
+    assert html_text == DOC_BODY_HTML
+    # 検証（1 回目の表示）
+    assert rewritten.is_error is False, rewritten.text
+    assert shown_html.is_error is False, shown_html.text
+    assert shown_html.data["body_html"] == DOC_BODY_HTML_REWRITTEN
+    assert shown_html.data["body_format"] == "html"
+    # 検証（変更履歴）
+    assert any(
+        {"line": 2, "now": ["<p>絞り込みの画面</p>"], "before": ["<p>一覧の画面</p>"]}
+        in entry.get("body_diff", [])
+        for entry in history
+    )
+    # 検証（Markdown に戻した後）
+    assert to_markdown.is_error is False, to_markdown.text
+    assert after_markdown["body"] == "A-1.md"
+    assert markdown_files == ["A-1.md"]
+    assert shown_markdown.data["body_markdown"] == DOC_BODY_MARKDOWN_AGAIN
+    assert shown_markdown.data["body_format"] == "markdown"
+    # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}
+
+
+def test_error_when_html_body_for_non_doc(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """資料以外の種類に HTML の本文を渡して足す・直すと、どちらも資料だけが HTML の本文を持てる旨のエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1"))
+    before = snapshot_tree(root)
+    # 実行
+    added = call_tool(
+        "add",
+        workspace=str(root),
+        kind="task",
+        item={"title": "画面を描く", "kind": "作業", "status": "未着手", "body_html": "<p>一覧の画面</p>"},
+    )
+    updated = call_tool(
+        "update", workspace=str(root), id="T-1", item={"body_html": "<p>一覧の画面</p>"}
+    )
+    # 検証
+    assert added.is_error is True
+    assert "資料だけが HTML の本文を持てる" in added.text
+    assert updated.is_error is True
+    assert "資料だけが HTML の本文を持てる" in updated.text
+    assert snapshot_tree(root) == before

@@ -26,6 +26,7 @@ __all__ = [
     "DRAWER_OPEN",
     "FILTER_BADGE",
     "FILTER_BUTTON",
+    "FRAME_TEXT_RECT_SCRIPT",
     "FREE_FORM",
     "FREE_TEXTAREA",
     "HISTORY_DIALOG",
@@ -45,6 +46,7 @@ __all__ = [
     "close_drawer",
     "closed_keys",
     "count_balls",
+    "drag_select_in_frame",
     "drawer_counts",
     "fetch_records",
     "http_call",
@@ -593,3 +595,54 @@ def bands_stay_on_top(page: Page) -> bool:
             return topbar.top === 0 && tabs.top === topbar.bottom && tabs.bottom > tabs.top;
         }"""
     )
+
+
+# マウスで選ぶときの動かす回数
+DRAG_STEPS = 6
+
+# 枠の中の文の矩形に、枠の位置を足した親の画面の座標を返す
+FRAME_TEXT_RECT_SCRIPT = """([selector, text]) => {
+  const frame = document.querySelector(selector);
+  const doc = frame.contentDocument;
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const at = node.data.indexOf(text);
+    if (at < 0) continue;
+    const range = doc.createRange();
+    range.setStart(node, at);
+    range.setEnd(node, at + text.length);
+    const rect = range.getBoundingClientRect();
+    const outer = frame.getBoundingClientRect();
+    return {
+      left: outer.left + frame.clientLeft + rect.left,
+      top: outer.top + frame.clientTop + rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+  return null;
+}"""
+
+
+def drag_select_in_frame(page: Page, selector: str, text: str) -> None:
+    """枠（iframe）の中で最初に出てくる文の上を、マウスで左から右へ引いて選ぶ（枠の上では `page.mouse` が返らないため、CDP で入力を送る）。"""
+    rect = page.evaluate(FRAME_TEXT_RECT_SCRIPT, [selector, text])
+    assert rect is not None, f"{selector} の中に文がありません: {text}"
+    y = rect["top"] + rect["height"] / 2
+    start_x = rect["left"] + 1
+    end_x = rect["left"] + rect["width"] - 1
+    cdp = page.context.new_cdp_session(page)
+
+    def mouse(kind: str, x: float, buttons: int, **extra: object) -> None:
+        """マウスの入力を 1 つ送る。"""
+        cdp.send(
+            "Input.dispatchMouseEvent",
+            {"type": kind, "x": x, "y": y, "button": "left", "buttons": buttons, **extra},
+        )
+
+    mouse("mouseMoved", start_x, 0)
+    mouse("mousePressed", start_x, 1, clickCount=1)
+    for step in range(1, DRAG_STEPS + 1):
+        mouse("mouseMoved", start_x + (end_x - start_x) * step / DRAG_STEPS, 1)
+    mouse("mouseReleased", end_x, 0, clickCount=1)
