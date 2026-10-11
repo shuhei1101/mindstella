@@ -243,8 +243,8 @@ flows:
       - name: make_workspace
         description: 項目を持たないワークスペース
       - name: item
-        description: '`title`・`kind`・`status` と `body_html` を持つ資料'
-        notes: '`{"title": "画面のモック", "kind": "モック", "status": "下書き", "body_html": "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"}`'
+        description: '`title`・`kind`・`status`・`deliverable` と `body_html` を持つ資料'
+        notes: '`{"title": "画面のモック", "kind": "モック", "status": "下書き", "deliverable": false, "body_html": "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"}`'
     flow: |-
       ```mermaid
       sequenceDiagram
