@@ -1111,7 +1111,14 @@ def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 実行
     payload = commands.run_show(root, "D-1")
     # 検証
-    assert set(payload) == {"item", "kind", "body_markdown", "referenced_by"}
+    assert set(payload) == {
+        "item",
+        "kind",
+        "body_markdown",
+        "body_html",
+        "body_format",
+        "referenced_by",
+    }
 
 
 def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

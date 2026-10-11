@@ -852,7 +852,7 @@ def test_render_value_when_library_missing(
     assert result == "**強調**"
 
 
-# html のコードブロックを 1 つ持つ本文（見出しは 1 行目、前の段落は 3 行目、コードブロックは 5〜7 行目、後の段落は 9 行目）
+# html のコードブロックを 1 つ持つ本文（見出しは 1 行目、前の段落は 3 行目、コードブロックは 5〜7 行目でその印は中身の先頭の 6、後の段落は 9 行目）
 HTML_CODE_BLOCK_SOURCE = (
     "# 見出し\n\n前の段落\n\n```html\n<p>a</p><script>x()</script>\n```\n\n後の段落\n"
 )
@@ -887,7 +887,7 @@ def test_render_markdown_when_html_code_block(
     # 検証
     assert result["blockCount"] == 1
     assert "<p>a</p><script>x()</script>" in result["blockSource"]
-    assert result["blockMark"] == "5"
+    assert result["blockMark"] == "6"
     assert result["preCount"] == 0
     assert result["heading"] == ["1"]
     assert result["paragraph"] == ["3", "9"]
