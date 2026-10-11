@@ -1,16 +1,20 @@
 """開発側の点検：ワークスペースの形（スキーマ）を変えた PR（任意のキーを足すだけの変更を除く）が、版を上げて移し替えの手順を足しているか。
 
+今のワークスペースがそのまま読める変更は、手順の代わりに `migrations/no-steps.yaml` に変えたスキーマの中身のハッシュを載せて通す。
+
 最新のタグを読むため、タグを取っていない clone では先に `git fetch --tags` を流す（タグが 1 つも無ければ skip する）。
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 import migrator
 import versions
@@ -28,6 +32,9 @@ SCHEMA_RELATIVE_DIR = "plugins/mindstella/skills/mindmap/schemas"
 
 # 移し替えの手順の形のスキーマ。ワークスペースの形ではないので、比べない
 STEPS_SCHEMA_NAME = "migration-steps.schema.json"
+
+# 手順の要らない変更の一覧（変えたスキーマのファイル名・変えた後の中身の SHA-256・理由）
+NO_STEPS_FILE = REPO_ROOT / "plugins/mindstella/skills/mindmap/migrations/no-steps.yaml"
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
@@ -92,38 +99,65 @@ def _schema_change_needs_migration(*, tagged: dict[str, Any], current: dict[str,
     return _without_added_optional_keys(tagged=tagged, current=current) != tagged
 
 
-def _schemas_changed_since(tag: Version) -> bool:
-    """タグの時点にあったスキーマのファイルが消えたか、任意のキーを足しただけでない違いがあるかを返す（足したファイルは比べない）。"""
+def _schema_hash(text: str) -> str:
+    """スキーマの中身（UTF-8 の文字列）の SHA-256 を 16 進で返す。"""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _changed_schemas_since(tag: Version) -> tuple[list[str], list[str]]:
+    """タグの時点にあったスキーマのうち、消えたものと、任意のキーを足しただけでない違いがあるものの名前を返す（足したファイルは比べない）。"""
     current_dir = REPO_ROOT / SCHEMA_RELATIVE_DIR
-    tagged_names = sorted(_schema_names_at(tag))
-    # タグの時点にあったファイルが消えた
-    if any(not (current_dir / name).exists() for name in tagged_names):
-        return True
-    # タグの時点にあったファイルの中身の違い（任意のキーを足しただけなら、既存のワークスペースがそのまま通るので変わりとしない）
-    for name in tagged_names:
+    removed: list[str] = []
+    changed: list[str] = []
+    for name in sorted(_schema_names_at(tag)):
+        # タグの時点にあったファイルが消えた
+        if not (current_dir / name).exists():
+            removed.append(name)
+            continue
+        # タグの時点にあったファイルの中身の違い（任意のキーを足しただけなら、既存のワークスペースがそのまま通るので変わりとしない）
         shown = _git("show", f"{tag}:{SCHEMA_RELATIVE_DIR}/{name}")
         tagged_schema = json.loads(shown.stdout)
         current_schema = json.loads((current_dir / name).read_text(encoding="utf-8"))
         if _schema_change_needs_migration(tagged=tagged_schema, current=current_schema):
-            return True
-    return False
+            changed.append(name)
+    return removed, changed
+
+
+def _no_steps_hashes() -> dict[str, str]:
+    """手順の要らない変更の一覧から、スキーマのファイル名 → 載っている中身の SHA-256 を返す。"""
+    entries = yaml.safe_load(NO_STEPS_FILE.read_text(encoding="utf-8"))
+    return {entry["schema"]: entry["sha256"] for entry in entries}
+
+
+def _unlisted_schemas(changed: list[str]) -> list[str]:
+    """変えたスキーマのうち、一覧に今の中身のハッシュで載っていないものの名前を返す。"""
+    listed = _no_steps_hashes()
+    current_dir = REPO_ROOT / SCHEMA_RELATIVE_DIR
+    return [
+        name
+        for name in changed
+        if listed.get(name) != _schema_hash((current_dir / name).read_text(encoding="utf-8"))
+    ]
 
 
 def test_schema_changes_have_migration() -> None:
-    """最新のタグからスキーマが任意のキーの追加より大きく変わったら、タグより新しくプラグインの版以下の手順がある（正常系）。"""
+    """最新のタグからスキーマが任意のキーの追加より大きく変わったら、手順の要らない変更の一覧に今の中身で載るか、タグより新しくプラグインの版以下の手順がある（正常系）。"""
     # 準備
     latest = _latest_tag()
     if latest is None:
         pytest.skip("版のタグが 1 つも無い clone では確かめない")
-    changed = _schemas_changed_since(latest)
+    removed, changed = _changed_schemas_since(latest)
+    # 一覧に今の中身のハッシュで載っていない変えたスキーマ（消えたスキーマは一覧で通さない）
+    unlisted = _unlisted_schemas(changed)
     plugin_version = versions.read_plugin_version()
     covering = [
         version for version in migrator.list_versions() if latest < version <= plugin_version
     ]
     # 検証
-    assert covering != [] or not changed, (
-        f"スキーマが {latest} から変わっているのに、{latest} より新しく {plugin_version} 以下の"
-        "版の手順が migrations/ にありません。版を上げて手順を足してください"
+    assert covering != [] or (removed == [] and unlisted == []), (
+        f"スキーマが {latest} から変わっている（消えた: {removed}、一覧に載っていない: {unlisted}）のに、"
+        f"{latest} より新しく {plugin_version} 以下の版の手順が migrations/ にありません。"
+        "今のワークスペースが読めない変更なら版を上げて手順を足し、読める変更なら no-steps.yaml に行を足してください"
     )
 
 

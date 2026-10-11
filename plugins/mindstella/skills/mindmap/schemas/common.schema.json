@@ -158,7 +158,7 @@
           },
           "before": {
             "type": "object",
-            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は入れない"
+            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は入れない。ただし `body` は、前に本文が無かった回（null）と資料の本文の形式を替えた回（前のファイル名）だけ入れる"
           },
           "body_diff": {
             "type": "array",

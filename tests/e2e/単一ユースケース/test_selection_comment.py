@@ -14,8 +14,10 @@ from preview_helpers import (
     COMMENTS_BUTTON,
     DETAIL_MESSAGE,
     DETAIL_TEXTAREA,
+    FRAME_TEXT_RECT_SCRIPT,
     PILL,
     OpenPreview,
+    drag_select_in_frame,
     select_text,
     select_text_for_pill,
 )
@@ -173,3 +175,68 @@ def test_error_when_outside_body_and_value(
     assert page.locator(PILL).count() == 0
     assert _read_comments(root) == []
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
+
+
+# 詳細パネルの HTML の本文の枠
+HTML_BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
+
+# 段落より前にコメントと `<style>` を置き、5〜6 行目に 2 行にまたがる段落を持ち、同じ文を 8 行目の段落にも持つ HTML の本文（6 行目のほうを選ぶ）
+HTML_BODY_WITH_SAME_SENTENCE = (
+    "<!-- 下書き -->\n"
+    "<style>p { color: rgb(51, 51, 51); }</style>\n"
+    "<h1>画面のモック</h1>\n"
+    "\n"
+    "<p>前置きの文\n"
+    f"{SENTENCE}</p>\n"
+    "\n"
+    f"<p>{SENTENCE}</p>\n"
+)
+
+# 枠を描き終えるまで待つ上限ミリ秒と、描き終わり・高さ合わせが済むまで待つミリ秒
+FRAME_TIMEOUT_MS = 20_000
+FRAME_SETTLE_MS = 400
+
+
+def test_normal_when_html_body_text(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """HTML の本文の枠の中で 6 行目の文を選ぶと入口が出て、元の HTML の行の箇所を添えたコメントを溜められる（正常系）。"""
+    # 準備
+    url, root = _serve(
+        make_workspace,
+        call_tool,
+        make_item("A-1", body="A-1.html"),
+        bodies={"A-1.html": HTML_BODY_WITH_SAME_SENTENCE},
+    )
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(f"{HTML_BODY_FRAME}[data-rendered]", state="attached", timeout=FRAME_TIMEOUT_MS)
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 実行（枠の中の文をマウスで選ぶと、入口が出る）
+    drag_select_in_frame(page, HTML_BODY_FRAME, SENTENCE)
+    page.wait_for_selector(PILL, timeout=RESULT_TIMEOUT_MS)
+    rect = page.evaluate(FRAME_TEXT_RECT_SCRIPT, [HTML_BODY_FRAME, SENTENCE])
+    pill_box = page.locator(PILL).bounding_box()
+    # 入口を押すと、選んだ文の引用と箇所を添えた入力になる
+    page.click(PILL)
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"
+    assert page.inner_text("aside.panel .send-quote") == SENTENCE
+    page.fill(DETAIL_TEXTAREA, "ここは言い換える")
+    page.get_by_role("button", name="レビューに追加").click()
+    page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=RESULT_TIMEOUT_MS)
+    # 検証
+    comments = _read_comments(root)
+    assert [(item["target"], item["body"]) for item in comments] == [("A-1", "ここは言い換える")]
+    assert comments[0]["loc"] == {"kind": "body", "start": 6, "end": 6, "text": SENTENCE}
+    # コメントの入口が、選んだ文の近く（縦の差が選んだ行の高さ以内）に出る
+    assert pill_box is not None
+    gap = max(
+        rect["top"] - (pill_box["y"] + pill_box["height"]),
+        pill_box["y"] - (rect["top"] + rect["height"]),
+        0,
+    )
+    assert gap <= rect["height"]
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"

@@ -145,3 +145,41 @@ def test_normal_when_title_match_in_later_kind(
     assert page.locator(DIALOG).count() == 0
     assert page.get_attribute('nav.tabbar a[data-tab="docs"]', "aria-current") == "page"
     assert "id=A-2" in page.evaluate("location.hash")
+
+
+# 段落の文に「画面の流れ」を持ち、属性 `data-step` を持つ HTML の本文
+FLOW_HTML_BODY = '<p class="flow" data-step="1">画面の流れを決める</p>\n'
+
+# コードブロックの段落の文に「画面の流れ」を持つ `html` のコードブロックを持つ Markdown の本文（コードブロックの外には書かない）
+FLOW_MARKDOWN_BODY = '# 概要\n\n```html\n<p class="flow" data-step="1">画面の流れを描く</p>\n```\n'
+
+
+def test_normal_when_html_body_matched(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """HTML の本文と `html` のコードブロックを描いた文で探し、タグと属性には当てない（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        make_item("T-1"),
+        settings=valid_settings,
+        bodies={"A-1.html": FLOW_HTML_BODY, "A-2.md": FLOW_MARKDOWN_BODY},
+    )
+    page = open_preview(url)
+    # 実行（Ctrl+K を押し、「画面の流れ」を入れる）
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    page.fill(f"{DIALOG} input", "画面の流れ")
+    page.wait_for_function(f"document.querySelectorAll('{DIALOG} .sr-item').length === 2")
+    # 検証（結果に A-1 と A-2 があり、T-1 は無い）
+    ids = page.eval_on_selector_all(f"{DIALOG} .sr-item", "items => items.map(i => i.dataset.id)")
+    assert sorted(ids) == ["A-1", "A-2"]
+    # 実行（入力を「data-step」に替える）
+    page.fill(f"{DIALOG} input", "data-step")
+    page.wait_for_function(f"document.querySelectorAll('{DIALOG} .sr-item').length === 0")
+    # 検証（HTML の本文と `html` のコードブロックのタグ・属性には当てず、該当なしが出る）
+    assert "該当する項目はありません" in page.inner_text(f"{DIALOG} .no-match")

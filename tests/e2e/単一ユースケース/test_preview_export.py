@@ -247,3 +247,77 @@ def test_error_when_schema_mismatch(
     assert "status" in result.text
     assert out.read_bytes() == out_before
     assert snapshot_tree(root) == workspace_before
+
+
+# 詳細パネルの HTML の本文の枠
+HTML_BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
+
+# `<style>` で全ての要素と本文を塗り、見出し・表・図・スクリプトを持つ資料 A-1 の HTML の本文（スクリプトは実行されると印を残す）
+HTML_DOC_BODY = """<style>
+  * { margin: 40px !important; color: rgb(255, 0, 0) !important; }
+  body { background: rgb(0, 0, 255) !important; }
+</style>
+<h1>画面のモック</h1>
+<table><tr><th>列</th><td>値</td></tr></table>
+<svg width="40" height="40"><circle cx="20" cy="20" r="18" fill="orange"/></svg>
+<script>window.__leak = 1; parent.__leak = 1;</script>
+"""
+
+# 詳細パネルの外のタイトルとトップバーの色・余白・背景を返す
+OUTSIDE_STYLE_SCRIPT = """() => ['aside.panel .d-title', 'header.topbar'].map((selector) => {
+    const style = getComputedStyle(document.querySelector(selector));
+    return [style.color, style.marginTop, style.backgroundColor];
+})"""
+
+# ページの変数に残る印を、親の画面と枠の中で返す
+LEAK_SCRIPT = """() => [
+    window.__leak ?? null,
+    document.querySelector('aside.panel iframe.html-frame[data-html-body]').contentWindow.__leak ?? null,
+]"""
+
+
+def test_normal_when_html_doc_exported(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+    tmp_path: Path,
+) -> None:
+    """HTML の本文の資料を書き出し、通信を止めたブラウザで開いて、描いた本文を読む（正常系）。"""
+    # 準備（本文が Markdown の資料 A-2 を描いたときの、枠の外の見た目を比べる見本にする）
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        bodies={"A-1.html": HTML_DOC_BODY, "A-2.md": "資料の本文\n"},
+    )
+    out = tmp_path / "配る.html"
+    # 実行（書き出す）
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行（外への通信を全て止めたブラウザで開く）
+    blocked: list[str] = []
+
+    def _block(route: Any) -> None:
+        """外への要求を数えて失敗させる。"""
+        blocked.append(route.request.url)
+        route.abort()
+
+    page.route(_is_not_file_url, _block)
+    open_preview(out.as_uri(), "#tab=docs&id=A-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    before = page.evaluate(OUTSIDE_STYLE_SCRIPT)
+    page.evaluate("location.hash = '#tab=docs&id=A-1'")
+    page.wait_for_selector(f"{HTML_BODY_FRAME}[data-rendered]", state="attached", timeout=DIAGRAM_TIMEOUT_MS)
+    frame = page.frame_locator(HTML_BODY_FRAME)
+    # 検証
+    # A-1 の詳細パネルに、本文の見出し・表・図が HTML を描いた結果で出る
+    assert frame.locator("h1").inner_text() == "画面のモック"
+    assert frame.locator("table").count() == 1
+    assert frame.locator("svg").count() == 1
+    # ページの変数に印が残らない（本文のスクリプトが実行されていない）
+    assert page.evaluate(LEAK_SCRIPT) == [None, None]
+    # 本文の `<style>` が、詳細パネルの外の色と余白を変えない
+    assert page.evaluate(OUTSIDE_STYLE_SCRIPT) == before
+    # 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
+    assert blocked == []

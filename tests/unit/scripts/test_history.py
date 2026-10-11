@@ -211,6 +211,27 @@ def test_make_entry_records_editor(
     assert entry == expected
 
 
+def test_make_entry_when_body_format_changed() -> None:
+    """本文の形式を替えた回は前の body を before に入れる（正常系）。"""
+    # 準備
+    before_item = {"id": "A-1", "title": "モック", "body": "A-1.md"}
+    after_item = {"id": "A-1", "title": "モック", "body": "A-1.html"}
+    # 実行
+    entry = history.make_entry(
+        before_item,
+        after_item,
+        before_body="a\n",
+        after_body="<p>a</p>\n",
+        seq=1,
+        at=NOW,
+        by="ai",
+    )
+    # 検証
+    assert entry is not None
+    assert entry["before"] == {"body": "A-1.md"}
+    assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\n"
+
+
 def test_stack_history() -> None:
     """保持する回数を超えた古いものを消し、消した回の seq を残す（正常系）。"""
     # 準備

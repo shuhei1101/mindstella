@@ -630,6 +630,55 @@ def test_diff_line_parts(
     ]
 
 
+# HTML の本文の差分を確かめる、段落を 1 行ずつ持つ本文
+HTML_THREE_PARAGRAPHS = "<p>一つ目</p>\n<p>二つ目</p>\n<p>三つ目</p>\n"
+
+
+@pytest.mark.parametrize(
+    ("after", "expected"),
+    [
+        pytest.param(
+            "<p>一つ目</p>\n<p>書き換えた二つ目</p>\n<p>三つ目</p>\n",
+            {"added": [], "changed": [2], "removedOnly": False},
+            id="rewritten",
+        ),
+        pytest.param(
+            HTML_THREE_PARAGRAPHS + "<p>四つ目</p>\n",
+            {"added": [4], "changed": [], "removedOnly": False},
+            id="added",
+        ),
+        pytest.param(
+            "<p>一つ目</p>\n<p>三つ目</p>\n",
+            {"added": [], "changed": [], "removedOnly": True},
+            id="removed_only",
+        ),
+        pytest.param(
+            "<p>一つ目</p>\n\n<p>二つ目</p>\n<p>三つ目</p>\n",
+            {"added": [], "changed": [], "removedOnly": False},
+            id="blank_line_added",
+        ),
+    ],
+)
+def test_html_changed_lines(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    after: str,
+    expected: dict[str, Any],
+) -> None:
+    """足した行・変えた行・消しただけの箇所を分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        "([before, after]) => MindmapPreview.htmlChangedLines(before, after)",
+        [HTML_THREE_PARAGRAPHS, after],
+    )
+    # 検証
+    assert result == expected
+
+
 def test_diff_line_parts_when_timeout(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
 ) -> None:

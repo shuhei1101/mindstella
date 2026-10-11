@@ -80,6 +80,36 @@ scenarios:
       - エラーの本文に、合わないファイル `decisions.yaml` とキー `status` がある
       - 書き出す先のファイルの中身が、呼ぶ前と同じである
     test: test_error_when_schema_mismatch
+  - name: 正常シナリオ（HTML の資料を配る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる配る書き出しのツールを MCP のクライアントで呼ぶ（描画のライブラリは jsDelivr から取る）。ブラウザは外への通信を全て止めて、書き出した HTML を開く
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持ち、`<style>` と見出し・表・`<svg>` の図・`<script>` を持つ資料 A-1
+        notes: '`<script>` は実行されるとページの変数に印を残す中身にする'
+      - name: 書き出す先
+        description: ワークスペースの外の一時フォルダの中のパス
+    flow: |-
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant P as 配る書き出し（通信を止めたブラウザ）
+
+        CC->>SV: 配る書き出し
+        SV->>WS: 全ての YAML と docs/ を読む
+        SV-->>CC: 書き出したファイルのパス
+        U->>P: 書き出したファイルを開き、A-1 の詳細パネルを開く
+        P-->>U: HTML を描いた本文
+    expected:
+      - A-1 の詳細パネルに、本文の見出し・表・図が HTML を描いた結果で出る
+      - ページの変数に印が残らない（本文のスクリプトが実行されていない）
+      - 本文の `<style>` が、詳細パネルの外の色と余白を変えない
+      - 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
+    test: test_normal_when_html_doc_exported
 lead: 利用者が、記録を見るだけの 1 枚の HTML（配る書き出し）に書き出してもらい、ネットにつながらない端末のブラウザで開いて読む単一ユースケース。
 issue: 19
 test_file: tests/e2e/単一ユースケース/test_preview_export.py

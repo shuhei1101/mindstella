@@ -164,7 +164,7 @@ def test_card_filter_clear_all(
 
 
 def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """ドロワーは、種類・状態・納品物（納品物 → 納品物以外の順）を並べ、何も選んでいない状態で開く（正常系）。"""
+    """ドロワーは、種類・状態・納品物（納品物 → 納品物以外の順）・形式を並べ、何も選んでいない状態で開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs")
@@ -172,9 +172,10 @@ def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
     open_drawer(page)
     groups = {group["label"]: group for group in drawer_groups(page)}
     # 検証
-    assert list(groups) == ["種類", "状態", "納品物"]
+    assert list(groups) == ["種類", "状態", "納品物", "形式"]
     assert groups["状態"]["values"] == [["下書き", 1, False], ["完成", 1, False]]
     assert groups["納品物"]["values"] == [["納品物", 1, False], ["納品物以外", 1, False]]
+    assert groups["形式"]["values"] == [["MD", 2, False]]
     assert badge_text(page) is None
     assert page.is_visible(FILTER_BUTTON)
 
@@ -805,3 +806,59 @@ def test_drawer_saved_filter_when_value_missing(
     assert _card_ids(page) == ["A-1"]
     assert badge_text(page) == "1"
     assert checked_values(page, "status") == ["完成"]
+
+
+# 形式の札を確かめる資料（A-1 は HTML、A-2 は Markdown の本文）
+def _write_format_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """本文の形式が違う資料 2 件の配信の URL を返す。"""
+    return write_preview(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        bodies={"A-1.html": "<p>一覧の画面</p>\n", "A-2.md": "資料の本文\n"},
+    )
+
+
+def test_format_badge_when_cards_and_board(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """カードとボードのカードの種類の右に、本文の形式の札（HTML / MD）を置く（正常系）。"""
+    # 準備
+    url = _write_format_preview(write_preview, make_item)
+    # 実行・検証（カード）
+    page = open_preview(url, "#tab=docs")
+    badges = page.eval_on_selector_all(
+        ".doc-card", "cards => cards.map(c => [c.dataset.id, c.querySelector('.doc-kind .fmt-badge')?.textContent])"
+    )
+    assert badges == [["A-1", "HTML"], ["A-2", "MD"]]
+    # 札は種類の右（同じ行で、種類の文字より右）にある
+    positions = page.eval_on_selector(
+        '.doc-card[data-id="A-1"] .doc-kind',
+        "e => { const badge = e.querySelector('.fmt-badge').getBoundingClientRect(); const kind = e.getBoundingClientRect(); return badge.left > kind.left; }",
+    )
+    assert positions is True
+    # 実行・検証（ボード）
+    page = open_preview(url, "#tab=docs&view=board")
+    badges = page.eval_on_selector_all(
+        ".doc-card", "cards => cards.map(c => [c.dataset.id, c.querySelector('.doc-kind .fmt-badge')?.textContent])"
+    )
+    assert sorted(badges) == [["A-1", "HTML"], ["A-2", "MD"]]
+
+
+def test_format_badge_when_table(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """表の「形式」の列に、本文の形式の札（HTML / MD）を出す（正常系）。"""
+    # 準備
+    url = _write_format_preview(write_preview, make_item)
+    # 実行
+    page = open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    headers = page.eval_on_selector_all("table.grid thead th", "ths => ths.map(th => th.textContent.trim())")
+    column = next(index for index, text in enumerate(headers) if text.startswith("形式"))
+    cells = page.eval_on_selector_all(
+        "table.grid tbody tr",
+        f"rows => rows.map(r => [r.dataset.id, r.children[{column}].textContent.trim()])",
+    )
+    assert cells == [["A-1", "HTML"], ["A-2", "MD"]]
+    assert page.locator("table.grid tbody tr td .fmt-badge").count() == 2

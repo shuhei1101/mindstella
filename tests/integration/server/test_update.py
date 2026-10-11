@@ -36,6 +36,14 @@ COMMITTED_D1 = (
 OPTION_A: dict[str, Any] = {"key": "A", "content": "種類ごとに分ける"}
 OPTION_B: dict[str, Any] = {"key": "B", "content": "1 つにまとめる"}
 
+# 資料として足す項目（本文は付けない）
+DOC_ITEM: dict[str, Any] = {
+    "title": "画面のモック",
+    "kind": "モック",
+    "status": "下書き",
+    "deliverable": False,
+}
+
 # 本文（3 行）と、2 行目を書き換えた本文
 BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
 BODY_AFTER = "1 行目\n書き換えた 2 行目\n3 行目\n"
@@ -316,3 +324,54 @@ def test_normal_when_note_withdrawn(make_workspace: MakeWorkspace, call_tool: Ca
     assert note["reason"] == "話題をやめた"
     assert note["history"][0]["before"] == {"withdrawn": None, "reason": None}
     assert read_changes(root)["pending"]["changed"] == ["N-1"]
+
+
+def test_normal_when_body_format_changed(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """資料の本文の形式を替えると、`{ID}.html` を書いて `{ID}.md` を消し、前の形式を履歴に積む（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(call_tool, root, "doc", {**DOC_ITEM, "body_markdown": "# 画面のモック\n一覧の画面\n"})
+    commit(call_tool, root, "足す")
+    body_html = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>\n"
+    # 実行
+    result = call_tool("update", workspace=str(root), id="A-1", item={"body_html": body_html})
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["body", "body_html"]
+    doc = read_items(root, "docs.yaml")[0]
+    assert doc["body"] == "A-1.html"
+    assert (root / RECORD_DIR / "docs" / "A-1.html").read_text(encoding="utf-8") == body_html
+    assert not (root / RECORD_DIR / "docs" / "A-1.md").exists()
+    # 前の形式のファイル名を持ち、本文の差分を今の本文に当てると書き換える前の本文になる
+    entry = doc["history"][0]
+    assert entry["before"] == {"body": "A-1.md"}
+    assert entry["body_diff"] == [
+        {
+            "line": 1,
+            "now": ["<h1>画面のモック</h1>", "<p>一覧の画面</p>", "<p>詳細の画面</p>"],
+            "before": ["# 画面のモック", "一覧の画面"],
+        }
+    ]
+
+
+def test_error_when_html_body_for_non_doc(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """資料以外の項目に HTML の本文を渡すと、直さずに資料だけが持てる旨を返す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1"))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool(
+        "update", workspace=str(root), id="T-1", item={"body_html": "<p>一覧の画面</p>"}
+    )
+    # 検証
+    assert result.is_error is True
+    assert "tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる" in result.text
+    assert snapshot_tree(root) == before
