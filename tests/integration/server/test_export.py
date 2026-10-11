@@ -8,12 +8,14 @@ from __future__ import annotations
 import json
 import re
 from html.parser import HTMLParser
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
+from .http_helpers import http_request
 from workspace_fixtures import RECORD_DIR
 
 # このファイルから見たリポジトリの直下（tests/integration/server の 3 つ上）
@@ -34,6 +36,13 @@ LICENSES_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 
 # 資料の本文（要素を閉じる文字列を含む）
 BODY_WITH_SCRIPT_TAG = "本文に </script> を含む\n"
+
+# HTML で書いた資料の本文（`<style>` と `<script>` と段落を持つ。`</script>` で埋め込みの要素を閉じない）
+HTML_BODY = (
+    "<style>p { color: red; }</style>\n"
+    "<script>window.opened = true;</script>\n"
+    "<p>一覧の画面</p>\n"
+)
 
 # jsDelivr に届かないようにする環境変数（届かない宛先のプロキシを通す）
 UNREACHABLE_PROXY_ENV = {
@@ -144,6 +153,34 @@ def test_normal(
     assert f"{ELKJS_REPOSITORY}/tree/{versions['elkjs']}" in licenses
     # ワークスペースは書き換えない
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_html_body(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    serve_preview: Callable[[Path], str],
+    tmp_path: Path,
+) -> None:
+    """HTML の本文も、原文と行の印を足したものを埋め込みのデータに入れる（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY}
+    )
+    out = tmp_path / "配る.html"
+    # 実行
+    result = call_tool("export", workspace=str(root), out=str(out))
+    # 検証
+    assert result.is_error is False, result.text
+    html = out.read_text(encoding="utf-8")
+    data = json.loads(_read_element(html, DATA_ELEMENT_OPEN))
+    assert data["bodies"]["A-1.html"] == HTML_BODY
+    # 『記録の取得』と同じ行の印つきの本文を持つ
+    records = http_request(serve_preview(root), "/api/records").json()
+    assert data["marked_bodies"]["A-1.html"] == records["marked_bodies"]["A-1.html"]
+    # 本文の `</script>` で埋め込みの要素が閉じていない
+    template_closes = TEMPLATE_PATH.read_text(encoding="utf-8").count("</script>")
+    assert html.count("</script>") == template_closes + 1
 
 
 def test_error_when_out_not_html(

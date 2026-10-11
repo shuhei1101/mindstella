@@ -237,3 +237,68 @@ def test_error_when_adopted_but_undecided(
         for line in result.text.splitlines()
     )
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_doc_body_html(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """資料の本文を HTML で渡すと、`{ID}.html` に書いて `body` から指す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_html": "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n",
+    }
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="doc", item=item)
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["id"] == "A-1"
+    assert result.data["body"] == ".mindstella/docs/A-1.html"
+    docs_yaml = yaml.safe_load((root / RECORD_DIR / "docs.yaml").read_text(encoding="utf-8"))
+    added = docs_yaml["items"][0]
+    assert added["body"] == "A-1.html"
+    assert "body_html" not in added
+    assert (root / RECORD_DIR / "docs" / "A-1.html").read_text(encoding="utf-8") == item["body_html"]
+    assert not (root / RECORD_DIR / "docs" / "A-1.md").exists()
+
+
+def test_error_when_html_body_for_non_doc(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """資料以外の種類に HTML の本文を渡すと、足さずに資料だけが持てる旨を返す（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    item = {"title": "画面を描く", "kind": "作業", "status": "未着手", "body_html": "<p>一覧の画面</p>"}
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="task", item=item)
+    # 検証
+    assert result.is_error is True
+    assert "tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる" in result.text
+    assert snapshot_tree(root) == before
+
+
+def test_error_when_both_bodies(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """資料に Markdown と HTML の本文を両方渡すと、足さずに一緒に渡せない旨を返す（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_markdown": "# 画面のモック\n",
+        "body_html": "<h1>画面のモック</h1>\n",
+    }
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="doc", item=item)
+    # 検証
+    assert result.is_error is True
+    assert "docs.yaml: items[0].body_html: body_markdown と body_html は一緒に渡せない" in result.text
+    assert snapshot_tree(root) == before

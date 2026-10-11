@@ -36,6 +36,15 @@ from preview_comment_helpers import (
     select_text_for_pill,
     wait_until_focused,
 )
+from preview_html_body_helpers import (
+    BODY_FRAME,
+    BODY_WITH_HTML_CODE_BLOCK,
+    FRAME_SETTLE_MS,
+    frame_height_gap,
+    frame_of,
+    select_in_frame,
+    wait_frame_rendered,
+)
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -2488,3 +2497,161 @@ def test_diff_withdrawn_when_unchanged(
     assert page.locator("aside.panel .d-meta dt.df-key").count() == 0
     assert page.locator('aside.panel [data-key="reason"] .df-kv').count() == 0
     assert page.locator('aside.panel [data-key="reason"]').inner_text() == WITHDRAWN_REASONS["R-2"]
+
+
+# ─── HTML の本文 ───
+
+# HTML の本文（4 行目に選ぶ段落を置く）
+HTML_BODY = (
+    "<style>p { color: rgb(51, 51, 51); }</style>\n"
+    "\n"
+    "<h1>画面のモック</h1>\n"
+    "<p>言い換えたい文</p>\n"
+)
+
+# 本文を描く枠の外の、枠の中の段落
+HTML_CODE_FRAME = "aside.panel .md iframe.html-frame"
+
+
+def test_format_badge(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """資料の見出しに本文の形式の札（HTML / MD）を置き、資料以外には置かない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        make_item("D-1"),
+        bodies={"A-1.html": HTML_BODY, "A-2.md": "資料の本文\n"},
+    )
+    # 実行・検証
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    assert page.inner_text("aside.panel .panel-head .fmt-badge") == "HTML"
+    page.evaluate("location.hash = '#tab=docs&id=A-2'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
+    assert page.inner_text("aside.panel .panel-head .fmt-badge") == "MD"
+    page.evaluate("location.hash = '#tab=decisions&id=D-1'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    assert page.locator("aside.panel .panel-head .fmt-badge").count() == 0
+
+
+def test_html_body(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文が HTML の資料は、本文を枠で描き、枠の高さを中身に合わせる（正常系）。"""
+    # 準備・実行
+    url, _ = write_review_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    # 検証
+    assert page.locator("aside.panel .md:not(.md-value)").count() == 0
+    assert frame_of(page, BODY_FRAME).locator("h1").inner_text() == "画面のモック"
+    assert frame_height_gap(page, BODY_FRAME) <= 1
+
+
+def test_html_code_block(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """Markdown の本文の中の html のコードブロックを、コードではなく枠で描く（正常系）。"""
+    # 準備・実行
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, HTML_CODE_FRAME)
+    # 検証
+    assert page.get_attribute(HTML_CODE_FRAME, "title") == "html のコードブロック"
+    assert page.locator("aside.panel .md pre code").count() == 0
+    assert frame_of(page, HTML_CODE_FRAME).locator("p").inner_text() == "枠の中の段落"
+    # 前後の Markdown は今までどおり描く
+    assert page.locator("aside.panel .md h4, aside.panel .md h1, aside.panel .md h2").count() >= 1
+    assert page.locator("aside.panel .md > p").count() == 2
+
+
+def test_selection_entry_when_html_body(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """枠の中の文を選ぶと入口を出し、押すと元の HTML の行の箇所を添える。選びを外すと入口を閉じる（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    # 実行（選ぶ）
+    select_in_frame(page, BODY_FRAME, "言い換えたい文", "言い換えたい文")
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    # 実行（選びを外す）
+    frame_of(page, BODY_FRAME).evaluate("getSelection().removeAllRanges()")
+    page.wait_for_selector(PILL, state="detached", timeout=UPDATE_TIMEOUT_MS)
+    # 実行（もう一度選んで押す）
+    select_in_frame(page, BODY_FRAME, "言い換えたい文", "言い換えたい文")
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証
+    assert page.locator(PILL).count() == 0
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 4 行目"
+    assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
+    assert page.evaluate("document.activeElement.matches('form.send textarea')") is True
+
+
+def test_highlight_location_when_html_body(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """コメントの一覧の行から開くと、枠の中でその行を含む最も内側の要素を示す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("A-1", body="A-1.html"),
+        bodies={"A-1.html": HTML_BODY},
+        comments=(
+            make_comment(
+                "C-1",
+                target="A-1",
+                body="ここは言い換える",
+                loc={"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"},
+            ),
+        ),
+    )
+    page = open_preview(url)
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(COMMENTS_PANEL)
+    # 実行
+    page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
+    wait_frame_rendered(page, BODY_FRAME)
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証
+    hit = frame_of(page, BODY_FRAME).locator("[data-loc-hit]")
+    assert hit.count() == 1
+    assert hit.inner_text() == "言い換えたい文"
+    assert hit.evaluate("e => getComputedStyle(e).backgroundColor") != "rgba(0, 0, 0, 0)"
+
+
+def test_diff_html_body_when_format_changed(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """選んだ時点の本文が Markdown だったときは、描いた結果の印と切り替えを出さず、原文の差分だけを出す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    workspace = str(root)
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_markdown": "# 画面のモック\n一覧の画面\n",
+    }
+    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
+    updated = call_tool("update", workspace=workspace, id="A-1", item={"body_html": HTML_BODY})
+    assert updated.is_error is False
+    assert call_tool("commit", workspace=workspace, summary="形式を替える").is_error is False
+    url = str(call_tool("preview_url", workspace=workspace).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .df-raw")
+    # 検証
+    assert page.locator("aside.panel .html-diff-bar").count() == 0
+    assert page.locator("aside.panel .html-marked").count() == 0
+    assert "# 画面のモック" in page.inner_text("aside.panel .df-raw .df-line.df-del")
+    assert "<h1>画面のモック</h1>" in page.inner_text("aside.panel .df-raw")

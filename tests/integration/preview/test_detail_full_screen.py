@@ -23,6 +23,13 @@ from preview_comment_helpers import (
     select_text_for_pill,
     wait_until_focused,
 )
+from preview_html_body_helpers import (
+    drag_select_in_frame,
+    frame_of,
+    select_in_frame,
+    text_rect_in_page,
+    wait_frame_rendered,
+)
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -665,3 +672,64 @@ def test_diff_withdrawn(
     assert row.locator(f"ins.df-now {WITHDRAWN_BADGE}").inner_text() == "取り下げ"
     reason = page.locator('dialog.full [data-key="reason"] .df-kv')
     assert reason.locator("ins.df-now").inner_text().endswith(WITHDRAWN_REASONS["R-2"])
+
+
+# 全画面の HTML の本文の枠
+FULL_BODY_FRAME = "dialog.full iframe.html-frame[data-html-body]"
+
+# HTML の本文（4 行目に選ぶ段落を置く）
+FULL_HTML_BODY = (
+    "<style>p { color: rgb(51, 51, 51); }</style>\n"
+    "\n"
+    "<h1>画面のモック</h1>\n"
+    "<p>言い換えたい文</p>\n"
+)
+
+
+def test_html_body(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面にも HTML の本文を枠で描き、枠の中の文を選んだ入口と箇所はモーダルの中に出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    wait_frame_rendered(page, FULL_BODY_FRAME)
+    # 実行
+    select_in_frame(page, FULL_BODY_FRAME, "言い換えたい文", "言い換えたい文")
+    page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
+    page.click(PILL)
+    # 検証
+    assert page.get_attribute(FULL_BODY_FRAME, "sandbox") == "allow-same-origin"
+    assert frame_of(page, FULL_BODY_FRAME).locator("h1").inner_text() == "画面のモック"
+    assert page.inner_text("dialog.full .send-loc-name") == "本文 4 行目"
+    assert page.inner_text("dialog.full .panel-head .fmt-badge") == "HTML"
+
+
+def test_html_body_entry_position_when_mouse(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面の枠の中をマウスで選んでも、入口は選んだ文の近くに出る（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    wait_frame_rendered(page, FULL_BODY_FRAME)
+    # 実行
+    drag_select_in_frame(page, FULL_BODY_FRAME, "言い換えたい文")
+    page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
+    rect = text_rect_in_page(page, FULL_BODY_FRAME, "言い換えたい文")
+    pill_box = page.locator(PILL).bounding_box()
+    # 検証（入口と選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    assert page.locator(f"dialog.full {PILL}").count() == 1
+    assert pill_box is not None
+    gap = max(
+        rect["top"] - (pill_box["y"] + pill_box["height"]),
+        pill_box["y"] - (rect["top"] + rect["height"]),
+        0,
+    )
+    assert gap <= rect["height"]
