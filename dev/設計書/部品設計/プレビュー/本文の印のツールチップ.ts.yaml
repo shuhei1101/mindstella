@@ -57,3 +57,4 @@ accessibility:
   - 資料・調査を含む印から Tab で中の最初のリンクへ移れ、最後のリンクの次は本文の印の次の要素へ、最初のリンクの Shift+Tab は印へ戻る。Esc で閉じる
   - リンクのフォーカスは印の色の輪で、ホバーと見分ける
   - 印からツールチップへポインターを動かす間（150 ミリ秒）は閉じない
+test_file: tests/integration/storybook/test_term_tip_stories.py
