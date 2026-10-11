@@ -4,8 +4,23 @@ from __future__ import annotations
 
 from storybook_fixture_types import OpenStory
 
-# 長いタイトルが折り返す幅
+# 長いタイトルが折り返す幅。列の表示のボタンの文言を隠す幅（720px 以下）でもある
 NARROW_SIZE = {"width": 640, "height": 600}
+
+# 列の表示のボタンの置き場所の計算（帯の右端との差・チップの行との左右の並び・表との間の余白）
+COLUMNS_BUTTON_LAYOUT_SCRIPT = """() => {
+    const box = selector => document.querySelector(selector).getBoundingClientRect();
+    const toolbar = box('.table-toolbar');
+    const button = box('.table-toolbar [data-popover="columns"]');
+    const chips = box('.table-toolbar .chips');
+    const wrap = box('.table-wrap');
+    return {
+        rightGap: toolbar.right - button.right,
+        chipsRight: chips.right,
+        buttonLeft: button.left,
+        gapToTable: wrap.top - toolbar.bottom,
+    };
+}"""
 
 # 見出しの aria-sort を列の key で読む
 SORT_SCRIPT = """() => Object.fromEntries([...document.querySelectorAll('table.grid thead th')].map(
@@ -21,6 +36,32 @@ def test_default(open_story: OpenStory) -> None:
     assert set(page.evaluate(SORT_SCRIPT).values()) == {"none"}
     rows = page.eval_on_selector_all("table.grid tbody tr", "rows => rows.map(r => r.dataset.id)")
     assert rows == ["D-1", "D-2", "D-3", "D-4"]
+    # チップの行の右端に、列のアイコンと「列の表示」の文言のボタンを置く
+    button = page.locator('.table-toolbar [data-popover="columns"]')
+    assert button.get_attribute("aria-label") == "列の表示"
+    assert button.locator(".lbl").inner_text() == "列の表示"
+    assert button.locator("svg.icon").count() == 1
+    layout = page.evaluate(COLUMNS_BUTTON_LAYOUT_SCRIPT)
+    assert layout["rightGap"] == 0
+    assert layout["buttonLeft"] >= layout["chipsRight"]
+    # チップの行と表の間を 12px 空ける
+    assert layout["gapToTable"] == 12
+
+
+def test_columns_button_narrow(open_story: OpenStory) -> None:
+    """幅 720px 以下では列の表示のボタンの文言を隠してアイコンだけにし、読み上げ名は残す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-table--default")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 640")
+    # 検証
+    button = page.get_by_role("button", name="列の表示")
+    assert button.count() == 1
+    assert not button.locator(".lbl").is_visible()
+    assert button.locator("svg.icon").is_visible()
+    layout = page.evaluate(COLUMNS_BUTTON_LAYOUT_SCRIPT)
+    assert layout["rightGap"] == 0
+    assert layout["gapToTable"] == 12
 
 
 def test_sorted_asc(open_story: OpenStory) -> None:
@@ -100,7 +141,7 @@ def test_no_match(open_story: OpenStory) -> None:
 
 
 def test_columns_popover(open_story: OpenStory) -> None:
-    """表示する列のポップオーバーを開いている。タイトルの列は外せない（正常系）。"""
+    """列の表示のポップオーバーを開いている。題は「列の表示」で、タイトルの列は外せない（正常系）。"""
     # 準備・実行
     page = open_story("preview-table--columns-popover")
     page.wait_for_selector(".pop:popover-open")
@@ -117,7 +158,7 @@ def test_columns_popover(open_story: OpenStory) -> None:
     # ポップオーバーの題は見出しの要素にせず、aria-labelledby から指す
     assert page.locator(".pop h3").count() == 0
     labelled = page.get_attribute(".pop", "aria-labelledby")
-    assert page.inner_text(f"#{labelled}") == "表示する列"
+    assert page.inner_text(f"#{labelled}") == "列の表示"
 
 
 def test_marked(open_story: OpenStory) -> None:
