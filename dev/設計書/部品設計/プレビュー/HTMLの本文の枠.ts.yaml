@@ -69,3 +69,4 @@ refs:
   - dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
 notes:
   モック: '`dev/mock/components/html-body-frame/`'
+test_file: tests/integration/storybook/test_html_body_frame_stories.py

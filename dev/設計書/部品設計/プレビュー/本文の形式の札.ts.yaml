@@ -31,3 +31,4 @@ accessibility:
   - '`title` に「本文は Markdown」「本文は HTML」を持ち、略語だけにしない'
 notes:
   モック: '`dev/mock/components/body-format-badge/`（種類の右に置く案 A を採用）'
+test_file: tests/integration/storybook/test_body_format_badge_stories.py

@@ -51,3 +51,4 @@ refs:
   - dev/設計書/部品設計/プレビュー/差分の印.ts#
 notes:
   モック: '`dev/mock/components/html-body-frame/` の「差分の表示」と `dev/mock/pages/detail-panel/214/c-marks/`（採用した案 C）'
+test_file: tests/integration/storybook/test_html_body_diff_stories.py
