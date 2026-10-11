@@ -29,7 +29,7 @@ SORT_SCRIPT = """() => Object.fromEntries([...document.querySelectorAll('table.g
 
 
 def test_default(open_story: OpenStory) -> None:
-    """通常。全ての見出しの aria-sort が none で、行は元の並び（正常系）。"""
+    """通常。全ての見出しの aria-sort が none で、行は元の並び。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける（正常系）。"""
     # 準備・実行
     page = open_story("preview-table--default")
     # 検証
