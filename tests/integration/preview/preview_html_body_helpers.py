@@ -124,10 +124,13 @@ TEXT_RECT_SCRIPT = """([selector, text]) => {
   return null;
 }"""
 
-# 枠の高さと、中の文書の高さの差（px）を返す
+# 枠の高さと、中の文書の高さの差（px）を返す。中の文書の高さは、枠の高さに引きずられない値（ルート要素の高さに、その上下の余白を足す）で測る
 HEIGHT_GAP_SCRIPT = """(selector) => {
   const frame = document.querySelector(selector);
-  return Math.abs(frame.clientHeight - frame.contentDocument.documentElement.scrollHeight);
+  const root = frame.contentDocument.documentElement;
+  const style = frame.contentWindow.getComputedStyle(root);
+  const height = root.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+  return Math.abs(frame.clientHeight - height);
 }"""
 
 # 画面に残る印（本文のスクリプトが動くと立つ変数）を、親の画面と枠の中で数える

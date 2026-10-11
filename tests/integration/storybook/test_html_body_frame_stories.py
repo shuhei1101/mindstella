@@ -14,10 +14,13 @@ HEIGHT_GAP_PX = 1
 # 幅の狭い画面の幅と高さ
 NARROW_VIEWPORT = {"width": 390, "height": 844}
 
-# 枠の中の文書の高さと枠の高さの差を返す
+# 枠の中の文書の高さと枠の高さの差を返す。中の文書の高さは、枠の高さに引きずられない値（ルート要素の高さに、その上下の余白を足す）で測る
 HEIGHT_GAP_SCRIPT = """() => {
     const frame = document.querySelector('iframe.html-frame');
-    return Math.abs(frame.clientHeight - frame.contentDocument.documentElement.scrollHeight);
+    const root = frame.contentDocument.documentElement;
+    const style = frame.contentWindow.getComputedStyle(root);
+    const height = root.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+    return Math.abs(frame.clientHeight - height);
 }"""
 
 # 枠の中の文書が横にはみ出していないかを返す
@@ -156,9 +159,9 @@ def test_diff_marks(open_story: OpenStory) -> None:
 def test_narrow(open_story: OpenStory) -> None:
     """幅 390px でも、本文の図・表が枠の幅に収まる（正常系）。"""
     # 準備
-    page = open_story("preview-htmlbodyframe--rendered")
+    page = open_story("preview-htmlbodyframe--narrow")
     page.set_viewport_size(NARROW_VIEWPORT)
-    page.reload()
+    page.wait_for_function("innerWidth === 390")
     wait_frame_rendered(page)
     # 検証
     assert page.evaluate(OVERFLOWS_X_SCRIPT) is False

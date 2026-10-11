@@ -119,13 +119,17 @@ namespace MindmapPreview {
     const original = selectable ? withoutHtmlLineMarks(source) : source;
     frame.addEventListener("load", () => {
       const doc = frame.contentDocument;
-      if (doc === null) return;
+      const win = frame.contentWindow;
+      if (doc === null || win === null) return;
       frame.setAttribute(RENDERED_ATTR, "");
-      // 高さを描いた中身に合わせる（中身が変わっても追う）。枠の線の分を足し、枠の中に縦のスクロールの帯を出さない
-      doc.documentElement.style.overflowY = "hidden";
+      // 高さを描いた中身に合わせる（中身が変わっても追う）。ルート要素の高さに、その上下の余白と枠の線の分を足し、枠の中に縦のスクロールの帯を出さない（`scrollHeight` は枠の高さを下回らないので使わない）
+      const root = doc.documentElement;
+      root.style.overflowY = "hidden";
       new ResizeObserver(() => {
-        frame.style.height = `${doc.documentElement.scrollHeight + frame.offsetHeight - frame.clientHeight}px`;
-      }).observe(doc.documentElement);
+        const style = win.getComputedStyle(root);
+        const margin = parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+        frame.style.height = `${root.getBoundingClientRect().height + margin + frame.offsetHeight - frame.clientHeight}px`;
+      }).observe(root);
       if (marks !== undefined) paintMarks({ doc, marks });
       if (!selectable) return;
       // 選び終えた（空でない選択）・選びを外した（空になった）を知らせる
