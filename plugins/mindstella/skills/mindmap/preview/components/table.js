@@ -273,7 +273,7 @@ var MindmapPreview;
         const root = previous ?? MindmapPreview.h({ tag: "div", attrs: { class: "table-block", "data-kind": kind } });
         const wrap = previous?.querySelector(".table-wrap") ??
             MindmapPreview.h({ tag: "div", attrs: { class: "table-wrap" } });
-        // ===== 条件のチップと、表示する列のボタン =====
+        // ===== 条件のチップと、列の表示のボタン =====
         const chipsRow = filterChips({
             filters,
             labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
@@ -296,7 +296,7 @@ var MindmapPreview;
             if (anchor !== null)
                 positionPopover(pop, anchor);
         };
-        /** 表示する列のポップオーバーの中身 */
+        /** 列の表示のポップオーバーの中身 */
         const columnsPopoverBody = () => {
             const boxes = columns.map((column) => MindmapPreview.h({
                 tag: "label",

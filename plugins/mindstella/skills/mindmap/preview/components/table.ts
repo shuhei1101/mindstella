@@ -438,7 +438,7 @@ namespace MindmapPreview {
       previous?.querySelector<HTMLElement>(".table-wrap") ??
       h({ tag: "div", attrs: { class: "table-wrap" } });
 
-    // ===== 条件のチップと、表示する列のボタン =====
+    // ===== 条件のチップと、列の表示のボタン =====
     const chipsRow = filterChips({
       filters,
       labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
@@ -460,7 +460,7 @@ namespace MindmapPreview {
       const anchor = root.querySelector('[data-popover="columns"]');
       if (anchor !== null) positionPopover(pop, anchor);
     };
-    /** 表示する列のポップオーバーの中身 */
+    /** 列の表示のポップオーバーの中身 */
     const columnsPopoverBody = (): Node => {
       const boxes = columns.map((column) =>
         h({
