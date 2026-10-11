@@ -56,6 +56,14 @@ from preview_history_helpers import build_long_line_diff_workspace, preselect_di
 from preview_mark_helpers import MARK_TIMEOUT_MS, marks_of
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
+from preview_word_diff_helpers import (
+    MIN_TEXT_CONTRAST,
+    WORD_COLORS_JS,
+    WORD_MARKS_JS,
+    colour_distance,
+    contrast_ratio,
+    serve_word_diff_workspace,
+)
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
@@ -2051,6 +2059,133 @@ def test_diff_diagram_raw_when_long_line(
     assert [line["rows"] > 1 for line in added] == [True]
     assert all(line["clearOfSign"] for line in added)
     assert axe_rule_results(page, raw, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+# 差分の表示の本文の領域と、語の面を確かめる検討事項 D-2（行の数が揃わない）・D-3（同じ部分が少ない）を開くハッシュ
+DIFF_BODY = "aside.panel .md:not(.md-value)"
+DIFF_D2_HASH = "#tab=decisions&view=table&id=D-2"
+DIFF_D3_HASH = "#tab=decisions&view=table&id=D-3"
+
+# 語の面を確かめる本文の、書き換えた語（前と今）
+WORD_BEFORE = "来週"
+WORD_AFTER = "今週"
+
+
+def test_diff_body_when_inline_words(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """変えた行の対は、描いた文字のうち変わった語だけに濃い面を付ける。行の面・記号・取り消し線は残り、変えていない段落と消しただけの段落には付けない（正常系）。"""
+    # 準備・実行
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector(f"{DIFF_BODY} span.df-word")
+    # 検証（段落: 消した段落・足した段落・消しただけの段落の順）
+    blocks = page.evaluate(WORD_MARKS_JS, f"{DIFF_BODY} del.df-blk, {DIFF_BODY} ins.df-blk")
+    assert [block["words"] for block in blocks] == [
+        [{"kind": "del", "text": WORD_BEFORE}],
+        [{"kind": "add", "text": WORD_AFTER}],
+        [],
+    ]
+    # 表の行も、書き換えたセルの語だけ（行の印は語の面に入らない）
+    rows = page.evaluate(WORD_MARKS_JS, f"{DIFF_BODY} tr.df-row")
+    assert [row["words"] for row in rows] == [
+        [{"kind": "del", "text": WORD_BEFORE}],
+        [{"kind": "add", "text": WORD_AFTER}],
+    ]
+    # 変えていない段落には語の面が付かない
+    assert page.locator(f"{DIFF_BODY} > p span.df-word").count() == 0
+    # 行の面・記号・取り消し線は残る
+    for line in ("ins.df-blk:has(span.df-word)", "del.df-blk:has(span.df-word)"):
+        assert (
+            page.eval_on_selector(f"{DIFF_BODY} {line}", "e => getComputedStyle(e).backgroundColor")
+            != TRANSPARENT
+        )
+    assert page.inner_text(f"{DIFF_BODY} ins.df-blk:has(span.df-word) > .df-sign") == "+"
+    assert page.inner_text(f"{DIFF_BODY} del.df-blk:has(span.df-word) > .df-sign") == "−"
+    assert (
+        page.eval_on_selector(
+            f"{DIFF_BODY} del.df-blk:has(span.df-word) > p",
+            "e => getComputedStyle(e).textDecorationLine",
+        )
+        == "line-through"
+    )
+
+
+def test_diff_body_when_inline_words_unpaired(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """消した行と足した行の行の数が揃わない書き換えは、語の面を付けず、行の面と記号だけで示す（正常系）。"""
+    # 準備・実行
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2", DIFF_D2_HASH)
+    page.wait_for_selector(f"{DIFF_BODY} ins.df-blk")
+    # 検証
+    assert page.locator(f"{DIFF_BODY} del.df-blk").count() == 1
+    assert page.locator(f"{DIFF_BODY} ins.df-blk").count() == 1
+    assert page.locator(f"{DIFF_BODY} span.df-word").count() == 0
+
+
+def test_diff_body_when_inline_words_little_same(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """行の数が揃っても、同じ部分が少ない（ほとんど書き換えた）対には語の面を付けない（正常系）。"""
+    # 準備・実行
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2", DIFF_D3_HASH)
+    page.wait_for_selector(f"{DIFF_BODY} ins.df-blk")
+    # 検証
+    assert page.locator(f"{DIFF_BODY} del.df-blk").count() == 1
+    assert page.locator(f"{DIFF_BODY} ins.df-blk").count() == 1
+    assert page.locator(f"{DIFF_BODY} span.df-word").count() == 0
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_diff_body_when_inline_words_color(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+    scheme: str,
+) -> None:
+    """語の面は行の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
+    # 準備
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.emulate_media(color_scheme=scheme)
+    page.reload()
+    page.wait_for_selector(f"{DIFF_BODY} span.df-word")
+    assert page.evaluate("document.documentElement.dataset.theme") == scheme
+    # 実行
+    added = page.evaluate(
+        WORD_COLORS_JS, [f"{DIFF_BODY} ins.df-blk span.df-word.df-add", "ins.df-blk"]
+    )
+    removed = page.evaluate(
+        WORD_COLORS_JS, [f"{DIFF_BODY} del.df-blk span.df-word.df-del", "del.df-blk"]
+    )
+    # 検証
+    for colors in (added, removed):
+        assert colour_distance(colors["wordBackground"], colors["surface"]) > colour_distance(
+            colors["lineBackground"], colors["surface"]
+        )
+        assert contrast_ratio(colors["text"], colors["wordBackground"]) >= MIN_TEXT_CONTRAST
+
+
+def test_diff_diagram_raw_when_inline_words(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """図の Raw の変えた行の対は、変わった語だけに濃い面を付け、ほかの行には付けない（正常系）。"""
+    # 準備
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel figure.diagram.df-changed", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 実行
+    page.click('aside.panel figure.diagram [data-act="diagram-raw"]')
+    lines = page.evaluate(WORD_MARKS_JS, "aside.panel figure.diagram > .dg-raw.df-raw .df-line")
+    # 検証
+    assert [line["words"] for line in lines if line["words"]] == [
+        [{"kind": "del", "text": "仕様"}],
+        [{"kind": "add", "text": "設計"}],
+    ]
 
 
 def test_diff_note_when_trimmed(

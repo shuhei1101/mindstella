@@ -29,10 +29,12 @@ namespace MindmapPreview {
   function rawElement({ source, before }: { source: string; before: string | null }): HTMLElement {
     const raw = h({ tag: "pre", attrs: { class: "dg-raw v-raw", hidden: true, tabindex: "0", role: "region", "aria-label": "図の記法" }, children: [source] });
     if (before === null) return raw;
+    // 語の差分は、行の差分を呼んでからこの時間の内に収める
+    const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
     const parts = diffLineParts(before.endsWith("\n") ? before : `${before}\n`, source.endsWith("\n") ? source : `${source}\n`);
     if (parts === null) return raw;
     raw.classList.add("df-raw");
-    raw.replaceChildren(...rawDiffLines(parts));
+    raw.replaceChildren(...rawDiffLines({ parts, deadline }));
     return raw;
   }
 

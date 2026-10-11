@@ -21,6 +21,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from preview_word_diff_helpers import WORD_MARKS_JS, serve_word_diff_workspace
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 # 図を描き終わるまで待つ上限ミリ秒
@@ -225,6 +226,27 @@ def test_diff_raw(
     assert any("処理を変えた" in text for text in raw.locator(".df-line.df-add").all_inner_texts())
     assert any("終了" in text for text in raw.locator(".df-line.df-del").all_inner_texts())
     assert page.get_attribute('dialog.viewer button[data-act="viewer-raw"]', "aria-pressed") == "true"
+
+
+def test_diff_raw_when_inline_words(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間の Raw は、変えた行の対の変わった語だけに濃い面を付け、ほかの行には付けない（正常系）。"""
+    # 準備
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel figure.diagram.df-colored", timeout=DIAGRAM_TIMEOUT_MS)
+    page.click('aside.panel button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.viewer[open] .v-stage svg")
+    # 実行
+    page.click('dialog.viewer button[data-act="viewer-raw"]')
+    lines = page.evaluate(WORD_MARKS_JS, "dialog.viewer .v-raw.df-raw .df-line")
+    # 検証
+    assert [line["words"] for line in lines if line["words"]] == [
+        [{"kind": "del", "text": "仕様"}],
+        [{"kind": "add", "text": "設計"}],
+    ]
 
 
 # ─── 記法の枠 ───

@@ -88,14 +88,14 @@ NEW_DECISION: dict[str, Any] = {
     **PLACE,
 }
 
-# 検討事項 D-3 の書き換える前の本文（段落 3 つと flowchart の図）
+# 検討事項 D-3 の書き換える前の本文（書き換える段落・変えない段落・消す段落の 3 つと flowchart の図）
 BODY_D3_BEFORE = """# 検討メモ
 
-最初の段落です。
-
-消す段落です。
+要件は来週までに決める。
 
 残す段落です。
+
+消す段落です。
 
 ```mermaid
 flowchart TD
@@ -103,10 +103,10 @@ flowchart TD
 ```
 """
 
-# D-3 の書き換えた後の本文（段落を 1 つ書き換えて 1 つ消し、図のノードのラベルを 1 つ変える）
+# D-3 の書き換えた後の本文（1 つ目の段落の語を書き換えて 3 つ目の段落を消し、図のノードのラベルを 1 つ変える）
 BODY_D3_AFTER = """# 検討メモ
 
-書き換えた段落です。
+要件は今週までに決める。
 
 残す段落です。
 
@@ -260,11 +260,16 @@ def test_normal(
     # 検証（本文は Markdown のまま、書き換えた段落に足した印、消した段落に消した印が付き、変えていない段落には付かない）
     assert page.inner_text('aside.panel .md [data-md-level="1"]') == "検討メモ"
     added, removed = _block_texts(page)
-    assert "書き換えた段落です。" in added
-    assert "最初の段落です。" in removed
+    assert "要件は今週までに決める。" in added
+    assert "要件は来週までに決める。" in removed
     assert "消す段落です。" in removed
     assert "残す段落です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert "残す段落です。" not in added + removed
+    # 検証（書き換えた語にだけ濃い面が付く。前は消した色、今は足した色で、変えていない語と消した段落には付かない）
+    body_words = "aside.panel .md:not(.md-value) span.df-word"
+    assert page.locator(f"{body_words}.df-del").all_inner_texts() == ["来週"]
+    assert page.locator(f"{body_words}.df-add").all_inner_texts() == ["今週"]
+    assert page.locator(body_words).count() == 2
     # 検証（図は、ラベルを変えたノードにだけ変わった色が付き、ほかのノードと辺には付かない）
     figure = page.locator("aside.panel figure.diagram.df-colored")
     assert figure.locator("g.df-n-chg").count() == 1
@@ -278,6 +283,10 @@ def test_normal(
     added_lines = raw.locator(".df-line.df-add").all_inner_texts()
     assert any("B[処理]" in line for line in removed_lines)
     assert any("B[処理を変えた]" in line for line in added_lines)
+    # 検証（変えたラベルの語にだけ濃い面が付く。消した行は語を消していないので付かず、足した行は足した語だけ）
+    assert raw.locator(".df-line.df-del span.df-word").count() == 0
+    assert raw.locator(".df-line.df-add span.df-word.df-add").all_inner_texts() == ["を変えた"]
+    assert raw.locator("span.df-word").count() == 1
     # 実行（読み込み直す）
     page.reload()
     page.wait_for_selector(".df-chip", timeout=HISTORY_REDRAW_TIMEOUT_MS)

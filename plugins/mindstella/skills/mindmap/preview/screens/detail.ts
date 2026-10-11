@@ -554,11 +554,12 @@ namespace MindmapPreview {
     return rendered;
   }
 
-  /** 消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む */
-  function insertRemovedBlocks({ root, blocks }: { root: HTMLElement; blocks: RemovedBlock[] }): void {
+  /** 消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む。かたまりごとに、差し込んだ語の面を付ける対象のブロックを返す */
+  function insertRemovedBlocks({ root, blocks }: { root: HTMLElement; blocks: RemovedBlock[] }): HTMLElement[][] {
     // 差し込む前の、行の印を持つ今のブロック（差し込む要素は印を持たない）
     const stamped = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
     const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
+    const placed: HTMLElement[][] = [];
     for (const block of blocks) {
       const rendered = renderRemoved(block);
       const target = block.beforeLine === null ? undefined : stamped.find((element) => lineOf(element) >= (block.beforeLine ?? 0));
@@ -572,13 +573,17 @@ namespace MindmapPreview {
         });
         if (target?.tagName === "TR") {
           target.before(...rows);
+          placed.push(rows);
           continue;
         }
         if (previous?.tagName === "TR") {
           previous.after(...rows);
+          placed.push(rows);
           continue;
         }
       }
+      // 囲みの中へ移す前に、語の面を付ける対象のブロックを引く
+      placed.push(wordBlocksIn(rendered));
       const piece = diffBlock({ op: "del", children: [...rendered.childNodes] });
       if (target === undefined) {
         root.append(piece);
@@ -588,6 +593,7 @@ namespace MindmapPreview {
       const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
       (outer.closest("ul, ol, table") ?? outer).before(piece);
     }
+    return placed;
   }
 
   /** 前の本文の図のコードブロック（開く行から閉じる行まで。1 始まり）。閉じていないコードブロックは本文の最後まで */
@@ -626,16 +632,145 @@ namespace MindmapPreview {
     });
   }
 
+  /** 語の面を付ける対象になる、描いたブロック（段落・見出し・箇条書きの項目・表の本体の行）の選び方 */
+  const WORD_BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, tbody tr";
+
+  /** 語の面を付ける対象のブロックか（ほかの対象のブロックを中に持たないもの） */
+  function isWordBlock(element: Element): boolean {
+    return element.matches(WORD_BLOCK_SELECTOR) && element.querySelector(WORD_BLOCK_SELECTOR) === null;
+  }
+
+  /** 要素の中の、語の面を付ける対象のブロック（文書の順） */
+  function wordBlocksIn(root: HTMLElement): HTMLElement[] {
+    return [...root.querySelectorAll<HTMLElement>(WORD_BLOCK_SELECTOR)].filter(isWordBlock);
+  }
+
+  /** 足した部分ごとの、足した行（空行を除く）を持つ今のブロックのうち、語の面を付ける対象のもの（足した行の順） */
+  function addedBlocksByPart({ root, parts, now }: { root: HTMLElement; parts: LinePart[]; now: string[] }): Map<number, HTMLElement[]> {
+    const blocks = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
+    const owners = blockOwners({ now, starts: blocks.map((block) => Number(block.getAttribute(LINE_ATTR))) });
+    const byStart = new Map(blocks.map((block) => [Number(block.getAttribute(LINE_ATTR)), block]));
+    const found = new Map<number, HTMLElement[]>();
+    let line = 0;
+    parts.forEach((part, position) => {
+      if (part.kind === "removed") return;
+      const here: HTMLElement[] = [];
+      for (const _ of part.lines) {
+        line += 1;
+        // 空行だけの足しは段落の間の空きで、どのブロックも足したことにしない
+        if (part.kind !== "added" || (now[line - 1] ?? "").trim() === "") continue;
+        const owner = owners[line - 1];
+        const block = owner === null || owner === undefined ? undefined : byStart.get(owner);
+        if (block !== undefined && isWordBlock(block) && !here.includes(block)) here.push(block);
+      }
+      if (part.kind === "added") found.set(position, here);
+    });
+    return found;
+  }
+
+  /** 語の面を付ける、消したブロックと足したブロックの対 */
+  type WordPair = { removed: HTMLElement; added: HTMLElement };
+
+  /** 変えた行の対（`pairedParts`）ごとに、消した部分から描いたブロックと、足した部分の行を持つ今のブロックを前から順に並べ、両方の数が同じときだけ 1 つずつ対にする */
+  function wordPairs({
+    root,
+    parts,
+    now,
+    placed,
+  }: {
+    root: HTMLElement;
+    parts: LinePart[];
+    now: string[];
+    placed: HTMLElement[][];
+  }): WordPair[] {
+    // 消した部分の並びの何番目か（`placed` は消した部分の順）
+    const removedOrder = parts.flatMap((part, position) => (part.kind === "removed" ? [position] : []));
+    const addedBlocks = addedBlocksByPart({ root, parts, now });
+    return pairedParts(parts).flatMap(({ removed, added }) => {
+      const removedList = placed[removedOrder.indexOf(removed)] ?? [];
+      const addedList = addedBlocks.get(added) ?? [];
+      if (removedList.length === 0 || removedList.length !== addedList.length) return [];
+      return removedList.map((block, offset) => ({ removed: block, added: addedList[offset]! }));
+    });
+  }
+
+  /** 要素の中の、行の印（`signMarks` が入れる記号と読み上げの文字）と、表・リストの構造の間の整形の空白を除いた文字のノード（文書の順） */
+  function wordTextNodes(root: HTMLElement): Text[] {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        const isSign = parent?.closest(".df-sign") != null || parent?.matches(".df-sign + .sr-only") === true;
+        const isLayoutSpace = (node.textContent ?? "").trim() === "" && parent?.matches("table, thead, tbody, tr, ul, ol") === true;
+        return isSign || isLayoutSpace ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const nodes: Text[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+    return nodes;
+  }
+
+  /** 変わった語の面の要素 */
+  function wordMark({ mark, text }: { mark: "add" | "del"; text: string }): HTMLElement {
+    return h({ tag: "span", attrs: { class: `df-word df-${mark}` }, children: [text] });
+  }
+
+  /** 文字のノードの並びのうち、語の差分の足した・消した部分を面の要素で囲む（ノードをまたぐ部分はノードごとに囲み、ノードの外の要素は分けない） */
+  function wrapWords({ nodes, parts, mark }: { nodes: Text[]; parts: InlinePart[]; mark: "add" | "del" }): void {
+    // 同じでない部分の、文字の頭からの範囲
+    const ranges: { start: number; end: number }[] = [];
+    let offset = 0;
+    for (const part of parts) {
+      if (part.kind !== "same") ranges.push({ start: offset, end: offset + part.text.length });
+      offset += part.text.length;
+    }
+    let nodeStart = 0;
+    for (const node of nodes) {
+      const text = node.data;
+      const nodeEnd = nodeStart + text.length;
+      const pieces: (string | HTMLElement)[] = [];
+      // ノードの中で、ここまでを pieces に入れた位置
+      let cursor = 0;
+      for (const range of ranges) {
+        const from = Math.max(range.start, nodeStart) - nodeStart;
+        const to = Math.min(range.end, nodeEnd) - nodeStart;
+        if (from >= to) continue;
+        if (from > cursor) pieces.push(text.slice(cursor, from));
+        pieces.push(wordMark({ mark, text: text.slice(from, to) }));
+        cursor = to;
+      }
+      nodeStart = nodeEnd;
+      if (pieces.length === 0) continue;
+      if (cursor < text.length) pieces.push(text.slice(cursor));
+      node.replaceWith(...pieces);
+    }
+  }
+
+  /** 対の 2 つのブロックの、行の印を除いた文字を語の単位で比べ、変わった語を濃い面で囲む。比べられなかった対には付けない */
+  function markWords({ pair, deadline }: { pair: WordPair; deadline: number }): void {
+    const removedNodes = wordTextNodes(pair.removed);
+    const addedNodes = wordTextNodes(pair.added);
+    const inline = diffInline(removedNodes.map((node) => node.data).join(""), addedNodes.map((node) => node.data).join(""), deadline);
+    if (inline === null) return;
+    wrapWords({ nodes: removedNodes, parts: inline.before, mark: "del" });
+    wrapWords({ nodes: addedNodes, parts: inline.after, mark: "add" });
+  }
+
+  /** 描いた本文の差分。`markWords` は、見出し・本文のリンクを付けた後に呼んで、変えた行の対に語の面を付ける */
+  type BodyDiff = { root: HTMLElement; markWords: () => void };
+
   /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
-  function renderBodyDiff({ before, after }: { before: string; after: string }): HTMLElement | null {
+  function renderBodyDiff({ before, after }: { before: string; after: string }): BodyDiff | null {
+    // 語の差分は、行の差分を呼んでからこの時間の内に収める
+    const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
     const compared = diffLineParts(before, after);
     if (compared === null) return null;
     const parts = withoutDiagramEdits({ parts: compared, before });
     const rendered = renderMarkdown(after);
     lowerHeadings(rendered);
     markAddedBlocks({ root: rendered, parts, source: after });
-    insertRemovedBlocks({ root: rendered, blocks: placeRemovedBlocks(parts) });
-    return rendered;
+    const placed = insertRemovedBlocks({ root: rendered, blocks: placeRemovedBlocks(parts) });
+    const pairs = wordPairs({ root: rendered, parts, now: linesOf(after), placed });
+    return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })) };
   }
 
   // ─── 図の差分 ───
@@ -654,17 +789,31 @@ namespace MindmapPreview {
     return source.endsWith("\n") ? source : `${source}\n`;
   }
 
-  /** 記法の行ごとの差分を、足した行（+）・消した行（−）の印つきの行にする */
-  export function rawDiffLines(parts: LinePart[]): HTMLElement[] {
+  /** 記法の行ごとの差分を、足した行（+）・消した行（−）の印つきの行にする。変えた行の対は、変わった語を濃い面で囲む（`deadline` は、行の差分を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足した時刻） */
+  export function rawDiffLines({ parts, deadline }: { parts: LinePart[]; deadline: number }): HTMLElement[] {
     const op = { added: "add", removed: "del", same: "same" } as const;
-    return parts.flatMap((part) =>
-      part.lines.map((text) =>
-        h({
+    // 対の行ごとの語の差分（`parts` の添え字 → 行ごと）。対の行ごとに 1 回だけ比べ、消した側と足した側に同じ結果を使う
+    const inlines = new Map<number, (InlineDiff | null)[]>();
+    for (const { removed, added } of pairedParts(parts)) {
+      const removedLines = parts[removed]?.lines ?? [];
+      const addedLines = parts[added]?.lines ?? [];
+      const compared = removedLines.map((text, offset) => diffInline(text, addedLines[offset] ?? "", deadline));
+      inlines.set(removed, compared);
+      inlines.set(added, compared);
+    }
+    return parts.flatMap((part, position) =>
+      part.lines.map((text, offset) => {
+        const inline = inlines.get(position)?.[offset] ?? null;
+        const pieces = inline === null ? null : part.kind === "removed" ? inline.before : inline.after;
+        return h({
           tag: "span",
           attrs: { class: `df-line${part.kind === "same" ? "" : ` df-${op[part.kind]}`}` },
-          children: [...signMarks(op[part.kind]), text],
-        }),
-      ),
+          children: [
+            ...signMarks(op[part.kind]),
+            ...(pieces === null ? [text] : pieces.map((piece) => (piece.kind === "same" ? piece.text : wordMark({ mark: part.kind === "removed" ? "del" : "add", text: piece.text })))),
+          ],
+        });
+      }),
     );
   }
 
@@ -764,10 +913,11 @@ namespace MindmapPreview {
     figure.classList.add("df-changed", "df-frame");
     // Raw: 記法の行ごとの差分（打ち切ったときは今の記法のまま）
     const raw = figure.querySelector<HTMLElement>(":scope > .dg-raw");
+    const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
     const parts = diffLineParts(withTrailingNewline(beforeSource), withTrailingNewline(afterSource));
     if (raw !== null && parts !== null) {
       raw.classList.add("df-raw");
-      raw.replaceChildren(...rawDiffLines(parts));
+      raw.replaceChildren(...rawDiffLines({ parts, deadline }));
     }
     const type = diagramType(afterSource);
     const afterSvg = holder?.querySelector<SVGElement>("svg") ?? null;
@@ -871,6 +1021,7 @@ namespace MindmapPreview {
       const source = view?.body ?? index.data.bodies[item.body ?? ""];
       if (source === undefined) return null;
       let rendered: HTMLElement | null = null;
+      let markBodyWords: (() => void) | null = null;
       let notice: HTMLElement | null = null;
       let diagramBefore: string | null = null;
       const versions = view?.versions ?? null;
@@ -882,7 +1033,9 @@ namespace MindmapPreview {
           notice = noteBox(NOTE_BODY_UNAVAILABLE);
         } else {
           diagramBefore = versions.beforeBody;
-          rendered = renderBodyDiff({ before: versions.beforeBody, after: source });
+          const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source });
+          rendered = bodyDiff?.root ?? null;
+          markBodyWords = bodyDiff?.markWords ?? null;
           if (rendered === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
         }
       }
@@ -899,6 +1052,8 @@ namespace MindmapPreview {
         },
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
+      // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）
+      markBodyWords?.();
       const drawn = renderDiagrams(root);
       if (diagramBefore !== null) {
         const before = diagramBefore;

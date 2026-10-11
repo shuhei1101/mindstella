@@ -4,6 +4,8 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** `Diff.diffLines` に渡す `timeout`（ミリ秒）。切り替えの 200ms のうち、図の描画に使った残りを本文 1 つの差分に充てる */
     MindmapPreview.LINE_DIFF_TIMEOUT_MS = 40;
+    /** 変えた行の対で、同じ部分の文字数を 2 つのうち短い方の文字数で割った値がこれに満たないとき、語の面を付けない（ほとんど書き換えた行は、語の面が行のほぼ全体に付いて行の面と見分けられない） */
+    MindmapPreview.WORD_PAIR_MIN_SAME_RATIO = 0.5;
     /** `Diff.diffArrays`（sequenceDiagram のメッセージの並び）に渡す `timeout`（ミリ秒） */
     MindmapPreview.ARRAY_DIFF_TIMEOUT_MS = 20;
     /** ノード・辺に色を付ける mermaid の図の種類（記法の 1 行目の語）。それ以外は図の枠に色を付ける */
@@ -186,6 +188,59 @@ var MindmapPreview;
         }));
     }
     MindmapPreview.diffLineParts = diffLineParts;
+    /** 行の差分のうち、消した行のすぐ後に同じ行の数の足した行が続くところを、変えた行の対にして返す（`parts` の添え字の並び。前から 1 行ずつが対になる） */
+    function pairedParts(parts) {
+        const pairs = [];
+        parts.forEach((part, position) => {
+            const next = parts[position + 1];
+            // 消した行のすぐ後に、同じ行の数の足した行が続く（間に変えない行を挟まない）
+            if (part.kind === "removed" && next?.kind === "added" && next.lines.length === part.lines.length) {
+                pairs.push({ removed: position, added: position + 1 });
+            }
+        });
+        return pairs;
+    }
+    MindmapPreview.pairedParts = pairedParts;
+    /** 語の区切りに使う分け方。ブラウザが `Intl.Segmenter` を持たなければ null（jsdiff の既定の区切りで比べる） */
+    let wordSegmenter;
+    /** 語の区切りに使う分け方を、最初に呼んだときに 1 つ作って使い回す */
+    function segmenterOf() {
+        if (wordSegmenter === undefined) {
+            wordSegmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("ja", { granularity: "word" }) : null;
+        }
+        return wordSegmenter;
+    }
+    /** 部分の文字をつないだもの */
+    function joinText(parts) {
+        return parts.map((part) => part.text).join("");
+    }
+    /** 変えた行の対の前と今の文字を語の単位で比べる。jsdiff を読めていない・時刻を過ぎた・打ち切った・同じ部分が少ない・部分をつないでも元の文字に戻らないときは null */
+    function diffInline(before, after, deadline) {
+        if (MindmapPreview.missingLibraries(["jsdiff"]).length > 0)
+            return null;
+        const remaining = deadline - performance.now();
+        if (remaining <= 0)
+            return null;
+        const segmenter = segmenterOf();
+        const parts = Diff.diffWords(before, after, { timeout: remaining, ...(segmenter === null ? {} : { intlSegmenter: segmenter }) });
+        // 時間内に終わらなかった
+        if (parts === undefined)
+            return null;
+        const sameLength = parts.filter((part) => !part.added && !part.removed).reduce((total, part) => total + part.value.length, 0);
+        const shorter = Math.min(before.length, after.length);
+        // ほとんど書き換えた対には面を付けない
+        if (shorter === 0 || sameLength / shorter < MindmapPreview.WORD_PAIR_MIN_SAME_RATIO)
+            return null;
+        const inline = {
+            before: parts.filter((part) => !part.added).map((part) => ({ kind: part.removed ? "removed" : "same", text: part.value })),
+            after: parts.filter((part) => !part.removed).map((part) => ({ kind: part.added ? "added" : "same", text: part.value })),
+        };
+        // 同じ部分の文字が空白の違いで片側の文字とずれたとき、範囲を元の文字に当てられない
+        if (joinText(inline.before) !== before || joinText(inline.after) !== after)
+            return null;
+        return inline;
+    }
+    MindmapPreview.diffInline = diffInline;
     /** 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す */
     function placeRemovedBlocks(parts) {
         const blocks = [];
