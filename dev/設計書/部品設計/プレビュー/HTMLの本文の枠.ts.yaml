@@ -27,6 +27,8 @@ states:
     description: 幅 390px。本文の図・表が枠の幅に収まる
     notes:
       見せ方: Storybook の画面幅を 390px にする
+  - name: ViewportRelative
+    description: '本文が `html, body { height: 100% }` と `body { min-height: 100vh }` のように、枠の高さを基準にする CSS を持つ。枠の高さが中身に合い、時間を置いても伸び続けず、中身が切れない'
 lead: HTML の本文と Markdown の中の `html` のコードブロックを、スクリプトを動かさない枠（`sandbox="allow-same-origin"` の iframe の `srcdoc`）に描く。枠の高さは描いた中身に合わせ、枠の中で選んだ文を元の HTML の行の範囲にして使う側へ知らせる。
 status: implemented
 args:

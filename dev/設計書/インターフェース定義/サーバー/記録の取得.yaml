@@ -171,8 +171,8 @@ flows:
     expected:
       - ステータスが 200
       - '`bodies` の `A-1.md`・`A-2.html` がそれぞれのファイルの中身と同じ'
-      - '`marked_bodies` が `A-2.html` だけを持ち、`<p` の直後に ` data-line="4"` がある'
-      - '`marked_bodies` の `A-2.html` の `<style>` に `data-line` が無く、`data-line` を取り除くと `bodies` の `A-2.html` と同じ'
+      - '`marked_bodies` が `A-2.html` だけを持ち、`<p` の直後に ` data-line="4" data-line-end="4"` がある'
+      - '`marked_bodies` の `A-2.html` の `<style>` に行の印が無く、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと `bodies` の `A-2.html` と同じ'
     test: test_normal_when_html_body
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
@@ -216,7 +216,7 @@ response:
     description: '`config.yaml` がスキーマに合わないとき、合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`。合うときは `null`。画面は表示を変えず、設定を直すよう知らせる'
   - name: marked_bodies
     type: dict[str, str]
-    description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行の印（`data-line`）を足した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分の印を付ける要素を決める。HTML の本文が無ければ `{}`'
+    description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行の印（`data-line`・`data-line-end`）を足した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分の印を付ける要素を決める。HTML の本文が無ければ `{}`'
     notes: 印の足し方は制約「行の印」
 response_notes: |-
   > [!NOTE]
@@ -240,7 +240,7 @@ constraints:
   - item: 設定の読み方
     constraint: 呼ばれるたびに `config.yaml` を読み、スキーマに合えば配信の「最後に検査に通った設定」をその値に差し替える。合わなければ差し替えず、最後に検査に通った設定を `settings` に、合わない箇所を `settings_problem` に入れて 200 を返す
   - item: 行の印
-    constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{行}"` を足す。行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には足さない。印の他は原文を変えず、行の並びも保つ
+    constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{始まりの行}" data-line-end="{終わりの行}"` を足す。始まりの行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。終わりの行はその要素の閉じタグが始まる原文の行で、空要素は始まりの行と同じ。閉じタグを省いた要素は、その要素を含む要素のうち閉じタグを持つ最も内側のものの閉じタグが始まる行（無ければ原文の最後の行）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には足さない。印の他は原文を変えず、行の並びも保つ
     notes: PoC（#215）で、コメントの中のタグ・`<style>` / `<script>` の中の `<` `>`・属性値の `>`・複数行の開きタグ・閉じタグを省いた `<p>` / `<li>` を含む 12 ケースで確かめた
 refs:
   - dev/設計書/インターフェース定義/サーバー/次の候補#

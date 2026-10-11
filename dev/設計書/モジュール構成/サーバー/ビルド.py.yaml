@@ -136,7 +136,7 @@ functions:
         case: 正常
         summary: HTML の本文は原文を `bodies` に、行の印つきを `marked_bodies` に入れる
         condition: 'A-1（`body: A-1.md`）・A-2（`body: A-2.html`、本文 `<p>a</p>`）'
-        expected: '`bodies` が `A-1.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1">a</p>` だけを持つ'
+        expected: '`bodies` が `A-1.md`・`A-2.html` の原文を持ち、`marked_bodies` が `A-2.html` → `<p data-line="1" data-line-end="1">a</p>` だけを持つ'
         mock: なし
   - name: escape_for_script
     title: 埋め込みのエスケープ

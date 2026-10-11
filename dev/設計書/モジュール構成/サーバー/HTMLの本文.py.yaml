@@ -27,6 +27,13 @@ constants:
     value: frozenset({"html", "head", "body", "meta", "link", "base"}) | HIDDEN_TEXT_TAGS
     usecase: 選んだ箇所へコメントする
     status: implemented
+  - name: LINE_END_ATTR
+    title: 終わりの行の印の属性
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    usecase: 選んだ箇所へコメントする
+    summary: 開きタグに足す、要素が閉じる原文の行の印の属性の名前
+    value: '"data-line-end"'
+    status: implemented
 functions:
   - name: mark_lines
     title: 行の印を足す
@@ -34,7 +41,7 @@ functions:
     usecase: 選んだ箇所へコメントする
     kind: 関数
     scope: public
-    summary: 開きタグのタグ名の直後に、中身が始まる原文の行の印を足した HTML を返す
+    summary: 開きタグのタグ名の直後に、中身が始まる原文の行と要素が閉じる原文の行の印を足した HTML を返す
     status: implemented
     args:
       - name: source
@@ -47,8 +54,10 @@ functions:
       description: 行の印を足した HTML。印の他は原文のままで、行の並びも変えない
     process: |-
       1. 原文の各行の先頭の位置を控え、`HTMLParser`（`convert_charrefs=True`）で読む
-      2. 開きタグと空要素ごとに、`getpos()` の行・列からタグの先頭の位置を、`get_starttag_text()` の改行の数からタグが閉じた行を求める（`UNMARKED_TAGS` は飛ばす）
-      3. タグ名の直後に ` data-line="{行}"` を差し込んだ文字列を返す
+      2. 開きタグと空要素ごとに、`getpos()` の行・列からタグの先頭の位置を、`get_starttag_text()` の改行の数からタグが閉じた行（始まりの行）を求める（`UNMARKED_TAGS` は飛ばす）。空要素の終わりの行は始まりの行と同じにし、それ以外は開いている要素の積み上げに積む
+      3. 閉じタグごとに、積み上げを上からたどって同じタグ名の要素があれば、そこまでの要素を降ろし、その閉じタグが始まる行を終わりの行にする（閉じタグを省いた要素も同じ行）。同じタグ名の要素が無ければ閉じタグを飛ばす
+      4. 読み終えて積み上げに残った要素の終わりの行を、原文の最後の行にする
+      5. タグ名の直後に ` data-line="{始まりの行}" data-line-end="{終わりの行}"` を差し込んだ文字列を返す
     unit_tests:
       - name: test_mark_lines
         case: 正常
@@ -60,8 +69,14 @@ functions:
         case: 正常
         summary: 文書の外枠と描いた文を持たない要素には足さず、印を消すと原文に戻る
         condition: '`<!doctype html>`・`<html>`・`<head>`・`<meta>`・`<title>`・`<style>`・`<body>`・`<script>` と段落を持つ文書'
-        expected: '`<p` だけに印があり、` data-line="{数}"` を取り除くと原文と同じ'
+        expected: '`<p` だけに印があり、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと原文と同じ'
         mock: なし
+      - name: test_mark_lines_when_end_line
+        case: 正常
+        summary: 要素が閉じる行の印を足す
+        condition: '`parametrize`: 3 行にまたがる `<section>\n<h2>見出し</h2>\n節の文\n</section>` / 閉じタグを省いた `<ul>\n<li>a\n<li>b\n</ul>` / 空要素 `<p>a<br>\nb</p>` / 閉じタグの無い `<div>\n<p>a`'
+        mock: なし
+        expected: 終わりの行が、順に `<section>` は 4・`<h2>` は 2 / 両方の `<li>` が 4（`</ul>` の行）/ `<br>` は 1・`<p>` は 2 / `<div>`・`<p>` が 2（原文の最後の行）
   - name: text_of_lines
     title: 行の範囲の描いた文
     container: plugins/mindstella/skills/mindmap/scripts/html_body.py
