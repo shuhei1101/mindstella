@@ -7,8 +7,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: 外部ライブラリを決める未決定の検討事項 D-1 を持つ
       - name: 再生する書き込み
-        description: '調査のタスク T-1（`kind`: 調査、`for: [D-1]`）を積み、確認の後に調査 R-1（ベストプラクティス）と R-2（候補の比較）を `related: [D-1]` で足し、調べた結果にある固有の言葉を用語集 G-1 に足して、T-1 を完了にする'
-        notes: 確認で示すのは「何を・どの観点で・何体で」
+        description: '調査のタスク T-1（`kind`: 調査、`for: [D-1]`）を積み、確認の後に調査 R-1（ベストプラクティス）と R-2（候補の比較）を `related: [D-1]` とエイリアス・説明を付けて足し、調べた結果にある固有の言葉を用語集 G-1 に足して、T-1 を完了にする'
+        notes: '確認で示すのは「何を・どの観点で・何体で」。R-2 は `aliases: [候補の比較]`、`description` に比べた候補の名前'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -30,6 +30,7 @@ scenarios:
       ```
     expected:
       - R-1・R-2 が `question`・`conclusion`・`confidence`・`angles` を持ち、`related` に D-1 がある
+      - R-1・R-2 がエイリアスと説明を持つ
       - 用語集 G-1 が `meaning` を持つ
       - T-1 が完了である
       - '`show D-1` の参照元に R-1・R-2 がある'

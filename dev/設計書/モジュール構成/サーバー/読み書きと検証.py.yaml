@@ -673,6 +673,12 @@ functions:
         condition: スキーマに合い、案を持たない未決定の D-1 を持つワークスペース
         mock: なし
         expected: '`file: decisions.yaml`・`key: items[0].options`・`id: D-1`・`kind: decision_state` の 1 件'
+      - name: test_validate_workspace_when_aliases
+        case: 正常
+        summary: 資料・調査の `aliases`・`description` を受け、空の語を拾う
+        condition: '`parametrize`: `aliases: [特殊効果]`・`description` を持つ資料 A-1 と調査 R-1 / どちらも持たない A-1 / `aliases: [特殊効果, ""]` の A-1'
+        mock: なし
+        expected: '空の並び / 空の並び / `file: docs.yaml`・`key: items[0].aliases[1]` の 1 件'
   - name: load_validators
     title: 検証器の用意
     kind: 関数

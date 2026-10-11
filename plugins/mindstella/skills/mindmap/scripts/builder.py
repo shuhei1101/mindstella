@@ -55,6 +55,7 @@ SCRIPT_FILES = (
     "components/filter-drawer.js",
     "components/send-form.js",
     "components/selection-comment.js",
+    "components/term-tip.js",
     "components/settings-panel.js",
     "components/settings-confirm.js",
     "screens/overview.js",

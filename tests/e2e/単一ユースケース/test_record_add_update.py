@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # 本文（3 行）と、2 行目を書き換えた本文
 BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
@@ -30,6 +33,15 @@ NEW_DECISION: dict[str, Any] = {
     "weight": "大",
     "options": NEW_OPTIONS,
 }
+
+# スキルが足す資料 A-1 のエイリアスと説明、直した後のエイリアス
+DOC_ALIASES = ["特殊効果"]
+DOC_ALIASES_AFTER = ["特殊効果", "エフェクト"]
+DOC_DESCRIPTION = "特殊効果の設定ファイルのキーと型"
+
+# スキルが足す調査 R-1 のエイリアスと説明
+RESEARCH_ALIASES = ["特殊効果の描画"]
+RESEARCH_DESCRIPTION = "特殊効果を重ねたときの描画の負荷の測り方"
 
 
 def _read_decisions(root: Path) -> list[dict[str, Any]]:
@@ -443,3 +455,65 @@ def test_error_when_adoption_and_status_mismatch(
     assert "未決定" in appended.text
     assert "A" in appended.text
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_aliases_and_description(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """エイリアスと説明を持つ資料と調査を足し、資料のエイリアスを 1 つ足して直す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    # 実行
+    added_doc = call_tool(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "特殊効果のスキーマ",
+            "kind": "仕様書",
+            "deliverable": False,
+            "status": "下書き",
+            "aliases": DOC_ALIASES,
+            "description": DOC_DESCRIPTION,
+            "body_markdown": "資料の本文\n",
+        },
+    )
+    added_research = call_tool(
+        "add",
+        **ws,
+        kind="research",
+        item={
+            "title": "特殊効果の描画",
+            "question": "特殊効果を重ねると描画は重くなるか",
+            "aliases": RESEARCH_ALIASES,
+            "description": RESEARCH_DESCRIPTION,
+        },
+    )
+    doc_after_add = read_yaml(root, "docs.yaml")["items"][0]
+    research = read_yaml(root, "research.yaml")["items"][0]
+    updated = call_tool("update", **ws, id="A-1", item={"aliases": DOC_ALIASES_AFTER})
+    doc_after_update = read_yaml(root, "docs.yaml")["items"][0]
+    checked = call_tool("check", **ws)
+    # 検証
+    assert added_doc.is_error is False, added_doc.text
+    assert added_research.is_error is False, added_research.text
+    assert [added_doc.data["id"], added_research.data["id"]] == ["A-1", "R-1"]
+    # 足した A-1 と R-1 が、渡したエイリアスと説明を持つ
+    assert doc_after_add["aliases"] == DOC_ALIASES
+    assert doc_after_add["description"] == DOC_DESCRIPTION
+    assert research["aliases"] == RESEARCH_ALIASES
+    assert research["description"] == RESEARCH_DESCRIPTION
+    # 直した後、A-1 のエイリアスが 2 つで、説明は足したときのままである
+    assert updated.is_error is False, updated.text
+    assert doc_after_update["aliases"] == DOC_ALIASES_AFTER
+    assert doc_after_update["description"] == DOC_DESCRIPTION
+    assert doc_after_update["updated"] >= doc_after_add["updated"]
+    # A-1 が変更履歴を 1 回分持ち、直す前のエイリアス（1 つだけ）が入っている
+    assert len(doc_after_update["history"]) == 1
+    assert doc_after_update["history"][0]["before"] == {"aliases": DOC_ALIASES}
+    # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data["problems"] == []

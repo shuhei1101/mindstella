@@ -9,6 +9,14 @@ from typing import Any
 import pytest
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
+from preview_alias_helpers import (
+    ALIAS_BODY,
+    MIXED_IDS,
+    PANEL_MARKS,
+    TIP,
+    TIP_OPEN,
+    write_alias_preview,
+)
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
     LONG_BODY,
@@ -2334,6 +2342,327 @@ def test_body_term_tooltip(
     assert described == "term-tip"
     assert tip == {"role": "tooltip", "head": "保存先G-1", "body": "記録を置く場所"}
     assert kept is True
+
+
+# ツールチップの形（役割・種類ごとの見出し・項目のリンクと文・区切り線・置き場所）を読む
+READ_TIP_SCRIPT = """() => {
+    const tip = document.getElementById('term-tip');
+    const line = (element) => element === undefined ? null : getComputedStyle(element).borderTopWidth;
+    return {
+        role: tip.getAttribute('role'),
+        inPanel: tip.closest('aside.panel') !== null,
+        kinds: [...tip.querySelectorAll('.tt-kind')].map((e) => e.textContent),
+        links: [...tip.querySelectorAll('a.tt-link')].map((a) => [a.dataset.id, a.textContent]),
+        bodies: [...tip.querySelectorAll('.tt-item')].map((li) => [
+            li.querySelector('a.tt-link').dataset.id,
+            li.querySelector('.tt-body')?.textContent ?? null,
+        ]),
+        groupLine: line(tip.querySelectorAll('.tt-group')[1]),
+        itemLine: line(tip.querySelectorAll('.tt-item')[2]),
+    };
+}"""
+
+
+def _open_alias_panel(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, **options: Any
+) -> Page:
+    """エイリアスを持つ資料・調査・用語と、本文を持つ A-1 を詳細パネルで開き、本文の印が付くのを待つ。"""
+    url = write_alias_preview(write_preview, make_item, **options)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector(PANEL_MARKS)
+    return page
+
+
+def test_body_alias_marks(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """資料・調査のエイリアスにも用語と同じ印を付け、同じ語の項目を 1 つの印にまとめる。取り下げた資料だけのエイリアスと開いている項目自身のエイリアスには付けない。見出しとコードブロックには付けず、インラインコードは中身がちょうど語のときだけ付ける（正常系）。"""
+    # 準備
+    page = _open_alias_panel(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    # 実行
+    marks = page.eval_on_selector_all(PANEL_MARKS, "a => a.map(x => [x.textContent, x.dataset.ids])")
+    in_heading_or_block = page.locator(
+        "aside.panel .md:not(.md-value) :is(h2, pre) a.term"
+    ).count()
+    in_code = page.eval_on_selector_all(
+        "aside.panel .md:not(.md-value) code a.term", "a => a.map(x => x.textContent)"
+    )
+    style = page.eval_on_selector(
+        PANEL_MARKS,
+        "e => ({line: getComputedStyle(e).textDecorationLine, style: getComputedStyle(e).textDecorationStyle, color: getComputedStyle(e).color, parent: getComputedStyle(e.parentElement).color})",
+    )
+    mixed = f"{PANEL_MARKS} >> nth=0"
+    term_only = f"{PANEL_MARKS} >> nth=2"
+    mixed_attrs = page.evaluate(
+        "s => { const e = document.querySelector(s); return [e.getAttribute('aria-details'), e.getAttribute('aria-describedby')]; }",
+        PANEL_MARKS,
+    )
+    term_attrs = page.eval_on_selector(
+        term_only, "e => [e.getAttribute('aria-details'), e.getAttribute('aria-describedby')]"
+    )
+    # 資料・調査にも一致した印を押しても移らない
+    page.click(mixed)
+    page.wait_for_timeout(200)
+    # 検証
+    # 段落の 3 つの印の後に、中身がちょうど語のインラインコードの印が続く
+    assert marks == [
+        ["特殊効果", MIXED_IDS],
+        ["エフェクト", "A-2"],
+        ["保存先", "G-2"],
+        ["特殊効果", MIXED_IDS],
+    ]
+    assert in_heading_or_block == 0
+    assert in_code == ["特殊効果"]
+    assert style["line"] == "underline"
+    assert style["style"] == "dotted"
+    assert style["color"] == style["parent"]
+    assert mixed_attrs == ["term-tip", None]
+    assert term_attrs == [None, "term-tip"]
+    assert page.evaluate("location.hash") == hash_before
+    assert page.evaluate("history.length") == history_length
+
+
+def test_body_alias_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """資料・調査にも一致した印に乗せると、用語 → 資料 → 調査の順に種類ごとの見出し（種類名と件数）と区切り線で分けて並べ、全項目のタイトルを詳細へのリンクにして、資料・調査は説明（無ければ出さない）を添える。用語だけに一致した印は今と同じ形のまま（正常系）。"""
+    # 準備
+    page = _open_alias_panel(write_preview, open_preview, make_item)
+    # 実行（資料・調査にも一致した印）
+    page.hover(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    mixed = page.evaluate(READ_TIP_SCRIPT)
+    # 実行（用語だけに一致した印）
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    page.hover(f"{PANEL_MARKS} >> nth=2")
+    page.wait_for_selector(TIP_OPEN)
+    term_only = page.evaluate(READ_TIP_SCRIPT)
+    # 検証
+    assert mixed["role"] is None
+    assert mixed["inPanel"] is True
+    assert mixed["kinds"] == ["用語 1", "資料 2", "調査 1"]
+    assert mixed["links"] == [
+        ["G-1", "特殊効果"],
+        ["A-2", "特殊効果のスキーマ"],
+        ["A-3", "炎ノード"],
+        ["R-1", "特殊効果を重ねたときの描画の負荷"],
+    ]
+    assert mixed["bodies"] == [
+        ["G-1", "画面に重ねる演出"],
+        ["A-2", "特殊効果の設定ファイルのキーと型"],
+        ["A-3", None],
+        ["R-1", "ノードを 1〜8 個重ねたときの測り方と結果"],
+    ]
+    assert mixed["groupLine"] == "1px"
+    assert mixed["itemLine"] == "1px"
+    assert term_only["role"] == "tooltip"
+    assert term_only["links"] == []
+
+
+def test_body_alias_tooltip_open_link(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ツールチップの中のタイトルを押すとその項目の詳細へ移り、履歴に積み、ツールチップを閉じる（正常系）。"""
+    # 準備
+    page = _open_alias_panel(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    page.hover(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    # 実行
+    page.click(f'{TIP} a.tt-link[data-id="A-2"]')
+    # 検証
+    page.wait_for_function("location.hash.includes('id=A-2')")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    assert page.evaluate("history.length") == history_length + 1
+    assert page.inner_text("aside.panel .d-title") == "特殊効果のスキーマ"
+
+
+def test_body_alias_tooltip_pinned(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """資料・調査にも一致した印を押すとツールチップを出したままにし（印から外れても消えない）、外を押すか Esc で閉じる。ほかの印に乗せても替えない（正常系）。"""
+    # 準備
+    page = _open_alias_panel(write_preview, open_preview, make_item)
+    mixed = f"{PANEL_MARKS} >> nth=0"
+    # 実行（押して、印から外して待つ）
+    page.click(mixed)
+    page.mouse.move(2, 2)
+    page.wait_for_timeout(400)
+    kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+    # 実行（ほかの印に乗せても替わらない）
+    page.hover(f"{PANEL_MARKS} >> nth=1")
+    page.wait_for_timeout(300)
+    still = page.evaluate(
+        "[...document.querySelectorAll('#term-tip a.tt-link')].map((a) => a.dataset.id).join(' ')"
+    )
+    # 実行（Esc で閉じる）
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（もう一度押して、外を押して閉じる）
+    page.click(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    page.click("aside.panel .panel-kind")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 検証
+    assert kept is True
+    assert still == "G-1 A-2 A-3 R-1"
+
+
+def test_body_alias_tooltip_keys(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """資料・調査にも一致した印から Tab で中の最初のリンクへ移り、Shift+Tab で印へ戻る。最後のリンクの次の Tab は本文の次の要素へ移し、Esc は印へフォーカスを戻して閉じる（正常系）。"""
+    # 準備
+    page = _open_alias_panel(write_preview, open_preview, make_item)
+    mixed = f"{PANEL_MARKS} >> nth=0"
+    page.focus(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    active = "document.activeElement"
+    # 実行（印から最初のリンクへ）
+    page.keyboard.press("Tab")
+    first = page.evaluate(f"{active}.dataset.id + ':' + {active}.className")
+    # 実行（最初のリンクの Shift+Tab で印へ戻る）
+    page.keyboard.press("Shift+Tab")
+    back = page.evaluate(f"{active}.textContent + ':' + {active}.className")
+    # 実行（Esc で閉じて、印へ戻る）
+    page.keyboard.press("Tab")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    after_escape = page.evaluate(f"{active}.textContent + ':' + {active}.className")
+    # 実行（最後のリンクの次の Tab で、本文の次の要素へ）
+    page.evaluate("document.activeElement.blur()")
+    page.focus(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    page.evaluate("[...document.querySelectorAll('#term-tip a.tt-link')].at(-1).focus()")
+    page.keyboard.press("Tab")
+    after_last = page.evaluate(f"{active}.textContent + ':' + {active}.className")
+    # 検証
+    assert first == "G-1:tt-link"
+    assert back == "特殊効果:term"
+    assert after_escape == "特殊効果:term"
+    assert after_last == "エフェクト:term"
+
+
+def test_body_alias_tooltip_placement(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ツールチップは印の上に 6px 空けて出す（正常系）。"""
+    # 準備（印を本文の中ほどに置く本文）
+    far_body = "段落\n\n" * 14 + "特殊効果を重ねる\n"
+    page = _open_alias_panel(write_preview, open_preview, make_item, body=far_body)
+    mark = f"{PANEL_MARKS} >> nth=0"
+    page.locator(mark).scroll_into_view_if_needed()
+    # 実行（上に出す）
+    page.hover(mark)
+    page.wait_for_selector(TIP_OPEN)
+    page.wait_for_timeout(200)
+    above = page.evaluate(
+        "() => { const m = document.querySelector('aside.panel .md a.term').getBoundingClientRect(); const t = document.getElementById('term-tip').getBoundingClientRect(); return {gap: Math.round(m.top - t.bottom), fits: t.top >= 8}; }"
+    )
+    # 検証
+    assert above == {"gap": 6, "fits": True}
+
+
+def test_body_alias_tooltip_scroll(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """項目が多いツールチップは、印の上に収まらないので印の下に出し、最大の高さ 360px で止める。中をスクロールして末尾の調査まで読め、後ろの本文は送らない（正常系）。"""
+    # 準備（印が本文の領域の上のほうにあるよう、本文を送っておく）
+    body = "特殊効果を重ねる\n\n" + "段落\n\n" * 40
+    page = _open_alias_panel(write_preview, open_preview, make_item, extra_docs=8, body=body)
+    page.wait_for_selector("aside.panel .md:not(.md-value) p:nth-of-type(41)", state="attached")
+    page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop = 300")
+    body_scrolled = page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop")
+    # 実行
+    page.hover(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    page.wait_for_timeout(200)
+    before = page.evaluate(
+        "() => { const m = document.querySelector('aside.panel .md a.term').getBoundingClientRect(); const t = document.getElementById('term-tip'); const b = t.getBoundingClientRect(); return {gap: Math.round(b.top - m.bottom), height: Math.round(b.height), scrollable: t.scrollHeight > t.clientHeight, overflowY: getComputedStyle(t).overflowY, overscroll: getComputedStyle(t).overscrollBehaviorY}; }"
+    )
+    box = page.locator(TIP).bounding_box()
+    assert box is not None
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    for _ in range(6):
+        page.mouse.wheel(0, 600)
+        page.wait_for_timeout(60)
+    page.wait_for_timeout(300)
+    after = page.evaluate(
+        "() => { const t = document.getElementById('term-tip'); const links = [...t.querySelectorAll('a.tt-link')]; const link = links.at(-1).getBoundingClientRect(); const b = t.getBoundingClientRect(); return {id: links.at(-1).dataset.id, inside: link.bottom <= b.bottom + 1 && link.top >= b.top, atEnd: t.scrollTop + t.clientHeight >= t.scrollHeight - 1, bodyTop: document.querySelector('aside.panel .panel-body').scrollTop}; }"
+    )
+    # 検証
+    assert body_scrolled == 300
+    assert before["gap"] == 6
+    assert before["height"] == 360
+    assert before["scrollable"] is True
+    assert before["overflowY"] == "auto"
+    assert before["overscroll"] == "contain"
+    assert after == {"id": "R-1", "inside": True, "atEnd": True, "bodyTop": body_scrolled}
+
+
+def test_detail_description_aliases(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """資料・調査の詳細に、見出し「説明」の節（結論と同じ灰色の面）と見出し「エイリアス」の節（タグ）を決めた位置に出す。説明は Markdown で描いて無害化し、キーの一覧には並べない。値を持たない項目には節を置かない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item(
+            "A-1",
+            description='**強調**の説明 <img src=x onerror="window.__x=1">',
+            aliases=["特殊効果", "エフェクト"],
+        ),
+        make_item("A-2"),
+        make_item(
+            "R-1",
+            question="何を調べたか",
+            description="調査の説明",
+            conclusion="調べた結論",
+            aliases=["効果"],
+            angles=["観点 1"],
+        ),
+        bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
+    )
+    sections = """() => [...document.querySelectorAll('aside.panel .detail > *')]
+        .map((e) => e.dataset.key ?? e.querySelector('h3, b')?.textContent ?? '')
+        .filter((label) => ['question', '説明', '結論', 'エイリアス', '調査の観点', '本文'].includes(label))"""
+    # 実行（資料）
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector("aside.panel .detail h3")
+    docs = page.evaluate(sections)
+    described = page.evaluate(
+        """() => {
+            const section = [...document.querySelectorAll('aside.panel .d-sec')].find((s) => s.querySelector('h3')?.textContent === '説明');
+            const style = getComputedStyle(section);
+            return {
+                strong: section.querySelectorAll('strong').length,
+                hijacked: window.__x === undefined,
+                keyed: section.querySelector('[data-key="description"]') !== null,
+                filled: style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.borderTopWidth === '1px',
+            };
+        }"""
+    )
+    tags = page.eval_on_selector_all(
+        "aside.panel .d-sec:has(h3:text-is('エイリアス')) .tag", "t => t.map(x => x.textContent)"
+    )
+    meta = page.eval_on_selector_all("aside.panel dl.d-meta dt", "t => t.map(x => x.textContent)")
+    # 実行（値を持たない資料）
+    page.goto(url + "#tab=docs&view=table&id=A-2")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
+    empty = page.evaluate(sections)
+    # 実行（調査）
+    page.goto(url + "#tab=research&view=table&id=R-1")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'R-1の題'")
+    research = page.evaluate(sections)
+    # 検証
+    assert docs == ["説明", "エイリアス", "本文"]
+    assert described == {"strong": 1, "hijacked": True, "keyed": True, "filled": True}
+    assert tags == ["特殊効果", "エフェクト"]
+    assert not {"説明", "エイリアス", "description", "aliases"} & set(meta)
+    assert empty == ["本文"]
+    assert research == ["question", "説明", "結論", "エイリアス", "調査の観点"]
 
 
 def _open_long_lines(
