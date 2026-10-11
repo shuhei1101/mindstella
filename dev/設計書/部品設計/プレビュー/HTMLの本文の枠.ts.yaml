@@ -12,7 +12,7 @@ states:
   - name: WithScripts
     description: '`<script>`・`onerror` の画像・`onclick` のボタンを持つ本文。見出し・段落は描き、ボタンを押しても何も起きない'
   - name: CodeBlock
-    description: Markdown の中の `html` のコードブロック。行の印を持たず、枠の中で選んでも「選び終えた」を知らせない
+    description: Markdown の中の `html` のコードブロック。行の印を持たず、枠の中で選んでも「選び終えた」を知らせない。本文が描く前の高さより短く、枠が中身の高さへ縮む
     args:
       - name: selectable
         value: 'false'

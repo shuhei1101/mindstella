@@ -34,6 +34,13 @@ constants:
     summary: 開きタグに足す、要素が閉じる原文の行の印の属性の名前
     value: '"data-line-end"'
     status: implemented
+  - name: VOID_TAGS
+    title: 閉じタグを持たない要素
+    container: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    usecase: 選んだ箇所へコメントする
+    summary: 空要素。終わりの行を始まりの行と同じにし、開いている要素の積み上げに積まない
+    value: frozenset({"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"})
+    status: implemented
 functions:
   - name: mark_lines
     title: 行の印を足す

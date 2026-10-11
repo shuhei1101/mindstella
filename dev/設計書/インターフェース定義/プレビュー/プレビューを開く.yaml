@@ -406,7 +406,7 @@ flows:
       - 詳細パネルの本文が `sandbox` が `allow-same-origin` だけの iframe に描かれ、見出し・表・`<svg>` の要素を持つ
       - ページの変数に印が残らない（ボタンを押した後も）
       - 詳細パネルのタイトル・トップバーの文字の色と余白が、本文を描く前と同じ
-      - iframe の高さと中の文書の高さの差が 1px 以内
+      - iframe の中の最後の要素の下端が iframe の高さ以下で、時間を置いて測り直しても iframe の高さが変わらない
     test: test_normal_when_html_body
   - name: 正常系（HTML の本文の文へコメントを溜める）
     summary: 枠の中で選んだ文を元の HTML の行の範囲にして、箇所を添えたコメントを溜める
