@@ -993,3 +993,154 @@ def test_diff_diagram_from_source_when_before_not_flowchart(
     )
     # 検証
     assert result == {"threw": False, "isNull": True}
+
+
+# 語の差分を確かめる、書き換えた語を 1 つ持つ文の前後
+WORD_SENTENCE_BEFORE = "要件は来週までに決める。"
+WORD_SENTENCE_AFTER = "要件は今週までに決める。"
+
+# 同じ語を持たない 2 つの文
+UNRELATED_SENTENCE_BEFORE = "東京は晴れ"
+UNRELATED_SENTENCE_AFTER = "Hello world"
+
+# 打ち切る時刻までに残す時間と、打ち切る時刻を過ぎている分の時間（ミリ秒）
+DEADLINE_REMAINING_MS = 1000
+DEADLINE_PASSED_MS = 1
+
+# 変えない行・消した行・足した行を並べた行の差分（`diffLineParts` の戻り値の形）
+SAME_LINE = {"kind": "same", "lines": ["変えない行"]}
+REMOVED_ONE_LINE = {"kind": "removed", "lines": ["消した行"]}
+ADDED_ONE_LINE = {"kind": "added", "lines": ["足した行"]}
+
+
+def test_paired_parts(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """行の数が同じ消した行と足した行を対にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    parts = [SAME_LINE, REMOVED_ONE_LINE, ADDED_ONE_LINE, SAME_LINE]
+    # 実行
+    pairs = preview_page.evaluate("(parts) => MindmapPreview.pairedParts(parts)", parts)
+    # 検証
+    assert pairs == [{"removed": 1, "added": 2}]
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        pytest.param(
+            [
+                {
+                    "kind": "removed",
+                    "lines": ["消した行 1", "消した行 2", "消した行 3"],
+                },
+                ADDED_ONE_LINE,
+            ],
+            id="counts_differ",
+        ),
+        pytest.param([REMOVED_ONE_LINE, SAME_LINE, ADDED_ONE_LINE], id="same_between"),
+    ],
+)
+def test_paired_parts_when_counts_differ(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    parts: list[dict[str, Any]],
+) -> None:
+    """行の数が違う・間に変えない行を挟むところは対にしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    pairs = preview_page.evaluate("(parts) => MindmapPreview.pairedParts(parts)", parts)
+    # 検証
+    assert pairs == []
+
+
+def test_diff_inline(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """日本語の文の書き換えた語だけを分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        "([before, after, remaining]) => MindmapPreview.diffInline(before, after, performance.now() + remaining)",
+        [WORD_SENTENCE_BEFORE, WORD_SENTENCE_AFTER, DEADLINE_REMAINING_MS],
+    )
+    # 検証
+    assert inline == {
+        "before": [
+            {"kind": "same", "text": "要件は"},
+            {"kind": "removed", "text": "来週"},
+            {"kind": "same", "text": "までに決める。"},
+        ],
+        "after": [
+            {"kind": "same", "text": "要件は"},
+            {"kind": "added", "text": "今週"},
+            {"kind": "same", "text": "までに決める。"},
+        ],
+    }
+
+
+def test_diff_inline_when_little_same(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """ほとんど書き換えた対には面を付けない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        "([before, after, remaining]) => MindmapPreview.diffInline(before, after, performance.now() + remaining)",
+        [UNRELATED_SENTENCE_BEFORE, UNRELATED_SENTENCE_AFTER, DEADLINE_REMAINING_MS],
+    )
+    # 検証
+    assert inline is None
+
+
+def test_diff_inline_when_deadline_passed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """打ち切る時刻を過ぎていたら比べない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        "([before, after, passed]) => MindmapPreview.diffInline(before, after, performance.now() - passed)",
+        [WORD_SENTENCE_BEFORE, WORD_SENTENCE_AFTER, DEADLINE_PASSED_MS],
+    )
+    # 検証
+    assert inline is None
+
+
+def test_diff_inline_without_segmenter(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """`Intl.Segmenter` が無いブラウザでも jsdiff の既定の区切りで比べる（正常系）。"""
+    # 準備
+    preview_page.evaluate("() => { Intl.Segmenter = undefined; }")
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        """([before, after, remaining]) => {
+            const inline = MindmapPreview.diffInline(before, after, performance.now() + remaining);
+            if (inline === null) return null;
+            const joined = (parts, kind) => parts
+                .filter((part) => part.kind === kind)
+                .map((part) => part.text)
+                .join("");
+            return {removed: joined(inline.before, "removed"), added: joined(inline.after, "added")};
+        }""",
+        [WORD_SENTENCE_BEFORE, WORD_SENTENCE_AFTER, DEADLINE_REMAINING_MS],
+    )
+    # 検証
+    assert inline == {"removed": "来", "added": "今"}

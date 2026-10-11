@@ -458,7 +458,7 @@ components:
         type: DiffPoint | null
         required: false
         default: 'null'
-        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagramFromSource` / `diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。`withdrawn` は選んだ時点で変わったときだけキーの一覧の「取り下げ」の行に前後を並べ、真の値を `withdrawnBadge` で出す。調査・資料・用語集・メモ・会話ログの `reason` の前後は「取り下げた理由」の節に並べる。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、flowchart の図は `diffDiagramFromSource` で前後の記法を解析して突き合わせ、前の版の図を描かない。`diffDiagramFromSource` が `null` を返した図（flowchart でない・解析できない）だけ、前の版の図を `renderDiagramSvg` で描いて `diffDiagram` で突き合わせる。'
+        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagramFromSource` / `diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。`withdrawn` は選んだ時点で変わったときだけキーの一覧の「取り下げ」の行に前後を並べ、真の値を `withdrawnBadge` で出す。調査・資料・用語集・メモ・会話ログの `reason` の前後は「取り下げた理由」の節に並べる。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、flowchart の図は `diffDiagramFromSource` で前後の記法を解析して突き合わせ、前の版の図を描かない。`diffDiagramFromSource` が `null` を返した図（flowchart でない・解析できない）だけ、前の版の図を `renderDiagramSvg` で描いて `diffDiagram` で突き合わせる。変えた行は、`pairedParts` の対ごとに、消した部分のかたまりから描いたブロック（段落・見出し・箇条書きの項目・表の行）と、足した部分の行を持つ今のブロックを前から順に並べ、両方の数が同じときだけ 1 つずつ対にする。対の 2 つのブロックの文字のうち、行の印（`signMarks` が入れる `span.df-sign` と読み上げの `span.sr-only`。表の行は 1 つ目のセルの頭に入る）を除いた文字を `diffInline` で比べ、`removed` の範囲を `span.df-word.df-del`、`added` の範囲を `span.df-word.df-add` で囲む。囲むのは `linkHeadings`・`linkBody` を当てた後で、行の印の外の文字の節だけを分けて囲み、リンク・用語の印などの要素は分けない。`diffInline` の `deadline` は、本文の行の差分（`diffLineParts`）を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足したもので、`null` が返った対は囲まない。図の Raw の差分も、その図の記法の `pairedParts` の対の行ごとに `diffInline`（`deadline` はその記法の行の差分を呼ぶ直前の時刻から）で比べ、行の印の外の文字だけを同じく囲む。'
       - name: heading
         type: string | null
         required: false
@@ -548,6 +548,36 @@ components:
         condition: '`parametrize`: `withdrawn: true`・`reason`「別の調査で足りた」の R-1 を `diff` なしで開く / 同じ R-1 を、選んだ時点で `withdrawn`・`reason` を足した `diff` つきで開く / `withdrawn` を持たない R-2 を開く'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 題の右に取り下げの札があり、見出し「取り下げた理由」の節に理由が出て、キーの一覧に「取り下げ」の行が無い / 加えてキーの一覧の「取り下げ」の行に今の値の取り下げの札が足した印で出て、「取り下げた理由」の節に足した印の理由が出る / 札も節も無い
+      - name: test_detail_panel_when_diff_inline_words
+        case: 正常
+        summary: 書き換えた段落の変わった語だけを囲み、消しただけの段落は囲まない
+        condition: 段落 3 つのうち 1 つ目を `要件は来週までに決める。` → `要件は今週までに決める。` に書き換え、3 つ目を消した D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した 1 つ目の段落の `span.df-word.df-del` が `来週` だけ、今の 1 つ目の段落の `span.df-word.df-add` が `今週` だけ。消した 3 つ目の段落と 2 つ目の段落は `span.df-word` を持たない。行の印（`ins.df-blk`・`del.df-blk`）は今までどおり
+      - name: test_detail_panel_when_diff_lines_unpaired
+        case: 正常
+        summary: 行の数が揃わない書き換えは語の面を付けない
+        condition: 1 つ目の段落を消し、続く 2 つ目の段落の語を 1 つ書き換えた D-1 を `diff` つきで開く（消した行 3 行・足した行 1 行）
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 本文に `span.df-word` が無く、行の印は今までどおり
+      - name: test_detail_panel_when_diff_inline_words_keep_links
+        case: 正常
+        summary: 語の面を付けても、本文の用語の印と項目の ID のリンクは分けない
+        condition: 用語集に「要件」を持ち、`要件は D-2 と来週までに決める。` → `要件は D-2 と今週までに決める。` に書き換えた D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 今の段落の用語の印「要件」と D-2 のリンクが 1 つずつの要素のままで、`span.df-word.df-add` が `今週` だけ
+      - name: test_detail_panel_when_diff_raw_inline_words
+        case: 正常
+        summary: 図の Raw の変えた行の対に、変わった語だけの面を付ける
+        condition: 本文の flowchart のノードのラベルを `A[仕様を決める]` → `A[設計を決める]` に変えた D-1 を `diff` つきで開き、図の Raw を押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した行の `span.df-word.df-del` が `仕様` だけ、足した行の `span.df-word.df-add` が `設計` だけ。そのほかの行は `span.df-word` を持たない
+      - name: test_detail_panel_when_diff_inline_words_in_table_row
+        case: 正常
+        summary: 表の行の対では、行の印を除いて比べ、書き換えたセルの語だけを囲む
+        condition: 本文の表の本体の行を `| D-1 | 来週 |` → `| D-1 | 今週 |` に書き換えた D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した行の `span.df-word.df-del` が `来週` だけ、今の行の `span.df-word.df-add` が `今週` だけ。1 つ目のセルの `span.df-sign` と `span.sr-only` は `span.df-word` の中にも外側にも囲まれない
       - name: test_detail_panel_when_description_aliases
         case: 正常
         summary: 資料・調査の説明とエイリアスを決めた位置の節に出す
@@ -600,7 +630,7 @@ components:
         type: '{beforeSource: string} | null'
         required: false
         default: 'null'
-        description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分（`diffLineParts`）を出す。`diffLineParts` が `null` のときは Raw に今の記法を差分なしで出す
+        description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分（`diffLineParts`）を出す。`diffLineParts` が `null` のときは Raw に今の記法を差分なしで出す。Raw の変えた行の対には、詳細パネルの図の Raw の差分と同じく語の面（`span.df-word`）を付ける
   - name: graphScreen
     title: ネットワーク
     container: plugins/mindstella/skills/mindmap/preview/graph/graph.ts

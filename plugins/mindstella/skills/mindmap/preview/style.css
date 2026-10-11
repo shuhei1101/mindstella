@@ -870,6 +870,9 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
   --df-add-bg: color-mix(in oklab, var(--st-done) 14%, var(--surface));
   --df-del-bg: color-mix(in oklab, var(--st-review) 12%, var(--surface));
   --df-chg-bg: color-mix(in oklab, var(--st-hold) 16%, var(--surface));
+  /* 変わった語の面: 行の面（--df-add-bg・--df-del-bg）より濃い。上に置く文字は本文の文字色で、置く面の上で 4.5:1 以上 */
+  --df-add-word-bg: color-mix(in oklab, var(--st-done) 40%, var(--surface));
+  --df-del-word-bg: color-mix(in oklab, var(--st-review) 36%, var(--surface));
 }
 
 /* ===== トップバーの変更履歴と選んだ時点の札 ===== */
@@ -1182,6 +1185,15 @@ text.df-t-chg { font-weight: 700 !important; }
 .df-raw .df-line.df-del { background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; }
 /* 消した行の記号 */
 .df-raw .df-line.df-del .df-sign { color: var(--df-del); font-weight: 700; }
+
+/* ===== 変わった語の面 ===== */
+
+/* 変わった語: 行の面の上に濃い面を重ねる。行の取り消し線・下線はそのまま引き継ぎ、文字は行の淡い文字色でなく本文の文字色にして対比を保つ */
+.df-word { border-radius: 2px; color: var(--text); }
+/* 足した語 */
+.df-word.df-add { background: var(--df-add-word-bg); }
+/* 消した語 */
+.df-word.df-del { background: var(--df-del-word-bg); }
 
 /* ===== 図の拡大の差分と Raw ===== */
 

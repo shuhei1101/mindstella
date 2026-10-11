@@ -7,18 +7,20 @@ var MindmapPreview;
     /** 原文の行の差分。足した行・消した行に印を付け、変わっていない長い並びは前後 3 行を残して件数の行にする */
     function rawDiff({ parts }) {
         const lines = [];
+        // 1 つの並びずつ渡すため、消した行と足した行は対にならず、語の面は付かない
+        const deadline = performance.now() + MindmapPreview.LINE_DIFF_TIMEOUT_MS;
         parts.forEach((part, position) => {
             if (part.kind !== "same" || part.lines.length <= RAW_DIFF_CONTEXT * 2) {
-                lines.push(...MindmapPreview.rawDiffLines([part]));
+                lines.push(...MindmapPreview.rawDiffLines({ parts: [part], deadline }));
                 return;
             }
             // 先頭・末尾の並びは、変わった行の側だけを残す
             const head = position === 0 ? [] : part.lines.slice(0, RAW_DIFF_CONTEXT);
             const tail = position === parts.length - 1 ? [] : part.lines.slice(-RAW_DIFF_CONTEXT);
             const skipped = part.lines.length - head.length - tail.length;
-            lines.push(...MindmapPreview.rawDiffLines([{ kind: "same", lines: head }]));
+            lines.push(...MindmapPreview.rawDiffLines({ parts: [{ kind: "same", lines: head }], deadline }));
             lines.push(MindmapPreview.h({ tag: "span", attrs: { class: "df-line df-skip" }, children: [`変わっていない ${skipped} 行`] }));
-            lines.push(...MindmapPreview.rawDiffLines([{ kind: "same", lines: tail }]));
+            lines.push(...MindmapPreview.rawDiffLines({ parts: [{ kind: "same", lines: tail }], deadline }));
         });
         return MindmapPreview.h({
             tag: "div",
