@@ -493,7 +493,8 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .dg-tools { position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 2px; }
 .dg-tools .btn { height: 28px; padding: 0 8px; font-size: var(--fs-xs); }
 .dg-tools .icon-btn { width: 28px; height: 28px; }
-.diagram .mermaid { cursor: zoom-in; }
+/* 本文の図の文字: カーソルを文字用にして、ドラッグで選べるようにする */
+.diagram .mermaid svg text, .diagram .mermaid svg foreignObject, .diagram .mermaid svg .nodeLabel, .diagram .mermaid svg .edgeLabel { user-select: text; cursor: text; }
 .dg-raw { margin: 0; background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font: 12px var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 dialog.viewer { width: min(1200px, calc(100vw - 32px)); height: min(820px, calc(100dvh - 32px)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); overflow: hidden; }
 dialog.viewer[open] { display: flex; flex-direction: column; }
