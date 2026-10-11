@@ -1189,6 +1189,11 @@ namespace MindmapPreview {
     return document.getElementById(TERM_TIP_ID);
   }
 
+  /** 押して残しているか。ツールチップがまだ文書にあって開いているときに限る（詳細パネルの描き直しで外れたものは残していないとみなす） */
+  function isPinned(): boolean {
+    return tipState?.pinned === true && currentTip()?.matches(":popover-open") === true;
+  }
+
   /** ツールチップを隠す（`now` が偽のときは、少し待ってから） */
   function hideTermTip(now: boolean): void {
     window.clearTimeout(tipTimer);
@@ -1277,20 +1282,20 @@ namespace MindmapPreview {
     root.addEventListener("mouseover", (event) => {
       const found = markOf(event);
       // 押して残している間は、ほかの印に乗せても替えない
-      if (found !== null && tipState?.pinned !== true) showTermTip({ ...found, pinned: false, onOpen });
+      if (found !== null && !isPinned()) showTermTip({ ...found, pinned: false, onOpen });
     });
     root.addEventListener("focusin", (event) => {
       const found = markOf(event);
       if (found !== null && found.mark !== refocused) showTermTip({ ...found, pinned: false, onOpen });
     });
     root.addEventListener("mouseout", (event) => {
-      if (markOf(event) !== null && tipState?.pinned !== true) hideTermTip(false);
+      if (markOf(event) !== null && !isPinned()) hideTermTip(false);
     });
     root.addEventListener("focusout", (event) => {
       const to = (event as FocusEvent).relatedTarget;
       // ツールチップの中へ移るときは残す。押して残している間は、フォーカスの行き先が無い（余白を押した）ときも残す
       if (markOf(event) === null || (to instanceof Node && currentTip()?.contains(to) === true)) return;
-      if (to === null && tipState?.pinned === true) return;
+      if (to === null && isPinned()) return;
       hideTermTip(true);
     });
     // 資料・調査にも一致した印から Tab で、ツールチップの中の最初のリンクへ移る

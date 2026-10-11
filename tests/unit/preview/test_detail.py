@@ -1339,11 +1339,20 @@ def test_detail_panel_when_alias_tip(
     after_link = preview_page.evaluate("() => window.__calls.open")
     preview_page.locator("a.term", has_text="保存先").click()
     after_term = preview_page.evaluate("() => window.__calls.open")
+    # 押して残したまま、詳細パネルを描き直す（古いパネルとその中のツールチップが文書から外れる）
+    mark.click()
+    preview_page.evaluate("() => window.__panel.remove()")
+    preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
+    preview_page.mouse.move(1, 1)
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown_after_redraw = links.evaluate_all("(items) => items.map((item) => item.getAttribute('data-id'))")
     # 検証
     assert shown == ["G-1", "A-2", "R-1"]
     assert (pinned, after_pin) == (True, [])
     assert after_link == ["A-2"]
     assert after_term == ["A-2", "G-2"]
+    assert shown_after_redraw == ["G-1", "A-2", "R-1"]
 
 
 # 全画面でツールチップの中にフォーカスを移して Esc を押した後の、フォーカスの場所・ツールチップの見え方・知らせた回数と全画面の開き具合

@@ -1079,6 +1079,10 @@ var MindmapPreview;
     function currentTip() {
         return document.getElementById(MindmapPreview.TERM_TIP_ID);
     }
+    /** 押して残しているか。ツールチップがまだ文書にあって開いているときに限る（詳細パネルの描き直しで外れたものは残していないとみなす） */
+    function isPinned() {
+        return tipState?.pinned === true && currentTip()?.matches(":popover-open") === true;
+    }
     /** ツールチップを隠す（`now` が偽のときは、少し待ってから） */
     function hideTermTip(now) {
         window.clearTimeout(tipTimer);
@@ -1158,7 +1162,7 @@ var MindmapPreview;
         root.addEventListener("mouseover", (event) => {
             const found = markOf(event);
             // 押して残している間は、ほかの印に乗せても替えない
-            if (found !== null && tipState?.pinned !== true)
+            if (found !== null && !isPinned())
                 showTermTip({ ...found, pinned: false, onOpen });
         });
         root.addEventListener("focusin", (event) => {
@@ -1167,7 +1171,7 @@ var MindmapPreview;
                 showTermTip({ ...found, pinned: false, onOpen });
         });
         root.addEventListener("mouseout", (event) => {
-            if (markOf(event) !== null && tipState?.pinned !== true)
+            if (markOf(event) !== null && !isPinned())
                 hideTermTip(false);
         });
         root.addEventListener("focusout", (event) => {
@@ -1175,7 +1179,7 @@ var MindmapPreview;
             // ツールチップの中へ移るときは残す。押して残している間は、フォーカスの行き先が無い（余白を押した）ときも残す
             if (markOf(event) === null || (to instanceof Node && currentTip()?.contains(to) === true))
                 return;
-            if (to === null && tipState?.pinned === true)
+            if (to === null && isPinned())
                 return;
             hideTermTip(true);
         });
