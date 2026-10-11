@@ -128,7 +128,7 @@ def test_term_tip_content(
 MIDDLE_RECT = {"left": 400, "top": 300, "width": 60, "height": 20}
 TOP_RECT = {"left": 400, "top": 10, "width": 60, "height": 20}
 
-# ツールチップを置き、印との間の空き・縮めた高さの余白・中身を減らした後の高さの変わりを調べる
+# ツールチップを置き、印との間の空き・縮めた高さと印の上の空きの差（印との 6px を除いた空きから、画面の端の 8px を引いた高さ）・中身を減らした後の高さの変わりを調べる
 POSITION_SCRIPT = (
     MOUNT_TIP_FUNCTION
     + """
@@ -159,7 +159,7 @@ async ({entries, rect}) => {
             520,
             MIDDLE_RECT,
             8,
-            {"gapAbove": 6, "unusedAbove": 0, "heightChanged": False},
+            {"gapAbove": 6, "unusedAbove": 8, "heightChanged": False},
             id="neither_fits",
         ),
     ],
