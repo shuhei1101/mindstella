@@ -2573,6 +2573,7 @@ def test_body_alias_tooltip_scroll(
     # 準備（印が本文の領域の上のほうにあるよう、本文を送っておく）
     body = "特殊効果を重ねる\n\n" + "段落\n\n" * 40
     page = _open_alias_panel(write_preview, open_preview, make_item, extra_docs=8, body=body)
+    page.wait_for_selector("aside.panel .md:not(.md-value) p:nth-of-type(41)", state="attached")
     page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop = 300")
     body_scrolled = page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop")
     # 実行
@@ -2599,7 +2600,7 @@ def test_body_alias_tooltip_scroll(
     assert before["scrollable"] is True
     assert before["overflowY"] == "auto"
     assert before["overscroll"] == "contain"
-    assert after == {"id": "R-1", "inside": True, "atEnd": True, "bodyTop": 300}
+    assert after == {"id": "R-1", "inside": True, "atEnd": True, "bodyTop": body_scrolled}
 
 
 def test_detail_description_aliases(
