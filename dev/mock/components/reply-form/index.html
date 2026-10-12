@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>返信の入力 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない）と、見本の引数 -->
+  <script src="../../refs/235/assets/app.js"></script>
+  <script src="../../refs/235/assets/catalog.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / reply-form</nav>
+    <h1>返信の入力</h1>
+
+    <!-- 空 -->
+    <section class="cat-sec">
+      <h2>空</h2>
+      <p>入力が空の間は「返信する」を押せない（入力欄が空であることが押せない理由）。</p>
+      <div class="stage" id="s-empty"></div>
+    </section>
+
+    <!-- 入力中 -->
+    <section class="cat-sec">
+      <h2>入力中</h2>
+      <p>Ctrl+Enter でも送る（変換の確定の Enter では送らない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
+      <div class="stage" id="s-typing"></div>
+    </section>
+
+    <!-- 送っている -->
+    <section class="cat-sec">
+      <h2>送っている</h2>
+      <p>入力欄を読み取りだけにし、「返信する」を押せなくする。</p>
+      <div class="stage" id="s-sending"></div>
+    </section>
+
+    <!-- 送った（Claude Code に入力した） -->
+    <section class="cat-sec">
+      <h2>送った（Claude Code に入力した）</h2>
+      <p>入力欄を空にし、送った時刻とともに Claude Code へ入力したことを出す。</p>
+      <div class="stage" id="s-sent"></div>
+    </section>
+
+    <!-- 送った（Claude Code に入力できなかった） -->
+    <section class="cat-sec">
+      <h2>送った（Claude Code に入力できなかった）</h2>
+      <p>返信は保存されていて、次に話し合いを始めたときに取り込まれることを出す。</p>
+      <div class="stage" id="s-not-entered"></div>
+    </section>
+
+    <!-- 送れなかった -->
+    <section class="cat-sec">
+      <h2>送れなかった</h2>
+      <p>入力を残し、理由と直し方を出す（自動で消さない）。</p>
+      <div class="stage" id="s-failed"></div>
+    </section>
+
+    <!-- 長文 -->
+    <section class="cat-sec">
+      <h2>長文</h2>
+      <p>入力欄は 8 行まで広がり、それより長いと中でスクロールする。</p>
+      <div class="stage" id="s-long"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p></p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
+  <script>
+    const T = Catalog.THREADS;
+    const form = (over) => MindmapPreview.h({ tag: "div", attrs: { class: "pane" }, children: [MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.replyForm(T.asking, Catalog.talkOf(over))] })] });
+    const text = "起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい";
+    const long = Array.from({ length: 12 }, (_, i) => `${i + 1} 行目: 版ごとに当てる操作を確かめる`).join("\n");
+    Catalog.place("s-empty", form());
+    Catalog.place("s-typing", form({ reply: { body: text } }));
+    Catalog.place("s-sending", form({ reply: { body: text, status: "sending" } }));
+    Catalog.place("s-sent", form({ reply: { status: "sent", entered: true, at: Catalog.at("05:20") } }));
+    Catalog.place("s-not-entered", form({ reply: { status: "sent", entered: false, at: Catalog.at("05:20") } }));
+    Catalog.place("s-failed", form({ reply: { body: text, status: "failed" } }));
+    Catalog.place("s-long", form({ reply: { body: long } }));
+    Catalog.place("s-narrow", form({ reply: { body: text } }));
+  </script>
+</body>
+</html>

@@ -13,6 +13,7 @@
 | [detail-panel](./detail-panel/index.md) | 詳細パネル | [21 / standard](./detail-panel/21/standard/index.html) |
 | [detail-full](./detail-full/index.md) | 詳細の全画面 | [21 / standard](./detail-full/21/standard/index.html) |
 | [comments](./comments/index.md) | コメントの一覧 | - |
+| [comment-thread](./comment-thread/index.md) | スレッド 1 件（コメントの一覧の会話のタブ） | - |
 | [settings-panel](./settings-panel/index.md) | 表示の設定 | - |
 | [settings-save-confirm](./settings-save-confirm/index.md) | ワークスペースの既定の確かめ | - |
 | [search](./search/index.md) | 全体の検索 | [216 / a-by-tier](./search/216/a-by-tier/index.html) |

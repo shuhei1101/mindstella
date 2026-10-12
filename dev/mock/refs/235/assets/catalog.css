@@ -1,0 +1,26 @@
+/* 部品のモックのカタログの見た目（実画面には無い） */
+
+/* カタログのページ: 本文の幅と余白 */
+.catalog { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+/* カタログの題 */
+.catalog > h1 { margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em; }
+/* カタログの節: 状態ごとの案を縦に並べる */
+.cat-sec { margin-top: 32px; }
+/* カタログの節の見出し */
+.cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+/* 状態の説明 */
+.cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+/* 部品を置く台 */
+.stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; border: 1px dashed var(--border); border-radius: var(--radius); padding: 16px; background: var(--bg); overflow-x: auto; }
+/* 狭い幅の見本 */
+.stage.narrow { width: 390px; max-width: 100%; }
+/* 左のパネルと同じ幅の枠: パネルの中の部品をこの中に置く */
+.pane { width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); }
+/* 狭い幅の見本の枠: 台の幅いっぱい */
+.stage.narrow .pane { width: 100%; }
+/* 枠の中の一覧: パネルと同じ余白で置く */
+.pane > .comments-body { flex: none; overflow: visible; }
+/* 見本の状態: ホバー */
+.is-hover.th-open, .is-hover.ctab, .is-hover.th-tag { background: var(--hover); color: var(--text); }
+/* 見本の状態: キーボードのフォーカス */
+.is-focus { outline: 2px solid var(--accent) !important; outline-offset: -2px; }

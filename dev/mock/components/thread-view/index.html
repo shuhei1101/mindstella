@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>スレッド 1 件 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない）と、見本の引数 -->
+  <script src="../../refs/235/assets/app.js"></script>
+  <script src="../../refs/235/assets/catalog.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / thread-view</nav>
+    <h1>スレッド 1 件</h1>
+
+    <!-- AI の問い（オープン） -->
+    <section class="cat-sec">
+      <h2>AI の問い（オープン）</h2>
+      <p>見出しは、上の行に「一覧へ戻る」と「クローズにする」、その下に状態の札と題、向けた項目とタグ。AI の書き込みは左に寄せて面の色を変え、利用者の書き込みは右に寄せる。書き手は名前でも示す。</p>
+      <div class="stage" id="s-asking"></div>
+    </section>
+
+    <!-- AI の返信の中の項目の ID -->
+    <section class="cat-sec">
+      <h2>AI の返信の中の項目の ID</h2>
+      <p>記録にある ID は、押すとその項目の詳細パネルを右に開くリンクにする（乗せるとタイトルが出る）。</p>
+      <div class="stage" id="s-replied"></div>
+    </section>
+
+    <!-- AI の返信待ち -->
+    <section class="cat-sec">
+      <h2>AI の返信待ち</h2>
+      <p>最後の書き込みが利用者のオープンのスレッドは、書き込みの後ろに「AI の返信を待っています」を出す。</p>
+      <div class="stage" id="s-waiting"></div>
+    </section>
+
+    <!-- 長いやり取り・改行 -->
+    <section class="cat-sec">
+      <h2>長いやり取り・改行</h2>
+      <p>改行を残し、長い語も折り返す。</p>
+      <div class="stage" id="s-long"></div>
+    </section>
+
+    <!-- クローズ -->
+    <section class="cat-sec">
+      <h2>クローズ</h2>
+      <p>見出しのボタンを「オープンに戻す」にし、下端は返信の入力の代わりに「クローズにしたスレッドです。」を出す。</p>
+      <div class="stage" id="s-closed"></div>
+    </section>
+
+    <!-- クローズにしている間 -->
+    <section class="cat-sec">
+      <h2>クローズにしている間</h2>
+      <p>押したボタンを押せなくし、二重に送らない。</p>
+      <div class="stage" id="s-saving"></div>
+    </section>
+
+    <!-- クローズにできなかった -->
+    <section class="cat-sec">
+      <h2>クローズにできなかった</h2>
+      <p>見出しの下に理由と直し方を出す（自動で消さない）。</p>
+      <div class="stage" id="s-failed"></div>
+    </section>
+
+    <!-- 向けた項目が消えた・記録に無い ID -->
+    <section class="cat-sec">
+      <h2>向けた項目が消えた・記録に無い ID</h2>
+      <p>向けた項目が消えたときは押せない ID だけを出す。本文の中の記録に無い ID は文字のまま。</p>
+      <div class="stage" id="s-gone"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>書き込みの寄せを詰め、見出しのボタンは 1 行に収める。</p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
+  <script>
+    const T = Catalog.THREADS;
+    const view = (thread, over) => MindmapPreview.h({ tag: "div", attrs: { class: "pane" }, children: MindmapPreview.threadView(thread, Catalog.talkOf(over)) });
+    Catalog.place("s-asking", view(T.asking));
+    Catalog.place("s-replied", view(T.replied));
+    Catalog.place("s-waiting", view(T.waiting));
+    Catalog.place("s-long", view(T.long));
+    Catalog.place("s-closed", view(T.closed));
+    Catalog.place("s-saving", view(T.replied, { action: { status: "saving" } }));
+    Catalog.place("s-failed", view(T.replied, { action: { status: "failed" } }));
+    Catalog.place("s-gone", view(T.gone));
+    Catalog.place("s-narrow", view(T.replied));
+  </script>
+</body>
+</html>
