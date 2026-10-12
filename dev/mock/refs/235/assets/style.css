@@ -172,7 +172,7 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 狭い幅（720px 以下）: 書き込みの寄せを詰め、レビュー中を確かめる画面の行の頭を、右上に重ねた修正と削除の手前で省く */
 @media (max-width: 720px) {
   .comments-list .row-head { padding-right: calc(2 * var(--control-h) + 8px); }
-  .posts > .row.removed { margin-left: 16px; }
+  .posts > li.row.removed { margin-left: 16px; }
   .post.user { margin-left: 16px; }
   .post.ai { margin-right: 16px; }
 }
