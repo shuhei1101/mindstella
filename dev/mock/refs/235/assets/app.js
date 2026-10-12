@@ -7710,6 +7710,8 @@ var MindmapPreview;
                             : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
                         // 235: クローズのスレッドへの返信は、送れない理由と「オープンに戻す」へ移る入口を出す
                         isBlocked(item, props.talk) ? blockedNote(item, props) : null,
+                        // 235: 新しいスレッドの行は、そのスレッドを開く入口を出す（案 A2）
+                        !isReply(item) && props.talk.variant.pending === "a2" ? openThreadEntry(item, props) : null,
                         reason === undefined
                             ? null
                             : MindmapPreview.h({
@@ -7765,6 +7767,7 @@ var MindmapPreview;
     const CLOSE_CHOICES = ["解決した", "取り下げ", "重複"];
     /** 235: まだ送っていない新しいスレッドの、画面の中だけの ID の頭 */
     const PENDING_THREAD_PREFIX = "new:";
+    MindmapPreview.PENDING_THREAD_PREFIX = PENDING_THREAD_PREFIX;
     /** 235: レビュー中の書き込みのうち、スレッドへの返信か */
     function isReply(item) {
         return (item.thread ?? null) !== null;
@@ -8438,17 +8441,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "row-head" },
-                children: [
-                    // 案 A2 は、新しいスレッドの行からもそのスレッドを開ける
-                    talk.variant.pending === "a2"
-                        ? MindmapPreview.h({
-                            tag: "button",
-                            attrs: { class: "row-kind", type: "button", "data-focus": `kind:${item.id}`, onclick: () => talk.on.open(`${PENDING_THREAD_PREFIX}${item.id}`) },
-                            children: ["新しいスレッド"],
-                        })
-                        : MindmapPreview.h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] }),
-                    targetCell(item, props),
-                ],
+                children: [MindmapPreview.h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] }), targetCell(item, props)],
             });
         }
         const thread = threadOf(item, talk);
@@ -8461,6 +8454,20 @@ var MindmapPreview;
                     tag: "button",
                     attrs: { class: "row-target idlink-like", type: "button", "data-focus": `open:${item.id}`, onclick: () => talk.on.open(thread.id) },
                     children: [threadState(thread.status), MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [threadTitle(thread)] })],
+                }),
+            ],
+        });
+    }
+    /** 235: 新しいスレッドの行に出す、そのスレッドを開く入口（案 A2。クローズのスレッドへの返信の行の入口と同じ文言・見た目） */
+    function openThreadEntry(item, props) {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "row-thread-open" },
+            children: [
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "btn ghost", type: "button", "data-focus": `thread-open:${item.id}`, onclick: () => props.talk.on.open(`${PENDING_THREAD_PREFIX}${item.id}`) },
+                    children: ["スレッドを開く"],
                 }),
             ],
         });
@@ -11853,7 +11860,10 @@ var MindmapPreview;
                     flushThreadDrafts();
                     // レビュー中を確かめる画面は開く前の画面へ、スレッドは一覧へ戻る
                     const from = talk.view === "review" ? "review" : `thread:${talk.opened}`;
-                    if (talk.view === "review" && talk.reviewFrom === "thread" && talk.opened !== null) {
+                    // 開く前に見ていたまだ送っていない新しいスレッドが、送るか消すかで無くなっていたら一覧へ戻る
+                    const pendingId = talk.opened !== null && talk.opened.startsWith(MindmapPreview.PENDING_THREAD_PREFIX) ? talk.opened.slice(MindmapPreview.PENDING_THREAD_PREFIX.length) : null;
+                    const openedGone = pendingId !== null && ![...comment.review.items, ...comment.removed].some((item) => item.id === pendingId);
+                    if (talk.view === "review" && talk.reviewFrom === "thread" && talk.opened !== null && !openedGone) {
                         talk.view = "thread";
                     }
                     else {
@@ -12195,6 +12205,8 @@ var MindmapPreview;
                 comment.removed = [];
                 comment.stale = new Map();
                 outcome = { kind: "sent", count: ids.length, at: result.data.sent, entered: result.data.entered };
+                // 235: 送った新しいスレッドは一覧に、送った返信はスレッドの書き込みに移る
+                await loadThreads();
             }
             else if (!result.ok && result.status === 409) {
                 comment.stale = new Map(result.stale.map((entry) => [entry.id, entry.reason]));

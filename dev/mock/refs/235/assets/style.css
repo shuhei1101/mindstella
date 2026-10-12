@@ -89,9 +89,9 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .th-tag svg.icon { width: 12px; height: 12px; }
 /* 絞っているタグ: 枠の全体と面で示す */
 .th-tag.on { border-color: var(--accent-line); background: var(--accent-weak); color: var(--text); }
-/* スレッドの見出しのタグ: 押せない札 */
-.th-tag.static { cursor: default; }
-.th-tag.static:hover { border-color: var(--border-soft); color: var(--text-2); }
+/* スレッドの見出しのタグ: 押せない札。枠と面を外して文字だけにし、一覧の押せるタグと見分ける */
+.th-tag.static { min-height: 0; padding: 0; border: 0; background: none; cursor: default; }
+.th-tag.static:hover { color: var(--text-2); }
 
 /* 状態の札: 印と文字で分ける（色だけに頼らない） */
 .th-state { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid currentColor; border-radius: 3px; font-size: var(--fs-xs); font-weight: 500; line-height: 1; white-space: nowrap; }
@@ -169,9 +169,11 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 返信のボタン: 押せないとき（空・送っている間）は塗りを外す */
 .reply .send-row .btn:disabled { cursor: default; }
 
-/* 狭い幅（720px 以下）: 書き込みの寄せを詰め、レビュー中を確かめる画面の行の頭を、右上に重ねた修正と削除の手前で省く */
+/* 狭い幅（720px 以下）: 書き込みの寄せを詰め、レビュー中を確かめる画面の行の頭を、札の行（右上に重ねた修正と削除と同じ高さ）と、2 行で省く題の行に分ける */
 @media (max-width: 720px) {
-  .comments-list .row-head { padding-right: calc(2 * var(--control-h) + 8px); }
+  .comments-list .row-head { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(var(--control-h), auto); justify-items: start; gap: 0; }
+  .comments-list .row-head .row-target { max-width: 100%; margin-left: -6px; align-items: flex-start; padding-block: 4px; }
+  .comments-list .row-head .row-target .t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
   .posts > li.row.removed { margin-left: 16px; }
   .post.user { margin-left: 16px; }
   .post.ai { margin-right: 16px; }
@@ -227,12 +229,10 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .review-title .count { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: 400; color: var(--text-3); }
 /* 行の頭: 返信か新しいスレッドかと、返信先・向けた項目を並べる */
 .row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* 行の種類（返信・新しいスレッド） */
-.row-kind { flex: none; display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 6px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font: inherit; font-size: var(--fs-xs); }
-/* 押せる種類（新しいスレッドを開く） */
-button.row-kind { cursor: pointer; }
-button.row-kind:hover { border-color: var(--accent); color: var(--text); }
-button.row-kind:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 行の種類（返信・新しいスレッド）: 押せない札 */
+.row-kind { flex: none; display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 6px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
+/* 新しいスレッドの行の、スレッドを開く入口: 本文の下の左に置き、クローズのスレッドへの返信の行の入口と同じ文字の大きさにする */
+.row-thread-open { display: flex; margin-left: -12px; font-size: var(--fs-small); }
 /* 行の頭の向けた先: 残りの幅で省く */
 .row-head .row-target { flex: 0 1 auto; margin-left: 0; min-width: 0; font-weight: 500; }
 /* クローズのスレッドへの返信の行: チェックできないことを面の色でも示す */
