@@ -3245,3 +3245,59 @@ def test_head_title_kind_label_when_narrow(
     assert (after["width"] == VISUALLY_HIDDEN_SIZE_PX and after["height"] == VISUALLY_HIDDEN_SIZE_PX) == label_hidden
     # ID は残る
     assert page.inner_text(f"{HEAD_PANEL} .panel-kind .mono") == "A-1"
+
+
+# タイトルを出した直後（出す指定が付いたそのコマ）の不透明度を返す。出る前は false を返して待たせる
+HEAD_TITLE_OPACITY_WHEN_SHOWN_JS = """() => {
+    const title = document.querySelector('aside.panel .panel-head .panel-title');
+    return title.classList.contains('is-shown') ? getComputedStyle(title).opacity : false;
+}"""
+
+
+@pytest.mark.parametrize(
+    ("reduced_motion", "animated"),
+    [
+        pytest.param("no-preference", ["opacity"], id="no_preference"),
+        pytest.param("reduce", [], id="reduce"),
+    ],
+)
+def test_head_title_motion(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    reduced_motion: str,
+    animated: list[str],
+) -> None:
+    """見出しのタイトルは opacity の動きで出し入れし、動きを減らす設定では何も動かさない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.emulate_media(reduced_motion=reduced_motion)
+    _wait_panel_settled(page)
+    # 実行
+    hidden_moving = animated_properties(page, f"{HEAD_PANEL} .panel-title")
+    page.evaluate(SCROLL_BODY_TO_END_JS, HEAD_PANEL)
+    page.wait_for_function(HEAD_TITLE_SHOWN_JS, arg=HEAD_PANEL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    shown_moving = animated_properties(page, f"{HEAD_PANEL} .panel-title")
+    # 検証
+    # 隠している間も出した後も、動かす対象は opacity だけ（動きを減らす設定では何も動かさない）
+    assert hidden_moving == animated
+    assert shown_moving == animated
+
+
+def test_head_title_motion_when_reduced(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """動きを減らす設定では、見出しのタイトルを出す指定が付いた直後から不透明になっている（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.emulate_media(reduced_motion="reduce")
+    _wait_panel_settled(page)
+    # 実行
+    page.evaluate(SCROLL_BODY_TO_END_JS, HEAD_PANEL)
+    opacity_when_shown = page.wait_for_function(
+        HEAD_TITLE_OPACITY_WHEN_SHOWN_JS, timeout=HEAD_TITLE_TIMEOUT_MS
+    ).json_value()
+    # 検証
+    assert opacity_when_shown == "1"
