@@ -62,6 +62,18 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from preview_head_title_helpers import (
+    ANIMATIONS_FINISHED_JS,
+    HEAD_BUTTON_WIDTH_PX,
+    HEAD_LONG_TITLE,
+    HEAD_METRICS_JS,
+    HEAD_TITLE_HIDDEN_JS,
+    HEAD_TITLE_PREFIX,
+    HEAD_TITLE_SHOWN_JS,
+    HEAD_TITLE_TIMEOUT_MS,
+    SCROLL_BODY_TO_END_JS,
+    SCROLL_BODY_TO_TOP_JS,
+)
 from preview_mark_helpers import MARK_TIMEOUT_MS, marks_of
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
@@ -3121,3 +3133,115 @@ def test_diff_html_body_when_format_changed(
     assert page.locator("aside.panel .html-marked").count() == 0
     assert "# 画面のモック" in page.inner_text("aside.panel .df-raw .df-line.df-del")
     assert "<h1>画面のモック</h1>" in page.inner_text("aside.panel .df-raw")
+
+
+# 見出しの帯のタイトルを測る横のパネル
+HEAD_PANEL = "aside.panel"
+
+# 幅 480px 以下で、種類の名前を見た目から外したときの大きさ（px）
+VISUALLY_HIDDEN_SIZE_PX = 1
+
+
+def _wait_panel_settled(page: Page) -> None:
+    """パネルがすべり込んで、窓の右端に着くまで待つ（動きの間は位置が動く）。"""
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.wait_for_function(
+        "Math.abs(document.querySelector('aside.panel').getBoundingClientRect().right - innerWidth) < 1"
+    )
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "item", "with_badge"),
+    [
+        pytest.param("#tab=docs&id=A-1", "A-1", True, id="docs_with_badge"),
+        pytest.param("#tab=notes&id=N-1", "N-1", False, id="notes"),
+    ],
+)
+def test_head_title_on_scroll(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    hash_text: str,
+    item: str,
+    with_badge: bool,
+) -> None:
+    """本文を送って先頭のタイトルが隠れたときだけ見出しにタイトルを出し、先頭へ戻すと隠す。長いタイトルは 1 行で省略し、ボタンを押し出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title=HEAD_LONG_TITLE),
+        make_item("N-1", title=HEAD_LONG_TITLE, content=LONG_BODY),
+        bodies={"A-1.md": LONG_BODY},
+    )
+    page = open_preview(url, hash_text)
+    _wait_panel_settled(page)
+    # 実行
+    page.wait_for_function(HEAD_TITLE_HIDDEN_JS, arg=HEAD_PANEL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    before = page.evaluate(HEAD_METRICS_JS, HEAD_PANEL)
+    page.evaluate(SCROLL_BODY_TO_END_JS, HEAD_PANEL)
+    page.wait_for_function(HEAD_TITLE_SHOWN_JS, arg=HEAD_PANEL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    after = page.evaluate(HEAD_METRICS_JS, HEAD_PANEL)
+    page.evaluate(SCROLL_BODY_TO_TOP_JS, HEAD_PANEL)
+    page.wait_for_function(HEAD_TITLE_HIDDEN_JS, arg=HEAD_PANEL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    back = page.evaluate(HEAD_METRICS_JS, HEAD_PANEL)
+    # 検証
+    # 本文の先頭のタイトルが見えるうちは出さない。隠していても場所は取り、種類と ID は動かない
+    assert (before["shown"], before["visibility"]) == (False, "hidden")
+    assert (after["titleLeft"], after["kindRight"]) == (before["titleLeft"], before["kindRight"])
+    # 送って隠れると出る。読み上げからは外し、title は全文を持つ
+    assert (after["shown"], after["visibility"]) == (True, "visible")
+    assert after["text"] == HEAD_LONG_TITLE
+    assert (after["titleAttr"], after["ariaHidden"]) == (HEAD_LONG_TITLE, "true")
+    # 先頭へ戻すと隠れる
+    assert (back["shown"], back["visibility"]) == (False, "hidden")
+    # 長いタイトルは 1 行で省略記号付きで切れる
+    assert after["text"].startswith(HEAD_TITLE_PREFIX)
+    assert (after["truncated"], after["oneLine"]) == (True, True)
+    assert (after["textOverflow"], after["whiteSpace"]) == ("ellipsis", "nowrap")
+    # 資料は形式の札の右、それ以外は種類と ID の右に並ぶ
+    assert after["titleLeft"] >= (after["badgeRight"] if with_badge else after["kindRight"])
+    # ボタンは縮まず、タイトルに押し出されず、見出しの中に収まる
+    assert after["buttonWidths"] == [HEAD_BUTTON_WIDTH_PX] * len(after["buttonWidths"])
+    assert after["titleRight"] <= after["firstButtonLeft"]
+    assert after["lastButtonRight"] <= after["headRight"]
+
+
+@pytest.mark.parametrize(
+    ("width", "label_hidden"),
+    [
+        pytest.param(480, True, id="width_480"),
+        pytest.param(481, False, id="width_481"),
+    ],
+)
+def test_head_title_kind_label_when_narrow(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    width: int,
+    label_hidden: bool,
+) -> None:
+    """幅 480px 以下でタイトルを出している間は種類の名前を見た目から外して読み上げには残し、481px 以上では外さない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.set_viewport_size({"width": width, "height": NARROW_HEIGHT})
+    _wait_panel_settled(page)
+    kind_label = f"{HEAD_PANEL} .panel-kind-label"
+    before = page.evaluate("(s) => document.querySelector(s).getBoundingClientRect().width", kind_label)
+    # 実行
+    page.evaluate(SCROLL_BODY_TO_END_JS, HEAD_PANEL)
+    page.wait_for_function(HEAD_TITLE_SHOWN_JS, arg=HEAD_PANEL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    after = page.evaluate(
+        "(s) => { const e = document.querySelector(s); const b = e.getBoundingClientRect(); return {width: b.width, height: b.height, text: e.textContent}; }",
+        kind_label,
+    )
+    # 検証
+    # タイトルを出す前は、どの幅でも種類の名前が見える
+    assert before > VISUALLY_HIDDEN_SIZE_PX
+    # 読み上げには残す（文字は DOM に残る）
+    assert after["text"].strip() == "資料"
+    # 480px 以下だけ見た目から外れる
+    assert (after["width"] == VISUALLY_HIDDEN_SIZE_PX and after["height"] == VISUALLY_HIDDEN_SIZE_PX) == label_hidden
+    # ID は残る
+    assert page.inner_text(f"{HEAD_PANEL} .panel-kind .mono") == "A-1"
