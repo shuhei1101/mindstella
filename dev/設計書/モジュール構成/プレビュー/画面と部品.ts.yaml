@@ -599,9 +599,9 @@ components:
       - name: test_detail_panel_when_head_title_on_scroll
         case: 正常
         summary: 本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルを出す
-        condition: 本文がパネルの高さの 3 倍以上ある資料 A-1 を開き、本文の頭 → 本文のスクロール領域を下端まで送る → 頭へ戻す の順に見出しのタイトルを読む
+        condition: 本文がパネルの高さの 3 倍以上あり、タイトルが見出しの帯に収まらない長さの資料 A-1 を開き、本文の頭 → 本文のスクロール領域を下端まで送る → 頭へ戻す の順に見出しのタイトルを読む。本文の頭と下端で、見出しのボタン（`.panel-head .icon-btn`）の幅も測る
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`.panel-title` は A-1 のタイトルの文字と同じ `title` を持ち、`aria-hidden` が `true`。本文の頭では `is-shown` が無く `visibility` が `hidden`、送った後は `is-shown` があり、頭へ戻すと `is-shown` が外れる'
+        expected: '`.panel-title` は A-1 のタイトルの文字と同じ `title` を持ち、`aria-hidden` が `true`。本文の頭では `is-shown` が無く `visibility` が `hidden`、送った後は `is-shown` があり、頭へ戻すと `is-shown` が外れる。本文の頭でも下端でも、見出しのボタンの幅はどれも `--control-h`（32px）のまま縮まない'
       - name: test_detail_panel_when_head_title_rerender
         case: 正常
         summary: 描き直した後も、今の項目の本文の先頭のタイトルだけを見張る
@@ -613,7 +613,7 @@ components:
         summary: 全画面でも、本文を送ったときだけ見出しのタイトルを出す
         condition: '`full: true` で本文の長い A-1 を開き、モーダルの本文のスクロール領域を下端まで送る'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: 送る前は `.panel-title` に `is-shown` が無く、送った後は `dialog` の中の `.panel-title` に `is-shown` がある
+        expected: 送る前は `.panel-title` に `is-shown` が無く、送った後は `dialog` の中の `.panel-title` に `is-shown` がある。送る前も送った後も、見出しのボタン（`.panel-head .icon-btn`）の幅はどれも `--control-h`（32px）のまま
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
