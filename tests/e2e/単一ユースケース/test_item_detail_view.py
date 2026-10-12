@@ -910,3 +910,100 @@ def test_normal_when_html_code_block(
     # 詳細パネルのヘッダーには MD のバッジが出て、HTML のバッジは出ない
     badges = page.eval_on_selector_all("aside.panel .panel-head .fmt-badge", "els => els.map(e => e.textContent)")
     assert badges == ["MD"]
+
+
+# 見出しの帯に収まらない長さの資料のタイトル（見出しの帯では省略記号付きで切れる）
+HEAD_LONG_TITLE = (
+    "話し合いの進め方の手引き（セットアップからヒアリング・リサーチ・方針転換を経て"
+    "ゴール判定でリリースするまでの流れと、各段で記録に残すことの一覧）"
+)
+
+# 見出しの帯のタイトルの先頭の語（省略されるので、完全一致でなくこれで始まることで確かめる）
+HEAD_TITLE_PREFIX = "話し合いの進め方の手引き"
+
+# 本文をスクロール領域の高さの 3 倍以上にする段落の数
+HEAD_BODY_PARAGRAPHS = 200
+
+# 本文のスクロール領域を下端まで送るホイールの量（px）
+WHEEL_TO_END_PX = 100_000
+
+# 見出しのタイトルが出るのを待つ上限ミリ秒
+HEAD_TITLE_TIMEOUT_MS = 5_000
+
+# 見出しのタイトルが出て（`is-shown`）、薄く現れる動きを終えたら真
+HEAD_TITLE_SHOWN_SCRIPT = """(root) => {
+    const title = document.querySelector(`${root} .panel-head .panel-title`);
+    return title.classList.contains('is-shown') && getComputedStyle(title).opacity === '1';
+}"""
+
+# 見出しの帯の ID・タイトルの出方と、ボタンが帯に収まって押せるかを読む
+HEAD_STATE_SCRIPT = """(root) => {
+    const head = document.querySelector(`${root} .panel-head`);
+    const title = head.querySelector('.panel-title');
+    const headBox = head.getBoundingClientRect();
+    // 幅の広い画面で隠れる「一覧へ戻る」は除き、表示されているボタンを読む
+    const buttons = [...head.querySelectorAll('.icon-btn')].filter((button) => button.getClientRects().length > 0);
+    return {
+        id: head.querySelector('.panel-kind .mono').textContent,
+        title: title.textContent,
+        truncated: title.scrollWidth > title.clientWidth && getComputedStyle(title).textOverflow === 'ellipsis',
+        buttons: buttons.map((button) => {
+            const box = button.getBoundingClientRect();
+            const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+            return {
+                inHead: box.left >= headBox.left && box.right <= headBox.right,
+                pressable: hit !== null && hit.closest('button') === button,
+            };
+        }),
+    };
+}"""
+
+
+def test_normal_when_body_scrolled(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """長いタイトルの資料を詳細パネルと全画面で読み、本文を送って先頭のタイトルが隠れても、見出しの帯の ID とタイトルで何の項目か分かる（正常系）。"""
+    # 準備
+    long_body = "\n\n".join(f"{number} 番目の段落" for number in range(HEAD_BODY_PARAGRAPHS))
+    url = serve_preview(
+        make_item("A-3", title=HEAD_LONG_TITLE),
+        settings=valid_settings,
+        bodies={"A-3.md": long_body},
+    )
+    open_preview(url, "#tab=docs", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    # 実行（資料の画面で A-3 を押し、本文のスクロール領域の上でホイールを回して下へ送る）
+    page.click('.doc-card[data-id="A-3"]')
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.wait_for_function(
+        "Math.abs(document.querySelector('aside.panel').getBoundingClientRect().right - innerWidth) < 1"
+    )
+    body_box = page.locator("aside.panel .panel-body").bounding_box()
+    assert body_box is not None
+    page.mouse.move(body_box["x"] + body_box["width"] / 2, body_box["y"] + body_box["height"] / 2)
+    page.mouse.wheel(0, WHEEL_TO_END_PX)
+    page.wait_for_function(HEAD_TITLE_SHOWN_SCRIPT, arg="aside.panel", timeout=HEAD_TITLE_TIMEOUT_MS)
+    panel = page.evaluate(HEAD_STATE_SCRIPT, "aside.panel")
+    # 実行（「全画面表示」を押し、モーダルの本文でも下へ送る）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open] .d-title")
+    full_box = page.locator("dialog.full .panel-body").bounding_box()
+    assert full_box is not None
+    page.mouse.move(full_box["x"] + full_box["width"] / 2, full_box["y"] + full_box["height"] / 2)
+    page.mouse.wheel(0, WHEEL_TO_END_PX)
+    page.wait_for_function(HEAD_TITLE_SHOWN_SCRIPT, arg="dialog.full", timeout=HEAD_TITLE_TIMEOUT_MS)
+    full = page.evaluate(HEAD_STATE_SCRIPT, "dialog.full")
+    # 検証（詳細パネル）: 見出しの帯に「A-3」とタイトルの先頭の語が出る
+    assert panel["id"] == "A-3"
+    assert panel["title"].startswith(HEAD_TITLE_PREFIX)
+    # 検証（詳細パネル）: タイトルは 1 行で省略記号付きで切れ、ボタンは帯に収まって押せる
+    assert panel["truncated"] is True
+    assert all(button == {"inHead": True, "pressable": True} for button in panel["buttons"])
+    # 検証（全画面）: モーダルの見出しの帯にも同じものが出る
+    assert full["id"] == "A-3"
+    assert full["title"].startswith(HEAD_TITLE_PREFIX)
+    assert full["truncated"] is True
+    assert all(button == {"inHead": True, "pressable": True} for button in full["buttons"])

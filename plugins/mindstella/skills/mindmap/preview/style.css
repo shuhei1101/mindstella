@@ -45,8 +45,25 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .panel { position: fixed; z-index: 20; top: calc(var(--topbar-h) + var(--tab-h) + 1px); right: 0; bottom: 0; width: var(--panel-w); max-width: 100%; background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow-panel); display: flex; flex-direction: column; }
 
 .panel-head { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
-.panel-kind { font-size: var(--fs-small); color: var(--text-2); }
+/* 見出しの種類と ID: 縮めない・折り返さない（収まらない分はタイトルの側で切る） */
+.panel-kind { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--text-2); }
 .panel-head .spacer { flex: 1; }
+/* 見出しのボタン: 縮めない（はみ出す分はタイトルの省略だけで吸う） */
+.panel-head .icon-btn { flex: none; }
+/* 見出しのタイトル: 1 行で省略記号を付けて切り、ボタンを押し出さない。出し入れは 0.15 秒の opacity（隠す側は opacity のあとに visibility を切る） */
+.panel-title { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--fs-h2); font-weight: 600; line-height: 1.4; white-space: nowrap; text-overflow: ellipsis; transition: opacity .15s ease, visibility 0s linear .15s; }
+/* 隠している間のタイトル: 場所は取ったまま見せない（出し入れで種類と ID を動かさない） */
+.panel-title:not(.is-shown) { visibility: hidden; opacity: 0; }
+/* 出したタイトル: 薄く現れる */
+.panel-title.is-shown { transition: opacity .15s ease; }
+/* 動きを減らす設定: すぐ切り替える */
+@media (prefers-reduced-motion: reduce) {
+  .panel-title, .panel-title.is-shown { transition: none; }
+}
+/* 狭い幅でタイトルを出している間: 種類の名前を見た目から外して ID だけにし、タイトルに幅を譲る（読み上げには残す） */
+@media (max-width: 480px) {
+  .panel-head:has(.panel-title.is-shown) .panel-kind-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 .panel-body { overflow-y: auto; padding: 22px 24px 56px; }
 .panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
