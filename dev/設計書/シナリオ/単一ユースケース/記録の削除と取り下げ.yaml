@@ -85,7 +85,7 @@ scenarios:
       - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
     test: test_error_when_referenced
     notes:
-      指す側: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`、ゴールの納品物の `doc`、コメント・送信の向け先が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
+      指す側: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`、ゴールの納品物の `doc`、レビュー中のコメントと AI の返信待ちのスレッドの向け先が指しているとき。指している側の参照は、スキルが先に付け替えるか外す。返信待ちでないスレッド（AI が返信した・クローズ）は記録として残し、指していても消せる
   - name: 異常シナリオ（存在しない ID を消す）
     setup:
       - name: Mock
@@ -106,6 +106,53 @@ scenarios:
       - エラーの本文に、渡した ID `N-9` がある
       - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
     test: test_error_when_item_missing
+  - name: 異常シナリオ（返信待ちのスレッドが指している）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、メモ N-1 と、最初の書き込みが N-1 を指し AI の返信待ちのオープンのスレッドを足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: N-1 を消す
+        SV->>WS: N-1 を指す記録を探す
+        SV-->>CC: エラー（N-1 を指している返信待ちのスレッド）
+      ```
+    expected:
+      - 消すツールがエラーを返す
+      - エラーの本文に、N-1 を指している返信待ちのスレッドがある
+      - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+  - name: 正常シナリオ（返信済みのスレッドだけが指している）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、メモ N-1・N-2 と、最初の書き込みが N-2 を指すスレッド 2 件を足したワークスペース
+        notes: 1 件は最後の書き込みが AI の返信のオープンのスレッド、もう 1 件は利用者の書き込みだけのクローズのスレッド
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: N-2 を消す
+        SV->>WS: N-2 を指す記録を探す（返信待ちのスレッドは無い）
+        SV->>WS: notes.yaml から N-2 を消す
+        SV-->>CC: 消した項目の ID
+        CC->>SV: check
+        SV-->>CC: 問題が無い
+      ```
+    expected:
+      - 消すツールが N-2 を返す
+      - '`.mindstella/notes.yaml` に N-2 が無い'
+      - 2 件のスレッドが、N-2 を指したまま残っている
+      - '`check` が問題を 0 件で返す'
 lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
 issue: 96
 primary_actor: スキルの手順を実行する Claude Code
