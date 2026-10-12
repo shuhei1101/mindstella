@@ -109,7 +109,7 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* ===== 会話のタブ: スレッド 1 件 ===== */
 
 /* スレッドの見出し: 戻る・状態の切り替え・題・向けた項目とタグを、書き込みの上に留める */
-.th-head { flex: none; display: grid; gap: 6px; padding: 8px 12px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.th-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px 12px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
 /* 戻るボタンと状態の切り替えの行 */
 .th-head-bar { display: flex; align-items: center; gap: 8px; }
 /* 戻るボタンと状態の切り替えの間: 状態の切り替えを右端へ寄せる */
@@ -120,6 +120,8 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .th-head-bar .btn:disabled { color: var(--text-2); cursor: progress; }
 /* スレッドの題: 状態の札と、折り返す題 */
 .th-heading { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--fs-h2); line-height: 1.45; overflow-wrap: anywhere; }
+/* 題の文字: 札の残りの幅で折り返す */
+.th-heading > span:last-child { min-width: 0; }
 /* 題の横の状態の札: 1 行目の高さに揃える */
 .th-heading .th-state { margin-top: 1px; }
 /* 向けた項目とタグ */
