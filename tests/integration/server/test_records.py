@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -188,3 +189,38 @@ def test_normal_when_config_invalid(
         for line in records["settings_problem"]
     )
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
+
+
+def test_normal_when_html_body(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """HTML の本文は原文を `bodies` に、行の印を足したものを `marked_bodies` に返す（正常系）。"""
+    # 準備
+    markdown_body = "資料の本文\n"
+    html_body = (
+        "<!doctype html>\n<style>p { color: red; }</style>\n"
+        '<p\n  class="lead">一覧の画面</p>\n'
+    )
+    root = make_workspace(
+        make_item("A-1"),
+        make_item("A-2", body="A-2.html"),
+        bodies={"A-1.md": markdown_body, "A-2.html": html_body},
+    )
+    url = serve_preview(root)
+    # 実行
+    result = http_request(url, "/api/records")
+    # 検証
+    assert result.status == 200
+    records = result.json()
+    assert records["bodies"]["A-1.md"] == markdown_body
+    assert records["bodies"]["A-2.html"] == html_body
+    assert list(records["marked_bodies"]) == ["A-2.html"]
+    marked = records["marked_bodies"]["A-2.html"]
+    # 複数行にまたがる開きタグの印は、中身が始まる行（開きタグが閉じる行）と、閉じタグが始まる行
+    assert '<p data-line="4" data-line-end="4"' in marked
+    # `<style>` の中には行の印を足さない
+    assert "<style>p { color: red; }</style>" in marked
+    # 行の印を取り除くと原文に戻る
+    assert re.sub(r' data-line(?:-end)?="\d+"', "", marked) == html_body

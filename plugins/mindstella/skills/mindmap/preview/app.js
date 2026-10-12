@@ -635,6 +635,7 @@ var MindmapPreview;
                     back: () => history.back(),
                     forward: () => history.forward(),
                     diagram: showDiagram,
+                    frame: { select: frameSelect, clear: frameClear },
                     // 本文の見出しへ移った: ハッシュの `h` を、履歴に積まずに置き換える
                     heading: (heading) => {
                         route = { ...route, heading };
@@ -1285,33 +1286,20 @@ var MindmapPreview;
         let pill = null;
         /** ポインターを押している間は入口を出さない（選び終えてから出す） */
         let pointerHeld = false;
+        /** HTML の本文の枠の中で選んでいる範囲（選びを外すと null）。枠の文書の選択は親の文書の選択に入らないので別に持つ */
+        let frameSelected = null;
         /** 入口を閉じる */
         const closePill = () => {
             pill?.remove();
             pill = null;
         };
-        /** 選んだ範囲から箇所を求め、あれば入口を出し、無ければ閉じる */
-        const updatePill = () => {
-            closePill();
-            const selection = getSelection();
-            const host = document.querySelector("dialog.full[open], aside.panel");
-            // 図の拡大を開いている間・選んだ範囲が無い・詳細パネルの外
-            if (!serverMode || route.id === null || document.querySelector("dialog.viewer") !== null || fullViewer !== null)
-                return;
-            if (selection === null || selection.rangeCount === 0 || selection.isCollapsed || host === null)
-                return;
-            const range = selection.getRangeAt(0);
-            if (!host.contains(range.commonAncestorContainer))
-                return;
-            const loc = MindmapPreview.selectionLocation(range);
-            const rects = range.getClientRects();
-            const first = rects[0];
-            const last = rects[rects.length - 1];
-            if (loc === null || first === undefined || last === undefined)
+        /** 選んだ箇所と選んだ範囲の矩形の近くに入口を出す。押したら入力に箇所を添える */
+        const openPill = ({ loc, anchor, host }) => {
+            if (route.id === null)
                 return;
             const id = route.id;
             pill = MindmapPreview.selectionComment({
-                anchor: { first, last },
+                anchor,
                 viewport: { width: innerWidth, height: innerHeight },
                 on: {
                     press: () => {
@@ -1328,8 +1316,58 @@ var MindmapPreview;
             // 全画面はモーダルなので、入口もその中に置く（外に置くと押せない）
             (host.matches("dialog") ? host : document.body).append(pill);
         };
-        document.addEventListener("pointerdown", () => {
+        /** 図の拡大を開いている間か、詳細パネルの外か（入口を出さない場面） */
+        const pillBlocked = () => !serverMode || route.id === null || document.querySelector("dialog.viewer") !== null || fullViewer !== null;
+        /** 選んだ範囲から箇所を求め、あれば入口を出し、無ければ閉じる。枠の中の選択が生きていて、親の文書の選択が空のときは、枠の入口をそのままにする */
+        const updatePill = () => {
+            const selection = getSelection();
+            const parentSelected = selection !== null && selection.rangeCount > 0 && !selection.isCollapsed;
+            if (!parentSelected && frameSelected !== null)
+                return;
+            closePill();
+            const host = document.querySelector("dialog.full[open], aside.panel");
+            // 図の拡大を開いている間・選んだ範囲が無い・詳細パネルの外
+            if (pillBlocked())
+                return;
+            if (selection === null || selection.rangeCount === 0 || selection.isCollapsed || host === null)
+                return;
+            const range = selection.getRangeAt(0);
+            if (!host.contains(range.commonAncestorContainer))
+                return;
+            const loc = MindmapPreview.selectionLocation(range);
+            const rects = range.getClientRects();
+            const first = rects[0];
+            const last = rects[rects.length - 1];
+            if (loc === null || first === undefined || last === undefined)
+                return;
+            openPill({ loc, anchor: { first, last }, host });
+        };
+        /** HTML の本文の枠で文を選び終えた: 元の HTML の行の範囲の箇所にして入口を出す */
+        const frameSelect = (selection) => {
+            frameSelected = selection;
+            closePill();
+            const host = document.querySelector("dialog.full[open], aside.panel");
+            if (pillBlocked() || host === null)
+                return;
+            openPill({
+                loc: { kind: "body", start: selection.start, end: selection.end, text: selection.text },
+                anchor: selection.rects,
+                host,
+            });
+        };
+        /** HTML の本文の枠で選びを外した: 入口を閉じる */
+        const frameClear = () => {
+            frameSelected = null;
+            closePill();
+        };
+        document.addEventListener("pointerdown", (event) => {
             pointerHeld = true;
+            // 枠の外を押したら、枠の中の選択を外す（入口を押したときは外さない）
+            if (event.target?.closest?.(".selection-comment") === null || event.target === document) {
+                for (const frame of document.querySelectorAll("iframe.html-frame")) {
+                    frame.contentWindow?.getSelection()?.removeAllRanges();
+                }
+            }
         });
         document.addEventListener("pointerup", () => {
             pointerHeld = false;

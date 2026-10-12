@@ -195,3 +195,66 @@ def test_normal_when_task_output_doc_missing(
     assert after["reached"] is True
     # release/ に何も書かれていない
     assert list((root / RECORD_DIR / "release").iterdir()) == []
+
+
+# 納品物の資料 A-2（HTML の本文）のタイトルと本文
+HTML_DELIVERABLE_TITLE = "画面のモック"
+HTML_DELIVERABLE_BODY = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"
+
+
+def test_normal_when_html_deliverable(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """納品物に HTML の本文の資料があれば、確定の後に HTML のまま release/ に書き出す（正常系）。"""
+    # 準備
+    settings = _goal_settings(valid_settings)
+    settings["goal"]["deliverables"] = [
+        {"title": "要件定義書", "doc": "A-1"},
+        {"title": HTML_DELIVERABLE_TITLE, "doc": "A-2"},
+    ]
+    root = make_workspace(
+        make_item("D-1", phase="目的", status="決定済み", answer="記録する", options=ADOPTED_OPTIONS),
+        make_item("A-1", deliverable=True, status="完成"),
+        make_item(
+            "A-2",
+            title=HTML_DELIVERABLE_TITLE,
+            deliverable=True,
+            status="完成",
+            body="A-2.html",
+        ),
+        settings=settings,
+        bodies={"A-1.md": "# 要件定義書\n\n支出を記録する。", "A-2.html": HTML_DELIVERABLE_BODY},
+    )
+    ws = {"workspace": str(root)}
+    release = root / RECORD_DIR / "release"
+    # 実行
+    goal = replay("goal", **ws)
+    markdown_deliverable = replay("show", **ws, id="A-1")
+    html_deliverable = replay("show", **ws, id="A-2")
+    # 利用者の確定の後に、スキルが release/ を片付けてから、納品物を本文の形式のまま書く
+    replay("clear_release", **ws)
+    (release / "要件定義書.md").write_text(markdown_deliverable["body_markdown"], encoding="utf-8")
+    (release / f"{HTML_DELIVERABLE_TITLE}.html").write_text(
+        html_deliverable["body_html"], encoding="utf-8"
+    )
+    replay(
+        "add",
+        **ws,
+        kind="log",
+        item={"title": "リリース", "date": "2026-10-02", "related": ["A-1", "A-2"]},
+    )
+    # 検証
+    assert goal["reached"] is True
+    # 納品物の本文が、形式を持って返る
+    assert markdown_deliverable["body_format"] == "markdown"
+    assert html_deliverable["body_format"] == "html"
+    # release/ に、A-1 の本文が {納品物のタイトル}.md で、A-2 の本文が 画面のモック.html で HTML のままある
+    assert "支出を記録する" in (release / "要件定義書.md").read_text(encoding="utf-8")
+    assert (release / f"{HTML_DELIVERABLE_TITLE}.html").read_text(encoding="utf-8") == HTML_DELIVERABLE_BODY
+    assert sorted(path.name for path in release.iterdir()) == ["画面のモック.html", "要件定義書.md"]
+    # 会話ログが 1 件足されている
+    assert [item["id"] for item in read_yaml(root, "logs.yaml")["items"]] == ["L-1"]

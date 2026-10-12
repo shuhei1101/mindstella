@@ -148,6 +148,15 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     hearing_step = (SKILLS_DIR / "session" / "steps" / "ヒアリング.md").read_text(encoding="utf-8")
     assert "`edit_option`" in hearing_step
     assert "`adopt`" in hearing_step
+    # steps/取り込み.md が資料の HTML の本文を body_html で渡すと書く
+    assert "`body_html`" in capture_step
+    # steps/ゴール判定.md が show の body_format を見て、playbooks/資料作り.md のリリースの形が .html を指す
+    goal_step = (SKILLS_DIR / "session" / "steps" / "ゴール判定.md").read_text(encoding="utf-8")
+    assert "`body_format`" in goal_step
+    document_playbook = (SKILLS_DIR / "mindmap" / "playbooks" / "資料作り.md").read_text(
+        encoding="utf-8"
+    )
+    assert ".html" in document_playbook.split("## リリースの形", 1)[1]
     # 取り込み・ヒアリング・リサーチ・方針転換のステップが commit を呼ぶ
     for step_file in COMMIT_STEP_FILES:
         step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")

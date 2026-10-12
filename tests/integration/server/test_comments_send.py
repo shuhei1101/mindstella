@@ -178,6 +178,32 @@ def test_error_when_location_stale(
     assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
+def test_error_when_html_body_location_stale(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """HTML の本文が書き換わって選んだ文が無くなったコメントがあれば、どれも送らない（異常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"),
+        bodies={"A-1.html": "<style>p { color: red; }</style>\n\n\n<p>書き直した文</p>\n"},
+    )
+    loc = {"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"}
+    write_comments(root, make_comment("C-1", target="A-1", loc=loc))
+    url = serve_preview(root)
+    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    # 実行
+    result = post_json(url, SEND_PATH, {"ids": ["C-1"]})
+    # 検証
+    assert result.status == 409
+    assert [item["id"] for item in result.json()["stale"]] == ["C-1"]
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
+
+
 def test_error_when_not_json(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,

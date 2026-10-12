@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from pathlib import Path
 
-from workspace_fixtures import McpServer
+from workspace_fixtures import RECORD_DIR, McpServer
 
 from .fixture_types import MakeItem, MakeWorkspace, StartServer
 from .http_helpers import EventStream
@@ -15,6 +16,9 @@ CHANGED_WITHIN_SEC = 1
 
 # 書き換えが無いことを確かめる間の秒数
 QUIET_SEC = 2
+
+# つないでから、サーバーが見張りの基準を取り終えるまで待つ秒数（直後の書き換えは基準に入って知らせが無い）
+WATCH_START_SEC = 0.5
 
 # 足す検討事項
 NEW_DECISION = {
@@ -81,3 +85,22 @@ def test_normal_when_unchanged(
     stream = open_events(serve_preview(make_workspace(make_item("D-1"))))
     # 実行・検証
     assert stream.wait_for_changed(QUIET_SEC) is False
+
+
+def test_normal_when_html_body_rewritten(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+    open_events: Callable[[str], EventStream],
+) -> None:
+    """YAML を書き換えずに HTML の本文のファイルだけが変わっても知らせる（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>一覧の画面</p>\n"}
+    )
+    stream = open_events(serve_preview(root))
+    time.sleep(WATCH_START_SEC)
+    # 実行
+    (root / RECORD_DIR / "docs" / "A-1.html").write_text("<p>書き換えた画面</p>\n", encoding="utf-8")
+    # 検証
+    assert stream.wait_for_changed(CHANGED_WITHIN_SEC) is True

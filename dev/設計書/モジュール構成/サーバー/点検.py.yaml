@@ -148,7 +148,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/checker.py
     usecase: ワークスペースの点検
     scope: internal
-    summary: 指す本文が無い項目と、どこからも指されない `docs/*.md` を拾う
+    summary: 指す本文が無い項目と、どこからも指されない `docs/*.md`・`docs/*.html` を拾う
     args:
       - name: workspace
         type: Workspace
@@ -160,7 +160,7 @@ functions:
       description: 問題の並び
     process: |-
       1. `body` を持つ項目ごとに、`docs/{body}` が無ければ `missing_body`（その項目の YAML・`key: items[n].body`）
-      2. `docs/` の `*.md` のうち、どの項目の `body` にも無いものを `orphan_body`（`file: docs/{名前}`・`id`・`key` は `None`）
+      2. `docs/` の `*.md` と `*.html` のうち、どの項目の `body` にも無いものを `orphan_body`（`file: docs/{名前}`・`id`・`key` は `None`）
     unit_tests:
       - name: test_check_bodies
         case: 正常
@@ -168,6 +168,12 @@ functions:
         condition: 'R-1 `body: R-1.md`（ファイル無し）・D-1 `body: D-1.md`（ファイルあり）・`docs/X-1.md`'
         mock: なし
         expected: '`missing_body`（R-1）と `orphan_body`（`docs/X-1.md`）の 2 件'
+      - name: test_check_bodies_when_html
+        case: 正常
+        summary: HTML の本文も本文のずれの対象にする
+        condition: 'A-1 `body: A-1.html`（ファイル無し）・A-2 `body: A-2.html`（ファイルあり）・`docs/A-9.html`'
+        expected: '`missing_body`（A-1）と `orphan_body`（`docs/A-9.html`）の 2 件だけ'
+        mock: なし
   - name: _check_submissions
     title: 送信の点検
     kind: 関数

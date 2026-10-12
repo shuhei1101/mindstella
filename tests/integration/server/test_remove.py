@@ -213,3 +213,30 @@ def test_error_when_write_fails(
     assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
     assert (root / RECORD_DIR / "docs" / "N-1.md").exists()
+
+
+def test_normal_when_html_body_removed(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """本文を HTML で持つ資料を消すと、HTML の本文のファイルも消す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(
+        call_tool,
+        root,
+        "doc",
+        {
+            "title": "画面のモック",
+            "kind": "モック",
+            "status": "下書き",
+            "deliverable": False,
+            "body_html": "<h1>画面のモック</h1>\n",
+        },
+    )
+    commit(call_tool, root, "足す")
+    # 実行
+    result = call_tool("remove", workspace=str(root), id="A-1")
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["body_removed"] is True
+    assert not (root / RECORD_DIR / "docs" / "A-1.html").exists()
+    assert read_items(root, "docs.yaml") == []

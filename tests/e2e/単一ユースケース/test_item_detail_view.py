@@ -688,3 +688,225 @@ def test_normal_when_aliases_matched(
     assert own_excluded_ids == ["G-1", "A-3", "A-4", "A-5", "A-6", "A-7", "R-1"]
     assert first_link == "G-1"
     assert after_escape == ALIAS_WORD
+
+
+# 詳細パネルの HTML の本文の枠と、全画面の HTML の本文の枠
+HTML_BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
+FULL_HTML_BODY_FRAME = "dialog.full iframe.html-frame[data-html-body]"
+
+# Markdown の本文の中の `html` のコードブロックの枠
+HTML_CODE_FRAME = "aside.panel .md iframe.html-frame"
+
+# 枠を描き終えるまで待つ上限ミリ秒
+FRAME_TIMEOUT_MS = 20_000
+
+# 枠の描き終わり・高さ合わせが済むまで待つミリ秒
+FRAME_SETTLE_MS = 400
+
+# 枠の高さが伸び続けないかを確かめるために置く間隔のミリ秒
+FRAME_LATER_MS = 1_500
+
+# 本文の高さを詳細パネルの高さより大きくするために足す段落の数
+HTML_FILLER_PARAGRAPHS = 40
+
+# `<style>` で `*`・`body`・`p` を塗り、見出し・段落・表・図と、詳細パネルの高さより大きくなる段落を持つ HTML の本文
+HTML_DOC_BODY = (
+    "<style>\n"
+    "  * { margin: 40px !important; color: rgb(255, 0, 0) !important; }\n"
+    "  body { background: rgb(0, 0, 255) !important; padding: 40px !important; }\n"
+    "  p { color: rgb(0, 128, 0) !important; }\n"
+    "</style>\n"
+    "<h1>画面のモック</h1>\n"
+    "<p>一覧の画面</p>\n"
+    "<table><tr><th>列</th><td>値</td></tr></table>\n"
+    '<svg width="40" height="40"><circle cx="20" cy="20" r="18" fill="orange"/></svg>\n'
+    + "".join(f"<p>続きの段落 {number}</p>\n" for number in range(1, HTML_FILLER_PARAGRAPHS + 1))
+)
+
+# スクリプト・`onerror` の画像・`onclick` のボタンを持つ HTML の本文（どれも実行されるとページの変数に印を残す）
+HTML_SCRIPT_BODY = (
+    "<h1>画面のモック</h1>\n"
+    "<p>一覧の画面</p>\n"
+    "<script>window.__leak = 1; parent.__leak = 1;</script>\n"
+    '<img src="missing.png" onerror="window.__leak = 1; parent.__leak = 1">\n'
+    '<button id="click" onclick="window.__leak = 1; parent.__leak = 1">押す</button>\n'
+)
+
+# 見出し・段落の間に、`<style>` と段落・図・スクリプトを持つ `html` のコードブロックを持つ Markdown の本文
+BODY_WITH_HTML_CODE_BLOCK = """# 見出し
+
+前の段落
+
+```html
+<style>p { color: rgb(255, 0, 0) !important; margin: 40px !important; }</style>
+<p>枠の中の段落</p>
+<svg width="40" height="40"><circle cx="20" cy="20" r="18" fill="orange"/></svg>
+<script>parent.__leak = 1;</script>
+```
+
+後の段落
+"""
+
+# `html` のコードブロックを持たない、前後の段落だけの Markdown の本文（描く前の色の見本）
+BODY_WITHOUT_HTML_CODE_BLOCK = """# 見出し
+
+前の段落
+
+後の段落
+"""
+
+# 枠の高さと、枠の中の最後の要素の下端を返す
+FRAME_METRICS_SCRIPT = """(selector) => {
+    const frame = document.querySelector(selector);
+    const bottoms = [...frame.contentDocument.body.querySelectorAll('*')].map(
+        (element) => element.getBoundingClientRect().bottom
+    );
+    return { height: frame.clientHeight, bottom: Math.max(...bottoms) };
+}"""
+
+# ページの変数に残る印を、親の画面と枠の中で返す
+LEAK_SCRIPT = """(selector) => [
+    window.__leak ?? null,
+    document.querySelector(selector).contentWindow.__leak ?? null,
+]"""
+
+# 選んだ要素の色・上の余白・背景を返す
+STYLE_SCRIPT = """(selectors) => selectors.map((selector) => {
+    const style = getComputedStyle(document.querySelector(selector));
+    return [style.color, style.marginTop, style.backgroundColor];
+})"""
+
+
+def _wait_frame_rendered(page: Page, selector: str) -> None:
+    """枠が描き終わり、高さ合わせが済むまで待つ。"""
+    page.wait_for_selector(f"{selector}[data-rendered]", state="attached", timeout=FRAME_TIMEOUT_MS)
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+
+
+def test_normal_when_html_doc(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """HTML の本文の資料を詳細パネルと全画面で読み、本文の CSS が画面の外を変えない（正常系）。"""
+    # 準備（A-2 は本文が Markdown の資料で、描く前の画面の見本にする）
+    url = serve_preview(
+        make_item("A-1", body="A-1.html", kind="モック"),
+        make_item("A-2"),
+        make_item("A-3"),
+        settings=valid_settings,
+        bodies={"A-1.html": HTML_DOC_BODY, "A-2.md": "資料の本文\n", "A-3.md": "別の資料の本文\n"},
+    )
+    # 押さない資料のカード A-3 は、押した資料の選択の見た目に引きずられず、本文の CSS の影響だけを比べられる
+    outside = ["header.topbar", "aside.panel .d-title", '.doc-card[data-id="A-3"]']
+    open_preview(url, "#tab=docs", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    page.click('.doc-card[data-id="A-2"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
+    before = page.evaluate(STYLE_SCRIPT, outside)
+    # 実行（資料のカードで A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-1の題'")
+    _wait_frame_rendered(page, HTML_BODY_FRAME)
+    frame = page.frame_locator(HTML_BODY_FRAME)
+    # 検証（詳細パネル）
+    assert page.inner_text("aside.panel .panel-head .fmt-badge") == "HTML"
+    assert frame.locator("h1").inner_text() == "画面のモック"
+    assert frame.locator("p").first.inner_text() == "一覧の画面"
+    assert frame.locator("table").count() == 1
+    assert frame.locator("svg").count() == 1
+    assert page.evaluate(STYLE_SCRIPT, outside) == before
+    # 本文の枠の高さが描いた中身に合い、中身が切れず、時間を置いても伸び続けない
+    metrics = page.evaluate(FRAME_METRICS_SCRIPT, HTML_BODY_FRAME)
+    page.wait_for_timeout(FRAME_LATER_MS)
+    assert metrics["bottom"] <= metrics["height"]
+    assert page.evaluate(FRAME_METRICS_SCRIPT, HTML_BODY_FRAME)["height"] == metrics["height"]
+    assert page.evaluate(
+        "selector => document.querySelector(selector).contentDocument.documentElement.style.overflowY",
+        HTML_BODY_FRAME,
+    ) == "hidden"
+    # 実行（「全画面表示」を押す）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open]")
+    _wait_frame_rendered(page, FULL_HTML_BODY_FRAME)
+    # 検証（全画面）
+    full_frame = page.frame_locator(FULL_HTML_BODY_FRAME)
+    assert full_frame.locator("h1").inner_text() == "画面のモック"
+    assert full_frame.locator("table").count() == 1
+    assert page.inner_text("dialog.full .panel-head .fmt-badge") == "HTML"
+    # 実行（モーダルの外側を押す）
+    page.mouse.click(*BACKDROP_POINT)
+    page.wait_for_selector("aside.panel.open")
+    # 検証
+    assert page.inner_text("aside.panel .d-title") == "A-1の題"
+
+
+def test_error_when_html_body_has_script(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """スクリプトとイベントの属性を持つ HTML の本文は、見出し・段落を描き、何も実行しない（異常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("A-1", body="A-1.html"),
+        settings=valid_settings,
+        bodies={"A-1.html": HTML_SCRIPT_BODY},
+    )
+    # 実行（詳細パネルを開き、本文のボタンを押す）
+    open_preview(url, "#tab=docs&id=A-1")
+    _wait_frame_rendered(page, HTML_BODY_FRAME)
+    frame = page.frame_locator(HTML_BODY_FRAME)
+    frame.locator("#click").click()
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証
+    # プレビューのページの変数にも、本文を描いた文書の変数にも印が残らない
+    assert page.evaluate(LEAK_SCRIPT, HTML_BODY_FRAME) == [None, None]
+    # 本文の見出し・段落は描かれて出る
+    assert frame.locator("h1").inner_text() == "画面のモック"
+    assert frame.locator("p").inner_text() == "一覧の画面"
+
+
+def test_normal_when_html_code_block(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """Markdown の本文の中の `html` のコードブロックを、コードのままではなく枠に描いて読む（正常系）。"""
+    # 準備（A-2 は `html` のコードブロックを持たない Markdown の資料で、描く前の色と余白の見本にする）
+    url = serve_preview(
+        make_item("A-1"),
+        make_item("A-2"),
+        settings=valid_settings,
+        bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK, "A-2.md": BODY_WITHOUT_HTML_CODE_BLOCK},
+    )
+    outside = ["header.topbar", "aside.panel .d-title", "aside.panel .md > p"]
+    open_preview(url, "#tab=docs", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    page.click('.doc-card[data-id="A-2"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
+    before = page.evaluate(STYLE_SCRIPT, outside)
+    # 実行（資料のカードで A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-1の題'")
+    _wait_frame_rendered(page, HTML_CODE_FRAME)
+    frame = page.frame_locator(HTML_CODE_FRAME)
+    # 検証
+    # コードブロックの位置に、HTML を描いた段落と図が出る（コードのまま出ない）
+    assert page.locator("aside.panel .md pre code").count() == 0
+    assert frame.locator("p").inner_text() == "枠の中の段落"
+    assert frame.locator("svg").count() == 1
+    # コードブロックの前後の Markdown の見出し・段落は、今までどおり描かれる
+    assert page.locator("aside.panel .md > p").count() == 2
+    assert page.locator("aside.panel .md h1, aside.panel .md h2").count() >= 1
+    # コードブロックの `<style>` が、前後の Markdown の段落・詳細パネル・トップバーの色を変えない
+    assert page.evaluate(STYLE_SCRIPT, outside) == before
+    # プレビューのページの変数にも、描いた文書の変数にも印が残らない
+    assert page.evaluate(LEAK_SCRIPT, HTML_CODE_FRAME) == [None, None]
+    # 詳細パネルのヘッダーには MD のバッジが出て、HTML のバッジは出ない
+    badges = page.eval_on_selector_all("aside.panel .panel-head .fmt-badge", "els => els.map(e => e.textContent)")
+    assert badges == ["MD"]

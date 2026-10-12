@@ -10,13 +10,22 @@ from typing import Any
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, row_ids
 from readme_helpers import preview_section
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
 # 書き換えが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
 
 # 配信のページの路（`preview_url` が返す URL の終わり）
 PAGE_PATH = "/mindstella.html"
+
+# 詳細パネルの HTML の本文の枠
+BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
+
+# 枠の中の文書の本文の文を返す
+FRAME_TEXT_SCRIPT = "(frame) => frame.contentDocument?.body?.textContent ?? ''"
+
+# 書き換えの見張りが基準を取るのを待つミリ秒
+WATCH_START_MS = 500
 
 # 足す検討事項
 NEW_DECISION = {
@@ -108,3 +117,36 @@ def test_error_when_config_invalid(
     assert "config.yaml: display.network_look: " in again.text
     # config.yaml の中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_html_body_rewritten(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """HTML の本文のファイルだけを書き換えると、再読み込みの操作をせずに、開いている詳細パネルの本文が描き直される（正常系）。"""
+    # 準備（本文を HTML で持ち、段落「一覧の画面」を持つ資料 A-1 の詳細パネルを開いておく）
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>一覧の画面</p>\n"}
+    )
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], "#tab=docs&id=A-1")
+    page.wait_for_selector(f"{BODY_FRAME}[data-rendered]", state="attached", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_timeout(WATCH_START_MS)
+    opened_url = page.url
+    # 実行（docs.yaml は書き換えず、本文のファイルだけを書き換える）
+    (root / RECORD_DIR / "docs" / "A-1.html").write_text("<p>絞り込みの画面</p>\n", encoding="utf-8")
+    page.wait_for_function(
+        f"document.querySelector('{BODY_FRAME}')?.contentDocument?.body?.textContent.includes('絞り込みの画面') === true",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    text = page.eval_on_selector(BODY_FRAME, FRAME_TEXT_SCRIPT)
+    assert "絞り込みの画面" in text
+    assert "一覧の画面" not in text
+    # 描き直した後も、開いていた画面と URL のハッシュが変わらない
+    assert page.url == opened_url
+    assert page.get_attribute('nav.tabbar a[data-tab="docs"]', "aria-current") == "page"

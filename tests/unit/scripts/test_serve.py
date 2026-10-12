@@ -682,6 +682,28 @@ def test_workspace_signature_with_changes(
     assert (after != before) is changes
 
 
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        pytest.param("A-1.html", id="rewrite_html_body"),
+        pytest.param("A-2.html", id="add_html_body"),
+    ],
+)
+def test_workspace_signature_with_html_body(
+    make_workspace: MakeWorkspace, make_item: MakeItem, file_name: str
+) -> None:
+    """HTML の本文の書き換えでも印が変わる（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+    before = serve.workspace_signature(root)
+    target = root / RECORD_DIR / "docs" / file_name
+    # 実行
+    target.write_text("<p>書き換えた後の本文</p>\n", encoding="utf-8")
+    after = serve.workspace_signature(root)
+    # 検証
+    assert after != before
+
+
 class _ScriptedSignature:
     """決めた印を順に返す、書き換えの印を作る代わりの関数。"""
 

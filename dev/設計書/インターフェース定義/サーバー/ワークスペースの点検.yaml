@@ -179,7 +179,29 @@ flows:
       - ツールのエラーにならない
       - '`ok` が真で、`problems` が空'
     test: test_normal_when_removed_item_in_change_set
-lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の Markdown のずれ・案と状態の合わない検討事項を全て洗い出す。
+  - name: 正常系（HTML の本文にずれがある）
+    summary: HTML の本文も、指す本文が無い・どこからも指されないの対象にする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1・A-2 を持ち、A-1 の本文のファイルを消して、どの項目も指さない `docs/A-9.html` を置いたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: 全ての YAML と docs/ を読む
+        IF-->>クライアント: JSON（ok: false・problems）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`problems` が `missing_body`（A-1）と `orphan_body`（`.mindstella/docs/A-9.html`）の 2 件だけで、A-2 の問題が無い'
+    test: test_normal_when_html_body_problems_found
+lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）
 request:
@@ -229,7 +251,7 @@ constraints:
   - item: 参照切れを確かめるキー
     constraint: '`depends_on`・`parent`・`for`・`related`・`sources` と設定の `goal.deliverables[].doc`、送信の `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、キーが決めた種類でない ID（`parent` が `D-` 以外など）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み済みの送信の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（『項目の削除』で消した項目）は参照切れにしない。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
   - item: 本文のずれ
-    constraint: '`body` が指す `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md` を `orphan_body` にする'
+    constraint: '`body` が指す `docs/` のファイルが無いものを `missing_body`、どの項目の `body` からも指されない `docs/*.md`・`docs/*.html` を `orphan_body` にする'
   - item: 問題の並び
     constraint: ファイル名の順、同じファイルの中は項目の並びの順
   - item: フェーズを確かめるキー
