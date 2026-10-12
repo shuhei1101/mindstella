@@ -1,4 +1,4 @@
-/* PR #235 で足すコメントの一覧のタブ・会話のタブ（スレッドの一覧とスレッド 1 件）と、モック専用の操作列 */
+/* PR #235 で足すコメントの一覧のタブ・スレッドのタブ（スレッドの一覧とスレッド 1 件）と、モック専用の操作列 */
 
 /* ===== モック専用の操作列（実画面には無い） ===== */
 
@@ -44,7 +44,7 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* タブの中身: 帯・一覧・下端の入力を縦に積み、一覧だけを送る */
 .ctab-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
-/* ===== 会話のタブ: スレッドの一覧 ===== */
+/* ===== スレッドのタブ: スレッドの一覧 ===== */
 
 /* 絞り込みの帯: 状態のセグメントと、タグの絞り込みのチップを一覧の上端に留める */
 .talk-band { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
@@ -106,7 +106,7 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* クローズ: 薄い文字 */
 .th-state.closed { color: var(--text-2); }
 
-/* ===== 会話のタブ: スレッド 1 件 ===== */
+/* ===== スレッドのタブ: スレッド 1 件 ===== */
 
 /* スレッドの見出し: 戻る・状態の切り替え・題・向けた項目とタグを、書き込みの上に留める */
 .th-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px 12px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }

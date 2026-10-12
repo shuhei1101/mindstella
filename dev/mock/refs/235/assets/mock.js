@@ -1,6 +1,6 @@
 // モックの操作。見本の記録（data.js が埋め込み先へ入れたもの）を、サーバーの配信の代わりに返す。
 // app.js の起動の前に、埋め込み先を空にしてサーバーの配信として起動させ、記録・レビュー中のコメント・スレッドの受け口と書き換えの知らせを置き換える。
-// 見本の状態はクエリで切り替える（review=0: レビュー中のコメント 0 件 / threads=0: スレッド 0 件 / offline=1: 送る・書き換える要求が届かない / entered=0: Claude Code へ入力できない / tag: 会話のタブをそのタグで絞る / open: そのスレッドを開いた状態で始める / drawer=1: コメントの一覧を開いた状態で始める）
+// 見本の状態はクエリで切り替える（review=0: レビュー中のコメント 0 件 / threads=0: スレッド 0 件 / offline=1: 送る・書き換える要求が届かない / entered=0: Claude Code へ入力できない / tag: スレッドのタブをそのタグで絞る / open: そのスレッドを開いた状態で始める / drawer=1: コメントの一覧を開いた状態で始める）
 (() => {
   const body = document.body;
   const params = new URLSearchParams(location.search);
@@ -82,6 +82,23 @@
       },
     ];
 
+  /** 返信の書きかけ（スレッドの ID → 本文）。サーバーの drafts.yaml の代わりに、読み込み直しても残るようタブの間だけ保つ */
+  const threadDrafts = (() => {
+    try {
+      return new Map(JSON.parse(sessionStorage.getItem("mock-235-drafts") ?? "[]"));
+    } catch {
+      return new Map();
+    }
+  })();
+  /** 返信の書きかけを保つ */
+  const keepDrafts = () => {
+    try {
+      sessionStorage.setItem("mock-235-drafts", JSON.stringify([...threadDrafts]));
+    } catch {
+      // 保てない端末では、開いている間だけ残る
+    }
+  };
+
   // ===== サーバーの配信の代わり =====
   /** JSON の応答 */
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -113,8 +130,16 @@
     }
     if (path === "api/records") return json(records);
     if (path === "api/opened") return json({ previous: null });
-    if (path === "api/drafts") return new Response(null, { status: 204 });
-    if (path === "api/comments" && method === "GET") return json({ items: review, drafts: [] });
+    // 書きかけの保存: スレッドへの返信の書きかけはスレッドごとに保つ（空なら消す）
+    if (path === "api/drafts") {
+      if (payload?.thread !== undefined) {
+        if (payload.body === "") threadDrafts.delete(payload.thread);
+        else threadDrafts.set(payload.thread, payload.body);
+        keepDrafts();
+      }
+      return new Response(null, { status: 204 });
+    }
+    if (path === "api/comments" && method === "GET") return json({ items: review, drafts: [...threadDrafts].map(([thread, body]) => ({ thread, body })) });
     if (path === "api/comments" && method === "POST") {
       const item = { id: `C-${43 + review.length}`, target: payload.target ?? null, target_title: null, loc: payload.loc ?? null, body: payload.body, created: now() };
       review.push(item);

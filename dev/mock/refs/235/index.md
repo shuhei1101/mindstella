@@ -8,7 +8,7 @@
 
 | 画面 | 中身 |
 | --- | --- |
-| [comments](../../pages/comments/235/index.md) | コメントの一覧のレビュー中と会話のタブ・スレッドの一覧 |
+| [comments](../../pages/comments/235/index.md) | コメントの一覧のレビュー中とスレッドのタブ・スレッドの一覧 |
 | [comment-thread](../../pages/comment-thread/235/index.md) | スレッド 1 件（書き込み・返信・クローズ） |
 
 | 部品 | 中身 |

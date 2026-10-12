@@ -7745,12 +7745,12 @@ var MindmapPreview;
         checkbox.indeterminate = count > 0 && count < ids.length;
         return MindmapPreview.h({ tag: "label", attrs: { class: "legend-all-check", title: "すべて選ぶ" }, children: [checkbox] });
     }
-    // ===== 235: 会話のタブ（スレッドの一覧とスレッド 1 件） =====
-    /** 235: 会話のタブのオープン・クローズ・全部の絞り込みの文言 */
+    // ===== 235: スレッドのタブ（スレッドの一覧とスレッド 1 件） =====
+    /** 235: スレッドのタブのオープン・クローズ・全部の絞り込みの文言 */
     const TALK_FILTERS = [
         { value: "open", label: "オープン" },
         { value: "closed", label: "クローズ" },
-        { value: "all", label: "全部" },
+        { value: "all", label: "すべて" },
     ];
     /** 235: 書き手の呼び名 */
     const AUTHOR_LABELS = { user: "あなた", ai: "AI" };
@@ -7790,11 +7790,11 @@ var MindmapPreview;
             children: [MindmapPreview.icon(open ? "changed" : "check"), open ? "オープン" : "クローズ"],
         });
     }
-    /** 235: パネルの上端のタブ（レビュー中・会話）。左右の矢印キーで移る */
+    /** 235: パネルの上端のタブ（レビュー中・スレッド）。左右の矢印キーで移る */
     function panelTabs({ tab, reviewCount, openCount, on }) {
         const tabs = [
             { name: "review", label: "レビュー中", count: reviewCount },
-            { name: "talk", label: "会話", count: openCount },
+            { name: "talk", label: "スレッド", count: openCount },
         ];
         return MindmapPreview.h({
             tag: "div",
@@ -7905,7 +7905,7 @@ var MindmapPreview;
         const state = { open: "オープンの", closed: "クローズの", all: "" }[talk.filter];
         return talk.tag === null ? `${state}スレッドはありません。` : `タグ「${talk.tag}」の${state}スレッドはありません。`;
     }
-    /** 235: 会話のタブのスレッドの一覧 */
+    /** 235: スレッドのタブのスレッドの一覧 */
     function threadList(talk) {
         const counts = talkCounts(talk.threads, talk.tag);
         const rows = visibleThreads(talk);
@@ -8066,7 +8066,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** 235: 会話のタブで開いたスレッド 1 件 */
+    /** 235: スレッドのタブで開いたスレッド 1 件 */
     function threadView(thread, talk) {
         const open = thread.status === "open";
         const saving = talk.action.status === "saving";
@@ -8185,7 +8185,7 @@ var MindmapPreview;
             });
         // 消したコメントは元の場所（ID の連番の順）に出す
         const rows = [...items.map((item) => ({ item, gone: false })), ...removed.map((item) => ({ item, gone: true }))].sort((a, b) => commentNumber(a.item.id) - commentNumber(b.item.id));
-        // 235: 会話のタブで開いているスレッド
+        // 235: スレッドのタブで開いているスレッド
         const openedThread = props.talk.threads.find((thread) => thread.id === props.talk.opened);
         return MindmapPreview.h({
             tag: "aside",
@@ -8195,7 +8195,7 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "comments-head" },
                     children: [
-                        // 235: 見出しの代わりに、レビュー中と会話のタブを置く
+                        // 235: 見出しの代わりに、レビュー中とスレッドのタブを置く
                         panelTabs({ tab: props.talk.tab, reviewCount: items.length, openCount: talkCounts(props.talk.threads, null).open, on: props.talk.on }),
                         MindmapPreview.h({
                             tag: "button",
@@ -8204,7 +8204,7 @@ var MindmapPreview;
                         }),
                     ],
                 }),
-                // 235: 選んだタブの中身（会話のタブは、スレッドを開いていればスレッド 1 件、それ以外は一覧）
+                // 235: 選んだタブの中身（スレッドのタブは、スレッドを開いていればスレッド 1 件、それ以外は一覧）
                 MindmapPreview.h({
                     tag: "div",
                     attrs: { class: "ctab-panel", id: "ctab-panel", role: "tabpanel", "aria-labelledby": `ctab-${props.talk.tab}` },
@@ -11196,6 +11196,9 @@ var MindmapPreview;
             if (!first)
                 return;
             for (const draft of review.drafts) {
+                // 235: スレッドへの返信の書きかけは、スレッドのタブが持つ
+                if (draft.thread !== undefined)
+                    continue;
                 if (draft.target !== null && draft.loc !== null && !comment.pendingLoc.has(draft.target)) {
                     comment.pendingLoc.set(draft.target, draft.loc);
                 }
@@ -11376,8 +11379,8 @@ var MindmapPreview;
             refreshComments();
             redrawForm({ target: state.target, focus: true });
         };
-        // ===== 235: 会話のタブ =====
-        /** 235: 会話のタブの状態（開いているタブ・スレッド・絞り込み・開いているスレッド・返信の入力・クローズの結果） */
+        // ===== 235: スレッドのタブ =====
+        /** 235: スレッドのタブの状態（開いているタブ・スレッド・絞り込み・開いているスレッド・返信の入力・クローズの結果） */
         const talk = {
             tab: "review",
             threads: [],
@@ -11385,18 +11388,40 @@ var MindmapPreview;
             tag: null,
             opened: null,
             listScroll: 0,
+            /** 235: スレッドの ID → 返信の書きかけ（書きかけの保存でサーバーに保つ） */
+            drafts: new Map(),
             reply: { body: "", status: "idle", entered: false, at: null, detail: null },
             action: { status: "idle", detail: null },
         };
-        /** 235: スレッドを読み直す。届かないときは前の写しのまま */
+        /** 235: スレッドと返信の書きかけを読み直す。届かないときは前の写しのまま。書きかけは入力中の欄の分を上書きしない */
         const loadThreads = async () => {
             const result = await MindmapPreview.callApi("GET", "api/threads");
             if (result.ok && result.data !== null)
                 talk.threads = result.data.threads;
+            const review = await api.read();
+            if (!review.ok || review.data === null)
+                return;
+            for (const draft of review.data.drafts) {
+                if (draft.thread !== undefined && !draftTimer.has(draft.thread))
+                    talk.drafts.set(draft.thread, draft.body);
+            }
         };
-        /** 235: 返信の入力と結果を空に戻す */
+        /** 235: 書きかけを待っているスレッドの ID → タイマー */
+        const draftTimer = new Map();
+        /** 235: スレッドの書きかけをすぐ保つ（空なら消える） */
+        const saveThreadDraft = (id) => {
+            window.clearTimeout(draftTimer.get(id));
+            draftTimer.delete(id);
+            void api.saveDraft({ thread: id, body: talk.drafts.get(id) ?? "" });
+        };
+        /** 235: 待っているスレッドの書きかけを全て、待たずに保つ（一覧へ戻る・別のスレッドを開く・パネルを閉じるとき） */
+        const flushThreadDrafts = () => {
+            for (const id of [...draftTimer.keys()])
+                saveThreadDraft(id);
+        };
+        /** 235: 開いたスレッドの返信の入力を、そのスレッドの書きかけで始め、結果を空に戻す */
         const resetReply = () => {
-            talk.reply = { body: "", status: "idle", entered: false, at: null, detail: null };
+            talk.reply = { body: talk.opened === null ? "" : (talk.drafts.get(talk.opened) ?? ""), status: "idle", entered: false, at: null, detail: null };
             talk.action = { status: "idle", detail: null };
         };
         /** 235: パネルの中身の送りを、描き直した後に合わせる（スレッドは末尾、一覧は戻る前の位置） */
@@ -11405,7 +11430,7 @@ var MindmapPreview;
             if (body !== null)
                 body.scrollTop = to === "end" ? body.scrollHeight : to;
         };
-        /** 235: 会話のタブの引数 */
+        /** 235: スレッドのタブの引数 */
         const talkProps = () => ({
             ...talk,
             titleOf: (id) => index.byId.get(id)?.item.title ?? null,
@@ -11430,6 +11455,7 @@ var MindmapPreview;
                     document.querySelector('.comments-panel [data-focus="filter:' + talk.filter + '"]')?.focus();
                 },
                 open: (id) => {
+                    flushThreadDrafts();
                     talk.listScroll = document.querySelector(".comments-panel .comments-body")?.scrollTop ?? 0;
                     talk.opened = id;
                     resetReply();
@@ -11438,6 +11464,7 @@ var MindmapPreview;
                     document.querySelector('.comments-panel [data-focus="back"]')?.focus();
                 },
                 back: () => {
+                    flushThreadDrafts();
                     const from = talk.opened;
                     talk.opened = null;
                     resetReply();
@@ -11448,6 +11475,11 @@ var MindmapPreview;
                 },
                 input: (body) => {
                     talk.reply.body = body;
+                    // 書きかけをスレッドごとに覚え、入力が止まってから保つ
+                    const id = talk.opened;
+                    talk.drafts.set(id, body);
+                    window.clearTimeout(draftTimer.get(id));
+                    draftTimer.set(id, window.setTimeout(() => saveThreadDraft(id), MindmapPreview.DRAFT_SAVE_DELAY_MS));
                     // 入力が空かどうかで返信のボタンを切り替える（描き直さず、入力欄のフォーカスを保つ）
                     const button = document.querySelector('.comments-panel [data-focus="reply-send"]');
                     if (button !== null)
@@ -11472,6 +11504,9 @@ var MindmapPreview;
                 return;
             }
             talk.reply = { body: "", status: "sent", entered: result.data.entered, at: result.data.post.created, detail: null };
+            // 送った: そのスレッドの書きかけを消す
+            talk.drafts.delete(id);
+            saveThreadDraft(id);
             await loadThreads();
             renderComments();
             scrollTalk("end");
@@ -11517,7 +11552,7 @@ var MindmapPreview;
                 selected: comment.opened,
                 titleOf: (id) => index.byId.get(id)?.item.title ?? null,
                 free: formProps(null),
-                // 235: 会話のタブ
+                // 235: スレッドのタブ
                 talk: talkProps(),
                 on: {
                     close: closeList,
@@ -11578,7 +11613,7 @@ var MindmapPreview;
             display.open = false;
             renderSettings();
             comment.listOpen = true;
-            // 235: レビュー中のコメントが 1 件以上ならレビュー中のタブ、0 件なら会話のタブで開く
+            // 235: レビュー中のコメントが 1 件以上ならレビュー中のタブ、0 件ならスレッドのタブで開く
             talk.tab = comment.review.items.length > 0 ? "review" : "talk";
             talk.opened = null;
             resetReply();
@@ -11597,6 +11632,8 @@ var MindmapPreview;
         /** コメントの一覧を閉じる */
         const closeList = () => {
             flushDrafts();
+            // 235: 返信の書きかけも待たずに保つ
+            flushThreadDrafts();
             comment.listOpen = false;
             comment.opened = null;
             comment.removed = [];
@@ -12171,7 +12208,7 @@ var MindmapPreview;
         // サーバーの配信では、レビュー中のコメントと書きかけを読んでおく（コメントのボタンの件数と入力に使う）
         if (serverMode)
             await loadReview(true);
-        // 235: スレッドも読んでおく（会話のタブの件数に使う）
+        // 235: スレッドも読んでおく（スレッドのタブの件数に使う）
         if (serverMode)
             await loadThreads();
         // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える
