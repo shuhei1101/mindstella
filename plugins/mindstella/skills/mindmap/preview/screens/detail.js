@@ -1207,11 +1207,20 @@ var MindmapPreview;
                     tag: "span",
                     attrs: { class: "panel-kind" },
                     children: [
-                        entry === undefined ? "" : `${MindmapPreview.KIND_LABEL[entry.kind]} `,
+                        // 狭い幅でタイトルに幅を譲るとき、種類の名前だけを見た目から外せるよう包む
+                        entry === undefined ? "" : MindmapPreview.h({ tag: "span", attrs: { class: "panel-kind-label" }, children: [`${MindmapPreview.KIND_LABEL[entry.kind]} `] }),
                         MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [id] }),
                     ],
                 }),
                 entry?.kind === "docs" ? MindmapPreview.bodyFormatBadgeOf(entry.item.body) : null,
+                // 本文の先頭のタイトルと二重に読ませないよう読み上げから外す。収まらない分は省略し、乗せると全文が読める
+                entry === undefined
+                    ? null
+                    : MindmapPreview.h({
+                        tag: "span",
+                        attrs: { class: "panel-title", "aria-hidden": "true", title: entry.item.title },
+                        children: [entry.item.title],
+                    }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
                 arrow("前の項目へ戻る", "←", position <= 0, on.back),
                 arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
@@ -1243,6 +1252,24 @@ var MindmapPreview;
                     }),
             ],
         });
+    }
+    /** 本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルに `is-shown` を付ける */
+    function bindHeadTitle({ head, body }) {
+        const headTitle = head.querySelector(".panel-title");
+        const bodyTitle = body.querySelector(".d-title");
+        if (headTitle === null || bodyTitle === null)
+            return;
+        const observer = new IntersectionObserver((entries) => {
+            // 描き直されて文書から外れた見出しの見張りは外す
+            if (!head.isConnected) {
+                observer.disconnect();
+                return;
+            }
+            const last = entries[entries.length - 1];
+            // 領域の上へ出たときだけ出す（下にあるときは出さない）
+            headTitle.classList.toggle("is-shown", !last.isIntersecting && last.boundingClientRect.top < (last.rootBounds?.top ?? 0));
+        }, { root: body, threshold: 0 });
+        observer.observe(bodyTitle);
     }
     /** 詳細パネルの節の見出し（h3）の下に、本文の見出し（h1〜h6）を並べるための段の差 */
     const BODY_HEADING_OFFSET = 3;
@@ -1456,6 +1483,7 @@ var MindmapPreview;
             children: [detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }) })],
         });
         const head = detailHead(props);
+        bindHeadTitle({ head, body });
         // 見出しと下端の入力の間の本文だけをスクロールする
         const footer = comment === null ? null : MindmapPreview.sendForm(comment.form);
         let root;
