@@ -48,6 +48,8 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 /* 見出しの種類と ID: 縮めない・折り返さない（収まらない分はタイトルの側で切る） */
 .panel-kind { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--text-2); }
 .panel-head .spacer { flex: 1; }
+/* 見出しのボタン: 縮めない（はみ出す分はタイトルの省略だけで吸う） */
+.panel-head .icon-btn { flex: none; }
 /* 見出しのタイトル: 1 行で省略記号を付けて切り、ボタンを押し出さない。出し入れは 0.15 秒の opacity（隠す側は opacity のあとに visibility を切る） */
 .panel-title { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--fs-h2); font-weight: 600; line-height: 1.4; white-space: nowrap; text-overflow: ellipsis; transition: opacity .15s ease, visibility 0s linear .15s; }
 /* 隠している間のタイトル: 場所は取ったまま見せない（出し入れで種類と ID を動かさない） */

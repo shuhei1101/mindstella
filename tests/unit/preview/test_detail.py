@@ -1682,7 +1682,7 @@ def test_detail_panel_when_alias_tip_escape_in_full(
     }
 
 
-# 見出しのタイトル（`.panel-title`）を調べる関数の集まり。`openHeadTitle` が項目を開き（開いていた詳細は外す）、`readHeadTitle` が今の見出しのタイトルの状態を読み、`scrollBody` が本文のスクロール領域を送って見出しのタイトルの出し入れが済むまで待つ
+# 見出しのタイトル（`.panel-title`）を調べる関数の集まり。`openHeadTitle` が項目を開き（開いていた詳細は外す）、`readHeadTitle` が今の見出しのタイトルの状態を読み、`readHeadButtonWidths` が見出しの表示されているボタンの幅を読み、`scrollBody` が本文のスクロール領域を送って見出しのタイトルの出し入れが済むまで待つ
 HEAD_TITLE_FUNCTIONS = """
 // 描画と、見張りが返す結果の反映を待つコマ数
 const SETTLE_FRAMES = 3;
@@ -1723,6 +1723,10 @@ const readHeadTitle = () => {
         visibility: getComputedStyle(title).visibility,
     };
 };
+// 見出しの表示されているボタン（幅の広い画面で隠れる「一覧へ戻る」は除く）の幅
+const readHeadButtonWidths = () => [...window.__panel.querySelectorAll(".panel-head .icon-btn")]
+    .filter((button) => button.getClientRects().length > 0)
+    .map((button) => button.getBoundingClientRect().width);
 const scrollBody = async (position) => {
     const body = window.__panel.querySelector(".panel-body");
     body.scrollTop = position === "end" ? body.scrollHeight : 0;
@@ -1745,11 +1749,14 @@ async ({data, id}) => {
     const body = window.__panel.querySelector(".panel-body");
     const bodyRatio = body.scrollHeight / body.clientHeight;
     const top = readHeadTitle();
+    const topButtons = readHeadButtonWidths();
     await scrollBody("end");
     const end = readHeadTitle();
+    const endButtons = readHeadButtonWidths();
     await scrollBody("top");
     const back = readHeadTitle();
-    return {bodyRatio, top, end, back};
+    const backButtons = readHeadButtonWidths();
+    return {bodyRatio, top, end, back, buttons: {top: topButtons, end: endButtons, back: backButtons}};
 }"""
 )
 
@@ -1758,6 +1765,15 @@ HEAD_TITLE_LONG_TITLE = (
     "話し合いの進め方の手引き（セットアップからヒアリング・リサーチ・方針転換を経て"
     "ゴール判定でリリースするまでの流れと、各段で記録に残すことの一覧）"
 )
+
+# 見出しのボタン（`.panel-head .icon-btn`）の幅（`--control-h`）。長いタイトルでも縮まない
+HEAD_BUTTON_WIDTH = 32
+
+# 横のパネルの見出しの表示されているボタンの数（戻る・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
+HEAD_BUTTON_COUNT_PANEL = 4
+
+# 全画面の見出しのボタンの数（戻る・進む・元の大きさに戻す）
+HEAD_BUTTON_COUNT_FULL = 3
 
 # 本文の高さを、本文のスクロール領域の高さの 3 倍以上にする段落の数
 HEAD_TITLE_LONG_BODY_PARAGRAPHS = 200
@@ -1810,6 +1826,11 @@ def test_detail_panel_when_head_title_on_scroll(
     assert result["end"]["visibility"] == "visible"
     # 頭へ戻す: 隠れる
     assert result["back"]["shown"] is False
+    # 長いタイトルでも、どの時点でも見出しのボタンは縮まない
+    expected_widths = [HEAD_BUTTON_WIDTH] * HEAD_BUTTON_COUNT_PANEL
+    assert result["buttons"]["top"] == expected_widths
+    assert result["buttons"]["end"] == expected_widths
+    assert result["buttons"]["back"] == expected_widths
 
 
 # 本文の長い A-1 を開いて本文を送り、本文の短い A-2、本文の頭のままの A-1 の順に開き直して、開き直した直後の見出しのタイトルを読む
@@ -1864,9 +1885,11 @@ HEAD_TITLE_FULL_SCRIPT = (
 async ({data}) => {
     await openHeadTitle({data, id: "A-1", full: true});
     const before = readHeadTitle();
+    const beforeButtons = readHeadButtonWidths();
     await scrollBody("end");
     const after = readHeadTitle();
-    return {before, after, inDialog: window.__panel.matches("dialog") && window.__panel.open};
+    const afterButtons = readHeadButtonWidths();
+    return {before, after, buttons: {before: beforeButtons, after: afterButtons}, inDialog: window.__panel.matches("dialog") && window.__panel.open};
 }"""
 )
 
@@ -1896,3 +1919,7 @@ def test_detail_panel_when_head_title_full(
     # 送る前は出ず、送った後は dialog の中の見出しのタイトルが出る
     assert result["before"]["shown"] is False
     assert result["after"]["shown"] is True
+    # 送る前も送った後も、見出しのボタンは縮まない
+    expected_widths = [HEAD_BUTTON_WIDTH] * HEAD_BUTTON_COUNT_FULL
+    assert result["buttons"]["before"] == expected_widths
+    assert result["buttons"]["after"] == expected_widths
