@@ -1,7 +1,7 @@
 /* 部品のモックのカタログの見た目（実画面には無い） */
 
 /* カタログのページ: 本文の幅と余白 */
-.catalog { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+.catalog { box-sizing: border-box; width: 100%; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
 /* カタログの題 */
 .catalog > h1 { margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em; }
 /* カタログの節: 状態ごとの案を縦に並べる */
@@ -15,7 +15,7 @@
 /* 狭い幅の見本 */
 .stage.narrow { width: 390px; max-width: 100%; }
 /* 左のパネルと同じ幅の枠: パネルの中の部品をこの中に置く */
-.pane { width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); }
+.pane { width: var(--drawer-w); max-width: 100%; min-width: 0; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); }
 /* 狭い幅の見本の枠: 台の幅いっぱい */
 .stage.narrow .pane { width: 100%; }
 /* 枠の中の一覧: パネルと同じ余白で置く */
