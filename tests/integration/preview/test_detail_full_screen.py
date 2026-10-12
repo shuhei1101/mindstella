@@ -40,6 +40,18 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import preselect_diff
+from preview_head_title_helpers import (
+    ANIMATIONS_FINISHED_JS,
+    HEAD_BUTTON_WIDTH_PX,
+    HEAD_LONG_TITLE,
+    HEAD_METRICS_JS,
+    HEAD_TITLE_HIDDEN_JS,
+    HEAD_TITLE_PREFIX,
+    HEAD_TITLE_SHOWN_JS,
+    HEAD_TITLE_TIMEOUT_MS,
+    SCROLL_BODY_TO_END_JS,
+    SCROLL_BODY_TO_TOP_JS,
+)
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
 
@@ -795,3 +807,44 @@ def test_html_body_entry_position_when_mouse(
         0,
     )
     assert gap <= rect["height"]
+
+
+# 見出しの帯のタイトルを測る全画面
+HEAD_FULL = "dialog.full"
+
+
+def test_head_title_on_scroll(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、本文を送って先頭のタイトルが隠れたときだけ見出しにタイトルを出し、先頭へ戻すと隠す。ボタンは押し出されない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open] .d-title")
+    # 実行
+    page.wait_for_function(HEAD_TITLE_HIDDEN_JS, arg=HEAD_FULL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    before = page.evaluate(HEAD_METRICS_JS, HEAD_FULL)
+    page.evaluate(SCROLL_BODY_TO_END_JS, HEAD_FULL)
+    page.wait_for_function(HEAD_TITLE_SHOWN_JS, arg=HEAD_FULL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    after = page.evaluate(HEAD_METRICS_JS, HEAD_FULL)
+    page.evaluate(SCROLL_BODY_TO_TOP_JS, HEAD_FULL)
+    page.wait_for_function(HEAD_TITLE_HIDDEN_JS, arg=HEAD_FULL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    back = page.evaluate(HEAD_METRICS_JS, HEAD_FULL)
+    # 検証
+    # 送る前は出さず、送って隠れると出し、先頭へ戻すと隠す
+    assert (before["shown"], before["visibility"]) == (False, "hidden")
+    assert (after["shown"], after["visibility"]) == (True, "visible")
+    assert (back["shown"], back["visibility"]) == (False, "hidden")
+    # 読み上げからは外し、title は全文を持つ
+    assert after["text"].startswith(HEAD_TITLE_PREFIX)
+    assert (after["titleAttr"], after["ariaHidden"]) == (HEAD_LONG_TITLE, "true")
+    # 資料は形式の札の右に並び、種類と ID は動かない
+    assert after["titleLeft"] >= after["badgeRight"]
+    assert (after["titleLeft"], after["kindRight"]) == (before["titleLeft"], before["kindRight"])
+    # 長いタイトルは 1 行で省略記号付きで切れ、ボタンは縮まず押し出されない
+    assert (after["truncated"], after["oneLine"]) == (True, True)
+    assert after["buttonWidths"] == [HEAD_BUTTON_WIDTH_PX] * len(after["buttonWidths"])
+    assert after["titleRight"] <= after["firstButtonLeft"]
+    assert after["lastButtonRight"] <= after["headRight"]

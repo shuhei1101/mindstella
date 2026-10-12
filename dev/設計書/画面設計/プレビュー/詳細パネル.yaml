@@ -8,8 +8,8 @@ elements:
     enabled_when: その向きに見てきた項目がある
   - name: タイトル
     kind: heading
-    position: 見出し
-    description: 項目の ID・タイトル・状態。納品物の資料はタイトルの右に余白を空けて納品物の印を置く（状態の横に並べない）
+    position: 本文のスクロール領域 > 先頭
+    description: 項目の状態とタイトル。納品物の資料はタイトルの右に余白を空けて納品物の印を置く（状態の横に並べない）。本文を送るとスクロール領域と一緒に隠れ、代わりに見出しのタイトルが出る
     io: 表示
     source: プレビューを開く.id の項目
   - name: 全画面表示
@@ -292,7 +292,7 @@ elements:
     args:
       - name: format
         value: 資料の `body` が `.html` で終われば `html`、それ以外は `md`
-    position: 見出し > タイトル > 種類と ID の右
+    position: 見出し > 種類と ID の右
     description: 資料の本文の形式を示す
     io: 表示
     source: プレビューを開く.id の項目の body
@@ -372,8 +372,23 @@ elements:
     visible_when: 資料・調査が `aliases` を持つ
     source: プレビューを開く.mindmap-data（docs[].aliases・research[].aliases）
     status: planned
+  - name: 種類と ID
+    kind: label
+    position: 見出し
+    description: 項目の種類の名前と ID（等幅）。幅 480px 以下で見出しのタイトルを出している間は、種類の名前を見た目から外して ID だけにする（読み上げには残す）
+    io: 表示
+    source: プレビューを開く.id の項目
+    visible_when: 常時
+  - name: 見出しのタイトル
+    kind: label
+    position: 見出し > 形式の札の右（形式の札が無い項目は種類と ID の右）
+    description: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間だけ、項目のタイトルを出す。本文を先頭へ戻すと隠す。隠している間も場所は取ったままにし、出し入れで種類と ID を動かさない。出し入れは 0.15 秒で薄く現れる・消える（動きを減らす設定では切り替えるだけ）。見出しの帯に収まらないタイトルは 1 行で省略記号を付けて切り、戻る・進む・全画面表示・閉じるのボタンを押し出さない。乗せると全文が出る（`title`）。本文の先頭のタイトルと二重に読ませないよう読み上げから外す（`aria-hidden`）。新規・取り下げ・納品物の札は出さず、文字だけにする
+    io: 表示
+    source: プレビューを開く.id の項目の title
+    visible_when: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間
+    reason: '本文を送っても何の項目を読んでいるかが分かるようにし、開いた直後は同じ題を 2 度見せないため（確認ログ: dev/pr/230/確認ログ.md）'
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
-mock: dev/mock/pages/detail-panel/190/a-always/index.html
+mock: dev/mock/pages/detail-panel/230/a-on-scroll/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`
