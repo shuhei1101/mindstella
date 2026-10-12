@@ -146,7 +146,26 @@ tests/unit/scripts/test_query.py ........................                [ 73%]
 tests/unit/scripts/test_readme.py ..........                             [ 74%]
 tests/unit/scripts/test_register.py ...............................s.... [ 77%]
 .......                                                                  [ 77%]
-tests/unit/scripts/test_serve.py ....................................... [ 81%]
+tests/unit/scripts/test_serve.py ..............Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-detail-head-title/plugins/mindstella/skills/mindmap/scripts/serve.py", line 291, in do_GET
+    self._reply(index_response(context.preview_dir))
+  File "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-detail-head-title/plugins/mindstella/skills/mindmap/scripts/serve.py", line 426, in _reply
+    self.wfile.write(response.body)
+  File "/usr/lib/python3.12/socketserver.py", line 840, in write
+    self._sock.sendall(b)
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
+......................... [ 81%]
 ............................................                             [ 84%]
 tests/unit/scripts/test_server.py ..................                     [ 86%]
 tests/unit/scripts/test_settings_update.py ............................. [ 88%]
@@ -156,4 +175,4 @@ tests/unit/scripts/test_store.py ....................................... [ 91%]
 tests/unit/scripts/test_submissions.py ................                  [ 98%]
 tests/unit/scripts/test_versions.py .................                    [100%]
 
-================= 1212 passed, 1 skipped in 282.93s (0:04:42) ==================
+================= 1212 passed, 1 skipped in 377.98s (0:06:17) ==================

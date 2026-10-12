@@ -13,4 +13,4 @@ tests/integration/preview/test_detail_full_screen.py ................... [ 82%]
 .............                                                            [ 90%]
 tests/integration/preview/test_detail_panel_screen.py ................   [100%]
 
-================ 163 passed, 1 deselected in 245.18s (0:04:05) =================
+================ 163 passed, 1 deselected in 257.35s (0:04:17) =================
