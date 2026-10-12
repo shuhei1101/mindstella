@@ -7666,7 +7666,7 @@ var MindmapPreview;
         return MindmapPreview.h({
             tag: "li",
             attrs: {
-                class: `row${item.id === props.selected ? " selected" : ""}${reason === undefined ? "" : " stale"}`,
+                class: `row${item.id === props.selected || item.id === props.talk.reviewFocus ? " selected" : ""}${reason === undefined ? "" : " stale"}${isBlocked(item, props.talk) ? " blocked" : ""}`,
                 "data-comment": item.id,
             },
             children: [
@@ -7675,7 +7675,9 @@ var MindmapPreview;
                     attrs: {
                         type: "checkbox",
                         class: "row-check",
-                        checked: props.checked.has(item.id),
+                        // 235: クローズのスレッドへの返信はチェックできない
+                        checked: props.checked.has(item.id) && !isBlocked(item, props.talk),
+                        disabled: isBlocked(item, props.talk),
                         "aria-label": `${label}を送る`,
                         "data-focus": `check:${item.id}`,
                         onchange: (event) => props.on.check(item.id, event.target.checked),
@@ -7685,7 +7687,8 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "row-main" },
                     children: [
-                        targetCell(item, props),
+                        // 235: 行の頭に、返信か新しいスレッドかと、返信先・向けた項目を出す
+                        reviewRowHead(item, props),
                         item.loc === null
                             ? null
                             : MindmapPreview.h({
@@ -7705,6 +7708,8 @@ var MindmapPreview;
                                 on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
                             })
                             : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                        // 235: クローズのスレッドへの返信は、送れない理由と「オープンに戻す」へ移る入口を出す
+                        isBlocked(item, props.talk) ? blockedNote(item, props) : null,
                         reason === undefined
                             ? null
                             : MindmapPreview.h({
@@ -7745,8 +7750,8 @@ var MindmapPreview;
         checkbox.indeterminate = count > 0 && count < ids.length;
         return MindmapPreview.h({ tag: "label", attrs: { class: "legend-all-check", title: "すべて選ぶ" }, children: [checkbox] });
     }
-    // ===== 235: スレッドのタブ（スレッドの一覧とスレッド 1 件） =====
-    /** 235: スレッドのタブのオープン・クローズ・全部の絞り込みの文言 */
+    // ===== 235: スレッドの一覧・スレッド 1 件・レビュー中を確かめる画面 =====
+    /** 235: スレッドの状態の絞り込みの文言 */
     const TALK_FILTERS = [
         { value: "open", label: "オープン" },
         { value: "closed", label: "クローズ" },
@@ -7756,13 +7761,38 @@ var MindmapPreview;
     const AUTHOR_LABELS = { user: "あなた", ai: "AI" };
     /** 235: 本文の中の項目の ID（例 D-1・T-12・A-3） */
     const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
+    /** 235: クローズの理由の選択肢（理由の入れ方の案 C） */
+    const CLOSE_CHOICES = ["解決した", "取り下げ", "重複"];
+    /** 235: まだ送っていない新しいスレッドの、画面の中だけの ID の頭 */
+    const PENDING_THREAD_PREFIX = "new:";
+    /** 235: レビュー中の書き込みのうち、スレッドへの返信か */
+    function isReply(item) {
+        return (item.thread ?? null) !== null;
+    }
     /** 235: スレッドの最後の書き込み */
     function lastPost(thread) {
         return thread.posts[thread.posts.length - 1];
     }
-    /** 235: AI の返信待ちか（最後の書き込みが利用者） */
+    /** 235: AI の返信待ちか（最後の書き込みが利用者のオープンのスレッド） */
     function waitsForAi(thread) {
         return thread.status === "open" && lastPost(thread).author === "user";
+    }
+    /** 235: レビュー中の返信の向けた先のスレッド（無ければ undefined） */
+    function threadOf(item, talk) {
+        return talk.threads.find((thread) => thread.id === item.thread);
+    }
+    /** 235: クローズのスレッドへの返信か（送れない行にする） */
+    function isBlocked(item, talk) {
+        return isReply(item) && threadOf(item, talk)?.status === "closed";
+    }
+    MindmapPreview.isBlockedReply = isBlocked;
+    /** 235: スレッドが持つレビュー中の返信 */
+    function pendingReplies(thread, props) {
+        return props.items.filter((item) => item.thread === thread.id);
+    }
+    /** 235: まだ送っていない新しいスレッド（レビュー中の、返信でない書き込み）を一覧に出すか */
+    function showsPendingThreads(talk) {
+        return talk.variant.pending !== "b" && talk.filter !== "closed" && talk.tag === null;
     }
     /** 235: タグで絞ったスレッドの、状態ごとの件数 */
     function talkCounts(threads, tag) {
@@ -7782,49 +7812,14 @@ var MindmapPreview;
         return thread.summary ?? thread.posts[0].body.split("\n")[0];
     }
     /** 235: 状態の札（色に加えて印と文字で区別する） */
-    function threadState(thread) {
-        const open = thread.status === "open";
-        return MindmapPreview.h({
-            tag: "span",
-            attrs: { class: `th-state ${thread.status}` },
-            children: [MindmapPreview.icon(open ? "changed" : "check"), open ? "オープン" : "クローズ"],
-        });
+    function threadState(status) {
+        const marks = { open: ["changed", "オープン"], closed: ["check", "クローズ"], pending: ["edit", "レビュー中"] };
+        const [name, label] = marks[status];
+        return MindmapPreview.h({ tag: "span", attrs: { class: `th-state ${status}` }, children: [MindmapPreview.icon(name), label] });
     }
-    /** 235: パネルの上端のタブ（レビュー中・スレッド）。左右の矢印キーで移る */
-    function panelTabs({ tab, reviewCount, openCount, on }) {
-        const tabs = [
-            { name: "review", label: "レビュー中", count: reviewCount },
-            { name: "talk", label: "スレッド", count: openCount },
-        ];
-        return MindmapPreview.h({
-            tag: "div",
-            attrs: { class: "ctabs", role: "tablist", "aria-label": "コメントの種類" },
-            children: tabs.map((entry, position) => MindmapPreview.h({
-                tag: "button",
-                attrs: {
-                    class: "ctab",
-                    type: "button",
-                    role: "tab",
-                    id: `ctab-${entry.name}`,
-                    "aria-selected": String(entry.name === tab),
-                    "aria-controls": "ctab-panel",
-                    tabindex: entry.name === tab ? "0" : "-1",
-                    "data-focus": `tab:${entry.name}`,
-                    onclick: () => on.tab(entry.name),
-                    onkeydown: (event) => {
-                        // 左右の矢印で隣のタブへ移る（2 つなので端で折り返す）
-                        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
-                            return;
-                        event.preventDefault();
-                        on.tab(tabs[(position + 1) % tabs.length].name);
-                    },
-                },
-                children: [
-                    entry.label,
-                    MindmapPreview.h({ tag: "span", attrs: { class: "count", "aria-label": `${entry.count} 件` }, children: [entry.count] }),
-                ],
-            })),
-        });
+    /** 235: レビュー中の印（スレッドの行と、スレッドの中のレビュー中の書き込みに出す） */
+    function pendingMark() {
+        return MindmapPreview.h({ tag: "span", attrs: { class: "th-pending" }, children: [MindmapPreview.icon("edit"), "レビュー中"] });
     }
     /** 235: 本文の文字。項目の ID は、記録にあればその項目を開くリンクにする */
     function postText(body, talk) {
@@ -7847,13 +7842,48 @@ var MindmapPreview;
         children.push(body.slice(last));
         return MindmapPreview.h({ tag: "p", attrs: { class: "post-body" }, children });
     }
+    /** 235: パネルの見出しの帯（見出し・レビュー中を確かめる入口・閉じる） */
+    function panelHead(props) {
+        const { talk } = props;
+        const count = props.items.length;
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "comments-head" },
+            children: [
+                MindmapPreview.h({ tag: "h2", children: ["コメント"] }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
+                // レビュー中を確かめる画面では、入口を出さない（押しても何も変わらない）
+                talk.view === "review"
+                    ? null
+                    : MindmapPreview.h({
+                        tag: "button",
+                        attrs: {
+                            class: `btn review-entry${count === 0 ? " zero" : ""}`,
+                            type: "button",
+                            "aria-label": `レビュー中の書き込みを確かめる（${count} 件）`,
+                            "data-focus": "review",
+                            onclick: () => talk.on.review(),
+                        },
+                        children: [
+                            talk.variant.names === "b" ? "レビュー中を確かめる" : "レビュー中",
+                            MindmapPreview.h({ tag: "span", attrs: { class: "count", "aria-hidden": "true" }, children: [count] }),
+                        ],
+                    }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "icon-btn", type: "button", "aria-label": "コメントの一覧を閉じる", "data-focus": "close", onclick: props.on.close },
+                    children: [MindmapPreview.icon("x")],
+                }),
+            ],
+        });
+    }
     /** 235: スレッドの行（押すとスレッドを開く。タグを押すとそのタグで絞る） */
-    function threadRow(thread, talk) {
+    function threadRow(thread, props) {
+        const { talk } = props;
         const last = lastPost(thread);
-        const title = threadTitle(thread);
         return MindmapPreview.h({
             tag: "li",
-            attrs: { class: `th-row${waitsForAi(thread) ? " waiting" : ""}`, "data-thread": thread.id },
+            attrs: { class: "th-row", "data-thread": thread.id },
             children: [
                 MindmapPreview.h({
                     tag: "button",
@@ -7863,8 +7893,8 @@ var MindmapPreview;
                             tag: "span",
                             attrs: { class: "th-line1" },
                             children: [
-                                threadState(thread),
-                                MindmapPreview.h({ tag: "span", attrs: { class: `th-title${thread.summary === null ? " head" : ""}` }, children: [title] }),
+                                threadState(thread.status),
+                                MindmapPreview.h({ tag: "span", attrs: { class: `th-title${thread.summary === null ? " head" : ""}` }, children: [threadTitle(thread)] }),
                             ],
                         }),
                         MindmapPreview.h({
@@ -7872,9 +7902,10 @@ var MindmapPreview;
                             attrs: { class: "th-line2" },
                             children: [
                                 thread.target === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [thread.target] }),
-                                MindmapPreview.h({ tag: "span", attrs: { class: `th-author ${last.author}` }, children: [AUTHOR_LABELS[last.author]] }),
+                                MindmapPreview.h({ tag: "span", attrs: { class: "th-author" }, children: [AUTHOR_LABELS[last.author]] }),
                                 MindmapPreview.h({ tag: "time", attrs: { datetime: last.created }, children: [MindmapPreview.formatJst(last.created)] }),
                                 waitsForAi(thread) ? MindmapPreview.h({ tag: "span", attrs: { class: "th-wait" }, children: ["AI の返信待ち"] }) : null,
+                                pendingReplies(thread, props).length > 0 ? pendingMark() : null,
                             ],
                         }),
                     ],
@@ -7900,15 +7931,86 @@ var MindmapPreview;
             ],
         });
     }
+    /** 235: まだ送っていない新しいスレッドの行（状態の札の代わりに「レビュー中」の札を出す） */
+    function pendingThreadRow(item, props) {
+        const { talk } = props;
+        // 案 A はレビュー中を確かめる画面のその行、案 A2 はスレッドの画面を開く
+        const open = talk.variant.pending === "a" ? () => talk.on.review(item.id) : () => talk.on.open(`${PENDING_THREAD_PREFIX}${item.id}`);
+        return MindmapPreview.h({
+            tag: "li",
+            attrs: { class: "th-row pending", "data-pending": item.id },
+            children: [
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "th-open", type: "button", "data-focus": `thread:${PENDING_THREAD_PREFIX}${item.id}`, onclick: open },
+                    children: [
+                        MindmapPreview.h({
+                            tag: "span",
+                            attrs: { class: "th-line1" },
+                            children: [threadState("pending"), MindmapPreview.h({ tag: "span", attrs: { class: "th-title head" }, children: [item.body.split("\n")[0]] })],
+                        }),
+                        MindmapPreview.h({
+                            tag: "span",
+                            attrs: { class: "th-line2" },
+                            children: [
+                                item.target === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.target] }),
+                                MindmapPreview.h({ tag: "span", attrs: { class: "th-author" }, children: [AUTHOR_LABELS.user] }),
+                                MindmapPreview.h({ tag: "time", attrs: { datetime: item.created }, children: [MindmapPreview.formatJst(item.created)] }),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+    }
     /** 235: 0 件のときの文言 */
     function emptyTalkText(talk) {
         const state = { open: "オープンの", closed: "クローズの", all: "" }[talk.filter];
         return talk.tag === null ? `${state}スレッドはありません。` : `タグ「${talk.tag}」の${state}スレッドはありません。`;
     }
-    /** 235: スレッドのタブのスレッドの一覧 */
-    function threadList(talk) {
+    /** 235: 一覧の下端の、新しいスレッドを立てる入口と入力 */
+    function newThreadBox(props) {
+        const { talk } = props;
+        if (!talk.composing) {
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "comments-free talk-new" },
+                children: [
+                    MindmapPreview.h({
+                        tag: "button",
+                        attrs: { class: "btn", type: "button", "data-focus": "compose", onclick: () => talk.on.compose(true) },
+                        children: [MindmapPreview.icon("plus"), "新しいスレッド"],
+                    }),
+                ],
+            });
+        }
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "comments-free talk-new open" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "talk-new-head" },
+                    children: [
+                        MindmapPreview.h({ tag: "span", attrs: { class: "send-label" }, children: ["新しいスレッド"] }),
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: { class: "icon-btn", type: "button", "aria-label": "新しいスレッドの入力を閉じる", "data-focus": "compose-close", onclick: () => talk.on.compose(false) },
+                            children: [MindmapPreview.icon("x")],
+                        }),
+                    ],
+                }),
+                MindmapPreview.sendForm({ ...props.free, collapsed: false }),
+            ],
+        });
+    }
+    /** 235: スレッドの一覧 */
+    function threadList(props) {
+        const { talk } = props;
+        const pending = showsPendingThreads(talk) ? props.items.filter((item) => !isReply(item)) : [];
         const counts = talkCounts(talk.threads, talk.tag);
         const rows = visibleThreads(talk);
+        const total = talk.threads.filter((thread) => talk.filter === "all" || thread.status === talk.filter).length;
         return [
             MindmapPreview.h({
                 tag: "div",
@@ -7947,7 +8049,7 @@ var MindmapPreview;
                                         }),
                                     ],
                                 }),
-                                MindmapPreview.h({ tag: "span", attrs: { class: "hint" }, children: [`${rows.length} / ${talk.threads.filter((thread) => talk.filter === "all" || thread.status === talk.filter).length} 件`] }),
+                                MindmapPreview.h({ tag: "span", attrs: { class: "hint" }, children: [`${rows.length} / ${total} 件`] }),
                             ],
                         }),
                 ],
@@ -7956,34 +8058,35 @@ var MindmapPreview;
                 tag: "div",
                 attrs: { class: "comments-body" },
                 children: [
-                    rows.length === 0
+                    rows.length + pending.length === 0
                         ? MindmapPreview.h({ tag: "p", attrs: { class: "comments-empty" }, children: [MindmapPreview.icon("comment"), emptyTalkText(talk)] })
-                        : MindmapPreview.h({ tag: "ul", attrs: { class: "th-list" }, children: rows.map((thread) => threadRow(thread, talk)) }),
+                        : MindmapPreview.h({
+                            tag: "ul",
+                            attrs: { class: "th-list" },
+                            children: [...pending.map((item) => pendingThreadRow(item, props)), ...rows.map((thread) => threadRow(thread, props))],
+                        }),
                 ],
             }),
+            newThreadBox(props),
         ];
     }
-    /** 235: 返信を送った結果の文言 */
+    /** 235: 返信をレビューに追加した結果の文言 */
     function replyOutcome(reply) {
-        if (reply.status === "sending") {
-            return [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", children: ["送っています"] })];
+        if (reply.status === "saving") {
+            return [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", children: ["レビューに追加しています"] })];
         }
-        if (reply.status === "sent") {
-            const time = MindmapPreview.formatJst(reply.at).slice(-5);
-            if (!reply.entered) {
-                return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [`返信を送りましたが、Claude Code には入力できませんでした（${time}）。返信は保存されていて、次に話し合いを始めたときに取り込まれます。`] })];
-            }
-            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [`返信を送り、Claude Code に入力しました（${time}）。`] })];
+        if (reply.status === "saved") {
+            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [`レビューに追加しました（レビュー中 ${reply.count} 件）。`] })];
         }
         if (reply.status === "failed") {
-            return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [reply.detail === null ? "送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。" : `送れませんでした。${reply.detail}`] })];
+            return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [reply.detail === null ? "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。" : `レビューに追加できませんでした。${reply.detail}`] })];
         }
         return [];
     }
-    /** 235: スレッドの下端の返信の入力（その場で送る。Ctrl+Enter でも送る） */
+    /** 235: スレッドの下端の返信の入力（レビューに追加で溜める。Ctrl+Enter でも溜める） */
     function replyForm(thread, talk) {
         const { reply } = talk;
-        const sending = reply.status === "sending";
+        const saving = reply.status === "saving";
         const field = MindmapPreview.h({
             tag: "textarea",
             attrs: {
@@ -7994,10 +8097,10 @@ var MindmapPreview;
                 "aria-keyshortcuts": "Control+Enter",
                 "aria-describedby": "reply-msg",
                 "data-focus": "reply",
-                readonly: sending,
+                readonly: saving,
                 oninput: (event) => talk.on.input(event.target.value),
                 onkeydown: (event) => {
-                    // 変換の確定の Enter では送らない
+                    // 変換の確定の Enter では溜めない
                     if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.isComposing) {
                         event.preventDefault();
                         event.target.form.requestSubmit();
@@ -8019,7 +8122,7 @@ var MindmapPreview;
                 novalidate: true,
                 onsubmit: (event) => {
                     event.preventDefault();
-                    if (field.value.trim() === "" || sending)
+                    if (field.value.trim() === "" || saving)
                         return;
                     talk.on.reply(field.value);
                 },
@@ -8037,11 +8140,11 @@ var MindmapPreview;
                             attrs: {
                                 class: "btn primary",
                                 type: "submit",
-                                title: "返信する（Ctrl+Enter）",
+                                title: "レビューに追加（Ctrl+Enter）",
                                 "data-focus": "reply-send",
-                                disabled: reply.body.trim() === "" || sending,
+                                disabled: reply.body.trim() === "" || saving,
                             },
-                            children: [MindmapPreview.icon("send"), "返信する"],
+                            children: [MindmapPreview.icon("comment"), "レビューに追加"],
                         }),
                     ],
                 }),
@@ -8058,7 +8161,7 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "post-head" },
                     children: [
-                        MindmapPreview.h({ tag: "span", attrs: { class: `post-author ${post.author}` }, children: [AUTHOR_LABELS[post.author]] }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "post-author" }, children: [AUTHOR_LABELS[post.author]] }),
                         MindmapPreview.h({ tag: "time", attrs: { datetime: post.created }, children: [MindmapPreview.formatJst(post.created)] }),
                     ],
                 }),
@@ -8066,56 +8169,236 @@ var MindmapPreview;
             ],
         });
     }
-    /** 235: スレッドのタブで開いたスレッド 1 件 */
-    function threadView(thread, talk) {
-        const open = thread.status === "open";
+    /** 235: レビュー中の書き込み 1 件（スレッドの末尾に印つきで出し、その場で修正・削除する） */
+    function pendingPost(item, props) {
+        const editingHere = props.editing === item.id && props.editingIn !== "detail";
+        return MindmapPreview.h({
+            tag: "li",
+            attrs: { class: "post user pending", "data-comment": item.id },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "post-head" },
+                    children: [
+                        MindmapPreview.h({ tag: "span", attrs: { class: "post-author" }, children: [AUTHOR_LABELS.user] }),
+                        pendingMark(),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
+                        props.editing === item.id ? null : reviewRowActions({ item, focus: "", on: { edit: props.on.edit, remove: props.on.remove } }),
+                    ],
+                }),
+                editingHere
+                    ? reviewEditForm({ item, body: props.editBody ?? null, error: props.editError ?? null, focus: "", on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit } })
+                    : postText(item.body, props.talk),
+            ],
+        });
+    }
+    /** 235: クローズ・オープンへの戻しの記録 1 件（日時と理由。案 B は最後の記録に、後から理由を書き足す入口を出す） */
+    function threadEvent({ event, isLast, talk }) {
+        const closed = event.kind === "closed";
+        const canAddReason = talk.variant.reason === "b" && isLast && event.reason === null;
+        return MindmapPreview.h({
+            tag: "li",
+            attrs: { class: "th-event" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "th-event-line" },
+                    children: [
+                        MindmapPreview.icon(closed ? "check" : "undo"),
+                        MindmapPreview.h({ tag: "span", children: [closed ? "あなたがクローズにしました" : "あなたがオープンに戻しました"] }),
+                        MindmapPreview.h({ tag: "time", attrs: { datetime: event.created }, children: [MindmapPreview.formatJst(event.created)] }),
+                        canAddReason && !talk.reasonOpen
+                            ? MindmapPreview.h({
+                                tag: "button",
+                                attrs: { class: "btn ghost", type: "button", "data-focus": "reason-add", onclick: () => talk.on.reasonOpen(true) },
+                                children: [MindmapPreview.icon("edit"), "理由を書く"],
+                            })
+                            : null,
+                    ],
+                }),
+                event.reason === null ? null : MindmapPreview.h({ tag: "p", attrs: { class: "th-event-reason" }, children: [event.reason] }),
+                canAddReason && talk.reasonOpen ? reasonForm({ thread: null, talk, after: true }) : null,
+            ],
+        });
+    }
+    /** 235: 理由の入力（任意）。案 A・C は状態を変える前に出し、確定で状態と理由を書く。案 B は記録に後から書き足す */
+    function reasonForm({ thread, talk, after }) {
+        const closing = !after && thread.status === "open";
+        const verb = after ? "理由を書く" : closing ? "クローズにする" : "オープンに戻す";
         const saving = talk.action.status === "saving";
-        const targetTitle = thread.target === null ? null : talk.titleOf(thread.target);
-        return [
-            MindmapPreview.h({
-                tag: "div",
-                attrs: { class: "th-head" },
-                children: [
-                    MindmapPreview.h({
-                        tag: "div",
-                        attrs: { class: "th-head-bar" },
+        const field = MindmapPreview.h({
+            tag: "textarea",
+            attrs: {
+                id: "reason-body",
+                name: "reason",
+                rows: 2,
+                maxlength: MindmapPreview.COMMENT_BODY_MAX_LENGTH,
+                "data-focus": "reason",
+                readonly: saving,
+                oninput: (event) => talk.on.reasonInput(event.target.value),
+                onkeydown: (event) => {
+                    if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.isComposing) {
+                        event.preventDefault();
+                        event.target.form.requestSubmit();
+                    }
+                    // Esc は理由の入力をやめる（一覧へは戻らない）
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        talk.on.reasonOpen(false);
+                    }
+                },
+            },
+            children: [talk.reasonBody],
+        });
+        return MindmapPreview.h({
+            tag: "form",
+            attrs: {
+                class: "th-reason",
+                novalidate: true,
+                onsubmit: (event) => {
+                    event.preventDefault();
+                    if (saving)
+                        return;
+                    if (after)
+                        talk.on.reasonSave(field.value);
+                    else
+                        talk.on.setStatus(closing ? "closed" : "open", field.value);
+                },
+            },
+            children: [
+                // 案 C: クローズの理由を選択肢から選ぶ（選ばなくてもよい）
+                talk.variant.reason === "c" && closing
+                    ? MindmapPreview.h({
+                        tag: "fieldset",
+                        attrs: { class: "th-reason-choices" },
                         children: [
-                            MindmapPreview.h({
-                                tag: "button",
-                                attrs: { class: "btn ghost th-back", type: "button", "data-focus": "back", onclick: talk.on.back },
-                                children: [MindmapPreview.icon("back"), "一覧へ戻る"],
-                            }),
-                            MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
-                            MindmapPreview.h({
-                                tag: "button",
-                                attrs: {
-                                    class: "btn",
-                                    type: "button",
-                                    "data-focus": "status",
-                                    disabled: saving,
-                                    onclick: () => talk.on.setStatus(open ? "closed" : "open"),
-                                },
-                                children: open ? [MindmapPreview.icon("check"), "クローズにする"] : [MindmapPreview.icon("undo"), "オープンに戻す"],
-                            }),
+                            MindmapPreview.h({ tag: "legend", children: ["クローズの理由（任意）"] }),
+                            ...["", ...CLOSE_CHOICES].map((choice) => MindmapPreview.h({
+                                tag: "label",
+                                children: [
+                                    MindmapPreview.h({
+                                        tag: "input",
+                                        attrs: { type: "radio", name: "choice", value: choice, checked: talk.reasonChoice === choice, onchange: () => talk.on.reasonChoice(choice) },
+                                    }),
+                                    choice === "" ? "選ばない" : choice,
+                                ],
+                            })),
                         ],
-                    }),
-                    MindmapPreview.h({ tag: "h3", attrs: { class: "th-heading" }, children: [threadState(thread), MindmapPreview.h({ tag: "span", children: [threadTitle(thread)] })] }),
-                    MindmapPreview.h({
+                    })
+                    : null,
+                MindmapPreview.h({ tag: "label", attrs: { class: "send-label", for: "reason-body" }, children: [talk.variant.reason === "c" && closing ? "補足（任意）" : "理由（任意）"] }),
+                field,
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "row-edit-actions" },
+                    children: [
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", "data-focus": "reason-cancel", onclick: () => talk.on.reasonOpen(false) }, children: ["キャンセル"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit", "data-focus": "reason-ok", disabled: saving }, children: [verb] }),
+                    ],
+                }),
+            ],
+        });
+    }
+    /** 235: スレッドの見出し（戻る・クローズとオープンへの戻し・題・向けた項目とタグ） */
+    function threadHead({ status, title, target, tags, statusButton, extra, talk }) {
+        const targetTitle = target === null ? null : talk.titleOf(target);
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "th-head" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "th-head-bar" },
+                    children: [
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: { class: "btn ghost th-back", type: "button", "data-focus": "back", onclick: talk.on.back },
+                            children: [MindmapPreview.icon("back"), "一覧へ戻る"],
+                        }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
+                        statusButton,
+                    ],
+                }),
+                ...extra,
+                MindmapPreview.h({ tag: "h3", attrs: { class: "th-heading" }, children: [threadState(status), MindmapPreview.h({ tag: "span", children: [title] })] }),
+                target === null && tags.length === 0
+                    ? null
+                    : MindmapPreview.h({
                         tag: "div",
                         attrs: { class: "th-meta" },
                         children: [
-                            thread.target === null
+                            target === null
                                 ? null
                                 : targetTitle === null
-                                    ? MindmapPreview.h({ tag: "span", attrs: { class: "row-target gone" }, children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [thread.target] })] })
+                                    ? MindmapPreview.h({ tag: "span", attrs: { class: "row-target gone" }, children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] })] })
                                     : MindmapPreview.h({
                                         tag: "button",
-                                        attrs: { class: "row-target", type: "button", "data-focus": "target", onclick: () => talk.on.openId(thread.target) },
-                                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [thread.target] }), MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [targetTitle] })],
+                                        attrs: { class: "row-target", type: "button", "data-focus": "target", onclick: () => talk.on.openId(target) },
+                                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] }), MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [targetTitle] })],
                                     }),
-                            ...thread.tags.map((tag) => MindmapPreview.h({ tag: "span", attrs: { class: "th-tag static" }, children: [MindmapPreview.icon("hash"), tag] })),
+                            ...tags.map((tag) => MindmapPreview.h({ tag: "span", attrs: { class: "th-tag static" }, children: [MindmapPreview.icon("hash"), tag] })),
                         ],
                     }),
+            ],
+        });
+    }
+    /** 235: まだ送っていない新しいスレッド（最初の書き込みをレビュー中の印つきで出し、クローズと返信の入力を出さない） */
+    function pendingThreadView(itemId, props) {
+        const { talk } = props;
+        const item = props.items.find((entry) => entry.id === itemId);
+        const gone = props.removed.find((entry) => entry.id === itemId);
+        const shown = item ?? gone;
+        return [
+            threadHead({ status: "pending", title: shown.body.split("\n")[0], target: shown.target, tags: [], statusButton: null, extra: [], talk }),
+            MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "comments-body th-body" },
+                children: [
+                    MindmapPreview.h({
+                        tag: "ol",
+                        attrs: { class: "posts", "aria-label": "書き込み" },
+                        children: [item === undefined ? removedReviewRow({ item: gone, focus: "", on: { restore: props.on.restore } }) : pendingPost(item, props)],
+                    }),
+                ],
+            }),
+            MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.h({ tag: "p", attrs: { class: "th-closed-note" }, children: [MindmapPreview.icon("edit"), "まだ送っていないスレッドです。"] })] }),
+        ];
+    }
+    /** 235: 一覧で開いたスレッド 1 件 */
+    function threadView(thread, props) {
+        const { talk } = props;
+        const open = thread.status === "open";
+        const saving = talk.action.status === "saving";
+        // 案 A・C は、押すと理由の入力を出す。案 B は、押すとすぐ状態を変える
+        const asksReason = talk.variant.reason !== "b";
+        const statusButton = asksReason && talk.reasonOpen
+            ? null
+            : MindmapPreview.h({
+                tag: "button",
+                attrs: {
+                    class: "btn",
+                    type: "button",
+                    "data-focus": "status",
+                    disabled: saving,
+                    onclick: () => (asksReason ? talk.on.reasonOpen(true) : talk.on.setStatus(open ? "closed" : "open", "")),
+                },
+                children: open ? [MindmapPreview.icon("check"), "クローズにする"] : [MindmapPreview.icon("undo"), "オープンに戻す"],
+            });
+        // 書き込みと状態の変更を、書いた順に並べる
+        const timeline = [...thread.posts.map((post) => ({ post, at: post.created })), ...thread.events.map((event) => ({ event, at: event.created }))].sort((a, b) => a.at.localeCompare(b.at));
+        const lastEvent = thread.events[thread.events.length - 1];
+        // レビュー中の返信と、消した返信（元の場所に「元に戻す」を出す）
+        const pending = [...pendingReplies(thread, props).map((item) => ({ item, gone: false })), ...props.removed.filter((item) => item.thread === thread.id).map((item) => ({ item, gone: true }))].sort((a, b) => commentNumber(a.item.id) - commentNumber(b.item.id));
+        return [
+            threadHead({
+                status: thread.status,
+                title: threadTitle(thread),
+                target: thread.target,
+                tags: thread.tags,
+                statusButton,
+                extra: [
+                    asksReason && talk.reasonOpen ? reasonForm({ thread, talk, after: false }) : null,
                     talk.action.status === "failed"
                         ? MindmapPreview.h({
                             tag: "p",
@@ -8124,12 +8407,20 @@ var MindmapPreview;
                         })
                         : null,
                 ],
+                talk,
             }),
             MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "comments-body th-body" },
                 children: [
-                    MindmapPreview.h({ tag: "ol", attrs: { class: "posts", "aria-label": "書き込み" }, children: thread.posts.map((post) => threadPost(post, talk)) }),
+                    MindmapPreview.h({
+                        tag: "ol",
+                        attrs: { class: "posts", "aria-label": "書き込み" },
+                        children: [
+                            ...timeline.map((entry) => (entry.post !== undefined ? threadPost(entry.post, talk) : threadEvent({ event: entry.event, isLast: entry.event === lastEvent, talk }))),
+                            ...pending.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: props.on.restore } }) : pendingPost(item, props))),
+                        ],
+                    }),
                     waitsForAi(thread)
                         ? MindmapPreview.h({ tag: "p", attrs: { class: "th-waiting" }, children: [MindmapPreview.icon("history"), "AI の返信を待っています"] })
                         : null,
@@ -8140,12 +8431,85 @@ var MindmapPreview;
                 : MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.h({ tag: "p", attrs: { class: "th-closed-note" }, children: [MindmapPreview.icon("check"), "クローズにしたスレッドです。"] })] }),
         ];
     }
-    // 235: 部品のモックが状態ごとに描けるように出す
-    Object.assign(MindmapPreview, { panelTabs, threadRow, threadList, threadView, threadPost, replyForm });
+    /** 235: レビュー中を確かめる画面の行の頭（返信は返信先のスレッド、新しいスレッドは向けた項目） */
+    function reviewRowHead(item, props) {
+        const { talk } = props;
+        if (!isReply(item)) {
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "row-head" },
+                children: [
+                    // 案 A2 は、新しいスレッドの行からもそのスレッドを開ける
+                    talk.variant.pending === "a2"
+                        ? MindmapPreview.h({
+                            tag: "button",
+                            attrs: { class: "row-kind", type: "button", "data-focus": `kind:${item.id}`, onclick: () => talk.on.open(`${PENDING_THREAD_PREFIX}${item.id}`) },
+                            children: ["新しいスレッド"],
+                        })
+                        : MindmapPreview.h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] }),
+                    targetCell(item, props),
+                ],
+            });
+        }
+        const thread = threadOf(item, talk);
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "row-head" },
+            children: [
+                MindmapPreview.h({ tag: "span", attrs: { class: "row-kind" }, children: ["返信"] }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "row-target idlink-like", type: "button", "data-focus": `open:${item.id}`, onclick: () => talk.on.open(thread.id) },
+                    children: [threadState(thread.status), MindmapPreview.h({ tag: "span", attrs: { class: "t" }, children: [threadTitle(thread)] })],
+                }),
+            ],
+        });
+    }
+    /** 235: クローズのスレッドへの返信の行に出す、送れない理由と「オープンに戻す」へ移る入口 */
+    function blockedNote(item, props) {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "row-stale row-blocked" },
+            children: [
+                MindmapPreview.icon("alert"),
+                MindmapPreview.h({ tag: "span", children: ["クローズのスレッドへの返信は送れません。オープンに戻すと送れます。"] }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "btn ghost", type: "button", "data-focus": `reopen:${item.id}`, onclick: () => props.talk.on.open(item.thread) },
+                    children: ["スレッドを開く"],
+                }),
+            ],
+        });
+    }
+    /** 235: レビュー中を確かめる画面の見出し（戻る・題・件数） */
+    function reviewHead(props) {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "th-head review-head" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "th-head-bar" },
+                    children: [
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: { class: "btn ghost th-back", type: "button", "data-focus": "back", onclick: props.talk.on.back },
+                            children: [MindmapPreview.icon("back"), "戻る"],
+                        }),
+                        MindmapPreview.h({ tag: "h3", attrs: { class: "review-title" }, children: ["レビュー中の書き込み", MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [props.items.length] })] }),
+                    ],
+                }),
+            ],
+        });
+    }
+    // 部品のモックが状態ごとに描けるように出す
+    Object.assign(MindmapPreview, { panelHead, threadRow, pendingThreadRow, threadList, threadView, pendingThreadView, threadPost, pendingPost, threadEvent, reasonForm, replyForm, reviewHead, commentRow });
     /** コメントの一覧を返す */
     function commentsPanel(props) {
         const { items, removed, checked, result, on } = props;
-        const checkedCount = items.filter((item) => checked.has(item.id)).length;
+        // 235: 送れる書き込み（クローズのスレッドへの返信を除く）
+        const sendable = items.filter((item) => !isBlocked(item, props.talk));
+        const checkedCount = sendable.filter((item) => checked.has(item.id)).length;
         const isEmpty = items.length === 0 && removed.length === 0;
         // 送る帯は一覧の上端に留める。送っている間とチェックが 0 件のときは押せない
         const sending = result?.kind === "sending";
@@ -8157,16 +8521,16 @@ var MindmapPreview;
                 tag: "div",
                 attrs: { class: "send-band" },
                 children: [
-                    items.length === 0
+                    sendable.length === 0
                         ? null
                         : selectAllBox({
-                            ids: items.map((item) => item.id),
+                            ids: sendable.map((item) => item.id),
                             checked,
                             onChange: on.checkAll,
                         }),
-                    items.length === 0
+                    sendable.length === 0
                         ? null
-                        : MindmapPreview.h({ tag: "span", attrs: { class: "send-count" }, children: [`${checkedCount} / ${items.length} 件`] }),
+                        : MindmapPreview.h({ tag: "span", attrs: { class: "send-count" }, children: [`${checkedCount} / ${sendable.length} 件`] }),
                     isEmpty
                         ? null
                         : MindmapPreview.h({
@@ -8185,49 +8549,39 @@ var MindmapPreview;
             });
         // 消したコメントは元の場所（ID の連番の順）に出す
         const rows = [...items.map((item) => ({ item, gone: false })), ...removed.map((item) => ({ item, gone: true }))].sort((a, b) => commentNumber(a.item.id) - commentNumber(b.item.id));
-        // 235: スレッドのタブで開いているスレッド
-        const openedThread = props.talk.threads.find((thread) => thread.id === props.talk.opened);
+        // 235: 開いているスレッド（まだ送っていない新しいスレッドは、レビュー中の書き込みから組み立てる）
+        const { talk } = props;
+        const openedThread = talk.threads.find((thread) => thread.id === talk.opened);
+        const openedPending = talk.opened !== null && talk.opened.startsWith(PENDING_THREAD_PREFIX) ? talk.opened.slice(PENDING_THREAD_PREFIX.length) : null;
         return MindmapPreview.h({
             tag: "aside",
             attrs: { class: "comments-panel", "aria-label": "コメントの一覧" },
             children: [
-                MindmapPreview.h({
-                    tag: "div",
-                    attrs: { class: "comments-head" },
-                    children: [
-                        // 235: 見出しの代わりに、レビュー中とスレッドのタブを置く
-                        panelTabs({ tab: props.talk.tab, reviewCount: items.length, openCount: talkCounts(props.talk.threads, null).open, on: props.talk.on }),
+                // 235: 見出しの帯にレビュー中を確かめる入口を置き、中身はスレッドの一覧・スレッド 1 件・レビュー中を確かめる画面を切り替える
+                panelHead(props),
+                ...(talk.view === "review"
+                    ? [
+                        reviewHead(props),
+                        band,
                         MindmapPreview.h({
-                            tag: "button",
-                            attrs: { class: "icon-btn", type: "button", "aria-label": "コメントの一覧を閉じる", "data-focus": "close", onclick: on.close },
-                            children: [MindmapPreview.icon("x")],
+                            tag: "div",
+                            attrs: { class: "comments-body" },
+                            children: [
+                                isEmpty
+                                    ? MindmapPreview.h({ tag: "p", attrs: { class: "comments-empty" }, children: [MindmapPreview.icon("comment"), "レビュー中の書き込みはありません。"] })
+                                    : MindmapPreview.h({
+                                        tag: "ul",
+                                        attrs: { class: "comments-list" },
+                                        children: rows.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : commentRow(item, props))),
+                                    }),
+                            ],
                         }),
-                    ],
-                }),
-                // 235: 選んだタブの中身（スレッドのタブは、スレッドを開いていればスレッド 1 件、それ以外は一覧）
-                MindmapPreview.h({
-                    tag: "div",
-                    attrs: { class: "ctab-panel", id: "ctab-panel", role: "tabpanel", "aria-labelledby": `ctab-${props.talk.tab}` },
-                    children: props.talk.tab === "talk"
-                        ? (openedThread === undefined ? threadList(props.talk) : threadView(openedThread, props.talk))
-                        : [
-                            band,
-                            MindmapPreview.h({
-                                tag: "div",
-                                attrs: { class: "comments-body" },
-                                children: [
-                                    isEmpty
-                                        ? MindmapPreview.h({ tag: "p", attrs: { class: "comments-empty" }, children: [MindmapPreview.icon("comment"), "レビュー中のコメントはありません。"] })
-                                        : MindmapPreview.h({
-                                            tag: "ul",
-                                            attrs: { class: "comments-list" },
-                                            children: rows.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : commentRow(item, props))),
-                                        }),
-                                ],
-                            }),
-                            MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.sendForm(props.free)] }),
-                        ],
-                }),
+                    ]
+                    : talk.view === "thread" && openedPending !== null
+                        ? pendingThreadView(openedPending, props)
+                        : talk.view === "thread" && openedThread !== undefined
+                            ? threadView(openedThread, props)
+                            : threadList(props)),
             ],
         });
     }
@@ -11196,7 +11550,7 @@ var MindmapPreview;
             if (!first)
                 return;
             for (const draft of review.drafts) {
-                // 235: スレッドへの返信の書きかけは、スレッドのタブが持つ
+                // 235: スレッドへの返信の書きかけは、スレッドの画面が持つ
                 if (draft.thread !== undefined)
                     continue;
                 if (draft.target !== null && draft.loc !== null && !comment.pendingLoc.has(draft.target)) {
@@ -11258,12 +11612,13 @@ var MindmapPreview;
         };
         /** 入力欄を、今の状態で差し替える（`focus` なら入力欄へフォーカスを戻す）。別の項目へ移っていたら状態だけ持っておく */
         const redrawForm = ({ target, focus }) => {
+            // 235: 項目を指さない入力は、一覧の下端の「新しいスレッド」の枠の中にある
             const current = target === null
-                ? document.querySelector(".comments-panel form.send")
+                ? document.querySelector(".comments-panel .talk-new form.send")
                 : document.querySelector("aside.panel form.send, dialog.full form.send");
             if (current === null || (target !== null && route.id !== target))
                 return;
-            const next = MindmapPreview.sendForm(formProps(target));
+            const next = MindmapPreview.sendForm(target === null ? { ...formProps(target), collapsed: false } : formProps(target));
             // 外した入力欄の blur は、利用者が外へ出たのではないので受けない
             formRedrawing = true;
             current.replaceWith(next);
@@ -11379,20 +11734,33 @@ var MindmapPreview;
             refreshComments();
             redrawForm({ target: state.target, focus: true });
         };
-        // ===== 235: スレッドのタブ =====
-        /** 235: スレッドのタブの状態（開いているタブ・スレッド・絞り込み・開いているスレッド・返信の入力・クローズの結果） */
+        // ===== 235: スレッド =====
+        /** 235: スレッドの画面の状態（開いている画面・スレッド・絞り込み・返信の入力・クローズの理由と結果） */
         const talk = {
-            tab: "review",
+            /** list: スレッドの一覧 / thread: スレッド 1 件 / review: レビュー中を確かめる画面 */
+            view: "list",
+            /** レビュー中を確かめる画面を開く前の画面（戻る先） */
+            reviewFrom: "list",
+            /** レビュー中を確かめる画面で示す行（一覧の行から開いたとき） */
+            reviewFocus: null,
             threads: [],
             filter: "open",
             tag: null,
             opened: null,
             listScroll: 0,
-            /** 235: スレッドの ID → 返信の書きかけ（書きかけの保存でサーバーに保つ） */
+            composing: false,
+            /** スレッドの ID → 返信の書きかけ（書きかけの保存でサーバーに保つ） */
             drafts: new Map(),
-            reply: { body: "", status: "idle", entered: false, at: null, detail: null },
+            reply: { body: "", status: "idle", count: 0, detail: null },
             action: { status: "idle", detail: null },
+            reasonOpen: false,
+            reasonBody: "",
+            reasonChoice: "",
+            /** モックで見比べる案（body の data-pending・data-names・data-reason） */
+            variant: { pending: document.body.dataset["pending"] ?? "a2", names: document.body.dataset["names"] ?? "a", reason: document.body.dataset["reason"] ?? "a" },
         };
+        /** 235: 書きかけを待っているスレッドの ID → タイマー */
+        const draftTimer = new Map();
         /** 235: スレッドと返信の書きかけを読み直す。届かないときは前の写しのまま。書きかけは入力中の欄の分を上書きしない */
         const loadThreads = async () => {
             const result = await MindmapPreview.callApi("GET", "api/threads");
@@ -11406,8 +11774,6 @@ var MindmapPreview;
                     talk.drafts.set(draft.thread, draft.body);
             }
         };
-        /** 235: 書きかけを待っているスレッドの ID → タイマー */
-        const draftTimer = new Map();
         /** 235: スレッドの書きかけをすぐ保つ（空なら消える） */
         const saveThreadDraft = (id) => {
             window.clearTimeout(draftTimer.get(id));
@@ -11419,10 +11785,13 @@ var MindmapPreview;
             for (const id of [...draftTimer.keys()])
                 saveThreadDraft(id);
         };
-        /** 235: 開いたスレッドの返信の入力を、そのスレッドの書きかけで始め、結果を空に戻す */
+        /** 235: 開いたスレッドの返信の入力を、そのスレッドの書きかけで始め、結果と理由の入力を空に戻す */
         const resetReply = () => {
-            talk.reply = { body: talk.opened === null ? "" : (talk.drafts.get(talk.opened) ?? ""), status: "idle", entered: false, at: null, detail: null };
+            talk.reply = { body: talk.opened === null ? "" : (talk.drafts.get(talk.opened) ?? ""), status: "idle", count: 0, detail: null };
             talk.action = { status: "idle", detail: null };
+            talk.reasonOpen = false;
+            talk.reasonBody = "";
+            talk.reasonChoice = "";
         };
         /** 235: パネルの中身の送りを、描き直した後に合わせる（スレッドは末尾、一覧は戻る前の位置） */
         const scrollTalk = (to) => {
@@ -11430,16 +11799,13 @@ var MindmapPreview;
             if (body !== null)
                 body.scrollTop = to === "end" ? body.scrollHeight : to;
         };
-        /** 235: スレッドのタブの引数 */
+        /** 235: パネルの中の部品へフォーカスを移す */
+        const focusTalk = (key) => document.querySelector(`.comments-panel [data-focus="${key}"]`)?.focus();
+        /** 235: スレッドの画面の引数 */
         const talkProps = () => ({
             ...talk,
             titleOf: (id) => index.byId.get(id)?.item.title ?? null,
             on: {
-                tab: (name) => {
-                    talk.tab = name;
-                    renderComments();
-                    document.querySelector(`.comments-panel [data-focus="tab:${name}"]`)?.focus();
-                },
                 filter: (value) => {
                     talk.filter = value;
                     renderComments();
@@ -11452,26 +11818,57 @@ var MindmapPreview;
                 clearTag: () => {
                     talk.tag = null;
                     renderComments();
-                    document.querySelector('.comments-panel [data-focus="filter:' + talk.filter + '"]')?.focus();
+                    focusTalk(`filter:${talk.filter}`);
+                },
+                compose: (open) => {
+                    talk.composing = open;
+                    renderComments();
+                    if (open)
+                        document.querySelector(".comments-panel .talk-new textarea")?.focus();
+                    else
+                        focusTalk("compose");
                 },
                 open: (id) => {
                     flushThreadDrafts();
-                    talk.listScroll = document.querySelector(".comments-panel .comments-body")?.scrollTop ?? 0;
+                    if (talk.view === "list")
+                        talk.listScroll = document.querySelector(".comments-panel .comments-body")?.scrollTop ?? 0;
+                    talk.view = "thread";
                     talk.opened = id;
                     resetReply();
                     renderComments();
                     scrollTalk("end");
-                    document.querySelector('.comments-panel [data-focus="back"]')?.focus();
+                    focusTalk("back");
+                },
+                review: (focusId = null) => {
+                    flushThreadDrafts();
+                    if (talk.view === "list")
+                        talk.listScroll = document.querySelector(".comments-panel .comments-body")?.scrollTop ?? 0;
+                    talk.reviewFrom = talk.view;
+                    talk.reviewFocus = focusId;
+                    talk.view = "review";
+                    renderComments();
+                    focusTalk("back");
                 },
                 back: () => {
                     flushThreadDrafts();
-                    const from = talk.opened;
-                    talk.opened = null;
+                    // レビュー中を確かめる画面は開く前の画面へ、スレッドは一覧へ戻る
+                    const from = talk.view === "review" ? "review" : `thread:${talk.opened}`;
+                    if (talk.view === "review" && talk.reviewFrom === "thread" && talk.opened !== null) {
+                        talk.view = "thread";
+                    }
+                    else {
+                        talk.view = "list";
+                        talk.opened = null;
+                    }
+                    talk.reviewFocus = null;
                     resetReply();
                     renderComments();
-                    scrollTalk(talk.listScroll);
-                    // 開いていた行へフォーカスを戻す（絞り込みで外れたときはタブへ）
-                    (document.querySelector(`.comments-panel [data-focus="thread:${from}"]`) ?? document.querySelector('.comments-panel [data-focus="tab:talk"]'))?.focus();
+                    if (talk.view === "list")
+                        scrollTalk(talk.listScroll);
+                    else
+                        scrollTalk("end");
+                    // 開いていた入口へフォーカスを戻す（絞り込みで外れたときは見出しの帯へ）
+                    (document.querySelector(`.comments-panel [data-focus="${from}"]`) ?? document.querySelector('.comments-panel [data-focus="review"]'))?.focus();
                 },
                 input: (body) => {
                     talk.reply.body = body;
@@ -11480,50 +11877,87 @@ var MindmapPreview;
                     talk.drafts.set(id, body);
                     window.clearTimeout(draftTimer.get(id));
                     draftTimer.set(id, window.setTimeout(() => saveThreadDraft(id), MindmapPreview.DRAFT_SAVE_DELAY_MS));
-                    // 入力が空かどうかで返信のボタンを切り替える（描き直さず、入力欄のフォーカスを保つ）
+                    // 入力が空かどうかでレビューに追加のボタンを切り替える（描き直さず、入力欄のフォーカスを保つ）
                     const button = document.querySelector('.comments-panel [data-focus="reply-send"]');
                     if (button !== null)
                         button.disabled = body.trim() === "";
                 },
-                reply: (body) => void sendReply(body),
-                setStatus: (status) => void setThreadStatus(status),
+                reply: (body) => void addReply(body),
+                reasonOpen: (open) => {
+                    talk.reasonOpen = open;
+                    talk.reasonBody = "";
+                    talk.reasonChoice = "";
+                    renderComments();
+                    focusTalk(open ? "reason" : (talk.variant.reason === "b" ? "reason-add" : "status"));
+                },
+                reasonInput: (body) => {
+                    talk.reasonBody = body;
+                },
+                reasonChoice: (choice) => {
+                    talk.reasonChoice = choice;
+                },
+                reasonSave: (reason) => void saveReason(reason),
+                setStatus: (status, reason) => void setThreadStatus(status, reason),
                 openId: (id) => openItem(id, false),
             },
         });
-        /** 235: 開いているスレッドへ返信をその場で送る */
-        const sendReply = async (body) => {
+        /** 235: 開いているスレッドへの返信を、レビュー中に溜める */
+        const addReply = async (body) => {
             const id = talk.opened;
-            talk.reply = { ...talk.reply, body, status: "sending" };
+            talk.reply = { ...talk.reply, body, status: "saving" };
             renderComments();
-            const result = await MindmapPreview.callApi("POST", `api/threads/${encodeURIComponent(id)}/posts`, { body });
+            const result = await api.add({ thread: id, body });
             if (!result.ok || result.data === null) {
                 // 届かない・断られた: 入力を残して理由を出す
                 talk.reply = { ...talk.reply, status: "failed", detail: result.ok ? null : result.detail };
                 renderComments();
-                document.querySelector('.comments-panel [data-focus="reply"]')?.focus();
+                focusTalk("reply");
                 return;
             }
-            talk.reply = { body: "", status: "sent", entered: result.data.entered, at: result.data.post.created, detail: null };
-            // 送った: そのスレッドの書きかけを消す
+            // 溜めた: 入力欄を空にし、そのスレッドの書きかけを消す
+            talk.reply = { body: "", status: "saved", count: result.data.count, detail: null };
             talk.drafts.delete(id);
             saveThreadDraft(id);
+            knownIds.add(result.data.id);
+            comment.checked.add(result.data.id);
+            await loadReview();
+            refreshComments();
+            scrollTalk("end");
+            focusTalk("reply");
+        };
+        /** 235: 開いているスレッドをクローズにする・オープンに戻す（確認は挟まず、任意の理由を添える） */
+        const setThreadStatus = async (status, reason) => {
+            const id = talk.opened;
+            talk.action = { status: "saving", detail: null };
+            talk.reasonBody = reason;
+            renderComments();
+            const result = await MindmapPreview.callApi("PATCH", `api/threads/${encodeURIComponent(id)}`, {
+                status,
+                ...(reason.trim() === "" ? {} : { reason }),
+                ...(talk.reasonChoice === "" ? {} : { choice: talk.reasonChoice }),
+            });
+            talk.action = result.ok ? { status: "idle", detail: null } : { status: "failed", detail: result.detail };
+            if (result.ok) {
+                talk.reasonOpen = false;
+                talk.reasonBody = "";
+                talk.reasonChoice = "";
+                talk.reply = { ...talk.reply, status: "idle" };
+            }
             await loadThreads();
             renderComments();
             scrollTalk("end");
-            document.querySelector('.comments-panel [data-focus="reply"]')?.focus();
+            focusTalk(result.ok || talk.variant.reason === "b" ? "status" : "reason");
         };
-        /** 235: 開いているスレッドをクローズにする・オープンに戻す（確認は挟まない） */
-        const setThreadStatus = async (status) => {
-            const id = talk.opened;
-            talk.action = { status: "saving", detail: null };
-            renderComments();
-            const result = await MindmapPreview.callApi("PATCH", `api/threads/${encodeURIComponent(id)}`, { status });
-            talk.action = result.ok ? { status: "idle", detail: null } : { status: "failed", detail: result.detail };
-            if (result.ok)
-                talk.reply = { ...talk.reply, status: "idle" };
+        /** 235: 最後のクローズ・オープンへの戻しの記録に、後から理由を書き足す（理由の入れ方の案 B） */
+        const saveReason = async (reason) => {
+            if (reason.trim() !== "")
+                await MindmapPreview.callApi("PATCH", `api/threads/${encodeURIComponent(talk.opened)}`, { reason });
+            talk.reasonOpen = false;
+            talk.reasonBody = "";
             await loadThreads();
             renderComments();
-            document.querySelector('.comments-panel [data-focus="status"]')?.focus();
+            scrollTalk("end");
+            focusTalk("status");
         };
         // ===== コメントの一覧 =====
         /** 一覧を作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
@@ -11552,7 +11986,7 @@ var MindmapPreview;
                 selected: comment.opened,
                 titleOf: (id) => index.byId.get(id)?.item.title ?? null,
                 free: formProps(null),
-                // 235: スレッドのタブ
+                // 235: スレッドの画面
                 talk: talkProps(),
                 on: {
                     close: closeList,
@@ -11613,9 +12047,10 @@ var MindmapPreview;
             display.open = false;
             renderSettings();
             comment.listOpen = true;
-            // 235: レビュー中のコメントが 1 件以上ならレビュー中のタブ、0 件ならスレッドのタブで開く
-            talk.tab = comment.review.items.length > 0 ? "review" : "talk";
+            // 235: いつもスレッドの一覧から始める
+            talk.view = "list";
             talk.opened = null;
+            talk.reviewFocus = null;
             resetReply();
             renderTop();
             renderComments();
@@ -11697,6 +12132,8 @@ var MindmapPreview;
                 created: item.created,
                 ...(item.target === null ? {} : { target: item.target }),
                 ...(item.loc === null ? {} : { loc: item.loc }),
+                // 235: 返信は返信先のスレッドも戻す
+                ...((item.thread ?? null) === null ? {} : { thread: item.thread }),
                 body: item.body,
             });
             if (result.ok)
@@ -11746,7 +12183,8 @@ var MindmapPreview;
         };
         /** チェックしたコメントを溜めた順にまとめて送る */
         const sendChecked = async () => {
-            const ids = comment.review.items.filter((item) => comment.checked.has(item.id)).map((item) => item.id);
+            // 235: クローズのスレッドへの返信は送らない
+            const ids = comment.review.items.filter((item) => comment.checked.has(item.id) && !MindmapPreview.isBlockedReply(item, talk)).map((item) => item.id);
             // 送るものが無い
             if (ids.length === 0)
                 return;
@@ -12160,11 +12598,10 @@ var MindmapPreview;
             else if (event.key === "Escape" &&
                 route.id === null &&
                 comment.listOpen &&
-                talk.tab === "talk" &&
-                talk.opened !== null &&
+                talk.view !== "list" &&
                 document.querySelector("dialog[open]:not(.drawer)") === null &&
                 document.querySelector(":popover-open") === null) {
-                // 235: スレッドを開いているときは一覧へ戻る
+                // 235: スレッドとレビュー中を確かめる画面は、戻る操作と同じ画面へ戻る
                 talkProps().on.back();
             }
             else if (event.key === "Escape" &&
@@ -12208,7 +12645,7 @@ var MindmapPreview;
         // サーバーの配信では、レビュー中のコメントと書きかけを読んでおく（コメントのボタンの件数と入力に使う）
         if (serverMode)
             await loadReview(true);
-        // 235: スレッドも読んでおく（スレッドのタブの件数に使う）
+        // 235: スレッドも読んでおく
         if (serverMode)
             await loadThreads();
         // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える

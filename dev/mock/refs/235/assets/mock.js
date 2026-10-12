@@ -1,6 +1,10 @@
 // モックの操作。見本の記録（data.js が埋め込み先へ入れたもの）を、サーバーの配信の代わりに返す。
-// app.js の起動の前に、埋め込み先を空にしてサーバーの配信として起動させ、記録・レビュー中のコメント・スレッドの受け口と書き換えの知らせを置き換える。
-// 見本の状態はクエリで切り替える（review=0: レビュー中のコメント 0 件 / threads=0: スレッド 0 件 / offline=1: 送る・書き換える要求が届かない / entered=0: Claude Code へ入力できない / tag: スレッドのタブをそのタグで絞る / open: そのスレッドを開いた状態で始める / drawer=1: コメントの一覧を開いた状態で始める）
+// app.js の起動の前に、埋め込み先を空にしてサーバーの配信として起動させ、記録・レビュー中の書き込み・スレッドの受け口と書き換えの知らせを置き換える。
+// 見本の状態はクエリで切り替える。
+//   review=0: レビュー中の書き込み 0 件 / threads=0: スレッド 0 件 / blocked=1: クローズのスレッドへの返信をレビュー中に持つ
+//   offline=1: 溜める・送る・書き換える要求が届かない / entered=0: Claude Code へ入力できない
+//   filter: スレッドの一覧をその状態で絞る / tag: そのタグで絞る / open: そのスレッドを開く / view=review: レビュー中を確かめる画面を開く / compose=1: 新しいスレッドの入力を開く
+//   drawer=1: コメントの一覧を開いた状態で始める
 (() => {
   const body = document.body;
   const params = new URLSearchParams(location.search);
@@ -19,20 +23,12 @@
   /** 見本の日時（UTC。画面は JST で出す） */
   const at = (hhmm) => `2026-10-12T${hhmm}:00+00:00`;
 
-  /** 見本のレビュー中のコメント */
-  const review = params.get("review") === "0"
-    ? []
-    : [
-      { id: "C-41", target: "D-5", target_title: null, loc: null, body: "写しは git のコミットで取るほうが戻しやすいと思う", created: at("05:10") },
-      { id: "C-42", target: null, target_title: null, loc: null, body: "移し替えの手順の名前は版の番号だけでよい？", created: at("05:12") },
-    ];
-
-  /** 見本のスレッド（書き込みは書いた順） */
+  /** 見本のスレッド（書き込みは書いた順。events はクローズ・オープンへの戻しの記録） */
   const threads = params.get("threads") === "0"
     ? []
     : [
       {
-        id: "TH-1", status: "open", tags: ["画面"], target: "D-12",
+        id: "TH-1", status: "open", tags: ["画面"], target: "D-12", events: [],
         summary: "D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった",
         posts: [
           { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい。失敗したら写しから戻せるなら十分", created: at("01:20") },
@@ -40,14 +36,14 @@
         ],
       },
       {
-        id: "TH-2", status: "open", tags: ["起票"], target: "D-16",
+        id: "TH-2", status: "open", tags: ["起票"], target: "D-16", events: [],
         summary: "D-16 の比べた結果を Issue に起票してよいかの確認。返事待ち",
         posts: [
           { id: "TH-2-1", author: "ai", body: "D-16 の比べた結果を Issue に起票してよいですか。\n起票先は shuhei1101/mindstella、題は「版の範囲を渡して、当てる手順を返すコマンド」です。", created: at("04:02") },
         ],
       },
       {
-        id: "TH-3", status: "open", tags: ["資料"], target: "A-1",
+        id: "TH-3", status: "open", tags: ["資料"], target: "A-1", events: [],
         summary: null,
         posts: [
           { id: "TH-3-1", author: "user", body: "A-1 の背景の節が長いので、3 行にまとめてほしい。経緯は会話ログへのリンクで足りる", created: at("05:01") },
@@ -55,6 +51,10 @@
       },
       {
         id: "TH-4", status: "open", tags: ["調査", "画面"], target: null,
+        events: [
+          { kind: "closed", reason: "手順は画面に出さないと分かった", created: at("00:20") },
+          { kind: "reopened", reason: null, created: at("00:29") },
+        ],
         summary: "移し替えの手順を画面で見られるかの質問。今は見られず、T-6 の点検の結果を資料にまとめることになった",
         posts: [
           { id: "TH-4-1", author: "user", body: "移し替えの手順（版ごとの YAML）は、プレビューのどこかで見られる？", created: at("00:10") },
@@ -65,6 +65,7 @@
       },
       {
         id: "TH-5", status: "closed", tags: ["画面"], target: "D-2",
+        events: [{ kind: "closed", reason: "config.yaml に書くと分かった", created: at("02:10") }],
         summary: "D-2 の版の置き場所の質問。config.yaml に書くと回答",
         posts: [
           { id: "TH-5-1", author: "user", body: "版はどこに書く？", created: at("02:00") },
@@ -73,6 +74,7 @@
       },
       {
         id: "TH-6", status: "closed", tags: ["起票"], target: "T-4",
+        events: [{ kind: "closed", reason: null, created: at("03:09") }],
         summary: "T-4 の Issue の起票の確認。起票して完了",
         posts: [
           { id: "TH-6-1", author: "ai", body: "T-4 の Issue 案を起票してよいですか。", created: at("03:00") },
@@ -81,6 +83,18 @@
         ],
       },
     ];
+
+  /** 見本のレビュー中の書き込み（thread を持つものはそのスレッドへの返信、持たないものは新しいスレッドの最初の書き込み） */
+  const review = params.get("review") === "0" || threads.length === 0
+    ? []
+    : [
+      { id: "C-41", target: "D-5", target_title: null, loc: null, thread: null, body: "写しは git のコミットで取るほうが戻しやすいと思う", created: at("05:10") },
+      { id: "C-42", target: null, target_title: null, loc: null, thread: null, body: "移し替えの手順の名前は版の番号だけでよい？", created: at("05:12") },
+      { id: "C-43", target: null, target_title: null, loc: null, thread: "TH-1", body: "了解。T-14 は今週中に書いてほしい", created: at("05:14") },
+      ...(params.get("blocked") === "1" ? [{ id: "C-44", target: null, target_title: null, loc: null, thread: "TH-5", body: "version は文字列で持つ？", created: at("05:16") }] : []),
+    ];
+  /** レビュー中の書き込みの ID の連番 */
+  let reviewSeq = 44;
 
   /** 返信の書きかけ（スレッドの ID → 本文）。サーバーの drafts.yaml の代わりに、読み込み直しても残るようタブの間だけ保つ */
   const threadDrafts = (() => {
@@ -102,7 +116,7 @@
   // ===== サーバーの配信の代わり =====
   /** JSON の応答 */
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
-  /** 送る・書き換える要求の待ち（送っている表示を見せる） */
+  /** 溜める・送る・書き換える要求の待ち（送っている表示を見せる） */
   const wait = () => new Promise((resolve) => setTimeout(resolve, 600));
   /** 今の日時（UTC） */
   const now = () => new Date().toISOString().replace(/\.\d+Z$/, "+00:00");
@@ -123,8 +137,9 @@
     if (!url.pathname.includes("/api/")) return realFetch(input, init);
     const method = init.method ?? "GET";
     const payload = init.body ? JSON.parse(init.body) : null;
-    // 届かない見本: 送る・書き換える要求だけ届かない（読むのはつながっている間に読めた写し）
-    if (method !== "GET" && params.get("offline") === "1" && path.startsWith("api/threads")) {
+    // 届かない見本: 溜める・送る・状態を書き換える要求が届かない（読むのはつながっている間に読めた写し）
+    const writes = path === "api/comments" || path === "api/comments/send" || path.startsWith("api/threads");
+    if (method !== "GET" && params.get("offline") === "1" && writes) {
       await wait();
       throw new TypeError("Failed to fetch");
     }
@@ -139,40 +154,64 @@
       }
       return new Response(null, { status: 204 });
     }
-    if (path === "api/comments" && method === "GET") return json({ items: review, drafts: [...threadDrafts].map(([thread, body]) => ({ thread, body })) });
+    if (path === "api/comments" && method === "GET") return json({ items: review, drafts: [...threadDrafts].map(([thread, text]) => ({ thread, body: text })) });
+    // レビュー中の書き込みを足す（id を持つ要求は、消した書き込みを同じ ID で戻す）
     if (path === "api/comments" && method === "POST") {
-      const item = { id: `C-${43 + review.length}`, target: payload.target ?? null, target_title: null, loc: payload.loc ?? null, body: payload.body, created: now() };
+      await wait();
+      const item = {
+        id: payload.id ?? `C-${(reviewSeq += 1)}`,
+        target: payload.target ?? null,
+        target_title: null,
+        loc: payload.loc ?? null,
+        thread: payload.thread ?? null,
+        body: payload.body,
+        created: payload.created ?? now(),
+      };
       review.push(item);
+      review.sort((a, b) => Number(a.id.slice(2)) - Number(b.id.slice(2)));
       return json({ id: item.id, created: item.created, count: review.length });
     }
-    // まとめて送る: 1 件ごとに、利用者の書き込みから始まるスレッドにする
+    // レビュー中の書き込みを書き換える・消す
+    const commentMatch = path.match(/^api\/comments\/([^/]+)$/);
+    if (commentMatch !== null && commentMatch[1] !== "send") {
+      const position = review.findIndex((item) => item.id === decodeURIComponent(commentMatch[1]));
+      if (method === "PATCH") {
+        Object.assign(review[position], payload);
+        return json({ id: review[position].id, body: review[position].body, loc: review[position].loc });
+      }
+      const [removed] = review.splice(position, 1);
+      return json({ ...removed, count: review.length });
+    }
+    // まとめて送る: 返信は向けたスレッドの末尾に足し、新しいスレッドは 1 件ごとにオープンのスレッドにする
     if (path === "api/comments/send") {
       await wait();
       const sent = now();
       for (const id of payload.ids) {
         const position = review.findIndex((item) => item.id === id);
         const [item] = review.splice(position, 1);
+        if (item.thread !== null) {
+          const thread = threads.find((entry) => entry.id === item.thread);
+          thread.posts.push({ id: `${thread.id}-${thread.posts.length + 1}`, author: "user", body: item.body, created: sent });
+          continue;
+        }
         threadSeq += 1;
-        threads.push({ id: `TH-${threadSeq}`, status: "open", tags: [], target: item.target, summary: null, posts: [{ id: `TH-${threadSeq}-1`, author: "user", body: item.body, created: sent }] });
+        threads.push({ id: `TH-${threadSeq}`, status: "open", tags: [], target: item.target, summary: null, events: [], posts: [{ id: `TH-${threadSeq}-1`, author: "user", body: item.body, created: sent }] });
       }
       return json({ sent, items: [], entered: params.get("entered") !== "0" });
     }
     if (path === "api/threads") return json({ threads });
-    // スレッドへの返信: 利用者の書き込みを末尾に足す
-    const postMatch = path.match(/^api\/threads\/([^/]+)\/posts$/);
-    if (postMatch !== null) {
-      await wait();
-      const thread = threads.find((entry) => entry.id === decodeURIComponent(postMatch[1]));
-      const post = { id: `${thread.id}-${thread.posts.length + 1}`, author: "user", body: payload.body, created: now() };
-      thread.posts.push(post);
-      return json({ post, entered: params.get("entered") !== "0" });
-    }
-    // スレッドの状態の書き換え（クローズ・オープンへの戻し）
+    // スレッドの状態の書き換え（クローズ・オープンへの戻し。任意の理由と日時を記録に残す）。status を持たない要求は、最後の記録に理由を書き足す
     const threadMatch = path.match(/^api\/threads\/([^/]+)$/);
     if (threadMatch !== null && method === "PATCH") {
       await wait();
       const thread = threads.find((entry) => entry.id === decodeURIComponent(threadMatch[1]));
-      thread.status = payload.status;
+      const reason = [payload.choice, payload.reason].filter(Boolean).join("。") || null;
+      if (payload.status === undefined) {
+        thread.events[thread.events.length - 1].reason = reason;
+      } else {
+        thread.status = payload.status;
+        thread.events.push({ kind: payload.status === "closed" ? "closed" : "reopened", reason, created: now() });
+      }
       return json({ id: thread.id, status: thread.status });
     }
     return json({ detail: `モックに無い受け口です（${method} ${path}）` }, 404);
@@ -199,8 +238,11 @@
   };
   new MutationObserver(keepBarOnTop).observe(body, { childList: true });
 
-  /** 操作列のリンクの行き先と、開いている見本の印を今のクエリから決める */
+  /** 操作列の見本のリンクの行き先と、開いている見本の印を今のクエリから決める。案のリンクは今の見本のまま移る */
   const refreshLinks = () => {
+    for (const link of document.querySelectorAll(".mockbar a[data-keep]")) {
+      link.href = `${link.getAttribute("href").split("?")[0]}${location.search}`;
+    }
     for (const link of document.querySelectorAll(".mockbar a[data-set]")) {
       const next = new URLSearchParams();
       for (const pair of link.dataset.set.split("&").filter(Boolean)) {
@@ -236,7 +278,7 @@
     "ai-thread": () => {
       threadSeq += 1;
       threads.push({
-        id: `TH-${threadSeq}`, status: "open", tags: ["起票"], target: "D-9",
+        id: `TH-${threadSeq}`, status: "open", tags: ["起票"], target: "D-9", events: [],
         summary: "D-9 の開発側の点検を Issue に起票してよいかの確認。返事待ち",
         posts: [{ id: `TH-${threadSeq}-1`, author: "ai", body: "D-9 で決めた開発側の点検を Issue に起票してよいですか。", created: now() }],
       });
@@ -247,17 +289,28 @@
     button.addEventListener("click", () => actions[button.dataset.mockAct]());
   }
 
-  // 見本: コメントの一覧を開いた状態で始める。filter があればその状態で絞り、tag があればそのタグで絞り、open があればそのスレッドを開く
-  if (params.get("drawer") === "1" || params.has("open") || params.has("tag") || params.has("filter")) {
+  // 見本: コメントの一覧を開いた状態で始め、クエリの順（絞り込み → タグ → 新しいスレッドの入力 → スレッド → レビュー中を確かめる画面）に操作する
+  const steps = ["filter", "tag", "compose", "open", "view"].filter((key) => params.has(key));
+  if (params.get("drawer") === "1" || steps.length > 0) {
+    const panel = (key) => `.comments-panel [data-focus="${key}"]`;
+    const selectors = {
+      filter: () => panel(`filter:${params.get("filter")}`),
+      tag: () => `.comments-panel .th-tag[data-focus$=":${params.get("tag")}"]`,
+      compose: () => panel("compose"),
+      open: () => panel(`thread:${params.get("open")}`),
+      view: () => panel("review"),
+    };
+    /** 残りの操作を、描かれるのを待ちながら順に押す */
+    const run = (rest) => {
+      if (rest.length === 0) return;
+      waitFor(selectors[rest[0]](), (target) => {
+        target.click();
+        run(rest.slice(1));
+      });
+    };
     waitFor(".comments-btn", (button) => {
       button.click();
-      if (!params.has("open") && !params.has("tag") && !params.has("filter")) return;
-      waitFor('.comments-panel [data-focus="tab:talk"]', (tab) => {
-        tab.click();
-        if (params.has("filter")) document.querySelector(`.comments-panel [data-focus="filter:${params.get("filter")}"]`).click();
-        if (params.has("tag")) waitFor(`.comments-panel .th-tag[data-focus$=":${params.get("tag")}"]`, (tag) => tag.click());
-        if (params.has("open")) waitFor(`.comments-panel [data-focus="thread:${params.get("open")}"]`, (row) => row.click());
-      });
+      run(steps);
     });
   }
   // 撮影用: mark に渡した CSS セレクタの要素に赤枠を付ける

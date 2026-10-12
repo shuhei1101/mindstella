@@ -21,6 +21,6 @@
 /* 枠の中の一覧: パネルと同じ余白で置く */
 .pane > .comments-body { flex: none; overflow: visible; }
 /* 見本の状態: ホバー */
-.is-hover.th-open, .is-hover.ctab, .is-hover.th-tag { background: var(--hover); color: var(--text); }
+.is-hover.th-open, .is-hover.review-entry, .is-hover.th-tag { background: var(--hover); color: var(--text); }
 /* 見本の状態: キーボードのフォーカス */
 .is-focus { outline: 2px solid var(--accent) !important; outline-offset: -2px; }

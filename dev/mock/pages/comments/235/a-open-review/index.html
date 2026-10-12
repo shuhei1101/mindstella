@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>スレッドの一覧 | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足すスレッドの一覧・スレッド 1 件・レビュー中を確かめる画面のスタイルと、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/235/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+<!-- data-initial: ハッシュが無いときに開く状態（検討事項の表）。data-pending: まだ送っていない新しいスレッドの出し方の案。data-names: 入口の名前の案。data-reason: 理由の入れ方の案 -->
+<body data-initial="tab=decisions&amp;view=table" data-pending="a" data-names="a" data-reason="a">
+  <!-- モック専用の操作列: 案・見本の状態・モックの操作・画面の切り替え・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span class="label">案（まだ送っていない新しいスレッド）:</span>
+    <a href="../a2-open-thread/index.html" data-keep>案 A2（一覧に出し、スレッドを開く）</a>
+    <a href="../a-open-review/index.html" data-keep aria-current="page">案 A（一覧に出し、レビュー中を確かめる画面を開く）</a>
+    <a href="../b-hidden/index.html" data-keep>案 B（一覧に出さない）</a>
+    <span class="label">入口の名前:</span>
+    <a href="../a2-open-thread/index.html" data-keep>案 A「レビュー中」</a>
+    <a href="../a2-open-thread/names-long/index.html" data-keep>案 B「レビュー中を確かめる」</a>
+    <span class="label">見本:</span>
+    <a href="#" data-set="drawer=1">レビュー中 3 件</a>
+    <a href="#" data-set="drawer=1&amp;review=0">レビュー中 0 件</a>
+    <a href="#" data-set="compose=1">新しいスレッドを書く</a>
+    <a href="#" data-set="tag=画面">タグ「画面」で絞った</a>
+    <a href="#" data-set="filter=closed">クローズ</a>
+    <a href="#" data-set="drawer=1&amp;threads=0">スレッド 0 件</a>
+    <a href="#" data-set="compose=1&amp;offline=1">サーバーにつながらない</a>
+    <span class="label">操作:</span>
+    <!-- data-mock-act: mock.js がサーバーの代わりに記録を書き換え、書き換えの知らせを送る -->
+    <button type="button" data-mock-act="ai-thread">AI がスレッドを立てる</button>
+    <span class="label">画面:</span>
+    <a href="../../../comment-thread/235/a-reason-before/index.html?open=TH-2">スレッド 1 件</a>
+    <a href="../../../comment-review/235/a-in-panel/index.html?view=review">レビュー中を確かめる画面</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">comments</a> / <a href="../index.md">235</a> / a-open-review</nav>
+  </div>
+
+  <!-- #127 の見本の記録を埋め込み先へ入れる → 埋め込み先を空にしてサーバーの代わりを置く → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/127/assets/data.js"></script>
+  <script src="../../../../refs/235/assets/mock.js"></script>
+  <script src="../../../../refs/235/assets/app.js"></script>
+</body>
+</html>

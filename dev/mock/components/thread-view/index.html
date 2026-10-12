@@ -32,11 +32,18 @@
       <div class="stage" id="s-asking"></div>
     </section>
 
-    <!-- AI の返信の中の項目の ID -->
+    <!-- レビュー中の返信を持つ -->
     <section class="cat-sec">
-      <h2>AI の返信の中の項目の ID</h2>
-      <p>記録にある ID は、押すとその項目の詳細パネルを右に開くリンクにする（乗せるとタイトルが出る）。</p>
-      <div class="stage" id="s-replied"></div>
+      <h2>レビュー中の返信を持つ</h2>
+      <p>溜めた返信は、書き込みの末尾に破線の枠と「レビュー中」の印つきで出し、その場で修正・削除する。</p>
+      <div class="stage" id="s-pending"></div>
+    </section>
+
+    <!-- レビュー中の返信を修正している・消した -->
+    <section class="cat-sec">
+      <h2>レビュー中の返信を修正している・消した</h2>
+      <p>左が修正の入力（キャンセル・修正）、右が消した後（元の場所に「元に戻す」）。</p>
+      <div class="stage" id="s-editing"></div>
     </section>
 
     <!-- AI の返信待ち -->
@@ -46,11 +53,32 @@
       <div class="stage" id="s-waiting"></div>
     </section>
 
-    <!-- 長いやり取り・改行 -->
+    <!-- クローズ・オープンへの戻しの記録 -->
     <section class="cat-sec">
-      <h2>長いやり取り・改行</h2>
-      <p>改行を残し、長い語も折り返す。</p>
-      <div class="stage" id="s-long"></div>
+      <h2>クローズ・オープンへの戻しの記録</h2>
+      <p>状態を変えた日時と理由を、書き込みの並びの中に枠の無い 1 行で出す。理由が無い記録は 1 行だけ。</p>
+      <div class="stage" id="s-events"></div>
+    </section>
+
+    <!-- 理由の入れ方の案 A（変える前に、その場で理由を書く） -->
+    <section class="cat-sec">
+      <h2>理由の入れ方の案 A（変える前に、その場で理由を書く）</h2>
+      <p>「クローズにする」「オープンに戻す」を押すと、見出しの下に理由（任意）の入力と「キャンセル」・確定を出す。左がクローズ、右がオープンへの戻し。</p>
+      <div class="stage" id="s-reason-a"></div>
+    </section>
+
+    <!-- 理由の入れ方の案 B（すぐ変え、後から理由を書き足す） -->
+    <section class="cat-sec">
+      <h2>理由の入れ方の案 B（すぐ変え、後から理由を書き足す）</h2>
+      <p>押すとすぐ状態を変える。最後の記録に「理由を書く」を出し（左）、押すと記録の下に入力を出す（右）。</p>
+      <div class="stage" id="s-reason-b"></div>
+    </section>
+
+    <!-- 理由の入れ方の案 C（理由を選択肢から選び、文も書く） -->
+    <section class="cat-sec">
+      <h2>理由の入れ方の案 C（理由を選択肢から選び、文も書く）</h2>
+      <p>クローズのときだけ、選択肢（選ばない・解決した・取り下げ・重複）と補足の入力を出す。</p>
+      <div class="stage" id="s-reason-c"></div>
     </section>
 
     <!-- クローズ -->
@@ -60,17 +88,17 @@
       <div class="stage" id="s-closed"></div>
     </section>
 
-    <!-- クローズにしている間 -->
+    <!-- まだ送っていない新しいスレッド -->
     <section class="cat-sec">
-      <h2>クローズにしている間</h2>
-      <p>押したボタンを押せなくし、二重に送らない。</p>
-      <div class="stage" id="s-saving"></div>
+      <h2>まだ送っていない新しいスレッド</h2>
+      <p>状態の札は「レビュー中」。最初の書き込みをレビュー中の印つきで出し、クローズと返信の入力を出さない。</p>
+      <div class="stage" id="s-new"></div>
     </section>
 
     <!-- クローズにできなかった -->
     <section class="cat-sec">
       <h2>クローズにできなかった</h2>
-      <p>見出しの下に理由と直し方を出す（自動で消さない）。</p>
+      <p>見出しの下に理由と直し方を出す（自動で消さない）。理由の入力は開いたまま残す。</p>
       <div class="stage" id="s-failed"></div>
     </section>
 
@@ -84,7 +112,7 @@
     <!-- 狭い幅（390px） -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>書き込みの寄せを詰め、見出しのボタンは 1 行に収める。</p>
+      <p></p>
       <div class="stage narrow" id="s-narrow"></div>
     </section>
   </main>
@@ -92,16 +120,21 @@
   <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
   <script>
     const T = Catalog.THREADS;
-    const view = (thread, over) => MindmapPreview.h({ tag: "div", attrs: { class: "pane" }, children: MindmapPreview.threadView(thread, Catalog.talkOf(over)) });
+    const R = Catalog.REVIEW;
+    const view = (thread, over) => Catalog.pane(MindmapPreview.threadView(thread, Catalog.propsOf(over)));
     Catalog.place("s-asking", view(T.asking));
-    Catalog.place("s-replied", view(T.replied));
+    Catalog.place("s-pending", view(T.replied, { items: [R.reply] }));
+    Catalog.place("s-editing", [view(T.replied, { items: [R.reply], editing: R.reply.id }), view(T.replied, { removed: [R.reply] })]);
     Catalog.place("s-waiting", view(T.waiting));
-    Catalog.place("s-long", view(T.long));
+    Catalog.place("s-events", view(T.long));
+    Catalog.place("s-reason-a", [view(T.replied, { talk: { reasonOpen: true, reasonBody: "案 B で決着" } }), view(T.closed, { talk: { reasonOpen: true } })]);
+    Catalog.place("s-reason-b", [view(T.closedNoReason, { talk: { variant: { reason: "b" } } }), view(T.closedNoReason, { talk: { variant: { reason: "b" }, reasonOpen: true } })]);
+    Catalog.place("s-reason-c", view(T.replied, { talk: { variant: { reason: "c" }, reasonOpen: true, reasonChoice: "解決した" } }));
     Catalog.place("s-closed", view(T.closed));
-    Catalog.place("s-saving", view(T.replied, { action: { status: "saving" } }));
-    Catalog.place("s-failed", view(T.replied, { action: { status: "failed" } }));
-    Catalog.place("s-gone", view(T.gone));
-    Catalog.place("s-narrow", view(T.replied));
+    Catalog.place("s-new", Catalog.pane(MindmapPreview.pendingThreadView(R.newToItem.id, Catalog.propsOf({ items: [R.newToItem] }))));
+    Catalog.place("s-failed", view(T.replied, { talk: { reasonOpen: true, reasonBody: "案 B で決着", action: { status: "failed" } } }));
+    Catalog.place("s-gone", view(T.closedNoReason));
+    Catalog.place("s-narrow", view(T.replied, { items: [R.reply] }));
   </script>
 </body>
 </html>

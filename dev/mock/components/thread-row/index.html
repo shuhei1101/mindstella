@@ -32,6 +32,13 @@
       <div class="stage" id="s-replied"></div>
     </section>
 
+    <!-- レビュー中の返信を持つスレッド -->
+    <section class="cat-sec">
+      <h2>レビュー中の返信を持つスレッド</h2>
+      <p>2 行目の末尾に「レビュー中」の印を出す（破線の枠・鉛筆の印・文字）。</p>
+      <div class="stage" id="s-pending-reply"></div>
+    </section>
+
     <!-- AI が立てたスレッド（利用者の返事待ち） -->
     <section class="cat-sec">
       <h2>AI が立てたスレッド（利用者の返事待ち）</h2>
@@ -44,6 +51,13 @@
       <h2>AI の返信待ち・要約がまだ無い</h2>
       <p>最後の書き手が利用者のオープンのスレッドに「AI の返信待ち」の札を出す。要約がまだ無い行は、最初の書き込みの先頭を太さを落として出す。</p>
       <div class="stage" id="s-waiting"></div>
+    </section>
+
+    <!-- まだ送っていない新しいスレッド -->
+    <section class="cat-sec">
+      <h2>まだ送っていない新しいスレッド</h2>
+      <p>状態の札の代わりに「レビュー中」の札を出し、行の枠を破線にする。上が項目へ向けたもの、下が項目を指さないもの。</p>
+      <div class="stage" id="s-pending-new"></div>
     </section>
 
     <!-- クローズ -->
@@ -60,13 +74,6 @@
       <div class="stage" id="s-long"></div>
     </section>
 
-    <!-- 向けた項目が消えた -->
-    <section class="cat-sec">
-      <h2>向けた項目が消えた</h2>
-      <p>返信待ちでないスレッドは記録として残り、消した項目の ID を文字のまま出す。</p>
-      <div class="stage" id="s-gone"></div>
-    </section>
-
     <!-- タグで絞っている行 -->
     <section class="cat-sec">
       <h2>タグで絞っている行</h2>
@@ -81,11 +88,18 @@
       <div class="stage" id="s-hover"></div>
     </section>
 
-    <!-- 一覧の上の絞り込みの帯 -->
+    <!-- 一覧の全体（絞り込みの帯・行・新しいスレッドの入口） -->
     <section class="cat-sec">
-      <h2>一覧の上の絞り込みの帯</h2>
-      <p>状態のセグメント（オープン・クローズ・すべてと件数）を帯の幅いっぱいに置き、タグで絞っているときだけ、その下に解除のチップと「残った件数 / 全体の件数」を出す。</p>
+      <h2>一覧の全体（絞り込みの帯・行・新しいスレッドの入口）</h2>
+      <p>左がタグで絞っていないとき、右がタグ「画面」で絞ったとき（解除のチップと「残った件数 / 全体の件数」。タグで絞っている間は、まだ送っていない新しいスレッドを出さない）。</p>
       <div class="stage" id="s-band"></div>
+    </section>
+
+    <!-- 新しいスレッドを書く -->
+    <section class="cat-sec">
+      <h2>新しいスレッドを書く</h2>
+      <p>「新しいスレッド」を押すと、同じ場所に見出し・入力欄・「レビューに追加」を出す。× で畳む。</p>
+      <div class="stage" id="s-compose"></div>
     </section>
 
     <!-- 0 件 -->
@@ -98,7 +112,7 @@
     <!-- 狭い幅（390px） -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>パネルが画面いっぱいのときも、行の 2 行目は折り返して収める。</p>
+      <p></p>
       <div class="stage narrow" id="s-narrow"></div>
     </section>
   </main>
@@ -106,24 +120,26 @@
   <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
   <script>
     const T = Catalog.THREADS;
-    const row = (thread, over) => MindmapPreview.threadRow(thread, Catalog.talkOf(over));
-    const list = (rows) => MindmapPreview.h({ tag: "ul", attrs: { class: "th-list" }, children: rows });
-    const pane = (nodes) => MindmapPreview.h({ tag: "div", attrs: { class: "pane" }, children: nodes });
-    const body = (nodes) => MindmapPreview.h({ tag: "div", attrs: { class: "comments-body" }, children: [nodes] });
-    Catalog.place("s-replied", pane([body(list([row(T.replied)]))]));
-    Catalog.place("s-asking", pane([body(list([row(T.asking)]))]));
-    Catalog.place("s-waiting", pane([body(list([row(T.waiting)]))]));
-    Catalog.place("s-closed", pane([body(list([row(T.closed)]))]));
-    Catalog.place("s-long", pane([body(list([row(T.long)]))]));
-    Catalog.place("s-gone", pane([body(list([row(T.gone)]))]));
-    Catalog.place("s-tagged", pane([body(list([row(T.long, { tag: "画面" })]))]));
-    Catalog.place("s-hover", [pane([body(list([row(T.replied)]))]), pane([body(list([row(T.replied)]))]), pane([body(list([row(T.replied)]))])]);
+    const R = Catalog.REVIEW;
+    const list = (rows) => Catalog.pane(MindmapPreview.h({ tag: "div", attrs: { class: "comments-body" }, children: [MindmapPreview.h({ tag: "ul", attrs: { class: "th-list" }, children: rows })] }));
+    const row = (thread, over) => MindmapPreview.threadRow(thread, Catalog.propsOf(over));
+    Catalog.place("s-replied", list([row(T.replied)]));
+    Catalog.place("s-pending-reply", list([row(T.replied, { items: [R.reply] })]));
+    Catalog.place("s-asking", list([row(T.asking)]));
+    Catalog.place("s-waiting", list([row(T.waiting)]));
+    Catalog.place("s-pending-new", list([MindmapPreview.pendingThreadRow(R.newToItem, Catalog.propsOf()), MindmapPreview.pendingThreadRow(R.newFree, Catalog.propsOf())]));
+    Catalog.place("s-closed", list([row(T.closed)]));
+    Catalog.place("s-long", list([row(T.long)]));
+    Catalog.place("s-tagged", list([row(T.long, { talk: { tag: "画面" } })]));
+    Catalog.place("s-hover", [list([row(T.replied)]), list([row(T.replied)]), list([row(T.replied)])]);
     Catalog.mark("s-hover", ".pane:nth-child(1) .th-open", "is-hover");
     Catalog.mark("s-hover", ".pane:nth-child(2) .th-open", "is-focus");
     Catalog.mark("s-hover", ".pane:nth-child(3) .th-tag", "is-focus");
-    Catalog.place("s-band", [pane(MindmapPreview.threadList(Catalog.talkOf())), pane(MindmapPreview.threadList(Catalog.talkOf({ tag: "画面" })))]);
-    Catalog.place("s-empty", [pane(MindmapPreview.threadList(Catalog.talkOf({ threads: [] }))), pane(MindmapPreview.threadList(Catalog.talkOf({ tag: "起票", filter: "closed", threads: [T.asking] })))]);
-    Catalog.place("s-narrow", pane(MindmapPreview.threadList(Catalog.talkOf())));
+    const items = [R.newToItem, R.newFree, R.reply];
+    Catalog.place("s-band", [Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ items }))), Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ items, talk: { tag: "画面" } })))]);
+    Catalog.place("s-compose", Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ talk: { composing: true, threads: [T.asking] } }))));
+    Catalog.place("s-empty", [Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ talk: { threads: [] } }))), Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ talk: { tag: "起票", filter: "closed", threads: [T.asking] } })))]);
+    Catalog.place("s-narrow", Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ items }))));
   </script>
 </body>
 </html>

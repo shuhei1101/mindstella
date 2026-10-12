@@ -1,5 +1,9 @@
 # comment-thread / 235
 
+クローズ・オープンへの戻しの理由の入れ方の 3 案。
+
 | 案 | 説明 |
 | --- | --- |
-| [a-in-panel](./a-in-panel/index.html) | 左のパネルの中で一覧と切り替え、上端に「一覧へ戻る」とクローズ（オープンに戻す）、下端に返信の入力を置く。返信はその場で送る |
+| [a-reason-before](./a-reason-before/index.html) | 「クローズにする」「オープンに戻す」を押すと、その場に理由（任意）の入力と確定を出し、状態と理由を 1 回で書く |
+| [b-reason-after](./b-reason-after/index.html) | 押すとすぐ状態を変え、並びに出た記録から、後で理由を書き足す |
+| [c-reason-choices](./c-reason-choices/index.html) | クローズの理由を選択肢から選び、文も書ける |

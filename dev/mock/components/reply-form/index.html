@@ -28,41 +28,34 @@
     <!-- 空 -->
     <section class="cat-sec">
       <h2>空</h2>
-      <p>入力が空の間は「返信する」を押せない（入力欄が空であることが押せない理由）。</p>
+      <p>入力が空の間は「レビューに追加」を押せない（入力欄が空であることが押せない理由）。</p>
       <div class="stage" id="s-empty"></div>
     </section>
 
     <!-- 入力中 -->
     <section class="cat-sec">
       <h2>入力中</h2>
-      <p>Ctrl+Enter でも送る（変換の確定の Enter では送らない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
+      <p>Ctrl+Enter でも溜める（変換の確定の Enter では溜めない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
       <div class="stage" id="s-typing"></div>
     </section>
 
-    <!-- 送っている -->
+    <!-- 溜めている -->
     <section class="cat-sec">
-      <h2>送っている</h2>
-      <p>入力欄を読み取りだけにし、「返信する」を押せなくする。</p>
-      <div class="stage" id="s-sending"></div>
+      <h2>溜めている</h2>
+      <p>入力欄を読み取りだけにし、「レビューに追加」を押せなくする。</p>
+      <div class="stage" id="s-saving"></div>
     </section>
 
-    <!-- 送った（Claude Code に入力した） -->
+    <!-- レビューに追加した -->
     <section class="cat-sec">
-      <h2>送った（Claude Code に入力した）</h2>
-      <p>入力欄を空にし、送った時刻とともに Claude Code へ入力したことを出す。</p>
-      <div class="stage" id="s-sent"></div>
+      <h2>レビューに追加した</h2>
+      <p>入力欄を空にし、レビュー中の件数を出す。溜めた返信は書き込みの末尾に出る。</p>
+      <div class="stage" id="s-saved"></div>
     </section>
 
-    <!-- 送った（Claude Code に入力できなかった） -->
+    <!-- レビューに追加できなかった -->
     <section class="cat-sec">
-      <h2>送った（Claude Code に入力できなかった）</h2>
-      <p>返信は保存されていて、次に話し合いを始めたときに取り込まれることを出す。</p>
-      <div class="stage" id="s-not-entered"></div>
-    </section>
-
-    <!-- 送れなかった -->
-    <section class="cat-sec">
-      <h2>送れなかった</h2>
+      <h2>レビューに追加できなかった</h2>
       <p>入力を残し、理由と直し方を出す（自動で消さない）。</p>
       <div class="stage" id="s-failed"></div>
     </section>
@@ -85,17 +78,16 @@
   <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
   <script>
     const T = Catalog.THREADS;
-    const form = (over) => MindmapPreview.h({ tag: "div", attrs: { class: "pane" }, children: [MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.replyForm(T.asking, Catalog.talkOf(over))] })] });
+    const form = (reply) => Catalog.pane(MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.replyForm(T.asking, Catalog.propsOf({ talk: { reply } }).talk)] }));
     const text = "起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい";
     const long = Array.from({ length: 12 }, (_, i) => `${i + 1} 行目: 版ごとに当てる操作を確かめる`).join("\n");
-    Catalog.place("s-empty", form());
-    Catalog.place("s-typing", form({ reply: { body: text } }));
-    Catalog.place("s-sending", form({ reply: { body: text, status: "sending" } }));
-    Catalog.place("s-sent", form({ reply: { status: "sent", entered: true, at: Catalog.at("05:20") } }));
-    Catalog.place("s-not-entered", form({ reply: { status: "sent", entered: false, at: Catalog.at("05:20") } }));
-    Catalog.place("s-failed", form({ reply: { body: text, status: "failed" } }));
-    Catalog.place("s-long", form({ reply: { body: long } }));
-    Catalog.place("s-narrow", form({ reply: { body: text } }));
+    Catalog.place("s-empty", form({}));
+    Catalog.place("s-typing", form({ body: text }));
+    Catalog.place("s-saving", form({ body: text, status: "saving" }));
+    Catalog.place("s-saved", form({ status: "saved", count: 3 }));
+    Catalog.place("s-failed", form({ body: text, status: "failed" }));
+    Catalog.place("s-long", form({ body: long }));
+    Catalog.place("s-narrow", form({ body: text }));
   </script>
 </body>
 </html>
