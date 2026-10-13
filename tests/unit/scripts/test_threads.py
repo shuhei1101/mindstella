@@ -218,6 +218,48 @@ def test_write_threads_when_write_fails(
     assert list(root.rglob("*.tmp")) == []
 
 
+RAW_THREADS = (
+    "items:\n"
+    "  - id: TH-1\n    status: waiting\n    target: D-9\n"
+    "    posts:\n      - {author: user, taken: null}\n"
+    "  - id: TH-2\n    status: closed\n    target: D-1\n"
+    "    posts:\n      - {author: user, taken: '2026-10-12T00:30:00+00:00'}\n"
+    "  - id: TH-3\n    status: open\n"
+    "  - id: 4\n    target: D-1\n"
+    "  - id: TH-5\n    target: 7\n"
+)
+
+
+def test_raw_thread_targets(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """合わないファイルから、ID と向けた項目が文字列のスレッドだけを、取り込み待ちかを添えて拾う（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"threads.yaml": RAW_THREADS})
+    # 実行
+    result = threads.raw_thread_targets(root)
+    # 検証
+    assert result == [("TH-1", "D-9", True), ("TH-2", "D-1", False)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(": : :\n  - [", id="not_yaml"),
+        pytest.param("items: 3\n", id="items_not_list"),
+        pytest.param("- id: TH-1\n", id="not_mapping"),
+    ],
+)
+def test_raw_thread_targets_when_unreadable(
+    make_workspace: MakeWorkspace, make_item: MakeItem, text: str
+) -> None:
+    """読めない・スレッドの並びでないファイルは、拾えるものが無い（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"threads.yaml": text})
+    # 実行
+    result = threads.raw_thread_targets(root)
+    # 検証
+    assert result == []
+
+
 def test_awaiting_posts() -> None:
     """取り込んでいない利用者の書き込みだけを返す（正常系）。"""
     # 準備

@@ -294,6 +294,30 @@ def test_check_threads_when_invalid(make_workspace: MakeWorkspace, make_item: Ma
     assert all(problem.kind == "schema" and problem.file == "threads.yaml" for problem in problems)
 
 
+def test_check_threads_when_invalid_and_target_missing(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """スキーマに合わないファイルでも、読める範囲のスレッドの無い項目への参照切れを拾う（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={
+            "threads.yaml": (
+                "items:\n  - id: TH-1\n    status: waiting\n    target: D-9\n"
+                "    posts:\n      - {author: user, taken: null}\n"
+                "  - id: TH-2\n    status: open\n    target: D-1\n    posts: []\n"
+            )
+        },
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_threads(workspace)
+    # 検証
+    assert ("broken_ref", "threads.yaml", "TH-1", "target") in _keys(problems)
+    assert any(problem.kind == "schema" for problem in problems)
+    assert all(problem.id != "TH-2" for problem in problems)
+
+
 def test_check_threads_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """スレッドのファイルが無ければ問題 0 件（正常系）。"""
     # 準備

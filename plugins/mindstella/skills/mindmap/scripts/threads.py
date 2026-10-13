@@ -159,6 +159,37 @@ def load_threads(root: Path) -> list[Thread]:
     return [_thread_of(item) for item in value["items"]]
 
 
+def raw_thread_targets(root: Path) -> list[tuple[str, str, bool]]:
+    """スキーマに合わない `threads.yaml` から、項目を指すスレッドの（ID・向けた項目・取り込み待ちか）を読める範囲で拾う。"""
+    path = records_root(root) / THREADS_FILE
+    try:
+        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        # 読めない: 拾えるものが無い
+        return []
+    items = value.get("items") if isinstance(value, dict) else None
+    # スレッドの並びでない: 拾えるものが無い
+    if not isinstance(items, list):
+        return []
+    targets: list[tuple[str, str, bool]] = []
+    for item in items:
+        # ID と向けた項目が文字列のスレッドだけを拾う
+        if not (
+            isinstance(item, dict)
+            and isinstance(item.get("id"), str)
+            and isinstance(item.get("target"), str)
+        ):
+            continue
+        posts = item.get("posts")
+        # 取り込んでいない利用者の書き込みを 1 件でも持つ
+        waiting = isinstance(posts, list) and any(
+            isinstance(post, dict) and post.get("author") == "user" and post.get("taken") is None
+            for post in posts
+        )
+        targets.append((item["id"], item["target"], waiting))
+    return targets
+
+
 def awaiting_posts(thread: Thread) -> list[Post]:
     """AI が取り込んでいない利用者の書き込みを書いた順に返す。"""
     return [post for post in thread.posts if post.author == "user" and post.taken is None]

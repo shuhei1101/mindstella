@@ -11,7 +11,7 @@ from errors import ItemNotFoundError, SchemaMismatchError
 from history import CHANGES_FILE, Changes, apply_body_diff, load_changes, removed_items
 from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
-from threads import THREADS_FILE, awaiting_posts, load_threads
+from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targets
 
 # 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
 SETTINGS_KIND = "settings"
@@ -272,7 +272,7 @@ def _check_threads(workspace: Workspace) -> list[Problem]:
     try:
         threads = load_threads(workspace.root)
     except SchemaMismatchError as error:
-        # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にする
+        # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にし、読める範囲のスレッドの参照切れも拾う
         return [
             Problem(
                 kind="schema",
@@ -282,27 +282,39 @@ def _check_threads(workspace: Workspace) -> list[Problem]:
                 detail=line.split(": ", 2)[2],
             )
             for line in error.lines
-        ]
+        ] + _check_thread_targets(workspace, raw_thread_targets(workspace.root))
+    # 項目を指すスレッドだけを確かめる
+    return _check_thread_targets(
+        workspace,
+        [
+            (thread.id, thread.target, bool(awaiting_posts(thread)))
+            for thread in threads
+            if thread.target is not None
+        ],
+    )
+
+
+def _check_thread_targets(
+    workspace: Workspace, targets: list[tuple[str, str, bool]]
+) -> list[Problem]:
+    """（スレッドの ID・向けた項目・取り込み待ちか）のうち、向けた項目が無いものを `broken_ref` にする。"""
     problems: list[Problem] = []
     removed_ids = _removed_ids(workspace.root)
-    for thread in threads:
-        # 項目に紐づかないスレッドは確かめるものが無い
-        if thread.target is None:
-            continue
+    for thread_id, target, waiting in targets:
         # 取り込み待ちでないスレッドが消した項目を指す: 記録として残るので拾わない
-        if not awaiting_posts(thread) and thread.target in removed_ids:
+        if not waiting and target in removed_ids:
             continue
         try:
-            find_item(workspace, thread.target)
+            find_item(workspace, target)
         except ItemNotFoundError:
             # 向けた項目が無い: 参照切れにする
             problems.append(
                 Problem(
                     kind="broken_ref",
                     file=THREADS_FILE,
-                    id=thread.id,
+                    id=thread_id,
                     key="target",
-                    detail=f"存在しない ID: {thread.target}",
+                    detail=f"存在しない ID: {target}",
                 )
             )
     return problems
