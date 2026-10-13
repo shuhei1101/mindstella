@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from storybook_fixture_types import OpenStory
 from storybook_frame_helpers import (
+    EXTERNAL_PAGE_TITLE,
     FRAME_SELECTOR,
     FRAME_SETTLE_MS,
+    WINDOW_OPEN_RECORDER_JS,
     frame_fit,
     frame_of,
+    new_tab_after,
+    opened_tabs,
+    serve_external_pages,
     wait_frame_rendered,
 )
 
@@ -183,3 +188,77 @@ def test_viewport_relative(open_story: OpenStory) -> None:
     fit = frame_fit(page)
     assert fit["bottom"] <= fit["height"]
     assert fit["later_height"] == fit["height"]
+
+
+# 枠を縦にスクロールさせる領域（ストーリーの `AnchorLinks`）
+STORY_SCROLLER = "#story-scroller"
+
+# 領域のスクロールの位置
+SCROLL_TOP_SCRIPT = "(selector) => document.querySelector(selector).scrollTop"
+
+# 枠の中の `id` の要素が、領域の見える範囲に入っているかを返す
+ANCHOR_VISIBLE_SCRIPT = """([scroller, id]) => {
+    const frame = document.querySelector('iframe.html-frame');
+    const target = frame.contentDocument.getElementById(id);
+    const box = document.querySelector(scroller).getBoundingClientRect();
+    const top = frame.getBoundingClientRect().top + frame.clientTop + target.getBoundingClientRect().top;
+    return top >= box.top - 1 && top + target.getBoundingClientRect().height <= box.bottom + 1;
+}"""
+
+
+def test_links(open_story: OpenStory) -> None:
+    """外のページへのリンクを押すと、枠の中の本文は残り、リンク先が新しいタブで開く。相対の URL と `javascript:` のリンクは、押しても何も起きない（正常系）。"""
+    # 準備
+    page = open_story("preview-htmlbodyframe--links")
+    serve_external_pages(page)
+    wait_frame_rendered(page)
+    frame = frame_of(page)
+    tabs = opened_tabs(page)
+    # 実行・検証（target を持たないリンク）
+    tab = new_tab_after(page, lambda: frame.click("#link-https"))
+    assert tab.url == "https://example.com/"
+    assert tab.title() == EXTERNAL_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    # 実行・検証（target="_blank" のリンク）
+    tab = new_tab_after(page, lambda: frame.click("#link-blank"))
+    assert tab.url == "https://example.com/blank"
+    assert opened_tabs(page) == tabs + 2
+    # 実行・検証（mailto: のリンクは window.open で開く）
+    page.evaluate(WINDOW_OPEN_RECORDER_JS)
+    frame.click("#link-mailto")
+    assert page.evaluate("window.__opens") == [["mailto:a@example.com", "_blank", "noopener,noreferrer"]]
+    # 実行（相対の URL と javascript: のリンク）
+    frame.click("#link-relative")
+    frame.click("#link-javascript")
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証（開かず、枠の中の本文は残り、スクリプトは動かない）
+    assert len(page.evaluate("window.__opens")) == 1
+    assert opened_tabs(page) == tabs + 2
+    assert frame.locator("h1").inner_text() == "リンクの見本"
+    assert frame.evaluate("location.href") == "about:srcdoc"
+    assert "動きました" not in frame.inner_text("body")
+
+
+def test_anchor_links(open_story: OpenStory) -> None:
+    """`#usage` のリンクを押すと、領域が見出しの位置まで送られ、新しいタブは開かない。`#none` のリンクは、押しても何も起きない（正常系）。"""
+    # 準備
+    page = open_story("preview-htmlbodyframe--anchor-links")
+    wait_frame_rendered(page)
+    frame = frame_of(page)
+    tabs = opened_tabs(page)
+    assert page.evaluate(ANCHOR_VISIBLE_SCRIPT, [STORY_SCROLLER, "usage"]) is False
+    # 実行（#usage のリンク）
+    frame.click("#link-usage")
+    page.wait_for_function(ANCHOR_VISIBLE_SCRIPT, arg=[STORY_SCROLLER, "usage"])
+    # 検証
+    assert page.evaluate(SCROLL_TOP_SCRIPT, STORY_SCROLLER) > 0
+    assert opened_tabs(page) == tabs
+    # 実行（#none のリンク。クリックが要素を見える位置へ送らないよう、先頭へ戻してから押す）
+    page.evaluate("(selector) => { document.querySelector(selector).scrollTop = 0; }", STORY_SCROLLER)
+    frame.click("#link-none")
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証
+    assert page.evaluate(SCROLL_TOP_SCRIPT, STORY_SCROLLER) == 0
+    assert opened_tabs(page) == tabs
+    assert frame.evaluate("location.href") == "about:srcdoc"

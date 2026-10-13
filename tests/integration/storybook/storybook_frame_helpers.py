@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TypedDict
 
 from playwright.sync_api import Frame, Page
 
 __all__ = [
+    "EXTERNAL_PAGE_TITLE",
     "FRAME_SELECTOR",
     "FRAME_SETTLE_MS",
+    "WINDOW_OPEN_RECORDER_JS",
     "FrameFit",
+    "new_tab_after",
+    "opened_tabs",
+    "serve_external_pages",
     "frame_fit",
     "frame_of",
     "wait_frame_rendered",
@@ -27,6 +33,21 @@ FRAME_RENDER_TIMEOUT_MS = 15_000
 # 枠の高さが伸び続けないかを確かめるために、置く間隔のミリ秒
 FRAME_LATER_MS = 1_500
 
+# 外のページへのリンクの先として返すページの題
+EXTERNAL_PAGE_TITLE = "外のページ"
+
+# 外のページへの要求を、テストが返すページで受ける条件
+EXTERNAL_PAGE_PATTERN = "https://example.com/**"
+
+# 新しいタブが開くまで待つ上限ミリ秒
+NEW_TAB_TIMEOUT_MS = 10_000
+
+# 親の画面の `window.open` を、呼び出しを記録するものに差し替える
+WINDOW_OPEN_RECORDER_JS = """() => {
+    window.__opens = [];
+    window.open = (...args) => { window.__opens.push(args.map(String)); return null; };
+}"""
+
 # 枠の高さと、枠の中の最後の要素の下端（px）を返す
 FRAME_METRICS_SCRIPT = """(selector) => {
     const frame = document.querySelector(selector);
@@ -43,6 +64,32 @@ class FrameFit(TypedDict):
     height: float
     bottom: float
     later_height: float
+
+
+def serve_external_pages(page: Page) -> None:
+    """`https://example.com/` への要求を、外へ通信せず、題だけを持つページで答えるようにする（新しいタブにも効く）。"""
+    page.context.route(
+        EXTERNAL_PAGE_PATTERN,
+        lambda route: route.fulfill(
+            status=200,
+            content_type="text/html; charset=utf-8",
+            body=f"<!doctype html><title>{EXTERNAL_PAGE_TITLE}</title>",
+        ),
+    )
+
+
+def opened_tabs(page: Page) -> int:
+    """ブラウザの文脈に開いているタブの数を返す。"""
+    return len(page.context.pages)
+
+
+def new_tab_after(page: Page, action: Callable[[], object]) -> Page:
+    """`action` を実行して開いた新しいタブを、読み込み終わりまで待って返す。"""
+    with page.context.expect_page(timeout=NEW_TAB_TIMEOUT_MS) as info:
+        action()
+    tab = info.value
+    tab.wait_for_load_state()
+    return tab
 
 
 def wait_frame_rendered(page: Page, selector: str = FRAME_SELECTOR) -> None:

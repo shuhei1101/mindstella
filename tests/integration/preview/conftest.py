@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 from preview_history_helpers import build_history_workspace
+from preview_html_link_helpers import link_target  # noqa: F401
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     MAIN_SELECTOR,
