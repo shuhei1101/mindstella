@@ -152,6 +152,27 @@ flows:
       - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_write_fails
+  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+    summary: 手で崩した threads.yaml には書かずに合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 から `posts` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_schema_mismatch
 lead: AI がスレッドをクローズにするかオープンに戻し、書き手（AI）・任意の理由・日時をスレッドに残す。利用者の書き換えは『画面からのスレッドの状態の書き換え』。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
@@ -208,6 +229,9 @@ exceptions:
   - name: WriteFailedError
     condition: '`threads.yaml` の書き込みか置き換えに失敗した'
     notes: ツールのエラー。前の `threads.yaml` を残す
+  - name: SchemaMismatchError
+    condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
+    notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形
