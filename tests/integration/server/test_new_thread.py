@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from .fixture_types import (
     CallTool,
     LockDirs,
@@ -55,32 +53,33 @@ def test_normal(
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-1"]
 
 
-@pytest.mark.parametrize(
-    ("arguments", "expected_text"),
-    [
-        pytest.param({"body": "  ", "summary": "確認"}, "エラー: 引数の誤り: body:", id="body_empty"),
-        pytest.param(
-            {"body": "起票してよいですか", "summary": "確認", "target": "D-9"},
-            "D-9",
-            id="target_not_found",
-        ),
-    ],
-)
-def test_error_when_rejected(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    call_tool: CallTool,
-    arguments: dict[str, str],
-    expected_text: str,
+def test_error_when_body_empty(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
-    """空白だけの本文と無い項目へは立てない（異常系）。"""
+    """空白だけの本文では立てない（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     # 実行
-    result = call_tool("new_thread", workspace=str(root), **arguments)
+    result = call_tool("new_thread", workspace=str(root), body="  ", summary="確認")
     # 検証
     assert result.is_error is True
-    assert expected_text in result.text
+    assert "エラー: 引数の誤り: body:" in result.text
+    assert not threads_path(root).exists()
+
+
+def test_error_when_target_not_found(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """無い項目へは立てない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行
+    result = call_tool(
+        "new_thread", workspace=str(root), body="起票してよいですか", summary="確認", target="D-9"
+    )
+    # 検証
+    assert result.is_error is True
+    assert "D-9" in result.text
     assert not threads_path(root).exists()
 
 

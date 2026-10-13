@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from .fixture_types import (
     CallTool,
     LockDirs,
@@ -88,32 +86,43 @@ def test_normal_when_tags(
     assert (thread["tags"], thread["summary"]) == (["画面", "調査"], "相談")
 
 
-@pytest.mark.parametrize(
-    ("arguments", "expected_text"),
-    [
-        pytest.param({}, "エラー: 引数の誤り: summary:", id="nothing_to_update"),
-        pytest.param({"id": "TH-9", "take": True}, "TH-9", id="thread_not_found"),
-    ],
-)
-def test_error_when_rejected(
+def test_error_when_nothing_to_update(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_thread: MakeThread,
     write_threads: WriteThreads,
     call_tool: CallTool,
-    arguments: dict[str, object],
-    expected_text: str,
 ) -> None:
-    """変えるものが無い・無い ID は書かずに終わる（異常系）。"""
+    """変えるものが無いときは書かずに終わる（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1"))
     before = threads_path(root).read_bytes()
     # 実行
-    result = call_tool("update_thread", workspace=str(root), **{"id": "TH-1", **arguments})
+    result = call_tool("update_thread", workspace=str(root), id="TH-1")
     # 検証
     assert result.is_error is True
-    assert expected_text in result.text
+    assert "エラー: 引数の誤り: summary:" in result.text
+    assert threads_path(root).read_bytes() == before
+
+
+def test_error_when_thread_not_found(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+) -> None:
+    """無い ID は書かずに終わる（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    before = threads_path(root).read_bytes()
+    # 実行
+    result = call_tool("update_thread", workspace=str(root), id="TH-9", take=True)
+    # 検証
+    assert result.is_error is True
+    assert "TH-9" in result.text
     assert threads_path(root).read_bytes() == before
 
 
