@@ -108,11 +108,15 @@ STATE_SEGMENTS = f"{COMMENTS_PANEL} .talk-filter button"
 THREAD_HEADING = f"{COMMENTS_PANEL} .th-heading"
 THREAD_POSTS = f"{COMMENTS_PANEL} ol.posts > li"
 
+# スレッドの画面とレビュー中を確かめる画面の、一覧へ戻るボタン
+BACK_BUTTON = f"{COMMENTS_PANEL} button.th-back"
+
 # スレッドの画面の状態を変えるボタン・理由の入力・結果
 STATUS_BUTTON = f"{COMMENTS_PANEL} button[data-focus='status']"
 REASON_FORM = f"{COMMENTS_PANEL} form.th-reason"
 REASON_TEXTAREA = f"{REASON_FORM} textarea"
 REASON_OK = f"{REASON_FORM} button[data-focus='reason-ok']"
+STATUS_MESSAGE = f"{COMMENTS_PANEL} .th-action-msg"
 
 # スレッドの画面の返信の入力と、クローズ・未送信の知らせ
 REPLY_FORM = f"{COMMENTS_PANEL} form.reply"
