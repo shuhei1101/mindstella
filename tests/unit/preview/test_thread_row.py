@@ -119,7 +119,7 @@ def _observe(
             id="no_summary",
         ),
         pytest.param({"thread": CLOSED}, ["クローズ"], [], True, id="closed"),
-        pytest.param({"thread": FREE}, ["オープン", "資料を足しました"], ["調査", "画面"], False, id="free"),
+        pytest.param({"thread": FREE}, ["オープン", "移し替えの手順を画面で見られるかの質問"], ["調査", "画面"], False, id="free"),
         pytest.param(
             {"thread": REPLIED, "hasPendingReply": True}, ["レビュー中"], ["画面"], True, id="pending_reply"
         ),
