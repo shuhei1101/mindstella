@@ -116,3 +116,4 @@ accessibility:
   - 入力欄と「レビューに追加」に Tab で届き、印の色の輪でフォーカスを見せる
 refs:
   - dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+test_file: tests/integration/storybook/test_reply_form_stories.py

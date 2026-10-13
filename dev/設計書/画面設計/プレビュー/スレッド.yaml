@@ -116,3 +116,4 @@ elements:
 lead: スレッドの一覧で開いたスレッド 1 件。書き込みと状態の変更を書いた順に並べ、下端で返信を溜め、上端でクローズとオープンへの戻しをする。コメントの一覧のパネルの中で一覧と切り替え、見出しの帯・パネルの置き方・閉じ方はコメントの一覧と同じ。まだ送っていない新しいスレッドもこの画面で開く。
 mock: dev/mock/pages/comment-thread/235/a-reason-before/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+test_file: tests/integration/preview/test_thread_screen.py

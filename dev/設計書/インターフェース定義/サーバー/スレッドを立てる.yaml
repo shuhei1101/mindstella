@@ -223,3 +223,4 @@ constraints:
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
   - dev/設計書/シナリオ/単一ユースケース/AIがスレッドを立てる#
+test_file: tests/integration/server/test_new_thread.py

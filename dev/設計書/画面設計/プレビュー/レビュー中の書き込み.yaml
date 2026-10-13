@@ -150,3 +150,4 @@ elements:
 lead: レビュー中の書き込み（新しいスレッドの最初の書き込みと、スレッドへの返信）を溜めた順に並べ、チェックしたものだけをまとめて送る。コメントの一覧のパネルの中で、見出しの帯の「レビュー中」から開く。見出しの帯（入口は出さない）・パネルの置き方・閉じ方はコメントの一覧と同じ。全てチェックした状態で開く。
 mock: dev/mock/pages/comment-review/235/a-in-panel/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+test_file: tests/integration/preview/test_review_screen.py

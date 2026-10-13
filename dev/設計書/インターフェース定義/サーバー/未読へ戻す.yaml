@@ -107,3 +107,4 @@ constraints:
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
   - dev/設計書/外部ライブラリ/claude-code#
+test_file: tests/integration/server/test_reset_unread.py

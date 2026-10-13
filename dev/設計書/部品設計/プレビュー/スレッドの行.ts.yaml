@@ -99,3 +99,4 @@ accessibility:
   - 行を開くボタンとタグの札のそれぞれに Tab で届き、フォーカスは枠の全体に印の色の輪で出す
 refs:
   - dev/設計書/画面設計/プレビュー/コメントの一覧#
+test_file: tests/integration/storybook/test_thread_row_stories.py
