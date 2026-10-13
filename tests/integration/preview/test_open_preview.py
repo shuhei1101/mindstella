@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs
 
 import yaml
 from playwright.sync_api import Page
@@ -82,6 +83,19 @@ CONNECTION = "header.topbar .conn"
 
 # サーバーにつながらないとき、接続の状態の全文が出る幅（幅 1440px 以下は短い文言になる）
 WIDE_SIZE = {"width": 1441, "height": 900}
+
+# 変更履歴のモーダルと検索のダイアログ・差分の札・札の × のボタン
+HISTORY_DIALOG = "dialog.hist"
+SEARCH_DIALOG = "dialog.search"
+DIFF_CHIP = ".df-chip"
+DIFF_CHIP_TITLE = ".df-chip-t"
+DIFF_OFF_NAME = "差分の表示をやめる"
+
+# 端末の保存領域に残した選んだ時点を読む
+SAVED_DIFF_JS = "JSON.parse(localStorage.getItem('mindmap-preview') || '{}').diffSel ?? null"
+
+# 時点を指すハッシュの書き換えと再描画を待つ上限ミリ秒
+DIFF_SETTLE_MS = 10_000
 
 # 溜めたコメントを受け付けるパス
 COMMENTS_PATH = "/api/comments"
@@ -1039,3 +1053,134 @@ def test_normal_when_html_body_line_edge_cases(
     page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
     page.get_by_role("button", name="選んだ箇所にコメント").click()
     assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"
+
+
+def _hash_params(page: Page) -> dict[str, list[str]]:
+    """今の URL のハッシュを、キー → 値の並びで返す。"""
+    return parse_qs(str(page.evaluate("location.hash")).lstrip("#"))
+
+
+def _make_diff_workspace(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, *, second: bool
+) -> str:
+    """D-1 の本文を書き換えて `commit`（V-1）し、`second` なら D-2 の本文も書き換えて `commit`（V-2）した配信の URL を返す。"""
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    workspace = str(root)
+    rewrites = [("D-1", "D-1 を直す")] + ([("D-2", "D-2 を直す")] if second else [])
+    for item_id, summary in rewrites:
+        updated = call_tool(
+            "update", workspace=workspace, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"}
+        )
+        assert updated.is_error is False, updated.text
+        committed = call_tool("commit", workspace=workspace, summary=summary)
+        assert committed.is_error is False, committed.text
+    result = call_tool("preview_url", workspace=workspace)
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    return str(result.data["url"])
+
+
+def test_normal_when_diff_in_hash(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """ハッシュの diff が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに diff を置き換える（正常系）。"""
+    # 準備
+    url = _make_diff_workspace(make_workspace, make_item, call_tool, second=True)
+    # 実行（時点を指すハッシュで開く）
+    open_preview(url, "#tab=decisions&view=table&diff=V-1")
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert page.inner_text(DIFF_CHIP_TITLE).endswith("D-1 を直す")
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert page.locator('table.grid tbody tr[data-id="D-2"] .df-mark').count() == 0
+    # 実行（項目を開く）
+    page.click('table.grid tbody tr[data-id="D-1"] .row-open')
+    page.wait_for_selector("aside.panel.open")
+    # 検証（diff を保つ）
+    assert _hash_params(page)["id"] == ["D-1"]
+    assert _hash_params(page)["diff"] == ["V-1"]
+    # 実行（変更履歴で V-2 を選ぶ）
+    history_before = page.evaluate("history.length")
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.click(f"{HISTORY_DIALOG} .hist-item[data-sel='V-2']")
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（diff を置き換え、履歴を増やさない）
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert page.evaluate("history.length") == history_before
+    # 実行（概要へ移る）
+    page.click('nav.tabbar a[data-tab="overview"]')
+    page.wait_for_function("!location.hash.includes('tab=decisions')", timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert _hash_params(page)["diff"] == ["V-2"]
+    # 実行（全体の検索で D-2 を開く）
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{SEARCH_DIALOG}[open]")
+    page.fill(f"{SEARCH_DIALOG} input", "D-2")
+    page.click(f'{SEARCH_DIALOG} .sr-item[data-id="D-2"]')
+    page.wait_for_selector("aside.panel.open")
+    # 検証
+    assert _hash_params(page)["id"] == ["D-2"]
+    assert _hash_params(page)["diff"] == ["V-2"]
+    # 実行（札の × を押す）
+    page.get_by_role("button", name=DIFF_OFF_NAME).click()
+    page.wait_for_function(f"!document.querySelector('{DIFF_CHIP}')", timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert "diff" not in _hash_params(page)
+    assert page.evaluate(SAVED_DIFF_JS) is None
+
+
+def test_normal_when_diff_in_hash_missing(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """記録に無いまとまり・空の pending を指すハッシュでは、差分を出さずに開き、diff を外す（正常系）。"""
+    # 準備
+    url = _make_diff_workspace(make_workspace, make_item, call_tool, second=False)
+    for missing in ("V-99", "pending"):
+        # 実行
+        open_preview(url, f"#tab=decisions&diff={missing}")
+        page.wait_for_function("!location.hash.includes('diff=')", timeout=DIFF_SETTLE_MS)
+        # 検証
+        assert page.locator(DIFF_CHIP).count() == 0
+        assert page.locator(".df-mark").count() == 0
+        assert page.locator("nav.tabbar .df-dot").count() == 0
+        assert page.evaluate("location.hash") == "#tab=decisions"
+        assert page.evaluate(SAVED_DIFF_JS) is None
+
+
+def test_normal_when_stored_diff_without_hash(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """ハッシュに diff が無ければ端末に残した時点で開き、その時点をハッシュに書く（正常系）。"""
+    # 準備（一度開いて変更履歴で V-1 を選び、閉じる）
+    url = _make_diff_workspace(make_workspace, make_item, call_tool, second=False)
+    open_preview(url, "#tab=decisions&view=table")
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.click(f"{HISTORY_DIALOG} .hist-item[data-sel='V-1']")
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    page.goto("about:blank")
+    history_before = page.evaluate("history.length")
+    # 実行（時点の無いハッシュで開き直す）
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert page.inner_text(DIFF_CHIP_TITLE).endswith("D-1 を直す")
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert _hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before + 1

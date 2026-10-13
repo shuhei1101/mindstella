@@ -384,8 +384,13 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     @server.tool(
         name="preview_url", description="プレビューを配る URL を返す（無ければ配信を立てる）"
     )
-    def preview_url(workspace: WorkspaceArg) -> CallToolResult:
-        return read(workspace, lambda root: commands.run_preview_url(root, previews=previews))
+    def preview_url(
+        workspace: WorkspaceArg,
+        diff: Annotated[
+            str | None, Field(description="差分を開くまとまりの ID（`commit` の `id`。例 V-3）")
+        ] = None,
+    ) -> CallToolResult:
+        return read(workspace, lambda root: commands.run_preview_url(root, previews=previews, diff=diff))
 
     @server.tool(
         name="readme",

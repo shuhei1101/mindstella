@@ -534,6 +534,82 @@ flows:
       - 描いた本文で `data-df` を持つ要素が、`<p>` と `<section>` の 2 つだけで、どちらも `chg`
       - '`<b>`・`<h2>`・`<div>` には印が無い'
     test: test_normal_when_html_body_diff_after_closed_element
+  - name: 正常系（時点を指す）
+    summary: ハッシュの diff が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに diff を置き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を、端末の保存領域が空の実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-1 の本文を書き換えて `commit`（V-1）し、その後 D-2 の本文を書き換えて `commit`（V-2）したワークスペース
+        notes: ハッシュは `tab=decisions&view=table&diff=V-1`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions&view=table&diff=V-1 で開く
+        IF-->>ユーザー: V-1 の差分の表示の検討事項の表
+        ユーザー->>IF: D-1 を開く
+        IF-->>ユーザー: D-1 の詳細パネルと、diff を保ったハッシュ
+        ユーザー->>IF: 変更履歴で V-2 を選ぶ
+        IF-->>ユーザー: V-2 の差分の表示と、diff を置き換えたハッシュ
+        ユーザー->>IF: タブの帯で概要へ移り、全体の検索で D-2 を開く
+        IF-->>ユーザー: D-2 の詳細パネルと、diff を保ったハッシュ
+        ユーザー->>IF: トップバーの札の × を押す
+        IF-->>ユーザー: 印の無い画面と、diff の無いハッシュ
+      ```
+    expected:
+      - 開いたとき、トップバーに V-1 の説明の札が出て、D-1 の行に変更の印があり、D-2 の行には無い
+      - D-1 を開いた後の URL のハッシュが `id=D-1` と `diff=V-1` を持つ
+      - V-2 を選んだ後、URL のハッシュの `diff` が `V-2` で、選ぶ前より履歴の数が増えていない
+      - 概要へ移った後と、全体の検索で D-2 を開いた後のどちらでも、URL のハッシュが `diff=V-2` を持つ
+      - × を押した後、URL のハッシュに `diff` が無く、端末の保存領域の選んだ時点が空
+    test: test_normal_when_diff_in_hash
+  - name: 正常系（記録に無い時点を指す）
+    summary: 記録に無いまとまり・空の pending を指すハッシュでは、差分を出さずに開き、diff を外す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を、端末の保存領域が空の実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-1 の本文を書き換えて `commit`（V-1）し、まだまとめていない変更を持たないワークスペース
+        notes: ハッシュは `tab=decisions&diff=V-99` と `tab=decisions&diff=pending` の 2 つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions&diff=V-99 で開く
+        IF-->>ユーザー: 印の無い検討事項の画面と、diff の無いハッシュ
+      ```
+    expected:
+      - どちらのハッシュで開いても、トップバーに選んだ時点の札が無く、D-1 にもタブにも印が無い
+      - 開いた後の URL のハッシュが `tab=decisions` だけで、端末の保存領域の選んだ時点が空
+    test: test_normal_when_diff_in_hash_missing
+  - name: 正常系（端末に時点が残り、ハッシュに時点が無い）
+    summary: ハッシュに diff が無ければ端末に残した時点で開き、その時点をハッシュに書く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-1 の本文を書き換えて `commit`（V-1）したワークスペース
+      - name: 端末の保存領域
+        description: 一度開いて変更履歴で V-1 を選び、閉じたブラウザ
+        notes: 開き直すハッシュは `tab=decisions`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions で開く
+        IF-->>ユーザー: V-1 の差分の表示と、diff=V-1 を持つハッシュ
+      ```
+    expected:
+      - トップバーに V-1 の説明の札が出て、D-1 に変更の印がある
+      - 開いた後の URL のハッシュが `diff=V-1` を持ち、履歴の数が増えていない
+    test: test_normal_when_stored_diff_without_hash
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメント・返信を溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `threads.yaml` にスレッドと返信を足し（『コメントをまとめて送る』）、クローズ・オープンへの戻しで `threads.yaml` の状態を書き換える（『画面からのスレッドの状態の書き換え』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
@@ -602,7 +678,7 @@ request:
     default: なし（差分を出さない）
     description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
     constraints: 記録に無いまとまりの ID・まだまとめていない変更が空の `pending` のときは差分を出さない
-    notes: 利用者が変更履歴のモーダルで選ぶ。端末の保存領域に持ち、URL のハッシュには書かない
+    notes: 利用者が変更履歴のモーダルで選ぶ。端末の保存領域に持ち、URL のハッシュの `diff` にも書く
   - name: 選んだ範囲
     type: Range
     required: false
@@ -618,6 +694,14 @@ request:
     constraints: 見出しの文言の空白を `-` にした形。同じ文言の見出しが 2 つ以上あるときは、本文の頭から 2 つ目が `-1`、3 つ目が `-2` を続ける。`id` があるときだけ効く。本文に無い見出しのときと、本文が HTML の資料のときは本文の頭で開き、ハッシュから `h` を外す
     example: 決め方
     notes: URL のハッシュの引数。本文の中の `[文言](#見出し)` のリンクは、同じ形で見出しを指す
+  - name: diff
+    type: "'since' | 'pending' | str"
+    required: false
+    default: なし（端末の保存領域に残した時点。残していなければ差分を出さない）
+    description: 差分の表示で比べる時点。値は『変更履歴で選んだ時点』と同じ
+    constraints: 端末の保存領域に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID・まだまとめていない変更が空の `pending` のときは差分を出さずに開き、ハッシュから `diff` を外す。ハッシュに `diff` が無く、保存領域の時点で差分を出せたときは、その時点をハッシュに書く
+    example: V-2
+    notes: URL のハッシュの引数。変更履歴で時点を選ぶと書き、差分の表示をやめると外す
 request_example: |-
   ```text
   http://127.0.0.1:43817/mindstella.html#tab=decisions&view=table&id=D-3&f.status=%E8%A6%81%E8%A6%8B%E7%9B%B4%E3%81%97
@@ -691,7 +775,7 @@ constraints:
   - item: 前の版の組み立て
     constraint: 項目の `history` を新しいものから順に、選んだ時点の最初の `seq` まで当てる（キーは `before` で戻し、本文は `body_diff` で戻す）。選んだ時点の範囲の中の回が 1 つでも保持する回数を超えて消えていれば（範囲の要素が無いか、項目の `history_dropped_seq` が範囲の始まりの `seq` より大きい）、印だけ付けて詳細パネルにその旨を出す。`body_diff` の `now` が今の本文に当たらなければ、本文は今の内容を描いて差分を出せない旨を出し、キーの差分は出す。`update_settings` が付け替えた `phase` は変更履歴に無いため、前の版でも今の値で出す
   - item: 差分の表示と書き換え
-    constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さず、履歴にも積まない。書き換えの知らせで読み直したときは、同じ時点の差分の表示のまま描き直す
+    constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さず、履歴にも積まずにハッシュの `diff` を置き換える。画面・項目を移ってもハッシュの `diff` を保つ。書き換えの知らせで読み直したときは、同じ時点の差分の表示のまま描き直す。選んだまとまりが記録から消えたか（保持する回数を超えた）、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめてハッシュから `diff` を外す
   - item: コメントの読み書き
     constraint: '開いたときに `GET /api/comments` を読み、コメントのボタンの件数・コメントの一覧・詳細の一番下のレビュー中のコメント・入力欄の書きかけを描く。溜める・直す・消す・元に戻す・まとめて送るはそれぞれの API へ `Content-Type: application/json` で送り、送っている間はそのボタンを押せなくする。空白だけの本文は送らずに理由を出す。届かない・エラーのときは本文を残して理由（届いたときは `detail`、409 のまとめて送るは `stale` を行ごとに）を出す。書きかけは入力が止まったときと入力欄を閉じるときに `PUT /api/drafts` へ送る。一覧のチェックは画面だけが持ち、溜めたコメントはチェックした状態で入る'
   - item: 選んだ箇所の対応づけ

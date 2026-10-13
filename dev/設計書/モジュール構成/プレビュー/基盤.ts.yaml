@@ -39,7 +39,7 @@ data_models:
     title: 画面の場所
     container: plugins/mindstella/skills/mindmap/preview/core/router.ts
     usecase: 共通
-    summary: URL のハッシュが指す画面・表示形式・項目・絞り込み（インターフェース定義『プレビューを開く』のリクエスト）
+    summary: URL のハッシュが指す画面・表示形式・項目・絞り込み・差分の時点（インターフェース定義『プレビューを開く』のリクエスト）
     properties:
       - name: tab
         type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'graph'"
@@ -59,6 +59,9 @@ data_models:
       - name: heading
         type: string | null
         description: 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`headingSlug` の形）。`id` が無いときは `null`
+      - name: diff
+        type: string | null
+        description: 差分の表示で比べる時点（ハッシュの `diff`。`since`・`pending`・まとまりの ID）。記録にあるかは確かめず、入口が `resolveDiffPoint` で引く。無いときは `null`
   - name: FetchResult
     title: 記録の取得の結果
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -532,6 +535,7 @@ functions:
       2. `tab` が画面の値でなければ `overview`、`view` が `VIEWS_OF` に無ければ `DEFAULT_VIEW`
       3. `id` が記録に無ければ `null`。`full` は `id` があり `1` のときだけ真。`heading` は `id` があるときの `h`（空なら `null`）
       4. `f.` で始まるキーを `filters` に入れる。`f.~{列}` は文字の条件で、値を分けず 1 つの配列にする。それ以外は値を `|` で分ける
+      5. `diff` は値をそのまま入れる（空か無ければ `null`）
     unit_tests:
       - name: test_parse_hash
         case: 正常
@@ -539,6 +543,12 @@ functions:
         condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board` / `#tab=docs&id=A-1&h=決め方-1` / `#tab=docs&h=決め方` / `#tab=terms&f.~title=a|b`'
         mock: なし
         expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board / docs・A-1・`heading` が `決め方-1` / `id` が `null` で `heading` も `null` / `{"~title": ["a|b"]}`'
+      - name: test_parse_hash_diff
+        case: 正常
+        summary: 差分の時点を読む
+        condition: '`parametrize`: `#tab=decisions&diff=V-2` / `#diff=pending` / `#tab=decisions&diff=` / `#tab=decisions`'
+        mock: なし
+        expected: decisions・`diff` が `V-2` / overview・`diff` が `pending` / `diff` が `null` / `diff` が `null`
   - name: toHash
     title: ハッシュを作る
     kind: 関数
@@ -554,7 +564,7 @@ functions:
         description: 画面の場所
     returns:
       type: string
-      description: '`#tab=...&view=...&id=...&full=1&h=...` の形（`h` は `heading` があるときだけ）。全て既定なら空文字'
+      description: '`#tab=...&view=...&id=...&full=1&h=...&diff=...` の形（`h` は `heading` があるときだけ、`diff` は `diff` があるときだけ）。全て既定なら空文字'
     unit_tests:
       - name: test_to_hash
         case: 正常
@@ -568,6 +578,12 @@ functions:
         condition: 資料のカードで A-1 を開き、`heading` が `決め方-1`
         mock: なし
         expected: '`#tab=docs&id=A-1&h=決め方-1`（`URLSearchParams` で読み戻すと同じ値）'
+      - name: test_to_hash_diff
+        case: 正常
+        summary: 差分の時点を diff に書く
+        condition: '`parametrize`: 概要の既定で `diff` が `V-2` / 検討事項の表で D-1 を開き `diff` が `since` / 概要の既定で `diff` が `null`'
+        mock: なし
+        expected: '`#diff=V-2` / `#tab=decisions&view=table&id=D-1&diff=since` / 空（`URLSearchParams` で読み戻すと同じ値）'
   - name: navigate
     title: 画面を移る
     kind: 関数

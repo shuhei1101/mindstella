@@ -1078,20 +1078,30 @@ functions:
         required: true
         passing: injected
         description: 配信の台帳
+      - name: diff
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`diff`（差分を開くまとまりの ID）'
     returns:
       type: dict[str, Any]
-      description: '`{url, workspace, started}`'
+      description: '`{url, workspace, started}`（`diff` を渡したときは `url` の末尾に `#diff={diff}`）'
     process: |-
       1. ワークスペースを確かめる（`require_workspace`）
-      2. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
-      3. この呼び出しで立てたときだけ、直下の README を URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
+      2. `diff` を渡した場合、まとまりを読み（`load_changes`。`SchemaMismatchError` はそのまま上がる）、`sets` に `id` が `diff` のまとまりが無ければ `ArgumentError`（`diff`、`記録に無いまとまりです: {diff}`）を送る（台帳の `start` を呼ばない）
+      3. 配信を立てるか、立っている配信を引く（`PreviewRegistry.start`。立てる前の検査の `SchemaMismatchError` はそのまま上がる）
+      4. この呼び出しで立てたときだけ、直下の README をハッシュの無い URL つきで書き直す（README の書き込み。`write_readme(root, preview_url=url)`）
          - `WriteFailedError` が起きた場合、送り直さずに続ける
            - `[WARNING]` README を書けなかった（パス、理由）
+      5. `diff` を渡した場合、`url` の末尾に `#diff={diff}` を付けて返す
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い（`mindmap.yaml` だけなら移し替えの案内を持つ）'
       - name: SchemaMismatchError
-        condition: まだ配っていないワークスペースの `config.yaml` がスキーマに合わない（`PreviewRegistry.start` から伝わる）
+        condition: まだ配っていないワークスペースの `config.yaml` がスキーマに合わない（`PreviewRegistry.start` から伝わる）。`diff` を渡したときは、`changes.yaml` がスキーマに合わないか YAML として読めない（`load_changes` から伝わる）
+      - name: ArgumentError
+        condition: '`diff` が `changes.yaml` の `sets` に無い'
     unit_tests:
       - name: test_run_preview_url
         case: 正常
@@ -1118,6 +1128,26 @@ functions:
         condition: 作成済みのワークスペースの `README.md` を消して同じ名前のフォルダを作る。偽の台帳の `start` が `(url, True)` を返す
         mock: '`previews`'
         expected: '例外が上がらず `started: true` の結果が返る。ログに WARNING が 1 件ある'
+      - name: test_run_preview_url_when_diff_given
+        case: 正常
+        summary: まとまりを指す URL を返し、README にはハッシュを書かない
+        condition: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース。偽の台帳の `start` が 1 回目 `(url, True)`、2 回目 `(url, False)` を返す。`diff="V-1"` で 2 回呼ぶ
+        mock: '`previews`'
+        expected: どちらの結果も `url` が `{url}#diff=V-1`。1 回目の後の `README.md` が `url` を含み、`#diff=` を含まない
+      - name: test_run_preview_url_when_diff_not_found
+        case: 異常
+        summary: 記録に無いまとまりでは配信を立てない
+        condition: まとまり V-1 だけを持つワークスペース。`diff="V-99"`
+        mock: '`previews`'
+        expected: '`ArgumentError`（メッセージが `引数の誤り: diff:` で始まり `V-99` を含む）。`start` が呼ばれない'
+        exception: '`diff` が `changes.yaml` の `sets` に無い'
+      - name: test_run_preview_url_when_changes_invalid
+        case: 異常
+        summary: changes.yaml が読めなければ配信を立てない
+        condition: '`changes.yaml` を YAML として読めない中身に書き換えたワークスペース。`diff="V-1"`'
+        mock: '`previews`'
+        expected: '`SchemaMismatchError`（`lines` が `changes.yaml: ` で始まる行を持つ）。`start` が呼ばれない'
+        exception: まだ配っていないワークスペースの `config.yaml` がスキーマに合わない（`PreviewRegistry.start` から伝わる）。`diff` を渡したときは、`changes.yaml` がスキーマに合わないか YAML として読めない（`load_changes` から伝わる）
   - name: run_update_settings
     title: update_settings の処理
     kind: 関数

@@ -154,6 +154,8 @@ constraints:
     notes: 単一ユースケース『AIがスレッドを立てる』
   - item: スレッドを読む範囲
     constraint: '取り込み待ちのスレッドのほかは、既定でオープンのスレッドの未読だけを読み、過去の経緯が要るときだけ `threads` を `status: closed` か `all` で、`thread` を `unread_only: false` で呼ぶ。一覧はキーだけで引き、要約で読むかを決める'
+  - item: 直したまとまりのリンク
+    constraint: 記録を直して `commit` が `id` を返した後、利用者への応答・会話ログ・ワークスペースの外（Issue のスレッドなど）に直したことを書くときは、その `id` を `diff` に渡して `preview_url` を呼び、返った `url` をリンクとして添える。`commit` の `id` が `null` のときは添えない
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

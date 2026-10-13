@@ -5,12 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, row_ids
+from preview_helpers import OpenInEmptyContext, OpenPreview, row_ids
 from readme_helpers import preview_section
 from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
+
+if TYPE_CHECKING:
+    from conftest import Replay
 
 # 書き換えが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
@@ -26,6 +30,14 @@ FRAME_TEXT_SCRIPT = "(frame) => frame.contentDocument?.body?.textContent ?? ''"
 
 # 書き換えの見張りが基準を取るのを待つミリ秒
 WATCH_START_MS = 500
+
+# 札が出るまで待つ上限ミリ秒
+CHIP_TIMEOUT_MS = 10_000
+
+# 表の行ごとに、印の class（印が無ければ null）を読む
+ROW_MARKS_SCRIPT = """rows => Object.fromEntries(rows.map(
+    r => [r.dataset.id, r.querySelector('.row-open + .df-mark')?.className ?? null]
+))"""
 
 # 足す検討事項
 NEW_DECISION = {
@@ -150,3 +162,37 @@ def test_normal_when_html_body_rewritten(
     # 描き直した後も、開いていた画面と URL のハッシュが変わらない
     assert page.url == opened_url
     assert page.get_attribute('nav.tabbar a[data-tab="docs"]', "aria-current") == "page"
+
+
+def test_normal_when_link_to_change_set(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    open_in_empty_context: OpenInEmptyContext,
+) -> None:
+    """記録を直して commit した後、その id を diff に渡して得た URL が、そのまとまりの差分の表示で開く（正常系）。"""
+    # 準備（まとまり V-1 を持つワークスペース）
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    ws = str(root)
+    replay("update", workspace=ws, id="D-2", item={"body_markdown": "D-2 の本文を直した\n"})
+    replay("commit", workspace=ws, summary="D-2 を直す")
+    # 実行（D-1 を直してまとめ、そのまとまりを指す URL を取る）
+    replay("update", workspace=ws, id="D-1", item={"body_markdown": "D-1 の本文を直した\n"})
+    committed = replay("commit", workspace=ws, summary="D-1 を直す")
+    link = str(replay("preview_url", workspace=ws, diff=committed["id"])["url"])
+    # 検証（リンクが 127.0.0.1 の画面を指し、ハッシュが V-2 を持つ）
+    parts = urlsplit(link)
+    assert committed["id"] == "V-2"
+    assert parts.hostname == "127.0.0.1"
+    assert parts.path == PAGE_PATH
+    assert parse_qs(parts.fragment)["diff"] == ["V-2"]
+    # 実行（端末の保存領域が空のブラウザでリンクを開き、検討事項の表へ移る）
+    opened = open_in_empty_context(link)
+    opened.wait_for_selector(".df-chip", timeout=CHIP_TIMEOUT_MS)
+    opened.click('nav.tabbar a[data-tab="decisions"]')
+    opened.click('.segment button[data-view="table"]')
+    opened.wait_for_selector("table.grid tbody tr")
+    # 検証（V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かない）
+    assert opened.inner_text(".df-chip-t").endswith("D-1 を直す")
+    marks = opened.eval_on_selector_all("table.grid tbody tr", ROW_MARKS_SCRIPT)
+    assert marks == {"D-1": "df-mark df-chg", "D-2": None}

@@ -674,6 +674,81 @@ def test_diagram_raw(write_sample_preview: WriteSamplePreview, open_preview: Ope
     assert page.is_visible("aside.panel .mermaid")
 
 
+def _open_diagram(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> Page:
+    """D-3 の詳細パネルを開き、本文の図を描き終わるまで待つ。"""
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel .diagram .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    return page
+
+
+def test_diagram_surface_cursor(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図の面は、虫眼鏡ではなく既定のカーソルを出す（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    # 実行
+    cursors = page.eval_on_selector_all(
+        "aside.panel .diagram .mermaid, aside.panel .diagram .mermaid svg",
+        "elements => elements.map(e => getComputedStyle(e).cursor)",
+    )
+    # 検証
+    assert cursors == ["auto", "auto"]
+
+
+def test_diagram_text_cursor(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図の文字は、文字を選ぶカーソルで選べる（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    # 実行
+    styles = page.eval_on_selector_all(
+        "aside.panel .diagram .mermaid svg .nodeLabel",
+        "elements => elements.map(e => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect])",
+    )
+    # 検証
+    assert styles == [["text", "text"], ["text", "text"]]
+
+
+def test_diagram_text_drag_select(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図の文字を、ドラッグで選べる（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    labels = page.locator("aside.panel .diagram .mermaid svg .nodeLabel")
+    labels.first.scroll_into_view_if_needed()
+    first = labels.first.bounding_box()
+    last = labels.last.bounding_box()
+    assert first is not None
+    assert last is not None
+    # 実行
+    page.mouse.move(first["x"] + 1, first["y"] + first["height"] / 2)
+    page.mouse.down()
+    page.mouse.move(last["x"] + last["width"] - 1, last["y"] + last["height"] / 2, steps=5)
+    page.mouse.up()
+    # 検証
+    selected = page.evaluate("getSelection().toString()")
+    assert "A" in selected
+    assert "B" in selected
+
+
+def test_diagram_press_does_not_open_viewer(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図は、面も文字も押して図の拡大を開かない（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    # 実行
+    page.locator("aside.panel .diagram .mermaid").click(position={"x": 5, "y": 5})
+    page.locator("aside.panel .diagram .mermaid svg .nodeLabel").first.click()
+    page.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+    # 検証
+    assert page.locator("dialog.viewer[open]").count() == 0
+
+
 def test_content_transition(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
@@ -1918,14 +1993,13 @@ def test_diff_head(
     assert page.inner_text("aside.panel .df-head-t") == "決める"
     assert page.inner_text("aside.panel .df-when") == "10/02 09:00"
     # 「前回開いてから」は範囲の始まりを添える
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'since'}))")
+    page.goto(f"{url}{DIFF_D1_HASH}&diff=since")
     page.reload()
     page.wait_for_selector("aside.panel .df-head")
     assert page.inner_text("aside.panel .df-head-t") == "前回開いてから"
     assert page.inner_text("aside.panel .df-when") == "10/01 21:00 より後"
     # 変わっていない項目（V-2 で足した・変えたものに入らない T-1）には出さない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
-    page.goto(f"{url}#tab=tasks&view=table&id=T-1")
+    page.goto(f"{url}#tab=tasks&view=table&id=T-1&diff=V-2")
     page.reload()
     page.wait_for_selector("aside.panel.open .d-title")
     assert page.locator("aside.panel .df-head").count() == 0
@@ -1945,7 +2019,7 @@ def test_diff_new_badge(
     assert page.locator("aside.panel .df-kv").count() == 0
     assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     # 変えただけの項目（V-2 の D-1）には札を置かない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
+    page.goto(f"{url}{DIFF_D1_HASH}&diff=V-2")
     page.reload()
     page.wait_for_selector("aside.panel .df-head")
     assert page.locator("aside.panel .d-title .df-badge").count() == 0

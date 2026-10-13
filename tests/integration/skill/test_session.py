@@ -128,6 +128,12 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/プレビュー.md が preview_url を呼ぶ
     preview_step = (SKILLS_DIR / "session" / "steps" / "プレビュー.md").read_text(encoding="utf-8")
     assert "`preview_url`" in preview_step
+    # 直したまとまりのリンクとして、commit の id を preview_url の diff に渡す手順を持つ
+    record_section = body.split(f"## {RECORD_SECTION}", 1)[1].split("\n## ", 1)[0]
+    assert "`commit`" in record_section
+    assert "`diff`" in record_section
+    assert "`preview_url`" in record_section
+    assert "| `preview_url` | `workspace`・`diff`" in body
     # steps/範囲の見直し.md が update_settings を呼ぶ
     scope_step = (SKILLS_DIR / "session" / "steps" / "範囲の見直し.md").read_text(encoding="utf-8")
     assert "`update_settings`" in scope_step
