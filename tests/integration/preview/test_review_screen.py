@@ -1,4 +1,4 @@
-"""画面設計『コメントの一覧』の結合テスト。"""
+"""画面設計『レビュー中の書き込み』の結合テスト。"""
 
 from __future__ import annotations
 
@@ -7,39 +7,36 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, Route
 from preview_comment_helpers import (
+    BAND_COUNT,
+    BAND_RESULT,
+    CHECK_ALL,
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
-    DETAIL_MESSAGE,
-    FREE_FORM,
-    FREE_TEXTAREA,
+    REVIEW_ENTRY,
+    REVIEW_HEAD,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     free_comment,
     fulfill_problem,
+    open_review,
     read_workspace_yaml,
     review_row,
 )
-from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from claude_pane_fixtures import StartClaudePane
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
     MakeComment,
-    MakeDraft,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     StartServer,
     WriteComments,
 )
 
-# 一覧の送る帯の要素
-CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
-BAND_COUNT = f"{COMMENTS_PANEL} .send-band .send-count"
-BAND_RESULT = f"{COMMENTS_PANEL} .send-band .send-msg"
-
-# 項目を指さないコメントの入力欄の畳む幅（これ以下）と、パネルを画面いっぱいに出す幅（これ以下）
-COMPACT_WIDTH = 700
+# パネルを画面いっぱいに出す幅（これ以下）
 NARROW_WIDTH = 800
 VIEWPORT_HEIGHT = 700
 
@@ -57,12 +54,6 @@ REVIEW_COLOR_SCRIPT = """(() => {
 def _row(comment_id: str) -> str:
     """コメントの行の選択子を返す。"""
     return f"{COMMENTS_PANEL} li[data-comment='{comment_id}']"
-
-
-def _open_list(page: Page) -> None:
-    """トップバーのコメントのボタンで一覧を開き、開くのを待つ。"""
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
 
 
 def _open_row_in_detail(page: Page, comment_id: str) -> None:
@@ -95,65 +86,44 @@ def served_review(
 
 
 def test_heading(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """トップバーのコメントのボタンで、見ている画面に重ねて左から出すパネルを開き、見出しとレビュー中の件数を出す（正常系）。"""
-    # 準備
-    url, _ = served_review
-    page = open_preview(url, "#tab=decisions&view=table")
-    # 実行
-    _open_list(page)
-    page.wait_for_function(
-        "document.querySelector('aside.comments-panel').getBoundingClientRect().x === 0"
-    )
-    # 検証
-    assert page.get_attribute(COMMENTS_PANEL, "aria-label") == "コメントの一覧"
-    assert page.inner_text(f"{COMMENTS_PANEL} .comments-head h2") == "レビュー中のコメント\n3"
-    assert page.get_attribute(COMMENTS_BUTTON, "aria-expanded") == "true"
-    box = page.locator(COMMENTS_PANEL).bounding_box()
-    assert box is not None
-    assert box["x"] == 0
-    # 見ている画面を開いたまま重ねる
-    assert page.locator("main table.grid").count() == 1
-
-
-def test_close(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """閉じるボタン・Esc・トップバーのコメントのボタンで閉じ、履歴に積まない（正常系）。"""
-    # 準備
-    url, _ = served_review
-    page = open_preview(url, "#tab=decisions&view=table")
-    history_length = page.evaluate("history.length")
-    _open_list(page)
-    assert history_length == page.evaluate("history.length")
-    # 実行・検証（閉じるボタン）
-    page.get_by_role("button", name="コメントの一覧を閉じる").click()
-    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
-    assert page.get_attribute(COMMENTS_BUTTON, "aria-expanded") == "false"
-    # Esc
-    _open_list(page)
-    page.keyboard.press("Escape")
-    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
-    # トップバーのコメントのボタン
-    _open_list(page)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
-    assert page.evaluate("history.length") == history_length
-
-
-def test_close_when_detail_open(
-    served_review: tuple[str, Path], open_preview: OpenPreview
-) -> None:
-    """詳細パネルを開いているときの Esc は、詳細パネルを先に閉じる（正常系）。"""
+    """見出しの帯の「レビュー中」でパネルの中を切り替え、見出しの題とレビュー中の書き込みの件数を出す。この画面では入口を出さない（正常系）。"""
     # 準備
     url, _ = served_review
     page = open_preview(url)
-    _open_list(page)
-    page.click(f"{_row('C-1')} button.row-target")
-    page.wait_for_selector("aside.panel.open")
-    # 実行・検証
+    history_length = page.evaluate("history.length")
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    assert page.get_attribute(REVIEW_ENTRY, "aria-label") == "レビュー中の書き込みを確かめる（3 件）"
+    # 実行
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    # 検証
+    assert page.inner_text(f"{REVIEW_HEAD} h3.review-title") == "レビュー中の書き込み\n3"
+    assert page.inner_text(f"{COMMENTS_PANEL} .comments-head h2") == "コメント"
+    assert page.locator(REVIEW_ENTRY).count() == 0
+    assert page.get_by_role("button", name="コメントの一覧を閉じる").count() == 1
+    assert page.evaluate("history.length") == history_length
+
+
+def test_back(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """戻るで開く前の画面（スレッドの一覧）へ戻り、「レビュー中」の入口へフォーカスを戻す。Esc も同じ（正常系）。"""
+    # 準備
+    url, _ = served_review
+    page = open_preview(url)
+    open_review(page)
+    # 実行・検証（戻る）
+    page.get_by_role("button", name="戻る").click()
+    page.wait_for_selector(f"{COMMENTS_PANEL} .talk-band")
+    assert page.locator(REVIEW_HEAD).count() == 0
+    assert page.evaluate(
+        "document.activeElement === document.querySelector('aside.comments-panel button.review-entry')"
+    )
+    # Esc
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
     page.keyboard.press("Escape")
-    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .talk-band")
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
-    page.keyboard.press("Escape")
-    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
 
 
 def test_toggle_all(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
@@ -161,7 +131,7 @@ def test_toggle_all(served_review: tuple[str, Path], open_preview: OpenPreview) 
     # 準備
     url, _ = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     row_checks = f"{COMMENTS_PANEL} input.row-check"
     # 実行・検証
     assert page.get_attribute(f"{COMMENTS_PANEL} .send-band label.legend-all-check", "title") == "すべて選ぶ"
@@ -179,7 +149,7 @@ def test_selected_count(served_review: tuple[str, Path], open_preview: OpenPrevi
     # 準備
     url, _ = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     assert page.inner_text(BAND_COUNT) == "3 / 3 件"
     # 実行
     page.locator(f"{_row('C-1')} input.row-check").uncheck()
@@ -190,11 +160,11 @@ def test_selected_count(served_review: tuple[str, Path], open_preview: OpenPrevi
 def test_send(
     served_review: tuple[str, Path], open_preview: OpenPreview, call_tool: CallTool
 ) -> None:
-    """チェックしたコメントだけを溜めた順に送り、送った行を一覧から外してコメントのボタンの件数を減らす（正常系）。"""
+    """チェックしたものだけを溜めた順に送り、送った行をレビュー中の書き込みから外してコメントのボタンの件数を減らす（正常系）。"""
     # 準備
     url, root = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.get_by_label("項目を指さないコメントを送る").uncheck()
     send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
     assert send.inner_text() == "まとめて送る（2 件）"
@@ -214,11 +184,11 @@ def test_send(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
     ) == ["C-3"]
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
-    pending = call_tool("submissions", workspace=str(root))
-    assert pending.data is not None
-    assert [(item["target"], item["body"]) for item in pending.data["items"]] == [
-        ("D-1", "案 A にする"),
-        ("A-1", "ここは言い換える"),
+    awaiting = call_tool("threads", workspace=str(root), awaiting=True)
+    assert awaiting.data is not None
+    assert [(item["id"], item["target"], item["head"]) for item in awaiting.data["items"]] == [
+        ("TH-2", "A-1", "ここは言い換える"),
+        ("TH-1", "D-1", "案 A にする"),
     ]
     assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == ["C-3"]
 
@@ -242,7 +212,7 @@ def test_send_when_entered(
     opened = server.call("preview_url", workspace=str(root))
     assert opened.data is not None
     page = open_preview(str(opened.data["url"]))
-    _open_list(page)
+    open_review(page)
     send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
     # 実行
     send.click()
@@ -262,7 +232,7 @@ def test_send_when_sending(
     held: list[Route] = []
     page.route("**/api/comments/send", lambda route: held.append(route))
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
     # 実行
     send.click()
@@ -291,14 +261,14 @@ def test_send_when_nothing_checked(
         ),
     )
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.get_by_label("すべて選ぶ").uncheck()
     # 検証
     send = page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る")
     assert send.inner_text() == "まとめて送る（0 件）"
     assert send.is_disabled()
-    assert page.inner_text(BAND_RESULT) == "送るコメントにチェックを付けてください。"
+    assert page.inner_text(BAND_RESULT) == "送る書き込みにチェックを付けてください。"
     assert posts == []
 
 
@@ -325,20 +295,20 @@ def test_send_when_stale(
         ),
     )
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert (
-        page.inner_text(BAND_RESULT) == "送れませんでした。箇所が合わないコメントが 1 件あります。"
+        page.inner_text(BAND_RESULT) == "送れませんでした。送れない書き込みが 1 件あります。"
     )
     assert page.get_attribute(f"{_row('C-2')} .row-stale", "role") == "alert"
     assert "選んだ文が A-1 の" in page.inner_text(f"{_row('C-2')} .row-stale")
     assert page.locator(f"{_row('C-1')} .row-stale").count() == 0
     review = page.evaluate(REVIEW_COLOR_SCRIPT)
     assert page.eval_on_selector(_row("C-2"), "e => getComputedStyle(e).borderTopColor") == review
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert len(read_workspace_yaml(root, "comments.yaml")["items"]) == 2
 
 
@@ -350,7 +320,7 @@ def test_send_when_unreachable(
     url, _ = served_review
     page.route("**/api/comments/send", lambda route: route.abort())
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.failed", timeout=UPDATE_TIMEOUT_MS)
@@ -370,15 +340,15 @@ def test_send_when_server_refuses(
     url, _ = served_review
     page.route(
         "**/api/comments/send",
-        lambda route: fulfill_problem(route, 500, "submissions.yaml を書けません"),
+        lambda route: fulfill_problem(route, 500, "threads.yaml を書けません"),
     )
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.failed", timeout=UPDATE_TIMEOUT_MS)
     # 検証
-    assert page.inner_text(BAND_RESULT) == "送れませんでした。submissions.yaml を書けません"
+    assert page.inner_text(BAND_RESULT) == "送れませんでした。threads.yaml を書けません"
 
 
 def test_rows_order(
@@ -398,7 +368,7 @@ def test_rows_order(
     )
     page = open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
@@ -406,15 +376,12 @@ def test_rows_order(
 
 
 def test_row_check(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
-    """行のチェックは、開いたときと新しく溜めたコメントがチェックした状態で入り、読み上げの名前に向けた項目を持つ（正常系）。"""
+    """行のチェックは、開いたときにチェックした状態で入り、読み上げの名前に向けた項目を持つ（正常系）。"""
     # 準備
     url, _ = served_review
     page = open_preview(url)
-    _open_list(page)
     # 実行
-    page.fill(FREE_TEXTAREA, "あとで足したコメント")
-    page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").click()
-    page.wait_for_selector(_row("C-4"), timeout=UPDATE_TIMEOUT_MS)
+    open_review(page)
     # 検証
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} input.row-check",
@@ -423,9 +390,8 @@ def test_row_check(served_review: tuple[str, Path], open_preview: OpenPreview) -
         ["D-1 へのコメントを送る", True],
         ["A-1 へのコメントを送る", True],
         ["項目を指さないコメントを送る", True],
-        ["項目を指さないコメントを送る", True],
     ]
-    assert page.inner_text(BAND_COUNT) == "4 / 4 件"
+    assert page.inner_text(BAND_COUNT) == "3 / 3 件"
 
 
 def test_row_target(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
@@ -433,7 +399,7 @@ def test_row_target(served_review: tuple[str, Path], open_preview: OpenPreview) 
     # 準備
     url, _ = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     target = f"{_row('C-1')} button.row-target"
     assert page.inner_text(target) == "D-1\nD-1の題"
     # 実行
@@ -459,7 +425,7 @@ def test_row_target_when_not_pointing(
     url, _ = served_review
     page = open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
     assert page.inner_text(f"{_row('C-3')} .row-target") == "項目を指さない"
     assert page.locator(f"{_row('C-3')} button.row-target").count() == 0
@@ -478,7 +444,7 @@ def test_row_target_when_gone(
     )
     page = open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
     assert page.inner_text(f"{_row('C-1')} .row-target") == "D-9"
     assert page.locator(f"{_row('C-1')} button.row-target").count() == 0
@@ -490,7 +456,7 @@ def test_row_location(served_review: tuple[str, Path], open_preview: OpenPreview
     url, _ = served_review
     page = open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
     assert page.inner_text(f"{_row('C-2')} .review-loc-name") == "本文 2 行目"
     assert page.inner_text(f"{_row('C-2')} .send-quote") == "言い換えたい文"
@@ -511,7 +477,7 @@ def test_row_body(
     )
     page = open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
     assert page.inner_text(f"{_row('C-1')} .review-body") == "1 行目\n2 行目"
 
@@ -521,7 +487,7 @@ def test_edit(served_review: tuple[str, Path], open_preview: OpenPreview) -> Non
     # 準備
     url, root = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     field = f"{_row('C-1')} form.row-edit textarea"
     assert page.input_value(field) == "案 A にする"
@@ -550,7 +516,7 @@ def test_edit_when_body_empty(
         lambda request: patches.append(request.url) if request.method == "PATCH" else None,
     )
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "   ")
     # 実行
@@ -576,7 +542,7 @@ def test_edit_when_server_refuses(
         ),
     )
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 B にする")
     # 実行
@@ -594,7 +560,7 @@ def test_edit_when_cancelled(
     # 準備
     url, root = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
     # 実行・検証（キャンセル）
@@ -616,7 +582,7 @@ def test_edit_when_started_in_detail(
     # 準備
     url, _ = served_review_rows
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     _open_row_in_detail(page, "C-1")
     # 実行
     page.locator(review_row("aside.panel", "C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
@@ -635,7 +601,7 @@ def test_edit_when_started_in_list(
     # 準備
     url, _ = served_review_rows
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     _open_row_in_detail(page, "C-1")
     # 実行
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
@@ -655,7 +621,7 @@ def test_edit_when_started_in_detail_while_editing_in_list(
     # 準備
     url, root = served_review_rows
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     _open_row_in_detail(page, "C-1")
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
@@ -678,7 +644,7 @@ def test_edit_when_started_in_list_while_editing_in_detail(
     # 準備
     url, root = served_review_rows
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     _open_row_in_detail(page, "C-1")
     page.locator(review_row("aside.panel", "C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{review_row('aside.panel', 'C-1')} form.row-edit textarea", "捨てる")
@@ -702,7 +668,7 @@ def test_edit_when_list_closed(
     # 準備
     url, root = served_review_rows
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     _open_row_in_detail(page, "C-1")
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{_row('C-1')} form.row-edit textarea", "捨てる")
@@ -714,7 +680,7 @@ def test_edit_when_list_closed(
     assert page.locator(f"{detail_row} form.row-edit").count() == 0
     assert page.locator(f"{detail_row} .row-actions").count() == 1
     assert page.inner_text(f"{detail_row} .review-body") == "案 A にする"
-    _open_list(page)
+    open_review(page)
     assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
     assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
@@ -734,7 +700,7 @@ def test_edit_when_detail_left(
     # 準備
     url, root = served_review_rows
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     _open_row_in_detail(page, "C-1")
     page.locator(review_row("aside.panel", "C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
     page.fill(f"{review_row('aside.panel', 'C-1')} form.row-edit textarea", "捨てる")
@@ -755,7 +721,7 @@ def test_remove_and_restore(
     # 準備
     url, root = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     created = read_workspace_yaml(root, "comments.yaml")["items"][0]["created"]
     # 実行（削除）
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを削除").click()
@@ -786,13 +752,13 @@ def test_restore_when_list_closed(
     # 準備
     url, _ = served_review
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを削除").click()
     page.wait_for_selector(f"{_row('C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
     # 実行
     page.get_by_role("button", name="コメントの一覧を閉じる").click()
     page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
-    _open_list(page)
+    open_review(page)
     # 検証
     assert page.get_by_role("button", name="元に戻す").count() == 0
     assert page.locator(_row("C-1")).count() == 0
@@ -819,7 +785,7 @@ def test_stale_reason_and_detach(
         ),
     )
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{_row('C-1')} .row-stale", timeout=UPDATE_TIMEOUT_MS)
     # 実行
@@ -852,7 +818,7 @@ def test_stale_reason_when_target_gone(
         ),
     )
     page = open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{_row('C-1')} .row-stale", timeout=UPDATE_TIMEOUT_MS)
@@ -864,96 +830,26 @@ def test_stale_reason_when_target_gone(
 def test_empty(
     write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """レビュー中のコメントが 0 件のときは、印と「レビュー中のコメントはありません。」を出し、送る帯は出さない（正常系）。"""
+    """レビュー中の書き込みが 0 件のときは、印と「レビュー中の書き込みはありません。」を出し、送る帯は出さない（正常系）。"""
     # 準備
     url, _ = write_review_preview(make_item("D-1"))
     page = open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
-    assert page.inner_text(f"{COMMENTS_PANEL} .comments-empty") == "レビュー中のコメントはありません。"
+    assert page.inner_text(f"{COMMENTS_PANEL} .comments-empty") == "レビュー中の書き込みはありません。"
     assert page.locator(f"{COMMENTS_PANEL} .comments-empty svg.icon").count() == 1
     assert page.locator(f"{COMMENTS_PANEL} .send-band").count() == 0
-    assert page.locator(FREE_FORM).count() == 1
-
-
-def test_free_input(
-    served_review: tuple[str, Path], open_preview: OpenPreview
-) -> None:
-    """項目を指さないコメントを下端の入力から溜めると、チェックした状態で一覧の末尾に足す（正常系）。"""
-    # 準備
-    url, root = served_review
-    page = open_preview(url)
-    _open_list(page)
-    # 実行
-    page.fill(FREE_TEXTAREA, "全体への補足")
-    page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").click()
-    page.wait_for_selector(_row("C-4"), timeout=UPDATE_TIMEOUT_MS)
-    # 検証
-    assert page.eval_on_selector_all(
-        f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
-    ) == ["C-1", "C-2", "C-3", "C-4"]
-    assert page.inner_text(f"{_row('C-4')} .row-target") == "項目を指さない"
-    assert page.inner_text(f"{_row('C-4')} .review-body") == "全体への補足"
-    assert page.is_checked(f"{_row('C-4')} input.row-check")
-    assert page.locator(f"{FREE_FORM} label.send-label").count() == 0
-    saved = read_workspace_yaml(root, "comments.yaml")["items"]
-    assert saved[-1].get("target") is None
-    assert saved[-1]["body"] == "全体への補足"
-
-
-def test_free_input_when_narrow(
-    served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
-) -> None:
-    """画面の幅 720px 以下では、項目を指さない入力を 1 行に畳み、フォーカスしたときに広げ、空のまま外へ出たら畳む（正常系）。"""
-    # 準備
-    url, _ = served_review
-    page.set_viewport_size({"width": COMPACT_WIDTH, "height": VIEWPORT_HEIGHT})
-    open_preview(url)
-    _open_list(page)
-    # 検証（畳んだ形）
-    assert page.locator(f"{FREE_FORM}.collapsed").count() == 1
-    assert page.locator(f"{FREE_FORM} button[type=submit]").count() == 0
-    # 実行（フォーカスして広げる）
-    page.focus(FREE_TEXTAREA)
-    page.wait_for_selector(f"{FREE_FORM}:not(.collapsed)")
-    assert page.locator(f"{FREE_FORM}").get_by_role("button", name="レビューに追加").is_visible()
-    # 実行（空のまま外へ出る）
-    page.get_by_role("button", name="コメントの一覧を閉じる").focus()
-    page.wait_for_selector(f"{FREE_FORM}.collapsed")
-
-
-def test_free_input_when_draft_exists(
-    write_review_preview: WriteReviewPreview,
-    open_preview: OpenPreview,
-    make_item: MakeItem,
-    make_draft: MakeDraft,
-    page: Page,
-) -> None:
-    """書きかけがあるときは、狭い幅でも広げて出す（正常系）。"""
-    # 準備
-    url, _ = write_review_preview(
-        make_item("D-1"),
-        drafts=(free_comment(make_draft(body="全体への書きかけ")),),
-    )
-    page.set_viewport_size({"width": COMPACT_WIDTH, "height": VIEWPORT_HEIGHT})
-    open_preview(url)
-    # 実行
-    _open_list(page)
-    # 検証
-    assert page.locator(f"{FREE_FORM}.collapsed").count() == 0
-    assert page.input_value(FREE_TEXTAREA) == "全体への書きかけ"
-    assert page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").is_visible()
 
 
 def test_narrow_width(served_review: tuple[str, Path], open_preview: OpenPreview, page: Page) -> None:
-    """幅 900px 以下は画面の幅いっぱいに出し、行から開いた詳細パネルを閉じると一覧へ戻る（正常系）。"""
+    """幅 900px 以下は画面の幅いっぱいに出し、行から開いた詳細パネルを閉じるとレビュー中の書き込みへ戻る（正常系）。"""
     # 準備
     url, _ = served_review
     page.set_viewport_size({"width": NARROW_WIDTH, "height": VIEWPORT_HEIGHT})
     open_preview(url)
     # 実行
-    _open_list(page)
+    open_review(page)
     # 検証
     width = page.evaluate(
         "document.querySelector('aside.comments-panel').getBoundingClientRect().width"
@@ -967,65 +863,137 @@ def test_narrow_width(served_review: tuple[str, Path], open_preview: OpenPreview
     assert page.is_visible(COMMENTS_PANEL)
 
 
-def test_detail_input_message_is_separate(
-    served_review: tuple[str, Path], open_preview: OpenPreview
-) -> None:
-    """行から開いた詳細パネルの入力は、一覧の下端の入力とは別に項目へのコメントを溜める（正常系）。"""
-    # 準備
-    url, root = served_review
-    page = open_preview(url)
-    _open_list(page)
-    page.click(f"{_row('C-1')} button.row-target")
-    page.wait_for_selector("aside.panel.open form.send")
-    # 実行
-    page.fill("aside.panel form.send textarea", "詳細パネルから足す")
-    page.locator("aside.panel form.send").get_by_role("button", name="レビューに追加").click()
-    page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=UPDATE_TIMEOUT_MS)
-    # 検証
-    page.wait_for_selector(_row("C-4"), timeout=UPDATE_TIMEOUT_MS)
-    assert page.inner_text(f"{_row('C-4')} .review-body") == "詳細パネルから足す"
-    assert page.inner_text(f"{_row('C-4')} .row-target") == "D-1\nD-1の題"
-    assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == [
-        "C-1",
-        "C-2",
-        "C-3",
-        "C-4",
-    ]
-
-
-# 覆われた本文の部品に付けた `inert` の数
-INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
-
-
-def test_exclusive_with_filter_drawer(
-    served_review: tuple[str, Path], open_preview: OpenPreview
-) -> None:
-    """絞り込みのドロワーとは同時に開かず、どちらかを開くと他方を閉じる。開いている間は覆った範囲の本文の部品を止める（正常系）。"""
-    # 準備（一覧を開く）
-    url, _ = served_review
-    page = open_preview(url, "#tab=decisions&view=table")
-    _open_list(page)
-    page.wait_for_function(f"{INERT_COUNT_SCRIPT} > 0")
-    list_open = (page.locator(DRAWER).count(), page.get_attribute(COMMENTS_BUTTON, "aria-expanded"))
-    # 実行（ドロワーを開くと、一覧が閉じる）
-    open_drawer(page)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
-    page.wait_for_function(f"{INERT_COUNT_SCRIPT} > 0")
-    drawer_open = (
-        page.locator(DRAWER_OPEN).count(),
-        page.get_attribute(COMMENTS_BUTTON, "aria-expanded"),
-        page.get_attribute(FILTER_BUTTON, "aria-expanded"),
+@pytest.fixture
+def served_replies(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """オープンの TH-1 への返信 C-1・クローズの TH-2 への返信 C-2・D-1 への新しいスレッド C-3 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body="起票してよいですか", created="2026-10-12T01:00:00+00:00"),
+                summary="起票の確認",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", read=True, taken="2026-10-12T00:30:00+00:00"),
+                status="closed",
+                summary="閉じた話",
+            ),
+        ),
+        comments=(
+            free_comment(make_comment("C-1", body="起票してよい", thread="TH-1")),
+            free_comment(make_comment("C-2", body="了解", thread="TH-2")),
+            make_comment("C-3", target="D-1", body="案 A にする"),
+        ),
     )
-    # 実行（一覧を開くと、ドロワーが閉じる）
+
+
+def test_row_reply(served_replies: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """返信の行は、頭に「返信」と返信先のスレッドの状態の札と題を出し、押すとそのスレッドを開く（正常系）。"""
+    # 準備
+    url, _ = served_replies
+    page = open_preview(url)
+    open_review(page)
+    # 検証
+    assert page.inner_text(f"{_row('C-1')} .row-kind") == "返信"
+    assert page.inner_text(f"{_row('C-1')} .row-target") == "オープン\n起票の確認"
+    assert page.inner_text(f"{_row('C-3')} .row-kind") == "新しいスレッド"
+    assert page.get_attribute(f"{_row('C-1')} input.row-check", "aria-label") == "TH-1 への返信を送る"
+    assert page.locator(f"{_row('C-1')}").get_by_role("button", name="TH-1 への返信を修正").count() == 1
+    assert page.locator(f"{_row('C-1')}").get_by_role("button", name="TH-1 への返信を削除").count() == 1
+    # 実行
+    page.click(f"{_row('C-1')} .row-head button.row-target")
+    # 検証（スレッドの画面へ切り替わる）
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "オープン\n起票の確認"
+
+
+def test_row_blocked(served_replies: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """クローズのスレッドへの返信は、チェックを押せず、送る件数に入れず、理由とそのスレッドを開く入口を出す（正常系）。"""
+    # 準備
+    url, _ = served_replies
+    page = open_preview(url)
+    # 実行
+    open_review(page)
+    # 検証
+    check = f"{_row('C-2')} input.row-check"
+    assert page.is_disabled(check)
+    assert not page.is_checked(check)
+    assert page.inner_text(BAND_COUNT) == "2 / 2 件"
+    assert (
+        page.inner_text(f"{_row('C-2')} .row-blocked span")
+        == "クローズのスレッドへの返信は送れません。オープンに戻すと送れます。"
+    )
+    # 実行（そのスレッドを開く）
+    page.locator(f"{_row('C-2')} .row-blocked").get_by_role("button", name="スレッドを開く").click()
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    # 検証
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "クローズ\n閉じた話"
+    assert page.get_by_role("button", name="オープンに戻す").count() == 1
+
+
+def test_row_open_thread(served_replies: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """新しいスレッドの行の「スレッドを開く」で、まだ送っていないそのスレッドを開く（正常系）。"""
+    # 準備
+    url, _ = served_replies
+    page = open_preview(url)
+    open_review(page)
+    # 実行
+    page.locator(f"{_row('C-3')} .row-thread-open").get_by_role("button", name="スレッドを開く").click()
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    # 検証
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "レビュー中\n案 A にする"
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-closed-note") == "まだ送っていないスレッドです。"
+
+
+def test_send_when_reply(
+    served_replies: tuple[str, Path], open_preview: OpenPreview, call_tool: CallTool
+) -> None:
+    """返信はそのスレッドの書き込みに移り、クローズのスレッドへの返信は送らずレビュー中に残す（正常系）。"""
+    # 準備
+    url, root = served_replies
+    page = open_preview(url)
+    open_review(page)
+    # 実行
+    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.inner_text(BAND_RESULT).startswith("2 件を送りましたが、Claude Code には入力できませんでした（")
+    assert page.eval_on_selector_all(
+        f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
+    ) == ["C-2"]
+    threads = {item["id"]: item for item in read_workspace_yaml(root, "threads.yaml")["items"]}
+    assert [post["body"] for post in threads["TH-1"]["posts"]] == ["起票してよいですか", "起票してよい"]
+    assert [post["body"] for post in threads["TH-2"]["posts"]] == ["TH-2-1の本文"]
+    assert threads["TH-3"]["target"] == "D-1"
+
+
+def test_row_selected_from_thread(
+    served_replies: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """スレッドの画面から開いたときは、そのスレッドへの返信の行を選んだ見た目にする（正常系）。"""
+    # 準備
+    url, _ = served_replies
+    page = open_preview(url)
+    open_list_button = f"{COMMENTS_PANEL} ul.th-list > li:has(button[data-focus='thread:TH-1']) button.th-open"
     page.click(COMMENTS_BUTTON)
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
-    page.wait_for_selector(DRAWER, state="detached")
-    list_again = (page.get_attribute(COMMENTS_BUTTON, "aria-expanded"), page.get_attribute(FILTER_BUTTON, "aria-expanded"))
-    # 実行（一覧を閉じると、止めた部品を戻す）
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
-    page.wait_for_function(f"{INERT_COUNT_SCRIPT} === 0")
+    page.click(open_list_button)
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    # 実行
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
     # 検証
-    assert list_open == (0, "true")
-    assert drawer_open == (1, "false", "true")
-    assert list_again == ("true", "false")
+    assert page.eval_on_selector(_row("C-1"), "e => e.classList.contains('selected')") is True
+    assert page.eval_on_selector(_row("C-3"), "e => e.classList.contains('selected')") is False
+    # 戻るで、見ていたスレッドの画面へ戻る
+    page.get_by_role("button", name="戻る").click()
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "オープン\n起票の確認"
