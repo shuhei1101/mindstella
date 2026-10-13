@@ -691,6 +691,108 @@ def test_normal_when_aliases_matched(
     assert after_escape == ALIAS_WORD
 
 
+# 用語の別名のシナリオの語（G-1 のタイトルと同じ別名、G-1 だけの別名）
+TERM_ALIAS_TITLE = "移し替え"
+TERM_ALIAS_ONLY = "マイグレーション"
+
+# G-1 の意味
+TERM_ALIAS_MEANING = "ワークスペースを今の版へ直すこと"
+
+# A-1 の本文: 段落に別名とタイトルと同じ別名、コードブロックに別名
+TERM_ALIAS_BODY = (
+    "マイグレーションと移し替えを済ませる\n\n"
+    "```\nマイグレーション\n```\n"
+)
+
+# G-1 の本文: 自分の別名（印を付けない）
+TERM_ALIAS_OWN_BODY = "マイグレーションの説明\n"
+
+
+def test_normal_when_term_alias_matched(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """本文の語に一致した用語の別名に、用語と同じ印とツールチップを出し、押して用語の詳細へ移る。キーボードでも同じツールチップを読める（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item(
+            "G-1",
+            title=TERM_ALIAS_TITLE,
+            aliases=[TERM_ALIAS_ONLY, TERM_ALIAS_TITLE],
+            meaning=TERM_ALIAS_MEANING,
+            body="G-1.md",
+        ),
+        make_item("A-1"),
+        settings=valid_settings,
+        bodies={"A-1.md": TERM_ALIAS_BODY, "G-1.md": TERM_ALIAS_OWN_BODY},
+    )
+    page = open_preview(url, "#tab=docs&view=table&id=A-1", width=TALL_SIZE[0], height=TALL_SIZE[1])
+    page.wait_for_selector(BODY_MARKS)
+    # 実行（A-1 の本文の印）
+    marks = page.eval_on_selector_all(
+        BODY_MARKS,
+        "a => a.map(x => [x.textContent, x.dataset.ids, getComputedStyle(x).textDecorationLine, getComputedStyle(x).textDecorationStyle])",
+    )
+    in_code_block = page.locator("aside.panel .md:not(.md-value) pre a.term").count()
+    # 実行（タイトルと同じ別名「移し替え」に乗せる）
+    page.hover(f"{BODY_MARKS} >> nth=1")
+    page.wait_for_selector(TIP_OPEN)
+    title_tip_heads = page.eval_on_selector_all(f"{TIP} .tt-head", "heads => heads.map(h => h.textContent)")
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（「マイグレーション」に乗せる）
+    page.hover(f"{BODY_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    alias_tip = page.evaluate(
+        """() => {
+            const tip = document.getElementById('term-tip');
+            return {
+                role: tip.getAttribute('role'),
+                head: tip.querySelector('.tt-head').textContent,
+                body: tip.querySelector('.tt-body').textContent,
+                links: tip.querySelectorAll('a.tt-link').length,
+            };
+        }"""
+    )
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（キーボードでフォーカスする）
+    page.focus(f"{BODY_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    focus_head = page.inner_text(f"{TIP} .tt-head")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（「マイグレーション」を押す）
+    page.click(f"{BODY_MARKS} >> nth=0")
+    page.wait_for_function(
+        f"document.querySelector('aside.panel .d-title')?.textContent === '{TERM_ALIAS_TITLE}'"
+    )
+    hash_after = page.evaluate("location.hash")
+    own_marks = page.locator(BODY_MARKS).count()
+    # 検証
+    # 「マイグレーション」と「移し替え」に用語と同じ点線の印が付き、コードブロックの中には付かない
+    assert marks == [
+        [TERM_ALIAS_ONLY, "G-1", "underline", "dotted"],
+        [TERM_ALIAS_TITLE, "G-1", "underline", "dotted"],
+    ]
+    assert in_code_block == 0
+    # タイトルと同じ別名でも G-1 は 1 回だけ出る
+    assert title_tip_heads == [f"{TERM_ALIAS_TITLE}G-1"]
+    # 別名のツールチップは用語・ID・意味だけを持つ。キーボードでフォーカスしても同じ
+    assert alias_tip == {
+        "role": "tooltip",
+        "head": f"{TERM_ALIAS_TITLE}G-1",
+        "body": TERM_ALIAS_MEANING,
+        "links": 0,
+    }
+    assert focus_head == f"{TERM_ALIAS_TITLE}G-1"
+    # 押すと G-1 の詳細へ移り、G-1 の本文の別名には印が付かない
+    assert "id=G-1" in hash_after
+    assert own_marks == 0
+
+
 # 詳細パネルの HTML の本文の枠と、全画面の HTML の本文の枠
 HTML_BODY_FRAME = "aside.panel iframe.html-frame[data-html-body]"
 FULL_HTML_BODY_FRAME = "dialog.full iframe.html-frame[data-html-body]"
