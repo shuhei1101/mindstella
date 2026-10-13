@@ -787,12 +787,10 @@ namespace MindmapPreview {
   }
 
   /** 描いた本文の差分。`markWords` は、見出し・本文のリンクを付けた後に呼んで、変えた行の対に語の面を付ける */
-  type BodyDiff = { root: HTMLElement; markWords: () => void; deadline: number };
+  type BodyDiff = { root: HTMLElement; markWords: () => void };
 
   /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
-  function renderBodyDiff({ before, after }: { before: string; after: string }): BodyDiff | null {
-    // 語の差分は、行の差分を呼んでからこの時間の内に収める
-    const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
+  function renderBodyDiff({ before, after, deadline }: { before: string; after: string; deadline: number }): BodyDiff | null {
     const compared = diffLineParts(before, after);
     if (compared === null) return null;
     const parts = withoutDiagramEdits({ parts: compared, before });
@@ -801,7 +799,7 @@ namespace MindmapPreview {
     markAddedBlocks({ root: rendered, parts, source: after });
     const placed = insertRemovedBlocks({ root: rendered, blocks: placeRemovedBlocks(parts) });
     const pairs = wordPairs({ root: rendered, parts, now: linesOf(after), placed });
-    return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })), deadline };
+    return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })) };
   }
 
   // ─── 図の差分 ───
@@ -1092,10 +1090,11 @@ namespace MindmapPreview {
           notice = noteBox(NOTE_BODY_UNAVAILABLE);
         } else {
           diagramBefore = versions.beforeBody;
-          const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source });
+          // 語の差分は、行の差分を呼ぶ前に決めたこの時刻の内に収める（行の差分を打ち切ったときも、キーの値の語の差分と共有する）
+          bodyDeadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
+          const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source, deadline: bodyDeadline });
           rendered = bodyDiff?.root ?? null;
           markBodyWords = bodyDiff?.markWords ?? null;
-          bodyDeadline = bodyDiff?.deadline ?? null;
           if (rendered === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
         }
       }

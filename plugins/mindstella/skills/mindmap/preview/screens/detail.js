@@ -667,9 +667,7 @@ var MindmapPreview;
         wrapWords({ nodes: addedNodes, parts: inline.after, mark: "add" });
     }
     /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
-    function renderBodyDiff({ before, after }) {
-        // 語の差分は、行の差分を呼んでからこの時間の内に収める
-        const deadline = performance.now() + MindmapPreview.LINE_DIFF_TIMEOUT_MS;
+    function renderBodyDiff({ before, after, deadline }) {
         const compared = MindmapPreview.diffLineParts(before, after);
         if (compared === null)
             return null;
@@ -679,7 +677,7 @@ var MindmapPreview;
         markAddedBlocks({ root: rendered, parts, source: after });
         const placed = insertRemovedBlocks({ root: rendered, blocks: MindmapPreview.placeRemovedBlocks(parts) });
         const pairs = wordPairs({ root: rendered, parts, now: linesOf(after), placed });
-        return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })), deadline };
+        return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })) };
     }
     // ─── 図の差分 ───
     /** 記法の 1 行目の語（図の種類）。先頭の設定の行（`%%`）と空行は読み飛ばす */
@@ -958,10 +956,11 @@ var MindmapPreview;
                 }
                 else {
                     diagramBefore = versions.beforeBody;
-                    const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source });
+                    // 語の差分は、行の差分を呼ぶ前に決めたこの時刻の内に収める（行の差分を打ち切ったときも、キーの値の語の差分と共有する）
+                    bodyDeadline = performance.now() + MindmapPreview.LINE_DIFF_TIMEOUT_MS;
+                    const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source, deadline: bodyDeadline });
                     rendered = bodyDiff?.root ?? null;
                     markBodyWords = bodyDiff?.markWords ?? null;
-                    bodyDeadline = bodyDiff?.deadline ?? null;
                     if (rendered === null)
                         notice = noteBox(NOTE_BODY_TOO_LARGE);
                 }
