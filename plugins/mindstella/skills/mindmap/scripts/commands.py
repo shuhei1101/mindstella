@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import os
 import re
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from builder import export_preview, validate_export_out
 from checker import check_workspace, find_referrers
@@ -72,7 +74,15 @@ from store import (
     write_failed,
     write_temp,
 )
-from submissions import list_pending_submissions, take_submission
+from threads import (
+    create_thread,
+    list_threads,
+    mark_read as mark_thread_read,
+    reply_thread,
+    set_thread_status,
+    update_thread,
+    view_thread,
+)
 from versions import Version, parse_release_version, read_plugin_version
 
 logger = logging.getLogger(__name__)
@@ -777,17 +787,91 @@ def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
     return {"path": str(root / README_FILE), "written": written, "preview_url": url}
 
 
-def run_submissions(root: Path) -> dict[str, Any]:
-    """取り込んでいない送信を出力の形にする。"""
-    pending = list_pending_submissions(load_workspace(root))
-    return {"items": [asdict(submission) for submission in pending]}
+def run_threads(
+    root: Path, status: str | None, tag: str | None, unread: bool, awaiting: bool
+) -> dict[str, Any]:
+    """スレッドを絞ったキーだけの一覧を出力の形にする。"""
+    # 決まった値でない状態
+    if status not in (None, "open", "closed", "all"):
+        raise ArgumentError("status", "open・closed・all のどれかを渡してください")
+    rows = list_threads(
+        load_workspace(root),
+        status=cast("Literal['open', 'closed', 'all'] | None", status),
+        tag=tag,
+        unread=unread,
+        awaiting=awaiting,
+    )
+    return {"items": rows}
 
 
-def run_take_submission(root: Path, submission_id: str, now: NowFn = now_utc) -> dict[str, Any]:
-    """送信 1 件を取り込み済みにし、出力の形にする。"""
+def run_thread(
+    root: Path,
+    thread_id: str,
+    unread_only: bool,
+    *,
+    lock: Callable[[], AbstractContextManager[None]],
+) -> dict[str, Any]:
+    """スレッド 1 件を返し、返した未読の書き込みを既読にする。未読が無ければ鍵を取らない。"""
+    view, unread_ids = view_thread(load_workspace(root), thread_id, unread_only=unread_only)
+    # 未読を返した: 鍵の中で既読にする
+    if unread_ids:
+        with lock():
+            mark_thread_read(root, thread_id, unread_ids)
+    return view
+
+
+def run_new_thread(
+    root: Path,
+    body: str,
+    summary: str,
+    tags: list[str] | None,
+    target: str | None,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """AI の書き込みを最初の 1 件にしたスレッドを立て、出力の形にする。"""
+    thread_id, post_id, created = create_thread(
+        load_workspace(root), body=body, summary=summary, tags=tags, target=target, now=now
+    )
+    return {"id": thread_id, "post": post_id, "created": created}
+
+
+def run_reply(
+    root: Path,
+    thread_id: str,
+    body: str,
+    summary: str,
+    take: bool,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """スレッドへ返信し、出力の形にする。"""
     require_workspace(root)
-    taken, already = take_submission(root, submission_id, now=now)
-    return {"id": submission_id, "taken": taken, "already": already}
+    post_id, created, taken = reply_thread(
+        root, thread_id, body=body, summary=summary, take=take, now=now
+    )
+    return {"id": thread_id, "post": post_id, "created": created, "taken": taken}
+
+
+def run_set_thread_status(
+    root: Path, thread_id: str, status: str, reason: str | None, now: NowFn = now_utc
+) -> dict[str, Any]:
+    """書き手を AI にしてスレッドの状態を変え、出力の形にする。"""
+    require_workspace(root)
+    changed = set_thread_status(root, thread_id, status=status, reason=reason, author="ai", now=now)
+    return {"id": thread_id, "status": status, "changed": changed}
+
+
+def run_update_thread(
+    root: Path,
+    thread_id: str,
+    summary: str | None,
+    tags: list[str] | None,
+    take: bool,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """スレッドの要約とタグを書き換え、出力の形にする。"""
+    require_workspace(root)
+    taken = update_thread(root, thread_id, summary=summary, tags=tags, take=take, now=now)
+    return {"id": thread_id, "taken": taken}
 
 
 def _read_item_body(workspace: Workspace, item: dict[str, Any]) -> str | None:
