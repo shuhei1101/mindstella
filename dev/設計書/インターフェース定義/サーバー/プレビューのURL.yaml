@@ -266,6 +266,51 @@ flows:
       - 'エラーの本文が `エラー: 引数の誤り: diff:` で始まり、`V-99` を含む'
       - 同じワークスペースで `diff` を渡さずに呼ぶと `started` が真（配信が立っていなかった）
     test: test_error_when_diff_not_found
+  - name: 正常系（配っている間にまとまりを指す）
+    summary: 既に配っているワークスペースで diff を渡すと、同じポートでハッシュを付けた URL を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース。`diff` を渡さずに `preview_url` を 1 回呼んでおく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: preview_url workspace diff=V-1
+        IF->>WS: changes.yaml を読み、sets に V-1 がある
+        IF-->>クライアント: JSON（同じポートで #diff=V-1 を付けた url・started: false）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`url` が 1 回目の `url` の末尾に `#diff=V-1` を付けたもので、`started` が偽'
+    test: test_normal_when_diff_given_while_serving
+  - name: 異常系（配っている間に記録に無いまとまり・引数の誤り）
+    summary: 既に配っているワークスペースでも、changes.yaml に無いまとまりを diff に渡すとツールのエラーになる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 だけを持つワークスペース。`diff` を渡さずに `preview_url` を 1 回呼んでおく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as preview_url（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: preview_url workspace diff=V-99
+        IF-->>WS: changes.yaml の sets に V-99 が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文が `エラー: 引数の誤り: diff:` で始まり、`V-99` を含む'
+      - 1 回目の `url` を GET すると 200 が返る（配信は止まらない）
+    test: test_error_when_diff_not_found_while_serving
 lead: ワークスペースのプレビューを配る URL を返す。このプロセスでまだ配っていなければ、`127.0.0.1` の空きポートで配信を立てる。
 idempotent: true
 side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの知らせ』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・書きかけ・まとめて送るの受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
@@ -305,14 +350,14 @@ exceptions:
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。配信を立てない
   - name: SchemaMismatchError
-    condition: 配信を立てる前に `config.yaml` をスキーマと突き合わせて合わない（このプロセスでまだ配っていないワークスペースのときだけ確かめる）。`diff` を渡したときは、`changes.yaml` がスキーマに合わないか YAML として読めない
-    notes: 'ツールのエラー。エラーの本文に合わない箇所ごとの `config.yaml: {キーのパス}: {理由}` の行。配信を立てない'
+    condition: 配信を立てる前に `config.yaml` をスキーマと突き合わせて合わない（このプロセスでまだ配っていないワークスペースのときだけ確かめる）。または、`diff` を渡した呼び出しで（既に配っているかによらず）`changes.yaml` がスキーマに合わないか YAML として読めない
+    notes: 'ツールのエラー。エラーの本文に合わない箇所ごとの `config.yaml: {キーのパス}: {理由}`（`changes.yaml` のときは `changes.yaml: {キーのパス}: {理由}`）の行。まだ配っていなければ配信を立てない'
   - name: ServeFailedError
     condition: 待ち受けを立てられない（空きポートが取れない、`preview.port` のポートを別のプロセスが使っている など）
     notes: ツールのエラー。エラーの本文に理由とポート。起動時のフックは呼ばない
   - name: 引数の誤り
     condition: '`diff` が `changes.yaml` の `sets` に無い'
-    notes: ツールのエラー。エラーの本文に渡した ID。配信を立てない
+    notes: ツールのエラー。エラーの本文に渡した ID。まだ配っていなければ配信を立てない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 結果の形
@@ -334,7 +379,7 @@ constraints:
     constraint: '配信を立てた呼び出し（`started` が真）だけ、配信を立てた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾にポートとワークスペースのフォルダの名前を引数で足して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
     decided_by: dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#constraints[終わり方]
   - item: まとまりを指す URL
-    constraint: '`diff` は配信を立てる前に `changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `#diff={ID}` を付けて返す。直下の `README.md` にはハッシュを付けない配信の URL を書く'
+    constraint: '`diff` は呼び出しのたびに（既に配っているワークスペースでも）`changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `#diff={ID}` を付けて返す。まだ配っていなければ、配信を立てる前に確かめる。直下の `README.md` にはハッシュを付けない配信の URL を書く'
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
 test_file: tests/integration/server/test_preview_url.py
