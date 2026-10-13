@@ -55,7 +55,9 @@ var MindmapPreview;
         }
         const requestedHeading = params.get("h");
         const heading = id !== null && requestedHeading ? requestedHeading : null;
-        return { tab, view, id, full: id !== null && params.get("full") === "1", filters, heading };
+        // 空の `diff` は時点を指さない
+        const diff = params.get("diff") || null;
+        return { tab, view, id, full: id !== null && params.get("full") === "1", filters, heading, diff };
     }
     MindmapPreview.parseHash = parseHash;
     /** `Route` を URL のハッシュにする（既定の値と絞り込みは書かない） */
@@ -71,6 +73,8 @@ var MindmapPreview;
             params.set("full", "1");
         if (route.heading)
             params.set("h", route.heading);
+        if (route.diff)
+            params.set("diff", route.diff);
         const text = params.toString();
         return text === "" ? "" : `#${text}`;
     }

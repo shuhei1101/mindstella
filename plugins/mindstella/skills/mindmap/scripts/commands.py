@@ -751,9 +751,12 @@ def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
     return {"path": str(path)}
 
 
-def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
-    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。立てたときは直下の README にも URL を書く。"""
+def run_preview_url(root: Path, previews: PreviewRegistry, *, diff: str | None = None) -> dict[str, Any]:
+    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。立てたときは直下の README にも URL を書く。`diff` を渡したときは、そのまとまりの差分を開く URL にする。"""
     require_workspace(root)
+    # まとまりを指すときは、配信を立てる前に記録にあるかを確かめる
+    if diff is not None and all(change_set["id"] != diff for change_set in load_changes(root)["sets"]):
+        raise ArgumentError("diff", f"記録に無いまとまりです: {diff}")
     url, started = previews.start(root)
     # この呼び出しで立てたときだけ、README のプレビューの節を URL にする
     if started:
@@ -762,7 +765,8 @@ def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
         except WriteFailedError as error:
             # README を書けなくても配信は止めず、URL を返す
             logger.warning("README を書けなかった: %s", error)
-    return {"url": url, "workspace": str(root), "started": started}
+    # README には時点を持たない URL を書き、返す URL にだけハッシュを付ける
+    return {"url": url if diff is None else f"{url}#diff={diff}", "workspace": str(root), "started": started}
 
 
 def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:

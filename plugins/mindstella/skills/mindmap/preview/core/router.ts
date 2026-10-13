@@ -40,6 +40,8 @@ namespace MindmapPreview {
     filters: Record<string, string[]>;
     /** 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`id` が無いときは null） */
     heading: string | null;
+    /** 差分の表示で比べる時点（ハッシュの `diff`。`since`・`pending`・まとまりの ID）。記録にあるかは確かめない */
+    diff: string | null;
   };
 
   /** 画面ごとの既定の表示形式（書いていない画面は表） */
@@ -91,7 +93,9 @@ namespace MindmapPreview {
     }
     const requestedHeading = params.get("h");
     const heading = id !== null && requestedHeading ? requestedHeading : null;
-    return { tab, view, id, full: id !== null && params.get("full") === "1", filters, heading };
+    // 空の `diff` は時点を指さない
+    const diff = params.get("diff") || null;
+    return { tab, view, id, full: id !== null && params.get("full") === "1", filters, heading, diff };
   }
 
   /** `Route` を URL のハッシュにする（既定の値と絞り込みは書かない） */
@@ -102,6 +106,7 @@ namespace MindmapPreview {
     if (route.id !== null) params.set("id", route.id);
     if (route.full) params.set("full", "1");
     if (route.heading) params.set("h", route.heading);
+    if (route.diff) params.set("diff", route.diff);
     const text = params.toString();
     return text === "" ? "" : `#${text}`;
   }
