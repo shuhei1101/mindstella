@@ -97,7 +97,7 @@ data_models:
         description: 断られたときの `detail`。届かなかったときは `null`
       - name: stale
         type: '{id, reason}[]'
-        description: 409 のときの箇所が合わないコメント（それ以外は空）
+        description: 409 のときの送れない書き込み（箇所が合わない・向けた項目が消えた・返信先がクローズか無い。それ以外は空）
   - name: Location
     title: 箇所
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -126,11 +126,44 @@ data_models:
     summary: 『レビュー中のコメントの読み取り』の本文
     properties:
       - name: items
-        type: '{id, target, target_title, loc, body, created}[]'
-        description: レビュー中のコメント（溜めた順）
+        type: '{id, target, target_title, loc, thread, body, created}[]'
+        description: レビュー中のコメント（溜めた順）。`thread` を持つものはスレッドへの返信、持たないものは新しいスレッドの最初の書き込み
       - name: drafts
-        type: '{target, loc, body}[]'
+        type: '{target, loc, thread, body}[]'
         description: 書きかけ
+  - name: Thread
+    title: スレッド
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: スレッドで話す
+    summary: 『スレッドの読み取り』の `threads[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: スレッドの ID
+      - name: status
+        type: "'open' | 'closed'"
+        description: 状態
+      - name: tags
+        type: string[]
+        description: タグ
+      - name: summary
+        type: string | null
+        description: 要約
+      - name: target
+        type: string | null
+        description: 向けた項目の ID
+      - name: target_title
+        type: string | null
+        description: その項目のタイトル。項目が消えていれば `null`
+      - name: loc
+        type: Location | null
+        description: 最初の書き込みに添えた箇所
+      - name: posts
+        type: "{id, author: 'user' | 'ai', body, created}[]"
+        description: 書いた順の書き込み
+      - name: events
+        type: "{kind: 'closed' | 'reopened', author: 'user' | 'ai', reason: string | null, created}[]"
+        description: 書いた順の状態の記録
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -196,6 +229,8 @@ constants:
         value: '"api/opened"'
       - key: configDisplay
         value: '"api/config/display"'
+      - key: threads
+        value: '"api/threads"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
@@ -1017,7 +1052,7 @@ functions:
         description: 要求を送る関数
     returns:
       type: '{read, add, update, remove, saveDraft, send}'
-      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`、`send(ids)` は `POST api/comments/send` を呼ぶ。`send` の成功の本文は `{sent, items: {comment, submission}[], entered}`'
+      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`（`input` は `{target, loc, body}` か、返信の `{thread, body}`。元に戻すときは `id`・`created` を足す）、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`（`{target, loc, body}` か `{thread, body}`）、`send(ids)` は `POST api/comments/send` を呼ぶ。`send` の成功の本文は `{sent, items: {comment, thread, post}[], entered}`'
     process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す
     unit_tests:
       - name: test_comment_api
@@ -1026,6 +1061,12 @@ functions:
         condition: "`parametrize`: `read()` / `add({body: x})` / `update('C-1', {loc: null})` / `remove('C-1')` / `saveDraft({target: D-1, body: x})` / `send(['C-1'])`"
         mock: '`fetchFn`'
         expected: '`GET api/comments` / `POST api/comments` / `PATCH api/comments/C-1`（本文 `{"loc":null}`）/ `DELETE api/comments/C-1` / `PUT api/drafts` / `POST api/comments/send`（本文 `{"ids":["C-1"]}`）'
+      - name: test_comment_api_when_thread
+        case: 正常
+        summary: 返信と返信の書きかけは thread を本文に持つ
+        condition: "`parametrize`: `add({thread: 'TH-1', body: x})` / `saveDraft({thread: 'TH-1', body: x})`"
+        mock: '`fetchFn`'
+        expected: '`POST api/comments`（本文 `{"thread":"TH-1","body":"x"}`）/ `PUT api/drafts`（同じ本文）'
   - name: selectionLocation
     title: 選んだ範囲の箇所
     kind: 関数
@@ -1539,6 +1580,38 @@ functions:
         condition: '`parametrize`: 空の選択 / 空白だけの選択 / 印を持つ要素より前の `body` 直下の文'
         expected: どれも `null`
         mock: なし
+  - name: threadApi
+    title: スレッドの API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドの読み取りと状態の書き換えを `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, setStatus}'
+      description: '`read()` は `GET api/threads`（成功の本文は `{threads: Thread[]}`）、`setStatus(id, status, reason)` は `PATCH api/threads/{id}`（本文 `{status, reason}`。`reason` が空白だけなら `null` を送る。成功の本文は `{id, status, changed}`）を呼ぶ。どちらも `ApiResult` を返す'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
+    unit_tests:
+      - name: test_thread_api
+        case: 正常
+        summary: 各呼び出しのメソッド・パス・本文
+        condition: "`parametrize`: `read()` / `setStatus('TH-1', 'closed', ' 案 A で決着 ')` / `setStatus('TH-1', 'open', '  ')`"
+        mock: '`fetchFn`'
+        expected: '`GET api/threads` / `PATCH api/threads/TH-1`（本文 `{"status":"closed","reason":"案 A で決着"}`）/ `PATCH api/threads/TH-1`（本文 `{"status":"open","reason":null}`）'
+      - name: test_thread_api_when_rejected
+        case: 異常
+        summary: 断られた・届かないときの結果
+        condition: '`parametrize`: `fetchFn` が 404（`detail` あり）を返す / `fetchFn` が例外を送る'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 404, detail}` / `{ok: false, status: null, detail: null}`'
+        exception: 断られた・届かない
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
