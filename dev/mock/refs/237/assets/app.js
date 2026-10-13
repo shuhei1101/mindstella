@@ -229,6 +229,8 @@ var MindmapPreview;
     MindmapPreview.emptyNote = emptyNote;
     /** 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす */
     const PRESS_SLOP_PX = 5;
+    // 237: ミニマップのドラッグでも同じ距離で見分ける
+    MindmapPreview.PRESS_SLOP_PX = PRESS_SLOP_PX;
     /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする。`onPress` は、背景を押して離したとき（ドラッグでないとき）に、離したときのイベントを渡して呼ぶ */
     function enableDragScroll(scroller, onPress) {
         let drag = null;
@@ -7512,8 +7514,6 @@ var MindmapPreview;
     const MAP_HIT_MS = 1600;
     /** 237: 飛んだ先を、本文の領域の上からこの割合の位置に置く */
     const MAP_JUMP_RATIO = 1 / 4;
-    /** 237: 押してからこの距離（px）より動かしたら、印を押したのではなくドラッグとして扱う */
-    const MAP_DRAG_SLOP_PX = 4;
     /** 237: ミニマップに並べる差分の印（キーの差分・本文の差分・図の差分・Raw の差分）のセレクタ */
     const MAP_TARGETS = ".df-kv, .md ins.df-blk, .md del.df-blk, .md li.df-li-add, .md tr.df-add, .md tr.df-del, .diagram.df-changed, .diagram.df-frame, .df-raw .df-line.df-add, .df-raw .df-line.df-del";
     /** 237: 差分の印の要素 → 印の種類 */
@@ -7689,8 +7689,13 @@ var MindmapPreview;
             map.addEventListener("pointermove", (event) => {
                 if (drag === null || event.pointerId !== drag.id)
                     return;
+                // ボタンを離している（帯の外で離して pointerup が届かなかった）: ドラッグを終えて、押していない動きでは送らない
+                if ((event.buttons & 1) === 0) {
+                    endDrag(event);
+                    return;
+                }
                 // 押した位置から少し動くまでは、印を押しただけとして扱う
-                if (!dragged && Math.abs(event.clientY - drag.startY) < MAP_DRAG_SLOP_PX)
+                if (!dragged && Math.abs(event.clientY - drag.startY) <= MindmapPreview.PRESS_SLOP_PX)
                     return;
                 if (!dragged) {
                     dragged = true;

@@ -101,7 +101,7 @@
         sec("案 A: ホバー・キーボードのフォーカス", "印のホバーは面の色、フォーカスは印の色の輪。帯はタブで 1 回だけ止まり、上下の矢印キーと Home / End で印の間を移る。Enter / Space でその箇所まで本文を送る。",
           panelHtml({ name: "ホバー", text: LONG, marks: GUIDE, state: { 2: "is-hover" } }) +
           panelHtml({ name: "フォーカス", text: LONG, marks: GUIDE, state: { 3: "is-focus" } })),
-        sec("案 A: 押したまま上下にドラッグして送る（PC）", "マウスで帯を押したまま上下に動かすと、スクロールバーと同じように本文を送る。4px 動くまでは印を押しただけとして扱う。",
+        sec("案 A: 押したまま上下にドラッグして送る（PC）", "マウスで帯を押したまま上下に動かすと、スクロールバーと同じように本文を送る。5px より動かすまでは印を押しただけとして扱う。",
           panelHtml({ name: "前: 帯に乗せるとつかむ形のポインタ", text: LONG, marks: GUIDE }) +
           panelHtml({ name: "間: 面を 1 段濃く、つかんでいる形のポインタ", text: LONG, marks: GUIDE, view: [38, 24], dragging: true }) +
           panelHtml({ name: "後: 離した位置で止まり、印へは飛ばない", text: LONG, marks: GUIDE, view: [38, 24] })),

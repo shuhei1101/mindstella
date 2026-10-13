@@ -86,7 +86,8 @@
       const face = map.querySelector(".df-map-view").getBoundingClientRect();
       const x = face.left + face.width / 2;
       const y = face.top + face.height / 2;
-      const send = (type, clientY) => map.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: "mouse", button: 0, clientX: x, clientY }));
+      // 押している間は左ボタンを押した状態（buttons: 1）で送り、離すときだけ外す
+      const send = (type, clientY) => map.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: "mouse", button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: x, clientY }));
       // 作った指の位置は捕まえられないため、捕まえる呼び出しだけを空にする
       map.setPointerCapture = () => {};
       send("pointerdown", y);
