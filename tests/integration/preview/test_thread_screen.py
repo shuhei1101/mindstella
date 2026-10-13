@@ -512,8 +512,12 @@ def test_updated_by_change(
     page = open_preview(url)
     open_thread(page, "TH-1")
     page.fill(REPLY_TEXTAREA, "入力途中")
-    # 実行
+    # 実行（AI の返信が並んでも、入力中の返信は保つ）
     call_tool("reply", workspace=str(root), id="TH-1", body="AI の返信です", summary="案の相談", take=True)
+    page.wait_for_selector(f"{POSTS}:has-text('AI の返信です')", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.input_value(REPLY_TEXTAREA) == "入力途中"
+    # 実行
     call_tool("set_thread_status", workspace=str(root), id="TH-1", status="closed", reason="了解を受けた")
     # 検証
     page.wait_for_function(
