@@ -46,13 +46,6 @@
       <div class="stage" id="s-many"></div>
     </section>
 
-    <!-- 入口の名前の案 B「レビュー中を確かめる」 -->
-    <section class="cat-sec">
-      <h2>入口の名前の案 B「レビュー中を確かめる」</h2>
-      <p>案 A（上）より幅を取る。狭い幅の見本は下。</p>
-      <div class="stage" id="s-names"></div>
-    </section>
-
     <!-- レビュー中を確かめる画面を開いている -->
     <section class="cat-sec">
       <h2>レビュー中を確かめる画面を開いている</h2>
@@ -70,7 +63,7 @@
     <!-- 狭い幅（390px） -->
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p>上が案 A、下が案 B。</p>
+      <p></p>
       <div class="stage narrow" id="s-narrow"></div>
     </section>
   </main>
@@ -81,13 +74,12 @@
     Catalog.place("s-some", head(3));
     Catalog.place("s-zero", head(0));
     Catalog.place("s-many", head(24));
-    Catalog.place("s-names", [head(3), head(3, { talk: { variant: { names: "b" } } })]);
     const reviewProps = Catalog.propsOf({ items: [Catalog.REVIEW.newToItem, Catalog.REVIEW.reply], talk: { view: "review" } });
     Catalog.place("s-review", Catalog.pane([MindmapPreview.panelHead(reviewProps), MindmapPreview.reviewHead(reviewProps)]));
     Catalog.place("s-hover", [head(3), head(3)]);
     Catalog.mark("s-hover", ".pane:nth-child(1) .review-entry", "is-hover");
     Catalog.mark("s-hover", ".pane:nth-child(2) .review-entry", "is-focus");
-    Catalog.place("s-narrow", [head(3), head(3, { talk: { variant: { names: "b" } } })]);
+    Catalog.place("s-narrow", head(3));
   </script>
 </body>
 </html>

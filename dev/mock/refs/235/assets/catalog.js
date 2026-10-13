@@ -34,7 +34,7 @@ const Catalog = (() => {
         { id: "TH-2-1", author: "ai", body: "D-16 の比べた結果を Issue に起票してよいですか。\n起票先は shuhei1101/mindstella、題は「版の範囲を渡して、当てる手順を返すコマンド」です。", created: at("04:02") },
       ],
     },
-    waiting: {
+    noSummary: {
       id: "TH-3", status: "open", tags: ["資料"], target: "A-1", events: [],
       summary: null,
       posts: [
@@ -44,8 +44,8 @@ const Catalog = (() => {
     long: {
       id: "TH-4", status: "open", tags: ["調査", "画面"], target: null,
       events: [
-        { kind: "closed", reason: "手順は画面に出さないと分かった", created: at("00:20") },
-        { kind: "reopened", reason: null, created: at("00:29") },
+        { kind: "closed", author: "user", reason: "手順は画面に出さないと分かった", created: at("00:20") },
+        { kind: "reopened", author: "user", reason: null, created: at("00:29") },
       ],
       summary: "移し替えの手順を画面で見られるかの質問。今は見られず、T-6 の点検の結果を、版ごとの操作の一覧にした資料 A-9 にまとめることになった",
       posts: [
@@ -57,7 +57,7 @@ const Catalog = (() => {
     },
     closed: {
       id: "TH-5", status: "closed", tags: ["画面"], target: "D-2",
-      events: [{ kind: "closed", reason: "config.yaml に書くと分かった", created: at("02:10") }],
+      events: [{ kind: "closed", author: "user", reason: "config.yaml に書くと分かった", created: at("02:10") }],
       summary: "D-2 の版の置き場所の質問。config.yaml に書くと回答",
       posts: [
         { id: "TH-5-1", author: "user", body: "版はどこに書く？", created: at("02:00") },
@@ -66,11 +66,33 @@ const Catalog = (() => {
     },
     closedNoReason: {
       id: "TH-6", status: "closed", tags: [], target: "D-99",
-      events: [{ kind: "closed", reason: null, created: at("03:14") }],
+      events: [{ kind: "closed", author: "user", reason: null, created: at("03:14") }],
       summary: "D-99 を取り下げてよいかの確認。消すことになった",
       posts: [
         { id: "TH-6-1", author: "ai", body: "D-99 は D-12 と重なっているので消してよいですか。", created: at("03:10") },
         { id: "TH-6-2", author: "user", body: "消してよい", created: at("03:12") },
+      ],
+    },
+    aiClosed: {
+      id: "TH-7", status: "closed", tags: ["画面"], target: "D-6",
+      events: [{ kind: "closed", author: "ai", reason: "了解を受けた", created: at("04:36") }],
+      summary: "D-6 の確認を出す操作の質問。消す・名前を変えるの 2 つと回答し、了解を受けた",
+      posts: [
+        { id: "TH-7-1", author: "user", body: "D-6 の確認は、どの操作で出る？", created: at("04:30") },
+        { id: "TH-7-2", author: "ai", body: "D-6 で決めたとおり、消す・名前を変えるの 2 つで出ます。", created: at("04:32") },
+        { id: "TH-7-3", author: "user", body: "了解", created: at("04:35") },
+      ],
+    },
+    aiReopened: {
+      id: "TH-9", status: "open", tags: ["資料"], target: "A-9",
+      events: [
+        { kind: "closed", author: "user", reason: null, created: at("02:42") },
+        { kind: "reopened", author: "ai", reason: "質問に答えるため", created: at("02:50") },
+      ],
+      summary: "A-9 の一覧に確認の要否の列があるかの質問。あると回答",
+      posts: [
+        { id: "TH-9-1", author: "user", body: "A-9 の一覧に、確認の要否の列はある？", created: at("02:40") },
+        { id: "TH-9-2", author: "ai", body: "A-9 の一覧の右端に、確認の要否の列があります。確認が要るのは D-6 で決めた 2 つの操作です。", created: at("02:51") },
       ],
     },
   };
@@ -116,13 +138,11 @@ const Catalog = (() => {
         composing: false,
         reasonOpen: false,
         reasonBody: "",
-        reasonChoice: "",
         titleOf: (id) => TITLES[id] ?? null,
-        on: { filter: noop, tag: noop, clearTag: noop, compose: noop, open: noop, review: noop, back: noop, input: noop, reply: noop, reasonOpen: noop, reasonInput: noop, reasonChoice: noop, reasonSave: noop, setStatus: noop, openId: noop },
+        on: { filter: noop, tag: noop, clearTag: noop, compose: noop, open: noop, review: noop, back: noop, input: noop, reply: noop, reasonOpen: noop, reasonInput: noop, setStatus: noop, openId: noop },
         ...talk,
         reply: { body: "", status: "idle", count: 0, detail: null, ...talk.reply },
         action: { status: "idle", detail: null, ...talk.action },
-        variant: { pending: "a2", names: "a", reason: "a", ...talk.variant },
       },
     };
   };

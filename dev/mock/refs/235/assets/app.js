@@ -7710,8 +7710,8 @@ var MindmapPreview;
                             : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
                         // 235: クローズのスレッドへの返信は、送れない理由と「オープンに戻す」へ移る入口を出す
                         isBlocked(item, props.talk) ? blockedNote(item, props) : null,
-                        // 235: 新しいスレッドの行は、そのスレッドを開く入口を出す（案 A2）
-                        !isReply(item) && props.talk.variant.pending === "a2" ? openThreadEntry(item, props) : null,
+                        // 235: 新しいスレッドの行は、そのスレッドを開く入口を出す
+                        !isReply(item) ? openThreadEntry(item, props) : null,
                         reason === undefined
                             ? null
                             : MindmapPreview.h({
@@ -7763,8 +7763,6 @@ var MindmapPreview;
     const AUTHOR_LABELS = { user: "あなた", ai: "AI" };
     /** 235: 本文の中の項目の ID（例 D-1・T-12・A-3） */
     const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
-    /** 235: クローズの理由の選択肢（理由の入れ方の案 C） */
-    const CLOSE_CHOICES = ["解決した", "取り下げ", "重複"];
     /** 235: まだ送っていない新しいスレッドの、画面の中だけの ID の頭 */
     const PENDING_THREAD_PREFIX = "new:";
     MindmapPreview.PENDING_THREAD_PREFIX = PENDING_THREAD_PREFIX;
@@ -7775,10 +7773,6 @@ var MindmapPreview;
     /** 235: スレッドの最後の書き込み */
     function lastPost(thread) {
         return thread.posts[thread.posts.length - 1];
-    }
-    /** 235: AI の返信待ちか（最後の書き込みが利用者のオープンのスレッド） */
-    function waitsForAi(thread) {
-        return thread.status === "open" && lastPost(thread).author === "user";
     }
     /** 235: レビュー中の返信の向けた先のスレッド（無ければ undefined） */
     function threadOf(item, talk) {
@@ -7795,7 +7789,7 @@ var MindmapPreview;
     }
     /** 235: まだ送っていない新しいスレッド（レビュー中の、返信でない書き込み）を一覧に出すか */
     function showsPendingThreads(talk) {
-        return talk.variant.pending !== "b" && talk.filter !== "closed" && talk.tag === null;
+        return talk.filter !== "closed" && talk.tag === null;
     }
     /** 235: タグで絞ったスレッドの、状態ごとの件数 */
     function talkCounts(threads, tag) {
@@ -7868,7 +7862,7 @@ var MindmapPreview;
                             onclick: () => talk.on.review(),
                         },
                         children: [
-                            talk.variant.names === "b" ? "レビュー中を確かめる" : "レビュー中",
+                            "レビュー中",
                             MindmapPreview.h({ tag: "span", attrs: { class: "count", "aria-hidden": "true" }, children: [count] }),
                         ],
                     }),
@@ -7907,7 +7901,6 @@ var MindmapPreview;
                                 thread.target === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [thread.target] }),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "th-author" }, children: [AUTHOR_LABELS[last.author]] }),
                                 MindmapPreview.h({ tag: "time", attrs: { datetime: last.created }, children: [MindmapPreview.formatJst(last.created)] }),
-                                waitsForAi(thread) ? MindmapPreview.h({ tag: "span", attrs: { class: "th-wait" }, children: ["AI の返信待ち"] }) : null,
                                 pendingReplies(thread, props).length > 0 ? pendingMark() : null,
                             ],
                         }),
@@ -7937,8 +7930,7 @@ var MindmapPreview;
     /** 235: まだ送っていない新しいスレッドの行（状態の札の代わりに「レビュー中」の札を出す） */
     function pendingThreadRow(item, props) {
         const { talk } = props;
-        // 案 A はレビュー中を確かめる画面のその行、案 A2 はスレッドの画面を開く
-        const open = talk.variant.pending === "a" ? () => talk.on.review(item.id) : () => talk.on.open(`${PENDING_THREAD_PREFIX}${item.id}`);
+        const open = () => talk.on.open(`${PENDING_THREAD_PREFIX}${item.id}`);
         return MindmapPreview.h({
             tag: "li",
             attrs: { class: "th-row pending", "data-pending": item.id },
@@ -8195,39 +8187,32 @@ var MindmapPreview;
             ],
         });
     }
-    /** 235: クローズ・オープンへの戻しの記録 1 件（日時と理由。案 B は最後の記録に、後から理由を書き足す入口を出す） */
-    function threadEvent({ event, isLast, talk }) {
+    /** 235: クローズ・オープンへの戻しの記録 1 件（書き手・日時・理由） */
+    function threadEvent({ event }) {
         const closed = event.kind === "closed";
-        const canAddReason = talk.variant.reason === "b" && isLast && event.reason === null;
+        // 書き手は文字で出す（利用者は「あなたが」、AI は「AI が」）
+        const who = event.author === "ai" ? "AI が" : "あなたが";
         return MindmapPreview.h({
             tag: "li",
-            attrs: { class: "th-event" },
+            attrs: { class: `th-event ${event.author}`, "data-event": event.kind },
             children: [
                 MindmapPreview.h({
                     tag: "div",
                     attrs: { class: "th-event-line" },
                     children: [
                         MindmapPreview.icon(closed ? "check" : "undo"),
-                        MindmapPreview.h({ tag: "span", children: [closed ? "あなたがクローズにしました" : "あなたがオープンに戻しました"] }),
+                        MindmapPreview.h({ tag: "span", children: [`${who}${closed ? "クローズにしました" : "オープンに戻しました"}`] }),
                         MindmapPreview.h({ tag: "time", attrs: { datetime: event.created }, children: [MindmapPreview.formatJst(event.created)] }),
-                        canAddReason && !talk.reasonOpen
-                            ? MindmapPreview.h({
-                                tag: "button",
-                                attrs: { class: "btn ghost", type: "button", "data-focus": "reason-add", onclick: () => talk.on.reasonOpen(true) },
-                                children: [MindmapPreview.icon("edit"), "理由を書く"],
-                            })
-                            : null,
                     ],
                 }),
                 event.reason === null ? null : MindmapPreview.h({ tag: "p", attrs: { class: "th-event-reason" }, children: [event.reason] }),
-                canAddReason && talk.reasonOpen ? reasonForm({ thread: null, talk, after: true }) : null,
             ],
         });
     }
-    /** 235: 理由の入力（任意）。案 A・C は状態を変える前に出し、確定で状態と理由を書く。案 B は記録に後から書き足す */
-    function reasonForm({ thread, talk, after }) {
-        const closing = !after && thread.status === "open";
-        const verb = after ? "理由を書く" : closing ? "クローズにする" : "オープンに戻す";
+    /** 235: 理由の入力（任意）。状態を変える前に出し、確定で状態と理由を 1 回で書く */
+    function reasonForm({ thread, talk }) {
+        const closing = thread.status === "open";
+        const verb = closing ? "クローズにする" : "オープンに戻す";
         const saving = talk.action.status === "saving";
         const field = MindmapPreview.h({
             tag: "textarea",
@@ -8263,34 +8248,11 @@ var MindmapPreview;
                     event.preventDefault();
                     if (saving)
                         return;
-                    if (after)
-                        talk.on.reasonSave(field.value);
-                    else
-                        talk.on.setStatus(closing ? "closed" : "open", field.value);
+                    talk.on.setStatus(closing ? "closed" : "open", field.value);
                 },
             },
             children: [
-                // 案 C: クローズの理由を選択肢から選ぶ（選ばなくてもよい）
-                talk.variant.reason === "c" && closing
-                    ? MindmapPreview.h({
-                        tag: "fieldset",
-                        attrs: { class: "th-reason-choices" },
-                        children: [
-                            MindmapPreview.h({ tag: "legend", children: ["クローズの理由（任意）"] }),
-                            ...["", ...CLOSE_CHOICES].map((choice) => MindmapPreview.h({
-                                tag: "label",
-                                children: [
-                                    MindmapPreview.h({
-                                        tag: "input",
-                                        attrs: { type: "radio", name: "choice", value: choice, checked: talk.reasonChoice === choice, onchange: () => talk.on.reasonChoice(choice) },
-                                    }),
-                                    choice === "" ? "選ばない" : choice,
-                                ],
-                            })),
-                        ],
-                    })
-                    : null,
-                MindmapPreview.h({ tag: "label", attrs: { class: "send-label", for: "reason-body" }, children: [talk.variant.reason === "c" && closing ? "補足（任意）" : "理由（任意）"] }),
+                MindmapPreview.h({ tag: "label", attrs: { class: "send-label", for: "reason-body" }, children: ["理由（任意）"] }),
                 field,
                 MindmapPreview.h({
                     tag: "div",
@@ -8373,9 +8335,8 @@ var MindmapPreview;
         const { talk } = props;
         const open = thread.status === "open";
         const saving = talk.action.status === "saving";
-        // 案 A・C は、押すと理由の入力を出す。案 B は、押すとすぐ状態を変える
-        const asksReason = talk.variant.reason !== "b";
-        const statusButton = asksReason && talk.reasonOpen
+        // 押すと、見出しの下に理由の入力を出す
+        const statusButton = talk.reasonOpen
             ? null
             : MindmapPreview.h({
                 tag: "button",
@@ -8384,13 +8345,12 @@ var MindmapPreview;
                     type: "button",
                     "data-focus": "status",
                     disabled: saving,
-                    onclick: () => (asksReason ? talk.on.reasonOpen(true) : talk.on.setStatus(open ? "closed" : "open", "")),
+                    onclick: () => talk.on.reasonOpen(true),
                 },
                 children: open ? [MindmapPreview.icon("check"), "クローズにする"] : [MindmapPreview.icon("undo"), "オープンに戻す"],
             });
         // 書き込みと状態の変更を、書いた順に並べる
         const timeline = [...thread.posts.map((post) => ({ post, at: post.created })), ...thread.events.map((event) => ({ event, at: event.created }))].sort((a, b) => a.at.localeCompare(b.at));
-        const lastEvent = thread.events[thread.events.length - 1];
         // レビュー中の返信と、消した返信（元の場所に「元に戻す」を出す）
         const pending = [...pendingReplies(thread, props).map((item) => ({ item, gone: false })), ...props.removed.filter((item) => item.thread === thread.id).map((item) => ({ item, gone: true }))].sort((a, b) => commentNumber(a.item.id) - commentNumber(b.item.id));
         return [
@@ -8401,7 +8361,7 @@ var MindmapPreview;
                 tags: thread.tags,
                 statusButton,
                 extra: [
-                    asksReason && talk.reasonOpen ? reasonForm({ thread, talk, after: false }) : null,
+                    talk.reasonOpen ? reasonForm({ thread, talk }) : null,
                     talk.action.status === "failed"
                         ? MindmapPreview.h({
                             tag: "p",
@@ -8420,13 +8380,10 @@ var MindmapPreview;
                         tag: "ol",
                         attrs: { class: "posts", "aria-label": "書き込み" },
                         children: [
-                            ...timeline.map((entry) => (entry.post !== undefined ? threadPost(entry.post, talk) : threadEvent({ event: entry.event, isLast: entry.event === lastEvent, talk }))),
+                            ...timeline.map((entry) => (entry.post !== undefined ? threadPost(entry.post, talk) : threadEvent({ event: entry.event }))),
                             ...pending.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: props.on.restore } }) : pendingPost(item, props))),
                         ],
                     }),
-                    waitsForAi(thread)
-                        ? MindmapPreview.h({ tag: "p", attrs: { class: "th-waiting" }, children: [MindmapPreview.icon("history"), "AI の返信を待っています"] })
-                        : null,
                 ],
             }),
             open
@@ -8458,7 +8415,7 @@ var MindmapPreview;
             ],
         });
     }
-    /** 235: 新しいスレッドの行に出す、そのスレッドを開く入口（案 A2。クローズのスレッドへの返信の行の入口と同じ文言・見た目） */
+    /** 235: 新しいスレッドの行に出す、そのスレッドを開く入口（クローズのスレッドへの返信の行の入口と同じ文言・見た目） */
     function openThreadEntry(item, props) {
         return MindmapPreview.h({
             tag: "div",
@@ -11762,17 +11719,21 @@ var MindmapPreview;
             action: { status: "idle", detail: null },
             reasonOpen: false,
             reasonBody: "",
-            reasonChoice: "",
-            /** モックで見比べる案（body の data-pending・data-names・data-reason） */
-            variant: { pending: document.body.dataset["pending"] ?? "a2", names: document.body.dataset["names"] ?? "a", reason: document.body.dataset["reason"] ?? "a" },
         };
         /** 235: 書きかけを待っているスレッドの ID → タイマー */
         const draftTimer = new Map();
         /** 235: スレッドと返信の書きかけを読み直す。届かないときは前の写しのまま。書きかけは入力中の欄の分を上書きしない */
         const loadThreads = async () => {
             const result = await MindmapPreview.callApi("GET", "api/threads");
-            if (result.ok && result.data !== null)
+            if (result.ok && result.data !== null) {
+                // 開いているスレッドの状態が変わっていたら（AI のクローズ・オープンへの戻しが届いた）、変わる前の状態で開いた理由の入力を閉じる
+                const statusOf = (threads) => threads.find((thread) => thread.id === talk.opened)?.status;
+                if (statusOf(talk.threads) !== statusOf(result.data.threads)) {
+                    talk.reasonOpen = false;
+                    talk.reasonBody = "";
+                }
                 talk.threads = result.data.threads;
+            }
             const review = await api.read();
             if (!review.ok || review.data === null)
                 return;
@@ -11798,7 +11759,6 @@ var MindmapPreview;
             talk.action = { status: "idle", detail: null };
             talk.reasonOpen = false;
             talk.reasonBody = "";
-            talk.reasonChoice = "";
         };
         /** 235: パネルの中身の送りを、描き直した後に合わせる（スレッドは末尾、一覧は戻る前の位置） */
         const scrollTalk = (to) => {
@@ -11896,17 +11856,12 @@ var MindmapPreview;
                 reasonOpen: (open) => {
                     talk.reasonOpen = open;
                     talk.reasonBody = "";
-                    talk.reasonChoice = "";
                     renderComments();
-                    focusTalk(open ? "reason" : (talk.variant.reason === "b" ? "reason-add" : "status"));
+                    focusTalk(open ? "reason" : "status");
                 },
                 reasonInput: (body) => {
                     talk.reasonBody = body;
                 },
-                reasonChoice: (choice) => {
-                    talk.reasonChoice = choice;
-                },
-                reasonSave: (reason) => void saveReason(reason),
                 setStatus: (status, reason) => void setThreadStatus(status, reason),
                 openId: (id) => openItem(id, false),
             },
@@ -11944,30 +11899,17 @@ var MindmapPreview;
             const result = await MindmapPreview.callApi("PATCH", `api/threads/${encodeURIComponent(id)}`, {
                 status,
                 ...(reason.trim() === "" ? {} : { reason }),
-                ...(talk.reasonChoice === "" ? {} : { choice: talk.reasonChoice }),
             });
             talk.action = result.ok ? { status: "idle", detail: null } : { status: "failed", detail: result.detail };
             if (result.ok) {
                 talk.reasonOpen = false;
                 talk.reasonBody = "";
-                talk.reasonChoice = "";
                 talk.reply = { ...talk.reply, status: "idle" };
             }
             await loadThreads();
             renderComments();
             scrollTalk("end");
-            focusTalk(result.ok || talk.variant.reason === "b" ? "status" : "reason");
-        };
-        /** 235: 最後のクローズ・オープンへの戻しの記録に、後から理由を書き足す（理由の入れ方の案 B） */
-        const saveReason = async (reason) => {
-            if (reason.trim() !== "")
-                await MindmapPreview.callApi("PATCH", `api/threads/${encodeURIComponent(talk.opened)}`, { reason });
-            talk.reasonOpen = false;
-            talk.reasonBody = "";
-            await loadThreads();
-            renderComments();
-            scrollTalk("end");
-            focusTalk("status");
+            focusTalk(result.ok ? "status" : "reason");
         };
         // ===== コメントの一覧 =====
         /** 一覧を作り直す（描き直しても、操作していた部品へフォーカスを戻す） */

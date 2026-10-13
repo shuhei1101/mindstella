@@ -4,12 +4,12 @@
 画面は、develop のプレビューのスクリプトをつないだものにこの PR の変更を当てたもの（`assets/app.js`、当てた箇所に「235:」のコメント）と、#127 の見本の記録（`../127/assets/data.js`）を読む。
 サーバーの代わりに `assets/mock.js` が記録・レビュー中の書き込み・スレッドの受け口と書き換えの知らせを返し、溜める・送る・クローズにする操作も画面の中で通る。
 スタイルは今のプレビューの `style.css` の上に、この PR の分とモック専用の操作列（`assets/style.css`）を重ねる。
-モック専用の操作列の「案」で見比べる案を、「見本」で状態を、「操作」で AI の返信・AI が立てたスレッドの届き方を切り替える。
+モック専用の操作列の「見本」で状態を、「操作」で AI の返信・AI が立てたスレッド・AI のクローズ・AI のオープンへの戻しの届き方を切り替える。
 
 | 画面 | 中身 |
 | --- | --- |
-| [comments](../../pages/comments/235/index.md) | スレッドの一覧（まだ送っていない新しいスレッドの出し方の 3 案・入口の名前の 2 案） |
-| [comment-thread](../../pages/comment-thread/235/index.md) | スレッド 1 件（クローズ・オープンへの戻しの理由の入れ方の 3 案） |
+| [comments](../../pages/comments/235/index.md) | スレッドの一覧 |
+| [comment-thread](../../pages/comment-thread/235/index.md) | スレッド 1 件 |
 | [comment-review](../../pages/comment-review/235/index.md) | レビュー中を確かめる画面 |
 
 | 部品 | 中身 |

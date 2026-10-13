@@ -24,17 +24,10 @@
   <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
 </head>
-<!-- data-initial: ハッシュが無いときに開く状態（検討事項の表）。data-pending: まだ送っていない新しいスレッドの出し方の案。data-names: 入口の名前の案。data-reason: 理由の入れ方の案 -->
-<body data-initial="tab=decisions&amp;view=table" data-pending="a2" data-names="a" data-reason="a">
-  <!-- モック専用の操作列: 案・見本の状態・モックの操作・画面の切り替え・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+<!-- data-initial: ハッシュが無いときに開く状態（検討事項の表） -->
+<body data-initial="tab=decisions&amp;view=table">
+  <!-- モック専用の操作列: 見本の状態・モックの操作・画面の切り替え・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
   <div class="mockbar" role="group" aria-label="モックの操作">
-    <span class="label">案（まだ送っていない新しいスレッド）:</span>
-    <a href="../a2-open-thread/index.html" data-keep aria-current="page">案 A2（一覧に出し、スレッドを開く）</a>
-    <a href="../a-open-review/index.html" data-keep>案 A（一覧に出し、レビュー中を確かめる画面を開く）</a>
-    <a href="../b-hidden/index.html" data-keep>案 B（一覧に出さない）</a>
-    <span class="label">入口の名前:</span>
-    <a href="../a2-open-thread/index.html" data-keep aria-current="page">案 A「レビュー中」</a>
-    <a href="../a2-open-thread/names-long/index.html" data-keep>案 B「レビュー中を確かめる」</a>
     <span class="label">見本:</span>
     <a href="#" data-set="drawer=1">レビュー中 3 件</a>
     <a href="#" data-set="drawer=1&amp;review=0">レビュー中 0 件</a>
@@ -46,6 +39,8 @@
     <span class="label">操作:</span>
     <!-- data-mock-act: mock.js がサーバーの代わりに記録を書き換え、書き換えの知らせを送る -->
     <button type="button" data-mock-act="ai-thread">AI がスレッドを立てる</button>
+    <button type="button" data-mock-act="ai-close">AI がクローズにする（TH-7）</button>
+    <button type="button" data-mock-act="ai-reopen">AI がオープンに戻して返信する（TH-9）</button>
     <span class="label">画面:</span>
     <a href="../../../comment-thread/235/a-reason-before/index.html?open=TH-2">スレッド 1 件</a>
     <a href="../../../comment-review/235/a-in-panel/index.html?view=review">レビュー中を確かめる画面</a>

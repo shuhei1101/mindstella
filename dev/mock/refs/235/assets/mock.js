@@ -23,7 +23,7 @@
   /** 見本の日時（UTC。画面は JST で出す） */
   const at = (hhmm) => `2026-10-12T${hhmm}:00+00:00`;
 
-  /** 見本のスレッド（書き込みは書いた順。events はクローズ・オープンへの戻しの記録） */
+  /** 見本のスレッド（書き込みは書いた順。events はクローズ・オープンへの戻しの記録で、author は状態を変えた書き手） */
   const threads = params.get("threads") === "0"
     ? []
     : [
@@ -52,8 +52,8 @@
       {
         id: "TH-4", status: "open", tags: ["調査", "画面"], target: null,
         events: [
-          { kind: "closed", reason: "手順は画面に出さないと分かった", created: at("00:20") },
-          { kind: "reopened", reason: null, created: at("00:29") },
+          { kind: "closed", author: "user", reason: "手順は画面に出さないと分かった", created: at("00:20") },
+          { kind: "reopened", author: "user", reason: null, created: at("00:29") },
         ],
         summary: "移し替えの手順を画面で見られるかの質問。今は見られず、T-6 の点検の結果を資料にまとめることになった",
         posts: [
@@ -65,7 +65,7 @@
       },
       {
         id: "TH-5", status: "closed", tags: ["画面"], target: "D-2",
-        events: [{ kind: "closed", reason: "config.yaml に書くと分かった", created: at("02:10") }],
+        events: [{ kind: "closed", author: "user", reason: "config.yaml に書くと分かった", created: at("02:10") }],
         summary: "D-2 の版の置き場所の質問。config.yaml に書くと回答",
         posts: [
           { id: "TH-5-1", author: "user", body: "版はどこに書く？", created: at("02:00") },
@@ -74,12 +74,40 @@
       },
       {
         id: "TH-6", status: "closed", tags: ["起票"], target: "T-4",
-        events: [{ kind: "closed", reason: null, created: at("03:09") }],
+        events: [{ kind: "closed", author: "user", reason: null, created: at("03:09") }],
         summary: "T-4 の Issue の起票の確認。起票して完了",
         posts: [
           { id: "TH-6-1", author: "ai", body: "T-4 の Issue 案を起票してよいですか。", created: at("03:00") },
           { id: "TH-6-2", author: "user", body: "起票してよい", created: at("03:05") },
           { id: "TH-6-3", author: "ai", body: "起票しました（#43）。T-4 を完了にしました。", created: at("03:07") },
+        ],
+      },
+      // 利用者の「了解」で終わるオープンのスレッド（操作「AI がクローズにする」で、AI が返信せずに理由つきでクローズにする）
+      {
+        id: "TH-7", status: "open", tags: ["画面"], target: "D-6", events: [],
+        summary: "D-6 の確認を出す操作の質問。消す・名前を変えるの 2 つと回答",
+        posts: [
+          { id: "TH-7-1", author: "user", body: "D-6 の確認は、どの操作で出る？", created: at("04:30") },
+          { id: "TH-7-2", author: "ai", body: "D-6 で決めたとおり、消す・名前を変えるの 2 つで出ます。", created: at("04:32") },
+          { id: "TH-7-3", author: "user", body: "了解", created: at("04:35") },
+        ],
+      },
+      // AI が返信せずにクローズにしたスレッド（返事の要らない書き込み）
+      {
+        id: "TH-8", status: "closed", tags: ["調査"], target: "D-15",
+        events: [{ kind: "closed", author: "ai", reason: "返事の要らない書き込みで、D-15 は今のままにする", created: at("03:33") }],
+        summary: "D-15 の操作の種類は今の 5 つのままにする",
+        posts: [
+          { id: "TH-8-1", author: "user", body: "D-15 の操作の種類は今の 5 つのままでよい。足さない", created: at("03:30") },
+        ],
+      },
+      // 利用者が質問を送ってからクローズにしたスレッド（操作「AI がオープンに戻して返信する」で、AI が理由つきでオープンに戻して返信する）
+      {
+        id: "TH-9", status: "closed", tags: ["資料"], target: "A-9",
+        events: [{ kind: "closed", author: "user", reason: null, created: at("02:42") }],
+        summary: null,
+        posts: [
+          { id: "TH-9-1", author: "user", body: "A-9 の一覧に、確認の要否の列はある？", created: at("02:40") },
         ],
       },
     ];
@@ -200,18 +228,13 @@
       return json({ sent, items: [], entered: params.get("entered") !== "0" });
     }
     if (path === "api/threads") return json({ threads });
-    // スレッドの状態の書き換え（クローズ・オープンへの戻し。任意の理由と日時を記録に残す）。status を持たない要求は、最後の記録に理由を書き足す
+    // スレッドの状態の書き換え（クローズ・オープンへの戻し。書き手・任意の理由・日時を記録に残す）
     const threadMatch = path.match(/^api\/threads\/([^/]+)$/);
     if (threadMatch !== null && method === "PATCH") {
       await wait();
       const thread = threads.find((entry) => entry.id === decodeURIComponent(threadMatch[1]));
-      const reason = [payload.choice, payload.reason].filter(Boolean).join("。") || null;
-      if (payload.status === undefined) {
-        thread.events[thread.events.length - 1].reason = reason;
-      } else {
-        thread.status = payload.status;
-        thread.events.push({ kind: payload.status === "closed" ? "closed" : "reopened", reason, created: now() });
-      }
+      thread.status = payload.status;
+      thread.events.push({ kind: payload.status === "closed" ? "closed" : "reopened", author: "user", reason: payload.reason ?? null, created: now() });
       return json({ id: thread.id, status: thread.status });
     }
     return json({ detail: `モックに無い受け口です（${method} ${path}）` }, 404);
@@ -267,7 +290,7 @@
     }, 50);
   };
 
-  // モックの操作: AI がスレッドへ返信する（TH-3 に返信して要約を書き直す）・AI がスレッドを立てる
+  // モックの操作: AI がスレッドへ返信する（TH-3 に返信して要約を書き直す）・AI がスレッドを立てる・AI がクローズにする（TH-7）・AI がオープンに戻して返信する（TH-9）
   const actions = {
     "ai-reply": () => {
       const thread = threads.find((entry) => entry.id === "TH-3");
@@ -282,6 +305,27 @@
         summary: "D-9 の開発側の点検を Issue に起票してよいかの確認。返事待ち",
         posts: [{ id: `TH-${threadSeq}-1`, author: "ai", body: "D-9 で決めた開発側の点検を Issue に起票してよいですか。", created: now() }],
       });
+      notifyChanged();
+    },
+    // AI が、利用者の「了解」を読んで、返信せずに理由つきでクローズにする
+    "ai-close": () => {
+      const thread = threads.find((entry) => entry.id === "TH-7");
+      if (thread.status === "closed") return;
+      thread.status = "closed";
+      thread.events.push({ kind: "closed", author: "ai", reason: "了解を受けた", created: now() });
+      thread.summary = "D-6 の確認を出す操作の質問。消す・名前を変えるの 2 つと回答し、了解を受けた";
+      notifyChanged();
+    },
+    // AI が、利用者がクローズにしたスレッドの質問に、理由つきでオープンに戻してから返信する
+    "ai-reopen": () => {
+      const thread = threads.find((entry) => entry.id === "TH-9");
+      if (thread.status === "open") return;
+      const reopened = new Date();
+      thread.status = "open";
+      thread.events.push({ kind: "reopened", author: "ai", reason: "質問に答えるため", created: reopened.toISOString().replace(/\.\d+Z$/, "+00:00") });
+      // 返信は、オープンに戻した記録の後ろに並ぶ日時にする
+      thread.posts.push({ id: `TH-9-${thread.posts.length + 1}`, author: "ai", body: "A-9 の一覧の右端に、確認の要否の列があります。確認が要るのは D-6 で決めた 2 つの操作です。", created: new Date(reopened.getTime() + 1000).toISOString().replace(/\.\d+Z$/, "+00:00") });
+      thread.summary = "A-9 の一覧に確認の要否の列があるかの質問。あると回答";
       notifyChanged();
     },
   };

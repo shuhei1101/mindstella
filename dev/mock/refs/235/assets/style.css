@@ -71,14 +71,12 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .th-title { min-width: 0; font-weight: 600; line-height: 1.45; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 /* 要約がまだ無い行の題（最初の書き込みの先頭）: 要約と見分けられるよう太さを落とす */
 .th-title.head { font-weight: 400; }
-/* 2 行目: 向けた項目・最後の書き手・日時・返信待ち */
+/* 2 行目: 向けた項目・最後の書き手・日時・レビュー中の印 */
 .th-line2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; color: var(--text-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
 /* 2 行目の向けた項目の ID */
 .th-line2 .mono { color: var(--text); }
 /* 最後の書き手 */
 .th-author { font-weight: 600; }
-/* AI の返信待ち: 文字の札で示す */
-.th-wait { padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text); }
 /* 行のタグの並び */
 .th-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
 /* タグ: 押すとそのタグで絞る */
@@ -158,10 +156,6 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .post-body { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* 本文の中の項目の ID: 行の中に収める */
 .post-body .idlink { margin: 0 2px; }
-/* AI の返信待ちの知らせ: 書き込みの後ろに置く */
-.th-waiting { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; color: var(--text-2); font-size: var(--fs-small); }
-/* 返信待ちの印 */
-.th-waiting svg.icon { width: 14px; height: 14px; }
 /* クローズのスレッドの下端: 返信の入力の代わりに置く */
 .th-closed-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 14px 16px; color: var(--text-2); font-size: var(--fs-small); }
 /* クローズの印 */
@@ -186,14 +180,6 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 理由の入力欄: コメントの入力欄と同じ見た目 */
 .th-reason textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(6lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .th-reason textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-/* 理由の選択肢（案 C）: 横に並べ、収まらなければ折り返す */
-.th-reason-choices { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; border: 0; font-size: var(--fs-small); }
-/* 選択肢の見出し: 1 行を取る */
-.th-reason-choices legend { padding: 0; margin-bottom: 4px; font-weight: 600; }
-/* 選択肢 1 つ: 丸と文字を並べ、押せる高さを取る */
-.th-reason-choices label { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target-min); }
-/* 選択肢の丸: 差し色 */
-.th-reason-choices input { accent-color: var(--accent); }
 /* 状態を変えた記録: 書き込みの並びの中に、枠を持たない 1 行で出す */
 .th-event { display: grid; gap: 4px; padding: 2px 4px; color: var(--text-2); font-size: var(--fs-small); }
 /* 記録の 1 行: 印・誰が何をしたか・日時 */
@@ -202,10 +188,6 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .th-event-line svg.icon { width: 14px; height: 14px; }
 /* 記録の理由: 印の分だけ下げて、本文の色で出す */
 .th-event-reason { margin: 0 0 0 22px; color: var(--text); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-/* 記録の中の理由の入力（案 B）: 印の分だけ下げる */
-.th-event .th-reason { margin-left: 22px; }
-/* 理由を書く入口: 行の高さに収める */
-.th-event-line .btn { height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
 
 /* ===== スレッドの中のレビュー中の書き込み ===== */
 

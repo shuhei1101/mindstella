@@ -46,11 +46,11 @@
       <div class="stage" id="s-asking"></div>
     </section>
 
-    <!-- AI の返信待ち・要約がまだ無い -->
+    <!-- 最後の書き手が利用者・要約がまだ無い -->
     <section class="cat-sec">
-      <h2>AI の返信待ち・要約がまだ無い</h2>
-      <p>最後の書き手が利用者のオープンのスレッドに「AI の返信待ち」の札を出す。要約がまだ無い行は、最初の書き込みの先頭を太さを落として出す。</p>
-      <div class="stage" id="s-waiting"></div>
+      <h2>最後の書き手が利用者・要約がまだ無い</h2>
+      <p>最後の書き手は「あなた」とだけ出す。要約がまだ無い行は、最初の書き込みの先頭を太さを落として出す。</p>
+      <div class="stage" id="s-no-summary"></div>
     </section>
 
     <!-- まだ送っていない新しいスレッド -->
@@ -63,7 +63,7 @@
     <!-- クローズ -->
     <section class="cat-sec">
       <h2>クローズ</h2>
-      <p>状態の札を「クローズ」にし、色は薄い文字にする（印と文字でも分ける）。</p>
+      <p>状態の札を「クローズ」にし、色は薄い文字にする（印と文字でも分ける）。上が利用者がクローズにしたもの、下が AI がクローズにしたもの（行の見た目は同じ）。</p>
       <div class="stage" id="s-closed"></div>
     </section>
 
@@ -126,9 +126,9 @@
     Catalog.place("s-replied", list([row(T.replied)]));
     Catalog.place("s-pending-reply", list([row(T.replied, { items: [R.reply] })]));
     Catalog.place("s-asking", list([row(T.asking)]));
-    Catalog.place("s-waiting", list([row(T.waiting)]));
+    Catalog.place("s-no-summary", list([row(T.noSummary)]));
     Catalog.place("s-pending-new", list([MindmapPreview.pendingThreadRow(R.newToItem, Catalog.propsOf()), MindmapPreview.pendingThreadRow(R.newFree, Catalog.propsOf())]));
-    Catalog.place("s-closed", list([row(T.closed)]));
+    Catalog.place("s-closed", list([row(T.closed), row(T.aiClosed)]));
     Catalog.place("s-long", list([row(T.long)]));
     Catalog.place("s-tagged", list([row(T.long, { talk: { tag: "画面" } })]));
     Catalog.place("s-hover", [list([row(T.replied)]), list([row(T.replied)]), list([row(T.replied)])]);
