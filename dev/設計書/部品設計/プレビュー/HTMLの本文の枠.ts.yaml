@@ -29,6 +29,16 @@ states:
       見せ方: Storybook の画面幅を 390px にする
   - name: ViewportRelative
     description: '本文が `html, body { height: 100% }` と `body { min-height: 100vh }` のように、枠の高さを基準にする CSS を持つ。枠の高さが中身に合い、時間を置いても伸び続けず、中身が切れない'
+  - name: Links
+    description: 外のページへのリンク（`target` を持たないものと `target="_blank"` を持つもの）・`mailto:` のリンク・相対の URL のリンク・`javascript:` のリンクを持つ本文。外のページへのリンクを押すと、枠の中の本文は残り、リンク先が新しいタブで開く。相対の URL と `javascript:` のリンクは、押しても何も起きない
+    screenshot: false
+    notes:
+      見せ方: 外のページへのリンクは、ストーリーの配信の中のページ（`iframe.html`）を絶対の URL で指す（外のサイトへ通信しない）
+  - name: AnchorLinks
+    description: 先頭に `#usage` と `#none` のリンク、離れた位置に `id="usage"` の見出しを持つ本文を、高さを限った縦にスクロールする領域の中に置く。`#usage` のリンクを押すと、その領域が見出しの位置まで送られ、新しいタブは開かない。`#none` のリンクは、押しても何も起きない
+    screenshot: false
+    notes:
+      見せ方: '枠を、高さ 240px で `overflow-y: auto` の領域に入れる'
 lead: HTML の本文と Markdown の中の `html` のコードブロックを、スクリプトを動かさない枠（`sandbox="allow-same-origin"` の iframe の `srcdoc`）に描く。枠の高さは描いた中身に合わせ、枠の中で選んだ文を元の HTML の行の範囲にして使う側へ知らせる。
 status: implemented
 args:
@@ -66,9 +76,11 @@ events:
 accessibility:
   - 枠は `title` に `label` を持ち、読み上げで本文の枠と分かる
   - 差分の印は色だけでなく、線の形（足した = 実線、変わった = 破線）でも分ける
+  - 枠の中のリンクは、キーボードでフォーカスして Enter を押しても、押したときと同じに働く
 refs:
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
   - dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
 notes:
   モック: '`dev/mock/components/html-body-frame/`'
+  リンクの押下: 引数・イベントを足さず、部品の中で扱う（`selectable` の真偽によらない）。枠の文書の `click`・`auxclick` を受け、開くリンクの範囲・`#` で始まるリンク・文の選択との並びは、インターフェース定義『プレビューを開く』の制約「HTML の本文の中のリンク」のとおりにする。`#` で始まるリンクで送る本文のスクロール領域は、枠から親をたどって最初に当たる、縦にスクロールできる要素（計算した `overflow-y` が `auto` か `scroll`）。その `scrollTop` を、`id` の要素の上端が領域の上端に来る位置へ変える（枠の位置に枠の中の要素の位置を足して求める）。当たる要素が無ければ送らない
 test_file: tests/integration/storybook/test_html_body_frame_stories.py

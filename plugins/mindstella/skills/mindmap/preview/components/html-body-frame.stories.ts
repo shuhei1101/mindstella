@@ -39,6 +39,25 @@ const VIEWPORT_RELATIVE = [
   ...Array.from({ length: 12 }, (_, index) => `<p data-line="${index + 2}" data-line-end="${index + 2}">${index + 1} つ目の段落です。</p>`),
 ].join("\n");
 
+/** 外のページへのリンク（`target` なしと `_blank`）・`mailto:`・相対の URL・`javascript:` のリンクを持つ本文 */
+const WITH_LINKS = [
+  '<h1 data-line="1" data-line-end="1">リンクの見本</h1>',
+  '<p data-line="2" data-line-end="2"><a id="link-https" href="https://example.com/">外のページ</a></p>',
+  '<p data-line="3" data-line-end="3"><a id="link-blank" href="https://example.com/blank" target="_blank">別のタブを指す外のページ</a></p>',
+  '<p data-line="4" data-line-end="4"><a id="link-mailto" href="mailto:a@example.com">メール</a></p>',
+  '<p data-line="5" data-line-end="5"><a id="link-relative" href="other.html">相対の URL</a></p>',
+  '<p data-line="6" data-line-end="6"><a id="link-javascript" href="javascript:document.body.append(\'リンクのスクリプトが動きました\')">javascript のリンク</a></p>',
+].join("\n");
+
+/** 先頭に `#usage`・`#none` のリンク、離れた位置に `id="usage"` の見出しを持つ本文 */
+const WITH_ANCHORS = [
+  '<p data-line="1" data-line-end="1"><a id="link-usage" href="#usage">使い方へ</a></p>',
+  '<p data-line="2" data-line-end="2"><a id="link-none" href="#none">無い場所へ</a></p>',
+  '<div data-line="3" data-line-end="3" style="height:600px"></div>',
+  '<h2 id="usage" data-line="4" data-line-end="4">使い方</h2>',
+  '<p data-line="5" data-line-end="5">使い方の本文です。</p>',
+].join("\n");
+
 const meta = {
   title: "Preview/HtmlBodyFrame",
   render: (args) => {
@@ -98,6 +117,21 @@ export const DiffMarks: Story = { args: { source: DIFF_BODY, marks: { added: [5]
 
 /** 本文が `html, body { height: 100% }` と `body { min-height: 100vh }` を持つ。枠の高さが中身に合い、時間を置いても伸び続けず、中身が切れない */
 export const ViewportRelative: Story = { args: { source: VIEWPORT_RELATIVE } };
+
+/** 外のページへのリンクを押すと、枠の中の本文は残り、リンク先が新しいタブで開く。相対の URL と `javascript:` のリンクは、押しても何も起きない */
+export const Links: Story = { args: { source: WITH_LINKS } };
+
+/** 高さを限った縦にスクロールする領域の中の本文。`#usage` のリンクを押すと領域が見出しの位置まで送られ、新しいタブは開かない。`#none` のリンクは、押しても何も起きない */
+export const AnchorLinks: Story = {
+  args: { source: WITH_ANCHORS },
+  render: (args) => {
+    const scroller = document.createElement("div");
+    scroller.id = "story-scroller";
+    scroller.style.cssText = "height:240px;overflow-y:auto";
+    scroller.append(MindmapPreview.htmlBodyFrame(args));
+    return scroller;
+  },
+};
 
 /** 幅 390px。本文の図・表が枠の幅に収まる */
 export const Narrow: Story = {

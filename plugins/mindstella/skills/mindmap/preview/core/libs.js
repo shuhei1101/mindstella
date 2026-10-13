@@ -213,6 +213,33 @@ var MindmapPreview;
         };
     }
     MindmapPreview.htmlSelectionLocation = htmlSelectionLocation;
+    /** HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形） */
+    MindmapPreview.HTML_LINK_OPEN_SCHEMES = ["http:", "https:", "mailto:"];
+    /** HTML の本文の枠の中のリンクの `href`（書かれたままの値）から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める */
+    function htmlLinkAction(href) {
+        const value = href.trim();
+        // `#` で始まる: 本文の中の場所を指す。`#` の後ろを戻した id を送り先にする
+        if (value.startsWith("#")) {
+            const encoded = value.slice(1);
+            let id = encoded;
+            try {
+                id = decodeURIComponent(encoded);
+            }
+            catch {
+                // 戻せない（`%` の後ろが不正）ときは、書かれたままを id にする
+            }
+            return id === "" ? { kind: "none" } : { kind: "anchor", id };
+        }
+        // それだけで絶対の URL として読めない（相対の URL）
+        if (!URL.canParse(value))
+            return { kind: "none" };
+        const url = new URL(value);
+        // 開くスキーム以外（`javascript:`・`data:`・`file:` ほか）
+        if (!MindmapPreview.HTML_LINK_OPEN_SCHEMES.includes(url.protocol))
+            return { kind: "none" };
+        return { kind: "open", url: url.href };
+    }
+    MindmapPreview.htmlLinkAction = htmlLinkAction;
     /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
     function keyElement(node) {
         const element = node instanceof Element ? node : node.parentElement;
