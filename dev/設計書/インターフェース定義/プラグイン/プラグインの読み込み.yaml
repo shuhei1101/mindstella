@@ -4,7 +4,7 @@ entry:
   value: '`plugins/mindstella/` の `.claude-plugin/plugin.json`・`skills/`・`bin/`・`LICENSE`（Claude Code の `claude plugin install` が取り込むプラグインの中身）'
 flows:
   - name: 正常系
-    summary: プラグイン mindstella がスキルのフォルダを持ち、hooks を持たずに読み込まれる
+    summary: プラグイン mindstella がスキルのフォルダと SessionStart のフック 1 つを持って読み込まれる
     setup:
       - name: Mock
         description: なし（実際の Claude Code の CLI で実行する）
@@ -28,7 +28,7 @@ flows:
       - 取り込まれたプラグインのフォルダに、実行の権限を持つ `bin/mindstella` がある
       - 取り込まれたプラグインのフォルダの直下に `LICENSE` があり、本文がリポジトリの直下の `LICENSE` と一致する
       - 取り込まれたプラグインのフォルダに `dev/`・`docs/`・`tests/`・`.storybook/`・`package.json`・`.mcp.json` が無く、`plugin.json` が `mcpServers` を持たない
-      - '`claude plugin details` で hooks が 0 件である'
+      - '`claude plugin details` で hooks が `SessionStart` の 1 件で、コマンドが `reset_unread.py` を呼ぶ'
       - その設定のフォルダで `claude mcp list` に mindstella が無い
     test: test_normal
 lead: Claude Code がプラグイン mindstella をインストールして読み込むときの、プラグインのマニフェストとフォルダの形。
