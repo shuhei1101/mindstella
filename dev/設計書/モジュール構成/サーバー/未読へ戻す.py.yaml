@@ -160,3 +160,5 @@ functions:
         expected: 0。`b` の書き込みが未読で、`stderr` に `a` のパスを含む 1 行、標準出力が空
 notes:
   フックの定義: '`hooks/hooks.json` は `SessionStart` に `matcher` を持たない `command` のフックを 1 つ置き、コマンドをインターフェース定義『未読へ戻す』の制約「起動するコマンド」の文字列にする。スクリプトは起動したファイルのフォルダから `store`・`threads` を読む（モジュール構成『入口』の「モジュールの読み込み」と同じ）。`print` を使わず、`logging` も標準エラーへ出す'
+test_files:
+  - tests/unit/scripts/test_reset_unread.py

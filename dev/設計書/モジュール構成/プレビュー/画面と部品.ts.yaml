@@ -2586,3 +2586,6 @@ test_files:
   - tests/unit/preview/test_comment_mark.py
   - tests/unit/preview/test_looks.py
   - tests/unit/preview/test_term_tip.py
+  - tests/unit/preview/test_reply_form.py
+  - tests/unit/preview/test_thread_row.py
+  - tests/unit/preview/test_thread_post.py

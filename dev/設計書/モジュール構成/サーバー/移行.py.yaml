@@ -1238,3 +1238,4 @@ test_files:
   - tests/unit/scripts/test_migration_coverage.py
   - tests/unit/scripts/test_field_to_playbooks.py
   - tests/unit/scripts/test_answer_to_adopted_option.py
+  - tests/unit/scripts/test_submissions_to_threads.py

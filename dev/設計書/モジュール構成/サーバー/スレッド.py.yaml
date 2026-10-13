@@ -999,3 +999,5 @@ functions:
       - name: ArgumentError
         condition: 文字列の並びでない・重なりがある・空の文字列を含む
         message: '引数の誤り: tags: {理由}'
+test_files:
+  - tests/unit/scripts/test_threads.py
