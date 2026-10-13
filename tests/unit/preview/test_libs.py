@@ -1194,3 +1194,79 @@ def test_html_selection_location_when_outside(
     )
     # 検証
     assert result is None
+
+
+@pytest.mark.parametrize(
+    ("href", "url"),
+    [
+        pytest.param("https://example.com/a?b=1#c", "https://example.com/a?b=1#c", id="https"),
+        pytest.param("http://127.0.0.1:8000/", "http://127.0.0.1:8000/", id="http"),
+        pytest.param("HTTPS://EXAMPLE.COM/", "https://example.com/", id="upper_case"),
+        pytest.param("mailto:a@example.com", "mailto:a@example.com", id="mailto"),
+        pytest.param("  https://example.com/  ", "https://example.com/", id="padded"),
+    ],
+)
+def test_html_link_action_when_open(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, href: str, url: str
+) -> None:
+    """絶対の http・https・mailto の URL は開く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == {"kind": "open", "url": url}
+
+
+@pytest.mark.parametrize(
+    ("href", "expected"),
+    [
+        pytest.param("#usage", {"kind": "anchor", "id": "usage"}, id="ascii"),
+        pytest.param(
+            "#%E4%BD%BF%E3%81%84%E6%96%B9", {"kind": "anchor", "id": "使い方"}, id="encoded"
+        ),
+        pytest.param("#100%", {"kind": "anchor", "id": "100%"}, id="undecodable"),
+        pytest.param("#", {"kind": "none"}, id="empty"),
+    ],
+)
+def test_html_link_action_when_anchor(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    href: str,
+    expected: dict[str, str],
+) -> None:
+    """# で始まる値は、戻した id へ送る（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        pytest.param("other.html", id="relative"),
+        pytest.param("/mindstella.html", id="absolute_path"),
+        pytest.param("//example.com/a", id="protocol_relative"),
+        pytest.param("?a=1", id="query_only"),
+        pytest.param("", id="empty"),
+        pytest.param("javascript:alert(1)", id="javascript"),
+        pytest.param("JaVaScRiPt:alert(1)", id="javascript_mixed_case"),
+        pytest.param("data:text/html,x", id="data"),
+        pytest.param("file:///etc/hosts", id="file"),
+        pytest.param("ftp://example.com/", id="ftp"),
+        pytest.param("blob:https://example.com/x", id="blob"),
+    ],
+)
+def test_html_link_action_when_none(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, href: str
+) -> None:
+    """相対の URL とほかのスキームは何もしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == {"kind": "none"}
