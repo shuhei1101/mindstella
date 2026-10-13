@@ -46,6 +46,8 @@
     /* 状態を見せるための見本のクラス */
     .df-map-m.is-hover { background: var(--hover); }
     .df-map-m.is-focus { z-index: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* 見本の押した位置: 帯の左に右向きの三角を置く */
+    .cat-press { position: absolute; left: -12px; width: 0; height: 0; margin-top: -6px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 10px solid #e5484d; }
   </style>
 </head>
 <body>
@@ -78,9 +80,11 @@
       };
 
       /** 詳細パネルの見本の HTML（見出しの帯と、本文とミニマップを並べる枠） */
-      const panelHtml = ({ name, text, narrow = false, horizontal = false, ...map }) => {
+      const panelHtml = ({ name, text, narrow = false, horizontal = false, pressAt = null, ...map }) => {
         const body = `<div class="panel-body">${text}</div>`;
-        const strip = mapHtml({ horizontal, ...map });
+        // 押した位置の印（見本だけ）: 帯の左に三角を置く
+        const pressHtml = pressAt === null ? "" : `<span class="cat-press" style="top:${pressAt}%" aria-hidden="true"></span>`;
+        const strip = mapHtml({ horizontal, ...map }).replace("</div>", `${pressHtml}</div>`);
         return `<figure class="demo"><figcaption>${name}</figcaption>
           <div class="panel-demo${narrow ? " narrow" : ""}"><div class="panel-head">資料 A-14</div>
             <div class="panel-scroll ${horizontal ? "map-b" : "map-a"} has-map">${horizontal ? strip + body : body + strip}</div>
@@ -105,6 +109,9 @@
           panelHtml({ name: "前: 帯に乗せるとつかむ形のポインタ", text: LONG, marks: GUIDE }) +
           panelHtml({ name: "間: 面を 1 段濃く、つかんでいる形のポインタ", text: LONG, marks: GUIDE, view: [38, 24], dragging: true }) +
           panelHtml({ name: "後: 離した位置で止まり、印へは飛ばない", text: LONG, marks: GUIDE, view: [38, 24] })),
+        sec("案 A: 印の無い所を押して送る", "帯の印の無い所を押すと、押した位置に見えている範囲の面の中央が来るまで本文をすぐ送る。タッチの端末でも同じ。",
+          panelHtml({ name: "前: 帯の下の方（三角の所）を押す", text: LONG, marks: GUIDE, pressAt: 72 }) +
+          panelHtml({ name: "後: 面の中央が押した位置に来る", text: LONG, marks: GUIDE, view: [60, 24], pressAt: 72 })),
         sec("案 A: 印の数と本文の長さ", "印が 1 つでも帯を出す。本文が送れない長さのときは、見えている範囲の面を出さない。印が帯に収まらないほど多いときは、印の最小の長さを詰めて全て並べる。",
           panelHtml({ name: "印が 1 つ", text: LONG, marks: [["chg", 46, 6]] }) +
           panelHtml({ name: "本文が送れない", text: "短い本文。", marks: [["chg", 40, 14]], view: null }) +

@@ -96,6 +96,24 @@
       if (params.get("release") === "1") send("pointerup", y + Number(drag));
     }, PANEL_SETTLE_MS));
   }
+  // 撮影用: クエリの press の割合（0〜1）の高さで、帯の印の無い所を押す（撮影の手順は要素の中央しか押せないため）。mark_press が 1 なら押した位置に印を残す
+  const press = params.get("press");
+  if (press !== null) {
+    waitFor(".df-map-view[style]", () => setTimeout(() => {
+      const map = document.querySelector(".df-map");
+      const rect = map.getBoundingClientRect();
+      const clientY = rect.top + rect.height * Number(press);
+      if (params.get("mark_press") === "1") {
+        const dot = document.createElement("span");
+        dot.className = "mock-press";
+        dot.style.top = `${clientY}px`;
+        dot.style.left = `${rect.left - 14}px`;
+        // 詳細の全画面（上の層に出るモーダル）の後ろに隠れないよう、モーダルの中に置く
+        (map.closest("dialog") ?? body).append(dot);
+      }
+      if (params.get("before") !== "1") map.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: rect.left + rect.width / 2, clientY }));
+    }, PANEL_SETTLE_MS));
+  }
   // 見本: 表示の設定のパネルを開く
   if (body.dataset.open === "settings") waitFor(".settings-btn", (button) => button.click());
   // 撮影用: mark に渡した CSS セレクタの要素に赤枠を付ける

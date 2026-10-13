@@ -7717,6 +7717,13 @@ var MindmapPreview;
             };
             map.addEventListener("pointerup", endDrag);
             map.addEventListener("pointercancel", endDrag);
+            // 印の無い所を動かさずに押して離すと、押した位置に見えている範囲の面の中央を合わせるまで本文をすぐ送る（タッチの端末も同じ）
+            map.addEventListener("click", (event) => {
+                if (dragged || view.hidden || event.target.closest(".df-map-m") !== null)
+                    return;
+                const rect = map.getBoundingClientRect();
+                body.scrollTop = ((event.clientY - rect.top) / rect.height) * body.scrollHeight - body.clientHeight / 2;
+            });
         }
         // 矢印キーと Home / End で印の間を移る
         map.addEventListener("keydown", (event) => {
