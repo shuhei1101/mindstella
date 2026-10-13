@@ -428,7 +428,7 @@ var MindmapPreview;
                     continue;
                 const target = isId ? word : ids[0];
                 // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
-                const withDocs = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
+                const multi = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
                 parts.push(text.slice(last, match.index), MindmapPreview.h({
                     tag: "a",
                     attrs: {
@@ -436,11 +436,11 @@ var MindmapPreview;
                         href: hashWith({ id: target, heading: null }),
                         "data-id": target,
                         "data-ids": isId ? null : ids.join(" "),
-                        "aria-describedby": isId || withDocs ? null : MindmapPreview.TERM_TIP_ID,
-                        "aria-details": withDocs ? MindmapPreview.TERM_TIP_ID : null,
+                        "aria-describedby": isId || multi ? null : MindmapPreview.TERM_TIP_ID,
+                        "aria-details": multi ? MindmapPreview.TERM_TIP_ID : null,
                         onclick: (event) => {
                             event.preventDefault();
-                            if (isId || !withDocs)
+                            if (isId || !multi)
                                 onOpen(target);
                         },
                     },

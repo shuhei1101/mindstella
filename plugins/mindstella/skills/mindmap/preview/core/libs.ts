@@ -447,7 +447,7 @@ namespace MindmapPreview {
         if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word)) continue;
         const target = isId ? word : ids[0]!;
         // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
-        const withDocs = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
+        const multi = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
         parts.push(
           text.slice(last, match.index),
           h({
@@ -457,11 +457,11 @@ namespace MindmapPreview {
               href: hashWith({ id: target, heading: null }),
               "data-id": target,
               "data-ids": isId ? null : ids.join(" "),
-              "aria-describedby": isId || withDocs ? null : TERM_TIP_ID,
-              "aria-details": withDocs ? TERM_TIP_ID : null,
+              "aria-describedby": isId || multi ? null : TERM_TIP_ID,
+              "aria-details": multi ? TERM_TIP_ID : null,
               onclick: (event: Event) => {
                 event.preventDefault();
-                if (isId || !withDocs) onOpen(target);
+                if (isId || !multi) onOpen(target);
               },
             },
             children: [word],

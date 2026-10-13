@@ -55,18 +55,18 @@ var MindmapPreview;
     /** ツールチップを返す。使う側が文書に入れて `showPopover()` で開く。開くと印の上に置き、上に収まらなければ下に、どちらにも収まらなければ広い側の高さに縮める */
     function termTip({ entries, anchor, pinned = false, on }) {
         // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる
-        const withDocs = entries.length > 1 || entries.some((entry) => entry.kind !== "terms");
+        const multi = entries.length > 1 || entries.some((entry) => entry.kind !== "terms");
         const tip = MindmapPreview.h({
             tag: "div",
             attrs: {
                 id: MindmapPreview.TERM_TIP_ID,
-                class: withDocs ? "term-tip is-multi" : "term-tip",
+                class: multi ? "term-tip is-multi" : "term-tip",
                 // リンクを持たない用語 1 件だけのツールチップは tooltip の役割にし、リンクを持つ方は印の aria-details で指す
-                role: withDocs ? null : "tooltip",
+                role: multi ? null : "tooltip",
                 popover: "manual",
             },
         });
-        if (withDocs) {
+        if (multi) {
             tip.append(...groupedContent(entries));
         }
         else {
