@@ -1,0 +1,145 @@
+title: "スレッドの書き込み"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/thread-post.ts#MindmapPreview.threadPost"
+story: "Preview/ThreadPost"
+states:
+  - name: UserPost
+    description: 利用者の書き込み。右に寄せ、頭に「あなた」と日時
+    args:
+      - name: post
+        value: '{"id":"TH-1-1","author":"user","body":"D-12 は案 B にしたい。失敗したら写しから戻せるなら十分","created":"2026-10-12T01:20:00+00:00"}'
+      - name: titles
+        value: '{"D-12":"移し替えが途中で失敗したときの扱い"}'
+  - name: AiPost
+    description: AI の書き込み。左に寄せて面の色を変え、頭に「AI」と日時。本文の中の記録にある項目の ID（D-12・T-14）はその項目を開くリンク、改行は保つ
+    args:
+      - name: post
+        value: '{"id":"TH-1-2","author":"ai","body":"D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。","created":"2026-10-12T01:24:00+00:00"}'
+      - name: titles
+        value: '{"D-12":"移し替えが途中で失敗したときの扱い","T-14":"移し替えの失敗の扱いを書く"}'
+  - name: UnknownId
+    description: 本文の中の記録に無い ID（D-99）は文字のまま出す
+    args:
+      - name: post
+        value: '{"id":"TH-6-1","author":"ai","body":"D-99 は D-12 と重なっているので消してよいですか。","created":"2026-10-12T03:10:00+00:00"}'
+      - name: titles
+        value: '{"D-12":"移し替えが途中で失敗したときの扱い"}'
+  - name: ClosedEvent
+    description: 利用者がクローズにした記録。枠の無い 1 行にチェックの印・「あなたがクローズにしました」・日時、次の行に理由
+    args:
+      - name: event
+        value: '{"kind":"closed","author":"user","reason":"config.yaml に書くと分かった","created":"2026-10-12T02:10:00+00:00"}'
+  - name: ReopenedEvent
+    description: 利用者が理由を書かずにオープンに戻した記録。戻す印と「あなたがオープンに戻しました」・日時の 1 行だけ
+    args:
+      - name: event
+        value: '{"kind":"reopened","author":"user","reason":null,"created":"2026-10-12T00:29:00+00:00"}'
+  - name: AiClosedEvent
+    description: AI がクローズにした記録。書き手を「AI が」にする
+    args:
+      - name: event
+        value: '{"kind":"closed","author":"ai","reason":"了解を受けた","created":"2026-10-12T04:36:00+00:00"}'
+  - name: AiReopenedEvent
+    description: AI がオープンに戻した記録。「AI がオープンに戻しました」と理由
+    args:
+      - name: event
+        value: '{"kind":"reopened","author":"ai","reason":"質問に答えるため","created":"2026-10-12T02:50:00+00:00"}'
+  - name: Pending
+    description: レビュー中の返信。利用者の書き込みと同じく右に寄せ、破線の枠と頭に「レビュー中」の印、右上に「修正」「削除」を出す。日時は出さない
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"了解。T-14 は今週中に書いてほしい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: titles
+        value: '{"T-14":"移し替えの失敗の扱いを書く"}'
+  - name: PendingEditing
+    description: レビュー中の返信を書き換えている。本文の代わりに書き換えの入力欄と「キャンセル」「修正」を出し、「修正」「削除」のアイコンは出さない
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"了解。T-14 は今週中に書いてほしい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: editing
+        value: 'true'
+  - name: PendingEditFailed
+    description: 書き換えを保てなかった。入力を残し、印のアイコンと理由を出す
+    args:
+      - name: pending
+        value: '{"id":"C-43","thread":"TH-1","target":null,"body":"了解。T-14 は今週中に書いてほしい","created":"2026-10-12T05:14:00+00:00"}'
+      - name: editing
+        value: 'true'
+      - name: edit_error
+        value: サーバーが止まっています。立ち上げ直してから直してください。
+  - name: Narrow
+    description: 幅 390px。利用者と AI の寄せは保ち、寄せの余白を 32px から 16px に詰める。条件はコメントの一覧のほかの行と同じく画面の幅（720px 以下）で持つ
+    args:
+      - name: post
+        value: '{"id":"TH-4-4","author":"ai","body":"T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。操作の種類は D-15 で決めた 5 つに揃えています。","created":"2026-10-12T00:41:00+00:00"}'
+      - name: titles
+        value: '{"T-6":"移し替えの手順の YAML を点検する","A-9":"#50 スキルの手順を直す","D-15":"手順の YAML で使える操作の種類"}'
+lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形で出す。
+status: planned
+args:
+  - name: post
+    type: オブジェクト
+    default: なし（`event` か `pending` を渡す）
+    description: 書き込み（『スレッドの読み取り』の `threads[].posts[]` の 1 件）。`post`・`event`・`pending` のどれか 1 つを渡す。利用者は右に寄せ、AI は左に寄せて面の色を変える。頭に書き手（「あなた」「AI」）と日時（JST）を出す
+    status: planned
+  - name: event
+    type: オブジェクト
+    default: なし（`post` か `pending` を渡す）
+    description: 状態の記録（`threads[].events[]` の 1 件）。枠の無い 1 行に「{あなたが / AI が}{クローズにしました / オープンに戻しました}」と日時を出し、理由があれば次の行に出す
+    status: planned
+  - name: pending
+    type: オブジェクト
+    default: なし（`post` か `event` を渡す）
+    description: レビュー中の書き込み（『レビュー中のコメントの読み取り』の `items[]` の 1 件。スレッドへの返信か、まだ送っていない新しいスレッドの最初の書き込み）。利用者の書き込みの形に破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く
+    status: planned
+  - name: titles
+    type: オブジェクト
+    default: '{}'
+    enabled_when: '`post` か `pending` を渡したとき'
+    description: 本文の中の項目の ID からそのタイトルへの対応（記録にある ID だけ）。対応にある ID は、書き手を問わずその項目を開くリンク（`title` にタイトル）にし、無い ID は文字のまま出す
+    status: planned
+  - name: editing
+    type: 真偽値
+    default: 'false'
+    enabled_when: '`pending` を渡したとき'
+    description: 本文を書き換えの入力欄と「キャンセル」「修正」に切り替えた形にするか。書き換えている間は「修正」「削除」のアイコンを出さない
+    status: planned
+  - name: edit_error
+    type: 文字列
+    default: なし（理由を出さない）
+    enabled_when: '`editing` が true のとき'
+    description: 書き換えを保てなかった理由。入力欄の下に印のアイコンと共に出す
+    status: planned
+  - name: edit_body
+    type: 文字列
+    default: なし（元の本文）
+    enabled_when: '`editing` が true のとき'
+    description: 書き換えの入力欄に入れる中身（保てなかったときに残す、書き換えていた中身）
+    status: planned
+events:
+  - name: 項目を開く
+    when: 本文の中の項目の ID のリンクを押したとき
+    value: 項目の ID
+    description: 使う側がパネルを開いたまま右にその項目の詳細パネルを開く
+  - name: 修正を始める
+    when: '`pending` の「修正」を押したとき'
+    value: '`pending.id`'
+    description: 使う側が `editing` を true にし、入力欄へフォーカスを移す
+  - name: 修正する
+    when: 書き換えの「修正」を押したとき
+    value: '`pending.id`・入力欄の中身'
+    description: 使う側が空白だけなら「コメントを入れてから直してください。」を `edit_error` に渡し、そうでなければ `PATCH /api/comments/{id}` へ送る
+  - name: 修正をやめる
+    when: 書き換えの「キャンセル」を押したときと、入力欄で Esc を押したとき
+    value: '`pending.id`'
+    description: 使う側が書き換えを捨てて `editing` を false に戻し、「修正」へフォーカスを戻す
+  - name: 削除
+    when: '`pending` の「削除」を押したとき'
+    value: '`pending.id`'
+    description: 使う側が `DELETE /api/comments/{id}` で消し、元の場所に「元に戻す」を出す
+accessibility:
+  - 書き手は寄せと面の色だけでなく、頭の文字（「あなた」「AI」）でも示す。レビュー中は破線の枠に加えて印のアイコンと「レビュー中」の文字で示す
+  - 日時は `time` 要素で `datetime` に元の日時を持つ
+  - 本文の中の項目の ID のリンクはボタンにし、読み上げの名前を ID、`title` をその項目のタイトルにする
+  - 「修正」「削除」は読み上げの名前を「{スレッドの ID} への返信を修正」「{スレッドの ID} への返信を削除」にする。新しいスレッドの最初の書き込みは「{向けた項目の ID} へのコメントを修正」「{向けた項目の ID} へのコメントを削除」（項目を指さないものは「項目を指さないコメントを修正」「項目を指さないコメントを削除」）。`title` は「修正」「削除」
+  - 書き換えを保てなかった理由は `role="alert"` で読み上げ、入力欄の `aria-describedby` から指す
+test_file: tests/integration/storybook/test_thread_post_stories.py

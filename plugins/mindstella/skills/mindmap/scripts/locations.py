@@ -10,7 +10,7 @@ from typing import Any, Literal
 from errors import CommentInvalidError
 from html_body import text_of_lines
 from store import Workspace, body_format, read_body
-from submissions import MAX_BODY_CHARS
+from threads import MAX_BODY_CHARS
 
 # 比べる前に、選んだ文と元の文の両方から外す Markdown の書式の記号
 MARK_CHARS = "*_~`\\|#>"
@@ -35,7 +35,7 @@ INDEXED_STEP = re.compile(r"^([^\[\]]+)\[([^\]]*)\]$")
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Location:
-    """コメント・書きかけ・送信が持つ `loc`。"""
+    """コメント・書きかけ・スレッドが持つ `loc`。"""
 
     # `body` は本文の文、`value` は項目の値
     kind: Literal["body", "value"]

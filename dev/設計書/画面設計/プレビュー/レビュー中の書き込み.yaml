@@ -1,0 +1,153 @@
+title: "レビュー中の書き込み"
+elements:
+  - name: 戻る
+    kind: button
+    position: 見出し
+    description: 開く前の画面（スレッドの一覧かスレッド）へ戻る（履歴に積まない）。開く前に見ていたまだ送っていない新しいスレッドが、送るか消すかで無くなっていたら一覧へ戻る。入力欄にフォーカスが無いときの Esc も同じ。詳細パネルを開いているときの Esc は詳細パネルを先に閉じる
+    label: 戻る
+    action_ref: dev/設計書/画面設計/プレビュー/コメントの一覧#
+  - name: 画面の見出し
+    kind: heading
+    position: 見出し
+    description: 「レビュー中の書き込み」とレビュー中の書き込みの件数（消した行を数えない）
+    label: レビュー中の書き込み
+    io: 表示
+    source: レビュー中のコメントの読み取り.items の件数
+  - name: すべて選ぶ
+    kind: checkbox
+    position: 送る帯
+    description: 送れる書き込み（クローズのスレッドへの返信を除く）をまとめてチェックする・外す。一部だけをチェックしているときは横棒（`indeterminate`）。文字を持たず、読み上げの名前と `title` を「すべて選ぶ」にする
+    io: 入力
+    visible_when: 送れる書き込みが 1 件以上
+  - name: 選んだ件数
+    kind: label
+    position: 送る帯
+    description: 「{チェックした件数} / {送れる書き込みの件数} 件」
+    io: 表示
+    visible_when: 送れる書き込みが 1 件以上
+  - name: まとめて送る
+    kind: button
+    position: 送る帯
+    description: チェックした書き込みの ID を溜めた順に送る。ラベルは「まとめて送る（{チェックした件数} 件）」。201 なら送った行を外し、送った新しいスレッドはスレッドの一覧に、送った返信はそのスレッドの書き込みに移し、コメントのボタンの件数を減らす。409 なら `stale` の行に理由を出し、どれも送らない。送っている間は押せない。送る帯は画面の上端に留める
+    label: まとめて送る（{件数} 件）
+    visible_when: レビュー中の書き込みが 1 件以上
+    enabled_when: チェックした書き込みが 1 件以上で、送っていない
+    action_ref: dev/設計書/インターフェース定義/サーバー/コメントをまとめて送る#
+  - name: 送った結果
+    kind: label
+    position: 送る帯の直下
+    description: '`role="status"`。送っている間は回る印と「送っています」、送れて Claude Code へ入力できたら「{件数} 件を送り、Claude Code に入力しました（{HH:mm}）。」、送れたが入力できなかったら注意の印と「{件数} 件を送りましたが、Claude Code には入力できませんでした（{HH:mm}）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。」、409 は「送れませんでした。送れない書き込みが {件数} 件あります。」、届かないときは「送れませんでした。サーバーが止まっています。立ち上げ直してから送ってください。」、そのほかのエラーは「送れませんでした。{detail}」、チェックが 0 件のときは「送る書き込みにチェックを付けてください。」。失敗と入力できなかったことは印のアイコンと文言でも伝える'
+    io: 表示
+    visible_when: レビュー中の書き込みが 1 件以上か、まとめて送った直後
+    source: コメントをまとめて送る.entered（送れたときの文言の出し分け）
+  - name: 書き込みの行
+    kind: list
+    position: 一覧
+    description: レビュー中の書き込み（新しいスレッドの最初の書き込みと、スレッドへの返信）を溜めた順（ID の連番の小さい順）に 1 件 1 行で並べる。各行にチェック・行の頭・箇所・本文・修正・削除を置く。スレッドの画面からこの画面を開いたときは、そのスレッドの書き込みの行を面と枠の全体で示す。一覧から開いた詳細パネルの項目の行も、開いている間だけ同じ見た目にする。幅 720px 以下では修正と削除を行の右上に重ね、行の頭を札の行と、2 行で省く題の行に分ける
+    io: 表示
+    source: レビュー中のコメントの読み取り.items
+  - name: 行のチェック
+    kind: checkbox
+    position: 書き込みの行 > 左端
+    description: まとめて送るものを選ぶ。チェックの状態は画面だけが持ち、開いたときと新しく溜めた書き込みはチェックした状態で入る。クローズのスレッドへの返信は押せない（`disabled`）。読み上げの名前は、返信は「{スレッドの ID} への返信を送る」、新しいスレッドは「{向けた項目の ID} へのコメントを送る」（項目を指さないものは「項目を指さないコメントを送る」）
+    io: 入力
+    type: 真偽値
+    enabled_when: 返信先のスレッドがオープン
+  - name: 行の種類
+    kind: label
+    position: 書き込みの行 > 頭
+    description: 「新しいスレッド」か「返信」の札
+    io: 表示
+  - name: 向けた項目
+    kind: button
+    position: 書き込みの行 > 頭
+    description: 新しいスレッドの向けた項目の ID（等幅）とタイトル（1 行で末尾を省く）。押すと画面を開いたまま右にその項目の詳細パネルを開き、箇所があれば詳細パネルの「示す箇所」で示す。項目を指さないものは押せない「項目を指さない」、項目が消えたものは押せない ID だけを出す
+    io: 表示
+    visible_when: 新しいスレッドの行
+    source: items[].target・items[].target_title
+    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#
+  - name: 返信先のスレッド
+    kind: button
+    position: 書き込みの行 > 頭
+    description: 返信先のスレッドの状態の札と題（要約。無ければ最初の書き込みの先頭）。押すとそのスレッドを開く
+    io: 表示
+    visible_when: 返信の行
+    source: スレッドの読み取り.threads[]（items[].thread の ID のもの）
+    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+  - name: スレッドを開く
+    kind: button
+    position: 書き込みの行 > 本文の下
+    description: まだ送っていない新しいスレッドの画面を開く
+    label: スレッドを開く
+    visible_when: 新しいスレッドの行
+    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+  - name: 行の箇所
+    kind: label
+    position: 書き込みの行
+    description: 箇所の名前（「本文 {行} 行目」かキーの見出し）と選んだ文の引用（3 行まで）
+    io: 表示
+    visible_when: 書き込みが箇所を持つ
+    source: items[].loc
+  - name: 行の本文
+    kind: label
+    position: 書き込みの行
+    description: 書き込みの本文。改行を保つ
+    io: 表示
+    source: items[].body
+  - name: 修正
+    kind: button
+    position: 書き込みの行 > 操作
+    description: 行の本文をその場で入力欄に切り替える。読み上げの名前は、返信は「{スレッドの ID} への返信を修正」、新しいスレッドは「{向けた項目の ID} へのコメントを修正」（項目を指さないものは「項目を指さないコメントを修正」）、`title` は「修正」
+    label: （鉛筆の印）
+  - name: 本文の書き換え
+    kind: form
+    position: 書き込みの行 > 本文
+    description: 本文の入力欄と「キャンセル」「修正」。「修正」で `PATCH /api/comments/{id}` へ `body` を送り、200 なら本文に戻す。空白だけは送らず「コメントを入れてから直してください。」、届かない・エラーのときは入力を残して理由を出す。「キャンセル」と Esc で書き換えを捨てる。書き換えている行は、スレッドの画面と詳細パネルの書き換えと合わせて 1 行で、一方で書き換えを始めると他方の書き換えを捨てる
+    io: 入力
+    visible_when: 修正を押した行
+    max_length: 10000
+    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの書き換え#
+  - name: 削除
+    kind: button
+    position: 書き込みの行 > 操作
+    description: '`DELETE /api/comments/{id}` で消し、行を「コメントを削除しました。」と「元に戻す」に置き換える。確認のモーダルは挟まない。読み上げの名前は「修正」と同じ言い方で「…を削除」、`title` は「削除」'
+    label: （ごみ箱の印）
+    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの削除#
+  - name: 元に戻す
+    kind: button
+    position: 書き込みの行（削除した行）
+    description: 削除で返った中身を『レビュー中のコメントの追加』へ同じ `id` と `created` で送り、元の場所に戻す。パネルを閉じるか、まとめて送るまで出す
+    label: 元に戻す
+    visible_when: パネルを開いている間に削除した行
+    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+  - name: 送れない理由
+    kind: label
+    position: 書き込みの行
+    description: 印のアイコンと「クローズのスレッドへの返信は送れません。オープンに戻すと送れます。」に、そのスレッドを開く「スレッドを開く」を添える（スレッドの画面の「オープンに戻す」へ移る入口）
+    io: 表示
+    visible_when: 返信先のスレッドがクローズ
+    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+  - name: 箇所が合わない理由
+    kind: label
+    position: 書き込みの行
+    description: '`role="alert"`。まとめて送るの 409 の `stale[].reason` を印のアイコンと共に出し、行の枠の全体を要見直しの赤（`--st-review`）にする。箇所を外すか削除するまで、または次にまとめて送るまで出す'
+    io: 表示
+    visible_when: 直前にまとめて送ったとき、その書き込みが `stale` にあった
+    source: コメントをまとめて送る.stale
+  - name: 箇所を外す
+    kind: button
+    position: 書き込みの行 > 箇所が合わない理由
+    description: '`PATCH /api/comments/{id}` へ `loc: null` を送り、項目への書き込みにする。200 なら理由と行の箇所を消す'
+    label: 箇所を外す
+    visible_when: 箇所が合わない理由を出していて、書き込みが箇所を持ち、向けた項目が記録にある
+    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの書き換え#
+  - name: 空の状態
+    kind: label
+    position: 一覧
+    description: 印と「レビュー中の書き込みはありません。」。送る帯は出さない
+    io: 表示
+    visible_when: レビュー中の書き込みも削除した行も 0 件
+lead: レビュー中の書き込み（新しいスレッドの最初の書き込みと、スレッドへの返信）を溜めた順に並べ、チェックしたものだけをまとめて送る。コメントの一覧のパネルの中で、見出しの帯の「レビュー中」から開く。見出しの帯（入口は出さない）・パネルの置き方・閉じ方はコメントの一覧と同じ。全てチェックした状態で開く。
+mock: dev/mock/pages/comment-review/235/a-in-panel/index.html
+screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+test_file: tests/integration/preview/test_review_screen.py

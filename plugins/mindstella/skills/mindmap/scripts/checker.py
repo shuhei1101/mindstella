@@ -11,7 +11,7 @@ from errors import ItemNotFoundError, SchemaMismatchError
 from history import CHANGES_FILE, Changes, apply_body_diff, load_changes, removed_items
 from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
-from submissions import SUBMISSIONS_FILE, load_submissions
+from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targets
 
 # 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
 SETTINGS_KIND = "settings"
@@ -36,7 +36,7 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_duplicate_ids(workspace),
         *_check_refs(workspace),
         *_check_bodies(workspace),
-        *_check_submissions(workspace),
+        *_check_threads(workspace),
         *_check_comments(workspace),
         *_check_phases(workspace),
         *_check_history(workspace),
@@ -73,11 +73,11 @@ def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
         for index, draft in enumerate(load_drafts(workspace.root))
         if draft.target == item_id
     )
-    # 取り込んでいない送信が向けている（取り込み済みは記録として残るので拾わない）
+    # 取り込み待ちのスレッドが向けている（オープンでもクローズでも。取り込み済みだけのスレッドは記録として残るので拾わない）
     lines.extend(
-        f"{SUBMISSIONS_FILE}: {submission.id}: target"
-        for submission in load_submissions(workspace.root)
-        if submission.taken is None and submission.target == item_id
+        f"{THREADS_FILE}: {thread.id}: target"
+        for thread in load_threads(workspace.root)
+        if awaiting_posts(thread) and thread.target == item_id
     )
     return lines
 
@@ -267,42 +267,54 @@ def _deliverables(settings: dict[str, Any]) -> list[dict[str, Any]]:
     return [deliverable for deliverable in deliverables if isinstance(deliverable, dict)]
 
 
-def _check_submissions(workspace: Workspace) -> list[Problem]:
-    """`submissions.yaml` のスキーマ違反を `schema`、無い項目への `target` を `broken_ref` にする。"""
+def _check_threads(workspace: Workspace) -> list[Problem]:
+    """`threads.yaml` のスキーマ違反を `schema`、無い項目への `target` を `broken_ref` にする。"""
     try:
-        submissions = load_submissions(workspace.root)
+        threads = load_threads(workspace.root)
     except SchemaMismatchError as error:
-        # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にする
+        # 読めない・合わない: `{ファイル名}: {キーのパス}: {理由}` の行を、パスと理由に分けて `schema` にし、読める範囲のスレッドの参照切れも拾う
         return [
             Problem(
                 kind="schema",
-                file=SUBMISSIONS_FILE,
+                file=THREADS_FILE,
                 id=None,
                 key=line.split(": ", 2)[1],
                 detail=line.split(": ", 2)[2],
             )
             for line in error.lines
-        ]
+        ] + _check_thread_targets(workspace, raw_thread_targets(workspace.root))
+    # 項目を指すスレッドだけを確かめる
+    return _check_thread_targets(
+        workspace,
+        [
+            (thread.id, thread.target, bool(awaiting_posts(thread)))
+            for thread in threads
+            if thread.target is not None
+        ],
+    )
+
+
+def _check_thread_targets(
+    workspace: Workspace, targets: list[tuple[str, str, bool]]
+) -> list[Problem]:
+    """（スレッドの ID・向けた項目・取り込み待ちか）のうち、向けた項目が無いものを `broken_ref` にする。"""
     problems: list[Problem] = []
     removed_ids = _removed_ids(workspace.root)
-    for submission in submissions:
-        # 項目に紐づかない送信は確かめるものが無い
-        if submission.target is None:
-            continue
-        # 取り込み済みの送信が消した項目を指す: 記録として残るので拾わない
-        if submission.taken is not None and submission.target in removed_ids:
+    for thread_id, target, waiting in targets:
+        # 取り込み待ちでないスレッドが消した項目を指す: 記録として残るので拾わない
+        if not waiting and target in removed_ids:
             continue
         try:
-            find_item(workspace, submission.target)
+            find_item(workspace, target)
         except ItemNotFoundError:
             # 向けた項目が無い: 参照切れにする
             problems.append(
                 Problem(
                     kind="broken_ref",
-                    file=SUBMISSIONS_FILE,
-                    id=submission.id,
+                    file=THREADS_FILE,
+                    id=thread_id,
                     key="target",
-                    detail=f"存在しない ID: {submission.target}",
+                    detail=f"存在しない ID: {target}",
                 )
             )
     return problems

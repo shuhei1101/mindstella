@@ -12,9 +12,9 @@ var MindmapPreview;
     MindmapPreview.NOTICE_MS = 6000;
     /** そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
     MindmapPreview.SINCE_KEY = "mindmap-since";
-    /** 入力欄のキー。向けた先（`target` と `loc` の組）を 1 つの文字列にする */
-    function formKey(target, loc) {
-        return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null]);
+    /** 入力欄のキー。向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする */
+    function formKey(target, loc, thread = null) {
+        return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null, thread]);
     }
     MindmapPreview.formKey = formKey;
     /** 狭い幅（詳細パネルを別画面として積む幅） */
@@ -697,6 +697,12 @@ var MindmapPreview;
         };
         /** コメントの一覧の行から開いたとき、そのコメントの箇所。別の項目へ移っていれば示すのをやめる */
         const openedLocation = () => {
+            // スレッドの向けた項目から開いた: その項目の中でだけ箇所を示す
+            if (comment.highlight !== null) {
+                if (comment.highlight.target === route.id)
+                    return comment.highlight.loc;
+                comment.highlight = null;
+            }
             const opened = comment.review.items.find((item) => item.id === comment.opened);
             if (opened === undefined || opened.target !== route.id) {
                 comment.opened = null;
@@ -834,7 +840,21 @@ var MindmapPreview;
             stale: new Map(),
             listOpen: false,
             opened: null,
+            highlight: null,
+            threads: [],
+            threadsError: null,
+            view: "list",
+            reviewFrom: "list",
+            filter: "open",
+            tag: null,
+            openedThread: null,
+            composing: false,
+            reason: { open: false, body: "", status: "idle", detail: null },
+            reviewFocus: null,
         };
+        const threadsApi = MindmapPreview.threadApi();
+        /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
+        let listScroll = 0;
         /** まとめて送った結果・本文を直している行・直せなかった理由・項目を指さない入力にフォーカスがあるか */
         let outcome = null;
         let editing = null;
@@ -844,9 +864,6 @@ var MindmapPreview;
         let editBody = null;
         /** 詳細パネルが今出している項目（別の項目へ移ったか閉じたかを知るため） */
         let detailShown = null;
-        let freeFocused = false;
-        /** 入力欄を差し替えている間か（外した入力欄の blur を受けないため） */
-        let formRedrawing = false;
         /** チェックした状態で入れるのは、初めて読んだコメントだけ */
         const knownIds = new Set();
         /** 各画面へ渡す項目の ID → コメントの件数。画面は描き直すたびにこれを読むので、件数が変わったときは同じ物の中身を入れ替える */
@@ -864,8 +881,6 @@ var MindmapPreview;
         };
         /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
         const draftTimers = new Map();
-        /** 幅 720px 以下か（項目を指さない入力を畳む幅） */
-        const isCompact = () => matchMedia("(max-width: 720px)").matches;
         /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ書きかけの箇所を入力に添える */
         const applyReview = (review, first) => {
             comment.review = review;
@@ -890,31 +905,42 @@ var MindmapPreview;
             if (result.ok && result.data !== null)
                 applyReview(result.data, first);
         };
+        /** スレッドを読み直す。読めたら置き換え、断られた・届かないときは前のまま残して理由を持つ */
+        const loadThreads = async () => {
+            const result = await threadsApi.read();
+            if (result.ok && result.data !== null) {
+                comment.threads = result.data.threads;
+                comment.threadsError = null;
+                return;
+            }
+            comment.threadsError = { detail: result.ok ? null : result.detail };
+        };
         /** 向けた先の入力欄の状態。無ければ、同じ向けた先の書きかけの本文で作る */
-        const formStateOf = (target, loc) => {
-            const key = formKey(target, loc);
+        const formStateOf = (target, loc, thread = null) => {
+            const key = formKey(target, loc, thread);
             let state = comment.forms.get(key);
             if (state === undefined) {
-                const draft = comment.review.drafts.find((entry) => formKey(entry.target, entry.loc) === key);
-                state = { target, loc, body: draft?.body ?? "", status: "idle", count: null, detail: null };
+                const draft = comment.review.drafts.find((entry) => formKey(entry.target, entry.loc, entry.thread ?? null) === key);
+                state = { target, loc, thread, body: draft?.body ?? "", status: "idle", count: null, detail: null };
                 comment.forms.set(key, state);
             }
             return state;
         };
         /** 書きかけをすぐ保つ（空なら消える）。届かないときは何も出さない */
         const saveDraftNow = (state) => {
-            const key = formKey(state.target, state.loc);
+            const key = formKey(state.target, state.loc, state.thread);
             window.clearTimeout(draftTimers.get(key));
             draftTimers.delete(key);
             void api.saveDraft({
                 ...(state.target === null ? {} : { target: state.target }),
                 ...(state.loc === null ? {} : { loc: state.loc }),
+                ...(state.thread === null ? {} : { thread: state.thread }),
                 body: state.body,
             });
         };
         /** 入力が止まってから書きかけを保つ */
         const scheduleDraft = (state) => {
-            const key = formKey(state.target, state.loc);
+            const key = formKey(state.target, state.loc, state.thread);
             window.clearTimeout(draftTimers.get(key));
             draftTimers.set(key, window.setTimeout(() => saveDraftNow(state), MindmapPreview.DRAFT_SAVE_DELAY_MS));
         };
@@ -938,16 +964,21 @@ var MindmapPreview;
         };
         /** 入力欄を、今の状態で差し替える（`focus` なら入力欄へフォーカスを戻す）。別の項目へ移っていたら状態だけ持っておく */
         const redrawForm = ({ target, focus }) => {
-            const current = target === null
-                ? document.querySelector(".comments-panel form.send")
-                : document.querySelector("aside.panel form.send, dialog.full form.send");
-            if (current === null || (target !== null && route.id !== target))
+            // 項目を指さない入力（新しいスレッド）はパネルの一部なので、パネルを描き直す
+            if (target === null) {
+                renderComments();
+                if (focus) {
+                    const field = document.querySelector(".comments-panel .talk-new form.send textarea");
+                    field?.focus();
+                    field?.setSelectionRange(field.value.length, field.value.length);
+                }
+                return;
+            }
+            const current = document.querySelector("aside.panel form.send, dialog.full form.send");
+            if (current === null || route.id !== target)
                 return;
             const next = MindmapPreview.sendForm(formProps(target));
-            // 外した入力欄の blur は、利用者が外へ出たのではないので受けない
-            formRedrawing = true;
             current.replaceWith(next);
-            formRedrawing = false;
             if (!focus)
                 return;
             const field = next.querySelector("textarea");
@@ -982,7 +1013,8 @@ var MindmapPreview;
                 status: state.status,
                 count: state.count,
                 detail: state.detail,
-                collapsed: target === null && isCompact() && !freeFocused && state.body === "",
+                collapsed: false,
+                ...(target === null ? { label: "新しいスレッド" } : {}),
                 on: {
                     input: (body) => {
                         state.body = body;
@@ -996,22 +1028,8 @@ var MindmapPreview;
                     save: (body) => void saveComment(state, body),
                     unquote: () => unquote(state),
                     copy: (body) => void navigator.clipboard?.writeText(body),
-                    focus: () => {
-                        if (target !== null || freeFocused)
-                            return;
-                        freeFocused = true;
-                        // 畳んでいた入力だけを広げる（広げない入力は作り直さず、入力中の欄を壊さない）
-                        if (isCompact() && state.body === "")
-                            redrawForm({ target: null, focus: true });
-                    },
-                    blur: () => {
-                        if (formRedrawing || target !== null || !freeFocused)
-                            return;
-                        freeFocused = false;
-                        // 本文が空のまま外へ出たら畳む
-                        if (isCompact() && state.body === "")
-                            redrawForm({ target: null, focus: false });
-                    },
+                    focus: () => undefined,
+                    blur: () => undefined,
                 },
             };
         };
@@ -1060,6 +1078,21 @@ var MindmapPreview;
             redrawForm({ target: state.target, focus: true });
         };
         // ===== コメントの一覧 =====
+        /** 開いているスレッドの返信の入力の引数（書きかけの本文を含む） */
+        const replyState = () => {
+            const opened = comment.openedThread;
+            // スレッドを開いていない・まだ送っていない新しいスレッド: 返信の入力は出さない
+            if (opened === null || opened.pending)
+                return { body: "", status: "idle", count: null, detail: null };
+            const { body, status, count, detail } = formStateOf(null, null, opened.id);
+            return { body, status: status === "empty" ? "idle" : status, count, detail };
+        };
+        /** 描き直す前に、打っている途中の理由を状態に写す（理由は確定のときにだけ入力部品が知らせるため） */
+        const captureTyped = () => {
+            const reasonField = document.querySelector(".comments-panel form.th-reason textarea");
+            if (reasonField !== null && comment.reason.open)
+                comment.reason.body = reasonField.value;
+        };
         /** 一覧を作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
         const renderComments = () => {
             const current = document.querySelector(".comments-panel");
@@ -1068,43 +1101,17 @@ var MindmapPreview;
                 scheduleInert();
                 return;
             }
+            captureTyped();
             const active = document.activeElement;
             const focusKey = active instanceof HTMLElement && current?.contains(active) === true ? (active.dataset["focus"] ?? null) : null;
-            const typing = active instanceof HTMLTextAreaElement && active.closest(".comments-panel form.send") !== null ? active : null;
+            // 入力欄（新しいスレッド・返信・理由）に打っている途中なら、選択も保つ
+            const typing = active instanceof HTMLTextAreaElement && active.closest(".comments-panel form.send, .comments-panel form.th-reason") !== null
+                ? active
+                : null;
+            const typingForm = typing?.closest("form")?.classList.contains("th-reason") === true ? "form.th-reason" : "form.send";
             const selection = typing === null ? null : { start: typing.selectionStart, end: typing.selectionEnd };
             const scroll = current?.querySelector(".comments-body")?.scrollTop ?? 0;
-            const next = MindmapPreview.commentsPanel({
-                items: comment.review.items,
-                removed: comment.removed,
-                checked: comment.checked,
-                editing,
-                editingIn,
-                editError,
-                editBody,
-                stale: comment.stale,
-                result: outcome,
-                selected: comment.opened,
-                titleOf: (id) => index.byId.get(id)?.item.title ?? null,
-                free: formProps(null),
-                on: {
-                    close: closeList,
-                    check: (id, checked) => {
-                        if (checked)
-                            comment.checked.add(id);
-                        else
-                            comment.checked.delete(id);
-                        renderComments();
-                    },
-                    checkAll: (checked) => {
-                        comment.checked = checked ? new Set(comment.review.items.map((item) => item.id)) : new Set();
-                        renderComments();
-                    },
-                    send: () => void sendChecked(),
-                    open: openRow,
-                    ...reviewRowHandlers(""),
-                    unloc: (id) => void detachLocation(id),
-                },
-            });
+            const next = MindmapPreview.commentsPanel(panelProps());
             if (current === null) {
                 document.body.append(next);
                 requestAnimationFrame(() => next.classList.add("open"));
@@ -1118,7 +1125,7 @@ var MindmapPreview;
             if (body !== null && body !== undefined)
                 body.scrollTop = scroll;
             if (typing !== null && selection !== null) {
-                const restored = panel?.querySelector("form.send textarea");
+                const restored = panel?.querySelector(`${typingForm} textarea`);
                 restored?.focus();
                 restored?.setSelectionRange(selection.start, selection.end);
             }
@@ -1135,7 +1142,16 @@ var MindmapPreview;
             });
             renderComments();
         };
-        /** コメントの一覧を開く（絞り込みのドロワーは閉じる） */
+        /** パネルの中の画面の状態を、開いた直後（スレッドの一覧）に戻す */
+        const resetPanelView = () => {
+            comment.view = "list";
+            comment.reviewFrom = "list";
+            comment.openedThread = null;
+            comment.composing = false;
+            comment.reason = { open: false, body: "", status: "idle", detail: null };
+            comment.reviewFocus = null;
+        };
+        /** コメントの一覧を開く（絞り込みのドロワーは閉じ、スレッドの一覧から始める） */
         const openList = () => {
             // 絞り込みのドロワー・表示の設定のパネルとは 1 つだけを開く
             if (filterState.drawerOpen) {
@@ -1145,8 +1161,11 @@ var MindmapPreview;
             display.open = false;
             renderSettings();
             comment.listOpen = true;
+            resetPanelView();
             renderTop();
             renderComments();
+            // スレッドを読み直して、届いていた AI の返信などを足す
+            void loadThreads().then(renderComments);
         };
         /** 一覧で始めた書き換えを捨てる（一覧を閉じると、詳細パネルの行が本文だけのまま残るため）。捨てたかを返す */
         const discardListEdit = () => {
@@ -1162,6 +1181,7 @@ var MindmapPreview;
             flushDrafts();
             comment.listOpen = false;
             comment.opened = null;
+            comment.highlight = null;
             comment.removed = [];
             discardListEdit();
             renderTop();
@@ -1173,6 +1193,7 @@ var MindmapPreview;
             if (item.target === null)
                 return;
             comment.opened = item.id;
+            comment.highlight = null;
             if (route.id === item.target) {
                 renderDetail();
                 renderComments();
@@ -1181,6 +1202,216 @@ var MindmapPreview;
             openItem(item.target, false);
             renderComments();
         };
+        /** 本文の中の ID・スレッドの向けた項目を、パネルを開いたまま詳細パネルに開く（箇所があればその箇所を示す） */
+        const openFromThread = (id, loc) => {
+            comment.opened = null;
+            comment.highlight = loc === undefined ? null : { target: id, loc };
+            if (route.id === id) {
+                renderDetail();
+                renderComments();
+                return;
+            }
+            openItem(id, false);
+            renderComments();
+        };
+        /** スレッドを開く。一覧のスクロールの位置を控え、理由の入力は閉じて空にする */
+        const openThread = (id, pending) => {
+            listScroll = document.querySelector(".comments-panel .comments-body")?.scrollTop ?? 0;
+            comment.openedThread = { id, pending };
+            comment.view = "thread";
+            comment.reason = { open: false, body: "", status: "idle", detail: null };
+            renderComments();
+        };
+        /** スレッドの返信の書きかけを、待たずに保つ */
+        const flushReplyDraft = () => {
+            const opened = comment.openedThread;
+            if (opened === null || opened.pending)
+                return;
+            const state = comment.forms.get(formKey(null, null, opened.id));
+            if (state !== undefined && draftTimers.has(formKey(null, null, opened.id)))
+                saveDraftNow(state);
+        };
+        /** 一覧・開く前の画面へ戻る（スレッドの画面と、レビュー中の書き込みの画面の「戻る」） */
+        const goBack = () => {
+            if (comment.view === "thread") {
+                flushReplyDraft();
+                const opened = comment.openedThread;
+                comment.view = "list";
+                comment.openedThread = null;
+                comment.reason = { open: false, body: "", status: "idle", detail: null };
+                renderComments();
+                // 控えたスクロールの位置と、開いていた行へのフォーカスを戻す
+                const body = document.querySelector(".comments-panel .comments-body");
+                if (body !== null)
+                    body.scrollTop = listScroll;
+                if (opened !== null) {
+                    const key = opened.pending ? `thread:new:${opened.id}` : `thread:${opened.id}`;
+                    document.querySelector(`.comments-panel [data-focus="${key}"]`)?.focus();
+                }
+                return;
+            }
+            if (comment.view === "review") {
+                const opened = comment.openedThread;
+                // 開く前に見ていた、まだ送っていない新しいスレッドが、送るか消すかで無くなっていたら一覧へ戻る
+                const gone = comment.reviewFrom === "thread" &&
+                    opened !== null &&
+                    opened.pending &&
+                    !comment.review.items.some((item) => item.id === opened.id) &&
+                    !comment.removed.some((item) => item.id === opened.id);
+                comment.view = gone ? "list" : comment.reviewFrom;
+                if (gone)
+                    comment.openedThread = null;
+                comment.reviewFocus = null;
+                renderComments();
+                document.querySelector('.comments-panel [data-focus="review"]')?.focus();
+            }
+        };
+        /** レビュー中の書き込みの画面を開く（開く前の画面を控える） */
+        const openReview = () => {
+            flushDrafts();
+            comment.reviewFrom = comment.view === "thread" ? "thread" : "list";
+            const opened = comment.openedThread;
+            comment.reviewFocus = comment.view === "thread" && opened !== null && !opened.pending ? opened.id : null;
+            comment.view = "review";
+            renderComments();
+        };
+        /** 開いているスレッドの状態を変える（理由は空白だけなら送らない） */
+        const changeStatus = async (status, reason) => {
+            const opened = comment.openedThread;
+            if (opened === null || opened.pending)
+                return;
+            comment.reason = { open: true, body: reason, status: "saving", detail: null };
+            renderComments();
+            const result = await threadsApi.setStatus(opened.id, status, reason);
+            // 断られた・届かない: 理由の入力を開いたまま、理由を出す
+            if (!result.ok) {
+                comment.reason = { open: true, body: reason, status: "failed", detail: result.detail };
+                renderComments();
+                return;
+            }
+            comment.reason = { open: false, body: "", status: "idle", detail: null };
+            await loadThreads();
+            renderComments();
+            document.querySelector('.comments-panel [data-focus="status"]')?.focus();
+        };
+        /** 返信を溜める。溜めたらレビュー中を読み直して、パネルを描き直す */
+        const saveReply = async (threadId, body) => {
+            const state = formStateOf(null, null, threadId);
+            state.body = body;
+            // 溜める前に、この返信の書きかけを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた書きかけを書き戻さないため）
+            window.clearTimeout(draftTimers.get(formKey(null, null, threadId)));
+            draftTimers.delete(formKey(null, null, threadId));
+            Object.assign(state, { status: "saving", detail: null });
+            renderComments();
+            const result = await api.add({ thread: threadId, body });
+            if (!result.ok || result.data === null) {
+                // 断られた・届かない: 本文を残す
+                Object.assign(state, { status: "failed", detail: result.ok ? null : result.detail });
+                scheduleDraft(state);
+                renderComments();
+                return;
+            }
+            Object.assign(state, { body: "", status: "saved", count: result.data.count, detail: null });
+            knownIds.add(result.data.id);
+            comment.checked.add(result.data.id);
+            await loadReview();
+            refreshComments();
+            document.querySelector(".comments-panel form.reply textarea")?.focus();
+        };
+        /** 返信の入力の中身が変わった。書きかけを保つ待ちを入れ、溜めた・失敗の結果は消す */
+        const typeReply = (body) => {
+            const opened = comment.openedThread;
+            if (opened === null || opened.pending)
+                return;
+            const state = formStateOf(null, null, opened.id);
+            state.body = body;
+            scheduleDraft(state);
+            // 溜めた結果は、入力を始めたら消す（溜められなかった結果は次に溜めるまで残す）
+            if (state.status === "saved") {
+                state.status = "idle";
+                clearSendResult();
+            }
+        };
+        /** コメントの一覧の引数 */
+        const panelProps = () => ({
+            view: comment.view,
+            items: comment.review.items,
+            removed: comment.removed,
+            threads: comment.threads,
+            threadsError: comment.threadsError,
+            filter: comment.filter,
+            tag: comment.tag,
+            opened: comment.openedThread,
+            composing: comment.composing,
+            free: formProps(null),
+            reply: replyState(),
+            reason: comment.reason,
+            checked: comment.checked,
+            editing,
+            editingIn,
+            editError,
+            editBody,
+            stale: comment.stale,
+            result: outcome,
+            selected: comment.opened,
+            reviewFocus: comment.reviewFocus,
+            titleOf: (id) => index.byId.get(id)?.item.title ?? null,
+            on: {
+                close: closeList,
+                review: openReview,
+                back: goBack,
+                filter: (filter) => {
+                    comment.filter = filter;
+                    renderComments();
+                },
+                tag: (tag) => {
+                    comment.tag = comment.tag === tag ? null : tag;
+                    renderComments();
+                },
+                clearTag: () => {
+                    comment.tag = null;
+                    renderComments();
+                },
+                compose: (open) => {
+                    comment.composing = open;
+                    renderComments();
+                    // 出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す
+                    const target = open ? ".comments-panel .talk-new form.send textarea" : '.comments-panel [data-focus="compose"]';
+                    document.querySelector(target)?.focus();
+                },
+                openThread,
+                openId: openFromThread,
+                reply: (thread, body) => void saveReply(thread, body),
+                replyInput: typeReply,
+                reasonOpen: (open) => {
+                    comment.reason = { open, body: "", status: "idle", detail: null };
+                    renderComments();
+                    const target = open ? '.comments-panel [data-focus="reason"]' : '.comments-panel [data-focus="status"]';
+                    document.querySelector(target)?.focus();
+                },
+                reasonInput: (body) => {
+                    comment.reason.body = body;
+                },
+                setStatus: (status, reason) => void changeStatus(status, reason),
+                check: (id, checked) => {
+                    if (checked)
+                        comment.checked.add(id);
+                    else
+                        comment.checked.delete(id);
+                    renderComments();
+                },
+                checkAll: (checked) => {
+                    comment.checked = checked
+                        ? new Set(comment.review.items.filter((item) => !MindmapPreview.isBlockedReply(item, comment.threads)).map((item) => item.id))
+                        : new Set();
+                    renderComments();
+                },
+                send: () => void sendChecked(),
+                open: openRow,
+                ...reviewRowHandlers(""),
+                unloc: (id) => void detachLocation(id),
+            },
+        });
         /** 読み直して一覧まで描き直す */
         const reloadAndRefresh = async () => {
             await loadReview();
@@ -1223,6 +1454,7 @@ var MindmapPreview;
                 created: item.created,
                 ...(item.target === null ? {} : { target: item.target }),
                 ...(item.loc === null ? {} : { loc: item.loc }),
+                ...(item.thread === null ? {} : { thread: item.thread }),
                 body: item.body,
             });
             if (result.ok)
@@ -1272,7 +1504,9 @@ var MindmapPreview;
         };
         /** チェックしたコメントを溜めた順にまとめて送る */
         const sendChecked = async () => {
-            const ids = comment.review.items.filter((item) => comment.checked.has(item.id)).map((item) => item.id);
+            const ids = comment.review.items
+                .filter((item) => comment.checked.has(item.id) && !MindmapPreview.isBlockedReply(item, comment.threads))
+                .map((item) => item.id);
             // 送るものが無い
             if (ids.length === 0)
                 return;
@@ -1291,6 +1525,7 @@ var MindmapPreview;
             else {
                 outcome = { kind: "failed", detail: result.ok ? null : result.detail };
             }
+            await loadThreads();
             await reloadAndRefresh();
         };
         // ===== 選んだ箇所のコメントの入口 =====
@@ -1496,6 +1731,7 @@ var MindmapPreview;
                 flushDrafts();
                 comment.listOpen = false;
                 comment.opened = null;
+                comment.highlight = null;
                 comment.removed = [];
                 renderComments();
                 if (discardListEdit())
@@ -1614,6 +1850,7 @@ var MindmapPreview;
             if (!result.ok)
                 return;
             await loadReview();
+            await loadThreads();
             const previousDisplay = data.settings.display;
             data = result.data;
             index = MindmapPreview.buildIndex(data);
@@ -1696,7 +1933,18 @@ var MindmapPreview;
                 comment.listOpen &&
                 document.querySelector("dialog[open]:not(.drawer)") === null &&
                 document.querySelector(":popover-open") === null) {
-                closeList();
+                const active = document.activeElement;
+                // 入力欄に打っている間は、入力欄から外れるだけにする（パネルは動かさない）
+                if (MindmapPreview.isTyping(active)) {
+                    if (active instanceof HTMLElement)
+                        active.blur();
+                }
+                else if (comment.view === "list") {
+                    closeList();
+                }
+                else {
+                    goBack();
+                }
             }
             else if (event.key === "Escape" &&
                 route.id === null &&
@@ -1735,8 +1983,10 @@ var MindmapPreview;
         addEventListener("hashchange", onLocationChange);
         // ===== 最初の描き =====
         // サーバーの配信では、レビュー中のコメントと書きかけを読んでおく（コメントのボタンの件数と入力に使う）
-        if (serverMode)
+        if (serverMode) {
             await loadReview(true);
+            await loadThreads();
+        }
         // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える
         const requested = new URLSearchParams(location.hash.replace(/^#/, "")).get("id");
         if (requested !== null && route.id === null)

@@ -57,8 +57,12 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
         "export",
         "preview_url",
         "readme",
-        "submissions",
-        "take_submission",
+        "threads",
+        "thread",
+        "new_thread",
+        "reply",
+        "set_thread_status",
+        "update_thread",
     )
 )
 
@@ -110,14 +114,15 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert mentions_old_mode(texts) == []
     # 本文が mindmap.yaml を Edit ツールで直す手順を持たない
     assert edits_settings_directly(texts) == []
-    # 本文が migrate を plan: true で呼び、その後に submissions を呼ぶ
+    # 本文が migrate を plan: true で呼び、その後に threads を awaiting: true で呼ぶ
     preparation = next(line for line in body.splitlines() if line.startswith("| 準備 |"))
     assert "`migrate`" in preparation
     assert PLAN_CALL in preparation
-    assert preparation.index("`migrate`") < preparation.index("`submissions`")
-    # 準備が changes_since_read を submissions より前に呼ぶ
+    assert preparation.index("`migrate`") < preparation.index("`threads`")
+    assert "`awaiting: true`" in preparation
+    # 準備が changes_since_read を threads より前に呼ぶ
     assert "`changes_since_read`" in preparation
-    assert preparation.index("`changes_since_read`") < preparation.index("`submissions`")
+    assert preparation.index("`changes_since_read`") < preparation.index("`threads`")
     # 準備が readme を changes_since_read より前に呼び、readme がエラーを返しても準備を続ける
     assert "`readme`" in preparation
     assert preparation.index("`readme`") < preparation.index("`changes_since_read`")
@@ -167,6 +172,11 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     for step_file in COMMIT_STEP_FILES:
         step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")
         assert "`commit`" in step
+    # 本文が reply・set_thread_status・update_thread・new_thread を呼び、submissions・take_submission を指さない
+    for tool in ("reply", "set_thread_status", "update_thread", "new_thread"):
+        assert f"`{tool}`" in body
+    assert "submissions" not in body
+    assert "take_submission" not in body
     # skills/mindmap/ に SKILL.md が無く、references/・playbooks/ がある
     assert not (SKILLS_DIR / "mindmap" / "SKILL.md").exists()
     assert (SKILLS_DIR / "mindmap" / "references").is_dir()

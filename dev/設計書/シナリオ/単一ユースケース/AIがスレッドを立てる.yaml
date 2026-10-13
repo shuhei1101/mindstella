@@ -1,0 +1,94 @@
+title: "AIがスレッドを立てる"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるスレッドを立てるツールの呼び出しを、決めた引数で再生する
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: 作成済みのワークスペース
+        description: 未決定の検討事項 D-1 を持ち、スレッドを持たない
+        notes: 立てるスレッドの本文は `D-1 の比べた結果を Issue に起票してよいですか`、タグは `起票`、要約は `D-1 の比べた結果を Issue に起票してよいかの確認。返事待ち`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>CC: D-1 の比べた結果を Issue に起票する前の確認に当たる
+        CC->>SV: スレッドを立てる（本文・タグ・要約）
+        SV->>WS: オープンのスレッドを書く
+        SV-->>CC: 立てたスレッド
+        CC->>CC: 起票せずに話し合いを続ける
+      ```
+    expected:
+      - オープンのスレッドが 1 件あり、最初の書き込みが AI の `D-1 の比べた結果を Issue に起票してよいですか` である
+      - スレッドがタグ `起票` と、本文と分けた要約を持つ
+      - 取り込み待ちのスレッドの一覧が 0 件を返す
+      - '`check` が問題を 0 件で返す'
+    test: test_normal
+  - name: 正常シナリオ（開いている画面に出る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開いた後に、スレッドを立てるツールを決めた引数で呼ぶ。描画のライブラリは CDN から読む
+      - name: 作成済みのワークスペース
+        description: スレッドを持たない
+      - name: 開いている画面
+        description: コメントの一覧（左のパネル）のスレッドの一覧
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant CC as Claude Code（session）
+
+        CC->>SV: スレッドを立てる
+        SV-->>P: 書き換えの知らせ
+        P->>SV: 記録を読み直す
+        P-->>U: スレッドの一覧に AI のスレッドの行を足す
+      ```
+    expected:
+      - 画面を開き直さずに、スレッドの一覧に AI が立てたスレッドの行が出る
+      - オープンだけの一覧の件数が 1 になる
+    test: test_normal_when_shown_on_open_screen
+  - name: 異常シナリオ（本文が空）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MCP サーバーを立て、スレッドを立てるツールを空の本文で呼ぶ
+      - name: 作成済みのワークスペース
+        description: スレッドを持たない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+
+        CC->>SV: スレッドを立てる（本文が空）
+        SV-->>CC: エラー（本文が空）
+        CC->>CC: 同じことをターミナルで聞く
+      ```
+    expected:
+      - ツールがエラーを返し、理由に本文が空であることがある
+      - スレッドが 0 件のままである
+    test: test_error_when_body_empty
+lead: '`session` が、ワークスペースの外へ書き込む前の確認（Issue に起票してよいか など）と、話の流れと関係の無い知らせを、スレッドを立てて利用者に返事を求める単一ユースケース。今の話の流れの中で答えが要る問いは、ターミナルで聞く。'
+issue: 208
+primary_actor: スキルの手順を実行する Claude Code
+stakeholders:
+  - name: 利用者
+    interest: 話の流れを切らずに AI からの確認をプレビューで受け、手の空いたときに返事できる
+trigger: '`session` の手順が、ワークスペースの外へ書き込む前の確認か、話の流れと関係の無い知らせに当たる'
+preconditions:
+  - ワークスペースが作成済みである
+  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
+success_guarantee: オープンのスレッドが 1 件でき、最初の書き込みが AI の問いで、要約とタグを持つ。利用者の返事を待つスレッドで、取り込み待ちには出ない。返事が届くまで、ワークスペースの外へは書き込まない。
+minimal_guarantee: スレッドを立てられなかったときは、ワークスペースの外へ書き込まず、同じことをターミナルで聞く。
+frequency: ワークスペースの外へ書き込む前の確認か、話の流れと関係の無い知らせがあるたびに 1 回
+priority: 中
+notes:
+  スレッドで聞く場面とターミナルで聞く場面: スレッドで聞くのは、ワークスペースの外へ書き込む前の確認（Issue の起票・外の資料の書き換え など）と、話の流れと関係の無い知らせ。今の話の流れの中で答えが要る問い（ヒアリングのラウンド・方針転換の確認・リサーチを始めてよいか）はターミナルで聞く。返事を待つ間も話し合いを続け、返事は単一ユースケース『送信の取り込み』で拾う
+  E2E の範囲: モデルを呼ばず、手順が連ねるツールの呼び出しを再生する。どの場面をスレッドで聞くかというモデルの判断と、ワークスペースの外への書き込み（Issue の起票）は確かめない
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_thread_ai_ask.py

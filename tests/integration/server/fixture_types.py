@@ -10,7 +10,9 @@ from workspace_fixtures import (
     MakeDraft,
     MakeItem,
     MakeLegacyWorkspace,
+    MakePost,
     MakeSubmission,
+    MakeThread,
     MakeVenv,
     MakeWorkspace,
     McpServer,
@@ -20,6 +22,7 @@ from workspace_fixtures import (
     WriteComments,
     WriteDrafts,
     WriteSubmissions,
+    WriteThreads,
 )
 
 __all__ = [
@@ -30,7 +33,9 @@ __all__ = [
     "MakeDraft",
     "MakeItem",
     "MakeLegacyWorkspace",
+    "MakePost",
     "MakeSubmission",
+    "MakeThread",
     "MakeVenv",
     "MakeWorkspace",
     "McpServer",
@@ -40,6 +45,7 @@ __all__ = [
     "WriteComments",
     "WriteDrafts",
     "WriteSubmissions",
+    "WriteThreads",
 ]
 
 type LockDirs = Callable[..., None]

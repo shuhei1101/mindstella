@@ -19,6 +19,8 @@ namespace MindmapPreview {
     detail?: string | null;
     /** 畳んだ形（`target` が null のときだけ使う） */
     collapsed?: boolean;
+    /** `target` が null のときの入力欄の読み上げの名前（コメントの一覧の新しいスレッドの入力は「新しいスレッド」） */
+    label?: string;
     on: {
       /** 入力欄の中身が変わったとき */
       input: (body: string) => void;
@@ -134,6 +136,7 @@ namespace MindmapPreview {
     count = null,
     detail = null,
     collapsed = false,
+    label = NO_TARGET_LABEL,
     on,
   }: SendFormProps): HTMLFormElement {
     sendFormSequence += 1;
@@ -155,7 +158,7 @@ namespace MindmapPreview {
         id: fieldId,
         name: "body",
         rows: folded ? 1 : 2,
-        "aria-label": target === null ? NO_TARGET_LABEL : null,
+        "aria-label": target === null ? label : null,
         "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
         "aria-keyshortcuts": "Control+Enter",
         // 溜めている間は書き換えられない

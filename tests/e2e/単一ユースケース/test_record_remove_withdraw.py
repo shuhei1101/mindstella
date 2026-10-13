@@ -7,7 +7,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import (
+    RECORD_DIR,
+    CallTool,
+    MakeItem,
+    MakePost,
+    MakeThread,
+    MakeWorkspace,
+    SnapshotTree,
+    WriteThreads,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -140,3 +149,88 @@ def test_error_when_item_missing(
     assert "N-9" in result.text
     # ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
     assert snapshot_tree(root) == before
+
+
+# 利用者がクローズにした記録
+USER_CLOSED = {
+    "kind": "closed",
+    "author": "user",
+    "reason": None,
+    "created": "2026-10-12T01:00:00+00:00",
+}
+
+# 取り込んだ日時
+TAKEN_AT = "2026-10-12T00:30:00+00:00"
+
+
+def test_error_when_awaiting_thread_refers(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """取り込み待ちのスレッドが指している項目は消さず、指しているスレッドを示すエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"))
+    write_threads(
+        root,
+        make_thread("TH-1", make_post("TH-1-1"), status="closed", target="N-1", events=[USER_CLOSED]),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("remove", workspace=str(root), id="N-1")
+    # 検証
+    # 消すツールがエラーを返し、本文に N-1 を指している取り込み待ちのスレッドがある
+    assert result.is_error is True
+    assert "threads.yaml: TH-1: target" in result.text
+    # ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_taken_thread_refers(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """取り込み済みのスレッドだけが指している項目は消せて、スレッドは指したまま残り、点検は問題を返さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"), make_item("N-2"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", read=True, taken=TAKEN_AT),
+            make_post("TH-1-2", author="ai"),
+            target="N-2",
+        ),
+        make_thread(
+            "TH-2",
+            make_post("TH-2-1", read=True, taken=TAKEN_AT),
+            status="closed",
+            target="N-2",
+            events=[USER_CLOSED],
+        ),
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    removed = replay("remove", **ws, id="N-2")
+    checked = replay("check", **ws)
+    # 検証
+    # 消すツールが N-2 を返す
+    assert removed["id"] == "N-2"
+    # notes.yaml に N-2 が無い
+    assert [item["id"] for item in read_yaml(root, "notes.yaml")["items"]] == ["N-1"]
+    # 2 件のスレッドが、N-2 を指したまま残っている
+    assert [(item["id"], item["target"]) for item in read_yaml(root, "threads.yaml")["items"]] == [
+        ("TH-1", "N-2"),
+        ("TH-2", "N-2"),
+    ]
+    # check が問題を 0 件で返す
+    assert checked == {"ok": True, "problems": []}

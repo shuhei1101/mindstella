@@ -1,0 +1,225 @@
+/* PR #235 で足すスレッドの一覧・スレッド 1 件・レビュー中を確かめる画面と、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンクとボタン */
+.mockbar :is(a, button) { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; background: none; font: inherit; }
+/* 操作列のボタン: 押せることを枠で示す */
+.mockbar button { border-color: currentColor; border-style: dashed; cursor: pointer; }
+/* 開いている見本 */
+.mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+/* 撮影用の赤枠（クエリの mark で付ける） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
+
+/* ===== コメントの一覧の見出しの帯 ===== */
+
+/* 見出し: 狭い幅でも折り返さない */
+.comments-head h2 { white-space: nowrap; }
+/* 見出しとレビュー中を確かめる入口の間: 入口と閉じるボタンを右端へ寄せる */
+.comments-head .spacer { flex: 1; }
+/* レビュー中を確かめる入口: 文字と件数を並べる */
+.review-entry { flex: none; gap: 8px; white-space: nowrap; }
+/* 入口の件数: コメントのボタンの件数と同じ丸い札 */
+.review-entry .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--text); color: var(--bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+/* レビュー中が 0 件の入口: 件数の塗りを外す */
+.review-entry.zero .count { background: transparent; color: var(--text-2); box-shadow: inset 0 0 0 1px var(--border); }
+
+/* ===== スレッドの一覧 ===== */
+
+/* 絞り込みの帯: 状態のセグメントと、タグの絞り込みのチップを一覧の上端に留める */
+.talk-band { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* 状態のセグメント: 帯の幅いっぱいに 3 つを等分する */
+.talk-filter { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+/* セグメントのボタン: 文字と件数を中央に並べる */
+.talk-filter button { justify-content: center; min-width: 0; width: auto; }
+/* セグメントの件数 */
+.talk-filter .count { font-family: var(--font-mono); font-size: var(--fs-xs); opacity: .75; }
+/* タグの絞り込みのチップと件数の行 */
+.talk-chips { margin: 0; min-height: 0; }
+/* チップのタグの印 */
+.talk-chips .chip > svg.icon { color: var(--text-3); }
+/* スレッドの一覧: 最後の書き込みの新しい順の縦並び */
+.th-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* スレッドの行: 開くボタンとタグを縦に積む */
+.th-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 行の上に乗ったとき: 行の面を変える */
+.th-row:has(.th-open:hover) { background: var(--hover); }
+/* 行を開くボタン: 行の幅いっぱいで、題とメタ情報を 2 行で出す */
+.th-open { display: grid; gap: 6px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--radius); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.th-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* タグがある行: 開くボタンの下の余白をタグに譲る */
+.th-row:has(.th-tags) .th-open { padding-bottom: 4px; }
+/* 1 行目: 状態の札と題 */
+.th-line1 { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+/* 題: 2 行で末尾を省く */
+.th-title { min-width: 0; font-weight: 600; line-height: 1.45; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+/* 要約がまだ無い行の題（最初の書き込みの先頭）: 要約と見分けられるよう太さを落とす */
+.th-title.head { font-weight: 400; }
+/* 2 行目: 向けた項目・最後の書き手・日時・レビュー中の印 */
+.th-line2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; color: var(--text-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+/* 2 行目の向けた項目の ID */
+.th-line2 .mono { color: var(--text); }
+/* 最後の書き手 */
+.th-author { font-weight: 600; }
+/* 行のタグの並び */
+.th-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+/* タグ: 押すとそのタグで絞る */
+.th-tag { display: inline-flex; align-items: center; gap: 3px; min-height: var(--target-min); padding: 0 8px 0 5px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.th-tag:hover { border-color: var(--accent); color: var(--text); }
+.th-tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* タグの印 */
+.th-tag svg.icon { width: 12px; height: 12px; }
+/* 絞っているタグ: 枠の全体と面で示す */
+.th-tag.on { border-color: var(--accent-line); background: var(--accent-weak); color: var(--text); }
+/* スレッドの見出しのタグ: 押せない札。枠と面を外して文字だけにし、一覧の押せるタグと見分ける */
+.th-tag.static { min-height: 0; padding: 0; border: 0; background: none; cursor: default; }
+.th-tag.static:hover { color: var(--text-2); }
+
+/* 状態の札: 印と文字で分ける（色だけに頼らない） */
+.th-state { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid currentColor; border-radius: 3px; font-size: var(--fs-xs); font-weight: 500; line-height: 1; white-space: nowrap; }
+/* 状態の札の印 */
+.th-state svg.icon { width: 11px; height: 11px; }
+/* オープン: 未決定と同じ色 */
+.th-state.open { color: var(--st-open); }
+/* クローズ: 薄い文字 */
+.th-state.closed { color: var(--text-2); }
+/* レビュー中（まだ送っていない新しいスレッド）: 破線の枠で、記録にあるスレッドの札と見分ける */
+.th-state.pending { color: var(--text); border-style: dashed; }
+/* レビュー中の印: レビュー中の書き込みを持つスレッドの行と、スレッドの中のレビュー中の書き込みに出す */
+.th-pending { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border: 1px dashed var(--text-2); border-radius: 3px; color: var(--text); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; }
+/* レビュー中の印の絵 */
+.th-pending svg.icon { width: 11px; height: 11px; }
+/* まだ送っていない新しいスレッドの行: 破線の枠にする */
+.th-row.pending { border-style: dashed; }
+/* 一覧の下端の、新しいスレッドを立てる入口 */
+.talk-new { padding: 10px 12px; }
+/* 新しいスレッドの入力を開いたとき: 見出しと入力を縦に積む */
+.talk-new.open { padding: 8px 0 0; }
+/* 新しいスレッドの入力の見出しと閉じるボタン */
+.talk-new-head { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 16px; }
+/* 新しいスレッドの入力: 見出しの下に詰める */
+.talk-new.open .send.send-footer { padding-top: 4px; }
+
+/* ===== スレッド 1 件 ===== */
+
+/* スレッドの見出し: 戻る・状態の切り替え・題・向けた項目とタグを、書き込みの上に留める */
+.th-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px 12px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* 戻るボタンと状態の切り替えの行 */
+.th-head-bar { display: flex; align-items: center; gap: 8px; }
+/* 戻るボタンと状態の切り替えの間: 状態の切り替えを右端へ寄せる */
+.th-head-bar .spacer { flex: 1; }
+/* 戻るボタン: 帯の左端に文字の頭を揃える */
+.th-back { margin-left: -6px; padding: 0 8px 0 4px; }
+/* 状態の切り替えを送っている間 */
+.th-head-bar .btn:disabled { color: var(--text-2); cursor: progress; }
+/* スレッドの題: 状態の札と、折り返す題 */
+.th-heading { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--fs-h2); line-height: 1.45; overflow-wrap: anywhere; }
+/* 題の文字: 札の残りの幅で折り返す */
+.th-heading > span:last-child { min-width: 0; }
+/* 題の横の状態の札: 1 行目の高さに揃える */
+.th-heading .th-state { margin-top: 1px; }
+/* 向けた項目とタグ */
+.th-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* 向けた項目: 押すと詳細パネルを開く */
+.th-meta .row-target { margin-left: -6px; font-weight: 500; }
+/* 状態を切り替えられなかった理由 */
+.th-action-msg { min-height: 0; padding-top: 0; }
+/* 書き込みの並び: 書いた順 */
+.posts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+/* 書き込み: 書き手の名前・日時・本文 */
+.post { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+/* 利用者の書き込み: 右に寄せる */
+.post.user { margin-left: 32px; }
+/* AI の書き込み: 左に寄せ、面の色を変える */
+.post.ai { margin-right: 32px; background: var(--surface-2); border-color: var(--border-soft); }
+/* 書き込みの頭: 書き手の名前と日時 */
+.post-head { display: flex; align-items: baseline; gap: 8px; color: var(--text-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+/* 書き手の名前 */
+.post-author { color: var(--text); font-weight: 600; }
+/* 書き込みの本文: 改行を残し、長い語も折り返す */
+.post-body { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* 本文の中の項目の ID: 行の中に収める */
+.post-body .idlink { margin: 0 2px; }
+/* クローズのスレッドの下端: 返信の入力の代わりに置く */
+.th-closed-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 14px 16px; color: var(--text-2); font-size: var(--fs-small); }
+/* クローズの印 */
+.th-closed-note svg.icon { width: 14px; height: 14px; }
+/* 返信のボタン: 押せないとき（空・送っている間）は塗りを外す */
+.reply .send-row .btn:disabled { cursor: default; }
+
+/* 狭い幅（720px 以下）: 書き込みの寄せを詰め、レビュー中を確かめる画面の行の頭を、札の行（右上に重ねた修正と削除と同じ高さ）と、2 行で省く題の行に分ける */
+@media (max-width: 720px) {
+  .comments-list .row-head { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(var(--control-h), auto); justify-items: start; gap: 0; }
+  .comments-list .row-head .row-target { max-width: 100%; margin-left: -6px; align-items: flex-start; padding-block: 4px; }
+  .comments-list .row-head .row-target .t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
+  .posts > li.row.removed { margin-left: 16px; }
+  .post.user { margin-left: 16px; }
+  .post.ai { margin-right: 16px; }
+}
+
+/* ===== クローズ・オープンへの戻しの理由と記録 ===== */
+
+/* 理由の入力（任意）: 見出しの下にその場で出す */
+.th-reason { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+/* 理由の入力欄: コメントの入力欄と同じ見た目 */
+.th-reason textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(6lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.th-reason textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 状態を変えた記録: 書き込みの並びの中に、枠を持たない 1 行で出す */
+.th-event { display: grid; gap: 4px; padding: 2px 4px; color: var(--text-2); font-size: var(--fs-small); }
+/* 記録の 1 行: 印・誰が何をしたか・日時 */
+.th-event-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-variant-numeric: tabular-nums; }
+/* 記録の印 */
+.th-event-line svg.icon { width: 14px; height: 14px; }
+/* 記録の理由: 印の分だけ下げて、本文の色で出す */
+.th-event-reason { margin: 0 0 0 22px; color: var(--text); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ===== スレッドの中のレビュー中の書き込み ===== */
+
+/* レビュー中の書き込み: 破線の枠で、送った書き込みと見分ける */
+.post.pending { border-style: dashed; }
+/* レビュー中の書き込みの頭: 印の右に、修正と削除を寄せる */
+.post.pending .post-head { align-items: center; }
+.post.pending .post-head .spacer { flex: 1; }
+/* レビュー中の書き込みの修正と削除: 狭い幅でも書き込みの頭の中に置く */
+.post.pending .row-actions { position: static; }
+/* スレッドの中の消した書き込み: 書き込みと同じ寄せにする */
+.posts > .row.removed { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-left: 32px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); }
+
+/* ===== レビュー中を確かめる画面 ===== */
+
+/* 見出し: 戻ると題を 1 行に並べる */
+.review-head { padding-bottom: 8px; }
+/* 題と件数 */
+.review-title { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: var(--fs-h2); }
+/* 題の件数 */
+.review-title .count { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: 400; color: var(--text-3); }
+/* 行の頭: 返信か新しいスレッドかと、返信先・向けた項目を並べる */
+.row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* 行の種類（返信・新しいスレッド）: 押せない札 */
+.row-kind { flex: none; display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 6px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
+/* 新しいスレッドの行の、スレッドを開く入口: 本文の下の左に置き、クローズのスレッドへの返信の行の入口と同じ文字の大きさにする */
+.row-thread-open { display: flex; margin-left: -12px; font-size: var(--fs-small); }
+/* 行の頭の向けた先: 残りの幅で省く */
+.row-head .row-target { flex: 0 1 auto; margin-left: 0; min-width: 0; font-weight: 500; }
+/* クローズのスレッドへの返信の行: チェックできないことを面の色でも示す */
+.comments-list .row.blocked { background: var(--surface-2); }
+/* チェックできない行のチェック */
+.row-check:disabled { opacity: .45; }
+/* 送れない理由と、スレッドを開く入口 */
+.row-blocked svg.icon { color: var(--text-2); }

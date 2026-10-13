@@ -15,8 +15,10 @@ from workspace_fixtures import (
     CallTool,
     MakeItem,
     MakeLegacyWorkspace,
+    MakeSubmission,
     MakeWorkspace,
     SnapshotTree,
+    WriteSubmissions,
     plugin_version,
     step_versions_after,
 )
@@ -405,6 +407,85 @@ def test_normal_when_options_filled(
     assert decisions["D-4"]["status"] == "決定済み"
     assert [option.get("adopted") for option in decisions["D-4"]["options"]] == [True, None]
     # 移し替えの後、.mindstella/mindstella-version.ini の 1 行目がプラグインの版である
+    first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
+    assert first_line == plugin_version()
+    # 最後の check が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}
+
+
+# 送信を持つ前の版（送信の記録をスレッドへ移す手順の 1 つ前の版）
+SUBMISSION_STEP_VERSION = "v0.8.0"
+
+# 送信を持つ版のワークスペースの版
+SUBMISSION_BASE_VERSION = "v0.7.0"
+
+# 資料 A-1 の本文と、2 行目を指す箇所
+SUBMISSION_BODY = "最初の文\n言い換えたい文\n最後の文\n"
+SECOND_LINE = {"kind": "body", "start": 2, "end": 2, "text": "言い換えたい文"}
+
+# 送った日時と、取り込んだ日時
+SENT_AT = "2026-10-02T07:00:00+00:00"
+TAKEN_AT = "2026-10-02T08:00:00+00:00"
+
+
+def test_normal_when_submissions_to_threads(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+    call_tool: CallTool,
+) -> None:
+    """送信を持つ版のワークスペースを、送信 1 件ずつのスレッドへ移して送信のファイルを消し、今の版へ移し替える（正常系）。"""
+    # 準備（S-1 は D-1 への取り込み済みの送信、S-2 は A-1 の 2 行目を指す取り込んでいない送信）
+    root = make_workspace(
+        make_item("D-1"), make_item("A-1"), bodies={"A-1.md": SUBMISSION_BODY}
+    )
+    write_submissions(
+        root,
+        make_submission("S-1", target="D-1", body="案 A にする", sent=SENT_AT, taken=TAKEN_AT),
+        make_submission(
+            "S-2", target="A-1", body="ここは言い換える", loc=SECOND_LINE, sent=SENT_AT
+        ),
+    )
+    (root / RECORD_DIR / VERSION_FILE).write_text(f"{SUBMISSION_BASE_VERSION}\n", encoding="utf-8")
+    ws = {"workspace": str(root)}
+    # 実行
+    # 版を比べ、当てる手順を並べる
+    plan = call_tool("migrate", **ws, plan=True)
+    # 写しを取って手順を当てる（破壊的な操作を当ててよいと確かめた後）
+    applied = call_tool("migrate", **ws)
+    checked = call_tool("check", **ws)
+    awaiting = call_tool("threads", **ws, awaiting=True)
+    # 版を書き換える
+    recorded = call_tool("migrate", **ws, record=True)
+    # 検証
+    assert plan.is_error is False
+    assert plan.data is not None
+    # 並べた手順に、送信をスレッドへ移して送信のファイルを消す手順が、破壊的な操作の印つきである
+    steps = [(step["version"], step["op"], step["destructive"]) for step in plan.data["steps"]]
+    assert (SUBMISSION_STEP_VERSION, "delete", True) in steps
+    assert applied.is_error is False, applied.text
+    threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
+    # スレッドが 2 件あり、それぞれの最初の書き込みが送信の向けた項目・箇所・本文・送った日時のままである
+    assert [(item["target"], item.get("loc"), item["posts"][0]["body"], item["posts"][0]["created"]) for item in threads] == [
+        ("D-1", None, "案 A にする", SENT_AT),
+        ("A-1", SECOND_LINE, "ここは言い換える", SENT_AT),
+    ]
+    # 取り込み済みだった S-1 のスレッドはクローズで、書き込みが取り込み済みである
+    assert threads[0]["status"] == "closed"
+    assert threads[0]["posts"][0]["taken"] == TAKEN_AT
+    # 取り込んでいなかった S-2 のスレッドはオープンで、取り込み待ちである
+    assert threads[1]["status"] == "open"
+    assert threads[1]["posts"][0]["taken"] is None
+    assert awaiting.data is not None
+    assert [item["id"] for item in awaiting.data["items"]] == [threads[1]["id"]]
+    # ワークスペースに送信のファイルが無い
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    # 移し替えの後、.mindstella/mindstella-version.ini の 1 行目がプラグインの版である
+    assert recorded.is_error is False
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
     assert first_line == plugin_version()
     # 最後の check が問題を 0 件で返す

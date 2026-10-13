@@ -47,8 +47,12 @@ EXPECTED_TOOL_NAMES = (
     "export",
     "preview_url",
     "readme",
-    "submissions",
-    "take_submission",
+    "threads",
+    "thread",
+    "new_thread",
+    "reply",
+    "set_thread_status",
+    "update_thread",
 )
 
 
