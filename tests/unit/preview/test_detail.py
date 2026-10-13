@@ -1635,6 +1635,77 @@ def test_detail_panel_when_diff_key_words_skipped(
     assert result["texts"] == expected_texts
 
 
+# 本文の行の差分の打ち切りの時間（ミリ秒。`LINE_DIFF_TIMEOUT_MS`）
+LINE_DIFF_TIMEOUT_MS = 40
+
+# 本文の行の差分（`Diff.diffLines`）を打ち切り（`undefined` を返し）、その間に時計を打ち切りの時間より進める包みを被せる
+INSTALL_LINE_DIFF_TIMEOUT_SCRIPT = """(timeoutMs) => {
+    const now = performance.now.bind(performance);
+    let advanced = 0;
+    performance.now = () => now() + advanced;
+    Diff.diffLines = () => {
+        advanced += timeoutMs + 10;
+        return undefined;
+    };
+}"""
+
+# `lead` と本文の 1 行目を書き換えた回（本文の行の差分を呼ぶ）
+BODY_TOO_LARGE_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"lead": "要件は来週までに決める。"},
+    "body_diff": [
+        {
+            "line": 1,
+            "now": ["要件は今週までに決める。"],
+            "before": ["要件は来週までに決める。"],
+        },
+    ],
+}
+
+
+def test_detail_panel_when_diff_key_words_body_too_large(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を足し直さない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item(
+                "D-1",
+                lead="要件は今週までに決める。",
+                body="D-1.md",
+                history=[BODY_TOO_LARGE_ENTRY],
+                seq=1,
+            )
+        ],
+        bodies={"D-1.md": WORD_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    preview_page.evaluate(INSTALL_LINE_DIFF_TIMEOUT_SCRIPT, LINE_DIFF_TIMEOUT_MS)
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "selectors": ['[data-key="lead"]']},
+    )
+    note = preview_page.evaluate("() => document.querySelector('.df-note')?.textContent ?? ''")
+    # 検証
+    # 本文の頭に、本文の差分を計算しきれない旨が出る
+    assert "本文の差分を出せません" in note
+    # 背景の前の値・今の値は今までどおり並び、語の面は付かない
+    assert result["texts"] == [
+        {"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}
+    ]
+    assert result["allWords"] == 0
+
+
 # 資料・調査の説明とエイリアスの節の位置と中身、キーの一覧の行を調べる（markers の見出しとキーの要素を、中身の直下の子の位置で返す）
 DESCRIPTION_ALIASES_SCRIPT = (
     OPEN_PANEL_FUNCTION
