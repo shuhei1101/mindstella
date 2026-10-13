@@ -761,7 +761,7 @@ def test_normal_when_term_alias_matched(
     # 実行（キーボードでフォーカスする）
     page.focus(f"{BODY_MARKS} >> nth=0")
     page.wait_for_selector(TIP_OPEN)
-    focus_head = page.inner_text(f"{TIP} .tt-head")
+    focus_head = page.eval_on_selector(f"{TIP} .tt-head", "h => h.textContent")
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
     # 実行（「マイグレーション」を押す）
