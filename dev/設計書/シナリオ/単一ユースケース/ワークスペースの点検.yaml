@@ -191,6 +191,7 @@ scenarios:
       - 出力に、消した N-1 を指すクローズのスレッドが無い
       - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_threads_problems_found
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

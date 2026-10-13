@@ -128,6 +128,7 @@ scenarios:
       - 消すツールがエラーを返す
       - エラーの本文に、N-1 を指している取り込み待ちのスレッドがある
       - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+    test: test_error_when_awaiting_thread_refers
   - name: 正常シナリオ（取り込み済みのスレッドだけが指している）
     setup:
       - name: Mock
@@ -154,6 +155,7 @@ scenarios:
       - '`.mindstella/notes.yaml` に N-2 が無い'
       - 2 件のスレッドが、N-2 を指したまま残っている
       - '`check` が問題を 0 件で返す'
+    test: test_normal_when_taken_thread_refers
 lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
 issue: 96
 primary_actor: スキルの手順を実行する Claude Code
