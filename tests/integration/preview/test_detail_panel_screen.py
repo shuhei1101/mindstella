@@ -89,6 +89,7 @@ from preview_word_diff_helpers import (
     WORD_MARKS_JS,
     colour_distance,
     contrast_ratio,
+    serve_key_word_diff_workspace,
     serve_word_diff_workspace,
 )
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
@@ -2258,6 +2259,101 @@ def test_diff_body_when_inline_words_color(
     )
     removed = page.evaluate(
         WORD_COLORS_JS, [f"{DIFF_BODY} del.df-blk span.df-word.df-del", "del.df-blk"]
+    )
+    # 検証
+    for colors in (added, removed):
+        assert colour_distance(colors["wordBackground"], colors["surface"]) > colour_distance(
+            colors["lineBackground"], colors["surface"]
+        )
+        assert contrast_ratio(colors["text"], colors["wordBackground"]) >= MIN_TEXT_CONTRAST
+
+
+# キーの語の面を確かめる、背景（`lead`）と案 A の内容の値の要素
+DIFF_KEY_LEAD = 'aside.panel [data-key="lead"]'
+DIFF_KEY_OPTION = 'aside.panel [data-key="options[A].content"]'
+
+
+def test_diff_keys_when_inline_words(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """背景と案の内容の前の値・今の値は、変わった語だけに濃い面を付ける。値の面・取り消し線・下線・矢印と、読み上げの名前は残る（正常系）。"""
+    # 準備・実行
+    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
+    # 検証
+    for selector, was, now in (
+        (DIFF_KEY_LEAD, "来週", "今週"),
+        (DIFF_KEY_OPTION, "毎週", "毎月"),
+    ):
+        pair = page.locator(f"{selector} .df-kv")
+        assert pair.locator("del.df-was span.df-word.df-del").all_inner_texts() == [was]
+        assert pair.locator("ins.df-now span.df-word.df-add").all_inner_texts() == [now]
+        # 値の面・取り消し線・下線・矢印は残る
+        assert page.eval_on_selector(
+            f"{selector} del.df-was", "e => getComputedStyle(e).textDecorationLine"
+        ) == "line-through"
+        assert page.eval_on_selector(
+            f"{selector} ins.df-now", "e => getComputedStyle(e).textDecorationLine"
+        ) == "underline"
+        assert page.eval_on_selector(
+            f"{selector} del.df-was", "e => getComputedStyle(e).backgroundColor"
+        ) != TRANSPARENT
+        assert pair.locator(".df-arrow").inner_text() == "→"
+        # 読み上げの名前は語の面の外に残る
+        assert pair.locator("del.df-was > .sr-only").text_content() == "前の値: "
+        assert pair.locator("ins.df-now > .sr-only").text_content() == "今の値: "
+
+
+def test_diff_keys_when_inline_words_skipped(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
+    # 準備・実行
+    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
+    # 検証
+    # 語の面は背景と案 A の内容の 4 つだけ
+    assert page.locator("aside.panel span.df-word").count() == 4
+    # 状態（面を塗らない差分）
+    status = page.locator('aside.panel [data-key="status"] .df-kv')
+    assert status.get_attribute("class") == "df-kv df-plain"
+    assert status.locator("del.df-was").inner_text().endswith("未決定")
+    assert status.locator("ins.df-now").inner_text().endswith("要見直し")
+    assert status.locator("span.df-word").count() == 0
+    # キーの一覧（影響度）とタグ
+    meta = page.locator("aside.panel .d-meta dd.df-key .df-kv")
+    assert meta.count() == 2
+    assert meta.locator("span.df-word").count() == 0
+    assert meta.nth(0).locator("del.df-was").inner_text().endswith("大")
+    assert meta.nth(0).locator("ins.df-now").inner_text().endswith("中")
+    assert meta.nth(1).locator("del.df-was").inner_text().endswith("要件、会議")
+    assert meta.nth(1).locator("ins.df-now").inner_text().endswith("要件、運用")
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_diff_keys_when_inline_words_color(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+    scheme: str,
+) -> None:
+    """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
+    # 準備
+    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.emulate_media(color_scheme=scheme)
+    page.reload()
+    page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
+    assert page.evaluate("document.documentElement.dataset.theme") == scheme
+    # 実行
+    added = page.evaluate(
+        WORD_COLORS_JS, [f"{DIFF_KEY_LEAD} ins.df-now span.df-word.df-add", "ins.df-now"]
+    )
+    removed = page.evaluate(
+        WORD_COLORS_JS, [f"{DIFF_KEY_LEAD} del.df-was span.df-word.df-del", "del.df-was"]
     )
     # 検証
     for colors in (added, removed):
