@@ -282,6 +282,131 @@ def test_comment_api(
     assert (call["method"], call["body"]) == (expected_method, expected_body)
 
 
+@pytest.mark.parametrize(
+    ("name", "expected_method", "expected_path"),
+    [
+        pytest.param("add", "POST", "api/comments", id="add"),
+        pytest.param("saveDraft", "PUT", "api/drafts", id="save_draft"),
+    ],
+)
+def test_comment_api_when_thread(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    name: str,
+    expected_method: str,
+    expected_path: str,
+) -> None:
+    """返信と返信の書きかけは thread を本文に持つ（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    call = preview_page.evaluate(
+        """async (name) => {
+            const calls = [];
+            const fetchFn = async (url, init) => {
+                calls.push({url: String(url), method: init?.method, body: init?.body ?? null});
+                return new Response("{}", {status: 200});
+            };
+            const api = MindmapPreview.commentApi(fetchFn);
+            await api[name]({thread: "TH-1", body: "x"});
+            return calls[0];
+        }""",
+        name,
+    )
+    # 検証
+    assert call["url"].endswith(expected_path)
+    assert (call["method"], call["body"]) == (expected_method, '{"thread":"TH-1","body":"x"}')
+
+
+@pytest.mark.parametrize(
+    ("name", "arguments", "expected_method", "expected_path", "expected_body"),
+    [
+        pytest.param("read", [], "GET", "api/threads", None, id="read"),
+        pytest.param(
+            "setStatus",
+            ["TH-1", "closed", " 案 A で決着 "],
+            "PATCH",
+            "api/threads/TH-1",
+            '{"status":"closed","reason":"案 A で決着"}',
+            id="close_with_reason",
+        ),
+        pytest.param(
+            "setStatus",
+            ["TH-1", "open", "  "],
+            "PATCH",
+            "api/threads/TH-1",
+            '{"status":"open","reason":null}',
+            id="reopen_blank_reason",
+        ),
+    ],
+)
+def test_thread_api(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    name: str,
+    arguments: list[Any],
+    expected_method: str,
+    expected_path: str,
+    expected_body: str | None,
+) -> None:
+    """各呼び出しのメソッド・パス・本文（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    call = preview_page.evaluate(
+        """async ([name, args]) => {
+            const calls = [];
+            const fetchFn = async (url, init) => {
+                calls.push({url: String(url), method: init?.method, body: init?.body ?? null});
+                return new Response("{}", {status: 200});
+            };
+            const api = MindmapPreview.threadApi(fetchFn);
+            await api[name](...args);
+            return calls[0];
+        }""",
+        [name, arguments],
+    )
+    # 検証
+    assert call["url"].endswith(expected_path)
+    assert (call["method"], call["body"]) == (expected_method, expected_body)
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_status", "expected_detail"),
+    [
+        pytest.param("rejected", 404, "スレッドがありません: TH-9", id="rejected"),
+        pytest.param("throws", None, None, id="unreachable"),
+    ],
+)
+def test_thread_api_when_rejected(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    failure: str,
+    expected_status: int | None,
+    expected_detail: str | None,
+) -> None:
+    """断られた・届かないときの結果（異常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """async (failure) => {
+            const fetchFn = async () => {
+                if (failure === "throws") throw new TypeError("Failed to fetch");
+                return new Response(
+                    JSON.stringify({detail: "スレッドがありません: TH-9"}),
+                    {status: 404},
+                );
+            };
+            return await MindmapPreview.threadApi(fetchFn).setStatus("TH-9", "closed", null);
+        }""",
+        failure,
+    )
+    # 検証
+    assert result["ok"] is False
+    assert (result["status"], result["detail"]) == (expected_status, expected_detail)
+
+
 # 保存する表示の既定
 DISPLAY = {"network_look": "glow", "visible_kinds": ["decisions"]}
 
