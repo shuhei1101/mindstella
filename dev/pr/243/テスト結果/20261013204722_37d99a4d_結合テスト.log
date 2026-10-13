@@ -1,0 +1,18 @@
+$ pytest tests/integration/preview/test_open_preview.py tests/integration/preview/test_detail_panel_screen.py tests/integration/storybook/test_html_body_frame_stories.py --deselect tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-html-body-frame-links
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 188 items / 1 deselected / 187 selected
+
+tests/integration/preview/test_open_preview.py ......................... [ 13%]
+........                                                                 [ 17%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 27%]
+........................................................................ [ 65%]
+...................................                                      [ 84%]
+tests/integration/storybook/test_html_body_frame_stories.py ..........   [ 89%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 99%]
+.                                                                        [100%]
+
+================ 187 passed, 1 deselected in 272.46s (0:04:32) =================
