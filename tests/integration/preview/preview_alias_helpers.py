@@ -26,13 +26,15 @@ MIXED_IDS = "G-1 A-2 A-3 R-1"
 # 本文を送った後に、最初の印を本文の領域の上端から下へ置く距離（px）。ツールチップの高さより上の余白が狭く、印が領域の中に見える
 MARK_MARGIN_PX = 40
 
-# 本文の上の要素はフォントの読み込みで高さが変わるので、読み終えて印の位置が 150ms 続けて同じになるまで待ってから、
-# 最初の印が本文の領域の上端から margin だけ下に来るよう送る
+# 本文の上の要素はフォントの読み込みで高さが変わり、パネルは開く動きの間に動くので、どちらも終わって印の位置が
+# 150ms 続けて同じになるまで待ってから、最初の印が本文の領域の上端から margin だけ下に来るよう送る
 SCROLL_MARK_NEAR_TOP_JS = """async (margin) => {
-  const body = document.querySelector('aside.panel .panel-body');
-  const mark = document.querySelector('aside.panel .md a.term');
+  const panel = document.querySelector('aside.panel');
+  const body = panel.querySelector('.panel-body');
+  const mark = panel.querySelector('.md a.term');
   const offset = () => mark.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
   await document.fonts.ready;
+  await Promise.all(panel.getAnimations().map((animation) => animation.finished));
   let last = -1;
   while (offset() !== last) {
     last = offset();
