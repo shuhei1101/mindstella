@@ -1555,6 +1555,50 @@ functions:
         condition: '`parametrize`: 空の選択 / 空白だけの選択 / 印を持つ要素より前の `body` 直下の文'
         expected: どれも `null`
         mock: なし
+  - name: htmlLinkAction
+    title: HTML の本文のリンクの扱い
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: HTML の本文の枠の中のリンクの `href` から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める（部品『HTMLの本文の枠』が押下を受けたときに使う）
+    status: planned
+    introduced:
+      pr: 243
+    args:
+      - name: href
+        type: string
+        required: true
+        passing: positional
+        description: 押されたリンクの `href` の属性の値（ブラウザが解いた URL ではなく、書かれたままの値）
+    returns:
+      type: HtmlLinkAction
+      description: '`{kind: "open", url}`（新しいタブで開く URL）/ `{kind: "anchor", id}`（送る先の要素の `id`）/ `{kind: "none"}`（何もしない）のどれか。型 `HtmlLinkAction` は同じファイルで export する'
+    process: |-
+      1. 前後の空白を除く
+      2. `#` で始まるとき、`#` の後ろを `decodeURIComponent` で戻す（戻せなければそのまま使う）。空なら `{kind: "none"}`、空でなければ `{kind: "anchor", id}`
+      3. `new URL(href)` が読めない（相対の URL）とき、`{kind: "none"}`
+      4. スキームが `http:`・`https:`・`mailto:` のとき、`{kind: "open", url}`（`url` は読んだ URL の `href`）
+      5. それ以外は `{kind: "none"}`
+    unit_tests:
+      - name: test_html_link_action_when_open
+        case: 正常
+        summary: 絶対の http・https・mailto の URL は開く
+        condition: '`parametrize`: `https://example.com/a?b=1#c` / `http://127.0.0.1:8000/` / `HTTPS://EXAMPLE.COM/` / `mailto:a@example.com` / 前後に空白を持つ `  https://example.com/  `'
+        expected: どれも `kind` が `open` で、`url` が読んだ URL の `href`（順に `https://example.com/a?b=1#c` / `http://127.0.0.1:8000/` / `https://example.com/` / `mailto:a@example.com` / `https://example.com/`）
+        mock: なし
+      - name: test_html_link_action_when_anchor
+        case: 正常
+        summary: '# で始まる値は、戻した id へ送る'
+        condition: '`parametrize`: `#usage` / `#%E4%BD%BF%E3%81%84%E6%96%B9` / `#100%`（戻せない）/ `#`'
+        expected: '順に `{kind: anchor, id: usage}` / `{kind: anchor, id: 使い方}` / `{kind: anchor, id: 100%}` / `{kind: none}`'
+        mock: なし
+      - name: test_html_link_action_when_none
+        case: 正常
+        summary: 相対の URL とほかのスキームは何もしない
+        condition: '`parametrize`: `other.html` / `/mindstella.html` / `//example.com/a` / `?a=1` / 空文字 / `javascript:alert(1)` / `JaVaScRiPt:alert(1)` / `data:text/html,x` / `file:///etc/hosts` / `ftp://example.com/` / `blob:https://example.com/x`'
+        expected: 'どれも `{kind: none}`'
+        mock: なし
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
