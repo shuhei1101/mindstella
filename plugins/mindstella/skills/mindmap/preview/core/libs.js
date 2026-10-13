@@ -384,7 +384,7 @@ var MindmapPreview;
     const ASCII_TERM = /^[!-~ ]+$/;
     /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
     MindmapPreview.MARK_KINDS = ["terms", "docs", "research"];
-    /** 描いた本文の文中の、用語集の用語と資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語だけに一致した印はその項目の ID を `onOpen` に知らせる（資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
+    /** 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
     function linkBody({ root, index, selfId, onOpen, }) {
         // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
         const byWord = new Map();
@@ -392,8 +392,8 @@ var MindmapPreview;
             for (const item of index.data[kind]) {
                 if (item.id === selfId || (kind !== "terms" && item.withdrawn === true))
                     continue;
-                const words = kind === "terms" ? [item.title] : (item.aliases ?? []);
-                // 同じ項目の同じ語は 1 つにまとめる
+                const words = kind === "terms" ? [item.title, ...(item.aliases ?? [])] : (item.aliases ?? []);
+                // 同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
                 for (const word of new Set(words.map((value) => value.trim()).filter((value) => value !== ""))) {
                     byWord.set(word, [...(byWord.get(word) ?? []), item.id]);
                 }
@@ -427,8 +427,8 @@ var MindmapPreview;
                 if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word))
                     continue;
                 const target = isId ? word : ids[0];
-                // 資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
-                const withDocs = !isId && ids.some((id) => index.byId.get(id)?.kind !== "terms");
+                // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
+                const withDocs = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
                 parts.push(text.slice(last, match.index), MindmapPreview.h({
                     tag: "a",
                     attrs: {

@@ -1380,9 +1380,9 @@ var MindmapPreview;
         back?.focus();
         refocused = null;
     }, true);
-    /** 本文の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける）。資料・調査にも一致した印は、押すとツールチップを残し、Tab で中へ移れる */
+    /** 本文の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し、Tab で中へ移れる */
     function attachTermTips({ root, index, onOpen }) {
-        /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。資料・調査を含むか */
+        /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。用語 2 件以上か、資料・調査を含むか */
         const markOf = (event) => {
             const mark = event.target.closest?.("a.term") ?? null;
             if (mark === null)
@@ -1392,7 +1392,7 @@ var MindmapPreview;
                 const found = index.byId.get(id);
                 return found === undefined ? [] : [{ kind: found.kind, item: found.item }];
             });
-            return entries.length === 0 ? null : { mark, entries, multi: entries.some((entry) => entry.kind !== "terms") };
+            return entries.length === 0 ? null : { mark, entries, multi: entries.length > 1 || entries.some((entry) => entry.kind !== "terms") };
         };
         root.addEventListener("mouseover", (event) => {
             const found = markOf(event);
@@ -1418,7 +1418,7 @@ var MindmapPreview;
                 return;
             hideTermTip(true);
         });
-        // 資料・調査にも一致した印から Tab で、ツールチップの中の最初のリンクへ移る
+        // 用語 2 件以上か、資料・調査にも一致した印から Tab で、ツールチップの中の最初のリンクへ移る
         root.addEventListener("keydown", (event) => {
             const found = markOf(event);
             const tip = currentTip();
@@ -1434,12 +1434,12 @@ var MindmapPreview;
             const found = markOf(event);
             if (found === null)
                 return;
-            // 資料・調査にも一致した印は、押すとツールチップを残す（移る先は中のリンクで選ぶ）
+            // 用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残す（移る先は中のリンクで選ぶ）
             if (found.multi) {
                 showTermTip({ ...found, pinned: true, onOpen });
                 return;
             }
-            // 用語だけに一致した印を押して項目へ移るときは、ツールチップを残さない
+            // 用語 1 件だけに一致した印を押して項目へ移るときは、ツールチップを残さない
             hideTermTip(true);
         });
     }
