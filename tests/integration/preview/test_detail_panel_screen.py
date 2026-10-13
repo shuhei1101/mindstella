@@ -12,8 +12,11 @@ from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import (
     ALIAS_BODY,
+    MARK_IN_PANEL_BODY_JS,
+    MARK_MARGIN_PX,
     MIXED_IDS,
     PANEL_MARKS,
+    SCROLL_MARK_NEAR_TOP_JS,
     SHARED_TERM_IDS,
     TIP,
     TIP_OPEN,
@@ -2915,8 +2918,8 @@ def test_body_alias_tooltip_scroll(
     body = "特殊効果を重ねる\n\n" + "段落\n\n" * 40
     page = _open_alias_panel(write_preview, open_preview, make_item, extra_docs=8, body=body)
     page.wait_for_selector("aside.panel .md:not(.md-value) p:nth-of-type(41)", state="attached")
-    page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop = 300")
-    body_scrolled = page.evaluate("document.querySelector('aside.panel .panel-body').scrollTop")
+    page.evaluate(SCROLL_MARK_NEAR_TOP_JS, MARK_MARGIN_PX)
+    before_hover = page.evaluate(MARK_IN_PANEL_BODY_JS)
     # 実行
     page.hover(f"{PANEL_MARKS} >> nth=0")
     page.wait_for_selector(TIP_OPEN)
@@ -2935,13 +2938,13 @@ def test_body_alias_tooltip_scroll(
         "() => { const t = document.getElementById('term-tip'); const links = [...t.querySelectorAll('a.tt-link')]; const link = links.at(-1).getBoundingClientRect(); const b = t.getBoundingClientRect(); return {id: links.at(-1).dataset.id, inside: link.bottom <= b.bottom + 1 && link.top >= b.top, atEnd: t.scrollTop + t.clientHeight >= t.scrollHeight - 1, bodyTop: document.querySelector('aside.panel .panel-body').scrollTop}; }"
     )
     # 検証
-    assert body_scrolled == 300
+    assert before_hover["inside"] is True
     assert before["gap"] == 6
     assert before["height"] == 360
     assert before["scrollable"] is True
     assert before["overflowY"] == "auto"
     assert before["overscroll"] == "contain"
-    assert after == {"id": "R-1", "inside": True, "atEnd": True, "bodyTop": body_scrolled}
+    assert after == {"id": "R-1", "inside": True, "atEnd": True, "bodyTop": before_hover["scrollTop"]}
 
 
 def test_detail_description_aliases(
