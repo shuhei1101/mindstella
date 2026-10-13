@@ -1,0 +1,119 @@
+title: "返信の入力"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/reply-form.ts#MindmapPreview.replyForm"
+story: "Preview/ReplyForm"
+states:
+  - name: Empty
+    description: 入力欄が空。ラベル「返信」を常に見せ、「レビューに追加」を押せなくする
+    args:
+      - name: thread
+        value: TH-2
+  - name: Typing
+    description: 入力中。入力欄に印の色の輪。「レビューに追加」を押せる
+    args:
+      - name: thread
+        value: TH-2
+      - name: body
+        value: 起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい
+  - name: Saving
+    description: 溜めている。入力欄を読み取りだけにし、「レビューに追加」を押せなくする。回る印と「レビューに追加しています」
+    args:
+      - name: thread
+        value: TH-2
+      - name: body
+        value: 起票してよい
+      - name: status
+        value: saving
+  - name: Saved
+    description: 溜めた。入力欄を空にし、「レビューに追加しました（レビュー中 3 件）。」を出す。入力を始めたら消す
+    args:
+      - name: thread
+        value: TH-2
+      - name: status
+        value: saved
+      - name: count
+        value: '3'
+  - name: FailedUnreachable
+    description: サーバーに届かなかった。本文を残し、印のアイコンと「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」を出す（自動で消さない）
+    args:
+      - name: thread
+        value: TH-2
+      - name: body
+        value: 起票してよい
+      - name: status
+        value: failed
+  - name: FailedDetail
+    description: サーバーが溜めなかった理由を返した。本文を残し、「レビューに追加できませんでした。{理由}」を出す
+    args:
+      - name: thread
+        value: TH-5
+      - name: body
+        value: version は文字列で持つ？
+      - name: status
+        value: failed
+      - name: detail
+        value: スレッド TH-5 はクローズです
+  - name: Long
+    description: 長文。入力欄は 8 行まで広がり、それより長いと中でスクロールする
+    args:
+      - name: thread
+        value: TH-2
+      - name: body
+        value: 1 行目\n2 行目\n3 行目\n4 行目\n5 行目\n6 行目\n7 行目\n8 行目\n9 行目\n10 行目\n11 行目\n12 行目
+  - name: Narrow
+    description: 幅 390px。入力の幅が 360px 以下では、ボタンを右に置いたまま、結果を下の行に幅いっぱいで出す。条件は部品の幅（コンテナクエリ）で持つ
+    args:
+      - name: thread
+        value: TH-2
+      - name: body
+        value: 起票してよい
+      - name: status
+        value: failed
+lead: スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン。箇所を添えず、入力が空の間はボタンを押せない。
+status: planned
+args:
+  - name: thread
+    type: 文字列
+    required: true
+    description: 返信先のスレッドの ID。「溜める」で使う側へ渡す
+    status: planned
+  - name: body
+    type: 文字列
+    default: '""'
+    description: 入力欄の中身。2 行から始まり、中身に合わせて 8 行まで伸びる。10000 文字まで
+    status: planned
+  - name: status
+    type: 列挙
+    default: idle
+    choices: idle・saving・saved・failed
+    description: 溜める状態。idle は結果を出さない。saving は入力欄を読み取りだけにしボタンを押せなくする。failed は入力欄の中身を残す
+    status: planned
+  - name: count
+    type: 整数
+    choices: 1 以上
+    enabled_when: '`status` が `saved` のとき'
+    description: 溜めた後のレビュー中の書き込みの件数（『レビュー中のコメントの追加』の `count`）
+    status: planned
+  - name: detail
+    type: 文字列
+    default: なし（サーバーに届かなかった）
+    enabled_when: '`status` が `failed` のとき'
+    description: サーバーが返した溜めなかった理由（`detail`）。無ければサーバーが止まっていることと立ち上げ直すことを出す
+    status: planned
+events:
+  - name: 溜める
+    when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。入力欄が空白だけのとき、`status` が `saving` の間、変換を確定する Enter では発火しない
+    value: thread・body（入力欄の中身そのまま）
+    description: 使う側が `saving` にして `POST /api/comments` へ `thread` と `body` を送り、201 なら入力欄を空にして `saved`、それ以外は `failed` にする
+  - name: 入力
+    when: 入力欄の中身が変わったとき
+    value: body
+    description: 使う側が書きかけを `PUT /api/drafts` で `thread` ごとに保ち、`saved` の結果を消して `idle` に戻す（`failed` は次に溜めるまで残す）
+accessibility:
+  - 入力欄にラベル「返信」を常に見せ、`aria-keyshortcuts` に Ctrl+Enter を持つ。「レビューに追加」の `title` は「レビューに追加（Ctrl+Enter）」
+  - 入力欄の Esc は入力から外れるだけにし、使う側の Esc（一覧へ戻る）へ伝えない
+  - 結果の文言は `role="status"` で読み上げに伝え、入力欄の `aria-describedby` から指す
+  - 失敗は色だけでなく印のアイコンと文言でも伝える
+  - 入力欄と「レビューに追加」に Tab で届き、印の色の輪でフォーカスを見せる
+refs:
+  - dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+test_file: tests/integration/storybook/test_reply_form_stories.py

@@ -13,10 +13,11 @@ import store
 from fixture_types import (
     MakeComment,
     MakeItem,
-    MakeSubmission,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     WriteComments,
-    WriteSubmissions,
+    WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR
 
@@ -250,37 +251,101 @@ def test_check_bodies_when_html(make_workspace: MakeWorkspace, make_item: MakeIt
     }
 
 
-def test_check_submissions(
+def test_check_threads(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
 ) -> None:
-    """無い項目への送信を拾い、項目に紐づかない送信は拾わない（正常系）。"""
+    """無い項目へのスレッドを拾い、項目に紐づかないスレッドは拾わない（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    no_target = make_submission("S-3")
-    del no_target["target"]
-    write_submissions(
+    write_threads(
         root,
-        make_submission("S-1", target="D-8"),
-        make_submission("S-2", target="D-1"),
-        no_target,
+        make_thread("TH-1", target="D-8"),
+        make_thread("TH-2", target="D-1"),
+        make_thread("TH-3"),
     )
     workspace = store.load_workspace(root)
     # 実行
-    problems = checker._check_submissions(workspace)
+    problems = checker._check_threads(workspace)
     # 検証
-    assert _keys(problems) == {("broken_ref", "submissions.yaml", "S-1", "target")}
+    assert _keys(problems) == {("broken_ref", "threads.yaml", "TH-1", "target")}
     assert "D-8" in problems[0].detail
 
 
-def test_check_submissions_when_target_removed(
-    make_workspace: MakeWorkspace,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+def test_check_threads_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """崩れたスレッドのファイルは schema にする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={
+            "threads.yaml": (
+                "items:\n  - id: TH-1\n    status: open\n    tags: []\n"
+                "    summary: null\n    events: []\n"
+            )
+        },
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_threads(workspace)
+    # 検証
+    assert problems != []
+    assert all(problem.kind == "schema" and problem.file == "threads.yaml" for problem in problems)
+
+
+def test_check_threads_when_invalid_and_target_missing(
+    make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """取り込み済みの送信が消した項目を指しても拾わない（正常系）。"""
+    """スキーマに合わないファイルでも、読める範囲のスレッドの無い項目への参照切れを拾う（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={
+            "threads.yaml": (
+                "items:\n  - id: TH-1\n    status: waiting\n    target: D-9\n"
+                "    posts:\n      - {author: user, taken: null}\n"
+                "  - id: TH-2\n    status: open\n    target: D-1\n    posts: []\n"
+            )
+        },
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_threads(workspace)
+    # 検証
+    assert ("broken_ref", "threads.yaml", "TH-1", "target") in _keys(problems)
+    assert any(problem.kind == "schema" for problem in problems)
+    assert all(problem.id != "TH-2" for problem in problems)
+
+
+def test_check_threads_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """スレッドのファイルが無ければ問題 0 件（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = checker._check_threads(workspace)
+    # 検証
+    assert problems == []
+
+
+@pytest.mark.parametrize(
+    ("taken", "status", "expected_keys"),
+    [
+        pytest.param("2026-10-02T08:00:00+00:00", "open", set(), id="taken_only"),
+        pytest.param(None, "closed", {("broken_ref", "threads.yaml", "TH-1", "target")}, id="awaiting"),
+    ],
+)
+def test_check_threads_when_target_removed(
+    make_workspace: MakeWorkspace,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    taken: str | None,
+    status: str,
+    expected_keys: set[tuple[str, str, str | None, str | None]],
+) -> None:
+    """取り込み待ちでないスレッドが消した項目を指しても拾わず、取り込み待ちは拾う（正常系）。"""
     # 準備
     changes = {
         "last_seq": 2,
@@ -296,45 +361,15 @@ def test_check_submissions_when_target_removed(
     root = make_workspace(
         raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)}
     )
-    write_submissions(root, make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00"))
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_submissions(workspace)
-    # 検証
-    assert problems == []
-
-
-def test_check_submissions_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """崩れた送信のファイルは schema にする（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1"),
-        raw_files={
-            "submissions.yaml": (
-                "items:\n  - id: S-1\n    target: D-1\n"
-                "    sent: 2026-10-01T00:00:00+00:00\n    taken: null\n"
-            )
-        },
+    write_threads(
+        root,
+        make_thread("TH-1", make_post("TH-1-1", taken=taken), target="N-1", status=status),
     )
     workspace = store.load_workspace(root)
     # 実行
-    problems = checker._check_submissions(workspace)
+    problems = checker._check_threads(workspace)
     # 検証
-    assert problems != []
-    assert all(
-        problem.kind == "schema" and problem.file == "submissions.yaml" for problem in problems
-    )
-
-
-def test_check_submissions_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """送信のファイルが無ければ問題 0 件（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_submissions(workspace)
-    # 検証
-    assert problems == []
+    assert _keys(problems) == expected_keys
 
 
 def test_check_history_when_body_rewritten(
@@ -456,25 +491,27 @@ def test_find_referrers(
     assert doc_lines == ["config.yaml: goal.deliverables[0].doc: doc", "comments.yaml: C-1: target"]
 
 
-def test_find_referrers_ignores_taken_submission(
+def test_find_referrers_with_threads(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
 ) -> None:
-    """取り込み済みの送信は拾わない（正常系）。"""
+    """取り込み待ちのスレッドだけを拾う（正常系）。"""
     # 準備
     root = make_workspace(make_item("N-1"))
-    write_submissions(
+    write_threads(
         root,
-        make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00"),
-        make_submission("S-2", target="N-1"),
+        make_thread("TH-1", make_post("TH-1-1", taken="2026-10-02T08:00:00+00:00"), target="N-1"),
+        make_thread("TH-2", make_post("TH-2-1"), target="N-1", status="closed"),
+        make_thread("TH-3", make_post("TH-3-1", author="ai"), target="N-1"),
     )
     workspace = store.load_workspace(root)
     # 実行
     lines = checker.find_referrers(workspace, "N-1")
     # 検証
-    assert lines == ["submissions.yaml: S-2: target"]
+    assert lines == ["threads.yaml: TH-2: target"]
 
 
 @pytest.mark.parametrize(

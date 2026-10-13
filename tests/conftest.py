@@ -23,7 +23,9 @@ from workspace_fixtures import (  # noqa: F401
     make_item,
     make_legacy_item,
     make_legacy_workspace,
+    make_post,
     make_submission,
+    make_thread,
     make_venv,
     make_workspace,
     mcp_server,
@@ -33,6 +35,7 @@ from workspace_fixtures import (  # noqa: F401
     write_comments,
     write_drafts,
     write_submissions,
+    write_threads,
 )
 
 type RunClaude = Callable[..., subprocess.CompletedProcess[str]]

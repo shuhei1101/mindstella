@@ -1,0 +1,329 @@
+title: "スレッドで話す"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 未決定の検討事項 D-1
+      - name: スレッド
+        description: AI が立てたオープンのスレッド 1 件
+        notes: 最初の書き込みは AI の `D-1 の比べた結果を Issue に起票してよいですか`。返信の本文は `起票してよい`
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: コメントのボタンを押す
+        P-->>U: オープンのスレッドの一覧（1 件）
+        U->>P: スレッドの行を押す
+        P-->>U: スレッドの書き込み（AI の問い）
+        U->>P: 「起票してよい」を書いてレビューに追加する
+        P->>SV: レビュー中の返信を足す（向けた先はそのスレッド）
+        SV->>WS: レビュー中の書き込みに足す
+        SV-->>P: 受け付けた
+        P-->>U: スレッドの末尾に返信をレビュー中の印つきで出し、入力欄を空にする
+        U->>P: レビュー中を確かめる画面を開き、まとめて送る
+        P->>SV: チェックした 1 件を送る（『コメントを選んで送る』）
+        SV->>WS: 利用者の書き込みをスレッドの末尾に足し、レビュー中から外す
+        SV-->>P: 受け付けた
+      ```
+    expected:
+      - レビューに追加した時点で、スレッドの末尾に `起票してよい` がレビュー中の印つきで出て、一覧のこのスレッドの行にレビュー中の印が出る。スレッドの書き込みは AI の問いの 1 件のままである
+      - まとめて送った後、スレッドの書き込みが AI の問い・利用者の `起票してよい` の順に並び、利用者の書き込みが AI の未読である
+      - 取り込み待ちのスレッドの一覧に、このスレッドが出る
+      - 一覧のこのスレッドの行に、最後の書き手として利用者が出る（AI の返信を待っているかどうかの札は出ない）
+      - レビュー中の書き込みが 0 件で、スレッドの行からレビュー中の印が消える
+    test: test_normal
+  - name: 正常シナリオ（クローズにする）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 決定済みの検討事項 D-1
+      - name: スレッド
+        description: D-1 へのオープンのスレッド 1 件
+        notes: 書き込みは利用者の `案 A にする` と、D-1 の ID を含む AI の返信
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: スレッドの一覧で D-1 へのスレッドを開く
+        P-->>U: 利用者の書き込みと AI の返信
+        U->>P: AI の返信の中の D-1 を押す
+        P-->>U: D-1 の詳細パネルを右に開く
+        U->>P: 詳細パネルを閉じ、理由に「案 A で決着」を書いてクローズにする
+        P->>SV: スレッドをクローズにする（理由つき）
+        SV->>WS: 状態をクローズに書き、書き手（利用者）・理由・日時を残す
+        SV-->>P: 受け付けた
+        U->>P: 一覧へ戻る
+        P-->>U: オープンだけの一覧（0 件）
+      ```
+    expected:
+      - AI の返信の中の D-1 から、D-1 の詳細パネルが開く
+      - スレッドの状態がクローズで、クローズにした書き手（利用者）・理由 `案 A で決着`・日時がスレッドに残り、書き込みの並びに出る
+      - クローズにしたスレッドに、返信の入力が出ない
+      - 一覧へ戻ると、オープンだけの一覧にこのスレッドが無く、クローズに切り替えると出る
+    test: test_normal_when_close
+  - name: 正常シナリオ（オープンに戻す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: クローズのスレッド 1 件
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: スレッドの一覧でクローズに切り替え、スレッドを開く
+        U->>P: 理由を書かずにオープンに戻す
+        P->>SV: スレッドをオープンに戻す（理由なし）
+        SV->>WS: 状態をオープンに書き、日時を残す
+        SV-->>P: 受け付けた
+      ```
+    expected:
+      - スレッドの状態がオープンで、オープンに戻した日時がスレッドに残る（理由は持たない）
+      - スレッドに返信の入力が出る
+      - 一覧へ戻り、オープンだけの一覧にこのスレッドが出る
+    test: test_normal_when_reopen
+  - name: 正常シナリオ（AI の返信が画面に届く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開いた後に、スレッドへ返信するツールを決めた引数で呼ぶ。描画のライブラリは CDN から読む
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: 利用者の `案 A にする` だけを持つオープンのスレッド 1 件
+      - name: 開いている画面
+        description: そのスレッド
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant CC as Claude Code（session）
+
+        CC->>SV: スレッドへ返信する
+        SV-->>P: 書き換えの知らせ
+        P->>SV: 記録を読み直す
+        P-->>U: スレッドの末尾に AI の返信を出す
+      ```
+    expected:
+      - 画面を開き直さずに、開いているスレッドの末尾に AI の返信が出る
+      - 入力欄に書きかけの文があれば、そのまま残る
+    test: test_normal_when_ai_reply_arrives
+  - name: 正常シナリオ（状態とタグで絞る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: タグ `画面` のオープン、タグ `調査` のオープン、タグ `画面` のクローズの 3 件
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: スレッドの一覧で、行のタグ「画面」を押す
+        P-->>U: オープンでタグ「画面」の 1 件と、解除のチップ
+        U->>P: すべてに切り替える
+        P-->>U: タグ「画面」の 2 件
+        U->>P: 解除のチップを押す
+        P-->>U: すべての 3 件
+      ```
+    expected:
+      - タグ `画面` で絞ると、オープンだけでは 1 件、すべてでは 2 件が出る
+      - 解除のチップを押すと、すべての 3 件が出る
+    test: test_normal_when_filtered
+  - name: 正常シナリオ（書きかけを残す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: オープンのスレッド 2 件
+        notes: どちらも利用者の書き込みと AI の返信を持つ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: 1 件目のスレッドを開き、返信の入力欄に書きかける
+        P->>SV: 書きかけを保つ（向けた先はそのスレッド）
+        SV->>WS: 書きかけを書く
+        U->>P: 一覧へ戻り、2 件目のスレッドを開く
+        P-->>U: 2 件目の返信の入力欄は空
+        U->>P: パネルを閉じ、画面を読み込み直して 1 件目のスレッドを開く
+        P->>SV: 書きかけを読む
+        SV-->>P: 1 件目のスレッドの書きかけ
+        P-->>U: 返信の入力欄に書きかけを戻す
+      ```
+    expected:
+      - 一覧へ戻る・別のスレッドを開く・パネルを閉じる・画面を読み込み直すのどれでも、1 件目のスレッドの書きかけが消えない
+      - 1 件目のスレッドを開き直すと、返信の入力欄に書きかけが戻る
+      - 2 件目のスレッドの返信の入力欄には、1 件目の書きかけが入らない
+      - 返信をレビューに追加すると、そのスレッドの書きかけが消える
+    test: test_normal_when_draft_kept
+  - name: 正常シナリオ（レビュー中の返信を直す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: AI の返信で終わるオープンのスレッド 1 件
+      - name: レビュー中の書き込み
+        description: そのスレッドへの返信「案 A にする」の 1 件
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: スレッドを開き、末尾のレビュー中の返信を「案 A に決める」へ書き換える
+        P->>SV: レビュー中の書き込みを書き換える
+        U->>P: その返信を消す
+        P->>SV: レビュー中の書き込みを消す
+        P-->>U: 末尾の返信と、一覧のこのスレッドの行のレビュー中の印を外す
+        U->>P: 消した返信を元に戻す
+        P->>SV: レビュー中の書き込みを戻す
+        P-->>U: 末尾に「案 A に決める」をレビュー中の印つきで出す
+      ```
+    expected:
+      - スレッドの末尾のレビュー中の返信と、レビュー中を確かめる画面の行の本文が、どちらも「案 A に決める」である
+      - 消した後は、スレッドの末尾と一覧の行からレビュー中の印が外れ、元に戻すと両方に戻る
+      - スレッドの書き込みは送る前のままで、レビュー中の書き込みが 1 件である
+    test: test_normal_when_pending_reply_edited
+  - name: 異常シナリオ（サーバーにつながらない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。スレッドを開いた後にサーバーを止める）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: AI が立てたオープンのスレッド 1 件
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー（止まっている）
+
+        U->>P: 「起票してよい」を書いてレビューに追加する
+        P->>SV: レビュー中の返信を足す
+        SV--xP: つながらない
+        P-->>U: レビューに追加できなかったことを出す
+      ```
+    expected:
+      - 画面に、レビューに追加できなかった旨が出る
+      - 入力欄に `起票してよい` が残っている
+      - レビュー中の書き込みが 0 件で、スレッドの書き込みが AI の問いの 1 件のままである
+    test: test_error_when_server_unreachable
+  - name: 異常シナリオ（返信が空）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: AI が立てたオープンのスレッド 1 件
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: スレッドを開き、入力欄を空のままにする
+        P-->>U: レビューに追加のボタンを押せなくする
+      ```
+    expected:
+      - レビューに追加のボタンが押せない
+      - スレッドの書き込みが AI の問いの 1 件のままで、レビュー中の書き込みが 0 件である
+    test: test_error_when_reply_empty
+  - name: 正常シナリオ（AI のクローズが画面に届く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開いた後に、スレッドをクローズにするツールを決めた引数で呼ぶ。描画のライブラリは CDN から読む
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: スレッド
+        description: 利用者の `案 A にする`・AI の返信・利用者の `了解` を持つオープンのスレッド 1 件
+        notes: ツールへ渡す理由は `了解を受けた`
+      - name: 開いている画面
+        description: そのスレッド
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant CC as Claude Code（session）
+
+        CC->>SV: スレッドをクローズにする（理由つき）
+        SV-->>P: 書き換えの知らせ
+        P->>SV: 記録を読み直す
+        P-->>U: 並びの末尾に、AI がクローズにした記録と理由を出す
+        U->>P: 理由を書かずにオープンに戻す
+        P->>SV: スレッドをオープンに戻す（理由なし）
+        SV-->>P: 受け付けた
+      ```
+    expected:
+      - 画面を開き直さずに、開いているスレッドの並びの末尾に、AI がクローズにした記録と理由 `了解を受けた` が出る
+      - スレッドの状態の札がクローズになり、返信の入力が出ず、「オープンに戻す」が出る
+      - 利用者がオープンに戻すと、並びに利用者がオープンに戻した記録が足され、返信の入力が出る
+    test: test_normal_when_ai_close_arrives
+lead: 利用者が、プレビューのコメントの一覧（左のパネル）でスレッドを開き、書き込みを読んで返信をレビューに追加し、レビュー中を確かめる画面からまとめて送り、話が済んだら任意の理由つきでクローズにする単一ユースケース。スレッドは単一ユースケース『コメントを選んで送る』で送った新しいスレッドと、単一ユースケース『AIがスレッドを立てる』でできる。返信を送る手順は『コメントを選んで送る』が持つ。
+issue: 208
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: AI の返信と問いを画面で読み、返事を溜めてまとめて返せる。済んだ話を理由を添えて一覧から片付け、要るときに戻せる。AI がクローズにしたスレッドも、誰がなぜ閉じたかを読んで戻せる
+trigger: 利用者がコメントのボタンを押し、スレッドの一覧を開く
+preconditions:
+  - ワークスペースに記録とスレッドがあり、サーバーがプレビューを配っている
+success_guarantee: レビューに追加した返信は、そのスレッドの末尾にレビュー中の印つきで出て、一覧のそのスレッドの行にレビュー中の印が出る。まとめて送ると、利用者の書き込みとしてスレッドの末尾に積まれ、AI の未読で、取り込み待ちになる。クローズ・オープンへの戻しは、書き手（利用者・AI）・書いた理由（任意）・日時とともにスレッドに残り、クローズにしたスレッドは既定の一覧（オープンだけ）から外れる。
+minimal_guarantee: レビューに追加できなかったときは、返信を溜めずに入力欄に残し、追加できなかったことを出す。
+frequency: AI の返信や問いが届くたびに
+priority: 高
+notes:
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_thread_talk.py

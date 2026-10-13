@@ -1,0 +1,5 @@
+steps:
+  - op: call
+    script: submissions_to_threads
+  - op: delete
+    path: .mindstella/submissions.yaml

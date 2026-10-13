@@ -1,4 +1,4 @@
-"""コメントを選んで送る（コメントの一覧でレビュー中のコメントを確かめ、直し・消し・足して、チェックしたものだけをまとめて送る）の E2E テスト。
+"""コメントを選んで送る（レビュー中を確かめる画面でレビュー中の書き込みを確かめ、直し・消し・足して、チェックしたものだけをまとめて送る）の E2E テスト。
 
 MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む。
 """
@@ -12,20 +12,30 @@ import yaml
 from claude_pane_fixtures import StartClaudePane
 from playwright.sync_api import Page
 from preview_helpers import (
+    BAND_RESULT,
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
+    COMPOSE_BUTTON,
     FREE_FORM,
     FREE_TEXTAREA,
+    REVIEW_ENTRY,
+    SEND_BAND,
+    THREAD_HEADING,
     OpenPreview,
+    open_list,
+    open_review,
 )
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
     MakeComment,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     StartServer,
     WriteComments,
+    WriteThreads,
 )
 
 # 資料 A-1 の本文（2 行目を指すコメントを付ける）
@@ -49,10 +59,6 @@ NARROW_WIDTH = 800
 # 結果が画面に出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
 
-# コメントの一覧の送る帯の結果とボタン、行
-BAND_RESULT = f"{COMMENTS_PANEL} .send-band .send-msg"
-SEND_BAND = f"{COMMENTS_PANEL} .send-band"
-
 
 def _serve(
     make_workspace: MakeWorkspace,
@@ -62,7 +68,7 @@ def _serve(
     comments: tuple[dict[str, Any], ...],
     bodies: dict[str, str] | None = None,
 ) -> tuple[str, Path]:
-    """項目とレビュー中のコメントを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す。"""
+    """項目とレビュー中の書き込みを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す。"""
     root = make_workspace(*items, bodies=bodies)
     write_comments(root, *comments)
     served = call_tool("preview_url", workspace=str(root))
@@ -75,19 +81,15 @@ def _row(comment_id: str) -> str:
     return f"{COMMENTS_PANEL} li[data-comment='{comment_id}']"
 
 
-def _open_list(page: Page) -> None:
-    """トップバーのコメントのボタンで一覧を開き、開き終わるのを待つ。"""
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
-    page.wait_for_function(
-        "document.querySelector('aside.comments-panel').getBoundingClientRect().x === 0"
-    )
-
-
 def _read(root: Path, name: str) -> list[dict[str, Any]]:
     """ワークスペースの YAML の items を読む（ファイルが無ければ 0 件）。"""
     path = root / RECORD_DIR / name
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"] if path.exists() else []
+
+
+def _openers(threads: list[dict[str, Any]]) -> list[tuple[Any, str]]:
+    """スレッドごとの、向けた項目と最初の書き込みの本文を返す。"""
+    return [(item.get("target"), item["posts"][0]["body"]) for item in threads]
 
 
 # 検討事項のボードを開くハッシュと、ボードの D-1 のカードのコメントの印の読み上げの文字
@@ -116,58 +118,83 @@ def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
     write_comments: WriteComments,
+    write_threads: WriteThreads,
     call_tool: CallTool,
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """一覧で項目に紐づかないコメントを足し、それだけチェックを外して送ると、残りが取り込んでいない送信になる（正常系）。"""
+    """項目に紐づかない書き込みを足し、それだけチェックを外して送ると、新しいスレッド 2 件と返信 1 件がスレッドになる（正常系）。"""
     # 準備
-    url, root = _serve(
-        make_workspace,
-        call_tool,
-        write_comments,
-        make_item("D-1"),
-        make_item("A-1"),
-        comments=(
-            make_comment("C-1", target="D-1", body="案 A にする"),
-            make_comment("C-2", target="A-1", body="ここは言い換える", loc=SECOND_LINE),
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": BODY})
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", author="ai", body="D-1 は案 A で進めます"),
+            summary="D-1 の進め方の連絡",
         ),
-        bodies={"A-1.md": BODY},
     )
-    open_preview(url, BOARD_HASH)
+    write_comments(
+        root,
+        make_comment("C-1", target="D-1", body="案 A にする"),
+        make_comment("C-2", target="A-1", body="ここは言い換える", loc=SECOND_LINE),
+        _without_target(make_comment("C-3", body="了解", thread="TH-1")),
+    )
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(str(served.data["url"]), BOARD_HASH)
     # 実行
-    _open_list(page)
-    assert page.eval_on_selector_all(
-        f"{COMMENTS_PANEL} input.row-check", "cs => cs.map(c => c.checked)"
-    ) == [True, True]
-    # 送る前は、ボードの D-1 のカードにコメントの印（件数 1）がある
-    assert page.inner_text(D1_MARK) == "コメント 1 件"
+    open_list(page)
+    page.click(COMPOSE_BUTTON)
     page.fill(FREE_TEXTAREA, "全体に目を通した")
     page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").click()
-    page.wait_for_selector(_row("C-3"), timeout=RESULT_TIMEOUT_MS)
-    page.locator(f"{_row('C-3')} input.row-check").uncheck()
+    page.wait_for_function(
+        "document.querySelector('header.topbar button.comments-btn .count')?.textContent === '4'",
+        timeout=RESULT_TIMEOUT_MS,
+    )
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(_row("C-4"), timeout=RESULT_TIMEOUT_MS)
+    assert page.eval_on_selector_all(
+        f"{COMMENTS_PANEL} input.row-check", "cs => cs.map(c => c.checked)"
+    ) == [True, True, True, True]
+    # 送る前は、ボードの D-1 のカードにコメントの印（件数 1）がある
+    assert page.inner_text(D1_MARK) == "コメント 1 件"
+    page.locator(f"{_row('C-4')} input.row-check").uncheck()
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    submissions = _read(root, "submissions.yaml")
-    assert [(item.get("target"), item["body"]) for item in submissions] == [
+    threads = _read(root, "threads.yaml")
+    assert _openers(threads) == [
+        (None, "D-1 は案 A で進めます"),
         ("D-1", "案 A にする"),
         ("A-1", "ここは言い換える"),
     ]
-    assert submissions[1]["loc"] == SECOND_LINE
-    assert all(item["taken"] is None for item in submissions)
+    assert threads[2]["loc"] == SECOND_LINE
+    assert [(post["author"], post["body"]) for post in threads[0]["posts"]] == [
+        ("ai", "D-1 は案 A で進めます"),
+        ("user", "了解"),
+    ]
+    assert (threads[0]["posts"][1]["read"], threads[0]["posts"][1]["taken"]) == (False, None)
+    assert all(item["status"] == "open" for item in threads)
+    # 新しいスレッドの 2 件と、返信を足した TH-1 が、取り込み待ちである
+    awaiting = call_tool("threads", workspace=str(root), awaiting=True)
+    assert awaiting.data is not None
+    assert [item["id"] for item in awaiting.data["items"]] == ["TH-3", "TH-2", "TH-1"]
     # tmux の外で立てた MCP サーバーなので、Claude Code へ入力しなかったことが出る
     assert page.inner_text(BAND_RESULT).startswith(
-        "2 件を送りましたが、Claude Code には入力できませんでした（"
+        "3 件を送りましたが、Claude Code には入力できませんでした（"
     )
     assert [(item.get("target"), item["body"]) for item in _read(root, "comments.yaml")] == [
         (None, "全体に目を通した")
     ]
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} .comments-list li", "rows => rows.map(r => r.dataset.comment)"
-    ) == ["C-3"]
+    ) == ["C-4"]
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
+    assert page.inner_text(f"{COMMENTS_PANEL} .review-title .count") == "1"
     # 画面を開き直さずに、ボードの D-1 のカードから印が消える
     _wait_d1_mark(page, None)
     assert page.locator('.board button.card[data-id="D-1"] .cmk').count() == 0
@@ -182,7 +209,7 @@ def test_normal_when_jump_to_location(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """一覧の行を押すと、A-1 の詳細パネルを開いて箇所までスクロールして示し、戻る操作で一覧へ戻る（正常系。パネルを開くときに履歴へ積む幅 900px 以下）。"""
+    """レビュー中を確かめる画面の行を押すと、A-1 の詳細パネルを開いて箇所までスクロールして示し、戻る操作でその画面へ戻る（正常系。パネルを開くときに履歴へ積む幅 900px 以下）。"""
     # 準備
     url, _ = _serve(
         make_workspace,
@@ -193,7 +220,7 @@ def test_normal_when_jump_to_location(
         bodies={"A-1.md": LONG_BODY},
     )
     open_preview(url, width=NARROW_WIDTH)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.click(f"{_row('C-1')} button.row-target")
     page.wait_for_selector("aside.panel.open .md .loc-hit")
@@ -206,8 +233,9 @@ def test_normal_when_jump_to_location(
     # 実行（ブラウザの戻る操作）
     page.go_back()
     page.wait_for_function("!document.querySelector('aside.panel.open')")
-    # 検証（一覧に戻る）
+    # 検証（レビュー中を確かめる画面に戻る）
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.locator(f"{COMMENTS_PANEL} .review-head").count() == 1
     assert "id=" not in page.evaluate("location.hash")
 
 
@@ -220,7 +248,7 @@ def test_normal_when_edit_remove_restore(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """一覧で本文を直し、別のコメントを消して戻すと、2 件が残り、開き直しても同じ 2 件が出る（正常系）。"""
+    """レビュー中を確かめる画面で本文を直し、別のコメントを消して戻すと、2 件が残り、開き直しても同じ 2 件が出る（正常系）。"""
     # 準備
     url, root = _serve(
         make_workspace,
@@ -233,7 +261,7 @@ def test_normal_when_edit_remove_restore(
         ),
     )
     open_preview(url, BOARD_HASH)
-    _open_list(page)
+    open_review(page)
     assert page.inner_text(D1_MARK) == "コメント 2 件"
     # 実行（書き換える）
     page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
@@ -260,7 +288,7 @@ def test_normal_when_edit_remove_restore(
     # 開き直しても同じ 2 件が出る
     page.reload()
     page.wait_for_selector("main#main > *", state="attached")
-    _open_list(page)
+    open_review(page)
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent)"
     ) == ["案 A に決める", "案 B も見たい"]
@@ -275,7 +303,7 @@ def test_error_when_server_unreachable(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """サーバーを止めてからまとめて送ると、送れなかった旨を出し、2 件をチェックしたまま一覧に残す（異常系）。"""
+    """サーバーを止めてからまとめて送ると、送れなかった旨を出し、2 件をチェックしたままレビュー中を確かめる画面に残す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(
@@ -287,7 +315,7 @@ def test_error_when_server_unreachable(
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     open_preview(served.data["url"])
-    _open_list(page)
+    open_review(page)
     # 一覧を開いた後にサーバーを止める
     server.close_stdin()
     server.wait_exit()
@@ -299,7 +327,7 @@ def test_error_when_server_unreachable(
     assert page.eval_on_selector_all(
         f"{COMMENTS_PANEL} input.row-check", "cs => cs.map(c => c.checked)"
     ) == [True, True]
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert len(_read(root, "comments.yaml")) == 2
 
 
@@ -322,12 +350,12 @@ def test_error_when_nothing_checked(
         comments=(make_comment("C-1", target="D-1", body="案 A にする"),),
     )
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(f"{_row('C-1')} input.row-check").uncheck()
     # 検証
     assert page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").is_disabled()
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
 
 
 def test_error_when_location_stale(
@@ -359,14 +387,14 @@ def test_error_when_location_stale(
         bodies={"A-1.md": "1 行目\n2 行目\n3 行目\n4 行目\n5 行目\n"},
     )
     open_preview(url)
-    _open_list(page)
+    open_review(page)
     # 溜めた後に、Claude Code が A-1 の本文を 3 行に書き換えた形にする
     (root / RECORD_DIR / "docs" / "A-1.md").write_text(SHORT_BODY, encoding="utf-8")
     # 実行（まとめて送る）
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=RESULT_TIMEOUT_MS)
     # 検証（何も送らず、A-1 への行に理由が出る）
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert len(_read(root, "comments.yaml")) == 2
     assert page.locator(f"{_row('C-1')} .row-stale").count() == 1
     assert page.locator(f"{_row('C-2')} .row-stale").count() == 0
@@ -377,13 +405,11 @@ def test_error_when_location_stale(
     )
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
-    # 検証（2 件が送信になり、A-1 への送信は箇所を持たない）
-    submissions = _read(root, "submissions.yaml")
-    assert [(item["target"], item["body"]) for item in submissions] == [
-        ("A-1", "5 行目への意見"),
-        ("D-1", "案 A にする"),
-    ]
-    assert submissions[0].get("loc") is None
+    # 検証（2 件がオープンのスレッドになり、A-1 へのスレッドの最初の書き込みは箇所を持たない）
+    threads = _read(root, "threads.yaml")
+    assert _openers(threads) == [("A-1", "5 行目への意見"), ("D-1", "案 A にする")]
+    assert all(item["status"] == "open" for item in threads)
+    assert threads[0].get("loc") is None
 
 
 def _serve_with_pane(root: Path, start_server: StartServer, pane_env: dict[str, str]) -> str:
@@ -414,16 +440,13 @@ def test_normal_when_entered_to_claude_code(
     )
     pane = start_claude_pane(mode="user", cwd=root)
     open_preview(_serve_with_pane(root, start_server, pane.env), BOARD_HASH)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    submissions = _read(root, "submissions.yaml")
-    assert [(item.get("target"), item["body"]) for item in submissions] == [
-        ("D-1", "案 A にする"),
-        (None, "全体に目を通した\n2 行目"),
-    ]
+    threads = _read(root, "threads.yaml")
+    assert _openers(threads) == [("D-1", "案 A にする"), (None, "全体に目を通した\n2 行目")]
     lines = pane.lines()
     assert len(lines) == 1
     assert (
@@ -432,7 +455,7 @@ def test_normal_when_entered_to_claude_code(
     )
     assert page.inner_text(BAND_RESULT).startswith("2 件を送り、Claude Code に入力しました（")
     # 取り込み済みにするのは Claude Code が記録した後
-    assert all(item["taken"] is None for item in submissions)
+    assert all(post["taken"] is None for item in threads for post in item["posts"])
 
 
 def test_error_when_not_entered(
@@ -445,18 +468,18 @@ def test_error_when_not_entered(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """上限までに会話の記録へ入らなければ、送信は残したまま Claude Code へ入力できなかったことが出る（異常系）。"""
+    """上限までに会話の記録へ入らなければ、スレッドは残したまま Claude Code へ入力できなかったことが出る（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
     pane = start_claude_pane(mode="silent", cwd=root)
     open_preview(_serve_with_pane(root, start_server, pane.env), BOARD_HASH)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    assert [item["body"] for item in _read(root, "submissions.yaml")] == ["案 A にする"]
+    assert _openers(_read(root, "threads.yaml")) == [("D-1", "案 A にする")]
     assert _read(root, "comments.yaml") == []
     assert page.inner_text(BAND_RESULT).startswith(
         "1 件を送りましたが、Claude Code には入力できませんでした（"
@@ -481,7 +504,7 @@ def test_normal_when_html_body_location(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """HTML の本文の 4 行目を指すコメントをチェックして送ると、箇所を持つ送信になる（正常系）。"""
+    """HTML の本文の 4 行目を指すコメントをチェックして送ると、箇所を持つ新しいスレッドになる（正常系）。"""
     # 準備
     url, root = _serve(
         make_workspace,
@@ -494,17 +517,15 @@ def test_normal_when_html_body_location(
         bodies={"A-1.html": HTML_BODY},
     )
     open_preview(url, BOARD_HASH)
-    _open_list(page)
+    open_review(page)
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
     # 検証
-    submissions = _read(root, "submissions.yaml")
-    assert [(item["target"], item["body"]) for item in submissions] == [
-        ("A-1", "ここは言い換える")
-    ]
-    assert submissions[0]["loc"] == HTML_FOURTH_LINE
-    assert submissions[0]["taken"] is None
+    threads = _read(root, "threads.yaml")
+    assert _openers(threads) == [("A-1", "ここは言い換える")]
+    assert threads[0]["loc"] == HTML_FOURTH_LINE
+    assert threads[0]["posts"][0]["taken"] is None
     assert _read(root, "comments.yaml") == []
 
 
@@ -530,13 +551,74 @@ def test_error_when_html_body_location_stale(
         bodies={"A-1.html": HTML_BODY},
     )
     open_preview(url, BOARD_HASH)
-    _open_list(page)
+    open_review(page)
     # 溜めた後に、Claude Code が A-1 の HTML の本文の 4 行目を書き換えた形にする
     (root / RECORD_DIR / "docs" / "A-1.html").write_text(HTML_BODY_REWRITTEN, encoding="utf-8")
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.stale", timeout=RESULT_TIMEOUT_MS)
     # 検証（何も送らず、A-1 へのコメントがレビュー中に残り、A-1 への行に理由が出る）
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert [item["id"] for item in _read(root, "comments.yaml")] == ["C-1"]
     assert page.locator(f"{_row('C-1')} .row-stale").count() == 1
+
+
+def test_error_when_thread_closed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_comments: WriteComments,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """返信先のスレッドがクローズなら、その返信はチェックできず送る対象に入らない。ほかの 1 件だけが送られ、行の入口からそのスレッドが開く（異常系）。"""
+    # 準備（返信をレビューに追加した後に、利用者が TH-1 をクローズにした形にする）
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", author="ai", body="D-1 は案 A で進めます"),
+            status="closed",
+            summary="D-1 の進め方の連絡",
+            events=[
+                {
+                    "kind": "closed",
+                    "author": "user",
+                    "reason": None,
+                    "created": "2026-10-12T04:00:00+00:00",
+                }
+            ],
+        ),
+    )
+    write_comments(
+        root,
+        _without_target(make_comment("C-1", body="了解", thread="TH-1")),
+        make_comment("C-2", target="D-1", body="案 A にする"),
+    )
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(str(served.data["url"]))
+    open_review(page)
+    # 実行（まとめて送る）
+    assert page.is_disabled(f"{_row('C-1')} input.row-check")
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    # 検証（D-1 への 1 件だけがスレッドになり、TH-1 は変わらない）
+    threads = _read(root, "threads.yaml")
+    assert [(item["id"], item["status"], len(item["posts"])) for item in threads] == [
+        ("TH-1", "closed", 1),
+        ("TH-2", "open", 1),
+    ]
+    assert _openers(threads)[1] == ("D-1", "案 A にする")
+    assert [item["id"] for item in _read(root, "comments.yaml")] == ["C-1"]
+    # 実行（返信の行の入口から、TH-1 のスレッドを開く）
+    page.locator(f"{_row('C-1')} .row-blocked").get_by_role("button", name="スレッドを開く").click()
+    page.wait_for_selector(THREAD_HEADING)
+    # 検証
+    assert page.inner_text(THREAD_HEADING) == "クローズ\nD-1 の進め方の連絡"
+    assert page.get_by_role("button", name="オープンに戻す").count() == 1

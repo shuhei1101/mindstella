@@ -1,0 +1,270 @@
+title: "スレッドへの返信"
+entry:
+  kind: mcp_tool
+  value: '`reply`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__reply`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 返信を足し、要約を書き直し、読んだ利用者の書き込みを取り込み済みにする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 と、D-1 へのオープンのスレッド TH-1 を持つワークスペース。TH-1 の書き込みは利用者の `案 A にする`（既読で、取り込んでいない）と、その後に送られた利用者の `案 B も見たい`（未読で、取り込んでいない）
+        notes: '`body` は `D-1 を案 A で決定にしました`、`summary` は `D-1 の案の相談。案 A で決定`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: reply workspace id TH-1 body summary
+        IF-->>WS: threads.yaml を読む
+        IF->>WS: 返信を足し、要約を書き、既読の利用者の書き込みを取り込み済みにする
+        IF-->>クライアント: JSON（post TH-1-3・taken [TH-1-1]）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 'TH-1 の末尾に AI の `D-1 を案 A で決定にしました`（`read: true`）が足され、要約が渡した文になる'
+      - '`案 A にする` の `taken` に日時が入り、未読の `案 B も見たい` は `taken` が `null` のまま'
+      - '`taken` が `["TH-1-1"]`'
+      - スレッドの状態はオープンのまま
+    test: test_normal
+  - name: 正常系（取り込み済みにしない）
+    summary: take を偽にすると返信と要約だけを書く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 正常系と同じワークスペース
+        notes: '`take` は `false`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-1 body summary take false
+        IF-->>クライアント: JSON（taken は空）
+      ```
+    expected:
+      - TH-1 の末尾に AI の返信が足される
+      - 利用者の書き込みはどちらも `taken` が `null` のままで、`taken` が空
+    test: test_normal_when_not_take
+  - name: 異常系（クローズのスレッド・ThreadClosedError）
+    summary: クローズのスレッドには返信せず、オープンに戻すよう返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 利用者が質問を送ってからクローズにしたスレッド TH-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-1 body summary
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになり、本文に `TH-1` と `set_thread_status` でオープンに戻す案内がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_thread_closed
+  - name: 異常系（スレッドが無い・ThreadNotFoundError）
+    summary: 無い ID を指すと何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-9 body summary
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになり、本文に `TH-9` がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_thread_not_found
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-1 body summary
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは前のスレッドを残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: reply workspace id TH-1 body summary
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_write_fails
+  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+    summary: 手で崩した threads.yaml には書かずに合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 から `status` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-1 body summary
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_schema_mismatch
+  - name: 異常系（本文が空・ArgumentError）
+    summary: 空白だけの本文では返信しない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '`body` は `""`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-1 body 空
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文に `エラー: 引数の誤り: body:` がある'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_body_empty
+lead: オープンのスレッドの末尾に AI の返信を足し、同じ呼び出しで要約を書き直して、AI が読んだ利用者の書き込みを取り込み済みにする。
+idempotent: false
+side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件足し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: id
+    type: str
+    required: true
+    location: argument
+    description: 返信するスレッドの ID
+    example: TH-1
+  - name: body
+    type: str
+    required: true
+    location: argument
+    description: 返信の本文。足した・直した項目があればその ID を書く
+    constraints: 前後の空白を除いて 1〜10000 文字
+  - name: summary
+    type: str
+    required: true
+    location: argument
+    description: 書き直したスレッドの要約
+    constraints: 前後の空白を除いて 1〜400 文字
+  - name: take
+    type: bool
+    required: false
+    default: 'true'
+    location: argument
+    description: 真なら、そのスレッドの AI が既読にした取り込んでいない利用者の書き込みを取り込み済みにする
+response:
+  - name: id
+    type: str
+    description: スレッドの ID
+  - name: post
+    type: str
+    description: 足した書き込みの ID
+    example: TH-1-3
+  - name: created
+    type: str
+    description: 書いた日時（UTC のタイムゾーン付き ISO 8601）
+  - name: taken
+    type: list[str]
+    description: 取り込み済みにした利用者の書き込みの ID。無ければ空
+exceptions:
+  - name: なし（正常終了）
+    condition: 返信した
+    notes: 結果を返す
+  - name: ThreadClosedError
+    condition: スレッドがクローズ
+    notes: ツールのエラー。本文に『スレッドの状態の書き換え』（`set_thread_status`）でオープンに戻してから返信する案内。何も書き込まない
+  - name: ThreadNotFoundError
+    condition: '`id` のスレッドが無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: '`threads.yaml` の書き込みか置き換えに失敗した'
+    notes: ツールのエラー。エラーの本文に書けなかったパスと理由。前の `threads.yaml` を残す
+  - name: SchemaMismatchError
+    condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
+    notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: ArgumentError
+    condition: '`body`・`summary` が空か上限を超える'
+    notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 取り込み済みにする範囲
+    constraint: 'AI が既読にした（`read: true`）利用者の書き込みだけ。読んだ後に送られた未読の書き込みは取り込み待ちに残す'
+  - item: 本文と要約の上限
+    constraint: 本文 10000 文字・要約 400 文字
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+    notes: 本文は『非機能要件』の送信の本文の長さ
+  - item: クローズのスレッド
+    constraint: 返信しない。AI は返信が要るとき、『スレッドの状態の書き換え』で理由つきでオープンに戻してから呼ぶ（要件『オープン・クローズ』）
+  - item: 同時の呼び出し
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送る・クローズと重なっても、どちらの書き換えも失わない
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+test_file: tests/integration/server/test_reply.py

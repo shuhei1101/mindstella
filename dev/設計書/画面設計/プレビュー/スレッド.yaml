@@ -1,0 +1,119 @@
+title: "スレッド"
+elements:
+  - name: 一覧へ戻る
+    kind: button
+    position: 見出し > 上の行
+    description: スレッドの一覧へ戻る（履歴に積まない）。一覧のスクロールと絞り込みを保ち、開いていた行へフォーカスを戻す。入力欄にフォーカスが無いときの Esc も同じ。詳細パネルを開いているときの Esc は詳細パネルを先に閉じる
+    label: 一覧へ戻る
+    action_ref: dev/設計書/画面設計/プレビュー/コメントの一覧#
+  - name: 状態を変える
+    kind: button
+    position: 見出し > 上の行 > 右端
+    description: オープンのスレッドはチェックの印と「クローズにする」、クローズのスレッドは戻す印と「オープンに戻す」。押すと見出しの下に理由の入力を出し、理由の入力を出している間はこのボタンを出さない。確認のモーダルは挟まない
+    label: クローズにする / オープンに戻す
+    visible_when: 送ったスレッドで、理由の入力を出していない
+    enabled_when: 状態を書き換えていない
+  - name: 理由の入力
+    kind: form
+    position: 見出し > 上の行の下
+    description: ラベル「理由（任意）」の入力欄と「キャンセル」・確定（「クローズにする」か「オープンに戻す」）。出したら入力欄へフォーカスを移す。確定と入力欄の Ctrl+Enter で `PATCH /api/threads/{id}` へ変えた後の `status` と `reason`（空白だけは理由なし）を 1 回で送る。利用者の状態の変更は溜めずにその場で書く。200 なら理由の入力を閉じ、スレッドを読み直して状態の札・状態の記録・下端を描き直し、「状態を変える」へフォーカスを戻す（この画面に留まる）。書き換えている間は入力欄を読み取りだけにし確定を押せなくする。「キャンセル」と入力欄の Esc で理由の入力を閉じ、「状態を変える」へフォーカスを戻す（一覧へは戻らない）
+    label: 理由（任意）
+    io: 入力
+    type: 文字列
+    visible_when: 「状態を変える」を押した後
+    required: false
+    max_length: 400
+    target: 画面からのスレッドの状態の書き換え.reason
+    action_ref: dev/設計書/インターフェース定義/サーバー/画面からのスレッドの状態の書き換え#
+  - name: 状態を変えられなかった理由
+    kind: label
+    position: 見出し > 理由の入力の下
+    description: '`role="alert"`。印のアイコンと「クローズにできませんでした。」か「オープンに戻せませんでした。」に、届かないときは「サーバーが止まっています。立ち上げ直してから押してください。」、そのほかのエラーは `detail` を続ける。自動で消さず、理由の入力は開いたまま残す。次に確定するか理由の入力を閉じると消す'
+    io: 表示
+    visible_when: 直前の状態の書き換えが 200 以外か届かなかった
+  - name: スレッドの題
+    kind: heading
+    position: 見出し
+    description: 状態の札（オープン・クローズ。まだ送っていない新しいスレッドは「レビュー中」。スレッドの行と同じ印と文字）と題（要約。無ければ最初の書き込みの 1 行目）
+    io: 表示
+    source: スレッドの読み取り.threads[].status・threads[].summary
+  - name: 向けた項目
+    kind: button
+    position: 見出し > 題の下
+    description: 向けた項目の ID（等幅）とタイトル（1 行で末尾を省く）。押すとパネルを開いたまま右にその項目の詳細パネルを開き、箇所があれば詳細パネルの「示す箇所」で示す。項目が消えたときは押せない ID だけを出す
+    io: 表示
+    visible_when: スレッドが項目に向いている
+    source: スレッドの読み取り.threads[].target・threads[].target_title・threads[].loc
+    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#
+  - name: タグ
+    kind: label
+    position: 見出し > 題の下
+    description: 'スレッドのタグを # の印つきで並べる（押せない）'
+    io: 表示
+    visible_when: タグが 1 つ以上
+    source: スレッドの読み取り.threads[].tags
+  - name: 書き込みの並び
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/スレッドの書き込み.ts#
+    args:
+      - name: post
+        value: スレッドの読み取り.threads[].posts[] の 1 件
+      - name: event
+        value: スレッドの読み取り.threads[].events[] の 1 件
+      - name: pending
+        value: レビュー中のコメントの読み取り.items のうち、このスレッドへの返信（まだ送っていない新しいスレッドはその最初の書き込み）の 1 件
+      - name: titles
+        value: 記録の取得の項目の ID とタイトル
+      - name: editing
+        value: そのレビュー中の書き込みをこの画面で書き換えているとき true
+      - name: edit_error
+        value: レビュー中のコメントの書き換え（PATCH /api/comments/{id}）の失敗の理由
+    position: 本文
+    description: 書き込みと状態の記録を日時の順に並べ、その後ろにレビュー中の返信を溜めた順に並べる。まだ送っていない新しいスレッドは最初の書き込み 1 件だけをレビュー中の形で出す。見出しと下端の間だけを縦にスクロールする。「修正」「削除」の振る舞いと、書き換えている行を詳細パネル・レビュー中の書き込みと合わせて 1 行にすることは、レビュー中の書き込みの「本文の書き換え」「削除」と同じ。書き換えの知らせが届いたらスレッドを読み直して描き直し、AI の返信と AI が状態を変えた記録を並びに足す（スクロールの位置と入力中の返信は保つ）
+    io: 表示
+    source: スレッドの読み取り.threads[]（開いた ID のもの）
+  - name: 消した書き込み
+    kind: button
+    position: 書き込みの並び > 消した行
+    description: 消したレビュー中の書き込みの元の場所に、「コメントを削除しました。」（`role="status"`）と「元に戻す」を出す。「元に戻す」はレビュー中の書き込みの「元に戻す」と同じ
+    label: 元に戻す
+    visible_when: パネルを開いている間に消した、このスレッドのレビュー中の書き込み
+    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+  - name: 返信の入力
+    kind: form
+    component: dev/設計書/部品設計/プレビュー/返信の入力.ts#
+    args:
+      - name: thread
+        value: 開いたスレッドの ID
+      - name: body
+        value: レビュー中のコメントの読み取り.drafts のうち、同じ thread の書きかけ（入力中は画面が持ち、一覧との行き来・描き直しをまたいで保つ）
+      - name: status
+        value: レビュー中のコメントの追加（POST /api/comments）の結果
+      - name: count
+        value: レビュー中のコメントの追加.count
+      - name: detail
+        value: レビュー中のコメントの追加のエラーの detail（届かなかったときはなし）
+    position: 下端
+    description: スレッドの下端に留め、本文と線で区切る。「溜める」で `POST /api/comments` へ `thread` と `body` を送り、201 なら入力欄を空にして、溜めた返信を書き込みの並びの末尾に足し、コメントのボタンと「レビュー中」の入口の件数を描き直す（この画面に留まる）。書きかけは入力が止まったときと、一覧へ戻る・レビュー中の書き込みの画面を開く・パネルを閉じるときに『書きかけの保存』へ `thread` ごとに送る
+    io: 入力
+    visible_when: オープンのスレッド
+    target: レビュー中のコメントの追加.thread・body
+    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+  - name: クローズの知らせ
+    kind: label
+    position: 下端
+    description: チェックの印と「クローズにしたスレッドです。」。返信の入力の代わりに出す。返信するときは「オープンに戻す」で戻してから書く
+    label: クローズにしたスレッドです。
+    io: 表示
+    visible_when: クローズのスレッド
+  - name: まだ送っていない知らせ
+    kind: label
+    position: 下端
+    description: 鉛筆の印と「まだ送っていないスレッドです。」。まだ送っていない新しいスレッドには「状態を変える」と返信の入力を出さない
+    label: まだ送っていないスレッドです。
+    io: 表示
+    visible_when: まだ送っていない新しいスレッド
+lead: スレッドの一覧で開いたスレッド 1 件。書き込みと状態の変更を書いた順に並べ、下端で返信を溜め、上端でクローズとオープンへの戻しをする。コメントの一覧のパネルの中で一覧と切り替え、見出しの帯・パネルの置き方・閉じ方はコメントの一覧と同じ。まだ送っていない新しいスレッドもこの画面で開く。
+mock: dev/mock/pages/comment-thread/235/a-reason-before/index.html
+screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+test_file: tests/integration/preview/test_thread_screen.py

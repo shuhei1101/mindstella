@@ -92,7 +92,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     scope: public
-    summary: 設定・7 種類・本文・まとまり・読んだ日時を 1 つの辞書にまとめる（インターフェース定義『記録の取得』のレスポンスの形。送信は含めない）
+    summary: 設定・7 種類・本文・まとまり・読んだ日時を 1 つの辞書にまとめる（インターフェース定義『記録の取得』のレスポンスの形。スレッドは含めない）
     args:
       - name: workspace
         type: Workspace

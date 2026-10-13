@@ -67,8 +67,12 @@ SERVER_TOOL_NAMES = [
     "export",
     "preview_url",
     "readme",
-    "submissions",
-    "take_submission",
+    "threads",
+    "thread",
+    "new_thread",
+    "reply",
+    "set_thread_status",
+    "update_thread",
 ]
 
 # Claude Code の中のツールの名前の頭（`mcp__{サーバーの名前}__{ツール}`）

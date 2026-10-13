@@ -551,60 +551,6 @@ tables:
         not_null: true
         description: '`v{メジャー}.{マイナー}.{パッチ}`。2 行目より後は読まない'
         example: v0.3.0
-  - name: submissions.yaml
-    title: 送信
-    datastore: YAML
-    summary: プレビューのコメントの一覧からまとめて送られた、項目・箇所へのコメントと項目に紐づかないコメント
-    primary_key: id
-    scale: ~1000
-    growth: コメントの一覧からまとめて送るたびに、送った件数を足す
-    deletion: 消さず、取り込んだら `taken` に日時を書く
-    access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 件の送信。初めて送ったときにサーバーが作り、無ければ送信 0 件として扱う。書くのはサーバーのまとめて送る（`POST /api/comments/send`）と `take_submission` だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。`target` と `loc` を持たない前の版の送信もそのまま読める（移し替えの手順は要らない）'
-    columns:
-      - name: id
-        title: ID
-        type: string
-        not_null: true
-        primary_key: true
-        auto: 採番
-        description: '`S-` + 連番。連番は最大 + 1 で、番号を使い回さない'
-        example: S-3
-      - name: target
-        title: 向けた項目
-        type: string
-        not_null: false
-        description: コメントを向けた項目の ID（どの種類でもよい）。送ったときにワークスペースにあった項目。項目に紐づかないコメントはキーを持たない
-        example: D-22
-      - name: body
-        title: 本文
-        type: string
-        not_null: true
-        description: コメントの本文。前後の空白を除いて 1〜10000 文字
-        example: 案 A にする
-      - name: sent
-        title: 送った日時
-        type: string
-        not_null: true
-        auto: 作成日時
-        description: UTC のタイムゾーン付き ISO 8601
-        example: '2026-10-04T03:00:00+00:00'
-      - name: taken
-        title: 取り込んだ日時
-        type: string
-        not_null: false
-        description: 取り込んだ日時（UTC のタイムゾーン付き ISO 8601）。取り込んでいなければ `null`
-      - name: loc
-        title: 箇所
-        type: object
-        not_null: false
-        description: 選んだ箇所。`kind`・`start`・`end`・`key`・`text` の形はレビュー中のコメント（`comments.yaml`）の `loc` と同じ。箇所を持たないコメントはキーを持たない。`target` を持つときだけ持つ
-      - name: comment
-        title: 元のコメント
-        type: string
-        not_null: false
-        description: 送ったレビュー中のコメントの ID。まとめて送る途中で落ち、同じコメントがレビュー中に残ったとき、次に送ったときに二重に足さないために持つ。前の版の送信はキーを持たない
-        example: C-1
   - name: .mindstella.lock
     title: 書き換えのロック
     datastore: テキスト
@@ -670,7 +616,7 @@ tables:
     primary_key: id
     scale: ~100
     growth: 詳細パネル・詳細の全画面・コメントの一覧で溜めるたびに 1 件足す
-    deletion: 削除と、まとめて送ったときに物理削除する（送ったものは `submissions.yaml` へ移る）
+    deletion: 削除と、まとめて送ったときに物理削除する（送ったものは `threads.yaml` へ移る）
     access: 全件
     description: 最上位に `seq`（最後に振った連番。振った番号を使い回さないために持つ）と `items:` の配列を持ち、1 要素 = 1 件のコメント。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのコメントの受け付け（`/api/comments`）だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。チェックの状態は画面だけが持ち、ここには書かない
     columns:
@@ -736,16 +682,22 @@ tables:
         auto: 作成日時
         description: UTC のタイムゾーン付き ISO 8601。元に戻したときは元の日時
         example: '2026-10-05T03:00:00+00:00'
+      - name: thread
+        title: 返信先のスレッド
+        type: string
+        not_null: false
+        description: 既存のスレッドへの返信のとき、そのスレッドの ID。新しいスレッドの最初の書き込み（項目の詳細パネル・新しいスレッドの入力欄で溜めたもの）はキーを持たない。持つときは `target`・`loc` を持たない
+        example: TH-3
   - name: drafts.yaml
     title: 書きかけ
     datastore: YAML
     summary: コメントの入力欄に書いて、まだ溜めていない本文
-    primary_key: (target, loc)
+    primary_key: (target, loc, thread)
     scale: ~100
     growth: 入力欄に書くたびに、向けた先ごとに 1 件を書き換える
     deletion: 溜めたとき・入力欄を空にしたときに物理削除する
     access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の書きかけ。向けた先（`target` と `loc` の組）ごとに 1 件。初めて書きかけを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの書きかけの保存（`PUT /api/drafts`）とコメントの追加だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない'
+    description: '`items:` の配列を持ち、1 要素 = 1 つの入力欄の書きかけ。向けた先（`target` と `loc` の組か、`thread`）ごとに 1 件。初めて書きかけを保つときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの書きかけの保存（`PUT /api/drafts`）とコメントの追加だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない'
     columns:
       - name: target
         title: 向けた項目
@@ -771,6 +723,12 @@ tables:
         auto: 更新日時
         description: UTC のタイムゾーン付き ISO 8601
         example: '2026-10-05T03:00:00+00:00'
+      - name: thread
+        title: 返信先のスレッド
+        type: string
+        not_null: false
+        description: スレッドの返信の入力欄の書きかけのとき、そのスレッドの ID。持つときは `target`・`loc` を持たない
+        example: TH-3
   - name: docs/{ID}.html
     title: HTML の本文
     datastore: HTML
@@ -781,3 +739,128 @@ tables:
         title: 本文
         type: string
         description: HTML の本文（文書全体でも断片でもよい）。書き込みは `add` / `update` の `body_html` が行い、ファイル名は項目の ID に揃える。サーバーは中身を解釈・実行せず、画面はスクリプトを動かさない枠に描く。同じ項目の `{ID}.md` とは並んで持たない
+  - name: threads.yaml
+    title: スレッド
+    datastore: YAML
+    summary: 利用者と AI が書き込みを積むスレッド。状態・タグ・要約・クローズとオープンへの戻しの記録を持つ
+    primary_key: id
+    scale: ~1000
+    growth: まとめて送った新しいスレッドの分と、AI が立てるたびに 1 件足す。書き込みは返信のたびに足す
+    deletion: 消さない（クローズにして残す）
+    access: 全件
+    description: '`items:` の配列を持ち、1 要素 = 1 件のスレッド。初めてスレッドを作ったときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのまとめて送る（`POST /api/comments/send`）・状態の書き換え（`PATCH /api/threads/{id}`）・スレッドの MCP のツール・未読へ戻すスクリプトだけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは ID の連番の小さい順（立てた順）。前の版の送信（`submissions.yaml`）は移し替えの手順でここへ移す'
+    columns:
+      - name: id
+        title: ID
+        type: string
+        not_null: true
+        primary_key: true
+        auto: 採番
+        description: '`TH-` + 連番。連番は最大 + 1 で、番号を使い回さない'
+        example: TH-3
+      - name: status
+        title: 状態
+        type: string
+        not_null: true
+        description: スレッドの状態
+        enum_values: "'open'（オープン） / 'closed'（クローズ）"
+      - name: tags
+        title: タグ
+        type: array
+        not_null: true
+        default: '[]'
+        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく `tags` の一覧から使い回す
+        example: '[起票]'
+      - name: summary
+        title: 要約
+        type: string
+        not_null: false
+        description: 何の話で、どう決着したか。AI が書き、まだ書いていなければ `null`。前後の空白を除いて 1〜400 文字
+        example: D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった
+      - name: target
+        title: 向けた項目
+        type: string
+        not_null: false
+        description: 最初の書き込みを向けた項目の ID（どの種類でもよい）。立てたときにワークスペースにあった項目。項目に紐づかないスレッドはキーを持たない
+        example: D-22
+      - name: loc
+        title: 箇所
+        type: object
+        not_null: false
+        description: 最初の書き込みに添えた箇所。形は `comments.yaml` の `loc` と同じ。`target` を持つときだけ持つ
+      - name: posts
+        title: 書き込み
+        type: array
+        not_null: true
+        description: 書いた順。1 件以上
+      - name: posts[].id
+        title: 書き込みの ID
+        type: string
+        not_null: true
+        auto: 採番
+        description: '`{スレッドの ID}-` + スレッドの中の連番（1 始まり）'
+        example: TH-3-2
+      - name: posts[].author
+        title: 書き手
+        type: string
+        not_null: true
+        description: 書いたのは誰か
+        enum_values: "'user'（利用者） / 'ai'（AI）"
+      - name: posts[].body
+        title: 本文
+        type: string
+        not_null: true
+        description: 前後の空白を除いて 1〜10000 文字
+        example: 案 A にする
+      - name: posts[].created
+        title: 書いた日時
+        type: string
+        not_null: true
+        auto: 作成日時
+        description: UTC のタイムゾーン付き ISO 8601。利用者の書き込みは送った日時
+        example: '2026-10-12T03:00:00+00:00'
+      - name: posts[].read
+        title: AI の既読
+        type: boolean
+        not_null: true
+        description: AI が `thread` で読んだか。利用者の書き込みは `false` で足し、AI の書き込みは `true` で足す。セッションを開いたときに全て `false` に戻す
+      - name: posts[].taken
+        title: 取り込んだ日時
+        type: string
+        not_null: false
+        description: 利用者の書き込みだけが持つ。AI が取り込み済みにした日時（UTC のタイムゾーン付き ISO 8601）。取り込んでいなければ `null`。未読に戻しても消さない
+      - name: posts[].comment
+        title: 元のコメント
+        type: string
+        not_null: false
+        description: まとめて送ったレビュー中のコメントの ID。まとめて送る途中で落ち、同じコメントがレビュー中に残ったとき、次に送ったときに二重に足さないために持つ。AI の書き込みと、移し替えた送信はキーを持たない
+        example: C-1
+      - name: events
+        title: 状態の記録
+        type: array
+        not_null: true
+        description: クローズとオープンへの戻しの記録。書いた順。無ければ空
+      - name: events[].kind
+        title: 種類
+        type: string
+        not_null: true
+        description: 変えた後の状態
+        enum_values: "'closed'（クローズにした） / 'reopened'（オープンに戻した）"
+      - name: events[].author
+        title: 書き手
+        type: string
+        not_null: true
+        description: 状態を変えたのは誰か
+        enum_values: "'user'（利用者） / 'ai'（AI）"
+      - name: events[].reason
+        title: 理由
+        type: string
+        not_null: false
+        description: 任意の理由。前後の空白を除いて 1〜400 文字。書かなければ `null`
+        example: 案 A で決着
+      - name: events[].created
+        title: 変えた日時
+        type: string
+        not_null: true
+        auto: 作成日時
+        description: UTC のタイムゾーン付き ISO 8601

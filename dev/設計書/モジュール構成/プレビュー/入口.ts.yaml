@@ -45,8 +45,8 @@ data_models:
         type: ReviewState
         description: 最後に読んだレビュー中のコメントと書きかけ
       - name: forms
-        type: Map<string, {target, loc, body, status, count, detail}>
-        description: 入力欄ごと（`formKey`）の書きかけと溜める状態
+        type: Map<string, {target, loc, thread, body, status, count, detail}>
+        description: 入力欄ごと（`formKey`）の書きかけと溜める状態。スレッドの返信の入力欄は `thread` を持ち、`target`・`loc` を `null` にする
       - name: pendingLoc
         type: Map<string, Location>
         description: 項目の ID → 選んだ箇所の入口を押して入力に添えた箇所
@@ -58,13 +58,43 @@ data_models:
         description: コメントの一覧か詳細パネルで消したコメント（一覧と詳細パネルで同じものを見る。一覧を閉じるかまとめて送ると空にする。一覧を開いていない間は、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
       - name: stale
         type: Map<string, string>
-        description: 箇所が合わないコメントの ID → 理由（箇所を外す・削除・次に送るで消す）
+        description: 送れなかった書き込みの ID → 理由（箇所を外す・削除・次に送るで消す）
       - name: listOpen
         type: boolean
         description: コメントの一覧を開いているか
       - name: opened
         type: string | null
-        description: 一覧の行から開いたコメントの ID
+        description: レビュー中の書き込みの行から項目を開いたコメントの ID
+      - name: threads
+        type: Thread[]
+        description: 最後に読めたスレッド（読めなかったときは前のまま残す）
+      - name: threadsError
+        type: '{detail: string | null} | null'
+        description: 直前のスレッドの読み取りが断られた・届かなかったときの理由。読めたら `null`
+      - name: view
+        type: "'list' | 'thread' | 'review'"
+        description: パネルの中に出している画面。パネルを開くたびに `list` に戻す
+      - name: reviewFrom
+        type: "'list' | 'thread'"
+        description: レビュー中の書き込みを開く前の画面（「戻る」の戻り先）
+      - name: filter
+        type: "'open' | 'closed' | 'all'"
+        description: スレッドの状態の絞り込み。ページを開いたときは `open` で、パネルを閉じても保つ
+      - name: tag
+        type: string | null
+        description: スレッドを絞っているタグ。パネルを閉じても保つ
+      - name: openedThread
+        type: '{id: string, pending: boolean} | null'
+        description: 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID）
+      - name: composing
+        type: boolean
+        description: 新しいスレッドの入力を出しているか
+      - name: reason
+        type: "{open: boolean, body: string, status: 'idle' | 'saving' | 'failed', detail: string | null}"
+        description: 開いているスレッドの理由の入力の状態。スレッドを開く・一覧へ戻るときに閉じて空にする
+      - name: reviewFocus
+        type: string | null
+        description: スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（一覧から開いたときは `null`）
   - name: DisplayState
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -320,7 +350,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目へコメントする
     scope: public
-    summary: 向けた先（`target` と `loc` の組）を 1 つの文字列にする（サーバーの書きかけの同じさと同じ比べ方）
+    summary: 向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする（サーバーの書きかけの同じさと同じ比べ方）
     args:
       - name: target
         type: string | null
@@ -332,9 +362,15 @@ functions:
         required: true
         passing: positional
         description: 添えた箇所
+      - name: thread
+        type: string | null
+        required: false
+        default: 'null'
+        passing: positional
+        description: 返信先のスレッドの ID
     returns:
       type: string
-      description: '`target`・`kind`・`start`・`end`・`key`・`text` をこの順に並べた JSON の文字列'
+      description: '`target`・`kind`・`start`・`end`・`key`・`text`・`thread` をこの順に並べた JSON の文字列'
     process: 1. 無い値を `null` にした配列を `JSON.stringify` して返す
     unit_tests:
       - name: test_form_key
@@ -343,6 +379,12 @@ functions:
         condition: '`parametrize`: `(D-1, null)` と `(D-1, null)` / `(D-1, null)` と `(D-1, 本文の 2 行目)` / キーの並びが違う同じ `loc` / `(null, null)` と `(D-1, null)`'
         mock: なし
         expected: 同じ / 違う / 同じ / 違う
+      - name: test_form_key_when_thread
+        case: 正常
+        summary: スレッドごとに別のキーで、新しいスレッドの入力とも別
+        condition: '`parametrize`: `(null, null, TH-1)` と `(null, null, TH-1)` / `(null, null, TH-1)` と `(null, null, TH-2)` / `(null, null, TH-1)` と `(null, null)`'
+        mock: なし
+        expected: 同じ / 違う / 違う
   - name: resolveDisplay
     title: 表示の読み分け
     kind: 関数
@@ -431,3 +473,18 @@ functions:
         expected: どちらも `{}`
 test_files:
   - tests/unit/preview/test_app.py
+notes:
+  スレッドの読み直し: '`start` の 2（開いたとき）・13（`changed` を受けたときとつながり直したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。読み直した後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを描き直す（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない'
+  スレッドの画面の操作: |-
+    `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`openedThread`（`opened`）・`composing`・`reason` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
+    - パネルを開くときは `view` を `list`、`openedThread` を `null`、`composing` を偽にし、スレッドを読み直す
+    - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」では `filter`・`tag` を書き換えてパネルを描き直す
+    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
+    - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送っていない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
+    - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す（書きかけは残す）
+    - 返信の「入力」「溜める」は 6 のコメントの入力と同じ扱いで、`add`・`saveDraft` に `{thread, body}` を送る（空白だけは部品が溜めさせないため `empty` は使わない）。溜めたらレビュー中を読み直して溜めた ID を `checked` に足し、トップバーとパネルを描き直す
+    - 「理由の入力を出す／閉じる」「理由の入力」では `reason` を書き換える。「状態を変える」では `reason.status` を `saving` にして送り（`threadApi().setStatus`）、200 なら `reason` を閉じて空にし、スレッドを読み直してパネルを描き直し、「状態を変える」へフォーカスを戻す。断られた・届かないなら `failed`（`detail`）にして理由の入力を開いたまま残す
+    - 「まとめて送る」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送る。201 の後はレビュー中に続けてスレッドも読み直す（`view` は `review` のまま）
+    - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
+    - Esc は、詳細パネルを開いていれば詳細パネルを閉じる。無ければ、入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
+    - パネルを閉じるときは、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ）

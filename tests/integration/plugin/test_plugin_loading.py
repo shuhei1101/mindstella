@@ -31,7 +31,7 @@ def _count_hooks(details: str) -> int:
 
 
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
-    """プラグイン mindstella が 2 つのスキルと共通の置き場所と起動スクリプトと LICENSE を持ち、プラグインの外のフォルダを持たず、hooks を持たずに読み込まれる（正常系）。"""
+    """プラグイン mindstella が 2 つのスキルと共通の置き場所と起動スクリプトと LICENSE を持ち、プラグインの外のフォルダを持たず、SessionStart の hooks を 1 つだけ持って読み込まれる（正常系）。"""
     # 準備
     run_claude("plugin", "marketplace", "add", str(repo_root))
 
@@ -66,7 +66,15 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
         (install_path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
     )
     assert "mcpServers" not in manifest
-    # claude plugin details で hooks が 0 件である
-    assert _count_hooks(details.stdout) == 0
+    # hooks/hooks.json が SessionStart で reset_unread.py を呼ぶ 1 つだけを持ち、claude plugin details で hooks が 1 件である
+    hooks = json.loads((install_path / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    assert list(hooks) == ["SessionStart"]
+    assert [
+        hook["command"] for group in hooks["SessionStart"] for hook in group["hooks"]
+    ] == [
+        '"${MINDSTELLA_VENV:-$HOME/.mindmap/venv}/bin/python" '
+        '"${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/reset_unread.py"'
+    ]
+    assert _count_hooks(details.stdout) == 1
     # その設定のフォルダで claude mcp list に mindstella が無い
     assert "mindstella" not in run_claude("mcp", "list").stdout

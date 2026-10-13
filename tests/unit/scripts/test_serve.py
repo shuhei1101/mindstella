@@ -32,7 +32,15 @@ from errors import (
     WriteFailedError,
 )
 from export_helpers import write_preview_dir
-from fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
+from fixture_types import (
+    MakeComment,
+    MakeItem,
+    MakePost,
+    MakeThread,
+    MakeWorkspace,
+    WriteComments,
+    WriteThreads,
+)
 from workspace_fixtures import RECORD_DIR, write_yaml
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
@@ -628,7 +636,7 @@ def test_records_response_when_settings_changed(
     [
         pytest.param("decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
         pytest.param("docs/D-1.md", "本文\n", True, id="add_body"),
-        pytest.param("submissions.yaml", "items: []\n", True, id="add_submissions"),
+        pytest.param("threads.yaml", "items: []\n", True, id="add_threads"),
         pytest.param("comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
         pytest.param("drafts.yaml", "items: []\n", False, id="add_drafts"),
         pytest.param(".mindstella.lock", "", False, id="add_lock_file"),
@@ -977,6 +985,120 @@ def test_write_response_when_after(
     assert lock_free == expected_lock_free
 
 
+THREADS_TEXT = (
+    "items:\n"
+    "  - id: TH-1\n    status: open\n    tags: []\n    summary: null\n    target: D-1\n"
+    "    events: []\n"
+    "    posts:\n"
+    "      - {id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00',"
+    " read: false, taken: null}\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("raw_files", "expected_titles"),
+    [
+        pytest.param({"threads.yaml": THREADS_TEXT}, ["問い"], id="with_thread"),
+        pytest.param({}, [], id="no_file"),
+    ],
+)
+def test_threads_response(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    raw_files: dict[str, str],
+    expected_titles: list[str],
+) -> None:
+    """スレッドを返す。無ければ空（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", title="問い"), raw_files=raw_files)
+    url, _started = registry.start(root)
+    # 実行
+    response = serve.threads_response(root)
+    with urllib.request.urlopen(
+        f"http://127.0.0.1:{_port_of(url)}/api/threads", timeout=HTTP_TIMEOUT_SEC
+    ) as served:
+        cache_control = served.headers["Cache-Control"]
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/json; charset=utf-8"
+    payload = json.loads(response.body)
+    assert [thread["target_title"] for thread in payload["threads"]] == expected_titles
+    assert cache_control == "no-store"
+
+
+def test_threads_response_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """崩れたスレッドのファイルは 422（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"threads.yaml": "items: [\n"})
+    # 実行
+    response = serve.threads_response(root)
+    # 検証
+    assert response.status == 422
+    assert "threads.yaml: " in json.loads(response.body)["detail"]
+
+
+def test_patch_thread_status(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """利用者のクローズを理由つきで書き、取り込み待ちを残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1")))
+    # 実行
+    result = serve.patch_thread_status(root, "TH-1", {"status": "closed", "reason": "案 A で決着"})
+    # 検証
+    assert result == {"id": "TH-1", "status": "closed", "changed": True}
+    saved = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    thread = saved["items"][0]
+    assert thread["events"][-1]["author"] == "user"
+    assert thread["posts"][0]["taken"] is None
+
+
+def _patch_outcome(root: Path, thread_id: str, data: dict[str, Any]) -> str:
+    """patch_thread_status を呼び、結果の changed か、送った例外の名前を文字列で返す。"""
+    try:
+        return f"changed={serve.patch_thread_status(root, thread_id, data)['changed']}"
+    except MindmapError as error:
+        return type(error).__name__
+
+
+@pytest.mark.parametrize(
+    ("thread_id", "data", "expected"),
+    [
+        pytest.param("TH-1", {"status": "open"}, "changed=False", id="same_status"),
+        pytest.param("TH-1", {}, "ArgumentError", id="status_missing"),
+        pytest.param(
+            "TH-1", {"status": "closed", "reason": "あ" * 401}, "ArgumentError", id="long_reason"
+        ),
+        pytest.param("TH-9", {"status": "closed"}, "ThreadNotFoundError", id="not_found"),
+    ],
+)
+def test_patch_thread_status_when_same_or_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    thread_id: str,
+    data: dict[str, Any],
+    expected: str,
+) -> None:
+    """既にその状態なら変えず、形の誤りと無い ID は断る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行
+    outcome = _patch_outcome(root, thread_id, data)
+    # 検証
+    assert outcome == expected
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
 def test_opened_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """2 回目は 1 回目の日時を返す（正常系）。"""
     # 準備
@@ -1054,6 +1176,12 @@ def test_delete_response(
             id="settings_invalid",
         ),
         pytest.param(
+            lambda: errors.ArgumentError("status", "open か closed を渡してください"),
+            400,
+            None,
+            id="argument",
+        ),
+        pytest.param(
             lambda: ItemNotFoundError("項目がありません: D-99"), 404, None, id="item_not_found"
         ),
         pytest.param(
@@ -1061,6 +1189,12 @@ def test_delete_response(
             404,
             None,
             id="comment_not_found",
+        ),
+        pytest.param(
+            lambda: errors.ThreadNotFoundError("スレッドがありません: TH-9"),
+            404,
+            None,
+            id="thread_not_found",
         ),
         pytest.param(
             lambda: CommentConflictError(

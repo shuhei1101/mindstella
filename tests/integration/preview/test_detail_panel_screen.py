@@ -41,6 +41,7 @@ from preview_comment_helpers import (
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     fulfill_problem,
+    open_review,
     read_workspace_yaml,
     review_row,
     select_text,
@@ -151,8 +152,7 @@ def _row_button(page: Page, comment_id: str, name: str) -> Locator:
 
 def _open_detail_from_list(page: Page, comment_id: str) -> None:
     """コメントの一覧を開き、行の向けた項目を押して、一覧を開いたまま詳細パネルを開く。"""
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    open_review(page)
     page.click(f"{review_row(COMMENTS_PANEL, comment_id)} button.row-target")
     page.wait_for_selector("aside.panel.open")
 
@@ -1759,8 +1759,7 @@ def test_highlight_location(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     page.wait_for_selector("aside.panel.open .md:not(.md-value) .loc-hit")
@@ -1799,8 +1798,7 @@ def test_highlight_location_when_value(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     page.wait_for_selector("aside.panel.open .loc-hit")
@@ -1831,8 +1829,7 @@ def test_highlight_location_when_mismatched(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     page.wait_for_selector("aside.panel.open .md:not(.md-value)")
@@ -3279,8 +3276,7 @@ def test_highlight_location_when_html_body(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     wait_frame_rendered(page, BODY_FRAME)

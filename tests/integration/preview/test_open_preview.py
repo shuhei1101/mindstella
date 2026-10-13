@@ -20,7 +20,11 @@ from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
     PILL,
+    REVIEW_ENTRY,
+    REVIEW_HEAD,
     THREE_LINE_BODY,
+    open_review,
+    read_workspace_yaml,
     select_text,
     select_text_for_pill,
 )
@@ -455,15 +459,16 @@ def test_normal_when_sent(
     page.focus(COMMENTS_BUTTON)
     page.keyboard.press("Enter")
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
     page.focus(LIST_SEND_BUTTON)
     page.keyboard.press("Enter")
     page.wait_for_selector(f"{COMMENTS_PANEL} .send-msg.sent", timeout=UPDATE_TIMEOUT_MS)
     # 検証（送った後）
-    pending = call_tool("submissions", workspace=str(root))
-    assert pending.data is not None
+    threads = read_workspace_yaml(root, "threads.yaml")["items"]
     assert [
-        (item["target"], item["loc"]["kind"], item["loc"]["start"], item["body"])
-        for item in pending.data["items"]
+        (thread["target"], thread["loc"]["kind"], thread["loc"]["start"], thread["posts"][0]["body"])
+        for thread in threads
     ] == [("A-1", "body", 2, "ここは言い換える")]
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
     assert page.locator(f"{COMMENTS_PANEL} .comments-list li").count() == 0
@@ -607,8 +612,7 @@ def test_normal_when_comment_removed_and_sent(
     open_preview(url, "#tab=decisions&view=board")
     page.wait_for_selector(".board button.card")
     page.evaluate(_card_marker_script('.board button.card[data-id="D-3"]'))
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    open_review(page)
     # 実行（C-1 を消すと D-2 の件数が 2 から 1 になる）
     page.locator(f"{COMMENTS_PANEL} li[data-comment='C-1']").get_by_role(
         "button", name="D-2 へのコメントを削除"
