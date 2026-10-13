@@ -131,7 +131,7 @@ def test_normal(
     # 検証
     comments = _read_comments(root)
     assert [(item["target"], item["body"]) for item in comments] == [("D-1", BODY)]
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert page.inner_text(DETAIL_MESSAGE) == "レビューに追加しました（レビュー中 1 件）。"
     assert page.input_value(DETAIL_TEXTAREA) == ""
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"

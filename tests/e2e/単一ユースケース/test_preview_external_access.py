@@ -26,11 +26,12 @@ from external_access_helpers import (
 )
 from playwright.sync_api import Page
 from preview_helpers import (
-    COMMENTS_BUTTON,
-    COMMENTS_PANEL,
+    BAND_RESULT,
     DETAIL_MESSAGE,
     DETAIL_TEXTAREA,
+    SEND_BAND,
     OpenPreview,
+    open_review,
     row_ids,
 )
 from workspace_fixtures import RECORD_DIR, MakeItem, MakeWorkspace, StartServer
@@ -58,10 +59,6 @@ RESULT_TIMEOUT_MS = 10_000
 
 # 端末の別のアドレスへのつなぎを待つ上限秒数
 CONNECT_TIMEOUT_SEC = 1
-
-# コメントの一覧の送る帯と、その結果
-SEND_BAND = f"{COMMENTS_PANEL} .send-band"
-BAND_RESULT = f"{SEND_BAND} .send-msg"
 
 # 外へ出る経路を調べるために向ける、文書用のアドレス（UDP は何も送らず、経路だけを引く）
 PROBE_ADDRESS = ("192.0.2.1", 9)
@@ -107,8 +104,7 @@ def test_normal_when_port_fixed(
         page.fill(DETAIL_TEXTAREA, COMMENT_BODY)
         page.get_by_role("button", name="レビューに追加").click()
         page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=RESULT_TIMEOUT_MS)
-        page.click(COMMENTS_BUTTON)
-        page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+        open_review(page)
         page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
         page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
     # 検証
@@ -120,11 +116,13 @@ def test_normal_when_port_fixed(
             socket.create_connection((other_address, port), timeout=CONNECT_TIMEOUT_SEC)
     # 外のホスト名で開いた画面に D-1 がある
     assert shown_ids == ["D-1"]
-    # 送ったコメントが、ワークスペースの送信に残る
-    submissions = yaml.safe_load(
-        (root / RECORD_DIR / "submissions.yaml").read_text(encoding="utf-8")
-    )["items"]
-    assert [(item["target"], item["body"]) for item in submissions] == [("D-1", COMMENT_BODY)]
+    # 送ったコメントが、ワークスペースのスレッドの最初の書き込みに残る
+    threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
+    assert [(item["target"], item["posts"][0]["body"]) for item in threads] == [
+        ("D-1", COMMENT_BODY)
+    ]
 
 
 def test_normal_when_hooks_set(
