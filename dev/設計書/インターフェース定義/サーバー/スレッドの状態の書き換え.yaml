@@ -1,0 +1,226 @@
+title: "スレッドの状態の書き換え"
+entry:
+  kind: mcp_tool
+  value: '`set_thread_status`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__set_thread_status`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: AI が理由つきでクローズにし、書き手・理由・日時を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 利用者の `了解` で終わるオープンのスレッド TH-1 を持つワークスペース
+        notes: '`status` は `closed`、`reason` は `了解を受けた`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed reason
+        IF->>WS: 状態を closed にし、記録を足す
+        IF-->>クライアント: JSON（status closed・changed true）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 'TH-1 の `status` が `closed` で、`events` の末尾が `kind: closed`・`author: ai`・`reason: 了解を受けた`・日時'
+      - 書き込みは呼ぶ前と同じ（返信を足さない）
+    test: test_normal
+  - name: 正常系（オープンに戻す）
+    summary: クローズのスレッドを AI が理由つきでオープンに戻す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 利用者が質問を送ってからクローズにしたスレッド TH-1 を持つワークスペース
+        notes: '`status` は `open`、`reason` は `質問に答える`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status open reason
+        IF-->>クライアント: JSON（status open・changed true）
+      ```
+    expected:
+      - 'TH-1 の `status` が `open` で、`events` の末尾が `kind: reopened`・`author: ai`・`reason: 質問に答える`'
+      - 続けて『スレッドへの返信』を呼ぶと返信が足せる
+    test: test_normal_when_reopen
+  - name: 正常系（既にその状態）
+    summary: 既に渡した状態なら記録を足さずに返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: クローズのスレッド TH-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed
+        IF-->>クライアント: JSON（changed false）
+      ```
+    expected:
+      - ツールのエラーにならず、`changed` が `false`
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_unchanged
+  - name: 異常系（理由が長すぎる・InvalidArgumentError）
+    summary: 上限を超える理由では状態を変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '`reason` は 401 文字'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed reason 401 文字
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文に `エラー: 引数の誤り: reason:` がある'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_reason_too_long
+  - name: 異常系（スレッドが無い・ThreadNotFoundError）
+    summary: 無い ID を指すと何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-9 status closed
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになり、本文に `TH-9` がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_thread_not_found
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは前の状態を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_write_fails
+lead: AI がスレッドをクローズにするかオープンに戻し、書き手（AI）・任意の理由・日時をスレッドに残す。利用者の書き換えは『画面からのスレッドの状態の書き換え』。
+idempotent: true
+side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: id
+    type: str
+    required: true
+    location: argument
+    description: スレッドの ID
+    example: TH-1
+  - name: status
+    type: Literal['open', 'closed']
+    required: true
+    location: argument
+    description: 変えた後の状態
+  - name: reason
+    type: str | None
+    required: false
+    default: なし（理由を持たない）
+    location: argument
+    description: 状態を変える理由
+    constraints: 前後の空白を除いて 400 文字まで。空白だけは理由なしとして扱う
+response:
+  - name: id
+    type: str
+    description: スレッドの ID
+  - name: status
+    type: Literal['open', 'closed']
+    description: 呼んだ後の状態
+  - name: changed
+    type: bool
+    description: 状態を変えたか。既にその状態なら `false`
+exceptions:
+  - name: なし（正常終了）
+    condition: 状態を変えたか、既にその状態だった
+    notes: 結果を返す
+  - name: InvalidArgumentError
+    condition: '`reason` が上限を超える'
+    notes: 'ツールのエラー（`エラー: 引数の誤り: reason: {理由}`）。何も書き込まない'
+  - name: ThreadNotFoundError
+    condition: '`id` のスレッドが無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: '`threads.yaml` の書き込みか置き換えに失敗した'
+    notes: ツールのエラー。前の `threads.yaml` を残す
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 理由の上限
+    constraint: 400 文字
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+  - item: 取り込み待ち
+    constraint: 状態を変えても利用者の書き込みの `taken` は書かない。クローズにしたスレッドも、取り込んでいない利用者の書き込みがあれば取り込み待ちに残る（取り込み済みにするのは『スレッドの書き換え』）
+  - item: 同時の呼び出し
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からの書き換えと重なっても、後から書いた側が前の状態を読んでから判断する
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#

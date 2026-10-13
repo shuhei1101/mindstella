@@ -1,0 +1,272 @@
+title: "画面からのスレッドの状態の書き換え"
+entry:
+  kind: endpoint
+  value: PATCH /api/threads/{id}
+flows:
+  - name: 正常系
+    summary: 利用者が理由つきでクローズにし、書き手・理由・日時を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '本文は `{"status": "closed", "reason": "案 A で決着"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+        participant WS as ワークスペース
+
+        クライアント->>IF: PATCH {status: closed, reason}
+        IF->>WS: 状態を closed にし、記録を足す
+        IF-->>クライアント: 200、JSON（status closed・changed true）
+      ```
+    expected:
+      - ステータスが 200
+      - 'TH-1 の `status` が `closed` で、`events` の末尾が `kind: closed`・`author: user`・`reason: 案 A で決着`・日時'
+      - 書き込みの `read`・`taken` は変わらない
+    test: test_normal
+  - name: 正常系（理由なしでオープンに戻す）
+    summary: 理由を書かずにオープンに戻す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: AI がクローズにしたスレッド TH-1 を持つワークスペース
+        notes: '本文は `{"status": "open"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+
+        クライアント->>IF: PATCH {status: open}
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - ステータスが 200
+      - 'TH-1 の `status` が `open` で、`events` の末尾が `kind: reopened`・`author: user`・`reason: null`'
+    test: test_normal_when_reopen
+  - name: 異常系（状態が無い・400）
+    summary: status を持たない本文は受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '本文は `{"reason": "決着"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+
+        クライアント->>IF: PATCH {reason}
+        IF-->>クライアント: 400
+      ```
+    expected:
+      - ステータスが 400 で、`detail` に `status` がある
+      - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_status_missing
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからの書き換えは受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+
+        クライアント->>IF: PATCH（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（スレッドが無い・404）
+    summary: 無いスレッドは書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: スレッド TH-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-9
+
+        クライアント->>IF: PATCH {status: closed}
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に `TH-9` がある
+    test: test_error_when_thread_not_found
+  - name: 異常系（本文が JSON でない・415）
+    summary: フォームの形の本文は受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '`Content-Type: application/x-www-form-urlencoded` で `status=closed` を送る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+
+        クライアント->>IF: PATCH（application/x-www-form-urlencoded）
+        IF-->>クライアント: 415
+      ```
+    expected:
+      - ステータスが 415
+      - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_not_json
+  - name: 異常系（スレッドの形が崩れている・422）
+    summary: 手で崩した threads.yaml は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 から `posts` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+
+        クライアント->>IF: PATCH {status: closed}
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - ステータスが 422
+      - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_schema_mismatch
+  - name: 異常系（書き込めない・500）
+    summary: 書き込めないワークスペースでは前の状態を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PATCH /api/threads/TH-1
+        participant WS as ワークスペース
+
+        クライアント->>IF: PATCH {status: closed}
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
+      - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_write_fails
+lead: 利用者が画面でスレッドをクローズにするかオープンに戻し、書き手（利用者）・任意の理由・日時をスレッドに残す。
+idempotent: true
+side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: スレッドの ID
+    example: TH-1
+  - name: status
+    type: Literal['open', 'closed']
+    required: true
+    location: body
+    description: 変えた後の状態
+  - name: reason
+    type: str | None
+    required: false
+    default: なし（理由を持たない）
+    location: body
+    description: 状態を変える理由
+    constraints: 前後の空白を除いて 400 文字まで。空白だけは理由なしとして扱う
+request_example: |-
+  ```json
+  {"status": "closed", "reason": "案 A で決着"}
+  ```
+response:
+  - name: id
+    type: str
+    description: スレッドの ID
+  - name: status
+    type: Literal['open', 'closed']
+    description: 書き換えた後の状態
+  - name: changed
+    type: bool
+    description: 状態を変えたか。既にその状態なら `false`
+status_codes:
+  - code: '200'
+    condition: 書き換えたか、既にその状態だった
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`status` が無いか `open`・`closed` でない・`reason` が 400 文字を超える
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`id` のスレッドが無い'
+    notes: 何も書かない
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: '`threads.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: '`threads.yaml` を書けない'
+    notes: '`detail` に書けなかったパスと理由。前の `threads.yaml` を残す'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 送り元の確かめ
+    constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば『プレビューの配信』の制約「送り元の確かめ」で確かめる'
+  - item: 本文の上限
+    constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
+  - item: 理由の上限
+    constraint: 400 文字
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+  - item: 取り込み待ち
+    constraint: クローズにしても利用者の書き込みの `taken` は書かない。返信を送ってからクローズにしても、その返信は取り込み待ちに残り AI に届く（要件『コメントをスレッドにする』）
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#

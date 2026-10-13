@@ -1,0 +1,252 @@
+title: "スレッドの一覧"
+entry:
+  kind: mcp_tool
+  value: '`threads`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__threads`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 状態を渡さなければオープンのスレッドだけを新しい順に返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 と、スレッド TH-1（オープン・D-1 への利用者の書き込みと AI の返信・要約あり）・TH-2（クローズ）・TH-3（オープン・項目を指さない利用者の書き込みだけで要約なし。最後の書き込みが TH-1 より新しい）を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as threads（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: threads workspace
+        IF-->>WS: threads.yaml と項目を読む
+        IF-->>クライアント: JSON（items）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`items` が TH-3・TH-1 の順で、TH-2 を含まない'
+      - TH-1 の `target_title` が D-1 のタイトルで `last_author` が `ai`、TH-3 の `summary` が `null` で `head` が最初の書き込みの先頭、`target` が `null`
+      - どの要素も書き込みの本文の全体と状態の記録を持たない
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じ（既読にしない）
+    test: test_normal
+  - name: 正常系（取り込み待ちだけ）
+    summary: 状態を渡さずに取り込み待ちで絞ると、クローズのスレッドも返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: TH-1（オープン・取り込んでいない利用者の書き込み）・TH-2（利用者が返信を送ってからクローズにした。その返信を取り込んでいない）・TH-3（オープン・利用者の書き込みは取り込み済みで AI の未読）を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as threads（MCP のツール）
+
+        クライアント->>IF: threads workspace awaiting true
+        IF-->>クライアント: JSON（TH-1・TH-2）
+      ```
+    expected:
+      - '`items` が TH-1 と TH-2 の 2 件で、TH-2 の `status` が `closed`'
+      - どちらも `awaiting` が 1
+      - TH-3 を含まない（未読でも取り込み済みなら取り込み待ちにしない）
+    test: test_normal_when_awaiting
+  - name: 正常系（タグと未読で絞る）
+    summary: タグ・未読・状態を重ねて絞る
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: TH-1（オープン・タグ `画面`・未読あり）・TH-2（オープン・タグ `画面`・全て既読）・TH-3（クローズ・タグ `画面`・未読あり）・TH-4（オープン・タグ `調査`・未読あり）を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as threads（MCP のツール）
+
+        クライアント->>IF: threads workspace tag 画面 unread true
+        IF-->>クライアント: JSON（TH-1）
+        クライアント->>IF: threads workspace tag 画面 status all
+        IF-->>クライアント: JSON（TH-1・TH-2・TH-3）
+      ```
+    expected:
+      - タグ `画面` と未読で絞ると TH-1 の 1 件だけ
+      - タグ `画面` と `status` `all` で絞ると TH-1・TH-2・TH-3 の 3 件で、TH-4 を含まない
+    test: test_normal_when_filtered
+  - name: 正常系（スレッドが無い）
+    summary: threads.yaml が無ければ 0 件を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`threads.yaml` を持たないワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as threads（MCP のツール）
+
+        クライアント->>IF: threads workspace awaiting true
+        IF-->>クライアント: JSON（items は空）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`items` が空'
+      - '`threads.yaml` が作られていない'
+    test: test_normal_when_empty
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as threads（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: threads workspace
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（スレッドの形が崩れている・SchemaMismatchError）
+    summary: 手で崩した threads.yaml は読まずに合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 から `status` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as threads（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: threads workspace
+        IF-->>WS: threads.yaml を読む
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `threads.yaml: items[0]` で始まる行がある'
+    test: test_error_when_schema_mismatch
+lead: スレッドを状態・タグ・未読・取り込み待ちで絞り、書き込みの本文を含めないキーだけを返す。読むだけで、既読にも取り込み済みにもしない。
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: status
+    type: Literal['open', 'closed', 'all'] | None
+    required: false
+    default: なし（`awaiting` が偽なら `open`、真なら `all`）
+    location: argument
+    description: 返すスレッドの状態。`open`（オープンだけ）・`closed`（クローズだけ）・`all`（両方）
+  - name: tag
+    type: str | None
+    required: false
+    default: なし（タグで絞らない）
+    location: argument
+    description: このタグを持つスレッドだけを返す
+    example: 起票
+  - name: unread
+    type: bool
+    required: false
+    default: 'false'
+    location: argument
+    description: 真なら AI の未読の書き込みを持つスレッドだけを返す
+  - name: awaiting
+    type: bool
+    required: false
+    default: 'false'
+    location: argument
+    description: 真なら取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド）だけを返す。`status` を渡さなければオープンとクローズの両方を返す
+request_example: |-
+  ```json
+  {"workspace": "/home/user/talk", "awaiting": true}
+  ```
+response:
+  - name: items[].id
+    type: str
+    description: スレッドの ID
+    example: TH-3
+  - name: items[].status
+    type: Literal['open', 'closed']
+    description: 状態
+  - name: items[].tags
+    type: list[str]
+    description: タグ
+  - name: items[].summary
+    type: str | None
+    description: 要約。まだ書いていなければ `null`
+  - name: items[].head
+    type: str
+    description: 最初の書き込みの本文の先頭（改行を空白にして 80 文字まで）。要約がまだ無いスレッドを見分けるために返す
+  - name: items[].target
+    type: str | None
+    description: 向けた項目の ID。項目に紐づかないスレッドは `null`
+    example: D-1
+  - name: items[].target_title
+    type: str | None
+    description: その項目のタイトル。項目に紐づかないか、項目が消えていれば `null`
+  - name: items[].last_author
+    type: Literal['user', 'ai']
+    description: 最後の書き込みの書き手
+  - name: items[].last_at
+    type: str
+    description: 最後の書き込みの日時（UTC のタイムゾーン付き ISO 8601）
+  - name: items[].posts
+    type: int
+    description: 書き込みの件数
+  - name: items[].unread
+    type: int
+    description: AI の未読の書き込みの件数
+  - name: items[].awaiting
+    type: int
+    description: AI が取り込んでいない利用者の書き込みの件数
+response_example: |-
+  ```json
+  {"items": [{"id": "TH-3", "status": "open", "tags": ["起票"], "summary": null, "head": "案 A にする", "target": "D-1", "target_title": "写しの取り方", "last_author": "user", "last_at": "2026-10-12T03:00:00+00:00", "posts": 1, "unread": 1, "awaiting": 1}]}
+  ```
+exceptions:
+  - name: なし（正常終了）
+    condition: 一覧を作れた（0 件のときも含む。`threads.yaml` が無ければ 0 件）
+    notes: 結果を返す
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー
+  - name: SchemaMismatchError
+    condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
+    notes: ツールのエラー。エラーの本文に合わない箇所
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 絞り込み
+    constraint: 渡した条件を全て満たすスレッドだけを返す。取り込み待ちは状態によらず取り込むため、`awaiting` が真で `status` を渡さないときは `all` として扱う（単一ユースケース『送信の取り込み』）
+  - item: 並び
+    constraint: 最後の書き込みの日時の新しい順。同じ日時は ID の連番の大きい順
+  - item: 返す中身
+    constraint: キーだけを返し、書き込みの本文・状態の記録は返さない。本文は『スレッドを読む』で読む
+  - item: 件数
+    constraint: 制限なし（キーだけのため、ER 図の `threads.yaml` の規模 ~1000 件でも結果は小さい）
+  - item: 同時の呼び出し
+    constraint: 読むだけでロックを取らない（『MCP サーバーの起動』の同時の呼び出し）
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#

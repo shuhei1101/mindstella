@@ -1,0 +1,146 @@
+title: "スレッドの読み取り"
+entry:
+  kind: endpoint
+  value: GET /api/threads
+flows:
+  - name: 正常系
+    summary: 全てのスレッドを書き込みと状態の記録ごと返し、AI の既読は変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、スレッド TH-1（オープン・D-1 への利用者の未読の書き込み）・TH-2（AI が理由つきでクローズにした）を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/threads
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET
+        IF-->>WS: threads.yaml と項目を読む
+        IF-->>クライアント: 200、JSON（threads）
+      ```
+    expected:
+      - ステータスが 200 で、`threads` が TH-1・TH-2 の 2 件（状態で絞らない）
+      - TH-1 の `target_title` が D-1 のタイトルで、書き込みの本文を含む
+      - 'TH-2 の `events` が `author: ai` と理由を持つ'
+      - ワークスペースの全てのファイルの中身が、読む前と同じ（AI の既読にしない）
+    test: test_normal
+  - name: 正常系（スレッドが無い）
+    summary: threads.yaml が無ければ空を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`threads.yaml` を持たないワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/threads
+
+        クライアント->>IF: GET
+        IF-->>クライアント: 200、JSON（threads は空）
+      ```
+    expected:
+      - ステータスが 200 で、`threads` が空
+      - '`threads.yaml` が作られていない'
+    test: test_normal_when_empty
+  - name: 異常系（スレッドの形が崩れている・422）
+    summary: 手で崩した threads.yaml は読まずに合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 から `posts` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/threads
+
+        クライアント->>IF: GET
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - ステータスが 422 で、`detail` に `threads.yaml` がある
+    test: test_error_when_schema_mismatch
+lead: スレッドを全て、書き込みと状態の記録ごとその場で読んで返す。プレビューの画面がスレッドの一覧とスレッド 1 件を描くときと、書き換えの知らせを受けたときに読む。AI の既読は変えない。
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+response:
+  - name: threads[].id
+    type: str
+    description: スレッドの ID。並びは最後の書き込みの日時の新しい順
+  - name: threads[].status
+    type: Literal['open', 'closed']
+    description: 状態
+  - name: threads[].tags
+    type: list[str]
+    description: タグ
+  - name: threads[].summary
+    type: str | None
+    description: 要約
+  - name: threads[].target
+    type: str | None
+    description: 向けた項目の ID
+  - name: threads[].target_title
+    type: str | None
+    description: その項目のタイトル。項目が消えていれば `null`
+  - name: threads[].loc
+    type: dict | None
+    description: 最初の書き込みに添えた箇所
+  - name: threads[].posts[].id
+    type: str
+    description: 書き込みの ID
+  - name: threads[].posts[].author
+    type: Literal['user', 'ai']
+    description: 書き手
+  - name: threads[].posts[].body
+    type: str
+    description: 本文
+  - name: threads[].posts[].created
+    type: str
+    description: 書いた日時
+  - name: threads[].events[].kind
+    type: Literal['closed', 'reopened']
+    description: 状態の記録の種類
+  - name: threads[].events[].author
+    type: Literal['user', 'ai']
+    description: 状態を変えた書き手
+  - name: threads[].events[].reason
+    type: str | None
+    description: 理由
+  - name: threads[].events[].created
+    type: str
+    description: 変えた日時
+response_notes: AI の既読（`read`）と取り込み済み（`taken`）は画面に出さないため返さない。
+status_codes:
+  - code: '200'
+    condition: 読めた（`threads.yaml` が無いときは空）
+  - code: '422'
+    condition: '`threads.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
+    notes: '`detail` は『記録の取得』の 422 と同じ形'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 読む時
+    constraint: 呼ばれるたびに `threads.yaml` と項目を読み直す。『記録の取得』はスレッドを返さない
+  - item: 本文の形
+    constraint: '`application/json; charset=utf-8`。日本語はエスケープしない。`Cache-Control: no-store`'
+  - item: 接続先の確かめ
+    constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403。確かめは『プレビューの配信』の異常系が持つ）
+  - item: 件数
+    constraint: 制限なし（クローズも含めて全て返し、絞り込みは画面が持つ。ER 図の `threads.yaml` の規模 ~1000 件）
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#

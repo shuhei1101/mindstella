@@ -1,0 +1,107 @@
+title: "未読へ戻す"
+entry:
+  kind: trigger
+  value: Claude Code の `SessionStart` のフック（新しい会話・再開・`/clear`・圧縮のたび）が、プラグインの `hooks/hooks.json` から `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/reset_unread.py` を呼ぶ
+flows:
+  - name: 正常系
+    summary: 作業フォルダとその直下のワークスペースの全ての書き込みを未読に戻し、取り込み済みは残す
+    setup:
+      - name: Mock
+        description: Claude Code の代わりに、フックの入力の JSON（`cwd` はテストの一時フォルダ、`source` は `clear`）を標準入力に渡してスクリプトを起動する
+      - name: make_workspace
+        description: 一時フォルダの直下のワークスペース `talk/` に、既読の書き込みを持つスレッド TH-1（利用者の書き込みは取り込み済み）とクローズの TH-2 を持たせる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as reset_unread.py
+        participant WS as ワークスペース
+
+        CC->>IF: SessionStart の入力（cwd）
+        IF-->>WS: cwd と直下の .mindstella/threads.yaml を探す
+        IF->>WS: 全ての書き込みの read を false にする
+        IF-->>CC: 終了コード 0
+      ```
+    expected:
+      - 終了コードが 0 で、標準出力に何も書かない
+      - TH-1・TH-2 の全ての書き込みの `read` が `false`
+      - 利用者の書き込みの `taken` と、状態・要約・状態の記録は呼ぶ前と同じ
+      - '`threads` を `awaiting` で呼ぶと 0 件（未読に戻しても取り込み待ちにしない）'
+    test: test_normal
+  - name: 正常系（ワークスペースが無い）
+    summary: ワークスペースを持たないフォルダでは何も書かずに終わる
+    setup:
+      - name: Mock
+        description: 正常系と同じくフックの入力の JSON を渡して起動する
+      - name: 空のフォルダ
+        description: '`.mindstella/` を持たない一時フォルダ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as reset_unread.py
+
+        CC->>IF: SessionStart の入力（cwd）
+        IF-->>CC: 終了コード 0
+      ```
+    expected:
+      - 終了コードが 0 で、一時フォルダにファイルが作られていない
+    test: test_normal_when_no_workspace
+  - name: 正常系（スレッドの形が崩れている）
+    summary: 読めない threads.yaml は書き換えず、会話の始まりを止めない
+    setup:
+      - name: Mock
+        description: 正常系と同じくフックの入力の JSON を渡して起動する
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 から `posts` を消したワークスペース `talk/`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as reset_unread.py
+
+        CC->>IF: SessionStart の入力（cwd）
+        IF->>IF: スキーマに合わない
+        IF-->>CC: 終了コード 0、標準エラーに理由
+      ```
+    expected:
+      - 終了コードが 0 で、標準エラーに `threads.yaml` と理由の行がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_schema_mismatch
+lead: Claude Code が会話を始めるたびに、作業フォルダのワークスペースのスレッドの書き込みを全て AI の未読に戻す。取り込み済みは戻さない。
+idempotent: true
+side_effects: 見つけたワークスペースごとに `threads.yaml` の書き込みの `read` を `false` にする（既に全て未読なら書かない）。一時ファイルから `os.replace` で置き換える
+request:
+  - name: cwd
+    type: str
+    required: true
+    location: body
+    description: Claude Code がフックの標準入力に渡す JSON の作業フォルダ
+  - name: source
+    type: Literal['startup', 'resume', 'clear', 'compact']
+    required: false
+    default: なし（どの契機でも同じに戻す）
+    location: body
+    description: 会話を始めた契機。読まない
+exceptions:
+  - name: なし（正常終了）
+    condition: 戻したか、戻すワークスペースが無かった（読めない・書けないワークスペースは飛ばして標準エラーに理由を書く）
+    notes: 終了コード 0。標準出力には何も書かない（会話の文脈に入れない）
+constraints:
+  - item: 契機
+    constraint: プラグインの `hooks/hooks.json` の `SessionStart`（`matcher` なし。`startup`・`resume`・`clear`・`compact` の全て）。要件の `未確定`（未読に戻す契機）の推奨案 A
+    notes: 会話の文脈を失う契機と一致するのは、会話の始まりに流れるフックだけ
+  - item: 起動するコマンド
+    constraint: '`"${MINDSTELLA_VENV:-$HOME/.mindmap/venv}/bin/python" "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/reset_unread.py"`。仮想環境は『依存の確認』と同じもの（PyYAML を使う）。仮想環境が無くて起動できないときは Claude Code がフックの失敗を表示するだけで、会話は始まる'
+  - item: 探す範囲
+    constraint: '`cwd` と、その直下のフォルダのうち `.mindstella/config.yaml` を持つもの。それより深くは探さない（起動スクリプトはワークスペースかその親で Claude Code を立てる）'
+  - item: 戻すもの
+    constraint: 書き込みの `read` だけ。`taken`・状態・要約・タグ・状態の記録は書き換えない（要件『AI の既読・未読』）
+  - item: 同時の書き込み
+    constraint: ワークスペースのロックファイル `.mindstella.lock` に `fcntl.flock` の排他ロックを取ってから読み・書く（『MCP サーバーの起動』の同時の呼び出し）
+  - item: 上限
+    constraint: ロックを待つのはワークスペースごとに 5 秒まで。超えたらそのワークスペースを飛ばして標準エラーに書く
+    notes: 会話の始まりを待たせない。ロックを持つ書き換えは 1 回のファイルの置き換えで終わる
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/外部ライブラリ/claude-code#

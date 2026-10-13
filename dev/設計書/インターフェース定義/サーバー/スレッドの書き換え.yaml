@@ -1,0 +1,210 @@
+title: "スレッドの書き換え"
+entry:
+  kind: mcp_tool
+  value: '`update_thread`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__update_thread`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 返信せずに、読んだ利用者の書き込みを取り込み済みにして要約を書き直す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: AI がクローズにしたスレッド TH-1（利用者の `了解` が既読で、取り込んでいない）を持つワークスペース
+        notes: '`summary` は `D-6 の確認を出す操作の質問。了解を受けた`、`take` は `true`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_thread（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_thread workspace id TH-1 summary take true
+        IF->>WS: 要約を書き、既読の利用者の書き込みを取り込み済みにする
+        IF-->>クライアント: JSON（taken [TH-1-3]）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - TH-1 の要約が渡した文で、`了解` の `taken` に日時が入る
+      - 書き込みの件数と状態は呼ぶ前と同じ（クローズのまま）
+      - '`threads` を `awaiting` で呼ぶと TH-1 を含まない'
+    test: test_normal
+  - name: 正常系（タグを書き換える）
+    summary: タグだけを渡した一覧で置き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグ `画面` を持つスレッド TH-1 を持つワークスペース
+        notes: '`tags` は `["画面", "調査"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_thread（MCP のツール）
+
+        クライアント->>IF: update_thread workspace id TH-1 tags
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - TH-1 のタグが `画面`・`調査` で、要約と書き込みは呼ぶ前と同じ
+    test: test_normal_when_tags
+  - name: 異常系（変えるものが無い・InvalidArgumentError）
+    summary: summary・tags・take のどれも渡さなければ書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_thread（MCP のツール）
+
+        クライアント->>IF: update_thread workspace id TH-1
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文に `エラー: 引数の誤り:` がある'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_nothing_to_update
+  - name: 異常系（スレッドが無い・ThreadNotFoundError）
+    summary: 無い ID を指すと何も書かずに終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_thread（MCP のツール）
+
+        クライアント->>IF: update_thread workspace id TH-9 take true
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになり、本文に `TH-9` がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_thread_not_found
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_thread（MCP のツール）
+
+        クライアント->>IF: update_thread workspace id TH-1 take true
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+  - name: 異常系（書き込めない・WriteFailedError）
+    summary: 書き込めないワークスペースでは前のスレッドを残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_thread（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_thread workspace id TH-1 summary
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: ` で始まりトレースバックを含まない'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_write_fails
+lead: スレッドの要約とタグを書き換え、AI が読んだ利用者の書き込みを取り込み済みにする。返信せずに取り込むとき（クローズにしたとき・クローズのまま取り込むとき）に使う。
+idempotent: true
+side_effects: '`threads.yaml` のそのスレッドの `summary`・`tags` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える'
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: id
+    type: str
+    required: true
+    location: argument
+    description: スレッドの ID
+    example: TH-1
+  - name: summary
+    type: str | None
+    required: false
+    default: なし（要約を変えない）
+    location: argument
+    description: 書き直した要約
+    constraints: 前後の空白を除いて 1〜400 文字
+  - name: tags
+    type: list[str] | None
+    required: false
+    default: なし（タグを変えない）
+    location: argument
+    description: 置き換えるタグの一覧。空の一覧でタグを外す
+    constraints: 重なりを持たない。空の文字列を含まない
+  - name: take
+    type: bool
+    required: false
+    default: 'false'
+    location: argument
+    description: 真なら、そのスレッドの AI が既読にした取り込んでいない利用者の書き込みを取り込み済みにする
+response:
+  - name: id
+    type: str
+    description: スレッドの ID
+  - name: taken
+    type: list[str]
+    description: 取り込み済みにした利用者の書き込みの ID。無ければ空
+exceptions:
+  - name: なし（正常終了）
+    condition: 書き換えた
+    notes: 結果を返す
+  - name: InvalidArgumentError
+    condition: '`summary`・`tags`・`take` のどれも渡さない（`take` が偽）、`summary` が空か上限を超える、`tags` に重なりか空の文字列がある'
+    notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
+  - name: ThreadNotFoundError
+    condition: '`id` のスレッドが無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書き込まない
+  - name: WriteFailedError
+    condition: '`threads.yaml` の書き込みか置き換えに失敗した'
+    notes: ツールのエラー。前の `threads.yaml` を残す
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 取り込み済みにする範囲
+    constraint: 『スレッドへの返信』と同じく、AI が既読にした利用者の書き込みだけ。クローズのスレッドも書き換える
+  - item: 要約の上限
+    constraint: 400 文字
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+  - item: 同時の呼び出し
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
