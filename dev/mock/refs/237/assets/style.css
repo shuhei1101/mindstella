@@ -83,5 +83,17 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 変わった: 斜めの縞 */
 .df-map-m.df-chg i { border: 1px solid var(--df-chg); background: repeating-linear-gradient(135deg, var(--df-chg) 0 3px, var(--surface) 3px 6px); }
 
+/* 案 A の帯: マウスで押したまま上下に動かして本文を送れることを、つかむ形のポインタで示す（印の上は押す形） */
+@media (pointer: fine) {
+  .map-a > .df-map { cursor: grab; }
+  .map-a > .df-map .df-map-m { cursor: pointer; }
+}
+/* ドラッグの間の見えている範囲の面: つかんでいる面を 1 段濃くする */
+.df-map.is-dragging .df-map-view { background: color-mix(in oklab, var(--text) 24%, transparent); }
+/* ドラッグの間: 帯の外へ出てもつかむ形のポインタのままにし、本文の文を選ばない */
+body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map .df-map-m { cursor: grabbing; user-select: none; }
+/* ドラッグの間の印: 乗っても面を変えない */
+.df-map.is-dragging .df-map-m:hover { background: none; }
+
 /* 飛んだ先の箇所: 当たった語と同じ色の輪で、少しの間だけ示す */
 .df-map-hit { box-shadow: 0 0 0 2px var(--hit); }

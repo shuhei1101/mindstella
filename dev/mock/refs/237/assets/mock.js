@@ -78,6 +78,23 @@
       document.querySelector(".panel-body").scrollTop = Number(scroll);
     }, PANEL_SETTLE_MS));
   }
+  // 撮影用: クエリの drag の px だけ、見えている範囲の面をマウスでつかんで下へ動かす（撮影の手順はマウスを押したまま動かせないため）。release が 1 なら離すところまで行う
+  const drag = params.get("drag");
+  if (drag !== null) {
+    waitFor(".df-map-view[style]", () => setTimeout(() => {
+      const map = document.querySelector(".df-map");
+      const face = map.querySelector(".df-map-view").getBoundingClientRect();
+      const x = face.left + face.width / 2;
+      const y = face.top + face.height / 2;
+      const send = (type, clientY) => map.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: "mouse", button: 0, clientX: x, clientY }));
+      // 作った指の位置は捕まえられないため、捕まえる呼び出しだけを空にする
+      map.setPointerCapture = () => {};
+      send("pointerdown", y);
+      send("pointermove", y + Number(drag) / 2);
+      send("pointermove", y + Number(drag));
+      if (params.get("release") === "1") send("pointerup", y + Number(drag));
+    }, PANEL_SETTLE_MS));
+  }
   // 見本: 表示の設定のパネルを開く
   if (body.dataset.open === "settings") waitFor(".settings-btn", (button) => button.click());
   // 撮影用: mark に渡した CSS セレクタの要素に赤枠を付ける

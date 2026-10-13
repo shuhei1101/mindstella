@@ -66,15 +66,15 @@
       /** 変わった箇所が多い見本の印の並び（帯に収まるよう、印の最小の長さを詰める） */
       const DENSE = Array.from({ length: 30 }, (_, at) => [["chg", "add", "del"][at % 3], at * 3.3 + 0.5, 2.6]);
 
-      /** 帯の中身（見えている範囲の枠と印）の HTML。horizontal は案 B、view は見えている範囲（[始まりの割合, 長さの割合]、無ければ出さない）、state は印の番号 → 見本のクラス */
-      const mapHtml = ({ marks, horizontal = false, view = [0, 24], state = {} }) => {
+      /** 帯の中身（見えている範囲の枠と印）の HTML。horizontal は案 B、view は見えている範囲（[始まりの割合, 長さの割合]、無ければ出さない）、state は印の番号 → 見本のクラス、dragging はドラッグの間 */
+      const mapHtml = ({ marks, horizontal = false, view = [0, 24], state = {}, dragging = false }) => {
         const at = (start, size) => (horizontal ? `left:${start}%;width:${size}%` : `top:${start}%;height:${size}%`);
         const viewHtml = view === null ? "" : `<span class="df-map-view" aria-hidden="true" style="${at(...view)}"></span>`;
         const marksHtml = marks.map(([kind, start, size], index) => {
           const name = `${NAME[kind]}（${index + 1} / ${marks.length}）`;
           return `<button class="df-map-m df-${kind} ${state[index] ?? ""}" type="button" aria-label="${name}" title="${name}" tabindex="${index === 0 ? 0 : -1}" style="${at(start, size)}"><i aria-hidden="true"></i></button>`;
         }).join("");
-        return `<div class="df-map" role="toolbar" aria-orientation="${horizontal ? "horizontal" : "vertical"}" aria-label="変わった箇所">${viewHtml}${marksHtml}</div>`;
+        return `<div class="df-map${dragging ? " is-dragging" : ""}" role="toolbar" aria-orientation="${horizontal ? "horizontal" : "vertical"}" aria-label="変わった箇所">${viewHtml}${marksHtml}</div>`;
       };
 
       /** 詳細パネルの見本の HTML（見出しの帯と、本文とミニマップを並べる枠） */
@@ -101,6 +101,10 @@
         sec("案 A: ホバー・キーボードのフォーカス", "印のホバーは面の色、フォーカスは印の色の輪。帯はタブで 1 回だけ止まり、上下の矢印キーと Home / End で印の間を移る。Enter / Space でその箇所まで本文を送る。",
           panelHtml({ name: "ホバー", text: LONG, marks: GUIDE, state: { 2: "is-hover" } }) +
           panelHtml({ name: "フォーカス", text: LONG, marks: GUIDE, state: { 3: "is-focus" } })),
+        sec("案 A: 押したまま上下にドラッグして送る（PC）", "マウスで帯を押したまま上下に動かすと、スクロールバーと同じように本文を送る。4px 動くまでは印を押しただけとして扱う。",
+          panelHtml({ name: "前: 帯に乗せるとつかむ形のポインタ", text: LONG, marks: GUIDE }) +
+          panelHtml({ name: "間: 面を 1 段濃く、つかんでいる形のポインタ", text: LONG, marks: GUIDE, view: [38, 24], dragging: true }) +
+          panelHtml({ name: "後: 離した位置で止まり、印へは飛ばない", text: LONG, marks: GUIDE, view: [38, 24] })),
         sec("案 A: 印の数と本文の長さ", "印が 1 つでも帯を出す。本文が送れない長さのときは、見えている範囲の面を出さない。印が帯に収まらないほど多いときは、印の最小の長さを詰めて全て並べる。",
           panelHtml({ name: "印が 1 つ", text: LONG, marks: [["chg", 46, 6]] }) +
           panelHtml({ name: "本文が送れない", text: "短い本文。", marks: [["chg", 40, 14]], view: null }) +

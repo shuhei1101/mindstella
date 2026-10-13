@@ -7512,6 +7512,8 @@ var MindmapPreview;
     const MAP_HIT_MS = 1600;
     /** 237: 飛んだ先を、本文の領域の上からこの割合の位置に置く */
     const MAP_JUMP_RATIO = 1 / 4;
+    /** 237: 押してからこの距離（px）より動かしたら、印を押したのではなくドラッグとして扱う */
+    const MAP_DRAG_SLOP_PX = 4;
     /** 237: ミニマップに並べる差分の印（キーの差分・本文の差分・図の差分・Raw の差分）のセレクタ */
     const MAP_TARGETS = ".df-kv, .md ins.df-blk, .md del.df-blk, .md li.df-li-add, .md tr.df-add, .md tr.df-del, .diagram.df-changed, .diagram.df-frame, .df-raw .df-line.df-add, .df-raw .df-line.df-del";
     /** 237: 差分の印の要素 → 印の種類 */
@@ -7650,6 +7652,9 @@ var MindmapPreview;
                         tabindex: at === current ? "0" : "-1",
                         style: horizontal ? `left:${start}px;width:${size}px` : `top:${start}px;height:${size}px`,
                         onclick: () => {
+                            // ドラッグで送った後に指を離した印は、飛ばない
+                            if (dragged)
+                                return;
                             current = at;
                             jump(target);
                             rebuild();
@@ -7664,6 +7669,50 @@ var MindmapPreview;
             if (focused)
                 marks[current]?.focus();
         };
+        // マウスで押したまま帯に沿って動かすと、スクロールバーと同じように本文を送る（縦の帯だけ）。押した所が見えている範囲の面の中なら面のつかんだ位置を保ち、外なら面の中央を押した所に合わせる
+        let drag = null;
+        let dragged = false;
+        /** ドラッグの間の指の位置に、見えている範囲の面が来るまで本文を送る */
+        const dragTo = (clientY) => {
+            const rect = map.getBoundingClientRect();
+            body.scrollTop = ((clientY - rect.top - drag.grab) / rect.height) * body.scrollHeight;
+        };
+        if (!horizontal) {
+            map.addEventListener("pointerdown", (event) => {
+                if (event.pointerType !== "mouse" || event.button !== 0 || view.hidden)
+                    return;
+                const face = view.getBoundingClientRect();
+                const inside = event.clientY >= face.top && event.clientY <= face.bottom;
+                drag = { id: event.pointerId, startY: event.clientY, grab: inside ? event.clientY - face.top : face.height / 2 };
+                dragged = false;
+            });
+            map.addEventListener("pointermove", (event) => {
+                if (drag === null || event.pointerId !== drag.id)
+                    return;
+                // 押した位置から少し動くまでは、印を押しただけとして扱う
+                if (!dragged && Math.abs(event.clientY - drag.startY) < MAP_DRAG_SLOP_PX)
+                    return;
+                if (!dragged) {
+                    dragged = true;
+                    map.setPointerCapture(event.pointerId);
+                    map.classList.add("is-dragging");
+                    document.body.classList.add("df-map-dragging");
+                }
+                dragTo(event.clientY);
+            });
+            /** ドラッグを終える（離した・取り消された） */
+            const endDrag = (event) => {
+                if (drag === null || event.pointerId !== drag.id)
+                    return;
+                drag = null;
+                map.classList.remove("is-dragging");
+                document.body.classList.remove("df-map-dragging");
+                // 離した直後の click まで印を押した扱いにしないよう、次のコマで戻す
+                requestAnimationFrame(() => (dragged = false));
+            };
+            map.addEventListener("pointerup", endDrag);
+            map.addEventListener("pointercancel", endDrag);
+        }
         // 矢印キーと Home / End で印の間を移る
         map.addEventListener("keydown", (event) => {
             const [prevKey, nextKey] = horizontal ? ["ArrowLeft", "ArrowRight"] : ["ArrowUp", "ArrowDown"];
