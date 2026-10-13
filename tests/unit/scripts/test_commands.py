@@ -1370,6 +1370,57 @@ def test_run_preview_url_when_readme_write_fails(
     assert [record.levelno for record in caplog.records] == [logging.WARNING]
 
 
+def _make_workspace_with_set(make_workspace: MakeWorkspace) -> Path:
+    """検討事項 D-1 を足して commit し、まとまり V-1 を持つワークスペースを作る。"""
+    root = make_workspace()
+    item = {"title": "問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}
+    commands.run_add(root, "decision", item, now=_fixed_now)
+    commands.run_commit(root, "足す", now=_fixed_now)
+    return root
+
+
+def test_run_preview_url_when_diff_given(make_workspace: MakeWorkspace) -> None:
+    """まとまりを指す URL を返し、README にはハッシュを書かない（正常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace)
+    url = "http://127.0.0.1:1/mindstella.html"
+    previews = _SequenceRegistry((url, True), (url, False))
+    # 実行（1 回目は立てて README を書く。2 回目は立っている配信を引く）
+    first = commands.run_preview_url(root, previews=previews, diff="V-1")
+    written_after_first = (root / "README.md").read_text(encoding="utf-8")
+    second = commands.run_preview_url(root, previews=previews, diff="V-1")
+    # 検証
+    assert first["url"] == f"{url}#diff=V-1"
+    assert second["url"] == f"{url}#diff=V-1"
+    assert url in written_after_first
+    assert "#diff=" not in written_after_first
+
+
+def test_run_preview_url_when_diff_not_found(make_workspace: MakeWorkspace) -> None:
+    """記録に無いまとまりでは配信を立てない（異常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace)
+    previews = _FakeRegistry()
+    # 実行・検証
+    with pytest.raises(ArgumentError, match=r"^引数の誤り: diff: .*V-99") as exc_info:
+        commands.run_preview_url(root, previews=previews, diff="V-99")
+    assert exc_info.value.argument == "diff"
+    assert previews.started == []
+
+
+def test_run_preview_url_when_changes_invalid(make_workspace: MakeWorkspace) -> None:
+    """changes.yaml が読めなければ配信を立てない（異常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace)
+    (root / RECORD_DIR / "changes.yaml").write_text("sets: [\n", encoding="utf-8")
+    previews = _FakeRegistry()
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        commands.run_preview_url(root, previews=previews, diff="V-1")
+    assert exc_info.value.lines[0].startswith("changes.yaml: ")
+    assert previews.started == []
+
+
 def test_run_readme(make_workspace: MakeWorkspace) -> None:
     """配っていなければ URL なしで書く（正常系）。"""
     # 準備

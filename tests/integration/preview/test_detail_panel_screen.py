@@ -1993,14 +1993,13 @@ def test_diff_head(
     assert page.inner_text("aside.panel .df-head-t") == "決める"
     assert page.inner_text("aside.panel .df-when") == "10/02 09:00"
     # 「前回開いてから」は範囲の始まりを添える
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'since'}))")
+    page.goto(f"{url}{DIFF_D1_HASH}&diff=since")
     page.reload()
     page.wait_for_selector("aside.panel .df-head")
     assert page.inner_text("aside.panel .df-head-t") == "前回開いてから"
     assert page.inner_text("aside.panel .df-when") == "10/01 21:00 より後"
     # 変わっていない項目（V-2 で足した・変えたものに入らない T-1）には出さない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
-    page.goto(f"{url}#tab=tasks&view=table&id=T-1")
+    page.goto(f"{url}#tab=tasks&view=table&id=T-1&diff=V-2")
     page.reload()
     page.wait_for_selector("aside.panel.open .d-title")
     assert page.locator("aside.panel .df-head").count() == 0
@@ -2020,7 +2019,7 @@ def test_diff_new_badge(
     assert page.locator("aside.panel .df-kv").count() == 0
     assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     # 変えただけの項目（V-2 の D-1）には札を置かない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
+    page.goto(f"{url}{DIFF_D1_HASH}&diff=V-2")
     page.reload()
     page.wait_for_selector("aside.panel .df-head")
     assert page.locator("aside.panel .d-title .df-badge").count() == 0

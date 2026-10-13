@@ -109,14 +109,43 @@ scenarios:
       - 再読み込みの操作をせずに、A-1 の詳細パネルの本文が書き換えた後の HTML（「絞り込みの画面」）で描かれ、「一覧の画面」が消える
       - 描き直した後も、開いていた画面と URL のハッシュが変わらない
     test: test_normal_when_html_body_rewritten
-lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。'
+  - name: 正常シナリオ（直したまとまりを指すリンク）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・プレビューの URL の取得を再生する。示されたリンクを端末の保存領域が空のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        U->>CC: D-1 を直してほしい
+        CC->>SV: D-1 を書き換え、書き換えをまとめる
+        SV-->>CC: まとまり V-2
+        CC->>SV: プレビューの URL
+        SV-->>CC: 127.0.0.1 の URL
+        CC-->>U: D-1 を直したことと、V-2 を指すリンクを示す
+        U->>P: リンクを開く
+        P->>SV: 記録を読む
+        SV-->>P: ワークスペースの記録
+        P-->>U: V-2 の差分の表示
+      ```
+    expected:
+      - 示したリンクが `127.0.0.1` の `/mindstella.html` を指し、ハッシュが V-2 を持つ
+      - リンクを開くと、トップバーに V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かない
+    test: test_normal_when_link_to_change_set
+lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。記録を直したときは、そのまとまりの差分を開くリンクを示す。'
 issue: 4
 primary_actor: 利用者
 trigger: 利用者が記録を見たいと言う
 preconditions:
   - ワークスペースが作成済みである
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: '応答にサーバーが配るプレビューの URL があり、開くと今の記録が出る。ワークスペースの YAML を書き換えると、開いている画面が再読み込みの操作なしで描き直される。'
+success_guarantee: '応答にサーバーが配るプレビューの URL があり、開くと今の記録が出る。ワークスペースの YAML を書き換えると、開いている画面が再読み込みの操作なしで描き直される。記録を直したときは、応答にそのまとまりの差分を開くリンクがあり、開くとそのまとまりの差分の表示で開く。'
 frequency: 話し合いの中で数回
 priority: 中
 notes:

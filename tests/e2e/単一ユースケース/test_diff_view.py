@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import Page
 from preview_helpers import (
     HISTORY_DIALOG,
     HISTORY_REDRAW_TIMEOUT_MS,
     OPENED_TICK_MS,
+    OpenInEmptyContext,
     OpenPreview,
     pick_history_point,
     snapshot_records,
@@ -854,3 +856,95 @@ def test_normal_when_html_body_changed(
     assert page.locator("aside.panel .html-marked").count() == 0
     # ワークスペースの YAML と本文の中身が、開く前と同じ
     assert snapshot_records(snapshot_tree(root)) == before
+
+
+def _hash_params(url: str) -> dict[str, list[str]]:
+    """URL のハッシュを、キー → 値の並びで返す。"""
+    return parse_qs(urlsplit(url).fragment)
+
+
+def test_normal_when_opened_with_change_set_url(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    open_in_empty_context: OpenInEmptyContext,
+    page: Page,
+) -> None:
+    """選んだまとまりが URL に残り、端末の保存領域が空のブラウザでその URL を開くと同じ差分の表示で開く（正常系）。"""
+    # 準備（A-1 を直した V-1 と、D-3 を直した V-2）
+    root = make_workspace(
+        make_item("A-1", status="完成", kind="仕様書"),
+        make_item("D-3", status="未決定", body="D-3.md"),
+        bodies={"A-1.md": BODY_A1_BEFORE, "D-3.md": BODY_V0},
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("update", workspace=ws, id="A-1", item={"body_markdown": BODY_A1_AFTER})
+    replay("commit", workspace=ws, summary="仕様書を直す")
+    replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
+    replay("commit", workspace=ws, summary="検討事項を直す")
+    open_preview(url, "#tab=docs")
+    history_before = page.evaluate("history.length")
+    # 実行（「仕様書を直す」を選ぶ）
+    pick_history_point(page, "仕様書を直す")
+    page.wait_for_function("location.hash.includes('diff=V-1')", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（URL のハッシュが V-1 を持ち、履歴の数が増えていない）
+    assert _hash_params(page.url)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before
+    # 実行（端末の保存領域が空のブラウザで同じ URL を開く）
+    opened = open_in_empty_context(page.url)
+    opened.wait_for_selector(".df-chip", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（「仕様書を直す」の札が出て、資料のタブと A-1 に印が付き、検討事項のタブには付かない）
+    assert opened.inner_text(".df-chip-t").endswith("仕様書を直す")
+    assert _marked_tabs(opened) == ["docs"]
+    assert opened.locator('.doc-card[data-id="A-1"] .df-mark').get_attribute("class") == MARK_CHANGED
+    # 実行（A-1 の詳細パネルを開く）
+    opened.click('.doc-card[data-id="A-1"]')
+    opened.wait_for_selector("aside.panel.open .d-title")
+    # 検証（そのまとまりの前後の本文の足した・消した印が出る）
+    added, removed = _block_texts(opened)
+    assert "直した後の仕様です。" in added
+    assert "直す前の仕様です。" in removed
+    # 実行（検討事項の表を開く）
+    opened.click('nav.tabbar a[data-tab="decisions"]')
+    opened.click('.segment button[data-view="table"]')
+    opened.wait_for_selector(TABLE_ROWS)
+    # 検証（D-3 には印が付かない）
+    assert _row_marks(opened) == {"D-3": None}
+    # 実行（「差分を出さない（今の内容）」を選ぶ）
+    opened.get_by_role("button", name="変更履歴").click()
+    opened.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    opened.locator("dialog.hist .hist-item[data-sel='']").click()
+    opened.wait_for_selector(".df-chip", state="detached", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（印が消え、URL のハッシュが時点を持たない）
+    assert opened.locator(".df-mark").count() == 0
+    assert opened.locator("nav.tabbar .df-dot").count() == 0
+    assert "diff" not in _hash_params(opened.url)
+
+
+def test_normal_when_url_points_missing_change_set(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_in_empty_context: OpenInEmptyContext,
+) -> None:
+    """記録に無いまとまりを指す URL では、差分を出さずに開き、URL のハッシュから時点を外す（正常系）。"""
+    # 準備（まとまり V-1 だけを持つ）
+    root = make_workspace(make_item("D-3", status="未決定", body="D-3.md"), bodies={"D-3.md": BODY_V0})
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
+    replay("commit", workspace=ws, summary="検討事項を直す")
+    # 実行（記録に無い V-99 を指す URL を、端末の保存領域が空のブラウザで開く）
+    opened = open_in_empty_context(f"{url}#tab=decisions&view=table&diff=V-99")
+    opened.wait_for_selector(TABLE_ROWS)
+    opened.wait_for_function("!location.hash.includes('diff=')", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（選んだ時点の札が無く、どのタブにも D-3 にも印が付かない）
+    assert opened.locator(".df-chip").count() == 0
+    assert opened.locator("nav.tabbar .df-dot").count() == 0
+    assert _row_marks(opened) == {"D-3": None}
+    # 検証（URL のハッシュが時点を持たない）
+    assert "diff" not in _hash_params(opened.url)

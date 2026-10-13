@@ -250,8 +250,8 @@ functions:
          - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（13 へ）
       3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
          - 「前回開いてから」の始まりを決める。`SINCE_KEY` が sessionStorage にあればそれを使う。無ければ、サーバーの配信では `postOpened`、配る書き出しでは `localStorage` の `opened` を読んで今の日時に書き換え、`null` ならタブを開いた日時にして `SINCE_KEY` に残す
-         - 選んだ時点を引く（`resolveDiffPoint`。`Prefs.diffSel` と始まり）
-      4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）
+         - 選んだ時点を引く（`resolveDiffPoint`。ハッシュの `diff`（`parseHash` の `Route.diff`）があればそれ、無ければ `Prefs.diffSel` と、始まり）。引けたら `Prefs.diffSel` と `Route.diff` をその時点にし、引けなければどちらも `null` にして残す（`savePrefs`）
+      4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
       5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
          - 絞り込みのドロワー・コメントの一覧・表示の設定のパネルのどれかを開いているときは、描いた後に前の `inertBehind` が返した解除を呼んでから、開いているパネルで `inertBehind` を呼び直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）
@@ -278,7 +278,7 @@ functions:
          - 概要へ移ったときは `drawerOpen` を偽にする
       10. 変更履歴のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
          - 「変更履歴を開く」では変更履歴のモーダルを開く（`historyDialog`。時点の件数は `resolveDiffPoint` の `added`・`changed`・`removed` の件数の和）
-         - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の引き直しと 5 をやり直す
+         - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の引き直しと 5 をやり直す。`Route.diff` をその時点（やめるときは `null`）にしたハッシュに置き換える（`navigate`、`push: false`）
       11. 表示の設定のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
          - トップバーの表示の設定のボタンで `DisplayState.open` を入れ替える。開くときはコメントの一覧と絞り込みのドロワーを閉じ（`listOpen`・`drawerOpen` を偽）、詳細パネルは開いたままにする。閉じる（×・Esc。詳細パネルを開いていれば Esc は詳細パネルを先に閉じる）ときはトップバーのボタンにフォーカスを戻す
          - 「表示する種類を変える」では `Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 をやり直す。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
@@ -298,10 +298,11 @@ functions:
          - 記録を読み直してロックした項目が無くなっていれば、その画面の `LockState` を `null` にする
       13. 書き換えの知らせにつなぐ（`subscribeEvents`）
          - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の並べ替え・`FilterState`・`CommentState`・`DisplayState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
+         - 読み直した記録で選んだ時点が引けなくなった（まとまりが消えた・`pending` が空になった）場合、`Prefs.diffSel` と `Route.diff` を `null` にして残し（`savePrefs`）、ハッシュを置き換える（`navigate`、`push: false`）
          - 読み直した `settings.display` が前と違う場合、`savedDisplay` と等しければ `savedDisplay` を `null` に戻すだけにする。そうでなければ、画面の下に「ワークスペースの既定が変わりました。」を `NOTICE_MS` の間出し、`message` を「ワークスペースの既定が変わりました（{MM/DD HH:mm}）。」にする（上書きを持たない項目だけが、読み分けで新しい既定になる）
          - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを描き直す
          - つながり直した場合、記録とレビュー中を読み直して接続の状態を `online` に戻す
-      14. `hashchange`・`popstate` で 4・5 を繰り返す
+      14. `hashchange`・`popstate` で 3 の選んだ時点の引き直しと 4・5 を繰り返す
 
       文書の `keydown` で `L`（大文字・小文字を問わない）を受けたら、修飾キー（Ctrl・Alt・Meta）が無く、変換中（`isComposing`）でなく、フォーカスが入力欄（`input`・`textarea`・`select`・編集できる要素）に無く、`dialog[open]` と `:popover-open` が無く、幅 901px 以上で、ネットワークを開いていて詳細パネルの項目があるときだけ、`lockTap` に `pressed` と `open` を詳細パネルの項目として渡し、ネットワークの「押した」と同じに扱う（`shake` では `shakeGraphKey` を呼ぶ）。それ以外は何もしない
 
@@ -312,6 +313,7 @@ functions:
       画面の作り: '`body` を窓の高さに固定し、トップバーとタブの帯の下に画面ごとの領域（画面設計の「画面の領域」）を 1 つ置く（`style.css`）。ページ全体はスクロールさせず、表・ボード（幅 721px 以上）とマップ（幅 901px 以上）は領域の高さいっぱいに広げて中でスクロールさせ、それより狭い幅では領域ごとスクロールさせる。`100dvh` から帯と余白を引く高さの計算（`.table-wrap`・`.map-wrap`・`.fg-wrap`・`.g3-wrap`）はやめる。詳細パネルの位置（`.panel` の `top`）は帯の下のまま'
       見出しのハッシュ: '5 で詳細パネルに `Route.heading` を渡す。詳細パネルの `on.heading` では `Route.heading` を書き換え、履歴に積まずにハッシュを置き換える（`navigate`、`push: false`）。項目へ移るときは `heading` を `null` にする'
       詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
+      差分の時点の引き継ぎ: 画面・項目を移るとき（画面と部品から受けた移る先の `Route` と、全体の検索から開くとき。`go`）は、移る先の `Route.diff` を今の `Route.diff` にしてから `route` に入れて書く（`navigate`）。概要の `tableRoute` のように `Route` を一から作る移る先でも `diff` を落とさない。`Route.diff` を変えるのは 3・10・13・14 だけ
   - name: formKey
     title: 入力欄のキー
     kind: 関数

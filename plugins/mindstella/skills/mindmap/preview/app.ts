@@ -439,13 +439,24 @@ namespace MindmapPreview {
         : { ...next, tab: "overview", view: defaultView("overview"), filters: {} };
     // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
     const since = await resolveSince({ serverMode, prefs, persist });
-    let point: DiffPoint | null = resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
 
     // ===== 画面の土台 =====
     const top = h({ tag: "div", attrs: { id: "top" } });
     const main = h({ tag: "main", attrs: { class: "content", id: "main" } });
     document.body.prepend(top, main);
-    let route = visibleRoute(parseHash({ hash: location.hash, index }));
+    /** ハッシュの `diff`（無ければ端末の設定）が指す時点を引き、引けた時点を端末の設定と route に揃える（引けなければどちらも null） */
+    const settleDiffPoint = (next: Route): { route: Route; point: DiffPoint | null } => {
+      const settled = resolveDiffPoint(data.changes, next.diff ?? prefs.diffSel ?? null, since);
+      const sel = settled?.sel ?? null;
+      if ((prefs.diffSel ?? null) !== sel) {
+        prefs.diffSel = sel;
+        persist();
+      }
+      return { route: { ...next, diff: sel }, point: settled };
+    };
+    const initial = settleDiffPoint(visibleRoute(parseHash({ hash: location.hash, index })));
+    let route = initial.route;
+    let point: DiffPoint | null = initial.point;
     let fullViewer: HTMLElement | null = null;
     /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
     let shownHeading: { id: string; heading: string } | null = null;
@@ -461,7 +472,8 @@ namespace MindmapPreview {
       const screenChanged =
         next.tab !== route.tab || next.view !== route.view || Object.keys(next.filters).length > 0;
       const idChanged = next.id !== route.id;
-      route = next;
+      // 差分の時点は、画面・項目を移っても引き継ぐ
+      route = { ...next, diff: route.diff };
       navigate({ route: { ...route, filters: {} }, push });
       render({ screen: screenChanged || (route.tab === "decisions" && route.view === "map" && idChanged) });
     };
@@ -504,7 +516,7 @@ namespace MindmapPreview {
       if (kind === undefined) return;
       // 表示しない種類の項目は、概要の上の詳細パネルで開く
       const tab: Tab = resolved.kinds.has(kind) ? kind : "overview";
-      go({ tab, view: defaultView(tab), id, full: false, filters: {}, heading: null }, tab !== route.tab);
+      go({ tab, view: defaultView(tab), id, full: false, filters: {}, heading: null, diff: route.diff }, tab !== route.tab);
     };
 
     // ===== ロック =====
@@ -1714,6 +1726,9 @@ namespace MindmapPreview {
       prefs.diffSel = sel;
       persist();
       point = resolveDiffPoint(data.changes, sel, since);
+      // 選んだ時点を共有できるよう、履歴に積まずにハッシュへ書く
+      route = { ...route, diff: sel };
+      navigate({ route: { ...route, filters: {} }, push: false });
       redrawKeepingState();
     };
 
@@ -1759,6 +1774,13 @@ namespace MindmapPreview {
       }
       // 選んだ時点と「前回開いてから」の始まりは保ち、新しい記録で印を引き直す
       point = resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
+      // 選んだ時点が引けなくなった（まとまりが消えた・まだまとめていない変更が空になった）: 差分を出さず、ハッシュからも外す
+      if (point === null && route.diff !== null) {
+        prefs.diffSel = null;
+        persist();
+        route = { ...route, diff: null };
+        navigate({ route: { ...route, filters: {} }, push: false });
+      }
       document.title = `${data.settings.summary} | mindstella`;
       // 開いていた項目が消えた: 詳細パネルを閉じる
       if (route.id !== null && !index.byId.has(route.id)) {
@@ -1825,14 +1847,19 @@ namespace MindmapPreview {
     /** ハッシュが変わったとき（戻る・進む・手で書き換えた）、その画面を描く */
     const onLocationChange = (): void => {
       const parsed = parseHash({ hash: location.hash, index });
-      const next = visibleRoute(parsed);
-      // 表示しない種類のタブを指していた: ハッシュを概要に置き換える
-      if (next !== parsed) navigate({ route: { ...next, filters: {} }, push: false });
-      // 画面・表示形式・項目が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
+      const visible = visibleRoute(parsed);
+      // 差分の時点を引き直し、引けた時点に揃える
+      const settled = settleDiffPoint(visible);
+      const next = settled.route;
+      point = settled.point;
+      // 表示しない種類のタブを指していた・時点が引けなかった: ハッシュを置き換える
+      if (visible !== parsed || next.diff !== parsed.diff) navigate({ route: { ...next, filters: {} }, push: false });
+      // 画面・表示形式・項目・差分の時点が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
       if (toHash(next) === toHash(route) && Object.keys(next.filters).length === 0) return;
       const screen =
         next.tab !== route.tab ||
         next.view !== route.view ||
+        next.diff !== route.diff ||
         Object.keys(next.filters).length > 0 ||
         (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
       route = next;

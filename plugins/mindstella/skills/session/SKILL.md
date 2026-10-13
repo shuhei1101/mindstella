@@ -38,6 +38,8 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 設定（`.mindstella/config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す。
 資料・調査を `add` で足すときは、本文や会話でその項目を呼ぶ名前（タイトルと違う言い方）を `aliases` に、タイトルだけでは中身が分からないときは中身を表す短い文を `description` に書く。
 呼び名が増えた・変わったときは `update` で直す。タグ（`tags`）には入れない。
+記録を直して `commit` が `id` を返した後、利用者への応答・会話ログ・ワークスペースの外（Issue のスレッドなど）に直したことを書くときは、その `id` を `diff` に渡して `preview_url` を呼び、返った `url` をリンクとして添える。
+`commit` の `id` が `null` のときは添えない。
 
 ## ツール
 
@@ -69,7 +71,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | `export` | `workspace`・`out` |
 | `goal` | `workspace` |
 | `clear_release` | `workspace` |
-| `preview_url` | `workspace` |
+| `preview_url` | `workspace`・`diff`（任意。差分を開くまとまりの ID） |
 | `readme` | `workspace` |
 | `submissions` | `workspace` |
 | `take_submission` | `workspace`・`id`（送信の ID） |
