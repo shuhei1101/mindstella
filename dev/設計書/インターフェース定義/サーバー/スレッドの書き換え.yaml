@@ -48,7 +48,7 @@ flows:
     expected:
       - TH-1 のタグが `画面`・`調査` で、要約と書き込みは呼ぶ前と同じ
     test: test_normal_when_tags
-  - name: 異常系（変えるものが無い・InvalidArgumentError）
+  - name: 異常系（変えるものが無い・ArgumentError）
     summary: summary・tags・take のどれも渡さなければ書かない
     setup:
       - name: Mock
@@ -201,9 +201,6 @@ exceptions:
   - name: なし（正常終了）
     condition: 書き換えた
     notes: 結果を返す
-  - name: InvalidArgumentError
-    condition: '`summary`・`tags`・`take` のどれも渡さない（`take` が偽）、`summary` が空か上限を超える、`tags` に重なりか空の文字列がある'
-    notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
   - name: ThreadNotFoundError
     condition: '`id` のスレッドが無い'
     notes: ツールのエラー。何も書き込まない
@@ -216,6 +213,9 @@ exceptions:
   - name: SchemaMismatchError
     condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: ArgumentError
+    condition: '`summary`・`tags`・`take` のどれも渡さない（`take` が偽）、`summary` が空か上限を超える、`tags` に重なりか空の文字列がある'
+    notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形

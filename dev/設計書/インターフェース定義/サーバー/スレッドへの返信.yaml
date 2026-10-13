@@ -71,27 +71,6 @@ flows:
       - ツールのエラーになり、本文に `TH-1` と `set_thread_status` でオープンに戻す案内がある
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_thread_closed
-  - name: 異常系（本文が空・InvalidArgumentError）
-    summary: 空白だけの本文では返信しない
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: オープンのスレッド TH-1 を持つワークスペース
-        notes: '`body` は `""`'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as reply（MCP のツール）
-
-        クライアント->>IF: reply workspace id TH-1 body 空
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - 'ツールのエラーになり、本文に `エラー: 引数の誤り: body:` がある'
-      - '`threads.yaml` の中身が呼ぶ前と同じ'
-    test: test_error_when_body_empty
   - name: 異常系（スレッドが無い・ThreadNotFoundError）
     summary: 無い ID を指すと何も書かずに終わる
     setup:
@@ -176,6 +155,27 @@ flows:
       - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_schema_mismatch
+  - name: 異常系（本文が空・ArgumentError）
+    summary: 空白だけの本文では返信しない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '`body` は `""`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply workspace id TH-1 body 空
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文に `エラー: 引数の誤り: body:` がある'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_body_empty
 lead: オープンのスレッドの末尾に AI の返信を足し、同じ呼び出しで要約を書き直して、AI が読んだ利用者の書き込みを取り込み済みにする。
 idempotent: false
 side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件足し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -233,9 +233,6 @@ exceptions:
   - name: ThreadClosedError
     condition: スレッドがクローズ
     notes: ツールのエラー。本文に『スレッドの状態の書き換え』（`set_thread_status`）でオープンに戻してから返信する案内。何も書き込まない
-  - name: InvalidArgumentError
-    condition: '`body`・`summary` が空か上限を超える'
-    notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
   - name: ThreadNotFoundError
     condition: '`id` のスレッドが無い'
     notes: ツールのエラー。何も書き込まない
@@ -248,6 +245,9 @@ exceptions:
   - name: SchemaMismatchError
     condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: ArgumentError
+    condition: '`body`・`summary` が空か上限を超える'
+    notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形

@@ -627,7 +627,7 @@ constraints:
   - item: v0.7.0 の手順
     constraint: '`call`（`answer_to_adopted_option`）の 1 手順。`.mindstella/decisions.yaml` のうち、`決定済み` で `answer` を持ち `options` を持たない（空の配列を含む）検討事項に、`key: A`・`content` に `answer`・`reason` に検討事項の `reason`（持つときだけ）・`adopted: true` の案を 1 つ作る。それ以外の検討事項と、案を持つ検討事項は変えない。作った検討事項の `updated`・`history` は変えない。案と状態の合わない残りの検討事項は、点検が `decision_state` で返し、移し替えのスキルが直す（『ワークスペースの移し替え』）。破壊的な操作ではない'
   - item: v0.8.0 の手順
-    constraint: '`call`（`submissions_to_threads`）の 1 手順。`.mindstella/submissions.yaml` の送信 1 件ごとに、`.mindstella/threads.yaml` へスレッドを 1 件足す（送信の連番の小さい順に `TH-{連番}`、`target`・`loc` を引き継ぎ、`tags: []`・`summary: null`・`events: []`）。最初の書き込みは `author: user`・`body`・`created`（送信の `sent`）・`read: false`・`taken`（送信の `taken`）。取り込み済みの送信は `status: closed` にして `events` に `kind: closed`・`author: ai`・`reason: null`・`created`（送信の `taken`）を 1 件足し、取り込んでいない送信は `status: open` にする。足し終えたら `submissions.yaml` を消す。`submissions.yaml` が無ければ飛ばし、`threads.yaml` が既にあれば StepFailedError（二重に移さない）。破壊的な操作'
+    constraint: '次の順の 2 手順。(1) `call`（`submissions_to_threads`）。`.mindstella/submissions.yaml` の送信 1 件ごとに、`.mindstella/threads.yaml` へスレッドを 1 件足す（送信の連番の小さい順に `TH-{連番}`、`target`・`loc` を引き継ぎ、`tags: []`・`summary: null`・`events: []`）。最初の書き込みは `author: user`・`body`・`created`（送信の `sent`）・`read: false`・`taken`（送信の `taken`）。取り込み済みの送信は `status: closed` にして `events` に `kind: closed`・`author: ai`・`reason: null`・`created`（送信の `taken`）を 1 件足し、取り込んでいない送信は `status: open` にする。`submissions.yaml` が無ければ飛ばし、`threads.yaml` が既にあれば StepFailedError（二重に移さない）。(2) `delete`（`.mindstella/submissions.yaml`。破壊的な操作）'
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]

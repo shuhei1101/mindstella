@@ -68,7 +68,7 @@ flows:
       - ツールのエラーにならず、`changed` が `false`
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_normal_when_unchanged
-  - name: 異常系（理由が長すぎる・InvalidArgumentError）
+  - name: 異常系（理由が長すぎる・ArgumentError）
     summary: 上限を超える理由では状態を変えない
     setup:
       - name: Mock
@@ -217,9 +217,6 @@ exceptions:
   - name: なし（正常終了）
     condition: 状態を変えたか、既にその状態だった
     notes: 結果を返す
-  - name: InvalidArgumentError
-    condition: '`reason` が上限を超える'
-    notes: 'ツールのエラー（`エラー: 引数の誤り: reason: {理由}`）。何も書き込まない'
   - name: ThreadNotFoundError
     condition: '`id` のスレッドが無い'
     notes: ツールのエラー。何も書き込まない
@@ -232,6 +229,9 @@ exceptions:
   - name: SchemaMismatchError
     condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
+  - name: ArgumentError
+    condition: '`reason` が上限を超える'
+    notes: 'ツールのエラー（`エラー: 引数の誤り: reason: {理由}`）。何も書き込まない'
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形

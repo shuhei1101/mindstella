@@ -29,7 +29,7 @@ flows:
       - TH-2 の書き込みが AI の 1 件で、`read` が `true`、`taken` を持たない
       - '`threads` を `awaiting` で呼ぶと TH-2 を含まない'
     test: test_normal
-  - name: 異常系（本文が空・InvalidArgumentError）
+  - name: 異常系（本文が空・ArgumentError）
     summary: 空白だけの本文では立てない
     setup:
       - name: Mock
@@ -189,7 +189,7 @@ exceptions:
   - name: なし（正常終了）
     condition: 立てた
     notes: 結果を返す
-  - name: InvalidArgumentError
+  - name: ArgumentError
     condition: '`body`・`summary` が空か上限を超える、`tags` に重なりか空の文字列がある'
     notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
   - name: ItemNotFoundError

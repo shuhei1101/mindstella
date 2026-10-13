@@ -15,7 +15,7 @@ diagrams:
         class 入口
         class ツールの処理
         class 配信
-        class 送信
+        class スレッド
         class コメント
         class Claude Codeへの入力
         class 読み書きと検証
@@ -31,7 +31,7 @@ diagrams:
         入口 --> 配信 : 終わるときに止める
         入口 --> Claude Codeへの入力 : 起動時に送り先を読む
         ツールの処理 --> 配信 : preview_url
-        ツールの処理 --> 送信
+        ツールの処理 --> スレッド : threads・thread・new_thread・reply・set_thread_status・update_thread
         ツールの処理 --> 読み書きと検証
         ツールの処理 --> 検索
         ツールの処理 --> 依存と影響
@@ -42,8 +42,9 @@ diagrams:
         ツールの処理 --> ワークスペースのREADME : readme・preview_url
         配信 --> ビルド : 雛形と記録
         配信 --> コメント : /api/comments・/api/drafts
+        配信 --> スレッド : /api/threads
         配信 --> Claude Codeへの入力 : まとめて送った後
-        コメント --> 送信 : まとめて送る
+        コメント --> スレッド : まとめて送る
       ```
 constants:
   - name: RESERVED_KEYS
@@ -69,7 +70,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "submissions", "take_submission")
+    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread")
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -879,7 +880,8 @@ functions:
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`take_submission` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
+         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`new_thread`・`reply`・`set_thread_status`・`update_thread` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
+         - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドを読む』の同時の呼び出し）
       3. サーバーを返す
     unit_tests:
       - name: test_build_server
@@ -1116,69 +1118,6 @@ functions:
         condition: 作成済みのワークスペースの `README.md` を消して同じ名前のフォルダを作る。偽の台帳の `start` が `(url, True)` を返す
         mock: '`previews`'
         expected: '例外が上がらず `started: true` の結果が返る。ログに WARNING が 1 件ある'
-  - name: run_submissions
-    title: submissions の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: 送信の取り込み
-    scope: public
-    summary: 取り込んでいない送信を出力の形にする
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-    returns:
-      type: dict[str, Any]
-      description: '`{items}`'
-    process: |-
-      1. ワークスペースを読み、取り込んでいない送信を並べる（`load_workspace`、`list_pending_submissions`）
-      2. `asdict` して返す
-    unit_tests:
-      - name: test_run_submissions
-        case: 正常
-        summary: 取り込んでいない送信を返す
-        condition: D-1 と、取り込んだ S-1・取り込んでいない S-2（D-1）・S-3（項目を指さない）を持つワークスペース
-        mock: なし
-        expected: '`{items: [{id: S-2, target: D-1, target_title: {D-1 のタイトル}, loc: null, body, sent}, {id: S-3, target: null, target_title: null, loc: null, body, sent}]}`'
-  - name: run_take_submission
-    title: take_submission の処理
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/commands.py
-    usecase: 送信の取り込み
-    scope: public
-    summary: 送信 1 件を取り込み済みにし、出力の形にする
-    args:
-      - name: root
-        type: Path
-        required: true
-        passing: positional
-        description: '`workspace`（絶対パス）'
-      - name: submission_id
-        type: str
-        required: true
-        passing: positional
-        description: '`id`'
-      - name: now
-        type: Callable[[], str]
-        required: false
-        default: now_utc
-        passing: injected
-        description: 今の日時を返す関数
-    returns:
-      type: dict[str, Any]
-      description: '`{id, taken, already}`'
-    process: |-
-      1. ワークスペースを確かめる（`require_workspace`）
-      2. 取り込み済みにする（`take_submission`）
-    unit_tests:
-      - name: test_run_take_submission
-        case: 正常
-        summary: 取り込んだ日時を返す
-        condition: 取り込んでいない S-1 を持つワークスペース。`now` は `2026-10-04T03:00:00+00:00`
-        mock: '`now`'
-        expected: '`{id: S-1, taken: 2026-10-04T03:00:00+00:00, already: false}`'
   - name: run_update_settings
     title: update_settings の処理
     kind: 関数
@@ -1872,6 +1811,299 @@ functions:
         condition: N-1 だけのワークスペースで N-9 を消す
         mock: なし
         expected: '`ItemNotFoundError`（メッセージに `N-9`）'
+  - name: run_threads
+    title: threads の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: スレッドを絞ったキーだけの一覧を出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: status
+        type: str | None
+        required: true
+        passing: positional
+        description: '`status`'
+      - name: tag
+        type: str | None
+        required: true
+        passing: positional
+        description: '`tag`'
+      - name: unread
+        type: bool
+        required: true
+        passing: positional
+        description: '`unread`'
+      - name: awaiting
+        type: bool
+        required: true
+        passing: positional
+        description: '`awaiting`'
+    returns:
+      type: dict[str, Any]
+      description: '`{items}`'
+    process: |-
+      1. `status` が `None`・`open`・`closed`・`all` のどれかでなければ `ArgumentError`（`argument` は `status`）
+      2. ワークスペースを読み、一覧を作る（`load_workspace`、`list_threads`）
+    exceptions:
+      - name: ArgumentError
+        condition: '`status` が決まった値でない'
+        message: '引数の誤り: status: {理由}'
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い'
+      - name: SchemaMismatchError
+        condition: '`threads.yaml` が崩れている'
+    unit_tests:
+      - name: test_run_threads
+        case: 正常
+        summary: 取り込み待ちのスレッドをキーだけで返す
+        condition: D-1 と、取り込んでいない利用者の書き込みを持つ TH-1（D-1）と取り込み済みだけの TH-2。`awaiting=True`
+        mock: なし
+        expected: '`{items: [{id: TH-1, target: D-1, target_title: {D-1 のタイトル}, awaiting: 1, ...}]}` で、行に `body` のキーが無い'
+      - name: test_run_threads_when_invalid_status
+        case: 異常
+        summary: 決まった値でない status は引数の誤り
+        condition: '`status="done"`'
+        mock: なし
+        expected: '`ArgumentError`（`argument` が `status`）'
+        exception: status が決まった値でない
+  - name: run_thread
+    title: thread の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッド 1 件を返し、返した未読の書き込みを既読にする。未読が無ければ鍵を取らない
+    side_effects: 未読を返したときだけ `threads.yaml` を置き換える
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: unread_only
+        type: bool
+        required: true
+        passing: positional
+        description: '`unread_only`'
+      - name: lock
+        type: Callable[[], ContextManager[None]]
+        required: true
+        passing: keyword
+        description: 書き換えの鍵とワークスペースのロックを取る文脈を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, status, tags, summary, target, target_title, loc, posts, events}`'
+    process: |-
+      1. ワークスペースを読み、読む形と未読の ID を作る（`load_workspace`、`view_thread`）
+      2. 未読の ID があれば、`lock()` の中で既読にする（`mark_read`）
+      3. 1 の読む形を返す（`posts[].read` は読む前の値のまま）
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い'
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+      - name: SchemaMismatchError
+        condition: '`threads.yaml` が崩れている'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_run_thread
+        case: 正常
+        summary: 未読を返して既読にする
+        condition: 既読の TH-1-1 と未読の TH-1-2 を持つ TH-1。`unread_only=True`
+        mock: '`lock`（呼ばれた回数を数える文脈）'
+        expected: '`posts` が TH-1-2 だけで `read` が偽。`lock` が 1 回呼ばれ、`threads.yaml` の TH-1-2 の `read` が真で `taken` が `None` のまま'
+      - name: test_run_thread_when_nothing_unread
+        case: 正常
+        summary: 未読が無ければ鍵を取らず書かない
+        condition: '既読だけの TH-1。`parametrize`: `unread_only=True` / `False`'
+        mock: '`lock`'
+        expected: '`posts` が空 / 全件。どちらも `lock` が呼ばれず、`threads.yaml` の更新日時が呼ぶ前と同じ'
+  - name: run_new_thread
+    title: new_thread の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: AIがスレッドを立てる
+    scope: public
+    summary: AI のスレッドを立て、出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: body
+        type: str
+        required: true
+        passing: positional
+        description: '`body`'
+      - name: summary
+        type: str
+        required: true
+        passing: positional
+        description: '`summary`'
+      - name: tags
+        type: list[str]
+        required: true
+        passing: positional
+        description: '`tags`'
+      - name: target
+        type: str | None
+        required: true
+        passing: positional
+        description: '`target`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, post, created}`'
+    process: 1. ワークスペースを読み、スレッドを立てる（`load_workspace`、`create_thread`。単体テストは `create_thread` が持つ）
+  - name: run_reply
+    title: reply の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドへ AI の返信を足し、出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: body
+        type: str
+        required: true
+        passing: positional
+        description: '`body`'
+      - name: summary
+        type: str
+        required: true
+        passing: positional
+        description: '`summary`'
+      - name: take
+        type: bool
+        required: true
+        passing: positional
+        description: '`take`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, post, created, taken}`'
+    process: 1. ワークスペースを確かめ（`require_workspace`）、返信する（`reply_thread`。単体テストは `reply_thread` が持つ）
+  - name: run_set_thread_status
+    title: set_thread_status の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: スレッドで話す
+    scope: public
+    summary: AI がスレッドの状態を変え、出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: status
+        type: str
+        required: true
+        passing: positional
+        description: '`status`'
+      - name: reason
+        type: str | None
+        required: true
+        passing: positional
+        description: '`reason`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, status, changed}`'
+    process: 1. ワークスペースを確かめ（`require_workspace`）、書き手を `ai` にして状態を変える（`set_thread_status`）
+    unit_tests:
+      - name: test_run_set_thread_status
+        case: 正常
+        summary: 書き手を AI にして記録する
+        condition: オープンの TH-1。`status="closed"`・`reason="了解を受けた"`
+        mock: '`now`'
+        expected: '`{id: TH-1, status: closed, changed: true}`。`events` の末尾の `author` が `ai`'
+  - name: run_update_thread
+    title: update_thread の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/commands.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: スレッドの要約・タグ・取り込み済みを書き換え、出力の形にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: '`workspace`（絶対パス）'
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: '`id`'
+      - name: summary
+        type: str | None
+        required: true
+        passing: positional
+        description: '`summary`'
+      - name: tags
+        type: list[str] | None
+        required: true
+        passing: positional
+        description: '`tags`'
+      - name: take
+        type: bool
+        required: true
+        passing: positional
+        description: '`take`'
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{id, taken}`'
+    process: 1. ワークスペースを確かめ（`require_workspace`）、書き換える（`update_thread`。単体テストは `update_thread` が持つ）
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く
