@@ -99,7 +99,7 @@ request_example: |-
   ```
 constraints:
   - item: 持つ部品
-    constraint: スキルだけ。hooks・MCP サーバー・コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱するが、マニフェストにも `.mcp.json` にも書かず、起動スクリプトが `--mcp-config` で渡す
+    constraint: スキルと、`hooks/hooks.json` の `SessionStart` のフック 1 つ（『未読へ戻す』）だけ。MCP サーバー・コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱するが、マニフェストにも `.mcp.json` にも書かず、起動スクリプトが `--mcp-config` で渡す
   - item: 版
     constraint: '`version` は持たない'
     notes: 版の正はタグと `version.ini`（規約『バージョニング』）。マニフェストに写すと揃える作業がリリースごとに増える

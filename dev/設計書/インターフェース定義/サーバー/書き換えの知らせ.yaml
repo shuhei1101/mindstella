@@ -121,14 +121,14 @@ response_notes: |-
   > つながりが切れたら、ブラウザの EventSource が自分でつなぎ直す。サーバーが止まっている間は画面に「サーバーにつながりません」と出し、前に読んだ記録で描き続ける（『プレビューを開く』）。
 constraints:
   - item: 見るファイル
-    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`submissions.yaml`・`changes.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から描き直す）'
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`docs/` の直下の `*.md`・`*.html`。`comments.yaml`・`drafts.yaml` は見ない（書くのは画面だけで、画面が応答から描き直す）。`threads.yaml` は AI の返信・スレッドを立てる・クローズとオープンへの戻しを開いている画面へ届けるために見る（AI の既読だけの書き換えも知らせる）'
   - item: 見る間隔
     constraint: 250ms ごとに書き換えの印を作り直し、前と違えば知らせる
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
   - item: 保つための行の間隔
     constraint: 15 秒
   - item: 書き換えた元
-    constraint: 問わない。このプロセスのツール・別のプロセスのツール・手での書き換え・送信のどれでも知らせる
+    constraint: 問わない。このプロセスのツール・別のプロセスのツール・手での書き換え・画面からまとめて送る・画面からのクローズのどれでも知らせる
   - item: 接続の数
     constraint: 制限なし（開いている画面ごとに 1 本。端末の中だけで使う）
   - item: 接続先の確かめ

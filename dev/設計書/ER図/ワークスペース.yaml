@@ -616,7 +616,7 @@ tables:
     primary_key: id
     scale: ~100
     growth: 詳細パネル・詳細の全画面・コメントの一覧で溜めるたびに 1 件足す
-    deletion: 削除と、まとめて送ったときに物理削除する（送ったものは `submissions.yaml` へ移る）
+    deletion: 削除と、まとめて送ったときに物理削除する（送ったものは `threads.yaml` へ移る）
     access: 全件
     description: 最上位に `seq`（最後に振った連番。振った番号を使い回さないために持つ）と `items:` の配列を持ち、1 要素 = 1 件のコメント。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのコメントの受け付け（`/api/comments`）だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。チェックの状態は画面だけが持ち、ここには書かない
     columns:
