@@ -1,0 +1,39 @@
+$ uv run --no-project --with-requirements requirements-dev.txt pytest tests/integration/preview/test_open_preview.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-9.1.0, pluggy-1.6.0 -- /home/shuhei2441/.cache/uv/builds-v0/.tmpZryENR/bin/python
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-diff-point-in-url
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collecting ... collected 29 items
+
+tests/integration/preview/test_open_preview.py::test_normal[chromium] PASSED [  3%]
+tests/integration/preview/test_open_preview.py::test_normal_when_no_hash[chromium] PASSED [  6%]
+tests/integration/preview/test_open_preview.py::test_normal_when_filter_in_hash[chromium] PASSED [ 10%]
+tests/integration/preview/test_open_preview.py::test_normal_when_tab_moved_with_item[chromium] PASSED [ 13%]
+tests/integration/preview/test_open_preview.py::test_normal_when_item_not_found[chromium] PASSED [ 17%]
+tests/integration/preview/test_open_preview.py::test_normal_when_exported_offline[chromium] PASSED [ 20%]
+tests/integration/preview/test_open_preview.py::test_normal_when_exported_filter_changed[chromium] PASSED [ 24%]
+tests/integration/preview/test_open_preview.py::test_normal_when_exported_with_saved_filter[chromium] PASSED [ 27%]
+tests/integration/preview/test_open_preview.py::test_error_when_library_unavailable[chromium] PASSED [ 31%]
+tests/integration/preview/test_open_preview.py::test_normal_when_rewritten[chromium] PASSED [ 34%]
+tests/integration/preview/test_open_preview.py::test_normal_when_sent[chromium] PASSED [ 37%]
+tests/integration/preview/test_open_preview.py::test_error_when_body_empty[chromium] PASSED [ 41%]
+tests/integration/preview/test_open_preview.py::test_error_when_server_unreachable[chromium] PASSED [ 44%]
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_marks_not_shown[chromium] PASSED [ 48%]
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_added[chromium] PASSED [ 51%]
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_removed_and_sent[chromium] PASSED [ 55%]
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_added_on_map[chromium] PASSED [ 58%]
+tests/integration/preview/test_open_preview.py::test_normal_when_comment_added_on_graph[chromium] PASSED [ 62%]
+tests/integration/preview/test_open_preview.py::test_normal_when_text_filter_in_hash[chromium] PASSED [ 65%]
+tests/integration/preview/test_open_preview.py::test_normal_when_heading_in_hash[chromium] PASSED [ 68%]
+tests/integration/preview/test_open_preview.py::test_normal_when_html_body[chromium] PASSED [ 72%]
+tests/integration/preview/test_open_preview.py::test_normal_when_html_body_commented[chromium] PASSED [ 75%]
+tests/integration/preview/test_open_preview.py::test_normal_when_html_body_diff[chromium] PASSED [ 79%]
+tests/integration/preview/test_open_preview.py::test_normal_when_html_body_diff_after_closed_element[chromium] PASSED [ 82%]
+tests/integration/preview/test_open_preview.py::test_normal_when_html_code_block[chromium] PASSED [ 86%]
+tests/integration/preview/test_open_preview.py::test_normal_when_html_body_line_edge_cases[chromium] PASSED [ 89%]
+tests/integration/preview/test_open_preview.py::test_normal_when_diff_in_hash[chromium] PASSED [ 93%]
+tests/integration/preview/test_open_preview.py::test_normal_when_diff_in_hash_missing[chromium] PASSED [ 96%]
+tests/integration/preview/test_open_preview.py::test_normal_when_stored_diff_without_hash[chromium] PASSED [100%]
+
+============================= 29 passed in 53.30s ==============================
