@@ -1,0 +1,1 @@
+# 図の拡大の結合テスト test_raw_scroll_by_keyboard を毎回同じ結果にする
