@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import (
@@ -54,12 +55,7 @@ from preview_html_body_helpers import (
     select_in_frame,
     wait_frame_rendered,
 )
-from preview_html_link_helpers import (
-    LINK_PAGE_TITLE,
-    frame_location,
-    new_tab_after,
-    opened_tabs,
-)
+from preview_html_link_helpers import frame_location
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,

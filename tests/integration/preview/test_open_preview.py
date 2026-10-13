@@ -7,6 +7,13 @@ from typing import Any
 from urllib.parse import parse_qs
 
 import yaml
+from integration.browser_tab_helpers import (
+    LINK_PAGE_TITLE,
+    WINDOW_OPEN_RECORDER_JS,
+    new_tab_after,
+    opened_tabs,
+    recorded_window_opens,
+)
 from playwright.sync_api import Page
 
 from preview_comment_helpers import (
@@ -40,15 +47,7 @@ from preview_html_body_helpers import (
     text_rect_in_page,
     wait_frame_rendered,
 )
-from preview_html_link_helpers import (
-    LINK_PAGE_TITLE,
-    WINDOW_OPEN_RECORDER_JS,
-    frame_location,
-    html_with_links,
-    new_tab_after,
-    opened_tabs,
-    recorded_window_opens,
-)
+from preview_html_link_helpers import frame_location, html_with_links
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     OpenPreview,
