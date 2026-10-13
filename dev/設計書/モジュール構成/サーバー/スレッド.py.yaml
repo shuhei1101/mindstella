@@ -999,5 +999,37 @@ functions:
       - name: ArgumentError
         condition: 文字列の並びでない・重なりがある・空の文字列を含む
         message: '引数の誤り: tags: {理由}'
+  - name: raw_thread_targets
+    title: 崩れたスレッドの向けた項目
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: ワークスペースの点検
+    scope: public
+    summary: スキーマに合わない `threads.yaml` から、項目を指すスレッドを読める範囲で拾う
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[tuple[str, str, bool]]
+      description: スレッドの（ID・向けた項目・取り込み待ちか）の並び
+    process: |-
+      1. `threads.yaml` を `yaml.safe_load` で読む。読めないか、`items` が配列でなければ空を返す
+      2. `id` と `target` が文字列の要素だけを、`posts` に取り込んでいない利用者の書き込み（`author` が `user` で `taken` が無い）を持つかを添えて並べる
+    unit_tests:
+      - name: test_raw_thread_targets
+        case: 正常
+        summary: ID と向けた項目が文字列のスレッドだけを、取り込み待ちかを添えて拾う
+        condition: スキーマに合わない `threads.yaml`（取り込み待ちのスレッド・取り込み済みのスレッド・`target` が文字列でない要素）
+        mock: なし
+        expected: 文字列の `id`・`target` を持つ要素だけが、取り込み待ちかを添えて並ぶ
+      - name: test_raw_thread_targets_when_unreadable
+        case: 正常
+        summary: 読めない・スレッドの並びでないファイルは拾えるものが無い
+        condition: '`parametrize`: YAML として読めない中身 / `items` が配列でない中身'
+        mock: なし
+        expected: 空の並び
 test_files:
   - tests/unit/scripts/test_threads.py

@@ -192,9 +192,8 @@ functions:
       description: 問題の並び（ファイルが無ければ空）
     process: |-
       1. スレッドを読む（スレッドの読み込み。`load_threads`）
-         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `threads.yaml`、`id` は `null`）にして返す
-      2. `target` を持つスレッドごとに、その項目が無ければ `broken_ref`（`id` はスレッドの ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
-         - 取り込み待ちでないスレッド（`awaiting_posts` が空）で、`target` が消した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない
+         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `threads.yaml`、`id` は `null`）にし、読める範囲のスレッドの向けた項目（`raw_thread_targets`）を 2 と同じく確かめた問題を後ろに足して返す
+      2. `target` を持つスレッドの（ID・`target`・取り込み待ちか）を、向けた項目の点検（`_check_thread_targets`）にかける
     unit_tests:
       - name: test_check_threads
         case: 正常
@@ -220,6 +219,12 @@ functions:
         condition: '`changes.yaml` の `pending.removed` に N-1 の記録（N-1 は無い）。`parametrize`: 取り込み済みだけの TH-1（N-1）/ 取り込んでいない利用者の書き込みを持つクローズの TH-1（N-1）'
         mock: なし
         expected: 空の並び / `broken_ref`（TH-1・`target`）の 1 件
+      - name: test_check_threads_when_invalid_and_target_missing
+        case: 正常
+        summary: スキーマに合わないファイルでも、読める範囲のスレッドの無い項目への参照切れを拾う
+        condition: スキーマに合わない `threads.yaml` に、無い項目を指すスレッドを持たせる
+        mock: なし
+        expected: '`schema` の問題と、そのスレッドの `broken_ref` が両方ある'
   - name: _check_phases
     title: フェーズの点検
     kind: 関数
@@ -358,5 +363,29 @@ functions:
         condition: N-1 を、取り込み済みだけの TH-1・取り込んでいない利用者の書き込みを持つクローズの TH-2・AI の書き込みだけのオープンの TH-3 が指す
         mock: なし
         expected: '`threads.yaml: TH-2: target` の 1 行だけ'
+  - name: _check_thread_targets
+    title: スレッドの向けた項目の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 向けた項目が無いスレッドを `broken_ref` にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: targets
+        type: list[tuple[str, str, bool]]
+        required: true
+        passing: positional
+        description: スレッドの（ID・向けた項目・取り込み待ちか）の並び
+    returns:
+      type: list[Problem]
+      description: 問題の並び
+    process: |-
+      1. 並びの 1 件ごとに、向けた項目が無ければ `broken_ref`（`file` は `threads.yaml`、`id` はスレッドの ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
+         - 取り込み待ちでなく、向けた項目が消した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない
 test_files:
   - tests/unit/scripts/test_checker.py
