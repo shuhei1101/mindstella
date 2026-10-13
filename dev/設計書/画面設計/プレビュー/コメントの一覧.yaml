@@ -86,6 +86,8 @@ elements:
         value: レビュー中のコメントの追加のエラーの detail
       - name: collapsed
         value: 'false'
+      - name: label
+        value: 新しいスレッド
     position: 下端
     description: 見出し「新しいスレッド」の下に、項目を指さない新しいスレッドの最初の書き込みを溜める入力を出す（`target` を渡さない）。溜めたら入力欄を空にし、まだ送っていない新しいスレッドとして一覧の先頭に足し、コメントのボタンと「レビュー中」の入口の件数を描き直す（この画面に留まる）
     io: 入力

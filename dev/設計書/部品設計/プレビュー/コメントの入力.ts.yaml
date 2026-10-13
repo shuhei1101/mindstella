@@ -166,6 +166,12 @@ args:
     default: 'false'
     enabled_when: '`target` が無いとき'
     description: 畳んだ形にするか。畳むと余白を詰め、読み上げのラベルと 1 行の入力欄だけを出す（入力欄は伸ばさず、結果と「レビューに追加」を出さない）。畳むかは使う側が決める
+  - name: label
+    type: 文字列
+    default: 項目を指さないコメント
+    enabled_when: '`target` が無いとき'
+    description: 入力欄の読み上げの名前（`aria-label`）。使う側が見出しを出すときは、その見出しと同じ文言を渡す
+    status: planned
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない
