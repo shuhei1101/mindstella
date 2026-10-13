@@ -229,6 +229,12 @@ constants:
     usecase: ネットワークを辿る
     summary: ロックを判定する画面の幅のメディアクエリ。幅 900px 以下では詳細が全面に出るため、ネットワークも検討事項のマップもロックしない
     value: '"(min-width: 901px)"'
+  - name: HTML_LINK_OPEN_SCHEMES
+    title: HTML の本文のリンクで開くスキーム
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    summary: HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形）
+    value: '["http:", "https:", "mailto:"]'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -1578,7 +1584,7 @@ functions:
       1. 前後の空白を除く
       2. `#` で始まるとき、`#` の後ろを `decodeURIComponent` で戻す（戻せなければそのまま使う）。空なら `{kind: "none"}`、空でなければ `{kind: "anchor", id}`
       3. `new URL(href)` が読めない（相対の URL）とき、`{kind: "none"}`
-      4. スキームが `http:`・`https:`・`mailto:` のとき、`{kind: "open", url}`（`url` は読んだ URL の `href`）
+      4. スキームが `HTML_LINK_OPEN_SCHEMES` にあるとき、`{kind: "open", url}`（`url` は読んだ URL の `href`）
       5. それ以外は `{kind: "none"}`
     unit_tests:
       - name: test_html_link_action_when_open
