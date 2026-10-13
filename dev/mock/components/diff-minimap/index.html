@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>差分のミニマップ | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、今のプレビューのスタイルに、この PR のミニマップの分を重ねる -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/237/assets/style.css">
+  <style>
+    /* カタログの本文: 画面の高さに縛らず、縦に流す */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文の幅と余白 */
+    main.content { display: block; max-width: var(--content-max); margin: 0 auto; padding: 28px var(--page-pad) 64px; overflow: visible; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 28px; padding: 12px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--bg); overflow: auto; }
+    /* 見本の 1 つ: 名前を上に、部品を下に置く */
+    .demo { display: grid; gap: 6px; margin: 0; }
+    /* 見本の名前 */
+    .demo > figcaption { color: var(--text-2); font-size: var(--fs-xs); }
+    /* 詳細パネルの見本: 見出しの帯と、本文とミニマップを並べる枠を縦に積む */
+    .panel-demo { display: flex; flex-direction: column; width: 300px; max-width: 100%; height: 280px; border: 1px solid var(--border); background: var(--surface); }
+    /* 詳細パネルの見本の見出しの帯 */
+    .panel-demo > .panel-head { flex: none; height: 40px; padding: 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 詳細パネルの見本の本文: 余白を詰め、文字を補足の大きさにする */
+    .panel-demo .panel-body { padding: 12px 16px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 狭い幅の見本: 最も狭い端末（320px）の画面幅 */
+    .panel-demo.narrow { width: 320px; }
+    /* 印の種類の見本: 帯と同じ面の上に、印を 1 つずつ大きさを揃えて置く */
+    .kind-demo { display: flex; align-items: center; gap: 10px; }
+    /* 印の種類の見本の面: 帯と同じ太さと面 */
+    .kind-demo .df-map { width: var(--df-map-w); height: 28px; }
+    /* 状態を見せるための見本のクラス */
+    .df-map-m.is-hover { background: var(--hover); }
+    .df-map-m.is-focus { z-index: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / diff-minimap</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">差分のミニマップ</h1>
+    <!-- 状態ごとの見本: 下のスクリプトが中身を描く -->
+    <div id="catalog"></div>
+  </main>
+  <!-- 見本の描き分け: 印の並び（種類・帯の中の位置と長さの割合）を渡して、詳細パネルの見本を組む -->
+  <script>
+    addEventListener("DOMContentLoaded", () => {
+      /** 印の種類 → 読み上げとツールチップに出す名前 */
+      const NAME = { add: "足した箇所", del: "消した箇所", chg: "変わった箇所" };
+      /** 手引きの見本の印の並び（[種類, 始まりの割合, 長さの割合]） */
+      const GUIDE = [["chg", 2, 4], ["del", 8, 4], ["chg", 17, 6], ["add", 30, 4], ["chg", 42, 4], ["del", 49, 4], ["add", 53.5, 4], ["del", 64, 4], ["add", 88, 9]];
+      /** 変わった箇所が多い見本の印の並び（帯に収まるよう、印の最小の長さを詰める） */
+      const DENSE = Array.from({ length: 30 }, (_, at) => [["chg", "add", "del"][at % 3], at * 3.3 + 0.5, 2.6]);
+
+      /** 帯の中身（見えている範囲の枠と印）の HTML。horizontal は案 B、view は見えている範囲（[始まりの割合, 長さの割合]、無ければ出さない）、state は印の番号 → 見本のクラス */
+      const mapHtml = ({ marks, horizontal = false, view = [0, 24], state = {} }) => {
+        const at = (start, size) => (horizontal ? `left:${start}%;width:${size}%` : `top:${start}%;height:${size}%`);
+        const viewHtml = view === null ? "" : `<span class="df-map-view" aria-hidden="true" style="${at(...view)}"></span>`;
+        const marksHtml = marks.map(([kind, start, size], index) => {
+          const name = `${NAME[kind]}（${index + 1} / ${marks.length}）`;
+          return `<button class="df-map-m df-${kind} ${state[index] ?? ""}" type="button" aria-label="${name}" title="${name}" tabindex="${index === 0 ? 0 : -1}" style="${at(start, size)}"><i aria-hidden="true"></i></button>`;
+        }).join("");
+        return `<div class="df-map" role="toolbar" aria-orientation="${horizontal ? "horizontal" : "vertical"}" aria-label="変わった箇所">${viewHtml}${marksHtml}</div>`;
+      };
+
+      /** 詳細パネルの見本の HTML（見出しの帯と、本文とミニマップを並べる枠） */
+      const panelHtml = ({ name, text, narrow = false, horizontal = false, ...map }) => {
+        const body = `<div class="panel-body">${text}</div>`;
+        const strip = mapHtml({ horizontal, ...map });
+        return `<figure class="demo"><figcaption>${name}</figcaption>
+          <div class="panel-demo${narrow ? " narrow" : ""}"><div class="panel-head">資料 A-14</div>
+            <div class="panel-scroll ${horizontal ? "map-b" : "map-a"} has-map">${horizontal ? strip + body : body + strip}</div>
+          </div></figure>`;
+      };
+
+      const sec = (heading, lead, inner) => `<section class="cat-sec"><h2>${heading}</h2><p>${lead}</p><div class="stage">${inner}</div></section>`;
+      const LONG = "本文のスクロール領域。印の位置は、本文の全体の高さに対するその箇所の位置の割合で置く。";
+
+      const kinds = Object.entries(NAME).map(([kind, name]) =>
+        `<div class="kind-demo"><div class="df-map" role="group" aria-label="${name}の印">${`<button class="df-map-m df-${kind}" type="button" aria-label="${name}" title="${name}" style="top:8px;height:12px;left:0;width:100%;padding:0 var(--df-map-pad)"><i aria-hidden="true"></i></button>`}</div><span>${name}</span></div>`).join("");
+
+      document.getElementById("catalog").innerHTML = [
+        sec("印の種類", "足した箇所は塗りつぶし、消した箇所は枠だけの中抜き、変わった箇所は斜めの縞。色と形の両方で分け、乗せると種類と何番目かをツールチップで出す。", kinds),
+        sec("案 A: 本文の右の縦の帯", "本文のスクロールバーの外側に立てる。濃い面は本文のうち今見えている範囲。続く同じ種類の箇所は 1 つの印にまとめ、印の長さは箇所の高さに合わせる（最小は 12px）。",
+          panelHtml({ name: "本文の頭", text: LONG, marks: GUIDE }) +
+          panelHtml({ name: "本文を末尾まで送った", text: LONG, marks: GUIDE, view: [76, 24] })),
+        sec("案 A: ホバー・キーボードのフォーカス", "印のホバーは面の色、フォーカスは印の色の輪。帯はタブで 1 回だけ止まり、上下の矢印キーと Home / End で印の間を移る。Enter / Space でその箇所まで本文を送る。",
+          panelHtml({ name: "ホバー", text: LONG, marks: GUIDE, state: { 2: "is-hover" } }) +
+          panelHtml({ name: "フォーカス", text: LONG, marks: GUIDE, state: { 3: "is-focus" } })),
+        sec("案 A: 印の数と本文の長さ", "印が 1 つでも帯を出す。本文が送れない長さのときは、見えている範囲の面を出さない。印が帯に収まらないほど多いときは、印の最小の長さを詰めて全て並べる。",
+          panelHtml({ name: "印が 1 つ", text: LONG, marks: [["chg", 46, 6]] }) +
+          panelHtml({ name: "本文が送れない", text: "短い本文。", marks: [["chg", 40, 14]], view: null }) +
+          panelHtml({ name: "印が多い（30 か所）", text: LONG, marks: DENSE })),
+        sec("案 A: 狭い幅（320px）", "帯の太さは変えず、本文の右の余白を帯に譲る。本文の文字と見出しのボタンに重ねない。",
+          panelHtml({ name: "最も狭い端末", text: LONG, marks: GUIDE, narrow: true })),
+        sec("案 B: 見出しの下の横の帯", "見出しの帯の下に寝かせ、本文の頭を左、末尾を右に取る。左右の矢印キーで印の間を移る。",
+          panelHtml({ name: "本文の頭", text: LONG, marks: GUIDE, horizontal: true }) +
+          panelHtml({ name: "フォーカス", text: LONG, marks: GUIDE, horizontal: true, state: { 3: "is-focus" } }) +
+          panelHtml({ name: "印が多い（30 か所）", text: LONG, marks: DENSE, horizontal: true }) +
+          panelHtml({ name: "最も狭い端末", text: LONG, marks: GUIDE, horizontal: true, narrow: true })),
+        sec("飛んだ先の箇所", "印を押して送った先の箇所を、当たった語と同じ色の輪で 1.6 秒だけ示す。",
+          `<div class="md" style="width: 420px; max-width: 100%; padding: 12px 16px; background: var(--surface);"><p>変わっていない段落。</p><ins class="df-blk df-map-hit"><span class="df-sign" aria-hidden="true">+</span><p>印を押すと、その箇所まで本文が送られる。</p></ins><p>変わっていない段落。</p></div>`),
+      ].join("");
+    });
+  </script>
+</body>
+</html>
