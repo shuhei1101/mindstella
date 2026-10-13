@@ -13,8 +13,10 @@ from .fixture_types import (
     CallTool,
     MakeItem,
     MakeLegacyWorkspace,
+    MakeSubmission,
     MakeWorkspace,
     SnapshotTree,
+    WriteSubmissions,
 )
 
 # プラグインの版（plugins/mindstella/version.ini の 1 行目）
@@ -110,8 +112,11 @@ def test_normal_when_plan(
     assert payload["relation"] == "older"
     assert payload["steps"] != []
     assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
-    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）だけ
-    assert {step["version"] for step in payload["steps"] if step["destructive"]} == {"v0.6.0"}
+    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）と v0.8.0 の手順（送信のファイルの削除）だけ
+    assert {step["version"] for step in payload["steps"] if step["destructive"]} == {
+        "v0.6.0",
+        "v0.8.0",
+    }
     # 値が要るキーは、全ての手順を当てた後の名前（.mindstella/config.yaml）で返す
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
         {"file": value["file"], "key": value["key"]} for value in payload["needs_values"]
@@ -431,6 +436,39 @@ def test_normal_when_answer_to_option(
     again = call_tool("migrate", workspace=str(root), to_version="v0.7.0")
     assert again.is_error is False
     assert len(_read_decisions(root)[0]["options"]) == 1
+
+
+def test_normal_when_submissions_to_threads(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_submission: MakeSubmission,
+    write_submissions: WriteSubmissions,
+    call_tool: CallTool,
+) -> None:
+    """v0.7.0 のワークスペースの送信を、取り込み済みはクローズ、取り込んでいないものはオープンのスレッドへ移す（正常系）。"""
+    # 準備
+    taken_at = "2026-10-02T08:00:00+00:00"
+    root = make_workspace(make_item("D-1"))
+    no_target = make_submission("S-2", body="全体に目を通した")
+    del no_target["target"]
+    write_submissions(root, make_submission("S-1", taken=taken_at), no_target)
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.7.0\n", encoding="utf-8")
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))["items"]
+    closed, opened = threads
+    assert (closed["id"], closed["status"], closed["target"]) == ("TH-1", "closed", "D-1")
+    assert [(event["kind"], event["author"]) for event in closed["events"]] == [("closed", "ai")]
+    assert closed["posts"][0]["taken"] == taken_at
+    assert (opened["id"], opened["status"], "target" in opened) == ("TH-2", "open", False)
+    assert opened["posts"][0]["taken"] is None
+    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    awaiting = call_tool("threads", workspace=str(root), awaiting=True)
+    assert awaiting.data is not None
+    assert [item["id"] for item in awaiting.data["items"]] == ["TH-2"]
 
 
 def test_error_when_newer(
