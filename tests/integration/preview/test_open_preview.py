@@ -1154,6 +1154,7 @@ def test_normal_when_diff_in_hash_missing(
         # 検証
         assert page.locator(DIFF_CHIP).count() == 0
         assert page.locator(".df-mark").count() == 0
+        assert page.locator("nav.tabbar .df-dot").count() == 0
         assert page.evaluate("location.hash") == "#tab=decisions"
         assert page.evaluate(SAVED_DIFF_JS) is None
 

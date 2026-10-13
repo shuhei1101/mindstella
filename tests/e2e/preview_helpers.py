@@ -33,6 +33,7 @@ __all__ = [
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "OpenInEmptyContext",
     "OpenPreview",
     "ServePreview",
     "ServeWorkspace",
@@ -70,6 +71,7 @@ __all__ = [
 
 type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
+type OpenInEmptyContext = Callable[[str], Page]
 type ServeWorkspace = Callable[..., tuple[str, Path]]
 
 # トップバーのコメントのボタンと、コメントの一覧のパネル
