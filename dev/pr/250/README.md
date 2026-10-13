@@ -1,0 +1,1 @@
+# 本文の印のツールチップの結合テスト test_body_alias_tooltip_scroll を毎回同じ結果にする
