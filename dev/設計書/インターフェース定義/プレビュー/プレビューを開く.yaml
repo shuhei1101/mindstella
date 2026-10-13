@@ -610,6 +610,128 @@ flows:
       - トップバーに V-1 の説明の札が出て、D-1 に変更の印がある
       - 開いた後の URL のハッシュが `diff=V-1` を持ち、履歴の数が増えていない
     test: test_normal_when_stored_diff_without_hash
+  - name: 正常系（HTML の本文のリンクを押す）
+    summary: 枠の中の外へのリンクを押すと、枠の中では移らず、新しいタブで開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）。リンク先は、テストが別のポートで配るページ（外のサイトへ通信しない）。`mailto:` のリンクを押す前に、親の画面の `window.open` を呼び出しを記録するものに差し替える
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: 本文は、リンク先のページを指す `target` を持たないリンクと `target="_blank"` を持つリンク、`mailto:a@example.com` のリンクを持つ。ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: target を持たないリンクを押す
+        IF->>IF: 既定の動作を止め、window.open で開く
+        IF-->>ユーザー: リンク先を開いた新しいタブ
+        ユーザー->>IF: target="_blank" のリンクを押す
+        IF-->>ユーザー: リンク先を開いた新しいタブ
+        ユーザー->>IF: target を持たないリンクを Ctrl を押しながら押す・中ボタンで押す・フォーカスして Enter を押す
+        IF-->>ユーザー: 押すたびにリンク先を開いた新しいタブ
+        ユーザー->>IF: mailto: のリンクを押す
+        IF->>IF: 既定の動作を止め、window.open で開く
+    expected:
+      - '`target` を持たないリンク・`target="_blank"` のリンクを押すたびに、リンク先を開いたタブが 1 つ増える'
+      - Ctrl を押しながら押す・中ボタンで押す・フォーカスして Enter を押すでも、押すたびにリンク先を開いたタブが 1 つ増える
+      - どのリンクを押した後も、詳細パネルの iframe は A-1 の本文を描いたままで、iframe の文書の場所が変わらない
+      - 新しいタブのページの `window.opener` が `null`
+      - '`mailto:` のリンクを押すと、`window.open` が `mailto:a@example.com`・`_blank`・`noopener,noreferrer` で 1 回呼ばれる'
+    test: test_normal_when_html_body_link
+  - name: 正常系（HTML の本文の中の場所を指すリンクを押す）
+    summary: '`#` で始まるリンクは新しいタブで開かず、本文をその `id` の要素まで送る'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: 本文は先頭に `href="#usage"`・`href="#%E4%BD%BF%E3%81%84%E6%96%B9"`・`href="#none"` のリンク、詳細パネルを開いたときに画面に入らない位置に `id="usage"` の見出しと `id="使い方"` の見出しを持つ。ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: #usage のリンクを押す
+        IF->>IF: 既定の動作を止め、id が usage の要素まで本文のスクロール領域を送る
+        ユーザー->>IF: #%E4%BD%BF%E3%81%84%E6%96%B9 のリンクを押す
+        IF->>IF: id が「使い方」の要素まで本文のスクロール領域を送る
+        ユーザー->>IF: #none のリンクを押す
+        IF->>IF: 既定の動作を止める
+    expected:
+      - '`#usage` のリンクを押すと、`id="usage"` の見出しが詳細パネルの本文のスクロール領域の見える範囲に入り、後ろの画面は送られない'
+      - パーセントエンコードした `#` のリンクを押すと、`id="使い方"` の見出しが見える範囲に入る
+      - '`#none` のリンクを押しても、本文のスクロール領域の位置が変わらない'
+      - どのリンクを押しても、タブは増えず、URL のハッシュは `tab=docs&id=A-1` のままで、iframe の文書の場所が変わらない
+    test: test_normal_when_html_body_anchor_link
+  - name: 正常系（HTML の本文の開かないリンクを押す）
+    summary: 相対の URL と `http:`・`https:`・`mailto:` 以外のスキームのリンクは、押しても開かず、枠の中でも移らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: 本文は `href="other.html"`・`href="/mindstella.html"`・`href="javascript:parent.__mark=1"`・`href="data:text/html,x"` のリンクを持つ。ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: 4 つのリンクを順に押す
+        IF->>IF: 既定の動作を止める
+    expected:
+      - どのリンクを押しても、タブは増えない
+      - どのリンクを押した後も、詳細パネルの iframe は A-1 の本文を描いたままで、iframe の文書の場所が変わらない
+      - ページの変数に印が残らない（`javascript:` が実行されていない）
+    test: test_normal_when_html_body_link_not_opened
+  - name: 正常系（HTML の本文のリンクの文を選ぶ）
+    summary: リンクの文をなぞって選んだ直後の押下では開かず、選んだ後にリンクを押す・Enter を押すと開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）。リンク先は、テストが別のポートで配るページ（外のサイトへ通信しない）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: '本文は段落と、リンク先のページを指すリンクを持つ。ハッシュは `tab=docs&id=A-1`。なぞって選ぶ操作は、枠の文書へ `pointerdown` を送り、Range でリンクの文を選び（`selectionchange`）、`pointerup` とリンクへの `click`（`detail` が 1）を送って作る（sandbox の iframe の上では Playwright の `page.mouse` が返らない。PoC #215）'
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: リンクの文をなぞって選ぶ
+        IF->>IF: 既定の動作を止める（開かない）
+        IF-->>ユーザー: 選んだ箇所のコメントの入口
+        ユーザー->>IF: 文を選んだまま、リンクにフォーカスして Enter を押す
+        IF->>IF: 既定の動作を止め、window.open で開く
+        IF-->>ユーザー: リンク先を開いた新しいタブ
+    expected:
+      - リンクの文をなぞって選んだ直後は、タブが増えず、選んだ箇所のコメントの入口が出る
+      - 文を選んだまま、リンクにフォーカスして Enter を押すと、リンク先を開いたタブが 1 つ増える
+      - どの操作の後も、iframe の文書の場所が変わらない
+    test: test_normal_when_html_body_link_text_selected
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメント・返信を溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `threads.yaml` にスレッドと返信を足し（『コメントをまとめて送る』）、クローズ・オープンへの戻しで `threads.yaml` の状態を書き換える（『画面からのスレッドの状態の書き換え』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
@@ -790,6 +912,9 @@ constraints:
   - item: スレッドの読み書き
     constraint: コメントの一覧を開いたときと、書き換えの知らせを受けたときに `GET /api/threads` を読み、スレッドの一覧と開いているスレッドを描き直す（入力欄の書きかけ・開いているスレッド・一覧の絞り込みを保つ）。一覧の状態・タグの絞り込みは画面が持つ。返信は `POST /api/comments` に `thread` を渡してレビュー中に溜め、クローズとオープンへの戻しは理由を添えて `PATCH /api/threads/{id}` へ送る。開いているスレッドの状態が知らせで変わったら、変わる前の状態で開いた理由の入力を閉じる
     notes: 単一ユースケース『スレッドで話す』。画面の要素は画面設計で決める
+  - item: HTML の本文の中のリンク
+    constraint: 親の画面が枠の文書に `click`・`auxclick` の受け手を足し、押された要素から最も近い `href` を持つ `a`（SVG の `a` を含む）・`area` の押下を受けて、既定の動作を止める（枠の中では移らない。`target` の有無、Ctrl・Shift・Meta つき、中ボタン、Enter によらない）。`href` の属性の値が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻した `id` を持つ枠の中の要素まで本文のスクロール領域を送り、その要素が無ければ何もしない（URL のハッシュは変えず、履歴に積まない）。それ以外は、`href` の属性の値がそれだけで絶対の URL として読め、スキームが `http:`・`https:`・`mailto:` のリンクだけを、親の画面の `window.open` に `_blank` と `noopener,noreferrer` を渡して開く。相対の URL とほかのスキーム（`javascript:`・`data:`・`file:` ほか）のリンクは開かない。ポインターを押してから離すまでの間に枠の中の選択が変わり、`click` の時点で選択が空でないときは、開かず送らない（リンクの文をなぞって選んだ直後）。キーボードからの `click`（`detail` が 0）は選択の有無によらず扱う。枠に描く全ての場所（HTML の本文・`html` のコードブロック・HTML の本文の差分の描いた結果・配る書き出し）で同じ
+    notes: '測った記録（Chromium 151、Linux、headless と headed）: `mailto:` を `window.open`（`_blank`・`noopener,noreferrer`）で開くと、新しいタブは残らず、親の画面は移らず `beforeunload` も届かない。親の画面の文書のリンクとして押す開き方と `location.assign` は、親の画面に `beforeunload` が届くため採らない。メールのアプリが立ち上がるかは端末の設定によるため、テストでは `window.open` の呼び出しで確かめる'
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#

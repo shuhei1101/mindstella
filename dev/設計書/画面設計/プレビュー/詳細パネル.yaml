@@ -318,6 +318,7 @@ elements:
     status: implemented
     introduced:
       pr: 214
+    action: 本文の中の `http:`・`https:`・`mailto:` のリンクを押すと、枠の中では移らず、リンク先を新しいタブで開く（`mailto:` はメールのアプリへ渡る）。`#` で始まるリンクは、本文のスクロール領域をその `id` の要素まで送る（URL のハッシュは変えず、履歴に積まない）。ほかのリンクは押しても移らない（『プレビューを開く』の制約「HTML の本文の中のリンク」）
   - name: html のコードブロック
     kind: iframe
     component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
@@ -336,6 +337,7 @@ elements:
     status: implemented
     introduced:
       pr: 214
+    action: 枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
   - name: HTML の本文の差分
     kind: label
     component: dev/設計書/部品設計/プレビュー/HTMLの本文の差分.ts#
@@ -356,6 +358,7 @@ elements:
     status: implemented
     introduced:
       pr: 214
+    action: 描いた結果の枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
   - name: 説明
     kind: section
     position: 資料はタイトルの下のキーの一覧の後・エイリアスの前。調査は問いの後・結論の前

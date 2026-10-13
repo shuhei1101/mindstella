@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 import yaml
+from integration.browser_tab_helpers import link_target  # noqa: F401
 from launch_registration_helpers import BASHRC_USER_LINE, RegistrationSandbox
 from playwright.sync_api import Browser, Page
 from preview_helpers import OpenInEmptyContext, OpenPreview, ServePreview, ServeWorkspace

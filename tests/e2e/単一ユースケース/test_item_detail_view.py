@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
@@ -1007,3 +1008,70 @@ def test_normal_when_body_scrolled(
     assert full["title"].startswith(HEAD_TITLE_PREFIX)
     assert full["truncated"] is True
     assert all(button == {"inHead": True, "pressable": True} for button in full["buttons"])
+
+
+# HTML の本文の `#usage` の見出しが、詳細パネルの本文のスクロール領域の見える範囲に入っているかを返す
+USAGE_HEADING_VISIBLE_SCRIPT = """(frameSelector) => {
+    const frame = document.querySelector(frameSelector);
+    const target = frame.contentDocument.getElementById('usage');
+    const box = document.querySelector('aside.panel .panel-body').getBoundingClientRect();
+    const top = frame.getBoundingClientRect().top + frame.clientTop + target.getBoundingClientRect().top;
+    return top >= box.top - 1 && top + target.getBoundingClientRect().height <= box.bottom + 1;
+}"""
+
+# `#usage` の見出しを、詳細パネルを開いたときに画面へ入らない位置へ離す空白の高さ（px）
+USAGE_SPACER_PX = 2_400
+
+
+def test_normal_when_html_body_links(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+    link_target: str,
+) -> None:
+    """HTML の本文の中の外のページへのリンクは新しいタブで開き、`#` のリンクは本文をその見出しまで送る（正常系）。"""
+    # 準備
+    body = (
+        '<p><a id="to-usage" href="#usage">使い方へ</a></p>\n'
+        f'<p><a id="plain" href="{link_target}/plain">target を持たない外のページ</a></p>\n'
+        f'<p><a id="blank" href="{link_target}/blank" target="_blank">target="_blank" の外のページ</a></p>\n'
+        f'<div style="height:{USAGE_SPACER_PX}px"></div>\n'
+        '<h2 id="usage">使い方</h2>\n'
+        "<p>使い方の本文</p>\n"
+    )
+    url = serve_preview(
+        make_item("A-1", body="A-1.html"), settings=valid_settings, bodies={"A-1.html": body}
+    )
+    # 実行（A-1 の詳細パネルを開く）
+    open_preview(url, "#tab=docs&id=A-1")
+    _wait_frame_rendered(page, HTML_BODY_FRAME)
+    frame = page.frame_locator(HTML_BODY_FRAME)
+    tabs = opened_tabs(page)
+    assert page.evaluate(USAGE_HEADING_VISIBLE_SCRIPT, HTML_BODY_FRAME) is False
+    # 実行（target を持たない外のページへのリンクを押す）
+    tab = new_tab_after(page, lambda: frame.locator("#plain").click())
+    # 検証
+    assert tab.url == f"{link_target}/plain"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    # 実行（元のタブへ戻り、target="_blank" のリンクを押す）
+    page.bring_to_front()
+    tab = new_tab_after(page, lambda: frame.locator("#blank").click())
+    # 検証（リンクを押した後も、枠は A-1 の本文を描いたままで、外のページに置き換わらない）
+    assert tab.url == f"{link_target}/blank"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 2
+    assert frame.locator("h2").inner_text() == "使い方"
+    assert page.evaluate("document.querySelector('iframe.html-frame[data-html-body]').contentDocument.location.href") == "about:srcdoc"
+    # 実行（元のタブへ戻り、#usage のリンクを押す）
+    page.bring_to_front()
+    frame.locator("#to-usage").click()
+    page.wait_for_function(USAGE_HEADING_VISIBLE_SCRIPT, arg=HTML_BODY_FRAME)
+    # 検証（タブは増えず、後ろの画面は送られず、URL のハッシュは変わらない）
+    assert opened_tabs(page) == tabs + 2
+    assert page.evaluate("document.scrollingElement.scrollTop") == 0
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1"

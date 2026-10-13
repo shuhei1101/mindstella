@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import (
@@ -48,11 +49,13 @@ from preview_html_body_helpers import (
     BODY_FRAME,
     BODY_WITH_HTML_CODE_BLOCK,
     FRAME_SETTLE_MS,
+    MARKED_FRAME,
     frame_fit,
     frame_of,
     select_in_frame,
     wait_frame_rendered,
 )
+from preview_html_link_helpers import frame_location
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -3207,6 +3210,83 @@ def test_diff_html_body_when_format_changed(
     assert page.locator("aside.panel .html-marked").count() == 0
     assert "# 画面のモック" in page.inner_text("aside.panel .df-raw .df-line.df-del")
     assert "<h1>画面のモック</h1>" in page.inner_text("aside.panel .df-raw")
+
+
+def test_html_code_block_when_link_pressed(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    link_target: str,
+) -> None:
+    """html のコードブロックの枠の中のリンクを押すと、枠の中で移らず新しいタブで開く（正常系）。"""
+    # 準備
+    body = (
+        "# 見出し\n\n前の段落\n\n"
+        f'```html\n<p><a id="link" href="{link_target}/code">コードブロックのリンク</a></p>\n```\n\n'
+        "後の段落\n"
+    )
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, HTML_CODE_FRAME)
+    frame = frame_of(page, HTML_CODE_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行
+    tab = new_tab_after(page, lambda: frame.click("#link"))
+    # 検証
+    assert tab.url == f"{link_target}/code"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    assert frame_location(frame) == location
+    assert frame.locator("#link").inner_text() == "コードブロックのリンク"
+
+
+def test_html_body_diff_when_link_pressed(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+    link_target: str,
+) -> None:
+    """HTML の本文の差分の描いた結果の枠の中のリンクを押すと、枠の中で移らず新しいタブで開く（正常系）。"""
+    # 準備（2 つ目の段落のリンクの文を書き換える）
+    paragraph = f'<p><a id="link" href="{link_target}/diff">{{}}</a></p>\n'
+    root = make_workspace()
+    workspace = str(root)
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("リンクの文"),
+    }
+    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
+    updated = call_tool(
+        "update",
+        workspace=workspace,
+        id="A-1",
+        item={"body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("書き直したリンクの文")},
+    )
+    assert updated.is_error is False
+    assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
+    url = str(call_tool("preview_url", workspace=workspace).data["url"])
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, MARKED_FRAME)
+    frame = frame_of(page, MARKED_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行
+    tab = new_tab_after(page, lambda: frame.click("#link"))
+    # 検証
+    assert tab.url == f"{link_target}/diff"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    assert frame_location(frame) == location
+    assert frame.locator("[data-df]").count() >= 1
 
 
 # 見出しの帯のタイトルを測る横のパネル
