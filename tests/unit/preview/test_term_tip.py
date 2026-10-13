@@ -70,9 +70,10 @@ async ({entries, mustInclude}) => {
 )
 
 def _entries(make_item: MakeItem, *item_ids: str) -> list[dict[str, Any]]:
-    """用語 G-1・資料 A-2（説明あり）・資料 A-9（説明なし）・調査 R-1 のうち、渡した ID の項目を並べた引数を返す。"""
+    """用語 G-1・G-2・資料 A-2（説明あり）・資料 A-9（説明なし）・調査 R-1 のうち、渡した ID の項目を並べた引数を返す。"""
     items = {
         "G-1": ("terms", make_item("G-1", title="保存先", meaning="用語の意味")),
+        "G-2": ("terms", make_item("G-2", title="置き場所", meaning="別の用語の意味")),
         "A-2": ("docs", make_item("A-2", title="効果の資料", description="資料の説明")),
         "A-9": ("docs", make_item("A-9", title="説明なし資料")),
         "R-1": ("research", make_item("R-1", title="効果の調査", description="調査の説明")),
@@ -103,6 +104,19 @@ def _entries(make_item: MakeItem, *item_ids: str) -> list[dict[str, Any]]:
             },
             id="with_docs_and_research",
         ),
+        pytest.param(
+            ["G-1", "G-2"],
+            {
+                "role": None,
+                "headings": ["用語 2"],
+                "links": [
+                    {"id": "G-1", "title": "保存先", "rest": "用語の意味"},
+                    {"id": "G-2", "title": "置き場所", "rest": "別の用語の意味"},
+                ],
+                "containsAll": True,
+            },
+            id="several_terms",
+        ),
     ],
 )
 def test_term_tip_content(
@@ -112,7 +126,7 @@ def test_term_tip_content(
     item_ids: list[str],
     expected: dict[str, Any],
 ) -> None:
-    """用語だけは今と同じ形、資料・調査を含むと見出しと区切りとリンクで並べる（正常系）。"""
+    """用語 1 件だけは今と同じ形、用語 2 件以上か資料・調査を含むと見出しと区切りとリンクで並べる（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行

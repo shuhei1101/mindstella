@@ -430,7 +430,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）'
     props:
       - name: id
         type: string
@@ -617,6 +617,12 @@ components:
         condition: '`full: true` で本文の長い A-1 を開き、モーダルの本文のスクロール領域を下端まで送る'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 送る前は `.panel-title` に `is-shown` が無く、送った後は `dialog` の中の `.panel-title` に `is-shown` がある。送る前も送った後も、見出しのボタン（`.panel-head .icon-btn`）の幅はどれも `--control-h`（32px）のまま
+      - name: test_detail_panel_when_term_aliases_tip
+        case: 正常
+        summary: 用語 2 件以上に一致した印は押すとツールチップを残し、中のリンクで移る
+        condition: 用語 G-1「移し替え」と、別名「移し替え」を持つ用語 G-2、本文に「移し替え」を持つ A-1 を開き、印に乗せてから押し、ツールチップの中の G-2 のリンクを押す
+        mock: '`on.open`。描画のライブラリの配信元（`page.route`）'
+        expected: ツールチップが見出し「用語 2」の下に G-1・G-2 を並べ、印を押しても開いたままで `on.open` が呼ばれない。G-2 のリンクで `on.open` が G-2 で 1 回呼ばれ、ツールチップが閉じる
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -1265,7 +1271,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/term-tip.ts
     usecase: 項目の詳細を読む
     kind: コンポーネント
-    summary: 部品設計『本文の印のツールチップ』の中身と置き場所を決める。`entries` が用語だけなら用語・ID・意味を入れて `role="tooltip"` にし、資料・調査を含むなら `role` を外して種類ごと（用語 → 資料 → 調査）の見出し（種類名と件数）とリストに分け、全ての項目のタイトルを `a.tt-link`（`data-id`。押すと `on.open`）にする。資料・調査は `description` があるときだけ出す。高さの上限は 360px で、超えた分は中でスクロールする。置き場所は `anchor` の上に 6px 空けて `bottom` で下端を留め、上に収まらなければ下に `top` で出し、上下どちらにも収まらなければ広い側に出してその高さに縮める（縮めた高さで固定し、中身が変わっても大きさを変えない）。収まるかの判定と縮める高さは、印との 6px と画面の端からの 8px を引いた余白で測る（上に出すなら `anchor` の上端 − 6 − 8）。左右も画面の端から 8px の内側に収める。中の Tab は、最初のリンクの Shift+Tab で印へ、最後のリンクの次で本文の印の次の要素へ移す
+    summary: 部品設計『本文の印のツールチップ』の中身と置き場所を決める。`entries` が用語 1 件だけなら用語・ID・意味を入れて `role="tooltip"` にし、用語が 2 件以上か、資料・調査を含むなら `role` を外して種類ごと（用語 → 資料 → 調査）の見出し（種類名と件数）とリストに分け、全ての項目のタイトルを `a.tt-link`（`data-id`。押すと `on.open`）にする。資料・調査は `description` があるときだけ出す。高さの上限は 360px で、超えた分は中でスクロールする。置き場所は `anchor` の上に 6px 空けて `bottom` で下端を留め、上に収まらなければ下に `top` で出し、上下どちらにも収まらなければ広い側に出してその高さに縮める（縮めた高さで固定し、中身が変わっても大きさを変えない）。収まるかの判定と縮める高さは、印との 6px と画面の端からの 8px を引いた余白で測る（上に出すなら `anchor` の上端 − 6 − 8）。左右も画面の端から 8px の内側に収める。中の Tab は、最初のリンクの Shift+Tab で印へ、最後のリンクの次で本文の印の次の要素へ移す
     props:
       - name: entries
         type: "{kind: 'terms' | 'docs' | 'research', item: object}[]"
@@ -1287,10 +1293,10 @@ components:
     unit_tests:
       - name: test_term_tip_content
         case: 正常
-        summary: 用語だけは今と同じ形、資料・調査を含むと見出しと区切りとリンクで並べる
-        condition: '`parametrize`: 用語 G-1 だけ / G-1・資料 A-2（説明あり）・資料 A-9（説明なし）・調査 R-1'
+        summary: 用語 1 件だけは今と同じ形、用語 2 件以上か資料・調査を含むと見出しと区切りとリンクで並べる
+        condition: '`parametrize`: 用語 G-1 だけ / G-1・資料 A-2（説明あり）・資料 A-9（説明なし）・調査 R-1 / 用語 G-1・G-2'
         mock: なし
-        expected: '`role="tooltip"` で用語・ID・意味だけ、リンクが無い / `role` を持たず、見出し「用語 1」「資料 2」「調査 1」がこの順で、各タイトルが `data-id` を持つリンク。A-9 は説明を持たない'
+        expected: '`role="tooltip"` で用語・ID・意味だけ、リンクが無い / `role` を持たず、見出し「用語 1」「資料 2」「調査 1」がこの順で、各タイトルが `data-id` を持つリンク。A-9 は説明を持たない / `role` を持たず、見出し「用語 2」の下に G-1・G-2 が用語・ID・意味とリンクのタイトルで並ぶ'
       - name: test_term_tip_position
         case: 正常
         summary: 上に出し、収まらなければ下、どちらにも収まらなければ広い側に縮める

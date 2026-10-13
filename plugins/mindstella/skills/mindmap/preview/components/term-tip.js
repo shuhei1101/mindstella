@@ -1,5 +1,5 @@
 "use strict";
-// 本文の印のツールチップ。本文の印（用語のタイトル・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べて印の上に出す。
+// 本文の印のツールチップ。本文の印（用語のタイトルと別名・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べて印の上に出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 種類ごとの見出しの名前 */
@@ -54,22 +54,23 @@ var MindmapPreview;
     }
     /** ツールチップを返す。使う側が文書に入れて `showPopover()` で開く。開くと印の上に置き、上に収まらなければ下に、どちらにも収まらなければ広い側の高さに縮める */
     function termTip({ entries, anchor, pinned = false, on }) {
-        const withDocs = entries.some((entry) => entry.kind !== "terms");
+        // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる
+        const multi = entries.length > 1 || entries.some((entry) => entry.kind !== "terms");
         const tip = MindmapPreview.h({
             tag: "div",
             attrs: {
                 id: MindmapPreview.TERM_TIP_ID,
-                class: withDocs ? "term-tip is-multi" : "term-tip",
-                // リンクを持たない用語だけのツールチップは tooltip の役割にし、リンクを持つ方は印の aria-details で指す
-                role: withDocs ? null : "tooltip",
+                class: multi ? "term-tip is-multi" : "term-tip",
+                // リンクを持たない用語 1 件だけのツールチップは tooltip の役割にし、リンクを持つ方は印の aria-details で指す
+                role: multi ? null : "tooltip",
                 popover: "manual",
             },
         });
-        if (withDocs) {
+        if (multi) {
             tip.append(...groupedContent(entries));
         }
         else {
-            // 用語だけに一致した印は、用語・ID・意味だけを出す
+            // 用語 1 件だけに一致した印は、用語・ID・意味だけを出す
             const term = entries[0].item;
             tip.append(MindmapPreview.h({ tag: "span", attrs: { class: "tt-head" }, children: [term.title, MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [term.id] })] }), MindmapPreview.h({ tag: "span", attrs: { class: "tt-body" }, children: [term.meaning ?? ""] }));
         }

@@ -456,7 +456,7 @@ tables:
       - name: aliases
         title: 別名
         type: array
-        description: 同じものを指す別の言い方
+        description: 同じものを指す別の言い方。プレビューは本文の語がこれに一致すると、タイトルと同じ印とツールチップを出す
       - name: avoid
         title: 使わない表記
         type: array

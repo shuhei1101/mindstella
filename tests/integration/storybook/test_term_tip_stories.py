@@ -86,6 +86,20 @@ def test_few(open_story: OpenStory) -> None:
     assert shape["groupLine"] == "1px"
 
 
+def test_several_terms(open_story: OpenStory) -> None:
+    """用語 2 件だけに一致した印。「用語 2」の見出しの下に 2 件を区切り線で分けて並べ、それぞれ用語・ID・意味を出してタイトルをリンクにし、役割は付けない（正常系）。"""
+    # 準備・実行
+    page = _open_tip(open_story, "preview-termtip--several-terms")
+    # 検証
+    shape: dict[str, Any] = page.evaluate(READ_SHAPE_SCRIPT)
+    bodies = dict(shape["bodies"])
+    assert shape["role"] is None
+    assert shape["kinds"] == ["用語 2"]
+    assert shape["links"] == ["G-1", "G-2"]
+    assert bodies == {"G-1": "画面に重ねる演出", "G-2": "特殊効果の別の言い方として使う用語"}
+    assert shape["itemLine"] == "1px"
+
+
 def test_doc_only(open_story: OpenStory) -> None:
     """資料 1 件だけに一致した印。「資料 1」の見出しの下に 1 件（正常系）。"""
     # 準備・実行
