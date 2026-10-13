@@ -394,7 +394,7 @@ namespace MindmapPreview {
   /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
   export const MARK_KINDS = ["terms", "docs", "research"] as const;
 
-  /** 描いた本文の文中の、用語集の用語と資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語だけに一致した印はその項目の ID を `onOpen` に知らせる（資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
+  /** 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
   export function linkBody({
     root,
     index,
@@ -411,8 +411,8 @@ namespace MindmapPreview {
     for (const kind of MARK_KINDS) {
       for (const item of index.data[kind]) {
         if (item.id === selfId || (kind !== "terms" && item.withdrawn === true)) continue;
-        const words = kind === "terms" ? [item.title] : (item.aliases ?? []);
-        // 同じ項目の同じ語は 1 つにまとめる
+        const words = kind === "terms" ? [item.title, ...(item.aliases ?? [])] : (item.aliases ?? []);
+        // 同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
         for (const word of new Set(words.map((value) => value.trim()).filter((value) => value !== ""))) {
           byWord.set(word, [...(byWord.get(word) ?? []), item.id]);
         }
@@ -446,8 +446,8 @@ namespace MindmapPreview {
         // 記録に無い ID・項目自身の ID・コードの一部は、そのままにする
         if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word)) continue;
         const target = isId ? word : ids[0]!;
-        // 資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
-        const withDocs = !isId && ids.some((id) => index.byId.get(id)?.kind !== "terms");
+        // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
+        const multi = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
         parts.push(
           text.slice(last, match.index),
           h({
@@ -457,11 +457,11 @@ namespace MindmapPreview {
               href: hashWith({ id: target, heading: null }),
               "data-id": target,
               "data-ids": isId ? null : ids.join(" "),
-              "aria-describedby": isId || withDocs ? null : TERM_TIP_ID,
-              "aria-details": withDocs ? TERM_TIP_ID : null,
+              "aria-describedby": isId || multi ? null : TERM_TIP_ID,
+              "aria-details": multi ? TERM_TIP_ID : null,
               onclick: (event: Event) => {
                 event.preventDefault();
-                if (isId || !withDocs) onOpen(target);
+                if (isId || !multi) onOpen(target);
               },
             },
             children: [word],

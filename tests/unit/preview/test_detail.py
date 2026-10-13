@@ -1682,6 +1682,61 @@ def test_detail_panel_when_alias_tip_escape_in_full(
     }
 
 
+# ツールチップの先頭の見出しと並んだ項目の ID を読む（ツールチップは `popover` を持つ要素）
+READ_TERM_TIP_SCRIPT = """() => {
+    const tip = document.querySelector("a.tt-link")?.closest("[popover]");
+    return {
+        text: (tip?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+        ids: [...(tip?.querySelectorAll("a.tt-link") ?? [])].map((link) => link.getAttribute("data-id")),
+    };
+}"""
+
+
+def test_detail_panel_when_term_aliases_tip(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """用語 2 件以上に一致した印は押すとツールチップを残し、中のリンクで移る（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[
+            make_item("G-1", title="移し替え", meaning="移すことの意味"),
+            make_item("G-2", title="版の更新", aliases=["移し替え"], meaning="版を上げることの意味"),
+        ],
+        docs=[make_item("A-1", body="A-1.md")],
+        bodies={"A-1.md": "移し替え\n"},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
+    links = preview_page.locator("a.tt-link")
+    mark = preview_page.locator("a.term", has_text="移し替え")
+    # 実行
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown = preview_page.evaluate(READ_TERM_TIP_SCRIPT)
+    mark.click()
+    # ポインターを印から外し、隠す待ち（150 ミリ秒）より長く待つ
+    preview_page.mouse.move(1, 1)
+    preview_page.wait_for_timeout(400)
+    pinned = links.first.is_visible()
+    after_pin = preview_page.evaluate("() => window.__calls.open")
+    links.filter(has_text="版の更新").click()
+    links.first.wait_for(state="hidden")
+    after_link = preview_page.evaluate("() => window.__calls.open")
+    # 検証
+    assert shown["ids"] == ["G-1", "G-2"]
+    assert "用語 2" in shown["text"]
+    assert (pinned, after_pin) == (True, [])
+    assert after_link == ["G-2"]
+
+
 # 見出しのタイトル（`.panel-title`）を調べる関数の集まり。`openHeadTitle` が項目を開き（開いていた詳細は外す）、`readHeadTitle` が今の見出しのタイトルの状態を読み、`readHeadButtonWidths` が見出しの表示されているボタンの幅を読み、`scrollBody` が本文のスクロール領域を送って見出しのタイトルの出し入れが済むまで待つ
 HEAD_TITLE_FUNCTIONS = """
 // 描画と、見張りが返す結果の反映を待つコマ数

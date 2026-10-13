@@ -14,9 +14,11 @@ from preview_alias_helpers import (
     ALIAS_BODY,
     MIXED_IDS,
     PANEL_MARKS,
+    SHARED_TERM_IDS,
     TIP,
     TIP_OPEN,
     write_alias_preview,
+    write_term_alias_preview,
 )
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
@@ -2777,6 +2779,115 @@ def test_body_alias_tooltip_keys(
     assert back == "特殊効果:term"
     assert after_escape == "特殊効果:term"
     assert after_last == "エフェクト:term"
+
+
+def _open_term_alias_panel(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """別名を持つ用語と、本文を持つ A-1 を詳細パネルで開き、本文の印が付くのを待つ。"""
+    url = write_term_alias_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector(PANEL_MARKS)
+    return page
+
+
+def test_body_term_alias_marks(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語の別名にもタイトルと同じ印を付け（取り下げた用語の別名にも付け、空白だけの別名には付けない）、同じ用語のタイトルと別名が同じ語なら 1 回だけ数える。用語 1 件だけに一致した印は押すとその用語へ移って履歴に積み、用語 2 件に一致した印は押しても移らない（正常系）。"""
+    # 準備
+    page = _open_term_alias_panel(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    # 実行
+    marks = page.eval_on_selector_all(
+        PANEL_MARKS,
+        "a => a.map(x => [x.textContent, x.dataset.ids, x.getAttribute('aria-describedby'), x.getAttribute('aria-details')])",
+    )
+    style = page.eval_on_selector(
+        PANEL_MARKS,
+        "e => ({line: getComputedStyle(e).textDecorationLine, style: getComputedStyle(e).textDecorationStyle, color: getComputedStyle(e).color, parent: getComputedStyle(e.parentElement).color})",
+    )
+    # 用語 2 件に一致した印を押しても移らない
+    page.click(f"{PANEL_MARKS} >> nth=1")
+    page.wait_for_timeout(200)
+    stayed = (page.evaluate("location.hash"), page.evaluate("history.length"))
+    # 用語 1 件だけに一致した印を押すとその用語へ移る
+    page.click(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_function("location.hash.includes('id=G-1')")
+    # 検証
+    assert marks == [
+        ["マイグレーション", "G-1", "term-tip", None],
+        ["移し替え", SHARED_TERM_IDS, None, "term-tip"],
+        ["古い呼び方", "G-3", "term-tip", None],
+    ]
+    assert style["line"] == "underline"
+    assert style["style"] == "dotted"
+    assert style["color"] == style["parent"]
+    assert stayed == (hash_before, history_length)
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_term_alias_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語 2 件に一致した印に乗せると「用語 2」の見出しの下に 2 件を並べ、タイトルを詳細へのリンクにする。別名に一致した用語 1 件だけの印は、用語・ID・意味だけを tooltip の役割で出す（正常系）。"""
+    # 準備
+    page = _open_term_alias_panel(write_preview, open_preview, make_item)
+    # 実行（用語 2 件に一致した印）
+    page.hover(f"{PANEL_MARKS} >> nth=1")
+    page.wait_for_selector(TIP_OPEN)
+    several = page.evaluate(READ_TIP_SCRIPT)
+    # 実行（別名に一致した用語 1 件だけの印）
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    page.hover(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    single = page.evaluate(
+        """() => {
+            const tip = document.getElementById('term-tip');
+            return {role: tip.getAttribute('role'), head: tip.querySelector('.tt-head').textContent, body: tip.querySelector('.tt-body').textContent, links: tip.querySelectorAll('a.tt-link').length};
+        }"""
+    )
+    # 検証
+    assert several["role"] is None
+    assert several["inPanel"] is True
+    assert several["kinds"] == ["用語 2"]
+    assert several["links"] == [["G-1", "移し替え"], ["G-2", "版の更新"]]
+    assert several["bodies"] == [["G-1", "記録を今の版に直すこと"], ["G-2", "版を上げること"]]
+    assert single == {"role": "tooltip", "head": "移し替えG-1", "body": "記録を今の版に直すこと", "links": 0}
+
+
+def test_body_term_alias_tooltip_pinned(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語 2 件に一致した印を押すとツールチップを出したままにし（印から外れても消えない）、外を押すと閉じる。Tab で中の最初のリンクへ移り、中のタイトルを押すとその用語へ移って履歴に積み、ツールチップを閉じる（正常系）。"""
+    # 準備
+    page = _open_term_alias_panel(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    shared = f"{PANEL_MARKS} >> nth=1"
+    # 実行（押して、印から外して待つ）
+    page.click(shared)
+    page.mouse.move(2, 2)
+    page.wait_for_timeout(400)
+    kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+    # 実行（外を押して閉じる）
+    page.click("aside.panel .panel-kind")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（フォーカスして Tab で中の最初のリンクへ）
+    page.focus(shared)
+    page.wait_for_selector(TIP_OPEN)
+    page.keyboard.press("Tab")
+    first = page.evaluate("document.activeElement.dataset.id + ':' + document.activeElement.className")
+    # 実行（中のタイトルを押して移る）
+    page.click(f'{TIP} a.tt-link[data-id="G-2"]')
+    page.wait_for_function("location.hash.includes('id=G-2')")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 検証
+    assert kept is True
+    assert first == "G-1:tt-link"
+    assert page.evaluate("history.length") == history_length + 1
+    assert page.inner_text("aside.panel .d-title") == "版の更新"
 
 
 def test_body_alias_tooltip_placement(
