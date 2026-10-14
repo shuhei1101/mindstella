@@ -27,6 +27,8 @@ __all__ = [
     "PILL",
     "REVIEW_ENTRY",
     "REVIEW_HEAD",
+    "ROW_CORNER_GAPS_JS",
+    "ROW_CORNER_TOLERANCE_PX",
     "THREAD_ROWS",
     "THREE_LINE_BODY",
     "UPDATE_TIMEOUT_MS",
@@ -75,8 +77,19 @@ PILL = "button.selection-comment"
 REVIEW_ENTRY = f"{COMMENTS_PANEL} .comments-head button.review-entry"
 REVIEW_HEAD = f"{COMMENTS_PANEL} .review-head"
 
+# 行の右上の操作が、行の右上の隅から離れてよい上限（px）
+ROW_CORNER_TOLERANCE_PX = 24
+
+# パネルの動きが終わってから、行の右上の隅と「修正」「削除」の組の隅との隙間（px）を返す
+ROW_CORNER_GAPS_JS = """async (selector) => {
+    await Promise.all(document.getAnimations().map(animation => animation.finished));
+    const row = document.querySelector(selector).getBoundingClientRect();
+    const actions = document.querySelector(`${selector} .row-actions`).getBoundingClientRect();
+    return { right: row.right - actions.right, top: actions.top - row.top };
+}"""
+
 # スレッドの一覧の行
-THREAD_ROWS = f"{COMMENTS_PANEL} ul.th-list > li"
+THREAD_ROWS =f"{COMMENTS_PANEL} ul.th-list > li"
 
 # レビュー中の書き込みの画面の送る帯の要素
 CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
