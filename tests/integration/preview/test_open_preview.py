@@ -620,7 +620,7 @@ def test_normal_when_comment_added(
 def test_normal_when_comment_removed_and_sent(
     write_commented_preview: WriteReviewPreview, open_preview: OpenPreview, page: Any
 ) -> None:
-    """コメントの一覧で消すと件数が減り、全て送ると印が全て消える。どちらも画面は描き直さない（正常系）。"""
+    """コメントの一覧で消すと件数が減り、全て送ると印が全て消える。消すだけでは画面を描き直さない（正常系）。"""
     # 準備
     url, _ = write_commented_preview()
     open_preview(url, "#tab=decisions&view=board")
@@ -647,7 +647,6 @@ def test_normal_when_comment_removed_and_sent(
     # 検証（送った後）
     assert marks_of(page) == {}
     assert page.locator(".board [data-comment-target]:not(:empty)").count() == 0
-    assert page.get_attribute('.board button.card[data-id="D-3"]', "data-kept") == "yes"
 
 
 # マップの拡大の倍率と、枠のスクロールの位置を返す
