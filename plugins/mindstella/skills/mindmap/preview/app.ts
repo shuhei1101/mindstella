@@ -1393,6 +1393,8 @@ namespace MindmapPreview {
       if (item.target === null) return;
       comment.opened = item.id;
       comment.highlight = null;
+      // いま開いている項目を指す行でも、詳細パネルを一覧の前に出す
+      stack.front = "detail";
       if (route.id === item.target) {
         renderDetail();
         renderComments();
@@ -1406,6 +1408,8 @@ namespace MindmapPreview {
     const openFromThread = (id: string, loc?: Location): void => {
       comment.opened = null;
       comment.highlight = loc === undefined ? null : { target: id, loc };
+      // いま開いている項目を指すときでも、詳細パネルをパネルの前に出す
+      stack.front = "detail";
       if (route.id === id) {
         renderDetail();
         renderComments();
