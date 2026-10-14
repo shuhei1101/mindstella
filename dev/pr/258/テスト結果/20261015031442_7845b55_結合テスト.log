@@ -1,10 +1,9 @@
 $ pytest tests/integration/server tests/integration/preview tests/integration/storybook -v
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /home/shuhei2441/.cache/mindstella/venv-dev/bin/python
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread
 configfile: pytest.ini
-plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
-asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
 collecting ... collected 1316 items
 
 tests/integration/server/test_add.py::test_normal PASSED                 [  0%]
@@ -48,7 +47,7 @@ tests/integration/server/test_check.py::test_normal_when_unknown_phase PASSED [ 
 tests/integration/server/test_check.py::test_normal_when_options_and_status_mismatch PASSED [  2%]
 tests/integration/server/test_check.py::test_normal_when_removed_item_in_change_set PASSED [  3%]
 tests/integration/server/test_check.py::test_normal_when_html_body_problems_found PASSED [  3%]
-tests/integration/server/test_check_env.py::test_normal FAILED           [  3%]
+tests/integration/server/test_check_env.py::test_normal PASSED           [  3%]
 tests/integration/server/test_check_env.py::test_error_when_venv_missing PASSED [  3%]
 tests/integration/server/test_check_env.py::test_error_when_python_too_old SKIPPED [  3%]
 tests/integration/server/test_check_env.py::test_error_when_dependency_missing PASSED [  3%]
@@ -154,17 +153,17 @@ tests/integration/server/test_init.py::test_error_when_workspace_exists PASSED [
 tests/integration/server/test_init.py::test_error_when_settings_mismatch PASSED [ 11%]
 tests/integration/server/test_init.py::test_error_when_write_fails PASSED [ 11%]
 tests/integration/server/test_init.py::test_error_when_old_settings_file_exists PASSED [ 11%]
-tests/integration/server/test_launch.py::test_normal FAILED              [ 11%]
-tests/integration/server/test_launch.py::test_normal_when_external_settings FAILED [ 11%]
-tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded FAILED [ 11%]
-tests/integration/server/test_launch.py::test_normal_when_session_exists FAILED [ 11%]
+tests/integration/server/test_launch.py::test_normal PASSED              [ 11%]
+tests/integration/server/test_launch.py::test_normal_when_external_settings PASSED [ 11%]
+tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded PASSED [ 11%]
+tests/integration/server/test_launch.py::test_normal_when_session_exists PASSED [ 11%]
 tests/integration/server/test_launch.py::test_error_when_dependency_missing PASSED [ 11%]
 tests/integration/server/test_launch.py::test_error_when_tmux_missing PASSED [ 11%]
 tests/integration/server/test_launch.py::test_error_when_claude_missing PASSED [ 11%]
-tests/integration/server/test_launch.py::test_error_when_plugin_not_installed FAILED [ 11%]
+tests/integration/server/test_launch.py::test_error_when_plugin_not_installed PASSED [ 11%]
 tests/integration/server/test_launch.py::test_error_when_folder_missing PASSED [ 11%]
-tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere FAILED [ 11%]
-tests/integration/server/test_launch.py::test_normal_when_another_account FAILED [ 12%]
+tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere PASSED [ 11%]
+tests/integration/server/test_launch.py::test_normal_when_another_account PASSED [ 12%]
 tests/integration/server/test_mcp_server.py::test_normal PASSED          [ 12%]
 tests/integration/server/test_mcp_server.py::test_normal_when_tool_fails PASSED [ 12%]
 tests/integration/server/test_mcp_server.py::test_normal_when_argument_missing PASSED [ 12%]
@@ -1324,180 +1323,4 @@ tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_
 tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_states_when_width[chromium-filter-diff-narrow-w900] PASSED [ 99%]
 tests/integration/storybook/test_topbar_stories.py::test_filter_narrow_gap_when_width[chromium-filter-diff-narrow-w900] PASSED [100%]
 
-=================================== FAILURES ===================================
-_________________________________ test_normal __________________________________
-
-make_venv = <function make_venv.<locals>._make at 0x7896dbb168e0>
-
-    def test_normal(make_venv: MakeVenv) -> None:
-        """仮想環境に依存がそろっていて、起動する Python を返す（正常系）。"""
-        # 準備
-        venv_dir = make_venv("venv")
-        # 実行
-        result = _run_check_env("--venv", str(venv_dir))
-        # 検証
->       assert result.returncode == 0
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3', '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/skills/mindmap/scripts/check_env.py', '--venv', '/tmp/pytest-of-shuhei2441/pytest-1581/test_normal5/venv'], returncode=1, stdout='{"base_python": "/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/bin/python3", "base_python_version": "3.12.3", "base_python_ok": true, "venv": "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal5/venv", "python_path": "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal5/venv/bin/python", "venv_ok": true, "python": "3.12.3", "python_ok": true, "packages": [{"name": "PyYAML", "required": "5.1", "installed": "6.0.3", "ok": true}, {"name": "jsonschema", "required": "4.18.0", "installed": "4.26.0", "ok": true}, {"name": "mcp", "required": "2.3.0", "installed": "2.0.0", "ok": false}], "install": "\\"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal5/venv/bin/python\\" -m pip install \\"mcp>=2.3.0\\""}\n', stderr='').returncode
-
-tests/integration/server/test_check_env.py:73: AssertionError
-_________________________________ test_normal __________________________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal21'), tools_dir=PosixPath('/tmp/pytest-...ig'), socket='mindstella-test-48200-mst_y61iwog', tmux_tmpdir=PosixPath('/tmp/mst_y61iwog'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal21/venv')
-
-    def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """依存がそろっていれば、今の版のサーバーを渡した Claude Code を tmux のセッションで立てる（正常系）。"""
-        # 準備
-        folder = sandbox.root / "家計簿アプリ"
-        # 実行
-        result = sandbox.launch("家計簿アプリ", venv=ready_venv)
-        # 検証
->       assert result.returncode == 0, result.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal21/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal21/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:32: AssertionError
-______________________ test_normal_when_external_settings ______________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_external_sett0'), tools_dir=Posix...ig'), socket='mindstella-test-48200-mstmsqef41r', tmux_tmpdir=PosixPath('/tmp/mstmsqef41r'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_external_sett0/venv')
-
-    def test_normal_when_external_settings(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """設定されている外から見る環境変数だけを MCP の設定の env に書く（正常系）。"""
-        # 準備
-        external = {
-            "MINDSTELLA_ALLOWED_HOSTS": "preview.example.test",
-            "MINDSTELLA_PREVIEW_START_HOOK": "pub add",
-        }
-        # 実行
-        with_env = sandbox.launch("家計簿アプリ", venv=ready_venv, extra_env=external)
-        without_env = sandbox.launch("別の話し合い", venv=ready_venv)
-        # 検証
->       assert with_env.returncode == 0, with_env.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_external_sett0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_external_sett0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:71: AssertionError
-_______________________ test_normal_when_plugin_upgraded _______________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_plugin_upgrad0'), tools_dir=Posix...ig'), socket='mindstella-test-48200-mst0l8d3qzz', tmux_tmpdir=PosixPath('/tmp/mst0l8d3qzz'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_plugin_upgrad0/venv')
-tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_plugin_upgrad0')
-
-    def test_normal_when_plugin_upgraded(
-        sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
-    ) -> None:
-        """古い版のフォルダのスクリプトを叩いても、新しい版のサーバーを指す（正常系）。"""
-        # 準備
-        old_dir = copy_plugin(tmp_path / "plugin-old")
-        new_dir = copy_plugin(tmp_path / "plugin-new")
-        sandbox.write_claude([{"id": "mindstella@mindstella", "installPath": str(new_dir)}])
-        # 実行
-        result = sandbox.launch("家計簿アプリ", venv=ready_venv, script=old_dir / "bin" / "mindstella")
-        # 検証
->       assert result.returncode == 0, result.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_plugin_upgrad0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_plugin_upgrad0/plugin-old/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_plugin_upgrad0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:95: AssertionError
-_______________________ test_normal_when_session_exists ________________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_session_exist0'), tools_dir=Posix...ig'), socket='mindstella-test-48200-mstoccr8olu', tmux_tmpdir=PosixPath('/tmp/mstoccr8olu'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_session_exist0/venv')
-
-    def test_normal_when_session_exists(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """既にあるセッションには新しく立てず、つなぐコマンドを返す（正常系）。"""
-        # 準備
-        first = sandbox.launch("家計簿アプリ", venv=ready_venv)
->       assert first.returncode == 0, first.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_session_exist0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_session_exist0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:108: AssertionError
-_____________________ test_error_when_plugin_not_installed _____________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_error_when_plugin_not_ins0'), tools_dir=Posix...ig'), socket='mindstella-test-48200-mstlmll0er1', tmux_tmpdir=PosixPath('/tmp/mstlmll0er1'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_error_when_plugin_not_ins0/venv')
-
-    def test_error_when_plugin_not_installed(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """プラグインの一覧に mindstella が無ければ、インストールを案内して止まる（異常系）。"""
-        # 準備
-        sandbox.write_claude([])
-        # 実行
-        result = sandbox.launch("家計簿アプリ", venv=ready_venv)
-        # 検証
-        assert result.returncode == 1
->       assert "mindstella@mindstella" in result.stderr
-E       assert 'mindstella@mindstella' in '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n'
-E        +  where '[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n' = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_error_when_plugin_not_ins0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').stderr
-
-tests/integration/server/test_launch.py:168: AssertionError
-_________________ test_normal_when_same_folder_name_elsewhere __________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_same_folder_n0'), tools_dir=Posix...ig'), socket='mindstella-test-48200-mstwfnppgoy', tmux_tmpdir=PosixPath('/tmp/mstwfnppgoy'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_same_folder_n0/venv')
-
-    def test_normal_when_same_folder_name_elsewhere(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-        """名前が同じでも場所が違うフォルダは、別のセッションを立てる（正常系）。"""
-        # 準備
-        first = sandbox.launch("仕事/家計簿アプリ", venv=ready_venv)
->       assert first.returncode == 0, first.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_same_folder_n0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/bin/mindstella', '仕事/家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_same_folder_n0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:187: AssertionError
-_______________________ test_normal_when_another_account _______________________
-
-sandbox = LaunchSandbox(root=PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_another_accou0'), tools_dir=Posix...ig'), socket='mindstella-test-48200-mstcy40clpn', tmux_tmpdir=PosixPath('/tmp/mstcy40clpn'), real_tmux='/usr/bin/tmux')
-ready_venv = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_another_accou0/venv')
-tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_another_accou0')
-
-    def test_normal_when_another_account(
-        sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
-    ) -> None:
-        """同じフォルダでも別のアカウント（`CLAUDE_CONFIG_DIR`）で開けば、別のセッションを立てる（正常系）。"""
-        # 準備
-        folder = sandbox.root / "家計簿アプリ"
-        sub1 = tmp_path / "claude-sub1"
-        sub1.mkdir()
-        first = sandbox.launch("家計簿アプリ", venv=ready_venv, with_config=False)
->       assert first.returncode == 0, first.stderr
-E       AssertionError: [mindstella] エラー: 依存が足りません
-E         ライブラリが足りません: mcp（2.3.0 以上）
-E         "/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_another_accou0/venv/bin/python" -m pip install "mcp>=2.3.0"
-E         
-E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-comment-thread-user-unread/plugins/mindstella/bin/mindstella', '家計簿アプリ'], returncode=1, stdout='', stderr='[mindstella] エラー: 依存が足りません\nライブラリが足りません: mcp（2.3.0 以上）\n"/tmp/pytest-of-shuhei2441/pytest-1581/test_normal_when_another_accou0/venv/bin/python" -m pip install "mcp>=2.3.0"\n').returncode
-
-tests/integration/server/test_launch.py:213: AssertionError
-=========================== short test summary info ============================
-FAILED tests/integration/server/test_check_env.py::test_normal - assert 1 == 0
-FAILED tests/integration/server/test_launch.py::test_normal - AssertionError:...
-FAILED tests/integration/server/test_launch.py::test_normal_when_external_settings
-FAILED tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded
-FAILED tests/integration/server/test_launch.py::test_normal_when_session_exists
-FAILED tests/integration/server/test_launch.py::test_error_when_plugin_not_installed
-FAILED tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere
-FAILED tests/integration/server/test_launch.py::test_normal_when_another_account
-============ 8 failed, 1306 passed, 2 skipped in 1584.33s (0:26:24) ============
+================= 1314 passed, 2 skipped in 1426.79s (0:23:46) =================
