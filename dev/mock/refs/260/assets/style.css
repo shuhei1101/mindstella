@@ -8,6 +8,8 @@
 :root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
 /* 操作列のリンク */
 .mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 操作列のボタン（モックの操作）: 地の色のまま破線の枠で、見本のリンクと見分ける */
+.mockbar button { padding: 2px 6px; border: 1px dashed currentColor; border-radius: 3px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 /* 開いている案・見本 */
 .mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
 /* 操作列の区切りの見出し */
