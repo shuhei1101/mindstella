@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>書き込みのまとまりのリンク | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/260/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <link rel="stylesheet" href="../../refs/260/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない） -->
+  <script src="../../refs/260/assets/app.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / thread-diff-link</nav>
+    <!-- 題と、ページ全体のライト / ダークの切り替え（data-act: catalog.js が押したときに data-theme を入れ替える） -->
+    <div class="cat-head">
+      <h1>書き込みのまとまりのリンク</h1>
+      <button type="button" class="btn" data-act="theme">ライト / ダークを切り替える</button>
+    </div>
+
+    <!-- AI の書き込み -->
+    <section class="cat-sec">
+      <h2>AI の書き込み</h2>
+      <p>1 つの書き込みに、まとまりのリンク（文言に項目の ID を含む）・項目の ID のボタン・まとまりのリンクにならない書き方（記録に無い V-99）が並ぶ。リンクには文言だけを出し、文言の中の A-14 はボタンにしない。</p>
+      <div class="stage" id="s-ai"></div>
+    </section>
+
+    <!-- 利用者の書き込み -->
+    <section class="cat-sec">
+      <h2>利用者の書き込み</h2>
+      <p>diff が since のもの・diff を持たない # のリンクは、書いた文字のまま出す。</p>
+      <div class="stage" id="s-user"></div>
+    </section>
+
+    <!-- スレッドの中のレビュー中の書き込み -->
+    <section class="cat-sec">
+      <h2>スレッドの中のレビュー中の書き込み</h2>
+      <p>破線の枠と「レビュー中」の印の書き込みも、同じ描き方で出す。</p>
+      <div class="stage" id="s-pending"></div>
+    </section>
+
+    <!-- レビュー中を確かめる画面の行 -->
+    <section class="cat-sec">
+      <h2>レビュー中を確かめる画面の行</h2>
+      <p>行の本文は今と同じく項目の ID を文字のまま出し、まとまりのリンクだけを描く。</p>
+      <div class="stage" id="s-review"></div>
+    </section>
+
+    <!-- ホバー -->
+    <section class="cat-sec">
+      <h2>ホバー</h2>
+      <p>案 A は下線を印の色に濃くし、案 B は項目の ID のボタンと同じく枠と文字を印の色にする。</p>
+      <div class="stage" id="s-hover"></div>
+    </section>
+
+    <!-- キーボードのフォーカス -->
+    <section class="cat-sec">
+      <h2>キーボードのフォーカス</h2>
+      <p>Tab で項目の ID のボタンと同じ並びの順に止まり、Enter で差分の表示に切り替わる。</p>
+      <div class="stage" id="s-focus"></div>
+    </section>
+
+    <!-- 長い文言・ほかの引数を持つリンク -->
+    <section class="cat-sec">
+      <h2>長い文言・ほかの引数を持つリンク</h2>
+      <p>#tab=docs&amp;id=A-11&amp;diff=V-5 は diff だけを読んでリンクにする。長い文言は書き込みの幅で折り返す。</p>
+      <div class="stage" id="s-long"></div>
+    </section>
+
+    <!-- 狭い幅 -->
+    <section class="cat-sec">
+      <h2>狭い幅</h2>
+      <p>スマホ幅（390px）のパネルの中。</p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+  <!-- 見本の引数で部品を台に置く -->
+  <script src="../../refs/260/assets/catalog.js"></script>
+</body>
+</html>
