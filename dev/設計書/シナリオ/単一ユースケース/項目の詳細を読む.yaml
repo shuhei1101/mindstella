@@ -200,6 +200,7 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー。表示の幅は 1920px
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -210,6 +211,7 @@ scenarios:
         P-->>U: 本文の HTML を描いた結果を持つモーダル
         U->>P: モーダルの外側を押す
         P-->>U: A-1 の詳細パネル
+      ```
     expected:
       - 詳細パネルのヘッダーに HTML のバッジが出る
       - 本文の見出し・段落・表・図が、HTML を描いた結果で出る
@@ -229,6 +231,7 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -237,6 +240,7 @@ scenarios:
         P-->>U: スクリプトを動かさずに描いた本文
         U->>P: 本文のボタンを押す
         P-->>U: 何も起きない
+      ```
     expected:
       - プレビューのページの変数にも、本文を描いた文書の変数にも印が残らない（本文のスクリプトとイベントの属性が実行されていない）
       - 本文の見出し・段落は描かれて出る
@@ -253,12 +257,14 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
 
         U->>P: 資料のカードで A-1 を押す
         P-->>U: Markdown の本文の中に、コードブロックの HTML を描いた結果を持つ詳細パネル
+      ```
     expected:
       - コードブロックの位置に、HTML を描いた段落と図が出る（コードのまま出ない）
       - コードブロックの前後の Markdown の見出し・段落は、今までどおり描かれる
@@ -353,6 +359,7 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -365,6 +372,7 @@ scenarios:
         P-->>U: 外のページを開いた新しいタブ
         U->>P: 元のタブへ戻り、本文の `#usage` のリンクを押す
         P-->>U: `id="usage"` の見出しまで送った本文
+      ```
     expected:
       - 外のページへのリンクを押すたびに、外のページを開いたタブが 1 つ増える（`target` の有無によらない）
       - リンクを押した後も、詳細パネルの本文の枠は A-1 の本文を描いたままで、外のページに置き換わらない

@@ -127,7 +127,8 @@ scenarios:
         notes: A-1 の段落と A-2 のコードブロックの段落は `<p class="flow" data-step="1">` のように属性を持ち、`data-step` は描いた文には出さない。A-2 のコードブロックの外の Markdown には「画面の流れ」も「data-step」も書かない
       - name: 配信
         description: 記録を配っているサーバー
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -136,6 +137,7 @@ scenarios:
         P-->>U: A-1 と A-2 の結果
         U->>P: 入力を「data-step」に替える
         P-->>U: 該当なし
+      ```
     expected:
       - 「画面の流れ」の結果に A-1 と A-2 があり、T-1 は無い
       - 「data-step」の結果が 0 件で、該当なしが出る（HTML の本文と、Markdown の中の `html` のコードブロックのタグ・属性には当てない）
