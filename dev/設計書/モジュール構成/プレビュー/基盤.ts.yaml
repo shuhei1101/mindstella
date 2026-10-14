@@ -1274,7 +1274,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: '描いた本文の見出しに、見出しを指す名前と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする'
+    summary: '描いた本文の見出しに、見出しを指す名前と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動に、`#diff=` のリンクをまとまりの知らせにする'
     args:
       - name: root
         type: HTMLElement
@@ -1286,13 +1286,20 @@ functions:
         required: true
         passing: keyword
         description: '# か `#見出し` のリンクを押したときに、その見出しの名前を知らせる（使う側が送ってハッシュの `h` を置き換える）'
+      - name: onChangeSet
+        type: '(id: string) => void'
+        required: true
+        passing: keyword
+        description: 本文の `#diff=` のリンクを押したときに、`diff` の値を知らせる（空・`since`・`pending` のときは呼ばない。記録にあるまとまりかは使う側が確かめる）
     returns:
       type: void
       description: '-'
     process: |-
       1. 本文の見出し（h1〜h6）を頭から順に、文言を `headingSlug`（本文 1 つで 1 つの `seen`）で名前にして `data-heading` に持たせる
       2. 見出しの右に、読み上げの名前「見出し「{見出し}」へのリンク」の # の `a` を置き、押したら既定の動作を止めて `onHeading` を呼ぶ
-      3. 本文の中の `href` が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻し（marked は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。押したら既定の動作を止め、同じ名前の見出しがあれば `onHeading` を呼ぶ。無ければ何もしない（URL のハッシュを `#{文字}` に替えさせない）
+      3. 本文の中の `href` が `#` で始まるリンクは、押したら既定の動作を止める（URL のハッシュを `#{文字}` に替えさせない）。`#` の後ろを `URLSearchParams` で読み、`diff` の引数を持つかで分ける
+         - `diff` を持つ場合、まとまりのリンクとして扱う。値が空・`since`・`pending` でなければ `onChangeSet` をその値で呼ぶ。他の引数は読まず、見出しのリンクとしても扱わない
+         - `diff` を持たない場合、`#` の後ろを `decodeURIComponent` で戻し（marked は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。同じ名前の見出しがあれば `onHeading` を呼び、無ければ何もしない
     unit_tests:
       - name: test_link_headings
         case: 正常
@@ -1300,6 +1307,12 @@ functions:
         condition: 見出し「保存先」「決め方」「決め方」と段落の `[決め方](#決め方)`・`[無い](#無い)` を描いた本文（marked が描いた `href` はパーセントエンコードされた日本語）。#・段落の 2 つのリンクを押す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`data-heading` が `保存先`・`決め方`・`決め方-1`。見出しごとに # が 1 つ。押すと `onHeading` にその名前が渡り、`[決め方]`（`href` はエンコードされた `#決め方`）は `決め方`、`[無い]` は呼ばず、URL のハッシュも変わらない'
+      - name: test_link_headings_when_change_set_link
+        case: 正常
+        summary: '`#diff=` のリンクでまとまりを知らせ、見出しとしては扱わない'
+        condition: 見出し「diff=V-1」と段落の `[a](#diff=V-1)`・`[b](#tab=tasks&id=D-1&diff=V-2)`・`[c](#diff=since)`・`[d](#diff=pending)`・`[e](#diff=)` を描いた本文。段落の 5 つのリンクを押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`onChangeSet` が `V-1`・`V-2` の順に 2 回だけ呼ばれる。`onHeading` はどのリンクでも呼ばれず、URL のハッシュも変わらない'
   - name: linkBody
     title: 本文の印と項目の ID のリンク
     kind: 関数

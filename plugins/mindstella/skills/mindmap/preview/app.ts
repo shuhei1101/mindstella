@@ -811,6 +811,10 @@ namespace MindmapPreview {
             shownHeading = heading === null || route.id === null ? null : { id: route.id, heading };
             navigate({ route: { ...route, filters: {} }, push: false });
           },
+          // 本文のまとまりのリンクを押した: 記録にあるまとまりのときだけ、変更履歴で選んだときと同じに切り替える
+          changeSet: (id) => {
+            if (resolveDiffPoint(data.changes, id, since) !== null) selectPoint(id);
+          },
         },
         comment: serverMode
           ? {

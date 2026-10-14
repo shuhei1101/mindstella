@@ -446,9 +446,9 @@ components:
         required: true
         description: 全画面か
       - name: on
-        type: '{open, close, full, back, forward, diagram, heading}'
+        type: '{open, close, full, back, forward, diagram, heading, changeSet}'
         required: true
-        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）
+        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）
       - name: comment
         type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
@@ -647,6 +647,12 @@ components:
         condition: '`lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、本文の行の差分が打ち切られる D-1 を `diff` つきで開く（`Diff.diffLines` が `undefined` を返し、その間に `performance.now()` が `LINE_DIFF_TIMEOUT_MS` より進むよう包む）'
         mock: 描画のライブラリの配信元（`page.route`）・`Diff.diffLines` と `performance.now()` を包む
         expected: 本文の頭に「本文の差分を計算しきれない旨」が出て、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` は今までどおり並び、`span.df-word` を持たない
+      - name: test_detail_panel_when_change_set_link
+        case: 正常
+        summary: 本文のまとまりのリンクで `on.changeSet` を呼ぶ
+        condition: '`parametrize`: 本文に `[V-1 へ](#diff=V-1)` を持つ D-1 を `diff` が `null` で開く / 同じ D-1 を、D-1 が変わった時点の `diff` で開く（差分の本文）。どちらも「V-1 へ」を押す'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: どちらも `on.changeSet` が `V-1` で 1 回呼ばれ、`on.heading` は呼ばれない
       - name: test_detail_panel_when_diff_minimap
         summary: 差分の表示の間だけ本文の右に帯を並べ、表示しない上書きでは並べない
         case: 正常

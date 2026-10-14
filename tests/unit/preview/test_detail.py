@@ -7,7 +7,13 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, LoadPreviewStyles, MakeData, MakeItem
+from .fixture_types import (
+    LoadLibrary,
+    LoadPreviewScripts,
+    LoadPreviewStyles,
+    MakeData,
+    MakeItem,
+)
 
 # 変更履歴の 1 回分の日時
 ENTRY_AT = "2026-10-03T09:00:00+00:00"
@@ -2242,6 +2248,84 @@ def test_detail_panel_when_head_title_full(
     expected_widths = [HEAD_BUTTON_WIDTH] * HEAD_BUTTON_COUNT_FULL
     assert result["buttons"]["before"] == expected_widths
     assert result["buttons"]["after"] == expected_widths
+
+
+# 本文の 3 行目にまとまりのリンクを持つ今の本文
+CHANGE_SET_LINK_BODY = "1 行目の段落\n\n[V-1 へ](#diff=V-1)\n"
+
+# 3 行目をリンクの段落に書き換えた回（差分の本文でもリンクを描く）
+CHANGE_SET_LINK_HISTORY = [
+    {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": [{"line": 3, "now": ["[V-1 へ](#diff=V-1)"], "before": ["元の 3 行目の段落"]}],
+    },
+]
+
+# 詳細パネルを開き、本文の「V-1 へ」を押したときに使う側へ知らせたまとまりと見出しを調べる
+CHANGE_SET_LINK_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const changeSetCalls = [];
+    const headingCalls = [];
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {
+            open: noop,
+            close: noop,
+            full: noop,
+            back: noop,
+            forward: noop,
+            diagram: noop,
+            heading: (slug) => headingCalls.push(slug),
+            changeSet: (id) => changeSetCalls.push(id),
+        },
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const link = [...panel.querySelectorAll(".md a")].find(
+        (element) => (element.textContent ?? "").trim() === "V-1 へ",
+    );
+    link.click();
+    return {changeSetCalls, headingCalls};
+}"""
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        pytest.param(None, id="without_diff"),
+        pytest.param(DIFF_POINT, id="with_diff"),
+    ],
+)
+def test_detail_panel_when_change_set_link(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    point: dict[str, object] | None,
+) -> None:
+    """本文のまとまりのリンクで `on.changeSet` を呼ぶ（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=CHANGE_SET_LINK_HISTORY)],
+        bodies={"D-1.md": CHANGE_SET_LINK_BODY},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(CHANGE_SET_LINK_SCRIPT, {"data": data, "point": point})
+    # 検証
+    assert result == {"changeSetCalls": ["V-1"], "headingCalls": []}
 
 
 # 1 つ目の段落を消し、末尾に段落を足した本文の今と、変えた回（消した段落と足した段落は離れていて、印は 2 つ）

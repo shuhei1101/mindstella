@@ -16,6 +16,7 @@ from preview_body_scroll_helpers import (
     SETTLED_SCROLL_TOP_JS,
     overflows_horizontally,
 )
+from preview_body_link_helpers import build_body_link_workspace
 from preview_comment_helpers import (
     PILL,
     ROW_CORNER_GAPS_JS,
@@ -721,6 +722,30 @@ def test_body_heading_link(
     assert "full=1" in page.evaluate("location.hash")
     assert page.locator("dialog.full .md:not(.md-value) a.term").count() == 1
     assert page.locator('dialog.full .md:not(.md-value) a.idref[data-id="D-3"]').count() == 1
+
+
+def test_body_change_set_link(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """全画面の本文でも、`#diff=` のリンクを押すと全画面のままそのまとまりの差分の表示に切り替え、ハッシュの diff を履歴に積まずに書く（正常系）。"""
+    # 準備
+    url = build_body_link_workspace(make_workspace, make_item, call_tool)
+    open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
+    page.wait_for_selector("dialog.full .md a")
+    history_length = page.evaluate("history.length")
+    # 実行
+    page.locator("dialog.full .md a", has_text="V-1 へ").click()
+    page.wait_for_selector(".df-chip")
+    # 検証
+    assert page.inner_text(".df-chip-t").endswith("D-1 を直す")
+    assert page.locator("dialog.full[open]").count() == 1
+    assert "full=1" in page.evaluate("location.hash")
+    assert page.evaluate("location.hash").count("diff=V-1") == 1
+    assert page.evaluate("history.length") == history_length
 
 
 def test_code_block_and_diagram_raw_when_long_line(

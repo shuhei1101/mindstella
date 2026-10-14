@@ -978,6 +978,7 @@ var MindmapPreview;
                     scrollToHeading({ root, slug });
                     on.heading(slug);
                 },
+                onChangeSet: on.changeSet,
             });
             MindmapPreview.linkBody({ root, index, selfId: id, onOpen: on.open });
             drawHtmlBlocks(root);
