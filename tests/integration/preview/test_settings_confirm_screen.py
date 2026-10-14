@@ -124,7 +124,7 @@ def test_save(
     assert {key: value for key, value in config.items() if key != "display"} == config_before
     assert "ワークスペースの既定にしました（" in panel_text(page)
     # 今の選びが既定と同じになり、ボタンの代わりにその旨を出す
-    assert "今の選びはワークスペースの既定と同じです。" in panel_text(page)
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
     assert read_prefs(page) == prefs_before
     page.wait_for_timeout(1500)
     assert page.locator(".stoast").count() == 0

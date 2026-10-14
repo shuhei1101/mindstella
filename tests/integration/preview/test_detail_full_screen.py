@@ -52,6 +52,15 @@ from preview_head_title_helpers import (
     SCROLL_BODY_TO_END_JS,
     SCROLL_BODY_TO_TOP_JS,
 )
+from preview_minimap_helpers import (
+    FULL_SCOPE,
+    MINIMAP_FULL_HASH,
+    added_paragraph_in_view,
+    map_metrics,
+    mark_shapes,
+    open_minimap,
+    scroll_top,
+)
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
 
@@ -848,3 +857,66 @@ def test_head_title_on_scroll(
     assert after["buttonWidths"] == [HEAD_BUTTON_WIDTH_PX] * len(after["buttonWidths"])
     assert after["titleRight"] <= after["firstButtonLeft"]
     assert after["lastButtonRight"] <= after["headRight"]
+
+
+# ─── 差分のミニマップ ───
+
+# ミニマップの帯の太さ（px）
+MINIMAP_WIDTH_PX = 20
+
+# 図の拡大を開いた・閉じたときに、帯が消える・戻るまで待つ上限ミリ秒
+MINIMAP_TOGGLE_MS = 5_000
+
+
+def test_diff_minimap(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面でも、詳細パネルと同じ帯を本文のスクロール領域の右に出し、印を押すとその箇所まで本文を送る。ハッシュと履歴は変えない（正常系）。"""
+    # 準備
+    url, _ = write_minimap_preview()
+    open_minimap(page, open_preview, url, MINIMAP_FULL_HASH)
+    history_length = page.evaluate("history.length")
+    metrics = map_metrics(page, FULL_SCOPE)
+    shapes = mark_shapes(page, FULL_SCOPE)
+    # 検証（帯は本文に重ならず、消した・足したの印が上下の順に並ぶ）
+    assert metrics["mapLeft"] >= metrics["bodyRight"] - 1
+    assert metrics["mapWidth"] == MINIMAP_WIDTH_PX
+    assert [shape["label"] for shape in shapes] == ["消した箇所（1 / 2）", "足した箇所（2 / 2）"]
+    assert shapes[0]["top"] < shapes[1]["top"]
+    assert not added_paragraph_in_view(page, FULL_SCOPE)
+    # 実行
+    page.locator(f"{FULL_SCOPE} .df-map .df-map-m").nth(1).click()
+    # 検証
+    assert scroll_top(page, FULL_SCOPE) > 0
+    assert added_paragraph_in_view(page, FULL_SCOPE)
+    assert "full=1" in page.evaluate("location.hash")
+    assert page.evaluate("history.length") == history_length
+
+
+def test_diff_minimap_when_diagram_zoomed(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """図の拡大を開いている間は、帯を出さない。閉じて本文へ戻ると、帯を出す（正常系）。"""
+    # 準備（差分の表示で、図を持つ D-1 を全画面で開く）
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full figure.diagram.df-colored", timeout=DIAGRAM_TIMEOUT_MS)
+    page.wait_for_selector(f"{FULL_SCOPE} .df-map .df-map-m")
+    assert page.locator(f"{FULL_SCOPE} .df-map").is_visible()
+    # 実行（図を拡大する）
+    page.click('dialog.full button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.full .full-viewer .v-stage svg")
+    # 検証
+    page.wait_for_function(
+        "document.querySelector('dialog.full .df-map')?.getClientRects().length === 0",
+        timeout=MINIMAP_TOGGLE_MS,
+    )
+    # 実行（図の拡大を閉じる）
+    page.click('dialog.full button[data-act="diagram-close"]')
+    page.wait_for_selector("dialog.full .panel-body", state="visible")
+    # 検証
+    page.wait_for_function(
+        "document.querySelector('dialog.full .df-map')?.getClientRects().length > 0",
+        timeout=MINIMAP_TOGGLE_MS,
+    )

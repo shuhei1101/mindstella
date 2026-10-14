@@ -17,6 +17,7 @@ from preview_drawer_helpers import (
     open_drawer,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_minimap_helpers import MINIMAP_HASH, PANEL_SCOPE, open_minimap
 from preview_settings_helpers import (
     DEFAULT_KINDS,
     LOOK_SELECT,
@@ -106,7 +107,7 @@ def test_open_and_close(
     assert opened["expanded"] == "true"
     assert opened["history"] == history_length
     assert "ワークスペースの既定のまま表示しています。" in opened["text"]
-    assert "今の選びはワークスペースの既定と同じです。" in opened["text"]
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in opened["text"]
     assert opened["buttons"] == []
     assert focus_after_esc == "settings"
     assert focus_after_close == "settings"
@@ -516,3 +517,85 @@ def test_reset_filters(
     # 記録の検討事項は未決定だけなので、ドロワーに並ぶ状態も未決定だけで、外していたチェックが戻る
     assert checked_values(page, "status") == ["未決定"]
     assert badge_text(page) == "1"
+
+
+# 「詳細に表示するもの」の区画の中の、差分のミニマップのチェックボックスの名前
+MINIMAP_LEGEND = "詳細に表示するもの"
+MINIMAP_LABEL = "差分のミニマップ"
+
+# 開いている詳細パネルの帯が消える・戻るまで待つ上限ミリ秒
+MINIMAP_TOGGLE_MS = 5_000
+
+
+def _minimap_checkbox(page: Page) -> Any:
+    """表示の設定の、区画「詳細に表示するもの」の中の「差分のミニマップ」のチェックボックスを返す。"""
+    return page.locator(f"{SETTINGS_PANEL} fieldset", has_text=MINIMAP_LEGEND).get_by_role(
+        "checkbox", name=MINIMAP_LABEL
+    )
+
+
+def test_minimap_override(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """「差分のミニマップ」のチェックを外すと、開いている詳細パネルからその場で帯が消え、個人の上書きとして残り、`config.yaml` は変わらない。戻すと帯が戻る（正常系）。"""
+    # 準備
+    url, root = write_minimap_preview()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    open_minimap(page, open_preview, url, MINIMAP_HASH)
+    history_length = page.evaluate("history.length")
+    open_settings(page)
+    # 検証（開いた直後は表示するで、上書きを持たない）
+    assert _minimap_checkbox(page).is_checked() is True
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    # 実行（チェックを外す）
+    _minimap_checkbox(page).click()
+    page.wait_for_function(
+        "document.querySelector('aside.panel .df-map') === null", timeout=MINIMAP_TOGGLE_MS
+    )
+    # 検証（詳細パネルは開いたままで、本文の差分の印は出ている）
+    assert page.locator(f"{PANEL_SCOPE}.open").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .md del.df-blk").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .md ins.df-blk").count() == 1
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is False
+    assert _minimap_checkbox(page).is_checked() is False
+    assert MINIMAP_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.evaluate("history.length") == history_length
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+    # 実行（チェックを戻す）
+    _minimap_checkbox(page).click()
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TOGGLE_MS)
+    # 検証（表示するは上書きを外す）
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+
+
+def test_reset_when_minimap(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表示しないにした「差分のミニマップ」は、「この端末で変えている項目」の末尾に並び、「既定に戻す」で外れて帯が戻る（正常系）。"""
+    # 準備（表示する種類も変え、その後ろに差分のミニマップが並ぶようにする）
+    url, _ = write_minimap_preview()
+    open_minimap(page, open_preview, url, MINIMAP_HASH)
+    open_settings(page)
+    toggle_kind(page, "用語集")
+    _minimap_checkbox(page).click()
+    page.wait_for_function(
+        "document.querySelector('aside.panel .df-map') === null", timeout=MINIMAP_TOGGLE_MS
+    )
+    # 検証
+    assert "表示する種類・差分のミニマップ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TOGGLE_MS)
+    # 検証（全ての上書きが外れ、チェックも表示するへ戻る）
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is None
+    assert prefs["kinds"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert _minimap_checkbox(page).is_checked() is True

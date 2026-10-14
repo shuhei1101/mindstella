@@ -84,6 +84,18 @@ from preview_head_title_helpers import (
     SCROLL_BODY_TO_TOP_JS,
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS, marks_of
+from preview_minimap_helpers import (
+    MINIMAP_HASH,
+    MINIMAP_VIEWPORT,
+    PANEL_SCOPE,
+    added_paragraph_in_view,
+    drag_view,
+    map_metrics,
+    mark_shapes,
+    open_minimap,
+    press_empty_area,
+    scroll_top,
+)
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from preview_word_diff_helpers import (
@@ -3661,3 +3673,170 @@ def test_head_title_motion_when_reduced(
     ).json_value()
     # 検証
     assert opacity_when_shown == "1"
+
+
+# ─── 差分のミニマップ ───
+
+# ミニマップの帯の太さ（px）
+MINIMAP_WIDTH_PX = 20
+
+# 帯の印の無い、上端に近い位置（帯の上端からの距離）と、面を押したまま動かす距離
+MINIMAP_EMPTY_AREA_OFFSET_PX = 40
+MINIMAP_DRAG_DISTANCE_PX = 100
+
+# 位置の比べで許す差（px）
+MINIMAP_TOLERANCE_PX = 2
+
+# 飛んだ箇所の枠が外れるまで待つ上限ミリ秒（枠は 1.6 秒出す）
+MINIMAP_HIT_GONE_MS = 4_000
+
+
+def _open_minimap_panel(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> Page:
+    """差分の表示で A-1 の詳細パネルを開き、ミニマップの印が置かれるまで待つ。"""
+    url, _ = write_minimap_preview()
+    return open_minimap(page, open_preview, url, MINIMAP_HASH)
+
+
+def test_diff_minimap(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """帯は本文のスクロール領域の右（スクロールバーの外側）に、本文と同じ高さの太さ 20px の縦の帯として並び、印は本文と同じ上下の順に、足した・消したを形で分けて置く（正常系）。"""
+    # 準備・実行
+    _open_minimap_panel(write_minimap_preview, open_preview, page)
+    metrics = map_metrics(page, PANEL_SCOPE)
+    shapes = mark_shapes(page, PANEL_SCOPE)
+    toolbar = page.locator(f"{PANEL_SCOPE} .df-map")
+    # 検証（本文のスクロールバーの外側に並び、本文には重ならない）
+    assert metrics["mapLeft"] >= metrics["bodyRight"] - 1
+    assert metrics["mapWidth"] == MINIMAP_WIDTH_PX
+    assert metrics["mapHeight"] == pytest.approx(
+        page.eval_on_selector(f"{PANEL_SCOPE} .panel-body", "e => e.getBoundingClientRect().height"),
+        abs=MINIMAP_TOLERANCE_PX,
+    )
+    # 検証（読み上げ）
+    assert toolbar.get_attribute("role") == "toolbar"
+    assert toolbar.get_attribute("aria-orientation") == "vertical"
+    assert toolbar.get_attribute("aria-label") == "変わった箇所"
+    assert [shape["label"] for shape in shapes] == ["消した箇所（1 / 2）", "足した箇所（2 / 2）"]
+    # 検証（印は 1 つのタブの止まりにまとめる）
+    assert page.locator(f"{PANEL_SCOPE} .df-map .df-map-m[tabindex='0']").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .df-map .df-map-m[tabindex='-1']").count() == 1
+    # 検証（消した・足したは色だけでなく形で分ける。見えている範囲の面は読み上げに出さない）
+    assert [shape["kind"] for shape in shapes] == ["df-del", "df-add"]
+    assert shapes[0]["border"] != shapes[1]["border"]
+    assert page.locator(f"{PANEL_SCOPE} .df-map-view").get_attribute("aria-hidden") == "true"
+    # 検証（印は本文と同じ上下の順に、印の最小の長さ 12px 以上で並ぶ）
+    assert shapes[0]["top"] < shapes[1]["top"]
+    assert all(shape["height"] >= 12 for shape in shapes)
+
+
+def test_diff_minimap_when_not_shown(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示でないときと、変わった箇所の印が無いときは、ミニマップを出さない（正常系）。"""
+    # 準備
+    url, _ = write_minimap_preview()
+    page.set_viewport_size(MINIMAP_VIEWPORT)
+    # 実行（差分の表示でない）
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .md")
+    # 検証
+    assert page.locator(f"{PANEL_SCOPE} .df-map").count() == 0
+    # 実行（変わった箇所の無い A-2 を差分の表示で開く）
+    page.goto(f"{url}#tab=docs&id=A-2&diff=V-1")
+    page.reload()
+    page.wait_for_selector("aside.panel.open .md")
+    # 検証
+    assert page.locator(f"{PANEL_SCOPE} .df-map").is_visible() is False
+    assert page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").count() == 0
+
+
+def test_diff_minimap_when_not_comparable(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """選んだ時点の前後を組み立てられないときは、変わった箇所の印が無いので、ミニマップを出さない（正常系）。"""
+    # 準備（保持する回数 1: D-2 は V-2 の回を持たず、前後を組み立てられない）
+    url, _ = write_history_preview(history_limit=1)
+    page.set_viewport_size(MINIMAP_VIEWPORT)
+    # 実行
+    _open_diff_panel(page, open_preview, url, "V-2", "#tab=decisions&view=table&id=D-2")
+    # 検証
+    assert page.inner_text("aside.panel .df-note") == NOTE_TRIMMED
+    assert page.locator(f"{PANEL_SCOPE} .df-map").is_visible() is False
+    assert page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").count() == 0
+
+
+def test_diff_minimap_when_mark_pressed(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """印を押すと、その箇所が本文のスクロール領域の見える範囲まで送られて枠で示され、履歴にもハッシュにも触れない（正常系）。"""
+    # 準備
+    _open_minimap_panel(write_minimap_preview, open_preview, page)
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    assert not added_paragraph_in_view(page, PANEL_SCOPE)
+    # 実行
+    page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").nth(1).click()
+    # 検証
+    assert scroll_top(page, PANEL_SCOPE) > 0
+    assert added_paragraph_in_view(page, PANEL_SCOPE)
+    assert page.locator(f"{PANEL_SCOPE} .md ins.df-blk.df-map-hit").count() == 1
+    page.wait_for_function(
+        "document.querySelectorAll('aside.panel .df-map-hit').length === 0",
+        timeout=MINIMAP_HIT_GONE_MS,
+    )
+    assert page.evaluate("location.hash") == hash_before
+    assert page.evaluate("history.length") == history_length
+
+
+def test_diff_minimap_when_empty_area_pressed(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """印の無い所を押すと、押した位置に見えている範囲の面の中央が来るまで本文をすぐ送り、履歴にもハッシュにも触れない（正常系）。"""
+    # 準備
+    _open_minimap_panel(write_minimap_preview, open_preview, page)
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    box = page.locator(f"{PANEL_SCOPE} .df-map").bounding_box()
+    assert box is not None
+    # 実行（帯の中ほどを押す）
+    press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
+    # 検証（中ほどを押したので、本文の送れる長さの半分まで送る）
+    metrics = map_metrics(page, PANEL_SCOPE)
+    assert metrics["scrollTop"] == pytest.approx(
+        (metrics["scrollHeight"] - metrics["clientHeight"]) / 2, abs=MINIMAP_TOLERANCE_PX
+    )
+    assert page.evaluate("location.hash") == hash_before
+    assert page.evaluate("history.length") == history_length
+    # 実行（帯の上端に近い所を押す）
+    press_empty_area(page, PANEL_SCOPE, offset_y=MINIMAP_EMPTY_AREA_OFFSET_PX)
+    # 検証（先頭の近くまで送る）
+    assert map_metrics(page, PANEL_SCOPE)["scrollTop"] < metrics["scrollTop"]
+
+
+def test_diff_minimap_when_dragged(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """見えている範囲の面をマウスで押したまま下へ動かすと、スクロールバーと同じように本文を送り、離した後もその位置に留まり、履歴にもハッシュにも触れない（正常系）。"""
+    # 準備
+    _open_minimap_panel(write_minimap_preview, open_preview, page)
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    before = map_metrics(page, PANEL_SCOPE)
+    # 実行
+    drag_view(page, PANEL_SCOPE, delta_y=MINIMAP_DRAG_DISTANCE_PX)
+    # 検証（動かした長さに当たる本文の長さだけ送る）
+    after = map_metrics(page, PANEL_SCOPE)
+    assert after["scrollTop"] == pytest.approx(
+        MINIMAP_DRAG_DISTANCE_PX / before["mapHeight"] * before["scrollHeight"],
+        abs=MINIMAP_TOLERANCE_PX,
+    )
+    page.wait_for_timeout(300)
+    assert map_metrics(page, PANEL_SCOPE)["scrollTop"] == after["scrollTop"]
+    # 離した後はドラッグの見た目が残らない
+    assert page.locator(f"{PANEL_SCOPE} .df-map.is-dragging").count() == 0
+    assert page.evaluate("document.body.classList.contains('df-map-dragging')") is False
+    assert page.evaluate("location.hash") == hash_before
+    assert page.evaluate("history.length") == history_length

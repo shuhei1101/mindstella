@@ -60,8 +60,22 @@ from preview_fixture_types import (
 )
 from preview_history_helpers import preselect_diff
 from preview_mark_helpers import MARK_TIMEOUT_MS, SCREEN_MARKS, marks_of
+from preview_minimap_helpers import (
+    MINIMAP_HASH,
+    PANEL_SCOPE,
+    added_paragraph_in_view,
+    drag_view,
+    hide_minimap_in_storage,
+    map_metrics,
+    mark_shapes,
+    marks_of_map,
+    open_minimap,
+    press_empty_area,
+    scroll_top,
+)
 from preview_network_helpers import ball_at, canvas_center
 from preview_saved_filter_helpers import read_saved_filters, reload_preview, seed_saved_filters
+from preview_settings_helpers import SETTINGS_PANEL, open_settings, panel_text, read_prefs
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
@@ -1397,3 +1411,96 @@ def test_normal_when_stored_diff_without_hash(
     assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
     assert _hash_params(page)["diff"] == ["V-1"]
     assert page.evaluate("history.length") == history_before + 1
+
+
+# 帯の印の無い、上端に近い位置（帯の上端からの距離。先頭の印の下）
+EMPTY_AREA_OFFSET_PX = 40
+
+# 面を押したまま下へ動かす距離
+DRAG_DISTANCE_PX = 100
+
+
+def test_normal_when_diff_minimap(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示で長い資料の詳細を開くと、変わった箇所の印を並べたミニマップが出て、印・印の無い所を押す・ドラッグ・キーで、履歴とハッシュを変えずに本文を送る（正常系）。"""
+    # 準備
+    url, _ = write_minimap_preview()
+    open_minimap(page, open_preview, url, MINIMAP_HASH)
+    history_length = page.evaluate("history.length")
+    shapes = mark_shapes(page, PANEL_SCOPE)
+    # 検証（印の並びと形、開いた直後の本文）
+    assert [shape["kind"] for shape in shapes] == ["df-del", "df-add"]
+    assert shapes[0]["top"] < shapes[1]["top"]
+    assert shapes[0]["border"] == "2px"
+    assert shapes[1]["border"] == "0px"
+    assert shapes[0]["fill"] != shapes[1]["fill"]
+    assert not added_paragraph_in_view(page, PANEL_SCOPE)
+    assert map_metrics(page, PANEL_SCOPE)["scrollTop"] == 0
+    # 実行（下の印を押す）
+    page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").nth(1).click()
+    pressed = scroll_top(page, PANEL_SCOPE)
+    # 検証
+    assert added_paragraph_in_view(page, PANEL_SCOPE)
+    # 実行（印の無い上端近くを押す）
+    press_empty_area(page, PANEL_SCOPE, offset_y=EMPTY_AREA_OFFSET_PX)
+    top_after_empty_area = scroll_top(page, PANEL_SCOPE)
+    # 検証
+    assert top_after_empty_area < pressed
+    assert top_after_empty_area < map_metrics(page, PANEL_SCOPE)["clientHeight"] / 2
+    # 実行（見えている範囲の面を押したまま下へ動かして離す）
+    drag_view(page, PANEL_SCOPE, delta_y=DRAG_DISTANCE_PX)
+    dragged = scroll_top(page, PANEL_SCOPE)
+    page.wait_for_timeout(300)
+    # 検証（動かした分だけ送り、離した後もその位置に留まる）
+    assert dragged > top_after_empty_area
+    assert scroll_top(page, PANEL_SCOPE) == dragged
+    # 実行（印にフォーカスして Home を押す）
+    page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").nth(1).focus()
+    page.keyboard.press("Home")
+    # 検証
+    assert page.evaluate("document.activeElement?.getAttribute('aria-label')") == "消した箇所（1 / 2）"
+    # 検証（ここまでの間、ハッシュは変わらず、履歴は増えない）
+    assert _hash_params(page) == {"tab": ["docs"], "id": ["A-1"], "diff": ["V-1"]}
+    assert page.evaluate("history.length") == history_length
+    # 実行（資料のタブで変わった箇所の無い A-2 を開く）
+    page.click('button.card[data-id="A-2"]')
+    page.wait_for_function(
+        "document.querySelector('aside.panel .d-title')?.textContent.includes('A-2')"
+    )
+    # 検証
+    assert marks_of_map(page, PANEL_SCOPE) == 0
+    assert page.locator(f"{PANEL_SCOPE} .df-map").is_visible() is False
+
+
+def test_normal_when_diff_minimap_hidden(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """端末の保存領域に差分のミニマップを表示しない上書きがあると、ミニマップを出さず、表示の設定で変えている項目に並び、既定に戻すと出る（正常系）。"""
+    # 準備
+    url, _ = write_minimap_preview()
+    hide_minimap_in_storage(page)
+    page.set_viewport_size({"width": 1280, "height": 800})
+    # 実行
+    open_preview(url, MINIMAP_HASH)
+    page.wait_for_selector(f"{PANEL_SCOPE}.open .md ins.df-blk")
+    # 検証（本文の差分の印はあり、ミニマップは無い）
+    assert page.locator(f"{PANEL_SCOPE} .md del.df-blk").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .df-map").count() == 0
+    # 実行（表示の設定を開く）
+    open_settings(page)
+    # 検証
+    checkbox = page.locator(f"{SETTINGS_PANEL} fieldset", has_text="詳細に表示するもの").get_by_role(
+        "checkbox", name="差分のミニマップ"
+    )
+    assert checkbox.is_checked() is False
+    assert "差分のミニマップ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    # 実行（既定に戻す）
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m")
+    # 検証
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is None
