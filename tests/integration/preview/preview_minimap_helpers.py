@@ -23,6 +23,7 @@ __all__ = [
     "drag_view",
     "hide_minimap_in_storage",
     "map_metrics",
+    "mark_at_empty_area",
     "mark_shapes",
     "marks_of_map",
     "open_minimap",
@@ -116,6 +117,10 @@ _ADDED_IN_VIEW_JS = """([scope, text]) => {
     return addedRect.top >= bodyRect.top && addedRect.bottom <= bodyRect.bottom;
 }"""
 
+# 画面上の座標にある要素が、印（またはその中）か
+_MARK_AT_POINT_JS = """([x, y]) =>
+    (document.elementFromPoint(x, y)?.closest('.df-map-m') ?? null) !== null"""
+
 
 def build_minimap_workspace(
     make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
@@ -180,11 +185,23 @@ def scroll_top(page: Page, scope: str) -> float:
     return page.evaluate(SETTLED_SCROLL_TOP_JS, f"{scope} .panel-body")
 
 
-def press_empty_area(page: Page, scope: str, *, offset_y: float) -> None:
-    """帯の上端から offset_y の位置（印の無い所）を押す。"""
+def _empty_area_point(page: Page, scope: str, *, offset_y: float) -> tuple[float, float]:
+    """帯の上端から offset_y の位置（印の無い所）の、画面上の座標を返す。"""
     box = page.locator(f"{scope} .df-map").bounding_box()
     assert box is not None
-    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + offset_y)
+    return box["x"] + box["width"] / 2, box["y"] + offset_y
+
+
+def mark_at_empty_area(page: Page, scope: str, *, offset_y: float) -> bool:
+    """帯の上端から offset_y の位置にある要素が、印（またはその中）かを返す。"""
+    x, y = _empty_area_point(page, scope, offset_y=offset_y)
+    return page.evaluate(_MARK_AT_POINT_JS, [x, y])
+
+
+def press_empty_area(page: Page, scope: str, *, offset_y: float) -> None:
+    """帯の上端から offset_y の位置（印の無い所）を押す。"""
+    x, y = _empty_area_point(page, scope, offset_y=offset_y)
+    page.mouse.click(x, y)
 
 
 def drag_view(page: Page, scope: str, *, delta_y: float) -> None:

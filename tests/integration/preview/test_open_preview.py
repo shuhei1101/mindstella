@@ -73,6 +73,7 @@ from preview_minimap_helpers import (
     drag_view,
     hide_minimap_in_storage,
     map_metrics,
+    mark_at_empty_area,
     mark_shapes,
     marks_of_map,
     open_minimap,
@@ -1523,6 +1524,8 @@ def test_normal_when_diff_minimap(
     pressed = scroll_top(page, PANEL_SCOPE)
     # 検証
     assert added_paragraph_in_view(page, PANEL_SCOPE)
+    # 次に押す位置は、印の上ではない
+    assert not mark_at_empty_area(page, PANEL_SCOPE, offset_y=EMPTY_AREA_OFFSET_PX)
     # 実行（印の無い上端近くを押す）
     press_empty_area(page, PANEL_SCOPE, offset_y=EMPTY_AREA_OFFSET_PX)
     top_after_empty_area = scroll_top(page, PANEL_SCOPE)
