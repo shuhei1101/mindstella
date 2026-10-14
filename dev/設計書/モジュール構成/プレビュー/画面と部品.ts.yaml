@@ -2658,8 +2658,8 @@ functions:
         passing: positional
         description: 本文のスクロール領域
     process: |-
-      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw など）と、Raw を出している図の枠は飛ばす
-      2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値が無い（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
+      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw の行など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
+      2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
       3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす。それ以外は新しい印にする
       4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）
     returns:
@@ -2669,8 +2669,8 @@ functions:
       - name: test_minimap_targets
         summary: 続く同じ種類をまとめ、消した塊の直後の足した塊を変わったにする
         case: 正常
-        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前に無かったキーと値が変わったキーの行 / 畳んだ Raw の足した行と、Raw を出している図の枠 / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"`'
-        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / 空 / `add` と `chg`（`frame` がその枠）'
+        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"`'
+        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠）'
         mock: なし（DOM を作って見る）
   - name: minimapLayout
     title: ミニマップの印の置き方
