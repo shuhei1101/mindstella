@@ -3,9 +3,9 @@
 import type { Meta, StoryObj } from "@storybook/html-vite";
 import { fn } from "storybook/test";
 
-/** 書き込みを作る */
-function post(author: "user" | "ai", body: string, created: string): MindmapPreview.Thread["posts"][number] {
-  return { id: "x", author, body, created };
+/** 書き込みを作る（利用者の既読が既定。未読にするときは `seen` に偽を渡す） */
+function post(author: "user" | "ai", body: string, created: string, seen = true): MindmapPreview.Thread["posts"][number] {
+  return { id: "x", author, body, created, seen };
 }
 
 /** スレッドを作る（オープン・タグなし・要約なし・項目を指さないのが既定） */
@@ -162,4 +162,49 @@ export const Narrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** オープンで AI の返信が利用者の未読。2 行目の先頭に塗りつぶしの札「● 未読」を出し、向けた項目の ID・最後の書き手「AI」・日時をその右に並べる */
+export const Unread: Story = {
+  args: {
+    thread: thread("TH-2", {
+      tags: ["起票"],
+      summary: "D-16 の比べた結果を Issue に起票してよいかの確認。返事待ち",
+      target: "D-16",
+      posts: [post("ai", "D-16 の比べた結果を Issue に起票してよいですか。", "2026-10-12T04:02:00+00:00", false)],
+    }),
+  },
+};
+
+/** 未読で、レビュー中の返信も持つ。2 行目の先頭に「● 未読」、末尾に破線の枠の「レビュー中」を出し、形（塗りつぶしと破線の枠）で見分ける */
+export const UnreadPendingReply: Story = {
+  args: {
+    thread: thread("TH-1", {
+      tags: ["画面"],
+      summary: "D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった",
+      target: "D-12",
+      posts: [
+        post("user", "D-12 は案 B にしたい", "2026-10-12T01:20:00+00:00"),
+        post("ai", "D-12 を案 B で決定にしました。", "2026-10-12T01:24:00+00:00", false),
+      ],
+    }),
+    hasPendingReply: true,
+  },
+};
+
+/** AI が返信してからクローズにし、返信が利用者の未読。状態の札「クローズ」のまま、2 行目の先頭に「● 未読」を出す */
+export const UnreadClosed: Story = {
+  args: {
+    thread: thread("TH-6", {
+      status: "closed",
+      tags: ["起票"],
+      summary: "T-4 の Issue の起票の確認。起票して完了",
+      target: "T-4",
+      posts: [
+        post("user", "起票してよい", "2026-10-12T03:00:00+00:00"),
+        post("ai", "T-4 の Issue を起票しました。", "2026-10-12T03:07:00+00:00", false),
+      ],
+      events: [{ kind: "closed", author: "ai", reason: "起票した", created: "2026-10-12T03:07:00+00:00" }],
+    }),
+  },
 };
