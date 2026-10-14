@@ -69,6 +69,7 @@ from preview_style_checks import (
     pin_id_column,
     table_cell_backgrounds,
 )
+from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import MakeItem
 
 # マップを字下げの一覧に切り替える幅の境（これ以下）
@@ -1519,6 +1520,49 @@ def test_drawer_when_narrow(
     assert box == [0, DRAWER_NARROW_VIEWPORT["width"]]
     assert label_visible is False
     assert badge_text(page) == "1"
+
+
+def test_drawer_when_narrow_in_front_of_detail(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 390px で詳細パネルを開いたまま絞り込みのボタンで開くと、ドロワーが詳細パネルの前に出て詳細パネルが `inert` になる。「件を表示」で閉じると、開く前の詳細パネルがそのまま見える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    # 実行（詳細パネルを開いたまま開く）
+    open_drawer(page)
+    wait_front(page, "drawer")
+    in_front = {"left_front": has_left_front(page), "detail_inert": is_inert(page, "detail")}
+    # 実行（「件を表示」で閉じる）
+    page.get_by_role("button", name="件を表示").click()
+    page.wait_for_selector(DRAWER, state="detached")
+    wait_front(page, "detail")
+    # 検証
+    assert in_front == {"left_front": True, "detail_inert": True}
+    assert has_left_front(page) is False
+    assert is_inert(page, "detail") is False
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+
+
+def test_drawer_close_by_escape_when_narrow_in_front_of_detail(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 390px でドロワーが詳細パネルの前に出ているときの Esc は、ドロワーだけを閉じ、詳細パネルは開いたままにする（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_drawer(page)
+    wait_front(page, "drawer")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_selector(DRAWER, state="detached")
+    wait_front(page, "detail")
+    assert page.locator("aside.panel.open").count() == 1
+    assert "id=D-1" in page.evaluate("location.hash")
+    assert is_inert(page, "detail") is False
 
 
 def test_drawer_value_is_checkbox(

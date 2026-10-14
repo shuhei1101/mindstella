@@ -313,6 +313,8 @@ dialog.search::backdrop { background: var(--scrim); }
 @media (max-width: 1100px) { .ov-grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .panel { top: var(--topbar-h); width: 100%; z-index: 35; border-left: 0; }
+  /* 詳細パネルを開いたまま左のパネル（コメントの一覧・表示の設定・絞り込みのドロワー）を開いたとき: 後から開いた左のパネルを詳細パネル（35）の前に出す */
+  body.left-front .comments-panel, body.left-front .settings-drawer, body.left-front dialog.drawer.narrow { z-index: 36; }
   .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; }
   .search-trigger .label, .search-trigger kbd, .brand-sub { display: none; }
   .table-wrap [data-pri="4"], .table-wrap [data-pri="5"] { display: none; }

@@ -20,7 +20,7 @@ elements:
   - name: 閉じる
     kind: button
     position: 見出し
-    description: パネルを閉じる。Esc でも閉じる。検討事項のマップでは、余白を押しても閉じる
+    description: パネルを閉じる。Esc でも閉じる（幅 900px 以下で左のパネルが前に出ているときは、左のパネルを先に閉じる）。検討事項のマップでは、余白を押しても閉じる
   - name: 案
     kind: list
     description: 背景の後に、検討事項の案をカードの縦並びで出す。カードの見出しに記号と内容、その下にメリット・デメリット・備考・理由を出し、値は文字列の値の描画で描く。採用した案に「採用」、`adopted` が偽の案に「不採用」を出し、どちらでもない案には何も出さない
@@ -420,4 +420,5 @@ test_file: tests/integration/preview/test_detail_panel_screen.py
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`
   HTML の本文のモック: 形式の札・HTML の本文・html のコードブロック・HTML の本文の差分の見本は `dev/mock/pages/detail-panel/214/c-marks/index.html`（差分の見せ方は案 C を採用）
+  幅 900px 以下の重なり: 左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。幅 901px 以上の重なり順は変えない
   差分のミニマップのモック: 差分のミニマップの見本は `dev/mock/pages/detail-panel/237/a-right-rail/index.html`（採用した案 A）

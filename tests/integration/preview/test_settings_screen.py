@@ -32,6 +32,15 @@ from preview_settings_helpers import (
     tab_keys,
     toggle_kind,
 )
+from preview_stack_helpers import (
+    DETAIL_HASH,
+    NARROW_VIEWPORT,
+    WIDE_VIEWPORT,
+    has_left_front,
+    is_inert,
+    open_narrow,
+    wait_front,
+)
 from workspace_fixtures import RECORD_DIR, MakeItem
 
 
@@ -396,6 +405,85 @@ def test_narrow(
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
+
+
+def test_narrow_in_front_of_detail(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """幅 390px で詳細パネルを開いたまま開くと、詳細パネルの前に出て詳細パネルが `inert` になる。Esc で表示の設定だけが閉じ、開く前の詳細パネルがそのまま見える（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    # 実行（詳細パネルを開いたまま開く）
+    open_settings(page)
+    wait_front(page, "settings")
+    in_front = {"left_front": has_left_front(page), "detail_inert": is_inert(page, "detail")}
+    # 実行（Esc で閉じる）
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    wait_front(page, "detail")
+    # 検証
+    assert in_front == {"left_front": True, "detail_inert": True}
+    assert has_left_front(page) is False
+    assert is_inert(page, "detail") is False
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+    assert "id=D-1" in page.evaluate("location.hash")
+
+
+def test_narrow_when_detail_opened_after(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """幅 390px で表示の設定を開いた後に詳細パネルを開く（別の項目へ移る）と、詳細パネルが前に出て表示の設定が `inert` になる（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_settings(page)
+    wait_front(page, "settings")
+    # 実行（別の項目 T-1 の詳細パネルへ移る）
+    page.evaluate("location.hash = '#tab=tasks&id=T-1'")
+    # 検証
+    wait_front(page, "detail")
+    assert has_left_front(page) is False
+    assert is_inert(page, "settings") is True
+    assert is_inert(page, "detail") is False
+
+
+def test_narrow_when_width_crosses_900(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` と `inert` が外れ、また 900px 以下に戻ると付け直す（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_settings(page)
+    wait_front(page, "settings")
+    # 実行（幅 1200px にする）
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_function("!document.body.classList.contains('left-front')")
+    wide = {
+        "left_front": has_left_front(page),
+        "detail_inert": is_inert(page, "detail"),
+        "settings_inert": is_inert(page, "settings"),
+    }
+    # 実行（幅 390px に戻す）
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_function("document.body.classList.contains('left-front')")
+    # 検証
+    assert wide == {"left_front": False, "detail_inert": False, "settings_inert": False}
+    assert is_inert(page, "detail") is True
+    assert is_inert(page, "settings") is False
 
 
 def test_defaults_changed_by_other(

@@ -9,7 +9,7 @@ elements:
   - name: パネルを閉じる
     kind: button
     position: 見出し
-    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーの表示の設定のボタンでも閉じる。詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。読み上げの名前は「表示の設定を閉じる」
+    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーの表示の設定のボタンでも閉じる。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる。読み上げの名前は「表示の設定を閉じる」
   - name: 表示の設定の中身
     kind: form
     component: dev/設計書/部品設計/プレビュー/表示の設定.ts#
@@ -49,3 +49,5 @@ lead: 表示する種類と差分のミニマップを、この端末だけの�
 mock: dev/mock/pages/settings-panel/237/standard/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
 test_file: tests/integration/preview/test_settings_screen.py
+notes:
+  幅 900px 以下の重なり: 詳細パネルを開いたまま開いたときは詳細パネルの前に出し、後ろになった詳細パネルの部品を `inert` にする。閉じると開く前の詳細パネルが見える
