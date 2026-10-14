@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>未読の印 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目（#235 のカタログと同じ） -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/258/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない） -->
+  <script src="../../refs/258/assets/app.js"></script>
+</head>
+<body>
+  <!-- モック専用の操作列: ライト / ダークの切り替え（クエリの theme） -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span class="label">表示:</span>
+    <a href="?theme=light" data-theme-link="light">ライト</a>
+    <a href="?theme=dark" data-theme-link="dark">ダーク</a>
+  </div>
+
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / unread-mark</nav>
+    <h1>未読の印</h1>
+
+    <!-- スレッドの行: 未読と既読 -->
+    <section class="cat-sec">
+      <h2>スレッドの行: 未読と既読</h2>
+      <p>利用者の未読の書き込みを持つ行は、2 行目の先頭に塗りつぶした「未読」の札（点と文字）を出し、最後の書き手と日時を本文と同じ濃さにする。上が未読（AI が返信した）、下が同じスレッドを開いて既読になった後。</p>
+      <div class="stage" id="s-row"></div>
+    </section>
+
+    <!-- 状態の札・レビュー中の印と並んだとき -->
+    <section class="cat-sec">
+      <h2>状態の札・レビュー中の印と並んだとき</h2>
+      <p>状態の札は線の枠と印、レビュー中の印は破線の枠と鉛筆の印、未読の印は塗りつぶしと点で、形が違う。上から、AI が立てたスレッド（未読）・未読とレビュー中の返信の両方を持つ行・まだ送っていない新しいスレッド（未読にならない）。</p>
+      <div class="stage" id="s-mixed"></div>
+    </section>
+
+    <!-- クローズのスレッドの未読 -->
+    <section class="cat-sec">
+      <h2>クローズのスレッドの未読</h2>
+      <p>行には未読の印を出す。トップバーの印には数えない（オープンのスレッドの未読だけで出す）。</p>
+      <div class="stage" id="s-closed"></div>
+    </section>
+
+    <!-- 長い要約・タグを持つ未読の行 -->
+    <section class="cat-sec">
+      <h2>長い要約・タグを持つ未読の行</h2>
+      <p>要約は 2 行で末尾を省く。未読の印は 2 行目の先頭のまま動かない。</p>
+      <div class="stage" id="s-long"></div>
+    </section>
+
+    <!-- ホバー・フォーカス -->
+    <section class="cat-sec">
+      <h2>未読の行のホバー・フォーカス</h2>
+      <p>ホバーは行の面を変え、フォーカスは開くボタンの枠の全体に出す。未読の印の見た目は変えない。</p>
+      <div class="stage" id="s-hover"></div>
+    </section>
+
+    <!-- 案 A: コメントのボタンの角の点 -->
+    <section class="cat-sec">
+      <h2>コメントのボタン 案 A（推奨）: 角の点</h2>
+      <p>吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま残す。ボタンの幅は変わらない。読み上げの名前は「コメント（未読あり・レビュー中 3 件）」。上から、未読なし・未読あり・未読ありでレビュー中 0 件・未読ありで一覧を開いている・未読ありでホバー・件数が多い。</p>
+      <div class="stage col" id="s-btn-a"></div>
+    </section>
+
+    <!-- 案 B: コメントのボタンの未読の件数 -->
+    <section class="cat-sec">
+      <h2>コメントのボタン 案 B: 未読の件数</h2>
+      <p>未読のスレッドの件数を、点つきの別の色の塗りでレビュー中の件数の前に足す。読み上げの名前は「コメント（未読 2 件・レビュー中 3 件）」。並びは案 A と同じ。</p>
+      <div class="stage col" id="s-btn-b"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>未読の行の一覧。トップバーのボタンが印と件数だけになる形は、画面の幅で決まるため、幅 390px でこのページを開いて上の案 A・案 B の帯で見る。</p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
+  <script>
+    (() => {
+      const { h } = MindmapPreview;
+      // ライト / ダーク: クエリの theme を文書に当て、開いている方の操作列のリンクを選択中にする
+      const theme = new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = theme;
+      for (const link of document.querySelectorAll("[data-theme-link]")) {
+        if (link.dataset.themeLink === theme) link.setAttribute("aria-current", "true");
+      }
+
+      /** 見本の日時（UTC。画面は JST で出す） */
+      const at = (hhmm) => `2026-10-12T${hhmm}:00+00:00`;
+      /** 見本のスレッド（書き込みの seen が false のものが利用者の未読） */
+      const replied = (seen) => ({
+        id: "TH-1", status: "open", tags: ["画面"], target: "D-12", target_title: null, loc: null, events: [],
+        summary: "D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった",
+        posts: [
+          { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい", created: at("01:20"), seen: true },
+          { id: "TH-1-2", author: "ai", body: "D-12 を案 B で決定にしました。", created: at("01:24"), seen },
+        ],
+      });
+      const asking = {
+        id: "TH-2", status: "open", tags: ["起票"], target: "D-16", target_title: null, loc: null, events: [],
+        summary: "D-16 の比べた結果を Issue に起票してよいかの確認。返事待ち",
+        posts: [{ id: "TH-2-1", author: "ai", body: "D-16 の比べた結果を Issue に起票してよいですか。", created: at("04:02"), seen: false }],
+      };
+      const closed = {
+        id: "TH-6", status: "closed", tags: ["起票"], target: "T-4", target_title: null, loc: null,
+        events: [{ kind: "closed", author: "user", reason: null, created: at("03:09") }],
+        summary: "T-4 の Issue の起票の確認。起票して完了",
+        posts: [
+          { id: "TH-6-1", author: "ai", body: "T-4 の Issue 案を起票してよいですか。", created: at("03:00"), seen: true },
+          { id: "TH-6-2", author: "user", body: "起票してよい", created: at("03:05"), seen: true },
+          { id: "TH-6-3", author: "ai", body: "起票しました（#43）。", created: at("03:07"), seen: false },
+        ],
+      };
+      const long = {
+        id: "TH-4", status: "open", tags: ["調査", "画面"], target: null, target_title: null, loc: null, events: [],
+        summary: "移し替えの手順を画面で見られるかの質問。今は見られず、T-6 の点検の結果を、版ごとの操作の一覧にした資料 A-9 にまとめることになった",
+        posts: [
+          { id: "TH-4-1", author: "user", body: "移し替えの手順は、プレビューのどこかで見られる？", created: at("00:10"), seen: true },
+          { id: "TH-4-4", author: "ai", body: "T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。", created: at("00:41"), seen: false },
+        ],
+      };
+      const newThread = { id: "C-41", target: "D-5", target_title: null, loc: null, thread: null, body: "写しは git のコミットで取るほうが戻しやすいと思う", created: at("05:10") };
+
+      /** 行を開く・タグを押す（見本では何もしない） */
+      const on = { open: () => {}, tag: () => {} };
+      /** 左のパネルと同じ幅の枠に、行の一覧を置く */
+      const list = (rows) => h({ tag: "div", attrs: { class: "pane" }, children: [h({ tag: "div", attrs: { class: "comments-body" }, children: [h({ tag: "ul", attrs: { class: "th-list" }, children: rows })] })] });
+      const row = (thread, more = {}) => MindmapPreview.threadRow({ thread, on, ...more });
+      /** 台に置く */
+      const place = (id, children) => document.getElementById(id).replaceChildren(...children);
+
+      place("s-row", [list([row(replied(false)), row(replied(true))])]);
+      place("s-mixed", [list([row(asking), row(replied(false), { hasPendingReply: true }), MindmapPreview.threadRow({ pending: newThread, on })])]);
+      place("s-closed", [list([row(closed)])]);
+      place("s-long", [list([row(long)])]);
+      place("s-hover", [list([row(replied(false))]), list([row(replied(false))])]);
+      document.querySelector("#s-hover .pane:nth-child(1) .th-open").classList.add("is-hover");
+      document.querySelector("#s-hover .pane:nth-child(2) .th-open").classList.add("is-focus");
+      place("s-narrow", [list([row(asking), row(replied(false), { hasPendingReply: true }), row(long), row(closed), row(replied(true))])]);
+
+      /** トップバーの帯（タブの帯を除く）。印の出し方は body の data-unread-mark で切り替える */
+      const bar = (mark, { count, unread, open = false, hover = false }) => {
+        document.body.dataset.unreadMark = mark;
+        const top = MindmapPreview.topbar({
+          title: "mindstella（mindmap）の改善を話し合い、Issue に起票できる形にまとめる",
+          tabs: [], current: "overview", theme,
+          onNavigate: () => {}, onSearch: () => {}, onTheme: () => {},
+          comments: true, commentCount: count, commentUnread: unread, commentsOpen: open, onComments: () => {},
+          onSettings: () => {}, filter: true,
+        });
+        delete document.body.dataset.unreadMark;
+        const header = top.querySelector(".topbar");
+        if (hover) header.querySelector(".comments-btn").classList.add("is-hover");
+        return h({ tag: "div", attrs: { class: "bar-sample" }, children: [header] });
+      };
+      /** 案ごとの帯の並び（未読なし・未読あり・レビュー中 0 件・一覧を開いている・ホバー・件数が多い） */
+      const bars = (mark) => [
+        bar(mark, { count: 3, unread: 0 }),
+        bar(mark, { count: 3, unread: 2 }),
+        bar(mark, { count: 0, unread: 1 }),
+        bar(mark, { count: 3, unread: 2, open: true }),
+        bar(mark, { count: 3, unread: 2, hover: true }),
+        bar(mark, { count: 120, unread: 120 }),
+      ];
+      place("s-btn-a", bars("dot"));
+      place("s-btn-b", bars("count"));
+    })();
+  </script>
+  <!-- カタログだけの見た目: トップバーの帯を台の幅いっぱいに縦へ並べる・ボタンのホバーの見本 -->
+  <style>
+    /* 帯を縦に並べる台 */
+    .stage.col { flex-direction: column; align-items: stretch; }
+    /* トップバーの帯の見本: 台の幅いっぱい */
+    .bar-sample { width: 100%; min-width: 0; }
+    /* 見本の状態: コメントのボタンのホバー */
+    .comments-btn.is-hover { background: var(--topbar-hover); }
+    /* 見本のホバーの角の点: 縁を地の色に合わせる */
+    .comments-btn.is-hover .unread-dot { box-shadow: 0 0 0 2px var(--topbar-hover); }
+  </style>
+</body>
+</html>
