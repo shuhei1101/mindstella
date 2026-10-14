@@ -101,6 +101,17 @@ layers:
         ```
   - name: 外部疎通テスト
     run_all: 未確定
+  - name: lint
+    description: Python のテストコードを ruff で、プレビューの TypeScript を tsc の型検査で確かめる。TypeScript の linter（typescript-eslint）は、採用している typescript が対応しないため入れない（外部ライブラリ『typescript』の選定の記録）
+    prerequisites:
+      - Python 3.12 以上と ruff（`ruff --version` が通る）
+      - Node 20.19 以上で `npm ci` を済ませてある
+      - 実行はリポジトリの直下で行う
+    run_all: |-
+      ```bash
+      ruff check --line-length 100 --target-version py312 --select E,F,I,B,UP,SIM,RUF,BLE001,TRY400,DTZ,ASYNC,PT011,PT012 --ignore E501,RUF001,RUF002,RUF003 tests
+      npm run typecheck
+      ```
 notes:
   部品のストーリー（Storybook）: |-
     前提: Node 20.19 以上（22 系なら 22.12 以上。vite 8.3.2 の `engines`）。リポジトリの直下で `npm ci` を済ませておく。
