@@ -12,6 +12,7 @@ from typing import Any
 from conftest import Replay
 from playwright.sync_api import Page
 from preview_helpers import (
+    COMMENTS_BUTTON,
     COMMENTS_PANEL,
     THREAD_ROWS,
     UPDATE_TIMEOUT_MS,
@@ -55,6 +56,8 @@ def test_normal(
     thread = threads[0]
     assert thread["status"] == "open"
     assert [(post["author"], post["body"]) for post in thread["posts"]] == [("ai", QUESTION)]
+    # 最初の書き込みは利用者の未読
+    assert thread["posts"][0]["seen"] is False
     assert (thread["tags"], thread["summary"]) == (TAGS, SUMMARY)
     assert thread["summary"] != QUESTION
     assert awaiting == {"items": []}
@@ -92,6 +95,9 @@ def test_normal_when_shown_on_open_screen(
     assert page.inner_text(f"{THREAD_ROWS} .th-title") == SUMMARY
     assert page.get_attribute(f"{COMMENTS_PANEL} .talk-filter button[aria-pressed='true']", "data-focus") == "filter:open"
     assert page.inner_text(f"{COMMENTS_PANEL} .talk-filter button[aria-pressed='true'] .count") == "1"
+    # 足した行とトップバーのコメントのボタンに未読の印が出る
+    assert page.inner_text(f"{THREAD_ROWS} .th-unread") == "未読"
+    page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot", timeout=UPDATE_TIMEOUT_MS)
 
 
 def test_error_when_body_empty(

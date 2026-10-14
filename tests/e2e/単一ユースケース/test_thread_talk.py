@@ -64,6 +64,16 @@ T_0400 = "2026-10-12T04:00:00+00:00"
 # 書きかけを保つ待ち（入力が止まってから保つまでの間より長く）
 DRAFT_WAIT_MS = 1_200
 
+# 未読の札（スレッドの行）と、コメントのボタンの未読の点
+UNREAD_MARK = f"{COMMENTS_PANEL} .th-unread"
+UNREAD_DOT = f"{COMMENTS_BUTTON} .unread-dot"
+
+# 利用者の既読になるのを待つ間に、threads.yaml を読み直す間隔ミリ秒
+SEEN_POLL_MS = 100
+
+# 未読の点が消えるのを待つ関数
+NO_UNREAD_DOT_JS = "() => !document.querySelector('header.topbar button.comments-btn .unread-dot')"
+
 # 利用者がクローズにした記録
 USER_CLOSED = {"kind": "closed", "author": "user", "reason": None, "created": T_0400}
 
@@ -98,6 +108,15 @@ def _serve(
     return str(served.data["url"]), root
 
 
+def _wait_seen(page: Page, root: Path, thread_id: str) -> None:
+    """threads.yaml のスレッドの全ての書き込みが利用者の既読になるのを待つ。"""
+    for _ in range(UPDATE_TIMEOUT_MS // SEEN_POLL_MS):
+        if all(post["seen"] for post in _thread(root, thread_id)["posts"]):
+            return
+        page.wait_for_timeout(SEEN_POLL_MS)
+    raise AssertionError(f"{thread_id} が既読になりません")
+
+
 def _without_target(comment: dict[str, Any]) -> dict[str, Any]:
     """向けた項目のキーを持たない（項目を指さない）コメントにする。"""
     return {key: value for key, value in comment.items() if key != "target"}
@@ -130,7 +149,7 @@ def test_normal(
         threads=(
             make_thread(
                 "TH-1",
-                make_post("TH-1-1", author="ai", body=AI_QUESTION, created=T_0100),
+                make_post("TH-1-1", author="ai", seen=False, body=AI_QUESTION, created=T_0100),
                 summary="D-1 の比べた結果を Issue に起票してよいかの確認。返事待ち",
                 tags=["起票"],
                 target="D-1",
@@ -138,8 +157,10 @@ def test_normal(
         ),
     )
     open_preview(url)
+    page.wait_for_selector(UNREAD_DOT)
     # 実行（返信をレビューに追加する）
     open_thread(page, "TH-1")
+    page.wait_for_function(NO_UNREAD_DOT_JS, timeout=UPDATE_TIMEOUT_MS)
     page.fill(REPLY_TEXTAREA, REPLY_BODY)
     page.click(REPLY_SEND)
     page.wait_for_selector(f"{THREAD_POSTS}[data-comment]", timeout=UPDATE_TIMEOUT_MS)
@@ -162,6 +183,8 @@ def test_normal(
         ("user", REPLY_BODY),
     ]
     assert (posts[1]["read"], posts[1]["taken"]) == (False, None)
+    # AI の問いも利用者の返信も利用者の既読
+    assert [post["seen"] for post in posts] == [True, True]
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-1"]
@@ -171,6 +194,9 @@ def test_normal(
     page.wait_for_selector(thread_row("TH-1"), timeout=UPDATE_TIMEOUT_MS)
     assert page.inner_text(f"{thread_row('TH-1')} .th-author") == "あなた"
     assert page.locator(f"{thread_row('TH-1')} .th-pending").count() == 0
+    # 一覧の行とコメントのボタンに未読の印が出ない
+    assert page.locator(UNREAD_MARK).count() == 0
+    assert page.locator(UNREAD_DOT).count() == 0
 
 
 def test_normal_when_close(
@@ -327,6 +353,13 @@ def test_normal_when_ai_reply_arrives(
         f"{THREAD_POSTS} .post-author", "authors => authors.map(a => a.textContent)"
     ) == ["あなた", "AI"]
     assert page.input_value(REPLY_TEXTAREA) == "書きかけの返信"
+    # 開いているスレッドに届いた返信は利用者の既読になり、一覧へ戻っても未読の印が出ない
+    _wait_seen(page, root, "TH-1")
+    page.click(BACK_BUTTON)
+    page.wait_for_selector(thread_row("TH-1"))
+    assert page.locator(UNREAD_MARK).count() == 0
+    assert page.locator(UNREAD_DOT).count() == 0
+    assert [post["seen"] for post in _thread(root, "TH-1")["posts"]] == [True, True]
 
 
 def test_normal_when_filtered(
@@ -635,3 +668,89 @@ def test_normal_when_ai_close_arrives(
     assert page.inner_text(f"{THREAD_POSTS}.th-event.user .th-event-line span") == "あなたがオープンに戻しました"
     assert [event["kind"] for event in _thread(root, "TH-1")["events"]] == ["closed", "reopened"]
     assert page.locator(REASON_FORM).count() == 0
+
+
+def test_normal_when_unseen_reply_opened(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """AI の返信が届いた行とコメントのボタンに未読の印が出て、スレッドを開くと利用者の既読になって印が消え、読み込み直しても出ない（正常系）。"""
+    # 準備
+    url, root = _serve(
+        make_workspace,
+        call_tool,
+        write_threads,
+        write_comments,
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", body="案 A にする", created=T_0100),
+                summary="D-1 の案の相談",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", body="別の質問", created=T_0100),
+                make_post("TH-2-2", author="ai", body="別の返事", created=T_0200),
+                summary="別の相談",
+            ),
+        ),
+    )
+    open_preview(url)
+    open_list(page)
+    assert page.locator(UNREAD_MARK).count() == 0
+    assert page.locator(UNREAD_DOT).count() == 0
+    user_post_before = {key: _thread(root, "TH-1")["posts"][0][key] for key in ("read", "taken")}
+    # 実行（1 件目へ AI が返信する）
+    replied = call_tool(
+        "reply",
+        workspace=str(root),
+        id="TH-1",
+        body="D-1 を案 A で決定にしました",
+        summary="D-1 の案の相談。案 A で決定",
+        take=False,
+    )
+    # 検証（画面を開き直さずに、1 件目の行とコメントのボタンに未読の印が出る）
+    assert replied.is_error is False
+    page.wait_for_selector(f"{thread_row('TH-1')} .th-unread", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_selector(UNREAD_DOT, timeout=UPDATE_TIMEOUT_MS)
+    assert page.locator(f"{thread_row('TH-2')} .th-unread").count() == 0
+    # 未読の印は色に加えて形（塗りつぶしの札と点）で示し、読み上げの名前に未読を含む
+    assert page.inner_text(f"{thread_row('TH-1')} .th-unread") == "未読"
+    assert page.locator(f"{thread_row('TH-1')} .th-unread .dot").count() == 1
+    assert page.eval_on_selector(
+        f"{thread_row('TH-1')} .th-unread", "e => getComputedStyle(e).backgroundColor"
+    ) != "rgba(0, 0, 0, 0)"
+    assert "未読" in (page.get_attribute(f"{thread_row('TH-1')} button.th-open", "aria-label") or "")
+    assert "未読あり" in (page.get_attribute(COMMENTS_BUTTON, "aria-label") or "")
+    # 実行（1 件目の行を押す）
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_selector(
+        f"{THREAD_POSTS}:has-text('D-1 を案 A で決定にしました')", timeout=UPDATE_TIMEOUT_MS
+    )
+    _wait_seen(page, root, "TH-1")
+    # 検証（AI の返信が利用者の既読で、利用者の書き込みの AI の既読と取り込み待ちは変わらない）
+    posts = _thread(root, "TH-1")["posts"]
+    assert [(post["author"], post["seen"]) for post in posts] == [("user", True), ("ai", True)]
+    assert {key: posts[0][key] for key in ("read", "taken")} == user_post_before
+    # 実行（一覧へ戻る）
+    page.click(BACK_BUTTON)
+    page.wait_for_selector(thread_row("TH-1"))
+    # 検証（未読の印の無い一覧）
+    page.wait_for_function(NO_UNREAD_DOT_JS, timeout=UPDATE_TIMEOUT_MS)
+    assert page.locator(UNREAD_MARK).count() == 0
+    # 実行（画面を読み込み直す）
+    page.reload()
+    page.wait_for_selector("main#main > *", state="attached")
+    open_list(page)
+    page.wait_for_selector(thread_row("TH-1"))
+    # 検証
+    assert page.locator(UNREAD_MARK).count() == 0
+    assert page.locator(UNREAD_DOT).count() == 0
