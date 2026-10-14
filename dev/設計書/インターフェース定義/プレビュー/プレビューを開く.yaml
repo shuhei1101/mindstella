@@ -619,6 +619,7 @@ flows:
         description: 本文を HTML で持つ資料 A-1 を持つワークスペース
         notes: 本文は、リンク先のページを指す `target` を持たないリンクと `target="_blank"` を持つリンク、`mailto:a@example.com` のリンクを持つ。ハッシュは `tab=docs&id=A-1`
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -638,6 +639,7 @@ flows:
         IF-->>ユーザー: 押すたびにリンク先を開いた新しいタブ
         ユーザー->>IF: mailto: のリンクを押す
         IF->>IF: 既定の動作を止め、window.open で開く
+      ```
     expected:
       - '`target` を持たないリンク・`target="_blank"` のリンクを押すたびに、リンク先を開いたタブが 1 つ増える'
       - Ctrl を押しながら押す・中ボタンで押す・フォーカスして Enter を押すでも、押すたびにリンク先を開いたタブが 1 つ増える
@@ -654,6 +656,7 @@ flows:
         description: 本文を HTML で持つ資料 A-1 を持つワークスペース
         notes: 本文は先頭に `href="#usage"`・`href="#%E4%BD%BF%E3%81%84%E6%96%B9"`・`href="#none"` のリンク、詳細パネルを開いたときに画面に入らない位置に `id="usage"` の見出しと `id="使い方"` の見出しを持つ。ハッシュは `tab=docs&id=A-1`
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -670,6 +673,7 @@ flows:
         IF->>IF: id が「使い方」の要素まで本文のスクロール領域を送る
         ユーザー->>IF: #none のリンクを押す
         IF->>IF: 既定の動作を止める
+      ```
     expected:
       - '`#usage` のリンクを押すと、`id="usage"` の見出しが詳細パネルの本文のスクロール領域の見える範囲に入り、後ろの画面は送られない'
       - パーセントエンコードした `#` のリンクを押すと、`id="使い方"` の見出しが見える範囲に入る
@@ -685,6 +689,7 @@ flows:
         description: 本文を HTML で持つ資料 A-1 を持つワークスペース
         notes: 本文は `href="other.html"`・`href="/mindstella.html"`・`href="javascript:parent.__mark=1"`・`href="data:text/html,x"` のリンクを持つ。ハッシュは `tab=docs&id=A-1`
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -697,6 +702,7 @@ flows:
         IF-->>ユーザー: A-1 の詳細パネル
         ユーザー->>IF: 4 つのリンクを順に押す
         IF->>IF: 既定の動作を止める
+      ```
     expected:
       - どのリンクを押しても、タブは増えない
       - どのリンクを押した後も、詳細パネルの iframe は A-1 の本文を描いたままで、iframe の文書の場所が変わらない
@@ -711,6 +717,7 @@ flows:
         description: 本文を HTML で持つ資料 A-1 を持つワークスペース
         notes: '本文は段落と、リンク先のページを指すリンクを持つ。ハッシュは `tab=docs&id=A-1`。なぞって選ぶ操作は、枠の文書へ `pointerdown` を送り、Range でリンクの文を選び（`selectionchange`）、`pointerup` とリンクへの `click`（`detail` が 1）を送って作る（sandbox の iframe の上では Playwright の `page.mouse` が返らない。PoC #215）'
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -727,6 +734,7 @@ flows:
         ユーザー->>IF: 文を選んだまま、リンクにフォーカスして Enter を押す
         IF->>IF: 既定の動作を止め、window.open で開く
         IF-->>ユーザー: リンク先を開いた新しいタブ
+      ```
     expected:
       - リンクの文をなぞって選んだ直後は、タブが増えず、選んだ箇所のコメントの入口が出る
       - 文を選んだまま、リンクにフォーカスして Enter を押すと、リンク先を開いたタブが 1 つ増える
