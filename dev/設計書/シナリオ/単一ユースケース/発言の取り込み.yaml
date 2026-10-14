@@ -250,6 +250,7 @@ scenarios:
       - name: 再生する書き込み
         description: '会話で求められた画面のモックを HTML の本文にした資料 A-1（`kind`: モック、`related: [D-1]`）と会話ログを、1 回のまとめての書き込みで渡す'
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
@@ -260,6 +261,7 @@ scenarios:
         CC->>SV: まとめての書き込み（資料 A-1、本文は HTML・会話ログ）
         SV->>WS: docs.yaml と docs/ の HTML の本文と logs.yaml を書く
         CC-->>U: プレビューで開く場所を示す
+      ```
     expected:
       - '資料 A-1 が `kind: モック` と `related: [D-1]` を持ち、本文が HTML の形式である'
       - '`.mindstella/docs/` に A-1 の本文の HTML がある'

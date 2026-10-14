@@ -92,6 +92,7 @@ scenarios:
       - name: 書き出す先
         description: ワークスペースの外の一時フォルダの中のパス
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
@@ -104,6 +105,7 @@ scenarios:
         SV-->>CC: 書き出したファイルのパス
         U->>P: 書き出したファイルを開き、A-1 の詳細パネルを開く
         P-->>U: HTML を描いた本文
+      ```
     expected:
       - A-1 の詳細パネルに、本文の見出し・表・図が HTML を描いた結果で出る
       - ページの変数に印が残らない（本文のスクリプトが実行されていない）
