@@ -79,13 +79,25 @@ NEW_AND_CHANGED_KEYS_HTML = (
     f'<div class="d-value">{_key_diff(key_id="changed-key", was="前の値", now="今の値")}</div>'
 )
 
-# 畳んだ Raw の足した行（図の外）と、Raw を出している図の枠（Raw に足した行・消した行は無い）を持つ本文
-FOLDED_RAW_HTML = (
+# Raw を畳んだ変わった図（隠した Raw が足した行を持つ）を持つ本文
+FOLDED_RAW_FIGURE_HTML = (
     '<div class="md">'
+    '<figure class="diagram df-changed df-frame" data-id="figure">'
+    '<div class="mermaid">図</div>'
     '<pre class="dg-raw df-raw" hidden><span class="df-line df-add">足した行</span></pre>'
-    '<figure class="diagram df-changed df-frame">'
+    "</figure>"
+    "</div>"
+)
+
+# Raw を出した変わった図（見えている Raw が足した行と消した行を持つ）を持つ本文
+SHOWN_RAW_FIGURE_HTML = (
+    '<div class="md">'
+    '<figure class="diagram df-changed df-frame" data-id="figure">'
     '<div class="mermaid" hidden>図</div>'
-    '<pre class="dg-raw df-raw"><span class="df-line">変わらない行</span></pre>'
+    '<pre class="dg-raw df-raw">'
+    '<span class="df-line df-add" data-id="raw-added">足した行</span>'
+    '<span class="df-line df-del" data-id="raw-deleted">消した行</span>'
+    "</pre>"
     "</figure>"
     "</div>"
 )
@@ -282,7 +294,19 @@ def test_diff_minimap_frame_when_keys(
             ],
             id="keys",
         ),
-        pytest.param(FOLDED_RAW_HTML, [], id="folded_raw_and_raw_shown_frame"),
+        pytest.param(
+            FOLDED_RAW_FIGURE_HTML,
+            [{"kind": "chg", "first": "figure", "last": "figure", "frame": None}],
+            id="figure_with_folded_raw",
+        ),
+        pytest.param(
+            SHOWN_RAW_FIGURE_HTML,
+            [
+                {"kind": "add", "first": "raw-added", "last": "raw-added", "frame": None},
+                {"kind": "del", "first": "raw-deleted", "last": "raw-deleted", "frame": None},
+            ],
+            id="figure_with_shown_raw",
+        ),
         pytest.param(
             HTML_FRAME_HTML,
             [
