@@ -339,9 +339,9 @@ var MindmapPreview;
         return `#${params.toString()}`;
     }
     MindmapPreview.hashWith = hashWith;
-    /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする。押したときは既定の動作を止め、見出しの名前を `onHeading` に知らせる */
-    function linkHeadings({ root, onHeading }) {
-        // 本文の中の `[文言](#見出し)` のリンク（# のリンクを足す前の分）。同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
+    /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動に、`#diff=` のリンクをまとまりの知らせにする。押したときは既定の動作を止め、見出しの名前を `onHeading` に、`diff` の値を `onChangeSet` に知らせる */
+    function linkHeadings({ root, onHeading, onChangeSet, }) {
+        // 本文の中の `[文言](#...)` のリンク（# のリンクを足す前の分）。`diff` の引数を持つものはまとまりのリンク、持たないものは見出しのリンクで、同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
         const bodyLinks = [...root.querySelectorAll("a[href^='#']")];
         const seen = new Map();
         for (const heading of root.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
@@ -366,6 +366,13 @@ var MindmapPreview;
             link.addEventListener("click", (event) => {
                 event.preventDefault();
                 const raw = (link.getAttribute("href") ?? "").slice(1);
+                // まとまりのリンク: 見出しとしては扱わない。空・`since`・`pending` は知らせない（記録にあるまとまりかは使う側が確かめる）
+                const changeSet = new URLSearchParams(raw).get("diff");
+                if (changeSet !== null) {
+                    if (changeSet !== "" && changeSet !== "since" && changeSet !== "pending")
+                        onChangeSet(changeSet);
+                    return;
+                }
                 let decoded = raw;
                 try {
                     decoded = decodeURIComponent(raw);
