@@ -118,6 +118,10 @@ flowchart TD
 ```
 """
 
+# D-3 の背景の書き換える前と後（書き換える語の前後に変えない語を残す。同じ部分が少ないと語の面が付かない）
+LEAD_D3_BEFORE = "要件は来週までに決める。"
+LEAD_D3_AFTER = "要件は今週までに決める。"
+
 # 段落 1 つの本文の移り変わり
 BODY_V0 = "# 検討メモ\n\n最初の本文です。\n"
 BODY_V1 = "# 検討メモ\n\n1 回目に書き換えた本文です。\n"
@@ -186,13 +190,16 @@ def _block_texts(page: Page) -> tuple[str, str]:
     return added, removed
 
 
-def _decisions(make_item: MakeItem, *body_ids: str) -> list[dict[str, Any]]:
-    """未決定の検討事項 D-1〜D-5 を返す。`body_ids` の項目だけ本文のファイルを持つ。"""
+def _decisions(
+    make_item: MakeItem, *body_ids: str, leads: dict[str, str] | None = None
+) -> list[dict[str, Any]]:
+    """未決定の検討事項 D-1〜D-5 を返す。`body_ids` の項目だけ本文のファイルを、`leads` の項目だけ背景を持つ。"""
     return [
         make_item(
             f"D-{number}",
             status="未決定",
             **({"body": f"D-{number}.md"} if f"D-{number}" in body_ids else {}),
+            **({"lead": (leads or {})[f"D-{number}"]} if f"D-{number}" in (leads or {}) else {}),
         )
         for number in range(1, 6)
     ]
@@ -210,7 +217,7 @@ def test_normal(
     """変更履歴から「前回開いてから」を選び、印の付いた D-3 の詳細パネルで状態・本文・図・Raw の変更を読む（正常系）。"""
     # 準備
     root = make_workspace(
-        *_decisions(make_item, "D-3"),
+        *_decisions(make_item, "D-3", leads={"D-3": LEAD_D3_BEFORE}),
         make_item("T-1"),
         bodies={"D-3.md": BODY_D3_BEFORE},
     )
@@ -218,7 +225,10 @@ def test_normal(
     url = _serve(call_tool, root)
     visit_and_close(page, url)
     replay(
-        "update", workspace=ws, id="D-3", item={"status": "要見直し", "body_markdown": BODY_D3_AFTER}
+        "update",
+        workspace=ws,
+        id="D-3",
+        item={"status": "要見直し", "lead": LEAD_D3_AFTER, "body_markdown": BODY_D3_AFTER},
     )
     replay("add", workspace=ws, kind="decision", item=NEW_DECISION)
     replay("commit", workspace=ws, summary=COMMIT_SUMMARY)
@@ -259,6 +269,11 @@ def test_normal(
     status = page.locator('aside.panel [data-key="status"] .df-kv')
     assert status.locator("del.df-was").inner_text().endswith("未決定")
     assert status.locator("ins.df-now").inner_text().endswith("要見直し")
+    # 検証（背景の前の値と今の値で、書き換えた語にだけ濃い面が付く。前は消した色、今は足した色で、変えていない語には付かない）
+    lead_words = 'aside.panel [data-key="lead"] span.df-word'
+    assert page.locator(f"{lead_words}.df-del").all_inner_texts() == ["来週"]
+    assert page.locator(f"{lead_words}.df-add").all_inner_texts() == ["今週"]
+    assert page.locator(lead_words).count() == 2
     # 検証（本文は Markdown のまま、書き換えた段落に足した印、消した段落に消した印が付き、変えていない段落には付かない）
     assert page.inner_text('aside.panel .md [data-md-level="1"]') == "検討メモ"
     added, removed = _block_texts(page)
@@ -268,7 +283,8 @@ def test_normal(
     assert "残す段落です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert "残す段落です。" not in added + removed
     # 検証（書き換えた語にだけ濃い面が付く。前は消した色、今は足した色で、変えていない語と消した段落には付かない）
-    body_words = "aside.panel .md:not(.md-value) span.df-word"
+    # 図の Raw の差分（隠して先に描いてある）の語の面は含めない。Raw の語の面は、Raw を押した後の確かめが見る
+    body_words = "aside.panel .md:not(.md-value) span.df-word:not(figure *)"
     assert page.locator(f"{body_words}.df-del").all_inner_texts() == ["来週"]
     assert page.locator(f"{body_words}.df-add").all_inner_texts() == ["今週"]
     assert page.locator(body_words).count() == 2
@@ -307,7 +323,7 @@ def test_normal(
     assert page.locator(".df-mark").count() == 0
     assert page.locator("nav.tabbar .df-dot").count() == 0
     body = page.inner_text("aside.panel .md:not(.md-value)")
-    assert "書き換えた段落です。" in body
+    assert "要件は今週までに決める。" in body
     assert "消す段落です。" not in body
     # 検証（ワークスペースの YAML と本文の中身が、開く前と同じ）
     assert snapshot_records(snapshot_tree(root)) == before

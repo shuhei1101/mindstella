@@ -131,26 +131,47 @@ namespace MindmapPreview {
     return [h({ tag: "span", attrs: { class: "df-sign", "aria-hidden": "true" }, children: [glyph] }), ...(name === "" ? [] : [srOnly(name)])];
   }
 
-  /** 変わったキーの前の値と今の値を並べる。前の値は取り消し線、今の値は下線。plain は面を塗らず、線と矢印だけで示す */
-  function keyDiff({ was, now, plain = false }: { was: Child; now: Child; plain?: boolean }): HTMLElement {
+  /** 語の面を付ける、並べた前の値（`del.df-was`）と今の値（`ins.df-now`）の対 */
+  type KeyWordPair = { was: HTMLElement; now: HTMLElement };
+
+  /** 変わったキーの前の値と今の値を並べる。前の値は取り消し線、今の値は下線。plain は面を塗らず、線と矢印だけで示す。pairs を渡すと、前後がどちらも空でない文字のとき、並べた対を語の面を付ける対として pairs に足す */
+  function keyDiff({
+    was,
+    now,
+    plain = false,
+    pairs,
+  }: {
+    was: Child;
+    now: Child;
+    plain?: boolean;
+    pairs?: KeyWordPair[];
+  }): HTMLElement {
     const empty = (value: Child): boolean => value === null || value === undefined || value === false || value === "";
+    const wasElement = h({ tag: "del", attrs: { class: "df-was" }, children: [srOnly("前の値: "), empty(was) ? NO_VALUE : was] });
+    const nowElement = h({ tag: "ins", attrs: { class: "df-now" }, children: [srOnly("今の値: "), empty(now) ? NO_VALUE : now] });
+    if (typeof was === "string" && typeof now === "string" && !empty(was) && !empty(now)) pairs?.push({ was: wasElement, now: nowElement });
     return h({
       tag: "span",
       attrs: { class: plain ? "df-kv df-plain" : "df-kv" },
-      children: [
-        h({
-          tag: "del",
-          attrs: { class: "df-was" },
-          children: [srOnly("前の値: "), empty(was) ? NO_VALUE : was],
-        }),
-        h({ tag: "span", attrs: { class: "df-arrow", "aria-hidden": "true" }, children: ["→"] }),
-        h({
-          tag: "ins",
-          attrs: { class: "df-now" },
-          children: [srOnly("今の値: "), empty(now) ? NO_VALUE : now],
-        }),
-      ],
+      children: [wasElement, h({ tag: "span", attrs: { class: "df-arrow", "aria-hidden": "true" }, children: ["→"] }), nowElement],
     });
+  }
+
+  /** 控えたキーの値の対の文字（読み上げの文字を除く） */
+  function keyWordNodes(root: HTMLElement): Text[] {
+    return wordTextNodes(root).filter((node) => node.parentElement?.closest(".sr-only") == null);
+  }
+
+  /** 控えたキーの値の対の前後の文字を語の単位で比べ、変わった語を濃い面で囲む。比べられなかった対には付けない */
+  function markKeyWords({ pairs, deadline }: { pairs: KeyWordPair[]; deadline: number }): void {
+    for (const pair of pairs) {
+      const wasNodes = keyWordNodes(pair.was);
+      const nowNodes = keyWordNodes(pair.now);
+      const inline = diffInline(wasNodes.map((node) => node.data).join(""), nowNodes.map((node) => node.data).join(""), deadline);
+      if (inline === null) continue;
+      wrapWords({ nodes: wasNodes, parts: inline.before, mark: "del" });
+      wrapWords({ nodes: nowNodes, parts: inline.after, mark: "add" });
+    }
   }
 
   /** キーの値を、差分に並べる文字にする。値が無ければ null */
@@ -172,6 +193,10 @@ namespace MindmapPreview {
     has: (key: string) => boolean;
     /** 変わったキーは前の値と今の値を並べ、変わっていないキーは今の値のままにする。`render` で値の見せ方を変える */
     show: (key: string, render?: (value: unknown) => Child, plain?: boolean) => Child;
+    /** `show` と同じ。変わったキーの前後がどちらも空でない文字なら、語の面を付ける対として `pairs` に控える（題と文字列の値の描画が描く値に使う） */
+    showWords: (key: string) => Child;
+    /** 語の面を付ける対（`showWords` と案の値が足す）。本文を描いた後に `markKeyWords` で囲む */
+    pairs: KeyWordPair[];
     /** 前の版の項目 */
     before: Item;
   };
@@ -185,10 +210,14 @@ namespace MindmapPreview {
         (key) => !UNDIFFED_KEYS.has(key) && JSON.stringify(left[key]) !== JSON.stringify(right[key]),
       ),
     );
+    const pairs: KeyWordPair[] = [];
     return {
       has: (key) => changed.has(key),
       show: (key, render = valueText, plain = false) =>
         changed.has(key) ? keyDiff({ was: render(left[key]), now: render(right[key]), plain }) : render(right[key]),
+      showWords: (key) =>
+        changed.has(key) ? keyDiff({ was: valueText(left[key]), now: valueText(right[key]), pairs }) : valueText(right[key]),
+      pairs,
       before,
     };
   }
@@ -264,7 +293,7 @@ namespace MindmapPreview {
   }
 
   /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由、採用した案が無いときは推奨の印を出す）。previous があれば、変わった値に前の値を並べる */
-  function optionCards(options: Option[], previous: Option[] | null): HTMLElement {
+  function optionCards({ options, previous, pairs }: { options: Option[]; previous: Option[] | null; pairs?: KeyWordPair[] }): HTMLElement {
     const compare = previous !== null;
     const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
     // 採用した案があれば採用の表示を優先し、推奨の印は出さない
@@ -287,7 +316,7 @@ namespace MindmapPreview {
           const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && beforeOf(field) !== undefined));
           const valueOf = (field: "pros" | "cons" | "note" | "reason", value: string | undefined): Child =>
             compare && beforeOf(field) !== value
-              ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null })
+              ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null, pairs })
               : markdownValue(value);
           const resultChild: Child =
             compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;
@@ -304,7 +333,7 @@ namespace MindmapPreview {
                   h({ tag: "span", attrs: { class: "key" }, children: [option.key] }),
                   valueBlock(`options[${option.key}].content`, [
                     compare && before?.content !== option.content
-                      ? keyDiff({ was: before?.content ?? null, now: option.content })
+                      ? keyDiff({ was: before?.content ?? null, now: option.content, pairs })
                       : markdownValue(option.content),
                   ]),
                   recommended ? h({ tag: "span", attrs: { class: "rec-badge" }, children: [icon("star"), "推奨"] }) : null,
@@ -761,9 +790,7 @@ namespace MindmapPreview {
   type BodyDiff = { root: HTMLElement; markWords: () => void };
 
   /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
-  function renderBodyDiff({ before, after }: { before: string; after: string }): BodyDiff | null {
-    // 語の差分は、行の差分を呼んでからこの時間の内に収める
-    const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
+  function renderBodyDiff({ before, after, deadline }: { before: string; after: string; deadline: number }): BodyDiff | null {
     const compared = diffLineParts(before, after);
     if (compared === null) return null;
     const parts = withoutDiagramEdits({ parts: compared, before });
@@ -999,7 +1026,7 @@ namespace MindmapPreview {
     const keys = view?.keys ?? null;
     const related = relatedItems({ id, index });
     /** キーの値。変わっていれば前の値と今の値を並べる */
-    const textOf = (key: string, value: string | undefined): Child => (keys?.has(key) === true ? keys.show(key) : value);
+    const textOf = (key: string, value: string | undefined): Child => (keys?.has(key) === true ? keys.showWords(key) : value);
     const labelled = (label: string, key: string, value: string | undefined): HTMLElement | null => {
       const changed = keys?.has(key) === true;
       if ((value === undefined || value === "") && !changed) return null;
@@ -1037,6 +1064,13 @@ namespace MindmapPreview {
         children: [keys?.has(key) === true ? textOf(key, value) : markdownValue(value)],
       });
     };
+    let keysMarked = false;
+    /** キーの値の語の面を、1 回だけ付ける。deadline は本文の語の差分と共有する（本文の差分を描かないときは、比べる直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足した時刻） */
+    const markKeys = (deadline: number): void => {
+      if (keys === null || keysMarked) return;
+      keysMarked = true;
+      markKeyWords({ pairs: keys.pairs, deadline });
+    };
     /** 本文の節。本文の図を描き、図の道具（拡大・Raw・コピー）を動かす。差分の表示の間は、本文と図の差分を重ねる */
     const bodySection = (label: string): HTMLElement | null => {
       const source = view?.body ?? index.data.bodies[item.body ?? ""];
@@ -1044,6 +1078,7 @@ namespace MindmapPreview {
       if (bodyFormatOf(item.body) === "html") return htmlBodySection({ label, source });
       let rendered: HTMLElement | null = null;
       let markBodyWords: (() => void) | null = null;
+      let bodyDeadline: number | null = null;
       let notice: HTMLElement | null = null;
       let diagramBefore: string | null = null;
       const versions = view?.versions ?? null;
@@ -1055,7 +1090,9 @@ namespace MindmapPreview {
           notice = noteBox(NOTE_BODY_UNAVAILABLE);
         } else {
           diagramBefore = versions.beforeBody;
-          const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source });
+          // 語の差分は、行の差分を呼ぶ前に決めたこの時刻の内に収める（行の差分を打ち切ったときも、キーの値の語の差分と共有する）
+          bodyDeadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
+          const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source, deadline: bodyDeadline });
           rendered = bodyDiff?.root ?? null;
           markBodyWords = bodyDiff?.markWords ?? null;
           if (rendered === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
@@ -1075,7 +1112,8 @@ namespace MindmapPreview {
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
       drawHtmlBlocks(root);
-      // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）
+      // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）。キーの値の語の面を先に付ける
+      if (bodyDeadline !== null) markKeys(bodyDeadline);
       markBodyWords?.();
       const drawn = renderDiagrams(root);
       if (diagramBefore !== null) {
@@ -1176,7 +1214,7 @@ namespace MindmapPreview {
           tag: "h2",
           attrs: { class: "d-title", [VALUE_KEY_ATTR]: "title" },
           children: [
-            keys?.has("title") === true ? keys.show("title") : item.title,
+            keys?.has("title") === true ? keys.showWords("title") : item.title,
             item.deliverable === true ? deliverableBadge() : null,
             view?.kind === "new" ? diffMark({ kind: "new", labeled: true }) : null,
             // 取り下げた項目は、差分の表示によらず題の右に札を置く
@@ -1193,7 +1231,7 @@ namespace MindmapPreview {
         parent: body,
         children: [
           lead("lead", item.lead, "d-lead"),
-          (item.options ?? []).length > 0 || previous !== null ? section("案", optionCards(item.options ?? [], previous)) : null,
+          (item.options ?? []).length > 0 || previous !== null ? section("案", optionCards({ options: item.options ?? [], previous, ...(keys === null ? {} : { pairs: keys.pairs }) })) : null,
           adoptedSection(),
           bodySection("本文"),
           relation("前提", related.prerequisites),
@@ -1279,6 +1317,8 @@ namespace MindmapPreview {
         review === null ? null : reviewSection(review),
       ],
     });
+    // 本文の差分を描かなかったとき、キーの値の語の面をここで付ける
+    markKeys(performance.now() + LINE_DIFF_TIMEOUT_MS);
     return body;
   }
 

@@ -1442,6 +1442,270 @@ def test_detail_panel_when_diff_raw_inline_words(
     assert sum(1 for line in lines if line["words"]) == len(words_by_op)
 
 
+# 詳細パネルを差分つきで開き、キーの前の値（`del.df-was`）と今の値（`ins.df-now`）の語の面（`span.df-word`）を、
+# 題と、渡した CSS セレクターに当たる要素ごとに、面の文字と読み上げの文字（`span.sr-only`）の置き場所に直して調べる。
+# 面を塗らない差分（`span.df-kv.df-plain`）と、パネル全体の語の面の数も返す
+OPEN_KEY_WORD_DIFF_PANEL_SCRIPT = """async ({data, point, selectors}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const texts = (root, selector) => [...root.querySelectorAll(selector)].map((word) => word.textContent);
+    const pairOf = (root) => ({
+        was: texts(root, "del.df-was span.df-word.df-del"),
+        now: texts(root, "ins.df-now span.df-word.df-add"),
+        wasText: root.querySelector("del.df-was")?.textContent ?? null,
+        nowText: root.querySelector("ins.df-now")?.textContent ?? null,
+        words: root.querySelectorAll("span.df-word").length,
+        reading: [...root.querySelectorAll("span.sr-only")].map((reading) => ({
+            text: reading.textContent,
+            insideWord: reading.closest("span.df-word") !== null || reading.querySelector("span.df-word") !== null,
+        })),
+    });
+    return {
+        title: pairOf(panel.querySelector(".d-title")),
+        pairs: selectors.flatMap((selector) => [...panel.querySelectorAll(selector)]).map(pairOf),
+        // 前の値・今の値の文字だけ（語の面の有無によらない）
+        texts: selectors.flatMap((selector) => [...panel.querySelectorAll(selector)]).map((element) => ({
+            was: element.querySelector("del.df-was")?.textContent ?? null,
+            now: element.querySelector("ins.df-now")?.textContent ?? null,
+        })),
+        plain: {
+            pairs: panel.querySelectorAll("span.df-kv.df-plain").length,
+            words: panel.querySelectorAll("span.df-kv.df-plain span.df-word").length,
+        },
+        allWords: panel.querySelectorAll("span.df-word").length,
+    };
+}"""
+
+# 題・背景（`lead`）・案 A の内容・状態を変え、本文を変えない回（前の値を持つ）
+KEY_WORDS_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {
+        "title": "要件を来週までに決める",
+        "lead": "要件は来週までに決める。",
+        "options": [{"key": "A", "content": "毎週の会議で決める"}],
+        "status": "未決定",
+    },
+}
+
+# 読み上げの「前の値: 」「今の値: 」は、語の面の外に置く
+READING_OUTSIDE_WORDS = [
+    {"text": "前の値: ", "insideWord": False},
+    {"text": "今の値: ", "insideWord": False},
+]
+
+
+def test_detail_panel_when_diff_key_words(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """題と文字列の値のキーの差分で、変わった語だけを囲む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item(
+                "D-1",
+                title="要件を今週までに決める",
+                lead="要件は今週までに決める。",
+                options=[{"key": "A", "content": "毎月の会議で決める"}],
+                status="要見直し",
+                history=[KEY_WORDS_ENTRY],
+                seq=1,
+            )
+        ],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT,
+        {
+            "data": data,
+            "point": DIFF_POINT,
+            "selectors": ["[data-key=\"lead\"]", "[data-key=\"options[A].content\"]"],
+        },
+    )
+    # 検証
+    # 題・背景・案 A の内容は、前の値の消した語と今の値の足した語だけを囲む
+    assert (result["title"]["was"], result["title"]["now"]) == (["来週"], ["今週"])
+    lead, content = result["pairs"]
+    assert (lead["was"], lead["now"]) == (["来週"], ["今週"])
+    assert (content["was"], content["now"]) == (["毎週"], ["毎月"])
+    # 読み上げの文字は、前の値・今の値の頭に残り、語の面の外にある
+    assert result["title"]["reading"] == READING_OUTSIDE_WORDS
+    assert lead["reading"] == READING_OUTSIDE_WORDS
+    assert content["reading"] == READING_OUTSIDE_WORDS
+    assert result["title"]["wasText"] == "前の値: 要件を来週までに決める"
+    assert result["title"]["nowText"] == "今の値: 要件を今週までに決める"
+    # 状態（面を塗らない差分）は、対が 1 つあり、語の面を持たない
+    assert result["plain"] == {"pairs": 1, "words": 0}
+    # 語の面は、題・背景・案 A の内容の前の値と今の値の 6 つだけ
+    assert result["allWords"] == 6
+
+
+def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
+    """渡した名前の描画のライブラリを、ページに読む。"""
+    for name in names:
+        load_library(name)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "before", "selector", "expected_texts", "libraries"),
+    [
+        pytest.param(
+            {"lead": "要件は来週までに決める。"},
+            {"lead": None},
+            "[data-key=\"lead\"]",
+            [{"was": "前の値: （なし）", "now": "今の値: 要件は来週までに決める。"}],
+            ["marked", "DOMPurify", "jsdiff"],
+            id="added",
+        ),
+        pytest.param(
+            {"lead": "予算を承認する"},
+            {"lead": "要件は来週までに決める。"},
+            "[data-key=\"lead\"]",
+            [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 予算を承認する"}],
+            ["marked", "DOMPurify", "jsdiff"],
+            id="unrelated",
+        ),
+        pytest.param(
+            {"tags": ["要件", "運用"], "date": "2026-10-08"},
+            {"tags": ["要件", "会議"], "date": "2026-10-01"},
+            "dl.d-meta dd.df-key",
+            [
+                {"was": "前の値: 2026-10-01", "now": "今の値: 2026-10-08"},
+                {"was": "前の値: 要件、会議", "now": "今の値: 要件、運用"},
+            ],
+            ["marked", "DOMPurify", "jsdiff"],
+            id="list_and_date",
+        ),
+        pytest.param(
+            {"lead": "要件は今週までに決める。"},
+            {"lead": "要件は来週までに決める。"},
+            "[data-key=\"lead\"]",
+            [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}],
+            ["marked", "DOMPurify"],
+            id="jsdiff_missing",
+        ),
+    ],
+)
+def test_detail_panel_when_diff_key_words_skipped(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    overrides: dict[str, Any],
+    before: dict[str, Any],
+    selector: str,
+    expected_texts: list[dict[str, str]],
+    libraries: list[str],
+) -> None:
+    """語の面の対でないキーと、比べられない値には語の面を付けない（正常系）。"""
+    # 準備
+    history = [{"seq": 1, "at": ENTRY_AT, "before": before}]
+    data = make_data(decisions=[make_item("D-1", history=history, seq=1, **overrides)])
+    load_preview_scripts()
+    # jsdiff を読めないケースは、jsdiff を差し込まない
+    _load_libraries(load_library, libraries)
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "selectors": [selector]}
+    )
+    # 検証
+    # どの対にも語の面が無い
+    assert result["allWords"] == 0
+    # 前の値・今の値は、今までどおり del.df-was・ins.df-now で並ぶ
+    assert result["texts"] == expected_texts
+
+
+# 本文の行の差分の打ち切りの時間（ミリ秒。`LINE_DIFF_TIMEOUT_MS`）
+LINE_DIFF_TIMEOUT_MS = 40
+
+# 本文の行の差分（`Diff.diffLines`）を打ち切り（`undefined` を返し）、その間に時計を打ち切りの時間より進める包みを被せる
+INSTALL_LINE_DIFF_TIMEOUT_SCRIPT = """(timeoutMs) => {
+    const now = performance.now.bind(performance);
+    let advanced = 0;
+    performance.now = () => now() + advanced;
+    Diff.diffLines = () => {
+        advanced += timeoutMs + 10;
+        return undefined;
+    };
+}"""
+
+# `lead` と本文の 1 行目を書き換えた回（本文の行の差分を呼ぶ）
+BODY_TOO_LARGE_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"lead": "要件は来週までに決める。"},
+    "body_diff": [
+        {
+            "line": 1,
+            "now": ["要件は今週までに決める。"],
+            "before": ["要件は来週までに決める。"],
+        },
+    ],
+}
+
+
+def test_detail_panel_when_diff_key_words_body_too_large(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を足し直さない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item(
+                "D-1",
+                lead="要件は今週までに決める。",
+                body="D-1.md",
+                history=[BODY_TOO_LARGE_ENTRY],
+                seq=1,
+            )
+        ],
+        bodies={"D-1.md": WORD_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    preview_page.evaluate(INSTALL_LINE_DIFF_TIMEOUT_SCRIPT, LINE_DIFF_TIMEOUT_MS)
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "selectors": ['[data-key="lead"]']},
+    )
+    note = preview_page.evaluate("() => document.querySelector('.df-note')?.textContent ?? ''")
+    # 検証
+    # 本文の頭に、本文の差分を計算しきれない旨が出る
+    assert "本文の差分を出せません" in note
+    # 背景の前の値・今の値は今までどおり並び、語の面は付かない
+    assert result["texts"] == [
+        {"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}
+    ]
+    assert result["allWords"] == 0
+
+
 # 資料・調査の説明とエイリアスの節の位置と中身、キーの一覧の行を調べる（markers の見出しとキーの要素を、中身の直下の子の位置で返す）
 DESCRIPTION_ALIASES_SCRIPT = (
     OPEN_PANEL_FUNCTION
