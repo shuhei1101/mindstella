@@ -1458,6 +1458,7 @@ def test_normal_when_body_link_to_change_set(
     )
     # 検証（diff 以外の引数は読まない）
     assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["view"] == ["table"]
     assert _hash_params(page)["id"] == ["D-2"]
     assert _hash_params(page)["diff"] == ["V-1"]
     assert page.evaluate("history.length") == history_before
