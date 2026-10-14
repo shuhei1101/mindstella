@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
@@ -466,7 +468,7 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
     assert page.get_attribute(".hist-btn", "aria-label") == "変更履歴"
     # 帯の子が左から順に並び、重ならず、画面の中に収まる
     order = ["brand", "search", "history", "chip", "comments", "theme"]
-    for left, right in zip(order, order[1:], strict=False):
+    for left, right in itertools.pairwise(order):
         assert boxes[left]["right"] <= boxes[right]["left"], (left, right)
     assert boxes["theme"]["right"] <= boxes["page"]["width"]
     assert boxes["page"]["scroll"] <= boxes["page"]["width"]

@@ -13,7 +13,6 @@ from preview_comment_helpers import (
     REVIEW_ENTRY,
     REVIEW_HEAD,
     THREAD_ROWS,
-    THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     free_comment,
     open_list,
