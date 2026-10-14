@@ -147,6 +147,7 @@ scenarios:
         description: 本文を HTML で持つ資料 A-1 と、本文を HTML で持つ資料 A-2
         notes: A-1 の本文のファイルを消し、どの資料からも指されない HTML の本文のファイル `A-9` を `.mindstella/docs/` に置く
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
@@ -155,6 +156,7 @@ scenarios:
         CC->>SV: 点検する
         SV->>WS: 全ての YAML と .mindstella/docs/ を読む
         SV-->>CC: 問題の一覧
+      ```
     expected:
       - A-1 の「指す本文が無い」問題が 1 件ある
       - '`A-9` の HTML の本文の「どこからも指されない」問題が 1 件ある'

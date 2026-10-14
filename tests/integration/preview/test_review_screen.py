@@ -23,6 +23,7 @@ from preview_comment_helpers import (
     review_row,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_stack_helpers import DETAIL_HASH, is_inert, open_narrow, wait_front
 from claude_pane_fixtures import StartClaudePane
 from workspace_fixtures import (
     RECORD_DIR,
@@ -124,6 +125,26 @@ def test_back(served_review: tuple[str, Path], open_preview: OpenPreview) -> Non
     page.keyboard.press("Escape")
     page.wait_for_selector(f"{COMMENTS_PANEL} .talk-band")
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+
+
+def test_narrow_back_by_escape_in_front_of_detail(
+    served_review: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """幅 390px で一覧が詳細パネルの前に出ているときの Esc は、レビュー中の書き込みの画面から開く前の画面へ戻り、詳細パネルは閉じない（正常系）。"""
+    # 準備
+    url, _ = served_review
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_review(page)
+    wait_front(page, "comments")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_selector(f"{COMMENTS_PANEL} .talk-band")
+    wait_front(page, "comments")
+    assert page.locator(REVIEW_HEAD).count() == 0
+    assert page.locator("aside.panel.open").count() == 1
+    assert is_inert(page, "detail") is True
 
 
 def test_toggle_all(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:

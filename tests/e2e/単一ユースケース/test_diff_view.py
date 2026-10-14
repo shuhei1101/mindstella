@@ -9,6 +9,18 @@ import re
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
 
+from diff_minimap_helpers import (
+    FULL_SCOPE,
+    MINIMAP_COMMIT_SUMMARY,
+    MINIMAP_TIMEOUT_MS,
+    MINIMAP_VIEWPORT_WIDTH,
+    PANEL_SCOPE,
+    added_paragraph_in_view,
+    block_kinds,
+    build_minimap_workspace,
+    mark_shapes,
+    wait_added_paragraph_in_view,
+)
 from playwright.sync_api import Page
 from preview_helpers import (
     HISTORY_DIALOG,
@@ -1071,3 +1083,59 @@ def test_normal_when_body_link_not_to_change_set(
         assert _hash_params(page.url)["diff"] == ["V-1"]
         assert "h" not in _hash_params(page.url)
         assert page.evaluate("history.length") == history_before
+
+
+def test_normal_when_minimap_jump(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示で長い資料の詳細を開くと変わった箇所の印を並べたミニマップが出て、印を押すとその箇所まで本文が送られ、全画面にも同じミニマップが出て、差分の表示から抜けると消える（正常系）。"""
+    # 準備（本文に段落を 40 個持つ A-1 の 1 つ目の段落を消し、末尾に段落を足した V-1）
+    root = build_minimap_workspace(make_workspace, make_item, call_tool)
+    url = _serve(call_tool, root)
+    open_preview(url, "#tab=docs", width=MINIMAP_VIEWPORT_WIDTH)
+    pick_history_point(page, MINIMAP_COMMIT_SUMMARY)
+    # 実行（資料のタブで A-2 を押す）
+    page.click('.doc-card[data-id="A-2"]')
+    page.wait_for_function(
+        f"document.querySelector('{PANEL_SCOPE} .d-title')?.textContent.includes('A-2')"
+    )
+    # 検証（変わっていない A-2 にはミニマップが出ない）
+    assert page.locator(f"{PANEL_SCOPE} .df-map").count() == 0
+    # 実行（資料のタブで A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TIMEOUT_MS)
+    shapes = mark_shapes(page, PANEL_SCOPE)
+    # 検証（消した段落と足した段落の印が、本文の中のその箇所と同じ上下の順で並び、形が違い、足した段落は見える範囲の外にある）
+    assert block_kinds(page, PANEL_SCOPE) == ["del", "ins"]
+    assert [shape["kind"] for shape in shapes] == ["df-del", "df-add"]
+    assert shapes[0]["top"] < shapes[1]["top"]
+    assert shapes[0]["border"] == "2px"
+    assert shapes[1]["border"] == "0px"
+    assert shapes[0]["fill"] != shapes[1]["fill"]
+    assert not added_paragraph_in_view(page, PANEL_SCOPE)
+    # 実行（ミニマップの下の印を押す）
+    hash_before = page.evaluate("location.hash")
+    page.locator(f"{PANEL_SCOPE} .df-map .df-map-m").nth(1).click()
+    wait_added_paragraph_in_view(page, PANEL_SCOPE)
+    # 検証（足した段落が見える範囲に入り、URL のハッシュは変わらない）
+    assert added_paragraph_in_view(page, PANEL_SCOPE)
+    assert page.evaluate("location.hash") == hash_before
+    # 実行（全画面表示を押す）
+    page.locator(PANEL_SCOPE).get_by_role("button", name="全画面表示").click()
+    page.wait_for_selector(f"{FULL_SCOPE}[open] .df-map .df-map-m", timeout=MINIMAP_TIMEOUT_MS)
+    # 検証（全画面にも消した段落と足した段落の印を並べたミニマップが出る）
+    assert [shape["kind"] for shape in mark_shapes(page, FULL_SCOPE)] == ["df-del", "df-add"]
+    # 実行（全画面は他の操作を受けないため元の大きさに戻してから、差分の表示から抜ける）
+    page.locator(FULL_SCOPE).get_by_role("button", name="元の大きさに戻す").click()
+    page.wait_for_selector(FULL_SCOPE, state="hidden")
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.locator("dialog.hist .hist-item[data-sel='']").click()
+    page.wait_for_selector(".df-chip", state="detached", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（ミニマップが消える）
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map", state="detached", timeout=MINIMAP_TIMEOUT_MS)
+    assert page.locator(".df-map").count() == 0

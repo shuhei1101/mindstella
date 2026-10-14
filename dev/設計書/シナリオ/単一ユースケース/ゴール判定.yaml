@@ -118,6 +118,7 @@ scenarios:
       - name: 利用者の返答
         description: 示した検討事項と納品物を確定する
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
@@ -133,6 +134,7 @@ scenarios:
         CC->>WS: .mindstella/release/ にリリースの資料を書き出す
         CC->>SV: add（会話ログ）
         CC-->>U: .mindstella/release/ のファイルを示す
+      ```
     expected:
       - '`.mindstella/release/` に、A-1 の本文が `{納品物のタイトル}.md` である'
       - '`.mindstella/release/` に、A-2 の本文が `画面のモック.html` で、HTML のままある'

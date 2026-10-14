@@ -17,12 +17,15 @@ from preview_comment_helpers import (
     UPDATE_TIMEOUT_MS,
     free_comment,
     open_list,
+    open_review,
     read_workspace_yaml,
+    review_row,
     thread_row,
     wait_until_focused,
 )
 from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
@@ -484,6 +487,84 @@ def test_narrow_width(served_threads: tuple[str, Path], open_preview: OpenPrevie
     page.wait_for_function("!document.querySelector('aside.panel.open')")
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
     assert page.is_visible(COMMENTS_PANEL)
+
+
+def test_narrow_in_front_of_detail(
+    write_review_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """幅 390px で詳細パネルを開いたままトップバーから開くと、一覧が詳細パネルの前に出て詳細パネルが `inert` になる。閉じると、開く前の詳細パネルがそのまま見える（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    # 実行（詳細パネルを開いたまま開く）
+    open_list(page)
+    wait_front(page, "comments")
+    in_front = {"left_front": has_left_front(page), "detail_inert": is_inert(page, "detail")}
+    # 実行（閉じる）
+    page.get_by_role("button", name="コメントの一覧を閉じる").click()
+    page.wait_for_selector(COMMENTS_PANEL, state="detached")
+    wait_front(page, "detail")
+    # 検証
+    assert in_front == {"left_front": True, "detail_inert": True}
+    assert has_left_front(page) is False
+    assert is_inert(page, "detail") is False
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+
+
+@pytest.mark.parametrize("target", ["D-1", "D-2"], ids=["opened_item", "other_item"])
+def test_narrow_row_opens_detail_in_front(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    open_preview: OpenPreview,
+    target: str,
+) -> None:
+    """幅 390px で一覧が前に出ているとき、一覧の行を押して詳細パネルを開くと、いま開いている項目を指す行でも別の項目を指す行でも、詳細パネルが一覧の前に出て一覧が `inert` になる（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        make_item("D-2"),
+        comments=(make_comment("C-1", target=target, body="案 A にする"),),
+    )
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_review(page)
+    wait_front(page, "comments")
+    # 実行
+    page.click(f"{review_row(COMMENTS_PANEL, 'C-1')} button.row-target")
+    # 検証
+    wait_front(page, "detail")
+    assert page.inner_text("aside.panel .d-title") == f"{target}の題"
+    assert has_left_front(page) is False
+    assert is_inert(page, "comments") is True
+    assert is_inert(page, "detail") is False
+
+
+def test_narrow_back_to_list_when_detail_closed(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    open_preview: OpenPreview,
+) -> None:
+    """幅 390px で、いま開いている項目を指す行から詳細パネルを前に出した後、Esc で詳細パネルを閉じると、一覧が見えて操作できる（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"), comments=(make_comment("C-1", target="D-1", body="案 A にする"),)
+    )
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_review(page)
+    page.click(f"{review_row(COMMENTS_PANEL, 'C-1')} button.row-target")
+    wait_front(page, "detail")
+    # 実行
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    # 検証
+    wait_front(page, "comments")
+    assert is_inert(page, "comments") is False
+    assert has_left_front(page) is False
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
 
 
 def test_updated_by_change(

@@ -22,6 +22,7 @@ from preview_comment_helpers import (
     wait_until_focused,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -183,6 +184,68 @@ def test_target(served_thread: tuple[str, Path], open_preview: OpenPreview) -> N
     # 検証
     page.wait_for_selector("aside.panel.open")
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+
+
+def test_narrow_back_by_escape_in_front_of_detail(
+    served_thread: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """幅 390px で一覧が詳細パネルの前に出ているときの Esc は、スレッドの画面から一覧へ戻り、詳細パネルは閉じない（正常系）。"""
+    # 準備
+    url, _ = served_thread
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_thread(page, "TH-1")
+    wait_front(page, "comments")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_selector(f"{COMMENTS_PANEL} .talk-filter")
+    wait_front(page, "comments")
+    assert page.locator(f"{COMMENTS_PANEL} .th-head").count() == 0
+    assert page.locator("aside.panel.open").count() == 1
+    assert is_inert(page, "detail") is True
+
+
+def test_narrow_escape_when_typing_in_front_of_detail(
+    served_thread: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """幅 390px で一覧が詳細パネルの前に出ているとき、返信の入力欄にフォーカスがある Esc は入力から外れるだけで、スレッドの画面も詳細パネルも閉じない（正常系）。"""
+    # 準備
+    url, _ = served_thread
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_thread(page, "TH-1")
+    wait_front(page, "comments")
+    page.click(REPLY_TEXTAREA)
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_function(
+        "selector => document.activeElement !== document.querySelector(selector)", arg=REPLY_TEXTAREA
+    )
+    wait_front(page, "comments")
+    assert page.locator(f"{COMMENTS_PANEL} .th-head").count() == 1
+    assert page.locator("aside.panel.open").count() == 1
+
+
+def test_narrow_target_opens_detail_in_front(
+    served_thread: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """幅 390px で、いま開いている項目を向けたスレッドの向けた項目を押すと、詳細パネルが一覧の前に出て一覧が `inert` になる（正常系）。"""
+    # 準備
+    url, _ = served_thread
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_thread(page, "TH-1")
+    wait_front(page, "comments")
+    # 実行
+    page.click(TARGET)
+    # 検証
+    wait_front(page, "detail")
+    assert page.inner_text("aside.panel .d-title") == "最初の問い"
+    assert has_left_front(page) is False
+    assert is_inert(page, "comments") is True
+    assert is_inert(page, "detail") is False
 
 
 def test_post_id_link(served_thread: tuple[str, Path], open_preview: OpenPreview) -> None:

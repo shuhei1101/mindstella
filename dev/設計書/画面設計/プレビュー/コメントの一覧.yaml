@@ -17,7 +17,7 @@ elements:
   - name: 一覧を閉じる
     kind: button
     position: 見出しの帯 > 右端
-    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。トップバーのコメントのボタンでも閉じ、スレッドの一覧では Esc でも閉じる。詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。次に開くときはいつもスレッドの一覧から始める。読み上げの名前は「コメントの一覧を閉じる」
+    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。トップバーのコメントのボタンでも閉じ、スレッドの一覧では Esc でも閉じる。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる。次に開くときはいつもスレッドの一覧から始める。読み上げの名前は「コメントの一覧を閉じる」
   - name: 状態の絞り込み
     kind: segment
     position: 絞り込みの帯
@@ -98,3 +98,5 @@ lead: スレッドを状態とタグで絞って並べ、新しいスレッド�
 mock: dev/mock/pages/comments/235/a2-open-thread/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
 test_file: tests/integration/preview/test_comments_screen.py
+notes:
+  幅 900px 以下の重なり: 詳細パネルと重なるときは後から開いた側を前に出す。詳細パネルを開いたままトップバーから開いたときはパネルを、パネルから詳細パネルを開いたときは詳細パネルを前に出し、後ろになった側の部品を `inert` にする。パネルを閉じると開く前の詳細パネルが見える

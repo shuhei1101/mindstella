@@ -57,7 +57,7 @@ var MindmapPreview;
     MindmapPreview.readEmbeddedData = readEmbeddedData;
     /** 既定の設定 */
     function defaultPrefs() {
-        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {} };
+        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null };
     }
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
@@ -76,6 +76,9 @@ var MindmapPreview;
             // 画面ごとの条件が値の配列の対応でないときは、残した条件を使わない
             if (!isFiltersByTab(parsed.filters))
                 parsed.filters = {};
+            // 差分のミニマップの上書きは false だけを読む（表示するは上書きを持たない）
+            if (parsed.minimap !== false)
+                parsed.minimap = null;
             return parsed;
         }
         catch {
@@ -119,13 +122,14 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込みの順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップの順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
             ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
             ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
+            ...(prefs.minimap === false ? [MindmapPreview.MINIMAP_LABEL] : []),
         ];
         return {
             look: prefs.look ?? defaultLook,
@@ -133,12 +137,14 @@ var MindmapPreview;
             defaultLook,
             defaultKinds,
             overrides,
+            // 上書きが false のときだけ表示しない
+            minimap: prefs.minimap !== false,
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
-        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {} };
+        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null };
     }
     MindmapPreview.clearOverrides = clearOverrides;
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
@@ -349,6 +355,7 @@ var MindmapPreview;
         let shownHeading = null;
         const filterState = { byTab: {}, drawerOpen: false };
         const lockState = { graph: null, map: null };
+        const stack = { front: "detail" };
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
         const isNarrow = () => matchMedia(NARROW_QUERY).matches;
@@ -606,6 +613,9 @@ var MindmapPreview;
             // 別の項目へ移るかパネルを閉じた: 詳細パネルで始めた書き換えは、一覧を開いていても捨てる（入力欄の無い一覧の行に「修正」「削除」の無い行を残さない）。一覧を開いていない間は、消した行と書き換えをすべて捨てる
             if (route.id !== detailShown) {
                 detailShown = route.id;
+                // 詳細パネルを開く・別の項目へ移った: 左のパネルを開いていても詳細パネルを前に出す
+                if (route.id !== null)
+                    stack.front = "detail";
                 const hadEdit = editing !== null;
                 if (!comment.listOpen) {
                     comment.removed = [];
@@ -635,6 +645,7 @@ var MindmapPreview;
                 id: route.id,
                 index,
                 full: route.full,
+                minimap: resolved.minimap,
                 on: {
                     open: (id) => openItem(id, true),
                     close: closeDetail,
@@ -734,20 +745,43 @@ var MindmapPreview;
         // ===== 絞り込み =====
         /** 開いているパネルが覆った本文の部品を止める関数が返した、止めた分を外す関数 */
         let releaseInert = null;
-        /** 前に止めた分を外してから、開いているパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品を止める */
+        /** 開いている左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）。開いていなければ null */
+        const openLeftPanel = () => filterState.drawerOpen
+            ? document.querySelector("dialog.drawer")
+            : comment.listOpen
+                ? document.querySelector(".comments-panel")
+                : display.open
+                    ? document.querySelector(".settings-drawer")
+                    : null;
+        /** 幅 900px 以下で詳細パネルと左のパネルを両方開いていて、左のパネルを前に出しているか */
+        const isLeftFront = () => isNarrow() &&
+            route.id !== null &&
+            !route.full &&
+            stack.front === "left" &&
+            (filterState.drawerOpen || comment.listOpen || display.open);
+        /** 幅 900px 以下で両方を開いているとき、前に出す側を `left-front` で決め、後ろになった側の部品に `inert` を付ける。それ以外は付けた分を外す */
+        const applyStack = () => {
+            const detail = document.querySelector("aside.panel");
+            const left = openLeftPanel();
+            const both = isNarrow() && route.id !== null && !route.full && detail !== null && left !== null;
+            const leftFront = both && stack.front === "left";
+            document.body.classList.toggle("left-front", leftFront);
+            if (detail !== null)
+                detail.inert = leftFront;
+            if (left !== null)
+                left.inert = both && !leftFront;
+        };
+        /** 前に止めた分を外してから、開いているパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品を止め、詳細パネルとの前後を当てる */
         const applyInert = () => {
             releaseInert?.();
             releaseInert = null;
-            const panel = filterState.drawerOpen
-                ? document.querySelector("dialog.drawer")
-                : comment.listOpen
-                    ? document.querySelector(".comments-panel")
-                    : display.open
-                        ? document.querySelector(".settings-drawer")
-                        : null;
+            const panel = openLeftPanel();
             if (panel !== null)
                 releaseInert = MindmapPreview.inertBehind(panel);
+            applyStack();
         };
+        // 幅が 900px をまたいだとき、前後と `inert` をやり直す
+        matchMedia(NARROW_QUERY).addEventListener("change", applyInert);
         /** パネルが開いた後（ドロワーは文書に入った後の次のマイクロタスクで開く）に、本文の部品を止める */
         const scheduleInert = () => queueMicrotask(applyInert);
         /** 画面の条件を変えて描き直す（ドロワーは開いたまま） */
@@ -782,6 +816,7 @@ var MindmapPreview;
                 renderSettings();
             }
             filterState.drawerOpen = true;
+            stack.front = "left";
             redrawKeepingState();
         };
         // ===== 図の拡大 =====
@@ -1166,6 +1201,7 @@ var MindmapPreview;
             display.open = false;
             renderSettings();
             comment.listOpen = true;
+            stack.front = "left";
             resetPanelView();
             renderTop();
             renderComments();
@@ -1199,6 +1235,8 @@ var MindmapPreview;
                 return;
             comment.opened = item.id;
             comment.highlight = null;
+            // いま開いている項目を指す行でも、詳細パネルを一覧の前に出す
+            stack.front = "detail";
             if (route.id === item.target) {
                 renderDetail();
                 renderComments();
@@ -1211,6 +1249,8 @@ var MindmapPreview;
         const openFromThread = (id, loc) => {
             comment.opened = null;
             comment.highlight = loc === undefined ? null : { target: id, loc };
+            // いま開いている項目を指すときでも、詳細パネルをパネルの前に出す
+            stack.front = "detail";
             if (route.id === id) {
                 renderDetail();
                 renderComments();
@@ -1682,6 +1722,7 @@ var MindmapPreview;
             counts: Object.fromEntries(MindmapPreview.KIND_KEYS.map((kind) => [kind, data[kind].length])),
             overrides: resolved.overrides,
             canSave: serverMode,
+            minimap: resolved.minimap,
             message: display.message,
             storageOk: display.storageOk,
             on: {
@@ -1689,8 +1730,13 @@ var MindmapPreview;
                     prefs.kinds = kinds;
                     changePrefs({ redrawMain: true });
                 },
+                // 表示するは上書きを外し、表示しないだけを上書きとして残す。開いている詳細をその場で描き直す
+                minimap: (shown) => {
+                    prefs.minimap = shown ? null : false;
+                    changePrefs({ redrawMain: true });
+                },
                 reset: () => {
-                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を全て外し、ワークスペースの既定の表示に戻す
+                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを全て外し、ワークスペースの既定の表示に戻す
                     Object.assign(prefs, clearOverrides(prefs));
                     MindmapPreview.clearTablePrefs();
                     // 開いている画面は、画面の既定の条件で開き直す
@@ -1743,6 +1789,7 @@ var MindmapPreview;
                     renderDetail();
             }
             display.open = true;
+            stack.front = "left";
             if (filterState.drawerOpen) {
                 filterState.drawerOpen = false;
                 redrawKeepingState();
@@ -1900,6 +1947,20 @@ var MindmapPreview;
             renderSettings();
         };
         // ===== 操作と履歴 =====
+        /** コメントの一覧の Esc。入力欄に打っている間は入力欄から外れるだけにし（パネルは動かさない）、スレッド・レビュー中の書き込みの画面では戻り、一覧ならパネルを閉じる */
+        const closeListByEscape = () => {
+            const active = document.activeElement;
+            if (MindmapPreview.isTyping(active)) {
+                if (active instanceof HTMLElement)
+                    active.blur();
+            }
+            else if (comment.view === "list") {
+                closeList();
+            }
+            else {
+                goBack();
+            }
+        };
         document.addEventListener("keydown", (event) => {
             // L: ネットワークで、詳細を開いている項目をもう一度押したのと同じ規則でロックを付け外しする。修飾キーがあるとき・変換中・入力欄にフォーカスがあるとき・重ねる面を開いているときは受けない
             if (event.key.toLowerCase() === "l" &&
@@ -1925,8 +1986,19 @@ var MindmapPreview;
                 else
                     openSearch();
             }
-            // Esc: 重ねる面が無いときは、詳細パネルを閉じる
+            // Esc: 幅 900px 以下で左のパネルを前に出しているときは、その左のパネルから閉じる（詳細パネルは閉じない）。重ねる面が無いときは、詳細パネルを閉じる
             if (event.key === "Escape" &&
+                isLeftFront() &&
+                document.querySelector("dialog[open]:not(.drawer)") === null &&
+                document.querySelector(":popover-open") === null) {
+                if (filterState.drawerOpen)
+                    closeDrawer();
+                else if (comment.listOpen)
+                    closeListByEscape();
+                else
+                    closeSettings();
+            }
+            else if (event.key === "Escape" &&
                 route.id !== null &&
                 !route.full &&
                 document.querySelector("dialog[open]:not(.drawer)") === null &&
@@ -1938,18 +2010,7 @@ var MindmapPreview;
                 comment.listOpen &&
                 document.querySelector("dialog[open]:not(.drawer)") === null &&
                 document.querySelector(":popover-open") === null) {
-                const active = document.activeElement;
-                // 入力欄に打っている間は、入力欄から外れるだけにする（パネルは動かさない）
-                if (MindmapPreview.isTyping(active)) {
-                    if (active instanceof HTMLElement)
-                        active.blur();
-                }
-                else if (comment.view === "list") {
-                    closeList();
-                }
-                else {
-                    goBack();
-                }
+                closeListByEscape();
             }
             else if (event.key === "Escape" &&
                 route.id === null &&

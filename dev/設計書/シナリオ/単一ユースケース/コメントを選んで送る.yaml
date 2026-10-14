@@ -275,6 +275,7 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -284,6 +285,7 @@ scenarios:
         P->>SV: 送る
         SV->>SV: 箇所を HTML の本文の 4 行目の描いた文と照らす
         SV-->>P: 受け付けた
+      ```
     expected:
       - オープンのスレッドが 1 件あり、最初の書き込みが A-1 の本文の 4 行目と選んだ文「言い換えたい文」の箇所を持つ
       - レビュー中の書き込みが 0 件である
@@ -302,6 +304,7 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -311,6 +314,7 @@ scenarios:
         P->>SV: 送る
         SV-->>P: A-1 へのコメントの箇所が本文に合わない（何も送っていない）
         P-->>U: A-1 への行に、箇所が合わない理由を出す
+      ```
     expected:
       - スレッドが 0 件で、A-1 へのコメントがレビュー中に残る
       - A-1 への行に、箇所が本文に合わない理由が出る

@@ -40,10 +40,12 @@ PANEL_SCRIPT = """(args) => {
         counts: args.counts,
         overrides: args.overrides,
         canSave: args.canSave,
+        minimap: args.minimap,
         message: null,
         storageOk: true,
         on: {
             kinds: (value) => calls.push(["kinds", [...value].sort()]),
+            minimap: (value) => calls.push(["minimap", value]),
             reset: () => calls.push(["reset"]),
             save: () => calls.push(["save"]),
             close: () => calls.push(["close"]),
@@ -58,12 +60,19 @@ PANEL_SCRIPT = """(args) => {
     const radios = [...panel.querySelectorAll('input[type="radio"]')];
     const checkboxes = [...panel.querySelectorAll('input[type="checkbox"]')];
     const findCheckbox = (name) => checkboxes.find((box) => rowText(box).includes(name));
+    const minimapBox = findCheckbox("差分のミニマップ");
     const operate = args.operate ?? [];
     const result = {
         text: panel.textContent,
         buttons: [...panel.querySelectorAll("button")].map((button) => button.textContent.trim()),
         radioCount: radios.length,
-        checkboxCount: checkboxes.length,
+        // 表示する種類のチェックボックスの数（差分のミニマップのチェックは数えない）
+        checkboxCount: checkboxes.filter((box) => box !== minimapBox).length,
+        // 差分のミニマップのチェックボックスの状態と、それを包む凡例の文字（押す前の値）
+        minimapBox: minimapBox === undefined ? null : {
+            checked: minimapBox.checked,
+            legend: minimapBox.closest("fieldset")?.querySelector("legend")?.textContent ?? null,
+        },
         alwaysShownCheckboxes: checkboxes.filter((box) =>
             ["概要", "ネットワーク"].some((name) => rowText(box).includes(name))
         ).length,
@@ -86,6 +95,7 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
         "counts": COUNTS,
         "overrides": [],
         "canSave": True,
+        "minimap": True,
         "operate": [],
     }
     args.update(overrides)
@@ -101,7 +111,7 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
             ["既定に戻す", "ワークスペースの既定にする"],
             [
                 "ワークスペースの既定のまま表示しています。",
-                "今の選びはワークスペースの既定と同じです。",
+                "見た目と表示する種類は、ワークスペースの既定と同じです。",
             ],
             id="no_override_same_as_default",
         ),
@@ -134,7 +144,7 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
             {"overrides": ["ライト / ダーク"]},
             ["既定に戻す"],
             ["ワークスペースの既定にする"],
-            ["今の選びはワークスペースの既定と同じです。"],
+            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
             id="override_same_as_default",
         ),
     ],
@@ -182,3 +192,46 @@ def test_settings_panel_when_kinds_changed(
     assert observed["checkboxCount"] == 8
     assert observed["alwaysShownCheckboxes"] == 0
     assert "常に表示" in observed["text"]
+
+
+@pytest.mark.parametrize(
+    ("args", "expected_checked", "expected_call", "expected_buttons", "expected_texts"),
+    [
+        pytest.param(
+            {"minimap": True, "overrides": []},
+            True,
+            ["minimap", False],
+            [],
+            [],
+            id="shown",
+        ),
+        pytest.param(
+            {"minimap": False, "overrides": ["差分のミニマップ"]},
+            False,
+            ["minimap", True],
+            ["既定に戻す"],
+            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            id="hidden",
+        ),
+    ],
+)
+def test_settings_panel_when_minimap(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    args: dict[str, Any],
+    expected_checked: bool,
+    expected_call: list[Any],
+    expected_buttons: list[str],
+    expected_texts: list[str],
+) -> None:
+    """差分のミニマップのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行（差分のミニマップのチェックを押す）
+    observed = _observe(preview_page, operate=["差分のミニマップ"], **args)
+    # 検証
+    assert observed["minimapBox"] == {"checked": expected_checked, "legend": "詳細に表示するもの"}
+    assert observed["calls"] == [expected_call]
+    assert all(label in observed["buttons"] for label in expected_buttons)
+    assert "ワークスペースの既定にする" not in observed["buttons"]
+    assert all(text in observed["text"] for text in expected_texts)
