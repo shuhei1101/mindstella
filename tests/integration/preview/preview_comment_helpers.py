@@ -89,7 +89,7 @@ ROW_CORNER_GAPS_JS = """async (selector) => {
 }"""
 
 # スレッドの一覧の行
-THREAD_ROWS =f"{COMMENTS_PANEL} ul.th-list > li"
+THREAD_ROWS = f"{COMMENTS_PANEL} ul.th-list > li"
 
 # レビュー中の書き込みの画面の送る帯の要素
 CHECK_ALL = f"{COMMENTS_PANEL} .send-band label.legend-all-check input"
