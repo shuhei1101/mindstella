@@ -664,7 +664,7 @@ LINK_HEADINGS_SCRIPT = """(source) => {
     const root = MindmapPreview.renderMarkdown(source);
     document.body.append(root);
     const calls = [];
-    MindmapPreview.linkHeadings({root, onHeading: (slug) => calls.push(slug)});
+    MindmapPreview.linkHeadings({root, onHeading: (slug) => calls.push(slug), onChangeSet: () => {}});
     const headings = [...root.querySelectorAll("h1, h2, h3, h4, h5, h6")];
     const paragraphLinks = [...root.querySelectorAll("p a")];
     const result = {
@@ -699,6 +699,45 @@ def test_link_headings(
     assert result["hash"] == ""
 
 
+# 見出し「diff=V-1」（`#diff=V-1` を見出しのリンクとして読むと当たってしまう名前）と、段落のまとまりのリンク 5 つ
+CHANGE_SET_LINKS_SOURCE = (
+    "## diff=V-1\n\n"
+    "[a](#diff=V-1) [b](#tab=tasks&id=D-1&diff=V-2) [c](#diff=since) [d](#diff=pending) [e](#diff=)\n"
+)
+
+# 段落の 5 つのリンクを順に押し、まとまりと見出しの知らせと、押した後の URL のハッシュを調べる
+LINK_HEADINGS_CHANGE_SET_SCRIPT = """(source) => {
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const headingCalls = [];
+    const changeSetCalls = [];
+    MindmapPreview.linkHeadings({
+        root,
+        onHeading: (slug) => headingCalls.push(slug),
+        onChangeSet: (id) => changeSetCalls.push(id),
+    });
+    for (const link of root.querySelectorAll("p a")) link.click();
+    return {headingCalls, changeSetCalls, hash: location.hash};
+}"""
+
+
+def test_link_headings_when_change_set_link(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """`#diff=` のリンクでまとまりを知らせ、見出しとしては扱わない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(LINK_HEADINGS_CHANGE_SET_SCRIPT, CHANGE_SET_LINKS_SOURCE)
+    # 検証
+    # since・pending・空は知らせず、他の引数を持つリンクも diff の値だけを知らせる
+    assert result["changeSetCalls"] == ["V-1", "V-2"]
+    assert result["headingCalls"] == []
+    assert result["hash"] == ""
+
+
 # 本文: 見出し「保存先」、用語・ID を並べた段落、コードブロック
 LINK_BODY_SOURCE = (
     "## 保存先\n\n保存先と AIM と AI と D-3 と `D-5` と D-99 と XD-3\n\n```\n保存先 D-3\n```\n"
@@ -710,7 +749,7 @@ LINK_BODY_SCRIPT = """({data, source, selfId}) => {
     const root = MindmapPreview.renderMarkdown(source);
     document.body.append(root);
     const calls = [];
-    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
     MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
     const pairs = (selector) => [...root.querySelectorAll(selector)].map(
         (element) => [element.textContent, element.getAttribute("data-id")],
@@ -793,7 +832,7 @@ LINK_BODY_ALIASES_SCRIPT = """({data, source, selfId}) => {
     const root = MindmapPreview.renderMarkdown(source);
     document.body.append(root);
     const calls = [];
-    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
     MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
     const marks = [...root.querySelectorAll("p a.term")].map((element) => ({
         text: element.textContent,
@@ -865,7 +904,7 @@ LINK_BODY_TERM_ALIASES_SCRIPT = """({data, source, selfId}) => {
     const root = MindmapPreview.renderMarkdown(source);
     document.body.append(root);
     const calls = [];
-    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
     MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
     const marks = [];
     const opened = {};

@@ -23,6 +23,8 @@ namespace MindmapPreview {
       diagram: (svg: SVGElement, diff: DiagramViewerDiff | null) => void;
       /** 本文の見出しへ移った（見出しの名前。本文に無い見出しで開いたときは null）。使う側がハッシュの `h` を、履歴に積まずに置き換える */
       heading: (heading: string | null) => void;
+      /** 本文のまとまりのリンクを押した（`diff` の値）。使う側が記録にあるまとまりか確かめて、時点を選ぶ */
+      changeSet: (id: string) => void;
       /** HTML の本文の枠で文を選び終えた・選びを外した。使う側が選んだ箇所のコメントの入口を出す・閉じる */
       frame?: { select: (selection: HtmlFrameSelection) => void; clear: () => void };
     };
@@ -1109,6 +1111,7 @@ namespace MindmapPreview {
           scrollToHeading({ root, slug });
           on.heading(slug);
         },
+        onChangeSet: on.changeSet,
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
       drawHtmlBlocks(root);
