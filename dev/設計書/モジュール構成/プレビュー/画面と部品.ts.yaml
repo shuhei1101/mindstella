@@ -142,6 +142,11 @@ components:
         required: false
         default: 'false'
         description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければテーマの切り替えの左）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
+      - name: commentsUnread
+        type: boolean
+        required: false
+        default: 'false'
+        description: オープンのスレッドに利用者の未読があるか（部品設計『トップバー』の `comments_unread`）。`comments` が真のときだけ効き、吹き出しの印の右上に点を重ねて読み上げの名前を「コメント（未読あり・レビュー中 {件数} 件）」にする（点は `aria-hidden`）
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -1409,7 +1414,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 部品設計『スレッドの行』の引数を受け、行を開くボタンとタグのボタンを持つ `li` を返す。題は `threadTitle`、日時は `formatJst`。状態の札（`threadState`）とレビュー中の印（`pendingMark`）もこのファイルが持ち、スレッドの画面とレビュー中の書き込みの行が使う。`data-focus` は行が `thread:{ID}`（まだ送っていないものは `thread:new:{コメントの ID}`）、タグが `tag:{ID}:{タグ}`
+    summary: 部品設計『スレッドの行』の引数を受け、行を開くボタンとタグのボタンを持つ `li` を返す。題は `threadTitle`、日時は `formatJst`。状態の札（`threadState`）とレビュー中の印（`pendingMark`）もこのファイルが持ち、スレッドの画面とレビュー中の書き込みの行が使う。`data-focus` は行が `thread:{ID}`（まだ送っていないものは `thread:new:{コメントの ID}`）、タグが `tag:{ID}:{タグ}`。`hasUnseen` が真のスレッドは 2 行目の先頭に塗りつぶしの「● 未読」の札を出し、行を開くボタンの読み上げの名前の状態の次に「未読」を読む
     props:
       - name: thread
         type: Thread | null
@@ -1454,6 +1459,12 @@ components:
         condition: "タグ `調査`・`画面` の TH-4、`activeTag: '画面'`。タグ `画面` を押す"
         mock: '`on.open`・`on.tag`'
         expected: '`画面` のボタンが `aria-pressed="true"`、`調査` が `false`。`on.tag` が `画面` で 1 回呼ばれ、`on.open` は呼ばれない'
+      - name: test_thread_row_when_unread
+        case: 正常
+        summary: 利用者の未読を持つ行に未読の札を出す
+        condition: '`parametrize`: AI の返信が `seen: false` のオープンの TH-2 / 同じ書き込みでクローズの TH-6 / 全て `seen: true` の TH-1'
+        mock: なし（DOM を作って見る）
+        expected: 2 行目の先頭に「未読」の札があり、行を開くボタンの読み上げの名前が状態の次に「未読」を含む / 「クローズ」と「未読」の札がある / 「未読」の札が無い
   - name: threadPost
     title: スレッドの書き込み
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
@@ -2715,6 +2726,52 @@ functions:
         condition: '`length` 400、`total` 4000。`parametrize`: `[{top: 2000, size: 400}]` / `[{top: 0, size: 10}, {top: 20, size: 10}]` / 末尾に近い `[{top: 3990, size: 10}]` / 同じ高さの 100 件'
         expected: '`[{start: 200, size: 40}]` / `[{start: 0, size: 12}, {start: 14, size: 12}]`（重なりを 2px 空けてずらす） / `[{start: 388, size: 12}]`（帯の終わりを出ない） / 全て `size` が 4、始まりが 0 以上で帯の終わりを出ない'
         mock: なし
+  - name: hasUnseen
+    title: 利用者の未読があるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドが `seen` が偽の書き込みを 1 件以上持つかを返す（`seen` が無い書き込みは未読にしない）
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: スレッド
+    returns:
+      type: boolean
+      description: 未読があれば真
+    unit_tests:
+      - name: test_has_unseen
+        case: 正常
+        summary: seen が偽の書き込みを持つときだけ真
+        condition: '`parametrize`: 書き込みの `seen` が `[true, false]` / `[true, true]` / `seen` を持たない書き込みだけ'
+        mock: なし
+        expected: '`true` / `false` / `false`'
+  - name: anyOpenUnseen
+    title: オープンの未読があるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: トップバーの `commentsUnread` に渡す値。オープンのスレッドのうち `hasUnseen` が真のものがあるかを返す
+    args:
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: positional
+        description: 最後に読めたスレッド
+    returns:
+      type: boolean
+      description: オープンのスレッドに未読があれば真
+    unit_tests:
+      - name: test_any_open_unseen
+        case: 正常
+        summary: クローズの未読は数えない
+        condition: '`parametrize`: 未読を持つオープンの TH-2 と既読の TH-1 / 未読を持つのがクローズの TH-6 だけ / 空'
+        mock: なし
+        expected: '`true` / `false` / `false`'
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
