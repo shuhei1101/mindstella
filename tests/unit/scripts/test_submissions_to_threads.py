@@ -86,6 +86,7 @@ def test_submissions_to_threads(
     assert (third["id"], third["status"]) == ("TH-3", "open")
     assert ("target" in third, "loc" in third) == (False, False)
     assert [thread["posts"][0]["read"] for thread in (first, second, third)] == [False] * 3
+    assert [thread["posts"][0]["seen"] for thread in (first, second, third)] == [True] * 3
     assert (root / RECORD_DIR / "submissions.yaml").exists()
     # 変換が書いたファイルを、サーバーのスレッドの読み込みで読める
     import threads

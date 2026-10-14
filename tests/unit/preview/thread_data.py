@@ -8,9 +8,15 @@ from typing import Any
 DEFAULT_CREATED = "2026-10-12T01:00:00+00:00"
 
 
-def make_post(author: str, body: str, created: str = DEFAULT_CREATED) -> dict[str, Any]:
-    """スレッドの書き込み 1 件（画面へ返す形）を作る。"""
-    return {"id": "x", "author": author, "body": body, "created": created}
+def make_post(
+    author: str, body: str, created: str = DEFAULT_CREATED, *, seen: bool | None = None
+) -> dict[str, Any]:
+    """スレッドの書き込み 1 件（画面へ返す形）を作る。利用者の既読 `seen` は渡したときだけ持つ。"""
+    post: dict[str, Any] = {"id": "x", "author": author, "body": body, "created": created}
+    # seen を渡さない: キーを持たない書き込みにする
+    if seen is not None:
+        post["seen"] = seen
+    return post
 
 
 def make_thread(thread_id: str, **overrides: Any) -> dict[str, Any]:

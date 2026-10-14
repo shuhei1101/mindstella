@@ -91,6 +91,8 @@ def test_normal(
         None,
         "C-1",
     )
+    # 利用者が書いたものは利用者の既読
+    assert [thread["posts"][0]["seen"] for thread in threads] == [True, True]
     assert [item["id"] for item in _read(root, "comments.yaml")["items"]] == ["C-3"]
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
     assert (root / RECORD_DIR / "docs.yaml").read_bytes() == docs_before

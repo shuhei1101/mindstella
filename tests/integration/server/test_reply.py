@@ -44,6 +44,7 @@ def test_normal(
     # 準備
     root = make_workspace(make_item("D-1"))
     _write_open_thread(root, make_post, make_thread, write_threads)
+    seen_before = [post["seen"] for post in find_thread(root, "TH-1")["posts"]]
     # 実行
     result = call_tool(
         "reply",
@@ -70,6 +71,9 @@ def test_normal(
         True,
     )
     assert (thread["status"], thread["summary"]) == ("open", "D-1 の案の相談。案 A で決定")
+    # 足した AI の書き込みは利用者の未読で、利用者の書き込みの既読は呼ぶ前と同じ
+    assert reply["seen"] is False
+    assert [first["seen"], second["seen"]] == seen_before
 
 
 def test_normal_when_not_take(

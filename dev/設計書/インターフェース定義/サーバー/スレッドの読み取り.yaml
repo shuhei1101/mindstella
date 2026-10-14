@@ -26,6 +26,7 @@ flows:
       - TH-1 の `target_title` が D-1 のタイトルで、書き込みの本文を含む
       - 'TH-2 の `events` が `author: ai` と理由を持つ'
       - ワークスペースの全てのファイルの中身が、読む前と同じ（AI の既読にしない）
+      - 書き込みごとに `threads.yaml` と同じ `seen` を返し、`read`・`taken` は返さない
     test: test_normal
   - name: 正常系（スレッドが無い）
     summary: threads.yaml が無ければ空を返す
@@ -124,6 +125,9 @@ response:
   - name: threads[].events[].created
     type: str
     description: 変えた日時
+  - name: threads[].posts[].seen
+    type: bool
+    description: 利用者の既読。画面は `false` の書き込みを持つスレッドの行と、それを持つオープンのスレッドがあるときのトップバーに未読の印を出す
 response_notes: AI の既読（`read`）と取り込み済み（`taken`）は画面に出さないため返さない。
 status_codes:
   - code: '200'

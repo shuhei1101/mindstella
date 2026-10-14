@@ -464,6 +464,8 @@ def test_normal_when_submissions_to_threads(
     assert closed["posts"][0]["taken"] == taken_at
     assert (opened["id"], opened["status"], "target" in opened) == ("TH-2", "open", False)
     assert opened["posts"][0]["taken"] is None
+    # 利用者が送ったものは利用者の既読
+    assert [thread["posts"][0]["seen"] for thread in threads] == [True, True]
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)

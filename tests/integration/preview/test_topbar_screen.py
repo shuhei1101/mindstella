@@ -9,7 +9,7 @@ from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
-from workspace_fixtures import MakeComment, MakeItem
+from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread
 
 # タブの帯に並ぶ画面の並び（ネットワークは右端）
 TAB_KEYS = [
@@ -133,6 +133,84 @@ def test_comments_button(
     page.click(COMMENTS_BUTTON)
     page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
     assert button.get_attribute("aria-expanded") == "false"
+
+
+# どの画面でもトップバーが同じ未読の点を出すことを確かめる画面のハッシュ（概要・検討事項・タスク・資料・記録の表・ネットワーク）
+UNREAD_SCREEN_HASHES = [
+    pytest.param("#tab=overview", id="overview"),
+    pytest.param("#tab=decisions&view=table", id="decisions"),
+    pytest.param("#tab=tasks", id="tasks"),
+    pytest.param("#tab=docs", id="docs"),
+    pytest.param("#tab=notes", id="records"),
+    pytest.param("#tab=graph", id="graph"),
+]
+
+# 未読の点を重ねたコメントのボタンの読み上げの名前
+UNREAD_LABEL = "コメント（未読あり・レビュー中 0 件）"
+
+
+@pytest.mark.parametrize("hash_text", UNREAD_SCREEN_HASHES)
+def test_comments_button_when_unseen(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    hash_text: str,
+) -> None:
+    """オープンのスレッドに利用者の未読があると、どの画面でも、コメントの一覧を開く前からコメントのボタンに点を重ね、読み上げの名前に未読を含める（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        make_item("N-1"),
+        threads=(
+            make_thread("TH-1", make_post("TH-1-1", author="ai", seen=False)),
+            make_thread("TH-2", make_post("TH-2-1")),
+        ),
+    )
+    # 実行
+    page = open_preview(url, hash_text)
+    page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot")
+    # 検証
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 0
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 1
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == UNREAD_LABEL
+    # 点は読み上げから外し、未読の件数は出さない
+    assert page.get_attribute(f"{COMMENTS_BUTTON} .unread-dot", "aria-hidden") == "true"
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
+
+
+@pytest.mark.parametrize(
+    "threads_kind",
+    [
+        pytest.param("seen_only", id="seen_only"),
+        pytest.param("closed_unseen_only", id="closed_unseen_only"),
+        pytest.param("none", id="none"),
+    ],
+)
+def test_comments_button_when_no_open_unseen(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    threads_kind: str,
+) -> None:
+    """全て既読か、未読がクローズのスレッドだけか、スレッドが無いときは、コメントのボタンに点を出さない（正常系）。"""
+    # 準備
+    threads = {
+        "seen_only": (make_thread("TH-1", make_post("TH-1-1", author="ai")),),
+        "closed_unseen_only": (
+            make_thread("TH-1", make_post("TH-1-1", author="ai", seen=False), status="closed"),
+        ),
+        "none": (),
+    }[threads_kind]
+    url, _ = write_review_preview(make_item("D-1"), threads=threads)
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 0
 
 
 def test_comments_button_when_zero(

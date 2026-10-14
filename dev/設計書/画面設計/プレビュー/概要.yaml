@@ -26,6 +26,8 @@ elements:
         value: コメントの一覧を開いているか
       - name: settings_open
         value: 表示の設定のパネルを開いているか
+      - name: comments_unread
+        value: スレッドの読み取り.threads のうち `status` が `open` で `posts[].seen` が `false` の書き込みを持つものが 1 件以上あるとき true（コメントの一覧を閉じていても、画面を開いたときと書き換えの知らせで読み直す）
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目

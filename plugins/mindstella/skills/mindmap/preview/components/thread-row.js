@@ -30,6 +30,24 @@ var MindmapPreview;
         return MindmapPreview.h({ tag: "span", attrs: { class: "th-pending" }, children: [MindmapPreview.icon("edit"), "レビュー中"] });
     }
     MindmapPreview.pendingMark = pendingMark;
+    /** 利用者の未読の書き込み（`seen` が偽）を持つか。`seen` を持たない書き込みは未読にしない */
+    function hasUnseen(thread) {
+        return thread.posts.some((post) => post.seen === false);
+    }
+    MindmapPreview.hasUnseen = hasUnseen;
+    /** トップバーの未読の点に渡す値（オープンのスレッドに利用者の未読があるか。クローズの未読は数えない） */
+    function anyOpenUnseen(threads) {
+        return threads.some((thread) => thread.status === "open" && hasUnseen(thread));
+    }
+    MindmapPreview.anyOpenUnseen = anyOpenUnseen;
+    /** 未読の札（塗りつぶしの形・点の印・「未読」の文字で示す。状態の札の線の枠、レビュー中の印の破線の枠と形で見分ける） */
+    function unseenMark() {
+        return MindmapPreview.h({
+            tag: "span",
+            attrs: { class: "th-unread" },
+            children: [MindmapPreview.h({ tag: "span", attrs: { class: "dot", "aria-hidden": "true" } }), "未読"],
+        });
+    }
     /** タグの札（行を開くボタンとは別のボタン。押すとそのタグで絞る） */
     function tagButton({ thread, tag, active, onTag }) {
         return MindmapPreview.h({
@@ -56,15 +74,23 @@ var MindmapPreview;
         const title = sent ? threadTitle(thread) : firstLine(pending?.body ?? "");
         const summarized = sent && thread.summary !== null;
         const status = sent ? thread.status : "pending";
+        const unseen = sent && hasUnseen(thread);
+        // 未読の行は、読み上げの名前が状態の次に「未読」を読む
+        const openLabel = unseen
+            ? [STATE_LABELS[status].label, "未読", title, target, MindmapPreview.AUTHOR_LABELS[author], MindmapPreview.formatJst(created), hasPendingReply ? "レビュー中の返信あり" : null]
+                .filter((part) => part !== null)
+                .join("、")
+            : null;
         return MindmapPreview.h({
             tag: "li",
-            attrs: sent ? { class: "th-row", "data-thread": id } : { class: "th-row pending", "data-pending": id },
+            attrs: sent ? { class: `th-row${unseen ? " unread" : ""}`, "data-thread": id } : { class: "th-row pending", "data-pending": id },
             children: [
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
                         class: "th-open",
                         type: "button",
+                        "aria-label": openLabel,
                         "data-focus": sent ? `thread:${id}` : `thread:new:${id}`,
                         onclick: () => on.open(id, !sent),
                     },
@@ -78,6 +104,7 @@ var MindmapPreview;
                             tag: "span",
                             attrs: { class: "th-line2" },
                             children: [
+                                unseen ? unseenMark() : null,
                                 target === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] }),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "th-author" }, children: [MindmapPreview.AUTHOR_LABELS[author]] }),
                                 MindmapPreview.h({ tag: "time", attrs: { datetime: created }, children: [MindmapPreview.formatJst(created)] }),

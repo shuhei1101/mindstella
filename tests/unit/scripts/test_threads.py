@@ -75,14 +75,20 @@ def _find(raw: list[dict[str, Any]], thread_id: str) -> dict[str, Any]:
     return next(thread for thread in raw if thread["id"] == thread_id)
 
 
+def _without_seen(posts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """書き込みの並びから、利用者の既読のキーを除いた並びを返す。"""
+    return [{key: value for key, value in post.items() if key != "seen"} for post in posts]
+
+
 def _post(post_id: str, *, author: str = "user", **overrides: Any) -> threads.Post:
-    """書き込みを作る（取り込んでいない利用者の未読の書き込みが既定）。"""
+    """書き込みを作る（AI が読んでいない、取り込んでいない利用者の書き込みが既定。利用者の既読は利用者の書き込みだけが真）。"""
     return threads.Post(
         id=post_id,
         author=author,
         body=f"{post_id}の本文",
         created=T_0100,
         read=author == "ai",
+        seen=author == "user",
         **overrides,
     )
 
@@ -153,7 +159,7 @@ def test_load_threads_when_missing(make_workspace: MakeWorkspace, make_item: Mak
         pytest.param(
             "items:\n  - id: TH-1\n    status: done\n    tags: []\n    summary: null\n"
             "    posts:\n      - id: TH-1-1\n        author: user\n        body: 本文\n"
-            "        created: 2026-10-12T00:00:00+00:00\n        read: false\n        taken: null\n"
+            "        created: 2026-10-12T00:00:00+00:00\n        read: false\n        seen: true\n        taken: null\n"
             "    events: []\n",
             id="status_done",
         ),
@@ -396,9 +402,9 @@ def test_list_threads_when_tag_and_unread(
                 "threads.yaml": (
                     "items:\n"
                     "  - {id: TH-2, status: open, tags: [], summary: null, events: [],\n"
-                    "     posts: [{id: TH-2-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, taken: null}]}\n"
+                    "     posts: [{id: TH-2-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, seen: true, taken: null}]}\n"
                     "  - {id: TH-10, status: open, tags: [], summary: null, events: [],\n"
-                    "     posts: [{id: TH-10-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, taken: null}]}\n"
+                    "     posts: [{id: TH-10-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, seen: true, taken: null}]}\n"
                 )
             },
             [("TH-10", None, None), ("TH-2", None, None)],
@@ -410,7 +416,7 @@ def test_list_threads_when_tag_and_unread(
                 "threads.yaml": (
                     "items:\n"
                     "  - {id: TH-1, status: open, tags: [], summary: null, events: [], target: D-9,\n"
-                    "     posts: [{id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, taken: null}]}\n"
+                    "     posts: [{id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, seen: true, taken: null}]}\n"
                 )
             },
             [("TH-1", "D-9", None)],
@@ -528,6 +534,86 @@ def test_mark_read_when_nothing_changes(
     assert (root / RECORD_DIR / "threads.yaml").stat().st_mtime_ns == mtime_before
 
 
+def test_mark_seen(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読を全て既読にし、ほかは変えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    events = [{"kind": "closed", "author": "ai", "reason": None, "created": T_0200}]
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", read=True, taken=T_0100),
+            make_post("TH-1-2", author="ai", seen=False),
+            make_post("TH-1-3", author="ai", read=False, seen=False),
+            status="closed",
+            summary="要約",
+            tags=["画面"],
+            events=events,
+        ),
+        make_thread("TH-2", make_post("TH-2-1", author="ai", seen=False)),
+    )
+    before = _read_threads(root)
+    # 実行
+    result = threads.mark_seen(root, "TH-1")
+    # 検証
+    assert result == ["TH-1-2", "TH-1-3"]
+    raw = _read_threads(root)
+    first = _find(raw, "TH-1")
+    assert [post["seen"] for post in first["posts"]] == [True, True, True]
+    # 利用者の既読以外は呼ぶ前と同じ
+    assert _without_seen(first["posts"]) == _without_seen(_find(before, "TH-1")["posts"])
+    assert (first["status"], first["summary"], first["tags"], first["events"]) == (
+        "closed",
+        "要約",
+        ["画面"],
+        events,
+    )
+    assert _find(raw, "TH-2") == _find(before, "TH-2")
+
+
+def test_mark_seen_when_nothing_unseen(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読が無ければ書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", seen=True)))
+    mtime_before = _age(root / RECORD_DIR / "threads.yaml")
+    # 実行
+    result = threads.mark_seen(root, "TH-1")
+    # 検証
+    assert result == []
+    assert _mtime(root / RECORD_DIR / "threads.yaml") == mtime_before
+
+
+def test_mark_seen_when_thread_not_found(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """無いスレッドは書かない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(ThreadNotFoundError, match="TH-9"):
+        threads.mark_seen(root, "TH-9")
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
 def test_create_thread(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -554,7 +640,12 @@ def test_create_thread(
     assert (created["status"], created["tags"], created["events"]) == ("open", ["起票"], [])
     assert (created["summary"], created["target"]) == ("起票の確認", "D-1")
     post = created["posts"][0]
-    assert (post["author"], post["read"], post["body"]) == ("ai", True, "起票してよいですか")
+    assert (post["author"], post["read"], post["seen"], post["body"]) == (
+        "ai",
+        True,
+        False,
+        "起票してよいですか",
+    )
     assert "taken" not in post
 
 
@@ -649,7 +740,7 @@ def test_reply_thread(
     assert raw["summary"] == "書き直した要約"
     first, second, reply = raw["posts"]
     assert (first["taken"], second["taken"]) == (FIXED_NOW, None)
-    assert (reply["author"], reply["read"]) == ("ai", True)
+    assert (reply["author"], reply["read"], reply["seen"]) == ("ai", True, False)
 
 
 def test_reply_thread_when_no_take(
@@ -945,13 +1036,17 @@ def test_append_user_posts(
     assert _find(raw, "TH-5")["loc"] == LINE2_LOC
     assert ("target" in _find(raw, "TH-6"), "loc" in _find(raw, "TH-6")) == (False, False)
     reply = _find(raw, "TH-1")["posts"][2]
-    assert (reply["author"], reply["read"], reply["taken"], reply["comment"]) == (
+    assert (reply["author"], reply["read"], reply["seen"], reply["taken"], reply["comment"]) == (
         "user",
         False,
+        True,
         None,
         "C-4",
     )
     assert (reply["created"], reply["body"]) == (FIXED_NOW, "C-4の本文")
+    # 足した書き込みはどれも利用者の既読
+    added = [_find(raw, thread_id)["posts"][-1] for thread_id in ("TH-4", "TH-5", "TH-6", "TH-1")]
+    assert [post["seen"] for post in added] == [True, True, True, True]
 
 
 def test_append_user_posts_when_first(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1016,7 +1111,7 @@ def test_threads_for_preview(
     make_thread: MakeThread,
     write_threads: WriteThreads,
 ) -> None:
-    """クローズも含めて返し、既読と取り込み済みを含めない（正常系）。"""
+    """クローズも含めて返し、AI の既読と取り込み済みを含めず、利用者の既読を含める（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="写しの取り方"))
     write_threads(
@@ -1024,7 +1119,7 @@ def test_threads_for_preview(
         make_thread("TH-1", make_post("TH-1-1", created=T_0100), target="D-1"),
         make_thread(
             "TH-2",
-            make_post("TH-2-1", created=T_0200, comment="C-1"),
+            make_post("TH-2-1", created=T_0200, comment="C-1", seen=False),
             status="closed",
             target="D-9",
             events=[{"kind": "closed", "author": "user", "reason": None, "created": T_0200}],
@@ -1040,6 +1135,7 @@ def test_threads_for_preview(
     assert len(second["events"]) == 1
     for post in first["posts"] + second["posts"]:
         assert {"read", "taken", "comment"}.isdisjoint(post)
+    assert [post["seen"] for post in first["posts"] + second["posts"]] == [True, False]
 
 
 def test_threads_for_preview_when_missing(
@@ -1071,7 +1167,7 @@ def test_reset_unread(
         make_thread(
             "TH-1",
             make_post("TH-1-1", read=True, taken=T_0100),
-            make_post("TH-1-2", author="ai"),
+            make_post("TH-1-2", author="ai", seen=False),
             make_post("TH-1-3", read=True),
             make_post("TH-1-4", read=False),
             status="closed",
@@ -1086,6 +1182,8 @@ def test_reset_unread(
     assert count == 3
     raw = _find(_read_threads(root), "TH-1")
     assert [post["read"] for post in raw["posts"]] == [False, False, False, False]
+    # 利用者の既読は戻さない
+    assert [post["seen"] for post in raw["posts"]] == [True, False, True, True]
     assert raw["posts"][0]["taken"] == T_0100
     assert (raw["status"], raw["summary"], raw["tags"], raw["events"]) == (
         "closed",
@@ -1103,7 +1201,7 @@ def test_reset_unread(
                 "threads.yaml": (
                     "items:\n"
                     "  - {id: TH-1, status: open, tags: [], summary: null, events: [],\n"
-                    "     posts: [{id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, taken: null}]}\n"
+                    "     posts: [{id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00', read: false, seen: true, taken: null}]}\n"
                 )
             },
             id="all_unread",

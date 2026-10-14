@@ -108,6 +108,8 @@ def test_normal(
     thread = _thread_of(root, read_yaml, "TH-1")
     last = thread["posts"][-1]
     assert (last["author"], "D-1" in last["body"]) == ("ai", True)
+    # AI の返信は利用者の未読
+    assert last["seen"] is False
     assert (thread["status"], thread["summary"]) == ("open", "D-1 の案の相談。案 A で決定")
     assert (thread["posts"][0]["read"], thread["posts"][0]["taken"] is not None) == (True, True)
     assert after == {"items": []}

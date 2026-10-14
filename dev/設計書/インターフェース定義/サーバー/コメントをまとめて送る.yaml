@@ -30,6 +30,7 @@ flows:
       - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で `loc` を持たず、TH-2 が `target: A-1` と本文の 2 行目の `loc` を持ち、どちらも要約が `null` で、最初の書き込みが `author: user`・`read: false`・`taken: null`'
       - '`comments.yaml` に C-3 だけが残る'
       - '`decisions.yaml`・`docs.yaml` の中身が送る前と同じ'
+      - 'TH-1・TH-2 の最初の書き込みが `seen: true`（利用者が書いたものは利用者の既読）'
     test: test_normal
   - name: 異常系（送るものが空・400）
     summary: チェックが 0 件の送信は受けない

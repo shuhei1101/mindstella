@@ -101,6 +101,22 @@ layers:
         ```
   - name: 外部疎通テスト
     run_all: 未確定
+  - name: lint
+    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）でプレビューの `.ts` とストーリーの `.ts` を検査する。formatter と import の並びの検査は含めない
+    prerequisites:
+      - Python 3.12 以上と ruff
+      - Node 20.19 以上で `npm ci` を済ませてある
+      - 実行はリポジトリの直下で行う
+    run_all: |-
+      ```bash
+      ruff check plugins tests && npm run typecheck
+      ```
+    run_one:
+      label: ファイル
+      command: |-
+        ```bash
+        ruff check {Pythonファイルパス}
+        ```
 notes:
   部品のストーリー（Storybook）: |-
     前提: Node 20.19 以上（22 系なら 22.12 以上。vite 8.3.2 の `engines`）。リポジトリの直下で `npm ci` を済ませておく。
