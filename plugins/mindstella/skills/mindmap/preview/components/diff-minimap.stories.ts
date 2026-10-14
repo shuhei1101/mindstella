@@ -133,6 +133,7 @@ export const Dragging: Story = {
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     canvasElement.querySelector<HTMLElement>(".panel-body")?.scrollTo({ top: 240 });
     canvasElement.querySelector<HTMLElement>(".df-map")?.classList.add("is-dragging");
+    document.body.classList.add("df-map-dragging");
   },
 };
 
