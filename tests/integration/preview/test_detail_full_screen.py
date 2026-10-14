@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
@@ -17,6 +18,8 @@ from preview_body_scroll_helpers import (
 )
 from preview_comment_helpers import (
     PILL,
+    ROW_CORNER_GAPS_JS,
+    ROW_CORNER_TOLERANCE_PX,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     read_workspace_yaml,
@@ -310,6 +313,23 @@ def test_review_comments(
         f"{FULL_REVIEW} li .row-actions button", "buttons => buttons.map(b => [b.getAttribute('aria-label'), b.title])"
     ) == [["D-1 へのコメントを修正", "修正"], ["D-1 へのコメントを削除", "削除"]]
     assert page.locator(f"{FULL_REVIEW} input").count() == 0
+
+
+@pytest.mark.parametrize("width", [390, 720])
+def test_review_row_actions_at_top_right_when_narrow(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, width: int
+) -> None:
+    """幅 720px 以下でも、全画面の各行の「修正」「削除」を行の右上の隅から 24px 以内に置く（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    page.wait_for_selector(FULL_REVIEW)
+    # 実行
+    page.set_viewport_size({"width": width, "height": 700})
+    # 検証
+    gaps = page.evaluate(ROW_CORNER_GAPS_JS, review_row("dialog.full", "C-1"))
+    assert 0 <= gaps["right"] <= ROW_CORNER_TOLERANCE_PX
+    assert 0 <= gaps["top"] <= ROW_CORNER_TOLERANCE_PX
 
 
 def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:

@@ -60,6 +60,14 @@ USER_CLOSED = {
     "created": "2026-10-12T04:00:00+00:00",
 }
 
+# パネルの動きが終わってから、書き込みの頭の中に「修正」「削除」の組が収まっているかを返す
+POST_ACTIONS_IN_HEAD_JS = """async (selector) => {
+    await Promise.all(document.getAnimations().map(animation => animation.finished));
+    const head = document.querySelector(`${selector} .post-head`).getBoundingClientRect();
+    const actions = document.querySelector(`${selector} .post-head .row-actions`).getBoundingClientRect();
+    return actions.left >= head.left && actions.right <= head.right && actions.top >= head.top && actions.bottom <= head.bottom;
+}"""
+
 
 def _open_closed_thread(page: Page, thread_id: str) -> None:
     """一覧を「クローズ」で絞ってから、スレッドの行を押してスレッドの画面を開く。"""
@@ -501,6 +509,21 @@ def test_pending_post_edit(served_thread: tuple[str, Path], open_preview: OpenPr
     page.get_by_role("button", name="元に戻す").click()
     # 検証
     page.wait_for_selector(row, timeout=UPDATE_TIMEOUT_MS)
+
+
+@pytest.mark.parametrize("width", [390, 720])
+def test_pending_post_actions_in_head_when_narrow(
+    served_thread: tuple[str, Path], open_preview: OpenPreview, width: int
+) -> None:
+    """幅 720px 以下でも、レビュー中の返信の「修正」「削除」を書き込みの頭の中に置く（正常系）。"""
+    # 準備
+    url, _ = served_thread
+    page = open_preview(url)
+    open_thread(page, "TH-1")
+    # 実行
+    page.set_viewport_size({"width": width, "height": 700})
+    # 検証
+    assert page.evaluate(POST_ACTIONS_IN_HEAD_JS, f"{POSTS}[data-comment='C-1']") is True
 
 
 def test_updated_by_change(

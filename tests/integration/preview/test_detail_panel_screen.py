@@ -41,6 +41,8 @@ from preview_comment_helpers import (
     DRAFT_WAIT_MS,
     PANEL_REVIEW,
     PILL,
+    ROW_CORNER_GAPS_JS,
+    ROW_CORNER_TOLERANCE_PX,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     fulfill_problem,
@@ -135,15 +137,15 @@ PANEL_HEAD_LAST_BUTTON = "aside.panel .panel-head button:not([disabled])"
 ROW_EDIT_NAME = "D-1 へのコメントを修正"
 ROW_REMOVE_NAME = "D-1 へのコメントを削除"
 
-# 行の右上の操作が、行の右上の隅から離れてよい上限（px）
-ROW_CORNER_TOLERANCE_PX = 24
-
-# パネルの動きが終わってから、行の右上の隅と「修正」「削除」の組の隅との隙間（px）を返す
-ROW_CORNER_GAPS_JS = """async (selector) => {
+# 行の操作と見出しの操作が重なるかを数える（パネルの動きが終わってから）
+ROW_ACTIONS_OVERLAP_JS = """async (selector) => {
     await Promise.all(document.getAnimations().map(animation => animation.finished));
-    const row = document.querySelector(selector).getBoundingClientRect();
     const actions = document.querySelector(`${selector} .row-actions`).getBoundingClientRect();
-    return { right: row.right - actions.right, top: actions.top - row.top };
+    const overlaps = [...document.querySelectorAll('aside.panel .panel-head button')].filter(button => {
+        const box = button.getBoundingClientRect();
+        return box.left < actions.right && box.right > actions.left && box.top < actions.bottom && box.bottom > actions.top;
+    });
+    return overlaps.length;
 }"""
 
 # 書き換えの入力欄が、行の本文の幅から欠けてよい上限（px）
@@ -1156,6 +1158,24 @@ def test_review_row_actions_at_top_right(
     assert gaps["top"] <= ROW_CORNER_TOLERANCE_PX
     assert _row_button(page, "C-1", ROW_EDIT_NAME).is_visible() is True
     assert _row_button(page, "C-1", ROW_REMOVE_NAME).is_visible() is True
+
+
+@pytest.mark.parametrize("width", [390, 720])
+def test_review_row_actions_at_top_right_when_narrow(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, width: int
+) -> None:
+    """幅 720px 以下でも、各行の「修正」「削除」を行の右上の隅から 24px 以内に置き、パネルの見出しの操作と重ねない（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    # 実行
+    page.set_viewport_size({"width": width, "height": NARROW_HEIGHT})
+    # 検証
+    row = review_row("aside.panel", "C-1")
+    gaps = page.evaluate(ROW_CORNER_GAPS_JS, row)
+    assert 0 <= gaps["right"] <= ROW_CORNER_TOLERANCE_PX
+    assert 0 <= gaps["top"] <= ROW_CORNER_TOLERANCE_PX
+    assert page.evaluate(ROW_ACTIONS_OVERLAP_JS, row) == 0
 
 
 def test_review_row_edit_button(
