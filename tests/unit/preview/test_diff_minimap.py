@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from html import escape
 from typing import Any
 
 import pytest
@@ -89,11 +90,16 @@ FOLDED_RAW_HTML = (
     "</div>"
 )
 
-# HTML の本文の枠。枠の中に、足した要素と変えた要素を持つ
+# HTML の本文の枠の中身（足した要素と変えた要素）
+FRAME_DOCUMENT = (
+    '<p data-df="add" data-id="in-added">足した要素</p>'
+    '<p data-df="chg" data-id="in-changed">変えた要素</p>'
+)
+
+# HTML の本文の枠
 HTML_FRAME_HTML = (
     '<iframe class="html-frame" sandbox="allow-same-origin" data-id="frame" '
-    "srcdoc='<p data-df=\"add\" data-id=\"in-added\">足した要素</p>"
-    '<p data-df="chg" data-id="in-changed">変えた要素</p>\'></iframe>'
+    f'srcdoc="{escape(FRAME_DOCUMENT)}"></iframe>'
 )
 
 # 本文を包んだ枠を作って文書に置き、次のコマの後の枠の中身を調べて返す JavaScript
