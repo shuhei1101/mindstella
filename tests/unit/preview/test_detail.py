@@ -2242,3 +2242,97 @@ def test_detail_panel_when_head_title_full(
     expected_widths = [HEAD_BUTTON_WIDTH] * HEAD_BUTTON_COUNT_FULL
     assert result["buttons"]["before"] == expected_widths
     assert result["buttons"]["after"] == expected_widths
+
+
+# 1 つ目の段落を消し、末尾に段落を足した本文の今と、変えた回（消した段落と足した段落は離れていて、印は 2 つ）
+MINIMAP_NOW_BODY = "残る段落\n\n足した段落\n"
+MINIMAP_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {"line": 1, "now": [], "before": ["消した段落", ""]},
+        {"line": 3, "now": ["足した段落"], "before": []},
+    ],
+}
+
+# 詳細パネルを開き（差分は withDiff のときだけ）、本文のスクロール領域の中身と、帯の印の数と、本文の読み上げの名前を調べる
+OPEN_MINIMAP_PANEL_SCRIPT = """async ({data, point, withDiff, minimap}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: withDiff ? {...point, added: new Set(), changed: new Set(["D-1"])} : null,
+        minimap,
+    });
+    document.body.append(panel);
+    // 本文の差分と帯の印は、文書に入った後の描き直しで置かれる
+    for (let frame = 0; frame < 3; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const scroll = panel.querySelector(".panel-scroll");
+    const kind = (child) =>
+        child.classList.contains("panel-body") ? "body" : child.classList.contains("df-map") ? "map" : "other";
+    return {
+        children: [...(scroll?.children ?? [])].map(kind),
+        marks: panel.querySelectorAll(".df-map button").length,
+        bodyLabel: scroll?.querySelector(".panel-body")?.getAttribute("aria-label") ?? null,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("with_diff", "minimap", "expected"),
+    [
+        pytest.param(
+            True,
+            True,
+            {"children": ["body", "map"], "marks": 2, "bodyLabel": "詳細の本文"},
+            id="diff_and_minimap",
+        ),
+        pytest.param(
+            True,
+            False,
+            {"children": ["body"], "marks": 0, "bodyLabel": "詳細の本文"},
+            id="diff_and_minimap_off",
+        ),
+        pytest.param(
+            False,
+            True,
+            {"children": ["body"], "marks": 0, "bodyLabel": "詳細の本文"},
+            id="no_diff",
+        ),
+    ],
+)
+def test_detail_panel_when_diff_minimap(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    with_diff: bool,
+    minimap: bool,
+    expected: dict[str, Any],
+) -> None:
+    """差分の表示の間だけ本文の右に帯を並べ、表示しない上書きでは並べない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[MINIMAP_ENTRY], seq=1)],
+        bodies={"D-1.md": MINIMAP_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_MINIMAP_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "withDiff": with_diff, "minimap": minimap},
+    )
+    # 検証
+    assert result == expected
