@@ -1,0 +1,14 @@
+$ python3 -m pytest tests/integration/preview/test_settings_screen.py tests/integration/preview/test_comments_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_decisions_screen.py tests/integration/preview/test_tasks_screen.py tests/integration/preview/test_docs_screen.py tests/integration/preview/test_records_screen.py tests/integration/preview/test_graph_screen.py tests/integration/preview/test_thread_screen.py tests/integration/preview/test_review_screen.py tests/integration/preview/test_topbar_screen.py -q -p no:cacheprovider
+........................................................................ [ 13%]
+........................................................................ [ 26%]
+........................................................................ [ 39%]
+........................................................................ [ 53%]
+........................................................................ [ 66%]
+........................................................................ [ 79%]
+........................................................................ [ 92%]
+.......................................                                  [100%]
+543 passed in 1106.76s (0:18:26)
+
+$ python3 -m pytest tests/integration/preview/test_history_screen.py tests/integration/preview/test_open_preview.py -q -p no:cacheprovider
+.........................................                                [100%]
+41 passed in 84.00s (0:01:24)
