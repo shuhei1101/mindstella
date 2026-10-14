@@ -10,6 +10,7 @@ directory: |-
 diagrams:
   - name: 全体
     diagram: |-
+      ```mermaid
       classDiagram
         direction LR
         class 入口
@@ -21,6 +22,7 @@ diagrams:
         入口 --> 登録の組み替え
         入口 --> 書く中身の組み立て
         入口 --> まとめた書き込み
+      ```
 data_models:
   - name: Registration
     title: 登録
