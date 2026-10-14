@@ -335,10 +335,10 @@ def make_post() -> MakePost:
     """スレッドの書き込み（threads.yaml の posts の 1 件）を作る関数を返す。"""
 
     def _make(post_id: str, **overrides: Any) -> dict[str, Any]:
-        """ID・書き手・本文・書いた日時・AI の既読・取り込んだ日時に、渡したキーを重ねた書き込みを返す。
+        """ID・書き手・本文・書いた日時・AI の既読・利用者の既読・取り込んだ日時に、渡したキーを重ねた書き込みを返す。
 
-        既定は取り込んでいない利用者の未読の書き込み。AI の書き込みは、渡さない限り既読で、
-        取り込んだ日時のキーを持たない。
+        既定は AI が読んでいない、取り込んでいない利用者の書き込み。AI の書き込みは、渡さない限り AI の既読で、
+        取り込んだ日時のキーを持たない。どちらも利用者の既読が既定で、利用者の未読にするときは `seen=False` を渡す。
         """
         post: dict[str, Any] = {
             "id": post_id,
@@ -346,6 +346,7 @@ def make_post() -> MakePost:
             "body": f"{post_id}の本文",
             "created": DEFAULT_TIMESTAMP,
             "read": False,
+            "seen": True,
             "taken": None,
         }
         # AI の書き込みは取り込みの対象ではないので、既読にして taken を持たせない

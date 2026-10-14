@@ -338,6 +338,7 @@ def test_comment_api_when_thread(
             '{"status":"open","reason":null}',
             id="reopen_blank_reason",
         ),
+        pytest.param("seen", ["TH-1"], "POST", "api/threads/TH-1/seen", None, id="seen"),
     ],
 )
 def test_thread_api(

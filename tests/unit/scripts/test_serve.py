@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import http.client
 import json
+import os
 import socket
 import sys
 import threading
@@ -55,6 +57,9 @@ HTTP_TIMEOUT_SEC = 10
 # 前回開いた日時として、1 回目・2 回目の呼び出しで返す日時
 FIRST_OPENED = "2026-10-04T13:05:00+00:00"
 SECOND_OPENED = "2026-10-04T14:45:00+00:00"
+
+# 古い更新日時（書き換えたかを更新日時で確かめるため、先にファイルをこの時刻へ戻す）
+OLD_MTIME_SEC = 1_000_000_000
 
 
 @pytest.fixture
@@ -991,7 +996,7 @@ THREADS_TEXT = (
     "    events: []\n"
     "    posts:\n"
     "      - {id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00',"
-    " read: false, taken: null}\n"
+    " read: false, seen: true, taken: null}\n"
 )
 
 
@@ -1096,6 +1101,137 @@ def test_patch_thread_status_when_same_or_rejected(
     outcome = _patch_outcome(root, thread_id, data)
     # 検証
     assert outcome == expected
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
+# AI の返信が利用者の未読のスレッド
+UNSEEN_THREADS_TEXT = (
+    "items:\n"
+    "  - id: TH-1\n    status: open\n    tags: []\n    summary: null\n    events: []\n"
+    "    posts:\n"
+    "      - {id: TH-1-1, author: ai, body: 返信, created: '2026-10-12T01:00:00+00:00',"
+    " read: true, seen: false}\n"
+)
+
+# 書き込みから seen を消して、スキーマに合わなくしたスレッド
+UNSEEN_THREADS_WITHOUT_SEEN_TEXT = UNSEEN_THREADS_TEXT.replace(", seen: false", "")
+
+
+def _count_lock_calls(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """serve.workspace_lock を、呼ばれたワークスペースを控えて本物の鍵を取る関数に差し替え、控える入れ物を返す。"""
+    calls: list[Path] = []
+    original = serve.workspace_lock
+
+    @contextlib.contextmanager
+    def _counting(root: Path, process_lock: threading.Lock, **kwargs: Any) -> Iterator[None]:
+        """呼ばれたワークスペースを控えてから、本物の鍵を取る。"""
+        calls.append(root)
+        with original(root, process_lock, **kwargs):
+            yield
+
+    monkeypatch.setattr(serve, "workspace_lock", _counting)
+    return calls
+
+
+def test_seen_response(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読を既読にして ID を返す（正常系）。"""
+    # 準備
+    direct = make_workspace(make_item("D-1"), name="direct")
+    served = make_workspace(make_item("D-1"), name="served")
+    thread = make_thread("TH-1", make_post("TH-1-1"), make_post("TH-1-2", author="ai", seen=False))
+    write_threads(direct, thread)
+    write_threads(served, thread)
+    url, _started = registry.start(served)
+    # 実行
+    response = serve.seen_response(_context(direct), "TH-1", origin=None)
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{_port_of(url)}/api/threads/TH-1/seen", method="POST"
+    )
+    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as over_http:
+        cache_control = over_http.headers["Cache-Control"]
+        http_status = over_http.status
+        http_payload = json.loads(over_http.read())
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/json; charset=utf-8"
+    assert json.loads(response.body) == {"id": "TH-1", "seen": ["TH-1-2"]}
+    assert (http_status, http_payload, cache_control) == (
+        200,
+        {"id": "TH-1", "seen": ["TH-1-2"]},
+        "no-store",
+    )
+    saved = yaml.safe_load((direct / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    assert [post["seen"] for post in saved["items"][0]["posts"]] == [True, True]
+
+
+def test_seen_response_when_nothing_unseen(
+    monkeypatch: pytest.MonkeyPatch,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読が無ければ鍵を取らず書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", seen=True)))
+    path = root / RECORD_DIR / "threads.yaml"
+    os.utime(path, (OLD_MTIME_SEC, OLD_MTIME_SEC))
+    mtime_before = path.stat().st_mtime_ns
+    lock_calls = _count_lock_calls(monkeypatch)
+    # 実行
+    response = serve.seen_response(_context(root), "TH-1", origin=None)
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == {"id": "TH-1", "seen": []}
+    assert lock_calls == []
+    assert path.stat().st_mtime_ns == mtime_before
+
+
+@pytest.mark.parametrize(
+    ("origin", "thread_id", "threads_text", "expected_status", "expected_detail"),
+    [
+        pytest.param(
+            "https://attacker.example", "TH-1", UNSEEN_THREADS_TEXT, 403, "", id="origin"
+        ),
+        pytest.param(None, "TH-9", UNSEEN_THREADS_TEXT, 404, "TH-9", id="not_found"),
+        pytest.param(
+            None,
+            "TH-1",
+            UNSEEN_THREADS_WITHOUT_SEEN_TEXT,
+            422,
+            "threads.yaml: ",
+            id="schema_mismatch",
+        ),
+    ],
+)
+def test_seen_response_when_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    origin: str | None,
+    thread_id: str,
+    threads_text: str,
+    expected_status: int,
+    expected_detail: str,
+) -> None:
+    """送り元の違い・無い ID・崩れたファイルは書かない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"threads.yaml": threads_text})
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行
+    response = serve.seen_response(_context(root), thread_id, origin=origin)
+    # 検証
+    assert response.status == expected_status
+    assert response.content_type == "application/problem+json; charset=utf-8"
+    assert expected_detail in json.loads(response.body)["detail"]
     assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
 
 
