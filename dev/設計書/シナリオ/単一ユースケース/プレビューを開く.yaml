@@ -95,6 +95,7 @@ scenarios:
         description: '`.mindstella/docs/` の A-1 の HTML の本文のファイルを、段落「絞り込みの画面」を持つ中身に書き換える'
         notes: docs.yaml は書き換えない（本文のファイルだけが変わる）
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant WS as ワークスペース
         participant SV as サーバー
@@ -105,6 +106,7 @@ scenarios:
         SV-->>P: 書き換えを知らせる
         P->>SV: 記録を読み直す
         P-->>P: 開いている画面を描き直す
+      ```
     expected:
       - 再読み込みの操作をせずに、A-1 の詳細パネルの本文が書き換えた後の HTML（「絞り込みの画面」）で描かれ、「一覧の画面」が消える
       - 描き直した後も、開いていた画面と URL のハッシュが変わらない

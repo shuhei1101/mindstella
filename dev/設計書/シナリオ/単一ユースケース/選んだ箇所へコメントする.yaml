@@ -121,6 +121,7 @@ scenarios:
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
@@ -134,6 +135,7 @@ scenarios:
         SV->>WS: 書く
         SV-->>P: 受け付けた
         P-->>U: 溜めたことと件数を出す
+      ```
     expected:
       - ワークスペースに、A-1 を指し、箇所が本文の 6 行目（開始と終わりが 6）と選んだ文「言い換えたい文」で、本文が「ここは言い換える」のレビュー中のコメントが 1 件ある
       - コメントの入口が、選んだ文の近くに出る

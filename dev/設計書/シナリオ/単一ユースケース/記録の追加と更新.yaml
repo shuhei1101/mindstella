@@ -365,6 +365,7 @@ scenarios:
         description: 資料 A-1 を足すときの 2 行の Markdown の本文と、形式を HTML に替えるときの 3 行の HTML の本文と、2 行目を書き換えた HTML の本文と、形式を Markdown に戻すときの 2 行の Markdown の本文
         notes: HTML の本文 `<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>`。書き換えは 2 行目を `<p>絞り込みの画面</p>` にする
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
@@ -383,6 +384,7 @@ scenarios:
         SV->>WS: docs.yaml と Markdown の本文を書き、HTML の本文を消す
         CC->>SV: A-1 を表示する
         SV-->>CC: 中身と Markdown の本文と形式
+      ```
     expected:
       - HTML に替えた後、A-1 の本文が HTML の形式になり、`.mindstella/docs/` に渡した HTML の本文があり、A-1 の Markdown の本文が残らない
       - 1 回目の表示が、書き換えた後の HTML の本文と HTML の形式を返す
@@ -402,6 +404,7 @@ scenarios:
       - name: 本文
         description: タスクを足すときと T-1 を直すときに渡す HTML の本文
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
@@ -411,6 +414,7 @@ scenarios:
         SV-->>CC: 資料だけが HTML の本文を持てる旨のエラー
         CC->>SV: HTML の本文を渡して T-1 を直す
         SV-->>CC: 資料だけが HTML の本文を持てる旨のエラー
+      ```
     expected:
       - どちらの呼び出しも、資料だけが HTML の本文を持てる旨のエラーを返す
       - tasks.yaml と `.mindstella/docs/` が呼ぶ前と同じである
