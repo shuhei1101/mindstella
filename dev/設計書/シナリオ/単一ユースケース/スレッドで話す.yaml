@@ -25,6 +25,8 @@ scenarios:
         P-->>U: オープンのスレッドの一覧（1 件）
         U->>P: スレッドの行を押す
         P-->>U: スレッドの書き込み（AI の問い）
+        P->>SV: スレッドを利用者の既読にする
+        SV->>WS: AI の問いを利用者の既読に書く
         U->>P: 「起票してよい」を書いてレビューに追加する
         P->>SV: レビュー中の返信を足す（向けた先はそのスレッド）
         SV->>WS: レビュー中の書き込みに足す
@@ -126,12 +128,15 @@ scenarios:
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
         participant SV as サーバー
+        participant WS as ワークスペース
         participant CC as Claude Code（session）
 
         CC->>SV: スレッドへ返信する
         SV-->>P: 書き換えの知らせ
         P->>SV: 記録を読み直す
         P-->>U: スレッドの末尾に AI の返信を出す
+        P->>SV: スレッドを利用者の既読にする
+        SV->>WS: AI の返信を利用者の既読に書く
       ```
     expected:
       - 画面を開き直さずに、開いているスレッドの末尾に AI の返信が出る
