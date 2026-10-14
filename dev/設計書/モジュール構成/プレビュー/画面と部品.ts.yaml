@@ -2729,6 +2729,7 @@ test_files:
   - tests/unit/preview/test_reply_form.py
   - tests/unit/preview/test_thread_row.py
   - tests/unit/preview/test_thread_post.py
+  - tests/unit/preview/test_diff_minimap.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ
