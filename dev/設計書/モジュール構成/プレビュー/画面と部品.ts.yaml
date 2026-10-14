@@ -12,6 +12,7 @@ directory: |-
       body-format-badge.ts  本文の形式の札（部品設計『本文の形式の札』）
       html-body-frame.ts    HTML の本文の枠（部品設計『HTMLの本文の枠』）
       html-body-diff.ts     HTML の本文の差分（部品設計『HTMLの本文の差分』）
+      diff-minimap.ts       差分のミニマップと、印の集め方・置き方（部品設計『差分のミニマップ』）
       comment-mark.ts       コメントの印と、画面を描き直さずに印を差し替える処理（部品設計『コメントの印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
       table.ts              表と、並べ替え・絞り込みの計算（部品設計『表』）
@@ -40,7 +41,7 @@ directory: |-
       graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
-  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py` に置く。
+  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py` に置く。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え
@@ -466,6 +467,11 @@ components:
         type: string | null
         required: false
         description: 開いたときに本文の中で画面に入れる見出しの名前（`Route.heading`）。本文に無ければ本文の頭で開き、`on.heading` を `null` で呼んでハッシュから `h` を外させる
+      - name: minimap
+        required: false
+        default: 'true'
+        type: boolean
+        description: '差分のミニマップを置くか（`resolveDisplay` の `minimap`）。本文のスクロール領域は常に `diffMinimapFrame({ body, shown: diff !== null && minimap })` で包み、包んだ枠を見出しと下端の間に置く。`style.css` の `.panel > .panel-body` に当てていた伸び縮み（`flex: 1; min-height: 0`）は `.panel-scroll` に移し、`.panel-body` は枠の中で帯を除いた幅いっぱいにする（`dialog.full` も同じ）。図の拡大に切り替えている間は帯を出さない'
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -641,6 +647,12 @@ components:
         condition: '`lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、本文の行の差分が打ち切られる D-1 を `diff` つきで開く（`Diff.diffLines` が `undefined` を返し、その間に `performance.now()` が `LINE_DIFF_TIMEOUT_MS` より進むよう包む）'
         mock: 描画のライブラリの配信元（`page.route`）・`Diff.diffLines` と `performance.now()` を包む
         expected: 本文の頭に「本文の差分を計算しきれない旨」が出て、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` は今までどおり並び、`span.df-word` を持たない
+      - name: test_detail_panel_when_diff_minimap
+        summary: 差分の表示の間だけ本文の右に帯を並べ、表示しない上書きでは並べない
+        case: 正常
+        condition: '本文の段落を 1 つ消し 1 つ足した資料。`parametrize`: `diff` あり・`minimap: true` / `diff` あり・`minimap: false` / `diff` が `null`'
+        expected: '`.panel-scroll` の中に `.panel-body` と印を 2 つ持つ `.df-map` が並ぶ / `.panel-scroll` の中は `.panel-body` だけ / `.panel-scroll` の中は `.panel-body` だけ。どれも `.panel-body` が「詳細の本文」の読み上げの名前を保つ'
+        mock: なし（DOM を作って見る）
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -1001,7 +1013,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
     usecase: 表示の設定を変える
-    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目は選ばせず、`look`・`defaultLook` は「ワークスペースの既定にする」を出すかの比較にだけ使う。「すべて」は `toggleAllBox` と同じく途中の印を持つ。描き直しても操作していた部品にフォーカスを戻す
+    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・差分のミニマップを切り替える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目は選ばせず、`look`・`defaultLook` は「ワークスペースの既定にする」を出すかの比較にだけ使う（`minimap` は比べに含めない）。「すべて」は `toggleAllBox` と同じく途中の印を持つ。表示する種類の下に `fieldset`（凡例「詳細に表示するもの」）を置き、`MINIMAP_LABEL` のチェックボックスを 1 行出す。描き直しても操作していた部品にフォーカスを戻す
     props:
       - name: look
         type: string
@@ -1042,22 +1054,33 @@ components:
         default: 'true'
         description: 偽のとき先頭に「この端末に保存できません。…」（`role="alert"`）
       - name: on
-        type: '{kinds, reset, save, close}'
+        type: '{kinds, minimap, reset, save, close}'
         required: true
-        description: 表示する種類を変える（変えた後の並び）・既定に戻す・ワークスペースの既定にする・閉じる
+        description: 表示する種類を変える（変えた後の並び）・差分のミニマップを切り替える（切り替えた後の表示する・しない）・既定に戻す・ワークスペースの既定にする・閉じる
+      - name: minimap
+        required: false
+        default: 'true'
+        type: boolean
+        description: 差分のミニマップを表示しているか（チェックボックスの状態）
     unit_tests:
       - name: test_settings_panel
         case: 正常
         summary: 上書きの有無と既定との違いで、既定に戻すと保存のボタンを出し分ける
         condition: '`parametrize`: `overrides` が空で既定と同じ / `look: dust`・`defaultLook: starlight`・`overrides` 2 件 / 同じで `canSave: false` / `look`・`kinds` が既定と同じで `overrides` が「ライト / ダーク」'
         mock: なし（DOM を作って見る）
-        expected: 「ワークスペースの既定のまま表示しています。」と「今の選びはワークスペースの既定と同じです。」でボタンが無い / 「既定に戻す」と「ワークスペースの既定にする」があり、見た目のラジオボタンが無い / 「既定に戻す」だけがある / 「既定に戻す」があり、保存のボタンの代わりに「今の選びは…同じです。」
+        expected: 「ワークスペースの既定のまま表示しています。」と「見た目と表示する種類は、ワークスペースの既定と同じです。」でボタンが無い / 「既定に戻す」と「ワークスペースの既定にする」があり、見た目のラジオボタンが無い / 「既定に戻す」だけがある / 「既定に戻す」があり、保存のボタンの代わりに「見た目と表示する種類は、…同じです。」
       - name: test_settings_panel_when_kinds_changed
         case: 正常
         summary: 種類のチェックと「すべて」で変えた後の並びを知らせる
         condition: 用語集と会話ログを除く 5 種類。タスクのチェックを外し、次に「すべて」を押す
         mock: '`on.kinds`'
         expected: 「すべて」が `indeterminate` で `5/7`。`on.kinds` がタスクを除いた 4 種類、続けて 7 種類で呼ばれる。概要とネットワークの行はチェックボックスを持たない
+      - name: test_settings_panel_when_minimap
+        summary: 差分のミニマップのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない
+        case: 正常
+        condition: '`look`・`kinds` が既定と同じ。`parametrize`: `minimap: true`・`overrides` が空 / `minimap: false`・`overrides` が「差分のミニマップ」。どちらもチェックボックスを押す'
+        expected: 凡例「詳細に表示するもの」の中に「差分のミニマップ」のチェックボックスがあり、付いている・`on.minimap` が `false` で呼ばれる / 外れている・「既定に戻す」がある・「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」・`on.minimap` が `true` で呼ばれる
+        mock: '`on.minimap`'
   - name: settingsConfirm
     title: 既定の保存の確かめ
     kind: コンポーネント
@@ -1610,6 +1633,34 @@ components:
         condition: "C-1 をチェックし、`result` を `{kind: 'sent', count: 2, at: '2026-10-10T03:04:00+00:00', entered}` で描く。`parametrize`: `entered` が `true` / `false`"
         mock: なし
         expected: 送った結果（`role="status"`）が、前者は確かめの印と「2 件を送り、Claude Code に入力しました（12:04）。」、後者は注意の印と「2 件を送りましたが、Claude Code には入力できませんでした（12:04）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。」
+  - name: diffMinimapFrame
+    title: 差分のミニマップ
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『差分のミニマップ』。本文のスクロール領域（`.panel-body`）を `div.panel-scroll` で包んで返し、`shown` が真ならその右に帯（`div.df-map`、`role="toolbar"`）を並べる。印は `minimapTargets` で集め `minimapLayout` で置き、印が無ければ帯を隠して枠に `has-map` を付けない。本文とその子の高さ（`ResizeObserver`）・中身（`MutationObserver`）・HTML の本文の枠の `load` が変わったら、次のコマで 1 回だけ置き直す。本文の `scroll` では見えている範囲の面だけを動かす。印の `click` はその箇所の上端を高さの `MINIMAP_JUMP_RATIO` の位置まで送り（`prefers-reduced-motion` でなければ `smooth`）、枚の外の箇所に `df-map-hit` を `MINIMAP_HIT_MS` の間付ける。帯の `click`（印の上でもドラッグの直後でもなく、面を出しているとき）は押した位置へ面の中央を合わせる。`pointerdown` / `pointermove` / `pointerup` / `pointercancel` でマウスの左ボタンのドラッグを受け、`PRESS_SLOP_PX` より動いたところで `setPointerCapture` して帯に `is-dragging`、`body` に `df-map-dragging` を付ける。`pointermove` で左ボタンを押していなければドラッグを終える。上下の矢印・Home / End で印の間を移り、移った印だけ `tabindex="0"` にする。どの操作も URL のハッシュと履歴を変えない
+    props:
+      - name: body
+        required: true
+        type: HTMLElement
+        description: 本文のスクロール領域（`detailPanel` が作る `.panel-body`）
+      - name: shown
+        required: true
+        type: boolean
+        description: 帯を置くか（`detailPanel` が `diff !== null && minimap` を渡す）。偽なら本文だけを包んだ枠を返す
+    unit_tests:
+      - name: test_diff_minimap_frame
+        summary: 印のある本文で帯と印を出し、出さないときは本文だけを包む
+        case: 正常
+        condition: '`parametrize`: 足した塊と消した行を持つ本文で `shown: true` / 同じ本文で `shown: false` / 差分の印の無い本文で `shown: true`'
+        expected: 枠の子が本文と帯で、帯に印のボタンが 2 つ（読み上げの名前「足した箇所（1 / 2）」「消した箇所（2 / 2）」、先頭だけ `tabindex="0"`）/ 枠の子が本文だけ / 帯が `hidden` で枠に `has-map` が無い
+        mock: なし（DOM を作って見る）
+      - name: test_diff_minimap_frame_when_keys
+        summary: 矢印・Home / End で印の間を移り、ハッシュを変えない
+        case: 正常
+        condition: 印が 3 つの帯。先頭の印にフォーカスして `ArrowDown`・`End`・`Home`・`ArrowUp` を送る
+        expected: フォーカスが 2 つ目 → 3 つ目 → 1 つ目 → 1 つ目（先頭より前へは移らない）。`tabindex="0"` はフォーカスのある印だけ。`location.hash` が変わらない
+        mock: なし（DOM を作って見る）
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -2593,6 +2644,71 @@ functions:
         condition: 書き込み 00:10・00:30 と記録 00:20・00:30
         mock: なし
         expected: 書き込み（00:10）・記録（00:20）・書き込み（00:30）・記録（00:30）
+  - name: minimapTargets
+    title: ミニマップの印の集め方
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    kind: 関数
+    scope: public
+    summary: 本文のスクロール領域の中の差分の印を、文書の順にミニマップの印にまとめて返す
+    args:
+      - name: body
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 本文のスクロール領域
+    process: |-
+      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw など）と、Raw を出している図の枠は飛ばす
+      2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値が無い（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
+      3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす。それ以外は新しい印にする
+      4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枚の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）
+    returns:
+      type: "{kind: 'add' | 'del' | 'chg', first: Element, last: Element, frame: HTMLIFrameElement | null}[]"
+      description: 印の並び。`first`・`last` は印が指す範囲の先頭と末尾の要素
+    unit_tests:
+      - name: test_minimap_targets
+        summary: 続く同じ種類をまとめ、消した塊の直後の足した塊を変わったにする
+        case: 正常
+        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前に無かったキーと値が変わったキーの行 / 畳んだ Raw の足した行と、Raw を出している図の枠 / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"`'
+        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / 空 / `add` と `chg`（`frame` がその枠）'
+        mock: なし（DOM を作って見る）
+  - name: minimapLayout
+    title: ミニマップの印の置き方
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    kind: 関数
+    scope: public
+    summary: 印が指す範囲の本文の中の位置と高さから、帯の中の印の始まりと長さを決める
+    args:
+      - name: extents
+        type: '{top: number, size: number}[]'
+        required: true
+        passing: keyword
+        description: 印ごとの、本文の中身の上端からの位置と高さ（px。文書の順）
+      - name: total
+        type: number
+        required: true
+        passing: keyword
+        description: 本文の全体の高さ（`scrollHeight`）
+      - name: length
+        type: number
+        required: true
+        passing: keyword
+        description: 帯の高さ（px）
+    process: |-
+      1. 最小の長さを `max(MINIMAP_MARK_FLOOR_PX, min(MINIMAP_MARK_MIN_PX, floor(length / 印の数) - MINIMAP_MARK_GAP_PX))` にする
+      2. 前から順に、长さを `max(最小, size / total × length)`、始まりを `max(top / total × length, 直前の終わり + MINIMAP_MARK_GAP_PX)` にする
+      3. 後ろから順に、帯の終わり（次の印の始まりから `MINIMAP_MARK_GAP_PX` 手前）を出た印を前へ詰め、始まりを 0 未満にしない
+    returns:
+      type: '{start: number, size: number}[]'
+      description: 印ごとの帯の中の始まりと長さ（px。`extents` と同じ順）
+    unit_tests:
+      - name: test_minimap_layout
+        summary: 割合で置き、最小の長さと重なりを直す
+        case: 正常
+        condition: '`length` 400、`total` 4000。`parametrize`: `[{top: 2000, size: 400}]` / `[{top: 0, size: 10}, {top: 20, size: 10}]` / 末尾に近い `[{top: 3990, size: 10}]` / 同じ高さの 100 件'
+        expected: '`[{start: 200, size: 40}]` / `[{start: 0, size: 12}, {start: 14, size: 12}]`（重なりを 2px 空けてずらす） / `[{start: 388, size: 12}]`（帯の終わりを出ない） / 全て `size` が 4、始まりが 0 以上で帯の終わりを出ない'
+        mock: なし
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
@@ -2613,3 +2729,40 @@ test_files:
   - tests/unit/preview/test_reply_form.py
   - tests/unit/preview/test_thread_row.py
   - tests/unit/preview/test_thread_post.py
+constants:
+  - name: MINIMAP_MARK_MIN_PX
+    title: ミニマップの印の最小の長さ
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印の帯の向きの最小の長さ（px）。押せる的を保つ（部品設計『差分のミニマップ』の印の置き方）
+    value: '12'
+  - name: MINIMAP_MARK_FLOOR_PX
+    title: ミニマップの印の最小の長さの下限
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印が帯に収まらないほど多いときに縮める、最小の長さの下限（px）
+    value: '4'
+  - name: MINIMAP_MARK_GAP_PX
+    title: ミニマップの印の間
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 重なる印をずらすときに空ける間（px）
+    value: '2'
+  - name: MINIMAP_JUMP_RATIO
+    title: ミニマップで飛んだ先の位置
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印を押したとき、その箇所の上端を置く本文のスクロール領域の高さに対する割合（上に前の文脈を少し残す）
+    value: '0.25'
+  - name: MINIMAP_HIT_MS
+    title: ミニマップで飛んだ箇所を示す長さ
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印を押して飛んだ箇所に枠（`df-map-hit`）を付けておくミリ秒
+    value: '1600'
+  - name: MINIMAP_LABEL
+    title: 差分のミニマップの呼び名
+    container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
+    usecase: 表示の設定を変える
+    summary: 表示の設定の切り替えと「この端末で変えている項目」に出す名前（確認ログの決定）。`resolveDisplay` もこの名前を並べる
+    value: '"差分のミニマップ"'
