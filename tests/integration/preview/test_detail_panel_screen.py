@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,7 @@ from preview_comment_helpers import (
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     fulfill_problem,
+    open_list,
     open_review,
     read_workspace_yaml,
     review_row,
@@ -96,6 +98,15 @@ from preview_word_diff_helpers import (
     contrast_ratio,
     serve_key_word_diff_workspace,
     serve_word_diff_workspace,
+)
+from preview_settings_helpers import SETTINGS_PANEL, SETTINGS_PANEL_OPEN, open_settings
+from preview_stack_helpers import (
+    DETAIL_HASH,
+    WIDE_VIEWPORT,
+    has_left_front,
+    is_inert,
+    open_narrow,
+    wait_front,
 )
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
 
@@ -1976,6 +1987,83 @@ def test_body_escape_closes_panel(
     # 検証
     page.wait_for_selector("aside.panel.open", state="detached")
     assert "id=" not in page.evaluate("location.hash")
+
+
+@pytest.mark.parametrize(
+    ("open_panel", "name", "selector"),
+    [
+        pytest.param(open_settings, "settings", SETTINGS_PANEL, id="settings"),
+        pytest.param(open_list, "comments", COMMENTS_PANEL, id="comments"),
+    ],
+)
+def test_escape_closes_front_left_panel_first_when_narrow(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    open_panel: Callable[[Page], None],
+    name: str,
+    selector: str,
+) -> None:
+    """幅 390px で左のパネルが詳細パネルの前に出ているときの Esc は、左のパネルを先に閉じ、詳細パネルは開いたままにする。もう一度の Esc で詳細パネルを閉じる（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_panel(page)
+    wait_front(page, name)
+    # 実行（1 回目の Esc）
+    page.keyboard.press("Escape")
+    page.wait_for_selector(selector, state="detached")
+    wait_front(page, "detail")
+    after_first = {
+        "detail_open": page.locator("aside.panel.open").count(),
+        "hash": page.evaluate("location.hash"),
+    }
+    # 実行（2 回目の Esc）
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    # 検証
+    assert after_first == {"detail_open": 1, "hash": DETAIL_HASH}
+    assert "id=" not in page.evaluate("location.hash")
+
+
+def test_escape_closes_detail_first_when_wide(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 1200px では、左のパネルを開いていても Esc は今のまま詳細パネルを先に閉じ、左のパネルは開いたままにする（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("aside.panel.open")
+    open_settings(page)
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    assert page.locator(SETTINGS_PANEL_OPEN).count() == 1
+    assert has_left_front(page) is False
+
+
+def test_escape_closes_detail_first_when_narrow_and_detail_in_front(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 390px で、左のパネルを開いた後に別の項目へ移って詳細パネルが前に出ているときの Esc は、詳細パネルを先に閉じ、左のパネルは開いたままで見える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-2"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_settings(page)
+    wait_front(page, "settings")
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-2'")
+    wait_front(page, "detail")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    wait_front(page, "settings")
+    assert is_inert(page, "settings") is False
+    assert has_left_front(page) is False
 
 
 # ─── 差分の表示 ───
