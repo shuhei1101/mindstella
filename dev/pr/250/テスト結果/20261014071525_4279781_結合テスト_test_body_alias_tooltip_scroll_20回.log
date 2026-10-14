@@ -1,0 +1,262 @@
+# commit 4279781 / test_body_alias_tooltip_scroll を 20 回続けて実行
+## 実行 1
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.90s ===============================
+## 実行 2
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.84s ===============================
+## 実行 3
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.77s ===============================
+## 実行 4
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.85s ===============================
+## 実行 5
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.81s ===============================
+## 実行 6
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.83s ===============================
+## 実行 7
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.76s ===============================
+## 実行 8
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.97s ===============================
+## 実行 9
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.85s ===============================
+## 実行 10
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.72s ===============================
+## 実行 11
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.74s ===============================
+## 実行 12
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.85s ===============================
+## 実行 13
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.79s ===============================
+## 実行 14
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.77s ===============================
+## 実行 15
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.88s ===============================
+## 実行 16
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.82s ===============================
+## 実行 17
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.86s ===============================
+## 実行 18
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.75s ===============================
+## 実行 19
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.80s ===============================
+## 実行 20
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_scroll
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-body-alias-tooltip-scroll-test
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 8.92s ===============================
+合計: 20 回中 20 回 pass
