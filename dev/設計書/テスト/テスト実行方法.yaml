@@ -110,3 +110,6 @@ notes:
     ```
 
     静的なファイルに書き出すときは `npx storybook build -o storybook-static`。
+prerequisites:
+  - conftest がテスト全体の始まる前に `MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_ALLOWED_HOSTS` をテストのプロセスから消して走らせる。手元のシェルに設定してあっても、テストは手元のフックのコマンドを呼ばず、結果は設定していないシェルと変わらない
+  - フックと許可するホスト名を確かめるテストは、値を `start_server` の `extra_env` や関数の引数で自分で渡す

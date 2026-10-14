@@ -4,15 +4,27 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs
 
 import yaml
+from integration.browser_tab_helpers import (
+    LINK_PAGE_TITLE,
+    WINDOW_OPEN_RECORDER_JS,
+    new_tab_after,
+    opened_tabs,
+    recorded_window_opens,
+)
 from playwright.sync_api import Page
 
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
     PILL,
+    REVIEW_ENTRY,
+    REVIEW_HEAD,
     THREE_LINE_BODY,
+    open_review,
+    read_workspace_yaml,
     select_text,
     select_text_for_pill,
 )
@@ -39,6 +51,7 @@ from preview_html_body_helpers import (
     text_rect_in_page,
     wait_frame_rendered,
 )
+from preview_html_link_helpers import frame_location, html_with_links
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     OpenPreview,
@@ -82,6 +95,19 @@ CONNECTION = "header.topbar .conn"
 
 # サーバーにつながらないとき、接続の状態の全文が出る幅（幅 1440px 以下は短い文言になる）
 WIDE_SIZE = {"width": 1441, "height": 900}
+
+# 変更履歴のモーダルと検索のダイアログ・差分の札・札の × のボタン
+HISTORY_DIALOG = "dialog.hist"
+SEARCH_DIALOG = "dialog.search"
+DIFF_CHIP = ".df-chip"
+DIFF_CHIP_TITLE = ".df-chip-t"
+DIFF_OFF_NAME = "差分の表示をやめる"
+
+# 端末の保存領域に残した選んだ時点を読む
+SAVED_DIFF_JS = "JSON.parse(localStorage.getItem('mindmap-preview') || '{}').diffSel ?? null"
+
+# 時点を指すハッシュの書き換えと再描画を待つ上限ミリ秒
+DIFF_SETTLE_MS = 10_000
 
 # 溜めたコメントを受け付けるパス
 COMMENTS_PATH = "/api/comments"
@@ -433,15 +459,16 @@ def test_normal_when_sent(
     page.focus(COMMENTS_BUTTON)
     page.keyboard.press("Enter")
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
     page.focus(LIST_SEND_BUTTON)
     page.keyboard.press("Enter")
     page.wait_for_selector(f"{COMMENTS_PANEL} .send-msg.sent", timeout=UPDATE_TIMEOUT_MS)
     # 検証（送った後）
-    pending = call_tool("submissions", workspace=str(root))
-    assert pending.data is not None
+    threads = read_workspace_yaml(root, "threads.yaml")["items"]
     assert [
-        (item["target"], item["loc"]["kind"], item["loc"]["start"], item["body"])
-        for item in pending.data["items"]
+        (thread["target"], thread["loc"]["kind"], thread["loc"]["start"], thread["posts"][0]["body"])
+        for thread in threads
     ] == [("A-1", "body", 2, "ここは言い換える")]
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
     assert page.locator(f"{COMMENTS_PANEL} .comments-list li").count() == 0
@@ -585,8 +612,7 @@ def test_normal_when_comment_removed_and_sent(
     open_preview(url, "#tab=decisions&view=board")
     page.wait_for_selector(".board button.card")
     page.evaluate(_card_marker_script('.board button.card[data-id="D-3"]'))
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    open_review(page)
     # 実行（C-1 を消すと D-2 の件数が 2 から 1 になる）
     page.locator(f"{COMMENTS_PANEL} li[data-comment='C-1']").get_by_role(
         "button", name="D-2 へのコメントを削除"
@@ -1039,3 +1065,335 @@ def test_normal_when_html_body_line_edge_cases(
     page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
     page.get_by_role("button", name="選んだ箇所にコメント").click()
     assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"
+
+
+# 詳細パネルの本文のスクロール領域
+PANEL_BODY_SELECTOR = "aside.panel .panel-body"
+
+# 本文の枠の中の `id` の要素が、詳細パネルの本文のスクロール領域の見える範囲に入っているかを返す
+ANCHOR_VISIBLE_JS = """([frameSelector, id]) => {
+    const frame = document.querySelector(frameSelector);
+    const target = frame.contentDocument.getElementById(id);
+    const box = document.querySelector('aside.panel .panel-body').getBoundingClientRect();
+    const top = frame.getBoundingClientRect().top + frame.clientTop + target.getBoundingClientRect().top;
+    return top >= box.top - 1 && top + target.getBoundingClientRect().height <= box.bottom + 1;
+}"""
+
+# 枠の中の文書へ、ポインターを押す → リンクの文を選ぶ（`selectionchange` は後の task で届く）の順に送る（sandbox の iframe は script を動かさないため、ここで待たない）
+PRESS_AND_SELECT_LINK_TEXT_JS = """(id) => {
+    const link = document.getElementById(id);
+    document.dispatchEvent(new Event('pointerdown'));
+    const range = document.createRange();
+    range.selectNodeContents(link);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+}"""
+
+# 枠の中の文書へ、ポインターを離す → リンクを押す（`detail` が 1）の順に送る
+RELEASE_AND_CLICK_LINK_JS = """(id) => {
+    document.dispatchEvent(new Event('pointerup'));
+    document.getElementById(id).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+}"""
+
+
+def test_normal_when_html_body_link(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    link_target: str,
+) -> None:
+    """枠の中の外へのリンクを押すと、枠の中では移らず、新しいタブで開く（正常系）。"""
+    # 準備
+    body = html_with_links(
+        ("plain", f'href="{link_target}/plain"', "target を持たないリンク"),
+        ("blank", f'href="{link_target}/blank" target="_blank"', "別のタブを指すリンク"),
+        ("mail", 'href="mailto:a@example.com"', "メールのリンク"),
+    )
+    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    frame = frame_of(page, BODY_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行・検証（target を持たないリンク）
+    tab = new_tab_after(page, lambda: frame.click("#plain"))
+    assert tab.url == f"{link_target}/plain"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    # 実行・検証（target="_blank" のリンク）
+    tab = new_tab_after(page, lambda: frame.click("#blank"))
+    assert tab.url == f"{link_target}/blank"
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 2
+    # 実行・検証（Ctrl を押しながら押す）
+    tab = new_tab_after(page, lambda: frame.click("#plain", modifiers=["Control"]))
+    assert tab.url == f"{link_target}/plain"
+    assert opened_tabs(page) == tabs + 3
+    # 実行・検証（中ボタンで押す）
+    tab = new_tab_after(page, lambda: frame.click("#plain", button="middle"))
+    assert tab.url == f"{link_target}/plain"
+    assert opened_tabs(page) == tabs + 4
+
+    def focus_and_enter() -> None:
+        """リンクにフォーカスして Enter を押す。"""
+        frame.focus("#plain")
+        page.keyboard.press("Enter")
+
+    # 実行・検証（フォーカスして Enter を押す）
+    tab = new_tab_after(page, focus_and_enter)
+    assert tab.url == f"{link_target}/plain"
+    assert opened_tabs(page) == tabs + 5
+    # 実行（mailto: のリンク）
+    page.evaluate(WINDOW_OPEN_RECORDER_JS)
+    frame.click("#mail")
+    # 検証（window.open が mailto: を `_blank`・`noopener,noreferrer` で 1 回呼んだ）
+    assert recorded_window_opens(page) == [["mailto:a@example.com", "_blank", "noopener,noreferrer"]]
+    # 検証（どのリンクを押した後も、枠は本文を描いたまま場所が変わらない）
+    assert frame_location(frame) == location
+    assert frame.locator("a").count() == 3
+    assert page.get_attribute(BODY_FRAME, "sandbox") == "allow-same-origin"
+
+
+def test_normal_when_html_body_anchor_link(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """`#` で始まるリンクは新しいタブで開かず、本文をその `id` の要素まで送る（正常系）。"""
+    # 準備（画面に入らない位置に、`id` の見出しを置く）
+    spacer = '<div style="height:2400px"></div>\n'
+    body = (
+        html_with_links(
+            ("to-usage", 'href="#usage"', "usage へ"),
+            ("to-encoded", 'href="#%E4%BD%BF%E3%81%84%E6%96%B9"', "使い方へ"),
+            ("to-none", 'href="#none"', "無い場所へ"),
+        )
+        + spacer
+        + '<h2 id="usage">usage の見出し</h2>\n'
+        + spacer
+        + '<h2 id="使い方">使い方の見出し</h2>\n'
+        + spacer
+    )
+    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    frame = frame_of(page, BODY_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    assert page.evaluate(ANCHOR_VISIBLE_JS, [BODY_FRAME, "usage"]) is False
+    assert page.evaluate(ANCHOR_VISIBLE_JS, [BODY_FRAME, "使い方"]) is False
+    # 実行（#usage のリンク）
+    frame.click("#to-usage")
+    page.wait_for_function(ANCHOR_VISIBLE_JS, arg=[BODY_FRAME, "usage"])
+    # 検証（後ろの画面は送られない）
+    assert page.evaluate("document.scrollingElement.scrollTop") == 0
+    # 実行（パーセントエンコードしたリンク）
+    frame.click("#to-encoded")
+    page.wait_for_function(ANCHOR_VISIBLE_JS, arg=[BODY_FRAME, "使い方"])
+    # 実行（無い id のリンク。クリックが要素を見える位置へ送らないよう、先頭へ戻してから押す）
+    page.evaluate(f"document.querySelector('{PANEL_BODY_SELECTOR}').scrollTop = 0")
+    frame.click("#to-none")
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証
+    assert page.evaluate(f"document.querySelector('{PANEL_BODY_SELECTOR}').scrollTop") == 0
+    assert opened_tabs(page) == tabs
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+    assert frame_location(frame) == location
+
+
+def test_normal_when_html_body_link_not_opened(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """相対の URL と `http:`・`https:`・`mailto:` 以外のスキームのリンクは、押しても開かず、枠の中でも移らない（正常系）。"""
+    # 準備
+    body = html_with_links(
+        ("relative", 'href="other.html"', "相対の URL"),
+        ("absolute-path", 'href="/mindstella.html"', "パスだけの URL"),
+        ("script", 'href="javascript:parent.__mark=1"', "javascript のリンク"),
+        ("data", 'href="data:text/html,x"', "data のリンク"),
+    )
+    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    frame = frame_of(page, BODY_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行
+    frame.click("#relative")
+    frame.click("#absolute-path")
+    frame.click("#script")
+    frame.click("#data")
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    # 検証
+    assert opened_tabs(page) == tabs
+    assert frame_location(frame) == location
+    assert frame.locator("a").count() == 4
+    assert page.evaluate("window.__mark") is None
+
+
+def test_normal_when_html_body_link_text_selected(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    link_target: str,
+) -> None:
+    """リンクの文をなぞって選んだ直後の押下では開かず、選んだ後にリンクにフォーカスして Enter を押すと開く（正常系）。"""
+    # 準備
+    body = f'<p>前の文 <a id="link" href="{link_target}/selected">リンクの文</a> 後の文</p>\n'
+    url, _ = write_review_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, BODY_FRAME)
+    frame = frame_of(page, BODY_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行（リンクの文をなぞって選ぶ）
+    frame.evaluate(PRESS_AND_SELECT_LINK_TEXT_JS, "link")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    frame.evaluate(RELEASE_AND_CLICK_LINK_JS, "link")
+    # 検証（開かず、選んだ箇所のコメントの入口が出る）
+    page.wait_for_selector(PILL, timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_timeout(FRAME_SETTLE_MS)
+    assert opened_tabs(page) == tabs
+    assert frame_location(frame) == location
+
+    def focus_and_enter() -> None:
+        """文を選んだまま、リンクにフォーカスして Enter を押す。"""
+        frame.focus("#link")
+        page.keyboard.press("Enter")
+
+    # 実行・検証（Enter を押すと開く）
+    tab = new_tab_after(page, focus_and_enter)
+    assert tab.url == f"{link_target}/selected"
+    assert opened_tabs(page) == tabs + 1
+    assert frame_location(frame) == location
+
+
+def _hash_params(page: Page) -> dict[str, list[str]]:
+    """今の URL のハッシュを、キー → 値の並びで返す。"""
+    return parse_qs(str(page.evaluate("location.hash")).lstrip("#"))
+
+
+def _make_diff_workspace(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, *, second: bool
+) -> str:
+    """D-1 の本文を書き換えて `commit`（V-1）し、`second` なら D-2 の本文も書き換えて `commit`（V-2）した配信の URL を返す。"""
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    workspace = str(root)
+    rewrites = [("D-1", "D-1 を直す")] + ([("D-2", "D-2 を直す")] if second else [])
+    for item_id, summary in rewrites:
+        updated = call_tool(
+            "update", workspace=workspace, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"}
+        )
+        assert updated.is_error is False, updated.text
+        committed = call_tool("commit", workspace=workspace, summary=summary)
+        assert committed.is_error is False, committed.text
+    result = call_tool("preview_url", workspace=workspace)
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    return str(result.data["url"])
+
+
+def test_normal_when_diff_in_hash(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """ハッシュの diff が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに diff を置き換える（正常系）。"""
+    # 準備
+    url = _make_diff_workspace(make_workspace, make_item, call_tool, second=True)
+    # 実行（時点を指すハッシュで開く）
+    open_preview(url, "#tab=decisions&view=table&diff=V-1")
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert page.inner_text(DIFF_CHIP_TITLE).endswith("D-1 を直す")
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert page.locator('table.grid tbody tr[data-id="D-2"] .df-mark').count() == 0
+    # 実行（項目を開く）
+    page.click('table.grid tbody tr[data-id="D-1"] .row-open')
+    page.wait_for_selector("aside.panel.open")
+    # 検証（diff を保つ）
+    assert _hash_params(page)["id"] == ["D-1"]
+    assert _hash_params(page)["diff"] == ["V-1"]
+    # 実行（変更履歴で V-2 を選ぶ）
+    history_before = page.evaluate("history.length")
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.click(f"{HISTORY_DIALOG} .hist-item[data-sel='V-2']")
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（diff を置き換え、履歴を増やさない）
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert page.evaluate("history.length") == history_before
+    # 実行（概要へ移る）
+    page.click('nav.tabbar a[data-tab="overview"]')
+    page.wait_for_function("!location.hash.includes('tab=decisions')", timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert _hash_params(page)["diff"] == ["V-2"]
+    # 実行（全体の検索で D-2 を開く）
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{SEARCH_DIALOG}[open]")
+    page.fill(f"{SEARCH_DIALOG} input", "D-2")
+    page.click(f'{SEARCH_DIALOG} .sr-item[data-id="D-2"]')
+    page.wait_for_selector("aside.panel.open")
+    # 検証
+    assert _hash_params(page)["id"] == ["D-2"]
+    assert _hash_params(page)["diff"] == ["V-2"]
+    # 実行（札の × を押す）
+    page.get_by_role("button", name=DIFF_OFF_NAME).click()
+    page.wait_for_function(f"!document.querySelector('{DIFF_CHIP}')", timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert "diff" not in _hash_params(page)
+    assert page.evaluate(SAVED_DIFF_JS) is None
+
+
+def test_normal_when_diff_in_hash_missing(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """記録に無いまとまり・空の pending を指すハッシュでは、差分を出さずに開き、diff を外す（正常系）。"""
+    # 準備
+    url = _make_diff_workspace(make_workspace, make_item, call_tool, second=False)
+    for missing in ("V-99", "pending"):
+        # 実行
+        open_preview(url, f"#tab=decisions&diff={missing}")
+        page.wait_for_function("!location.hash.includes('diff=')", timeout=DIFF_SETTLE_MS)
+        # 検証
+        assert page.locator(DIFF_CHIP).count() == 0
+        assert page.locator(".df-mark").count() == 0
+        assert page.locator("nav.tabbar .df-dot").count() == 0
+        assert page.evaluate("location.hash") == "#tab=decisions"
+        assert page.evaluate(SAVED_DIFF_JS) is None
+
+
+def test_normal_when_stored_diff_without_hash(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """ハッシュに diff が無ければ端末に残した時点で開き、その時点をハッシュに書く（正常系）。"""
+    # 準備（一度開いて変更履歴で V-1 を選び、閉じる）
+    url = _make_diff_workspace(make_workspace, make_item, call_tool, second=False)
+    open_preview(url, "#tab=decisions&view=table")
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.click(f"{HISTORY_DIALOG} .hist-item[data-sel='V-1']")
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    page.goto("about:blank")
+    history_before = page.evaluate("history.length")
+    # 実行（時点の無いハッシュで開き直す）
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    # 検証
+    assert page.inner_text(DIFF_CHIP_TITLE).endswith("D-1 を直す")
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert _hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before + 1

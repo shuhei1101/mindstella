@@ -2,7 +2,7 @@
 name: session
 description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__remove, mcp__mindstella__update_settings, mcp__mindstella__adopt, mcp__mindstella__edit_option, mcp__mindstella__batch, mcp__mindstella__changes_since_read, mcp__mindstella__commit, mcp__mindstella__pending, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__tags, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__readme, mcp__mindstella__submissions, mcp__mindstella__take_submission
+allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mindstella__update, mcp__mindstella__remove, mcp__mindstella__update_settings, mcp__mindstella__adopt, mcp__mindstella__edit_option, mcp__mindstella__batch, mcp__mindstella__changes_since_read, mcp__mindstella__commit, mcp__mindstella__pending, mcp__mindstella__status, mcp__mindstella__next, mcp__mindstella__impact, mcp__mindstella__find, mcp__mindstella__show, mcp__mindstella__attrs, mcp__mindstella__tags, mcp__mindstella__check, mcp__mindstella__goal, mcp__mindstella__migrate, mcp__mindstella__clear_release, mcp__mindstella__export, mcp__mindstella__preview_url, mcp__mindstella__readme, mcp__mindstella__threads, mcp__mindstella__thread, mcp__mindstella__new_thread, mcp__mindstella__reply, mcp__mindstella__set_thread_status, mcp__mindstella__update_thread
 ---
 
 # session
@@ -21,8 +21,8 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 
 | ステップ | 手順 | 実行する場面 |
 | --- | --- | --- |
-| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`readme` を呼んでワークスペースの直下の README を書き直す（`written` が偽でも利用者には示さずに続ける。ツールのエラーは本文を利用者に短く示して準備を続ける）。続けて `playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `changes_since_read` を呼ぶ。`had_read_point` が偽なら何も示さない。`added`・`changed`・`removed` があれば、前回読んだ後に足された・変わった・消された項目として、ID・タイトル・変わったキーと読んだ時点の値（`before`）を短く示し、話し合いの前提にする。続けて `submissions` を呼ぶ。1 件以上あれば、届いていた送信（ID・`target`・`target_title`・`body`・`loc`）を示す。`loc` を持つ送信には本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` の送信には項目を指さない旨を添える。送った順に 1 件ずつ、取り込みのステップで記録してから `take_submission` で取り込み済みにする。`loc` を持つ送信はその箇所への意見として、項目を指さない送信は発言と同じく対象を振り分けて記録する。0 件なら取り込みを飛ばす。取り込みの前に `pending` を呼び、空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する | 話し合いの最初の 1 回 |
-| 送信の取り込み | 利用者の発言としては取り込まず、入力された文字列の中身も記録に使わない。`submissions` を呼び、一覧にある送信だけを、準備のときと同じく送った順に 1 件ずつ取り込みのステップで記録してから `take_submission` で取り込み済みにする。0 件なら何も記録しない | 話し合いの途中に `[mindstella]` で始まる 1 行が入力された |
+| 準備 | mindstella の MCP のツール（`mcp__mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`readme` を呼んでワークスペースの直下の README を書き直す（`written` が偽でも利用者には示さずに続ける。ツールのエラーは本文を利用者に短く示して準備を続ける）。続けて `playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `changes_since_read` を呼ぶ。`had_read_point` が偽なら何も示さない。`added`・`changed`・`removed` があれば、前回読んだ後に足された・変わった・消された項目として、ID・タイトル・変わったキーと読んだ時点の値（`before`）を短く示し、話し合いの前提にする。続けて `threads` を `awaiting: true` で呼ぶ（状態は渡さず、オープンもクローズも拾う）。1 件以上あれば、スレッド 1 件ずつ、`thread` で未読の書き込みを読み、利用者に示す。示すとき、箇所（`loc`）を持つスレッドには本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` のスレッドには項目を指さない旨を添える。続けて取り込みのステップで記録してから、「スレッドの返し方」に沿って返信するかクローズにする。`loc` を持つスレッドはその箇所への意見として、項目を指さないスレッドは発言と同じく対象を振り分けて記録する。0 件ならスレッドの取り込みを飛ばす。取り込みの前に `pending` を呼び、空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する | 話し合いの最初の 1 回 |
+| スレッドの取り込み | 利用者の発言としては取り込まず、入力された文字列の中身も記録に使わない。`threads` を `awaiting: true` で呼び、一覧にあるスレッドだけを、準備のときと同じく 1 件ずつ取り込みのステップで記録してから、「スレッドの返し方」に沿って返信するかクローズにする。0 件なら何も記録しない | 話し合いの途中に `[mindstella]` で始まる 1 行が入力された |
 | 取り込み | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/取り込み.md` | 利用者が発言した（決め事・問い・やること・保留・中止・図や文書・脱線した質問） |
 | ヒアリング | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ヒアリング.md` | 取り込みの後に前提が揃った未決定がある、または利用者が次に決めることを求めた |
 | リサーチ | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/リサーチ.md` | 外部ライブラリ・外部 API を決める検討事項が積まれた、進め方ガイドの「必ず調べるもの」に当たった、または利用者が調べるよう頼んだ |
@@ -38,6 +38,19 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 設定（`.mindstella/config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す。
 資料・調査を `add` で足すときは、本文や会話でその項目を呼ぶ名前（タイトルと違う言い方）を `aliases` に、タイトルだけでは中身が分からないときは中身を表す短い文を `description` に書く。
 呼び名が増えた・変わったときは `update` で直す。タグ（`tags`）には入れない。
+記録を直して `commit` が `id` を返した後、利用者への応答・会話ログ・ワークスペースの外（Issue のスレッドなど）に直したことを書くときは、その `id` を `diff` に渡して `preview_url` を呼び、返った `url` をリンクとして添える。
+`commit` の `id` が `null` のときは添えない。
+
+## スレッドの返し方
+
+利用者のコメントは、スレッドとして届く。
+
+- 質問・依頼には `reply` で返信する（要約の書き直しと、読んだ利用者の書き込みの取り込み済みを 1 回で行う）。足した・直した項目があれば、その ID を返信に書く。返信してもクローズにしない
+- クローズのスレッドへ返信が要るときは、先に `set_thread_status` で理由つきでオープンに戻す
+- 返事の要らない書き込み（「了解」など）には返信しない。話が済んでいれば `set_thread_status` で理由つきでクローズにし、`update_thread`（`take: true`・要約）で取り込み済みにする
+- `thread` で読んだだけでは取り込み済みにならない
+- 取り込み待ちのスレッドのほかは、既定でオープンのスレッドの未読だけを読む。過去の経緯が要るときだけ `threads` を `status: closed` か `all` で、`thread` を `unread_only: false` で呼ぶ。一覧はキーだけで引き、要約で読むかを決める
+- ワークスペースの外へ書き込む前の確認（Issue の起票 など）と、話の流れと関係の無い知らせは、`new_thread` で本文・要約・タグを渡してスレッドを立て、返事が届くまで外へは書き込まない。今の話の流れの中で答えが要る問い（ヒアリング・方針転換の確認・リサーチを始めてよいか）はターミナルで聞く。立てられなかったときは同じことをターミナルで聞く。タグは記録の話題のタグと同じく `tags` の一覧から使い回す
 
 ## ツール
 
@@ -69,7 +82,11 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | `export` | `workspace`・`out` |
 | `goal` | `workspace` |
 | `clear_release` | `workspace` |
-| `preview_url` | `workspace` |
+| `preview_url` | `workspace`・`diff`（任意。差分を開くまとまりの ID） |
 | `readme` | `workspace` |
-| `submissions` | `workspace` |
-| `take_submission` | `workspace`・`id`（送信の ID） |
+| `threads` | `workspace`・`status`（任意。`open`・`closed`・`all`）・`tag`（任意）・`unread`（任意）・`awaiting`（任意） |
+| `thread` | `workspace`・`id`（スレッドの ID）・`unread_only`（任意。既定は真） |
+| `new_thread` | `workspace`・`body`・`summary`・`tags`（任意）・`target`（任意。向ける項目の ID） |
+| `reply` | `workspace`・`id`・`body`・`summary`・`take`（任意。既定は真） |
+| `set_thread_status` | `workspace`・`id`・`status`（`open`・`closed`）・`reason`（任意） |
+| `update_thread` | `workspace`・`id`・`summary`（任意）・`tags`（任意）・`take`（任意） |

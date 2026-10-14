@@ -2,7 +2,7 @@ title: "プレビューを開く"
 entry:
   kind: screen
   value: サーバーの配信の URL（`preview_url` が返す `http://127.0.0.1:{ポート}/mindstella.html`。画面は『プレビューの配信』が返し、雛形は `plugins/mindstella/skills/mindmap/preview/`）。`export` が書き出した配る書き出しも同じ画面を開く
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中のコメント）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`PUT /api/config/display`（ワークスペースの既定の書き換え）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込み）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`GET /api/threads`（スレッド）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`PUT /api/config/display`（ワークスペースの既定の書き換え）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
 flows:
   - name: 正常系
     summary: ハッシュが指す画面・表示形式・項目を開く
@@ -205,7 +205,7 @@ flows:
     expected:
       - 入口を押した後、下端の入力に「本文 2 行目」と選んだ文が添えられている
       - 溜めた後、コメントのボタンの件数が 1 で、詳細の一番下のレビュー中のコメントにその 1 件がある
-      - 送った後、取り込んでいない送信（`submissions`）が A-1 の本文の 2 行目の箇所を持つ 1 件を返し、コメントのボタンの件数が 0
+      - 送った後、取り込み待ちのスレッドの一覧（`threads` を `awaiting` で）が A-1 の本文の 2 行目の箇所を持つ 1 件を返し、コメントのボタンの件数が 0
       - 入口と入力欄とコメントのボタンとまとめて送るボタンに Tab キーで届き、入口は Esc で閉じる
     test: test_normal_when_sent
   - name: 異常系（本文が空）
@@ -534,9 +534,207 @@ flows:
       - 描いた本文で `data-df` を持つ要素が、`<p>` と `<section>` の 2 つだけで、どちらも `chg`
       - '`<b>`・`<h2>`・`<div>` には印が無い'
     test: test_normal_when_html_body_diff_after_closed_element
+  - name: 正常系（時点を指す）
+    summary: ハッシュの diff が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに diff を置き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を、端末の保存領域が空の実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-1 の本文を書き換えて `commit`（V-1）し、その後 D-2 の本文を書き換えて `commit`（V-2）したワークスペース
+        notes: ハッシュは `tab=decisions&view=table&diff=V-1`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions&view=table&diff=V-1 で開く
+        IF-->>ユーザー: V-1 の差分の表示の検討事項の表
+        ユーザー->>IF: D-1 を開く
+        IF-->>ユーザー: D-1 の詳細パネルと、diff を保ったハッシュ
+        ユーザー->>IF: 変更履歴で V-2 を選ぶ
+        IF-->>ユーザー: V-2 の差分の表示と、diff を置き換えたハッシュ
+        ユーザー->>IF: タブの帯で概要へ移り、全体の検索で D-2 を開く
+        IF-->>ユーザー: D-2 の詳細パネルと、diff を保ったハッシュ
+        ユーザー->>IF: トップバーの札の × を押す
+        IF-->>ユーザー: 印の無い画面と、diff の無いハッシュ
+      ```
+    expected:
+      - 開いたとき、トップバーに V-1 の説明の札が出て、D-1 の行に変更の印があり、D-2 の行には無い
+      - D-1 を開いた後の URL のハッシュが `id=D-1` と `diff=V-1` を持つ
+      - V-2 を選んだ後、URL のハッシュの `diff` が `V-2` で、選ぶ前より履歴の数が増えていない
+      - 概要へ移った後と、全体の検索で D-2 を開いた後のどちらでも、URL のハッシュが `diff=V-2` を持つ
+      - × を押した後、URL のハッシュに `diff` が無く、端末の保存領域の選んだ時点が空
+    test: test_normal_when_diff_in_hash
+  - name: 正常系（記録に無い時点を指す）
+    summary: 記録に無いまとまり・空の pending を指すハッシュでは、差分を出さずに開き、diff を外す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を、端末の保存領域が空の実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-1 の本文を書き換えて `commit`（V-1）し、まだまとめていない変更を持たないワークスペース
+        notes: ハッシュは `tab=decisions&diff=V-99` と `tab=decisions&diff=pending` の 2 つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions&diff=V-99 で開く
+        IF-->>ユーザー: 印の無い検討事項の画面と、diff の無いハッシュ
+      ```
+    expected:
+      - どちらのハッシュで開いても、トップバーに選んだ時点の札が無く、D-1 にもタブにも印が無い
+      - 開いた後の URL のハッシュが `tab=decisions` だけで、端末の保存領域の選んだ時点が空
+    test: test_normal_when_diff_in_hash_missing
+  - name: 正常系（端末に時点が残り、ハッシュに時点が無い）
+    summary: ハッシュに diff が無ければ端末に残した時点で開き、その時点をハッシュに書く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-1 の本文を書き換えて `commit`（V-1）したワークスペース
+      - name: 端末の保存領域
+        description: 一度開いて変更履歴で V-1 を選び、閉じたブラウザ
+        notes: 開き直すハッシュは `tab=decisions`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions で開く
+        IF-->>ユーザー: V-1 の差分の表示と、diff=V-1 を持つハッシュ
+      ```
+    expected:
+      - トップバーに V-1 の説明の札が出て、D-1 に変更の印がある
+      - 開いた後の URL のハッシュが `diff=V-1` を持ち、履歴の数が増えていない
+    test: test_normal_when_stored_diff_without_hash
+  - name: 正常系（HTML の本文のリンクを押す）
+    summary: 枠の中の外へのリンクを押すと、枠の中では移らず、新しいタブで開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）。リンク先は、テストが別のポートで配るページ（外のサイトへ通信しない）。`mailto:` のリンクを押す前に、親の画面の `window.open` を呼び出しを記録するものに差し替える
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: 本文は、リンク先のページを指す `target` を持たないリンクと `target="_blank"` を持つリンク、`mailto:a@example.com` のリンクを持つ。ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: target を持たないリンクを押す
+        IF->>IF: 既定の動作を止め、window.open で開く
+        IF-->>ユーザー: リンク先を開いた新しいタブ
+        ユーザー->>IF: target="_blank" のリンクを押す
+        IF-->>ユーザー: リンク先を開いた新しいタブ
+        ユーザー->>IF: target を持たないリンクを Ctrl を押しながら押す・中ボタンで押す・フォーカスして Enter を押す
+        IF-->>ユーザー: 押すたびにリンク先を開いた新しいタブ
+        ユーザー->>IF: mailto: のリンクを押す
+        IF->>IF: 既定の動作を止め、window.open で開く
+    expected:
+      - '`target` を持たないリンク・`target="_blank"` のリンクを押すたびに、リンク先を開いたタブが 1 つ増える'
+      - Ctrl を押しながら押す・中ボタンで押す・フォーカスして Enter を押すでも、押すたびにリンク先を開いたタブが 1 つ増える
+      - どのリンクを押した後も、詳細パネルの iframe は A-1 の本文を描いたままで、iframe の文書の場所が変わらない
+      - 新しいタブのページの `window.opener` が `null`
+      - '`mailto:` のリンクを押すと、`window.open` が `mailto:a@example.com`・`_blank`・`noopener,noreferrer` で 1 回呼ばれる'
+    test: test_normal_when_html_body_link
+  - name: 正常系（HTML の本文の中の場所を指すリンクを押す）
+    summary: '`#` で始まるリンクは新しいタブで開かず、本文をその `id` の要素まで送る'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: 本文は先頭に `href="#usage"`・`href="#%E4%BD%BF%E3%81%84%E6%96%B9"`・`href="#none"` のリンク、詳細パネルを開いたときに画面に入らない位置に `id="usage"` の見出しと `id="使い方"` の見出しを持つ。ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: #usage のリンクを押す
+        IF->>IF: 既定の動作を止め、id が usage の要素まで本文のスクロール領域を送る
+        ユーザー->>IF: #%E4%BD%BF%E3%81%84%E6%96%B9 のリンクを押す
+        IF->>IF: id が「使い方」の要素まで本文のスクロール領域を送る
+        ユーザー->>IF: #none のリンクを押す
+        IF->>IF: 既定の動作を止める
+    expected:
+      - '`#usage` のリンクを押すと、`id="usage"` の見出しが詳細パネルの本文のスクロール領域の見える範囲に入り、後ろの画面は送られない'
+      - パーセントエンコードした `#` のリンクを押すと、`id="使い方"` の見出しが見える範囲に入る
+      - '`#none` のリンクを押しても、本文のスクロール領域の位置が変わらない'
+      - どのリンクを押しても、タブは増えず、URL のハッシュは `tab=docs&id=A-1` のままで、iframe の文書の場所が変わらない
+    test: test_normal_when_html_body_anchor_link
+  - name: 正常系（HTML の本文の開かないリンクを押す）
+    summary: 相対の URL と `http:`・`https:`・`mailto:` 以外のスキームのリンクは、押しても開かず、枠の中でも移らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: 本文は `href="other.html"`・`href="/mindstella.html"`・`href="javascript:parent.__mark=1"`・`href="data:text/html,x"` のリンクを持つ。ハッシュは `tab=docs&id=A-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: 4 つのリンクを順に押す
+        IF->>IF: 既定の動作を止める
+    expected:
+      - どのリンクを押しても、タブは増えない
+      - どのリンクを押した後も、詳細パネルの iframe は A-1 の本文を描いたままで、iframe の文書の場所が変わらない
+      - ページの変数に印が残らない（`javascript:` が実行されていない）
+    test: test_normal_when_html_body_link_not_opened
+  - name: 正常系（HTML の本文のリンクの文を選ぶ）
+    summary: リンクの文をなぞって選んだ直後の押下では開かず、選んだ後にリンクを押す・Enter を押すと開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）。リンク先は、テストが別のポートで配るページ（外のサイトへ通信しない）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: '本文は段落と、リンク先のページを指すリンクを持つ。ハッシュは `tab=docs&id=A-1`。なぞって選ぶ操作は、枠の文書へ `pointerdown` を送り、Range でリンクの文を選び（`selectionchange`）、`pointerup` とリンクへの `click`（`detail` が 1）を送って作る（sandbox の iframe の上では Playwright の `page.mouse` が返らない。PoC #215）'
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: #tab=docs&id=A-1 で開く
+        IF-->>SV: GET /api/records
+        SV-->>IF: 記録（marked_bodies に A-1.html）
+        IF->>IF: sandbox の iframe に A-1 の本文を描き、枠の文書に押下の受け手を足す
+        IF-->>ユーザー: A-1 の詳細パネル
+        ユーザー->>IF: リンクの文をなぞって選ぶ
+        IF->>IF: 既定の動作を止める（開かない）
+        IF-->>ユーザー: 選んだ箇所のコメントの入口
+        ユーザー->>IF: 文を選んだまま、リンクにフォーカスして Enter を押す
+        IF->>IF: 既定の動作を止め、window.open で開く
+        IF-->>ユーザー: リンク先を開いた新しいタブ
+    expected:
+      - リンクの文をなぞって選んだ直後は、タブが増えず、選んだ箇所のコメントの入口が出る
+      - 文を選んだまま、リンクにフォーカスして Enter を押すと、リンク先を開いたタブが 1 つ増える
+      - どの操作の後も、iframe の文書の場所が変わらない
+    test: test_normal_when_html_body_link_text_selected
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
-side_effects: コメントを溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `submissions.yaml` に足す（『コメントをまとめて送る』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
+side_effects: コメント・返信を溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `threads.yaml` にスレッドと返信を足し（『コメントをまとめて送る』）、クローズ・オープンへの戻しで `threads.yaml` の状態を書き換える（『画面からのスレッドの状態の書き換え』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
 callers:
   - dev/設計書/シナリオ/複合ユースケース/プレビューで記録を読み返す#
 request:
@@ -602,7 +800,7 @@ request:
     default: なし（差分を出さない）
     description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
     constraints: 記録に無いまとまりの ID・まだまとめていない変更が空の `pending` のときは差分を出さない
-    notes: 利用者が変更履歴のモーダルで選ぶ。端末の保存領域に持ち、URL のハッシュには書かない
+    notes: 利用者が変更履歴のモーダルで選ぶ。端末の保存領域に持ち、URL のハッシュの `diff` にも書く
   - name: 選んだ範囲
     type: Range
     required: false
@@ -618,6 +816,14 @@ request:
     constraints: 見出しの文言の空白を `-` にした形。同じ文言の見出しが 2 つ以上あるときは、本文の頭から 2 つ目が `-1`、3 つ目が `-2` を続ける。`id` があるときだけ効く。本文に無い見出しのときと、本文が HTML の資料のときは本文の頭で開き、ハッシュから `h` を外す
     example: 決め方
     notes: URL のハッシュの引数。本文の中の `[文言](#見出し)` のリンクは、同じ形で見出しを指す
+  - name: diff
+    type: "'since' | 'pending' | str"
+    required: false
+    default: なし（端末の保存領域に残した時点。残していなければ差分を出さない）
+    description: 差分の表示で比べる時点。値は『変更履歴で選んだ時点』と同じ
+    constraints: 端末の保存領域に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID・まだまとめていない変更が空の `pending` のときは差分を出さずに開き、ハッシュから `diff` を外す。ハッシュに `diff` が無く、保存領域の時点で差分を出せたときは、その時点をハッシュに書く
+    example: V-2
+    notes: URL のハッシュの引数。変更履歴で時点を選ぶと書き、差分の表示をやめると外す
 request_example: |-
   ```text
   http://127.0.0.1:43817/mindstella.html#tab=decisions&view=table&id=D-3&f.status=%E8%A6%81%E8%A6%8B%E7%9B%B4%E3%81%97
@@ -691,7 +897,7 @@ constraints:
   - item: 前の版の組み立て
     constraint: 項目の `history` を新しいものから順に、選んだ時点の最初の `seq` まで当てる（キーは `before` で戻し、本文は `body_diff` で戻す）。選んだ時点の範囲の中の回が 1 つでも保持する回数を超えて消えていれば（範囲の要素が無いか、項目の `history_dropped_seq` が範囲の始まりの `seq` より大きい）、印だけ付けて詳細パネルにその旨を出す。`body_diff` の `now` が今の本文に当たらなければ、本文は今の内容を描いて差分を出せない旨を出し、キーの差分は出す。`update_settings` が付け替えた `phase` は変更履歴に無いため、前の版でも今の値で出す
   - item: 差分の表示と書き換え
-    constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さず、履歴にも積まない。書き換えの知らせで読み直したときは、同じ時点の差分の表示のまま描き直す
+    constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さず、履歴にも積まずにハッシュの `diff` を置き換える。画面・項目を移ってもハッシュの `diff` を保つ。書き換えの知らせで読み直したときは、同じ時点の差分の表示のまま描き直す。選んだまとまりが記録から消えたか（保持する回数を超えた）、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめてハッシュから `diff` を外す
   - item: コメントの読み書き
     constraint: '開いたときに `GET /api/comments` を読み、コメントのボタンの件数・コメントの一覧・詳細の一番下のレビュー中のコメント・入力欄の書きかけを描く。溜める・直す・消す・元に戻す・まとめて送るはそれぞれの API へ `Content-Type: application/json` で送り、送っている間はそのボタンを押せなくする。空白だけの本文は送らずに理由を出す。届かない・エラーのときは本文を残して理由（届いたときは `detail`、409 のまとめて送るは `stale` を行ごとに）を出す。書きかけは入力が止まったときと入力欄を閉じるときに `PUT /api/drafts` へ送る。一覧のチェックは画面だけが持ち、溜めたコメントはチェックした状態で入る'
   - item: 選んだ箇所の対応づけ
@@ -703,6 +909,12 @@ constraints:
   - item: HTML の本文の差分
     constraint: 前の版の本文と今の本文の原文を行ごとに比べ、今の本文で足した行と、消した行と入れ替えた行（変えた行）を求める（空行だけを足した行は入れない）。描いた結果では、その行を含む最も内側の `data-line` を持つ要素に「足した」か「変わった」の印を付ける。行を含む要素は `data-line` ≦ 行 ≦ `data-line-end` の要素で、最も内側はそのうち文書の順で最後のもの（コメントの一覧から開いたときに示す要素も同じ）。消しただけの箇所は描いた結果に出せないため、原文の差分で見られる旨を添える。前の版の本文が Markdown（形式を替えた）のときは、原文の差分だけを出す
     notes: 差分の見せ方はモック作成でユーザーが案 C を選んだ（PR ドキュメントの確認ログ）
+  - item: スレッドの読み書き
+    constraint: コメントの一覧を開いたときと、書き換えの知らせを受けたときに `GET /api/threads` を読み、スレッドの一覧と開いているスレッドを描き直す（入力欄の書きかけ・開いているスレッド・一覧の絞り込みを保つ）。一覧の状態・タグの絞り込みは画面が持つ。返信は `POST /api/comments` に `thread` を渡してレビュー中に溜め、クローズとオープンへの戻しは理由を添えて `PATCH /api/threads/{id}` へ送る。開いているスレッドの状態が知らせで変わったら、変わる前の状態で開いた理由の入力を閉じる
+    notes: 単一ユースケース『スレッドで話す』。画面の要素は画面設計で決める
+  - item: HTML の本文の中のリンク
+    constraint: 親の画面が枠の文書に `click`・`auxclick` の受け手を足し、押された要素から最も近い `href` を持つ `a`（SVG の `a` を含む）・`area` の押下を受けて、既定の動作を止める（枠の中では移らない。`target` の有無、Ctrl・Shift・Meta つき、中ボタン、Enter によらない）。`href` の属性の値が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻した `id` を持つ枠の中の要素まで本文のスクロール領域を送り、その要素が無ければ何もしない（URL のハッシュは変えず、履歴に積まない）。それ以外は、`href` の属性の値がそれだけで絶対の URL として読め、スキームが `http:`・`https:`・`mailto:` のリンクだけを、親の画面の `window.open` に `_blank` と `noopener,noreferrer` を渡して開く。相対の URL とほかのスキーム（`javascript:`・`data:`・`file:` ほか）のリンクは開かない。ポインターを押してから離すまでの間に枠の中の選択が変わり、`click` の時点で選択が空でないときは、開かず送らない（リンクの文をなぞって選んだ直後）。キーボードからの `click`（`detail` が 0）は選択の有無によらず扱う。枠に描く全ての場所（HTML の本文・`html` のコードブロック・HTML の本文の差分の描いた結果・配る書き出し）で同じ
+    notes: '測った記録（Chromium 151、Linux、headless と headed）: `mailto:` を `window.open`（`_blank`・`noopener,noreferrer`）で開くと、新しいタブは残らず、親の画面は移らず `beforeunload` も届かない。親の画面の文書のリンクとして押す開き方と `location.assign` は、親の画面に `beforeunload` が届くため採らない。メールのアプリが立ち上がるかは端末の設定によるため、テストでは `window.open` の呼び出しで確かめる'
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#

@@ -20,6 +20,8 @@ namespace MindmapPreview {
   export type FormState = {
     target: string | null;
     loc: Location | null;
+    /** 返信先のスレッドの ID（スレッドの返信の入力欄のとき。持つときは `target`・`loc` を持たない） */
+    thread: string | null;
     /** 入力欄の書きかけ */
     body: string;
     status: SendStatus;
@@ -47,6 +49,28 @@ namespace MindmapPreview {
     listOpen: boolean;
     /** 一覧の行から開いたコメントの ID */
     opened: string | null;
+    /** スレッドの向けた項目を開いたとき、その項目の中で示す箇所 */
+    highlight: { target: string; loc: Location } | null;
+    /** 最後に読めたスレッド（読めなかったときは前のまま残す） */
+    threads: Thread[];
+    /** 直前のスレッドの読み取りが断られた・届かなかったときの理由。読めたら null */
+    threadsError: { detail: string | null } | null;
+    /** パネルの中に出している画面。パネルを開くたびに `list` に戻す */
+    view: PanelView;
+    /** レビュー中の書き込みを開く前の画面（「戻る」の戻り先） */
+    reviewFrom: "list" | "thread";
+    /** スレッドの状態の絞り込み。ページを開いたときは `open` で、パネルを閉じても保つ */
+    filter: ThreadFilter;
+    /** スレッドを絞っているタグ。パネルを閉じても保つ */
+    tag: string | null;
+    /** 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID） */
+    openedThread: OpenedThread | null;
+    /** 新しいスレッドの入力を出しているか */
+    composing: boolean;
+    /** 開いているスレッドの理由の入力の状態。スレッドを開く・一覧へ戻るときに閉じて空にする */
+    reason: ReasonState;
+    /** スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID */
+    reviewFocus: string | null;
   };
 
   /** 表示の設定の画面の状態（開いている間だけ持つ。描き直し・書き換えの知らせでも保つ） */
@@ -63,9 +87,9 @@ namespace MindmapPreview {
     storageOk: boolean;
   };
 
-  /** 入力欄のキー。向けた先（`target` と `loc` の組）を 1 つの文字列にする */
-  export function formKey(target: string | null, loc: Location | null): string {
-    return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null]);
+  /** 入力欄のキー。向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする */
+  export function formKey(target: string | null, loc: Location | null, thread: string | null = null): string {
+    return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null, thread]);
   }
 
   /** 絞り込みの状態（開いている間の状態。表示形式の切り替え・描き直し・書き換えの知らせでも保つ。サーバーの配信では、条件を変えるたびに `Prefs.filters` へ写して端末に残す） */
@@ -439,13 +463,24 @@ namespace MindmapPreview {
         : { ...next, tab: "overview", view: defaultView("overview"), filters: {} };
     // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
     const since = await resolveSince({ serverMode, prefs, persist });
-    let point: DiffPoint | null = resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
 
     // ===== 画面の土台 =====
     const top = h({ tag: "div", attrs: { id: "top" } });
     const main = h({ tag: "main", attrs: { class: "content", id: "main" } });
     document.body.prepend(top, main);
-    let route = visibleRoute(parseHash({ hash: location.hash, index }));
+    /** ハッシュの `diff`（無ければ端末の設定）が指す時点を引き、引けた時点を端末の設定と route に揃える（引けなければどちらも null） */
+    const settleDiffPoint = (next: Route): { route: Route; point: DiffPoint | null } => {
+      const settled = resolveDiffPoint(data.changes, next.diff ?? prefs.diffSel ?? null, since);
+      const sel = settled?.sel ?? null;
+      if ((prefs.diffSel ?? null) !== sel) {
+        prefs.diffSel = sel;
+        persist();
+      }
+      return { route: { ...next, diff: sel }, point: settled };
+    };
+    const initial = settleDiffPoint(visibleRoute(parseHash({ hash: location.hash, index })));
+    let route = initial.route;
+    let point: DiffPoint | null = initial.point;
     let fullViewer: HTMLElement | null = null;
     /** 詳細パネルがもう画面に入れた見出し（同じ項目・同じ見出しでは、描き直しのたびに本文のスクロールを戻さない） */
     let shownHeading: { id: string; heading: string } | null = null;
@@ -461,7 +496,8 @@ namespace MindmapPreview {
       const screenChanged =
         next.tab !== route.tab || next.view !== route.view || Object.keys(next.filters).length > 0;
       const idChanged = next.id !== route.id;
-      route = next;
+      // 差分の時点は、画面・項目を移っても引き継ぐ
+      route = { ...next, diff: route.diff };
       navigate({ route: { ...route, filters: {} }, push });
       render({ screen: screenChanged || (route.tab === "decisions" && route.view === "map" && idChanged) });
     };
@@ -504,7 +540,7 @@ namespace MindmapPreview {
       if (kind === undefined) return;
       // 表示しない種類の項目は、概要の上の詳細パネルで開く
       const tab: Tab = resolved.kinds.has(kind) ? kind : "overview";
-      go({ tab, view: defaultView(tab), id, full: false, filters: {}, heading: null }, tab !== route.tab);
+      go({ tab, view: defaultView(tab), id, full: false, filters: {}, heading: null, diff: route.diff }, tab !== route.tab);
     };
 
     // ===== ロック =====
@@ -809,6 +845,11 @@ namespace MindmapPreview {
 
     /** コメントの一覧の行から開いたとき、そのコメントの箇所。別の項目へ移っていれば示すのをやめる */
     const openedLocation = (): Location | null => {
+      // スレッドの向けた項目から開いた: その項目の中でだけ箇所を示す
+      if (comment.highlight !== null) {
+        if (comment.highlight.target === route.id) return comment.highlight.loc;
+        comment.highlight = null;
+      }
       const opened = comment.review.items.find((item) => item.id === comment.opened);
       if (opened === undefined || opened.target !== route.id) {
         comment.opened = null;
@@ -950,7 +991,21 @@ namespace MindmapPreview {
       stale: new Map(),
       listOpen: false,
       opened: null,
+      highlight: null,
+      threads: [],
+      threadsError: null,
+      view: "list",
+      reviewFrom: "list",
+      filter: "open",
+      tag: null,
+      openedThread: null,
+      composing: false,
+      reason: { open: false, body: "", status: "idle", detail: null },
+      reviewFocus: null,
     };
+    const threadsApi = threadApi();
+    /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
+    let listScroll = 0;
     /** まとめて送った結果・本文を直している行・直せなかった理由・項目を指さない入力にフォーカスがあるか */
     let outcome: SendOutcome | null = null;
     let editing: string | null = null;
@@ -960,9 +1015,6 @@ namespace MindmapPreview {
     let editBody: string | null = null;
     /** 詳細パネルが今出している項目（別の項目へ移ったか閉じたかを知るため） */
     let detailShown: string | null = null;
-    let freeFocused = false;
-    /** 入力欄を差し替えている間か（外した入力欄の blur を受けないため） */
-    let formRedrawing = false;
     /** チェックした状態で入れるのは、初めて読んだコメントだけ */
     const knownIds = new Set<string>();
 
@@ -980,9 +1032,6 @@ namespace MindmapPreview {
     };
     /** 書きかけを保つ待ちのタイマー（入力欄のキー → タイマー） */
     const draftTimers = new Map<string, number>();
-
-    /** 幅 720px 以下か（項目を指さない入力を畳む幅） */
-    const isCompact = (): boolean => matchMedia("(max-width: 720px)").matches;
 
     /** 読んだレビュー中を状態に入れる。初めて読んだコメントはチェックした状態で入れ、最初の読み込みだけ書きかけの箇所を入力に添える */
     const applyReview = (review: ReviewState, first: boolean): void => {
@@ -1007,13 +1056,24 @@ namespace MindmapPreview {
       if (result.ok && result.data !== null) applyReview(result.data, first);
     };
 
+    /** スレッドを読み直す。読めたら置き換え、断られた・届かないときは前のまま残して理由を持つ */
+    const loadThreads = async (): Promise<void> => {
+      const result = await threadsApi.read();
+      if (result.ok && result.data !== null) {
+        comment.threads = result.data.threads;
+        comment.threadsError = null;
+        return;
+      }
+      comment.threadsError = { detail: result.ok ? null : result.detail };
+    };
+
     /** 向けた先の入力欄の状態。無ければ、同じ向けた先の書きかけの本文で作る */
-    const formStateOf = (target: string | null, loc: Location | null): FormState => {
-      const key = formKey(target, loc);
+    const formStateOf = (target: string | null, loc: Location | null, thread: string | null = null): FormState => {
+      const key = formKey(target, loc, thread);
       let state = comment.forms.get(key);
       if (state === undefined) {
-        const draft = comment.review.drafts.find((entry) => formKey(entry.target, entry.loc) === key);
-        state = { target, loc, body: draft?.body ?? "", status: "idle", count: null, detail: null };
+        const draft = comment.review.drafts.find((entry) => formKey(entry.target, entry.loc, entry.thread ?? null) === key);
+        state = { target, loc, thread, body: draft?.body ?? "", status: "idle", count: null, detail: null };
         comment.forms.set(key, state);
       }
       return state;
@@ -1021,19 +1081,20 @@ namespace MindmapPreview {
 
     /** 書きかけをすぐ保つ（空なら消える）。届かないときは何も出さない */
     const saveDraftNow = (state: FormState): void => {
-      const key = formKey(state.target, state.loc);
+      const key = formKey(state.target, state.loc, state.thread);
       window.clearTimeout(draftTimers.get(key));
       draftTimers.delete(key);
       void api.saveDraft({
         ...(state.target === null ? {} : { target: state.target }),
         ...(state.loc === null ? {} : { loc: state.loc }),
+        ...(state.thread === null ? {} : { thread: state.thread }),
         body: state.body,
       });
     };
 
     /** 入力が止まってから書きかけを保つ */
     const scheduleDraft = (state: FormState): void => {
-      const key = formKey(state.target, state.loc);
+      const key = formKey(state.target, state.loc, state.thread);
       window.clearTimeout(draftTimers.get(key));
       draftTimers.set(
         key,
@@ -1062,16 +1123,20 @@ namespace MindmapPreview {
 
     /** 入力欄を、今の状態で差し替える（`focus` なら入力欄へフォーカスを戻す）。別の項目へ移っていたら状態だけ持っておく */
     const redrawForm = ({ target, focus }: { target: string | null; focus: boolean }): void => {
-      const current =
-        target === null
-          ? document.querySelector<HTMLFormElement>(".comments-panel form.send")
-          : document.querySelector<HTMLFormElement>("aside.panel form.send, dialog.full form.send");
-      if (current === null || (target !== null && route.id !== target)) return;
+      // 項目を指さない入力（新しいスレッド）はパネルの一部なので、パネルを描き直す
+      if (target === null) {
+        renderComments();
+        if (focus) {
+          const field = document.querySelector<HTMLTextAreaElement>(".comments-panel .talk-new form.send textarea");
+          field?.focus();
+          field?.setSelectionRange(field.value.length, field.value.length);
+        }
+        return;
+      }
+      const current = document.querySelector<HTMLFormElement>("aside.panel form.send, dialog.full form.send");
+      if (current === null || route.id !== target) return;
       const next = sendForm(formProps(target));
-      // 外した入力欄の blur は、利用者が外へ出たのではないので受けない
-      formRedrawing = true;
       current.replaceWith(next);
-      formRedrawing = false;
       if (!focus) return;
       const field = next.querySelector("textarea");
       field?.focus();
@@ -1106,7 +1171,8 @@ namespace MindmapPreview {
         status: state.status,
         count: state.count,
         detail: state.detail,
-        collapsed: target === null && isCompact() && !freeFocused && state.body === "",
+        collapsed: false,
+        ...(target === null ? { label: "新しいスレッド" } : {}),
         on: {
           input: (body) => {
             state.body = body;
@@ -1120,18 +1186,8 @@ namespace MindmapPreview {
           save: (body) => void saveComment(state, body),
           unquote: () => unquote(state),
           copy: (body) => void navigator.clipboard?.writeText(body),
-          focus: () => {
-            if (target !== null || freeFocused) return;
-            freeFocused = true;
-            // 畳んでいた入力だけを広げる（広げない入力は作り直さず、入力中の欄を壊さない）
-            if (isCompact() && state.body === "") redrawForm({ target: null, focus: true });
-          },
-          blur: () => {
-            if (formRedrawing || target !== null || !freeFocused) return;
-            freeFocused = false;
-            // 本文が空のまま外へ出たら畳む
-            if (isCompact() && state.body === "") redrawForm({ target: null, focus: false });
-          },
+          focus: () => undefined,
+          blur: () => undefined,
         },
       };
     };
@@ -1181,6 +1237,21 @@ namespace MindmapPreview {
     };
 
     // ===== コメントの一覧 =====
+    /** 開いているスレッドの返信の入力の引数（書きかけの本文を含む） */
+    const replyState = (): ReplyState => {
+      const opened = comment.openedThread;
+      // スレッドを開いていない・まだ送っていない新しいスレッド: 返信の入力は出さない
+      if (opened === null || opened.pending) return { body: "", status: "idle", count: null, detail: null };
+      const { body, status, count, detail } = formStateOf(null, null, opened.id);
+      return { body, status: status === "empty" ? "idle" : status, count, detail };
+    };
+
+    /** 描き直す前に、打っている途中の理由を状態に写す（理由は確定のときにだけ入力部品が知らせるため） */
+    const captureTyped = (): void => {
+      const reasonField = document.querySelector<HTMLTextAreaElement>(".comments-panel form.th-reason textarea");
+      if (reasonField !== null && comment.reason.open) comment.reason.body = reasonField.value;
+    };
+
     /** 一覧を作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
     const renderComments = (): void => {
       const current = document.querySelector<HTMLElement>(".comments-panel");
@@ -1189,41 +1260,18 @@ namespace MindmapPreview {
         scheduleInert();
         return;
       }
+      captureTyped();
       const active = document.activeElement;
       const focusKey = active instanceof HTMLElement && current?.contains(active) === true ? (active.dataset["focus"] ?? null) : null;
-      const typing = active instanceof HTMLTextAreaElement && active.closest(".comments-panel form.send") !== null ? active : null;
+      // 入力欄（新しいスレッド・返信・理由）に打っている途中なら、選択も保つ
+      const typing =
+        active instanceof HTMLTextAreaElement && active.closest(".comments-panel form.send, .comments-panel form.th-reason") !== null
+          ? active
+          : null;
+      const typingForm = typing?.closest("form")?.classList.contains("th-reason") === true ? "form.th-reason" : "form.send";
       const selection = typing === null ? null : { start: typing.selectionStart, end: typing.selectionEnd };
       const scroll = current?.querySelector<HTMLElement>(".comments-body")?.scrollTop ?? 0;
-      const next = commentsPanel({
-        items: comment.review.items,
-        removed: comment.removed,
-        checked: comment.checked,
-        editing,
-        editingIn,
-        editError,
-        editBody,
-        stale: comment.stale,
-        result: outcome,
-        selected: comment.opened,
-        titleOf: (id) => index.byId.get(id)?.item.title ?? null,
-        free: formProps(null),
-        on: {
-          close: closeList,
-          check: (id, checked) => {
-            if (checked) comment.checked.add(id);
-            else comment.checked.delete(id);
-            renderComments();
-          },
-          checkAll: (checked) => {
-            comment.checked = checked ? new Set(comment.review.items.map((item) => item.id)) : new Set();
-            renderComments();
-          },
-          send: () => void sendChecked(),
-          open: openRow,
-          ...reviewRowHandlers(""),
-          unloc: (id) => void detachLocation(id),
-        },
-      });
+      const next = commentsPanel(panelProps());
       if (current === null) {
         document.body.append(next);
         requestAnimationFrame(() => next.classList.add("open"));
@@ -1235,7 +1283,7 @@ namespace MindmapPreview {
       const body = panel?.querySelector<HTMLElement>(".comments-body");
       if (body !== null && body !== undefined) body.scrollTop = scroll;
       if (typing !== null && selection !== null) {
-        const restored = panel?.querySelector<HTMLTextAreaElement>("form.send textarea");
+        const restored = panel?.querySelector<HTMLTextAreaElement>(`${typingForm} textarea`);
         restored?.focus();
         restored?.setSelectionRange(selection.start, selection.end);
       } else if (focusKey !== null) {
@@ -1253,7 +1301,17 @@ namespace MindmapPreview {
       renderComments();
     };
 
-    /** コメントの一覧を開く（絞り込みのドロワーは閉じる） */
+    /** パネルの中の画面の状態を、開いた直後（スレッドの一覧）に戻す */
+    const resetPanelView = (): void => {
+      comment.view = "list";
+      comment.reviewFrom = "list";
+      comment.openedThread = null;
+      comment.composing = false;
+      comment.reason = { open: false, body: "", status: "idle", detail: null };
+      comment.reviewFocus = null;
+    };
+
+    /** コメントの一覧を開く（絞り込みのドロワーは閉じ、スレッドの一覧から始める） */
     const openList = (): void => {
       // 絞り込みのドロワー・表示の設定のパネルとは 1 つだけを開く
       if (filterState.drawerOpen) {
@@ -1263,8 +1321,11 @@ namespace MindmapPreview {
       display.open = false;
       renderSettings();
       comment.listOpen = true;
+      resetPanelView();
       renderTop();
       renderComments();
+      // スレッドを読み直して、届いていた AI の返信などを足す
+      void loadThreads().then(renderComments);
     };
 
     /** 一覧で始めた書き換えを捨てる（一覧を閉じると、詳細パネルの行が本文だけのまま残るため）。捨てたかを返す */
@@ -1281,6 +1342,7 @@ namespace MindmapPreview {
       flushDrafts();
       comment.listOpen = false;
       comment.opened = null;
+      comment.highlight = null;
       comment.removed = [];
       discardListEdit();
       renderTop();
@@ -1292,6 +1354,7 @@ namespace MindmapPreview {
     const openRow = (item: ReviewItem): void => {
       if (item.target === null) return;
       comment.opened = item.id;
+      comment.highlight = null;
       if (route.id === item.target) {
         renderDetail();
         renderComments();
@@ -1300,6 +1363,218 @@ namespace MindmapPreview {
       openItem(item.target, false);
       renderComments();
     };
+
+    /** 本文の中の ID・スレッドの向けた項目を、パネルを開いたまま詳細パネルに開く（箇所があればその箇所を示す） */
+    const openFromThread = (id: string, loc?: Location): void => {
+      comment.opened = null;
+      comment.highlight = loc === undefined ? null : { target: id, loc };
+      if (route.id === id) {
+        renderDetail();
+        renderComments();
+        return;
+      }
+      openItem(id, false);
+      renderComments();
+    };
+
+    /** スレッドを開く。一覧のスクロールの位置を控え、理由の入力は閉じて空にする */
+    const openThread = (id: string, pending: boolean): void => {
+      listScroll = document.querySelector<HTMLElement>(".comments-panel .comments-body")?.scrollTop ?? 0;
+      comment.openedThread = { id, pending };
+      comment.view = "thread";
+      comment.reason = { open: false, body: "", status: "idle", detail: null };
+      renderComments();
+    };
+
+    /** スレッドの返信の書きかけを、待たずに保つ */
+    const flushReplyDraft = (): void => {
+      const opened = comment.openedThread;
+      if (opened === null || opened.pending) return;
+      const state = comment.forms.get(formKey(null, null, opened.id));
+      if (state !== undefined && draftTimers.has(formKey(null, null, opened.id))) saveDraftNow(state);
+    };
+
+    /** 一覧・開く前の画面へ戻る（スレッドの画面と、レビュー中の書き込みの画面の「戻る」） */
+    const goBack = (): void => {
+      if (comment.view === "thread") {
+        flushReplyDraft();
+        const opened = comment.openedThread;
+        comment.view = "list";
+        comment.openedThread = null;
+        comment.reason = { open: false, body: "", status: "idle", detail: null };
+        renderComments();
+        // 控えたスクロールの位置と、開いていた行へのフォーカスを戻す
+        const body = document.querySelector<HTMLElement>(".comments-panel .comments-body");
+        if (body !== null) body.scrollTop = listScroll;
+        if (opened !== null) {
+          const key = opened.pending ? `thread:new:${opened.id}` : `thread:${opened.id}`;
+          document.querySelector<HTMLElement>(`.comments-panel [data-focus="${key}"]`)?.focus();
+        }
+        return;
+      }
+      if (comment.view === "review") {
+        const opened = comment.openedThread;
+        // 開く前に見ていた、まだ送っていない新しいスレッドが、送るか消すかで無くなっていたら一覧へ戻る
+        const gone =
+          comment.reviewFrom === "thread" &&
+          opened !== null &&
+          opened.pending &&
+          !comment.review.items.some((item) => item.id === opened.id) &&
+          !comment.removed.some((item) => item.id === opened.id);
+        comment.view = gone ? "list" : comment.reviewFrom;
+        if (gone) comment.openedThread = null;
+        comment.reviewFocus = null;
+        renderComments();
+        document.querySelector<HTMLElement>('.comments-panel [data-focus="review"]')?.focus();
+      }
+    };
+
+    /** レビュー中の書き込みの画面を開く（開く前の画面を控える） */
+    const openReview = (): void => {
+      flushDrafts();
+      comment.reviewFrom = comment.view === "thread" ? "thread" : "list";
+      const opened = comment.openedThread;
+      comment.reviewFocus = comment.view === "thread" && opened !== null && !opened.pending ? opened.id : null;
+      comment.view = "review";
+      renderComments();
+    };
+
+    /** 開いているスレッドの状態を変える（理由は空白だけなら送らない） */
+    const changeStatus = async (status: "open" | "closed", reason: string): Promise<void> => {
+      const opened = comment.openedThread;
+      if (opened === null || opened.pending) return;
+      comment.reason = { open: true, body: reason, status: "saving", detail: null };
+      renderComments();
+      const result = await threadsApi.setStatus(opened.id, status, reason);
+      // 断られた・届かない: 理由の入力を開いたまま、理由を出す
+      if (!result.ok) {
+        comment.reason = { open: true, body: reason, status: "failed", detail: result.detail };
+        renderComments();
+        return;
+      }
+      comment.reason = { open: false, body: "", status: "idle", detail: null };
+      await loadThreads();
+      renderComments();
+      document.querySelector<HTMLElement>('.comments-panel [data-focus="status"]')?.focus();
+    };
+
+    /** 返信を溜める。溜めたらレビュー中を読み直して、パネルを描き直す */
+    const saveReply = async (threadId: string, body: string): Promise<void> => {
+      const state = formStateOf(null, null, threadId);
+      state.body = body;
+      // 溜める前に、この返信の書きかけを保つ待ちを止める（応答を待つ間にタイマーが切れて、消えた書きかけを書き戻さないため）
+      window.clearTimeout(draftTimers.get(formKey(null, null, threadId)));
+      draftTimers.delete(formKey(null, null, threadId));
+      Object.assign(state, { status: "saving", detail: null });
+      renderComments();
+      const result = await api.add({ thread: threadId, body });
+      if (!result.ok || result.data === null) {
+        // 断られた・届かない: 本文を残す
+        Object.assign(state, { status: "failed", detail: result.ok ? null : result.detail });
+        scheduleDraft(state);
+        renderComments();
+        return;
+      }
+      Object.assign(state, { body: "", status: "saved", count: result.data.count, detail: null });
+      knownIds.add(result.data.id);
+      comment.checked.add(result.data.id);
+      await loadReview();
+      refreshComments();
+      document.querySelector<HTMLTextAreaElement>(".comments-panel form.reply textarea")?.focus();
+    };
+
+    /** 返信の入力の中身が変わった。書きかけを保つ待ちを入れ、溜めた・失敗の結果は消す */
+    const typeReply = (body: string): void => {
+      const opened = comment.openedThread;
+      if (opened === null || opened.pending) return;
+      const state = formStateOf(null, null, opened.id);
+      state.body = body;
+      scheduleDraft(state);
+      // 溜めた結果は、入力を始めたら消す（溜められなかった結果は次に溜めるまで残す）
+      if (state.status === "saved") {
+        state.status = "idle";
+        clearSendResult();
+      }
+    };
+
+    /** コメントの一覧の引数 */
+    const panelProps = (): CommentsPanelProps => ({
+      view: comment.view,
+      items: comment.review.items,
+      removed: comment.removed,
+      threads: comment.threads,
+      threadsError: comment.threadsError,
+      filter: comment.filter,
+      tag: comment.tag,
+      opened: comment.openedThread,
+      composing: comment.composing,
+      free: formProps(null),
+      reply: replyState(),
+      reason: comment.reason,
+      checked: comment.checked,
+      editing,
+      editingIn,
+      editError,
+      editBody,
+      stale: comment.stale,
+      result: outcome,
+      selected: comment.opened,
+      reviewFocus: comment.reviewFocus,
+      titleOf: (id) => index.byId.get(id)?.item.title ?? null,
+      on: {
+        close: closeList,
+        review: openReview,
+        back: goBack,
+        filter: (filter) => {
+          comment.filter = filter;
+          renderComments();
+        },
+        tag: (tag) => {
+          comment.tag = comment.tag === tag ? null : tag;
+          renderComments();
+        },
+        clearTag: () => {
+          comment.tag = null;
+          renderComments();
+        },
+        compose: (open) => {
+          comment.composing = open;
+          renderComments();
+          // 出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す
+          const target = open ? ".comments-panel .talk-new form.send textarea" : '.comments-panel [data-focus="compose"]';
+          document.querySelector<HTMLElement>(target)?.focus();
+        },
+        openThread,
+        openId: openFromThread,
+        reply: (thread, body) => void saveReply(thread, body),
+        replyInput: typeReply,
+        reasonOpen: (open) => {
+          comment.reason = { open, body: "", status: "idle", detail: null };
+          renderComments();
+          const target = open ? '.comments-panel [data-focus="reason"]' : '.comments-panel [data-focus="status"]';
+          document.querySelector<HTMLElement>(target)?.focus();
+        },
+        reasonInput: (body) => {
+          comment.reason.body = body;
+        },
+        setStatus: (status, reason) => void changeStatus(status, reason),
+        check: (id, checked) => {
+          if (checked) comment.checked.add(id);
+          else comment.checked.delete(id);
+          renderComments();
+        },
+        checkAll: (checked) => {
+          comment.checked = checked
+            ? new Set(comment.review.items.filter((item) => !isBlockedReply(item, comment.threads)).map((item) => item.id))
+            : new Set();
+          renderComments();
+        },
+        send: () => void sendChecked(),
+        open: openRow,
+        ...reviewRowHandlers(""),
+        unloc: (id) => void detachLocation(id),
+      },
+    });
 
     /** 読み直して一覧まで描き直す */
     const reloadAndRefresh = async (): Promise<void> => {
@@ -1345,6 +1620,7 @@ namespace MindmapPreview {
         created: item.created,
         ...(item.target === null ? {} : { target: item.target }),
         ...(item.loc === null ? {} : { loc: item.loc }),
+        ...(item.thread === null ? {} : { thread: item.thread }),
         body: item.body,
       });
       if (result.ok) comment.removed = comment.removed.filter((entry) => entry.id !== id);
@@ -1394,7 +1670,9 @@ namespace MindmapPreview {
 
     /** チェックしたコメントを溜めた順にまとめて送る */
     const sendChecked = async (): Promise<void> => {
-      const ids = comment.review.items.filter((item) => comment.checked.has(item.id)).map((item) => item.id);
+      const ids = comment.review.items
+        .filter((item) => comment.checked.has(item.id) && !isBlockedReply(item, comment.threads))
+        .map((item) => item.id);
       // 送るものが無い
       if (ids.length === 0) return;
       outcome = { kind: "sending" };
@@ -1410,6 +1688,7 @@ namespace MindmapPreview {
       } else {
         outcome = { kind: "failed", detail: result.ok ? null : result.detail };
       }
+      await loadThreads();
       await reloadAndRefresh();
     };
 
@@ -1618,6 +1897,7 @@ namespace MindmapPreview {
         flushDrafts();
         comment.listOpen = false;
         comment.opened = null;
+        comment.highlight = null;
         comment.removed = [];
         renderComments();
         if (discardListEdit()) renderDetail();
@@ -1714,6 +1994,9 @@ namespace MindmapPreview {
       prefs.diffSel = sel;
       persist();
       point = resolveDiffPoint(data.changes, sel, since);
+      // 選んだ時点を共有できるよう、履歴に積まずにハッシュへ書く
+      route = { ...route, diff: sel };
+      navigate({ route: { ...route, filters: {} }, push: false });
       redrawKeepingState();
     };
 
@@ -1736,6 +2019,7 @@ namespace MindmapPreview {
       const result = await fetchRecords();
       if (!result.ok) return;
       await loadReview();
+      await loadThreads();
       const previousDisplay = data.settings.display;
       data = result.data;
       index = buildIndex(data);
@@ -1759,6 +2043,13 @@ namespace MindmapPreview {
       }
       // 選んだ時点と「前回開いてから」の始まりは保ち、新しい記録で印を引き直す
       point = resolveDiffPoint(data.changes, prefs.diffSel ?? null, since);
+      // 選んだ時点が引けなくなった（まとまりが消えた・まだまとめていない変更が空になった）: 差分を出さず、ハッシュからも外す
+      if (point === null && route.diff !== null) {
+        prefs.diffSel = null;
+        persist();
+        route = { ...route, diff: null };
+        navigate({ route: { ...route, filters: {} }, push: false });
+      }
       document.title = `${data.settings.summary} | mindstella`;
       // 開いていた項目が消えた: 詳細パネルを閉じる
       if (route.id !== null && !index.byId.has(route.id)) {
@@ -1811,7 +2102,15 @@ namespace MindmapPreview {
         document.querySelector("dialog[open]:not(.drawer)") === null &&
         document.querySelector(":popover-open") === null
       ) {
-        closeList();
+        const active = document.activeElement;
+        // 入力欄に打っている間は、入力欄から外れるだけにする（パネルは動かさない）
+        if (isTyping(active)) {
+          if (active instanceof HTMLElement) active.blur();
+        } else if (comment.view === "list") {
+          closeList();
+        } else {
+          goBack();
+        }
       } else if (
         event.key === "Escape" &&
         route.id === null &&
@@ -1825,14 +2124,19 @@ namespace MindmapPreview {
     /** ハッシュが変わったとき（戻る・進む・手で書き換えた）、その画面を描く */
     const onLocationChange = (): void => {
       const parsed = parseHash({ hash: location.hash, index });
-      const next = visibleRoute(parsed);
-      // 表示しない種類のタブを指していた: ハッシュを概要に置き換える
-      if (next !== parsed) navigate({ route: { ...next, filters: {} }, push: false });
-      // 画面・表示形式・項目が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
+      const visible = visibleRoute(parsed);
+      // 差分の時点を引き直し、引けた時点に揃える
+      const settled = settleDiffPoint(visible);
+      const next = settled.route;
+      point = settled.point;
+      // 表示しない種類のタブを指していた・時点が引けなかった: ハッシュを置き換える
+      if (visible !== parsed || next.diff !== parsed.diff) navigate({ route: { ...next, filters: {} }, push: false });
+      // 画面・表示形式・項目・差分の時点が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
       if (toHash(next) === toHash(route) && Object.keys(next.filters).length === 0) return;
       const screen =
         next.tab !== route.tab ||
         next.view !== route.view ||
+        next.diff !== route.diff ||
         Object.keys(next.filters).length > 0 ||
         (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
       route = next;
@@ -1845,7 +2149,10 @@ namespace MindmapPreview {
 
     // ===== 最初の描き =====
     // サーバーの配信では、レビュー中のコメントと書きかけを読んでおく（コメントのボタンの件数と入力に使う）
-    if (serverMode) await loadReview(true);
+    if (serverMode) {
+      await loadReview(true);
+      await loadThreads();
+    }
     // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える
     const requested = new URLSearchParams(location.hash.replace(/^#/, "")).get("id");
     if (requested !== null && route.id === null) navigate({ route: { ...route, filters: {} }, push: false });

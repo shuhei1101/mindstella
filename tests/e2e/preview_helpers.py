@@ -33,6 +33,7 @@ __all__ = [
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "OpenInEmptyContext",
     "OpenPreview",
     "ServePreview",
     "ServeWorkspace",
@@ -70,6 +71,7 @@ __all__ = [
 
 type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
+type OpenInEmptyContext = Callable[[str], Page]
 type ServeWorkspace = Callable[..., tuple[str, Path]]
 
 # トップバーのコメントのボタンと、コメントの一覧のパネル
@@ -89,9 +91,42 @@ DETAIL_FORM = "aside.panel form.send"
 DETAIL_TEXTAREA = "aside.panel form.send textarea"
 DETAIL_MESSAGE = "aside.panel form.send .send-msg"
 
-# コメントの一覧の下端の、項目を指さないコメントの入力とその入力欄
-FREE_FORM = f"{COMMENTS_PANEL} .comments-free form.send"
+# スレッドの一覧の下端の、「新しいスレッド」の入口と、項目を指さない新しいスレッドの入力とその入力欄
+COMPOSE_BUTTON = f"{COMMENTS_PANEL} .talk-new button[data-focus='compose']"
+FREE_FORM = f"{COMMENTS_PANEL} .talk-new form.send"
 FREE_TEXTAREA = f"{FREE_FORM} textarea"
+
+# コメントの一覧の見出しの帯の「レビュー中」の入口と、レビュー中を確かめる画面の見出し・送る帯の結果
+REVIEW_ENTRY = f"{COMMENTS_PANEL} .comments-head button.review-entry"
+REVIEW_HEAD = f"{COMMENTS_PANEL} .review-head"
+SEND_BAND = f"{COMMENTS_PANEL} .send-band"
+BAND_RESULT = f"{SEND_BAND} .send-msg"
+
+# スレッドの一覧の行と状態の絞り込み、スレッドの画面の見出し・書き込みの並び
+THREAD_ROWS = f"{COMMENTS_PANEL} ul.th-list > li"
+STATE_SEGMENTS = f"{COMMENTS_PANEL} .talk-filter button"
+THREAD_HEADING = f"{COMMENTS_PANEL} .th-heading"
+THREAD_POSTS = f"{COMMENTS_PANEL} ol.posts > li"
+
+# スレッドの画面とレビュー中を確かめる画面の、一覧へ戻るボタン
+BACK_BUTTON = f"{COMMENTS_PANEL} button.th-back"
+
+# スレッドの画面の状態を変えるボタン・理由の入力・結果
+STATUS_BUTTON = f"{COMMENTS_PANEL} button[data-focus='status']"
+REASON_FORM = f"{COMMENTS_PANEL} form.th-reason"
+REASON_TEXTAREA = f"{REASON_FORM} textarea"
+REASON_OK = f"{REASON_FORM} button[data-focus='reason-ok']"
+STATUS_MESSAGE = f"{COMMENTS_PANEL} .th-action-msg"
+
+# スレッドの画面の返信の入力と、クローズ・未送信の知らせ
+REPLY_FORM = f"{COMMENTS_PANEL} form.reply"
+REPLY_TEXTAREA = f"{REPLY_FORM} textarea"
+REPLY_SEND = f"{REPLY_FORM} button[data-focus='reply-send']"
+REPLY_MESSAGE = f"{REPLY_FORM} .send-msg"
+CLOSED_NOTE = f"{COMMENTS_PANEL} .th-closed-note"
+
+# 結果が画面に出るまで待つ上限ミリ秒
+UPDATE_TIMEOUT_MS = 10_000
 
 # 選んだ箇所のコメントの入口
 PILL = "button.selection-comment"
@@ -646,3 +681,48 @@ def drag_select_in_frame(page: Page, selector: str, text: str) -> None:
     for step in range(1, DRAG_STEPS + 1):
         mouse("mouseMoved", start_x + (end_x - start_x) * step / DRAG_STEPS, 1)
     mouse("mouseReleased", end_x, 0, clickCount=1)
+
+
+def open_list(page: Page) -> None:
+    """トップバーのコメントのボタンでスレッドの一覧を開き、開き終わるのを待つ。"""
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.wait_for_function(
+        "document.querySelector('aside.comments-panel').getBoundingClientRect().x === 0"
+    )
+
+
+def open_review(page: Page) -> None:
+    """スレッドの一覧を開き、見出しの帯の「レビュー中」でレビュー中を確かめる画面へ切り替える。"""
+    open_list(page)
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+
+
+def thread_row(thread_id: str) -> str:
+    """スレッドの一覧の中の、スレッドの行の選択子を返す（まだ送っていない新しいスレッドは `new:{コメントの ID}`）。"""
+    return f"{COMMENTS_PANEL} ul.th-list > li:has(> button[data-focus='thread:{thread_id}'])"
+
+
+def open_thread(page: Page, thread_id: str) -> None:
+    """一覧を開き、スレッドの行を押してスレッドの画面へ切り替える。"""
+    open_list(page)
+    page.click(f"{thread_row(thread_id)} button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+
+
+def open_closed_thread(page: Page, thread_id: str) -> None:
+    """一覧を開いて「クローズ」に切り替え、スレッドの行を押してスレッドの画面へ切り替える。"""
+    open_list(page)
+    page.click(f"{STATE_SEGMENTS}[data-focus='filter:closed']")
+    page.click(f"{thread_row(thread_id)} button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+
+
+def wait_until_focused(page: Page, selector: str) -> None:
+    """selector に当たる要素へフォーカスが移るのを待つ。"""
+    page.wait_for_function(
+        "selector => document.activeElement === document.querySelector(selector)",
+        arg=selector,
+        timeout=UPDATE_TIMEOUT_MS,
+    )

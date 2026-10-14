@@ -160,6 +160,38 @@ scenarios:
       - '`A-9` の HTML の本文の「どこからも指されない」問題が 1 件ある'
       - A-2 には問題が無い
     test: test_normal_when_html_body_problems_found
+  - name: 正常シナリオ（スレッドに参照切れとスキーマ違反がある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 参照切れのスレッド
+        description: 最初の書き込みが、一度も足していない D-9 を指すオープンのスレッド
+      - name: 消した項目を指す取り込み済みのスレッド
+        description: メモ N-1 を足して `commit` し、N-1 を消してもう一度 `commit` した後に残った、最初の書き込みが N-1 を指すクローズのスレッド
+        notes: 利用者の書き込みは取り込み済み。スレッドのファイルを直接書いて作る
+      - name: スキーマに合わないスレッド
+        description: 状態がオープンでもクローズでもないスレッド
+        notes: スレッドのファイルを直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML・スレッドのファイル・docs/ を読む
+        SV-->>CC: 参照切れとスキーマ違反の一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、スレッドの最初の書き込みが存在しない D-9 を指す旨が、参照切れとしてある
+      - 出力に、消した N-1 を指すクローズのスレッドが無い
+      - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_threads_problems_found
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

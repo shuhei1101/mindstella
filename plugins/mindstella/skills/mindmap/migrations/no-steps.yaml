@@ -7,3 +7,6 @@
 - schema: common.schema.json
   sha256: 46d2db520b36886f083463b487aab251984fe1e7e6de163710999b8e08f463e7
   reason: history[].before の説明に、本文の形式を替えた回だけ body を入れることを足した。形は変わらない
+- schema: terms.schema.json
+  sha256: b1206e20345aeca378168819a32aa050d6267e25b8dd8029da929585816c504b
+  reason: aliases の説明に、プレビューは本文の語がこれに一致するとタイトルと同じ印とツールチップを出すことを足した。形は変わらない

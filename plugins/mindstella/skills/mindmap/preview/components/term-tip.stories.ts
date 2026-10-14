@@ -118,6 +118,11 @@ export const Shrunk: Story = {
   globals: { viewport: { value: "short", isRotated: false } },
 };
 
+/** 用語 2 件だけに一致した印（ある用語のタイトルが別の用語の別名と同じ）。「用語 2」の見出しの下に 2 件を区切り線で分けて並べ、それぞれ用語・ID・意味を出してタイトルをリンクにする */
+export const SeveralTerms: Story = {
+  args: { entries: [term, { kind: "terms", item: item("G-2", "演出効果", { meaning: "特殊効果の別の言い方として使う用語" }) }] },
+};
+
 /** 印から Tab で中の最初のリンクへ移った。印の色の輪でフォーカスを示す */
 export const LinkFocus: Story = {
   args: { entries: [term, docs[0]!, docs[1]!, research], pinned: true },

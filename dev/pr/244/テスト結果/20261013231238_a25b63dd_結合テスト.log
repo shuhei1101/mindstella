@@ -1,0 +1,58 @@
+$ pytest tests/integration/server/test_preview_url.py tests/integration/server/test_mcp_server.py tests/integration/server/test_preview_serve.py tests/integration/server/test_comment_add.py tests/integration/server/test_launch.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/eab608ba-f7f5-48f7-9d58-68f72193a8ef/scratchpad/venv244/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-test-isolate-preview-env
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collecting ... collected 47 items
+
+tests/integration/server/test_preview_url.py::test_normal PASSED         [  2%]
+tests/integration/server/test_preview_url.py::test_normal_when_user_readme_exists PASSED [  4%]
+tests/integration/server/test_preview_url.py::test_normal_when_called_again PASSED [  6%]
+tests/integration/server/test_preview_url.py::test_error_when_workspace_not_found PASSED [  8%]
+tests/integration/server/test_preview_url.py::test_error_when_config_invalid PASSED [ 10%]
+tests/integration/server/test_preview_url.py::test_error_when_serve_fails PASSED [ 12%]
+tests/integration/server/test_preview_url.py::test_normal_when_port_fixed PASSED [ 14%]
+tests/integration/server/test_preview_url.py::test_error_when_port_in_use PASSED [ 17%]
+tests/integration/server/test_preview_url.py::test_normal_when_start_hook_set PASSED [ 19%]
+tests/integration/server/test_preview_url.py::test_normal_when_diff_given PASSED [ 21%]
+tests/integration/server/test_preview_url.py::test_error_when_diff_not_found PASSED [ 23%]
+tests/integration/server/test_preview_url.py::test_normal_when_diff_given_while_serving PASSED [ 25%]
+tests/integration/server/test_preview_url.py::test_error_when_diff_not_found_while_serving PASSED [ 27%]
+tests/integration/server/test_mcp_server.py::test_normal PASSED          [ 29%]
+tests/integration/server/test_mcp_server.py::test_normal_when_tool_fails PASSED [ 31%]
+tests/integration/server/test_mcp_server.py::test_normal_when_argument_missing PASSED [ 34%]
+tests/integration/server/test_mcp_server.py::test_normal_when_stdin_closed PASSED [ 36%]
+tests/integration/server/test_mcp_server.py::test_normal_when_sigterm PASSED [ 38%]
+tests/integration/server/test_mcp_server.py::test_normal_when_two_processes_write PASSED [ 40%]
+tests/integration/server/test_preview_serve.py::test_normal PASSED       [ 42%]
+tests/integration/server/test_preview_serve.py::test_normal_when_root PASSED [ 44%]
+tests/integration/server/test_preview_serve.py::test_error_when_host_mismatch PASSED [ 46%]
+tests/integration/server/test_preview_serve.py::test_error_when_path_unknown PASSED [ 48%]
+tests/integration/server/test_preview_serve.py::test_normal_when_host_allowed PASSED [ 51%]
+tests/integration/server/test_comment_add.py::test_normal PASSED         [ 53%]
+tests/integration/server/test_comment_add.py::test_normal_when_html_body_location PASSED [ 55%]
+tests/integration/server/test_comment_add.py::test_normal_when_body_location PASSED [ 57%]
+tests/integration/server/test_comment_add.py::test_normal_when_no_target PASSED [ 59%]
+tests/integration/server/test_comment_add.py::test_normal_when_restore PASSED [ 61%]
+tests/integration/server/test_comment_add.py::test_error_when_body_empty PASSED [ 63%]
+tests/integration/server/test_comment_add.py::test_error_when_origin_mismatch PASSED [ 65%]
+tests/integration/server/test_comment_add.py::test_normal_when_origin_allowed PASSED [ 68%]
+tests/integration/server/test_comment_add.py::test_error_when_target_not_found PASSED [ 70%]
+tests/integration/server/test_comment_add.py::test_error_when_location_stale PASSED [ 72%]
+tests/integration/server/test_comment_add.py::test_error_when_not_json PASSED [ 74%]
+tests/integration/server/test_comment_add.py::test_error_when_write_fails PASSED [ 76%]
+tests/integration/server/test_launch.py::test_normal PASSED              [ 78%]
+tests/integration/server/test_launch.py::test_normal_when_external_settings PASSED [ 80%]
+tests/integration/server/test_launch.py::test_normal_when_plugin_upgraded PASSED [ 82%]
+tests/integration/server/test_launch.py::test_normal_when_session_exists PASSED [ 85%]
+tests/integration/server/test_launch.py::test_error_when_dependency_missing PASSED [ 87%]
+tests/integration/server/test_launch.py::test_error_when_tmux_missing PASSED [ 89%]
+tests/integration/server/test_launch.py::test_error_when_claude_missing PASSED [ 91%]
+tests/integration/server/test_launch.py::test_error_when_plugin_not_installed PASSED [ 93%]
+tests/integration/server/test_launch.py::test_error_when_folder_missing PASSED [ 95%]
+tests/integration/server/test_launch.py::test_normal_when_same_folder_name_elsewhere PASSED [ 97%]
+tests/integration/server/test_launch.py::test_normal_when_another_account PASSED [100%]
+
+======================== 47 passed in 63.85s (0:01:03) =========================

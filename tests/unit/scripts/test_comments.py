@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 import comments
+import errors
 import locations
 import store
 from errors import (
@@ -25,11 +26,12 @@ from fixture_types import (
     MakeComment,
     MakeDraft,
     MakeItem,
-    MakeSubmission,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     WriteComments,
     WriteDrafts,
-    WriteSubmissions,
+    WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR
 
@@ -72,10 +74,25 @@ def _read_drafts(root: Path) -> list[dict[str, Any]]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
 
 
-def _read_submissions(root: Path) -> list[dict[str, Any]]:
-    """ワークスペースの submissions.yaml の送信の並びを返す。"""
-    data = yaml.safe_load((root / RECORD_DIR / "submissions.yaml").read_text(encoding="utf-8"))
+def _read_threads(root: Path) -> list[dict[str, Any]]:
+    """ワークスペースの threads.yaml のスレッドの並びを返す。"""
+    data = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
     return data["items"]
+
+
+def _reply_comment(comment_id: str, thread: str) -> dict[str, Any]:
+    """スレッドへの返信のレビュー中のコメント（target・loc を持たない）を作る。"""
+    return {
+        "id": comment_id,
+        "thread": thread,
+        "body": f"{comment_id}の本文",
+        "created": DEFAULT_TIMESTAMP,
+    }
+
+
+def _reply_draft(thread: str, body: str = "書きかけ") -> dict[str, Any]:
+    """スレッドへの返信の書きかけ（target・loc を持たない）を作る。"""
+    return {"thread": thread, "body": body, "updated": DEFAULT_TIMESTAMP}
 
 
 def test_load_comments(
@@ -183,7 +200,30 @@ def test_list_review(
         ("C-2", None),
         ("C-3", None),
     ]
-    assert result["drafts"] == [{"target": "D-1", "loc": None, "body": "案 B も見たい"}]
+    assert result["drafts"] == [
+        {"target": "D-1", "loc": None, "thread": None, "body": "案 B も見たい"}
+    ]
+
+
+def test_list_review_when_thread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    write_comments: WriteComments,
+    write_drafts: WriteDrafts,
+) -> None:
+    """返信と返信の書きかけは返信先を持つ（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, _reply_comment("C-1", "TH-1"))
+    write_drafts(root, _reply_draft("TH-1"))
+    workspace = store.load_workspace(root)
+    # 実行
+    result = comments.list_review(workspace)
+    # 検証
+    reply = result["items"][0]
+    assert reply["thread"] == "TH-1"
+    assert (reply["target"], reply["target_title"], reply["loc"]) == (None, None, None)
+    assert [draft["thread"] for draft in result["drafts"]] == ["TH-1"]
 
 
 def test_add_comment(
@@ -337,6 +377,58 @@ def test_add_comment_when_write_fails(
         comments.add_comment(root, {"target": "D-1", "body": "本文"}, now=_fixed_now)
     assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
     assert list(root.rglob("*.tmp")) == []
+
+
+def test_add_comment_when_reply(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_draft: MakeDraft,
+    make_thread: MakeThread,
+    write_drafts: WriteDrafts,
+    write_threads: WriteThreads,
+) -> None:
+    """オープンのスレッドへの返信を溜め、そのスレッドの書きかけを消す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    write_drafts(root, _reply_draft("TH-1"), make_draft(target="D-1"))
+    threads_before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行
+    comment, _count = comments.add_comment(
+        root, {"thread": "TH-1", "body": "了解"}, now=_fixed_now
+    )
+    # 検証
+    assert comment.thread == "TH-1"
+    saved = _read_comments(root)["items"][-1]
+    assert ("target" in saved, "loc" in saved) == (False, False)
+    assert [draft.get("target") for draft in _read_drafts(root)] == ["D-1"]
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == threads_before
+
+
+@pytest.mark.parametrize(
+    ("thread_id", "error_name", "message"),
+    [
+        pytest.param("TH-9", "ThreadNotFoundError", "TH-9", id="not_found"),
+        pytest.param("TH-2", "CommentConflictError", "クローズ", id="closed"),
+    ],
+)
+def test_add_comment_when_reply_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    thread_id: str,
+    error_name: str,
+    message: str,
+) -> None:
+    """無いスレッド・クローズのスレッドへの返信は溜めない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-2", status="closed"))
+    # 実行・検証
+    with pytest.raises(getattr(errors, error_name), match=message):
+        comments.add_comment(root, {"thread": thread_id, "body": "x"}, now=_fixed_now)
+    assert not (root / RECORD_DIR / "comments.yaml").exists()
 
 
 @pytest.mark.parametrize(
@@ -535,13 +627,69 @@ def test_save_draft_when_rejected(
     assert not (root / RECORD_DIR / "drafts.yaml").exists()
 
 
+def test_save_draft_when_thread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_drafts: WriteDrafts,
+    write_threads: WriteThreads,
+) -> None:
+    """スレッドごとに保ち、クローズのスレッドへも保つ（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"), make_thread("TH-2", status="closed"))
+    write_drafts(root, _reply_draft("TH-1", "了解"))
+    # 実行
+    comments.save_draft(root, {"thread": "TH-1", "body": "了解した"}, now=_fixed_now)
+    comments.save_draft(root, {"thread": "TH-2", "body": "追記"}, now=_fixed_now)
+    # 検証
+    saved = _read_drafts(root)
+    assert {draft["thread"]: draft["body"] for draft in saved} == {
+        "TH-1": "了解した",
+        "TH-2": "追記",
+    }
+    assert len(saved) == 2
+    assert all("target" not in draft and "loc" not in draft for draft in saved)
+
+
+@pytest.mark.parametrize(
+    ("data", "error_name", "message"),
+    [
+        pytest.param({"thread": "TH-9", "body": "x"}, "ThreadNotFoundError", "TH-9", id="not_found"),
+        pytest.param(
+            {"thread": "TH-1", "target": "D-1", "body": "x"},
+            "CommentInvalidError",
+            "thread",
+            id="with_target",
+        ),
+    ],
+)
+def test_save_draft_when_thread_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    data: dict[str, Any],
+    error_name: str,
+    message: str,
+) -> None:
+    """無いスレッドと、項目と一緒に渡したスレッドは保たない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    # 実行・検証
+    with pytest.raises(getattr(errors, error_name), match=message):
+        comments.save_draft(root, data, now=_fixed_now)
+    assert not (root / RECORD_DIR / "drafts.yaml").exists()
+
+
 def test_send_comments(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_comment: MakeComment,
     write_comments: WriteComments,
 ) -> None:
-    """チェックしたものだけを溜めた順に送る（正常系）。"""
+    """チェックしたものだけを溜めた順に送り、新しいスレッドを立てる（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
     no_target = make_comment("C-3")
@@ -558,32 +706,46 @@ def test_send_comments(
     sent, sent_comments = comments.send_comments(root, {"ids": ["C-2", "C-1"]}, now=_fixed_now)
     # 検証
     assert sent == FIXED_NOW
-    assert sent_comments == [
-        comments.SentComment(comment="C-1", submission="S-1"),
-        comments.SentComment(comment="C-2", submission="S-2"),
+    assert [(item.comment, item.thread, item.post) for item in sent_comments] == [
+        ("C-1", "TH-1", "TH-1-1"),
+        ("C-2", "TH-2", "TH-2-1"),
     ]
-    assert _read_submissions(root) == [
-        {
-            "id": "S-1",
-            "target": "D-1",
-            "body": "C-1の本文",
-            "sent": FIXED_NOW,
-            "taken": None,
-            "comment": "C-1",
-        },
-        {
-            "id": "S-2",
-            "target": "A-1",
-            "loc": LINE2_LOC,
-            "body": "C-2の本文",
-            "sent": FIXED_NOW,
-            "taken": None,
-            "comment": "C-2",
-        },
+    saved = _read_threads(root)
+    assert [(thread["id"], thread["status"], thread["target"]) for thread in saved] == [
+        ("TH-1", "open", "D-1"),
+        ("TH-2", "open", "A-1"),
     ]
+    assert saved[1]["loc"] == LINE2_LOC
+    assert [thread["posts"][0]["comment"] for thread in saved] == ["C-1", "C-2"]
     assert [item["id"] for item in _read_comments(root)["items"]] == ["C-3"]
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
     assert (root / RECORD_DIR / "docs.yaml").read_bytes() == docs_before
+
+
+def test_send_comments_when_reply(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_comments: WriteComments,
+    write_drafts: WriteDrafts,
+    write_threads: WriteThreads,
+) -> None:
+    """返信をスレッドの末尾に足し、そのスレッドの書きかけを消す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1"), make_post("TH-1-2")))
+    write_comments(root, _reply_comment("C-1", "TH-1"))
+    write_drafts(root, _reply_draft("TH-1"))
+    # 実行
+    _sent, sent_comments = comments.send_comments(root, {"ids": ["C-1"]}, now=_fixed_now)
+    # 検証
+    assert [(item.comment, item.thread, item.post) for item in sent_comments] == [
+        ("C-1", "TH-1", "TH-1-3")
+    ]
+    reply = _read_threads(root)[0]["posts"][2]
+    assert (reply["author"], reply["read"], reply["taken"]) == ("user", False, None)
+    assert _read_drafts(root) == []
 
 
 @pytest.mark.parametrize(
@@ -611,7 +773,7 @@ def test_send_comments_when_rejected(
     # 実行・検証
     with pytest.raises(expected_error, match=expected_message):
         comments.send_comments(root, data, now=_fixed_now)
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
 
 
@@ -619,28 +781,65 @@ def test_send_comments_when_stale(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_comment: MakeComment,
+    make_thread: MakeThread,
     write_comments: WriteComments,
+    write_threads: WriteThreads,
 ) -> None:
-    """合わないコメントを全て返し、何も送らない（異常系）。"""
+    """送れないコメントを全て返し、何も送らない（異常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1"), make_item("A-1"), bodies={"A-1.md": "1 行目\n2 行目\n3 行目"}
     )
+    write_threads(root, make_thread("TH-2", status="closed"))
     out_of_range = {"kind": "body", "start": 5, "end": 5, "text": "5 行目"}
     write_comments(
         root,
         make_comment("C-1"),
         make_comment("C-2", target="A-1", loc=out_of_range),
         make_comment("C-3", target="D-9"),
+        _reply_comment("C-4", "TH-2"),
+        _reply_comment("C-5", "TH-9"),
     )
-    before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    comments_before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    threads_before = (root / RECORD_DIR / "threads.yaml").read_bytes()
     # 実行・検証
     with pytest.raises(CommentConflictError) as exc_info:
-        comments.send_comments(root, {"ids": ["C-1", "C-2", "C-3"]}, now=_fixed_now)
-    assert [comment_id for comment_id, _reason in exc_info.value.stale] == ["C-2", "C-3"]
-    assert all(reason for _comment_id, reason in exc_info.value.stale)
-    assert not (root / RECORD_DIR / "submissions.yaml").exists()
-    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == before
+        comments.send_comments(root, {"ids": ["C-1", "C-2", "C-3", "C-4", "C-5"]}, now=_fixed_now)
+    stale = exc_info.value.stale
+    assert [comment_id for comment_id, _reason in stale] == ["C-2", "C-3", "C-4", "C-5"]
+    assert all(reason for _comment_id, reason in stale)
+    assert "クローズ" in dict(stale)["C-4"]
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == comments_before
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == threads_before
+
+
+def test_send_comments_when_already_sent(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_comments: WriteComments,
+    write_threads: WriteThreads,
+) -> None:
+    """既に足してあるコメントは確かめずにレビュー中から外す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1", make_post("TH-1-1"), make_post("TH-1-2", comment="C-1"), status="closed"
+        ),
+    )
+    write_comments(root, _reply_comment("C-1", "TH-1"))
+    threads_before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行
+    _sent, sent_comments = comments.send_comments(root, {"ids": ["C-1"]}, now=_fixed_now)
+    # 検証
+    assert [(item.comment, item.thread, item.post) for item in sent_comments] == [
+        ("C-1", "TH-1", "TH-1-2")
+    ]
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == threads_before
+    assert _read_comments(root)["items"] == []
 
 
 def test_send_comments_when_comments_write_fails(
@@ -649,22 +848,22 @@ def test_send_comments_when_comments_write_fails(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_comment: MakeComment,
-    make_submission: MakeSubmission,
+    make_thread: MakeThread,
     write_comments: WriteComments,
-    write_submissions: WriteSubmissions,
+    write_threads: WriteThreads,
 ) -> None:
-    """レビュー中を書けなければ送信を書き戻す（異常系）。"""
+    """レビュー中を書けなければスレッドを書き戻す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    write_submissions(root, make_submission("S-1"))
+    write_threads(root, make_thread("TH-1"))
     write_comments(root, make_comment("C-1"))
-    submissions_before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
+    threads_before = (root / RECORD_DIR / "threads.yaml").read_bytes()
     comments_before = (root / RECORD_DIR / "comments.yaml").read_bytes()
     monkeypatch.setattr(comments.os, "replace", failing_replace("comments.yaml"))
     # 実行・検証
     with pytest.raises(WriteFailedError):
         comments.send_comments(root, {"ids": ["C-1"]}, now=_fixed_now)
-    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == submissions_before
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == threads_before
     assert (root / RECORD_DIR / "comments.yaml").read_bytes() == comments_before
 
 
@@ -680,6 +879,15 @@ def test_send_comments_when_comments_write_fails(
         pytest.param({"id": "C-2", "body": "x"}, "created", id="id_without_created"),
         pytest.param(
             {"id": "X-1", "created": DEFAULT_TIMESTAMP, "body": "x"}, "id", id="id_wrong_form"
+        ),
+        pytest.param({"thread": 1, "body": "x"}, "thread", id="thread_not_string"),
+        pytest.param(
+            {"thread": "TH-1", "target": "D-1", "body": "x"}, "thread", id="thread_with_target"
+        ),
+        pytest.param(
+            {"thread": "TH-1", "target": "D-1", "loc": LINE2_LOC, "body": "x"},
+            "thread",
+            id="thread_with_target_and_loc",
         ),
     ],
 )
@@ -698,4 +906,4 @@ def test_parse_comment_input_when_boundary() -> None:
     # 実行
     result = comments._parse_comment_input({"body": body})
     # 検証
-    assert len(result[2]) == MAX_BODY_CHARS
+    assert len(result[3]) == MAX_BODY_CHARS

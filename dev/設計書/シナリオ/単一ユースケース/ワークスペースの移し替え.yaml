@@ -269,6 +269,45 @@ scenarios:
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
       - 最後の `check` が問題を 0 件で返す
     test: test_normal_when_options_filled
+  - name: 正常シナリオ（送信をスレッドへ移す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・版の書き換えを、決めた引数で順に再生する
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: スレッドを足す前の版のワークスペース
+        description: 版のファイルが v0.7.0 で、未決定の検討事項 D-1・本文を持つ資料 A-1 と、送信 2 件を持つワークスペース
+        notes: S-1 は D-1 への「案 A にする」で取り込み済み。S-2 は A-1 の本文の 2 行目と選んだ文「言い換えたい文」を指す「ここは言い換える」で、取り込んでいない。YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:upgrade {フォルダ}
+        CC->>SV: 版を比べ、当てる手順を並べる
+        SV-->>CC: 送信をスレッドへ移し、送信のファイルを消す手順（破壊的な操作）
+        CC-->>U: 当てる手順の一覧を示し、破壊的な操作を当ててよいか確かめる
+        U->>CC: 当ててよい
+        CC->>SV: 写しを取って手順を当てる
+        SV->>WS: 送信を 1 件ずつスレッドにし、送信のファイルを消す
+        CC->>SV: check
+        SV-->>CC: 問題が無い
+        CC->>SV: 版を書き換える
+        SV->>WS: .mindstella/mindstella-version.ini を書く
+      ```
+    expected:
+      - 並べた手順に、送信をスレッドへ移して送信のファイルを消す手順が、破壊的な操作の印つきである
+      - スレッドが 2 件あり、それぞれの最初の書き込みが S-1・S-2 の向けた項目・箇所・本文・送った日時のままである
+      - 取り込み済みだった S-1 のスレッドはクローズで、書き込みが取り込み済みである。取り込んでいなかった S-2 のスレッドはオープンで、取り込み待ちである
+      - ワークスペースに送信のファイルが無い
+      - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
+      - 最後の `check` が問題を 0 件で返す
+    notes:
+      取り込み済みの送信: 取り込み済みの送信は、書き込みを取り込み済みにして移す（次の取り込みで記録し直さない）。AI の返信を持たず話が済んでいるので、クローズのスレッドとして移す
+    test: test_normal_when_submissions_to_threads
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者

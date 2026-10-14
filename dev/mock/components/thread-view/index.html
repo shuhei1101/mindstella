@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>スレッド 1 件 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない）と、見本の引数 -->
+  <script src="../../refs/235/assets/app.js"></script>
+  <script src="../../refs/235/assets/catalog.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / thread-view</nav>
+    <h1>スレッド 1 件</h1>
+
+    <!-- AI の問い（オープン） -->
+    <section class="cat-sec">
+      <h2>AI の問い（オープン）</h2>
+      <p>見出しは、上の行に「一覧へ戻る」と「クローズにする」、その下に状態の札と題、向けた項目とタグ。AI の書き込みは左に寄せて面の色を変え、利用者の書き込みは右に寄せる。書き手は名前でも示す。</p>
+      <div class="stage" id="s-asking"></div>
+    </section>
+
+    <!-- レビュー中の返信を持つ -->
+    <section class="cat-sec">
+      <h2>レビュー中の返信を持つ</h2>
+      <p>溜めた返信は、書き込みの末尾に破線の枠と「レビュー中」の印つきで出し、その場で修正・削除する。</p>
+      <div class="stage" id="s-pending"></div>
+    </section>
+
+    <!-- レビュー中の返信を修正している・消した -->
+    <section class="cat-sec">
+      <h2>レビュー中の返信を修正している・消した</h2>
+      <p>左が修正の入力（キャンセル・修正）、右が消した後（元の場所に「元に戻す」）。</p>
+      <div class="stage" id="s-editing"></div>
+    </section>
+
+    <!-- 最後の書き込みが利用者 -->
+    <section class="cat-sec">
+      <h2>最後の書き込みが利用者</h2>
+      <p>書き込みの後ろには何も足さない。</p>
+      <div class="stage" id="s-user-last"></div>
+    </section>
+
+    <!-- クローズ・オープンへの戻しの記録 -->
+    <section class="cat-sec">
+      <h2>クローズ・オープンへの戻しの記録</h2>
+      <p>状態を変えた書き手・日時・理由を、書き込みの並びの中に枠の無い 1 行で出す。理由が無い記録は 1 行だけ。</p>
+      <div class="stage" id="s-events"></div>
+    </section>
+
+    <!-- AI がクローズにした -->
+    <section class="cat-sec">
+      <h2>AI がクローズにした</h2>
+      <p>記録の書き手を「AI が」にする。返信は足されず、下端は返信の入力の代わりに「クローズにしたスレッドです。」、見出しのボタンは「オープンに戻す」。</p>
+      <div class="stage" id="s-ai-closed"></div>
+    </section>
+
+    <!-- AI がオープンに戻して返信した -->
+    <section class="cat-sec">
+      <h2>AI がオープンに戻して返信した</h2>
+      <p>利用者がクローズにした記録の後ろに、「AI がオープンに戻しました」と理由、AI の返信が並ぶ。</p>
+      <div class="stage" id="s-ai-reopened"></div>
+    </section>
+
+    <!-- 理由の入力 -->
+    <section class="cat-sec">
+      <h2>理由の入力</h2>
+      <p>「クローズにする」「オープンに戻す」を押すと、見出しの下に理由（任意）の入力と「キャンセル」・確定を出す。左がクローズ、右がオープンへの戻し。</p>
+      <div class="stage" id="s-reason"></div>
+    </section>
+
+    <!-- クローズ -->
+    <section class="cat-sec">
+      <h2>クローズ</h2>
+      <p>見出しのボタンを「オープンに戻す」にし、下端は返信の入力の代わりに「クローズにしたスレッドです。」を出す。</p>
+      <div class="stage" id="s-closed"></div>
+    </section>
+
+    <!-- まだ送っていない新しいスレッド -->
+    <section class="cat-sec">
+      <h2>まだ送っていない新しいスレッド</h2>
+      <p>状態の札は「レビュー中」。最初の書き込みをレビュー中の印つきで出し、クローズと返信の入力を出さない。</p>
+      <div class="stage" id="s-new"></div>
+    </section>
+
+    <!-- クローズにできなかった -->
+    <section class="cat-sec">
+      <h2>クローズにできなかった</h2>
+      <p>見出しの下に理由と直し方を出す（自動で消さない）。理由の入力は開いたまま残す。</p>
+      <div class="stage" id="s-failed"></div>
+    </section>
+
+    <!-- 向けた項目が消えた・記録に無い ID -->
+    <section class="cat-sec">
+      <h2>向けた項目が消えた・記録に無い ID</h2>
+      <p>向けた項目が消えたときは押せない ID だけを出す。本文の中の記録に無い ID は文字のまま。</p>
+      <div class="stage" id="s-gone"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p></p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
+  <script>
+    const T = Catalog.THREADS;
+    const R = Catalog.REVIEW;
+    const view = (thread, over) => Catalog.pane(MindmapPreview.threadView(thread, Catalog.propsOf(over)));
+    Catalog.place("s-asking", view(T.asking));
+    Catalog.place("s-pending", view(T.replied, { items: [R.reply] }));
+    Catalog.place("s-editing", [view(T.replied, { items: [R.reply], editing: R.reply.id }), view(T.replied, { removed: [R.reply] })]);
+    Catalog.place("s-user-last", view(T.noSummary));
+    Catalog.place("s-events", view(T.long));
+    Catalog.place("s-ai-closed", view(T.aiClosed));
+    Catalog.place("s-ai-reopened", view(T.aiReopened));
+    Catalog.place("s-reason", [view(T.replied, { talk: { reasonOpen: true, reasonBody: "案 B で決着" } }), view(T.closed, { talk: { reasonOpen: true } })]);
+    Catalog.place("s-closed", view(T.closed));
+    Catalog.place("s-new", Catalog.pane(MindmapPreview.pendingThreadView(R.newToItem.id, Catalog.propsOf({ items: [R.newToItem] }))));
+    Catalog.place("s-failed", view(T.replied, { talk: { reasonOpen: true, reasonBody: "案 B で決着", action: { status: "failed" } } }));
+    Catalog.place("s-gone", view(T.closedNoReason));
+    Catalog.place("s-narrow", view(T.replied, { items: [R.reply] }));
+  </script>
+</body>
+</html>

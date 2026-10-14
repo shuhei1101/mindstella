@@ -213,6 +213,33 @@ var MindmapPreview;
         };
     }
     MindmapPreview.htmlSelectionLocation = htmlSelectionLocation;
+    /** HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形） */
+    MindmapPreview.HTML_LINK_OPEN_SCHEMES = ["http:", "https:", "mailto:"];
+    /** HTML の本文の枠の中のリンクの `href`（書かれたままの値）から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める */
+    function htmlLinkAction(href) {
+        const value = href.trim();
+        // `#` で始まる: 本文の中の場所を指す。`#` の後ろを戻した id を送り先にする
+        if (value.startsWith("#")) {
+            const encoded = value.slice(1);
+            let id = encoded;
+            try {
+                id = decodeURIComponent(encoded);
+            }
+            catch {
+                // 戻せない（`%` の後ろが不正）ときは、書かれたままを id にする
+            }
+            return id === "" ? { kind: "none" } : { kind: "anchor", id };
+        }
+        // それだけで絶対の URL として読めない（相対の URL）
+        if (!URL.canParse(value))
+            return { kind: "none" };
+        const url = new URL(value);
+        // 開くスキーム以外（`javascript:`・`data:`・`file:` ほか）
+        if (!MindmapPreview.HTML_LINK_OPEN_SCHEMES.includes(url.protocol))
+            return { kind: "none" };
+        return { kind: "open", url: url.href };
+    }
+    MindmapPreview.htmlLinkAction = htmlLinkAction;
     /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
     function keyElement(node) {
         const element = node instanceof Element ? node : node.parentElement;
@@ -357,7 +384,7 @@ var MindmapPreview;
     const ASCII_TERM = /^[!-~ ]+$/;
     /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
     MindmapPreview.MARK_KINDS = ["terms", "docs", "research"];
-    /** 描いた本文の文中の、用語集の用語と資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語だけに一致した印はその項目の ID を `onOpen` に知らせる（資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
+    /** 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
     function linkBody({ root, index, selfId, onOpen, }) {
         // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
         const byWord = new Map();
@@ -365,8 +392,8 @@ var MindmapPreview;
             for (const item of index.data[kind]) {
                 if (item.id === selfId || (kind !== "terms" && item.withdrawn === true))
                     continue;
-                const words = kind === "terms" ? [item.title] : (item.aliases ?? []);
-                // 同じ項目の同じ語は 1 つにまとめる
+                const words = kind === "terms" ? [item.title, ...(item.aliases ?? [])] : (item.aliases ?? []);
+                // 同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
                 for (const word of new Set(words.map((value) => value.trim()).filter((value) => value !== ""))) {
                     byWord.set(word, [...(byWord.get(word) ?? []), item.id]);
                 }
@@ -400,8 +427,8 @@ var MindmapPreview;
                 if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word))
                     continue;
                 const target = isId ? word : ids[0];
-                // 資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
-                const withDocs = !isId && ids.some((id) => index.byId.get(id)?.kind !== "terms");
+                // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
+                const multi = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
                 parts.push(text.slice(last, match.index), MindmapPreview.h({
                     tag: "a",
                     attrs: {
@@ -409,11 +436,11 @@ var MindmapPreview;
                         href: hashWith({ id: target, heading: null }),
                         "data-id": target,
                         "data-ids": isId ? null : ids.join(" "),
-                        "aria-describedby": isId || withDocs ? null : MindmapPreview.TERM_TIP_ID,
-                        "aria-details": withDocs ? MindmapPreview.TERM_TIP_ID : null,
+                        "aria-describedby": isId || multi ? null : MindmapPreview.TERM_TIP_ID,
+                        "aria-details": multi ? MindmapPreview.TERM_TIP_ID : null,
                         onclick: (event) => {
                             event.preventDefault();
-                            if (isId || !withDocs)
+                            if (isId || !multi)
                                 onOpen(target);
                         },
                     },

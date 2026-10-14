@@ -87,6 +87,9 @@ type CallTool = Callable[..., ToolResult]
 type MakeItem = Callable[..., dict[str, Any]]
 type MakeSubmission = Callable[..., dict[str, Any]]
 type WriteSubmissions = Callable[..., None]
+type MakePost = Callable[..., dict[str, Any]]
+type MakeThread = Callable[..., dict[str, Any]]
+type WriteThreads = Callable[..., None]
 type MakeComment = Callable[..., dict[str, Any]]
 type WriteComments = Callable[..., None]
 type MakeDraft = Callable[..., dict[str, Any]]
@@ -323,6 +326,65 @@ def write_submissions() -> WriteSubmissions:
     def _write(root: Path, *submissions: dict[str, Any]) -> None:
         """渡した送信を並びのまま items に入れて、root の記録のフォルダの submissions.yaml に書く。"""
         write_yaml(root / RECORD_DIR / "submissions.yaml", {"items": list(submissions)})
+
+    return _write
+
+
+@pytest.fixture
+def make_post() -> MakePost:
+    """スレッドの書き込み（threads.yaml の posts の 1 件）を作る関数を返す。"""
+
+    def _make(post_id: str, **overrides: Any) -> dict[str, Any]:
+        """ID・書き手・本文・書いた日時・AI の既読・取り込んだ日時に、渡したキーを重ねた書き込みを返す。
+
+        既定は取り込んでいない利用者の未読の書き込み。AI の書き込みは、渡さない限り既読で、
+        取り込んだ日時のキーを持たない。
+        """
+        post: dict[str, Any] = {
+            "id": post_id,
+            "author": "user",
+            "body": f"{post_id}の本文",
+            "created": DEFAULT_TIMESTAMP,
+            "read": False,
+            "taken": None,
+        }
+        # AI の書き込みは取り込みの対象ではないので、既読にして taken を持たせない
+        if overrides.get("author") == "ai":
+            post["read"] = True
+            del post["taken"]
+        post.update(overrides)
+        return post
+
+    return _make
+
+
+@pytest.fixture
+def make_thread(make_post: MakePost) -> MakeThread:
+    """スレッド（threads.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(thread_id: str, *posts: dict[str, Any], **overrides: Any) -> dict[str, Any]:
+        """ID・オープン・タグなし・要約なし・渡した書き込み（無ければ 1 件）・状態の記録なしに、渡したキーを重ねたスレッドを返す。"""
+        thread: dict[str, Any] = {
+            "id": thread_id,
+            "status": "open",
+            "tags": [],
+            "summary": None,
+            "posts": list(posts) if posts else [make_post(f"{thread_id}-1")],
+            "events": [],
+        }
+        thread.update(overrides)
+        return thread
+
+    return _make
+
+
+@pytest.fixture
+def write_threads() -> WriteThreads:
+    """ワークスペースに threads.yaml を書く関数を返す。"""
+
+    def _write(root: Path, *threads: dict[str, Any]) -> None:
+        """渡したスレッドを並びのまま items に入れて、root の記録のフォルダの threads.yaml に書く。"""
+        write_yaml(root / RECORD_DIR / "threads.yaml", {"items": list(threads)})
 
     return _write
 

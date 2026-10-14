@@ -11,15 +11,28 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from playwright.sync_api import Page
 from preview_helpers import (
-    COMMENTS_BUTTON,
+    BACK_BUTTON,
+    BAND_RESULT,
+    CLOSED_NOTE,
     COMMENTS_PANEL,
+    COMPOSE_BUTTON,
     DETAIL_MESSAGE,
     DETAIL_TEXTAREA,
     FREE_FORM,
     FREE_TEXTAREA,
     PILL,
+    REASON_OK,
+    REPLY_SEND,
+    REPLY_TEXTAREA,
+    REVIEW_ENTRY,
+    REVIEW_HEAD,
+    SEND_BAND,
+    STATUS_BUTTON,
+    THREAD_POSTS,
     OpenPreview,
     fetch_records,
+    open_list,
+    open_thread,
     select_text_for_pill,
 )
 from readme_helpers import assert_readme_commands, preview_section
@@ -74,6 +87,11 @@ SUBMISSION_DOC_BODY = "最初の文\n言い換えたい文\n最後の文\n"
 SUBMISSION_SENTENCE = "言い換えたい文"
 SUBMISSION_LOCATION_BODY = "ここは言い換える"
 SUBMISSION_FREE_BODY = "全体に目を通した"
+
+# AI がスレッドで尋ねる問いと要約、利用者の返信の本文
+ASK_QUESTION = "D-1 の比べた結果を Issue に起票してよいですか"
+ASK_SUMMARY = "D-1 の比べた結果を Issue に起票してよいかの確認。返事待ち"
+ASK_REPLY = "起票してよい"
 
 # コメントを溜めて送る結果を待つ上限ミリ秒
 SEND_TIMEOUT_MS = 10_000
@@ -682,7 +700,7 @@ def test_normal_when_submission_from_preview(
     page: Page,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """プレビューで溜めてまとめて送ったコメントを、Claude Code を立ち上げ直した後の話し合いの最初に取り込む（正常系）。"""
+    """プレビューで溜めてまとめて送ったコメントを、Claude Code を立ち上げ直した後の話し合いの最初に取り込み、AI の返信を読んでクローズにする（正常系）。"""
     # 準備
     # 案 A・B を持つ未決定の検討事項 D-1 と、3 行の段落の本文を持つ資料 A-1 を持つワークスペース（版のファイルはプラグインと同じ版）
     root = make_workspace(
@@ -712,24 +730,32 @@ def test_normal_when_submission_from_preview(
     page.fill(DETAIL_TEXTAREA, SUBMISSION_LOCATION_BODY)
     page.get_by_role("button", name="レビューに追加").click()
     page.wait_for_selector(f"{DETAIL_MESSAGE}.saved", timeout=SEND_TIMEOUT_MS)
-    # コメントのボタンから一覧を開き、項目に紐づかないコメントを溜めてチェックを外し、まとめて送る
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    # コメントのボタンから一覧を開き、「新しいスレッド」で項目に紐づかないコメントを溜める
+    open_list(page)
+    page.click(COMPOSE_BUTTON)
     page.fill(FREE_TEXTAREA, SUBMISSION_FREE_BODY)
     page.locator(FREE_FORM).get_by_role("button", name="レビューに追加").click()
+    # レビュー中を確かめる画面でチェックを外し、まとめて送る
+    page.wait_for_function(
+        "document.querySelector('header.topbar button.comments-btn .count')?.textContent === '3'",
+        timeout=SEND_TIMEOUT_MS,
+    )
+    page.click(REVIEW_ENTRY)
     page.wait_for_selector(f"{COMMENTS_PANEL} li[data-comment='C-3']", timeout=SEND_TIMEOUT_MS)
     page.locator(f"{COMMENTS_PANEL} li[data-comment='C-3'] input.row-check").uncheck()
-    page.locator(f"{COMMENTS_PANEL} .send-band").get_by_role("button", name="まとめて送る").click()
-    page.wait_for_selector(f"{COMMENTS_PANEL} .send-band .send-msg.sent", timeout=SEND_TIMEOUT_MS)
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=SEND_TIMEOUT_MS)
     # Claude Code を閉じる（MCP サーバーが止まる）
     first_server.close_stdin()
     first_server.wait_exit()
     # 立ち上げ直し: 同じワークスペースを渡した新しい MCP サーバーで、セットアップの後に取り込みを再生する
     second_server = start_server()
     second_status = second_server.call("status", **ws)
-    pending = second_server.call("submissions", **ws)
+    pending = second_server.call("threads", **ws, awaiting=True)
     assert pending.data is not None
-    # 取り込みのステップ: D-1 への送信の本文から採用する案を A にして決定済みにし、会話ログに本文を残す
+    decision_thread, doc_thread = (item["id"] for item in pending.data["items"][::-1])
+    # 取り込みのステップ: D-1 へのスレッドの書き込みから採用する案を A にして決定済みにし、会話ログに本文を残す
+    decision_read = second_server.call("thread", **ws, id=decision_thread)
     adopted = second_server.call("adopt", **ws, id="D-1", key="A")
     updated = second_server.call(
         "update", **ws, id="D-1", item={"status": "決定済み", "answer": "表で見せる"}
@@ -745,9 +771,16 @@ def test_normal_when_submission_from_preview(
             "body_markdown": SUBMISSION_BODY,
         },
     )
-    # 記録した後に、その送信を取り込み済みにする
-    first_taken = second_server.call("take_submission", **ws, id=pending.data["items"][0]["id"])
-    # A-1 の箇所を持つ送信は、本文の 2 行目と選んだ文を添えて会話ログに残し、取り込み済みにする
+    # 記録した後に、D-1 の ID を含む返信で取り込み済みにし、要約を書く
+    first_replied = second_server.call(
+        "reply",
+        **ws,
+        id=decision_thread,
+        body="D-1 を案 A で決定にしました",
+        summary="D-1 の見せ方の回答。案 A で決定",
+    )
+    # A-1 の箇所を持つスレッドは、本文の 2 行目と選んだ文を添えて会話ログに残し、返信して取り込み済みにする
+    doc_read = second_server.call("thread", **ws, id=doc_thread)
     second_logged = second_server.call(
         "add",
         **ws,
@@ -759,45 +792,159 @@ def test_normal_when_submission_from_preview(
             "body_markdown": f"A-1 の本文の 2 行目「{SUBMISSION_SENTENCE}」へ: {SUBMISSION_LOCATION_BODY}",
         },
     )
-    second_taken = second_server.call("take_submission", **ws, id=pending.data["items"][1]["id"])
-    again = second_server.call("submissions", **ws)
+    second_replied = second_server.call(
+        "reply",
+        **ws,
+        id=doc_thread,
+        body="A-1 の 2 行目を言い換えます",
+        summary="A-1 の 2 行目の言い換えの依頼",
+    )
+    again = second_server.call("threads", **ws, awaiting=True)
+    # 新しい MCP サーバーが配るプレビューで、スレッドの一覧から D-1 へのスレッドの AI の返信を読み、クローズにする
+    served_again = second_server.call("preview_url", **ws)
+    assert served_again.data is not None
+    open_preview(served_again.data["url"])
+    open_thread(page, decision_thread)
+    page.wait_for_selector(f"{THREAD_POSTS}:has-text('D-1 を案 A で決定にしました')")
+    page.click(STATUS_BUTTON)
+    page.click(REASON_OK)
+    page.wait_for_selector(CLOSED_NOTE, timeout=SEND_TIMEOUT_MS)
+    unread_after = second_server.call("thread", **ws, id=decision_thread)
+    open_only = second_server.call("threads", **ws)
     checked = second_server.call("check", **ws)
     # 検証
     assert first_status.is_error is False
     assert second_status.is_error is False
-    assert [item["target"] for item in pending.data["items"]] == ["D-1", "A-1"]
-    assert [item["body"] for item in pending.data["items"]] == [
-        SUBMISSION_BODY,
-        SUBMISSION_LOCATION_BODY,
-    ]
-    assert pending.data["items"][1]["loc"] == {
+    assert [item["target"] for item in pending.data["items"]] == ["A-1", "D-1"]
+    assert [post["body"] for post in decision_read.data["posts"]] == [SUBMISSION_BODY]
+    assert [post["body"] for post in doc_read.data["posts"]] == [SUBMISSION_LOCATION_BODY]
+    assert doc_read.data["loc"] == {
         "kind": "body",
         "start": 2,
         "end": 2,
         "text": SUBMISSION_SENTENCE,
     }
-    for result in (adopted, updated, first_logged, first_taken, second_logged, second_taken):
+    for result in (adopted, updated, first_logged, first_replied, second_logged, second_replied):
         assert result.is_error is False, result.text
     # D-1 の採用する案が A で、決定済みである
     decision = read_yaml(root, "decisions.yaml")["items"][0]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["A"]
     assert decision["status"] == "決定済み"
-    # 会話ログに、D-1 への送信の本文と、A-1 の箇所を添えた送信の本文が残っている
+    # 会話ログに、D-1 への書き込みの本文と、A-1 の箇所を添えた書き込みの本文が残っている
     assert SUBMISSION_BODY in (root / RECORD_DIR / "docs" / "L-1.md").read_text(encoding="utf-8")
     location_log = (root / RECORD_DIR / "docs" / "L-2.md").read_text(encoding="utf-8")
     assert SUBMISSION_LOCATION_BODY in location_log
     assert SUBMISSION_SENTENCE in location_log
-    # チェックを外した項目に紐づかないコメントは送信に無く、コメントの一覧に残っている
-    assert [item["body"] for item in read_yaml(root, "submissions.yaml")["items"]] == [
-        SUBMISSION_BODY,
-        SUBMISSION_LOCATION_BODY,
-    ]
+    # チェックを外した項目に紐づかないコメントはスレッドに無く、レビュー中に残っている
+    threads = {item["id"]: item for item in read_yaml(root, "threads.yaml")["items"]}
+    assert sorted(item["posts"][0]["body"] for item in threads.values()) == sorted(
+        [SUBMISSION_BODY, SUBMISSION_LOCATION_BODY]
+    )
     assert [item["body"] for item in read_yaml(root, "comments.yaml")["items"]] == [
         SUBMISSION_FREE_BODY
     ]
-    # 送信が取り込み済みで、取り込みのツールをもう一度呼ぶと 0 件を返す
-    assert all(item["taken"] is not None for item in read_yaml(root, "submissions.yaml")["items"])
+    # 送ったコメントのスレッドごとに AI の返信と要約が付き、D-1 へのスレッドの返信は D-1 の ID を含む
+    for thread in threads.values():
+        assert [post["author"] for post in thread["posts"]] == ["user", "ai"]
+        assert thread["summary"] is not None
+    assert "D-1" in threads[decision_thread]["posts"][-1]["body"]
+    # 送ったコメントの書き込みが AI の既読で、未読だけを引くと 0 件を返す
+    assert all(post["read"] for thread in threads.values() for post in thread["posts"])
+    assert unread_after.data["posts"] == []
     assert again.data == {"items": []}
+    # D-1 へのスレッドがクローズで、既定の一覧（オープンだけ）に出ない
+    assert threads[decision_thread]["status"] == "closed"
+    assert [item["id"] for item in open_only.data["items"]] == [doc_thread]
+    # check が問題を 0 件で返す
+    assert checked.data is not None
+    assert checked.data["problems"] == []
+
+
+def test_normal_when_ai_asks_in_thread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    open_preview: OpenPreview,
+    page: Page,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """AI が Issue に起票してよいかをスレッドで尋ね、利用者がプレビューで返信し、AI が未読の返信を読んでメモを足して返信し、利用者が読んでクローズにする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", title="見せ方"),
+        raw_files={"mindstella-version.ini": f"{plugin_version()}\n"},
+    )
+    ws = {"workspace": str(root)}
+    server = start_server()
+    # 実行
+    # 起動スクリプトで立ち上げ、セットアップが既存のワークスペースの状況を読む
+    status = server.call("status", **ws)
+    # AI が Issue に起票する前の確認を、スレッドを立てて尋ねる（ワークスペースの外へは書き込まない）
+    asked = server.call(
+        "new_thread",
+        **ws,
+        body=ASK_QUESTION,
+        summary=ASK_SUMMARY,
+        tags=["起票"],
+        target="D-1",
+    )
+    assert asked.data is not None
+    thread_id = str(asked.data["id"])
+    # 利用者が記録を見たいと言い、プレビューの URL を示す
+    served = server.call("preview_url", **ws)
+    assert served.data is not None
+    # スレッドの一覧で AI のスレッドを開き、返信をレビューに追加してまとめて送る
+    open_preview(served.data["url"])
+    open_thread(page, thread_id)
+    page.fill(REPLY_TEXTAREA, ASK_REPLY)
+    page.click(REPLY_SEND)
+    page.wait_for_selector(f"{THREAD_POSTS}[data-comment]", timeout=SEND_TIMEOUT_MS)
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=SEND_TIMEOUT_MS)
+    # AI が未読の返信を読み、起票した旨のメモを足して、メモの ID を書いた返信で取り込み済みにする
+    unread = server.call("thread", **ws, id=thread_id)
+    noted = server.call("add", **ws, kind="note", item={"title": "起票した", "content": "Issue に起票した"})
+    replied = server.call(
+        "reply",
+        **ws,
+        id=thread_id,
+        body="起票しました。経緯は N-1 に書きました",
+        summary="D-1 の比べた結果の起票を確認し、起票した。N-1 に記録",
+    )
+    # 利用者がスレッドの一覧で AI の返信を読み、クローズにする
+    page.click(BACK_BUTTON)
+    page.wait_for_selector(f"{THREAD_POSTS}:has-text('N-1')", timeout=SEND_TIMEOUT_MS)
+    page.click(STATUS_BUTTON)
+    page.click(REASON_OK)
+    page.wait_for_selector(CLOSED_NOTE, timeout=SEND_TIMEOUT_MS)
+    after = server.call("thread", **ws, id=thread_id)
+    open_only = server.call("threads", **ws)
+    with_closed = server.call("threads", **ws, status="all")
+    checked = server.call("check", **ws)
+    # 検証
+    assert status.is_error is False
+    assert [post["body"] for post in unread.data["posts"]] == [ASK_REPLY]
+    assert noted.is_error is False
+    assert noted.data["id"] == "N-1"
+    assert replied.is_error is False
+    # AI が立てたスレッドに、AI の問い・利用者の返信・N-1 の ID を含む AI の返信が書いた順に並んでいる
+    thread = read_yaml(root, "threads.yaml")["items"][0]
+    assert [(post["author"], post["body"]) for post in thread["posts"]][:2] == [
+        ("ai", ASK_QUESTION),
+        ("user", ASK_REPLY),
+    ]
+    assert thread["posts"][-1]["author"] == "ai"
+    assert "N-1" in thread["posts"][-1]["body"]
+    # スレッドの要約が、AI の最後の返信の後に書き直されている
+    assert thread["summary"] == "D-1 の比べた結果の起票を確認し、起票した。N-1 に記録"
+    # 利用者の返信が AI の既読で、未読だけを引くと 0 件を返す
+    assert after.data["posts"] == []
+    # スレッドがクローズで、既定の一覧（オープンだけ）に出ず、クローズも含めて引くと出る
+    assert thread["status"] == "closed"
+    assert open_only.data == {"items": []}
+    assert [item["id"] for item in with_closed.data["items"]] == [thread_id]
     # check が問題を 0 件で返す
     assert checked.data is not None
     assert checked.data["problems"] == []

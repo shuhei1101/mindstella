@@ -11,6 +11,7 @@ from preview_body_scroll_helpers import (
     LONG_LINE,
     LONG_LINES_BODY,
     SCROLLABLE_REGION_RULE,
+    SETTLED_SCROLL_TOP_JS,
     TALL_DIAGRAM_BODY,
     overflows_horizontally,
 )
@@ -292,15 +293,14 @@ def test_raw_scroll_by_keyboard(
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement?.matches('dialog.viewer .v-raw')")
     page.keyboard.press("ArrowDown")
-    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop > 0")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW) > 0
     page.keyboard.press("PageDown")
-    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop > 100")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW) > 100
     page.keyboard.press("End")
-    page.wait_for_function(
-        "(e => e.scrollTop + e.clientHeight >= e.scrollHeight - 1)(document.querySelector('dialog.viewer .v-raw'))"
-    )
+    page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW)
+    assert page.eval_on_selector(VIEWER_RAW, "e => e.scrollTop + e.clientHeight >= e.scrollHeight - 1")
     page.keyboard.press("Home")
-    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop === 0")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW) == 0
 
 
 def test_raw_focus_outline_inside(

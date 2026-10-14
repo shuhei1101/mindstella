@@ -65,3 +65,26 @@ def write_alias_preview(
         make_item("G-2", title="保存先", meaning="記録を置く場所"),
         bodies={"A-1.md": body, "A-2.md": "資料 A-2 の本文の段落\n"},
     )
+
+
+# 本文: 別名・タイトルと同じ別名・2 つの用語が持つ同じ別名・取り下げた用語の別名を並べた段落
+TERM_ALIAS_BODY = "マイグレーションと移し替えと古い呼び方\n"
+
+# 「移し替え」の印に一致する用語の ID（G-1 はタイトルと別名の両方が同じ語だが 1 回だけ数える）
+SHARED_TERM_IDS = "G-1 G-2"
+
+
+def write_term_alias_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """本文を持つ資料 A-1 と、別名を持つ用語 G-1・G-2・取り下げた G-3 の配信の URL を返す。"""
+    return write_preview(
+        make_item("A-1"),
+        make_item(
+            "G-1",
+            title="移し替え",
+            aliases=["マイグレーション", "移し替え", " "],
+            meaning="記録を今の版に直すこと",
+        ),
+        make_item("G-2", title="版の更新", aliases=["移し替え"], meaning="版を上げること"),
+        make_item("G-3", title="旧名", aliases=["古い呼び方"], meaning="今は使わない用語", withdrawn=True),
+        bodies={"A-1.md": TERM_ALIAS_BODY},
+    )

@@ -57,8 +57,12 @@ TOOL_NAMES = (
     "export",
     "preview_url",
     "readme",
-    "submissions",
-    "take_submission",
+    "threads",
+    "thread",
+    "new_thread",
+    "reply",
+    "set_thread_status",
+    "update_thread",
 )
 
 # `MindmapError` でない例外をツールのエラーにするときの文言
@@ -384,8 +388,13 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     @server.tool(
         name="preview_url", description="プレビューを配る URL を返す（無ければ配信を立てる）"
     )
-    def preview_url(workspace: WorkspaceArg) -> CallToolResult:
-        return read(workspace, lambda root: commands.run_preview_url(root, previews=previews))
+    def preview_url(
+        workspace: WorkspaceArg,
+        diff: Annotated[
+            str | None, Field(description="差分を開くまとまりの ID（`commit` の `id`。例 V-3）")
+        ] = None,
+    ) -> CallToolResult:
+        return read(workspace, lambda root: commands.run_preview_url(root, previews=previews, diff=diff))
 
     @server.tool(
         name="readme",
@@ -394,16 +403,107 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     def readme(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_readme(root, previews=previews))
 
-    @server.tool(name="submissions", description="取り込んでいない送信を送った順に返す")
-    def submissions(workspace: WorkspaceArg) -> CallToolResult:
-        return read(workspace, commands.run_submissions)
-
-    @server.tool(name="take_submission", description="送信 1 件を取り込み済みにする")
-    def take_submission(
+    @server.tool(
+        name="threads",
+        description="スレッドを状態・タグ・未読・取り込み待ちで絞り、本文を含めないキーだけを返す（読むだけ）",
+    )
+    def threads(
         workspace: WorkspaceArg,
-        id: Annotated[str, Field(description="送信の ID（例 S-1）")],  # noqa: A002
+        status: Annotated[
+            Literal["open", "closed", "all"] | None,
+            Field(
+                description="返す状態。省略は、awaiting が偽ならオープンだけ、真ならオープンとクローズの両方"
+            ),
+        ] = None,
+        tag: Annotated[str | None, Field(description="このタグを持つスレッドだけ")] = None,
+        unread: Annotated[bool, Field(description="真なら AI の未読の書き込みを持つスレッドだけ")] = False,
+        awaiting: Annotated[
+            bool, Field(description="真なら AI が取り込んでいない利用者の書き込みを持つスレッドだけ")
+        ] = False,
     ) -> CallToolResult:
-        return write(workspace, lambda root: commands.run_take_submission(root, id))
+        return read(workspace, lambda root: commands.run_threads(root, status, tag, unread, awaiting))
+
+    @server.tool(
+        name="thread",
+        description="スレッド 1 件の書き込みと状態の記録を返し、返した書き込みを AI の既読にする（取り込み済みにはしない）",
+    )
+    def thread(
+        workspace: WorkspaceArg,
+        id: Annotated[str, Field(description="スレッドの ID（例 TH-1）")],  # noqa: A002
+        unread_only: Annotated[
+            bool, Field(description="真なら AI の未読の書き込みだけ、偽なら全ての書き込み")
+        ] = True,
+    ) -> CallToolResult:
+        root = resolve_workspace(workspace, cwd)
+        return call_tool(
+            lambda: commands.run_thread(
+                root, id, unread_only, lock=lambda: workspace_lock(root, write_lock)
+            ),
+            write_lock=write_lock,
+        )
+
+    @server.tool(
+        name="new_thread",
+        description="AI から利用者へ返事を求めるスレッドを立てる（最初の書き込みは AI の本文）",
+    )
+    def new_thread(
+        workspace: WorkspaceArg,
+        body: Annotated[str, Field(description="最初の書き込みの本文（1〜10000 文字）")],
+        summary: Annotated[str, Field(description="スレッドの要約（1〜400 文字）")],
+        tags: Annotated[list[str] | None, Field(description="付けるタグ")] = None,
+        target: Annotated[str | None, Field(description="向ける項目の ID")] = None,
+    ) -> CallToolResult:
+        return write(
+            workspace, lambda root: commands.run_new_thread(root, body, summary, tags, target)
+        )
+
+    @server.tool(
+        name="reply",
+        description="オープンのスレッドに AI の返信を足し、要約を書き直し、既読にした利用者の書き込みを取り込み済みにする",
+    )
+    def reply(
+        workspace: WorkspaceArg,
+        id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+        body: Annotated[str, Field(description="返信の本文（1〜10000 文字）")],
+        summary: Annotated[str, Field(description="書き直した要約（1〜400 文字）")],
+        take: Annotated[
+            bool, Field(description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする")
+        ] = True,
+    ) -> CallToolResult:
+        return write(workspace, lambda root: commands.run_reply(root, id, body, summary, take))
+
+    @server.tool(
+        name="set_thread_status",
+        description="AI がスレッドをクローズにするかオープンに戻し、理由を残す",
+    )
+    def set_thread_status(
+        workspace: WorkspaceArg,
+        id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+        status: Annotated[Literal["open", "closed"], Field(description="変えた後の状態")],
+        reason: Annotated[str | None, Field(description="状態を変える理由（400 文字まで）")] = None,
+    ) -> CallToolResult:
+        return write(
+            workspace, lambda root: commands.run_set_thread_status(root, id, status, reason)
+        )
+
+    @server.tool(
+        name="update_thread",
+        description="スレッドの要約とタグを書き換え、既読にした利用者の書き込みを取り込み済みにする（クローズのスレッドも書き換える）",
+    )
+    def update_thread(
+        workspace: WorkspaceArg,
+        id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+        summary: Annotated[str | None, Field(description="書き直した要約（1〜400 文字）")] = None,
+        tags: Annotated[
+            list[str] | None, Field(description="置き換えるタグ。空の一覧でタグを外す")
+        ] = None,
+        take: Annotated[
+            bool, Field(description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする")
+        ] = False,
+    ) -> CallToolResult:
+        return write(
+            workspace, lambda root: commands.run_update_thread(root, id, summary, tags, take)
+        )
 
     return server
 

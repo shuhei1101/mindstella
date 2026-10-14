@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from .fixture_types import MakeDraft, MakeItem, MakeWorkspace, WriteDrafts
+from .fixture_types import MakeDraft, MakeItem, MakeThread, MakeWorkspace, WriteDrafts, WriteThreads
 from .http_helpers import http_request, send_json
 from workspace_fixtures import RECORD_DIR
 
@@ -96,3 +96,33 @@ def test_error_when_target_not_found(
     assert result.status == 404
     assert "D-99" in result.json()["detail"]
     assert not (root / RECORD_DIR / "drafts.yaml").exists()
+
+
+def test_normal_when_thread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """スレッドごとに返信の書きかけを保つ（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"), make_thread("TH-2"))
+    url = serve_preview(root)
+    # 実行
+    first = send_json(url, "PUT", DRAFTS_PATH, {"thread": "TH-1", "body": "案 B も"})
+    second = send_json(url, "PUT", DRAFTS_PATH, {"thread": "TH-2", "body": "後で読む"})
+    # 検証
+    assert (first.status, second.status) == (204, 204)
+    drafts = _read_drafts(root)
+    assert [(draft["thread"], draft["body"]) for draft in drafts] == [
+        ("TH-1", "案 B も"),
+        ("TH-2", "後で読む"),
+    ]
+    assert all({"target", "loc"}.isdisjoint(draft) for draft in drafts)
+    read = http_request(url, "/api/comments")
+    assert [(draft["thread"], draft["body"]) for draft in read.json()["drafts"]] == [
+        ("TH-1", "案 B も"),
+        ("TH-2", "後で読む"),
+    ]

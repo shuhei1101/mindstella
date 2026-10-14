@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from integration.browser_tab_helpers import link_target  # noqa: F401
 from playwright.sync_api import Page
 from preview_history_helpers import build_history_workspace
 from preview_fixture_types import (
@@ -28,6 +29,7 @@ from workspace_fixtures import (
     MakeWorkspace,
     WriteComments,
     WriteDrafts,
+    WriteThreads,
 )
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -58,14 +60,16 @@ def write_review_preview(
     make_workspace: MakeWorkspace,
     write_comments: WriteComments,
     write_drafts: WriteDrafts,
+    write_threads: WriteThreads,
     call_tool: CallTool,
 ) -> WriteReviewPreview:
-    """項目・レビュー中のコメント・書きかけを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
+    """項目・レビュー中のコメント・書きかけ・スレッドを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
 
     def _write(
         *items: dict[str, Any],
         comments: tuple[dict[str, Any], ...] = (),
         drafts: tuple[dict[str, Any], ...] = (),
+        threads: tuple[dict[str, Any], ...] = (),
         bodies: dict[str, str] | None = None,
         settings: dict[str, Any] | None = None,
     ) -> tuple[str, Path]:
@@ -75,6 +79,8 @@ def write_review_preview(
             write_comments(root, *comments)
         if drafts:
             write_drafts(root, *drafts)
+        if threads:
+            write_threads(root, *threads)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

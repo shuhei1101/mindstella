@@ -11,7 +11,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/locations.py
     usecase: 選んだ箇所へコメントする
     role: DTO
-    summary: コメント・書きかけ・送信が持つ `loc`（ER 図『ワークスペース』）。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    summary: コメント・書きかけ・スレッドが持つ `loc`（ER 図『ワークスペース』）。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: kind
         type: Literal['body', 'value']

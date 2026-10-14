@@ -859,6 +859,88 @@ def test_link_body_when_aliases(
     assert result["calls"] == []
 
 
+# 用語の別名に一致した語に印を付け、印ごとの項目・ツールチップの指し方と、押したときに知らせた項目を調べる
+LINK_BODY_TERM_ALIASES_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    const marks = [];
+    const opened = {};
+    // 印を 1 つずつ調べてから押し、押して知らせた項目を印の語ごとに残す
+    for (const element of root.querySelectorAll("p a.term")) {
+        marks.push({
+            text: element.textContent,
+            ids: element.getAttribute("data-ids"),
+            hasDescribedby: element.hasAttribute("aria-describedby"),
+            hasDetails: element.hasAttribute("aria-details"),
+        });
+        const before = calls.length;
+        element.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+        opened[element.textContent] = calls.slice(before);
+    }
+    return {marks, opened};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("self_id", "expected_marks", "expected_opened"),
+    [
+        pytest.param(
+            "A-1",
+            [
+                {"text": "マイグレーション", "ids": "G-1", "hasDescribedby": True, "hasDetails": False},
+                {"text": "移し替え", "ids": "G-1 G-2", "hasDescribedby": False, "hasDetails": True},
+                {"text": "古い呼び方", "ids": "G-3", "hasDescribedby": True, "hasDetails": False},
+            ],
+            {"マイグレーション": ["G-1"], "移し替え": [], "古い呼び方": ["G-3"]},
+            id="other_item_open",
+        ),
+        pytest.param(
+            "G-1",
+            [
+                {"text": "移し替え", "ids": "G-2", "hasDescribedby": True, "hasDetails": False},
+                {"text": "古い呼び方", "ids": "G-3", "hasDescribedby": True, "hasDetails": False},
+            ],
+            {"移し替え": ["G-2"], "古い呼び方": ["G-3"]},
+            id="self_in_aliases",
+        ),
+    ],
+)
+def test_link_body_when_term_aliases(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    self_id: str,
+    expected_marks: list[dict[str, Any]],
+    expected_opened: dict[str, list[str]],
+) -> None:
+    """用語の別名にも印を付け、用語 2 件以上の一致はリンクを持つツールチップへ回す（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[
+            make_item("G-1", title="移し替え", aliases=["マイグレーション", "移し替え", " "]),
+            make_item("G-2", title="版の更新", aliases=["移し替え"]),
+            make_item("G-3", title="旧名", aliases=["古い呼び方"], withdrawn=True),
+        ],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_TERM_ALIASES_SCRIPT,
+        {"data": data, "source": "マイグレーションと移し替えと古い呼び方\n", "selfId": self_id},
+    )
+    # 検証
+    assert result["marks"] == expected_marks
+    assert result["opened"] == expected_opened
+
+
 # 値の Markdown（強調・実行される属性を持つ画像・スクリプト・箇条書き 2 行）
 VALUE_MARKDOWN = '**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>\n\n- 項目 1\n- 項目 2\n'
 
@@ -1194,3 +1276,79 @@ def test_html_selection_location_when_outside(
     )
     # 検証
     assert result is None
+
+
+@pytest.mark.parametrize(
+    ("href", "url"),
+    [
+        pytest.param("https://example.com/a?b=1#c", "https://example.com/a?b=1#c", id="https"),
+        pytest.param("http://127.0.0.1:8000/", "http://127.0.0.1:8000/", id="http"),
+        pytest.param("HTTPS://EXAMPLE.COM/", "https://example.com/", id="upper_case"),
+        pytest.param("mailto:a@example.com", "mailto:a@example.com", id="mailto"),
+        pytest.param("  https://example.com/  ", "https://example.com/", id="padded"),
+    ],
+)
+def test_html_link_action_when_open(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, href: str, url: str
+) -> None:
+    """絶対の http・https・mailto の URL は開く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == {"kind": "open", "url": url}
+
+
+@pytest.mark.parametrize(
+    ("href", "expected"),
+    [
+        pytest.param("#usage", {"kind": "anchor", "id": "usage"}, id="ascii"),
+        pytest.param(
+            "#%E4%BD%BF%E3%81%84%E6%96%B9", {"kind": "anchor", "id": "使い方"}, id="encoded"
+        ),
+        pytest.param("#100%", {"kind": "anchor", "id": "100%"}, id="undecodable"),
+        pytest.param("#", {"kind": "none"}, id="empty"),
+    ],
+)
+def test_html_link_action_when_anchor(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    href: str,
+    expected: dict[str, str],
+) -> None:
+    """# で始まる値は、戻した id へ送る（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        pytest.param("other.html", id="relative"),
+        pytest.param("/mindstella.html", id="absolute_path"),
+        pytest.param("//example.com/a", id="protocol_relative"),
+        pytest.param("?a=1", id="query_only"),
+        pytest.param("", id="empty"),
+        pytest.param("javascript:alert(1)", id="javascript"),
+        pytest.param("JaVaScRiPt:alert(1)", id="javascript_mixed_case"),
+        pytest.param("data:text/html,x", id="data"),
+        pytest.param("file:///etc/hosts", id="file"),
+        pytest.param("ftp://example.com/", id="ftp"),
+        pytest.param("blob:https://example.com/x", id="blob"),
+    ],
+)
+def test_html_link_action_when_none(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, href: str
+) -> None:
+    """相対の URL とほかのスキームは何もしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == {"kind": "none"}

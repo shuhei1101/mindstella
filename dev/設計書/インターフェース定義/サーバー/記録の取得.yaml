@@ -219,8 +219,7 @@ response:
     description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行の印（`data-line`・`data-line-end`）を足した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分の印を付ける要素を決める。HTML の本文が無ければ `{}`'
     notes: 印の足し方は制約「行の印」
 response_notes: |-
-  > [!NOTE]
-  > 配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。送信（`submissions.yaml`）は返さない。
+  配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。スレッド（`threads.yaml`）は返さない（『スレッドの読み取り』）。
 status_codes:
   - code: '200'
     condition: 読めた

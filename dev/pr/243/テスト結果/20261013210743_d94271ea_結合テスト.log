@@ -1,0 +1,13 @@
+$ pytest tests/integration/preview/test_open_preview.py tests/integration/preview/test_detail_panel_screen.py tests/integration/storybook/test_html_body_frame_stories.py -k "html_body_link or html_body_anchor or link_pressed or test_links or test_anchor_links"
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-html-body-frame-links
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 188 items / 180 deselected / 8 selected
+
+tests/integration/preview/test_open_preview.py ....                      [ 50%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [ 75%]
+tests/integration/storybook/test_html_body_frame_stories.py ..           [100%]
+
+====================== 8 passed, 180 deselected in 18.60s ======================

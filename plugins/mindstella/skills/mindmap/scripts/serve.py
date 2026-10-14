@@ -1,6 +1,6 @@
 """ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
 
-画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。
+画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・設定の既定の書き換え・設定の再読み込みを受け付ける。
 まとめて送った後は Claude Code へ入力する。
 """
 
@@ -24,7 +24,6 @@ from builder import PREVIEW_DIR, assemble_template, read_records
 from claude_input import InputTarget, enter_to_claude
 from comments import (
     ReviewComment,
-    SentComment,
     add_comment,
     delete_comment,
     list_review,
@@ -33,6 +32,7 @@ from comments import (
     update_comment,
 )
 from errors import (
+    ArgumentError,
     CommentConflictError,
     CommentInvalidError,
     CommentNotFoundError,
@@ -41,6 +41,7 @@ from errors import (
     SchemaMismatchError,
     ServeFailedError,
     SettingsInvalidError,
+    ThreadNotFoundError,
     WorkspaceNotFoundError,
     WriteFailedError,
 )
@@ -55,9 +56,10 @@ from store import (
     check_settings,
     load_workspace,
     now_utc,
+    require_workspace,
     workspace_lock,
 )
-from submissions import SUBMISSIONS_FILE
+from threads import THREADS_FILE, SentPost, set_thread_status, threads_for_preview
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +87,9 @@ MAX_REQUEST_BYTES = 131072
 COMMENTS_PATH = "/api/comments"
 SEND_PATH = "/api/comments/send"
 DRAFTS_PATH = "/api/drafts"
+
+# スレッドの読み取りと、スレッド 1 件の状態の書き換え（`/api/threads/{id}`）のパス
+THREADS_PATH = "/api/threads"
 
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
@@ -275,7 +280,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
 
     def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける。"""
+        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
         if not check_host(
@@ -295,6 +300,8 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._stream(context)
         elif path == COMMENTS_PATH:
             self._reply(comments_response(context.root))
+        elif path == THREADS_PATH:
+            self._reply(threads_response(context.root))
         else:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -312,7 +319,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
             )
         elif path == SEND_PATH:
-            # 書き換えの鍵を外した後に、足した送信を Claude Code へ入力する
+            # 書き換えの鍵を外した後に、足した書き込みを Claude Code へ入力する
             self._write(
                 lambda root, data: _sent_body(*send_comments(root, data)),
                 HTTPStatus.CREATED,
@@ -332,14 +339,17 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_PATCH(self) -> None:
-        """レビュー中のコメント 1 件を書き換える要求を受け付けの関数へ渡す。"""
+        """レビュー中のコメント 1 件の書き換えとスレッド 1 件の状態の書き換えを受け付けの関数へ渡す。"""
         path = self._checked_path()
         comment_id = _comment_id_of(path)
+        thread_id = _thread_id_of(path)
         if comment_id is not None:
             self._write(
                 lambda root, data: _updated_body(update_comment(root, comment_id, data)),
                 HTTPStatus.OK,
             )
+        elif thread_id is not None:
+            self._write(lambda root, data: patch_thread_status(root, thread_id, data), HTTPStatus.OK)
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -665,7 +675,7 @@ def reload_response(context: ServeContext, *, origin: str | None) -> Response:
 def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
-    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE, CHANGES_FILE]
+    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), THREADS_FILE, CHANGES_FILE]
     # 本文の Markdown と HTML（`.mindstella/docs/` の直下）も見る
     records = records_root(root)
     body_dir = records / BODY_DIR
@@ -728,6 +738,29 @@ def comments_response(root: Path) -> Response:
     )
 
 
+def threads_response(root: Path) -> Response:
+    """全てのスレッドをその場で読んだ JSON を返す。"""
+    try:
+        data = threads_for_preview(load_workspace(root))
+    except (SchemaMismatchError, WorkspaceNotFoundError) as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def patch_thread_status(root: Path, thread_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    """画面からのクローズ・オープンへの戻しを、書き手を利用者にして書く。"""
+    require_workspace(root)
+    status = data.get("status")
+    changed = set_thread_status(
+        root, thread_id, status=cast("str", status), reason=data.get("reason"), author="user"
+    )
+    return {"id": thread_id, "status": status, "changed": changed}
+
+
 def write_response(
     context: ServeContext,
     *,
@@ -788,6 +821,7 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
         "id": deleted.id,
         "target": deleted.target,
         "loc": None if deleted.loc is None else location_to_dict(deleted.loc),
+        "thread": deleted.thread,
         "body": deleted.body,
         "created": deleted.created,
         "count": count,
@@ -802,9 +836,9 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
 def error_response(error: MindmapError) -> Response:
     """ツールのエラーの種類からステータスコードを決めて問題の応答にする。"""
     detail = str(error)
-    if isinstance(error, (CommentInvalidError, SettingsInvalidError)):
+    if isinstance(error, (CommentInvalidError, SettingsInvalidError, ArgumentError)):
         return problem_response(HTTPStatus.BAD_REQUEST, detail)
-    if isinstance(error, (ItemNotFoundError, CommentNotFoundError)):
+    if isinstance(error, (ItemNotFoundError, CommentNotFoundError, ThreadNotFoundError)):
         return problem_response(HTTPStatus.NOT_FOUND, detail)
     if isinstance(error, CommentConflictError):
         response = problem_response(HTTPStatus.CONFLICT, detail)
@@ -831,7 +865,7 @@ def _added_body(comment: ReviewComment, count: int) -> dict[str, Any]:
     return {"id": comment.id, "created": comment.created, "count": count}
 
 
-def _sent_body(sent: str, items: list[SentComment]) -> dict[str, Any]:
+def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
     """まとめて送った応答の本文を作る。"""
     return {"sent": sent, "items": [asdict(item) for item in items]}
 
@@ -865,3 +899,13 @@ def _comment_id_of(path: str | None) -> str | None:
     if path is None or not path.startswith(prefix) or path == SEND_PATH:
         return None
     return unquote(path.removeprefix(prefix))
+
+
+def _thread_id_of(path: str | None) -> str | None:
+    """`/api/threads/{id}` のパスからスレッドの ID を取り出す（`id` は `/` を含まない）。"""
+    prefix = f"{THREADS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix):
+        return None
+    thread_id = unquote(path.removeprefix(prefix))
+    return thread_id if thread_id and "/" not in thread_id else None

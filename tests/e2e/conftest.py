@@ -11,9 +11,10 @@ from typing import Any
 
 import pytest
 import yaml
+from integration.browser_tab_helpers import link_target  # noqa: F401
 from launch_registration_helpers import BASHRC_USER_LINE, RegistrationSandbox
-from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview, ServeWorkspace
+from playwright.sync_api import Browser, Page
+from preview_helpers import OpenInEmptyContext, OpenPreview, ServePreview, ServeWorkspace
 from workspace_fixtures import RECORD_DIR, CallTool, MakeWorkspace
 
 # スキルの手順が連ねるツールの呼び出しを再生する関数（ツールの名前と引数を渡し、結果の JSON を返す）
@@ -145,3 +146,24 @@ def open_preview(page: Page) -> OpenPreview:
         return page
 
     return _open
+
+
+@pytest.fixture
+def open_in_empty_context(
+    browser: Browser, browser_context_args: dict[str, Any]
+) -> Iterator[OpenInEmptyContext]:
+    """端末の保存領域が空の新しいブラウザのコンテキストで URL を開き、画面が描き終わるまで待つ関数を返し、テストの後でコンテキストを閉じる。"""
+    contexts = []
+
+    def _open(url: str) -> Page:
+        """新しいコンテキストを作って URL を開き、本文の領域に中身が入るのを待つ。"""
+        context = browser.new_context(**browser_context_args)
+        contexts.append(context)
+        opened = context.new_page()
+        opened.goto(url)
+        opened.wait_for_selector("main#main > *", state="attached", timeout=RENDER_TIMEOUT_MS)
+        return opened
+
+    yield _open
+    for context in contexts:
+        context.close()

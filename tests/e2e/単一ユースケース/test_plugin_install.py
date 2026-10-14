@@ -62,5 +62,8 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # インストールしたプラグインのフォルダに .claude-plugin/plugin.json があり、リポジトリの開発用のファイルが無い
     assert (install_path / ".claude-plugin" / "plugin.json").is_file()
     assert [name for name in OUTSIDE_PLUGIN_NAMES if (install_path / name).exists()] == []
-    # インストールしたプラグインが hooks を持たない
-    assert _count_hooks(details.stdout) == 0
+    # インストールしたプラグインの hooks が SessionStart の 1 件（未読へ戻す）だけである
+    assert _count_hooks(details.stdout) == 1
+    hooks = json.loads((install_path / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    assert list(hooks) == ["SessionStart"]
+    assert len(hooks["SessionStart"]) == 1

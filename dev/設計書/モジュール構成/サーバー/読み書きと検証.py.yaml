@@ -7,7 +7,7 @@ directory: |-
       common.schema.json       共通のキー（$defs）
       settings.schema.json     config.yaml
       decisions.schema.json    ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
-      submissions.schema.json  submissions.yaml（『送信』が使う）
+      threads.schema.json      threads.yaml（『スレッド』が使う）
       comments.schema.json     comments.yaml（『コメント』が使う）
       drafts.schema.json       drafts.yaml（『コメント』が使う）
     scripts/
@@ -294,20 +294,13 @@ classes:
     title: 引数の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない）。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
     kind: クラス
     inherits: MindmapError
     properties:
       - name: argument
         type: str
         description: 誤った引数の名前
-  - name: SubmissionNotFoundError
-    title: 送信が無い
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 送信の取り込み
-    summary: 渡した ID の送信が無い。メッセージに ID
-    kind: クラス
-    inherits: MindmapError
   - name: ServeFailedError
     title: 配信を立てられない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -344,7 +337,7 @@ classes:
     title: コメントが今の記録に合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: コメントを選んで送る
-    summary: 箇所が今の項目に合わない、向けた項目が消えた、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
+    summary: 箇所が今の項目に合わない、向けた項目が消えた、返信先のスレッドがクローズか無い、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
     kind: クラス
     inherits: MindmapError
     properties:
@@ -395,6 +388,20 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の削除と取り下げ
     summary: '消そうとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
+    kind: クラス
+    inherits: MindmapError
+  - name: ThreadNotFoundError
+    title: スレッドが無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: スレッドで話す
+    summary: '渡した ID のスレッドが無い。配信は 404 にする。メッセージは `スレッドがありません: {ID}`'
+    kind: クラス
+    inherits: MindmapError
+  - name: ThreadClosedError
+    title: スレッドがクローズ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: スレッドで話す
+    summary: クローズのスレッドへ AI が返信しようとした。メッセージは `スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください`（画面からのクローズのスレッドへの返信は `CommentConflictError`）
     kind: クラス
     inherits: MindmapError
 constants:

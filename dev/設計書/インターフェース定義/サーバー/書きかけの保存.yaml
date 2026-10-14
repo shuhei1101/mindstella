@@ -94,6 +94,32 @@ flows:
       - ステータスが 404 で、`detail` に `D-99` がある
       - '`drafts.yaml` が無い'
     test: test_error_when_target_not_found
+  - name: 正常系（スレッドの返信の書きかけ）
+    summary: スレッドごとに返信の書きかけを保つ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1・TH-2 を持つワークスペース
+        notes: TH-1 へ `案 B も`、TH-2 へ `後で読む` を順に保つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as PUT /api/drafts
+        participant WS as ワークスペース
+
+        クライアント->>IF: PUT {thread: TH-1, body}
+        IF->>WS: drafts.yaml に書く
+        クライアント->>IF: PUT {thread: TH-2, body}
+        IF->>WS: drafts.yaml に書く
+        IF-->>クライアント: 204
+      ```
+    expected:
+      - どちらもステータスが 204
+      - '`drafts.yaml` に `thread: TH-1` と `thread: TH-2` の 2 件があり、どちらも `target`・`loc` を持たない'
+      - '`GET /api/comments` の `drafts` に 2 件が `thread` つきで返る'
+    test: test_normal_when_thread
 lead: コメントの入力欄の書きかけを、向けた先（項目と箇所の組）ごとに `drafts.yaml` へ保つ。空の本文を受けたらその書きかけを消す。パネルを閉じても・再読み込みしても・起動スクリプトで立ち上げ直しても、『レビュー中のコメントの読み取り』で戻せる。
 idempotent: true
 side_effects: '`drafts.yaml` のその向けた先の 1 件を書き換えるか消す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -141,17 +167,26 @@ request:
     description: 書きかけの本文。空文字ならその向けた先の書きかけを消す
     constraints: 10000 文字以下
     example: 案 B も見たい
+  - name: thread
+    type: str
+    required: false
+    default: なし（項目か項目に紐づかない入力欄）
+    location: body
+    description: スレッドの返信の入力欄のとき、そのスレッドの ID
+    constraints: ワークスペースにあるスレッド。`target`・`loc` と一緒に渡さない
+    example: TH-3
+    status: planned
 status_codes:
   - code: '204'
     condition: 保ったか、消した
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`body` が無いか 10000 文字を超える・`loc` だけで `target` が無い・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`body` が無いか 10000 文字を超える・`loc` だけで `target` が無い・`thread` を `target` か `loc` と一緒に渡した・リクエストの本文が 128KiB を超える
     notes: 何も書かない
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
     notes: 何も書かない
   - code: '404'
-    condition: '`target` の項目がワークスペースに無い'
+    condition: '`target` の項目か `thread` のスレッドがワークスペースに無い'
     notes: 何も書かない。消す（`body` が空）ときは項目が無くても 204 で消す
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
@@ -167,7 +202,7 @@ constraints:
   - item: 呼ぶ間隔
     constraint: 画面は入力が止まってから待って 1 回呼ぶ（待ちの長さはモジュール構成で決める）。パネルを閉じるときは待たずに呼ぶ
   - item: 向けた先の同じさ
-    constraint: '`target` と `loc`（`kind`・`start`・`end`・`key`・`text` の全て）が同じものを同じ向けた先として上書きする'
+    constraint: '`target` と `loc`（`kind`・`start`・`end`・`key`・`text` の全て）が同じものか、`thread` が同じものを同じ向けた先として上書きする。スレッドの返信の書きかけはクローズのスレッドへも保つ（戻したときに入力欄へ戻す）'
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]

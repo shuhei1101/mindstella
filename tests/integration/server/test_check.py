@@ -8,10 +8,11 @@ from typing import Any
 from .fixture_types import (
     CallTool,
     MakeItem,
-    MakeSubmission,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     SnapshotTree,
-    WriteSubmissions,
+    WriteThreads,
 )
 from .history_helpers import DECISION_ITEM, add_item, commit, remove_item, update_item
 from workspace_fixtures import RECORD_DIR
@@ -42,8 +43,8 @@ def test_normal_when_clean(
 def test_normal_when_problems_found(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
@@ -55,7 +56,7 @@ def test_normal_when_problems_found(
         make_item("R-1", body="R-1.md"),
         bodies={"X-1.md": "どこからも指されない本文\n"},
     )
-    write_submissions(root, make_submission("S-1", target="D-8"))
+    write_threads(root, make_thread("TH-1", target="D-8"))
     before = snapshot_tree(root)
     # 実行
     result = call_tool("check", workspace=str(root))
@@ -65,7 +66,7 @@ def test_normal_when_problems_found(
     assert result.data["ok"] is False
     assert _problem_keys(result.data["problems"]) == {
         ("broken_ref", ".mindstella/decisions.yaml", "D-1", "depends_on"),
-        ("broken_ref", ".mindstella/submissions.yaml", "S-1", "target"),
+        ("broken_ref", ".mindstella/threads.yaml", "TH-1", "target"),
         ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
         ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
         ("orphan_body", ".mindstella/docs/X-1.md", None, None),
@@ -192,17 +193,21 @@ def test_normal_when_options_and_status_mismatch(
 
 def test_normal_when_removed_item_in_change_set(
     make_workspace: MakeWorkspace,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
     call_tool: CallTool,
 ) -> None:
-    """過去のまとまりと取り込み済みの送信が消した項目を指していても、参照切れにしない（正常系）。"""
+    """過去のまとまりと取り込み待ちでないスレッドが消した項目を指していても、参照切れにしない（正常系）。"""
     # 準備
     root = make_workspace()
     add_item(call_tool, root, "note", {"title": "メモ", "content": "中身"})
     commit(call_tool, root, "足す")
-    write_submissions(
-        root, make_submission("S-1", target="N-1", taken="2026-10-02T08:00:00+00:00")
+    write_threads(
+        root,
+        make_thread(
+            "TH-1", make_post("TH-1-1", taken="2026-10-02T08:00:00+00:00"), target="N-1"
+        ),
     )
     remove_item(call_tool, root, "N-1")
     commit(call_tool, root, "消す")

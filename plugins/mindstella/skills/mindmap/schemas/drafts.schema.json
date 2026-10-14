@@ -94,8 +94,37 @@
           "updated": {
             "type": "string",
             "minLength": 1
+          },
+          "thread": {
+            "type": "string",
+            "pattern": "^TH-[0-9]+$"
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "thread"
+              ]
+            },
+            "then": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "target"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "loc"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
       }
     }
   }

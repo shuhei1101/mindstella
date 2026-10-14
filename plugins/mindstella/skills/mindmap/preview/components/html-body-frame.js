@@ -87,6 +87,71 @@ var MindmapPreview;
         const shift = (rect) => new DOMRect(rect.left + outer.left + frame.clientLeft, rect.top + outer.top + frame.clientTop, rect.width, rect.height);
         return { start: location.start, end: location.end, text: location.text, rects: { first: shift(first), last: shift(last) } };
     }
+    /** 枠から親をたどって最初に当たる、縦にスクロールできる要素（計算した `overflow-y` が `auto` か `scroll`）。無ければ null */
+    function verticalScroller(frame) {
+        for (let element = frame.parentElement; element !== null; element = element.parentElement) {
+            const overflowY = getComputedStyle(element).overflowY;
+            if (overflowY === "auto" || overflowY === "scroll")
+                return element;
+        }
+        return null;
+    }
+    /** 本文のスクロール領域を、枠の中の `id` の要素の上端が領域の上端に来る位置まで送る（要素か領域が無ければ送らない） */
+    function scrollToAnchor({ frame, id }) {
+        const target = frame.contentDocument?.getElementById(id) ?? null;
+        const scroller = verticalScroller(frame);
+        if (target === null || scroller === null)
+            return;
+        // 枠の位置に枠の中の要素の位置を足して、領域の上端からの距離を求める
+        const offset = frame.getBoundingClientRect().top + frame.clientTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        scroller.scrollTop += offset;
+    }
+    /** 枠の文書の `click`・`auxclick`（中ボタン）を受け、リンクの押下を枠の中で移らせず、`htmlLinkAction` の決めたとおりに開く・送る */
+    function bindLinks({ frame, doc }) {
+        const view = doc.defaultView;
+        if (view === null)
+            return;
+        // ポインターを押してから離すまでの間に選択が変わったか（リンクの文をなぞって選んだ直後の `click` を見分ける）
+        let pressed = false;
+        let selectionChanged = false;
+        doc.addEventListener("pointerdown", () => {
+            pressed = true;
+            selectionChanged = false;
+        });
+        doc.addEventListener("pointerup", () => {
+            pressed = false;
+        });
+        doc.addEventListener("selectionchange", () => {
+            if (pressed)
+                selectionChanged = true;
+        });
+        const onPress = (event) => {
+            // 枠の文書の要素は枠の文書の `Element` で見分ける（親の画面の `Element` とは別物）
+            if (!(event.target instanceof view.Element))
+                return;
+            // 押された要素から最も近い `href` を持つリンク
+            const link = event.target.closest("a[href], area[href]");
+            if (link === null)
+                return;
+            // 枠の中では移らない
+            event.preventDefault();
+            // 選んだ直後は開かず送らない。キーボードからの `click`（`detail` が 0）は選択の有無によらず扱う
+            const selection = view.getSelection();
+            if (selectionChanged && event.detail > 0 && selection !== null && !selection.isCollapsed)
+                return;
+            const action = MindmapPreview.htmlLinkAction(link.getAttribute("href") ?? "");
+            if (action.kind === "open")
+                window.open(action.url, "_blank", "noopener,noreferrer");
+            else if (action.kind === "anchor")
+                scrollToAnchor({ frame, id: action.id });
+        };
+        doc.addEventListener("click", onPress);
+        // 中ボタン以外の `auxclick`（右ボタンなど）はリンクの押下として扱わない
+        doc.addEventListener("auxclick", (event) => {
+            if (event.button === 1)
+                onPress(event);
+        });
+    }
     /** HTML の本文の枠。スクリプトを動かさず（sandbox に `allow-scripts` を付けない）、高さを描いた中身に合わせる */
     function htmlBodyFrame({ source, selectable = true, label = "本文（HTML）", marks, on }) {
         const frame = MindmapPreview.h({
@@ -113,6 +178,7 @@ var MindmapPreview;
             }).observe(root);
             if (marks !== undefined)
                 paintMarks({ doc, marks });
+            bindLinks({ frame, doc });
             if (!selectable)
                 return;
             // 選び終えた（空でない選択）・選びを外した（空になった）を知らせる

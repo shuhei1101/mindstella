@@ -7,15 +7,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import (
     ALIAS_BODY,
     MIXED_IDS,
     PANEL_MARKS,
+    SHARED_TERM_IDS,
     TIP,
     TIP_OPEN,
     write_alias_preview,
+    write_term_alias_preview,
 )
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
@@ -38,6 +41,7 @@ from preview_comment_helpers import (
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     fulfill_problem,
+    open_review,
     read_workspace_yaml,
     review_row,
     select_text,
@@ -48,11 +52,13 @@ from preview_html_body_helpers import (
     BODY_FRAME,
     BODY_WITH_HTML_CODE_BLOCK,
     FRAME_SETTLE_MS,
+    MARKED_FRAME,
     frame_fit,
     frame_of,
     select_in_frame,
     wait_frame_rendered,
 )
+from preview_html_link_helpers import frame_location
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -146,8 +152,7 @@ def _row_button(page: Page, comment_id: str, name: str) -> Locator:
 
 def _open_detail_from_list(page: Page, comment_id: str) -> None:
     """コメントの一覧を開き、行の向けた項目を押して、一覧を開いたまま詳細パネルを開く。"""
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    open_review(page)
     page.click(f"{review_row(COMMENTS_PANEL, comment_id)} button.row-target")
     page.wait_for_selector("aside.panel.open")
 
@@ -672,6 +677,81 @@ def test_diagram_raw(write_sample_preview: WriteSamplePreview, open_preview: Ope
     assert "flowchart LR" in page.inner_text("aside.panel pre.dg-raw")
     page.click('aside.panel button[data-act="diagram-raw"]')
     assert page.is_visible("aside.panel .mermaid")
+
+
+def _open_diagram(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> Page:
+    """D-3 の詳細パネルを開き、本文の図を描き終わるまで待つ。"""
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel .diagram .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    return page
+
+
+def test_diagram_surface_cursor(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図の面は、虫眼鏡ではなく既定のカーソルを出す（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    # 実行
+    cursors = page.eval_on_selector_all(
+        "aside.panel .diagram .mermaid, aside.panel .diagram .mermaid svg",
+        "elements => elements.map(e => getComputedStyle(e).cursor)",
+    )
+    # 検証
+    assert cursors == ["auto", "auto"]
+
+
+def test_diagram_text_cursor(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図の文字は、文字を選ぶカーソルで選べる（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    # 実行
+    styles = page.eval_on_selector_all(
+        "aside.panel .diagram .mermaid svg .nodeLabel",
+        "elements => elements.map(e => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect])",
+    )
+    # 検証
+    assert styles == [["text", "text"], ["text", "text"]]
+
+
+def test_diagram_text_drag_select(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図の文字を、ドラッグで選べる（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    labels = page.locator("aside.panel .diagram .mermaid svg .nodeLabel")
+    labels.first.scroll_into_view_if_needed()
+    first = labels.first.bounding_box()
+    last = labels.last.bounding_box()
+    assert first is not None
+    assert last is not None
+    # 実行
+    page.mouse.move(first["x"] + 1, first["y"] + first["height"] / 2)
+    page.mouse.down()
+    page.mouse.move(last["x"] + last["width"] - 1, last["y"] + last["height"] / 2, steps=5)
+    page.mouse.up()
+    # 検証
+    selected = page.evaluate("getSelection().toString()")
+    assert "A" in selected
+    assert "B" in selected
+
+
+def test_diagram_press_does_not_open_viewer(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """通常の表示の図は、面も文字も押して図の拡大を開かない（正常系）。"""
+    # 準備
+    page = _open_diagram(write_sample_preview, open_preview)
+    # 実行
+    page.locator("aside.panel .diagram .mermaid").click(position={"x": 5, "y": 5})
+    page.locator("aside.panel .diagram .mermaid svg .nodeLabel").first.click()
+    page.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+    # 検証
+    assert page.locator("dialog.viewer[open]").count() == 0
 
 
 def test_content_transition(
@@ -1679,8 +1759,7 @@ def test_highlight_location(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     page.wait_for_selector("aside.panel.open .md:not(.md-value) .loc-hit")
@@ -1719,8 +1798,7 @@ def test_highlight_location_when_value(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     page.wait_for_selector("aside.panel.open .loc-hit")
@@ -1751,8 +1829,7 @@ def test_highlight_location_when_mismatched(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     page.wait_for_selector("aside.panel.open .md:not(.md-value)")
@@ -1918,14 +1995,13 @@ def test_diff_head(
     assert page.inner_text("aside.panel .df-head-t") == "決める"
     assert page.inner_text("aside.panel .df-when") == "10/02 09:00"
     # 「前回開いてから」は範囲の始まりを添える
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'since'}))")
+    page.goto(f"{url}{DIFF_D1_HASH}&diff=since")
     page.reload()
     page.wait_for_selector("aside.panel .df-head")
     assert page.inner_text("aside.panel .df-head-t") == "前回開いてから"
     assert page.inner_text("aside.panel .df-when") == "10/01 21:00 より後"
     # 変わっていない項目（V-2 で足した・変えたものに入らない T-1）には出さない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
-    page.goto(f"{url}#tab=tasks&view=table&id=T-1")
+    page.goto(f"{url}#tab=tasks&view=table&id=T-1&diff=V-2")
     page.reload()
     page.wait_for_selector("aside.panel.open .d-title")
     assert page.locator("aside.panel .df-head").count() == 0
@@ -1945,7 +2021,7 @@ def test_diff_new_badge(
     assert page.locator("aside.panel .df-kv").count() == 0
     assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     # 変えただけの項目（V-2 の D-1）には札を置かない
-    page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: 'V-2'}))")
+    page.goto(f"{url}{DIFF_D1_HASH}&diff=V-2")
     page.reload()
     page.wait_for_selector("aside.panel .df-head")
     assert page.locator("aside.panel .d-title .df-badge").count() == 0
@@ -2702,6 +2778,115 @@ def test_body_alias_tooltip_keys(
     assert after_last == "エフェクト:term"
 
 
+def _open_term_alias_panel(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """別名を持つ用語と、本文を持つ A-1 を詳細パネルで開き、本文の印が付くのを待つ。"""
+    url = write_term_alias_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1")
+    page.wait_for_selector(PANEL_MARKS)
+    return page
+
+
+def test_body_term_alias_marks(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語の別名にもタイトルと同じ印を付け（取り下げた用語の別名にも付け、空白だけの別名には付けない）、同じ用語のタイトルと別名が同じ語なら 1 回だけ数える。用語 1 件だけに一致した印は押すとその用語へ移って履歴に積み、用語 2 件に一致した印は押しても移らない（正常系）。"""
+    # 準備
+    page = _open_term_alias_panel(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    # 実行
+    marks = page.eval_on_selector_all(
+        PANEL_MARKS,
+        "a => a.map(x => [x.textContent, x.dataset.ids, x.getAttribute('aria-describedby'), x.getAttribute('aria-details')])",
+    )
+    style = page.eval_on_selector(
+        PANEL_MARKS,
+        "e => ({line: getComputedStyle(e).textDecorationLine, style: getComputedStyle(e).textDecorationStyle, color: getComputedStyle(e).color, parent: getComputedStyle(e.parentElement).color})",
+    )
+    # 用語 2 件に一致した印を押しても移らない
+    page.click(f"{PANEL_MARKS} >> nth=1")
+    page.wait_for_timeout(200)
+    stayed = (page.evaluate("location.hash"), page.evaluate("history.length"))
+    # 用語 1 件だけに一致した印を押すとその用語へ移る
+    page.click(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_function("location.hash.includes('id=G-1')")
+    # 検証
+    assert marks == [
+        ["マイグレーション", "G-1", "term-tip", None],
+        ["移し替え", SHARED_TERM_IDS, None, "term-tip"],
+        ["古い呼び方", "G-3", "term-tip", None],
+    ]
+    assert style["line"] == "underline"
+    assert style["style"] == "dotted"
+    assert style["color"] == style["parent"]
+    assert stayed == (hash_before, history_length)
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_term_alias_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語 2 件に一致した印に乗せると「用語 2」の見出しの下に 2 件を並べ、タイトルを詳細へのリンクにする。別名に一致した用語 1 件だけの印は、用語・ID・意味だけを tooltip の役割で出す（正常系）。"""
+    # 準備
+    page = _open_term_alias_panel(write_preview, open_preview, make_item)
+    # 実行（用語 2 件に一致した印）
+    page.hover(f"{PANEL_MARKS} >> nth=1")
+    page.wait_for_selector(TIP_OPEN)
+    several = page.evaluate(READ_TIP_SCRIPT)
+    # 実行（別名に一致した用語 1 件だけの印）
+    page.mouse.move(2, 2)
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    page.hover(f"{PANEL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    single = page.evaluate(
+        """() => {
+            const tip = document.getElementById('term-tip');
+            return {role: tip.getAttribute('role'), head: tip.querySelector('.tt-head').textContent, body: tip.querySelector('.tt-body').textContent, links: tip.querySelectorAll('a.tt-link').length};
+        }"""
+    )
+    # 検証
+    assert several["role"] is None
+    assert several["inPanel"] is True
+    assert several["kinds"] == ["用語 2"]
+    assert several["links"] == [["G-1", "移し替え"], ["G-2", "版の更新"]]
+    assert several["bodies"] == [["G-1", "記録を今の版に直すこと"], ["G-2", "版を上げること"]]
+    assert single == {"role": "tooltip", "head": "移し替えG-1", "body": "記録を今の版に直すこと", "links": 0}
+
+
+def test_body_term_alias_tooltip_pinned(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """用語 2 件に一致した印を押すとツールチップを出したままにし（印から外れても消えない）、外を押すと閉じる。Tab で中の最初のリンクへ移り、中のタイトルを押すとその用語へ移って履歴に積み、ツールチップを閉じる（正常系）。"""
+    # 準備
+    page = _open_term_alias_panel(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    shared = f"{PANEL_MARKS} >> nth=1"
+    # 実行（押して、印から外して待つ）
+    page.click(shared)
+    page.mouse.move(2, 2)
+    page.wait_for_timeout(400)
+    kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
+    # 実行（外を押して閉じる）
+    page.click("aside.panel .panel-kind")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 実行（フォーカスして Tab で中の最初のリンクへ）
+    page.focus(shared)
+    page.wait_for_selector(TIP_OPEN)
+    page.keyboard.press("Tab")
+    first = page.evaluate("document.activeElement.dataset.id + ':' + document.activeElement.className")
+    # 実行（中のタイトルを押して移る）
+    page.click(f'{TIP} a.tt-link[data-id="G-2"]')
+    page.wait_for_function("location.hash.includes('id=G-2')")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    # 検証
+    assert kept is True
+    assert first == "G-1:tt-link"
+    assert page.evaluate("history.length") == history_length + 1
+    assert page.inner_text("aside.panel .d-title") == "版の更新"
+
+
 def test_body_alias_tooltip_placement(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
@@ -3091,8 +3276,7 @@ def test_highlight_location_when_html_body(
         ),
     )
     page = open_preview(url)
-    page.click(COMMENTS_BUTTON)
-    page.wait_for_selector(COMMENTS_PANEL)
+    open_review(page)
     # 実行
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
     wait_frame_rendered(page, BODY_FRAME)
@@ -3133,6 +3317,83 @@ def test_diff_html_body_when_format_changed(
     assert page.locator("aside.panel .html-marked").count() == 0
     assert "# 画面のモック" in page.inner_text("aside.panel .df-raw .df-line.df-del")
     assert "<h1>画面のモック</h1>" in page.inner_text("aside.panel .df-raw")
+
+
+def test_html_code_block_when_link_pressed(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    link_target: str,
+) -> None:
+    """html のコードブロックの枠の中のリンクを押すと、枠の中で移らず新しいタブで開く（正常系）。"""
+    # 準備
+    body = (
+        "# 見出し\n\n前の段落\n\n"
+        f'```html\n<p><a id="link" href="{link_target}/code">コードブロックのリンク</a></p>\n```\n\n'
+        "後の段落\n"
+    )
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": body})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, HTML_CODE_FRAME)
+    frame = frame_of(page, HTML_CODE_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行
+    tab = new_tab_after(page, lambda: frame.click("#link"))
+    # 検証
+    assert tab.url == f"{link_target}/code"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    assert frame_location(frame) == location
+    assert frame.locator("#link").inner_text() == "コードブロックのリンク"
+
+
+def test_html_body_diff_when_link_pressed(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+    link_target: str,
+) -> None:
+    """HTML の本文の差分の描いた結果の枠の中のリンクを押すと、枠の中で移らず新しいタブで開く（正常系）。"""
+    # 準備（2 つ目の段落のリンクの文を書き換える）
+    paragraph = f'<p><a id="link" href="{link_target}/diff">{{}}</a></p>\n'
+    root = make_workspace()
+    workspace = str(root)
+    item = {
+        "title": "画面のモック",
+        "kind": "モック",
+        "status": "下書き",
+        "deliverable": False,
+        "body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("リンクの文"),
+    }
+    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
+    updated = call_tool(
+        "update",
+        workspace=workspace,
+        id="A-1",
+        item={"body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("書き直したリンクの文")},
+    )
+    assert updated.is_error is False
+    assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
+    url = str(call_tool("preview_url", workspace=workspace).data["url"])
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    wait_frame_rendered(page, MARKED_FRAME)
+    frame = frame_of(page, MARKED_FRAME)
+    location = frame_location(frame)
+    tabs = opened_tabs(page)
+    # 実行
+    tab = new_tab_after(page, lambda: frame.click("#link"))
+    # 検証
+    assert tab.url == f"{link_target}/diff"
+    assert tab.title() == LINK_PAGE_TITLE
+    assert tab.evaluate("window.opener") is None
+    assert opened_tabs(page) == tabs + 1
+    assert frame_location(frame) == location
+    assert frame.locator("[data-df]").count() >= 1
 
 
 # 見出しの帯のタイトルを測る横のパネル

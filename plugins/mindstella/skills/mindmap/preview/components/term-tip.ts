@@ -1,4 +1,4 @@
-// 本文の印のツールチップ。本文の印（用語のタイトル・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べて印の上に出す。
+// 本文の印のツールチップ。本文の印（用語のタイトルと別名・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べて印の上に出す。
 
 namespace MindmapPreview {
   /** ツールチップに並べる項目（種類と項目） */
@@ -6,7 +6,7 @@ namespace MindmapPreview {
 
   /** 本文の印のツールチップの引数 */
   export type TermTipProps = {
-    /** 印の語に一致した項目。用語 → 資料 → 調査の順。開いている項目自身と取り下げた資料・調査は含めない */
+    /** 印の語に一致した項目。用語 → 資料 → 調査の順。開いている項目自身と取り下げた資料・調査は含めない（取り下げた用語は含める） */
     entries: TermTipEntry[];
     /** 本文の印の要素。置き場所とフォーカスの戻し先 */
     anchor: HTMLElement;
@@ -81,21 +81,22 @@ namespace MindmapPreview {
 
   /** ツールチップを返す。使う側が文書に入れて `showPopover()` で開く。開くと印の上に置き、上に収まらなければ下に、どちらにも収まらなければ広い側の高さに縮める */
   export function termTip({ entries, anchor, pinned = false, on }: TermTipProps): HTMLElement {
-    const withDocs = entries.some((entry) => entry.kind !== "terms");
+    // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる
+    const multi = entries.length > 1 || entries.some((entry) => entry.kind !== "terms");
     const tip = h({
       tag: "div",
       attrs: {
         id: TERM_TIP_ID,
-        class: withDocs ? "term-tip is-multi" : "term-tip",
-        // リンクを持たない用語だけのツールチップは tooltip の役割にし、リンクを持つ方は印の aria-details で指す
-        role: withDocs ? null : "tooltip",
+        class: multi ? "term-tip is-multi" : "term-tip",
+        // リンクを持たない用語 1 件だけのツールチップは tooltip の役割にし、リンクを持つ方は印の aria-details で指す
+        role: multi ? null : "tooltip",
         popover: "manual",
       },
     });
-    if (withDocs) {
+    if (multi) {
       tip.append(...groupedContent(entries));
     } else {
-      // 用語だけに一致した印は、用語・ID・意味だけを出す
+      // 用語 1 件だけに一致した印は、用語・ID・意味だけを出す
       const term = entries[0]!.item;
       tip.append(
         h({ tag: "span", attrs: { class: "tt-head" }, children: [term.title, h({ tag: "span", attrs: { class: "mono" }, children: [term.id] })] }),

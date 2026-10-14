@@ -272,6 +272,33 @@ def test_form_key(
 
 
 @pytest.mark.parametrize(
+    ("first", "second", "expected_same"),
+    [
+        pytest.param([None, None, "TH-1"], [None, None, "TH-1"], True, id="same_thread"),
+        pytest.param([None, None, "TH-1"], [None, None, "TH-2"], False, id="other_thread"),
+        pytest.param([None, None, "TH-1"], [None, None], False, id="new_thread_form"),
+    ],
+)
+def test_form_key_when_thread(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    first: list[Any],
+    second: list[Any],
+    expected_same: bool,
+) -> None:
+    """スレッドごとに別のキーで、新しいスレッドの入力とも別（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    same = preview_page.evaluate(
+        "([a, b]) => MindmapPreview.formKey(...a) === MindmapPreview.formKey(...b)",
+        [first, second],
+    )
+    # 検証
+    assert same is expected_same
+
+
+@pytest.mark.parametrize(
     ("prefs", "display", "expected"),
     [
         pytest.param(
