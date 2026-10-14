@@ -39,7 +39,7 @@
     /* 状態を見せるための見本のクラス */
     .is-hover { background: var(--hover) !important; color: var(--text) !important; }
     .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
-    /* 画面幅の見本: 実装の @media を効かせるため、枠（frame.html）をその幅で埋め込む。台より広い見本は台の中で横に送る */
+    /* 画面幅の見本: 実装の @media を効かせるため、枠（frame.html）をその幅で埋め込む。台より広い見本は台の中で横に送る（キーボードでも送れるよう台にフォーカスを置ける） */
     .stage.frames { display: grid; gap: 12px; overflow-x: auto; }
     /* 見本ごとの組み合わせの名前 */
     .frame-label { margin: 0 0 4px; color: var(--text-2); font-size: var(--fs-small); }
@@ -160,8 +160,8 @@
     <!-- 幅 320px の畳み方: 実装の部品とスタイルを枠の中で描き、案 A の規則を足す -->
     <section class="cat-sec" id="fit-320">
       <h2>最も狭い幅（320px）・案 A ツール名の印を隠して詰める（推奨）</h2>
-      <p>幅 360px 以下でツール名の印と名前を隠し、印だけのボタンを幅 28px に揃え、間隔 3px・左右の余白 8px に詰める。ボタンは 1 つも隠さない。差分の札は空いた幅まで伸び、5.5em を下回らない。幅 361px 以上は今と同じ。</p>
-      <div class="stage frames">
+      <p>幅 360px 以下でツール名の名前を隠し（差分の札を出している間は印も隠す）、印だけのボタンを幅 28px に揃え、間隔 3px・左右の余白 8px に詰める。ボタンは 1 つも隠さない。差分の札は空いた幅まで伸び、5.5em を下回らない。幅 361px 以上は今と同じ。</p>
+      <div class="stage frames" tabindex="0" role="group" aria-label="幅 320px・案 A の見本">
         <div><p class="frame-label">つながる・差分なし</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=0" title="幅 320px・つながる・差分なし"></iframe></div>
         <div><p class="frame-label">つながる・差分あり</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=1" title="幅 320px・つながる・差分あり"></iframe></div>
         <div><p class="frame-label">つながらない・差分なし</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=0" title="幅 320px・つながらない・差分なし"></iframe></div>
@@ -172,7 +172,7 @@
     <section class="cat-sec">
       <h2>最も狭い幅（320px）・今の作り（比べる見本）</h2>
       <p>案 A の規則を外した今の見た目。トップバーが 341〜362px まで広がり、右端のライト / ダークの切り替えが枠の外へ出る（枠の中で横に送ると見える）。</p>
-      <div class="stage frames">
+      <div class="stage frames" tabindex="0" role="group" aria-label="幅 320px・今の作りの見本">
         <div><p class="frame-label">つながる・差分なし</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=0&amp;plan=current" title="今の作り・幅 320px・つながる・差分なし"></iframe></div>
         <div><p class="frame-label">つながる・差分あり</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=1&amp;plan=current" title="今の作り・幅 320px・つながる・差分あり"></iframe></div>
         <div><p class="frame-label">つながらない・差分なし</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=0&amp;plan=current" title="今の作り・幅 320px・つながらない・差分なし"></iframe></div>
