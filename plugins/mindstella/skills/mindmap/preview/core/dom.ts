@@ -231,7 +231,7 @@ namespace MindmapPreview {
   }
 
   /** 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす */
-  const PRESS_SLOP_PX = 5;
+  export const PRESS_SLOP_PX = 5;
 
   /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする。`onPress` は、背景を押して離したとき（ドラッグでないとき）に、離したときのイベントを渡して呼ぶ */
   export function enableDragScroll(scroller: HTMLElement, onPress?: (event: PointerEvent) => void): void {

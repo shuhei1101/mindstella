@@ -17,6 +17,7 @@ DEFAULT_PREFS = {
     "kinds": None,
     "diffSel": None,
     "filters": {},
+    "minimap": None,
 }
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
@@ -183,6 +184,36 @@ def test_load_prefs(
     assert prefs == expected
 
 
+@pytest.mark.parametrize(
+    ("stored", "expected_minimap"),
+    [
+        pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+        pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+        pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+        pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+    ],
+)
+def test_load_prefs_when_minimap(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str,
+    expected_minimap: bool | None,
+) -> None:
+    """差分のミニマップの上書きは false だけを読む（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    prefs = preview_page.evaluate(
+        """(stored) => {
+            const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+            return MindmapPreview.loadPrefs(storage);
+        }""",
+        stored,
+    )
+    # 検証（ほかの項目はそのまま読める）
+    assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+
+
 # 保存する設定
 SAVED_PREFS = {
     "theme": "dark",
@@ -191,6 +222,7 @@ SAVED_PREFS = {
     "kinds": ["tasks"],
     "diffSel": None,
     "filters": {"tasks": TASKS_FILTERS},
+    "minimap": None,
 }
 
 
@@ -397,6 +429,52 @@ def test_resolve_display(
     assert resolved == expected
 
 
+@pytest.mark.parametrize(
+    ("prefs", "expected"),
+    [
+        pytest.param(
+            {**DEFAULT_PREFS, "minimap": None},
+            {"minimap": True, "overrides": []},
+            id="no_override",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "minimap": False},
+            {"minimap": False, "overrides": ["差分のミニマップ"]},
+            id="minimap_hidden",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "theme": "dark", "minimap": False},
+            {"minimap": False, "overrides": ["ライト / ダーク", "差分のミニマップ"]},
+            id="theme_and_minimap_hidden",
+        ),
+    ],
+)
+def test_resolve_display_when_minimap(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    prefs: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """差分のミニマップは上書きが false のときだけ偽で、変えている項目の末尾に並ぶ（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行（Set は並びを揃えた配列にして返す）
+    resolved = preview_page.evaluate(
+        """(prefs) => {
+            const result = MindmapPreview.resolveDisplay(prefs, undefined);
+            return {
+                look: result.look,
+                kinds: [...result.kinds].sort(),
+                minimap: result.minimap,
+                overrides: result.overrides,
+            };
+        }""",
+        prefs,
+    )
+    # 検証（見た目と表示する種類は既定のまま）
+    assert resolved == {"look": "deep", "kinds": ALL_KINDS, **expected}
+
+
 def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """上書きだけを外し、差分の時点は残す（正常系）。"""
     # 準備
@@ -408,6 +486,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "kinds": ["tasks"],
         "diffSel": "since",
         "filters": {"tasks": TASKS_FILTERS},
+        "minimap": False,
     }
     # 実行
     result = preview_page.evaluate(
@@ -421,6 +500,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "kinds": None,
         "diffSel": "since",
         "filters": {},
+        "minimap": None,
     }
     assert result["original"] == prefs
 

@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from display_settings_helpers import (
     DEFAULT_KINDS,
@@ -30,9 +30,18 @@ from display_settings_helpers import (
     table_headers,
     toggle_kind,
 )
-from playwright.sync_api import BrowserContext, Page
-from preview_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, OpenPreview, ServeWorkspace
+from playwright.sync_api import BrowserContext, Locator, Page
+from preview_helpers import (
+    COMMENTS_BUTTON,
+    COMMENTS_PANEL,
+    OpenPreview,
+    ServeWorkspace,
+    pick_history_point,
+)
 from workspace_fixtures import RECORD_DIR, MakeItem
+
+if TYPE_CHECKING:
+    from conftest import Replay
 
 # タブの帯に並ぶ画面の数（概要・ネットワークと、表示する種類）
 TABS_WITHOUT_TERMS = 8
@@ -59,6 +68,20 @@ FRONT_IS_DETAIL_SCRIPT = """document.elementFromPoint(window.innerWidth / 2, win
 
 # 現在のタブの key を読む
 CURRENT_TAB_SCRIPT = "document.querySelector('nav.tabbar a[aria-current=\"page\"]')?.dataset.tab"
+
+# 資料 A-1 の書き換える前と後の本文と、書き換えのまとまりの説明
+BODY_A1_BEFORE = "# 仕様\n\n直す前の仕様です。\n"
+BODY_A1_AFTER = "# 仕様\n\n直した後の仕様です。\n"
+COMMIT_SUMMARY = "仕様書を直す"
+
+# 詳細パネルと、その中のミニマップの印・本文の差分の印
+DETAIL_PANEL = "aside.panel"
+MINIMAP_MARKS = f"{DETAIL_PANEL} .df-map .df-map-m"
+BODY_MARKS = f"{DETAIL_PANEL} .panel-body .df-blk"
+
+# 表示の設定のパネルの区画の名前と、差分のミニマップの切り替えの名前
+DETAIL_SECTION = "詳細に表示するもの"
+MINIMAP_LABEL = "差分のミニマップ"
 
 
 def test_normal(
@@ -326,3 +349,67 @@ def test_normal_when_narrow_with_detail_open(
     assert page.locator("aside.panel.open").count() == 1
     assert page.inner_text("aside.panel .d-title") == "D-1の題"
     assert "id=D-1" in page.evaluate("location.hash")
+
+
+def _minimap_checkbox(page: Page) -> Locator:
+    """表示の設定のパネルの区画「詳細に表示するもの」にある、差分のミニマップのチェックボックスを返す。"""
+    return page.locator(f"{SETTINGS_PANEL} fieldset", has_text=DETAIL_SECTION).get_by_role(
+        "checkbox", name=MINIMAP_LABEL
+    )
+
+
+def test_normal_when_diff_minimap_hidden(
+    serve_workspace: ServeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """表示の設定で差分のミニマップを表示しないにすると詳細パネルのミニマップが消えて読み込み直しても保たれ、既定に戻すと出る（正常系）。"""
+    # 準備（A-1 の本文の段落を書き換えて commit し、そのまとまりを選んで A-1 の詳細パネルを開く）
+    url, root = serve_workspace(make_item("A-1"), bodies={"A-1.md": BODY_A1_BEFORE})
+    workspace = str(root)
+    replay("update", workspace=workspace, id="A-1", item={"body_markdown": BODY_A1_AFTER})
+    replay("commit", workspace=workspace, summary=COMMIT_SUMMARY)
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    open_preview(url, "#tab=docs&id=A-1")
+    pick_history_point(page, COMMIT_SUMMARY)
+    page.wait_for_selector(MINIMAP_MARKS, timeout=RENDER_TIMEOUT_MS)
+    # 実行（トップバーの表示の設定を押す）
+    open_settings(page)
+    initial_checked = _minimap_checkbox(page).is_checked()
+    overrides_initial = overrides_text(page)
+    # 検証（差分のミニマップが表示するになっていて、この端末で変えている項目に無い）
+    assert initial_checked is True
+    assert MINIMAP_LABEL not in overrides_initial
+    # 実行（差分のミニマップを表示しないにする）
+    _minimap_checkbox(page).uncheck()
+    page.wait_for_selector(f"{DETAIL_PANEL} .df-map", state="detached", timeout=RENDER_TIMEOUT_MS)
+    overrides_hidden = overrides_text(page)
+    prefs_hidden = read_prefs(page)
+    # 検証（ミニマップが無く、本文の差分の印は出ていて、この端末で変えている項目に差分のミニマップがあり、端末の保存領域に上書きが残る）
+    assert page.locator(MINIMAP_MARKS).count() == 0
+    assert page.locator(BODY_MARKS).count() > 0
+    assert MINIMAP_LABEL in overrides_hidden
+    assert prefs_hidden is not None
+    assert prefs_hidden["minimap"] is False
+    # 実行（画面を読み込み直す）
+    page.reload()
+    page.wait_for_selector(BODY_MARKS, timeout=RENDER_TIMEOUT_MS)
+    # 検証（読み込み直した後も、ミニマップが無く、本文の差分の印は出ている）
+    assert page.locator(f"{DETAIL_PANEL} .df-map").count() == 0
+    assert page.locator(BODY_MARKS).count() > 0
+    prefs_reloaded = read_prefs(page)
+    assert prefs_reloaded is not None
+    assert prefs_reloaded["minimap"] is False
+    # 実行（表示の設定で既定に戻す）
+    open_settings(page)
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(MINIMAP_MARKS, timeout=RENDER_TIMEOUT_MS)
+    prefs_reset = read_prefs(page)
+    # 検証（ミニマップが出て、端末の保存領域に差分のミニマップの上書きが無い）
+    assert page.locator(MINIMAP_MARKS).count() > 0
+    assert prefs_reset is not None
+    assert prefs_reset["minimap"] is None
+    # config.yaml の中身が、開く前と同じである
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before

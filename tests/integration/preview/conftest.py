@@ -13,6 +13,7 @@ import pytest
 from integration.browser_tab_helpers import link_target  # noqa: F401
 from playwright.sync_api import Page
 from preview_history_helpers import build_history_workspace
+from preview_minimap_helpers import build_minimap_workspace
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     MAIN_SELECTOR,
@@ -114,6 +115,23 @@ def write_history_preview(make_workspace: MakeWorkspace, call_tool: CallTool) ->
         root = build_history_workspace(
             make_workspace, call_tool, pending=pending, history_limit=history_limit
         )
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_minimap_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """本文に段落を 40 個持つ資料 A-1 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_minimap_workspace(make_workspace, make_item, call_tool)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

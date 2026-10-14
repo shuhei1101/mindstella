@@ -238,7 +238,7 @@ constants:
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 検討事項をマップで辿る
-    summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）
+    summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）。`MindmapPreview.PRESS_SLOP_PX` として出し、差分のミニマップの印を押したかドラッグかの見分けもこの値を使う
     value: '5'
   - name: DOUBLE_TAP_MS
     title: 2 回押しとみなす間隔

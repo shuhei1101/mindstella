@@ -36,13 +36,15 @@ namespace MindmapPreview {
     diff?: DiffPoint | null;
     /** 開いたときに本文の中で画面に入れる見出しの名前（`Route.heading`）。本文に無ければ本文の頭で開き、`on.heading` を null で呼ぶ */
     heading?: string | null;
+    /** 差分のミニマップを置くか（`resolveDisplay` の `minimap`）。差分の表示の間だけ置く */
+    minimap?: boolean;
   };
 
   /** 図の拡大へ渡す、差分の表示の間のその図の前の版の記法 */
   export type DiagramViewerDiff = { beforeSource: string };
 
-  /** 前の値が無いときに出す文字 */
-  const NO_VALUE = "（なし）";
+  /** 前の値が無いときに出す文字（差分のミニマップが、前に無かったキーを見分けるのにも使う） */
+  export const NO_VALUE = "（なし）";
 
   /** 詳細パネルのレビュー中のコメントの行の `data-focus` の接頭辞（コメントの一覧と同時に開いても、描き直した後のフォーカスの戻し先を分ける） */
   export const REVIEW_FOCUS = "detail-";
@@ -1639,7 +1641,7 @@ namespace MindmapPreview {
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
   export function detailPanel(props: DetailProps): HTMLElement {
-    const { id, index, full, on, comment, highlight = null, diff = null, heading = null } = props;
+    const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true } = props;
     const kind = index.byId.get(id)?.kind;
     // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
     const body = h({
@@ -1649,17 +1651,18 @@ namespace MindmapPreview {
     });
     const head = detailHead(props);
     bindHeadTitle({ head, body });
-    // 見出しと下端の入力の間の本文だけをスクロールする
+    // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる
     const footer = comment === null ? null : sendForm(comment.form);
+    const scroller = diffMinimapFrame({ body, shown: diff !== null && minimap });
     let root: HTMLElement;
     if (!full) {
       root = h({
         tag: "aside",
         attrs: { class: `panel${kind === "docs" ? " wide" : ""}`, "aria-label": "詳細" },
-        children: [head, body, footer],
+        children: [head, scroller, footer],
       });
     } else {
-      const dialog = h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body, footer] });
+      const dialog = h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, scroller, footer] });
       // Esc は閉じずに元の大きさ（詳細パネル）に戻す。外側（後ろの幕）を押したときも同じ
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();

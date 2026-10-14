@@ -57,7 +57,7 @@ var MindmapPreview;
     MindmapPreview.readEmbeddedData = readEmbeddedData;
     /** 既定の設定 */
     function defaultPrefs() {
-        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {} };
+        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null };
     }
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
@@ -76,6 +76,9 @@ var MindmapPreview;
             // 画面ごとの条件が値の配列の対応でないときは、残した条件を使わない
             if (!isFiltersByTab(parsed.filters))
                 parsed.filters = {};
+            // 差分のミニマップの上書きは false だけを読む（表示するは上書きを持たない）
+            if (parsed.minimap !== false)
+                parsed.minimap = null;
             return parsed;
         }
         catch {
@@ -119,13 +122,14 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込みの順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップの順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
             ...(prefs.theme === null ? [] : ["ライト / ダーク"]),
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
             ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
+            ...(prefs.minimap === false ? [MindmapPreview.MINIMAP_LABEL] : []),
         ];
         return {
             look: prefs.look ?? defaultLook,
@@ -133,12 +137,14 @@ var MindmapPreview;
             defaultLook,
             defaultKinds,
             overrides,
+            // 上書きが false のときだけ表示しない
+            minimap: prefs.minimap !== false,
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
-        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {} };
+        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null };
     }
     MindmapPreview.clearOverrides = clearOverrides;
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
@@ -639,6 +645,7 @@ var MindmapPreview;
                 id: route.id,
                 index,
                 full: route.full,
+                minimap: resolved.minimap,
                 on: {
                     open: (id) => openItem(id, true),
                     close: closeDetail,
@@ -1715,6 +1722,7 @@ var MindmapPreview;
             counts: Object.fromEntries(MindmapPreview.KIND_KEYS.map((kind) => [kind, data[kind].length])),
             overrides: resolved.overrides,
             canSave: serverMode,
+            minimap: resolved.minimap,
             message: display.message,
             storageOk: display.storageOk,
             on: {
@@ -1722,8 +1730,13 @@ var MindmapPreview;
                     prefs.kinds = kinds;
                     changePrefs({ redrawMain: true });
                 },
+                // 表示するは上書きを外し、表示しないだけを上書きとして残す。開いている詳細をその場で描き直す
+                minimap: (shown) => {
+                    prefs.minimap = shown ? null : false;
+                    changePrefs({ redrawMain: true });
+                },
                 reset: () => {
-                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件を全て外し、ワークスペースの既定の表示に戻す
+                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを全て外し、ワークスペースの既定の表示に戻す
                     Object.assign(prefs, clearOverrides(prefs));
                     MindmapPreview.clearTablePrefs();
                     // 開いている画面は、画面の既定の条件で開き直す
