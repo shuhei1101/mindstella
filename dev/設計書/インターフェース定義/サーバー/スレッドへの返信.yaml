@@ -29,6 +29,7 @@ flows:
       - '`案 A にする` の `taken` に日時が入り、未読の `案 B も見たい` は `taken` が `null` のまま'
       - '`taken` が `["TH-1-1"]`'
       - スレッドの状態はオープンのまま
+      - '足した AI の書き込みが `seen: false`（利用者の未読）で、利用者の書き込みの `seen` は呼ぶ前と同じ'
     test: test_normal
   - name: 正常系（取り込み済みにしない）
     summary: take を偽にすると返信と要約だけを書く

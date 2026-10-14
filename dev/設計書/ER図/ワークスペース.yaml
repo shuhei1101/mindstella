@@ -748,7 +748,7 @@ tables:
     growth: まとめて送った新しいスレッドの分と、AI が立てるたびに 1 件足す。書き込みは返信のたびに足す
     deletion: 消さない（クローズにして残す）
     access: 全件
-    description: '`items:` の配列を持ち、1 要素 = 1 件のスレッド。初めてスレッドを作ったときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのまとめて送る（`POST /api/comments/send`）・状態の書き換え（`PATCH /api/threads/{id}`）・スレッドの MCP のツール・未読へ戻すスクリプトだけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは ID の連番の小さい順（立てた順）。前の版の送信（`submissions.yaml`）は移し替えの手順でここへ移す'
+    description: '`items:` の配列を持ち、1 要素 = 1 件のスレッド。初めてスレッドを作ったときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーのまとめて送る（`POST /api/comments/send`）・状態の書き換え（`PATCH /api/threads/{id}`）・利用者の既読（`POST /api/threads/{id}/seen`）・スレッドの MCP のツール・未読へ戻すスクリプトだけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは ID の連番の小さい順（立てた順）。前の版の送信（`submissions.yaml`）は移し替えの手順でここへ移す'
     columns:
       - name: id
         title: ID
@@ -864,3 +864,8 @@ tables:
         not_null: true
         auto: 作成日時
         description: UTC のタイムゾーン付き ISO 8601
+      - name: posts[].seen
+        title: 利用者の既読
+        type: boolean
+        not_null: true
+        description: 利用者がプレビューでそのスレッドを開いたか。AI の書き込みは `false` で足し、利用者の書き込みと移し替えた送信は `true` で足す。画面でスレッドを開いたとき（`POST /api/threads/{id}/seen`）にそのスレッドの全てを `true` にする。セッションを開いたときに戻すのは AI の既読 `read` だけで、このキーは戻さない

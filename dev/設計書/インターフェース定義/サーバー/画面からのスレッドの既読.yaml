@@ -1,0 +1,222 @@
+title: "画面からのスレッドの既読"
+entry:
+  kind: endpoint
+  value: POST /api/threads/{id}/seen
+flows:
+  - name: 正常系
+    summary: AI の未読の返信を利用者の既読にし、ほかのキーは変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: オープンのスレッド TH-1 を持つワークスペース
+        notes: '書き込みは利用者の TH-1-1（`seen: true`・`read: true`・取り込み済み）と AI の TH-1-2（`seen: false`・`read: true`）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-1/seen
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF->>WS: TH-1-2 を利用者の既読に書く
+        IF-->>クライアント: 200、JSON（seen [TH-1-2]）
+      ```
+    expected:
+      - ステータスが 200 で、`seen` が `["TH-1-2"]`
+      - TH-1 の全ての書き込みの `seen` が `true`
+      - 書き込みの `read`・`taken` と、スレッドの `status`・`events`・`summary`・`tags` が送る前と同じ
+  - name: 正常系（未読が無い）
+    summary: 未読が無ければ書かずに空を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '全ての書き込みが `seen: true` のスレッド TH-1 を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-1/seen
+
+        クライアント->>IF: POST
+        IF-->>クライアント: 200、JSON（seen は空）
+      ```
+    expected:
+      - ステータスが 200 で、`seen` が空
+      - '`threads.yaml` の更新日時と中身が送る前と同じ'
+  - name: 正常系（クローズのスレッド）
+    summary: クローズのスレッドも既読にし、状態は変えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: AI が返信してからクローズにしたスレッド TH-1 を持つワークスペース
+        notes: 'AI の返信 TH-1-2 が `seen: false`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-1/seen
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF->>WS: TH-1-2 を利用者の既読に書く
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - ステータスが 200 で、`seen` が `["TH-1-2"]`
+      - TH-1 の `status` が `closed` のままで、`events` が送る前と同じ
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからの書き換えは受けない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: AI の未読の返信を持つスレッド TH-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-1/seen
+
+        クライアント->>IF: POST（Origin: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403
+      - '`threads.yaml` の中身が送る前と同じ'
+  - name: 異常系（スレッドが無い・404）
+    summary: 無いスレッドは書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: スレッド TH-1 だけを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-9/seen
+
+        クライアント->>IF: POST
+        IF-->>クライアント: 404
+      ```
+    expected:
+      - ステータスが 404 で、`detail` に `TH-9` がある
+      - '`threads.yaml` の中身が送る前と同じ'
+  - name: 異常系（スレッドの形が崩れている・422）
+    summary: 手で崩した threads.yaml は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`threads.yaml` の TH-1 の書き込みから `seen` を消したワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-1/seen
+
+        クライアント->>IF: POST
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - ステータスが 422 で、`detail` に `threads.yaml` がある
+      - '`threads.yaml` の中身が送る前と同じ'
+  - name: 異常系（書き込めない・500）
+    summary: 書き込めないワークスペースでは前の状態を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: AI の未読の返信を持つスレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        notes: root で動かすときは skip する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/threads/TH-1/seen
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF->>WS: 一時ファイルを書けない
+        IF-->>クライアント: 500
+      ```
+    expected:
+      - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
+      - '`threads.yaml` の中身が送る前と同じ'
+lead: 利用者が画面でスレッドを開いたときに、そのスレッドの利用者の未読の書き込みを全て利用者の既読にする。AI の既読・取り込み済み・状態は変えない。
+idempotent: true
+side_effects: '`threads.yaml` のそのスレッドの `posts[].seen` が `false` の書き込みを `true` にする（未読が無ければ書かない）。一時ファイルから `os.replace` で置き換える'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: スレッドの ID
+    example: TH-1
+request_example: |-
+  ```
+  POST /api/threads/TH-1/seen
+  ```
+response:
+  - name: id
+    type: str
+    description: スレッドの ID
+  - name: seen
+    type: list[str]
+    description: この呼び出しで利用者の既読にした書き込みの ID。未読が無ければ空
+response_example: |-
+  ```json
+  {"id": "TH-1", "seen": ["TH-1-2"]}
+  ```
+status_codes:
+  - code: '200'
+    condition: 既読にしたか、未読が無かった
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`id` のスレッドが無い'
+    notes: 何も書かない
+  - code: '422'
+    condition: '`threads.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: '`threads.yaml` を書けない'
+    notes: '`detail` に書けなかったパスと理由。前の `threads.yaml` を残す'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 送り元の確かめ
+    constraint: '`Host` は『プレビューの配信』と同じ。本文を持たないため `Content-Type` は確かめず、`Origin` が付いていれば『プレビューの配信』の制約「送り元の確かめ」で確かめる'
+  - item: 既読にする書き込み
+    constraint: そのスレッドの `seen` が `false` の書き込みを全て。状態（オープン・クローズ）で分けない。鍵を取るまでに足された書き込みも既読にする（画面は書き換えの知らせでその書き込みを描き、開いているスレッドに未読を残さない）
+  - item: 変えないもの
+    constraint: AI の既読 `read`・取り込み済み `taken`・状態・状態の記録・要約・タグ
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。未読が無ければ鍵を取らない
+  - item: 画面への反映
+    constraint: 書いたら『書き換えの知らせ』が `threads.yaml` の書き換えとして知らせる（この受け口は知らせを自分で送らない）
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+  - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#
