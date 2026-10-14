@@ -390,9 +390,10 @@ elements:
     source: プレビューを開く.id の項目の title
     visible_when: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間
     reason: '本文を送っても何の項目を読んでいるかが分かるようにし、開いた直後は同じ題を 2 度見せないため（確認ログ: dev/pr/230/確認ログ.md）'
-lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。幅 900px 以下で左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。
+lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/230/a-on-scroll/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`
   HTML の本文のモック: 形式の札・HTML の本文・html のコードブロック・HTML の本文の差分の見本は `dev/mock/pages/detail-panel/214/c-marks/index.html`（差分の見せ方は案 C を採用）
+  幅 900px 以下の重なり: 左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。幅 901px 以上の重なり順は変えない
