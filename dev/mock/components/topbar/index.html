@@ -39,6 +39,12 @@
     /* 状態を見せるための見本のクラス */
     .is-hover { background: var(--hover) !important; color: var(--text) !important; }
     .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* 画面幅の見本: 実装の @media を効かせるため、枠（frame.html）をその幅で埋め込む。台より広い見本は台の中で横に送る */
+    .stage.frames { display: grid; gap: 12px; overflow-x: auto; }
+    /* 見本ごとの組み合わせの名前 */
+    .frame-label { margin: 0 0 4px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 幅 320px の枠: トップバーとタブの帯が入る高さ */
+    .frame-320 { display: block; width: 320px; height: 100px; border: 1px solid var(--border); }
   </style>
 </head>
 <body>
@@ -150,6 +156,28 @@
       <h2>検索の入口のキーの案内（macOS）</h2>
       <p>キーの案内は Ctrl+K、macOS では ⌘K と出す。入力欄に入力中でも、このキーで全体の検索を開く。読み上げには aria-keyshortcuts で Control+K と Meta+K を渡す。</p>
       <div class="stage"><header class="topbar"><a class="brand" href="#" style="color: inherit; text-decoration: none;"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"/><path d="M12 16h5M17 16V7h5M17 16v9h5"/><circle cx="25" cy="7" r="2.6"/><circle cx="25" cy="25" r="2.6"/></svg><span class="brand-name">mindmap</span></a><span class="brand-sub">要件出しのスキル mindmap を設計する</span><span class="spacer"></span><button class="search-trigger " type="button" aria-label="すべての項目を検索"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="label">すべての項目を検索</span><kbd>⌘K</kbd></button><button class="top-btn" type="button" aria-label="ダークに切り替え"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button></header></div>
+    </section>
+    <!-- 幅 320px の畳み方: 実装の部品とスタイルを枠の中で描き、案 A の規則を足す -->
+    <section class="cat-sec" id="fit-320">
+      <h2>最も狭い幅（320px）・案 A ツール名の印を隠して詰める（推奨）</h2>
+      <p>幅 360px 以下でツール名の印と名前を隠し、印だけのボタンを幅 28px に揃え、間隔 3px・左右の余白 8px に詰める。ボタンは 1 つも隠さない。差分の札は空いた幅まで伸び、5.5em を下回らない。幅 361px 以上は今と同じ。</p>
+      <div class="stage frames">
+        <div><p class="frame-label">つながる・差分なし</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=0" title="幅 320px・つながる・差分なし"></iframe></div>
+        <div><p class="frame-label">つながる・差分あり</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=1" title="幅 320px・つながる・差分あり"></iframe></div>
+        <div><p class="frame-label">つながらない・差分なし</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=0" title="幅 320px・つながらない・差分なし"></iframe></div>
+        <div><p class="frame-label">つながらない・差分あり</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=1" title="幅 320px・つながらない・差分あり"></iframe></div>
+        <div><p class="frame-label">つながらない・差分あり（ダーク）</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=1&amp;theme=dark" title="幅 320px・つながらない・差分あり・ダーク"></iframe></div>
+      </div>
+    </section>
+    <section class="cat-sec">
+      <h2>最も狭い幅（320px）・今の作り（比べる見本）</h2>
+      <p>案 A の規則を外した今の見た目。トップバーが 341〜362px まで広がり、右端のライト / ダークの切り替えが枠の外へ出る（枠の中で横に送ると見える）。</p>
+      <div class="stage frames">
+        <div><p class="frame-label">つながる・差分なし</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=0&amp;plan=current" title="今の作り・幅 320px・つながる・差分なし"></iframe></div>
+        <div><p class="frame-label">つながる・差分あり</p><iframe class="frame-320" src="frame.html?conn=online&amp;diff=1&amp;plan=current" title="今の作り・幅 320px・つながる・差分あり"></iframe></div>
+        <div><p class="frame-label">つながらない・差分なし</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=0&amp;plan=current" title="今の作り・幅 320px・つながらない・差分なし"></iframe></div>
+        <div><p class="frame-label">つながらない・差分あり</p><iframe class="frame-320" src="frame.html?conn=offline&amp;diff=1&amp;plan=current" title="今の作り・幅 320px・つながらない・差分あり"></iframe></div>
+      </div>
     </section>
   </main>
 </body>
