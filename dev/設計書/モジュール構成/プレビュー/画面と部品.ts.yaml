@@ -1638,7 +1638,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
     usecase: 前回からの差分を見る
     kind: コンポーネント
-    summary: 部品設計『差分のミニマップ』。本文のスクロール領域（`.panel-body`）を `div.panel-scroll` で包んで返し、`shown` が真ならその右に帯（`div.df-map`、`role="toolbar"`）を並べる。印は `minimapTargets` で集め `minimapLayout` で置き、印が無ければ帯を隠して枠に `has-map` を付けない。本文とその子の高さ（`ResizeObserver`）・中身（`MutationObserver`）・HTML の本文の枠の `load` が変わったら、次のコマで 1 回だけ置き直す。本文の `scroll` では見えている範囲の面だけを動かす。印の `click` はその箇所の上端を高さの `MINIMAP_JUMP_RATIO` の位置まで送り（`prefers-reduced-motion` でなければ `smooth`）、枚の外の箇所に `df-map-hit` を `MINIMAP_HIT_MS` の間付ける。帯の `click`（印の上でもドラッグの直後でもなく、面を出しているとき）は押した位置へ面の中央を合わせる。`pointerdown` / `pointermove` / `pointerup` / `pointercancel` でマウスの左ボタンのドラッグを受け、`PRESS_SLOP_PX` より動いたところで `setPointerCapture` して帯に `is-dragging`、`body` に `df-map-dragging` を付ける。`pointermove` で左ボタンを押していなければドラッグを終える。上下の矢印・Home / End で印の間を移り、移った印だけ `tabindex="0"` にする。どの操作も URL のハッシュと履歴を変えない
+    summary: 部品設計『差分のミニマップ』。本文のスクロール領域（`.panel-body`）を `div.panel-scroll` で包んで返し、`shown` が真ならその右に帯（`div.df-map`、`role="toolbar"`）を並べる。印は `minimapTargets` で集め `minimapLayout` で置き、印が無ければ帯を隠して枠に `has-map` を付けない。本文とその子の高さ（`ResizeObserver`）・中身（`MutationObserver`）・HTML の本文の枠の `load` が変わったら、次のコマで 1 回だけ置き直す。本文の `scroll` では見えている範囲の面だけを動かす。印の `click` はその箇所の上端を高さの `MINIMAP_JUMP_RATIO` の位置まで送り（`prefers-reduced-motion` でなければ `smooth`）、枠の外の箇所に `df-map-hit` を `MINIMAP_HIT_MS` の間付ける。帯の `click`（印の上でもドラッグの直後でもなく、面を出しているとき）は押した位置へ面の中央を合わせる。`pointerdown` / `pointermove` / `pointerup` / `pointercancel` でマウスの左ボタンのドラッグを受け、`PRESS_SLOP_PX` より動いたところで `setPointerCapture` して帯に `is-dragging`、`body` に `df-map-dragging` を付ける。`pointermove` で左ボタンを押していなければドラッグを終える。上下の矢印・Home / End で印の間を移り、移った印だけ `tabindex="0"` にする。どの操作も URL のハッシュと履歴を変えない
     props:
       - name: body
         required: true
@@ -2661,7 +2661,7 @@ functions:
       1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw など）と、Raw を出している図の枠は飛ばす
       2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値が無い（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
       3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす。それ以外は新しい印にする
-      4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枚の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）
+      4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）
     returns:
       type: "{kind: 'add' | 'del' | 'chg', first: Element, last: Element, frame: HTMLIFrameElement | null}[]"
       description: 印の並び。`first`・`last` は印が指す範囲の先頭と末尾の要素
@@ -2697,7 +2697,7 @@ functions:
         description: 帯の高さ（px）
     process: |-
       1. 最小の長さを `max(MINIMAP_MARK_FLOOR_PX, min(MINIMAP_MARK_MIN_PX, floor(length / 印の数) - MINIMAP_MARK_GAP_PX))` にする
-      2. 前から順に、长さを `max(最小, size / total × length)`、始まりを `max(top / total × length, 直前の終わり + MINIMAP_MARK_GAP_PX)` にする
+      2. 前から順に、長さを `max(最小, size / total × length)`、始まりを `max(top / total × length, 直前の終わり + MINIMAP_MARK_GAP_PX)` にする
       3. 後ろから順に、帯の終わり（次の印の始まりから `MINIMAP_MARK_GAP_PX` 手前）を出た印を前へ詰め、始まりを 0 未満にしない
     returns:
       type: '{start: number, size: number}[]'
