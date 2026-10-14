@@ -1,7 +1,7 @@
 # 単体テスト（書き換えていない既存のテストが全 pass）
 # commit: 46d6f72
 # 実行日時: 2026-10-14 10:31:52 JST
-# deselect: 今回新規・改修した Red のテスト（実装が無いことで落ちる）
+# deselect: 今回新規・改修したテスト関数（実装が無いことで落ちる 34 ケースと、現状でも通る 3 ケース）
 $ pytest tests/unit/preview \
     --deselect tests/unit/preview/test_diff_minimap.py \
     --deselect tests/unit/preview/test_detail.py::test_detail_panel_when_diff_minimap \
