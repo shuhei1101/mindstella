@@ -964,3 +964,110 @@ def test_normal_when_url_points_missing_change_set(
     assert _row_marks(opened) == {"D-3": None}
     # 検証（URL のハッシュが時点を持たない）
     assert "diff" not in _hash_params(opened.url)
+
+
+# 本文のまとまりのリンクを持つ検討事項 D-3 の本文（リンクを頭に置き、見出し「決め方」を本文のスクロール領域の外に置く）
+BODY_WITH_CHANGE_SET_LINKS = (
+    "# 検討メモ\n\n"
+    "[仕様書を直したところ](#diff=V-1)\n\n"
+    "[決め方へ](#決め方)\n\n"
+    + "\n\n".join(f"先頭の段落 {number}" for number in range(1, 41))
+    + "\n\n## 決め方\n\n決め方の段落\n"
+)
+
+# まとまりを指さない値のリンクを持つ検討事項 D-3 の本文（V-99 は記録に無い）
+BODY_WITH_MISSING_LINKS = (
+    "# 検討メモ\n\n"
+    "[古い直し](#diff=V-99)\n\n"
+    "[前回から](#diff=since)\n\n"
+    "[まとめる前](#diff=pending)\n"
+)
+
+# 見出しが詳細パネルの本文のスクロール領域の中で画面に入っているかを返す
+HEADING_IN_VIEW_SCRIPT = """(slug) => {
+    const area = document.querySelector('aside.panel .panel-body').getBoundingClientRect();
+    const box = document.querySelector(`[data-heading="${slug}"]`).getBoundingClientRect();
+    return box.top >= area.top - 1 && box.bottom <= area.bottom + 1;
+}"""
+
+
+def test_normal_when_body_link_to_change_set(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """本文の #diff= のリンクを押すと、開いた項目のままそのまとまりの差分の表示に切り替わり、見出しのリンクはその見出しまで送る（正常系）。"""
+    # 準備（A-1 を直した V-1 と、D-3 の本文にリンクを書き足した V-2）
+    root = make_workspace(
+        make_item("A-1", status="完成", kind="仕様書"),
+        make_item("D-3", status="未決定", body="D-3.md"),
+        bodies={"A-1.md": BODY_A1_BEFORE, "D-3.md": BODY_V0},
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("update", workspace=ws, id="A-1", item={"body_markdown": BODY_A1_AFTER})
+    replay("commit", workspace=ws, summary="仕様書を直す")
+    replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_WITH_CHANGE_SET_LINKS})
+    replay("commit", workspace=ws, summary="検討事項を直す")
+    # 実行（差分を出さずに D-3 の詳細パネルを開き、「仕様書を直したところ」を押す）
+    open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel.open .md a")
+    assert page.locator(".df-chip").count() == 0
+    history_before = page.evaluate("history.length")
+    page.locator("aside.panel .md a", has_text="仕様書を直したところ").click()
+    page.wait_for_selector(".df-chip", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    # 検証（「仕様書を直す」の札が出て、資料のタブに印が付き、検討事項のタブには付かない）
+    assert page.inner_text(".df-chip-t").endswith("仕様書を直す")
+    assert _marked_tabs(page) == ["docs"]
+    # 検証（D-3 の詳細パネルが開いたままで、URL のハッシュが id=D-3 と diff=V-1 を持ち、履歴の数が増えていない）
+    assert page.locator("aside.panel.open").count() == 1
+    assert _hash_params(page.url)["id"] == ["D-3"]
+    assert _hash_params(page.url)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before
+    # 実行（「決め方へ」を押す）
+    assert page.evaluate(HEADING_IN_VIEW_SCRIPT, "決め方") is False
+    page.locator("aside.panel .md a", has_text="決め方へ").click()
+    page.wait_for_function(
+        "new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'",
+        timeout=HISTORY_REDRAW_TIMEOUT_MS,
+    )
+    # 検証（本文が「決め方」の見出しまで送られ、h が「決め方」になり、選んだ時点は V-1 のまま）
+    assert page.evaluate(HEADING_IN_VIEW_SCRIPT, "決め方") is True
+    assert _hash_params(page.url)["h"] == ["決め方"]
+    assert _hash_params(page.url)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before
+
+
+def test_normal_when_body_link_not_to_change_set(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """本文のリンクが記録に無いまとまり・前回から・まとめる前を指すときは、押しても差分の表示を変えない（正常系）。"""
+    # 準備（D-3 の本文にリンクを書き足した V-1 だけを持つ）
+    root = make_workspace(make_item("D-3", status="未決定", body="D-3.md"), bodies={"D-3.md": BODY_V0})
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_WITH_MISSING_LINKS})
+    replay("commit", workspace=ws, summary="検討事項を直す")
+    # 実行（V-1 を持つ URL で D-3 の詳細パネルを開く）
+    open_preview(url, "#tab=decisions&view=table&id=D-3&diff=V-1")
+    page.wait_for_selector(".df-chip", timeout=HISTORY_REDRAW_TIMEOUT_MS)
+    page.wait_for_selector("aside.panel.open .md a")
+    history_before = page.evaluate("history.length")
+    for text in ("古い直し", "前回から", "まとめる前"):
+        page.locator("aside.panel .md a", has_text=text).click()
+        page.wait_for_timeout(PRESS_SETTLE_MS)
+        # 検証（札が「検討事項を直す」のままで、D-3 に変更の印が付いたまま）
+        assert page.inner_text(".df-chip-t").endswith("検討事項を直す")
+        assert _row_marks(page) == {"D-3": MARK_CHANGED}
+        # 検証（URL のハッシュが diff=V-1 を持ち、h を持たず、履歴の数が増えていない）
+        assert _hash_params(page.url)["diff"] == ["V-1"]
+        assert "h" not in _hash_params(page.url)
+        assert page.evaluate("history.length") == history_before

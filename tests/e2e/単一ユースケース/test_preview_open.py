@@ -5,13 +5,22 @@
 
 from __future__ import annotations
 
+import socket
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import Page
 from preview_helpers import OpenInEmptyContext, OpenPreview, row_ids
 from readme_helpers import preview_section
-from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import (
+    RECORD_DIR,
+    CallTool,
+    MakeItem,
+    MakeWorkspace,
+    McpServer,
+    SnapshotTree,
+    StartServer,
+)
 
 if TYPE_CHECKING:
     from conftest import Replay
@@ -196,3 +205,77 @@ def test_normal_when_link_to_change_set(
     assert opened.inner_text(".df-chip-t").endswith("D-1 を直す")
     marks = opened.eval_on_selector_all("table.grid tbody tr", ROW_MARKS_SCRIPT)
     assert marks == {"D-1": "df-mark df-chg", "D-2": None}
+
+
+# 足す会話ログの日付
+LOG_DATE = "2026-10-02"
+
+
+def _call(server: McpServer, tool: str, **arguments: Any) -> dict[str, Any]:
+    """MCP サーバーでツールを呼び、エラーが返ったら本文を添えて失敗させ、構造化の結果を返す。"""
+    result = server.call(tool, **arguments)
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    return result.data
+
+
+def test_normal_when_body_link_written_to_record(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    open_in_empty_context: OpenInEmptyContext,
+) -> None:
+    """記録の本文に直したまとまりを書くと、ポートを含まないリンクになり、配信を別のポートで立て直しても開ける（正常系）。"""
+    # 準備（D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ）
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    ws = str(root)
+    first = start_server()
+    _call(first, "update", workspace=ws, id="D-2", item={"body_markdown": "D-2 の本文を直した\n"})
+    _call(first, "commit", workspace=ws, summary="D-2 を直す")
+    # 実行（D-1 を直してまとめ、V-2 を指すリンクを本文に書いた会話ログを足してまとめる）
+    _call(first, "update", workspace=ws, id="D-1", item={"body_markdown": "D-1 の本文を直した\n"})
+    set_id = str(_call(first, "commit", workspace=ws, summary="D-1 を直す")["id"])
+    added = _call(
+        first,
+        "add",
+        workspace=ws,
+        kind="log",
+        item={
+            "title": "D-1 を直した",
+            "date": LOG_DATE,
+            "body_markdown": f"[D-1 を直したところ](#diff={set_id})\n",
+        },
+    )
+    _call(first, "commit", workspace=ws, summary="会話ログを足す")
+    old_port = urlsplit(str(_call(first, "preview_url", workspace=ws)["url"])).port
+    # 検証（足した会話ログの本文のリンクの先が #diff=V-2 で、ホストとポートを含まない）
+    body = (root / RECORD_DIR / "docs" / f"{added['id']}.md").read_text(encoding="utf-8")
+    assert set_id == "V-2"
+    assert f"(#diff={set_id})" in body
+    assert "127.0.0.1" not in body
+    assert "http" not in body
+    # 実行（配信を止め、前のポートを塞いだまま別のポートで立て直し、会話ログの詳細パネルを開く）
+    first.stop()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupier:
+        occupier.bind(("127.0.0.1", old_port))
+        occupier.listen()
+        second = start_server()
+        new_url = str(_call(second, "preview_url", workspace=ws)["url"])
+        # 検証（立て直した配信のポートが、立て直す前と違う）
+        assert urlsplit(new_url).port != old_port
+        opened = open_in_empty_context(f"{new_url}#tab=logs&id={added['id']}")
+        opened.wait_for_selector("aside.panel.open .md a")
+        # 実行（本文の V-2 を指すリンクを押す）
+        opened.locator("aside.panel .md a", has_text="D-1 を直したところ").click()
+        opened.wait_for_selector(".df-chip", timeout=CHIP_TIMEOUT_MS)
+        # 検証（V-2 の説明の札が出て、会話ログの詳細パネルが開いたまま）
+        assert opened.inner_text(".df-chip-t").endswith("D-1 を直す")
+        assert opened.locator("aside.panel.open").count() == 1
+        assert parse_qs(urlsplit(opened.url).fragment)["id"] == [added["id"]]
+        # 実行（検討事項の表へ移る）
+        opened.click('nav.tabbar a[data-tab="decisions"]')
+        opened.click('.segment button[data-view="table"]')
+        opened.wait_for_selector("table.grid tbody tr")
+        # 検証（D-1 に変更の印が付き、D-2 には付かない）
+        marks = opened.eval_on_selector_all("table.grid tbody tr", ROW_MARKS_SCRIPT)
+        assert marks == {"D-1": "df-mark df-chg", "D-2": None}
