@@ -85,6 +85,7 @@ def _thread_of(number: int, submission: dict[str, Any]) -> dict[str, Any]:
             "body": submission["body"],
             "created": submission["sent"],
             "read": False,
+            "seen": True,
             "taken": taken,
         }
     ]
