@@ -279,4 +279,4 @@ tests/integration/preview/test_detail_panel_screen.py::test_withdrawn_badge[chro
 tests/integration/preview/test_detail_panel_screen.py::test_side_by_side_moves_content_left[chromium-docs_wide_1920] PASSED [ 99%]
 tests/integration/preview/test_detail_panel_screen.py::test_withdrawn_badge[chromium-logs] PASSED [100%]
 
-======================= 270 passed in 408.71s (0:06:48) ========================
+======================= 270 passed in 394.68s (0:06:34) ========================
