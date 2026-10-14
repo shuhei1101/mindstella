@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Route
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -626,3 +626,191 @@ def test_review_entry_from_thread(served_thread: tuple[str, Path], open_preview:
     page.click(REVIEW_ENTRY)
     # 検証
     page.wait_for_selector(REVIEW_HEAD)
+
+
+# 利用者の既読にする要求のパス（スレッドの ID を取り出す）
+SEEN_URL = "**/api/threads/*/seen"
+
+# 既読になるのを待つ間に、threads.yaml を読み直す間隔ミリ秒
+SEEN_POLL_MS = 100
+
+
+def _record_seen_requests(page: Page, *, status: int | None = None) -> list[str]:
+    """既読にする要求を控える入れ物を返す。status を渡すとサーバーへ届かせず、その応答を返す。"""
+    requested: list[str] = []
+
+    def _handle(route: Route) -> None:
+        """要求のスレッドの ID を控え、status が無ければ本物のサーバーへ通す。"""
+        requested.append(route.request.url.split("/")[-2])
+        if status is None:
+            route.continue_()
+        else:
+            fulfill_problem(route, status, "書けませんでした")
+
+    page.route(SEEN_URL, _handle)
+    return requested
+
+
+def _wait_seen(page: Page, root: Path, thread_id: str) -> None:
+    """threads.yaml のスレッドの全ての書き込みが利用者の既読になるのを待つ。"""
+    for _ in range(UPDATE_TIMEOUT_MS // SEEN_POLL_MS):
+        posts = _thread_in_yaml(root, thread_id)["posts"]
+        if all(post["seen"] for post in posts):  # type: ignore[index]
+            return
+        page.wait_for_timeout(SEEN_POLL_MS)
+    raise AssertionError(f"{thread_id} が既読になりません")
+
+
+@pytest.fixture
+def served_unseen_thread(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """AI の返信が利用者の未読のオープンの TH-1（レビュー中の返信 C-1 つき）・全て既読の TH-2・D-1 へのまだ送っていない新しいスレッド C-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1", title="最初の問い"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, body="案を決めたい", created="2026-10-12T01:00:00+00:00"),
+                make_post(
+                    "TH-1-2", author="ai", seen=False, body="案 A で決めました", created="2026-10-12T02:00:00+00:00"
+                ),
+                summary="未読のスレッド",
+                target="D-1",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", author="ai", created="2026-10-12T03:00:00+00:00"),
+                summary="既読のスレッド",
+            ),
+        ),
+        comments=(
+            free_comment(make_comment("C-1", body="了解です", thread="TH-1")),
+            make_comment("C-2", target="D-1", body="新しい話"),
+        ),
+    )
+
+
+def test_seen_when_opened(
+    served_unseen_thread: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """未読のスレッドの画面を出すと、そのスレッドを利用者の既読にする。並びは応答を待たずに出す（正常系）。"""
+    # 準備
+    url, root = served_unseen_thread
+    requested = _record_seen_requests(page)
+    open_preview(url)
+    # 実行
+    open_thread(page, "TH-1")
+    # 検証
+    assert page.inner_text(HEADING) == "オープン\n未読のスレッド"
+    assert page.locator(f"{POSTS}:has-text('案 A で決めました')").count() == 1
+    _wait_seen(page, root, "TH-1")
+    assert requested == ["TH-1"]
+    # 既読にしたのは利用者の既読だけで、AI の既読と取り込み済みは変えない
+    posts = _thread_in_yaml(root, "TH-1")["posts"]
+    assert [(post["read"], post.get("taken")) for post in posts] == [(True, None), (True, None)]  # type: ignore[union-attr]
+
+
+def test_seen_when_opened_seen_thread(
+    served_unseen_thread: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """利用者の未読の書き込みが無いスレッドの画面を出しても、既読にする要求を送らない（正常系）。"""
+    # 準備
+    url, root = served_unseen_thread
+    requested = _record_seen_requests(page)
+    open_preview(url)
+    # 実行
+    open_thread(page, "TH-2")
+    page.wait_for_selector(f"{POSTS}")
+    page.wait_for_timeout(DRAFT_WAIT_MS)
+    # 検証
+    assert requested == []
+    assert [post["seen"] for post in _thread_in_yaml(root, "TH-2")["posts"]] == [True]  # type: ignore[index]
+
+
+def test_seen_when_opened_from_review(
+    served_unseen_thread: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """レビュー中の書き込みの行から未読のスレッドの画面を出しても、既読にする（正常系）。"""
+    # 準備
+    url, root = served_unseen_thread
+    requested = _record_seen_requests(page)
+    open_preview(url)
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    # 実行
+    page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] .row-head button.row-target")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    # 検証
+    _wait_seen(page, root, "TH-1")
+    assert requested == ["TH-1"]
+
+
+def test_seen_when_opened_pending_thread(
+    served_unseen_thread: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """まだ送っていない新しいスレッドの画面を出すときは、既読にする要求を送らない（正常系）。"""
+    # 準備
+    url, _ = served_unseen_thread
+    requested = _record_seen_requests(page)
+    open_preview(url)
+    open_list(page)
+    # 実行
+    page.click(f"{COMMENTS_PANEL} ul.th-list > li:has(> button[data-focus='thread:new:C-2']) button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_timeout(DRAFT_WAIT_MS)
+    # 検証
+    assert requested == []
+
+
+def test_seen_when_failed(
+    served_unseen_thread: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """既読にできなくても画面にエラーを出さず、次にスレッドの画面を出したときに呼び直す（異常系）。"""
+    # 準備
+    url, root = served_unseen_thread
+    requested = _record_seen_requests(page, status=500)
+    open_preview(url)
+    # 実行（1 回目: 断られる）
+    open_thread(page, "TH-1")
+    page.wait_for_timeout(DRAFT_WAIT_MS)
+    # 検証
+    assert requested == ["TH-1"]
+    assert page.inner_text(HEADING) == "オープン\n未読のスレッド"
+    assert page.locator(f"{COMMENTS_PANEL} [role='alert'], {ACTION_MSG}").count() == 0
+    assert [post["seen"] for post in _thread_in_yaml(root, "TH-1")["posts"]] == [True, False]  # type: ignore[index]
+    # 実行（2 回目: 一覧へ戻って開き直す）
+    page.get_by_role("button", name="一覧へ戻る").click()
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_timeout(DRAFT_WAIT_MS)
+    # 検証
+    assert requested == ["TH-1", "TH-1"]
+
+
+def test_seen_when_reply_arrives_while_open(
+    served_unseen_thread: tuple[str, Path],
+    open_preview: OpenPreview,
+    page: Page,
+    call_tool: CallTool,
+) -> None:
+    """スレッドの画面を開いている間に届いた AI の返信も、描き直した後に既読にする（正常系）。"""
+    # 準備
+    url, root = served_unseen_thread
+    requested = _record_seen_requests(page)
+    open_preview(url)
+    open_thread(page, "TH-2")
+    page.wait_for_selector(POSTS)
+    assert requested == []
+    # 実行
+    call_tool("reply", workspace=str(root), id="TH-2", body="続きの返信です", summary="既読のスレッド")
+    # 検証
+    page.wait_for_selector(f"{POSTS}:has-text('続きの返信です')", timeout=UPDATE_TIMEOUT_MS)
+    _wait_seen(page, root, "TH-2")
+    assert requested == ["TH-2"]

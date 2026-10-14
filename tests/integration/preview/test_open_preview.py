@@ -14,7 +14,7 @@ from integration.browser_tab_helpers import (
     opened_tabs,
     recorded_window_opens,
 )
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Route
 from preview_body_link_helpers import (
     BODY_LINK_HASH,
     build_body_link_workspace,
@@ -97,6 +97,8 @@ from workspace_fixtures import (
     CallTool,
     MakeComment,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     StartServer,
     WriteComments,
@@ -1588,3 +1590,76 @@ def test_normal_when_diff_minimap_hidden(
     prefs = read_prefs(page)
     assert prefs is not None
     assert prefs["minimap"] is None
+
+
+def test_normal_when_unseen_thread_opened(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    page: Page,
+) -> None:
+    """未読の印を出し、未読のスレッドを開くと既読にして印を消す。既読のスレッドを開いても既読にする要求は送らない（正常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, created="2026-10-12T01:00:00+00:00"),
+                make_post("TH-1-2", author="ai", seen=False, created="2026-10-12T02:00:00+00:00"),
+                summary="未読のスレッド",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", author="ai", created="2026-10-12T03:00:00+00:00"),
+                summary="既読のスレッド",
+            ),
+        ),
+    )
+    requested: list[str] = []
+
+    def _record(route: Route) -> None:
+        """既読にする要求のスレッドの ID を控えて、サーバーへ通す。"""
+        requested.append(route.request.url.split("/")[-2])
+        route.continue_()
+
+    page.route("**/api/threads/*/seen", _record)
+    # 実行（コメントの一覧を開く前）
+    open_preview(url)
+    page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot")
+    # 検証
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（未読あり・レビュー中 0 件）"
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 0
+    # 実行（一覧を開く）
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    # 検証（TH-1 の行だけに未読の札）
+    row = f"{COMMENTS_PANEL} ul.th-list > li"
+    assert page.locator(f"{row}:has(button[data-focus='thread:TH-1']) .th-unread").count() == 1
+    assert page.locator(f"{row}:has(button[data-focus='thread:TH-2']) .th-unread").count() == 0
+    assert requested == []
+    # 実行（TH-1 を開く）
+    page.click(f"{row}:has(button[data-focus='thread:TH-1']) button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_function(
+        "() => !document.querySelector('header.topbar button.comments-btn .unread-dot')",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    threads = read_workspace_yaml(root, "threads.yaml")["items"]
+    assert [post["seen"] for post in threads[0]["posts"]] == [True, True]
+    assert requested == ["TH-1"]
+    # 実行（一覧へ戻る）
+    page.get_by_role("button", name="一覧へ戻る").click()
+    page.wait_for_selector(f"{row}:has(button[data-focus='thread:TH-1'])")
+    # 検証（未読の印の無い一覧とボタン）
+    assert page.locator(f"{COMMENTS_PANEL} .th-unread").count() == 0
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
+    # 実行（既読の TH-2 を開く）
+    page.click(f"{row}:has(button[data-focus='thread:TH-2']) button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert requested == ["TH-1"]

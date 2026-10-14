@@ -16,6 +16,17 @@ TITLE = "li.th-row .th-title"
 LINE2 = "li.th-row .th-line2"
 TAGS = "li.th-row .th-tags button.th-tag"
 
+# 2 行目の先頭に出す未読の札と、行を開くボタン
+UNREAD = f"{LINE2} .th-unread"
+OPEN_BUTTON = "li.th-row button.th-open"
+
+# 塗りが無いときの背景色
+TRANSPARENT = "rgba(0, 0, 0, 0)"
+
+# 要素の背景色と、枠の線の種類を読む
+BACKGROUND_SCRIPT = "e => getComputedStyle(e).backgroundColor"
+BORDER_STYLE_SCRIPT = "e => getComputedStyle(e).borderTopStyle"
+
 
 def test_replied(open_story: OpenStory) -> None:
     """オープンで AI が返信した。1 行目に状態の札と要約、2 行目に向けた項目の ID・最後の書き手・日時、行の下にタグを出す（正常系）。"""
@@ -139,3 +150,68 @@ def test_narrow(open_story: OpenStory) -> None:
     assert row["width"] <= 390
     assert tag["y"] >= line2["y"] + line2["height"] - 1
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_unread(open_story: OpenStory) -> None:
+    """オープンで AI の返信が利用者の未読。2 行目の先頭に塗りつぶしの札「未読」を出し、向けた項目の ID・最後の書き手・日時をその右に並べる（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadrow--unread")
+    # 検証
+    assert page.inner_text(STATE) == "オープン"
+    assert page.inner_text(UNREAD) == "未読"
+    # 札は塗りつぶしで、点の印を持つ（色だけに頼らない）
+    assert page.eval_on_selector(UNREAD, BACKGROUND_SCRIPT) != TRANSPARENT
+    assert page.locator(f"{UNREAD} .dot").count() == 1
+    # 2 行目の並びは 未読の札 → 向けた項目の ID → 最後の書き手 → 日時
+    assert page.evaluate(
+        "(selector) => [...document.querySelector(selector).children].map((e) => e.className.split(' ')[0] || e.tagName.toLowerCase())",
+        LINE2,
+    ) == ["th-unread", "mono", "th-author", "time"]
+    assert page.inner_text(f"{LINE2} .mono") == "D-16"
+    assert page.inner_text(f"{LINE2} .th-author") == "AI"
+    # 行を開くボタンの読み上げの名前は、状態の次に「未読」を読む
+    label = page.get_attribute(OPEN_BUTTON, "aria-label") or ""
+    assert label.split("、")[:2] == ["オープン", "未読"]
+    assert page.get_attribute("li.th-row", "class") == "th-row unread"
+
+
+def test_unread_pending_reply(open_story: OpenStory) -> None:
+    """未読で、レビュー中の返信も持つ。先頭に「未読」、末尾に破線の枠の「レビュー中」を出し、形で見分ける（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadrow--unread-pending-reply")
+    # 検証
+    assert page.inner_text(UNREAD) == "未読"
+    assert page.inner_text(f"{LINE2} .th-pending") == "レビュー中"
+    assert page.eval_on_selector(UNREAD, BORDER_STYLE_SCRIPT) == "none"
+    assert page.eval_on_selector(f"{LINE2} .th-pending", BORDER_STYLE_SCRIPT) == "dashed"
+    # 未読の札が先頭、レビュー中の印が末尾
+    order = page.evaluate(
+        "(selector) => [...document.querySelector(selector).children].map((e) => e.className.split(' ')[0])",
+        LINE2,
+    )
+    assert order[0] == "th-unread"
+    assert order[-1] == "th-pending"
+    label = page.get_attribute(OPEN_BUTTON, "aria-label") or ""
+    assert "未読" in label
+    assert label.endswith("レビュー中の返信あり")
+
+
+def test_unread_closed(open_story: OpenStory) -> None:
+    """AI が返信してからクローズにし、返信が利用者の未読。状態の札「クローズ」のまま、先頭に「未読」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadrow--unread-closed")
+    # 検証
+    assert page.inner_text(STATE) == "クローズ"
+    assert "closed" in (page.get_attribute(STATE, "class") or "").split()
+    assert page.inner_text(UNREAD) == "未読"
+    label = page.get_attribute(OPEN_BUTTON, "aria-label") or ""
+    assert label.split("、")[:2] == ["クローズ", "未読"]
+
+
+def test_no_unread_when_seen(open_story: OpenStory) -> None:
+    """利用者の既読のスレッドの行には、未読の札を出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadrow--replied")
+    # 検証
+    assert page.locator(UNREAD).count() == 0
+    assert page.get_attribute("li.th-row", "class") == "th-row"
