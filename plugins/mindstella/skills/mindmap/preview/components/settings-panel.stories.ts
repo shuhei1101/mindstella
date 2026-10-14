@@ -28,7 +28,7 @@ const meta = {
     counts: COUNTS,
     overrides: [],
     canSave: true,
-    on: { kinds: fn(), reset: fn(), save: fn(), close: fn() },
+    on: { kinds: fn(), minimap: fn(), reset: fn(), save: fn(), close: fn() },
   },
 } satisfies Meta<MindmapPreview.SettingsPanelProps>;
 
@@ -95,4 +95,9 @@ export const Narrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 差分のミニマップだけを表示しないにした。「詳細に表示するもの」のチェックを外し、変えている項目に「差分のミニマップ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
+export const MinimapHidden: Story = {
+  args: { minimap: false, overrides: ["差分のミニマップ"] },
 };

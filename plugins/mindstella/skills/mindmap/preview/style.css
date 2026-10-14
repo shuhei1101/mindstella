@@ -647,8 +647,10 @@ table.grid td.no-match-cell .no-match { position: sticky; left: 0; width: var(--
 
 /* ===== 回答・意見の送信 ===== */
 
-/* 見出しと下端の入力の間の本文だけをスクロールする */
-.panel > .panel-body { flex: 1; min-height: 0; }
+/* 見出しと下端の入力の間の枠: 本文のスクロール領域とミニマップを横に並べる */
+.panel-scroll { flex: 1; min-height: 0; display: flex; }
+/* 枠の中の本文: 帯を除いた幅いっぱいを取り、本文だけをスクロールする */
+.panel-scroll > .panel-body { flex: 1; min-width: 0; min-height: 0; }
 /* 送信の入力: ラベル・入力欄・結果と送るボタンの行を縦に積む。入力の幅を結果の置き方の問い合わせの基準にする */
 .send { display: grid; gap: 6px; container-type: inline-size; }
 /* パネルの下端に留める置き方: 本文の下に線で区切って置く */
@@ -1843,3 +1845,44 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .row-check:disabled { opacity: .45; }
 /* 送れない理由と、スレッドを開く入口 */
 .row-blocked svg.icon { color: var(--text-2); }
+
+/* ===== 差分のミニマップ: 本文のスクロールバーの外側に立てる、変わった箇所の印の縦の帯 ===== */
+
+/* 帯の太さと、帯の中で印の左右に空ける余白 */
+:root {
+  --df-map-w: 20px;
+  --df-map-pad: 4px;
+}
+/* 帯: 本文の全体を縮めた面。本文の右に立て、線で区切る。印と見えている範囲の面を、この中に位置で置く */
+.panel-scroll > .df-map { position: relative; flex: none; width: var(--df-map-w); background: var(--surface-2); border-left: 1px solid var(--border-soft); }
+/* 帯を出している間の本文: 右の余白を帯に譲る */
+.panel-scroll.has-map > .panel-body { padding-right: 12px; }
+/* 見えている範囲の面: 本文のうち今見えている部分を、面の濃さで示す */
+.df-map-view { position: absolute; left: 0; right: 0; background: color-mix(in oklab, var(--text) 12%, transparent); pointer-events: none; }
+/* 印: 押すとその箇所まで本文を送るボタン。押せる的は帯の幅いっぱいに取る */
+.df-map-m { position: absolute; left: 0; display: block; width: 100%; padding: 0 var(--df-map-pad); border: 0; border-radius: 2px; background: none; cursor: pointer; }
+/* 印のホバー: 面だけを変える */
+.df-map-m:hover { background: var(--hover); }
+/* 印のフォーカス: 印の色の輪。隣の印より手前に出す */
+.df-map-m:focus-visible { z-index: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 印の形: 種類を色と形の両方で分ける */
+.df-map-m i { display: block; width: 100%; height: 100%; border-radius: 2px; }
+/* 足した印: 塗りつぶし */
+.df-map-m.df-add i { background: var(--df-add); }
+/* 消した印: 枠だけの中抜き */
+.df-map-m.df-del i { border: 2px solid var(--df-del); background: var(--surface); }
+/* 変わった印: 斜めの縞 */
+.df-map-m.df-chg i { border: 1px solid var(--df-chg); background: repeating-linear-gradient(135deg, var(--df-chg) 0 3px, var(--surface) 3px 6px); }
+/* マウスで押したまま上下に動かして本文を送れることを、つかむ形のポインタで示す（印の上は押す形） */
+@media (pointer: fine) {
+  .panel-scroll > .df-map { cursor: grab; }
+  .panel-scroll > .df-map .df-map-m { cursor: pointer; }
+}
+/* ドラッグの間の見えている範囲の面: つかんでいる面を 1 段濃くする */
+.df-map.is-dragging .df-map-view { background: color-mix(in oklab, var(--text) 24%, transparent); }
+/* ドラッグの間: 帯の外へ出てもつかむ形のポインタのままにし、本文の文を選ばない */
+body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map .df-map-m { cursor: grabbing; user-select: none; }
+/* ドラッグの間の印: 乗っても面を変えない */
+.df-map.is-dragging .df-map-m:hover { background: none; }
+/* 飛んだ先の箇所: 当たった語と同じ色の輪で、少しの間だけ示す */
+.df-map-hit { box-shadow: 0 0 0 2px var(--hit); }

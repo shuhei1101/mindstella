@@ -2,8 +2,8 @@
 // 詳細パネルと詳細の全画面。項目 1 件の中身（案・本文・図・関係する項目）を出す。差分の表示の間は、選んだ時点の前後の差分も出す。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 前の値が無いときに出す文字 */
-    const NO_VALUE = "（なし）";
+    /** 前の値が無いときに出す文字（差分のミニマップが、前に無かったキーを見分けるのにも使う） */
+    MindmapPreview.NO_VALUE = "（なし）";
     /** 詳細パネルのレビュー中のコメントの行の `data-focus` の接頭辞（コメントの一覧と同時に開いても、描き直した後のフォーカスの戻し先を分ける） */
     MindmapPreview.REVIEW_FOCUS = "detail-";
     /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
@@ -80,8 +80,8 @@ var MindmapPreview;
     /** 変わったキーの前の値と今の値を並べる。前の値は取り消し線、今の値は下線。plain は面を塗らず、線と矢印だけで示す。pairs を渡すと、前後がどちらも空でない文字のとき、並べた対を語の面を付ける対として pairs に足す */
     function keyDiff({ was, now, plain = false, pairs, }) {
         const empty = (value) => value === null || value === undefined || value === false || value === "";
-        const wasElement = MindmapPreview.h({ tag: "del", attrs: { class: "df-was" }, children: [srOnly("前の値: "), empty(was) ? NO_VALUE : was] });
-        const nowElement = MindmapPreview.h({ tag: "ins", attrs: { class: "df-now" }, children: [srOnly("今の値: "), empty(now) ? NO_VALUE : now] });
+        const wasElement = MindmapPreview.h({ tag: "del", attrs: { class: "df-was" }, children: [srOnly("前の値: "), empty(was) ? MindmapPreview.NO_VALUE : was] });
+        const nowElement = MindmapPreview.h({ tag: "ins", attrs: { class: "df-now" }, children: [srOnly("今の値: "), empty(now) ? MindmapPreview.NO_VALUE : now] });
         if (typeof was === "string" && typeof now === "string" && !empty(was) && !empty(now))
             pairs?.push({ was: wasElement, now: nowElement });
         return MindmapPreview.h({
@@ -1498,7 +1498,7 @@ var MindmapPreview;
     }
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
-        const { id, index, full, on, comment, highlight = null, diff = null, heading = null } = props;
+        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true } = props;
         const kind = index.byId.get(id)?.kind;
         // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
         const body = MindmapPreview.h({
@@ -1508,18 +1508,19 @@ var MindmapPreview;
         });
         const head = detailHead(props);
         bindHeadTitle({ head, body });
-        // 見出しと下端の入力の間の本文だけをスクロールする
+        // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる
         const footer = comment === null ? null : MindmapPreview.sendForm(comment.form);
+        const scroller = MindmapPreview.diffMinimapFrame({ body, shown: diff !== null && minimap });
         let root;
         if (!full) {
             root = MindmapPreview.h({
                 tag: "aside",
                 attrs: { class: `panel${kind === "docs" ? " wide" : ""}`, "aria-label": "詳細" },
-                children: [head, body, footer],
+                children: [head, scroller, footer],
             });
         }
         else {
-            const dialog = MindmapPreview.h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body, footer] });
+            const dialog = MindmapPreview.h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, scroller, footer] });
             // Esc は閉じずに元の大きさ（詳細パネル）に戻す。外側（後ろの幕）を押したときも同じ
             dialog.addEventListener("cancel", (event) => {
                 event.preventDefault();

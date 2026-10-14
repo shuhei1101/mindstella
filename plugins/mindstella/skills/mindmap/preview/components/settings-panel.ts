@@ -1,4 +1,4 @@
-// 表示の設定の中身。表示する種類を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 
 namespace MindmapPreview {
   /** ネットワークの見た目 1 つ（値・画面に出す名前・短い説明） */
@@ -44,9 +44,13 @@ namespace MindmapPreview {
     message?: SettingsMessage | null;
     /** 端末の保存領域に書けるか。偽のとき先頭にその旨を出す */
     storageOk?: boolean;
+    /** 差分のミニマップを表示しているか（チェックボックスの状態。「ワークスペースの既定にする」を出すかの比べには使わない） */
+    minimap?: boolean;
     on: {
       /** 表示する種類を変えたとき（変えた後の並びを渡す） */
       kinds: (kinds: string[]) => void;
+      /** 差分のミニマップを切り替えたとき（切り替えた後の表示する・しない） */
+      minimap: (shown: boolean) => void;
       /** 「既定に戻す」を押したとき */
       reset: () => void;
       /** 「ワークスペースの既定にする」を押したとき */
@@ -55,6 +59,9 @@ namespace MindmapPreview {
       close: () => void;
     };
   };
+
+  /** 差分のミニマップの呼び名（表示の設定の切り替えと「この端末で変えている項目」に出す名前） */
+  export const MINIMAP_LABEL = "差分のミニマップ";
 
   /** 種類 → 種類の行に出す印 */
   const KIND_ICON: Record<Kind, IconName> = {
@@ -180,6 +187,38 @@ namespace MindmapPreview {
     });
   }
 
+  /** 詳細に表示するものの選び（差分のミニマップのチェック 1 行） */
+  function detailField({ minimap = true, on }: SettingsPanelProps): HTMLElement {
+    return h({
+      tag: "fieldset",
+      attrs: { class: "st-sec" },
+      children: [
+        h({ tag: "legend", children: ["詳細に表示するもの"] }),
+        h({
+          tag: "ul",
+          attrs: { class: "st-kinds" },
+          children: [
+            h({
+              tag: "li",
+              children: [
+                h({
+                  tag: "label",
+                  children: [
+                    h({
+                      tag: "input",
+                      attrs: { type: "checkbox", checked: minimap, "data-focus": "minimap", onchange: () => on.minimap(!minimap) },
+                    }),
+                    h({ tag: "span", attrs: { class: "st-k-label" }, children: [MINIMAP_LABEL] }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
   /** この端末で変えている項目と「既定に戻す」。上書きが無いときはボタンを出さず、その旨を出す */
   function resetBlock({ overrides, on }: SettingsPanelProps): HTMLElement {
     if (overrides.length === 0) {
@@ -238,7 +277,7 @@ namespace MindmapPreview {
           : h({
             tag: "p",
             attrs: { class: "st-same", tabindex: "-1", "data-focus": "same" },
-            children: ["今の選びはワークスペースの既定と同じです。"],
+            children: ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
           }),
       ],
     });
@@ -262,6 +301,7 @@ namespace MindmapPreview {
       children: [
         storageOk ? null : storageNote(),
         kindsField(props),
+        detailField(props),
         resetBlock(props),
         canSave ? saveBlock(props) : null,
         messageLine(message),
