@@ -283,7 +283,8 @@ def test_normal(
     assert "残す段落です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert "残す段落です。" not in added + removed
     # 検証（書き換えた語にだけ濃い面が付く。前は消した色、今は足した色で、変えていない語と消した段落には付かない）
-    body_words = "aside.panel .md:not(.md-value) span.df-word"
+    # 図の Raw の差分（隠して先に描いてある）の語の面は含めない。Raw の語の面は、Raw を押した後の確かめが見る
+    body_words = "aside.panel .md:not(.md-value) span.df-word:not(figure *)"
     assert page.locator(f"{body_words}.df-del").all_inner_texts() == ["来週"]
     assert page.locator(f"{body_words}.df-add").all_inner_texts() == ["今週"]
     assert page.locator(body_words).count() == 2
