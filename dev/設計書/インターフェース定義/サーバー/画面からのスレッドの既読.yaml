@@ -26,6 +26,7 @@ flows:
       - ステータスが 200 で、`seen` が `["TH-1-2"]`
       - TH-1 の全ての書き込みの `seen` が `true`
       - 書き込みの `read`・`taken` と、スレッドの `status`・`events`・`summary`・`tags` が送る前と同じ
+    test: test_normal
   - name: 正常系（未読が無い）
     summary: 未読が無ければ書かずに空を返す
     setup:
@@ -45,6 +46,7 @@ flows:
     expected:
       - ステータスが 200 で、`seen` が空
       - '`threads.yaml` の更新日時と中身が送る前と同じ'
+    test: test_normal_when_nothing_unseen
   - name: 正常系（クローズのスレッド）
     summary: クローズのスレッドも既読にし、状態は変えない
     setup:
@@ -67,6 +69,7 @@ flows:
     expected:
       - ステータスが 200 で、`seen` が `["TH-1-2"]`
       - TH-1 の `status` が `closed` のままで、`events` が送る前と同じ
+    test: test_normal_when_closed
   - name: 異常系（送り元が違う・403）
     summary: 別のサイトのページからの書き換えは受けない
     setup:
@@ -87,6 +90,7 @@ flows:
     expected:
       - ステータスが 403
       - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_origin_mismatch
   - name: 異常系（スレッドが無い・404）
     summary: 無いスレッドは書き換えない
     setup:
@@ -106,6 +110,7 @@ flows:
     expected:
       - ステータスが 404 で、`detail` に `TH-9` がある
       - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_thread_not_found
   - name: 異常系（スレッドの形が崩れている・422）
     summary: 手で崩した threads.yaml は書き換えない
     setup:
@@ -125,6 +130,7 @@ flows:
     expected:
       - ステータスが 422 で、`detail` に `threads.yaml` がある
       - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_schema_mismatch
   - name: 異常系（書き込めない・500）
     summary: 書き込めないワークスペースでは前の状態を残す
     setup:
@@ -147,6 +153,7 @@ flows:
     expected:
       - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
       - '`threads.yaml` の中身が送る前と同じ'
+    test: test_error_when_write_fails
 lead: 利用者が画面でスレッドを開いたときに、そのスレッドの利用者の未読の書き込みを全て利用者の既読にする。AI の既読・取り込み済み・状態は変えない。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `posts[].seen` が `false` の書き込みを `true` にする（未読が無ければ書かない）。一時ファイルから `os.replace` で置き換える'
@@ -220,3 +227,4 @@ constraints:
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
   - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#
+test_file: tests/integration/server/test_thread_seen.py
