@@ -393,9 +393,11 @@ elements:
   - name: まとまりのリンク
     kind: link
     position: 本文 > 文中
-    description: 本文に書かれた `[文言](#diff=V-2)` のリンク（`#` の後ろが `diff` の引数を持つリンク）。見た目は本文のほかのリンクと同じ。押すと、`diff` が記録にあるまとまりの ID のときだけ、開いている画面・項目のままそのまとまりの差分の表示に切り替え、URL のハッシュの `diff` を書き換える（履歴に積まない）。記録に無いまとまり・`since`・`pending` を指すときは何もしない。`diff` 以外の引数は読まない。差分の表示の間に描く本文でも同じ
+    description: 本文に書かれた `[文言](#diff=V-2)` のリンク（`#` の後ろが `diff` の引数を持つリンク）。見た目は本文のほかのリンクと同じ。差分の表示の間に描く本文でも同じ
     visible_when: 本文に `#diff=` のリンクがあるとき
-    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文のまとまりのリンク]
+    action: 押すと、`diff` が記録にあるまとまりの ID のときだけ、開いている画面・項目のままそのまとまりの差分の表示に切り替え、URL のハッシュの `diff` を書き換える（履歴に積まない）。記録に無いまとまり・`since`・`pending` を指すときは何もしない。`diff` 以外の引数は読まない
+    refs:
+      - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文のまとまりのリンク]
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/230/a-on-scroll/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
