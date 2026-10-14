@@ -558,13 +558,13 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
     usecase: 前回からの差分を見る
     scope: public
-    summary: 変えた行の対の前と今の文字を語の単位で比べる。同じ部分が少ないとき・打ち切ったら `null`
+    summary: 変えた行の対か、キーの差分の前の値と今の値の文字を語の単位で比べる。同じ部分が少ないとき・打ち切ったら `null`
     args:
       - name: before
         type: string
         required: true
         passing: positional
-        description: 前の文字（記法の 1 行か、描いた本文の 1 ブロックの文字）
+        description: 前の文字（記法の 1 行か、描いた本文の 1 ブロックの文字か、キーの前の値）
       - name: after
         type: string
         required: true
@@ -574,7 +574,7 @@ functions:
         type: number
         required: true
         passing: positional
-        description: 打ち切る時刻（`performance.now()` の値）。呼ぶ側が行の差分を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足して渡す
+        description: 打ち切る時刻（`performance.now()` の値）。呼ぶ側が行の差分を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足して渡す。キーの差分は本文の差分と同じ時刻を渡す（本文の差分を描かないときは、比べる直前の時刻から）
     returns:
       type: InlineDiff | null
       description: 語の差分。jsdiff が読めていない・時刻を過ぎた・打ち切った・同じ部分の割合が `WORD_PAIR_MIN_SAME_RATIO` に満たないときは `null`

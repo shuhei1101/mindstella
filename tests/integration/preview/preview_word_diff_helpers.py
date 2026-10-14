@@ -10,9 +10,11 @@ __all__ = [
     "MIN_TEXT_CONTRAST",
     "WORD_COLORS_JS",
     "WORD_MARKS_JS",
+    "build_key_word_diff_workspace",
     "build_word_diff_workspace",
     "colour_distance",
     "contrast_ratio",
+    "serve_key_word_diff_workspace",
     "serve_word_diff_workspace",
 ]
 
@@ -146,6 +148,49 @@ def build_word_diff_workspace(make_workspace: Any, call_tool: Any) -> Path:
         )
     _call(call_tool, "commit", workspace=workspace, summary="語を書き換える")
     return root
+
+
+def build_key_word_diff_workspace(make_workspace: Any, call_tool: Any) -> Path:
+    """実際のツールで、背景・案 A の内容の語と、状態・影響度・タグを書き換えたまとまり V-2 を持つ検討事項 D-1（本文は持たない）のワークスペースを作る。"""
+    root: Path = make_workspace()
+    workspace = str(root)
+    decision = {
+        "title": "会議の進め方を決める問い",
+        "status": "未決定",
+        "lead": "要件は来週までに決める。",
+        "options": [{"key": "A", "content": "毎週の会議で決める"}],
+        "weight": "大",
+        "tags": ["要件", "会議"],
+        "category": "データ構造",
+        "phase": "要件",
+        "target": "mindmap",
+    }
+    _call(call_tool, "add", workspace=workspace, kind="decision", item=decision)
+    _call(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
+    _call(
+        call_tool,
+        "update",
+        workspace=workspace,
+        id="D-1",
+        item={
+            "status": "要見直し",
+            "lead": "要件は今週までに決める。",
+            "options": [{"key": "A", "content": "毎月の会議で決める"}],
+            "weight": "中",
+            "tags": ["要件", "運用"],
+        },
+    )
+    _call(call_tool, "commit", workspace=workspace, summary="語を書き換える")
+    return root
+
+
+def serve_key_word_diff_workspace(make_workspace: Any, call_tool: Any) -> str:
+    """キーの語の面を確かめるワークスペースを作って配信を立て、その URL を返す。"""
+    root = build_key_word_diff_workspace(make_workspace, call_tool)
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.is_error is False, served.text
+    assert served.data is not None
+    return str(served.data["url"])
 
 
 def serve_word_diff_workspace(make_workspace: Any, call_tool: Any) -> str:
