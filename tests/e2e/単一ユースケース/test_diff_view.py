@@ -322,7 +322,7 @@ def test_normal(
     assert page.locator(".df-mark").count() == 0
     assert page.locator("nav.tabbar .df-dot").count() == 0
     body = page.inner_text("aside.panel .md:not(.md-value)")
-    assert "書き換えた段落です。" in body
+    assert "要件は今週までに決める。" in body
     assert "消す段落です。" not in body
     # 検証（ワークスペースの YAML と本文の中身が、開く前と同じ）
     assert snapshot_records(snapshot_tree(root)) == before
