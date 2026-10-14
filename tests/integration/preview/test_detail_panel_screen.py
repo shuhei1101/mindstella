@@ -63,6 +63,7 @@ from preview_html_body_helpers import (
     select_in_frame,
     wait_frame_rendered,
 )
+from preview_body_link_helpers import build_body_link_workspace
 from preview_html_link_helpers import frame_location
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
@@ -2597,6 +2598,37 @@ def test_body_heading_link_press(
     assert page.evaluate("history.length") == history_length
     assert page.evaluate("location.hash") == hash_before
     assert "%E7%84%A1" not in page.evaluate("location.hash")
+
+
+def test_body_change_set_link_press(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """本文の `[文言](#diff=V-1)` は本文のほかのリンクと同じ見た目で、押すと開いている項目のままそのまとまりの差分の表示に切り替え、ハッシュの diff を履歴に積まずに書く。h は書かない（正常系）。"""
+    # 準備
+    url = build_body_link_workspace(make_workspace, make_item, call_tool)
+    open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector("aside.panel.open .md a")
+    history_length = page.evaluate("history.length")
+    style_js = "e => { const s = getComputedStyle(e); return [s.color, s.textDecorationLine, s.cursor]; }"
+    change_set_link = page.locator("aside.panel .md a", has_text="V-1 へ")
+    heading_link = page.locator("aside.panel .md a", has_text="決め方へ")
+    # 実行
+    change_set_style = change_set_link.evaluate(style_js)
+    heading_style = heading_link.evaluate(style_js)
+    change_set_link.click()
+    page.wait_for_selector(".df-chip")
+    # 検証
+    assert change_set_style == heading_style
+    assert page.inner_text(".df-chip-t").endswith("D-1 を直す")
+    assert page.locator("aside.panel.open").count() == 1
+    assert page.evaluate("location.hash").count("diff=V-1") == 1
+    assert "h=" not in page.evaluate("location.hash")
+    assert "id=D-2" in page.evaluate("location.hash")
+    assert page.evaluate("history.length") == history_length
 
 
 def test_body_term_marks(
