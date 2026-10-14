@@ -16,6 +16,11 @@ from integration.browser_tab_helpers import (
 )
 from playwright.sync_api import Page
 
+from preview_body_link_helpers import (
+    BODY_LINK_HASH,
+    HEADING_IN_VIEW_JS as BODY_LINK_HEADING_IN_VIEW_JS,
+    build_body_link_workspace,
+)
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -1397,3 +1402,69 @@ def test_normal_when_stored_diff_without_hash(
     assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
     assert _hash_params(page)["diff"] == ["V-1"]
     assert page.evaluate("history.length") == history_before + 1
+
+
+def test_normal_when_body_link_to_change_set(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """詳細の本文の #diff= のリンクを押すと、開いた項目のままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さない値のリンクは何もしない（正常系）。"""
+    # 準備
+    url = build_body_link_workspace(make_workspace, make_item, call_tool)
+    open_preview(url, BODY_LINK_HASH)
+    page.wait_for_selector(DIFF_CHIP, timeout=DIFF_SETTLE_MS)
+    page.wait_for_selector("aside.panel.open .md a", timeout=DIFF_SETTLE_MS)
+    history_before = page.evaluate("history.length")
+    # 実行（記録に無いまとまりと since のリンクを押す）
+    for text in ("無いまとまり", "前回から"):
+        page.locator("aside.panel .md a", has_text=text).click()
+        page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert page.inner_text(DIFF_CHIP_TITLE).endswith("D-2 を直す")
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert "h" not in _hash_params(page)
+    assert page.evaluate("history.length") == history_before
+    # 実行（V-1 へのリンクを押す）
+    page.locator("aside.panel .md a", has_text="V-1 へ").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert page.locator('table.grid tbody tr[data-id="D-2"] .df-mark').count() == 0
+    assert page.locator("aside.panel.open").count() == 1
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["view"] == ["table"]
+    assert _hash_params(page)["id"] == ["D-2"]
+    assert _hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate(SAVED_DIFF_JS) == "V-1"
+    assert page.evaluate("history.length") == history_before
+    # 実行（変更履歴で V-2 を選び直し、他の引数つきのリンクを押す）
+    page.get_by_role("button", name="変更履歴").click()
+    page.wait_for_selector(f"{HISTORY_DIALOG}[open]")
+    page.click(f"{HISTORY_DIALOG} .hist-item[data-sel='V-2']")
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    page.locator("aside.panel .md a", has_text="他の引数つき").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（diff 以外の引数は読まない）
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["id"] == ["D-2"]
+    assert _hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before
+    # 実行（本文の見出しのリンクを押す）
+    assert page.evaluate(BODY_LINK_HEADING_IN_VIEW_JS, ["aside.panel .panel-body", "決め方"]) is False
+    page.locator("aside.panel .md a", has_text="決め方へ").click()
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '決め方'")
+    # 検証
+    assert page.evaluate(BODY_LINK_HEADING_IN_VIEW_JS, ["aside.panel .panel-body", "決め方"]) is True
+    assert _hash_params(page)["diff"] == ["V-1"]
