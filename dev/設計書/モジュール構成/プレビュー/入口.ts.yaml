@@ -140,6 +140,16 @@ data_models:
       - name: map
         type: string | null
         description: 検討事項のマップでロックしている検討事項
+  - name: StackState
+    title: 重なりの状態
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 共通
+    summary: 幅 900px 以下で詳細パネルと左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）を両方開いているときに前に出す側。ページを開いている間だけ持ち、URL のハッシュにも端末の保存領域にも書かない（`start` の 5）
+    properties:
+      - name: front
+        type: "'left' | 'detail'"
+        default: "'detail'"
+        description: 後から開いた側。左のパネルをトップバーから開いたら `left`、詳細パネルを開く・別の項目へ移ったら `detail`
 constants:
   - name: PREFS_KEY
     title: 端末の保存領域のキー
@@ -285,6 +295,7 @@ functions:
       5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
          - 絞り込みのドロワー・コメントの一覧・表示の設定のパネルのどれかを開いているときは、描いた後に前の `inertBehind` が返した解除を呼んでから、開いているパネルで `inertBehind` を呼び直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）
+         - 詳細パネルを開く・別の項目へ移るときは `StackState.front` を `detail` にする。幅 900px 以下（`NARROW_QUERY`）で詳細パネルと左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）を両方開いているときは、`front` の側を前に出す。`left` なら `body` に `left-front` を付け、詳細パネル（`aside.panel`）に `inert` を付ける。`detail` なら `left-front` を外し、開いている左のパネルに `inert` を付ける。それ以外（幅 901px 以上・片方だけ開いている）では `left-front` と、この 2 つに付けた `inert` を外す。幅が 900px をまたいだとき（`NARROW_QUERY` の `change`）もやり直す
       6. コメントの入力のコールバックを次で扱う
          - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って書きかけを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
          - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を読み直して溜めた ID を `checked` に足し、トップバー・詳細の一番下・一覧を描き直す。断られた・届かないなら本文を残して `failed`
@@ -295,14 +306,15 @@ functions:
          - `pointerup` と、ポインターを押していない間の `selectionchange` で、詳細パネル・全画面の中の選択から箇所を求め（`selectionLocation`）、あれば入口を出し、無ければ閉じる（図の拡大を開いている間は出さない）
          - 「押す」では入口を閉じ、`pendingLoc` に入れて下端の入力を描き直し、入力欄へフォーカスを移す。「閉じる」では入口を閉じて本文へフォーカスを戻す
       8. コメントの一覧のコールバックを次で扱う（どれも履歴に積まない）
-         - トップバーのコメントのボタンで一覧を開くときは、表示の設定を閉じる（`DisplayState.open` を偽）
+         - トップバーのコメントのボタンで一覧を開くときは、表示の設定を閉じる（`DisplayState.open` を偽）。`StackState.front` を `left` にする
          - 「行の項目を開く」では一覧を開いたまま詳細パネルを開き、`highlight` にその箇所を渡す
          - 「直しを送る」「箇所を外す」では `update`、「削除」では `remove` して消した中身を `removed` に入れ、「元に戻す」ではその中身を `id`・`created` ごと `add` して `removed` から外す。終えたらレビュー中を読み直して描き直す
          - 「まとめて送る」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして、結果を `sent`（`count` は送った件数、`at` は応答の `sent`、`entered` は応答の `entered`）にする（文言は `commentsPanel` が `entered` で出し分ける）。409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を読み直す
-         - Esc は、詳細パネルを開いていれば詳細パネルを、無ければ一覧を閉じる
+         - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外は「スレッドの画面の操作」の Esc（`isTyping` の扱い・`view` ごとの戻る / 閉じる）に従う
          - 一覧を開くときは、絞り込みのドロワーと表示の設定のパネルを閉じる（`drawerOpen`・`DisplayState.open` を偽）
       9. 絞り込みのコールバックを次で扱う（どれも履歴に積まない）
-         - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧と表示の設定のパネルを閉じる
+         - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧と表示の設定のパネルを閉じ、`StackState.front` を `left` にする
+         - Esc は、幅 900px 以下で `StackState.front` が `left` ならドロワーだけを閉じ、詳細パネルは閉じない
          - 画面の「条件を変える」では `FilterState.byTab` のその画面の分を置き換え、トップバーと画面を描き直す（ドロワーは開いたまま）。サーバーの配信では、`Prefs.filters` のその画面の分も同じ条件に置き換えて残す（`savePrefs`。結果を `DisplayState.storageOk` に入れる。表示の設定を開いていれば描き直す）
          - 画面の「ドロワーを閉じる」では `drawerOpen` を偽にして描き直し、トップバーの絞り込みのボタンへフォーカスを戻す
          - 概要へ移ったときは `drawerOpen` を偽にする
@@ -310,7 +322,7 @@ functions:
          - 「変更履歴を開く」では変更履歴のモーダルを開く（`historyDialog`。時点の件数は `resolveDiffPoint` の `added`・`changed`・`removed` の件数の和）
          - 「時点を選ぶ」「差分の表示をやめる」では `Prefs.diffSel` を書き換えて残し（`savePrefs`）、3 の時点の引き直しと 5 をやり直す。`Route.diff` をその時点（やめるときは `null`）にしたハッシュに置き換える（`navigate`、`push: false`）
       11. 表示の設定のコールバックを次で扱う（どれも記録を読み直さず、履歴に積まない）
-         - トップバーの表示の設定のボタンで `DisplayState.open` を入れ替える。開くときはコメントの一覧と絞り込みのドロワーを閉じ（`listOpen`・`drawerOpen` を偽）、詳細パネルは開いたままにする。閉じる（×・Esc。詳細パネルを開いていれば Esc は詳細パネルを先に閉じる）ときはトップバーのボタンにフォーカスを戻す
+         - トップバーの表示の設定のボタンで `DisplayState.open` を入れ替える。開くときはコメントの一覧と絞り込みのドロワーを閉じ（`listOpen`・`drawerOpen` を偽）、詳細パネルは開いたままにし、`StackState.front` を `left` にする。閉じる（×・Esc。幅 900px 以下で `StackState.front` が `left` なら Esc は表示の設定を閉じる。それ以外で詳細パネルを開いていれば Esc は詳細パネルを先に閉じる）ときはトップバーのボタンにフォーカスを戻す
          - 「表示する種類を変える」では `Prefs.kinds` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けと 5 をやり直す。開いている画面の種類を外したときは概要へ移す（`navigate`、`push: false`）
          - ネットワークの見た目のドロップダウンの「見た目を選ぶ」では `Prefs.look` を書き換えて残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直してネットワークを作り直さずに `setGraphLook` で差し替える。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
          - 「既定に戻す」では個人の上書きを外して残し（`clearOverrides`、`savePrefs`）、`FilterState.byTab` を空にして、3 と 5 をやり直す（開いている画面は画面の既定の条件で開き直る）。フォーカスは「ワークスペースの既定のまま表示しています。」へ移す
@@ -345,6 +357,7 @@ functions:
       詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
       差分の時点の引き継ぎ: 画面・項目を移るとき（画面と部品から受けた移る先の `Route` と、全体の検索から開くとき。`go`）は、移る先の `Route.diff` を今の `Route.diff` にしてから `route` に入れて書く（`navigate`）。概要の `tableRoute` のように `Route` を一から作る移る先でも `diff` を落とさない。`Route.diff` を変えるのは 3・10・13・14 だけ
       本文のまとまりのリンク: 詳細パネルの `on.changeSet` では、渡された値を `resolveDiffPoint` で引き、まとまりの ID として引けたときだけ 10 の「時点を選ぶ」と同じに扱う（`Prefs.diffSel` と `Route.diff` をそのまとまりにし、履歴に積まずにハッシュを置き換える。開いている画面・項目・全画面はそのまま）。引けなければ何もしない
+      幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときと幅 901px 以上の重なり順は変えない
   - name: formKey
     title: 入力欄のキー
     kind: 関数
@@ -487,5 +500,5 @@ notes:
     - 「理由の入力を出す／閉じる」「理由の入力」では `reason` を書き換える。「状態を変える」では `reason.status` を `saving` にして送り（`threadApi().setStatus`）、200 なら `reason` を閉じて空にし、スレッドを読み直してパネルを描き直し、「状態を変える」へフォーカスを戻す。断られた・届かないなら `failed`（`detail`）にして理由の入力を開いたまま残す
     - 「まとめて送る」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送る。201 の後はレビュー中に続けてスレッドも読み直す（`view` は `review` のまま）
     - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
-    - Esc は、詳細パネルを開いていれば詳細パネルを閉じる。無ければ、入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
+    - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外で入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
     - パネルを閉じるときは、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ）

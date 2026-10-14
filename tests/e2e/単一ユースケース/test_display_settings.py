@@ -11,8 +11,10 @@ from typing import Any
 
 from display_settings_helpers import (
     DEFAULT_KINDS,
+    KINDS_WITHOUT_TERMS,
     LOOK_SELECT,
     RENDER_TIMEOUT_MS,
+    SETTINGS_BUTTON,
     SETTINGS_PANEL,
     SETTINGS_PANEL_OPEN,
     checked_kind_count,
@@ -42,6 +44,18 @@ OVERRIDE_THEME = "dark"
 # 調査の表で隠しておく列の key と、その列の名前
 HIDDEN_COLUMN_KEY = "conclusion"
 HIDDEN_COLUMN_LABEL = "結論"
+
+# 詳細パネルと表示の設定のパネルが、どちらも画面の幅いっぱいに出る幅（スマホの幅）
+NARROW_VIEWPORT = {"width": 390, "height": 844}
+
+# 検討事項の表で D-1 の詳細パネルを開く URL のハッシュ
+DETAIL_HASH = "#tab=decisions&view=table&id=D-1"
+
+# 画面の真ん中で一番前に見えているのが、表示の設定のパネル・詳細パネルであるかを返す式
+FRONT_IS_SETTINGS_SCRIPT = """document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.6)
+    ?.closest('aside.settings-drawer') != null"""
+FRONT_IS_DETAIL_SCRIPT = """document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.6)
+    ?.closest('aside.panel') != null"""
 
 # 現在のタブの key を読む
 CURRENT_TAB_SCRIPT = "document.querySelector('nav.tabbar a[aria-current=\"page\"]')?.dataset.tab"
@@ -271,3 +285,44 @@ def test_normal_when_switched_with_comments(
     # どちらの間も、右の D-1 の詳細パネルが開いたままである
     assert after_settings["detail"] == 1
     assert after_comments["detail"] == 1
+
+
+def test_normal_when_narrow_with_detail_open(
+    serve_workspace: ServeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """幅 390px で詳細パネルを開いたまま表示の設定を開くと詳細パネルの前に出て、用語集を外すとタブが消えて端末に残り、閉じると開く前の D-1 の詳細パネルが見える（正常系）。"""
+    # 準備
+    url, _ = serve_workspace(make_item("D-1"), make_item("G-1"), settings=valid_settings)
+    open_preview(url, DETAIL_HASH)
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_selector("aside.panel.open")
+    # 実行（表示の設定を押す）
+    open_settings(page)
+    page.wait_for_function(FRONT_IS_SETTINGS_SCRIPT)
+    settings_in_front = page.evaluate(FRONT_IS_SETTINGS_SCRIPT)
+    # 実行（表示する種類から用語集を外す。覆われていれば押せずに失敗する）
+    toggle_kind(page, "用語集")
+    page.wait_for_function(
+        f"document.querySelectorAll('nav.tabbar a').length === {TABS_WITHOUT_TERMS}"
+    )
+    tabs_after_toggle = tab_keys(page)
+    prefs = read_prefs(page)
+    # 実行（表示の設定のパネルを閉じる）
+    page.click(SETTINGS_BUTTON)
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    page.wait_for_function(FRONT_IS_DETAIL_SCRIPT)
+    # 検証
+    # 表示の設定を押した後、表示の設定のパネルが D-1 の詳細パネルの前にあり、パネルの中のチェックボックスを押せる
+    assert settings_in_front is True
+    # 用語集を外した後、トップバーに用語集のタブが無く、端末の保存領域に用語集を除いた表示する種類が残っている
+    assert "terms" not in tabs_after_toggle
+    assert prefs is not None
+    assert prefs["kinds"] == KINDS_WITHOUT_TERMS
+    # 表示の設定のパネルを閉じた後、D-1 の詳細パネルが開いたままで見え、URL のハッシュが D-1 を指している
+    assert page.locator("aside.panel.open").count() == 1
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+    assert "id=D-1" in page.evaluate("location.hash")
