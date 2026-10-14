@@ -5,7 +5,7 @@
 //   offline=1: 溜める・送る・書き換える要求が届かない / entered=0: Claude Code へ入力できない
 //   filter: スレッドの一覧をその状態で絞る / tag: そのタグで絞る / open: そのスレッドを開く / view=review: レビュー中を確かめる画面を開く / compose=1: 新しいスレッドの入力を開く
 //   drawer=1: コメントの一覧を開いた状態で始める
-//   unread: 利用者の未読の書き込みの見本（無し: TH-2・TH-4・TH-6 が未読 / 0: 未読なし / closed: クローズの TH-6 だけが未読）
+//   unread: 利用者の未読の書き込みの見本（無し: TH-2・TH-4・TH-6 が未読 / 0: 未読なし / closed: クローズの TH-6 だけが未読 / one: オープンは TH-2 だけが未読）
 (() => {
   const body = document.body;
   const params = new URLSearchParams(location.search);
@@ -117,6 +117,7 @@
   const unreadPosts = {
     "0": [],
     closed: ["TH-6-3"],
+    one: ["TH-2-1", "TH-6-3"],
   }[params.get("unread") ?? ""] ?? ["TH-2-1", "TH-4-4", "TH-6-3"];
   // 書き込みに利用者の既読を持たせる（キーの名前は ER 図の更新で決める。モックの仮の名前 seen）
   for (const thread of threads) {
