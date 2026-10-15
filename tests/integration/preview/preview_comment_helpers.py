@@ -39,9 +39,9 @@ __all__ = [
     "open_thread",
     "read_workspace_yaml",
     "review_row",
-    "thread_row",
     "select_text",
     "select_text_for_pill",
+    "thread_row",
     "wait_thread_seen",
     "wait_until_focused",
 ]
