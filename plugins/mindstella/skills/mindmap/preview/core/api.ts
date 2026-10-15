@@ -65,7 +65,8 @@ namespace MindmapPreview {
     target_title: string | null;
     /** 最初の書き込みに添えた箇所 */
     loc: Location | null;
-    posts: { id: string; author: PostAuthor; body: string; created: string }[];
+    /** 書き込み。`seen` は利用者の既読 */
+    posts: { id: string; author: PostAuthor; body: string; created: string; seen: boolean }[];
     events: { kind: "closed" | "reopened"; author: PostAuthor; reason: string | null; created: string }[];
   };
 
@@ -191,7 +192,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** スレッドの読み取りと状態の書き換えを束ねて返す。理由が空白だけなら `null` を送る */
+  /** スレッドの読み取り・状態の書き換え・利用者の既読を束ねて返す。理由が空白だけなら `null` を送る */
   export function threadApi(fetchFn: FetchFn = window.fetch.bind(window)) {
     return {
       read: () => callApi<{ threads: Thread[] }>("GET", API_PATHS.threads, null, fetchFn),
@@ -200,6 +201,13 @@ namespace MindmapPreview {
           "PATCH",
           `${API_PATHS.threads}/${encodeURIComponent(id)}`,
           { status, reason: reason === null || reason.trim() === "" ? null : reason.trim() },
+          fetchFn,
+        ),
+      seen: (id: string) =>
+        callApi<{ id: string; seen: string[] }>(
+          "POST",
+          `${API_PATHS.threads}/${encodeURIComponent(id)}/seen`,
+          null,
           fetchFn,
         ),
     };

@@ -47,6 +47,8 @@ def test_normal(
     assert len(created["posts"]) == 1
     post = created["posts"][0]
     assert (post["author"], post["read"], "taken" in post) == ("ai", True, False)
+    # AI の書き込みは利用者の未読
+    assert post["seen"] is False
     assert find_thread(root, "TH-1") == existing
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None

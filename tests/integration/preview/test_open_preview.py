@@ -14,7 +14,7 @@ from integration.browser_tab_helpers import (
     opened_tabs,
     recorded_window_opens,
 )
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Route
 from preview_body_link_helpers import (
     BODY_LINK_HASH,
     build_body_link_workspace,
@@ -30,7 +30,9 @@ from preview_comment_helpers import (
     REVIEW_HEAD,
     THREE_LINE_BODY,
     open_review,
+    open_thread,
     read_workspace_yaml,
+    review_row,
     select_text,
     select_text_for_pill,
 )
@@ -48,6 +50,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
 )
 from preview_history_helpers import preselect_diff
+from preview_post_link_helpers import POST_LINK_HASH
 from preview_html_body_helpers import (
     BODY_FRAME,
     BODY_WITH_HTML_CODE_BLOCK,
@@ -97,6 +100,8 @@ from workspace_fixtures import (
     CallTool,
     MakeComment,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     StartServer,
     WriteComments,
@@ -1495,6 +1500,86 @@ def test_normal_when_body_link_to_change_set(
     assert _hash_params(page)["diff"] == ["V-1"]
 
 
+def test_normal_when_post_link_to_change_set(
+    write_post_link_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """スレッドの書き込みとレビュー中を確かめる画面の行の #diff= のリンクを押すと、画面を開いたままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さないものは書いた文字のまま出す（正常系）。"""
+    # 準備
+    url, _ = write_post_link_preview()
+    open_preview(url, POST_LINK_HASH)
+    open_thread(page, "TH-1")
+    post = f"{COMMENTS_PANEL} ol.posts > li:nth-child(1) .post-body"
+    links = f"{post} a.setlink"
+    history_before = page.evaluate("history.length")
+    # 検証（リンクは 2 つだけで、リンクの中の D-1 は項目を開くボタンにしない）
+    assert page.eval_on_selector_all(links, "links => links.map(a => a.textContent)") == [
+        "D-1 を直した",
+        "他の引数つき",
+    ]
+    assert page.locator(f"{post} button.idlink").count() == 0
+    text = page.inner_text(post)
+    assert "](#diff=V-1)" not in text
+    assert "](#tab=tasks&id=D-2&diff=V-2)" not in text
+    # 検証（まとまりを指さないものは書いた文字のまま）
+    for literal in ("[無いまとまり](#diff=V-99)", "[前回から](#diff=since)", "[決め方へ](#決め方)"):
+        assert literal in text
+    # 実行（「D-1 を直した」を押す）
+    page.locator(links, has_text="D-1 を直した").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（V-1 の差分の表示と、開いたままのスレッド）
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert page.locator('table.grid tbody tr[data-id="D-2"] .df-mark').count() == 0
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") != ""
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["view"] == ["table"]
+    assert _hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate(SAVED_DIFF_JS) == "V-1"
+    assert page.evaluate("history.length") == history_before
+    # 実行（「他の引数つき」を押す）
+    page.locator(links, has_text="他の引数つき").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（`tab`・`id` は書き換わらず、`diff` だけを読む）
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["view"] == ["table"]
+    assert "id" not in _hash_params(page)
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.evaluate("history.length") == history_before
+    # 実行（V-1 に戻してから、レビュー中を確かめる画面の行の「V-2 の直し」を押す）
+    page.locator(links, has_text="D-1 を直した").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    row = review_row(COMMENTS_PANEL, "C-1")
+    # 検証（行のリンクは 1 つで、行の D-2 は文字のまま）
+    assert page.eval_on_selector_all(
+        f"{row} .review-body a.setlink", "links => links.map(a => a.textContent)"
+    ) == ["V-2 の直し"]
+    assert page.locator(f"{row} .review-body button").count() == 0
+    assert "D-2" in page.inner_text(f"{row} .review-body")
+    # 実行
+    page.locator(f"{row} .review-body a.setlink").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（レビュー中を確かめる画面は開いたまま）
+    assert page.locator(REVIEW_HEAD).count() == 1
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert page.evaluate("history.length") == history_before
+
+
 # 帯の印の無い、上端に近い位置（帯の上端からの距離。先頭の印の下）
 EMPTY_AREA_OFFSET_PX = 40
 
@@ -1588,3 +1673,76 @@ def test_normal_when_diff_minimap_hidden(
     prefs = read_prefs(page)
     assert prefs is not None
     assert prefs["minimap"] is None
+
+
+def test_normal_when_unseen_thread_opened(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    page: Page,
+) -> None:
+    """未読の印を出し、未読のスレッドを開くと既読にして印を消す。既読のスレッドを開いても既読にする要求は送らない（正常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, created="2026-10-12T01:00:00+00:00"),
+                make_post("TH-1-2", author="ai", seen=False, created="2026-10-12T02:00:00+00:00"),
+                summary="未読のスレッド",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", author="ai", created="2026-10-12T03:00:00+00:00"),
+                summary="既読のスレッド",
+            ),
+        ),
+    )
+    requested: list[str] = []
+
+    def _record(route: Route) -> None:
+        """既読にする要求のスレッドの ID を控えて、サーバーへ通す。"""
+        requested.append(route.request.url.split("/")[-2])
+        route.continue_()
+
+    page.route("**/api/threads/*/seen", _record)
+    # 実行（コメントの一覧を開く前）
+    open_preview(url)
+    page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot")
+    # 検証
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（未読あり・レビュー中 0 件）"
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 0
+    # 実行（一覧を開く）
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    # 検証（TH-1 の行だけに未読の札）
+    row = f"{COMMENTS_PANEL} ul.th-list > li"
+    assert page.locator(f"{row}:has(button[data-focus='thread:TH-1']) .th-unread").count() == 1
+    assert page.locator(f"{row}:has(button[data-focus='thread:TH-2']) .th-unread").count() == 0
+    assert requested == []
+    # 実行（TH-1 を開く）
+    page.click(f"{row}:has(button[data-focus='thread:TH-1']) button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_function(
+        "() => !document.querySelector('header.topbar button.comments-btn .unread-dot')",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    threads = read_workspace_yaml(root, "threads.yaml")["items"]
+    assert [post["seen"] for post in threads[0]["posts"]] == [True, True]
+    assert requested == ["TH-1"]
+    # 実行（一覧へ戻る）
+    page.get_by_role("button", name="一覧へ戻る").click()
+    page.wait_for_selector(f"{row}:has(button[data-focus='thread:TH-1'])")
+    # 検証（未読の印の無い一覧とボタン）
+    assert page.locator(f"{COMMENTS_PANEL} .th-unread").count() == 0
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
+    # 実行（既読の TH-2 を開く）
+    page.click(f"{row}:has(button[data-focus='thread:TH-2']) button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert requested == ["TH-1"]

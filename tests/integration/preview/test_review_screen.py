@@ -23,6 +23,7 @@ from preview_comment_helpers import (
     review_row,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_post_link_helpers import DIFF_CHIP_TITLE, DIFF_SETTLE_MS, hash_params
 from preview_stack_helpers import DETAIL_HASH, is_inert, open_narrow, wait_front
 from claude_pane_fixtures import StartClaudePane
 from workspace_fixtures import (
@@ -501,6 +502,36 @@ def test_row_body(
     open_review(page)
     # 検証
     assert page.inner_text(f"{_row('C-1')} .review-body") == "1 行目\n2 行目"
+
+
+def test_row_body_change_set_link(
+    write_post_link_preview: WriteReviewPreview, open_preview: OpenPreview
+) -> None:
+    """行の本文の記録にあるまとまりを指すリンクだけをまとまりのリンクにし、項目の ID は文字のまま出す。押すとこの画面を開いたままそのまとまりの差分の表示に切り替える（正常系）。"""
+    # 準備
+    url, _ = write_post_link_preview()
+    page = open_preview(url)
+    history_before = page.evaluate("history.length")
+    open_review(page)
+    body = f"{_row('C-1')} .review-body"
+    # 検証（リンクは 1 つで、行の D-2 は文字のまま）
+    assert page.eval_on_selector_all(
+        f"{body} a.setlink", "links => links.map(a => a.textContent)"
+    ) == ["V-2 の直し"]
+    assert page.get_attribute(f"{body} a.setlink", "href") == "#diff=V-2"
+    assert page.get_attribute(f"{body} a.setlink", "title") == "D-2 を直す"
+    assert page.locator(f"{body} button").count() == 0
+    assert page.inner_text(body) == "V-2 の直し は D-2 にも関わる"
+    # 実行
+    page.click(f"{body} a.setlink")
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（この画面は開いたまま）
+    assert page.locator(REVIEW_HEAD).count() == 1
+    assert hash_params(page)["diff"] == ["V-2"]
+    assert page.evaluate("history.length") == history_before
 
 
 def test_edit(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:

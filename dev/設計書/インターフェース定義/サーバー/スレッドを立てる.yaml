@@ -28,6 +28,7 @@ flows:
       - '`threads.yaml` に TH-2 が `status: open`・タグ `起票`・渡した要約・`target: D-1` で足され、TH-1 は呼ぶ前と同じ'
       - TH-2 の書き込みが AI の 1 件で、`read` が `true`、`taken` を持たない
       - '`threads` を `awaiting` で呼ぶと TH-2 を含まない'
+      - 'TH-2 の書き込みが `seen: false`（利用者の未読）'
     test: test_normal
   - name: 異常系（本文が空・ArgumentError）
     summary: 空白だけの本文では立てない

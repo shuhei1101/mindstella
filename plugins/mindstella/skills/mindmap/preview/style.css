@@ -730,6 +730,14 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 /* 件数が 0 のとき: 塗りを外して目立たせない */
 .comments-btn .count.zero { background: transparent; color: var(--topbar-fg-2); box-shadow: inset 0 0 0 1px var(--topbar-line); }
+/* 未読の点の色: トップバーは明暗どちらの表示でも暗い地のため、暗い地で読める色にする */
+:root { --unread-on-topbar: var(--teal-400); }
+/* コメントのボタンの吹き出しの印: 未読の点を重ねる起点 */
+.comments-btn .cb-icon { position: relative; display: inline-grid; place-items: center; }
+/* 未読の点: 吹き出しの右上に重ね、トップバーの地の色の縁で印から切り離す（ボタンの幅を変えない） */
+.comments-btn .unread-dot { position: absolute; top: -3px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: var(--unread-on-topbar); box-shadow: 0 0 0 2px var(--topbar-bg); }
+/* 未読の点（ボタンのホバー・開いているとき）: 縁を地の色に合わせる */
+.comments-btn:is(:hover, .open) .unread-dot { box-shadow: 0 0 0 2px var(--topbar-hover); }
 /* 狭い幅（1100px 以下）: 文字を隠し、印と件数だけにする */
 @media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn { padding: 0 8px; } }
 /* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、同じく文字を隠す。詳細度を足さず、480px 以下の余白の指定が効くようにする */
@@ -1731,6 +1739,12 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .th-pending svg.icon { width: 11px; height: 11px; }
 /* まだ送っていない新しいスレッドの行: 破線の枠にする */
 .th-row.pending { border-style: dashed; }
+/* 未読の札: 塗りつぶした札に点と「未読」を出す（状態の札は線の枠、レビュー中の印は破線の枠で、形が違う） */
+.th-unread { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; }
+/* 未読の札の点 */
+.th-unread .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* 未読の行の最後の書き手と日時: 届いた返信を読む手がかりになるため、本文と同じ濃さにする */
+.th-row.unread :is(.th-author, time) { color: var(--text); }
 /* 一覧の下端の、新しいスレッドを立てる入口 */
 .talk-new { padding: 10px 12px; }
 /* 新しいスレッドの入力を開いたとき: 見出しと入力を縦に積む */
@@ -1780,6 +1794,8 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .post-body { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* 本文の中の項目の ID: 行の中に収める */
 .post-body .idlink { margin: 0 2px; }
+/* 本文の中のまとまりのリンク: 詳細の本文のリンクと同じ、色の付いた文字と下線 */
+.post-body a.setlink, .review-body a.setlink { color: var(--accent); text-decoration: underline; cursor: pointer; }
 /* クローズのスレッドの下端: 返信の入力の代わりに置く */
 .th-closed-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 14px 16px; color: var(--text-2); font-size: var(--fs-small); }
 /* クローズの印 */

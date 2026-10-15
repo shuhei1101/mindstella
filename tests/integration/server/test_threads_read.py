@@ -47,7 +47,13 @@ def test_normal(
         ),
         make_thread(
             "TH-2",
-            make_post("TH-2-1", body="これは何？", read=True, created="2026-10-12T02:00:00+00:00"),
+            make_post(
+                "TH-2-1",
+                body="これは何？",
+                read=True,
+                seen=False,
+                created="2026-10-12T02:00:00+00:00",
+            ),
             status="closed",
             events=[closed_by_ai],
         ),
@@ -67,6 +73,8 @@ def test_normal(
         ("ai", "了解を受けた")
     ]
     assert all({"read", "taken", "comment"}.isdisjoint(post) for item in threads for post in item["posts"])
+    # 書き込みごとに、threads.yaml と同じ利用者の既読を返す
+    assert [post["seen"] for item in threads for post in item["posts"]] == [False, True]
     assert snapshot_tree(root) == before
 
 

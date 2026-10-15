@@ -148,3 +148,6 @@ items:
   - page: 未読へ戻す.yaml
     summary: 'reset_unread.py: 会話を始めるたびにスレッドの書き込みを AI の未読に戻す'
     group: スレッド
+  - page: 画面からのスレッドの既読.yaml
+    summary: 'POST /api/threads/{id}/seen: 利用者が開いたスレッドの未読の書き込みを利用者の既読にする'
+    group: スレッド

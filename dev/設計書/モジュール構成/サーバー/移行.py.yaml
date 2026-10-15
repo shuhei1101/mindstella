@@ -1152,7 +1152,7 @@ functions:
       1. `.mindstella/submissions.yaml` が無い場合、何も書かず空を返す
       2. `.mindstella/threads.yaml` が既にある場合、`threads.yaml が既にあります` の `ValueError` を送る（手順の当て方が `StepFailedError` にする）
       3. `yaml.safe_load` で送信を読む。一番上が辞書でないか `items` が配列でない場合、`submissions.yaml の形が崩れています` の `ValueError` を送る（次の `delete` で失わないため、飛ばさない）
-      4. 送信を連番の小さい順に並べ、1 件ごとに `TH-{1 からの連番}`・`tags: []`・`summary: null`・`target`・`loc`（持つときだけ）のスレッドにする。最初の書き込みは `{ID}-1`・`author: user`・`body`・`created`（送信の `sent`）・`read: false`・`taken`（送信の `taken`）。送信の `comment` は引き継がない
+      4. 送信を連番の小さい順に並べ、1 件ごとに `TH-{1 からの連番}`・`tags: []`・`summary: null`・`target`・`loc`（持つときだけ）のスレッドにする。最初の書き込みは `{ID}-1`・`author: user`・`body`・`created`（送信の `sent`）・`read: false`・`seen: true`・`taken`（送信の `taken`）。送信の `comment` は引き継がない
          - `taken` を持つ送信は `status: closed` にし、`events` を `[{kind: closed, author: ai, reason: null, created: {taken}}]` にする
          - `taken` を持たない送信は `status: open`・`events: []` にする
       5. `{items: [...]}` を読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で `threads.yaml` に置く（送信が 0 件でも `items: []` で書く）
@@ -1169,7 +1169,7 @@ functions:
         summary: 取り込み済みはクローズ、取り込んでいないものはオープンのスレッドにする
         condition: 'S-3（項目を指さない・取り込んでいない）・S-1（D-1・取り込み済み・`comment: C-1`）・S-2（A-1 の本文の 2 行目の `loc`・取り込んでいない）をこの順に持つ `submissions.yaml`'
         mock: なし
-        expected: '戻り値が `[.mindstella/threads.yaml]`。TH-1 が S-1 からで `closed`・`target: D-1`・`events` が `kind: closed`・`author: ai`・`created` が S-1 の `taken` の 1 件、書き込みの `taken` が S-1 の `taken` で `comment` のキーが無い。TH-2 が `open` で `loc` を持ち、TH-3 が `open` で `target`・`loc` のキーを持たない。どの書き込みも `read: false`。`submissions.yaml` が残っている。『スレッド』の `load_threads` で読める'
+        expected: '戻り値が `[.mindstella/threads.yaml]`。TH-1 が S-1 からで `closed`・`target: D-1`・`events` が `kind: closed`・`author: ai`・`created` が S-1 の `taken` の 1 件、書き込みの `taken` が S-1 の `taken` で `comment` のキーが無い。TH-2 が `open` で `loc` を持ち、TH-3 が `open` で `target`・`loc` のキーを持たない。どの書き込みも `read: false`・`seen: true`。`submissions.yaml` が残っている。『スレッド』の `load_threads` で読める'
       - name: test_submissions_to_threads_when_no_file
         case: 正常
         summary: submissions.yaml が無ければ何も書かない

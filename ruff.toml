@@ -1,0 +1,23 @@
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = [
+    "E", "F", "B", "UP", "SIM", "RUF",
+    "PLR2004",  # マジックナンバー禁止
+    "BLE001",   # 広い except は最上位だけ
+    "TRY400",   # 例外は logger.exception で出す
+    "DTZ",      # 保存する日時はタイムゾーン付き
+    "ASYNC",    # async の中でブロックする処理を呼ばない
+    "S101",     # assert を実行時の検査に使わない
+    "S602", "S604",  # 外部コマンドはシェルを通さない
+    "S301", "S506",  # 外部から来たデータを pickle / yaml.load で読まない
+    "PT011", "PT012",  # pytest.raises の型の絞り込みとブロックの 1 文
+]
+ignore = [
+    "E501",     # 行長は formatter に任せる
+    "RUF001", "RUF002", "RUF003",   # 日本語の全角記号を紛らわしい Unicode として指すため外す
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004"]   # テストの assert と期待値の数値は許す

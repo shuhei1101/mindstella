@@ -162,8 +162,8 @@ data_models:
         type: Location | null
         description: 最初の書き込みに添えた箇所
       - name: posts
-        type: "{id, author: 'user' | 'ai', body, created}[]"
-        description: 書いた順の書き込み
+        type: "{id, author: 'user' | 'ai', body, created, seen: boolean}[]"
+        description: 書いた順の書き込み。`seen` は利用者の既読
       - name: events
         type: "{kind: 'closed' | 'reopened', author: 'user' | 'ai', reason: string | null, created}[]"
         description: 書いた順の状態の記録
@@ -1627,7 +1627,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: スレッドで話す
     scope: public
-    summary: スレッドの読み取りと状態の書き換えを `callApi` に当てた関数の束を返す
+    summary: スレッドの読み取り・状態の書き換え・利用者の既読を `callApi` に当てた関数の束を返す
     args:
       - name: fetchFn
         type: typeof fetch
@@ -1636,16 +1636,16 @@ functions:
         passing: injected
         description: 要求を送る関数
     returns:
-      type: '{read, setStatus}'
-      description: '`read()` は `GET api/threads`（成功の本文は `{threads: Thread[]}`）、`setStatus(id, status, reason)` は `PATCH api/threads/{id}`（本文 `{status, reason}`。`reason` が空白だけなら `null` を送る。成功の本文は `{id, status, changed}`）を呼ぶ。どちらも `ApiResult` を返す'
+      type: '{read, setStatus, seen}'
+      description: '`read()` は `GET api/threads`（成功の本文は `{threads: Thread[]}`）、`setStatus(id, status, reason)` は `PATCH api/threads/{id}`（本文 `{status, reason}`。`reason` が空白だけなら `null` を送る。成功の本文は `{id, status, changed}`）、`seen(id)` は `POST api/threads/{id}/seen`（本文を送らない。成功の本文は `{id, seen}`）を呼ぶ。どれも `ApiResult` を返す'
     process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
     unit_tests:
       - name: test_thread_api
         case: 正常
         summary: 各呼び出しのメソッド・パス・本文
-        condition: "`parametrize`: `read()` / `setStatus('TH-1', 'closed', ' 案 A で決着 ')` / `setStatus('TH-1', 'open', '  ')`"
+        condition: "`parametrize`: `read()` / `setStatus('TH-1', 'closed', ' 案 A で決着 ')` / `setStatus('TH-1', 'open', '  ')` / `seen('TH-1')`"
         mock: '`fetchFn`'
-        expected: '`GET api/threads` / `PATCH api/threads/TH-1`（本文 `{"status":"closed","reason":"案 A で決着"}`）/ `PATCH api/threads/TH-1`（本文 `{"status":"open","reason":null}`）'
+        expected: '`GET api/threads` / `PATCH api/threads/TH-1`（本文 `{"status":"closed","reason":"案 A で決着"}`）/ `PATCH api/threads/TH-1`（本文 `{"status":"open","reason":null}`）/ `POST api/threads/TH-1/seen`（本文なし）'
       - name: test_thread_api_when_rejected
         case: 異常
         summary: 断られた・届かないときの結果

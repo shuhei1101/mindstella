@@ -103,11 +103,12 @@ var MindmapPreview;
         };
     }
     MindmapPreview.commentApi = commentApi;
-    /** スレッドの読み取りと状態の書き換えを束ねて返す。理由が空白だけなら `null` を送る */
+    /** スレッドの読み取り・状態の書き換え・利用者の既読を束ねて返す。理由が空白だけなら `null` を送る */
     function threadApi(fetchFn = window.fetch.bind(window)) {
         return {
             read: () => callApi("GET", MindmapPreview.API_PATHS.threads, null, fetchFn),
             setStatus: (id, status, reason) => callApi("PATCH", `${MindmapPreview.API_PATHS.threads}/${encodeURIComponent(id)}`, { status, reason: reason === null || reason.trim() === "" ? null : reason.trim() }, fetchFn),
+            seen: (id) => callApi("POST", `${MindmapPreview.API_PATHS.threads}/${encodeURIComponent(id)}/seen`, null, fetchFn),
         };
     }
     MindmapPreview.threadApi = threadApi;

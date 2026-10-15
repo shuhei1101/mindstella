@@ -23,7 +23,7 @@ const meta = {
     list.append(MindmapPreview.threadPost(args));
     return list;
   },
-  args: { titles, on: { openId: fn(), edit: fn(), saveEdit: fn(), cancelEdit: fn(), remove: fn() } },
+  args: { titles, on: { openId: fn(), changeSet: fn(), edit: fn(), saveEdit: fn(), cancelEdit: fn(), remove: fn() } },
 } satisfies Meta<MindmapPreview.ThreadPostProps>;
 
 export default meta;
@@ -43,7 +43,7 @@ const PENDING = {
 
 /** 利用者の書き込み。右に寄せ、頭に「あなた」と日時 */
 export const UserPost: Story = {
-  args: { post: { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい。失敗したら写しから戻せるなら十分", created: "2026-10-12T01:20:00+00:00" } },
+  args: { post: { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい。失敗したら写しから戻せるなら十分", created: "2026-10-12T01:20:00+00:00", seen: true } },
 };
 
 /** AI の書き込み。左に寄せて面の色を変え、頭に「AI」と日時。本文の中の記録にある項目の ID（D-12・T-14）はその項目を開くリンク、改行は保つ */
@@ -54,6 +54,7 @@ export const AiPost: Story = {
       author: "ai",
       body: "D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。",
       created: "2026-10-12T01:24:00+00:00",
+      seen: true,
     },
   },
 };
@@ -61,7 +62,7 @@ export const AiPost: Story = {
 /** 本文の中の記録に無い ID（D-99）は文字のまま出す */
 export const UnknownId: Story = {
   args: {
-    post: { id: "TH-6-1", author: "ai", body: "D-99 は D-12 と重なっているので消してよいですか。", created: "2026-10-12T03:10:00+00:00" },
+    post: { id: "TH-6-1", author: "ai", body: "D-99 は D-12 と重なっているので消してよいですか。", created: "2026-10-12T03:10:00+00:00", seen: true },
   },
 };
 
@@ -104,6 +105,7 @@ export const Narrow: Story = {
       author: "ai",
       body: "T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。操作の種類は D-15 で決めた 5 つに揃えています。",
       created: "2026-10-12T00:41:00+00:00",
+      seen: true,
     },
   },
   parameters: {
@@ -112,4 +114,71 @@ export const Narrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 対応表（ID → 値）から、ID を引く関数を作る（無ければ null） */
+const lookup =
+  (table: Record<string, string>) =>
+  (id: string): string | null =>
+    table[id] ?? null;
+
+/** AI の書き込みの中のまとまりのリンク。「A-14 の手引きの書き直し」だけが色の付いた文字と下線のリンクで、中の A-14 はボタンにしない。外の A-14・D-12 は項目を開くボタン。`[古い手引き](#diff=V-99)` は書いた文字のまま */
+export const ChangeSetLink: Story = {
+  args: {
+    post: {
+      id: "TH-1-2",
+      author: "ai",
+      body: "A-14 の手引きを書き直しました。直したところは [A-14 の手引きの書き直し](#diff=V-6) で見られます。\n表の行の消し方は D-12 で決めたとおりにしています。\n前に相談した版は [古い手引き](#diff=V-99) にありましたが、保持する回数を超えて消えています。",
+      created: "2026-10-12T01:24:00+00:00",
+      seen: true,
+    },
+    titles: lookup({ "A-14": "プレビューの差分の読み方（手引き）", "D-12": "移し替えが途中で失敗したときの扱い" }),
+    changeSets: lookup({ "V-6": "A-14 の手引きを書き直す" }),
+  },
+};
+
+/** 利用者の書き込みの中の、まとまりのリンクにしない書き方。`[since から](#diff=since)`・`[ハッシュの例](#tab=docs)` は書いた文字のままで、`[その他](#tab=docs&id=A-11&diff=V-5)` は `diff` だけを読んでリンクにする */
+export const ChangeSetLinkNotLinked: Story = {
+  args: {
+    post: {
+      id: "TH-1-3",
+      author: "user",
+      body: "[since から](#diff=since) と [ハッシュの例](#tab=docs) は押せなくてよい。[その他](#tab=docs&id=A-11&diff=V-5) は押せる",
+      created: "2026-10-12T01:31:00+00:00",
+      seen: true,
+    },
+    changeSets: lookup({ "V-5": "A-11 の段落を直す" }),
+  },
+};
+
+/** レビュー中の返信の中のまとまりのリンク。破線の枠の中でも同じ見た目のリンクにする */
+export const PendingChangeSetLink: Story = {
+  args: {
+    pending: {
+      id: "C-44",
+      thread: "TH-1",
+      target: null,
+      target_title: null,
+      loc: null,
+      body: "[A-14 の手引きの書き直し](#diff=V-6) で消した表の行は戻してほしい。T-14 にも関わる",
+      created: "2026-10-12T05:20:00+00:00",
+    },
+    titles: lookup({ "T-14": "移し替えの失敗の扱いを書く" }),
+    changeSets: lookup({ "V-6": "A-14 の手引きを書き直す" }),
+  },
+};
+
+/** 長い文言のまとまりのリンク。行の中で書き込みの幅で折り返す */
+export const ChangeSetLinkLong: Story = {
+  args: {
+    post: {
+      id: "TH-2-1",
+      author: "ai",
+      body: "A-11 の段落を [設定のパネルの画面の流れのうち、既定として保存するまでの段落と確かめのダイアログの説明](#diff=V-5) のとおりに直しました。",
+      created: "2026-10-12T04:02:00+00:00",
+      seen: true,
+    },
+    titles: lookup({ "A-11": "設定のパネルの画面の流れ（モック）" }),
+    changeSets: lookup({ "V-5": "A-11 の段落を直す" }),
+  },
 };

@@ -618,6 +618,7 @@ namespace MindmapPreview {
           comments: serverMode,
           commentCount: comment.review.items.length,
           commentsOpen: comment.listOpen,
+          commentsUnread: anyOpenUnseen(comment.threads),
           onComments: () => (comment.listOpen ? closeList() : openList()),
           settingsOpen: display.open,
           onSettings: () => (display.open ? closeSettings() : openSettings()),
@@ -821,9 +822,7 @@ namespace MindmapPreview {
             navigate({ route: { ...route, filters: {} }, push: false });
           },
           // 本文のまとまりのリンクを押した: 記録にあるまとまりのときだけ、変更履歴で選んだときと同じに切り替える
-          changeSet: (id) => {
-            if (resolveDiffPoint(data.changes, id, since) !== null) selectPoint(id);
-          },
+          changeSet: openChangeSet,
         },
         comment: serverMode
           ? {
@@ -1106,12 +1105,28 @@ namespace MindmapPreview {
       if (result.ok && result.data !== null) applyReview(result.data, first);
     };
 
-    /** スレッドを読み直す。読めたら置き換え、断られた・届かないときは前のまま残して理由を持つ */
+    /** 利用者の既読にする要求を送っているスレッドの ID（応答を待つ間に読み直しても、同じスレッドへ重ねて送らない） */
+    const seenSending = new Set<string>();
+
+    /** 開いているスレッドに利用者の未読があれば、待たずに既読にする。印は書き換えの知らせを受けて描き直す。失敗しても画面に出さない */
+    const markOpenedSeen = (): void => {
+      const opened = comment.openedThread;
+      if (comment.view !== "thread" || opened === null || opened.pending || seenSending.has(opened.id)) return;
+      const thread = comment.threads.find((entry) => entry.id === opened.id);
+      if (thread === undefined || !hasUnseen(thread)) return;
+      seenSending.add(opened.id);
+      void threadsApi.seen(opened.id).finally(() => seenSending.delete(opened.id));
+    };
+
+    /** スレッドを読み直す。読めたら置き換え（トップバーの未読の点が変わるなら描き直し）、断られた・届かないときは前のまま残して理由を持つ */
     const loadThreads = async (): Promise<void> => {
       const result = await threadsApi.read();
       if (result.ok && result.data !== null) {
+        const wasUnseen = anyOpenUnseen(comment.threads);
         comment.threads = result.data.threads;
         comment.threadsError = null;
+        if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
+        markOpenedSeen();
         return;
       }
       comment.threadsError = { detail: result.ok ? null : result.detail };
@@ -1439,6 +1454,7 @@ namespace MindmapPreview {
       comment.view = "thread";
       comment.reason = { open: false, body: "", status: "idle", detail: null };
       renderComments();
+      markOpenedSeen();
     };
 
     /** スレッドの返信の書きかけを、待たずに保つ */
@@ -1576,6 +1592,7 @@ namespace MindmapPreview {
       selected: comment.opened,
       reviewFocus: comment.reviewFocus,
       titleOf: (id) => index.byId.get(id)?.item.title ?? null,
+      changeSetOf: (id) => data.changes.sets.find((set) => set.id === id)?.summary ?? null,
       on: {
         close: closeList,
         review: openReview,
@@ -1601,6 +1618,7 @@ namespace MindmapPreview {
         },
         openThread,
         openId: openFromThread,
+        changeSet: openChangeSet,
         reply: (thread, body) => void saveReply(thread, body),
         replyInput: typeReply,
         reasonOpen: (open) => {
@@ -2060,6 +2078,11 @@ namespace MindmapPreview {
       route = { ...route, diff: sel };
       navigate({ route: { ...route, filters: {} }, push: false });
       redrawKeepingState();
+    };
+
+    /** 本文・書き込みのまとまりのリンクを押した: 記録にあるまとまりのときだけ、変更履歴で選んだときと同じに切り替える */
+    const openChangeSet = (id: string): void => {
+      if (resolveDiffPoint(data.changes, id, since) !== null) selectPoint(id);
     };
 
     /** 変更履歴のモーダルを開く（開いているときは何もしない） */

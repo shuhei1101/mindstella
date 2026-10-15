@@ -32,6 +32,8 @@ elements:
         value: 絞り込みのドロワーで値を 1 つ以上選んでいる条件の数
       - name: filter_open
         value: 絞り込みのドロワーを開いているか
+      - name: comments_unread
+        value: 概要と同じ
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え
