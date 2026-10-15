@@ -1,0 +1,19 @@
+$ ruff check {この PR の変更ファイル（Python）}
+tests/integration/preview/preview_comment_helpers.py:14:11: RUF022 [*] `__all__` is not sorted
+Found 1 error.
+[*] 1 fixable with the `--fix` option.
+(exit: 1)
+
+$ npm run typecheck
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+(exit: 0)
+
+## base ブランチ（release/v0.8.0）で同じコマンドを回した出力
+$ ruff check {同じファイル}
+tests/integration/preview/preview_comment_helpers.py:14:11: RUF022 [*] `__all__` is not sorted
+Found 1 error.
+[*] 1 fixable with the `--fix` option.
+(exit: 1)
