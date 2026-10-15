@@ -2420,3 +2420,149 @@ def test_detail_panel_when_diff_minimap(
     )
     # 検証
     assert result == expected
+
+
+# 詳細パネルを開き（差分は point があるときだけ）、本文の見出しの段と、足した囲みの中の見出しの上の余白を調べる
+OPEN_HEADING_LEVELS_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["A-1"])},
+    });
+    document.body.append(panel);
+    // 本文の差分と見出しの段下げは、文書に入った後の描き直しで置かれる
+    for (let frame = 0; frame < 3; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const body = panel.querySelector(".md:not(.md-value)");
+    const headings = [...body.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
+        text: (heading.textContent ?? "").trim(),
+        tag: heading.tagName.toLowerCase(),
+        mdLevel: heading.getAttribute("data-md-level"),
+        ariaLevel: heading.getAttribute("aria-level"),
+    }));
+    // 比べる元の段 2 の見出しを、足した囲みの外の同じ本文の中に置いて余白を読む
+    const reference = document.createElement("h2");
+    reference.setAttribute("data-md-level", "2");
+    body.append(reference);
+    const referenceMargin = getComputedStyle(reference).marginTop;
+    const inBlock = [...body.querySelectorAll("ins.df-blk :is(h1, h2, h3, h4, h5, h6)")].map((heading) => ({
+        text: (heading.textContent ?? "").trim(),
+        sameAsLevel2: getComputedStyle(heading).marginTop === referenceMargin,
+        fourPx: getComputedStyle(heading).marginTop === "4px",
+    }));
+    return {headings, inBlock};
+}"""
+
+# 本文の見出しの最も上の段が `##` の本文（「決め方」の下に「理由」）
+HEADING_LEVELS_TOP_H2_BODY = "## 決め方\n\n決め方の段落\n\n### 理由\n\n理由の段落\n"
+
+# 本文の見出しの最も上の段が `#` の本文（「要件」の下に「決め方」）
+HEADING_LEVELS_TOP_H1_BODY = "# 要件\n\n要件の段落\n\n## 決め方\n\n決め方の段落\n"
+
+# `##` から `######` までを順に持つ本文
+HEADING_LEVELS_H2_TO_H6_BODY = "## 見出し2\n\n### 見出し3\n\n#### 見出し4\n\n##### 見出し5\n\n###### 見出し6\n"
+
+# 前の版が `# 要件` と `## 決め方`、今が `## 決め方` だけの本文の今と、`# 要件` を消した回
+HEADING_LEVELS_REMOVED_TOP_BODY = "## 決め方\n"
+HEADING_LEVELS_REMOVED_TOP_ENTRY = _body_entry(line=1, now=[], before=["# 要件", ""])
+
+# 前の版が段落だけ、今が `## 決め方` と段落の本文の今と、`## 決め方` を足した回
+HEADING_LEVELS_ADDED_BLOCK_BODY = "## 決め方\n\n段落\n"
+HEADING_LEVELS_ADDED_BLOCK_ENTRY = _body_entry(line=1, now=["## 決め方", ""], before=[])
+
+
+@pytest.mark.parametrize(
+    ("body", "entries", "point", "expected_headings", "expected_in_block"),
+    [
+        pytest.param(
+            HEADING_LEVELS_TOP_H2_BODY,
+            [],
+            None,
+            [
+                {"text": "決め方", "tag": "h4", "mdLevel": "2", "ariaLevel": None},
+                {"text": "理由", "tag": "h5", "mdLevel": "3", "ariaLevel": None},
+            ],
+            [],
+            id="top_is_h2",
+        ),
+        pytest.param(
+            HEADING_LEVELS_TOP_H1_BODY,
+            [],
+            None,
+            [
+                {"text": "要件", "tag": "h4", "mdLevel": "1", "ariaLevel": None},
+                {"text": "決め方", "tag": "h5", "mdLevel": "2", "ariaLevel": None},
+            ],
+            [],
+            id="top_is_h1",
+        ),
+        pytest.param(
+            HEADING_LEVELS_H2_TO_H6_BODY,
+            [],
+            None,
+            [
+                {"text": "見出し2", "tag": "h4", "mdLevel": "2", "ariaLevel": None},
+                {"text": "見出し3", "tag": "h5", "mdLevel": "3", "ariaLevel": None},
+                {"text": "見出し4", "tag": "h6", "mdLevel": "4", "ariaLevel": None},
+                {"text": "見出し5", "tag": "h6", "mdLevel": "5", "ariaLevel": "7"},
+                {"text": "見出し6", "tag": "h6", "mdLevel": "6", "ariaLevel": "8"},
+            ],
+            [],
+            id="beyond_h6",
+        ),
+        pytest.param(
+            HEADING_LEVELS_REMOVED_TOP_BODY,
+            [HEADING_LEVELS_REMOVED_TOP_ENTRY],
+            DIFF_POINT,
+            [
+                {"text": "要件", "tag": "h4", "mdLevel": "1", "ariaLevel": None},
+                {"text": "決め方", "tag": "h5", "mdLevel": "2", "ariaLevel": None},
+            ],
+            [],
+            id="diff_removed_part_is_higher",
+        ),
+        pytest.param(
+            HEADING_LEVELS_ADDED_BLOCK_BODY,
+            [HEADING_LEVELS_ADDED_BLOCK_ENTRY],
+            DIFF_POINT,
+            [{"text": "決め方", "tag": "h4", "mdLevel": "2", "ariaLevel": None}],
+            [{"text": "決め方", "sameAsLevel2": True, "fourPx": False}],
+            id="diff_added_block_margin",
+        ),
+    ],
+)
+def test_detail_panel_when_body_heading_levels(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    body: str,
+    entries: list[dict[str, Any]],
+    point: dict[str, object] | None,
+    expected_headings: list[dict[str, str | None]],
+    expected_in_block: list[dict[str, object]],
+) -> None:
+    """本文の見出しの最も上の段を h4 にし、段の差を保って並べる（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[make_item("A-1", history=entries, seq=1)],
+        bodies={"A-1.md": body},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_HEADING_LEVELS_PANEL_SCRIPT, {"data": data, "point": point})
+    # 検証
+    assert result["headings"] == expected_headings
+    # 足した囲みの中の見出しの上の余白は、4px でなく元の段の余白のまま
+    assert result["inBlock"] == expected_in_block
