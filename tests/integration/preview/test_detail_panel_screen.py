@@ -3477,7 +3477,7 @@ def test_html_code_block(
     assert page.locator("aside.panel .md pre code").count() == 0
     assert frame_of(page, HTML_CODE_FRAME).locator("p").inner_text() == "枠の中の段落"
     # 前後の Markdown は今までどおり描く
-    assert page.locator("aside.panel .md h4, aside.panel .md h1, aside.panel .md h2").count() >= 1
+    assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
     assert page.locator("aside.panel .md > p").count() == 2
 
 
