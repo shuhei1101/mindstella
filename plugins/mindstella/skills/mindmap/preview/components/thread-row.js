@@ -40,6 +40,11 @@ var MindmapPreview;
         return threads.some((thread) => thread.status === "open" && hasUnseen(thread));
     }
     MindmapPreview.anyOpenUnseen = anyOpenUnseen;
+    /** 指したスレッドの書き込みを全て既読にした新しい並び（渡した並びは書き換えない。ID が無ければ同じ中身の並び） */
+    function withSeen(threads, id) {
+        return threads.map((thread) => thread.id === id ? { ...thread, posts: thread.posts.map((post) => ({ ...post, seen: true })) } : thread);
+    }
+    MindmapPreview.withSeen = withSeen;
     /** 未読の札（塗りつぶしの形・点の印・「未読」の文字で示す。状態の札の線の枠、レビュー中の印の破線の枠と形で見分ける） */
     function unseenMark() {
         return MindmapPreview.h({
