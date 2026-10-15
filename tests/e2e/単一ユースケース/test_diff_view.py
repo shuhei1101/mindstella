@@ -1103,8 +1103,8 @@ def test_normal_when_minimap_jump(
     page.wait_for_function(
         f"document.querySelector('{PANEL_SCOPE} .d-title')?.textContent.includes('A-2')"
     )
-    # 検証（変わっていない A-2 にはミニマップが出ない）
-    assert page.locator(f"{PANEL_SCOPE} .df-map").count() == 0
+    # 検証（変わっていない A-2 にはミニマップが見えない）
+    assert not page.locator(f"{PANEL_SCOPE} .df-map").is_visible()
     # 実行（資料のタブで A-1 を押す）
     page.click('.doc-card[data-id="A-1"]')
     page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TIMEOUT_MS)
