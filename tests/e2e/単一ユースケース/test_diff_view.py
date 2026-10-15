@@ -25,12 +25,12 @@ from playwright.sync_api import Page
 from preview_helpers import (
     HISTORY_DIALOG,
     HISTORY_REDRAW_TIMEOUT_MS,
-    OPENED_TICK_MS,
     OpenInEmptyContext,
     OpenPreview,
     pick_history_point,
     snapshot_records,
     visit_and_close,
+    wait_past_boundary,
 )
 from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
@@ -51,6 +51,10 @@ NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後�
 
 # まとまりの日時の表示（月/日 時:分）
 WHEN_PATTERN = re.compile(r"\d{2}/\d{2} \d{2}:\d{2}")
+
+# そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキーと、その値を読む
+SINCE_KEY = "mindmap-since"
+SINCE_SCRIPT = "key => sessionStorage.getItem(key)"
 
 # 変更の印と新規の印の class
 MARK_CHANGED = "df-mark df-chg"
@@ -235,7 +239,7 @@ def test_normal(
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url)
+    visit_and_close(page, url, root)
     replay(
         "update",
         workspace=ws,
@@ -477,8 +481,8 @@ def test_normal_when_rewritten_while_open(
     pick_history_point(page, "前回開いてから")
     assert _row_marks(page) == {"D-1": None, "D-3": None}
     url_before = page.url
-    # タブを開いた日時より後に書き換える
-    page.wait_for_timeout(OPENED_TICK_MS)
+    # タブを開いた日時より後の秒に書き換える
+    wait_past_boundary(page.evaluate(SINCE_SCRIPT, SINCE_KEY))
     # 実行（開いたまま書き換える）
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
     replay("commit", workspace=ws, summary="検討事項を直す")
@@ -516,9 +520,9 @@ def test_normal_when_first_open(
     ws = str(root)
     url = _serve(call_tool, root)
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
-    replay("commit", workspace=ws, summary="検討事項を直す")
-    # 開いた日時より後に書き換えたことにならないよう、書き換えの後に待ってから開く
-    page.wait_for_timeout(OPENED_TICK_MS)
+    committed = replay("commit", workspace=ws, summary="検討事項を直す")
+    # 開いた日時より後に書き換えたことにならないよう、まとまりの日時の先の秒に入ってから開く
+    wait_past_boundary(committed["at"])
     open_preview(url, "#tab=decisions&view=table")
     # 実行（「前回開いてから」を選ぶ）
     pick_history_point(page, "前回開いてから")
@@ -554,7 +558,7 @@ def test_normal_when_history_limit_zero(
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url)
+    visit_and_close(page, url, root)
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
     replay("add", workspace=ws, kind="decision", item=NEW_DECISION)
     replay("commit", workspace=ws, summary=COMMIT_SUMMARY)
@@ -667,7 +671,7 @@ def test_normal_when_since_history_dropped(
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url)
+    visit_and_close(page, url, root)
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
     replay("commit", workspace=ws, summary="1 回目")
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V2})
@@ -787,7 +791,7 @@ def test_normal_when_added_then_removed_since(
     root = make_workspace(make_item("N-1", title="残すメモ"))
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url)
+    visit_and_close(page, url, root)
     replay("add", workspace=ws, kind="note", item={"title": "足すメモ", "content": "メモ"})
     replay("commit", workspace=ws, summary="メモを足す")
     replay("remove", workspace=ws, id="N-2")
@@ -841,7 +845,7 @@ def test_normal_when_html_body_changed(
     root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY_BEFORE})
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url)
+    visit_and_close(page, url, root)
     replay("update", workspace=ws, id="A-1", item={"body_html": HTML_BODY_AFTER})
     replay("commit", workspace=ws, summary="段落を書き直す")
     before = snapshot_records(snapshot_tree(root))
@@ -1103,8 +1107,8 @@ def test_normal_when_minimap_jump(
     page.wait_for_function(
         f"document.querySelector('{PANEL_SCOPE} .d-title')?.textContent.includes('A-2')"
     )
-    # 検証（変わっていない A-2 にはミニマップが出ない）
-    assert page.locator(f"{PANEL_SCOPE} .df-map").count() == 0
+    # 検証（変わっていない A-2 にはミニマップが見えない）
+    assert not page.locator(f"{PANEL_SCOPE} .df-map").is_visible()
     # 実行（資料のタブで A-1 を押す）
     page.click('.doc-card[data-id="A-1"]')
     page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TIMEOUT_MS)

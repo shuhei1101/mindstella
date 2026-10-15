@@ -1,0 +1,15 @@
+$ python3 -m pytest tests/integration/preview/test_detail_panel_screen.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-e2e-html-code-block-heading
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 165 items
+
+tests/integration/preview/test_detail_panel_screen.py .................. [ 10%]
+........................................................................ [ 54%]
+........................................................................ [ 98%]
+...                                                                      [100%]
+
+======================= 165 passed in 264.76s (0:04:24) ========================

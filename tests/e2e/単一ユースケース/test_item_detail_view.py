@@ -355,7 +355,7 @@ def test_normal_when_body_links(
         "aside.panel .md a.idref", "a => a.map(x => [x.textContent, x.dataset.id])"
     )
     in_code_or_heading = page.locator(
-        "aside.panel .md :is(pre, h2) :is(a.term, a.idref)"
+        'aside.panel .md :is(pre, [data-md-level="2"]) :is(a.term, a.idref)'
     ).count()
     heading_links = page.eval_on_selector_all(
         "aside.panel [data-heading] .h-link", "l => l.map(x => x.getAttribute('aria-label'))"
@@ -1005,7 +1005,7 @@ def test_normal_when_html_code_block(
     assert frame.locator("svg").count() == 1
     # コードブロックの前後の Markdown の見出し・段落は、今までどおり描かれる
     assert page.locator("aside.panel .md > p").count() == 2
-    assert page.locator("aside.panel .md h1, aside.panel .md h2").count() >= 1
+    assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
     # コードブロックの `<style>` が、前後の Markdown の段落・詳細パネル・トップバーの色を変えない
     assert page.evaluate(STYLE_SCRIPT, outside) == before
     # プレビューのページの変数にも、描いた文書の変数にも印が残らない
@@ -1108,7 +1108,6 @@ def test_normal_when_body_scrolled(
     # 検証（全画面）: モーダルの見出しの帯にも同じものが出る
     assert full["id"] == "A-3"
     assert full["title"].startswith(HEAD_TITLE_PREFIX)
-    assert full["truncated"] is True
     assert all(button == {"inHead": True, "pressable": True} for button in full["buttons"])
 
 

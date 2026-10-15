@@ -1,0 +1,125 @@
+# commit 39b303a8 / test_diff_view.py（test_normal_when_minimap_jump を除く）を 30 回続けて実行
+## 実行 1
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 54.62s
+## 実行 2
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 52.92s
+## 実行 3
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 48.71s
+## 実行 4
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 59.30s
+## 実行 5
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 60.41s (0:01:00)
+## 実行 6
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 59.54s
+## 実行 7
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 54.97s
+## 実行 8
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 57.20s
+## 実行 9
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 50.16s
+## 実行 10
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 51.05s
+## 実行 11
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 53.11s
+## 実行 12
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 48.20s
+## 実行 13
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 51.94s
+## 実行 14
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 51.14s
+## 実行 15
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 54.47s
+## 実行 16
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 55.96s
+## 実行 17
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 47.87s
+## 実行 18
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 48.26s
+## 実行 19
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 45.64s
+## 実行 20
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 47.30s
+## 実行 21
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 60.28s (0:01:00)
+## 実行 22
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 50.13s
+## 実行 23
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 47.70s
+## 実行 24
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 47.67s
+## 実行 25
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 59.08s
+## 実行 26
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 50.67s
+## 実行 27
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 50.99s
+## 実行 28
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 52.90s
+## 実行 29
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 53.91s
+## 実行 30
+$ pytest "tests/e2e/単一ユースケース/test_diff_view.py" --deselect "tests/e2e/単一ユースケース/test_diff_view.py::test_normal_when_minimap_jump"
+.................                                                        [100%]
+17 passed, 1 deselected in 54.00s
+## test_preview_reread
+$ pytest "tests/e2e/複合ユースケース/test_preview_reread.py"
+.                                                                        [100%]
+1 passed in 31.52s
