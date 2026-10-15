@@ -73,6 +73,40 @@ states:
         value: '{"id":"TH-4-4","author":"ai","body":"T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。操作の種類は D-15 で決めた 5 つに揃えています。","created":"2026-10-12T00:41:00+00:00"}'
       - name: titles
         value: '{"T-6":"移し替えの手順の YAML を点検する","A-9":"#50 スキルの手順を直す","D-15":"手順の YAML で使える操作の種類"}'
+  - name: ChangeSetLink
+    description: AI の書き込みの中のまとまりのリンク。「A-14 の手引きの書き直し」だけが色の付いた文字と下線のリンクで、中の A-14 はボタンにしない。外の A-14・D-12 は項目を開くボタン。`[古い手引き](#diff=V-99)` は書いた文字のまま
+    args:
+      - name: post
+        value: '{"id":"TH-1-2","author":"ai","body":"A-14 の手引きを書き直しました。直したところは [A-14 の手引きの書き直し](#diff=V-6) で見られます。\n表の行の消し方は D-12 で決めたとおりにしています。\n前に相談した版は [古い手引き](#diff=V-99) にありましたが、保持する回数を超えて消えています。","created":"2026-10-12T01:24:00+00:00"}'
+      - name: titles
+        value: '{"A-14":"プレビューの差分の読み方（手引き）","D-12":"移し替えが途中で失敗したときの扱い"}'
+      - name: change_sets
+        value: '{"V-6":"A-14 の手引きを書き直す"}'
+  - name: ChangeSetLinkNotLinked
+    description: 利用者の書き込みの中の、まとまりのリンクにしない書き方。`[since から](#diff=since)`・`[ハッシュの例](#tab=docs)` は書いた文字のままで、`[その他](#tab=docs&id=A-11&diff=V-5)` は `diff` だけを読んでリンクにする
+    args:
+      - name: post
+        value: '{"id":"TH-1-3","author":"user","body":"[since から](#diff=since) と [ハッシュの例](#tab=docs) は押せなくてよい。[その他](#tab=docs&id=A-11&diff=V-5) は押せる","created":"2026-10-12T01:31:00+00:00"}'
+      - name: change_sets
+        value: '{"V-5":"A-11 の段落を直す"}'
+  - name: PendingChangeSetLink
+    description: レビュー中の返信の中のまとまりのリンク。破線の枠の中でも同じ見た目のリンクにする
+    args:
+      - name: pending
+        value: '{"id":"C-44","thread":"TH-1","target":null,"body":"[A-14 の手引きの書き直し](#diff=V-6) で消した表の行は戻してほしい。T-14 にも関わる","created":"2026-10-12T05:20:00+00:00"}'
+      - name: titles
+        value: '{"T-14":"移し替えの失敗の扱いを書く"}'
+      - name: change_sets
+        value: '{"V-6":"A-14 の手引きを書き直す"}'
+  - name: ChangeSetLinkLong
+    description: 長い文言のまとまりのリンク。行の中で書き込みの幅で折り返す
+    args:
+      - name: post
+        value: '{"id":"TH-2-1","author":"ai","body":"A-11 の段落を [設定のパネルの画面の流れのうち、既定として保存するまでの段落と確かめのダイアログの説明](#diff=V-5) のとおりに直しました。","created":"2026-10-12T04:02:00+00:00"}'
+      - name: titles
+        value: '{"A-11":"設定のパネルの画面の流れ（モック）"}'
+      - name: change_sets
+        value: '{"V-5":"A-11 の段落を直す"}'
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形で出す。
 status: planned
 args:
@@ -115,6 +149,12 @@ args:
     enabled_when: '`editing` が true のとき'
     description: 書き換えの入力欄に入れる中身（保てなかったときに残す、書き換えていた中身）
     status: planned
+  - name: change_sets
+    type: オブジェクト
+    default: '{}'
+    enabled_when: '`post` か `pending` を渡したとき'
+    description: 記録にある書き換えのまとまりの ID からその説明への対応。本文の中の `[文言](#...)` のうち、`#` の後ろを `URLSearchParams` で読んだ `diff` の値が対応にあるものを、`文言` だけを出すまとまりのリンクにする（詳細の本文のまとまりのリンクと同じく、色の付いた文字と下線）。`文言` の中の項目の ID はボタンにしない。対応に無い値・`since`・`pending`・空の値、`diff` を持たないもの、`#` で始まらないものは書いた文字のまま出す
+    status: planned
 events:
   - name: 項目を開く
     when: 本文の中の項目の ID のリンクを押したとき
@@ -136,10 +176,15 @@ events:
     when: '`pending` の「削除」を押したとき'
     value: '`pending.id`'
     description: 使う側が `DELETE /api/comments/{id}` で消し、元の場所に「元に戻す」を出す
+  - name: まとまりを開く
+    when: 本文の中のまとまりのリンクを押したとき（既定の動作を止める）
+    value: まとまりの ID
+    description: 使う側が変更履歴でそのまとまりを選んだときと同じく差分の表示に切り替え、スレッドの画面は開いたままにする
 accessibility:
   - 書き手は寄せと面の色だけでなく、頭の文字（「あなた」「AI」）でも示す。レビュー中は破線の枠に加えて印のアイコンと「レビュー中」の文字で示す
   - 日時は `time` 要素で `datetime` に元の日時を持つ
   - 本文の中の項目の ID のリンクはボタンにし、読み上げの名前を ID、`title` をその項目のタイトルにする
   - 「修正」「削除」は読み上げの名前を「{スレッドの ID} への返信を修正」「{スレッドの ID} への返信を削除」にする。新しいスレッドの最初の書き込みは「{向けた項目の ID} へのコメントを修正」「{向けた項目の ID} へのコメントを削除」（項目を指さないものは「項目を指さないコメントを修正」「項目を指さないコメントを削除」）。`title` は「修正」「削除」
   - 書き換えを保てなかった理由は `role="alert"` で読み上げ、入力欄の `aria-describedby` から指す
+  - 本文の中のまとまりのリンクは `href` に書いた `#...` を持つ `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
 test_file: tests/integration/storybook/test_thread_post_stories.py
