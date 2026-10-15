@@ -391,8 +391,22 @@ HEADING_BODY = (
     + "\n\n## 決め方\n\n2 つ目の決め方の段落\n"
 )
 
+# 末尾の段落を書き換えた変えた回（差分の表示で本文を変えた A-1 にする）
+HEADING_BODY_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {
+            "line": len(HEADING_BODY.splitlines()),
+            "now": ["2 つ目の決め方の段落"],
+            "before": ["前の 2 つ目の決め方の段落"],
+        }
+    ],
+}
+
 # 本文のスクロール領域を 200px に抑えて詳細パネルを開き、2 つ目の「決め方」が領域に入ったかと、見出しを外させる知らせを調べる
-OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
+OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading, point, bodyLayout, width}) => {
     // 単体テストでは雛形の CSS を読まないので、本文のスクロール領域だけ作る
     const style = document.createElement("style");
     style.textContent = ".panel-body { height: 200px; overflow: auto; }";
@@ -412,10 +426,14 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
             forward: noop,
             diagram: noop,
             heading: (slug) => headingCalls.push(slug),
+            layout: noop,
         },
         comment: null,
         heading,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["A-1"])},
+        bodyLayout,
     });
+    panel.style.width = `${width}px`;
     document.body.append(panel);
     // 見出しへのスクロールは、文書に入った後の描き直しで付くことがある
     for (let frame = 0; frame < 2; frame += 1) {
@@ -423,8 +441,10 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
     }
     const body = panel.querySelector(".panel-body");
     const area = body.getBoundingClientRect();
-    const target = panel.querySelector('[data-heading="決め方-1"]');
-    const rect = target === null ? null : target.getBoundingClientRect();
+    // 左右に並べるときは同じ見出しが 3 か所にあるので、見えている見出しを調べる
+    const target = [...panel.querySelectorAll('[data-heading="決め方-1"]')]
+        .find((heading) => heading.getClientRects().length > 0);
+    const rect = target === undefined ? null : target.getBoundingClientRect();
     return {
         scrolled: body.scrollTop > 0,
         inView: rect !== null && rect.top >= area.top && rect.bottom <= area.bottom,
@@ -434,38 +454,64 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
 
 
 @pytest.mark.parametrize(
-    ("heading", "expected"),
+    ("heading", "entries", "body_layout", "expected"),
     [
         pytest.param(
             "決め方-1",
+            [],
+            None,
             {"scrolled": True, "inView": True, "nullCalls": 0},
             id="heading_in_body",
         ),
         pytest.param(
             "無い",
+            [],
+            None,
             {"scrolled": False, "inView": False, "nullCalls": 1},
             id="heading_not_in_body",
+        ),
+        pytest.param(
+            "決め方-1",
+            [HEADING_BODY_ENTRY],
+            "side",
+            {"scrolled": True, "inView": True, "nullCalls": 0},
+            id="heading_in_inline_body_when_side_narrow",
         ),
     ],
 )
 def test_detail_panel_when_heading(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
     make_data: MakeData,
     make_item: MakeItem,
     heading: str,
+    entries: list[dict[str, Any]],
+    body_layout: str | None,
     expected: dict[str, object],
 ) -> None:
     """指した見出しを画面に入れて開く（正常系）。"""
     # 準備
-    data = make_data(docs=[make_item("A-1")], bodies={"A-1.md": HEADING_BODY})
+    data = make_data(
+        docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+        bodies={"A-1.md": HEADING_BODY},
+    )
     load_preview_scripts()
+    load_preview_styles()
     load_library("marked")
     load_library("DOMPurify")
+    load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
-        OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading}
+        OPEN_HEADING_PANEL_SCRIPT,
+        {
+            "data": data,
+            "heading": heading,
+            "point": DIFF_POINT if entries else None,
+            "bodyLayout": body_layout,
+            "width": 480,
+        },
     )
     # 検証
     assert result == expected
