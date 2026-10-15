@@ -23,7 +23,7 @@ const meta = {
     list.append(MindmapPreview.threadPost(args));
     return list;
   },
-  args: { titles, on: { openId: fn(), edit: fn(), saveEdit: fn(), cancelEdit: fn(), remove: fn() } },
+  args: { titles, on: { openId: fn(), changeSet: fn(), edit: fn(), saveEdit: fn(), cancelEdit: fn(), remove: fn() } },
 } satisfies Meta<MindmapPreview.ThreadPostProps>;
 
 export default meta;

@@ -324,7 +324,13 @@ var MindmapPreview;
                                 focus: "",
                                 on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
                             })
-                            : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                            : MindmapPreview.postBody({
+                                body: item.body,
+                                titles: () => null,
+                                changeSets: props.changeSetOf,
+                                className: "review-body",
+                                on: { openId: (id) => props.on.openId(id), changeSet: props.on.changeSet },
+                            }),
                         // クローズのスレッドへの返信: 送れない理由と、そのスレッドを開く入口
                         blocked && item.thread !== null
                             ? MindmapPreview.h({
@@ -671,11 +677,13 @@ var MindmapPreview;
         return MindmapPreview.threadPost({
             pending: item,
             titles: props.titleOf,
+            changeSets: props.changeSetOf,
             editing: props.editing === item.id && props.editingIn !== "detail",
             editBody: props.editBody ?? null,
             editError: props.editError ?? null,
             on: {
                 openId: (id) => props.on.openId(id),
+                changeSet: props.on.changeSet,
                 edit: props.on.edit,
                 saveEdit: props.on.saveEdit,
                 cancelEdit: props.on.cancelEdit,
@@ -771,8 +779,8 @@ var MindmapPreview;
                         attrs: { class: "posts", "aria-label": "書き込み" },
                         children: [
                             ...threadTimeline(thread).map((entry) => "post" in entry
-                                ? MindmapPreview.threadPost({ post: entry.post, titles: props.titleOf, on: { openId: (id) => on.openId(id), edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
-                                : MindmapPreview.threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })),
+                                ? MindmapPreview.threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
+                                : MindmapPreview.threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })),
                             ...replies.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : pendingPostItem(item, props))),
                         ],
                     }),

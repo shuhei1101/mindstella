@@ -77,6 +77,8 @@ namespace MindmapPreview {
     reviewFocus: string | null;
     /** 項目のタイトル（記録から消えていれば null。押せない ID だけを出し、箇所を外すを出さない） */
     titleOf: (id: string) => string | null;
+    /** まとまりの説明（記録の `changes.sets` に無ければ null。あるまとまりを指す本文の `[文言](#diff=...)` を、まとまりのリンクにする） */
+    changeSetOf: (id: string) => string | null;
     on: {
       close: () => void;
       /** レビュー中の書き込みの画面を開く */
@@ -94,6 +96,8 @@ namespace MindmapPreview {
       openThread: (id: string, pending: boolean) => void;
       /** 項目を開く（本文の中の ID・スレッドの向けた項目。向けた項目の箇所があれば渡す） */
       openId: (id: string, loc?: Location) => void;
+      /** 本文の中のまとまりのリンクを押した（まとまりの ID） */
+      changeSet: (id: string) => void;
       /** 返信を溜める（スレッドの ID と本文） */
       reply: (thread: string, body: string) => void;
       replyInput: (body: string) => void;
@@ -496,7 +500,13 @@ namespace MindmapPreview {
                 focus: "",
                 on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
               })
-              : h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+              : postBody({
+                body: item.body,
+                titles: () => null,
+                changeSets: props.changeSetOf,
+                className: "review-body",
+                on: { openId: (id) => props.on.openId(id), changeSet: props.on.changeSet },
+              }),
             // クローズのスレッドへの返信: 送れない理由と、そのスレッドを開く入口
             blocked && item.thread !== null
               ? h({
@@ -882,11 +892,13 @@ namespace MindmapPreview {
     return threadPost({
       pending: item,
       titles: props.titleOf,
+      changeSets: props.changeSetOf,
       editing: props.editing === item.id && props.editingIn !== "detail",
       editBody: props.editBody ?? null,
       editError: props.editError ?? null,
       on: {
         openId: (id) => props.on.openId(id),
+        changeSet: props.on.changeSet,
         edit: props.on.edit,
         saveEdit: props.on.saveEdit,
         cancelEdit: props.on.cancelEdit,
@@ -983,8 +995,8 @@ namespace MindmapPreview {
             children: [
               ...threadTimeline(thread).map((entry) =>
                 "post" in entry
-                  ? threadPost({ post: entry.post, titles: props.titleOf, on: { openId: (id) => on.openId(id), edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
-                  : threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } }),
+                  ? threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
+                  : threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } }),
               ),
               ...replies.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : pendingPostItem(item, props))),
             ],
