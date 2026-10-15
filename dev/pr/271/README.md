@@ -1,0 +1,1 @@
+# 差分の表示の E2E test_normal_when_added_then_removed_since を毎回同じ結果にする
