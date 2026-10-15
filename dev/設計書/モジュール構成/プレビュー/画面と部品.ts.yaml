@@ -964,9 +964,13 @@ components:
         required: true
         description: 項目のタイトル（記録から消えていれば `null`）
       - name: on
-        type: '{close, review, back, filter, tag, clearTag, compose, openThread, openId, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc}'
+        type: '{close, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc}'
         required: true
-        description: 閉じる・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す
+        description: 閉じる・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す
+      - name: changeSetOf
+        type: '(id: string) => string | null'
+        required: true
+        description: まとまりの説明（記録の `changes.sets` に無ければ `null`）
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -1470,7 +1474,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `splitPostBody` で切り分け、項目の ID をボタン（`data-focus` は `post-id:{ID}`）にする（Markdown としては描かず、改行を保った文字で出す）。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
+    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `postBody`（クラス `post-body`）で描く。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
     props:
       - name: post
         type: Thread['posts'][number] | null
@@ -1508,9 +1512,14 @@ components:
         default: 'null'
         description: 直せなかった理由
       - name: on
-        type: '{openId, edit, saveEdit, cancelEdit, remove}'
+        type: '{openId, changeSet, edit, saveEdit, cancelEdit, remove}'
         required: true
-        description: 本文の中の項目の ID を押した・修正を始める・書き換えを送る・キャンセル・削除
+        description: 本文の中の項目の ID を押した・まとまりのリンクを押した・修正を始める・書き換えを送る・キャンセル・削除
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: まとまりの説明（記録に無ければ `null`）。部品設計の `change_sets` の対応を関数で受ける
     unit_tests:
       - name: test_thread_post
         case: 正常
@@ -1530,6 +1539,12 @@ components:
         condition: '`pending` に C-43（`thread: TH-1`）。`parametrize`: 既定 / `editing: true` / `editing: true`・`editError` あり'
         mock: '`on.edit`・`on.remove`'
         expected: 「レビュー中」の印と、読み上げの名前「TH-1 への返信を修正」「TH-1 への返信を削除」のボタン（押すとそれぞれ 1 回）/ 入力欄と「キャンセル」「修正」がありアイコンのボタンが無い / 理由が `role="alert"` で出る
+      - name: test_thread_post_when_change_set_link
+        case: 正常
+        summary: 書き込みとレビュー中の書き込みのまとまりのリンク
+        condition: '`changeSets` は V-6 だけ。`parametrize`: 本文に `[A-14 の書き直し](#diff=V-6)` を持つ AI の `post` / 同じ本文の `pending`'
+        mock: '`on.changeSet`'
+        expected: どちらも `p.post-body` の中に `a.setlink` が 1 つで、押すと `on.changeSet` が `V-6` で 1 回
   - name: threadListView
     title: スレッドの一覧
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
@@ -1602,12 +1617,18 @@ components:
         condition: '`parametrize`: D-12 へ向けたタグ `画面` の TH-1 / 消えた D-99 へ向けた TH-6 / 項目もタグも持たないスレッド'
         mock: '`on.openId`'
         expected: '`D-12` とタイトルのボタン（押すと `on.openId` が 1 回）と押せないタグ / 押せない `D-99` だけ / 向けた項目とタグの行が無い'
+      - name: test_thread_view_when_change_set_link
+        case: 正常
+        summary: 書き込みのまとまりのリンクを使う側へ知らせる
+        condition: TH-1 を開き、AI の書き込みが `[D-1 を直した](#diff=V-1)`。`changeSetOf` は V-1 を引く
+        mock: '`on.changeSet`'
+        expected: リンクを押すと `on.changeSet` が `V-1` で 1 回、`on.back` は呼ばれない
   - name: reviewView
     title: レビュー中の書き込み
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: コメントを選んで送る
     kind: 画面
-    summary: 画面設計『レビュー中の書き込み』を描く。見出し（戻る・題と件数）・送る帯・行・削除した行の「元に戻す」・送れない理由・箇所が合わない理由・空の状態を持つ。行の頭は「新しいスレッド」と向けた項目か、「返信」と返信先のスレッド（状態の札と `threadTitle`）。クローズのスレッドへの返信（`isBlockedReply`）はチェックを `disabled` にして送れる件数から除き、送れない理由と「スレッドを開く」を出す。行の「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm`、消した行は `removedReviewRow` で描く（`focus` の接頭辞は空）。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）
+    summary: 画面設計『レビュー中の書き込み』を描く。見出し（戻る・題と件数）・送る帯・行・削除した行の「元に戻す」・送れない理由・箇所が合わない理由・空の状態を持つ。行の頭は「新しいスレッド」と向けた項目か、「返信」と返信先のスレッド（状態の札と `threadTitle`）。行の本文は `postBody`（クラス `review-body`、`titles` は `() => null`、`changeSets` は `changeSetOf`）で描く。クローズのスレッドへの返信（`isBlockedReply`）はチェックを `disabled` にして送れる件数から除き、送れない理由と「スレッドを開く」を出す。行の「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm`、消した行は `removedReviewRow` で描く（`focus` の接頭辞は空）。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）
     props:
       - name: props
         type: CommentsPanelProps
@@ -1650,6 +1671,12 @@ components:
         condition: "C-1 をチェックし、`result` を `{kind: 'sent', count: 2, at: '2026-10-10T03:04:00+00:00', entered}` で描く。`parametrize`: `entered` が `true` / `false`"
         mock: なし
         expected: 送った結果（`role="status"`）が、前者は確かめの印と「2 件を送り、Claude Code に入力しました（12:04）。」、後者は注意の印と「2 件を送りましたが、Claude Code には入力できませんでした（12:04）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。」
+      - name: test_review_view_when_change_set_link
+        case: 正常
+        summary: 行の本文のまとまりのリンクと、文字のままの項目の ID
+        condition: レビュー中に本文 `[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる` の返信 1 件。`titleOf` は T-14、`changeSetOf` は V-6 を引く
+        mock: '`on.changeSet`・`on.openId`'
+        expected: 行の `p.review-body` に `a.setlink` が 1 つで、T-14 は文字のまま（`button` が無い）。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openThread` は呼ばれない
   - name: diffMinimapFrame
     title: 差分のミニマップ
     container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
@@ -1678,6 +1705,40 @@ components:
         condition: 印が 3 つの帯。先頭の印にフォーカスして `ArrowDown`・`End`・`Home`・`ArrowUp` を送る
         expected: フォーカスが 2 つ目 → 3 つ目 → 1 つ目 → 1 つ目（先頭より前へは移らない）。`tabindex="0"` はフォーカスのある印だけ。`location.hash` が変わらない
         mock: なし（DOM を作って見る）
+  - name: postBody
+    title: 書き込みの本文
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
+    usecase: スレッドで話す
+    kind: コンポーネント
+    summary: 書き込みの本文を `splitPostBody` で切り分け、改行を保った文字の `p` を返す（Markdown としては描かない）。項目の ID はボタン（`button.idlink`。`title` にタイトル、`data-focus` は `post-id:{ID}`）、まとまりのリンクは `a`（クラス `setlink`。`href` は `#diff={まとまりの ID}`、`title` にまとまりの説明、`data-focus` は `post-set:{ID}`）にする。まとまりのリンクを押すと既定の動作を止めて `on.changeSet` にまとまりの ID を渡す。リンクの見た目は詳細の本文のまとまりのリンクと同じにする（`style.css`）
+    props:
+      - name: body
+        type: string
+        required: true
+        description: 本文
+      - name: titles
+        type: '(id: string) => string | null'
+        required: true
+        description: 項目のタイトル。レビュー中を確かめる画面の行は `() => null` を渡して項目の ID を文字のまま出す
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: true
+        description: まとまりの説明
+      - name: className
+        type: "'post-body' | 'review-body'"
+        required: true
+        description: '`p` のクラス'
+      - name: on
+        type: '{openId, changeSet}'
+        required: true
+        description: 項目の ID を押した・まとまりのリンクを押した
+    unit_tests:
+      - name: test_post_body
+        case: 正常
+        summary: 項目の ID のボタンとまとまりのリンクを描き分ける
+        condition: '本文 `[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)`。`titles` は A-14・D-12、`changeSets` は V-6 だけ。`parametrize`: `titles` をそのまま / `() => null`'
+        mock: '`on.openId`・`on.changeSet`'
+        expected: '`a.setlink` が 1 つで、文字が「A-14 の書き直し」、`href` が `#diff=V-6`、`title` が V-6 の説明で、中に `button` が無い。`[古い](#diff=V-99)` は文字のまま。`titles` をそのまま渡したときは D-12 が `button.idlink`、`() => null` のときは D-12 も文字。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openId` は呼ばれず、`location.hash` は変わらない'
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -2491,7 +2552,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     usecase: スレッドで話す
     scope: public
-    summary: 書き込みの本文を、文字の部分と記録にある項目の ID の部分に切り分ける
+    summary: 書き込みの本文を、文字の部分・記録にある項目の ID の部分・記録にあるまとまりを指すまとまりのリンクの部分に切り分ける
     args:
       - name: body
         type: string
@@ -2503,12 +2564,18 @@ functions:
         required: true
         passing: positional
         description: 項目のタイトル（記録に無ければ `null`）
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        passing: positional
+        description: まとまりの説明（記録に無いまとまりの ID と `since`・`pending`・空の値は `null`）
     returns:
-      type: '({text: string} | {id: string, title: string})[]'
-      description: 本文の順の部分。つなぐと元の本文になる
+      type: '({text: string} | {id: string, title: string} | {set: string, label: string, summary: string})[]'
+      description: 本文の順の部分。`set` はまとまりの ID、`label` は `[文言](#...)` の文言。まとまりのリンクの部分を `[{label}](#...)` に戻してつなぐと元の本文になる
     process: |-
-      1. `\b[A-Z]{1,2}-\d+\b` に合う文字列を順に見る
-      2. `titles` が `null` でないものだけを `{id, title}` にし、その前後の文字を `{text}` にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）
+      1. `\[([^\]\n]+)\]\(#([^)\s]*)\)` に合う文字列を順に見る。`#` の後ろを `URLSearchParams` で読んだ `diff` の値を `changeSets` で引き、`null` でなければ `{set: 値, label: 文言, summary}` にする（文言の中の項目の ID は切り出さない。`diff` 以外の引数は見ない）
+      2. まとまりのリンクにしなかった文字（まとまりのリンクにならない `[文言](...)` を含む）は、`\b[A-Z]{1,2}-\d+\b` に合う文字列のうち `titles` が `null` でないものだけを `{id, title}` にし、その前後の文字を `{text}` にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）
     unit_tests:
       - name: test_split_post_body
         case: 正常
@@ -2516,6 +2583,12 @@ functions:
         condition: '`parametrize`: `D-12 を案 B に。T-14 も` / `D-99 は無い` / `TH-1 と AD-12 と D-12x` / 空文字。`titles` は D-12・T-14 だけ'
         mock: なし
         expected: "`[{id: D-12}, {text}, {id: T-14}, {text}]` / `[{text}]` / `[{text}]` / `[{text: ''}]`。どれもつなぐと元の本文"
+      - name: test_split_post_body_when_change_set_link
+        case: 正常
+        summary: 記録にあるまとまりを指すリンクだけを切り出し、文言の中の ID は切り出さない
+        condition: 本文 `[D-1 を直した](#diff=V-1)。[無い](#diff=V-99)・[前回](#diff=since)・[未](#diff=pending)・[空](#diff=)・[見出し](#決め方)・[外](https://example.com)・[他](#tab=tasks&id=D-2&diff=V-2)・D-2`。`titles` は D-1・D-2、`changeSets` は V-1・V-2 だけ
+        mock: なし
+        expected: "順に `{set: 'V-1', label: 'D-1 を直した'}`・`{text: '。[無い](#diff=V-99)・[前回](#diff=since)・[未](#diff=pending)・[空](#diff=)・[見出し](#決め方)・[外](https://example.com)・'}`・`{set: 'V-2', label: '他'}`・`{text: '・'}`・`{id: 'D-2'}`。まとまりのリンクの部分の `summary` は `changeSets` の説明"
   - name: visibleThreads
     title: 一覧に出すスレッド
     kind: 関数
