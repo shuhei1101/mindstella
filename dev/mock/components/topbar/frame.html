@@ -19,12 +19,12 @@
     @media (max-width: 389px) {
       /* 押せない飾りのツール名: 名前は常に隠し、差分の札を出している間は印も隠して札に幅を回す */
       .topbar .brand-name, .topbar:has(.df-chip) .brand { display: none; }
-      /* トップバー: 左右の余白を詰め、差分の札を出している間も要素の間隔を 3px にする */
-      .topbar, .topbar:has(.df-chip), .topbar:has(.conn):has(.df-chip) { gap: 3px; padding: 0 8px; }
+      /* トップバー: 左右の余白を詰め、差分の札を出している間も要素の間隔を 1px にする */
+      .topbar, .topbar:has(.df-chip), .topbar:has(.conn):has(.df-chip) { gap: 1px; padding: 0 8px; }
       /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 高さは保ち、幅を 28px に揃えて縮ませない */
       .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
-      /* 表示の設定・絞り込み・コメントのボタン: 左右の余白を 4px に揃える */
-      .topbar :is(.comments-btn, .filter-btn, .settings-btn) { padding: 0 4px; }
+      /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える */
+      .topbar :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
     }
   </style>
   <style>
