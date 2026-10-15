@@ -61,4 +61,4 @@ $ ruff check plugins tests  (develop の worktree)
 Found 23 errors.
 [*] 21 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).
 
-作業 PR の変更ファイル (.css / .ts) に ruff の対象は無く、23 件は base と同数・同内容の既存の違反。
+作業 PR の変更ファイル (.css / .ts / .html) に ruff の対象は無く、23 件は base と同数・同内容の既存の違反。
