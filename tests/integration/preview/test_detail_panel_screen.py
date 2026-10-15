@@ -12,7 +12,6 @@ from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, open
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import (
-    ALIAS_BODY,
     MARK_IN_PANEL_BODY_JS,
     MARK_MARGIN_PX,
     MIXED_IDS,
