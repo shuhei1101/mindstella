@@ -449,6 +449,70 @@ states:
         value: 'true'
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: FitNarrowest
+    description: 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。ツール名の文字を隠し（印は残す）、印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませず、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白 2px・ボタンの中の印と件数の間隔 2px に詰める。ボタンを 1 つも隠さず、絞り込みのバッジ 2 桁・コメントの件数 `99+` までトップバーもページも横にはみ出さない。幅 390px 以上は `FilterHistoryNarrow` と同じ
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 320px・361px・389px・390px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: FitNarrowestDiff
+    description: 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。`FitNarrowest` の詰め方に加えてツール名の印も隠し、差分の間の要素の間隔も 1px にする。札は空いた幅まで伸び、どの幅でも `5.5em` 以上を取る。トップバーもページも横にはみ出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+    notes:
+      見せ方: Storybook の画面幅を 320px・361px・389px・390px にして見せる
+  - name: FitNarrowestOffline
+    description: 幅 320〜389px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、接続の状態は印だけにする。ツール名の印は残す。トップバーもページも横にはみ出さない
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '2'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 320px・361px・389px・390px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: FitNarrowestOfflineDiff
+    description: 幅 320〜389px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。収める中身が最も広い組み合わせ。`FitNarrowestDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+    notes:
+      見せ方: Storybook の画面幅を 320px・361px・389px・390px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける

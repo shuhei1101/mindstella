@@ -309,3 +309,79 @@ export const FilterDiffNarrow: Story = {
   },
   ...narrowViewport,
 };
+
+// 幅 320〜389px のストーリーは、設計書の見せ方の 4 つの幅（320・361・389・390px）を切り替えて見せる。既定は最も狭い 320px
+const fitViewport = {
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: {
+        w320: { name: "幅 320px", styles: { width: "320px", height: "568px" } },
+        w361: { name: "幅 361px", styles: { width: "361px", height: "844px" } },
+        w389: { name: "幅 389px", styles: { width: "389px", height: "844px" } },
+        w390: { name: "幅 390px", styles: { width: "390px", height: "844px" } },
+      },
+    },
+  },
+  globals: { viewport: { value: "w320", isRotated: false } },
+} satisfies Story;
+
+/** 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。ツール名の文字を隠し（印は残す）、印だけのボタンを高さ 32px・幅 28px に揃えて縮ませず、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白 2px・ボタンの中の印と件数の間隔 2px に詰める。ボタンを 1 つも隠さず、絞り込みのバッジ 2 桁・コメントの件数 `99+` までトップバーもページも横にはみ出さない */
+export const FitNarrowest: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。`FitNarrowest` の詰め方に加えてツール名の印も隠し、差分の間の要素の間隔も 1px にする。札は空いた幅まで伸び、どの幅でも 5.5em 以上を取る。トップバーもページも横にはみ出さない */
+export const FitNarrowestDiff: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、接続の状態は印だけにする。ツール名の印は残す。トップバーもページも横にはみ出さない */
+export const FitNarrowestOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。収める中身が最も広い組み合わせ。`FitNarrowestDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも 5.5em 以上を取り、トップバーもページも横にはみ出さない */
+export const FitNarrowestOfflineDiff: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...fitViewport,
+};
