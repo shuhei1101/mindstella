@@ -1520,10 +1520,10 @@ namespace MindmapPreview {
     }
   }
 
-  /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（本文に無ければ false） */
+  /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（見えている見出しが本文に無ければ false。左右に並べるときは同じ見出しが 3 か所にあるので、矩形を持つ最初のものへ送る） */
   function scrollToHeading({ root, slug }: { root: ParentNode; slug: string }): boolean {
-    const target = root.querySelector(`[data-heading="${CSS.escape(slug)}"]`);
-    if (target === null) return false;
+    const target = [...root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)].find(isRendered);
+    if (target === undefined) return false;
     target.scrollIntoView({ block: "start" });
     return true;
   }

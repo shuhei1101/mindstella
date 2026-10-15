@@ -35,6 +35,7 @@ var MindmapPreview;
     function isRendered(element) {
         return element.getClientRects().length > 0;
     }
+    MindmapPreview.isRendered = isRendered;
     /** 前に無かったキーの差分の行か（前の値が「（なし）」） */
     function isNewKey(row) {
         const was = row.querySelector("del.df-was");
@@ -100,6 +101,8 @@ var MindmapPreview;
         }
         // HTML の本文の枠の中の印
         for (const frame of body.querySelectorAll("iframe.html-frame")) {
+            if (!isRendered(frame))
+                continue;
             for (const element of frame.contentDocument?.querySelectorAll("[data-df]") ?? []) {
                 found.push({ kind: element.getAttribute("data-df") === "add" ? "add" : "chg", first: element, last: element, frame });
             }

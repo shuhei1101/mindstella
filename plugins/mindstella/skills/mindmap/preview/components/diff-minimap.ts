@@ -64,7 +64,7 @@ namespace MindmapPreview {
   ].join(", ");
 
   /** 要素が見えているか（畳んだ Raw などは矩形を持たない） */
-  function isRendered(element: Element): boolean {
+  export function isRendered(element: Element): boolean {
     return element.getClientRects().length > 0;
   }
 
@@ -127,6 +127,7 @@ namespace MindmapPreview {
     }
     // HTML の本文の枠の中の印
     for (const frame of body.querySelectorAll<HTMLIFrameElement>("iframe.html-frame")) {
+      if (!isRendered(frame)) continue;
       for (const element of frame.contentDocument?.querySelectorAll("[data-df]") ?? []) {
         found.push({ kind: element.getAttribute("data-df") === "add" ? "add" : "chg", first: element, last: element, frame });
       }
