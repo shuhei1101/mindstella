@@ -9,17 +9,29 @@ import socket
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
 
+import yaml
 from playwright.sync_api import Page
-from preview_helpers import OpenInEmptyContext, OpenPreview, row_ids
+from preview_helpers import (
+    COMMENTS_PANEL,
+    THREAD_HEADING,
+    THREAD_POSTS,
+    OpenInEmptyContext,
+    OpenPreview,
+    open_thread,
+    row_ids,
+)
 from readme_helpers import preview_section
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     McpServer,
     SnapshotTree,
     StartServer,
+    WriteThreads,
 )
 
 if TYPE_CHECKING:
@@ -279,3 +291,76 @@ def test_normal_when_body_link_written_to_record(
         # 検証（D-1 に変更の印が付き、D-2 には付かない）
         marks = opened.eval_on_selector_all("table.grid tbody tr", ROW_MARKS_SCRIPT)
         assert marks == {"D-1": "df-mark df-chg", "D-2": None}
+
+
+def test_normal_when_thread_link_written(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    start_server: StartServer,
+    open_in_empty_context: OpenInEmptyContext,
+) -> None:
+    """スレッドに直したまとまりを書くと、ポートを含まないリンクになり、配信を別のポートで立て直しても開ける（正常系）。"""
+    # 準備（D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ。D-1 へのスレッドの書き込みは利用者の `D-1 を直してほしい` だけで、取り込み待ち）
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    ws = str(root)
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="D-1 を直してほしい", created="2026-10-12T01:00:00+00:00"),
+            summary="D-1 を直してほしい",
+            target="D-1",
+        ),
+    )
+    first = start_server()
+    _call(first, "update", workspace=ws, id="D-2", item={"body_markdown": "D-2 の本文を直した\n"})
+    _call(first, "commit", workspace=ws, summary="D-2 を直す")
+    # 実行（取り込み待ちのスレッドを読み、D-1 を直してまとめ、V-2 を指すリンクを書いた返信を足す）
+    awaiting = _call(first, "threads", workspace=ws, awaiting=True)["items"]
+    _call(first, "thread", workspace=ws, id="TH-1")
+    _call(first, "update", workspace=ws, id="D-1", item={"body_markdown": "D-1 の本文を直した\n"})
+    set_id = str(_call(first, "commit", workspace=ws, summary="D-1 を直す")["id"])
+    _call(
+        first,
+        "reply",
+        workspace=ws,
+        id="TH-1",
+        body=f"D-1 を直しました。[D-1 を直したところ](#diff={set_id})",
+        summary="D-1 を直した",
+    )
+    old_port = urlsplit(str(_call(first, "preview_url", workspace=ws)["url"])).port
+    # 検証（足した返信の本文が (#diff=V-2) で終わるリンクを持ち、ホストとポートを含まない）
+    threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))["items"]
+    reply = threads[0]["posts"][-1]
+    assert [item["id"] for item in awaiting] == ["TH-1"]
+    assert set_id == "V-2"
+    assert reply["author"] == "ai"
+    assert reply["body"].rstrip().endswith(f"(#diff={set_id})")
+    assert "127.0.0.1" not in reply["body"]
+    assert "http" not in reply["body"]
+    # 実行（配信を止め、前のポートを塞いだまま別のポートで立て直し、コメントの一覧から D-1 へのスレッドを開く）
+    first.stop()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupier:
+        occupier.bind(("127.0.0.1", old_port))
+        occupier.listen()
+        second = start_server()
+        new_url = str(_call(second, "preview_url", workspace=ws)["url"])
+        # 検証（立て直した配信のポートが、立て直す前と違う）
+        assert urlsplit(new_url).port != old_port
+        opened = open_in_empty_context(f"{new_url}#tab=decisions&view=table")
+        opened.wait_for_selector("table.grid tbody tr")
+        open_thread(opened, "TH-1")
+        opened.wait_for_selector(f"{THREAD_POSTS}:nth-child(2) .post-body a.setlink")
+        # 実行（AI の返信の V-2 を指すリンクを押す）
+        opened.locator(f"{THREAD_POSTS}:nth-child(2) .post-body a.setlink").click()
+        opened.wait_for_selector(".df-chip", timeout=CHIP_TIMEOUT_MS)
+        # 検証（V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かず、D-1 へのスレッドの画面が開いたまま）
+        assert opened.inner_text(".df-chip-t").endswith("D-1 を直す")
+        marks = opened.eval_on_selector_all("table.grid tbody tr", ROW_MARKS_SCRIPT)
+        assert marks == {"D-1": "df-mark df-chg", "D-2": None}
+        assert opened.locator(f"{COMMENTS_PANEL}.open").count() == 1
+        assert opened.locator(THREAD_HEADING).count() == 1
+        assert parse_qs(urlsplit(opened.url).fragment)["diff"] == [set_id]

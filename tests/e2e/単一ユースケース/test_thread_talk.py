@@ -6,7 +6,8 @@ MCP サーバーを立て、サーバーが配るプレビューを実際のブ�
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs
 
 import yaml
 from playwright.sync_api import Page
@@ -50,6 +51,9 @@ from workspace_fixtures import (
     WriteComments,
     WriteThreads,
 )
+
+if TYPE_CHECKING:
+    from conftest import Replay
 
 # AI が立てたスレッドの問いと、利用者の返信の本文
 AI_QUESTION = "D-1 の比べた結果を Issue に起票してよいですか"
@@ -754,3 +758,82 @@ def test_normal_when_unseen_reply_opened(
     # 検証
     assert page.locator(UNREAD_MARK).count() == 0
     assert page.locator(UNREAD_DOT).count() == 0
+
+
+# AI の書き込みの本文（まとまりのリンク 1 つと、リンクにしない書き方 3 つ）
+POST_LINK_BODY = (
+    "[D-1 を直した](#diff=V-1)。[無いまとまり](#diff=V-99)・[前回から](#diff=since)"
+    "・[決め方へ](#決め方) も見てください"
+)
+
+# 差分の表示の札が出るまで待つ上限ミリ秒
+CHIP_TIMEOUT_MS = 10_000
+
+# 検討事項の表の行ごとに、変更の印の class（印が無ければ null）を読む
+ROW_MARKS_SCRIPT = """rows => Object.fromEntries(rows.map(
+    r => [r.dataset.id, r.querySelector('.row-open + .df-mark')?.className ?? null]
+))"""
+
+# 端末の保存領域に残した選んだ時点を読む
+SAVED_DIFF_SCRIPT = "JSON.parse(localStorage.getItem('mindmap-preview') || '{}').diffSel ?? null"
+
+
+def test_normal_when_post_link_to_change_set(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """AI の書き込みの中のまとまりのリンクだけがリンクで、押すとスレッドを開いたまま、そのまとまりの差分の表示に切り替わる（正常系）。"""
+    # 準備（まとまり V-1・V-2 を持つワークスペースと、まとまりのリンクを書いた AI のスレッド）
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    ws = str(root)
+    for item_id in ("D-1", "D-2"):
+        replay("update", workspace=ws, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"})
+        replay("commit", workspace=ws, summary=f"{item_id} を直す")
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", author="ai", body=POST_LINK_BODY, created=T_0100),
+            summary="直したところ",
+        ),
+    )
+    url = str(replay("preview_url", workspace=ws)["url"])
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    history_before = page.evaluate("history.length")
+    # 実行（コメントのボタンを押し、スレッドの行を押す）
+    open_thread(page, "TH-1")
+    post = f"{THREAD_POSTS}:nth-child(1) .post-body"
+    # 検証（「D-1 を直した」だけがリンクで、中の D-1 は項目を開くボタンにならない）
+    assert page.eval_on_selector_all(
+        f"{post} a.setlink", "links => links.map(a => a.textContent)"
+    ) == ["D-1 を直した"]
+    assert page.locator(f"{post} a.setlink button").count() == 0
+    assert page.locator(f"{post} button.idlink").count() == 0
+    text = page.inner_text(post)
+    assert "[D-1 を直した" not in text
+    assert "](#diff=V-1)" not in text
+    # 検証（まとまりを指さないものは書いた文字のまま）
+    for literal in ("[無いまとまり](#diff=V-99)", "[前回から](#diff=since)", "[決め方へ](#決め方)"):
+        assert literal in text
+    # 実行（「D-1 を直した」を押す）
+    page.locator(f"{post} a.setlink", has_text="D-1 を直した").click()
+    page.wait_for_selector(".df-chip", timeout=CHIP_TIMEOUT_MS)
+    # 検証（V-1 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かない）
+    assert page.inner_text(".df-chip-t").endswith("D-1 を直す")
+    marks = page.eval_on_selector_all("table.grid tbody tr", ROW_MARKS_SCRIPT)
+    assert marks == {"D-1": "df-mark df-chg", "D-2": None}
+    # 検証（ハッシュの diff・端末の保存領域の選んだ時点が V-1 で、履歴の数は増えない）
+    assert parse_qs(str(page.evaluate("location.hash")).lstrip("#"))["diff"] == ["V-1"]
+    assert page.evaluate(SAVED_DIFF_SCRIPT) == "V-1"
+    assert page.evaluate("history.length") == history_before
+    # 検証（スレッドの画面が開いたままで、書き込みが同じく出ている）
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.locator(THREAD_HEADING).count() == 1
+    assert page.inner_text(post) == text
