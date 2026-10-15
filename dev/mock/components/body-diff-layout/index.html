@@ -37,6 +37,13 @@
     .segment button.is-focus { outline: 2px solid var(--accent); outline-offset: -2px; }
     /* 狭い幅の見本: 画面幅によらず、狭い画面幅で出すインラインの本文を見せる */
     .stage.narrow .sbs-fallback { display: block; }
+    /* 狭い画面幅でカタログを開いたとき: 狭い幅の見本の外では、左右に並べた見本と切り替えを隠さずに見せる */
+    @media (max-width: 720px) {
+      .stage:not(.narrow) .sbs { display: grid !important; }
+      .stage:not(.narrow) .sbs-only { display: grid !important; }
+      .stage:not(.narrow) .sbs-switch { display: inline-flex !important; }
+      .stage:not(.narrow) .body-diff-bar { display: flex !important; }
+    }
     /* 見本の切り替えの行: 台の中では下の余白を詰める */
     .stage .body-diff-bar, .stage .html-diff-bar { margin: 0; }
   </style>
