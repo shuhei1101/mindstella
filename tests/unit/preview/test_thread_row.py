@@ -295,7 +295,7 @@ def test_any_open_unseen(
 
 # withSeen を呼び、返り値・呼んだ後の渡した並び・返り値のオープンの未読の有無を集める JavaScript
 WITH_SEEN_SCRIPT = """(args) => {
-    const result = MindmapPreview.withSeen(args.threads, args.id);
+    const result = MindmapPreview.withSeen({ threads: args.threads, id: args.id });
     return {
         result,
         input: args.threads,

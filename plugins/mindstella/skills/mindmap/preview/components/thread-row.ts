@@ -64,7 +64,7 @@ namespace MindmapPreview {
   }
 
   /** 指したスレッドの書き込みを全て既読にした新しい並び（渡した並びは書き換えない。ID が無ければ同じ中身の並び） */
-  export function withSeen(threads: Thread[], id: string): Thread[] {
+  export function withSeen({ threads, id }: { threads: Thread[]; id: string }): Thread[] {
     return threads.map((thread) =>
       thread.id === id ? { ...thread, posts: thread.posts.map((post) => ({ ...post, seen: true })) } : thread,
     );

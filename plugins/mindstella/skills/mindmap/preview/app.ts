@@ -1120,13 +1120,14 @@ namespace MindmapPreview {
       if (thread === undefined || !hasUnseen(thread)) return;
       seenSending.add(opened.id);
       const wasUnseen = anyOpenUnseen(comment.threads);
-      comment.threads = withSeen(comment.threads, opened.id);
+      comment.threads = withSeen({ threads: comment.threads, id: opened.id });
       if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
       void threadsApi
         .seen(opened.id)
         .then(async (result) => {
           if (result.ok) return;
-          // 断られた・届かないとき: 失敗を控えて、写しをサーバーの値に戻す
+          // 断られた・届かないとき: 送っている控えから失敗の控えへ移して、写しをサーバーの値に戻す
+          seenSending.delete(opened.id);
           seenFailed.add(opened.id);
           await loadThreads();
           renderComments();
@@ -1139,7 +1140,11 @@ namespace MindmapPreview {
       const result = await threadsApi.read();
       if (result.ok && result.data !== null) {
         const wasUnseen = anyOpenUnseen(comment.threads);
-        comment.threads = result.data.threads;
+        // 既読にする要求を送っている間は、送る前のサーバーの値で写しを未読に戻さない
+        comment.threads = [...seenSending].reduce(
+          (threads, id) => withSeen({ threads, id }),
+          result.data.threads,
+        );
         comment.threadsError = null;
         if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
         markOpenedSeen();
