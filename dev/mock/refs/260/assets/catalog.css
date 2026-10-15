@@ -1,0 +1,18 @@
+/* 部品のモックのカタログのうち、#235 のカタログの見た目に足すもの（実画面には無い） */
+
+/* 案の列: 左のパネルと同じ幅で、案 A と案 B を横に並べる */
+.cat-col { width: var(--drawer-w); max-width: 100%; min-width: 0; }
+/* 狭い幅の見本の案の列: 台の幅いっぱい */
+.stage.narrow .cat-col { width: 100%; }
+/* 案の列の見出し */
+.cat-col-label { margin: 0 0 6px; color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; }
+/* レビュー中を確かめる画面の行の本文の見本: 行と同じ枠と余白 */
+.review-row-sample { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+/* 見本の状態: 案 A のホバー */
+a.post-diff.is-hover { text-decoration-color: var(--accent); }
+/* 見本の状態: 案 B のホバー */
+.idlink.post-diff.is-hover { border-color: var(--accent); color: var(--accent); }
+/* 見本の状態: キーボードのフォーカス */
+.post-diff.is-focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* ライト / ダークの切り替えのボタン: 題の右 */
+.cat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

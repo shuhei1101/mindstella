@@ -1,0 +1,65 @@
+# lint
+# commit: 9a3529ee
+# 実行日時: 2026-10-15 12:47:58 JST
+$ ruff check plugins tests --output-format concise
+# 変更したファイルは .ts / .js / .css / SKILL.md で、Python の変更は無い。違反 23 件は base ブランチ（c433ba0f）と同じ（行・列を除いて突き合わせ、新しい違反なし）
+plugins/mindstella/skills/mindmap/scripts/html_body.py:114:39: B905 `zip()` without an explicit `strict=` parameter
+plugins/mindstella/skills/mindmap/scripts/server.py:164:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:175:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:218:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:229:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:298:76: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:328:74: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:432:69: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:466:61: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:481:61: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:495:61: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:531:33: RUF100 [*] Unused `noqa` directive (unused: `BLE001`)
+tests/e2e/preview_helpers.py:18:11: RUF022 [*] `__all__` is not sorted
+tests/e2e/preview_helpers.py:267:40: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/e2e/preview_helpers.py:274:86: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/external_access_helpers.py:130:73: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+tests/integration/browser_tab_helpers.py:38:32: RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+tests/integration/preview/preview_comment_helpers.py:14:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/preview_html_body_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/test_detail_panel_screen.py:15:5: F401 [*] `preview_alias_helpers.ALIAS_BODY` imported but unused
+tests/integration/skill/register_helpers.py:19:11: RUF022 [*] `__all__` is not sorted
+tests/integration/storybook/storybook_frame_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/unit/scripts/test_register.py:131:20: S604 Function call with truthy `shell` parameter identified, security issue
+Found 23 errors.
+[*] 21 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).
+
+$ npm run typecheck
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+exit: 0
+
+# base ブランチ（c433ba0f）で同じ ruff のコマンドを回した出力
+$ ruff check plugins tests --output-format concise
+plugins/mindstella/skills/mindmap/scripts/html_body.py:114:39: B905 `zip()` without an explicit `strict=` parameter
+plugins/mindstella/skills/mindmap/scripts/server.py:164:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:175:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:218:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:229:25: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:298:76: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:328:74: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:432:69: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:466:61: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:481:61: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:495:61: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+plugins/mindstella/skills/mindmap/scripts/server.py:531:33: RUF100 [*] Unused `noqa` directive (unused: `BLE001`)
+tests/e2e/preview_helpers.py:18:11: RUF022 [*] `__all__` is not sorted
+tests/e2e/preview_helpers.py:267:40: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/e2e/preview_helpers.py:274:86: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/external_access_helpers.py:130:73: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+tests/integration/browser_tab_helpers.py:38:32: RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+tests/integration/preview/preview_comment_helpers.py:14:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/preview_html_body_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/test_detail_panel_screen.py:15:5: F401 [*] `preview_alias_helpers.ALIAS_BODY` imported but unused
+tests/integration/skill/register_helpers.py:19:11: RUF022 [*] `__all__` is not sorted
+tests/integration/storybook/storybook_frame_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/unit/scripts/test_register.py:131:20: S604 Function call with truthy `shell` parameter identified, security issue
+Found 23 errors.
+[*] 21 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).

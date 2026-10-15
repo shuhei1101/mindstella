@@ -4,42 +4,84 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 本文の中の項目の ID（例 D-1・T-12・A-3） */
     const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
-    /** 書き込みの本文を、文字の部分と記録にある項目の ID の部分に切り分ける（つなぐと元の本文になる） */
-    function splitPostBody(body, titles) {
+    /** 本文の中の `[文言](#...)` のリンク（文言は 1 行、`#` の後ろは空白と `)` を含まない） */
+    const HASH_LINK_PATTERN = /\[([^\]\n]+)\]\(#([^)\s]*)\)/g;
+    /** 文字の中の項目の ID のうち、記録にあるものだけを切り出す（残りは文字のまま、前後の文字が無ければ部分を作らない） */
+    function splitItemIds(text, titles) {
         const parts = [];
         let last = 0;
-        for (const match of body.matchAll(ITEM_ID_PATTERN)) {
+        for (const match of text.matchAll(ITEM_ID_PATTERN)) {
             const title = titles(match[0]);
             // 記録に無い ID（スレッドの ID を含む）は文字のまま残す
             if (title === null)
                 continue;
-            const before = body.slice(last, match.index);
+            const before = text.slice(last, match.index);
             if (before !== "")
                 parts.push({ text: before });
             parts.push({ id: match[0], title });
             last = match.index + match[0].length;
         }
-        const rest = body.slice(last);
-        // 残りの文字がある、または部分が 1 つも無い（空の本文）
-        if (rest !== "" || parts.length === 0)
+        const rest = text.slice(last);
+        if (rest !== "")
             parts.push({ text: rest });
         return parts;
     }
+    /** 書き込みの本文を、文字の部分・記録にある項目の ID の部分・記録にあるまとまりを指すリンクの部分に切り分ける（リンクの部分を `[文言](#...)` に戻してつなぐと元の本文になる） */
+    function splitPostBody(body, titles, changeSets = () => null) {
+        const parts = [];
+        let last = 0;
+        for (const match of body.matchAll(HASH_LINK_PATTERN)) {
+            // `diff` だけを読む（他の引数は無視する）。記録にあるまとまりを指さないリンクは文字のまま残す
+            const set = new URLSearchParams(match[2]).get("diff");
+            const summary = set === null ? null : changeSets(set);
+            if (set === null || summary === null)
+                continue;
+            parts.push(...splitItemIds(body.slice(last, match.index), titles));
+            parts.push({ set, label: match[1], summary });
+            last = match.index + match[0].length;
+        }
+        parts.push(...splitItemIds(body.slice(last), titles));
+        // 部分が 1 つも無い（空の本文）
+        if (parts.length === 0)
+            parts.push({ text: "" });
+        return parts;
+    }
     MindmapPreview.splitPostBody = splitPostBody;
-    /** 本文（改行を保った文字。項目の ID はその項目を開くボタン） */
-    function postBody({ body, titles, onOpenId }) {
+    /** 本文（改行を保った文字。項目の ID はその項目を開くボタン、記録にあるまとまりを指すリンクはまとまりのリンク） */
+    function postBody({ body, titles, changeSets, className, on, }) {
         return MindmapPreview.h({
             tag: "p",
-            attrs: { class: "post-body" },
-            children: splitPostBody(body, titles).map((part) => "id" in part
-                ? MindmapPreview.h({
-                    tag: "button",
-                    attrs: { class: "idlink", type: "button", title: part.title, "data-focus": `post-id:${part.id}`, onclick: () => onOpenId(part.id) },
-                    children: [part.id],
-                })
-                : part.text),
+            attrs: { class: className },
+            children: splitPostBody(body, titles, changeSets).map((part) => {
+                if ("id" in part) {
+                    return MindmapPreview.h({
+                        tag: "button",
+                        attrs: { class: "idlink", type: "button", title: part.title, "data-focus": `post-id:${part.id}`, onclick: () => on.openId(part.id) },
+                        children: [part.id],
+                    });
+                }
+                if ("set" in part) {
+                    return MindmapPreview.h({
+                        tag: "a",
+                        attrs: {
+                            class: "setlink",
+                            href: `#${new URLSearchParams({ diff: part.set }).toString()}`,
+                            title: part.summary,
+                            "data-focus": `post-set:${part.set}`,
+                            onclick: (event) => {
+                                // ハッシュの書き換えは使う側に任せる
+                                event.preventDefault();
+                                on.changeSet(part.set);
+                            },
+                        },
+                        children: [part.label],
+                    });
+                }
+                return part.text;
+            }),
         });
     }
+    MindmapPreview.postBody = postBody;
     /** 状態の記録（枠の無い 1 行に、書き手・したこと・日時と、あれば理由） */
     function eventItem(event) {
         const closed = event.kind === "closed";
@@ -62,7 +104,7 @@ var MindmapPreview;
         });
     }
     /** レビュー中の書き込み（破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く） */
-    function pendingItem({ item, titles, editing, editBody, editError, on, }) {
+    function pendingItem({ item, titles, changeSets, editing, editBody, editError, on, }) {
         return MindmapPreview.h({
             tag: "li",
             attrs: { class: "post user pending", "data-comment": item.id },
@@ -79,18 +121,18 @@ var MindmapPreview;
                 }),
                 editing
                     ? MindmapPreview.reviewEditForm({ item, body: editBody, error: editError, focus: "", on: { saveEdit: on.saveEdit, cancelEdit: on.cancelEdit } })
-                    : postBody({ body: item.body, titles, onOpenId: on.openId }),
+                    : postBody({ body: item.body, titles, changeSets, className: "post-body", on: { openId: on.openId, changeSet: on.changeSet } }),
             ],
         });
     }
     /** スレッドの書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す */
-    function threadPost({ post = null, event = null, pending = null, titles = () => null, editing = false, editBody = null, editError = null, on, }) {
+    function threadPost({ post = null, event = null, pending = null, titles = () => null, changeSets = () => null, editing = false, editBody = null, editError = null, on, }) {
         // 状態の記録
         if (event !== null)
             return eventItem(event);
         // レビュー中の書き込み
         if (pending !== null)
-            return pendingItem({ item: pending, titles, editing, editBody, editError, on });
+            return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, on });
         // 書き込みが無い（渡し方の誤り）
         if (post === null)
             throw new Error("threadPost には post・event・pending のどれか 1 つを渡す");
@@ -106,7 +148,7 @@ var MindmapPreview;
                         MindmapPreview.h({ tag: "time", attrs: { datetime: post.created }, children: [MindmapPreview.formatJst(post.created)] }),
                     ],
                 }),
-                postBody({ body: post.body, titles, onOpenId: on.openId }),
+                postBody({ body: post.body, titles, changeSets, className: "post-body", on: { openId: on.openId, changeSet: on.changeSet } }),
             ],
         });
     }
