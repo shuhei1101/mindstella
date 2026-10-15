@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from playwright.sync_api import Page
 from preview_helpers import (
+    OpenInEmptyContext,
     OpenPreview,
     click_item_ball,
     pick_history_point,
@@ -132,9 +133,10 @@ def test_normal(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     snapshot_tree: SnapshotTree,
+    open_in_empty_context: OpenInEmptyContext,
     page: Page,
 ) -> None:
-    """変更履歴から書き換えのまとまりを選び、概要の要見直しから D-3 の詳細を開き、ネットワークで D-3 を押して、終えた URL を開き直す（正常系）。"""
+    """変更履歴から書き換えのまとまりを選び、概要の要見直しから D-3 の詳細を開き、ネットワークで D-3 を押して、終えた URL を端末の保存領域が空のブラウザで開き直す（正常系）。"""
     # 準備（プレビューを一度開いて閉じた後に、D-3 の状態と本文を書き換え、D-6 を足して 1 つのまとまりにする）
     root = make_workspace(
         *_records(make_item),
@@ -145,7 +147,7 @@ def test_normal(
     served = call_tool("preview_url", workspace=ws)
     assert served.data is not None
     url = served.data["url"]
-    visit_and_close(page, url)
+    visit_and_close(page, url, root)
     replay(
         "update", workspace=ws, id="D-3", item={"status": "要見直し", "body_markdown": BODY_D3_AFTER}
     )
@@ -168,16 +170,15 @@ def test_normal(
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
     final_url = page.url
-    # 検証（終えたときの URL を新しいタブで開くと、ネットワークの画面と D-3 の詳細パネルが開く）
-    reopened = page.context.new_page()
-    reopened.goto(final_url)
-    reopened.wait_for_selector("main#main > *", state="attached", timeout=RENDER_TIMEOUT_MS)
+    # 検証（終えたときの URL を端末の保存領域が空の新しいブラウザのコンテキストで開くと、ネットワークの画面と D-3 の詳細パネルが開く）
+    reopened = open_in_empty_context(final_url)
     reopened.wait_for_selector("aside.panel.open")
     assert reopened.get_attribute('nav.tabbar a[data-tab="graph"]', "aria-current") == "page"
     assert reopened.inner_text("aside.panel .d-title") == "D-3の題"
     assert reopened.locator("#graph-canvas").count() == 1
-    # 検証（新しいタブで開いた画面でも、選んだ時点の差分の表示のままで、D-3 の本文に足した・消した印がある）
+    # 検証（新しいコンテキストで開いた画面でも、選んだまとまりの差分の表示で開き、D-3 の本文に足した・消した印がある）
     assert reopened.locator(".df-chip").count() == 1
+    assert reopened.inner_text(".df-chip-t").endswith(COMMIT_SUMMARY)
     reopened.wait_for_selector("aside.panel .md ins.df-blk", timeout=RENDER_TIMEOUT_MS)
     assert reopened.locator("aside.panel .md del.df-blk").count() >= 1
     # 検証（ワークスペースの YAML の中身が、開く前と同じ）

@@ -190,6 +190,21 @@ def test_show_item_when_body_missing(make_workspace: MakeWorkspace, make_item: M
     assert shown["body_markdown"] is None
 
 
+def test_show_item_when_html_body(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """HTML の本文は body_html と形式で返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>画面のモック</p>\n"}
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    shown = query.show_item(workspace, "A-1")
+    # 検証
+    assert shown["body_html"] == "<p>画面のモック</p>\n"
+    assert shown["body_format"] == "html"
+    assert shown["body_markdown"] is None
+
+
 def test_list_referrers(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """parent・sources を含む全ての参照のキーを拾い、キーごとに行を分ける（正常系）。"""
     # 準備

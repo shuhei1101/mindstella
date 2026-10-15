@@ -1,0 +1,193 @@
+# 結合テスト（バック）の全件
+$ pytest tests/integration/server tests/integration/skill tests/integration/plugin
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-setup-alias-env-and-filter-save
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 263 items
+
+tests/integration/server/test_add.py .........                           [  3%]
+tests/integration/server/test_adopt.py .......                           [  6%]
+tests/integration/server/test_attrs.py ..                                [  6%]
+tests/integration/server/test_batch.py ......                            [  9%]
+tests/integration/server/test_changes_since_read.py ......               [ 11%]
+tests/integration/server/test_check.py .......                           [ 14%]
+tests/integration/server/test_check_env.py ..s.s                         [ 15%]
+tests/integration/server/test_clear_release.py ....                      [ 17%]
+tests/integration/server/test_comment_add.py ...........                 [ 21%]
+tests/integration/server/test_comment_delete.py ...                      [ 22%]
+tests/integration/server/test_comment_update.py .....                    [ 24%]
+tests/integration/server/test_comments_read.py ...                       [ 25%]
+tests/integration/server/test_comments_send.py .......                   [ 28%]
+tests/integration/server/test_commit.py .......                          [ 31%]
+tests/integration/server/test_config_display.py ....                     [ 32%]
+tests/integration/server/test_config_reload.py ..                        [ 33%]
+tests/integration/server/test_draft_save.py ....                         [ 34%]
+tests/integration/server/test_edit_option.py .............               [ 39%]
+tests/integration/server/test_events.py ...                              [ 41%]
+tests/integration/server/test_export.py ......                           [ 43%]
+tests/integration/server/test_find.py ...                                [ 44%]
+tests/integration/server/test_goal.py ....                               [ 46%]
+tests/integration/server/test_impact.py ...                              [ 47%]
+tests/integration/server/test_init.py .......                            [ 49%]
+tests/integration/server/test_launch.py ...........                      [ 53%]
+tests/integration/server/test_mcp_server.py ......                       [ 56%]
+tests/integration/server/test_migrate.py .................               [ 62%]
+tests/integration/server/test_next.py ...                                [ 63%]
+tests/integration/server/test_opened.py ..                               [ 64%]
+tests/integration/server/test_pending.py .....                           [ 66%]
+tests/integration/server/test_preview_serve.py .....                     [ 68%]
+tests/integration/server/test_preview_url.py .........                   [ 71%]
+tests/integration/server/test_readme.py ......                           [ 74%]
+tests/integration/server/test_records.py ......                          [ 76%]
+tests/integration/server/test_remove.py ........                         [ 79%]
+tests/integration/server/test_show.py ...                                [ 80%]
+tests/integration/server/test_status.py ...                              [ 81%]
+tests/integration/server/test_submissions.py ....                        [ 83%]
+tests/integration/server/test_tags.py ...                                [ 84%]
+tests/integration/server/test_take_submission.py .....                   [ 86%]
+tests/integration/server/test_update.py ............                     [ 90%]
+tests/integration/server/test_update_settings.py ............            [ 95%]
+tests/integration/skill/test_register.py .......                         [ 98%]
+tests/integration/skill/test_session.py .                                [ 98%]
+tests/integration/skill/test_setup.py .                                  [ 98%]
+tests/integration/skill/test_upgrade.py .                                [ 99%]
+tests/integration/plugin/test_marketplace_registration.py .              [ 99%]
+tests/integration/plugin/test_plugin_loading.py .                        [100%]
+
+================== 261 passed, 2 skipped in 111.29s (0:01:51) ==================
+exit 0
+
+# 結合テスト（フロント）の全件（先に npx storybook build -o storybook-static を済ませた）
+$ pytest tests/integration/preview tests/integration/storybook
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-setup-alias-env-and-filter-save
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 647 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  3%]
+...........                                                              [  5%]
+tests/integration/preview/test_decisions_screen.py ..................... [  8%]
+..................................................                       [ 16%]
+tests/integration/preview/test_detail_full_screen.py ................... [ 19%]
+....                                                                     [ 19%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 22%]
+................................................                         [ 29%]
+tests/integration/preview/test_diagram_viewer_screen.py .............    [ 31%]
+tests/integration/preview/test_docs_screen.py .......................... [ 35%]
+...                                                                      [ 36%]
+tests/integration/preview/test_graph_screen.py ......................... [ 40%]
+........F.......                                                         [ 42%]
+tests/integration/preview/test_history_screen.py ......                  [ 43%]
+tests/integration/preview/test_open_preview.py ..................        [ 46%]
+tests/integration/preview/test_overview_screen.py .................      [ 48%]
+tests/integration/preview/test_records_screen.py ..............          [ 51%]
+tests/integration/preview/test_search_screen.py ...........              [ 52%]
+tests/integration/preview/test_settings_confirm_screen.py .......        [ 53%]
+tests/integration/preview/test_settings_screen.py .............          [ 55%]
+tests/integration/preview/test_tasks_screen.py ......................... [ 59%]
+.                                                                        [ 59%]
+tests/integration/preview/test_topbar_screen.py ..............           [ 62%]
+tests/integration/storybook/test_comment_mark_stories.py ..              [ 62%]
+tests/integration/storybook/test_diff_mark_stories.py ...                [ 62%]
+tests/integration/storybook/test_filter_drawer_stories.py ........       [ 64%]
+tests/integration/storybook/test_history_dialog_stories.py .....         [ 64%]
+tests/integration/storybook/test_selection_comment_stories.py .....      [ 65%]
+tests/integration/storybook/test_send_form_stories.py ..............     [ 67%]
+tests/integration/storybook/test_settings_confirm_stories.py ......      [ 68%]
+tests/integration/storybook/test_settings_panel_stories.py ........      [ 70%]
+tests/integration/storybook/test_table_stories.py ............           [ 71%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 75%]
+..........                                                               [ 76%]
+tests/integration/storybook/test_view_switch_stories.py ..               [ 76%]
+tests/integration/preview/test_decisions_screen.py .....                 [ 77%]
+tests/integration/preview/test_detail_panel_screen.py ....               [ 78%]
+tests/integration/preview/test_docs_screen.py ....                       [ 78%]
+tests/integration/preview/test_graph_screen.py ....                      [ 79%]
+tests/integration/preview/test_records_screen.py ..                      [ 79%]
+tests/integration/preview/test_tasks_screen.py ...                       [ 80%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 80%]
+tests/integration/storybook/test_comment_mark_stories.py .               [ 80%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 82%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 82%]
+tests/integration/preview/test_decisions_screen.py ...                   [ 82%]
+tests/integration/preview/test_detail_panel_screen.py ....               [ 83%]
+tests/integration/preview/test_docs_screen.py .                          [ 83%]
+tests/integration/preview/test_graph_screen.py ...                       [ 84%]
+tests/integration/preview/test_records_screen.py .                       [ 84%]
+tests/integration/preview/test_tasks_screen.py .                         [ 84%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 84%]
+tests/integration/storybook/test_comment_mark_stories.py .               [ 85%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 86%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 86%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 86%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [ 87%]
+tests/integration/preview/test_docs_screen.py .                          [ 87%]
+tests/integration/preview/test_graph_screen.py ...                       [ 87%]
+tests/integration/preview/test_records_screen.py .                       [ 87%]
+tests/integration/preview/test_tasks_screen.py .                         [ 87%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 88%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 89%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 89%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 90%]
+tests/integration/preview/test_graph_screen.py ...                       [ 90%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 91%]
+tests/integration/storybook/test_topbar_stories.py ........              [ 92%]
+tests/integration/preview/test_decisions_screen.py .                     [ 92%]
+tests/integration/preview/test_topbar_screen.py ...                      [ 92%]
+tests/integration/storybook/test_topbar_stories.py .......               [ 93%]
+tests/integration/preview/test_topbar_screen.py .                        [ 94%]
+tests/integration/storybook/test_topbar_stories.py ....                  [ 94%]
+tests/integration/preview/test_topbar_screen.py .                        [ 94%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 98%]
+............                                                             [100%]
+
+=================================== FAILURES ===================================
+_________________ test_lock_when_quick_double_press[chromium] __________________
+
+write_sample_preview = <function write_sample_preview.<locals>._write at 0x793c508ccd60>
+open_preview = <function open_preview.<locals>._open at 0x793c50561c60>
+page = <Page url='http://127.0.0.1:57076/mindstella.html#tab=graph&id=T-3'>
+
+    def test_lock_when_quick_double_press(
+        write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """何も選んでいないとき、ある玉を素早く同じ位置で 2 回押すと、1 回目で詳細が開いてキャンバスが縮み 2 回目の位置にもう玉が無くても、その項目への 2 回押しとしてロックする（正常系）。"""
+        # 準備
+        _reduce_motion(page)
+        install_key_spy(page)
+        url = write_sample_preview()
+        page = open_preview(url, "#tab=graph")
+        page.wait_for_function(HAS_DRAWING_SCRIPT)
+        page.mouse.move(*blank_point(page))
+        settle(page)
+        # 詳細が開いてキャンバスが縮んでも押した位置がキャンバスに残るよう、左寄りの玉を選ぶ
+        x, y = min(ball_centers(page), key=lambda center: center[0])
+        width_before = page.locator(CANVAS).evaluate("(canvas) => canvas.getBoundingClientRect().width")
+        # 実行（1 回目を押し、詳細が開いてキャンバスが縮むのを待ち、玉が無くなった同じ位置をもう一度押す）
+        click_at(page, x, y)
+        page.wait_for_function(CANVAS_SHRUNK_SCRIPT, arg=width_before)
+        ball_after_shrink = ball_at(page, x, y)
+        click_at(page, x, y)
+        page.wait_for_function("location.hash.includes('id=')")
+        page.mouse.move(*blank_point(page))
+        settle(page)
+        draws = key_draws(page)
+        # 検証
+>       assert ball_after_shrink is False
+E       assert True is False
+
+tests/integration/preview/test_graph_screen.py:1023: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_graph_screen.py::test_lock_when_quick_double_press[chromium]
+================== 1 failed, 646 passed in 867.21s (0:14:27) ===================
+exit 1
+
+# 補足: test_lock_when_quick_double_press の fail
+$ pytest tests/integration/preview/test_graph_screen.py::test_lock_when_quick_double_press
+この PR のブランチで単独実行 3 回: fail 2・pass 1
+develop（e2e08355）で単独実行 4 回: fail 4
+（この PR は test_lock_when_quick_double_press も、ネットワークの描画・操作の実装も変えていない）

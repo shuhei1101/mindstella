@@ -1,5 +1,5 @@
 "use strict";
-// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・書き換えの知らせの購読。
+// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・スレッド・書き換えの知らせの購読。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 配信のパス（画面が開いた URL からの相対パス） */
@@ -11,6 +11,7 @@ var MindmapPreview;
         drafts: "api/drafts",
         opened: "api/opened",
         configDisplay: "api/config/display",
+        threads: "api/threads",
     };
     /** 応答の本文から、日本語の理由（`detail`）を取り出す。読めなければ null */
     async function detailOf(response) {
@@ -90,7 +91,7 @@ var MindmapPreview;
         };
     }
     MindmapPreview.callApi = callApi;
-    /** コメント・書きかけの 6 つの呼び出しを束ねて返す */
+    /** コメント・書きかけの API の 6 つの呼び出しを束ねて返す */
     function commentApi(fetchFn = window.fetch.bind(window)) {
         return {
             read: () => callApi("GET", MindmapPreview.API_PATHS.comments, null, fetchFn),
@@ -102,6 +103,15 @@ var MindmapPreview;
         };
     }
     MindmapPreview.commentApi = commentApi;
+    /** スレッドの読み取り・状態の書き換え・利用者の既読を束ねて返す。理由が空白だけなら `null` を送る */
+    function threadApi(fetchFn = window.fetch.bind(window)) {
+        return {
+            read: () => callApi("GET", MindmapPreview.API_PATHS.threads, null, fetchFn),
+            setStatus: (id, status, reason) => callApi("PATCH", `${MindmapPreview.API_PATHS.threads}/${encodeURIComponent(id)}`, { status, reason: reason === null || reason.trim() === "" ? null : reason.trim() }, fetchFn),
+            seen: (id) => callApi("POST", `${MindmapPreview.API_PATHS.threads}/${encodeURIComponent(id)}/seen`, null, fetchFn),
+        };
+    }
+    MindmapPreview.threadApi = threadApi;
     /** 書き換えの知らせにつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる。返す関数でつながりを閉じる */
     function subscribeEvents({ onChanged, onConnection, EventSourceCtor = window.EventSource, }) {
         const source = new EventSourceCtor(MindmapPreview.API_PATHS.events);

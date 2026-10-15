@@ -10,7 +10,7 @@ layers:
       - Python 3.12 以上と pytest
       - PyYAML 5.1 以上・jsonschema 4.18.0 以上・mcp 2.3.0 以上が、テストを動かす Python に入っている
       - 実行はリポジトリの直下で行う
-      - 開発側の点検（`tests/unit/scripts/test_migration_coverage.py`）は `v*` のタグを読む。タグを取っていない clone では `git fetch --tags` を先に流す（タグが 1 つも無ければ skip する）
+      - 開発側の点検（`tests/unit/scripts/test_migration_coverage.py`）は `v*` のタグを読む。タグを取っていない clone では `git fetch --tags` を先に流す（タグが 1 つも無ければ skip する）。タグから中身が変わったスキーマが全て「手順の要らない変更の一覧」（`plugins/mindstella/skills/mindmap/migrations/no-steps.yaml`）に今の中身のハッシュで載っていれば、手順を求めない。消えたスキーマは一覧で通さない
       - git の写しのテスト（`tests/unit/scripts/test_backup.py`）は git を使う。テストの中で一時フォルダに `git init` し、作者の名前とメールはそのリポジトリの設定に置く
     run_one:
       label: ファイル
@@ -101,6 +101,22 @@ layers:
         ```
   - name: 外部疎通テスト
     run_all: 未確定
+  - name: lint
+    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）でプレビューの `.ts` とストーリーの `.ts` を検査する。formatter と import の並びの検査は含めない
+    prerequisites:
+      - Python 3.12 以上と ruff
+      - Node 20.19 以上で `npm ci` を済ませてある
+      - 実行はリポジトリの直下で行う
+    run_all: |-
+      ```bash
+      ruff check plugins tests && npm run typecheck
+      ```
+    run_one:
+      label: ファイル
+      command: |-
+        ```bash
+        ruff check {Pythonファイルパス}
+        ```
 notes:
   部品のストーリー（Storybook）: |-
     前提: Node 20.19 以上（22 系なら 22.12 以上。vite 8.3.2 の `engines`）。リポジトリの直下で `npm ci` を済ませておく。
@@ -110,3 +126,6 @@ notes:
     ```
 
     静的なファイルに書き出すときは `npx storybook build -o storybook-static`。
+prerequisites:
+  - conftest がテスト全体の始まる前に `MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_ALLOWED_HOSTS` をテストのプロセスから消して走らせる。手元のシェルに設定してあっても、テストは手元のフックのコマンドを呼ばず、結果は設定していないシェルと変わらない
+  - フックと許可するホスト名を確かめるテストは、値を `start_server` の `extra_env` や関数の引数で自分で渡す

@@ -36,6 +36,7 @@ from preview_network_helpers import (
     canvas_hash,
     changed_pixels,
     click_at,
+    free_point_near,
     install_key_spy,
     install_status_mark_spy,
     is_moving,
@@ -45,6 +46,12 @@ from preview_network_helpers import (
     remember_pixels,
     settle,
     status_marks,
+)
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
 )
 from preview_settings_helpers import LOOK_SELECT, pick_look, read_prefs
 
@@ -977,6 +984,9 @@ MARK_LEFT_SCRIPT = """() => {
 # キャンバスの幅が、引数の幅より縮んだか（詳細パネルが開いて枠が狭まったか）
 CANVAS_SHRUNK_SCRIPT = """(before) => document.getElementById('graph-canvas').getBoundingClientRect().width < before"""
 
+# 2 回目をずらしてよい距離（px）。素早い 2 回押しとして扱う距離の上限（24px）より小さくする
+QUICK_PRESS_RANGE_PX = 20
+
 
 def _open_spied(open_preview: OpenPreview, url: str, hash_text: str, page: Page) -> Page:
     """鍵の記録を入れ、動きを減らす設定で項目を開いたネットワークを、画が静止するまで待って返す。"""
@@ -1004,11 +1014,12 @@ def test_lock_when_quick_double_press(
     # 詳細が開いてキャンバスが縮んでも押した位置がキャンバスに残るよう、左寄りの玉を選ぶ
     x, y = min(ball_centers(page), key=lambda center: center[0])
     width_before = page.locator(CANVAS).evaluate("(canvas) => canvas.getBoundingClientRect().width")
-    # 実行（1 回目を押し、詳細が開いてキャンバスが縮むのを待ち、玉が無くなった同じ位置をもう一度押す）
+    # 実行（1 回目を押し、詳細が開いてキャンバスが縮むのを待ち、縮んだ後に玉が残る配置でも、1 回目の近くで玉に当たらない点をもう一度押す）
     click_at(page, x, y)
     page.wait_for_function(CANVAS_SHRUNK_SCRIPT, arg=width_before)
-    ball_after_shrink = ball_at(page, x, y)
-    click_at(page, x, y)
+    second_x, second_y = free_point_near(page, x, y, QUICK_PRESS_RANGE_PX)
+    ball_after_shrink = ball_at(page, second_x, second_y)
+    click_at(page, second_x, second_y)
     page.wait_for_function("location.hash.includes('id=')")
     page.mouse.move(*blank_point(page))
     settle(page)
@@ -1132,3 +1143,61 @@ def test_lock_key_ignored_when_select_focused(
     assert while_focused == []
     assert look == "deep"
     assert [draw["closed"] for draw in after_blur] == [True]
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直してもその条件でドロワーを開き玉を絞る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    click_value(page, "type", "会話ログ")
+    page.wait_for_function("document.querySelector('dialog.drawer .fd-count').textContent === '14 件中 1 件'")
+    # 実行
+    reload_preview(page)
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {"graph": {"type": ["会話ログ"]}}
+    assert checked_values(page, "type") == ["会話ログ"]
+    assert badge_text(page) == "1"
+    assert drawer_head(page)["count"] == "14 件中 1 件"
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    seed_saved_filters(page, {"graph": {"type": ["会話ログ"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=graph&f.type=メモ")
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    # 検証
+    assert checked_values(page, "type") == ["メモ"]
+    assert badge_text(page) == "1"
+    assert read_saved_filters(page) == {"graph": {"type": ["会話ログ"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（項目の種類に「存在しない種類」は無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    seed_saved_filters(page, {"graph": {"type": ["会話ログ", "存在しない種類"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    page.wait_for_function(HAS_DRAWING_SCRIPT)
+    open_drawer(page)
+    # 検証
+    assert checked_values(page, "type") == ["会話ログ"]
+    assert badge_text(page) == "1"
+    assert drawer_head(page)["count"] == "14 件中 1 件"

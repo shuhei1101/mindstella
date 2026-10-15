@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 import urllib.error
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -26,12 +28,14 @@ __all__ = [
     "DRAWER_OPEN",
     "FILTER_BADGE",
     "FILTER_BUTTON",
+    "FRAME_TEXT_RECT_SCRIPT",
     "FREE_FORM",
     "FREE_TEXTAREA",
     "HISTORY_DIALOG",
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "OpenInEmptyContext",
     "OpenPreview",
     "ServePreview",
     "ServeWorkspace",
@@ -45,6 +49,7 @@ __all__ = [
     "close_drawer",
     "closed_keys",
     "count_balls",
+    "drag_select_in_frame",
     "drawer_counts",
     "fetch_records",
     "http_call",
@@ -64,10 +69,12 @@ __all__ = [
     "visit_and_close",
     "wait_camera_still",
     "wait_closed_key",
+    "wait_past_boundary",
 ]
 
 type ServePreview = Callable[..., str]
 type OpenPreview = Callable[..., Page]
+type OpenInEmptyContext = Callable[[str], Page]
 type ServeWorkspace = Callable[..., tuple[str, Path]]
 
 # トップバーのコメントのボタンと、コメントの一覧のパネル
@@ -87,9 +94,42 @@ DETAIL_FORM = "aside.panel form.send"
 DETAIL_TEXTAREA = "aside.panel form.send textarea"
 DETAIL_MESSAGE = "aside.panel form.send .send-msg"
 
-# コメントの一覧の下端の、項目を指さないコメントの入力とその入力欄
-FREE_FORM = f"{COMMENTS_PANEL} .comments-free form.send"
+# スレッドの一覧の下端の、「新しいスレッド」の入口と、項目を指さない新しいスレッドの入力とその入力欄
+COMPOSE_BUTTON = f"{COMMENTS_PANEL} .talk-new button[data-focus='compose']"
+FREE_FORM = f"{COMMENTS_PANEL} .talk-new form.send"
 FREE_TEXTAREA = f"{FREE_FORM} textarea"
+
+# コメントの一覧の見出しの帯の「レビュー中」の入口と、レビュー中を確かめる画面の見出し・送る帯の結果
+REVIEW_ENTRY = f"{COMMENTS_PANEL} .comments-head button.review-entry"
+REVIEW_HEAD = f"{COMMENTS_PANEL} .review-head"
+SEND_BAND = f"{COMMENTS_PANEL} .send-band"
+BAND_RESULT = f"{SEND_BAND} .send-msg"
+
+# スレッドの一覧の行と状態の絞り込み、スレッドの画面の見出し・書き込みの並び
+THREAD_ROWS = f"{COMMENTS_PANEL} ul.th-list > li"
+STATE_SEGMENTS = f"{COMMENTS_PANEL} .talk-filter button"
+THREAD_HEADING = f"{COMMENTS_PANEL} .th-heading"
+THREAD_POSTS = f"{COMMENTS_PANEL} ol.posts > li"
+
+# スレッドの画面とレビュー中を確かめる画面の、一覧へ戻るボタン
+BACK_BUTTON = f"{COMMENTS_PANEL} button.th-back"
+
+# スレッドの画面の状態を変えるボタン・理由の入力・結果
+STATUS_BUTTON = f"{COMMENTS_PANEL} button[data-focus='status']"
+REASON_FORM = f"{COMMENTS_PANEL} form.th-reason"
+REASON_TEXTAREA = f"{REASON_FORM} textarea"
+REASON_OK = f"{REASON_FORM} button[data-focus='reason-ok']"
+STATUS_MESSAGE = f"{COMMENTS_PANEL} .th-action-msg"
+
+# スレッドの画面の返信の入力と、クローズ・未送信の知らせ
+REPLY_FORM = f"{COMMENTS_PANEL} form.reply"
+REPLY_TEXTAREA = f"{REPLY_FORM} textarea"
+REPLY_SEND = f"{REPLY_FORM} button[data-focus='reply-send']"
+REPLY_MESSAGE = f"{REPLY_FORM} .send-msg"
+CLOSED_NOTE = f"{COMMENTS_PANEL} .th-closed-note"
+
+# 結果が画面に出るまで待つ上限ミリ秒
+UPDATE_TIMEOUT_MS = 10_000
 
 # 選んだ箇所のコメントの入口
 PILL = "button.selection-comment"
@@ -163,8 +203,12 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
 # プレビューを開くたびに今の日時へ書き換わる、前回開いた日時のファイル
 OPENED_FILE_NAME = f"{RECORD_DIR}/.mindstella-opened"
 
-# 前回開いた日時（秒の単位）より後に書き換えが入るよう、開いて閉じた後に待つミリ秒
-OPENED_TICK_MS = 1_100
+# 境目の日時の秒から、この秒数だけ先の秒に入るまで待つ（端末の時計が 1 秒に満たない幅で後ろへ戻っても、境目より後の秒に残す）
+BOUNDARY_MARGIN_SEC = 2
+
+# 今の時刻を確かめる間隔と、待つ上限の秒数
+BOUNDARY_POLL_SEC = 0.05
+BOUNDARY_TIMEOUT_SEC = 10
 
 # 一度開く画面が描き終わるまで待つ上限ミリ秒
 VISIT_RENDER_TIMEOUT_MS = 20_000
@@ -191,13 +235,27 @@ def snapshot_records(snapshot: dict[str, bytes]) -> dict[str, bytes]:
     return {path: content for path, content in snapshot.items() if path != OPENED_FILE_NAME}
 
 
-def visit_and_close(page: Page, url: str) -> None:
-    """新しいタブでプレビューを一度開いて閉じ、前回開いた日時を残す。後の書き換えがその日時より後になるまで待つ。"""
+def wait_past_boundary(boundary: str) -> None:
+    """境目の日時（ISO 8601）の秒の 2 秒先の秒に、今の UTC の時刻が入るまで、短い間隔で確かめて待つ。"""
+    target = datetime.fromisoformat(boundary).astimezone(UTC).replace(microsecond=0) + timedelta(
+        seconds=BOUNDARY_MARGIN_SEC
+    )
+    deadline = time.monotonic() + BOUNDARY_TIMEOUT_SEC
+    while datetime.now(UTC) < target:
+        # 待つ上限を過ぎた: 境目が今より遠い先にある
+        if time.monotonic() > deadline:
+            raise AssertionError(f"{BOUNDARY_TIMEOUT_SEC} 秒待っても境目の日時 {boundary} の先の秒に入りません")
+        time.sleep(BOUNDARY_POLL_SEC)
+
+
+def visit_and_close(page: Page, url: str, root: Path) -> None:
+    """新しいタブでプレビューを一度開いて閉じ、前回開いた日時を残す。後の書き換えがその日時より後の秒になるまで待つ。"""
     tab = page.context.new_page()
     tab.goto(url)
     tab.wait_for_selector("main#main > *", state="attached", timeout=VISIT_RENDER_TIMEOUT_MS)
     tab.close()
-    page.wait_for_timeout(OPENED_TICK_MS)
+    opened = (root / OPENED_FILE_NAME).read_text(encoding="utf-8").splitlines()[0].strip()
+    wait_past_boundary(opened)
 
 
 def fetch_records(url: str) -> dict[str, Any]:
@@ -592,4 +650,100 @@ def bands_stay_on_top(page: Page) -> bool:
             const tabs = document.querySelector('.tabbar').getBoundingClientRect();
             return topbar.top === 0 && tabs.top === topbar.bottom && tabs.bottom > tabs.top;
         }"""
+    )
+
+
+# マウスで選ぶときの動かす回数
+DRAG_STEPS = 6
+
+# 枠の中の文の矩形に、枠の位置を足した親の画面の座標を返す
+FRAME_TEXT_RECT_SCRIPT = """([selector, text]) => {
+  const frame = document.querySelector(selector);
+  const doc = frame.contentDocument;
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const at = node.data.indexOf(text);
+    if (at < 0) continue;
+    const range = doc.createRange();
+    range.setStart(node, at);
+    range.setEnd(node, at + text.length);
+    const rect = range.getBoundingClientRect();
+    const outer = frame.getBoundingClientRect();
+    return {
+      left: outer.left + frame.clientLeft + rect.left,
+      top: outer.top + frame.clientTop + rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+  return null;
+}"""
+
+
+def drag_select_in_frame(page: Page, selector: str, text: str) -> None:
+    """枠（iframe）の中で最初に出てくる文の上を、マウスで左から右へ引いて選ぶ（枠の上では `page.mouse` が返らないため、CDP で入力を送る）。"""
+    rect = page.evaluate(FRAME_TEXT_RECT_SCRIPT, [selector, text])
+    assert rect is not None, f"{selector} の中に文がありません: {text}"
+    y = rect["top"] + rect["height"] / 2
+    start_x = rect["left"] + 1
+    end_x = rect["left"] + rect["width"] - 1
+    cdp = page.context.new_cdp_session(page)
+
+    def mouse(kind: str, x: float, buttons: int, **extra: object) -> None:
+        """マウスの入力を 1 つ送る。"""
+        cdp.send(
+            "Input.dispatchMouseEvent",
+            {"type": kind, "x": x, "y": y, "button": "left", "buttons": buttons, **extra},
+        )
+
+    mouse("mouseMoved", start_x, 0)
+    mouse("mousePressed", start_x, 1, clickCount=1)
+    for step in range(1, DRAG_STEPS + 1):
+        mouse("mouseMoved", start_x + (end_x - start_x) * step / DRAG_STEPS, 1)
+    mouse("mouseReleased", end_x, 0, clickCount=1)
+
+
+def open_list(page: Page) -> None:
+    """トップバーのコメントのボタンでスレッドの一覧を開き、開き終わるのを待つ。"""
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open")
+    page.wait_for_function(
+        "document.querySelector('aside.comments-panel').getBoundingClientRect().x === 0"
+    )
+
+
+def open_review(page: Page) -> None:
+    """スレッドの一覧を開き、見出しの帯の「レビュー中」でレビュー中を確かめる画面へ切り替える。"""
+    open_list(page)
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+
+
+def thread_row(thread_id: str) -> str:
+    """スレッドの一覧の中の、スレッドの行の選択子を返す（まだ送っていない新しいスレッドは `new:{コメントの ID}`）。"""
+    return f"{COMMENTS_PANEL} ul.th-list > li:has(> button[data-focus='thread:{thread_id}'])"
+
+
+def open_thread(page: Page, thread_id: str) -> None:
+    """一覧を開き、スレッドの行を押してスレッドの画面へ切り替える。"""
+    open_list(page)
+    page.click(f"{thread_row(thread_id)} button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+
+
+def open_closed_thread(page: Page, thread_id: str) -> None:
+    """一覧を開いて「クローズ」に切り替え、スレッドの行を押してスレッドの画面へ切り替える。"""
+    open_list(page)
+    page.click(f"{STATE_SEGMENTS}[data-focus='filter:closed']")
+    page.click(f"{thread_row(thread_id)} button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+
+
+def wait_until_focused(page: Page, selector: str) -> None:
+    """selector に当たる要素へフォーカスが移るのを待つ。"""
+    page.wait_for_function(
+        "selector => document.activeElement === document.querySelector(selector)",
+        arg=selector,
+        timeout=UPDATE_TIMEOUT_MS,
     )

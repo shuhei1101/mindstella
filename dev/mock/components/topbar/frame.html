@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: 埋め込んだ枠の幅をそのまま画面幅にして、実装の @media を効かせる -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>トップバーの見本の枠 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- 実装のトークンとスタイルをそのまま読む -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- 案 A の畳み方: 実装の style.css に足す規則。?plan=current のとき外して今の見た目を出す -->
+  <style id="plan-a">
+    /* 狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅に収める */
+    @media (max-width: 389px) {
+      /* 押せない飾りのツール名: 名前は常に隠し、差分の札を出している間は印も隠して札に幅を回す */
+      .topbar .brand-name, .topbar:has(.df-chip) .brand { display: none; }
+      /* トップバー: 左右の余白を詰め、差分の札を出している間も要素の間隔を 1px にする */
+      .topbar, .topbar:has(.df-chip), .topbar:has(.conn):has(.df-chip) { gap: 1px; padding: 0 8px; }
+      /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 高さは保ち、幅を 28px に揃えて縮ませない */
+      .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
+      /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
+      .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+    }
+  </style>
+  <style>
+    /* 枠の中ではトップバーを流れに置き、下に余白を残さない */
+    body { margin: 0; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <!-- トップバーの置き場所: 実装の部品（topbar.js）がここへ描く -->
+  <div id="mount"></div>
+  <!-- 実装の部品と、部品が使う要素の組み立て・日時の整形 -->
+  <script src="../../../../plugins/mindstella/skills/mindmap/preview/core/dom.js"></script>
+  <script src="../../../../plugins/mindstella/skills/mindmap/preview/components/send-form.js"></script>
+  <script src="../../../../plugins/mindstella/skills/mindmap/preview/components/topbar.js"></script>
+  <script>
+    // URL の ?conn=offline&diff=1&theme=dark&plan=current で組み合わせを選ぶ
+    const params = new URLSearchParams(location.search);
+    const theme = params.get("theme") === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+    if (params.get("plan") === "current") document.getElementById("plan-a").remove();
+    const noop = () => {};
+    document.getElementById("mount").replaceWith(MindmapPreview.topbar({
+      title: "要件出しのスキル mindmap を設計する",
+      tabs: [
+        { key: "overview", label: "概要", icon: "home" },
+        { key: "decisions", label: "検討事項", icon: "decision", count: 12 },
+        { key: "tasks", label: "タスク", icon: "task", count: 8 },
+        { key: "research", label: "調査", icon: "research", count: 3 },
+        { key: "docs", label: "資料", icon: "doc", count: 5 },
+        { key: "terms", label: "用語集", icon: "term", count: 9 },
+        { key: "notes", label: "メモ", icon: "note", count: 4 },
+        { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+      ],
+      current: "decisions",
+      theme,
+      onNavigate: noop,
+      onSearch: noop,
+      onTheme: noop,
+      connection: params.get("conn") === "offline" ? "offline" : "online",
+      readAt: "2026-10-15T01:20:00+00:00",
+      comments: true,
+      commentCount: 3,
+      onComments: noop,
+      diffPoint: params.get("diff") === "1" ? { name: "前回開いてから", sub: "10/15 10:20" } : null,
+      onHistory: noop,
+      onDiffOff: noop,
+      onSettings: noop,
+      filter: true,
+      onFilter: noop,
+    }));
+  </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>スレッドの行 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない）と、見本の引数 -->
+  <script src="../../refs/235/assets/app.js"></script>
+  <script src="../../refs/235/assets/catalog.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / thread-row</nav>
+    <h1>スレッドの行</h1>
+
+    <!-- オープン・AI が返信した -->
+    <section class="cat-sec">
+      <h2>オープン・AI が返信した</h2>
+      <p>1 行目に状態の札と要約（2 行まで）、2 行目に向けた項目の ID・最後の書き手・最後の書き込みの日時を出す。タグは行の下に並べ、押すとそのタグで絞る。</p>
+      <div class="stage" id="s-replied"></div>
+    </section>
+
+    <!-- レビュー中の返信を持つスレッド -->
+    <section class="cat-sec">
+      <h2>レビュー中の返信を持つスレッド</h2>
+      <p>2 行目の末尾に「レビュー中」の印を出す（破線の枠・鉛筆の印・文字）。</p>
+      <div class="stage" id="s-pending-reply"></div>
+    </section>
+
+    <!-- AI が立てたスレッド（利用者の返事待ち） -->
+    <section class="cat-sec">
+      <h2>AI が立てたスレッド（利用者の返事待ち）</h2>
+      <p>最初の書き込みが AI の問い。最後の書き手は AI。</p>
+      <div class="stage" id="s-asking"></div>
+    </section>
+
+    <!-- 最後の書き手が利用者・要約がまだ無い -->
+    <section class="cat-sec">
+      <h2>最後の書き手が利用者・要約がまだ無い</h2>
+      <p>最後の書き手は「あなた」とだけ出す。要約がまだ無い行は、最初の書き込みの先頭を太さを落として出す。</p>
+      <div class="stage" id="s-no-summary"></div>
+    </section>
+
+    <!-- まだ送っていない新しいスレッド -->
+    <section class="cat-sec">
+      <h2>まだ送っていない新しいスレッド</h2>
+      <p>状態の札の代わりに「レビュー中」の札を出し、行の枠を破線にする。上が項目へ向けたもの、下が項目を指さないもの。</p>
+      <div class="stage" id="s-pending-new"></div>
+    </section>
+
+    <!-- クローズ -->
+    <section class="cat-sec">
+      <h2>クローズ</h2>
+      <p>状態の札を「クローズ」にし、色は薄い文字にする（印と文字でも分ける）。上が利用者がクローズにしたもの、下が AI がクローズにしたもの（行の見た目は同じ）。</p>
+      <div class="stage" id="s-closed"></div>
+    </section>
+
+    <!-- 長い要約・タグが 2 つ・項目を指さない -->
+    <section class="cat-sec">
+      <h2>長い要約・タグが 2 つ・項目を指さない</h2>
+      <p>要約は 2 行で末尾を省く。項目を指さないスレッドは ID を出さない。</p>
+      <div class="stage" id="s-long"></div>
+    </section>
+
+    <!-- タグで絞っている行 -->
+    <section class="cat-sec">
+      <h2>タグで絞っている行</h2>
+      <p>絞っているタグは枠の全体と面で示す（押し直すと外れる）。</p>
+      <div class="stage" id="s-tagged"></div>
+    </section>
+
+    <!-- ホバー・フォーカス -->
+    <section class="cat-sec">
+      <h2>ホバー・フォーカス</h2>
+      <p>ホバーは行の面を変える。フォーカスは行（開くボタン）とタグのそれぞれの枠の全体に出す。</p>
+      <div class="stage" id="s-hover"></div>
+    </section>
+
+    <!-- 一覧の全体（絞り込みの帯・行・新しいスレッドの入口） -->
+    <section class="cat-sec">
+      <h2>一覧の全体（絞り込みの帯・行・新しいスレッドの入口）</h2>
+      <p>左がタグで絞っていないとき、右がタグ「画面」で絞ったとき（解除のチップと「残った件数 / 全体の件数」。タグで絞っている間は、まだ送っていない新しいスレッドを出さない）。</p>
+      <div class="stage" id="s-band"></div>
+    </section>
+
+    <!-- 新しいスレッドを書く -->
+    <section class="cat-sec">
+      <h2>新しいスレッドを書く</h2>
+      <p>「新しいスレッド」を押すと、同じ場所に見出し・入力欄・「レビューに追加」を出す。× で畳む。</p>
+      <div class="stage" id="s-compose"></div>
+    </section>
+
+    <!-- 0 件 -->
+    <section class="cat-sec">
+      <h2>0 件</h2>
+      <p>絞り込みの状態とタグを文言に含める。</p>
+      <div class="stage" id="s-empty"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p></p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
+  <script>
+    const T = Catalog.THREADS;
+    const R = Catalog.REVIEW;
+    const list = (rows) => Catalog.pane(MindmapPreview.h({ tag: "div", attrs: { class: "comments-body" }, children: [MindmapPreview.h({ tag: "ul", attrs: { class: "th-list" }, children: rows })] }));
+    const row = (thread, over) => MindmapPreview.threadRow(thread, Catalog.propsOf(over));
+    Catalog.place("s-replied", list([row(T.replied)]));
+    Catalog.place("s-pending-reply", list([row(T.replied, { items: [R.reply] })]));
+    Catalog.place("s-asking", list([row(T.asking)]));
+    Catalog.place("s-no-summary", list([row(T.noSummary)]));
+    Catalog.place("s-pending-new", list([MindmapPreview.pendingThreadRow(R.newToItem, Catalog.propsOf()), MindmapPreview.pendingThreadRow(R.newFree, Catalog.propsOf())]));
+    Catalog.place("s-closed", list([row(T.closed), row(T.aiClosed)]));
+    Catalog.place("s-long", list([row(T.long)]));
+    Catalog.place("s-tagged", list([row(T.long, { talk: { tag: "画面" } })]));
+    Catalog.place("s-hover", [list([row(T.replied)]), list([row(T.replied)]), list([row(T.replied)])]);
+    Catalog.mark("s-hover", ".pane:nth-child(1) .th-open", "is-hover");
+    Catalog.mark("s-hover", ".pane:nth-child(2) .th-open", "is-focus");
+    Catalog.mark("s-hover", ".pane:nth-child(3) .th-tag", "is-focus");
+    const items = [R.newToItem, R.newFree, R.reply];
+    Catalog.place("s-band", [Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ items }))), Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ items, talk: { tag: "画面" } })))]);
+    Catalog.place("s-compose", Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ talk: { composing: true, threads: [T.asking] } }))));
+    Catalog.place("s-empty", [Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ talk: { threads: [] } }))), Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ talk: { tag: "起票", filter: "closed", threads: [T.asking] } })))]);
+    Catalog.place("s-narrow", Catalog.pane(MindmapPreview.threadList(Catalog.propsOf({ items }))));
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# 配る書き出しの絞り込みの結合テスト（test_open_preview.py の全件）
+$ pytest tests/integration/preview/test_open_preview.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-setup-alias-env-and-filter-save
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 20 items
+
+tests/integration/preview/test_open_preview.py ....................      [100%]
+
+============================= 20 passed in 36.24s ==============================

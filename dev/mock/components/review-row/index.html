@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>レビュー中の書き込みの行 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない）と、見本の引数 -->
+  <script src="../../refs/235/assets/app.js"></script>
+  <script src="../../refs/235/assets/catalog.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / review-row</nav>
+    <h1>レビュー中の書き込みの行</h1>
+
+    <!-- 新しいスレッド（項目へ向けたもの） -->
+    <section class="cat-sec">
+      <h2>新しいスレッド（項目へ向けたもの）</h2>
+      <p>行の頭に「新しいスレッド」の札と向けた項目。向けた項目を押すと詳細パネルを、本文の下の「スレッドを開く」を押すとそのスレッドを開く。右上に修正と削除。</p>
+      <div class="stage" id="s-new-item"></div>
+    </section>
+
+    <!-- 新しいスレッド（項目を指さない） -->
+    <section class="cat-sec">
+      <h2>新しいスレッド（項目を指さない）</h2>
+      <p>向けた項目の代わりに「項目を指さない」を出す。</p>
+      <div class="stage" id="s-new-free"></div>
+    </section>
+
+    <!-- 返信 -->
+    <section class="cat-sec">
+      <h2>返信</h2>
+      <p>行の頭に「返信」と、返信先のスレッドの状態の札と題。押すと返信先のスレッドを開く。</p>
+      <div class="stage" id="s-reply"></div>
+    </section>
+
+    <!-- クローズのスレッドへの返信 -->
+    <section class="cat-sec">
+      <h2>クローズのスレッドへの返信</h2>
+      <p>チェックできず、まとめて送る対象に入らない。送れない理由と、「オープンに戻す」へ移る入口（スレッドを開く）を出す。</p>
+      <div class="stage" id="s-blocked"></div>
+    </section>
+
+    <!-- チェックを外した行 -->
+    <section class="cat-sec">
+      <h2>チェックを外した行</h2>
+      <p>チェックした行だけをまとめて送る。</p>
+      <div class="stage" id="s-unchecked"></div>
+    </section>
+
+    <!-- 修正している・消した -->
+    <section class="cat-sec">
+      <h2>修正している・消した</h2>
+      <p>上が修正の入力、下が消した後（元の場所に「元に戻す」）。</p>
+      <div class="stage" id="s-editing"></div>
+    </section>
+
+    <!-- 一覧から開いて示している行 -->
+    <section class="cat-sec">
+      <h2>一覧から開いて示している行</h2>
+      <p>行の面と枠の全体で示す。</p>
+      <div class="stage" id="s-selected"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>幅 720px 以下で開くと、修正と削除は行の右上に重ね、行の頭は札の行と、2 行で省く題の行に分ける。</p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
+  <script>
+    const R = Catalog.REVIEW;
+    const list = (rows) => Catalog.pane(MindmapPreview.h({ tag: "div", attrs: { class: "comments-body" }, children: [MindmapPreview.h({ tag: "ul", attrs: { class: "comments-list" }, children: rows })] }));
+    const row = (item, over) => MindmapPreview.commentRow(item, Catalog.propsOf({ items: [item], ...over }));
+    Catalog.place("s-new-item", list([row(R.newToItem)]));
+    Catalog.place("s-new-free", list([row(R.newFree)]));
+    Catalog.place("s-reply", list([row(R.reply)]));
+    Catalog.place("s-blocked", list([row(R.replyToClosed)]));
+    Catalog.place("s-unchecked", list([row(R.newFree, { checked: new Set() })]));
+    Catalog.place("s-editing", list([row(R.reply, { editing: R.reply.id }), MindmapPreview.h({ tag: "li", attrs: { class: "row removed" }, children: [MindmapPreview.h({ tag: "span", attrs: { class: "removed-msg" }, children: ["コメントを削除しました。"] }), MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button" }, children: [MindmapPreview.icon("undo"), "元に戻す"] })] })]));
+    Catalog.place("s-selected", list([row(R.newToItem, { selected: R.newToItem.id })]));
+    Catalog.place("s-narrow", list([row(R.newToItem), row(R.reply), row(R.replyToClosed)]));
+  </script>
+</body>
+</html>

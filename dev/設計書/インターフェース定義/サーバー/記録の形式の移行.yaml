@@ -444,6 +444,34 @@ flows:
       - 同じ呼び出しをもう一度当てても、D-1 の案が 1 件のまま
       - '`.mindstella/mindstella-version.ini` が `v0.6.0` のまま'
     test: test_normal_when_answer_to_option
+  - name: 正常系（送信をスレッドへ移す）
+    summary: v0.7.0 のワークスペースの送信を、取り込み済みはクローズ、取り込んでいないものはオープンのスレッドへ移す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 版 v0.7.0 で、検討事項 D-1 と、送信 S-1（D-1・取り込み済み）・S-2（項目を指さない・取り込んでいない）を持ち、`threads.yaml` を持たないワークスペース
+        notes: '`migrate` を `apply` で呼ぶ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace apply
+        IF->>WS: submissions_to_threads を当てる
+        IF->>WS: 版を書く
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`threads.yaml` の TH-1 が `status: closed`・`target: D-1` で、`events` に `kind: closed`・`author: ai` の 1 件、書き込みの `taken` が S-1 の `taken`'
+      - 'TH-2 が `status: open` で `target` を持たず、書き込みの `taken` が `null`'
+      - '`submissions.yaml` が無く、`check` が問題を 0 件で返す'
+      - '`threads` を `awaiting` で呼ぶと TH-2 だけを返す'
+      - 'TH-1・TH-2 の書き込みが `seen: true`（利用者が送ったものは利用者の既読）'
+    test: test_normal_when_submissions_to_threads
 lead: ワークスペースの版とプラグインの版を比べ、間の版の移し替えの手順（`migrations/{版}/steps.yaml`）を版の順に並べる・当てる。値が要るキーを入れ、点検に合えば版のファイルを書き換える。
 idempotent: false
 side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
@@ -599,6 +627,8 @@ constraints:
     constraint: ワークスペースの版は `.mindstella/mindstella-version.ini` の 1 行目。無ければ直下の `mindstella-version.ini`（v0.6.0 より前の置き場所）を読み、どちらも無ければ版を記録する前の形式。両方あるときは `.mindstella/` の方を読む
   - item: v0.7.0 の手順
     constraint: '`call`（`answer_to_adopted_option`）の 1 手順。`.mindstella/decisions.yaml` のうち、`決定済み` で `answer` を持ち `options` を持たない（空の配列を含む）検討事項に、`key: A`・`content` に `answer`・`reason` に検討事項の `reason`（持つときだけ）・`adopted: true` の案を 1 つ作る。それ以外の検討事項と、案を持つ検討事項は変えない。作った検討事項の `updated`・`history` は変えない。案と状態の合わない残りの検討事項は、点検が `decision_state` で返し、移し替えのスキルが直す（『ワークスペースの移し替え』）。破壊的な操作ではない'
+  - item: v0.8.0 の手順
+    constraint: '次の順の 2 手順。(1) `call`（`submissions_to_threads`）。`.mindstella/submissions.yaml` の送信 1 件ごとに、`.mindstella/threads.yaml` へスレッドを 1 件足す（送信の連番の小さい順に `TH-{連番}`、`target`・`loc` を引き継ぎ、`tags: []`・`summary: null`・`events: []`）。最初の書き込みは `author: user`・`body`・`created`（送信の `sent`）・`read: false`・`seen: true`・`taken`（送信の `taken`）。取り込み済みの送信は `status: closed` にして `events` に `kind: closed`・`author: ai`・`reason: null`・`created`（送信の `taken`）を 1 件足し、取り込んでいない送信は `status: open` にする。`submissions.yaml` が無ければ飛ばし、`threads.yaml` が既にあれば StepFailedError（二重に移さない）。(2) `delete`（`.mindstella/submissions.yaml`。破壊的な操作）'
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]

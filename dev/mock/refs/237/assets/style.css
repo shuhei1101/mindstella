@@ -1,0 +1,101 @@
+/* PR #237 で足す差分のミニマップと、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+/* 撮影用の押した位置の印（クエリの mark_press で付ける）: 帯の左に右向きの三角を置く */
+.mock-press { position: fixed; z-index: 60; width: 0; height: 0; margin-top: -6px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 10px solid #e5484d; pointer-events: none; }
+/* 撮影用の赤枠（クエリの mark で付ける） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
+
+/* ===== 本文のスクロール領域とミニマップを並べる枠 ===== */
+
+:root {
+  /* ミニマップの帯の太さ（縦の帯の幅・横の帯の高さ） */
+  --df-map-w: 20px;
+  /* 帯の中で印の左右（横の帯では上下）に空ける余白 */
+  --df-map-pad: 4px;
+}
+
+/* 枠: 見出しと下端の入力の間の残りを取り、本文とミニマップを並べる */
+.panel-scroll { flex: 1; min-height: 0; display: flex; }
+/* 案 B の枠: ミニマップを本文の上に積む */
+.panel-scroll.map-b { flex-direction: column; }
+/* 枠の中の本文: 残りを取り、本文だけをスクロールする */
+.panel-scroll > .panel-body { flex: 1; min-width: 0; min-height: 0; }
+/* 案 A でミニマップを出している本文: 右の余白を帯に譲る */
+.panel-scroll.map-a.has-map > .panel-body { padding-right: 12px; }
+
+/* ===== ミニマップ ===== */
+
+/* 帯: 本文の全体を縮めた面。印と見えている範囲の枠を、この中に位置で置く */
+.df-map { position: relative; flex: none; background: var(--surface-2); }
+/* 出さない帯（変わった箇所の印が無い） */
+.df-map[hidden] { display: none; }
+/* 案 A の帯: 本文の右に立て、線で区切る */
+.map-a > .df-map { width: var(--df-map-w); border-left: 1px solid var(--border-soft); }
+/* 案 B の帯: 見出しの帯の下に寝かせ、線で区切る */
+.map-b > .df-map { height: var(--df-map-w); border-bottom: 1px solid var(--border-soft); }
+
+/* 見えている範囲の枠: 本文のうち今見えている部分を、面の濃さで示す */
+.df-map-view { position: absolute; background: color-mix(in oklab, var(--text) 12%, transparent); pointer-events: none; }
+/* 出さない枠（本文が送れない） */
+.df-map-view[hidden] { display: none; }
+/* 案 A の枠: 帯の幅いっぱい */
+.map-a .df-map-view { left: 0; right: 0; }
+/* 案 B の枠: 帯の高さいっぱい */
+.map-b .df-map-view { top: 0; bottom: 0; }
+
+/* 印: 押すとその箇所まで本文を送るボタン。押せる的は帯の太さいっぱいに取る */
+.df-map-m { position: absolute; display: block; border: 0; border-radius: 2px; background: none; cursor: pointer; }
+/* 案 A の印: 帯の幅いっぱい */
+.map-a .df-map-m { left: 0; width: 100%; padding: 0 var(--df-map-pad); }
+/* 案 B の印: 帯の高さいっぱい */
+.map-b .df-map-m { top: 0; height: 100%; padding: var(--df-map-pad) 0; }
+/* 印のホバー: 面だけを変える */
+.df-map-m:hover { background: var(--hover); }
+/* 印のフォーカス: 印の色の輪。隣の印より手前に出す */
+.df-map-m:focus-visible { z-index: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 印の形: 種類を色と形の両方で分ける */
+.df-map-m i { display: block; width: 100%; height: 100%; border-radius: 2px; }
+/* 足した: 塗りつぶし */
+.df-map-m.df-add i { background: var(--df-add); }
+/* 消した: 枠だけの中抜き */
+.df-map-m.df-del i { border: 2px solid var(--df-del); background: var(--surface); }
+/* 変わった: 斜めの縞 */
+.df-map-m.df-chg i { border: 1px solid var(--df-chg); background: repeating-linear-gradient(135deg, var(--df-chg) 0 3px, var(--surface) 3px 6px); }
+
+/* 案 A の帯: マウスで押したまま上下に動かして本文を送れることを、つかむ形のポインタで示す（印の上は押す形） */
+@media (pointer: fine) {
+  .map-a > .df-map { cursor: grab; }
+  .map-a > .df-map .df-map-m { cursor: pointer; }
+}
+/* ドラッグの間の見えている範囲の面: つかんでいる面を 1 段濃くする */
+.df-map.is-dragging .df-map-view { background: color-mix(in oklab, var(--text) 24%, transparent); }
+/* ドラッグの間: 帯の外へ出てもつかむ形のポインタのままにし、本文の文を選ばない */
+body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map .df-map-m { cursor: grabbing; user-select: none; }
+/* ドラッグの間の印: 乗っても面を変えない */
+.df-map.is-dragging .df-map-m:hover { background: none; }
+
+/* 飛んだ先の箇所: 当たった語と同じ色の輪で、少しの間だけ示す */
+.df-map-hit { box-shadow: 0 0 0 2px var(--hit); }

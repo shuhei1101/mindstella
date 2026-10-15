@@ -7,8 +7,9 @@ from typing import Any
 
 from workspace_fixtures import MakeItem
 
-__all__ = ["LoadLibrary", "LoadPreviewScripts", "MakeData", "MakeItem"]
+__all__ = ["LoadLibrary", "LoadPreviewScripts", "LoadPreviewStyles", "MakeData", "MakeItem"]
 
 type LoadPreviewScripts = Callable[..., None]
+type LoadPreviewStyles = Callable[[], None]
 type LoadLibrary = Callable[[str], None]
 type MakeData = Callable[..., dict[str, Any]]

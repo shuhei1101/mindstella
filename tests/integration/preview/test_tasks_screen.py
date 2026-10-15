@@ -39,6 +39,18 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_PENDING_BY_TAB,
+    assert_band_above,
+    assert_removed_band,
+)
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -246,9 +258,74 @@ def test_diff_marks_when_table(
     assert page.locator('table.grid tbody tr[data-id="T-1"] .row-open + .df-mark.df-new').count() == 1
     # 印の無い時点では付かない
     page.evaluate("localStorage.setItem('mindmap-preview', JSON.stringify({diffSel: null}))")
-    page.reload()
+    page.goto("about:blank")
+    open_preview(url, "#tab=tasks&view=table")
     page.wait_for_selector("table.grid tbody tr")
     assert page.locator("table.grid .df-mark").count() == 0
+
+
+@pytest.mark.parametrize(
+    ("view", "below"),
+    [
+        pytest.param("board", ".board", id="board"),
+        pytest.param("table", "table.grid", id="table"),
+    ],
+)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    view: str,
+    below: str,
+) -> None:
+    """差分の表示の間、選んだ時点で消したタスクを、表示形式によらず一覧の上の帯に並べる。押せず、カードにも行にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, f"#tab=tasks&view={view}")
+    page.wait_for_selector(below)
+    # 検証
+    assert_removed_band(page, REMOVED_IN_PENDING_BY_TAB["tasks"])
+    assert_band_above(page, below)
+    assert page.locator('[data-id="T-2"]').count() == 0
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """絞り込みの条件で表の行が 0 件になっても、消したタスクは絞り込まず帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, "#tab=tasks&view=table&f.status=中止")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_PENDING_BY_TAB["tasks"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("V-2", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点でタスクを消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator(BAND).count() == 0
 
 
 def _board_columns(page: Page) -> list[list[object]]:
@@ -524,3 +601,66 @@ def test_region_at_boundary(
     page.wait_for_selector(REGION_SCROLLER[view])
     # 実行・検証
     assert_region_mode(page, REGION_SCROLLER[view], filled=filled)
+
+
+def _table_row_ids(page: Page) -> list[str]:
+    """表に並んでいる行の ID を並びのまま返す。"""
+    return page.eval_on_selector_all(
+        "table.grid tbody tr[data-id]", "rows => rows.map(r => r.dataset.id)"
+    )
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直してもその条件でドロワーと表を開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
+    open_drawer(page)
+    click_value(page, "status", "進行中")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {"tasks": {"status": ["進行中"]}}
+    assert _table_row_ids(page) == ["T-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["進行中"]
+    assert chip_texts(page) == ["状態: 進行中"]
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
+    seed_saved_filters(page, {"tasks": {"status": ["進行中"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=tasks&view=table&f.status=完了")
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["T-3"]
+    assert checked_values(page, "status") == ["完了"]
+    assert read_saved_filters(page) == {"tasks": {"status": ["進行中"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（タスクに中止の状態は無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=tasks&view=table")
+    seed_saved_filters(page, {"tasks": {"status": ["進行中", "中止"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["T-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["進行中"]
+    assert chip_texts(page) == ["状態: 進行中"]

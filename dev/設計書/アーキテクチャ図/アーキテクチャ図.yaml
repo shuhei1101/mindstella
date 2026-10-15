@@ -156,9 +156,9 @@ external_systems:
     notes:
       事前確認: 不要。読めないときは端末の文字で描き、画面の操作は変わらない。配る書き出しは文字を読まず、常に端末の文字で描く。
   - name: tmux
-    purpose: 起動スクリプトが立てるセッションの中で、MCP サーバーを渡した Claude Code を動かす
+    purpose: 起動スクリプトが立てるセッションの中で、MCP サーバーを渡した Claude Code を動かす。サーバーは、まとめて送られた送信を Claude Code のペインへ入力する
     direction: 送信のみ
-    protocol: tmux のコマンド（`new-session`・`has-session`・`attach-session`）
+    protocol: tmux のコマンド（起動スクリプトは `new-session`・`has-session`・`attach-session`、サーバーは `load-buffer`・`paste-buffer`・`send-keys`）
     detail: dev/設計書/外部ライブラリ/tmux#
     notes:
       事前確認: 要。起動スクリプトが、`PATH` に `tmux` があることを確かめ、無ければ Claude Code を立てずに止まる。

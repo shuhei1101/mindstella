@@ -45,8 +45,25 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .panel { position: fixed; z-index: 20; top: calc(var(--topbar-h) + var(--tab-h) + 1px); right: 0; bottom: 0; width: var(--panel-w); max-width: 100%; background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow-panel); display: flex; flex-direction: column; }
 
 .panel-head { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 10px 0 20px; border-bottom: 1px solid var(--border-soft); }
-.panel-kind { font-size: var(--fs-small); color: var(--text-2); }
+/* 見出しの種類と ID: 縮めない・折り返さない（収まらない分はタイトルの側で切る） */
+.panel-kind { flex: none; white-space: nowrap; font-size: var(--fs-small); color: var(--text-2); }
 .panel-head .spacer { flex: 1; }
+/* 見出しのボタン: 縮めない（はみ出す分はタイトルの省略だけで吸う） */
+.panel-head .icon-btn { flex: none; }
+/* 見出しのタイトル: 1 行で省略記号を付けて切り、ボタンを押し出さない。出し入れは 0.15 秒の opacity（隠す側は opacity のあとに visibility を切る） */
+.panel-title { min-width: 0; margin: 0; overflow: hidden; color: var(--text); font-size: var(--fs-h2); font-weight: 600; line-height: 1.4; white-space: nowrap; text-overflow: ellipsis; transition: opacity .15s ease, visibility 0s linear .15s; }
+/* 隠している間のタイトル: 場所は取ったまま見せない（出し入れで種類と ID を動かさない） */
+.panel-title:not(.is-shown) { visibility: hidden; opacity: 0; }
+/* 出したタイトル: 薄く現れる */
+.panel-title.is-shown { transition: opacity .15s ease; }
+/* 動きを減らす設定: すぐ切り替える */
+@media (prefers-reduced-motion: reduce) {
+  .panel-title, .panel-title.is-shown { transition: none; }
+}
+/* 狭い幅でタイトルを出している間: 種類の名前を見た目から外して ID だけにし、タイトルに幅を譲る（読み上げには残す） */
+@media (max-width: 480px) {
+  .panel-head:has(.panel-title.is-shown) .panel-kind-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 .panel-body { overflow-y: auto; padding: 22px 24px 56px; }
 .panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
@@ -129,6 +146,12 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 /* 条件のチップの行は、無いときも高さを取っておく（表が上下に動かないように） */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 28px; margin-bottom: 8px; }
 .chips .hint { color: var(--text-3); font-size: var(--fs-xs); }
+/* 表の上の帯: 条件のチップを左、列の表示のボタンを右端に並べ、表との間に 12px の余白を取る */
+.table-toolbar { flex: none; display: flex; align-items: flex-start; gap: 8px 12px; margin-bottom: 12px; }
+/* 帯の条件のチップ: 残りの幅を取り、行の高さをボタンに揃える。帯の下の余白は帯が持つ */
+.table-toolbar .chips { flex: 1; min-height: var(--control-h); margin-bottom: 0; }
+/* 列の表示のボタン: 帯の右端で縮めない */
+.table-toolbar .cols-btn-table { flex: none; }
 .chip { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 2px 0 8px; border: 1px solid var(--accent-line); border-radius: 3px; background: var(--accent-weak); color: var(--text); font-size: var(--fs-xs); }
 .chip button { display: inline-grid; place-items: center; width: 20px; height: 20px; border: 0; background: none; color: var(--text-2); border-radius: 2px; }
 .chip button:hover { color: var(--text); background: var(--accent-line); }
@@ -216,6 +239,10 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .d-answer b { display: block; font-size: var(--fs-xs); color: var(--text-2); margin-bottom: 2px; }
 .d-sec { margin-top: 26px; }
 .d-sec > h3 { margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft); font-size: var(--fs-small); }
+/* 説明の節: 結論と同じ、灰色の面に小さな名前を添えた形 */
+.d-sec.d-answer { margin: 0 0 18px; }
+/* 説明の節の名前 */
+.d-sec.d-answer > h3 { margin: 0 0 2px; padding: 0; border-bottom: 0; font-size: var(--fs-xs); color: var(--text-2); }
 .d-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .d-list li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-small); }
 .d-list li .t { flex: 1; }
@@ -286,6 +313,8 @@ dialog.search::backdrop { background: var(--scrim); }
 @media (max-width: 1100px) { .ov-grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .panel { top: var(--topbar-h); width: 100%; z-index: 35; border-left: 0; }
+  /* 詳細パネルを開いたまま左のパネル（コメントの一覧・表示の設定・絞り込みのドロワー）を開いたとき: 後から開いた左のパネルを詳細パネル（35）の前に出す */
+  body.left-front .comments-panel, body.left-front .settings-drawer, body.left-front dialog.drawer.narrow { z-index: 36; }
   .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; }
   .search-trigger .label, .search-trigger kbd, .brand-sub { display: none; }
   .table-wrap [data-pri="4"], .table-wrap [data-pri="5"] { display: none; }
@@ -304,6 +333,10 @@ dialog.search::backdrop { background: var(--scrim); }
   table.grid thead th { position: static; }
   .th-tool.pin { display: none; }
   .toolbar .btn .lbl { display: none; }
+  /* 列の表示のボタンの文言: 隠してアイコンだけにする（読み上げ名は残る） */
+  .table-toolbar .cols-btn-table .lbl { display: none; }
+  /* 列の表示のボタン: アイコンだけの幅に詰める */
+  .table-toolbar .cols-btn-table { padding: 0 8px; }
   .toolbar .grow { max-width: none; flex-basis: 100%; }
   .board { grid-template-columns: 1fr; }
 }
@@ -479,7 +512,8 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .dg-tools { position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 2px; }
 .dg-tools .btn { height: 28px; padding: 0 8px; font-size: var(--fs-xs); }
 .dg-tools .icon-btn { width: 28px; height: 28px; }
-.diagram .mermaid { cursor: zoom-in; }
+/* 本文の図の文字: カーソルを文字用にして、ドラッグで選べるようにする */
+.diagram .mermaid svg text, .diagram .mermaid svg foreignObject, .diagram .mermaid svg .nodeLabel, .diagram .mermaid svg .edgeLabel { user-select: text; cursor: text; }
 .dg-raw { margin: 0; background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font: 12px var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 dialog.viewer { width: min(1200px, calc(100vw - 32px)); height: min(820px, calc(100dvh - 32px)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); overflow: hidden; }
 dialog.viewer[open] { display: flex; flex-direction: column; }
@@ -615,8 +649,10 @@ table.grid td.no-match-cell .no-match { position: sticky; left: 0; width: var(--
 
 /* ===== 回答・意見の送信 ===== */
 
-/* 見出しと下端の入力の間の本文だけをスクロールする */
-.panel > .panel-body { flex: 1; min-height: 0; }
+/* 見出しと下端の入力の間の枠: 本文のスクロール領域とミニマップを横に並べる */
+.panel-scroll { flex: 1; min-height: 0; display: flex; }
+/* 枠の中の本文: 帯を除いた幅いっぱいを取り、本文だけをスクロールする */
+.panel-scroll > .panel-body { flex: 1; min-width: 0; min-height: 0; }
 /* 送信の入力: ラベル・入力欄・結果と送るボタンの行を縦に積む。入力の幅を結果の置き方の問い合わせの基準にする */
 .send { display: grid; gap: 6px; container-type: inline-size; }
 /* パネルの下端に留める置き方: 本文の下に線で区切って置く */
@@ -694,6 +730,14 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 /* 件数が 0 のとき: 塗りを外して目立たせない */
 .comments-btn .count.zero { background: transparent; color: var(--topbar-fg-2); box-shadow: inset 0 0 0 1px var(--topbar-line); }
+/* 未読の点の色: トップバーは明暗どちらの表示でも暗い地のため、暗い地で読める色にする */
+:root { --unread-on-topbar: var(--teal-400); }
+/* コメントのボタンの吹き出しの印: 未読の点を重ねる起点 */
+.comments-btn .cb-icon { position: relative; display: inline-grid; place-items: center; }
+/* 未読の点: 吹き出しの右上に重ね、トップバーの地の色の縁で印から切り離す（ボタンの幅を変えない） */
+.comments-btn .unread-dot { position: absolute; top: -3px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: var(--unread-on-topbar); box-shadow: 0 0 0 2px var(--topbar-bg); }
+/* 未読の点（ボタンのホバー・開いているとき）: 縁を地の色に合わせる */
+.comments-btn:is(:hover, .open) .unread-dot { box-shadow: 0 0 0 2px var(--topbar-hover); }
 /* 狭い幅（1100px 以下）: 文字を隠し、印と件数だけにする */
 @media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn { padding: 0 8px; } }
 /* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、同じく文字を隠す。詳細度を足さず、480px 以下の余白の指定が効くようにする */
@@ -733,6 +777,18 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .review-list li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 /* 最後の行: 下の線を引かない */
 .review-list li:last-child { border-bottom: 0; }
+/* 詳細パネルの行: 中身と行の操作の 2 列。操作は 1 行目の高さに揃える */
+.review-list li.review-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: start; }
+/* 行の中身: 箇所と本文（書き換えているときは入力）を縦に積む */
+.review-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+/* 書き換えている行: 入力を行の幅いっぱいに使う */
+.review-list li.review-row.editing { grid-template-columns: minmax(0, 1fr); }
+/* 詳細パネルの行の操作: 本文の 1 行目の高さに揃える */
+.review-list .row-actions { margin-top: -4px; }
+/* 詳細パネルの消した行: 文言と元に戻すを 1 行に並べ、点線の枠で消えたことを示す */
+.review-list li.row.removed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; margin: 6px 0; padding: 6px 6px 6px 12px; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius); }
+/* 消した行の次の行: 区切り線の重なりを避ける */
+.review-list li.row.removed + li { border-top: 0; }
 /* レビュー中のコメントの箇所: 名前と選んだ文を縦に積む */
 .review-loc { display: grid; gap: 4px; padding: 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
 /* レビュー中のコメントの本文: 改行を保ち、長い URL も折り返す */
@@ -802,6 +858,8 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 本文を直す入力欄: コメントの入力欄と同じ見た目 */
 .row-edit textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(10lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .row-edit textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 空白だけで修正しようとしたとき: 入力欄の枠を赤くする */
+.row-edit textarea[aria-invalid="true"] { border-color: var(--st-review); }
 /* 直せなかった理由 */
 .row-edit .send-msg { min-height: 0; padding-top: 0; }
 .row-edit .send-msg:empty { display: none; }
@@ -824,7 +882,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 狭い幅（720px 以下）: 行の余白を詰め、直す・削除を右上に重ねる */
 @media (max-width: 720px) {
   .comments-list .row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
-  .row-actions { position: absolute; top: 10px; right: 10px; }
+  .comments-list .row > .row-actions { position: absolute; top: 10px; right: 10px; }
   .row-target { max-width: calc(100% - 2 * var(--control-h) - 8px); }
   .comments-list .row.removed { grid-template-columns: minmax(0, 1fr) auto; }
 }
@@ -842,6 +900,9 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
   --df-add-bg: color-mix(in oklab, var(--st-done) 14%, var(--surface));
   --df-del-bg: color-mix(in oklab, var(--st-review) 12%, var(--surface));
   --df-chg-bg: color-mix(in oklab, var(--st-hold) 16%, var(--surface));
+  /* 変わった語の面: 行の面（--df-add-bg・--df-del-bg）より濃い。上に置く文字は本文の文字色で、置く面の上で 4.5:1 以上 */
+  --df-add-word-bg: color-mix(in oklab, var(--st-done) 40%, var(--surface));
+  --df-del-word-bg: color-mix(in oklab, var(--st-review) 36%, var(--surface));
 }
 
 /* ===== トップバーの変更履歴と選んだ時点の札 ===== */
@@ -958,6 +1019,60 @@ dialog.hist::backdrop { background: var(--scrim); }
 /* マップの節の印の記号 */
 .n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
 
+/* ===== 消した印・消した項目の帯 ===== */
+
+/* 一覧の消した印（−）: 差分の色の赤 */
+.df-mark.df-del { color: var(--df-del); }
+/* 消した印の札: 赤の枠と面 */
+.df-badge.df-del { border-color: var(--df-del); background: var(--df-del-bg); }
+/* 消した印の札の記号 */
+.df-badge.df-del svg.icon { color: var(--df-del); }
+/* 消した項目の帯: 表・カードと同じ面に置き、中の項目は押せない */
+.rm-band { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 10px; padding: 8px 14px; background: var(--surface); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 帯の見出し: 「消した項目」と件数 */
+.rm-band-t { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-small); font-weight: 600; color: var(--text-2); white-space: nowrap; }
+/* 帯の見出しの件数 */
+.rm-band-t .n { color: var(--text-3); font-weight: 400; }
+/* 消した項目の並び: 印・ID・消したときのタイトル */
+.rm-list { display: flex; flex-wrap: wrap; gap: 4px 18px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+/* 消した項目 1 件 */
+.rm-item { display: inline-flex; align-items: flex-start; gap: 6px; min-width: 0; max-width: 100%; }
+/* 消した項目の印: 折り返したタイトルの 1 行目に揃える */
+.rm-item .df-mark { margin-top: 1px; }
+/* 消した項目の ID: 縮めず折り返さない */
+.rm-item .mono { flex: none; color: var(--text-2); white-space: nowrap; }
+/* 消したときのタイトル: 長いものは途中で切らずに折り返す */
+.rm-ttl { color: var(--text-2); overflow-wrap: anywhere; }
+/* マップ: 道具の行とマップの枠の間に置く */
+.map-view-root > .rm-band { margin-bottom: 10px; }
+
+/* ===== 取り下げの札 ===== */
+
+/* 取り下げの札: 状態の「取り下げ」と同じ印と文言を、枠の札にしてタイトルの右に置く */
+.wd-badge { display: inline-flex; align-items: center; gap: 5px; flex: none; height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: 1px; }
+/* 表の行のタイトルの右: ボタンとの間を空ける */
+.row-open + .wd-badge { margin-left: 8px; }
+/* 札の右の差分の印: 札との間を空ける */
+.wd-badge + .df-mark { margin-left: 6px; }
+/* 詳細パネルの題の右の札: 題の大きさに合わせる */
+.d-title .wd-badge, .wd-badge.wd-large { height: 22px; margin-left: 12px; vertical-align: 4px; }
+/* キーの一覧の札 */
+.d-meta dd .wd-badge { vertical-align: 0; }
+/* キーの差分の今の値（色の面）の上では、札の文字を本文の色にしてコントラストを保つ */
+.df-now .wd-badge { color: var(--text); }
+/* 資料のカード: 札があるときだけ、題と札を 1 行目に並べ、ほかは全幅に置く */
+.doc-card:has(> .wd-badge) { grid-template-columns: minmax(0, max-content) auto 1fr; column-gap: 8px; }
+/* 札のある資料のカードの中身: 全幅 */
+.doc-card:has(> .wd-badge) > * { grid-column: 1 / -1; }
+/* 札のある資料のカードの題: 1 列目 */
+.doc-card:has(> .wd-badge) > .c-ttl { grid-column: 1; }
+/* 札のある資料のカードの札: 題の右の 2 列目 */
+.doc-card:has(> .wd-badge) > .wd-badge { grid-column: 2; align-self: start; }
+/* 取り下げた項目の表の行の文字を薄くする（--text-3 も面の上で 4.5:1 以上） */
+table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var(--text-3); }
+/* 取り下げた資料のカードの文字を薄くする */
+.card.is-withdrawn :is(.c-ttl, .c-meta, .doc-kind) { color: var(--text-3); }
+
 /* ===== コメントの印 ===== */
 
 /* 印を置く場所: 自分では箱を作らず、印を置く並びの子として振る舞わせる */
@@ -1016,8 +1131,8 @@ dialog.hist::backdrop { background: var(--scrim); }
 
 /* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
 .md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
-/* 塊の中の段落・見出し・箇条書き: 塊の余白に寄せる */
-.md .df-blk > :is(p, ul, ol, h1, h2, h3, h4, table, pre) { margin: 4px 0; }
+/* 塊の中の段落・見出し（元の段が # のもの）・箇条書き: 塊の余白に寄せる */
+.md .df-blk > :is(p, ul, ol, table, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
 /* 足した塊 */
 .md ins.df-blk { background: var(--df-add-bg); }
 /* 消した塊: 取り消し線を引き、文字を控えめにする */
@@ -1100,6 +1215,15 @@ text.df-t-chg { font-weight: 700 !important; }
 .df-raw .df-line.df-del { background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; }
 /* 消した行の記号 */
 .df-raw .df-line.df-del .df-sign { color: var(--df-del); font-weight: 700; }
+
+/* ===== 変わった語の面 ===== */
+
+/* 変わった語: 行の面の上に濃い面を重ねる。行の取り消し線・下線はそのまま引き継ぎ、文字は行の淡い文字色でなく本文の文字色にして対比を保つ */
+.df-word { border-radius: 2px; color: var(--text); }
+/* 足した語 */
+.df-word.df-add { background: var(--df-add-word-bg); }
+/* 消した語 */
+.df-word.df-del { background: var(--df-del-word-bg); }
 
 /* ===== 図の拡大の差分と Raw ===== */
 
@@ -1289,6 +1413,18 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   .topbar:has(.conn):has(.df-chip) .brand { display: none; }
 }
 
+/* 最も狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅 320px までトップバーを収める */
+@media (max-width: 389px) {
+  /* 押せない飾りのツール名: 名前は常に隠し、差分の札を出している間は印も隠して札に幅を回す */
+  .topbar .brand-name, .topbar:has(.df-chip) .brand { display: none; }
+  /* トップバー: 左右の余白を詰め、差分の札を出している間も要素の間隔を 1px にする */
+  .topbar, .topbar:has(.df-chip), .topbar:has(.conn):has(.df-chip) { gap: 1px; padding: 0 8px; }
+  /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 高さは保ち、幅を 28px に揃えて縮ませない */
+  .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
+  /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
+  .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+}
+
 /* 幅 481〜900px: 接続の状態・差分の札・変更履歴のボタンが並んでも横に溢れないよう、トップバーの間隔を詰める（480px 以下は上の 3px） */
 @media (min-width: 481px) and (max-width: 900px) { .topbar { gap: 8px; } }
 
@@ -1382,12 +1518,12 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 
 /* ===== 全体の検索 ===== */
 
-/* 完全に一致のまとまりの見出し: 種類の見出しと同じ形で、先頭に置く */
-.search-results h2.sr-exact { color: var(--text); }
-/* 完全に一致の結果に添える種類 */
+/* 段の見出し: 先頭の段から順に置く */
+.search-results h2.sr-tier { color: var(--text); }
+/* 結果に添える種類 */
 .sr-item .sr-kind { margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); white-space: nowrap; }
-/* 完全に一致のまとまりと種類のまとまりの境 */
-.search-results h2.sr-exact ~ h2:not(.sr-exact) { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+/* 段と段の境 */
+.search-results h2.sr-tier ~ h2.sr-tier { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
 /* 結果の ID: 折り返さない */
 .sr-item > .mono { flex: none; white-space: nowrap; }
 /* トップバーの検索の入口のキーの案内: 2 文字以上でも詰まらない幅 */
@@ -1436,6 +1572,34 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 .term-tip .tt-head .mono { color: var(--text-3); font-weight: 400; font-size: var(--fs-xs); }
 /* ツールチップの意味 */
 .term-tip .tt-body { display: block; color: var(--text-2); }
+/* ツールチップ: 高さに上限を持たせ、収まらない分は中でスクロールする（後ろの本文は送らない）。縮めた高さを border 込みで測る */
+.term-tip { box-sizing: border-box; max-height: min(360px, calc(100vh - 16px)); overflow-y: auto; overscroll-behavior: contain; }
+/* 用語と資料・調査を並べたツールチップ: 幅を決め、中の区画が余白を持つ */
+.term-tip.is-multi { width: min(380px, calc(100vw - 16px)); max-width: none; padding: 0; }
+/* 種類のまとまり */
+.term-tip .tt-group { padding: 8px 10px 4px; }
+/* 種類のまとまりの間の区切り線 */
+.term-tip .tt-group + .tt-group { border-top: 1px solid var(--border); }
+/* 種類の見出しと件数 */
+.term-tip .tt-kind { display: flex; align-items: baseline; gap: 6px; margin: 0; color: var(--text-2); font-size: var(--fs-xs); font-weight: 700; }
+/* 種類の件数 */
+.term-tip .tt-kind .tt-n { color: var(--text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+/* 種類の中の項目の並び */
+.term-tip .tt-items { margin: 0; padding: 0; list-style: none; }
+/* 項目 */
+.term-tip .tt-item { padding: 6px 0; }
+/* 項目の間の区切り線 */
+.term-tip .tt-item + .tt-item { border-top: 1px solid var(--border-soft); }
+/* 項目の 1 行目: タイトルが長ければ折り返し、ID は右に添える */
+.term-tip.is-multi .tt-head { margin-bottom: 0; }
+/* 項目の ID: 折り返さない */
+.term-tip.is-multi .tt-head .mono { flex: none; white-space: nowrap; }
+/* 項目のタイトルのリンク: 文字の色で押せることを示す */
+.term-tip .tt-link { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+/* 項目のタイトルのリンクに乗せた */
+.term-tip .tt-link:hover { text-decoration-color: var(--accent); }
+/* 項目のタイトルのリンクのフォーカス: 印の色の輪 */
+.term-tip .tt-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 
 /* ===== 詳細の全画面 ===== */
 
@@ -1467,3 +1631,286 @@ button.n-item.sel .r1, button.n-item.locked .r1 { padding-right: 10px; }
 .map-canvas.focusing button.n-item.sel { opacity: 1; }
 /* 表示の設定の種類の行のホバー: 面の色が濃くなる分、件数の文字を 1 段濃くして読めるようにする */
 .st-kinds label:hover .n { color: var(--text-2); }
+
+/* ===== 本文の形式の札: 形式の名前を等幅の文字で出す（色だけで分けない） ===== */
+
+/* 札: 取り下げの札と同じ高さ・枠。文字は等幅にして、状態の札・取り下げの札と見分ける */
+.fmt-badge { display: inline-flex; align-items: center; flex: none; height: 20px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-3); font: 600 11px/1 var(--font-mono); letter-spacing: .02em; white-space: nowrap; vertical-align: 1px; }
+/* HTML: 地の面を敷き、文字を一段濃くする（見た目のある資料を一覧で拾いやすくする） */
+.fmt-badge.fmt-html { border-color: var(--text-3); background: var(--surface-2); color: var(--text-2); }
+/* カードの種類の右: 種類の色（印の色）を引き継がない */
+.doc-kind .fmt-badge { margin-left: 2px; }
+/* 詳細のヘッダー: 種類と ID の右 */
+.panel-head .fmt-badge { margin-left: 2px; }
+/* 取り下げた資料のカード: 札も薄くする */
+.card.is-withdrawn .fmt-badge { color: var(--text-3); }
+
+/* ===== HTML の本文の枠: 資料が自分で持つ見た目の紙として、詳細の地と分ける ===== */
+
+/* 枠: 幅いっぱい。描く前は 120px で、描いた後は中身の高さに合わせる（スクリプトが height を入れる）。地は白にして、ダークでも資料の色のまま読む */
+iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; }
+/* Markdown の中の html のコードブロックの枠: 前後の段落との間を空ける */
+.md .html-block { margin: 12px 0; }
+/* 差分の表示の間、変わった html のコードブロックは枠に描かず原文に印を付けて出す */
+.md pre.html-block-src { margin: 12px 0; }
+
+/* ===== HTML の本文の差分 ===== */
+
+/* 見せ方の切り替えと凡例の行を持つ、描いた結果と原文の差分の入れ物 */
+.html-diff-c { display: grid; gap: 8px; }
+/* 切り替えの行: 切り替えの右に凡例を置き、狭い幅では折り返す */
+.html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* 凡例の行の余白を切り替えの行に揃える */
+.html-diff-bar .df-legend { margin: 0; }
+/* 切り替えで隠した側（描いた結果・原文の差分・凡例）は、display を持つ部品でも出さない */
+.html-diff-c [hidden], .html-diff[hidden] { display: none; }
+/* 原文の行の差分 */
+.html-diff { display: grid; gap: 6px; }
+/* 原文の差分の見出し: 描いた結果ではなく原文であることを示す */
+.html-diff-head { margin: 0; color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
+/* 変わっていない行を畳んだ行 */
+.df-raw .df-line.df-skip { padding-left: 2em; text-indent: 0; color: var(--text-3); font-family: var(--font-sans); font-size: var(--fs-xs); }
+
+/* ===== スレッド（コメントの一覧のスレッドの一覧・スレッド・レビュー中の書き込み） ===== */
+
+/* 見出し: 狭い幅でも折り返さない */
+.comments-head h2 { white-space: nowrap; }
+/* 見出しとレビュー中を確かめる入口の間: 入口と閉じるボタンを右端へ寄せる */
+.comments-head .spacer { flex: 1; }
+/* レビュー中を確かめる入口: 文字と件数を並べる */
+.review-entry { flex: none; gap: 8px; white-space: nowrap; }
+/* 入口の件数: コメントのボタンの件数と同じ丸い札 */
+.review-entry .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--text); color: var(--bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+/* レビュー中が 0 件の入口: 件数の塗りを外す */
+.review-entry.zero .count { background: transparent; color: var(--text-2); box-shadow: inset 0 0 0 1px var(--border); }
+
+/* ===== スレッドの一覧 ===== */
+
+/* 絞り込みの帯: 状態のセグメントと、タグの絞り込みのチップを一覧の上端に留める */
+.talk-band { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* 状態のセグメント: 帯の幅いっぱいに 3 つを等分する */
+.talk-filter { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+/* セグメントのボタン: 文字と件数を中央に並べる */
+.talk-filter button { justify-content: center; min-width: 0; width: auto; }
+/* セグメントの件数 */
+.talk-filter .count { font-family: var(--font-mono); font-size: var(--fs-xs); opacity: .75; }
+/* タグの絞り込みのチップと件数の行 */
+.talk-chips { margin: 0; min-height: 0; }
+/* チップのタグの印 */
+.talk-chips .chip > svg.icon { color: var(--text-3); }
+/* スレッドの一覧: 最後の書き込みの新しい順の縦並び */
+.th-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* スレッドの行: 開くボタンとタグを縦に積む */
+.th-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 行の上に乗ったとき: 行の面を変える */
+.th-row:has(.th-open:hover) { background: var(--hover); }
+/* 行を開くボタン: 行の幅いっぱいで、題とメタ情報を 2 行で出す */
+.th-open { display: grid; gap: 6px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--radius); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.th-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* タグがある行: 開くボタンの下の余白をタグに譲る */
+.th-row:has(.th-tags) .th-open { padding-bottom: 4px; }
+/* 1 行目: 状態の札と題 */
+.th-line1 { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+/* 題: 2 行で末尾を省く */
+.th-title { min-width: 0; font-weight: 600; line-height: 1.45; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+/* 要約がまだ無い行の題（最初の書き込みの先頭）: 要約と見分けられるよう太さを落とす */
+.th-title.head { font-weight: 400; }
+/* 2 行目: 向けた項目・最後の書き手・日時・レビュー中の印 */
+.th-line2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; color: var(--text-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+/* 2 行目の向けた項目の ID */
+.th-line2 .mono { color: var(--text); }
+/* 最後の書き手 */
+.th-author { font-weight: 600; }
+/* 行のタグの並び */
+.th-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+/* タグ: 押すとそのタグで絞る */
+.th-tag { display: inline-flex; align-items: center; gap: 3px; min-height: var(--target-min); padding: 0 8px 0 5px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.th-tag:hover { border-color: var(--accent); color: var(--text); }
+.th-tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* タグの印 */
+.th-tag svg.icon { width: 12px; height: 12px; }
+/* 絞っているタグ: 枠の全体と面で示す */
+.th-tag.on { border-color: var(--accent-line); background: var(--accent-weak); color: var(--text); }
+/* スレッドの見出しのタグ: 押せない札。枠と面を外して文字だけにし、一覧の押せるタグと見分ける */
+.th-tag.static { min-height: 0; padding: 0; border: 0; background: none; cursor: default; }
+.th-tag.static:hover { color: var(--text-2); }
+
+/* 状態の札: 印と文字で分ける（色だけに頼らない） */
+.th-state { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid currentColor; border-radius: 3px; font-size: var(--fs-xs); font-weight: 500; line-height: 1; white-space: nowrap; }
+/* 状態の札の印 */
+.th-state svg.icon { width: 11px; height: 11px; }
+/* オープン: 未決定と同じ色 */
+.th-state.open { color: var(--st-open); }
+/* クローズ: 薄い文字 */
+.th-state.closed { color: var(--text-2); }
+/* レビュー中（まだ送っていない新しいスレッド）: 破線の枠で、記録にあるスレッドの札と見分ける */
+.th-state.pending { color: var(--text); border-style: dashed; }
+/* レビュー中の印: レビュー中の書き込みを持つスレッドの行と、スレッドの中のレビュー中の書き込みに出す */
+.th-pending { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border: 1px dashed var(--text-2); border-radius: 3px; color: var(--text); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; }
+/* レビュー中の印の絵 */
+.th-pending svg.icon { width: 11px; height: 11px; }
+/* まだ送っていない新しいスレッドの行: 破線の枠にする */
+.th-row.pending { border-style: dashed; }
+/* 未読の札: 塗りつぶした札に点と「未読」を出す（状態の札は線の枠、レビュー中の印は破線の枠で、形が違う） */
+.th-unread { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 3px; background: var(--accent); color: var(--on-accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; }
+/* 未読の札の点 */
+.th-unread .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* 未読の行の最後の書き手と日時: 届いた返信を読む手がかりになるため、本文と同じ濃さにする */
+.th-row.unread :is(.th-author, time) { color: var(--text); }
+/* 一覧の下端の、新しいスレッドを立てる入口 */
+.talk-new { padding: 10px 12px; }
+/* 新しいスレッドの入力を開いたとき: 見出しと入力を縦に積む */
+.talk-new.open { padding: 8px 0 0; }
+/* 新しいスレッドの入力の見出しと閉じるボタン */
+.talk-new-head { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 0 16px; }
+/* 新しいスレッドの入力: 見出しの下に詰める */
+.talk-new.open .send.send-footer { padding-top: 4px; }
+
+/* ===== スレッド 1 件 ===== */
+
+/* スレッドの見出し: 戻る・状態の切り替え・題・向けた項目とタグを、書き込みの上に留める */
+.th-head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px 12px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* 戻るボタンと状態の切り替えの行 */
+.th-head-bar { display: flex; align-items: center; gap: 8px; }
+/* 戻るボタンと状態の切り替えの間: 状態の切り替えを右端へ寄せる */
+.th-head-bar .spacer { flex: 1; }
+/* 戻るボタン: 帯の左端に文字の頭を揃える */
+.th-back { margin-left: -6px; padding: 0 8px 0 4px; }
+/* 状態の切り替えを送っている間 */
+.th-head-bar .btn:disabled { color: var(--text-2); cursor: progress; }
+/* スレッドの題: 状態の札と、折り返す題 */
+.th-heading { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--fs-h2); line-height: 1.45; overflow-wrap: anywhere; }
+/* 題の文字: 札の残りの幅で折り返す */
+.th-heading > span:last-child { min-width: 0; }
+/* 題の横の状態の札: 1 行目の高さに揃える */
+.th-heading .th-state { margin-top: 1px; }
+/* 向けた項目とタグ */
+.th-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* 向けた項目: 押すと詳細パネルを開く */
+.th-meta .row-target { margin-left: -6px; font-weight: 500; }
+/* 状態を切り替えられなかった理由 */
+.th-action-msg { min-height: 0; padding-top: 0; }
+/* 書き込みの並び: 書いた順 */
+.posts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+/* 書き込み: 書き手の名前・日時・本文 */
+.post { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+/* 利用者の書き込み: 右に寄せる */
+.post.user { margin-left: 32px; }
+/* AI の書き込み: 左に寄せ、面の色を変える */
+.post.ai { margin-right: 32px; background: var(--surface-2); border-color: var(--border-soft); }
+/* 書き込みの頭: 書き手の名前と日時 */
+.post-head { display: flex; align-items: baseline; gap: 8px; color: var(--text-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+/* 書き手の名前 */
+.post-author { color: var(--text); font-weight: 600; }
+/* 書き込みの本文: 改行を残し、長い語も折り返す */
+.post-body { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* 本文の中の項目の ID: 行の中に収める */
+.post-body .idlink { margin: 0 2px; }
+/* 本文の中のまとまりのリンク: 詳細の本文のリンクと同じ、色の付いた文字と下線 */
+.post-body a.setlink, .review-body a.setlink { color: var(--accent); text-decoration: underline; cursor: pointer; }
+/* クローズのスレッドの下端: 返信の入力の代わりに置く */
+.th-closed-note { display: flex; align-items: center; gap: 6px; margin: 0; padding: 14px 16px; color: var(--text-2); font-size: var(--fs-small); }
+/* クローズの印 */
+.th-closed-note svg.icon { width: 14px; height: 14px; }
+/* 返信のボタン: 押せないとき（空・送っている間）は塗りを外す */
+.reply .send-row .btn:disabled { cursor: default; }
+
+/* 狭い幅（720px 以下）: 書き込みの寄せを詰め、レビュー中を確かめる画面の行の頭を、札の行（右上に重ねた修正と削除と同じ高さ）と、2 行で省く題の行に分ける */
+@media (max-width: 720px) {
+  .comments-list .row-head { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(var(--control-h), auto); justify-items: start; gap: 0; }
+  .comments-list .row-head .row-target { max-width: 100%; margin-left: -6px; align-items: flex-start; padding-block: 4px; }
+  .comments-list .row-head .row-target .t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
+  .posts > li.row.removed { margin-left: 16px; }
+  .post.user { margin-left: 16px; }
+  .post.ai { margin-right: 16px; }
+}
+
+/* ===== クローズ・オープンへの戻しの理由と記録 ===== */
+
+/* 理由の入力（任意）: 見出しの下にその場で出す */
+.th-reason { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+/* 理由の入力欄: コメントの入力欄と同じ見た目 */
+.th-reason textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(6lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.th-reason textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 状態を変えた記録: 書き込みの並びの中に、枠を持たない 1 行で出す */
+.th-event { display: grid; gap: 4px; padding: 2px 4px; color: var(--text-2); font-size: var(--fs-small); }
+/* 記録の 1 行: 印・誰が何をしたか・日時 */
+.th-event-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-variant-numeric: tabular-nums; }
+/* 記録の印 */
+.th-event-line svg.icon { width: 14px; height: 14px; }
+/* 記録の理由: 印の分だけ下げて、本文の色で出す */
+.th-event-reason { margin: 0 0 0 22px; color: var(--text); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ===== スレッドの中のレビュー中の書き込み ===== */
+
+/* レビュー中の書き込み: 破線の枠で、送った書き込みと見分ける */
+.post.pending { border-style: dashed; }
+/* レビュー中の書き込みの頭: 印の右に、修正と削除を寄せる */
+.post.pending .post-head { align-items: center; }
+.post.pending .post-head .spacer { flex: 1; }
+/* スレッドの中の消した書き込み: 書き込みと同じ寄せにする */
+.posts > .row.removed { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-left: 32px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); }
+
+/* ===== レビュー中を確かめる画面 ===== */
+
+/* 見出し: 戻ると題を 1 行に並べる */
+.review-head { padding-bottom: 8px; }
+/* 題と件数 */
+.review-title { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: var(--fs-h2); }
+/* 題の件数 */
+.review-title .count { font-family: var(--font-mono); font-size: var(--fs-small); font-weight: 400; color: var(--text-3); }
+/* 行の頭: 返信か新しいスレッドかと、返信先・向けた項目を並べる */
+.row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* 行の種類（返信・新しいスレッド）: 押せない札 */
+.row-kind { flex: none; display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 6px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
+/* 新しいスレッドの行の、スレッドを開く入口: 本文の下の左に置き、クローズのスレッドへの返信の行の入口と同じ文字の大きさにする */
+.row-thread-open { display: flex; margin-left: -12px; font-size: var(--fs-small); }
+/* 行の頭の向けた先: 残りの幅で省く */
+.row-head .row-target { flex: 0 1 auto; margin-left: 0; min-width: 0; font-weight: 500; }
+/* クローズのスレッドへの返信の行: チェックできないことを面の色でも示す */
+.comments-list .row.blocked { background: var(--surface-2); }
+/* チェックできない行のチェック */
+.row-check:disabled { opacity: .45; }
+/* 送れない理由と、スレッドを開く入口 */
+.row-blocked svg.icon { color: var(--text-2); }
+
+/* ===== 差分のミニマップ: 本文のスクロールバーの外側に立てる、変わった箇所の印の縦の帯 ===== */
+
+/* 帯の太さと、帯の中で印の左右に空ける余白 */
+:root {
+  --df-map-w: 20px;
+  --df-map-pad: 4px;
+}
+/* 帯: 本文の全体を縮めた面。本文の右に立て、線で区切る。印と見えている範囲の面を、この中に位置で置く */
+.panel-scroll > .df-map { position: relative; flex: none; width: var(--df-map-w); background: var(--surface-2); border-left: 1px solid var(--border-soft); }
+/* 帯を出している間の本文: 右の余白を帯に譲る */
+.panel-scroll.has-map > .panel-body { padding-right: 12px; }
+/* 見えている範囲の面: 本文のうち今見えている部分を、面の濃さで示す */
+.df-map-view { position: absolute; left: 0; right: 0; background: color-mix(in oklab, var(--text) 12%, transparent); pointer-events: none; }
+/* 印: 押すとその箇所まで本文を送るボタン。押せる的は帯の幅いっぱいに取る */
+.df-map-m { position: absolute; left: 0; display: block; width: 100%; padding: 0 var(--df-map-pad); border: 0; border-radius: 2px; background: none; cursor: pointer; }
+/* 印のホバー: 面だけを変える */
+.df-map-m:hover { background: var(--hover); }
+/* 印のフォーカス: 印の色の輪。隣の印より手前に出す */
+.df-map-m:focus-visible { z-index: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 印の形: 種類を色と形の両方で分ける */
+.df-map-m i { display: block; width: 100%; height: 100%; border-radius: 2px; }
+/* 足した印: 塗りつぶし */
+.df-map-m.df-add i { background: var(--df-add); }
+/* 消した印: 枠だけの中抜き */
+.df-map-m.df-del i { border: 2px solid var(--df-del); background: var(--surface); }
+/* 変わった印: 斜めの縞 */
+.df-map-m.df-chg i { border: 1px solid var(--df-chg); background: repeating-linear-gradient(135deg, var(--df-chg) 0 3px, var(--surface) 3px 6px); }
+/* マウスで押したまま上下に動かして本文を送れることを、つかむ形のポインタで示す（印の上は押す形） */
+@media (pointer: fine) {
+  .panel-scroll > .df-map { cursor: grab; }
+  .panel-scroll > .df-map .df-map-m { cursor: pointer; }
+}
+/* ドラッグの間の見えている範囲の面: つかんでいる面を 1 段濃くする */
+.df-map.is-dragging .df-map-view { background: color-mix(in oklab, var(--text) 24%, transparent); }
+/* ドラッグの間: 帯の外へ出てもつかむ形のポインタのままにし、本文の文を選ばない */
+body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map .df-map-m { cursor: grabbing; user-select: none; }
+/* ドラッグの間の印: 乗っても面を変えない */
+.df-map.is-dragging .df-map-m:hover { background: none; }
+/* 飛んだ先の箇所: 当たった語と同じ色の輪で、少しの間だけ示す */
+.df-map-hit { box-shadow: 0 0 0 2px var(--hit); }

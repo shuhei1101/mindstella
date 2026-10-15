@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 from collections import deque
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,6 +29,9 @@ REPO_ROOT = Path(__file__).resolve().parents[REPO_ROOT_PARENT_DEPTH]
 SERVER_SCRIPT = (
     REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "server.py"
 )
+
+# MCP サーバーが送り先に使う、tmux のサーバーとペインを指す環境変数の名前
+TMUX_ENV_NAMES = ("TMUX", "TMUX_PANE")
 
 # 子プロセス 1 回を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 120
@@ -84,6 +87,9 @@ type CallTool = Callable[..., ToolResult]
 type MakeItem = Callable[..., dict[str, Any]]
 type MakeSubmission = Callable[..., dict[str, Any]]
 type WriteSubmissions = Callable[..., None]
+type MakePost = Callable[..., dict[str, Any]]
+type MakeThread = Callable[..., dict[str, Any]]
+type WriteThreads = Callable[..., None]
 type MakeComment = Callable[..., dict[str, Any]]
 type WriteComments = Callable[..., None]
 type MakeDraft = Callable[..., dict[str, Any]]
@@ -93,6 +99,11 @@ type MakeLegacyItem = Callable[[str, bool], dict[str, Any]]
 type MakeLegacyWorkspace = Callable[..., Path]
 type SnapshotTree = Callable[[Path], dict[str, bytes]]
 type MakeVenv = Callable[..., Path]
+
+
+def _without_tmux(environ: Mapping[str, str]) -> dict[str, str]:
+    """tmux のペインを指す環境変数を外した環境変数を返す（テストを流すペインへ、サーバーが入力しないため）。"""
+    return {key: value for key, value in environ.items() if key not in TMUX_ENV_NAMES}
 
 
 @dataclass(frozen=True)
@@ -210,7 +221,7 @@ class McpServer:
 def start_server(tmp_path: Path) -> Iterator[StartServer]:
     """MCP サーバーを子プロセスとして立てる関数を返し、テストの後で全て止める。"""
     # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    base_env = {**os.environ, "PYTHONUTF8": "1"}
+    base_env = {**_without_tmux(os.environ), "PYTHONUTF8": "1"}
     started: list[McpServer] = []
 
     def _start(
@@ -237,7 +248,7 @@ def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
     """テスト全体で共有する MCP サーバーを 1 つ立てて返す（立ち上げに数秒かかるため）。"""
     server = McpServer(
         python=sys.executable,
-        env={**os.environ, "PYTHONUTF8": "1"},
+        env={**_without_tmux(os.environ), "PYTHONUTF8": "1"},
         cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
     )
     yield server
@@ -315,6 +326,66 @@ def write_submissions() -> WriteSubmissions:
     def _write(root: Path, *submissions: dict[str, Any]) -> None:
         """渡した送信を並びのまま items に入れて、root の記録のフォルダの submissions.yaml に書く。"""
         write_yaml(root / RECORD_DIR / "submissions.yaml", {"items": list(submissions)})
+
+    return _write
+
+
+@pytest.fixture
+def make_post() -> MakePost:
+    """スレッドの書き込み（threads.yaml の posts の 1 件）を作る関数を返す。"""
+
+    def _make(post_id: str, **overrides: Any) -> dict[str, Any]:
+        """ID・書き手・本文・書いた日時・AI の既読・利用者の既読・取り込んだ日時に、渡したキーを重ねた書き込みを返す。
+
+        既定は AI が読んでいない、取り込んでいない利用者の書き込み。AI の書き込みは、渡さない限り AI の既読で、
+        取り込んだ日時のキーを持たない。どちらも利用者の既読が既定で、利用者の未読にするときは `seen=False` を渡す。
+        """
+        post: dict[str, Any] = {
+            "id": post_id,
+            "author": "user",
+            "body": f"{post_id}の本文",
+            "created": DEFAULT_TIMESTAMP,
+            "read": False,
+            "seen": True,
+            "taken": None,
+        }
+        # AI の書き込みは取り込みの対象ではないので、既読にして taken を持たせない
+        if overrides.get("author") == "ai":
+            post["read"] = True
+            del post["taken"]
+        post.update(overrides)
+        return post
+
+    return _make
+
+
+@pytest.fixture
+def make_thread(make_post: MakePost) -> MakeThread:
+    """スレッド（threads.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(thread_id: str, *posts: dict[str, Any], **overrides: Any) -> dict[str, Any]:
+        """ID・オープン・タグなし・要約なし・渡した書き込み（無ければ 1 件）・状態の記録なしに、渡したキーを重ねたスレッドを返す。"""
+        thread: dict[str, Any] = {
+            "id": thread_id,
+            "status": "open",
+            "tags": [],
+            "summary": None,
+            "posts": list(posts) if posts else [make_post(f"{thread_id}-1")],
+            "events": [],
+        }
+        thread.update(overrides)
+        return thread
+
+    return _make
+
+
+@pytest.fixture
+def write_threads() -> WriteThreads:
+    """ワークスペースに threads.yaml を書く関数を返す。"""
+
+    def _write(root: Path, *threads: dict[str, Any]) -> None:
+        """渡したスレッドを並びのまま items に入れて、root の記録のフォルダの threads.yaml に書く。"""
+        write_yaml(root / RECORD_DIR / "threads.yaml", {"items": list(threads)})
 
     return _write
 

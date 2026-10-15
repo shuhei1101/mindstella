@@ -7,8 +7,17 @@ from typing import Any
 
 from playwright.sync_api import Page
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL
-from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
+from preview_drawer_helpers import (
+    DRAWER_OPEN,
+    FILTER_BUTTON,
+    badge_text,
+    checked_values,
+    click_value,
+    close_drawer,
+    open_drawer,
+)
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_minimap_helpers import MINIMAP_HASH, PANEL_SCOPE, open_minimap
 from preview_settings_helpers import (
     DEFAULT_KINDS,
     LOOK_SELECT,
@@ -22,6 +31,15 @@ from preview_settings_helpers import (
     read_prefs,
     tab_keys,
     toggle_kind,
+)
+from preview_stack_helpers import (
+    DETAIL_HASH,
+    NARROW_VIEWPORT,
+    WIDE_VIEWPORT,
+    has_left_front,
+    is_inert,
+    open_narrow,
+    wait_front,
 )
 from workspace_fixtures import RECORD_DIR, MakeItem
 
@@ -40,6 +58,11 @@ INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
 
 # 既定が変わった知らせが画面の下に出てから消えるまでの余裕の上限ミリ秒（画面は 6 秒出す）
 NOTICE_GONE_MS = 9_000
+
+# 絞り込みのドロワーの状態の条件で、「未決定」のチェックが `checked` のとおりになるのを待つ式
+UNDECIDED_CHECKED_SCRIPT = """checked => document.querySelector(
+    'dialog.drawer input[data-key="status"][value="未決定"]'
+)?.checked === checked"""
 
 
 def _preview(
@@ -93,7 +116,7 @@ def test_open_and_close(
     assert opened["expanded"] == "true"
     assert opened["history"] == history_length
     assert "ワークスペースの既定のまま表示しています。" in opened["text"]
-    assert "今の選びはワークスペースの既定と同じです。" in opened["text"]
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in opened["text"]
     assert opened["buttons"] == []
     assert focus_after_esc == "settings"
     assert focus_after_close == "settings"
@@ -384,6 +407,85 @@ def test_narrow(
     )
 
 
+def test_narrow_in_front_of_detail(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """幅 390px で詳細パネルを開いたまま開くと、詳細パネルの前に出て詳細パネルが `inert` になる。Esc で表示の設定だけが閉じ、開く前の詳細パネルがそのまま見える（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    # 実行（詳細パネルを開いたまま開く）
+    open_settings(page)
+    wait_front(page, "settings")
+    in_front = {"left_front": has_left_front(page), "detail_inert": is_inert(page, "detail")}
+    # 実行（Esc で閉じる）
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    wait_front(page, "detail")
+    # 検証
+    assert in_front == {"left_front": True, "detail_inert": True}
+    assert has_left_front(page) is False
+    assert is_inert(page, "detail") is False
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+    assert "id=D-1" in page.evaluate("location.hash")
+
+
+def test_narrow_when_detail_opened_after(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """幅 390px で表示の設定を開いた後に詳細パネルを開く（別の項目へ移る）と、詳細パネルが前に出て表示の設定が `inert` になる（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_settings(page)
+    wait_front(page, "settings")
+    # 実行（別の項目 T-1 の詳細パネルへ移る）
+    page.evaluate("location.hash = '#tab=tasks&id=T-1'")
+    # 検証
+    wait_front(page, "detail")
+    assert has_left_front(page) is False
+    assert is_inert(page, "settings") is True
+    assert is_inert(page, "detail") is False
+
+
+def test_narrow_when_width_crosses_900(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` と `inert` が外れ、また 900px 以下に戻ると付け直す（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_settings(page)
+    wait_front(page, "settings")
+    # 実行（幅 1200px にする）
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_function("!document.body.classList.contains('left-front')")
+    wide = {
+        "left_front": has_left_front(page),
+        "detail_inert": is_inert(page, "detail"),
+        "settings_inert": is_inert(page, "settings"),
+    }
+    # 実行（幅 390px に戻す）
+    page.set_viewport_size(NARROW_VIEWPORT)
+    page.wait_for_function("document.body.classList.contains('left-front')")
+    # 検証
+    assert wide == {"left_front": False, "detail_inert": False, "settings_inert": False}
+    assert is_inert(page, "detail") is True
+    assert is_inert(page, "settings") is False
+
+
 def test_defaults_changed_by_other(
     write_review_preview: WriteReviewPreview,
     make_item: MakeItem,
@@ -424,3 +526,164 @@ def test_defaults_changed_by_other(
     assert read_config(root)["display"]["network_look"] == "glow"
     # 知らせは 6 秒で消える
     page.wait_for_selector(".stoast", state="detached", timeout=NOTICE_GONE_MS)
+
+
+def test_filter_override(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """サーバーの配信で残した条件が画面の既定の条件と違う画面を、「この端末で変えている項目」に「絞り込み（{画面}）」で並べる（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=tasks&view=table")
+    open_drawer(page)
+    click_value(page, "status", "未着手")
+    page.wait_for_function("document.querySelector('[data-act=filter] .fbadge')?.textContent === '1'")
+    close_drawer(page)
+    # 実行
+    open_settings(page)
+    # 検証
+    assert "絞り込み（タスク）" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.locator(f"{SETTINGS_PANEL} button:has-text('既定に戻す')").count() == 1
+
+
+def test_filter_override_when_same_as_default(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """残した条件が画面の既定の条件と同じ画面は、変えている項目に並べない（正常系）。"""
+    # 準備（検討事項の既定の状態の条件から、1 つ外して戻す）
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "status", "未決定")
+    page.wait_for_function(UNDECIDED_CHECKED_SCRIPT, arg=False)
+    click_value(page, "status", "未決定")
+    page.wait_for_function(UNDECIDED_CHECKED_SCRIPT, arg=True)
+    close_drawer(page)
+    # 実行
+    open_settings(page)
+    # 検証
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert "絞り込み" not in panel_text(page)
+    assert page.locator(f"{SETTINGS_PANEL} button:has-text('既定に戻す')").count() == 0
+
+
+def test_reset_filters(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """「既定に戻す」で残した絞り込みの条件も外し、開いている画面を画面の既定の条件で描き直す（正常系）。"""
+    # 準備（検討事項の既定の状態の条件から 1 つ外して残す）
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "status", "未決定")
+    page.wait_for_function(UNDECIDED_CHECKED_SCRIPT, arg=False)
+    close_drawer(page)
+    open_settings(page)
+    overridden_text = page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_function(
+        "document.querySelector('aside.settings-drawer').textContent.includes('ワークスペースの既定のまま表示しています。')"
+    )
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    open_drawer(page)
+    # 検証
+    assert "絞り込み（検討事項）" in overridden_text
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["filters"] == {}
+    # 記録の検討事項は未決定だけなので、ドロワーに並ぶ状態も未決定だけで、外していたチェックが戻る
+    assert checked_values(page, "status") == ["未決定"]
+    assert badge_text(page) == "1"
+
+
+# 「詳細に表示するもの」の区画の中の、差分のミニマップのチェックボックスの名前
+MINIMAP_LEGEND = "詳細に表示するもの"
+MINIMAP_LABEL = "差分のミニマップ"
+
+# 開いている詳細パネルの帯が消える・戻るまで待つ上限ミリ秒
+MINIMAP_TOGGLE_MS = 5_000
+
+
+def _minimap_checkbox(page: Page) -> Any:
+    """表示の設定の、区画「詳細に表示するもの」の中の「差分のミニマップ」のチェックボックスを返す。"""
+    return page.locator(f"{SETTINGS_PANEL} fieldset", has_text=MINIMAP_LEGEND).get_by_role(
+        "checkbox", name=MINIMAP_LABEL
+    )
+
+
+def test_minimap_override(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """「差分のミニマップ」のチェックを外すと、開いている詳細パネルからその場で帯が消え、個人の上書きとして残り、`config.yaml` は変わらない。戻すと帯が戻る（正常系）。"""
+    # 準備
+    url, root = write_minimap_preview()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    open_minimap(page, open_preview, url, MINIMAP_HASH)
+    history_length = page.evaluate("history.length")
+    open_settings(page)
+    # 検証（開いた直後は表示するで、上書きを持たない）
+    assert _minimap_checkbox(page).is_checked() is True
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    # 実行（チェックを外す）
+    _minimap_checkbox(page).click()
+    page.wait_for_function(
+        "document.querySelector('aside.panel .df-map') === null", timeout=MINIMAP_TOGGLE_MS
+    )
+    # 検証（詳細パネルは開いたままで、本文の差分の印は出ている）
+    assert page.locator(f"{PANEL_SCOPE}.open").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .md del.df-blk").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .md ins.df-blk").count() == 1
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is False
+    assert _minimap_checkbox(page).is_checked() is False
+    assert MINIMAP_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.evaluate("history.length") == history_length
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+    # 実行（チェックを戻す）
+    _minimap_checkbox(page).click()
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TOGGLE_MS)
+    # 検証（表示するは上書きを外す）
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+
+
+def test_reset_when_minimap(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表示しないにした「差分のミニマップ」は、「この端末で変えている項目」の末尾に並び、「既定に戻す」で外れて帯が戻る（正常系）。"""
+    # 準備（表示する種類も変え、その後ろに差分のミニマップが並ぶようにする）
+    url, _ = write_minimap_preview()
+    open_minimap(page, open_preview, url, MINIMAP_HASH)
+    open_settings(page)
+    toggle_kind(page, "用語集")
+    _minimap_checkbox(page).click()
+    page.wait_for_function(
+        "document.querySelector('aside.panel .df-map') === null", timeout=MINIMAP_TOGGLE_MS
+    )
+    # 検証
+    assert "表示する種類・差分のミニマップ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(f"{PANEL_SCOPE} .df-map .df-map-m", timeout=MINIMAP_TOGGLE_MS)
+    # 検証（全ての上書きが外れ、チェックも表示するへ戻る）
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["minimap"] is None
+    assert prefs["kinds"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert _minimap_checkbox(page).is_checked() is True

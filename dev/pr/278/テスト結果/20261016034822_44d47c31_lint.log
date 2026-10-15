@@ -1,0 +1,10 @@
+$ ruff check {この PR の変更ファイル（Python）}
+All checks passed!
+(exit: 0)
+
+$ npm run typecheck
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+(exit: 0)

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +15,7 @@ import yaml
 import builder
 import commands
 import errors
+import history
 import store
 from errors import (
     ArgumentError,
@@ -29,11 +33,12 @@ from export_helpers import (
 from fixture_types import (
     MakeItem,
     MakeLegacyWorkspace,
-    MakeSubmission,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     PatchPluginVersion,
     SnapshotTree,
-    WriteSubmissions,
+    WriteThreads,
 )
 from query import SearchFilter
 from workspace_fixtures import RECORD_DIR
@@ -41,8 +46,11 @@ from workspace_fixtures import RECORD_DIR
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-02T08:00:00+00:00"
 
-# 送信の取り込みで now の代わりに返す日時
-SUBMISSION_NOW = "2026-10-04T03:00:00+00:00"
+# スレッドの書き換えで now の代わりに返す日時
+THREAD_NOW = "2026-10-13T03:00:00+00:00"
+
+# 古い更新日時（書き換えたかを更新日時で確かめるため、先にファイルをこの時刻へ戻す）
+OLD_MTIME_SEC = 1_000_000_000
 
 # make_item が項目に入れる既定の日時
 DEFAULT_TIMESTAMP = "2026-10-01T00:00:00+00:00"
@@ -57,9 +65,27 @@ def _fixed_now() -> str:
     return FIXED_NOW
 
 
-def _submission_now() -> str:
-    """送信の取り込みで、今の日時の代わりに決めた日時を返す。"""
-    return SUBMISSION_NOW
+def _thread_now() -> str:
+    """スレッドの書き換えで、今の日時の代わりに決めた日時を返す。"""
+    return THREAD_NOW
+
+
+def _counting_lock(calls: list[int]) -> Callable[[], AbstractContextManager[None]]:
+    """取られた回数を calls に控える、何もしない鍵の文脈を返す関数を作る。"""
+
+    @contextmanager
+    def _lock() -> Iterator[None]:
+        """鍵を取った回数を 1 つ控えて、そのまま通す。"""
+        calls.append(1)
+        yield
+
+    return _lock
+
+
+def _read_threads(root: Path) -> list[dict[str, Any]]:
+    """ワークスペースの threads.yaml のスレッドの並びを返す。"""
+    data = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    return data["items"]
 
 
 def _make_staged(
@@ -134,12 +160,13 @@ class _UrlRegistry:
         pytest.param("decision", {"title": "t", "body_markdown": "b"}, id="decision"),
         pytest.param("task", {"title": "t", "body_markdown": "b"}, id="task"),
         pytest.param("note", {"content": "c", "body_markdown": "b"}, id="note"),
+        pytest.param("doc", {"title": "t", "body_html": "<p>a</p>"}, id="doc_html_body"),
     ],
 )
 def test_validate_input_keys(kind: str, data: dict[str, Any]) -> None:
     """渡せるキーだけなら何もしない（正常系）。"""
     # 実行
-    result = commands.validate_input_keys(kind, data)
+    result = commands.validate_input_keys(kind, data, index=0)
     # 検証
     assert result is None
 
@@ -151,8 +178,37 @@ def test_validate_input_keys_when_reserved(key: str) -> None:
     """ツールが付けるキーを弾く（異常系）。"""
     # 実行・検証
     with pytest.raises(SchemaMismatchError) as exc_info:
-        commands.validate_input_keys("decision", {key: "x"})
+        commands.validate_input_keys("decision", {key: "x"}, index=0)
     assert key in exc_info.value.lines[0]
+
+
+@pytest.mark.parametrize(
+    ("kind", "data", "index", "expected_line"),
+    [
+        pytest.param(
+            "task",
+            {"title": "t", "body_html": "<p>a</p>"},
+            0,
+            "tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる",
+            id="not_doc",
+        ),
+        pytest.param(
+            "doc",
+            {"title": "t", "body_markdown": "a", "body_html": "<p>a</p>"},
+            2,
+            "docs.yaml: items[2].body_html: body_markdown と body_html は一緒に渡せない",
+            id="both_bodies",
+        ),
+    ],
+)
+def test_validate_input_keys_when_html_body(
+    kind: str, data: dict[str, Any], index: int, expected_line: str
+) -> None:
+    """資料以外の body_html と、本文の両方の指定を弾く（異常系）。"""
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        commands.validate_input_keys(kind, data, index=index)
+    assert exc_info.value.lines == [expected_line]
 
 
 def test_merge_changes() -> None:
@@ -444,6 +500,22 @@ def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
     assert new_staged.bodies["N-1.md"].text == "b"
 
 
+def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None:
+    """資料の HTML の本文を `{ID}.html` の書き込みにする（正常系）。"""
+    # 準備
+    staged = _make_staged(make_workspace(), 0)
+    item = {"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}
+    # 実行
+    new_staged, result = commands.stage_add(staged, "doc", item, now=_fixed_now)
+    # 検証
+    added = new_staged.items["doc"][0]
+    assert added["id"] == "A-1"
+    assert added["body"] == "A-1.html"
+    assert "body_html" not in added
+    assert new_staged.bodies["A-1.html"].text == "<p>a</p>"
+    assert result["body"] == ".mindstella/docs/A-1.html"
+
+
 def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """消した ID を振らない（正常系）。"""
     # 準備
@@ -501,6 +573,34 @@ def test_stage_update_when_nothing_changed(
     assert result["changed"] == []
     assert new_staged.changes["last_seq"] == 3
     assert new_staged.items["decision"][0]["seq"] == 2
+
+
+def test_stage_update_when_body_format_changed(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.md"), bodies={"A-1.md": "a\nb\n"})
+    staged = _make_staged(root, 3)
+    # 実行（Markdown から HTML へ）
+    to_html, to_html_result = commands.stage_update(
+        staged, "A-1", {"body_html": "<p>a</p>\n"}, now=_fixed_now
+    )
+    # 検証
+    html_item = to_html.items["doc"][0]
+    assert html_item["body"] == "A-1.html"
+    assert "A-1.html" in to_html.bodies
+    assert to_html.removed_bodies == ["A-1.md"]
+    assert to_html_result["changed"] == ["body", "body_html"]
+    entry = html_item["history"][0]
+    assert entry["before"]["body"] == "A-1.md"
+    assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\nb\n"
+    # 実行（続けて HTML から Markdown へ）
+    to_markdown, _ = commands.stage_update(to_html, "A-1", {"body_markdown": "a\n"}, now=_fixed_now)
+    # 検証
+    assert to_markdown.items["doc"][0]["body"] == "A-1.md"
+    assert to_markdown.removed_bodies == ["A-1.html"]
+    assert "A-1.html" not in to_markdown.bodies
 
 
 @pytest.mark.parametrize(
@@ -1036,7 +1136,14 @@ def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 実行
     payload = commands.run_show(root, "D-1")
     # 検証
-    assert set(payload) == {"item", "kind", "body_markdown", "referenced_by"}
+    assert set(payload) == {
+        "item",
+        "kind",
+        "body_markdown",
+        "body_html",
+        "body_format",
+        "referenced_by",
+    }
 
 
 def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1288,6 +1395,57 @@ def test_run_preview_url_when_readme_write_fails(
     assert [record.levelno for record in caplog.records] == [logging.WARNING]
 
 
+def _make_workspace_with_set(make_workspace: MakeWorkspace) -> Path:
+    """検討事項 D-1 を足して commit し、まとまり V-1 を持つワークスペースを作る。"""
+    root = make_workspace()
+    item = {"title": "問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}
+    commands.run_add(root, "decision", item, now=_fixed_now)
+    commands.run_commit(root, "足す", now=_fixed_now)
+    return root
+
+
+def test_run_preview_url_when_diff_given(make_workspace: MakeWorkspace) -> None:
+    """まとまりを指す URL を返し、README にはハッシュを書かない（正常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace)
+    url = "http://127.0.0.1:1/mindstella.html"
+    previews = _SequenceRegistry((url, True), (url, False))
+    # 実行（1 回目は立てて README を書く。2 回目は立っている配信を引く）
+    first = commands.run_preview_url(root, previews=previews, diff="V-1")
+    written_after_first = (root / "README.md").read_text(encoding="utf-8")
+    second = commands.run_preview_url(root, previews=previews, diff="V-1")
+    # 検証
+    assert first["url"] == f"{url}#diff=V-1"
+    assert second["url"] == f"{url}#diff=V-1"
+    assert url in written_after_first
+    assert "#diff=" not in written_after_first
+
+
+def test_run_preview_url_when_diff_not_found(make_workspace: MakeWorkspace) -> None:
+    """記録に無いまとまりでは配信を立てない（異常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace)
+    previews = _FakeRegistry()
+    # 実行・検証
+    with pytest.raises(ArgumentError, match=r"^引数の誤り: diff: .*V-99") as exc_info:
+        commands.run_preview_url(root, previews=previews, diff="V-99")
+    assert exc_info.value.argument == "diff"
+    assert previews.started == []
+
+
+def test_run_preview_url_when_changes_invalid(make_workspace: MakeWorkspace) -> None:
+    """changes.yaml が読めなければ配信を立てない（異常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace)
+    (root / RECORD_DIR / "changes.yaml").write_text("sets: [\n", encoding="utf-8")
+    previews = _FakeRegistry()
+    # 実行・検証
+    with pytest.raises(SchemaMismatchError) as exc_info:
+        commands.run_preview_url(root, previews=previews, diff="V-1")
+    assert exc_info.value.lines[0].startswith("changes.yaml: ")
+    assert previews.started == []
+
+
 def test_run_readme(make_workspace: MakeWorkspace) -> None:
     """配っていなければ URL なしで書く（正常系）。"""
     # 準備
@@ -1338,59 +1496,110 @@ def test_run_readme_when_not_workspace(tmp_path: Path) -> None:
     assert not (tmp_path / "README.md").exists()
 
 
-def test_run_submissions(
+def test_run_threads(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
 ) -> None:
-    """取り込んでいない送信を返す（正常系）。"""
+    """取り込み待ちのスレッドをキーだけで返す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="最初の問い"))
-    no_target = make_submission("S-3", body="全体に目を通した")
-    del no_target["target"]
-    write_submissions(
+    write_threads(
         root,
-        make_submission("S-1", taken="2026-10-03T00:00:00+00:00"),
-        make_submission("S-2", body="案 A にする"),
-        no_target,
+        make_thread("TH-1", make_post("TH-1-1"), target="D-1"),
+        make_thread("TH-2", make_post("TH-2-1", taken="2026-10-12T00:00:00+00:00")),
     )
     # 実行
-    payload = commands.run_submissions(root)
+    payload = commands.run_threads(root, None, None, False, True)
     # 検証
-    assert payload == {
-        "items": [
-            {
-                "id": "S-2",
-                "target": "D-1",
-                "target_title": "最初の問い",
-                "loc": None,
-                "body": "案 A にする",
-                "sent": DEFAULT_TIMESTAMP,
-            },
-            {
-                "id": "S-3",
-                "target": None,
-                "target_title": None,
-                "loc": None,
-                "body": "全体に目を通した",
-                "sent": DEFAULT_TIMESTAMP,
-            },
-        ]
-    }
+    assert [(row["id"], row["target"], row["target_title"], row["awaiting"]) for row in payload["items"]] == [
+        ("TH-1", "D-1", "最初の問い", 1)
+    ]
+    assert "body" not in payload["items"][0]
 
 
-def test_run_take_submission(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+def test_run_threads_when_invalid_status(
+    make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
-    """取り込んだ日時を返す（正常系）。"""
+    """決まった値でない status は引数の誤り（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    write_submissions(root, make_submission("S-1"))
+    # 実行・検証
+    with pytest.raises(ArgumentError) as exc_info:
+        commands.run_threads(root, "done", None, False, False)
+    assert exc_info.value.argument == "status"
+
+
+def test_run_thread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読を返して既読にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread("TH-1", make_post("TH-1-1", read=True), make_post("TH-1-2", read=False)),
+    )
+    calls: list[int] = []
     # 実行
-    payload = commands.run_take_submission(root, "S-1", now=_submission_now)
+    payload = commands.run_thread(root, "TH-1", True, lock=_counting_lock(calls))
     # 検証
-    assert payload == {"id": "S-1", "taken": SUBMISSION_NOW, "already": False}
+    assert [(post["id"], post["read"]) for post in payload["posts"]] == [("TH-1-2", False)]
+    assert len(calls) == 1
+    second = _read_threads(root)[0]["posts"][1]
+    assert (second["read"], second["taken"]) == (True, None)
+
+
+@pytest.mark.parametrize(
+    ("unread_only", "expected_post_ids"),
+    [
+        pytest.param(True, [], id="unread_only"),
+        pytest.param(False, ["TH-1-1"], id="all"),
+    ],
+)
+def test_run_thread_when_nothing_unread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    unread_only: bool,
+    expected_post_ids: list[str],
+) -> None:
+    """未読が無ければ鍵を取らず書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", read=True)))
+    path = root / RECORD_DIR / "threads.yaml"
+    os.utime(path, (OLD_MTIME_SEC, OLD_MTIME_SEC))
+    mtime_before = path.stat().st_mtime_ns
+    calls: list[int] = []
+    # 実行
+    payload = commands.run_thread(root, "TH-1", unread_only, lock=_counting_lock(calls))
+    # 検証
+    assert [post["id"] for post in payload["posts"]] == expected_post_ids
+    assert calls == []
+    assert path.stat().st_mtime_ns == mtime_before
+
+
+def test_run_set_thread_status(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """書き手を AI にして記録する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    # 実行
+    payload = commands.run_set_thread_status(root, "TH-1", "closed", "了解を受けた", now=_thread_now)
+    # 検証
+    assert payload == {"id": "TH-1", "status": "closed", "changed": True}
+    assert _read_threads(root)[0]["events"][-1]["author"] == "ai"

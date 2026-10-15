@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # 本文（3 行）と、2 行目を書き換えた本文
 BODY_BEFORE = "1 行目\n2 行目\n3 行目\n"
@@ -30,6 +33,15 @@ NEW_DECISION: dict[str, Any] = {
     "weight": "大",
     "options": NEW_OPTIONS,
 }
+
+# スキルが足す資料 A-1 のエイリアスと説明、直した後のエイリアス
+DOC_ALIASES = ["特殊効果"]
+DOC_ALIASES_AFTER = ["特殊効果", "エフェクト"]
+DOC_DESCRIPTION = "特殊効果の設定ファイルのキーと型"
+
+# スキルが足す調査 R-1 のエイリアスと説明
+RESEARCH_ALIASES = ["特殊効果の描画"]
+RESEARCH_DESCRIPTION = "特殊効果を重ねたときの描画の負荷の測り方"
 
 
 def _read_decisions(root: Path) -> list[dict[str, Any]]:
@@ -442,4 +454,161 @@ def test_error_when_adoption_and_status_mismatch(
     assert appended.is_error is True
     assert "未決定" in appended.text
     assert "A" in appended.text
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_aliases_and_description(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """エイリアスと説明を持つ資料と調査を足し、資料のエイリアスを 1 つ足して直す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    # 実行
+    added_doc = call_tool(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "特殊効果のスキーマ",
+            "kind": "仕様書",
+            "deliverable": False,
+            "status": "下書き",
+            "aliases": DOC_ALIASES,
+            "description": DOC_DESCRIPTION,
+            "body_markdown": "資料の本文\n",
+        },
+    )
+    added_research = call_tool(
+        "add",
+        **ws,
+        kind="research",
+        item={
+            "title": "特殊効果の描画",
+            "question": "特殊効果を重ねると描画は重くなるか",
+            "aliases": RESEARCH_ALIASES,
+            "description": RESEARCH_DESCRIPTION,
+        },
+    )
+    doc_after_add = read_yaml(root, "docs.yaml")["items"][0]
+    research = read_yaml(root, "research.yaml")["items"][0]
+    updated = call_tool("update", **ws, id="A-1", item={"aliases": DOC_ALIASES_AFTER})
+    doc_after_update = read_yaml(root, "docs.yaml")["items"][0]
+    checked = call_tool("check", **ws)
+    # 検証
+    assert added_doc.is_error is False, added_doc.text
+    assert added_research.is_error is False, added_research.text
+    assert [added_doc.data["id"], added_research.data["id"]] == ["A-1", "R-1"]
+    # 足した A-1 と R-1 が、渡したエイリアスと説明を持つ
+    assert doc_after_add["aliases"] == DOC_ALIASES
+    assert doc_after_add["description"] == DOC_DESCRIPTION
+    assert research["aliases"] == RESEARCH_ALIASES
+    assert research["description"] == RESEARCH_DESCRIPTION
+    # 直した後、A-1 のエイリアスが 2 つで、説明は足したときのままである
+    assert updated.is_error is False, updated.text
+    assert doc_after_update["aliases"] == DOC_ALIASES_AFTER
+    assert doc_after_update["description"] == DOC_DESCRIPTION
+    assert doc_after_update["updated"] >= doc_after_add["updated"]
+    # A-1 が変更履歴を 1 回分持ち、直す前のエイリアス（1 つだけ）が入っている
+    assert len(doc_after_update["history"]) == 1
+    assert doc_after_update["history"][0]["before"] == {"aliases": DOC_ALIASES}
+    # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data["problems"] == []
+
+
+# 資料 A-1 を足すときの Markdown の本文と、形式を替えるときの HTML の本文・2 行目を書き換えた HTML の本文、Markdown に戻すときの本文
+DOC_BODY_MARKDOWN = "# 画面のモック\n一覧の画面\n"
+DOC_BODY_HTML = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n<p>詳細の画面</p>"
+DOC_BODY_HTML_REWRITTEN = "<h1>画面のモック</h1>\n<p>絞り込みの画面</p>\n<p>詳細の画面</p>"
+DOC_BODY_MARKDOWN_AGAIN = "# 画面のモック\n詳細の画面\n"
+
+# スキルが足す資料 A-1 の中身（本文を除く）
+VISUAL_DOC: dict[str, Any] = {
+    "title": "画面のモック",
+    "kind": "モック",
+    "deliverable": False,
+    "status": "下書き",
+}
+
+
+def test_normal_when_doc_body_html(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """資料の本文を Markdown で足し、HTML に替えて 2 行目を直し、Markdown に戻す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    docs_dir = root / RECORD_DIR / "docs"
+    # 実行
+    added = call_tool("add", **ws, kind="doc", item={**VISUAL_DOC, "body_markdown": DOC_BODY_MARKDOWN})
+    to_html = call_tool("update", **ws, id="A-1", item={"body_html": DOC_BODY_HTML})
+    after_html = read_yaml(root, "docs.yaml")["items"][0]
+    html_files = sorted(path.name for path in docs_dir.iterdir())
+    html_text = (docs_dir / "A-1.html").read_text(encoding="utf-8")
+    rewritten = call_tool("update", **ws, id="A-1", item={"body_html": DOC_BODY_HTML_REWRITTEN})
+    shown_html = call_tool("show", **ws, id="A-1")
+    history = read_yaml(root, "docs.yaml")["items"][0]["history"]
+    to_markdown = call_tool("update", **ws, id="A-1", item={"body_markdown": DOC_BODY_MARKDOWN_AGAIN})
+    after_markdown = read_yaml(root, "docs.yaml")["items"][0]
+    markdown_files = sorted(path.name for path in docs_dir.iterdir())
+    shown_markdown = call_tool("show", **ws, id="A-1")
+    checked = call_tool("check", **ws)
+    # 検証（HTML に替えた後）
+    assert added.is_error is False, added.text
+    assert to_html.is_error is False, to_html.text
+    assert after_html["body"] == "A-1.html"
+    assert html_files == ["A-1.html"]
+    assert html_text == DOC_BODY_HTML
+    # 検証（1 回目の表示）
+    assert rewritten.is_error is False, rewritten.text
+    assert shown_html.is_error is False, shown_html.text
+    assert shown_html.data["body_html"] == DOC_BODY_HTML_REWRITTEN
+    assert shown_html.data["body_format"] == "html"
+    # 検証（変更履歴）
+    assert any(
+        {"line": 2, "now": ["<p>絞り込みの画面</p>"], "before": ["<p>一覧の画面</p>"]}
+        in entry.get("body_diff", [])
+        for entry in history
+    )
+    # 検証（Markdown に戻した後）
+    assert to_markdown.is_error is False, to_markdown.text
+    assert after_markdown["body"] == "A-1.md"
+    assert markdown_files == ["A-1.md"]
+    assert shown_markdown.data["body_markdown"] == DOC_BODY_MARKDOWN_AGAIN
+    assert shown_markdown.data["body_format"] == "markdown"
+    # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}
+
+
+def test_error_when_html_body_for_non_doc(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """資料以外の種類に HTML の本文を渡して足す・直すと、どちらも資料だけが HTML の本文を持てる旨のエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("T-1"))
+    before = snapshot_tree(root)
+    # 実行
+    added = call_tool(
+        "add",
+        workspace=str(root),
+        kind="task",
+        item={"title": "画面を描く", "kind": "作業", "status": "未着手", "body_html": "<p>一覧の画面</p>"},
+    )
+    updated = call_tool(
+        "update", workspace=str(root), id="T-1", item={"body_html": "<p>一覧の画面</p>"}
+    )
+    # 検証
+    assert added.is_error is True
+    assert "資料だけが HTML の本文を持てる" in added.text
+    assert updated.is_error is True
+    assert "資料だけが HTML の本文を持てる" in updated.text
     assert snapshot_tree(root) == before

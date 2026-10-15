@@ -23,14 +23,19 @@ if TYPE_CHECKING:
 
 # front matter の allowed-tools の値
 SETUP_ALLOWED_TOOLS = (
-    "Read, mcp__mindstella__init, mcp__mindstella__status, mcp__mindstella__migrate"
+    "Read, mcp__mindstella__init, mcp__mindstella__status, mcp__mindstella__migrate, "
+    "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/register.py:*)"
 )
+
+# 本文が Bash で起動する登録のスクリプトと、MCP のツールが無いときの呼び方
+REGISTER_SCRIPT_PATH = "skills/setup/scripts/register.py"
+SHOW_CALL = "`show`"
 
 # 版を比べる呼び方
 PLAN_CALL = "`plan: true`"
 
 # スキル setup の steps/ のファイル
-SETUP_STEP_FILES = ["新しいワークスペース.md", "既存のワークスペース.md"]
+SETUP_STEP_FILES = ["新しいワークスペース.md", "既存のワークスペース.md", "起動スクリプトの登録.md"]
 
 
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
@@ -60,5 +65,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert any("`migrate`" in text and PLAN_CALL in text for text in texts)
     # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
     assert any("bin/mindstella" in text and "止まる" in text for text in texts)
+    # その分岐は、登録のスクリプトを show で呼んで登録の有無を見る
+    assert any(
+        REGISTER_SCRIPT_PATH in text and SHOW_CALL in text and "止まる" in text for text in texts
+    )
     # claude plugin validate が終了コード 0（失敗すれば run_claude が例外にする）
     assert validate.returncode == 0

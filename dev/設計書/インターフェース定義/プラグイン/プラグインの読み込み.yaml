@@ -4,7 +4,7 @@ entry:
   value: '`plugins/mindstella/` の `.claude-plugin/plugin.json`・`skills/`・`bin/`・`LICENSE`（Claude Code の `claude plugin install` が取り込むプラグインの中身）'
 flows:
   - name: 正常系
-    summary: プラグイン mindstella がスキルのフォルダを持ち、hooks を持たずに読み込まれる
+    summary: プラグイン mindstella がスキルのフォルダと SessionStart のフック 1 つを持って読み込まれる
     setup:
       - name: Mock
         description: なし（実際の Claude Code の CLI で実行する）
@@ -28,7 +28,7 @@ flows:
       - 取り込まれたプラグインのフォルダに、実行の権限を持つ `bin/mindstella` がある
       - 取り込まれたプラグインのフォルダの直下に `LICENSE` があり、本文がリポジトリの直下の `LICENSE` と一致する
       - 取り込まれたプラグインのフォルダに `dev/`・`docs/`・`tests/`・`.storybook/`・`package.json`・`.mcp.json` が無く、`plugin.json` が `mcpServers` を持たない
-      - '`claude plugin details` で hooks が 0 件である'
+      - '`claude plugin details` で hooks が `SessionStart` の 1 件で、コマンドが `reset_unread.py` を呼ぶ'
       - その設定のフォルダで `claude mcp list` に mindstella が無い
     test: test_normal
 lead: Claude Code がプラグイン mindstella をインストールして読み込むときの、プラグインのマニフェストとフォルダの形。
@@ -99,7 +99,7 @@ request_example: |-
   ```
 constraints:
   - item: 持つ部品
-    constraint: スキルだけ。hooks・MCP サーバー・コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱するが、マニフェストにも `.mcp.json` にも書かず、起動スクリプトが `--mcp-config` で渡す
+    constraint: スキルと、`hooks/hooks.json` の `SessionStart` のフック 1 つ（『未読へ戻す』）だけ。MCP サーバー・コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱するが、マニフェストにも `.mcp.json` にも書かず、起動スクリプトが `--mcp-config` で渡す
   - item: 版
     constraint: '`version` は持たない'
     notes: 版の正はタグと `version.ini`（規約『バージョニング』）。マニフェストに写すと揃える作業がリリースごとに増える
@@ -111,5 +111,5 @@ constraints:
     notes: 'Claude Code は、ローカルのパスからインストールするとプラグインのフォルダの外を指すシンボリックリンクを飛ばす（公式ドキュメント『Host and maintain a marketplace』の Share files within a marketplace with symlinks）。Windows の clone ではリンクが本文を持たないファイルになる'
   - item: プラグインの版のファイル
     constraint: '`plugins/mindstella/version.ini` の 1 行目にプラグインの版（`v{メジャー}.{マイナー}.{パッチ}`）を書く。スクリプトがワークスペースの版と比べるために読む。リポジトリの直下の `version.ini` の版より小さくしない'
-    notes: ワークスペースの形を変える PR が `migrations/{次の版}/` を足すときに、同じ PR でその版へ上げる。リリースでは tester がリポジトリの直下の `version.ini` を上げるときに、形を変えなかったスプリントでも同じ版へ揃える。マニフェストの `version` には写さない（制約「版」）
+    notes: ワークスペースの形を変える PR が `migrations/{次の版}/` を足すときに、同じ PR でその版へ上げる。今のワークスペースがそのまま読める形の変更（スキーマを広げるだけなど）は、手順と版を足さず、`migrations/no-steps.yaml` に変えたスキーマのファイル名・変えた後の中身の SHA-256・理由の行を足す。リリースでは tester がリポジトリの直下の `version.ini` を上げるときに、形を変えなかったスプリントでも同じ版へ揃える。マニフェストの `version` には写さない（制約「版」）
 test_file: tests/integration/plugin/test_plugin_loading.py

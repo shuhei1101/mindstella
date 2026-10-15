@@ -93,3 +93,49 @@ def test_normal(
         "aside.panel .md td", "cells => cells.map(c => c.textContent)"
     )
     assert cells == ["列", "3"]
+
+
+# カードとボードのカードごとに、資料の ID と形式の札の文言を返す
+CARD_BADGES_SCRIPT = (
+    "cards => cards.map(c => [c.dataset.id, c.querySelector('.doc-kind .fmt-badge')?.textContent])"
+)
+
+
+def test_normal_when_body_format_badge(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """カード・ボード・表のどれでも、本文の形式を札の文言（HTML / MD）で示す（正常系）。"""
+    # 準備（A-1 は本文が Markdown の仕様書、A-2 は本文が HTML のモック）
+    url = serve_preview(
+        make_item("A-1", kind="仕様書"),
+        make_item("A-2", kind="モック", body="A-2.html"),
+        settings=valid_settings,
+        bodies={"A-1.md": SPEC_BODY, "A-2.html": "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"},
+    )
+    # 実行（資料のタブを開く）
+    page = open_preview(url, "#tab=docs")
+    # 検証（カード）
+    cards = page.eval_on_selector_all(".doc-card", CARD_BADGES_SCRIPT)
+    assert sorted(cards) == [["A-1", "MD"], ["A-2", "HTML"]]
+    # 実行（表示形式をボードに切り替える）
+    page.click('.segment button[data-view="board"]')
+    page.wait_for_selector(".board")
+    # 検証（ボード）
+    board = page.eval_on_selector_all(".board .doc-card", CARD_BADGES_SCRIPT)
+    assert sorted(board) == [["A-1", "MD"], ["A-2", "HTML"]]
+    # 実行（表示形式を表に切り替える）
+    page.click('.segment button[data-view="table"]')
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証（表: 「形式」の列に HTML / MD）
+    headers = page.eval_on_selector_all(
+        "table.grid thead th", "ths => ths.map(th => th.textContent.trim())"
+    )
+    column = next(index for index, text in enumerate(headers) if text.startswith("形式"))
+    cells = page.eval_on_selector_all(
+        "table.grid tbody tr",
+        f"rows => rows.map(r => [r.dataset.id, r.children[{column}].textContent.trim()])",
+    )
+    assert sorted(cells) == [["A-1", "MD"], ["A-2", "HTML"]]

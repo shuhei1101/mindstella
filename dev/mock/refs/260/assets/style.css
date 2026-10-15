@@ -1,0 +1,37 @@
+/* PR #260 で足すスレッドの書き込みのまとまりのリンクと、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 操作列のボタン（モックの操作）: 地の色のまま破線の枠で、見本のリンクと見分ける */
+.mockbar button { padding: 2px 6px; border: 1px dashed currentColor; border-radius: 3px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+/* 撮影用の赤枠（クエリの mark で付ける） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
+
+/* ===== 書き込みの中のまとまりのリンク ===== */
+
+/* 案 A: 詳細の本文のリンク（印の色の文字と下線）と同じ見た目。長い文言は書き込みの中で折り返す */
+a.post-diff { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; cursor: pointer; }
+a.post-diff:hover { text-decoration-color: var(--accent); }
+a.post-diff:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
+/* 案 B: 項目の ID のボタンと同じ枠。文言は本文の字で出し、長い文言はボタンの中で折り返す */
+.post-body .idlink.post-diff, .review-body .idlink.post-diff { font-family: inherit; font-size: inherit; line-height: 1.4; white-space: normal; text-align: start; vertical-align: baseline; }

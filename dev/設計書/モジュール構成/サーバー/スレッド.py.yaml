@@ -1,0 +1,1093 @@
+title: "サーバー / スレッド"
+lead: スレッド（`threads.yaml`）を読み書きする。まとめて送られた利用者の書き込みを足し、AI の一覧・既読・返信・状態と要約の書き換え・取り込み済みを担い、画面へ返す形を作る。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・コメント・配信・未読へ戻す）が取る。単体テストは `tests/unit/scripts/test_threads.py` に置く。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    schemas/threads.schema.json  threads.yaml の形（ER 図『ワークスペース』のスレッド）
+    scripts/threads.py           スレッドの読み書き
+  ```
+constants:
+  - name: THREADS_FILE
+    title: スレッドのファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    summary: '`records_root(root)` の下。無ければスレッド 0 件'
+    value: '"threads.yaml"'
+  - name: THREADS_SCHEMA
+    title: スレッドのスキーマ
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    summary: '`SCHEMA_DIR` の下のファイル名'
+    value: '"threads.schema.json"'
+  - name: MAX_BODY_CHARS
+    title: 本文の上限
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    summary: 非機能要件の「送信の本文の長さ」（前後の空白を除いた文字数）。書き込みの本文・レビュー中のコメントの本文・選んだ文のそれぞれに使う
+    value: '10000'
+  - name: MAX_SUMMARY_CHARS
+    title: 要約と理由の上限
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    summary: 非機能要件の「スレッドの要約と理由の長さ」（前後の空白を除いた文字数）。要約と、状態を変える理由のそれぞれに使う
+    value: '400'
+  - name: THREAD_ID_PREFIX
+    title: スレッドの ID の頭
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    summary: スレッドの ID の頭の文字（項目の種類とコメントの頭の文字と重ならない）。書き込みの ID は `{スレッドの ID}-{スレッドの中の連番}`
+    value: '"TH"'
+  - name: HEAD_CHARS
+    title: 先頭の長さ
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    summary: 一覧の `head`（最初の書き込みの先頭）の文字数
+    value: '80'
+data_models:
+  - name: Post
+    title: 書き込み
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    role: DTO
+    summary: スレッドの書き込み 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: id
+        type: str
+        description: '`{スレッドの ID}-{連番}`'
+      - name: author
+        type: Literal['user', 'ai']
+        description: 書き手
+      - name: body
+        type: str
+        description: 本文（前後の空白を除いたもの）
+      - name: created
+        type: str
+        description: 書いた日時
+      - name: read
+        type: bool
+        description: AI の既読
+      - name: taken
+        type: str | None
+        default: None
+        description: 利用者の書き込みを AI が取り込んだ日時。取り込んでいなければ `None`。AI の書き込みはキーを書かない
+      - name: comment
+        type: str | None
+        default: None
+        description: 送ったレビュー中のコメントの ID。まとめて送る途中で落ちたときに二重に足さないために持つ。AI の書き込みと移し替えた書き込みは `None`（キーを書かない）
+      - name: seen
+        type: bool
+        description: 利用者の既読。AI の書き込みは `False`、利用者の書き込みと移し替えた書き込みは `True` で足し、画面で開いたときに `mark_seen` が `True` にする。`read`（AI の既読）とは別に持ち、`reset_unread` は変えない
+  - name: ThreadEvent
+    title: 状態の記録
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    role: DTO
+    summary: クローズかオープンへの戻しの 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: kind
+        type: Literal['closed', 'reopened']
+        description: 記録の種類
+      - name: author
+        type: Literal['user', 'ai']
+        description: 状態を変えた書き手
+      - name: reason
+        type: str | None
+        description: 理由。持たなければ `None`（`null` で書く）
+      - name: created
+        type: str
+        description: 変えた日時
+  - name: Thread
+    title: スレッド
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    role: DTO
+    summary: '`threads.yaml` の 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: id
+        type: str
+        description: '`TH-{連番}`'
+      - name: status
+        type: Literal['open', 'closed']
+        description: 状態
+      - name: tags
+        type: list[str]
+        description: タグ
+      - name: summary
+        type: str | None
+        description: 要約。まだ書いていなければ `None`（`null` で書く）
+      - name: target
+        type: str | None
+        default: None
+        description: 向けた項目の ID。項目に紐づかないスレッドは `None`（キーを書かない）
+      - name: loc
+        type: dict[str, Any] | None
+        default: None
+        description: 最初の書き込みに添えた箇所（ER 図『ワークスペース』の `loc`）。持たなければ `None`（キーを書かない）
+      - name: posts
+        type: list[Post]
+        description: 書いた順の書き込み（1 件以上）
+      - name: events
+        type: list[ThreadEvent]
+        description: 書いた順の状態の記録
+  - name: UserPostInput
+    title: 足す利用者の書き込み
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: コメントを選んで送る
+    role: DTO
+    summary: まとめて送るレビュー中のコメント 1 件を、スレッドへ足す形にしたもの（コメントのモジュールが作る）。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: comment
+        type: str
+        description: レビュー中のコメントの ID
+      - name: thread
+        type: str | None
+        description: 返信先のスレッドの ID。新しいスレッドの最初の書き込みは `None`
+      - name: target
+        type: str | None
+        description: 新しいスレッドの向けた項目の ID
+      - name: loc
+        type: dict[str, Any] | None
+        description: 新しいスレッドの最初の書き込みに添えた箇所
+      - name: body
+        type: str
+        description: 本文
+  - name: SentPost
+    title: 足した書き込み
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: コメントを選んで送る
+    role: DTO
+    summary: 『コメントをまとめて送る』の `items[]` の 1 行。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: comment
+        type: str
+        description: 送ったレビュー中のコメントの ID
+      - name: thread
+        type: str
+        description: 書き込みを足したスレッドの ID
+      - name: post
+        type: str
+        description: 足した（既にあった）書き込みの ID
+functions:
+  - name: load_threads
+    title: スレッドの読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    scope: public
+    summary: '`threads.yaml` を読み、スキーマと突き合わせてスレッドの並びにする'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Thread]
+      description: ファイルの並びの順のスレッド。ファイルが無ければ空
+    process: |-
+      1. ファイルが無ければ空を返す
+      2. `yaml.safe_load` で読み、`THREADS_SCHEMA` と突き合わせる
+         - 読めないか合わない場合、合わない箇所ごとの `threads.yaml: {キーのパス}: {理由}` を持った `SchemaMismatchError` を送る
+      3. `items` の要素を `Thread`（`posts` は `Post`、`events` は `ThreadEvent`）にして返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`threads.yaml` が YAML として読めないか、スキーマに合わない'
+    unit_tests:
+      - name: test_load_threads
+        case: 正常
+        summary: 並びの順に読む
+        condition: TH-1（利用者と AI の書き込み・クローズの記録）・TH-2（`target`・`loc` を持たない）を持つ `threads.yaml`
+        mock: なし
+        expected: '`[TH-1, TH-2]`。TH-1 の `posts` が 2 件で `events` が 1 件、TH-2 の `target`・`loc` が `None`'
+      - name: test_load_threads_when_missing
+        case: 正常
+        summary: ファイルが無ければ空
+        condition: '`threads.yaml` が無いワークスペース'
+        mock: なし
+        expected: '`[]`'
+      - name: test_load_threads_when_invalid
+        case: 異常
+        summary: 読めない・合わないファイルは読まない
+        condition: '`parametrize`: `items: [` / TH-1 から `posts` を消したもの / `status: done`'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` が `threads.yaml: ` で始まる）'
+        exception: 読めないかスキーマに合わない
+  - name: _write_threads
+    title: スレッドの書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    scope: internal
+    summary: スレッドの並びを `threads.yaml` に一時ファイルから置き換える
+    side_effects: '`threads.yaml` を置き換える（無ければ作る）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: threads
+        type: list[Thread]
+        required: true
+        passing: positional
+        description: 書くスレッド（並びのまま書く）
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. `{"items": [...]}` を `dump_yaml` し、一時ファイルに書いて（`write_temp`）`os.replace` で置き換える。`None` の `target`・`loc`・`comment` と、AI の書き込みの `taken` はキーを書かない。`summary`・`reason` と利用者の書き込みの `taken` は `None` を `null` で書く
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る（前の `threads.yaml` は残る）
+    exceptions:
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_write_threads
+        case: 正常
+        summary: 持たないキーを書かず、読み直すと同じになる
+        condition: 項目を指さない TH-1（利用者の取り込んでいない書き込みと AI の書き込み、要約なし）を書いて `load_threads` で読む
+        mock: なし
+        expected: '読み直した並びが書いた並びと等しい。ファイルに `target`・`loc` のキーが無く、`summary: null`、利用者の書き込みに `taken: null`、AI の書き込みに `taken` のキーが無い'
+      - name: test_write_threads_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら前のスレッドを残す
+        condition: TH-1 を持つワークスペース。`os.replace` を `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`threads` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`threads.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+        exception: 置き換えで OSError
+  - name: awaiting_posts
+    title: 取り込み待ちの書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: スレッドの、AI が取り込んでいない利用者の書き込みを返す（1 件以上あれば取り込み待ちのスレッド。点検と項目の削除も使う）
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: スレッド
+    returns:
+      type: list[Post]
+      description: '`author` が `user` で `taken` が `None` の書き込み（書いた順）'
+    unit_tests:
+      - name: test_awaiting_posts
+        case: 正常
+        summary: 取り込んでいない利用者の書き込みだけを返す
+        condition: 利用者（取り込み済み）・AI・利用者（取り込んでいない）の 3 件を持つスレッド / AI の書き込みだけのスレッド
+        mock: なし
+        expected: 3 件目だけ / 空
+  - name: list_threads
+    title: スレッドの一覧
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: スレッドを状態・タグ・未読・取り込み待ちで絞り、本文を含めないキーだけの行にする（『スレッドの一覧』の `items`。読むだけ）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（項目のタイトルを引く）
+      - name: status
+        type: Literal['open', 'closed', 'all'] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 返す状態。`None` は `awaiting` が偽なら `open`、真なら `all`
+      - name: tag
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: このタグを持つものだけ
+      - name: unread
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: AI の未読の書き込みを持つものだけ
+      - name: awaiting
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: 取り込み待ちのものだけ
+    returns:
+      type: list[dict[str, Any]]
+      description: '`{id, status, tags, summary, head, target, target_title, last_author, last_at, posts, unread, awaiting}` の行'
+    process: |-
+      1. スレッドを読む（`load_threads`）
+      2. 渡した条件を全て満たすものを残す（`status` が `None` なら `awaiting` で決めた状態。取り込み待ちは `awaiting_posts` が 1 件以上）
+      3. 最後の書き込みの日時の新しい順、同じ日時は ID の連番の大きい順に並べる
+      4. 行にする。`head` は最初の書き込みの本文の改行を空白にした先頭 `HEAD_CHARS` 文字、`target_title` は `target` の項目の `title`（`target` が `None` か項目が無ければ `None`。`find_item` の `ItemNotFoundError` は `None` にする）、`posts`・`unread`・`awaiting` は件数
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+    unit_tests:
+      - name: test_list_threads
+        case: 正常
+        summary: 既定はオープンだけを最後の書き込みの新しい順に
+        condition: D-1 と、TH-1（オープン・D-1・最後の書き込み 01:00）・TH-2（クローズ）・TH-3（オープン・最後の書き込み 02:00・要約なし・本文が 2 行で 100 文字）
+        mock: なし
+        expected: '`[TH-3, TH-1]`。TH-1 の `target_title` が D-1 のタイトル。TH-3 の `summary` が `None` で `head` が改行を含まない 80 文字'
+      - name: test_list_threads_when_awaiting
+        case: 正常
+        summary: 取り込み待ちは状態を渡さなければクローズも返す
+        condition: '取り込んでいない利用者の書き込みを持つ TH-1（オープン）・TH-2（クローズ）と、取り込み済みだけの TH-3。`parametrize`: `awaiting=True` / `awaiting=True, status="open"`'
+        mock: なし
+        expected: TH-1・TH-2（どちらも `awaiting` が 1 以上）/ TH-1 だけ
+      - name: test_list_threads_when_tag_and_unread
+        case: 正常
+        summary: タグと未読を両方満たすものだけ
+        condition: TH-1（タグ `画面`・未読あり）・TH-2（タグ `画面`・全て既読）・TH-3（タグ `起票`・未読あり）で `tag="画面", unread=True`
+        mock: なし
+        expected: TH-1 だけで `unread` が未読の件数
+      - name: test_list_threads_when_same_time_or_missing
+        case: 正常
+        summary: 同じ日時は連番の大きい順。ファイルが無ければ空。消えた項目はタイトルを None に
+        condition: '`parametrize`: 最後の書き込みが同じ日時の TH-2・TH-10 / `threads.yaml` が無い / 消えた D-9 への TH-1'
+        mock: なし
+        expected: '`[TH-10, TH-2]` / `[]` / `target` が D-9 で `target_title` が `None`'
+  - name: view_thread
+    title: スレッドを読む形
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッド 1 件を『スレッドを読む』の結果の形にし、返した書き込みのうち未読の ID を添える（読むだけ。既読は `mark_read` が書く）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（項目のタイトルを引く）
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: スレッドの ID
+      - name: unread_only
+        type: bool
+        required: false
+        default: 'True'
+        passing: keyword
+        description: 未読の書き込みだけを返すか
+    returns:
+      type: tuple[dict[str, Any], list[str]]
+      description: '`{id, status, tags, summary, target, target_title, loc, posts, events}` と、返した書き込みのうち未読の ID'
+    process: |-
+      1. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
+      2. `posts` を、`unread_only` が真なら `read` が偽のものだけ、偽なら全て、書いた順に `{id, author, body, created, read, taken}` にする（`read` は読む前の値。AI の書き込みの `taken` は `None`）
+      3. `events` は全ての記録を書いた順に `{kind, author, reason, created}` にする
+    exceptions:
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+        message: 'スレッドがありません: {ID}'
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+    unit_tests:
+      - name: test_view_thread
+        case: 正常
+        summary: 未読だけか全部かを選ぶ
+        condition: '既読の TH-1-1（利用者・取り込み済み）・既読の TH-1-2（AI）・未読の TH-1-3（利用者）とクローズの記録を持つ TH-1。`parametrize`: 既定 / `unread_only=False`'
+        mock: なし
+        expected: '`posts` が TH-1-3 だけ・未読の ID が `[TH-1-3]` / `posts` が 3 件・未読の ID が `[TH-1-3]`。どちらも `events` が 1 件で、TH-1-3 の `read` が偽'
+      - name: test_view_thread_when_not_found
+        case: 異常
+        summary: 無い ID は読まない
+        condition: TH-1 だけで `TH-9`
+        mock: なし
+        expected: '`ThreadNotFoundError`（メッセージに `TH-9`）'
+        exception: その ID のスレッドが無い
+  - name: mark_read
+    title: 既読にする
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドの渡した書き込みの `read` を真にする（鍵は呼ぶ側が取る。`taken` は書かない）
+    side_effects: '`threads.yaml` を置き換える（変わるものが無ければ書かない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: スレッドの ID
+      - name: post_ids
+        type: list[str]
+        required: true
+        passing: positional
+        description: 既読にする書き込みの ID
+    returns:
+      type: None
+      description: '-'
+    process: |-
+      1. スレッドを読み直し、ID で引く（無ければ `ThreadNotFoundError`）
+      2. `post_ids` の書き込みの `read` を真にした並びを書く（`_write_threads`）。`post_ids` に無い書き込み（鍵を取るまでに足された書き込み）は変えない
+    exceptions:
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_mark_read
+        case: 正常
+        summary: 渡した書き込みだけを既読にし、取り込み済みは変えない
+        condition: 未読の TH-1-1・TH-1-2（どちらも利用者・取り込んでいない）で `[TH-1-1]`
+        mock: なし
+        expected: TH-1-1 の `read` が真、TH-1-2 は偽。どちらも `taken` が `None`
+      - name: test_mark_read_when_nothing_changes
+        case: 正常
+        summary: 既に既読なら書かない
+        condition: 既読の TH-1-1 で `[TH-1-1]`
+        mock: なし
+        expected: '`threads.yaml` の更新日時が呼ぶ前と同じ'
+  - name: create_thread
+    title: スレッドを立てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: AIがスレッドを立てる
+    scope: public
+    summary: AI の書き込みを最初の 1 件にしたオープンのスレッドを足す（鍵は呼ぶ側が取る）
+    side_effects: '`threads.yaml` を置き換える（無ければ作る）'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（`target` の項目を引く）
+      - name: body
+        type: str
+        required: true
+        passing: keyword
+        description: 最初の書き込みの本文
+      - name: summary
+        type: str
+        required: true
+        passing: keyword
+        description: 要約
+      - name: tags
+        type: list[str]
+        required: false
+        default: '[]'
+        passing: keyword
+        description: タグ
+      - name: target
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: 向ける項目の ID
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[str, str, str]
+      description: 立てたスレッドの ID・最初の書き込みの ID・書いた日時
+    process: |-
+      1. `body`・`summary`・`tags` を確かめる（`_check_text`、`_check_tags`）
+      2. `target` があれば項目を引く（`find_item`）
+      3. スレッドを読み、`TH-{連番の最大 + 1}`・`status: open`・`tags`・`summary`・`target`・`events: []` と、`{ID}-1`・`author: ai`・`read: True`・`seen: False` の書き込み 1 件を末尾に足して書く（`_write_threads`）
+         - `[INFO]` スレッドを立てた（スレッドの ID・向けた項目）
+    exceptions:
+      - name: ArgumentError
+        condition: '`body`・`summary` が空白だけか上限を超える、`tags` に重なりか空の文字列がある'
+        message: '引数の誤り: {引数の名前}: {理由}'
+      - name: ItemNotFoundError
+        condition: '`target` の項目が無い'
+        message: '{target} がありません'
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_create_thread
+        case: 正常
+        summary: 連番を振って AI の既読の書き込みで立てる
+        condition: D-1 と TH-1・TH-3 を持つワークスペース。`body=" 起票してよいですか "`・`summary="起票の確認"`・`tags=["起票"]`・`target="D-1"`。`now` は `2026-10-13T03:00:00+00:00`
+        mock: '`now`'
+        expected: '`(TH-4, TH-4-1, now の値)`。TH-4 が `open`・タグ `起票`・`events` が空で、書き込みが `author: ai`・`read: True`・`seen: False`・本文 `起票してよいですか`・`taken` のキーなし'
+      - name: test_create_thread_when_first
+        case: 正常
+        summary: ファイルが無ければ作って TH-1。項目を指さないスレッドは target を書かない
+        condition: '`threads.yaml` が無いワークスペース。`target` を渡さない'
+        mock: '`now`'
+        expected: '`TH-1` で、ファイルに `target` のキーが無い'
+      - name: test_create_thread_when_rejected
+        case: 異常
+        summary: 形の誤りと無い項目は立てない
+        condition: '`parametrize`: `body="  "` / `summary` が 401 文字 / `tags=["a", "a"]` / `tags=[""]` / `target="D-99"`'
+        mock: なし
+        expected: '`ArgumentError`（`argument` が順に `body`・`summary`・`tags`・`tags`）/ `ItemNotFoundError`。`threads.yaml` が無い'
+        exception: 形の誤り・無い項目
+      - name: test_create_thread_when_boundary
+        case: 正常
+        summary: ちょうど上限の本文と要約を受ける
+        condition: 10000 文字の `body` と 400 文字の `summary`
+        mock: '`now`'
+        expected: 立てたスレッドの本文が 10000 文字、要約が 400 文字
+  - name: reply_thread
+    title: スレッドへ返信する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: オープンのスレッドの末尾に AI の書き込みを足し、要約を書き直し、AI が既読にした利用者の書き込みを取り込み済みにする（鍵は呼ぶ側が取る）
+    side_effects: '`threads.yaml` を置き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: スレッドの ID
+      - name: body
+        type: str
+        required: true
+        passing: keyword
+        description: 返信の本文
+      - name: summary
+        type: str
+        required: true
+        passing: keyword
+        description: 書き直した要約
+      - name: take
+        type: bool
+        required: false
+        default: 'True'
+        passing: keyword
+        description: 既読にした利用者の書き込みを取り込み済みにするか
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[str, str, list[str]]
+      description: 足した書き込みの ID・書いた日時・取り込み済みにした書き込みの ID
+    process: |-
+      1. `body`・`summary` を確かめる（`_check_text`）
+      2. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
+         - `status` が `closed` の場合、`ThreadClosedError` を送る
+      3. `take` が真なら取り込み済みにする（`_take_read`。足す書き込みと同じ日時）
+      4. `{ID}-{書き込みの件数 + 1}`・`author: ai`・`read: True`・`seen: False` の書き込みを末尾に足し、`summary` を置き換えて書く（`_write_threads`）
+         - `[INFO]` 返信した（スレッドの ID・書き込みの ID・取り込み済みにした件数）
+    exceptions:
+      - name: ArgumentError
+        condition: '`body`・`summary` が空白だけか上限を超える'
+        message: '引数の誤り: {引数の名前}: {理由}'
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+      - name: ThreadClosedError
+        condition: スレッドがクローズ
+        message: スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_reply_thread
+        case: 正常
+        summary: 返信を足し、要約を書き直し、既読の書き込みだけを取り込み済みにする
+        condition: 既読の TH-1-1（利用者・取り込んでいない）・未読の TH-1-2（利用者・取り込んでいない）を持つオープンの TH-1。`body`・`summary` を渡す。`now` は `2026-10-13T03:00:00+00:00`
+        mock: '`now`'
+        expected: '`(TH-1-3, now の値, [TH-1-1])`。TH-1-3 が `author: ai`・`read: True`・`seen: False`、`summary` が渡した値、TH-1-1 の `taken` が now の値、TH-1-2 の `taken` が `None`'
+      - name: test_reply_thread_when_no_take
+        case: 正常
+        summary: take が偽なら取り込み済みにしない
+        condition: 同じ TH-1 で `take=False`
+        mock: '`now`'
+        expected: 返した取り込み済みが空で、TH-1-1 の `taken` が `None`
+      - name: test_reply_thread_when_rejected
+        case: 異常
+        summary: クローズ・無い ID・形の誤りは書かない
+        condition: '`parametrize`: クローズの TH-2 / `TH-9` / `body=""` / `summary` が 401 文字'
+        mock: なし
+        expected: '`ThreadClosedError`（メッセージに `set_thread_status`）/ `ThreadNotFoundError` / `ArgumentError` / `ArgumentError`。`threads.yaml` が呼ぶ前と同じ'
+        exception: クローズ・無い ID・形の誤り
+  - name: set_thread_status
+    title: 状態を変える
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドをクローズにするかオープンに戻し、書き手・理由・日時を状態の記録に足す。既にその状態なら書かない（鍵は呼ぶ側が取る。AI のツールと画面の受け口が書き手を渡す）
+    side_effects: '`threads.yaml` を置き換える（状態が変わるときだけ）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: スレッドの ID
+      - name: status
+        type: str
+        required: true
+        passing: keyword
+        description: 変えた後の状態（`open`・`closed`）
+      - name: reason
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: 理由
+      - name: author
+        type: Literal['user', 'ai']
+        required: true
+        passing: keyword
+        description: 状態を変える書き手
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: bool
+      description: 状態を変えたか（既にその状態なら偽）
+    process: |-
+      1. `status` が `open`・`closed` のどちらかで、`reason` が `None` か文字列で前後の空白を除いて `MAX_SUMMARY_CHARS` 文字以下かを確かめる（空白だけは `None` にする）
+      2. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
+         - 既にその状態の場合、書かずに偽を返す
+      3. `status` を置き換え、`events` の末尾に `kind`（`closed` へは `closed`、`open` へは `reopened`）・`author`・`reason`・今の日時を足して書く（`_write_threads`）。書き込みの `taken`・`read` は変えない
+         - `[INFO]` スレッドの状態を変えた（スレッドの ID・状態・書き手）
+    exceptions:
+      - name: ArgumentError
+        condition: '`status` が `open`・`closed` でない、`reason` が文字列でないか上限を超える'
+        message: '引数の誤り: {引数の名前}: {理由}'
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_set_thread_status
+        case: 正常
+        summary: クローズにして記録を足し、取り込み待ちは変えない
+        condition: 取り込んでいない利用者の書き込みを持つオープンの TH-1。`status="closed"`・`reason=" 案 A で決着 "`・`author="ai"`。`now` は `2026-10-13T03:00:00+00:00`
+        mock: '`now`'
+        expected: '真。`status` が `closed`、`events` の末尾が `{kind: closed, author: ai, reason: 案 A で決着, created: now の値}`。書き込みの `taken` が `None` のまま'
+      - name: test_set_thread_status_when_reopen
+        case: 正常
+        summary: オープンに戻す。空白だけの理由は持たない
+        condition: クローズの TH-1。`status="open"`・`reason="  "`・`author="user"`
+        mock: '`now`'
+        expected: '真。`events` の末尾が `kind: reopened`・`author: user`・`reason: None`'
+      - name: test_set_thread_status_when_same
+        case: 正常
+        summary: 既にその状態なら書かない
+        condition: オープンの TH-1 で `status="open"`
+        mock: '`now`（呼ばれないことを確かめる）'
+        expected: 偽。`threads.yaml` の更新日時が呼ぶ前と同じ
+      - name: test_set_thread_status_when_rejected
+        case: 異常
+        summary: 形の誤りと無い ID は書かない
+        condition: '`parametrize`: `status="done"` / `reason` が 401 文字 / `TH-9`'
+        mock: なし
+        expected: '`ArgumentError`（`argument` が `status`）/ `ArgumentError`（`reason`）/ `ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
+        exception: 形の誤り・無い ID
+  - name: update_thread
+    title: スレッドを書き換える
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 送信の取り込み
+    scope: public
+    summary: スレッドの要約とタグを置き換え、AI が既読にした利用者の書き込みを取り込み済みにする。クローズのスレッドも書き換える（鍵は呼ぶ側が取る）
+    side_effects: '`threads.yaml` を置き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: スレッドの ID
+      - name: summary
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: 書き直した要約。`None` は変えない
+      - name: tags
+        type: list[str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 置き換えるタグ。`None` は変えない。空の並びはタグを外す
+      - name: take
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: 既読にした利用者の書き込みを取り込み済みにするか
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: list[str]
+      description: 取り込み済みにした書き込みの ID（無ければ空）
+    process: |-
+      1. `summary`・`tags` が `None` で `take` が偽なら `ArgumentError`（`argument` は `summary`、理由は `summary・tags・take のどれかを渡してください`）。渡した `summary`・`tags` を確かめる（`_check_text`、`_check_tags`）
+      2. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
+      3. 渡した `summary`・`tags` を置き換え、`take` が真なら取り込み済みにして（`_take_read`）書く（`_write_threads`）
+    exceptions:
+      - name: ArgumentError
+        condition: 変えるものを渡さない、`summary` が空白だけか上限を超える、`tags` に重なりか空の文字列がある
+        message: '引数の誤り: {引数の名前}: {理由}'
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_update_thread
+        case: 正常
+        summary: クローズのスレッドの既読の書き込みを取り込み済みにし、要約を書き直す
+        condition: 既読の取り込んでいない利用者の書き込み TH-1-2 を持つクローズの TH-1。`summary`・`take=True`
+        mock: '`now`'
+        expected: '`[TH-1-2]`。`summary` が渡した値、TH-1-2 の `taken` が now の値、`tags`・`status`・`events` が呼ぶ前と同じ'
+      - name: test_update_thread_when_tags
+        case: 正常
+        summary: タグを置き換える・外す
+        condition: 'タグ `画面` の TH-1。`parametrize`: `tags=["起票", "資料"]` / `tags=[]`'
+        mock: '`now`'
+        expected: '`["起票", "資料"]` / `[]`。どちらも返した取り込み済みが空で、`summary` が呼ぶ前と同じ'
+      - name: test_update_thread_when_rejected
+        case: 異常
+        summary: 変えるものが無い・形の誤り・無い ID は書かない
+        condition: '`parametrize`: 何も渡さない / `summary=" "` / `tags=["a", "a"]` / `TH-9` に `take=True`'
+        mock: なし
+        expected: '`ArgumentError`（`argument` が `summary`）/ `ArgumentError`（`summary`）/ `ArgumentError`（`tags`）/ `ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
+        exception: 変えるものが無い・形の誤り・無い ID
+  - name: append_user_posts
+    title: 利用者の書き込みのまとめた追加
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: まとめて送る書き込みを並びの順に足す。返信先を持たないものは 1 件ごとにオープンのスレッドを立て、持つものはそのスレッドの末尾に足す。同じコメントの書き込みが既にあれば足さずにそれを返す（鍵は呼ぶ側が取る。向けた項目・箇所・返信先の確かめは呼ぶ側が済ませる）
+    side_effects: '`threads.yaml` を一時ファイルから 1 回で置き換える（無ければ作る。足すものが無ければ書かない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: posts
+        type: list[UserPostInput]
+        required: true
+        passing: positional
+        description: 足す書き込み（溜めた順）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[str, list[SentPost]]
+      description: 送った日時と、`posts` と同じ並びの足したか既にあった書き込み
+    process: |-
+      1. スレッドを読む（`load_threads`）
+      2. 書き込みごとに、同じ `comment` を持つ書き込みが既にあればそのスレッドと書き込みの ID を使う
+         - `[WARNING]` 既に送っていたコメント（コメントの ID・書き込みの ID）
+      3. 無ければ足す。足す書き込みは `author: user`・`body`・`created`（この呼び出しで 1 つの日時）・`read: False`・`seen: True`・`taken: None`・`comment`
+         - `thread` が `None` の場合、`TH-{連番の最大 + 1 から順}`・`status: open`・`tags: []`・`summary: None`・`target`・`loc`・`events: []` のスレッドを末尾に足し、その最初の書き込みにする
+         - `thread` がある場合、そのスレッドの末尾に `{ID}-{書き込みの件数 + 1}` で足す（無ければ `ThreadNotFoundError`）
+      4. 足したものがあれば書く（`_write_threads`）
+    exceptions:
+      - name: ThreadNotFoundError
+        condition: 返信先のスレッドが無い（呼ぶ側の確かめを通さない呼び出しに備える）
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない（前の `threads.yaml` は残る）'
+    unit_tests:
+      - name: test_append_user_posts
+        case: 正常
+        summary: 新しいスレッドを立て、返信を末尾に足す
+        condition: '書き込み 2 件の TH-1・TH-3 を持つワークスペース。C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）・C-4（`thread: TH-1`）。`now` は `2026-10-13T03:00:00+00:00`'
+        mock: '`now`'
+        expected: '`(now の値, [C-1 → TH-4・TH-4-1, C-2 → TH-5・TH-5-1, C-3 → TH-6・TH-6-1, C-4 → TH-1・TH-1-3])`。TH-4 が `open`・`tags: []`・`summary: None`・`target: D-1`、TH-5 が `loc` を持ち、TH-6 が `target`・`loc` のキーを持たない。足した書き込みはどれも `author: user`・`read: False`・`seen: True`・`taken: None`・`comment` が元のコメントの ID'
+      - name: test_append_user_posts_when_first
+        case: 正常
+        summary: ファイルが無ければ作って TH-1
+        condition: '`threads.yaml` が無いワークスペース、C-1'
+        mock: '`now`'
+        expected: '`[C-1 → TH-1・TH-1-1]` で、`threads.yaml` ができている'
+      - name: test_append_user_posts_when_already_sent
+        case: 正常
+        summary: 既に送ったコメントは足さずにその書き込みを返す
+        condition: '`comment: C-1` の書き込み TH-1-1 を持つワークスペース、C-1・C-2'
+        mock: '`now`'
+        expected: '`[C-1 → TH-1・TH-1-1, C-2 → TH-2・TH-2-1]`。スレッドが 2 件で、TH-1 の書き込みが 1 件のまま'
+      - name: test_append_user_posts_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら前のスレッドを残す
+        condition: TH-1 を持つワークスペース、C-1。`os.replace` を `OSError` を送る関数に差し替える
+        mock: '`os.replace`（`threads` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`threads.yaml` が呼ぶ前と同じ'
+        exception: 置き換えで OSError
+  - name: threads_for_preview
+    title: 画面へ返すスレッド
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: 全てのスレッドを『スレッドの読み取り』の本文の形にする（読むだけ。AI の既読と取り込み済みは含めず、利用者の既読は含める）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（項目のタイトルを引く）
+    returns:
+      type: dict[str, Any]
+      description: '`{threads: [{id, status, tags, summary, target, target_title, loc, posts: [{id, author, body, created, seen}], events: [{kind, author, reason, created}]}]}`'
+    process: |-
+      1. スレッドを読み、最後の書き込みの日時の新しい順（同じ日時は ID の連番の大きい順）に並べる
+      2. `target_title` を付ける（`list_threads` と同じ引き方）
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+    unit_tests:
+      - name: test_threads_for_preview
+        case: 正常
+        summary: クローズも含めて返し、既読と取り込み済みを含めない
+        condition: D-1 と、TH-1（オープン・D-1・最後の書き込み 01:00）・TH-2（クローズ・消えた D-9・最後の書き込み 02:00・クローズの記録）
+        mock: なし
+        expected: '`threads` が TH-2・TH-1 の順。TH-1 の `target_title` が D-1 のタイトル、TH-2 は `None` で `events` が 1 件。どの書き込みにも `read`・`taken`・`comment` のキーが無い。どの書き込みも `seen` を持つ'
+      - name: test_threads_for_preview_when_missing
+        case: 正常
+        summary: ファイルが無ければ空
+        condition: '`threads.yaml` が無いワークスペース'
+        mock: なし
+        expected: '`{threads: []}`'
+  - name: reset_unread
+    title: 未読へ戻す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: 全てのスレッドの書き込みの `read` を偽にする。`seen`（利用者の既読）・`taken`・状態・要約・タグ・状態の記録は変えない（鍵は呼ぶ側が取る）
+    side_effects: '`threads.yaml` を置き換える（既に全て未読なら書かない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: int
+      description: 未読に戻した書き込みの件数
+    process: |-
+      1. スレッドを読み、`read` が真の書き込みを数える
+         - 0 件の場合、書かずに 0 を返す
+      2. 全ての書き込みの `read` を偽にして書き（`_write_threads`）、数えた件数を返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_reset_unread
+        case: 正常
+        summary: 既読を全て未読に戻し、ほかは変えない
+        condition: 既読 3 件（1 件は取り込み済み）と未読 1 件を持つ TH-1（クローズ・要約とタグあり）
+        mock: なし
+        expected: 3。全ての書き込みの `read` が偽で、`seen`・`taken`・`status`・`summary`・`tags`・`events` が呼ぶ前と同じ
+      - name: test_reset_unread_when_nothing
+        case: 正常
+        summary: 全て未読かファイルが無ければ書かない
+        condition: '`parametrize`: 未読だけの TH-1 / `threads.yaml` が無い'
+        mock: なし
+        expected: 0。前者は `threads.yaml` の更新日時が呼ぶ前と同じ、後者は `threads.yaml` ができない
+  - name: _take_read
+    title: 既読の書き込みを取り込み済みにする
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 送信の取り込み
+    scope: internal
+    summary: スレッドの、AI が既読にした取り込んでいない利用者の書き込みの `taken` に日時を入れたスレッドと、その書き込みの ID を返す（単体テストは `reply_thread`・`update_thread` が持つ）
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: スレッド
+      - name: at
+        type: str
+        required: true
+        passing: positional
+        description: 取り込んだ日時
+    returns:
+      type: tuple[Thread, list[str]]
+      description: 書き換えたスレッドと、取り込み済みにした書き込みの ID（書いた順）
+    process: 1. `author` が `user`・`read` が真・`taken` が `None` の書き込みの `taken` を `at` にする。未読の書き込みは取り込み待ちに残す
+  - name: _check_text
+    title: 文の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    scope: internal
+    summary: 本文・要約が文字列で、前後の空白を除いて 1 文字以上・上限以下かを確かめ、空白を除いた文を返す（単体テストは呼ぶ側の `_when_rejected`・`_when_boundary` が持つ）
+    args:
+      - name: argument
+        type: str
+        required: true
+        passing: positional
+        description: 引数の名前（`body`・`summary`）
+      - name: value
+        type: Any
+        required: true
+        passing: positional
+        description: 渡された値
+      - name: max_chars
+        type: int
+        required: true
+        passing: positional
+        description: 上限（`MAX_BODY_CHARS`・`MAX_SUMMARY_CHARS`）
+    returns:
+      type: str
+      description: 前後の空白を除いた文
+    exceptions:
+      - name: ArgumentError
+        condition: 文字列でない・空白だけ・上限を超える
+        message: '引数の誤り: {引数の名前}: {理由}'
+  - name: _check_tags
+    title: タグの確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 共通
+    scope: internal
+    summary: タグが文字列の並びで、重なりと空の文字列を持たないかを確かめる（単体テストは呼ぶ側の `_when_rejected` が持つ）
+    args:
+      - name: tags
+        type: Any
+        required: true
+        passing: positional
+        description: 渡された値
+    returns:
+      type: list[str]
+      description: 渡された並びのままのタグ
+    exceptions:
+      - name: ArgumentError
+        condition: 文字列の並びでない・重なりがある・空の文字列を含む
+        message: '引数の誤り: tags: {理由}'
+  - name: raw_thread_targets
+    title: 崩れたスレッドの向けた項目
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: ワークスペースの点検
+    scope: public
+    summary: スキーマに合わない `threads.yaml` から、項目を指すスレッドを読める範囲で拾う
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[tuple[str, str, bool]]
+      description: スレッドの（ID・向けた項目・取り込み待ちか）の並び
+    process: |-
+      1. `threads.yaml` を `yaml.safe_load` で読む。読めないか、`items` が配列でなければ空を返す
+      2. `id` と `target` が文字列の要素だけを、`posts` に取り込んでいない利用者の書き込み（`author` が `user` で `taken` が無い）を持つかを添えて並べる
+    unit_tests:
+      - name: test_raw_thread_targets
+        case: 正常
+        summary: ID と向けた項目が文字列のスレッドだけを、取り込み待ちかを添えて拾う
+        condition: スキーマに合わない `threads.yaml`（取り込み待ちのスレッド・取り込み済みのスレッド・`target` が文字列でない要素）
+        mock: なし
+        expected: 文字列の `id`・`target` を持つ要素だけが、取り込み待ちかを添えて並ぶ
+      - name: test_raw_thread_targets_when_unreadable
+        case: 正常
+        summary: 読めない・スレッドの並びでないファイルは拾えるものが無い
+        condition: '`parametrize`: YAML として読めない中身 / `items` が配列でない中身'
+        mock: なし
+        expected: 空の並び
+  - name: mark_seen
+    title: 利用者の既読にする
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドの `seen` が偽の書き込みを全て真にする（鍵は呼ぶ側が取る。`read`・`taken`・状態・要約・タグ・状態の記録は変えない）。`mark_read` と違い ID を受け取らず、鍵を取るまでに足された書き込みも既読にする
+    side_effects: '`threads.yaml` を置き換える（未読が無ければ書かない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: スレッドの ID
+    returns:
+      type: list[str]
+      description: 利用者の既読にした書き込みの ID（書いた順）。未読が無ければ空
+    process: |-
+      1. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
+      2. `seen` が偽の書き込みを集める
+         - 0 件の場合、書かずに空を返す
+      3. その書き込みの `seen` を真にした並びを書き（`_write_threads`）、ID を返す
+         - `[INFO]` 利用者の既読にした（スレッドの ID・件数）
+    exceptions:
+      - name: ThreadNotFoundError
+        condition: その ID のスレッドが無い
+      - name: SchemaMismatchError
+        condition: '`load_threads` が送るもの'
+      - name: WriteFailedError
+        condition: '`threads.yaml` を書けない'
+    unit_tests:
+      - name: test_mark_seen
+        case: 正常
+        summary: 未読を全て既読にし、ほかは変えない
+        condition: '利用者の TH-1-1（`seen: True`・取り込み済み）と AI の TH-1-2・TH-1-3（どちらも `seen: False`）を持つクローズの TH-1、未読を持つ TH-2 で `TH-1`'
+        mock: なし
+        expected: '`[TH-1-2, TH-1-3]`。TH-1 の全ての書き込みの `seen` が真で、`read`・`taken`・`status`・`summary`・`tags`・`events` と TH-2 が呼ぶ前と同じ'
+      - name: test_mark_seen_when_nothing_unseen
+        case: 正常
+        summary: 未読が無ければ書かない
+        condition: '全て `seen: True` の TH-1 で `TH-1`'
+        mock: なし
+        expected: '`[]`。`threads.yaml` の更新日時が呼ぶ前と同じ'
+      - name: test_mark_seen_when_thread_not_found
+        case: 異常
+        summary: 無いスレッドは書かない
+        condition: TH-1 だけを持つワークスペースで `TH-9`
+        mock: なし
+        expected: '`ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
+        exception: 無い ID
+test_files:
+  - tests/unit/scripts/test_threads.py

@@ -133,13 +133,38 @@ var MindmapPreview;
         return Object.values(filters).filter((values) => values.length > 0).length;
     }
     MindmapPreview.activeConditionCount = activeConditionCount;
-    /** 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ画面の既定 */
-    function initialFilters(tab, fromHash) {
+    /** 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ端末に残した条件、それも無ければ画面の既定 */
+    function initialFilters(tab, fromHash, saved) {
         if (Object.keys(fromHash).length > 0)
             return { ...fromHash };
+        // 残した条件は、全て外した状態（空）でも画面の既定に戻さない
+        if (saved !== null)
+            return { ...saved };
         return tab === "decisions" ? { status: [...DEFAULT_DECISION_STATUSES] } : {};
     }
     MindmapPreview.initialFilters = initialFilters;
+    /** 端末に残した条件から、今の記録のどの行にも無い値を外す。文字の条件（`~{列}`）はそのまま残し、知らない列の条件は外す（渡した条件は変えない） */
+    function pruneFilters({ rows, columns, saved, }) {
+        const pruned = {};
+        for (const [key, values] of Object.entries(saved)) {
+            // 文字の条件は記録の値ではないので、そのまま写す
+            if (key.startsWith(MindmapPreview.TEXT_FILTER_PREFIX)) {
+                pruned[key] = [...values];
+                continue;
+            }
+            const column = columns.find((candidate) => candidate.key === key);
+            // 知らない列の条件は外す
+            if (column === undefined)
+                continue;
+            const present = new Set(rows.flatMap((row) => valuesOf(column, row)));
+            const kept = values.filter((value) => present.has(value));
+            // 値が 1 つも残らない列はキーごと外す
+            if (kept.length > 0)
+                pruned[key] = kept;
+        }
+        return pruned;
+    }
+    MindmapPreview.pruneFilters = pruneFilters;
     /** ポップオーバーを開いた元のボタンの上か下に置く（収まる側に開き、どちらも収まらないときは広い側で高さを抑える） */
     function positionPopover(pop, anchor) {
         const gap = 6;
@@ -248,7 +273,7 @@ var MindmapPreview;
         const root = previous ?? MindmapPreview.h({ tag: "div", attrs: { class: "table-block", "data-kind": kind } });
         const wrap = previous?.querySelector(".table-wrap") ??
             MindmapPreview.h({ tag: "div", attrs: { class: "table-wrap" } });
-        // ===== 条件のチップと、表示する列のボタン =====
+        // ===== 条件のチップと、列の表示のボタン =====
         const chipsRow = filterChips({
             filters,
             labels: Object.fromEntries(columns.map((column) => [column.key, column.label])),
@@ -271,7 +296,7 @@ var MindmapPreview;
             if (anchor !== null)
                 positionPopover(pop, anchor);
         };
-        /** 表示する列のポップオーバーの中身 */
+        /** 列の表示のポップオーバーの中身 */
         const columnsPopoverBody = () => {
             const boxes = columns.map((column) => MindmapPreview.h({
                 tag: "label",
@@ -296,7 +321,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 children: [
-                    popoverTitle("表示する列"),
+                    popoverTitle("列の表示"),
                     ...boxes,
                     MindmapPreview.h({
                         tag: "div",
@@ -336,15 +361,15 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
-                        class: "btn",
+                        class: "btn cols-btn-table",
                         type: "button",
                         "data-popover": "columns",
-                        "aria-label": "表示する列",
+                        "aria-label": "列の表示",
                         onclick: openPopover,
                     },
                     children: [
                         MindmapPreview.icon("cols"),
-                        MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["表示する列"] }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: ["列の表示"] }),
                     ],
                 }),
             ],
@@ -405,24 +430,32 @@ var MindmapPreview;
             const content = column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");
             if (column.fixed !== true)
                 return content;
-            // タイトルの列は、押すと詳細を開くボタンにし、差分の印があれば右に置く
+            // タイトルの列は、押すと詳細を開くボタンにし、取り下げの札・差分の印があれば右に置く
             const opener = MindmapPreview.h({
                 tag: "button",
                 attrs: { class: "row-open", type: "button", "data-id": row.id, onclick: () => on.open(row.id) },
                 children: [content],
             });
+            // 取り下げた行は、差分の表示によらず差分の印より前に札を置く
+            const badge = row["withdrawn"] === true ? MindmapPreview.withdrawnBadge() : null;
             const mark = MindmapPreview.markFor({ marks, id: row.id });
             const commentPlaceElement = comments === undefined ? null : MindmapPreview.commentPlace({ id: row.id, count: comments[row.id] });
-            if (mark === null && commentPlaceElement === null)
+            if (badge === null && mark === null && commentPlaceElement === null)
                 return opener;
             const fragment = document.createDocumentFragment();
-            fragment.append(...[opener, mark, commentPlaceElement].filter((node) => node !== null));
+            fragment.append(...[opener, badge, mark, commentPlaceElement].filter((node) => node !== null));
             return fragment;
         };
         const body = shownRows.length > 0
             ? shownRows.map((row) => MindmapPreview.h({
                 tag: "tr",
-                attrs: { "data-id": row.id, class: row.id === MindmapPreview.currentSelection() ? "selected" : "" },
+                attrs: {
+                    "data-id": row.id,
+                    // 取り下げた行は文字を薄くする
+                    class: [row.id === MindmapPreview.currentSelection() ? "selected" : "", row["withdrawn"] === true ? "is-withdrawn" : ""]
+                        .join(" ")
+                        .trim(),
+                },
                 children: [
                     ...visible.map((column, position) => MindmapPreview.h({
                         tag: "td",

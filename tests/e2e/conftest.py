@@ -11,8 +11,10 @@ from typing import Any
 
 import pytest
 import yaml
-from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview, ServeWorkspace
+from integration.browser_tab_helpers import link_target  # noqa: F401
+from launch_registration_helpers import BASHRC_USER_LINE, RegistrationSandbox
+from playwright.sync_api import Browser, Page
+from preview_helpers import OpenInEmptyContext, OpenPreview, ServePreview, ServeWorkspace
 from workspace_fixtures import RECORD_DIR, CallTool, MakeWorkspace
 
 # スキルの手順が連ねるツールの呼び出しを再生する関数（ツールの名前と引数を渡し、結果の JSON を返す）
@@ -69,6 +71,20 @@ def lock_dirs() -> Iterator[LockDirs]:
     # 一時フォルダを片付けられるよう、権限を戻す
     for path in locked:
         path.chmod(stat.S_IRWXU)
+
+
+@pytest.fixture
+def registration_sandbox(tmp_path: Path) -> RegistrationSandbox:
+    """空のホームのフォルダ（`~/.bashrc` に利用者の行を 1 行持つ）と、偽の `claude`・起動スクリプトを置く場所を作る。"""
+    home = tmp_path / "home"
+    tools_dir = tmp_path / "tools"
+    records_dir = tmp_path / "records"
+    for folder in (home, tools_dir, records_dir):
+        folder.mkdir()
+    (home / ".bashrc").write_text(f"{BASHRC_USER_LINE}\n", encoding="utf-8")
+    return RegistrationSandbox(
+        root=tmp_path, home=home, tools_dir=tools_dir, records_dir=records_dir
+    )
 
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -130,3 +146,24 @@ def open_preview(page: Page) -> OpenPreview:
         return page
 
     return _open
+
+
+@pytest.fixture
+def open_in_empty_context(
+    browser: Browser, browser_context_args: dict[str, Any]
+) -> Iterator[OpenInEmptyContext]:
+    """端末の保存領域が空の新しいブラウザのコンテキストで URL を開き、画面が描き終わるまで待つ関数を返し、テストの後でコンテキストを閉じる。"""
+    contexts = []
+
+    def _open(url: str) -> Page:
+        """新しいコンテキストを作って URL を開き、本文の領域に中身が入るのを待つ。"""
+        context = browser.new_context(**browser_context_args)
+        contexts.append(context)
+        opened = context.new_page()
+        opened.goto(url)
+        opened.wait_for_selector("main#main > *", state="attached", timeout=RENDER_TIMEOUT_MS)
+        return opened
+
+    yield _open
+    for context in contexts:
+        context.close()

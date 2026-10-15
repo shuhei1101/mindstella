@@ -448,20 +448,27 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 起動スクリプトで立ち上げる
     scope: public
-    summary: ワークスペースのフォルダから tmux のセッションの名前を作る
+    summary: ワークスペースのフォルダと Claude Code の設定のフォルダ（アカウント）から tmux のセッションの名前を作る
     args:
       - name: folder
         type: Path
         required: true
         passing: positional
         description: ワークスペースのフォルダ
+      - name: config_dir
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: Claude Code の設定のフォルダ（`CLAUDE_CONFIG_DIR`）。`None` ならフォルダだけで名前を作る
     returns:
       type: str
       description: '`{SESSION_PREFIX}{フォルダ名}-{ハッシュ}`'
     process: |-
       1. フォルダを `resolve()` してシンボリックリンクを解いた絶対パスにする
-      2. その文字列を UTF-8 で SHA-256 にかけ、 16 進の先頭 `PATH_HASH_DIGITS` 桁を取る
-      3. フォルダ名の `.`・`:` を `-` に置き換え、`SESSION_PREFIX` とハッシュをつなぐ
+      2. `config_dir` があれば、`resolve()` した絶対パスを改行を挟んで 1 の後ろにつなぐ
+      3. その文字列を UTF-8 で SHA-256 にかけ、 16 進の先頭 `PATH_HASH_DIGITS` 桁を取る
+      4. フォルダ名の `.`・`:` を `-` に置き換え、`SESSION_PREFIX` とハッシュをつなぐ
     unit_tests:
       - name: test_session_name
         case: 正常
@@ -475,6 +482,12 @@ functions:
         condition: '`tmp_path / "仕事" / "家計簿アプリ"` と `tmp_path / "個人" / "家計簿アプリ"`'
         mock: なし
         expected: 2 つの名前が違う。同じフォルダを相対パスで渡しても同じ名前
+      - name: test_session_name_when_config_dir
+        case: 正常
+        summary: 同じフォルダでも設定のフォルダが違えば別の名前
+        condition: '`tmp_path / "家計簿アプリ"` を `config_dir` 無し・`tmp_path / ".claude-sub1"`・`tmp_path / ".claude-sub2"` で渡す'
+        mock: なし
+        expected: 3 つの名前が違い、どれも `mindstella-家計簿アプリ-` で始まる。`config_dir` 無しの名前は `test_session_name` と同じ作り方。`.claude-sub1` のハッシュは絶対パスと設定のフォルダの絶対パスを改行でつないだ文字列の SHA-256 の先頭 6 桁
   - name: write_mcp_config
     title: MCP の設定の書き出し
     kind: 関数
@@ -554,7 +567,7 @@ functions:
         required: false
         default: os.environ
         passing: keyword
-        description: MCP サーバーへ渡す値を読む環境変数
+        description: MCP サーバーへ渡す値と `CLAUDE_CONFIG_DIR` を読む環境変数
     returns:
       type: int
       description: 終了コード（0 正常 / 1 プラグインが無い・一覧を読めない / 2 引数の誤りは argparse が終える）
@@ -563,7 +576,7 @@ functions:
          - 読めないか配列でない場合、標準エラーに `[mindstella] エラー: claude plugin list --json の出力を読めません` を出して 1 を返す
       2. プラグインのフォルダを引く（`find_plugin_dir`）
          - `PluginNotInstalledError` を捕まえた場合、標準エラーに `[mindstella] エラー: {メッセージ}` とインストールの手順を案内する行を出して 1 を返す
-      3. セッションの名前を作り（`session_name`）、`external_env(environ)` を `env` に渡して MCP の設定を書く（`write_mcp_config`）
+      3. セッションの名前を作り（`session_name`。`environ` の `CLAUDE_CONFIG_DIR` が空でなければ `config_dir` に渡す）、`external_env(environ)` を `env` に渡して MCP の設定を書く（`write_mcp_config`）
       4. 標準出力に、プラグインのフォルダ・セッションの名前・MCP の設定のパスを 1 行ずつこの順で出し、 0 を返す（起動スクリプトが `read` で 1 行ずつ受ける）
     unit_tests:
       - name: test_run_launch
@@ -584,6 +597,12 @@ functions:
         condition: '`parametrize`: 標準入力が `{` / `{}`'
         mock: なし
         expected: '1 を返し、標準エラーが `[mindstella] エラー: ` で始まる'
+      - name: test_run_launch_when_config_dir
+        case: 正常
+        summary: CLAUDE_CONFIG_DIR があればセッションの名前に入れる
+        condition: '`test_run_launch` と同じ引数と標準入力。`parametrize`: `environ={"CLAUDE_CONFIG_DIR": "{tmp_path}/.claude-sub1"}` / `environ={"CLAUDE_CONFIG_DIR": ""}`'
+        mock: '`write_mcp_config`（`temp_root` を `tmp_path` にした本物）'
+        expected: 0 を返し、2 行目が `session_name(フォルダ, config_dir=そのフォルダ)` / `session_name(フォルダ)` と同じ
   - name: external_env
     title: 渡す環境変数の抜き出し
     kind: 関数

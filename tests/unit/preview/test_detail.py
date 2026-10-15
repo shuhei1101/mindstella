@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, MakeData, MakeItem
+from .fixture_types import (
+    LoadLibrary,
+    LoadPreviewScripts,
+    LoadPreviewStyles,
+    MakeData,
+    MakeItem,
+)
 
 # 変更履歴の 1 回分の日時
 ENTRY_AT = "2026-10-03T09:00:00+00:00"
@@ -66,7 +74,12 @@ def test_detail_panel_when_diff_highlight(
 ) -> None:
     """差分の表示の間も、消した部分の後ろの箇所を今の行のブロックで示す（正常系）。"""
     # 準備
-    entry = {"seq": 1, "at": ENTRY_AT, "before": {}, "body_diff": REMOVED_PARAGRAPHS_DIFF}
+    entry = {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": REMOVED_PARAGRAPHS_DIFF,
+    }
     data = make_data(
         decisions=[make_item("D-1", body="D-1.md", history=[entry])],
         bodies={"D-1.md": NOW_BODY},
@@ -78,7 +91,8 @@ def test_detail_panel_when_diff_highlight(
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
-        OPEN_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "highlight": highlight}
+        OPEN_DIFF_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "highlight": highlight},
     )
     # 検証
     assert result["hits"] == [{"line": "3", "text": "今の 3 行目の段落"}]
@@ -104,7 +118,11 @@ OLD_SET_HISTORY = [
         "at": ENTRY_AT,
         "before": {},
         "body_diff": [
-            {"line": 3, "now": ["V-1 の 3 行目の段落"], "before": ["元の 3 行目の段落"]},
+            {
+                "line": 3,
+                "now": ["V-1 の 3 行目の段落"],
+                "before": ["元の 3 行目の段落"],
+            },
         ],
     },
 ]
@@ -161,7 +179,8 @@ def test_detail_panel_when_old_set_after_body_edit(
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
-        OPEN_OLD_SET_PANEL_SCRIPT, {"data": data, "point": OLD_SET_POINT, "highlight": highlight}
+        OPEN_OLD_SET_PANEL_SCRIPT,
+        {"data": data, "point": OLD_SET_POINT, "highlight": highlight},
     )
     # 検証
     assert "V-1 の 3 行目の段落" in result["text"]
@@ -170,7 +189,11 @@ def test_detail_panel_when_old_set_after_body_edit(
 
 
 # 選んだ時点の後に、答えと編集した人（利用者 → AI）が変わった回
-EDITOR_ENTRY = {"seq": 1, "at": ENTRY_AT, "before": {"answer": None, "updated_by": "user"}}
+EDITOR_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"answer": None, "updated_by": "user"},
+}
 
 # 詳細パネルを差分つきで開き、差分の印の数と、編集した人の値が出ているかを調べる
 OPEN_EDITOR_PANEL_SCRIPT = """async ({data, point}) => {
@@ -207,7 +230,13 @@ def test_detail_panel_when_diff_editor_only(
     # 準備
     data = make_data(
         decisions=[
-            make_item("D-1", answer="新しい答え", updated_by="ai", history=[EDITOR_ENTRY], seq=1)
+            make_item(
+                "D-1",
+                answer="新しい答え",
+                updated_by="ai",
+                history=[EDITOR_ENTRY],
+                seq=1,
+            )
         ],
     )
     load_preview_scripts()
@@ -215,7 +244,9 @@ def test_detail_panel_when_diff_editor_only(
     load_library("DOMPurify")
     load_library("jsdiff")
     # 実行
-    result = preview_page.evaluate(OPEN_EDITOR_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    result = preview_page.evaluate(
+        OPEN_EDITOR_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
     # 検証
     assert result["keyMarks"] == 1
     assert result["valueMarks"] == 1
@@ -285,11 +316,17 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
     # 差分なしで開いて、今の版の図を描き終える
     preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
-    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg') !== null"
+    )
     preview_page.evaluate("() => { window.renderedSources.length = 0; }")
     # 実行
-    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
-    preview_page.wait_for_function("() => document.querySelector('.mermaid svg .df-n-chg') !== null")
+    preview_page.evaluate(
+        OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg .df-n-chg') !== null"
+    )
     rendered_sources = preview_page.evaluate("() => window.renderedSources")
     # 検証
     assert rendered_sources == []
@@ -331,10 +368,14 @@ def test_detail_panel_when_diff_renders_before_sequence(
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
     # 差分なしで開いて、今の版の図を描き終える
     preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": None})
-    preview_page.wait_for_function("() => document.querySelector('.mermaid svg') !== null")
+    preview_page.wait_for_function(
+        "() => document.querySelector('.mermaid svg') !== null"
+    )
     preview_page.evaluate("() => { window.renderedSources.length = 0; }")
     # 実行
-    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.evaluate(
+        OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
     preview_page.wait_for_function(
         "() => document.querySelector('.mermaid svg .df-t-chg') !== null"
     )
@@ -396,10 +437,14 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
     ("heading", "expected"),
     [
         pytest.param(
-            "決め方-1", {"scrolled": True, "inView": True, "nullCalls": 0}, id="heading_in_body"
+            "決め方-1",
+            {"scrolled": True, "inView": True, "nullCalls": 0},
+            id="heading_in_body",
         ),
         pytest.param(
-            "無い", {"scrolled": False, "inView": False, "nullCalls": 1}, id="heading_not_in_body"
+            "無い",
+            {"scrolled": False, "inView": False, "nullCalls": 1},
+            id="heading_not_in_body",
         ),
     ],
 )
@@ -419,7 +464,9 @@ def test_detail_panel_when_heading(
     load_library("marked")
     load_library("DOMPurify")
     # 実行
-    result = preview_page.evaluate(OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading})
+    result = preview_page.evaluate(
+        OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading}
+    )
     # 検証
     assert result == expected
 
@@ -544,8 +591,16 @@ async ({data, id}) => {
         pytest.param(
             "D-1",
             "未決定",
-            [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B", "recommended": True}],
-            {"recommended": ["B"], "stars": 1, "hasDecidedSection": False, "results": ["", ""]},
+            [
+                {"key": "A", "content": "案 A"},
+                {"key": "B", "content": "案 B", "recommended": True},
+            ],
+            {
+                "recommended": ["B"],
+                "stars": 1,
+                "hasDecidedSection": False,
+                "results": ["", ""],
+            },
             id="undecided_with_recommended",
         ),
         pytest.param(
@@ -567,7 +622,12 @@ async ({data, id}) => {
             "D-3",
             "未決定",
             [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
-            {"recommended": [], "stars": 0, "hasDecidedSection": False, "results": ["", ""]},
+            {
+                "recommended": [],
+                "stars": 0,
+                "hasDecidedSection": False,
+                "results": ["", ""],
+            },
             id="undecided_without_recommended",
         ),
     ],
@@ -631,7 +691,12 @@ async ({data, id, keys}) => {
                         "answer": "**強調**",
                         "reason": "**強調**",
                         "options": [
-                            {"key": "A", "content": "案 A", "pros": "**強調**", "adopted": True}
+                            {
+                                "key": "A",
+                                "content": "案 A",
+                                "pros": "**強調**",
+                                "adopted": True,
+                            }
                         ],
                     }
                 ]
@@ -640,20 +705,37 @@ async ({data, id, keys}) => {
             id="decision",
         ),
         pytest.param(
-            "T-1", {"tasks": [{"id": "T-1", "reason": "**強調**"}]}, ["reason"], id="task"
+            "T-1",
+            {"tasks": [{"id": "T-1", "reason": "**強調**"}]},
+            ["reason"],
+            id="task",
         ),
         pytest.param(
             "R-1",
-            {"research": [{"id": "R-1", "question": "**強調**", "conclusion": "**強調**"}]},
+            {
+                "research": [
+                    {"id": "R-1", "question": "**強調**", "conclusion": "**強調**"}
+                ]
+            },
             ["question", "conclusion"],
             id="research",
         ),
         pytest.param(
-            "G-1", {"terms": [{"id": "G-1", "meaning": "**強調**"}]}, ["meaning"], id="term"
+            "G-1",
+            {"terms": [{"id": "G-1", "meaning": "**強調**"}]},
+            ["meaning"],
+            id="term",
         ),
         pytest.param(
             "N-1",
-            {"notes": [{"id": "N-1", "content": '**強調** <img src=x onerror="window.__x=1">'}]},
+            {
+                "notes": [
+                    {
+                        "id": "N-1",
+                        "content": '**強調** <img src=x onerror="window.__x=1">',
+                    }
+                ]
+            },
             ["content"],
             id="note",
         ),
@@ -724,7 +806,14 @@ def test_detail_panel_when_option_list_values(
             make_item(
                 "D-1",
                 status="未決定",
-                options=[{"key": "A", "content": "案 A", "pros": ["速い", "**安い**"], "cons": []}],
+                options=[
+                    {
+                        "key": "A",
+                        "content": "案 A",
+                        "pros": ["速い", "**安い**"],
+                        "cons": [],
+                    }
+                ],
             )
         ]
     )
@@ -732,6 +821,1748 @@ def test_detail_panel_when_option_list_values(
     load_library("marked")
     load_library("DOMPurify")
     # 実行
-    result = preview_page.evaluate(OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"})
+    result = preview_page.evaluate(
+        OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"}
+    )
     # 検証
     assert result == {"prosText": "速い、安い", "prosStrong": 1, "consFound": False}
+
+
+# レビュー中のコメントの溜めた日時
+REVIEW_CREATED = "2026-10-05T03:00:00+00:00"
+
+
+def _review_item(item_id: str, body: str) -> dict[str, object]:
+    """D-1 へのレビュー中のコメントを返す。"""
+    return {
+        "id": item_id,
+        "target": "D-1",
+        "target_title": "問い",
+        "loc": None,
+        "body": body,
+        "created": REVIEW_CREATED,
+    }
+
+
+# 詳細パネルに渡す、下端の入力欄とレビュー中のコメントと行の操作の引数を作り、文書に置く関数
+OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const count = (name) => () => { calls[name] += 1; };
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full,
+        on: {
+            open: noop, close: noop, full: count("full"), back: noop, forward: noop, diagram: noop,
+            heading: noop,
+        },
+        comment: {
+            form: {
+                target: "D-1",
+                on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
+            },
+            reviews,
+            edit: {
+                removed,
+                editing,
+                editingIn,
+                editError: null,
+                editBody: null,
+                on: {
+                    edit: noop, saveEdit: noop, cancelEdit: count("cancelEdit"), remove: noop,
+                    restore: noop,
+                },
+            },
+        },
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    if (full) panel.showModal();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return panel;
+};"""
+
+# レビュー中のコメントの節の行を、順に調べる
+REVIEW_ROWS_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews, removed, editing, editingIn}) => {
+    const calls = {full: 0, cancelEdit: 0};
+    const panel = await openReviewPanel({data, reviews, removed, editing, editingIn, full: false, calls});
+    const section = panel.querySelector(".d-review");
+    const labelOf = (button) => button.getAttribute("aria-label") ?? button.textContent.trim();
+    return {
+        count: section.querySelector("h3 .count").textContent.trim(),
+        rows: [...section.querySelectorAll("li")].map((row) => ({
+            buttons: [...row.querySelectorAll("button")].map(labelOf),
+            status: [...row.querySelectorAll('[role="status"]')].map((status) => status.textContent.trim()),
+            hasField: row.querySelector("textarea") !== null,
+            body: row.querySelector(".review-body")?.textContent ?? null,
+        })),
+        focuses: [...section.querySelectorAll("[data-focus]")].map((element) => element.getAttribute("data-focus")),
+    };
+}"""
+)
+
+
+def test_detail_panel_when_review_rows(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """レビュー中のコメントの行に修正・削除を置き、書き換えている行と消した行を元の場所に描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ROWS_SCRIPT,
+        {
+            "data": data,
+            "reviews": [
+                _review_item("C-1", "案 A にする"),
+                _review_item("C-3", "案 B も見たい"),
+            ],
+            "removed": [_review_item("C-2", "消したコメント")],
+            "editing": "C-3",
+        },
+    )
+    # 検証
+    assert result["count"] == "2"
+    assert result["rows"] == [
+        {
+            "buttons": ["D-1 へのコメントを修正", "D-1 へのコメントを削除"],
+            "status": [],
+            "hasField": False,
+            "body": "案 A にする",
+        },
+        {
+            "buttons": ["元に戻す"],
+            "status": ["コメントを削除しました。"],
+            "hasField": False,
+            "body": None,
+        },
+        {
+            "buttons": ["キャンセル", "修正"],
+            "status": [],
+            "hasField": True,
+            "body": None,
+        },
+    ]
+    assert result["focuses"] == [
+        "detail-edit-open:C-1",
+        "detail-remove:C-1",
+        "detail-restore:C-2",
+        "detail-edit:C-3",
+    ]
+
+
+# 全画面で書き換えの入力欄にフォーカスして Esc を押す前の用意（押した後の結果は別に読む）
+OPEN_FULL_EDIT_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews}) => {
+    window.__calls = {full: 0, cancelEdit: 0};
+    window.__panel = await openReviewPanel({
+        data, reviews, removed: [], editing: "C-1", full: true, calls: window.__calls,
+    });
+    const field = window.__panel.querySelector(".d-review textarea");
+    if (field !== null) field.focus();
+    return field !== null;
+}"""
+)
+
+# Esc を押した後の、呼ばれた回数と全画面の開き具合
+READ_FULL_EDIT_SCRIPT = """() => ({
+    calls: window.__calls,
+    open: window.__panel.open,
+})"""
+
+
+def test_detail_panel_when_review_escape_in_full(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全画面で書き換えの入力欄の Esc は、書き換えだけを捨てて全画面を閉じない（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    has_field = preview_page.evaluate(
+        OPEN_FULL_EDIT_SCRIPT,
+        {"data": data, "reviews": [_review_item("C-1", "案 A にする")]},
+    )
+    # 実行
+    preview_page.keyboard.press("Escape")
+    # 検証
+    assert has_field is True
+    assert preview_page.evaluate(READ_FULL_EDIT_SCRIPT) == {
+        "calls": {"full": 0, "cancelEdit": 1},
+        "open": True,
+    }
+
+
+def test_detail_panel_when_review_editing_in_list(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """コメントの一覧で書き換えている行は、詳細パネルでは本文だけで描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ROWS_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-1", "案 A にする")],
+            "removed": [],
+            "editing": "C-1",
+            "editingIn": "list",
+        },
+    )
+    # 検証
+    assert result["rows"] == [
+        {"buttons": [], "status": [], "hasField": False, "body": "案 A にする"}
+    ]
+
+
+# 取り下げた理由
+WITHDRAWN_REASON = "別の調査で足りた"
+
+# 選んだ時点の後に、取り下げと理由を足した回（前は両方とも無かった）
+WITHDRAW_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"withdrawn": None, "reason": None},
+}
+
+# 詳細パネルを開き（point があれば差分つきで）、題の札・取り下げた理由の節・キーの一覧の取り下げの行を調べる
+OPEN_WITHDRAWN_PANEL_SCRIPT = """async ({data, id, point, reasonText}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set([id])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const reasonSection = [...panel.querySelectorAll("section.d-sec")].find(
+        (section) => section.querySelector("h3")?.textContent === "取り下げた理由"
+    );
+    const withdrawnLabel = [...panel.querySelectorAll("dl.d-meta dt")].find(
+        (label) => label.textContent === "取り下げ"
+    );
+    return {
+        titleBadge: (panel.querySelector(".d-title .wd-badge")?.textContent ?? "").includes("取り下げ"),
+        reasonSection: reasonSection !== undefined,
+        reasonShown: (reasonSection?.textContent ?? "").includes(reasonText),
+        reasonAdded: reasonSection?.querySelector(".df-now") != null,
+        metaRow: withdrawnLabel !== undefined,
+        metaBadgeAdded: withdrawnLabel?.nextElementSibling?.querySelector(".df-now .wd-badge") != null,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("item_id", "point", "expected"),
+    [
+        pytest.param(
+            "R-1",
+            None,
+            {
+                "titleBadge": True,
+                "reasonSection": True,
+                "reasonShown": True,
+                "reasonAdded": False,
+                "metaRow": False,
+                "metaBadgeAdded": False,
+            },
+            id="withdrawn_without_diff",
+        ),
+        pytest.param(
+            "R-1",
+            DIFF_POINT,
+            {
+                "titleBadge": True,
+                "reasonSection": True,
+                "reasonShown": True,
+                "reasonAdded": True,
+                "metaRow": True,
+                "metaBadgeAdded": True,
+            },
+            id="withdrawn_in_range",
+        ),
+        pytest.param(
+            "R-2",
+            None,
+            {
+                "titleBadge": False,
+                "reasonSection": False,
+                "reasonShown": False,
+                "reasonAdded": False,
+                "metaRow": False,
+                "metaBadgeAdded": False,
+            },
+            id="not_withdrawn",
+        ),
+    ],
+)
+def test_detail_panel_when_withdrawn(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    point: dict[str, Any] | None,
+    expected: dict[str, bool],
+) -> None:
+    """取り下げた項目の題に札を置き、理由を節に出す（正常系）。"""
+    # 準備
+    data = make_data(
+        research=[
+            make_item(
+                "R-1",
+                withdrawn=True,
+                reason=WITHDRAWN_REASON,
+                history=[WITHDRAW_ENTRY],
+                seq=1,
+            ),
+            make_item("R-2"),
+        ]
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_WITHDRAWN_PANEL_SCRIPT,
+        {"data": data, "id": item_id, "point": point, "reasonText": WITHDRAWN_REASON},
+    )
+    # 検証
+    assert result == expected
+
+
+# 詳細パネルを差分つきで開き、本文の差分の語の面（`span.df-word`）を、足した面（add）・消した面（del）と文字に直して調べる。
+# 本文の囲み（足した塊 `ins.df-blk`・消した塊 `del.df-blk`）ごと、用語の印と項目の ID のリンクごと、表の行（`tr.df-row`）ごとに分けて返す
+OPEN_WORD_DIFF_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const wordMarks = (root) => [...root.querySelectorAll("span.df-word")].map((word) => ({
+        kind: word.classList.contains("df-add") ? "add" : word.classList.contains("df-del") ? "del" : "none",
+        text: word.textContent,
+    }));
+    const body = panel.querySelector(".md:not(.md-value)");
+    const blocks = [...body.querySelectorAll("ins.df-blk, del.df-blk")].map((block) => ({
+        tag: block.tagName.toLowerCase(),
+        paragraph: block.querySelector("p")?.textContent ?? null,
+        words: wordMarks(block),
+    }));
+    const added = body.querySelector("ins.df-blk p");
+    const links = added === null ? null : {
+        terms: [...added.querySelectorAll("a.term")].map((link) => link.textContent),
+        refs: [...added.querySelectorAll("a.idref")].map((link) => link.getAttribute("data-id")),
+        wordsInLinks: added.querySelectorAll("a span.df-word, span.df-word a").length,
+    };
+    const rows = [...body.querySelectorAll("tr.df-row")].map((row) => ({
+        op: row.classList.contains("df-add") ? "add" : "del",
+        words: wordMarks(row),
+        signs: row.querySelectorAll(".df-sign").length,
+        signsInsideWords: [...row.querySelectorAll(".df-sign, .sr-only")]
+            .filter((sign) => sign.closest("span.df-word") !== null).length,
+    }));
+    return {blocks, words: wordMarks(body), links, rows};
+}"""
+
+
+def _body_entry(*, line: int, now: list[str], before: list[str]) -> dict[str, Any]:
+    """本文の `body_diff` を 1 つ持つ変更履歴の 1 回分を返す。"""
+    return {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": [{"line": line, "now": now, "before": before}],
+    }
+
+
+# 書き換える段落（1 つ目）・変えない段落（2 つ目）・消す段落（3 つ目）を持つ本文の今と、変えた回
+WORD_BODY_NOW = "要件は今週までに決める。\n\n変えない段落\n"
+WORD_BODY_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {
+            "line": 1,
+            "now": ["要件は今週までに決める。"],
+            "before": ["要件は来週までに決める。"],
+        },
+        {"line": 4, "now": [], "before": ["", "消す段落"]},
+    ],
+}
+
+
+def test_detail_panel_when_diff_inline_words(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """書き換えた段落の変わった語だけを囲み、消しただけの段落は囲まない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[WORD_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": WORD_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["blocks"] == [
+        {
+            "tag": "del",
+            "paragraph": "要件は来週までに決める。",
+            "words": [{"kind": "del", "text": "来週"}],
+        },
+        {
+            "tag": "ins",
+            "paragraph": "要件は今週までに決める。",
+            "words": [{"kind": "add", "text": "今週"}],
+        },
+        {"tag": "del", "paragraph": "消す段落", "words": []},
+    ]
+    # 変えない 2 つ目の段落にも、語の面は付かない
+    assert result["words"] == [
+        {"kind": "del", "text": "来週"},
+        {"kind": "add", "text": "今週"},
+    ]
+
+
+# 1 つ目の段落を消し、続く 2 つ目の段落の語を書き換えた本文の今と、変えた回（消した行 3 行・足した行 1 行）
+UNPAIRED_BODY_NOW = "要件は今週までに決める。\n"
+UNPAIRED_BODY_ENTRY = _body_entry(
+    line=1,
+    now=["要件は今週までに決める。"],
+    before=["消す段落", "", "要件は来週までに決める。"],
+)
+
+
+def test_detail_panel_when_diff_lines_unpaired(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """行の数が揃わない書き換えは語の面を付けない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[UNPAIRED_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": UNPAIRED_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["words"] == []
+    # 行の印は今までどおり
+    assert [block["tag"] for block in result["blocks"]] == ["del", "ins"]
+
+
+# 用語集の用語「要件」
+TERM_TITLE = "要件"
+
+# 用語と項目 D-2 の ID を含む段落の語を書き換えた本文の今と、変えた回
+LINKS_BODY_NOW = "要件は D-2 と今週までに決める。\n"
+LINKS_BODY_ENTRY = _body_entry(
+    line=1,
+    now=["要件は D-2 と今週までに決める。"],
+    before=["要件は D-2 と来週までに決める。"],
+)
+
+
+def test_detail_panel_when_diff_inline_words_keep_links(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """語の面を付けても、本文の用語の印と項目の ID のリンクは分けない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item("D-1", body="D-1.md", history=[LINKS_BODY_ENTRY], seq=1),
+            make_item("D-2"),
+        ],
+        terms=[make_item("G-1", title=TERM_TITLE)],
+        bodies={"D-1.md": LINKS_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["links"] == {
+        "terms": [TERM_TITLE],
+        "refs": ["D-2"],
+        "wordsInLinks": 0,
+    }
+    assert result["words"] == [
+        {"kind": "del", "text": "来週"},
+        {"kind": "add", "text": "今週"},
+    ]
+    added = [block for block in result["blocks"] if block["tag"] == "ins"]
+    assert [block["words"] for block in added] == [[{"kind": "add", "text": "今週"}]]
+
+
+# 本文の表の本体の行を書き換えた本文（見出し・区切り・1 行の表）の今と、変えた回
+TABLE_BODY_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
+TABLE_BODY_ENTRY = _body_entry(line=3, now=["| D-1 | 今週 |"], before=["| D-1 | 来週 |"])
+
+
+def test_detail_panel_when_diff_inline_words_in_table_row(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """表の行の対では、行の印を除いて比べ、書き換えたセルの語だけを囲む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[TABLE_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": TABLE_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result["rows"] == [
+        {
+            "op": "del",
+            "words": [{"kind": "del", "text": "来週"}],
+            "signs": 1,
+            "signsInsideWords": 0,
+        },
+        {
+            "op": "add",
+            "words": [{"kind": "add", "text": "今週"}],
+            "signs": 1,
+            "signsInsideWords": 0,
+        },
+    ]
+
+
+# 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
+RAW_BODY_NOW = "# 図\n\n```mermaid\nflowchart TD\n  A[設計を決める] --> B\n```\n"
+RAW_BODY_ENTRY = _body_entry(
+    line=5, now=["  A[設計を決める] --> B"], before=["  A[仕様を決める] --> B"]
+)
+
+# 図の Raw の行（消した行・足した行・変えない行）ごとの語の面を調べる
+RAW_LINE_WORDS_SCRIPT = """() => [...document.querySelectorAll("pre.dg-raw.df-raw .df-line")].map((line) => ({
+    op: line.classList.contains("df-add") ? "add" : line.classList.contains("df-del") ? "del" : "same",
+    words: [...line.querySelectorAll("span.df-word")].map((word) => ({
+        kind: word.classList.contains("df-add") ? "add" : word.classList.contains("df-del") ? "del" : "none",
+        text: word.textContent,
+    })),
+}))"""
+
+
+def test_detail_panel_when_diff_raw_inline_words(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """図の Raw の変えた行の対に、変わった語だけの面を付ける（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[RAW_BODY_ENTRY], seq=1)],
+        bodies={"D-1.md": RAW_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    load_library("mermaid")
+    # 実行
+    preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    preview_page.wait_for_function("() => document.querySelector('pre.dg-raw.df-raw') !== null")
+    preview_page.click("button[data-act='diagram-raw']")
+    lines = preview_page.evaluate(RAW_LINE_WORDS_SCRIPT)
+    # 検証
+    # 語の面を持つ行は、消した行と足した行の 2 つだけ
+    words_by_op = {line["op"]: line["words"] for line in lines if line["words"]}
+    assert words_by_op == {
+        "del": [{"kind": "del", "text": "仕様"}],
+        "add": [{"kind": "add", "text": "設計"}],
+    }
+    assert sum(1 for line in lines if line["words"]) == len(words_by_op)
+
+
+# 詳細パネルを差分つきで開き、キーの前の値（`del.df-was`）と今の値（`ins.df-now`）の語の面（`span.df-word`）を、
+# 題と、渡した CSS セレクターに当たる要素ごとに、面の文字と読み上げの文字（`span.sr-only`）の置き場所に直して調べる。
+# 面を塗らない差分（`span.df-kv.df-plain`）と、パネル全体の語の面の数も返す
+OPEN_KEY_WORD_DIFF_PANEL_SCRIPT = """async ({data, point, selectors}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const texts = (root, selector) => [...root.querySelectorAll(selector)].map((word) => word.textContent);
+    const pairOf = (root) => ({
+        was: texts(root, "del.df-was span.df-word.df-del"),
+        now: texts(root, "ins.df-now span.df-word.df-add"),
+        wasText: root.querySelector("del.df-was")?.textContent ?? null,
+        nowText: root.querySelector("ins.df-now")?.textContent ?? null,
+        words: root.querySelectorAll("span.df-word").length,
+        reading: [...root.querySelectorAll("span.sr-only")].map((reading) => ({
+            text: reading.textContent,
+            insideWord: reading.closest("span.df-word") !== null || reading.querySelector("span.df-word") !== null,
+        })),
+    });
+    return {
+        title: pairOf(panel.querySelector(".d-title")),
+        pairs: selectors.flatMap((selector) => [...panel.querySelectorAll(selector)]).map(pairOf),
+        // 前の値・今の値の文字だけ（語の面の有無によらない）
+        texts: selectors.flatMap((selector) => [...panel.querySelectorAll(selector)]).map((element) => ({
+            was: element.querySelector("del.df-was")?.textContent ?? null,
+            now: element.querySelector("ins.df-now")?.textContent ?? null,
+        })),
+        plain: {
+            pairs: panel.querySelectorAll("span.df-kv.df-plain").length,
+            words: panel.querySelectorAll("span.df-kv.df-plain span.df-word").length,
+        },
+        allWords: panel.querySelectorAll("span.df-word").length,
+    };
+}"""
+
+# 題・背景（`lead`）・案 A の内容・状態を変え、本文を変えない回（前の値を持つ）
+KEY_WORDS_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {
+        "title": "要件を来週までに決める",
+        "lead": "要件は来週までに決める。",
+        "options": [{"key": "A", "content": "毎週の会議で決める"}],
+        "status": "未決定",
+    },
+}
+
+# 読み上げの「前の値: 」「今の値: 」は、語の面の外に置く
+READING_OUTSIDE_WORDS = [
+    {"text": "前の値: ", "insideWord": False},
+    {"text": "今の値: ", "insideWord": False},
+]
+
+
+def test_detail_panel_when_diff_key_words(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """題と文字列の値のキーの差分で、変わった語だけを囲む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item(
+                "D-1",
+                title="要件を今週までに決める",
+                lead="要件は今週までに決める。",
+                options=[{"key": "A", "content": "毎月の会議で決める"}],
+                status="要見直し",
+                history=[KEY_WORDS_ENTRY],
+                seq=1,
+            )
+        ],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT,
+        {
+            "data": data,
+            "point": DIFF_POINT,
+            "selectors": ["[data-key=\"lead\"]", "[data-key=\"options[A].content\"]"],
+        },
+    )
+    # 検証
+    # 題・背景・案 A の内容は、前の値の消した語と今の値の足した語だけを囲む
+    assert (result["title"]["was"], result["title"]["now"]) == (["来週"], ["今週"])
+    lead, content = result["pairs"]
+    assert (lead["was"], lead["now"]) == (["来週"], ["今週"])
+    assert (content["was"], content["now"]) == (["毎週"], ["毎月"])
+    # 読み上げの文字は、前の値・今の値の頭に残り、語の面の外にある
+    assert result["title"]["reading"] == READING_OUTSIDE_WORDS
+    assert lead["reading"] == READING_OUTSIDE_WORDS
+    assert content["reading"] == READING_OUTSIDE_WORDS
+    assert result["title"]["wasText"] == "前の値: 要件を来週までに決める"
+    assert result["title"]["nowText"] == "今の値: 要件を今週までに決める"
+    # 状態（面を塗らない差分）は、対が 1 つあり、語の面を持たない
+    assert result["plain"] == {"pairs": 1, "words": 0}
+    # 語の面は、題・背景・案 A の内容の前の値と今の値の 6 つだけ
+    assert result["allWords"] == 6
+
+
+def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
+    """渡した名前の描画のライブラリを、ページに読む。"""
+    for name in names:
+        load_library(name)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "before", "selector", "expected_texts", "libraries"),
+    [
+        pytest.param(
+            {"lead": "要件は来週までに決める。"},
+            {"lead": None},
+            "[data-key=\"lead\"]",
+            [{"was": "前の値: （なし）", "now": "今の値: 要件は来週までに決める。"}],
+            ["marked", "DOMPurify", "jsdiff"],
+            id="added",
+        ),
+        pytest.param(
+            {"lead": "予算を承認する"},
+            {"lead": "要件は来週までに決める。"},
+            "[data-key=\"lead\"]",
+            [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 予算を承認する"}],
+            ["marked", "DOMPurify", "jsdiff"],
+            id="unrelated",
+        ),
+        pytest.param(
+            {"tags": ["要件", "運用"], "date": "2026-10-08"},
+            {"tags": ["要件", "会議"], "date": "2026-10-01"},
+            "dl.d-meta dd.df-key",
+            [
+                {"was": "前の値: 2026-10-01", "now": "今の値: 2026-10-08"},
+                {"was": "前の値: 要件、会議", "now": "今の値: 要件、運用"},
+            ],
+            ["marked", "DOMPurify", "jsdiff"],
+            id="list_and_date",
+        ),
+        pytest.param(
+            {"lead": "要件は今週までに決める。"},
+            {"lead": "要件は来週までに決める。"},
+            "[data-key=\"lead\"]",
+            [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}],
+            ["marked", "DOMPurify"],
+            id="jsdiff_missing",
+        ),
+    ],
+)
+def test_detail_panel_when_diff_key_words_skipped(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    overrides: dict[str, Any],
+    before: dict[str, Any],
+    selector: str,
+    expected_texts: list[dict[str, str]],
+    libraries: list[str],
+) -> None:
+    """語の面の対でないキーと、比べられない値には語の面を付けない（正常系）。"""
+    # 準備
+    history = [{"seq": 1, "at": ENTRY_AT, "before": before}]
+    data = make_data(decisions=[make_item("D-1", history=history, seq=1, **overrides)])
+    load_preview_scripts()
+    # jsdiff を読めないケースは、jsdiff を差し込まない
+    _load_libraries(load_library, libraries)
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "selectors": [selector]}
+    )
+    # 検証
+    # どの対にも語の面が無い
+    assert result["allWords"] == 0
+    # 前の値・今の値は、今までどおり del.df-was・ins.df-now で並ぶ
+    assert result["texts"] == expected_texts
+
+
+# 本文の行の差分の打ち切りの時間（ミリ秒。`LINE_DIFF_TIMEOUT_MS`）
+LINE_DIFF_TIMEOUT_MS = 40
+
+# 本文の行の差分（`Diff.diffLines`）を打ち切り（`undefined` を返し）、その間に時計を打ち切りの時間より進める包みを被せる
+INSTALL_LINE_DIFF_TIMEOUT_SCRIPT = """(timeoutMs) => {
+    const now = performance.now.bind(performance);
+    let advanced = 0;
+    performance.now = () => now() + advanced;
+    Diff.diffLines = () => {
+        advanced += timeoutMs + 10;
+        return undefined;
+    };
+}"""
+
+# `lead` と本文の 1 行目を書き換えた回（本文の行の差分を呼ぶ）
+BODY_TOO_LARGE_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {"lead": "要件は来週までに決める。"},
+    "body_diff": [
+        {
+            "line": 1,
+            "now": ["要件は今週までに決める。"],
+            "before": ["要件は来週までに決める。"],
+        },
+    ],
+}
+
+
+def test_detail_panel_when_diff_key_words_body_too_large(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を足し直さない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[
+            make_item(
+                "D-1",
+                lead="要件は今週までに決める。",
+                body="D-1.md",
+                history=[BODY_TOO_LARGE_ENTRY],
+                seq=1,
+            )
+        ],
+        bodies={"D-1.md": WORD_BODY_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    preview_page.evaluate(INSTALL_LINE_DIFF_TIMEOUT_SCRIPT, LINE_DIFF_TIMEOUT_MS)
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_WORD_DIFF_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "selectors": ['[data-key="lead"]']},
+    )
+    note = preview_page.evaluate("() => document.querySelector('.df-note')?.textContent ?? ''")
+    # 検証
+    # 本文の頭に、本文の差分を計算しきれない旨が出る
+    assert "本文の差分を出せません" in note
+    # 背景の前の値・今の値は今までどおり並び、語の面は付かない
+    assert result["texts"] == [
+        {"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}
+    ]
+    assert result["allWords"] == 0
+
+
+# 資料・調査の説明とエイリアスの節の位置と中身、キーの一覧の行を調べる（markers の見出しとキーの要素を、中身の直下の子の位置で返す）
+DESCRIPTION_ALIASES_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id, markers}) => {
+    const panel = await openPanel(data, id);
+    const detail = panel.querySelector(".detail");
+    const position = (element) => {
+        let node = element;
+        while (node !== null && node.parentElement !== detail) node = node.parentElement;
+        return node === null ? -1 : [...detail.children].indexOf(node);
+    };
+    const find = (marker) => marker.heading !== undefined
+        ? [...panel.querySelectorAll("h3")].find((element) => (element.textContent ?? "").trim() === marker.heading) ?? null
+        : panel.querySelector(`[data-key="${marker.key}"]`);
+    const descriptionSection = find({heading: "説明"});
+    const aliasSection = find({heading: "エイリアス"});
+    return {
+        positions: markers.map((marker) => position(find(marker))),
+        descriptionKeyed: descriptionSection?.parentElement.querySelector('[data-key="description"]') != null,
+        tags: [...(aliasSection?.parentElement.querySelectorAll(".tag") ?? [])].map((tag) => tag.textContent),
+        metaLabels: [...panel.querySelectorAll("dl.d-meta dt")].map((label) => label.textContent),
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "markers", "present", "tags"),
+    [
+        pytest.param(
+            "A-1",
+            [{"heading": "説明"}, {"heading": "エイリアス"}, {"heading": "本文"}],
+            True,
+            ["特殊効果", "エフェクト"],
+            id="docs",
+        ),
+        pytest.param(
+            "R-1",
+            [
+                {"key": "question"},
+                {"heading": "説明"},
+                {"key": "conclusion"},
+                {"heading": "エイリアス"},
+                {"heading": "調査の観点"},
+            ],
+            True,
+            ["特殊効果", "エフェクト"],
+            id="research",
+        ),
+        pytest.param("A-2", [{"heading": "説明"}, {"heading": "エイリアス"}], False, [], id="neither"),
+    ],
+)
+def test_detail_panel_when_description_aliases(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    markers: list[dict[str, str]],
+    present: bool,
+    tags: list[str],
+) -> None:
+    """資料・調査の説明とエイリアスを決めた位置の節に出す（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[
+            make_item("A-1", description="演出の説明", aliases=["特殊効果", "エフェクト"]),
+            make_item("A-2"),
+        ],
+        research=[
+            make_item(
+                "R-1",
+                question="何を調べたか",
+                description="調査の説明",
+                conclusion="調べた結論",
+                aliases=["特殊効果", "エフェクト"],
+                angles=["観点 1"],
+            )
+        ],
+        bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        DESCRIPTION_ALIASES_SCRIPT, {"data": data, "id": item_id, "markers": markers}
+    )
+    # 検証
+    assert (-1 not in result["positions"]) == present
+    assert (result["positions"] == sorted(set(result["positions"]))) == present
+    assert result["descriptionKeyed"] == present
+    assert result["tags"] == tags
+    assert not {"description", "aliases", "説明", "エイリアス"} & set(result["metaLabels"])
+
+
+# 本文に印を持つ A-1 を開く（用語 G-1「特殊効果」・G-2「保存先」と、エイリアス「特殊効果」を持つ資料 A-2・調査 R-1）。on.open は呼ばれた ID を window.__calls に積む
+OPEN_ALIAS_TIP_FUNCTION = """const openAliasTip = async ({data, full}) => {
+    window.__calls = {open: [], full: 0};
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full,
+        on: {
+            open: (id) => window.__calls.open.push(id),
+            close: noop,
+            full: () => { window.__calls.full += 1; },
+            back: noop, forward: noop, diagram: noop, heading: noop,
+        },
+        comment: null,
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    // 全画面は開き、横のパネルは画面と同じく open を付けて見せる
+    if (full) panel.showModal();
+    else panel.classList.add("open");
+    window.__panel = panel;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+};"""
+
+
+OPEN_ALIAS_TIP_SCRIPT = OPEN_ALIAS_TIP_FUNCTION + "\n(args) => openAliasTip(args)"
+
+
+def _alias_tip_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
+    """本文に「特殊効果」と「保存先」を持つ A-1 と、それらに一致する用語・資料・調査を持つ埋め込みのデータを返す。"""
+    return make_data(
+        terms=[
+            make_item("G-1", title="特殊効果", meaning="演出の用語"),
+            make_item("G-2", title="保存先", meaning="置き場所の用語"),
+        ],
+        docs=[
+            make_item("A-1", body="A-1.md"),
+            make_item("A-2", title="効果の資料", aliases=["特殊効果"], description="資料の説明"),
+        ],
+        research=[make_item("R-1", title="効果の調査", aliases=["特殊効果"])],
+        bodies={"A-1.md": "特殊効果と保存先\n"},
+    )
+
+
+def test_detail_panel_when_alias_tip(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """資料・調査にも一致した印は押すとツールチップを残し、中のリンクで移る（正常系）。"""
+    # 準備
+    data = _alias_tip_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    preview_page.evaluate(
+        OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False}
+    )
+    links = preview_page.locator("a.tt-link")
+    mark = preview_page.locator("a.term", has_text="特殊効果")
+    # 実行
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown = links.evaluate_all("(items) => items.map((item) => item.getAttribute('data-id'))")
+    mark.click()
+    # ポインターを印から外し、隠す待ち（150 ミリ秒）より長く待つ
+    preview_page.mouse.move(1, 1)
+    preview_page.wait_for_timeout(400)
+    pinned = links.first.is_visible()
+    after_pin = preview_page.evaluate("() => window.__calls.open")
+    links.filter(has_text="効果の資料").click()
+    links.first.wait_for(state="hidden")
+    after_link = preview_page.evaluate("() => window.__calls.open")
+    preview_page.locator("a.term", has_text="保存先").click()
+    after_term = preview_page.evaluate("() => window.__calls.open")
+    # 押して残したまま、詳細パネルを描き直す（古いパネルとその中のツールチップが文書から外れる）
+    mark.click()
+    preview_page.evaluate("() => window.__panel.remove()")
+    preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
+    preview_page.mouse.move(1, 1)
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown_after_redraw = links.evaluate_all("(items) => items.map((item) => item.getAttribute('data-id'))")
+    # 検証
+    assert shown == ["G-1", "A-2", "R-1"]
+    assert (pinned, after_pin) == (True, [])
+    assert after_link == ["A-2"]
+    assert after_term == ["A-2", "G-2"]
+    assert shown_after_redraw == ["G-1", "A-2", "R-1"]
+
+
+# 全画面でツールチップの中にフォーカスを移して Esc を押した後の、フォーカスの場所・ツールチップの見え方・知らせた回数と全画面の開き具合
+READ_ALIAS_TIP_STATE_SCRIPT = """() => ({
+    active: document.activeElement?.matches("a.term") ? "mark" : document.activeElement?.className ?? "",
+    full: window.__calls.full,
+    open: window.__panel.open,
+})"""
+
+
+def test_detail_panel_when_alias_tip_escape_in_full(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全画面でツールチップの中にフォーカスがあるときの Esc は、ツールチップだけを閉じて印へ戻す（正常系）。"""
+    # 準備
+    data = _alias_tip_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    preview_page.evaluate(
+        OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": True}
+    )
+    links = preview_page.locator("a.tt-link")
+    preview_page.locator("a.term", has_text="特殊効果").focus()
+    links.first.wait_for(state="visible")
+    # 印から Tab で中の最初のリンクへ移す
+    preview_page.keyboard.press("Tab")
+    in_link = preview_page.evaluate("() => document.activeElement?.matches('a.tt-link') === true")
+    # 実行
+    preview_page.keyboard.press("Escape")
+    links.first.wait_for(state="hidden")
+    # 検証
+    assert in_link is True
+    assert preview_page.evaluate(READ_ALIAS_TIP_STATE_SCRIPT) == {
+        "active": "mark",
+        "full": 0,
+        "open": True,
+    }
+
+
+# ツールチップの先頭の見出しと並んだ項目の ID を読む（ツールチップは `popover` を持つ要素）
+READ_TERM_TIP_SCRIPT = """() => {
+    const tip = document.querySelector("a.tt-link")?.closest("[popover]");
+    return {
+        text: (tip?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+        ids: [...(tip?.querySelectorAll("a.tt-link") ?? [])].map((link) => link.getAttribute("data-id")),
+    };
+}"""
+
+
+def test_detail_panel_when_term_aliases_tip(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """用語 2 件以上に一致した印は押すとツールチップを残し、中のリンクで移る（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[
+            make_item("G-1", title="移し替え", meaning="移すことの意味"),
+            make_item("G-2", title="版の更新", aliases=["移し替え"], meaning="版を上げることの意味"),
+        ],
+        docs=[make_item("A-1", body="A-1.md")],
+        bodies={"A-1.md": "移し替え\n"},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
+    links = preview_page.locator("a.tt-link")
+    mark = preview_page.locator("a.term", has_text="移し替え")
+    # 実行
+    mark.hover()
+    links.first.wait_for(state="visible")
+    shown = preview_page.evaluate(READ_TERM_TIP_SCRIPT)
+    mark.click()
+    # ポインターを印から外し、隠す待ち（150 ミリ秒）より長く待つ
+    preview_page.mouse.move(1, 1)
+    preview_page.wait_for_timeout(400)
+    pinned = links.first.is_visible()
+    after_pin = preview_page.evaluate("() => window.__calls.open")
+    links.filter(has_text="版の更新").click()
+    links.first.wait_for(state="hidden")
+    after_link = preview_page.evaluate("() => window.__calls.open")
+    # 検証
+    assert shown["ids"] == ["G-1", "G-2"]
+    assert "用語 2" in shown["text"]
+    assert (pinned, after_pin) == (True, [])
+    assert after_link == ["G-2"]
+
+
+# 見出しのタイトル（`.panel-title`）を調べる関数の集まり。`openHeadTitle` が項目を開き（開いていた詳細は外す）、`readHeadTitle` が今の見出しのタイトルの状態を読み、`readHeadButtonWidths` が見出しの表示されているボタンの幅を読み、`scrollBody` が本文のスクロール領域を送って見出しのタイトルの出し入れが済むまで待つ
+HEAD_TITLE_FUNCTIONS = """
+// 描画と、見張りが返す結果の反映を待つコマ数
+const SETTLE_FRAMES = 3;
+// 出し入れが済むのを待つ上限（ミリ秒）
+const SCROLL_WAIT_MS = 1000;
+const frames = (count) => new Promise((resolve) => {
+    const tick = (left) => (left === 0 ? resolve() : requestAnimationFrame(() => tick(left - 1)));
+    tick(count);
+});
+const openHeadTitle = async ({data, id, full}) => {
+    window.__panel?.remove();
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop},
+        comment: null,
+        highlight: null,
+        diff: null,
+    });
+    document.body.append(panel);
+    // 全画面は開き、横のパネルは画面と同じく open を付けて見せる
+    if (full) panel.showModal();
+    else panel.classList.add("open");
+    window.__panel = panel;
+    await frames(SETTLE_FRAMES);
+};
+const readHeadTitle = () => {
+    const title = window.__panel.querySelector(".panel-title");
+    if (title === null) return null;
+    return {
+        shown: title.classList.contains("is-shown"),
+        text: title.textContent,
+        title: title.getAttribute("title"),
+        ariaHidden: title.getAttribute("aria-hidden"),
+        visibility: getComputedStyle(title).visibility,
+    };
+};
+// 見出しの表示されているボタン（幅の広い画面で隠れる「一覧へ戻る」は除く）の幅
+const readHeadButtonWidths = () => [...window.__panel.querySelectorAll(".panel-head .icon-btn")]
+    .filter((button) => button.getClientRects().length > 0)
+    .map((button) => button.getBoundingClientRect().width);
+const scrollBody = async (position) => {
+    const body = window.__panel.querySelector(".panel-body");
+    body.scrollTop = position === "end" ? body.scrollHeight : 0;
+    const deadline = performance.now() + SCROLL_WAIT_MS;
+    // 見張りの結果は次のコマ以降に届くので、出し入れが済む（end なら出る・top なら隠れる）まで待つ
+    while (performance.now() < deadline) {
+        const title = window.__panel.querySelector(".panel-title");
+        if (title !== null && title.classList.contains("is-shown") === (position === "end")) break;
+        await frames(1);
+    }
+};"""
+
+
+# 本文の頭 → 本文のスクロール領域の下端 → 頭へ戻す の順に、見出しのタイトルの状態を読む。本文の高さは、スクロール領域の高さの何倍かも返す
+HEAD_TITLE_ON_SCROLL_SCRIPT = (
+    HEAD_TITLE_FUNCTIONS
+    + """
+async ({data, id}) => {
+    await openHeadTitle({data, id, full: false});
+    const body = window.__panel.querySelector(".panel-body");
+    const bodyRatio = body.scrollHeight / body.clientHeight;
+    const top = readHeadTitle();
+    const topButtons = readHeadButtonWidths();
+    await scrollBody("end");
+    const end = readHeadTitle();
+    const endButtons = readHeadButtonWidths();
+    await scrollBody("top");
+    const back = readHeadTitle();
+    const backButtons = readHeadButtonWidths();
+    return {bodyRatio, top, end, back, buttons: {top: topButtons, end: endButtons, back: backButtons}};
+}"""
+)
+
+# 見出しのタイトルを確かめる資料のタイトル（見出しの帯の幅に収まらない長さ）
+HEAD_TITLE_LONG_TITLE = (
+    "話し合いの進め方の手引き（セットアップからヒアリング・リサーチ・方針転換を経て"
+    "ゴール判定でリリースするまでの流れと、各段で記録に残すことの一覧）"
+)
+
+# 見出しのボタン（`.panel-head .icon-btn`）の幅（`--control-h`）。長いタイトルでも縮まない
+HEAD_BUTTON_WIDTH = 32
+
+# 横のパネルの見出しの表示されているボタンの数（戻る・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
+HEAD_BUTTON_COUNT_PANEL = 4
+
+# 全画面の見出しのボタンの数（戻る・進む・元の大きさに戻す）
+HEAD_BUTTON_COUNT_FULL = 3
+
+# 本文の高さを、本文のスクロール領域の高さの 3 倍以上にする段落の数
+HEAD_TITLE_LONG_BODY_PARAGRAPHS = 200
+
+
+def _head_title_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
+    """本文の長い資料 A-1（長いタイトル）と、本文の短い資料 A-2 を持つ埋め込みのデータを返す。"""
+    long_body = "\n\n".join(f"{number} 番目の段落" for number in range(HEAD_TITLE_LONG_BODY_PARAGRAPHS))
+    return make_data(
+        docs=[
+            make_item("A-1", title=HEAD_TITLE_LONG_TITLE),
+            make_item("A-2", title="短い本文の資料"),
+        ],
+        bodies={"A-1.md": long_body, "A-2.md": "短い段落\n"},
+    )
+
+
+def test_detail_panel_when_head_title_on_scroll(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルを出す（正常系）。"""
+    # 準備
+    data = _head_title_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(HEAD_TITLE_ON_SCROLL_SCRIPT, {"data": data, "id": "A-1"})
+    # 検証
+    # どの時点にも見出しのタイトルがある
+    assert None not in (result["top"], result["end"], result["back"])
+    # 本文はスクロール領域の高さの 3 倍以上ある
+    assert result["bodyRatio"] >= 3
+    # 本文の頭: タイトルは隠れ、場所は取ったまま。文字は全文を持ち、読み上げからは外す
+    assert result["top"] == {
+        "shown": False,
+        "text": HEAD_TITLE_LONG_TITLE,
+        "title": HEAD_TITLE_LONG_TITLE,
+        "ariaHidden": "true",
+        "visibility": "hidden",
+    }
+    # 本文の下端: 本文の先頭のタイトルが上へ外れ、見出しのタイトルが出る
+    assert result["end"]["shown"] is True
+    assert result["end"]["visibility"] == "visible"
+    # 頭へ戻す: 隠れる
+    assert result["back"]["shown"] is False
+    # 長いタイトルでも、どの時点でも見出しのボタンは縮まない
+    expected_widths = [HEAD_BUTTON_WIDTH] * HEAD_BUTTON_COUNT_PANEL
+    assert result["buttons"]["top"] == expected_widths
+    assert result["buttons"]["end"] == expected_widths
+    assert result["buttons"]["back"] == expected_widths
+
+
+# 本文の長い A-1 を開いて本文を送り、本文の短い A-2、本文の頭のままの A-1 の順に開き直して、開き直した直後の見出しのタイトルを読む
+HEAD_TITLE_RERENDER_SCRIPT = (
+    HEAD_TITLE_FUNCTIONS
+    + """
+async ({data}) => {
+    await openHeadTitle({data, id: "A-1", full: false});
+    await scrollBody("end");
+    const scrolled = readHeadTitle();
+    await openHeadTitle({data, id: "A-2", full: false});
+    const short = readHeadTitle();
+    await openHeadTitle({data, id: "A-1", full: false});
+    const reopened = readHeadTitle();
+    return {scrolled, short, reopened};
+}"""
+)
+
+
+def test_detail_panel_when_head_title_rerender(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """描き直した後も、今の項目の本文の先頭のタイトルだけを見張る（正常系）。"""
+    # 準備
+    data = _head_title_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(HEAD_TITLE_RERENDER_SCRIPT, {"data": data})
+    # 検証
+    # どの時点にも見出しのタイトルがある
+    assert None not in (result["scrolled"], result["short"], result["reopened"])
+    # 開き直す前: 送った A-1 は見出しのタイトルが出ている
+    assert result["scrolled"]["shown"] is True
+    # A-2 を開き直した直後: A-2 のタイトルで、出ていない
+    assert (result["short"]["text"], result["short"]["shown"]) == ("短い本文の資料", False)
+    # 本文の頭のまま A-1 を開き直した直後: 前の見張りが残らず、出ていない
+    assert (result["reopened"]["text"], result["reopened"]["shown"]) == (HEAD_TITLE_LONG_TITLE, False)
+
+
+# 全画面で本文の長い A-1 を開き、送る前と、モーダルの本文のスクロール領域を下端まで送った後の見出しのタイトルを読む
+HEAD_TITLE_FULL_SCRIPT = (
+    HEAD_TITLE_FUNCTIONS
+    + """
+async ({data}) => {
+    await openHeadTitle({data, id: "A-1", full: true});
+    const before = readHeadTitle();
+    const beforeButtons = readHeadButtonWidths();
+    await scrollBody("end");
+    const after = readHeadTitle();
+    const afterButtons = readHeadButtonWidths();
+    return {before, after, buttons: {before: beforeButtons, after: afterButtons}, inDialog: window.__panel.matches("dialog") && window.__panel.open};
+}"""
+)
+
+
+def test_detail_panel_when_head_title_full(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全画面でも、本文を送ったときだけ見出しのタイトルを出す（正常系）。"""
+    # 準備
+    data = _head_title_data(make_data, make_item)
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(HEAD_TITLE_FULL_SCRIPT, {"data": data})
+    # 検証
+    # 送る前も送った後も見出しのタイトルがある
+    assert None not in (result["before"], result["after"])
+    # 開いているのは全画面の dialog
+    assert result["inDialog"] is True
+    # 送る前は出ず、送った後は dialog の中の見出しのタイトルが出る
+    assert result["before"]["shown"] is False
+    assert result["after"]["shown"] is True
+    # 送る前も送った後も、見出しのボタンは縮まない
+    expected_widths = [HEAD_BUTTON_WIDTH] * HEAD_BUTTON_COUNT_FULL
+    assert result["buttons"]["before"] == expected_widths
+    assert result["buttons"]["after"] == expected_widths
+
+
+# 本文の 3 行目にまとまりのリンクを持つ今の本文
+CHANGE_SET_LINK_BODY = "1 行目の段落\n\n[V-1 へ](#diff=V-1)\n"
+
+# 3 行目をリンクの段落に書き換えた回（差分の本文でもリンクを描く）
+CHANGE_SET_LINK_HISTORY = [
+    {
+        "seq": 1,
+        "at": ENTRY_AT,
+        "before": {},
+        "body_diff": [{"line": 3, "now": ["[V-1 へ](#diff=V-1)"], "before": ["元の 3 行目の段落"]}],
+    },
+]
+
+# 詳細パネルを開き、本文の「V-1 へ」を押したときに使う側へ知らせたまとまりと見出しを調べる
+CHANGE_SET_LINK_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const changeSetCalls = [];
+    const headingCalls = [];
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {
+            open: noop,
+            close: noop,
+            full: noop,
+            back: noop,
+            forward: noop,
+            diagram: noop,
+            heading: (slug) => headingCalls.push(slug),
+            changeSet: (id) => changeSetCalls.push(id),
+        },
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const link = [...panel.querySelectorAll(".md a")].find(
+        (element) => (element.textContent ?? "").trim() === "V-1 へ",
+    );
+    link.click();
+    return {changeSetCalls, headingCalls};
+}"""
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        pytest.param(None, id="without_diff"),
+        pytest.param(DIFF_POINT, id="with_diff"),
+    ],
+)
+def test_detail_panel_when_change_set_link(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    point: dict[str, object] | None,
+) -> None:
+    """本文のまとまりのリンクで `on.changeSet` を呼ぶ（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=CHANGE_SET_LINK_HISTORY)],
+        bodies={"D-1.md": CHANGE_SET_LINK_BODY},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(CHANGE_SET_LINK_SCRIPT, {"data": data, "point": point})
+    # 検証
+    assert result == {"changeSetCalls": ["V-1"], "headingCalls": []}
+
+
+# 1 つ目の段落を消し、末尾に段落を足した本文の今と、変えた回（消した段落と足した段落は離れていて、印は 2 つ）
+MINIMAP_NOW_BODY = "残る段落\n\n足した段落\n"
+MINIMAP_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {"line": 1, "now": [], "before": ["消した段落", ""]},
+        {"line": 3, "now": ["足した段落"], "before": []},
+    ],
+}
+
+# 詳細パネルを開き（差分は withDiff のときだけ）、本文のスクロール領域の中身と、帯の印の数と、本文の読み上げの名前を調べる
+OPEN_MINIMAP_PANEL_SCRIPT = """async ({data, point, withDiff, minimap}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: withDiff ? {...point, added: new Set(), changed: new Set(["D-1"])} : null,
+        minimap,
+    });
+    document.body.append(panel);
+    // 本文の差分と帯の印は、文書に入った後の描き直しで置かれる
+    for (let frame = 0; frame < 3; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const scroll = panel.querySelector(".panel-scroll");
+    const kind = (child) =>
+        child.classList.contains("panel-body") ? "body" : child.classList.contains("df-map") ? "map" : "other";
+    return {
+        children: [...(scroll?.children ?? [])].map(kind),
+        marks: panel.querySelectorAll(".df-map button").length,
+        bodyLabel: scroll?.querySelector(".panel-body")?.getAttribute("aria-label") ?? null,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("with_diff", "minimap", "expected"),
+    [
+        pytest.param(
+            True,
+            True,
+            {"children": ["body", "map"], "marks": 2, "bodyLabel": "詳細の本文"},
+            id="diff_and_minimap",
+        ),
+        pytest.param(
+            True,
+            False,
+            {"children": ["body"], "marks": 0, "bodyLabel": "詳細の本文"},
+            id="diff_and_minimap_off",
+        ),
+        pytest.param(
+            False,
+            True,
+            {"children": ["body"], "marks": 0, "bodyLabel": "詳細の本文"},
+            id="no_diff",
+        ),
+    ],
+)
+def test_detail_panel_when_diff_minimap(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    with_diff: bool,
+    minimap: bool,
+    expected: dict[str, Any],
+) -> None:
+    """差分の表示の間だけ本文の右に帯を並べ、表示しない上書きでは並べない（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[MINIMAP_ENTRY], seq=1)],
+        bodies={"D-1.md": MINIMAP_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_MINIMAP_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "withDiff": with_diff, "minimap": minimap},
+    )
+    # 検証
+    assert result == expected
+
+
+# 詳細パネルを開き（差分は point があるときだけ）、本文の見出しの段と、足した囲みの中の見出しの上の余白を調べる
+OPEN_HEADING_LEVELS_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["A-1"])},
+    });
+    document.body.append(panel);
+    // 本文の差分と見出しの段下げは、文書に入った後の描き直しで置かれる
+    for (let frame = 0; frame < 3; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const body = panel.querySelector(".md:not(.md-value)");
+    const headings = [...body.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
+        text: (heading.textContent ?? "").trim(),
+        tag: heading.tagName.toLowerCase(),
+        mdLevel: heading.getAttribute("data-md-level"),
+        ariaLevel: heading.getAttribute("aria-level"),
+    }));
+    // 比べる元の段 2 の見出しを、足した囲みの外の同じ本文の中に置いて余白を読む
+    const reference = document.createElement("h2");
+    reference.setAttribute("data-md-level", "2");
+    body.append(reference);
+    const referenceMargin = getComputedStyle(reference).marginTop;
+    const inBlock = [...body.querySelectorAll("ins.df-blk :is(h1, h2, h3, h4, h5, h6)")].map((heading) => ({
+        text: (heading.textContent ?? "").trim(),
+        sameAsLevel2: getComputedStyle(heading).marginTop === referenceMargin,
+        fourPx: getComputedStyle(heading).marginTop === "4px",
+    }));
+    return {headings, inBlock};
+}"""
+
+# 本文の見出しの最も上の段が `##` の本文（「決め方」の下に「理由」）
+HEADING_LEVELS_TOP_H2_BODY = "## 決め方\n\n決め方の段落\n\n### 理由\n\n理由の段落\n"
+
+# 本文の見出しの最も上の段が `#` の本文（「要件」の下に「決め方」）
+HEADING_LEVELS_TOP_H1_BODY = "# 要件\n\n要件の段落\n\n## 決め方\n\n決め方の段落\n"
+
+# `##` から `######` までを順に持つ本文
+HEADING_LEVELS_H2_TO_H6_BODY = "## 見出し2\n\n### 見出し3\n\n#### 見出し4\n\n##### 見出し5\n\n###### 見出し6\n"
+
+# 前の版が `# 要件` と `## 決め方`、今が `## 決め方` だけの本文の今と、`# 要件` を消した回
+HEADING_LEVELS_REMOVED_TOP_BODY = "## 決め方\n"
+HEADING_LEVELS_REMOVED_TOP_ENTRY = _body_entry(line=1, now=[], before=["# 要件", ""])
+
+# 前の版が段落だけ、今が `## 決め方` と段落の本文の今と、`## 決め方` を足した回
+HEADING_LEVELS_ADDED_BLOCK_BODY = "## 決め方\n\n段落\n"
+HEADING_LEVELS_ADDED_BLOCK_ENTRY = _body_entry(line=1, now=["## 決め方", ""], before=[])
+
+
+@pytest.mark.parametrize(
+    ("body", "entries", "point", "expected_headings", "expected_in_block"),
+    [
+        pytest.param(
+            HEADING_LEVELS_TOP_H2_BODY,
+            [],
+            None,
+            [
+                {"text": "決め方", "tag": "h4", "mdLevel": "2", "ariaLevel": None},
+                {"text": "理由", "tag": "h5", "mdLevel": "3", "ariaLevel": None},
+            ],
+            [],
+            id="top_is_h2",
+        ),
+        pytest.param(
+            HEADING_LEVELS_TOP_H1_BODY,
+            [],
+            None,
+            [
+                {"text": "要件", "tag": "h4", "mdLevel": "1", "ariaLevel": None},
+                {"text": "決め方", "tag": "h5", "mdLevel": "2", "ariaLevel": None},
+            ],
+            [],
+            id="top_is_h1",
+        ),
+        pytest.param(
+            HEADING_LEVELS_H2_TO_H6_BODY,
+            [],
+            None,
+            [
+                {"text": "見出し2", "tag": "h4", "mdLevel": "2", "ariaLevel": None},
+                {"text": "見出し3", "tag": "h5", "mdLevel": "3", "ariaLevel": None},
+                {"text": "見出し4", "tag": "h6", "mdLevel": "4", "ariaLevel": None},
+                {"text": "見出し5", "tag": "h6", "mdLevel": "5", "ariaLevel": "7"},
+                {"text": "見出し6", "tag": "h6", "mdLevel": "6", "ariaLevel": "8"},
+            ],
+            [],
+            id="beyond_h6",
+        ),
+        pytest.param(
+            HEADING_LEVELS_REMOVED_TOP_BODY,
+            [HEADING_LEVELS_REMOVED_TOP_ENTRY],
+            DIFF_POINT,
+            [
+                {"text": "要件", "tag": "h4", "mdLevel": "1", "ariaLevel": None},
+                {"text": "決め方", "tag": "h5", "mdLevel": "2", "ariaLevel": None},
+            ],
+            [],
+            id="diff_removed_part_is_higher",
+        ),
+        pytest.param(
+            HEADING_LEVELS_ADDED_BLOCK_BODY,
+            [HEADING_LEVELS_ADDED_BLOCK_ENTRY],
+            DIFF_POINT,
+            [{"text": "決め方", "tag": "h4", "mdLevel": "2", "ariaLevel": None}],
+            [{"text": "決め方", "sameAsLevel2": True, "fourPx": False}],
+            id="diff_added_block_margin",
+        ),
+    ],
+)
+def test_detail_panel_when_body_heading_levels(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    body: str,
+    entries: list[dict[str, Any]],
+    point: dict[str, object] | None,
+    expected_headings: list[dict[str, str | None]],
+    expected_in_block: list[dict[str, object]],
+) -> None:
+    """本文の見出しの最も上の段を h4 にし、段の差を保って並べる（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[make_item("A-1", history=entries, seq=1)],
+        bodies={"A-1.md": body},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(OPEN_HEADING_LEVELS_PANEL_SCRIPT, {"data": data, "point": point})
+    # 検証
+    assert result["headings"] == expected_headings
+    # 足した囲みの中の見出しの上の余白は、4px でなく元の段の余白のまま
+    assert result["inBlock"] == expected_in_block

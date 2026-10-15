@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>全体の検索 | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で変える検索の結果の見出しのスタイルと、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/216/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+<!-- data-initial: ハッシュが無いときに開く状態。data-heading: 結果の見出しの立て方（tier = A 段ごとの見出し / kind = B 種類ごとのまとまり）。data-query: 検索に入れる見本の言葉（クエリの q で替える） -->
+<body data-initial="tab=overview" data-heading="tier" data-query="シナリオの依頼">
+  <!-- モック専用の操作列: 同じ階層の案・見本の言葉・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <a href="../a-by-tier/index.html" data-variant aria-current="page">案A 段ごとの見出し</a>
+    <a href="../b-by-kind/index.html" data-variant>案B 種類ごとのまとまり</a>
+    <span class="label">見本の言葉:</span>
+    <a href="?q=シナリオの依頼" data-query="シナリオの依頼">シナリオの依頼</a>
+    <a href="?q=保存先" data-query="保存先">保存先</a>
+    <a href="?q=存在しない語" data-query="存在しない語">該当なし</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">search</a> / <a href="../index.md">216</a> / a-by-tier</nav>
+  </div>
+
+  <!-- 起動の前にハッシュを整える → #127 の見本の記録を埋め込み先へ入れる → 検索のシナリオの記録に書き換える → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/216/assets/mock.js"></script>
+  <script src="../../../../refs/127/assets/data.js"></script>
+  <script src="../../../../refs/216/assets/data.js"></script>
+  <script src="../../../../refs/216/assets/app.js"></script>
+</body>
+</html>

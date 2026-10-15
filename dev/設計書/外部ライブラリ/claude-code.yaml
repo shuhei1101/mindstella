@@ -32,7 +32,7 @@ catalogs:
         purpose: 非対話でスキルを動かし、`--output-format stream-json` で読み込みと許可を確かめる（PoC だけで使う。テストはモデルを呼ばない）
       - name: claude plugin list --json
         kind: コマンド
-        purpose: 起動スクリプトが `mindstella@mindstella` の `installPath`（インストールした今の版のフォルダ）を引く
+        purpose: 起動スクリプトと、登録のスクリプトが書く alias `mindstella`・`mindstella-{名前}` が `mindstella@mindstella` の `installPath`（インストールした今の版のフォルダ）を引く
       - name: claude --mcp-config {ファイル}
         kind: コマンド
         purpose: 起動スクリプトが、この起動だけの MCP の設定で mindstella の MCP サーバーを渡して Claude Code を立ち上げる
@@ -51,6 +51,19 @@ catalogs:
       - name: skills/{スキル名}/
         kind: フォルダ
         purpose: プラグインが同梱するスキルを置く
+      - name: '{設定のフォルダ}/projects/{作業フォルダ}/{会話の ID}.jsonl'
+        kind: ファイル
+        purpose: '会話の記録。1 行 1 件の JSON で、利用者の入力は `type: user`（`cwd` と `message.content` を持つ）、処理中に待ち行列へ入った入力は `type: queue-operation`・`operation: enqueue`（本文も `cwd` も持たない）の行になる'
+        description: '`{設定のフォルダ}` は `CLAUDE_CONFIG_DIR`、無ければ `~/.claude`。`{作業フォルダ}` は Claude Code を立てたフォルダの絶対パスを UTF-16 の単位で英数字以外を `-` にした名前（日本語の名前のフォルダは同じ名前へ寄り得る。サロゲートペアの文字は `--` になる）。名前が 200 文字を超えると、先頭 200 文字に `-{パスのハッシュ}` を足した名前になる（ハッシュは Claude Code の内部の関数で作り、外からは作れない）。会話の ID は `/clear`・`/resume` で変わり、新しい会話は最初の user の行までファイルを作らない。入力を待っているときは確定から約 0.13 秒で user の行が、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる（2.1.296 で確かめた。公開された形ではなく、版で変わり得る）'
+      - name: hooks/hooks.json
+        kind: ファイル
+        purpose: プラグインのフック。`SessionStart` で会話を始めるたびにスレッドを AI の未読に戻すスクリプトを呼ぶ
+        description: '`{"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "..."}]}]}}` の形。`matcher` を持たなければ `startup`・`resume`・`clear`・`compact` の全てで流れる。コマンドの標準入力に `session_id`・`cwd`・`source` などの JSON が渡り、標準出力は会話の文脈に入る。失敗しても会話は始まる'
+        refs:
+          - dev/設計書/インターフェース定義/サーバー/未読へ戻す#
+        status: planned
+        introduced:
+          pr: 235
   - name: スキル
     version: 2.1.287
     entries:
@@ -86,7 +99,7 @@ adoption: 採用
 upstream: anthropics/claude-code
 verification:
   state: 済
-  date: '2026-10-02'
-  detail: PoC（https://github.com/shuhei1101/mindmap/pull/22）で、2.1.287 の `claude -p --plugin-dir` を既定の許可モードで動かし、プラグインの 2 つのスキルの呼び名・`${CLAUDE_PLUGIN_ROOT}` の展開・`allowed-tools` の許可とサブエージェントへの及び方を確かめた（作業ツリーとインストールした形の両方）
+  date: '2026-10-13'
+  detail: PoC（https://github.com/shuhei1101/mindmap/pull/22）で、2.1.287 の `claude -p --plugin-dir` を既定の許可モードで動かし、プラグインの 2 つのスキルの呼び名・`${CLAUDE_PLUGIN_ROOT}` の展開・`allowed-tools` の許可とサブエージェントへの及び方を確かめた（作業ツリーとインストールした形の両方）。2026-10-13 に 2.1.296 で、`hooks/hooks.json` に `matcher` なしの `SessionStart` を 1 つ持つ最小のプラグインを `claude -p --plugin-dir` で読み込み、新しい会話・`--resume`・`--resume` での `/compact`・`/clear` を流した。フックは `source` が `startup`・`resume`・`compact`・`clear` の全てで流れ（`/compact`・`/clear` はその前に `resume` も流れる）、標準入力の JSON に作業フォルダの `cwd` が入り、コマンドの `${CLAUDE_PLUGIN_ROOT}` はプラグインのフォルダへ展開された。フックが終了コード 1 で終えても会話は始まり応答した。フックが標準出力に書いた文は会話の文脈に入り（モデルがその文を答えた）、書かなければ入らなかった
 license: 独自の利用規約（npm のライセンス欄は `SEE LICENSE IN README.md`）。このプラグインは同梱せず、利用者が入れたものを使う
 docs_url: https://code.claude.com/docs/en/plugins/marketplace-reference

@@ -1,0 +1,195 @@
+title: "起動スクリプトの登録"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。スキルの手順が連ねる登録のスクリプトの呼び出しを、決めた引数で再生する。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返す偽のコマンドに差し替える。`installPath` の版のフォルダの `bin/mindstella` を、受け取った引数をファイルに書く偽のスクリプトに差し替える
+        notes: 本物の起動スクリプトの先（依存の確認・tmux・MCP の設定）は『起動スクリプトで立ち上げる』が確かめる
+      - name: ホームのフォルダ
+        description: テストごとの空の一時フォルダを `HOME` にする。ログインシェルは bash で、`~/.bashrc` に利用者が書いた行を 1 行持つ
+        notes: 利用者のシェルの設定に触れない
+      - name: 渡す環境変数
+        description: 利用者が `MINDSTELLA_ALLOWED_HOSTS` だけを設定したいと答える
+        notes: '`preview.example.com`'
+      - name: ワークスペースのフォルダ
+        description: 作成済みかどうかを問わないフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SH as シェルの設定
+
+        U->>CC: /mindstella:setup {フォルダ}
+        CC->>CC: mindstella の MCP のツールが無い
+        CC->>RS: 登録を読む
+        RS-->>CC: 未登録
+        CC-->>U: 起動スクリプトの登録を持ちかけ、設定したい環境変数を尋ねる
+        U->>CC: 外から見るホスト名を渡して登録する
+        CC->>RS: alias と環境変数を登録する
+        RS->>SH: alias と環境変数を書く
+        CC-->>U: 新しいシェルで mindstella {フォルダ} を叩くよう案内して止まる
+      ```
+    expected:
+      - 新しく開いた bash で `mindstella` が定義され、`MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com` になっている
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、`installPath` の版の起動スクリプトが `{フォルダ}` を受け取る
+      - 利用者が書いた `~/.bashrc` の行がそのまま残っている
+      - ワークスペースのフォルダに何も書かれていない
+    test: test_normal
+  - name: 正常シナリオ（登録済みの値を変える）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 登録済みのホーム
+        description: 正常シナリオの登録を済ませ、`MINDSTELLA_ALLOWED_HOSTS` が `a.example.com`、`MINDSTELLA_VENV` が `~/venvs/mindstella` のホームのフォルダ
+      - name: 変える値
+        description: 利用者が `MINDSTELLA_ALLOWED_HOSTS` だけを `b.example.com` に変えると答える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SH as シェルの設定
+
+        U->>CC: /mindstella:setup で、起動スクリプトの登録を変えたいと伝える
+        CC->>RS: 登録を読む
+        RS-->>CC: 登録済みの alias と環境変数
+        CC-->>U: 登録済みの値を示し、変えるものを尋ねる
+        U->>CC: 外から見るホスト名だけを変える
+        CC->>RS: 変える環境変数だけを渡して登録する
+        RS->>SH: 登録の範囲を書き直す
+      ```
+    expected:
+      - 新しく開いた bash で `MINDSTELLA_ALLOWED_HOSTS` が `b.example.com`、`MINDSTELLA_VENV` が `~/venvs/mindstella` のまま
+      - シェルの設定に、mindstella の alias と各環境変数の登録が 1 つずつしかない
+      - 利用者が書いた `~/.bashrc` の行がそのまま残っている
+    test: test_normal_when_registered
+  - name: 正常シナリオ（プラグインを上げた後）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ偽の Claude Code。`installPath` は新しい版のフォルダを返す
+      - name: 登録済みのホーム
+        description: 古い版をインストールしていたときに登録を済ませたホームのフォルダ
+      - name: インストールしたプラグイン
+        description: 新しい版のフォルダだけがあり、古い版のフォルダは消えている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant SH as 新しいシェル
+        participant CC as Claude Code
+        participant LS as 起動スクリプト（新しい版）
+
+        U->>SH: mindstella {フォルダ}
+        SH->>CC: インストールしたプラグインの一覧
+        CC-->>SH: 新しい版のフォルダ
+        SH->>LS: {フォルダ} を渡して叩く
+      ```
+    expected:
+      - 新しい版のフォルダの起動スクリプトが `{フォルダ}` を受け取って立ち上がる
+      - シェルの設定の中身が、登録した直後と同じ（上げた後に登録し直さなくてよい）
+    test: test_normal_when_plugin_upgraded
+  - name: 正常シナリオ（登録を外す）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 登録済みのホーム
+        description: 正常シナリオの登録を済ませたホームのフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SH as シェルの設定
+
+        U->>CC: /mindstella:setup で、起動スクリプトの登録を外したいと伝える
+        CC->>RS: 登録を外す
+        RS->>SH: mindstella の登録だけを消す
+        CC-->>U: 新しいシェルから効くことを案内する
+      ```
+    expected:
+      - 新しく開いた bash で `mindstella` が定義されておらず、`MINDSTELLA_` で始まる環境変数が無い
+      - 利用者が書いた `~/.bashrc` の行がそのまま残っている
+    test: test_normal_when_unregistered
+  - name: 異常シナリオ（シェルの設定に書き込めない）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 書き込めないホーム
+        description: '`~/.bashrc` と登録の書き先を読み取りだけにしたホームのフォルダ'
+        notes: 書き込みの権限を外して作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SH as シェルの設定
+
+        U->>CC: /mindstella:setup {フォルダ}
+        CC->>RS: 登録を読む
+        RS-->>CC: 未登録
+        CC-->>U: 起動スクリプトの登録を持ちかける
+        U->>CC: 登録する
+        CC->>RS: alias と環境変数を登録する
+        RS->>SH: 書き込めない
+        RS-->>CC: 書き込めない理由と手で書く行
+        CC-->>U: 理由と手で書く行を示して止まる
+      ```
+    expected:
+      - 登録のスクリプトが 0 以外の終了コードで終わり、書き込めない理由と、手で書けば同じ登録になる行を返す
+      - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
+    test: test_error_when_not_writable
+  - name: 正常シナリオ（アカウントごとの alias を足す）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。ただし偽の Claude Code は、受け取った `CLAUDE_CONFIG_DIR` ごとに別の `installPath` を返す（既定のアカウントと `~/.claude-sub1` で別の版のフォルダ）。どちらのフォルダの偽の起動スクリプトも、自分のフォルダ・受け取った引数・`CLAUDE_CONFIG_DIR` の値をファイルに書く
+      - name: 登録済みのホーム
+        description: 正常シナリオの登録（alias `mindstella`）を済ませたホームのフォルダ
+      - name: 足すアカウント
+        description: 利用者が、名前 `sub1` で Claude Code の設定のフォルダ `~/.claude-sub1` を登録すると答える
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SH as シェルの設定
+
+        U->>CC: /mindstella:setup で、アカウントを足したいと伝える
+        CC-->>U: アカウントの名前と設定のフォルダを尋ねる
+        U->>CC: sub1 と ~/.claude-sub1
+        CC->>RS: アカウントの alias を登録する
+        RS->>SH: mindstella-sub1 を書く
+        CC-->>U: 新しいシェルで mindstella-sub1 {フォルダ} を叩くよう案内する
+      ```
+    expected:
+      - 新しく開いた bash で `mindstella-sub1 {フォルダ}` を叩くと、`~/.claude-sub1` で引いた `installPath` の版の起動スクリプトが `{フォルダ}` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る
+      - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、既定のアカウントで引いた `installPath` の版の起動スクリプトが立ち上がり、alias から `CLAUDE_CONFIG_DIR` を受け取らない（シェルの既定のアカウントのまま）
+      - シェルの設定に、`mindstella` と `mindstella-sub1` の登録が 1 つずつしかない
+      - 利用者が書いた `~/.bashrc` の行がそのまま残っている
+    test: test_normal_when_account_added
+lead: 利用者が、起動スクリプトで立ち上げていない Claude Code でセットアップのスキル `setup` を呼び、起動スクリプトを呼ぶ alias と、起動スクリプトが読む環境変数を、スキルの配下のスクリプトでシェルの設定に登録する単一ユースケース。
+issue: 10
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 起動スクリプトのパスを毎回引かずに、短い名前で話し合いを立ち上げられる。外から見る設定などの環境変数を毎回打たずに済む。自分で書いたシェルの設定は変わらない
+trigger: 利用者が、起動スクリプトで立ち上げていない Claude Code で `/mindstella:setup` を呼ぶ（未登録なら登録を持ちかけられる）。または `/mindstella:setup` で登録を変えたい・外したい・アカウントを足したいと伝える
+preconditions:
+  - プラグイン mindstella がインストールされている
+  - システムの `bash` と `python3` がある（mindstella の仮想環境と MCP のツールは要らない）
+success_guarantee: 新しく開いたシェルで、alias `mindstella` にワークスペースのフォルダを渡すと、インストールしたプラグインの今の版の起動スクリプトが立ち上がり、登録した環境変数が入っている。アカウントを登録したときは、alias `mindstella-{アカウントの名前}` がそのアカウントの Claude Code の設定のフォルダで立ち上げる。登録し直しても、登録の行は重ならない。
+minimal_guarantee: シェルの設定に書き込めないときは、どのファイルも書き換えずに、理由と手で書く行を示して止まる。利用者が書いたシェルの設定の行と、ワークスペースは書き換えない。
+frequency: プラグインを入れた後に 1 回と、環境変数を変えたいとき
+priority: 中
+refs:
+  - dev/設計書/シナリオ/単一ユースケース/話し合いのセットアップ#
+  - dev/設計書/シナリオ/単一ユースケース/起動スクリプトで立ち上げる#
+notes:
+  E2E の範囲: 登録を持ちかける・環境変数を尋ねる言い回しはモデルの応答で、確かめない。手順が連ねる登録のスクリプトの呼び出しを再生し、新しく開いた bash で alias と環境変数が効くことを確かめる
+  シナリオの分け方: 判定フローチャート『シナリオ』で、既存の『話し合いのセットアップ』はワークスペースを作る・続きを選ぶ価値で、シェルの設定を書く価値と分かれるため、新規の単一ユースケースにした（Q0B が NO、Q0A が YES）
+test_file: tests/e2e/単一ユースケース/test_launch_registration.py

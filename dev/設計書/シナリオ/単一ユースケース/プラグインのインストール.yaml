@@ -31,7 +31,7 @@ scenarios:
       - インストール済みのプラグインの一覧に `mindstella@mindstella` が有効である
       - インストールしたプラグインのフォルダに `skills/mindmap/schemas/` と `skills/mindmap/scripts/` がある
       - インストールしたプラグインのフォルダに `dev/`・`docs/`・`tests/`・`.storybook/`・`package.json` が無い
-      - インストールしたプラグインが hooks を持たない
+      - インストールしたプラグインの hooks が `SessionStart` の 1 件（『未読へ戻す』）だけである
     test: test_normal
 lead: 利用者がこのリポジトリを Claude Code のマーケットプレイスとして登録し、プラグイン mindstella をインストールする単一ユースケース。
 issue: 2

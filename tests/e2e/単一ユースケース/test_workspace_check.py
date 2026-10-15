@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
+from workspace_fixtures import (
+    RECORD_DIR,
+    CallTool,
+    MakeItem,
+    MakePost,
+    MakeThread,
+    MakeWorkspace,
+    SnapshotTree,
+    WriteThreads,
+)
 
 
 def test_normal_when_clean(
@@ -163,3 +172,98 @@ def test_normal_when_removed_item_in_change_set(
     # 点検のツールが成功を返し、問題が無い旨がある
     assert result.is_error is False
     assert result.data == {"ok": True, "problems": []}
+
+
+def test_normal_when_html_body_problems_found(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """HTML の本文の、指す本文が無い資料と、どこからも指されない本文のファイルを出す（正常系）。"""
+    # 準備（A-1 の本文のファイルを消し、どの資料も指さない HTML の本文 A-9 を置く）
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2", body="A-2.html"),
+        bodies={
+            "A-1.html": "<p>一覧の画面</p>\n",
+            "A-2.html": "<p>詳細の画面</p>\n",
+            "A-9.html": "<p>どの項目も指さない画面</p>\n",
+        },
+    )
+    (root / RECORD_DIR / "docs" / "A-1.html").unlink()
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    payload = result.data
+    assert payload["ok"] is False
+    problems = {
+        (row["kind"], row["file"], row["id"], row["key"]) for row in payload["problems"]
+    }
+    # A-1 の「指す本文が無い」問題が 1 件、A-9 の「どこからも指されない」問題が 1 件あり、A-2 には問題が無い
+    assert problems == {
+        ("missing_body", ".mindstella/docs.yaml", "A-1", "items[0].body"),
+        ("orphan_body", ".mindstella/docs/A-9.html", None, None),
+    }
+
+
+def test_normal_when_threads_problems_found(
+    make_workspace: MakeWorkspace,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """スレッドの、存在しない項目を指す参照切れとスキーマ違反を出し、消した項目を指す取り込み済みのスレッドは出さない（正常系）。"""
+    # 準備（メモ N-1 を足して commit し、消してもう一度 commit する）
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    for tool, arguments in (
+        ("add", {"kind": "note", "item": {"title": "メモ", "content": "中身"}}),
+        ("commit", {"summary": "メモを足す"}),
+        ("remove", {"id": "N-1"}),
+        ("commit", {"summary": "メモを消す"}),
+    ):
+        step = call_tool(tool, **ws, **arguments)
+        assert step.is_error is False, step.text
+    taken_at = "2026-10-12T00:30:00+00:00"
+    write_threads(
+        root,
+        make_thread("TH-1", make_post("TH-1-1"), target="D-9"),
+        make_thread(
+            "TH-2",
+            make_post("TH-2-1", read=True, taken=taken_at),
+            status="closed",
+            target="N-1",
+            events=[
+                {
+                    "kind": "closed",
+                    "author": "user",
+                    "reason": None,
+                    "created": "2026-10-12T01:00:00+00:00",
+                }
+            ],
+        ),
+        make_thread("TH-3", make_post("TH-3-1"), status="waiting"),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", **ws)
+    # 検証
+    # 点検のツールがエラーにせず、ok が偽の結果を返す
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    problems = result.data["problems"]
+    broken = [row for row in problems if row["kind"] == "broken_ref"]
+    # スレッドの最初の書き込みが存在しない D-9 を指す旨が、参照切れとしてある
+    assert [(row["file"], row["id"]) for row in broken] == [(".mindstella/threads.yaml", "TH-1")]
+    assert "D-9" in broken[0]["detail"]
+    # 消した N-1 を指すクローズのスレッドは出ない
+    assert all("N-1" not in row["detail"] for row in problems)
+    # 状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
+    schema = [row for row in problems if row["kind"] == "schema"]
+    assert len(schema) == 1
+    assert schema[0]["file"] == ".mindstella/threads.yaml"
+    assert "waiting" in schema[0]["detail"]
+    # ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    assert snapshot_tree(root) == before

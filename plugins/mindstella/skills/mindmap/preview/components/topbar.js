@@ -34,7 +34,7 @@ var MindmapPreview;
                     ? MindmapPreview.h({
                         tag: "span",
                         attrs: { class: "df-dot" },
-                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更の項目があります"] })],
+                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更・消した項目があります"] })],
                     })
                     : null,
             ],
@@ -106,19 +106,24 @@ var MindmapPreview;
         });
     }
     /** コメントのボタン（印と「コメント」と件数）。押すとコメントの一覧を開く・閉じる */
-    function commentsButton({ count, open, onClick }) {
+    function commentsButton({ count, open, unread, onClick }) {
         return MindmapPreview.h({
             tag: "button",
             attrs: {
                 class: `comments-btn${open ? " open" : ""}`,
                 type: "button",
                 "data-act": "comments",
-                "aria-label": `コメント（レビュー中 ${count} 件）`,
+                "aria-label": `コメント（${unread ? "未読あり・" : ""}レビュー中 ${count} 件）`,
                 "aria-expanded": String(open),
                 onclick: () => onClick?.(),
             },
             children: [
-                MindmapPreview.icon("comment"),
+                // 吹き出しの印の右上に、未読の点を重ねる（ボタンの幅を変えない。点は読み上げから外す）
+                MindmapPreview.h({
+                    tag: "span",
+                    attrs: { class: "cb-icon" },
+                    children: [MindmapPreview.icon("comment"), unread ? MindmapPreview.h({ tag: "span", attrs: { class: "unread-dot", "aria-hidden": "true" } }) : null],
+                }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["コメント"] }),
                 MindmapPreview.h({
                     tag: "span",
@@ -165,7 +170,7 @@ var MindmapPreview;
         });
     }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -205,7 +210,7 @@ var MindmapPreview;
                 comments ? MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }) : null,
                 onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
                 filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
-                comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
+                comments ? commentsButton({ count: commentCount, open: commentsOpen, unread: commentsUnread, onClick: onComments }) : null,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {

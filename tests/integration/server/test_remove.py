@@ -11,11 +11,12 @@ from .fixture_types import (
     LockDirs,
     MakeComment,
     MakeItem,
-    MakeSubmission,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     SnapshotTree,
     WriteComments,
-    WriteSubmissions,
+    WriteThreads,
 )
 from .history_helpers import add_item, commit, read_changes, read_items
 from workspace_fixtures import RECORD_DIR
@@ -89,24 +90,69 @@ def test_normal_when_added_since_last_commit(
     assert add_item(call_tool, root, "note", _note("次のメモ")) == "N-2"
 
 
-def test_normal_when_only_taken_submission_refers(
+def test_normal_when_only_taken_thread_refers(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    make_submission: MakeSubmission,
-    write_submissions: WriteSubmissions,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
     call_tool: CallTool,
 ) -> None:
-    """取り込み済みの送信が向けた項目は消せる（正常系）。"""
+    """取り込み待ちでないスレッドが向けた項目は消せる（正常系）。"""
     # 準備
     root = make_workspace(make_item("N-1"))
-    write_submissions(root, make_submission("S-1", target="N-1", taken=TAKEN_AT))
-    submissions_before = (root / RECORD_DIR / "submissions.yaml").read_bytes()
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", read=True, taken=TAKEN_AT),
+            make_post("TH-1-2", author="ai"),
+            target="N-1",
+        ),
+    )
+    threads_before = (root / RECORD_DIR / "threads.yaml").read_bytes()
     # 実行
     result = call_tool("remove", workspace=str(root), id="N-1")
     # 検証
     assert result.is_error is False
     assert "N-1" not in [item["id"] for item in read_items(root, "notes.yaml")]
-    assert (root / RECORD_DIR / "submissions.yaml").read_bytes() == submissions_before
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == threads_before
+
+
+def test_error_when_awaiting_thread_refers(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """取り込み待ちのスレッド（クローズのものを含む）が指す項目は消さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", read=True, taken=TAKEN_AT),
+            make_post("TH-1-2"),
+            target="N-1",
+            status="closed",
+            events=[
+                {"kind": "closed", "author": "user", "reason": None, "created": TAKEN_AT}
+            ],
+        ),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("remove", workspace=str(root), id="N-1")
+    # 検証
+    assert result.is_error is True
+    assert any(
+        line.startswith("threads.yaml: TH-1") for line in result.text.splitlines()
+    )
+    assert snapshot_tree(root) == before
 
 
 def test_error_when_referenced(
@@ -213,3 +259,30 @@ def test_error_when_write_fails(
     assert "Traceback" not in result.text
     assert snapshot_tree(root) == before
     assert (root / RECORD_DIR / "docs" / "N-1.md").exists()
+
+
+def test_normal_when_html_body_removed(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """本文を HTML で持つ資料を消すと、HTML の本文のファイルも消す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(
+        call_tool,
+        root,
+        "doc",
+        {
+            "title": "画面のモック",
+            "kind": "モック",
+            "status": "下書き",
+            "deliverable": False,
+            "body_html": "<h1>画面のモック</h1>\n",
+        },
+    )
+    commit(call_tool, root, "足す")
+    # 実行
+    result = call_tool("remove", workspace=str(root), id="A-1")
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["body_removed"] is True
+    assert not (root / RECORD_DIR / "docs" / "A-1.html").exists()
+    assert read_items(root, "docs.yaml") == []

@@ -273,6 +273,37 @@ flows:
       - MCP の設定の `mcpServers.mindstella.env` が `MINDSTELLA_ALLOWED_HOSTS` と `MINDSTELLA_PREVIEW_START_HOOK` の 2 つだけで、値が設定したものと同じ
       - どれも設定しないと、`mcpServers.mindstella` が `env` を持たない
     test: test_normal_when_external_settings
+  - name: 正常系（同じフォルダを別のアカウントで開く）
+    summary: 同じフォルダでも `CLAUDE_CONFIG_DIR` が違えば別のセッションを立てる
+    setup:
+      - name: Mock
+        description: 正常系と同じ偽の `claude`
+      - name: 仮想環境
+        description: 正常系と同じ
+      - name: tmux
+        description: 正常系と同じ tmux のサーバーに、`CLAUDE_CONFIG_DIR` を渡さずに立てた `mindstella-家計簿アプリ-{ハッシュ}` のセッションがある
+      - name: 設定のフォルダ
+        description: 一時フォルダ `claude-sub1` を `CLAUDE_CONFIG_DIR` で渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as bin/mindstella
+        participant TM as tmux
+
+        クライアント->>IF: CLAUDE_CONFIG_DIR=claude-sub1 mindstella 家計簿アプリ
+        IF->>IF: フォルダと設定のフォルダからセッションの名前を作る
+        IF->>TM: has-session -t =mindstella-家計簿アプリ-{別のハッシュ}
+        TM-->>IF: 無い
+        IF->>TM: new-session -d -s mindstella-家計簿アプリ-{別のハッシュ} -e CLAUDE_CONFIG_DIR
+        IF-->>クライアント: つなぐコマンド、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - tmux に `mindstella-家計簿アプリ-` で始まるセッションが 2 つあり、新しい方のハッシュは絶対パスと `claude-sub1` の絶対パスを改行でつないだ文字列の SHA-256 の先頭 6 桁
+      - 新しいセッションの偽の `claude` の環境変数 `CLAUDE_CONFIG_DIR` が `claude-sub1`
+      - 先にあったセッションのプロセスが立ち上げ直されていない
+    test: test_normal_when_another_account
 lead: 依存を確かめ、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を立ち上げ、そのセッションへつなぐ。
 idempotent: false
 side_effects: この起動だけの MCP の設定（`{一時フォルダ}/mindstella-{ランダム}/mcp.json`）を書き、tmux のセッションを 1 つ立てる。ワークスペースのフォルダが無ければ作る。ワークスペースの中は書かない
@@ -298,7 +329,7 @@ request:
     required: false
     default: なし（Claude Code の既定の設定のフォルダ）
     location: argument
-    description: 環境変数。Claude Code の設定のフォルダ。あれば tmux のセッションへ `new-session -e` で渡す
+    description: 環境変数。Claude Code の設定のフォルダ（アカウント）。あれば tmux のセッションへ `new-session -e` で渡し、セッションの名前のハッシュにも使う
     notes: tmux のサーバーが先に立っていると、呼び出し元の環境変数はセッションへ渡らない
   - name: MINDSTELLA_ALLOWED_HOSTS
     type: str
@@ -321,7 +352,7 @@ request:
 response:
   - name: tmux のセッション
     type: tmux のセッション
-    description: 名前は `mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` は `-` に置き換える。ハッシュは、ワークスペースのフォルダのシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁。作業フォルダがワークスペースのフォルダで、`claude --mcp-config {MCP の設定}` が動く
+    description: 名前は `mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` は `-` に置き換える。ハッシュは、ワークスペースのフォルダのシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁。`CLAUDE_CONFIG_DIR` が空でないときは、絶対パスの後ろに改行と `CLAUDE_CONFIG_DIR` のシンボリックリンクを解いた絶対パスをつないだ文字列の SHA-256 にする（同じフォルダでもアカウントごとに別のセッションになる）。作業フォルダがワークスペースのフォルダで、`claude --mcp-config {MCP の設定}` が動く
   - name: MCP の設定
     type: JSON のファイル
     description: '`{"mcpServers": {"mindstella": {"command": "{仮想環境の Python}", "args": ["{プラグインのフォルダ}/skills/mindmap/scripts/server.py"]}}}`。プラグインのフォルダは `claude plugin list --json` の `mindstella@mindstella` の `installPath`'
@@ -354,7 +385,7 @@ constraints:
   - item: 使う版
     constraint: 叩いたスクリプトの版ではなく、`claude plugin list --json` の `installPath` が指すインストールした今の版のサーバーを立てる
   - item: 同じ名前のセッション
-    constraint: 同じ名前のセッション（同じフォルダを開いたセッション）が既にあれば新しく立てず、そのセッションへつなぐ（端末でなければ、つなぐコマンドを出して終わる）。標準エラーに既にあった旨を出す。別の場所にある同じ名前のフォルダはハッシュが違うため、別のセッションになる
+    constraint: 同じ名前のセッション（同じフォルダを同じアカウントで開いたセッション）が既にあれば新しく立てず、そのセッションへつなぐ（端末でなければ、つなぐコマンドを出して終わる）。標準エラーに既にあった旨を出す。別の場所にある同じ名前のフォルダと、同じフォルダを別の `CLAUDE_CONFIG_DIR` で開いたときはハッシュが違うため、別のセッションになる
   - item: MCP の設定を渡す範囲
     constraint: '`--mcp-config` で mindstella のサーバーだけを足す。利用者のほかの MCP の設定は消さない（`--strict-mcp-config` を付けない）。プラグインのマニフェストには MCP サーバーを書かない'
   - item: 書くもの
@@ -374,5 +405,5 @@ refs:
   - dev/設計書/外部ライブラリ/tmux#
   - dev/設計書/外部ライブラリ/claude-code#
 notes:
-  置き場所: 'プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）。シェルの alias への登録は #10 に残したスコープ'
+  置き場所: プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）か、インターフェース定義『起動スクリプトの登録』で登録した `mindstella`・`mindstella-{名前}` から叩く
 test_file: tests/integration/server/test_launch.py

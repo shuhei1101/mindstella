@@ -33,6 +33,19 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_V2_BY_TAB,
+    WITHDRAWN_BADGE,
+    assert_band_above,
+    assert_removed_band,
+)
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -151,7 +164,7 @@ def test_card_filter_clear_all(
 
 
 def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """ドロワーは、種類・状態・納品物（納品物 → 納品物以外の順）を並べ、何も選んでいない状態で開く（正常系）。"""
+    """ドロワーは、種類・状態・納品物（納品物 → 納品物以外の順）・形式を並べ、何も選んでいない状態で開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs")
@@ -159,9 +172,10 @@ def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
     open_drawer(page)
     groups = {group["label"]: group for group in drawer_groups(page)}
     # 検証
-    assert list(groups) == ["種類", "状態", "納品物"]
+    assert list(groups) == ["種類", "状態", "納品物", "形式"]
     assert groups["状態"]["values"] == [["下書き", 1, False], ["完成", 1, False]]
     assert groups["納品物"]["values"] == [["納品物", 1, False], ["納品物以外", 1, False]]
+    assert groups["形式"]["values"] == [["MD", 2, False]]
     assert badge_text(page) is None
     assert page.is_visible(FILTER_BUTTON)
 
@@ -411,6 +425,155 @@ def test_diff_marks_when_table(
     assert page.locator('table.grid tbody tr[data-id="A-1"] .row-open + .df-mark.df-chg').count() == 1
 
 
+@pytest.mark.parametrize(
+    ("view", "below"),
+    [
+        pytest.param("cards", ".doc-grid", id="cards"),
+        pytest.param("board", ".board", id="board"),
+        pytest.param("table", "table.grid", id="table"),
+    ],
+)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    view: str,
+    below: str,
+) -> None:
+    """差分の表示の間、選んだ時点で消した資料を、表示形式によらず一覧の上の帯に並べる。押せず、カードにも行にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector(below)
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["docs"])
+    assert_band_above(page, below)
+    assert page.locator('[data-id="A-3"]').count() == 0
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """絞り込みの条件で表の行が 0 件になっても、消した資料は絞り込まず帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&view=table&f.status=完成")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["docs"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("pending", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点で資料を消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=docs&view=cards")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    assert page.locator(BAND).count() == 0
+
+
+# 資料のカードの、題の右の札と、札が差分の印より前にあるかを調べる（戻り値は [札が題の右の同じ行か, 札が差分の印より前か]）
+CARD_BADGE_SCRIPT = """(id) => {
+    const card = document.querySelector(`.doc-card[data-id="${id}"]`);
+    const title = card.querySelector('.c-ttl').getBoundingClientRect();
+    const badge = card.querySelector('.wd-badge');
+    const box = badge.getBoundingClientRect();
+    const mark = card.querySelector('.df-mark');
+    return [
+        box.left >= title.right && box.top < title.bottom && box.bottom > title.top,
+        mark === null || (badge.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    ];
+}"""
+
+# 資料のカードの題・種類・メタ情報の文字の色を読む
+CARD_COLORS_SCRIPT = """(id) => Object.fromEntries(['.c-ttl', '.c-meta', '.doc-kind'].map(
+    selector => [selector, getComputedStyle(document.querySelector(`.doc-card[data-id="${id}"] ${selector}`)).color]
+))"""
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_withdrawn_badge_when_cards_and_board(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, view: str
+) -> None:
+    """取り下げた資料のカードは、差分の表示によらずタイトルの右に取り下げの札を置いて文字を薄くし、押すと詳細を開く。取り下げていないカードは変えない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, None)
+    open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    withdrawn = page.locator('.doc-card[data-id="A-2"]')
+    assert withdrawn.locator(WITHDRAWN_BADGE).count() == 1
+    assert withdrawn.locator(WITHDRAWN_BADGE).inner_text() == "取り下げ"
+    assert "is-withdrawn" in str(withdrawn.get_attribute("class"))
+    assert page.evaluate(CARD_BADGE_SCRIPT, "A-2")[0] is True
+    assert page.locator('.doc-card[data-id="A-1"]').locator(WITHDRAWN_BADGE).count() == 0
+    assert "is-withdrawn" not in str(page.get_attribute('.doc-card[data-id="A-1"]', "class"))
+    # 取り下げたカードの文字は、取り下げていないカードより薄い
+    normal_colors = page.evaluate(CARD_COLORS_SCRIPT, "A-1")
+    withdrawn_colors = page.evaluate(CARD_COLORS_SCRIPT, "A-2")
+    assert all(withdrawn_colors[key] != normal_colors[key] for key in normal_colors)
+    # 押すと詳細を開く
+    withdrawn.click()
+    page.wait_for_selector("aside.panel.open .d-title")
+    assert page.inner_text("aside.panel .d-title").startswith("A-2の題")
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_withdrawn_badge_when_cards_and_board_with_diff(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, view: str
+) -> None:
+    """差分の表示で取り下げた資料に変更の印が付くとき、取り下げの札は差分の印より前に置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector(".doc-card")
+    # 検証
+    assert page.locator('.doc-card[data-id="A-2"] .df-mark.df-chg').count() == 1
+    assert page.evaluate(CARD_BADGE_SCRIPT, "A-2") == [True, True]
+
+
+def test_withdrawn_badge_when_table(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """取り下げた資料の表の行は、差分の表示によらずタイトルの右に取り下げの札を置き、文字を薄くする。差分の印は札の後ろに置く（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    row = 'table.grid tbody tr[data-id="A-2"]'
+    assert page.locator(f"{row} .row-open + .wd-badge + .df-mark.df-chg").count() == 1
+    assert "is-withdrawn" in str(page.get_attribute(row, "class"))
+    normal = 'table.grid tbody tr[data-id="A-1"]'
+    assert page.locator(f"{normal} .wd-badge").count() == 0
+    assert "is-withdrawn" not in str(page.get_attribute(normal, "class"))
+    color_script = "e => getComputedStyle(e).color"
+    assert page.eval_on_selector(f"{row} .row-open", color_script) != page.eval_on_selector(
+        f"{normal} .row-open", color_script
+    )
+
+
 @pytest.mark.parametrize("view", ["cards", "board"])
 def test_chips(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, view: str
@@ -588,3 +751,114 @@ def test_region_at_boundary(
     page.wait_for_selector(REGION_SCROLLER[view])
     # 実行・検証
     assert_region_mode(page, REGION_SCROLLER[view], filled=filled)
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直してもその条件でドロワーとカードを開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    open_drawer(page)
+    click_value(page, "status", "完成")
+    page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {"docs": {"status": ["完成"]}}
+    assert _card_ids(page) == ["A-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["完成"]
+    assert chip_texts(page) == ["状態: 完成"]
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    seed_saved_filters(page, {"docs": {"status": ["下書き"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=docs&f.status=完成")
+    open_drawer(page)
+    # 検証
+    assert _card_ids(page) == ["A-1"]
+    assert checked_values(page, "status") == ["完成"]
+    assert read_saved_filters(page) == {"docs": {"status": ["下書き"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（資料に確認中の状態のものは無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=docs")
+    seed_saved_filters(page, {"docs": {"status": ["完成", "確認中"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _card_ids(page) == ["A-1"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["完成"]
+
+
+# 形式の札を確かめる資料（A-1 は HTML、A-2 は Markdown の本文）
+def _write_format_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """本文の形式が違う資料 2 件の配信の URL を返す。"""
+    return write_preview(
+        make_item("A-1", body="A-1.html"),
+        make_item("A-2"),
+        bodies={"A-1.html": "<p>一覧の画面</p>\n", "A-2.md": "資料の本文\n"},
+    )
+
+
+def test_format_badge_when_cards_and_board(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """カードとボードのカードの種類の右に、本文の形式の札（HTML / MD）を置く（正常系）。"""
+    # 準備
+    url = _write_format_preview(write_preview, make_item)
+    # 実行・検証（カード）
+    page = open_preview(url, "#tab=docs")
+    badges = page.eval_on_selector_all(
+        ".doc-card", "cards => cards.map(c => [c.dataset.id, c.querySelector('.doc-kind .fmt-badge')?.textContent])"
+    )
+    assert badges == [["A-1", "HTML"], ["A-2", "MD"]]
+    # 札は種類の右（同じ行で、種類の文字より右）にある
+    positions = page.eval_on_selector(
+        '.doc-card[data-id="A-1"] .doc-kind',
+        "e => { const badge = e.querySelector('.fmt-badge').getBoundingClientRect(); const kind = e.getBoundingClientRect(); return badge.left > kind.left; }",
+    )
+    assert positions is True
+    # 実行・検証（ボード）
+    page = open_preview(url, "#tab=docs&view=board")
+    badges = page.eval_on_selector_all(
+        ".doc-card", "cards => cards.map(c => [c.dataset.id, c.querySelector('.doc-kind .fmt-badge')?.textContent])"
+    )
+    assert sorted(badges) == [["A-1", "HTML"], ["A-2", "MD"]]
+
+
+def test_format_badge_when_table(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """表の「形式」の列に、本文の形式の札（HTML / MD）を出す（正常系）。"""
+    # 準備
+    url = _write_format_preview(write_preview, make_item)
+    # 実行
+    page = open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    # 検証
+    headers = page.eval_on_selector_all("table.grid thead th", "ths => ths.map(th => th.textContent.trim())")
+    column = next(index for index, text in enumerate(headers) if text.startswith("形式"))
+    cells = page.eval_on_selector_all(
+        "table.grid tbody tr",
+        f"rows => rows.map(r => [r.dataset.id, r.children[{column}].textContent.trim()])",
+    )
+    assert cells == [["A-1", "HTML"], ["A-2", "MD"]]
+    assert page.locator("table.grid tbody tr td .fmt-badge").count() == 2

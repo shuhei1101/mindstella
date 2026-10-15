@@ -58,11 +58,15 @@ def find_plugin_dir(listing: list[dict[str, Any]]) -> Path:
     raise PluginNotInstalledError(f"プラグイン {PLUGIN_ID} がインストールされていません")
 
 
-def session_name(folder: Path) -> str:
-    """ワークスペースのフォルダから tmux のセッションの名前を作る。"""
+def session_name(folder: Path, *, config_dir: Path | None = None) -> str:
+    """ワークスペースのフォルダと Claude Code の設定のフォルダ（アカウント）から tmux のセッションの名前を作る。"""
     # シンボリックリンクを解いた絶対パスで、同じ名前の別の場所のフォルダを見分ける
     resolved = folder.resolve()
-    digest = hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:PATH_HASH_DIGITS]
+    hashed = str(resolved)
+    # 設定のフォルダがあれば改行を挟んでつなぎ、同じフォルダでもアカウントごとに別の名前にする
+    if config_dir is not None:
+        hashed += "\n" + str(config_dir.resolve())
+    digest = hashlib.sha256(hashed.encode("utf-8")).hexdigest()[:PATH_HASH_DIGITS]
     # tmux が名前の区切りに使う `.`・`:` は `-` にする
     name = resolved.name.replace(".", "-").replace(":", "-")
     return f"{SESSION_PREFIX}{name}-{digest}"
@@ -125,10 +129,11 @@ def run_launch(
         print(INSTALL_GUIDE, file=sys.stderr)
         return 1
 
-    name = session_name(args.folder)
-    config = write_mcp_config(
-        args.python, plugin_dir, env=external_env(os.environ if environ is None else environ)
-    )
+    env = os.environ if environ is None else environ
+    # CLAUDE_CONFIG_DIR が空でなければ、アカウントとしてセッションの名前に入れる
+    config_dir = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else None
+    name = session_name(args.folder, config_dir=config_dir)
+    config = write_mcp_config(args.python, plugin_dir, env=external_env(env))
     # 起動スクリプトが `read` で 1 行ずつ受ける
     print(plugin_dir)
     print(name)

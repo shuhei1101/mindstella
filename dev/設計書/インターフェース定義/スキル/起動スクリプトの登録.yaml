@@ -1,0 +1,293 @@
+title: "起動スクリプトの登録"
+entry:
+  kind: operation
+  value: '`python3 {プラグインのフォルダ}/skills/setup/scripts/register.py {show|set|add-account|remove-account|remove} [オプション]`（セットアップのスキルが Bash で呼ぶコマンド。引数・環境変数・標準出力の JSON・終了コード）'
+flows:
+  - name: 正常系（登録する）
+    summary: 未登録のホームに、起動スクリプトを呼ぶ `mindstella` と環境変数を登録する
+    setup:
+      - name: Mock
+        description: '`PATH` の先頭に偽の `claude` を置き、`plugin list --json` に決めた `installPath` を返す。`installPath` の `bin/mindstella` は、受け取った引数と `CLAUDE_CONFIG_DIR` をファイルに書く偽のスクリプト'
+      - name: ホームのフォルダ
+        description: 空の一時フォルダを `HOME` にし、`XDG_CONFIG_HOME` を消す。`SHELL=/bin/bash`。`~/.bashrc` に利用者の行 `export EDITOR=vim` を 1 行持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+        participant FS as ホームのフォルダ
+
+        クライアント->>IF: set --env MINDSTELLA_ALLOWED_HOSTS=preview.example.com
+        IF->>FS: ~/.config/mindstella/registration.json と shell.sh を書く
+        IF->>FS: ~/.bashrc の末尾に読み込む範囲を足す
+        IF-->>クライアント: 登録の JSON、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - '標準出力の JSON の `registered` が `true`、`aliases` が `["mindstella"]`、`env` が `{"MINDSTELLA_ALLOWED_HOSTS": "preview.example.com"}`、`rc_file` が `~/.bashrc`'
+      - '`bash -ic` で `type mindstella` が関数を返し、`echo $MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com`'
+      - "`bash -ic 'mindstella 家計簿アプリ'` で、偽の起動スクリプトが引数 `家計簿アプリ` を受け取る"
+      - '`~/.bashrc` の `export EDITOR=vim` の行がそのままで、mindstella の印で囲んだ範囲が 1 つだけある'
+    test: test_normal
+  - name: 正常系（読み返す）
+    summary: 登録済みの alias と環境変数を、何も書かずに返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 登録済みのホーム
+        description: 正常系（登録する）を済ませたホームのフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+
+        クライアント->>IF: show
+        IF-->>クライアント: 登録の JSON、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - '`registered` が `true`、`env` が登録した値'
+      - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
+    test: test_normal_when_show
+  - name: 正常系（登録し直す）
+    summary: 渡した環境変数だけを書き換え、印の範囲は重ねない
+    setup:
+      - name: Mock
+        description: なし
+      - name: 登録済みのホーム
+        description: '`MINDSTELLA_ALLOWED_HOSTS=a.example.com`・`MINDSTELLA_VENV=~/venvs/mindstella` で登録したホームのフォルダ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+        participant FS as ホームのフォルダ
+
+        クライアント->>IF: set --env MINDSTELLA_ALLOWED_HOSTS=b.example.com
+        IF->>FS: registration.json と shell.sh を書き直す
+        IF-->>クライアント: 登録の JSON、終了コード 0
+      ```
+    expected:
+      - '`env` が `MINDSTELLA_ALLOWED_HOSTS=b.example.com`・`MINDSTELLA_VENV=~/venvs/mindstella`'
+      - '`~/.bashrc` の印で囲んだ範囲が 1 つだけで、`~/.bashrc` の中身が登録し直す前と同じ'
+    test: test_normal_when_set_again
+  - name: 正常系（アカウントを足す）
+    summary: '`mindstella-{名前}` がそのアカウントの `installPath` で起動スクリプトを叩く'
+    setup:
+      - name: Mock
+        description: 偽の `claude` は `CLAUDE_CONFIG_DIR` ごとに別の `installPath` を返す。どちらの `bin/mindstella` も、自分のフォルダ・引数・`CLAUDE_CONFIG_DIR` をファイルに書く偽のスクリプト
+      - name: 登録済みのホーム
+        description: 正常系（登録する）を済ませたホームのフォルダ。`~/.claude-sub1` を作ってある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+        participant FS as ホームのフォルダ
+
+        クライアント->>IF: add-account --name sub1 --config-dir ~/.claude-sub1
+        IF->>FS: registration.json と shell.sh を書き直す
+        IF-->>クライアント: 登録の JSON、終了コード 0
+      ```
+    expected:
+      - '`aliases` が `["mindstella", "mindstella-sub1"]`、`accounts` に `sub1` と `~/.claude-sub1` の絶対パス'
+      - "`bash -ic 'mindstella-sub1 家計簿アプリ'` で、`~/.claude-sub1` で引いた `installPath` の偽の起動スクリプトが、引数 `家計簿アプリ` と `CLAUDE_CONFIG_DIR=~/.claude-sub1` を受け取る"
+      - "`bash -ic 'mindstella 家計簿アプリ'` では、既定のアカウントで引いた `installPath` の偽の起動スクリプトが立ち上がり、`CLAUDE_CONFIG_DIR` を受け取らない"
+    test: test_normal_when_account_added
+  - name: 正常系（外す）
+    summary: 登録のファイルと印の範囲だけを消す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 登録済みのホーム
+        description: 正常系（登録する）を済ませたホームのフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+        participant FS as ホームのフォルダ
+
+        クライアント->>IF: remove
+        IF->>FS: registration.json と shell.sh を消し、印の範囲を消す
+        IF-->>クライアント: 登録の JSON、終了コード 0
+      ```
+    expected:
+      - '`registered` が `false`'
+      - '`registration.json` と `shell.sh` が無い'
+      - '`~/.bashrc` の中身が、登録する前と同じ（`export EDITOR=vim` の 1 行）'
+    test: test_normal_when_removed
+  - name: 異常系（引数の誤り）
+    summary: 許さない環境変数のキーを渡すと、何も書かず 2 で終わる
+    setup:
+      - name: Mock
+        description: なし
+      - name: ホームのフォルダ
+        description: 正常系（登録する）と同じ未登録のホームのフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+
+        クライアント->>IF: set --env PATH=/tmp
+        IF-->>クライアント: 使い方、終了コード 2
+      ```
+    expected:
+      - 終了コードが 2
+      - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
+    test: test_error_when_unknown_env_key
+  - name: 異常系（書き込めない・NotWritableError）
+    summary: ログインシェルの設定ファイルに書き込めないと、何も書かず手で書く行を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 書き込めないホーム
+        description: 未登録のホームのフォルダで、`~/.bashrc` を読み取りだけにした
+        notes: root で動かすと権限を外しても書けるため、root のときは飛ばす
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+        participant FS as ホームのフォルダ
+
+        クライアント->>IF: set
+        IF->>FS: 書き込めるかを確かめる
+        FS-->>IF: ~/.bashrc に書き込めない
+        IF-->>クライアント: error と manual_lines の JSON、終了コード 1
+      ```
+    expected:
+      - 終了コードが 1
+      - '`error` に `~/.bashrc` に書き込めない旨があり、`manual_lines` に印の範囲と alias `mindstella` の定義の行がある'
+      - '`registration.json`・`shell.sh` が無く、`~/.bashrc` の中身が呼ぶ前と同じ'
+    test: test_error_when_not_writable
+lead: 起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{アカウントの名前}`（シェルの関数で定義する）と、起動スクリプトが読む環境変数を、ログインシェルの設定に登録・読み返し・外すスクリプト。MCP のツールも mindstella の仮想環境も使わず、システムの `python3` の標準ライブラリだけで動く。
+idempotent: true
+side_effects: '`set`・`add-account`・`remove-account` は `{XDG_CONFIG_HOME か ~/.config}/mindstella/` の `registration.json` と `shell.sh` を書き、ログインシェルの設定ファイルに `shell.sh` を読み込む印つきの範囲が無ければ末尾に足す。`remove` はその 2 つのファイルと印つきの範囲を消す。`show` は何も書かない。ワークスペースは書かない'
+callers:
+  - dev/設計書/インターフェース定義/スキル/セットアップ#
+request:
+  - name: '{サブコマンド}'
+    type: Literal['show', 'set', 'add-account', 'remove-account', 'remove']
+    required: true
+    location: argument
+    description: '`show` 登録を読む / `set` alias `mindstella` と環境変数を登録・書き直す / `add-account` アカウントごとの alias を足す・書き直す / `remove-account` アカウントの alias を外す / `remove` 登録を全て外す'
+  - name: --env
+    type: str
+    required: false
+    default: なし（環境変数を変えない）
+    location: argument
+    description: '`set` で登録する環境変数。`KEY=VALUE` を繰り返し渡せる。渡したキーだけを書き換え、登録済みのほかのキーは残す'
+    constraints: キーは `MINDSTELLA_VENV`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` のどれか。値は改行を含まない
+    example: MINDSTELLA_ALLOWED_HOSTS=preview.example.com
+  - name: --unset-env
+    type: str
+    required: false
+    default: なし
+    location: argument
+    description: '`set` で登録から外す環境変数のキー。繰り返し渡せる'
+    constraints: '`--env` と同じキーのどれか'
+  - name: --name
+    type: str
+    required: false
+    default: なし
+    location: argument
+    description: '`add-account`・`remove-account` で必須。アカウントの名前。alias の名前 `mindstella-{名前}` になる'
+    constraints: 英小文字・数字・`-` の 1〜32 文字で、英小文字か数字で始まる
+    example: sub1
+  - name: --config-dir
+    type: str
+    required: false
+    default: なし
+    location: argument
+    description: '`add-account` で必須。そのアカウントの Claude Code の設定のフォルダ。絶対パスに直して登録する'
+    example: ~/.claude-sub1
+  - name: HOME
+    type: str
+    required: true
+    location: argument
+    description: 環境変数。ログインシェルの設定ファイルと、`XDG_CONFIG_HOME` が無いときの登録の置き場所を決める
+  - name: XDG_CONFIG_HOME
+    type: str
+    required: false
+    default: '`~/.config`'
+    location: argument
+    description: 環境変数。登録の置き場所 `{XDG_CONFIG_HOME}/mindstella/` を決める
+  - name: SHELL
+    type: str
+    required: true
+    location: argument
+    description: 環境変数。末尾の名前が `bash` なら `~/.bashrc`（macOS では `~/.bash_profile`・`~/.bash_login`・`~/.profile` のうち最初にあるもの、どれも無ければ `~/.bash_profile`。macOS のターミナルは bash をログインシェルで開き、`~/.bashrc` を読まず、この 3 つのうち最初に見つかった 1 つだけを読む）、`zsh` なら `~/.zshrc` をログインシェルの設定ファイルにする
+response:
+  - name: registered
+    type: bool
+    description: alias `mindstella` が登録されているか
+  - name: rc_file
+    type: str
+    description: '`shell.sh` を読み込むログインシェルの設定ファイルの絶対パス'
+  - name: shell_file
+    type: str
+    description: alias と環境変数を書く `shell.sh` の絶対パス
+  - name: env
+    type: dict[str, str]
+    description: 登録した環境変数
+  - name: accounts[].name
+    type: str
+    description: アカウントの名前
+  - name: accounts[].config_dir
+    type: str
+    description: そのアカウントの Claude Code の設定のフォルダの絶対パス
+  - name: aliases
+    type: list[str]
+    description: 登録した alias の名前（`mindstella` と `mindstella-{名前}`）
+  - name: error
+    type: str | None
+    description: 失敗したときの理由。成功したときは持たない
+  - name: manual_lines
+    type: list[str] | None
+    description: 書き込めなかったとき、利用者が手でログインシェルの設定ファイルに書けば同じ登録になる行（印の範囲と alias `mindstella` の定義）。成功したときと、`remove` のときは持たない
+exceptions:
+  - name: なし（正常終了）
+    condition: 登録を読んだ・書いた・外した
+    notes: 終了コード 0。標準出力にその後の登録の JSON を出す
+  - name: 引数の誤り
+    condition: サブコマンドが無い・知らない。`--env` のキーが許すキーでない。`--name` が形に合わない。`add-account` に `--name` か `--config-dir` が無い
+    notes: 終了コード 2。何も書かず、使い方を標準エラーに出す
+  - name: NotWritableError
+    condition: ログインシェルの設定ファイルか登録の置き場所に書き込めない
+    notes: 終了コード 1。どのファイルも書き換えず、標準出力の JSON の `error` に理由、`manual_lines` に手で書く行を入れる
+  - name: UnsupportedShellError
+    condition: '`SHELL` の末尾の名前が `bash`・`zsh` のどちらでもない'
+    notes: 終了コード 1。何も書かず、`error` に理由、`manual_lines` に手で書く行（bash の形）を入れる
+  - name: UnknownAccountError
+    condition: '`remove-account` の `--name` が登録に無い'
+    notes: 終了コード 1。何も書かず、`error` に登録済みのアカウントの名前を入れる
+  - name: 登録を読めない
+    condition: '`registration.json` を JSON として読めない'
+    notes: 終了コード 1。何も書かず、`error` に読めないファイルのパスを入れる
+constraints:
+  - item: 書く先
+    constraint: 登録は `{XDG_CONFIG_HOME か ~/.config}/mindstella/registration.json`（登録の中身）と、そこから作る `shell.sh`（alias と `export`）に書く。ログインシェルの設定ファイルには `# >>> mindstella >>>` と `# <<< mindstella <<<` で囲んだ `shell.sh` を読み込む 1 行だけを足す
+    notes: 要件.md の書く先の案 B。書き直す・外すときに利用者の設定ファイルを書き換えるのは、印の範囲の足し引きだけになる
+  - item: 利用者の行
+    constraint: ログインシェルの設定ファイルの、印の範囲の外の行は 1 字も変えない。印の範囲が既にあれば足さない
+  - item: alias mindstella
+    constraint: 叩くたびに `claude plugin list --json` の `mindstella@mindstella` の `installPath` を引き、`{installPath}/bin/mindstella` に引数をそのまま渡す。JSON はシステムの `python3` で読み、`jq` に頼らない。引けなければ `[mindstella] エラー:` で始まる行を標準エラーに出して 1 を返す
+  - item: alias mindstella-{名前}
+    constraint: '`CLAUDE_CONFIG_DIR` をそのアカウントの設定のフォルダにして、`installPath` を引く `claude plugin list --json` と起動スクリプトの両方を動かす。利用者のシェルの `CLAUDE_CONFIG_DIR` は変えない'
+  - item: 環境変数
+    constraint: 登録した環境変数を `shell.sh` に `export` で書く。値はシェルの単引用符で囲む
+  - item: 書き方
+    constraint: 書く前に書き込めるかを全てのファイルで確かめ、各ファイルは同じフォルダの一時ファイルに書いてから置き換える。途中で失敗しても、書きかけのファイルを残さない。書く先がシンボリックリンクなら、リンクを残してリンク先を書き換える
+  - item: 依存
+    constraint: システムの `python3`（3.8 以上）の標準ライブラリだけ。mindstella の仮想環境・MCP のサーバー・`claude` を呼ばない
+    notes: MCP の無い状態（起動スクリプトで立ち上げる前）でも動かすため（#10 でユーザーが決めた）
+  - item: 終了コード
+    constraint: 0 正常 / 1 実行時のエラー / 2 引数の誤り
+refs:
+  - dev/設計書/シナリオ/単一ユースケース/起動スクリプトの登録#
+  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - dev/設計書/外部ライブラリ/claude-code#
+test_file: tests/integration/skill/test_register.py

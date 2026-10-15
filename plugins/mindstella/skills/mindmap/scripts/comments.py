@@ -1,4 +1,4 @@
-"""レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントを送信へ移す。鍵は呼ぶ側が取る。"""
+"""レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。鍵は呼ぶ側が取る。"""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from errors import (
     CommentNotFoundError,
     ItemNotFoundError,
     SchemaMismatchError,
+    ThreadNotFoundError,
     WriteFailedError,
 )
 from kinds import records_root
@@ -37,7 +38,15 @@ from store import (
     write_failed,
     write_temp,
 )
-from submissions import MAX_BODY_CHARS, SUBMISSIONS_FILE, append_submissions
+from threads import (
+    MAX_BODY_CHARS,
+    THREADS_FILE,
+    SentPost,
+    Thread,
+    UserPostInput,
+    append_user_posts,
+    load_threads,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +60,7 @@ DRAFTS_FILE = "drafts.yaml"
 COMMENTS_SCHEMA = "comments.schema.json"
 DRAFTS_SCHEMA = "drafts.schema.json"
 
-# コメントの ID の頭の文字（項目の種類と送信の頭の文字と重ならない）
+# コメントの ID の頭の文字（項目の種類とスレッドの頭の文字と重ならない）
 COMMENT_ID_PREFIX = "C"
 
 # コメントの ID の形（`C-{連番}`）
@@ -71,6 +80,8 @@ class ReviewComment:
     body: str
     # 溜めた日時
     created: str
+    # 返信先のスレッドの ID（新しいスレッドの最初の書き込みは None で、キーを書かない。持つときは target・loc を持たない）
+    thread: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -94,6 +105,8 @@ class Draft:
     body: str
     # 書いた日時
     updated: str
+    # 返信の入力欄が向けるスレッドの ID（キーを書かないときは None。持つときは target・loc を持たない）
+    thread: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -107,14 +120,8 @@ class ReviewCommentView:
     loc: dict[str, Any] | None
     body: str
     created: str
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class SentComment:
-    """『コメントをまとめて送る』の `items[]` の 1 行。"""
-
-    comment: str
-    submission: str
+    # 返信先のスレッドの ID（新しいスレッドの最初の書き込みは None）
+    thread: str | None
 
 
 def load_comments(root: Path) -> CommentFile:
@@ -130,6 +137,7 @@ def load_comments(root: Path) -> CommentFile:
             loc=parse_location(item["loc"]) if "loc" in item else None,
             body=item["body"],
             created=item["created"],
+            thread=item.get("thread"),
         )
         for item in value["items"]
     ]
@@ -148,6 +156,7 @@ def load_drafts(root: Path) -> list[Draft]:
             loc=parse_location(item["loc"]) if "loc" in item else None,
             body=item["body"],
             updated=item["updated"],
+            thread=item.get("thread"),
         )
         for item in value["items"]
     ]
@@ -163,6 +172,7 @@ def list_review(workspace: Workspace) -> dict[str, Any]:
             loc=None if comment.loc is None else location_to_dict(comment.loc),
             body=comment.body,
             created=comment.created,
+            thread=comment.thread,
         )
         for comment in load_comments(workspace.root).items
     ]
@@ -170,6 +180,7 @@ def list_review(workspace: Workspace) -> dict[str, Any]:
         {
             "target": draft.target,
             "loc": None if draft.loc is None else location_to_dict(draft.loc),
+            "thread": draft.thread,
             "body": draft.body,
         }
         for draft in load_drafts(workspace.root)
@@ -180,14 +191,24 @@ def list_review(workspace: Workspace) -> dict[str, Any]:
 def add_comment(
     root: Path, data: dict[str, Any], now: NowFn = now_utc
 ) -> tuple[ReviewComment, int]:
-    """向けた先と本文を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す。"""
-    target, loc, body, comment_id, created = _parse_comment_input(data)
+    """向けた先（項目と箇所か、返信先のスレッド）と本文を確かめ、レビュー中のコメントを 1 件足す。`id` を渡されたら消したコメントを同じ ID で戻す。"""
+    target, loc, thread, body, comment_id, created = _parse_comment_input(data)
     workspace = load_workspace(root)
     # 向けた項目が無ければ ItemNotFoundError が上がる
     item = None if target is None else find_item(workspace, target).item
     if loc is not None and item is not None:
         reason = check_location(workspace, item, loc)
         # 箇所が今の項目に合わない
+        if reason is not None:
+            raise CommentConflictError(reason)
+    # 返信先のスレッドが無い・クローズ: 溜めない（元に戻すときも同じ）
+    if thread is not None:
+        found_thread = _find_thread(load_threads(root), thread)
+        # 返信先のスレッドが無い
+        if found_thread is None:
+            raise ThreadNotFoundError(f"スレッドがありません: {thread}")
+        reason = _closed_reason(found_thread)
+        # 返信先のスレッドがクローズ
         if reason is not None:
             raise CommentConflictError(reason)
 
@@ -200,20 +221,30 @@ def add_comment(
         ):
             raise CommentConflictError(f"元に戻せないコメントです: {comment_id}")
         comment = ReviewComment(
-            id=comment_id, target=target, loc=loc, body=body, created=created or ""
+            id=comment_id,
+            target=target,
+            loc=loc,
+            body=body,
+            created=created or "",
+            thread=thread,
         )
         seq = current.seq
     else:
         # 連番は `seq` + 1 で振る
         seq = current.seq + 1
         comment = ReviewComment(
-            id=f"{COMMENT_ID_PREFIX}-{seq}", target=target, loc=loc, body=body, created=now()
+            id=f"{COMMENT_ID_PREFIX}-{seq}",
+            target=target,
+            loc=loc,
+            body=body,
+            created=now(),
+            thread=thread,
         )
     items = sorted([*current.items, comment], key=_number_of)
     _write_comments(root, seq, items)
     # 新しく溜めたときは、同じ向けた先の書きかけを消す
     if comment_id is None:
-        _remove_draft(root, target, loc)
+        _remove_draft(root, target, loc, thread)
     return comment, len(items)
 
 
@@ -241,6 +272,7 @@ def update_comment(root: Path, comment_id: str, data: dict[str, Any]) -> ReviewC
         loc=None if has_loc else found.loc,
         body=found.body if body is None else body,
         created=found.created,
+        thread=found.thread,
     )
     items = [updated if comment.id == comment_id else comment for comment in current.items]
     _write_comments(root, current.seq, items)
@@ -260,35 +292,34 @@ def delete_comment(root: Path, comment_id: str) -> tuple[ReviewComment, int]:
 
 
 def save_draft(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> None:
-    """向けた先（`target` と `loc` の組）の書きかけを上書きする。空の本文なら消す。"""
+    """向けた先（`target` と `loc` の組か、`thread`）の書きかけを上書きする。空の本文なら消す。"""
     body = data.get("body")
     # 本文が無いか、文字列でないか、上限を超える
     if not isinstance(body, str) or len(body) > MAX_BODY_CHARS:
         raise CommentInvalidError(f"body: {MAX_BODY_CHARS} 文字以下の文字列で渡してください")
-    target = data.get("target")
-    # 向ける項目が文字列でない
-    if target is not None and not isinstance(target, str):
-        raise CommentInvalidError("target: 文字列で渡してください")
-    loc = None
-    if data.get("loc") is not None:
-        # 箇所だけで項目が無い
-        if target is None:
-            raise CommentInvalidError("target: loc を渡すときは target も渡してください")
-        loc = parse_location(data["loc"])
-    # 空でない本文は、向けた項目があるかを確かめる（無ければ ItemNotFoundError）
-    if body != "" and target is not None:
-        find_item(load_workspace(root), target)
-
-    kept = [draft for draft in load_drafts(root) if (draft.target, draft.loc) != (target, loc)]
+    target, loc, thread = _parse_destination(data)
+    # 空でない本文は、向けた項目・スレッドがあるかを確かめる（無ければ ItemNotFoundError・ThreadNotFoundError）
     if body != "":
-        kept.append(Draft(target=target, loc=loc, body=body, updated=now()))
+        if target is not None:
+            find_item(load_workspace(root), target)
+        # 返信先のスレッドはクローズでも保つ
+        if thread is not None and _find_thread(load_threads(root), thread) is None:
+            raise ThreadNotFoundError(f"スレッドがありません: {thread}")
+
+    kept = [
+        draft
+        for draft in load_drafts(root)
+        if (draft.target, draft.loc, draft.thread) != (target, loc, thread)
+    ]
+    if body != "":
+        kept.append(Draft(target=target, loc=loc, thread=thread, body=body, updated=now()))
     _write_drafts(root, kept)
 
 
 def send_comments(
     root: Path, data: dict[str, Any], now: NowFn = now_utc
-) -> tuple[str, list[SentComment]]:
-    """渡した ID のコメントを全て確かめてから送信へ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない。"""
+) -> tuple[str, list[SentPost]]:
+    """渡した ID のコメントを全て確かめてからスレッドへ足し、レビュー中から外す。1 件でも合わなければ何も書き換えない。"""
     ids = data.get("ids")
     # ids が 1 件以上の文字列の配列でない、または重なりがある
     if not isinstance(ids, list) or not ids or not all(isinstance(entry, str) for entry in ids):
@@ -305,54 +336,56 @@ def send_comments(
     chosen = [comment for comment in current.items if comment.id in set(ids)]
 
     workspace = load_workspace(root)
+    threads = load_threads(root)
+    # 同じコメントの書き込みが既にあるものは確かめない（足さずに外すだけ）
+    sent_already = {post.comment for thread in threads for post in thread.posts}
     stale = [
         (comment.id, reason)
         for comment in chosen
-        if (reason := _stale_reason(workspace, comment)) is not None
+        if comment.id not in sent_already
+        and (reason := _stale_reason(workspace, threads, comment)) is not None
     ]
-    # 向けた項目が消えたか、箇所が合わないコメントがある
+    # 向けた項目が消えた・箇所が合わない・返信先が無いかクローズのコメントがある
     if stale:
-        raise CommentConflictError(f"箇所が合わないコメントが {len(stale)} 件あります", stale=stale)
+        raise CommentConflictError(f"送れない書き込みが {len(stale)} 件あります", stale=stale)
 
-    submissions_path = records_root(root) / SUBMISSIONS_FILE
-    previous = submissions_path.read_bytes() if submissions_path.exists() else None
-    sent = now()
-    submissions = append_submissions(root, chosen, now=lambda: sent)
+    threads_path = records_root(root) / THREADS_FILE
+    previous = threads_path.read_bytes() if threads_path.exists() else None
+    posts = [
+        UserPostInput(
+            comment=comment.id,
+            thread=comment.thread,
+            target=comment.target,
+            loc=None if comment.loc is None else location_to_dict(comment.loc),
+            body=comment.body,
+        )
+        for comment in chosen
+    ]
+    sent, sent_posts = append_user_posts(root, posts, now=now)
     try:
         _write_comments(
             root, current.seq, [comment for comment in current.items if comment.id not in set(ids)]
         )
     except WriteFailedError:
-        # レビュー中を書けなかった: 足した送信を書き戻し、どちらも前のままにする
-        _restore_file(submissions_path, previous)
+        # レビュー中を書けなかった: 足したスレッドを書き戻し、どちらも前のままにする
+        _restore_file(threads_path, previous)
         raise
-    sent_comments = [
-        SentComment(comment=comment.id, submission=submission.id)
-        for comment, submission in zip(chosen, submissions, strict=True)
-    ]
+    # 送った返信のスレッドの書きかけは消す
+    for comment in chosen:
+        if comment.thread is not None:
+            _remove_draft(root, None, None, comment.thread)
     logger.info(
-        "コメントを送った: %d 件 %s",
-        len(sent_comments),
-        [entry.submission for entry in sent_comments],
+        "コメントを送った: %d 件 %s", len(sent_posts), sorted({entry.thread for entry in sent_posts})
     )
-    return sent, sent_comments
+    return sent, sent_posts
 
 
 def _parse_comment_input(
     data: dict[str, Any],
-) -> tuple[str | None, Location | None, str, str | None, str | None]:
-    """溜める要求の `target`・`loc`・`body`・`id`・`created` の形を確かめる。"""
+) -> tuple[str | None, Location | None, str | None, str, str | None, str | None]:
+    """溜める要求の `target`・`loc`・`thread`・`body`・`id`・`created` の形を確かめる。"""
     body = _validate_body(data.get("body"))
-    target = data.get("target")
-    # 向ける項目が文字列でない
-    if target is not None and not isinstance(target, str):
-        raise CommentInvalidError("target: 文字列で渡してください")
-    loc = None
-    if data.get("loc") is not None:
-        # 箇所だけで項目が無い
-        if target is None:
-            raise CommentInvalidError("target: loc を渡すときは target も渡してください")
-        loc = parse_location(data["loc"])
+    target, loc, thread = _parse_destination(data)
     comment_id, created = data.get("id"), data.get("created")
     if comment_id is not None:
         # `C-{数字}` の形でない
@@ -363,7 +396,30 @@ def _parse_comment_input(
             raise CommentInvalidError("created: id を渡すときは created も渡してください")
     elif created is not None:
         raise CommentInvalidError("id: created を渡すときは id も渡してください")
-    return target, loc, body, comment_id, created
+    return target, loc, thread, body, comment_id, created
+
+
+def _parse_destination(data: dict[str, Any]) -> tuple[str | None, Location | None, str | None]:
+    """要求の向けた先（`target` と `loc` の組か、`thread`）の形を確かめる。"""
+    target = data.get("target")
+    # 向ける項目が文字列でない
+    if target is not None and not isinstance(target, str):
+        raise CommentInvalidError("target: 文字列で渡してください")
+    loc = None
+    if data.get("loc") is not None:
+        # 箇所だけで項目が無い
+        if target is None:
+            raise CommentInvalidError("target: loc を渡すときは target も渡してください")
+        loc = parse_location(data["loc"])
+    thread = data.get("thread")
+    if thread is not None:
+        # 返信先が文字列でない
+        if not isinstance(thread, str):
+            raise CommentInvalidError("thread: 文字列で渡してください")
+        # 返信先を項目・箇所と一緒に渡した
+        if target is not None or loc is not None:
+            raise CommentInvalidError("thread: target・loc と一緒には渡せません")
+    return target, loc, thread
 
 
 def _validate_body(value: Any) -> str:
@@ -378,8 +434,14 @@ def _validate_body(value: Any) -> str:
     return body
 
 
-def _stale_reason(workspace: Workspace, comment: ReviewComment) -> str | None:
-    """向けた項目が消えたか、箇所が今の項目に合わないときの理由を返す（合えば None）。"""
+def _stale_reason(workspace: Workspace, threads: list[Thread], comment: ReviewComment) -> str | None:
+    """向けた項目が消えた・箇所が今の項目に合わない・返信先が無いかクローズのときの理由を返す（送れれば None）。"""
+    # 返信: 返信先のスレッドが無いかクローズ
+    if comment.thread is not None:
+        found = _find_thread(threads, comment.thread)
+        if found is None:
+            return f"スレッド {comment.thread} がありません"
+        return _closed_reason(found)
     # 項目に紐づかないコメントは確かめるものが無い
     if comment.target is None:
         return None
@@ -390,6 +452,18 @@ def _stale_reason(workspace: Workspace, comment: ReviewComment) -> str | None:
     if comment.loc is None:
         return None
     return check_location(workspace, item, comment.loc)
+
+
+def _find_thread(threads: list[Thread], thread_id: str) -> Thread | None:
+    """ID のスレッドを返す（無ければ None）。"""
+    return next((thread for thread in threads if thread.id == thread_id), None)
+
+
+def _closed_reason(thread: Thread) -> str | None:
+    """スレッドがクローズのときの理由を返す（オープンなら None）。"""
+    if thread.status == "closed":
+        return f"スレッド {thread.id} はクローズです"
+    return None
 
 
 def _title_of(workspace: Workspace, item_id: str | None) -> str | None:
@@ -442,7 +516,7 @@ def _read_validated(path: Path, schema_name: str) -> Any | None:
 
 
 def _comment_dict(comment: ReviewComment) -> dict[str, Any]:
-    """コメントを YAML に書く辞書にする（持たない `target`・`loc` は書かない）。"""
+    """コメントを YAML に書く辞書にする（持たない `target`・`loc`・`thread` は書かない）。"""
     result: dict[str, Any] = {"id": comment.id}
     if comment.target is not None:
         result["target"] = comment.target
@@ -450,11 +524,13 @@ def _comment_dict(comment: ReviewComment) -> dict[str, Any]:
         result["loc"] = location_to_dict(comment.loc)
     result["body"] = comment.body
     result["created"] = comment.created
+    if comment.thread is not None:
+        result["thread"] = comment.thread
     return result
 
 
 def _draft_dict(draft: Draft) -> dict[str, Any]:
-    """書きかけを YAML に書く辞書にする（持たない `target`・`loc` は書かない）。"""
+    """書きかけを YAML に書く辞書にする（持たない `target`・`loc`・`thread` は書かない）。"""
     result: dict[str, Any] = {}
     if draft.target is not None:
         result["target"] = draft.target
@@ -462,6 +538,8 @@ def _draft_dict(draft: Draft) -> dict[str, Any]:
         result["loc"] = location_to_dict(draft.loc)
     result["body"] = draft.body
     result["updated"] = draft.updated
+    if draft.thread is not None:
+        result["thread"] = draft.thread
     return result
 
 
@@ -480,11 +558,15 @@ def _write_drafts(root: Path, drafts: list[Draft]) -> None:
     )
 
 
-def _remove_draft(root: Path, target: str | None, loc: Location | None) -> None:
+def _remove_draft(
+    root: Path, target: str | None, loc: Location | None, thread: str | None
+) -> None:
     """同じ向けた先の書きかけがあれば消す。消せなくても溜めたコメントは残す。"""
     try:
         drafts = load_drafts(root)
-        kept = [draft for draft in drafts if (draft.target, draft.loc) != (target, loc)]
+        kept = [
+            draft for draft in drafts if (draft.target, draft.loc, draft.thread) != (target, loc, thread)
+        ]
         # 消す書きかけが無い
         if len(kept) == len(drafts):
             return

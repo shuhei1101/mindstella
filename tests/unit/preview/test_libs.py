@@ -664,7 +664,7 @@ LINK_HEADINGS_SCRIPT = """(source) => {
     const root = MindmapPreview.renderMarkdown(source);
     document.body.append(root);
     const calls = [];
-    MindmapPreview.linkHeadings({root, onHeading: (slug) => calls.push(slug)});
+    MindmapPreview.linkHeadings({root, onHeading: (slug) => calls.push(slug), onChangeSet: () => {}});
     const headings = [...root.querySelectorAll("h1, h2, h3, h4, h5, h6")];
     const paragraphLinks = [...root.querySelectorAll("p a")];
     const result = {
@@ -699,6 +699,45 @@ def test_link_headings(
     assert result["hash"] == ""
 
 
+# 見出し「diff=V-1」（`#diff=V-1` を見出しのリンクとして読むと当たってしまう名前）と、段落のまとまりのリンク 5 つ
+CHANGE_SET_LINKS_SOURCE = (
+    "## diff=V-1\n\n"
+    "[a](#diff=V-1) [b](#tab=tasks&id=D-1&diff=V-2) [c](#diff=since) [d](#diff=pending) [e](#diff=)\n"
+)
+
+# 段落の 5 つのリンクを順に押し、まとまりと見出しの知らせと、押した後の URL のハッシュを調べる
+LINK_HEADINGS_CHANGE_SET_SCRIPT = """(source) => {
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const headingCalls = [];
+    const changeSetCalls = [];
+    MindmapPreview.linkHeadings({
+        root,
+        onHeading: (slug) => headingCalls.push(slug),
+        onChangeSet: (id) => changeSetCalls.push(id),
+    });
+    for (const link of root.querySelectorAll("p a")) link.click();
+    return {headingCalls, changeSetCalls, hash: location.hash};
+}"""
+
+
+def test_link_headings_when_change_set_link(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """`#diff=` のリンクでまとまりを知らせ、見出しとしては扱わない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(LINK_HEADINGS_CHANGE_SET_SCRIPT, CHANGE_SET_LINKS_SOURCE)
+    # 検証
+    # since・pending・空は知らせず、他の引数を持つリンクも diff の値だけを知らせる
+    assert result["changeSetCalls"] == ["V-1", "V-2"]
+    assert result["headingCalls"] == []
+    assert result["hash"] == ""
+
+
 # 本文: 見出し「保存先」、用語・ID を並べた段落、コードブロック
 LINK_BODY_SOURCE = (
     "## 保存先\n\n保存先と AIM と AI と D-3 と `D-5` と D-99 と XD-3\n\n```\n保存先 D-3\n```\n"
@@ -710,7 +749,7 @@ LINK_BODY_SCRIPT = """({data, source, selfId}) => {
     const root = MindmapPreview.renderMarkdown(source);
     document.body.append(root);
     const calls = [];
-    MindmapPreview.linkHeadings({root, onHeading: () => {}});
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
     MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
     const pairs = (selector) => [...root.querySelectorAll(selector)].map(
         (element) => [element.textContent, element.getAttribute("data-id")],
@@ -787,6 +826,160 @@ def test_link_body_when_self(
     assert result["allMarks"] == 0
 
 
+# 資料・調査のエイリアスに一致した語に印を付け、印の項目・ツールチップの指し方・押したときの知らせを調べる
+LINK_BODY_ALIASES_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    const marks = [...root.querySelectorAll("p a.term")].map((element) => ({
+        text: element.textContent,
+        ids: element.getAttribute("data-ids"),
+        hasDetails: element.hasAttribute("aria-details"),
+    }));
+    // 最初の印（「特殊効果」）を押す
+    root.querySelector("p a.term")?.dispatchEvent(
+        new MouseEvent("click", {bubbles: true, cancelable: true}),
+    );
+    return {marks, calls};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("self_id", "expected_marks"),
+    [
+        pytest.param(
+            "A-1",
+            [
+                {"text": "特殊効果", "ids": "G-1 A-2 R-1", "hasDetails": True},
+                {"text": "エフェクト", "ids": "A-2", "hasDetails": True},
+            ],
+            id="other_item_open",
+        ),
+        pytest.param(
+            "A-2",
+            [{"text": "特殊効果", "ids": "G-1 R-1", "hasDetails": True}],
+            id="self_in_aliases",
+        ),
+    ],
+)
+def test_link_body_when_aliases(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    self_id: str,
+    expected_marks: list[dict[str, Any]],
+) -> None:
+    """資料・調査のエイリアスにも印を付け、同じ語の項目を 1 つの印にまとめる（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[make_item("G-1", title="特殊効果")],
+        docs=[
+            make_item("A-2", aliases=["特殊効果", "エフェクト"]),
+            make_item("A-8", aliases=["特殊効果"], withdrawn=True),
+            make_item("A-9", aliases=["古い語"], withdrawn=True),
+        ],
+        research=[make_item("R-1", aliases=["特殊効果"])],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_ALIASES_SCRIPT,
+        {"data": data, "source": "特殊効果とエフェクトと古い語\n", "selfId": self_id},
+    )
+    # 検証
+    assert result["marks"] == expected_marks
+    assert result["calls"] == []
+
+
+# 用語の別名に一致した語に印を付け、印ごとの項目・ツールチップの指し方と、押したときに知らせた項目を調べる
+LINK_BODY_TERM_ALIASES_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    const marks = [];
+    const opened = {};
+    // 印を 1 つずつ調べてから押し、押して知らせた項目を印の語ごとに残す
+    for (const element of root.querySelectorAll("p a.term")) {
+        marks.push({
+            text: element.textContent,
+            ids: element.getAttribute("data-ids"),
+            hasDescribedby: element.hasAttribute("aria-describedby"),
+            hasDetails: element.hasAttribute("aria-details"),
+        });
+        const before = calls.length;
+        element.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+        opened[element.textContent] = calls.slice(before);
+    }
+    return {marks, opened};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("self_id", "expected_marks", "expected_opened"),
+    [
+        pytest.param(
+            "A-1",
+            [
+                {"text": "マイグレーション", "ids": "G-1", "hasDescribedby": True, "hasDetails": False},
+                {"text": "移し替え", "ids": "G-1 G-2", "hasDescribedby": False, "hasDetails": True},
+                {"text": "古い呼び方", "ids": "G-3", "hasDescribedby": True, "hasDetails": False},
+            ],
+            {"マイグレーション": ["G-1"], "移し替え": [], "古い呼び方": ["G-3"]},
+            id="other_item_open",
+        ),
+        pytest.param(
+            "G-1",
+            [
+                {"text": "移し替え", "ids": "G-2", "hasDescribedby": True, "hasDetails": False},
+                {"text": "古い呼び方", "ids": "G-3", "hasDescribedby": True, "hasDetails": False},
+            ],
+            {"移し替え": ["G-2"], "古い呼び方": ["G-3"]},
+            id="self_in_aliases",
+        ),
+    ],
+)
+def test_link_body_when_term_aliases(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    self_id: str,
+    expected_marks: list[dict[str, Any]],
+    expected_opened: dict[str, list[str]],
+) -> None:
+    """用語の別名にも印を付け、用語 2 件以上の一致はリンクを持つツールチップへ回す（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[
+            make_item("G-1", title="移し替え", aliases=["マイグレーション", "移し替え", " "]),
+            make_item("G-2", title="版の更新", aliases=["移し替え"]),
+            make_item("G-3", title="旧名", aliases=["古い呼び方"], withdrawn=True),
+        ],
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_TERM_ALIASES_SCRIPT,
+        {"data": data, "source": "マイグレーションと移し替えと古い呼び方\n", "selfId": self_id},
+    )
+    # 検証
+    assert result["marks"] == expected_marks
+    assert result["opened"] == expected_opened
+
+
 # 値の Markdown（強調・実行される属性を持つ画像・スクリプト・箇条書き 2 行）
 VALUE_MARKDOWN = '**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>\n\n- 項目 1\n- 項目 2\n'
 
@@ -850,3 +1043,351 @@ def test_render_value_when_library_missing(
     result = preview_page.evaluate("(source) => MindmapPreview.renderValue(source)", "**強調**")
     # 検証
     assert result == "**強調**"
+
+
+# html のコードブロックを 1 つ持つ本文（見出しは 1 行目、前の段落は 3 行目、コードブロックは 5〜7 行目でその印は中身の先頭の 6、後の段落は 9 行目）
+HTML_CODE_BLOCK_SOURCE = (
+    "# 見出し\n\n前の段落\n\n```html\n<p>a</p><script>x()</script>\n```\n\n後の段落\n"
+)
+
+
+def test_render_markdown_when_html_code_block(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """html のコードブロックを枠の入れ物にし、前後は今までどおり描く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            const marks = (selector) =>
+                [...root.querySelectorAll(selector)].map((e) => e.getAttribute("data-line-start"));
+            const blocks = root.querySelectorAll(".html-block");
+            return {
+                blockCount: blocks.length,
+                blockSource: blocks.length > 0 ? blocks[0].getAttribute("data-source") : null,
+                blockMark: blocks.length > 0 ? blocks[0].getAttribute("data-line-start") : null,
+                preCount: root.querySelectorAll("pre").length,
+                heading: marks("h1"),
+                paragraph: marks("p"),
+            };
+        }""",
+        HTML_CODE_BLOCK_SOURCE,
+    )
+    # 検証
+    assert result["blockCount"] == 1
+    assert "<p>a</p><script>x()</script>" in result["blockSource"]
+    assert result["blockMark"] == "6"
+    assert result["preCount"] == 0
+    assert result["heading"] == ["1"]
+    assert result["paragraph"] == ["3", "9"]
+
+
+# 選んだ箇所を求める HTML の本文の原文（左の数字は行。サーバーの行の印を足す前）
+HTML_SAMPLE_SOURCE = "\n".join(
+    [
+        "<!doctype html>",  # 1
+        '<html><head><meta charset="utf-8">',  # 2
+        "<style>",  # 3
+        "  * { margin: 40px !important; }",  # 4
+        "  body, p { color: rgb(255, 0, 0) !important; }",  # 5
+        "  p > a { color: rgb(0, 255, 0) !important; }",  # 6
+        "</style>",  # 7
+        '<script>var s = "<p>x</p>"; if (1 < 2) { s += "<p>y</p>"; }</script>',  # 8
+        "</head>",  # 9
+        "<body>",  # 10
+        "<!-- <p>コメントの中の段落</p> -->",  # 11
+        '<h1 id="h">見出しの文</h1>',  # 12
+        '<p title="a>b">一行目の文',  # 13
+        "二行目の文</p>",  # 14
+        "<div",  # 15
+        '  class="multi">複数行の開きタグの文</div>',  # 16
+        "<ul>",  # 17
+        "  <li>項目いち",  # 18
+        "  <li>項目に<ul><li>入れ子の項目</li></ul>",  # 19
+        "</ul>",  # 20
+        "<table>",  # 21
+        "  <tr><td>表のいち</td><td>表のに</td></tr>",  # 22
+        "  <tr><td>表のさん</td><td>表のよん</td></tr>",  # 23
+        "</table>",  # 24
+        "<p>改行の<br>",  # 25
+        "あとの文</p>",  # 26
+        "<p>省いた閉じタグの段落",  # 27
+        "<p>次の段落 &amp; 文字参照</p>",  # 28
+        "<section><div><p>深い入れ子の文</p></div></section>",  # 29
+        '<p><a href="#">リンクの文</a></p>',  # 30
+        '<button id="click">押す</button>',  # 31
+        '<img src="data:,">',  # 32
+        '<p id="tail">最後の文</p>',  # 33
+        "</body></html>",  # 34
+    ]
+)
+
+# 上の原文に、サーバーの `mark_lines` と同じ形（開きタグのタグ名の直後に、中身が始まる行の印）を足したもの
+HTML_SAMPLE_MARKED = "\n".join(
+    [
+        "<!doctype html>",
+        '<html><head><meta charset="utf-8">',
+        "<style>",
+        "  * { margin: 40px !important; }",
+        "  body, p { color: rgb(255, 0, 0) !important; }",
+        "  p > a { color: rgb(0, 255, 0) !important; }",
+        "</style>",
+        '<script>var s = "<p>x</p>"; if (1 < 2) { s += "<p>y</p>"; }</script>',
+        "</head>",
+        "<body>",
+        "<!-- <p>コメントの中の段落</p> -->",
+        '<h1 data-line="12" id="h">見出しの文</h1>',
+        '<p data-line="13" title="a>b">一行目の文',
+        "二行目の文</p>",
+        '<div data-line="16"',
+        '  class="multi">複数行の開きタグの文</div>',
+        '<ul data-line="17">',
+        '  <li data-line="18">項目いち',
+        '  <li data-line="19">項目に<ul data-line="19"><li data-line="19">入れ子の項目</li></ul>',
+        "</ul>",
+        '<table data-line="21">',
+        '  <tr data-line="22"><td data-line="22">表のいち</td><td data-line="22">表のに</td></tr>',
+        '  <tr data-line="23"><td data-line="23">表のさん</td><td data-line="23">表のよん</td></tr>',
+        "</table>",
+        '<p data-line="25">改行の<br data-line="25">',
+        "あとの文</p>",
+        '<p data-line="27">省いた閉じタグの段落',
+        '<p data-line="28">次の段落 &amp; 文字参照</p>',
+        '<section data-line="29"><div data-line="29"><p data-line="29">深い入れ子の文</p></div></section>',
+        '<p data-line="30"><a data-line="30" href="#">リンクの文</a></p>',
+        '<button data-line="31" id="click">押す</button>',
+        '<img data-line="32" src="data:,">',
+        '<p data-line="33" id="tail">最後の文</p>',
+        "</body></html>",
+    ]
+)
+
+# 選び始めの文の頭から、選び終わりの文の終わりまでを選び、箇所の行の範囲を返す
+SELECT_HTML_SCRIPT = """([marked, source, startText, endText]) => {
+    const doc = new DOMParser().parseFromString(marked, "text/html");
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const startNode = nodes.find((node) => node.data.includes(startText));
+    const startOffset = startNode.data.indexOf(startText);
+    const endNode = nodes
+        .slice(nodes.indexOf(startNode))
+        .find((node) => node.data.includes(endText));
+    const endOffset =
+        endNode.data.indexOf(endText, endNode === startNode ? startOffset : 0) + endText.length;
+    const range = doc.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    const location = MindmapPreview.htmlSelectionLocation(range, source);
+    return location === null ? null : {kind: location.kind, start: location.start, end: location.end};
+}"""
+
+# PoC #215 の 12 ケース: (見本の中の選び方, 期待する行の範囲)。原文と行の印つきは見本のもの
+HTML_POC_CASES = [
+    pytest.param(
+        HTML_SAMPLE_SOURCE, HTML_SAMPLE_MARKED, start_text, end_text, start, end, id=case_id
+    )
+    for case_id, start_text, end_text, start, end in [
+        ("heading", "見出しの文", "見出しの文", 12, 12),
+        ("paragraph_first_line", "一行目の文", "一行目の文", 13, 13),
+        ("paragraph_second_line", "二行目の文", "二行目の文", 14, 14),
+        ("paragraph_across_lines", "一行目の文", "二行目の文", 13, 14),
+        ("multi_line_tag", "複数行の開きタグの文", "複数行の開きタグの文", 16, 16),
+        ("omitted_end_tag_item", "項目いち", "項目いち", 18, 18),
+        ("nested_item", "入れ子の項目", "入れ子の項目", 19, 19),
+        ("across_items", "項目いち", "入れ子の項目", 18, 19),
+        ("table_row", "表のさん", "表のよん", 23, 23),
+        ("after_line_break", "あとの文", "あとの文", 26, 26),
+        ("across_blocks", "見出しの文", "二行目の文", 12, 14),
+        ("after_comment_and_script", "最後の文", "最後の文", 33, 33),
+    ]
+]
+
+# 改行の数え方が分かれる選び方（入れ子の複数行のタグの後・`<br>` の後・`<pre>` の直後の改行の後・複数行のコメントの後）
+HTML_LINE_SHIFT_CASES = [
+    pytest.param(
+        '<p><span><span\nclass="x">中の文</span></span>\n三行目の文</p>',
+        '<p data-line="1"><span data-line="1"><span data-line="2"\n'
+        'class="x">中の文</span></span>\n三行目の文</p>',
+        "三行目の文",
+        "三行目の文",
+        3,
+        3,
+        id="after_nested_multi_line_tag",
+    ),
+    pytest.param(
+        "<p>a<br>別の文</p>",
+        '<p data-line="1">a<br data-line="1">別の文</p>',
+        "別の文",
+        "別の文",
+        1,
+        1,
+        id="after_br",
+    ),
+    pytest.param(
+        "<pre>\nコードの文\n</pre>",
+        '<pre data-line="1">\nコードの文\n</pre>',
+        "コードの文",
+        "コードの文",
+        2,
+        2,
+        id="after_pre_line_break",
+    ),
+    pytest.param(
+        "<div>前の文\n<!-- 一行目\n二行目 -->\n後の文</div>",
+        '<div data-line="1">前の文\n<!-- 一行目\n二行目 -->\n後の文</div>',
+        "後の文",
+        "後の文",
+        4,
+        4,
+        id="after_multi_line_comment",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("source", "marked", "start_text", "end_text", "start", "end"),
+    [*HTML_POC_CASES, *HTML_LINE_SHIFT_CASES],
+)
+def test_html_selection_location(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    source: str,
+    marked: str,
+    start_text: str,
+    end_text: str,
+    start: int,
+    end: int,
+) -> None:
+    """選んだ端を元の HTML の行にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(SELECT_HTML_SCRIPT, [marked, source, start_text, end_text])
+    # 検証
+    assert result == {"kind": "body", "start": start, "end": end}
+
+
+# 印を持つ要素より前の文を持つ HTML の本文の原文と、行の印を足したもの
+HTML_OUTSIDE_SOURCE = "文頭の文\n<p>段落</p>\n<p>次の段落</p>"
+HTML_OUTSIDE_MARKED = '文頭の文\n<p data-line="2">段落</p>\n<p data-line="3">次の段落</p>'
+
+# 選び方を指す記述から範囲を作って、htmlSelectionLocation の結果を返す
+SELECT_HTML_OUTSIDE_SCRIPT = """([marked, source, how]) => {
+    const doc = new DOMParser().parseFromString(marked, "text/html");
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const range = doc.createRange();
+    if (how.kind === "collapsed") {
+        range.setStart(doc.querySelector("p").firstChild, 1);
+        range.collapse(true);
+    } else if (how.kind === "whitespace") {
+        range.selectNodeContents(nodes.find((node) => node.data.length > 0 && node.data.trim() === ""));
+    } else {
+        range.selectNodeContents(nodes.find((node) => node.data.includes(how.text)));
+    }
+    return MindmapPreview.htmlSelectionLocation(range, source);
+}"""
+
+
+@pytest.mark.parametrize(
+    "how",
+    [
+        pytest.param({"kind": "collapsed"}, id="empty"),
+        pytest.param({"kind": "whitespace"}, id="blank_only"),
+        pytest.param({"kind": "text", "text": "文頭の文"}, id="before_first_mark"),
+    ],
+)
+def test_html_selection_location_when_outside(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, how: dict[str, str]
+) -> None:
+    """印の無い範囲と空の選択は null（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        SELECT_HTML_OUTSIDE_SCRIPT, [HTML_OUTSIDE_MARKED, HTML_OUTSIDE_SOURCE, how]
+    )
+    # 検証
+    assert result is None
+
+
+@pytest.mark.parametrize(
+    ("href", "url"),
+    [
+        pytest.param("https://example.com/a?b=1#c", "https://example.com/a?b=1#c", id="https"),
+        pytest.param("http://127.0.0.1:8000/", "http://127.0.0.1:8000/", id="http"),
+        pytest.param("HTTPS://EXAMPLE.COM/", "https://example.com/", id="upper_case"),
+        pytest.param("mailto:a@example.com", "mailto:a@example.com", id="mailto"),
+        pytest.param("  https://example.com/  ", "https://example.com/", id="padded"),
+    ],
+)
+def test_html_link_action_when_open(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, href: str, url: str
+) -> None:
+    """絶対の http・https・mailto の URL は開く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == {"kind": "open", "url": url}
+
+
+@pytest.mark.parametrize(
+    ("href", "expected"),
+    [
+        pytest.param("#usage", {"kind": "anchor", "id": "usage"}, id="ascii"),
+        pytest.param(
+            "#%E4%BD%BF%E3%81%84%E6%96%B9", {"kind": "anchor", "id": "使い方"}, id="encoded"
+        ),
+        pytest.param("#100%", {"kind": "anchor", "id": "100%"}, id="undecodable"),
+        pytest.param("#", {"kind": "none"}, id="empty"),
+    ],
+)
+def test_html_link_action_when_anchor(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    href: str,
+    expected: dict[str, str],
+) -> None:
+    """# で始まる値は、戻した id へ送る（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        pytest.param("other.html", id="relative"),
+        pytest.param("/mindstella.html", id="absolute_path"),
+        pytest.param("//example.com/a", id="protocol_relative"),
+        pytest.param("?a=1", id="query_only"),
+        pytest.param("", id="empty"),
+        pytest.param("javascript:alert(1)", id="javascript"),
+        pytest.param("JaVaScRiPt:alert(1)", id="javascript_mixed_case"),
+        pytest.param("data:text/html,x", id="data"),
+        pytest.param("file:///etc/hosts", id="file"),
+        pytest.param("ftp://example.com/", id="ftp"),
+        pytest.param("blob:https://example.com/x", id="blob"),
+    ],
+)
+def test_html_link_action_when_none(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, href: str
+) -> None:
+    """相対の URL とほかのスキームは何もしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
+    # 検証
+    assert result == {"kind": "none"}

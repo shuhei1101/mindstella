@@ -1,4 +1,4 @@
-// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・書き換えの知らせの購読。
+// サーバーの配信とのやり取り。記録の取得・レビュー中のコメントと書きかけ・まとめて送る・スレッド・書き換えの知らせの購読。
 
 namespace MindmapPreview {
   /** 配信のパス（画面が開いた URL からの相対パス） */
@@ -10,6 +10,7 @@ namespace MindmapPreview {
     drafts: "api/drafts",
     opened: "api/opened",
     configDisplay: "api/config/display",
+    threads: "api/threads",
   } as const;
 
   /** 記録の取得の結果。読めなかったときは、届かなかったか、サーバーが 422 を返したかを分ける */
@@ -35,17 +36,38 @@ namespace MindmapPreview {
     text: string;
   };
 
-  /** 『レビュー中のコメントの読み取り』の本文 */
+  /** 『レビュー中のコメントの読み取り』の本文。`thread` を持つ書き込みはスレッドへの返信、持たないものは新しいスレッドの最初の書き込み */
   export type ReviewState = {
     items: {
       id: string;
       target: string | null;
       target_title: string | null;
       loc: Location | null;
+      thread: string | null;
       body: string;
       created: string;
     }[];
-    drafts: { target: string | null; loc: Location | null; body: string }[];
+    drafts: { target: string | null; loc: Location | null; thread: string | null; body: string }[];
+  };
+
+  /** 書き手 */
+  export type PostAuthor = "user" | "ai";
+
+  /** 『スレッドの読み取り』の `threads[]` の 1 件 */
+  export type Thread = {
+    id: string;
+    status: "open" | "closed";
+    tags: string[];
+    /** 要約。まだ書いていなければ null */
+    summary: string | null;
+    target: string | null;
+    /** 向けた項目のタイトル。項目が消えていれば null */
+    target_title: string | null;
+    /** 最初の書き込みに添えた箇所 */
+    loc: Location | null;
+    /** 書き込み。`seen` は利用者の既読 */
+    posts: { id: string; author: PostAuthor; body: string; created: string; seen: boolean }[];
+    events: { kind: "closed" | "reopened"; author: PostAuthor; reason: string | null; created: string }[];
   };
 
   /** HTTP のメソッド */
@@ -140,7 +162,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** コメント・書きかけの 6 つの呼び出しを束ねて返す */
+  /** コメント・書きかけの API の 6 つの呼び出しを束ねて返す */
   export function commentApi(fetchFn: FetchFn = window.fetch.bind(window)) {
     return {
       read: () => callApi<ReviewState>("GET", API_PATHS.comments, null, fetchFn),
@@ -161,10 +183,31 @@ namespace MindmapPreview {
         ),
       saveDraft: (draft: object) => callApi<null>("PUT", API_PATHS.drafts, draft, fetchFn),
       send: (ids: string[]) =>
-        callApi<{ sent: string; items: { comment: string; submission: string }[] }>(
+        callApi<{ sent: string; items: { comment: string; thread: string; post: string }[]; entered: boolean }>(
           "POST",
           API_PATHS.commentsSend,
           { ids },
+          fetchFn,
+        ),
+    };
+  }
+
+  /** スレッドの読み取り・状態の書き換え・利用者の既読を束ねて返す。理由が空白だけなら `null` を送る */
+  export function threadApi(fetchFn: FetchFn = window.fetch.bind(window)) {
+    return {
+      read: () => callApi<{ threads: Thread[] }>("GET", API_PATHS.threads, null, fetchFn),
+      setStatus: (id: string, status: "open" | "closed", reason: string | null) =>
+        callApi<{ id: string; status: string; changed: boolean }>(
+          "PATCH",
+          `${API_PATHS.threads}/${encodeURIComponent(id)}`,
+          { status, reason: reason === null || reason.trim() === "" ? null : reason.trim() },
+          fetchFn,
+        ),
+      seen: (id: string) =>
+        callApi<{ id: string; seen: string[] }>(
+          "POST",
+          `${API_PATHS.threads}/${encodeURIComponent(id)}/seen`,
+          null,
           fetchFn,
         ),
     };

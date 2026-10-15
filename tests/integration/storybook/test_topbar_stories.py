@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
@@ -215,6 +217,99 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
+# 未読の点が吹き出しの印のどこにあるかを読む（吹き出しの印の箱と点の箱）
+DOT_BOXES_SCRIPT = """() => {
+  const icon = document.querySelector('.comments-btn .cb-icon svg.icon').getBoundingClientRect();
+  const dot = document.querySelector('.comments-btn .unread-dot').getBoundingClientRect();
+  const button = document.querySelector('.comments-btn').getBoundingClientRect();
+  return {
+    iconRight: icon.right, iconTop: icon.top, iconLeft: icon.left,
+    dotLeft: dot.left, dotRight: dot.right, dotTop: dot.top, dotBottom: dot.bottom,
+    dotCenterX: (dot.left + dot.right) / 2, dotCenterY: (dot.top + dot.bottom) / 2,
+    buttonWidth: button.width,
+  };
+}"""
+
+# 点を付けたままのボタンの幅と、同じ文書で点を外したボタンの幅を読む（別の文書と比べると、文字の読み込みの有無で幅が揺れる）
+DOT_WIDTH_SCRIPT = """async () => {
+  await document.fonts.ready;
+  const button = document.querySelector('.comments-btn');
+  const withDot = button.getBoundingClientRect().width;
+  button.querySelector('.unread-dot').remove();
+  return { withDot, withoutDot: button.getBoundingClientRect().width };
+}"""
+
+
+def test_comments_unread(open_story: OpenStory) -> None:
+    """オープンのスレッドに未読がある。吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま出す。ボタンの幅は変えない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--comments-unread")
+    boxes = page.evaluate(DOT_BOXES_SCRIPT)
+    # 検証
+    button = page.get_by_role("button", name="コメント（未読あり・レビュー中 3 件）")
+    assert button.count() == 1
+    assert button.locator(".count").inner_text() == "3"
+    # 点は吹き出しの印の右上の角に重なり、読み上げから外す
+    dot = page.locator(".comments-btn .unread-dot")
+    assert dot.count() == 1
+    assert dot.get_attribute("aria-hidden") == "true"
+    assert boxes["dotCenterX"] >= boxes["iconRight"] - 4
+    assert boxes["dotCenterY"] <= boxes["iconTop"] + 4
+    # 点は暗い地で読める色（--teal-400）で、数字は出さない
+    assert page.eval_on_selector(".comments-btn .unread-dot", BACKGROUND_SCRIPT) == "rgb(45, 212, 191)"
+    assert dot.inner_text() == ""
+    # 点を足してもボタンの幅は変わらない
+    widths = page.evaluate(DOT_WIDTH_SCRIPT)
+    assert widths["withDot"] == widths["withoutDot"]
+    # 未読の無い状態には点が無い
+    plain = open_story("preview-topbar--comments")
+    assert plain.locator(".comments-btn .unread-dot").count() == 0
+    assert plain.get_attribute(".comments-btn", "aria-label") == "コメント（レビュー中 3 件）"
+
+
+def test_comments_unread_zero(open_story: OpenStory) -> None:
+    """未読があり、レビュー中は 0 件。点を出し、件数は塗りを外した 0 のまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--comments-unread-zero")
+    # 検証
+    button = page.get_by_role("button", name="コメント（未読あり・レビュー中 0 件）")
+    assert button.is_enabled()
+    assert page.locator(".comments-btn .unread-dot").count() == 1
+    assert button.locator(".count").inner_text() == "0"
+    assert page.eval_on_selector(".comments-btn .count", BACKGROUND_SCRIPT) == TRANSPARENT
+
+
+def test_comments_unread_open(open_story: OpenStory) -> None:
+    """未読があり、コメントの一覧を開いている。選んだ見た目の枠と面に点を重ねる（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--comments-unread-open")
+    # 検証
+    assert page.get_attribute(".comments-btn", "aria-expanded") == "true"
+    assert page.eval_on_selector(".comments-btn", BACKGROUND_SCRIPT) != TRANSPARENT
+    assert page.locator(".comments-btn.open .unread-dot").count() == 1
+
+
+def test_comments_unread_narrow(open_story: OpenStory) -> None:
+    """幅 390px で未読がある。印と件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--comments-unread-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert not page.is_visible(".comments-btn .label")
+    assert page.is_visible(".comments-btn .unread-dot")
+    assert page.inner_text(".comments-btn .count") == "3"
+    assert page.get_attribute(".comments-btn", "aria-label") == "コメント（未読あり・レビュー中 3 件）"
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    # 点まで含めて、ボタンが画面の中に収まる
+    box = page.locator(".comments-btn").bounding_box()
+    dot = page.locator(".comments-btn .unread-dot").bounding_box()
+    assert box is not None
+    assert dot is not None
+    assert box["x"] >= 0
+    assert dot["x"] + dot["width"] <= 390
+
+
 @pytest.mark.parametrize(
     "story_id",
     [
@@ -222,6 +317,7 @@ def test_comments_narrow(open_story: OpenStory) -> None:
         pytest.param("preview-topbar--filter-open", id="filter_open"),
         pytest.param("preview-topbar--settings-open", id="settings_open"),
         pytest.param("preview-topbar--comments-narrow", id="comments_narrow"),
+        pytest.param("preview-topbar--comments-unread-narrow", id="comments_unread_narrow"),
         pytest.param("preview-topbar--diff-on-narrow", id="diff_on_narrow"),
     ],
 )
@@ -354,7 +450,7 @@ def test_diff_on(open_story: OpenStory) -> None:
     )
     assert dotted == ["decisions", "docs"]
     assert page.inner_text("nav.tabbar a[data-tab='decisions'] .count") == "12"
-    assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更・消した項目があります"
 
 
 def test_diff_on_narrow(open_story: OpenStory) -> None:
@@ -372,7 +468,7 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
     assert page.get_attribute(".hist-btn", "aria-label") == "変更履歴"
     # 帯の子が左から順に並び、重ならず、画面の中に収まる
     order = ["brand", "search", "history", "chip", "comments", "theme"]
-    for left, right in zip(order, order[1:], strict=False):
+    for left, right in itertools.pairwise(order):
         assert boxes[left]["right"] <= boxes[right]["left"], (left, right)
     assert boxes["theme"]["right"] <= boxes["page"]["width"]
     assert boxes["page"]["scroll"] <= boxes["page"]["width"]
@@ -663,3 +759,209 @@ def test_search_key_hint(open_story: OpenStory) -> None:
     assert trigger.get_attribute("aria-keyshortcuts") == "Control+K Meta+K"
     assert trigger.get_attribute("aria-label") == "すべての項目を検索"
     assert trigger.locator("kbd").inner_text() in ("Ctrl+K", "⌘K")
+
+
+# 幅 320〜389px で全てのボタンを出す 4 つの状態
+FIT_NARROWEST = "preview-topbar--fit-narrowest"
+FIT_NARROWEST_DIFF = "preview-topbar--fit-narrowest-diff"
+FIT_NARROWEST_OFFLINE = "preview-topbar--fit-narrowest-offline"
+FIT_NARROWEST_OFFLINE_DIFF = "preview-topbar--fit-narrowest-offline-diff"
+
+# 部品設計『トップバー』が見せ方に挙げた、幅 389px 以下の幅
+NARROWEST_WIDTHS = [320, 361, 389]
+
+# 幅 389px 以下の状態と幅の組
+NARROWEST_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id in (FIT_NARROWEST, FIT_NARROWEST_DIFF, FIT_NARROWEST_OFFLINE, FIT_NARROWEST_OFFLINE_DIFF)
+    for width in NARROWEST_WIDTHS
+]
+
+# 差分の札を出している状態と幅の組
+NARROWEST_DIFF_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id in (FIT_NARROWEST_DIFF, FIT_NARROWEST_OFFLINE_DIFF)
+    for width in NARROWEST_WIDTHS
+]
+
+# 状態と幅と、ツール名の印を隠すか（差分の札を出している状態だけ隠す）の組
+NARROWEST_PACKING_CASES = [
+    pytest.param(story_id, width, brand_hidden, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id, brand_hidden in (
+        (FIT_NARROWEST, False),
+        (FIT_NARROWEST_DIFF, True),
+        (FIT_NARROWEST_OFFLINE, False),
+        (FIT_NARROWEST_OFFLINE_DIFF, True),
+    )
+    for width in NARROWEST_WIDTHS
+]
+
+# トップバーの要素の間隔・左右の余白、表示の設定・絞り込み・コメントのボタンの左右の余白と印と件数の間隔、ツール名の文字と印が隠れているかを同じ瞬間に読む
+BAR_SHAPE_SCRIPT = """() => {
+  const bar = getComputedStyle(document.querySelector('.topbar'));
+  const buttons = ['.settings-btn', '.filter-btn', '.comments-btn'].map((selector) => {
+    const style = getComputedStyle(document.querySelector(selector));
+    return [style.paddingLeft, style.paddingRight, style.columnGap];
+  });
+  const hidden = (selector) => document.querySelector(selector).getClientRects().length === 0;
+  return {
+    gap: bar.columnGap,
+    padding: [bar.paddingLeft, bar.paddingRight],
+    buttons,
+    nameHidden: hidden('.brand-name'),
+    brandHidden: hidden('.brand'),
+  };
+}"""
+
+# 印だけのボタン（検索・変更履歴・ライト / ダーク）の幅と高さを読む
+ICON_BUTTON_SIZES_SCRIPT = """() => ['.search-trigger', '.hist-btn', '.top-btn'].map((selector) => {
+  const r = document.querySelector(selector).getBoundingClientRect();
+  return [r.width, r.height];
+})"""
+
+# 幅 389px 以下の印だけのボタンの幅と高さ
+NARROWEST_ICON_BUTTON_SIZE = [28, 32]
+
+
+@pytest.mark.parametrize(("story_id", "width"), NARROWEST_CASES)
+def test_fit_narrowest_states_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """幅 320・361・389px で全てのボタンを出しても、ページもトップバーも横にはみ出さず、全てのボタンと札の × が表示幅の中にある（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(BUTTONS_FIT_SCRIPT)
+    # 検証
+    assert measured == {"pageFits": True, "barFits": True, "outside": []}
+
+
+@pytest.mark.parametrize(("story_id", "width"), NARROWEST_DIFF_CASES)
+def test_fit_narrowest_chip_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """差分を出している間は、幅 320・361・389px で札の幅が 5.5em 以上ある（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(FIT_SCRIPT)
+    # 検証
+    assert measured["chipEm"] >= CHIP_MIN_WIDTH_EM
+
+
+@pytest.mark.parametrize(("story_id", "width", "brand_hidden"), NARROWEST_PACKING_CASES)
+def test_fit_narrowest_packing_when_width(open_story: OpenStory, story_id: str, width: int, brand_hidden: bool) -> None:
+    """幅 389px 以下では、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白と印と件数の間隔 2px（差分ありでも）に詰め、ツール名の文字を隠し、差分の札を出している間だけ印も隠す（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(BAR_SHAPE_SCRIPT)
+    # 検証
+    assert measured == {
+        "gap": "1px",
+        "padding": ["8px", "8px"],
+        "buttons": [["2px", "2px", "2px"], ["2px", "2px", "2px"], ["2px", "2px", "2px"]],
+        "nameHidden": True,
+        "brandHidden": brand_hidden,
+    }
+
+
+@pytest.mark.parametrize(("story_id", "width"), NARROWEST_CASES)
+def test_fit_narrowest_icon_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """幅 389px 以下では、印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませない（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    sizes = page.evaluate(ICON_BUTTON_SIZES_SCRIPT)
+    # 検証
+    assert sizes == [NARROWEST_ICON_BUTTON_SIZE] * 3
+
+
+def test_fit_narrowest_offline_diff_max_content(open_story: OpenStory) -> None:
+    """つながらず差分を出す状態は、収める最大の中身（絞り込みのバッジ 2 桁・コメントの件数 99+）を出す（正常系）。"""
+    # 準備・実行
+    page = open_story(FIT_NARROWEST_OFFLINE_DIFF)
+    # 検証
+    assert page.locator(".filter-btn .fbadge").inner_text() == "12"
+    assert page.locator(".comments-btn .count").inner_text() == "99+"
+
+
+# 幅 390px の見た目（幅 389px 以下の詰め方が効かない既存の狭い幅の作り）の期待値
+DEFAULT_BUTTON_PADDING = [["6px", "6px", "4px"]] * 3
+DIFF_BUTTON_PADDING = [["4px", "4px", "4px"], ["6px", "6px", "4px"], ["6px", "6px", "4px"]]
+WIDTH_390_SHAPES = [
+    pytest.param(
+        FIT_NARROWEST,
+        {"gap": "3px", "buttons": DEFAULT_BUTTON_PADDING, "nameHidden": False, "brandHidden": False},
+        id="fit-narrowest",
+    ),
+    pytest.param(
+        FIT_NARROWEST_DIFF,
+        {"gap": "8px", "buttons": DIFF_BUTTON_PADDING, "nameHidden": True, "brandHidden": False},
+        id="fit-narrowest-diff",
+    ),
+    pytest.param(
+        FIT_NARROWEST_OFFLINE,
+        {"gap": "3px", "buttons": DEFAULT_BUTTON_PADDING, "nameHidden": False, "brandHidden": False},
+        id="fit-narrowest-offline",
+    ),
+    pytest.param(
+        FIT_NARROWEST_OFFLINE_DIFF,
+        {"gap": "8px", "buttons": DIFF_BUTTON_PADDING, "nameHidden": True, "brandHidden": True},
+        id="fit-narrowest-offline-diff",
+    ),
+]
+
+
+@pytest.mark.parametrize(("story_id", "expected"), WIDTH_390_SHAPES)
+def test_fit_narrowest_unchanged_when_width_390(open_story: OpenStory, story_id: str, expected: dict[str, object]) -> None:
+    """幅 390px は既存の狭い幅の見た目のままで、幅 389px 以下の詰め方（間隔 1px・余白 2px）は効かない（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, 390)
+    # 実行
+    measured = page.evaluate(BAR_SHAPE_SCRIPT)
+    # 検証
+    assert measured == {"padding": ["10px", "10px"], **expected}
+
+
+# 1px ずつ通す幅（既定の中身は 320〜1440px、最大の中身は 320〜389px。最大の中身の 390px 以上は別 Issue の範囲）と、そのときの画面の高さ
+DEFAULT_CONTENT_EVERY_WIDTH = range(320, 1441)
+MAX_CONTENT_EVERY_WIDTH = range(320, 390)
+NARROWEST_HEIGHT = 844
+
+# ストーリーの引数の上書き: 既定の中身（絞り込みのバッジ 2・コメントの件数 3。FitNarrowestOfflineDiff は既定が最大の中身のため明示する）と、収める最大の中身（絞り込みのバッジ 12・コメントの件数 99+）
+STORY_DEFAULT_CONTENT = "&args=filterCount:2;commentCount:3"
+STORY_MAX_CONTENT = "&args=filterCount:12;commentCount:120"
+
+# 4 つの状態を、既定の中身と最大の中身で開く組（引数の上書きと、1px ずつ通す幅）
+NARROWEST_CONTENT_CASES = [
+    pytest.param(story_id, args, widths, id=f"{story_id.removeprefix('preview-topbar--')}-{content}")
+    for story_id in (FIT_NARROWEST, FIT_NARROWEST_DIFF, FIT_NARROWEST_OFFLINE, FIT_NARROWEST_OFFLINE_DIFF)
+    for content, args, widths in (
+        ("default", STORY_DEFAULT_CONTENT, DEFAULT_CONTENT_EVERY_WIDTH),
+        ("max", STORY_MAX_CONTENT, MAX_CONTENT_EVERY_WIDTH),
+    )
+]
+
+# 全てのボタンが収まっているときの BUTTONS_FIT_SCRIPT の結果
+BUTTONS_ALL_FIT = {"pageFits": True, "barFits": True, "outside": []}
+
+
+def _overflowing_widths(page: Page, widths: range) -> list[int]:
+    """表示幅を 1px ずつ変えながらトップバーを測り、横にはみ出した幅（ボタンが幅の外に出た幅を含む）を返す。"""
+    overflowing = []
+    for width in widths:
+        # 幅を変え、画面がその幅になってから測る
+        page.set_viewport_size({"width": width, "height": NARROWEST_HEIGHT})
+        page.wait_for_function(f"innerWidth === {width}")
+        if page.evaluate(BUTTONS_FIT_SCRIPT) != BUTTONS_ALL_FIT:
+            overflowing.append(width)
+    return overflowing
+
+
+@pytest.mark.parametrize(("story_id", "args", "widths"), NARROWEST_CONTENT_CASES)
+def test_fit_narrowest_every_width(open_story: OpenStory, story_id: str, args: str, widths: range) -> None:
+    """幅を 1px ずつ変えても（既定の中身は 320〜1440px、最大の中身は 320〜389px）、ページもトップバーも横にはみ出さず、全てのボタンと札の × が表示幅の中にある（正常系）。"""
+    # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
+    page = open_story(f"{story_id}{args}")
+    page.evaluate("document.fonts.ready")
+    # 実行
+    overflowing = _overflowing_widths(page, widths)
+    # 検証（はみ出した幅をまとめて出す）
+    assert overflowing == []

@@ -23,6 +23,7 @@ __all__ = [
     "canvas_hash",
     "changed_pixels",
     "click_at",
+    "free_point_near",
     "install_key_spy",
     "install_status_mark_spy",
     "is_moving",
@@ -55,6 +56,9 @@ _SAME_BALL_DISTANCE = 24
 _BLANK_MARGIN = 24
 _OTHER_BALL_DISTANCE = 80
 
+# 玉に当たらない点を探すときの、候補の点の間隔（CSS ピクセル）
+_FREE_POINT_STEP = 2
+
 # 絵の比較で、違いと見なす 1 色の差
 _PIXEL_TOLERANCE = 8
 
@@ -80,6 +84,28 @@ _HIT_SCRIPT = """([x, y]) => {
     const hit = canvas.style.cursor === 'pointer';
     canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
     return hit;
+}"""
+
+# 点から `range` 未満の距離にある点を近い順に並べ、`pointermove` を送ってカーソルが `pointer`（玉の上）にならない最初の点を返す（無ければ null）
+_FREE_POINT_SCRIPT = """([x, y, range, step]) => {
+    const canvas = document.getElementById('graph-canvas');
+    const offsets = [];
+    for (let dy = -range; dy <= range; dy += step) {
+        for (let dx = -range; dx <= range; dx += step) {
+            if (Math.hypot(dx, dy) < range) offsets.push([dx, dy]);
+        }
+    }
+    offsets.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]));
+    let found = null;
+    for (const [dx, dy] of offsets) {
+        canvas.dispatchEvent(new PointerEvent('pointermove', {clientX: x + dx, clientY: y + dy, bubbles: true}));
+        if (canvas.style.cursor !== 'pointer') {
+            found = [x + dx, y + dy];
+            break;
+        }
+    }
+    canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
+    return found;
 }"""
 
 # 領域の画素を名前を付けて取っておく
@@ -314,6 +340,14 @@ def click_at(page: Page, x: float, y: float) -> None:
     page.mouse.move(x, y)
     page.mouse.down()
     page.mouse.up()
+
+
+def free_point_near(page: Page, x: float, y: float, within: float) -> tuple[float, float]:
+    """画面の点から `within` 未満の距離で、玉に当たらない最も近い点（画面の座標）を返す。玉に当たる点しか無ければ失敗する。"""
+    point: list[float] | None = page.evaluate(_FREE_POINT_SCRIPT, [x, y, within, _FREE_POINT_STEP])
+    if point is None:
+        raise AssertionError("玉に当たらない点が見つからない")
+    return point[0], point[1]
 
 
 def remember_pixels(page: Page, name: str) -> None:

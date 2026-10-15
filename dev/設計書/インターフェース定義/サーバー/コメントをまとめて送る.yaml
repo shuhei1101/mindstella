@@ -4,12 +4,12 @@ entry:
   value: POST /api/comments/send
 flows:
   - name: 正常系
-    summary: チェックしたコメントだけを送信へ移し、残りはレビュー中に残す
+    summary: チェックしたコメントだけをスレッドへ移し、残りはレビュー中に残す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る。MCP サーバーの環境から `TMUX`・`TMUX_PANE` を外す）
       - name: make_workspace
-        description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目を指す「ここは言い換える」）・C-3（項目を指さない「全体に目を通した」）を持ち、`submissions.yaml` を持たないワークスペース
+        description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目を指す「ここは言い換える」）・C-3（項目を指さない「全体に目を通した」）を持ち、`threads.yaml` を持たないワークスペース
         notes: '`ids` は `["C-2", "C-1"]`'
     flow: |-
       ```mermaid
@@ -19,17 +19,18 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {ids: [C-2, C-1]}
-        IF-->>WS: コメント・項目・本文・送信を読む
+        IF-->>WS: コメント・項目・本文・スレッドを読む
         IF->>IF: 向けた項目と箇所を確かめる
-        IF->>WS: submissions.yaml に 2 件足す
+        IF->>WS: threads.yaml にスレッドを 2 件足す
         IF->>WS: comments.yaml から C-1・C-2 を消す
         IF-->>クライアント: 201、JSON（sent・items）
       ```
     expected:
-      - ステータスが 201 で、`items` が C-1 → S-1、C-2 → S-2 の順
-      - '`submissions.yaml` の S-1 が `target: D-1`・`body: 案 A にする` で `loc` を持たず、S-2 が `target: A-1` と本文の 2 行目の `loc` を持ち、どちらも `taken: null`'
+      - ステータスが 201 で、`items` が C-1 → TH-1（TH-1-1）、C-2 → TH-2（TH-2-1）の順で、`entered` が `false`（tmux の外のため）
+      - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で `loc` を持たず、TH-2 が `target: A-1` と本文の 2 行目の `loc` を持ち、どちらも要約が `null` で、最初の書き込みが `author: user`・`read: false`・`taken: null`'
       - '`comments.yaml` に C-3 だけが残る'
       - '`decisions.yaml`・`docs.yaml` の中身が送る前と同じ'
+      - 'TH-1・TH-2 の最初の書き込みが `seen: true`（利用者が書いたものは利用者の既読）'
     test: test_normal
   - name: 異常系（送るものが空・400）
     summary: チェックが 0 件の送信は受けない
@@ -50,7 +51,7 @@ flows:
       ```
     expected:
       - ステータスが 400 で、`detail` に `ids` がある
-      - '`submissions.yaml` が無い'
+      - '`threads.yaml` が無い'
     test: test_error_when_ids_empty
   - name: 異常系（送り元が違う・403）
     summary: 別のサイトのページからの送信は受けない
@@ -71,7 +72,7 @@ flows:
       ```
     expected:
       - ステータスが 403
-      - '`submissions.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
+      - '`threads.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
     test: test_error_when_origin_mismatch
   - name: 異常系（コメントが無い・404）
     summary: 消えたコメントを含むと、どれも送らない
@@ -92,7 +93,7 @@ flows:
       ```
     expected:
       - ステータスが 404 で、`detail` に `C-9` がある
-      - '`submissions.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
+      - '`threads.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
     test: test_error_when_comment_not_found
   - name: 異常系（箇所が合わない・409）
     summary: 本文が書き換わって箇所が合わないコメントがあれば、どれも送らない
@@ -116,7 +117,7 @@ flows:
       ```
     expected:
       - ステータスが 409 で、`stale` が C-2 だけで `reason` が空でない
-      - '`submissions.yaml` が無い'
+      - '`threads.yaml` が無い'
       - '`comments.yaml` の中身が送る前と同じ'
     test: test_error_when_location_stale
   - name: 異常系（本文が JSON でない・415）
@@ -138,15 +139,15 @@ flows:
       ```
     expected:
       - ステータスが 415
-      - '`submissions.yaml` が無い'
+      - '`threads.yaml` が無い'
     test: test_error_when_not_json
   - name: 異常系（書き込めない・500）
-    summary: 書き込めないワークスペースでは、送信もレビュー中も前のままにする
+    summary: 書き込めないワークスペースでは、スレッドもレビュー中も前のままにする
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
       - name: make_workspace
-        description: 検討事項 D-1・送信 S-1・レビュー中のコメント C-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        description: 検討事項 D-1・スレッド TH-1・レビュー中のコメント C-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する
     flow: |-
       ```mermaid
@@ -161,11 +162,179 @@ flows:
       ```
     expected:
       - ステータスが 500 で、`detail` が書けなかったパスを含み、トレースバックを含まない
-      - '`submissions.yaml`・`comments.yaml` の中身が送る前と同じ'
+      - '`threads.yaml`・`comments.yaml` の中身が送る前と同じ'
     test: test_error_when_write_fails
-lead: コメントの一覧でチェックしたレビュー中のコメントを受け、全てを取り込んでいない送信として `submissions.yaml` に足してから、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。
+  - name: 正常系（Claude Code へ入力する）
+    summary: tmux の中で立てたとき、届いた件数を Claude Code のペインへ 1 回の入力として貼り、会話の記録で確かめる
+    setup:
+      - name: Mock
+        description: Claude Code の代わりに、貼られて確定した文字列を 1 件の user の行（`cwd` は自分の作業フォルダ）として、`CLAUDE_CONFIG_DIR` の `projects` の下の作業フォルダに当たるフォルダの jsonl へ書き足す偽のコマンドを tmux のペインで動かす。そのペインの `TMUX`・`TMUX_PANE` と、テストの一時フォルダの `CLAUDE_CONFIG_DIR` を渡して MCP サーバーを立て、`preview_url` が返した URL へ HTTP のクライアントで送る
+      - name: tmux
+        description: テストごとに専用のソケット（`-L`）で立てた tmux のサーバー。後片付けは `kill-session -t` で名前を指して落とす
+        notes: 利用者の tmux のセッションに触れない
+      - name: make_workspace
+        description: 検討事項 D-1 と、本文を持つ資料 A-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）・C-2（A-1 の本文の 2 行目の「言い換えたい文」を指す「ここは言い換える」）・C-3（項目を指さない 2 行の「全体に目を通した」）を持つワークスペース。偽のコマンドと MCP サーバーの作業フォルダにする
+        notes: '`ids` は `["C-1", "C-2", "C-3"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+        participant TM as tmux
+        participant CC as Claude Code（偽のコマンド）
+        participant JL as 会話の記録
+
+        クライアント->>IF: POST {ids: [C-1, C-2, C-3]}
+        IF->>WS: threads.yaml に 3 件足し、comments.yaml から消す
+        IF->>JL: jsonl の大きさを控える
+        IF->>TM: load-buffer → paste-buffer -p → send-keys Enter
+        TM->>CC: 1 回の入力
+        CC->>JL: user の行を書き足す
+        IF-->>JL: 書き足された行に入力した文字列がある
+        IF-->>クライアント: 201、entered: true
+      ```
+    expected:
+      - ステータスが 201 で、`entered` が `true`
+      - 会話の記録に user の行が 1 件だけ増え、その本文が `[mindstella] ユーザーからのコメントが 3 件届きました。読み直してください。` である
+      - '`threads.yaml` の TH-1〜TH-3 の最初の書き込みがどれも `taken: null`（取り込み済みにするのは Claude Code が記録した後）'
+      - 応答が送ってから 0.5 秒以内に返る
+    test: test_normal_when_entered_to_claude_code
+  - name: 正常系（処理中で待ち行列に入る）
+    summary: Claude Code が処理中で入力が待ち行列に入ったときも、入力したと返す
+    setup:
+      - name: Mock
+        description: '貼られて確定したとき、user の行を書かずに `{"type": "queue-operation", "operation": "enqueue"}` の行だけを jsonl へ書き足す偽のコマンドを tmux のペインで動かす。ほかは正常系（Claude Code へ入力する）と同じ'
+      - name: tmux
+        description: 正常系（Claude Code へ入力する）と同じ
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）を持つワークスペース
+        notes: '`ids` は `["C-1"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant TM as tmux
+        participant CC as Claude Code（偽のコマンド）
+        participant JL as 会話の記録
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>TM: 貼って Enter
+        TM->>CC: 入力
+        CC->>JL: queue-operation enqueue を書き足す
+        IF-->>クライアント: 201、entered: true
+      ```
+    expected:
+      - ステータスが 201 で、`entered` が `true`
+      - '`threads.yaml` に TH-1 があり、最初の書き込みが `taken: null` である'
+    test: test_normal_when_queued
+  - name: 正常系（入力が会話に入らない）
+    summary: 上限までに会話の記録に入らなければ、スレッドを残したまま入力できなかったと返す
+    setup:
+      - name: Mock
+        description: 貼られても jsonl へ何も書かない偽のコマンドを tmux のペインで動かす（選択の表示で入力が失われた形）。ほかは正常系（Claude Code へ入力する）と同じ
+      - name: tmux
+        description: 正常系（Claude Code へ入力する）と同じ
+      - name: make_workspace
+        description: 検討事項 D-1 と、レビュー中のコメント C-1（D-1・「案 A にする」）を持つワークスペース
+        notes: '`ids` は `["C-1"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+        participant TM as tmux
+        participant JL as 会話の記録
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>WS: threads.yaml に足し、comments.yaml から消す
+        IF->>TM: 貼って Enter
+        IF-->>JL: 0.5 秒まで書き足されない
+        IF-->>クライアント: 201、entered: false
+      ```
+    expected:
+      - ステータスが 201 で、`entered` が `false`
+      - '`threads.yaml` に TH-1 があり最初の書き込みが `taken: null` であり、`comments.yaml` が空である'
+      - 応答が送ってから 1 秒以内に返る
+      - MCP サーバーの標準エラーに、入力できなかった理由の行がある
+    test: test_normal_when_not_entered
+  - name: 異常系（HTML の本文の箇所が合わない・409）
+    summary: HTML の本文が書き換わって選んだ文が無くなったコメントがあれば、どれも送らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 本文を HTML で持ち 4 行目が `<p>言い<b>換え</b>たい文</p>` の資料 A-1 と、A-1 の本文の 4 行目と「言い換えたい文」を指すレビュー中のコメント C-1 を持つワークスペース
+        notes: C-1 を溜めた後に A-1 の 4 行目を `<p>書き直した文</p>` に書き換えた形。`ids` は `["C-1"]`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF-->>WS: コメントと A-1 の HTML の本文を読む
+        IF->>IF: 4 行目の描いた文に選んだ文が無い
+        IF-->>クライアント: 409（stale: C-1）
+      ```
+    expected:
+      - ステータスが 409 で、`stale` が C-1 の 1 件
+      - '`threads.yaml` が無く、`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_html_body_location_stale
+  - name: 正常系（返信をスレッドに足す）
+    summary: 返信は向けたスレッドの末尾に足し、新しいスレッドは作らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る。MCP サーバーの環境から `TMUX`・`TMUX_PANE` を外す）
+      - name: make_workspace
+        description: AI が立てたオープンのスレッド TH-1（AI の問い 1 件）と、TH-1 へのレビュー中の返信 C-1（`起票してよい`）を持つワークスペース
+        notes: '`ids` は `["C-1"]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1]}
+        IF->>WS: TH-1 の末尾に足し、comments.yaml から消す
+        IF-->>クライアント: 201（items: C-1 → TH-1-2）
+      ```
+    expected:
+      - ステータスが 201 で、`items` が C-1 → TH-1（TH-1-2）
+      - 'TH-1 の書き込みが AI の問い・利用者の `起票してよい`（`read: false`・`taken: null`）の順で、スレッドは 1 件のまま'
+      - '`threads` を `awaiting` で呼ぶと TH-1 を返す'
+    test: test_normal_when_reply
+  - name: 異常系（クローズのスレッドへの返信・409）
+    summary: 送る前にクローズになったスレッドへの返信があれば、どれも送らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: クローズのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 と、項目を指さないレビュー中のコメント C-2 を持つワークスペース
+        notes: C-1 を溜めた後に TH-1 がクローズになった形。`ids` は `["C-1", "C-2"]`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments/send
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {ids: [C-1, C-2]}
+        IF-->>WS: コメントとスレッドを読む
+        IF->>IF: C-1 の向けたスレッドがクローズ
+        IF-->>クライアント: 409（stale: C-1）
+      ```
+    expected:
+      - ステータスが 409 で、`stale` が C-1 の 1 件で `reason` にクローズであることがある
+      - '`threads.yaml`・`comments.yaml` の中身が送る前と同じ'
+    test: test_error_when_thread_closed
+lead: コメントの一覧でチェックしたレビュー中の書き込みを受け、新しいスレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に足して（`threads.yaml`）から、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。足した後、tmux の中で立てた Claude Code なら、届いた件数を Claude Code のペインへ 1 回の入力として貼り、会話の記録に入ったかを確かめて応答に載せる。
 idempotent: false
-side_effects: '`submissions.yaml` に送った件数を足し（無ければ作る）、`comments.yaml` からそのコメントを消す。どちらも一時ファイルから `os.replace` で置き換え、`submissions.yaml` を先に書く。ほかのファイルは書き換えない'
+side_effects: '`threads.yaml` に新しいスレッドと返信の書き込みを足し（無ければ作る）、`comments.yaml` からその書き込みを消す。どちらも一時ファイルから `os.replace` で置き換え、`threads.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送り先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
 callers:
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
 request:
@@ -204,15 +373,24 @@ request_example: |-
 response:
   - name: sent
     type: str
-    description: 送った日時（UTC のタイムゾーン付き ISO 8601）。足した送信の `sent` と同じ
+    description: 送った日時（UTC のタイムゾーン付き ISO 8601）。足した書き込みの `created` と同じ
   - name: items[].comment
     type: str
-    description: 送ったレビュー中のコメントの ID。並びはコメントの連番の小さい順（溜めた順）
+    description: 送ったレビュー中の書き込みの ID。並びはコメントの連番の小さい順（溜めた順）
     example: C-1
-  - name: items[].submission
+  - name: items[].thread
     type: str
-    description: 振った送信の ID（`S-{連番}`）
-    example: S-3
+    description: 書き込みを足したスレッドの ID（新しいスレッドは振った ID）
+    example: TH-3
+  - name: items[].post
+    type: str
+    description: 足した書き込みの ID
+    example: TH-3-1
+  - name: entered
+    type: bool
+    description: 届いた件数を Claude Code へ入力し、会話の記録に入った（または処理中の待ち行列に入った）と確かめたか。送り先のペインが無い・tmux が失敗した・上限までに確かめられなかったときは `false`
+    example: 'true'
+    notes: '`false` でも書き込みは取り込み待ちで残っており、話し合いの取り込みで拾われる'
 status_codes:
   - code: '201'
     condition: 全て送った
@@ -226,38 +404,57 @@ status_codes:
     condition: '`ids` のどれかがレビュー中のコメントに無い'
     notes: 何も書かない。`detail` に無い ID
   - code: '409'
-    condition: 向けた項目が無くなったコメントか、箇所が今の項目に合わないコメントがある
-    notes: 何も書かない。本文に `stale[]`（`{id, reason}`）を足し、合わないコメントを全て返す
+    condition: 向けた項目が無くなったコメントか、箇所が今の項目に合わないコメントか、クローズか無いスレッドへの返信がある
+    notes: 何も書かない。本文に `stale[]`（`{id, reason}`）を足し、送れない書き込みを全て返す
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
     notes: 何も書かない
   - code: '422'
-    condition: ワークスペースの YAML（`comments.yaml`・`submissions.yaml` を含む）がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった
+    condition: ワークスペースの YAML（`comments.yaml`・`threads.yaml` を含む）がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった
     notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
   - code: '500'
-    condition: '`submissions.yaml` か `comments.yaml` を書けない（権限が無い など）'
-    notes: '`detail` に書けなかったパスと理由。`comments.yaml` だけを書けなかったときは `submissions.yaml` を前の中身に書き戻し、どちらも前のままにする'
+    condition: '`threads.yaml` か `comments.yaml` を書けない（権限が無い など）'
+    notes: '`detail` に書けなかったパスと理由。`comments.yaml` だけを書けなかったときは `threads.yaml` を前の中身に書き戻し、どちらも前のままにする'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `stale` を足す
 constraints:
   - item: 書く中身
-    constraint: '送るコメント 1 件ごとに、`id`（`S-{連番}`。連番の最大 + 1 から順に）・`target`（あれば）・`loc`（あれば）・`body`・`sent`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `submissions.yaml`'
+    constraint: '返信先（`thread`）を持たない書き込みは 1 件ごとにスレッドを立てる（`id` は `TH-{連番}`。連番の最大 + 1 から順に・`status: open`・`tags: []`・`summary: null`・`target` と `loc`（あれば）・`events: []`）。返信先を持つ書き込みはそのスレッドの末尾に足す。足す書き込みは `author: user`・`body`・`created`（送った日時）・`read: false`・`taken: null`・`comment`（元のコメントの ID）。ER 図『ワークスペース』の `threads.yaml`'
   - item: 全てか何もなしか
     constraint: 全ての ID・向けた項目・箇所を確かめてから書く。1 件でも 404・409 に当たれば、どのコメントも送らずレビュー中に残す（単一ユースケース『コメントを選んで送る』の補足）
   - item: 箇所の確かめ
-    constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。向けた項目が無くなったコメントも 409 の `stale` に載せる（箇所を持たないときも）
+    constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。向けた項目が無くなったコメントも 409 の `stale` に載せる（箇所を持たないときも）。返信は向けたスレッドがオープンであることを確かめ、クローズか無いスレッドへの返信を `stale` に載せる（画面はチェックできない行にするが、送る前にクローズにされたときに備える）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400。ID だけを送るため、送れる件数は溜める件数の規模（ER 図の `comments.yaml`）より大きい
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
   - item: 送り元の確かめ
     constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば『プレビューの配信』の制約「送り元の確かめ」で確かめる（別のサイトのページからの書き込みを防ぐ）'
   - item: 同時の書き込み
-    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスの `take_submission` やコメントの書き換えと重なっても、どちらの書き換えも失わず、送信の ID も重ならない
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスのスレッドのツールやコメントの書き換えと重なっても、どちらの書き換えも失わず、スレッドと書き込みの ID も重ならない
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
   - item: 二重に送らない
-    constraint: 同じ `comment` の送信が既にあるコメントは足さず、その送信の ID を `items[].submission` に返してレビュー中から外す（`submissions.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
+    constraint: 同じ `comment` を持つ書き込みが既にあるコメントは足さず、そのスレッドと書き込みの ID を `items[]` に返してレビュー中から外す（`threads.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
+  - item: 送り先
+    constraint: 'MCP サーバーが起動時に Claude Code から受け継いだ `TMUX_PANE` のペインへ、`TMUX` が指す tmux のサーバーで入力する（『MCP サーバーの起動』の制約「受け継ぐ環境変数」）。どちらかが空なら tmux を呼ばずに `entered: false` にする'
+    notes: '要件の送り先の決め方の案 A。MCP の設定の `env` は親の環境へ足され、`TMUX`・`TMUX_PANE` を消さないことを PoC で確かめた（PR #201 のサーバー.md の PoC 結果）'
+  - item: 入力の時点
+    constraint: '`threads.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。入力と確かめはプロセスの中の 1 本の入力の鍵で順に行い、同時に送られた 2 回の入力を重ねない'
+  - item: 入力する文字列
+    constraint: '`[mindstella] ユーザーからのコメントが {足した件数} 件届きました。読み直してください。` の 1 行だけを入力する（新しいスレッドと返信を合わせた件数）。スレッドの ID・向けた項目・箇所・本文は入れない'
+    notes: 'ユーザーが決めた文面（PR #201 の確認ログ）。`[mindstella]` は `session` が利用者の発言と見分ける印で、Claude Code は取り込み待ちのスレッドの一覧で中身を読む（インターフェース定義『話し合いの進行』の制約「送信の取り込み」）'
+  - item: 入力のやり方
+    constraint: 文字列を `tmux load-buffer -b {名前の付いたバッファ} -` へ標準入力で渡し、`tmux paste-buffer -p -d -b {同じバッファ} -t {TMUX_PANE}` でブラケットペーストとして貼り、待たずに `tmux send-keys -t {TMUX_PANE} Enter` で確定する。ペインの状態（打ちかけ・選択の表示）は見ない
+    notes: 'ブラケットペーストにしないと本文の改行で途中確定する。貼ってから `Enter` までの待ちは 0ms で確定することを PoC で確かめた。打ちかけとつながる・選択の表示で失われるのは利用者が tmux で気づいて直す（PR #201 の確認ログ）'
+  - item: 届いたかの確かめ
+    constraint: '貼る前に、会話の記録のフォルダの各 jsonl の大きさを控える。会話の記録のフォルダは `{CLAUDE_CONFIG_DIR、無ければ ~/.claude}/projects` の下で、サーバーの起動時の作業フォルダの絶対パスを UTF-16 の単位で英数字以外を `-` にした名前が 200 文字以下ならその名前のフォルダ、超えるなら名前の先頭 200 文字に `-` を続けた文字列で始まるフォルダの全てにする（Claude Code が末尾に足すパスのハッシュは作らない）。`Enter` の後、50ms ごとに控えより後ろへ書き足された行を読み、次のどちらかがあれば `entered: true` にする。① `type` が `user` で、`cwd` がサーバーの起動時の作業フォルダと一致し、本文に入力した文字列が入った行（入力を待っていたとき。打ちかけとつながったときも含む）。② `type` が `queue-operation`・`operation` が `enqueue` の行（Claude Code が処理中で、入力が待ち行列に入ったとき。この行は本文も `cwd` も持たない）。上限までにどちらも無ければ `entered: false` にする。会話の ID（`CLAUDE_CODE_SESSION_ID`）は `/clear`・`/resume` で変わるため使わない'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
+    notes: Claude Code 2.1.296 で確かめた（2026-10-10）。入力を待っているときは貼ってから約 0.13 秒で user の行が書かれ、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる。選択の表示で失われたときはどちらも書かれない。新しい会話は最初の user の行まで jsonl を作らないため、控えに無いファイルは大きさ 0 から読む。同じ作業フォルダで別の Claude Code を並べて動かしていると、別の会話に入ったものも届いたと数える
+  - item: 入力の上限
+    constraint: 'tmux の 3 つのコマンドと届いたかの確かめを合わせて、貼り始めてから 0.5 秒で打ち切る。各 tmux のコマンドの待ちは、その時点の残り時間を超えない。tmux が終了コード 0 以外を返したか時間内に終わらないときは、残りのコマンドを呼ばずに `entered: false` にする。どの場合も理由を標準エラーに記録する'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
 refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
 test_file: tests/integration/server/test_comments_send.py
+notes: {}

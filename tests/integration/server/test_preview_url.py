@@ -20,6 +20,7 @@ from external_access_helpers import (
 from workspace_fixtures import SERVER_SCRIPT
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
+from .history_helpers import DECISION_ITEM, add_item, commit
 from .http_helpers import http_request
 from .readme_helpers import section_of
 
@@ -53,6 +54,10 @@ START_HOOK_ENV = "MINDSTELLA_PREVIEW_START_HOOK"
 # 配信の URL の頭と、画面のパス
 URL_PREFIX = "http://127.0.0.1:"
 PAGE_PATH = "/mindstella.html"
+
+# 記録にあるまとまりと、記録に無いまとまり
+KNOWN_SET_ID = "V-1"
+UNKNOWN_SET_ID = "V-99"
 
 
 def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> None:
@@ -249,3 +254,88 @@ def test_normal_when_start_hook_set(
     assert missing.data is not None
     assert missing.data["url"].startswith(URL_PREFIX)
     assert http_request(missing.data["url"], PAGE_PATH).status == 200
+
+
+def _make_workspace_with_set(make_workspace: MakeWorkspace, call_tool: CallTool) -> Path:
+    """検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペースを作る。"""
+    root = make_workspace()
+    add_item(call_tool, root, "decision", DECISION_ITEM)
+    assert commit(call_tool, root, "足す")["id"] == KNOWN_SET_ID
+    return root
+
+
+def test_normal_when_diff_given(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """diff を渡すと、そのまとまりの差分を開くハッシュを付けた URL を返す（正常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace, call_tool)
+    # 実行
+    result = call_tool("preview_url", workspace=str(root), diff=KNOWN_SET_ID)
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["url"].startswith(URL_PREFIX)
+    assert result.data["url"].endswith(f"{PAGE_PATH}#diff={KNOWN_SET_ID}")
+    assert result.data["started"] is True
+    # 直下の README のプレビューの節の URL はハッシュを持たない
+    readme_text = (root / "README.md").read_text(encoding="utf-8")
+    assert "#diff=" not in section_of(readme_text, "## プレビュー")
+    # diff を渡さずに呼び直すと、ハッシュの無い同じポートの URL が返る
+    again = call_tool("preview_url", workspace=str(root))
+    assert again.data is not None
+    assert again.data["url"] == result.data["url"].split("#")[0]
+    assert again.data["started"] is False
+
+
+def test_error_when_diff_not_found(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """記録に無いまとまりを diff に渡すと、配信を立てずに終わる（異常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace, call_tool)
+    # 実行
+    result = call_tool("preview_url", workspace=str(root), diff=UNKNOWN_SET_ID)
+    # 検証
+    assert result.is_error is True
+    assert result.text.startswith("エラー: 引数の誤り: diff:")
+    assert UNKNOWN_SET_ID in result.text
+    # 配信を立てていないので、diff を渡さずに呼ぶと立てる
+    again = call_tool("preview_url", workspace=str(root))
+    assert again.data is not None
+    assert again.data["started"] is True
+
+
+def test_normal_when_diff_given_while_serving(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """既に配っているワークスペースで diff を渡すと、同じポートでハッシュを付けた URL を返す（正常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace, call_tool)
+    first = call_tool("preview_url", workspace=str(root))
+    assert first.data is not None
+    # 実行
+    result = call_tool("preview_url", workspace=str(root), diff=KNOWN_SET_ID)
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["url"] == f"{first.data['url']}#diff={KNOWN_SET_ID}"
+    assert result.data["started"] is False
+
+
+def test_error_when_diff_not_found_while_serving(
+    make_workspace: MakeWorkspace, call_tool: CallTool
+) -> None:
+    """既に配っているワークスペースでも、記録に無いまとまりを diff に渡すとエラーになる（異常系）。"""
+    # 準備
+    root = _make_workspace_with_set(make_workspace, call_tool)
+    first = call_tool("preview_url", workspace=str(root))
+    assert first.data is not None
+    # 実行
+    result = call_tool("preview_url", workspace=str(root), diff=UNKNOWN_SET_ID)
+    # 検証
+    assert result.is_error is True
+    assert result.text.startswith("エラー: 引数の誤り: diff:")
+    assert UNKNOWN_SET_ID in result.text
+    # 配信は止まらない
+    assert http_request(first.data["url"], PAGE_PATH).status == 200

@@ -1,0 +1,31 @@
+$ ruff check tests
+tests/e2e/preview_helpers.py:20:11: RUF022 [*] `__all__` is not sorted
+tests/e2e/preview_helpers.py:288:40: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/e2e/preview_helpers.py:295:86: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/external_access_helpers.py:130:73: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+tests/integration/browser_tab_helpers.py:38:32: RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+tests/integration/preview/preview_comment_helpers.py:14:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/preview_html_body_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/test_detail_panel_screen.py:15:5: F401 [*] `preview_alias_helpers.ALIAS_BODY` imported but unused
+tests/integration/skill/register_helpers.py:19:11: RUF022 [*] `__all__` is not sorted
+tests/integration/storybook/storybook_frame_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/unit/scripts/test_register.py:131:20: S604 Function call with truthy `shell` parameter identified, security issue
+Found 11 errors.
+[*] 10 fixable with the `--fix` option.
+(exit: 1)
+
+# base (develop f7a88035) で同じコマンドを回した出力
+$ ruff check tests
+tests/e2e/preview_helpers.py:18:11: RUF022 [*] `__all__` is not sorted
+tests/e2e/preview_helpers.py:267:40: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/e2e/preview_helpers.py:274:86: RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+tests/external_access_helpers.py:130:73: RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+tests/integration/browser_tab_helpers.py:38:32: RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+tests/integration/preview/preview_comment_helpers.py:14:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/preview_html_body_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/integration/preview/test_detail_panel_screen.py:15:5: F401 [*] `preview_alias_helpers.ALIAS_BODY` imported but unused
+tests/integration/skill/register_helpers.py:19:11: RUF022 [*] `__all__` is not sorted
+tests/integration/storybook/storybook_frame_helpers.py:9:11: RUF022 [*] `__all__` is not sorted
+tests/unit/scripts/test_register.py:131:20: S604 Function call with truthy `shell` parameter identified, security issue
+Found 11 errors.
+[*] 10 fixable with the `--fix` option.

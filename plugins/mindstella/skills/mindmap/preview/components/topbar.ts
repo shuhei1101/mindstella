@@ -11,7 +11,7 @@ namespace MindmapPreview {
     icon: IconName;
     /** その種類の項目の件数（概要は持たない） */
     count?: number;
-    /** 差分の表示の間、その種類に新規・変更の項目があるか。真のとき、件数を残したまま右上に点を重ねる */
+    /** 差分の表示の間、その種類に新規・変更・消した項目があるか。真のとき、件数を残したまま右上に点を重ねる */
     marked?: boolean;
   };
 
@@ -49,6 +49,8 @@ namespace MindmapPreview {
     commentCount?: number;
     /** コメントの一覧を開いているか */
     commentsOpen?: boolean;
+    /** オープンのスレッドに利用者の未読があるか。`comments` が真のときだけ効き、吹き出しの印の右上に点を重ねる（件数は出さない） */
+    commentsUnread?: boolean;
     /** コメントのボタンを押したとき（0 件でも押せる。一覧を開く・閉じる） */
     onComments?: () => void;
     /** 変更履歴で選んだ時点。あるとき、「変更履歴」の右にその名前の札と外す × を出す */
@@ -110,7 +112,7 @@ namespace MindmapPreview {
           ? h({
             tag: "span",
             attrs: { class: "df-dot" },
-            children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更の項目があります"] })],
+            children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["新規・変更・消した項目があります"] })],
           })
           : null,
       ],
@@ -186,19 +188,24 @@ namespace MindmapPreview {
   }
 
   /** コメントのボタン（印と「コメント」と件数）。押すとコメントの一覧を開く・閉じる */
-  function commentsButton({ count, open, onClick }: { count: number; open: boolean; onClick?: () => void }): HTMLElement {
+  function commentsButton({ count, open, unread, onClick }: { count: number; open: boolean; unread: boolean; onClick?: () => void }): HTMLElement {
     return h({
       tag: "button",
       attrs: {
         class: `comments-btn${open ? " open" : ""}`,
         type: "button",
         "data-act": "comments",
-        "aria-label": `コメント（レビュー中 ${count} 件）`,
+        "aria-label": `コメント（${unread ? "未読あり・" : ""}レビュー中 ${count} 件）`,
         "aria-expanded": String(open),
         onclick: () => onClick?.(),
       },
       children: [
-        icon("comment"),
+        // 吹き出しの印の右上に、未読の点を重ねる（ボタンの幅を変えない。点は読み上げから外す）
+        h({
+          tag: "span",
+          attrs: { class: "cb-icon" },
+          children: [icon("comment"), unread ? h({ tag: "span", attrs: { class: "unread-dot", "aria-hidden": "true" } }) : null],
+        }),
         h({ tag: "span", attrs: { class: "label" }, children: ["コメント"] }),
         h({
           tag: "span",
@@ -261,6 +268,7 @@ namespace MindmapPreview {
     comments = false,
     commentCount = 0,
     commentsOpen = false,
+    commentsUnread = false,
     onComments,
     diffPoint = null,
     onHistory,
@@ -311,7 +319,7 @@ namespace MindmapPreview {
         comments ? h({ tag: "span", attrs: { class: "spacer" } }) : null,
         onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
         filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
-        comments ? commentsButton({ count: commentCount, open: commentsOpen, onClick: onComments }) : null,
+        comments ? commentsButton({ count: commentCount, open: commentsOpen, unread: commentsUnread, onClick: onComments }) : null,
         h({
           tag: "button",
           attrs: {
