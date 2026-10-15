@@ -1,0 +1,794 @@
+$ ruff check plugins tests && npm run typecheck
+B905 `zip()` without an explicit `strict=` parameter
+   --> plugins/mindstella/skills/mindmap/scripts/html_body.py:114:39
+    |
+112 |     pieces: list[str] = []
+113 |     cursor = 0
+114 |     for (name_end, line), end_line in zip(collector.marks, collector.end_lines):
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+115 |         pieces.append(source[cursor:name_end])
+116 |         pieces.append(f' {LINE_ATTR}="{line}" {LINE_END_ATTR}="{end_line}"')
+    |
+help: Add explicit value for parameter `strict=`
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:164:25
+    |
+162 |     def update(
+163 |         workspace: WorkspaceArg,
+164 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+165 |         item: Annotated[dict[str, Any], Field(description="置き換えるキーと値。null で消す")],
+166 |     ) -> CallToolResult:
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:175:25
+    |
+173 |     def remove(
+174 |         workspace: WorkspaceArg,
+175 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+176 |     ) -> CallToolResult:
+177 |         return write(workspace, lambda root: commands.run_remove(root, id))
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:218:25
+    |
+216 |     def adopt(
+217 |         workspace: WorkspaceArg,
+218 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+219 |         key: Annotated[str, Field(description="採用する案の記号")],
+220 |     ) -> CallToolResult:
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:229:25
+    |
+227 |     def edit_option(
+228 |         workspace: WorkspaceArg,
+229 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+230 |         action: Annotated[
+231 |             Literal["add", "update", "remove"],
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:298:76
+    |
+297 |     @server.tool(name="impact", description="参照を逆向きにたどって影響を受ける項目を返す")
+298 |     def impact(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:  # noqa: A002
+    |                                                                            ^^^^^^^^^^^^
+299 |         return read(workspace, lambda root: commands.run_impact(root, id))
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:328:74
+    |
+327 |     @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
+328 |     def show(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:  # noqa: A002
+    |                                                                          ^^^^^^^^^^^^
+329 |         return read(workspace, lambda root: commands.run_show(root, id))
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:432:69
+    |
+430 |     def thread(
+431 |         workspace: WorkspaceArg,
+432 |         id: Annotated[str, Field(description="スレッドの ID（例 TH-1）")],  # noqa: A002
+    |                                                                             ^^^^^^^^^^^^
+433 |         unread_only: Annotated[
+434 |             bool, Field(description="真なら AI の未読の書き込みだけ、偽なら全ての書き込み")
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:466:61
+    |
+464 |     def reply(
+465 |         workspace: WorkspaceArg,
+466 |         id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+    |                                                                  ^^^^^^^^^^^^
+467 |         body: Annotated[str, Field(description="返信の本文（1〜10000 文字）")],
+468 |         summary: Annotated[str, Field(description="書き直した要約（1〜400 文字）")],
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:481:61
+    |
+479 |     def set_thread_status(
+480 |         workspace: WorkspaceArg,
+481 |         id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+    |                                                                  ^^^^^^^^^^^^
+482 |         status: Annotated[Literal["open", "closed"], Field(description="変えた後の状態")],
+483 |         reason: Annotated[str | None, Field(description="状態を変える理由（400 文字まで）")] = None,
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:495:61
+    |
+493 |     def update_thread(
+494 |         workspace: WorkspaceArg,
+495 |         id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+    |                                                                  ^^^^^^^^^^^^
+496 |         summary: Annotated[str | None, Field(description="書き直した要約（1〜400 文字）")] = None,
+497 |         tags: Annotated[
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (unused: `BLE001`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:531:33
+    |
+529 |     except MindmapError as error:
+530 |         return error_result(error)
+531 |     except Exception as error:  # noqa: BLE001
+    |                                 ^^^^^^^^^^^^^^
+532 |         # 想定していない例外: トレースバックは記録に残し、利用者には文言だけ返す
+533 |         logger.exception("ツールの予期しないエラー")
+    |
+help: Remove unused `noqa` directive
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/e2e/preview_helpers.py:18:11
+   |
+16 |   from workspace_fixtures import RECORD_DIR
+17 |
+18 |   __all__ = [
+   |  ___________^
+19 | |     "HttpResult",
+20 | |     "COMMENTS_BUTTON",
+21 | |     "COMMENTS_PANEL",
+22 | |     "DETAIL_FORM",
+23 | |     "DETAIL_MESSAGE",
+24 | |     "DETAIL_TEXTAREA",
+25 | |     "DRAWER",
+26 | |     "DRAWER_OPEN",
+27 | |     "FILTER_BADGE",
+28 | |     "FILTER_BUTTON",
+29 | |     "FRAME_TEXT_RECT_SCRIPT",
+30 | |     "FREE_FORM",
+31 | |     "FREE_TEXTAREA",
+32 | |     "HISTORY_DIALOG",
+33 | |     "HISTORY_REDRAW_TIMEOUT_MS",
+34 | |     "HISTORY_ROW",
+35 | |     "PILL",
+36 | |     "OpenInEmptyContext",
+37 | |     "OpenPreview",
+38 | |     "ServePreview",
+39 | |     "ServeWorkspace",
+40 | |     "badge_text",
+41 | |     "bands_stay_on_top",
+42 | |     "canvas_center",
+43 | |     "center_ball",
+44 | |     "checked_values",
+45 | |     "clear_condition",
+46 | |     "click_item_ball",
+47 | |     "close_drawer",
+48 | |     "closed_keys",
+49 | |     "count_balls",
+50 | |     "drag_select_in_frame",
+51 | |     "drawer_counts",
+52 | |     "fetch_records",
+53 | |     "http_call",
+54 | |     "install_closed_key_spy",
+55 | |     "open_drawer",
+56 | |     "page_scroll_overflow",
+57 | |     "pick_history_point",
+58 | |     "press_ball_keeping_detail",
+59 | |     "press_blank",
+60 | |     "press_center_ball",
+61 | |     "row_ids",
+62 | |     "select_text",
+63 | |     "select_text_for_pill",
+64 | |     "shown_ball_item_ids",
+65 | |     "snapshot_records",
+66 | |     "toggle_value",
+67 | |     "visit_and_close",
+68 | |     "wait_camera_still",
+69 | |     "wait_closed_key",
+70 | | ]
+   | |_^
+71 |
+72 |   type ServePreview = Callable[..., str]
+   |
+help: Apply an isort-style sorting to `__all__`
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+   --> tests/e2e/preview_helpers.py:267:40
+    |
+265 | ) -> HttpResult:
+266 |     """配信の URL のページの路に依らず、パスを足して 1 回つなぐ。ステータスが 4xx・5xx でも例外にせず、応答を返す。"""
+267 |     request = urllib.request.Request(  # noqa: S310
+    |                                        ^^^^^^^^^^^^
+268 |         urljoin(url, path),
+269 |         method=method,
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+   --> tests/e2e/preview_helpers.py:274:86
+    |
+272 |     )
+273 |     try:
+274 |         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:  # noqa: S310
+    |                                                                                      ^^^^^^^^^^^^
+275 |             return HttpResult(
+276 |                 response.status,
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> tests/external_access_helpers.py:130:73
+    |
+128 |             do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = _relay
+129 |
+130 |             def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+    |                                                                         ^^^^^^^^^^^^
+131 |                 """転送の記録は出さない。"""
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+  --> tests/integration/browser_tab_helpers.py:38:32
+   |
+36 |     """どのパスにも同じ小さなページを返す、リンク先の配信。"""
+37 |
+38 |     def do_GET(self) -> None:  # noqa: N802 - http.server が呼ぶ名前
+   |                                ^^^^^^^^^^^^
+39 |         """リンク先のページを返す。"""
+40 |         body = f"<!doctype html><title>{LINK_PAGE_TITLE}</title><p>リンク先</p>".encode()
+   |
+help: Remove unused `noqa` directive
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/preview/preview_comment_helpers.py:14:11
+   |
+12 |   from workspace_fixtures import RECORD_DIR
+13 |
+14 |   __all__ = [
+   |  ___________^
+15 | |     "BAND_COUNT",
+16 | |     "BAND_RESULT",
+17 | |     "CHECK_ALL",
+18 | |     "COMMENTS_BUTTON",
+19 | |     "COMMENTS_PANEL",
+20 | |     "DETAIL_FORM",
+21 | |     "DETAIL_MESSAGE",
+22 | |     "DETAIL_TEXTAREA",
+23 | |     "DRAFT_WAIT_MS",
+24 | |     "FREE_FORM",
+25 | |     "FREE_TEXTAREA",
+26 | |     "PANEL_REVIEW",
+27 | |     "PILL",
+28 | |     "REVIEW_ENTRY",
+29 | |     "REVIEW_HEAD",
+30 | |     "ROW_CORNER_GAPS_JS",
+31 | |     "ROW_CORNER_TOLERANCE_PX",
+32 | |     "THREAD_ROWS",
+33 | |     "THREE_LINE_BODY",
+34 | |     "UPDATE_TIMEOUT_MS",
+35 | |     "free_comment",
+36 | |     "fulfill_problem",
+37 | |     "open_list",
+38 | |     "open_review",
+39 | |     "open_thread",
+40 | |     "read_workspace_yaml",
+41 | |     "review_row",
+42 | |     "thread_row",
+43 | |     "select_text",
+44 | |     "select_text_for_pill",
+45 | |     "wait_until_focused",
+46 | | ]
+   | |_^
+47 |
+48 |   # 3 行の段落を持つ資料の本文（2 行目が選ぶ文）
+   |
+help: Apply an isort-style sorting to `__all__`
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/preview/preview_html_body_helpers.py:9:11
+   |
+ 7 |   from playwright.sync_api import Frame, Page
+ 8 |
+ 9 |   __all__ = [
+   |  ___________^
+10 | |     "BODY_FRAME",
+11 | |     "BODY_WITH_HTML_CODE_BLOCK",
+12 | |     "BODY_WITHOUT_HTML_CODE_BLOCK",
+13 | |     "LEAKING_HTML_BODY",
+14 | |     "MARKED_FRAME",
+15 | |     "FRAME_SETTLE_MS",
+16 | |     "FrameFit",
+17 | |     "drag_select_in_frame",
+18 | |     "frame_fit",
+19 | |     "frame_of",
+20 | |     "leak_counts",
+21 | |     "select_in_frame",
+22 | |     "style_snapshot",
+23 | |     "text_rect_in_page",
+24 | |     "wait_frame_rendered",
+25 | | ]
+   | |_^
+   |
+help: Apply an isort-style sorting to `__all__`
+
+F401 [*] `preview_alias_helpers.ALIAS_BODY` imported but unused
+  --> tests/integration/preview/test_detail_panel_screen.py:15:5
+   |
+13 | from preview_a11y_checks import axe_rule_results
+14 | from preview_alias_helpers import (
+15 |     ALIAS_BODY,
+   |     ^^^^^^^^^^
+16 |     MARK_IN_PANEL_BODY_JS,
+17 |     MARK_MARGIN_PX,
+   |
+help: Remove unused import: `preview_alias_helpers.ALIAS_BODY`
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/skill/register_helpers.py:19:11
+   |
+17 |   from .skill_files import PLUGIN_DIR
+18 |
+19 |   __all__ = [
+   |  ___________^
+20 | |     "BASHRC_USER_LINE",
+21 | |     "CONFIG_UNSET",
+22 | |     "LockFiles",
+23 | |     "MARK_BEGIN",
+24 | |     "REGISTER_SCRIPT",
+25 | |     "RegisterSandbox",
+26 | |     "read_report",
+27 | | ]
+   | |_^
+28 |
+29 |   type LockFiles = Callable[..., None]
+   |
+help: Apply an isort-style sorting to `__all__`
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/storybook/storybook_frame_helpers.py:9:11
+   |
+ 7 |   from playwright.sync_api import Frame, Page
+ 8 |
+ 9 |   __all__ = [
+   |  ___________^
+10 | |     "EXTERNAL_PAGE_TITLE",
+11 | |     "FRAME_SELECTOR",
+12 | |     "FRAME_SETTLE_MS",
+13 | |     "FrameFit",
+14 | |     "serve_external_pages",
+15 | |     "frame_fit",
+16 | |     "frame_of",
+17 | |     "wait_frame_rendered",
+18 | | ]
+   | |_^
+19 |
+20 |   # 部品が描く枠
+   |
+help: Apply an isort-style sorting to `__all__`
+
+S604 Function call with truthy `shell` parameter identified, security issue
+   --> tests/unit/scripts/test_register.py:131:20
+    |
+129 |     """bash・zsh でなければ手で書く行を返して 1（異常系）。"""
+130 |     # 実行
+131 |     code, report = _run_main(register, ["set"], tmp_path, capsys, shell="/usr/bin/fish")
+    |                    ^^^^^^^^^
+132 |     # 検証
+133 |     assert code == 1
+    |
+
+Found 23 errors.
+[*] 21 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).
+
+$ npm run typecheck
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+
+# base（origin/develop）で同じ ruff check を回した出力
+$ ruff check plugins tests
+B905 `zip()` without an explicit `strict=` parameter
+   --> plugins/mindstella/skills/mindmap/scripts/html_body.py:114:39
+    |
+112 |     pieces: list[str] = []
+113 |     cursor = 0
+114 |     for (name_end, line), end_line in zip(collector.marks, collector.end_lines):
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+115 |         pieces.append(source[cursor:name_end])
+116 |         pieces.append(f' {LINE_ATTR}="{line}" {LINE_END_ATTR}="{end_line}"')
+    |
+help: Add explicit value for parameter `strict=`
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:164:25
+    |
+162 |     def update(
+163 |         workspace: WorkspaceArg,
+164 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+165 |         item: Annotated[dict[str, Any], Field(description="置き換えるキーと値。null で消す")],
+166 |     ) -> CallToolResult:
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:175:25
+    |
+173 |     def remove(
+174 |         workspace: WorkspaceArg,
+175 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+176 |     ) -> CallToolResult:
+177 |         return write(workspace, lambda root: commands.run_remove(root, id))
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:218:25
+    |
+216 |     def adopt(
+217 |         workspace: WorkspaceArg,
+218 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+219 |         key: Annotated[str, Field(description="採用する案の記号")],
+220 |     ) -> CallToolResult:
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:229:25
+    |
+227 |     def edit_option(
+228 |         workspace: WorkspaceArg,
+229 |         id: ItemIdArg,  # noqa: A002
+    |                         ^^^^^^^^^^^^
+230 |         action: Annotated[
+231 |             Literal["add", "update", "remove"],
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:298:76
+    |
+297 |     @server.tool(name="impact", description="参照を逆向きにたどって影響を受ける項目を返す")
+298 |     def impact(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:  # noqa: A002
+    |                                                                            ^^^^^^^^^^^^
+299 |         return read(workspace, lambda root: commands.run_impact(root, id))
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:328:74
+    |
+327 |     @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
+328 |     def show(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:  # noqa: A002
+    |                                                                          ^^^^^^^^^^^^
+329 |         return read(workspace, lambda root: commands.run_show(root, id))
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:432:69
+    |
+430 |     def thread(
+431 |         workspace: WorkspaceArg,
+432 |         id: Annotated[str, Field(description="スレッドの ID（例 TH-1）")],  # noqa: A002
+    |                                                                             ^^^^^^^^^^^^
+433 |         unread_only: Annotated[
+434 |             bool, Field(description="真なら AI の未読の書き込みだけ、偽なら全ての書き込み")
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:466:61
+    |
+464 |     def reply(
+465 |         workspace: WorkspaceArg,
+466 |         id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+    |                                                                  ^^^^^^^^^^^^
+467 |         body: Annotated[str, Field(description="返信の本文（1〜10000 文字）")],
+468 |         summary: Annotated[str, Field(description="書き直した要約（1〜400 文字）")],
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:481:61
+    |
+479 |     def set_thread_status(
+480 |         workspace: WorkspaceArg,
+481 |         id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+    |                                                                  ^^^^^^^^^^^^
+482 |         status: Annotated[Literal["open", "closed"], Field(description="変えた後の状態")],
+483 |         reason: Annotated[str | None, Field(description="状態を変える理由（400 文字まで）")] = None,
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:495:61
+    |
+493 |     def update_thread(
+494 |         workspace: WorkspaceArg,
+495 |         id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+    |                                                                  ^^^^^^^^^^^^
+496 |         summary: Annotated[str | None, Field(description="書き直した要約（1〜400 文字）")] = None,
+497 |         tags: Annotated[
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (unused: `BLE001`)
+   --> plugins/mindstella/skills/mindmap/scripts/server.py:531:33
+    |
+529 |     except MindmapError as error:
+530 |         return error_result(error)
+531 |     except Exception as error:  # noqa: BLE001
+    |                                 ^^^^^^^^^^^^^^
+532 |         # 想定していない例外: トレースバックは記録に残し、利用者には文言だけ返す
+533 |         logger.exception("ツールの予期しないエラー")
+    |
+help: Remove unused `noqa` directive
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/e2e/preview_helpers.py:18:11
+   |
+16 |   from workspace_fixtures import RECORD_DIR
+17 |
+18 |   __all__ = [
+   |  ___________^
+19 | |     "HttpResult",
+20 | |     "COMMENTS_BUTTON",
+21 | |     "COMMENTS_PANEL",
+22 | |     "DETAIL_FORM",
+23 | |     "DETAIL_MESSAGE",
+24 | |     "DETAIL_TEXTAREA",
+25 | |     "DRAWER",
+26 | |     "DRAWER_OPEN",
+27 | |     "FILTER_BADGE",
+28 | |     "FILTER_BUTTON",
+29 | |     "FRAME_TEXT_RECT_SCRIPT",
+30 | |     "FREE_FORM",
+31 | |     "FREE_TEXTAREA",
+32 | |     "HISTORY_DIALOG",
+33 | |     "HISTORY_REDRAW_TIMEOUT_MS",
+34 | |     "HISTORY_ROW",
+35 | |     "PILL",
+36 | |     "OpenInEmptyContext",
+37 | |     "OpenPreview",
+38 | |     "ServePreview",
+39 | |     "ServeWorkspace",
+40 | |     "badge_text",
+41 | |     "bands_stay_on_top",
+42 | |     "canvas_center",
+43 | |     "center_ball",
+44 | |     "checked_values",
+45 | |     "clear_condition",
+46 | |     "click_item_ball",
+47 | |     "close_drawer",
+48 | |     "closed_keys",
+49 | |     "count_balls",
+50 | |     "drag_select_in_frame",
+51 | |     "drawer_counts",
+52 | |     "fetch_records",
+53 | |     "http_call",
+54 | |     "install_closed_key_spy",
+55 | |     "open_drawer",
+56 | |     "page_scroll_overflow",
+57 | |     "pick_history_point",
+58 | |     "press_ball_keeping_detail",
+59 | |     "press_blank",
+60 | |     "press_center_ball",
+61 | |     "row_ids",
+62 | |     "select_text",
+63 | |     "select_text_for_pill",
+64 | |     "shown_ball_item_ids",
+65 | |     "snapshot_records",
+66 | |     "toggle_value",
+67 | |     "visit_and_close",
+68 | |     "wait_camera_still",
+69 | |     "wait_closed_key",
+70 | | ]
+   | |_^
+71 |
+72 |   type ServePreview = Callable[..., str]
+   |
+help: Apply an isort-style sorting to `__all__`
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+   --> tests/e2e/preview_helpers.py:267:40
+    |
+265 | ) -> HttpResult:
+266 |     """配信の URL のページの路に依らず、パスを足して 1 回つなぐ。ステータスが 4xx・5xx でも例外にせず、応答を返す。"""
+267 |     request = urllib.request.Request(  # noqa: S310
+    |                                        ^^^^^^^^^^^^
+268 |         urljoin(url, path),
+269 |         method=method,
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `S310`)
+   --> tests/e2e/preview_helpers.py:274:86
+    |
+272 |     )
+273 |     try:
+274 |         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:  # noqa: S310
+    |                                                                                      ^^^^^^^^^^^^
+275 |             return HttpResult(
+276 |                 response.status,
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `A002`)
+   --> tests/external_access_helpers.py:130:73
+    |
+128 |             do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = _relay
+129 |
+130 |             def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+    |                                                                         ^^^^^^^^^^^^
+131 |                 """転送の記録は出さない。"""
+    |
+help: Remove unused `noqa` directive
+
+RUF100 [*] Unused `noqa` directive (non-enabled: `N802`)
+  --> tests/integration/browser_tab_helpers.py:38:32
+   |
+36 |     """どのパスにも同じ小さなページを返す、リンク先の配信。"""
+37 |
+38 |     def do_GET(self) -> None:  # noqa: N802 - http.server が呼ぶ名前
+   |                                ^^^^^^^^^^^^
+39 |         """リンク先のページを返す。"""
+40 |         body = f"<!doctype html><title>{LINK_PAGE_TITLE}</title><p>リンク先</p>".encode()
+   |
+help: Remove unused `noqa` directive
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/preview/preview_comment_helpers.py:14:11
+   |
+12 |   from workspace_fixtures import RECORD_DIR
+13 |
+14 |   __all__ = [
+   |  ___________^
+15 | |     "BAND_COUNT",
+16 | |     "BAND_RESULT",
+17 | |     "CHECK_ALL",
+18 | |     "COMMENTS_BUTTON",
+19 | |     "COMMENTS_PANEL",
+20 | |     "DETAIL_FORM",
+21 | |     "DETAIL_MESSAGE",
+22 | |     "DETAIL_TEXTAREA",
+23 | |     "DRAFT_WAIT_MS",
+24 | |     "FREE_FORM",
+25 | |     "FREE_TEXTAREA",
+26 | |     "PANEL_REVIEW",
+27 | |     "PILL",
+28 | |     "REVIEW_ENTRY",
+29 | |     "REVIEW_HEAD",
+30 | |     "ROW_CORNER_GAPS_JS",
+31 | |     "ROW_CORNER_TOLERANCE_PX",
+32 | |     "THREAD_ROWS",
+33 | |     "THREE_LINE_BODY",
+34 | |     "UPDATE_TIMEOUT_MS",
+35 | |     "free_comment",
+36 | |     "fulfill_problem",
+37 | |     "open_list",
+38 | |     "open_review",
+39 | |     "open_thread",
+40 | |     "read_workspace_yaml",
+41 | |     "review_row",
+42 | |     "thread_row",
+43 | |     "select_text",
+44 | |     "select_text_for_pill",
+45 | |     "wait_until_focused",
+46 | | ]
+   | |_^
+47 |
+48 |   # 3 行の段落を持つ資料の本文（2 行目が選ぶ文）
+   |
+help: Apply an isort-style sorting to `__all__`
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/preview/preview_html_body_helpers.py:9:11
+   |
+ 7 |   from playwright.sync_api import Frame, Page
+ 8 |
+ 9 |   __all__ = [
+   |  ___________^
+10 | |     "BODY_FRAME",
+11 | |     "BODY_WITH_HTML_CODE_BLOCK",
+12 | |     "BODY_WITHOUT_HTML_CODE_BLOCK",
+13 | |     "LEAKING_HTML_BODY",
+14 | |     "MARKED_FRAME",
+15 | |     "FRAME_SETTLE_MS",
+16 | |     "FrameFit",
+17 | |     "drag_select_in_frame",
+18 | |     "frame_fit",
+19 | |     "frame_of",
+20 | |     "leak_counts",
+21 | |     "select_in_frame",
+22 | |     "style_snapshot",
+23 | |     "text_rect_in_page",
+24 | |     "wait_frame_rendered",
+25 | | ]
+   | |_^
+   |
+help: Apply an isort-style sorting to `__all__`
+
+F401 [*] `preview_alias_helpers.ALIAS_BODY` imported but unused
+  --> tests/integration/preview/test_detail_panel_screen.py:15:5
+   |
+13 | from preview_a11y_checks import axe_rule_results
+14 | from preview_alias_helpers import (
+15 |     ALIAS_BODY,
+   |     ^^^^^^^^^^
+16 |     MARK_IN_PANEL_BODY_JS,
+17 |     MARK_MARGIN_PX,
+   |
+help: Remove unused import: `preview_alias_helpers.ALIAS_BODY`
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/skill/register_helpers.py:19:11
+   |
+17 |   from .skill_files import PLUGIN_DIR
+18 |
+19 |   __all__ = [
+   |  ___________^
+20 | |     "BASHRC_USER_LINE",
+21 | |     "CONFIG_UNSET",
+22 | |     "LockFiles",
+23 | |     "MARK_BEGIN",
+24 | |     "REGISTER_SCRIPT",
+25 | |     "RegisterSandbox",
+26 | |     "read_report",
+27 | | ]
+   | |_^
+28 |
+29 |   type LockFiles = Callable[..., None]
+   |
+help: Apply an isort-style sorting to `__all__`
+
+RUF022 [*] `__all__` is not sorted
+  --> tests/integration/storybook/storybook_frame_helpers.py:9:11
+   |
+ 7 |   from playwright.sync_api import Frame, Page
+ 8 |
+ 9 |   __all__ = [
+   |  ___________^
+10 | |     "EXTERNAL_PAGE_TITLE",
+11 | |     "FRAME_SELECTOR",
+12 | |     "FRAME_SETTLE_MS",
+13 | |     "FrameFit",
+14 | |     "serve_external_pages",
+15 | |     "frame_fit",
+16 | |     "frame_of",
+17 | |     "wait_frame_rendered",
+18 | | ]
+   | |_^
+19 |
+20 |   # 部品が描く枠
+   |
+help: Apply an isort-style sorting to `__all__`
+
+S604 Function call with truthy `shell` parameter identified, security issue
+   --> tests/unit/scripts/test_register.py:131:20
+    |
+129 |     """bash・zsh でなければ手で書く行を返して 1（異常系）。"""
+130 |     # 実行
+131 |     code, report = _run_main(register, ["set"], tmp_path, capsys, shell="/usr/bin/fish")
+    |                    ^^^^^^^^^
+132 |     # 検証
+133 |     assert code == 1
+    |
+
+Found 23 errors.
+[*] 21 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).
