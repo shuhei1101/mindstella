@@ -30,7 +30,9 @@ from preview_comment_helpers import (
     REVIEW_HEAD,
     THREE_LINE_BODY,
     open_review,
+    open_thread,
     read_workspace_yaml,
+    review_row,
     select_text,
     select_text_for_pill,
 )
@@ -48,6 +50,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
 )
 from preview_history_helpers import preselect_diff
+from preview_post_link_helpers import POST_LINK_HASH
 from preview_html_body_helpers import (
     BODY_FRAME,
     BODY_WITH_HTML_CODE_BLOCK,
@@ -1495,6 +1498,86 @@ def test_normal_when_body_link_to_change_set(
     # 検証
     assert page.evaluate(BODY_LINK_HEADING_IN_VIEW_JS, ["aside.panel .panel-body", "決め方"]) is True
     assert _hash_params(page)["diff"] == ["V-1"]
+
+
+def test_normal_when_post_link_to_change_set(
+    write_post_link_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """スレッドの書き込みとレビュー中を確かめる画面の行の #diff= のリンクを押すと、画面を開いたままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さないものは書いた文字のまま出す（正常系）。"""
+    # 準備
+    url, _ = write_post_link_preview()
+    open_preview(url, POST_LINK_HASH)
+    open_thread(page, "TH-1")
+    post = f"{COMMENTS_PANEL} ol.posts > li:nth-child(1) .post-body"
+    links = f"{post} a.setlink"
+    history_before = page.evaluate("history.length")
+    # 検証（リンクは 2 つだけで、リンクの中の D-1 は項目を開くボタンにしない）
+    assert page.eval_on_selector_all(links, "links => links.map(a => a.textContent)") == [
+        "D-1 を直した",
+        "他の引数つき",
+    ]
+    assert page.locator(f"{post} button.idlink").count() == 0
+    text = page.inner_text(post)
+    assert "](#diff=V-1)" not in text
+    assert "](#tab=tasks&id=D-2&diff=V-2)" not in text
+    # 検証（まとまりを指さないものは書いた文字のまま）
+    for literal in ("[無いまとまり](#diff=V-99)", "[前回から](#diff=since)", "[決め方へ](#決め方)"):
+        assert literal in text
+    # 実行（「D-1 を直した」を押す）
+    page.locator(links, has_text="D-1 を直した").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（V-1 の差分の表示と、開いたままのスレッド）
+    assert page.locator('table.grid tbody tr[data-id="D-1"] .row-open + .df-mark.df-chg').count() == 1
+    assert page.locator('table.grid tbody tr[data-id="D-2"] .df-mark').count() == 0
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") != ""
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["view"] == ["table"]
+    assert _hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate(SAVED_DIFF_JS) == "V-1"
+    assert page.evaluate("history.length") == history_before
+    # 実行（「他の引数つき」を押す）
+    page.locator(links, has_text="他の引数つき").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（`tab`・`id` は書き換わらず、`diff` だけを読む）
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["view"] == ["table"]
+    assert "id" not in _hash_params(page)
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.evaluate("history.length") == history_before
+    # 実行（V-1 に戻してから、レビュー中を確かめる画面の行の「V-2 の直し」を押す）
+    page.locator(links, has_text="D-1 を直した").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    row = review_row(COMMENTS_PANEL, "C-1")
+    # 検証（行のリンクは 1 つで、行の D-2 は文字のまま）
+    assert page.eval_on_selector_all(
+        f"{row} .review-body a.setlink", "links => links.map(a => a.textContent)"
+    ) == ["V-2 の直し"]
+    assert page.locator(f"{row} .review-body button").count() == 0
+    assert "D-2" in page.inner_text(f"{row} .review-body")
+    # 実行
+    page.locator(f"{row} .review-body a.setlink").click()
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（レビュー中を確かめる画面は開いたまま）
+    assert page.locator(REVIEW_HEAD).count() == 1
+    assert _hash_params(page)["tab"] == ["decisions"]
+    assert _hash_params(page)["diff"] == ["V-2"]
+    assert page.evaluate("history.length") == history_before
 
 
 # 帯の印の無い、上端に近い位置（帯の上端からの距離。先頭の印の下）

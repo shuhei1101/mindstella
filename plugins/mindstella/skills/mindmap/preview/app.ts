@@ -822,9 +822,7 @@ namespace MindmapPreview {
             navigate({ route: { ...route, filters: {} }, push: false });
           },
           // 本文のまとまりのリンクを押した: 記録にあるまとまりのときだけ、変更履歴で選んだときと同じに切り替える
-          changeSet: (id) => {
-            if (resolveDiffPoint(data.changes, id, since) !== null) selectPoint(id);
-          },
+          changeSet: openChangeSet,
         },
         comment: serverMode
           ? {
@@ -1594,6 +1592,7 @@ namespace MindmapPreview {
       selected: comment.opened,
       reviewFocus: comment.reviewFocus,
       titleOf: (id) => index.byId.get(id)?.item.title ?? null,
+      changeSetOf: (id) => data.changes.sets.find((set) => set.id === id)?.summary ?? null,
       on: {
         close: closeList,
         review: openReview,
@@ -1619,6 +1618,7 @@ namespace MindmapPreview {
         },
         openThread,
         openId: openFromThread,
+        changeSet: openChangeSet,
         reply: (thread, body) => void saveReply(thread, body),
         replyInput: typeReply,
         reasonOpen: (open) => {
@@ -2078,6 +2078,11 @@ namespace MindmapPreview {
       route = { ...route, diff: sel };
       navigate({ route: { ...route, filters: {} }, push: false });
       redrawKeepingState();
+    };
+
+    /** 本文・書き込みのまとまりのリンクを押した: 記録にあるまとまりのときだけ、変更履歴で選んだときと同じに切り替える */
+    const openChangeSet = (id: string): void => {
+      if (resolveDiffPoint(data.changes, id, since) !== null) selectPoint(id);
     };
 
     /** 変更履歴のモーダルを開く（開いているときは何もしない） */

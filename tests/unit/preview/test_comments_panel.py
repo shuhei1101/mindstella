@@ -73,7 +73,7 @@ RUN_SCRIPT = """(args) => {
     const names = [
         "close", "review", "back", "filter", "tag", "clearTag", "compose", "openThread", "openId",
         "reply", "replyInput", "reasonOpen", "reasonInput", "setStatus", "check", "checkAll",
-        "send", "open", "edit", "saveEdit", "cancelEdit", "remove", "restore", "unloc",
+        "send", "open", "edit", "saveEdit", "cancelEdit", "remove", "restore", "unloc", "changeSet",
     ];
     const on = Object.fromEntries(names.map((name) => [name, (...a) => calls.push([name, ...a])]));
     const props = {
@@ -87,7 +87,8 @@ RUN_SCRIPT = """(args) => {
         reason: {open: false, body: "", status: "idle", detail: null},
         checked: new Set(), editing: null, editingIn: "list", editError: null, editBody: null,
         stale: new Map(), result: null, selected: null, reviewFocus: null,
-        titleOf: (id) => ({"D-1": "問い", "D-12": "失敗時の扱い"})[id] ?? null,
+        titleOf: (id) => ({"D-1": "問い", "D-12": "失敗時の扱い", "T-14": "確かめる"})[id] ?? null,
+        changeSetOf: (id) => ({"V-1": "1 回目の説明", "V-6": "6 回目の説明"})[id] ?? null,
         ...args.props,
         on,
     };
@@ -148,6 +149,9 @@ RUN_SCRIPT = """(args) => {
             indeterminate: f.indeterminate, maxlength: f.getAttribute("maxlength"), value: f.value,
         })),
         alerts: [...host.querySelectorAll('[role="alert"]')].map((a) => norm(a.textContent)),
+        setLinks: [...host.querySelectorAll("a.setlink")].map((a) => ({
+            text: norm(a.textContent), bodyClass: a.parentElement.className,
+        })),
         statuses: [...host.querySelectorAll('[role="status"]')].map((s) => norm(s.textContent)),
         items: [...host.querySelectorAll("li")].map((li) => ({
             text: norm(li.textContent),
@@ -484,6 +488,25 @@ def test_thread_view_when_closed_or_pending(
     assert ("クローズにする" in labels) is False
 
 
+def test_thread_view_when_change_set_link(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """書き込みのまとまりのリンクを使う側へ知らせる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    thread = make_thread(
+        "TH-1",
+        posts=[make_post("ai", "[D-1 を直した](#diff=V-1)", "2026-10-12T01:00:00+00:00")],
+    )
+    props = {"threads": [thread], "opened": {"id": "TH-1", "pending": False}}
+    actions = [{"click": {"selector": "p.post-body a.setlink"}}]
+    # 実行
+    observed = _run(preview_page, "threadView", props, actions=actions)
+    # 検証
+    assert observed["setLinks"] == [{"text": "D-1 を直した", "bodyClass": "post-body"}]
+    assert observed["calls"] == [["changeSet", "V-1"]]
+
+
 REASON_FIELD = 'textarea[maxlength="400"]'
 
 
@@ -775,6 +798,31 @@ def test_review_view_when_sent(
     observed = _run(preview_page, "reviewView", props)
     # 検証
     assert any(expected_text in status for status in observed["statuses"])
+
+
+def test_review_view_when_change_set_link(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """行の本文のまとまりのリンクと、文字のままの項目の ID（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    reply = make_review_item(
+        "C-6",
+        target=None,
+        target_title=None,
+        thread="TH-1",
+        body="[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる",
+    )
+    props = {"items": [reply], "threads": [THREAD_1]}
+    actions = [{"click": {"selector": 'li[data-comment="C-6"] p.review-body a.setlink'}}]
+    # 実行
+    observed = _run(preview_page, "reviewView", props, actions=actions)
+    # 検証
+    row = _row(observed, "C-6")
+    assert observed["setLinks"] == [{"text": "A-14 の書き直し", "bodyClass": "review-body"}]
+    assert "T-14" in row["text"]
+    assert "T-14" not in [button["text"] for button in row["buttons"]]
+    assert observed["calls"] == [["changeSet", "V-6"]]
 
 
 # --- 補助の関数 -------------------------------------------------------------

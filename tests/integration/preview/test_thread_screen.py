@@ -18,10 +18,12 @@ from preview_comment_helpers import (
     open_list,
     open_thread,
     read_workspace_yaml,
+    review_row,
     thread_row,
     wait_until_focused,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_post_link_helpers import DIFF_CHIP_TITLE, DIFF_SETTLE_MS, hash_params
 from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import (
     CallTool,
@@ -262,6 +264,54 @@ def test_post_id_link(served_thread: tuple[str, Path], open_preview: OpenPreview
     page.click(link)
     # 検証
     page.wait_for_selector("aside.panel.open")
+
+
+def test_post_change_set_link(
+    write_post_link_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """本文の中の記録にあるまとまりを指すリンクは、まとまりの説明を title に持つリンクにし、押すと（Enter でも）スレッドの画面を開いたままそのまとまりの差分の表示に切り替える。レビュー中の返信の中でも同じ（正常系）。"""
+    # 準備
+    url, _ = write_post_link_preview()
+    open_preview(url)
+    open_thread(page, "TH-1")
+    history_before = page.evaluate("history.length")
+    link = f"{POSTS}:nth-child(1) .post-body a.setlink"
+    # 検証（読み上げの名前は文言、href はまとまりの ID、title はまとまりの説明）
+    assert page.eval_on_selector_all(link, "links => links.map(a => a.textContent)") == [
+        "D-1 を直した",
+        "他の引数つき",
+    ]
+    assert page.get_attribute(f"{link} >> nth=0", "href") == "#diff=V-1"
+    assert page.get_attribute(f"{link} >> nth=0", "title") == "D-1 を直す"
+    assert page.get_by_role("link", name="D-1 を直した").count() == 1
+    # 実行（Enter で押す）
+    page.focus(f"{link} >> nth=0")
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-1 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（スレッドの画面は開いたまま）
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
+    assert page.locator(HEADING).count() == 1
+    assert hash_params(page)["diff"] == ["V-1"]
+    assert page.evaluate("history.length") == history_before
+    # 実行（レビュー中の返信の中のリンクを押す）
+    reply = f"{review_row(COMMENTS_PANEL, 'C-1')} .post-body"
+    page.click(f"{reply} a.setlink")
+    page.wait_for_function(
+        f"document.querySelector('{DIFF_CHIP_TITLE}')?.textContent.endsWith('D-2 を直す')",
+        timeout=DIFF_SETTLE_MS,
+    )
+    # 検証（リンクの外の D-2 は項目を開くボタンのまま）
+    assert page.inner_text(f"{reply} a.setlink") == "V-2 の直し"
+    assert page.locator(f"{reply} a.setlink button").count() == 0
+    assert page.eval_on_selector_all(
+        f"{reply} button.idlink", "buttons => buttons.map(b => b.textContent)"
+    ) == ["D-2"]
+    assert page.locator(HEADING).count() == 1
+    assert hash_params(page)["diff"] == ["V-2"]
+    assert page.evaluate("history.length") == history_before
 
 
 def test_status_close(served_thread: tuple[str, Path], open_preview: OpenPreview) -> None:

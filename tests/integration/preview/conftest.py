@@ -12,8 +12,10 @@ from typing import Any
 import pytest
 from integration.browser_tab_helpers import link_target  # noqa: F401
 from playwright.sync_api import Page
+from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
 from preview_minimap_helpers import build_minimap_workspace
+from preview_post_link_helpers import REPLY_BODY, THREAD_POST_BODY, build_post_link_workspace
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     MAIN_SELECTOR,
@@ -27,6 +29,8 @@ from workspace_fixtures import (
     CallTool,
     MakeComment,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     WriteComments,
     WriteDrafts,
@@ -132,6 +136,39 @@ def write_minimap_preview(
     def _write() -> tuple[str, Path]:
         """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
         root = build_minimap_workspace(make_workspace, make_item, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_post_link_preview(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    make_comment: MakeComment,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+) -> WriteReviewPreview:
+    """まとまり V-1・V-2 と、まとまりのリンクを持つ AI の書き込みのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースにスレッドと返信を足して配信を立てる。"""
+        root = build_post_link_workspace(make_workspace, make_item, call_tool)
+        write_threads(
+            root,
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body=THREAD_POST_BODY, created="2026-10-12T01:00:00+00:00"),
+                summary="まとまりのリンク",
+            ),
+        )
+        write_comments(root, free_comment(make_comment("C-1", body=REPLY_BODY, thread="TH-1")))
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None
