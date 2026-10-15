@@ -26,7 +26,9 @@ const meta = {
   title: "Preview/HtmlBodyDiff",
   render: (args) => {
     const stage = document.createElement("div");
-    const diff = MindmapPreview.htmlBodyDiff(args);
+    // 左右に並べるときは、描いた結果と原文の差分の組の前に、並べ方の切り替えを別の組で置く
+    const layoutSwitch = args.layout === "side" ? MindmapPreview.bodyDiffLayoutSwitch({ layout: "side", on: { change: () => undefined } }) : null;
+    const diff = MindmapPreview.htmlBodyDiff({ ...args, layoutSwitch });
     if (diff !== null) stage.append(diff);
     return stage;
   },
@@ -53,4 +55,20 @@ export const RemovedOnly: Story = { args: { before: BEFORE, after: REMOVED, mark
 /** 選んだ時点の本文が Markdown。切り替えを出さず、原文の差分だけを出す */
 export const FromMarkdown: Story = {
   args: { before: "# 画面の流れ\n\n一つ目の段落\n", after: AFTER, marked: MARKED, beforeFormat: "md" },
+};
+
+/** 左右に並べた描いた結果。左に選んだ時点、右に今の本文を描き、右の変えた 2 つ目の段落にだけ「変わった」の印。切り替えの行に並べ方の組と見せ方の組を並べる */
+export const SideRendered: Story = { args: { layout: "side" } };
+
+/** 左右に並べた原文の差分。左に消した行、右に足した行を同じ高さで並べ、片側にしか無い行の向かいは縞の空き。変わっていない長い並びは両方の列にまたがる 1 行に畳む */
+export const SideRaw: Story = {
+  args: { layout: "side" },
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLButtonElement>('.segment[aria-label="本文の差分の見せ方"] button[aria-pressed="false"]')?.click();
+  },
+};
+
+/** 選んだ時点の本文が Markdown で、左右に並べた。左は Markdown として描き、右の今の本文には印を付けない */
+export const SideFromMarkdown: Story = {
+  args: { before: "# 画面の流れ\n\n一つ目の段落\n", after: AFTER, marked: MARKED, beforeFormat: "md", layout: "side" },
 };

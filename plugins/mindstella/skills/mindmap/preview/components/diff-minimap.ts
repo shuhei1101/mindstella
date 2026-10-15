@@ -109,6 +109,22 @@ namespace MindmapPreview {
         found.push({ kind, first: element, last: element, frame: null });
       }
     }
+    // 左右に並べた本文の印は列ごとに文書の順に並ぶので、高さの順に並べ直し、向かい合う消した塊と足した塊を「変わった」1 つにする
+    if (body.querySelector(".sbs") !== null) {
+      const topOf = (target: MinimapTarget): number => target.first.getBoundingClientRect().top;
+      found.sort((a, b) => topOf(a) - topOf(b));
+      for (let position = found.length - 1; position > 0; position -= 1) {
+        const upper = found[position - 1];
+        const lower = found[position];
+        if (upper === undefined || lower === undefined) continue;
+        const kinds = [upper.kind, lower.kind].sort().join();
+        // 上の印の下端より上で始まる、もう片側の印
+        if (kinds === "add,del" && topOf(lower) < upper.last.getBoundingClientRect().bottom) {
+          upper.kind = "chg";
+          found.splice(position, 1);
+        }
+      }
+    }
     // HTML の本文の枠の中の印
     for (const frame of body.querySelectorAll<HTMLIFrameElement>("iframe.html-frame")) {
       for (const element of frame.contentDocument?.querySelectorAll("[data-df]") ?? []) {
