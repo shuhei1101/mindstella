@@ -1108,14 +1108,31 @@ namespace MindmapPreview {
     /** 利用者の既読にする要求を送っているスレッドの ID（応答を待つ間に読み直しても、同じスレッドへ重ねて送らない） */
     const seenSending = new Set<string>();
 
-    /** 開いているスレッドに利用者の未読があれば、待たずに既読にする。印は書き換えの知らせを受けて描き直す。失敗しても画面に出さない */
+    /** 既読にする要求が失敗したスレッドの ID（別のスレッドを開くか一覧へ戻るまで、同じスレッドへ重ねて送らない） */
+    const seenFailed = new Set<string>();
+
+    /** 開いているスレッドに利用者の未読があれば、写しを既読にして印を待たずに消し、要求は応答を待たずに送る。失敗しても画面に出さず、写しをサーバーの値に戻す */
     const markOpenedSeen = (): void => {
       const opened = comment.openedThread;
-      if (comment.view !== "thread" || opened === null || opened.pending || seenSending.has(opened.id)) return;
+      if (comment.view !== "thread" || opened === null || opened.pending) return;
+      if (seenSending.has(opened.id) || seenFailed.has(opened.id)) return;
       const thread = comment.threads.find((entry) => entry.id === opened.id);
       if (thread === undefined || !hasUnseen(thread)) return;
       seenSending.add(opened.id);
-      void threadsApi.seen(opened.id).finally(() => seenSending.delete(opened.id));
+      const wasUnseen = anyOpenUnseen(comment.threads);
+      comment.threads = withSeen({ threads: comment.threads, id: opened.id });
+      if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
+      void threadsApi
+        .seen(opened.id)
+        .then(async (result) => {
+          if (result.ok) return;
+          // 断られた・届かないとき: 送っている控えから失敗の控えへ移して、写しをサーバーの値に戻す
+          seenSending.delete(opened.id);
+          seenFailed.add(opened.id);
+          await loadThreads();
+          renderComments();
+        })
+        .finally(() => seenSending.delete(opened.id));
     };
 
     /** スレッドを読み直す。読めたら置き換え（トップバーの未読の点が変わるなら描き直し）、断られた・届かないときは前のまま残して理由を持つ */
@@ -1123,7 +1140,11 @@ namespace MindmapPreview {
       const result = await threadsApi.read();
       if (result.ok && result.data !== null) {
         const wasUnseen = anyOpenUnseen(comment.threads);
-        comment.threads = result.data.threads;
+        // 既読にする要求を送っている間は、送る前のサーバーの値で写しを未読に戻さない
+        comment.threads = [...seenSending].reduce(
+          (threads, id) => withSeen({ threads, id }),
+          result.data.threads,
+        );
         comment.threadsError = null;
         if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
         markOpenedSeen();
@@ -1452,6 +1473,7 @@ namespace MindmapPreview {
       listScroll = document.querySelector<HTMLElement>(".comments-panel .comments-body")?.scrollTop ?? 0;
       comment.openedThread = { id, pending };
       comment.view = "thread";
+      seenFailed.clear();
       comment.reason = { open: false, body: "", status: "idle", detail: null };
       renderComments();
       markOpenedSeen();
@@ -1472,6 +1494,7 @@ namespace MindmapPreview {
         const opened = comment.openedThread;
         comment.view = "list";
         comment.openedThread = null;
+        seenFailed.clear();
         comment.reason = { open: false, body: "", status: "idle", detail: null };
         renderComments();
         // 控えたスクロールの位置と、開いていた行へのフォーカスを戻す

@@ -39,9 +39,10 @@ __all__ = [
     "open_thread",
     "read_workspace_yaml",
     "review_row",
-    "thread_row",
     "select_text",
     "select_text_for_pill",
+    "thread_row",
+    "wait_thread_seen",
     "wait_until_focused",
 ]
 
@@ -53,6 +54,9 @@ UPDATE_TIMEOUT_MS = 10_000
 
 # 書きかけを保つ待ち（画面の `DRAFT_SAVE_DELAY_MS`）を過ぎるまで待つミリ秒
 DRAFT_WAIT_MS = 1_200
+
+# 既読になるのを待つ間に、threads.yaml を読み直す間隔ミリ秒
+SEEN_POLL_MS = 100
 
 # トップバーのコメントのボタンと、コメントの一覧のパネル
 COMMENTS_BUTTON = "header.topbar button.comments-btn"
@@ -167,6 +171,16 @@ def wait_until_focused(page: Page, selector: str) -> None:
 def read_workspace_yaml(root: Path, name: str) -> dict[str, Any]:
     """ワークスペースの YAML を読む。"""
     return yaml.safe_load((root / RECORD_DIR / name).read_text(encoding="utf-8"))
+
+
+def wait_thread_seen(page: Page, root: Path, thread_id: str) -> None:
+    """threads.yaml のスレッドの全ての書き込みが利用者の既読になるのを待つ。"""
+    for _ in range(UPDATE_TIMEOUT_MS // SEEN_POLL_MS):
+        thread = next(item for item in read_workspace_yaml(root, "threads.yaml")["items"] if item["id"] == thread_id)
+        if all(post["seen"] for post in thread["posts"]):
+            return
+        page.wait_for_timeout(SEEN_POLL_MS)
+    raise AssertionError(f"{thread_id} が既読になりません")
 
 
 def free_comment(comment: dict[str, Any]) -> dict[str, Any]:

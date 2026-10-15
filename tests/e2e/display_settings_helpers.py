@@ -48,6 +48,9 @@ SETTINGS_PANEL_OPEN = f"{SETTINGS_PANEL}.open"
 # ネットワークのキャンバスの右上に重ねる、見た目のドロップダウン
 LOOK_SELECT = ".screen.graph .look-pick select"
 
+# 表示の設定のパネルの区画「表示する種類」（区画「詳細に表示するもの」を含まない）
+KINDS_SECTION = f"{SETTINGS_PANEL} fieldset.st-sec:has(> legend:text-is('表示する種類'))"
+
 # 既定の保存の確かめ（開いているときだけ `open` 属性を持つ）
 CONFIRM = "dialog.sconfirm"
 CONFIRM_OPEN = "dialog.sconfirm[open]"
@@ -125,8 +128,8 @@ def toggle_kind(page: Page, label: str) -> None:
 
 
 def checked_kind_count(page: Page) -> int:
-    """表示の設定のパネルで、印が付いている表示する種類の数を返す（「すべて」の行は数えない）。"""
-    return page.locator(f"{SETTINGS_PANEL} .st-kinds li:not(.st-all) input:checked").count()
+    """表示の設定のパネルの区画「表示する種類」で、印が付いている表示する種類の数を返す（「すべて」の行と区画「詳細に表示するもの」のチェックは数えない）。"""
+    return page.locator(f"{KINDS_SECTION} .st-kinds li:not(.st-all) input:checked").count()
 
 
 def read_prefs(page: Page) -> dict[str, Any] | None:

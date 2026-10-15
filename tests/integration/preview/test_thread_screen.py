@@ -20,6 +20,7 @@ from preview_comment_helpers import (
     read_workspace_yaml,
     review_row,
     thread_row,
+    wait_thread_seen,
     wait_until_focused,
 )
 from preview_fixture_types import OpenPreview, WriteReviewPreview
@@ -681,9 +682,6 @@ def test_review_entry_from_thread(served_thread: tuple[str, Path], open_preview:
 # 利用者の既読にする要求のパス（スレッドの ID を取り出す）
 SEEN_URL = "**/api/threads/*/seen"
 
-# 既読になるのを待つ間に、threads.yaml を読み直す間隔ミリ秒
-SEEN_POLL_MS = 100
-
 
 def _record_seen_requests(page: Page, *, status: int | None = None) -> list[str]:
     """既読にする要求を控える入れ物を返す。status を渡すとサーバーへ届かせず、その応答を返す。"""
@@ -699,16 +697,6 @@ def _record_seen_requests(page: Page, *, status: int | None = None) -> list[str]
 
     page.route(SEEN_URL, _handle)
     return requested
-
-
-def _wait_seen(page: Page, root: Path, thread_id: str) -> None:
-    """threads.yaml のスレッドの全ての書き込みが利用者の既読になるのを待つ。"""
-    for _ in range(UPDATE_TIMEOUT_MS // SEEN_POLL_MS):
-        posts = _thread_in_yaml(root, thread_id)["posts"]
-        if all(post["seen"] for post in posts):  # type: ignore[index]
-            return
-        page.wait_for_timeout(SEEN_POLL_MS)
-    raise AssertionError(f"{thread_id} が既読になりません")
 
 
 @pytest.fixture
@@ -758,7 +746,7 @@ def test_seen_when_opened(
     # 検証
     assert page.inner_text(HEADING) == "オープン\n未読のスレッド"
     assert page.locator(f"{POSTS}:has-text('案 A で決めました')").count() == 1
-    _wait_seen(page, root, "TH-1")
+    wait_thread_seen(page, root, "TH-1")
     assert requested == ["TH-1"]
     # 既読にしたのは利用者の既読だけで、AI の既読と取り込み済みは変えない
     posts = _thread_in_yaml(root, "TH-1")["posts"]
@@ -798,7 +786,7 @@ def test_seen_when_opened_from_review(
     page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] .row-head button.row-target")
     page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
     # 検証
-    _wait_seen(page, root, "TH-1")
+    wait_thread_seen(page, root, "TH-1")
     assert requested == ["TH-1"]
 
 
@@ -862,5 +850,5 @@ def test_seen_when_reply_arrives_while_open(
     call_tool("reply", workspace=str(root), id="TH-2", body="続きの返信です", summary="既読のスレッド")
     # 検証
     page.wait_for_selector(f"{POSTS}:has-text('続きの返信です')", timeout=UPDATE_TIMEOUT_MS)
-    _wait_seen(page, root, "TH-2")
+    wait_thread_seen(page, root, "TH-2")
     assert requested == ["TH-2"]

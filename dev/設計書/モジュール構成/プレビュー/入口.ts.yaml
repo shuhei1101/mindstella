@@ -507,12 +507,23 @@ test_files:
 notes:
   スレッドの読み直し: '`start` の 2（開いたとき）・13（`changed` を受けたときとつながり直したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。読み直した後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを描き直す（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない
 
-    読み直したらトップバーの `commentsUnread` を `anyOpenUnseen(threads)` で描き直す（パネルを閉じていても読む）。`view` が `thread` で、開いているスレッドが送ったもの（`openedThread.pending` が偽）で `hasUnseen` が真なら、待たずに `threadApi().seen` を呼ぶ（開いている間に届いた返信も既読にする）。失敗しても画面に出さない'
+    読み直したらトップバーの `commentsUnread` を `anyOpenUnseen(threads)` で描き直す（パネルを閉じていても読む）。`view` が `thread` で、開いているスレッドが送ったもの（`openedThread.pending` が偽）で `hasUnseen` が真なら、「既読にする」を行う（開いている間に届いた返信も既読にする）
+
+
+    「既読にする」は、「スレッドを開く」と読み直しの両方が使う 1 か所の処理。
+
+    - そのスレッドへの要求を送っている間と、そのスレッドへの要求が失敗してから別のスレッドを開くか一覧へ戻るまでの間は、呼ばない（送っているスレッドと失敗したスレッドの ID を控える。失敗の控えは「スレッドを開く」と「戻る」で空にする）
+
+    - `threadApi().seen` を呼ぶと同時に、`CommentState.threads` を `withSeen({ threads, id })` に置き換え、`anyOpenUnseen` が変わればトップバーを描き直す。応答は待たない
+
+    - 要求を送っている間に読み直した値で置き換えるときは、送っているスレッドを `withSeen` で既読にしてから置き換える（送る前のサーバーの値で写しを未読に戻さない）
+
+    - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）'
   スレッドの画面の操作: |-
     `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`openedThread`（`opened`）・`composing`・`reason` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
     - パネルを開くときは `view` を `list`、`openedThread` を `null`、`composing` を偽にし、スレッドを読み直す
     - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」では `filter`・`tag` を書き換えてパネルを描き直す
-    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送ったスレッドで `hasUnseen` が真なら、待たずに `threadApi().seen` を呼ぶ（一覧の行・レビュー中の書き込みのどちらから開いても同じ。印は書き換えの知らせを受けて描き直す。失敗しても画面に出さず、次に開いたときに呼び直す）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
+    - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送ったスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
     - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送っていない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
     - 「新しいスレッドの入力を出す／畳む」では `composing` を入れ替え、出したときは入力欄へ、畳んだときは「新しいスレッド」へフォーカスを移す（書きかけは残す）
     - 返信の「入力」「溜める」は 6 のコメントの入力と同じ扱いで、`add`・`saveDraft` に `{thread, body}` を送る（空白だけは部品が溜めさせないため `empty` は使わない）。溜めたらレビュー中を読み直して溜めた ID を `checked` に足し、トップバーとパネルを描き直す

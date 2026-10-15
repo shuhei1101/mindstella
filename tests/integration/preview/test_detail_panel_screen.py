@@ -12,7 +12,6 @@ from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, open
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import (
-    ALIAS_BODY,
     MARK_IN_PANEL_BODY_JS,
     MARK_MARGIN_PX,
     MIXED_IDS,
@@ -3477,7 +3476,7 @@ def test_html_code_block(
     assert page.locator("aside.panel .md pre code").count() == 0
     assert frame_of(page, HTML_CODE_FRAME).locator("p").inner_text() == "枠の中の段落"
     # 前後の Markdown は今までどおり描く
-    assert page.locator("aside.panel .md h4, aside.panel .md h1, aside.panel .md h2").count() >= 1
+    assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
     assert page.locator("aside.panel .md > p").count() == 2
 
 
