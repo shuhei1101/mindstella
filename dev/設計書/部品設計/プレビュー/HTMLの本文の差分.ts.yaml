@@ -55,7 +55,7 @@ args:
     required: false
     default: html
     choices: md・html
-    description: 選んだ時点の本文の形式。`md`（形式を替えた）のときは描いた結果の印と切り替えを出さず、原文の差分だけを出す
+    description: 選んだ時点の本文の形式。`md`（形式を替えた）で `layout` が `inline` のときは、描いた結果の印と切り替えを出さず、原文の差分だけを出す
     status: implemented
   - name: layout
     type: 列挙
