@@ -584,19 +584,20 @@ namespace MindmapPreview {
   function renderRemoved(block: RemovedBlock): HTMLElement {
     const lines = block.tableHeader === null ? block.lines : [...block.tableHeader, ...block.lines];
     const rendered = withoutLineMarks(renderMarkdown(lines.join("\n")));
-    lowerHeadings(rendered);
     plainDiagrams(rendered);
     return rendered;
   }
 
-  /** 消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む。かたまりごとに、差し込んだ語の面を付ける対象のブロックを返す */
-  function insertRemovedBlocks({ root, blocks }: { root: HTMLElement; blocks: RemovedBlock[] }): HTMLElement[][] {
+  /** 描いた消した行のかたまりと、それが元になる `RemovedBlock` の組 */
+  type RenderedRemoved = { block: RemovedBlock; rendered: HTMLElement };
+
+  /** 描いた消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む。かたまりごとに、差し込んだ語の面を付ける対象のブロックを返す */
+  function insertRemovedBlocks({ root, blocks }: { root: HTMLElement; blocks: RenderedRemoved[] }): HTMLElement[][] {
     // 差し込む前の、行の印を持つ今のブロック（差し込む要素は印を持たない）
     const stamped = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
     const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
     const placed: HTMLElement[][] = [];
-    for (const block of blocks) {
-      const rendered = renderRemoved(block);
+    for (const { block, rendered } of blocks) {
       const target = block.beforeLine === null ? undefined : stamped.find((element) => lineOf(element) >= (block.beforeLine ?? 0));
       const previous = target === undefined ? stamped.at(-1) : stamped[stamped.indexOf(target) - 1];
       // 表の本体の行だけ: 今の表の行の間（表の最後の後も）へ、消した行の印を付けた行として差し込む
@@ -799,9 +800,13 @@ namespace MindmapPreview {
     if (compared === null) return null;
     const parts = withoutDiagramEdits({ parts: compared, before });
     const rendered = renderMarkdown(after);
-    lowerHeadings(rendered);
+    const removed = placeRemovedBlocks(parts).map((block) => ({ block, rendered: renderRemoved(block) }));
+    // 今の本文と消した部分の見出しを合わせた最も上の段から、段の差を 1 つ求める
+    const shift = headingShift([rendered, ...removed.map((piece) => piece.rendered)]);
+    lowerHeadings({ root: rendered, shift });
+    for (const piece of removed) lowerHeadings({ root: piece.rendered, shift });
     markAddedBlocks({ root: rendered, parts, source: after });
-    const placed = insertRemovedBlocks({ root: rendered, blocks: placeRemovedBlocks(parts) });
+    const placed = insertRemovedBlocks({ root: rendered, blocks: removed });
     const pairs = wordPairs({ root: rendered, parts, now: linesOf(after), placed });
     return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })) };
   }
@@ -1103,7 +1108,7 @@ namespace MindmapPreview {
         }
       }
       const root = rendered ?? renderMarkdown(source);
-      if (rendered === null) lowerHeadings(root);
+      if (rendered === null) lowerHeadings({ root, shift: headingShift([root]) });
       // 古いまとまりを選び、その後に本文を直した: 描いた本文は今の本文の行と合わないので、行の印を外す（選んだ箇所のコメントも示す箇所も今の行に向けない）
       if (source !== index.data.bodies[item.body ?? ""]) withoutLineMarks(root);
       // 見出しのリンクと、本文の用語・項目の ID の印を付ける
@@ -1430,17 +1435,28 @@ namespace MindmapPreview {
     observer.observe(bodyTitle);
   }
 
-  /** 詳細パネルの節の見出し（h3）の下に、本文の見出し（h1〜h6）を並べるための段の差 */
-  const BODY_HEADING_OFFSET = 3;
+  /** 節の見出し「本文」（h3）の次に置く、本文の見出しのうち最も上の段 */
+  const BODY_TOP_HEADING_LEVEL = 4;
 
   /** 見出しの要素の最も下の段（h6） */
   const LOWEST_HEADING_LEVEL = 6;
 
-  /** 本文の見出しを、パネルの節の見出しより下の段（h4〜h6）に下げる。見た目は元の段のまま（`data-md-level`） */
-  function lowerHeadings(root: HTMLElement): void {
+  /** 見出しの要素の段（h1〜h6 の数字） */
+  function headingLevel(heading: HTMLElement): number {
+    return Number(heading.tagName.slice(1));
+  }
+
+  /** 本文の見出しのうち最も上の段を h4 にするための、全ての見出しに足す段の差。見出しが無ければ 0 */
+  function headingShift(roots: HTMLElement[]): number {
+    const levels = roots.flatMap((root) => [...root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")].map(headingLevel));
+    return levels.length === 0 ? 0 : BODY_TOP_HEADING_LEVEL - Math.min(...levels);
+  }
+
+  /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
+  function lowerHeadings({ root, shift }: { root: HTMLElement; shift: number }): void {
     for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
-      const level = Number(heading.tagName.slice(1));
-      const lowered = Math.min(level + BODY_HEADING_OFFSET, LOWEST_HEADING_LEVEL);
+      const level = headingLevel(heading);
+      const lowered = Math.min(level + shift, LOWEST_HEADING_LEVEL);
       const replacement = h({
         tag: `h${lowered}` as "h4" | "h5" | "h6",
         attrs: {
@@ -1448,7 +1464,7 @@ namespace MindmapPreview {
           // 元の Markdown の行の印を引き継ぐ
           [LINE_ATTR]: heading.getAttribute(LINE_ATTR),
           // h6 を超える段は、読み上げの段で伝える
-          "aria-level": level + BODY_HEADING_OFFSET > LOWEST_HEADING_LEVEL ? level + BODY_HEADING_OFFSET : null,
+          "aria-level": level + shift > LOWEST_HEADING_LEVEL ? level + shift : null,
         },
         children: [...heading.childNodes],
       });
