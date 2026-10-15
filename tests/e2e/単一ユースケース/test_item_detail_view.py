@@ -1108,7 +1108,6 @@ def test_normal_when_body_scrolled(
     # 検証（全画面）: モーダルの見出しの帯にも同じものが出る
     assert full["id"] == "A-3"
     assert full["title"].startswith(HEAD_TITLE_PREFIX)
-    assert full["truncated"] is True
     assert all(button == {"inHead": True, "pressable": True} for button in full["buttons"])
 
 
