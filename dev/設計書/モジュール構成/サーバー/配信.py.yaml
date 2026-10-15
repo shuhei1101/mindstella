@@ -1,5 +1,5 @@
 title: "サーバー / 配信"
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・設定の既定の書き換え・設定の再読み込みを受け付ける。まとめて送った後は Claude Code へ入力する。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込みを受け付ける。まとめて送った後は Claude Code へ入力する。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と読み書きと検証に依存する。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
@@ -294,8 +294,9 @@ classes:
           2. パスで分ける
              - `/api/opened` の場合、本文を読まずに前回開いた日時を返す（`opened_response`）
              - `/api/config/reload` の場合、本文を読まずに設定を読み直す（`reload_response`）
+             - `/api/threads/{id}/seen`（`id` は `/` を含まない）の場合、本文を読まずにそのスレッドを利用者の既読にする（`seen_response`）
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
-             - `/api/comments/send` は、`context.input_target` があれば `enter_to_claude(context.input_target, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含む）。応答の本文は `{sent, items: [{comment, thread, post}], entered}`
+             - `/api/comments/send` は、`context.input_target` があれば `enter_to_claude(context.input_target, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered}`
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
           4. 本文を読み、受け付ける（`write_response`。成功は 201）
       - name: log_message
@@ -1307,5 +1308,62 @@ functions:
         condition: 'オープンの TH-1。`parametrize`: `{status: open}` / `{}` / `{status: closed, reason: 401 文字}` / `TH-9` に `{status: closed}`'
         mock: なし
         expected: '`changed: false` / `ArgumentError` / `ArgumentError` / `ThreadNotFoundError`。どれも `threads.yaml` が呼ぶ前と同じ'
+  - name: seen_response
+    title: 利用者の既読の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: スレッドで話す
+    scope: public
+    summary: 画面で開いたスレッドの利用者の未読の書き込みを全て既読にし、既読にした ID を返す（インターフェース定義『画面からのスレッドの既読』）。本文を持たないため `write_response` を通さない
+    side_effects: '`threads.yaml` を置き換える（未読が無ければ書かない）'
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: thread_id
+        type: str
+        required: true
+        passing: positional
+        description: パスの `id`
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+    returns:
+      type: Response
+      description: 200 と `{id, seen}`、問題の応答
+    process: |-
+      1. `Origin` が合わなければ 403 を返す（`check_origin`）
+      2. ワークスペースを確かめ、スレッドを読んで ID で引く（`require_workspace`、`load_threads`。鍵を取らない）
+         - `seen` が偽の書き込みが無ければ、書かずに 200 で `{id, seen: []}` を返す
+      3. 書き換えの鍵を取って（`workspace_lock`）既読にする（`mark_seen`。鍵を取るまでに足された書き込みも既読にする）
+         - `MindmapError` の場合、`error_response` の応答を返す（`ThreadNotFoundError` は 404、`SchemaMismatchError`・`WorkspaceNotFoundError` は 422、`WriteFailedError` は 500）
+      4. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{id, seen}` を返す
+    exceptions:
+      - name: なし（問題の応答を返す）
+        condition: 無い ID・崩れた `threads.yaml`・書けないときは `error_response` の応答にする
+    unit_tests:
+      - name: test_seen_response
+        case: 正常
+        summary: 未読を既読にして ID を返す
+        condition: AI の未読の返信 TH-1-2 を持つ TH-1。`origin=None`
+        mock: なし
+        expected: '200 で `{id: TH-1, seen: [TH-1-2]}`、`Cache-Control: no-store`。`threads.yaml` の TH-1-2 の `seen` が真'
+      - name: test_seen_response_when_nothing_unseen
+        case: 正常
+        summary: 未読が無ければ鍵を取らず書かない
+        condition: '全て `seen: true` の TH-1。`workspace_lock` を呼ばれた回数を数える関数に差し替える'
+        mock: '`workspace_lock`（`serve` モジュールの参照を monkeypatch）'
+        expected: '200 で `{id: TH-1, seen: []}`。`workspace_lock` が呼ばれず、`threads.yaml` の更新日時が呼ぶ前と同じ'
+      - name: test_seen_response_when_rejected
+        case: 異常
+        summary: 送り元の違い・無い ID・崩れたファイルは書かない
+        condition: '`parametrize`: `origin="https://attacker.example"` / `TH-9` / `threads.yaml` の書き込みから `seen` を消す'
+        mock: なし
+        expected: 403 / 404（`detail` に `TH-9`）/ 422。どれも `threads.yaml` が呼ぶ前と同じ
+        exception: 送り元の違い・無い ID・スキーマに合わない
 test_files:
   - tests/unit/scripts/test_serve.py

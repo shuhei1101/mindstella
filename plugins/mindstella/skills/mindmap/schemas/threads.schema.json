@@ -126,7 +126,8 @@
                 "author",
                 "body",
                 "created",
-                "read"
+                "read",
+                "seen"
               ],
               "properties": {
                 "id": {
@@ -149,6 +150,9 @@
                   "minLength": 1
                 },
                 "read": {
+                  "type": "boolean"
+                },
+                "seen": {
                   "type": "boolean"
                 },
                 "taken": {

@@ -71,6 +71,8 @@ class Post:
     created: str
     # AI の既読
     read: bool
+    # 利用者の既読（AI の書き込みは偽で足し、利用者の書き込みは真で足す。画面で開くと真になる）
+    seen: bool
     # 利用者の書き込みを AI が取り込んだ日時（取り込んでいなければ None。AI の書き込みはキーを書かない）
     taken: str | None = None
     # 送ったレビュー中のコメントの ID（まとめて送る途中で落ちたとき二重に足さないために持つ。無ければキーを書かない）
@@ -284,6 +286,20 @@ def mark_read(root: Path, thread_id: str, post_ids: list[str]) -> None:
     _replace_thread(root, current, replace(thread, posts=posts))
 
 
+def mark_seen(root: Path, thread_id: str) -> list[str]:
+    """スレッドの `seen` が偽の書き込みを全て真にし、真にした書き込みの ID を返す。未読が無ければ書かない。"""
+    current = load_threads(root)
+    thread = _find_thread(current, thread_id)
+    unseen = [post.id for post in thread.posts if not post.seen]
+    # 未読が無い: 書かずに空を返す
+    if not unseen:
+        return []
+    posts = [post if post.seen else replace(post, seen=True) for post in thread.posts]
+    _replace_thread(root, current, replace(thread, posts=posts))
+    logger.info("利用者の既読にした: %s %d", thread_id, len(unseen))
+    return unseen
+
+
 def create_thread(
     workspace: Workspace,
     *,
@@ -312,7 +328,7 @@ def create_thread(
         tags=checked_tags,
         summary=summary_text,
         target=target,
-        posts=[Post(id=post_id, author="ai", body=text, created=created, read=True)],
+        posts=[Post(id=post_id, author="ai", body=text, created=created, read=True, seen=False)],
         events=[],
     )
     _write_threads(root, [*current, thread])
@@ -346,7 +362,7 @@ def reply_thread(
     if take:
         thread, taken = _take_read(thread, created)
     post_id = f"{thread_id}-{len(thread.posts) + 1}"
-    post = Post(id=post_id, author="ai", body=text, created=created, read=True)
+    post = Post(id=post_id, author="ai", body=text, created=created, read=True, seen=False)
     updated = replace(thread, summary=summary_text, posts=[*thread.posts, post])
     _replace_thread(root, current, updated)
     logger.info("返信した: %s %s %d", thread_id, post_id, len(taken))
@@ -476,7 +492,7 @@ def append_user_posts(
 
 
 def threads_for_preview(workspace: Workspace) -> dict[str, Any]:
-    """全てのスレッドを画面へ返す形にする。AI の既読と取り込み済みは含めない。"""
+    """全てのスレッドを画面へ返す形にする。AI の既読と取り込み済みは含めず、利用者の既読は含める。"""
     threads = sorted(load_threads(workspace.root), key=_recency_key, reverse=True)
     return {
         "threads": [
@@ -494,6 +510,7 @@ def threads_for_preview(workspace: Workspace) -> dict[str, Any]:
                         "author": post.author,
                         "body": post.body,
                         "created": post.created,
+                        "seen": post.seen,
                     }
                     for post in thread.posts
                 ],
@@ -610,13 +627,14 @@ def _title_of(workspace: Workspace, item_id: str | None) -> str | None:
 
 
 def _user_post(post_id: str, item: UserPostInput, created: str) -> Post:
-    """まとめて送るコメントから、取り込んでいない未読の利用者の書き込みを作る。"""
+    """まとめて送るコメントから、AI が読んでいない、取り込んでいない利用者の既読の書き込みを作る。"""
     return Post(
         id=post_id,
         author="user",
         body=item.body,
         created=created,
         read=False,
+        seen=True,
         taken=None,
         comment=item.comment,
     )
@@ -659,6 +677,7 @@ def _thread_of(item: dict[str, Any]) -> Thread:
                 body=post["body"],
                 created=post["created"],
                 read=post["read"],
+                seen=post["seen"],
                 taken=post.get("taken"),
                 comment=post.get("comment"),
             )

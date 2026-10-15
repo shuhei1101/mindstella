@@ -59,7 +59,14 @@ from store import (
     require_workspace,
     workspace_lock,
 )
-from threads import THREADS_FILE, SentPost, set_thread_status, threads_for_preview
+from threads import (
+    THREADS_FILE,
+    SentPost,
+    load_threads,
+    mark_seen,
+    set_thread_status,
+    threads_for_preview,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +97,9 @@ DRAFTS_PATH = "/api/drafts"
 
 # スレッドの読み取りと、スレッド 1 件の状態の書き換え（`/api/threads/{id}`）のパス
 THREADS_PATH = "/api/threads"
+
+# スレッド 1 件の利用者の既読にする口（`/api/threads/{id}/seen`）の、`{id}` の後ろ
+SEEN_SUFFIX = "/seen"
 
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
@@ -306,14 +316,20 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_POST(self) -> None:
-        """前回開いた日時を返す・レビュー中のコメントを溜める・まとめて送る・設定の再読み込みを処理の関数へ渡す。"""
+        """前回開いた日時を返す・スレッドを利用者の既読にする・レビュー中のコメントを溜める・まとめて送る・設定の再読み込みを処理の関数へ渡す。"""
         path = self._checked_path()
+        seen_thread_id = _seen_thread_id_of(path)
         if path == OPENED_PATH:
             # 本文を読まずに、前回開いた日時を返して書き換える
             self._reply(opened_response(self.context))
         elif path == CONFIG_RELOAD_PATH:
             # 本文を読まずに、設定を読み直す
             self._reply(reload_response(self.context, origin=self.headers.get("Origin")))
+        elif seen_thread_id is not None:
+            # 本文を読まずに、そのスレッドを利用者の既読にする
+            self._reply(
+                seen_response(self.context, seen_thread_id, origin=self.headers.get("Origin"))
+            )
         elif path == COMMENTS_PATH:
             self._write(
                 lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
@@ -366,7 +382,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: Any) -> None:
         """標準の要求の記録を `logging` の `DEBUG` に回す（標準エラーへの直接の書き込みをやめる）。"""
         logger.debug("受けた要求: %s", format % args)
 
@@ -650,6 +666,33 @@ def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
     )
 
 
+def seen_response(context: ServeContext, thread_id: str, *, origin: str | None) -> Response:
+    """送り元を確かめ、そのスレッドの利用者の未読の書き込みを全て既読にして、既読にした ID を返す。"""
+    # 別のサイトからの書き込み
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    try:
+        require_workspace(context.root)
+        thread = next((item for item in load_threads(context.root) if item.id == thread_id), None)
+        # 無いスレッド
+        if thread is None:
+            raise ThreadNotFoundError(f"スレッドがありません: {thread_id}")
+        # 未読が無い: 鍵を取らず、書かずに空を返す
+        if all(post.seen for post in thread.posts):
+            seen: list[str] = []
+        else:
+            # 鍵を取るまでに足された書き込みも既読にする（画面は書き換えの知らせでその書き込みを描く）
+            with workspace_lock(context.root, context.write_lock):
+                seen = mark_seen(context.root, thread_id)
+    except MindmapError as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps({"id": thread_id, "seen": seen}, ensure_ascii=False).encode("utf-8"),
+    )
+
+
 def reload_response(context: ServeContext, *, origin: str | None) -> Response:
     """config.yaml を検査し、通れば最後に検査に通った設定を差し替えて知らせ、通らなければ違う箇所を返す。"""
     # 別のサイトからの要求
@@ -856,7 +899,7 @@ def error_response(error: MindmapError) -> Response:
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join([detail, *error.lines]))
     # 書き込めなかった・渡された種類のないエラー
     if not isinstance(error, WriteFailedError):
-        logger.error("渡された種類のないエラー: %s %s", type(error).__name__, detail)  # noqa: TRY400
+        logger.error("渡された種類のないエラー: %s %s", type(error).__name__, detail)
     return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, detail)
 
 
@@ -908,4 +951,14 @@ def _thread_id_of(path: str | None) -> str | None:
     if path is None or not path.startswith(prefix):
         return None
     thread_id = unquote(path.removeprefix(prefix))
+    return thread_id if thread_id and "/" not in thread_id else None
+
+
+def _seen_thread_id_of(path: str | None) -> str | None:
+    """`/api/threads/{id}/seen` のパスからスレッドの ID を取り出す（`id` は `/` を含まない）。"""
+    prefix = f"{THREADS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix) or not path.endswith(SEEN_SUFFIX):
+        return None
+    thread_id = unquote(path.removeprefix(prefix).removesuffix(SEEN_SUFFIX))
     return thread_id if thread_id and "/" not in thread_id else None

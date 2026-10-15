@@ -43,7 +43,7 @@ const PENDING = {
 
 /** 利用者の書き込み。右に寄せ、頭に「あなた」と日時 */
 export const UserPost: Story = {
-  args: { post: { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい。失敗したら写しから戻せるなら十分", created: "2026-10-12T01:20:00+00:00" } },
+  args: { post: { id: "TH-1-1", author: "user", body: "D-12 は案 B にしたい。失敗したら写しから戻せるなら十分", created: "2026-10-12T01:20:00+00:00", seen: true } },
 };
 
 /** AI の書き込み。左に寄せて面の色を変え、頭に「AI」と日時。本文の中の記録にある項目の ID（D-12・T-14）はその項目を開くリンク、改行は保つ */
@@ -54,6 +54,7 @@ export const AiPost: Story = {
       author: "ai",
       body: "D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。",
       created: "2026-10-12T01:24:00+00:00",
+      seen: true,
     },
   },
 };
@@ -61,7 +62,7 @@ export const AiPost: Story = {
 /** 本文の中の記録に無い ID（D-99）は文字のまま出す */
 export const UnknownId: Story = {
   args: {
-    post: { id: "TH-6-1", author: "ai", body: "D-99 は D-12 と重なっているので消してよいですか。", created: "2026-10-12T03:10:00+00:00" },
+    post: { id: "TH-6-1", author: "ai", body: "D-99 は D-12 と重なっているので消してよいですか。", created: "2026-10-12T03:10:00+00:00", seen: true },
   },
 };
 
@@ -104,6 +105,7 @@ export const Narrow: Story = {
       author: "ai",
       body: "T-6 の点検の結果を、版ごとの一覧にした資料 A-9 を足しました。操作の種類は D-15 で決めた 5 つに揃えています。",
       created: "2026-10-12T00:41:00+00:00",
+      seen: true,
     },
   },
   parameters: {

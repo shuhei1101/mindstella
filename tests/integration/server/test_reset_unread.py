@@ -69,7 +69,7 @@ def test_normal(
         make_thread(
             "TH-1",
             make_post("TH-1-1", read=True, taken=TAKEN_AT),
-            make_post("TH-1-2", author="ai"),
+            make_post("TH-1-2", author="ai", seen=False),
             summary="相談",
             tags=["画面"],
         ),
@@ -87,6 +87,8 @@ def test_normal(
     assert result.stdout == ""
     first, second = find_thread(root, "TH-1"), find_thread(root, "TH-2")
     assert [post["read"] for post in first["posts"] + second["posts"]] == [False, False, False]
+    # 利用者の既読は戻さない
+    assert [post["seen"] for post in first["posts"] + second["posts"]] == [True, False, True]
     assert [post["taken"] for post in first["posts"][:1] + second["posts"]] == [TAKEN_AT, TAKEN_AT]
     assert (first["summary"], first["tags"], first["status"]) == ("相談", ["画面"], "open")
     assert (second["status"], second["events"]) == ("closed", [AI_CLOSED])

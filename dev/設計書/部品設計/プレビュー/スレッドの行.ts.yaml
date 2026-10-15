@@ -58,13 +58,30 @@ states:
         value: '{"id":"TH-1","status":"open","tags":["画面"],"summary":"D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった","target":"D-12","posts":[{"author":"ai","body":"D-12 を案 B で決定にしました。","created":"2026-10-12T01:24:00+00:00"}],"events":[]}'
       - name: has_pending_reply
         value: 'true'
+  - name: Unread
+    description: オープンで AI の返信が利用者の未読。2 行目の先頭に塗りつぶしの札「● 未読」を出し、向けた項目の ID・最後の書き手「AI」・日時をその右に並べる
+    args:
+      - name: thread
+        value: '{"id":"TH-2","status":"open","tags":["起票"],"summary":"D-16 の比べた結果を Issue に起票してよいかの確認。返事待ち","target":"D-16","posts":[{"author":"ai","body":"D-16 の比べた結果を Issue に起票してよいですか。","created":"2026-10-12T04:02:00+00:00","seen":false}],"events":[]}'
+  - name: UnreadPendingReply
+    description: 未読で、レビュー中の返信も持つ。2 行目の先頭に「● 未読」、末尾に破線の枠の「レビュー中」を出し、形（塗りつぶしと破線の枠）で見分ける
+    args:
+      - name: thread
+        value: '{"id":"TH-1","status":"open","tags":["画面"],"summary":"D-12 の失敗時の扱いの相談。案 B（写しから戻す）で決まった","target":"D-12","posts":[{"author":"user","body":"D-12 は案 B にしたい","created":"2026-10-12T01:20:00+00:00","seen":true},{"author":"ai","body":"D-12 を案 B で決定にしました。","created":"2026-10-12T01:24:00+00:00","seen":false}],"events":[]}'
+      - name: has_pending_reply
+        value: 'true'
+  - name: UnreadClosed
+    description: AI が返信してからクローズにし、返信が利用者の未読。状態の札「クローズ」のまま、2 行目の先頭に「● 未読」を出す
+    args:
+      - name: thread
+        value: '{"id":"TH-6","status":"closed","tags":["起票"],"summary":"T-4 の Issue の起票の確認。起票して完了","target":"T-4","posts":[{"author":"user","body":"起票してよい","created":"2026-10-12T03:00:00+00:00","seen":true},{"author":"ai","body":"T-4 の Issue を起票しました。","created":"2026-10-12T03:07:00+00:00","seen":false}],"events":[{"kind":"closed","author":"ai","reason":"起票した","created":"2026-10-12T03:07:00+00:00"}]}'
 lead: スレッドの一覧に並べる 1 件の行。状態の札・題・向けた項目・最後の書き手と日時・レビュー中の印・タグを出し、押すとそのスレッドを開く。まだ送っていない新しいスレッドも同じ形で「レビュー中」の札にする。
 status: planned
 args:
   - name: thread
     type: オブジェクト
     default: なし（`pending` を渡す）
-    description: 送ったスレッド（『スレッドの読み取り』の `threads[]` の 1 件）。`pending` とどちらか片方を渡す。題は `summary`、無ければ最初の書き込みの 1 行目。2 行目の書き手と日時は最後の書き込みのもの
+    description: 送ったスレッド（『スレッドの読み取り』の `threads[]` の 1 件）。`pending` とどちらか片方を渡す。題は `summary`、無ければ最初の書き込みの 1 行目。2 行目の書き手と日時は最後の書き込みのもの。書き込みに `seen` が `false` のものがあれば、2 行目の先頭に未読の札を出す（クローズのスレッドでも出す）
     status: planned
   - name: pending
     type: オブジェクト
@@ -95,6 +112,7 @@ events:
 accessibility:
   - 行を開く操作は 1 つのボタンにし、読み上げの名前は状態・題・向けた項目・最後の書き手・日時をこの順で読む。レビュー中の印は「レビュー中の返信あり」と読む
   - 状態の札とレビュー中の印は、色に加えて印のアイコンと文字で示す
+  - 未読の札は、色に加えて塗りつぶしの形・点の印・「未読」の文字で示す。行を開くボタンの読み上げの名前は、状態の次に「未読」を読む
   - タグの札は行を開くボタンと別のボタンにし、`aria-pressed` と読み上げの名前「タグ「{タグ}」で絞る」を持つ
   - 行を開くボタンとタグの札のそれぞれに Tab で届き、フォーカスは枠の全体に印の色の輪で出す
 refs:

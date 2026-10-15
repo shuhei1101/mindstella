@@ -13,7 +13,6 @@ from preview_comment_helpers import (
     REVIEW_ENTRY,
     REVIEW_HEAD,
     THREAD_ROWS,
-    THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     free_comment,
     open_list,
@@ -584,3 +583,114 @@ def test_updated_by_change(
     page.wait_for_selector(thread_row(str(result.data["id"])), timeout=UPDATE_TIMEOUT_MS)
     assert page.inner_text(f"{thread_row(str(result.data['id']))} .th-author") == "AI"
     assert page.inner_text(f"{thread_row(str(result.data['id']))} .th-title") == "起票の確認"
+
+
+@pytest.fixture
+def served_unseen_threads(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """AI の返信が利用者の未読のオープンの TH-1・全て既読の TH-2・AI の返信が未読のクローズの TH-3 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, body="案を決めたい", created="2026-10-12T01:00:00+00:00"),
+                make_post(
+                    "TH-1-2", author="ai", seen=False, body="案 A で決めました", created="2026-10-12T02:00:00+00:00"
+                ),
+                summary="未読のオープン",
+                target="D-1",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", author="ai", created="2026-10-12T03:00:00+00:00"),
+                summary="既読のオープン",
+            ),
+            make_thread(
+                "TH-3",
+                make_post("TH-3-1", author="ai", seen=False, created="2026-10-12T04:00:00+00:00"),
+                status="closed",
+                summary="未読のクローズ",
+            ),
+        ),
+    )
+
+
+def test_rows_when_unseen(served_unseen_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """利用者の未読の書き込みを持つスレッドの行の 2 行目の先頭に未読の札を出す。クローズの行にも出し、既読の行には出さない（正常系）。"""
+    # 準備
+    url, root = served_unseen_threads
+    page = open_preview(url)
+    before = read_workspace_yaml(root, "threads.yaml")
+    # 実行（すべての状態の行を並べる）
+    open_list(page)
+    page.click(f"{SEGMENTS}[data-focus='filter:all']")
+    # 検証
+    assert page.locator(f"{thread_row('TH-1')} .th-line2 > :first-child.th-unread").inner_text() == "未読"
+    assert page.locator(f"{thread_row('TH-3')} .th-line2 > :first-child.th-unread").inner_text() == "未読"
+    assert page.locator(f"{thread_row('TH-2')} .th-unread").count() == 0
+    # 未読の行の状態の札は変えず、読み上げの名前が状態の次に「未読」を読む
+    assert page.inner_text(f"{thread_row('TH-3')} .th-state") == "クローズ"
+    label = page.get_attribute(f"{thread_row('TH-1')} button.th-open", "aria-label") or ""
+    assert label.split("、")[:2] == ["オープン", "未読"]
+    # 一覧を開いただけでは既読にしない
+    assert read_workspace_yaml(root, "threads.yaml") == before
+
+
+def test_rows_when_opened_thread_back(
+    served_unseen_threads: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """未読のスレッドを開いて一覧へ戻ると、その行とトップバーのコメントのボタンから未読の印が消え、ほかの未読の行は残る（正常系）。"""
+    # 準備
+    url, root = served_unseen_threads
+    page = open_preview(url)
+    open_list(page)
+    page.click(f"{SEGMENTS}[data-focus='filter:all']")
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 1
+    # 実行
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
+    page.wait_for_function(
+        "() => !document.querySelector('header.topbar button.comments-btn .unread-dot')",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    page.get_by_role("button", name="一覧へ戻る").click()
+    page.wait_for_selector(thread_row("TH-1"))
+    # 検証
+    threads = {item["id"]: item for item in read_workspace_yaml(root, "threads.yaml")["items"]}
+    assert [post["seen"] for post in threads["TH-1"]["posts"]] == [True, True]
+    # クローズの TH-3 の未読は残るが、トップバーの点はオープンの未読だけで出す
+    assert [post["seen"] for post in threads["TH-3"]["posts"]] == [False]
+    assert page.locator(f"{thread_row('TH-1')} .th-unread").count() == 0
+    assert page.locator(f"{thread_row('TH-3')} .th-unread").count() == 1
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 0
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
+
+
+def test_rows_when_reply_arrives(
+    served_unseen_threads: tuple[str, Path], open_preview: OpenPreview, call_tool: CallTool
+) -> None:
+    """一覧を開いたまま AI の返信が届くと、開き直さずにその行へ未読の札を出し、トップバーの点を出す（正常系）。"""
+    # 準備
+    url, root = served_unseen_threads
+    page = open_preview(url)
+    # 既読にして、未読の印が無い状態から始める
+    open_list(page)
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_function(
+        "() => !document.querySelector('header.topbar button.comments-btn .unread-dot')",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    page.get_by_role("button", name="一覧へ戻る").click()
+    page.wait_for_selector(thread_row("TH-2"))
+    assert page.locator(f"{COMMENTS_PANEL} .th-unread").count() == 0
+    # 実行
+    call_tool("reply", workspace=str(root), id="TH-2", body="続きです", summary="既読のオープン")
+    # 検証
+    page.wait_for_selector(f"{thread_row('TH-2')} .th-unread", timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot", timeout=UPDATE_TIMEOUT_MS)
+    assert page.locator(f"{COMMENTS_PANEL} .th-unread").count() == 1

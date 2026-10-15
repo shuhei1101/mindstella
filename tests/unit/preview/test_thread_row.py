@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import pytest
@@ -54,6 +55,41 @@ FREE = _thread(
     posts=[_post("ai", "資料を足しました。", "2026-10-12T00:41:00+00:00")],
 )
 
+# AI の返信が利用者の未読のオープンのスレッド
+UNSEEN_OPEN = _thread(
+    "TH-2",
+    tags=["起票"],
+    summary="D-16 の比べた結果を Issue に起票してよいかの確認。返事待ち",
+    target="D-16",
+    posts=[_post("ai", "D-16 の比べた結果を Issue に起票してよいですか。", "2026-10-12T04:02:00+00:00", seen=False)],
+)
+
+# AI が返信してからクローズにし、返信が利用者の未読のスレッド
+UNSEEN_CLOSED = _thread(
+    "TH-6",
+    status="closed",
+    tags=["起票"],
+    summary="T-4 の Issue の起票の確認。起票して完了",
+    target="T-4",
+    posts=[
+        _post("user", "起票してよい", "2026-10-12T03:00:00+00:00", seen=True),
+        _post("ai", "T-4 の Issue を起票しました。", "2026-10-12T03:07:00+00:00", seen=False),
+    ],
+    events=[{"kind": "closed", "author": "ai", "reason": "起票した", "created": "2026-10-12T03:07:00+00:00"}],
+)
+
+# 全ての書き込みが利用者の既読のオープンのスレッド
+ALL_SEEN = _thread(
+    "TH-1",
+    tags=["画面"],
+    summary="D-12 の失敗時の扱いの相談",
+    target="D-12",
+    posts=[
+        _post("user", "D-12 は案 B にしたい", "2026-10-12T01:20:00+00:00", seen=True),
+        _post("ai", "D-12 を案 B で決定にしました。", "2026-10-12T01:24:00+00:00", seen=True),
+    ],
+)
+
 # まだ送っていない新しいスレッドの最初の書き込み
 PENDING = {
     "id": "C-41",
@@ -84,6 +120,7 @@ ROW_SCRIPT = """(args) => {
     if (args.clickRow) row.querySelector("button").click();
     return {
         text: row.textContent.replace(/\\s+/g, " "),
+        line2First: row.querySelector(".th-line2")?.firstElementChild?.textContent.trim() ?? "",
         hasTime: row.querySelector("time[datetime]") !== null,
         tagLabels: tags.map((button) => button.textContent.trim()),
         tagPressed: tags.map((button) => button.getAttribute("aria-pressed")),
@@ -176,6 +213,84 @@ def test_thread_row_when_tag(
     assert observed["tagLabels"] == ["調査", "画面"]
     assert observed["tagPressed"] == ["false", "true"]
     assert observed["calls"] == [["tag", "画面"]]
+
+
+@pytest.mark.parametrize(
+    ("thread", "expected_state", "expected_unread"),
+    [
+        pytest.param(UNSEEN_OPEN, "オープン", True, id="open"),
+        pytest.param(UNSEEN_CLOSED, "クローズ", True, id="closed"),
+        pytest.param(ALL_SEEN, "オープン", False, id="all_seen"),
+    ],
+)
+def test_thread_row_when_unread(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    thread: dict[str, Any],
+    expected_state: str,
+    expected_unread: bool,
+) -> None:
+    """利用者の未読を持つ行に未読の札を出す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = _observe(preview_page, {"thread": thread})
+    # 行を開くボタンの読み上げの名前が、状態の次に「未読」を読むもの
+    reads_unread = preview_page.get_by_role(
+        "button", name=re.compile(rf"^{expected_state}[\s、,，]*未読")
+    ).count()
+    # 検証
+    assert expected_state in observed["text"]
+    assert ("未読" in observed["line2First"]) is expected_unread
+    assert (reads_unread == 1) is expected_unread
+    assert ("未読" in observed["text"]) is expected_unread
+
+
+@pytest.mark.parametrize(
+    ("seen_flags", "expected"),
+    [
+        pytest.param([True, False], True, id="has_unseen"),
+        pytest.param([True, True], False, id="all_seen"),
+        pytest.param([None, None], False, id="without_seen"),
+    ],
+)
+def test_has_unseen(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    seen_flags: list[bool | None],
+    expected: bool,
+) -> None:
+    """seen が偽の書き込みを持つときだけ真（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    thread = _thread("TH-1", posts=[_post("ai", "返信", seen=flag) for flag in seen_flags])
+    # 実行
+    result = preview_page.evaluate("(thread) => MindmapPreview.hasUnseen(thread)", thread)
+    # 検証
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("threads", "expected"),
+    [
+        pytest.param([UNSEEN_OPEN, ALL_SEEN], True, id="open_unseen"),
+        pytest.param([UNSEEN_CLOSED], False, id="closed_unseen_only"),
+        pytest.param([], False, id="empty"),
+    ],
+)
+def test_any_open_unseen(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    threads: list[dict[str, Any]],
+    expected: bool,
+) -> None:
+    """クローズの未読は数えない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(threads) => MindmapPreview.anyOpenUnseen(threads)", threads)
+    # 検証
+    assert result is expected
 
 
 @pytest.mark.parametrize(
