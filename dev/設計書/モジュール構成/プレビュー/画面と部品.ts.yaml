@@ -1790,7 +1790,7 @@ components:
     title: 左右に並べた本文の差分
     container: plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts
     usecase: 前回からの差分を見る
-    summary: 部品設計『左右に並べた本文の差分』。`sideBySideRows` の行ごとに、左右の列（`section.sbs-col`、読み上げの名前「選んだ時点の本文」「今の本文」）へ `div.sbs-row` を 1 つずつ置き、塊を本文の中の行の位置のまま `renderMarkdown` で描く（前に空行を積んで `data-line-start` を本文の行に揃える）。`changed` の行を持つ要素に、左は消した印、右は足した印を付ける（段落・見出し・コードは `del.df-blk` / `ins.df-blk` で囲み、表の行は `tr.df-row.df-del` / `df-add`、箇条書きの項目は `li.df-li-del` / `df-li-add`）。片側が空の行は `sbs-gap`（`aria-hidden`）にする。左の列と、`lined` が偽のときの右の列は `data-line-start` を外す。左の変えた図には `sbs-was` だけを付ける。行ごとに左右の高い方に `min-height` を揃え、中の要素の高さが変わったら（`ResizeObserver`）次のコマで 1 回だけ揃え直す
+    summary: 部品設計『左右に並べた本文の差分』。`sideBySideRows` の行ごとに、左右の列（`section.sbs-col`、読み上げの名前「選んだ時点の本文」「今の本文」）へ `div.sbs-row` を 1 つずつ置き、塊を本文の中の行の位置のまま `renderMarkdown` で描く（前に空行を積んで `data-line-start` を本文の行に揃える）。見出しの段は、左右の全ての塊を描いた後、それらを合わせた最も上の段から `detailPanel` と同じ差を 1 つ求め（`headingShift`）、左右の全ての塊に当てる（`lowerHeadings`。h6 を超える段は `aria-level` で伝える。どちらも `screens/detail.ts` の関数を `MindmapPreview` に出して使う）。`changed` の行を持つ要素に、左は消した印、右は足した印を付ける（段落・見出し・コードは `del.df-blk` / `ins.df-blk` で囲み、表の行は `tr.df-row.df-del` / `df-add`、箇条書きの項目は `li.df-li-del` / `df-li-add`）。片側が空の行は `sbs-gap`（`aria-hidden`）にする。左の列と、`lined` が偽のときの右の列は `data-line-start` を外す。左の変えた図には `sbs-was` だけを付ける。行ごとに左右の高い方に `min-height` を揃え、中の要素の高さが変わったら（`ResizeObserver`）次のコマで 1 回だけ揃え直す
     description: 返すのは `{root, columns, markWords, decorate}`（並べた本文、左右の列、向かい合う変えた行で消した塊と足した塊の数が同じものを対にして語の面を付ける関数、右の変えた図に図の差分を付ける関数）。`sideBySideRows` が `null` のときは `null` を返し、`detailPanel` が本文の差分を計算しきれない旨を出す
     kind: コンポーネント
     props:
@@ -1830,6 +1830,12 @@ components:
         condition: 全ての行が違う 5000 行の前後
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`null`'
+      - name: test_side_by_side_body_diff_when_headings
+        case: 正常
+        summary: 見出しの段は前後を合わせた最も上の段から 1 つの差で下げ、左右で揃う
+        condition: '`## 決め方` と `### 理由` の見出しを持ち、`### 理由` の下の段落だけを書き換えた前後'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 左右の列とも「決め方」が `h4`、「理由」が `h5`
 functions:
   - name: filterRows
     title: 行の絞り込み
