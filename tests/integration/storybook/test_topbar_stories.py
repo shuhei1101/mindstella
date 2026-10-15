@@ -918,3 +918,46 @@ def test_fit_narrowest_unchanged_when_width_390(open_story: OpenStory, story_id:
     measured = page.evaluate(BAR_SHAPE_SCRIPT)
     # 検証
     assert measured == {"padding": ["10px", "10px"], **expected}
+
+
+# 幅 320〜389px を 1px ずつ通す幅と、そのときの画面の高さ
+NARROWEST_EVERY_WIDTH = range(320, 390)
+NARROWEST_HEIGHT = 844
+
+# ストーリーの引数の上書き: 既定の中身のままと、収める最大の中身（絞り込みのバッジ 12・コメントの件数 99+）
+STORY_DEFAULT_CONTENT = ""
+STORY_MAX_CONTENT = "&args=filterCount:12;commentCount:120"
+
+# 4 つの状態を、既定の中身と最大の中身で開く組
+NARROWEST_CONTENT_CASES = [
+    pytest.param(story_id, args, id=f"{story_id.removeprefix('preview-topbar--')}-{content}")
+    for story_id in (FIT_NARROWEST, FIT_NARROWEST_DIFF, FIT_NARROWEST_OFFLINE, FIT_NARROWEST_OFFLINE_DIFF)
+    for content, args in (("default", STORY_DEFAULT_CONTENT), ("max", STORY_MAX_CONTENT))
+]
+
+# 全てのボタンが収まっているときの BUTTONS_FIT_SCRIPT の結果
+BUTTONS_ALL_FIT = {"pageFits": True, "barFits": True, "outside": []}
+
+
+def _overflowing_widths(page: Page, widths: range) -> list[int]:
+    """表示幅を 1px ずつ変えながらトップバーを測り、横にはみ出した幅（ボタンが幅の外に出た幅を含む）を返す。"""
+    overflowing = []
+    for width in widths:
+        # 幅を変え、画面がその幅になってから測る
+        page.set_viewport_size({"width": width, "height": NARROWEST_HEIGHT})
+        page.wait_for_function(f"innerWidth === {width}")
+        if page.evaluate(BUTTONS_FIT_SCRIPT) != BUTTONS_ALL_FIT:
+            overflowing.append(width)
+    return overflowing
+
+
+@pytest.mark.parametrize(("story_id", "args"), NARROWEST_CONTENT_CASES)
+def test_fit_narrowest_every_width(open_story: OpenStory, story_id: str, args: str) -> None:
+    """幅 320〜389px を 1px ずつ変えても、既定の中身でも最大の中身でも、ページもトップバーも横にはみ出さず、全てのボタンと札の × が表示幅の中にある（正常系）。"""
+    # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
+    page = open_story(f"{story_id}{args}")
+    page.evaluate("document.fonts.ready")
+    # 実行
+    overflowing = _overflowing_widths(page, NARROWEST_EVERY_WIDTH)
+    # 検証（はみ出した幅をまとめて出す）
+    assert overflowing == []
