@@ -176,3 +176,18 @@ def test_minimap_hidden(open_story: OpenStory) -> None:
     assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
     # 検証（表示する種類は既定のまま）
     assert page.inner_text(".st-all .n") == "7/7"
+
+
+def test_body_diff_layout_overridden(open_story: OpenStory) -> None:
+    """詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "body-diff-layout-overridden")
+    # 検証（変えている項目と「既定に戻す」）
+    assert page.inner_text(f"{PANEL} .st-over-h") == "この端末で変えている項目"
+    assert page.inner_text(f"{PANEL} .st-over > span:last-child") == "本文の差分の並べ方"
+    assert _buttons(page) == ["既定に戻す"]
+    # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
+    assert page.locator(f"{PANEL} .st-save button").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
+    # 検証（表示する種類は既定のまま）
+    assert page.inner_text(".st-all .n") == "7/7"
