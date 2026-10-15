@@ -2566,3 +2566,190 @@ def test_detail_panel_when_body_heading_levels(
     assert result["headings"] == expected_headings
     # 足した囲みの中の見出しの上の余白は、4px でなく元の段の余白のまま
     assert result["inBlock"] == expected_in_block
+
+
+# 本文を変えていない資料の変えた回（キーの状態だけを変えた）
+BODY_UNCHANGED_ENTRY = {"seq": 1, "at": ENTRY_AT, "before": {"status": "未決定"}}
+
+# 詳細パネルを指定の幅で差分つきに開き、並べ方の切り替えと左右の本文・インラインの本文の見え方を調べる
+OPEN_SIDE_BY_SIDE_PANEL_SCRIPT = """async ({data, point, bodyLayout, width}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, layout: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+        bodyLayout,
+    });
+    panel.style.width = `${width}px`;
+    document.body.append(panel);
+    // 本文の差分と、本文の幅による出し分けは、文書に入った後の描き直しで置かれる
+    for (let frame = 0; frame < 4; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const visible = (element) => element !== null && element.getClientRects().length > 0;
+    const marks = "ins.df-blk, del.df-blk";
+    const switchGroup = panel.querySelector(".sbs-switch");
+    const pressed = visible(switchGroup)
+        ? switchGroup.querySelector('[aria-pressed="true"]').getAttribute("data-layout")
+        : null;
+    return {
+        switch: visible(switchGroup),
+        pressed,
+        sbs: visible(panel.querySelector(".sbs")),
+        sbsFallback: visible(panel.querySelector(".sbs-fallback")),
+        inlineMarks: [...panel.querySelectorAll(marks)]
+            .filter((mark) => mark.closest(".sbs") === null && visible(mark)).length,
+        sbsMarks: [...panel.querySelectorAll(".sbs ins.df-blk, .sbs del.df-blk")]
+            .filter(visible).length,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("entries", "body_layout", "width", "expected"),
+    [
+        pytest.param(
+            [MINIMAP_ENTRY],
+            "inline",
+            760,
+            {
+                "switch": True,
+                "pressed": "inline",
+                "sbs": False,
+                "sbsFallback": False,
+                "inlineMarks": 2,
+                "sbsMarks": 0,
+            },
+            id="inline_wide",
+        ),
+        pytest.param(
+            [MINIMAP_ENTRY],
+            "side",
+            760,
+            {
+                "switch": True,
+                "pressed": "side",
+                "sbs": True,
+                "sbsFallback": False,
+                "inlineMarks": 0,
+                "sbsMarks": 2,
+            },
+            id="side_wide",
+        ),
+        pytest.param(
+            [MINIMAP_ENTRY],
+            "side",
+            480,
+            {
+                "switch": False,
+                "pressed": None,
+                "sbs": False,
+                "sbsFallback": True,
+                "inlineMarks": 2,
+                "sbsMarks": 0,
+            },
+            id="side_narrow",
+        ),
+        pytest.param(
+            [BODY_UNCHANGED_ENTRY],
+            "side",
+            760,
+            {
+                "switch": False,
+                "pressed": None,
+                "sbs": False,
+                "sbsFallback": False,
+                "inlineMarks": 0,
+                "sbsMarks": 0,
+            },
+            id="side_body_unchanged",
+        ),
+    ],
+)
+def test_detail_panel_when_body_side_by_side(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    entries: list[dict[str, Any]],
+    body_layout: str,
+    width: int,
+    expected: dict[str, Any],
+) -> None:
+    """並べ方が side のとき、切り替えと左右の本文を置き、本文の幅が足りなければインラインを出す（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=entries, seq=1)],
+        bodies={"D-1.md": MINIMAP_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_SIDE_BY_SIDE_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "bodyLayout": body_layout, "width": width},
+    )
+    # 検証
+    assert result == expected
+
+
+# 詳細パネルを「インライン」で開いて URL のハッシュを決め、「左右に並べる」を押して、知らせた並べ方とハッシュを返す
+PRESS_SIDE_SCRIPT = """async ({data, point, width}) => {
+    history.replaceState(null, "", "#keep");
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const calls = [];
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {
+            open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop,
+            layout: (...args) => calls.push(args),
+        },
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+        bodyLayout: "inline",
+    });
+    panel.style.width = `${width}px`;
+    document.body.append(panel);
+    for (let frame = 0; frame < 4; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    panel.querySelector('.sbs-switch button[data-layout="side"]').click();
+    return {calls, hash: location.hash};
+}"""
+
+
+def test_detail_panel_when_body_layout_changed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """並べ方のボタンを押すと on.layout を呼ぶ（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[MINIMAP_ENTRY], seq=1)],
+        bodies={"D-1.md": MINIMAP_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        PRESS_SIDE_SCRIPT, {"data": data, "point": DIFF_POINT, "width": 760}
+    )
+    # 検証（URL のハッシュは変わらない）
+    assert result == {"calls": [["side"]], "hash": "#keep"}

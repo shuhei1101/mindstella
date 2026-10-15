@@ -334,6 +334,44 @@ def test_minimap_targets(
     assert targets == expected
 
 
+# 左右に並べた本文（変えた行・変えていない行・変えた行の 3 行）。2 行目の左は空き
+SIDE_BY_SIDE_HTML = (
+    '<div class="sbs">'
+    '<div class="sbs-cols">'
+    '<section class="sbs-col sbs-before" aria-label="選んだ時点の本文">'
+    '<div class="sbs-row sbs-chg"><div class="md">'
+    '<del class="df-blk" data-id="deleted"><p>消した段落</p></del></div></div>'
+    '<div class="sbs-row"><div class="md"><p>変えていない段落</p></div></div>'
+    '<div class="sbs-row sbs-chg sbs-gap" aria-hidden="true"></div>'
+    "</section>"
+    '<section class="sbs-col sbs-after" aria-label="今の本文">'
+    '<div class="sbs-row sbs-chg"><div class="md">'
+    '<ins class="df-blk" data-id="added-first"><p>足した段落</p></ins></div></div>'
+    '<div class="sbs-row"><div class="md"><p>変えていない段落</p></div></div>'
+    '<div class="sbs-row sbs-chg"><div class="md">'
+    '<ins class="df-blk" data-id="added-last"><p>末尾に足した段落</p></ins></div></div>'
+    "</section>"
+    "</div>"
+    "</div>"
+)
+
+
+def test_minimap_targets_when_side_by_side(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+) -> None:
+    """左右に並べた本文は高さの順に並べ、向かい合う消した塊と足した塊を変わったにする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    # 実行
+    targets = preview_page.evaluate(TARGETS_SCRIPT, SIDE_BY_SIDE_HTML)
+    # 検証（向かい合う消した塊と足した塊が変わった 1 つ。末尾の足した塊は足した）
+    assert [target["kind"] for target in targets] == ["chg", "add"]
+    assert [target["first"] for target in targets] == ["deleted", "added-last"]
+
+
 @pytest.mark.parametrize(
     ("extents", "expected_sizes", "expected_starts"),
     [
