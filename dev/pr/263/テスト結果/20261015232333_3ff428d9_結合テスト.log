@@ -1,0 +1,6 @@
+$ pytest tests/integration/storybook/test_topbar_stories.py tests/integration/preview/test_topbar_screen.py
+........................................................................ [ 46%]
+........................................................................ [ 93%]
+..........                                                               [100%]
+154 passed in 111.25s (0:01:51)
+exit=0
