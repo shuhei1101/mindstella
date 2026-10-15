@@ -514,9 +514,11 @@ notes:
 
     - そのスレッドへの要求を送っている間と、そのスレッドへの要求が失敗してから別のスレッドを開くか一覧へ戻るまでの間は、呼ばない（送っているスレッドと失敗したスレッドの ID を控える。失敗の控えは「スレッドを開く」と「戻る」で空にする）
 
-    - `threadApi().seen` を呼ぶと同時に、`CommentState.threads` を `withSeen(threads, ID)` に置き換え、`anyOpenUnseen` が変わればトップバーを描き直す。応答は待たない
+    - `threadApi().seen` を呼ぶと同時に、`CommentState.threads` を `withSeen({ threads, id })` に置き換え、`anyOpenUnseen` が変わればトップバーを描き直す。応答は待たない
 
-    - 断られた・届かないときは画面に出さず、失敗したスレッドの ID を控えてからスレッドを読み直す（写しをサーバーの値に戻す）'
+    - 要求を送っている間に読み直した値で置き換えるときは、送っているスレッドを `withSeen` で既読にしてから置き換える（送る前のサーバーの値で写しを未読に戻さない）
+
+    - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）'
   スレッドの画面の操作: |-
     `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`openedThread`（`opened`）・`composing`・`reason` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
     - パネルを開くときは `view` を `list`、`openedThread` を `null`、`composing` を偽にし、スレッドを読み直す

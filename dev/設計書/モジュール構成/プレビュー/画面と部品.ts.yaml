@@ -2862,12 +2862,12 @@ functions:
       - name: threads
         type: Thread[]
         required: true
-        passing: positional
+        passing: keyword
         description: 画面が持つスレッドの写し
       - name: id
         type: string
         required: true
-        passing: positional
+        passing: keyword
         description: 既読にするスレッドの ID
     returns:
       type: Thread[]
