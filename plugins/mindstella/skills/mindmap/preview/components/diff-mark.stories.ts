@@ -24,3 +24,6 @@ export const Changed: Story = { args: { kind: "changed" } };
 
 /** 詳細パネルの題の横の新規の札 */
 export const NewLabeled: Story = { args: { kind: "new", labeled: true } };
+
+/** 消した。差分の色の赤の太い − だけで、新規・変更と同じ大きさ */
+export const Removed: Story = { args: { kind: "removed" } };

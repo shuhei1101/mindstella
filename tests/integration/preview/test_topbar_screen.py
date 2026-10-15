@@ -8,7 +8,8 @@ from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL, free_commen
 from preview_drawer_helpers import DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
-from workspace_fixtures import MakeComment, MakeItem
+from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
+from workspace_fixtures import MakeComment, MakeItem, MakePost, MakeThread
 
 # タブの帯に並ぶ画面の並び（ネットワークは右端）
 TAB_KEYS = [
@@ -134,6 +135,84 @@ def test_comments_button(
     assert button.get_attribute("aria-expanded") == "false"
 
 
+# どの画面でもトップバーが同じ未読の点を出すことを確かめる画面のハッシュ（概要・検討事項・タスク・資料・記録の表・ネットワーク）
+UNREAD_SCREEN_HASHES = [
+    pytest.param("#tab=overview", id="overview"),
+    pytest.param("#tab=decisions&view=table", id="decisions"),
+    pytest.param("#tab=tasks", id="tasks"),
+    pytest.param("#tab=docs", id="docs"),
+    pytest.param("#tab=notes", id="records"),
+    pytest.param("#tab=graph", id="graph"),
+]
+
+# 未読の点を重ねたコメントのボタンの読み上げの名前
+UNREAD_LABEL = "コメント（未読あり・レビュー中 0 件）"
+
+
+@pytest.mark.parametrize("hash_text", UNREAD_SCREEN_HASHES)
+def test_comments_button_when_unseen(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    hash_text: str,
+) -> None:
+    """オープンのスレッドに利用者の未読があると、どの画面でも、コメントの一覧を開く前からコメントのボタンに点を重ね、読み上げの名前に未読を含める（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        make_item("N-1"),
+        threads=(
+            make_thread("TH-1", make_post("TH-1-1", author="ai", seen=False)),
+            make_thread("TH-2", make_post("TH-2-1")),
+        ),
+    )
+    # 実行
+    page = open_preview(url, hash_text)
+    page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot")
+    # 検証
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 0
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 1
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == UNREAD_LABEL
+    # 点は読み上げから外し、未読の件数は出さない
+    assert page.get_attribute(f"{COMMENTS_BUTTON} .unread-dot", "aria-hidden") == "true"
+    assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "0"
+
+
+@pytest.mark.parametrize(
+    "threads_kind",
+    [
+        pytest.param("seen_only", id="seen_only"),
+        pytest.param("closed_unseen_only", id="closed_unseen_only"),
+        pytest.param("none", id="none"),
+    ],
+)
+def test_comments_button_when_no_open_unseen(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    threads_kind: str,
+) -> None:
+    """全て既読か、未読がクローズのスレッドだけか、スレッドが無いときは、コメントのボタンに点を出さない（正常系）。"""
+    # 準備
+    threads = {
+        "seen_only": (make_thread("TH-1", make_post("TH-1-1", author="ai")),),
+        "closed_unseen_only": (
+            make_thread("TH-1", make_post("TH-1-1", author="ai", seen=False), status="closed"),
+        ),
+        "none": (),
+    }[threads_kind]
+    url, _ = write_review_preview(make_item("D-1"), threads=threads)
+    # 実行
+    page = open_preview(url)
+    # 検証
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 0
+
+
 def test_comments_button_when_zero(
     write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
@@ -213,7 +292,7 @@ def test_diff_off_by_chip(
 def test_tab_marks(
     write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """差分の表示の間、新規・変更の項目を持つ種類のタブにだけ点を付け、件数は残す（正常系）。"""
+    """差分の表示の間、新規・変更・消した項目を持つ種類のタブにだけ点を付け、件数は残す（正常系）。"""
     # 準備・実行
     url, _ = write_history_preview()
     preselect_diff(page, "pending")
@@ -225,7 +304,42 @@ def test_tab_marks(
     )
     assert dotted == ["decisions", "tasks", "notes"]
     assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
-    assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更・消した項目があります"
+
+
+def test_tab_marks_when_only_removed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """選んだ時点で新規・変更の項目が無く、消した項目だけを持つ種類のタブにも点を付け、消した項目を含めた件数にしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "pending")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector(".df-chip")
+    # 検証（まだまとめていない変更: タスク T-2 を消しただけ）
+    dotted = page.eval_on_selector_all(
+        "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
+    )
+    assert dotted == ["tasks"]
+    assert page.locator('nav.tabbar a[data-tab="tasks"] .df-dot .sr-only').inner_text() == "新規・変更・消した項目があります"
+    # タブの件数は今ある項目の数（消した T-2 は含めない）
+    assert page.inner_text('nav.tabbar a[data-tab="tasks"] .count') == "1"
+
+
+def test_tab_marks_when_removed_and_changed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """消した項目だけの種類（検討事項）にも、消した項目を持たない種類（タスク）を除いて点を付ける（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector(".df-chip")
+    # 検証（まとまり V-2: 各種類の項目を消した。タスクは消していない）
+    dotted = page.eval_on_selector_all(
+        "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
+    )
+    assert dotted == list(REMOVED_IN_V2_BY_TAB)
 
 
 @pytest.mark.parametrize("tab", [key for key in TAB_KEYS if key != "overview"])

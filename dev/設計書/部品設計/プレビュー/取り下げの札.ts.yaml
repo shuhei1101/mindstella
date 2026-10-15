@@ -1,0 +1,25 @@
+title: "取り下げの札"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.ts#MindmapPreview.withdrawnBadge"
+story: "Preview/WithdrawnBadge"
+states:
+  - name: Default
+    description: 表の行・カードのタイトルの右に置く大きさ。枠付きの × と「取り下げ」
+  - name: Large
+    description: 詳細パネルの題の右に置く大きさ
+    args:
+      - name: large
+        value: 'true'
+  - name: BesideStatusBadges
+    description: 検討事項の状態「取り下げ」・タスクの状態「中止」・資料の状態「完成」の札と並べ、枠の有無で見分けられることを見せる
+lead: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に、差分の表示によらず置く札。検討事項の状態「取り下げ」と同じ × の印と文言に枠を付け、状態の札（枠なし）と見分ける。
+args:
+  - name: large
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 真のとき、詳細パネルの題の大きさに合わせて札を一回り大きくする
+    status: planned
+accessibility:
+  - × の印は `aria-hidden` にし、「取り下げ」の文字で伝える
+  - 色だけに頼らず、枠と文言で状態の札と消した印から見分ける
+test_file: tests/integration/storybook/test_withdrawn_badge_stories.py

@@ -31,6 +31,27 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     ]
 
 
+def test_normal_when_html_body(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """本文を HTML で持つ資料は、HTML の原文と形式を返す（正常系）。"""
+    # 準備
+    body_html = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"
+    root = make_workspace(
+        make_item("A-1", body="A-1.html"),
+        bodies={"A-1.html": body_html},
+    )
+    # 実行
+    result = call_tool("show", workspace=str(root), id="A-1")
+    # 検証
+    assert result.is_error is False
+    payload = result.data
+    assert payload["body_html"] == body_html
+    assert "data-line" not in payload["body_html"]
+    assert payload["body_format"] == "html"
+    assert payload["body_markdown"] is None
+
+
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
     """config.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備

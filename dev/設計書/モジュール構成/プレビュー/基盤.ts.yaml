@@ -39,7 +39,7 @@ data_models:
     title: 画面の場所
     container: plugins/mindstella/skills/mindmap/preview/core/router.ts
     usecase: 共通
-    summary: URL のハッシュが指す画面・表示形式・項目・絞り込み（インターフェース定義『プレビューを開く』のリクエスト）
+    summary: URL のハッシュが指す画面・表示形式・項目・絞り込み・差分の時点（インターフェース定義『プレビューを開く』のリクエスト）
     properties:
       - name: tab
         type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'graph'"
@@ -59,6 +59,9 @@ data_models:
       - name: heading
         type: string | null
         description: 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`headingSlug` の形）。`id` が無いときは `null`
+      - name: diff
+        type: string | null
+        description: 差分の表示で比べる時点（ハッシュの `diff`。`since`・`pending`・まとまりの ID）。記録にあるかは確かめず、入口が `resolveDiffPoint` で引く。無いときは `null`
   - name: FetchResult
     title: 記録の取得の結果
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -97,7 +100,7 @@ data_models:
         description: 断られたときの `detail`。届かなかったときは `null`
       - name: stale
         type: '{id, reason}[]'
-        description: 409 のときの箇所が合わないコメント（それ以外は空）
+        description: 409 のときの送れない書き込み（箇所が合わない・向けた項目が消えた・返信先がクローズか無い。それ以外は空）
   - name: Location
     title: 箇所
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -126,11 +129,44 @@ data_models:
     summary: 『レビュー中のコメントの読み取り』の本文
     properties:
       - name: items
-        type: '{id, target, target_title, loc, body, created}[]'
-        description: レビュー中のコメント（溜めた順）
+        type: '{id, target, target_title, loc, thread, body, created}[]'
+        description: レビュー中のコメント（溜めた順）。`thread` を持つものはスレッドへの返信、持たないものは新しいスレッドの最初の書き込み
       - name: drafts
-        type: '{target, loc, body}[]'
+        type: '{target, loc, thread, body}[]'
         description: 書きかけ
+  - name: Thread
+    title: スレッド
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: スレッドで話す
+    summary: 『スレッドの読み取り』の `threads[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: スレッドの ID
+      - name: status
+        type: "'open' | 'closed'"
+        description: 状態
+      - name: tags
+        type: string[]
+        description: タグ
+      - name: summary
+        type: string | null
+        description: 要約
+      - name: target
+        type: string | null
+        description: 向けた項目の ID
+      - name: target_title
+        type: string | null
+        description: その項目のタイトル。項目が消えていれば `null`
+      - name: loc
+        type: Location | null
+        description: 最初の書き込みに添えた箇所
+      - name: posts
+        type: "{id, author: 'user' | 'ai', body, created, seen: boolean}[]"
+        description: 書いた順の書き込み。`seen` は利用者の既読
+      - name: events
+        type: "{kind: 'closed' | 'reopened', author: 'user' | 'ai', reason: string | null, created}[]"
+        description: 書いた順の状態の記録
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -196,11 +232,13 @@ constants:
         value: '"api/opened"'
       - key: configDisplay
         value: '"api/config/display"'
+      - key: threads
+        value: '"api/threads"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 検討事項をマップで辿る
-    summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）
+    summary: 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす（タッチパッド・ペンで 1 回押すときのぶれを吸収し、マップを動かすつもりのドラッグとは取り違えない幅）。`MindmapPreview.PRESS_SLOP_PX` として出し、差分のミニマップの印を押したかドラッグかの見分けもこの値を使う
     value: '5'
   - name: DOUBLE_TAP_MS
     title: 2 回押しとみなす間隔
@@ -226,6 +264,12 @@ constants:
     usecase: ネットワークを辿る
     summary: ロックを判定する画面の幅のメディアクエリ。幅 900px 以下では詳細が全面に出るため、ネットワークも検討事項のマップもロックしない
     value: '"(min-width: 901px)"'
+  - name: HTML_LINK_OPEN_SCHEMES
+    title: HTML の本文のリンクで開くスキーム
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    summary: HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形）
+    value: '["http:", "https:", "mailto:"]'
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -288,7 +332,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/records.ts
     usecase: 項目を検索する
     scope: public
-    summary: 空白で区切った語を全て含む項目を、完全に一致する項目を先にして返す
+    summary: 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す
     args:
       - name: query
         type: string
@@ -301,8 +345,8 @@ functions:
         passing: keyword
         description: 索引
     returns:
-      type: '{id, kind, title, exact}[]'
-      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。大文字・小文字を区別しない。`exact` は ID かタイトルが言葉と完全に一致するか（大文字・小文字と前後の空白を区別しない）。`exact` が真の項目を先に、それぞれ種類の順 → 連番の順。言葉が空なら空
+      type: '{id, kind, title, tier}[]'
+      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。本文が HTML のものと、Markdown の本文の言語指定 `html` のコードブロックは、描いた文（`htmlText`）で当てる。大文字・小文字を区別しない。`tier` は段で、`1` は ID かタイトルが言葉と完全に一致（大文字・小文字と前後の空白を区別しない）、`2` はタイトルが語を全て含む、`3` はそれ以外。`tier` の順 → 種類の順 → 連番の順。言葉が空なら空
     unit_tests:
       - name: test_search_items
         case: 正常
@@ -310,12 +354,18 @@ functions:
         condition: '`parametrize`: `"d-1"` / 本文にだけある語 / 2 語のうち 1 語だけ含む項目 / 空白だけ'
         mock: なし
         expected: D-1 / その項目 / 返らない / 空
-      - name: test_search_items_exact_first
+      - name: test_search_items_tier_order
         case: 正常
-        summary: 完全に一致する項目を先にする
-        condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」に 「シナリオの依頼 」（末尾に空白） / `"g-1"` / どれにも一致しない語「依頼」'
+        summary: 段の順に並べる
+        condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」・本文にだけ「シナリオの依頼」を含む資料 A-1 に「シナリオの依頼 」（末尾に空白） / `"g-1"` / 決定内容にだけ「保存先」を含む検討事項 D-1・タイトルに「保存先」を含む資料 A-2 に「保存先」 / 2 語「シナリオ 受け方」'
         mock: なし
-        expected: G-1（`exact` 真）→ D-1（偽） / G-1 が先頭で `exact` 真、G-12 などは偽 / 全て `exact` 偽で種類の順
+        expected: G-1（`tier` 1）→ D-1（2）→ A-1（3） / G-1 が先頭で `tier` 1、G-12 などは 1 でない / A-2（2）→ D-1（3）で種類の順より段が先 / D-1 が `tier` 2（語がタイトルに全てある）
+      - name: test_search_items_when_html
+        case: 正常
+        summary: HTML の本文と html のコードブロックを描いた文で当てる
+        condition: '本文 `<p class="flow" data-step="1">画面の流れ</p>` の資料 A-1（`A-1.html`）と、同じ中身を言語指定 `html` のコードブロックに持つ資料 A-2（`A-2.md`）。`parametrize`: `画面の流れ` / `data-step` / `flow`'
+        expected: A-1・A-2 / 返らない / 返らない
+        mock: なし
   - name: missingLibraries
     title: 読めなかったライブラリ
     kind: 関数
@@ -373,7 +423,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える
+    summary: 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換える
     args:
       - name: source
         type: string
@@ -389,6 +439,7 @@ functions:
       2. `marked.lexer` の token に先頭の行から `raw` の改行を足し進めた行を持たせ（リストの項目と引用は中の token にも）、見出し・段落・コード・リストの項目・表の行の最初の開きタグに `data-line-start` を付けて HTML にする（`marked.Renderer` を包む。段落を持つ項目は中の段落に任せ、mermaid のコードには付けない。フェンスのコードは次の行、表は見出しの行と区切りの行の次から 1 行ずつ。PoC #80 の方式）
       3. `DOMPurify.sanitize`（`data-line-start` を残す）して要素に入れる
       4. `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に置き換える（描くのは `renderDiagrams`）
+      5. `language-html` のコードブロックを、原文を `data-source` に持ち元の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に置き換える（描くのは詳細の画面が部品『HTMLの本文の枠』で、`selectable` は偽）
     unit_tests:
       - name: test_render_markdown
         case: 正常
@@ -408,6 +459,12 @@ functions:
         condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・表・フェンスのコード・mermaid のコードブロックを持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`h1` の `data-line-start` が 1、段落が 3、表の各行とコードが PoC #80 の対応づけどおり。図の入れ物には付かない。`data-line-start` を除いた HTML が印を付けないときと同じ'
+      - name: test_render_markdown_when_html_code_block
+        case: 正常
+        summary: html のコードブロックを枠の入れ物にし、前後は今までどおり描く
+        condition: 見出し・段落の間に、`<p>a</p><script>x()</script>` を持つ言語指定 `html` のコードブロックを 1 つ持つ本文
+        expected: '`.html-block` が 1 つで `data-source` に原文、`pre` にコードとしては出ない。見出し・段落の `data-line-start` はコードブロックが無いときと同じ数え方'
+        mock: 描画のライブラリの配信元（`page.route`）
   - name: renderDiagrams
     title: 図を描く
     kind: 関数
@@ -484,6 +541,7 @@ functions:
       2. `tab` が画面の値でなければ `overview`、`view` が `VIEWS_OF` に無ければ `DEFAULT_VIEW`
       3. `id` が記録に無ければ `null`。`full` は `id` があり `1` のときだけ真。`heading` は `id` があるときの `h`（空なら `null`）
       4. `f.` で始まるキーを `filters` に入れる。`f.~{列}` は文字の条件で、値を分けず 1 つの配列にする。それ以外は値を `|` で分ける
+      5. `diff` は値をそのまま入れる（空か無ければ `null`）
     unit_tests:
       - name: test_parse_hash
         case: 正常
@@ -491,6 +549,12 @@ functions:
         condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board` / `#tab=docs&id=A-1&h=決め方-1` / `#tab=docs&h=決め方` / `#tab=terms&f.~title=a|b`'
         mock: なし
         expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board / docs・A-1・`heading` が `決め方-1` / `id` が `null` で `heading` も `null` / `{"~title": ["a|b"]}`'
+      - name: test_parse_hash_diff
+        case: 正常
+        summary: 差分の時点を読む
+        condition: '`parametrize`: `#tab=decisions&diff=V-2` / `#diff=pending` / `#tab=decisions&diff=` / `#tab=decisions`'
+        mock: なし
+        expected: decisions・`diff` が `V-2` / overview・`diff` が `pending` / `diff` が `null` / `diff` が `null`
   - name: toHash
     title: ハッシュを作る
     kind: 関数
@@ -506,7 +570,7 @@ functions:
         description: 画面の場所
     returns:
       type: string
-      description: '`#tab=...&view=...&id=...&full=1&h=...` の形（`h` は `heading` があるときだけ）。全て既定なら空文字'
+      description: '`#tab=...&view=...&id=...&full=1&h=...&diff=...` の形（`h` は `heading` があるときだけ、`diff` は `diff` があるときだけ）。全て既定なら空文字'
     unit_tests:
       - name: test_to_hash
         case: 正常
@@ -520,6 +584,12 @@ functions:
         condition: 資料のカードで A-1 を開き、`heading` が `決め方-1`
         mock: なし
         expected: '`#tab=docs&id=A-1&h=決め方-1`（`URLSearchParams` で読み戻すと同じ値）'
+      - name: test_to_hash_diff
+        case: 正常
+        summary: 差分の時点を diff に書く
+        condition: '`parametrize`: 概要の既定で `diff` が `V-2` / 検討事項の表で D-1 を開き `diff` が `since` / 概要の既定で `diff` が `null`'
+        mock: なし
+        expected: '`#diff=V-2` / `#tab=decisions&view=table&id=D-1&diff=since` / 空（`URLSearchParams` で読み戻すと同じ値）'
   - name: navigate
     title: 画面を移る
     kind: 関数
@@ -1004,7 +1074,7 @@ functions:
         description: 要求を送る関数
     returns:
       type: '{read, add, update, remove, saveDraft, send}'
-      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`、`send(ids)` は `POST api/comments/send` を呼ぶ'
+      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`（`input` は `{target, loc, body}` か、返信の `{thread, body}`。元に戻すときは `id`・`created` を足す）、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`（`{target, loc, body}` か `{thread, body}`）、`send(ids)` は `POST api/comments/send` を呼ぶ。`send` の成功の本文は `{sent, items: {comment, thread, post}[], entered}`'
     process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す
     unit_tests:
       - name: test_comment_api
@@ -1013,6 +1083,12 @@ functions:
         condition: "`parametrize`: `read()` / `add({body: x})` / `update('C-1', {loc: null})` / `remove('C-1')` / `saveDraft({target: D-1, body: x})` / `send(['C-1'])`"
         mock: '`fetchFn`'
         expected: '`GET api/comments` / `POST api/comments` / `PATCH api/comments/C-1`（本文 `{"loc":null}`）/ `DELETE api/comments/C-1` / `PUT api/drafts` / `POST api/comments/send`（本文 `{"ids":["C-1"]}`）'
+      - name: test_comment_api_when_thread
+        case: 正常
+        summary: 返信と返信の書きかけは thread を本文に持つ
+        condition: "`parametrize`: `add({thread: 'TH-1', body: x})` / `saveDraft({thread: 'TH-1', body: x})`"
+        mock: '`fetchFn`'
+        expected: '`POST api/comments`（本文 `{"thread":"TH-1","body":"x"}`）/ `PUT api/drafts`（同じ本文）'
   - name: selectionLocation
     title: 選んだ範囲の箇所
     kind: 関数
@@ -1198,7 +1274,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: '描いた本文の見出しに、見出しを指す名前と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする'
+    summary: '描いた本文の見出しに、見出しを指す名前と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動に、`#diff=` のリンクをまとまりの知らせにする'
     args:
       - name: root
         type: HTMLElement
@@ -1210,13 +1286,20 @@ functions:
         required: true
         passing: keyword
         description: '# か `#見出し` のリンクを押したときに、その見出しの名前を知らせる（使う側が送ってハッシュの `h` を置き換える）'
+      - name: onChangeSet
+        type: '(id: string) => void'
+        required: true
+        passing: keyword
+        description: 本文の `#diff=` のリンクを押したときに、`diff` の値を知らせる（空・`since`・`pending` のときは呼ばない。記録にあるまとまりかは使う側が確かめる）
     returns:
       type: void
       description: '-'
     process: |-
       1. 本文の見出し（h1〜h6）を頭から順に、文言を `headingSlug`（本文 1 つで 1 つの `seen`）で名前にして `data-heading` に持たせる
       2. 見出しの右に、読み上げの名前「見出し「{見出し}」へのリンク」の # の `a` を置き、押したら既定の動作を止めて `onHeading` を呼ぶ
-      3. 本文の中の `href` が `#` で始まるリンクは、`#` の後ろを `decodeURIComponent` で戻し（marked は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。押したら既定の動作を止め、同じ名前の見出しがあれば `onHeading` を呼ぶ。無ければ何もしない（URL のハッシュを `#{文字}` に替えさせない）
+      3. 本文の中の `href` が `#` で始まるリンクは、押したら既定の動作を止める（URL のハッシュを `#{文字}` に替えさせない）。`#` の後ろを `URLSearchParams` で読み、`diff` の引数を持つかで分ける
+         - `diff` を持つ場合、まとまりのリンクとして扱う。値が空・`since`・`pending` でなければ `onChangeSet` をその値で呼ぶ。他の引数は読まず、見出しのリンクとしても扱わない
+         - `diff` を持たない場合、`#` の後ろを `decodeURIComponent` で戻し（marked は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。同じ名前の見出しがあれば `onHeading` を呼び、無ければ何もしない
     unit_tests:
       - name: test_link_headings
         case: 正常
@@ -1224,13 +1307,19 @@ functions:
         condition: 見出し「保存先」「決め方」「決め方」と段落の `[決め方](#決め方)`・`[無い](#無い)` を描いた本文（marked が描いた `href` はパーセントエンコードされた日本語）。#・段落の 2 つのリンクを押す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`data-heading` が `保存先`・`決め方`・`決め方-1`。見出しごとに # が 1 つ。押すと `onHeading` にその名前が渡り、`[決め方]`（`href` はエンコードされた `#決め方`）は `決め方`、`[無い]` は呼ばず、URL のハッシュも変わらない'
+      - name: test_link_headings_when_change_set_link
+        case: 正常
+        summary: '`#diff=` のリンクでまとまりを知らせ、見出しとしては扱わない'
+        condition: 見出し「diff=V-1」と段落の `[a](#diff=V-1)`・`[b](#tab=tasks&id=D-1&diff=V-2)`・`[c](#diff=since)`・`[d](#diff=pending)`・`[e](#diff=)` を描いた本文。段落の 5 つのリンクを押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`onChangeSet` が `V-1`・`V-2` の順に 2 回だけ呼ばれる。`onHeading` はどのリンクでも呼ばれず、URL のハッシュも変わらない'
   - name: linkBody
-    title: 本文の用語と項目の ID の印
+    title: 本文の印と項目の ID のリンク
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 描いた本文の文中の、用語集の用語を印に、記録にある項目の ID をリンクにする
+    summary: 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを本文の印に、記録にある項目の ID をリンクにする
     args:
       - name: root
         type: HTMLElement
@@ -1241,25 +1330,26 @@ functions:
         type: RecordIndex
         required: true
         passing: keyword
-        description: 索引（用語は `data.terms` のタイトル、ID は `byId`）
+        description: 索引（用語は `data.terms` のタイトルと `aliases`、資料・調査は `data.docs`・`data.research` の `aliases`、ID は `byId`）
       - name: selfId
         type: string
         required: true
         passing: keyword
-        description: 開いている項目の ID（その項目自身の ID と、用語ならその用語には付けない）
+        description: 開いている項目の ID（その項目自身の ID にはリンクを付けず、その項目は印に当てる項目に含めない）
       - name: onOpen
         type: '(id: string) => void'
         required: true
         passing: keyword
-        description: 印かリンクを押したときにその項目の ID を知らせる（使う側が詳細へ移り、履歴に積む）
+        description: ID のリンクと、用語 1 件だけに一致した印を押したときにその項目の ID を知らせる（使う側が詳細へ移り、履歴に積む）。用語 2 件以上か、資料・調査にも一致した印では呼ばない
     returns:
       type: void
       description: '-'
     process: |-
-      1. 本文の文字のノードをたどる。`pre`・図の入れ物・`a`・h1〜h6 の中は飛ばす。インラインコード（`pre` の外の `code`）は、中身がちょうど用語か記録にある ID のときだけ `code` ごと当てる
-      2. 用語は長いものから順に当て、英数字だけの用語は前後が英数字でないときだけ当てる。出てくる全ての箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id`・`aria-describedby` でツールチップを指す）で包む
-      3. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものは当てない
-      4. 包んだ要素を押したら既定の動作を止めて `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
+      1. 印に当てる語 → 一致した項目の ID の対応を作る。用語はタイトルと `aliases` の各語、資料・調査は `aliases` の各語を、前後の空白を落として用語 → 資料 → 調査の順に積む。`selfId` の項目、`withdrawn` が真の資料・調査、空の語は積まない（取り下げた用語はタイトルも別名も積む）。同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
+      2. 本文の文字のノードをたどる。`pre`・図の入れ物・`a`・h1〜h6 の中は飛ばす。インラインコード（`pre` の外の `code`）は、中身がちょうど語か記録にある ID のときだけ `code` ごと当てる
+      3. 語は長いものから順に当て、英数字だけの語は前後が英数字でないときだけ当てる。出てくる全ての箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id` に先頭の項目・`data-ids` に一致した全ての項目を空白区切りで）で包む。用語 1 件だけに一致した印は `aria-describedby`、用語 2 件以上か、資料・調査にも一致した印は `aria-details` でツールチップを指す
+      4. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものと `selfId` は当てない
+      5. 包んだ要素を押したら既定の動作を止める。ID のリンクと用語 1 件だけに一致した印は `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
     unit_tests:
       - name: test_link_body
         case: 正常
@@ -1273,6 +1363,18 @@ functions:
         condition: '`selfId` が G-1 で、本文に「保存先」と「G-1」'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 「保存先」にも「G-1」にも印・リンクが無い
+      - name: test_link_body_when_aliases
+        case: 正常
+        summary: 資料・調査のエイリアスにも印を付け、同じ語の項目を 1 つの印にまとめる
+        condition: '用語 G-1「特殊効果」、エイリアス「特殊効果」を持つ資料 A-2・調査 R-1、エイリアス「エフェクト」を持つ資料 A-2、エイリアス「特殊効果」を持つ取り下げた資料 A-8 と、エイリアス「古い語」だけを持つ取り下げた資料 A-9 の索引。本文の段落「特殊効果とエフェクトと古い語」。`parametrize`: `selfId` が A-1 / A-2'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「特殊効果」の印の `data-ids` が `G-1 A-2 R-1`、「エフェクト」が `A-2` で `aria-details` を持ち、「古い語」には印が無い。「特殊効果」の印を押しても `onOpen` が呼ばれない / `data-ids` が `G-1 R-1` で、「エフェクト」には印が無い
+      - name: test_link_body_when_term_aliases
+        case: 正常
+        summary: 用語の別名にも印を付け、用語 2 件以上の一致はリンクを持つツールチップへ回す
+        condition: '用語 G-1「移し替え」（別名「マイグレーション」「移し替え」「 」）・G-2「版の更新」（別名「移し替え」）、取り下げた用語 G-3「旧名」（別名「古い呼び方」）の索引。本文の段落「マイグレーションと移し替えと古い呼び方」。`parametrize`: `selfId` が A-1 / G-1'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「マイグレーション」の印の `data-ids` が `G-1` で `aria-describedby` を持ち、押すと `onOpen` に G-1。「移し替え」が `G-1 G-2` で `aria-details` を持ち、押しても `onOpen` が呼ばれない。「古い呼び方」が `G-3`。空白だけの別名には印が無い / 「マイグレーション」には印が無く、「移し替え」が `G-2` で `aria-describedby` を持つ
   - name: lockTap
     title: ロックの押下の判定
     container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
@@ -1422,6 +1524,179 @@ functions:
     returns:
       type: boolean
       description: 文字の入力欄なら true
+  - name: bodyFormatOf
+    title: 本文の形式
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 資料を読む
+    kind: 関数
+    scope: public
+    summary: 項目の `body` の拡張子から本文の形式を返す（形式の札・表の形式の列・詳細の描き分けが使う）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: body
+        type: string | undefined
+        required: true
+        passing: positional
+        description: 項目の `body`
+    returns:
+      type: "'md' | 'html' | null"
+      description: '`.html` で終われば `html`、`.md` で終われば `md`、それ以外と `undefined` は `null`'
+    unit_tests:
+      - name: test_body_format_of
+        case: 正常
+        summary: 拡張子から形式を決める
+        condition: '`parametrize`: `A-1.md` / `A-1.html` / `undefined`'
+        expected: '`md` / `html` / `null`'
+        mock: なし
+  - name: htmlText
+    title: HTML の描いた文
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 項目を検索する
+    kind: 関数
+    scope: public
+    summary: HTML をスクリプトを動かさずに解析し、描いた文だけを返す（全体の検索が当てる文）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: HTML の本文か `html` のコードブロックの原文
+    returns:
+      type: string
+      description: '`style`・`script`・`template`・`title` の中身とコメントを除いた文書の文'
+    process: |-
+      1. `DOMParser` で `text/html` として解析する（スクリプトは動かない）
+      2. `style`・`script`・`template`・`title` を取り除き、文書の `textContent` を返す
+    unit_tests:
+      - name: test_html_text
+        case: 正常
+        summary: タグ・属性・隠れた中身を外した文を返す
+        condition: '`<style>p{}</style><!-- メモ --><p class="flow" data-step="1">画面の流れ</p><script>x()</script>`'
+        expected: '`画面の流れ` を含み、`flow`・`data-step`・`p{}`・`メモ`・`x()` を含まない'
+        mock: なし
+  - name: htmlSelectionLocation
+    title: HTML の本文で選んだ範囲の箇所
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 選んだ箇所へコメントする
+    kind: 関数
+    scope: public
+    summary: HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする（部品『HTMLの本文の枠』の「選び終えた」が使う）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: range
+        type: Range
+        required: true
+        passing: positional
+        description: 枠の文書の中の選んだ範囲
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 本文の原文（`<pre>`・`<textarea>`・`<listing>` の開きタグの直後に改行があるかを確かめる）
+    returns:
+      type: Location | null
+      description: '`{kind: body, start, end, text}`（`text` は `range.toString()` の前後の空白を除いたもの）。空の選択・端より前に `data-line` を持つ要素が無い選択は `null`'
+    process: |-
+      1. 空の選択か、文が空白だけなら `null`
+      2. 始点と終点それぞれについて、文書の順で端より前にある `data-line` を持つ要素のうち最も後のものを引く（無ければ `null`）
+      3. その要素の開きタグの直後から端までの文とコメントの中の改行の数を、その要素の `data-line` に足す（`<br>` は数えない）。その要素が `pre`・`textarea`・`listing` で、原文のその行の開きタグの直後に改行があれば 1 を足す
+      4. `{kind: body, start, end, text}` を返す
+    unit_tests:
+      - name: test_html_selection_location
+        case: 正常
+        summary: 選んだ端を元の HTML の行にする
+        condition: 'PoC #215 の 12 ケースと、`parametrize`: 入れ子の `<span` が 2 行にまたがった後の 3 行目の文 / `<p>a<br>別の文</p>` の `別の文` / `<pre>` の直後の改行の次の行の文 / 前に複数行のコメントを持つ段落の文'
+        expected: 各ケースの元の行の範囲。順に 3 / 段落の行（`<br>` を数えない）/ `<pre>` の次の行 / 段落の行
+        mock: なし（印を足した HTML はサーバーの `mark_lines` と同じ形をテストの中で作る）
+      - name: test_html_selection_location_when_outside
+        case: 正常
+        summary: 印の無い範囲と空の選択は null
+        condition: '`parametrize`: 空の選択 / 空白だけの選択 / 印を持つ要素より前の `body` 直下の文'
+        expected: どれも `null`
+        mock: なし
+  - name: threadApi
+    title: スレッドの API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドの読み取り・状態の書き換え・利用者の既読を `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, setStatus, seen}'
+      description: '`read()` は `GET api/threads`（成功の本文は `{threads: Thread[]}`）、`setStatus(id, status, reason)` は `PATCH api/threads/{id}`（本文 `{status, reason}`。`reason` が空白だけなら `null` を送る。成功の本文は `{id, status, changed}`）、`seen(id)` は `POST api/threads/{id}/seen`（本文を送らない。成功の本文は `{id, seen}`）を呼ぶ。どれも `ApiResult` を返す'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
+    unit_tests:
+      - name: test_thread_api
+        case: 正常
+        summary: 各呼び出しのメソッド・パス・本文
+        condition: "`parametrize`: `read()` / `setStatus('TH-1', 'closed', ' 案 A で決着 ')` / `setStatus('TH-1', 'open', '  ')` / `seen('TH-1')`"
+        mock: '`fetchFn`'
+        expected: '`GET api/threads` / `PATCH api/threads/TH-1`（本文 `{"status":"closed","reason":"案 A で決着"}`）/ `PATCH api/threads/TH-1`（本文 `{"status":"open","reason":null}`）/ `POST api/threads/TH-1/seen`（本文なし）'
+      - name: test_thread_api_when_rejected
+        case: 異常
+        summary: 断られた・届かないときの結果
+        condition: '`parametrize`: `fetchFn` が 404（`detail` あり）を返す / `fetchFn` が例外を送る'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 404, detail}` / `{ok: false, status: null, detail: null}`'
+        exception: 断られた・届かない
+  - name: htmlLinkAction
+    title: HTML の本文のリンクの扱い
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: HTML の本文の枠の中のリンクの `href` から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める（部品『HTMLの本文の枠』が押下を受けたときに使う）
+    status: planned
+    introduced:
+      pr: 243
+    args:
+      - name: href
+        type: string
+        required: true
+        passing: positional
+        description: 押されたリンクの `href` の属性の値（ブラウザが解いた URL ではなく、書かれたままの値）
+    returns:
+      type: HtmlLinkAction
+      description: '`{kind: "open", url}`（新しいタブで開く URL）/ `{kind: "anchor", id}`（送る先の要素の `id`）/ `{kind: "none"}`（何もしない）のどれか。型 `HtmlLinkAction` は同じファイルで export する'
+    process: |-
+      1. 前後の空白を除く
+      2. `#` で始まるとき、`#` の後ろを `decodeURIComponent` で戻す（戻せなければそのまま使う）。空なら `{kind: "none"}`、空でなければ `{kind: "anchor", id}`
+      3. `new URL(href)` が読めない（相対の URL）とき、`{kind: "none"}`
+      4. スキームが `HTML_LINK_OPEN_SCHEMES` にあるとき、`{kind: "open", url}`（`url` は読んだ URL の `href`）
+      5. それ以外は `{kind: "none"}`
+    unit_tests:
+      - name: test_html_link_action_when_open
+        case: 正常
+        summary: 絶対の http・https・mailto の URL は開く
+        condition: '`parametrize`: `https://example.com/a?b=1#c` / `http://127.0.0.1:8000/` / `HTTPS://EXAMPLE.COM/` / `mailto:a@example.com` / 前後に空白を持つ `  https://example.com/  `'
+        expected: どれも `kind` が `open` で、`url` が読んだ URL の `href`（順に `https://example.com/a?b=1#c` / `http://127.0.0.1:8000/` / `https://example.com/` / `mailto:a@example.com` / `https://example.com/`）
+        mock: なし
+      - name: test_html_link_action_when_anchor
+        case: 正常
+        summary: '# で始まる値は、戻した id へ送る'
+        condition: '`parametrize`: `#usage` / `#%E4%BD%BF%E3%81%84%E6%96%B9` / `#100%`（戻せない）/ `#`'
+        expected: '順に `{kind: anchor, id: usage}` / `{kind: anchor, id: 使い方}` / `{kind: anchor, id: 100%}` / `{kind: none}`'
+        mock: なし
+      - name: test_html_link_action_when_none
+        case: 正常
+        summary: 相対の URL とほかのスキームは何もしない
+        condition: '`parametrize`: `other.html` / `/mindstella.html` / `//example.com/a` / `?a=1` / 空文字 / `javascript:alert(1)` / `JaVaScRiPt:alert(1)` / `data:text/html,x` / `file:///etc/hosts` / `ftp://example.com/` / `blob:https://example.com/x`'
+        expected: 'どれも `{kind: none}`'
+        mock: なし
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

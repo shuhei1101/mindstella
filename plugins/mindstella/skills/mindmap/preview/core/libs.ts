@@ -38,6 +38,15 @@ namespace MindmapPreview {
   /** 本文のブロックの要素が持つ、元の Markdown の先頭の行（1 始まり）の属性 */
   export const LINE_ATTR = "data-line-start";
 
+  /** Markdown の中の `html` のコードブロックを置き換えた、HTML の本文の枠の入れ物の class */
+  export const HTML_BLOCK_CLASS = "html-block";
+
+  /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
+  export const HTML_LINE_ATTR = "data-line";
+
+  /** 開きタグの直後の改行を、解析のときに取り除く要素 */
+  const LEADING_NEWLINE_TAGS = ["PRE", "TEXTAREA", "LISTING"];
+
   /** 項目の値を描いた要素が持つ、項目のキーのパスの属性 */
   export const VALUE_KEY_ATTR = "data-key";
 
@@ -156,6 +165,91 @@ namespace MindmapPreview {
     };
   }
 
+  /** 文書の順で端より前にある、行の印（`data-line`）を持つ要素のうち最も後のものを返す（無ければ null） */
+  function htmlLineElement({ doc, node, offset }: { doc: Document; node: Node; offset: number }): Element | null {
+    const probe = doc.createRange();
+    probe.setStart(node, offset);
+    probe.collapse(true);
+    let found: Element | null = null;
+    for (const element of doc.querySelectorAll(`[${HTML_LINE_ATTR}]`)) {
+      // 要素の先頭が端より前（端と同じ位置を含む）にあるものだけが候補
+      if (probe.comparePoint(element, 0) > 0) break;
+      found = element;
+    }
+    return found;
+  }
+
+  /** 行の印を持つ要素の開きタグの直後から端までにある改行（文とコメントの中の改行。`br` は数えない）の数を返す */
+  function htmlLinesBefore({ element, node, offset }: { element: Element; node: Node; offset: number }): number {
+    const range = element.ownerDocument.createRange();
+    range.setStart(element, 0);
+    range.setEnd(node, offset);
+    const fragment = range.cloneContents();
+    let count = countNewlines(fragment.textContent ?? "");
+    // コメントは textContent に入らないので、中の改行を足す
+    const walker = element.ownerDocument.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
+    while (walker.nextNode()) count += countNewlines((walker.currentNode as Comment).data);
+    return count;
+  }
+
+  /** `pre`・`textarea`・`listing` の開きタグの直後に改行があるとき 1（その改行は解析のときに取り除かれる）を返す */
+  function leadingNewlineBefore({ element, source }: { element: Element; source: string }): number {
+    if (!LEADING_NEWLINE_TAGS.includes(element.tagName)) return 0;
+    const line = source.split("\n")[Number(element.getAttribute(HTML_LINE_ATTR)) - 1] ?? "";
+    return /<(?:pre|textarea|listing)\b[^>]*>\r?$/i.test(line) ? 1 : 0;
+  }
+
+  /** HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする。空の選択・端より前に行の印を持つ要素が無い選択は null */
+  export function htmlSelectionLocation(range: Range, source: string): Location | null {
+    if (range.collapsed) return null;
+    const text = range.toString().trim();
+    // 文が空白だけ
+    if (text === "") return null;
+    const doc = range.startContainer.ownerDocument ?? (range.startContainer as Document);
+    const startElement = htmlLineElement({ doc, node: range.startContainer, offset: range.startOffset });
+    const endElement = htmlLineElement({ doc, node: range.endContainer, offset: range.endOffset });
+    // 端より前に行の印を持つ要素が無い
+    if (startElement === null || endElement === null) return null;
+    const lineOfBoundary = (element: Element, node: Node, offset: number): number =>
+      Number(element.getAttribute(HTML_LINE_ATTR)) +
+      htmlLinesBefore({ element, node, offset }) +
+      leadingNewlineBefore({ element, source });
+    return {
+      kind: "body",
+      start: lineOfBoundary(startElement, range.startContainer, range.startOffset),
+      end: lineOfBoundary(endElement, range.endContainer, range.endOffset),
+      text,
+    };
+  }
+
+  /** HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形） */
+  export const HTML_LINK_OPEN_SCHEMES: readonly string[] = ["http:", "https:", "mailto:"];
+
+  /** HTML の本文のリンクの扱い。新しいタブで開く URL・送る先の要素の `id`・何もしない */
+  export type HtmlLinkAction = { kind: "open"; url: string } | { kind: "anchor"; id: string } | { kind: "none" };
+
+  /** HTML の本文の枠の中のリンクの `href`（書かれたままの値）から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める */
+  export function htmlLinkAction(href: string): HtmlLinkAction {
+    const value = href.trim();
+    // `#` で始まる: 本文の中の場所を指す。`#` の後ろを戻した id を送り先にする
+    if (value.startsWith("#")) {
+      const encoded = value.slice(1);
+      let id = encoded;
+      try {
+        id = decodeURIComponent(encoded);
+      } catch {
+        // 戻せない（`%` の後ろが不正）ときは、書かれたままを id にする
+      }
+      return id === "" ? { kind: "none" } : { kind: "anchor", id };
+    }
+    // それだけで絶対の URL として読めない（相対の URL）
+    if (!URL.canParse(value)) return { kind: "none" };
+    const url = new URL(value);
+    // 開くスキーム以外（`javascript:`・`data:`・`file:` ほか）
+    if (!HTML_LINK_OPEN_SCHEMES.includes(url.protocol)) return { kind: "none" };
+    return { kind: "open", url: url.href };
+  }
+
   /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
   function keyElement(node: Node): Element | null {
     const element = node instanceof Element ? node : node.parentElement;
@@ -222,6 +316,17 @@ namespace MindmapPreview {
       });
       (code.closest("pre") ?? code).replaceWith(figure);
     }
+    // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面）
+    for (const code of root.querySelectorAll("code.language-html")) {
+      const pre = code.closest("pre") ?? code;
+      const block = h({
+        tag: "div",
+        attrs: { class: HTML_BLOCK_CLASS, [DIAGRAM_SOURCE_ATTR]: code.textContent ?? "" },
+      });
+      const line = pre.getAttribute(LINE_ATTR);
+      if (line !== null) block.setAttribute(LINE_ATTR, line);
+      pre.replaceWith(block);
+    }
     return root;
   }
 
@@ -234,7 +339,7 @@ namespace MindmapPreview {
   }
 
   /** 今のハッシュの `id`・`h` を替えた URL のハッシュ（キーボードとリンクのコピーで使うリンク先。押したときは使う側の移動に替える） */
-  function hashWith({ id, heading }: { id?: string; heading: string | null }): string {
+  export function hashWith({ id, heading }: { id?: string; heading: string | null }): string {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
     if (id !== undefined) params.set("id", id);
     if (heading === null) params.delete("h");
@@ -242,9 +347,17 @@ namespace MindmapPreview {
     return `#${params.toString()}`;
   }
 
-  /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動にする。押したときは既定の動作を止め、見出しの名前を `onHeading` に知らせる */
-  export function linkHeadings({ root, onHeading }: { root: HTMLElement; onHeading: (slug: string) => void }): void {
-    // 本文の中の `[文言](#見出し)` のリンク（# のリンクを足す前の分）。同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
+  /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動に、`#diff=` のリンクをまとまりの知らせにする。押したときは既定の動作を止め、見出しの名前を `onHeading` に、`diff` の値を `onChangeSet` に知らせる */
+  export function linkHeadings({
+    root,
+    onHeading,
+    onChangeSet,
+  }: {
+    root: HTMLElement;
+    onHeading: (slug: string) => void;
+    onChangeSet: (id: string) => void;
+  }): void {
+    // 本文の中の `[文言](#...)` のリンク（# のリンクを足す前の分）。`diff` の引数を持つものはまとまりのリンク、持たないものは見出しのリンクで、同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
     const bodyLinks = [...root.querySelectorAll<HTMLAnchorElement>("a[href^='#']")];
     const seen = new Map<string, number>();
     for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
@@ -271,6 +384,12 @@ namespace MindmapPreview {
       link.addEventListener("click", (event) => {
         event.preventDefault();
         const raw = (link.getAttribute("href") ?? "").slice(1);
+        // まとまりのリンク: 見出しとしては扱わない。空・`since`・`pending` は知らせない（記録にあるまとまりかは使う側が確かめる）
+        const changeSet = new URLSearchParams(raw).get("diff");
+        if (changeSet !== null) {
+          if (changeSet !== "" && changeSet !== "since" && changeSet !== "pending") onChangeSet(changeSet);
+          return;
+        }
         let decoded = raw;
         try {
           decoded = decodeURIComponent(raw);
@@ -286,7 +405,10 @@ namespace MindmapPreview {
   /** 英数字と記号だけの用語か（ファイル名・識別子の一部に当てないよう、語の切れ目でだけ当てる） */
   const ASCII_TERM = /^[!-~ ]+$/;
 
-  /** 描いた本文の文中の、用語集の用語を印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど用語か ID のときだけ当てる。押したときは既定の動作を止め、その項目の ID を `onOpen` に知らせる */
+  /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
+  export const MARK_KINDS = ["terms", "docs", "research"] as const;
+
+  /** 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
   export function linkBody({
     root,
     index,
@@ -298,16 +420,25 @@ namespace MindmapPreview {
     selfId: string;
     onOpen: (id: string) => void;
   }): void {
-    // 項目自身の用語と、タイトルが空の用語には付けない。長い用語から順に当てる
-    const terms = index.data.terms
-      .filter((term) => term.id !== selfId && term.title.trim() !== "")
-      .sort((a, b) => b.title.length - a.title.length);
-    const byTitle = new Map(terms.map((term) => [term.title, term]));
+    // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
+    const byWord = new Map<string, string[]>();
+    for (const kind of MARK_KINDS) {
+      for (const item of index.data[kind]) {
+        if (item.id === selfId || (kind !== "terms" && item.withdrawn === true)) continue;
+        const words = kind === "terms" ? [item.title, ...(item.aliases ?? [])] : (item.aliases ?? []);
+        // 同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
+        for (const word of new Set(words.map((value) => value.trim()).filter((value) => value !== ""))) {
+          byWord.set(word, [...(byWord.get(word) ?? []), item.id]);
+        }
+      }
+    }
+    // 長い語から順に当てる
+    const words = [...byWord.keys()].sort((a, b) => b.length - a.length);
     const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const termPattern = (title: string): string =>
       ASCII_TERM.test(title) ? `(?<![A-Za-z0-9_.-])${escape(title)}(?![A-Za-z0-9_-])` : escape(title);
-    // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い用語の順
-    const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...terms.map((term) => termPattern(term.title))].join("|"), "g");
+    // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い語の順
+    const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...words.map((word) => termPattern(word))].join("|"), "g");
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) =>
         node.parentElement?.closest("pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6") !== null
@@ -318,17 +449,19 @@ namespace MindmapPreview {
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
     for (const node of nodes) {
       const text = node.textContent ?? "";
-      // インラインコードは、中身がちょうど用語か ID のときだけ（パスや識別子の一部には付けない）
+      // インラインコードは、中身がちょうど語か ID のときだけ（パスや識別子の一部には付けない）
       const inCode = node.parentElement?.closest("code") !== null;
       const parts: (Node | string)[] = [];
       let last = 0;
       for (const match of text.matchAll(pattern)) {
         const word = match[0];
-        const term = byTitle.get(word);
-        const isId = term === undefined;
+        const ids = byWord.get(word);
+        const isId = ids === undefined;
         // 記録に無い ID・項目自身の ID・コードの一部は、そのままにする
         if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word)) continue;
-        const target = isId ? word : term.id;
+        const target = isId ? word : ids[0]!;
+        // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
+        const multi = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
         parts.push(
           text.slice(last, match.index),
           h({
@@ -337,10 +470,12 @@ namespace MindmapPreview {
               class: isId ? "idref" : "term",
               href: hashWith({ id: target, heading: null }),
               "data-id": target,
-              "aria-describedby": isId ? null : TERM_TIP_ID,
+              "data-ids": isId ? null : ids.join(" "),
+              "aria-describedby": isId || multi ? null : TERM_TIP_ID,
+              "aria-details": multi ? TERM_TIP_ID : null,
               onclick: (event: Event) => {
                 event.preventDefault();
-                onOpen(target);
+                if (isId || !multi) onOpen(target);
               },
             },
             children: [word],

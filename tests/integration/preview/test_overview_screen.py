@@ -8,6 +8,7 @@ from playwright.sync_api import Page
 from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import assert_bands_stay, assert_page_does_not_scroll, region_metrics
+from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # 概要のタイルの項目 ID
@@ -274,6 +275,24 @@ def test_diff_marks(
     running_mark = page.locator('#tile-running button[data-id="T-1"] .df-mark')
     assert running_mark.get_attribute("title") == "変更"
     assert page.locator("#tile-next .df-badge, #tile-running .df-badge").count() == 0
+    assert_topbar_history(page)
+
+
+def test_diff_marks_when_removed(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間、消した項目を持つ種類のタブに点を付ける。消した項目はタイルに並べない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=overview")
+    page.wait_for_selector("#tile-next")
+    # 検証
+    dotted = page.eval_on_selector_all(
+        "nav.tabbar a.tab:has(.df-dot)", "tabs => tabs.map(t => t.dataset.tab)"
+    )
+    assert dotted == list(REMOVED_IN_V2_BY_TAB)
+    assert page.locator('main#main [data-id="D-3"], main#main [data-id="D-4"]').count() == 0
     assert_topbar_history(page)
 
 

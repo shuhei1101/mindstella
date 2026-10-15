@@ -107,8 +107,12 @@ class StepsInvalidError(MindmapError):
     """プラグインの `steps.yaml` が読めないか、手順の形のスキーマに合わない。`lines` は合わない箇所。"""
 
 
-class SubmissionNotFoundError(MindmapError):
-    """渡した ID の送信が無い。"""
+class ThreadNotFoundError(MindmapError):
+    """渡した ID のスレッドが無い。"""
+
+
+class ThreadClosedError(MindmapError):
+    """クローズのスレッドへ返信しようとした。メッセージにオープンに戻す手段を持つ。"""
 
 
 class ServeFailedError(MindmapError):

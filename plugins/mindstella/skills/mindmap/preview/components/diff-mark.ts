@@ -1,11 +1,11 @@
-// 差分の印。差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）の印を出す。
+// 差分の印。差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）、消した項目に消した（太い −）の印を出す。
 
 namespace MindmapPreview {
-  /** 差分の印の種類（新規・変更） */
-  export type DiffKind = "new" | "changed";
+  /** 差分の印の種類（新規・変更・消した） */
+  export type DiffKind = "new" | "changed" | "removed";
 
-  /** 項目の ID → 差分の印。差分の表示の間だけ画面に渡す */
-  export type DiffMarks = Record<string, DiffKind>;
+  /** 項目の ID → 差分の印。差分の表示の間だけ画面に渡す（消した項目は中身が残らないので、印は新規と変更だけ） */
+  export type DiffMarks = Record<string, Exclude<DiffKind, "removed">>;
 
   /** 差分の印の引数 */
   export type DiffMarkProps = {
@@ -15,13 +15,19 @@ namespace MindmapPreview {
   };
 
   /** 種類 → 画面に出す名前 */
-  const DIFF_LABEL: Record<DiffKind, string> = { new: "新規", changed: "変更" };
+  const DIFF_LABEL: Record<DiffKind, string> = { new: "新規", changed: "変更", removed: "消した" };
 
-  /** 差分の印。色だけでなく形（+ と ●）でも新規と変更を分け、名前は読み上げに残す */
+  /** 種類 → 記号 */
+  const DIFF_GLYPH: Record<DiffKind, IconName> = { new: "plus", changed: "changed", removed: "minus" };
+
+  /** 種類 → 色の class */
+  const DIFF_TONE: Record<DiffKind, string> = { new: "df-new", changed: "df-chg", removed: "df-del" };
+
+  /** 差分の印。色だけでなく形（+ と ● と −）でも新規と変更と消したを分け、名前は読み上げに残す */
   export function diffMark({ kind, labeled = false }: DiffMarkProps): HTMLElement {
     const label = DIFF_LABEL[kind];
-    const glyph = icon(kind === "new" ? "plus" : "changed");
-    const tone = kind === "new" ? "df-new" : "df-chg";
+    const glyph = icon(DIFF_GLYPH[kind]);
+    const tone = DIFF_TONE[kind];
     // 札: 記号と文言を見える形で出す
     if (labeled) return h({ tag: "span", attrs: { class: `df-badge ${tone}` }, children: [glyph, label] });
     // 一覧の印: 記号だけを見せ、名前を読み上げと title に持つ

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import http.client
 import json
+import os
 import socket
 import sys
 import threading
@@ -32,7 +34,15 @@ from errors import (
     WriteFailedError,
 )
 from export_helpers import write_preview_dir
-from fixture_types import MakeComment, MakeItem, MakeWorkspace, WriteComments
+from fixture_types import (
+    MakeComment,
+    MakeItem,
+    MakePost,
+    MakeThread,
+    MakeWorkspace,
+    WriteComments,
+    WriteThreads,
+)
 from workspace_fixtures import RECORD_DIR, write_yaml
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
@@ -47,6 +57,9 @@ HTTP_TIMEOUT_SEC = 10
 # 前回開いた日時として、1 回目・2 回目の呼び出しで返す日時
 FIRST_OPENED = "2026-10-04T13:05:00+00:00"
 SECOND_OPENED = "2026-10-04T14:45:00+00:00"
+
+# 古い更新日時（書き換えたかを更新日時で確かめるため、先にファイルをこの時刻へ戻す）
+OLD_MTIME_SEC = 1_000_000_000
 
 
 @pytest.fixture
@@ -628,7 +641,7 @@ def test_records_response_when_settings_changed(
     [
         pytest.param("decisions.yaml", "items: []\n", True, id="rewrite_yaml"),
         pytest.param("docs/D-1.md", "本文\n", True, id="add_body"),
-        pytest.param("submissions.yaml", "items: []\n", True, id="add_submissions"),
+        pytest.param("threads.yaml", "items: []\n", True, id="add_threads"),
         pytest.param("comments.yaml", "seq: 0\nitems: []\n", False, id="add_comments"),
         pytest.param("drafts.yaml", "items: []\n", False, id="add_drafts"),
         pytest.param(".mindstella.lock", "", False, id="add_lock_file"),
@@ -680,6 +693,28 @@ def test_workspace_signature_with_changes(
     after = serve.workspace_signature(root)
     # 検証
     assert (after != before) is changes
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        pytest.param("A-1.html", id="rewrite_html_body"),
+        pytest.param("A-2.html", id="add_html_body"),
+    ],
+)
+def test_workspace_signature_with_html_body(
+    make_workspace: MakeWorkspace, make_item: MakeItem, file_name: str
+) -> None:
+    """HTML の本文の書き換えでも印が変わる（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+    before = serve.workspace_signature(root)
+    target = root / RECORD_DIR / "docs" / file_name
+    # 実行
+    target.write_text("<p>書き換えた後の本文</p>\n", encoding="utf-8")
+    after = serve.workspace_signature(root)
+    # 検証
+    assert after != before
 
 
 class _ScriptedSignature:
@@ -891,6 +926,315 @@ def test_write_response_when_rejected(
     assert calls == []
 
 
+def _handle_succeeding(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
+    """処理が成功したとして、本文を返す。"""
+    return {"ok": True}
+
+
+def _handle_conflicting(root: Path, data: dict[str, Any]) -> dict[str, Any] | None:
+    """箇所が合わないとして、CommentConflictError を送る。"""
+    raise CommentConflictError("箇所が合いません")
+
+
+@pytest.mark.parametrize(
+    (
+        "handle",
+        "expected_status",
+        "expected_entered",
+        "expected_after_bodies",
+        "expected_lock_free",
+    ),
+    [
+        pytest.param(_handle_succeeding, 201, True, [{"ok": True}], [True], id="succeeded"),
+        pytest.param(_handle_conflicting, 409, False, [], [], id="conflict"),
+    ],
+)
+def test_write_response_when_after(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+    expected_status: int,
+    expected_entered: bool,
+    expected_after_bodies: list[dict[str, Any]],
+    expected_lock_free: list[bool],
+) -> None:
+    """鍵を外した後に after を呼び、その結果を返す（正常系）。"""
+    # 準備
+    context = _context(make_workspace(make_item("D-1")))
+    after_bodies: list[dict[str, Any]] = []
+    lock_free: list[bool] = []
+
+    def _after(body: dict[str, Any]) -> dict[str, Any]:
+        """呼ばれたときに書き換えの鍵が取れるかと受けた本文を控え、entered を足した本文を返す。"""
+        acquired = context.write_lock.acquire(blocking=False)
+        lock_free.append(acquired)
+        if acquired:
+            context.write_lock.release()
+        after_bodies.append(body)
+        return {**body, "entered": True}
+
+    # 実行
+    response = serve.write_response(
+        context,
+        content_type="application/json",
+        origin=None,
+        body=_post_body(a=1),
+        handle=handle,
+        status=201,
+        after=_after,
+    )
+    # 検証
+    assert response.status == expected_status
+    assert (b'"entered": true' in response.body) is expected_entered
+    assert after_bodies == expected_after_bodies
+    assert lock_free == expected_lock_free
+
+
+THREADS_TEXT = (
+    "items:\n"
+    "  - id: TH-1\n    status: open\n    tags: []\n    summary: null\n    target: D-1\n"
+    "    events: []\n"
+    "    posts:\n"
+    "      - {id: TH-1-1, author: user, body: 本文, created: '2026-10-12T01:00:00+00:00',"
+    " read: false, seen: true, taken: null}\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("raw_files", "expected_titles"),
+    [
+        pytest.param({"threads.yaml": THREADS_TEXT}, ["問い"], id="with_thread"),
+        pytest.param({}, [], id="no_file"),
+    ],
+)
+def test_threads_response(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    raw_files: dict[str, str],
+    expected_titles: list[str],
+) -> None:
+    """スレッドを返す。無ければ空（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", title="問い"), raw_files=raw_files)
+    url, _started = registry.start(root)
+    # 実行
+    response = serve.threads_response(root)
+    with urllib.request.urlopen(
+        f"http://127.0.0.1:{_port_of(url)}/api/threads", timeout=HTTP_TIMEOUT_SEC
+    ) as served:
+        cache_control = served.headers["Cache-Control"]
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/json; charset=utf-8"
+    payload = json.loads(response.body)
+    assert [thread["target_title"] for thread in payload["threads"]] == expected_titles
+    assert cache_control == "no-store"
+
+
+def test_threads_response_when_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """崩れたスレッドのファイルは 422（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"threads.yaml": "items: [\n"})
+    # 実行
+    response = serve.threads_response(root)
+    # 検証
+    assert response.status == 422
+    assert "threads.yaml: " in json.loads(response.body)["detail"]
+
+
+def test_patch_thread_status(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """利用者のクローズを理由つきで書き、取り込み待ちを残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1")))
+    # 実行
+    result = serve.patch_thread_status(root, "TH-1", {"status": "closed", "reason": "案 A で決着"})
+    # 検証
+    assert result == {"id": "TH-1", "status": "closed", "changed": True}
+    saved = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    thread = saved["items"][0]
+    assert thread["events"][-1]["author"] == "user"
+    assert thread["posts"][0]["taken"] is None
+
+
+def _patch_outcome(root: Path, thread_id: str, data: dict[str, Any]) -> str:
+    """patch_thread_status を呼び、結果の changed か、送った例外の名前を文字列で返す。"""
+    try:
+        return f"changed={serve.patch_thread_status(root, thread_id, data)['changed']}"
+    except MindmapError as error:
+        return type(error).__name__
+
+
+@pytest.mark.parametrize(
+    ("thread_id", "data", "expected"),
+    [
+        pytest.param("TH-1", {"status": "open"}, "changed=False", id="same_status"),
+        pytest.param("TH-1", {}, "ArgumentError", id="status_missing"),
+        pytest.param(
+            "TH-1", {"status": "closed", "reason": "あ" * 401}, "ArgumentError", id="long_reason"
+        ),
+        pytest.param("TH-9", {"status": "closed"}, "ThreadNotFoundError", id="not_found"),
+    ],
+)
+def test_patch_thread_status_when_same_or_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    thread_id: str,
+    data: dict[str, Any],
+    expected: str,
+) -> None:
+    """既にその状態なら変えず、形の誤りと無い ID は断る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行
+    outcome = _patch_outcome(root, thread_id, data)
+    # 検証
+    assert outcome == expected
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
+# AI の返信が利用者の未読のスレッド
+UNSEEN_THREADS_TEXT = (
+    "items:\n"
+    "  - id: TH-1\n    status: open\n    tags: []\n    summary: null\n    events: []\n"
+    "    posts:\n"
+    "      - {id: TH-1-1, author: ai, body: 返信, created: '2026-10-12T01:00:00+00:00',"
+    " read: true, seen: false}\n"
+)
+
+# 書き込みから seen を消して、スキーマに合わなくしたスレッド
+UNSEEN_THREADS_WITHOUT_SEEN_TEXT = UNSEEN_THREADS_TEXT.replace(", seen: false", "")
+
+
+def _count_lock_calls(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """serve.workspace_lock を、呼ばれたワークスペースを控えて本物の鍵を取る関数に差し替え、控える入れ物を返す。"""
+    calls: list[Path] = []
+    original = serve.workspace_lock
+
+    @contextlib.contextmanager
+    def _counting(root: Path, process_lock: threading.Lock, **kwargs: Any) -> Iterator[None]:
+        """呼ばれたワークスペースを控えてから、本物の鍵を取る。"""
+        calls.append(root)
+        with original(root, process_lock, **kwargs):
+            yield
+
+    monkeypatch.setattr(serve, "workspace_lock", _counting)
+    return calls
+
+
+def test_seen_response(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読を既読にして ID を返す（正常系）。"""
+    # 準備
+    direct = make_workspace(make_item("D-1"), name="direct")
+    served = make_workspace(make_item("D-1"), name="served")
+    thread = make_thread("TH-1", make_post("TH-1-1"), make_post("TH-1-2", author="ai", seen=False))
+    write_threads(direct, thread)
+    write_threads(served, thread)
+    url, _started = registry.start(served)
+    # 実行
+    response = serve.seen_response(_context(direct), "TH-1", origin=None)
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{_port_of(url)}/api/threads/TH-1/seen", method="POST"
+    )
+    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as over_http:
+        cache_control = over_http.headers["Cache-Control"]
+        http_status = over_http.status
+        http_payload = json.loads(over_http.read())
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/json; charset=utf-8"
+    assert json.loads(response.body) == {"id": "TH-1", "seen": ["TH-1-2"]}
+    assert (http_status, http_payload, cache_control) == (
+        200,
+        {"id": "TH-1", "seen": ["TH-1-2"]},
+        "no-store",
+    )
+    saved = yaml.safe_load((direct / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    assert [post["seen"] for post in saved["items"][0]["posts"]] == [True, True]
+
+
+def test_seen_response_when_nothing_unseen(
+    monkeypatch: pytest.MonkeyPatch,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """未読が無ければ鍵を取らず書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", seen=True)))
+    path = root / RECORD_DIR / "threads.yaml"
+    os.utime(path, (OLD_MTIME_SEC, OLD_MTIME_SEC))
+    mtime_before = path.stat().st_mtime_ns
+    lock_calls = _count_lock_calls(monkeypatch)
+    # 実行
+    response = serve.seen_response(_context(root), "TH-1", origin=None)
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == {"id": "TH-1", "seen": []}
+    assert lock_calls == []
+    assert path.stat().st_mtime_ns == mtime_before
+
+
+@pytest.mark.parametrize(
+    ("origin", "thread_id", "threads_text", "expected_status", "expected_detail"),
+    [
+        pytest.param(
+            "https://attacker.example", "TH-1", UNSEEN_THREADS_TEXT, 403, "", id="origin"
+        ),
+        pytest.param(None, "TH-9", UNSEEN_THREADS_TEXT, 404, "TH-9", id="not_found"),
+        pytest.param(
+            None,
+            "TH-1",
+            UNSEEN_THREADS_WITHOUT_SEEN_TEXT,
+            422,
+            "threads.yaml: ",
+            id="schema_mismatch",
+        ),
+    ],
+)
+def test_seen_response_when_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    origin: str | None,
+    thread_id: str,
+    threads_text: str,
+    expected_status: int,
+    expected_detail: str,
+) -> None:
+    """送り元の違い・無い ID・崩れたファイルは書かない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"threads.yaml": threads_text})
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行
+    response = serve.seen_response(_context(root), thread_id, origin=origin)
+    # 検証
+    assert response.status == expected_status
+    assert response.content_type == "application/problem+json; charset=utf-8"
+    assert expected_detail in json.loads(response.body)["detail"]
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
 def test_opened_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """2 回目は 1 回目の日時を返す（正常系）。"""
     # 準備
@@ -968,6 +1312,12 @@ def test_delete_response(
             id="settings_invalid",
         ),
         pytest.param(
+            lambda: errors.ArgumentError("status", "open か closed を渡してください"),
+            400,
+            None,
+            id="argument",
+        ),
+        pytest.param(
             lambda: ItemNotFoundError("項目がありません: D-99"), 404, None, id="item_not_found"
         ),
         pytest.param(
@@ -975,6 +1325,12 @@ def test_delete_response(
             404,
             None,
             id="comment_not_found",
+        ),
+        pytest.param(
+            lambda: errors.ThreadNotFoundError("スレッドがありません: TH-9"),
+            404,
+            None,
+            id="thread_not_found",
         ),
         pytest.param(
             lambda: CommentConflictError(

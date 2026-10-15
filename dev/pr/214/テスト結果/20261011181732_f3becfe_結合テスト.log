@@ -1,0 +1,25 @@
+$ pytest tests/integration/storybook/test_body_format_badge_stories.py tests/integration/storybook/test_html_body_frame_stories.py tests/integration/storybook/test_html_body_diff_stories.py tests/integration/preview/test_search_screen.py::test_search_by_html_body -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /home/shuhei2441/.cache/mindstella/venv/bin/python
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-docs-html-body
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collecting ... collected 15 items
+
+tests/integration/storybook/test_body_format_badge_stories.py::test_markdown[chromium] PASSED [  6%]
+tests/integration/storybook/test_body_format_badge_stories.py::test_html[chromium] PASSED [ 13%]
+tests/integration/storybook/test_body_format_badge_stories.py::test_beside_other_badges[chromium] PASSED [ 20%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_rendered[chromium] PASSED [ 26%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_style_isolated[chromium] PASSED [ 33%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_loading[chromium] PASSED [ 40%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_with_scripts[chromium] PASSED [ 46%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_code_block[chromium] PASSED [ 53%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_diff_marks[chromium] PASSED [ 60%]
+tests/integration/storybook/test_html_body_frame_stories.py::test_narrow[chromium] PASSED [ 66%]
+tests/integration/storybook/test_html_body_diff_stories.py::test_rendered[chromium] PASSED [ 73%]
+tests/integration/storybook/test_html_body_diff_stories.py::test_raw_diff[chromium] PASSED [ 80%]
+tests/integration/storybook/test_html_body_diff_stories.py::test_removed_only[chromium] PASSED [ 86%]
+tests/integration/storybook/test_html_body_diff_stories.py::test_from_markdown[chromium] PASSED [ 93%]
+tests/integration/preview/test_search_screen.py::test_search_by_html_body[chromium] PASSED [100%]
+
+============================= 15 passed in 17.50s ==============================

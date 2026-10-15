@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "スレッド",
+  "description": "threads.yaml。利用者と AI が書き込みを積むスレッド。状態・タグ・要約・クローズとオープンへの戻しの記録を持つ。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "items"
+  ],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "tags",
+          "summary",
+          "posts",
+          "events"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^TH-[0-9]+$"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "loc": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "text"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "body",
+                  "value"
+                ]
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 10000
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "body"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "start",
+                    "end"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "kind": {
+                      "const": "value"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "key"
+                  ]
+                }
+              }
+            ]
+          },
+          "posts": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "author",
+                "body",
+                "created",
+                "read",
+                "seen"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^TH-[0-9]+-[0-9]+$"
+                },
+                "author": {
+                  "enum": [
+                    "user",
+                    "ai"
+                  ]
+                },
+                "body": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 10000
+                },
+                "created": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "read": {
+                  "type": "boolean"
+                },
+                "seen": {
+                  "type": "boolean"
+                },
+                "taken": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "comment": {
+                  "type": "string",
+                  "pattern": "^C-[0-9]+$"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "author": {
+                        "const": "user"
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "taken"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "taken"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "author",
+                "reason",
+                "created"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "closed",
+                    "reopened"
+                  ]
+                },
+                "author": {
+                  "enum": [
+                    "user",
+                    "ai"
+                  ]
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "maxLength": 400
+                },
+                "created": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "loc"
+              ]
+            },
+            "then": {
+              "required": [
+                "target"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

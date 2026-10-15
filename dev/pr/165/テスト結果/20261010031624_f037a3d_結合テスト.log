@@ -1,0 +1,13 @@
+# 配る書き出しで絞り込みの条件を残さないことの結合テスト（test_open_preview.py の全件）
+$ pytest tests/integration/preview/test_open_preview.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-setup-alias-env-and-filter-save
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 19 items
+
+tests/integration/preview/test_open_preview.py ...................       [100%]
+
+============================= 19 passed in 32.13s ==============================
+exit 0

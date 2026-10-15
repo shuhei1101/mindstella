@@ -82,7 +82,7 @@ var MindmapPreview;
         });
     }
     /** 項目へのコメントをレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, on, }) {
+    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, on, }) {
         sendFormSequence += 1;
         const fieldId = `send-${sendFormSequence}`;
         const messageId = `${fieldId}-msg`;
@@ -101,7 +101,7 @@ var MindmapPreview;
                 id: fieldId,
                 name: "body",
                 rows: folded ? 1 : 2,
-                "aria-label": target === null ? NO_TARGET_LABEL : null,
+                "aria-label": target === null ? label : null,
                 "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
                 "aria-keyshortcuts": "Control+Enter",
                 // 溜めている間は書き換えられない

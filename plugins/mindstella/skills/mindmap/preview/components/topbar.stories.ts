@@ -143,6 +143,26 @@ export const CommentsNarrow: Story = {
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
 
+/** オープンのスレッドに未読がある。吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま出す。ボタンの幅は `Comments` と同じ */
+export const CommentsUnread: Story = { args: { comments: true, commentCount: 3, commentsUnread: true } };
+
+/** 未読があり、レビュー中は 0 件。点を出し、件数は塗りを外した 0 のまま */
+export const CommentsUnreadZero: Story = { args: { comments: true, commentCount: 0, commentsUnread: true } };
+
+/** 未読があり、コメントの一覧を開いている。選んだ見た目の枠と面に点を重ねる */
+export const CommentsUnreadOpen: Story = { args: { comments: true, commentCount: 3, commentsUnread: true, commentsOpen: true } };
+
+/** 幅 390px で未読がある。コメントのボタンは印と件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める */
+export const CommentsUnreadNarrow: Story = {
+  args: { comments: true, commentCount: 3, commentsUnread: true },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
 /** 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
 export const SettingsOpen: Story = { args: { comments: true, commentCount: 3, settingsOpen: true } };
 

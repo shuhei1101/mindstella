@@ -23,22 +23,31 @@ namespace MindmapPreview {
       diagram: (svg: SVGElement, diff: DiagramViewerDiff | null) => void;
       /** 本文の見出しへ移った（見出しの名前。本文に無い見出しで開いたときは null）。使う側がハッシュの `h` を、履歴に積まずに置き換える */
       heading: (heading: string | null) => void;
+      /** 本文のまとまりのリンクを押した（`diff` の値）。使う側が記録にあるまとまりか確かめて、時点を選ぶ */
+      changeSet: (id: string) => void;
+      /** HTML の本文の枠で文を選び終えた・選びを外した。使う側が選んだ箇所のコメントの入口を出す・閉じる */
+      frame?: { select: (selection: HtmlFrameSelection) => void; clear: () => void };
     };
-    /** 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント（溜めた順）。配る書き出しでは null（どちらも置かない） */
-    comment: { form: SendFormProps; reviews: ReviewState["items"] } | null;
+    /** 下端に置くコメントの入力の引数と、その項目へのレビュー中のコメント（溜めた順）と、行の修正・削除・元に戻すの引数。配る書き出しでは null（どれも置かない） */
+    comment: { form: SendFormProps; reviews: ReviewState["items"]; edit: ReviewEditProps } | null;
     /** コメントの一覧から開いたとき示す箇所。本文は `start` の行を含むブロック、値は `data-key` が `key` の要素 */
     highlight?: Location | null;
     /** 変更履歴で選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の差分を出す */
     diff?: DiffPoint | null;
     /** 開いたときに本文の中で画面に入れる見出しの名前（`Route.heading`）。本文に無ければ本文の頭で開き、`on.heading` を null で呼ぶ */
     heading?: string | null;
+    /** 差分のミニマップを置くか（`resolveDisplay` の `minimap`）。差分の表示の間だけ置く */
+    minimap?: boolean;
   };
 
   /** 図の拡大へ渡す、差分の表示の間のその図の前の版の記法 */
   export type DiagramViewerDiff = { beforeSource: string };
 
-  /** 前の値が無いときに出す文字 */
-  const NO_VALUE = "（なし）";
+  /** 前の値が無いときに出す文字（差分のミニマップが、前に無かったキーを見分けるのにも使う） */
+  export const NO_VALUE = "（なし）";
+
+  /** 詳細パネルのレビュー中のコメントの行の `data-focus` の接頭辞（コメントの一覧と同時に開いても、描き直した後のフォーカスの戻し先を分ける） */
+  export const REVIEW_FOCUS = "detail-";
 
   /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
   const UNDIFFED_KEYS = new Set(["id", "created", "updated", "updated_by", "history", "history_dropped_seq", "body"]);
@@ -126,26 +135,47 @@ namespace MindmapPreview {
     return [h({ tag: "span", attrs: { class: "df-sign", "aria-hidden": "true" }, children: [glyph] }), ...(name === "" ? [] : [srOnly(name)])];
   }
 
-  /** 変わったキーの前の値と今の値を並べる。前の値は取り消し線、今の値は下線。plain は面を塗らず、線と矢印だけで示す */
-  function keyDiff({ was, now, plain = false }: { was: Child; now: Child; plain?: boolean }): HTMLElement {
+  /** 語の面を付ける、並べた前の値（`del.df-was`）と今の値（`ins.df-now`）の対 */
+  type KeyWordPair = { was: HTMLElement; now: HTMLElement };
+
+  /** 変わったキーの前の値と今の値を並べる。前の値は取り消し線、今の値は下線。plain は面を塗らず、線と矢印だけで示す。pairs を渡すと、前後がどちらも空でない文字のとき、並べた対を語の面を付ける対として pairs に足す */
+  function keyDiff({
+    was,
+    now,
+    plain = false,
+    pairs,
+  }: {
+    was: Child;
+    now: Child;
+    plain?: boolean;
+    pairs?: KeyWordPair[];
+  }): HTMLElement {
     const empty = (value: Child): boolean => value === null || value === undefined || value === false || value === "";
+    const wasElement = h({ tag: "del", attrs: { class: "df-was" }, children: [srOnly("前の値: "), empty(was) ? NO_VALUE : was] });
+    const nowElement = h({ tag: "ins", attrs: { class: "df-now" }, children: [srOnly("今の値: "), empty(now) ? NO_VALUE : now] });
+    if (typeof was === "string" && typeof now === "string" && !empty(was) && !empty(now)) pairs?.push({ was: wasElement, now: nowElement });
     return h({
       tag: "span",
       attrs: { class: plain ? "df-kv df-plain" : "df-kv" },
-      children: [
-        h({
-          tag: "del",
-          attrs: { class: "df-was" },
-          children: [srOnly("前の値: "), empty(was) ? NO_VALUE : was],
-        }),
-        h({ tag: "span", attrs: { class: "df-arrow", "aria-hidden": "true" }, children: ["→"] }),
-        h({
-          tag: "ins",
-          attrs: { class: "df-now" },
-          children: [srOnly("今の値: "), empty(now) ? NO_VALUE : now],
-        }),
-      ],
+      children: [wasElement, h({ tag: "span", attrs: { class: "df-arrow", "aria-hidden": "true" }, children: ["→"] }), nowElement],
     });
+  }
+
+  /** 控えたキーの値の対の文字（読み上げの文字を除く） */
+  function keyWordNodes(root: HTMLElement): Text[] {
+    return wordTextNodes(root).filter((node) => node.parentElement?.closest(".sr-only") == null);
+  }
+
+  /** 控えたキーの値の対の前後の文字を語の単位で比べ、変わった語を濃い面で囲む。比べられなかった対には付けない */
+  function markKeyWords({ pairs, deadline }: { pairs: KeyWordPair[]; deadline: number }): void {
+    for (const pair of pairs) {
+      const wasNodes = keyWordNodes(pair.was);
+      const nowNodes = keyWordNodes(pair.now);
+      const inline = diffInline(wasNodes.map((node) => node.data).join(""), nowNodes.map((node) => node.data).join(""), deadline);
+      if (inline === null) continue;
+      wrapWords({ nodes: wasNodes, parts: inline.before, mark: "del" });
+      wrapWords({ nodes: nowNodes, parts: inline.after, mark: "add" });
+    }
   }
 
   /** キーの値を、差分に並べる文字にする。値が無ければ null */
@@ -167,6 +197,10 @@ namespace MindmapPreview {
     has: (key: string) => boolean;
     /** 変わったキーは前の値と今の値を並べ、変わっていないキーは今の値のままにする。`render` で値の見せ方を変える */
     show: (key: string, render?: (value: unknown) => Child, plain?: boolean) => Child;
+    /** `show` と同じ。変わったキーの前後がどちらも空でない文字なら、語の面を付ける対として `pairs` に控える（題と文字列の値の描画が描く値に使う） */
+    showWords: (key: string) => Child;
+    /** 語の面を付ける対（`showWords` と案の値が足す）。本文を描いた後に `markKeyWords` で囲む */
+    pairs: KeyWordPair[];
     /** 前の版の項目 */
     before: Item;
   };
@@ -180,10 +214,14 @@ namespace MindmapPreview {
         (key) => !UNDIFFED_KEYS.has(key) && JSON.stringify(left[key]) !== JSON.stringify(right[key]),
       ),
     );
+    const pairs: KeyWordPair[] = [];
     return {
       has: (key) => changed.has(key),
       show: (key, render = valueText, plain = false) =>
         changed.has(key) ? keyDiff({ was: render(left[key]), now: render(right[key]), plain }) : render(right[key]),
+      showWords: (key) =>
+        changed.has(key) ? keyDiff({ was: valueText(left[key]), now: valueText(right[key]), pairs }) : valueText(right[key]),
+      pairs,
       before,
     };
   }
@@ -259,7 +297,7 @@ namespace MindmapPreview {
   }
 
   /** 検討事項の案をカードの縦並びにする（採用 / 不採用と理由、採用した案が無いときは推奨の印を出す）。previous があれば、変わった値に前の値を並べる */
-  function optionCards(options: Option[], previous: Option[] | null): HTMLElement {
+  function optionCards({ options, previous, pairs }: { options: Option[]; previous: Option[] | null; pairs?: KeyWordPair[] }): HTMLElement {
     const compare = previous !== null;
     const removed = (previous ?? []).filter((entry) => !options.some((option) => option.key === entry.key));
     // 採用した案があれば採用の表示を優先し、推奨の印は出さない
@@ -282,7 +320,7 @@ namespace MindmapPreview {
           const shown = rows.filter(([, field, value]) => (value !== undefined && value !== "") || (compare && beforeOf(field) !== undefined));
           const valueOf = (field: "pros" | "cons" | "note" | "reason", value: string | undefined): Child =>
             compare && beforeOf(field) !== value
-              ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null })
+              ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null, pairs })
               : markdownValue(value);
           const resultChild: Child =
             compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;
@@ -299,7 +337,7 @@ namespace MindmapPreview {
                   h({ tag: "span", attrs: { class: "key" }, children: [option.key] }),
                   valueBlock(`options[${option.key}].content`, [
                     compare && before?.content !== option.content
-                      ? keyDiff({ was: before?.content ?? null, now: option.content })
+                      ? keyDiff({ was: before?.content ?? null, now: option.content, pairs })
                       : markdownValue(option.content),
                   ]),
                   recommended ? h({ tag: "span", attrs: { class: "rec-badge" }, children: [icon("star"), "推奨"] }) : null,
@@ -352,14 +390,22 @@ namespace MindmapPreview {
       ["確度", "confidence", item.confidence],
       ["日付", "date", item.date],
       ["更新日", "updated", item.updated],
+      // 取り下げは値をここに出さず（題の右の札が示す）、差分の表示で変わったときだけ前後を並べる
+      ["取り下げ", "withdrawn", undefined],
     ];
     const rows = pairs.flatMap(([label, key, value]) => {
       const changed = diff?.has(key) === true;
       // 値が無く、変わってもいないキーは出さない
       if ((value === undefined || value === "") && !changed) return [];
+      const shown =
+        diff === null
+          ? value
+          : key === "withdrawn"
+            ? diff.show(key, (flag) => (flag === true ? withdrawnBadge() : null))
+            : diff.show(key);
       return [
         h({ tag: "dt", attrs: { class: changed ? "df-key" : null }, children: [label] }),
-        h({ tag: "dd", attrs: { class: changed ? "df-key" : null }, children: [diff === null ? value : diff.show(key)] }),
+        h({ tag: "dd", attrs: { class: changed ? "df-key" : null }, children: [shown] }),
       ];
     });
     const tagsChanged = diff?.has("tags") === true;
@@ -372,8 +418,12 @@ namespace MindmapPreview {
     return h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
   }
 
-  /** この項目へのレビュー中のコメントの節（読むだけ。直す・消す・チェックはコメントの一覧で行う） */
-  function reviewSection(items: ReviewState["items"]): HTMLElement {
+  /** この項目へのレビュー中のコメントの節（各行の右上の「修正」「削除」で、その場で直す・消す・戻す。チェックとまとめて送るはコメントの一覧で行う） */
+  function reviewSection({ items, edit }: { items: ReviewState["items"]; edit: ReviewEditProps }): HTMLElement {
+    // 消した行は元の場所（溜めた順）に「元に戻す」と共に残す
+    const rows = [...items.map((item) => ({ item, gone: false })), ...edit.removed.map((item) => ({ item, gone: true }))].sort(
+      (a, b) => commentNumber(a.item.id) - commentNumber(b.item.id),
+    );
     return h({
       tag: "section",
       attrs: { class: "d-sec d-review" },
@@ -382,29 +432,50 @@ namespace MindmapPreview {
           tag: "h3",
           children: ["レビュー中のコメント", h({ tag: "span", attrs: { class: "count" }, children: [items.length] })],
         }),
-        items.length === 0
+        rows.length === 0
           ? emptyNote("レビュー中のコメントはありません。")
           : h({
             tag: "ul",
             attrs: { class: "d-list review-list" },
-            children: items.map((comment) =>
-              h({
+            children: rows.map(({ item, gone }) => {
+              if (gone) return removedReviewRow({ item, focus: REVIEW_FOCUS, on: { restore: edit.on.restore } });
+              const editing = edit.editing === item.id;
+              // 入力欄は修正を始めた場所だけに描く。コメントの一覧で始めた行は、ここでは本文だけにして「修正」「削除」も出さない
+              const editingHere = editing && edit.editingIn === "detail";
+              return h({
                 tag: "li",
+                attrs: { class: `review-row${editing ? " editing" : ""}`, "data-comment": item.id },
                 children: [
-                  comment.loc === null
-                    ? null
-                    : h({
-                      tag: "div",
-                      attrs: { class: "review-loc" },
-                      children: [
-                        h({ tag: "span", attrs: { class: "review-loc-name" }, children: [locationLabel(comment.loc)] }),
-                        h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [comment.loc.text] }),
-                      ],
-                    }),
-                  h({ tag: "p", attrs: { class: "review-body" }, children: [comment.body] }),
+                  h({
+                    tag: "div",
+                    attrs: { class: "review-main" },
+                    children: [
+                      item.loc === null
+                        ? null
+                        : h({
+                          tag: "div",
+                          attrs: { class: "review-loc" },
+                          children: [
+                            h({ tag: "span", attrs: { class: "review-loc-name" }, children: [locationLabel(item.loc)] }),
+                            h({ tag: "blockquote", attrs: { class: "send-quote" }, children: [item.loc.text] }),
+                          ],
+                        }),
+                      editingHere
+                        ? reviewEditForm({
+                          item,
+                          body: edit.editBody,
+                          error: edit.editError,
+                          focus: REVIEW_FOCUS,
+                          on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit },
+                        })
+                        : h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                    ],
+                  }),
+                  // 書き換えている行には「修正」「削除」を出さない（入力欄の「キャンセル」「修正」と並べない）
+                  editing ? null : reviewRowActions({ item, focus: REVIEW_FOCUS, on: { edit: edit.on.edit, remove: edit.on.remove } }),
                 ],
-              }),
-            ),
+              });
+            }),
           }),
       ],
     });
@@ -513,18 +584,20 @@ namespace MindmapPreview {
   function renderRemoved(block: RemovedBlock): HTMLElement {
     const lines = block.tableHeader === null ? block.lines : [...block.tableHeader, ...block.lines];
     const rendered = withoutLineMarks(renderMarkdown(lines.join("\n")));
-    lowerHeadings(rendered);
     plainDiagrams(rendered);
     return rendered;
   }
 
-  /** 消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む */
-  function insertRemovedBlocks({ root, blocks }: { root: HTMLElement; blocks: RemovedBlock[] }): void {
+  /** 描いた消した行のかたまりと、それが元になる `RemovedBlock` の組 */
+  type RenderedRemoved = { block: RemovedBlock; rendered: HTMLElement };
+
+  /** 描いた消した行のかたまりを、今の本文の差し込む場所の前（無ければ本文の最後）へ差し込む。かたまりごとに、差し込んだ語の面を付ける対象のブロックを返す */
+  function insertRemovedBlocks({ root, blocks }: { root: HTMLElement; blocks: RenderedRemoved[] }): HTMLElement[][] {
     // 差し込む前の、行の印を持つ今のブロック（差し込む要素は印を持たない）
     const stamped = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
     const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
-    for (const block of blocks) {
-      const rendered = renderRemoved(block);
+    const placed: HTMLElement[][] = [];
+    for (const { block, rendered } of blocks) {
       const target = block.beforeLine === null ? undefined : stamped.find((element) => lineOf(element) >= (block.beforeLine ?? 0));
       const previous = target === undefined ? stamped.at(-1) : stamped[stamped.indexOf(target) - 1];
       // 表の本体の行だけ: 今の表の行の間（表の最後の後も）へ、消した行の印を付けた行として差し込む
@@ -536,13 +609,17 @@ namespace MindmapPreview {
         });
         if (target?.tagName === "TR") {
           target.before(...rows);
+          placed.push(rows);
           continue;
         }
         if (previous?.tagName === "TR") {
           previous.after(...rows);
+          placed.push(rows);
           continue;
         }
       }
+      // 囲みの中へ移す前に、語の面を付ける対象のブロックを引く
+      placed.push(wordBlocksIn(rendered));
       const piece = diffBlock({ op: "del", children: [...rendered.childNodes] });
       if (target === undefined) {
         root.append(piece);
@@ -552,6 +629,7 @@ namespace MindmapPreview {
       const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
       (outer.closest("ul, ol, table") ?? outer).before(piece);
     }
+    return placed;
   }
 
   /** 前の本文の図のコードブロック（開く行から閉じる行まで。1 始まり）。閉じていないコードブロックは本文の最後まで */
@@ -590,16 +668,147 @@ namespace MindmapPreview {
     });
   }
 
+  /** 語の面を付ける対象になる、描いたブロック（段落・見出し・箇条書きの項目・表の本体の行）の選び方 */
+  const WORD_BLOCK_SELECTOR = "p, h1, h2, h3, h4, h5, h6, li, tbody tr";
+
+  /** 語の面を付ける対象のブロックか（ほかの対象のブロックを中に持たないもの） */
+  function isWordBlock(element: Element): boolean {
+    return element.matches(WORD_BLOCK_SELECTOR) && element.querySelector(WORD_BLOCK_SELECTOR) === null;
+  }
+
+  /** 要素の中の、語の面を付ける対象のブロック（文書の順） */
+  function wordBlocksIn(root: HTMLElement): HTMLElement[] {
+    return [...root.querySelectorAll<HTMLElement>(WORD_BLOCK_SELECTOR)].filter(isWordBlock);
+  }
+
+  /** 足した部分ごとの、足した行（空行を除く）を持つ今のブロックのうち、語の面を付ける対象のもの（足した行の順） */
+  function addedBlocksByPart({ root, parts, now }: { root: HTMLElement; parts: LinePart[]; now: string[] }): Map<number, HTMLElement[]> {
+    const blocks = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
+    const owners = blockOwners({ now, starts: blocks.map((block) => Number(block.getAttribute(LINE_ATTR))) });
+    const byStart = new Map(blocks.map((block) => [Number(block.getAttribute(LINE_ATTR)), block]));
+    const found = new Map<number, HTMLElement[]>();
+    let line = 0;
+    parts.forEach((part, position) => {
+      if (part.kind === "removed") return;
+      const here: HTMLElement[] = [];
+      for (const _ of part.lines) {
+        line += 1;
+        // 空行だけの足しは段落の間の空きで、どのブロックも足したことにしない
+        if (part.kind !== "added" || (now[line - 1] ?? "").trim() === "") continue;
+        const owner = owners[line - 1];
+        const block = owner === null || owner === undefined ? undefined : byStart.get(owner);
+        if (block !== undefined && isWordBlock(block) && !here.includes(block)) here.push(block);
+      }
+      if (part.kind === "added") found.set(position, here);
+    });
+    return found;
+  }
+
+  /** 語の面を付ける、消したブロックと足したブロックの対 */
+  type WordPair = { removed: HTMLElement; added: HTMLElement };
+
+  /** 変えた行の対（`pairedParts`）ごとに、消した部分から描いたブロックと、足した部分の行を持つ今のブロックを前から順に並べ、両方の数が同じときだけ 1 つずつ対にする */
+  function wordPairs({
+    root,
+    parts,
+    now,
+    placed,
+  }: {
+    root: HTMLElement;
+    parts: LinePart[];
+    now: string[];
+    placed: HTMLElement[][];
+  }): WordPair[] {
+    // 消した部分の並びの何番目か（`placed` は消した部分の順）
+    const removedOrder = parts.flatMap((part, position) => (part.kind === "removed" ? [position] : []));
+    const addedBlocks = addedBlocksByPart({ root, parts, now });
+    return pairedParts(parts).flatMap(({ removed, added }) => {
+      const removedList = placed[removedOrder.indexOf(removed)] ?? [];
+      const addedList = addedBlocks.get(added) ?? [];
+      if (removedList.length === 0 || removedList.length !== addedList.length) return [];
+      return removedList.map((block, offset) => ({ removed: block, added: addedList[offset]! }));
+    });
+  }
+
+  /** 要素の中の、行の印（`signMarks` が入れる記号と読み上げの文字）と、表・リストの構造の間の整形の空白を除いた文字のノード（文書の順） */
+  function wordTextNodes(root: HTMLElement): Text[] {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        const isSign = parent?.closest(".df-sign") != null || parent?.matches(".df-sign + .sr-only") === true;
+        const isLayoutSpace = (node.textContent ?? "").trim() === "" && parent?.matches("table, thead, tbody, tr, ul, ol") === true;
+        return isSign || isLayoutSpace ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const nodes: Text[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+    return nodes;
+  }
+
+  /** 変わった語の面の要素 */
+  function wordMark({ mark, text }: { mark: "add" | "del"; text: string }): HTMLElement {
+    return h({ tag: "span", attrs: { class: `df-word df-${mark}` }, children: [text] });
+  }
+
+  /** 文字のノードの並びのうち、語の差分の足した・消した部分を面の要素で囲む（ノードをまたぐ部分はノードごとに囲み、ノードの外の要素は分けない） */
+  function wrapWords({ nodes, parts, mark }: { nodes: Text[]; parts: InlinePart[]; mark: "add" | "del" }): void {
+    // 同じでない部分の、文字の頭からの範囲
+    const ranges: { start: number; end: number }[] = [];
+    let offset = 0;
+    for (const part of parts) {
+      if (part.kind !== "same") ranges.push({ start: offset, end: offset + part.text.length });
+      offset += part.text.length;
+    }
+    let nodeStart = 0;
+    for (const node of nodes) {
+      const text = node.data;
+      const nodeEnd = nodeStart + text.length;
+      const pieces: (string | HTMLElement)[] = [];
+      // ノードの中で、ここまでを pieces に入れた位置
+      let cursor = 0;
+      for (const range of ranges) {
+        const from = Math.max(range.start, nodeStart) - nodeStart;
+        const to = Math.min(range.end, nodeEnd) - nodeStart;
+        if (from >= to) continue;
+        if (from > cursor) pieces.push(text.slice(cursor, from));
+        pieces.push(wordMark({ mark, text: text.slice(from, to) }));
+        cursor = to;
+      }
+      nodeStart = nodeEnd;
+      if (pieces.length === 0) continue;
+      if (cursor < text.length) pieces.push(text.slice(cursor));
+      node.replaceWith(...pieces);
+    }
+  }
+
+  /** 対の 2 つのブロックの、行の印を除いた文字を語の単位で比べ、変わった語を濃い面で囲む。比べられなかった対には付けない */
+  function markWords({ pair, deadline }: { pair: WordPair; deadline: number }): void {
+    const removedNodes = wordTextNodes(pair.removed);
+    const addedNodes = wordTextNodes(pair.added);
+    const inline = diffInline(removedNodes.map((node) => node.data).join(""), addedNodes.map((node) => node.data).join(""), deadline);
+    if (inline === null) return;
+    wrapWords({ nodes: removedNodes, parts: inline.before, mark: "del" });
+    wrapWords({ nodes: addedNodes, parts: inline.after, mark: "add" });
+  }
+
+  /** 描いた本文の差分。`markWords` は、見出し・本文のリンクを付けた後に呼んで、変えた行の対に語の面を付ける */
+  type BodyDiff = { root: HTMLElement; markWords: () => void };
+
   /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
-  function renderBodyDiff({ before, after }: { before: string; after: string }): HTMLElement | null {
+  function renderBodyDiff({ before, after, deadline }: { before: string; after: string; deadline: number }): BodyDiff | null {
     const compared = diffLineParts(before, after);
     if (compared === null) return null;
     const parts = withoutDiagramEdits({ parts: compared, before });
     const rendered = renderMarkdown(after);
-    lowerHeadings(rendered);
+    const removed = placeRemovedBlocks(parts).map((block) => ({ block, rendered: renderRemoved(block) }));
+    // 今の本文と消した部分の見出しを合わせた最も上の段から、段の差を 1 つ求める
+    const shift = headingShift([rendered, ...removed.map((piece) => piece.rendered)]);
+    lowerHeadings({ root: rendered, shift });
+    for (const piece of removed) lowerHeadings({ root: piece.rendered, shift });
     markAddedBlocks({ root: rendered, parts, source: after });
-    insertRemovedBlocks({ root: rendered, blocks: placeRemovedBlocks(parts) });
-    return rendered;
+    const placed = insertRemovedBlocks({ root: rendered, blocks: removed });
+    const pairs = wordPairs({ root: rendered, parts, now: linesOf(after), placed });
+    return { root: rendered, markWords: () => pairs.forEach((pair) => markWords({ pair, deadline })) };
   }
 
   // ─── 図の差分 ───
@@ -618,17 +827,31 @@ namespace MindmapPreview {
     return source.endsWith("\n") ? source : `${source}\n`;
   }
 
-  /** 記法の行ごとの差分を、足した行（+）・消した行（−）の印つきの行にする */
-  export function rawDiffLines(parts: LinePart[]): HTMLElement[] {
+  /** 記法の行ごとの差分を、足した行（+）・消した行（−）の印つきの行にする。変えた行の対は、変わった語を濃い面で囲む（`deadline` は、行の差分を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足した時刻） */
+  export function rawDiffLines({ parts, deadline }: { parts: LinePart[]; deadline: number }): HTMLElement[] {
     const op = { added: "add", removed: "del", same: "same" } as const;
-    return parts.flatMap((part) =>
-      part.lines.map((text) =>
-        h({
+    // 対の行ごとの語の差分（`parts` の添え字 → 行ごと）。対の行ごとに 1 回だけ比べ、消した側と足した側に同じ結果を使う
+    const inlines = new Map<number, (InlineDiff | null)[]>();
+    for (const { removed, added } of pairedParts(parts)) {
+      const removedLines = parts[removed]?.lines ?? [];
+      const addedLines = parts[added]?.lines ?? [];
+      const compared = removedLines.map((text, offset) => diffInline(text, addedLines[offset] ?? "", deadline));
+      inlines.set(removed, compared);
+      inlines.set(added, compared);
+    }
+    return parts.flatMap((part, position) =>
+      part.lines.map((text, offset) => {
+        const inline = inlines.get(position)?.[offset] ?? null;
+        const pieces = inline === null ? null : part.kind === "removed" ? inline.before : inline.after;
+        return h({
           tag: "span",
           attrs: { class: `df-line${part.kind === "same" ? "" : ` df-${op[part.kind]}`}` },
-          children: [...signMarks(op[part.kind]), text],
-        }),
-      ),
+          children: [
+            ...signMarks(op[part.kind]),
+            ...(pieces === null ? [text] : pieces.map((piece) => (piece.kind === "same" ? piece.text : wordMark({ mark: part.kind === "removed" ? "del" : "add", text: piece.text })))),
+          ],
+        });
+      }),
     );
   }
 
@@ -728,10 +951,11 @@ namespace MindmapPreview {
     figure.classList.add("df-changed", "df-frame");
     // Raw: 記法の行ごとの差分（打ち切ったときは今の記法のまま）
     const raw = figure.querySelector<HTMLElement>(":scope > .dg-raw");
+    const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
     const parts = diffLineParts(withTrailingNewline(beforeSource), withTrailingNewline(afterSource));
     if (raw !== null && parts !== null) {
       raw.classList.add("df-raw");
-      raw.replaceChildren(...rawDiffLines(parts));
+      raw.replaceChildren(...rawDiffLines({ parts, deadline }));
     }
     const type = diagramType(afterSource);
     const afterSvg = holder?.querySelector<SVGElement>("svg") ?? null;
@@ -777,13 +1001,32 @@ namespace MindmapPreview {
     id: string;
     index: RecordIndex;
     on: DetailProps["on"];
-    /** その項目へのレビュー中のコメント。配る書き出しでは null（節を置かない） */
-    reviews: ReviewState["items"] | null;
+    /** その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。配る書き出しでは null（節を置かない） */
+    review: { items: ReviewState["items"]; edit: ReviewEditProps } | null;
     view: DiffView | null;
   };
 
+  /** 資料の HTML の本文の枠が持つ属性（コメントの一覧から開いたとき、示す箇所を求める枠を引く） */
+  const HTML_BODY_ATTR = "data-html-body";
+
+  /** Markdown の本文の中の `html` のコードブロックの入れ物を、枠に置き換える。差分の表示の間の足した・消した部分は、枠に描かず原文に印を付けたまま出す */
+  function drawHtmlBlocks(root: HTMLElement): void {
+    for (const block of root.querySelectorAll<HTMLElement>(`.${HTML_BLOCK_CLASS}`)) {
+      const source = block.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
+      if (block.closest(".df-blk") !== null) {
+        block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src" }, children: [source] }));
+      } else {
+        const frame = htmlBodyFrame({ source, selectable: false, label: "html のコードブロック" });
+        frame.classList.add(HTML_BLOCK_CLASS);
+        const line = block.getAttribute(LINE_ATTR);
+        if (line !== null) frame.setAttribute(LINE_ATTR, line);
+        block.replaceWith(frame);
+      }
+    }
+  }
+
   /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-  function detailBody({ id, index, on, reviews, view }: BodyProps): HTMLElement {
+  function detailBody({ id, index, on, review, view }: BodyProps): HTMLElement {
     const entry = index.byId.get(id);
     const body = h({ tag: "div", attrs: { class: "detail" } });
     if (entry === undefined) return body;
@@ -792,7 +1035,7 @@ namespace MindmapPreview {
     const keys = view?.keys ?? null;
     const related = relatedItems({ id, index });
     /** キーの値。変わっていれば前の値と今の値を並べる */
-    const textOf = (key: string, value: string | undefined): Child => (keys?.has(key) === true ? keys.show(key) : value);
+    const textOf = (key: string, value: string | undefined): Child => (keys?.has(key) === true ? keys.showWords(key) : value);
     const labelled = (label: string, key: string, value: string | undefined): HTMLElement | null => {
       const changed = keys?.has(key) === true;
       if ((value === undefined || value === "") && !changed) return null;
@@ -801,6 +1044,25 @@ namespace MindmapPreview {
         attrs: { class: changed ? "d-answer df-key" : "d-answer" },
         children: [h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue(value)])],
       });
+    };
+    /** 資料・調査の説明の節（値があるとき、または値が変わったときだけ）。値が変わっていれば、前の値と今の値を並べる */
+    const descriptionSection = (): HTMLElement | null => {
+      const changed = keys?.has("description") === true;
+      if ((item.description === undefined || item.description === "") && !changed) return null;
+      const described = section("説明", valueBlock("description", [changed ? textOf("description", item.description) : markdownValue(item.description)]));
+      // 見た目は結論と同じ、灰色の面に小さな名前を添えた形
+      described.classList.add("d-answer");
+      return described;
+    };
+    /** 取り下げた理由の節（検討事項・タスクの `reason` は別の節が持つ）。値が変わっていれば、前の値と今の値を並べる */
+    const withdrawnReason = (): HTMLElement | null => {
+      if (kind === "decisions" || kind === "tasks") return null;
+      const changed = keys?.has("reason") === true;
+      if ((item.reason === undefined || item.reason === "") && !changed) return null;
+      return section(
+        "取り下げた理由",
+        valueBlock("reason", [changed ? textOf("reason", item.reason) : markdownValue(item.reason)]),
+      );
     };
     /** 見出しの下の 1 段落 */
     const lead = (key: string, value: string | undefined, className: string | null): HTMLElement | null => {
@@ -811,11 +1073,21 @@ namespace MindmapPreview {
         children: [keys?.has(key) === true ? textOf(key, value) : markdownValue(value)],
       });
     };
+    let keysMarked = false;
+    /** キーの値の語の面を、1 回だけ付ける。deadline は本文の語の差分と共有する（本文の差分を描かないときは、比べる直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足した時刻） */
+    const markKeys = (deadline: number): void => {
+      if (keys === null || keysMarked) return;
+      keysMarked = true;
+      markKeyWords({ pairs: keys.pairs, deadline });
+    };
     /** 本文の節。本文の図を描き、図の道具（拡大・Raw・コピー）を動かす。差分の表示の間は、本文と図の差分を重ねる */
     const bodySection = (label: string): HTMLElement | null => {
       const source = view?.body ?? index.data.bodies[item.body ?? ""];
       if (source === undefined) return null;
+      if (bodyFormatOf(item.body) === "html") return htmlBodySection({ label, source });
       let rendered: HTMLElement | null = null;
+      let markBodyWords: (() => void) | null = null;
+      let bodyDeadline: number | null = null;
       let notice: HTMLElement | null = null;
       let diagramBefore: string | null = null;
       const versions = view?.versions ?? null;
@@ -827,12 +1099,16 @@ namespace MindmapPreview {
           notice = noteBox(NOTE_BODY_UNAVAILABLE);
         } else {
           diagramBefore = versions.beforeBody;
-          rendered = renderBodyDiff({ before: versions.beforeBody, after: source });
+          // 語の差分は、行の差分を呼ぶ前に決めたこの時刻の内に収める（行の差分を打ち切ったときも、キーの値の語の差分と共有する）
+          bodyDeadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
+          const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source, deadline: bodyDeadline });
+          rendered = bodyDiff?.root ?? null;
+          markBodyWords = bodyDiff?.markWords ?? null;
           if (rendered === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
         }
       }
       const root = rendered ?? renderMarkdown(source);
-      if (rendered === null) lowerHeadings(root);
+      if (rendered === null) lowerHeadings({ root, shift: headingShift([root]) });
       // 古いまとまりを選び、その後に本文を直した: 描いた本文は今の本文の行と合わないので、行の印を外す（選んだ箇所のコメントも示す箇所も今の行に向けない）
       if (source !== index.data.bodies[item.body ?? ""]) withoutLineMarks(root);
       // 見出しのリンクと、本文の用語・項目の ID の印を付ける
@@ -842,8 +1118,13 @@ namespace MindmapPreview {
           scrollToHeading({ root, slug });
           on.heading(slug);
         },
+        onChangeSet: on.changeSet,
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
+      drawHtmlBlocks(root);
+      // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）。キーの値の語の面を先に付ける
+      if (bodyDeadline !== null) markKeys(bodyDeadline);
+      markBodyWords?.();
       const drawn = renderDiagrams(root);
       if (diagramBefore !== null) {
         const before = diagramBefore;
@@ -876,6 +1157,44 @@ namespace MindmapPreview {
       content.append(...(notice === null ? [] : [notice]), root);
       return section(label, content);
     };
+    /** HTML の本文の節。本文を枠に描く。差分の表示の間は、描いた結果の上の印と原文の差分で前後を見せる */
+    const htmlBodySection = ({ label, source }: { label: string; source: string }): HTMLElement => {
+      const current = index.data.bodies[entry.item.body ?? ""];
+      const marked = index.data.marked_bodies?.[entry.item.body ?? ""];
+      // 選んだ時点が今の本文のとき、行の印つきの HTML を使う（古いまとまりを選び、その後に本文を直したときは、今の行と合わない）
+      const lined = source === current && marked !== undefined;
+      const drawn = lined ? marked : source;
+      let notice: HTMLElement | null = null;
+      let content: HTMLElement | null = null;
+      const versions = view?.versions ?? null;
+      if (versions !== null && versions.before !== null && !versions.trimmed) {
+        if (missingLibraries(["jsdiff"]).length > 0) {
+          notice = libraryNotice({ names: ["jsdiff"], what: "本文の差分" });
+        } else if (versions.beforeBody === null) {
+          notice = noteBox(NOTE_BODY_UNAVAILABLE);
+        } else if (versions.beforeBody !== source) {
+          content = htmlBodyDiff({
+            before: versions.beforeBody,
+            after: source,
+            marked: drawn,
+            beforeFormat: bodyFormatOf(versions.before.body) === "md" ? "md" : "html",
+          });
+          if (content === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
+        }
+      }
+      const frame =
+        content ??
+        htmlBodyFrame({
+          source: drawn,
+          // 配る書き出しと、今の本文の行と合わない本文では、選んだ箇所のコメントの入口を出さない
+          selectable: review !== null && lined,
+          ...(on.frame === undefined ? {} : { on: { select: on.frame.select, clear: on.frame.clear } }),
+        });
+      if (frame instanceof HTMLIFrameElement) frame.setAttribute(HTML_BODY_ATTR, "");
+      const wrapped = document.createDocumentFragment();
+      wrapped.append(...(notice === null ? [] : [notice]), frame);
+      return section(label, wrapped);
+    };
     /** 採用した案と理由の節（決定内容・理由のどちらかがあるときだけ） */
     const adoptedSection = (): HTMLElement | null => {
       const rows = [labelled("決定内容", "answer", item.answer), labelled("理由", "reason", item.reason)].filter(
@@ -905,12 +1224,15 @@ namespace MindmapPreview {
           tag: "h2",
           attrs: { class: "d-title", [VALUE_KEY_ATTR]: "title" },
           children: [
-            keys?.has("title") === true ? keys.show("title") : item.title,
+            keys?.has("title") === true ? keys.showWords("title") : item.title,
             item.deliverable === true ? deliverableBadge() : null,
             view?.kind === "new" ? diffMark({ kind: "new", labeled: true }) : null,
+            // 取り下げた項目は、差分の表示によらず題の右に札を置く
+            item.withdrawn === true ? withdrawnBadge({ large: true }) : null,
           ],
         }),
         metaList({ item, settings: index.data.settings, diff: keys }),
+        withdrawnReason(),
       ],
     });
     if (kind === "decisions") {
@@ -919,7 +1241,7 @@ namespace MindmapPreview {
         parent: body,
         children: [
           lead("lead", item.lead, "d-lead"),
-          (item.options ?? []).length > 0 || previous !== null ? section("案", optionCards(item.options ?? [], previous)) : null,
+          (item.options ?? []).length > 0 || previous !== null ? section("案", optionCards({ options: item.options ?? [], previous, ...(keys === null ? {} : { pairs: keys.pairs }) })) : null,
           adoptedSection(),
           bodySection("本文"),
           relation("前提", related.prerequisites),
@@ -944,13 +1266,15 @@ namespace MindmapPreview {
         parent: body,
         children: [
           lead("question", item.question, "d-lead"),
+          descriptionSection(),
           labelled("結論", "conclusion", item.conclusion),
+          listSection("エイリアス", "aliases", item.aliases),
           listSection("調査の観点", "angles", item.angles),
           bodySection("本文"),
         ],
       });
     } else if (kind === "docs") {
-      append({ parent: body, children: [bodySection("本文")] });
+      append({ parent: body, children: [descriptionSection(), listSection("エイリアス", "aliases", item.aliases), bodySection("本文")] });
     } else if (kind === "terms") {
       append({
         parent: body,
@@ -1000,9 +1324,11 @@ namespace MindmapPreview {
       children: [
         relation(kind === "logs" ? "更新した項目" : "関連", related.related),
         relation("参照元", related.referencedBy),
-        reviews === null ? null : reviewSection(reviews),
+        review === null ? null : reviewSection(review),
       ],
     });
+    // 本文の差分を描かなかったとき、キーの値の語の面をここで付ける
+    markKeys(performance.now() + LINE_DIFF_TIMEOUT_MS);
     return body;
   }
 
@@ -1041,10 +1367,20 @@ namespace MindmapPreview {
           tag: "span",
           attrs: { class: "panel-kind" },
           children: [
-            entry === undefined ? "" : `${KIND_LABEL[entry.kind]} `,
+            // 狭い幅でタイトルに幅を譲るとき、種類の名前だけを見た目から外せるよう包む
+            entry === undefined ? "" : h({ tag: "span", attrs: { class: "panel-kind-label" }, children: [`${KIND_LABEL[entry.kind]} `] }),
             h({ tag: "span", attrs: { class: "mono" }, children: [id] }),
           ],
         }),
+        entry?.kind === "docs" ? bodyFormatBadgeOf(entry.item.body) : null,
+        // 本文の先頭のタイトルと二重に読ませないよう読み上げから外す。収まらない分は省略し、乗せると全文が読める
+        entry === undefined
+          ? null
+          : h({
+            tag: "span",
+            attrs: { class: "panel-title", "aria-hidden": "true", title: entry.item.title },
+            children: [entry.item.title],
+          }),
         h({ tag: "span", attrs: { class: "spacer" } }),
         arrow("前の項目へ戻る", "←", position <= 0, on.back),
         arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
@@ -1078,17 +1414,49 @@ namespace MindmapPreview {
     });
   }
 
-  /** 詳細パネルの節の見出し（h3）の下に、本文の見出し（h1〜h6）を並べるための段の差 */
-  const BODY_HEADING_OFFSET = 3;
+  /** 本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルに `is-shown` を付ける */
+  function bindHeadTitle({ head, body }: { head: HTMLElement; body: HTMLElement }): void {
+    const headTitle = head.querySelector<HTMLElement>(".panel-title");
+    const bodyTitle = body.querySelector<HTMLElement>(".d-title");
+    if (headTitle === null || bodyTitle === null) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // 描き直されて文書から外れた見出しの見張りは外す
+        if (!head.isConnected) {
+          observer.disconnect();
+          return;
+        }
+        const last = entries[entries.length - 1];
+        // 領域の上へ出たときだけ出す（下にあるときは出さない）
+        headTitle.classList.toggle("is-shown", !last.isIntersecting && last.boundingClientRect.top < (last.rootBounds?.top ?? 0));
+      },
+      { root: body, threshold: 0 },
+    );
+    observer.observe(bodyTitle);
+  }
+
+  /** 節の見出し「本文」（h3）の次に置く、本文の見出しのうち最も上の段 */
+  const BODY_TOP_HEADING_LEVEL = 4;
 
   /** 見出しの要素の最も下の段（h6） */
   const LOWEST_HEADING_LEVEL = 6;
 
-  /** 本文の見出しを、パネルの節の見出しより下の段（h4〜h6）に下げる。見た目は元の段のまま（`data-md-level`） */
-  function lowerHeadings(root: HTMLElement): void {
+  /** 見出しの要素の段（h1〜h6 の数字） */
+  function headingLevel(heading: HTMLElement): number {
+    return Number(heading.tagName.slice(1));
+  }
+
+  /** 本文の見出しのうち最も上の段を h4 にするための、全ての見出しに足す段の差。見出しが無ければ 0 */
+  function headingShift(roots: HTMLElement[]): number {
+    const levels = roots.flatMap((root) => [...root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")].map(headingLevel));
+    return levels.length === 0 ? 0 : BODY_TOP_HEADING_LEVEL - Math.min(...levels);
+  }
+
+  /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
+  function lowerHeadings({ root, shift }: { root: HTMLElement; shift: number }): void {
     for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
-      const level = Number(heading.tagName.slice(1));
-      const lowered = Math.min(level + BODY_HEADING_OFFSET, LOWEST_HEADING_LEVEL);
+      const level = headingLevel(heading);
+      const lowered = Math.min(level + shift, LOWEST_HEADING_LEVEL);
       const replacement = h({
         tag: `h${lowered}` as "h4" | "h5" | "h6",
         attrs: {
@@ -1096,7 +1464,7 @@ namespace MindmapPreview {
           // 元の Markdown の行の印を引き継ぐ
           [LINE_ATTR]: heading.getAttribute(LINE_ATTR),
           // h6 を超える段は、読み上げの段で伝える
-          "aria-level": level + BODY_HEADING_OFFSET > LOWEST_HEADING_LEVEL ? level + BODY_HEADING_OFFSET : null,
+          "aria-level": level + shift > LOWEST_HEADING_LEVEL ? level + shift : null,
         },
         children: [...heading.childNodes],
       });
@@ -1112,77 +1480,152 @@ namespace MindmapPreview {
     return true;
   }
 
-  /** 用語のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
+  /** 本文の印のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
   const TIP_HIDE_DELAY_MS = 150;
 
-  /** 用語のツールチップを隠す待ちのタイマー */
+  /** ツールチップを隠す待ちのタイマー */
   let tipTimer = 0;
 
-  /** 用語のツールチップ（1 つを使い回す。重ねる面の上にも出せるよう、ポップオーバーにする）。ツールチップに乗せている間は消さず、Esc で消す */
-  function termTip(): HTMLElement {
-    const existing = document.getElementById(TERM_TIP_ID);
-    if (existing !== null) return existing;
-    const tip = h({ tag: "div", attrs: { id: TERM_TIP_ID, class: "term-tip", role: "tooltip", popover: "manual" } });
-    tip.addEventListener("mouseenter", () => window.clearTimeout(tipTimer));
-    tip.addEventListener("mouseleave", () => hideTermTip(false));
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") hideTermTip(true);
-    });
-    document.body.append(tip);
-    return tip;
+  /** 今出している（出していた）ツールチップの印と、押して残しているか */
+  let tipState: { mark: HTMLElement; pinned: boolean } | null = null;
+
+  /** Esc で閉じて印へフォーカスを戻すとき、その印のフォーカスでツールチップを出し直さない */
+  let refocused: Element | null = null;
+
+  /** 今のツールチップの要素（使い回す 1 つ。隠していても文書に残る） */
+  function currentTip(): HTMLElement | null {
+    return document.getElementById(TERM_TIP_ID);
   }
 
-  /** 用語の印の下（収まらなければ上）にツールチップを出す */
-  function showTermTip({ mark, term }: { mark: Element; term: Item }): void {
-    const tip = termTip();
-    window.clearTimeout(tipTimer);
-    tip.replaceChildren(
-      h({ tag: "span", attrs: { class: "tt-head" }, children: [term.title, h({ tag: "span", attrs: { class: "mono" }, children: [term.id] })] }),
-      h({ tag: "span", attrs: { class: "tt-body" }, children: [term.meaning ?? ""] }),
-    );
-    if (!tip.matches(":popover-open")) tip.showPopover();
-    const gap = 6;
-    const margin = 8;
-    const rect = mark.getBoundingClientRect();
-    const below = innerHeight - rect.bottom - gap - margin >= tip.offsetHeight;
-    tip.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - tip.offsetWidth - margin))}px`;
-    tip.style.top = `${below ? rect.bottom + gap : rect.top - gap - tip.offsetHeight}px`;
+  /** 押して残しているか。ツールチップがまだ文書にあって開いているときに限る（詳細パネルの描き直しで外れたものは残していないとみなす） */
+  function isPinned(): boolean {
+    return tipState?.pinned === true && currentTip()?.matches(":popover-open") === true;
   }
 
-  /** 用語のツールチップを隠す（`now` が偽のときは、少し待ってから） */
+  /** ツールチップを隠す（`now` が偽のときは、少し待ってから） */
   function hideTermTip(now: boolean): void {
     window.clearTimeout(tipTimer);
     const hide = (): void => {
-      const tip = document.getElementById(TERM_TIP_ID);
+      const tip = currentTip();
       if (tip?.matches(":popover-open") === true) tip.hidePopover();
+      tipState = null;
     };
     if (now) hide();
     else tipTimer = window.setTimeout(hide, TIP_HIDE_DELAY_MS);
   }
 
-  /** 本文の用語の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける） */
-  function attachTermTips({ root, index }: { root: HTMLElement; index: RecordIndex }): void {
-    /** イベントの先の用語の印と、その用語 */
-    const termOf = (event: Event): { mark: Element; term: Item } | null => {
-      const mark = (event.target as Element).closest?.("a.term") ?? null;
-      const term = index.byId.get(mark?.getAttribute("data-id") ?? "")?.item;
-      return mark === null || term === undefined ? null : { mark, term };
-    };
-    for (const type of ["mouseover", "focusin"]) {
-      root.addEventListener(type, (event) => {
-        const found = termOf(event);
-        if (found !== null) showTermTip(found);
-      });
+  /** 印の上に、一致した項目のツールチップを出す。重ねる面の上にも出せるよう、印のある詳細パネル・全画面のモーダルの中に置く（モーダルの外は操作できない） */
+  function showTermTip({
+    mark,
+    entries,
+    pinned,
+    onOpen,
+  }: {
+    mark: HTMLElement;
+    entries: TermTipEntry[];
+    pinned: boolean;
+    onOpen: (id: string) => void;
+  }): void {
+    window.clearTimeout(tipTimer);
+    const previous = currentTip();
+    // 同じ印を同じ出し方で出しているときは出し直さない（中のスクロールを保つ）
+    if (tipState?.mark === mark && tipState.pinned === pinned && previous?.matches(":popover-open") === true) return;
+    if (previous !== null) {
+      if (previous.matches(":popover-open")) previous.hidePopover();
+      previous.remove();
     }
+    const tip = termTip({
+      entries,
+      anchor: mark,
+      pinned,
+      on: {
+        open: (id) => {
+          hideTermTip(true);
+          onOpen(id);
+        },
+        close: () => hideTermTip(true),
+      },
+    });
+    // ツールチップに乗せている間は消さない。押して残した間は、外れても消さない
+    tip.addEventListener("mouseenter", () => window.clearTimeout(tipTimer));
+    tip.addEventListener("mouseleave", () => {
+      if (!pinned) hideTermTip(false);
+    });
+    (mark.closest("dialog, aside") ?? document.body).append(tip);
+    tip.showPopover();
+    tipState = { mark, pinned };
+  }
+
+  /** Esc でツールチップを隠す。中にフォーカスがあれば印へ戻し、全画面の Esc（元の大きさに戻す）を起こさない */
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      const tip = currentTip();
+      // 詳細パネルが出したツールチップだけを対象にする
+      if (event.key !== "Escape" || tipState === null || tip?.matches(":popover-open") !== true) return;
+      const back = tip.contains(document.activeElement) ? tipState.mark : null;
+      event.preventDefault();
+      event.stopPropagation();
+      hideTermTip(true);
+      refocused = back;
+      back?.focus();
+      refocused = null;
+    },
+    true,
+  );
+
+  /** 本文の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し、Tab で中へ移れる */
+  function attachTermTips({ root, index, onOpen }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void }): void {
+    /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。用語 2 件以上か、資料・調査を含むか */
+    const markOf = (event: Event): { mark: HTMLElement; entries: TermTipEntry[]; multi: boolean } | null => {
+      const mark = (event.target as Element).closest?.<HTMLElement>("a.term") ?? null;
+      if (mark === null) return null;
+      const ids = (mark.getAttribute("data-ids") ?? mark.getAttribute("data-id") ?? "").split(" ");
+      const entries = ids.flatMap((id) => {
+        const found = index.byId.get(id);
+        return found === undefined ? [] : [{ kind: found.kind as TermTipEntry["kind"], item: found.item }];
+      });
+      return entries.length === 0 ? null : { mark, entries, multi: entries.length > 1 || entries.some((entry) => entry.kind !== "terms") };
+    };
+    root.addEventListener("mouseover", (event) => {
+      const found = markOf(event);
+      // 押して残している間は、ほかの印に乗せても替えない
+      if (found !== null && !isPinned()) showTermTip({ ...found, pinned: false, onOpen });
+    });
+    root.addEventListener("focusin", (event) => {
+      const found = markOf(event);
+      if (found !== null && found.mark !== refocused) showTermTip({ ...found, pinned: false, onOpen });
+    });
     root.addEventListener("mouseout", (event) => {
-      if (termOf(event) !== null) hideTermTip(false);
+      if (markOf(event) !== null && !isPinned()) hideTermTip(false);
     });
     root.addEventListener("focusout", (event) => {
-      if (termOf(event) !== null) hideTermTip(true);
+      const to = (event as FocusEvent).relatedTarget;
+      // ツールチップの中へ移るときは残す。押して残している間は、フォーカスの行き先が無い（余白を押した）ときも残す
+      if (markOf(event) === null || (to instanceof Node && currentTip()?.contains(to) === true)) return;
+      if (to === null && isPinned()) return;
+      hideTermTip(true);
     });
-    // 印を押して項目へ移るときは、ツールチップを残さない
+    // 用語 2 件以上か、資料・調査にも一致した印から Tab で、ツールチップの中の最初のリンクへ移る
+    root.addEventListener("keydown", (event) => {
+      const found = markOf(event);
+      const tip = currentTip();
+      if (event.key !== "Tab" || event.shiftKey || found === null || !found.multi || tip?.matches(":popover-open") !== true) return;
+      const first = tip.querySelector<HTMLElement>("a[href]");
+      if (first === null) return;
+      event.preventDefault();
+      first.focus();
+    });
     root.addEventListener("click", (event) => {
-      if (termOf(event) !== null) hideTermTip(true);
+      const found = markOf(event);
+      if (found === null) return;
+      // 用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残す（移る先は中のリンクで選ぶ）
+      if (found.multi) {
+        showTermTip({ ...found, pinned: true, onOpen });
+        return;
+      }
+      // 用語 1 件だけに一致した印を押して項目へ移るときは、ツールチップを残さない
+      hideTermTip(true);
     });
   }
 
@@ -1194,6 +1637,12 @@ namespace MindmapPreview {
     } else {
       const start = loc.start ?? 0;
       const end = loc.end ?? start;
+      // HTML の本文: 枠の中で、始まりの行を含む最も内側の要素を示す
+      const frame = root.querySelector<HTMLIFrameElement>(`iframe[${HTML_BODY_ATTR}]`);
+      if (frame !== null) {
+        highlightFrameLine({ frame, line: start, scroller: root.querySelector<HTMLElement>(".panel-body") });
+        return;
+      }
       const blocks = [...root.querySelectorAll(`.md [${LINE_ATTR}]`)];
       const lineOf = (element: Element): number => Number(element.getAttribute(LINE_ATTR));
       // 始まりの行を含む（始まりの行以前で最も後ろの）ブロックから、終わりの行までのブロック
@@ -1208,26 +1657,28 @@ namespace MindmapPreview {
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
   export function detailPanel(props: DetailProps): HTMLElement {
-    const { id, index, full, on, comment, highlight = null, diff = null, heading = null } = props;
+    const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true } = props;
     const kind = index.byId.get(id)?.kind;
     // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
     const body = h({
       tag: "div",
       attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
-      children: [detailBody({ id, index, on, reviews: comment === null ? null : comment.reviews, view: resolveDiffView({ id, index, diff }) })],
+      children: [detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }) })],
     });
     const head = detailHead(props);
-    // 見出しと下端の入力の間の本文だけをスクロールする
+    bindHeadTitle({ head, body });
+    // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる
     const footer = comment === null ? null : sendForm(comment.form);
+    const scroller = diffMinimapFrame({ body, shown: diff !== null && minimap });
     let root: HTMLElement;
     if (!full) {
       root = h({
         tag: "aside",
         attrs: { class: `panel${kind === "docs" ? " wide" : ""}`, "aria-label": "詳細" },
-        children: [head, body, footer],
+        children: [head, scroller, footer],
       });
     } else {
-      const dialog = h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, body, footer] });
+      const dialog = h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, scroller, footer] });
       // Esc は閉じずに元の大きさ（詳細パネル）に戻す。外側（後ろの幕）を押したときも同じ
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();
@@ -1239,7 +1690,7 @@ namespace MindmapPreview {
       root = dialog;
     }
     if (highlight !== null) applyHighlight({ root, loc: highlight });
-    attachTermTips({ root: body, index });
+    attachTermTips({ root: body, index, onOpen: on.open });
     // 見出しを指して開いた: 描いた後にその見出しを本文の領域の中で画面に入れる（本文に無ければ、本文の頭で開き、ハッシュから外させる）
     if (heading !== null) {
       requestAnimationFrame(() => {

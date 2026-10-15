@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import os
 import re
-from dataclasses import asdict, dataclass, replace
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from builder import export_preview, validate_export_out
 from checker import check_workspace, find_referrers
@@ -72,7 +74,15 @@ from store import (
     write_failed,
     write_temp,
 )
-from submissions import list_pending_submissions, take_submission
+from threads import (
+    create_thread,
+    list_threads,
+    mark_read as mark_thread_read,
+    reply_thread,
+    set_thread_status,
+    update_thread,
+    view_thread,
+)
 from versions import Version, parse_release_version, read_plugin_version
 
 logger = logging.getLogger(__name__)
@@ -95,6 +105,15 @@ RESERVED_KEYS = (
 
 # `item` で本文の Markdown を渡すキー（YAML には残さない）
 BODY_INPUT_KEY = "body_markdown"
+
+# `item` で資料の HTML の本文を渡すキー（YAML には残さない）
+HTML_BODY_INPUT_KEY = "body_html"
+
+# HTML の本文を持てる種類
+HTML_BODY_KIND: Kind = "doc"
+
+# `item` で渡す本文のキー（どちらも YAML には残さない）
+BODY_INPUT_KEYS = (BODY_INPUT_KEY, HTML_BODY_INPUT_KEY)
 
 # 項目の中身のエラーの行に付けるファイル名の代わり
 ITEM_NAME = "item"
@@ -142,13 +161,26 @@ class Staged:
     bodies: dict[str, BodyWrite]
     # 当てた後のまとまりの記録
     changes: Changes
+    # 書き込んだ後に消す `docs/` の本文のファイル名（形式を替えた資料の前の形式の本文）
+    removed_bodies: list[str] = field(default_factory=list)
 
 
-def validate_input_keys(kind: Kind, data: dict[str, Any]) -> None:
-    """ツールが付けるキーを弾く（`body_markdown` はどの種類も渡せる）。"""
+def validate_input_keys(kind: Kind, data: dict[str, Any], *, index: int) -> None:
+    """ツールが付けるキーと、資料以外の `body_html`・両方の本文を弾く（`body_markdown` はどの種類も渡せる）。"""
     lines = [f"{ITEM_NAME}: {key}: ツールが付けるキーです" for key in RESERVED_KEYS if key in data]
     if lines:
         raise SchemaMismatchError(lines)
+    if HTML_BODY_INPUT_KEY not in data:
+        return
+    where = f"{KINDS[kind].file}: items[{index}].{HTML_BODY_INPUT_KEY}"
+    # 資料以外は HTML の本文を持てない
+    if kind != HTML_BODY_KIND:
+        raise SchemaMismatchError([f"{where}: 資料だけが HTML の本文を持てる"])
+    # 本文は Markdown か HTML のどちらか 1 つ
+    if BODY_INPUT_KEY in data:
+        raise SchemaMismatchError(
+            [f"{where}: {BODY_INPUT_KEY} と {HTML_BODY_INPUT_KEY} は一緒に渡せない"]
+        )
 
 
 def merge_changes(
@@ -278,7 +310,7 @@ def stage_add(
     staged: Staged, kind: Kind, item: dict[str, Any], now: NowFn = now_utc
 ) -> tuple[Staged, dict[str, Any]]:
     """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
-    validate_input_keys(kind, item)
+    validate_input_keys(kind, item, index=len(staged.items[kind]))
     # 消した項目の ID は振り直さない
     item_id = next_id(
         replace(staged.workspace, items=staged.items),
@@ -289,10 +321,10 @@ def stage_add(
     record, seq = advance_seq(staged.changes)
     # id を先頭に、created・updated・updated_by・seq・added_seq を末尾に置く
     added: dict[str, Any] = {"id": item_id}
-    added.update({key: value for key, value in item.items() if key != BODY_INPUT_KEY})
+    added.update({key: value for key, value in item.items() if key not in BODY_INPUT_KEYS})
     body = _body_write(item_id, item)
     bodies = dict(staged.bodies)
-    # 本文を渡したときだけ（どの種類も）、項目の body を `{ID}.md` にして本文の書き込みを足す
+    # 本文を渡したときだけ、項目の body を `{ID}.md`（資料の HTML は `{ID}.html`）にして本文の書き込みを足す
     if body is not None:
         added["body"] = body.name
         bodies[body.name] = body
@@ -328,26 +360,35 @@ def stage_update(
     """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。"""
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
-    validate_input_keys(ref.kind, item)
-    changes = {key: value for key, value in item.items() if key != BODY_INPUT_KEY}
+    validate_input_keys(ref.kind, item, index=ref.index)
+    changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
     merged["updated_by"] = EDITOR
     body = _body_write(item_id, item)
-    # 本文を渡したときは body を `{ID}.md` にする（changed に入れるのは値が変わったときだけ）
+    previous_name = ref.item.get("body")
+    bodies = dict(staged.bodies)
+    removed_bodies = list(staged.removed_bodies)
+    # 本文を渡したときは body を `{ID}.md` か `{ID}.html` にする（changed に入れるのは値が変わったときだけ）
     if body is not None and merged.get("body") != body.name:
         merged["body"] = body.name
         changed.append("body")
+        # 前の body があり名前が違う（形式を替えた）: 前の形式の本文を消す書き込みにする
+        if isinstance(previous_name, str):
+            bodies.pop(previous_name, None)
+            removed_bodies.append(previous_name)
+    # 新しい名前の本文を書くので、消す本文には入れない
+    if body is not None:
+        removed_bodies = [name for name in removed_bodies if name != body.name]
     # 書き換える前の本文（同じ呼び出しで先に書いた本文があればそれ）
-    previous_name = ref.item.get("body")
     previous_body = (
         staged.bodies[previous_name].text
         if isinstance(previous_name, str) and previous_name in staged.bodies
         else _read_item_body(workspace, ref.item)
     )
-    # 本文の中身が変わったときは、`body_markdown` も changed に入れる
+    # 本文の中身が変わったときは、渡した本文のキー（`body_markdown` か `body_html`）も changed に入れる
     if body is not None and body.text != previous_body:
-        changed.append(BODY_INPUT_KEY)
+        changed.append(HTML_BODY_INPUT_KEY if body.name.endswith(".html") else BODY_INPUT_KEY)
     merged, record = _stack_changes(
         workspace,
         staged.changes,
@@ -362,8 +403,9 @@ def stage_update(
         staged,
         items={**staged.items, ref.kind: rows},
         touched=staged.touched | {ref.kind},
-        bodies={**staged.bodies, **({body.name: body} if body is not None else {})},
+        bodies={**bodies, **({body.name: body} if body is not None else {})},
         changes=record,
+        removed_bodies=removed_bodies,
     )
     return new_staged, {
         "id": item_id,
@@ -719,9 +761,12 @@ def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:
     return {"path": str(path)}
 
 
-def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
-    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。立てたときは直下の README にも URL を書く。"""
+def run_preview_url(root: Path, previews: PreviewRegistry, *, diff: str | None = None) -> dict[str, Any]:
+    """ワークスペースを確かめて配信を立て（立っていればそのまま）、URL を返す。立てたときは直下の README にも URL を書く。`diff` を渡したときは、そのまとまりの差分を開く URL にする。"""
     require_workspace(root)
+    # まとまりを指すときは、配信を立てる前に記録にあるかを確かめる
+    if diff is not None and all(change_set["id"] != diff for change_set in load_changes(root)["sets"]):
+        raise ArgumentError("diff", f"記録に無いまとまりです: {diff}")
     url, started = previews.start(root)
     # この呼び出しで立てたときだけ、README のプレビューの節を URL にする
     if started:
@@ -730,7 +775,8 @@ def run_preview_url(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
         except WriteFailedError as error:
             # README を書けなくても配信は止めず、URL を返す
             logger.warning("README を書けなかった: %s", error)
-    return {"url": url, "workspace": str(root), "started": started}
+    # README には時点を持たない URL を書き、返す URL にだけハッシュを付ける
+    return {"url": url if diff is None else f"{url}#diff={diff}", "workspace": str(root), "started": started}
 
 
 def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
@@ -741,17 +787,91 @@ def run_readme(root: Path, previews: PreviewRegistry) -> dict[str, Any]:
     return {"path": str(root / README_FILE), "written": written, "preview_url": url}
 
 
-def run_submissions(root: Path) -> dict[str, Any]:
-    """取り込んでいない送信を出力の形にする。"""
-    pending = list_pending_submissions(load_workspace(root))
-    return {"items": [asdict(submission) for submission in pending]}
+def run_threads(
+    root: Path, status: str | None, tag: str | None, unread: bool, awaiting: bool
+) -> dict[str, Any]:
+    """スレッドを絞ったキーだけの一覧を出力の形にする。"""
+    # 決まった値でない状態
+    if status not in (None, "open", "closed", "all"):
+        raise ArgumentError("status", "open・closed・all のどれかを渡してください")
+    rows = list_threads(
+        load_workspace(root),
+        status=cast("Literal['open', 'closed', 'all'] | None", status),
+        tag=tag,
+        unread=unread,
+        awaiting=awaiting,
+    )
+    return {"items": rows}
 
 
-def run_take_submission(root: Path, submission_id: str, now: NowFn = now_utc) -> dict[str, Any]:
-    """送信 1 件を取り込み済みにし、出力の形にする。"""
+def run_thread(
+    root: Path,
+    thread_id: str,
+    unread_only: bool,
+    *,
+    lock: Callable[[], AbstractContextManager[None]],
+) -> dict[str, Any]:
+    """スレッド 1 件を返し、返した未読の書き込みを既読にする。未読が無ければ鍵を取らない。"""
+    view, unread_ids = view_thread(load_workspace(root), thread_id, unread_only=unread_only)
+    # 未読を返した: 鍵の中で既読にする
+    if unread_ids:
+        with lock():
+            mark_thread_read(root, thread_id, unread_ids)
+    return view
+
+
+def run_new_thread(
+    root: Path,
+    body: str,
+    summary: str,
+    tags: list[str] | None,
+    target: str | None,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """AI の書き込みを最初の 1 件にしたスレッドを立て、出力の形にする。"""
+    thread_id, post_id, created = create_thread(
+        load_workspace(root), body=body, summary=summary, tags=tags, target=target, now=now
+    )
+    return {"id": thread_id, "post": post_id, "created": created}
+
+
+def run_reply(
+    root: Path,
+    thread_id: str,
+    body: str,
+    summary: str,
+    take: bool,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """スレッドへ返信し、出力の形にする。"""
     require_workspace(root)
-    taken, already = take_submission(root, submission_id, now=now)
-    return {"id": submission_id, "taken": taken, "already": already}
+    post_id, created, taken = reply_thread(
+        root, thread_id, body=body, summary=summary, take=take, now=now
+    )
+    return {"id": thread_id, "post": post_id, "created": created, "taken": taken}
+
+
+def run_set_thread_status(
+    root: Path, thread_id: str, status: str, reason: str | None, now: NowFn = now_utc
+) -> dict[str, Any]:
+    """書き手を AI にしてスレッドの状態を変え、出力の形にする。"""
+    require_workspace(root)
+    changed = set_thread_status(root, thread_id, status=status, reason=reason, author="ai", now=now)
+    return {"id": thread_id, "status": status, "changed": changed}
+
+
+def run_update_thread(
+    root: Path,
+    thread_id: str,
+    summary: str | None,
+    tags: list[str] | None,
+    take: bool,
+    now: NowFn = now_utc,
+) -> dict[str, Any]:
+    """スレッドの要約とタグを書き換え、出力の形にする。"""
+    require_workspace(root)
+    taken = update_thread(root, thread_id, summary=summary, tags=tags, take=take, now=now)
+    return {"id": thread_id, "taken": taken}
 
 
 def _read_item_body(workspace: Workspace, item: dict[str, Any]) -> str | None:
@@ -811,6 +931,7 @@ def _batch_of(staged: Staged, original: Changes) -> BatchChange:
         items={kind: staged.items[kind] for kind in KINDS if kind in staged.touched},
         bodies=list(staged.bodies.values()),
         changes=dict(staged.changes) if staged.changes != original else None,
+        removed_bodies=list(staged.removed_bodies),
     )
 
 
@@ -848,7 +969,8 @@ def _show_staged(staged: Staged, item_id: str) -> dict[str, Any]:
     name = shown["item"].get("body")
     # 同じ呼び出しで先に書いた本文は、ファイルより新しい
     if isinstance(name, str) and name in staged.bodies:
-        shown["body_markdown"] = staged.bodies[name].text
+        key = "body_html" if shown["body_format"] == "html" else "body_markdown"
+        shown[key] = staged.bodies[name].text
     return shown
 
 
@@ -889,12 +1011,15 @@ def _write_changes(root: Path, record: Changes) -> None:
 
 
 def _body_write(item_id: str, item: dict[str, Any]) -> BodyWrite | None:
-    """`item` に `body_markdown` があれば、`docs/{ID}.md` に書く本文にする。"""
-    text = item.get(BODY_INPUT_KEY)
+    """`item` の `body_markdown` を `docs/{ID}.md`、`body_html` を `docs/{ID}.html` に書く本文にする。"""
+    markdown = item.get(BODY_INPUT_KEY)
+    html = item.get(HTML_BODY_INPUT_KEY)
+    if markdown is not None:
+        return BodyWrite(name=f"{item_id}.md", text=str(markdown))
+    if html is not None:
+        return BodyWrite(name=f"{item_id}.html", text=str(html))
     # 本文を渡していない
-    if text is None:
-        return None
-    return BodyWrite(name=f"{item_id}.md", text=str(text))
+    return None
 
 
 def _parse_version(argument: str, text: str | None) -> Version | None:

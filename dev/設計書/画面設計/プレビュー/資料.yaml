@@ -32,6 +32,8 @@ elements:
         value: 絞り込みのドロワーで値を 1 つ以上選んでいる条件の数
       - name: filter_open
         value: 絞り込みのドロワーを開いているか
+      - name: comments_unread
+        value: 概要と同じ
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え
@@ -64,7 +66,7 @@ elements:
       - name: kind
         value: docs
       - name: columns
-        value: ID・タイトル（外せない）・納品物（deliverable、絞れる）・状態（絞れる）・種類（絞れる）・対象（絞れる）・カテゴリー（絞れる）・フェーズ（絞れる）・タグ（絞れる）
+        value: ID・タイトル（外せない）・納品物（deliverable、絞れる）・状態（絞れる）・種類（絞れる）・形式（`body` の拡張子から `MD` / `HTML`、絞れる）・対象（絞れる）・カテゴリー（絞れる）・フェーズ（絞れる）・タグ（絞れる）
       - name: rows
         value: プレビューを開く.mindmap-data.docs
       - name: filters
@@ -73,7 +75,7 @@ elements:
         value: 差分の表示の間、選んだ時点で足した・変えた資料（記録の取得.changes）
       - name: comments
         value: サーバーにつながって開いたとき、資料の ID → その資料を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target）
-    description: 資料の表
+    description: 資料の表。取り下げた資料（`withdrawn` が真）の行は、差分の表示によらずタイトルの右に取り下げの札を置き、行の文字を薄くする（部品設計『表』の `rows`）
     visible_when: 表示形式が表
   - name: ボード
     kind: board
@@ -97,7 +99,7 @@ elements:
     description: 画面設計『検討事項』の絞り込みのドロワーと同じ出し方（列の文字の欄を含む）で、カード・ボード・表で 1 つの条件を共有する
     io: 入力
     visible_when: トップバーの絞り込みのボタンを押したとき
-    initial_value: どの値も選んでいない。URL のハッシュに `f.{列}` があるときはその条件で開く
+    initial_value: どの値も選んでいない。サーバーの配信でこの画面の残した条件があればその条件（今の記録に無い値は外す）。URL のハッシュに `f.{列}` があるときはその条件で開き、残した条件を書き換えない
     args:
       - name: groups
         value: 種類（kind）・状態（status。印は status）・タグ（tags）・納品物（deliverable。納品物 → 納品物以外の順）・対象（target）・カテゴリー（category）・フェーズ（phase）
@@ -122,8 +124,44 @@ elements:
     description: 資料のカードとボードのカードのメタ情報の並びの右端に置く。コメントを溜める・直す・消す・戻す・送ると、スクロールの位置を動かさずに印だけを描き替える。印だけを押す操作は持たない
     io: 表示
     visible_when: サーバーにつながって開いていて、その資料を指すレビュー中のコメントが 1 件以上あるとき
+  - name: 消した項目の帯
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/消した項目の帯.ts#
+    args:
+      - name: items
+        value: 選んだ時点で消した項目（記録の取得.changes の removed）のうち、種類が doc のものの id・title を ID の順に並べたもの。合わせた範囲で足して消した項目も含む
+    position: ツールバー・条件のチップの下、カード・ボード・表の上
+    description: 選んだ時点で消した資料を並べる。表示形式と絞り込みの条件によらず同じ帯を出す。項目は押せず、詳細パネルを開かない
+    io: 表示
+    source: 記録の取得.changes
+    visible_when: 差分の表示の間で、選んだ時点で資料を 1 件以上消したとき
+    status: planned
+  - name: カード・ボードの取り下げの札
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
+    description: 資料のカードとボードのカードのタイトルの右、差分の印より前に置き、カードの文字を薄くする。押すと詳細を開くのはほかのカードと同じ
+    io: 表示
+    source: プレビューを開く.mindmap-data.docs[].withdrawn
+    visible_when: その資料の `withdrawn` が真のとき（差分の表示によらない）
+    status: planned
+  - name: カード・ボードの形式の札
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/本文の形式の札.ts#
+    args:
+      - name: format
+        value: 資料の `body` が `.html` で終われば `html`、それ以外は `md`
+    position: 資料のカード・ボードのカード > 種類の右
+    description: 資料のカードとボードのカードで、種類の右に本文の形式を示す。幅 390px でカードが 1 列になっても種類の右に収める。カードのホバー・フォーカスで札の見た目を変えない
+    io: 表示
+    source: プレビューを開く.mindmap-data.docs[].body
+    visible_when: 資料が `body` を持つ
+    status: implemented
+    introduced:
+      pr: 214
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/126/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py
 notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/docs/121/standard/index.html`
+  消した項目と取り下げのモック: 消した項目の帯と取り下げの札の見本は `dev/mock/pages/docs/179/b-band/index.html`
+  形式の札のモック: カード・ボードの形式の札と表の形式の列の見本は `dev/mock/pages/docs/214/a-kind/index.html`（種類の右に置く案 A を採用）

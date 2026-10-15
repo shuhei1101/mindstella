@@ -14,6 +14,7 @@ from preview_fixture_types import (
 )
 from preview_drawer_helpers import (
     ALL_DECISION_STATUSES_HASH,
+    DEFAULT_DECISION_STATUSES,
     DRAWER,
     DRAWER_OPEN,
     FILTER_BUTTON,
@@ -43,6 +44,18 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_removed_helpers import (
+    BAND,
+    REMOVED_IN_V2_BY_TAB,
+    assert_band_above,
+    assert_removed_band,
+)
+from preview_saved_filter_helpers import (
+    read_saved_filters,
+    reload_preview,
+    reopen_preview,
+    seed_saved_filters,
+)
 from preview_style_checks import (
     BOARD_COLUMN_WIDTH_PX,
     BOARD_EDGE_GAP_PX,
@@ -56,6 +69,7 @@ from preview_style_checks import (
     pin_id_column,
     table_cell_backgrounds,
 )
+from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import MakeItem
 
 # マップを字下げの一覧に切り替える幅の境（これ以下）
@@ -1157,6 +1171,88 @@ def test_diff_marks_when_map(
     assert_topbar_history(page)
 
 
+@pytest.mark.parametrize(
+    ("view", "below"),
+    [
+        pytest.param("table", "table.grid", id="table"),
+        pytest.param("board", ".board", id="board"),
+        pytest.param("map", "#decision-map", id="map"),
+    ],
+)
+def test_removed_band(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    view: str,
+    below: str,
+) -> None:
+    """差分の表示の間、選んだ時点で消した検討事項を、表示形式によらず一覧の上の帯に ID の順で並べる。押せず、マップの節にもしない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, f"#tab=decisions&view={view}")
+    page.wait_for_selector(below)
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+    assert_band_above(page, below)
+    # 消した検討事項は、マップの節・ボードのカード・表の行にしない
+    assert page.locator('[data-node="D-3"], [data-node="D-4"], [data-id="D-3"], [data-id="D-4"]').count() == 0
+
+
+def test_removed_band_when_outline(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """マップが幅 900px 以下の字下げの一覧になっても、同じ帯を一覧の上に置く（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=map")
+    # 実行
+    page.set_viewport_size({"width": NARROW_WIDTH, "height": NARROW_HEIGHT})
+    page.wait_for_selector(".map-outline")
+    # 検証
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+    assert_band_above(page, ".map-outline")
+
+
+def test_removed_band_when_filtered(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """絞り込みの条件で一覧の行が 0 件になっても、消した項目は絞り込まず全て帯に出す（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=table&f.status=対象外")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator("table.grid tbody tr[data-id]").count() == 0
+    assert_removed_band(page, REMOVED_IN_V2_BY_TAB["decisions"])
+
+
+@pytest.mark.parametrize(
+    "sel",
+    [
+        pytest.param(None, id="diff_off"),
+        pytest.param("V-1", id="nothing_removed"),
+        pytest.param("pending", id="removed_other_kind"),
+    ],
+)
+def test_removed_band_when_nothing_to_show(
+    write_removed_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    sel: str | None,
+) -> None:
+    """差分を出していないとき、選んだ時点で検討事項を消していないとき（消したのがほかの種類だけのときも）は、帯を置かない（正常系）。"""
+    # 準備・実行
+    url, _ = write_removed_preview()
+    preselect_diff(page, sel)
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid")
+    # 検証
+    assert page.locator(BAND).count() == 0
+
+
 def _table_row_ids(page: Page) -> list[str]:
     """表に並んでいる行の ID を並びのまま返す。"""
     return page.eval_on_selector_all(
@@ -1424,6 +1520,49 @@ def test_drawer_when_narrow(
     assert box == [0, DRAWER_NARROW_VIEWPORT["width"]]
     assert label_visible is False
     assert badge_text(page) == "1"
+
+
+def test_drawer_when_narrow_in_front_of_detail(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 390px で詳細パネルを開いたまま絞り込みのボタンで開くと、ドロワーが詳細パネルの前に出て詳細パネルが `inert` になる。「件を表示」で閉じると、開く前の詳細パネルがそのまま見える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    # 実行（詳細パネルを開いたまま開く）
+    open_drawer(page)
+    wait_front(page, "drawer")
+    in_front = {"left_front": has_left_front(page), "detail_inert": is_inert(page, "detail")}
+    # 実行（「件を表示」で閉じる）
+    page.get_by_role("button", name="件を表示").click()
+    page.wait_for_selector(DRAWER, state="detached")
+    wait_front(page, "detail")
+    # 検証
+    assert in_front == {"left_front": True, "detail_inert": True}
+    assert has_left_front(page) is False
+    assert is_inert(page, "detail") is False
+    assert page.inner_text("aside.panel .d-title") == "D-1の題"
+
+
+def test_drawer_close_by_escape_when_narrow_in_front_of_detail(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 390px でドロワーが詳細パネルの前に出ているときの Esc は、ドロワーだけを閉じ、詳細パネルは開いたままにする（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    open_narrow(page)
+    open_drawer(page)
+    wait_front(page, "drawer")
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_selector(DRAWER, state="detached")
+    wait_front(page, "detail")
+    assert page.locator("aside.panel.open").count() == 1
+    assert "id=D-1" in page.evaluate("location.hash")
+    assert is_inert(page, "detail") is False
 
 
 def test_drawer_value_is_checkbox(
@@ -1837,3 +1976,103 @@ def test_region_at_boundary(
         assert_bands_stay(page)
     else:
         assert_region_mode(page, selector, filled=filled)
+
+
+def test_drawer_saved_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、条件を変えるたびに端末へ残し、読み込み直しても開いたときの既定に代えてその条件でドロワーと表を開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    click_value(page, "phase", "要件")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {
+        "decisions": {"status": DEFAULT_DECISION_STATUSES, "phase": ["要件"]}
+    }
+    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert badge_text(page) == "2"
+    # サンプルの検討事項に未整理は無いので、残した状態の条件から外して開く
+    assert checked_values(page, "status") == ["要見直し", "未決定", "保留"]
+    assert checked_values(page, "phase") == ["要件"]
+
+
+def test_drawer_saved_filter_when_all_cleared(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """条件を全て外して残したときは、読み込み直しても開いたときの既定の条件に戻さず、何も選んでいない状態で開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    page.click(f"{DRAWER} button[aria-label='状態の条件を解除']")
+    page.wait_for_function("!document.querySelector('[data-act=filter] .fbadge')")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["D-1", "D-2", "D-3", "D-4", "D-5"]
+    assert badge_text(page) is None
+    assert checked_values(page, "status") == []
+
+
+def test_drawer_saved_filter_when_text_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """列の文字の欄に入れた条件も端末へ残し、読み込み直しても欄に文字が入ったまま、その文字で絞って開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_drawer(page)
+    page.fill(f'{DRAWER} input[data-text-key="id"]', "d-2")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert read_saved_filters(page) == {
+        "decisions": {"status": DEFAULT_DECISION_STATUSES, "~id": ["d-2"]}
+    }
+    assert _table_row_ids(page) == ["D-2"]
+    assert drawer_text_fields(page)[0] == {"key": "id", "label": "ID", "value": "d-2"}
+    assert "ID に「d-2」を含む" in chip_texts(page)
+
+
+def test_drawer_saved_filter_when_hash_filter(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """ハッシュの `f.{列}` で開くと、残した条件に代えてハッシュの条件だけで開き、残した条件は書き換えない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    seed_saved_filters(page, {"decisions": {"status": ["未決定"]}})
+    # 実行
+    reopen_preview(page, url, "#tab=decisions&view=table&f.phase=要件")
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert checked_values(page, "phase") == ["要件"]
+    assert checked_values(page, "status") == []
+    assert read_saved_filters(page) == {"decisions": {"status": ["未決定"]}}
+
+
+def test_drawer_saved_filter_when_value_missing(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
+    # 準備（検討事項に取り下げの状態は無く、`unknown` という列も無い）
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    seed_saved_filters(page, {"decisions": {"status": ["未決定", "取り下げ"], "unknown": ["値"]}})
+    # 実行
+    reload_preview(page)
+    open_drawer(page)
+    # 検証
+    assert _table_row_ids(page) == ["D-2", "D-5"]
+    assert badge_text(page) == "1"
+    assert checked_values(page, "status") == ["未決定"]

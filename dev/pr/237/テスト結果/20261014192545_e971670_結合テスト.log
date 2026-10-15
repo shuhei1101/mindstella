@@ -1,0 +1,6 @@
+# 結合テスト（フロント（tests/integration/preview/test_open_preview.py）、全件 pass）
+# commit: e971670
+# 実行日時: 2026-10-14 19:25:45 JST
+$ python3 -m pytest tests/integration/preview/test_open_preview.py -p no:cacheprovider -q
+....................................                                     [100%]
+36 passed in 82.92s (0:01:22)

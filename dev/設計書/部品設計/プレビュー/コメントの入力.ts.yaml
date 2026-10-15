@@ -92,7 +92,7 @@ states:
           ID の等幅は残す。
           以上。
   - name: NoTarget
-    description: 項目を指さないコメント（コメントの一覧の下端）。見出しを出さず、入力欄と「レビューに追加」だけにする。名前「項目を指さないコメント」は読み上げにだけ持つ
+    description: 項目を指さないコメント（コメントの一覧の新しいスレッドの入力）。見出しを出さず、入力欄と「レビューに追加」だけにする。名前「項目を指さないコメント」は読み上げにだけ持つ
   - name: Narrow
     description: 幅 390px。左右の余白をパネルの本文に揃える。入力の幅が 360px 以下では、ボタンを右に置いたまま、結果を下の行に幅いっぱいで出す。条件は画面の幅ではなく部品の幅（コンテナクエリ）で持つ
     args:
@@ -122,7 +122,7 @@ states:
         value: 全体に目を通した
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
-lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の下端に留める、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
+lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook/test_send_form_stories.py
 status: planned
 args:
@@ -166,6 +166,12 @@ args:
     default: 'false'
     enabled_when: '`target` が無いとき'
     description: 畳んだ形にするか。畳むと余白を詰め、読み上げのラベルと 1 行の入力欄だけを出す（入力欄は伸ばさず、結果と「レビューに追加」を出さない）。畳むかは使う側が決める
+  - name: label
+    type: 文字列
+    default: 項目を指さないコメント
+    enabled_when: '`target` が無いとき'
+    description: 入力欄の読み上げの名前（`aria-label`）。使う側が見出しを出すときは、その見出しと同じ文言を渡す
+    status: planned
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない

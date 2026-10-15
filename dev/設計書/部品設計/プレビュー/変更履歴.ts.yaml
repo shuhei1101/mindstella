@@ -47,7 +47,7 @@ args:
     required: false
     default: なし（件数を出さない）
     choices: 0 以上
-    description: その時点で足した・変えた項目の数。「{数} 件」と出す
+    description: その時点で足した・変えた・消した項目の数。「{数} 件」と出す
     status: planned
   - name: current
     type: 文字列

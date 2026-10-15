@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
 from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
+from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
 from preview_body_scroll_helpers import (
     LONG_BODY,
     LONG_LINES_BODY,
@@ -12,7 +16,25 @@ from preview_body_scroll_helpers import (
     SETTLED_SCROLL_TOP_JS,
     overflows_horizontally,
 )
-from preview_comment_helpers import PILL, THREE_LINE_BODY, UPDATE_TIMEOUT_MS, select_text_for_pill
+from preview_body_link_helpers import build_body_link_workspace
+from preview_comment_helpers import (
+    PILL,
+    ROW_CORNER_GAPS_JS,
+    ROW_CORNER_TOLERANCE_PX,
+    THREE_LINE_BODY,
+    UPDATE_TIMEOUT_MS,
+    read_workspace_yaml,
+    review_row,
+    select_text_for_pill,
+    wait_until_focused,
+)
+from preview_html_body_helpers import (
+    drag_select_in_frame,
+    frame_of,
+    select_in_frame,
+    text_rect_in_page,
+    wait_frame_rendered,
+)
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -21,6 +43,29 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_history_helpers import preselect_diff
+from preview_head_title_helpers import (
+    ANIMATIONS_FINISHED_JS,
+    HEAD_BUTTON_WIDTH_PX,
+    HEAD_LONG_TITLE,
+    HEAD_METRICS_JS,
+    HEAD_TITLE_HIDDEN_JS,
+    HEAD_TITLE_PREFIX,
+    HEAD_TITLE_SHOWN_JS,
+    HEAD_TITLE_TIMEOUT_MS,
+    SCROLL_BODY_TO_END_JS,
+    SCROLL_BODY_TO_TOP_JS,
+)
+from preview_minimap_helpers import (
+    FULL_SCOPE,
+    MINIMAP_FULL_HASH,
+    added_paragraph_in_view,
+    map_metrics,
+    mark_shapes,
+    open_minimap,
+    scroll_top,
+)
+from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
@@ -35,6 +80,13 @@ FULL_HEAD_LAST_BUTTON = "dialog.full .panel-head button:not([disabled])"
 
 # 全画面のモーダルの外側（後ろの幕）を押す位置（画面の左上の隅）
 BACKDROP_POINT = (4, 4)
+
+# 全画面の中のレビュー中のコメントの節
+FULL_REVIEW = "dialog.full .d-review"
+
+# D-1 へのコメントの行の「修正」「削除」の読み上げの名前
+ROW_EDIT_NAME = "D-1 へのコメントを修正"
+ROW_REMOVE_NAME = "D-1 へのコメントを削除"
 
 
 def _open_full(page: Page) -> None:
@@ -247,18 +299,112 @@ def test_review_comments(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """全画面にも、その項目へのレビュー中のコメントを読むだけの形で出す（正常系）。"""
+    """全画面にも、その項目へのレビュー中のコメントを行ごとの「修正」「削除」つきで出す（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"), comments=(make_comment("C-1", target="D-1", body="案 A にする"),)
     )
     # 実行
     page = open_preview(url, "#tab=decisions&id=D-1&full=1")
-    page.wait_for_selector("dialog.full[open] .d-review")
+    page.wait_for_selector(f"{FULL_REVIEW}")
     # 検証
-    assert page.inner_text("dialog.full .d-review h3") == "レビュー中のコメント1"
-    assert page.inner_text("dialog.full .d-review .review-body") == "案 A にする"
-    assert page.locator("dialog.full .d-review button").count() == 0
+    assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント1"
+    assert page.inner_text(f"{FULL_REVIEW} .review-body") == "案 A にする"
+    assert page.eval_on_selector_all(
+        f"{FULL_REVIEW} li .row-actions button", "buttons => buttons.map(b => [b.getAttribute('aria-label'), b.title])"
+    ) == [["D-1 へのコメントを修正", "修正"], ["D-1 へのコメントを削除", "削除"]]
+    assert page.locator(f"{FULL_REVIEW} input").count() == 0
+
+
+@pytest.mark.parametrize("width", [390, 720])
+def test_review_row_actions_at_top_right_when_narrow(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, width: int
+) -> None:
+    """幅 720px 以下でも、全画面の各行の「修正」「削除」を行の右上の隅から 24px 以内に置く（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    page.wait_for_selector(FULL_REVIEW)
+    # 実行
+    page.set_viewport_size({"width": width, "height": 700})
+    # 検証
+    gaps = page.evaluate(ROW_CORNER_GAPS_JS, review_row("dialog.full", "C-1"))
+    assert 0 <= gaps["right"] <= ROW_CORNER_TOLERANCE_PX
+    assert 0 <= gaps["top"] <= ROW_CORNER_TOLERANCE_PX
+
+
+def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """全画面でも「修正」で行の本文を直し、200 なら本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    row = review_row("dialog.full", "C-1")
+    page.locator(row).get_by_role("button", name=ROW_EDIT_NAME, exact=True).click()
+    field = f"{row} form.row-edit textarea"
+    page.wait_for_selector(field)
+    page.fill(field, "案 B にする")
+    # 実行
+    page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
+    page.wait_for_function(
+        "document.querySelector(\"dialog.full li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 B にする"
+    wait_until_focused(page, f"{row} button[title='修正']")
+
+
+def test_review_row_edit_when_escaped(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """書き換えの入力欄での Esc は書き換えだけを捨て、全画面を閉じない。もう一度 Esc で全画面を閉じる（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    row = review_row("dialog.full", "C-1")
+    page.locator(row).get_by_role("button", name=ROW_EDIT_NAME, exact=True).click()
+    field = f"{row} form.row-edit textarea"
+    page.wait_for_selector(field)
+    page.fill(field, "捨てる")
+    # 実行
+    page.press(field, "Escape")
+    # 検証
+    assert page.inner_text(f"{row} .review-body") == "案 A にする"
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert page.locator("dialog.full[open]").count() == 1
+    wait_until_focused(page, f"{row} button[title='修正']")
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+    # 実行（書き換えていないときの Esc）
+    page.keyboard.press("Escape")
+    # 検証
+    page.wait_for_function("!document.querySelector('dialog.full[open]')")
+
+
+def test_review_row_remove_and_restore(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """全画面でも「削除」で確認を挟まず消して「元に戻す」を出し、「元に戻す」で元の場所へ戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    row = review_row("dialog.full", "C-1")
+    # 実行（消す）
+    page.locator(row).get_by_role("button", name=ROW_REMOVE_NAME, exact=True).click()
+    page.wait_for_selector(f"{row}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（消す）
+    assert page.locator("dialog[open]:not(.full)").count() == 0
+    assert page.inner_text(f"{row} .removed-msg") == "コメントを削除しました。"
+    assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント1"
+    wait_until_focused(page, f"{row} button")
+    assert [item["id"] for item in read_workspace_yaml(root, "comments.yaml")["items"]] == ["C-2", "C-3"]
+    # 実行（戻す）
+    page.locator(f"{row}.removed").get_by_role("button", name="元に戻す").click()
+    page.wait_for_selector(f"{row} .review-body", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（戻す）
+    assert page.eval_on_selector_all(f"{FULL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == ["C-1", "C-2"]
+    assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント2"
+    wait_until_focused(page, f"{row} button[title='修正']")
 
 
 def test_selection_entry(
@@ -414,6 +560,67 @@ def test_body_escape_returns_to_panel(
     assert "id=A-1" in page.evaluate("location.hash")
 
 
+def test_body_alias_tooltip(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文の印のツールチップはモーダルの中に置き、その中のタイトルを押すと全画面のままその項目へ移って履歴に積む（正常系）。"""
+    # 準備
+    url = write_alias_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&full=1")
+    page.wait_for_selector(f"{FULL_MARKS}")
+    history_length = page.evaluate("history.length")
+    # 実行
+    page.hover(f"{FULL_MARKS} >> nth=0")
+    page.wait_for_selector(TIP_OPEN)
+    in_modal = page.evaluate("document.getElementById('term-tip').closest('dialog.full') !== null")
+    page.click(f'{TIP} a.tt-link[data-id="A-2"]')
+    # 検証
+    page.wait_for_function(
+        "document.querySelector('dialog.full .d-title')?.textContent === '特殊効果のスキーマ'"
+    )
+    assert in_modal is True
+    assert page.locator("dialog.full[open]").count() == 1
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_body_alias_tooltip_when_escaped(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """ツールチップを出している間の Esc はツールチップだけを閉じ、全画面を閉じない。次の Esc で元の大きさ（詳細パネル）に戻る。ツールチップの中にフォーカスがあるときの Esc は、フォーカスを印へ戻す（正常系）。"""
+    # 準備
+    url = write_alias_preview(write_preview, make_item)
+    page = open_preview(url, "#tab=docs&view=table&id=A-1&full=1")
+    page.wait_for_selector(f"{FULL_MARKS}")
+    mixed = f"{FULL_MARKS} >> nth=0"
+    # 実行（乗せて出し、Esc）
+    page.hover(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    still_full = page.locator("dialog.full[open]").count()
+    full_hash = page.evaluate("location.hash.includes('full=1')")
+    # 実行（フォーカスして中のリンクへ移り、Esc）
+    page.mouse.move(2, 2)
+    page.focus(mixed)
+    page.wait_for_selector(TIP_OPEN)
+    page.keyboard.press("Tab")
+    in_link = page.evaluate("document.activeElement.matches('#term-tip a.tt-link')")
+    page.keyboard.press("Escape")
+    page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
+    back_on_mark = page.evaluate("document.activeElement.matches('dialog.full a.term')")
+    still_full_after_link = page.locator("dialog.full[open]").count()
+    # 実行（ツールチップが無いときの Esc で、全画面を元の大きさに戻す）
+    page.keyboard.press("Escape")
+    # 検証
+    assert still_full == 1
+    assert full_hash is True
+    assert in_link is True
+    assert back_on_mark is True
+    assert still_full_after_link == 1
+    page.wait_for_selector("aside.panel.open")
+    assert page.locator("dialog.full").count() == 0
+
+
 def test_size(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
     """モーダルは窓から 32px 内側で、幅の上限は 1600px。幅 720px 以下は 8px 内側にする（正常系）。"""
     # 準備
@@ -517,6 +724,30 @@ def test_body_heading_link(
     assert page.locator('dialog.full .md:not(.md-value) a.idref[data-id="D-3"]').count() == 1
 
 
+def test_body_change_set_link(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """全画面の本文でも、`#diff=` のリンクを押すと全画面のままそのまとまりの差分の表示に切り替え、ハッシュの diff を履歴に積まずに書く（正常系）。"""
+    # 準備
+    url = build_body_link_workspace(make_workspace, make_item, call_tool)
+    open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
+    page.wait_for_selector("dialog.full .md a")
+    history_length = page.evaluate("history.length")
+    # 実行
+    page.locator("dialog.full .md a", has_text="V-1 へ").click()
+    page.wait_for_selector(".df-chip")
+    # 検証
+    assert page.inner_text(".df-chip-t").endswith("D-1 を直す")
+    assert page.locator("dialog.full[open]").count() == 1
+    assert "full=1" in page.evaluate("location.hash")
+    assert page.evaluate("location.hash").count("diff=V-1") == 1
+    assert page.evaluate("history.length") == history_length
+
+
 def test_code_block_and_diagram_raw_when_long_line(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
@@ -532,3 +763,205 @@ def test_code_block_and_diagram_raw_when_long_line(
         assert page.is_visible(selector)
         assert not overflows_horizontally(page, selector)
         assert axe_rule_results(page, selector, SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+def test_withdrawn(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """取り下げた項目の全画面にも、題の右の取り下げの札と「取り下げた理由」の節をパネルと同じに出す（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    preselect_diff(page, None)
+    open_preview(url, "#tab=research&id=R-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 実行
+    _open_full(page)
+    # 検証
+    assert page.locator(f"dialog.full .d-title {WITHDRAWN_BADGE}.wd-large").inner_text() == "取り下げ"
+    assert "取り下げ" not in page.eval_on_selector_all("dialog.full .d-meta dt", "dts => dts.map(d => d.textContent)")
+    reason = page.locator('dialog.full section.d-sec:has(> h3:text-is("取り下げた理由")) [data-key="reason"]')
+    assert reason.inner_text() == WITHDRAWN_REASONS["R-2"]
+
+
+def test_diff_withdrawn(
+    write_removed_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面にも、選んだ時点で取り下げたことを「取り下げ」の行と「取り下げた理由」の節の前後で並べる（正常系）。"""
+    # 準備
+    url, _ = write_removed_preview()
+    preselect_diff(page, "V-1")
+    open_preview(url, "#tab=research&id=R-2")
+    page.wait_for_selector("aside.panel.open .d-title")
+    # 実行
+    _open_full(page)
+    # 検証
+    row = page.locator("dialog.full .d-meta dd.df-key .df-kv")
+    assert row.locator("del.df-was").inner_text().endswith("（なし）")
+    assert row.locator(f"ins.df-now {WITHDRAWN_BADGE}").inner_text() == "取り下げ"
+    reason = page.locator('dialog.full [data-key="reason"] .df-kv')
+    assert reason.locator("ins.df-now").inner_text().endswith(WITHDRAWN_REASONS["R-2"])
+
+
+# 全画面の HTML の本文の枠
+FULL_BODY_FRAME = "dialog.full iframe.html-frame[data-html-body]"
+
+# HTML の本文（4 行目に選ぶ段落を置く）
+FULL_HTML_BODY = (
+    "<style>p { color: rgb(51, 51, 51); }</style>\n"
+    "\n"
+    "<h1>画面のモック</h1>\n"
+    "<p>言い換えたい文</p>\n"
+)
+
+
+def test_html_body(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面にも HTML の本文を枠で描き、枠の中の文を選んだ入口と箇所はモーダルの中に出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    wait_frame_rendered(page, FULL_BODY_FRAME)
+    # 実行
+    select_in_frame(page, FULL_BODY_FRAME, "言い換えたい文", "言い換えたい文")
+    page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
+    page.click(PILL)
+    # 検証
+    assert page.get_attribute(FULL_BODY_FRAME, "sandbox") == "allow-same-origin"
+    assert frame_of(page, FULL_BODY_FRAME).locator("h1").inner_text() == "画面のモック"
+    assert page.inner_text("dialog.full .send-loc-name") == "本文 4 行目"
+    assert page.inner_text("dialog.full .panel-head .fmt-badge") == "HTML"
+
+
+def test_html_body_entry_position_when_mouse(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面の枠の中をマウスで選んでも、入口は選んだ文の近くに出る（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    wait_frame_rendered(page, FULL_BODY_FRAME)
+    # 実行
+    drag_select_in_frame(page, FULL_BODY_FRAME, "言い換えたい文")
+    page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
+    rect = text_rect_in_page(page, FULL_BODY_FRAME, "言い換えたい文")
+    pill_box = page.locator(PILL).bounding_box()
+    # 検証（入口と選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    assert page.locator(f"dialog.full {PILL}").count() == 1
+    assert pill_box is not None
+    gap = max(
+        rect["top"] - (pill_box["y"] + pill_box["height"]),
+        pill_box["y"] - (rect["top"] + rect["height"]),
+        0,
+    )
+    assert gap <= rect["height"]
+
+
+# 見出しの帯のタイトルを測る全画面
+HEAD_FULL = "dialog.full"
+
+
+def test_head_title_on_scroll(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、本文を送って先頭のタイトルが隠れたときだけ見出しにタイトルを出し、先頭へ戻すと隠す。ボタンは押し出されない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", title=HEAD_LONG_TITLE), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open] .d-title")
+    # 実行
+    page.wait_for_function(HEAD_TITLE_HIDDEN_JS, arg=HEAD_FULL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    before = page.evaluate(HEAD_METRICS_JS, HEAD_FULL)
+    page.evaluate(SCROLL_BODY_TO_END_JS, HEAD_FULL)
+    page.wait_for_function(HEAD_TITLE_SHOWN_JS, arg=HEAD_FULL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    after = page.evaluate(HEAD_METRICS_JS, HEAD_FULL)
+    page.evaluate(SCROLL_BODY_TO_TOP_JS, HEAD_FULL)
+    page.wait_for_function(HEAD_TITLE_HIDDEN_JS, arg=HEAD_FULL, timeout=HEAD_TITLE_TIMEOUT_MS)
+    back = page.evaluate(HEAD_METRICS_JS, HEAD_FULL)
+    # 検証
+    # 送る前は出さず、送って隠れると出し、先頭へ戻すと隠す
+    assert (before["shown"], before["visibility"]) == (False, "hidden")
+    assert (after["shown"], after["visibility"]) == (True, "visible")
+    assert (back["shown"], back["visibility"]) == (False, "hidden")
+    # 読み上げからは外し、title は全文を持つ
+    assert after["text"].startswith(HEAD_TITLE_PREFIX)
+    assert (after["titleAttr"], after["ariaHidden"]) == (HEAD_LONG_TITLE, "true")
+    # 資料は形式の札の右に並び、種類と ID は動かない
+    assert after["titleLeft"] >= after["badgeRight"]
+    assert (after["titleLeft"], after["kindRight"]) == (before["titleLeft"], before["kindRight"])
+    # 長いタイトルは 1 行で省略記号付きで切れ、ボタンは縮まず押し出されない
+    assert (after["truncated"], after["oneLine"]) == (True, True)
+    assert after["buttonWidths"] == [HEAD_BUTTON_WIDTH_PX] * len(after["buttonWidths"])
+    assert after["titleRight"] <= after["firstButtonLeft"]
+    assert after["lastButtonRight"] <= after["headRight"]
+
+
+# ─── 差分のミニマップ ───
+
+# ミニマップの帯の太さ（px）
+MINIMAP_WIDTH_PX = 20
+
+# 図の拡大を開いた・閉じたときに、帯が消える・戻るまで待つ上限ミリ秒
+MINIMAP_TOGGLE_MS = 5_000
+
+
+def test_diff_minimap(
+    write_minimap_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面でも、詳細パネルと同じ帯を本文のスクロール領域の右に出し、印を押すとその箇所まで本文を送る。ハッシュと履歴は変えない（正常系）。"""
+    # 準備
+    url, _ = write_minimap_preview()
+    open_minimap(page, open_preview, url, MINIMAP_FULL_HASH)
+    history_length = page.evaluate("history.length")
+    metrics = map_metrics(page, FULL_SCOPE)
+    shapes = mark_shapes(page, FULL_SCOPE)
+    # 検証（帯は本文に重ならず、消した・足したの印が上下の順に並ぶ）
+    assert metrics["mapLeft"] >= metrics["bodyRight"] - 1
+    assert metrics["mapWidth"] == MINIMAP_WIDTH_PX
+    assert [shape["label"] for shape in shapes] == ["消した箇所（1 / 2）", "足した箇所（2 / 2）"]
+    assert shapes[0]["top"] < shapes[1]["top"]
+    assert not added_paragraph_in_view(page, FULL_SCOPE)
+    # 実行
+    page.locator(f"{FULL_SCOPE} .df-map .df-map-m").nth(1).click()
+    # 検証
+    assert scroll_top(page, FULL_SCOPE) > 0
+    assert added_paragraph_in_view(page, FULL_SCOPE)
+    assert "full=1" in page.evaluate("location.hash")
+    assert page.evaluate("history.length") == history_length
+
+
+def test_diff_minimap_when_diagram_zoomed(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """図の拡大を開いている間は、帯を出さない。閉じて本文へ戻ると、帯を出す（正常系）。"""
+    # 準備（差分の表示で、図を持つ D-1 を全画面で開く）
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full figure.diagram.df-colored", timeout=DIAGRAM_TIMEOUT_MS)
+    page.wait_for_selector(f"{FULL_SCOPE} .df-map .df-map-m")
+    assert page.locator(f"{FULL_SCOPE} .df-map").is_visible()
+    # 実行（図を拡大する）
+    page.click('dialog.full button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.full .full-viewer .v-stage svg")
+    # 検証
+    page.wait_for_function(
+        "document.querySelector('dialog.full .df-map')?.getClientRects().length === 0",
+        timeout=MINIMAP_TOGGLE_MS,
+    )
+    # 実行（図の拡大を閉じる）
+    page.click('dialog.full button[data-act="diagram-close"]')
+    page.wait_for_selector("dialog.full .panel-body", state="visible")
+    # 検証
+    page.wait_for_function(
+        "document.querySelector('dialog.full .df-map')?.getClientRects().length > 0",
+        timeout=MINIMAP_TOGGLE_MS,
+    )

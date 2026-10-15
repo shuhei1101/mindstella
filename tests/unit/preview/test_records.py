@@ -112,49 +112,164 @@ def test_search_items(
 
 
 @pytest.mark.parametrize(
-    ("query", "expected_hits"),
+    ("kinds", "bodies", "query", "expected_hits"),
     [
         pytest.param(
+            {
+                "decisions": [("D-1", {"title": "シナリオの依頼の受け方"})],
+                "terms": [("G-1", {"title": "シナリオの依頼"})],
+                "docs": [("A-1", {})],
+            },
+            {"A-1.md": "シナリオの依頼の話\n"},
             "シナリオの依頼 ",
-            [["G-1", True], ["D-1", False]],
-            id="title_exact_with_trailing_space",
+            [["G-1", 1], ["D-1", 2], ["A-1", 3]],
+            id="title_exact_then_title_part_then_other",
         ),
-        pytest.param("g-1", [["G-1", True], ["G-12", False]], id="id_exact_case_insensitive"),
         pytest.param(
-            "依頼",
-            [["D-1", False], ["G-1", False], ["G-12", False]],
-            id="no_exact_kind_order",
+            {
+                "terms": [
+                    ("G-1", {"title": "シナリオの依頼"}),
+                    ("G-12", {"title": "依頼の控え"}),
+                ],
+            },
+            {},
+            "g-1",
+            [["G-1", 1], ["G-12", 3]],
+            id="id_exact_case_insensitive",
+        ),
+        pytest.param(
+            {
+                "decisions": [("D-1", {"answer": "保存先は共有のフォルダにする"})],
+                "docs": [("A-2", {"title": "保存先の決め方"})],
+            },
+            {"A-2.md": "本文\n"},
+            "保存先",
+            [["A-2", 2], ["D-1", 3]],
+            id="tier_before_kind_order",
+        ),
+        pytest.param(
+            {
+                "decisions": [("D-1", {"title": "シナリオの依頼の受け方"})],
+                "terms": [("G-1", {"title": "シナリオの依頼"})],
+                "docs": [("A-1", {})],
+            },
+            {"A-1.md": "シナリオの依頼の話\n"},
+            "シナリオ 受け方",
+            [["D-1", 2]],
+            id="all_words_in_title",
         ),
     ],
 )
-def test_search_items_exact_first(
+def test_search_items_tier_order(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     make_data: MakeData,
     make_item: MakeItem,
+    kinds: dict[str, list[tuple[str, dict[str, Any]]]],
+    bodies: dict[str, str],
     query: str,
     expected_hits: list[list[Any]],
 ) -> None:
-    """完全に一致する項目を先にする（正常系）。"""
+    """段の順に並べる（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", title="シナリオの依頼の受け方")],
-        terms=[
-            make_item("G-1", title="シナリオの依頼"),
-            make_item("G-12", title="依頼の控え"),
-        ],
+        bodies=bodies,
+        **{
+            kind: [make_item(item_id, **overrides) for item_id, overrides in specs]
+            for kind, specs in kinds.items()
+        },
     )
     load_preview_scripts()
     # 実行
     found = preview_page.evaluate(
         """({data, query}) => {
             const index = MindmapPreview.buildIndex(data);
-            return MindmapPreview.searchItems({query, index}).map((hit) => [hit.id, hit.exact]);
+            return MindmapPreview.searchItems({query, index}).map((hit) => [hit.id, hit.tier]);
         }""",
         {"data": data, "query": query},
     )
     # 検証
     assert found == expected_hits
+
+
+# HTML の本文と、同じ中身を html のコードブロックに持つ Markdown の本文が持つ段落
+FLOW_PARAGRAPH = '<p class="flow" data-step="1">画面の流れ</p>'
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_ids"),
+    [
+        pytest.param("画面の流れ", ["A-1", "A-2"], id="rendered_text"),
+        pytest.param("data-step", [], id="attribute_name"),
+        pytest.param("flow", [], id="class_name"),
+    ],
+)
+def test_search_items_when_html(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+    query: str,
+    expected_ids: list[str],
+) -> None:
+    """HTML の本文と html のコードブロックを描いた文で当てる（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[make_item("A-1", body="A-1.html"), make_item("A-2", body="A-2.md")],
+        bodies={"A-1.html": FLOW_PARAGRAPH, "A-2.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
+    )
+    load_preview_scripts()
+    # 実行
+    found = preview_page.evaluate(
+        """({data, query}) => {
+            const index = MindmapPreview.buildIndex(data);
+            return MindmapPreview.searchItems({query, index}).map((hit) => hit.id);
+        }""",
+        {"data": data, "query": query},
+    )
+    # 検証
+    assert found == expected_ids
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        pytest.param("A-1.md", "md", id="markdown"),
+        pytest.param("A-1.html", "html", id="html"),
+        pytest.param(None, None, id="undefined"),
+    ],
+)
+def test_body_format_of(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    body: str | None,
+    expected: str | None,
+) -> None:
+    """拡張子から形式を決める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        "(body) => MindmapPreview.bodyFormatOf(body === null ? undefined : body)", body
+    )
+    # 検証
+    assert result == expected
+
+
+def test_html_text(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """タグ・属性・隠れた中身を外した文を返す（正常系）。"""
+    # 準備
+    source = f"<style>p{{}}</style><!-- メモ -->{FLOW_PARAGRAPH}<script>x()</script>"
+    load_preview_scripts()
+    # 実行
+    text = preview_page.evaluate("(source) => MindmapPreview.htmlText(source)", source)
+    # 検証
+    assert "画面の流れ" in text
+    assert "flow" not in text
+    assert "data-step" not in text
+    assert "p{}" not in text
+    assert "メモ" not in text
+    assert "x()" not in text
 
 
 @pytest.mark.parametrize(

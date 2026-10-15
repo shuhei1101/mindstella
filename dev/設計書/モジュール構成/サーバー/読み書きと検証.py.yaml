@@ -7,7 +7,7 @@ directory: |-
       common.schema.json       共通のキー（$defs）
       settings.schema.json     config.yaml
       decisions.schema.json    ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
-      submissions.schema.json  submissions.yaml（『送信』が使う）
+      threads.schema.json      threads.yaml（『スレッド』が使う）
       comments.schema.json     comments.yaml（『コメント』が使う）
       drafts.schema.json       drafts.yaml（『コメント』が使う）
     scripts/
@@ -131,10 +131,10 @@ data_models:
     properties:
       - name: name
         type: str
-        description: '`docs/` の中のファイル名（`{ID}.md`）'
+        description: '`docs/` の中のファイル名（`{ID}.md`、資料の HTML の本文は `{ID}.html`）'
       - name: text
         type: str
-        description: 本文の Markdown
+        description: 本文（Markdown か HTML）
   - name: Change
     title: 書き込みの変更
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -294,20 +294,13 @@ classes:
     title: 引数の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない）。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
     kind: クラス
     inherits: MindmapError
     properties:
       - name: argument
         type: str
         description: 誤った引数の名前
-  - name: SubmissionNotFoundError
-    title: 送信が無い
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 送信の取り込み
-    summary: 渡した ID の送信が無い。メッセージに ID
-    kind: クラス
-    inherits: MindmapError
   - name: ServeFailedError
     title: 配信を立てられない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -344,7 +337,7 @@ classes:
     title: コメントが今の記録に合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: コメントを選んで送る
-    summary: 箇所が今の項目に合わない、向けた項目が消えた、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
+    summary: 箇所が今の項目に合わない、向けた項目が消えた、返信先のスレッドがクローズか無い、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
     kind: クラス
     inherits: MindmapError
     properties:
@@ -395,6 +388,20 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 記録の削除と取り下げ
     summary: '消そうとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
+    kind: クラス
+    inherits: MindmapError
+  - name: ThreadNotFoundError
+    title: スレッドが無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: スレッドで話す
+    summary: '渡した ID のスレッドが無い。配信は 404 にする。メッセージは `スレッドがありません: {ID}`'
+    kind: クラス
+    inherits: MindmapError
+  - name: ThreadClosedError
+    title: スレッドがクローズ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: スレッドで話す
+    summary: クローズのスレッドへ AI が返信しようとした。メッセージは `スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください`（画面からのクローズのスレッドへの返信は `CommentConflictError`）
     kind: クラス
     inherits: MindmapError
 constants:
@@ -673,6 +680,12 @@ functions:
         condition: スキーマに合い、案を持たない未決定の D-1 を持つワークスペース
         mock: なし
         expected: '`file: decisions.yaml`・`key: items[0].options`・`id: D-1`・`kind: decision_state` の 1 件'
+      - name: test_validate_workspace_when_aliases
+        case: 正常
+        summary: 資料・調査の `aliases`・`description` を受け、空の語を拾う
+        condition: '`parametrize`: `aliases: [特殊効果]`・`description` を持つ資料 A-1 と調査 R-1 / どちらも持たない A-1 / `aliases: [特殊効果, ""]` の A-1'
+        mock: なし
+        expected: '空の並び / 空の並び / `file: docs.yaml`・`key: items[0].aliases[1]` の 1 件'
   - name: load_validators
     title: 検証器の用意
     kind: 関数
@@ -1641,6 +1654,37 @@ functions:
         condition: 読んだ時点が D-1・D-2、変更後が D-1（そのまま）・D-2（`status` を直した）・D-3（足した）
         mock: なし
         expected: '`{D-2, D-3}`'
+  - name: body_format
+    title: 本文の形式
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の追加と更新
+    kind: 関数
+    scope: public
+    summary: 本文のファイル名の拡張子から形式を返す
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: name
+        type: str | None
+        required: true
+        passing: positional
+        description: 項目の `body`
+    returns:
+      type: Literal['markdown', 'html'] | None
+      description: '`.html` で終われば `html`、`.md` で終われば `markdown`、`None` かそれ以外は `None`'
+    process: |-
+      1. `name` が文字列でなければ `None` を返す
+      2. 拡張子が `.html` なら `html`、`.md` なら `markdown`、それ以外は `None` を返す
+    unit_tests:
+      - name: test_body_format
+        case: 正常
+        summary: 拡張子から形式を決める
+        condition: '`parametrize`: `A-1.md` / `A-1.html` / `None` / `A-1.txt`'
+        expected: '`markdown` / `html` / `None` / `None`'
+        mock: なし
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py
+notes:
+  HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'

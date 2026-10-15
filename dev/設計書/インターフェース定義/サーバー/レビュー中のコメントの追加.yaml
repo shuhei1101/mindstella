@@ -28,7 +28,7 @@ flows:
       - ステータスが 201 で、`id` が `C-1`、`count` が 1
       - '`comments.yaml` に `id: C-1`・`target: D-1`・`body: 案 A にする` の 1 件があり、`seq` が 1'
       - '`drafts.yaml` に D-1 への書きかけが無い'
-      - '`submissions.yaml`・`decisions.yaml` の中身が溜める前と同じ'
+      - '`threads.yaml` が作られておらず、`decisions.yaml` の中身が溜める前と同じ'
     test: test_normal
   - name: 正常系（本文の箇所）
     summary: 本文の文を選んだコメントを、書式の記号を外して箇所を確かめて溜める
@@ -253,6 +253,79 @@ flows:
       - ステータスが 201
       - '`Origin: https://other.example.test` で送ると 403 で、コメントが増えない'
     test: test_normal_when_origin_allowed
+  - name: 正常系（HTML の本文の箇所）
+    summary: HTML の本文の文を選んだコメントを、タグを外した文と照らして溜める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 本文を HTML で持つ資料 A-1 を持つワークスペース
+        notes: '本文の 1・2 行目は `<style>` とコメント、4 行目は `<p>言い<b>換え</b>たい文</p>`。`loc` は `{kind: body, start: 4, end: 4, text: 言い換えたい文}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {target: A-1, loc: 本文の 4 行目, body}
+        IF-->>WS: A-1 の HTML の本文を読む
+        IF->>IF: タグを外して 4 行目に選んだ文がある
+        IF->>WS: comments.yaml に足す
+        IF-->>クライアント: 201
+      ```
+    expected:
+      - ステータスが 201
+      - '`comments.yaml` のそのコメントが、渡した `loc` をそのまま持つ'
+      - 同じ本文で `loc.text` を `p { color` にして送ると、`<style>` の中身は当てないため 409
+    test: test_normal_when_html_body_location
+  - name: 正常系（スレッドへの返信）
+    summary: オープンのスレッドへの返信をレビュー中に溜め、スレッドには書かない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: AI が立てたオープンのスレッド TH-1 と、TH-1 への返信の書きかけを持つワークスペース
+        notes: '本文は `{"thread": "TH-1", "body": "起票してよい"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {thread: TH-1, body}
+        IF-->>WS: スレッドを読んでオープンを確かめる
+        IF->>WS: comments.yaml に足し、TH-1 への書きかけを消す
+        IF-->>クライアント: 201
+      ```
+    expected:
+      - ステータスが 201
+      - '`comments.yaml` のそのコメントが `thread: TH-1` を持ち、`target`・`loc` を持たない'
+      - '`drafts.yaml` に TH-1 への書きかけが無い'
+      - '`threads.yaml` の中身が溜める前と同じ'
+    test: test_normal_when_reply
+  - name: 異常系（クローズのスレッドへの返信・409）
+    summary: クローズのスレッドへの返信は溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: クローズのスレッド TH-1 を持つワークスペース
+        notes: '本文は `{"thread": "TH-1", "body": "了解"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/comments
+
+        クライアント->>IF: POST {thread: TH-1, body}
+        IF-->>クライアント: 409
+      ```
+    expected:
+      - ステータスが 409 で、`detail` にクローズであることがある
+      - '`comments.yaml` が無い'
+    test: test_error_when_thread_closed
 lead: 詳細パネル・詳細の全画面・コメントの一覧の入力から、項目・選んだ箇所へのコメントか項目に紐づかないコメントを受け、送らずにレビュー中のコメントとして `comments.yaml` に溜める。削除したコメントを元に戻すときもこれを呼ぶ。
 idempotent: false
 side_effects: '`comments.yaml` に 1 件足し（無ければ作る）、同じ向けた先（`target` と `loc`）の書きかけを `drafts.yaml` から消す。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -298,7 +371,7 @@ request:
     type: int
     required: false
     location: body
-    description: '`body` のとき。選んだ範囲の始めの本文の Markdown の行（1 始まり）'
+    description: '`body` のとき。選んだ範囲の始めの本文の原文（Markdown か HTML）の行（1 始まり）'
     constraints: '`kind` が `body` のとき必須。1 以上'
     example: '2'
   - name: loc.end
@@ -345,6 +418,15 @@ request:
     description: 元に戻すときの、削除したコメントの溜めた日時
     constraints: '`id` を渡すときだけ渡す。UTC のタイムゾーン付き ISO 8601'
     format: date-time
+  - name: thread
+    type: str
+    required: false
+    default: なし（新しいスレッドの最初の書き込み）
+    location: body
+    description: 既存のスレッドへの返信を溜めるときの、そのスレッドの ID
+    constraints: オープンのスレッド。`target`・`loc` と一緒に渡さない
+    example: TH-3
+    status: planned
 request_example: |-
   ```json
   {
@@ -369,16 +451,16 @@ status_codes:
   - code: '201'
     condition: 溜めた
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`body` が無いか空白だけか 10000 文字を超える・`loc` の形が崩れている（`target` が無い、`kind` に合うキーが無い など）・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`body` が無いか空白だけか 10000 文字を超える・`loc` の形が崩れている（`target` が無い、`kind` に合うキーが無い など）・`thread` を `target` か `loc` と一緒に渡した・リクエストの本文が 128KiB を超える
     notes: 何も書かない
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
     notes: 何も書かない
   - code: '404'
-    condition: '`target` の項目がワークスペースに無い'
+    condition: '`target` の項目か `thread` のスレッドがワークスペースに無い'
     notes: 何も書かない
   - code: '409'
-    condition: 箇所が今の項目に合わない（「箇所の確かめ」）、または `id` が今のレビュー中にあるか `seq` を超える
+    condition: 箇所が今の項目に合わない（「箇所の確かめ」）、`thread` のスレッドがクローズ、または `id` が今のレビュー中にあるか `seq` を超える
     notes: 何も書かない。`detail` に合わない理由
   - code: '415'
     condition: '`Content-Type` が `application/json` でない'
@@ -392,11 +474,11 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 書く中身
-    constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`body`（前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。ER 図『ワークスペース』の `comments.yaml`'
+    constraint: '`id`（`C-{seq + 1}`。元に戻すときは渡した ID）・`target`（あれば）・`loc`（あれば）・`thread`（あれば）・`body`（前後の空白を除く）・`created`。新しく振ったときは `seq` を 1 上げる。スレッドは作らない（作るのは『コメントをまとめて送る』）。ER 図『ワークスペース』の `comments.yaml`'
   - item: 箇所の確かめ
-    constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。『コメントをまとめて送る』も同じ確かめ方を使う
+    constraint: 本文の箇所は、行の範囲がその項目の本文の行数に収まり、その行の範囲の文に選んだ文が含まれるかを確かめる。値の箇所は、キーがその項目にあり、その値に選んだ文が含まれるかを確かめる。比べる前に、選んだ文と元の文の両方から記号 `*`・`_`・`~`・`` ` ``・`\`・`|`・`#`・`>` と空白・改行を外す。Markdown の本文の元の文は先に、各行の行頭のリストの記号（`-`・`+`・`数字.`・`数字)`）・表の区切りの行・コードブロックのフェンスの行・画像（`![代わりの文](URL)` を丸ごと）を外し、リンク `[文](URL)` を `文` にし、文字参照を文字に戻す。HTML の本文の元の文は、`html.parser.HTMLParser` で原文を読んだときの文の断片のうち、その行の範囲にあるものをつなぐ（タグとコメントを外し、`style`・`script`・`template`・`title` の中身を除き、文字参照を文字に戻す）。『コメントをまとめて送る』も同じ確かめ方を使う
   - item: 書きかけ
-    constraint: 溜めたら、同じ `target` と `loc` の書きかけを `drafts.yaml` から消す（元に戻すときは消さない）
+    constraint: 溜めたら、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけを `drafts.yaml` から消す（元に戻すときは消さない）
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]

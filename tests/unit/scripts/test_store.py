@@ -282,6 +282,23 @@ def test_load_validators(schema_name: str) -> None:
     Draft202012Validator.check_schema(validators[schema_name].schema)
 
 
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        pytest.param("A-1.md", "markdown", id="markdown"),
+        pytest.param("A-1.html", "html", id="html"),
+        pytest.param(None, None, id="no_body"),
+        pytest.param("A-1.txt", None, id="unknown_extension"),
+    ],
+)
+def test_body_format(name: str | None, expected: str | None) -> None:
+    """拡張子から形式を決める（正常系）。"""
+    # 実行
+    result = store.body_format(name)
+    # 検証
+    assert result == expected
+
+
 def test_find_item(make_workspace, make_item) -> None:
     """ID の項目と位置を返す（正常系）。"""
     # 準備
@@ -1265,6 +1282,41 @@ def test_validate_workspace_when_decision_state(
     assert problem.file == "decisions.yaml"
     assert problem.key == "items[0].options"
     assert problem.id == "D-1"
+
+
+@pytest.mark.parametrize(
+    ("docs_extra", "research_extra", "expected"),
+    [
+        pytest.param(
+            {"aliases": ["特殊効果"], "description": "演出の説明"},
+            {"aliases": ["特殊効果"], "description": "調査の説明"},
+            [],
+            id="with_aliases_and_description",
+        ),
+        pytest.param({}, {}, [], id="without_aliases_and_description"),
+        pytest.param(
+            {"aliases": ["特殊効果", ""]},
+            {},
+            [("docs.yaml", "items[0].aliases[1]")],
+            id="empty_alias",
+        ),
+    ],
+)
+def test_validate_workspace_when_aliases(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    docs_extra: dict[str, Any],
+    research_extra: dict[str, Any],
+    expected: list[tuple[str, str]],
+) -> None:
+    """資料・調査の `aliases`・`description` を受け、空の語を拾う（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", **docs_extra), make_item("R-1", **research_extra))
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = store.validate_workspace(workspace)
+    # 検証
+    assert [(problem.file, problem.key) for problem in problems] == expected
 
 
 @pytest.mark.parametrize(

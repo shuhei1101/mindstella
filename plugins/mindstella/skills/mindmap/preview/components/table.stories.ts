@@ -59,7 +59,7 @@ export default meta;
 
 type Story = StoryObj<MindmapPreview.TableProps>;
 
-/** 通常。並べ替えの印は見出しにホバーかフォーカスしたときだけ出す */
+/** 通常。並べ替えの印は見出しにホバーかフォーカスしたときだけ出す。チップの行の右端に列のアイコンと「列の表示」のボタンを置き、チップの行と表の間を 12px 空ける */
 export const Default: Story = {};
 
 /** タイトルで昇順。向きの矢印を出し、`aria-sort="ascending"` */
@@ -118,10 +118,21 @@ export const Commented: Story = {
   },
 };
 
-/** 表示する列のポップオーバーを開いている。タイトルの列は外せない */
+/** 取り下げた行。タイトルの右に取り下げの札、その後ろに差分の印を置き、行の文字を薄くする。取り下げていない行は変わらない。ホバー・フォーカスの見せ方はほかの行と同じ */
+export const Withdrawn: Story = {
+  args: {
+    rows: [
+      ...rows,
+      { id: "R-1", title: "別の調査で足りた調査", conf: "中", status: "決定済み", withdrawn: true },
+    ],
+    marks: { "R-1": "changed" },
+  },
+};
+
+/** 列の表示のポップオーバーを開いている。題は「列の表示」。タイトルの列は外せない */
 export const ColumnsPopover: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole("button", { name: "表示する列" }));
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "列の表示" }));
   },
 };
 

@@ -1,5 +1,5 @@
 "use strict";
-// 表示の設定の中身。表示する種類を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 選べるネットワークの見た目 */
@@ -17,6 +17,8 @@ var MindmapPreview;
         return MindmapPreview.NETWORK_LOOKS.find((option) => option.key === look)?.label ?? look;
     }
     MindmapPreview.lookLabel = lookLabel;
+    /** 差分のミニマップの呼び名（表示の設定の切り替えと「この端末で変えている項目」に出す名前） */
+    MindmapPreview.MINIMAP_LABEL = "差分のミニマップ";
     /** 種類 → 種類の行に出す印 */
     const KIND_ICON = {
         decisions: "decision",
@@ -135,6 +137,37 @@ var MindmapPreview;
             ],
         });
     }
+    /** 詳細に表示するものの選び（差分のミニマップのチェック 1 行） */
+    function detailField({ minimap = true, on }) {
+        return MindmapPreview.h({
+            tag: "fieldset",
+            attrs: { class: "st-sec" },
+            children: [
+                MindmapPreview.h({ tag: "legend", children: ["詳細に表示するもの"] }),
+                MindmapPreview.h({
+                    tag: "ul",
+                    attrs: { class: "st-kinds" },
+                    children: [
+                        MindmapPreview.h({
+                            tag: "li",
+                            children: [
+                                MindmapPreview.h({
+                                    tag: "label",
+                                    children: [
+                                        MindmapPreview.h({
+                                            tag: "input",
+                                            attrs: { type: "checkbox", checked: minimap, "data-focus": "minimap", onchange: () => on.minimap(!minimap) },
+                                        }),
+                                        MindmapPreview.h({ tag: "span", attrs: { class: "st-k-label" }, children: [MindmapPreview.MINIMAP_LABEL] }),
+                                    ],
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+    }
     /** この端末で変えている項目と「既定に戻す」。上書きが無いときはボタンを出さず、その旨を出す */
     function resetBlock({ overrides, on }) {
         if (overrides.length === 0) {
@@ -192,7 +225,7 @@ var MindmapPreview;
                     : MindmapPreview.h({
                         tag: "p",
                         attrs: { class: "st-same", tabindex: "-1", "data-focus": "same" },
-                        children: ["今の選びはワークスペースの既定と同じです。"],
+                        children: ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
                     }),
             ],
         });
@@ -214,6 +247,7 @@ var MindmapPreview;
             children: [
                 storageOk ? null : storageNote(),
                 kindsField(props),
+                detailField(props),
                 resetBlock(props),
                 canSave ? saveBlock(props) : null,
                 messageLine(message),

@@ -101,6 +101,8 @@ namespace MindmapPreview {
     until_seq: number;
     added: string[];
     changed: string[];
+    /** 消した項目。何も消していないまとまりは持たない */
+    removed?: RemovedItem[];
   };
 
   /** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
@@ -108,7 +110,7 @@ namespace MindmapPreview {
     last_seq: number;
     /** 新しい順 */
     sets: ChangeSet[];
-    pending: { added: string[]; changed: string[] };
+    pending: { added: string[]; changed: string[]; removed?: RemovedItem[] };
   };
 
   /** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
@@ -143,8 +145,13 @@ namespace MindmapPreview {
     confidence?: string;
     angles?: string[];
     deliverable?: boolean;
+    /** 取り下げた調査・資料・用語集・メモ・会話ログは真。取り下げた理由は `reason` */
+    withdrawn?: boolean;
     meaning?: string;
+    /** 用語の別名・資料と調査の本文で一致させる語（エイリアス） */
     aliases?: string[];
+    /** 資料と調査のタイトルだけでは分からない中身の短い説明 */
+    description?: string;
     avoid?: string[];
     content?: string;
     date?: string;
@@ -206,6 +213,8 @@ namespace MindmapPreview {
   export type MindmapData = Record<Kind, Item[]> & {
     settings: Settings;
     bodies: Record<string, string>;
+    /** HTML の本文（`bodies` のうち `.html`）の、開きタグに原文の行の印（`data-line`）を足したもの。HTML の本文が無ければ `{}` */
+    marked_bodies?: Record<string, string>;
     /** 書き換えのまとまりと、まだまとめていない変更 */
     changes: Changes;
     derived: Derived;
@@ -302,8 +311,42 @@ namespace MindmapPreview {
     };
   }
 
-  /** 全体の検索の 1 件（`exact` は ID かタイトルが言葉と完全に一致するか） */
-  export type SearchHit = { id: string; kind: Kind; title: string; exact: boolean };
+  /** 全体の検索の段（1 は ID かタイトルが言葉と完全に一致、2 はタイトルが語を全て含む、3 はそれ以外） */
+  export type SearchTier = 1 | 2 | 3;
+
+  /** 全体の検索の 1 件 */
+  export type SearchHit = { id: string; kind: Kind; title: string; tier: SearchTier };
+
+  /** 全体の検索の段の順 */
+  const SEARCH_TIERS: SearchTier[] = [1, 2, 3];
+
+  /** 項目の `body` の拡張子から本文の形式を返す（`body` を持たないか、知らない拡張子なら `null`） */
+  export function bodyFormatOf(body: string | undefined): "md" | "html" | null {
+    if (body === undefined) return null;
+    if (body.endsWith(".html")) return "html";
+    if (body.endsWith(".md")) return "md";
+    return null;
+  }
+
+  /** 描いた文に出ない中身を持つ要素 */
+  const HIDDEN_TEXT_SELECTOR = "style, script, template, title";
+
+  /** HTML をスクリプトを動かさずに解析し、`style`・`script`・`template`・`title` の中身とコメントを除いた描いた文を返す */
+  export function htmlText(source: string): string {
+    const doc = new DOMParser().parseFromString(source, "text/html");
+    for (const hidden of doc.querySelectorAll(HIDDEN_TEXT_SELECTOR)) hidden.remove();
+    return doc.documentElement.textContent ?? "";
+  }
+
+  /** Markdown の本文の中の言語指定 `html` のコードブロック（フェンスは ``` か ~~~） */
+  const HTML_FENCE = /^(```|~~~)html[^\n]*\n([\s\S]*?)^\1[ \t]*$/gm;
+
+  /** 検索で当てる本文の文。HTML の本文と Markdown の `html` のコードブロックは、タグではなく描いた文にする */
+  function searchableBody(body: string | undefined, bodies: Record<string, string>): string {
+    const text = bodies[body ?? ""] ?? "";
+    if (bodyFormatOf(body) === "html") return htmlText(text);
+    return text.replace(HTML_FENCE, (_block, _fence, code: string) => htmlText(code));
+  }
 
   /** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
   function searchableText(item: Item, bodies: Record<string, string>): string {
@@ -314,11 +357,11 @@ namespace MindmapPreview {
         for (const element of value) if (typeof element === "string") parts.push(element);
       }
     }
-    parts.push(bodies[item.body ?? ""] ?? "");
+    parts.push(searchableBody(item.body, bodies));
     return parts.join("\n").toLowerCase();
   }
 
-  /** 空白で区切った語を全て含む項目を、ID かタイトルが言葉と完全に一致する項目を先にして返す（大文字・小文字と前後の空白を区別しない） */
+  /** 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す（大文字・小文字と前後の空白を区別しない） */
   export function searchItems({ query, index }: { query: string; index: RecordIndex }): SearchHit[] {
     const whole = query.trim().toLowerCase();
     const terms = whole.split(/\s+/).filter(Boolean);
@@ -330,13 +373,15 @@ namespace MindmapPreview {
       for (const item of items) {
         const text = searchableText(item, index.data.bodies);
         if (terms.every((term) => text.includes(term))) {
-          const exact = item.id.toLowerCase() === whole || item.title.trim().toLowerCase() === whole;
-          hits.push({ id: item.id, kind, title: item.title, exact });
+          const title = item.title.trim().toLowerCase();
+          const exact = item.id.toLowerCase() === whole || title === whole;
+          const tier = exact ? 1 : terms.every((term) => title.includes(term)) ? 2 : 3;
+          hits.push({ id: item.id, kind, title: item.title, tier });
         }
       }
     }
-    // 完全に一致する項目を先にする（それぞれ今の種類の順・連番の順のまま）
-    return [...hits.filter((hit) => hit.exact), ...hits.filter((hit) => !hit.exact)];
+    // 段の順にする（段の中は種類の順・連番の順のまま）
+    return SEARCH_TIERS.flatMap((tier) => hits.filter((hit) => hit.tier === tier));
   }
 
   /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */

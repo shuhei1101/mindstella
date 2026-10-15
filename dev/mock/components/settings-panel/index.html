@@ -63,7 +63,7 @@
       const counts = { decisions: 36, tasks: 8, research: 4, docs: 5, terms: 6, notes: 3, logs: 7 };
       const without = (...ks) => new Set(ALL.filter((k) => !ks.includes(k)));
       // 開いた直後の値（ワークスペースの既定も上書きも無い）
-      const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false };
+      const base = { look: "deep", defLook: "deep", shown: new Set(ALL), defShown: new Set(ALL), counts, theme: "system", showTheme: false, overrides: [], save: "button", ws: { look: "deep", shown: new Set(ALL) }, msg: null, nostore: false, minimap: true, minimapLabel: "差分のミニマップ", minimapAt: "afterend" };
       const PANELS = [
         ["開いた直後（ワークスペースの既定のまま）", "上書きが無い。既定に戻すとワークスペースの既定にするのボタンを出さず、そのことを文言で示す。", {}],
         ["この端末で変えている（推奨の案 A）", "ネットワークのドロップダウンで選んだ見た目も含めて上書きを持つ項目を並べ、既定に戻すで 4 項目の上書きを外す。ワークスペースの既定にするは線で区切った下に置く。", { look: "dust", defLook: "starlight", defShown: without("notes"), overrides: ["ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列（調査）"] }],
@@ -76,6 +76,10 @@
         ["案 B: ワークスペースの既定を別の区画で選ぶ", "この端末の区画とワークスペースの既定の区画を分け、既定は保存するまで画面に当てない。", { save: "sections", ws: { look: "starlight", shown: without("logs") } }],
         ["ホバー・キーボードのフォーカス", "種類の行のホバーは面の色、フォーカスは印の色の輪。", { hover: true }],
         ["狭い幅（390px）", "画面の幅いっぱいに出す。行の高さと押せる的は変えない。", { narrow: true, look: "dust", defLook: "starlight", overrides: ["ネットワークの見た目", "表示する種類"], shown: without("notes") }],
+        ["差分のミニマップを表示しない", "表示する種類の下の区画「詳細に表示するもの」のチェックを外すと、その場で詳細からミニマップを外し、この端末で変えている項目に並べる。既定に戻すで表示するに戻る。ワークスペースの既定には保存しない。", { minimap: false, overrides: ["差分のミニマップ"] }],
+        ["差分のミニマップ: 呼び名の案 B", "「変わった箇所のミニマップ」。差分という言葉を使わない。", { minimapLabel: "変わった箇所のミニマップ" }],
+        ["差分のミニマップ: 呼び名の案 C", "「変更箇所の帯」。ミニマップという言葉を使わない。", { minimapLabel: "変更箇所の帯" }],
+        ["差分のミニマップ: 置き場所の案 B", "区画を表示する種類の上に置く。", { minimapAt: "beforebegin" }],
       ];
       const CONFIRMS = [
         ["確かめ（2 つの項目を変える）", "今の既定と保存する値を並べる。最初のフォーカスは取り消すに置く。", { from: { look: "starlight", shown: without("notes") }, to: { look: "dust", shown: new Set(ALL) } }],
@@ -95,6 +99,12 @@
         html += sec(h, p, `<dialog open class="confirm sconfirm${c.narrow ? " narrow" : ""}" aria-label="${h}">${S.confirmHtml(c).replace('id="sc-h"', "")}</dialog>`);
       });
       document.getElementById("catalog").innerHTML = html;
+      // 詳細に表示するものの区画（差分のミニマップ）を、表示する種類の区画の下（置き場所の案 B は上）に足す
+      PANELS.forEach(([, , o], i) => {
+        const m = { ...base, ...o };
+        document.querySelector(`[data-demo="${i}"] .st-kinds`).closest("fieldset").insertAdjacentHTML(m.minimapAt,
+          `<fieldset class="st-sec"><legend>詳細に表示するもの</legend><ul class="st-kinds"><li><label><input type="checkbox" data-act="sminimap" ${m.minimap ? "checked" : ""}><span class="st-k-label">${m.minimapLabel}</span></label></li></ul></fieldset>`);
+      });
       S.markMixed(document);
       // ホバー・フォーカスの見本: 表示する種類の 1 行にホバー、別の 1 つにフォーカスの輪
       const hv = document.querySelector('[data-demo="9"]');

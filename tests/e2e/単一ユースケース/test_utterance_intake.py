@@ -31,6 +31,10 @@ INTAKE_SUMMARY = "発言を取り込む"
 # 納品物の資料の本文（概要・背景・最終的な構成の見出しを先に置く）
 DELIVERABLE_BODY = "# 要件定義書\n\n## 概要\n\n支出を記録する。\n\n## 背景\n\n## 構成\n\n- 画面\n- データ\n"
 
+# 会話で出した図の資料に付けるエイリアスと説明
+DIAGRAM_ALIASES = ["画面遷移", "遷移図"]
+DIAGRAM_DESCRIPTION = "ログインから設定までの画面の移り方"
+
 # 検討事項に書く案（A を採用する）
 OPTIONS = [
     {"key": "A", "content": "YAML", "pros": "手で読める", "cons": "大きいと遅い"},
@@ -190,11 +194,13 @@ def test_normal_when_diagram_kept_as_doc(
                 "op": "add",
                 "kind": "doc",
                 "item": {
-                    "title": "保存の流れ",
+                    "title": "画面遷移図",
                     "kind": "図",
                     "deliverable": False,
                     "status": "下書き",
                     "related": ["D-1"],
+                    "aliases": DIAGRAM_ALIASES,
+                    "description": DIAGRAM_DESCRIPTION,
                     "body_markdown": "```mermaid\nflowchart TD\n  A --> B\n```\n",
                 },
             },
@@ -212,6 +218,9 @@ def test_normal_when_diagram_kept_as_doc(
     assert doc["id"] == "A-1"
     assert doc["kind"] == "図"
     assert doc["related"] == ["D-1"]
+    # 資料 A-1 が渡したエイリアスと説明を持つ
+    assert doc["aliases"] == DIAGRAM_ALIASES
+    assert doc["description"] == DIAGRAM_DESCRIPTION
     # docs/ に A-1 の本文の Markdown がある
     assert "flowchart TD" in (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     # check が YAML と Markdown のずれを 0 件で返す
@@ -470,3 +479,58 @@ def test_normal_when_note_withdrawn(
     change_set = read_yaml(root, "changes.yaml")["sets"][0]
     assert change_set["changed"] == ["N-1"]
     assert "removed" not in change_set
+
+
+# 会話で求められた画面のモックを HTML で書いた本文
+MOCK_BODY_HTML = "<h1>画面のモック</h1>\n<p>一覧の画面</p>\n"
+
+
+def test_normal_when_visual_doc_kept_as_html(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """会話で求められた画面のモックを、本文が HTML の資料に残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    ws = {"workspace": str(root)}
+    # 実行
+    # 資料と会話ログを、1 回のまとめての書き込みで渡す（本文は HTML）
+    replay(
+        "batch",
+        **ws,
+        operations=[
+            {
+                "op": "add",
+                "kind": "doc",
+                "item": {
+                    "title": "画面のモック",
+                    "kind": "モック",
+                    "deliverable": False,
+                    "status": "下書き",
+                    "related": ["D-1"],
+                    "body_html": MOCK_BODY_HTML,
+                },
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "モックを出した", "date": TODAY, "related": ["$1"]},
+            },
+        ],
+    )
+    checked = call_tool("check", **ws)
+    # 検証
+    doc = read_yaml(root, "docs.yaml")["items"][0]
+    # 資料 A-1 が kind: モック と related: [D-1] を持ち、本文が HTML の形式である
+    assert doc["id"] == "A-1"
+    assert doc["kind"] == "モック"
+    assert doc["related"] == ["D-1"]
+    assert doc["body"] == "A-1.html"
+    # docs/ に A-1 の本文の HTML がある
+    assert (root / RECORD_DIR / "docs" / "A-1.html").read_text(encoding="utf-8") == MOCK_BODY_HTML
+    # check が YAML と本文のずれを 0 件で返す
+    assert checked.is_error is False
+    assert checked.data["problems"] == []

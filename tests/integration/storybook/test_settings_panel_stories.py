@@ -11,8 +11,11 @@ NARROW_SIZE = {"width": 390, "height": 844}
 # 表示の設定のパネルの外側
 PANEL = "aside.settings-drawer"
 
+# 区画「表示する種類」（先頭の区画）
+KINDS_SECTION = "fieldset.st-sec:first-of-type"
+
 # 種類の行（チェックの箱を持つ行）の名前・チェック・件数を読む
-_KINDS_SCRIPT = """() => [...document.querySelectorAll('.st-kinds li:not(.st-all):not(.st-always)')].map((row) => ({
+_KINDS_SCRIPT = """() => [...document.querySelectorAll('fieldset.st-sec:first-of-type .st-kinds li:not(.st-all):not(.st-always)')].map((row) => ({
     name: row.querySelector('.st-k-label').textContent,
     checked: row.querySelector('input').checked,
     count: row.querySelector('.n').textContent,
@@ -42,7 +45,7 @@ def test_default(open_story: OpenStory) -> None:
     assert _buttons(page) == []
     text = page.inner_text(f"{PANEL} .st-wrap")
     assert "ワークスペースの既定のまま表示しています。" in text
-    assert "今の選びはワークスペースの既定と同じです。" in text
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in text
     # 概要とネットワークは、チェックの箱を持たない常に表示の行
     assert page.locator(".st-always").count() == 2
     assert page.locator(".st-always input").count() == 0
@@ -51,13 +54,15 @@ def test_default(open_story: OpenStory) -> None:
 
 
 def test_overridden(open_story: OpenStory) -> None:
-    """この端末で変えている。上書きを持つ 4 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く（正常系）。"""
+    """この端末で変えている。上書きを持つ 5 項目を並べて「既定に戻す」を出し、線で区切った下に「ワークスペースの既定にする」を置く（正常系）。"""
     # 準備・実行
     page = _open(open_story, "overridden")
     # 検証
     over = page.inner_text(f"{PANEL} .st-over")
     assert "この端末で変えている項目" in over
-    assert "ネットワークの見た目・表示する種類・ライト / ダーク・表の列（調査）" in over
+    assert (
+        "ネットワークの見た目・表示する種類・ライト / ダーク・表の列（調査）・絞り込み（タスク）" in over
+    )
     assert _buttons(page) == ["既定に戻す", "ワークスペースの既定にする"]
     # 見た目を上書きしていても、パネルには見た目の選びを出さない
     assert page.locator(f"{PANEL} .st-look").count() == 0
@@ -86,7 +91,7 @@ def test_saved(open_story: OpenStory) -> None:
     # 準備・実行
     page = _open(open_story, "saved")
     # 検証
-    assert "今の選びはワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
     assert _buttons(page) == ["既定に戻す"]
     message = page.locator(f"{PANEL} .st-msg")
     assert message.get_attribute("role") == "status"
@@ -131,7 +136,7 @@ def test_export(open_story: OpenStory) -> None:
     assert _buttons(page) == ["既定に戻す"]
     assert page.locator(f"{PANEL} .st-save").count() == 0
     assert page.locator(f"{PANEL} .st-look").count() == 0
-    assert page.locator(f"{PANEL} .st-kinds input").count() == 8
+    assert page.locator(f"{PANEL} {KINDS_SECTION} .st-kinds input").count() == 8
 
 
 def test_narrow(open_story: OpenStory) -> None:
@@ -151,3 +156,23 @@ def test_narrow(open_story: OpenStory) -> None:
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
+
+
+def test_minimap_hidden(open_story: OpenStory) -> None:
+    """差分のミニマップだけを表示しないにした。「詳細に表示するもの」のチェックを外し、変えている項目に「差分のミニマップ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "minimap-hidden")
+    # 検証（区画「詳細に表示するもの」の中の「差分のミニマップ」のチェックが外れている）
+    section = page.locator(f"{PANEL} fieldset", has_text="詳細に表示するもの")
+    assert section.locator("legend").inner_text() == "詳細に表示するもの"
+    checkbox = section.get_by_role("checkbox", name="差分のミニマップ")
+    assert checkbox.is_checked() is False
+    # 検証（変えている項目と「既定に戻す」）
+    assert page.inner_text(f"{PANEL} .st-over-h") == "この端末で変えている項目"
+    assert page.inner_text(f"{PANEL} .st-over > span:last-child") == "差分のミニマップ"
+    assert _buttons(page) == ["既定に戻す"]
+    # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
+    assert page.locator(f"{PANEL} .st-save button").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
+    # 検証（表示する種類は既定のまま）
+    assert page.inner_text(".st-all .n") == "7/7"

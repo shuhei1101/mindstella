@@ -4,6 +4,8 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** `Diff.diffLines` に渡す `timeout`（ミリ秒）。切り替えの 200ms のうち、図の描画に使った残りを本文 1 つの差分に充てる */
     MindmapPreview.LINE_DIFF_TIMEOUT_MS = 40;
+    /** 変えた行の対で、同じ部分の文字数を 2 つのうち短い方の文字数で割った値がこれに満たないとき、語の面を付けない（ほとんど書き換えた行は、語の面が行のほぼ全体に付いて行の面と見分けられない） */
+    MindmapPreview.WORD_PAIR_MIN_SAME_RATIO = 0.5;
     /** `Diff.diffArrays`（sequenceDiagram のメッセージの並び）に渡す `timeout`（ミリ秒） */
     MindmapPreview.ARRAY_DIFF_TIMEOUT_MS = 20;
     /** ノード・辺に色を付ける mermaid の図の種類（記法の 1 行目の語）。それ以外は図の枠に色を付ける */
@@ -15,6 +17,16 @@ var MindmapPreview;
         "erDiagram",
         "stateDiagram-v2",
     ];
+    /** 消した項目の種類（`RemovedItem.kind`）から、その項目を出す画面の種類を引く */
+    MindmapPreview.REMOVED_KIND_TAB = {
+        decision: "decisions",
+        task: "tasks",
+        research: "research",
+        doc: "docs",
+        term: "terms",
+        note: "notes",
+        log: "logs",
+    };
     /** 「まだまとめていない変更」の名前と補足 */
     const PENDING_NAME = "まだまとめていない変更";
     const PENDING_SUB = "AI がまだ区切っていない書き換え";
@@ -22,11 +34,23 @@ var MindmapPreview;
     const SINCE_NAME = "前回開いてから";
     /** 選んだ時点の名前・補足・印・範囲から、時点を組み立てる */
     function buildPoint({ sel, name, sub, groups, fromSeq, untilSeq, }) {
-        const added = new Set(groups.flatMap((group) => group.added));
+        // `removed` を持たないまとまりは、何も足さない
+        const removed = new Map(groups.flatMap((group) => group.removed ?? []).map((item) => [item.id, item]));
+        // 合わせた範囲で足して消した項目は、消した項目としてだけ出す
+        const added = new Set(groups.flatMap((group) => group.added).filter((id) => !removed.has(id)));
         // 足した項目は、変えても変更の印にしない
-        const changed = new Set(groups.flatMap((group) => group.changed).filter((id) => !added.has(id)));
-        return { sel, name, sub, added, changed, fromSeq, untilSeq };
+        const changed = new Set(groups.flatMap((group) => group.changed).filter((id) => !added.has(id) && !removed.has(id)));
+        return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
     }
+    /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
+    function removedOf({ point, kind }) {
+        if (point === null)
+            return [];
+        return [...point.removed.values()]
+            .filter((item) => MindmapPreview.REMOVED_KIND_TAB[item.kind] === kind)
+            .sort((a, b) => MindmapPreview.compareIds(a.id, b.id));
+    }
+    MindmapPreview.removedOf = removedOf;
     /** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないときは null */
     function resolveDiffPoint(changes, sel, since) {
         if (sel === null)
@@ -36,7 +60,8 @@ var MindmapPreview;
         const latestSeq = sets[0]?.until_seq ?? 0;
         if (sel === "pending") {
             // まだまとめていない変更が無い
-            if (changes.pending.added.length === 0 && changes.pending.changed.length === 0)
+            const pending = changes.pending;
+            if (pending.added.length === 0 && pending.changed.length === 0 && (pending.removed ?? []).length === 0)
                 return null;
             return buildPoint({ sel, name: PENDING_NAME, sub: PENDING_SUB, groups: [changes.pending], fromSeq: latestSeq, untilSeq: null });
         }
@@ -103,6 +128,9 @@ var MindmapPreview;
                 // 本文を初めて足した回: 前は本文が無い
                 if (value === null)
                     body = "";
+                // 資料の本文の形式を替えた回: 前の形式のファイル名に戻す
+                else if (typeof value === "string")
+                    item["body"] = value;
                 continue;
             }
             if (value === null)
@@ -163,6 +191,89 @@ var MindmapPreview;
         }));
     }
     MindmapPreview.diffLineParts = diffLineParts;
+    /** 前後の HTML の原文を行ごとに比べ、足した行・変えた行（消した行と入れ替えた行）と、足した行と隣り合わない消した行があるかを返す。差分を打ち切ったら null */
+    function htmlChangedLines(before, after) {
+        const parts = diffLineParts(before, after);
+        if (parts === null)
+            return null;
+        const added = [];
+        const changed = [];
+        let removedOnly = false;
+        let nowLine = 0;
+        parts.forEach((part, position) => {
+            const neighbors = [parts[position - 1]?.kind, parts[position + 1]?.kind];
+            if (part.kind === "removed") {
+                // 足した並びに隣らない消した並びは、描いた結果に印を付けられない
+                if (!neighbors.includes("added"))
+                    removedOnly = true;
+                return;
+            }
+            if (part.kind === "added") {
+                // 消した並びに隣る足した並びは変えた行、それ以外は足した行（空白だけの行は入れない）
+                const target = neighbors.includes("removed") ? changed : added;
+                part.lines.forEach((line, offset) => {
+                    if (line.trim() !== "")
+                        target.push(nowLine + offset + 1);
+                });
+            }
+            nowLine += part.lines.length;
+        });
+        return { added, changed, removedOnly };
+    }
+    MindmapPreview.htmlChangedLines = htmlChangedLines;
+    /** 行の差分のうち、消した行のすぐ後に同じ行の数の足した行が続くところを、変えた行の対にして返す（`parts` の添え字の並び。前から 1 行ずつが対になる） */
+    function pairedParts(parts) {
+        const pairs = [];
+        parts.forEach((part, position) => {
+            const next = parts[position + 1];
+            // 消した行のすぐ後に、同じ行の数の足した行が続く（間に変えない行を挟まない）
+            if (part.kind === "removed" && next?.kind === "added" && next.lines.length === part.lines.length) {
+                pairs.push({ removed: position, added: position + 1 });
+            }
+        });
+        return pairs;
+    }
+    MindmapPreview.pairedParts = pairedParts;
+    /** 語の区切りに使う分け方。ブラウザが `Intl.Segmenter` を持たなければ null（jsdiff の既定の区切りで比べる） */
+    let wordSegmenter;
+    /** 語の区切りに使う分け方を、最初に呼んだときに 1 つ作って使い回す */
+    function segmenterOf() {
+        if (wordSegmenter === undefined) {
+            wordSegmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("ja", { granularity: "word" }) : null;
+        }
+        return wordSegmenter;
+    }
+    /** 部分の文字をつないだもの */
+    function joinText(parts) {
+        return parts.map((part) => part.text).join("");
+    }
+    /** 変えた行の対の前と今の文字を語の単位で比べる。jsdiff を読めていない・時刻を過ぎた・打ち切った・同じ部分が少ない・部分をつないでも元の文字に戻らないときは null */
+    function diffInline(before, after, deadline) {
+        if (MindmapPreview.missingLibraries(["jsdiff"]).length > 0)
+            return null;
+        const remaining = deadline - performance.now();
+        if (remaining <= 0)
+            return null;
+        const segmenter = segmenterOf();
+        const parts = Diff.diffWords(before, after, { timeout: remaining, ...(segmenter === null ? {} : { intlSegmenter: segmenter }) });
+        // 時間内に終わらなかった
+        if (parts === undefined)
+            return null;
+        const sameLength = parts.filter((part) => !part.added && !part.removed).reduce((total, part) => total + part.value.length, 0);
+        const shorter = Math.min(before.length, after.length);
+        // ほとんど書き換えた対には面を付けない
+        if (shorter === 0 || sameLength / shorter < MindmapPreview.WORD_PAIR_MIN_SAME_RATIO)
+            return null;
+        const inline = {
+            before: parts.filter((part) => !part.added).map((part) => ({ kind: part.removed ? "removed" : "same", text: part.value })),
+            after: parts.filter((part) => !part.removed).map((part) => ({ kind: part.added ? "added" : "same", text: part.value })),
+        };
+        // 同じ部分の文字が空白の違いで片側の文字とずれたとき、範囲を元の文字に当てられない
+        if (joinText(inline.before) !== before || joinText(inline.after) !== after)
+            return null;
+        return inline;
+    }
+    MindmapPreview.diffInline = diffInline;
     /** 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す */
     function placeRemovedBlocks(parts) {
         const blocks = [];

@@ -148,6 +148,108 @@ def test_to_hash(
     assert hash_text == expected
 
 
+@pytest.mark.parametrize(
+    ("hash_text", "tab", "diff"),
+    [
+        pytest.param("#tab=decisions&diff=V-2", "decisions", "V-2", id="set"),
+        pytest.param("#diff=pending", "overview", "pending", id="pending_only"),
+        pytest.param("#tab=decisions&diff=", "decisions", None, id="empty_value"),
+        pytest.param("#tab=decisions", "decisions", None, id="no_diff"),
+    ],
+)
+def test_parse_hash_diff(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+    hash_text: str,
+    tab: str,
+    diff: str | None,
+) -> None:
+    """差分の時点を読む（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1")])
+    load_preview_scripts()
+    # 実行
+    route = preview_page.evaluate(
+        """({data, hash}) => {
+            const index = MindmapPreview.buildIndex(data);
+            return MindmapPreview.parseHash({hash, index});
+        }""",
+        {"data": data, "hash": hash_text},
+    )
+    # 検証
+    assert route["tab"] == tab
+    assert route["diff"] == diff
+
+
+@pytest.mark.parametrize(
+    ("route", "expected", "read_back"),
+    [
+        pytest.param(
+            {
+                "tab": "overview",
+                "view": "table",
+                "id": None,
+                "full": False,
+                "filters": {},
+                "diff": "V-2",
+            },
+            "#diff=V-2",
+            "V-2",
+            id="overview_set",
+        ),
+        pytest.param(
+            {
+                "tab": "decisions",
+                "view": "table",
+                "id": "D-1",
+                "full": False,
+                "filters": {},
+                "diff": "since",
+            },
+            "#tab=decisions&view=table&id=D-1&diff=since",
+            "since",
+            id="decisions_since",
+        ),
+        pytest.param(
+            {
+                "tab": "overview",
+                "view": "table",
+                "id": None,
+                "full": False,
+                "filters": {},
+                "diff": None,
+            },
+            "",
+            None,
+            id="no_diff",
+        ),
+    ],
+)
+def test_to_hash_diff(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    route: dict[str, Any],
+    expected: str,
+    read_back: str | None,
+) -> None:
+    """差分の時点を diff に書く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """(route) => {
+            const hash = MindmapPreview.toHash(route);
+            return {hash, diff: new URLSearchParams(hash.slice(1)).get("diff")};
+        }""",
+        route,
+    )
+    # 検証
+    assert result["hash"] == expected
+    assert result["diff"] == read_back
+
+
 def test_to_hash_heading(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """見出しを `h` に書く（正常系）。"""
     # 準備

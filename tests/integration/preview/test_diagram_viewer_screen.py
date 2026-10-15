@@ -11,6 +11,7 @@ from preview_body_scroll_helpers import (
     LONG_LINE,
     LONG_LINES_BODY,
     SCROLLABLE_REGION_RULE,
+    SETTLED_SCROLL_TOP_JS,
     TALL_DIAGRAM_BODY,
     overflows_horizontally,
 )
@@ -21,6 +22,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from preview_word_diff_helpers import WORD_MARKS_JS, serve_word_diff_workspace
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 # 図を描き終わるまで待つ上限ミリ秒
@@ -227,6 +229,27 @@ def test_diff_raw(
     assert page.get_attribute('dialog.viewer button[data-act="viewer-raw"]', "aria-pressed") == "true"
 
 
+def test_diff_raw_when_inline_words(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間の Raw は、変えた行の対の変わった語だけに濃い面を付け、ほかの行には付けない（正常系）。"""
+    # 準備
+    url = serve_word_diff_workspace(make_workspace, call_tool)
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel figure.diagram.df-colored", timeout=DIAGRAM_TIMEOUT_MS)
+    page.click('aside.panel button[data-act="diagram-zoom"]')
+    page.wait_for_selector("dialog.viewer[open] .v-stage svg")
+    # 実行
+    page.click('dialog.viewer button[data-act="viewer-raw"]')
+    lines = page.evaluate(WORD_MARKS_JS, "dialog.viewer .v-raw.df-raw .df-line")
+    # 検証
+    assert [line["words"] for line in lines if line["words"]] == [
+        [{"kind": "del", "text": "仕様"}],
+        [{"kind": "add", "text": "設計"}],
+    ]
+
+
 # ─── 記法の枠 ───
 
 
@@ -270,15 +293,14 @@ def test_raw_scroll_by_keyboard(
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement?.matches('dialog.viewer .v-raw')")
     page.keyboard.press("ArrowDown")
-    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop > 0")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW) > 0
     page.keyboard.press("PageDown")
-    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop > 100")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW) > 100
     page.keyboard.press("End")
-    page.wait_for_function(
-        "(e => e.scrollTop + e.clientHeight >= e.scrollHeight - 1)(document.querySelector('dialog.viewer .v-raw'))"
-    )
+    page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW)
+    assert page.eval_on_selector(VIEWER_RAW, "e => e.scrollTop + e.clientHeight >= e.scrollHeight - 1")
     page.keyboard.press("Home")
-    page.wait_for_function("document.querySelector('dialog.viewer .v-raw').scrollTop === 0")
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, VIEWER_RAW) == 0
 
 
 def test_raw_focus_outline_inside(

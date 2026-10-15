@@ -1,0 +1,164 @@
+title: "サーバー / 未読へ戻す"
+lead: Claude Code の `SessionStart` のフックが呼ぶスクリプト。作業フォルダとその直下のワークスペースを探し、ロックを取ってスレッドの書き込みを未読に戻す。スレッドと読み書きと検証に依存する。単体テストは `tests/unit/scripts/test_reset_unread.py` に置く。
+directory: |-
+  ```
+  plugins/mindstella/
+    hooks/hooks.json                     SessionStart で reset_unread.py を呼ぶ（形はインターフェース定義『未読へ戻す』の起動するコマンド）
+    skills/mindmap/scripts/
+      reset_unread.py                    ワークスペースを探して未読へ戻す（仮想環境の Python で起動）
+  ```
+constants:
+  - name: LOCK_WAIT_SEC
+    title: ロックを待つ上限
+    container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
+    usecase: スレッドで話す
+    summary: ワークスペースごとにロックを待つ秒数（インターフェース定義『未読へ戻す』の制約「上限」）
+    value: '2.0'
+  - name: LOCK_POLL_SEC
+    title: ロックを試す間隔
+    container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
+    usecase: スレッドで話す
+    summary: 取れなかったロックを試し直す間隔の秒数（上限の中で 40 回試せ、待ちが会話の始まりに感じられない長さ）
+    value: '0.05'
+functions:
+  - name: find_workspaces
+    title: ワークスペースを探す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
+    usecase: スレッドで話す
+    scope: public
+    summary: 作業フォルダとその直下のフォルダのうち、ワークスペース（`.mindstella/config.yaml` を持つ）を返す
+    args:
+      - name: cwd
+        type: Path
+        required: true
+        passing: positional
+        description: Claude Code の作業フォルダ
+    returns:
+      type: list[Path]
+      description: '`cwd`（ワークスペースなら先頭）と、直下のワークスペースを名前の順に並べたもの。無ければ空'
+    process: |-
+      1. `cwd` がフォルダでなければ空を返す
+      2. `cwd` と、`cwd` の直下のフォルダ（シンボリックリンクを辿らず、`.` で始まる名前を除く）のうち、`records_root(フォルダ) / SETTINGS_FILE` があるものを残す。それより深くは探さない
+         - 直下を読めない（`OSError`）場合、`cwd` だけを見る
+    unit_tests:
+      - name: test_find_workspaces
+        case: 正常
+        summary: 作業フォルダと直下だけを探す
+        condition: '`parametrize`: `cwd` がワークスペース / `cwd` の直下にワークスペース `b`・`a` とただのフォルダ `c` / ワークスペースが 2 階層下にだけある / `cwd` が無いパス'
+        mock: なし
+        expected: '`[cwd]` / `[cwd/a, cwd/b]` / `[]` / `[]`'
+  - name: reset_workspace
+    title: 1 つのワークスペースを未読へ戻す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
+    usecase: スレッドで話す
+    scope: public
+    summary: ワークスペースのロックを上限まで待って取り、スレッドの書き込みを未読へ戻す。取れない・読めない・書けないときは飛ばして理由を返す
+    side_effects: '`threads.yaml` を置き換える（既に全て未読なら書かない）。ロックファイルが無ければ作る'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: wait_sec
+        type: float
+        required: false
+        default: LOCK_WAIT_SEC
+        passing: keyword
+        description: ロックを待つ上限
+      - name: sleep
+        type: Callable[[float], None]
+        required: false
+        default: time.sleep
+        passing: injected
+        description: 待つ関数
+      - name: clock
+        type: Callable[[], float]
+        required: false
+        default: time.monotonic
+        passing: injected
+        description: 経過を測る関数
+    returns:
+      type: str | None
+      description: 飛ばした理由（戻したか、戻すものが無ければ `None`）
+    process: |-
+      1. `records_root(root) / LOCK_FILE` を追記で開き、`fcntl.flock(LOCK_EX | LOCK_NB)` を `LOCK_POLL_SEC` ごとに、`wait_sec` が過ぎるまで試す
+         - 開けない（`OSError`）場合、`ロックファイルを開けませんでした: {パス}（{理由}）` を返す
+         - 上限までに取れない場合、ファイルを閉じて `ロックを取れませんでした: {パス}` を返す
+      2. 未読へ戻す（`reset_unread`）
+         - `SchemaMismatchError`・`WriteFailedError` の場合、そのメッセージ（`lines` があれば改行でつなぐ）を返す
+      3. `LOCK_UN` してファイルを閉じる（2 が例外で終わったときも）
+    unit_tests:
+      - name: test_reset_workspace
+        case: 正常
+        summary: 既読を未読に戻す
+        condition: 既読の書き込みを持つ TH-1 のワークスペース
+        mock: なし
+        expected: '`None`。全ての書き込みの `read` が偽'
+      - name: test_reset_workspace_when_locked
+        case: 正常
+        summary: ロックを取れなければ上限で飛ばす
+        condition: 別のファイル記述子で `.mindstella.lock` の排他ロックを持ったまま呼ぶ。`clock` は呼ぶたびに 1 秒進む
+        mock: '`sleep`・`clock`'
+        expected: '`ロックを取れませんでした` で始まる理由。`threads.yaml` が呼ぶ前と同じ'
+      - name: test_reset_workspace_when_invalid
+        case: 正常
+        summary: 崩れたスレッドのファイルは飛ばして理由を返す
+        condition: '`threads.yaml` が `items: [`'
+        mock: なし
+        expected: '`threads.yaml: ` を含む理由。ファイルが呼ぶ前と同じで、ロックが外れている'
+  - name: main
+    title: 起動
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
+    usecase: スレッドで話す
+    scope: public
+    summary: フックの標準入力から作業フォルダを読み、見つけたワークスペースを順に未読へ戻す。標準出力には何も書かず、いつも終了コード 0 で終える
+    side_effects: 見つけたワークスペースの `threads.yaml` を置き換える。飛ばした理由を標準エラーに書く
+    args:
+      - name: stdin
+        type: TextIO
+        required: false
+        default: sys.stdin
+        passing: injected
+        description: フックの入力（`cwd` を持つ JSON）
+      - name: stderr
+        type: TextIO
+        required: false
+        default: sys.stderr
+        passing: injected
+        description: 理由を書く先
+    returns:
+      type: int
+      description: 終了コード（いつも 0）
+    process: |-
+      1. 標準入力を JSON として読み、`cwd` を取り出す（`source` は読まない）
+         - JSON として読めないか、`cwd` が文字列でない場合、その理由を `stderr` に書いて 0 を返す
+      2. ワークスペースを探し（`find_workspaces`）、順に未読へ戻す（`reset_workspace`）
+         - 理由が返った場合、`[mindstella] 未読へ戻せませんでした: {ワークスペース}: {理由}` を `stderr` に書いて次へ進む
+      3. 0 を返す（`if __name__ == "__main__"` で `sys.exit(main())`）
+    unit_tests:
+      - name: test_main
+        case: 正常
+        summary: 作業フォルダのワークスペースを戻し、何も出さない
+        condition: '既読の書き込みを持つワークスペースを `cwd` にした `{"cwd": ..., "source": "resume"}`'
+        mock: '`stdin`・`stderr`（`capsys` で標準出力も見る）'
+        expected: 0。書き込みが全て未読で、標準出力と `stderr` が空
+      - name: test_main_when_nothing_to_do
+        case: 正常
+        summary: ワークスペースが無い・入力が読めないときも 0 で終える
+        condition: '`parametrize`: ワークスペースの無い `cwd` / 入力が `not json` / 入力が `{}`'
+        mock: '`stdin`・`stderr`'
+        expected: どれも 0 で標準出力が空。後の 2 つは `stderr` に理由が 1 行
+      - name: test_main_when_one_fails
+        case: 正常
+        summary: 戻せないワークスペースを飛ばして次を戻す
+        condition: '`cwd` の直下に、`threads.yaml` が崩れた `a` と既読の書き込みを持つ `b`'
+        mock: '`stdin`・`stderr`'
+        expected: 0。`b` の書き込みが未読で、`stderr` に `a` のパスを含む 1 行、標準出力が空
+notes:
+  フックの定義: '`hooks/hooks.json` は `SessionStart` に `matcher` を持たない `command` のフックを 1 つ置き、コマンドをインターフェース定義『未読へ戻す』の制約「起動するコマンド」の文字列にする。スクリプトは起動したファイルのフォルダから `store`・`threads` を読む（モジュール構成『入口』の「モジュールの読み込み」と同じ）。`print` を使わず、`logging` も標準エラーへ出す'
+test_files:
+  - tests/unit/scripts/test_reset_unread.py

@@ -12,10 +12,19 @@ namespace MindmapPreview {
   /** 納品物の列の値 */
   const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
 
-  /** 資料の画面を返す */
-  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen }: ScreenProps): HTMLElement {
+  /** 形式の列の値（札の文言と同じ） */
+  const BODY_FORMAT_VALUES = ["MD", "HTML"];
+
+  /** 形式の列の値。`body` の拡張子から決め、本文を持たなければ空にする */
+  function bodyFormatLabel(body: unknown): string {
+    const format = bodyFormatOf(typeof body === "string" ? body : undefined);
+    return format === null ? "" : format === "html" ? "HTML" : "MD";
+  }
+
+  /** 資料の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+  export function docColumns(index: RecordIndex): Column[] {
     const common = commonColumns(index.data.settings);
-    const columns: Column[] = [
+    return [
       common.id,
       common.title(),
       {
@@ -31,11 +40,28 @@ namespace MindmapPreview {
       },
       common.status(DOC_STATUSES),
       common.text("kind", "種類", { filterable: true, nowrap: true, priority: 2 }),
+      {
+        key: "body_format",
+        label: "形式",
+        nowrap: true,
+        filterable: true,
+        order: BODY_FORMAT_VALUES,
+        priority: 2,
+        get: (row) => bodyFormatLabel(row["body"]),
+        cell: (row) =>
+          bodyFormatBadgeOf(typeof row["body"] === "string" ? row["body"] : undefined) ??
+          h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
+      },
       common.target,
       common.category,
       common.phase,
       common.tags,
     ];
+  }
+
+  /** 資料の画面を返す */
+  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
+    const columns = docColumns(index);
     const toolbarElement = toolbar(
       [
         { key: "cards", label: "カード" },
@@ -63,6 +89,7 @@ namespace MindmapPreview {
         attrs: { class: "screen docs" },
         children: [
           toolbarElement,
+          removedBand({ items: removed }),
           managedTable({
             kind: "docs",
             columns,
@@ -108,7 +135,11 @@ namespace MindmapPreview {
                   )
                 : [h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
           });
-    return h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, chips, content, drawer] });
+    return h({
+      tag: "div",
+      attrs: { class: "screen docs" },
+      children: [toolbarElement, chips, removedBand({ items: removed }), content, drawer],
+    });
   }
 
   /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
@@ -132,7 +163,7 @@ namespace MindmapPreview {
     return h({
       tag: "button",
       attrs: {
-        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}`,
+        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}`,
         type: "button",
         "data-id": doc.id,
         onclick: () => open(doc.id),
@@ -142,9 +173,11 @@ namespace MindmapPreview {
         h({
           tag: "span",
           attrs: { class: "doc-kind" },
-          children: [icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? ""],
+          children: [icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? "", bodyFormatBadgeOf(doc.body)],
         }),
         h({ tag: "span", attrs: { class: "c-ttl" }, children: [doc.title] }),
+        // 取り下げた資料は、差分の表示によらず差分の印より前に札を置く
+        doc.withdrawn === true ? withdrawnBadge() : null,
         h({
           tag: "span",
           attrs: { class: "c-meta" },

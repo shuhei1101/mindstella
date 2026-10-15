@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from display_settings_helpers import SETTINGS_PANEL, open_settings, overrides_text
 from playwright.sync_api import Page
 from preview_helpers import (
     DRAWER,
     FILTER_BUTTON,
     OpenPreview,
     ServePreview,
+    ServeWorkspace,
     badge_text,
     bands_stay_on_top,
     close_drawer,
@@ -19,7 +21,7 @@ from preview_helpers import (
     row_ids,
     toggle_value,
 )
-from workspace_fixtures import MakeItem
+from workspace_fixtures import RECORD_DIR, MakeItem
 
 # 表が縦に送れる件数にするために足す調査の件数
 EXTRA_RESEARCH_COUNT = 40
@@ -271,3 +273,62 @@ def test_normal_when_text_condition(
     assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
         "ID に「g-1」を含む"
     ]
+
+
+def test_normal_when_reloaded(
+    serve_workspace: ServeWorkspace,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """サーバーの配信で選んだ絞り込みの条件が読み込み直しても残り、ハッシュの条件は保存した条件を書き換えず、既定に戻すと外れる（正常系）。"""
+    # 準備
+    url, root = serve_workspace(
+        make_item("T-1", status="未着手"),
+        make_item("T-2", status="完了"),
+        make_item("T-3", status="進行中"),
+        settings=valid_settings,
+    )
+    records_before = (root / RECORD_DIR / "tasks.yaml").read_bytes()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    page = open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    # 実行（ドロワーで状態 = 未着手を選び、読み込み直す）
+    open_drawer(page)
+    toggle_value(page, "status", "未着手")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
+    close_drawer(page)
+    page.reload()
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    rows_reloaded = row_ids(page)
+    chips_reloaded = page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)")
+    badge_reloaded = badge_text(page)
+    # 実行（ハッシュに状態 = 完了を付けて開き、ハッシュを付けずに開き直す）
+    page.goto("about:blank")
+    open_preview(url, "#tab=tasks&view=table&f.status=完了")
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    rows_hash = row_ids(page)
+    page.goto("about:blank")
+    open_preview(url, "#tab=tasks&view=table")
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    rows_without_hash = row_ids(page)
+    # 実行（表示の設定で変えている項目を確かめ、既定に戻す）
+    open_settings(page)
+    overrides_before = overrides_text(page)
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
+    rows_reset = row_ids(page)
+    page.reload()
+    page.wait_for_selector("table.grid tbody tr[data-id]")
+    rows_reset_reloaded = row_ids(page)
+    # 検証
+    assert rows_reloaded == ["T-1"]
+    assert chips_reloaded == ["状態: 未着手"]
+    assert badge_reloaded == "1"
+    assert rows_hash == ["T-2"]
+    assert rows_without_hash == ["T-1"]
+    assert "絞り込み（タスク）" in overrides_before
+    assert sorted(rows_reset) == ["T-1", "T-2", "T-3"]
+    assert sorted(rows_reset_reloaded) == ["T-1", "T-2", "T-3"]
+    assert (root / RECORD_DIR / "tasks.yaml").read_bytes() == records_before
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before

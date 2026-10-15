@@ -1,6 +1,7 @@
 """ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。
 
-画面・記録・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・設定の既定の書き換え・設定の再読み込みを受け付ける。
+画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・設定の既定の書き換え・設定の再読み込みを受け付ける。
+まとめて送った後は Claude Code へ入力する。
 """
 
 from __future__ import annotations
@@ -20,9 +21,9 @@ from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 from builder import PREVIEW_DIR, assemble_template, read_records
+from claude_input import InputTarget, enter_to_claude
 from comments import (
     ReviewComment,
-    SentComment,
     add_comment,
     delete_comment,
     list_review,
@@ -31,6 +32,7 @@ from comments import (
     update_comment,
 )
 from errors import (
+    ArgumentError,
     CommentConflictError,
     CommentInvalidError,
     CommentNotFoundError,
@@ -39,6 +41,7 @@ from errors import (
     SchemaMismatchError,
     ServeFailedError,
     SettingsInvalidError,
+    ThreadNotFoundError,
     WorkspaceNotFoundError,
     WriteFailedError,
 )
@@ -53,9 +56,17 @@ from store import (
     check_settings,
     load_workspace,
     now_utc,
+    require_workspace,
     workspace_lock,
 )
-from submissions import SUBMISSIONS_FILE
+from threads import (
+    THREADS_FILE,
+    SentPost,
+    load_threads,
+    mark_seen,
+    set_thread_status,
+    threads_for_preview,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +94,12 @@ MAX_REQUEST_BYTES = 131072
 COMMENTS_PATH = "/api/comments"
 SEND_PATH = "/api/comments/send"
 DRAFTS_PATH = "/api/drafts"
+
+# スレッドの読み取りと、スレッド 1 件の状態の書き換え（`/api/threads/{id}`）のパス
+THREADS_PATH = "/api/threads"
+
+# スレッド 1 件の利用者の既読にする口（`/api/threads/{id}/seen`）の、`{id}` の後ろ
+SEEN_SUFFIX = "/seen"
 
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
@@ -153,6 +170,8 @@ class ServeContext:
     preview_dir: Path = PREVIEW_DIR
     # 許可するホスト名（`check_host`・`check_origin` に渡す）
     allowed_hosts: frozenset[str] = frozenset()
+    # Claude Code への入力の送り先（None ならまとめて送った後に入力しない）
+    input_target: InputTarget | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -199,11 +218,19 @@ class PreviewServer:
 class PreviewRegistry:
     """このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、終わるときに全て止める。"""
 
-    def __init__(self, write_lock: threading.Lock, *, external: ExternalAccess | None = None) -> None:
-        """ツールと共有する書き換えの鍵と外から見る設定（無ければ空）を受け取り、空の台帳を作る。"""
+    def __init__(
+        self,
+        write_lock: threading.Lock,
+        *,
+        external: ExternalAccess | None = None,
+        input_target: InputTarget | None = None,
+    ) -> None:
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と Claude Code への入力の送り先（無ければ入力しない）を受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
+        # 立てる配信へ渡す送り先（プロセスに 1 つで、入力の鍵を共有する）
+        self._input_target = input_target
         # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
@@ -225,6 +252,7 @@ class PreviewRegistry:
                 settings=settings,
                 port=settings.get("preview", {}).get("port", 0),
                 allowed_hosts=self._external.allowed_hosts,
+                input_target=self._input_target,
             )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
@@ -262,7 +290,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
 
     def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments` を処理の関数へ振り分ける。"""
+        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
         if not check_host(
@@ -282,25 +310,36 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._stream(context)
         elif path == COMMENTS_PATH:
             self._reply(comments_response(context.root))
+        elif path == THREADS_PATH:
+            self._reply(threads_response(context.root))
         else:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_POST(self) -> None:
-        """前回開いた日時を返す・レビュー中のコメントを溜める・まとめて送る・設定の再読み込みを処理の関数へ渡す。"""
+        """前回開いた日時を返す・スレッドを利用者の既読にする・レビュー中のコメントを溜める・まとめて送る・設定の再読み込みを処理の関数へ渡す。"""
         path = self._checked_path()
+        seen_thread_id = _seen_thread_id_of(path)
         if path == OPENED_PATH:
             # 本文を読まずに、前回開いた日時を返して書き換える
             self._reply(opened_response(self.context))
         elif path == CONFIG_RELOAD_PATH:
             # 本文を読まずに、設定を読み直す
             self._reply(reload_response(self.context, origin=self.headers.get("Origin")))
+        elif seen_thread_id is not None:
+            # 本文を読まずに、そのスレッドを利用者の既読にする
+            self._reply(
+                seen_response(self.context, seen_thread_id, origin=self.headers.get("Origin"))
+            )
         elif path == COMMENTS_PATH:
             self._write(
                 lambda root, data: _added_body(*add_comment(root, data)), HTTPStatus.CREATED
             )
         elif path == SEND_PATH:
+            # 書き換えの鍵を外した後に、足した書き込みを Claude Code へ入力する
             self._write(
-                lambda root, data: _sent_body(*send_comments(root, data)), HTTPStatus.CREATED
+                lambda root, data: _sent_body(*send_comments(root, data)),
+                HTTPStatus.CREATED,
+                after=lambda body: _entered_body(self.context, body),
             )
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
@@ -316,14 +355,17 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
     def do_PATCH(self) -> None:
-        """レビュー中のコメント 1 件を書き換える要求を受け付けの関数へ渡す。"""
+        """レビュー中のコメント 1 件の書き換えとスレッド 1 件の状態の書き換えを受け付けの関数へ渡す。"""
         path = self._checked_path()
         comment_id = _comment_id_of(path)
+        thread_id = _thread_id_of(path)
         if comment_id is not None:
             self._write(
                 lambda root, data: _updated_body(update_comment(root, comment_id, data)),
                 HTTPStatus.OK,
             )
+        elif thread_id is not None:
+            self._write(lambda root, data: patch_thread_status(root, thread_id, data), HTTPStatus.OK)
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -340,7 +382,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: Any) -> None:
         """標準の要求の記録を `logging` の `DEBUG` に回す（標準エラーへの直接の書き込みをやめる）。"""
         logger.debug("受けた要求: %s", format % args)
 
@@ -355,9 +397,13 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return urlsplit(self.path).path
 
     def _write(
-        self, handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None], status: int
+        self,
+        handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+        status: int,
+        *,
+        after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     ) -> None:
-        """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答を書く。"""
+        """本文の長さを確かめて読み、書き込む受け付けの関数へ渡して応答を書く。after は鍵を外した後に呼ぶ処理。"""
         length = self._content_length()
         # 長さが無いか、上限を超える: 本文を読まずに断る
         if length is None or length > MAX_REQUEST_BYTES:
@@ -376,6 +422,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 body=self.rfile.read(length),
                 handle=handle,
                 status=status,
+                after=after,
             )
         )
 
@@ -438,6 +485,7 @@ def start_preview_server(
     settings: dict[str, Any],
     port: int = 0,
     allowed_hosts: frozenset[str] = frozenset(),
+    input_target: InputTarget | None = None,
 ) -> PreviewServer:
     """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
@@ -455,6 +503,7 @@ def start_preview_server(
         write_lock=write_lock,
         settings=SettingsHolder(settings),
         allowed_hosts=allowed_hosts,
+        input_target=input_target,
     )
     setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -617,6 +666,33 @@ def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
     )
 
 
+def seen_response(context: ServeContext, thread_id: str, *, origin: str | None) -> Response:
+    """送り元を確かめ、そのスレッドの利用者の未読の書き込みを全て既読にして、既読にした ID を返す。"""
+    # 別のサイトからの書き込み
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    try:
+        require_workspace(context.root)
+        thread = next((item for item in load_threads(context.root) if item.id == thread_id), None)
+        # 無いスレッド
+        if thread is None:
+            raise ThreadNotFoundError(f"スレッドがありません: {thread_id}")
+        # 未読が無い: 鍵を取らず、書かずに空を返す
+        if all(post.seen for post in thread.posts):
+            seen: list[str] = []
+        else:
+            # 鍵を取るまでに足された書き込みも既読にする（画面は書き換えの知らせでその書き込みを描く）
+            with workspace_lock(context.root, context.write_lock):
+                seen = mark_seen(context.root, thread_id)
+    except MindmapError as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps({"id": thread_id, "seen": seen}, ensure_ascii=False).encode("utf-8"),
+    )
+
+
 def reload_response(context: ServeContext, *, origin: str | None) -> Response:
     """config.yaml を検査し、通れば最後に検査に通った設定を差し替えて知らせ、通らなければ違う箇所を返す。"""
     # 別のサイトからの要求
@@ -642,12 +718,16 @@ def reload_response(context: ServeContext, *, origin: str | None) -> Response:
 def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
-    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), SUBMISSIONS_FILE, CHANGES_FILE]
-    # 本文の Markdown（`.mindstella/docs/` の直下）も見る
+    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), THREADS_FILE, CHANGES_FILE]
+    # 本文の Markdown と HTML（`.mindstella/docs/` の直下）も見る
     records = records_root(root)
     body_dir = records / BODY_DIR
     if body_dir.is_dir():
-        names.extend(f"{BODY_DIR}/{path.name}" for path in body_dir.glob("*.md"))
+        names.extend(
+            f"{BODY_DIR}/{path.name}"
+            for pattern in ("*.md", "*.html")
+            for path in body_dir.glob(pattern)
+        )
     parts: list[str] = []
     for name in sorted(names):
         try:
@@ -701,6 +781,29 @@ def comments_response(root: Path) -> Response:
     )
 
 
+def threads_response(root: Path) -> Response:
+    """全てのスレッドをその場で読んだ JSON を返す。"""
+    try:
+        data = threads_for_preview(load_workspace(root))
+    except (SchemaMismatchError, WorkspaceNotFoundError) as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def patch_thread_status(root: Path, thread_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    """画面からのクローズ・オープンへの戻しを、書き手を利用者にして書く。"""
+    require_workspace(root)
+    status = data.get("status")
+    changed = set_thread_status(
+        root, thread_id, status=cast("str", status), reason=data.get("reason"), author="user"
+    )
+    return {"id": thread_id, "status": status, "changed": changed}
+
+
 def write_response(
     context: ServeContext,
     *,
@@ -709,8 +812,9 @@ def write_response(
     body: bytes,
     handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
     status: int,
+    after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> Response:
-    """本文の形と送り元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す。"""
+    """本文の形と送り元を確かめ、書き換えの鍵を取って渡した処理を呼び、結果の応答を返す。after があれば、鍵を外した後に結果を渡して呼び、返った値を応答の本文にする。"""
     media_type = (content_type or "").split(";")[0].strip().lower()
     # JSON でない
     if media_type != REQUEST_JSON_TYPE:
@@ -734,6 +838,9 @@ def write_response(
             result = handle(context.root, data)
     except MindmapError as error:
         return error_response(error)
+    # 鍵を外した後の処理がある: 結果を渡して、返った値を応答の本文にする
+    if after is not None and result is not None:
+        result = after(result)
     return Response(
         status=status,
         content_type=JSON_TYPE,
@@ -757,6 +864,7 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
         "id": deleted.id,
         "target": deleted.target,
         "loc": None if deleted.loc is None else location_to_dict(deleted.loc),
+        "thread": deleted.thread,
         "body": deleted.body,
         "created": deleted.created,
         "count": count,
@@ -771,9 +879,9 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
 def error_response(error: MindmapError) -> Response:
     """ツールのエラーの種類からステータスコードを決めて問題の応答にする。"""
     detail = str(error)
-    if isinstance(error, (CommentInvalidError, SettingsInvalidError)):
+    if isinstance(error, (CommentInvalidError, SettingsInvalidError, ArgumentError)):
         return problem_response(HTTPStatus.BAD_REQUEST, detail)
-    if isinstance(error, (ItemNotFoundError, CommentNotFoundError)):
+    if isinstance(error, (ItemNotFoundError, CommentNotFoundError, ThreadNotFoundError)):
         return problem_response(HTTPStatus.NOT_FOUND, detail)
     if isinstance(error, CommentConflictError):
         response = problem_response(HTTPStatus.CONFLICT, detail)
@@ -791,7 +899,7 @@ def error_response(error: MindmapError) -> Response:
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join([detail, *error.lines]))
     # 書き込めなかった・渡された種類のないエラー
     if not isinstance(error, WriteFailedError):
-        logger.error("渡された種類のないエラー: %s %s", type(error).__name__, detail)  # noqa: TRY400
+        logger.error("渡された種類のないエラー: %s %s", type(error).__name__, detail)
     return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, detail)
 
 
@@ -800,9 +908,17 @@ def _added_body(comment: ReviewComment, count: int) -> dict[str, Any]:
     return {"id": comment.id, "created": comment.created, "count": count}
 
 
-def _sent_body(sent: str, items: list[SentComment]) -> dict[str, Any]:
+def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
     """まとめて送った応答の本文を作る。"""
     return {"sent": sent, "items": [asdict(item) for item in items]}
+
+
+def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
+    """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
+    target = context.input_target
+    # 送り先が無い: 入力しない
+    entered = False if target is None else enter_to_claude(target, len(body["items"]))
+    return {**body, "entered": entered}
 
 
 def _updated_body(comment: ReviewComment) -> dict[str, Any]:
@@ -826,3 +942,23 @@ def _comment_id_of(path: str | None) -> str | None:
     if path is None or not path.startswith(prefix) or path == SEND_PATH:
         return None
     return unquote(path.removeprefix(prefix))
+
+
+def _thread_id_of(path: str | None) -> str | None:
+    """`/api/threads/{id}` のパスからスレッドの ID を取り出す（`id` は `/` を含まない）。"""
+    prefix = f"{THREADS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix):
+        return None
+    thread_id = unquote(path.removeprefix(prefix))
+    return thread_id if thread_id and "/" not in thread_id else None
+
+
+def _seen_thread_id_of(path: str | None) -> str | None:
+    """`/api/threads/{id}/seen` のパスからスレッドの ID を取り出す（`id` は `/` を含まない）。"""
+    prefix = f"{THREADS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix) or not path.endswith(SEEN_SUFFIX):
+        return None
+    thread_id = unquote(path.removeprefix(prefix).removesuffix(SEEN_SUFFIX))
+    return thread_id if thread_id and "/" not in thread_id else None

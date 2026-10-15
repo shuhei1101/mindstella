@@ -12,13 +12,16 @@ from .fixture_types import (
     MakeComment,
     MakeDraft,
     MakeItem,
+    MakeThread,
     MakeWorkspace,
     SnapshotTree,
     StartServer,
     WriteComments,
     WriteDrafts,
+    WriteThreads,
 )
 from .http_helpers import http_request, post_json
+from .thread_helpers import threads_path
 from workspace_fixtures import RECORD_DIR
 
 # コメントの受け付けのパス
@@ -30,6 +33,11 @@ ALLOWED_HOST = "preview.example.test"
 
 # 資料 A-1 の本文（2 行目は書式の記号を持つ）
 A_BODY = "1 行目\n- **言い換えたい**文\n3 行目"
+
+# HTML で書いた資料 A-1 の本文（4 行目はタグで文が分かれる）
+A_HTML_BODY = (
+    "<style>p { color: red; }</style>\n<!-- 下書き -->\n\n<p>言い<b>換え</b>たい文</p>\n"
+)
 
 
 def _read_comments(root: Path) -> dict[str, object]:
@@ -67,6 +75,32 @@ def test_normal(
     assert [draft for draft in drafts if draft.get("target") == "D-1"] == []
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+def test_normal_when_html_body_location(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """HTML の本文の文を選んだコメントを、タグを外した文と照らして溜める（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": A_HTML_BODY})
+    url = serve_preview(root)
+    loc = {"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"}
+    # 実行
+    created = post_json(
+        url, COMMENTS_PATH, {"target": "A-1", "loc": loc, "body": "ここは言い換える"}
+    )
+    in_style = post_json(
+        url,
+        COMMENTS_PATH,
+        {"target": "A-1", "loc": {**loc, "start": 1, "end": 1, "text": "p { color"}, "body": "色"},
+    )
+    # 検証
+    assert created.status == 201
+    assert _read_comments(root)["items"][0]["loc"] == loc
+    # `<style>` の中身は当てない
+    assert in_style.status == 409
 
 
 def test_normal_when_body_location(
@@ -280,3 +314,55 @@ def test_error_when_write_fails(
     assert str(root) in detail
     assert "Traceback" not in detail
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_reply(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    make_draft: MakeDraft,
+    write_threads: WriteThreads,
+    write_drafts: WriteDrafts,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """オープンのスレッドへの返信をレビュー中に溜め、そのスレッドの書きかけを消す。スレッドには書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    reply_draft = make_draft(thread="TH-1", body="起票")
+    del reply_draft["target"]
+    write_drafts(root, reply_draft, make_draft(target="D-1", body="案 B も見たい"))
+    url = serve_preview(root)
+    before = threads_path(root).read_bytes()
+    # 実行
+    result = post_json(url, COMMENTS_PATH, {"thread": "TH-1", "body": "起票してよい"})
+    # 検証
+    assert result.status == 201
+    saved = _read_comments(root)["items"]
+    assert [(item["id"], item["thread"], item["body"]) for item in saved] == [
+        ("C-1", "TH-1", "起票してよい")
+    ]
+    assert {"target", "loc"}.isdisjoint(saved[0])
+    drafts = yaml.safe_load((root / RECORD_DIR / "drafts.yaml").read_text(encoding="utf-8"))["items"]
+    assert [draft.get("target") for draft in drafts] == ["D-1"]
+    assert threads_path(root).read_bytes() == before
+
+
+def test_error_when_thread_closed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """クローズのスレッドへの返信は溜めない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", status="closed"))
+    url = serve_preview(root)
+    # 実行
+    result = post_json(url, COMMENTS_PATH, {"thread": "TH-1", "body": "了解"})
+    # 検証
+    assert result.status == 409
+    assert "クローズ" in result.json()["detail"]
+    assert not (root / RECORD_DIR / "comments.yaml").exists()

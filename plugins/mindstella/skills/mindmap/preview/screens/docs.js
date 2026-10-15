@@ -9,10 +9,17 @@ var MindmapPreview;
     MindmapPreview.orderDocs = orderDocs;
     /** 納品物の列の値 */
     const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
-    /** 資料の画面を返す */
-    function docsScreen({ index, route, on, marks, comments, filters, drawerOpen }) {
+    /** 形式の列の値（札の文言と同じ） */
+    const BODY_FORMAT_VALUES = ["MD", "HTML"];
+    /** 形式の列の値。`body` の拡張子から決め、本文を持たなければ空にする */
+    function bodyFormatLabel(body) {
+        const format = MindmapPreview.bodyFormatOf(typeof body === "string" ? body : undefined);
+        return format === null ? "" : format === "html" ? "HTML" : "MD";
+    }
+    /** 資料の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
+    function docColumns(index) {
         const common = MindmapPreview.commonColumns(index.data.settings);
-        const columns = [
+        return [
             common.id,
             common.title(),
             {
@@ -27,11 +34,27 @@ var MindmapPreview;
             },
             common.status(MindmapPreview.DOC_STATUSES),
             common.text("kind", "種類", { filterable: true, nowrap: true, priority: 2 }),
+            {
+                key: "body_format",
+                label: "形式",
+                nowrap: true,
+                filterable: true,
+                order: BODY_FORMAT_VALUES,
+                priority: 2,
+                get: (row) => bodyFormatLabel(row["body"]),
+                cell: (row) => MindmapPreview.bodyFormatBadgeOf(typeof row["body"] === "string" ? row["body"] : undefined) ??
+                    MindmapPreview.h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
+            },
             common.target,
             common.category,
             common.phase,
             common.tags,
         ];
+    }
+    MindmapPreview.docColumns = docColumns;
+    /** 資料の画面を返す */
+    function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }) {
+        const columns = docColumns(index);
         const toolbarElement = MindmapPreview.toolbar([
             { key: "cards", label: "カード" },
             { key: "board", label: "ボード" },
@@ -55,6 +78,7 @@ var MindmapPreview;
                 attrs: { class: "screen docs" },
                 children: [
                     toolbarElement,
+                    MindmapPreview.removedBand({ items: removed }),
                     MindmapPreview.managedTable({
                         kind: "docs",
                         columns,
@@ -95,7 +119,11 @@ var MindmapPreview;
                     ? orderDocs(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments }))
                     : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
             });
-        return MindmapPreview.h({ tag: "div", attrs: { class: "screen docs" }, children: [toolbarElement, chips, content, drawer] });
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "screen docs" },
+            children: [toolbarElement, chips, MindmapPreview.removedBand({ items: removed }), content, drawer],
+        });
     }
     MindmapPreview.docsScreen = docsScreen;
     /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
@@ -103,7 +131,7 @@ var MindmapPreview;
         return MindmapPreview.h({
             tag: "button",
             attrs: {
-                class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === MindmapPreview.currentSelection() ? " selected" : ""}`,
+                class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === MindmapPreview.currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}`,
                 type: "button",
                 "data-id": doc.id,
                 onclick: () => open(doc.id),
@@ -113,9 +141,11 @@ var MindmapPreview;
                 MindmapPreview.h({
                     tag: "span",
                     attrs: { class: "doc-kind" },
-                    children: [MindmapPreview.icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? ""],
+                    children: [MindmapPreview.icon(doc.kind === "図" ? "graph" : "cards"), doc.kind ?? "", MindmapPreview.bodyFormatBadgeOf(doc.body)],
                 }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "c-ttl" }, children: [doc.title] }),
+                // 取り下げた資料は、差分の表示によらず差分の印より前に札を置く
+                doc.withdrawn === true ? MindmapPreview.withdrawnBadge() : null,
                 MindmapPreview.h({
                     tag: "span",
                     attrs: { class: "c-meta" },

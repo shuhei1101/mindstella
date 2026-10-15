@@ -5,7 +5,7 @@ elements:
     component: dev/設計書/部品設計/プレビュー/変更履歴.ts#
     args:
       - name: points
-        value: 「差分を出さない（今の内容）」・「まだまとめていない変更」（記録の取得.changes.pending が空でないとき）・「前回開いてから」・記録の取得.changes.sets の並び
+        value: 「差分を出さない（今の内容）」・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・「前回開いてから」・記録の取得.changes.sets の並び
       - name: points[].sel
         value: 空文字列・pending・since・sets[].id
       - name: points[].name
@@ -13,7 +13,7 @@ elements:
       - name: points[].sub
         value: 印と差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・{前回開いた日時} より後・sets[].at（JST の MM/DD HH:mm）
       - name: points[].count
-        value: その時点の added と changed の数（差分を出さない行は渡さない）
+        value: その時点の added・changed・removed の数。合わせた範囲で足して消した項目は、消した項目として 1 件に数える（差分を出さない行は渡さない）
       - name: current
         value: プレビューを開く.変更履歴で選んだ時点（無ければ空文字列）
     description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で描き直す。「差分を出さない（今の内容）」は差分の表示をやめる
@@ -27,3 +27,5 @@ elements:
 lead: 差分の表示で比べる時点を選ぶモーダル。トップバーの「変更履歴」で開く。
 mock: dev/mock/pages/decisions/79/standard/index.html
 test_file: tests/integration/preview/test_history_screen.py
+notes:
+  消した項目を含む件数のモック: 消した項目を含む時点の件数の見本は `dev/mock/pages/decisions/179/b-band/index.html` の変更履歴のモーダル

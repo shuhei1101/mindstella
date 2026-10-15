@@ -14,6 +14,9 @@ FIRST_SET_AT = "2026-10-01T09:00:00+00:00"
 SINCE = "2026-10-02T00:00:00+00:00"
 SECOND_SET_AT = "2026-10-03T09:00:00+00:00"
 
+# 消した項目を持つまとまりの日時（V-1 より後・「前回開いてから」の始まりより前）
+REMOVED_SET_AT = "2026-10-01T18:00:00+00:00"
+
 # 変更履歴の 1 回分に入れる日時
 ENTRY_AT = "2026-10-03T09:00:00+00:00"
 
@@ -274,6 +277,198 @@ def test_resolve_diff_point(
     assert result == expected
 
 
+# 消した項目を持つ記録の `changes`（新しい順）。V-1 と V-3 は `removed` を持たない
+REMOVED_CHANGES = {
+    "last_seq": 4,
+    "sets": [
+        {
+            "id": "V-4",
+            "at": SECOND_SET_AT,
+            "summary": "消す",
+            "until_seq": 4,
+            "added": [],
+            "changed": [],
+            "removed": [{"id": "N-7", "kind": "note", "title": "足してすぐ消したメモ"}],
+        },
+        {
+            "id": "V-3",
+            "at": SECOND_SET_AT,
+            "summary": "足す",
+            "until_seq": 3,
+            "added": ["N-7"],
+            "changed": [],
+        },
+        {
+            "id": "V-2",
+            "at": REMOVED_SET_AT,
+            "summary": "変えて消す",
+            "until_seq": 2,
+            "added": [],
+            "changed": ["R-1"],
+            "removed": [{"id": "N-6", "kind": "note", "title": "消したメモ"}],
+        },
+        {
+            "id": "V-1",
+            "at": FIRST_SET_AT,
+            "summary": "最初",
+            "until_seq": 1,
+            "added": [],
+            "changed": ["A-1"],
+        },
+    ],
+    "pending": {"added": [], "changed": []},
+}
+
+
+@pytest.mark.parametrize(
+    ("sel", "expected"),
+    [
+        pytest.param(
+            "V-2",
+            {
+                "added": [],
+                "changed": ["R-1"],
+                "removed": [{"id": "N-6", "kind": "note", "title": "消したメモ"}],
+            },
+            id="set_with_removed",
+        ),
+        pytest.param(
+            "since",
+            {
+                "added": [],
+                "changed": [],
+                "removed": [{"id": "N-7", "kind": "note", "title": "足してすぐ消したメモ"}],
+            },
+            id="since_added_then_removed",
+        ),
+    ],
+)
+def test_resolve_diff_point_when_removed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    sel: str,
+    expected: dict[str, Any],
+) -> None:
+    """消した項目を持ち、合わせた範囲で足して消した項目は新規にしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, sel, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, sel, since);
+            return {
+                added: [...point.added].sort(),
+                changed: [...point.changed].sort(),
+                removed: [...point.removed.values()].map(({id, kind, title}) => ({id, kind, title})),
+            };
+        }""",
+        [REMOVED_CHANGES, sel, SINCE],
+    )
+    # 検証
+    assert result == expected
+
+
+def test_resolve_diff_point_when_pending_removed_only(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """消した項目だけのまだまとめていない変更も時点になる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    changes = {
+        "last_seq": 1,
+        "sets": [],
+        "pending": {
+            "added": [],
+            "changed": [],
+            "removed": [{"id": "N-2", "kind": "note", "title": "消したメモ"}],
+        },
+    }
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, "pending", since);
+            if (point === null) return null;
+            return {
+                added: [...point.added],
+                changed: [...point.changed],
+                removed: [...point.removed.values()].map(({id, kind, title}) => ({id, kind, title})),
+            };
+        }""",
+        [changes, SINCE],
+    )
+    # 検証
+    assert result == {
+        "added": [],
+        "changed": [],
+        "removed": [{"id": "N-2", "kind": "note", "title": "消したメモ"}],
+    }
+
+
+@pytest.mark.parametrize(
+    ("kind", "point", "expected_ids"),
+    [
+        pytest.param(
+            "notes",
+            {
+                "removed": [
+                    {"id": "N-10", "kind": "note", "title": "十番目のメモ"},
+                    {"id": "D-53", "kind": "decision", "title": "消した検討事項"},
+                    {"id": "N-6", "kind": "note", "title": "六番目のメモ"},
+                ]
+            },
+            ["N-6", "N-10"],
+            id="notes",
+        ),
+        pytest.param(
+            "tasks",
+            {
+                "removed": [
+                    {"id": "N-10", "kind": "note", "title": "十番目のメモ"},
+                    {"id": "D-53", "kind": "decision", "title": "消した検討事項"},
+                    {"id": "N-6", "kind": "note", "title": "六番目のメモ"},
+                ]
+            },
+            [],
+            id="no_removed_of_kind",
+        ),
+        pytest.param("notes", None, [], id="no_point"),
+    ],
+)
+def test_removed_of(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    kind: str,
+    point: dict[str, Any] | None,
+    expected_ids: list[str],
+) -> None:
+    """画面の種類の消した項目だけを ID の順に返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    ids = preview_page.evaluate(
+        """({kind, point}) => {
+            // 時点は、消した項目を渡した並びのまま持つ Map として組む
+            const diffPoint =
+                point === null
+                    ? null
+                    : {
+                        sel: "pending",
+                        name: "まだまとめていない変更",
+                        sub: "",
+                        added: new Set(),
+                        changed: new Set(),
+                        fromSeq: 0,
+                        untilSeq: null,
+                        removed: new Map(point.removed.map((item) => [item.id, item])),
+                    };
+            return MindmapPreview.removedOf({point: diffPoint, kind}).map((item) => item.id);
+        }""",
+        {"kind": kind, "point": point},
+    )
+    # 検証
+    assert ids == expected_ids
+
+
 def test_build_versions(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """古いまとまりの前後のキーと本文を組み立てる（正常系）。"""
     # 準備
@@ -433,6 +628,55 @@ def test_diff_line_parts(
         {"kind": "added", "lines": ["書き換えた 2 行目"]},
         {"kind": "same", "lines": ["3 行目"]},
     ]
+
+
+# HTML の本文の差分を確かめる、段落を 1 行ずつ持つ本文
+HTML_THREE_PARAGRAPHS = "<p>一つ目</p>\n<p>二つ目</p>\n<p>三つ目</p>\n"
+
+
+@pytest.mark.parametrize(
+    ("after", "expected"),
+    [
+        pytest.param(
+            "<p>一つ目</p>\n<p>書き換えた二つ目</p>\n<p>三つ目</p>\n",
+            {"added": [], "changed": [2], "removedOnly": False},
+            id="rewritten",
+        ),
+        pytest.param(
+            HTML_THREE_PARAGRAPHS + "<p>四つ目</p>\n",
+            {"added": [4], "changed": [], "removedOnly": False},
+            id="added",
+        ),
+        pytest.param(
+            "<p>一つ目</p>\n<p>三つ目</p>\n",
+            {"added": [], "changed": [], "removedOnly": True},
+            id="removed_only",
+        ),
+        pytest.param(
+            "<p>一つ目</p>\n\n<p>二つ目</p>\n<p>三つ目</p>\n",
+            {"added": [], "changed": [], "removedOnly": False},
+            id="blank_line_added",
+        ),
+    ],
+)
+def test_html_changed_lines(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    after: str,
+    expected: dict[str, Any],
+) -> None:
+    """足した行・変えた行・消しただけの箇所を分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        "([before, after]) => MindmapPreview.htmlChangedLines(before, after)",
+        [HTML_THREE_PARAGRAPHS, after],
+    )
+    # 検証
+    assert result == expected
 
 
 def test_diff_line_parts_when_timeout(
@@ -749,3 +993,154 @@ def test_diff_diagram_from_source_when_before_not_flowchart(
     )
     # 検証
     assert result == {"threw": False, "isNull": True}
+
+
+# 語の差分を確かめる、書き換えた語を 1 つ持つ文の前後
+WORD_SENTENCE_BEFORE = "要件は来週までに決める。"
+WORD_SENTENCE_AFTER = "要件は今週までに決める。"
+
+# 同じ語を持たない 2 つの文
+UNRELATED_SENTENCE_BEFORE = "東京は晴れ"
+UNRELATED_SENTENCE_AFTER = "Hello world"
+
+# 打ち切る時刻までに残す時間と、打ち切る時刻を過ぎている分の時間（ミリ秒）
+DEADLINE_REMAINING_MS = 1000
+DEADLINE_PASSED_MS = 1
+
+# 変えない行・消した行・足した行を並べた行の差分（`diffLineParts` の戻り値の形）
+SAME_LINE = {"kind": "same", "lines": ["変えない行"]}
+REMOVED_ONE_LINE = {"kind": "removed", "lines": ["消した行"]}
+ADDED_ONE_LINE = {"kind": "added", "lines": ["足した行"]}
+
+
+def test_paired_parts(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """行の数が同じ消した行と足した行を対にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    parts = [SAME_LINE, REMOVED_ONE_LINE, ADDED_ONE_LINE, SAME_LINE]
+    # 実行
+    pairs = preview_page.evaluate("(parts) => MindmapPreview.pairedParts(parts)", parts)
+    # 検証
+    assert pairs == [{"removed": 1, "added": 2}]
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        pytest.param(
+            [
+                {
+                    "kind": "removed",
+                    "lines": ["消した行 1", "消した行 2", "消した行 3"],
+                },
+                ADDED_ONE_LINE,
+            ],
+            id="counts_differ",
+        ),
+        pytest.param([REMOVED_ONE_LINE, SAME_LINE, ADDED_ONE_LINE], id="same_between"),
+    ],
+)
+def test_paired_parts_when_counts_differ(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    parts: list[dict[str, Any]],
+) -> None:
+    """行の数が違う・間に変えない行を挟むところは対にしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    pairs = preview_page.evaluate("(parts) => MindmapPreview.pairedParts(parts)", parts)
+    # 検証
+    assert pairs == []
+
+
+def test_diff_inline(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """日本語の文の書き換えた語だけを分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        "([before, after, remaining]) => MindmapPreview.diffInline(before, after, performance.now() + remaining)",
+        [WORD_SENTENCE_BEFORE, WORD_SENTENCE_AFTER, DEADLINE_REMAINING_MS],
+    )
+    # 検証
+    assert inline == {
+        "before": [
+            {"kind": "same", "text": "要件は"},
+            {"kind": "removed", "text": "来週"},
+            {"kind": "same", "text": "までに決める。"},
+        ],
+        "after": [
+            {"kind": "same", "text": "要件は"},
+            {"kind": "added", "text": "今週"},
+            {"kind": "same", "text": "までに決める。"},
+        ],
+    }
+
+
+def test_diff_inline_when_little_same(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """ほとんど書き換えた対には面を付けない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        "([before, after, remaining]) => MindmapPreview.diffInline(before, after, performance.now() + remaining)",
+        [UNRELATED_SENTENCE_BEFORE, UNRELATED_SENTENCE_AFTER, DEADLINE_REMAINING_MS],
+    )
+    # 検証
+    assert inline is None
+
+
+def test_diff_inline_when_deadline_passed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """打ち切る時刻を過ぎていたら比べない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        "([before, after, passed]) => MindmapPreview.diffInline(before, after, performance.now() - passed)",
+        [WORD_SENTENCE_BEFORE, WORD_SENTENCE_AFTER, DEADLINE_PASSED_MS],
+    )
+    # 検証
+    assert inline is None
+
+
+def test_diff_inline_without_segmenter(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+) -> None:
+    """`Intl.Segmenter` が無いブラウザでも jsdiff の既定の区切りで比べる（正常系）。"""
+    # 準備
+    preview_page.evaluate("() => { Intl.Segmenter = undefined; }")
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    inline = preview_page.evaluate(
+        """([before, after, remaining]) => {
+            const inline = MindmapPreview.diffInline(before, after, performance.now() + remaining);
+            if (inline === null) return null;
+            const joined = (parts, kind) => parts
+                .filter((part) => part.kind === kind)
+                .map((part) => part.text)
+                .join("");
+            return {removed: joined(inline.before, "removed"), added: joined(inline.after, "added")};
+        }""",
+        [WORD_SENTENCE_BEFORE, WORD_SENTENCE_AFTER, DEADLINE_REMAINING_MS],
+    )
+    # 検証
+    assert inline == {"removed": "来", "added": "今"}

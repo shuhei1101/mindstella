@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
@@ -215,6 +217,99 @@ def test_comments_narrow(open_story: OpenStory) -> None:
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
+# 未読の点が吹き出しの印のどこにあるかを読む（吹き出しの印の箱と点の箱）
+DOT_BOXES_SCRIPT = """() => {
+  const icon = document.querySelector('.comments-btn .cb-icon svg.icon').getBoundingClientRect();
+  const dot = document.querySelector('.comments-btn .unread-dot').getBoundingClientRect();
+  const button = document.querySelector('.comments-btn').getBoundingClientRect();
+  return {
+    iconRight: icon.right, iconTop: icon.top, iconLeft: icon.left,
+    dotLeft: dot.left, dotRight: dot.right, dotTop: dot.top, dotBottom: dot.bottom,
+    dotCenterX: (dot.left + dot.right) / 2, dotCenterY: (dot.top + dot.bottom) / 2,
+    buttonWidth: button.width,
+  };
+}"""
+
+# 点を付けたままのボタンの幅と、同じ文書で点を外したボタンの幅を読む（別の文書と比べると、文字の読み込みの有無で幅が揺れる）
+DOT_WIDTH_SCRIPT = """async () => {
+  await document.fonts.ready;
+  const button = document.querySelector('.comments-btn');
+  const withDot = button.getBoundingClientRect().width;
+  button.querySelector('.unread-dot').remove();
+  return { withDot, withoutDot: button.getBoundingClientRect().width };
+}"""
+
+
+def test_comments_unread(open_story: OpenStory) -> None:
+    """オープンのスレッドに未読がある。吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま出す。ボタンの幅は変えない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--comments-unread")
+    boxes = page.evaluate(DOT_BOXES_SCRIPT)
+    # 検証
+    button = page.get_by_role("button", name="コメント（未読あり・レビュー中 3 件）")
+    assert button.count() == 1
+    assert button.locator(".count").inner_text() == "3"
+    # 点は吹き出しの印の右上の角に重なり、読み上げから外す
+    dot = page.locator(".comments-btn .unread-dot")
+    assert dot.count() == 1
+    assert dot.get_attribute("aria-hidden") == "true"
+    assert boxes["dotCenterX"] >= boxes["iconRight"] - 4
+    assert boxes["dotCenterY"] <= boxes["iconTop"] + 4
+    # 点は暗い地で読める色（--teal-400）で、数字は出さない
+    assert page.eval_on_selector(".comments-btn .unread-dot", BACKGROUND_SCRIPT) == "rgb(45, 212, 191)"
+    assert dot.inner_text() == ""
+    # 点を足してもボタンの幅は変わらない
+    widths = page.evaluate(DOT_WIDTH_SCRIPT)
+    assert widths["withDot"] == widths["withoutDot"]
+    # 未読の無い状態には点が無い
+    plain = open_story("preview-topbar--comments")
+    assert plain.locator(".comments-btn .unread-dot").count() == 0
+    assert plain.get_attribute(".comments-btn", "aria-label") == "コメント（レビュー中 3 件）"
+
+
+def test_comments_unread_zero(open_story: OpenStory) -> None:
+    """未読があり、レビュー中は 0 件。点を出し、件数は塗りを外した 0 のまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--comments-unread-zero")
+    # 検証
+    button = page.get_by_role("button", name="コメント（未読あり・レビュー中 0 件）")
+    assert button.is_enabled()
+    assert page.locator(".comments-btn .unread-dot").count() == 1
+    assert button.locator(".count").inner_text() == "0"
+    assert page.eval_on_selector(".comments-btn .count", BACKGROUND_SCRIPT) == TRANSPARENT
+
+
+def test_comments_unread_open(open_story: OpenStory) -> None:
+    """未読があり、コメントの一覧を開いている。選んだ見た目の枠と面に点を重ねる（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--comments-unread-open")
+    # 検証
+    assert page.get_attribute(".comments-btn", "aria-expanded") == "true"
+    assert page.eval_on_selector(".comments-btn", BACKGROUND_SCRIPT) != TRANSPARENT
+    assert page.locator(".comments-btn.open .unread-dot").count() == 1
+
+
+def test_comments_unread_narrow(open_story: OpenStory) -> None:
+    """幅 390px で未読がある。印と件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--comments-unread-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行・検証
+    assert not page.is_visible(".comments-btn .label")
+    assert page.is_visible(".comments-btn .unread-dot")
+    assert page.inner_text(".comments-btn .count") == "3"
+    assert page.get_attribute(".comments-btn", "aria-label") == "コメント（未読あり・レビュー中 3 件）"
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    # 点まで含めて、ボタンが画面の中に収まる
+    box = page.locator(".comments-btn").bounding_box()
+    dot = page.locator(".comments-btn .unread-dot").bounding_box()
+    assert box is not None
+    assert dot is not None
+    assert box["x"] >= 0
+    assert dot["x"] + dot["width"] <= 390
+
+
 @pytest.mark.parametrize(
     "story_id",
     [
@@ -222,6 +317,7 @@ def test_comments_narrow(open_story: OpenStory) -> None:
         pytest.param("preview-topbar--filter-open", id="filter_open"),
         pytest.param("preview-topbar--settings-open", id="settings_open"),
         pytest.param("preview-topbar--comments-narrow", id="comments_narrow"),
+        pytest.param("preview-topbar--comments-unread-narrow", id="comments_unread_narrow"),
         pytest.param("preview-topbar--diff-on-narrow", id="diff_on_narrow"),
     ],
 )
@@ -354,7 +450,7 @@ def test_diff_on(open_story: OpenStory) -> None:
     )
     assert dotted == ["decisions", "docs"]
     assert page.inner_text("nav.tabbar a[data-tab='decisions'] .count") == "12"
-    assert page.inner_text(".df-dot .sr-only") == "新規・変更の項目があります"
+    assert page.inner_text(".df-dot .sr-only") == "新規・変更・消した項目があります"
 
 
 def test_diff_on_narrow(open_story: OpenStory) -> None:
@@ -372,7 +468,7 @@ def test_diff_on_narrow(open_story: OpenStory) -> None:
     assert page.get_attribute(".hist-btn", "aria-label") == "変更履歴"
     # 帯の子が左から順に並び、重ならず、画面の中に収まる
     order = ["brand", "search", "history", "chip", "comments", "theme"]
-    for left, right in zip(order, order[1:], strict=False):
+    for left, right in itertools.pairwise(order):
         assert boxes[left]["right"] <= boxes[right]["left"], (left, right)
     assert boxes["theme"]["right"] <= boxes["page"]["width"]
     assert boxes["page"]["scroll"] <= boxes["page"]["width"]

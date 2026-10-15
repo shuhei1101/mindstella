@@ -111,6 +111,13 @@ response:
   - name: drafts[].body
     type: str
     description: 書きかけの本文
+  - name: items[].thread
+    type: str | None
+    description: 返信のとき、向けたスレッドの ID。新しいスレッドの最初の書き込みは `null`
+    example: TH-3
+  - name: drafts[].thread
+    type: str | None
+    description: スレッドの返信の入力欄の書きかけのとき、そのスレッドの ID。それ以外は `null`
 status_codes:
   - code: '200'
     condition: 読めた（`comments.yaml`・`drafts.yaml` が無いときはどちらも空）

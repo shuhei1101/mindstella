@@ -101,6 +101,18 @@
             "type": "string"
           }
         },
+        "aliases": {
+          "type": "array",
+          "description": "本文で一致させる語。プレビューは本文の語がこれに一致すると、用語と同じツールチップにこの調査を出す。タグ（`tags`）とは別のキー",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "タイトルだけでは中身が分からないときの短い説明。ツールチップと詳細に出す"
+        },
         "body": {
           "type": "string",
           "description": "`docs/` の本文の Markdown のファイル名（`{ID}.md`）",

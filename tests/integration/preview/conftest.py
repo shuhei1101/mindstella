@@ -10,8 +10,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from integration.browser_tab_helpers import link_target  # noqa: F401
 from playwright.sync_api import Page
+from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
+from preview_minimap_helpers import build_minimap_workspace
+from preview_post_link_helpers import REPLY_BODY, THREAD_POST_BODY, build_post_link_workspace
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     MAIN_SELECTOR,
@@ -20,13 +24,17 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
+from preview_removed_helpers import build_removed_workspace
 from workspace_fixtures import (
     CallTool,
     MakeComment,
     MakeItem,
+    MakePost,
+    MakeThread,
     MakeWorkspace,
     WriteComments,
     WriteDrafts,
+    WriteThreads,
 )
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -57,14 +65,16 @@ def write_review_preview(
     make_workspace: MakeWorkspace,
     write_comments: WriteComments,
     write_drafts: WriteDrafts,
+    write_threads: WriteThreads,
     call_tool: CallTool,
 ) -> WriteReviewPreview:
-    """項目・レビュー中のコメント・書きかけを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
+    """項目・レビュー中のコメント・書きかけ・スレッドを持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
 
     def _write(
         *items: dict[str, Any],
         comments: tuple[dict[str, Any], ...] = (),
         drafts: tuple[dict[str, Any], ...] = (),
+        threads: tuple[dict[str, Any], ...] = (),
         bodies: dict[str, str] | None = None,
         settings: dict[str, Any] | None = None,
     ) -> tuple[str, Path]:
@@ -74,12 +84,30 @@ def write_review_preview(
             write_comments(root, *comments)
         if drafts:
             write_drafts(root, *drafts)
+        if threads:
+            write_threads(root, *threads)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None
         return str(result.data["url"]), root
 
     return _write
+
+
+@pytest.fixture
+def served_review_rows(
+    write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment
+) -> tuple[str, Path]:
+    """D-1 へのコメント 2 件（C-1・C-2）と D-2 へのコメント 1 件（C-3）を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        make_item("D-2"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+            make_comment("C-3", target="D-2", body="別の項目へのコメント"),
+        ),
+    )
 
 
 @pytest.fixture
@@ -91,6 +119,73 @@ def write_history_preview(make_workspace: MakeWorkspace, call_tool: CallTool) ->
         root = build_history_workspace(
             make_workspace, call_tool, pending=pending, history_limit=history_limit
         )
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_minimap_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """本文に段落を 40 個持つ資料 A-1 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_minimap_workspace(make_workspace, make_item, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_post_link_preview(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    make_comment: MakeComment,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+) -> WriteReviewPreview:
+    """まとまり V-1・V-2 と、まとまりのリンクを持つ AI の書き込みのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースにスレッドと返信を足して配信を立てる。"""
+        root = build_post_link_workspace(make_workspace, make_item, call_tool)
+        write_threads(
+            root,
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body=THREAD_POST_BODY, created="2026-10-12T01:00:00+00:00"),
+                summary="まとまりのリンク",
+            ),
+        )
+        write_comments(root, free_comment(make_comment("C-1", body=REPLY_BODY, thread="TH-1")))
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_removed_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """消した項目と取り下げた項目を持つワークスペース（まとまり V-1・V-2 とまだまとめていない消した項目）を作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで消した・取り下げた記録を積んだワークスペースを作って配信を立てる。"""
+        root = build_removed_workspace(make_workspace, make_item, call_tool)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

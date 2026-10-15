@@ -1,0 +1,53 @@
+/* PR #190 で変える詳細パネルのレビュー中のコメントの行（直す・削除・元に戻す）と、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { font-weight: 700; border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+/* 撮影用の赤枠（クエリの mark で付ける） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
+
+/* ===== レビュー中のコメントの行 ===== */
+
+/* 行: 中身と操作の 2 列。操作は 1 行目の高さに揃える */
+.review-list li.review-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: start; }
+/* 行の中身: 箇所と本文（直しているときは入力）を縦に積む */
+.review-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+/* 直している行: 入力を行の幅いっぱいに使う */
+.review-list li.review-row.editing { grid-template-columns: minmax(0, 1fr); }
+/* 行の操作: 直す・削除を横に並べる */
+.review-actions { display: flex; gap: 2px; margin-top: -4px; }
+/* 削除した行: 文言と元に戻すを 1 行に並べ、点線の枠で消えたことを示す */
+.review-list li.review-removed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; margin: 6px 0; padding: 6px 6px 6px 12px; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius); }
+/* 削除した行の次の行: 区切り線の重なりを避ける */
+.review-list li.review-removed + li { border-top: 0; }
+
+/* B 案: 行に乗せた・行の中にフォーカスがあるときだけ操作を見せる（タッチの端末と幅 720px 以下は常に見せる） */
+body[data-actions="reveal"] .review-actions { opacity: 0; transition: opacity .12s ease; }
+body[data-actions="reveal"] .review-row:is(:hover, :focus-within) .review-actions { opacity: 1; }
+@media (hover: none), (max-width: 720px) {
+  body[data-actions="reveal"] .review-actions { opacity: 1; }
+}
+/* C 案: 本文の下に文字のボタンを並べる。行を 1 列にし、操作を中身の下へ送る */
+body[data-actions="text"] .review-list li.review-row { grid-template-columns: minmax(0, 1fr); }
+body[data-actions="text"] .review-actions { margin: -2px 0 0 -8px; gap: 4px; }
+/* C 案の文字のボタン: アイコンを文字の大きさに合わせる */
+body[data-actions="text"] .review-actions .btn svg.icon { width: 14px; height: 14px; }

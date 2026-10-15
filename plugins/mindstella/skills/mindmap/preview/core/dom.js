@@ -88,6 +88,7 @@ var MindmapPreview;
         undo: '<path d="M9 7 4 12l5 5"/><path d="M4 12h10a5 5 0 0 1 0 10h-2"/>',
         history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
         plus: '<path d="M12 5v14M5 12h14"/>',
+        minus: '<path d="M5 12h14"/>',
         changed: '<circle cx="12" cy="12" r="5"/>',
         arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
         save: '<path d="M5 4h11l3 3v13H5Z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
@@ -225,7 +226,7 @@ var MindmapPreview;
     }
     MindmapPreview.emptyNote = emptyNote;
     /** 背景を押してから離すまでのポインターの移動（縦・横それぞれの px）がこの値以内なら、ドラッグではなく押したとみなす */
-    const PRESS_SLOP_PX = 5;
+    MindmapPreview.PRESS_SLOP_PX = 5;
     /** 背景（ボタンなどの上でない所）をつかんで、スクロールする要素を動かせるようにする。`onPress` は、背景を押して離したとき（ドラッグでないとき）に、離したときのイベントを渡して呼ぶ */
     function enableDragScroll(scroller, onPress) {
         let drag = null;
@@ -243,7 +244,7 @@ var MindmapPreview;
             const dx = event.clientX - drag.x;
             const dy = event.clientY - drag.y;
             // 一度でも上限を超えて動いたら、離した位置が近くてもドラッグとして扱う
-            if (Math.abs(dx) > PRESS_SLOP_PX || Math.abs(dy) > PRESS_SLOP_PX)
+            if (Math.abs(dx) > MindmapPreview.PRESS_SLOP_PX || Math.abs(dy) > MindmapPreview.PRESS_SLOP_PX)
                 drag.moved = true;
             scroller.scrollLeft = drag.left - dx;
             scroller.scrollTop = drag.top - dy;

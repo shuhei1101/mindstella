@@ -291,16 +291,25 @@ def test_active_condition_count(
 
 
 @pytest.mark.parametrize(
-    ("tab", "from_hash", "expected"),
+    ("tab", "from_hash", "saved", "expected"),
     [
         pytest.param(
             "decisions",
             {},
+            None,
             {"status": ["要見直し", "未決定", "未整理", "保留"]},
             id="decisions_default",
         ),
-        pytest.param("decisions", {"phase": ["要件"]}, {"phase": ["要件"]}, id="decisions_hash"),
-        pytest.param("tasks", {}, {}, id="tasks_default"),
+        pytest.param(
+            "decisions",
+            {"phase": ["要件"]},
+            {"status": ["保留"]},
+            {"phase": ["要件"]},
+            id="decisions_hash_over_saved",
+        ),
+        pytest.param("tasks", {}, None, {}, id="tasks_default"),
+        pytest.param("decisions", {}, {}, {}, id="decisions_saved_cleared"),
+        pytest.param("tasks", {}, {"status": ["未着手"]}, {"status": ["未着手"]}, id="tasks_saved"),
     ],
 )
 def test_initial_filters(
@@ -308,18 +317,61 @@ def test_initial_filters(
     load_preview_scripts: LoadPreviewScripts,
     tab: str,
     from_hash: dict[str, list[str]],
+    saved: dict[str, list[str]] | None,
     expected: dict[str, list[str]],
 ) -> None:
-    """ハッシュがあれば既定に代えて使う（正常系）。"""
+    """ハッシュ → 残した条件 → 画面の既定の順に使う（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
     filters = preview_page.evaluate(
-        "({tab, fromHash}) => MindmapPreview.initialFilters(tab, fromHash)",
-        {"tab": tab, "fromHash": from_hash},
+        "({tab, fromHash, saved}) => MindmapPreview.initialFilters(tab, fromHash, saved)",
+        {"tab": tab, "fromHash": from_hash, "saved": saved},
     )
     # 検証
     assert filters == expected
+
+
+# 残した条件の刈り込みの行（状態が未着手・完了、タグが a）
+PRUNE_ROWS = [
+    {"id": "T-1", "status": "未着手", "tags": ["a"]},
+    {"id": "T-2", "status": "完了", "tags": ["a"]},
+]
+
+
+@pytest.mark.parametrize(
+    ("saved", "expected"),
+    [
+        pytest.param({"status": ["未着手", "保留"]}, {"status": ["未着手"]}, id="unknown_value"),
+        pytest.param({"tags": ["b"]}, {}, id="no_value_left"),
+        pytest.param(
+            {"~title": ["x"], "nope": ["y"]}, {"~title": ["x"]}, id="text_and_unknown_key"
+        ),
+        pytest.param({}, {}, id="empty"),
+    ],
+)
+def test_prune_filters(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    saved: dict[str, list[str]],
+    expected: dict[str, list[str]],
+) -> None:
+    """記録に無い値だけを外す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """({rows, saved}) => {
+            // 条件の定義は `key` と値を取る `get` だけを持つ
+            const columns = ["status", "tags"].map((key) => ({key, get: (row) => row[key]}));
+            const copy = JSON.parse(JSON.stringify(saved));
+            return {pruned: MindmapPreview.pruneFilters({rows, columns, saved}), saved, copy};
+        }""",
+        {"rows": PRUNE_ROWS, "saved": saved},
+    )
+    # 検証
+    assert result["pruned"] == expected
+    assert result["saved"] == result["copy"]
 
 
 # 用語集の表の列（`filterable` の列が値で絞る列。数の列は持たない）
@@ -375,3 +427,56 @@ def test_text_columns(
     )
     # 検証
     assert keys == expected_keys
+
+
+def test_table_when_withdrawn(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """取り下げた行だけに札を差分の印より前に置き、文字を薄くする（正常系）。"""
+    # 準備
+    rows = [
+        {"id": "R-1", "title": "取り下げた調査", "withdrawn": True},
+        {"id": "R-2", "title": "残した調査"},
+    ]
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """({rows, marks}) => {
+            const noop = () => {};
+            const columns = [
+                {key: "id", label: "ID", get: (row) => row.id},
+                {key: "title", label: "タイトル", fixed: true, get: (row) => row.title},
+            ];
+            const element = MindmapPreview.table({
+                kind: "research",
+                columns,
+                rows,
+                marks,
+                on: {sort: noop, filter: noop, pin: noop, columns: noop, reset: noop, open: noop},
+            });
+            document.body.append(element);
+            // 行のタイトルのセルの中身を、並びの種類にする
+            const kindOf = (child) =>
+                child.classList.contains("row-open")
+                    ? "title"
+                    : child.classList.contains("wd-badge")
+                      ? "withdrawn"
+                      : child.classList.contains("df-mark")
+                        ? "diff"
+                        : "other";
+            const summarize = (id) => {
+                const row = element.querySelector(`tr[data-id="${id}"]`);
+                const titleCell = row.querySelector('td[data-col="1"]');
+                return {
+                    order: [...titleCell.children].map(kindOf),
+                    badgeText: titleCell.querySelector(".wd-badge")?.textContent ?? null,
+                    dimmed: row.classList.contains("is-withdrawn"),
+                };
+            };
+            return {withdrawn: summarize("R-1"), kept: summarize("R-2")};
+        }""",
+        {"rows": rows, "marks": {"R-1": "changed"}},
+    )
+    # 検証
+    assert result["withdrawn"]["order"] == ["title", "withdrawn", "diff"]
+    assert "取り下げ" in result["withdrawn"]["badgeText"]
+    assert result["withdrawn"]["dimmed"] is True
+    assert result["kept"] == {"order": ["title"], "badgeText": None, "dimmed": False}
