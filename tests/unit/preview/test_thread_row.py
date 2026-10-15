@@ -293,6 +293,65 @@ def test_any_open_unseen(
     assert result is expected
 
 
+# withSeen を呼び、返り値・呼んだ後の渡した並び・返り値のオープンの未読の有無を集める JavaScript
+WITH_SEEN_SCRIPT = """(args) => {
+    const result = MindmapPreview.withSeen({ threads: args.threads, id: args.id });
+    return {
+        result,
+        input: args.threads,
+        anyOpenUnseen: MindmapPreview.anyOpenUnseen(result),
+    };
+}"""
+
+
+def test_with_seen(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """指したスレッドだけを既読にし、渡した並びは変えない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    threads = [
+        _thread(
+            "TH-1",
+            posts=[
+                _post("user", "D-12 は案 B にしたい", "2026-10-12T01:20:00+00:00", seen=True),
+                _post("ai", "D-12 を案 B で決定にしました。", "2026-10-12T01:24:00+00:00", seen=False),
+            ],
+        ),
+        UNSEEN_OPEN,
+    ]
+    expected_th1 = _thread(
+        "TH-1",
+        posts=[
+            _post("user", "D-12 は案 B にしたい", "2026-10-12T01:20:00+00:00", seen=True),
+            _post("ai", "D-12 を案 B で決定にしました。", "2026-10-12T01:24:00+00:00", seen=True),
+        ],
+    )
+    # 実行
+    observed = preview_page.evaluate(WITH_SEEN_SCRIPT, {"threads": threads, "id": "TH-1"})
+    # 検証
+    # TH-1 は全ての書き込みが既読で、ほかのキーはそのまま
+    assert observed["result"][0] == expected_th1
+    # TH-2 は未読のまま残り、オープンの未読は TH-2 の分で真
+    assert observed["result"][1] == UNSEEN_OPEN
+    assert observed["anyOpenUnseen"] is True
+    # 渡した並びの TH-1 は未読のまま
+    assert observed["input"] == threads
+
+
+def test_with_seen_when_not_found(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """無い ID は何も既読にしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    threads = [
+        _thread("TH-1", posts=[_post("ai", "返信", "2026-10-12T01:24:00+00:00", seen=False)])
+    ]
+    # 実行
+    observed = preview_page.evaluate(WITH_SEEN_SCRIPT, {"threads": threads, "id": "TH-9"})
+    # 検証
+    assert observed["result"] == threads
+
+
 @pytest.mark.parametrize(
     ("thread", "expected"),
     [

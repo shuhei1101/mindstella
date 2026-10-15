@@ -2851,6 +2851,40 @@ functions:
         condition: '`parametrize`: 未読を持つオープンの TH-2 と既読の TH-1 / 未読を持つのがクローズの TH-6 だけ / 空'
         mock: なし
         expected: '`true` / `false` / `false`'
+  - name: withSeen
+    title: 既読にした写し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: 指したスレッドの `seen` が偽の書き込みを既読にした新しい並びを返す（渡した並びは書き換えない。ほかのスレッドと書き込みのほかのキーはそのまま）
+    args:
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: keyword
+        description: 画面が持つスレッドの写し
+      - name: id
+        type: string
+        required: true
+        passing: keyword
+        description: 既読にするスレッドの ID
+    returns:
+      type: Thread[]
+      description: 'そのスレッドの書き込みを全て `seen: true` にした並び。ID が無ければ同じ中身の並び'
+    unit_tests:
+      - name: test_with_seen
+        case: 正常
+        summary: 指したスレッドだけを既読にし、渡した並びは変えない
+        condition: 'AI の返信が `seen: false` のオープンの TH-1 と TH-2 で `TH-1`'
+        mock: なし
+        expected: '返り値の TH-1 の全ての書き込みが `seen: true` で `anyOpenUnseen` は TH-2 の分で真。TH-2 と、渡した並びの TH-1 は `seen: false` のまま'
+      - name: test_with_seen_when_not_found
+        case: 正常
+        summary: 無い ID は何も既読にしない
+        condition: TH-1 だけの並びで `TH-9`
+        mock: なし
+        expected: 返り値が渡した並びと同じ中身
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
