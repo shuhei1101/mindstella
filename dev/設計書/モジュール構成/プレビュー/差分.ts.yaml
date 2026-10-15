@@ -129,6 +129,39 @@ data_models:
       - name: after
         type: InlinePart[]
         description: 今の文字の部分。`text` をつなぐと今の文字に戻る
+  - name: SideBlock
+    title: 左右に並べる塊
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 本文を marked の最上位の token ごとに分けた 1 つの塊
+    properties:
+      - name: start
+        type: number
+        description: 塊の最初の行（1 始まり）
+      - name: end
+        type: number
+        description: 塊の最後の行（1 始まり）
+      - name: raw
+        type: string
+        description: 塊の原文（末尾の改行を除く）
+      - name: changed
+        type: Set<number>
+        description: 塊の中で、左の列は消した行、右の列は足した行のうち空行でない行の番号。空なら変えていない塊
+  - name: SideRow
+    title: 左右の列の行
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 左右の列で同じ高さに揃える 1 行。片側が空ならその側は縞の空きになる
+    properties:
+      - name: changed
+        type: boolean
+        description: 変えた行か。変えていない塊の対の行は偽
+      - name: left
+        type: SideBlock[]
+        description: 左の列（選んだ時点）の塊
+      - name: right
+        type: SideBlock[]
+        description: 右の列（今）の塊
 constants:
   - name: LINE_DIFF_TIMEOUT_MS
     title: 行の差分の打ち切り
@@ -608,5 +641,45 @@ functions:
         condition: '`Intl.Segmenter` を消したページで `要件は来週までに決める。` → `要件は今週までに決める。`'
         mock: 描画のライブラリの配信元（`page.route`）・`Intl.Segmenter` を `undefined` にする
         expected: '`null` でなく、`before` の `removed` の文字をつなぐと `来`、`after` の `added` の文字をつなぐと `今`'
+  - name: sideBySideRows
+    title: 左右の列の行の対応づけ
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 前後の Markdown の本文を塊に分け、変えていない塊を向かい合わせた左右の列の行にする。行の差分を打ち切ったら `null`
+    kind: 関数
+    scope: public
+    args:
+      - name: before
+        type: string
+        required: true
+        passing: keyword
+        description: 選んだ時点の本文
+      - name: after
+        type: string
+        required: true
+        passing: keyword
+        description: 今の本文
+    returns:
+      type: SideRow[] | null
+      description: 上から順の行。`diffLineParts` が `null` のときは `null`
+    process: |-
+      1. `diffLineParts(before, after)` を呼ぶ。`null` なら `null`
+      2. 行の差分から、前後の各行の種類（`same`・`removed`・`added`）と、変えていない行の前の版 → 今の版の行の対応を作る
+      3. 前後の本文を `marked.lexer` の最上位の token（`space` を除く）ごとの `SideBlock` に分け、前は消した行、今は足した行のうち空行でない行を `changed` に入れる
+      4. 前の版の塊を上から見て、`changed` が空で、最初の行に対応する今の行から始まる今の塊も `changed` が空で `raw` が同じとき、その 2 つを対にして区切りにする
+      5. 区切りの間の前の版の塊と今の塊は、数が同じなら 1 つずつの変えた行に、違えばまとめて 1 つの変えた行にする（片側が 0 個ならその側は空）。区切りの対は変えていない行にする
+    unit_tests:
+      - name: test_side_by_side_rows
+        case: 正常
+        summary: 変えていない塊を向かい合わせ、片側だけの塊の向かいを空にする
+        condition: '`parametrize`: 段落 3 つの 1 つ目を消し末尾に段落を足した / 2 つ目の段落の語を書き換えた / 2 つ目の段落を 2 つの段落に分けた / 表の行を 1 つ書き換えた。jsdiff と marked はリポジトリの外部ライブラリの設計書の版を `page.route` で返す'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 変えた行（左に 1 つ目、右は空）・変えていない行 2 つ・変えた行（左は空、右に足した段落） / 変えていない行・変えた行（左右に 1 つずつ）・変えていない行 / 変えた行は左に 1 つ、右に 2 つの塊をまとめた 1 行 / 表の塊が変えた行で、左の `changed` が消した行、右の `changed` が足した行だけを持つ
+      - name: test_side_by_side_rows_when_timeout
+        case: 正常
+        summary: 行の差分を打ち切ったら対応づけない
+        condition: 全ての行が違う 5000 行の前後
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`null`'
 test_files:
   - tests/unit/preview/test_diff.py
