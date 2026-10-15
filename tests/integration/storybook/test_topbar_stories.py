@@ -920,19 +920,23 @@ def test_fit_narrowest_unchanged_when_width_390(open_story: OpenStory, story_id:
     assert measured == {"padding": ["10px", "10px"], **expected}
 
 
-# 幅 320〜389px を 1px ずつ通す幅と、そのときの画面の高さ
-NARROWEST_EVERY_WIDTH = range(320, 390)
+# 1px ずつ通す幅（既定の中身は 320〜1440px、最大の中身は 320〜389px。最大の中身の 390px 以上は別 Issue の範囲）と、そのときの画面の高さ
+DEFAULT_CONTENT_EVERY_WIDTH = range(320, 1441)
+MAX_CONTENT_EVERY_WIDTH = range(320, 390)
 NARROWEST_HEIGHT = 844
 
-# ストーリーの引数の上書き: 既定の中身のままと、収める最大の中身（絞り込みのバッジ 12・コメントの件数 99+）
-STORY_DEFAULT_CONTENT = ""
+# ストーリーの引数の上書き: 既定の中身（絞り込みのバッジ 2・コメントの件数 3。FitNarrowestOfflineDiff は既定が最大の中身のため明示する）と、収める最大の中身（絞り込みのバッジ 12・コメントの件数 99+）
+STORY_DEFAULT_CONTENT = "&args=filterCount:2;commentCount:3"
 STORY_MAX_CONTENT = "&args=filterCount:12;commentCount:120"
 
-# 4 つの状態を、既定の中身と最大の中身で開く組
+# 4 つの状態を、既定の中身と最大の中身で開く組（引数の上書きと、1px ずつ通す幅）
 NARROWEST_CONTENT_CASES = [
-    pytest.param(story_id, args, id=f"{story_id.removeprefix('preview-topbar--')}-{content}")
+    pytest.param(story_id, args, widths, id=f"{story_id.removeprefix('preview-topbar--')}-{content}")
     for story_id in (FIT_NARROWEST, FIT_NARROWEST_DIFF, FIT_NARROWEST_OFFLINE, FIT_NARROWEST_OFFLINE_DIFF)
-    for content, args in (("default", STORY_DEFAULT_CONTENT), ("max", STORY_MAX_CONTENT))
+    for content, args, widths in (
+        ("default", STORY_DEFAULT_CONTENT, DEFAULT_CONTENT_EVERY_WIDTH),
+        ("max", STORY_MAX_CONTENT, MAX_CONTENT_EVERY_WIDTH),
+    )
 ]
 
 # 全てのボタンが収まっているときの BUTTONS_FIT_SCRIPT の結果
@@ -951,13 +955,13 @@ def _overflowing_widths(page: Page, widths: range) -> list[int]:
     return overflowing
 
 
-@pytest.mark.parametrize(("story_id", "args"), NARROWEST_CONTENT_CASES)
-def test_fit_narrowest_every_width(open_story: OpenStory, story_id: str, args: str) -> None:
-    """幅 320〜389px を 1px ずつ変えても、既定の中身でも最大の中身でも、ページもトップバーも横にはみ出さず、全てのボタンと札の × が表示幅の中にある（正常系）。"""
+@pytest.mark.parametrize(("story_id", "args", "widths"), NARROWEST_CONTENT_CASES)
+def test_fit_narrowest_every_width(open_story: OpenStory, story_id: str, args: str, widths: range) -> None:
+    """幅を 1px ずつ変えても（既定の中身は 320〜1440px、最大の中身は 320〜389px）、ページもトップバーも横にはみ出さず、全てのボタンと札の × が表示幅の中にある（正常系）。"""
     # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
     page = open_story(f"{story_id}{args}")
     page.evaluate("document.fonts.ready")
     # 実行
-    overflowing = _overflowing_widths(page, NARROWEST_EVERY_WIDTH)
+    overflowing = _overflowing_widths(page, widths)
     # 検証（はみ出した幅をまとめて出す）
     assert overflowing == []
