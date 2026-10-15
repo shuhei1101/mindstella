@@ -68,15 +68,20 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 変わっていない行を畳んだ行: 左右の 2 列にまたがる */
 .df-raw.df-split .df-line.df-span { grid-column: 1 / -1; }
 
-/* ===== 本文の幅が足りない画面幅 ===== */
+/* ===== 本文の幅が足りないとき ===== */
 
-/* 左右に並べるときに持つインラインの本文: 広い画面幅では出さない */
+/* 詳細の本文の領域: 左右に並べるかを本文の幅で決めるため、幅を問い合わせられる入れ物にする */
+.panel-body { container: detail-body / inline-size; }
+/* 左右に並べるときに持つインラインの本文: 本文の幅が足りるときは出さない */
 .sbs-fallback { display: none; }
-/* 左右に並べるときに持つインラインの本文: 切り替えで隠したものは、狭い画面幅でも出さない */
+/* 左右に並べるときに持つ HTML の本文のインラインの枠: 枠の既定の表示より優先して、本文の幅が足りるときは出さない */
+.html-marked > iframe.sbs-fallback { display: none; }
+/* 左右に並べるときに持つインラインの本文: 切り替えで隠したものは、本文の幅が足りないときも出さない */
 .sbs-fallback[hidden] { display: none !important; }
-/* 本文の幅が足りない画面幅: 左右に並べる表示と並べ方の切り替えを出さず、インラインで出す */
-@media (max-width: 720px) {
+/* 本文の幅が 560px に満たないとき（資料以外の詳細パネル・狭い画面幅）: 左右に並べる表示と並べ方の切り替えを出さず、インラインで出す */
+@container detail-body (width < 560px) {
   .sbs, .sbs-only, .sbs-switch { display: none !important; }
   .sbs-fallback { display: block; }
+  .html-marked > iframe.sbs-fallback { display: block; }
   .body-diff-bar:not(:has(> :not(.sbs-switch))) { display: none; }
 }

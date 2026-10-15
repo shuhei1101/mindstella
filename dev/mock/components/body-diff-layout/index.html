@@ -27,7 +27,7 @@
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
     /* 部品を置く台 */
     .stage { display: grid; gap: 12px; padding: 16px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface); overflow: auto; }
-    /* 狭い幅の見本: 最も狭い端末（320px）の本文の幅 */
+    /* 本文の幅が足りない見本: 最も狭い端末（320px）の本文の幅 */
     .stage.narrow { width: 320px; max-width: 100%; }
     /* 見本の名前 */
     .demo-name { margin: 0; color: var(--text-2); font-size: var(--fs-xs); }
@@ -35,15 +35,8 @@
     .segment button.is-hover { background: var(--hover); }
     /* 状態を見せるための見本のクラス: フォーカス */
     .segment button.is-focus { outline: 2px solid var(--accent); outline-offset: -2px; }
-    /* 狭い幅の見本: 画面幅によらず、狭い画面幅で出すインラインの本文を見せる */
+    /* 本文の幅が足りない見本: 本文の幅が足りないときに出すインラインの本文を見せる */
     .stage.narrow .sbs-fallback { display: block; }
-    /* 狭い画面幅でカタログを開いたとき: 狭い幅の見本の外では、左右に並べた見本と切り替えを隠さずに見せる */
-    @media (max-width: 720px) {
-      .stage:not(.narrow) .sbs { display: grid !important; }
-      .stage:not(.narrow) .sbs-only { display: grid !important; }
-      .stage:not(.narrow) .sbs-switch { display: inline-flex !important; }
-      .stage:not(.narrow) .body-diff-bar { display: flex !important; }
-    }
     /* 見本の切り替えの行: 台の中では下の余白を詰める */
     .stage .body-diff-bar, .stage .html-diff-bar { margin: 0; }
   </style>
@@ -119,10 +112,10 @@
       </div>
     </section>
 
-    <!-- 狭い幅: 左右に並べるを選んでいても、切り替えを出さずにインラインで出す -->
+    <!-- 本文の幅が足りないとき: 左右に並べるを選んでいても、切り替えを出さずにインラインで出す -->
     <section class="cat-sec">
-      <h2>狭い幅（画面幅 720px 以下）</h2>
-      <p>左右に並べるを選んでいても、切り替えを出さずにインラインで出す。</p>
+      <h2>本文の幅が 560px に満たないとき</h2>
+      <p>資料以外の詳細パネル（480px）と狭い画面幅。左右に並べるを選んでいても、切り替えを出さずにインラインで出す。</p>
       <div class="stage narrow">
         <div class="md sbs-fallback"><del class="df-blk"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除: </span><p>まとまりを 1 つ選ぶと、その回で<span class="df-word df-del">変わった</span>項目<span class="df-word df-del">だけ</span>に印が付く。</p></del><ins class="df-blk"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加: </span><p>まとまりを 1 つ選ぶと、その回で<span class="df-word df-add">足した</span>項目<span class="df-word df-add">に新規（+）、変えた項目に変更（●）の</span>印が付く。</p></ins></div>
       </div>
