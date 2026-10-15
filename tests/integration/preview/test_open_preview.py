@@ -35,6 +35,8 @@ from preview_comment_helpers import (
     review_row,
     select_text,
     select_text_for_pill,
+    thread_row,
+    wait_thread_seen,
 )
 from preview_drawer_helpers import (
     FILTER_BUTTON,
@@ -1730,7 +1732,8 @@ def test_normal_when_unseen_thread_opened(
         "() => !document.querySelector('header.topbar button.comments-btn .unread-dot')",
         timeout=UPDATE_TIMEOUT_MS,
     )
-    # 検証
+    # 検証（点は要求の応答より先に消えるので、threads.yaml が既読になるのを待つ）
+    wait_thread_seen(page, root, "TH-1")
     threads = read_workspace_yaml(root, "threads.yaml")["items"]
     assert [post["seen"] for post in threads[0]["posts"]] == [True, True]
     assert requested == ["TH-1"]
@@ -1746,3 +1749,43 @@ def test_normal_when_unseen_thread_opened(
     page.wait_for_timeout(SELECTION_SETTLE_MS)
     # 検証
     assert requested == ["TH-1"]
+
+
+def test_normal_when_reply_seen_while_opened(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    call_tool: CallTool,
+    page: Page,
+) -> None:
+    """開いているスレッドに届いた AI の返信を既読にし、直後に一覧へ戻っても未読の印を出さない（正常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, created="2026-10-12T01:00:00+00:00"),
+                summary="開いているスレッド",
+            ),
+        ),
+    )
+    open_preview(url)
+    open_thread(page, "TH-1")
+    posts = f"{COMMENTS_PANEL} ol.posts > li"
+    # 実行（AI の返信が届く）
+    call_tool("reply", workspace=str(root), id="TH-1", body="続きの返信です", summary="開いているスレッド")
+    page.wait_for_selector(f"{posts}:has-text('続きの返信です')", timeout=UPDATE_TIMEOUT_MS)
+    wait_thread_seen(page, root, "TH-1")
+    # 検証
+    assert page.locator(posts).last.inner_text().count("続きの返信です") == 1
+    assert [post["seen"] for post in read_workspace_yaml(root, "threads.yaml")["items"][0]["posts"]] == [True, True]
+    # 実行（threads.yaml が既読になった直後に一覧へ戻る）
+    page.get_by_role("button", name="一覧へ戻る").click()
+    page.wait_for_selector(thread_row("TH-1"))
+    # 検証（戻った時点で未読の印が無い）
+    assert page.locator(f"{thread_row('TH-1')} .th-unread").count() == 0
+    assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 0
+    assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
