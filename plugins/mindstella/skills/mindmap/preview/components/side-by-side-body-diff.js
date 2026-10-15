@@ -4,13 +4,6 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 列の名前（列の頭に出し、列の読み上げの名前にも使う） */
     const SIDE_COLUMN_NAMES = { before: "選んだ時点", after: "今" };
-    /** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
-    function splitLines(text) {
-        const lines = text.split("\n");
-        if (lines.at(-1) === "")
-            lines.pop();
-        return lines;
-    }
     /** 片側の描いたブロックの、変えた行を持つ要素に印を付ける（段落・見出し・コードは囲み、表の行と箇条書きの項目は行の印にする） */
     function markSideBlocks({ root, lines, changed, op }) {
         if (changed.size === 0)
@@ -86,8 +79,8 @@ var MindmapPreview;
         const rows = MindmapPreview.sideBySideRows({ before, after });
         if (rows === null)
             return null;
-        const beforeLines = splitLines(before);
-        const afterLines = splitLines(after);
+        const beforeLines = MindmapPreview.linesOfText(before);
+        const afterLines = MindmapPreview.linesOfText(after);
         const leftCol = MindmapPreview.h({ tag: "section", attrs: { class: "sbs-col sbs-before", "aria-label": `${SIDE_COLUMN_NAMES.before}の本文` } });
         const rightCol = MindmapPreview.h({ tag: "section", attrs: { class: "sbs-col sbs-after", "aria-label": `${SIDE_COLUMN_NAMES.after}の本文` } });
         // 行ごとに、左右の行の入れ物と、そこへ置く塊を描く

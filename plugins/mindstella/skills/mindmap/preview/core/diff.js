@@ -237,6 +237,7 @@ var MindmapPreview;
             lines.pop();
         return lines;
     }
+    MindmapPreview.linesOfText = linesOfText;
     /** 前後の Markdown の本文を塊に分け、変えていない塊を向かい合わせた左右の列の行にする。行の差分を打ち切ったら null */
     function sideBySideRows({ before, after }) {
         const parts = diffLineParts(before, after);

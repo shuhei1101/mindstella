@@ -33,13 +33,6 @@ namespace MindmapPreview {
   /** 描いた塊と、それを置く行の側 */
   type RenderedPiece = { cell: HTMLElement; block: SideBlock; lines: string[]; op: "add" | "del"; rendered: HTMLElement };
 
-  /** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
-  function splitLines(text: string): string[] {
-    const lines = text.split("\n");
-    if (lines.at(-1) === "") lines.pop();
-    return lines;
-  }
-
   /** 片側の描いたブロックの、変えた行を持つ要素に印を付ける（段落・見出し・コードは囲み、表の行と箇条書きの項目は行の印にする） */
   function markSideBlocks({ root, lines, changed, op }: { root: HTMLElement; lines: string[]; changed: Set<number>; op: "add" | "del" }): void {
     if (changed.size === 0) return;
@@ -111,8 +104,8 @@ namespace MindmapPreview {
   export function sideBySideBodyDiff({ before, after, lined = true, deadline }: SideBySideBodyDiffProps): SideBySideBodyDiff | null {
     const rows = sideBySideRows({ before, after });
     if (rows === null) return null;
-    const beforeLines = splitLines(before);
-    const afterLines = splitLines(after);
+    const beforeLines = linesOfText(before);
+    const afterLines = linesOfText(after);
     const leftCol = h({ tag: "section", attrs: { class: "sbs-col sbs-before", "aria-label": `${SIDE_COLUMN_NAMES.before}の本文` } });
     const rightCol = h({ tag: "section", attrs: { class: "sbs-col sbs-after", "aria-label": `${SIDE_COLUMN_NAMES.after}の本文` } });
     // 行ごとに、左右の行の入れ物と、そこへ置く塊を描く

@@ -370,7 +370,7 @@ namespace MindmapPreview {
   }
 
   /** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
-  function linesOfText(text: string): string[] {
+  export function linesOfText(text: string): string[] {
     const lines = text.split("\n");
     if (lines.at(-1) === "") lines.pop();
     return lines;
