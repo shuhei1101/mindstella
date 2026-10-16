@@ -41,3 +41,4 @@ notes:
   HTML の本文のモック: 形式の札・HTML の本文・HTML の本文の差分の見本は `dev/mock/pages/detail-full/214/c-marks/index.html`
   差分のミニマップのモック: 差分のミニマップの見本は `dev/mock/pages/detail-full/237/a-right-rail/index.html`（採用した案 A）
   本文の差分の並べ方のモック: '本文の差分の並べ方の切り替え・左右に並べた本文の差分の見本は `dev/mock/pages/detail-full/261/a-both/index.html`（採用した案 A。確認ログ: dev/pr/261/確認ログ.md）'
+  本文の長い語と表のモック: 本文の長い URL・インラインコードを折り返し、列の多い表を表の中だけで送る見本は `dev/mock/pages/detail-full/289/a-wrap-long-words/index.html`（包む要素の読み上げの役割は、モックの `region` ではなく詳細パネルの本文のとおり）
