@@ -566,6 +566,7 @@ namespace MindmapPreview {
         block.firstElementChild?.prepend(...signMarks("add"));
       } else if (block.tagName === "LI") {
         block.classList.add("df-li-add");
+        block.prepend(...signMarks("add"));
       } else {
         // 囲みを元の位置に置いてから、ブロックを囲みの中へ移す
         const wrapper = diffBlock({ op: "add", children: [] });
