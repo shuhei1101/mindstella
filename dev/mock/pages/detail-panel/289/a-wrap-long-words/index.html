@@ -25,6 +25,9 @@
   <!-- mindmap-external:end -->
 <style type="text/css">/* PR #289: 本文の長い URL・インラインコード: 本文の幅で折り返し、本文の区画ごと横に送らせない（項目の ID のリンクは折り返さない） */
 .md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
+/* PR #289: 本文の表: 描いた表を包む要素の中でだけ横に送り、本文の区画ごと横に送らせない（幅に収まる表は今のまま幅いっぱいに広げる） */
+.md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
+.md .md-table-wrap > table { margin: 0; }
 
 /* PR #289: 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
 @media (max-width: 389px) {
@@ -67,10 +70,10 @@ body:has(dialog[open])::after { content: ""; position: fixed; inset: 0; z-index:
 <aside class="panel wide open" aria-label="詳細"><div class="panel-head"><button class="icon-btn panel-back" type="button" aria-label="一覧へ戻る"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button><span class="panel-kind"><span class="panel-kind-label">資料 </span><span class="mono">A-1</span></span><span class="fmt-badge fmt-md" title="本文は Markdown">MD</span><span class="panel-title" aria-hidden="true" title="長い本文の資料">長い本文の資料</span><span class="spacer"></span><button class="icon-btn" type="button" data-act="back" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled="">←</button><button class="icon-btn" type="button" data-act="forward" aria-label="次の項目へ進む" title="次の項目へ進む" disabled="">→</button><button class="icon-btn panel-full" type="button" data-act="full" aria-label="全画面表示" title="全画面表示"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button><button class="icon-btn panel-close-x" type="button" data-act="close" aria-label="詳細を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div><div class="panel-scroll"><div class="panel-body" tabindex="0" role="region" aria-label="詳細の本文"><div class="detail"><span data-key="status"><span class="st" data-st="下書き"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-off)" stroke-width="1.6" stroke-dasharray="2 1.6"></circle></svg>下書き</span></span><h2 class="d-title" data-key="title">長い本文の資料</h2><dl class="d-meta"><dt>種類</dt><dd>文書</dd><dt>更新日</dt><dd>2026-10-01T00:00:00+00:00</dd></dl><section class="d-sec"><h3>本文</h3><div class="md"><p data-line-start="1">長い URL と、途中で切れないインラインコードを本文に書いたとき:</p>
 <p data-line-start="3"><a href="https://example.com/a/very/long/path/that/does/not/break/naturally/anywhere/index.html">https://example.com/a/very/long/path/that/does/not/break/naturally/anywhere/index.html</a></p>
 <p data-line-start="5"><code>inline_code_that_is_extremely_long_without_any_break_point_inside</code></p>
-<p data-line-start="7">コードブロックと表は、今の見せ方のまま。</p>
+<p data-line-start="7">コードブロックは今の見せ方のまま、表は表の中で横に送る。</p>
 <pre data-line-start="10"><code>const value = someVeryLongFunctionName(argumentNumberOne, argumentNumberTwo);
 </code></pre>
-<table>
+<div class="md-table-wrap"><table>
 <thead>
 <tr data-line-start="13">
 <th>列 A</th>
@@ -85,6 +88,6 @@ body:has(dialog[open])::after { content: ""; position: fixed; inset: 0; z-index:
 <td>長めのセルの値</td>
 <td>長めのセルの値</td>
 </tr>
-</tbody></table>
+</tbody></table></div><p>列の多い表と、折り返せない値の表:</p><div class="md-table-wrap"><table><thead><tr><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th></tr></thead><tbody><tr><td>2026-01-16</td><td>2026-02-16</td><td>2026-03-16</td><td>2026-04-16</td><td>2026-05-16</td><td>2026-06-16</td><td>2026-07-16</td><td>2026-08-16</td><td>2026-09-16</td><td>2026-10-16</td><td>2026-11-16</td><td>2026-12-16</td></tr></tbody></table></div><div class="md-table-wrap"><table><thead><tr><th>column_name_0</th><th>column_name_1</th><th>column_name_2</th><th>column_name_3</th><th>column_name_4</th><th>column_name_5</th><th>column_name_6</th><th>column_name_7</th></tr></thead><tbody><tr><td>value_0</td><td>value_1</td><td>value_2</td><td>value_3</td><td>value_4</td><td>value_5</td><td>value_6</td><td>value_7</td></tr></tbody></table></div>
 <p data-line-start="17">選んだ箇所へコメントする文はここです。</p>
 </div></section><section class="d-sec d-review"><h3>レビュー中のコメント<span class="count">0</span></h3><p class="empty">レビュー中のコメントはありません。</p></section></div></div></div><form class="send send-footer" novalidate="" data-id="A-1"><label class="send-label" for="send-1"><span class="mono">A-1</span> へのコメント</label><textarea id="send-1" name="body" rows="2" aria-describedby="send-1-msg" aria-keyshortcuts="Control+Enter" style=""></textarea><div class="send-row"><p class="send-msg" id="send-1-msg" role="status"></p><button class="btn primary" type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"></path><path d="M8 9h8M8 12.5h5"></path></svg>レビューに追加</button></div></form></aside></body></html>
