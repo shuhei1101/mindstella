@@ -41,6 +41,9 @@ data_models:
       - name: bodyLayout
         type: "'side' | null"
         description: 本文の差分を左右に並べる上書き（インターフェース定義の `body_diff_layout`）。`null` はインライン（ワークスペースの既定は持たない）。「インライン」を押すと `null` にする
+      - name: opened
+        type: unknown
+        description: 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`resolveSince` が `isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う。サーバーの配信では読まず書かない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -173,7 +176,7 @@ constants:
     title: 「前回開いてから」の始まりのキー
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 前回からの差分を見る
-    summary: そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた日時を `Prefs` と同じ `localStorage` のキーの `opened` に持つ
+    summary: そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた時点を `Prefs.opened` に持つ
     value: '"mindmap-since"'
   - name: NOTICE_MS
     title: 既定が変わった知らせを出す長さ
@@ -307,7 +310,7 @@ functions:
       2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）
          - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（13 へ）
       3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
-         - 「前回開いてから」の始まりを決める。`SINCE_KEY` が sessionStorage にあればそれを使う。無ければ、サーバーの配信では `postOpened`、配る書き出しでは `localStorage` の `opened` を読んで今の日時に書き換え、`null` ならタブを開いた日時にして `SINCE_KEY` に残す
+         - 「前回開いてから」の始まりを決める（`resolveSince`。読んだ記録の先頭のまとまりの `until_seq` を渡す）
          - 選んだ時点を引く（`resolveDiffPoint`。ハッシュの `diff`（`parseHash` の `Route.diff`）があればそれ、無ければ `Prefs.diffSel` と、始まり）。引けたら `Prefs.diffSel` と `Route.diff` をその時点にし、引けなければどちらも `null` にして残す（`savePrefs`）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
       5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
@@ -518,6 +521,81 @@ functions:
         condition: '`parametrize`: `items` が空 / `target` が `null` の 2 件だけ'
         mock: なし
         expected: どちらも `{}`
+  - name: resolveSince
+    title: 「前回開いてから」の始まりを決める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: そのタブの「前回開いてから」の始まりを決めて `SINCE_KEY` に残す。同じタブで読み込み直したときは、残した始まりをそのまま使う
+    side_effects: '`session` の `SINCE_KEY` を書く。サーバーの配信では `post` がワークスペースの前回開いた時点を書き換える。配る書き出しでは `prefs.opened` を書き換えて `persist` を呼ぶ'
+    args:
+      - name: serverMode
+        type: boolean
+        required: true
+        passing: keyword
+        description: サーバーの配信か（偽は配る書き出し）
+      - name: prefs
+        type: Prefs
+        required: true
+        passing: keyword
+        description: 端末の設定
+      - name: persist
+        type: () => void
+        required: true
+        passing: keyword
+        description: 端末の設定を残す
+      - name: headSeq
+        type: number
+        required: true
+        passing: keyword
+        description: 読んだ記録の先頭のまとまりの `until_seq`（まとまりが無ければ 0）
+      - name: session
+        type: Storage
+        required: true
+        passing: injected
+        description: そのタブの保存領域（`sessionStorage`。使えないときは `openStorage` の代わり）
+      - name: post
+        type: () => Promise<OpenedReply | null>
+        required: false
+        default: postOpened
+        passing: injected
+        description: 前回開いた日時を引く
+      - name: now
+        type: () => string
+        required: false
+        default: () => new Date().toISOString()
+        passing: injected
+        description: 今の日時を返す
+    returns:
+      type: Promise<OpenedPoint>
+      description: そのタブの「前回開いてから」の始まり
+    process: |-
+      1. `session` の `SINCE_KEY` を JSON として読み、`isOpenedPoint` ならそれを返す（読めない・前の版の日時の文字列は残っていないものとして続ける）
+      2. タブを開いた時点を `{at: now(), seq: headSeq}` にする
+      3. サーバーの配信では `post` を呼び、前回の時点を `previous`、今の時点を `opened` にする（`null` なら前回の時点は無く、今の時点はタブを開いた時点）。配る書き出しでは、前回の時点を `prefs.opened`（`isOpenedPoint` でなければ無い）、今の時点をタブを開いた時点にし、`prefs.opened` を今の時点に書き換えて `persist` を呼ぶ
+      4. 前回の時点があり、その `seq` が `headSeq` 以下ならそれを、それ以外（無い・`seq` が `headSeq` より大きい）は今の時点を始まりにする
+      5. 始まりを JSON で `SINCE_KEY` に書き（書けなければ何もしない。読み込み直すたびに決め直す）、返す
+    unit_tests:
+      - name: test_resolve_since
+        case: 正常
+        summary: サーバーの配信では前回の時点を始まりにし、無い・通し番号が先のときは今の時点にする
+        condition: '`serverMode` 真、`headSeq` 2、空の `session`。`parametrize`: `post` が `{previous: {at: A, seq: 1}, opened: {at: B, seq: 2}}` / `{previous: null, opened: {at: B, seq: 2}}` / `{previous: {at: A, seq: 5}, opened: {at: B, seq: 2}}` / `null`'
+        mock: '`post`・`now`（引数で渡す）'
+        expected: '`{at: A, seq: 1}` / `{at: B, seq: 2}` / `{at: B, seq: 2}` / `{at: now, seq: 2}`。どれも `session` の `SINCE_KEY` に返した値の JSON が入る'
+      - name: test_resolve_since_when_kept
+        case: 正常
+        summary: 同じタブに残した始まりを使い、前の版の値は使わない
+        condition: '`serverMode` 真。`parametrize`: `SINCE_KEY` に `{"at": A, "seq": 1}` / 日時の文字列 `2026-10-04T13:05:00+00:00`'
+        mock: '`post`（呼んだ回数を数える）'
+        expected: '`{at: A, seq: 1}` を返し `post` を呼ばない / `post` を 1 回呼び、その結果から決める'
+      - name: test_resolve_since_when_exported
+        case: 正常
+        summary: 配る書き出しは端末の設定の前回の時点を使い、今の時点に書き換える
+        condition: '`serverMode` 偽、`headSeq` 2。`parametrize`: `prefs.opened` が `{at: A, seq: 1}` / 日時の文字列 / 無い'
+        mock: '`persist`・`now`（引数で渡す）'
+        expected: '`{at: A, seq: 1}` / `{at: now, seq: 2}` / `{at: now, seq: 2}`。どれも `prefs.opened` が `{at: now, seq: 2}` になり `persist` を 1 回呼ぶ'
 test_files:
   - tests/unit/preview/test_app.py
 notes:
