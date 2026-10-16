@@ -90,9 +90,15 @@ var MindmapPreview;
             ],
         });
     }
+    /** 選んだ時点の Markdown の本文を描き、見出しを節の見出し「本文」（h3）の次の段から並べる */
+    function renderedMarkdown({ source }) {
+        const root = MindmapPreview.renderMarkdown(source);
+        MindmapPreview.lowerHeadings({ root, shift: MindmapPreview.headingShift({ roots: [root] }) });
+        return root;
+    }
     /** 描いた結果を左右に並べる。左は選んだ時点の本文（Markdown のときは Markdown として描く）、右は今の本文 */
     function renderedSide({ before, beforeFormat, right }) {
-        const left = beforeFormat === "md" ? MindmapPreview.renderMarkdown(before) : MindmapPreview.htmlBodyFrame({ source: before, selectable: false, label: "選んだ時点の本文" });
+        const left = beforeFormat === "md" ? renderedMarkdown({ source: before }) : MindmapPreview.htmlBodyFrame({ source: before, selectable: false, label: "選んだ時点の本文" });
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "sbs sbs-html" },
