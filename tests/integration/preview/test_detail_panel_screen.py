@@ -2237,11 +2237,12 @@ def test_diff_body_when_added_mark_without_underline(
     assert page.evaluate(DECORATION_LINES_JS, f"{DIFF_BODY} ins.df-blk") == ["none"]
     assert page.evaluate(DECORATION_LINES_JS, f"{DIFF_BODY} li.df-li-add") == ["none"]
     assert page.evaluate(DECORATION_LINES_JS, f"{DIFF_BODY} tr.df-add td") == ["none"]
-    # 検証（足した印が色だけにならない: 足した塊と表の足した行に + の記号がある）
+    # 検証（足した印が色だけにならない: 足した塊・箇条書きの足した項目・表の足した行に + の記号がある）
     assert "足した段落です。" in page.inner_text(f"{DIFF_BODY} ins.df-blk")
     assert "足した項目" in page.inner_text(f"{DIFF_BODY} li.df-li-add")
     assert "4" in page.inner_text(f"{DIFF_BODY} tr.df-add")
     assert page.inner_text(f"{DIFF_BODY} ins.df-blk > .df-sign") == "+"
+    assert page.inner_text(f"{DIFF_BODY} li.df-li-add .df-sign") == "+"
     assert page.inner_text(f"{DIFF_BODY} tr.df-add .df-sign") == "+"
     # 検証（足した色の面が付く）
     background_js = "e => getComputedStyle(e).backgroundColor"
