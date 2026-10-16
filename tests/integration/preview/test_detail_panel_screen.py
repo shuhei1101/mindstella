@@ -12,7 +12,12 @@ from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, open
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
-from preview_added_mark_helpers import DECORATION_LINES_JS, serve_added_mark_workspace
+from preview_added_mark_helpers import (
+    DECORATION_LINES_JS,
+    LOOSE_LIST_AFTER,
+    LOOSE_LIST_BEFORE,
+    serve_added_mark_workspace,
+)
 from preview_alias_helpers import (
     MARK_IN_PANEL_BODY_JS,
     MARK_MARGIN_PX,
@@ -2249,6 +2254,26 @@ def test_diff_body_when_added_mark_without_underline(
     assert page.eval_on_selector(f"{DIFF_BODY} ins.df-blk", background_js) != TRANSPARENT
     assert page.eval_on_selector(f"{DIFF_BODY} li.df-li-add", background_js) != TRANSPARENT
     assert page.eval_on_selector(f"{DIFF_BODY} tr.df-add td", background_js) != TRANSPARENT
+
+
+def test_diff_body_when_added_mark_in_loose_list(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """項目の間に空行を挟んだ箇条書きでも、足した項目の + は項目の文と同じ行に出る（正常系）。"""
+    # 準備・実行
+    url = serve_added_mark_workspace(make_workspace, call_tool, LOOSE_LIST_BEFORE, LOOSE_LIST_AFTER)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector(f"{DIFF_BODY} li ins.df-blk")
+    # 検証（足した項目だけに + が付き、項目の文の行の高さに収まる）
+    assert page.locator(f"{DIFF_BODY} li .df-sign").count() == 1
+    assert page.inner_text(f"{DIFF_BODY} li ins.df-blk > .df-sign") == "+"
+    assert page.inner_text(f"{DIFF_BODY} li ins.df-blk > p") == "足した項目"
+    sign_box = page.locator(f"{DIFF_BODY} li .df-sign").bounding_box()
+    text_box = page.locator(f"{DIFF_BODY} li ins.df-blk > p").bounding_box()
+    assert sign_box is not None
+    assert text_box is not None
+    sign_center = sign_box["y"] + sign_box["height"] / 2
+    assert text_box["y"] <= sign_center <= text_box["y"] + text_box["height"]
 
 
 def test_diff_diagram(

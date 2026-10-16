@@ -7,6 +7,8 @@ from typing import Any
 
 __all__ = [
     "DECORATION_LINES_JS",
+    "LOOSE_LIST_AFTER",
+    "LOOSE_LIST_BEFORE",
     "build_added_mark_workspace",
     "serve_added_mark_workspace",
 ]
@@ -39,6 +41,22 @@ AFTER_ADDED = """# 概要
 | 3 | 4 |
 """
 
+# 項目の間に空行を挟んだ箇条書き（項目の中身が段落で包まれる）の書き換える前と後の本文（項目を 1 つ足す）
+LOOSE_LIST_BEFORE = """# 概要
+
+- 項目 1
+
+- 項目 2
+"""
+LOOSE_LIST_AFTER = """# 概要
+
+- 項目 1
+
+- 項目 2
+
+- 足した項目
+"""
+
 # `selector` に当たる要素と、その子孫の計算済みの `text-decoration-line` を、重複を除いて並べて返す
 DECORATION_LINES_JS = """selector => {
     const lines = new Set();
@@ -58,8 +76,10 @@ def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
     return result.data
 
 
-def build_added_mark_workspace(make_workspace: Any, call_tool: Any) -> Path:
-    """実際のツールで、段落・箇条書きの項目・表の行を足したまとまり V-2 を持つ検討事項 D-1 のワークスペースを作る。"""
+def build_added_mark_workspace(
+    make_workspace: Any, call_tool: Any, before: str = BEFORE_ADDED, after: str = AFTER_ADDED
+) -> Path:
+    """実際のツールで、本文を `before` から `after` へ書き換えたまとまり V-2 を持つ検討事項 D-1 のワークスペースを作る。"""
     root: Path = make_workspace()
     workspace = str(root)
     decision = {
@@ -76,17 +96,19 @@ def build_added_mark_workspace(make_workspace: Any, call_tool: Any) -> Path:
         "add",
         workspace=workspace,
         kind="decision",
-        item={**decision, "body_markdown": BEFORE_ADDED},
+        item={**decision, "body_markdown": before},
     )
     _call(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
-    _call(call_tool, "update", workspace=workspace, id="D-1", item={"body_markdown": AFTER_ADDED})
+    _call(call_tool, "update", workspace=workspace, id="D-1", item={"body_markdown": after})
     _call(call_tool, "commit", workspace=workspace, summary="足す")
     return root
 
 
-def serve_added_mark_workspace(make_workspace: Any, call_tool: Any) -> str:
+def serve_added_mark_workspace(
+    make_workspace: Any, call_tool: Any, before: str = BEFORE_ADDED, after: str = AFTER_ADDED
+) -> str:
     """足した印を確かめるワークスペースを作って配信を立て、その URL を返す。"""
-    root = build_added_mark_workspace(make_workspace, call_tool)
+    root = build_added_mark_workspace(make_workspace, call_tool, before, after)
     served = call_tool("preview_url", workspace=str(root))
     assert served.is_error is False, served.text
     assert served.data is not None
