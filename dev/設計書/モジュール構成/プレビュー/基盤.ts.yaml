@@ -1698,7 +1698,7 @@ functions:
     kind: 関数
     scope: public
     summary: HTML の本文の枠の中のリンクの `href` から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める（部品『HTMLの本文の枠』が押下を受けたときに使う）
-    status: planned
+    status: implemented
     introduced:
       pr: 243
     args:
