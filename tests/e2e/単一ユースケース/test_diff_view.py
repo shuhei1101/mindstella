@@ -1149,6 +1149,10 @@ def test_normal_when_minimap_jump(
 SIDE_BODY_A1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落です。\n\n3 つ目の段落です。\n"
 SIDE_BODY_A1_AFTER = "2 つ目の段落です。\n\n3 つ目の段落です。\n\n4 つ目の段落です。\n"
 
+# 詳細パネルで左右に並べるシナリオの値: 資料 A-1 の本文の書き換える前と後（2 つ目の段落を書き換える）
+SIDE_PANEL_A1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落は、前の案です。\n\n3 つ目の段落です。\n"
+SIDE_PANEL_A1_AFTER = "1 つ目の段落です。\n\n2 つ目の段落は、今の案です。\n\n3 つ目の段落です。\n"
+
 # 検討事項 D-1 の本文の書き換える前と後（2 つ目の段落を書き換える）
 SIDE_BODY_D1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落は、来週に決めます。\n\n3 つ目の段落です。\n"
 SIDE_BODY_D1_AFTER = "1 つ目の段落です。\n\n2 つ目の段落は、今週に決めます。\n\n3 つ目の段落です。\n"
@@ -1308,11 +1312,11 @@ def test_normal_when_side_by_side_in_panel(
     root = make_workspace(
         make_item("A-1"),
         make_item("D-1", body="D-1.md"),
-        bodies={"A-1.md": SIDE_BODY_A1_BEFORE, "D-1.md": SIDE_BODY_D1_BEFORE},
+        bodies={"A-1.md": SIDE_PANEL_A1_BEFORE, "D-1.md": SIDE_BODY_D1_BEFORE},
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    replay("update", workspace=ws, id="A-1", item={"body_markdown": SIDE_BODY_A1_AFTER})
+    replay("update", workspace=ws, id="A-1", item={"body_markdown": SIDE_PANEL_A1_AFTER})
     replay("update", workspace=ws, id="D-1", item={"body_markdown": SIDE_BODY_D1_AFTER})
     replay("commit", workspace=ws, summary=SIDE_COMMIT_SUMMARY)
     before = snapshot_records(snapshot_tree(root))
@@ -1327,9 +1331,12 @@ def test_normal_when_side_by_side_in_panel(
     # 実行（「左右に並べる」を押す）
     page.locator(PANEL_SCOPE).get_by_role("button", name="左右に並べる").click()
     _wait_side_by_side(page, PANEL_SCOPE)
-    # 検証（詳細パネルの中で、左に消した印、右に足した印で並ぶ。端末の保存領域に上書きが残る）
-    assert "1 つ目の段落です。" in page.inner_text(f"{PANEL_SCOPE} {SIDE_BEFORE} del.df-blk")
-    assert "4 つ目の段落です。" in page.inner_text(f"{PANEL_SCOPE} {SIDE_AFTER} ins.df-blk")
+    # 検証（詳細パネルの中で、書き換えた 2 つ目の段落が左に消した印つき、右に足した印つきで同じ高さに並ぶ。端末の保存領域に上書きが残る）
+    assert "前の案です" in page.inner_text(f"{PANEL_SCOPE} {SIDE_BEFORE} del.df-blk")
+    assert "今の案です" in page.inner_text(f"{PANEL_SCOPE} {SIDE_AFTER} ins.df-blk")
+    left, right = page.evaluate(SIDE_ROWS_SCRIPT, PANEL_SCOPE)
+    assert [row[0] for row in left] == [row[0] for row in right]
+    assert [row[1] for row in left] == [False, True, False]
     prefs = page.evaluate(SAVED_PREFS_SCRIPT)
     assert prefs["bodyLayout"] == "side"
     # 実行（検討事項のタブで D-1 を押す）
