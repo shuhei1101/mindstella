@@ -9,10 +9,16 @@ from playwright.sync_api import Page
 
 from .fixture_types import LoadLibrary, LoadPreviewScripts
 
-# 差分の時点を決める記録の日時（V-1 より後・V-2 より前の「前回開いてから」の始まりを含む）
+# 差分の時点を決める記録の日時と、「前回開いてから」の始まりの日時（日時は範囲を決めず、表示にだけ使う）
 FIRST_SET_AT = "2026-10-01T09:00:00+00:00"
-SINCE = "2026-10-02T00:00:00+00:00"
+SINCE_AT = "2026-10-02T00:00:00+00:00"
 SECOND_SET_AT = "2026-10-03T09:00:00+00:00"
+
+# 「前回開いてから」の始まりの日時を JST にした表示
+SINCE_SUB = "10/02 09:00 より後"
+
+# V-1 を過ぎて V-2 を過ぎる前に開いた「前回開いてから」の始まり
+SINCE = {"at": SINCE_AT, "seq": 1}
 
 # 消した項目を持つまとまりの日時（V-1 より後・「前回開いてから」の始まりより前）
 REMOVED_SET_AT = "2026-10-01T18:00:00+00:00"
@@ -219,12 +225,24 @@ def _lines_of(prefix: str) -> str:
     [
         pytest.param(
             "V-1",
-            {"added": [], "changed": ["A-1"], "fromSeq": 0, "untilSeq": 1},
+            {
+                "added": [],
+                "changed": ["A-1"],
+                "fromSeq": 0,
+                "untilSeq": 1,
+                "sub": "10/01 18:00",
+            },
             id="old_set",
         ),
         pytest.param(
             "since",
-            {"added": ["D-6"], "changed": ["D-3"], "fromSeq": 1, "untilSeq": None},
+            {
+                "added": ["D-6"],
+                "changed": ["D-3"],
+                "fromSeq": 1,
+                "untilSeq": None,
+                "sub": SINCE_SUB,
+            },
             id="since",
         ),
     ],
@@ -269,12 +287,109 @@ def test_resolve_diff_point(
                 changed: [...point.changed].sort(),
                 fromSeq: point.fromSeq,
                 untilSeq: point.untilSeq,
+                sub: point.sub,
             };
         }""",
         [changes, sel, SINCE],
     )
     # 検証
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "second_set_at",
+    [
+        pytest.param("2026-10-01T23:00:00+00:00", id="an_hour_before"),
+        pytest.param(SINCE_AT, id="same_second"),
+    ],
+)
+def test_resolve_diff_point_when_at_before_since(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, second_set_at: str
+) -> None:
+    """まとまりの日時ではなく通し番号で範囲を決める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # V-2 の `at` を「前回開いてから」の始まりの日時より前か同じ秒にして、日時を比べると範囲から落ちる記録にする
+    changes = {
+        "last_seq": 2,
+        "sets": [
+            {
+                "id": "V-2",
+                "at": second_set_at,
+                "summary": "決める",
+                "until_seq": 2,
+                "added": [],
+                "changed": ["D-3"],
+            },
+            {
+                "id": "V-1",
+                "at": FIRST_SET_AT,
+                "summary": "最初",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["A-1"],
+            },
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, sel, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, sel, since);
+            return {
+                changed: [...point.changed].sort(),
+                fromSeq: point.fromSeq,
+            };
+        }""",
+        [changes, "since", SINCE],
+    )
+    # 検証
+    assert result == {"changed": ["D-3"], "fromSeq": 1}
+
+
+def test_resolve_diff_point_when_seq_ahead(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """始まりの通し番号が先頭のまとまりより大きければ、まとまりを範囲に入れない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    changes = {
+        "last_seq": 2,
+        "sets": [
+            {
+                "id": "V-2",
+                "at": SECOND_SET_AT,
+                "summary": "決める",
+                "until_seq": 2,
+                "added": ["D-6"],
+                "changed": ["D-3"],
+            },
+            {
+                "id": "V-1",
+                "at": FIRST_SET_AT,
+                "summary": "最初",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["A-1"],
+            },
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, "since", since);
+            return {
+                added: [...point.added],
+                changed: [...point.changed],
+                removed: [...point.removed.values()],
+                fromSeq: point.fromSeq,
+            };
+        }""",
+        [changes, {"at": SINCE_AT, "seq": 9}],
+    )
+    # 検証
+    assert result == {"added": [], "changed": [], "removed": [], "fromSeq": 2}
 
 
 # 消した項目を持つ記録の `changes`（新しい順）。V-1 と V-3 は `removed` を持たない
@@ -362,7 +477,7 @@ def test_resolve_diff_point_when_removed(
                 removed: [...point.removed.values()].map(({id, kind, title}) => ({id, kind, title})),
             };
         }""",
-        [REMOVED_CHANGES, sel, SINCE],
+        [REMOVED_CHANGES, sel, {"at": SINCE_AT, "seq": 2}],
     )
     # 検証
     assert result == expected

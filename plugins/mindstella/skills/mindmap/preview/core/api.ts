@@ -102,13 +102,38 @@ namespace MindmapPreview {
     return { ok: true, data: (await response.json()) as MindmapData };
   }
 
-  /** プレビューを開いたことを知らせ、前回開いた日時を返す。届かない・200 でない・読めないときは null */
-  export async function postOpened(fetchFn: FetchFn = window.fetch.bind(window)): Promise<string | null> {
+  /** 前回開いた時点。「前回開いてから」の範囲の始まり */
+  export type OpenedPoint = {
+    /** 開いた日時（UTC のタイムゾーン付き ISO 8601）。`{日時} より後` の表示にだけ使う */
+    at: string;
+    /** 開いた時点の先頭のまとまりの `until_seq`（無ければ 0）。`until_seq` がこれより大きいまとまりが範囲に入る */
+    seq: number;
+  };
+
+  /** `POST /api/opened` の応答 */
+  export type OpenedReply = {
+    /** 前回開いた時点。無いときは null */
+    previous: OpenedPoint | null;
+    /** サーバーが書き込んだ今の時点 */
+    opened: OpenedPoint;
+  };
+
+  /** 値が前回開いた時点の形（文字列の `at` と 0 以上の整数の `seq`）か。日時だけの文字列（前の版の形）は偽 */
+  export function isOpenedPoint(value: unknown): value is OpenedPoint {
+    if (typeof value !== "object" || value === null) return false;
+    const { at, seq } = value as { at?: unknown; seq?: unknown };
+    return typeof at === "string" && typeof seq === "number" && Number.isInteger(seq) && seq >= 0;
+  }
+
+  /** プレビューを開いたことを知らせ、前回開いた時点と今の時点を返す。届かない・200 でない・読めないときは null */
+  export async function postOpened(fetchFn: FetchFn = window.fetch.bind(window)): Promise<OpenedReply | null> {
     try {
       const response = await fetchFn(API_PATHS.opened, { method: "POST" });
       if (!response.ok) return null;
-      const body = (await response.json()) as { previous?: unknown };
-      return typeof body.previous === "string" ? body.previous : null;
+      const body = (await response.json()) as { previous?: unknown; opened?: unknown };
+      // 今の時点が読めない（前の版の形）: 使わない
+      if (!isOpenedPoint(body.opened)) return null;
+      return { previous: isOpenedPoint(body.previous) ? body.previous : null, opened: body.opened };
     } catch {
       return null;
     }

@@ -16,9 +16,9 @@ from workspace_fixtures import RECORD_DIR
 # まとめた日時・書き換えた日時
 NOW = "2026-10-02T08:00:00+00:00"
 
-# 前回開いた日時として 1 回目・2 回目に渡す日時
-FIRST_OPENED = "2026-10-04T13:05:00+00:00"
-SECOND_OPENED = "2026-10-04T14:45:00+00:00"
+# 前回開いた時点として 1 回目・2 回目に渡す日時と通し番号
+FIRST_OPENED = {"at": "2026-10-04T13:05:00+00:00", "seq": 3}
+SECOND_OPENED = {"at": "2026-10-04T14:45:00+00:00", "seq": 7}
 
 # 大きな本文の行数と、空行を挟む間隔（3 行に 1 行が空行）
 LARGE_LINE_COUNT = 5000
@@ -416,8 +416,38 @@ def test_pending_view_when_removed(make_workspace: MakeWorkspace) -> None:
     assert view["changed"] == []
 
 
+@pytest.mark.parametrize(
+    ("changes", "expected"),
+    [
+        pytest.param(
+            {"last_seq": 3, "sets": [], "pending": {"added": [], "changed": []}},
+            0,
+            id="no_sets",
+        ),
+        pytest.param(
+            {
+                "last_seq": 7,
+                "sets": [
+                    {"id": "V-2", "at": NOW, "summary": "新しい", "until_seq": 5, "added": [], "changed": []},
+                    {"id": "V-1", "at": NOW, "summary": "古い", "until_seq": 2, "added": [], "changed": []},
+                ],
+                "pending": {"added": [], "changed": []},
+            },
+            5,
+            id="two_sets",
+        ),
+    ],
+)
+def test_head_until_seq(changes: dict[str, Any], expected: int) -> None:
+    """先頭のまとまりの通し番号を返し、`last_seq` は返さない（正常系）。"""
+    # 実行
+    seq = history.head_until_seq(changes)
+    # 検証
+    assert seq == expected
+
+
 def test_touch_opened(make_workspace: MakeWorkspace) -> None:
-    """前の日時を返して書き換える（正常系）。"""
+    """前の時点を返して書き換える（正常系）。"""
     # 準備
     root = make_workspace()
     # 実行
@@ -427,7 +457,34 @@ def test_touch_opened(make_workspace: MakeWorkspace) -> None:
     assert first is None
     assert second == FIRST_OPENED
     opened_text = (root / RECORD_DIR / ".mindstella-opened").read_text(encoding="utf-8")
-    assert opened_text.splitlines()[0] == SECOND_OPENED
+    assert opened_text.splitlines() == [SECOND_OPENED["at"], str(SECOND_OPENED["seq"])]
+
+
+@pytest.mark.parametrize(
+    "previous_text",
+    [
+        pytest.param("2026-10-04T13:05:00+00:00\n", id="date_only"),
+        pytest.param("2026-10-04T13:05:00+00:00\nx\n", id="seq_not_number"),
+        pytest.param("2026-10-04T13:05:00+00:00\n-1\n", id="seq_negative"),
+        pytest.param("not-a-date\n3\n", id="date_unreadable"),
+    ],
+)
+def test_touch_opened_when_previous_unreadable(
+    make_workspace: MakeWorkspace, previous_text: str
+) -> None:
+    """通し番号を読めない前の時点は無いものとして返し、今の形で書き換える（正常系）。"""
+    # 準備
+    root = make_workspace()
+    opened_path = root / RECORD_DIR / ".mindstella-opened"
+    opened_path.write_text(previous_text, encoding="utf-8")
+    # 実行
+    previous = history.touch_opened(root, SECOND_OPENED)
+    # 検証
+    assert previous is None
+    assert opened_path.read_text(encoding="utf-8").splitlines() == [
+        SECOND_OPENED["at"],
+        str(SECOND_OPENED["seq"]),
+    ]
 
 
 def test_advance_seq() -> None:

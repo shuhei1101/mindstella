@@ -1236,17 +1236,53 @@ def test_seen_response_when_rejected(
 
 
 def test_opened_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """2 回目は 1 回目の日時を返す（正常系）。"""
+    """2 回目は 1 回目の時点を返し、通し番号は先頭のまとまりの `until_seq` にする（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"))
+    # まとまり 1 つ（until_seq 3）と、その後に書き換えたまだまとめていない変更（last_seq 4）
+    changes_text = (
+        "last_seq: 4\n"
+        "sets:\n"
+        "  - id: V-1\n"
+        "    at: '2026-10-04T12:00:00+00:00'\n"
+        "    summary: 最初のまとまり\n"
+        "    until_seq: 3\n"
+        "    added: [D-1]\n"
+        "    changed: []\n"
+        "pending:\n"
+        "  added: []\n"
+        "  changed: [D-1]\n"
+    )
+    root = make_workspace(make_item("D-1"), raw_files={"changes.yaml": changes_text})
     # 実行
     first = serve.opened_response(_context(root), now=_first_opened_now)
     second = serve.opened_response(_context(root), now=_second_opened_now)
     # 検証
+    first_point = {"at": FIRST_OPENED, "seq": 3}
+    second_point = {"at": SECOND_OPENED, "seq": 3}
     assert (first.status, second.status) == (200, 200)
     assert second.content_type == "application/json; charset=utf-8"
-    assert json.loads(first.body) == {"previous": None, "opened": FIRST_OPENED}
-    assert json.loads(second.body) == {"previous": FIRST_OPENED, "opened": SECOND_OPENED}
+    assert json.loads(first.body) == {"previous": None, "opened": first_point}
+    assert json.loads(second.body) == {"previous": first_point, "opened": second_point}
+
+
+def test_opened_response_when_changes_invalid(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """`changes.yaml` が読めなければ 422 で、前回開いた時点を書き換えない（異常系）。"""
+    # 準備
+    # last_seq を文字列にしてスキーマに合わなくした記録
+    changes_text = 'last_seq: "x"\nsets: []\npending:\n  added: []\n  changed: []\n'
+    root = make_workspace(make_item("D-1"), raw_files={"changes.yaml": changes_text})
+    opened_path = root / RECORD_DIR / ".mindstella-opened"
+    opened_path.write_text(f"{FIRST_OPENED}\n3\n", encoding="utf-8")
+    # 実行
+    response = serve.opened_response(_context(root), now=_second_opened_now)
+    # 検証
+    assert response.status == 422
+    assert response.content_type == "application/problem+json; charset=utf-8"
+    detail_lines = json.loads(response.body)["detail"].splitlines()
+    assert any(line.startswith("changes.yaml: last_seq:") for line in detail_lines)
+    assert opened_path.read_text(encoding="utf-8") == f"{FIRST_OPENED}\n3\n"
 
 
 def test_opened_response_when_write_fails(

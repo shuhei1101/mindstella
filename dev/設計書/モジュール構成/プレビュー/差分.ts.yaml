@@ -213,10 +213,10 @@ functions:
         passing: positional
         description: 端末に残した選んだ時点
       - name: since
-        type: string
+        type: OpenedPoint
         required: true
         passing: positional
-        description: そのタブの「前回開いてから」の始まりの日時
+        description: そのタブの「前回開いてから」の始まり（`resolveSince`）
     returns:
       type: DiffPoint | null
       description: 差分を出さないとき（`sel` が `null`・記録に無いまとまり・`added`・`changed`・`removed` がどれも空の `pending`）は `null`
@@ -224,20 +224,32 @@ functions:
       1. `sel` で分ける
          - まとまりの ID の場合、そのまとまりの `added`・`changed`・`removed` を印にし、`fromSeq` を 1 つ古いまとまりの `until_seq`（無ければ 0）、`untilSeq` をそのまとまりの `until_seq` にする
          - `pending` の場合、`pending` を印にし、`fromSeq` を先頭のまとまりの `until_seq`（無ければ 0）にする
-         - `since` の場合、`at` が `since` より後のまとまりと `pending` を合わせて印にし、`fromSeq` をそのうち一番古いまとまりの 1 つ前の `until_seq`（まとまりが無ければ先頭の `until_seq`）にする
+         - `since` の場合、`until_seq` が `since.seq` より大きいまとまりと `pending` を合わせて印にし、`fromSeq` をそのうち一番古いまとまりの 1 つ前の `until_seq`（まとまりが無ければ先頭の `until_seq`）にする。まとまりの `at` は比べない。`sub` は `{since.at を JST にした日時} より後`
       2. `removed` の要素を ID → `{id, kind, title}` にして `removed` に入れる（`removed` を持たないまとまり・`pending` は何も足さない）
       3. `removed` にある ID を `added`・`changed` から除き（合わせた範囲で足して消した項目は消した項目としてだけ出す）、`added` にある ID を `changed` から除く
     unit_tests:
       - name: test_resolve_diff_point
         case: 正常
         summary: 古いまとまりと「前回開いてから」で印と範囲が分かれる
-        condition: 'V-1（`until_seq` 1、A-1 を変えた）・V-2（`until_seq` 2、D-3 を変え D-6 を足した、`at` が `since` より後）。`parametrize`: `V-1` / `since`'
+        condition: 'V-1（`until_seq` 1、A-1 を変えた）・V-2（`until_seq` 2、D-3 を変え D-6 を足した）。`since` は `{at, seq: 1}`。`parametrize`: `V-1` / `since`'
         mock: なし
-        expected: '`V-1` は `changed` が {A-1}、`fromSeq` 0、`untilSeq` 1。`since` は `added` が {D-6}、`changed` が {D-3}、`fromSeq` 1、`untilSeq` が `null`'
+        expected: '`V-1` は `changed` が {A-1}、`fromSeq` 0、`untilSeq` 1。`since` は `added` が {D-6}、`changed` が {D-3}、`fromSeq` 1、`untilSeq` が `null`、`sub` が `since.at` の JST の日時と `より後`'
+      - name: test_resolve_diff_point_when_at_before_since
+        case: 正常
+        summary: まとまりの日時ではなく通し番号で範囲を決める
+        condition: 'V-1（`until_seq` 1）・V-2（`until_seq` 2、D-3 を変えた、`at` が `since.at` より前か同じ秒）。`since` は `{at, seq: 1}`。`parametrize`: V-2 の `at` が `since.at` より 1 時間前 / 同じ秒'
+        mock: なし
+        expected: どちらも `changed` が {D-3}、`fromSeq` 1
+      - name: test_resolve_diff_point_when_seq_ahead
+        case: 正常
+        summary: 始まりの通し番号が先頭のまとまりより大きければ、まとまりを範囲に入れない
+        condition: 'V-1（`until_seq` 1）・V-2（`until_seq` 2）。`since` は `{at, seq: 9}`。`pending` は空。`sel` が `since`'
+        mock: なし
+        expected: '`added`・`changed`・`removed` が空、`fromSeq` 2'
       - name: test_resolve_diff_point_when_removed
         case: 正常
         summary: 消した項目を持ち、合わせた範囲で足して消した項目は新規にしない
-        condition: 'V-2（R-1 を変え、`removed` に N-6）・V-3（N-7 を足した、`at` が `since` より後）・V-4（`removed` に N-7、`at` が `since` より後）。`parametrize`: `V-2` / `since`。`removed` を持たない V-1 も並べる'
+        condition: 'V-2（`until_seq` 2、R-1 を変え、`removed` に N-6）・V-3（`until_seq` 3、N-7 を足した）・V-4（`until_seq` 4、`removed` に N-7）。`since` は `{at, seq: 2}`。`parametrize`: `V-2` / `since`。`removed` を持たない V-1 も並べる'
         mock: なし
         expected: '`V-2` は `changed` が {R-1}、`removed` が N-6（`kind` `note`・消したときのタイトル）だけ。`since` は `added` が空、`removed` が N-7 だけ'
       - name: test_resolve_diff_point_when_pending_removed_only

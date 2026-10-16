@@ -153,8 +153,9 @@ def build_removed_workspace(
     (root / RECORD_DIR / "changes.yaml").write_text(
         yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
+    # 通し番号は 0（全てのまとまりが「前回開いてから」に入る）
     (root / RECORD_DIR / ".mindstella-opened").write_text(
-        f"{OPENED_BEFORE_SETS_AT}\n", encoding="utf-8"
+        f"{OPENED_BEFORE_SETS_AT}\n0\n", encoding="utf-8"
     )
     return root
 

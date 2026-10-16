@@ -1039,7 +1039,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: 前回からの差分を見る
     scope: public
-    summary: 前回開いた日時を返し、今の日時に書き換える（インターフェース定義『前回開いた日時』）
+    summary: 前回開いた日時と通し番号を返し、今の値に書き換える（インターフェース定義『前回開いた日時』）
     args:
       - name: context
         type: ServeContext
@@ -1054,18 +1054,27 @@ functions:
         description: 今の日時を返す関数
     returns:
       type: Response
-      description: 200 と `{previous, opened}`、書けなければ 500 の problem+json
+      description: 200 と `{previous, opened}`、`changes.yaml` が読めなければ 422、書けなければ 500 の problem+json
     process: |-
-      1. 前回開いた日時を書き換える（`touch_opened`。記録のロックは取らない）
+      1. `changes.yaml` を読み（`load_changes`。記録のロックは取らない）、今の通し番号を求める（`head_until_seq`）
+         - `SchemaMismatchError` の場合、`.mindstella-opened` を書き換えずに 422 を返す（`problem_response`、`detail` は `error.lines` を改行でつなぐ）
+      2. 前回開いた時点を `{at: now(), seq}` に書き換える（`touch_opened`。記録のロックは取らない）
          - `WriteFailedError` の場合、500 を返す（`problem_response`、`detail` に理由）
-      2. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{previous, opened}` を返す
+      3. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で `{previous, opened}` を返す
     unit_tests:
       - name: test_opened_response
         case: 正常
-        summary: 2 回目は 1 回目の日時を返す
-        condition: '`.mindstella-opened` を持たないワークスペースで 2 回呼ぶ。`now` は 1 回目と 2 回目で違う日時'
+        summary: 2 回目は 1 回目の時点を返し、通し番号は先頭のまとまりの `until_seq`
+        condition: '`.mindstella-opened` を持たず、まとまり 1 つとまだまとめていない変更を持つワークスペースで 2 回呼ぶ。`now` は 1 回目と 2 回目で違う日時'
         mock: '`now`'
-        expected: 1 回目の `previous` が `null`、2 回目の `previous` が 1 回目の `opened`
+        expected: 1 回目の `previous` が `null`、`opened.seq` が先頭のまとまりの `until_seq`（`last_seq` でない）。2 回目の `previous` が 1 回目の `opened`
+      - name: test_opened_response_when_changes_invalid
+        case: 異常
+        summary: '`changes.yaml` が読めなければ 422 で、前回開いた時点を書き換えない'
+        condition: '`.mindstella-opened` を持ち、`changes.yaml` の `last_seq` を文字列にしたワークスペース'
+        mock: なし
+        expected: 'ステータスが 422、`Content-Type` が `application/problem+json`、`detail` が `changes.yaml: last_seq:` で始まる行を持つ。`.mindstella-opened` が呼ぶ前と同じ'
+        exception: 変更履歴が読めない
       - name: test_opened_response_when_write_fails
         case: 異常
         summary: 書けなければ 500
