@@ -147,7 +147,7 @@ def test_normal(
     served = call_tool("preview_url", workspace=ws)
     assert served.data is not None
     url = served.data["url"]
-    visit_and_close(page, url, root)
+    visit_and_close(page, url)
     replay(
         "update", workspace=ws, id="D-3", item={"status": "要見直し", "body_markdown": BODY_D3_AFTER}
     )
