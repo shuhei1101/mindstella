@@ -11,6 +11,7 @@ import pytest
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import APIResponse, Locator, Page, Route
 from preview_a11y_checks import axe_rule_results
+from preview_added_mark_helpers import DECORATION_LINES_JS, serve_added_mark_workspace
 from preview_alias_helpers import (
     MARK_IN_PANEL_BODY_JS,
     MARK_MARGIN_PX,
@@ -2220,6 +2221,31 @@ def test_diff_body(
         [line, text] for line, text in unchanged
     ]
     assert page.locator("aside.panel .md:not(.md-value) del.df-blk [data-line-start]").count() == 0
+
+
+def test_diff_body_when_added_mark_without_underline(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """足した段落・箇条書きの項目・表の行の文字に下線を引かず、足した色の面に + の記号を併せる（正常系）。"""
+    # 準備・実行
+    url = serve_added_mark_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector(f"{DIFF_BODY} li.df-li-add")
+    # 検証（足した塊・箇条書きの足した項目・表の足した行の文字に線を引かない）
+    assert page.evaluate(DECORATION_LINES_JS, f"{DIFF_BODY} ins.df-blk") == ["none"]
+    assert page.evaluate(DECORATION_LINES_JS, f"{DIFF_BODY} li.df-li-add") == ["none"]
+    assert page.evaluate(DECORATION_LINES_JS, f"{DIFF_BODY} tr.df-add td") == ["none"]
+    # 検証（足した印が色だけにならない: 足した塊と表の足した行に + の記号がある）
+    assert "足した段落です。" in page.inner_text(f"{DIFF_BODY} ins.df-blk")
+    assert "足した項目" in page.inner_text(f"{DIFF_BODY} li.df-li-add")
+    assert "4" in page.inner_text(f"{DIFF_BODY} tr.df-add")
+    assert page.inner_text(f"{DIFF_BODY} ins.df-blk > .df-sign") == "+"
+    assert page.inner_text(f"{DIFF_BODY} tr.df-add .df-sign") == "+"
+    # 検証（足した色の面が付く）
+    background_js = "e => getComputedStyle(e).backgroundColor"
+    assert page.eval_on_selector(f"{DIFF_BODY} ins.df-blk", background_js) != TRANSPARENT
+    assert page.eval_on_selector(f"{DIFF_BODY} li.df-li-add", background_js) != TRANSPARENT
+    assert page.eval_on_selector(f"{DIFF_BODY} tr.df-add td", background_js) != TRANSPARENT
 
 
 def test_diff_diagram(
