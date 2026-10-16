@@ -570,4 +570,3 @@ def _read_opened(path: Path) -> OpenedPoint | None:
     if seq < 0:
         return None
     return {"at": at, "seq": seq}
-
