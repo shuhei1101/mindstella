@@ -76,30 +76,30 @@ states:
       - name: thread
         value: '{"id":"TH-6","status":"closed","tags":["起票"],"summary":"T-4 の Issue の起票の確認。起票して完了","target":"T-4","posts":[{"author":"user","body":"起票してよい","created":"2026-10-12T03:00:00+00:00","seen":true},{"author":"ai","body":"T-4 の Issue を起票しました。","created":"2026-10-12T03:07:00+00:00","seen":false}],"events":[{"kind":"closed","author":"ai","reason":"起票した","created":"2026-10-12T03:07:00+00:00"}]}'
 lead: スレッドの一覧に並べる 1 件の行。状態の札・題・向けた項目・最後の書き手と日時・レビュー中の印・タグを出し、押すとそのスレッドを開く。まだ送っていない新しいスレッドも同じ形で「レビュー中」の札にする。
-status: planned
+status: implemented
 args:
   - name: thread
     type: オブジェクト
     default: なし（`pending` を渡す）
     description: 送ったスレッド（『スレッドの読み取り』の `threads[]` の 1 件）。`pending` とどちらか片方を渡す。題は `summary`、無ければ最初の書き込みの 1 行目。2 行目の書き手と日時は最後の書き込みのもの。書き込みに `seen` が `false` のものがあれば、2 行目の先頭に未読の札を出す（クローズのスレッドでも出す）
-    status: planned
+    status: implemented
   - name: pending
     type: オブジェクト
     default: なし（`thread` を渡す）
     description: まだ送っていない新しいスレッドの最初の書き込み（『レビュー中のコメントの読み取り』の `items[]` のうち `thread` を持たないもの）。題は本文の 1 行目、書き手は「あなた」、日時は溜めた日時（`created`）。タグを出さない
-    status: planned
+    status: implemented
   - name: has_pending_reply
     type: 真偽値
     default: 'false'
     enabled_when: '`thread` を渡したとき'
     description: そのスレッドへのレビュー中の返信を持つか。持てば 2 行目の末尾に「レビュー中」の印を出す
-    status: planned
+    status: implemented
   - name: active_tag
     type: 文字列
     default: なし（タグで絞っていない）
     enabled_when: '`thread` を渡したとき'
     description: 一覧を絞っているタグ。同じタグの札を押した見た目にする
-    status: planned
+    status: implemented
 events:
   - name: 開く
     when: 行のタグ以外の所を押したとき（Enter・Space を含む）

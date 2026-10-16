@@ -39,7 +39,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 320px にして見せる
 lead: 表示の設定の「ワークスペースの既定にする」で開くモーダル。見出し「ワークスペースの既定を書き換えますか」の下に、ネットワークの見た目と表示する種類の今の既定と保存する値を並べ、取り消すと保存するを出す。
-status: planned
+status: implemented
 args:
   - name: from
     type: オブジェクト
