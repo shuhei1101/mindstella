@@ -1154,8 +1154,10 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 .md ins.df-blk > .df-sign { color: var(--df-add); }
 /* 消した塊の記号 */
 .md del.df-blk > .df-sign { color: var(--df-del); }
-/* 箇条書きの足した項目: 足した色の面と下線 */
+/* 箇条書きの足した項目: 足した色の面と + */
 .md li.df-li-add { background: var(--df-add-bg); border-radius: var(--radius); }
+/* 箇条書きの足した項目の記号 */
+.md li.df-li-add > .df-sign { display: inline-block; margin-right: 6px; color: var(--df-add); font-family: var(--font-mono); font-weight: 700; text-decoration: none; }
 /* 消した箇条書きの項目: 消した色の面と取り消し線 */
 .md li.df-li-del { background: var(--df-del-bg); border-radius: var(--radius); color: var(--text-2); text-decoration: line-through; }
 /* 表の足した行 */
