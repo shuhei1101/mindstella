@@ -26,34 +26,34 @@ args:
     type: オブジェクトの配列
     required: true
     description: 選べる時点。先頭から「差分を出さない（今の内容）」・「まだまとめていない変更」（あるときだけ）・「前回開いてから」・まとまりを新しい順に。その並びで出す
-    status: planned
+    status: implemented
   - name: points[].sel
     type: 文字列
     required: true
     description: 時点の識別子。空文字列は差分を出さない、`pending`・`since`・まとまりの ID
-    status: planned
+    status: implemented
   - name: points[].name
     type: 文字列
     required: true
     description: 行の名前。まとまりは `commit` の説明。長ければ折り返し、日時と件数の列を押し出さない
-    status: planned
+    status: implemented
   - name: points[].sub
     type: 文字列
     required: true
     description: 名前の下の補足（まとまりの日時・「{日時} より後」・差分を出さない行の説明）
-    status: planned
+    status: implemented
   - name: points[].count
     type: 整数
     required: false
     default: なし（件数を出さない）
     choices: 0 以上
     description: その時点で足した・変えた・消した項目の数。「{数} 件」と出す
-    status: planned
+    status: implemented
   - name: current
     type: 文字列
     required: true
     description: 今選んでいる時点の `sel`。その行にチェックを付け、開いたときにフォーカスを置く
-    status: planned
+    status: implemented
 events:
   - name: 時点を選ぶ
     when: 行を押したとき

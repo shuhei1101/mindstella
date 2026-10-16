@@ -25,17 +25,17 @@ args:
     type: オブジェクトの配列
     required: true
     description: 消した項目。渡した並びで出す。1 件以上を渡す（0 件のとき使う側は帯を置かない）
-    status: planned
+    status: implemented
   - name: items[].id
     type: 文字列
     required: true
     description: 消した項目の ID。等幅の文字で出す
-    status: planned
+    status: implemented
   - name: items[].title
     type: 文字列
     required: true
     description: 消したときのタイトル。途中で切らずに折り返す
-    status: planned
+    status: implemented
 uses:
   - component: dev/設計書/部品設計/プレビュー/差分の印.ts#
     how: 各項目の頭に `kind` を `removed` にして置く

@@ -38,54 +38,54 @@ args:
     type: オブジェクトの配列
     required: true
     description: 条件の並び。種類・状態・タグを先に置き、残りは表の列の順。値を 1 つも持たない条件は渡さない。各値の `count` は、文字の条件で絞った項目で数える
-    status: planned
+    status: implemented
   - name: groups[].key
     type: 文字列
     required: true
     description: 条件の識別子（表の列の `key`。ネットワークの種類は `type`）。URL のハッシュの `f.{列}` と同じ値
-    status: planned
+    status: implemented
   - name: groups[].label
     type: 文字列
     required: true
     description: 条件の見出し（`legend`）
-    status: planned
+    status: implemented
   - name: groups[].values
     type: オブジェクトの配列
     required: true
     description: 選べる値の並び（`value`・`count`、マップでは `hit` も）。並びは状態・フェーズなどの決まった順、ほかは五十音の順。`count` は、その条件以外の条件で絞った項目のうち、その値を持つ件数。0 件の値も並べ、文字を薄くする。`hit` はマップのキーワードに一致した件数で、1 以上のときだけ件数の左に出す
-    status: planned
+    status: implemented
   - name: groups[].mark
     type: 列挙
     default: none
     choices: none・status・kind
     description: 値の左に添える印。status は状態の印（色と形）、kind は項目の種類の色の点
-    status: planned
+    status: implemented
   - name: selected
     type: オブジェクト
     default: なし（どの条件でも絞らない）
     description: 条件の `key` → 選んだ値の配列。文字の条件は `~{列}` → 入っている文字 1 つの配列。値を選んだ条件の見出しの右に「{件数} 件を選択」と「解除」を出す。件数は、その条件の `values` に並ぶ値のうち選んだものの数（並ばない値は数えない）
-    status: planned
+    status: implemented
   - name: total
     type: 整数
     required: true
     description: 画面の項目の件数
-    status: planned
+    status: implemented
   - name: shown
     type: 整数
     required: true
     description: 今の条件に合う項目の件数。値を選んだ条件があるときは見出しの右に「{total} 件中 {shown} 件」、無いときは「{total} 件」と出し、下端のボタンを「{shown} 件を表示」にする
-    status: planned
+    status: implemented
   - name: narrow
     type: 真偽値
     default: 'false'
     description: 画面の幅が 900px 以下か。偽のときはコメントの一覧と同じ 420px の幅で、真のときはトップバーの下から画面の幅いっぱいに重ねる（コメントの一覧と同じ）
-    status: planned
+    status: implemented
   - name: texts
     type: オブジェクトの配列
     required: false
     default: なし（文字の欄を出さない）
     description: 文字で絞れる列（`key`・`label`・今入っている文字 `value`）。値を選ぶ条件にしない、数でない列（ID・タイトル・用語・意味など）だけを表の列の順に渡す。値の条件より上に「文字を含む」のまとまりとして、列ごとに見出しと文字の欄を並べる
-    status: planned
+    status: implemented
 events:
   - name: 値の選択
     when: 値のチェックボックスを入れた・外したとき
@@ -116,5 +116,5 @@ accessibility:
 refs:
   - dev/設計書/部品設計/プレビュー/トップバー.ts#
   - dev/設計書/部品設計/プレビュー/表.ts#
-status: planned
+status: implemented
 test_file: tests/integration/storybook/test_filter_drawer_stories.py

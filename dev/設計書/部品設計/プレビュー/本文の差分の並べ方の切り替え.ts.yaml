@@ -34,7 +34,7 @@ accessibility:
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
 refs:
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文の差分の並べ方]
-status: planned
+status: implemented
 notes:
   モック: '`dev/mock/components/body-diff-layout/` の「並べ方の切り替え」'
 test_file: tests/integration/storybook/test_body_diff_layout_switch_stories.py

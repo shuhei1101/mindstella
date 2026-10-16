@@ -65,13 +65,13 @@ args:
     required: false
     default: なし（印を出さない）
     description: 項目の ID → `new`（新規）か `changed`（変更）。差分の表示の間だけ渡され、当たる行のタイトルの右に部品『差分の印』を文言なしで置く
-    status: planned
+    status: implemented
   - name: comments
     type: オブジェクト
     required: false
     default: なし（印を出さない）
     description: 項目の ID → レビュー中のコメントの件数（1 以上）。サーバーにつながって開いたときだけ渡され、当たる行のタイトルの右、差分の印の後ろに部品『コメントの印』を置く。収まらなければ次の行へ送る
-    status: planned
+    status: implemented
 events:
   - name: 並べ替え
     when: 見出しの文字を押したとき

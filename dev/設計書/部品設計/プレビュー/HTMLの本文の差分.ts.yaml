@@ -63,7 +63,7 @@ args:
     default: inline
     choices: inline・side
     description: 本文の差分の並べ方。`side` のとき、「描いた結果」では左に選んだ時点、右に今の本文を描いた結果を並べて右にだけ今と同じ印を付け、「原文の差分」では左に選んだ時点の行（消した行に印）、右に今の行（足した行に印）を並べて片側にしか無い行の向かいを縞の空きにする。`beforeFormat` が `md` のときは、左を Markdown として描き、右の今の本文には印を付けない
-    status: planned
+    status: implemented
 uses:
   - component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
     how: 描いた結果を `marked` と `marks`（足した行・変えた行）で描き、`selectable` は `false` で渡す（差分の表示の間は選んだ箇所のコメントの入口を出さない）
