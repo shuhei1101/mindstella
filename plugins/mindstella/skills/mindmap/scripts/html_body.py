@@ -111,7 +111,7 @@ def mark_lines(source: str) -> str:
     collector.collect(source)
     pieces: list[str] = []
     cursor = 0
-    for (name_end, line), end_line in zip(collector.marks, collector.end_lines):
+    for (name_end, line), end_line in zip(collector.marks, collector.end_lines, strict=True):
         pieces.append(source[cursor:name_end])
         pieces.append(f' {LINE_ATTR}="{line}" {LINE_END_ATTR}="{end_line}"')
         cursor = name_end
