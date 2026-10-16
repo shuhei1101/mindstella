@@ -34,6 +34,8 @@ var MindmapPreview;
     MindmapPreview.LINE_ATTR = "data-line-start";
     /** Markdown の中の `html` のコードブロックを置き換えた、HTML の本文の枠の入れ物の class */
     MindmapPreview.HTML_BLOCK_CLASS = "html-block";
+    /** 本文の表を包む、表の中だけで横に送る入れ物の class */
+    MindmapPreview.TABLE_WRAP_CLASS = "md-table-wrap";
     /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
     MindmapPreview.HTML_LINE_ATTR = "data-line";
     /** 開きタグの直後の改行を、解析のときに取り除く要素 */
@@ -315,6 +317,15 @@ var MindmapPreview;
             if (line !== null)
                 block.setAttribute(MindmapPreview.LINE_ATTR, line);
             pre.replaceWith(block);
+        }
+        // 表を、表の中だけで横に送れる入れ物で包む（行の印は表の行に残し、入れ物には付けない）
+        for (const table of root.querySelectorAll("table")) {
+            const wrap = MindmapPreview.h({
+                tag: "div",
+                attrs: { class: MindmapPreview.TABLE_WRAP_CLASS, tabindex: "0", role: "group", "aria-label": "本文の表" },
+            });
+            table.replaceWith(wrap);
+            wrap.append(table);
         }
         return root;
     }

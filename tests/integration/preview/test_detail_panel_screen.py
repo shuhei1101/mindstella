@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import APIResponse, Locator, Page, Route
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_added_mark_helpers import DECORATION_LINES_JS, serve_added_mark_workspace
 from preview_alias_helpers import (
@@ -35,6 +36,7 @@ from preview_body_layout_helpers import (
     rows_of_columns,
     seed_side_layout,
 )
+from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
     LONG_BODY,
@@ -4290,3 +4292,65 @@ def test_diff_html_body_layout_switch(
     page.wait_for_selector(f"{LAYOUT_PANEL} .sbs-html", state="detached")
     # 検証
     assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+
+
+@pytest.mark.parametrize("width", BODY_WIDTHS)
+def test_body_wrap_when_long_words_and_tables(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
+) -> None:
+    """本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は包む入れ物の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", body="A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.set_viewport_size({"width": width, "height": 800})
+    page.wait_for_selector("aside.panel .md-table-wrap")
+    # 実行
+    result = page.evaluate(WRAP_METRICS_JS, "aside.panel")
+    # 検証
+    assert result["bodyScrollsHorizontally"] is False
+    assert result["mdScrollsHorizontally"] is False
+    assert (result["urlInside"], result["codeInside"]) == (True, True)
+    assert result["urlRows"] > 1
+    assert result["codeRows"] > 1
+    assert result["idrefOverflowWrap"] == "normal"
+    assert result["idrefRows"] == 1
+    wide, narrow = result["wraps"]
+    group = {"role": "group", "label": "本文の表", "tabindex": "0", "inside": True}
+    assert {key: wide[key] for key in group} == group
+    assert {key: narrow[key] for key in group} == group
+    assert wide["scrolls"] is True
+    assert wide["overflowX"] in ("auto", "scroll")
+    assert narrow["scrolls"] is False
+    assert narrow["tableFillsWrap"] is True
+
+
+@pytest.mark.parametrize("width", [320, 1280])
+def test_body_table_scroll_by_keyboard(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
+) -> None:
+    """列の多い表を包む入れ物はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れて、フォーカスの枠は内側に描く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", body="A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.set_viewport_size({"width": width, "height": 800})
+    wrap = page.locator("aside.panel .md-table-wrap").first
+    wrap.wait_for()
+    # 実行
+    wrap.focus()
+    page.keyboard.press("ArrowRight")
+    # 検証
+    page.wait_for_function("selector => document.querySelector(selector).scrollLeft > 0", arg="aside.panel .md-table-wrap")
+    assert wrap.evaluate("element => getComputedStyle(element).outlineOffset") == "-2px"
+    assert page.evaluate("document.querySelector('aside.panel .panel-body').scrollLeft") == 0
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """詳細パネルは、幅 320px で横にスクロールせず、本文の表・図・コードブロックのほかにあふれる区画が無く、閉じる・全画面のボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 実行
+    set_smallest(page)
+    # 検証
+    assert_fits_smallest(page, ("aside.panel", 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]'), scope="aside.panel")

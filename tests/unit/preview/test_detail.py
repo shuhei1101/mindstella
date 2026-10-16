@@ -1445,6 +1445,58 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     ]
 
 
+# 表だけの本文（1 行目から表）の今と、表の直前にあった段落（1〜2 行目）を消した回
+REMOVED_BEFORE_TABLE_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
+REMOVED_BEFORE_TABLE_ENTRY = _body_entry(line=1, now=[], before=["消した段落", ""])
+
+# 消した塊の親と直後の兄弟、表を包む入れ物の子を調べる
+REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const removed = panel.querySelector(".md:not(.md-value) del.df-blk");
+    const next = removed.nextElementSibling;
+    return {
+        parentIsWrap: removed.parentElement.classList.contains("md-table-wrap"),
+        nextIsWrap: next !== null && next.classList.contains("md-table-wrap"),
+        wrapChildren: next === null ? null : [...next.children].map((child) => child.tagName),
+    };
+}"""
+
+
+def test_detail_panel_when_diff_removed_before_table(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
+        bodies={"D-1.md": REMOVED_BEFORE_TABLE_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result == {"parentIsWrap": False, "nextIsWrap": True, "wrapChildren": ["TABLE"]}
+
+
 # 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
 RAW_BODY_NOW = "# 図\n\n```mermaid\nflowchart TD\n  A[設計を決める] --> B\n```\n"
 RAW_BODY_ENTRY = _body_entry(

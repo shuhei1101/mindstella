@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import assert_bands_stay, assert_page_does_not_scroll, region_metrics
@@ -367,3 +369,63 @@ def test_region(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
     assert_page_does_not_scroll(page)
     assert metrics["content"]["scrollHeight"] > metrics["content"]["clientHeight"]
     assert_bands_stay(page)
+
+
+# 次に検討する項目のタイルの見出しと「すべて表示」が、それぞれ何行に折り返しているかと、「すべて表示」が見出しの下の行にあるかを読む
+HEAD_ROWS_JS = """() => {
+    // 行の数は、文字の枠の縦の中心が半分の高さより離れるたびに 1 行と数える（印のアイコンと文字は高さが違うので、上端では数えない）
+    const rows = (element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rects = [...range.getClientRects()].sort((a, b) => a.top + a.height / 2 - (b.top + b.height / 2));
+        return rects.reduce((count, rect, index) => {
+            const previous = rects[index - 1];
+            const apart = previous === undefined || rect.top + rect.height / 2 - (previous.top + previous.height / 2) > rect.height / 2;
+            return apart ? count + 1 : count;
+        }, 0);
+    };
+    const heading = document.querySelector('#tile-next .t-head h2');
+    const link = document.querySelector('#tile-next .t-head .t-link');
+    return {
+        headingRows: rows(heading),
+        linkRows: rows(link),
+        linkBelow: link.getBoundingClientRect().top >= heading.getBoundingClientRect().bottom - 1,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("width", "link_below"),
+    [
+        pytest.param(320, True, id="narrowest"),
+        pytest.param(389, False, id="narrow_edge"),
+        pytest.param(390, False, id="wide_edge"),
+    ],
+)
+def test_next_tile_head_when_narrow(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    width: int,
+    link_below: bool,
+) -> None:
+    """幅 389px 以下でも見出しと「すべて表示」はそれぞれ 1 行で、収まらない幅 320px では「すべて表示」が見出しの下の行に回る。収まる幅では見出しと同じ行に並ぶ（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    # 実行
+    page.set_viewport_size({"width": width, "height": 568})
+    page.wait_for_selector("#tile-next .t-link")
+    result = page.evaluate(HEAD_ROWS_JS)
+    # 検証
+    assert result == {"headingRows": 1, "linkRows": 1, "linkBelow": link_below}
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """概要は、幅 320px でページが横にスクロールせず、表のほかに横にあふれる区画が無く、「すべて表示」が表示幅の中にある（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=overview")
+    # 実行
+    set_smallest(page)
+    # 検証
+    assert_fits_smallest(page, ("#tile-next .t-link",))
