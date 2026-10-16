@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>本文の差分の並べ方 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、今のプレビューのスタイルに、この PR の本文の差分の並べ方の分を重ねる -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/261/assets/style.css">
+  <style>
+    /* カタログの本文: 画面の高さに縛らず、縦に流す */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文の幅と余白 */
+    main.content { display: block; max-width: var(--content-max); margin: 0 auto; padding: 28px var(--page-pad) 64px; overflow: visible; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { display: grid; gap: 12px; padding: 16px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface); overflow: auto; }
+    /* 本文の幅が足りない見本: 最も狭い端末（320px）の本文の幅 */
+    .stage.narrow { width: 320px; max-width: 100%; }
+    /* 見本の名前 */
+    .demo-name { margin: 0; color: var(--text-2); font-size: var(--fs-xs); }
+    /* 状態を見せるための見本のクラス: ホバー */
+    .segment button.is-hover { background: var(--hover); }
+    /* 状態を見せるための見本のクラス: フォーカス */
+    .segment button.is-focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+    /* 本文の幅が足りない見本: 本文の幅が足りないときに出すインラインの本文を見せる */
+    .stage.narrow .sbs-fallback { display: block; }
+    /* 見本の切り替えの行: 台の中では下の余白を詰める */
+    .stage .body-diff-bar, .stage .html-diff-bar { margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / body-diff-layout</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">本文の差分の並べ方</h1>
+
+    <!-- 並べ方の切り替え: 選んでいる状態・ホバーとフォーカス・HTML の本文での並び -->
+    <section class="cat-sec">
+      <h2>並べ方の切り替え</h2>
+      <p>本文の差分の頭に置くボタンの組。押している方を塗りで示す。既定はインライン。本文が選んだ時点から変わっていない項目と、差分を出せない項目には出さない。</p>
+      <div class="stage">
+        <p class="demo-name">インラインを選んでいる（既定）</p>
+        <div class="body-diff-bar"><div class="segment sbs-switch" role="group" aria-label="本文の差分の並べ方"><button type="button" aria-pressed="true">インライン</button><button type="button" aria-pressed="false">左右に並べる</button></div></div>
+        <p class="demo-name">左右に並べるを選んでいる</p>
+        <div class="body-diff-bar"><div class="segment sbs-switch" role="group" aria-label="本文の差分の並べ方"><button type="button" aria-pressed="false">インライン</button><button type="button" aria-pressed="true">左右に並べる</button></div></div>
+        <p class="demo-name">選んでいない方にホバー・キーボードのフォーカス</p>
+        <div class="body-diff-bar"><div class="segment sbs-switch" role="group" aria-label="本文の差分の並べ方"><button type="button" aria-pressed="true">インライン</button><button type="button" aria-pressed="false" class="is-hover is-focus">左右に並べる</button></div></div>
+        <p class="demo-name">HTML の本文: 描いた結果・原文の差分の切り替えとは別の組にし、その前に置く</p>
+        <div class="html-diff-bar"><div class="segment sbs-switch" role="group" aria-label="本文の差分の並べ方"><button type="button" aria-pressed="false">インライン</button><button type="button" aria-pressed="true">左右に並べる</button></div><div class="segment" role="group" aria-label="本文の差分の見せ方"><button type="button" aria-pressed="true">描いた結果</button><button type="button" aria-pressed="false">原文の差分</button></div><div class="df-legend"><span class="df-lg df-lg-add"><i aria-hidden="true"></i>足した</span><span class="df-lg df-lg-chg"><i aria-hidden="true"></i>変わった</span></div></div>
+      </div>
+    </section>
+
+    <!-- 左右に並べた本文: 変えていない段落・変えた段落の語の面・片側だけの段落の空き・箇条書きと表の行 -->
+    <section class="cat-sec">
+      <h2>左右に並べた本文</h2>
+      <p>左に選んだ時点、右に今を描く。消した印は左、足した印は右だけに付け、変えていない段落は同じ高さで向かい合わせる。片側にしか無い段落の向かいは縞の空きにする。</p>
+      <div class="stage">
+        <div class="sbs">
+          <div class="sbs-head" aria-hidden="true"><span>選んだ時点</span><span>今</span></div>
+          <div class="sbs-cols">
+            <section class="sbs-col sbs-before" aria-label="選んだ時点の本文">
+              <div class="sbs-row"><div class="md"><p>変えていない段落は、左右で同じ高さに並ぶ。</p></div></div>
+              <div class="sbs-row sbs-chg"><div class="md"><del class="df-blk"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除: </span><p>まとまりを 1 つ選ぶと、その回で<span class="df-word df-del">変わった</span>項目<span class="df-word df-del">だけ</span>に印が付く。</p></del></div></div>
+              <div class="sbs-row sbs-chg"><div class="md"><del class="df-blk"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除: </span><p>図の拡大は、差分の表示の間は使えない。</p></del></div></div>
+              <div class="sbs-row sbs-chg sbs-gap" aria-hidden="true"></div>
+              <div class="sbs-row sbs-chg"><div class="md"><ul><li>ボードとカードは、タイトルの左に印が付く</li><li>表は、ID の列の右に印が付く</li></ul></div></div>
+              <div class="sbs-row sbs-chg"><div class="md"><table><thead><tr><th>印</th><th>意味</th></tr></thead><tbody><tr><td>+</td><td>足した</td></tr><tr class="df-row df-del"><td><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除: </span>〜</td><td>並べ替えた</td></tr></tbody></table></div></div>
+            </section>
+            <section class="sbs-col sbs-after" aria-label="今の本文">
+              <div class="sbs-row"><div class="md"><p>変えていない段落は、左右で同じ高さに並ぶ。</p></div></div>
+              <div class="sbs-row sbs-chg"><div class="md"><ins class="df-blk"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加: </span><p>まとまりを 1 つ選ぶと、その回で<span class="df-word df-add">足した</span>項目<span class="df-word df-add">に新規（+）、変えた項目に変更（●）の</span>印が付く。</p></ins></div></div>
+              <div class="sbs-row sbs-chg sbs-gap" aria-hidden="true"></div>
+              <div class="sbs-row sbs-chg"><div class="md"><ins class="df-blk"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加: </span><p>差分を出せない項目には、ミニマップも出ない。</p></ins></div></div>
+              <div class="sbs-row sbs-chg"><div class="md"><ul><li>ボードとカードは、タイトルの左に印が付く</li><li>表は、ID の列の右に印が付く</li><li class="df-li-add">マップは、節の右上に印が付く</li></ul></div></div>
+              <div class="sbs-row sbs-chg"><div class="md"><table><thead><tr><th>印</th><th>意味</th></tr></thead><tbody><tr><td>+</td><td>足した</td></tr><tr class="df-row df-add"><td><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加: </span>濃い面</td><td>変わった語</td></tr></tbody></table></div></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 消した箇条書きの項目: 左の列だけで使う印 -->
+    <section class="cat-sec">
+      <h2>消した箇条書きの項目</h2>
+      <p>インラインには無い、左の列だけで使う印。消した色の面と取り消し線。</p>
+      <div class="stage"><div class="md"><ul><li>表は、ID の列の右に印が付く</li><li class="df-li-del">マップは、節の左上に印が付く</li></ul></div></div>
+    </section>
+
+    <!-- 原文の差分を左右に並べる: HTML の本文で原文の差分を選んでいるとき -->
+    <section class="cat-sec">
+      <h2>原文の差分を左右に並べる（HTML の本文）</h2>
+      <p>原文の行を左右に並べ、片側にしか無い行の向かいを縞の空きにする。変わっていない長い並びは両方の列にまたがる 1 行に畳む。</p>
+      <div class="stage">
+        <div class="html-diff">
+          <p class="html-diff-head">原文の差分</p>
+          <div class="sbs-head" aria-hidden="true"><span>選んだ時点</span><span>今</span></div>
+          <pre class="dg-raw df-raw df-split" tabindex="0" aria-label="原文の差分（左に選んだ時点、右に今）"><span class="df-line df-skip df-span">変わっていない 24 行</span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span>&lt;h2&gt;画面の流れ&lt;/h2&gt;</span><span class="df-line"><span class="df-sign" aria-hidden="true"> </span>&lt;h2&gt;画面の流れ&lt;/h2&gt;</span><span class="df-line df-del"><span class="df-sign" aria-hidden="true">−</span>&lt;p&gt;種類を<span class="df-word df-del">選び、「適用」を押す</span>&lt;/p&gt;</span><span class="df-line df-add"><span class="df-sign" aria-hidden="true">+</span>&lt;p&gt;種類を<span class="df-word df-add">切り替える</span>&lt;/p&gt;</span><span class="df-line df-gap" aria-hidden="true"></span><span class="df-line df-add"><span class="df-sign" aria-hidden="true">+</span>&lt;p&gt;タイルがすぐに変わる。&lt;/p&gt;</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 本文の幅が足りないとき: 左右に並べるを選んでいても、切り替えを出さずにインラインで出す -->
+    <section class="cat-sec">
+      <h2>本文の幅が 560px に満たないとき</h2>
+      <p>資料以外の詳細パネル（480px）と狭い画面幅。左右に並べるを選んでいても、切り替えを出さずにインラインで出す。</p>
+      <div class="stage narrow">
+        <div class="md sbs-fallback"><del class="df-blk"><span class="df-sign" aria-hidden="true">−</span><span class="sr-only">削除: </span><p>まとまりを 1 つ選ぶと、その回で<span class="df-word df-del">変わった</span>項目<span class="df-word df-del">だけ</span>に印が付く。</p></del><ins class="df-blk"><span class="df-sign" aria-hidden="true">+</span><span class="sr-only">追加: </span><p>まとまりを 1 つ選ぶと、その回で<span class="df-word df-add">足した</span>項目<span class="df-word df-add">に新規（+）、変えた項目に変更（●）の</span>印が付く。</p></ins></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

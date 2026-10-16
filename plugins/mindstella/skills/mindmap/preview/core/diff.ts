@@ -290,6 +290,150 @@ namespace MindmapPreview {
     }));
   }
 
+  /** 本文を marked の最上位の token ごとに分けた 1 つの塊 */
+  export type SideBlock = {
+    /** 塊の最初の行（1 始まり） */
+    start: number;
+    /** 塊の最後の行（1 始まり） */
+    end: number;
+    /** 塊の原文（末尾の改行を除く） */
+    raw: string;
+    /** 塊の中で、左の列は消した行、右の列は足した行のうち空行でない行の番号。空なら変えていない塊 */
+    changed: Set<number>;
+  };
+
+  /** 左右の列で同じ高さに揃える 1 行。片側が空ならその側は縞の空きになる */
+  export type SideRow = {
+    /** 変えた行か。変えていない塊の対の行は偽 */
+    changed: boolean;
+    /** 左の列（選んだ時点）の塊 */
+    left: SideBlock[];
+    /** 右の列（今）の塊 */
+    right: SideBlock[];
+  };
+
+  /** 本文を、marked の最上位の token（空行の token を除く）ごとの塊に分ける。塊の変えた行は空で返す */
+  function topBlocks(source: string): SideBlock[] {
+    const blocks: SideBlock[] = [];
+    let line = 0;
+    for (const token of marked.lexer(source)) {
+      if (token.type !== "space") {
+        const raw = token.raw.replace(/\n+$/, "");
+        blocks.push({ start: line + 1, end: line + raw.split("\n").length, raw, changed: new Set() });
+      }
+      line += token.raw.split("\n").length - 1;
+    }
+    return blocks;
+  }
+
+  /** 行の差分の各行の種類（前の版・今の版の 1 始まりの行）と、変えていない行の前の版 → 今の版の行の対応 */
+  type SideLineKinds = {
+    before: (LinePart["kind"] | null)[];
+    after: (LinePart["kind"] | null)[];
+    map: (number | null)[];
+  };
+
+  /** 行の差分から、前の版と今の版の各行の種類と、変えていない行の前の版 → 今の版の行の対応を作る */
+  function sideLineKinds(parts: LinePart[]): SideLineKinds {
+    const before: SideLineKinds["before"] = [null];
+    const after: SideLineKinds["after"] = [null];
+    const map: SideLineKinds["map"] = [null];
+    for (const part of parts) {
+      for (const _ of part.lines) {
+        if (part.kind !== "added") {
+          before.push(part.kind);
+          map.push(part.kind === "same" ? after.length : null);
+        }
+        if (part.kind !== "removed") after.push(part.kind);
+      }
+    }
+    return { before, after, map };
+  }
+
+  /** 塊の範囲の行のうち、その種類（消した・足した）で空行でない行を塊の変えた行に入れる */
+  function markChangedLines({
+    blocks,
+    kinds,
+    lines,
+    kind,
+  }: {
+    blocks: SideBlock[];
+    kinds: (LinePart["kind"] | null)[];
+    lines: string[];
+    kind: "removed" | "added";
+  }): void {
+    for (const block of blocks) {
+      for (let line = block.start; line <= block.end; line += 1) {
+        if (kinds[line] === kind && (lines[line - 1] ?? "").trim() !== "") block.changed.add(line);
+      }
+    }
+  }
+
+  /** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
+  export function linesOfText(text: string): string[] {
+    const lines = text.split("\n");
+    if (lines.at(-1) === "") lines.pop();
+    return lines;
+  }
+
+  /** 前後の Markdown の本文を塊に分け、変えていない塊を向かい合わせた左右の列の行にする。行の差分を打ち切ったら null */
+  export function sideBySideRows({ before, after }: { before: string; after: string }): SideRow[] | null {
+    const parts = diffLineParts(before, after);
+    if (parts === null) return null;
+    const kinds = sideLineKinds(parts);
+    const beforeBlocks = topBlocks(before);
+    const afterBlocks = topBlocks(after);
+    markChangedLines({ blocks: beforeBlocks, kinds: kinds.before, lines: linesOfText(before), kind: "removed" });
+    markChangedLines({ blocks: afterBlocks, kinds: kinds.after, lines: linesOfText(after), kind: "added" });
+    /** 前の版の x 番目の塊と対になる、今の版の from 番目以降の変えていない同じ塊の番号。無ければ -1 */
+    const anchorOf = (x: number, from: number): number => {
+      const block = beforeBlocks[x];
+      if (block === undefined || block.changed.size > 0) return -1;
+      const target = kinds.map[block.start];
+      for (let k = from; k < afterBlocks.length; k += 1) {
+        const other = afterBlocks[k];
+        if (other === undefined || target === null || target === undefined) return -1;
+        // 対応する行から始まる塊で、変えておらず原文が同じときだけ対にする
+        if (other.start === target) return other.changed.size === 0 && other.raw === block.raw ? k : -1;
+        if (other.start > target) return -1;
+      }
+      return -1;
+    };
+    const rows: SideRow[] = [];
+    let i = 0;
+    let j = 0;
+    while (i < beforeBlocks.length || j < afterBlocks.length) {
+      // 次の区切り（変えていない塊の対）を探す。無ければ末尾まで
+      let ai = beforeBlocks.length;
+      let aj = afterBlocks.length;
+      for (let x = i; x < beforeBlocks.length; x += 1) {
+        const k = anchorOf(x, j);
+        if (k >= 0) {
+          ai = x;
+          aj = k;
+          break;
+        }
+      }
+      const left = beforeBlocks.slice(i, ai);
+      const right = afterBlocks.slice(j, aj);
+      // 区切りの間の変えた塊: 数が両側で同じなら 1 つずつ、違えばまとめて 1 つの行にする
+      if (left.length === right.length) {
+        left.forEach((block, offset) => {
+          const opposite = right[offset];
+          if (opposite !== undefined) rows.push({ changed: true, left: [block], right: [opposite] });
+        });
+      } else {
+        rows.push({ changed: true, left, right });
+      }
+      const anchorLeft = beforeBlocks[ai];
+      const anchorRight = afterBlocks[aj];
+      if (anchorLeft !== undefined && anchorRight !== undefined) rows.push({ changed: false, left: [anchorLeft], right: [anchorRight] });
+      i = ai + 1;
+      j = aj + 1;
+    }
+    return rows;
+  }
+
   /** HTML の本文の差分: 今の本文で足した行と変えた行（今の本文の 1 始まりの行）と、消しただけの箇所があるか */
   export type HtmlChangedLines = { added: number[]; changed: number[]; removedOnly: boolean };
 

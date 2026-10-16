@@ -1143,3 +1143,224 @@ def test_normal_when_minimap_jump(
     # 検証（ミニマップが消える）
     page.wait_for_selector(f"{PANEL_SCOPE} .df-map", state="detached", timeout=MINIMAP_TIMEOUT_MS)
     assert page.locator(".df-map").count() == 0
+
+
+# 本文を左右に並べるシナリオの値: 資料 A-1 の本文の書き換える前と後（1 つ目の段落を消して、末尾に段落を足す）
+SIDE_BODY_A1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落です。\n\n3 つ目の段落です。\n"
+SIDE_BODY_A1_AFTER = "2 つ目の段落です。\n\n3 つ目の段落です。\n\n4 つ目の段落です。\n"
+
+# 詳細パネルで左右に並べるシナリオの値: 資料 A-1 の本文の書き換える前と後（2 つ目の段落を書き換える）
+SIDE_PANEL_A1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落は、前の案です。\n\n3 つ目の段落です。\n"
+SIDE_PANEL_A1_AFTER = "1 つ目の段落です。\n\n2 つ目の段落は、今の案です。\n\n3 つ目の段落です。\n"
+
+# 検討事項 D-1 の本文の書き換える前と後（2 つ目の段落を書き換える）
+SIDE_BODY_D1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落は、来週に決めます。\n\n3 つ目の段落です。\n"
+SIDE_BODY_D1_AFTER = "1 つ目の段落です。\n\n2 つ目の段落は、今週に決めます。\n\n3 つ目の段落です。\n"
+
+# 資料の詳細パネルの本文が 560px 以上になる画面の幅
+SIDE_VIEWPORT_WIDTH = 1280
+
+# 書き換えのまとまりの説明
+SIDE_COMMIT_SUMMARY = "段落を直す"
+
+# 切り替えのボタンの組と、左右に並べた本文、その左右の列（選んだ時点・今）
+SWITCH = ".sbs-switch"
+SIDE_BEFORE = ".sbs section.sbs-before"
+SIDE_AFTER = ".sbs section.sbs-after"
+
+# 切り替えのボタンごとに、並べ方と押している状態を返す
+SWITCH_STATE_SCRIPT = """scope => [...document.querySelectorAll(`${scope} .sbs-switch button`)].map(
+    button => [button.getAttribute('data-layout'), button.getAttribute('aria-pressed')]
+)"""
+
+# 左右の列ごとに、直下の行の上端の位置と、変えた行か、を返す
+SIDE_ROWS_SCRIPT = """scope => [...document.querySelectorAll(`${scope} .sbs .sbs-col`)].map(
+    column => [...column.querySelectorAll(':scope > .sbs-row')].map(
+        row => [row.getBoundingClientRect().top, row.classList.contains('sbs-chg'), row.textContent.trim()]
+    )
+)"""
+
+# 端末の保存領域の個人の上書きを読む
+SAVED_PREFS_SCRIPT = "JSON.parse(localStorage.getItem('mindmap-preview') || 'null')"
+
+
+def _switch_state(page: Page, scope: str) -> list[list[str]]:
+    """切り替えの 2 つのボタンを、並べ方と押している状態の組で返す。"""
+    state: list[list[str]] = page.evaluate(SWITCH_STATE_SCRIPT, scope)
+    return state
+
+
+def _wait_side_by_side(page: Page, scope: str) -> None:
+    """左右に並べた本文が置かれるまで待つ。"""
+    page.wait_for_selector(f"{scope} .sbs", timeout=DIAGRAM_TIMEOUT_MS)
+
+
+def test_normal_when_side_by_side(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    snapshot_tree: SnapshotTree,
+    page: Page,
+) -> None:
+    """全画面で「左右に並べる」を押すと本文の差分を左右に並べ、HTML の本文でも前後の描いた結果を左右に並べ、「インライン」を押すと今までの表示に戻る（正常系）。"""
+    # 準備（Markdown の A-1 の 1 つ目の段落を消して末尾に段落を足し、HTML の A-2 の 2 つ目の段落を書き換えて 1 つのまとまりにする）
+    root = make_workspace(
+        make_item("A-1"),
+        make_item("A-2", body="A-2.html"),
+        bodies={"A-1.md": SIDE_BODY_A1_BEFORE, "A-2.html": HTML_BODY_BEFORE},
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("update", workspace=ws, id="A-1", item={"body_markdown": SIDE_BODY_A1_AFTER})
+    replay("update", workspace=ws, id="A-2", item={"body_html": HTML_BODY_AFTER})
+    replay("commit", workspace=ws, summary=SIDE_COMMIT_SUMMARY)
+    before = snapshot_records(snapshot_tree(root))
+    open_preview(url, "#tab=docs", width=SIDE_VIEWPORT_WIDTH)
+    pick_history_point(page, SIDE_COMMIT_SUMMARY)
+    # 実行（資料のタブで A-1 を押し、全画面表示を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector(f"{PANEL_SCOPE}.open {SWITCH}")
+    page.locator(PANEL_SCOPE).get_by_role("button", name="全画面表示").click()
+    page.wait_for_selector(f"{FULL_SCOPE}[open] {SWITCH}")
+    hash_before = page.evaluate("location.hash")
+    # 検証（本文の差分がインラインで出て、切り替えは「インライン」を押した状態）
+    assert _switch_state(page, FULL_SCOPE) == [["inline", "true"], ["side", "false"]]
+    assert page.locator(f"{FULL_SCOPE} .md:not(.md-value) del.df-blk").count() == 1
+    assert page.locator(f"{FULL_SCOPE} .md:not(.md-value) ins.df-blk").count() == 1
+    assert page.locator(f"{FULL_SCOPE} .sbs").is_visible() is False
+    # 実行（「左右に並べる」を押す）
+    page.locator(FULL_SCOPE).get_by_role("button", name="左右に並べる").click()
+    _wait_side_by_side(page, FULL_SCOPE)
+    # 検証（左に消した 1 つ目の段落、右に足した段落。変えていない 2 つ目・3 つ目の段落は左右の同じ高さに印なしで並ぶ）
+    assert "1 つ目の段落です。" in page.inner_text(f"{FULL_SCOPE} {SIDE_BEFORE} del.df-blk")
+    assert "4 つ目の段落です。" in page.inner_text(f"{FULL_SCOPE} {SIDE_AFTER} ins.df-blk")
+    left, right = page.evaluate(SIDE_ROWS_SCRIPT, FULL_SCOPE)
+    assert [row[0] for row in left] == [row[0] for row in right]
+    assert [row[1] for row in left] == [True, False, False, True]
+    assert [row[2] for row in left[1:3]] == ["2 つ目の段落です。", "3 つ目の段落です。"]
+    assert _switch_state(page, FULL_SCOPE) == [["inline", "false"], ["side", "true"]]
+    # 検証（左右に並べている間も、URL のハッシュは変わらない）
+    assert page.evaluate("location.hash") == hash_before
+    # 実行（元の大きさに戻し、資料のタブで A-2 を押し、全画面表示を押す）
+    page.locator(FULL_SCOPE).get_by_role("button", name="元の大きさに戻す").click()
+    page.wait_for_selector(FULL_SCOPE, state="hidden")
+    page.click('.doc-card[data-id="A-2"]')
+    page.wait_for_function(
+        f"document.querySelector('{PANEL_SCOPE} .d-title')?.textContent.includes('A-2')"
+    )
+    page.locator(PANEL_SCOPE).get_by_role("button", name="全画面表示").click()
+    page.wait_for_selector(f"{FULL_SCOPE}[open] .sbs-html")
+    _wait_frame_rendered(page, f"{FULL_SCOPE} .sbs-after iframe.html-frame")
+    _wait_frame_rendered(page, f"{FULL_SCOPE} .sbs-before iframe.html-frame")
+    # 検証（切り替えは A-1 で選んだ「左右に並べる」を押した状態のまま。左に選んだ時点、右に今の描いた結果で、右の書き換えた 2 つ目の段落に変更の印が付く）
+    assert _switch_state(page, FULL_SCOPE) == [["inline", "false"], ["side", "true"]]
+    assert page.frame_locator(f"{FULL_SCOPE} .sbs-before iframe.html-frame").locator("p").all_inner_texts() == [
+        "1 つ目の段落",
+        "2 つ目の段落",
+        "3 つ目の段落",
+    ]
+    marked = page.frame_locator(f"{FULL_SCOPE} .sbs-after iframe.html-frame").locator("p").evaluate_all(
+        PARAGRAPH_MARKS_SCRIPT
+    )
+    assert marked == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 実行（「インライン」を押す）
+    page.locator(FULL_SCOPE).get_by_role("button", name="インライン").click()
+    page.wait_for_selector(f"{FULL_SCOPE} .sbs-html", state="detached")
+    _wait_frame_rendered(page, f"{FULL_SCOPE} .html-marked iframe.html-frame")
+    # 検証（A-2 の本文は、描いた本文の上で変わった段落に印を付けた今までの表示に戻る）
+    marked = page.frame_locator(f"{FULL_SCOPE} .html-marked iframe.html-frame").locator("p").evaluate_all(
+        PARAGRAPH_MARKS_SCRIPT
+    )
+    assert marked == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 実行（元の大きさに戻し、差分の表示から抜ける）
+    page.locator(FULL_SCOPE).get_by_role("button", name="元の大きさに戻す").click()
+    page.wait_for_selector(FULL_SCOPE, state="hidden")
+    page.get_by_role("button", name="差分の表示をやめる").click()
+    _wait_frame_rendered(page, HTML_BODY_FRAME)
+    # 検証（切り替えは消え、A-2 の本文は今の内容を描いた結果だけになる）
+    assert page.locator(f"{PANEL_SCOPE} {SWITCH}").count() == 0
+    assert page.frame_locator(HTML_BODY_FRAME).locator("p").all_inner_texts() == [
+        "1 つ目の段落",
+        "書き直した 2 つ目の段落",
+        "3 つ目の段落",
+    ]
+    # ワークスペースの YAML と本文の中身が、開く前と同じ
+    assert snapshot_records(snapshot_tree(root)) == before
+
+
+def test_normal_when_side_by_side_in_panel(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    snapshot_tree: SnapshotTree,
+    page: Page,
+) -> None:
+    """幅の足りる資料の詳細パネルで「左右に並べる」を押すと上書きを残し、幅の足りない検討事項の詳細パネルでは切り替えを出さず、その全画面では上書きに従って左右に並べ、読み込み直しても保つ（正常系）。"""
+    # 準備（Markdown の A-1 と D-1 の 2 つ目の段落をそれぞれ書き換えて 1 つのまとまりにする）
+    root = make_workspace(
+        make_item("A-1"),
+        make_item("D-1", body="D-1.md"),
+        bodies={"A-1.md": SIDE_PANEL_A1_BEFORE, "D-1.md": SIDE_BODY_D1_BEFORE},
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    replay("update", workspace=ws, id="A-1", item={"body_markdown": SIDE_PANEL_A1_AFTER})
+    replay("update", workspace=ws, id="D-1", item={"body_markdown": SIDE_BODY_D1_AFTER})
+    replay("commit", workspace=ws, summary=SIDE_COMMIT_SUMMARY)
+    before = snapshot_records(snapshot_tree(root))
+    open_preview(url, "#tab=docs", width=SIDE_VIEWPORT_WIDTH)
+    pick_history_point(page, SIDE_COMMIT_SUMMARY)
+    # 実行（資料のタブで A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector(f"{PANEL_SCOPE}.open {SWITCH}")
+    # 検証（本文の差分がインラインで出て、切り替えは「インライン」を押した状態）
+    assert _switch_state(page, PANEL_SCOPE) == [["inline", "true"], ["side", "false"]]
+    assert page.locator(f"{PANEL_SCOPE} .sbs").is_visible() is False
+    # 実行（「左右に並べる」を押す）
+    page.locator(PANEL_SCOPE).get_by_role("button", name="左右に並べる").click()
+    _wait_side_by_side(page, PANEL_SCOPE)
+    # 検証（詳細パネルの中で、書き換えた 2 つ目の段落が左に消した印つき、右に足した印つきで同じ高さに並ぶ。端末の保存領域に上書きが残る）
+    assert "前の案です" in page.inner_text(f"{PANEL_SCOPE} {SIDE_BEFORE} del.df-blk")
+    assert "今の案です" in page.inner_text(f"{PANEL_SCOPE} {SIDE_AFTER} ins.df-blk")
+    left, right = page.evaluate(SIDE_ROWS_SCRIPT, PANEL_SCOPE)
+    assert [row[0] for row in left] == [row[0] for row in right]
+    assert [row[1] for row in left] == [False, True, False]
+    prefs = page.evaluate(SAVED_PREFS_SCRIPT)
+    assert prefs["bodyLayout"] == "side"
+    # 実行（検討事項のタブで D-1 を押す）
+    page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="table"]')
+    _open_decision(page, "D-1")
+    page.wait_for_selector(f"{PANEL_SCOPE} .md:not(.md-value) ins.df-blk:visible")
+    # 検証（切り替えが無く、本文の差分はインラインで出る）
+    assert page.locator(f"{PANEL_SCOPE} {SWITCH}").is_visible() is False
+    assert page.locator(f"{PANEL_SCOPE} .sbs").is_visible() is False
+    assert "来週に決めます" in page.inner_text(f"{PANEL_SCOPE} .md:not(.md-value) del.df-blk:visible")
+    assert "今週に決めます" in page.inner_text(f"{PANEL_SCOPE} .md:not(.md-value) ins.df-blk:visible")
+    # 実行（全画面表示を押す）
+    page.locator(PANEL_SCOPE).get_by_role("button", name="全画面表示").click()
+    page.wait_for_selector(f"{FULL_SCOPE}[open] .sbs", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（切り替えは「左右に並べる」を押した状態で、本文の差分が左右に並ぶ）
+    assert _switch_state(page, FULL_SCOPE) == [["inline", "false"], ["side", "true"]]
+    assert "来週に決めます" in page.inner_text(f"{FULL_SCOPE} {SIDE_BEFORE} del.df-blk")
+    assert "今週に決めます" in page.inner_text(f"{FULL_SCOPE} {SIDE_AFTER} ins.df-blk")
+    # 実行（画面を読み込み直す）
+    page.reload()
+    page.wait_for_selector(f"{FULL_SCOPE}[open] .sbs", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（読み込み直した後も、D-1 の詳細の全画面で本文の差分が左右に並ぶ）
+    assert "来週に決めます" in page.inner_text(f"{FULL_SCOPE} {SIDE_BEFORE} del.df-blk")
+    assert "今週に決めます" in page.inner_text(f"{FULL_SCOPE} {SIDE_AFTER} ins.df-blk")
+    # ワークスペースの YAML と本文の中身が、開く前と同じ
+    assert snapshot_records(snapshot_tree(root)) == before

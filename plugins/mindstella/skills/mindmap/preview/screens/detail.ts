@@ -25,6 +25,8 @@ namespace MindmapPreview {
       heading: (heading: string | null) => void;
       /** 本文のまとまりのリンクを押した（`diff` の値）。使う側が記録にあるまとまりか確かめて、時点を選ぶ */
       changeSet: (id: string) => void;
+      /** 本文の差分の並べ方の切り替えを押した（押した並べ方）。使う側が個人の上書きに残して描き直す */
+      layout: (layout: BodyLayout) => void;
       /** HTML の本文の枠で文を選び終えた・選びを外した。使う側が選んだ箇所のコメントの入口を出す・閉じる */
       frame?: { select: (selection: HtmlFrameSelection) => void; clear: () => void };
     };
@@ -38,6 +40,8 @@ namespace MindmapPreview {
     heading?: string | null;
     /** 差分のミニマップを置くか（`resolveDisplay` の `minimap`）。差分の表示の間だけ置く */
     minimap?: boolean;
+    /** 本文の差分の並べ方（`resolveDisplay` の `bodyLayout`）。本文の差分を描けたときだけ切り替えを置く */
+    bodyLayout?: BodyLayout;
   };
 
   /** 図の拡大へ渡す、差分の表示の間のその図の前の版の記法 */
@@ -130,7 +134,7 @@ namespace MindmapPreview {
   }
 
   /** 差分の記号（見えるのは記号だけで、名前は読み上げに残す） */
-  function signMarks(op: keyof typeof SIGNS): Node[] {
+  export function signMarks(op: keyof typeof SIGNS): Node[] {
     const { glyph, name } = SIGNS[op];
     return [h({ tag: "span", attrs: { class: "df-sign", "aria-hidden": "true" }, children: [glyph] }), ...(name === "" ? [] : [srOnly(name)])];
   }
@@ -506,7 +510,7 @@ namespace MindmapPreview {
   }
 
   /** 今の本文の各行が属するブロックの先頭の行を求める。図のコードブロックの中は null（図の差分が示す）。それ以外のコードブロックの中は、中身の最初の行を持つブロックに属する */
-  function blockOwners({ now, starts }: { now: string[]; starts: number[] }): (number | null)[] {
+  export function blockOwners({ now, starts }: { now: string[]; starts: number[] }): (number | null)[] {
     const owners: (number | null)[] = [];
     let fence: { owner: number | null } | null = null;
     now.forEach((text, offset) => {
@@ -530,7 +534,7 @@ namespace MindmapPreview {
   }
 
   /** 差分の記号を頭に置いた、足した塊・消した塊の囲み */
-  function diffBlock({ op, children }: { op: "add" | "del"; children: Node[] }): HTMLElement {
+  export function diffBlock({ op, children }: { op: "add" | "del"; children: Node[] }): HTMLElement {
     return h({
       tag: op === "add" ? "ins" : "del",
       attrs: { class: "df-blk" },
@@ -567,7 +571,7 @@ namespace MindmapPreview {
   }
 
   /** 消した行を別に描いた要素から、行の印を外す（今の本文の行に対応づけない） */
-  function withoutLineMarks(root: HTMLElement): HTMLElement {
+  export function withoutLineMarks(root: HTMLElement): HTMLElement {
     for (const element of root.querySelectorAll(`[${LINE_ATTR}]`)) element.removeAttribute(LINE_ATTR);
     return root;
   }
@@ -677,7 +681,7 @@ namespace MindmapPreview {
   }
 
   /** 要素の中の、語の面を付ける対象のブロック（文書の順） */
-  function wordBlocksIn(root: HTMLElement): HTMLElement[] {
+  export function wordBlocksIn(root: HTMLElement): HTMLElement[] {
     return [...root.querySelectorAll<HTMLElement>(WORD_BLOCK_SELECTOR)].filter(isWordBlock);
   }
 
@@ -705,7 +709,7 @@ namespace MindmapPreview {
   }
 
   /** 語の面を付ける、消したブロックと足したブロックの対 */
-  type WordPair = { removed: HTMLElement; added: HTMLElement };
+  export type WordPair = { removed: HTMLElement; added: HTMLElement };
 
   /** 変えた行の対（`pairedParts`）ごとに、消した部分から描いたブロックと、足した部分の行を持つ今のブロックを前から順に並べ、両方の数が同じときだけ 1 つずつ対にする */
   function wordPairs({
@@ -782,7 +786,7 @@ namespace MindmapPreview {
   }
 
   /** 対の 2 つのブロックの、行の印を除いた文字を語の単位で比べ、変わった語を濃い面で囲む。比べられなかった対には付けない */
-  function markWords({ pair, deadline }: { pair: WordPair; deadline: number }): void {
+  export function markWords({ pair, deadline }: { pair: WordPair; deadline: number }): void {
     const removedNodes = wordTextNodes(pair.removed);
     const addedNodes = wordTextNodes(pair.added);
     const inline = diffInline(removedNodes.map((node) => node.data).join(""), addedNodes.map((node) => node.data).join(""), deadline);
@@ -945,7 +949,7 @@ namespace MindmapPreview {
   }
 
   /** 変わった図に、色・凡例と消したもの・Raw の行ごとの差分を付ける。前の版の図を描けない・色を付けない種類・突き合わせを打ち切ったときは、図の枠に色を付ける */
-  async function decorateDiagram({ figure, beforeSource }: { figure: HTMLElement; beforeSource: string }): Promise<void> {
+  export async function decorateDiagram({ figure, beforeSource }: { figure: HTMLElement; beforeSource: string }): Promise<void> {
     const holder = figure.querySelector<HTMLElement>(".mermaid");
     const afterSource = holder?.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
     figure.classList.add("df-changed", "df-frame");
@@ -1004,6 +1008,7 @@ namespace MindmapPreview {
     /** その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。配る書き出しでは null（節を置かない） */
     review: { items: ReviewState["items"]; edit: ReviewEditProps } | null;
     view: DiffView | null;
+    bodyLayout: BodyLayout;
   };
 
   /** 資料の HTML の本文の枠が持つ属性（コメントの一覧から開いたとき、示す箇所を求める枠を引く） */
@@ -1026,7 +1031,7 @@ namespace MindmapPreview {
   }
 
   /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-  function detailBody({ id, index, on, review, view }: BodyProps): HTMLElement {
+  function detailBody({ id, index, on, review, view, bodyLayout }: BodyProps): HTMLElement {
     const entry = index.byId.get(id);
     const body = h({ tag: "div", attrs: { class: "detail" } });
     if (entry === undefined) return body;
@@ -1090,6 +1095,9 @@ namespace MindmapPreview {
       let bodyDeadline: number | null = null;
       let notice: HTMLElement | null = null;
       let diagramBefore: string | null = null;
+      // 左右に並べた本文（並べ方が「左右に並べる」のとき）と、並べ方の切り替え
+      let side: SideBySideBodyDiff | null = null;
+      let layoutBar: HTMLElement | null = null;
       const versions = view?.versions ?? null;
       if (versions !== null && versions.before !== null && !versions.trimmed) {
         if (missingLibraries(["jsdiff"]).length > 0) {
@@ -1104,7 +1112,20 @@ namespace MindmapPreview {
           const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source, deadline: bodyDeadline });
           rendered = bodyDiff?.root ?? null;
           markBodyWords = bodyDiff?.markWords ?? null;
-          if (rendered === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
+          if (rendered === null) {
+            notice = noteBox(NOTE_BODY_TOO_LARGE);
+          } else if (versions.beforeBody !== source) {
+            // 本文が選んだ時点から変わっていて差分を描けたときだけ、並べ方の切り替えを置く
+            side =
+              bodyLayout === "side"
+                ? sideBySideBodyDiff({ before: versions.beforeBody, after: source, lined: source === index.data.bodies[item.body ?? ""], deadline: bodyDeadline })
+                : null;
+            if (bodyLayout === "side" && side === null) {
+              notice = noteBox(NOTE_BODY_TOO_LARGE);
+            } else {
+              layoutBar = h({ tag: "div", attrs: { class: "body-diff-bar" }, children: [bodyDiffLayoutSwitch({ layout: bodyLayout, on: { change: on.layout } })] });
+            }
+          }
         }
       }
       const root = rendered ?? renderMarkdown(source);
@@ -1122,15 +1143,34 @@ namespace MindmapPreview {
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
       drawHtmlBlocks(root);
+      // 左右に並べた本文にも、見出しのリンクと本文の印を付ける（右の列だけが今の本文の行を持つ）
+      for (const column of side?.columns ?? []) {
+        linkHeadings({
+          root: column,
+          onHeading: (slug) => {
+            scrollToHeading({ root: column, slug });
+            on.heading(slug);
+          },
+          onChangeSet: on.changeSet,
+        });
+        linkBody({ root: column, index, selfId: id, onOpen: on.open });
+        drawHtmlBlocks(column);
+      }
       // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）。キーの値の語の面を先に付ける
       if (bodyDeadline !== null) markKeys(bodyDeadline);
       markBodyWords?.();
+      side?.markWords();
       const drawn = renderDiagrams(root);
       if (diagramBefore !== null) {
         const before = diagramBefore;
         void drawn.then(() => decorateDiagrams({ root, before }));
       }
-      root.addEventListener("click", (event) => {
+      // 左右に並べた本文の図を描き、右の変えた図に色・凡例・Raw の差分を付ける
+      if (side !== null) {
+        const sideView = side;
+        void renderDiagrams(sideView.root).then(() => sideView.decorate());
+      }
+      const onDiagramTool = (event: Event): void => {
         const button = (event.target as Element).closest<HTMLElement>("[data-act]");
         const figure = button?.closest<HTMLElement>(".diagram");
         if (button === null || button === undefined || figure === null || figure === undefined) return;
@@ -1152,9 +1192,15 @@ namespace MindmapPreview {
             window.setTimeout(() => button.replaceChildren(icon("copy")), 1400);
           });
         }
-      });
+      };
+      root.addEventListener("click", onDiagramTool);
       const content = document.createDocumentFragment();
-      content.append(...(notice === null ? [] : [notice]), root);
+      // 左右に並べるときは、本文の幅が足りないときに出すインラインの本文も持つ
+      if (side !== null) {
+        side.root.addEventListener("click", onDiagramTool);
+        root.classList.add("sbs-fallback");
+      }
+      content.append(...(notice === null ? [] : [notice]), ...(layoutBar === null ? [] : [layoutBar]), ...(side === null ? [] : [side.root]), root);
       return section(label, content);
     };
     /** HTML の本文の節。本文を枠に描く。差分の表示の間は、描いた結果の上の印と原文の差分で前後を見せる */
@@ -1178,6 +1224,8 @@ namespace MindmapPreview {
             after: source,
             marked: drawn,
             beforeFormat: bodyFormatOf(versions.before.body) === "md" ? "md" : "html",
+            layout: bodyLayout,
+            layoutSwitch: bodyDiffLayoutSwitch({ layout: bodyLayout, on: { change: on.layout } }),
           });
           if (content === null) notice = noteBox(NOTE_BODY_TOO_LARGE);
         }
@@ -1447,13 +1495,13 @@ namespace MindmapPreview {
   }
 
   /** 本文の見出しのうち最も上の段を h4 にするための、全ての見出しに足す段の差。見出しが無ければ 0 */
-  function headingShift(roots: HTMLElement[]): number {
+  export function headingShift(roots: HTMLElement[]): number {
     const levels = roots.flatMap((root) => [...root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")].map(headingLevel));
     return levels.length === 0 ? 0 : BODY_TOP_HEADING_LEVEL - Math.min(...levels);
   }
 
   /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
-  function lowerHeadings({ root, shift }: { root: HTMLElement; shift: number }): void {
+  export function lowerHeadings({ root, shift }: { root: HTMLElement; shift: number }): void {
     for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
       const level = headingLevel(heading);
       const lowered = Math.min(level + shift, LOWEST_HEADING_LEVEL);
@@ -1472,10 +1520,10 @@ namespace MindmapPreview {
     }
   }
 
-  /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（本文に無ければ false） */
+  /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（見えている見出しが本文に無ければ false。左右に並べるときは同じ見出しが 3 か所にあるので、矩形を持つ最初のものへ送る） */
   function scrollToHeading({ root, slug }: { root: ParentNode; slug: string }): boolean {
-    const target = root.querySelector(`[data-heading="${CSS.escape(slug)}"]`);
-    if (target === null) return false;
+    const target = [...root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)].find(isRendered);
+    if (target === undefined) return false;
     target.scrollIntoView({ block: "start" });
     return true;
   }
@@ -1657,13 +1705,15 @@ namespace MindmapPreview {
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
   export function detailPanel(props: DetailProps): HTMLElement {
-    const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true } = props;
+    const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline" } = props;
     const kind = index.byId.get(id)?.kind;
     // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
     const body = h({
       tag: "div",
       attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
-      children: [detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }) })],
+      children: [
+        detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout }),
+      ],
     });
     const head = detailHead(props);
     bindHeadTitle({ head, body });

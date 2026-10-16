@@ -101,3 +101,8 @@ export const Narrow: Story = {
 export const MinimapHidden: Story = {
   args: { minimap: false, overrides: ["差分のミニマップ"] },
 };
+
+/** 詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
+export const BodyDiffLayoutOverridden: Story = {
+  args: { overrides: ["本文の差分の並べ方"] },
+};

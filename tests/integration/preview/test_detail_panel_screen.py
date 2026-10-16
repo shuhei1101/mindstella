@@ -23,6 +23,17 @@ from preview_alias_helpers import (
     write_alias_preview,
     write_term_alias_preview,
 )
+from preview_body_layout_helpers import (
+    INLINE_NAME,
+    LAYOUT_GROUP_NAME,
+    LAYOUT_SWITCH,
+    SIDE_NAME,
+    SIDE_VIEWPORT,
+    layout_buttons,
+    open_side_by_side,
+    rows_of_columns,
+    seed_side_layout,
+)
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
     LONG_BODY,
@@ -3541,7 +3552,7 @@ def test_highlight_location_when_html_body(
 def test_diff_html_body_when_format_changed(
     make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
 ) -> None:
-    """選んだ時点の本文が Markdown だったときは、描いた結果の印と切り替えを出さず、原文の差分だけを出す（正常系）。"""
+    """選んだ時点の本文が Markdown だったときは、描いた結果の印と見せ方の切り替えを出さず、原文の差分だけを出す。並べ方の切り替えは出す（正常系）。"""
     # 準備
     root = make_workspace()
     workspace = str(root)
@@ -3563,7 +3574,8 @@ def test_diff_html_body_when_format_changed(
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .df-raw")
     # 検証
-    assert page.locator("aside.panel .html-diff-bar").count() == 0
+    assert page.locator("aside.panel .html-diff-bar [aria-label='本文の差分の見せ方']").count() == 0
+    assert page.locator(f"aside.panel .html-diff-bar {LAYOUT_SWITCH}").count() == 1
     assert page.locator("aside.panel .html-marked").count() == 0
     assert "# 画面のモック" in page.inner_text("aside.panel .df-raw .df-line.df-del")
     assert "<h1>画面のモック</h1>" in page.inner_text("aside.panel .df-raw")
@@ -3979,3 +3991,276 @@ def test_diff_minimap_when_dragged(
     assert page.evaluate("document.body.classList.contains('df-map-dragging')") is False
     assert page.evaluate("location.hash") == hash_before
     assert page.evaluate("history.length") == history_length
+
+
+# ─── 本文の差分の並べ方 ───
+
+# 詳細パネルの中の、切り替え・左右に並べた本文・左右の列
+LAYOUT_PANEL = "aside.panel"
+SIDE_BEFORE = f"{LAYOUT_PANEL} .sbs section.sbs-before"
+SIDE_AFTER = f"{LAYOUT_PANEL} .sbs section.sbs-after"
+
+# 資料 A-1 の詳細パネルを開くハッシュ
+DOC_HASH = "#tab=docs&id=A-1"
+
+
+def _open_side_panel(
+    page: Page, open_preview: OpenPreview, url: str, sel: str = "V-2", hash_text: str = DOC_HASH
+) -> Page:
+    """画面の幅を決め、選んだ時点を入れて資料 A-1 の詳細パネルを開く。"""
+    page.set_viewport_size(SIDE_VIEWPORT)
+    return _open_diff_panel(page, open_preview, url, sel, hash_text)
+
+
+def test_diff_body_layout_switch(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示の間、本文が変わった資料の本文の差分の頭に「インライン」「左右に並べる」の切り替えを出し、押すとその場で描き直し、履歴に積まず URL のハッシュも変えず、押したボタンにフォーカスを保つ（正常系）。"""
+    # 準備
+    url, _ = write_body_layout_preview()
+    _open_side_panel(page, open_preview, url)
+    page.wait_for_selector(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}")
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    # 検証（読み上げの名前の付いたボタンの組で、「インライン」を押した状態。本文の差分の印より前にある）
+    assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "role") == "group"
+    assert page.get_attribute(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}", "aria-label") == LAYOUT_GROUP_NAME
+    assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+    assert page.evaluate(
+        """() => !!(document.querySelector('aside.panel .sbs-switch').compareDocumentPosition(
+            document.querySelector('aside.panel .md:not(.md-value) ins.df-blk')) & Node.DOCUMENT_POSITION_FOLLOWING)"""
+    )
+    # 実行（「左右に並べる」を押す）
+    page.get_by_role("button", name=SIDE_NAME).click()
+    open_side_by_side(page, LAYOUT_PANEL)
+    # 検証（押した状態が移り、押したボタンにフォーカスが残る。履歴もハッシュも変わらない）
+    assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["false", "true"]
+    assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "side"
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == hash_before
+    # 実行（「インライン」を押す）
+    page.get_by_role("button", name=INLINE_NAME).click()
+    page.wait_for_selector(f"{LAYOUT_PANEL} .sbs", state="detached")
+    # 検証（インラインに戻り、フォーカスは押したボタンに残る）
+    assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+    assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "inline"
+    assert page.locator(f"{DIFF_BODY} ins.df-blk").count() == 1
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == hash_before
+
+
+def test_diff_body_layout_switch_when_narrow(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """本文のスクロール領域の幅が 560px に満たない詳細パネルでは、並べ方が side でも切り替えを出さず、本文の差分をインラインで出す（正常系）。"""
+    # 準備
+    url, _ = write_body_layout_preview()
+    page.set_viewport_size(SIDE_VIEWPORT)
+    seed_side_layout(page, "V-2")
+    # 実行（幅 480px の検討事項の詳細パネルを開く）
+    open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{LAYOUT_PANEL}.open .md:not(.md-value) ins.df-blk:visible")
+    # 検証
+    assert page.locator(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}").is_visible() is False
+    assert page.locator(f"{LAYOUT_PANEL} .sbs").is_visible() is False
+    assert page.locator(f"{LAYOUT_PANEL} .md:not(.md-value) del.df-blk:visible").count() == 1
+
+
+def test_diff_body_layout_switch_when_body_unchanged(
+    write_body_layout_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+    page: Page,
+) -> None:
+    """選んだ時点で本文が変わっていない項目には、切り替えも左右に並べた本文も出さない（正常系）。"""
+    # 準備（A-1 の題だけを直したまとまり V-3 を選ぶ）
+    url, root = write_body_layout_preview()
+    assert call_tool("update", workspace=str(root), id="A-1", item={"title": "題だけ直す"}).is_error is False
+    assert call_tool("commit", workspace=str(root), summary="題を直す").is_error is False
+    seed_side_layout(page, "V-3")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    # 実行
+    open_preview(url, DOC_HASH)
+    page.wait_for_selector(f"{LAYOUT_PANEL}.open .df-head")
+    # 検証
+    assert page.locator(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}").count() == 0
+    assert page.locator(f"{LAYOUT_PANEL} .sbs").count() == 0
+
+
+def test_diff_body_layout_switch_when_library_unavailable(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """jsdiff を読めないとき、切り替えも左右に並べた本文も出さず、旨を出して今の本文を差分なしで描く（異常系）。"""
+    # 準備
+    url, _ = write_body_layout_preview()
+    page.route(JSDIFF_URL_PATTERN, lambda route: route.abort())
+    seed_side_layout(page, "V-2")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    # 実行
+    open_preview(url, DOC_HASH)
+    page.wait_for_selector(f"{LAYOUT_PANEL} .lib-error")
+    # 検証
+    assert page.locator(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}").count() == 0
+    assert page.locator(f"{LAYOUT_PANEL} .sbs").count() == 0
+    assert "2 つ目の段落です。" in page.inner_text(DIFF_BODY)
+
+
+def test_diff_body_layout_switch_when_body_too_large(
+    write_body_layout_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+    page: Page,
+) -> None:
+    """本文の行の差分を打ち切ったとき、並べ方が side でも切り替えも左右に並べた本文も出さず、旨を出して今の本文を差分なしで描く（正常系）。"""
+    # 準備（全ての行が違う大きな本文へ書き換えて、まとめていない変更を選ぶ）
+    url, root = write_body_layout_preview()
+    before = "".join(f"前の行 {index}\n" for index in range(LARGE_LINE_COUNT))
+    after = "".join(f"後の行 {index}\n" for index in range(LARGE_LINE_COUNT))
+    for body, summary in ((before, "大きな本文にする"), (after, None)):
+        assert call_tool("update", workspace=str(root), id="A-1", item={"body_markdown": body}).is_error is False
+        if summary is not None:
+            assert call_tool("commit", workspace=str(root), summary=summary).is_error is False
+    seed_side_layout(page, "pending")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    # 実行
+    open_preview(url, DOC_HASH)
+    page.wait_for_selector(f"{LAYOUT_PANEL} .df-note", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 検証
+    assert page.inner_text(f"{LAYOUT_PANEL} .df-note") == NOTE_BODY_TOO_LARGE
+    assert page.locator(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}").count() == 0
+    assert page.locator(f"{LAYOUT_PANEL} .sbs").count() == 0
+
+
+def test_diff_body_side_by_side(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """並べ方が side のとき、Markdown の本文の差分を、左に選んだ時点、右に今で描いて並べる。足した・消したは記号と色と取り消し線で分け、向かいに空きを置き、変えていない段落は同じ高さに並べる（正常系）。"""
+    # 準備・実行
+    url, _ = write_body_layout_preview()
+    seed_side_layout(page, "V-2")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    open_preview(url, DOC_HASH)
+    open_side_by_side(page, LAYOUT_PANEL)
+    # 検証（列は読み上げの名前を持つ section で、列の頭の名前の行と空きは読み上げない）
+    assert page.get_attribute(SIDE_BEFORE, "aria-label") == "選んだ時点の本文"
+    assert page.get_attribute(SIDE_AFTER, "aria-label") == "今の本文"
+    assert page.get_attribute(f"{LAYOUT_PANEL} .sbs .sbs-head", "aria-hidden") == "true"
+    assert page.locator(f"{LAYOUT_PANEL} .sbs .sbs-row.sbs-gap[aria-hidden=true]").count() == 2
+    # 検証（消した塊は左だけ、足した塊は右だけに、記号と色と取り消し線の印を付ける）
+    assert page.inner_text(f"{SIDE_BEFORE} del.df-blk > .df-sign") == "−"
+    assert page.inner_text(f"{SIDE_AFTER} ins.df-blk > .df-sign") == "+"
+    assert page.eval_on_selector(f"{SIDE_BEFORE} del.df-blk > p", "e => getComputedStyle(e).textDecorationLine") == "line-through"
+    assert page.eval_on_selector(f"{SIDE_BEFORE} del.df-blk", "e => getComputedStyle(e).backgroundColor") != TRANSPARENT
+    assert page.eval_on_selector(f"{SIDE_AFTER} ins.df-blk", "e => getComputedStyle(e).backgroundColor") != TRANSPARENT
+    # 検証（変えていない段落は印なしで、左右の同じ高さに並ぶ）
+    before_rows, after_rows = rows_of_columns(page, LAYOUT_PANEL)
+    assert [row["top"] for row in before_rows] == [row["top"] for row in after_rows]
+    assert page.locator(f"{SIDE_BEFORE} > .sbs-row:not(.sbs-chg) :is(ins, del)").count() == 0
+    # 検証（インラインの本文は隠れ、右の列の要素だけが今の本文の行を持つ）
+    assert page.locator(f"{LAYOUT_PANEL} .sbs-fallback").is_visible() is False
+    assert page.locator(f"{SIDE_BEFORE} [data-line-start]").count() == 0
+    assert page.locator(f"{SIDE_AFTER} [data-line-start]").count() >= 1
+
+
+def test_diff_body_side_by_side_when_linked(
+    write_linked_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """左右に並べた本文の右の列には見出しのリンク・本文の印・項目の ID のリンクを付ける。変わった語だけに濃い面を付ける（正常系）。"""
+    # 準備・実行
+    url, _ = write_linked_body_layout_preview()
+    seed_side_layout(page, "V-1")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    open_preview(url, "#tab=docs&id=A-1")
+    open_side_by_side(page, LAYOUT_PANEL)
+    page.wait_for_selector(f"{SIDE_AFTER} a.term")
+    # 検証（右の列）
+    assert page.locator(f"{SIDE_AFTER} [data-heading] .h-link").count() == 1
+    assert page.eval_on_selector_all(f"{SIDE_AFTER} a.term", "a => a.map(x => x.dataset.id)") == ["G-1"]
+    assert page.eval_on_selector_all(f"{SIDE_AFTER} a.idref", "a => a.map(x => x.dataset.id)") == ["D-1"]
+    # 検証（書き換えた段落の対は、変わった語だけに濃い面を付ける）
+    removed = page.eval_on_selector_all(f"{SIDE_BEFORE} span.df-word", "e => e.map(x => x.textContent)")
+    added = page.eval_on_selector_all(f"{SIDE_AFTER} span.df-word", "e => e.map(x => x.textContent)")
+    assert removed
+    assert added
+    # 実行（右の列の見出しのリンクを押す）
+    history_length = page.evaluate("history.length")
+    page.locator(f"{SIDE_AFTER} [data-heading] .h-link").click()
+    # 検証（見出しのリンクはハッシュの h を書き換え、履歴に積まない）
+    page.wait_for_function("new URLSearchParams(location.hash.slice(1)).get('h') === '保存先'")
+    assert page.evaluate("history.length") == history_length
+
+
+def test_diff_body_side_by_side_when_diagram(
+    write_linked_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """図は左に選んだ時点、右に今の記法で描き、図の差分の色付けと凡例は右の図にだけ付ける。左の図は消した色の破線の枠だけを付ける（正常系）。"""
+    # 準備・実行
+    url, _ = write_linked_body_layout_preview()
+    seed_side_layout(page, "V-1")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    open_preview(url, "#tab=docs&id=A-1")
+    open_side_by_side(page, LAYOUT_PANEL)
+    page.wait_for_selector(f"{SIDE_AFTER} .mermaid svg", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    page.wait_for_selector(f"{SIDE_BEFORE} .mermaid svg", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    page.wait_for_selector(f"{SIDE_AFTER} .df-legend", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
+    # 検証
+    assert page.locator(f"{SIDE_BEFORE} .df-legend").count() == 0
+    assert page.locator(f"{SIDE_BEFORE} figure.diagram.df-colored").count() == 0
+    assert page.locator(f"{SIDE_BEFORE} g.df-n-add, {SIDE_BEFORE} g.df-n-chg").count() == 0
+    assert page.locator(f"{SIDE_AFTER} figure.diagram.df-colored g.df-n-add").count() == 1
+    assert page.locator(f"{SIDE_AFTER} figure.diagram.df-colored g.df-n-chg").count() == 1
+    assert page.eval_on_selector(f"{SIDE_BEFORE} figure.diagram", "e => getComputedStyle(e).outlineStyle") == "dashed"
+    assert page.eval_on_selector(f"{SIDE_AFTER} figure.diagram", "e => getComputedStyle(e).outlineStyle") != "dashed"
+
+
+def test_selection_entry_when_diff_side_by_side(
+    write_linked_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """左右に並べた本文では、右の列の変えていない文を選ぶと入口を出して今の本文の行をコメントに添え、左の列を含む選択では出さない（正常系）。"""
+    # 準備
+    url, _ = write_linked_body_layout_preview()
+    seed_side_layout(page, "V-1")
+    page.set_viewport_size(SIDE_VIEWPORT)
+    open_preview(url, "#tab=docs&id=A-1")
+    open_side_by_side(page, LAYOUT_PANEL)
+    # 実行（右の列の変えていない文を選ぶ）
+    select_text_for_pill(page, SIDE_AFTER, "の話です。")
+    page.click(PILL)
+    # 検証（今の本文の 3 行目）
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 3 行目"
+    # 実行（左の列の文を選ぶ）
+    page.keyboard.press("Escape")
+    select_text(page, SIDE_BEFORE, "の話です。")
+    page.wait_for_timeout(SELECTION_SETTLE_MS)
+    # 検証
+    assert page.locator(PILL).count() == 0
+
+
+def test_diff_html_body_layout_switch(
+    write_html_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """HTML の本文の差分の見せ方の切り替えの前に、並べ方の切り替えを別の組で置く。「左右に並べる」を押すと描いた結果を左右に並べ、「インライン」を押すと戻す（正常系）。"""
+    # 準備
+    url, _ = write_html_body_layout_preview()
+    _open_side_panel(page, open_preview, url)
+    wait_frame_rendered(page, MARKED_FRAME)
+    # 検証（並べ方の組が見せ方の組の前にある。「インライン」を押した状態）
+    bar_groups = page.eval_on_selector_all(
+        f"{LAYOUT_PANEL} .html-diff-bar [role=group]", "groups => groups.map(g => g.getAttribute('aria-label'))"
+    )
+    assert bar_groups == [LAYOUT_GROUP_NAME, "本文の差分の見せ方"]
+    assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]
+    assert page.locator(f"{LAYOUT_PANEL} .sbs-html").count() == 0
+    # 実行（「左右に並べる」を押す）
+    page.get_by_role("button", name=SIDE_NAME).click()
+    page.wait_for_selector(f"{LAYOUT_PANEL} .sbs-html")
+    # 検証（左右の列に描いた結果の枠が 1 つずつ）
+    assert page.get_attribute(f"{LAYOUT_PANEL} .sbs-html section.sbs-before", "aria-label") == "選んだ時点の本文"
+    assert page.get_attribute(f"{LAYOUT_PANEL} .sbs-html section.sbs-after", "aria-label") == "今の本文"
+    assert page.locator(f"{LAYOUT_PANEL} .sbs-html iframe.html-frame").count() == 2
+    assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "side"
+    # 実行（「インライン」を押す）
+    page.get_by_role("button", name=INLINE_NAME).click()
+    page.wait_for_selector(f"{LAYOUT_PANEL} .sbs-html", state="detached")
+    # 検証
+    assert [button["pressed"] for button in layout_buttons(page, LAYOUT_PANEL)] == ["true", "false"]

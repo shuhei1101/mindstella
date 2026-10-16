@@ -1,6 +1,6 @@
 title: "プレビュー / 画面と部品"
 lead: 部品（表・トップバー・表示形式の切り替え）と画面。どれも「引数を受けて要素を返す関数」で、操作は引数のコールバックで入口に知らせる。
-directory: |-
+directory: |
   ```
   plugins/mindstella/skills/mindmap/preview/
     components/
@@ -12,6 +12,8 @@ directory: |-
       body-format-badge.ts  本文の形式の札（部品設計『本文の形式の札』）
       html-body-frame.ts    HTML の本文の枠（部品設計『HTMLの本文の枠』）
       html-body-diff.ts     HTML の本文の差分（部品設計『HTMLの本文の差分』）
+      body-diff-layout-switch.ts  本文の差分の並べ方の切り替え（部品設計『本文の差分の並べ方の切り替え』）
+      side-by-side-body-diff.ts   左右に並べた本文の差分（部品設計『左右に並べた本文の差分』）
       diff-minimap.ts       差分のミニマップと、印の集め方・置き方（部品設計『差分のミニマップ』）
       comment-mark.ts       コメントの印と、画面を描き直さずに印を差し替える処理（部品設計『コメントの印』）
       history-dialog.ts     変更履歴（部品設計『変更履歴』）
@@ -41,7 +43,7 @@ directory: |-
       graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
-  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py` に置く。
+  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py` に置く。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え
@@ -451,9 +453,9 @@ components:
         required: true
         description: 全画面か
       - name: on
-        type: '{open, close, full, back, forward, diagram, heading, changeSet}'
+        type: '{open, close, full, back, forward, diagram, heading, changeSet, layout}'
         required: true
-        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）
+        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）・本文の差分の並べ方を切り替える（`bodyDiffLayoutSwitch` が知らせた並べ方。使う側が個人の上書きに残して描き直す）
       - name: comment
         type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
@@ -477,6 +479,11 @@ components:
         default: 'true'
         type: boolean
         description: '差分のミニマップを置くか（`resolveDisplay` の `minimap`）。本文のスクロール領域は常に `diffMinimapFrame({ body, shown: diff !== null && minimap })` で包み、包んだ枠を見出しと下端の間に置く。`style.css` の `.panel > .panel-body` に当てていた伸び縮み（`flex: 1; min-height: 0`）は `.panel-scroll` に移し、`.panel-body` は枠の中で帯を除いた幅いっぱいにする（`dialog.full` も同じ）。図の拡大に切り替えている間は帯を出さない'
+      - name: bodyLayout
+        type: "'inline' | 'side'"
+        required: false
+        default: "'inline'"
+        description: 本文の差分の並べ方（`resolveDisplay` の `bodyLayout`）。`diff` があり本文の差分を描けたとき（前後を組み立てられない・出せない・計算しきれない・ライブラリを読めない旨を出していない）だけ、本文の差分の頭に `bodyDiffLayoutSwitch` を置く（HTML の本文では `htmlBodyDiff` の `layoutSwitch` に渡し、`layout` にもこの値を渡す）。Markdown の本文で `side` のときは `sideBySideBodyDiff` で描いた左右の本文と、今までどおり描いたインラインの本文（`div.sbs-fallback`）の両方を置き、`style.css` の `@container detail-body (width < 560px)`（`.panel-body` を入れ物にする）で、本文の幅が足りないときは切り替えと左右の本文を隠してインラインの方を出す。HTML の本文の左右の表示も同じ入れ物で切り替える。`sideBySideBodyDiff` が `null` を返したら「本文の差分を計算しきれない旨」を出し、切り替えを置かない
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -511,9 +518,9 @@ components:
       - name: test_detail_panel_when_heading
         case: 正常
         summary: 指した見出しを画面に入れて開く
-        condition: '`parametrize`: 本文に見出し「決め方」を 2 つ持つ A-1 を `heading` が `決め方-1` で開く / `heading` が `無い` で開く'
+        condition: '`parametrize`: 本文に見出し「決め方」を 2 つ持つ A-1 を `heading` が `決め方-1` で開く / `heading` が `無い` で開く / 同じ A-1 の本文を選んだ時点から変えた `diff` つきで、本文の幅が 480px のパネルに、`bodyLayout` が `side`・`heading` が `決め方-1` で開く'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: 2 つ目の「決め方」が本文のスクロール領域の中で画面に入る / 本文の頭で開き `on.heading` が `null` で呼ばれる
+        expected: 2 つ目の「決め方」が本文のスクロール領域の中で画面に入る / 本文の頭で開き `on.heading` が `null` で呼ばれる / インラインの本文の 2 つ目の「決め方」が本文のスクロール領域の中で画面に入り、`on.heading` が `null` で呼ばれない
       - name: test_detail_panel_when_decision_order
         case: 正常
         summary: 検討事項を 背景 → 案 → 採用した案と理由 → 本文 の順に描く
@@ -664,6 +671,18 @@ components:
         condition: '本文の段落を 1 つ消し 1 つ足した資料。`parametrize`: `diff` あり・`minimap: true` / `diff` あり・`minimap: false` / `diff` が `null`'
         expected: '`.panel-scroll` の中に `.panel-body` と印を 2 つ持つ `.df-map` が並ぶ / `.panel-scroll` の中は `.panel-body` だけ / `.panel-scroll` の中は `.panel-body` だけ。どれも `.panel-body` が「詳細の本文」の読み上げの名前を保つ'
         mock: なし（DOM を作って見る）
+      - name: test_detail_panel_when_body_side_by_side
+        case: 正常
+        summary: 並べ方が side のとき、切り替えと左右の本文を置き、本文の幅が足りなければインラインを出す
+        condition: '本文の 1 つ目の段落を消し末尾に段落を足した資料を `diff` つきで開く。`parametrize`: `bodyLayout: inline`・幅 760px のパネル / `bodyLayout: side`・幅 760px のパネル / `bodyLayout: side`・幅 480px のパネル / `bodyLayout: side` で本文が変わっていない資料'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 切り替えがあり「インライン」が `aria-pressed="true"`、インラインの本文だけが見える / 切り替えの「左右に並べる」が `aria-pressed="true"`、`.sbs` が見え `.sbs-fallback` が見えない / 切り替えと `.sbs` が見えず `.sbs-fallback` が見える / 切り替えが無く、本文は印なし
+      - name: test_detail_panel_when_body_layout_changed
+        case: 正常
+        summary: 並べ方のボタンを押すと on.layout を呼ぶ
+        condition: '本文を変えた資料を `diff` つき・`bodyLayout: inline` で開き、「左右に並べる」を押す'
+        mock: 描画のライブラリの配信元（`page.route`）・`on.layout` を数える関数
+        expected: '`on.layout` が `side` で 1 回呼ばれ、`location.hash` が変わらない'
       - name: test_detail_panel_when_body_heading_levels
         case: 正常
         summary: 本文の見出しの最も上の段を h4 にし、段の差を保って並べる
@@ -1745,6 +1764,78 @@ components:
         condition: '本文 `[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)`。`titles` は A-14・D-12、`changeSets` は V-6 だけ。`parametrize`: `titles` をそのまま / `() => null`'
         mock: '`on.openId`・`on.changeSet`'
         expected: '`a.setlink` が 1 つで、文字が「A-14 の書き直し」、`href` が `#diff=V-6`、`title` が V-6 の説明で、中に `button` が無い。`[古い](#diff=V-99)` は文字のまま。`titles` をそのまま渡したときは D-12 が `button.idlink`、`() => null` のときは D-12 も文字。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openId` は呼ばれず、`location.hash` は変わらない'
+  - name: bodyDiffLayoutSwitch
+    title: 本文の差分の並べ方の切り替え
+    container: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
+    usecase: 前回からの差分を見る
+    summary: 部品設計『本文の差分の並べ方の切り替え』。`div.segment.sbs-switch`（`role="group"`、読み上げの名前 `BODY_LAYOUT_LABEL`）に「インライン」「左右に並べる」の 2 つのボタン（`data-layout` に `inline`・`side`、`aria-pressed`）を並べて返す。押していない方を押したときだけ `on.change` を呼ぶ
+    kind: コンポーネント
+    props:
+      - name: layout
+        type: "'inline' | 'side'"
+        required: true
+        description: 選んでいる並べ方
+      - name: on
+        type: '{change}'
+        required: true
+        description: 並べ方を切り替える（押した方の並べ方）
+    unit_tests:
+      - name: test_body_diff_layout_switch
+        case: 正常
+        summary: 選んでいる方を押した状態で出し、押していない方を押したときだけ知らせる
+        condition: '`parametrize`: `layout: inline` で「左右に並べる」を押す / `layout: inline` で「インライン」を押す / `layout: side` で「インライン」を押す'
+        mock: なし（DOM を作って見る。`on.change` を数える関数にする）
+        expected: 「インライン」が `aria-pressed="true"` で `on.change` が `side` で 1 回 / 呼ばれない / 「左右に並べる」が `aria-pressed="true"` で `on.change` が `inline` で 1 回。組の読み上げの名前は「本文の差分の並べ方」
+  - name: sideBySideBodyDiff
+    title: 左右に並べた本文の差分
+    container: plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts
+    usecase: 前回からの差分を見る
+    summary: 部品設計『左右に並べた本文の差分』。`sideBySideRows` の行ごとに、左右の列（`section.sbs-col`、読み上げの名前「選んだ時点の本文」「今の本文」）へ `div.sbs-row` を 1 つずつ置き、塊を本文の中の行の位置のまま `renderMarkdown` で描く（前に空行を積んで `data-line-start` を本文の行に揃える）。見出しの段は、左右の全ての塊を描いた後、それらを合わせた最も上の段から `detailPanel` と同じ差を 1 つ求め（`headingShift`）、左右の全ての塊に当てる（`lowerHeadings`。h6 を超える段は `aria-level` で伝える。どちらも `screens/detail.ts` の関数を `MindmapPreview` に出して使う）。`changed` の行を持つ要素に、左は消した印、右は足した印を付ける（段落・見出し・コードは `del.df-blk` / `ins.df-blk` で囲み、表の行は `tr.df-row.df-del` / `df-add`、箇条書きの項目は `li.df-li-del` / `df-li-add`）。片側が空の行は `sbs-gap`（`aria-hidden`）にする。左の列と、`lined` が偽のときの右の列は `data-line-start` を外す。左の変えた図には `sbs-was` だけを付ける。行ごとに左右の高い方に `min-height` を揃え、中の要素の高さが変わったら（`ResizeObserver`）次のコマで 1 回だけ揃え直す
+    description: 返すのは `{root, columns, markWords, decorate}`（並べた本文、左右の列、向かい合う変えた行で消した塊と足した塊の数が同じものを対にして語の面を付ける関数、右の変えた図に図の差分を付ける関数）。`sideBySideRows` が `null` のときは `null` を返し、`detailPanel` が本文の差分を計算しきれない旨を出す
+    kind: コンポーネント
+    props:
+      - name: before
+        type: string
+        required: true
+        description: 選んだ時点の本文
+      - name: after
+        type: string
+        required: true
+        description: 今の本文
+      - name: lined
+        type: boolean
+        required: false
+        default: 'true'
+        description: 右の列に今の本文の行の印を残すか
+      - name: deadline
+        type: number
+        required: true
+        description: 語の差分（`diffInline`）を打ち切る時刻。`detailPanel` が行の差分を呼ぶ直前に決めたもの
+    unit_tests:
+      - name: test_side_by_side_body_diff
+        case: 正常
+        summary: 消した印を左、足した印を右に付け、片側だけの塊の向かいを空きにする
+        condition: '段落 3 つの 1 つ目を消し末尾に段落を足した前後。`parametrize`: `lined: true` / `lined: false`'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 左の列の 1 行目が `del.df-blk`、右の列の 1 行目が `sbs-gap`、右の列の最後の行が `ins.df-blk`、左の列の最後の行が `sbs-gap`。左の列は `data-line-start` を持たない。右の列は `data-line-start` を持つ / 持たない。列の読み上げの名前は「選んだ時点の本文」「今の本文」
+      - name: test_side_by_side_body_diff_when_aligned
+        case: 正常
+        summary: 変えていない塊は左右で上端の高さが揃う
+        condition: 1 つ目の段落を 3 段落の長さに書き換えた前後を幅 600px の本文で描く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 2 つ目・3 つ目の段落の左右の `getBoundingClientRect().top` が同じ
+      - name: test_side_by_side_body_diff_when_timeout
+        case: 正常
+        summary: 行の差分を打ち切ったら描かない
+        condition: 全ての行が違う 5000 行の前後
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`null`'
+      - name: test_side_by_side_body_diff_when_headings
+        case: 正常
+        summary: 見出しの段は前後を合わせた最も上の段から 1 つの差で下げ、左右で揃う
+        condition: '`## 決め方` と `### 理由` の見出しを持ち、`### 理由` の下の段落だけを書き換えた前後'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 左右の列とも「決め方」が `h4`、「理由」が `h5`
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -2754,10 +2845,11 @@ functions:
         passing: positional
         description: 本文のスクロール領域
     process: |-
-      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw の行など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
+      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw の行や、本文の幅が足りなくて隠した左右の本文など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
       2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
       3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす。それ以外は新しい印にする
-      4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）
+      4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）。矩形を持たない枠（左右に並べるときに持つインラインの枠や並べた枠のうち隠した方、「原文の差分」に切り替えて隠した描いた結果の枠）は飛ばす
+      5. 左右に並べた本文（`.sbs`）が見えているときは、印を本文の中の高さの順に並べ直し、同じ `div.sbs-row` の対（左右の同じ行）にある `del` と `add` を `chg` 1 つにまとめる
     returns:
       type: "{kind: 'add' | 'del' | 'chg', first: Element, last: Element, frame: HTMLIFrameElement | null}[]"
       description: 印の並び。`first`・`last` は印が指す範囲の先頭と末尾の要素
@@ -2765,9 +2857,15 @@ functions:
       - name: test_minimap_targets
         summary: 続く同じ種類をまとめ、消した塊の直後の足した塊を変わったにする
         case: 正常
-        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"`'
-        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠）'
+        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"` / HTML の本文の枠が 2 つあり、どちらの中にも `data-df="add"` と `data-df="chg"` を持ち、片方は `display: none`'
+        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠） / `add` と `chg` の 2 つだけ（`frame` が見えている方の枠）'
         mock: なし（DOM を作って見る）
+      - name: test_minimap_targets_when_side_by_side
+        case: 正常
+        summary: 左右に並べた本文は高さの順に並べ、向かい合う消した塊と足した塊を変わったにする
+        condition: '`.sbs` の 3 行。変えた行（左に `del.df-blk`、右に `ins.df-blk`）・変えていない行・変えた行（左は `sbs-gap`、右に `ins.df-blk`）'
+        mock: なし（DOM を作って見る）
+        expected: '`chg`（`first` が左の消した塊）・`add` の順'
   - name: minimapLayout
     title: ミニマップの印の置き方
     container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
@@ -2906,6 +3004,8 @@ test_files:
   - tests/unit/preview/test_thread_row.py
   - tests/unit/preview/test_thread_post.py
   - tests/unit/preview/test_diff_minimap.py
+  - tests/unit/preview/test_body_diff_layout_switch.py
+  - tests/unit/preview/test_side_by_side_body_diff.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ
@@ -2943,3 +3043,9 @@ constants:
     usecase: 表示の設定を変える
     summary: 表示の設定の切り替えと「この端末で変えている項目」に出す名前（確認ログの決定）。`resolveDisplay` もこの名前を並べる
     value: '"差分のミニマップ"'
+  - name: BODY_LAYOUT_LABEL
+    title: 本文の差分の並べ方の呼び名
+    container: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
+    usecase: 表示の設定を変える
+    summary: 切り替えの読み上げの名前と、表示の設定の「この端末で変えている項目」に出す名前。`resolveDisplay` もこの名前を並べる
+    value: '"本文の差分の並べ方"'

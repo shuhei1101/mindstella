@@ -202,3 +202,19 @@ def test_narrow(open_story: OpenStory) -> None:
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
+
+
+def test_side_by_side(open_story: OpenStory) -> None:
+    """本文を左右に並べている。左の消した塊と右の足した塊が向かい合う箇所は変わった 1 つ、片側だけの塊はその種類の印を、高さの順に並べる（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "side-by-side")
+    marks = _marks(page)
+    # 検証（向かい合う箇所は変わった 1 つ。右だけの足した塊は足した。高さの順）
+    assert [mark["kind"] for mark in marks] == ["df-chg", "df-add"]
+    assert [mark["label"] for mark in marks] == ["変わった箇所（1 / 2）", "足した箇所（2 / 2）"]
+    tops = [mark["top"] for mark in marks]
+    assert tops == sorted(tops)
+    # 検証（変わったは斜めの縞、足したは塗りつぶし）
+    assert marks[0]["stripes"] is True
+    assert marks[1]["stripes"] is False
+    assert marks[1]["border"] == "0px"

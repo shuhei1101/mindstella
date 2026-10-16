@@ -77,6 +77,7 @@ var MindmapPreview;
         const { glyph, name } = SIGNS[op];
         return [MindmapPreview.h({ tag: "span", attrs: { class: "df-sign", "aria-hidden": "true" }, children: [glyph] }), ...(name === "" ? [] : [srOnly(name)])];
     }
+    MindmapPreview.signMarks = signMarks;
     /** 変わったキーの前の値と今の値を並べる。前の値は取り消し線、今の値は下線。plain は面を塗らず、線と矢印だけで示す。pairs を渡すと、前後がどちらも空でない文字のとき、並べた対を語の面を付ける対として pairs に足す */
     function keyDiff({ was, now, plain = false, pairs, }) {
         const empty = (value) => value === null || value === undefined || value === false || value === "";
@@ -410,6 +411,7 @@ var MindmapPreview;
         });
         return owners;
     }
+    MindmapPreview.blockOwners = blockOwners;
     /** 差分の記号を頭に置いた、足した塊・消した塊の囲み */
     function diffBlock({ op, children }) {
         return MindmapPreview.h({
@@ -418,6 +420,7 @@ var MindmapPreview;
             children: [...signMarks(op), ...children],
         });
     }
+    MindmapPreview.diffBlock = diffBlock;
     /** 本文の足した部分の印を、今の本文の要素に付ける（段落・見出し・コードは囲み、表の行と箇条書きの項目は行の印にする） */
     function markAddedBlocks({ root, parts, source }) {
         const now = linesOf(source);
@@ -456,6 +459,7 @@ var MindmapPreview;
             element.removeAttribute(MindmapPreview.LINE_ATTR);
         return root;
     }
+    MindmapPreview.withoutLineMarks = withoutLineMarks;
     /** 消した行の図のコードブロックを、記法の原文だけにする（描かない） */
     function plainDiagrams(root) {
         for (const figure of root.querySelectorAll("figure.diagram")) {
@@ -561,6 +565,7 @@ var MindmapPreview;
     function wordBlocksIn(root) {
         return [...root.querySelectorAll(WORD_BLOCK_SELECTOR)].filter(isWordBlock);
     }
+    MindmapPreview.wordBlocksIn = wordBlocksIn;
     /** 足した部分ごとの、足した行（空行を除く）を持つ今のブロックのうち、語の面を付ける対象のもの（足した行の順） */
     function addedBlocksByPart({ root, parts, now }) {
         const blocks = [...root.querySelectorAll(`[${MindmapPreview.LINE_ATTR}]`)];
@@ -664,6 +669,7 @@ var MindmapPreview;
         wrapWords({ nodes: removedNodes, parts: inline.before, mark: "del" });
         wrapWords({ nodes: addedNodes, parts: inline.after, mark: "add" });
     }
+    MindmapPreview.markWords = markWords;
     /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
     function renderBodyDiff({ before, after, deadline }) {
         const compared = MindmapPreview.diffLineParts(before, after);
@@ -842,6 +848,7 @@ var MindmapPreview;
         // 図の拡大が、同じ凡例と Raw の差分を出せるようになる
         figure.setAttribute(BEFORE_SOURCE_ATTR, beforeSource);
     }
+    MindmapPreview.decorateDiagram = decorateDiagram;
     /** 差分の表示の間、今の本文の図のうち前の版から変わったものを、色・凡例・Raw の差分で示す */
     function decorateDiagrams({ root, before }) {
         const afterFigures = [...root.querySelectorAll("figure.diagram")];
@@ -878,7 +885,7 @@ var MindmapPreview;
         }
     }
     /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-    function detailBody({ id, index, on, review, view }) {
+    function detailBody({ id, index, on, review, view, bodyLayout }) {
         const entry = index.byId.get(id);
         const body = MindmapPreview.h({ tag: "div", attrs: { class: "detail" } });
         if (entry === undefined)
@@ -948,6 +955,9 @@ var MindmapPreview;
             let bodyDeadline = null;
             let notice = null;
             let diagramBefore = null;
+            // 左右に並べた本文（並べ方が「左右に並べる」のとき）と、並べ方の切り替え
+            let side = null;
+            let layoutBar = null;
             const versions = view?.versions ?? null;
             if (versions !== null && versions.before !== null && !versions.trimmed) {
                 if (MindmapPreview.missingLibraries(["jsdiff"]).length > 0) {
@@ -964,8 +974,22 @@ var MindmapPreview;
                     const bodyDiff = renderBodyDiff({ before: versions.beforeBody, after: source, deadline: bodyDeadline });
                     rendered = bodyDiff?.root ?? null;
                     markBodyWords = bodyDiff?.markWords ?? null;
-                    if (rendered === null)
+                    if (rendered === null) {
                         notice = noteBox(NOTE_BODY_TOO_LARGE);
+                    }
+                    else if (versions.beforeBody !== source) {
+                        // 本文が選んだ時点から変わっていて差分を描けたときだけ、並べ方の切り替えを置く
+                        side =
+                            bodyLayout === "side"
+                                ? MindmapPreview.sideBySideBodyDiff({ before: versions.beforeBody, after: source, lined: source === index.data.bodies[item.body ?? ""], deadline: bodyDeadline })
+                                : null;
+                        if (bodyLayout === "side" && side === null) {
+                            notice = noteBox(NOTE_BODY_TOO_LARGE);
+                        }
+                        else {
+                            layoutBar = MindmapPreview.h({ tag: "div", attrs: { class: "body-diff-bar" }, children: [MindmapPreview.bodyDiffLayoutSwitch({ layout: bodyLayout, on: { change: on.layout } })] });
+                        }
+                    }
                 }
             }
             const root = rendered ?? MindmapPreview.renderMarkdown(source);
@@ -985,16 +1009,35 @@ var MindmapPreview;
             });
             MindmapPreview.linkBody({ root, index, selfId: id, onOpen: on.open });
             drawHtmlBlocks(root);
+            // 左右に並べた本文にも、見出しのリンクと本文の印を付ける（右の列だけが今の本文の行を持つ）
+            for (const column of side?.columns ?? []) {
+                MindmapPreview.linkHeadings({
+                    root: column,
+                    onHeading: (slug) => {
+                        scrollToHeading({ root: column, slug });
+                        on.heading(slug);
+                    },
+                    onChangeSet: on.changeSet,
+                });
+                MindmapPreview.linkBody({ root: column, index, selfId: id, onOpen: on.open });
+                drawHtmlBlocks(column);
+            }
             // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）。キーの値の語の面を先に付ける
             if (bodyDeadline !== null)
                 markKeys(bodyDeadline);
             markBodyWords?.();
+            side?.markWords();
             const drawn = MindmapPreview.renderDiagrams(root);
             if (diagramBefore !== null) {
                 const before = diagramBefore;
                 void drawn.then(() => decorateDiagrams({ root, before }));
             }
-            root.addEventListener("click", (event) => {
+            // 左右に並べた本文の図を描き、右の変えた図に色・凡例・Raw の差分を付ける
+            if (side !== null) {
+                const sideView = side;
+                void MindmapPreview.renderDiagrams(sideView.root).then(() => sideView.decorate());
+            }
+            const onDiagramTool = (event) => {
                 const button = event.target.closest("[data-act]");
                 const figure = button?.closest(".diagram");
                 if (button === null || button === undefined || figure === null || figure === undefined)
@@ -1020,9 +1063,15 @@ var MindmapPreview;
                         window.setTimeout(() => button.replaceChildren(MindmapPreview.icon("copy")), 1400);
                     });
                 }
-            });
+            };
+            root.addEventListener("click", onDiagramTool);
             const content = document.createDocumentFragment();
-            content.append(...(notice === null ? [] : [notice]), root);
+            // 左右に並べるときは、本文の幅が足りないときに出すインラインの本文も持つ
+            if (side !== null) {
+                side.root.addEventListener("click", onDiagramTool);
+                root.classList.add("sbs-fallback");
+            }
+            content.append(...(notice === null ? [] : [notice]), ...(layoutBar === null ? [] : [layoutBar]), ...(side === null ? [] : [side.root]), root);
             return section(label, content);
         };
         /** HTML の本文の節。本文を枠に描く。差分の表示の間は、描いた結果の上の印と原文の差分で前後を見せる */
@@ -1048,6 +1097,8 @@ var MindmapPreview;
                         after: source,
                         marked: drawn,
                         beforeFormat: MindmapPreview.bodyFormatOf(versions.before.body) === "md" ? "md" : "html",
+                        layout: bodyLayout,
+                        layoutSwitch: MindmapPreview.bodyDiffLayoutSwitch({ layout: bodyLayout, on: { change: on.layout } }),
                     });
                     if (content === null)
                         notice = noteBox(NOTE_BODY_TOO_LARGE);
@@ -1312,6 +1363,7 @@ var MindmapPreview;
         const levels = roots.flatMap((root) => [...root.querySelectorAll("h1, h2, h3, h4, h5, h6")].map(headingLevel));
         return levels.length === 0 ? 0 : BODY_TOP_HEADING_LEVEL - Math.min(...levels);
     }
+    MindmapPreview.headingShift = headingShift;
     /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
     function lowerHeadings({ root, shift }) {
         for (const heading of root.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
@@ -1331,10 +1383,11 @@ var MindmapPreview;
             heading.replaceWith(replacement);
         }
     }
-    /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（本文に無ければ false） */
+    MindmapPreview.lowerHeadings = lowerHeadings;
+    /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（見えている見出しが本文に無ければ false。左右に並べるときは同じ見出しが 3 か所にあるので、矩形を持つ最初のものへ送る） */
     function scrollToHeading({ root, slug }) {
-        const target = root.querySelector(`[data-heading="${CSS.escape(slug)}"]`);
-        if (target === null)
+        const target = [...root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)].find(MindmapPreview.isRendered);
+        if (target === undefined)
             return false;
         target.scrollIntoView({ block: "start" });
         return true;
@@ -1511,13 +1564,15 @@ var MindmapPreview;
     }
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
-        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true } = props;
+        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline" } = props;
         const kind = index.byId.get(id)?.kind;
         // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
         const body = MindmapPreview.h({
             tag: "div",
             attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
-            children: [detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }) })],
+            children: [
+                detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout }),
+            ],
         });
         const head = detailHead(props);
         bindHeadTitle({ head, body });

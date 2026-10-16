@@ -155,7 +155,7 @@ def test_normal_when_reset(
     valid_settings: dict[str, Any],
     new_context: Callable[..., BrowserContext],
 ) -> None:
-    """既定に戻すと、見た目・表示する種類・ライト / ダーク・表の列の上書きが外れ、ワークスペースの既定の表示に戻る（正常系）。"""
+    """既定に戻すと、見た目・表示する種類・ライト / ダーク・表の列・本文の差分の並べ方の上書きが外れ、ワークスペースの既定の表示に戻る（正常系）。"""
     # 準備
     url, root = serve_workspace(
         make_item("R-1"),
@@ -173,7 +173,7 @@ def test_normal_when_reset(
     context = new_context(color_scheme="light")
     page = context.new_page()
     open_in(page, url, "#tab=research")
-    # 端末の保存領域に、見た目 dust・全ての種類・ダーク・調査の表で隠した列 1 つを残しておく
+    # 端末の保存領域に、見た目 dust・全ての種類・ダーク・調査の表で隠した列 1 つ・本文の差分の並べ方（左右に並べる）を残しておく
     seed_prefs(
         page,
         {
@@ -181,6 +181,7 @@ def test_normal_when_reset(
             "columns": {"research": {"hidden": [HIDDEN_COLUMN_KEY], "pinTo": None}},
             "look": "dust",
             "kinds": DEFAULT_KINDS,
+            "bodyLayout": "side",
             "diffSel": None,
         },
     )
@@ -206,8 +207,8 @@ def test_normal_when_reset(
     page.wait_for_selector("table.grid", timeout=RENDER_TIMEOUT_MS)
     headers_after = table_headers(page)
     # 検証
-    # 上書きが効いている状態から始まる（全ての種類に印・この端末で変えている項目に見た目・表示する種類・ライト / ダーク・表の列がある・ダーク・隠した列）
-    for name in ("ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列"):
+    # 上書きが効いている状態から始まる（全ての種類に印・この端末で変えている項目に見た目・表示する種類・ライト / ダーク・表の列・本文の差分の並べ方がある・ダーク・隠した列）
+    for name in ("ネットワークの見た目", "表示する種類", "ライト / ダーク", "表の列", "本文の差分の並べ方"):
         assert name in overrides_before
     assert kinds_before == len(DEFAULT_KINDS)
     assert theme_before == OVERRIDE_THEME
@@ -220,12 +221,13 @@ def test_normal_when_reset(
     assert theme_after == "light"
     # 調査の表が既定の列で並ぶ
     assert HIDDEN_COLUMN_LABEL in headers_after
-    # 端末の保存領域に、見た目・表示する種類・ライト / ダーク・表の列の上書きが無い
+    # 端末の保存領域に、見た目・表示する種類・ライト / ダーク・表の列・本文の差分の並べ方の上書きが無い
     assert prefs_after is not None
     assert prefs_after["look"] is None
     assert prefs_after["kinds"] is None
     assert prefs_after["theme"] is None
     assert prefs_after["columns"] == {}
+    assert prefs_after["bodyLayout"] is None
     # config.yaml の中身が、操作の前と同じである
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
 

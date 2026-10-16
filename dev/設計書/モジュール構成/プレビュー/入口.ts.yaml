@@ -15,7 +15,7 @@ data_models:
     title: 端末に残す設定
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
-    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップは個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
+    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方は個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
     properties:
       - name: theme
         type: "'light' | 'dark' | null"
@@ -38,6 +38,9 @@ data_models:
       - name: minimap
         type: false | null
         description: 差分のミニマップを表示しない上書き。`null` は表示する（ワークスペースの既定は持たない）。表示するに戻すと `null` にする
+      - name: bodyLayout
+        type: "'side' | null"
+        description: 本文の差分を左右に並べる上書き（インターフェース定義の `body_diff_layout`）。`null` はインライン（ワークスペースの既定は持たない）。「インライン」を押すと `null` にする
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -225,7 +228,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap` はその項目だけ既定にする'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout` はその項目だけ既定にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -249,6 +252,12 @@ functions:
         condition: '`parametrize`: `minimap: false` を残した / `minimap: true` を残した / `minimap: "no"` を残した / `minimap` を持たない前の版の値'
         expected: '`minimap` が `false` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
         mock: 保存領域（引数で渡す）
+      - name: test_load_prefs_when_body_layout
+        case: 正常
+        summary: 本文の差分の並べ方の上書きは side だけを読む
+        condition: '`parametrize`: `bodyLayout: side` を残した / `bodyLayout: inline` を残した / `bodyLayout: 1` を残した / `bodyLayout` を持たない前の版の値'
+        mock: 保存領域（引数で渡す）
+        expected: '`bodyLayout` が `side` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
@@ -368,6 +377,7 @@ functions:
       本文のまとまりのリンク: 詳細パネルの `on.changeSet` では、渡された値を `resolveDiffPoint` で引き、まとまりの ID として引けたときだけ 10 の「時点を選ぶ」と同じに扱う（`Prefs.diffSel` と `Route.diff` をそのまとまりにし、履歴に積まずにハッシュを置き換える。開いている画面・項目・全画面はそのまま）。引けなければ何もしない
       幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときと幅 901px 以上の重なり順は変えない
       書き込みのまとまりのリンク: コメントの一覧に `changeSetOf`（記録の `changes.sets` からまとまりの ID で説明を引く。無ければ `null`）を渡す。コメントの一覧の `on.changeSet` は詳細パネルの `on.changeSet` と同じく扱う（`resolveDiffPoint` で引けたときだけ 10 の「時点を選ぶ」と同じにし、履歴に積まずにハッシュを置き換える）。コメントの一覧（`listOpen`）と、その中の画面・開いているスレッドは変えない
+      本文の差分の並べ方: 詳細パネルに `resolveDisplay` の `bodyLayout` を渡す。詳細パネルの `on.layout`（押した並べ方）では、`side` なら `Prefs.bodyLayout` を `side`、`inline` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押した並べ方のボタン（`[data-layout]`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
   - name: formKey
     title: 入力欄のキー
     kind: 関数
@@ -428,14 +438,14 @@ functions:
         passing: positional
         description: 記録の `settings.display`（配る書き出しは埋め込みの値）
     returns:
-      type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean}'
-      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」の順）、差分のミニマップを置くか
+      type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean, bodyLayout: ''inline'' | ''side''}'
+      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」・「本文の差分の並べ方」の順）、差分のミニマップを置くか、本文の差分の並べ方
     process: |-
       1. 既定を決める（`display.network_look` が無ければ `deep`、`display.visible_kinds` が無ければ 7 つの種類全て）
-      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする
+      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする。`bodyLayout` は `prefs.bodyLayout` が `side` のときだけ `side`、それ以外は `inline` にする
       3. `prefs.look`・`prefs.kinds`・`prefs.theme` が `null` でない項目と、`prefs.columns` の種類ごとに「表の列（{種類の名前}）」を `overrides` に並べる
       4. `prefs.filters` の画面ごとに、条件が画面の既定（`initialFilters(画面, {}, null)`）と違えば「絞り込み（{画面の名前}）」を `overrides` に並べる（記録の表は種類の名前）
-      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を `overrides` の末尾に並べる
+      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を、`prefs.bodyLayout` が `side` なら `BODY_LAYOUT_LABEL`（「本文の差分の並べ方」）を、この順に `overrides` の末尾に並べる
     unit_tests:
       - name: test_resolve_display
         case: 正常
@@ -449,13 +459,19 @@ functions:
         condition: '既定の無い `display`。`parametrize`: `minimap: null` / `minimap: false` / `minimap: false`・`theme: dark`'
         expected: '`minimap` が真で `overrides` が空 / `minimap` が偽で `overrides` が「差分のミニマップ」 / `overrides` が「ライト / ダーク」・「差分のミニマップ」の順。どれも `look`・`kinds` は既定のまま'
         mock: なし
+      - name: test_resolve_display_when_body_layout
+        case: 正常
+        summary: 本文の差分の並べ方は上書きが side のときだけ side で、変えている項目の末尾に並ぶ
+        condition: '既定の無い `display`。`parametrize`: `bodyLayout: null` / `bodyLayout: side` / `bodyLayout: side`・`minimap: false`'
+        mock: なし
+        expected: '`bodyLayout` が `inline` で `overrides` が空 / `bodyLayout` が `side` で `overrides` が「本文の差分の並べ方」 / `overrides` が「差分のミニマップ」・「本文の差分の並べ方」の順'
   - name: clearOverrides
     title: 個人の上書きを外す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
     scope: public
-    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを外した `Prefs` を返す（`diffSel` は残す）
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した `Prefs` を返す（`diffSel` は残す）
     args:
       - name: prefs
         type: Prefs
@@ -464,15 +480,15 @@ functions:
         description: 今の端末の設定
     returns:
       type: Prefs
-      description: '`theme`・`look`・`kinds`・`minimap` を `null`、`columns`・`filters` を空にした写し'
-    process: 1. `prefs` を写し、上の 6 項目を外して返す（渡した `prefs` は変えない）
+      description: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout` を `null`、`columns`・`filters` を空にした写し'
+    process: 1. `prefs` を写し、上の 7 項目を外して返す（渡した `prefs` は変えない）
     unit_tests:
       - name: test_clear_overrides
         case: 正常
         summary: 上書きだけを外し、差分の時点は残す
-        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`diffSel: since` の `Prefs`'
+        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`bodyLayout: side`・`diffSel: since` の `Prefs`'
         mock: なし
-        expected: '`theme`・`look`・`kinds`・`minimap` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+        expected: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
   - name: commentCounts
     title: 項目ごとのコメントの件数
     container: plugins/mindstella/skills/mindmap/preview/app.ts

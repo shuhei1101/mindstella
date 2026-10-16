@@ -1,0 +1,39 @@
+title: "左右に並べた本文の差分"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts#MindmapPreview.sideBySideBodyDiff"
+story: "Preview/SideBySideBodyDiff"
+states:
+  - name: Paragraphs
+    description: 1 つ目の段落を消し、末尾に段落を足した。左に消した段落と向かいの縞の空き、右に足した段落と向かいの縞の空きを出し、変えていない段落は左右の同じ高さに印なしで並ぶ
+  - name: Rewritten
+    description: 段落の中の語を書き換えた。左の消した段落と右の足した段落が向かい合い、変わった語だけに濃い面を付ける
+  - name: TableAndList
+    description: 表の行と箇条書きの項目を変えた。左に消した行・項目、右に足した行・項目の印を付け、消した箇条書きの項目は消した色の面と取り消し線で出す
+  - name: Diagram
+    description: 図の記法を変えた。左は選んだ時点の図に消した色の破線の枠だけを付け、右は今の図に今と同じ色付けと凡例を付ける
+lead: Markdown の本文を左に選んだ時点、右に今で描き、変えていない塊を同じ高さで向かい合わせる
+args:
+  - name: before
+    type: 文字列
+    required: true
+    description: 選んだ時点の Markdown の本文（`body_diff` で組み立てたもの）
+  - name: after
+    type: 文字列
+    required: true
+    description: 今の Markdown の本文（記録の `bodies`）
+  - name: lined
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: 右の列の要素に今の本文の行の印を残し、選んだ箇所の対応づけに使えるようにするか。左の列には行の印を残さない
+accessibility:
+  - 左右の列は `section` で、読み上げの名前は「選んだ時点の本文」「今の本文」。列の頭の名前の行と縞の空きは `aria-hidden` にする
+  - 足した・消したは、色に加えて `+` / `−` の記号で分け、消した方には取り消し線も付ける（インラインの本文の差分と同じ印）
+refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文の差分の並べ方]
+  - dev/設計書/部品設計/プレビュー/差分の印.ts#
+status: planned
+notes:
+  塊の対応づけ: 本文を marked の最上位の token（空行を除く）ごとの塊に分け、行の差分で消した行・足した行を持つ塊を変えた塊にする。変えていない塊で原文が同じものを対にして区切り、間の変えた塊を 1 つの行にまとめる（両側の数が同じなら 1 つずつ向かい合わせる）。行ごとに左右の高い方に揃え、図・文字の読み込みで高さが変わったら揃え直す
+  出せないとき: 行の差分を計算しきれないときは描かず、使う側が本文の差分を計算しきれない旨と今の本文を出す
+  モック: '`dev/mock/components/body-diff-layout/` の「左右に並べた本文」「消した箇条書きの項目」と `dev/mock/pages/detail-full/261/a-both/`'
+test_file: tests/integration/storybook/test_side_by_side_body_diff_stories.py

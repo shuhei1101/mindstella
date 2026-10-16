@@ -1,0 +1,44 @@
+$ pytest tests/unit
+........................................................................ [  4%]
+........................................................................ [  9%]
+........................................................................ [ 14%]
+........................................................................ [ 18%]
+........................................................................ [ 23%]
+........................................................................ [ 28%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 42%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 71%]
+........................................................................ [ 75%]
+.s....................................Traceback (most recent call last):
+  File "/usr/lib/python3.12/socketserver.py", line 692, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/usr/lib/python3.12/socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/usr/lib/python3.12/socketserver.py", line 761, in __init__
+    self.handle()
+  File "/usr/lib/python3.12/http/server.py", line 436, in handle
+    self.handle_one_request()
+  File "/usr/lib/python3.12/http/server.py", line 424, in handle_one_request
+    method()
+  File "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-side-by-side-body-diff/plugins/mindstella/skills/mindmap/scripts/serve.py", line 306, in do_GET
+    self._reply(index_response(context.preview_dir))
+  File "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-side-by-side-body-diff/plugins/mindstella/skills/mindmap/scripts/serve.py", line 452, in _reply
+    self.wfile.write(response.body)
+  File "/usr/lib/python3.12/socketserver.py", line 840, in write
+    self._sock.sendall(b)
+ConnectionResetError: [Errno 104] Connection reset by peer
+----------------------------------------
+.................................. [ 80%]
+........................................................................ [ 85%]
+........................................................................ [ 90%]
+........................................................................ [ 94%]
+........................................................................ [ 99%]
+....                                                                     [100%]
+1515 passed, 1 skipped in 784.78s (0:13:04)
+exit=0
