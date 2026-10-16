@@ -312,7 +312,10 @@ def test_render_markdown_when_line_marks(
             const marks = (selector) =>
                 [...root.querySelectorAll(selector)].map((e) => e.getAttribute("data-line-start"));
             const plain = DOMPurify.sanitize(marked.parse(lookSource, {async: false}));
-            const marked_ = MindmapPreview.renderMarkdown(lookSource).innerHTML;
+            // 表を包む入れ物を外し、中の表をその位置へ戻してから比べる
+            const markedRoot = MindmapPreview.renderMarkdown(lookSource);
+            for (const wrap of markedRoot.querySelectorAll(".md-table-wrap")) wrap.replaceWith(...wrap.childNodes);
+            const marked_ = markedRoot.innerHTML;
             return {
                 heading: marks("h1"),
                 paragraph: marks("p"),
