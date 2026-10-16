@@ -1511,13 +1511,13 @@ namespace MindmapPreview {
     return levels.length === 0 ? 0 : top - Math.min(...levels);
   }
 
-  /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
+  /** 本文・値の見出しに渡された段の差を足して並べる（`headingShift` が求めた差なら h3〜h6 になる）。見た目は元の段のまま（`data-md-level`） */
   export function lowerHeadings({ root, shift }: { root: HTMLElement; shift: number }): void {
     for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
       const level = headingLevel(heading);
       const lowered = Math.min(level + shift, LOWEST_HEADING_LEVEL);
       const replacement = h({
-        tag: `h${lowered}` as "h4" | "h5" | "h6",
+        tag: `h${lowered}` as "h3" | "h4" | "h5" | "h6",
         attrs: {
           "data-md-level": level,
           // 元の Markdown の行の印を引き継ぐ

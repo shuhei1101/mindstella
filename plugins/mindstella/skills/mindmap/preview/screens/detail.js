@@ -1376,7 +1376,7 @@ var MindmapPreview;
         return levels.length === 0 ? 0 : top - Math.min(...levels);
     }
     MindmapPreview.headingShift = headingShift;
-    /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
+    /** 本文・値の見出しに渡された段の差を足して並べる（`headingShift` が求めた差なら h3〜h6 になる）。見た目は元の段のまま（`data-md-level`） */
     function lowerHeadings({ root, shift }) {
         for (const heading of root.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
             const level = headingLevel(heading);
