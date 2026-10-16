@@ -152,7 +152,7 @@ namespace MindmapPreview {
             h({
               tag: "button",
               attrs: { class: "btn ghost", type: "button", "data-act": "diagram-close", onclick: on.close },
-              children: [icon("back"), "本文へ戻る"],
+              children: [icon("back"), h({ tag: "span", attrs: { class: "v-back-label" }, children: ["本文へ戻る"] })],
             }),
           ],
         }),

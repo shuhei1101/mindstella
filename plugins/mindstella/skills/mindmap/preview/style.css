@@ -282,6 +282,14 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
 .md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
 .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+/* 本文の表を包む要素: 表の中だけで横に送り、本文の区画ごと横に送らせない */
+.md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
+/* 包まれた表: 幅に収まる表は本文の幅いっぱいに広げ、余白は包む要素が持つ */
+.md .md-table-wrap > table { margin: 0; }
+/* 包む要素のフォーカスの枠: 送る区画の内側に描く */
+.md .md-table-wrap:focus-visible { outline-offset: -2px; }
+/* 本文の長い URL とインラインコード: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
+.md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
 .md th, .md td { border: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
 .md th { background: var(--surface-2); }
 .md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1964,4 +1972,15 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
   .sbs-fallback { display: block; }
   .html-marked > iframe.sbs-fallback { display: block; }
   .body-diff-bar:not(:has(> :not(.sbs-switch))) { display: none; }
+}
+/* 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
+@media (max-width: 389px) {
+  /* 全体の検索の入力欄: 縮められるようにし、「検索を閉じる」を窓の中に残す */
+  .search-head input { min-width: 0; }
+  /* 図の拡大の「本文へ戻る」の文字: 読み上げにだけ残して印だけのボタンにし、上の帯を 1 行に収める */
+  .v-bar .v-back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 概要のタイルの見出しの帯: 見出しと「すべて表示」をそれぞれ 1 行に保ち、収まらないときは「すべて表示」を次の行へ回す */
+  .t-head { flex-wrap: wrap; row-gap: 4px; }
+  /* 概要のタイルの見出しと「すべて表示」: それぞれ 1 行に保つ */
+  .t-head h2, .t-head .t-link { white-space: nowrap; }
 }

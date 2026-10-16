@@ -508,9 +508,10 @@ var MindmapPreview;
                 root.append(piece);
                 continue;
             }
-            // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む
+            // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は包む入れ物ごと外側にする）
             const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
-            (outer.closest("ul, ol, table") ?? outer).before(piece);
+            const container = outer.closest("ul, ol, table") ?? outer;
+            (container.parentElement?.matches(`.${MindmapPreview.TABLE_WRAP_CLASS}`) === true ? container.parentElement : container).before(piece);
         }
         return placed;
     }

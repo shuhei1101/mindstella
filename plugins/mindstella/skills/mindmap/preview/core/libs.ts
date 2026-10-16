@@ -41,6 +41,9 @@ namespace MindmapPreview {
   /** Markdown の中の `html` のコードブロックを置き換えた、HTML の本文の枠の入れ物の class */
   export const HTML_BLOCK_CLASS = "html-block";
 
+  /** 本文の表を包む、表の中だけで横に送る入れ物の class */
+  export const TABLE_WRAP_CLASS = "md-table-wrap";
+
   /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
   export const HTML_LINE_ATTR = "data-line";
 
@@ -326,6 +329,15 @@ namespace MindmapPreview {
       const line = pre.getAttribute(LINE_ATTR);
       if (line !== null) block.setAttribute(LINE_ATTR, line);
       pre.replaceWith(block);
+    }
+    // 表を、表の中だけで横に送れる入れ物で包む（行の印は表の行に残し、入れ物には付けない）
+    for (const table of root.querySelectorAll("table")) {
+      const wrap = h({
+        tag: "div",
+        attrs: { class: TABLE_WRAP_CLASS, tabindex: "0", role: "group", "aria-label": "本文の表" },
+      });
+      table.replaceWith(wrap);
+      wrap.append(table);
     }
     return root;
   }
