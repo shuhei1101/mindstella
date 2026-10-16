@@ -28,6 +28,8 @@
 /* PR #289: 本文の表: 描いた表を包む要素の中でだけ横に送り、本文の区画ごと横に送らせない（幅に収まる表は今のまま幅いっぱいに広げる） */
 .md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
 .md .md-table-wrap > table { margin: 0; }
+/* キーボードでも表を送れるよう包む要素にフォーカスを置き、送る区画の内側に枠を描く */
+.md .md-table-wrap:focus-visible { outline-offset: -2px; }
 
 /* PR #289: 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
 @media (max-width: 389px) {
@@ -73,7 +75,7 @@ body:has(dialog[open])::after { content: ""; position: fixed; inset: 0; z-index:
 <p data-line-start="7">コードブロックは今の見せ方のまま、表は表の中で横に送る。</p>
 <pre data-line-start="10"><code>const value = someVeryLongFunctionName(argumentNumberOne, argumentNumberTwo);
 </code></pre>
-<div class="md-table-wrap"><table>
+<div class="md-table-wrap" tabindex="0" role="region" aria-label="本文の表 1"><table>
 <thead>
 <tr data-line-start="13">
 <th>列 A</th>
@@ -88,6 +90,6 @@ body:has(dialog[open])::after { content: ""; position: fixed; inset: 0; z-index:
 <td>長めのセルの値</td>
 <td>長めのセルの値</td>
 </tr>
-</tbody></table></div><p>列の多い表と、折り返せない値の表:</p><div class="md-table-wrap"><table><thead><tr><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th></tr></thead><tbody><tr><td>2026-01-16</td><td>2026-02-16</td><td>2026-03-16</td><td>2026-04-16</td><td>2026-05-16</td><td>2026-06-16</td><td>2026-07-16</td><td>2026-08-16</td><td>2026-09-16</td><td>2026-10-16</td><td>2026-11-16</td><td>2026-12-16</td></tr></tbody></table></div><div class="md-table-wrap"><table><thead><tr><th>column_name_0</th><th>column_name_1</th><th>column_name_2</th><th>column_name_3</th><th>column_name_4</th><th>column_name_5</th><th>column_name_6</th><th>column_name_7</th></tr></thead><tbody><tr><td>value_0</td><td>value_1</td><td>value_2</td><td>value_3</td><td>value_4</td><td>value_5</td><td>value_6</td><td>value_7</td></tr></tbody></table></div>
+</tbody></table></div><p>列の多い表と、折り返せない値の表:</p><div class="md-table-wrap" tabindex="0" role="region" aria-label="本文の表 2"><table><thead><tr><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th></tr></thead><tbody><tr><td>2026-01-16</td><td>2026-02-16</td><td>2026-03-16</td><td>2026-04-16</td><td>2026-05-16</td><td>2026-06-16</td><td>2026-07-16</td><td>2026-08-16</td><td>2026-09-16</td><td>2026-10-16</td><td>2026-11-16</td><td>2026-12-16</td></tr></tbody></table></div><div class="md-table-wrap" tabindex="0" role="region" aria-label="本文の表 3"><table><thead><tr><th>column_name_0</th><th>column_name_1</th><th>column_name_2</th><th>column_name_3</th><th>column_name_4</th><th>column_name_5</th><th>column_name_6</th><th>column_name_7</th></tr></thead><tbody><tr><td>value_0</td><td>value_1</td><td>value_2</td><td>value_3</td><td>value_4</td><td>value_5</td><td>value_6</td><td>value_7</td></tr></tbody></table></div>
 <p data-line-start="17">選んだ箇所へコメントする文はここです。</p>
 </div></section><section class="d-sec d-review"><h3>レビュー中のコメント<span class="count">0</span></h3><p class="empty">レビュー中のコメントはありません。</p></section></div></div></div><form class="send send-footer" novalidate="" data-id="A-1"><label class="send-label" for="send-1"><span class="mono">A-1</span> へのコメント</label><textarea id="send-1" name="body" rows="2" aria-describedby="send-1-msg" aria-keyshortcuts="Control+Enter" style=""></textarea><div class="send-row"><p class="send-msg" id="send-1-msg" role="status"></p><button class="btn primary" type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"></path><path d="M8 9h8M8 12.5h5"></path></svg>レビューに追加</button></div></form></dialog></body></html>
