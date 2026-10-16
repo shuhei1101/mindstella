@@ -3552,7 +3552,7 @@ def test_highlight_location_when_html_body(
 def test_diff_html_body_when_format_changed(
     make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
 ) -> None:
-    """選んだ時点の本文が Markdown だったときは、描いた結果の印と切り替えを出さず、原文の差分だけを出す（正常系）。"""
+    """選んだ時点の本文が Markdown だったときは、描いた結果の印と見せ方の切り替えを出さず、原文の差分だけを出す。並べ方の切り替えは出す（正常系）。"""
     # 準備
     root = make_workspace()
     workspace = str(root)
@@ -3574,7 +3574,8 @@ def test_diff_html_body_when_format_changed(
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .df-raw")
     # 検証
-    assert page.locator("aside.panel .html-diff-bar").count() == 0
+    assert page.locator("aside.panel .html-diff-bar [aria-label='本文の差分の見せ方']").count() == 0
+    assert page.locator(f"aside.panel .html-diff-bar {LAYOUT_SWITCH}").count() == 1
     assert page.locator("aside.panel .html-marked").count() == 0
     assert "# 画面のモック" in page.inner_text("aside.panel .df-raw .df-line.df-del")
     assert "<h1>画面のモック</h1>" in page.inner_text("aside.panel .df-raw")
