@@ -175,7 +175,7 @@ request:
     description: スレッドの返信の入力欄のとき、そのスレッドの ID
     constraints: ワークスペースにあるスレッド。`target`・`loc` と一緒に渡さない
     example: TH-3
-    status: planned
+    status: implemented
 status_codes:
   - code: '204'
     condition: 保ったか、消した

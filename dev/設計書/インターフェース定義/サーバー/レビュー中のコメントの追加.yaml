@@ -426,7 +426,7 @@ request:
     description: 既存のスレッドへの返信を溜めるときの、そのスレッドの ID
     constraints: オープンのスレッド。`target`・`loc` と一緒に渡さない
     example: TH-3
-    status: planned
+    status: implemented
 request_example: |-
   ```json
   {

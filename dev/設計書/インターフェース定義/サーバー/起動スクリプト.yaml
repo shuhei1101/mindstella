@@ -336,19 +336,19 @@ request:
     required: false
     default: なし（MCP の設定に書かない）
     description: '環境変数。プレビューの配信が受ける外のホスト名（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
-    status: planned
+    status: implemented
   - name: MINDSTELLA_PREVIEW_START_HOOK
     type: str
     required: false
     default: なし（MCP の設定に書かない）
     description: '環境変数。配信を立てたときのフック（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
-    status: planned
+    status: implemented
   - name: MINDSTELLA_PREVIEW_STOP_HOOK
     type: str
     required: false
     default: なし（MCP の設定に書かない）
     description: '環境変数。配信を止めるときのフック（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
-    status: planned
+    status: implemented
 response:
   - name: tmux のセッション
     type: tmux のセッション
