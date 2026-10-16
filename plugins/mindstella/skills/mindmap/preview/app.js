@@ -10,7 +10,7 @@ var MindmapPreview;
     MindmapPreview.DRAFT_SAVE_DELAY_MS = 500;
     /** 画面の下に「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
     MindmapPreview.NOTICE_MS = 6000;
-    /** そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
+    /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
     MindmapPreview.SINCE_KEY = "mindmap-since";
     /** 入力欄のキー。向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする */
     function formKey(target, loc, thread = null) {
@@ -177,39 +177,43 @@ var MindmapPreview;
             };
         }
     }
-    /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した日時をそのまま使う */
-    async function resolveSince({ serverMode, prefs, persist, }) {
-        const session = openStorage("sessionStorage");
-        let kept;
+    /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した始まりをそのまま使う */
+    async function resolveSince({ serverMode, prefs, persist, headSeq, session = openStorage("sessionStorage"), post = MindmapPreview.postOpened, now = () => new Date().toISOString(), }) {
+        // 同じタブに残した始まりがあれば使う（読めない・前の版の日時の文字列は残っていないものとして続ける）
         try {
-            kept = session.getItem(MindmapPreview.SINCE_KEY);
+            const kept = JSON.parse(session.getItem(MindmapPreview.SINCE_KEY) ?? "null");
+            if (MindmapPreview.isOpenedPoint(kept))
+                return kept;
         }
         catch {
-            kept = null;
+            // 読めない保存領域・JSON でない値: 決め直す
         }
-        if (kept !== null)
-            return kept;
-        const now = new Date().toISOString();
+        // タブを開いた時点
+        let opened = { at: now(), seq: headSeq };
         let previous;
         if (serverMode) {
-            previous = await MindmapPreview.postOpened();
+            // サーバーの配信は、ワークスペースに残る前回の時点を引き、今の時点に書き換えてもらう
+            const reply = await post();
+            previous = reply?.previous ?? null;
+            opened = reply?.opened ?? opened;
         }
         else {
-            // 配る書き出しは、前回開いた日時を端末の設定に持ち、今の日時に書き換える
-            previous = prefs.opened ?? null;
-            prefs.opened = now;
+            // 配る書き出しは、前回の時点を端末の設定に持ち、今の時点に書き換える
+            previous = MindmapPreview.isOpenedPoint(prefs.opened) ? prefs.opened : null;
+            prefs.opened = opened;
             persist();
         }
-        // 前回開いた日時が無い・呼べなかったときは、タブを開いた日時にする
-        const since = previous ?? now;
+        // 前回の時点が無い・通し番号が今の記録より先（ワークスペースを戻した・作り直した）ときは、今の時点からにする
+        const since = previous !== null && previous.seq <= headSeq ? previous : opened;
         try {
-            session.setItem(MindmapPreview.SINCE_KEY, since);
+            session.setItem(MindmapPreview.SINCE_KEY, JSON.stringify(since));
         }
         catch {
             // 残せない環境では、読み込み直すたびに決め直す
         }
         return since;
     }
+    MindmapPreview.resolveSince = resolveSince;
     /** 変更履歴のモーダルに、差分を出さない行と、まだまとめていない変更・前回開いてから・まとまりの行を新しい順に並べる */
     function historyPoints({ changes, since }) {
         /** その時点で足した・変えた・消した項目の数（合わせた範囲で足して消した項目は、消した項目として 1 件に数える） */
@@ -223,7 +227,7 @@ var MindmapPreview;
             ...(hasPending
                 ? [{ sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: countOf("pending") }]
                 : []),
-            { sel: "since", name: "前回開いてから", sub: `${MindmapPreview.formatJst(since)} より後`, count: countOf("since") },
+            { sel: "since", name: "前回開いてから", sub: `${MindmapPreview.formatJst(since.at)} より後`, count: countOf("since") },
             ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: MindmapPreview.formatJst(set.at), count: countOf(set.id) })),
         ];
     }
@@ -338,7 +342,7 @@ var MindmapPreview;
             ? next
             : { ...next, tab: "overview", view: MindmapPreview.defaultView("overview"), filters: {} };
         // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
-        const since = await resolveSince({ serverMode, prefs, persist });
+        const since = await resolveSince({ serverMode, prefs, persist, headSeq: data.changes.sets[0]?.until_seq ?? 0 });
         // ===== 画面の土台 =====
         const top = MindmapPreview.h({ tag: "div", attrs: { id: "top" } });
         const main = MindmapPreview.h({ tag: "main", attrs: { class: "content", id: "main" } });

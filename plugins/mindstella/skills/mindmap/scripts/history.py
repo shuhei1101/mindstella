@@ -40,6 +40,7 @@ __all__ = [
     "ChangeSet",
     "Changes",
     "HistoryEntry",
+    "OpenedPoint",
     "Pending",
     "RemovedItem",
     "advance_seq",
@@ -47,6 +48,7 @@ __all__ = [
     "changes_since",
     "commit_pending",
     "diff_body",
+    "head_until_seq",
     "history_limit",
     "load_changes",
     "make_entry",
@@ -63,8 +65,11 @@ __all__ = [
 # `SCHEMA_DIR` の下の、`changes.yaml` を検証するスキーマのファイル名
 CHANGES_SCHEMA = "changes.schema.json"
 
-# プレビューを最後に開いた日時を持つファイルの名前（`records_root` の下）
+# プレビューを最後に開いた日時（1 行目）と通し番号（2 行目）を持つファイルの名前（`records_root` の下）
 OPENED_FILE = ".mindstella-opened"
+
+# `OPENED_FILE` の行数（日時の行と通し番号の行）
+OPENED_LINE_COUNT = 2
 
 # `config.yaml` に `history_limit` が無いときの回数
 DEFAULT_HISTORY_LIMIT = 5
@@ -148,6 +153,15 @@ class Pending(TypedDict):
     changed: list[str]
     # 消した項目（消した順）。無ければ消した項目なし
     removed: NotRequired[list[RemovedItem]]
+
+
+class OpenedPoint(TypedDict):
+    """前回開いた時点。`POST /api/opened` の `previous`・`opened` の形。"""
+
+    # 開いた日時（UTC のタイムゾーン付き ISO 8601）。範囲の始まりの表示にだけ使う
+    at: str
+    # 開いた時点の通し番号（`head_until_seq`）。0 以上
+    seq: int
 
 
 class Changes(TypedDict):
@@ -501,12 +515,21 @@ def mark_read(changes: Changes) -> Changes:
     return {**changes, "read_seq": changes["last_seq"]}
 
 
-def touch_opened(root: Path, now: str) -> str | None:
-    """前回開いた日時を読み、今の日時に書き換えて、前の日時を返す。"""
+def head_until_seq(changes: Changes) -> int:
+    """先頭（最新）のまとまりの `until_seq` を返す。まとまりが無ければ 0。"""
+    # `last_seq` は使わない: `commit_pending` が `until_seq` に `last_seq` をそのまま入れるため、
+    # `last_seq` を開いた時点にすると、開く前に書き換えて開いた後にまとめたまとまりが範囲から落ちる
+    if not changes["sets"]:
+        return 0
+    return changes["sets"][0]["until_seq"]
+
+
+def touch_opened(root: Path, opened: OpenedPoint) -> OpenedPoint | None:
+    """前回開いた時点を読み、今の時点に書き換えて、前の時点を返す。"""
     path = records_root(root) / OPENED_FILE
     previous = _read_opened(path)
     try:
-        temp = write_temp(path, f"{now}\n")
+        temp = write_temp(path, f"{opened['at']}\n{opened['seq']}\n")
     except OSError as error:
         raise write_failed(path, error) from error
     try:
@@ -529,14 +552,22 @@ def _existing_items(workspace: Workspace, ids: list[str]) -> list[tuple[str, dic
     return found
 
 
-def _read_opened(path: Path) -> str | None:
-    """前回開いた日時のファイルの 1 行目を返す。無いか、日時として読めなければ `None`。"""
+def _read_opened(path: Path) -> OpenedPoint | None:
+    """前回開いた時点のファイルを読む。無い・日時や通し番号として読めない（前の版の形を含む）ときは `None`。"""
     if not path.is_file():
         return None
     lines = path.read_text(encoding="utf-8").splitlines()
-    first = lines[0].strip() if lines else ""
+    # 日時と通し番号の 2 行に満たない: 前の版の形（日時だけ）
+    if len(lines) < OPENED_LINE_COUNT:
+        return None
+    at, seq_text = lines[0].strip(), lines[1].strip()
     try:
-        datetime.fromisoformat(first)
+        datetime.fromisoformat(at)
+        seq = int(seq_text)
     except ValueError:
         return None
-    return first
+    # 負の通し番号は読めない値として扱う
+    if seq < 0:
+        return None
+    return {"at": at, "seq": seq}
+

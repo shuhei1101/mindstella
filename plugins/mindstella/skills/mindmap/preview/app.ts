@@ -13,7 +13,7 @@ namespace MindmapPreview {
   /** 画面の下に「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
   export const NOTICE_MS = 6000;
 
-  /** そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
+  /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
   export const SINCE_KEY = "mindmap-since";
 
   /** 入力欄 1 つ（向けた先ごと）の書きかけと溜める状態（開いている間だけ持つ。書きかけの本文はサーバーにも残す） */
@@ -132,8 +132,8 @@ namespace MindmapPreview {
     minimap: false | null;
     /** 本文の差分を左右に並べる上書き。null はインライン（ワークスペースの既定は持たない） */
     bodyLayout: "side" | null;
-    /** 配る書き出しだけが持つ、前回開いた日時 */
-    opened?: string;
+    /** 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う */
+    opened?: unknown;
   };
 
   /** 狭い幅（詳細パネルを別画面として積む幅） */
@@ -313,38 +313,50 @@ namespace MindmapPreview {
     }
   }
 
-  /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した日時をそのまま使う */
-  async function resolveSince({
+  /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した始まりをそのまま使う */
+  export async function resolveSince({
     serverMode,
     prefs,
     persist,
+    headSeq,
+    session = openStorage("sessionStorage"),
+    post = postOpened,
+    now = () => new Date().toISOString(),
   }: {
     serverMode: boolean;
     prefs: Prefs;
     persist: () => void;
-  }): Promise<string> {
-    const session = openStorage("sessionStorage");
-    let kept: string | null;
+    /** 読んだ記録の先頭のまとまりの `until_seq`（まとまりが無ければ 0） */
+    headSeq: number;
+    session?: Storage;
+    post?: () => Promise<OpenedReply | null>;
+    now?: () => string;
+  }): Promise<OpenedPoint> {
+    // 同じタブに残した始まりがあれば使う（読めない・前の版の日時の文字列は残っていないものとして続ける）
     try {
-      kept = session.getItem(SINCE_KEY);
+      const kept: unknown = JSON.parse(session.getItem(SINCE_KEY) ?? "null");
+      if (isOpenedPoint(kept)) return kept;
     } catch {
-      kept = null;
+      // 読めない保存領域・JSON でない値: 決め直す
     }
-    if (kept !== null) return kept;
-    const now = new Date().toISOString();
-    let previous: string | null;
+    // タブを開いた時点
+    let opened: OpenedPoint = { at: now(), seq: headSeq };
+    let previous: OpenedPoint | null;
     if (serverMode) {
-      previous = await postOpened();
+      // サーバーの配信は、ワークスペースに残る前回の時点を引き、今の時点に書き換えてもらう
+      const reply = await post();
+      previous = reply?.previous ?? null;
+      opened = reply?.opened ?? opened;
     } else {
-      // 配る書き出しは、前回開いた日時を端末の設定に持ち、今の日時に書き換える
-      previous = prefs.opened ?? null;
-      prefs.opened = now;
+      // 配る書き出しは、前回の時点を端末の設定に持ち、今の時点に書き換える
+      previous = isOpenedPoint(prefs.opened) ? prefs.opened : null;
+      prefs.opened = opened;
       persist();
     }
-    // 前回開いた日時が無い・呼べなかったときは、タブを開いた日時にする
-    const since = previous ?? now;
+    // 前回の時点が無い・通し番号が今の記録より先（ワークスペースを戻した・作り直した）ときは、今の時点からにする
+    const since = previous !== null && previous.seq <= headSeq ? previous : opened;
     try {
-      session.setItem(SINCE_KEY, since);
+      session.setItem(SINCE_KEY, JSON.stringify(since));
     } catch {
       // 残せない環境では、読み込み直すたびに決め直す
     }
@@ -352,7 +364,7 @@ namespace MindmapPreview {
   }
 
   /** 変更履歴のモーダルに、差分を出さない行と、まだまとめていない変更・前回開いてから・まとまりの行を新しい順に並べる */
-  function historyPoints({ changes, since }: { changes: Changes; since: string }): HistoryPoint[] {
+  function historyPoints({ changes, since }: { changes: Changes; since: OpenedPoint }): HistoryPoint[] {
     /** その時点で足した・変えた・消した項目の数（合わせた範囲で足して消した項目は、消した項目として 1 件に数える） */
     const countOf = (sel: string): number => {
       const point = resolveDiffPoint(changes, sel, since);
@@ -365,7 +377,7 @@ namespace MindmapPreview {
       ...(hasPending
         ? [{ sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: countOf("pending") }]
         : []),
-      { sel: "since", name: "前回開いてから", sub: `${formatJst(since)} より後`, count: countOf("since") },
+      { sel: "since", name: "前回開いてから", sub: `${formatJst(since.at)} より後`, count: countOf("since") },
       ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: formatJst(set.at), count: countOf(set.id) })),
     ];
   }
@@ -484,7 +496,7 @@ namespace MindmapPreview {
         ? next
         : { ...next, tab: "overview", view: defaultView("overview"), filters: {} };
     // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
-    const since = await resolveSince({ serverMode, prefs, persist });
+    const since = await resolveSince({ serverMode, prefs, persist, headSeq: data.changes.sets[0]?.until_seq ?? 0 });
 
     // ===== 画面の土台 =====
     const top = h({ tag: "div", attrs: { id: "top" } });

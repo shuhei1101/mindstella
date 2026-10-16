@@ -160,7 +160,7 @@ namespace MindmapPreview {
   }
 
   /** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないときは null */
-  export function resolveDiffPoint(changes: Changes, sel: string | null, since: string): DiffPoint | null {
+  export function resolveDiffPoint(changes: Changes, sel: string | null, since: OpenedPoint): DiffPoint | null {
     if (sel === null) return null;
     const sets = changes.sets;
     // 先頭のまとまりまでの変更履歴（それより後がまだまとめていない分）
@@ -172,15 +172,15 @@ namespace MindmapPreview {
       return buildPoint({ sel, name: PENDING_NAME, sub: PENDING_SUB, groups: [changes.pending], fromSeq: latestSeq, untilSeq: null });
     }
     if (sel === "since") {
-      const startedAt = Date.parse(since);
-      const inRange = sets.filter((set) => Date.parse(set.at) > startedAt);
+      // 日時は比べず、開いた時点の通し番号より大きいまとまりを範囲にする
+      const inRange = sets.filter((set) => set.until_seq > since.seq);
       const oldest = inRange.at(-1);
       // 範囲で一番古いまとまりの 1 つ前の `until_seq` から。範囲にまとまりが無ければ、先頭のまとまりの `until_seq` から
       const fromSeq = oldest === undefined ? latestSeq : (sets[sets.indexOf(oldest) + 1]?.until_seq ?? 0);
       return buildPoint({
         sel,
         name: SINCE_NAME,
-        sub: `${formatJst(since)} より後`,
+        sub: `${formatJst(since.at)} より後`,
         groups: [...inRange, changes.pending],
         fromSeq,
         untilSeq: null,
