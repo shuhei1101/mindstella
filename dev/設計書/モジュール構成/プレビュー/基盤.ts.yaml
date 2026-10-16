@@ -167,6 +167,30 @@ data_models:
       - name: events
         type: "{kind: 'closed' | 'reopened', author: 'user' | 'ai', reason: string | null, created}[]"
         description: 書いた順の状態の記録
+  - name: OpenedPoint
+    title: 前回開いた時点
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    summary: 「前回開いてから」の範囲の始まり（インターフェース定義『前回開いた日時』の `previous`・`opened` の形）
+    properties:
+      - name: at
+        type: string
+        description: 開いた日時（UTC のタイムゾーン付き ISO 8601）。`{日時} より後` の表示にだけ使う
+      - name: seq
+        type: number
+        description: 開いた時点の先頭のまとまりの `until_seq`（無ければ 0）。`until_seq` がこれより大きいまとまりが範囲に入る
+  - name: OpenedReply
+    title: 前回開いた日時の応答
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    summary: '`postOpened` の結果（`{previous, opened}`）'
+    properties:
+      - name: previous
+        type: OpenedPoint | null
+        description: 前回開いた時点。無いときは `null`
+      - name: opened
+        type: OpenedPoint
+        description: サーバーが書き込んだ今の時点
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -999,21 +1023,28 @@ functions:
     usecase: 前回からの差分を見る
     scope: public
     is_async: true
-    summary: '`POST /api/opened` を呼び、前回開いた日時を返す'
-    args: []
+    summary: '`POST /api/opened` を呼び、前回開いた時点とサーバーが書き込んだ今の時点を返す'
+    args:
+      - name: fetchFn
+        type: FetchFn
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 配信への問い合わせ
     returns:
-      type: Promise<string | null>
-      description: '`previous`。届かない・200 でない・読めないときも `null`'
+      type: Promise<OpenedReply | null>
+      description: 届かない・200 でない（422・500）・読めない・`opened` が `OpenedPoint` の形でないときは `null`
     process: |-
-      1. `fetch(API_PATHS.opened, {method: "POST"})` を呼ぶ
-      2. 200 なら JSON の `previous` を返し、それ以外と例外は `null` を返す
+      1. `fetchFn(API_PATHS.opened, {method: "POST"})` を呼ぶ
+      2. 200 なら JSON を読み、`opened` が `isOpenedPoint` でなければ `null` を返す。`previous` は `isOpenedPoint` ならそのまま、それ以外は `null` にして `{previous, opened}` を返す
+      3. 200 以外と例外は `null` を返す
     unit_tests:
       - name: test_post_opened
         case: 正常
-        summary: 前回の日時を返し、失敗は null
-        condition: '`parametrize`: 200 で `{previous: "2026-10-04T13:05:00+00:00"}` / 500 / 届かない'
+        summary: 前回と今の時点を返し、失敗は null
+        condition: '`parametrize`: 200 で `{previous: {at: "2026-10-04T13:05:00+00:00", seq: 3}, opened: {at: "2026-10-05T09:00:00+00:00", seq: 5}}` / 200 で `previous: null` / 200 で前の版の形（`previous`・`opened` が日時の文字列）/ 422 / 500 / 届かない'
         mock: '`page.route`'
-        expected: '`2026-10-04T13:05:00+00:00` / `null` / `null`'
+        expected: 同じ `{previous, opened}` / `previous` が `null` で `opened` はそのまま / `null` / `null` / `null` / `null`
   - name: callApi
     title: 配信の呼び出し
     kind: 関数
@@ -1704,6 +1735,30 @@ functions:
         condition: '`parametrize`: `other.html` / `/mindstella.html` / `//example.com/a` / `?a=1` / 空文字 / `javascript:alert(1)` / `JaVaScRiPt:alert(1)` / `data:text/html,x` / `file:///etc/hosts` / `ftp://example.com/` / `blob:https://example.com/x`'
         expected: 'どれも `{kind: none}`'
         mock: なし
+  - name: isOpenedPoint
+    title: 前回開いた時点として読めるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 値が `OpenedPoint` の形（文字列の `at` と 0 以上の整数の `seq`）かを確かめる。サーバーの応答・`sessionStorage`・`Prefs.opened` の値を読むときに使う
+    args:
+      - name: value
+        type: unknown
+        required: true
+        passing: positional
+        description: 確かめる値
+    returns:
+      type: value is OpenedPoint
+      description: 読めれば真。日時だけの文字列（前の版の形）は偽
+    process: 1. オブジェクトで、`at` が文字列、`seq` が 0 以上の整数（`Number.isInteger`）なら真、それ以外は偽を返す
+    unit_tests:
+      - name: test_is_opened_point
+        case: 正常
+        summary: 時点の形だけを読めるとする
+        condition: '`parametrize`: `{at: "2026-10-04T13:05:00+00:00", seq: 3}` / `{at: "...", seq: 0}` / 日時の文字列 / `{at: "..."}` / `{at: "...", seq: -1}` / `{at: "...", seq: 1.5}` / `null`'
+        mock: なし
+        expected: 真 / 真 / 偽 / 偽 / 偽 / 偽 / 偽
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

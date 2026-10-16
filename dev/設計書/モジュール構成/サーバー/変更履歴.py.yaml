@@ -138,6 +138,20 @@ data_models:
       - name: removed
         type: NotRequired[list[RemovedItem]]
         description: 消した項目（消した順）。無ければ消した項目なし
+  - name: OpenedPoint
+    title: 前回開いた時点
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 前回からの差分を見る
+    role: DTO
+    summary: '`OPENED_FILE` の中身で、`POST /api/opened` の `previous`・`opened` の形'
+    description: '`TypedDict`。'
+    properties:
+      - name: at
+        type: str
+        description: 開いた日時（UTC のタイムゾーン付き ISO 8601）。範囲の始まりの表示にだけ使う
+      - name: seq
+        type: int
+        description: 開いた時点の通し番号（`head_until_seq`）。0 以上
 constants:
   - name: CHANGES_FILE
     title: まとまりのファイル名
@@ -155,7 +169,7 @@ constants:
     title: 前回開いた日時のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/history.py
     usecase: 前回からの差分を見る
-    summary: プレビューを最後に開いた日時を持つファイルの名前（`records_root(root)` の下）
+    summary: プレビューを最後に開いた日時（1 行目）と通し番号（2 行目）を持つファイルの名前（`records_root(root)` の下）
     value: '".mindstella-opened"'
   - name: DEFAULT_HISTORY_LIMIT
     title: 保持する回数の既定
@@ -568,24 +582,24 @@ functions:
     usecase: 前回からの差分を見る
     scope: public
     side_effects: ワークスペースの `OPENED_FILE` を置き換える
-    summary: '`OPENED_FILE` の日時を読んでから今の日時に書き換え、前の日時を返す'
+    summary: '`OPENED_FILE` の前回開いた時点を読んでから今の日時と通し番号に書き換え、前の時点を返す'
     args:
       - name: root
         type: Path
         required: true
         passing: positional
         description: ワークスペースのフォルダ
-      - name: now
-        type: str
+      - name: opened
+        type: OpenedPoint
         required: true
         passing: positional
-        description: 今の日時
+        description: 今の時点（今の日時と `head_until_seq`）
     returns:
-      type: str | None
-      description: 前の日時。無いか 1 行目が日時として読めなければ `None`
+      type: OpenedPoint | None
+      description: 前の時点。無い・1 行目が日時として読めない・2 行目が無い（前の版の形）・2 行目が 0 以上の整数として読めなければ `None`
     process: |-
-      1. `records_root(root) / OPENED_FILE` の 1 行目を読む（無ければ `None`。`datetime.fromisoformat` で読めなければ `None`）
-      2. 一時ファイルに `now` を書いて `os.replace` で置き換える
+      1. `records_root(root) / OPENED_FILE` を読む（無ければ `None`。1 行目を `datetime.fromisoformat` で、2 行目を 0 以上の整数として読めなければ `None`）
+      2. 一時ファイルに `{opened.at}\n{opened.seq}\n` を書いて `os.replace` で置き換える
          - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: WriteFailedError
@@ -594,10 +608,16 @@ functions:
     unit_tests:
       - name: test_touch_opened
         case: 正常
-        summary: 前の日時を返して書き換える
-        condition: 無い状態で 1 回、別の日時でもう 1 回呼ぶ
+        summary: 前の時点を返して書き換える
+        condition: 無い状態で 1 回、別の日時と通し番号でもう 1 回呼ぶ
         mock: なし
-        expected: 1 回目が `None`、2 回目が 1 回目の `now`。ファイルの 1 行目が 2 回目の `now`
+        expected: 1 回目が `None`、2 回目が 1 回目の `opened`。ファイルの 1 行目が 2 回目の `at`、2 行目が 2 回目の `seq`
+      - name: test_touch_opened_when_previous_unreadable
+        case: 正常
+        summary: 通し番号を読めない前の時点は無いものとして返し、今の形で書き換える
+        condition: '`parametrize`: 1 行の日時だけ（前の版の形）/ 2 行目が `x` / 2 行目が `-1` / 1 行目が日時でない'
+        mock: なし
+        expected: '`None` を返し、ファイルが渡した `opened` の 2 行になる'
   - name: advance_seq
     title: 通し番号を振る
     kind: 関数
@@ -810,5 +830,32 @@ functions:
         condition: '`sets[0].removed` に N-1（`seq` 3）、`removed` を持たない `sets[1]`、`pending.removed` に N-2（`seq` 5）'
         mock: なし
         expected: N-1・N-2 の順の 2 件
+  - name: head_until_seq
+    title: 先頭のまとまりの通し番号
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 先頭（最新）のまとまりの `until_seq` を返す。開いた時点の通し番号に使う
+    description: '`last_seq` ではなくこの値を使う。`commit_pending` は `until_seq` に `last_seq` をそのまま入れるため、`last_seq` を開いた時点にすると、開く前に書き換えて開いた後にまとめたまとまりが範囲から落ちる'
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: まとまりの記録
+    returns:
+      type: int
+      description: 先頭のまとまりの `until_seq`。まとまりが無ければ 0
+    process: |-
+      1. `sets` が空なら 0 を返す
+      2. `sets[0]["until_seq"]` を返す
+    unit_tests:
+      - name: test_head_until_seq
+        case: 正常
+        summary: 先頭のまとまりの通し番号を返し、`last_seq` は返さない
+        condition: '`parametrize`: まとまりが無い（`last_seq` 3）/ まとまり 2 つ（新しい順に `until_seq` 5・2、`last_seq` 7）'
+        mock: なし
+        expected: 0 / 5
 test_files:
   - tests/unit/scripts/test_history.py
