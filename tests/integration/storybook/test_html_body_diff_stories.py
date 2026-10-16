@@ -143,12 +143,15 @@ def test_side_raw(open_story: OpenStory) -> None:
 
 
 def test_side_from_markdown(open_story: OpenStory) -> None:
-    """選んだ時点の本文が Markdown のとき、左右に並べる。左は Markdown として描き、右の今の本文には印を付けない（正常系）。"""
+    """選んだ時点の本文が Markdown のとき、左右に並べる。左は Markdown として描き、見出しは節の見出し「本文」の次の段（h4）から並べ、右の今の本文には印を付けない（正常系）。"""
     # 準備・実行
     page = open_story("preview-htmlbodydiff--side-from-markdown")
     wait_frame_rendered(page, f"{SIDE_AFTER} iframe")
-    # 検証（左は Markdown として描いた見出しと段落、右の今の本文には印が無い）
+    # 検証（左は Markdown として描いた見出しと段落、見出しは h4 に下げて元の段を残す、右の今の本文には印が無い）
     assert page.locator(f"{SIDE_BEFORE} iframe").count() == 0
     assert "一つ目の段落" in page.inner_text(f"{SIDE_BEFORE}")
-    assert page.locator(f"{SIDE_BEFORE} h1").count() == 1
+    assert page.locator(f"{SIDE_BEFORE} h1").count() == 0
+    heading = page.locator(f"{SIDE_BEFORE} h4", has_text="画面の流れ")
+    assert heading.count() == 1
+    assert heading.get_attribute("data-md-level") == "1"
     assert frame_of(page, f"{SIDE_AFTER} iframe").locator("[data-df]").count() == 0
