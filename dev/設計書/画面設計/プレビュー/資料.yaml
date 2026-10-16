@@ -135,7 +135,7 @@ elements:
     io: 表示
     source: 記録の取得.changes
     visible_when: 差分の表示の間で、選んだ時点で資料を 1 件以上消したとき
-    status: planned
+    status: implemented
   - name: カード・ボードの取り下げの札
     kind: label
     component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
@@ -143,7 +143,7 @@ elements:
     io: 表示
     source: プレビューを開く.mindmap-data.docs[].withdrawn
     visible_when: その資料の `withdrawn` が真のとき（差分の表示によらない）
-    status: planned
+    status: implemented
   - name: カード・ボードの形式の札
     kind: label
     component: dev/設計書/部品設計/プレビュー/本文の形式の札.ts#

@@ -190,7 +190,7 @@ elements:
     io: 表示
     source: 記録の取得.changes
     visible_when: 差分の表示の間で、選んだ時点で検討事項を 1 件以上消したとき
-    status: planned
+    status: implemented
 lead: 検討事項をボード（既定）・マップ・表で見る画面。
 mock: dev/mock/pages/decisions/223/a-above-table/index.html
 test_file: tests/integration/preview/test_decisions_screen.py
