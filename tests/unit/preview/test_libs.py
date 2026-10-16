@@ -1086,6 +1086,63 @@ def test_render_markdown_when_html_code_block(
     assert result["paragraph"] == ["3", "9"]
 
 
+# 段落（1 行目）の後に表を 2 つ持つ本文（1 つ目の表は 3〜5 行目、2 つ目は 7〜9 行目）
+TABLE_WRAP_SOURCE = (
+    "段落\n\n"
+    "| 列 A | 列 B |\n| --- | --- |\n| 1 | 2 |\n\n"
+    "| 列 C | 列 D |\n| --- | --- |\n| 3 | 4 |\n"
+)
+
+# 表を包む入れ物の期待する属性（役割・読み上げの名前・キーボードで届く・行の印は持たない）
+TABLE_WRAP_ATTRIBUTES = {
+    "tabindex": "0",
+    "role": "group",
+    "label": "本文の表",
+    "lineStart": None,
+}
+
+
+def test_render_markdown_when_table(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """表を横に送れる入れ物で包み、行の印を変えない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            const tables = [...root.querySelectorAll("table")];
+            const wraps = tables.map((table) => table.parentElement);
+            return {
+                tableCount: tables.length,
+                wrapClasses: wraps.map((wrap) => wrap.className),
+                wrapAttributes: wraps.map((wrap) => ({
+                    tabindex: wrap.getAttribute("tabindex"),
+                    role: wrap.getAttribute("role"),
+                    label: wrap.getAttribute("aria-label"),
+                    lineStart: wrap.getAttribute("data-line-start"),
+                })),
+                wrapChildren: wraps.map((wrap) => [...wrap.children].map((child) => child.tagName)),
+                rows: tables.map((table) =>
+                    [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start"))
+                ),
+                paragraphParentIsRoot: root.querySelector("p").parentElement === root,
+            };
+        }""",
+        TABLE_WRAP_SOURCE,
+    )
+    # 検証
+    assert result["tableCount"] == 2
+    assert result["wrapClasses"] == ["md-table-wrap", "md-table-wrap"]
+    assert result["wrapAttributes"] == [TABLE_WRAP_ATTRIBUTES, TABLE_WRAP_ATTRIBUTES]
+    assert result["wrapChildren"] == [["TABLE"], ["TABLE"]]
+    assert result["rows"] == [["3", "5"], ["7", "9"]]
+    assert result["paragraphParentIsRoot"] is True
+
+
 # 選んだ箇所を求める HTML の本文の原文（左の数字は行。サーバーの行の印を足す前）
 HTML_SAMPLE_SOURCE = "\n".join(
     [
