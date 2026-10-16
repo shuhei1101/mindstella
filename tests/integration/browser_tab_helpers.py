@@ -35,7 +35,7 @@ WINDOW_OPEN_RECORDER_JS = """() => {
 class _LinkPageHandler(http.server.BaseHTTPRequestHandler):
     """どのパスにも同じ小さなページを返す、リンク先の配信。"""
 
-    def do_GET(self) -> None:  # noqa: N802 - http.server が呼ぶ名前
+    def do_GET(self) -> None:  # http.server が呼ぶ名前
         """リンク先のページを返す。"""
         body = f"<!doctype html><title>{LINK_PAGE_TITLE}</title><p>リンク先</p>".encode()
         self.send_response(200)

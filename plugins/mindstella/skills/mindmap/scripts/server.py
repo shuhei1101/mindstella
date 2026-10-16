@@ -161,7 +161,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     @server.tool(name="update", description="項目 1 つのキーを置き換える")
     def update(
         workspace: WorkspaceArg,
-        id: ItemIdArg,  # noqa: A002
+        id: ItemIdArg,
         item: Annotated[dict[str, Any], Field(description="置き換えるキーと値。null で消す")],
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_update(root, id, item))
@@ -172,7 +172,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def remove(
         workspace: WorkspaceArg,
-        id: ItemIdArg,  # noqa: A002
+        id: ItemIdArg,
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_remove(root, id))
 
@@ -215,7 +215,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def adopt(
         workspace: WorkspaceArg,
-        id: ItemIdArg,  # noqa: A002
+        id: ItemIdArg,
         key: Annotated[str, Field(description="採用する案の記号")],
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_adopt(root, id, key))
@@ -226,7 +226,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def edit_option(
         workspace: WorkspaceArg,
-        id: ItemIdArg,  # noqa: A002
+        id: ItemIdArg,
         action: Annotated[
             Literal["add", "update", "remove"],
             Field(description="add は末尾に足す、update は指した案を直す、remove は指した案を消す"),
@@ -295,7 +295,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return read(workspace, lambda root: commands.run_next(root, limit))
 
     @server.tool(name="impact", description="参照を逆向きにたどって影響を受ける項目を返す")
-    def impact(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:  # noqa: A002
+    def impact(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_impact(root, id))
 
     @server.tool(name="find", description="条件に合う項目を返す")
@@ -325,7 +325,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         return read(workspace, lambda root: commands.run_find(root, search_filter))
 
     @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
-    def show(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:  # noqa: A002
+    def show(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_show(root, id))
 
     @server.tool(name="attrs", description="使っている属性名と件数を返す")
@@ -429,7 +429,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def thread(
         workspace: WorkspaceArg,
-        id: Annotated[str, Field(description="スレッドの ID（例 TH-1）")],  # noqa: A002
+        id: Annotated[str, Field(description="スレッドの ID（例 TH-1）")],
         unread_only: Annotated[
             bool, Field(description="真なら AI の未読の書き込みだけ、偽なら全ての書き込み")
         ] = True,
@@ -463,7 +463,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def reply(
         workspace: WorkspaceArg,
-        id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+        id: Annotated[str, Field(description="スレッドの ID")],
         body: Annotated[str, Field(description="返信の本文（1〜10000 文字）")],
         summary: Annotated[str, Field(description="書き直した要約（1〜400 文字）")],
         take: Annotated[
@@ -478,7 +478,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def set_thread_status(
         workspace: WorkspaceArg,
-        id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+        id: Annotated[str, Field(description="スレッドの ID")],
         status: Annotated[Literal["open", "closed"], Field(description="変えた後の状態")],
         reason: Annotated[str | None, Field(description="状態を変える理由（400 文字まで）")] = None,
     ) -> CallToolResult:
@@ -492,7 +492,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     )
     def update_thread(
         workspace: WorkspaceArg,
-        id: Annotated[str, Field(description="スレッドの ID")],  # noqa: A002
+        id: Annotated[str, Field(description="スレッドの ID")],
         summary: Annotated[str | None, Field(description="書き直した要約（1〜400 文字）")] = None,
         tags: Annotated[
             list[str] | None, Field(description="置き換えるタグ。空の一覧でタグを外す")
@@ -528,7 +528,7 @@ def call_tool(
             payload = handler()
     except MindmapError as error:
         return error_result(error)
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         # 想定していない例外: トレースバックは記録に残し、利用者には文言だけ返す
         logger.exception("ツールの予期しないエラー")
         message = UNEXPECTED_ERROR.format(type=type(error).__name__, message=error)

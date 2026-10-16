@@ -18,7 +18,6 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from workspace_fixtures import RECORD_DIR
 
 __all__ = [
-    "HttpResult",
     "COMMENTS_BUTTON",
     "COMMENTS_PANEL",
     "DETAIL_FORM",
@@ -35,6 +34,7 @@ __all__ = [
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "HttpResult",
     "OpenInEmptyContext",
     "OpenPreview",
     "ServePreview",
@@ -285,14 +285,14 @@ def http_call(
     url: str, path: str, *, method: str = "GET", payload: dict[str, Any] | None = None
 ) -> HttpResult:
     """配信の URL のページの路に依らず、パスを足して 1 回つなぐ。ステータスが 4xx・5xx でも例外にせず、応答を返す。"""
-    request = urllib.request.Request(  # noqa: S310
+    request = urllib.request.Request(
         urljoin(url, path),
         method=method,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None,
         headers={"Content-Type": "application/json"} if payload is not None else {},
     )
     try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
             return HttpResult(
                 response.status,
                 {name.lower(): value for name, value in response.getheaders()},

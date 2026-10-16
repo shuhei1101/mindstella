@@ -11,9 +11,9 @@ __all__ = [
     "FRAME_SELECTOR",
     "FRAME_SETTLE_MS",
     "FrameFit",
-    "serve_external_pages",
     "frame_fit",
     "frame_of",
+    "serve_external_pages",
     "wait_frame_rendered",
 ]
 

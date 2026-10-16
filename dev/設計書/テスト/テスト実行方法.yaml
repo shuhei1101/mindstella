@@ -104,12 +104,12 @@ layers:
   - name: lint
     description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）でプレビューの `.ts` とストーリーの `.ts` を検査する。formatter と import の並びの検査は含めない
     prerequisites:
-      - Python 3.12 以上と ruff
+      - Python 3.12 以上と、`requirements-dev.txt` で固定した版の ruff（外部ライブラリ『ruff』）
       - Node 20.19 以上で `npm ci` を済ませてある
       - 実行はリポジトリの直下で行う
     run_all: |-
       ```bash
-      ruff check plugins tests && npm run typecheck
+      ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
       ```
     run_one:
       label: ファイル
