@@ -46,6 +46,15 @@
       .topbar :is(.search-trigger, .hist-btn, .top-btn), .topbar:has(.conn) :is(.search-trigger, .hist-btn) { flex: 0 1 32px; min-width: 28px; }
     }
   </style>
+  <style id="fit-c" media="not all">
+    /* 案 C: 件数の札が幅の広い中身（絞り込み 2 桁以上・コメント 99+）のときだけ、案 A と同じ詰め方を幅 400px まで効かせる。既定の中身は今のまま */
+    @media (min-width: 390px) and (max-width: 400px) {
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
+    }
+  </style>
   <style>
     /* 枠の中ではトップバーを流れに置き、下に余白を残さない */
     body { margin: 0; overflow-x: auto; }
@@ -98,6 +107,9 @@
       filterCount: Number(params.get("fc") ?? 0),
       onFilter: noop,
     }));
+    // 件数の札の幅の広い中身の印: 部品のスクリプトが付ける想定の data-wide を、見本では描いた後に付ける
+    if (Number(params.get("fc") ?? 0) >= 10) document.querySelector(".filter-btn .fbadge")?.setAttribute("data-wide", "");
+    if (Number(params.get("cc") ?? 3) > 99) document.querySelector(".comments-btn .count")?.setAttribute("data-wide", "");
   </script>
 </body>
 </html>
