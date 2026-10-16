@@ -130,7 +130,7 @@ namespace MindmapPreview {
       for (const block of row.right) pieces.push({ cell: entry.rightCell, block, lines: afterLines, op: "add", rendered: render(block) });
     }
     // 見出しの段は、左右の全ての塊を合わせた最も上の段から 1 つの差を求めて全てに当てる
-    const shift = headingShift(pieces.map((piece) => piece.rendered));
+    const shift = headingShift({ roots: pieces.map((piece) => piece.rendered) });
     for (const { cell, block, lines, op, rendered } of pieces) {
       lowerHeadings({ root: rendered, shift });
       markSideBlocks({ root: rendered, lines, changed: block.changed, op });
