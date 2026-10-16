@@ -1141,7 +1141,7 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 /* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
 .md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
 /* 塊の中の段落・見出し（元の段が # のもの）・箇条書き: 塊の余白に寄せる */
-.md .df-blk > :is(p, ul, ol, table, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
+.md .df-blk > :is(p, ul, ol, .md-table-wrap, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
 /* 足した塊 */
 .md ins.df-blk { background: var(--df-add-bg); }
 /* 消した塊: 取り消し線を引き、文字を控えめにする */
