@@ -13,18 +13,11 @@
   <!-- 実装のトークンとスタイルをそのまま読む -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
-  <!-- 案 A の畳み方: 実装の style.css に足す規則。?plan=current のとき外して今の見た目を出す -->
+  <!-- 押せる的の下限: 実装の style.css に足す規則。?plan=current のとき外して今の見た目を出す -->
   <style id="plan-a">
-    /* 狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅に収める */
+    /* 狭い幅（389px 以下）: 表示の設定・絞り込み・コメントのボタンを、件数の札を持たない間も幅 --target-min 以上にし、印を中央に置く */
     @media (max-width: 389px) {
-      /* 押せない飾りのツール名: 名前は常に隠し、差分の札を出している間は印も隠して札に幅を回す */
-      .topbar .brand-name, .topbar:has(.df-chip) .brand { display: none; }
-      /* トップバー: 左右の余白を詰め、差分の札を出している間も要素の間隔を 1px にする */
-      .topbar, .topbar:has(.df-chip), .topbar:has(.conn):has(.df-chip) { gap: 1px; padding: 0 8px; }
-      /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 高さは保ち、幅を 28px に揃えて縮ませない */
-      .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
-      /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
-      .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+      .topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
     }
   </style>
   <style>
@@ -40,7 +33,7 @@
   <script src="../../../../plugins/mindstella/skills/mindmap/preview/components/send-form.js"></script>
   <script src="../../../../plugins/mindstella/skills/mindmap/preview/components/topbar.js"></script>
   <script>
-    // URL の ?conn=offline&diff=1&theme=dark&plan=current で組み合わせを選ぶ
+    // URL の ?conn=offline&diff=1&fcount=12&ccount=120&theme=dark&plan=current で組み合わせを選ぶ
     const params = new URLSearchParams(location.search);
     const theme = params.get("theme") === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = theme;
@@ -66,13 +59,14 @@
       connection: params.get("conn") === "offline" ? "offline" : "online",
       readAt: "2026-10-15T01:20:00+00:00",
       comments: true,
-      commentCount: 3,
+      commentCount: Number(params.get("ccount") ?? 3),
       onComments: noop,
       diffPoint: params.get("diff") === "1" ? { name: "前回開いてから", sub: "10/15 10:20" } : null,
       onHistory: noop,
       onDiffOff: noop,
       onSettings: noop,
       filter: true,
+      filterCount: Number(params.get("fcount") ?? 0),
       onFilter: noop,
     }));
   </script>
