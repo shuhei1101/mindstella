@@ -85,6 +85,30 @@ flows:
       - '`previous` が `null`'
       - '`.mindstella-opened` が 2 行（日時と通し番号）で、`opened` と同じ値'
     test: test_normal_when_previous_has_no_seq
+  - name: 異常系（変更履歴が読めない・422）
+    summary: '`changes.yaml` がスキーマに合わないときは合わない箇所を返し、前回開いた時点を書き換えない'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`.mindstella-opened` に日時と通し番号を持ち、`changes.yaml` の `last_seq` を文字列にしたワークスペース'
+        notes: '`last_seq: "x"`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/opened
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST /api/opened
+        IF-->>WS: changes.yaml を読む（スキーマに合わない）
+        IF-->>クライアント: 422
+      ```
+    expected:
+      - ステータスが 422、`Content-Type` が `application/problem+json`
+      - '`detail` が `changes.yaml: last_seq:` で始まる行を持つ'
+      - '`.mindstella-opened` の中身が呼ぶ前と同じ'
+    test: test_error_when_changes_invalid
 lead: プレビューのタブが開いたときに 1 度呼び、そのワークスペースを前回開いた日時と通し番号を返して、今の値に書き換える。変更履歴の「前回開いてから」の範囲の始まりに使う。
 idempotent: false
 side_effects: ワークスペースの `.mindstella-opened` を今の日時と通し番号で書き換える（無ければ作る）。記録（種類ごとの YAML・本文・`changes.yaml`）は書き換えない
@@ -124,6 +148,9 @@ status_codes:
   - code: '500'
     condition: '`.mindstella-opened` を書けない'
     notes: '`detail` に書けなかった理由。画面はタブを開いた日時を範囲の始まりにする'
+  - code: '422'
+    condition: '`changes.yaml` が YAML として読めないか、スキーマに合わない'
+    notes: '`.mindstella-opened` は書き換えない。`detail` は『記録の取得』の 422 と同じく合わない箇所ごとの `{ファイル名}: {キーのパス}: {理由}` を改行でつなぐ。画面は呼べなかったときと同じく、タブを開いた時点を範囲の始まりにする'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 呼ぶ時
@@ -143,7 +170,7 @@ constraints:
   - item: 共有の範囲
     constraint: ワークスペースごとに 1 つ。同じワークスペースを開いた全てのブラウザで共有し、Claude Code を立て直しても残る
   - item: 通し番号
-    constraint: 日時ではなく通し番号で「前回開いてから」の範囲を決める（端末の時計の戻りと秒の切り捨てに左右されない）。通し番号は `changes.yaml` の先頭のまとまりの `until_seq` で、`last_seq` ではない（開く前に書き換え、開いた後に `commit` したまとまりの `until_seq` が開いた時点の値と同じになって範囲から落ちるため）。`changes.yaml` が無ければ 0
+    constraint: 日時ではなく通し番号で「前回開いてから」の範囲を決める（端末の時計の戻りと秒の切り捨てに左右されない）。通し番号は `changes.yaml` の先頭のまとまりの `until_seq` で、`last_seq` ではない（開く前に書き換え、開いた後に `commit` したまとまりの `until_seq` が開いた時点の値と同じになって範囲から落ちるため）。`changes.yaml` が無ければ 0。YAML として読めないかスキーマに合わなければ 422 を返し、`.mindstella-opened` は書き換えない
   - item: 前の版の形
     constraint: 1 行目の日時だけを持つ `.mindstella-opened`（前の版の形）は、`previous` を `null` にして返し、今の形で書き換える。移し替え（`migrate`）の手順は足さない
 refs:
