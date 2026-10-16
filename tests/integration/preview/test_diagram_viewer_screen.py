@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+import pytest
 from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
 from preview_body_scroll_helpers import (
@@ -15,6 +16,7 @@ from preview_body_scroll_helpers import (
     TALL_DIAGRAM_BODY,
     overflows_horizontally,
 )
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import (
     OpenPreview,
     WritePreview,
@@ -359,3 +361,77 @@ def test_diff_raw_when_long_line(
     assert [line["rows"] > 1 for line in added] == [True]
     assert all(line["clearOfSign"] for line in added)
     assert axe_rule_results(page, "dialog.viewer", SCROLLABLE_REGION_RULE)["violations"] == []
+
+
+# 上の帯のボタンの文字の見え方（文字の枠の大きさ）・帯が何段か・読み上げの名前を読む
+BACK_BUTTON_JS = """() => {
+    const button = document.querySelector('dialog.viewer button[data-act="diagram-close"]');
+    const label = button.querySelector('.v-back-label');
+    const labelBox = label.getBoundingClientRect();
+    // 帯の子の縦の中心が、一番低いボタンの半分の高さより離れていなければ 1 段
+    const centers = [...document.querySelectorAll('dialog.viewer .v-bar > *')]
+        .filter((element) => element.getBoundingClientRect().width > 0)
+        .map((element) => {
+            const box = element.getBoundingClientRect();
+            return box.top + box.height / 2;
+        });
+    const sameRow = Math.max(...centers) - Math.min(...centers) < 8;
+    return {
+        labelVisible: labelBox.width > 1 && labelBox.height > 1,
+        barRows: sameRow ? 1 : 2,
+        buttonRight: button.getBoundingClientRect().right,
+        viewportWidth: document.documentElement.clientWidth,
+        name: button.textContent.trim(),
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("width", "label_visible"),
+    [
+        pytest.param(320, False, id="narrowest"),
+        pytest.param(389, False, id="narrow_edge"),
+        pytest.param(390, True, id="wide_edge"),
+    ],
+)
+def test_close_when_narrow(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    width: int,
+    label_visible: bool,
+) -> None:
+    """幅 389px 以下では「本文へ戻る」の文字が見えず印だけで、読み上げの名前は残り、上の帯は 1 段で表示幅に収まる。幅 390px 以上は文字が見える（正常系）。"""
+    # 準備
+    page = _open_viewer(write_sample_preview, open_preview)
+    # 実行
+    page.set_viewport_size({"width": width, "height": 568})
+    page.wait_for_selector("dialog.viewer[open] .v-bar")
+    result = page.evaluate(BACK_BUTTON_JS)
+    # 検証
+    assert result["labelVisible"] is label_visible
+    assert result["name"] == "本文へ戻る"
+    assert result["barRows"] == 1
+    assert result["buttonRight"] <= result["viewportWidth"]
+    assert page.get_by_role("button", name="本文へ戻る").count() == 1
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """幅 320px で図の拡大が横にスクロールせず、縮小・拡大・Raw・本文へ戻るの全てが表示幅の中にあり、「本文へ戻る」で閉じられる（正常系）。"""
+    # 準備
+    page = _open_viewer(write_sample_preview, open_preview)
+    # 実行
+    set_smallest(page)
+    # 検証
+    assert_fits_smallest(
+        page,
+        (
+            "dialog.viewer",
+            'dialog.viewer .v-bar button[aria-label="縮小"]',
+            'dialog.viewer .v-bar button[aria-label="拡大"]',
+            'dialog.viewer button[data-act="viewer-raw"]',
+            'dialog.viewer button[data-act="diagram-close"]',
+        ),
+        scope="dialog.viewer",
+    )
+    page.click('dialog.viewer button[data-act="diagram-close"]')
+    page.wait_for_function("!document.querySelector('dialog.viewer[open]')")

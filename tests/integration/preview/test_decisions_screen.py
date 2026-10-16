@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -2076,3 +2077,38 @@ def test_drawer_saved_filter_when_value_missing(
     assert _table_row_ids(page) == ["D-2", "D-5"]
     assert badge_text(page) == "1"
     assert checked_values(page, "status") == ["未決定"]
+
+
+@pytest.mark.parametrize("view", ["map", "board", "table"])
+def test_fit_smallest(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, view: str
+) -> None:
+    """検討事項は、幅 320px でページが横にスクロールせず、マップ・表のほかにあふれる区画が無く、絞り込みのボタンが表示幅の中にある。ボードは列の右端も表示幅に収まる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    # 実行
+    set_smallest(page)
+    # 検証
+    assert_fits_smallest(page, (FILTER_BUTTON,))
+    if view == "board":
+        layout = board_layout(page)
+        assert layout["rightmost"] <= layout["viewportWidth"]
+        assert not layout["pageScrolls"]
+
+
+def test_drawer_fit_smallest(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """絞り込みのドロワーは、幅 320px で横にスクロールせず、「件を表示」が表示幅の中にあり、押して閉じられる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    set_smallest(page)
+    # 実行
+    open_drawer(page)
+    # 検証
+    assert_fits_smallest(
+        page, (DRAWER, f"{DRAWER} button:has-text('件を表示')"), scope=DRAWER
+    )
+    close_drawer(page)

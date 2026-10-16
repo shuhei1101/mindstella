@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from playwright.sync_api import Page, Route
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_comment_helpers import (
     BAND_COUNT,
     BAND_RESULT,
@@ -1049,3 +1050,19 @@ def test_row_selected_from_thread(
     page.get_by_role("button", name="戻る").click()
     page.wait_for_selector(f"{COMMENTS_PANEL} .th-head h3.th-heading")
     assert page.inner_text(f"{COMMENTS_PANEL} .th-heading") == "オープン\n起票の確認"
+
+
+def test_fit_smallest(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """レビュー中の書き込みの画面は、幅 320px で横にスクロールせず、パネルと「まとめて送る」が表示幅の中にある（正常系）。"""
+    # 準備
+    url, _ = served_review
+    page = open_preview(url, "#tab=decisions&view=table")
+    set_smallest(page)
+    # 実行
+    open_review(page)
+    # 検証
+    assert_fits_smallest(
+        page,
+        (COMMENTS_PANEL, f"{COMMENTS_PANEL} button:has-text('まとめて送る')"),
+        scope=COMMENTS_PANEL,
+    )
