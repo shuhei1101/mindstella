@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -694,3 +695,19 @@ def test_rows_when_reply_arrives(
     page.wait_for_selector(f"{thread_row('TH-2')} .th-unread", timeout=UPDATE_TIMEOUT_MS)
     page.wait_for_selector(f"{COMMENTS_BUTTON} .unread-dot", timeout=UPDATE_TIMEOUT_MS)
     assert page.locator(f"{COMMENTS_PANEL} .th-unread").count() == 1
+
+
+def test_fit_smallest(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """コメントの一覧は、幅 320px で横にスクロールせず、パネルと閉じるボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&view=table")
+    set_smallest(page)
+    # 実行
+    open_list(page)
+    # 検証
+    assert_fits_smallest(
+        page,
+        (COMMENTS_PANEL, f"{COMMENTS_PANEL} button[aria-label='コメントの一覧を閉じる']"),
+        scope=COMMENTS_PANEL,
+    )

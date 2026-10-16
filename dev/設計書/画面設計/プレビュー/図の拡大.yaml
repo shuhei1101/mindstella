@@ -7,7 +7,8 @@ elements:
     source: 詳細パネルの本文の図
   - name: 閉じる
     kind: button
-    description: 図の拡大を閉じ、開いた元（詳細パネルか詳細の全画面の本文）に戻る。Esc でも閉じる
+    description: 図の拡大を閉じ、開いた元（詳細パネルか詳細の全画面の本文）に戻る。Esc でも閉じる。幅 389px 以下では文字を隠して印（‹）だけのボタンにし、上の帯を 1 行に保つ（読み上げの名前は「本文へ戻る」のまま）
+    label: 本文へ戻る
   - name: 図の差分
     kind: label
     description: 詳細パネルの図の差分と同じ色を付け、窓の下端に凡例と「消したもの」の札を並べる
@@ -28,3 +29,5 @@ elements:
 lead: 本文の図を大きく見る。詳細パネルからはモーダルで開き、詳細の全画面からは全画面の中身を切り替える。
 mock: dev/mock/pages/diagram-viewer/21/standard/index.html
 test_file: tests/integration/preview/test_diagram_viewer_screen.py
+notes:
+  幅 320px のモック: 幅 389px 以下で「本文へ戻る」を印だけにする見本は `dev/mock/pages/diagram-viewer/289/a-icon-back/index.html`
