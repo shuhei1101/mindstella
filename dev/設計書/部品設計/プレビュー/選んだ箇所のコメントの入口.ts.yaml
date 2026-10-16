@@ -19,7 +19,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にし、選んだ範囲を右端に置いて見せる
 lead: 詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出すピルの形の入口。押すと使う側が下端のコメントの入力に箇所を添える。
-status: planned
+status: implemented
 args:
   - name: anchor
     type: オブジェクト
