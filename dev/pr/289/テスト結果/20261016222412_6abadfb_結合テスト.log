@@ -798,4 +798,4 @@ tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_scre
 tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-logs] PASSED [ 99%]
 tests/integration/preview/test_topbar_screen.py::test_filter_button_on_item_screens[chromium-graph] PASSED [100%]
 
-======================= 790 passed in 1334.51s (0:22:14) =======================
+======================= 790 passed in 1619.81s (0:26:59) =======================
