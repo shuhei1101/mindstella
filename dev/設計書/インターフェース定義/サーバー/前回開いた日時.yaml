@@ -4,12 +4,15 @@ entry:
   value: POST /api/opened
 flows:
   - name: 正常系
-    summary: 前回開いた日時を返し、今の日時に書き換える
+    summary: 前回開いた日時と通し番号を返し、今の値に書き換える
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
         description: '`.mindstella-opened` を持たないワークスペース'
+      - name: まとまり
+        description: 項目を 1 つ足して `commit` し、もう 1 つ足して `commit` を呼ばない
+        notes: 先頭のまとまりの `until_seq` は `last_seq` より 1 小さい
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -18,17 +21,20 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST /api/opened
+        IF-->>WS: changes.yaml を読む
         IF->>WS: .mindstella-opened を書く
         IF-->>クライアント: 200（previous: null）
         クライアント->>IF: POST /api/opened
-        IF-->>WS: .mindstella-opened を読む
+        IF-->>WS: .mindstella-opened と changes.yaml を読む
         IF->>WS: .mindstella-opened を書く
         IF-->>クライアント: 200（previous: 1 回目の opened）
       ```
     expected:
       - 2 回ともステータスが 200
       - 1 回目の `previous` が `null`
-      - 2 回目の `previous` が 1 回目の `opened` と同じ
+      - 1 回目の `opened.seq` が先頭のまとまりの `until_seq` で、`last_seq` ではない
+      - 2 回目の `previous` が 1 回目の `opened` と同じ（`at`・`seq` とも）
+      - '`.mindstella-opened` の 1 行目が 2 回目の `opened.at`、2 行目が 2 回目の `opened.seq`'
       - 種類ごとの YAML・`changes.yaml` の中身が呼ぶ前と同じ
     test: test_normal
   - name: 異常系（書き込めない・500）
@@ -54,9 +60,34 @@ flows:
       - ステータスが 500、`Content-Type` が `application/problem+json`
       - '`.mindstella-opened` が作られていない'
     test: test_error_when_write_fails
-lead: プレビューのタブが開いたときに 1 度呼び、そのワークスペースを前回開いた日時を返して、今の日時に書き換える。変更履歴の「前回開いてから」の範囲の始まりに使う。
+  - name: 正常系（前の版の形）
+    summary: 日時だけを持つ前の版の `.mindstella-opened` は前回開いた時点なしとして返し、今の形で書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: '`.mindstella-opened` に 1 行の日時だけを書いたワークスペース'
+        notes: '`2026-10-04T13:05:00+00:00`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/opened
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST /api/opened
+        IF-->>WS: .mindstella-opened（日時だけ）と changes.yaml を読む
+        IF->>WS: .mindstella-opened を書く
+        IF-->>クライアント: 200（previous: null）
+      ```
+    expected:
+      - ステータスが 200
+      - '`previous` が `null`'
+      - '`.mindstella-opened` が 2 行（日時と通し番号）で、`opened` と同じ値'
+    test: test_normal_when_previous_has_no_seq
+lead: プレビューのタブが開いたときに 1 度呼び、そのワークスペースを前回開いた日時と通し番号を返して、今の値に書き換える。変更履歴の「前回開いてから」の範囲の始まりに使う。
 idempotent: false
-side_effects: ワークスペースの `.mindstella-opened` を今の日時で書き換える（無ければ作る）。記録（種類ごとの YAML・本文・`changes.yaml`）は書き換えない
+side_effects: ワークスペースの `.mindstella-opened` を今の日時と通し番号で書き換える（無ければ作る）。記録（種類ごとの YAML・本文・`changes.yaml`）は書き換えない
 callers:
   - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
 request:
@@ -68,11 +99,25 @@ request:
     constraints: '『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）'
 response:
   - name: previous
-    type: str | None
-    description: 書き換える前の `.mindstella-opened` の日時（UTC のタイムゾーン付き ISO 8601）。無いか読めなければ `null`
-  - name: opened
+    type: dict | None
+    description: 書き換える前の `.mindstella-opened` が持っていた前回開いた時点。無い・読めない・通し番号を持たない前の版の形（1 行の日時だけ）なら `null`
+  - name: previous.at
     type: str
-    description: 書き込んだ今の日時
+    description: 前回開いた日時（UTC のタイムゾーン付き ISO 8601）。範囲の始まりの表示にだけ使う
+  - name: previous.seq
+    type: int
+    description: 前回開いた時点の通し番号（その時点の `changes.yaml` の先頭のまとまりの `until_seq`。まとまりが無ければ 0）
+    constraints: 0 以上
+  - name: opened
+    type: dict
+    description: 書き込んだ今の時点
+  - name: opened.at
+    type: str
+    description: 書き込んだ今の日時（UTC のタイムゾーン付き ISO 8601）
+  - name: opened.seq
+    type: int
+    description: 書き込んだ今の通し番号（今の `changes.yaml` の先頭のまとまりの `until_seq`。まとまりが無ければ 0）
+    constraints: 0 以上
 status_codes:
   - code: '200'
     condition: 書き換えた
@@ -84,7 +129,7 @@ constraints:
   - item: 呼ぶ時
     constraint: 画面がタブで最初に記録を読む前に 1 度だけ。同じタブで読み込み直したときと、書き換えの知らせで読み直すときは呼ばない（『プレビューを開く』）
   - item: 置き場所
-    constraint: ワークスペースの直下の `.mindstella-opened`（1 行の日時）。配信のポートは立てるたびに変わり、端末の保存領域はポートごとに分かれるため、ワークスペースの中に置く
+    constraint: ワークスペースの直下の `.mindstella-opened`（1 行目が日時、2 行目が通し番号）。配信のポートは立てるたびに変わり、端末の保存領域はポートごとに分かれるため、ワークスペースの中に置く
   - item: 書き換えの知らせ・点検
     constraint: '`.mindstella-opened` は書き換えの知らせの見るファイル・点検・移し替えの対象にしない'
   - item: 書き方
@@ -97,6 +142,10 @@ constraints:
     constraint: 開くたびに書き換わるため、ワークスペースを git などで管理するときは版の管理から外す（リファレンス『ワークスペースの書式』で `.gitignore` に入れるよう案内する）。サーバーは `.gitignore` を書かない
   - item: 共有の範囲
     constraint: ワークスペースごとに 1 つ。同じワークスペースを開いた全てのブラウザで共有し、Claude Code を立て直しても残る
+  - item: 通し番号
+    constraint: 日時ではなく通し番号で「前回開いてから」の範囲を決める（端末の時計の戻りと秒の切り捨てに左右されない）。通し番号は `changes.yaml` の先頭のまとまりの `until_seq` で、`last_seq` ではない（開く前に書き換え、開いた後に `commit` したまとまりの `until_seq` が開いた時点の値と同じになって範囲から落ちるため）。`changes.yaml` が無ければ 0
+  - item: 前の版の形
+    constraint: 1 行目の日時だけを持つ `.mindstella-opened`（前の版の形）は、`previous` を `null` にして返し、今の形で書き換える。移し替え（`migrate`）の手順は足さない
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
   - dev/設計書/ER図/ワークスペース#

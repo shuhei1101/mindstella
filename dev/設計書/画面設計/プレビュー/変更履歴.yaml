@@ -18,7 +18,7 @@ elements:
         value: プレビューを開く.変更履歴で選んだ時点（無ければ空文字列）
     description: 時点を新しい順に並べる。行を押すとモーダルを閉じ、どの画面もその時点の差分の表示で描き直す。「差分を出さない（今の内容）」は差分の表示をやめる
     io: 入力
-    source: 記録の取得.changes、前回開いた日時.previous
+    source: 記録の取得.changes、前回開いた日時.previous（`null` のときは前回開いた日時.opened）
     visible_when: 常時
   - name: 閉じる
     kind: button
