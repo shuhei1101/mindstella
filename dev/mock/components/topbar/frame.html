@@ -18,6 +18,8 @@
     /* 狭い幅（389px 以下）: 表示の設定・絞り込み・コメントのボタンを、件数の札を持たない間も幅 --target-min 以上にし、印を中央に置く */
     @media (max-width: 389px) {
       .topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
+      /* つながらない・差分ありの間: 印だけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にし、下限で広がった分を右の余白から取らない */
+      .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
     }
   </style>
   <style>
