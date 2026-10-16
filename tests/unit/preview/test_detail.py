@@ -2799,3 +2799,114 @@ def test_detail_panel_when_body_layout_changed(
     )
     # 検証（URL のハッシュは変わらない）
     assert result == {"calls": [["side"]], "hash": "#keep"}
+
+
+# 値の要素（data-key がキーのパス）の中の見出しの段と、強調の数を調べる
+VALUE_HEADING_LEVELS_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id, key}) => {
+    const panel = await openPanel(data, id);
+    const value = panel.querySelector(`[data-key="${key}"]`);
+    return {
+        found: value !== null,
+        headings: value === null ? [] : [...value.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
+            text: (heading.textContent ?? "").trim(),
+            tag: heading.tagName.toLowerCase(),
+            mdLevel: heading.getAttribute("data-md-level"),
+        })),
+        strong: value === null ? 0 : value.querySelectorAll("strong").length,
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "kinds", "key", "expected"),
+    [
+        pytest.param(
+            "D-1",
+            {"decisions": [{"id": "D-1", "lead": "## 背景\n\n背景の段落\n\n### 経緯\n\n経緯の段落\n"}]},
+            "lead",
+            {
+                "found": True,
+                "headings": [
+                    {"text": "背景", "tag": "h3", "mdLevel": "2"},
+                    {"text": "経緯", "tag": "h4", "mdLevel": "3"},
+                ],
+                "strong": 0,
+            },
+            id="lead_after_title",
+        ),
+        pytest.param(
+            "D-2",
+            {
+                "decisions": [
+                    {
+                        "id": "D-2",
+                        "options": [{"key": "A", "content": "# 案\n\n案の段落\n\n## 中身\n\n中身の段落\n"}],
+                    }
+                ]
+            },
+            "options[A].content",
+            {
+                "found": True,
+                "headings": [
+                    {"text": "案", "tag": "h4", "mdLevel": "1"},
+                    {"text": "中身", "tag": "h5", "mdLevel": "2"},
+                ],
+                "strong": 0,
+            },
+            id="option_content_in_section",
+        ),
+        pytest.param(
+            "T-1",
+            {"tasks": [{"id": "T-1", "reason": "# 手順\n\n手順の段落\n"}]},
+            "reason",
+            {
+                "found": True,
+                "headings": [{"text": "手順", "tag": "h3", "mdLevel": "1"}],
+                "strong": 0,
+            },
+            id="task_reason_after_title",
+        ),
+        pytest.param(
+            "D-3",
+            {"decisions": [{"id": "D-3", "lead": "**強調**"}]},
+            "lead",
+            {"found": True, "headings": [], "strong": 1},
+            id="no_headings",
+        ),
+    ],
+)
+def test_detail_panel_when_value_heading_levels(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    kinds: dict[str, list[dict[str, object]]],
+    key: str,
+    expected: dict[str, object],
+) -> None:
+    """文字列の値の見出しの最も上の段を、置く場所の直上の見出しの次の段にし、段の差を保って並べる（正常系）。"""
+    # 準備
+    data = make_data(
+        **{
+            kind: [
+                make_item(item["id"], **{k: v for k, v in item.items() if k != "id"})
+                for item in items
+            ]
+            for kind, items in kinds.items()
+        }
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        VALUE_HEADING_LEVELS_SCRIPT, {"data": data, "id": item_id, "key": key}
+    )
+    # 検証
+    assert result == expected
