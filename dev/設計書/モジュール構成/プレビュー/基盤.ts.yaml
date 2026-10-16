@@ -459,7 +459,7 @@ functions:
         summary: ブロックに元の行の印を付け、見た目を変えない
         condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・表・フェンスのコード・mermaid のコードブロックを持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`h1` の `data-line-start` が 1、段落が 3、表の各行とコードが PoC #80 の対応づけどおり。図の入れ物には付かない。`data-line-start` を除いた HTML が印を付けないときと同じ'
+        expected: '`h1` の `data-line-start` が 1、段落が 3、表の各行とコードが PoC #80 の対応づけどおり。図の入れ物には付かない。`data-line-start` と表を包む入れ物（`.md-table-wrap`。中の表は残す）を除いた HTML が印を付けないときと同じ'
       - name: test_render_markdown_when_html_code_block
         case: 正常
         summary: html のコードブロックを枠の入れ物にし、前後は今までどおり描く
