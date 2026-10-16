@@ -4000,12 +4000,12 @@ LAYOUT_PANEL = "aside.panel"
 SIDE_BEFORE = f"{LAYOUT_PANEL} .sbs section.sbs-before"
 SIDE_AFTER = f"{LAYOUT_PANEL} .sbs section.sbs-after"
 
-# 資料 A-1 の本文を書き換えずに題だけを直したまとまり（V-3）を開くハッシュ
-TITLE_ONLY_HASH = "#tab=docs&id=A-1"
+# 資料 A-1 の詳細パネルを開くハッシュ
+DOC_HASH = "#tab=docs&id=A-1"
 
 
 def _open_side_panel(
-    page: Page, open_preview: OpenPreview, url: str, sel: str = "V-2", hash_text: str = TITLE_ONLY_HASH
+    page: Page, open_preview: OpenPreview, url: str, sel: str = "V-2", hash_text: str = DOC_HASH
 ) -> Page:
     """画面の幅を決め、選んだ時点を入れて資料 A-1 の詳細パネルを開く。"""
     page.set_viewport_size(SIDE_VIEWPORT)
@@ -4080,7 +4080,7 @@ def test_diff_body_layout_switch_when_body_unchanged(
     seed_side_layout(page, "V-3")
     page.set_viewport_size(SIDE_VIEWPORT)
     # 実行
-    open_preview(url, TITLE_ONLY_HASH)
+    open_preview(url, DOC_HASH)
     page.wait_for_selector(f"{LAYOUT_PANEL}.open .df-head")
     # 検証
     assert page.locator(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}").count() == 0
@@ -4097,7 +4097,7 @@ def test_diff_body_layout_switch_when_library_unavailable(
     seed_side_layout(page, "V-2")
     page.set_viewport_size(SIDE_VIEWPORT)
     # 実行
-    open_preview(url, TITLE_ONLY_HASH)
+    open_preview(url, DOC_HASH)
     page.wait_for_selector(f"{LAYOUT_PANEL} .lib-error")
     # 検証
     assert page.locator(f"{LAYOUT_PANEL} {LAYOUT_SWITCH}").count() == 0
@@ -4123,7 +4123,7 @@ def test_diff_body_layout_switch_when_body_too_large(
     seed_side_layout(page, "pending")
     page.set_viewport_size(SIDE_VIEWPORT)
     # 実行
-    open_preview(url, TITLE_ONLY_HASH)
+    open_preview(url, DOC_HASH)
     page.wait_for_selector(f"{LAYOUT_PANEL} .df-note", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
     # 検証
     assert page.inner_text(f"{LAYOUT_PANEL} .df-note") == NOTE_BODY_TOO_LARGE
@@ -4139,7 +4139,7 @@ def test_diff_body_side_by_side(
     url, _ = write_body_layout_preview()
     seed_side_layout(page, "V-2")
     page.set_viewport_size(SIDE_VIEWPORT)
-    open_preview(url, TITLE_ONLY_HASH)
+    open_preview(url, DOC_HASH)
     open_side_by_side(page, LAYOUT_PANEL)
     # 検証（列は読み上げの名前を持つ section で、列の頭の名前の行と空きは読み上げない）
     assert page.get_attribute(SIDE_BEFORE, "aria-label") == "選んだ時点の本文"
