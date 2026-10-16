@@ -27,7 +27,7 @@
       .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
     }
   </style>
-  <!-- 幅 390px 以上の最大の中身の畳み方: ?fit=a / ?fit=b のときだけ効かせる。指定が無ければ今の実装の見た目 -->
+  <!-- 幅 390px 以上の最大の中身の畳み方: ?fit=a〜d のときだけ効かせる。指定が無ければ今の実装の見た目 -->
   <style id="fit-a" media="not all">
     /* 案 A: 幅 389px 以下の詰め方を効かせる境を 400px へ上げる。はみ出す組み合わせ（差分の札か接続の状態を出している間）だけに効かせ、つながる・差分なしは今のまま */
     @media (min-width: 390px) and (max-width: 400px) {
@@ -49,6 +49,15 @@
   <style id="fit-c" media="not all">
     /* 案 C: 件数の札が幅の広い中身（絞り込み 2 桁以上・コメント 99+）のときだけ、案 A と同じ詰め方を幅 400px まで効かせる。既定の中身は今のまま */
     @media (min-width: 390px) and (max-width: 400px) {
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
+    }
+  </style>
+  <style id="fit-d" media="not all">
+    /* 案 D: 案 C と同じ条件の詰め方を、既にある幅 480px 以下の範囲で効かせる。既定の中身は今のまま */
+    @media (min-width: 390px) and (max-width: 480px) {
       .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
       .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
       .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
