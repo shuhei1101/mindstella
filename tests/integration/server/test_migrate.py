@@ -14,9 +14,11 @@ from .fixture_types import (
     MakeItem,
     MakeLegacyWorkspace,
     MakeSubmission,
+    MakeThread,
     MakeWorkspace,
     SnapshotTree,
     WriteSubmissions,
+    WriteThreads,
 )
 
 # プラグインの版（plugins/mindstella/version.ini の 1 行目）
@@ -471,6 +473,58 @@ def test_normal_when_submissions_to_threads(
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-2"]
+
+
+def test_normal_when_tags_to_vocabulary(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    snapshot_tree: SnapshotTree,
+    call_tool: CallTool,
+) -> None:
+    """v0.9.0 のワークスペースの項目とスレッドが使っているタグを、説明なしで語彙へ登録する（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["保存", "通知"]), make_item("N-1", tags=["脱線", "保存"])
+    )
+    write_threads(root, make_thread("TH-1", tags=["起票"]))
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.9.0\n", encoding="utf-8")
+    settings_before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    records_before = {
+        name: data
+        for name, data in snapshot_tree(root).items()
+        if name != f"{RECORD_DIR}/config.yaml"
+    }
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    steps = result.data["steps"]
+    assert [(step["version"], step["op"], step["destructive"]) for step in steps] == [
+        ("v0.10.0", "call", False)
+    ]
+    settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    assert settings["tags"] == [
+        {"name": "保存"},
+        {"name": "脱線"},
+        {"name": "起票"},
+        {"name": "通知"},
+    ]
+    assert {key: value for key, value in settings.items() if key != "tags"} == settings_before
+    records_after = {
+        name: data
+        for name, data in snapshot_tree(root).items()
+        if name != f"{RECORD_DIR}/config.yaml"
+    }
+    assert records_after == records_before
+    # もう一度当てても、タグは 4 件のまま
+    again = call_tool("migrate", workspace=str(root))
+    assert again.is_error is False
+    settings_again = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    assert len(settings_again["tags"]) == 4
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
 
 
 def test_error_when_newer(
