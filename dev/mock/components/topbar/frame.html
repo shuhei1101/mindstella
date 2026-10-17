@@ -21,6 +21,10 @@
       /* つながらない・差分ありの間: 印だけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にし、下限で広がった分を右の余白から取らない */
       .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
     }
+    /* 幅 390〜480px で件数の札が幅の広い中身の詰め方が効く間: 表示の設定・絞り込み・コメントのボタンを幅 --target-min 以上にし、印を中央に置く */
+    @media (min-width: 390px) and (max-width: 480px) {
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
+    }
   </style>
   <!-- 幅 390px 以上の最大の中身の畳み方: ?fit=a〜d のときだけ効かせる。指定が無ければ今の実装の見た目 -->
   <style id="fit-a" media="not all">
