@@ -4,16 +4,16 @@ platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/bug-preview-full-screen-selection-comment
 configfile: pytest.ini
 plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
-collected 421 items
+collected 423 items
 
 tests/integration/preview/test_detail_full_screen.py ................... [  4%]
-........................                                                 [ 10%]
+..........................                                               [ 10%]
 tests/integration/preview/test_detail_panel_screen.py .................. [ 14%]
 ........................................................................ [ 31%]
 ....................................................................     [ 47%]
-tests/integration/preview/test_comments_screen.py ...................... [ 52%]
-....                                                                     [ 53%]
-tests/integration/preview/test_decisions_screen.py ..................... [ 58%]
+tests/integration/preview/test_comments_screen.py ...................... [ 53%]
+....                                                                     [ 54%]
+tests/integration/preview/test_decisions_screen.py ..................... [ 59%]
 ..........................................................               [ 72%]
 tests/integration/preview/test_history_screen.py .........               [ 74%]
 tests/integration/preview/test_search_screen.py ..............           [ 78%]
@@ -32,4 +32,4 @@ tests/integration/preview/test_decisions_screen.py ..                    [ 98%]
 tests/integration/preview/test_detail_panel_screen.py ..                 [ 99%]
 tests/integration/preview/test_decisions_screen.py ...                   [100%]
 
-======================= 421 passed in 651.45s (0:10:51) ========================
+======================= 423 passed in 547.85s (0:09:07) ========================

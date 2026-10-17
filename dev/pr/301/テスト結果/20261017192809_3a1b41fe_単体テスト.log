@@ -208,11 +208,10 @@ E       assert Version(major=0, minor=8, patch=0) >= Version(major=0, minor=9, p
 tests/unit/scripts/test_migration_coverage.py:172: AssertionError
 =========================== short test summary info ============================
 FAILED tests/unit/scripts/test_migration_coverage.py::test_plugin_version_not_behind_release_version
-============ 1 failed, 1551 passed, 1 skipped in 509.01s (0:08:29) =============
+============ 1 failed, 1551 passed, 1 skipped in 461.32s (0:07:41) =============
 
-# base ブランチ（develop 9a56c3c7）で同じ失敗の有無を確かめた: pytest tests/unit/scripts/test_migration_coverage.py
-
+# base ブランチ（develop）で同じ失敗の有無を確かめた: pytest tests/unit/scripts/test_migration_coverage.py
 tests/unit/scripts/test_migration_coverage.py:172: AssertionError
 =========================== short test summary info ============================
 FAILED tests/unit/scripts/test_migration_coverage.py::test_plugin_version_not_behind_release_version
-========================= 1 failed, 8 passed in 5.75s ==========================
+========================= 1 failed, 8 passed in 4.27s ==========================
