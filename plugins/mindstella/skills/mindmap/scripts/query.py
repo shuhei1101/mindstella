@@ -22,7 +22,7 @@ REFERENCE_KEYS = ("depends_on", "parent", "for", "related", "sources")
 DEFAULT_LIMIT = 20
 
 # `find` の `limit` に渡せる件数の上限
-MAX_LIMIT = 100
+MAX_LIMIT = 80
 
 # `response_format` が `detailed` のとき、項目ごとに足すキーとその並び
 DETAILED_KEYS = ("target", "category", "phase", "attrs", "updated")

@@ -1163,7 +1163,7 @@ def test_run_find(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     }
 
 
-@pytest.mark.parametrize("limit", [0, 101])
+@pytest.mark.parametrize("limit", [0, 81])
 def test_run_find_when_limit_out_of_range(
     make_workspace: MakeWorkspace, make_item: MakeItem, limit: int
 ) -> None:
