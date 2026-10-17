@@ -385,3 +385,16 @@ export const FitNarrowestOfflineDiff: Story = {
   },
   ...fitViewport,
 };
+
+/** 幅 320〜389px で、サーバーにつながり、絞り込み（件数なし）・表示の設定・コメント（0 件）・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く */
+export const FitNarrowestNoCount: Story = {
+  args: {
+    filter: true,
+    filterCount: 0,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 0,
+    onHistory: fn(),
+  },
+  ...fitViewport,
+};

@@ -1436,6 +1436,10 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
   /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
   .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+  /* 表示の設定・絞り込み・コメントのボタン: 件数の札を持たない間も幅を --target-min 以上にし、印を中央に置く */
+  .topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
+  /* つながらない・差分ありの間: 印だけのボタンを幅 26px にし、下限で広がった分を右の余白から取らない（既存の 28px の規則に勝つようセレクタを重ねる） */
+  .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
 }
 
 /* 幅 481〜900px: 接続の状態・差分の札・変更履歴のボタンが並んでも横に溢れないよう、トップバーの間隔を詰める（480px 以下は上の 3px） */
