@@ -819,6 +819,9 @@ ICON_BUTTON_SIZES_SCRIPT = """() => ['.search-trigger', '.hist-btn', '.top-btn']
   return [r.width, r.height];
 })"""
 
+# 幅 389px 以下の印だけのボタンの幅と高さ
+NARROWEST_ICON_BUTTON_SIZE = [28, 32]
+
 # 幅 389px 以下の印だけのボタンの幅と高さ。つながらず差分を出している間だけ幅 26px にする
 NARROWEST_ICON_BUTTON_CASES = [
     pytest.param(story_id, width, size, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")

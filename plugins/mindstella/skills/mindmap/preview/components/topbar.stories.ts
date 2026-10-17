@@ -472,3 +472,20 @@ export const FitWideOfflineDiff: Story = {
   },
   ...fitWideViewport,
 };
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く */
+export const FitWideOfflineDiffNoFilter: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 0,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...fitWideViewport,
+};
