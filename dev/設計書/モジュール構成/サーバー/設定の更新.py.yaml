@@ -363,7 +363,7 @@ functions:
       3. 設定を置き換える（`merge_settings`）
       4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
       5. 対象とカテゴリーを付け替える（`remap_names`。対応が `None` なら空）。書き換えのたびに呼ぶので、新しい設定に無い対象・カテゴリーが残れば `UnmappedTargetError` で止まる。カテゴリーの `target` が変わったら変わったキーに `categories` を足す
-      6. タグを付け替える（`remap_tags`。スレッドは `.mindstella/threads.yaml` の `items` を読み（無ければ空）、`tag_map` が `None` なら空）。書き換えのたびに呼ぶので、`settings` が `tags` を持ち、新しい語彙に無いタグが残れば `UnmappedTagError` で止まる
+      6. タグを付け替える（`remap_tags`。`replaced` は渡した `settings` が `tags` のキーを持つか。スレッドは `.mindstella/threads.yaml` の `items` を読み（無ければ空）、`tag_map` が `None` なら空）。語彙を置き換える・消すときに、新しい語彙に無いタグが残れば `UnmappedTagError` で止まる
       7. 4.〜6. で付け替えた項目がある種類を `Change` にし、タグを付け替えたスレッドがあれば `threads` も渡して、まとめて書く（`save_settings`）
     exceptions:
       - name: WorkspaceNotFoundError
@@ -559,12 +559,17 @@ functions:
         default: now_utc
         passing: injected
         description: 今の日時を返す関数
+      - name: replaced
+        type: bool
+        required: true
+        passing: keyword
+        description: 渡した `settings` が `tags` のキーを持つか（値が `null` で語彙を消すときも真）
     returns:
       type: tuple[dict[Kind, list[dict[str, Any]]], list[dict[str, Any]], list[PhaseRemap]]
       description: 付け替えた後の種類ごとの項目・スレッド・付け替えた項目とスレッドのタグ
     process: |-
-      1. 設定が `tags` を持たなければ、何も変えずに返す（語彙を置き換えないときはタグを確かめない）
-      2. 新しい語彙の名前を集める（`tag_names`）
+      1. `replaced` が偽なら、何も変えずに返す（語彙を置き換えないときはタグを確かめない）
+      2. 新しい語彙の名前を集める（`tag_names`。`tags: null` で消した設定は空の語彙になる）
       3. 種類の順（`KINDS`）の項目、続けてスレッドの並びの順に、`tags` の要素を前から見る
          - 語彙にあるタグはそのまま残す
          - 語彙に無く `tag_map` に対応があれば、値に置き換える（値が `None` なら外す。置き換えた先が既に `tags` にあれば足さない）。付け替えたタグ 1 つごとに `PhaseRemap(key="tags")` を足す
@@ -591,8 +596,14 @@ functions:
       - name: test_remap_tags_when_tags_not_given
         case: 正常
         summary: 語彙を置き換えないときは何も変えない
-        condition: '設定が `tags` を持たない。D-1: `[通知]`'
+        condition: '`replaced=False`、設定が `tags` を持たない。D-1: `[通知]`'
         mock: '`now`'
         expected: 項目・スレッドが渡したまま、付け替えが空
+      - name: test_remap_tags_when_vocabulary_removed
+        case: 異常
+        summary: 'tags: null で語彙を消すとき、使われているタグに対応が無ければ送る'
+        condition: '`tags` を消した設定、`replaced=True`、対応なし。D-1: `[保存]`／TH-1: `[起票]`'
+        mock: '`now`'
+        expected: '`UnmappedTagError` の `unmapped` が `[(D-1, 保存), (TH-1, 起票)]`'
 test_files:
   - tests/unit/scripts/test_settings_update.py
