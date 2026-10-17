@@ -302,3 +302,22 @@ def test_error_when_both_bodies(
     assert result.is_error is True
     assert "docs.yaml: items[0].body_html: body_markdown と body_html は一緒に渡せない" in result.text
     assert snapshot_tree(root) == before
+
+
+def test_error_when_unknown_tag(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
+    before = snapshot_tree(root)
+    item = {**NEW_DECISION, "tags": ["通知機能"]}
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
+    # 検証
+    assert result.is_error is True
+    assert "tags: 通知機能（候補: 通知）" in result.text
+    assert snapshot_tree(root) == before

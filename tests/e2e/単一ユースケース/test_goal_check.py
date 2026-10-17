@@ -188,6 +188,8 @@ def test_normal_when_task_output_doc_missing(
     # goal の出力が「届いた」で、完了したタスクは T-1 だけである
     assert reached["reached"] is True
     assert [item["id"] for item in done["items"]] == ["T-1"]
+    # 続きを取る値が無く、全件を読み終えている
+    assert done["next_cursor"] is None
     # T-1 が related に A-2 を持ち、A-2 の本文が docs/ にある
     assert read_yaml(root, "tasks.yaml")["items"][0]["related"] == ["A-2"]
     assert "画面の一覧" in (root / RECORD_DIR / "docs" / "A-2.md").read_text(encoding="utf-8")

@@ -1,0 +1,16 @@
+$ pytest tests/integration/server/test_find.py tests/integration/server/test_tags.py tests/integration/server/test_update_settings.py tests/integration/server/test_add.py tests/integration/server/test_update.py tests/integration/server/test_batch.py tests/integration/server/test_new_thread.py tests/integration/server/test_update_thread.py tests/integration/server/test_check.py tests/integration/server/test_migrate.py tests/integration/server/test_mcp_server.py tests/integration/skill/test_session.py
+
+tests/integration/server/test_find.py .........                          [  8%]
+tests/integration/server/test_tags.py ...                                [ 10%]
+tests/integration/server/test_update_settings.py ..............          [ 23%]
+tests/integration/server/test_add.py .............                       [ 35%]
+tests/integration/server/test_update.py ...............                  [ 48%]
+tests/integration/server/test_batch.py .......                           [ 54%]
+tests/integration/server/test_new_thread.py .......                      [ 61%]
+tests/integration/server/test_update_thread.py ........                  [ 68%]
+tests/integration/server/test_check.py .........                         [ 76%]
+tests/integration/server/test_migrate.py ...................             [ 93%]
+tests/integration/server/test_mcp_server.py ......                       [ 99%]
+tests/integration/skill/test_session.py .                                [100%]
+
+============================= 111 passed in 58.52s =============================

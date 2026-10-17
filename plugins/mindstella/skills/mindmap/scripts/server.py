@@ -22,7 +22,7 @@ import commands
 from claude_input import load_input_target
 from errors import MindmapError, SchemaMismatchError
 from kinds import Kind
-from query import SearchFilter, parse_attr
+from query import DEFAULT_LIMIT, MAX_LIMIT, SearchFilter, parse_attr
 from serve import PreviewRegistry, load_external_access
 from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
@@ -178,14 +178,14 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="update_settings",
-        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする",
+        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・タグの語彙・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリー・タグの語彙を変えるときは項目とスレッドの付け替えもする",
     )
     def update_settings(
         workspace: WorkspaceArg,
         settings: Annotated[
             dict[str, Any],
             Field(
-                description="置き換える設定のキーと値。description・goal・links・history_limit は null で消す"
+                description="置き換える設定のキーと値。description・goal・tags・links・history_limit は null で消す。tags は name と任意の summary を持つタグの配列で、語彙を丸ごと置き換える"
             ),
         ],
         phase_map: Annotated[
@@ -202,11 +202,17 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
                 description="古いカテゴリー → 新しいカテゴリーの対応。categories を変えるときだけ渡す"
             ),
         ] = None,
+        tag_map: Annotated[
+            dict[str, str | None] | None,
+            Field(
+                description="古いタグ → 新しいタグの対応（null で外す）。tags を変えるときだけ渡す"
+            ),
+        ] = None,
     ) -> CallToolResult:
         return write(
             workspace,
             lambda root: commands.run_update_settings(
-                root, settings, phase_map, target_map, category_map
+                root, settings, phase_map, target_map, category_map, tag_map
             ),
         )
 
@@ -298,31 +304,62 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     def impact(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:
         return read(workspace, lambda root: commands.run_impact(root, id))
 
-    @server.tool(name="find", description="条件に合う項目を返す")
+    @server.tool(
+        name="find",
+        description="文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは語彙のタグだけを受け付ける。使える絞り込みは text・kind・status・tags・any_tags・target・category・phase・attr。タグで絞る前に tags で語彙を引く。全体の件数が 1 ページより多いときは next_cursor を同じ条件で cursor に渡して続きを読む",
+    )
     def find(
         workspace: WorkspaceArg,
         text: str | None = None,
         kind: Kind | None = None,
         status: str | None = None,
-        tag: str | None = None,
+        tags: Annotated[
+            list[str] | None, Field(description="全てを持つ項目に絞るタグ（AND）。語彙のタグだけ")
+        ] = None,
+        any_tags: Annotated[
+            list[str] | None, Field(description="いずれかを持つ項目に絞るタグ（OR）。語彙のタグだけ")
+        ] = None,
         target: str | None = None,
         category: str | None = None,
         phase: str | None = None,
         attr: Annotated[
             list[str] | None, Field(description="`名前=値`（`名前` だけならその属性を持つ項目）")
         ] = None,
+        limit: Annotated[
+            int, Field(description=f"1 ページに返す件数（1〜{MAX_LIMIT}）")
+        ] = DEFAULT_LIMIT,
+        cursor: Annotated[
+            str | None,
+            Field(description="前のページの next_cursor。前のページと同じ条件で渡す"),
+        ] = None,
+        response_format: Annotated[
+            Literal["concise", "detailed"],
+            Field(
+                description="返す量。concise は ID・種類・タイトル・状態・タグ、detailed はそれに対象・カテゴリー・フェーズ・属性・更新日時を足す"
+            ),
+        ] = "concise",
     ) -> CallToolResult:
         search_filter = SearchFilter(
             text=text,
             kind=kind,
             status=status,
-            tag=tag,
             target=target,
             category=category,
             phase=phase,
             attrs=[parse_attr(entry) for entry in attr or []],
+            tags=tuple(tags or []),
+            any_tags=tuple(any_tags or []),
         )
-        return read(workspace, lambda root: commands.run_find(root, search_filter))
+        return read(
+            workspace,
+            lambda root: commands.run_find(
+                root,
+                search_filter,
+                limit=limit,
+                cursor=cursor,
+                response_format=response_format,
+            ),
+        )
 
     @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
     def show(workspace: WorkspaceArg, id: ItemIdArg) -> CallToolResult:
@@ -332,7 +369,10 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     def attrs(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_attrs)
 
-    @server.tool(name="tags", description="使っているタグと件数・種類を返す")
+    @server.tool(
+        name="tags",
+        description="ワークスペースのタグの語彙を、タグごとの説明と、付いている項目の数・種類を添えて返す。取り込みで話題に合うタグを選ぶためと、find のタグの条件を決めるために、find でタグを渡す前やタグを付ける前に引く",
+    )
     def tags(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_tags)
 

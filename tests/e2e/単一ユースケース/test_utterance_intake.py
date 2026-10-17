@@ -21,6 +21,7 @@ PLACE = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
 # 取り込みの前からある話題のタグと、取り込みで作る新しい話題のタグ
 TOPIC_TAG = "保存"
 NEW_TOPIC_TAG = "通知"
+NEW_TOPIC_SUMMARY = "通知の送り方と文面の話題"
 
 # 会話の日付
 TODAY = "2026-10-02"
@@ -45,16 +46,31 @@ OPTIONS = [
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
+    valid_settings: dict[str, Any],
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """話題のタグを引いて使い回し、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
-    # 準備（取り込みの前から、タグ `保存` を持つメモ N-1 がある）
-    root = make_workspace(make_item("N-1", tags=[TOPIC_TAG]))
+    """話題のタグを語彙から選び、新しい話題は語彙へ登録してから、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
+    # 準備（取り込みの前から、タグの語彙 `保存` と、タグ `保存` を持つメモ N-1 がある）
+    root = make_workspace(
+        make_item("N-1", tags=[TOPIC_TAG]),
+        settings={**valid_settings, "tags": [{"name": TOPIC_TAG}]},
+    )
     ws = {"workspace": str(root)}
     # 実行
-    # 取り込みの最初に、使っているタグの一覧を引く
+    # 取り込みの最初に、タグの語彙を引く
     tags_before = replay("tags", **ws)
+    # 合うタグが無い新しい話題のタグを、説明つきで語彙へ登録する
+    replay(
+        "update_settings",
+        **ws,
+        settings={
+            "tags": [
+                {"name": TOPIC_TAG},
+                {"name": NEW_TOPIC_TAG, "summary": NEW_TOPIC_SUMMARY},
+            ]
+        },
+    )
     # 1 つの発言から出た記録を、1 回のまとめての書き込みで渡す（D-2 の parent と T-1 の for は、先に足す項目を指す）
     replay(
         "batch",
@@ -157,12 +173,24 @@ def test_normal(
         "データ構造",
         "要件",
     ]
-    # 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と `通知`（1 件）を返す
-    assert tags_before == {"tags": [{"name": TOPIC_TAG, "count": 1, "kinds": ["note"]}]}
+    # 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と、説明を持つ `通知`（1 件）を返す
+    assert tags_before == {
+        "tags": [{"name": TOPIC_TAG, "summary": None, "count": 1, "kinds": ["note"]}]
+    }
     assert tags_after == {
         "tags": [
-            {"name": TOPIC_TAG, "count": 5, "kinds": ["decision", "task", "note"]},
-            {"name": NEW_TOPIC_TAG, "count": 1, "kinds": ["decision"]},
+            {
+                "name": TOPIC_TAG,
+                "summary": None,
+                "count": 5,
+                "kinds": ["decision", "task", "note"],
+            },
+            {
+                "name": NEW_TOPIC_TAG,
+                "summary": NEW_TOPIC_SUMMARY,
+                "count": 1,
+                "kinds": ["decision"],
+            },
         ]
     }
     # 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。pending が空を返す
@@ -230,12 +258,13 @@ def test_normal_when_diagram_kept_as_doc(
 
 def test_normal_when_off_topic_question(
     make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """脱線した質問を、言葉は用語集に・それ以外はメモに残し、タスクにはしない（正常系）。"""
-    # 準備
-    root = make_workspace()
+    # 準備（脱線のタグ `脱線` は語彙に登録済み）
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "脱線"}]})
     ws = {"workspace": str(root)}
     # 実行
     replay(

@@ -56,7 +56,7 @@
         },
         "tags": {
           "type": "array",
-          "description": "タグ（自由な文字列）",
+          "description": "タグ。設定の `tags` の語彙にあるタグだけ",
           "items": {
             "type": "string"
           }

@@ -8,6 +8,7 @@ import pytest
 
 import query
 import store
+from errors import ArgumentError
 from fixture_types import MakeItem, MakeWorkspace
 
 
@@ -75,6 +76,7 @@ def test_search_items_when_text_and_attr(schema_workspace: store.Workspace) -> N
             "kind": "decision",
             "title": "スキーマの設計",
             "status": "未決定",
+            "tags": [],
         },
     ]
 
@@ -94,7 +96,7 @@ def test_search_items_when_nested_text(schema_workspace: store.Workspace) -> Non
     [
         pytest.param({"kind": "task"}, ["T-1"], id="kind"),
         pytest.param({"status": "未決定"}, ["D-1"], id="status"),
-        pytest.param({"tag": "データ"}, ["D-1", "T-1"], id="tag"),
+        pytest.param({"tags": ("データ",)}, ["D-1", "T-1"], id="tags"),
         pytest.param({"target": "別の対象"}, ["D-2"], id="target"),
         pytest.param({"category": "別のカテゴリー"}, ["D-2"], id="category"),
         pytest.param({"phase": "目的"}, ["D-2"], id="phase"),
@@ -123,6 +125,76 @@ def test_search_items_when_no_filter(make_workspace: MakeWorkspace, make_item: M
     result = query.search_items(workspace, query.SearchFilter())
     # 検証
     assert _ids(result) == ["D-1", "D-2", "T-1"]
+
+
+@pytest.mark.parametrize(
+    ("conditions", "expected_ids"),
+    [
+        pytest.param({"tags": ("データ", "画面")}, ["T-1"], id="tags_and"),
+        pytest.param({"any_tags": ("データ", "画面")}, ["D-1", "D-2", "T-1"], id="any_tags_or"),
+        pytest.param({"tags": ("データ",), "any_tags": ("画面",)}, ["T-1"], id="both"),
+    ],
+)
+def test_search_items_when_tags_and_any_tags(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    conditions: dict[str, tuple[str, ...]],
+    expected_ids: list[str],
+) -> None:
+    """tags は全てを持つ項目、any_tags はいずれかを持つ項目を返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["データ"]),
+        make_item("D-2", tags=["画面"]),
+        make_item("T-1", tags=["データ", "画面"]),
+        make_item("N-1"),
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    result = query.search_items(workspace, query.SearchFilter(**conditions))
+    # 検証
+    assert _ids(result) == expected_ids
+
+
+def test_search_items_when_detailed(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """detailed は対象・カテゴリー・フェーズ・属性・更新日時を足し、案は入れない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(
+            "D-1",
+            target="mindmap",
+            category="データ構造",
+            phase="要件",
+            attrs={"担当": "自分"},
+            options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+        ),
+        make_item("N-1"),
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    decision, note = query.search_items(workspace, query.SearchFilter(), detailed=True)
+    # 検証
+    assert list(decision) == [
+        "id",
+        "kind",
+        "title",
+        "status",
+        "tags",
+        "target",
+        "category",
+        "phase",
+        "attrs",
+        "updated",
+    ]
+    assert decision["target"] == "mindmap"
+    assert decision["category"] == "データ構造"
+    assert decision["phase"] == "要件"
+    assert decision["attrs"] == {"担当": "自分"}
+    assert decision["updated"] == "2026-10-01T00:00:00+00:00"
+    assert "options" not in decision
+    assert note["target"] is None
+    assert note["attrs"] == {}
+    assert note["tags"] == []
 
 
 @pytest.mark.parametrize(
@@ -251,40 +323,168 @@ def test_list_attrs_when_none(make_workspace: MakeWorkspace, make_item: MakeItem
     assert attrs == []
 
 
-def test_list_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """種類をまたいで数える（正常系）。"""
+def test_list_tags(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """語彙のタグごとに種類をまたいで数え、持つ項目が無いタグも返す（正常系）。"""
     # 準備
+    settings = {
+        **valid_settings,
+        "tags": [{"name": "データ", "summary": "s"}, {"name": "画面"}, {"name": "保留"}],
+    }
     root = make_workspace(
         make_item("D-1", tags=["データ"]),
         make_item("D-2", tags=["画面"]),
         make_item("T-1", tags=["データ"]),
         make_item("N-1"),
+        settings=settings,
     )
     workspace = store.load_workspace(root)
     # 実行
     tags = query.list_tags(workspace)
     # 検証
     assert tags == [
-        {"name": "データ", "count": 2, "kinds": ["decision", "task"]},
-        {"name": "画面", "count": 1, "kinds": ["decision"]},
+        {"name": "データ", "summary": "s", "count": 2, "kinds": ["decision", "task"]},
+        {"name": "保留", "summary": None, "count": 0, "kinds": []},
+        {"name": "画面", "summary": None, "count": 1, "kinds": ["decision"]},
     ]
 
 
-def test_list_tags_when_duplicated(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+def test_list_tags_when_duplicated(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
     """1 つの項目が同じタグを 2 回持っても 1 件と数える（正常系）。"""
     # 準備
-    workspace = store.load_workspace(make_workspace(make_item("D-1", tags=["データ", "データ"])))
+    root = make_workspace(
+        make_item("D-1", tags=["データ", "データ"]),
+        settings={**valid_settings, "tags": [{"name": "データ"}]},
+    )
+    workspace = store.load_workspace(root)
     # 実行
     tags = query.list_tags(workspace)
     # 検証
-    assert tags == [{"name": "データ", "count": 1, "kinds": ["decision"]}]
+    assert tags == [{"name": "データ", "summary": None, "count": 1, "kinds": ["decision"]}]
 
 
 def test_list_tags_when_none(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """タグが無ければ空の並びを返す（正常系）。"""
+    """語彙が無ければ空の並びを返す（正常系）。"""
     # 準備
-    workspace = store.load_workspace(make_workspace(make_item("D-1")))
+    workspace = store.load_workspace(make_workspace(make_item("D-1", tags=["データ"])))
     # 実行
     tags = query.list_tags(workspace)
     # 検証
     assert tags == []
+
+
+@pytest.fixture
+def five_decisions_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> store.Workspace:
+    """検討事項 D-1〜D-5 を持つワークスペースを読み込んで返す。"""
+    root = make_workspace(*(make_item(f"D-{number}") for number in range(1, 6)))
+    return store.load_workspace(root)
+
+
+def test_page_results(five_decisions_workspace: store.Workspace) -> None:
+    """件数で切り、続きの値で残りを返す（正常系）。"""
+    # 準備
+    search_filter = query.SearchFilter()
+    results = query.search_items(five_decisions_workspace, search_filter)
+    # 実行
+    first = query.page_results(results, search_filter, limit=3, cursor=None)
+    second = query.page_results(results, search_filter, limit=3, cursor=first["next_cursor"])
+    # 検証
+    assert _ids(first["items"]) == ["D-1", "D-2", "D-3"]
+    assert first["total"] == 5
+    assert isinstance(first["next_cursor"], str)
+    assert _ids(second["items"]) == ["D-4", "D-5"]
+    assert second["total"] == 5
+    assert second["next_cursor"] is None
+
+
+def test_page_results_when_fits(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """件数に収まれば続きの値も案内も無い（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1")))
+    search_filter = query.SearchFilter()
+    results = query.search_items(workspace, search_filter)
+    # 実行
+    page = query.page_results(results, search_filter, limit=20, cursor=None)
+    # 検証
+    assert _ids(page["items"]) == ["D-1"]
+    assert page["next_cursor"] is None
+    assert page["hint"] is None
+
+
+def test_page_results_when_cursor_mismatched(five_decisions_workspace: store.Workspace) -> None:
+    """違う条件の続きの値は引数の誤りにする（異常系）。"""
+    # 準備
+    results = query.search_items(five_decisions_workspace, query.SearchFilter())
+    first = query.page_results(results, query.SearchFilter(), limit=3, cursor=None)
+    # 実行・検証
+    with pytest.raises(ArgumentError) as raised:
+        query.page_results(
+            results, query.SearchFilter(kind="task"), limit=3, cursor=first["next_cursor"]
+        )
+    assert raised.value.argument == "cursor"
+
+
+def test_page_results_when_cursor_broken(five_decisions_workspace: store.Workspace) -> None:
+    """読めない続きの値は引数の誤りにする（異常系）。"""
+    # 準備
+    search_filter = query.SearchFilter()
+    results = query.search_items(five_decisions_workspace, search_filter)
+    # 実行・検証
+    with pytest.raises(ArgumentError) as raised:
+        query.page_results(results, search_filter, limit=3, cursor="!!")
+    assert raised.value.argument == "cursor"
+
+
+def test_encode_cursor_round_trip() -> None:
+    """組み立てた値を同じ条件で読むと同じ位置に戻る（正常系）。"""
+    # 準備
+    search_filter = query.SearchFilter(kind="decision")
+    # 実行
+    cursor = query._encode_cursor(20, search_filter)
+    # 検証
+    assert query._decode_cursor(cursor, search_filter) == 20
+    assert not {"=", "/", "+"} & set(cursor)
+
+
+def test_build_hint_when_truncated() -> None:
+    """切り詰めたときは、渡していない絞り込みの引数を並べる（正常系）。"""
+    # 実行
+    hint = query.build_hint(45, 20, query.SearchFilter(kind="decision"), has_next=True)
+    # 検証
+    assert hint is not None
+    assert "45" in hint
+    assert "20" in hint
+    assert "tags" in hint
+    assert "status" in hint
+    assert "next_cursor" in hint
+    assert "kind" not in hint
+
+
+def test_build_hint_when_empty() -> None:
+    """0 件のときは、渡した条件の引数を並べる（正常系）。"""
+    # 準備
+    search_filter = query.SearchFilter(kind="decision", tags=("保留",))
+    # 実行
+    hint = query.build_hint(0, 0, search_filter, has_next=False)
+    # 検証
+    assert hint is not None
+    assert "kind" in hint
+    assert "tags" in hint
+
+
+@pytest.mark.parametrize(
+    ("total", "returned", "search_filter"),
+    [
+        pytest.param(3, 3, query.SearchFilter(), id="fits"),
+        pytest.param(0, 0, query.SearchFilter(), id="empty_without_filter"),
+    ],
+)
+def test_build_hint_when_none(total: int, returned: int, search_filter: query.SearchFilter) -> None:
+    """収まったときと、条件なしで 0 件のときは案内しない（正常系）。"""
+    # 実行
+    hint = query.build_hint(total, returned, search_filter, has_next=False)
+    # 検証
+    assert hint is None

@@ -148,6 +148,41 @@ def test_normal_when_unknown_phase(
     assert snapshot_tree(root) == before
 
 
+def test_normal_when_unknown_tag(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """項目とスレッドの tags がタグの語彙に無ければ unknown_tag を返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["保存", "通知"]),
+        settings={**valid_settings, "tags": [{"name": "保存"}]},
+    )
+    write_threads(root, make_thread("TH-1", tags=["起票"]))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    unknown = {
+        (row["file"], row["id"], row["key"], row["detail"])
+        for row in result.data["problems"]
+        if row["kind"] == "unknown_tag"
+    }
+    assert unknown == {
+        (".mindstella/decisions.yaml", "D-1", "items[0].tags", "通知"),
+        (".mindstella/threads.yaml", "TH-1", "items[0].tags", "起票"),
+    }
+    assert snapshot_tree(root) == before
+
+
 def _without_options(item: dict[str, Any]) -> dict[str, Any]:
     """案のキーを持たない検討事項にする。"""
     return {key: value for key, value in item.items() if key != "options"}

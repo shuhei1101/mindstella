@@ -1,0 +1,16 @@
+$ pytest tests/unit
+............................................................             [ 83%]
+tests/unit/scripts/test_server.py ..................                     [ 84%]
+tests/unit/scripts/test_settings_update.py ............................. [ 86%]
+...........                                                              [ 86%]
+tests/unit/scripts/test_store.py ....................................... [ 89%]
+..................................................................       [ 93%]
+tests/unit/scripts/test_submissions_to_threads.py ......                 [ 93%]
+tests/unit/scripts/test_tags_to_vocabulary.py ....                       [ 94%]
+tests/unit/scripts/test_threads.py ..................................... [ 96%]
+............................                                             [ 98%]
+tests/unit/scripts/test_versions.py .................                    [ 99%]
+tests/unit/scripts/test_vocabulary.py ........                           [ 99%]
+tests/unit/test_isolated_environment.py ...                              [100%]
+
+================= 1597 passed, 1 skipped in 733.19s (0:12:13) ==================

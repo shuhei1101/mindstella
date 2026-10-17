@@ -612,3 +612,28 @@ def test_error_when_html_body_for_non_doc(
     assert updated.is_error is True
     assert "資料だけが HTML の本文を持てる" in updated.text
     assert snapshot_tree(root) == before
+
+
+def test_error_when_unknown_tag(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """語彙に無いタグを持つ検討事項は書かず、近いタグの候補を添えたエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool(
+        "add",
+        workspace=str(root),
+        kind="decision",
+        item={**NEW_DECISION, "tags": ["通知機能"]},
+    )
+    # 検証
+    # 追加のツールがエラーを返し、本文に渡したタグと候補がある
+    assert result.is_error is True
+    assert "tags: 通知機能（候補: 通知）" in result.text
+    # ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
+    assert snapshot_tree(root) == before
