@@ -863,6 +863,7 @@ def test_normal_when_submission_from_preview(
 def test_normal_when_ai_asks_in_thread(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
+    valid_settings: dict[str, Any],
     start_server: StartServer,
     open_preview: OpenPreview,
     page: Page,
@@ -872,6 +873,7 @@ def test_normal_when_ai_asks_in_thread(
     # 準備
     root = make_workspace(
         make_item("D-1", title="見せ方"),
+        settings={**valid_settings, "tags": [{"name": "起票"}]},
         raw_files={"mindstella-version.ini": f"{plugin_version()}\n"},
     )
     ws = {"workspace": str(root)}
