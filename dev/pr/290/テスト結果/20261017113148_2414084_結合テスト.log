@@ -1,0 +1,16 @@
+$ python3 -m pytest tests/integration/storybook/test_topbar_stories.py tests/integration/preview/test_topbar_screen.py
+tests/integration/preview/test_topbar_screen.py .....                    [ 47%]
+tests/integration/storybook/test_topbar_stories.py ...................   [ 55%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 57%]
+tests/integration/storybook/test_topbar_stories.py ................      [ 63%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 65%]
+tests/integration/storybook/test_topbar_stories.py ................      [ 71%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 73%]
+tests/integration/storybook/test_topbar_stories.py .........             [ 77%]
+tests/integration/preview/test_topbar_screen.py .                        [ 77%]
+tests/integration/storybook/test_topbar_stories.py .........             [ 81%]
+tests/integration/preview/test_topbar_screen.py .                        [ 81%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 90%]
+.......................                                                  [100%]
+
+======================= 242 passed in 964.13s (0:16:04) ========================
