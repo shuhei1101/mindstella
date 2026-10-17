@@ -618,7 +618,7 @@ functions:
       - name: test_run_find_when_limit_out_of_range
         case: 異常
         summary: 範囲の外の件数は引数の誤り
-        condition: '`parametrize`: `limit=0` / `limit=101`'
+        condition: '`parametrize`: `limit=0` / `limit=81`'
         mock: なし
         expected: '`ArgumentError`（引数 `limit`）'
       - name: test_run_find_when_unknown_tag

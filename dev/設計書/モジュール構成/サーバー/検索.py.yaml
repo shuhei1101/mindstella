@@ -68,7 +68,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/query.py
     usecase: 記録の検索
     summary: '`find` の `limit` に渡せる件数の上限（インターフェース定義『項目の検索』の制約「件数」が導き方を持つ）'
-    value: '100'
+    value: '80'
   - name: DETAILED_KEYS
     title: 詳しい結果に足すキー
     container: plugins/mindstella/skills/mindmap/scripts/query.py
