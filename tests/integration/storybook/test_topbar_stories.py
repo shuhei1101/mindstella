@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 
 import pytest
+from integration.preview.preview_a11y_checks import axe_rule_results
 from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
 
@@ -767,6 +768,9 @@ FIT_NARROWEST_DIFF = "preview-topbar--fit-narrowest-diff"
 FIT_NARROWEST_OFFLINE = "preview-topbar--fit-narrowest-offline"
 FIT_NARROWEST_OFFLINE_DIFF = "preview-topbar--fit-narrowest-offline-diff"
 
+# 幅 320〜389px で、絞り込みに件数の札を持たない状態
+FIT_NARROWEST_NO_COUNT = "preview-topbar--fit-narrowest-no-count"
+
 # 部品設計『トップバー』が見せ方に挙げた、幅 389px 以下の幅
 NARROWEST_WIDTHS = [320, 361, 389]
 
@@ -819,8 +823,8 @@ ICON_BUTTON_SIZES_SCRIPT = """() => ['.search-trigger', '.hist-btn', '.top-btn']
   return [r.width, r.height];
 })"""
 
-# 幅 389px 以下の印だけのボタンの幅と高さ
-NARROWEST_ICON_BUTTON_SIZE = [28, 32]
+# 幅 390〜480px で詰め方が効くとき（`test_fit_wide_icon_buttons_when_width`）の印だけのボタンの幅と高さ
+FIT_WIDE_ICON_BUTTON_SIZE = [28, 32]
 
 # 幅 389px 以下の印だけのボタンの幅と高さ。つながらず差分を出している間だけ幅 26px にする
 NARROWEST_ICON_BUTTON_CASES = [
@@ -985,6 +989,9 @@ FIT_WIDE_DIFF = "preview-topbar--fit-wide-diff"
 FIT_WIDE_OFFLINE = "preview-topbar--fit-wide-offline"
 FIT_WIDE_OFFLINE_DIFF = "preview-topbar--fit-wide-offline-diff"
 
+# 幅 390〜480px で、つながらず差分を出し、絞り込みに件数の札を持たない状態
+FIT_WIDE_OFFLINE_DIFF_NO_FILTER = "preview-topbar--fit-wide-offline-diff-no-filter"
+
 # 1px ずつ通す幅（最大の中身の 390px 以上）
 FIT_WIDE_EVERY_WIDTH = range(390, 1441)
 
@@ -1083,7 +1090,7 @@ def test_fit_wide_icon_buttons_when_width(open_story: OpenStory, story_id: str, 
     # 実行
     sizes = page.evaluate(ICON_BUTTON_SIZES_SCRIPT)
     # 検証
-    assert sizes == [NARROWEST_ICON_BUTTON_SIZE] * 3
+    assert sizes == [FIT_WIDE_ICON_BUTTON_SIZE] * 3
 
 
 @pytest.mark.parametrize(("wide_story", "default_story", "width"), FIT_WIDE_UNPACKED_CASES)
@@ -1114,3 +1121,84 @@ def test_fit_wide_mark_when_count(
     # 検証
     assert page.locator(".filter-btn .fbadge").get_attribute("data-wide") == filter_mark
     assert page.locator(".comments-btn .count").get_attribute("data-wide") == comments_mark
+
+
+# 押せる的の縦横の下限（ピクセル。WCAG 2.2 の 2.5.8 と `--target-min`）
+TARGET_MIN_PX = 24
+
+# 押せる的を測る範囲（トップバー）と axe の規則
+TOPBAR_SELECTOR = ".topbar"
+TARGET_SIZE_RULE = "target-size"
+
+# 見えているボタンのうち、枠が縦横 24px 未満のものの名前と寸法を読む（差分の札の × を含む）
+SMALL_BUTTONS_SCRIPT = """(min) => [...document.querySelectorAll('.topbar button')]
+  .filter((e) => e.getClientRects().length > 0)
+  .map((e) => {
+    const r = e.getBoundingClientRect();
+    return { button: e.getAttribute('aria-label') || e.className, width: r.width, height: r.height };
+  })
+  .filter((box) => box.width < min || box.height < min)"""
+
+# 表示の設定・絞り込みのボタンの幅を読む
+COUNTLESS_BUTTON_WIDTHS_SCRIPT = """() => ['.settings-btn', '.filter-btn'].map((selector) => document.querySelector(selector).getBoundingClientRect().width)"""
+
+# 全てのボタンの押せる的が 24px 以上の状態と幅の組（幅 320・361・389px の 5 状態と、幅 390・480px の 4 状態）
+TARGET_SIZE_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id, widths in (
+        (FIT_NARROWEST, NARROWEST_WIDTHS),
+        (FIT_NARROWEST_DIFF, NARROWEST_WIDTHS),
+        (FIT_NARROWEST_OFFLINE, NARROWEST_WIDTHS),
+        (FIT_NARROWEST_OFFLINE_DIFF, NARROWEST_WIDTHS),
+        (FIT_NARROWEST_NO_COUNT, NARROWEST_WIDTHS),
+        (FIT_WIDE_DIFF, FIT_WIDE_PACKED_WIDTHS),
+        (FIT_WIDE_OFFLINE, FIT_WIDE_PACKED_WIDTHS),
+        (FIT_WIDE_OFFLINE_DIFF, FIT_WIDE_PACKED_WIDTHS),
+        (FIT_WIDE_OFFLINE_DIFF_NO_FILTER, FIT_WIDE_PACKED_WIDTHS),
+    )
+    for width in widths
+]
+
+# 絞り込みに件数の札を持たない状態と幅の組
+COUNTLESS_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id, widths in (
+        (FIT_NARROWEST_NO_COUNT, NARROWEST_WIDTHS),
+        (FIT_WIDE_OFFLINE_DIFF_NO_FILTER, FIT_WIDE_PACKED_WIDTHS),
+    )
+    for width in widths
+]
+
+
+@pytest.mark.parametrize(("story_id", "width"), TARGET_SIZE_CASES)
+def test_fit_target_size_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """幅 320〜480px で全てのボタンを出しても、トップバーの全てのボタン（差分の札の × を含む）の枠が縦横 24px 以上ある（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    small = page.evaluate(SMALL_BUTTONS_SCRIPT, TARGET_MIN_PX)
+    # 検証（24px に届かなかったボタンをまとめて出す）
+    assert small == []
+
+
+@pytest.mark.parametrize(("story_id", "width"), TARGET_SIZE_CASES)
+def test_fit_target_size_axe_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """幅 320〜480px で全てのボタンを出しても、トップバーに axe の `target-size` を当てて違反が無く、規則が実際に要素へ当たっている（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    result = axe_rule_results(page, TOPBAR_SELECTOR, TARGET_SIZE_RULE)
+    # 検証
+    assert result["violations"] == []
+    assert result["passes"] != []
+
+
+@pytest.mark.parametrize(("story_id", "width"), COUNTLESS_CASES)
+def test_fit_target_size_countless_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """絞り込みに件数の札を持たない状態は、表示の設定・絞り込みのボタンがどちらも幅 24px で、22px まで縮まない（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    widths = page.evaluate(COUNTLESS_BUTTON_WIDTHS_SCRIPT)
+    # 検証
+    assert widths == [24, 24]
