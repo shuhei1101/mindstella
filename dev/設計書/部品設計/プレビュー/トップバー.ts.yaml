@@ -78,7 +78,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`comments` が `true` のとき'
-    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない
+    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身の印 `data-wide` を付ける
     status: implemented
   - name: comments_open
     type: 真偽値
@@ -102,7 +102,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`filter` が `true` のとき'
-    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身の印 `data-wide` を付ける
     status: implemented
   - name: filter_open
     type: 真偽値
@@ -513,6 +513,62 @@ states:
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
     notes:
       見せ方: Storybook の画面幅を 320px・361px・389px・390px にして見せる
+  - name: FitWide
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` が付くが、差分の札も接続の状態も出していないので詰め方は `FilterHistoryNarrow` と同じ。トップバーもページも横にはみ出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+  - name: FitWideDiff
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px）にする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+  - name: FitWideOffline
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す）にする。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+  - name: FitWideOfflineDiff
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitNarrowestOfflineDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
