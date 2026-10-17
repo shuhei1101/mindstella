@@ -61,7 +61,7 @@ catalogs:
         description: '`{"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "..."}]}]}}` の形。`matcher` を持たなければ `startup`・`resume`・`clear`・`compact` の全てで流れる。コマンドの標準入力に `session_id`・`cwd`・`source` などの JSON が渡り、標準出力は会話の文脈に入る。失敗しても会話は始まる'
         refs:
           - dev/設計書/インターフェース定義/サーバー/未読へ戻す#
-        status: planned
+        status: implemented
         introduced:
           pr: 235
   - name: スキル
