@@ -308,6 +308,39 @@ scenarios:
     notes:
       取り込み済みの送信: 取り込み済みの送信は、書き込みを取り込み済みにして移す（次の取り込みで記録し直さない）。AI の返信を持たず話が済んでいるので、クローズのスレッドとして移す
     test: test_normal_when_submissions_to_threads
+  - name: 正常シナリオ（使っているタグを語彙へ登録する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・版の書き換えを、決めた引数で順に再生する
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: タグの語彙を持つ前の版のワークスペース
+        description: 版のファイルが v0.9.0 で、`config.yaml` がタグの語彙を持たず、検討事項 D-1（タグ `保存`・`通知`）・メモ N-1（タグ `脱線`）と、タグ `起票` を持つスレッド TH-1 を持つワークスペース
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:upgrade {フォルダ}
+        CC->>SV: 版を比べ、当てる手順を並べる
+        SV-->>CC: 使っているタグを語彙へ登録する手順
+        CC->>SV: 写しを取って手順を当てる
+        SV->>WS: 項目とスレッドのタグを集め、config.yaml の語彙へ書く
+        CC->>SV: check
+        SV-->>CC: 問題が無い
+        CC->>SV: 版を書き換える
+        SV->>WS: .mindstella/mindstella-version.ini を書く
+      ```
+    expected:
+      - タグの語彙が `保存`・`通知`・`脱線`・`起票` の 4 件を名前の順で持ち、どれも説明を持たない
+      - D-1・N-1・TH-1 のタグが、移し替える前と同じである
+      - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
+      - 最後の `check` が問題を 0 件で返す
+    test: test_normal_when_tags_registered
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者
