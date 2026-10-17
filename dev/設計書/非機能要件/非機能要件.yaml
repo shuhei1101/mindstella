@@ -212,7 +212,7 @@ requirements:
     overflow: MCP のツールは引数の誤りのエラー、状態の書き換えは 400 を返して何も書かない。画面は理由の入力の近くに理由（`detail`）を出し、入力を残す
     refs:
       - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-    status: planned
+    status: implemented
     introduced:
       pr: 235
 lead: mindstella が外部の制約から逆算して決める値。

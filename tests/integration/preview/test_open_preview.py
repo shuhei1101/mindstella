@@ -15,6 +15,20 @@ from integration.browser_tab_helpers import (
     recorded_window_opens,
 )
 from playwright.sync_api import Page, Route
+from preview_body_layout_helpers import (
+    INLINE_NAME,
+    LAYOUT_GROUP_NAME,
+    LAYOUT_SWITCH,
+    SIDE_HASH,
+    SIDE_NAME,
+    SIDE_VIEWPORT,
+    build_body_layout_workspace,
+    build_html_body_layout_workspace,
+    layout_buttons,
+    open_side_by_side,
+    rows_of_columns,
+    seed_side_layout,
+)
 from preview_body_link_helpers import (
     BODY_LINK_HASH,
     build_body_link_workspace,
@@ -1789,3 +1803,118 @@ def test_normal_when_reply_seen_while_opened(
     assert page.locator(f"{thread_row('TH-1')} .th-unread").count() == 0
     assert page.locator(f"{COMMENTS_BUTTON} .unread-dot").count() == 0
     assert page.get_attribute(COMMENTS_BUTTON, "aria-label") == "コメント（レビュー中 0 件）"
+
+
+# 詳細パネル（本文のスクロール領域とミニマップを持つ外側）
+PANEL = "aside.panel"
+
+# 左右に並べた本文の列（選んだ時点・今）と、インラインの本文の差分の印
+BEFORE_COLUMN = f"{PANEL} .sbs section.sbs-before"
+AFTER_COLUMN = f"{PANEL} .sbs section.sbs-after"
+INLINE_MARKS = f"{PANEL} .md:not(.md-value) ins.df-blk, {PANEL} .md:not(.md-value) del.df-blk"
+
+
+def test_normal_when_body_diff_side_by_side(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """本文の幅が足りる詳細パネルで「左右に並べる」を押すと前後の本文を左右に並べて上書きに残し、本文の幅が足りない詳細パネルでは切り替えを出さずインラインで出す（正常系）。"""
+    # 準備
+    root = build_body_layout_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    page.set_viewport_size(SIDE_VIEWPORT)
+    # 実行
+    open_preview(url, SIDE_HASH)
+    page.wait_for_selector(f"{PANEL}.open {LAYOUT_SWITCH}")
+    # 検証（切り替えは「インライン」を押した状態で、本文の差分はインライン）
+    assert page.get_attribute(f"{PANEL} {LAYOUT_SWITCH}", "aria-label") == LAYOUT_GROUP_NAME
+    assert layout_buttons(page, PANEL) == [
+        {"name": INLINE_NAME, "layout": "inline", "pressed": "true"},
+        {"name": SIDE_NAME, "layout": "side", "pressed": "false"},
+    ]
+    assert page.locator(INLINE_MARKS).count() == 2
+    assert page.locator(f"{PANEL} .sbs").is_visible() is False
+    # 実行（「左右に並べる」を押す）
+    page.get_by_role("button", name=SIDE_NAME).click()
+    open_side_by_side(page, PANEL)
+    # 検証（選んだ時点の列に消した段落、今の列に足した段落。向かいは同じ高さの空き）
+    assert page.locator(f"{BEFORE_COLUMN} del.df-blk").inner_text().endswith("1 つ目の段落です。")
+    assert page.locator(f"{AFTER_COLUMN} ins.df-blk").inner_text().endswith("4 つ目の段落です。")
+    assert page.locator(f"{BEFORE_COLUMN} ins.df-blk").count() == 0
+    assert page.locator(f"{AFTER_COLUMN} del.df-blk").count() == 0
+    before_rows, after_rows = rows_of_columns(page, PANEL)
+    assert [row["gap"] for row in before_rows] == [False, False, False, True]
+    assert [row["gap"] for row in after_rows] == [True, False, False, False]
+    assert [row["changed"] for row in before_rows] == [True, False, False, True]
+    assert [row["top"] for row in before_rows] == [row["top"] for row in after_rows]
+    assert [row["height"] for row in before_rows] == [row["height"] for row in after_rows]
+    # 検証（変えていない 2 つ目・3 つ目の段落は、左右で同じ高さに印なしで並ぶ）
+    unchanged = [(left["text"], right["text"]) for left, right in zip(before_rows, after_rows, strict=True) if not left["changed"]]
+    assert unchanged == [("2 つ目の段落です。", "2 つ目の段落です。"), ("3 つ目の段落です。", "3 つ目の段落です。")]
+    # 検証（「左右に並べる」を押した状態。ハッシュは開いたときのままで、個人の上書きに side が残る）
+    assert [button["pressed"] for button in layout_buttons(page, PANEL)] == ["false", "true"]
+    assert page.evaluate("location.hash") == SIDE_HASH
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["bodyLayout"] == "side"
+    # 実行（検討事項のタブで D-1 を開く）
+    page.click('nav.tabbar a[data-tab="decisions"]')
+    page.wait_for_selector('[data-id="D-1"]')
+    page.click('[data-id="D-1"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent.includes('いつ決めるか')")
+    page.wait_for_selector(f"{PANEL} .md:not(.md-value) ins.df-blk:visible")
+    # 検証（D-1 の詳細パネルは幅 480px で、切り替えが無く、書き換えた段落をインラインの消した行と足した行で出す）
+    assert page.locator(f"{PANEL} {LAYOUT_SWITCH}").is_visible() is False
+    assert page.locator(f"{PANEL} .sbs").is_visible() is False
+    assert "来週に決めます" in page.inner_text(f"{PANEL} .md:not(.md-value) del.df-blk:visible")
+    assert "今週に決めます" in page.inner_text(f"{PANEL} .md:not(.md-value) ins.df-blk:visible")
+
+
+def test_normal_when_html_body_diff_side_by_side(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """並べ方の上書きが side のとき、HTML の本文の前後を描いた結果を左右に並べ、「原文の差分」で原文の行を左右に並べる（正常系）。"""
+    # 準備
+    root = build_html_body_layout_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    page.set_viewport_size(SIDE_VIEWPORT)
+    seed_side_layout(page, "V-2")
+    full_scope = "dialog.full"
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1&diff=V-2&full=1")
+    page.wait_for_selector(f"{full_scope} .sbs-html")
+    wait_frame_rendered(page, f"{full_scope} .sbs-after iframe.html-frame")
+    # 検証（並べ方の切り替えは「左右に並べる」を押した状態で、見せ方の組より前の別の組）
+    assert [button["pressed"] for button in layout_buttons(page, full_scope)] == ["false", "true"]
+    bar_groups = page.eval_on_selector_all(
+        f"{full_scope} .html-diff-bar [role=group]", "groups => groups.map(g => g.getAttribute('aria-label'))"
+    )
+    assert bar_groups == [LAYOUT_GROUP_NAME, "本文の差分の見せ方"]
+    # 検証（選んだ時点の列に前の版、今の列に今の版を描いた結果。今の列の 2 つ目の段落だけに「変わった」の印）
+    before_text = frame_of(page, f"{full_scope} .sbs-before iframe.html-frame").inner_text("body")
+    assert "2 つ目の段落" in before_text
+    assert "書き直した" not in before_text
+    marked = frame_of(page, f"{full_scope} .sbs-after iframe.html-frame").eval_on_selector_all(
+        "p", "ps => ps.map(p => [p.textContent, p.closest('[data-df]')?.dataset.df ?? null])"
+    )
+    assert marked == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 実行（「原文の差分」を押す）
+    page.get_by_role("button", name=RAW_DIFF_BUTTON).click()
+    page.wait_for_selector(f"{full_scope} .df-raw.df-split")
+    # 検証（左に消した行、右に足した行が同じ高さで出て、行の印を含まない）
+    removed = page.locator(f"{full_scope} .df-raw.df-split .df-line.df-del")
+    added = page.locator(f"{full_scope} .df-raw.df-split .df-line.df-add")
+    assert removed.count() == 1
+    assert added.count() == 1
+    assert "<p>2 つ目の段落</p>" in removed.inner_text()
+    assert "<p>書き直した 2 つ目の段落</p>" in added.inner_text()
+    removed_box = removed.bounding_box()
+    added_box = added.bounding_box()
+    assert removed_box is not None
+    assert added_box is not None
+    assert removed_box["y"] == added_box["y"]
+    assert removed_box["x"] < added_box["x"]
+    assert "data-line" not in page.inner_text(f"{full_scope} .df-raw.df-split")

@@ -75,12 +75,63 @@ function kindsBody(): HTMLElement {
   ]);
 }
 
+/** 左右に並べた本文の 1 行（`sbs-row`）。`blocks` が空なら向かいにしか無い行の空き */
+function sideRow({ blocks, changed }: { blocks: HTMLElement[]; changed: boolean }): HTMLElement {
+  const gap = blocks.length === 0;
+  return h({
+    tag: "div",
+    attrs: { class: `sbs-row${changed ? " sbs-chg" : ""}${gap ? " sbs-gap" : ""}`, ...(gap ? { "aria-hidden": "true" } : {}) },
+    children: gap ? [] : [markdown(blocks)],
+  });
+}
+
+/** 本文を左右に並べた状態（左の消した段落と右の足した段落が向かい合う箇所、変えていない段落、右だけの足した段落） */
+function sideBySideBody(): HTMLElement {
+  const column = ({ name, className, rows }: { name: string; className: string; rows: HTMLElement[] }): HTMLElement =>
+    h({ tag: "section", attrs: { class: `sbs-col ${className}`, "aria-label": name }, children: rows });
+  const unchanged = (from: number): HTMLElement[] => paragraphs({ from, count: 6 }).map((paragraph) => sideRow({ blocks: [paragraph], changed: false }));
+  return bodyOf([
+    h({
+      tag: "div",
+      attrs: { class: "sbs" },
+      children: [
+        h({
+          tag: "div",
+          attrs: { class: "sbs-cols" },
+          children: [
+            column({
+              name: "選んだ時点の本文",
+              className: "sbs-before",
+              rows: [
+                ...unchanged(1),
+                sideRow({ blocks: [block({ op: "del", text: "書き換える前の段落" })], changed: true }),
+                ...unchanged(7),
+                sideRow({ blocks: [], changed: true }),
+              ],
+            }),
+            column({
+              name: "今の本文",
+              className: "sbs-after",
+              rows: [
+                ...unchanged(1),
+                sideRow({ blocks: [block({ op: "add", text: "書き換えた後の段落" })], changed: true }),
+                ...unchanged(7),
+                sideRow({ blocks: [block({ op: "add", text: "末尾に足した段落" })], changed: true }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ]);
+}
+
 /** 本文を置く舞台。部品は見出しと下端の間に置かれるため、高さの決まった縦並びの中に入れる */
-function stage({ body, shown }: { body: HTMLElement } & Args): HTMLElement {
+function stage({ body, shown, width = 560 }: { body: HTMLElement; width?: number } & Args): HTMLElement {
   return h({
     tag: "div",
     attrs: {
-      style: "display:flex;flex-direction:column;width:min(560px,100%);height:480px;border:1px solid var(--border);background:var(--surface)",
+      style: `display:flex;flex-direction:column;width:min(${width}px,100%);height:480px;border:1px solid var(--border);background:var(--surface)`,
     },
     children: [MindmapPreview.diffMinimapFrame({ body, shown })],
   });
@@ -155,4 +206,10 @@ export const Narrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 本文を左右に並べている。左の消した塊と右の足した塊が向かい合う箇所は変わった 1 つ、片側だけの塊はその種類の印を、高さの順に並べる */
+export const SideBySide: Story = {
+  // 左右に並べるのは本文の幅が 560px 以上のときなので、舞台を広げる
+  render: (args) => stage({ body: sideBySideBody(), shown: args.shown, width: 760 }),
 };

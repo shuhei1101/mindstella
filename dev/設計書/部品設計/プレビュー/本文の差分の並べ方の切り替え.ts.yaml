@@ -1,0 +1,40 @@
+title: "本文の差分の並べ方の切り替え"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts#MindmapPreview.bodyDiffLayoutSwitch"
+story: "Preview/BodyDiffLayoutSwitch"
+states:
+  - name: Inline
+    description: 既定。「インライン」を押した状態
+    args:
+      - name: layout
+        value: inline
+  - name: Side
+    description: 「左右に並べる」を押した状態
+    args:
+      - name: layout
+        value: side
+  - name: FocusOnOther
+    description: 「インライン」を押したまま、「左右に並べる」にキーボードのフォーカスを置いた。印の色の輪を出す
+    args:
+      - name: layout
+        value: inline
+lead: 差分の表示の間、本文の差分の頭に置く「インライン」「左右に並べる」のボタンの組
+args:
+  - name: layout
+    type: 列挙
+    required: true
+    choices: inline・side
+    description: 選んでいる並べ方。`inline` は「インライン」、`side` は「左右に並べる」を押した状態で出す
+events:
+  - name: 並べ方を切り替える
+    when: 押していない方のボタンを押したとき（押している方を押しても知らせない）
+    value: 押した方の並べ方（`inline`・`side`）。ボタンの `data-layout` に持つ
+    description: 使う側が、`side` は個人の上書きに残し、`inline` は上書きを外して、開いている詳細パネル・詳細の全画面をその場で描き直す。本文を送った位置と、押したボタンのフォーカスを保つ。履歴に積まず、URL のハッシュも変えない
+accessibility:
+  - 2 つのボタンの組（`role="group"`、読み上げの名前「本文の差分の並べ方」）で、押している方を `aria-pressed` で示す
+  - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
+refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文の差分の並べ方]
+status: implemented
+notes:
+  モック: '`dev/mock/components/body-diff-layout/` の「並べ方の切り替え」'
+test_file: tests/integration/storybook/test_body_diff_layout_switch_stories.py

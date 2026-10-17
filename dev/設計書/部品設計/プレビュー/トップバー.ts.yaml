@@ -47,46 +47,46 @@ args:
     default: online
     choices: online・offline
     description: サーバーにつながっているか。offline のときだけ、検索の入口の左に押せない接続の状態を出す。配る書き出しは常に online
-    status: planned
+    status: implemented
   - name: read_at
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
     description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 900px 以下は印だけを見せて文言を読み上げにだけ残す
-    status: planned
+    status: implemented
   - name: tabs[].marked
     type: 真偽値
     required: false
     default: 'false'
     description: 差分の表示の間、その種類に新規・変更・消した項目があるか。真のとき、件数を残したままタブの右上に点を重ね、「新規・変更・消した項目があります」を読み上げに残す。タブの幅は変えない
-    status: planned
+    status: implemented
   - name: diffPoint
     type: オブジェクト
     required: false
     default: なし（差分を出さない）
     description: 変更履歴で選んだ時点。`name`（「前回開いてから」・「まだまとめていない変更」・まとまりの説明）と `sub`（日時など）を持つ。あるとき、「変更履歴」の右にその名前の札と外す × を出す。札は幅に合わせて名前の末尾を省略し、`{name}（{sub}）` を `title` と読み上げに持つ。札はどの幅でも `5.5em` 以上を取り、足りない幅は題名の側を縮める
-    status: planned
+    status: implemented
   - name: comments
     type: 真偽値
     required: false
     default: 'false'
     description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる
-    status: planned
+    status: implemented
   - name: comment_count
     type: 整数
     required: false
     default: '0'
     choices: 0 以上
     enabled_when: '`comments` が `true` のとき'
-    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない
-    status: planned
+    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身の印 `data-wide` を付ける
+    status: implemented
   - name: comments_open
     type: 真偽値
     required: false
     default: 'false'
     enabled_when: '`comments` が `true` のとき'
     description: コメントの一覧を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
-    status: planned
+    status: implemented
   - name: settings_open
     type: 真偽値
     required: false
@@ -96,27 +96,27 @@ args:
     type: 真偽値
     default: 'false'
     description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・ネットワーク）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする
-    status: planned
+    status: implemented
   - name: filter_count
     type: 整数
     default: '0'
     choices: 0 以上
     enabled_when: '`filter` が `true` のとき'
-    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない
-    status: planned
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身の印 `data-wide` を付ける
+    status: implemented
   - name: filter_open
     type: 真偽値
     default: 'false'
     enabled_when: '`filter` が `true` のとき'
     description: 絞り込みのドロワー（部品設計『絞り込み』）を開いているか。開いているときはボタンを枠と面で選んだ見た目にする
-    status: planned
+    status: implemented
   - name: comments_unread
     type: 真偽値
     required: false
     default: 'false'
     enabled_when: '`comments` が `true` のとき'
     description: オープンのスレッドに利用者の未読の書き込みがあるか。`true` のとき、コメントのボタンの吹き出しの印の右上に点を重ねる（ボタンの幅は変えない。件数は出さない）。点の色は暗い地で読める印の色（`--teal-400`）
-    status: planned
+    status: implemented
 events:
   - name: 画面を移る
     when: タブかネットワークの入口を押したとき
@@ -513,6 +513,62 @@ states:
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
     notes:
       見せ方: Storybook の画面幅を 320px・361px・389px・390px にして見せる
+  - name: FitWide
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` が付くが、差分の札も接続の状態も出していないので詰め方は `FilterHistoryNarrow` と同じ。トップバーもページも横にはみ出さない
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+  - name: FitWideDiff
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px）にする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
+    args:
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+  - name: FitWideOffline
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す）にする。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+  - name: FitWideOfflineDiff
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitNarrowestOfflineDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける

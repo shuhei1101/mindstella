@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
+from preview_body_layout_helpers import SIDE_NAME, SIDE_VIEWPORT, open_side_by_side
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL
 from preview_drawer_helpers import (
     DRAWER_OPEN,
@@ -16,9 +18,12 @@ from preview_drawer_helpers import (
     close_drawer,
     open_drawer,
 )
-from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_minimap_helpers import MINIMAP_HASH, PANEL_SCOPE, open_minimap
+from preview_history_helpers import preselect_diff
 from preview_settings_helpers import (
+    CONFIRM,
+    CONFIRM_OPEN,
     DEFAULT_KINDS,
     LOOK_SELECT,
     SETTINGS_BUTTON,
@@ -687,3 +692,100 @@ def test_reset_when_minimap(
     assert prefs["kinds"] is None
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
     assert _minimap_checkbox(page).is_checked() is True
+
+
+# 「ワークスペースの既定にする」のボタン
+SAVE_DEFAULT_BUTTON = f"{SETTINGS_PANEL} button:has-text('ワークスペースの既定にする')"
+
+# 「この端末で変えている項目」に並ぶ名前
+BODY_LAYOUT_LABEL = "本文の差分の並べ方"
+
+# 開いている詳細パネルの左右に並べた本文が消える・出るまで待つ上限ミリ秒
+BODY_LAYOUT_TOGGLE_MS = 5_000
+
+
+def _open_side_by_side_panel(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> tuple[Page, Path]:
+    """資料 A-1 の詳細パネルを差分の表示で開き、「左右に並べる」を押して、左右に並べた本文が出るまで待つ。"""
+    url, root = write_body_layout_preview()
+    page.set_viewport_size(SIDE_VIEWPORT)
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    page.get_by_role("button", name=SIDE_NAME).click()
+    open_side_by_side(page, PANEL_SCOPE)
+    return page, root
+
+
+def test_reset_when_body_diff_layout(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """詳細で選んだ「左右に並べる」は、「この端末で変えている項目」に「本文の差分の並べ方」として並び、「ワークスペースの既定にする」は出さず、「既定に戻す」で外れてインラインに戻る（正常系）。"""
+    # 準備
+    _open_side_by_side_panel(write_body_layout_preview, open_preview, page)
+    history_length = page.evaluate("history.length")
+    # 実行
+    open_settings(page)
+    # 検証（見た目と表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
+    assert BODY_LAYOUT_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["bodyLayout"] == "side"
+    # 実行（既定に戻す）
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(f"{PANEL_SCOPE} .sbs", state="detached", timeout=BODY_LAYOUT_TOGGLE_MS)
+    # 検証（詳細パネルは開いたままインラインに戻り、全ての上書きが外れる）
+    assert page.locator(f"{PANEL_SCOPE}.open").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .md:not(.md-value) del.df-blk").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} .md:not(.md-value) ins.df-blk").count() == 1
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["bodyLayout"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert page.evaluate("history.length") == history_length
+
+
+def test_save_default_when_body_diff_layout(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表示する種類も変えて「ワークスペースの既定にする」で保存しても、本文の差分の並べ方は保存する対象に含めず、config.yaml に書かず、個人の上書きに残す（正常系）。"""
+    # 準備
+    page, root = _open_side_by_side_panel(write_body_layout_preview, open_preview, page)
+    open_settings(page)
+    toggle_kind(page, "用語集")
+    # 検証（変えている項目に、表示する種類の後ろへ並ぶ）
+    assert "表示する種類・本文の差分の並べ方" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行
+    page.click(SAVE_DEFAULT_BUTTON)
+    page.wait_for_selector(CONFIRM_OPEN)
+    # 検証（確かめに並ぶのは見た目と表示する種類の 2 行だけ）
+    assert len(page.locator(f"{CONFIRM} .sc-row").all_inner_texts()) == 2
+    assert BODY_LAYOUT_LABEL not in page.inner_text(CONFIRM)
+    # 実行
+    page.get_by_role("button", name="保存する").click()
+    page.wait_for_selector(CONFIRM, state="detached", timeout=BODY_LAYOUT_TOGGLE_MS)
+    # 検証
+    display = read_config(root)["display"]
+    assert sorted(display) == ["network_look", "visible_kinds"]
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["bodyLayout"] == "side"
+    assert page.locator(f"{PANEL_SCOPE} .sbs").count() == 1
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """表示の設定は、幅 320px で横にスクロールせず、パネルと閉じるボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    set_smallest(page)
+    # 実行
+    open_settings(page)
+    # 検証
+    assert_fits_smallest(
+        page,
+        (SETTINGS_PANEL, f"{SETTINGS_PANEL} button[aria-label='表示の設定を閉じる']"),
+        scope=SETTINGS_PANEL,
+    )

@@ -31,13 +31,13 @@ args:
     required: true
     choices: new・changed・removed
     description: 新規か変更か消したか。色だけでなく形（+ と ● と −）でも分ける。`removed` は部品『消した項目の帯』だけが使う
-    status: planned
+    status: implemented
   - name: labeled
     type: 真偽値
     required: false
     default: 'false'
     description: 真のとき記号に文言（「新規」「変更」）を付けた札にする。詳細パネルの題の横だけが使う
-    status: planned
+    status: implemented
 accessibility:
   - 記号は `aria-hidden` にし、「新規」「変更」「消した」を読み上げにだけ残す文字と `title` を持つ
   - 色だけに頼らず、新規・変更・消したを記号の形でも分ける

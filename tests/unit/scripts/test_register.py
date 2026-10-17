@@ -55,10 +55,10 @@ def _run_main(
     home: Path,
     capsys: pytest.CaptureFixture[str],
     *,
-    shell: str | None = "/bin/bash",
+    login_shell: str | None = "/bin/bash",
 ) -> tuple[int, dict[str, Any] | None]:
     """main を Linux として呼び、終了コードと、標準出力に出た JSON（無ければ None）を返す。"""
-    code = register.main(argv, environ=_environ(home, shell=shell), system="Linux")
+    code = register.main(argv, environ=_environ(home, shell=login_shell), system="Linux")
     out = capsys.readouterr().out
     return code, json.loads(out) if out else None
 
@@ -128,7 +128,7 @@ def test_main_when_unsupported_shell(
 ) -> None:
     """bash・zsh でなければ手で書く行を返して 1（異常系）。"""
     # 実行
-    code, report = _run_main(register, ["set"], tmp_path, capsys, shell="/usr/bin/fish")
+    code, report = _run_main(register, ["set"], tmp_path, capsys, login_shell="/usr/bin/fish")
     # 検証
     assert code == 1
     assert report is not None

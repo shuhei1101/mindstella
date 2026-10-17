@@ -6,8 +6,21 @@ from pathlib import Path
 
 import pytest
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
+from preview_body_layout_helpers import (
+    INLINE_NAME,
+    LAYOUT_GROUP_NAME,
+    LAYOUT_SWITCH,
+    SIDE_NAME,
+    SIDE_VIEWPORT,
+    layout_buttons,
+    open_side_by_side,
+    rows_of_columns,
+    seed_side_layout,
+)
+from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS
 from preview_body_scroll_helpers import (
     LONG_BODY,
     LONG_LINES_BODY,
@@ -965,3 +978,146 @@ def test_diff_minimap_when_diagram_zoomed(
         "document.querySelector('dialog.full .df-map')?.getClientRects().length > 0",
         timeout=MINIMAP_TOGGLE_MS,
     )
+
+
+# ─── 本文の差分の並べ方 ───
+
+# 検討事項 D-1 を、まとまり V-2 の差分の表示で全画面で開くハッシュ
+SIDE_FULL_HASH = "#tab=decisions&view=table&id=D-1&diff=V-2&full=1"
+
+# 本文の幅が 560px に満たない狭い画面
+SIDE_NARROW_VIEWPORT = {"width": 520, "height": 800}
+
+
+def test_diff_body_layout_switch(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面でも、本文の幅が足りれば本文の差分の頭に切り替えを出し、「左右に並べる」を押すと全画面のまま前後を左右に並べ、履歴に積まず URL のハッシュも変えない（正常系）。"""
+    # 準備（幅 480px の詳細パネルでは切り替えを出さない検討事項 D-1 を、全画面で開く）
+    url, _ = write_body_layout_preview()
+    page.set_viewport_size(SIDE_VIEWPORT)
+    preselect_diff(page, "V-2")
+    open_preview(url, SIDE_FULL_HASH)
+    page.wait_for_selector(f"{FULL_SCOPE} {LAYOUT_SWITCH}")
+    history_length = page.evaluate("history.length")
+    hash_before = page.evaluate("location.hash")
+    # 検証（読み上げの名前の付いたボタンの組で、「インライン」を押した状態）
+    assert page.get_attribute(f"{FULL_SCOPE} {LAYOUT_SWITCH}", "aria-label") == LAYOUT_GROUP_NAME
+    assert [button["pressed"] for button in layout_buttons(page, FULL_SCOPE)] == ["true", "false"]
+    assert page.locator(f"{FULL_SCOPE} .sbs").is_visible() is False
+    # 実行（「左右に並べる」を押す）
+    page.get_by_role("button", name=SIDE_NAME).click()
+    open_side_by_side(page, FULL_SCOPE)
+    # 検証（左に消した行、右に足した行。変えていない段落は同じ高さ）
+    assert "来週" in page.inner_text(f"{FULL_SCOPE} .sbs section.sbs-before del.df-blk")
+    assert "今週" in page.inner_text(f"{FULL_SCOPE} .sbs section.sbs-after ins.df-blk")
+    before_rows, after_rows = rows_of_columns(page, FULL_SCOPE)
+    assert [row["top"] for row in before_rows] == [row["top"] for row in after_rows]
+    assert [button["pressed"] for button in layout_buttons(page, FULL_SCOPE)] == ["false", "true"]
+    assert page.evaluate("document.activeElement?.getAttribute('data-layout')") == "side"
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == hash_before
+    # 実行（「インライン」を押す）
+    page.get_by_role("button", name=INLINE_NAME).click()
+    page.wait_for_selector(f"{FULL_SCOPE} .sbs", state="detached")
+    # 検証
+    assert page.locator(f"{FULL_SCOPE} .md:not(.md-value) ins.df-blk").count() == 1
+    assert page.evaluate("history.length") == history_length
+
+
+def test_diff_body_layout_switch_when_narrow(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面の本文の幅が 560px に満たないときは、詳細パネルと同じく、並べ方が side でも切り替えを出さずインラインで出す（正常系）。"""
+    # 準備
+    url, _ = write_body_layout_preview()
+    page.set_viewport_size(SIDE_NARROW_VIEWPORT)
+    seed_side_layout(page, "V-2")
+    # 実行
+    open_preview(url, SIDE_FULL_HASH)
+    page.wait_for_selector(f"{FULL_SCOPE} .md:not(.md-value) ins.df-blk:visible")
+    # 検証
+    assert page.locator(f"{FULL_SCOPE} {LAYOUT_SWITCH}").is_visible() is False
+    assert page.locator(f"{FULL_SCOPE} .sbs").is_visible() is False
+    assert page.locator(f"{FULL_SCOPE} .md:not(.md-value) del.df-blk:visible").count() == 1
+
+
+def test_diff_body_layout_kept_when_returned_to_panel(
+    write_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面で選んだ並べ方は個人の上書きで、元の大きさに戻した幅の足りる詳細パネルにも当たる（正常系）。"""
+    # 準備（資料 A-1 は幅 760px の詳細パネルで切り替えを出す）
+    url, _ = write_body_layout_preview()
+    page.set_viewport_size(SIDE_VIEWPORT)
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1&diff=V-2&full=1")
+    page.wait_for_selector(f"{FULL_SCOPE} {LAYOUT_SWITCH}")
+    page.get_by_role("button", name=SIDE_NAME).click()
+    open_side_by_side(page, FULL_SCOPE)
+    # 実行（元の大きさに戻す）
+    page.get_by_role("button", name="元の大きさに戻す").click()
+    page.wait_for_selector("aside.panel.open .sbs")
+    # 検証
+    assert [button["pressed"] for button in layout_buttons(page, "aside.panel")] == ["false", "true"]
+
+
+@pytest.mark.parametrize("width", BODY_WIDTHS)
+def test_body_wrap_when_long_words_and_tables(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
+) -> None:
+    """全画面でも、本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は包む入れ物の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", body="A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.set_viewport_size({"width": width, "height": 800})
+    page.wait_for_selector("dialog.full .md-table-wrap")
+    # 実行
+    result = page.evaluate(WRAP_METRICS_JS, "dialog.full")
+    # 検証
+    assert result["bodyScrollsHorizontally"] is False
+    assert result["mdScrollsHorizontally"] is False
+    assert (result["urlInside"], result["codeInside"]) == (True, True)
+    assert result["urlRows"] > 1
+    assert result["codeRows"] > 1
+    assert result["idrefOverflowWrap"] == "normal"
+    assert result["idrefRows"] == 1
+    wide, narrow = result["wraps"]
+    group = {"role": "group", "label": "本文の表", "tabindex": "0", "inside": True}
+    assert {key: wide[key] for key in group} == group
+    assert {key: narrow[key] for key in group} == group
+    assert wide["scrolls"] is True
+    assert wide["overflowX"] in ("auto", "scroll")
+    assert narrow["scrolls"] is False
+    assert narrow["tableFillsWrap"] is True
+
+
+@pytest.mark.parametrize("width", [320, 1280])
+def test_body_table_scroll_by_keyboard(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, width: int
+) -> None:
+    """全画面でも、列の多い表を包む入れ物はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れて、フォーカスの枠は内側に描く（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1", body="A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.set_viewport_size({"width": width, "height": 800})
+    wrap = page.locator("dialog.full .md-table-wrap").first
+    wrap.wait_for()
+    # 実行
+    wrap.focus()
+    page.keyboard.press("ArrowRight")
+    # 検証
+    page.wait_for_function("selector => document.querySelector(selector).scrollLeft > 0", arg="dialog.full .md-table-wrap")
+    assert wrap.evaluate("element => getComputedStyle(element).outlineOffset") == "-2px"
+    assert page.evaluate("document.querySelector('dialog.full .panel-body').scrollLeft") == 0
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """詳細の全画面は、幅 320px で横にスクロールせず、本文の表・図・コードブロックのほかにあふれる区画が無く、閉じる・全画面のボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3&full=1")
+    page.wait_for_selector("dialog.full .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 実行
+    set_smallest(page)
+    # 検証
+    assert_fits_smallest(page, ("dialog.full", 'dialog.full button[data-act="full"]'), scope="dialog.full")

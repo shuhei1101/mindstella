@@ -15,7 +15,7 @@ data_models:
     title: 端末に残す設定
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
-    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップは個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
+    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方は個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
     properties:
       - name: theme
         type: "'light' | 'dark' | null"
@@ -38,6 +38,12 @@ data_models:
       - name: minimap
         type: false | null
         description: 差分のミニマップを表示しない上書き。`null` は表示する（ワークスペースの既定は持たない）。表示するに戻すと `null` にする
+      - name: bodyLayout
+        type: "'side' | null"
+        description: 本文の差分を左右に並べる上書き（インターフェース定義の `body_diff_layout`）。`null` はインライン（ワークスペースの既定は持たない）。「インライン」を押すと `null` にする
+      - name: opened
+        type: unknown
+        description: 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`resolveSince` が `isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う。サーバーの配信では読まず書かない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -170,7 +176,7 @@ constants:
     title: 「前回開いてから」の始まりのキー
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 前回からの差分を見る
-    summary: そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた日時を `Prefs` と同じ `localStorage` のキーの `opened` に持つ
+    summary: そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない）。配る書き出しでは、前回開いた時点を `Prefs.opened` に持つ
     value: '"mindmap-since"'
   - name: NOTICE_MS
     title: 既定が変わった知らせを出す長さ
@@ -225,7 +231,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap` はその項目だけ既定にする'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout` はその項目だけ既定にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -249,6 +255,12 @@ functions:
         condition: '`parametrize`: `minimap: false` を残した / `minimap: true` を残した / `minimap: "no"` を残した / `minimap` を持たない前の版の値'
         expected: '`minimap` が `false` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
         mock: 保存領域（引数で渡す）
+      - name: test_load_prefs_when_body_layout
+        case: 正常
+        summary: 本文の差分の並べ方の上書きは side だけを読む
+        condition: '`parametrize`: `bodyLayout: side` を残した / `bodyLayout: inline` を残した / `bodyLayout: 1` を残した / `bodyLayout` を持たない前の版の値'
+        mock: 保存領域（引数で渡す）
+        expected: '`bodyLayout` が `side` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
@@ -298,7 +310,7 @@ functions:
       2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）
          - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（13 へ）
       3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
-         - 「前回開いてから」の始まりを決める。`SINCE_KEY` が sessionStorage にあればそれを使う。無ければ、サーバーの配信では `postOpened`、配る書き出しでは `localStorage` の `opened` を読んで今の日時に書き換え、`null` ならタブを開いた日時にして `SINCE_KEY` に残す
+         - 「前回開いてから」の始まりを決める（`resolveSince`。読んだ記録の先頭のまとまりの `until_seq` を渡す）
          - 選んだ時点を引く（`resolveDiffPoint`。ハッシュの `diff`（`parseHash` の `Route.diff`）があればそれ、無ければ `Prefs.diffSel` と、始まり）。引けたら `Prefs.diffSel` と `Route.diff` をその時点にし、引けなければどちらも `null` にして残す（`savePrefs`）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
       5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
@@ -368,6 +380,7 @@ functions:
       本文のまとまりのリンク: 詳細パネルの `on.changeSet` では、渡された値を `resolveDiffPoint` で引き、まとまりの ID として引けたときだけ 10 の「時点を選ぶ」と同じに扱う（`Prefs.diffSel` と `Route.diff` をそのまとまりにし、履歴に積まずにハッシュを置き換える。開いている画面・項目・全画面はそのまま）。引けなければ何もしない
       幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときと幅 901px 以上の重なり順は変えない
       書き込みのまとまりのリンク: コメントの一覧に `changeSetOf`（記録の `changes.sets` からまとまりの ID で説明を引く。無ければ `null`）を渡す。コメントの一覧の `on.changeSet` は詳細パネルの `on.changeSet` と同じく扱う（`resolveDiffPoint` で引けたときだけ 10 の「時点を選ぶ」と同じにし、履歴に積まずにハッシュを置き換える）。コメントの一覧（`listOpen`）と、その中の画面・開いているスレッドは変えない
+      本文の差分の並べ方: 詳細パネルに `resolveDisplay` の `bodyLayout` を渡す。詳細パネルの `on.layout`（押した並べ方）では、`side` なら `Prefs.bodyLayout` を `side`、`inline` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押した並べ方のボタン（`[data-layout]`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
   - name: formKey
     title: 入力欄のキー
     kind: 関数
@@ -428,14 +441,14 @@ functions:
         passing: positional
         description: 記録の `settings.display`（配る書き出しは埋め込みの値）
     returns:
-      type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean}'
-      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」の順）、差分のミニマップを置くか
+      type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean, bodyLayout: ''inline'' | ''side''}'
+      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」・「本文の差分の並べ方」の順）、差分のミニマップを置くか、本文の差分の並べ方
     process: |-
       1. 既定を決める（`display.network_look` が無ければ `deep`、`display.visible_kinds` が無ければ 7 つの種類全て）
-      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする
+      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする。`bodyLayout` は `prefs.bodyLayout` が `side` のときだけ `side`、それ以外は `inline` にする
       3. `prefs.look`・`prefs.kinds`・`prefs.theme` が `null` でない項目と、`prefs.columns` の種類ごとに「表の列（{種類の名前}）」を `overrides` に並べる
       4. `prefs.filters` の画面ごとに、条件が画面の既定（`initialFilters(画面, {}, null)`）と違えば「絞り込み（{画面の名前}）」を `overrides` に並べる（記録の表は種類の名前）
-      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を `overrides` の末尾に並べる
+      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を、`prefs.bodyLayout` が `side` なら `BODY_LAYOUT_LABEL`（「本文の差分の並べ方」）を、この順に `overrides` の末尾に並べる
     unit_tests:
       - name: test_resolve_display
         case: 正常
@@ -449,13 +462,19 @@ functions:
         condition: '既定の無い `display`。`parametrize`: `minimap: null` / `minimap: false` / `minimap: false`・`theme: dark`'
         expected: '`minimap` が真で `overrides` が空 / `minimap` が偽で `overrides` が「差分のミニマップ」 / `overrides` が「ライト / ダーク」・「差分のミニマップ」の順。どれも `look`・`kinds` は既定のまま'
         mock: なし
+      - name: test_resolve_display_when_body_layout
+        case: 正常
+        summary: 本文の差分の並べ方は上書きが side のときだけ side で、変えている項目の末尾に並ぶ
+        condition: '既定の無い `display`。`parametrize`: `bodyLayout: null` / `bodyLayout: side` / `bodyLayout: side`・`minimap: false`'
+        mock: なし
+        expected: '`bodyLayout` が `inline` で `overrides` が空 / `bodyLayout` が `side` で `overrides` が「本文の差分の並べ方」 / `overrides` が「差分のミニマップ」・「本文の差分の並べ方」の順'
   - name: clearOverrides
     title: 個人の上書きを外す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
     scope: public
-    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを外した `Prefs` を返す（`diffSel` は残す）
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した `Prefs` を返す（`diffSel` は残す）
     args:
       - name: prefs
         type: Prefs
@@ -464,15 +483,15 @@ functions:
         description: 今の端末の設定
     returns:
       type: Prefs
-      description: '`theme`・`look`・`kinds`・`minimap` を `null`、`columns`・`filters` を空にした写し'
-    process: 1. `prefs` を写し、上の 6 項目を外して返す（渡した `prefs` は変えない）
+      description: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout` を `null`、`columns`・`filters` を空にした写し'
+    process: 1. `prefs` を写し、上の 7 項目を外して返す（渡した `prefs` は変えない）
     unit_tests:
       - name: test_clear_overrides
         case: 正常
         summary: 上書きだけを外し、差分の時点は残す
-        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`diffSel: since` の `Prefs`'
+        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`bodyLayout: side`・`diffSel: since` の `Prefs`'
         mock: なし
-        expected: '`theme`・`look`・`kinds`・`minimap` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+        expected: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
   - name: commentCounts
     title: 項目ごとのコメントの件数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -502,6 +521,81 @@ functions:
         condition: '`parametrize`: `items` が空 / `target` が `null` の 2 件だけ'
         mock: なし
         expected: どちらも `{}`
+  - name: resolveSince
+    title: 「前回開いてから」の始まりを決める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: そのタブの「前回開いてから」の始まりを決めて `SINCE_KEY` に残す。同じタブで読み込み直したときは、残した始まりをそのまま使う
+    side_effects: '`session` の `SINCE_KEY` を書く。サーバーの配信では `post` がワークスペースの前回開いた時点を書き換える。配る書き出しでは `prefs.opened` を書き換えて `persist` を呼ぶ'
+    args:
+      - name: serverMode
+        type: boolean
+        required: true
+        passing: keyword
+        description: サーバーの配信か（偽は配る書き出し）
+      - name: prefs
+        type: Prefs
+        required: true
+        passing: keyword
+        description: 端末の設定
+      - name: persist
+        type: () => void
+        required: true
+        passing: keyword
+        description: 端末の設定を残す
+      - name: headSeq
+        type: number
+        required: true
+        passing: keyword
+        description: 読んだ記録の先頭のまとまりの `until_seq`（まとまりが無ければ 0）
+      - name: session
+        type: Storage
+        required: true
+        passing: injected
+        description: そのタブの保存領域（`sessionStorage`。使えないときは `openStorage` の代わり）
+      - name: post
+        type: () => Promise<OpenedReply | null>
+        required: false
+        default: postOpened
+        passing: injected
+        description: 前回開いた日時を引く
+      - name: now
+        type: () => string
+        required: false
+        default: () => new Date().toISOString()
+        passing: injected
+        description: 今の日時を返す
+    returns:
+      type: Promise<OpenedPoint>
+      description: そのタブの「前回開いてから」の始まり
+    process: |-
+      1. `session` の `SINCE_KEY` を JSON として読み、`isOpenedPoint` ならそれを返す（読めない・前の版の日時の文字列は残っていないものとして続ける）
+      2. タブを開いた時点を `{at: now(), seq: headSeq}` にする
+      3. サーバーの配信では `post` を呼び、前回の時点を `previous`、今の時点を `opened` にする（`null` なら前回の時点は無く、今の時点はタブを開いた時点）。配る書き出しでは、前回の時点を `prefs.opened`（`isOpenedPoint` でなければ無い）、今の時点をタブを開いた時点にし、`prefs.opened` を今の時点に書き換えて `persist` を呼ぶ
+      4. 前回の時点があり、その `seq` が `headSeq` 以下ならそれを、それ以外（無い・`seq` が `headSeq` より大きい）は今の時点を始まりにする
+      5. 始まりを JSON で `SINCE_KEY` に書き（書けなければ何もしない。読み込み直すたびに決め直す）、返す
+    unit_tests:
+      - name: test_resolve_since
+        case: 正常
+        summary: サーバーの配信では前回の時点を始まりにし、無い・通し番号が先のときは今の時点にする
+        condition: '`serverMode` 真、`headSeq` 2、空の `session`。`parametrize`: `post` が `{previous: {at: A, seq: 1}, opened: {at: B, seq: 2}}` / `{previous: null, opened: {at: B, seq: 2}}` / `{previous: {at: A, seq: 5}, opened: {at: B, seq: 2}}` / `null`'
+        mock: '`post`・`now`（引数で渡す）'
+        expected: '`{at: A, seq: 1}` / `{at: B, seq: 2}` / `{at: B, seq: 2}` / `{at: now, seq: 2}`。どれも `session` の `SINCE_KEY` に返した値の JSON が入る'
+      - name: test_resolve_since_when_kept
+        case: 正常
+        summary: 同じタブに残した始まりを使い、前の版の値は使わない
+        condition: '`serverMode` 真。`parametrize`: `SINCE_KEY` に `{"at": A, "seq": 1}` / 日時の文字列 `2026-10-04T13:05:00+00:00`'
+        mock: '`post`（呼んだ回数を数える）'
+        expected: '`{at: A, seq: 1}` を返し `post` を呼ばない / `post` を 1 回呼び、その結果から決める'
+      - name: test_resolve_since_when_exported
+        case: 正常
+        summary: 配る書き出しは端末の設定の前回の時点を使い、今の時点に書き換える
+        condition: '`serverMode` 偽、`headSeq` 2。`parametrize`: `prefs.opened` が `{at: A, seq: 1}` / 日時の文字列 / 無い'
+        mock: '`persist`・`now`（引数で渡す）'
+        expected: '`{at: A, seq: 1}` / `{at: now, seq: 2}` / `{at: now, seq: 2}`。どれも `prefs.opened` が `{at: now, seq: 2}` になり `persist` を 1 回呼ぶ'
 test_files:
   - tests/unit/preview/test_app.py
 notes:

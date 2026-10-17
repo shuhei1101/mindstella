@@ -124,7 +124,7 @@ states:
       見せ方: Storybook の画面幅を 390px にして見せる
 lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook/test_send_form_stories.py
-status: planned
+status: implemented
 args:
   - name: target
     type: 文字列
@@ -171,7 +171,7 @@ args:
     default: 項目を指さないコメント
     enabled_when: '`target` が無いとき'
     description: 入力欄の読み上げの名前（`aria-label`）。使う側が見出しを出すときは、その見出しと同じ文言を渡す
-    status: planned
+    status: implemented
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない

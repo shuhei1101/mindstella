@@ -1,0 +1,47 @@
+title: "ruff"
+kind: "CLI"
+version:
+  current: 0.17.1
+  latest: 0.17.1
+  checked_on: '2026-10-16'
+  source: requirements-dev.txt
+  pinning: '`requirements-dev.txt` に `ruff==0.17.1` と版を固定する。0 系は版が上がると規則の既定や検査が変わるため、上げるときは違反の出方を確かめてから上げる'
+catalogs:
+  - name: コマンド
+    version: 0.17.1
+    entries:
+      - name: ruff check
+        kind: コマンド
+        purpose: 渡したパス（`plugins tests`）の Python を `ruff.toml` の規則で検査し、違反があれば終了コード 1 で終わる
+  - name: 設定
+    version: 0.17.1
+    entries:
+      - name: ruff.toml
+        kind: 設定
+        purpose: リポジトリの直下に置き、`[lint]` の `select` で規則を選び、`ignore` で外す規則を、`per-file-ignores` でテストだけ許す規則を決める。formatter と import の並び（`I`）は選ばない
+lead: Python の linter。ruff.toml に選んだ規則で Python のソースを検査し、違反があれば終了コード 1 で終わる。Rust 製で、flake8・pyupgrade・bugbear ほかの規則を 1 つで回す。
+supplier: Astral
+dependency_scope: 開発のみ
+adoption: 採用
+purl: pkg:pypi/ruff
+used_in:
+  - ruff.toml
+  - requirements-dev.txt
+  - dev/設計書/テスト/テスト実行方法.yaml
+upstream: astral-sh/ruff
+license: MIT（商用利用可。開発用だけで配る物に入らない）
+official_url: https://docs.astral.sh/ruff/
+docs_url: https://docs.astral.sh/ruff/linter/
+verification:
+  state: 済
+  date: '2026-10-16'
+  detail: Python 3.12.3 の仮想環境に ruff 0.17.1 を入れ、リポジトリの直下で `ruff check plugins tests` を流した。`ruff.toml` の規則で検査し、develop の違反 21 件（RUF100 15・RUF022 4・B905 1・S604 1）を返して終了コード 1 で終わること、違反の無い `plugins/mindstella/skills/mindmap/scripts/store.py` だけを渡すと終了コード 0 で終わることを確かめた
+install: |-
+  ```bash
+  pip install -r requirements-dev.txt
+  ```
+
+  `requirements-dev.txt` の `ruff==0.17.1` が入る。単体で入れるときは `pip install ruff==0.17.1`。
+limitations:
+  - item: noqa
+    content: '`# noqa: A002` のように、`select` に無い規則を指す `noqa` は RUF100（有効でない規則を指す `noqa`）の違反になる。規則を選ぶ側（`ruff.toml`）と `noqa` の指す規則を揃える'

@@ -45,7 +45,7 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
-from history import touch_opened
+from history import head_until_seq, load_changes, touch_opened
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
 from locations import location_to_dict
 from settings_update import update_display
@@ -650,12 +650,17 @@ def records_response(
 
 
 def opened_response(context: ServeContext, now: NowFn = now_utc) -> Response:
-    """前回開いた日時を返し、今の日時に書き換える（記録のロックは取らない）。"""
-    opened = now()
+    """前回開いた時点を返し、今の時点に書き換える（記録のロックは取らない）。"""
+    try:
+        seq = head_until_seq(load_changes(context.root))
+    except SchemaMismatchError as error:
+        # changes.yaml が読めない: 前回開いた時点を書き換えず、画面はタブを開いた時点を範囲の始まりにする
+        return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join(error.lines))
+    opened = {"at": now(), "seq": seq}
     try:
         previous = touch_opened(context.root, opened)
     except WriteFailedError as error:
-        # 前回開いた日時を書けない: 画面はタブを開いた日時を範囲の始まりにする
+        # 前回開いた時点を書けない: 画面はタブを開いた時点を範囲の始まりにする
         return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, str(error))
     return Response(
         status=HTTPStatus.OK,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -18,6 +19,7 @@ DEFAULT_PREFS = {
     "diffSel": None,
     "filters": {},
     "minimap": None,
+    "bodyLayout": None,
 }
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
@@ -32,6 +34,34 @@ RESEARCH_COLUMNS = {"research": {"hidden": ["tags"], "pinTo": None}}
 
 # `</script>` を JSON のエスケープ（バックスラッシュに続けて u003c・u003e）で持つ埋め込みの JSON
 ESCAPED_JSON = '{"text": "\\u003c/script\\u003e"}'
+
+# 「前回開いてから」の始まりを決める日時（前回開いた日時・サーバーが書いた今の日時・タブを開いた日時）
+OPENED_A = "2026-10-04T13:05:00+00:00"
+OPENED_B = "2026-10-05T09:00:00+00:00"
+OPENED_NOW = "2026-10-05T09:30:00+00:00"
+
+# 読んだ記録の先頭のまとまりの通し番号
+HEAD_SEQ = 2
+
+# メモリの上に作る `Storage`（`sessionStorage` の代わり）と、`post` の呼んだ回数を数える関数を作る
+STORAGE_AND_POST_SCRIPT = """
+const makeSession = (initial) => {
+    const data = new Map(Object.entries(initial));
+    return {
+        getItem: (key) => (data.has(key) ? data.get(key) : null),
+        setItem: (key, value) => { data.set(key, String(value)); },
+        removeItem: (key) => { data.delete(key); },
+        clear: () => { data.clear(); },
+        key: () => null,
+        length: 0,
+    };
+};
+const makePost = (reply) => {
+    const post = async () => { post.calls += 1; return reply; };
+    post.calls = 0;
+    return post;
+};
+"""
 
 # レビュー中のコメントを溜めた日時
 CREATED = "2026-10-05T03:00:00+00:00"
@@ -214,6 +244,36 @@ def test_load_prefs_when_minimap(
     assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
 
 
+@pytest.mark.parametrize(
+    ("stored", "expected_body_layout"),
+    [
+        pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+        pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+        pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+        pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+    ],
+)
+def test_load_prefs_when_body_layout(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str,
+    expected_body_layout: str | None,
+) -> None:
+    """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    prefs = preview_page.evaluate(
+        """(stored) => {
+            const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+            return MindmapPreview.loadPrefs(storage);
+        }""",
+        stored,
+    )
+    # 検証（ほかの項目はそのまま読める）
+    assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+
+
 # 保存する設定
 SAVED_PREFS = {
     "theme": "dark",
@@ -223,6 +283,7 @@ SAVED_PREFS = {
     "diffSel": None,
     "filters": {"tasks": TASKS_FILTERS},
     "minimap": None,
+    "bodyLayout": None,
 }
 
 
@@ -475,6 +536,47 @@ def test_resolve_display_when_minimap(
     assert resolved == {"look": "deep", "kinds": ALL_KINDS, **expected}
 
 
+@pytest.mark.parametrize(
+    ("prefs", "expected"),
+    [
+        pytest.param(
+            {**DEFAULT_PREFS, "bodyLayout": None},
+            {"bodyLayout": "inline", "overrides": []},
+            id="no_override",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "bodyLayout": "side"},
+            {"bodyLayout": "side", "overrides": ["本文の差分の並べ方"]},
+            id="side",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "minimap": False, "bodyLayout": "side"},
+            {"bodyLayout": "side", "overrides": ["差分のミニマップ", "本文の差分の並べ方"]},
+            id="minimap_hidden_and_side",
+        ),
+    ],
+)
+def test_resolve_display_when_body_layout(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    prefs: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """本文の差分の並べ方は上書きが side のときだけ side で、変えている項目の末尾に並ぶ（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    resolved = preview_page.evaluate(
+        """(prefs) => {
+            const result = MindmapPreview.resolveDisplay(prefs, undefined);
+            return {bodyLayout: result.bodyLayout, overrides: result.overrides};
+        }""",
+        prefs,
+    )
+    # 検証
+    assert resolved == expected
+
+
 def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """上書きだけを外し、差分の時点は残す（正常系）。"""
     # 準備
@@ -487,6 +589,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "diffSel": "since",
         "filters": {"tasks": TASKS_FILTERS},
         "minimap": False,
+        "bodyLayout": "side",
     }
     # 実行
     result = preview_page.evaluate(
@@ -501,6 +604,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "diffSel": "since",
         "filters": {},
         "minimap": None,
+        "bodyLayout": None,
     }
     assert result["original"] == prefs
 
@@ -535,3 +639,158 @@ def test_comment_counts_when_empty(
     counts = preview_page.evaluate("""(items) => MindmapPreview.commentCounts(items)""", items)
     # 検証
     assert counts == {}
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        pytest.param(
+            {
+                "previous": {"at": OPENED_A, "seq": 1},
+                "opened": {"at": OPENED_B, "seq": HEAD_SEQ},
+            },
+            {"at": OPENED_A, "seq": 1},
+            id="previous_kept",
+        ),
+        pytest.param(
+            {"previous": None, "opened": {"at": OPENED_B, "seq": HEAD_SEQ}},
+            {"at": OPENED_B, "seq": HEAD_SEQ},
+            id="no_previous",
+        ),
+        pytest.param(
+            {
+                "previous": {"at": OPENED_A, "seq": 5},
+                "opened": {"at": OPENED_B, "seq": HEAD_SEQ},
+            },
+            {"at": OPENED_B, "seq": HEAD_SEQ},
+            id="previous_seq_ahead",
+        ),
+        pytest.param(None, {"at": OPENED_NOW, "seq": HEAD_SEQ}, id="unreachable"),
+    ],
+)
+def test_resolve_since(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    reply: dict[str, Any] | None,
+    expected: dict[str, Any],
+) -> None:
+    """サーバーの配信では前回の時点を始まりにし、無い・通し番号が先のときは今の時点にする（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    result = preview_page.evaluate(
+        STORAGE_AND_POST_SCRIPT
+        + """async ({reply, headSeq, now}) => {
+            const session = makeSession({});
+            const since = await MindmapPreview.resolveSince({
+                serverMode: true,
+                prefs: {},
+                persist: () => undefined,
+                headSeq,
+                session,
+                post: makePost(reply),
+                now: () => now,
+            });
+            return {since, kept: session.getItem(MindmapPreview.SINCE_KEY)};
+        }""",
+        {"reply": reply, "headSeq": HEAD_SEQ, "now": OPENED_NOW},
+    )
+    # 検証
+    assert result["since"] == expected
+    assert json.loads(result["kept"]) == expected
+
+
+@pytest.mark.parametrize(
+    ("kept", "expected_calls", "expected"),
+    [
+        pytest.param(
+            json.dumps({"at": OPENED_A, "seq": 1}),
+            0,
+            {"at": OPENED_A, "seq": 1},
+            id="point_kept",
+        ),
+        pytest.param(OPENED_A, 1, {"at": OPENED_A, "seq": 1}, id="previous_version_kept"),
+    ],
+)
+def test_resolve_since_when_kept(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    kept: str,
+    expected_calls: int,
+    expected: dict[str, Any],
+) -> None:
+    """同じタブに残した始まりを使い、前の版の値は使わない（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    reply = {
+        "previous": {"at": OPENED_A, "seq": 1},
+        "opened": {"at": OPENED_B, "seq": HEAD_SEQ},
+    }
+    # 実行
+    result = preview_page.evaluate(
+        STORAGE_AND_POST_SCRIPT
+        + """async ({kept, reply, headSeq, now}) => {
+            const post = makePost(reply);
+            const since = await MindmapPreview.resolveSince({
+                serverMode: true,
+                prefs: {},
+                persist: () => undefined,
+                headSeq,
+                session: makeSession({[MindmapPreview.SINCE_KEY]: kept}),
+                post,
+                now: () => now,
+            });
+            return {since, calls: post.calls};
+        }""",
+        {"kept": kept, "reply": reply, "headSeq": HEAD_SEQ, "now": OPENED_NOW},
+    )
+    # 検証
+    assert result == {"since": expected, "calls": expected_calls}
+
+
+@pytest.mark.parametrize(
+    ("opened", "expected"),
+    [
+        pytest.param(
+            {"at": OPENED_A, "seq": 1}, {"at": OPENED_A, "seq": 1}, id="point"
+        ),
+        pytest.param(OPENED_A, {"at": OPENED_NOW, "seq": HEAD_SEQ}, id="previous_version"),
+        pytest.param(None, {"at": OPENED_NOW, "seq": HEAD_SEQ}, id="missing"),
+    ],
+)
+def test_resolve_since_when_exported(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    opened: dict[str, Any] | str | None,
+    expected: dict[str, Any],
+) -> None:
+    """配る書き出しは端末の設定の前回の時点を使い、今の時点に書き換える（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    prefs = {**DEFAULT_PREFS} if opened is None else {**DEFAULT_PREFS, "opened": opened}
+    # 実行
+    result = preview_page.evaluate(
+        STORAGE_AND_POST_SCRIPT
+        + """async ({prefs, headSeq, now}) => {
+            let persisted = 0;
+            const post = makePost(null);
+            const since = await MindmapPreview.resolveSince({
+                serverMode: false,
+                prefs,
+                persist: () => { persisted += 1; },
+                headSeq,
+                session: makeSession({}),
+                post,
+                now: () => now,
+            });
+            return {since, opened: prefs.opened, persisted, calls: post.calls};
+        }""",
+        {"prefs": prefs, "headSeq": HEAD_SEQ, "now": OPENED_NOW},
+    )
+    # 検証
+    assert result == {
+        "since": expected,
+        "opened": {"at": OPENED_NOW, "seq": HEAD_SEQ},
+        "persisted": 1,
+        "calls": 0,
+    }

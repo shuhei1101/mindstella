@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_drawer_helpers import (
     DRAWER,
     badge_text,
@@ -512,3 +513,17 @@ def test_drawer_saved_filter_when_value_missing(
     assert _row_ids(page) == ["R-1"]
     assert badge_text(page) == "1"
     assert checked_values(page, "confidence") == ["高"]
+
+
+@pytest.mark.parametrize("tab", ["research", "terms", "notes", "logs"])
+def test_fit_smallest(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, tab: str
+) -> None:
+    """調査・用語集・メモ・会話ログの表は、幅 320px でページが横にスクロールせず、表のほかにあふれる区画が無く、絞り込みのボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, f"#tab={tab}")
+    # 実行
+    set_smallest(page)
+    # 検証
+    assert_fits_smallest(page, ("[data-act='filter']",))

@@ -27,6 +27,43 @@
       .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
     }
   </style>
+  <!-- 幅 390px 以上の最大の中身の畳み方: ?fit=a〜d のときだけ効かせる。指定が無ければ今の実装の見た目 -->
+  <style id="fit-a" media="not all">
+    /* 案 A: 幅 389px 以下の詰め方を効かせる境を 400px へ上げる。はみ出す組み合わせ（差分の札か接続の状態を出している間）だけに効かせ、つながる・差分なしは今のまま */
+    @media (min-width: 390px) and (max-width: 400px) {
+      .topbar:is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has(.df-chip) .brand { display: none; }
+      .topbar:is(:has(.df-chip), :has(.conn)), .topbar:has(.conn):has(.df-chip) { gap: 1px; padding: 0 8px; }
+      .topbar:is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+      .topbar:is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+    }
+  </style>
+  <style id="fit-b" media="not all">
+    /* 案 B: 幅 480px 以下で、収まらない分だけを縮む要素が受け止める。収まる中身では何も縮まず、見た目は今と同じ */
+    @media (min-width: 390px) and (max-width: 480px) {
+      /* 差分の札: 名前を先に縮める。札が 5.5em に届くまでボタンは縮まない */
+      .topbar .df-chip { flex-shrink: 10000; }
+      /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 札が縮みきってもはみ出す分だけ、幅 32px から 28px まで縮む。高さは保つ */
+      .topbar :is(.search-trigger, .hist-btn, .top-btn), .topbar:has(.conn) :is(.search-trigger, .hist-btn) { flex: 0 1 32px; min-width: 28px; }
+    }
+  </style>
+  <style id="fit-c" media="not all">
+    /* 案 C: 件数の札が幅の広い中身（絞り込み 2 桁以上・コメント 99+）のときだけ、案 A と同じ詰め方を幅 400px まで効かせる。既定の中身は今のまま */
+    @media (min-width: 390px) and (max-width: 400px) {
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
+    }
+  </style>
+  <style id="fit-d" media="not all">
+    /* 案 D: 案 C と同じ条件の詰め方を、既にある幅 480px 以下の範囲で効かせる。既定の中身は今のまま */
+    @media (min-width: 390px) and (max-width: 480px) {
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
+    }
+  </style>
   <style>
     /* 枠の中ではトップバーを流れに置き、下に余白を残さない */
     body { margin: 0; overflow-x: auto; }
@@ -45,6 +82,9 @@
     const theme = params.get("theme") === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = theme;
     if (params.get("plan") === "current") document.getElementById("plan-a").remove();
+    // ?fit=a / ?fit=b: 幅 390px 以上の最大の中身の畳み方の案を効かせる
+    const fit = document.getElementById(`fit-${params.get("fit")}`);
+    if (fit) fit.media = "all";
     const noop = () => {};
     document.getElementById("mount").replaceWith(MindmapPreview.topbar({
       title: "要件出しのスキル mindmap を設計する",
@@ -66,15 +106,19 @@
       connection: params.get("conn") === "offline" ? "offline" : "online",
       readAt: "2026-10-15T01:20:00+00:00",
       comments: true,
-      commentCount: 3,
+      commentCount: Number(params.get("cc") ?? 3),
       onComments: noop,
       diffPoint: params.get("diff") === "1" ? { name: "前回開いてから", sub: "10/15 10:20" } : null,
       onHistory: noop,
       onDiffOff: noop,
       onSettings: noop,
       filter: true,
+      filterCount: Number(params.get("fc") ?? 0),
       onFilter: noop,
     }));
+    // 件数の札の幅の広い中身の印: 部品のスクリプトが付ける想定の data-wide を、見本では描いた後に付ける
+    if (Number(params.get("fc") ?? 0) >= 10) document.querySelector(".filter-btn .fbadge")?.setAttribute("data-wide", "");
+    if (Number(params.get("cc") ?? 3) > 99) document.querySelector(".comments-btn .count")?.setAttribute("data-wide", "");
   </script>
 </body>
 </html>

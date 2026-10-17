@@ -29,7 +29,7 @@ elements:
     visible_when: 検討事項で案を持つ
   - name: 本文
     kind: article
-    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込み、見出しのリンク・本文の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図は押しても拡大せず、図の上で虫眼鏡のカーソルを出さない。図の文字の上は文字を選ぶカーソルにし、ドラッグで選んでコピーできる。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文。コードブロックと図の原文（Raw・描けないときの原文・Raw の差分）は、長い行を折り返して本文の幅に収め、横にスクロールさせない
+    description: 本文の Markdown を marked で描き DOMPurify で無害化して差し込み、見出しのリンク・本文の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図は押しても拡大せず、図の上で虫眼鏡のカーソルを出さない。図の文字の上は文字を選ぶカーソルにし、ドラッグで選んでコピーできる。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文。コードブロックと図の原文（Raw・描けないときの原文・Raw の差分）は、長い行を折り返して本文の幅に収め、横にスクロールさせない。本文の長い URL とインラインコードは、どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない）。本文の表は、どの幅でも横に送れる要素（役割 `group`、読み上げの名前「本文の表」、キーボードのフォーカスで止まり矢印で送れる）で包み、表の中だけで横に送る。幅に収まる表は本文の幅いっぱいに広げる。本文の区画は横に送らせない
     io: 表示
     source: プレビューを開く.mindmap-data.bodies[{項目の body}]
     visible_when: 項目が `body` を持ち、本文が Markdown（`body` が `.md` で終わる）
@@ -74,7 +74,7 @@ elements:
     description: 開いている項目へのコメントをレビュー中に溜める。パネルの下端に留め、本文と線で区切る。書きかけは入力が止まったときとパネルを閉じるときに『書きかけの保存』へ送る。溜めたら入力欄と添えた箇所を空にし、コメントのボタンの件数とレビュー中のコメントを描き直す
     io: 入力
     visible_when: サーバーの配信で開いたとき（配る書き出しでは出さず、パネルは関係する項目で終わる）
-    status: planned
+    status: implemented
   - name: 選んだ時点
     kind: label
     description: 本文の冒頭に、変更履歴で選んだ時点の名前と日時（前回開いてからは範囲の始まり）を出す
@@ -100,10 +100,10 @@ elements:
     visible_when: 差分の表示の間で、そのキーが選んだ時点で変わったとき
   - name: 本文の差分
     kind: label
-    description: 本文を Markdown として描いたまま、足した段落・見出し・箇条書き・表の行に足した印（足した色の面と +・下線）、消したものを消した印（消した色の面と −・取り消し線）つきで元の位置に差し込む。変えていないものには印を付けない。足した部分と変えていない部分は今の本文の行で選んだ箇所に対応づき、消した部分は選んだ箇所の対応づけの外にする。変えた行（消した行と、すぐ後に続く同じ行の数の足した行を前から 1 行ずつ対にしたもの）は、対の消した方と足した方の描いた文字のうち変わった語だけに、行の面より濃い面（消した方は濃い赤、足した方は濃い緑）を付ける。行の面・記号・下線・取り消し線はそのまま残し、濃い面の上の文字も置く面の上で 4.5:1 以上にする。対にならない行と、語の差分を計算しきれなかった対には濃い面を付けない
+    description: 本文を Markdown として描いたまま、足した段落・見出し・箇条書き・表の行に足した印（足した色の面と +）、消したものを消した印（消した色の面と −・取り消し線）つきで元の位置に差し込む。変えていないものには印を付けない。足した部分と変えていない部分は今の本文の行で選んだ箇所に対応づき、消した部分は選んだ箇所の対応づけの外にする。変えた行（消した行と、すぐ後に続く同じ行の数の足した行を前から 1 行ずつ対にしたもの）は、対の消した方と足した方の描いた文字のうち変わった語だけに、行の面より濃い面（消した方は濃い赤、足した方は濃い緑）を付ける。行の面・記号・取り消し線はそのまま残し、濃い面の上の文字も置く面の上で 4.5:1 以上にする。対にならない行と、語の差分を計算しきれなかった対には濃い面を付けない
     io: 表示
     source: 記録の取得.bodies と、history の body_diff から組み立てた前の本文
-    visible_when: 差分の表示の間で、Markdown の本文が選んだ時点で変わったとき
+    visible_when: 差分の表示の間で、Markdown の本文が選んだ時点で変わったとき（並べ方が「左右に並べる」で、本文の幅が 560px 以上のときは「左右に並べた本文の差分」が代わる）
   - name: 図の差分
     kind: label
     description: flowchart・sequenceDiagram・classDiagram・erDiagram・stateDiagram-v2 は、足した・変えたノードと辺に色を付け、図の下に凡例と「消したもの」の札を並べる。それ以外の種類は変わった図の枠に色を付け、Raw で差分を見るよう案内する
@@ -145,7 +145,7 @@ elements:
     io: 表示
     source: レビュー中のコメントの読み取り.items（target がこの項目のもの）
     visible_when: サーバーの配信で開いたとき
-    status: planned
+    status: implemented
   - name: 選んだ箇所のコメントの入口
     kind: button
     component: dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
@@ -154,15 +154,15 @@ elements:
         value: 選んだ範囲の端の矩形
     position: 本文・値 > 選んだ範囲の近く
     description: 本文の文章か項目の値（案の中の値を含む）を選び終えたときに出す。本文は元の行の印から行の範囲を、値は描いた要素のキーのパスを求める（『プレビューを開く』の選んだ箇所の対応づけ）。HTML の本文は、「HTML の本文」の「選び終えた」で受けた行の範囲と矩形で出す。押すと入口を閉じ、コメントの入力に箇所を添えて入力欄へフォーカスを移す。履歴に積まない
-    visible_when: サーバーの配信で、選んだ範囲が空でなく、始まりと終わりがどちらも本文か同じ値の中にあるとき（見出しの帯・関係する項目・図・レビュー中のコメント・入力を含む選択と、差分の表示の間の消した部分を含む選択、古いまとまりを選んでいてその後に本文を直した項目の本文の選択、`html` のコードブロックの枠の中の選択、「HTML の本文の差分」の中の選択では出さない）
-    status: planned
+    visible_when: サーバーの配信で、選んだ範囲が空でなく、始まりと終わりがどちらも本文か同じ値の中にあるとき（見出しの帯・関係する項目・図・レビュー中のコメント・入力を含む選択と、差分の表示の間の消した部分を含む選択、古いまとまりを選んでいてその後に本文を直した項目の本文の選択、`html` のコードブロックの枠の中の選択、「HTML の本文の差分」の中の選択、「左右に並べた本文の差分」の左の列を含む選択では出さない）
+    status: implemented
   - name: 示す箇所
     kind: highlight
     position: 本文・値
     description: レビュー中の書き込みの行かスレッドの向けた項目から開いたとき、その書き込みの箇所（本文はその行の範囲のブロック、値はそのキーの要素）までスクロールし、印の色の地で示す。HTML の本文は、枠の中でその行を含む最も内側の `data-line` を持つ要素を印の色の地で示し、その要素が見える位置まで本文のスクロール領域を送る。別の項目へ移るかパネルを閉じると消す。箇所が今の本文に合わなければ示さず、項目の先頭を出す
     io: 表示
     visible_when: レビュー中の書き込みの行かスレッドの向けた項目から、箇所を持つ書き込みの項目を開いたとき
-    status: planned
+    status: implemented
   - name: 本文のスクロール領域
     kind: region
     position: 見出しと下端の間
@@ -170,7 +170,7 @@ elements:
     io: 表示
     visible_when: 常時
     reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
-    status: planned
+    status: implemented
   - name: 見出しのリンク
     kind: link
     position: 本文 > 見出しの右
@@ -209,7 +209,7 @@ elements:
     io: 表示
     visible_when: 検討事項が `lead` を持つ
     source: プレビューを開く.mindmap-data.decisions[].lead
-    status: planned
+    status: implemented
   - name: 推奨の印
     kind: label
     position: 案 > 推奨の案のカードの見出しの右
@@ -218,7 +218,7 @@ elements:
     io: 表示
     visible_when: 推奨の印を持つ案があり、どの案も採用でないとき
     source: プレビューを開く.mindmap-data.decisions[].options[].recommended
-    status: planned
+    status: implemented
   - name: 採用した案と理由
     kind: section
     position: 案の後・本文の前
@@ -227,7 +227,7 @@ elements:
     io: 表示
     visible_when: 検討事項が `answer`・`reason` のどちらかを持つ
     source: プレビューを開く.mindmap-data.decisions[].answer・reason
-    status: planned
+    status: implemented
   - name: 文字列の値の描画
     kind: label
     position: 背景・案・採用した案と理由と、ほかの種類の値
@@ -235,7 +235,7 @@ elements:
     io: 表示
     visible_when: 項目がその値を持つ
     source: プレビューを開く.mindmap-data
-    status: planned
+    status: implemented
   - name: 取り下げの札
     kind: label
     component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
@@ -247,7 +247,7 @@ elements:
     io: 表示
     source: プレビューを開く.id の項目の withdrawn
     visible_when: 開いた項目の `withdrawn` が真のとき（差分の表示によらない）
-    status: planned
+    status: implemented
   - name: 取り下げた理由
     kind: section
     position: タイトルの下のキーの一覧の後
@@ -256,21 +256,21 @@ elements:
     io: 表示
     source: プレビューを開く.mindmap-data.{research・docs・terms・notes・logs}[].reason
     visible_when: 調査・資料・用語集・メモ・会話ログが `reason` を持つか、差分の表示で `reason` が選んだ時点に変わったとき
-    status: planned
+    status: implemented
   - name: 行の修正
     kind: button
     position: レビュー中のコメント > 行 > 右上
     description: 行の本文をその場で「行の本文の書き換え」に切り替え、入力欄へフォーカスを移す。アイコンのボタンを常に出す（レビュー中の書き込みの行の「修正」と同じアイコン）。読み上げの名前は「{項目の ID} へのコメントを修正」、`title` は「修正」。書き換えている行には出さない
     label: （鉛筆の印）
     visible_when: サーバーの配信で開いたとき、書き換えていない行
-    status: planned
+    status: implemented
   - name: 行の削除
     kind: button
     position: レビュー中のコメント > 行 > 右上
     description: 確認のモーダルを挟まず `DELETE /api/comments/{id}` で消し、行を「行の元に戻す」に置き換えて「元に戻す」へフォーカスを移す。トップバーのコメントのボタンの件数・コメントの印・見出しの件数・開いていればコメントの一覧を描き直す。読み上げの名前は「{項目の ID} へのコメントを削除」、`title` は「削除」。書き換えている行には出さない
     label: （ごみ箱の印）
     visible_when: サーバーの配信で開いたとき、書き換えていない行
-    status: planned
+    status: implemented
   - name: 行の本文の書き換え
     kind: form
     position: レビュー中のコメント > 行 > 本文
@@ -278,14 +278,14 @@ elements:
     io: 入力
     max_length: 10000
     visible_when: 行の修正を押した行
-    status: planned
+    status: implemented
   - name: 行の元に戻す
     kind: button
     position: レビュー中のコメント > 消した行
     description: 消した行を点線の枠の面にし、「コメントを削除しました。」（`role="status"`）と「元に戻す」を出す。「元に戻す」は消した中身を『レビュー中のコメントの追加』へ同じ `id` と `created` で送り、元の場所に戻して戻した行の「行の修正」へフォーカスを移す。詳細パネルで別の項目へ移るか、パネルを閉じるまで出す。コメントの一覧を開いている間は一覧と同じ消した行を見て、一覧を閉じた時点で一覧と一緒に消える
     label: 元に戻す
     visible_when: 詳細パネルかコメントの一覧で消した、この項目へのコメントの行
-    status: planned
+    status: implemented
   - name: 形式の札
     kind: label
     component: dev/設計書/部品設計/プレビュー/本文の形式の札.ts#
@@ -350,6 +350,8 @@ elements:
         value: 記録の取得.marked_bodies[{項目の body}]
       - name: beforeFormat
         value: 選んだ時点の `body`（history の before にあればその値）が `.md` で終われば `md`、それ以外は `html`
+      - name: layout
+        value: 並べ方の切り替えを置き、プレビューを開く.個人の上書き.body_diff_layout が side のとき side、それ以外は inline
     position: 本文の場所
     description: 差分の表示の間、HTML の本文を描いた結果の上で変わった要素に印を付け、「原文の差分」で原文の行の差分に切り替える（『プレビューを開く』の制約「HTML の本文の差分」）。本文の差分を出せない・計算しきれない・差分のライブラリを読めないときは、Markdown の本文と同じ旨を出し、「HTML の本文」で今の本文を印なしで描く
     io: 表示
@@ -359,6 +361,9 @@ elements:
     introduced:
       pr: 214
     action: 描いた結果の枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
+    slots:
+      - name: layout_switch
+        value: 本文の差分の並べ方の切り替え
   - name: 説明
     kind: section
     position: 資料はタイトルの下のキーの一覧の後・エイリアスの前。調査は問いの後・結論の前
@@ -366,7 +371,7 @@ elements:
     io: 表示
     visible_when: 資料・調査が `description` を持つ
     source: プレビューを開く.mindmap-data（docs[].description・research[].description）
-    status: planned
+    status: implemented
   - name: エイリアス
     kind: section
     position: 資料は説明の後・本文の前。調査は結論の後・調査の観点の前
@@ -374,7 +379,7 @@ elements:
     io: 表示
     visible_when: 資料・調査が `aliases` を持つ
     source: プレビューを開く.mindmap-data（docs[].aliases・research[].aliases）
-    status: planned
+    status: implemented
   - name: 種類と ID
     kind: label
     position: 見出し
@@ -413,7 +418,35 @@ elements:
     visible_when: 差分の表示の間で、本文のスクロール領域に変わった箇所の印が 1 つ以上あり、表示の設定で差分のミニマップを外していないとき（前後を組み立てられない・本文の差分を出せない旨だけを出しているときは印が無いので出さない）
     source: 本文のスクロール領域の中の差分の印
     reason: '置き場所・形・印のまとめ方・ドラッグと印の無い所を押す動きはユーザーが決めた（確認ログ: dev/pr/237/確認ログ.md）'
-    status: planned
+    status: implemented
+  - name: 本文の差分の並べ方の切り替え
+    kind: button
+    component: dev/設計書/部品設計/プレビュー/本文の差分の並べ方の切り替え.ts#
+    args:
+      - name: layout
+        value: プレビューを開く.個人の上書き.body_diff_layout が side のとき side、それ以外は inline
+    position: 本文の差分の頭（HTML の本文では「HTML の本文の差分」の見せ方の切り替えの前）
+    description: 本文の差分を、インラインと左右に並べる表示で切り替える（『プレビューを開く』の制約「本文の差分の並べ方」）。「左右に並べる」を押すと個人の上書きに side を残し、「インライン」を押すと上書きを外して、その場で描き直す。本文を送った位置と押したボタンのフォーカスを保ち、履歴に積まず URL のハッシュも変えない
+    io: 入力
+    visible_when: 差分の表示の間で、本文が選んだ時点で変わっていて本文の差分を描けたとき（前後を組み立てられない・本文の差分を出せない・計算しきれない・差分のライブラリを読めない旨を出しているときは出さない）で、本文のスクロール領域の幅（パディング・差分のミニマップを除く）が 560px 以上のとき
+    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文の差分の並べ方]
+    status: implemented
+  - name: 左右に並べた本文の差分
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/左右に並べた本文の差分.ts#
+    args:
+      - name: before
+        value: history の body_diff で組み立てた選んだ時点の本文
+      - name: after
+        value: 記録の取得.bodies[{項目の body}]
+      - name: lined
+        value: 古いまとまりを選んでいてその後に本文を直した項目では false、それ以外は true
+    position: 本文の場所
+    description: Markdown の本文の差分を、左に選んだ時点、右に今で描いて並べる。右の列には「本文」と同じく見出しのリンク・本文の印・項目の ID のリンクを付け、選んだ箇所のコメントの入口は右の列の選択でだけ出す。図は左に選んだ時点、右に今の記法で描き、「図の差分」の色付けと「図の Raw の差分」は右の図にだけ付ける
+    io: 表示
+    visible_when: 差分の表示の間で、Markdown の本文が選んだ時点で変わっていて、並べ方が「左右に並べる」で、「本文の差分の並べ方の切り替え」を出しているとき
+    source: 記録の取得.bodies と、history の body_diff から組み立てた前の本文
+    status: implemented
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/230/a-on-scroll/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
@@ -422,3 +455,5 @@ notes:
   HTML の本文のモック: 形式の札・HTML の本文・html のコードブロック・HTML の本文の差分の見本は `dev/mock/pages/detail-panel/214/c-marks/index.html`（差分の見せ方は案 C を採用）
   幅 900px 以下の重なり: 左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。幅 901px 以上の重なり順は変えない
   差分のミニマップのモック: 差分のミニマップの見本は `dev/mock/pages/detail-panel/237/a-right-rail/index.html`（採用した案 A）
+  本文の差分の並べ方のモック: '本文の差分の並べ方の切り替え・左右に並べた本文の差分の見本は `dev/mock/pages/detail-panel/261/a-both/index.html`（採用した案 A。確認ログ: dev/pr/261/確認ログ.md）'
+  本文の長い語と表のモック: 本文の長い URL・インラインコードを折り返し、列の多い表を表の中だけで送る見本は `dev/mock/pages/detail-panel/289/a-wrap-long-words/index.html`（包む要素の読み上げの役割は、モックの `region` ではなく本文の要素のとおり）

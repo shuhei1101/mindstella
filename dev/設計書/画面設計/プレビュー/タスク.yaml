@@ -129,7 +129,7 @@ elements:
     io: 表示
     source: 記録の取得.changes
     visible_when: 差分の表示の間で、選んだ時点でタスクを 1 件以上消したとき
-    status: planned
+    status: implemented
 lead: タスクをボード（既定）・表で見る画面。
 mock: dev/mock/pages/tasks/126/standard/index.html
 test_file: tests/integration/preview/test_tasks_screen.py

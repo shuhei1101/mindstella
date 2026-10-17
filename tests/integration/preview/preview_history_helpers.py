@@ -185,7 +185,10 @@ def build_history_workspace(
     (root / RECORD_DIR / "changes.yaml").write_text(
         yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
-    (root / RECORD_DIR / ".mindstella-opened").write_text(f"{OPENED_AT}\n", encoding="utf-8")
+    # 通し番号は V-1 の until_seq（V-1 より後のまとまりと、まだまとめていない変更が「前回開いてから」に入る）
+    (root / RECORD_DIR / ".mindstella-opened").write_text(
+        f"{OPENED_AT}\n{changes['sets'][1]['until_seq']}\n", encoding="utf-8"
+    )
     return root
 
 

@@ -24,7 +24,7 @@ args:
     required: true
     choices: 1 以上
     description: その項目へのレビュー中のコメントの件数。99 を超えると画面には「99+」と出し、読み上げは実数で読む。件数 0 の項目には使う側が部品を置かない
-    status: planned
+    status: implemented
 accessibility:
   - 吹き出しと数字は `aria-hidden` にし、「コメント {件数} 件」を読み上げにだけ残す文字と `title` を持つ（件数は 99 を超えても実数）
   - 押す操作を持たず、フォーカスも受けない。置いたカード・行・節点を押すと詳細パネルが開く

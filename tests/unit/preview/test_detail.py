@@ -391,8 +391,22 @@ HEADING_BODY = (
     + "\n\n## 決め方\n\n2 つ目の決め方の段落\n"
 )
 
+# 末尾の段落を書き換えた変えた回（差分の表示で本文を変えた A-1 にする）
+HEADING_BODY_ENTRY = {
+    "seq": 1,
+    "at": ENTRY_AT,
+    "before": {},
+    "body_diff": [
+        {
+            "line": len(HEADING_BODY.splitlines()),
+            "now": ["2 つ目の決め方の段落"],
+            "before": ["前の 2 つ目の決め方の段落"],
+        }
+    ],
+}
+
 # 本文のスクロール領域を 200px に抑えて詳細パネルを開き、2 つ目の「決め方」が領域に入ったかと、見出しを外させる知らせを調べる
-OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
+OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading, point, bodyLayout, width}) => {
     // 単体テストでは雛形の CSS を読まないので、本文のスクロール領域だけ作る
     const style = document.createElement("style");
     style.textContent = ".panel-body { height: 200px; overflow: auto; }";
@@ -412,10 +426,14 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
             forward: noop,
             diagram: noop,
             heading: (slug) => headingCalls.push(slug),
+            layout: noop,
         },
         comment: null,
         heading,
+        diff: point === null ? null : {...point, added: new Set(), changed: new Set(["A-1"])},
+        bodyLayout,
     });
+    panel.style.width = `${width}px`;
     document.body.append(panel);
     // 見出しへのスクロールは、文書に入った後の描き直しで付くことがある
     for (let frame = 0; frame < 2; frame += 1) {
@@ -423,8 +441,10 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
     }
     const body = panel.querySelector(".panel-body");
     const area = body.getBoundingClientRect();
-    const target = panel.querySelector('[data-heading="決め方-1"]');
-    const rect = target === null ? null : target.getBoundingClientRect();
+    // 左右に並べるときは同じ見出しが 3 か所にあるので、見えている見出しを調べる
+    const target = [...panel.querySelectorAll('[data-heading="決め方-1"]')]
+        .find((heading) => heading.getClientRects().length > 0);
+    const rect = target === undefined ? null : target.getBoundingClientRect();
     return {
         scrolled: body.scrollTop > 0,
         inView: rect !== null && rect.top >= area.top && rect.bottom <= area.bottom,
@@ -434,38 +454,64 @@ OPEN_HEADING_PANEL_SCRIPT = """async ({data, heading}) => {
 
 
 @pytest.mark.parametrize(
-    ("heading", "expected"),
+    ("heading", "entries", "body_layout", "expected"),
     [
         pytest.param(
             "決め方-1",
+            [],
+            None,
             {"scrolled": True, "inView": True, "nullCalls": 0},
             id="heading_in_body",
         ),
         pytest.param(
             "無い",
+            [],
+            None,
             {"scrolled": False, "inView": False, "nullCalls": 1},
             id="heading_not_in_body",
+        ),
+        pytest.param(
+            "決め方-1",
+            [HEADING_BODY_ENTRY],
+            "side",
+            {"scrolled": True, "inView": True, "nullCalls": 0},
+            id="heading_in_inline_body_when_side_narrow",
         ),
     ],
 )
 def test_detail_panel_when_heading(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
     make_data: MakeData,
     make_item: MakeItem,
     heading: str,
+    entries: list[dict[str, Any]],
+    body_layout: str | None,
     expected: dict[str, object],
 ) -> None:
     """指した見出しを画面に入れて開く（正常系）。"""
     # 準備
-    data = make_data(docs=[make_item("A-1")], bodies={"A-1.md": HEADING_BODY})
+    data = make_data(
+        docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+        bodies={"A-1.md": HEADING_BODY},
+    )
     load_preview_scripts()
+    load_preview_styles()
     load_library("marked")
     load_library("DOMPurify")
+    load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
-        OPEN_HEADING_PANEL_SCRIPT, {"data": data, "heading": heading}
+        OPEN_HEADING_PANEL_SCRIPT,
+        {
+            "data": data,
+            "heading": heading,
+            "point": DIFF_POINT if entries else None,
+            "bodyLayout": body_layout,
+            "width": 480,
+        },
     )
     # 検証
     assert result == expected
@@ -1397,6 +1443,58 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
             "signsInsideWords": 0,
         },
     ]
+
+
+# 表だけの本文（1 行目から表）の今と、表の直前にあった段落（1〜2 行目）を消した回
+REMOVED_BEFORE_TABLE_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
+REMOVED_BEFORE_TABLE_ENTRY = _body_entry(line=1, now=[], before=["消した段落", ""])
+
+# 消した塊の親と直後の兄弟、表を包む入れ物の子を調べる
+REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const removed = panel.querySelector(".md:not(.md-value) del.df-blk");
+    const next = removed.nextElementSibling;
+    return {
+        parentIsWrap: removed.parentElement.classList.contains("md-table-wrap"),
+        nextIsWrap: next !== null && next.classList.contains("md-table-wrap"),
+        wrapChildren: next === null ? null : [...next.children].map((child) => child.tagName),
+    };
+}"""
+
+
+def test_detail_panel_when_diff_removed_before_table(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
+        bodies={"D-1.md": REMOVED_BEFORE_TABLE_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result == {"parentIsWrap": False, "nextIsWrap": True, "wrapChildren": ["TABLE"]}
 
 
 # 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
@@ -2566,3 +2664,301 @@ def test_detail_panel_when_body_heading_levels(
     assert result["headings"] == expected_headings
     # 足した囲みの中の見出しの上の余白は、4px でなく元の段の余白のまま
     assert result["inBlock"] == expected_in_block
+
+
+# 本文を変えていない資料の変えた回（キーの状態だけを変えた）
+BODY_UNCHANGED_ENTRY = {"seq": 1, "at": ENTRY_AT, "before": {"status": "未決定"}}
+
+# 詳細パネルを指定の幅で差分つきに開き、並べ方の切り替えと左右の本文・インラインの本文の見え方を調べる
+OPEN_SIDE_BY_SIDE_PANEL_SCRIPT = """async ({data, point, bodyLayout, width}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, layout: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+        bodyLayout,
+    });
+    panel.style.width = `${width}px`;
+    document.body.append(panel);
+    // 本文の差分と、本文の幅による出し分けは、文書に入った後の描き直しで置かれる
+    for (let frame = 0; frame < 4; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const visible = (element) => element !== null && element.getClientRects().length > 0;
+    const marks = "ins.df-blk, del.df-blk";
+    const switchGroup = panel.querySelector(".sbs-switch");
+    const pressed = visible(switchGroup)
+        ? switchGroup.querySelector('[aria-pressed="true"]').getAttribute("data-layout")
+        : null;
+    return {
+        switch: visible(switchGroup),
+        pressed,
+        sbs: visible(panel.querySelector(".sbs")),
+        sbsFallback: visible(panel.querySelector(".sbs-fallback")),
+        inlineMarks: [...panel.querySelectorAll(marks)]
+            .filter((mark) => mark.closest(".sbs") === null && visible(mark)).length,
+        sbsMarks: [...panel.querySelectorAll(".sbs ins.df-blk, .sbs del.df-blk")]
+            .filter(visible).length,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("entries", "body_layout", "width", "expected"),
+    [
+        pytest.param(
+            [MINIMAP_ENTRY],
+            "inline",
+            760,
+            {
+                "switch": True,
+                "pressed": "inline",
+                "sbs": False,
+                "sbsFallback": False,
+                "inlineMarks": 2,
+                "sbsMarks": 0,
+            },
+            id="inline_wide",
+        ),
+        pytest.param(
+            [MINIMAP_ENTRY],
+            "side",
+            760,
+            {
+                "switch": True,
+                "pressed": "side",
+                "sbs": True,
+                "sbsFallback": False,
+                "inlineMarks": 0,
+                "sbsMarks": 2,
+            },
+            id="side_wide",
+        ),
+        pytest.param(
+            [MINIMAP_ENTRY],
+            "side",
+            480,
+            {
+                "switch": False,
+                "pressed": None,
+                "sbs": False,
+                "sbsFallback": True,
+                "inlineMarks": 2,
+                "sbsMarks": 0,
+            },
+            id="side_narrow",
+        ),
+        pytest.param(
+            [BODY_UNCHANGED_ENTRY],
+            "side",
+            760,
+            {
+                "switch": False,
+                "pressed": None,
+                "sbs": False,
+                "sbsFallback": False,
+                "inlineMarks": 0,
+                "sbsMarks": 0,
+            },
+            id="side_body_unchanged",
+        ),
+    ],
+)
+def test_detail_panel_when_body_side_by_side(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    entries: list[dict[str, Any]],
+    body_layout: str,
+    width: int,
+    expected: dict[str, Any],
+) -> None:
+    """並べ方が side のとき、切り替えと左右の本文を置き、本文の幅が足りなければインラインを出す（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=entries, seq=1)],
+        bodies={"D-1.md": MINIMAP_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_SIDE_BY_SIDE_PANEL_SCRIPT,
+        {"data": data, "point": DIFF_POINT, "bodyLayout": body_layout, "width": width},
+    )
+    # 検証
+    assert result == expected
+
+
+# 詳細パネルを「インライン」で開いて URL のハッシュを決め、「左右に並べる」を押して、知らせた並べ方とハッシュを返す
+PRESS_SIDE_SCRIPT = """async ({data, point, width}) => {
+    history.replaceState(null, "", "#keep");
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const calls = [];
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {
+            open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop,
+            layout: (...args) => calls.push(args),
+        },
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+        bodyLayout: "inline",
+    });
+    panel.style.width = `${width}px`;
+    document.body.append(panel);
+    for (let frame = 0; frame < 4; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+    panel.querySelector('.sbs-switch button[data-layout="side"]').click();
+    return {calls, hash: location.hash};
+}"""
+
+
+def test_detail_panel_when_body_layout_changed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """並べ方のボタンを押すと on.layout を呼ぶ（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[MINIMAP_ENTRY], seq=1)],
+        bodies={"D-1.md": MINIMAP_NOW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        PRESS_SIDE_SCRIPT, {"data": data, "point": DIFF_POINT, "width": 760}
+    )
+    # 検証（URL のハッシュは変わらない）
+    assert result == {"calls": [["side"]], "hash": "#keep"}
+
+
+# 値の要素（data-key がキーのパス）の中の見出しの段と、強調の数を調べる
+VALUE_HEADING_LEVELS_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id, key}) => {
+    const panel = await openPanel(data, id);
+    const value = panel.querySelector(`[data-key="${key}"]`);
+    return {
+        found: value !== null,
+        headings: value === null ? [] : [...value.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
+            text: (heading.textContent ?? "").trim(),
+            tag: heading.tagName.toLowerCase(),
+            mdLevel: heading.getAttribute("data-md-level"),
+        })),
+        strong: value === null ? 0 : value.querySelectorAll("strong").length,
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "kinds", "key", "expected"),
+    [
+        pytest.param(
+            "D-1",
+            {"decisions": [{"id": "D-1", "lead": "## 背景\n\n背景の段落\n\n### 経緯\n\n経緯の段落\n"}]},
+            "lead",
+            {
+                "found": True,
+                "headings": [
+                    {"text": "背景", "tag": "h3", "mdLevel": "2"},
+                    {"text": "経緯", "tag": "h4", "mdLevel": "3"},
+                ],
+                "strong": 0,
+            },
+            id="lead_after_title",
+        ),
+        pytest.param(
+            "D-2",
+            {
+                "decisions": [
+                    {
+                        "id": "D-2",
+                        "options": [{"key": "A", "content": "# 案\n\n案の段落\n\n## 中身\n\n中身の段落\n"}],
+                    }
+                ]
+            },
+            "options[A].content",
+            {
+                "found": True,
+                "headings": [
+                    {"text": "案", "tag": "h4", "mdLevel": "1"},
+                    {"text": "中身", "tag": "h5", "mdLevel": "2"},
+                ],
+                "strong": 0,
+            },
+            id="option_content_in_section",
+        ),
+        pytest.param(
+            "T-1",
+            {"tasks": [{"id": "T-1", "reason": "# 手順\n\n手順の段落\n"}]},
+            "reason",
+            {
+                "found": True,
+                "headings": [{"text": "手順", "tag": "h3", "mdLevel": "1"}],
+                "strong": 0,
+            },
+            id="task_reason_after_title",
+        ),
+        pytest.param(
+            "D-3",
+            {"decisions": [{"id": "D-3", "lead": "**強調**"}]},
+            "lead",
+            {"found": True, "headings": [], "strong": 1},
+            id="no_headings",
+        ),
+    ],
+)
+def test_detail_panel_when_value_heading_levels(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    kinds: dict[str, list[dict[str, object]]],
+    key: str,
+    expected: dict[str, object],
+) -> None:
+    """文字列の値の見出しの最も上の段を、置く場所の直上の見出しの次の段にし、段の差を保って並べる（正常系）。"""
+    # 準備
+    data = make_data(
+        **{
+            kind: [
+                make_item(item["id"], **{k: v for k, v in item.items() if k != "id"})
+                for item in items
+            ]
+            for kind, items in kinds.items()
+        }
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        VALUE_HEADING_LEVELS_SCRIPT, {"data": data, "id": item_id, "key": key}
+    )
+    # 検証
+    assert result == expected

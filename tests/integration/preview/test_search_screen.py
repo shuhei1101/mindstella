@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from playwright.sync_api import Page
 from preview_a11y_checks import axe_rule_results
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import OpenPreview, WritePreview, WriteSamplePreview
 from workspace_fixtures import MakeItem
 
@@ -289,3 +290,21 @@ def test_search_by_html_body(write_preview: WritePreview, open_preview: OpenPrev
     page.fill(f"{DIALOG} input", "data-step")
     page.wait_for_function(f"document.querySelectorAll('{DIALOG} .sr-item').length === 0")
     assert "該当する項目はありません" in page.inner_text(DIALOG)
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """幅 320px で言葉を入れても、検索が横にスクロールせず、「検索を閉じる」と窓が表示幅の中にあり、押して閉じられる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url)
+    set_smallest(page)
+    page.keyboard.press("Control+K")
+    page.wait_for_selector(f"{DIALOG}[open]")
+    # 実行
+    page.fill(f"{DIALOG} input", "の題")
+    page.wait_for_selector(f"{DIALOG} .sr-item")
+    # 検証
+    assert_fits_smallest(page, (DIALOG, f'{DIALOG} button[aria-label="検索を閉じる"]'), scope=DIALOG)
+    assert page.evaluate(f"document.querySelector('{DIALOG} input').getBoundingClientRect().width") > 0
+    page.click(f'{DIALOG} button[aria-label="検索を閉じる"]')
+    page.wait_for_function(f"!document.querySelector('{DIALOG}')")

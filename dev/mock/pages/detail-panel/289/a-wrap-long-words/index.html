@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja" data-theme="light"><head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.ts が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>詳細パネル（幅 320px） | mindstella のモック</title>
+  <!-- モック: PR #289 の詳細パネルの幅 320px の見せ方。プレビューを 320 x 568 で開いた画面を静的に書き出したもの。スタイルはプラグインの tokens.css・style.css を読み、この PR で足す規則は末尾の #mock-289 に置く -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- 外の読み込み: export が、この印から印までを、取った描画のライブラリとライセンスの表示に置き換える。印は雛形にちょうど 1 つずつ置く -->
+  <!-- mindmap-external:start -->
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を Google Fonts から読む -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;family=Noto+Sans+JP:wght@400;500;700&amp;display=swap">
+  <!-- 描画のライブラリ: 版を固定して jsDelivr から読み、integrity でファイルの中身を確かめる。defer で、文書を読み終えて app が起動する前に読み終える -->
+  
+  
+  
+  
+  <!-- 差分のライブラリ: 描画のライブラリと同じ。本文と図の差分の計算に使う -->
+  
+  <!-- mindmap-external:end -->
+<style type="text/css">/* PR #289: 本文の長い URL・インラインコード: 本文の幅で折り返し、本文の区画ごと横に送らせない（項目の ID のリンクは折り返さない） */
+.md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
+/* PR #289: 本文の表: 描いた表を包む要素の中でだけ横に送り、本文の区画ごと横に送らせない（幅に収まる表は今のまま幅いっぱいに広げる） */
+.md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
+.md .md-table-wrap > table { margin: 0; }
+/* キーボードでも表を送れるよう包む要素にフォーカスを置き、送る区画の内側に枠を描く */
+.md .md-table-wrap:focus-visible { outline-offset: -2px; }
+
+/* PR #289: 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
+@media (max-width: 389px) {
+  /* 全体の検索: 入力欄を縮められるようにし、閉じるボタンを窓の中に残す */
+  .search-head input { min-width: 0; }
+  /* 図の拡大の上の帯: 「本文へ戻る」の文字を読み上げにだけ残して印だけのボタンにし、帯を 1 行に収める */
+  .v-bar .v-back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 概要のタイルの見出しの帯: 見出しと「すべて表示」をそれぞれ 1 行に保ち、収まらないときは「すべて表示」を次の行へ回す */
+  .t-head { flex-wrap: wrap; row-gap: 4px; }
+  .t-head h2, .t-head .t-link { white-space: nowrap; }
+}
+</style><!-- モック専用: 書き出したダイアログは showModal を経ないため、開いたときと同じく窓に固定して背景を暗くする -->
+<style id="mock-static">
+dialog[open] { position: fixed; inset: 0; z-index: 50; max-width: calc(100% - 6px - 2em); max-height: calc(100% - 6px - 2em); }
+body:has(dialog[open])::after { content: ""; position: fixed; inset: 0; z-index: 49; background: var(--scrim); }
+</style>
+<!-- PR #289 で足す規則 -->
+<style id="mock-289">/* PR #289: 本文の長い URL・インラインコード: 本文の幅で折り返し、本文の区画ごと横に送らせない（項目の ID のリンクは折り返さない） */
+.md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
+
+/* PR #289: 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
+@media (max-width: 389px) {
+  /* 全体の検索: 入力欄を縮められるようにし、閉じるボタンを窓の中に残す */
+  .search-head input { min-width: 0; }
+  /* 図の拡大の上の帯: 「本文へ戻る」の文字を読み上げにだけ残して印だけのボタンにし、帯を 1 行に収める */
+  .v-bar .v-back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 概要のタイルの見出しの帯: 見出しと「すべて表示」をそれぞれ 1 行に保ち、収まらないときは「すべて表示」を次の行へ回す */
+  .t-head { flex-wrap: wrap; row-gap: 4px; }
+  .t-head h2, .t-head .t-link { white-space: nowrap; }
+}
+</style></head>
+<body class="panel-open"><div id="top"><div class="top"><header class="topbar has-comments"><span class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"></circle><path d="M12 16h5M17 16V7h5M17 16v9h5"></path><circle cx="25" cy="7" r="2.6"></circle><circle cx="25" cy="25" r="2.6"></circle></svg><span class="brand-name">mindstella</span></span><span class="brand-sub" title="要件出しのスキル mindmap を設計する">要件出しのスキル mindmap を設計する</span><span class="spacer"></span><button class="search-trigger" type="button" data-act="search" aria-label="すべての項目を検索" aria-keyshortcuts="Control+K Meta+K"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span class="label">すべての項目を検索</span><kbd>Ctrl+K</kbd></button><button class="hist-btn" type="button" data-act="hist" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l3 2"></path></svg><span class="label">変更履歴</span></button><span class="spacer"></span><button class="settings-btn" type="button" data-act="settings" aria-label="表示の設定" aria-expanded="false"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" data-act="filter" aria-label="絞り込み" aria-expanded="false"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"></path></svg><span class="label">絞り込み</span></button><button class="comments-btn" type="button" data-act="comments" aria-label="コメント（レビュー中 0 件）" aria-expanded="false"><span class="cb-icon"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"></path><path d="M8 9h8M8 12.5h5"></path></svg></span><span class="label">コメント</span><span class="count zero">0</span></button><button class="top-btn" type="button" data-theme="dark" aria-label="ダークに切り替え"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"></path></svg></button></header><nav class="tabbar" aria-label="項目の種類"><a class="tab" href="#" data-tab="overview"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"></path><path d="M5 10v10h14V10"></path></svg>概要</a><a class="tab" href="#tab=decisions" data-tab="decisions"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="m9 12 2 2 4-4"></path></svg>検討事項<span class="count">1</span></a><a class="tab" href="#tab=tasks" data-tab="tasks"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 9h8M8 13h8M8 17h5"></path></svg>タスク<span class="count">0</span></a><a class="tab" href="#tab=research" data-tab="research"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"></circle><path d="m15 15 5 5"></path><path d="M8 10.5h5"></path></svg>調査<span class="count">0</span></a><a class="tab" href="#tab=docs" data-tab="docs" aria-current="page"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"></path><path d="M14 3v4h4"></path></svg>資料<span class="count">1</span></a><a class="tab" href="#tab=terms" data-tab="terms"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11a3 3 0 0 1 3 3v12H7a3 3 0 0 1-3-3Z"></path><path d="M4 17a3 3 0 0 1 3-3h11"></path></svg>用語集<span class="count">0</span></a><a class="tab" href="#tab=notes" data-tab="notes"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v12l-4 4H5Z"></path><path d="M15 20v-4h4"></path></svg>メモ<span class="count">0</span></a><a class="tab" href="#tab=logs" data-tab="logs"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v10H9l-5 4Z"></path></svg>会話ログ<span class="count">0</span></a><span class="tab-gap"></span><a class="tab tab-special" href="#tab=graph" data-tab="graph"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18.5 10 13.5l5 3M10 13.5 7.5 6.5M15 16.5l3.2-6.6" stroke-width="1.15"></path><circle cx="4" cy="18.5" r="2" fill="currentColor" stroke="none"></circle><circle cx="10" cy="13.5" r="2.2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="16.5" r="1.8" fill="currentColor" stroke="none"></circle><circle cx="7.5" cy="6.5" r="1.8" fill="currentColor" stroke="none"></circle><path d="m19 1.8 1.05 3.15L23.2 6l-3.15 1.05L19 10.2l-1.05-3.15L14.8 6l3.15-1.05Z" fill="currentColor" stroke="none"></path></svg>ネットワーク</a></nav></div></div><main class="content" id="main"><h1 class="sr-only">資料</h1><div class="screen docs"><div class="toolbar"><div class="segment" role="group" aria-label="表示形式"><button type="button" data-view="cards" aria-pressed="true"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="8" height="7" rx="1"></rect><rect x="13" y="4" width="8" height="7" rx="1"></rect><rect x="3" y="13" width="8" height="7" rx="1"></rect><rect x="13" y="13" width="8" height="7" rx="1"></rect></svg>カード</button><button type="button" data-view="board" aria-pressed="false"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1"></rect><rect x="10" y="4" width="5" height="11" rx="1"></rect><rect x="17" y="4" width="4" height="7" rx="1"></rect></svg>ボード</button><button type="button" data-view="table" aria-pressed="false"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 10h18M9 10v10"></path></svg>表</button></div></div><div class="doc-grid"><button class="card doc-card selected" type="button" data-id="A-1"><span class="doc-kind"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="8" height="7" rx="1"></rect><rect x="13" y="4" width="8" height="7" rx="1"></rect><rect x="3" y="13" width="8" height="7" rx="1"></rect><rect x="13" y="13" width="8" height="7" rx="1"></rect></svg>文書<span class="fmt-badge fmt-md" title="本文は Markdown">MD</span></span><span class="c-ttl">長い本文の資料</span><span class="c-meta"><span class="mono">A-1</span><span class="st" data-st="下書き"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-off)" stroke-width="1.6" stroke-dasharray="2 1.6"></circle></svg>下書き</span><span></span><span class="cmk-place" data-comment-target="A-1"></span></span></button></div></div></main>
+  <!-- 埋め込み先: build が記録の JSON をここへ入れる。この要素は雛形にちょうど 1 つだけ置く -->
+  
+
+  <!-- JavaScript の差し込み口: build が tsc の生成した .js をここへ入れる。埋め込み先より後ろに置く（app が先に記録の要素を探す） -->
+  
+
+
+<aside class="panel wide open" aria-label="詳細"><div class="panel-head"><button class="icon-btn panel-back" type="button" aria-label="一覧へ戻る"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button><span class="panel-kind"><span class="panel-kind-label">資料 </span><span class="mono">A-1</span></span><span class="fmt-badge fmt-md" title="本文は Markdown">MD</span><span class="panel-title" aria-hidden="true" title="長い本文の資料">長い本文の資料</span><span class="spacer"></span><button class="icon-btn" type="button" data-act="back" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled="">←</button><button class="icon-btn" type="button" data-act="forward" aria-label="次の項目へ進む" title="次の項目へ進む" disabled="">→</button><button class="icon-btn panel-full" type="button" data-act="full" aria-label="全画面表示" title="全画面表示"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button><button class="icon-btn panel-close-x" type="button" data-act="close" aria-label="詳細を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div><div class="panel-scroll"><div class="panel-body" tabindex="0" role="region" aria-label="詳細の本文"><div class="detail"><span data-key="status"><span class="st" data-st="下書き"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-off)" stroke-width="1.6" stroke-dasharray="2 1.6"></circle></svg>下書き</span></span><h2 class="d-title" data-key="title">長い本文の資料</h2><dl class="d-meta"><dt>種類</dt><dd>文書</dd><dt>更新日</dt><dd>2026-10-01T00:00:00+00:00</dd></dl><section class="d-sec"><h3>本文</h3><div class="md"><p data-line-start="1">長い URL と、途中で切れないインラインコードを本文に書いたとき:</p>
+<p data-line-start="3"><a href="https://example.com/a/very/long/path/that/does/not/break/naturally/anywhere/index.html">https://example.com/a/very/long/path/that/does/not/break/naturally/anywhere/index.html</a></p>
+<p data-line-start="5"><code>inline_code_that_is_extremely_long_without_any_break_point_inside</code></p>
+<p data-line-start="7">コードブロックは今の見せ方のまま、表は表の中で横に送る。</p>
+<pre data-line-start="10"><code>const value = someVeryLongFunctionName(argumentNumberOne, argumentNumberTwo);
+</code></pre>
+<div class="md-table-wrap" tabindex="0" role="region" aria-label="本文の表 1"><table>
+<thead>
+<tr data-line-start="13">
+<th>列 A</th>
+<th>列 B</th>
+<th>列 C</th>
+<th>列 D</th>
+</tr>
+</thead>
+<tbody><tr data-line-start="15">
+<td>長めのセルの値</td>
+<td>長めのセルの値</td>
+<td>長めのセルの値</td>
+<td>長めのセルの値</td>
+</tr>
+</tbody></table></div><p>列の多い表と、折り返せない値の表:</p><div class="md-table-wrap" tabindex="0" role="region" aria-label="本文の表 2"><table><thead><tr><th>1月</th><th>2月</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th><th>10月</th><th>11月</th><th>12月</th></tr></thead><tbody><tr><td>2026-01-16</td><td>2026-02-16</td><td>2026-03-16</td><td>2026-04-16</td><td>2026-05-16</td><td>2026-06-16</td><td>2026-07-16</td><td>2026-08-16</td><td>2026-09-16</td><td>2026-10-16</td><td>2026-11-16</td><td>2026-12-16</td></tr></tbody></table></div><div class="md-table-wrap" tabindex="0" role="region" aria-label="本文の表 3"><table><thead><tr><th>column_name_0</th><th>column_name_1</th><th>column_name_2</th><th>column_name_3</th><th>column_name_4</th><th>column_name_5</th><th>column_name_6</th><th>column_name_7</th></tr></thead><tbody><tr><td>value_0</td><td>value_1</td><td>value_2</td><td>value_3</td><td>value_4</td><td>value_5</td><td>value_6</td><td>value_7</td></tr></tbody></table></div>
+<p data-line-start="17">選んだ箇所へコメントする文はここです。</p>
+</div></section><section class="d-sec d-review"><h3>レビュー中のコメント<span class="count">0</span></h3><p class="empty">レビュー中のコメントはありません。</p></section></div></div></div><form class="send send-footer" novalidate="" data-id="A-1"><label class="send-label" for="send-1"><span class="mono">A-1</span> へのコメント</label><textarea id="send-1" name="body" rows="2" aria-describedby="send-1-msg" aria-keyshortcuts="Control+Enter" style=""></textarea><div class="send-row"><p class="send-msg" id="send-1-msg" role="status"></p><button class="btn primary" type="submit" title="レビューに追加（Ctrl+Enter）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"></path><path d="M8 9h8M8 12.5h5"></path></svg>レビューに追加</button></div></form></aside></body></html>

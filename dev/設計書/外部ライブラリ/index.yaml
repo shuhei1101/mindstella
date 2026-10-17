@@ -30,3 +30,5 @@ items:
     summary: プレビューで本文と図の記法の前後を行ごとに比べる
   - page: axe-core.yaml
     summary: プレビューのテストでアクセシビリティの規則（WCAG）を画面に当てる（開発用）
+  - page: ruff.yaml
+    summary: Python のソースを ruff.toml の規則で検査する（開発用）

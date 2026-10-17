@@ -127,7 +127,7 @@ class ForwardProxy:
 
             do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = _relay
 
-            def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            def log_message(self, format: str, *args: object) -> None:
                 """転送の記録は出さない。"""
 
         self.upstream_port = upstream_port

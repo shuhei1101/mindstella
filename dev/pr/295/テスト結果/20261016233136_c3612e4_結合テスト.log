@@ -1,0 +1,11 @@
+$ pytest tests/integration/storybook/test_html_body_diff_stories.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-html-body-diff-side-heading-levels
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 7 items
+
+tests/integration/storybook/test_html_body_diff_stories.py .......       [100%]
+
+============================== 7 passed in 7.15s ===============================

@@ -64,7 +64,8 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 @media (max-width: 480px) {
   .panel-head:has(.panel-title.is-shown) .panel-kind-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
-.panel-body { overflow-y: auto; padding: 22px 24px 56px; }
+/* 本文の領域: 左右に並べるかを本文の幅で決めるため、幅を問い合わせられる入れ物にする */
+.panel-body { overflow-y: auto; padding: 22px 24px 56px; container: detail-body / inline-size; }
 .panel-body:focus-visible { outline-offset: -2px; }
 .icon-btn { display: inline-grid; place-items: center; width: var(--control-h); height: var(--control-h); border: 1px solid transparent; background: none; border-radius: var(--radius); color: var(--text-2); }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
@@ -281,6 +282,14 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
 .md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
 .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+/* 本文の表を包む要素: 表の中だけで横に送り、本文の区画ごと横に送らせない */
+.md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
+/* 包まれた表: 幅に収まる表は本文の幅いっぱいに広げ、余白は包む要素が持つ */
+.md .md-table-wrap > table { margin: 0; }
+/* 包む要素のフォーカスの枠: 送る区画の内側に描く */
+.md .md-table-wrap:focus-visible { outline-offset: -2px; }
+/* 本文の長い URL とインラインコード: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
+.md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
 .md th, .md td { border: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
 .md th { background: var(--surface-2); }
 .md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1132,7 +1141,7 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 /* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
 .md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
 /* 塊の中の段落・見出し（元の段が # のもの）・箇条書き: 塊の余白に寄せる */
-.md .df-blk > :is(p, ul, ol, table, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
+.md .df-blk > :is(p, ul, ol, .md-table-wrap, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
 /* 足した塊 */
 .md ins.df-blk { background: var(--df-add-bg); }
 /* 消した塊: 取り消し線を引き、文字を控えめにする */
@@ -1145,8 +1154,12 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 .md ins.df-blk > .df-sign { color: var(--df-add); }
 /* 消した塊の記号 */
 .md del.df-blk > .df-sign { color: var(--df-del); }
-/* 箇条書きの足した項目: 足した色の面と下線 */
+/* 箇条書きの足した項目: 足した色の面と + */
 .md li.df-li-add { background: var(--df-add-bg); border-radius: var(--radius); }
+/* 箇条書きの足した項目の記号 */
+.md li.df-li-add > .df-sign { display: inline-block; margin-right: 6px; color: var(--df-add); font-family: var(--font-mono); font-weight: 700; text-decoration: none; }
+/* 消した箇条書きの項目: 消した色の面と取り消し線 */
+.md li.df-li-del { background: var(--df-del-bg); border-radius: var(--radius); color: var(--text-2); text-decoration: line-through; }
 /* 表の足した行 */
 .md tr.df-add td { background: var(--df-add-bg); }
 /* 表の消した行 */
@@ -1411,6 +1424,14 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   .comments-btn, .filter-btn, .settings-btn { gap: 4px; padding: 0 6px; }
   /* つながらない間に差分を出すと札の幅が足りなくなるため、押せない飾りのツール名の印を隠す */
   .topbar:has(.conn):has(.df-chip) .brand { display: none; }
+  /* 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・コメントの `99+`）で、差分の札か接続の状態を出している間: 幅 389px 以下と同じ詰め方を、幅 390px 以上のこの範囲でも効かせる。ツール名の文字は隠し、差分の札を出している間は印も隠す */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+  /* 同じ条件のトップバー: 要素の間隔を 1px、左右の余白を 8px にする */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+  /* 同じ条件の印だけのボタン（検索・ライト / ダーク・変更履歴）: 幅を 28px に揃えて縮ませない */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+  /* 同じ条件の表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
 }
 
 /* 最も狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅 320px までトップバーを収める */
@@ -1914,3 +1935,62 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
 .df-map.is-dragging .df-map-m:hover { background: none; }
 /* 飛んだ先の箇所: 当たった語と同じ色の輪で、少しの間だけ示す */
 .df-map-hit { box-shadow: 0 0 0 2px var(--hit); }
+
+/* ===== 本文の差分の並べ方（インライン・左右に並べる） ===== */
+
+/* 切り替えの行: 本文の差分の頭に置く */
+.body-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 12px; }
+/* 並べ方のボタン: 文字の幅に合わせる */
+.sbs-switch button { min-width: 0; width: auto; }
+/* 左右に並べた本文の入れ物: 列の名前の行と、2 つの列 */
+.sbs { display: grid; gap: 6px; }
+/* 列の名前の行: 列と同じ幅の 2 つに分ける */
+.sbs-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
+/* 列の名前の下の線: どちらの列の本文かを区切る */
+.sbs-head > span { padding-bottom: 4px; border-bottom: 1px solid var(--border-soft); }
+/* 2 つの列: 同じ幅で並べ、間を空ける */
+.sbs-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; }
+/* 列: 中の行を縦に積む */
+.sbs-col { min-width: 0; }
+/* 行: 中の段落の余白を行の中に収め、向かいの行と同じ高さにそろえる */
+.sbs-row { display: flow-root; }
+/* 行の中の描いた本文: 行の中で前後の余白を詰める */
+.sbs-row > .md > :first-child { margin-top: 8px; }
+/* 向かいにしか無い行の空き: 斜めの縞の面で、こちらの側には無いことを示す（向かいの行と高さを揃えるため、外側の余白を持たず内側を空ける） */
+.sbs-row.sbs-gap { padding: 6px 0; border-radius: var(--radius); background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, transparent 6px 12px) content-box; }
+/* 左の変えた図: 図には色を付けず、消した色の枠だけを付ける */
+.diagram.sbs-was { outline: 1px dashed var(--df-del); outline-offset: 2px; border-radius: var(--radius); }
+/* HTML の本文の 2 つの枠: 列の幅いっぱいに描く */
+.sbs-html .sbs-col > * { width: 100%; }
+/* 原文の差分を左右に並べた行: 左右の 2 列の格子にし、行ごとに高さをそろえる */
+.df-raw.df-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1px; background: var(--border-soft); }
+/* 左右に並べた原文の行: 折り返して列の幅に収める */
+.df-raw.df-split .df-line { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-2); }
+/* 向かいにしか無い原文の行の空き */
+.df-raw.df-split .df-line.df-gap { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--surface) 6px 12px); }
+/* 変わっていない行を畳んだ行: 左右の 2 列にまたがる */
+.df-raw.df-split .df-line.df-span { grid-column: 1 / -1; }
+/* 左右に並べるときに持つインラインの本文: 本文の幅が足りるときは出さない */
+.sbs-fallback { display: none; }
+/* 左右に並べるときに持つ HTML の本文のインラインの枠: 枠の既定の表示より優先して、本文の幅が足りるときは出さない */
+.html-marked > iframe.sbs-fallback { display: none; }
+/* 切り替えで隠したインラインの本文は、本文の幅が足りないときも出さない */
+.sbs-fallback[hidden] { display: none !important; }
+/* 本文の幅が 560px に満たないとき: 左右に並べる表示と並べ方の切り替えを出さず、インラインで出す */
+@container detail-body (width < 560px) {
+  .sbs, .sbs-only, .sbs-switch { display: none !important; }
+  .sbs-fallback { display: block; }
+  .html-marked > iframe.sbs-fallback { display: block; }
+  .body-diff-bar:not(:has(> :not(.sbs-switch))) { display: none; }
+}
+/* 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
+@media (max-width: 389px) {
+  /* 全体の検索の入力欄: 縮められるようにし、「検索を閉じる」を窓の中に残す */
+  .search-head input { min-width: 0; }
+  /* 図の拡大の「本文へ戻る」の文字: 読み上げにだけ残して印だけのボタンにし、上の帯を 1 行に収める */
+  .v-bar .v-back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 概要のタイルの見出しの帯: 見出しと「すべて表示」をそれぞれ 1 行に保ち、収まらないときは「すべて表示」を次の行へ回す */
+  .t-head { flex-wrap: wrap; row-gap: 4px; }
+  /* 概要のタイルの見出しと「すべて表示」: それぞれ 1 行に保つ */
+  .t-head h2, .t-head .t-link { white-space: nowrap; }
+}

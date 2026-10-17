@@ -8,11 +8,11 @@ from playwright.sync_api import Frame, Page
 
 __all__ = [
     "BODY_FRAME",
-    "BODY_WITH_HTML_CODE_BLOCK",
     "BODY_WITHOUT_HTML_CODE_BLOCK",
+    "BODY_WITH_HTML_CODE_BLOCK",
+    "FRAME_SETTLE_MS",
     "LEAKING_HTML_BODY",
     "MARKED_FRAME",
-    "FRAME_SETTLE_MS",
     "FrameFit",
     "drag_select_in_frame",
     "frame_fit",

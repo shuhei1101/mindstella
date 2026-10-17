@@ -12,6 +12,11 @@ from typing import Any
 import pytest
 from integration.browser_tab_helpers import link_target  # noqa: F401
 from playwright.sync_api import Page
+from preview_body_layout_helpers import (
+    build_body_layout_workspace,
+    build_html_body_layout_workspace,
+    build_linked_body_layout_workspace,
+)
 from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
 from preview_minimap_helpers import build_minimap_workspace
@@ -136,6 +141,53 @@ def write_minimap_preview(
     def _write() -> tuple[str, Path]:
         """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
         root = build_minimap_workspace(make_workspace, make_item, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_body_layout_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
+    """段落 3 つの Markdown の本文を持つ資料 A-1 と検討事項 D-1 を書き換えて `commit`（V-2）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_body_layout_workspace(make_workspace, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_html_body_layout_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
+    """段落 3 つの HTML の本文を持つ資料 A-1 を書き換えて `commit`（V-2）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_html_body_layout_workspace(make_workspace, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_linked_body_layout_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """見出し・用語・項目の ID・図を持つ資料 A-1 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_linked_body_layout_workspace(make_workspace, make_item, call_tool)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

@@ -69,36 +69,36 @@ states:
       - name: status
         value: failed
 lead: スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン。箇所を添えず、入力が空の間はボタンを押せない。
-status: planned
+status: implemented
 args:
   - name: thread
     type: 文字列
     required: true
     description: 返信先のスレッドの ID。「溜める」で使う側へ渡す
-    status: planned
+    status: implemented
   - name: body
     type: 文字列
     default: '""'
     description: 入力欄の中身。2 行から始まり、中身に合わせて 8 行まで伸びる。10000 文字まで
-    status: planned
+    status: implemented
   - name: status
     type: 列挙
     default: idle
     choices: idle・saving・saved・failed
     description: 溜める状態。idle は結果を出さない。saving は入力欄を読み取りだけにしボタンを押せなくする。failed は入力欄の中身を残す
-    status: planned
+    status: implemented
   - name: count
     type: 整数
     choices: 1 以上
     enabled_when: '`status` が `saved` のとき'
     description: 溜めた後のレビュー中の書き込みの件数（『レビュー中のコメントの追加』の `count`）
-    status: planned
+    status: implemented
   - name: detail
     type: 文字列
     default: なし（サーバーに届かなかった）
     enabled_when: '`status` が `failed` のとき'
     description: サーバーが返した溜めなかった理由（`detail`）。無ければサーバーが止まっていることと立ち上げ直すことを出す
-    status: planned
+    status: implemented
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。入力欄が空白だけのとき、`status` が `saving` の間、変換を確定する Enter では発火しない

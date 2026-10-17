@@ -76,6 +76,9 @@ namespace MindmapPreview {
   /** 件数の表示を揺らさない上限 */
   const COMMENT_COUNT_CAP = 99;
 
+  /** 絞り込みのバッジが 2 桁に広がる条件の数 */
+  const FILTER_BADGE_WIDE_FROM = 10;
+
   /** ブランドのマーク（木の形の線画） */
   function brandMark(): SVGSVGElement {
     const holder = document.createElement("template");
@@ -209,7 +212,8 @@ namespace MindmapPreview {
         h({ tag: "span", attrs: { class: "label" }, children: ["コメント"] }),
         h({
           tag: "span",
-          attrs: { class: `count${count === 0 ? " zero" : ""}` },
+          // 件数が `99+` に広がったときは、幅の広い中身の印を付ける（style.css が詰め方を切り替える）
+          attrs: { class: `count${count === 0 ? " zero" : ""}`, "data-wide": count > COMMENT_COUNT_CAP },
           children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
         }),
       ],
@@ -249,7 +253,14 @@ namespace MindmapPreview {
       children: [
         icon("filter"),
         h({ tag: "span", attrs: { class: "label" }, children: ["絞り込み"] }),
-        count === 0 ? null : h({ tag: "span", attrs: { class: "fbadge", "aria-hidden": "true" }, children: [count] }),
+        count === 0
+          ? null
+          : h({
+              tag: "span",
+              // 2 桁に広がったときは、幅の広い中身の印を付ける（style.css が詰め方を切り替える）
+              attrs: { class: "fbadge", "aria-hidden": "true", "data-wide": count >= FILTER_BADGE_WIDE_FROM },
+              children: [count],
+            }),
       ],
     });
   }

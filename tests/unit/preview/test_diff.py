@@ -9,10 +9,16 @@ from playwright.sync_api import Page
 
 from .fixture_types import LoadLibrary, LoadPreviewScripts
 
-# 差分の時点を決める記録の日時（V-1 より後・V-2 より前の「前回開いてから」の始まりを含む）
+# 差分の時点を決める記録の日時と、「前回開いてから」の始まりの日時（日時は範囲を決めず、表示にだけ使う）
 FIRST_SET_AT = "2026-10-01T09:00:00+00:00"
-SINCE = "2026-10-02T00:00:00+00:00"
+SINCE_AT = "2026-10-02T00:00:00+00:00"
 SECOND_SET_AT = "2026-10-03T09:00:00+00:00"
+
+# 「前回開いてから」の始まりの日時を JST にした表示
+SINCE_SUB = "10/02 09:00 より後"
+
+# V-1 を過ぎて V-2 を過ぎる前に開いた「前回開いてから」の始まり
+SINCE = {"at": SINCE_AT, "seq": 1}
 
 # 消した項目を持つまとまりの日時（V-1 より後・「前回開いてから」の始まりより前）
 REMOVED_SET_AT = "2026-10-01T18:00:00+00:00"
@@ -219,12 +225,24 @@ def _lines_of(prefix: str) -> str:
     [
         pytest.param(
             "V-1",
-            {"added": [], "changed": ["A-1"], "fromSeq": 0, "untilSeq": 1},
+            {
+                "added": [],
+                "changed": ["A-1"],
+                "fromSeq": 0,
+                "untilSeq": 1,
+                "sub": "10/01 18:00",
+            },
             id="old_set",
         ),
         pytest.param(
             "since",
-            {"added": ["D-6"], "changed": ["D-3"], "fromSeq": 1, "untilSeq": None},
+            {
+                "added": ["D-6"],
+                "changed": ["D-3"],
+                "fromSeq": 1,
+                "untilSeq": None,
+                "sub": SINCE_SUB,
+            },
             id="since",
         ),
     ],
@@ -269,12 +287,109 @@ def test_resolve_diff_point(
                 changed: [...point.changed].sort(),
                 fromSeq: point.fromSeq,
                 untilSeq: point.untilSeq,
+                sub: point.sub,
             };
         }""",
         [changes, sel, SINCE],
     )
     # 検証
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "second_set_at",
+    [
+        pytest.param("2026-10-01T23:00:00+00:00", id="an_hour_before"),
+        pytest.param(SINCE_AT, id="same_second"),
+    ],
+)
+def test_resolve_diff_point_when_at_before_since(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, second_set_at: str
+) -> None:
+    """まとまりの日時ではなく通し番号で範囲を決める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # V-2 の `at` を「前回開いてから」の始まりの日時より前か同じ秒にして、日時を比べると範囲から落ちる記録にする
+    changes = {
+        "last_seq": 2,
+        "sets": [
+            {
+                "id": "V-2",
+                "at": second_set_at,
+                "summary": "決める",
+                "until_seq": 2,
+                "added": [],
+                "changed": ["D-3"],
+            },
+            {
+                "id": "V-1",
+                "at": FIRST_SET_AT,
+                "summary": "最初",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["A-1"],
+            },
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, sel, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, sel, since);
+            return {
+                changed: [...point.changed].sort(),
+                fromSeq: point.fromSeq,
+            };
+        }""",
+        [changes, "since", SINCE],
+    )
+    # 検証
+    assert result == {"changed": ["D-3"], "fromSeq": 1}
+
+
+def test_resolve_diff_point_when_seq_ahead(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """始まりの通し番号が先頭のまとまりより大きければ、まとまりを範囲に入れない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    changes = {
+        "last_seq": 2,
+        "sets": [
+            {
+                "id": "V-2",
+                "at": SECOND_SET_AT,
+                "summary": "決める",
+                "until_seq": 2,
+                "added": ["D-6"],
+                "changed": ["D-3"],
+            },
+            {
+                "id": "V-1",
+                "at": FIRST_SET_AT,
+                "summary": "最初",
+                "until_seq": 1,
+                "added": [],
+                "changed": ["A-1"],
+            },
+        ],
+        "pending": {"added": [], "changed": []},
+    }
+    # 実行
+    result = preview_page.evaluate(
+        """([changes, since]) => {
+            const point = MindmapPreview.resolveDiffPoint(changes, "since", since);
+            return {
+                added: [...point.added],
+                changed: [...point.changed],
+                removed: [...point.removed.values()],
+                fromSeq: point.fromSeq,
+            };
+        }""",
+        [changes, {"at": SINCE_AT, "seq": 9}],
+    )
+    # 検証
+    assert result == {"added": [], "changed": [], "removed": [], "fromSeq": 2}
 
 
 # 消した項目を持つ記録の `changes`（新しい順）。V-1 と V-3 は `removed` を持たない
@@ -362,7 +477,7 @@ def test_resolve_diff_point_when_removed(
                 removed: [...point.removed.values()].map(({id, kind, title}) => ({id, kind, title})),
             };
         }""",
-        [REMOVED_CHANGES, sel, SINCE],
+        [REMOVED_CHANGES, sel, {"at": SINCE_AT, "seq": 2}],
     )
     # 検証
     assert result == expected
@@ -756,6 +871,190 @@ def test_place_removed_blocks_when_table_row(
     )
     # 検証
     assert blocks == [{"lines": ["| 3 | 4 |"], "beforeLine": 4, "tableHeader": TABLE_HEADER_LINES}]
+
+
+# 左右に並べる行を、Set を並びを揃えた配列にして返す JavaScript（Playwright は Set を返せない）
+SIDE_BY_SIDE_ROWS_SCRIPT = """([before, after]) => {
+    const rows = MindmapPreview.sideBySideRows({before, after});
+    if (rows === null) return null;
+    const blocks = (list) => list.map((block) => ({
+        start: block.start,
+        end: block.end,
+        raw: block.raw,
+        changed: [...block.changed].sort((a, b) => a - b),
+    }));
+    return rows.map((row) => ({
+        changed: row.changed,
+        left: blocks(row.left),
+        right: blocks(row.right),
+    }));
+}"""
+
+
+def _block(*, start: int, end: int, raw: str, changed: list[int]) -> dict[str, Any]:
+    """左右に並べる塊の期待値を作る。"""
+    return {"start": start, "end": end, "raw": raw, "changed": changed}
+
+
+# 段落 3 つの 1 つ目を消し、末尾に段落を足した前後
+SIDE_FIRST_REMOVED_BEFORE = "消す段落\n\n残る段落 A\n\n残る段落 B\n"
+SIDE_FIRST_REMOVED_AFTER = "残る段落 A\n\n残る段落 B\n\n足す段落\n"
+
+# 2 つ目の段落の語を書き換えた前後
+SIDE_REWRITTEN_BEFORE = "一つ目の段落\n\n二つ目の段落を来週に決める。\n\n三つ目の段落\n"
+SIDE_REWRITTEN_AFTER = "一つ目の段落\n\n二つ目の段落を今週に決める。\n\n三つ目の段落\n"
+
+# 2 つ目の段落を 2 つの段落に分けた前後
+SIDE_SPLIT_BEFORE = "一つ目の段落\n\n二つ目の段落\n\n三つ目の段落\n"
+SIDE_SPLIT_AFTER = "一つ目の段落\n\n二つ目の前半\n\n二つ目の後半\n\n三つ目の段落\n"
+
+# 表の行を 1 つ書き換えた前後（表は 3 行目から 6 行目）
+SIDE_TABLE_BEFORE = (
+    "前の段落\n\n" + "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 3 | 4 |"]) + "\n\n後の段落\n"
+)
+SIDE_TABLE_AFTER = (
+    "前の段落\n\n" + "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 3 | 9 |"]) + "\n\n後の段落\n"
+)
+SIDE_TABLE_RAW_BEFORE = "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 3 | 4 |"])
+SIDE_TABLE_RAW_AFTER = "\n".join([*TABLE_HEADER_LINES, "| 1 | 2 |", "| 3 | 9 |"])
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "expected"),
+    [
+        pytest.param(
+            SIDE_FIRST_REMOVED_BEFORE,
+            SIDE_FIRST_REMOVED_AFTER,
+            [
+                {
+                    "changed": True,
+                    "left": [_block(start=1, end=1, raw="消す段落", changed=[1])],
+                    "right": [],
+                },
+                {
+                    "changed": False,
+                    "left": [_block(start=3, end=3, raw="残る段落 A", changed=[])],
+                    "right": [_block(start=1, end=1, raw="残る段落 A", changed=[])],
+                },
+                {
+                    "changed": False,
+                    "left": [_block(start=5, end=5, raw="残る段落 B", changed=[])],
+                    "right": [_block(start=3, end=3, raw="残る段落 B", changed=[])],
+                },
+                {
+                    "changed": True,
+                    "left": [],
+                    "right": [_block(start=5, end=5, raw="足す段落", changed=[5])],
+                },
+            ],
+            id="first_removed_last_added",
+        ),
+        pytest.param(
+            SIDE_REWRITTEN_BEFORE,
+            SIDE_REWRITTEN_AFTER,
+            [
+                {
+                    "changed": False,
+                    "left": [_block(start=1, end=1, raw="一つ目の段落", changed=[])],
+                    "right": [_block(start=1, end=1, raw="一つ目の段落", changed=[])],
+                },
+                {
+                    "changed": True,
+                    "left": [
+                        _block(start=3, end=3, raw="二つ目の段落を来週に決める。", changed=[3])
+                    ],
+                    "right": [
+                        _block(start=3, end=3, raw="二つ目の段落を今週に決める。", changed=[3])
+                    ],
+                },
+                {
+                    "changed": False,
+                    "left": [_block(start=5, end=5, raw="三つ目の段落", changed=[])],
+                    "right": [_block(start=5, end=5, raw="三つ目の段落", changed=[])],
+                },
+            ],
+            id="rewritten",
+        ),
+        pytest.param(
+            SIDE_SPLIT_BEFORE,
+            SIDE_SPLIT_AFTER,
+            [
+                {
+                    "changed": False,
+                    "left": [_block(start=1, end=1, raw="一つ目の段落", changed=[])],
+                    "right": [_block(start=1, end=1, raw="一つ目の段落", changed=[])],
+                },
+                {
+                    "changed": True,
+                    "left": [_block(start=3, end=3, raw="二つ目の段落", changed=[3])],
+                    "right": [
+                        _block(start=3, end=3, raw="二つ目の前半", changed=[3]),
+                        _block(start=5, end=5, raw="二つ目の後半", changed=[5]),
+                    ],
+                },
+                {
+                    "changed": False,
+                    "left": [_block(start=5, end=5, raw="三つ目の段落", changed=[])],
+                    "right": [_block(start=7, end=7, raw="三つ目の段落", changed=[])],
+                },
+            ],
+            id="split_into_two",
+        ),
+        pytest.param(
+            SIDE_TABLE_BEFORE,
+            SIDE_TABLE_AFTER,
+            [
+                {
+                    "changed": False,
+                    "left": [_block(start=1, end=1, raw="前の段落", changed=[])],
+                    "right": [_block(start=1, end=1, raw="前の段落", changed=[])],
+                },
+                {
+                    "changed": True,
+                    "left": [_block(start=3, end=6, raw=SIDE_TABLE_RAW_BEFORE, changed=[6])],
+                    "right": [_block(start=3, end=6, raw=SIDE_TABLE_RAW_AFTER, changed=[6])],
+                },
+                {
+                    "changed": False,
+                    "left": [_block(start=8, end=8, raw="後の段落", changed=[])],
+                    "right": [_block(start=8, end=8, raw="後の段落", changed=[])],
+                },
+            ],
+            id="table_row_rewritten",
+        ),
+    ],
+)
+def test_side_by_side_rows(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    before: str,
+    after: str,
+    expected: list[dict[str, Any]],
+) -> None:
+    """変えていない塊を向かい合わせ、片側だけの塊の向かいを空にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    load_library("marked")
+    # 実行
+    rows = preview_page.evaluate(SIDE_BY_SIDE_ROWS_SCRIPT, [before, after])
+    # 検証
+    assert rows == expected
+
+
+def test_side_by_side_rows_when_timeout(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """行の差分を打ち切ったら対応づけない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    load_library("marked")
+    # 実行
+    rows = preview_page.evaluate(SIDE_BY_SIDE_ROWS_SCRIPT, [_lines_of("前"), _lines_of("後")])
+    # 検証
+    assert rows is None
 
 
 @pytest.mark.parametrize(

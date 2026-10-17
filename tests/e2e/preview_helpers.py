@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import json
-import time
 import urllib.request
 import urllib.error
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -18,7 +16,6 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from workspace_fixtures import RECORD_DIR
 
 __all__ = [
-    "HttpResult",
     "COMMENTS_BUTTON",
     "COMMENTS_PANEL",
     "DETAIL_FORM",
@@ -35,6 +32,7 @@ __all__ = [
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "HttpResult",
     "OpenInEmptyContext",
     "OpenPreview",
     "ServePreview",
@@ -69,7 +67,6 @@ __all__ = [
     "visit_and_close",
     "wait_camera_still",
     "wait_closed_key",
-    "wait_past_boundary",
 ]
 
 type ServePreview = Callable[..., str]
@@ -203,13 +200,6 @@ SCAN_BALLS_SCRIPT = """([step, margin]) => {
 # プレビューを開くたびに今の日時へ書き換わる、前回開いた日時のファイル
 OPENED_FILE_NAME = f"{RECORD_DIR}/.mindstella-opened"
 
-# 境目の日時の秒から、この秒数だけ先の秒に入るまで待つ（端末の時計が 1 秒に満たない幅で後ろへ戻っても、境目より後の秒に残す）
-BOUNDARY_MARGIN_SEC = 2
-
-# 今の時刻を確かめる間隔と、待つ上限の秒数
-BOUNDARY_POLL_SEC = 0.05
-BOUNDARY_TIMEOUT_SEC = 10
-
 # 一度開く画面が描き終わるまで待つ上限ミリ秒
 VISIT_RENDER_TIMEOUT_MS = 20_000
 
@@ -235,27 +225,12 @@ def snapshot_records(snapshot: dict[str, bytes]) -> dict[str, bytes]:
     return {path: content for path, content in snapshot.items() if path != OPENED_FILE_NAME}
 
 
-def wait_past_boundary(boundary: str) -> None:
-    """境目の日時（ISO 8601）の秒の 2 秒先の秒に、今の UTC の時刻が入るまで、短い間隔で確かめて待つ。"""
-    target = datetime.fromisoformat(boundary).astimezone(UTC).replace(microsecond=0) + timedelta(
-        seconds=BOUNDARY_MARGIN_SEC
-    )
-    deadline = time.monotonic() + BOUNDARY_TIMEOUT_SEC
-    while datetime.now(UTC) < target:
-        # 待つ上限を過ぎた: 境目が今より遠い先にある
-        if time.monotonic() > deadline:
-            raise AssertionError(f"{BOUNDARY_TIMEOUT_SEC} 秒待っても境目の日時 {boundary} の先の秒に入りません")
-        time.sleep(BOUNDARY_POLL_SEC)
-
-
-def visit_and_close(page: Page, url: str, root: Path) -> None:
-    """新しいタブでプレビューを一度開いて閉じ、前回開いた日時を残す。後の書き換えがその日時より後の秒になるまで待つ。"""
+def visit_and_close(page: Page, url: str) -> None:
+    """新しいタブでプレビューを一度開いて閉じ、前回開いた日時を残す。"""
     tab = page.context.new_page()
     tab.goto(url)
     tab.wait_for_selector("main#main > *", state="attached", timeout=VISIT_RENDER_TIMEOUT_MS)
     tab.close()
-    opened = (root / OPENED_FILE_NAME).read_text(encoding="utf-8").splitlines()[0].strip()
-    wait_past_boundary(opened)
 
 
 def fetch_records(url: str) -> dict[str, Any]:
@@ -285,14 +260,14 @@ def http_call(
     url: str, path: str, *, method: str = "GET", payload: dict[str, Any] | None = None
 ) -> HttpResult:
     """配信の URL のページの路に依らず、パスを足して 1 回つなぐ。ステータスが 4xx・5xx でも例外にせず、応答を返す。"""
-    request = urllib.request.Request(  # noqa: S310
+    request = urllib.request.Request(
         urljoin(url, path),
         method=method,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None,
         headers={"Content-Type": "application/json"} if payload is not None else {},
     )
     try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
             return HttpResult(
                 response.status,
                 {name.lower(): value for name, value in response.getheaders()},

@@ -13,7 +13,7 @@ namespace MindmapPreview {
   /** 画面の下に「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
   export const NOTICE_MS = 6000;
 
-  /** そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
+  /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
   export const SINCE_KEY = "mindmap-since";
 
   /** 入力欄 1 つ（向けた先ごと）の書きかけと溜める状態（開いている間だけ持つ。書きかけの本文はサーバーにも残す） */
@@ -130,8 +130,10 @@ namespace MindmapPreview {
     filters: Record<string, Filters>;
     /** 差分のミニマップを表示しない上書き。null は表示する（ワークスペースの既定は持たない） */
     minimap: false | null;
-    /** 配る書き出しだけが持つ、前回開いた日時 */
-    opened?: string;
+    /** 本文の差分を左右に並べる上書き。null はインライン（ワークスペースの既定は持たない） */
+    bodyLayout: "side" | null;
+    /** 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う */
+    opened?: unknown;
   };
 
   /** 狭い幅（詳細パネルを別画面として積む幅） */
@@ -175,7 +177,7 @@ namespace MindmapPreview {
 
   /** 既定の設定 */
   function defaultPrefs(): Prefs {
-    return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null };
+    return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null, bodyLayout: null };
   }
 
   /** 端末の保存領域から設定を読む。読めないときは既定を返す */
@@ -193,6 +195,8 @@ namespace MindmapPreview {
       if (!isFiltersByTab(parsed.filters)) parsed.filters = {};
       // 差分のミニマップの上書きは false だけを読む（表示するは上書きを持たない）
       if (parsed.minimap !== false) parsed.minimap = null;
+      // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
+      if (parsed.bodyLayout !== "side") parsed.bodyLayout = null;
       return parsed;
     } catch {
       return defaultPrefs();
@@ -249,10 +253,11 @@ namespace MindmapPreview {
     defaultKinds: Set<Kind>;
     overrides: string[];
     minimap: boolean;
+    bodyLayout: BodyLayout;
   } {
     const defaultLook = display?.network_look ?? BUILTIN_LOOK;
     const defaultKinds = new Set<Kind>(display?.visible_kinds ?? KIND_KEYS);
-    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップの順に並べる（条件が画面の既定と同じ画面は並べない）
+    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
     const overrides = [
       ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
       ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -262,6 +267,7 @@ namespace MindmapPreview {
         (tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], initialFilters(tab, {}, null)),
       ).map((tab) => `絞り込み（${screenName(tab)}）`),
       ...(prefs.minimap === false ? [MINIMAP_LABEL] : []),
+      ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
     ];
     return {
       look: prefs.look ?? defaultLook,
@@ -271,12 +277,14 @@ namespace MindmapPreview {
       overrides,
       // 上書きが false のときだけ表示しない
       minimap: prefs.minimap !== false,
+      // 上書きが side のときだけ左右に並べる
+      bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
     };
   }
 
-  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
   export function clearOverrides(prefs: Prefs): Prefs {
-    return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null };
+    return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null, bodyLayout: null };
   }
 
   /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
@@ -305,38 +313,50 @@ namespace MindmapPreview {
     }
   }
 
-  /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した日時をそのまま使う */
-  async function resolveSince({
+  /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した始まりをそのまま使う */
+  export async function resolveSince({
     serverMode,
     prefs,
     persist,
+    headSeq,
+    session = openStorage("sessionStorage"),
+    post = postOpened,
+    now = () => new Date().toISOString(),
   }: {
     serverMode: boolean;
     prefs: Prefs;
     persist: () => void;
-  }): Promise<string> {
-    const session = openStorage("sessionStorage");
-    let kept: string | null;
+    /** 読んだ記録の先頭のまとまりの `until_seq`（まとまりが無ければ 0） */
+    headSeq: number;
+    session?: Storage;
+    post?: () => Promise<OpenedReply | null>;
+    now?: () => string;
+  }): Promise<OpenedPoint> {
+    // 同じタブに残した始まりがあれば使う（読めない・前の版の日時の文字列は残っていないものとして続ける）
     try {
-      kept = session.getItem(SINCE_KEY);
+      const kept: unknown = JSON.parse(session.getItem(SINCE_KEY) ?? "null");
+      if (isOpenedPoint(kept)) return kept;
     } catch {
-      kept = null;
+      // 読めない保存領域・JSON でない値: 決め直す
     }
-    if (kept !== null) return kept;
-    const now = new Date().toISOString();
-    let previous: string | null;
+    // タブを開いた時点
+    let opened: OpenedPoint = { at: now(), seq: headSeq };
+    let previous: OpenedPoint | null;
     if (serverMode) {
-      previous = await postOpened();
+      // サーバーの配信は、ワークスペースに残る前回の時点を引き、今の時点に書き換えてもらう
+      const reply = await post();
+      previous = reply?.previous ?? null;
+      opened = reply?.opened ?? opened;
     } else {
-      // 配る書き出しは、前回開いた日時を端末の設定に持ち、今の日時に書き換える
-      previous = prefs.opened ?? null;
-      prefs.opened = now;
+      // 配る書き出しは、前回の時点を端末の設定に持ち、今の時点に書き換える
+      previous = isOpenedPoint(prefs.opened) ? prefs.opened : null;
+      prefs.opened = opened;
       persist();
     }
-    // 前回開いた日時が無い・呼べなかったときは、タブを開いた日時にする
-    const since = previous ?? now;
+    // 前回の時点が無い・通し番号が今の記録より先（ワークスペースを戻した・作り直した）ときは、今の時点からにする
+    const since = previous !== null && previous.seq <= headSeq ? previous : opened;
     try {
-      session.setItem(SINCE_KEY, since);
+      session.setItem(SINCE_KEY, JSON.stringify(since));
     } catch {
       // 残せない環境では、読み込み直すたびに決め直す
     }
@@ -344,7 +364,7 @@ namespace MindmapPreview {
   }
 
   /** 変更履歴のモーダルに、差分を出さない行と、まだまとめていない変更・前回開いてから・まとまりの行を新しい順に並べる */
-  function historyPoints({ changes, since }: { changes: Changes; since: string }): HistoryPoint[] {
+  function historyPoints({ changes, since }: { changes: Changes; since: OpenedPoint }): HistoryPoint[] {
     /** その時点で足した・変えた・消した項目の数（合わせた範囲で足して消した項目は、消した項目として 1 件に数える） */
     const countOf = (sel: string): number => {
       const point = resolveDiffPoint(changes, sel, since);
@@ -357,7 +377,7 @@ namespace MindmapPreview {
       ...(hasPending
         ? [{ sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: countOf("pending") }]
         : []),
-      { sel: "since", name: "前回開いてから", sub: `${formatJst(since)} より後`, count: countOf("since") },
+      { sel: "since", name: "前回開いてから", sub: `${formatJst(since.at)} より後`, count: countOf("since") },
       ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: formatJst(set.at), count: countOf(set.id) })),
     ];
   }
@@ -476,7 +496,7 @@ namespace MindmapPreview {
         ? next
         : { ...next, tab: "overview", view: defaultView("overview"), filters: {} };
     // 差分の表示: そのタブの「前回開いてから」の始まりと、選んだ時点（持たない・記録に無いときは差分を出さない）
-    const since = await resolveSince({ serverMode, prefs, persist });
+    const since = await resolveSince({ serverMode, prefs, persist, headSeq: data.changes.sets[0]?.until_seq ?? 0 });
 
     // ===== 画面の土台 =====
     const top = h({ tag: "div", attrs: { id: "top" } });
@@ -762,6 +782,24 @@ namespace MindmapPreview {
       route = { ...route, filters: {} };
     };
 
+    /** 本文の差分の並べ方を切り替えた: 個人の上書きに残し、開いている詳細パネル・詳細の全画面だけを描き直す（履歴にもハッシュにも書かない）。本文を送った位置と、押したボタンのフォーカスを保つ */
+    const changeBodyLayout = (layout: BodyLayout): void => {
+      const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+      const scrollTop = document.querySelector<HTMLElement>(bodySelector)?.scrollTop ?? 0;
+      prefs.bodyLayout = layout === "side" ? "side" : null;
+      display.storageOk = persist();
+      resolved = resolveDisplay(prefs, data.settings.display);
+      renderDetail();
+      // 描き直した本文の高さは、文書に入った後の次のコマで決まる
+      requestAnimationFrame(() => {
+        const next = document.querySelector<HTMLElement>(bodySelector);
+        if (next === null) return;
+        next.scrollTop = scrollTop;
+        next.querySelector<HTMLElement>(`[data-layout="${layout}"]`)?.focus({ preventScroll: true });
+      });
+      renderSettings();
+    };
+
     /** 詳細パネルと全画面 */
     const renderDetail = (): void => {
       const existing = document.querySelector<HTMLElement>("aside.panel");
@@ -803,8 +841,10 @@ namespace MindmapPreview {
         index,
         full: route.full,
         minimap: resolved.minimap,
+        bodyLayout: resolved.bodyLayout,
         on: {
           open: (id) => openItem(id, true),
+          layout: changeBodyLayout,
           close: closeDetail,
           full: (full) => {
             // 全画面の中で図を拡大しているときは、本文へ戻る
@@ -1954,7 +1994,7 @@ namespace MindmapPreview {
           changePrefs({ redrawMain: true });
         },
         reset: () => {
-          // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップを全て外し、ワークスペースの既定の表示に戻す
+          // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
           Object.assign(prefs, clearOverrides(prefs));
           clearTablePrefs();
           // 開いている画面は、画面の既定の条件で開き直す

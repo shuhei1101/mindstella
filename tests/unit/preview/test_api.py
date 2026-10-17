@@ -10,16 +10,46 @@ from playwright.sync_api import Page, Route
 
 from .fixture_types import LoadPreviewScripts
 
-# 前回開いた日時として返す日時
-PREVIOUS_OPENED = "2026-10-04T13:05:00+00:00"
+# 前回開いた時点と、サーバーが書き込んだ今の時点
+PREVIOUS_OPENED = {"at": "2026-10-04T13:05:00+00:00", "seq": 3}
+NEW_OPENED = {"at": "2026-10-05T09:00:00+00:00", "seq": 5}
 
 
 def _respond_previous(route: Route) -> None:
-    """前回開いた日時を 200 で返す。"""
+    """前回開いた時点と今の時点を 200 で返す。"""
     route.fulfill(
         status=200,
         content_type="application/json",
-        body=json.dumps({"previous": PREVIOUS_OPENED, "opened": "2026-10-04T14:45:00+00:00"}),
+        body=json.dumps({"previous": PREVIOUS_OPENED, "opened": NEW_OPENED}),
+    )
+
+
+def _respond_no_previous(route: Route) -> None:
+    """前回開いた時点が無いことにして、今の時点だけを 200 で返す。"""
+    route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({"previous": None, "opened": NEW_OPENED}),
+    )
+
+
+def _respond_previous_version(route: Route) -> None:
+    """前の版の形（前回と今の時点が日時の文字列）を 200 で返す。"""
+    route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps(
+            {"previous": "2026-10-04T13:05:00+00:00", "opened": "2026-10-04T14:45:00+00:00"}
+        ),
+    )
+
+
+def _respond_invalid_changes(route: Route) -> None:
+    """変更履歴が読めないことにして 422 の problem+json を返す。"""
+    route.fulfill(
+        status=422,
+        content_type="application/problem+json",
+        body=json.dumps({"detail": "changes.yaml: last_seq: 整数ではありません"}, ensure_ascii=False),
     )
 
 
@@ -523,7 +553,14 @@ def test_subscribe_events(preview_page: Page, load_preview_scripts: LoadPreviewS
 @pytest.mark.parametrize(
     ("respond", "expected"),
     [
-        pytest.param(_respond_previous, PREVIOUS_OPENED, id="ok"),
+        pytest.param(
+            _respond_previous, {"previous": PREVIOUS_OPENED, "opened": NEW_OPENED}, id="ok"
+        ),
+        pytest.param(
+            _respond_no_previous, {"previous": None, "opened": NEW_OPENED}, id="no_previous"
+        ),
+        pytest.param(_respond_previous_version, None, id="previous_version"),
+        pytest.param(_respond_invalid_changes, None, id="invalid_changes"),
         pytest.param(_respond_server_error, None, id="server_error"),
         pytest.param(_respond_abort, None, id="unreachable"),
     ],
@@ -532,9 +569,9 @@ def test_post_opened(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     respond: Any,
-    expected: str | None,
+    expected: dict[str, Any] | None,
 ) -> None:
-    """前回の日時を返し、失敗は null を返す（正常系）。"""
+    """前回と今の時点を返し、失敗は null を返す（正常系）。"""
     # 準備
     load_preview_scripts()
     preview_page.route("**/api/opened", respond)
@@ -542,3 +579,27 @@ def test_post_opened(
     result = preview_page.evaluate("() => MindmapPreview.postOpened()")
     # 検証
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        pytest.param({"at": "2026-10-04T13:05:00+00:00", "seq": 3}, True, id="point"),
+        pytest.param({"at": "2026-10-04T13:05:00+00:00", "seq": 0}, True, id="seq_zero"),
+        pytest.param("2026-10-04T13:05:00+00:00", False, id="date_string"),
+        pytest.param({"at": "2026-10-04T13:05:00+00:00"}, False, id="no_seq"),
+        pytest.param({"at": "2026-10-04T13:05:00+00:00", "seq": -1}, False, id="seq_negative"),
+        pytest.param({"at": "2026-10-04T13:05:00+00:00", "seq": 1.5}, False, id="seq_fraction"),
+        pytest.param(None, False, id="null"),
+    ],
+)
+def test_is_opened_point(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, value: Any, expected: bool
+) -> None:
+    """時点の形だけを読めるとする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(value) => MindmapPreview.isOpenedPoint(value)", value)
+    # 検証
+    assert result is expected

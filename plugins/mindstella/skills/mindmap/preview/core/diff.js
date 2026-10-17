@@ -66,15 +66,15 @@ var MindmapPreview;
             return buildPoint({ sel, name: PENDING_NAME, sub: PENDING_SUB, groups: [changes.pending], fromSeq: latestSeq, untilSeq: null });
         }
         if (sel === "since") {
-            const startedAt = Date.parse(since);
-            const inRange = sets.filter((set) => Date.parse(set.at) > startedAt);
+            // 日時は比べず、開いた時点の通し番号より大きいまとまりを範囲にする
+            const inRange = sets.filter((set) => set.until_seq > since.seq);
             const oldest = inRange.at(-1);
             // 範囲で一番古いまとまりの 1 つ前の `until_seq` から。範囲にまとまりが無ければ、先頭のまとまりの `until_seq` から
             const fromSeq = oldest === undefined ? latestSeq : (sets[sets.indexOf(oldest) + 1]?.until_seq ?? 0);
             return buildPoint({
                 sel,
                 name: SINCE_NAME,
-                sub: `${MindmapPreview.formatJst(since)} より後`,
+                sub: `${MindmapPreview.formatJst(since.at)} より後`,
                 groups: [...inRange, changes.pending],
                 fromSeq,
                 untilSeq: null,
@@ -191,6 +191,119 @@ var MindmapPreview;
         }));
     }
     MindmapPreview.diffLineParts = diffLineParts;
+    /** 本文を、marked の最上位の token（空行の token を除く）ごとの塊に分ける。塊の変えた行は空で返す */
+    function topBlocks(source) {
+        const blocks = [];
+        let line = 0;
+        for (const token of marked.lexer(source)) {
+            if (token.type !== "space") {
+                const raw = token.raw.replace(/\n+$/, "");
+                blocks.push({ start: line + 1, end: line + raw.split("\n").length, raw, changed: new Set() });
+            }
+            line += token.raw.split("\n").length - 1;
+        }
+        return blocks;
+    }
+    /** 行の差分から、前の版と今の版の各行の種類と、変えていない行の前の版 → 今の版の行の対応を作る */
+    function sideLineKinds(parts) {
+        const before = [null];
+        const after = [null];
+        const map = [null];
+        for (const part of parts) {
+            for (const _ of part.lines) {
+                if (part.kind !== "added") {
+                    before.push(part.kind);
+                    map.push(part.kind === "same" ? after.length : null);
+                }
+                if (part.kind !== "removed")
+                    after.push(part.kind);
+            }
+        }
+        return { before, after, map };
+    }
+    /** 塊の範囲の行のうち、その種類（消した・足した）で空行でない行を塊の変えた行に入れる */
+    function markChangedLines({ blocks, kinds, lines, kind, }) {
+        for (const block of blocks) {
+            for (let line = block.start; line <= block.end; line += 1) {
+                if (kinds[line] === kind && (lines[line - 1] ?? "").trim() !== "")
+                    block.changed.add(line);
+            }
+        }
+    }
+    /** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
+    function linesOfText(text) {
+        const lines = text.split("\n");
+        if (lines.at(-1) === "")
+            lines.pop();
+        return lines;
+    }
+    MindmapPreview.linesOfText = linesOfText;
+    /** 前後の Markdown の本文を塊に分け、変えていない塊を向かい合わせた左右の列の行にする。行の差分を打ち切ったら null */
+    function sideBySideRows({ before, after }) {
+        const parts = diffLineParts(before, after);
+        if (parts === null)
+            return null;
+        const kinds = sideLineKinds(parts);
+        const beforeBlocks = topBlocks(before);
+        const afterBlocks = topBlocks(after);
+        markChangedLines({ blocks: beforeBlocks, kinds: kinds.before, lines: linesOfText(before), kind: "removed" });
+        markChangedLines({ blocks: afterBlocks, kinds: kinds.after, lines: linesOfText(after), kind: "added" });
+        /** 前の版の x 番目の塊と対になる、今の版の from 番目以降の変えていない同じ塊の番号。無ければ -1 */
+        const anchorOf = (x, from) => {
+            const block = beforeBlocks[x];
+            if (block === undefined || block.changed.size > 0)
+                return -1;
+            const target = kinds.map[block.start];
+            for (let k = from; k < afterBlocks.length; k += 1) {
+                const other = afterBlocks[k];
+                if (other === undefined || target === null || target === undefined)
+                    return -1;
+                // 対応する行から始まる塊で、変えておらず原文が同じときだけ対にする
+                if (other.start === target)
+                    return other.changed.size === 0 && other.raw === block.raw ? k : -1;
+                if (other.start > target)
+                    return -1;
+            }
+            return -1;
+        };
+        const rows = [];
+        let i = 0;
+        let j = 0;
+        while (i < beforeBlocks.length || j < afterBlocks.length) {
+            // 次の区切り（変えていない塊の対）を探す。無ければ末尾まで
+            let ai = beforeBlocks.length;
+            let aj = afterBlocks.length;
+            for (let x = i; x < beforeBlocks.length; x += 1) {
+                const k = anchorOf(x, j);
+                if (k >= 0) {
+                    ai = x;
+                    aj = k;
+                    break;
+                }
+            }
+            const left = beforeBlocks.slice(i, ai);
+            const right = afterBlocks.slice(j, aj);
+            // 区切りの間の変えた塊: 数が両側で同じなら 1 つずつ、違えばまとめて 1 つの行にする
+            if (left.length === right.length) {
+                left.forEach((block, offset) => {
+                    const opposite = right[offset];
+                    if (opposite !== undefined)
+                        rows.push({ changed: true, left: [block], right: [opposite] });
+                });
+            }
+            else {
+                rows.push({ changed: true, left, right });
+            }
+            const anchorLeft = beforeBlocks[ai];
+            const anchorRight = afterBlocks[aj];
+            if (anchorLeft !== undefined && anchorRight !== undefined)
+                rows.push({ changed: false, left: [anchorLeft], right: [anchorRight] });
+            i = ai + 1;
+            j = aj + 1;
+        }
+        return rows;
+    }
+    MindmapPreview.sideBySideRows = sideBySideRows;
     /** 前後の HTML の原文を行ごとに比べ、足した行・変えた行（消した行と入れ替えた行）と、足した行と隣り合わない消した行があるかを返す。差分を打ち切ったら null */
     function htmlChangedLines(before, after) {
         const parts = diffLineParts(before, after);
