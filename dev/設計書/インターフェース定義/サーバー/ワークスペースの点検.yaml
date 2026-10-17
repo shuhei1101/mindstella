@@ -200,6 +200,32 @@ flows:
       - ツールのエラーにならない
       - '`problems` が `missing_body`（A-1）と `orphan_body`（`.mindstella/docs/A-9.html`）の 2 件だけで、A-2 の問題が無い'
     test: test_normal_when_html_body_problems_found
+  - name: 正常系（語彙に無いタグがある）
+    summary: 項目とスレッドの tags がタグの語彙に無ければ unknown_tag を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙が `保存` だけで、検討事項 D-1 の `tags` が `[保存, 通知]`、スレッド TH-1 の `tags` が `[起票]` のワークスペース
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: config.yaml と全ての YAML・threads.yaml を読む
+        IF-->>クライアント: JSON（ok: false・problems）
+      ```
+    expected:
+      - ツールのエラーにならず、`ok` が偽
+      - '`problems` に `kind: unknown_tag`・`file: .mindstella/decisions.yaml`・`id: D-1`・`key: items[0].tags`・`detail` に `通知` がある'
+      - '`problems` に `kind: unknown_tag`・`file: .mindstella/threads.yaml`・`id: TH-1`・`key: items[0].tags`・`detail` に `起票` がある'
+      - D-1 の `保存` は問題にしない
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じ
+    test: test_normal_when_unknown_tag
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）
@@ -215,8 +241,8 @@ response:
     type: bool
     description: 問題が 1 つも無いか
   - name: problems[].kind
-    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "unknown_phase" | "stale_history" | "decision_state"'
-    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・設定の `phases` に無いフェーズ・変更履歴から前の本文を組み立てられない・検討事項の案と状態が合わない）
+    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "unknown_phase" | "unknown_tag" | "stale_history" | "decision_state"'
+    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・設定の `phases` に無いフェーズ・タグの語彙に無いタグ・変更履歴から前の本文を組み立てられない・検討事項の案と状態が合わない）
   - name: problems[].file
     type: str
     description: 問題のあるファイル（ワークスペースからの相対パス。例 `.mindstella/decisions.yaml`）
@@ -259,6 +285,8 @@ constraints:
     constraint: 本文を持つ項目の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
+  - item: タグを確かめるキー
+    constraint: 種類ごとの YAML の項目と `threads.yaml` のスレッドの `tags` のうち、設定の `tags` の語彙に無いタグを `unknown_tag` にする。無いタグ 1 つ = 1 件で、`key` は `items[{番号}].tags`、`detail` にそのタグ
 refs:
   - dev/設計書/ER図/ワークスペース#
 test_file: tests/integration/server/test_check.py

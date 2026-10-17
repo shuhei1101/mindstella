@@ -24,7 +24,8 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`items` が D-1 の 1 件だけ'
+      - '`items` が D-1 の 1 件だけで、D-1 が `id`・`kind`・`title`・`status`・`tags` を持つ'
+      - '`total` が 1、`next_cursor` が `null`、`hint` が `null`'
     test: test_normal
   - name: 正常系（入れ子の文字に当たる）
     summary: 文字だけで探すと、案の中身に含む項目も返す
@@ -70,7 +71,149 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
-lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を返す。
+  - name: 正常系（複数のタグで絞る）
+    summary: '`tags` は全てを持つ項目、`any_tags` はいずれかを持つ項目を返す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `データ`・`画面` を持ち、次の項目を持つワークスペース
+        notes: 'D-1: タグ `データ`／D-2: タグ `画面`／T-1: タグ `データ`・`画面`／N-1: タグ無し'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace tags [データ, 画面]
+        IF-->>WS: 語彙と全ての YAML を読む
+        IF-->>クライアント: JSON（items）
+        クライアント->>IF: find workspace any_tags [データ, 画面]
+        IF-->>クライアント: JSON（items）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`tags` で探した `items` が T-1 の 1 件だけ'
+      - '`any_tags` で探した `items` が D-1・D-2・T-1 の順で、N-1 が無い'
+    test: test_normal_when_tags_and_any_tags
+  - name: 正常系（ページを分ける）
+    summary: 件数を超える分は `next_cursor` で続きを返し、最初のページに絞り込みの案内を添える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1〜D-5 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace limit 3
+        IF-->>WS: 全ての YAML を読む
+        IF-->>クライアント: JSON（items・total・next_cursor・hint）
+        クライアント->>IF: find workspace limit 3 cursor {next_cursor}
+        IF-->>クライアント: JSON（items・total・next_cursor）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 最初のページの `items` が D-1・D-2・D-3、`total` が 5 で、`next_cursor` が文字列
+      - 最初のページの `hint` が、`tags`・`kind`・`status` の引数名と `next_cursor` を含む
+      - 続きのページの `items` が D-4・D-5、`total` が 5、`next_cursor` が `null`
+    test: test_normal_when_paged
+  - name: 正常系（0 件に外せる条件を案内する）
+    summary: 語彙にあるタグで 0 件になると、空の結果に外せる条件の案内を添える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `データ`・`保留` を持ち、タグ `データ` の検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace kind decision tags [保留]
+        IF-->>WS: 語彙と全ての YAML を読む
+        IF-->>クライアント: JSON（items: []・total: 0・hint）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`items` が空の配列、`total` が 0、`next_cursor` が `null`'
+      - '`hint` が、渡した条件の引数名 `kind`・`tags` を含む'
+    test: test_normal_when_empty
+  - name: 正常系（返す量を detailed にする）
+    summary: '`detailed` は対象・カテゴリー・フェーズ・属性・更新日時を足し、本文と案は返さない'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B を持つ検討事項 D-1 を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace response_format detailed
+        IF-->>WS: 全ての YAML を読む
+        IF-->>クライアント: JSON（items）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - 'D-1 が `target`・`category`・`phase`・`attrs`（`担当: 自分`）・`updated` を持つ'
+      - D-1 が `options` と本文を持たない
+    test: test_normal_when_detailed
+  - name: 異常系（語彙に無いタグ・UnknownTagError）
+    summary: 語彙に無いタグで探すと、近いタグの候補を添えたエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `データ`・`画面` を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace tags [データー]
+        IF-->>WS: 語彙を読む
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `データー` と、候補の `データ` がある
+    test: test_error_when_unknown_tag
+  - name: 異常系（条件の違う続きの値・ArgumentError）
+    summary: 続きの値を作った条件と違う条件で渡すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1〜D-3 とタスク T-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+
+        クライアント->>IF: find workspace limit 2
+        IF-->>クライアント: JSON（next_cursor）
+        クライアント->>IF: find workspace kind task limit 2 cursor {next_cursor}
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 2 回目の呼び出しがツールのエラーになる
+      - エラーの本文に引数の名前 `cursor` がある
+    test: test_error_when_cursor_mismatched
+lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは語彙のタグだけを受け付ける。
 idempotent: true
 side_effects: なし（読むだけ）
 request:
@@ -99,12 +242,6 @@ request:
     default: なし
     location: argument
     description: 状態が一致する項目
-  - name: tag
-    type: str
-    required: false
-    default: なし
-    location: argument
-    description: タグに持つ項目
   - name: target
     type: str
     required: false
@@ -130,6 +267,44 @@ request:
     location: argument
     description: '`名前=値` の形で、属性が一致する項目。複数渡したときは全てに合うもの。`名前` だけならその属性を持つ項目'
     example: '["担当=自分"]'
+  - name: tags
+    type: list[str]
+    required: false
+    default: なし（タグで絞らない）
+    location: argument
+    description: 全てを持つ項目に絞るタグ（AND）
+    constraints: 語彙のタグだけ。空の配列は渡さないのと同じ
+    example: '["データ", "画面"]'
+  - name: any_tags
+    type: list[str]
+    required: false
+    default: なし（タグで絞らない）
+    location: argument
+    description: いずれかを持つ項目に絞るタグ（OR）
+    constraints: 語彙のタグだけ。空の配列は渡さないのと同じ
+    notes: '`tags` と一緒に渡したときは、両方の条件に合う項目'
+  - name: limit
+    type: int
+    required: false
+    default: '20'
+    location: argument
+    description: 1 ページに返す件数
+    constraints: 1〜100
+  - name: cursor
+    type: str
+    required: false
+    default: なし（最初のページ）
+    location: argument
+    description: 前のページの `next_cursor`。渡すとその続きのページを返す
+    constraints: 前のページと同じ条件（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）で渡す
+    notes: 中身は不透明な文字列で、スキルは組み立てない
+  - name: response_format
+    type: '"concise" | "detailed"'
+    required: false
+    default: concise
+    location: argument
+    description: 返す量。`concise` は ID・種類・タイトル・状態・タグ、`detailed` はそれに対象・カテゴリー・フェーズ・属性・更新日時を足す
+    notes: 本文と案は返さない（`show` で取る）
 response:
   - name: items[].id
     type: str
@@ -143,6 +318,35 @@ response:
   - name: items[].status
     type: str | None
     description: 状態（状態を持たない種類は `null`）
+  - name: items[].tags
+    type: list[str]
+    description: タグ（持たない項目は空の配列）
+  - name: items[].target
+    type: str | None
+    description: 対象（`response_format` が `detailed` のときだけ）
+  - name: items[].category
+    type: str | None
+    description: カテゴリー（`response_format` が `detailed` のときだけ）
+  - name: items[].phase
+    type: str | None
+    description: フェーズ（`response_format` が `detailed` のときだけ）
+  - name: items[].attrs
+    type: dict[str, Any]
+    description: 属性（`response_format` が `detailed` のときだけ。持たない項目は空のオブジェクト）
+  - name: items[].updated
+    type: str
+    description: 更新日時（`response_format` が `detailed` のときだけ）
+    format: date-time
+  - name: total
+    type: int
+    description: 条件に合う全体の件数（ページに分ける前）
+  - name: next_cursor
+    type: str | None
+    description: 次のページを取るときに `cursor` へ渡す値。最後のページでは `null`
+  - name: hint
+    type: str | None
+    description: 絞り込みの案内。全体の件数がページより多いときは絞り込める引数（`tags`・`kind`・`status` など）を、0 件のときは外せる条件（渡した条件の引数の名前）を案内する。どちらでもないときは `null`
+    example: 全 45 件のうち 20 件を返しました。tags・kind・status で絞るか、next_cursor で続きを読んでください
 exceptions:
   - name: なし（正常終了）
     condition: 探せた（合う項目が 0 件のときも含む）
@@ -150,6 +354,12 @@ exceptions:
   - name: WorkspaceNotFoundError
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
+  - name: UnknownTagError
+    condition: '`tags` か `any_tags` に語彙に無いタグがある'
+    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す
+  - name: ArgumentError
+    condition: '`limit` が 1〜100 の外、`cursor` が読めない、または `cursor` を作った条件と今の条件が違う'
+    notes: ツールのエラー。本文に引数の名前と理由を出す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形
@@ -157,7 +367,17 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 条件の組み合わせ
-    constraint: 渡した条件の全てに合う項目。条件を 1 つも渡さなければ全ての項目
+    constraint: 渡した条件の全てに合う項目。条件を 1 つも渡さなければ全ての項目を、ページに分けて返す
   - item: 件数
-    constraint: 制限なし
+    constraint: 1 ページの既定は 20 件、上限は 100 件
+    notes: '上限: Claude Code が MCP のツールの結果に設ける上限 25,000 トークンから安全率 20% を引いた 20,000 トークンを、`detailed` の 1 件の見積もり 150 トークン（ID・種類・タイトル・状態・タグ・対象・カテゴリー・フェーズ・属性・更新日時）で割った 133 件を、きりのよい 100 件に下げた。既定: `concise` の 1 件の見積もり 50 トークンで 1,000 トークンに収まり、スキルが一度に読み比べる候補の数として足りる 20 件。1 件のトークン数は見積もりで、実装照合で実際のワークスペースの結果を測って確かめる'
+  - item: 並び
+    constraint: 種類の順（D・T・R・A・G・N・L）、同じ種類の中は連番の小さい順。ページはこの並びで切る
+  - item: 続きの値
+    constraint: 読んだ位置と条件を表す。ページの間に項目が増減したときは、読んだ位置からの続きを返す（重なり・抜けは保証しない）
+  - item: 近いタグの候補
+    constraint: 語彙のタグのうち、渡したタグと字面が近い順に最大 5 件
+    notes: 近さの測り方はモジュール構成で決める
+  - item: ツールの説明
+    constraint: MCP のツールの説明に、使える絞り込み（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）と、ページを `next_cursor` でたどること、タグで絞る前に `tags` を呼ぶことを書く
 test_file: tests/integration/server/test_find.py

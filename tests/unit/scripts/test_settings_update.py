@@ -17,7 +17,14 @@ from errors import (
     UnmappedPhaseError,
     WriteFailedError,
 )
-from fixture_types import FailingReplace, MakeItem, MakeWorkspace, SnapshotTree
+from fixture_types import (
+    FailingReplace,
+    MakeItem,
+    MakeThread,
+    MakeWorkspace,
+    SnapshotTree,
+    WriteThreads,
+)
 from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 # フェーズを付け替えた項目に入る更新日時
@@ -33,6 +40,7 @@ CURRENT_SETTINGS: dict[str, Any] = {
         {"name": "画面", "target": "本体", "summary": "画面の部品"},
         {"name": "設定", "target": "管理画面", "summary": "設定の画面"},
     ],
+    "tags": [{"name": "保存"}, {"name": "通知"}],
 }
 
 type MakeSettings = Callable[..., dict[str, Any]]
@@ -44,15 +52,20 @@ def _validate(
     *,
     target_map: dict[str, str] | None = None,
     category_map: dict[str, str] | None = None,
+    tag_map: dict[str, str | None] | None = None,
+    current: dict[str, Any] = CURRENT_SETTINGS,
 ) -> None:
-    """今の phases を 問い・発散、今の設定を CURRENT_SETTINGS にして、引数を確かめる。"""
+    """今の phases を 問い・発散、今の設定を current（既定は CURRENT_SETTINGS）にして、引数を確かめる。"""
+    # tag_map は渡したときだけ引数にする
+    tag_kwargs = {} if tag_map is None else {"tag_map": tag_map}
     settings_update.validate_settings_input(
         settings,
         phase_map,
         ["問い", "発散"],
         target_map=target_map,
         category_map=category_map,
-        current=CURRENT_SETTINGS,
+        current=current,
+        **tag_kwargs,
     )
 
 
@@ -204,6 +217,63 @@ def test_validate_settings_input_when_bad_target_map(
         _validate(settings, target_map=target_map)
 
 
+@pytest.mark.parametrize(
+    ("settings", "tag_map", "expected_error_name", "message"),
+    [
+        pytest.param(
+            {"summary": "新しい題名"},
+            {"通知": "保存"},
+            "ArgumentError",
+            "tag_map",
+            id="without_tags",
+        ),
+        pytest.param(
+            {"tags": [{"name": "保存"}, {"name": "通知"}]},
+            {"保存": "通知"},
+            "ArgumentError",
+            "tag_map",
+            id="key_in_new_tags",
+        ),
+        pytest.param(
+            {"tags": [{"name": "保存"}]},
+            {"通知": "不明"},
+            "UnmappedTagError",
+            "対応の無いタグ",
+            id="value_not_in_new_tags",
+        ),
+        pytest.param(
+            {"tags": [{"name": "保存"}, {"name": "保存"}]},
+            None,
+            "SchemaMismatchError",
+            "同じ名前のタグが重なっています",
+            id="duplicated_tags",
+        ),
+    ],
+)
+def test_validate_settings_input_when_bad_tag_map(
+    settings: dict[str, Any],
+    tag_map: dict[str, str | None] | None,
+    expected_error_name: str,
+    message: str,
+) -> None:
+    """tag_map の誤った渡し方と語彙の名前の重なりを拒む（異常系）。"""
+    # 準備
+    expected_error = getattr(errors, expected_error_name)
+    # 実行・検証
+    with pytest.raises(expected_error) as raised:
+        _validate(settings, tag_map=tag_map)
+    assert message in "\n".join([str(raised.value), *raised.value.lines])
+
+
+def test_validate_settings_input_when_tag_removed() -> None:
+    """値が None の対応は外す対応として通す（正常系）。"""
+    # 準備
+    current = {**CURRENT_SETTINGS, "tags": [{"name": "保存"}, {"name": "下書き"}]}
+    settings = {"tags": [{"name": "保存"}]}
+    # 実行・検証
+    _validate(settings, tag_map={"下書き": None}, current=current)
+
+
 def test_merge_settings(make_settings: MakeSettings) -> None:
     """渡したキーだけを置き換え、null で消し、並びを保つ（正常系）。"""
     # 準備
@@ -321,6 +391,27 @@ def test_save_settings(
     assert list(root.rglob("*.tmp")) == []
 
 
+def test_save_settings_with_threads(
+    make_workspace: MakeWorkspace,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
+) -> None:
+    """スレッドも一緒に書く（正常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "保存"}, {"name": "通知"}]})
+    write_threads(root, make_thread("TH-1", tags=["通知"]))
+    workspace = store.load_workspace(root)
+    settings = {**workspace.settings, "tags": [{"name": "保存"}, {"name": "お知らせ"}]}
+    threads = [make_thread("TH-1", tags=["お知らせ"])]
+    # 実行
+    files = settings_update.save_settings(workspace, settings, [], threads=threads)
+    # 検証
+    assert files == [".mindstella/config.yaml", ".mindstella/threads.yaml"]
+    saved = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    assert saved["items"][0]["tags"] == ["お知らせ"]
+
+
 def test_save_settings_when_schema_mismatch(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -392,6 +483,40 @@ def test_update_settings(
     assert saved["goal"]["phase"] == "目的"
     decisions = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
     assert decisions["items"][0]["updated_by"] == "ai"
+
+
+def test_update_settings_when_tags_remapped(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
+) -> None:
+    """語彙を置き換え、項目とスレッドのタグを付け替えて書く（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["通知"]),
+        settings={**valid_settings, "tags": [{"name": "保存"}, {"name": "通知"}]},
+    )
+    write_threads(root, make_thread("TH-1", tags=["通知"]))
+    settings = {"tags": [{"name": "保存"}, {"name": "お知らせ"}]}
+    # 実行
+    result = settings_update.update_settings(
+        root, settings, None, now=_fixed_now, tag_map={"通知": "お知らせ"}
+    )
+    # 検証
+    assert result == {
+        "changed": ["tags"],
+        "remapped": [
+            {"id": "D-1", "key": "tags", "from": "通知", "to": "お知らせ"},
+            {"id": "TH-1", "key": "tags", "from": "通知", "to": "お知らせ"},
+        ],
+        "files": [
+            ".mindstella/config.yaml",
+            ".mindstella/decisions.yaml",
+            ".mindstella/threads.yaml",
+        ],
+    }
 
 
 def test_update_settings_when_goal_phase_unknown(
@@ -509,6 +634,88 @@ def test_remap_names_when_unmapped(
     with pytest.raises(errors.UnmappedTargetError) as raised:
         settings_update.remap_names(workspace.items, settings, {}, {})
     assert raised.value.lines == ["D-2: category: 設定"]
+
+
+def test_remap_tags(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+) -> None:
+    """対応で付け替え、null の対応は外し、スレッドも付け替える（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["保存", "下書き"]),
+        make_item("D-2", tags=["通知", "お知らせ"]),
+    )
+    workspace = store.load_workspace(root)
+    threads = [make_thread("TH-1", tags=["通知"])]
+    settings = {"tags": [{"name": "保存"}, {"name": "お知らせ"}]}
+    tag_map = {"通知": "お知らせ", "下書き": None}
+    # 実行
+    items, new_threads, remapped = settings_update.remap_tags(
+        workspace.items, threads, settings, tag_map, now=_fixed_now, replaced=True
+    )
+    # 検証
+    decisions = {item["id"]: item for item in items["decision"]}
+    assert decisions["D-1"]["tags"] == ["保存"]
+    assert decisions["D-2"]["tags"] == ["お知らせ"]
+    assert new_threads[0]["tags"] == ["お知らせ"]
+    assert remapped == [
+        settings_update.PhaseRemap(id="D-1", key="tags", from_value="下書き", to_value=None),
+        settings_update.PhaseRemap(id="D-2", key="tags", from_value="通知", to_value="お知らせ"),
+        settings_update.PhaseRemap(id="TH-1", key="tags", from_value="通知", to_value="お知らせ"),
+    ]
+    assert decisions["D-1"]["updated_by"] == "ai"
+    assert decisions["D-2"]["updated_by"] == "ai"
+    assert decisions["D-1"]["updated"] == NOW
+
+
+def test_remap_tags_when_unmapped(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """対応の無いタグが残ると止める（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=["保存"]), make_item("D-2", tags=["通知"]))
+    workspace = store.load_workspace(root)
+    settings = {"tags": [{"name": "保存"}]}
+    # 実行・検証
+    with pytest.raises(errors.UnmappedTagError) as raised:
+        settings_update.remap_tags(
+            workspace.items, [], settings, {}, now=_fixed_now, replaced=True
+        )
+    assert raised.value.unmapped == [("D-2", "通知")]
+
+
+def test_remap_tags_when_tags_not_given(
+    make_workspace: MakeWorkspace, make_item: MakeItem, make_thread: MakeThread
+) -> None:
+    """語彙を置き換えないときは何も変えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=["通知"]))
+    workspace = store.load_workspace(root)
+    threads = [make_thread("TH-1", tags=["起票"])]
+    # 実行
+    items, new_threads, remapped = settings_update.remap_tags(
+        workspace.items, threads, {}, {}, now=_fixed_now, replaced=False
+    )
+    # 検証
+    assert items == workspace.items
+    assert new_threads == threads
+    assert remapped == []
+
+
+def test_remap_tags_when_vocabulary_removed(
+    make_workspace: MakeWorkspace, make_item: MakeItem, make_thread: MakeThread
+) -> None:
+    """tags: null で語彙を消すとき、使われているタグに対応が無ければ止める（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=["保存"]))
+    workspace = store.load_workspace(root)
+    threads = [make_thread("TH-1", tags=["起票"])]
+    # 実行・検証
+    with pytest.raises(errors.UnmappedTagError) as raised:
+        settings_update.remap_tags(
+            workspace.items, threads, {}, {}, now=_fixed_now, replaced=True
+        )
+    assert raised.value.unmapped == [("D-1", "保存"), ("TH-1", "起票")]
 
 
 def test_update_display(make_workspace: MakeWorkspace) -> None:

@@ -22,6 +22,10 @@ directory: |-
           steps.yaml                   v0.7.0 の形式 → v0.8.0 の手順（送信をスレッドへ移す）
           scripts/
             submissions_to_threads.py  送信をスレッドにする変換
+        v0.10.0/
+          steps.yaml                   v0.9.0 の形式 → v0.10.0 の手順（使っているタグを語彙へ登録する）
+          scripts/
+            tags_to_vocabulary.py      項目とスレッドのタグを設定の語彙へ書く変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -1189,6 +1193,61 @@ functions:
         condition: '`items: []` の `submissions.yaml`'
         mock: なし
         expected: '`threads.yaml` が `items: []`'
+  - name: tags_to_vocabulary.migrate
+    title: 使っているタグを語彙へ登録する移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.10.0/scripts/tags_to_vocabulary.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.10.0 の `call`（`tags_to_vocabulary`）が呼ぶ変換（関数名は `migrate`）。項目とスレッドが使っているタグを、説明なしで `config.yaml` の `tags` へ書く
+    side_effects: '`.mindstella/config.yaml` を書き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `yaml.safe_load` で `.mindstella/config.yaml` を読む。一番上が辞書でなければ `config.yaml の形が崩れています` の `ValueError` を送る
+      2. `.mindstella/` の種類ごとの YAML（`KINDS` のファイル）と `threads.yaml` を読めるものだけ読み、`items` の各要素の `tags` のうち空でない文字列を集める（無いファイル・形の合わない要素は飛ばす）
+      3. 今の `tags` に無い名前だけを `{name}` で足し、全体を名前の順に並べる（今の要素の `summary` は残す）
+         - 足す名前が無く、並びも変わらない場合（タグを使っていない、または既に当てた）、何も書かず空を返す
+      4. 設定のキーの並びを保って `tags` を置き換え（無ければ `categories` の後ろに置く）、読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
+      5. `[.mindstella/config.yaml]` を返す
+    exceptions:
+      - name: ValueError
+        condition: '`config.yaml` の形が崩れている'
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_tags_to_vocabulary
+        case: 正常
+        summary: 項目とスレッドのタグを重なりなく名前の順で語彙へ書く
+        condition: '`tags` を持たない `config.yaml`、D-1: `[保存, 通知]`／N-1: `[脱線, 保存]`／TH-1: `[起票]`'
+        mock: なし
+        expected: '戻り値が `[.mindstella/config.yaml]`。`tags` が `{name: 保存}`・`{name: 脱線}`・`{name: 起票}`・`{name: 通知}`。D-1・N-1・TH-1 と他の設定のキーが呼ぶ前と同じ'
+      - name: test_tags_to_vocabulary_when_existing
+        case: 正常
+        summary: 既にある語彙の説明を残し、無いタグだけを足す。もう一度当てても変えない
+        condition: '`tags: [{name: 保存, summary: s}]`、D-1: `[保存, 通知]`。同じ変換を 2 回呼ぶ'
+        mock: なし
+        expected: '1 回目の後の `tags` が `{name: 保存, summary: s}`・`{name: 通知}`。2 回目の戻り値が空で、`config.yaml` が 1 回目の後と同じ'
+      - name: test_tags_to_vocabulary_when_no_tags
+        case: 正常
+        summary: タグを使っていなければ書かない
+        condition: どの項目もスレッドもタグを持たず、`threads.yaml` が無い
+        mock: なし
+        expected: 戻り値が空で、`config.yaml` が呼ぶ前と同じ（`tags` のキーが無い）
+      - name: test_tags_to_vocabulary_when_broken
+        case: 異常
+        summary: 設定の形が崩れていれば移さない
+        condition: 一番上が配列の `config.yaml`
+        mock: なし
+        expected: '`ValueError`。`config.yaml` が呼ぶ前と同じ'
 diagrams:
   - name: 全体
     diagram: |-
@@ -1239,3 +1298,4 @@ test_files:
   - tests/unit/scripts/test_field_to_playbooks.py
   - tests/unit/scripts/test_answer_to_adopted_option.py
   - tests/unit/scripts/test_submissions_to_threads.py
+  - tests/unit/scripts/test_tags_to_vocabulary.py

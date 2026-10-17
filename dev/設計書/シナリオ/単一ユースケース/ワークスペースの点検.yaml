@@ -194,6 +194,32 @@ scenarios:
       - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_threads_problems_found
+  - name: 正常シナリオ（語彙に無いタグがある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `保存` で作成を済ませたワークスペース
+      - name: 語彙に無いタグ
+        description: タグ `通知` を持つ検討事項 D-1 と、タグ `起票` を持つスレッド TH-1
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: config.yaml と全ての YAML・スレッドを読む
+        SV-->>CC: 語彙に無いタグの一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、D-1 のタグ `通知` が語彙に無い旨がある
+      - 出力に、TH-1 のタグ `起票` が語彙に無い旨がある
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_unknown_tag
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
