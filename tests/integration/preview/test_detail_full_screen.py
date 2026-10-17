@@ -436,6 +436,25 @@ def test_selection_entry(
     assert page.inner_text("dialog.full .send-loc-name") == "本文 2 行目"
 
 
+def test_selection_entry_when_switched_from_panel(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """詳細パネルから全画面に切り替えた後も、本文の文を選ぶと入口を全画面の中に 1 つ出す（正常系）。"""
+    # 準備（詳細パネルで開き、文書に aside.panel が残る状態で全画面に切り替える）
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md")
+    _open_full(page)
+    page.wait_for_selector("dialog.full[open] .md")
+    # 実行
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "言い換えたい文")
+    # 検証
+    assert page.locator(PILL).count() == 1
+    assert page.locator(f"dialog.full {PILL}").count() == 1
+    page.click(PILL)
+    assert page.inner_text("dialog.full .send-loc-name") == "本文 2 行目"
+
+
 def test_selection_entry_when_diagram_zoomed(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
@@ -874,6 +893,26 @@ def test_html_body_entry_position_when_mouse(
         0,
     )
     assert gap <= rect["height"]
+
+
+def test_html_body_entry_when_switched_from_panel(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """詳細パネルから全画面に切り替えた後に枠の中の文を選ぶと、入口を全画面の中に 1 つ出す（正常系）。"""
+    # 準備（詳細パネルで開き、文書に aside.panel が残る状態で全画面に切り替える）
+    url, _ = write_review_preview(
+        make_item("A-1", body="A-1.html"), bodies={"A-1.html": FULL_HTML_BODY}
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel")
+    _open_full(page)
+    wait_frame_rendered(page, FULL_BODY_FRAME)
+    # 実行
+    select_in_frame(page, FULL_BODY_FRAME, "言い換えたい文", "言い換えたい文")
+    page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert page.locator(PILL).count() == 1
+    assert page.locator(f"dialog.full {PILL}").count() == 1
 
 
 # 見出しの帯のタイトルを測る全画面

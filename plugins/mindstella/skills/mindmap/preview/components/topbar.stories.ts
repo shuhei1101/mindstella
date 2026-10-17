@@ -386,6 +386,19 @@ export const FitNarrowestOfflineDiff: Story = {
   ...fitViewport,
 };
 
+/** 幅 320〜389px で、サーバーにつながり、絞り込み（件数なし）・表示の設定・コメント（0 件）・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く */
+export const FitNarrowestNoCount: Story = {
+  args: {
+    filter: true,
+    filterCount: 0,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 0,
+    onHistory: fn(),
+  },
+  ...fitViewport,
+};
+
 // 幅 390〜480px のストーリーは、この範囲の両端（390px・480px）を切り替えて見せる。既定は 390px
 const fitWideViewport = {
   parameters: {
@@ -450,6 +463,23 @@ export const FitWideOfflineDiff: Story = {
     readAt: "2026-10-04T02:21:00+00:00",
     filter: true,
     filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く */
+export const FitWideOfflineDiffNoFilter: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 0,
     onFilter: fn(),
     comments: true,
     commentCount: 120,
