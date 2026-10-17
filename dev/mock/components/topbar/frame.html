@@ -15,15 +15,11 @@
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <!-- 押せる的の下限: 実装の style.css に足す規則。?plan=current のとき外して今の見た目を出す -->
   <style id="plan-a">
-    /* 狭い幅（389px 以下）: 表示の設定・絞り込み・コメントのボタンを、件数の札を持たない間も幅 --target-min 以上にし、印を中央に置く */
+    /* 表示の設定・絞り込み・コメントのボタン: どの幅でも、件数の札を持たない間も幅 --target-min 以上にし、印を中央に置く（幅で区切らず、狭い幅の詰め方を足しても 24px を割らない） */
+    .topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
+    /* 狭い幅（389px 以下）・つながらない・差分ありの間: 印だけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にし、下限で広がった分を右の余白から取らない */
     @media (max-width: 389px) {
-      .topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
-      /* つながらない・差分ありの間: 印だけのボタン（検索・変更履歴・ライト / ダーク）を幅 26px にし、下限で広がった分を右の余白から取らない */
       .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
-    }
-    /* 幅 390〜480px で件数の札が幅の広い中身の詰め方が効く間: 表示の設定・絞り込み・コメントのボタンを幅 --target-min 以上にし、印を中央に置く */
-    @media (min-width: 390px) and (max-width: 480px) {
-      .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
     }
   </style>
   <!-- 幅 390px 以上の最大の中身の畳み方: ?fit=a〜d のときだけ効かせる。指定が無ければ今の実装の見た目 -->
