@@ -51,7 +51,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 - 返事の要らない書き込み（「了解」など）には返信しない。話が済んでいれば `set_thread_status` で理由つきでクローズにし、`update_thread`（`take: true`・要約）で取り込み済みにする
 - `thread` で読んだだけでは取り込み済みにならない
 - 取り込み待ちのスレッドのほかは、既定でオープンのスレッドの未読だけを読む。過去の経緯が要るときだけ `threads` を `status: closed` か `all` で、`thread` を `unread_only: false` で呼ぶ。一覧はキーだけで引き、要約で読むかを決める
-- ワークスペースの外へ書き込む前の確認（Issue の起票 など）と、話の流れと関係の無い知らせは、`new_thread` で本文・要約・タグを渡してスレッドを立て、返事が届くまで外へは書き込まない。今の話の流れの中で答えが要る問い（ヒアリング・方針転換の確認・リサーチを始めてよいか）はターミナルで聞く。立てられなかったときは同じことをターミナルで聞く。タグは記録の話題のタグと同じく `tags` の一覧から使い回す
+- ワークスペースの外へ書き込む前の確認（Issue の起票 など）と、話の流れと関係の無い知らせは、`new_thread` で本文・要約・タグを渡してスレッドを立て、返事が届くまで外へは書き込まない。今の話の流れの中で答えが要る問い（ヒアリング・方針転換の確認・リサーチを始めてよいか）はターミナルで聞く。立てられなかったときは同じことをターミナルで聞く。タグは記録の話題のタグと同じく `tags` の語彙から選び、合うタグが無ければ語彙へ登録してから付ける
 
 ## ツール
 
@@ -64,7 +64,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`updated_by`・`body` は渡さない。本文はどの種類も `body_markdown`。資料は `body_html` で HTML の本文も書ける） |
 | `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
 | `remove` | `workspace`・`id`（消す項目。ほかの記録が指しているとエラーで、指している記録の行が返る） |
-| `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`description`・`goal`・`links`・`history_limit` は `null` で消す）・`phase_map`・`target_map`・`category_map`（任意。`phases`・`targets`・`categories` を変えるときだけ、新しい設定に無い古い名前 → 新しい名前の対応） |
+| `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`tags`（`name` と任意の `summary` を持つ語彙の配列）・`links`・`history_limit` だけ。`description`・`goal`・`tags`・`links`・`history_limit` は `null` で消す）・`phase_map`・`target_map`・`category_map`・`tag_map`（任意。`phases`・`targets`・`categories`・`tags` を変えるときだけ、新しい設定に無い古い名前 → 新しい名前の対応。`tag_map` は値を `null` にするとタグを外す） |
 | `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号）。状態が `決定済み` になる |
 | `edit_option` | `workspace`・`id`（検討事項）・`action`（`add`・`update`・`remove`）・`key`（案の記号）・`option`（`add`・`update` の案の中身のオブジェクト。`content`・`pros`・`cons`・`note`・`reason`・`recommended`。`recommended: true` で推奨の印を立てる（ほかの案の印は外れる）。`update` で消すキーは `null`。`remove` では渡さない） |
 | `batch` | `workspace`・`operations`（操作の配列。要素は `op`（`add`・`update`・`show`）と、`add` は `kind`・`item`、`update` は `id`・`item`、`show` は `id`。同じ呼び出しで先に足した項目は `$番号`（`add` の番号、1 始まり）で指す） |
@@ -73,7 +73,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__mindstella__add, mcp__mind
 | `pending` | `workspace` |
 | `next` | `workspace`・`limit`（任意） |
 | `impact` | `workspace`・`id` |
-| `find` | `workspace`・`text`・`kind`・`status`・`tag`・`target`・`category`・`phase`・`attr`（`名前=値` の配列）。条件は全て任意 |
+| `find` | `workspace`・`text`・`kind`・`status`・`tags`（全てを持つ。AND）・`any_tags`（いずれかを持つ。OR）・`target`・`category`・`phase`・`attr`（`名前=値` の配列）・`limit`（1 ページの件数。既定 20）・`cursor`（前のページの `next_cursor`）・`response_format`（`concise`・`detailed`）。条件は全て任意。タグは語彙のタグだけ |
 | `show` | `workspace`・`id` |
 | `attrs` | `workspace` |
 | `tags` | `workspace` |

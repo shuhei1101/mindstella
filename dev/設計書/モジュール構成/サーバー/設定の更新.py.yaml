@@ -11,34 +11,34 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     role: DTO
-    summary: フェーズ・対象・カテゴリーのどれかを付け替えた 1 項目の 1 キー
+    summary: フェーズ・対象・カテゴリー・タグのどれかを付け替えた 1 項目（タグはスレッドも）の 1 キー
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`update_settings` のレスポンスの `remapped[]` に `{id, key, from, to}` で返す（`from_value` → `from`、`to_value` → `to`）。'
     properties:
       - name: id
         type: str
-        description: 項目の ID
+        description: 項目かスレッドの ID
       - name: key
-        type: Literal['phase', 'target', 'category']
+        type: Literal['phase', 'target', 'category', 'tags']
         description: 付け替えたキー
       - name: from_value
         type: str
         description: 前の名前
       - name: to_value
-        type: str
-        description: 後の名前
+        type: str | None
+        description: 後の名前（タグを外したときは `None`）
 constants:
   - name: EDITABLE_KEYS
     title: 書き換えられる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: '`update_settings` の `settings` に渡せるキー'
-    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit", "display")
+    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "tags", "links", "history_limit", "display")
   - name: REMOVABLE_KEYS
     title: null で消せる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: 値が `null` のときに消してよい任意のキー
-    value: ("description", "goal", "links", "history_limit", "display")
+    value: ("description", "goal", "tags", "links", "history_limit", "display")
 functions:
   - name: validate_settings_input
     title: 設定の更新の引数の確かめ
@@ -73,6 +73,12 @@ functions:
         required: true
         passing: keyword
         description: '`category_map`（渡さないときは `None`）'
+      - name: tag_map
+        type: dict[str, str | None] | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`tag_map`（渡さないときは `None`）'
       - name: current
         type: dict[str, Any]
         required: true
@@ -82,25 +88,29 @@ functions:
       type: None
       description: 問題が無ければ何も返さない
     process: |-
-      1. `settings` が空か、`EDITABLE_KEYS` に無いキーを持つか、`REMOVABLE_KEYS` に無いキーの値が `None` なら `SchemaMismatchError`（行は `config.yaml: {キー}: {理由}`）
+      1. `settings` が空か、`EDITABLE_KEYS` に無いキーを持つか、`REMOVABLE_KEYS` に無いキーの値が `None` か、`tags` の要素の `name` が重なっているなら `SchemaMismatchError`（行は `config.yaml: {キー}: {理由}`。重なりは `config.yaml: tags: 同じ名前のタグが重なっています: {名前}`）
       2. `phase_map` がある場合
          - `settings` が `phases` を持たなければ `ArgumentError`（`phase_map`）
          - キーが `current_phases` に無いか、新しい `phases` にもあるなら `ArgumentError`（理由にそのキー）
          - 値が新しい `phases` に無ければ `UnmappedPhaseError`（そのキーと値）
       3. `target_map`・`category_map` がある場合、それぞれ `targets`・`categories` の名前で 2. と同じく確かめる（引数の誤りは `ArgumentError`（`target_map` か `category_map`）、値が新しい設定に無ければ `UnmappedTargetError`）
+      4. `tag_map` がある場合、`tags` の名前で 3. と同じく確かめる（引数の誤りは `ArgumentError`（`tag_map`））。値が `None` のキーは外す対応として通し、値が新しい語彙に無ければ `UnmappedTagError`
     exceptions:
       - name: SchemaMismatchError
         condition: '`settings` が空・書き換えられないキー・必須のキーの `None`'
         message: スキーマに合いません（`lines` に問題ごとの行）
       - name: ArgumentError
         condition: 対応の元のキーを渡さずに対応を渡した・キーが合わない
-        message: '引数の誤り: {phase_map か target_map か category_map}: {理由}'
+        message: '引数の誤り: {phase_map か target_map か category_map か tag_map}: {理由}'
       - name: UnmappedPhaseError
         condition: '`phase_map` の値が新しい `phases` に無い'
         message: '新しいフェーズに対応の無いフェーズが残ります（`lines` に `{ID か goal}: {フェーズ}`）'
       - name: UnmappedTargetError
         condition: '`target_map`・`category_map` の値が新しい設定に無い'
         message: 新しい設定に対応の無い対象・カテゴリーが残ります（`lines` に残るものごとの行）
+      - name: UnmappedTagError
+        condition: '`tag_map` の値が `None` でなく、新しい語彙に無い'
+        message: 新しい語彙に対応の無いタグが残ります（`lines` に残るものごとの行）
     unit_tests:
       - name: test_validate_settings_input
         case: 正常
@@ -126,6 +136,18 @@ functions:
         condition: '今の `targets` 本体・管理画面。`parametrize`: `targets` 無しで `target_map` `{"本体": "アプリ"}` / 新しい `targets` アプリ・管理画面で `{"管理画面": "アプリ"}` / 同じで `{"本体": "画面"}`'
         mock: なし
         expected: '`ArgumentError`（メッセージに `target_map`） / `ArgumentError` / `UnmappedTargetError`'
+      - name: test_validate_settings_input_when_bad_tag_map
+        case: 異常
+        summary: タグの対応と語彙の重なりを確かめる
+        condition: '今の語彙 `保存`・`通知`。`parametrize`: `tags` を渡さずに `tag_map` / キーが新しい語彙にもある `{保存: 通知}` / 値が新しい語彙に無い `{通知: 不明}` / `tags` に `保存` が 2 つ'
+        mock: なし
+        expected: '`ArgumentError`（`tag_map`） / `ArgumentError`（`tag_map`） / `UnmappedTagError` / `SchemaMismatchError`（`config.yaml: tags:` の行）'
+      - name: test_validate_settings_input_when_tag_removed
+        case: 正常
+        summary: 値が None の対応は外す対応として通す
+        condition: '今の語彙 `保存`・`下書き`、新しい語彙 `保存`、`tag_map={下書き: None}`'
+        mock: なし
+        expected: 例外が起きない
   - name: merge_settings
     title: 設定の置き換え
     kind: 関数
@@ -236,16 +258,22 @@ functions:
         required: true
         passing: positional
         description: 一緒に書く種類ごとの変更（本文は持たない。空なら設定だけ）
+      - name: threads
+        type: list[dict[str, Any]] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 一緒に書く `threads.yaml` の `items`（`None` なら書かない）
     returns:
       type: list[str]
-      description: 書き換えた YAML（ワークスペースからの相対パスで `.mindstella/` から始まる。`config.yaml` が先、続けて `changes` の並び）
+      description: 書き換えた YAML（ワークスペースからの相対パスで `.mindstella/` から始まる。`config.yaml` が先、続けて `changes` の並び、最後に `threads.yaml`）
     process: |-
       1. `changes` の種類のファイルが、書き戻しても中身を失わない形かを確かめる（読み書きと検証の `save_change` の 1. と同じ）
       2. `raw` の設定と `changes` の種類のファイルを差し替えたワークスペースを作り、検証する（`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
-      3. 書く全てのファイルの一時ファイルを書き（`dump_yaml`、`write_temp`）、置き換える前の中身を控える
+      3. 書く全てのファイル（`threads` があれば `threads.yaml` も）の一時ファイルを書き（`dump_yaml`、`write_temp`）、置き換える前の中身を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. `changes` の種類 → `config.yaml` の順に `os.replace` で置き換える
+      4. `changes` の種類 → `threads.yaml` → `config.yaml` の順に `os.replace` で置き換える
          - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
@@ -273,6 +301,12 @@ functions:
         condition: 設定と検討事項の変更。`os.replace` を、置き換え先が `config.yaml` のときだけ `OSError` を送る関数に差し替える
         mock: '`os.replace`（`settings_update` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`（メッセージに `config.yaml`）。`decisions.yaml` と `config.yaml` が呼ぶ前と同じで、`.tmp` のファイルが無い'
+      - name: test_save_settings_with_threads
+        case: 正常
+        summary: スレッドも一緒に書く
+        condition: 設定の `tags` を変え、TH-1 の `tags` を付け替えた `threads` を渡す
+        mock: なし
+        expected: 戻り値の最後が `.mindstella/threads.yaml` で、ファイルの TH-1 の `tags` が付け替えた値
   - name: update_settings
     title: 設定の更新
     kind: 関数
@@ -314,16 +348,23 @@ functions:
         default: None
         passing: keyword
         description: '`category_map`'
+      - name: tag_map
+        type: dict[str, str | None] | None
+        required: false
+        default: None
+        passing: keyword
+        description: '`tag_map`'
     returns:
       type: dict[str, Any]
       description: '`{changed, remapped: [{id, key, from, to}], files}`'
     process: |-
       1. ワークスペースを読む（`load_workspace`）
-      2. 引数を確かめる（`validate_settings_input`。今の `phases` と今の設定を渡す）
+      2. 引数を確かめる（`validate_settings_input`。今の `phases` と今の設定・`tag_map` を渡す）
       3. 設定を置き換える（`merge_settings`）
       4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
       5. 対象とカテゴリーを付け替える（`remap_names`。対応が `None` なら空）。書き換えのたびに呼ぶので、新しい設定に無い対象・カテゴリーが残れば `UnmappedTargetError` で止まる。カテゴリーの `target` が変わったら変わったキーに `categories` を足す
-      6. 4.・5. で付け替えた項目がある種類を `Change` にして、まとめて書く（`save_settings`）
+      6. タグを付け替える（`remap_tags`。`replaced` は渡した `settings` が `tags` のキーを持つか。スレッドは `.mindstella/threads.yaml` の `items` を読み（無ければ空）、`tag_map` が `None` なら空）。語彙を置き換える・消すときに、新しい語彙に無いタグが残れば `UnmappedTagError` で止まる
+      7. 4.〜6. で付け替えた項目がある種類を `Change` にし、タグを付け替えたスレッドがあれば `threads` も渡して、まとめて書く（`save_settings`）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い（`load_workspace` から伝わる）'
@@ -337,6 +378,8 @@ functions:
         condition: '`save_settings` から伝わる'
       - name: UnmappedTargetError
         condition: '`validate_settings_input`・`remap_names` から伝わる'
+      - name: UnmappedTagError
+        condition: '`validate_settings_input`・`remap_tags` から伝わる'
     unit_tests:
       - name: test_update_settings
         case: 正常
@@ -356,6 +399,12 @@ functions:
         condition: '`display` を持たない設定のワークスペースに `{"display": {"network_look": "starlight", "visible_kinds": [会話ログを除く 6 種類]}}`。続けて `{"display": {"network_look": "glow"}}` を渡す'
         mock: なし
         expected: '1 回目の `changed` が `[display]`、`files` が `[.mindstella/config.yaml]`、`config.yaml` の `display` が渡した値で `summary`・`phases`・`history_limit` が呼ぶ前と同じ。2 回目の後は `display` が `{network_look: glow}` だけ（`visible_kinds` を持たない）'
+      - name: test_update_settings_when_tags_remapped
+        case: 正常
+        summary: 語彙を置き換え、項目とスレッドのタグを付け替えて書く
+        condition: '語彙 `保存`・`通知`、D-1（`[通知]`）・TH-1（`[通知]`）。`settings={tags: [{name: 保存}, {name: お知らせ}]}`・`tag_map={通知: お知らせ}`'
+        mock: '`now`'
+        expected: '`changed` が `[tags]`、`remapped` が D-1 と TH-1 の 2 件、`files` に `.mindstella/config.yaml`・`.mindstella/decisions.yaml`・`.mindstella/threads.yaml`'
   - name: remap_names
     title: 対象とカテゴリーの付け替え
     kind: 関数
@@ -476,5 +525,85 @@ functions:
         mock: なし
         expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `phases`）。`config.yaml` が呼ぶ前と同じ'
         exception: 今の config.yaml が合わない
+  - name: remap_tags
+    title: タグの付け替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 設定の更新
+    scope: public
+    summary: 新しい語彙に無いタグを、対応で項目とスレッドの `tags` から付け替えるか外す
+    args:
+      - name: items
+        type: dict[Kind, list[dict[str, Any]]]
+        required: true
+        passing: positional
+        description: 種類ごとの項目（`remap_names` が付け替えた後の並び）
+      - name: threads
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: '`threads.yaml` の `items`（無ければ空）'
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`merge_settings` で置き換えた設定'
+      - name: tag_map
+        type: dict[str, str | None]
+        required: true
+        passing: positional
+        description: 古いタグ → 新しいタグか `None`（渡さないときは空）
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+      - name: replaced
+        type: bool
+        required: true
+        passing: keyword
+        description: 渡した `settings` が `tags` のキーを持つか（値が `null` で語彙を消すときも真）
+    returns:
+      type: tuple[dict[Kind, list[dict[str, Any]]], list[dict[str, Any]], list[PhaseRemap]]
+      description: 付け替えた後の種類ごとの項目・スレッド・付け替えた項目とスレッドのタグ
+    process: |-
+      1. `replaced` が偽なら、何も変えずに返す（語彙を置き換えないときはタグを確かめない）
+      2. 新しい語彙の名前を集める（`tag_names`。`tags: null` で消した設定は空の語彙になる）
+      3. 種類の順（`KINDS`）の項目、続けてスレッドの並びの順に、`tags` の要素を前から見る
+         - 語彙にあるタグはそのまま残す
+         - 語彙に無く `tag_map` に対応があれば、値に置き換える（値が `None` なら外す。置き換えた先が既に `tags` にあれば足さない）。付け替えたタグ 1 つごとに `PhaseRemap(key="tags")` を足す
+         - 語彙に無く対応も無ければ、残るものに `(ID, タグ)` を足す
+      4. タグを付け替えた項目は `updated` を今の日時、`updated_by` を `EDITOR` にする（変更履歴・通し番号・`pending` は触らない）。スレッドは `tags` だけを変える
+      5. 残るものが 1 つ以上あれば `UnmappedTagError`（残るものを全て）
+    exceptions:
+      - name: UnmappedTagError
+        condition: 新しい語彙に対応の無いタグを持つ項目かスレッドが残る
+        message: 新しい語彙に対応の無いタグが残ります（`lines` に残るものごとの行）
+    unit_tests:
+      - name: test_remap_tags
+        case: 正常
+        summary: 対応で付け替え、null の対応は外し、スレッドも付け替える
+        condition: '新しい語彙 `保存`・`お知らせ`、`tag_map={通知: お知らせ, 下書き: None}`。D-1: `[保存, 下書き]`／D-2: `[通知, お知らせ]`／TH-1: `[通知]`'
+        mock: '`now`'
+        expected: D-1 が `[保存]`、D-2 が `[お知らせ]`、TH-1 が `[お知らせ]`。付け替えが `{D-1, tags, 下書き, None}`・`{D-2, tags, 通知, お知らせ}`・`{TH-1, tags, 通知, お知らせ}` の順。D-1・D-2 の `updated_by` が `ai`
+      - name: test_remap_tags_when_unmapped
+        case: 異常
+        summary: 対応の無いタグが残ると送る
+        condition: '新しい語彙 `保存`、対応なし。D-2: `[通知]`'
+        mock: '`now`'
+        expected: '`UnmappedTagError` の `unmapped` が `[(D-2, 通知)]`'
+      - name: test_remap_tags_when_tags_not_given
+        case: 正常
+        summary: 語彙を置き換えないときは何も変えない
+        condition: '`replaced=False`、設定が `tags` を持たない。D-1: `[通知]`'
+        mock: '`now`'
+        expected: 項目・スレッドが渡したまま、付け替えが空
+      - name: test_remap_tags_when_vocabulary_removed
+        case: 異常
+        summary: 'tags: null で語彙を消すとき、使われているタグに対応が無ければ送る'
+        condition: '`tags` を消した設定、`replaced=True`、対応なし。D-1: `[保存]`／TH-1: `[起票]`'
+        mock: '`now`'
+        expected: '`UnmappedTagError` の `unmapped` が `[(D-1, 保存), (TH-1, 起票)]`'
 test_files:
   - tests/unit/scripts/test_settings_update.py

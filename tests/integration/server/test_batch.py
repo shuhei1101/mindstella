@@ -179,3 +179,24 @@ def test_error_when_argument_invalid(
     assert result.text.startswith("エラー: 1 番目の操作（add）:")
     assert "$2" in result.text
     assert snapshot_tree(root) == before
+
+
+def test_error_when_unknown_tag(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
+    before = snapshot_tree(root)
+    first = {**NORMAL_OPERATIONS[0], "item": {**NORMAL_OPERATIONS[0]["item"], "tags": ["通知"]}}
+    second = {**NORMAL_OPERATIONS[0], "item": {**NORMAL_OPERATIONS[0]["item"], "tags": ["通知機能"]}}
+    # 実行
+    result = call_tool("batch", workspace=str(root), operations=[first, second])
+    # 検証
+    assert result.is_error is True
+    assert result.text.startswith("エラー: 2 番目の操作（add）:")
+    assert "tags: 通知機能（候補: 通知）" in result.text
+    assert snapshot_tree(root) == before

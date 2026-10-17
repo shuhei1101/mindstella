@@ -1,5 +1,5 @@
 title: "サーバー / 検索"
-lead: 条件で項目を探し、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証だけに依存し、ファイルを書かない。
+lead: 条件で項目を探してページに分け、1 件の中身と参照元、使っている属性名とタグの語彙を出す。読み書きと検証・タグの語彙だけに依存し、ファイルを書かない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
@@ -26,10 +26,6 @@ data_models:
         type: str | None
         default: None
         description: 状態
-      - name: tag
-        type: str | None
-        default: None
-        description: タグ
       - name: target
         type: str | None
         default: None
@@ -46,6 +42,14 @@ data_models:
         type: list[tuple[str, str | None]]
         default: '[]'
         description: 属性名と値（値が `None` ならその属性を持つことだけ）
+      - name: tags
+        type: tuple[str, ...]
+        default: ()
+        description: 全てを持つ項目に絞るタグ（AND。空なら絞らない）
+      - name: any_tags
+        type: tuple[str, ...]
+        default: ()
+        description: いずれかを持つ項目に絞るタグ（OR。空なら絞らない）
 constants:
   - name: REFERENCE_KEYS
     title: 参照のキー
@@ -53,6 +57,30 @@ constants:
     usecase: 記録の検索
     summary: 参照元として拾うキーとその並び
     value: ("depends_on", "parent", "for", "related", "sources")
+  - name: DEFAULT_LIMIT
+    title: 既定の件数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: '`find` が 1 ページに返す既定の件数（インターフェース定義『項目の検索』の制約「件数」）'
+    value: '20'
+  - name: MAX_LIMIT
+    title: 件数の上限
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: '`find` の `limit` に渡せる件数の上限（インターフェース定義『項目の検索』の制約「件数」が導き方を持つ）'
+    value: '80'
+  - name: DETAILED_KEYS
+    title: 詳しい結果に足すキー
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: '`response_format` が `detailed` のとき、項目ごとに足すキーとその並び'
+    value: ("target", "category", "phase", "attrs", "updated")
+  - name: NARROWING_ARGUMENTS
+    title: 絞り込める引数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: 切り詰めたときの案内に並べる引数の名前とその並び
+    value: ("tags", "kind", "status", "phase", "category", "text")
 functions:
   - name: search_items
     title: 項目の検索
@@ -72,14 +100,21 @@ functions:
         required: true
         passing: positional
         description: 条件
+      - name: detailed
+        type: bool
+        required: false
+        default: 'False'
+        passing: keyword
+        description: 真なら `DETAILED_KEYS` も返す
     returns:
-      type: list[dict[str, str | None]]
-      description: '`{id, kind, title, status}` の並び（`status` を持たない種類は `None`）'
+      type: list[dict[str, Any]]
+      description: '`{id, kind, title, status, tags}` の並び（`status` を持たない種類は `None`、タグを持たない項目の `tags` は空の並び）。`detailed` なら `DETAILED_KEYS` の順に `target`・`category`・`phase`（無ければ `None`）・`attrs`（無ければ空の辞書）・`updated` を足す'
     process: |-
       1. `KINDS` の順に、`kind` の条件に合う種類の項目を見る
-      2. `status`・`target`・`category`・`phase` は一致、`tag` は `tags` に含む、`attrs` は全ての名前と値（値は文字列にして）が一致、で絞る
+      2. `status`・`target`・`category`・`phase` は一致、`tags` は全てを `tags` に含む、`any_tags` はどれかを `tags` に含む、`attrs` は全ての名前と値（値は文字列にして）が一致、で絞る
       3. `text` は項目の全ての文字列の値のどれかに、英字の大小を区別せず含まれるかで絞る（`_contains_text`）
       4. 各種類の中は連番の小さい順に並べる
+      5. 合った項目を `{id, kind, title, status, tags}` にし、`detailed` なら `DETAILED_KEYS` を足す（本文・案は入れない）
     unit_tests:
       - name: test_search_items_when_text_and_attr
         case: 正常
@@ -96,7 +131,7 @@ functions:
       - name: test_search_items_when_fields
         case: 正常
         summary: 種類・状態・タグ・対象・カテゴリー・フェーズで絞る
-        condition: '`parametrize` で各条件を 1 つずつ渡す（例: `kind=task`・`status=未決定`・`tag=データ`）'
+        condition: '`parametrize` で各条件を 1 つずつ渡す（例: `kind=task`・`status=未決定`・`tags=(データ,)`）'
         mock: なし
         expected: それぞれの条件に合う ID だけ
       - name: test_search_items_when_no_filter
@@ -105,6 +140,18 @@ functions:
         condition: T-1・D-2・D-1 の順にファイルに書いたワークスペース（D は D-2 が先）
         mock: なし
         expected: D-1・D-2・T-1
+      - name: test_search_items_when_tags_and_any_tags
+        case: 正常
+        summary: tags は全てを持つ項目、any_tags はいずれかを持つ項目
+        condition: 'D-1: `[データ]`／D-2: `[画面]`／T-1: `[データ, 画面]`／N-1: タグ無し。`parametrize`: `tags=(データ, 画面)` / `any_tags=(データ, 画面)` / 両方 `tags=(データ,)`・`any_tags=(画面,)`'
+        mock: なし
+        expected: T-1 / D-1・D-2・T-1 / T-1
+      - name: test_search_items_when_detailed
+        case: 正常
+        summary: detailed は対象・カテゴリー・フェーズ・属性・更新日時を足し、案は入れない
+        condition: '対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B を持つ D-1 と、どれも持たない N-1。`detailed=True`'
+        mock: なし
+        expected: D-1 が `target`・`category`・`phase`・`attrs`・`updated` を持ち `options` を持たない。N-1 は `target` が `None`、`attrs` が `{}`、`tags` が `[]`
   - name: _contains_text
     title: 文字の包含
     kind: 関数
@@ -277,7 +324,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/query.py
     usecase: 記録の検索
     scope: public
-    summary: 全ての項目の `tags` のタグごとに、持つ項目の数と種類を数える
+    summary: タグの語彙のタグごとに、説明と、持つ項目の数と種類を数える
     args:
       - name: workspace
         type: Workspace
@@ -286,28 +333,221 @@ functions:
         description: ワークスペース
     returns:
       type: list[dict[str, Any]]
-      description: '`{name, count, kinds}` の並び（名前の順。`kinds` は `KINDS` の順で重なりなし）'
+      description: '`{name, summary, count, kinds}` の並び（語彙のタグだけを名前の順。`kinds` は `KINDS` の順で重なりなし。持つ項目が無いタグは `count: 0`・`kinds: []`）'
     process: |-
-      1. 全ての項目の `tags` を、項目ごとに重なりを除いてからタグごとに件数と種類を数える（字面が違えば別のタグ）
-      2. 名前の順に並べる
+      1. 設定から語彙を読む（`tag_entries`）
+      2. 全ての項目の `tags` を、項目ごとに重なりを除いてからタグごとに件数と種類を数える
+      3. 語彙のタグごとに、説明・数えた件数と種類（無ければ 0 と空）を並べる。語彙に無いタグは返さない
     unit_tests:
       - name: test_list_tags
         case: 正常
-        summary: 種類をまたいで数える
-        condition: 'D-1: タグ `データ`／D-2: タグ `画面`／T-1: タグ `データ`／N-1: タグ無し'
+        summary: 語彙のタグごとに種類をまたいで数え、持つ項目が無いタグも返す
+        condition: '語彙 `データ`（説明 `s`）・`画面`・`保留`。D-1: タグ `データ`／D-2: タグ `画面`／T-1: タグ `データ`／N-1: タグ無し'
         mock: なし
-        expected: '`データ`（2・`[decision, task]`）・`画面`（1・`[decision]`）の順'
+        expected: '`データ`（`s`・2・`[decision, task]`）・`保留`（`None`・0・`[]`）・`画面`（`None`・1・`[decision]`）の順'
       - name: test_list_tags_when_duplicated
         case: 正常
         summary: 1 つの項目が同じタグを 2 回持っても 1 件と数える
-        condition: 'D-1: タグ `[データ, データ]`'
+        condition: '語彙 `データ`。D-1: タグ `[データ, データ]`'
         mock: なし
         expected: '`データ`（1・`[decision]`）'
       - name: test_list_tags_when_none
         case: 正常
-        summary: タグが無ければ空
-        condition: '`tags` を持たない D-1 だけ'
+        summary: 語彙が無ければ空
+        condition: 語彙を持たず、タグ `データ` の D-1 だけ
         mock: なし
         expected: 空の並び
+  - name: page_results
+    title: ページ分け
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: 検索結果を続きの値の位置から件数だけ切り出し、全体の件数・次の続きの値・絞り込みの案内を添える
+    args:
+      - name: results
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: '`search_items` の結果（並べ終えた全件）'
+      - name: search_filter
+        type: SearchFilter
+        required: true
+        passing: positional
+        description: 結果を作った条件（続きの値の照合と案内に使う）
+      - name: limit
+        type: int
+        required: true
+        passing: keyword
+        description: 1 ページの件数（1〜`MAX_LIMIT`。確かめは呼ぶ側）
+      - name: cursor
+        type: str | None
+        required: true
+        passing: keyword
+        description: 前のページの `next_cursor`（`None` なら最初のページ）
+    returns:
+      type: dict[str, Any]
+      description: '`{items, total, next_cursor, hint}`'
+    process: |-
+      1. `cursor` があれば読んだ位置を取り出す（`_decode_cursor`）。無ければ 0
+      2. その位置から `limit` 件を切り出す
+      3. 切り出した後ろに結果が残れば、次の位置を続きの値にする（`_encode_cursor`）。残らなければ `None`
+      4. `total` は結果の全件数、`hint` は案内の文（`build_hint`）
+    exceptions:
+      - name: ArgumentError
+        condition: '`cursor` が読めない、または今の条件と違う条件で作られた（`_decode_cursor` から伝わる）'
+    unit_tests:
+      - name: test_page_results
+        case: 正常
+        summary: 件数で切り、続きの値で残りを返す
+        condition: D-1〜D-5 の結果、`limit=3`。最初のページの `next_cursor` でもう一度呼ぶ
+        mock: なし
+        expected: '1 回目は D-1〜D-3・`total: 5`・`next_cursor` が文字列。2 回目は D-4・D-5・`total: 5`・`next_cursor: None`'
+      - name: test_page_results_when_fits
+        case: 正常
+        summary: 件数に収まれば続きの値も案内も無い
+        condition: D-1 だけの結果、条件なし、`limit=20`
+        mock: なし
+        expected: '`next_cursor: None`・`hint: None`'
+      - name: test_page_results_when_cursor_mismatched
+        case: 異常
+        summary: 違う条件の続きの値は引数の誤り
+        condition: 条件なしで作った続きの値を、`kind=task` の条件で渡す
+        mock: なし
+        expected: '`ArgumentError`（引数 `cursor`）'
+      - name: test_page_results_when_cursor_broken
+        case: 異常
+        summary: 読めない続きの値は引数の誤り
+        condition: '`cursor="!!"`'
+        mock: なし
+        expected: '`ArgumentError`（引数 `cursor`）'
+  - name: _encode_cursor
+    title: 続きの値の組み立て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: internal
+    summary: 読んだ位置と条件を、不透明な文字列にする
+    args:
+      - name: offset
+        type: int
+        required: true
+        passing: positional
+        description: 次のページの先頭の位置
+      - name: search_filter
+        type: SearchFilter
+        required: true
+        passing: positional
+        description: 条件
+    returns:
+      type: str
+      description: 続きの値
+    process: '1. 条件の指紋（`_filter_fingerprint`）と位置を `{"o": 位置, "f": 指紋}` の JSON にし、URL 安全な Base64 にする（末尾の `=` は外す）'
+    unit_tests:
+      - name: test_encode_cursor_round_trip
+        case: 正常
+        summary: 組み立てた値を同じ条件で読むと同じ位置に戻る
+        condition: '`offset=20`、`kind=decision` の条件'
+        mock: なし
+        expected: '`_decode_cursor` が 20 を返し、文字列に `=`・`/`・`+` を含まない'
+  - name: _decode_cursor
+    title: 続きの値の読み取り
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: internal
+    summary: 続きの値から読んだ位置を取り出し、今の条件と同じ条件で作られたかを確かめる
+    args:
+      - name: cursor
+        type: str
+        required: true
+        passing: positional
+        description: 続きの値
+      - name: search_filter
+        type: SearchFilter
+        required: true
+        passing: positional
+        description: 今の条件
+    returns:
+      type: int
+      description: 読んだ位置（0 以上）
+    process: |-
+      1. 末尾の `=` を補って Base64 と JSON を解く
+      2. `o` が 0 以上の整数、`f` が今の条件の指紋と同じであることを確かめる
+      3. `o` を返す（結果の件数を超えていてもそのまま返し、空のページになる）
+    exceptions:
+      - name: ArgumentError
+        condition: Base64 か JSON として読めない、`o`・`f` の形が合わない（理由 `読めない続きの値です`）、または指紋が違う（理由 `前のページと同じ条件で渡してください`）。引数の名前は `cursor`
+  - name: _filter_fingerprint
+    title: 条件の指紋
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: internal
+    summary: 条件を短い文字列にする（同じ条件なら同じ値）
+    args:
+      - name: search_filter
+        type: SearchFilter
+        required: true
+        passing: positional
+        description: 条件
+    returns:
+      type: str
+      description: SHA-256 の 16 進の先頭 16 文字
+    process: 1. 条件の全てのフィールドを、キーを並べた JSON（`sort_keys=True`、`ensure_ascii=False`。タプルは配列）にして SHA-256 を取る
+  - name: build_hint
+    title: 絞り込みの案内
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: 切り詰めたときは絞り込める引数、0 件のときは外せる条件を案内する文を組み立てる
+    args:
+      - name: total
+        type: int
+        required: true
+        passing: positional
+        description: 全体の件数
+      - name: returned
+        type: int
+        required: true
+        passing: positional
+        description: このページに返した件数
+      - name: search_filter
+        type: SearchFilter
+        required: true
+        passing: positional
+        description: 条件
+      - name: has_next
+        type: bool
+        required: true
+        passing: keyword
+        description: 続きがあるか
+    returns:
+      type: str | None
+      description: 案内の文。どちらにも当たらないときは `None`
+    process: |-
+      1. `total` が 0 で条件を 1 つ以上渡していれば、渡した条件の引数の名前を並べ、`合う項目がありません。{引数を・でつないだもの} のどれかを外して探してください` を返す（`attrs` は引数名 `attr` で並べる）
+      2. `has_next` が真なら、`NARROWING_ARGUMENTS` のうちまだ渡していない引数を並べ、`全 {total} 件のうち {returned} 件を返しました。{引数を・でつないだもの} で絞るか、next_cursor で続きを読んでください` を返す（渡していない引数が無ければ `next_cursor で続きを読んでください` だけ）
+      3. どちらでもなければ `None`
+    unit_tests:
+      - name: test_build_hint_when_truncated
+        case: 正常
+        summary: 切り詰めたときは、渡していない絞り込みの引数を並べる
+        condition: '`total=45`・`returned=20`・`has_next=True`、条件 `kind=decision`'
+        mock: なし
+        expected: '`45` と `20`・`tags`・`status`・`next_cursor` を含み、`kind` を含まない'
+      - name: test_build_hint_when_empty
+        case: 正常
+        summary: 0 件のときは、渡した条件の引数を並べる
+        condition: '`total=0`・`returned=0`・`has_next=False`、条件 `kind=decision`・`tags=(保留,)`'
+        mock: なし
+        expected: '`kind` と `tags` を含む'
+      - name: test_build_hint_when_none
+        case: 正常
+        summary: 収まったときと、条件なしで 0 件のときは案内しない
+        condition: '`parametrize`: `total=3`・`returned=3`・`has_next=False` / `total=0`・条件なし'
+        mock: なし
+        expected: '`None` / `None`'
 test_files:
   - tests/unit/scripts/test_query.py

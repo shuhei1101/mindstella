@@ -98,7 +98,7 @@ scenarios:
 
         CC->>SV: goal
         SV-->>CC: 届いた（残り 0 件）
-        CC->>SV: find（完了したタスク）
+        CC->>SV: find（完了したタスク。続きを取る値が無くなるまでたどる）
         SV-->>CC: T-1（成果の資料が無い）
         CC->>SV: add（資料 A-2）
         CC->>SV: update（T-1 を related: A-2 にする）
