@@ -312,6 +312,31 @@ flows:
       - 'エラーの本文に `docs.yaml: items[0].body_html: body_markdown と body_html は一緒に渡せない` の行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、`docs/` にファイルが増えていない
     test: test_error_when_both_bodies
+  - name: 異常系（語彙に無いタグ・UnknownTagError）
+    summary: 語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `通知` を持つワークスペース
+        notes: 足す検討事項はタグ `通知機能` を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: add workspace kind decision（tags [通知機能]）
+        IF-->>WS: タグの語彙を読む
+        IF->>IF: 語彙に無いタグ
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に `通知機能` と候補の `通知` がある
+      - '`decisions.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_unknown_tag
 lead: '`item` で渡した中身に ID・作成日時・更新日時・編集した人を付けて、種類の YAML に 1 項目足す。本文を渡したときは `.mindstella/docs/{ID}.md`（資料の HTML の本文は `.mindstella/docs/{ID}.html`）に書く。'
 idempotent: false
 side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。`body_html` を渡したときは `.mindstella/docs/{ID}.html` を書き、項目の `body` を `{ID}.html` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
@@ -397,6 +422,9 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えた本文は消し、どのファイルも書き換えない
+  - name: UnknownTagError
+    condition: '`tags` に語彙に無いタグがある'
+    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける（キーのパスは `items[0].status` の形）。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・足す項目以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形

@@ -149,6 +149,11 @@ tables:
         type: object
         description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を開き直して立て直すと効く）
         example: '{port: 47800}'
+      - name: tags
+        title: タグの語彙
+        type: array
+        description: 任意。項目とスレッドの `tags` に使えるタグ。要素は `name`（空でない文字列。語彙の中で一意）・`summary`（任意。タグの説明）。無ければ語彙は空で、タグを付けられない。書き換えは `update_settings`
+        example: '[{name: 保存, summary: 記録の保存先と形}, {name: 脱線}]'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
@@ -183,7 +188,7 @@ tables:
       - name: tags
         title: タグ
         type: array
-        description: 自由な文字列
+        description: 設定の `tags` の語彙にあるタグ。語彙に無いタグは書き込みのツールが弾き、手で書いたものは点検が `unknown_tag` で返す
       - name: attrs
         title: 属性
         type: object
@@ -775,7 +780,7 @@ tables:
         type: array
         not_null: true
         default: '[]'
-        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく `tags` の一覧から使い回す
+        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく、設定の `tags` の語彙にあるタグだけ
         example: '[起票]'
       - name: summary
         title: 要約

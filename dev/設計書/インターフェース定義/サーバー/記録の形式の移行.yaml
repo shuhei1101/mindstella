@@ -472,6 +472,33 @@ flows:
       - '`threads` を `awaiting` で呼ぶと TH-2 だけを返す'
       - 'TH-1・TH-2 の書き込みが `seen: true`（利用者が送ったものは利用者の既読）'
     test: test_normal_when_submissions_to_threads
+  - name: 正常系（使っているタグを語彙へ登録する）
+    summary: v0.9.0 のワークスペースの項目とスレッドが使っているタグを、説明なしで config.yaml の語彙へ書く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '版 v0.9.0 で、`config.yaml` が `tags` を持たず、検討事項 D-1（`tags: [保存, 通知]`）・メモ N-1（`tags: [脱線, 保存]`）と、スレッド TH-1（`tags: [起票]`）を持つワークスペース'
+        notes: '`migrate` を `apply` で呼ぶ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace apply
+        IF->>WS: tags_to_vocabulary を当てる
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`steps` が `version: v0.10.0`・`op: call`・`destructive: false` の 1 件'
+      - '`config.yaml` の `tags` が `{name: 保存}`・`{name: 脱線}`・`{name: 起票}`・`{name: 通知}` の 4 件で、どれも `summary` を持たない'
+      - D-1・N-1・TH-1 が呼ぶ前と同じ
+      - 同じ呼び出しをもう一度当てても、`tags` が 4 件のまま
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_tags_to_vocabulary
 lead: ワークスペースの版とプラグインの版を比べ、間の版の移し替えの手順（`migrations/{版}/steps.yaml`）を版の順に並べる・当てる。値が要るキーを入れ、点検に合えば版のファイルを書き換える。
 idempotent: false
 side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
@@ -629,6 +656,8 @@ constraints:
     constraint: '`call`（`answer_to_adopted_option`）の 1 手順。`.mindstella/decisions.yaml` のうち、`決定済み` で `answer` を持ち `options` を持たない（空の配列を含む）検討事項に、`key: A`・`content` に `answer`・`reason` に検討事項の `reason`（持つときだけ）・`adopted: true` の案を 1 つ作る。それ以外の検討事項と、案を持つ検討事項は変えない。作った検討事項の `updated`・`history` は変えない。案と状態の合わない残りの検討事項は、点検が `decision_state` で返し、移し替えのスキルが直す（『ワークスペースの移し替え』）。破壊的な操作ではない'
   - item: v0.8.0 の手順
     constraint: '次の順の 2 手順。(1) `call`（`submissions_to_threads`）。`.mindstella/submissions.yaml` の送信 1 件ごとに、`.mindstella/threads.yaml` へスレッドを 1 件足す（送信の連番の小さい順に `TH-{連番}`、`target`・`loc` を引き継ぎ、`tags: []`・`summary: null`・`events: []`）。最初の書き込みは `author: user`・`body`・`created`（送信の `sent`）・`read: false`・`seen: true`・`taken`（送信の `taken`）。取り込み済みの送信は `status: closed` にして `events` に `kind: closed`・`author: ai`・`reason: null`・`created`（送信の `taken`）を 1 件足し、取り込んでいない送信は `status: open` にする。`submissions.yaml` が無ければ飛ばし、`threads.yaml` が既にあれば StepFailedError（二重に移さない）。(2) `delete`（`.mindstella/submissions.yaml`。破壊的な操作）'
+  - item: v0.10.0 の手順
+    constraint: '`call`（`tags_to_vocabulary`）の 1 手順。`.mindstella/` の種類ごとの YAML の項目と `threads.yaml` のスレッドが持つ `tags` を集め、重なりを除いて名前の順に並べ、`.mindstella/config.yaml` の `tags` へ説明なし（`name` だけ）で書く。`config.yaml` が既に `tags` を持つときは、無いタグだけを足して名前の順に並べ直す（説明は消さない）。どの項目もスレッドもタグを持たなければ `tags` を書かない。項目とスレッドは変えない。破壊的な操作ではない'
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]
