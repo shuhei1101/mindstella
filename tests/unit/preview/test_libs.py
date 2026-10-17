@@ -1025,6 +1025,37 @@ def test_render_value(
     assert result["dirty"] is None
 
 
+def test_render_value_when_line_break_in_paragraph(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """段落の中の 1 つの改行を改行にし、空行の段落は分けたままにする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const element = MindmapPreview.renderValue(source);
+            const paragraphs = [...element.querySelectorAll("p")];
+            return {
+                className: element.className,
+                paragraphs: paragraphs.length,
+                firstChildren: [...paragraphs[0].childNodes].map((node) =>
+                    node.nodeType === Node.TEXT_NODE ? node.textContent : node.nodeName.toLowerCase()
+                ),
+                secondText: paragraphs[1].textContent,
+            };
+        }""",
+        "1 行目\n2 行目\n\n3 行目",
+    )
+    # 検証
+    assert "md-value" in result["className"].split()
+    assert result["paragraphs"] == 2
+    assert result["firstChildren"] == ["1 行目", "br", "2 行目"]
+    assert result["secondText"] == "3 行目"
+
+
 @pytest.mark.parametrize(
     "present_library",
     [
@@ -1038,14 +1069,30 @@ def test_render_value_when_library_missing(
     load_library: LoadLibrary,
     present_library: str,
 ) -> None:
-    """ライブラリが読めなければ文字のまま返す（正常系）。"""
+    """ライブラリが読めなければ、改行を残した文字のままの要素を返す（正常系）。"""
     # 準備
     load_preview_scripts()
     load_library(present_library)
     # 実行
-    result = preview_page.evaluate("(source) => MindmapPreview.renderValue(source)", "**強調**")
+    result = preview_page.evaluate(
+        """(source) => {
+            const element = MindmapPreview.renderValue(source);
+            return {
+                isElement: typeof element !== "string",
+                tagName: element.tagName,
+                className: element.className,
+                text: element.textContent,
+                children: element.children.length,
+            };
+        }""",
+        "**強調**\n2 行目",
+    )
     # 検証
-    assert result == "**強調**"
+    assert result["isElement"] is True
+    assert result["tagName"] == "SPAN"
+    assert result["className"] == "md-value-raw"
+    assert result["text"] == "**強調**\n2 行目"
+    assert result["children"] == 0
 
 
 # html のコードブロックを 1 つ持つ本文（見出しは 1 行目、前の段落は 3 行目、コードブロックは 5〜7 行目でその印は中身の先頭の 6、後の段落は 9 行目）
