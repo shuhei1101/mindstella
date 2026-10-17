@@ -538,7 +538,7 @@ states:
       - name: comment_count
         value: '120'
   - name: FitWideDiff
-    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px）にする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px、幅の下限 `--target-min`（24px））にする。件数の札を持たない表示の設定のボタンは幅 24px で印を中央に置く。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ
     args:
       - name: filter
         value: 'true'
@@ -551,7 +551,7 @@ states:
       - name: diffPoint
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
   - name: FitWideOffline
-    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す）にする。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す。3 つのボタンの幅の下限 `--target-min`）にする。件数の札を持たない表示の設定のボタンは幅 24px で印を中央に置く。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ
     args:
       - name: connection
         value: offline
@@ -566,7 +566,7 @@ states:
       - name: comment_count
         value: '120'
   - name: FitWideOfflineDiff
-    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitNarrowestOfflineDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitWideDiff` と同じ詰め方（印だけのボタンは幅 28px のまま、3 つのボタンの幅の下限 `--target-min`）で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーの左右の余白 8px を保ち、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ
     args:
       - name: connection
         value: offline
@@ -582,6 +582,25 @@ states:
         value: '120'
       - name: diffPoint
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+  - name: FitWideOfflineDiffNoFilter
+    description: 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '0'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
+      - name: diffPoint
+        value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
+    notes:
+      見せ方: Storybook の画面幅を 390px・480px にして見せる
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
@@ -592,4 +611,4 @@ accessibility:
   - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
   - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す
-  - 幅 389px 以下でも、全てのボタン（差分の札の × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ
+  - どの幅でも、全てのボタン（差分の札の × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を足しても 24px を割らないようにする
