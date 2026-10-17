@@ -405,7 +405,7 @@ request:
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
     constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`tags`・`links`・`history_limit`・`display` だけ。`null` で消せるのは任意の `description`・`goal`・`tags`・`links`・`history_limit`・`display` だけ。1 つ以上のキーを持つ
-    example: '{"tags": [{"name": "保存", "summary": "記録の保存先と形"}, {"name": "通知"}]}'
+    example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
   - name: phase_map
     type: dict[str, str]
     required: false

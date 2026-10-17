@@ -24,7 +24,7 @@ flows:
       ```
     expected:
       - ツールのエラーにならない
-      - '`tags` が `保留`（`summary: null`・`count: 0`・`kinds: []`）・`データ`（`summary: 記録の形`・`count: 2`・`kinds: [decision, task]`）・`画面`（`summary: 利用者が見る画面`・`count: 1`・`kinds: [decision]`）の 3 件を、名前の順に並べる'
+      - '`tags` が `データ`（`summary: 記録の形`・`count: 2`・`kinds: [decision, task]`）・`保留`（`summary: null`・`count: 0`・`kinds: []`）・`画面`（`summary: 利用者が見る画面`・`count: 1`・`kinds: [decision]`）の 3 件を、この順に並べる'
     test: test_normal
   - name: 正常系（タグが無い）
     summary: 語彙が空なら空の一覧を返す
