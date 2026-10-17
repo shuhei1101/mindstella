@@ -404,6 +404,28 @@ classes:
     summary: クローズのスレッドへ AI が返信しようとした。メッセージは `スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください`（画面からのクローズのスレッドへの返信は `CommentConflictError`）
     kind: クラス
     inherits: MindmapError
+  - name: UnknownTagError
+    title: 語彙に無いタグ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の検索
+    summary: '設定の `tags` の語彙に無いタグを渡した。メッセージは `語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）`、`lines` に無いタグごとの `{引数の名前}: {タグ}（候補: {候補を・でつないだもの}）`（候補が無ければ `（候補なし）`）'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: unknown
+        type: list[tuple[str, str, list[str]]]
+        description: 語彙に無いタグ（引数の名前・タグ・字面の近い語彙のタグ）
+  - name: UnmappedTagError
+    title: 対応の無いタグ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 設定の更新
+    summary: '新しい `tags` の語彙に対応の無いタグを持つ項目かスレッドが残る。メッセージは `新しい語彙に対応の無いタグが残ります`、`lines` に残るものごとの `{項目かスレッドの ID}: tags: {タグ}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: unmapped
+        type: list[tuple[str, str]]
+        description: 残るもの（項目かスレッドの ID、タグ）
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -1688,3 +1710,4 @@ test_files:
   - tests/unit/scripts/test_store.py
 notes:
   HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'
+  タグの語彙のスキーマ: '`settings.schema.json` に任意の `tags`（配列。要素は `name`（必須・`minLength: 1`）と `summary`（任意の文字列）だけを持ち `additionalProperties: false`）を足す。名前の重なりは JSON Schema では見られないので、`update_settings` の引数の確かめ（モジュール構成『設定の更新』）が弾く。`common.schema.json` と `threads.schema.json` の `tags` の説明は、設定の語彙のタグだけと直す（ER 図『ワークスペース』）'
