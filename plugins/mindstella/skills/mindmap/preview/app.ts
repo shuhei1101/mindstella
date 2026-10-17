@@ -1259,7 +1259,7 @@ namespace MindmapPreview {
         }
         return;
       }
-      const current = document.querySelector<HTMLFormElement>("aside.panel form.send, dialog.full form.send");
+      const current = document.querySelector<HTMLFormElement>(route.full ? "dialog.full form.send" : "aside.panel form.send");
       if (current === null || route.id !== target) return;
       const next = sendForm(formProps(target));
       current.replaceWith(next);
@@ -1875,8 +1875,8 @@ namespace MindmapPreview {
       const parentSelected = selection !== null && selection.rangeCount > 0 && !selection.isCollapsed;
       if (!parentSelected && frameSelected !== null) return;
       closePill();
-      const host = document.querySelector<HTMLElement>("dialog.full[open], aside.panel");
-      // 図の拡大を開いている間・選んだ範囲が無い・詳細パネルの外
+      const host = document.querySelector<HTMLElement>(route.full ? "dialog.full[open]" : "aside.panel");
+      // 図の拡大を開いている間・選んだ範囲が無い・詳細パネル（全画面を開いている間は全画面）の外
       if (pillBlocked()) return;
       if (selection === null || selection.rangeCount === 0 || selection.isCollapsed || host === null) return;
       const range = selection.getRangeAt(0);
@@ -1893,7 +1893,7 @@ namespace MindmapPreview {
     const frameSelect = (selection: HtmlFrameSelection): void => {
       frameSelected = selection;
       closePill();
-      const host = document.querySelector<HTMLElement>("dialog.full[open], aside.panel");
+      const host = document.querySelector<HTMLElement>(route.full ? "dialog.full[open]" : "aside.panel");
       if (pillBlocked() || host === null) return;
       openPill({
         loc: { kind: "body", start: selection.start, end: selection.end, text: selection.text },
@@ -1945,7 +1945,7 @@ namespace MindmapPreview {
       window.scrollTo(0, pageScroll);
       if (selection !== null) {
         const restored = document.querySelector<HTMLTextAreaElement>(
-          inList ? ".comments-panel form.send textarea" : "aside.panel form.send textarea, dialog.full form.send textarea",
+          inList ? ".comments-panel form.send textarea" : route.full ? "dialog.full form.send textarea" : "aside.panel form.send textarea",
         );
         restored?.focus();
         restored?.setSelectionRange(selection.start, selection.end);
