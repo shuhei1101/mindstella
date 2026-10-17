@@ -1424,6 +1424,14 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   .comments-btn, .filter-btn, .settings-btn { gap: 4px; padding: 0 6px; }
   /* つながらない間に差分を出すと札の幅が足りなくなるため、押せない飾りのツール名の印を隠す */
   .topbar:has(.conn):has(.df-chip) .brand { display: none; }
+  /* 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・コメントの `99+`）で、差分の札か接続の状態を出している間: 幅 389px 以下と同じ詰め方を、幅 390px 以上のこの範囲でも効かせる。ツール名の文字は隠し、差分の札を出している間は印も隠す */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+  /* 同じ条件のトップバー: 要素の間隔を 1px、左右の余白を 8px にする */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+  /* 同じ条件の印だけのボタン（検索・ライト / ダーク・変更履歴）: 幅を 28px に揃えて縮ませない */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+  /* 同じ条件の表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
 }
 
 /* 最も狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅 320px までトップバーを収める */

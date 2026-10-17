@@ -398,3 +398,77 @@ export const FitNarrowestNoCount: Story = {
   },
   ...fitViewport,
 };
+
+// 幅 390〜480px のストーリーは、この範囲の両端（390px・480px）を切り替えて見せる。既定は 390px
+const fitWideViewport = {
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: {
+        w390: { name: "幅 390px", styles: { width: "390px", height: "844px" } },
+        w480: { name: "幅 480px", styles: { width: "480px", height: "844px" } },
+      },
+    },
+  },
+  globals: { viewport: { value: "w390", isRotated: false } },
+} satisfies Story;
+
+/** 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` が付くが、差分の札も接続の状態も出していないので詰め方は `FilterHistoryNarrow` と同じ。トップバーもページも横にはみ出さない */
+export const FitWide: Story = {
+  args: {
+    filter: true,
+    filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    onHistory: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px）にする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ */
+export const FitWideDiff: Story = {
+  args: {
+    filter: true,
+    filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す）にする。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ */
+export const FitWideOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    onHistory: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitNarrowestOfflineDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ */
+export const FitWideOfflineDiff: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onHistory: fn(),
+    onDiffOff: fn(),
+  },
+  ...fitWideViewport,
+};

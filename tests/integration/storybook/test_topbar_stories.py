@@ -911,9 +911,9 @@ WIDTH_390_SHAPES = [
         id="fit-narrowest-offline",
     ),
     pytest.param(
-        FIT_NARROWEST_OFFLINE_DIFF,
+        OFFLINE_DIFF,
         {"gap": "8px", "buttons": DIFF_BUTTON_PADDING, "nameHidden": True, "brandHidden": True},
-        id="fit-narrowest-offline-diff",
+        id="filter-diff-offline-narrow",
     ),
 ]
 
@@ -929,7 +929,7 @@ def test_fit_narrowest_unchanged_when_width_390(open_story: OpenStory, story_id:
     assert measured == {"padding": ["10px", "10px"], **expected}
 
 
-# 1px ずつ通す幅（既定の中身は 320〜1440px、最大の中身は 320〜389px。最大の中身の 390px 以上は別 Issue の範囲）と、そのときの画面の高さ
+# 1px ずつ通す幅（既定の中身は 320〜1440px、最大の中身は 320〜389px。最大の中身の 390px 以上は FitWide 系の確かめが持つ）と、そのときの画面の高さ
 DEFAULT_CONTENT_EVERY_WIDTH = range(320, 1441)
 MAX_CONTENT_EVERY_WIDTH = range(320, 390)
 NARROWEST_HEIGHT = 844
@@ -974,3 +974,140 @@ def test_fit_narrowest_every_width(open_story: OpenStory, story_id: str, args: s
     overflowing = _overflowing_widths(page, widths)
     # 検証（はみ出した幅をまとめて出す）
     assert overflowing == []
+
+
+# 幅 390〜480px で全てのボタンを出す 4 つの状態（既定の引数が最大の中身: 絞り込みのバッジ 2 桁・コメントの件数 99+）
+FIT_WIDE = "preview-topbar--fit-wide"
+FIT_WIDE_DIFF = "preview-topbar--fit-wide-diff"
+FIT_WIDE_OFFLINE = "preview-topbar--fit-wide-offline"
+FIT_WIDE_OFFLINE_DIFF = "preview-topbar--fit-wide-offline-diff"
+
+# 1px ずつ通す幅（最大の中身の 390px 以上）
+FIT_WIDE_EVERY_WIDTH = range(390, 1441)
+
+# 幅 389px 以下と同じ詰め方が効く幅（幅 480px 以下の両端）
+FIT_WIDE_PACKED_WIDTHS = [390, 480]
+
+# 差分の札か接続の状態を出している状態と、ツール名の印を隠すか（差分の札を出している状態だけ隠す）の組
+FIT_WIDE_PACKED_CASES = [
+    pytest.param(story_id, width, brand_hidden, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id, brand_hidden in (
+        (FIT_WIDE_DIFF, True),
+        (FIT_WIDE_OFFLINE, False),
+        (FIT_WIDE_OFFLINE_DIFF, True),
+    )
+    for width in FIT_WIDE_PACKED_WIDTHS
+]
+
+# 詰め方が効く状態と幅の組
+FIT_WIDE_PACKED_ICON_CASES = [
+    pytest.param(story_id, width, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id in (FIT_WIDE_DIFF, FIT_WIDE_OFFLINE, FIT_WIDE_OFFLINE_DIFF)
+    for width in FIT_WIDE_PACKED_WIDTHS
+]
+
+# 詰め方が効かないとき、同じ状態の既定の中身（絞り込みのバッジ 2・コメントの件数 3）と見た目が一致する組（最大の中身の状態、既定の中身の状態、幅）
+FIT_WIDE_UNPACKED_CASES = [
+    pytest.param(wide_story, default_story, width, id=f"{wide_story.removeprefix('preview-topbar--')}-w{width}")
+    for wide_story, default_story, widths in (
+        (FIT_WIDE, CONNECTED_HISTORY, [390, 435, 480, 481, 900]),
+        (FIT_WIDE_DIFF, CONNECTED_DIFF, [481, 900]),
+        (FIT_WIDE_OFFLINE, OFFLINE_HISTORY, [481, 900]),
+        (FIT_WIDE_OFFLINE_DIFF, OFFLINE_DIFF, [481, 900]),
+    )
+    for width in widths
+]
+
+
+def _narrow_chip_widths(page: Page, widths: range) -> list[int]:
+    """表示幅を 1px ずつ変えながら差分の札を測り、5.5em に届かなかった幅を返す。"""
+    short = []
+    for width in widths:
+        # 幅を変え、画面がその幅になってから測る
+        page.set_viewport_size({"width": width, "height": NARROWEST_HEIGHT})
+        page.wait_for_function(f"innerWidth === {width}")
+        if page.evaluate(FIT_SCRIPT)["chipEm"] < CHIP_MIN_WIDTH_EM:
+            short.append(width)
+    return short
+
+
+@pytest.mark.parametrize("story_id", [FIT_WIDE, FIT_WIDE_DIFF, FIT_WIDE_OFFLINE, FIT_WIDE_OFFLINE_DIFF])
+def test_fit_wide_every_width(open_story: OpenStory, story_id: str) -> None:
+    """最大の中身（絞り込みのバッジ 2 桁・コメントの件数 99+）を、幅を 1px ずつ変えて 390〜1440px で開いても、ページもトップバーも横にはみ出さず、全てのボタンと札の × が表示幅の中にある（正常系）。"""
+    # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
+    page = open_story(story_id)
+    page.evaluate("document.fonts.ready")
+    # 実行
+    overflowing = _overflowing_widths(page, FIT_WIDE_EVERY_WIDTH)
+    # 検証（はみ出した幅をまとめて出す）
+    assert overflowing == []
+
+
+@pytest.mark.parametrize("story_id", [FIT_WIDE_DIFF, FIT_WIDE_OFFLINE_DIFF])
+def test_fit_wide_chip_every_width(open_story: OpenStory, story_id: str) -> None:
+    """差分を出している間は、幅を 1px ずつ変えて 390〜1440px で開いても札の幅が 5.5em 以上ある（正常系）。"""
+    # 準備（ストーリーは 1 回だけ開き、表示幅を変えながら測る）
+    page = open_story(story_id)
+    page.evaluate("document.fonts.ready")
+    # 実行
+    short = _narrow_chip_widths(page, FIT_WIDE_EVERY_WIDTH)
+    # 検証（届かなかった幅をまとめて出す）
+    assert short == []
+
+
+@pytest.mark.parametrize(("story_id", "width", "brand_hidden"), FIT_WIDE_PACKED_CASES)
+def test_fit_wide_packing_when_width(open_story: OpenStory, story_id: str, width: int, brand_hidden: bool) -> None:
+    """件数の札が最大の中身で、差分の札か接続の状態を出している間は、幅 390・480px でも幅 389px 以下と同じ詰め方（間隔 1px・左右の余白 8px・3 つのボタンの余白と印と件数の間隔 2px）にし、ツール名の文字を隠す。差分の札を出している状態だけ印も隠す（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    measured = page.evaluate(BAR_SHAPE_SCRIPT)
+    # 検証
+    assert measured == {
+        "gap": "1px",
+        "padding": ["8px", "8px"],
+        "buttons": [["2px", "2px", "2px"], ["2px", "2px", "2px"], ["2px", "2px", "2px"]],
+        "nameHidden": True,
+        "brandHidden": brand_hidden,
+    }
+
+
+@pytest.mark.parametrize(("story_id", "width"), FIT_WIDE_PACKED_ICON_CASES)
+def test_fit_wide_icon_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
+    """件数の札が最大の中身で、差分の札か接続の状態を出している間は、幅 390・480px でも印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませない（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, story_id, width)
+    # 実行
+    sizes = page.evaluate(ICON_BUTTON_SIZES_SCRIPT)
+    # 検証
+    assert sizes == [NARROWEST_ICON_BUTTON_SIZE] * 3
+
+
+@pytest.mark.parametrize(("wide_story", "default_story", "width"), FIT_WIDE_UNPACKED_CASES)
+def test_fit_wide_unpacked_when_width(open_story: OpenStory, wide_story: str, default_story: str, width: int) -> None:
+    """詰め方が効かない組み合わせ（差分の札も接続の状態も出していない間の幅 390〜480px、全ての状態の幅 481px 以上）は、件数の札に `data-wide` が付いても、間隔・余白・ボタンの余白が既定の中身の同じ状態と一致する（正常系）。"""
+    # 準備・実行
+    wide = _open_narrow_story_at(open_story, wide_story, width).evaluate(BAR_SHAPE_SCRIPT)
+    default = _open_narrow_story_at(open_story, default_story, width).evaluate(BAR_SHAPE_SCRIPT)
+    # 検証
+    assert wide == default
+
+
+@pytest.mark.parametrize(
+    ("filter_count", "comment_count", "filter_mark", "comments_mark"),
+    [
+        pytest.param(9, 99, None, None, id="filter9-comments99"),
+        pytest.param(10, 99, "", None, id="filter10-comments99"),
+        pytest.param(9, 100, None, "", id="filter9-comments100"),
+        pytest.param(10, 100, "", "", id="filter10-comments100"),
+    ],
+)
+def test_fit_wide_mark_when_count(
+    open_story: OpenStory, filter_count: int, comment_count: int, filter_mark: str | None, comments_mark: str | None
+) -> None:
+    """絞り込みのバッジは 10 以上、コメントの件数は 99 を超えたときだけ、値を持たない `data-wide` を付ける（正常系）。"""
+    # 準備・実行
+    page = open_story(f"{FIT_WIDE}&args=filterCount:{filter_count};commentCount:{comment_count}")
+    # 検証
+    assert page.locator(".filter-btn .fbadge").get_attribute("data-wide") == filter_mark
+    assert page.locator(".comments-btn .count").get_attribute("data-wide") == comments_mark
