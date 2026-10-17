@@ -38,14 +38,25 @@ var MindmapPreview;
         return { ok: true, data: (await response.json()) };
     }
     MindmapPreview.fetchRecords = fetchRecords;
-    /** プレビューを開いたことを知らせ、前回開いた日時を返す。届かない・200 でない・読めないときは null */
+    /** 値が前回開いた時点の形（文字列の `at` と 0 以上の整数の `seq`）か。日時だけの文字列（前の版の形）は偽 */
+    function isOpenedPoint(value) {
+        if (typeof value !== "object" || value === null)
+            return false;
+        const { at, seq } = value;
+        return typeof at === "string" && typeof seq === "number" && Number.isInteger(seq) && seq >= 0;
+    }
+    MindmapPreview.isOpenedPoint = isOpenedPoint;
+    /** プレビューを開いたことを知らせ、前回開いた時点と今の時点を返す。届かない・200 でない・読めないときは null */
     async function postOpened(fetchFn = window.fetch.bind(window)) {
         try {
             const response = await fetchFn(MindmapPreview.API_PATHS.opened, { method: "POST" });
             if (!response.ok)
                 return null;
             const body = (await response.json());
-            return typeof body.previous === "string" ? body.previous : null;
+            // 今の時点が読めない（前の版の形）: 使わない
+            if (!isOpenedPoint(body.opened))
+                return null;
+            return { previous: isOpenedPoint(body.previous) ? body.previous : null, opened: body.opened };
         }
         catch {
             return null;

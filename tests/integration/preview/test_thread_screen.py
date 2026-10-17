@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from playwright.sync_api import Page, Route
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -852,3 +853,19 @@ def test_seen_when_reply_arrives_while_open(
     page.wait_for_selector(f"{POSTS}:has-text('続きの返信です')", timeout=UPDATE_TIMEOUT_MS)
     wait_thread_seen(page, root, "TH-2")
     assert requested == ["TH-2"]
+
+
+def test_fit_smallest(served_thread: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """スレッドの画面は、幅 320px で横にスクロールせず、パネルと閉じるボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url, _ = served_thread
+    page = open_preview(url, "#tab=decisions&view=table")
+    set_smallest(page)
+    # 実行
+    open_thread(page, "TH-1")
+    # 検証
+    assert_fits_smallest(
+        page,
+        (COMMENTS_PANEL, f"{COMMENTS_PANEL} button[aria-label='コメントの一覧を閉じる']"),
+        scope=COMMENTS_PANEL,
+    )

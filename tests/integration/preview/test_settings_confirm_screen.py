@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page, Route
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_settings_helpers import (
     CONFIRM,
@@ -256,3 +257,24 @@ def test_busy(
     held[0].continue_()
     page.wait_for_selector(CONFIRM, state="detached", timeout=SAVE_TIMEOUT_MS)
     assert read_config(root)["display"]["network_look"] == "dust"
+
+
+def test_fit_smallest(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """既定の保存の確かめは、幅 320px で横にスクロールせず、窓と「取り消す」「保存する」が表示幅の中にある（正常系）。"""
+    # 準備
+    page, _ = _open_changed(write_review_preview, make_item, valid_settings, open_preview)
+    set_smallest(page)
+    # 実行
+    page.click(SAVE_DEFAULT_BUTTON)
+    page.wait_for_selector(CONFIRM_OPEN)
+    # 検証
+    assert_fits_smallest(
+        page,
+        (CONFIRM, f"{CONFIRM} button:has-text('取り消す')", f"{CONFIRM} button:has-text('保存する')"),
+        scope=CONFIRM,
+    )

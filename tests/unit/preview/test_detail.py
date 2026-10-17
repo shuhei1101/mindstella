@@ -1445,6 +1445,58 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     ]
 
 
+# 表だけの本文（1 行目から表）の今と、表の直前にあった段落（1〜2 行目）を消した回
+REMOVED_BEFORE_TABLE_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
+REMOVED_BEFORE_TABLE_ENTRY = _body_entry(line=1, now=[], before=["消した段落", ""])
+
+# 消した塊の親と直後の兄弟、表を包む入れ物の子を調べる
+REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const removed = panel.querySelector(".md:not(.md-value) del.df-blk");
+    const next = removed.nextElementSibling;
+    return {
+        parentIsWrap: removed.parentElement.classList.contains("md-table-wrap"),
+        nextIsWrap: next !== null && next.classList.contains("md-table-wrap"),
+        wrapChildren: next === null ? null : [...next.children].map((child) => child.tagName),
+    };
+}"""
+
+
+def test_detail_panel_when_diff_removed_before_table(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", body="D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
+        bodies={"D-1.md": REMOVED_BEFORE_TABLE_NOW},
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
+    # 検証
+    assert result == {"parentIsWrap": False, "nextIsWrap": True, "wrapChildren": ["TABLE"]}
+
+
 # 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
 RAW_BODY_NOW = "# 図\n\n```mermaid\nflowchart TD\n  A[設計を決める] --> B\n```\n"
 RAW_BODY_ENTRY = _body_entry(
@@ -2799,3 +2851,114 @@ def test_detail_panel_when_body_layout_changed(
     )
     # 検証（URL のハッシュは変わらない）
     assert result == {"calls": [["side"]], "hash": "#keep"}
+
+
+# 値の要素（data-key がキーのパス）の中の見出しの段と、強調の数を調べる
+VALUE_HEADING_LEVELS_SCRIPT = (
+    OPEN_PANEL_FUNCTION
+    + """
+async ({data, id, key}) => {
+    const panel = await openPanel(data, id);
+    const value = panel.querySelector(`[data-key="${key}"]`);
+    return {
+        found: value !== null,
+        headings: value === null ? [] : [...value.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
+            text: (heading.textContent ?? "").trim(),
+            tag: heading.tagName.toLowerCase(),
+            mdLevel: heading.getAttribute("data-md-level"),
+        })),
+        strong: value === null ? 0 : value.querySelectorAll("strong").length,
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("item_id", "kinds", "key", "expected"),
+    [
+        pytest.param(
+            "D-1",
+            {"decisions": [{"id": "D-1", "lead": "## 背景\n\n背景の段落\n\n### 経緯\n\n経緯の段落\n"}]},
+            "lead",
+            {
+                "found": True,
+                "headings": [
+                    {"text": "背景", "tag": "h3", "mdLevel": "2"},
+                    {"text": "経緯", "tag": "h4", "mdLevel": "3"},
+                ],
+                "strong": 0,
+            },
+            id="lead_after_title",
+        ),
+        pytest.param(
+            "D-2",
+            {
+                "decisions": [
+                    {
+                        "id": "D-2",
+                        "options": [{"key": "A", "content": "# 案\n\n案の段落\n\n## 中身\n\n中身の段落\n"}],
+                    }
+                ]
+            },
+            "options[A].content",
+            {
+                "found": True,
+                "headings": [
+                    {"text": "案", "tag": "h4", "mdLevel": "1"},
+                    {"text": "中身", "tag": "h5", "mdLevel": "2"},
+                ],
+                "strong": 0,
+            },
+            id="option_content_in_section",
+        ),
+        pytest.param(
+            "T-1",
+            {"tasks": [{"id": "T-1", "reason": "# 手順\n\n手順の段落\n"}]},
+            "reason",
+            {
+                "found": True,
+                "headings": [{"text": "手順", "tag": "h3", "mdLevel": "1"}],
+                "strong": 0,
+            },
+            id="task_reason_after_title",
+        ),
+        pytest.param(
+            "D-3",
+            {"decisions": [{"id": "D-3", "lead": "**強調**"}]},
+            "lead",
+            {"found": True, "headings": [], "strong": 1},
+            id="no_headings",
+        ),
+    ],
+)
+def test_detail_panel_when_value_heading_levels(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    kinds: dict[str, list[dict[str, object]]],
+    key: str,
+    expected: dict[str, object],
+) -> None:
+    """文字列の値の見出しの最も上の段を、置く場所の直上の見出しの次の段にし、段の差を保って並べる（正常系）。"""
+    # 準備
+    data = make_data(
+        **{
+            kind: [
+                make_item(item["id"], **{k: v for k, v in item.items() if k != "id"})
+                for item in items
+            ]
+            for kind, items in kinds.items()
+        }
+    )
+    load_preview_scripts()
+    load_library("marked")
+    load_library("DOMPurify")
+    # 実行
+    result = preview_page.evaluate(
+        VALUE_HEADING_LEVELS_SCRIPT, {"data": data, "id": item_id, "key": key}
+    )
+    # 検証
+    assert result == expected

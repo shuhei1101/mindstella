@@ -118,9 +118,14 @@ namespace MindmapPreview {
     return h({ tag: "span", attrs: { [VALUE_KEY_ATTR]: key }, children });
   }
 
-  /** 文字列の値を Markdown で描く（値が無ければ何も描かない。ライブラリを読めないときは文字のまま） */
-  function markdownValue(value: string | undefined): Child {
-    return value === undefined ? undefined : renderValue(value);
+  /** 文字列の値を Markdown で描き、見出しは最も上の段を top にして並べる（値が無ければ何も描かない。ライブラリを読めないときは文字のまま） */
+  function markdownValue({ value, top }: { value: string | undefined; top: number }): Child {
+    if (value === undefined) return undefined;
+    const rendered = renderValue(value);
+    // 文字のまま返った値には、下げる見出しが無い
+    if (typeof rendered === "string") return rendered;
+    lowerHeadings({ root: rendered, shift: headingShift({ roots: [rendered], top }) });
+    return rendered;
   }
 
   /** Markdown で描く値の入れ物。選んだ箇所のコメント・示す箇所・キーの差分が、キーのパスで値を指せるようにする */
@@ -325,7 +330,7 @@ namespace MindmapPreview {
           const valueOf = (field: "pros" | "cons" | "note" | "reason", value: string | undefined): Child =>
             compare && beforeOf(field) !== value
               ? keyDiff({ was: beforeOf(field) ?? null, now: value ?? null, pairs })
-              : markdownValue(value);
+              : markdownValue({ value, top: SECTION_TOP_HEADING_LEVEL });
           const resultChild: Child =
             compare && optionResult(before) !== result ? keyDiff({ was: optionResult(before), now: result, plain: true }) : result;
           return h({
@@ -342,7 +347,7 @@ namespace MindmapPreview {
                   valueBlock(`options[${option.key}].content`, [
                     compare && before?.content !== option.content
                       ? keyDiff({ was: before?.content ?? null, now: option.content, pairs })
-                      : markdownValue(option.content),
+                      : markdownValue({ value: option.content, top: SECTION_TOP_HEADING_LEVEL }),
                   ]),
                   recommended ? h({ tag: "span", attrs: { class: "rec-badge" }, children: [icon("star"), "推奨"] }) : null,
                   resultChild === null ? null : h({ tag: "span", attrs: { class: "res" }, children: [resultChild] }),
@@ -561,6 +566,7 @@ namespace MindmapPreview {
         block.firstElementChild?.prepend(...signMarks("add"));
       } else if (block.tagName === "LI") {
         block.classList.add("df-li-add");
+        block.prepend(...signMarks("add"));
       } else {
         // 囲みを元の位置に置いてから、ブロックを囲みの中へ移す
         const wrapper = diffBlock({ op: "add", children: [] });
@@ -629,9 +635,10 @@ namespace MindmapPreview {
         root.append(piece);
         continue;
       }
-      // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む
+      // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は包む入れ物ごと外側にする）
       const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
-      (outer.closest("ul, ol, table") ?? outer).before(piece);
+      const container = outer.closest("ul, ol, table") ?? outer;
+      (container.parentElement?.matches(`.${TABLE_WRAP_CLASS}`) === true ? container.parentElement : container).before(piece);
     }
     return placed;
   }
@@ -806,7 +813,7 @@ namespace MindmapPreview {
     const rendered = renderMarkdown(after);
     const removed = placeRemovedBlocks(parts).map((block) => ({ block, rendered: renderRemoved(block) }));
     // 今の本文と消した部分の見出しを合わせた最も上の段から、段の差を 1 つ求める
-    const shift = headingShift([rendered, ...removed.map((piece) => piece.rendered)]);
+    const shift = headingShift({ roots: [rendered, ...removed.map((piece) => piece.rendered)] });
     lowerHeadings({ root: rendered, shift });
     for (const piece of removed) lowerHeadings({ root: piece.rendered, shift });
     markAddedBlocks({ root: rendered, parts, source: after });
@@ -1041,20 +1048,20 @@ namespace MindmapPreview {
     const related = relatedItems({ id, index });
     /** キーの値。変わっていれば前の値と今の値を並べる */
     const textOf = (key: string, value: string | undefined): Child => (keys?.has(key) === true ? keys.showWords(key) : value);
-    const labelled = (label: string, key: string, value: string | undefined): HTMLElement | null => {
+    const labelled = ({ label, key, value, top }: { label: string; key: string; value: string | undefined; top: number }): HTMLElement | null => {
       const changed = keys?.has(key) === true;
       if ((value === undefined || value === "") && !changed) return null;
       return h({
         tag: "div",
         attrs: { class: changed ? "d-answer df-key" : "d-answer" },
-        children: [h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue(value)])],
+        children: [h({ tag: "b", children: [label] }), valueBlock(key, [changed ? textOf(key, value) : markdownValue({ value, top })])],
       });
     };
     /** 資料・調査の説明の節（値があるとき、または値が変わったときだけ）。値が変わっていれば、前の値と今の値を並べる */
     const descriptionSection = (): HTMLElement | null => {
       const changed = keys?.has("description") === true;
       if ((item.description === undefined || item.description === "") && !changed) return null;
-      const described = section("説明", valueBlock("description", [changed ? textOf("description", item.description) : markdownValue(item.description)]));
+      const described = section("説明", valueBlock("description", [changed ? textOf("description", item.description) : markdownValue({ value: item.description, top: SECTION_TOP_HEADING_LEVEL })]));
       // 見た目は結論と同じ、灰色の面に小さな名前を添えた形
       described.classList.add("d-answer");
       return described;
@@ -1066,7 +1073,7 @@ namespace MindmapPreview {
       if ((item.reason === undefined || item.reason === "") && !changed) return null;
       return section(
         "取り下げた理由",
-        valueBlock("reason", [changed ? textOf("reason", item.reason) : markdownValue(item.reason)]),
+        valueBlock("reason", [changed ? textOf("reason", item.reason) : markdownValue({ value: item.reason, top: SECTION_TOP_HEADING_LEVEL })]),
       );
     };
     /** 見出しの下の 1 段落 */
@@ -1075,7 +1082,7 @@ namespace MindmapPreview {
       return h({
         tag: "div",
         attrs: { class: className, [VALUE_KEY_ATTR]: key },
-        children: [keys?.has(key) === true ? textOf(key, value) : markdownValue(value)],
+        children: [keys?.has(key) === true ? textOf(key, value) : markdownValue({ value, top: TITLE_TOP_HEADING_LEVEL })],
       });
     };
     let keysMarked = false;
@@ -1129,7 +1136,7 @@ namespace MindmapPreview {
         }
       }
       const root = rendered ?? renderMarkdown(source);
-      if (rendered === null) lowerHeadings({ root, shift: headingShift([root]) });
+      if (rendered === null) lowerHeadings({ root, shift: headingShift({ roots: [root] }) });
       // 古いまとまりを選び、その後に本文を直した: 描いた本文は今の本文の行と合わないので、行の印を外す（選んだ箇所のコメントも示す箇所も今の行に向けない）
       if (source !== index.data.bodies[item.body ?? ""]) withoutLineMarks(root);
       // 見出しのリンクと、本文の用語・項目の ID の印を付ける
@@ -1245,7 +1252,10 @@ namespace MindmapPreview {
     };
     /** 採用した案と理由の節（決定内容・理由のどちらかがあるときだけ） */
     const adoptedSection = (): HTMLElement | null => {
-      const rows = [labelled("決定内容", "answer", item.answer), labelled("理由", "reason", item.reason)].filter(
+      const rows = [
+        labelled({ label: "決定内容", key: "answer", value: item.answer, top: SECTION_TOP_HEADING_LEVEL }),
+        labelled({ label: "理由", key: "reason", value: item.reason, top: SECTION_TOP_HEADING_LEVEL }),
+      ].filter(
         (row) => row !== null,
       );
       if (rows.length === 0) return null;
@@ -1302,7 +1312,7 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          labelled("理由", "reason", item.reason),
+          labelled({ label: "理由", key: "reason", value: item.reason, top: TITLE_TOP_HEADING_LEVEL }),
           relation("進める検討事項", item.for ?? []),
           relation("前提", related.prerequisites),
           relation("結果", item.result === undefined ? [] : [item.result]),
@@ -1315,7 +1325,7 @@ namespace MindmapPreview {
         children: [
           lead("question", item.question, "d-lead"),
           descriptionSection(),
-          labelled("結論", "conclusion", item.conclusion),
+          labelled({ label: "結論", key: "conclusion", value: item.conclusion, top: TITLE_TOP_HEADING_LEVEL }),
           listSection("エイリアス", "aliases", item.aliases),
           listSection("調査の観点", "angles", item.angles),
           bodySection("本文"),
@@ -1327,7 +1337,7 @@ namespace MindmapPreview {
       append({
         parent: body,
         children: [
-          labelled("意味", "meaning", item.meaning),
+          labelled({ label: "意味", key: "meaning", value: item.meaning, top: TITLE_TOP_HEADING_LEVEL }),
           listSection("別名", "aliases", item.aliases),
           listSection("使わない表記", "avoid", item.avoid),
           bodySection("本文"),
@@ -1483,8 +1493,11 @@ namespace MindmapPreview {
     observer.observe(bodyTitle);
   }
 
-  /** 節の見出し「本文」（h3）の次に置く、本文の見出しのうち最も上の段 */
-  const BODY_TOP_HEADING_LEVEL = 4;
+  /** 節の見出し（h3）の次に置く、本文・値の見出しのうち最も上の段 */
+  const SECTION_TOP_HEADING_LEVEL = 4;
+
+  /** 題（h2）の次に置く、値の見出しのうち最も上の段 */
+  const TITLE_TOP_HEADING_LEVEL = 3;
 
   /** 見出しの要素の最も下の段（h6） */
   const LOWEST_HEADING_LEVEL = 6;
@@ -1494,19 +1507,19 @@ namespace MindmapPreview {
     return Number(heading.tagName.slice(1));
   }
 
-  /** 本文の見出しのうち最も上の段を h4 にするための、全ての見出しに足す段の差。見出しが無ければ 0 */
-  export function headingShift(roots: HTMLElement[]): number {
+  /** 見出しのうち最も上の段を top（省略すると節の見出しの次の段）にするための、全ての見出しに足す段の差。見出しが無ければ 0 */
+  export function headingShift({ roots, top = SECTION_TOP_HEADING_LEVEL }: { roots: HTMLElement[]; top?: number }): number {
     const levels = roots.flatMap((root) => [...root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")].map(headingLevel));
-    return levels.length === 0 ? 0 : BODY_TOP_HEADING_LEVEL - Math.min(...levels);
+    return levels.length === 0 ? 0 : top - Math.min(...levels);
   }
 
-  /** 本文の見出しに段の差を足して、パネルの節の見出しより下の段（h4〜h6）に並べる。見た目は元の段のまま（`data-md-level`） */
+  /** 本文・値の見出しに渡された段の差を足して並べる（`headingShift` が求めた差なら h3〜h6 になる）。見た目は元の段のまま（`data-md-level`） */
   export function lowerHeadings({ root, shift }: { root: HTMLElement; shift: number }): void {
     for (const heading of root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6")) {
       const level = headingLevel(heading);
       const lowered = Math.min(level + shift, LOWEST_HEADING_LEVEL);
       const replacement = h({
-        tag: `h${lowered}` as "h4" | "h5" | "h6",
+        tag: `h${lowered}` as "h3" | "h4" | "h5" | "h6",
         attrs: {
           "data-md-level": level,
           // 元の Markdown の行の印を引き継ぐ

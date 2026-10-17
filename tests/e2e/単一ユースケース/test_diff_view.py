@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
 
@@ -25,12 +26,12 @@ from playwright.sync_api import Page
 from preview_helpers import (
     HISTORY_DIALOG,
     HISTORY_REDRAW_TIMEOUT_MS,
+    OPENED_FILE_NAME,
     OpenInEmptyContext,
     OpenPreview,
     pick_history_point,
     snapshot_records,
     visit_and_close,
-    wait_past_boundary,
 )
 from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace, SnapshotTree
 
@@ -52,10 +53,6 @@ NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後�
 # まとまりの日時の表示（月/日 時:分）
 WHEN_PATTERN = re.compile(r"\d{2}/\d{2} \d{2}:\d{2}")
 
-# そのタブの「前回開いてから」の始まりの日時を残す sessionStorage のキーと、その値を読む
-SINCE_KEY = "mindmap-since"
-SINCE_SCRIPT = "key => sessionStorage.getItem(key)"
-
 # 変更の印と新規の印の class
 MARK_CHANGED = "df-mark df-chg"
 MARK_NEW = "df-mark df-new"
@@ -66,6 +63,97 @@ WITHDRAWN_BADGE = ".wd-badge"
 
 # 消した項目を押した後、詳細パネルが開かないことを確かめるまで待つミリ秒
 PRESS_SETTLE_MS = 400
+
+# 端末の時計が戻ったことにして、前回開いた日時を進める幅
+CLOCK_SHIFT = timedelta(hours=1)
+
+
+def _shift_opened_at(root: Path, delta: timedelta) -> None:
+    """前回開いた時点のファイルの 1 行目（日時）だけを delta 進め、2 行目（通し番号）は変えない。"""
+    path = root / OPENED_FILE_NAME
+    at, *rest = path.read_text(encoding="utf-8").splitlines()
+    assert len(rest) == 1
+    shifted = (datetime.fromisoformat(at) + delta).isoformat()
+    path.write_text("\n".join([shifted, *rest]) + "\n", encoding="utf-8")
+
+
+def _since_count(page: Page) -> str | None:
+    """変更履歴のモーダルの「前回開いてから」の行の件数の表示を返す。"""
+    row = next(row for row in _read_rows(page) if row["sel"] == "since")
+    return row["n"]
+
+
+def test_normal_when_clock_moved_back(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """前回開いた日時より前の日時で作ったまとまりも「前回開いてから」に入り、D-3 の本文の差分を読める（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", status="未決定", body="D-1.md"),
+        make_item("D-3", status="未決定", body="D-3.md"),
+        bodies={"D-1.md": BODY_V0, "D-3.md": BODY_V0},
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    visit_and_close(page, url)
+    # 端末の時計が戻った並びにするため、前回開いた日時だけを 1 時間後にする
+    _shift_opened_at(root, CLOCK_SHIFT)
+    replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
+    replay("commit", workspace=ws, summary="検討事項を直す")
+    open_preview(url, "#tab=decisions&view=table")
+    # 実行・検証（変更履歴の「前回開いてから」の件数が 1）
+    assert _since_count(page) == "1 件"
+    # 実行（「前回開いてから」を選ぶ）
+    pick_history_point(page, "前回開いてから")
+    # 検証（検討事項のタブと D-3 に変更の印が付き、D-1 には付かない）
+    assert _marked_tabs(page) == ["decisions"]
+    assert _row_marks(page) == {"D-1": None, "D-3": MARK_CHANGED}
+    # 実行（D-3 の詳細パネルを開く）
+    _open_decision(page, "D-3")
+    page.wait_for_selector("aside.panel .md ins.df-blk", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（書き換えた本文の足した・消した印が出る）
+    added, removed = _block_texts(page)
+    assert "1 回目に書き換えた本文です。" in added
+    assert "最初の本文です。" in removed
+
+
+def test_normal_when_committed_after_open(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """開く前に書き換え、開いた後に `commit` したまとまりも「前回開いてから」に入る（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", status="未決定", body="D-1.md"),
+        make_item("D-3", status="未決定", body="D-3.md"),
+        bodies={"D-1.md": BODY_V0, "D-3.md": BODY_V0},
+    )
+    ws = str(root)
+    url = _serve(call_tool, root)
+    # 先頭のまとまりを 1 つ作り、その後に D-3 を書き換えて `commit` を呼ばない
+    replay("update", workspace=ws, id="D-1", item={"body_markdown": BODY_V2})
+    replay("commit", workspace=ws, summary="最初の書き込み")
+    replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
+    visit_and_close(page, url)
+    replay("commit", workspace=ws, summary="検討事項を直す")
+    open_preview(url, "#tab=decisions&view=table")
+    # 実行・検証（変更履歴の「前回開いてから」の件数が 1）
+    assert _since_count(page) == "1 件"
+    # 実行（「前回開いてから」を選ぶ）
+    pick_history_point(page, "前回開いてから")
+    # 検証（検討事項のタブと D-3 に変更の印が付き、D-1 には付かない）
+    assert _marked_tabs(page) == ["decisions"]
+    assert _row_marks(page) == {"D-1": None, "D-3": MARK_CHANGED}
+
 
 # 消した項目の帯の項目（ID・消したときのタイトル）を上から読む
 REMOVED_ITEMS_SCRIPT = """items => items.map(
@@ -239,7 +327,7 @@ def test_normal(
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url, root)
+    visit_and_close(page, url)
     replay(
         "update",
         workspace=ws,
@@ -481,8 +569,6 @@ def test_normal_when_rewritten_while_open(
     pick_history_point(page, "前回開いてから")
     assert _row_marks(page) == {"D-1": None, "D-3": None}
     url_before = page.url
-    # タブを開いた日時より後の秒に書き換える
-    wait_past_boundary(page.evaluate(SINCE_SCRIPT, SINCE_KEY))
     # 実行（開いたまま書き換える）
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
     replay("commit", workspace=ws, summary="検討事項を直す")
@@ -520,9 +606,7 @@ def test_normal_when_first_open(
     ws = str(root)
     url = _serve(call_tool, root)
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
-    committed = replay("commit", workspace=ws, summary="検討事項を直す")
-    # 開いた日時より後に書き換えたことにならないよう、まとまりの日時の先の秒に入ってから開く
-    wait_past_boundary(committed["at"])
+    replay("commit", workspace=ws, summary="検討事項を直す")
     open_preview(url, "#tab=decisions&view=table")
     # 実行（「前回開いてから」を選ぶ）
     pick_history_point(page, "前回開いてから")
@@ -558,7 +642,7 @@ def test_normal_when_history_limit_zero(
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url, root)
+    visit_and_close(page, url)
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
     replay("add", workspace=ws, kind="decision", item=NEW_DECISION)
     replay("commit", workspace=ws, summary=COMMIT_SUMMARY)
@@ -671,7 +755,7 @@ def test_normal_when_since_history_dropped(
     )
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url, root)
+    visit_and_close(page, url)
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V1})
     replay("commit", workspace=ws, summary="1 回目")
     replay("update", workspace=ws, id="D-3", item={"body_markdown": BODY_V2})
@@ -791,7 +875,7 @@ def test_normal_when_added_then_removed_since(
     root = make_workspace(make_item("N-1", title="残すメモ"))
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url, root)
+    visit_and_close(page, url)
     replay("add", workspace=ws, kind="note", item={"title": "足すメモ", "content": "メモ"})
     replay("commit", workspace=ws, summary="メモを足す")
     replay("remove", workspace=ws, id="N-2")
@@ -845,7 +929,7 @@ def test_normal_when_html_body_changed(
     root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY_BEFORE})
     ws = str(root)
     url = _serve(call_tool, root)
-    visit_and_close(page, url, root)
+    visit_and_close(page, url)
     replay("update", workspace=ws, id="A-1", item={"body_html": HTML_BODY_AFTER})
     replay("commit", workspace=ws, summary="段落を書き直す")
     before = snapshot_records(snapshot_tree(root))

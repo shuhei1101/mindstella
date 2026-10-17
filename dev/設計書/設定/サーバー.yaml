@@ -10,7 +10,7 @@ settings:
     description: MCP サーバーを動かす仮想環境のフォルダ。起動スクリプトが依存の確認に渡し、MCP の設定の `command` にその Python を書く
     env_var: MINDSTELLA_VENV
     reload: restart
-    status: planned
+    status: implemented
     visibility: user
     refs:
       - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
@@ -24,7 +24,7 @@ settings:
     description: あれば起動スクリプトが tmux のセッションへ `new-session -e` で渡し、`claude plugin list --json` もそのフォルダで引く
     env_var: CLAUDE_CONFIG_DIR
     reload: restart
-    status: planned
+    status: implemented
     visibility: user
     refs:
       - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
@@ -40,7 +40,7 @@ settings:
     reload: restart
     allowed: ホスト名をカンマで区切ったもの（例 `preview.example.com,notes.example.com`）。前後の空白は外し、大文字と小文字を区別しない。スキーム・ポート・`/` を含む要素と空の要素は使わず、MCP サーバーが立つときに標準エラーへ記録する
     reason: 待ち受けは `127.0.0.1` のままで、外から開く画面の認証は外の入口に任せる。端末ごとに決まる値のため、ワークスペースの `config.yaml` には置かない
-    status: planned
+    status: implemented
     visibility: user
     refs:
       - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
@@ -59,7 +59,7 @@ settings:
     reload: restart
     allowed: シェルの書き方で区切ったコマンドと引数（`shlex.split` で分け、シェルを通さずに呼ぶ）
     reason: コマンドを動かす値のため、ワークスペースと一緒に他の端末へ渡る `config.yaml` には置かない
-    status: planned
+    status: implemented
     visibility: user
     refs:
       - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
@@ -78,7 +78,7 @@ settings:
     reload: restart
     allowed: '`MINDSTELLA_PREVIEW_START_HOOK` と同じ'
     reason: '`MINDSTELLA_PREVIEW_START_HOOK` と同じ'
-    status: planned
+    status: implemented
     visibility: user
     refs:
       - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

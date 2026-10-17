@@ -108,9 +108,16 @@ namespace MindmapPreview {
     });
   }
 
+  /** 選んだ時点の Markdown の本文を描き、見出しを節の見出し「本文」（h3）の次の段から並べる */
+  function renderedMarkdown({ source }: { source: string }): HTMLElement {
+    const root = renderMarkdown(source);
+    lowerHeadings({ root, shift: headingShift({ roots: [root] }) });
+    return root;
+  }
+
   /** 描いた結果を左右に並べる。左は選んだ時点の本文（Markdown のときは Markdown として描く）、右は今の本文 */
   function renderedSide({ before, beforeFormat, right }: { before: string; beforeFormat: "md" | "html"; right: HTMLElement }): HTMLElement {
-    const left = beforeFormat === "md" ? renderMarkdown(before) : htmlBodyFrame({ source: before, selectable: false, label: "選んだ時点の本文" });
+    const left = beforeFormat === "md" ? renderedMarkdown({ source: before }) : htmlBodyFrame({ source: before, selectable: false, label: "選んだ時点の本文" });
     return h({
       tag: "div",
       attrs: { class: "sbs sbs-html" },

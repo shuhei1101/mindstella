@@ -282,6 +282,14 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
 .md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
 .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+/* 本文の表を包む要素: 表の中だけで横に送り、本文の区画ごと横に送らせない */
+.md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
+/* 包まれた表: 幅に収まる表は本文の幅いっぱいに広げ、余白は包む要素が持つ */
+.md .md-table-wrap > table { margin: 0; }
+/* 包む要素のフォーカスの枠: 送る区画の内側に描く */
+.md .md-table-wrap:focus-visible { outline-offset: -2px; }
+/* 本文の長い URL とインラインコード: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
+.md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
 .md th, .md td { border: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
 .md th { background: var(--surface-2); }
 .md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1133,7 +1141,7 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 /* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
 .md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
 /* 塊の中の段落・見出し（元の段が # のもの）・箇条書き: 塊の余白に寄せる */
-.md .df-blk > :is(p, ul, ol, table, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
+.md .df-blk > :is(p, ul, ol, .md-table-wrap, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
 /* 足した塊 */
 .md ins.df-blk { background: var(--df-add-bg); }
 /* 消した塊: 取り消し線を引き、文字を控えめにする */
@@ -1146,8 +1154,10 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 .md ins.df-blk > .df-sign { color: var(--df-add); }
 /* 消した塊の記号 */
 .md del.df-blk > .df-sign { color: var(--df-del); }
-/* 箇条書きの足した項目: 足した色の面と下線 */
+/* 箇条書きの足した項目: 足した色の面と + */
 .md li.df-li-add { background: var(--df-add-bg); border-radius: var(--radius); }
+/* 箇条書きの足した項目の記号 */
+.md li.df-li-add > .df-sign { display: inline-block; margin-right: 6px; color: var(--df-add); font-family: var(--font-mono); font-weight: 700; text-decoration: none; }
 /* 消した箇条書きの項目: 消した色の面と取り消し線 */
 .md li.df-li-del { background: var(--df-del-bg); border-radius: var(--radius); color: var(--text-2); text-decoration: line-through; }
 /* 表の足した行 */
@@ -1964,4 +1974,15 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
   .sbs-fallback { display: block; }
   .html-marked > iframe.sbs-fallback { display: block; }
   .body-diff-bar:not(:has(> :not(.sbs-switch))) { display: none; }
+}
+/* 最も狭い幅（389px 以下）: トップバー以外の画面を幅 320px まで収める */
+@media (max-width: 389px) {
+  /* 全体の検索の入力欄: 縮められるようにし、「検索を閉じる」を窓の中に残す */
+  .search-head input { min-width: 0; }
+  /* 図の拡大の「本文へ戻る」の文字: 読み上げにだけ残して印だけのボタンにし、上の帯を 1 行に収める */
+  .v-bar .v-back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 概要のタイルの見出しの帯: 見出しと「すべて表示」をそれぞれ 1 行に保ち、収まらないときは「すべて表示」を次の行へ回す */
+  .t-head { flex-wrap: wrap; row-gap: 4px; }
+  /* 概要のタイルの見出しと「すべて表示」: それぞれ 1 行に保つ */
+  .t-head h2, .t-head .t-link { white-space: nowrap; }
 }

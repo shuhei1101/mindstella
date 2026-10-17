@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_drawer_helpers import ALL_DECISION_STATUSES_HASH
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_history_helpers import preselect_diff
@@ -221,3 +222,15 @@ def test_selection_kept_when_reloaded_and_rewritten(
     assert page.inner_text(".df-chip-t").endswith("決める")
     assert page.evaluate(SAVED_SEL_JS) == "V-2"
     assert page.locator("table.grid tbody tr[data-id='D-3'] .df-mark").count() == 0
+
+
+def test_fit_smallest(write_history_preview: WriteReviewPreview, open_preview: OpenPreview) -> None:
+    """変更履歴のモーダルは、幅 320px で横にスクロールせず、窓と時点の行が表示幅の中にある（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    page = open_preview(url, "#tab=decisions&view=table")
+    set_smallest(page)
+    # 実行
+    _open_dialog(page)
+    # 検証
+    assert_fits_smallest(page, (DIALOG, ROW), scope=DIALOG)

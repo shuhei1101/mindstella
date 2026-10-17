@@ -39,7 +39,7 @@ elements:
     visible_when: 常時（0 件のときは「次に検討する項目はありません。」）
   - name: 次に検討する項目のすべて表示
     kind: link
-    description: 検討事項の表を状態 = 未決定 × 着手可否 = 着手可能で絞って開く（`#tab=decisions&view=table&f.status=未決定&f.ready=着手可能`）
+    description: 検討事項の表を状態 = 未決定 × 着手可否 = 着手可能で絞って開く（`#tab=decisions&view=table&f.status=未決定&f.ready=着手可能`）。タイルの見出しと同じ行に置き、幅 389px 以下で見出しと同じ行に収まらないときは、見出しの下の行へ回す。見出しと「すべて表示（{件数} 件）」は、どちらも途中で折り返さない
     label: すべて表示（{件数} 件）
     visible_when: 次に検討する項目が 1 件以上で、表示する種類に検討事項がある
   - name: ゴールまでの進捗
@@ -124,3 +124,5 @@ elements:
 lead: プレビューを開いたときの既定の画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。
 mock: dev/mock/pages/overview/126/standard/index.html
 test_file: tests/integration/preview/test_overview_screen.py
+notes:
+  幅 320px のモック: 幅 389px 以下で「すべて表示」を見出しの下の行へ回す見本は `dev/mock/pages/overview/289/a-wrap-head/index.html`

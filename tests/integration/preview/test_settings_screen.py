@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page
+from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_body_layout_helpers import SIDE_NAME, SIDE_VIEWPORT, open_side_by_side
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL
 from preview_drawer_helpers import (
@@ -17,7 +18,7 @@ from preview_drawer_helpers import (
     close_drawer,
     open_drawer,
 )
-from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_fixture_types import OpenPreview, WriteReviewPreview, WriteSamplePreview
 from preview_minimap_helpers import MINIMAP_HASH, PANEL_SCOPE, open_minimap
 from preview_history_helpers import preselect_diff
 from preview_settings_helpers import (
@@ -772,3 +773,19 @@ def test_save_default_when_body_diff_layout(
     assert prefs is not None
     assert prefs["bodyLayout"] == "side"
     assert page.locator(f"{PANEL_SCOPE} .sbs").count() == 1
+
+
+def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """表示の設定は、幅 320px で横にスクロールせず、パネルと閉じるボタンが表示幅の中にある（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=graph")
+    set_smallest(page)
+    # 実行
+    open_settings(page)
+    # 検証
+    assert_fits_smallest(
+        page,
+        (SETTINGS_PANEL, f"{SETTINGS_PANEL} button[aria-label='表示の設定を閉じる']"),
+        scope=SETTINGS_PANEL,
+    )
