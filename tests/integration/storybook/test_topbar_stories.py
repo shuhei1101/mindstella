@@ -819,8 +819,17 @@ ICON_BUTTON_SIZES_SCRIPT = """() => ['.search-trigger', '.hist-btn', '.top-btn']
   return [r.width, r.height];
 })"""
 
-# 幅 389px 以下の印だけのボタンの幅と高さ
-NARROWEST_ICON_BUTTON_SIZE = [28, 32]
+# 幅 389px 以下の印だけのボタンの幅と高さ。つながらず差分を出している間だけ幅 26px にする
+NARROWEST_ICON_BUTTON_CASES = [
+    pytest.param(story_id, width, size, id=f"{story_id.removeprefix('preview-topbar--')}-w{width}")
+    for story_id, size in (
+        (FIT_NARROWEST, [28, 32]),
+        (FIT_NARROWEST_DIFF, [28, 32]),
+        (FIT_NARROWEST_OFFLINE, [28, 32]),
+        (FIT_NARROWEST_OFFLINE_DIFF, [26, 32]),
+    )
+    for width in NARROWEST_WIDTHS
+]
 
 
 @pytest.mark.parametrize(("story_id", "width"), NARROWEST_CASES)
@@ -862,15 +871,15 @@ def test_fit_narrowest_packing_when_width(open_story: OpenStory, story_id: str, 
     }
 
 
-@pytest.mark.parametrize(("story_id", "width"), NARROWEST_CASES)
-def test_fit_narrowest_icon_buttons_when_width(open_story: OpenStory, story_id: str, width: int) -> None:
-    """幅 389px 以下では、印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませない（正常系）。"""
+@pytest.mark.parametrize(("story_id", "width", "size"), NARROWEST_ICON_BUTTON_CASES)
+def test_fit_narrowest_icon_buttons_when_width(open_story: OpenStory, story_id: str, width: int, size: list[int]) -> None:
+    """幅 389px 以下では、印だけのボタン（検索・変更履歴・ライト / ダーク）を高さ 32px・幅 28px に揃えて縮ませない。つながらず差分を出している間だけ幅 26px にする（正常系）。"""
     # 準備
     page = _open_narrow_story_at(open_story, story_id, width)
     # 実行
     sizes = page.evaluate(ICON_BUTTON_SIZES_SCRIPT)
     # 検証
-    assert sizes == [NARROWEST_ICON_BUTTON_SIZE] * 3
+    assert sizes == [size] * 3
 
 
 def test_fit_narrowest_offline_diff_max_content(open_story: OpenStory) -> None:
