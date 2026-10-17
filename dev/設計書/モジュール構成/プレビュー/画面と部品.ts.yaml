@@ -128,7 +128,7 @@ components:
         type: boolean
         required: false
         default: 'false'
-        description: コメントのボタンを置くか（配る書き出しでは false。置かないときは検索の入口も今の位置のまま）。置くときはテーマの切り替えの左。件数は `commentCount`（99 を超えたら `99+`、読み上げの名前には実際の件数）、一覧を開いているかは `commentsOpen`、押したときは `onComments`
+        description: コメントのボタンを置くか（配る書き出しでは false。置かないときは検索の入口も今の位置のまま）。置くときはテーマの切り替えの左。件数は `commentCount`（99 を超えたら `99+` にして `.count` に `data-wide` を付ける、読み上げの名前には実際の件数）、一覧を開いているかは `commentsOpen`、押したときは `onComments`
       - name: settingsOpen
         type: boolean
         required: false
@@ -143,7 +143,7 @@ components:
         type: boolean
         required: false
         default: 'false'
-        description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければテーマの切り替えの左）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
+        description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければテーマの切り替えの左）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない、10 以上なら `.fbadge` に `data-wide` を付ける）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
       - name: commentsUnread
         type: boolean
         required: false
