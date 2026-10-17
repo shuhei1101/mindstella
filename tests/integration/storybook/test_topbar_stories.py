@@ -902,9 +902,9 @@ WIDTH_390_SHAPES = [
         id="fit-narrowest-offline",
     ),
     pytest.param(
-        FIT_NARROWEST_OFFLINE_DIFF,
+        OFFLINE_DIFF,
         {"gap": "8px", "buttons": DIFF_BUTTON_PADDING, "nameHidden": True, "brandHidden": True},
-        id="fit-narrowest-offline-diff",
+        id="filter-diff-offline-narrow",
     ),
 ]
 
