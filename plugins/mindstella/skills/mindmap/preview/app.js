@@ -1079,7 +1079,7 @@ var MindmapPreview;
                 }
                 return;
             }
-            const current = document.querySelector("aside.panel form.send, dialog.full form.send");
+            const current = document.querySelector(route.full ? "dialog.full form.send" : "aside.panel form.send");
             if (current === null || route.id !== target)
                 return;
             const next = MindmapPreview.sendForm(formProps(target));
@@ -1759,7 +1759,7 @@ var MindmapPreview;
                 panelBody?.focus({ preventScroll: true });
             window.scrollTo(0, pageScroll);
             if (selection !== null) {
-                const restored = document.querySelector(inList ? ".comments-panel form.send textarea" : "aside.panel form.send textarea, dialog.full form.send textarea");
+                const restored = document.querySelector(inList ? ".comments-panel form.send textarea" : route.full ? "dialog.full form.send textarea" : "aside.panel form.send textarea");
                 restored?.focus();
                 restored?.setSelectionRange(selection.start, selection.end);
             }

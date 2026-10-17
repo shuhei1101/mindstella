@@ -1259,7 +1259,7 @@ namespace MindmapPreview {
         }
         return;
       }
-      const current = document.querySelector<HTMLFormElement>("aside.panel form.send, dialog.full form.send");
+      const current = document.querySelector<HTMLFormElement>(route.full ? "dialog.full form.send" : "aside.panel form.send");
       if (current === null || route.id !== target) return;
       const next = sendForm(formProps(target));
       current.replaceWith(next);
@@ -1945,7 +1945,7 @@ namespace MindmapPreview {
       window.scrollTo(0, pageScroll);
       if (selection !== null) {
         const restored = document.querySelector<HTMLTextAreaElement>(
-          inList ? ".comments-panel form.send textarea" : "aside.panel form.send textarea, dialog.full form.send textarea",
+          inList ? ".comments-panel form.send textarea" : route.full ? "dialog.full form.send textarea" : "aside.panel form.send textarea",
         );
         restored?.focus();
         restored?.setSelectionRange(selection.start, selection.end);
