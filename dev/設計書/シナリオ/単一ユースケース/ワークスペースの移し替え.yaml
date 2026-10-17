@@ -336,7 +336,7 @@ scenarios:
         SV->>WS: .mindstella/mindstella-version.ini を書く
       ```
     expected:
-      - タグの語彙が `保存`・`通知`・`脱線`・`起票` の 4 件を名前の順で持ち、どれも説明を持たない
+      - タグの語彙が `保存`・`脱線`・`起票`・`通知` の 4 件をこの順で持ち、どれも説明を持たない
       - D-1・N-1・TH-1 のタグが、移し替える前と同じである
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
       - 最後の `check` が問題を 0 件で返す
