@@ -529,6 +529,20 @@ def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: Ma
     assert result["id"] == "N-3"
 
 
+def test_stage_add_when_unknown_tag(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
+) -> None:
+    """語彙に無いタグを渡すと当てない（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
+    staged = _make_staged(root, 0)
+    item = {"title": "問い", "status": "未整理", "tags": ["通知機能"]}
+    # 実行・検証
+    with pytest.raises(errors.UnknownTagError) as raised:
+        commands.stage_add(staged, "decision", item, now=_fixed_now)
+    assert raised.value.unknown == [("tags", "通知機能", ["通知"])]
+
+
 def test_stage_update_when_limit_zero(
     make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
 ) -> None:
@@ -573,6 +587,19 @@ def test_stage_update_when_nothing_changed(
     assert result["changed"] == []
     assert new_staged.changes["last_seq"] == 3
     assert new_staged.items["decision"][0]["seq"] == 2
+
+
+def test_stage_update_when_unknown_tag(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """語彙に無いタグを渡すと当てない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": [{"name": "通知"}]})
+    staged = _make_staged(root, 0)
+    # 実行・検証
+    with pytest.raises(errors.UnknownTagError) as raised:
+        commands.stage_update(staged, "D-1", {"tags": ["通知機能"]}, now=_fixed_now)
+    assert raised.value.unknown == [("tags", "通知機能", ["通知"])]
 
 
 def test_stage_update_when_body_format_changed(
@@ -1118,15 +1145,54 @@ def test_run_status(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
 
 
 def test_run_find(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """検索結果を出力の形にする（正常系）。"""
+    """検索結果をページの形にする（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="最初の問い"))
     # 実行
-    payload = commands.run_find(root, SearchFilter())
+    payload = commands.run_find(
+        root, SearchFilter(), limit=20, cursor=None, response_format="concise"
+    )
     # 検証
     assert payload == {
-        "items": [{"id": "D-1", "kind": "decision", "title": "最初の問い", "status": "未決定"}]
+        "items": [
+            {"id": "D-1", "kind": "decision", "title": "最初の問い", "status": "未決定", "tags": []}
+        ],
+        "total": 1,
+        "next_cursor": None,
+        "hint": None,
     }
+
+
+@pytest.mark.parametrize("limit", [0, 101])
+def test_run_find_when_limit_out_of_range(
+    make_workspace: MakeWorkspace, make_item: MakeItem, limit: int
+) -> None:
+    """範囲の外の件数は引数の誤りにする（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行・検証
+    with pytest.raises(ArgumentError) as raised:
+        commands.run_find(
+            root, SearchFilter(), limit=limit, cursor=None, response_format="concise"
+        )
+    assert raised.value.argument == "limit"
+
+
+def test_run_find_when_unknown_tag(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
+) -> None:
+    """語彙に無いタグで探すとエラーにする（異常系）。"""
+    # 準備
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": "データ"}]})
+    # 実行・検証
+    with pytest.raises(errors.UnknownTagError):
+        commands.run_find(
+            root,
+            SearchFilter(tags=("データー",)),
+            limit=20,
+            cursor=None,
+            response_format="concise",
+        )
 
 
 def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1156,14 +1222,21 @@ def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     assert payload == {"attrs": [{"name": "担当", "count": 1, "kinds": ["decision"]}]}
 
 
-def test_run_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """タグを出力の形にする（正常系）。"""
+def test_run_tags(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """語彙のタグを出力の形にする（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", tags=["データ"]))
+    root = make_workspace(
+        make_item("D-1", tags=["データ"]),
+        settings={**valid_settings, "tags": [{"name": "データ"}]},
+    )
     # 実行
     payload = commands.run_tags(root)
     # 検証
-    assert payload == {"tags": [{"name": "データ", "count": 1, "kinds": ["decision"]}]}
+    assert payload == {
+        "tags": [{"name": "データ", "summary": None, "count": 1, "kinds": ["decision"]}]
+    }
 
 
 def test_run_goal(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

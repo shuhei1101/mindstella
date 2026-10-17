@@ -155,3 +155,5 @@ functions:
         condition: '`tags` を持たない設定、`[(tags, [通知])]`'
         mock: なし
         expected: '`lines` に `tags: 通知（候補なし）`'
+test_files:
+  - tests/unit/scripts/test_vocabulary.py
