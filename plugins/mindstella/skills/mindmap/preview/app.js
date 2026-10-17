@@ -1687,8 +1687,8 @@ var MindmapPreview;
             if (!parentSelected && frameSelected !== null)
                 return;
             closePill();
-            const host = document.querySelector("dialog.full[open], aside.panel");
-            // 図の拡大を開いている間・選んだ範囲が無い・詳細パネルの外
+            const host = document.querySelector(route.full ? "dialog.full[open]" : "aside.panel");
+            // 図の拡大を開いている間・選んだ範囲が無い・詳細パネル（全画面を開いている間は全画面）の外
             if (pillBlocked())
                 return;
             if (selection === null || selection.rangeCount === 0 || selection.isCollapsed || host === null)
@@ -1708,7 +1708,7 @@ var MindmapPreview;
         const frameSelect = (selection) => {
             frameSelected = selection;
             closePill();
-            const host = document.querySelector("dialog.full[open], aside.panel");
+            const host = document.querySelector(route.full ? "dialog.full[open]" : "aside.panel");
             if (pillBlocked() || host === null)
                 return;
             openPill({
