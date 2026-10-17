@@ -8,7 +8,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 検討事項 D-3（背景 `lead`・答え `answer`・理由 `reason` はそれぞれ強調とリストを含む Markdown、案 A を採用・案 B を不採用と理由、前提 D-1・後続 D-5、進めるタスク T-2、関連 R-1、本文の Markdown に mermaid の図を 1 つ）。メモ N-1 が D-3 を `related` で指す
-        notes: 背景 `lead` の 1 つ目の段落は、空行を挟まない改行で区切った 2 行
+        notes: 背景 `lead` の 1 つ目の段落は、空行を挟まない改行で区切った 2 行。各行はパネルの幅で折り返さない短い文にする
       - name: 配信
         description: 記録を配っているサーバー。表示の幅は 1920px
     flow: |-
@@ -80,6 +80,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 本文に見出しと mermaid の図を持ち、説明 `description` を改行で区切った 2 行にした資料 A-1
+        notes: 説明の各行はパネルの幅で折り返さない短い文にする
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
