@@ -1,0 +1,62 @@
+# command: pytest tests/unit/preview
+# commit: ce964a1e（テストコードは未 commit の作業ツリー）
+        load_library(present_library)
+        # 実行
+>       result = preview_page.evaluate(
+            """(source) => {
+                const element = MindmapPreview.renderValue(source);
+                return {
+                    isElement: typeof element !== "string",
+                    tagName: element.tagName,
+                    className: element.className,
+                    text: element.textContent,
+                    children: element.children.length,
+                };
+            }""",
+            "**強調**\n2 行目",
+        )
+
+tests/unit/preview/test_libs.py:1077: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9385: in evaluate
+    self._sync(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:472: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:345: in evaluate
+    await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x75088e987f80>
+cb = <function Channel.send.<locals>.<lambda> at 0x75088da340e0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of undefined (reading 'length')
+E               at eval (eval at evaluate (:311:30), <anonymous>:8:44)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_libs.py::test_render_value_when_line_break_in_paragraph[chromium]
+FAILED tests/unit/preview/test_libs.py::test_render_value_when_library_missing[chromium-marked_missing]
+FAILED tests/unit/preview/test_libs.py::test_render_value_when_library_missing[chromium-dompurify_missing]
+3 failed, 625 passed in 645.03s (0:10:45)
