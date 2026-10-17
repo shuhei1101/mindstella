@@ -34,6 +34,7 @@
           },
           "tags": {
             "type": "array",
+            "description": "タグ。設定の `tags` の語彙にあるタグだけ",
             "items": {
               "type": "string",
               "minLength": 1

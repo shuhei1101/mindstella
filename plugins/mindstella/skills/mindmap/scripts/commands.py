@@ -46,7 +46,15 @@ from history import (
 from kinds import EDITOR, KINDS, RECORD_DIR, Kind, records_root
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
-from query import SearchFilter, list_attrs, list_tags, search_items, show_item
+from query import (
+    MAX_LIMIT,
+    SearchFilter,
+    list_attrs,
+    list_tags,
+    page_results,
+    search_items,
+    show_item,
+)
 from readme import README_FILE, write_readme
 from serve import PreviewRegistry
 from settings_update import update_settings
@@ -84,6 +92,7 @@ from threads import (
     view_thread,
 )
 from versions import Version, parse_release_version, read_plugin_version
+from vocabulary import require_known_tags
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +320,9 @@ def stage_add(
 ) -> tuple[Staged, dict[str, Any]]:
     """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
     validate_input_keys(kind, item, index=len(staged.items[kind]))
+    # タグを渡したときは語彙にあるものだけ
+    if "tags" in item:
+        require_known_tags([("tags", item["tags"])], staged.workspace.settings)
     # 消した項目の ID は振り直さない
     item_id = next_id(
         replace(staged.workspace, items=staged.items),
@@ -361,6 +373,9 @@ def stage_update(
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
     validate_input_keys(ref.kind, item, index=ref.index)
+    # タグを渡したときは語彙にあるものだけ（項目がもともと持つ語彙に無いタグは点検が返す）
+    if "tags" in item:
+        require_known_tags([("tags", item["tags"])], staged.workspace.settings)
     changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
@@ -476,10 +491,16 @@ def run_update_settings(
     phase_map: dict[str, str] | None,
     target_map: dict[str, str] | None,
     category_map: dict[str, str] | None,
+    tag_map: dict[str, str | None] | None,
 ) -> dict[str, Any]:
-    """設定のキーを置き換え、フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする。"""
+    """設定のキーを置き換え、フェーズ・対象・カテゴリー・タグを変えるときは項目の付け替えもする。"""
     return update_settings(
-        root, settings, phase_map, target_map=target_map, category_map=category_map
+        root,
+        settings,
+        phase_map,
+        target_map=target_map,
+        category_map=category_map,
+        tag_map=tag_map,
     )
 
 
@@ -687,9 +708,25 @@ def run_goal(root: Path) -> dict[str, Any]:
     return asdict(judge_goal(load_workspace(root)))
 
 
-def run_find(root: Path, search_filter: SearchFilter) -> dict[str, Any]:
-    """引数から作った条件で探し、検索結果を出力の形にする。"""
-    return {"items": search_items(load_workspace(root), search_filter)}
+def run_find(
+    root: Path,
+    search_filter: SearchFilter,
+    *,
+    limit: int,
+    cursor: str | None,
+    response_format: Literal["concise", "detailed"],
+) -> dict[str, Any]:
+    """引数を確かめ、条件で探した結果をページに分けて出力の形にする。"""
+    # 件数が範囲の外
+    if not 1 <= limit <= MAX_LIMIT:
+        raise ArgumentError("limit", f"1〜{MAX_LIMIT} の整数で渡してください")
+    workspace = load_workspace(root)
+    # タグは語彙にあるものだけ
+    require_known_tags(
+        [("tags", search_filter.tags), ("any_tags", search_filter.any_tags)], workspace.settings
+    )
+    results = search_items(workspace, search_filter, detailed=response_format == "detailed")
+    return page_results(results, search_filter, limit=limit, cursor=cursor)
 
 
 def run_show(root: Path, item_id: str) -> dict[str, Any]:
@@ -703,7 +740,7 @@ def run_attrs(root: Path) -> dict[str, Any]:
 
 
 def run_tags(root: Path) -> dict[str, Any]:
-    """タグの一覧を出力の形にする。"""
+    """タグの語彙と件数を出力の形にする。"""
     return {"tags": list_tags(load_workspace(root))}
 
 
