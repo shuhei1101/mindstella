@@ -235,7 +235,7 @@ elements:
     io: 表示
     visible_when: 項目がその値を持つ
     source: プレビューを開く.mindmap-data
-    status: planned
+    status: implemented
   - name: 取り下げの札
     kind: label
     component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
