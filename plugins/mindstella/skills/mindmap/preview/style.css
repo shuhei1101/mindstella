@@ -272,6 +272,8 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md-value > :last-child { margin-bottom: 0; }
 .md-value :is(p, ul, ol) { margin: 6px 0; }
 .md-value :is(ul, ol) { padding-left: 1.4em; }
+/* ライブラリが読めないときの値: 書かれた改行を改行として出す */
+.md-value-raw { white-space: pre-wrap; }
 .d-lead .md-value { color: var(--text-2); }
 /* 本文の見出し: 段を下げて差し込んでも、元の段の大きさと余白で見せる */
 .md [data-md-level] { font-weight: 700; }
