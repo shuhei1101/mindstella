@@ -1,0 +1,175 @@
+# command: pytest tests/integration/preview/test_detail_panel_screen.py
+# commit: 7084f344
+# 4 failed は develop（7f2c849d）でも同じ 4 件が fail する（語彙に無いタグ）
+........................................................................ [ 38%]
+.........................FFF............................................ [ 77%]
+........................F..................                              [100%]
+=================================== FAILURES ===================================
+__________________ test_diff_keys_when_inline_words[chromium] __________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x71cc0c9c8180>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+open_preview = <function open_preview.<locals>._open at 0x71cc0cb3b240>
+page = <Page url='about:blank'>
+
+    def test_diff_keys_when_inline_words(
+        make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """背景と案の内容の前の値・今の値は、変わった語だけに濃い面を付ける。値の面・取り消し線・下線・矢印と、読み上げの名前は残る（正常系）。"""
+        # 準備・実行
+>       url = serve_key_word_diff_workspace(make_workspace, call_tool)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/preview/test_detail_panel_screen.py:2529: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/preview/preview_word_diff_helpers.py:189: in serve_key_word_diff_workspace
+    root = build_key_word_diff_workspace(make_workspace, call_tool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/preview/preview_word_diff_helpers.py:168: in build_key_word_diff_workspace
+    _call(call_tool, "add", workspace=workspace, kind="decision", item=decision)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+name = 'add'
+arguments = {'workspace': '/tmp/pytest-of-shuhei2441/pytest-2426/test_diff_keys_when_inline_wor0/workspace', 'kind': 'decision', '...tle': '会議の進め方を決める問い', 'status': '未決定', 'lead': '要件は来週までに決める。', 'options': [{'key': 'A', 'content': '毎週の会議で決める'}], ...}}
+
+    def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
+        """ツールを呼び、エラーならテストを止めて結果を返す。"""
+        result = call_tool(name, **arguments)
+>       assert result.is_error is False, result.text
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: エラー: 語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）
+E       tags: 要件（候補なし）
+E       tags: 会議（候補なし）
+
+tests/integration/preview/preview_word_diff_helpers.py:111: AssertionError
+______________ test_diff_keys_when_inline_words_skipped[chromium] ______________
+
+make_workspace = <function make_workspace.<locals>._make at 0x71cc0cb38a40>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+open_preview = <function open_preview.<locals>._open at 0x71cc0c985b20>
+page = <Page url='about:blank'>
+
+    def test_diff_keys_when_inline_words_skipped(
+        make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
+        # 準備・実行
+>       url = serve_key_word_diff_workspace(make_workspace, call_tool)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/preview/test_detail_panel_screen.py:2561: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/preview/preview_word_diff_helpers.py:189: in serve_key_word_diff_workspace
+    root = build_key_word_diff_workspace(make_workspace, call_tool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/preview/preview_word_diff_helpers.py:168: in build_key_word_diff_workspace
+    _call(call_tool, "add", workspace=workspace, kind="decision", item=decision)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+name = 'add'
+arguments = {'workspace': '/tmp/pytest-of-shuhei2441/pytest-2426/test_diff_keys_when_inline_wor1/workspace', 'kind': 'decision', '...tle': '会議の進め方を決める問い', 'status': '未決定', 'lead': '要件は来週までに決める。', 'options': [{'key': 'A', 'content': '毎週の会議で決める'}], ...}}
+
+    def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
+        """ツールを呼び、エラーならテストを止めて結果を返す。"""
+        result = call_tool(name, **arguments)
+>       assert result.is_error is False, result.text
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: エラー: 語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）
+E       tags: 要件（候補なし）
+E       tags: 会議（候補なし）
+
+tests/integration/preview/preview_word_diff_helpers.py:111: AssertionError
+____________ test_diff_keys_when_inline_words_color[chromium-light] ____________
+
+make_workspace = <function make_workspace.<locals>._make at 0x71cc0cb4e8e0>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+open_preview = <function open_preview.<locals>._open at 0x71cc0c9874c0>
+page = <Page url='about:blank'>, scheme = 'light'
+
+    @pytest.mark.parametrize("scheme", ["light", "dark"])
+    def test_diff_keys_when_inline_words_color(
+        make_workspace: MakeWorkspace,
+        call_tool: CallTool,
+        open_preview: OpenPreview,
+        page: Page,
+        scheme: str,
+    ) -> None:
+        """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
+        # 準備
+>       url = serve_key_word_diff_workspace(make_workspace, call_tool)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/preview/test_detail_panel_screen.py:2593: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/preview/preview_word_diff_helpers.py:189: in serve_key_word_diff_workspace
+    root = build_key_word_diff_workspace(make_workspace, call_tool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/preview/preview_word_diff_helpers.py:168: in build_key_word_diff_workspace
+    _call(call_tool, "add", workspace=workspace, kind="decision", item=decision)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+name = 'add'
+arguments = {'workspace': '/tmp/pytest-of-shuhei2441/pytest-2426/test_diff_keys_when_inline_wor2/workspace', 'kind': 'decision', '...tle': '会議の進め方を決める問い', 'status': '未決定', 'lead': '要件は来週までに決める。', 'options': [{'key': 'A', 'content': '毎週の会議で決める'}], ...}}
+
+    def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
+        """ツールを呼び、エラーならテストを止めて結果を返す。"""
+        result = call_tool(name, **arguments)
+>       assert result.is_error is False, result.text
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: エラー: 語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）
+E       tags: 要件（候補なし）
+E       tags: 会議（候補なし）
+
+tests/integration/preview/preview_word_diff_helpers.py:111: AssertionError
+____________ test_diff_keys_when_inline_words_color[chromium-dark] _____________
+
+make_workspace = <function make_workspace.<locals>._make at 0x71cc07f01da0>
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+open_preview = <function open_preview.<locals>._open at 0x71cc0cb4c2c0>
+page = <Page url='about:blank'>, scheme = 'dark'
+
+    @pytest.mark.parametrize("scheme", ["light", "dark"])
+    def test_diff_keys_when_inline_words_color(
+        make_workspace: MakeWorkspace,
+        call_tool: CallTool,
+        open_preview: OpenPreview,
+        page: Page,
+        scheme: str,
+    ) -> None:
+        """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
+        # 準備
+>       url = serve_key_word_diff_workspace(make_workspace, call_tool)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/preview/test_detail_panel_screen.py:2593: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/preview/preview_word_diff_helpers.py:189: in serve_key_word_diff_workspace
+    root = build_key_word_diff_workspace(make_workspace, call_tool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/preview/preview_word_diff_helpers.py:168: in build_key_word_diff_workspace
+    _call(call_tool, "add", workspace=workspace, kind="decision", item=decision)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x71cc0d73fd70>>
+name = 'add'
+arguments = {'workspace': '/tmp/pytest-of-shuhei2441/pytest-2426/test_diff_keys_when_inline_wor3/workspace', 'kind': 'decision', '...tle': '会議の進め方を決める問い', 'status': '未決定', 'lead': '要件は来週までに決める。', 'options': [{'key': 'A', 'content': '毎週の会議で決める'}], ...}}
+
+    def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
+        """ツールを呼び、エラーならテストを止めて結果を返す。"""
+        result = call_tool(name, **arguments)
+>       assert result.is_error is False, result.text
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: エラー: 語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）
+E       tags: 要件（候補なし）
+E       tags: 会議（候補なし）
+
+tests/integration/preview/preview_word_diff_helpers.py:111: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_keys_when_inline_words[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_keys_when_inline_words_skipped[chromium]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_keys_when_inline_words_color[chromium-light]
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_keys_when_inline_words_color[chromium-dark]
+4 failed, 183 passed in 291.94s (0:04:51)
