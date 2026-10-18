@@ -231,7 +231,7 @@ elements:
   - name: 文字列の値の描画
     kind: label
     position: 背景・案・採用した案と理由と、ほかの種類の値
-    description: 詳細に出す文字列の値（検討事項の `lead`・`answer`・`reason`・案の各値、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`、調査・資料の `description`、調査・資料・用語集・メモ・会話ログの取り下げた理由 `reason`）を、本文と同じく marked で描き DOMPurify で無害化して差し込む。値の要素はキーのパスを持ち、選んだ箇所のコメント・示す箇所・キーの差分が指せる。marked か DOMPurify を読めないときは文字のまま出す。差分の表示の間で変わった値は、キーの差分で前の値と今の値を文字で並べる
+    description: 詳細に出す文字列の値（検討事項の `lead`・`answer`・`reason`・案の各値、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`、調査・資料の `description`、調査・資料・用語集・メモ・会話ログの取り下げた理由 `reason`）を、本文と同じく marked で描き DOMPurify で無害化して差し込む。本文と違い、段落の中の 1 つの改行も改行として出す。値の要素はキーのパスを持ち、選んだ箇所のコメント・示す箇所・キーの差分が指せる。marked か DOMPurify を読めないときは文字のまま、改行を改行として出す。差分の表示の間で変わった値は、キーの差分で前の値と今の値を文字で並べる
     io: 表示
     visible_when: 項目がその値を持つ
     source: プレビューを開く.mindmap-data

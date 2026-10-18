@@ -254,6 +254,16 @@ def test_content(write_sample_preview: WriteSamplePreview, open_preview: OpenPre
 # Markdown で書いた値（太字・コード・箇条書きを持つ）
 MARKDOWN_VALUE = "**太字**と`コード`\n\n- 箇条書き"
 
+# 空行を挟まない改行を持つ値（1 行ずつがパネルの幅で折り返さない短い文）
+LINE_BREAK_VALUE = "一行目の文\n二行目の文"
+
+# 要素の中の文字が出る行の数（文字の外接矩形を、上端が同じものでまとめて数える）
+TEXT_LINE_COUNT_JS = """el => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
+}"""
+
 
 def _section_titles(page: Page) -> list[str]:
     """パネルの節の見出しを上から並べて返す。"""
@@ -435,6 +445,39 @@ def test_value_markdown(
     assert page.locator("aside.panel .md-value [data-line-start]").count() == 0
 
 
+def test_value_markdown_when_line_break_in_paragraph(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """文字列の値の段落の中の 1 つの改行を、改行として 2 行に出す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", status="未決定", lead=LINE_BREAK_VALUE))
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .d-lead .md-value")
+    # 検証
+    assert page.locator("aside.panel .d-lead .md-value p").count() == 1
+    assert page.locator("aside.panel .d-lead .md-value p br").count() == 1
+    assert page.eval_on_selector("aside.panel .d-lead .md-value p", TEXT_LINE_COUNT_JS) == 2
+
+
+def test_body_markdown_when_line_break_in_paragraph(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文の段落の中の 1 つの改行は、改行にせず 1 つの段落に結合したままにする（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", status="未決定", body="D-1.md"),
+        bodies={"D-1.md": f"{LINE_BREAK_VALUE}\n"},
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value) p")
+    # 検証
+    assert page.locator("aside.panel .md:not(.md-value) p").count() == 1
+    assert page.locator("aside.panel .md:not(.md-value) p br").count() == 0
+    assert page.eval_on_selector("aside.panel .md:not(.md-value) p", TEXT_LINE_COUNT_JS) == 1
+
+
 @pytest.mark.parametrize(
     ("item_id", "tab", "values"),
     [
@@ -484,6 +527,23 @@ def test_value_markdown_when_library_unavailable(
     # 検証
     assert page.inner_text("aside.panel .d-lead") == "**太字**"
     assert page.locator("aside.panel .d-lead strong").count() == 0
+
+
+def test_value_markdown_when_library_unavailable_with_line_break(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """marked か DOMPurify を読めないときも、値の改行を改行として 2 行に出す（異常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", status="未決定", lead=LINE_BREAK_VALUE, options=[{"key": "A", "content": "案 A"}]))
+    page.route("https://cdn.jsdelivr.net/**", lambda route: route.abort())
+    # 実行
+    open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel .d-lead .md-value-raw")
+    # 検証
+    raw = page.locator("aside.panel .d-lead .md-value-raw")
+    assert raw.evaluate("el => getComputedStyle(el).whiteSpace") == "pre-wrap"
+    assert raw.evaluate(TEXT_LINE_COUNT_JS) == 2
+    assert raw.inner_text() == LINE_BREAK_VALUE
 
 
 @pytest.mark.parametrize(

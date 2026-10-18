@@ -13,6 +13,26 @@ catalogs:
       - name: marked.parse
         kind: 関数
         purpose: 本文の Markdown を HTML の文字列にする（結果は DOMPurify で無害化してから差し込む）
+        params:
+          - name: src
+            type: string
+            required: true
+            description: 描く Markdown
+          - name: options.async
+            type: boolean
+            required: false
+            default: 'false'
+            description: '`false` で結果を文字列で返す。プレビューは常に `false` を渡す'
+          - name: options.gfm
+            type: boolean
+            required: false
+            default: 'true'
+            description: '`true` で GitHub Flavored Markdown（表など）として描く。プレビューは渡さず既定のまま'
+          - name: options.breaks
+            type: boolean
+            required: false
+            default: 'false'
+            description: '`true` で段落の中の 1 つの改行を `br` にする。`gfm` が `true` のときだけ効く。詳細の文字列の値の描画（`renderValue`）だけが `true` を渡し、本文（`renderMarkdown`）は渡さない'
 lead: Markdown を HTML に描く JavaScript のライブラリ。
 purl: pkg:npm/marked
 dependency_scope: 必須

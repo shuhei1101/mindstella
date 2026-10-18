@@ -44,6 +44,19 @@ BACKDROP_POINT = (4, 4)
 # Markdown で書いた値（強調とリストを持つ）
 MARKDOWN_VALUE = "**強調**した文\n\n- 箇条書き"
 
+# 1 つ目の段落を空行を挟まない改行で区切った 2 行にした Markdown の背景（各行はパネルの幅で折り返さない短い文）
+LEAD_WITH_LINE_BREAK = "一行目の**強調**\n二行目の文\n\n- 箇条書き"
+
+# 改行で区切った 2 行の説明（各行はパネルの幅で折り返さない短い文）
+DESCRIPTION_WITH_LINE_BREAK = "説明の一行目\n説明の二行目"
+
+# 要素の中の文字が出る行の数（文字の外接矩形を、上端が同じものでまとめて数える）
+TEXT_LINE_COUNT_JS = """el => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
+}"""
+
 # 本文のスクリプトが実行されたときに残す印
 SCRIPT_BODY = """<script>window.__bodyScriptRan = true</script>
 
@@ -69,7 +82,7 @@ def _decision_records(make_item: MakeItem) -> list[dict[str, Any]]:
         make_item(
             "D-3",
             status="要見直し",
-            lead=MARKDOWN_VALUE,
+            lead=LEAD_WITH_LINE_BREAK,
             answer=MARKDOWN_VALUE,
             reason=MARKDOWN_VALUE,
             depends_on=["D-1"],
@@ -139,6 +152,9 @@ def test_normal(
         "els => els.map(e => [e.querySelectorAll('strong').length, e.querySelectorAll('li').length])",
     )
     assert drawn.count([1, 1]) == 4
+    # 検証（改行）: 背景の 1 つ目の段落が、改行の位置で改行されて 2 行に出る
+    assert page.locator("aside.panel .d-lead .md-value p").first.locator("br").count() == 1
+    assert page.eval_on_selector("aside.panel .d-lead .md-value p", TEXT_LINE_COUNT_JS) == 2
     # 検証（関係）
     related = _related(page)
     assert related["前提"] == ["D-1"]
@@ -284,7 +300,9 @@ def test_error_when_render_library_unavailable(
     """本文の描画のライブラリ（marked・mermaid）が読めないと、名前を出し、本文を文字のまま読める（異常系）。"""
     # 準備
     url = serve_preview(
-        make_item("A-1"), settings=valid_settings, bodies={"A-1.md": BODY_WITH_DIAGRAM}
+        make_item("A-1", description=DESCRIPTION_WITH_LINE_BREAK),
+        settings=valid_settings,
+        bodies={"A-1.md": BODY_WITH_DIAGRAM},
     )
     page.route(re.compile(r"/npm/(marked|mermaid)@"), lambda route: route.abort())
     # 実行
@@ -297,6 +315,10 @@ def test_error_when_render_library_unavailable(
     raw = page.inner_text("aside.panel .md .md-raw")
     assert "# 要件" in raw
     assert "flowchart LR" in raw
+    # 説明が、描画されないままの文字で、改行の位置で改行されて 2 行に出る
+    description = page.locator("aside.panel .md-value-raw")
+    assert description.inner_text() == DESCRIPTION_WITH_LINE_BREAK
+    assert description.evaluate(TEXT_LINE_COUNT_JS) == 2
 
 
 # 本文の見出し「決め方」を、詳細パネルを開いたときに画面に入らない位置に置く段落の数
