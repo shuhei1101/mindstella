@@ -1,0 +1,7 @@
+# command: ruff check plugins tests; npm run typecheck
+# commit: 84b02b75
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+

@@ -259,12 +259,14 @@ namespace MindmapPreview {
     return element?.closest(`[${VALUE_KEY_ATTR}]`) ?? null;
   }
 
-  /** 項目の文字列の値の Markdown を無害化した要素にする。marked か DOMPurify が読めないときは文字のまま返す（知らせは本文の描画が出す） */
-  export function renderValue(source: string): HTMLElement | string {
-    if (missingLibraries(["marked", "DOMPurify"]).length > 0) return source;
+  /** 項目の文字列の値の Markdown を、段落の中の改行も改行にして無害化した要素にする。marked か DOMPurify が読めないときは、改行を残した文字のままの要素にする（知らせは本文の描画が出す） */
+  export function renderValue(source: string): HTMLElement {
+    if (missingLibraries(["marked", "DOMPurify"]).length > 0) {
+      return h({ tag: "span", attrs: { class: "md-value-raw" }, children: [source] });
+    }
     const root = h({ tag: "div", attrs: { class: "md md-value" } });
     // 描いた HTML は無害化してから差し込む（記録は利用者のもの）。行の印は付けず、mermaid のコードブロックも図にしない
-    root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false }));
+    root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false, breaks: true }));
     return root;
   }
 

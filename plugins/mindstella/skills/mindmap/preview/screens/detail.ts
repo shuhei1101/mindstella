@@ -118,12 +118,12 @@ namespace MindmapPreview {
     return h({ tag: "span", attrs: { [VALUE_KEY_ATTR]: key }, children });
   }
 
-  /** 文字列の値を Markdown で描き、見出しは最も上の段を top にして並べる（値が無ければ何も描かない。ライブラリを読めないときは文字のまま） */
+  /** 文字列の値を Markdown で描き、見出しは最も上の段を top にして並べる（値が無ければ何も描かない。ライブラリを読めないときは改行を残した文字のまま） */
   function markdownValue({ value, top }: { value: string | undefined; top: number }): Child {
     if (value === undefined) return undefined;
     const rendered = renderValue(value);
-    // 文字のまま返った値には、下げる見出しが無い
-    if (typeof rendered === "string") return rendered;
+    // 文字のままの要素には、下げる見出しが無い
+    if (rendered.classList.contains("md-value-raw")) return rendered;
     lowerHeadings({ root: rendered, shift: headingShift({ roots: [rendered], top }) });
     return rendered;
   }
