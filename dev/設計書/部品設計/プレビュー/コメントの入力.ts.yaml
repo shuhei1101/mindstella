@@ -141,7 +141,7 @@ args:
     type: 文字列
     required: false
     default: '""'
-    description: 入力欄の中身。2 行から始まり、中身に合わせて 8 行まで伸び、それより長いと入力欄の中を送る
+    description: 入力欄の中身。1 行から始まり、中身に合わせて 8 行まで伸び、それより長いと入力欄の中を送る
   - name: status
     type: 列挙
     required: false
