@@ -863,7 +863,7 @@ components:
         summary: 添えた箇所と項目を指さない形
         condition: '`parametrize`: `target: A-005`・`loc` が本文の 3 行目 / `target: null` / `target: null`・`collapsed: true`'
         mock: '`on.unquote`'
-        expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」/ 「レビューに追加」が無く入力欄が 1 行
+        expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回、入力欄が 1 行 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」で入力欄が 1 行 / 「レビューに追加」が無く入力欄が 1 行
       - name: test_send_form_when_ctrl_enter
         case: 正常
         summary: Ctrl+Enter で溜め、溜めている間は溜めない
@@ -1417,7 +1417,7 @@ components:
         type: string
         required: false
         default: "''"
-        description: 入力欄の中身（`maxlength` 10000。2 行から 8 行まで伸びる）
+        description: 入力欄の中身（`maxlength` 10000。1 行から 8 行まで伸びる）
       - name: status
         type: "'idle' | 'saving' | 'saved' | 'failed'"
         required: false
@@ -1443,7 +1443,7 @@ components:
         summary: 状態ごとの入力欄と結果
         condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、結果の要素が `role="status"` で入力欄の `aria-describedby` が指す
+        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指す
       - name: test_reply_form_when_keys
         case: 正常
         summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない

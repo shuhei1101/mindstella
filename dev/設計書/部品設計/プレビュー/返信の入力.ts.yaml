@@ -79,7 +79,7 @@ args:
   - name: body
     type: 文字列
     default: '""'
-    description: 入力欄の中身。2 行から始まり、中身に合わせて 8 行まで伸びる。10000 文字まで
+    description: 入力欄の中身。1 行から始まり、中身に合わせて 8 行まで伸びる。10000 文字まで
     status: implemented
   - name: status
     type: 列挙

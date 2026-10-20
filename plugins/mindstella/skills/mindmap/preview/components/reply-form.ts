@@ -62,7 +62,7 @@ namespace MindmapPreview {
       attrs: {
         id: fieldId,
         name: "body",
-        rows: 2,
+        rows: 1,
         maxlength: COMMENT_BODY_MAX_LENGTH,
         "aria-keyshortcuts": "Control+Enter",
         "aria-describedby": messageId,
