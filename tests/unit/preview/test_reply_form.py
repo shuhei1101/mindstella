@@ -24,6 +24,7 @@ OBSERVE_SCRIPT = """(props) => {
             (label) => label.textContent.trim() === "返信" && label.offsetParent !== null
         ),
         describedByStatus: status !== null && textarea.getAttribute("aria-describedby") === status.id,
+        rows: textarea.rows,
         statusText: status === null ? "" : status.textContent,
     };
 }"""
@@ -87,6 +88,7 @@ def test_reply_form(
     observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
     # 検証
     assert expected.items() <= observed.items()
+    assert observed["rows"] == 1
     assert expected_text in observed["statusText"]
 
 
