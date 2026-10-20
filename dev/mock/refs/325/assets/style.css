@@ -97,6 +97,8 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 /* 最も狭い幅: ほかのトップバーのボタンと同じく左右の余白と間隔を 2px に詰める */
 @media (max-width: 389px) {
   .topbar :is(.pending-btn, .pending-save-btn, .ws-btn) { gap: 2px; padding: 0 2px; }
+  /* 印だけのボタン（保存する・設定）: 押せる的を 28px に保つ */
+  .topbar :is(.pending-save-btn, .ws-btn) { min-width: 28px; justify-content: center; }
 }
 
 /* ===== 一覧の「項目を足す」 ===== */
