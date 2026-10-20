@@ -10,7 +10,7 @@
 //   save: トップバーの保存の入口（a: 件数だけ / b: 件数と保存のボタン）
 //   del: 消す編集を含む保存（a: ボタンに消す件数を出す / b: 消す行を先頭に分ける）
 //   edit=1: 開いた項目を編集の表示で始める / pe=1: 保存待ちのパネルを開いて始める（0 で閉じて始める） / ws=1: 設定の画面で始める /
-//   add: その種類の項目を足す入力で始める / sp=1: 表示の設定のパネルを開いて始める / diff: 差分の表示中（mock.js が時点を選ぶ）
+//   add: その種類の項目を足す入力で始める / sp=1: 表示の設定のパネルを開いて始める / diff: 差分の表示中（mock.js が時点を選ぶ） / mark: 撮影用に赤枠を付ける要素
 // 見本と論点の案は、クエリに無いときは body の data-* を画面の既定にする
 (() => {
   const body = document.body;
@@ -1437,6 +1437,13 @@
       callback(found);
     }, 50);
   };
+  // 撮影用: mark に渡した CSS セレクタの要素に赤枠を付ける（詳細の全画面のような最前面の面の中でも見える枠）
+  const markSelector = params.get("mark");
+  if (markSelector !== null) {
+    new MutationObserver(() => {
+      for (const target of document.querySelectorAll(markSelector)) target.classList.add("mock-mark");
+    }).observe(body, { childList: true, subtree: true });
+  }
   if (given("sp") === "1") waitFor(".settings-btn", (button) => button.click());
   if (given("add") !== null && !diffing) waitFor(".pe-add", () => startAdd(given("add")));
   if (ui.editing === "route" && place === "b") waitFor("#main .screen", () => {

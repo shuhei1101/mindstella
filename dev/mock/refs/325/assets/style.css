@@ -20,6 +20,8 @@
 body:has(> .mockbar) { --mock-h: 32px; }
 /* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
 body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 撮影用の赤枠（クエリの mark で付ける） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
 /* 詳細の全画面: 操作列の下に収める */
 body:has(> .mockbar) dialog.full { margin-top: calc(var(--mock-h) + 16px); height: calc(100dvh - 48px - var(--mock-h)); }
 /* 狭い幅の重ねる面: 操作列の分だけ下げる */
