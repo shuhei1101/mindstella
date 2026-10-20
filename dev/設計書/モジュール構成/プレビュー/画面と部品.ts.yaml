@@ -701,6 +701,12 @@ components:
         condition: '`parametrize`: `lead` が `## 背景`・`### 経緯` を持つ D-1 を開く / 案 A の `content` が `# 案`・`## 中身` を持つ D-2 を開く / `reason` が `# 手順` を持つタスク T-1 を開く / `lead` が見出しを持たず `**強調**` だけの D-3 を開く'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: D-1 は `data-key` が `lead` の要素の中で「背景」が `h3`、「経緯」が `h4` / D-2 は `data-key` が `options[A].content` の要素の中で「案」が `h4`、「中身」が `h5` / T-1 は `data-key` が `reason` の要素の中で「手順」が `h3` / D-3 は `lead` の要素が見出しを持たず `strong` を持つ。どれも見出しの `data-md-level` は元の段のまま
+      - name: test_detail_panel_when_diff_key_newlines
+        case: 正常
+        summary: キーの差分の前の値と今の値で、改行を改行として出し、改行をまたぐ語の面を行ごとに付ける
+        condition: '`parametrize`: `lead` を `要件を決める。\n期限は来週。` → `要件を決める。\n期限は今週。` にした D-1 / `lead` を `予定は来週の会議で決める` → `予定は今週\n明日の会議で決める` にした D-1（変わった範囲が改行をまたぐ）を、いずれも `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '1 つ目のケースで、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` の計算後の `white-space` が改行を残す値（`pre-wrap` か `pre-line`）で、どちらも `getClientRects()` の箱の `top` が 2 種類ある。`span.df-word.df-del` は `来週` だけ、`span.df-word.df-add` は `今週` だけ。2 つ目のケースで、`ins.df-now` の `span.df-word.df-add` の文字をつなげると `今週\n明日` になり、その `getClientRects()` のうち幅を持つ箱が、改行の前の行と後の行の両方（`top` が 2 種類）にある。どちらのケースも `span.sr-only` の「前の値: 」「今の値: 」は `span.df-word` の外'
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -863,7 +869,7 @@ components:
         summary: 添えた箇所と項目を指さない形
         condition: '`parametrize`: `target: A-005`・`loc` が本文の 3 行目 / `target: null` / `target: null`・`collapsed: true`'
         mock: '`on.unquote`'
-        expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」/ 「レビューに追加」が無く入力欄が 1 行
+        expected: 「本文 3 行目」と選んだ文が出て × で `on.unquote` が 1 回、入力欄が 1 行 / ラベルが見えず入力欄の `aria-label` が「項目を指さないコメント」で入力欄が 1 行 / 「レビューに追加」が無く入力欄が 1 行
       - name: test_send_form_when_ctrl_enter
         case: 正常
         summary: Ctrl+Enter で溜め、溜めている間は溜めない
@@ -1417,7 +1423,7 @@ components:
         type: string
         required: false
         default: "''"
-        description: 入力欄の中身（`maxlength` 10000。2 行から 8 行まで伸びる）
+        description: 入力欄の中身（`maxlength` 10000。1 行から 8 行まで伸びる）
       - name: status
         type: "'idle' | 'saving' | 'saved' | 'failed'"
         required: false
@@ -1443,7 +1449,7 @@ components:
         summary: 状態ごとの入力欄と結果
         condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、結果の要素が `role="status"` で入力欄の `aria-describedby` が指す
+        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指す
       - name: test_reply_form_when_keys
         case: 正常
         summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない

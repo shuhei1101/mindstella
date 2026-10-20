@@ -222,9 +222,34 @@ flowchart TD
 ```
 """
 
-# D-3 の背景の書き換える前と後（書き換える語の前後に変えない語を残す。同じ部分が少ないと語の面が付かない）
-LEAD_D3_BEFORE = "要件は来週までに決める。"
-LEAD_D3_AFTER = "要件は今週までに決める。"
+# D-3 の背景の書き換える前と後（改行で区切った 2 つの文のうち、2 つ目の文の語を書き換える。書き換える語の前後に変えない語を残す。同じ部分が少ないと語の面が付かない）
+LEAD_D3_BEFORE = "検討を始める。\n要件は来週までに決める。"
+LEAD_D3_AFTER = "検討を始める。\n要件は今週までに決める。"
+
+# 背景の前の値（`del.df-was`）と今の値（`ins.df-now`）が占める行の数（幅を持つ箱の `top` の種類）と、1 つ目の文・2 つ目の文が始まる位置の `top` を読む（読み上げの文字は除く）
+LEAD_LINES_SCRIPT = """() => {
+    const topOf = (root, needle) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (node.parentElement.closest('.sr-only')) continue;
+            const at = node.data.indexOf(needle);
+            if (at < 0) continue;
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + needle.length);
+            return Math.round(range.getBoundingClientRect().top);
+        }
+        return null;
+    };
+    const measure = (selector) => {
+        const element = document.querySelector(`aside.panel [data-key="lead"] ${selector}`);
+        const tops = new Set(
+            [...element.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)),
+        );
+        return {lines: tops.size, first: topOf(element, '検討を始める。'), second: topOf(element, '要件は')};
+    };
+    return {was: measure('del.df-was'), now: measure('ins.df-now')};
+}"""
 
 # 段落 1 つの本文の移り変わり
 BODY_V0 = "# 検討メモ\n\n最初の本文です。\n"
@@ -378,6 +403,12 @@ def test_normal(
     assert page.locator(f"{lead_words}.df-del").all_inner_texts() == ["来週"]
     assert page.locator(f"{lead_words}.df-add").all_inner_texts() == ["今週"]
     assert page.locator(lead_words).count() == 2
+    # 検証（背景の前の値と今の値が、どちらも書かれた改行の位置で改行されて出る。2 つの文が 2 行に分かれ、2 つ目の文が 1 つ目の文より下から始まる）
+    lead_lines = page.evaluate(LEAD_LINES_SCRIPT)
+    assert lead_lines["was"]["lines"] == 2
+    assert lead_lines["now"]["lines"] == 2
+    assert lead_lines["was"]["second"] > lead_lines["was"]["first"]
+    assert lead_lines["now"]["second"] > lead_lines["now"]["first"]
     # 検証（本文は Markdown のまま、書き換えた段落に足した印、消した段落に消した印が付き、変えていない段落には付かない）
     assert page.inner_text('aside.panel .md [data-md-level="1"]') == "検討メモ"
     added, removed = _block_texts(page)

@@ -1,0 +1,48 @@
+$ npx storybook build -o storybook-static
+（成功）
+$ pytest tests/integration/storybook
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-comment-input-one-line
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 414 items
+
+tests/integration/storybook/test_body_diff_layout_switch_stories.py ...  [  0%]
+tests/integration/storybook/test_body_format_badge_stories.py ...        [  1%]
+tests/integration/storybook/test_comment_mark_stories.py ..              [  1%]
+tests/integration/storybook/test_diff_mark_stories.py ....               [  2%]
+tests/integration/storybook/test_diff_minimap_stories.py .........       [  5%]
+tests/integration/storybook/test_filter_drawer_stories.py ........       [  7%]
+tests/integration/storybook/test_history_dialog_stories.py .....         [  8%]
+tests/integration/storybook/test_html_body_diff_stories.py .......       [  9%]
+tests/integration/storybook/test_html_body_frame_stories.py ..........   [ 12%]
+tests/integration/storybook/test_removed_band_stories.py ...             [ 13%]
+tests/integration/storybook/test_reply_form_stories.py ........          [ 14%]
+tests/integration/storybook/test_selection_comment_stories.py .....      [ 16%]
+tests/integration/storybook/test_send_form_stories.py ..............     [ 19%]
+tests/integration/storybook/test_settings_confirm_stories.py ......      [ 21%]
+tests/integration/storybook/test_settings_panel_stories.py ..........    [ 23%]
+tests/integration/storybook/test_side_by_side_body_diff_stories.py ....  [ 24%]
+tests/integration/storybook/test_table_stories.py ..............         [ 27%]
+tests/integration/storybook/test_term_tip_stories.py ..........          [ 30%]
+tests/integration/storybook/test_thread_post_stories.py ...............  [ 33%]
+tests/integration/storybook/test_thread_row_stories.py ..............    [ 37%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 42%]
+..............................                                           [ 49%]
+tests/integration/storybook/test_view_switch_stories.py ..               [ 50%]
+tests/integration/storybook/test_withdrawn_badge_stories.py ...          [ 50%]
+tests/integration/storybook/test_comment_mark_stories.py .               [ 50%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 56%]
+..                                                                       [ 56%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 56%]
+tests/integration/storybook/test_comment_mark_stories.py .               [ 57%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 62%]
+.                                                                        [ 62%]
+tests/integration/storybook/test_view_switch_stories.py .                [ 62%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 67%]
+........................................................................ [ 85%]
+..............................................................           [100%]
+
+======================= 414 passed in 739.17s (0:12:19) ========================

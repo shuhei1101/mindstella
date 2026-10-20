@@ -122,11 +122,13 @@ from preview_minimap_helpers import (
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from preview_word_diff_helpers import (
+    KEY_LINES_JS,
     MIN_TEXT_CONTRAST,
     WORD_COLORS_JS,
     WORD_MARKS_JS,
     colour_distance,
     contrast_ratio,
+    serve_key_newline_diff_workspace,
     serve_key_word_diff_workspace,
     serve_word_diff_workspace,
 )
@@ -2522,11 +2524,15 @@ DIFF_KEY_OPTION = 'aside.panel [data-key="options[A].content"]'
 
 
 def test_diff_keys_when_inline_words(
-    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
 ) -> None:
     """背景と案の内容の前の値・今の値は、変わった語だけに濃い面を付ける。値の面・取り消し線・下線・矢印と、読み上げの名前は残る（正常系）。"""
     # 準備・実行
-    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2554,11 +2560,15 @@ def test_diff_keys_when_inline_words(
 
 
 def test_diff_keys_when_inline_words_skipped(
-    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
 ) -> None:
     """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
     # 準備・実行
-    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2583,6 +2593,7 @@ def test_diff_keys_when_inline_words_skipped(
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_diff_keys_when_inline_words_color(
     make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
     call_tool: CallTool,
     open_preview: OpenPreview,
     page: Page,
@@ -2590,7 +2601,7 @@ def test_diff_keys_when_inline_words_color(
 ) -> None:
     """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
     # 準備
-    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.emulate_media(color_scheme=scheme)
     page.reload()
@@ -2609,6 +2620,71 @@ def test_diff_keys_when_inline_words_color(
             colors["lineBackground"], colors["surface"]
         )
         assert contrast_ratio(colors["text"], colors["wordBackground"]) >= MIN_TEXT_CONTRAST
+
+
+# 背景の改行を確かめる、検討事項 D-2（書き換えた範囲が改行をまたぐ）と D-3（長い 1 行）を開く URL のハッシュ
+DIFF_D2_HASH = "#tab=decisions&view=table&id=D-2"
+DIFF_D3_HASH = "#tab=decisions&view=table&id=D-3"
+
+
+def test_diff_keys_when_newlines(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """背景の前の値・今の値は、書かれた改行の位置で改行して出し、語の面は書き換えた語だけに付く（正常系）。"""
+    # 準備
+    url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
+    # 実行
+    result = page.evaluate(KEY_LINES_JS, [DIFF_KEY_LEAD, ["要件を決める。", "期限は"]])
+    # 検証
+    # 前の値・今の値とも、改行を残し、2 つの文が 2 行に分かれる
+    assert result["was"]["whiteSpace"] in ("pre-wrap", "pre-line")
+    assert result["now"]["whiteSpace"] in ("pre-wrap", "pre-line")
+    assert result["was"]["lines"] == 2
+    assert result["now"]["lines"] == 2
+    assert result["was"]["tops"][1] > result["was"]["tops"][0]
+    assert result["now"]["tops"][1] > result["now"]["tops"][0]
+    # 語の面は 2 つ目の文の書き換えた語だけ
+    assert result["was"]["wordText"] == "来週"
+    assert result["now"]["wordText"] == "今週"
+
+
+def test_diff_keys_when_newlines_across_words(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """書き換えた範囲が改行をまたぐとき、改行の前後の行それぞれで、その範囲の文字に語の面を付ける（正常系）。"""
+    # 準備
+    url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2", DIFF_D2_HASH)
+    page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
+    # 実行
+    result = page.evaluate(KEY_LINES_JS, [DIFF_KEY_LEAD, []])
+    # 検証
+    # 今の値は、足した語の面の文字が改行をはさんでつながり、前の行と後の行の両方に面が付く
+    assert result["now"]["wordText"] == "今週\n明日"
+    assert result["now"]["wordLines"] == 2
+    assert result["now"]["lines"] == 2
+    # 前の値は、消した語の面が 1 行に付く
+    assert result["was"]["wordText"] == "来週"
+    assert result["was"]["wordLines"] == 1
+
+
+def test_diff_keys_when_newlines_long_line(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """改行を持たない長い 1 行の前の値・今の値は、幅に合わせて折り返し、パネルからはみ出さない（正常系）。"""
+    # 準備
+    url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    _open_diff_panel(page, open_preview, url, "V-2", DIFF_D3_HASH)
+    page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
+    # 実行
+    result = page.evaluate(KEY_LINES_JS, [DIFF_KEY_LEAD, []])
+    # 検証
+    assert result["was"]["lines"] > 1
+    assert result["now"]["lines"] > 1
+    assert result["was"]["overflow"] == 0
+    assert result["now"]["overflow"] == 0
 
 
 def test_diff_diagram_raw_when_inline_words(
@@ -4067,11 +4143,11 @@ def test_diff_minimap_when_empty_area_pressed(
     box = page.locator(f"{PANEL_SCOPE} .df-map").bounding_box()
     assert box is not None
     # 実行（帯の中ほどを押す）
-    press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
-    # 検証（中ほどを押したので、本文の送れる長さの半分まで送る）
+    pressed_y = press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
+    # 検証（押した位置に、見えている範囲の面の中央が来る）
     metrics = map_metrics(page, PANEL_SCOPE)
-    assert metrics["scrollTop"] == pytest.approx(
-        (metrics["scrollHeight"] - metrics["clientHeight"]) / 2, abs=MINIMAP_TOLERANCE_PX
+    assert metrics["viewTop"] + metrics["viewHeight"] / 2 == pytest.approx(
+        pressed_y, abs=MINIMAP_TOLERANCE_PX
     )
     assert page.evaluate("location.hash") == hash_before
     assert page.evaluate("history.length") == history_length

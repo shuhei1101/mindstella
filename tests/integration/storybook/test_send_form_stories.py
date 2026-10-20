@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from storybook_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -9,6 +10,9 @@ NARROW_SIZE = {"width": 390, "height": 844}
 
 # 溜めている印と文言が出るまで待つ上限ミリ秒（部品は 1 秒を超えたら出す）
 SAVING_NOTICE_TIMEOUT_MS = 3_000
+
+# 入力欄の始めの高さの行数
+MIN_ROWS = 1
 
 # 入力欄の最大の高さの行数（これを超えたら入力欄の中を送る）
 MAX_ROWS = 8
@@ -18,6 +22,28 @@ QUOTE_MAX_LINES = 3
 
 # 入力欄の上下の余白と枠の合計（ピクセル）
 TEXTAREA_PADDING_PX = 18
+
+# 畳んだ入力欄の高さを 1 行の入力の高さと比べるときに許す誤差（ピクセル。小数の丸め）
+HEIGHT_TOLERANCE_PX = 1
+
+# 入力欄の高さと、行の高さ・中身の高さを読む
+TEXTAREA_SIZES_SCRIPT = """e => ({
+  height: e.clientHeight,
+  lineHeight: parseFloat(getComputedStyle(e).lineHeight),
+  scrollHeight: e.scrollHeight,
+})"""
+
+# 入力欄の枠を含む高さと、1 行の入力の高さ（`--control-h`）の実際の値を読む
+BORDER_BOX_HEIGHT_SCRIPT = "e => e.getBoundingClientRect().height"
+CONTROL_HEIGHT_SCRIPT = """(() => {
+  const probe = document.createElement('i');
+  probe.style.display = 'block';
+  probe.style.height = 'var(--control-h)';
+  document.body.append(probe);
+  const height = probe.getBoundingClientRect().height;
+  probe.remove();
+  return height;
+})()"""
 
 # 選んだ文の行数の上限の指定と、出している高さ・省かないときの高さを読む
 QUOTE_SIZES_SCRIPT = """e => {
@@ -58,6 +84,10 @@ def test_idle(open_story: OpenStory) -> None:
         page.eval_on_selector("form.send-footer", "e => getComputedStyle(e).borderTopWidth")
         == "1px"
     )
+    # 空の入力欄は 1 行分の高さ
+    sizes = page.eval_on_selector("textarea", TEXTAREA_SIZES_SCRIPT)
+    assert sizes["lineHeight"] * MIN_ROWS <= sizes["height"]
+    assert sizes["height"] <= sizes["lineHeight"] * MIN_ROWS + TEXTAREA_PADDING_PX
 
 
 def test_typing(open_story: OpenStory) -> None:
@@ -186,12 +216,10 @@ def test_long(open_story: OpenStory) -> None:
     # 準備・実行
     page = open_story("preview-sendform--long")
     # 検証
-    sizes = page.eval_on_selector(
-        "textarea",
-        "e => ({ lineHeight: parseFloat(getComputedStyle(e).lineHeight), height: e.clientHeight, scrollHeight: e.scrollHeight })",
-    )
+    sizes = page.eval_on_selector("textarea", TEXTAREA_SIZES_SCRIPT)
     assert sizes["scrollHeight"] > sizes["height"]
-    # 入力欄の高さは 8 行分と上下の余白までに収まる
+    # 入力欄の高さは 8 行分と上下の余白までで止まる
+    assert sizes["lineHeight"] * MAX_ROWS <= sizes["height"]
     assert sizes["height"] <= sizes["lineHeight"] * MAX_ROWS + TEXTAREA_PADDING_PX
 
 
@@ -239,6 +267,9 @@ def test_no_target_collapsed(open_story: OpenStory) -> None:
     assert page.locator(".send-msg").count() == 0
     assert page.get_by_role("button", name="レビューに追加").count() == 0
     assert page.locator("form.send-footer.collapsed").count() == 1
+    # 畳んだ入力欄は 1 行の入力の高さ（`--control-h`）のまま
+    height = page.eval_on_selector("textarea", BORDER_BOX_HEIGHT_SCRIPT)
+    assert height == pytest.approx(page.evaluate(CONTROL_HEIGHT_SCRIPT), abs=HEIGHT_TOLERANCE_PX)
 
 
 def test_no_target_expanded(open_story: OpenStory) -> None:
@@ -249,6 +280,6 @@ def test_no_target_expanded(open_story: OpenStory) -> None:
     page.wait_for_function("innerWidth === 390")
     # 実行・検証
     assert page.input_value("textarea") == "全体に目を通した"
-    assert page.get_attribute("textarea", "rows") == "2"
+    assert page.get_attribute("textarea", "rows") == "1"
     assert page.get_by_role("button", name="レビューに追加").is_visible()
     assert page.locator("form.send-footer.collapsed").count() == 0

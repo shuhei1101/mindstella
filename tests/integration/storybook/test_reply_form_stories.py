@@ -7,6 +7,9 @@ from storybook_fixture_types import OpenStory
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
 NARROW_SIZE = {"width": 390, "height": 844}
 
+# 入力欄の始めの高さの行数
+MIN_ROWS = 1
+
 # 入力欄の最大の高さの行数（これを超えたら入力欄の中を送る）
 MAX_ROWS = 8
 
@@ -32,7 +35,11 @@ def test_empty(open_story: OpenStory) -> None:
     assert page.inner_text("label.send-label") == "返信"
     assert page.get_attribute("label.send-label", "for") == page.get_attribute("textarea", "id")
     assert page.input_value("textarea") == ""
-    assert page.get_attribute("textarea", "rows") == "2"
+    assert page.get_attribute("textarea", "rows") == "1"
+    # 空の入力欄は 1 行分の高さ
+    sizes = page.eval_on_selector("textarea", TEXTAREA_SIZES_SCRIPT)
+    assert sizes["lineHeight"] * MIN_ROWS <= sizes["height"]
+    assert sizes["height"] <= sizes["lineHeight"] * MIN_ROWS + TEXTAREA_PADDING_PX
     assert page.get_attribute("textarea", "aria-keyshortcuts") == "Control+Enter"
     assert page.get_attribute("textarea", "aria-describedby") == page.get_attribute(MESSAGE, "id")
     assert page.get_attribute(MESSAGE, "role") == "status"
@@ -101,6 +108,7 @@ def test_long(open_story: OpenStory) -> None:
     page = open_story("preview-replyform--long")
     # 検証
     sizes = page.eval_on_selector("textarea", TEXTAREA_SIZES_SCRIPT)
+    assert sizes["lineHeight"] * MAX_ROWS <= sizes["height"]
     assert sizes["height"] <= sizes["lineHeight"] * MAX_ROWS + TEXTAREA_PADDING_PX
     assert sizes["scrollHeight"] > sizes["height"]
 

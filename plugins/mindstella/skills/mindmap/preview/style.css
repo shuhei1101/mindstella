@@ -675,8 +675,8 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* 送信の入力のラベル: 常に見せる。どの項目へ送るかを ID で示す */
 .send-label { font-size: var(--fs-small); font-weight: 600; color: var(--text); }
 .send-label .mono { font-weight: 400; }
-/* 入力欄: 中身に合わせて 2 行から 8 行まで伸び、それを超えたら中を送る */
-.send textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(8lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 入力欄: 中身に合わせて 1 行から 8 行まで伸び、それを超えたら中を送る */
+.send textarea { width: 100%; min-block-size: calc(1lh + 16px); max-block-size: calc(8lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .send textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 送っている間の入力欄: 書き換えられないことを面の色で示す */
 .send textarea:read-only { background: var(--surface-2); color: var(--text-2); }
@@ -1119,18 +1119,18 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 .df-head-t svg.icon { width: 16px; height: 16px; color: var(--df-chg); }
 /* 選んだ時点の日時・範囲 */
 .df-when { color: var(--text-2); font-family: var(--font-mono); }
-/* キーの前の値と今の値 */
-.df-kv { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-/* 前の値: 取り消し線と消した色の面 */
-.df-was { padding: 0 4px; border-radius: 3px; background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; text-decoration-thickness: 1.5px; }
-/* 今の値: 下線と足した色の面 */
-.df-now { padding: 0 4px; border-radius: 3px; background: var(--df-add-bg); color: var(--text); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+/* キーの前の値と今の値: 前後を文の流れの中に並べ、値の中の改行で行が分かれるようにする（flex にすると前後の値が 1 つの箱になり、行ごとの面と線が付かない） */
+.df-kv { display: inline; }
+/* 前の値: 取り消し線と消した色の面。値の中の改行を改行として出す */
+.df-was { padding: 0 4px; border-radius: 3px; background: var(--df-del-bg); color: var(--text-2); text-decoration: line-through; text-decoration-thickness: 1.5px; white-space: pre-wrap; }
+/* 今の値: 下線と足した色の面。値の中の改行を改行として出す */
+.df-now { padding: 0 4px; border-radius: 3px; background: var(--df-add-bg); color: var(--text); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; white-space: pre-wrap; }
 /* 前の値・今の値の中の状態とタグ: 線は内側の箱に届かないので、箱にも付ける */
 .df-was .st, .df-was .tag { text-decoration: inherit; }
 /* 状態のキーの前後: 面を塗らず、取り消し線・下線と矢印だけで示す */
 .df-kv.df-plain :is(.df-was, .df-now) { padding: 0; background: none; }
 /* 前の値と今の値をつなぐ矢印 */
-.df-arrow { color: var(--text-3); }
+.df-arrow { margin: 0 8px; color: var(--text-3); }
 /* 値が変わったキーの名前 */
 .d-meta dt.df-key { color: var(--text); font-weight: 600; }
 /* 本文の前の版を組み立てられない旨: 本文の節の頭に置く */
