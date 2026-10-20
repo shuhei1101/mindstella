@@ -2962,3 +2962,100 @@ def test_detail_panel_when_value_heading_levels(
     )
     # 検証
     assert result == expected
+
+
+# 詳細パネルを差分つきで開き、背景（`lead`）の前の値（`del.df-was`）と今の値（`ins.df-now`）の、
+# 計算後の `white-space`・文字が占める行の数（幅を持つ箱の `top` の種類）・語の面の文字・読み上げの文字の置き場所を調べる
+OPEN_KEY_NEWLINE_DIFF_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const root = panel.querySelector('[data-key="lead"]');
+    const was = root.querySelector("del.df-was");
+    const now = root.querySelector("ins.df-now");
+    const wasWords = [...was.querySelectorAll("span.df-word.df-del")];
+    const nowWords = [...now.querySelectorAll("span.df-word.df-add")];
+    const lineCount = (elements) => new Set(
+        elements.flatMap((element) => [...element.getClientRects()])
+            .filter((rect) => rect.width > 0)
+            .map((rect) => Math.round(rect.top)),
+    ).size;
+    return {
+        whiteSpace: [getComputedStyle(was).whiteSpace, getComputedStyle(now).whiteSpace],
+        lines: {was: lineCount([was]), now: lineCount([now]), nowWords: lineCount(nowWords)},
+        words: {
+            was: wasWords.map((word) => word.textContent),
+            now: nowWords.map((word) => word.textContent),
+        },
+        reading: [...root.querySelectorAll("span.sr-only")].map((reading) => ({
+            text: reading.textContent,
+            insideWord: reading.closest("span.df-word") !== null || reading.querySelector("span.df-word") !== null,
+        })),
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("before_lead", "now_lead", "lines", "words_text"),
+    [
+        pytest.param(
+            "要件を決める。\n期限は来週。",
+            "要件を決める。\n期限は今週。",
+            {"was": 2, "now": 2, "nowWords": 1},
+            {"was": "来週", "now": "今週"},
+            id="word_after_newline",
+        ),
+        pytest.param(
+            "予定は来週の会議で決める",
+            "予定は今週\n明日の会議で決める",
+            {"was": 1, "now": 2, "nowWords": 2},
+            {"was": "来週", "now": "今週\n明日"},
+            id="word_across_newline",
+        ),
+    ],
+)
+def test_detail_panel_when_diff_key_newlines(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    before_lead: str,
+    now_lead: str,
+    lines: dict[str, int],
+    words_text: dict[str, str],
+) -> None:
+    """キーの差分の前の値と今の値で、改行を改行として出し、改行をまたぐ語の面を行ごとに付ける（正常系）。"""
+    # 準備
+    history = [{"seq": 1, "at": ENTRY_AT, "before": {"lead": before_lead}}]
+    data = make_data(decisions=[make_item("D-1", lead=now_lead, history=history, seq=1)])
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_KEY_NEWLINE_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
+    )
+    # 検証
+    # 前の値・今の値は、書かれた改行を残す
+    assert set(result["whiteSpace"]) <= {"pre-wrap", "pre-line"}
+    # 前の値・今の値と今の値の語の面は、改行の前後の行に分かれて並ぶ
+    assert result["lines"] == lines
+    # 語の面は、変わった語だけに付く（改行をまたぐ範囲は行ごとの面の文字をつなげる）
+    assert "".join(result["words"]["was"]) == words_text["was"]
+    assert "".join(result["words"]["now"]) == words_text["now"]
+    # 読み上げの文字は、語の面の外にある
+    assert result["reading"] == READING_OUTSIDE_WORDS
