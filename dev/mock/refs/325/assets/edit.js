@@ -692,6 +692,8 @@
     const originalValue = key === "body" ? (adding ? "" : mockBody(id, original, true) ?? "") : original[key];
     /** 入力した値を保存待ちに入れる（溜める時点の案 A では入力欄を離れたとき、B では「保存待ちに入れる」で） */
     const commit = (next) => {
+      // 空のタイトルは溜めず、入力の誤りを出したままにする
+      if (key === "title" && next.trim() === "") return;
       if (stage === "b") {
         ui.dirty = true;
         wrap.classList.add("is-dirty");

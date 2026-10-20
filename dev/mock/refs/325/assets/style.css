@@ -40,7 +40,7 @@ body:has(> .mockbar) dialog.full { margin-top: calc(var(--mock-h) + 16px); heigh
 /* 印だけのバッジ（キー・案の見出し・マップの節・詳細パネルの見出し） */
 .pm.pm-compact { width: 20px; height: 18px; padding: 0; justify-content: center; }
 /* 詳細の見出し・項目名の後ろに置くバッジの間隔 */
-:is(dt, h3, .o-head, .pe-label-row, .panel-head) > .pm { margin-left: 6px; }
+:is(dt, h3, b, .o-head, .pe-label-row, .panel-head) > .pm { margin-left: 6px; }
 /* カードの補足の行のバッジ: 行の高さに合わせる */
 .c-meta > .pm { align-self: center; }
 /* 表のタイトルの後ろのバッジ */
