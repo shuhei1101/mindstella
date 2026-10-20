@@ -31,7 +31,7 @@ body:has(> .mockbar) dialog.full { margin-top: calc(var(--mock-h) + 16px); heigh
 
 /* ===== 保存待ちのバッジ（pending-mark） ===== */
 
-/* バッジ: 破線の枠の札に鉛筆と「保存待ち」を出す（差分の印は記号の塗り、コメントの印は吹き出しの塗りのピルで、形が違う） */
+/* バッジ: 破線の枠の札に重ねた紙の印と「保存待ち」を出す（差分の印は記号の塗り、コメントの印は吹き出しの塗りのピルで、形が違う） */
 .pm { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 6px 0 4px; border: 1px dashed var(--accent); border-radius: 3px; background: var(--surface); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: middle; }
 /* バッジの印 */
 .pm svg.icon { width: 12px; height: 12px; flex: none; }
@@ -326,7 +326,7 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 /* 動きを減らす設定: 回る印を止める */
 @media (prefers-reduced-motion: reduce) { .pe-spin { animation: none; } }
 /* 保存した知らせ: 画面の下の中央に出す */
-.pe-toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: var(--radius); background: var(--text); color: var(--bg); box-shadow: var(--shadow-pop); font-size: var(--fs-small); }
+.pe-toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: var(--radius); background: var(--text); color: var(--bg); box-shadow: var(--shadow-pop); font-size: var(--fs-small); white-space: nowrap; }
 
 /* ===== 表示の設定のパネルの入口と、設定の画面 ===== */
 
@@ -372,7 +372,7 @@ body:is(.pe-ws-open, .pe-edit-open) #main { display: none; }
 /* 納品物の並び */
 .pe-rowsx { margin: 0; padding-left: 18px; font-size: var(--fs-small); }
 /* 1 行ずつの表の入れ物: 狭い幅では表の中で横に送る */
-.pe-mini-wrap { overflow-x: auto; }
+.pe-mini-wrap { position: relative; overflow-x: auto; }
 /* 1 行ずつの表 */
 .pe-mini { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
 /* 1 行ずつの表の見出し */

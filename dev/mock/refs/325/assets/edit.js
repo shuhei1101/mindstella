@@ -14,6 +14,45 @@
 // 見本と論点の案は、クエリに無いときは body の data-* を画面の既定にする
 (() => {
   const body = document.body;
+  /** 一部だけ覆われていても子をたどらない押せる要素（子だけを止めると読み上げの名前が消える） */
+  const operable = "button, a[href], input, select, textarea, summary, [tabindex]";
+  /** 左から重ねるパネルが覆った本文の部品に `inert` を付け、外す関数を返す。一部だけ覆われた押せる要素は、見えている側から押せるまま残す */
+  MindmapPreview.inertBehind = (panel) => {
+    const covered = {
+      left: panel.offsetLeft,
+      top: panel.offsetTop,
+      right: panel.offsetLeft + panel.offsetWidth,
+      bottom: panel.offsetTop + panel.offsetHeight,
+    };
+    const attached = [];
+    /** 要素がパネルの矩形に全体が収まるなら `inert` を付け、一部だけ重なるなら子をたどる */
+    const visit = (element) => {
+      if (element === panel || element.inert) return;
+      const rect = element.getBoundingClientRect();
+      // 大きさを持たない要素（`display: contents` など）は、子をたどる
+      if (rect.width === 0 || rect.height === 0) {
+        for (const child of element.children) if (child instanceof HTMLElement) visit(child);
+        return;
+      }
+      const overlaps =
+        rect.left < covered.right && rect.right > covered.left && rect.top < covered.bottom && rect.bottom > covered.top;
+      if (!overlaps) return;
+      const inside =
+        rect.left >= covered.left && rect.right <= covered.right && rect.top >= covered.top && rect.bottom <= covered.bottom;
+      if (inside && !element.contains(panel)) {
+        element.inert = true;
+        attached.push(element);
+        return;
+      }
+      if (element.matches(operable)) return;
+      for (const child of element.children) if (child instanceof HTMLElement) visit(child);
+    };
+    const main = document.querySelector("main");
+    if (main !== null) for (const child of main.children) if (child instanceof HTMLElement) visit(child);
+    return () => {
+      for (const element of attached) element.inert = false;
+    };
+  };
   const params = new URLSearchParams(location.search);
   /** 見本の指定（クエリ → body の data-*） */
   const given = (key) => params.get(key) ?? body.dataset[key] ?? null;
@@ -230,7 +269,7 @@
   /** 線のアイコン（今のプレビューと同じ 24 の枠・線の太さ） */
   const ICONS = {
     pencil: '<path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="m13.5 6.5 4 4"></path>',
-    pending: '<path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path>',
+    pending: '<path d="m12 3 9 5-9 5-9-5Z"></path><path d="m3 13 9 5 9-5"></path>',
     plus: '<path d="M12 5v14M5 12h14"></path>',
     trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path><path d="M10 11v6M14 11v6"></path>',
     undo: '<path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path>',
