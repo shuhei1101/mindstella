@@ -198,10 +198,13 @@ def mark_at_empty_area(page: Page, scope: str, *, offset_y: float) -> bool:
     return page.evaluate(_MARK_AT_POINT_JS, [x, y])
 
 
-def press_empty_area(page: Page, scope: str, *, offset_y: float) -> None:
-    """帯の上端から offset_y の位置（印の無い所）を押す。"""
+def press_empty_area(page: Page, scope: str, *, offset_y: float) -> int:
+    """帯の上端から offset_y の位置（印の無い所）を整数の画面の座標に丸めて押し、押した縦の座標を返す。"""
     x, y = _empty_area_point(page, scope, offset_y=offset_y)
-    page.mouse.click(x, y)
+    # 小数の座標は click の clientY で切り捨てられて送りがずれるため、整数に丸めてから押す
+    pressed_y = round(y)
+    page.mouse.click(x, pressed_y)
+    return pressed_y
 
 
 def drag_view(page: Page, scope: str, *, delta_y: float) -> None:

@@ -4143,11 +4143,11 @@ def test_diff_minimap_when_empty_area_pressed(
     box = page.locator(f"{PANEL_SCOPE} .df-map").bounding_box()
     assert box is not None
     # 実行（帯の中ほどを押す）
-    press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
-    # 検証（中ほどを押したので、本文の送れる長さの半分まで送る）
+    pressed_y = press_empty_area(page, PANEL_SCOPE, offset_y=box["height"] / 2)
+    # 検証（押した位置に、見えている範囲の面の中央が来る）
     metrics = map_metrics(page, PANEL_SCOPE)
-    assert metrics["scrollTop"] == pytest.approx(
-        (metrics["scrollHeight"] - metrics["clientHeight"]) / 2, abs=MINIMAP_TOLERANCE_PX
+    assert metrics["viewTop"] + metrics["viewHeight"] / 2 == pytest.approx(
+        pressed_y, abs=MINIMAP_TOLERANCE_PX
     )
     assert page.evaluate("location.hash") == hash_before
     assert page.evaluate("history.length") == history_length
