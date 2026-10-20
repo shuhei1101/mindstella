@@ -381,3 +381,5 @@ body:is(.pe-ws-open, .pe-edit-open) #main { display: none; }
 .pe-form-screen { padding: 16px; background: var(--surface); border-radius: var(--radius); }
 /* 詳細の全画面の編集の表示: 読みやすい幅に収める */
 dialog.full .pe-form { width: 100%; max-width: 860px; margin-inline: auto; }
+/* 別の画面の見出しの帯のボタン: 文言を折り返さない */
+.pe-screen-head .btn { flex: none; white-space: nowrap; }
