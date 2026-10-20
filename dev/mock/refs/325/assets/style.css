@@ -213,7 +213,7 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 /* 項目を消す区画: 上の区切り線で入力と分ける */
 .pe-remove-sec { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
 /* 項目を消す区画の見出し */
-.pe-remove-sec h3 { margin: 0; font-size: var(--fs-small); }
+.pe-remove-sec h2 { margin: 0; font-size: var(--fs-small); }
 /* 項目を消すボタン: 失敗の赤の文字と枠で、取り返しのつかない操作と示す */
 .btn.pe-danger { color: var(--st-review); border-color: var(--st-review); }
 .btn.pe-danger:hover { background: var(--hover); }
@@ -301,6 +301,8 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 .pe-alert-title svg.icon { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--st-review); }
 /* 書き込めない編集へのリンクの並び */
 .pe-alert ul { margin: 6px 0 0; padding-left: 26px; }
+/* 書き込めない編集へのリンク: 押せる的を縦 24px 以上にする */
+.pe-alert li a { display: inline-block; padding: 3px 0; }
 /* 次にすること */
 .pe-alert-next { margin: 6px 0 0 22px; color: var(--text-2); }
 /* パネルの下端（保存の合計とまとめて保存する） */
@@ -350,7 +352,7 @@ body:is(.pe-ws-open, .pe-edit-open) #main { display: none; }
 /* 見出しの帯の右寄せの隙間 */
 .pe-screen-head .spacer { flex: 1; }
 /* 設定のまとまり: 面の色のタイル */
-.pe-ws-group { display: flex; flex-direction: column; gap: 18px; margin: 0; padding: 16px; background: var(--surface); border: 0; border-radius: var(--radius); }
+.pe-ws-group { display: flex; flex-direction: column; gap: 18px; min-width: 0; margin: 0; padding: 16px; background: var(--surface); border: 0; border-radius: var(--radius); }
 /* 設定のまとまりの見出し */
 .pe-ws-group > legend { float: left; width: 100%; margin-bottom: 2px; padding: 0; font-size: var(--fs-body); font-weight: 700; }
 /* パネルの中の設定（案 D）: タイルを持たず、詰めて並べる */

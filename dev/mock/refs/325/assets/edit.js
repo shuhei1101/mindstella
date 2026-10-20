@@ -654,7 +654,7 @@
       const removing = editOfKey(id, "item-remove", kind);
       const referrers = referrersOf(id);
       form.append(el("section", { class: "pe-remove-sec" },
-        el("h3", {}, "項目を消す"),
+        el("h2", {}, "項目を消す"),
         removing === null
           ? el("button", { class: "btn pe-danger", type: "button", onclick: () => {
             putEdit({ target: id, op: "item-remove", key: kind, value: null, original: undefined });
@@ -744,7 +744,6 @@
     } else {
       wrap.append(control);
     }
-    if (key === "body") wrap.append(el("p", { class: "pe-hint" }, "Markdown で書きます。"));
     if (pending?.blocked) wrap.append(blockedNote(pending));
     return wrap;
   };
@@ -1047,6 +1046,11 @@
     const signature = JSON.stringify([edits, saveState, ui.pendingOpen]);
     if (panel.dataset.sig === signature) return;
     panel.dataset.sig = signature;
+    // 閉じている間は中身を持たない（隠れた文字を読み上げ・検索に残さない）
+    if (!ui.pendingOpen) {
+      panel.replaceChildren();
+      return;
+    }
     const focusedUndo = document.activeElement?.closest?.(".pending-panel") !== null ? document.activeElement?.dataset?.focus : null;
 
     const removals = edits.filter((edit) => edit.op === "item-remove");
@@ -1293,7 +1297,6 @@
       wrap.append(input, el("p", { class: "pe-hint" }, "変更履歴に残す書き換えのまとまりの数"));
     } else if (key === "playbooks" || key === "phases" || key === "tag_vocabulary") {
       wrap.append(buildChips({ fieldId, key: key === "tag_vocabulary" ? "vocabulary" : key, label: key === "tag_vocabulary" ? "タグ" : SETTING_LABELS[key], value: value ?? (key === "tag_vocabulary" ? vocabulary() : []), onChange: commit }));
-      if (key === "phases") wrap.append(el("p", { class: "pe-hint" }, "並びの順に進みます。"));
     } else if (key === "goal") {
       const phase = el("select", { id: fieldId, class: "input" }, ...settings.phases.map((entry) => el("option", { value: entry, selected: entry === value.phase }, entry)));
       const summary = el("textarea", { id: `${fieldId}-summary`, class: "input pe-text", rows: 2 });
