@@ -595,8 +595,9 @@
     // 別の画面の案: 詳細パネルを閉じて編集の画面へ移る
     if (place === "b") go({ id: null });
     decorate();
+    // パネルの中では最初の入力欄へ、別の画面では見出しへ移る（画面の頭から読む）
     if (place === "a") document.querySelector(".pe-form [data-first]")?.focus();
-    else document.querySelector(".pe-edit-screen [data-first]")?.focus();
+    else document.querySelector(".pe-edit-screen h1")?.focus({ preventScroll: true });
   };
   /** 「保存待ちに入れる」の案で溜めていない入力があるとき、捨てるかを確かめてから進む */
   const confirmLeave = (proceed) => {
