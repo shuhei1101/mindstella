@@ -347,7 +347,7 @@ body:is(.pe-ws-open, .pe-edit-open) #main { display: none; }
 /* 別の画面の見出しの帯 */
 .pe-screen-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 /* 別の画面の見出し */
-.pe-screen-head h1 { margin: 0; min-width: 0; font-size: var(--fs-h2); overflow-wrap: anywhere; }
+.pe-screen-head h1 { margin: 0; min-width: 0; font-size: calc(var(--fs-h2) * 1.4); overflow-wrap: anywhere; }
 .pe-screen-head h1:focus { outline: none; }
 /* 見出しの帯の右寄せの隙間 */
 .pe-screen-head .spacer { flex: 1; }
