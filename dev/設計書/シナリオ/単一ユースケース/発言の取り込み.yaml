@@ -269,6 +269,36 @@ scenarios:
       - '`.mindstella/docs/` に A-1 の本文の HTML がある'
       - '`check` が YAML と本文のずれを 0 件で返す'
     test: test_normal_when_visual_doc_kept_as_html
+  - name: 正常シナリオ（タスクの日付を予定に書く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込みを、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: 未決定の検討事項 D-1（案 A・B を持つ）を持ち、タスクを持たない
+      - name: 再生する書き込み
+        description: 1 回目は、D-1 を進めるタスク T-1（未着手、予定を持つ）と会話ログを、2 回目は、T-1 を進行中に直す更新と会話ログを、それぞれ 1 回のまとめての書き込みで渡す
+        notes: '発言は「10 月 5 日から始めて 9 日までに終える」と「取りかかった」。T-1 は `plan: {start: 2026-10-05, due: 2026-10-09}`。どちらの書き込みも `actual` を渡さない'
+    flow: |-
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（タスクの開始日と期限を含む）
+        CC->>SV: まとめての書き込み（予定を持つタスク T-1・会話ログ）
+        SV->>WS: tasks.yaml と logs.yaml を書く
+        U->>CC: 発言（T-1 に取りかかった）
+        CC->>SV: まとめての書き込み（T-1 を進行中に直す・会話ログ）
+        SV->>SV: T-1 の実績の着手に今日の日付を入れる
+        SV->>WS: tasks.yaml と logs.yaml を書く
+        CC-->>U: 足したタスクと変えた状態を短く示す
+    expected:
+      - 'T-1 が `for: [D-1]` と予定（開始 `2026-10-05`・期限 `2026-10-09`）を持つ'
+      - 2 回目の書き込みの後、T-1 が進行中で、実績の着手が今日の日付で、実績の完了を持たない
+      - 会話ログが 2 件足されている
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_task_dates_planned
 lead: 話し合いを進めるスキル `session` が、利用者の発言を対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む単一ユースケース。
 issue: 4
 primary_actor: 利用者

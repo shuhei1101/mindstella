@@ -474,6 +474,71 @@ scenarios:
       - エラーの本文に、渡したタグ `通知機能` と、候補の `通知` がある
       - ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
     test: test_error_when_unknown_tag
+  - name: 正常シナリオ（タスクの予定と実績を記録する）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませた、項目を持たないワークスペース
+      - name: タスクの中身
+        description: 予定を持つ未着手のタスクと、完了で足すタスク
+        notes: '1 件目は種類 `作業`・状態 `未着手`・`plan: {start: 2026-10-05, due: 2026-10-09}`。2 件目は状態 `完了` で `plan` を持たない。どちらも `actual` を渡さない'
+    flow: |-
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 予定を持つ未着手のタスク T-1 と、完了のタスク T-2 を足す
+        SV->>SV: 予定の開始が期限より後でないことを確かめ、T-2 の実績の着手と完了に今日の日付を入れる
+        SV->>WS: tasks.yaml に書く
+        CC->>SV: T-1 を進行中に直す
+        SV->>SV: T-1 の実績の着手に今日の日付を入れる
+        SV->>WS: tasks.yaml に書く
+        CC->>SV: T-1 を完了に直す
+        SV->>SV: T-1 の実績の完了に今日の日付を入れる
+        SV->>WS: tasks.yaml に書く
+        CC->>SV: T-1 を進行中に戻す
+        SV->>SV: T-1 の実績の完了を消し、着手を残す
+        SV->>WS: tasks.yaml に書く
+    expected:
+      - T-1 が渡した予定（開始 `2026-10-05`・期限 `2026-10-09`）を持つ
+      - 足した時点の T-1 が実績を持たない
+      - T-2 が実績の着手と完了を持ち、どちらもサーバーの端末の今日の日付である
+      - 進行中に直した後、T-1 の実績の着手が今日の日付で、実績の完了を持たない
+      - 完了に直した後、T-1 の実績の完了が今日の日付で、着手は直す前のままである
+      - 進行中に戻した後、T-1 が実績の完了を持たず、着手は戻す前のままである
+      - T-1 の変更履歴の各回が、直す前の状態と実績を持つ
+      - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    test: test_normal_when_task_plan_and_actual
+    notes:
+      実績の入れ方: 実績はツールが入れ、`item` では渡せない。`進行中` にした書き込みで着手が無ければ着手を、`完了` にした書き込みで完了を入れる（着手が無ければ着手にも同じ日付を入れる）。着手は最初に入れた日付を書き直さない。`完了` から他の状態へ戻したら完了を消す。日付はサーバーの端末のその日の日付（`YYYY-MM-DD`）。E2E は同じ日に流れるため、着手を書き直さないことは単体テストが日付を差し替えて確かめる
+  - name: 異常シナリオ（タスクの予定と実績が合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、未着手のタスク T-1 を足したワークスペース
+      - name: 書き込み
+        description: 予定の開始が期限より後のタスクを足す追加と、T-1 に実績を渡す更新
+        notes: '追加は `plan: {start: 2026-10-10, due: 2026-10-09}`。更新は `actual: {started: 2026-10-01}`。2 回に分けて呼ぶ'
+    flow: |-
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 予定の開始が期限より後のタスクを足す
+        SV->>SV: 予定の開始が期限より後
+        SV-->>CC: 予定が合わないことを示すエラー
+        CC->>SV: T-1 に実績を渡して直す
+        SV->>SV: 実績はツールが入れるキー
+        SV-->>CC: 実績を渡せないことを示すエラー
+    expected:
+      - 追加のツールがエラーを返し、本文にキー `plan` と、開始 `2026-10-10`・期限 `2026-10-09` がある
+      - 更新のツールがエラーを返し、本文にキー `actual` と、状態を変えると実績が入ることがある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_task_plan_or_actual_invalid
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

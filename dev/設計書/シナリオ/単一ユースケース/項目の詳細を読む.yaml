@@ -421,6 +421,32 @@ scenarios:
       - 「マイグレーション」を押すと G-1 の詳細パネルが開き、URL のハッシュが G-1 を指す
       - G-1 の本文の「マイグレーション」には印が付かない
     test: test_normal_when_term_alias_matched
+  - name: 正常シナリオ（タスクの予定と実績を読む）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 予定と実績を持つ完了のタスク T-1 と、予定も実績も持たない未着手のタスク T-2
+        notes: 'T-1 は `plan: {start: 2026-10-05, due: 2026-10-09}`・`actual: {started: 2026-10-06, done: 2026-10-10}`'
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: タスクの表で T-1 を押す
+        P-->>U: T-1 の詳細パネル（予定と実績）
+        U->>P: タスクの表で T-2 を押す
+        P-->>U: T-2 の詳細パネル
+    expected:
+      - T-1 の詳細パネルに、予定の開始 `2026-10-05`・期限 `2026-10-09` と、実績の着手 `2026-10-06`・完了 `2026-10-10` が出る
+      - T-2 の詳細パネルに、予定と実績の要素が無い
+    test: test_normal_when_task_schedule
+    notes:
+      見せ方: 詳細パネルの中の置き場所と日付の出し方はモック作成で決める
 lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読む単一ユースケース。
 issue: 5
 primary_actor: 利用者
