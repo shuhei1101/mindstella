@@ -675,8 +675,8 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* 送信の入力のラベル: 常に見せる。どの項目へ送るかを ID で示す */
 .send-label { font-size: var(--fs-small); font-weight: 600; color: var(--text); }
 .send-label .mono { font-weight: 400; }
-/* 入力欄: 中身に合わせて 2 行から 8 行まで伸び、それを超えたら中を送る */
-.send textarea { width: 100%; min-block-size: calc(2lh + 16px); max-block-size: calc(8lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 入力欄: 中身に合わせて 1 行から 8 行まで伸び、それを超えたら中を送る */
+.send textarea { width: 100%; min-block-size: calc(1lh + 16px); max-block-size: calc(8lh + 16px); field-sizing: content; resize: vertical; padding: 8px 10px; font: inherit; line-height: 1.5; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .send textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 送っている間の入力欄: 書き換えられないことを面の色で示す */
 .send textarea:read-only { background: var(--surface-2); color: var(--text-2); }

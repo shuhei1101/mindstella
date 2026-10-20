@@ -157,7 +157,7 @@ namespace MindmapPreview {
       attrs: {
         id: fieldId,
         name: "body",
-        rows: folded ? 1 : 2,
+        rows: 1,
         "aria-label": target === null ? label : null,
         "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
         "aria-keyshortcuts": "Control+Enter",
