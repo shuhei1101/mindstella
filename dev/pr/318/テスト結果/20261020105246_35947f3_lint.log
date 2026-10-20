@@ -1,0 +1,10 @@
+# 実行したコマンド
+ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+# コミット: 35947f333ff0f314d195c8a777ad75737854fb61
+
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+# 終了コード: 0
