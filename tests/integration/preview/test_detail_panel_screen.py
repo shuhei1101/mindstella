@@ -2522,11 +2522,15 @@ DIFF_KEY_OPTION = 'aside.panel [data-key="options[A].content"]'
 
 
 def test_diff_keys_when_inline_words(
-    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
 ) -> None:
     """背景と案の内容の前の値・今の値は、変わった語だけに濃い面を付ける。値の面・取り消し線・下線・矢印と、読み上げの名前は残る（正常系）。"""
     # 準備・実行
-    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2554,11 +2558,15 @@ def test_diff_keys_when_inline_words(
 
 
 def test_diff_keys_when_inline_words_skipped(
-    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
 ) -> None:
     """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
     # 準備・実行
-    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2583,6 +2591,7 @@ def test_diff_keys_when_inline_words_skipped(
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_diff_keys_when_inline_words_color(
     make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
     call_tool: CallTool,
     open_preview: OpenPreview,
     page: Page,
@@ -2590,7 +2599,7 @@ def test_diff_keys_when_inline_words_color(
 ) -> None:
     """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
     # 準備
-    url = serve_key_word_diff_workspace(make_workspace, call_tool)
+    url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.emulate_media(color_scheme=scheme)
     page.reload()
