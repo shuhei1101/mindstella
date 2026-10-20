@@ -701,6 +701,12 @@ components:
         condition: '`parametrize`: `lead` が `## 背景`・`### 経緯` を持つ D-1 を開く / 案 A の `content` が `# 案`・`## 中身` を持つ D-2 を開く / `reason` が `# 手順` を持つタスク T-1 を開く / `lead` が見出しを持たず `**強調**` だけの D-3 を開く'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: D-1 は `data-key` が `lead` の要素の中で「背景」が `h3`、「経緯」が `h4` / D-2 は `data-key` が `options[A].content` の要素の中で「案」が `h4`、「中身」が `h5` / T-1 は `data-key` が `reason` の要素の中で「手順」が `h3` / D-3 は `lead` の要素が見出しを持たず `strong` を持つ。どれも見出しの `data-md-level` は元の段のまま
+      - name: test_detail_panel_when_diff_key_newlines
+        case: 正常
+        summary: キーの差分の前の値と今の値で、改行を改行として出し、改行をまたぐ語の面を行ごとに付ける
+        condition: '`parametrize`: `lead` を `要件を決める。\n期限は来週。` → `要件を決める。\n期限は今週。` にした D-1 / `lead` を `来週までに決める` → `今週\nまでに決める` にした D-1（変わった範囲が改行をまたぐ）を、いずれも `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '1 つ目のケースで、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` の計算後の `white-space` が改行を残す値（`pre-wrap` か `pre-line`）で、どちらも `getClientRects()` が 2 行分の箱を返す。`span.df-word.df-del` は `来週` だけ、`span.df-word.df-add` は `今週` だけ。2 つ目のケースで、`ins.df-now` の `span.df-word.df-add` の文字をつなげると変わった範囲の文字になり、その箱（`getClientRects()`）が改行の前後の 2 行にある。どちらのケースも `span.sr-only` の「前の値: 」「今の値: 」は `span.df-word` の外'
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
