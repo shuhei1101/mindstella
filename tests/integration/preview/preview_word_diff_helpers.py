@@ -7,13 +7,16 @@ from typing import Any
 
 __all__ = [
     "BEFORE_PARAGRAPHS",
+    "KEY_LINES_JS",
     "MIN_TEXT_CONTRAST",
     "WORD_COLORS_JS",
     "WORD_MARKS_JS",
+    "build_key_newline_diff_workspace",
     "build_key_word_diff_workspace",
     "build_word_diff_workspace",
     "colour_distance",
     "contrast_ratio",
+    "serve_key_newline_diff_workspace",
     "serve_key_word_diff_workspace",
     "serve_word_diff_workspace",
 ]
@@ -76,6 +79,47 @@ WORD_MARKS_JS = """selector => [...document.querySelectorAll(selector)].map(elem
         text: word.textContent,
     })),
 }))"""
+
+# 背景（`lead`）の前の値と今の値の要素（`del.df-was` / `ins.df-now`）について、計算後の `white-space`・文字が占める行の数（幅を持つ箱の `top` の種類）・
+# 渡した文字（読み上げの文字を除く）が始まる位置の `top`・語の面（`span.df-word`）が占める行の数と文字・パネルの右端からのはみ出しを返す。
+# `[選択子の頭, 文字の配列]` を渡し、文字は頭から順に、前の値・今の値の中で探す
+KEY_LINES_JS = """([scope, needles]) => {
+    const lineCount = (elements) => new Set(
+        elements.flatMap((element) => [...element.getClientRects()])
+            .filter((rect) => rect.width > 0)
+            .map((rect) => Math.round(rect.top)),
+    ).size;
+    const topOf = (root, needle) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (node.parentElement.closest('.sr-only')) continue;
+            const at = node.data.indexOf(needle);
+            if (at < 0) continue;
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + needle.length);
+            return Math.round(range.getBoundingClientRect().top);
+        }
+        return null;
+    };
+    const panelRight = document.querySelector('aside.panel').getBoundingClientRect().right;
+    const measure = (selector, wordSelector) => {
+        const element = document.querySelector(`${scope} ${selector}`);
+        const words = [...element.querySelectorAll(wordSelector)];
+        return {
+            whiteSpace: getComputedStyle(element).whiteSpace,
+            lines: lineCount([element]),
+            tops: needles.map((needle) => topOf(element, needle)),
+            wordLines: lineCount(words),
+            wordText: words.map((word) => word.textContent).join(''),
+            overflow: Math.max(0, element.getBoundingClientRect().right - panelRight),
+        };
+    };
+    return {
+        was: measure('del.df-was', 'span.df-word.df-del'),
+        now: measure('ins.df-now', 'span.df-word.df-add'),
+    };
+}"""
 
 # 語の面の要素の背景色と文字色、それを含む行の面と画面の地の背景色を、RGB に直して返す。`[語の面の選択子, 行の面の選択子]` を渡す
 WORD_COLORS_JS = """([wordSelector, lineSelector]) => {
@@ -189,6 +233,61 @@ def build_key_word_diff_workspace(
     )
     _call(call_tool, "commit", workspace=workspace, summary="語を書き換える")
     return root
+
+
+# 検討事項 D-1 の背景: 改行で区切った 2 つの文を持ち、2 つ目の文の中の語を 1 つ書き換える（改行は残す）
+NEWLINE_LEAD_BEFORE = "要件を決める。\n期限は来週。"
+NEWLINE_LEAD_AFTER = "要件を決める。\n期限は今週。"
+
+# 検討事項 D-2 の背景: 書き換えた範囲（`来週` → `今週\n明日`）が改行をまたぐ
+ACROSS_LEAD_BEFORE = "予定は来週の会議で決める"
+ACROSS_LEAD_AFTER = "予定は今週\n明日の会議で決める"
+
+# 検討事項 D-3 の背景: 改行を持たず、幅に収まらない長さの 1 行で、中の語を 1 つ書き換える
+LONG_SENTENCE = "要件を決めるための会議の進め方を、関係者の予定を見ながら慎重に話し合う。"
+LONG_LEAD_BEFORE = LONG_SENTENCE * 8 + "期限は来週。"
+LONG_LEAD_AFTER = LONG_SENTENCE * 8 + "期限は今週。"
+
+
+def build_key_newline_diff_workspace(make_workspace: Any, call_tool: Any) -> Path:
+    """実際のツールで、背景の改行を確かめる検討事項 D-1（改行を持つ）・D-2（書き換えた範囲が改行をまたぐ）・D-3（長い 1 行）の、背景を書き換えたまとまり V-2 を持つワークスペースを作る。"""
+    root: Path = make_workspace()
+    workspace = str(root)
+    decision = {
+        "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
+        "weight": "大",
+        "category": "データ構造",
+        "phase": "要件",
+        "target": "mindmap",
+    }
+    leads = [
+        ("改行を持つ問い", NEWLINE_LEAD_BEFORE, NEWLINE_LEAD_AFTER),
+        ("範囲が改行をまたぐ問い", ACROSS_LEAD_BEFORE, ACROSS_LEAD_AFTER),
+        ("長い 1 行の問い", LONG_LEAD_BEFORE, LONG_LEAD_AFTER),
+    ]
+    for title, before, _ in leads:
+        _call(
+            call_tool,
+            "add",
+            workspace=workspace,
+            kind="decision",
+            item={**decision, "title": title, "lead": before},
+        )
+    _call(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
+    for number, (_, _, after) in enumerate(leads, start=1):
+        _call(call_tool, "update", workspace=workspace, id=f"D-{number}", item={"lead": after})
+    _call(call_tool, "commit", workspace=workspace, summary="語を書き換える")
+    return root
+
+
+def serve_key_newline_diff_workspace(make_workspace: Any, call_tool: Any) -> str:
+    """背景の改行を確かめるワークスペースを作って配信を立て、その URL を返す。"""
+    root = build_key_newline_diff_workspace(make_workspace, call_tool)
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.is_error is False, served.text
+    assert served.data is not None
+    return str(served.data["url"])
 
 
 def serve_key_word_diff_workspace(
