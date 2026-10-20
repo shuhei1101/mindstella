@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>保存待ちのバッジ | mindstella 部品のモック</title>
+  <!-- 明暗: クエリの theme（dark）で開く。ダークの節の枠の中で使う -->
+  <script>if (new URLSearchParams(location.search).get("theme") === "dark") document.documentElement.dataset.theme = "dark";</script>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足す保存待ちのバッジ -->
+  <link rel="stylesheet" href="../../refs/325/assets/style.css">
+  <style>
+    /* 部品のモックの本文: 送れる 1 枚にする */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 320px; max-width: 100%; }
+    /* 横に並べる見本 */
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    /* カードを並べる見本 */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    /* 並べたカードの下の余白を詰める */
+    .cards .card { margin: 0; }
+    /* 状態を見せるための見本のクラス */
+    .card.is-hover { border-color: var(--accent); }
+    .card.is-focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* ダークの見本の枠 */
+    .dark-frame { display: block; width: 100%; height: 640px; border: 0; }
+    /* 枠の中で開いたときは、ダークの節を出さない */
+    html.embed .cat-sec:last-child { display: none; }
+  </style>
+  <script>if (new URLSearchParams(location.search).has("embed")) document.documentElement.classList.add("embed");</script>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / pending-mark</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">保存待ちのバッジ</h1>
+    <section class="cat-sec">
+      <h2>バッジの種類</h2>
+      <p>書き換え・足すは「保存待ち」、消すは「保存で消す」、保存で書き込めなかった編集は「書き込めない」。破線の枠と鉛筆の印で、差分の印（記号の塗り）・コメントの印（吹き出しのピル）と形を分ける</p>
+      <div class="stage"><div class="row"><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span><span class="pm pm-add"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span><span class="pm pm-remove"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path><path d="M10 11v6M14 11v6"></path></svg><span class="pm-text">保存で消す</span></span><span class="pm pm-blocked"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg><span class="pm-text">書き込めない</span></span></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>印だけ（キー・案の見出し・マップの節・詳細パネルの見出し）</h2>
+      <p>場所が狭いところは印だけにし、名前は読み上げと title に残す</p>
+      <div class="stage"><div class="row"><span class="pm pm-edit pm-compact" title="保存待ち"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="sr-only">保存待ち</span></span><span class="pm pm-remove pm-compact" title="保存で消す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path><path d="M10 11v6M14 11v6"></path></svg><span class="sr-only">保存で消す</span></span><span class="pm pm-blocked pm-compact" title="書き込めない"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg><span class="sr-only">書き込めない</span></span></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>ボードのカード</h2>
+      <p>書き換え・足す（ID を持たない）・消す（タイトルに取り消し線）・書き込めない</p>
+      <div class="stage"><div class="cards"><div class="card pe-changed"><div class="c-ttl">ゴールを後から変えられる・足せる</div><div class="c-meta"><span class="mono">D-17</span><span>設定とゴール</span><span>要件</span><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span></div></div><div class="card pe-new"><div class="c-ttl">画面を作る</div><div class="c-meta"><span class="pe-noid">ID は保存で決まる</span><span class="pm pm-add"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span></div></div><div class="card pe-removing"><div class="c-ttl">話題のタグを付け直す</div><div class="c-meta"><span class="mono">T-17</span><span>作業</span><span class="pm pm-remove"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path><path d="M10 11v6M14 11v6"></path></svg><span class="pm-text">保存で消す</span></span></div></div><div class="card pe-blocked"><div class="c-ttl">移し替えの手順を持つ場所</div><div class="c-meta"><span class="mono">D-8</span><span>移し替えの手順</span><span class="pm pm-blocked"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg><span class="pm-text">書き込めない</span></span></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>表の行</h2>
+      <p>タイトルの後ろに置く。足す行は先頭に ID を持たずに並ぶ</p>
+      <div class="stage"><div class="table-wrap"><table class="grid"><thead><tr><th>ID</th><th>タイトル</th><th>状態</th></tr></thead><tbody>
+<tr class="pe-new"><td class="nowrap"><span class="pe-noid">—</span></td><td><button class="row-open" type="button">画面の形</button><span class="pm pm-add"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span></td><td></td></tr>
+<tr class="pe-changed"><td class="nowrap"><span class="mono">N-2</span></td><td><button class="row-open" type="button">1 つのワークスペースで複数の話題を並べる</button><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span></td><td></td></tr>
+<tr class="pe-removing"><td class="nowrap"><span class="mono">N-5</span></td><td><button class="row-open" type="button">納品物の資料が前提と経緯しか無い</button><span class="pm pm-remove"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path><path d="M10 11v6M14 11v6"></path></svg><span class="pm-text">保存で消す</span></span></td><td></td></tr>
+</tbody></table></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>マップの節</h2>
+      <p>2 行目（ID と状態）の後ろに印だけを置く</p>
+      <div class="stage"><div class="map-wrap" style="height:auto;padding:16px"><button class="map-node n-item pe-changed" type="button" style="position:relative;left:auto;top:auto;width:268px;height:48px"><span class="r1"><svg class="mark" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.8" fill="none" stroke="var(--st-open)" stroke-width="1.6"></circle></svg><span class="lbl">ゴールを後から変えられる・足せる</span></span><span class="r2"><span class="mono">D-17</span><span>未決定</span><span class="pm pm-edit pm-compact" title="保存待ち"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="sr-only">保存待ち</span></span></span></button></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>詳細パネルの読む表示</h2>
+      <p>変えたキーの名前・案の見出しの後ろに印だけを置く</p>
+      <div class="stage"><div class="detail" style="max-width:480px"><dl class="d-meta"><dt>カテゴリー</dt><dd>設定とゴール</dd><dt>タグ<span class="pm pm-edit pm-compact" title="保存待ち"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="sr-only">保存待ち</span></span></dt><dd><span class="tag">mindstella</span><span class="tag">ゴールと設定</span><span class="tag">記録の形</span></dd></dl>
+<div class="opt"><div class="o-head"><span class="key">C</span><div class="d-value"><div class="md md-value"><p>ゴールはフェーズごとに 1 つ持つ</p></div></div><span class="pm pm-edit pm-compact" title="保存待ち"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="sr-only">保存待ち</span></span></div></div>
+<div class="d-answer"><b>決定内容<span class="pm pm-blocked pm-compact" title="書き込めない"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg><span class="sr-only">書き込めない</span></span></b><div class="d-value"><div class="md md-value"><p>ゴールはフェーズごとに 1 つ持ち、話しながら足す・直す</p></div></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>差分の印・コメントの印と並べたとき（比べる見本）</h2>
+      <p>差分の印は差分の表示中だけに出て、保存待ちのバッジとは同時に出ない。コメントの印とは同じ行に並ぶ</p>
+      <div class="stage"><div class="cards"><div class="card"><div class="c-ttl">問いを出した時点で選択肢を画面に出す</div><div class="c-meta"><span class="mono">D-21</span><span>画面</span><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span><span class="cmk" title="コメント 2 件"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"></path></svg><span class="cmk-n" aria-hidden="true">2</span><span class="sr-only">コメント 2 件</span></span></div></div><div class="card"><div class="c-ttl">（差分の表示中）問いを出した時点で選択肢を画面に出す</div><div class="c-meta"><span class="df-mark df-chg" title="変更"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle></svg><span class="sr-only">変更</span></span><span class="mono">D-21</span><span>画面</span><span class="cmk" title="コメント 2 件"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"></path></svg><span class="cmk-n" aria-hidden="true">2</span><span class="sr-only">コメント 2 件</span></span></div></div><div class="card"><div class="c-ttl">（差分の表示中）画面からすべての項目を編集する</div><div class="c-meta"><span class="df-mark df-new" title="新規"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span class="sr-only">新規</span></span><span class="mono">D-38</span><span>画面</span></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>ホバー・キーボードのフォーカス</h2>
+      <p>カードのホバーとフォーカスは今のまま。バッジは押せる部品ではないため、状態を持たない</p>
+      <div class="stage"><div class="cards"><div class="card pe-changed is-hover"><div class="c-ttl">ゴールを後から変えられる・足せる</div><div class="c-meta"><span class="mono">D-17</span><span>設定とゴール</span><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span></div></div><div class="card pe-changed is-focus"><div class="c-ttl">ゴールを後から変えられる・足せる</div><div class="c-meta"><span class="mono">D-17</span><span>設定とゴール</span><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>長いタイトル・狭い幅（320px）</h2>
+      <p>補足の行が収まらないときは、バッジごと次の行へ回す</p>
+      <div class="stage narrow"><div class="card pe-changed"><div class="c-ttl">ユーザー共通の設定を画面から編集できる人を、ワークスペースごとに決められるようにする</div><div class="c-meta"><span class="mono">D-45</span><span>プレイブックとテンプレート</span><span>要件</span><span class="pm pm-edit"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"></path><path d="M14 20h6"></path></svg><span class="pm-text">保存待ち</span></span><span class="cmk" title="コメント 12 件"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"></path></svg><span class="cmk-n" aria-hidden="true">12</span><span class="sr-only">コメント 12 件</span></span></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>ダーク</h2>
+      <p>同じ見本をダークで開いたもの</p>
+      <div class="stage frames"><iframe class="dark-frame" src="index.html?theme=dark&amp;embed=1" title="保存待ちのバッジ（ダーク）"></iframe></div>
+    </section>
+  </main>
+</body>
+</html>

@@ -17,5 +17,7 @@
 | [comment-review](./comment-review/index.md) | レビュー中を確かめる画面（コメントの一覧で開く） | - |
 | [settings-panel](./settings-panel/index.md) | 表示の設定 | - |
 | [settings-save-confirm](./settings-save-confirm/index.md) | ワークスペースの既定の確かめ | - |
+| [pending-edits](./pending-edits/index.md) | 保存待ちのパネル | - |
+| [workspace-settings](./workspace-settings/index.md) | 設定の画面 | - |
 | [search](./search/index.md) | 全体の検索 | [216 / a-by-tier](./search/216/a-by-tier/index.html) |
 | [diagram-viewer](./diagram-viewer/index.md) | 図の拡大 | [21 / standard](./diagram-viewer/21/standard/index.html) |
