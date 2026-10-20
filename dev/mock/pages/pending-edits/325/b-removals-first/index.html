@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
   <meta name="color-scheme" content="light dark">
-  <title>保存待ちのパネル（案 B: 消す行を先頭に分ける） | mindstella プレビューのモック</title>
+  <title>保存待ちのパネル（案 B: 削除する行を先頭に分ける） | mindstella プレビューのモック</title>
   <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,14 +28,14 @@
 <body data-initial="tab=tasks" data-del="b" data-pe="1" data-sample="mixed">
   <!-- モック専用の操作列: 案・論点の案・見本・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
   <div class="mockbar" role="group" aria-label="モックの操作">
-    <span class="label">消す編集を含む保存:</span>
-    <a href="../a-count-in-button/index.html" data-keep>A ボタンに消す件数を出す（推奨）</a>
-    <a href="../b-removals-first/index.html" data-keep aria-current="page">B 消す行を先頭に分ける</a>
+    <span class="label">削除を含む保存:</span>
+    <a href="../a-count-in-button/index.html" data-keep>A ボタンに削除の件数を出す（推奨）</a>
+    <a href="../b-removals-first/index.html" data-keep aria-current="page">B 削除する行を先頭に分ける</a>
     <span class="label">トップバーの保存:</span>
     <a href="#" data-set="save=">A 件数だけ（推奨）</a>
     <a href="#" data-set="save=b">B 件数と保存のボタン</a>
     <span class="label">見本:</span>
-    <a href="#" data-set="sample=mixed&amp;pe=1&amp;diff=">足す・消す・設定を含む</a>
+    <a href="#" data-set="sample=mixed&amp;pe=1&amp;diff=">追加・削除・設定を含む</a>
     <a href="#" data-set="sample=blocked&amp;pe=1&amp;diff=">書き込めない編集</a>
     <a href="#" data-set="sample=offline&amp;pe=1&amp;diff=">つながらない</a>
     <a href="#" data-set="sample=edited&amp;pe=1&amp;diff=">書き換えだけ</a>

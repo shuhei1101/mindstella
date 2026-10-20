@@ -252,7 +252,7 @@
   const srOnly = (text) => el("span", { class: "sr-only" }, text);
   /** 保存待ちのバッジ（kind: edit 書き換え / add 足す / remove 消す / blocked 書き込めない。compact は印だけ） */
   const mark = (kind, compact = false) => {
-    const text = { edit: "保存待ち", add: "保存待ち", remove: "保存で消す", blocked: "書き込めない" }[kind];
+    const text = { edit: "保存待ち", add: "保存待ち", remove: "保存で削除", blocked: "書き込めない" }[kind];
     const symbol = { edit: "pending", add: "pending", remove: "trash", blocked: "warn" }[kind];
     return el("span", { class: `pm pm-${kind}${compact ? " pm-compact" : ""}`, title: compact ? text : null }, icon(symbol), compact ? srOnly(text) : el("span", { class: "pm-text" }, text));
   };
@@ -404,8 +404,8 @@
     const existing = document.querySelector(".pe-add");
     if (existing !== null && (existing.dataset.kind !== kind || existing.parentElement !== toolbar)) existing.remove();
     if (toolbar === null || kind === null || diffing || toolbar.querySelector(".pe-add") !== null) return;
-    const button = el("button", { class: "btn pe-add", type: "button", "data-kind": kind, onclick: () => startAdd(kind) }, icon("plus"), el("span", { class: "lbl" }, "項目を足す"));
-    button.setAttribute("aria-label", `${KINDS[kind].label}の項目を足す`);
+    const button = el("button", { class: "btn pe-add", type: "button", "data-kind": kind, onclick: () => startAdd(kind) }, icon("plus"), el("span", { class: "lbl" }, "項目を追加"));
+    button.setAttribute("aria-label", `${KINDS[kind].label}の項目を追加`);
     const columns = toolbar.querySelector(".cols-btn-table");
     if (columns !== null) columns.before(button);
     else toolbar.append(button);
@@ -543,11 +543,15 @@
     if (editingHere) {
       if (form === null || form.dataset.id !== id) {
         form?.remove();
-        scrollBody.append(buildForm(id, "panel"));
+        panel.querySelector(".pe-stage-bar")?.remove();
+        const fresh = buildForm(id, "panel");
+        scrollBody.append(fresh);
+        placeStageBar(fresh);
       }
       if (detail !== null) detail.hidden = true;
     } else {
       form?.remove();
+      panel.querySelector(".pe-stage-bar")?.remove();
       if (detail !== null) {
         detail.hidden = false;
         if (!diffing) markKeys(detail, id);
@@ -628,7 +632,8 @@
     const kind = adding ? (addEdit?.key ?? ui.addKind) : kindOf(id);
     const original = adding ? { title: "", status: KINDS[kind].first, tags: [] } : itemOf(id);
     const view = adding ? { ...original, ...(addEdit?.value ?? {}) } : applied()[kind].find((item) => item.id === id);
-    const form = el("form", { class: `pe-form pe-form-${where}`, "data-id": id, novalidate: true, "aria-label": adding ? `${KINDS[kind].label}を足す` : `${id} を編集` });
+    const formId = `pe-form-${where}-${id.replace(/[^A-Za-z0-9]/g, "")}`;
+    const form = el("form", { class: `pe-form pe-form-${where}`, id: formId, "data-id": id, novalidate: true, "aria-label": adding ? `${KINDS[kind].label}を追加` : `${id} を編集` });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       if (stage === "b") stageAll(form, id);
@@ -655,30 +660,40 @@
       const removing = editOfKey(id, "item-remove", kind);
       const referrers = referrersOf(id);
       form.append(el("section", { class: "pe-remove-sec" },
-        el("h2", {}, "項目を消す"),
+        el("h2", {}, "項目を削除"),
         removing === null
           ? el("button", { class: "btn pe-danger", type: "button", onclick: () => {
             putEdit({ target: id, op: "item-remove", key: kind, value: null, original: undefined });
             decorate();
-          } }, icon("trash"), "項目を消す")
+          } }, icon("trash"), "項目を削除")
           : el("button", { class: "btn", type: "button", onclick: () => {
             undo(removing.id);
             decorate();
-          } }, icon("undo"), "消す編集を取り消す"),
-        referrers.length > 0 ? el("p", { class: "pe-hint" }, icon("warn"), `${referrers.join("・")} が指しているため、保存のときに消せません。指している項目から外すと消せます。`) : null));
+          } }, icon("undo"), "削除を取り消す"),
+        referrers.length > 0 ? el("p", { class: "pe-hint" }, icon("warn"), `${referrers.join("・")} が指しているため、保存のときに削除できません。指している項目から外すと削除できます。`) : null));
     }
     // 溜めた知らせ（読み上げにも伝える）
     form.append(el("p", { class: "pe-form-msg", role: "status" }));
-    // 「保存待ちに入れる」の案: 下端に留めるボタン
+    // 「保存待ちに入れる」の案: 入力の区画の外（パネル・画面の下端）に置くボタンの帯。置く側が placeStageBar で動かす
     if (stage === "b") {
-      form.append(el("div", { class: "pe-stage-bar" },
+      form.stageBar = el("div", { class: "pe-stage-bar", "data-for": formId },
         el("button", { class: "btn", type: "button", onclick: () => {
           ui.dirty = false;
-          form.replaceWith(buildForm(id, where));
+          const fresh = buildForm(id, where);
+          form.stageBar.remove();
+          form.replaceWith(fresh);
+          placeStageBar(fresh);
         } }, "入力を捨てる"),
-        el("button", { class: "btn primary", type: "submit" }, icon("pending"), "保存待ちに入れる")));
+        el("button", { class: "btn primary", type: "submit", form: formId }, icon("pending"), "保存待ちに入れる"));
     }
     return form;
+  };
+  /** 「保存待ちに入れる」の帯を、入力の区画の外に置く（パネル・全画面は送る区画の下、別の画面は入力の後ろ） */
+  const placeStageBar = (form) => {
+    if (form.stageBar === undefined) return;
+    const scroll = form.closest(".panel-scroll, dialog.full .panel-body");
+    if (scroll !== null) scroll.after(form.stageBar);
+    else form.after(form.stageBar);
   };
   /** キー 1 つの入力欄 */
   const buildField = ({ id, kind, key, original, view, adding }) => {
@@ -781,7 +796,7 @@
         ...(key === "tags" ? [el("datalist", { id: listId }, ...vocabulary().map((tag) => el("option", { value: tag })))] : []),
       );
     };
-    const input = el("input", { id: fieldId, class: "input pe-chip-input", type: "text", list: key === "tags" ? listId : null, placeholder: placeholder, "aria-label": `${label}を足す`, autocomplete: "off" });
+    const input = el("input", { id: fieldId, class: "input pe-chip-input", type: "text", list: key === "tags" ? listId : null, placeholder: placeholder, "aria-label": `${label}を追加`, autocomplete: "off" });
     input.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.isComposing) return;
       event.preventDefault();
@@ -828,12 +843,12 @@
             undo(pending.id);
             decorate();
             section.replaceWith(buildOptions(id, original, applied().decisions.find((item) => item.id === id)));
-          } }, icon("undo"), "消す編集を取り消す")
-          : el("button", { class: "icon-btn", type: "button", "aria-label": `案 ${option.key} を消す`, title: `案 ${option.key} を消す`, onclick: () => {
+          } }, icon("undo"), "削除を取り消す")
+          : el("button", { class: "icon-btn", type: "button", "aria-label": `案 ${option.key} を削除`, title: `案 ${option.key} を削除`, onclick: () => {
             const added = editOfKey(id, "option-add", option.key);
             if (added !== null) undo(added.id);
             else putEdit({ target: id, op: "option-remove", key: option.key, value: null, original: undefined });
-            announce(`${id} の案 ${option.key} を消す編集を保存待ちに入れました`);
+            announce(`${id} の案 ${option.key} の削除を保存待ちに入れました`);
             decorate();
             section.replaceWith(buildOptions(id, original, applied().decisions.find((item) => item.id === id)));
           } }, icon("trash")));
@@ -865,7 +880,7 @@
       const fresh = buildOptions(id, original, applied().decisions.find((item) => item.id === id));
       section.replaceWith(fresh);
       fresh.querySelector(`#pe-${id.replace(/[^A-Za-z0-9]/g, "")}-opt-${next}`)?.focus();
-    } }, icon("plus"), "案を足す"));
+    } }, icon("plus"), "案を追加"));
     return section;
   };
   /** 「保存待ちに入れる」の案: 開いている項目の入力をまとめて溜める */
@@ -892,7 +907,7 @@
       }
     }
     ui.dirty = false;
-    announce(`${id.startsWith("new:") ? "足す項目" : id} の入力を保存待ちに入れました`);
+    announce(`${id.startsWith("new:") ? "追加する項目" : id} の入力を保存待ちに入れました`);
     decorate();
   };
   /** 溜めた知らせを、開いている編集の表示に出す */
@@ -907,7 +922,7 @@
     const referrers = referrersOf(edit.target);
     return el("p", { class: "pe-blocked-note" }, icon("warn"),
       ...referrers.flatMap((ref, index) => [index > 0 ? "・" : "", el("button", { class: "idlink", type: "button", onclick: () => openItem(ref) }, ref)]),
-      " が指しているため消せません。指している項目から外してください。");
+      " が指しているため削除できません。指している項目から外してください。");
   };
 
   // ===== 項目を足す =====
@@ -936,7 +951,7 @@
       if (key !== "title" || value.trim() === "") return;
       editSeq += 1;
       edits = [...edits, { id: `E-${editSeq}`, target, op: "item-add", key: ui.addKind, value: { title: value.trim(), status: KINDS[ui.addKind].first } }];
-      announce(`${KINDS[ui.addKind].label}を足す編集を保存待ちに入れました`);
+      announce(`${KINDS[ui.addKind].label}の追加を保存待ちに入れました`);
     } else {
       if (key === "title" && value.trim() === "" && !force) return;
       found.value = { ...found.value, [key]: value };
@@ -959,13 +974,15 @@
     if (panel !== null && panel.dataset.id === target) return;
     panel?.remove();
     const kind = ui.addKind;
-    panel = el("aside", { class: "panel open pe-add-panel", "aria-label": `${KINDS[kind].label}を足す`, "data-id": target },
+    panel = el("aside", { class: "panel open pe-add-panel", "aria-label": `${KINDS[kind].label}を追加`, "data-id": target },
       el("div", { class: "panel-head" },
-        el("span", { class: "panel-kind" }, el("span", { class: "panel-kind-label" }, `${KINDS[kind].label}を足す`)),
+        el("button", { class: "icon-btn panel-back", type: "button", "aria-label": "一覧へ戻る", onclick: () => confirmLeave(closeAdd) }, icon("back")),
+        el("span", { class: "panel-kind" }, el("span", { class: "panel-kind-label" }, `${KINDS[kind].label}を追加`)),
         el("span", { class: "spacer" }),
-        el("button", { class: "icon-btn panel-close-x", type: "button", "aria-label": "足す項目の入力を閉じる", onclick: () => confirmLeave(closeAdd) }, icon("close"))),
-      el("div", { class: "panel-scroll" }, el("div", { class: "panel-body", tabindex: "0", role: "region", "aria-label": "足す項目の入力" }, buildForm(target, "panel"))));
+        el("button", { class: "icon-btn panel-close-x", type: "button", "aria-label": "追加の入力を閉じる", onclick: () => confirmLeave(closeAdd) }, icon("close"))),
+      el("div", { class: "panel-scroll" }, el("div", { class: "panel-body", tabindex: "0", role: "region", "aria-label": "追加する項目の入力" }, buildForm(target, "panel"))));
     body.append(panel);
+    placeStageBar(panel.querySelector(".pe-form"));
     body.classList.add("panel-open");
   };
   /** 足す項目の入力を閉じる（タイトルを書いていなければ何も溜めない） */
@@ -1018,17 +1035,17 @@
   const describe = (target) => {
     if (target === "settings") return { kind: "設定", id: null, title: base.settings.summary };
     const add = edits.find((edit) => edit.target === target && edit.op === "item-add");
-    if (add !== undefined) return { kind: `${KINDS[add.key].label}を足す`, id: null, title: add.value.title };
+    if (add !== undefined) return { kind: `${KINDS[add.key].label}を追加`, id: null, title: add.value.title };
     const item = itemOf(target);
     return { kind: KINDS[kindOf(target)].label, id: target, title: applied()[kindOf(target)].find((entry) => entry.id === target)?.title ?? item.title };
   };
   /** 1 件の編集の中身の 1 行（何を・どう変えるか） */
   const describeEdit = (edit) => {
-    if (edit.op === "item-add") return { what: "項目を足す", change: edit.value.title };
-    if (edit.op === "item-remove") return { what: "項目を消す", change: null };
+    if (edit.op === "item-add") return { what: "項目を追加", change: edit.value.title };
+    if (edit.op === "item-remove") return { what: "項目を削除", change: null };
     if (edit.op === "setting") return { what: SETTING_LABELS[edit.key], change: [flat(base.settings[edit.key]), flat(edit.value)] };
-    if (edit.op === "option-add") return { what: `案 ${edit.key} を足す`, change: flat(edit.value) };
-    if (edit.op === "option-remove") return { what: `案 ${edit.key} を消す`, change: null };
+    if (edit.op === "option-add") return { what: `案 ${edit.key} を追加`, change: flat(edit.value) };
+    if (edit.op === "option-remove") return { what: `案 ${edit.key} を削除`, change: null };
     if (edit.op === "option-edit") return { what: `案 ${edit.key}`, change: [flat(itemOf(edit.target).options.find((option) => option.key === edit.key)?.content), flat(edit.value)] };
     if (edit.op === "adopt") return { what: "採用する案", change: [flat(itemOf(edit.target).options.find((option) => option.adopted)?.key ?? "なし"), edit.value] };
     const original = edit.key === "body" ? "（今の本文）" : itemOf(edit.target)[edit.key];
@@ -1121,16 +1138,16 @@
       });
     };
     if (delStyle === "b" && removals.length > 0) {
-      list.append(el("h3", { class: "pe-sec-head" }, icon("trash"), `消す項目（${removals.length} 件）`), ...groupsOf(removals),
-        el("h3", { class: "pe-sec-head" }, `書き換える・足す（${edits.length - removals.length} 件）`), ...groupsOf(edits.filter((edit) => edit.op !== "item-remove")));
+      list.append(el("h3", { class: "pe-sec-head" }, icon("trash"), `削除する項目（${removals.length} 件）`), ...groupsOf(removals),
+        el("h3", { class: "pe-sec-head" }, `変更・追加する項目（${edits.length - removals.length} 件）`), ...groupsOf(edits.filter((edit) => edit.op !== "item-remove")));
     } else {
       list.append(...groupsOf(edits));
     }
     // まとめて保存する
     const saving = saveState === "saving";
-    const label = saving ? "保存しています…" : delStyle === "a" && removals.length > 0 ? `まとめて保存する（${removals.length} 件を消す）` : "まとめて保存する";
+    const label = saving ? "保存しています…" : delStyle === "a" && removals.length > 0 ? `まとめて保存する（${removals.length} 件を削除）` : "まとめて保存する";
     const foot = el("div", { class: "comments-free pe-foot" },
-      el("p", { class: "pe-foot-sum" }, `${edits.length} 件${removals.length > 0 ? `（うち消す ${removals.length} 件）` : ""}をワークスペースに書きます`),
+      el("p", { class: "pe-foot-sum" }, `${edits.length} 件${removals.length > 0 ? `（うち削除 ${removals.length} 件）` : ""}をワークスペースに書きます`),
       el("button", { class: "btn primary pe-save", type: "button", disabled: saving || edits.length === 0, "aria-busy": saving ? "true" : null, onclick: () => save() },
         saving ? el("span", { class: "pe-spin" }, icon("spin")) : icon("save"), label));
     panel.replaceChildren(head, list, foot);
@@ -1323,9 +1340,9 @@
             input.addEventListener("change", () => commit(value.map((entry, at) => (at === index ? { ...entry, [column]: input.value } : entry))));
             return input;
           })())),
-          el("td", {}, el("button", { class: "icon-btn", type: "button", "aria-label": `${index + 1} 行目を消す`, onclick: () => commit(value.filter((_, at) => at !== index)) }, icon("trash")))))));
+          el("td", {}, el("button", { class: "icon-btn", type: "button", "aria-label": `${index + 1} 行目を削除`, onclick: () => commit(value.filter((_, at) => at !== index)) }, icon("trash")))))));
       wrap.append(el("div", { class: "pe-mini-wrap" }, table),
-        el("button", { class: "btn pe-row-add", type: "button", onclick: () => commit([...(value ?? []), Object.fromEntries(columns.map((column) => [column, ""]))]) }, icon("plus"), `${SETTING_LABELS[key]}を足す`));
+        el("button", { class: "btn pe-row-add", type: "button", onclick: () => commit([...(value ?? []), Object.fromEntries(columns.map((column) => [column, ""]))]) }, icon("plus"), `${SETTING_LABELS[key]}を追加`));
     }
     return wrap;
   };
@@ -1388,7 +1405,7 @@
     if (screen !== null && screen.dataset.id === target) return;
     screen?.remove();
     const adding = String(target).startsWith("new:");
-    const who = adding ? { kind: `${KINDS[ui.addKind].label}を足す`, id: null, title: "" } : describe(target);
+    const who = adding ? { kind: `${KINDS[ui.addKind].label}を追加`, id: null, title: "" } : describe(target);
     screen = el("main", { class: "content pe-edit-screen pe-screen", "data-id": target },
       el("div", { class: "pe-screen-head" },
         el("button", { class: "icon-btn", type: "button", "aria-label": "一覧へ戻る", onclick: () => toggleEdit(target) }, icon("back")),
@@ -1397,6 +1414,7 @@
         el("button", { class: "btn", type: "button", "aria-pressed": "true", onclick: () => toggleEdit(target) }, icon("pencil"), "編集を終える")),
       buildForm(target, "screen"));
     main.after(screen);
+    placeStageBar(screen.querySelector(".pe-form"));
   };
 
   // ===== モックの操作 =====

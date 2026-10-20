@@ -227,8 +227,10 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 .pe-blocked-note svg.icon { vertical-align: -2px; margin-right: 4px; }
 /* 書き込めない理由の中の項目の ID */
 .pe-blocked-note .idlink { margin: 0 2px; }
-/* 「保存待ちに入れる」の案の下端のボタンの帯: 編集の表示の下端に留める */
-.pe-stage-bar { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 8px; margin: 0 -2px; padding: 10px 2px; background: var(--surface); border-top: 1px solid var(--border); }
+/* 「保存待ちに入れる」の案のボタンの帯: 送る区画の外の下端に置き、入力を覆わない */
+.pe-stage-bar { flex: none; display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px 12px; background: var(--surface); border-top: 1px solid var(--border); }
+/* 別の画面の帯: 入力の後ろに並べる */
+.pe-screen > .pe-stage-bar { padding: 12px 0 0; background: none; border-top: 0; }
 /* 確かめのダイアログ */
 .pe-confirm { max-width: min(420px, calc(100% - 32px)); padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); }
 /* 確かめのダイアログの後ろの幕 */
@@ -313,6 +315,8 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 .pe-foot-sum { margin: 0; font-size: var(--fs-small); color: var(--text-2); }
 /* まとめて保存するボタン: 幅いっぱい */
 .pe-save { justify-content: center; width: 100%; }
+/* 保存待ちが 0 件・保存しているとき: 押せない見た目にする */
+.pe-save:disabled { opacity: .45; cursor: default; }
 /* 保存しているときの回る印 */
 .pe-spin { display: inline-grid; place-items: center; animation: pe-spin 1s linear infinite; }
 /* 回る印の動き */
