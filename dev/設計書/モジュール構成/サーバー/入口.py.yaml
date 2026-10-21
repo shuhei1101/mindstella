@@ -1338,6 +1338,12 @@ functions:
         default: now_utc
         passing: injected
         description: 今の日時を返す関数
+      - name: editor
+        type: str
+        required: false
+        default: EDITOR
+        passing: keyword
+        description: 編集した人（MCP のツールは既定の `ai`、まとめて保存は `user`）
     returns:
       type: tuple[Staged, dict[str, Any]]
       description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
@@ -1345,7 +1351,7 @@ functions:
       1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）
          - `item` が `tags` を持つ場合、語彙にあるかを確かめる（`require_known_tags`。引数の名前は `tags`、設定は `staged.workspace.settings`）。項目がもともと持つ語彙に無いタグは確かめない（点検が返す）
       2. `staged.items` のその種類で ID を振る（`next_id`。`taken` に消した項目の記録（`removed_items`）の ID を渡す）
-      3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`EDITOR`）・`seq`・`added_seq` を末尾に置いた項目を作る
+      3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`editor`）・`seq`・`added_seq` を末尾に置いた項目を作る
          - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す（どの種類も）
          - `body_html` がある場合、項目の `body` を `{ID}.html` にし、本文の書き込みを足す（資料だけ）
       4. まだまとめていない変更の `added` に ID を足す（`note_pending`）
@@ -1381,6 +1387,12 @@ functions:
         condition: 語彙 `通知` の `Staged` に、タグ `通知機能` の検討事項を足す
         mock: '`now`'
         expected: '`UnknownTagError`（`unknown` が `[(tags, 通知機能, [通知])]`）'
+      - name: test_stage_add_when_user_editor
+        case: 正常
+        summary: 編集した人を渡すと、足した項目の `updated_by` にその人を書く
+        condition: 'タスク `{"title": "画面を作る", "status": "未着手"}` を `editor="user"` で足す'
+        mock: '`now`'
+        expected: 足した T-1 の `updated_by` が `user`
     exceptions:
       - name: UnknownTagError
         condition: '`item` の `tags` に語彙に無いタグがある'
@@ -1413,18 +1425,24 @@ functions:
         default: now_utc
         passing: injected
         description: 今の日時を返す関数
+      - name: editor
+        type: str
+        required: false
+        default: EDITOR
+        passing: keyword
+        description: 編集した人（MCP のツールは既定の `ai`、まとめて保存は `user`）
     returns:
       type: tuple[Staged, dict[str, Any]]
       description: 新しい `Staged` と、`update` の結果 `{id, file, changed}`
     process: |-
       1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`。`index` はその項目の位置）
          - `item` が `tags` を持つ場合、語彙にあるかを確かめる（`require_known_tags`。引数の名前は `tags`、設定は `staged.workspace.settings`）。項目がもともと持つ語彙に無いタグは確かめない（点検が返す）
-      2. 変更を当てはめ、`updated` を今の日時、`updated_by` を `EDITOR` にする（`merge_changes`）
+      2. 変更を当てはめ、`updated` を今の日時、`updated_by` を `editor` にする（`merge_changes`）
          - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（どの種類も）
          - `body_html` がある場合、`body` を `{ID}.html` にし、本文の書き込みを作る（資料だけ）
          - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
          - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
-      3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `EDITOR`）
+      3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `editor`）
          - 変わったものがある場合、通し番号を振り（`advance_seq`）、項目の `seq` をその番号にして、変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は記録のもの）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
       4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
     exceptions:
@@ -1464,6 +1482,12 @@ functions:
         condition: 語彙 `通知` の `Staged` に、D-1 の `tags` を `[通知機能]` にする
         mock: '`now`'
         expected: '`UnknownTagError`（`unknown` が `[(tags, 通知機能, [通知])]`）'
+      - name: test_stage_update_when_user_editor
+        case: 正常
+        summary: 編集した人を渡すと、項目と変更履歴の回にその人を書く
+        condition: '`updated_by: ai` の D-1 に `{"answer": "a"}` を `editor="user"` で当てる。保持する回数は既定'
+        mock: '`now`'
+        expected: D-1 の `updated_by` が `user`、`history[0].by` が `user`
   - name: apply_option_edit
     title: 案の書き換えを当てる
     kind: 関数
