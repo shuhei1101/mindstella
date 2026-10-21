@@ -1,0 +1,92 @@
+title: "設定の画面"
+elements:
+  - name: 画面の見出し
+    kind: heading
+    position: 見出し
+    description: 「設定」。開いたときにフォーカスを移す
+    label: 設定
+    io: 表示
+    status: planned
+    introduced:
+      pr: 325
+  - name: 閉じる
+    kind: button
+    position: 見出し > 右端
+    description: 設定の画面を閉じ、開く前の画面に戻る。溜めた編集は保存待ちに残る
+    label: 閉じる
+    status: planned
+    introduced:
+      pr: 325
+  - name: 設定のまとまり
+    kind: form
+    position: 本文
+    description: 設定のキーを「話し合い」（題名・プレイブック・ゴール）・「進め方」（フェーズ・最上位の軸の呼び名・対象・カテゴリー）・「タグと関連」（タグの語彙・関連する場所）・「変更履歴」（保持する回数）の `fieldset` に分けて並べる。入力欄を離れたとき（選ぶ・チップ・行の追加と削除は操作したとき）にそのキーの `setting` を 1 件溜め、溜めたキーは名前の右に保存待ちの印（compact）を付ける。元の値に戻すと保存待ちから外れる。入力は保存待ちの編集を当てた値で描く
+    io: 入力
+    source: 記録の取得.settings
+    target: 保存待ちの編集の追加（target が settings、op が setting、key が設定のキー）
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    status: planned
+    introduced:
+      pr: 325
+  - name: 題名・最上位の軸の呼び名
+    kind: input
+    position: 設定のまとまり
+    description: 1 行の文字の入力
+    label: 題名 / 最上位の軸の呼び名
+    io: 入力
+    type: 文字列
+    target: 保存待ちの編集の追加.value（key が summary・target_label）
+    status: planned
+    introduced:
+      pr: 325
+  - name: プレイブック・フェーズ・タグの語彙
+    kind: list
+    position: 設定のまとまり
+    description: 値をチップで並べ、チップの × で外し、入力欄で足す
+    label: プレイブック / フェーズ / タグの語彙
+    io: 入力
+    type: 文字列の配列
+    target: 保存待ちの編集の追加.value（key が playbooks・phases・tag_vocabulary）
+    status: planned
+    introduced:
+      pr: 325
+  - name: ゴール
+    kind: form
+    position: 設定のまとまり
+    description: 届けるフェーズ（フェーズから選ぶ）とゴールの中身（何行も書く欄）を書き換え、納品物は ID とタイトルを読むだけで並べる
+    label: ゴール
+    io: 入力
+    target: 保存待ちの編集の追加.value（key が goal）
+    status: planned
+    introduced:
+      pr: 325
+  - name: 対象・カテゴリー・関連する場所
+    kind: table
+    position: 設定のまとまり
+    description: 1 行ずつの表で、対象は名前・説明、カテゴリーは名前・対象・説明、関連する場所は表示名・URL の入力を並べ、各行に「{n} 行目を削除」、表の下に「{呼び名}を追加」を置く。狭い幅は表の中で横に送る（画面は横に送らない）
+    label: 対象 / カテゴリー / 関連する場所
+    io: 入力
+    type: オブジェクトの配列
+    target: 保存待ちの編集の追加.value（key が targets・categories・links）
+    status: planned
+    introduced:
+      pr: 325
+  - name: 保持する回数
+    kind: input
+    position: 設定のまとまり
+    description: 変更履歴に残す書き換えのまとまりの数
+    label: 保持する回数
+    io: 入力
+    type: 整数
+    range:
+      min: '1'
+      step: '1'
+    inputmode: numeric
+    hint: 変更履歴に残す書き換えのまとまりの数
+    target: 保存待ちの編集の追加.value（key が keep）
+    status: planned
+    introduced:
+      pr: 325
+screen: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
+mock: dev/mock/pages/workspace-settings/325/standard/index.html
+lead: ワークスペースの設定（題名・プレイブック・フェーズ・ゴール・対象・カテゴリー・タグの語彙・関連する場所・保持する回数）を書き換える別の画面。表示の設定のパネルの「設定を編集する」で開き、本文の区画を置き換える。書き換えは設定のキーごとの編集として保存待ちに溜め、保存待ちのパネルでまとめて保存する。差分の表示中と配る書き出しでは開かない。

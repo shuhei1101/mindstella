@@ -447,6 +447,104 @@ elements:
     visible_when: 差分の表示の間で、Markdown の本文が選んだ時点で変わっていて、並べ方が「左右に並べる」で、「本文の差分の並べ方の切り替え」を出しているとき
     source: 記録の取得.bodies と、history の body_diff から組み立てた前の本文
     status: implemented
+  - name: 編集する
+    kind: button
+    position: 見出し > 前後の移動の左
+    description: 読む表示と編集の表示を切り替える（`aria-pressed`）。編集の表示の間は文字色の塗りで「編集を終える」にする。幅 480px 以下は鉛筆の印だけにし、文字を読み上げと `title` に残す。別の項目を開くと読む表示に戻る（溜めた編集は保存待ちに残る）
+    label: 編集する（編集の表示の間は「編集を終える」）
+    visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
+    status: planned
+    introduced:
+      pr: 325
+  - name: 見出しの保存待ちの印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/保存待ちの印.ts#
+    args:
+      - name: kind
+        value: その項目の削除を溜めていれば remove、直前の保存で書き込めなかった編集を持てば blocked、それ以外は pending
+      - name: compact
+        value: 'true'
+    position: 見出し > 種類と ID の右
+    description: その項目に保存待ちの編集があることを示す。幅 480px 以下では出さず、キー・案の印に任せる
+    io: 表示
+    visible_when: その項目に保存待ちの編集が 1 件以上あり、差分の表示をしていない
+    source: 保存待ちの編集の読み取り.items（target がその項目のもの）
+    status: planned
+    introduced:
+      pr: 325
+  - name: キー・案の保存待ちの印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/保存待ちの印.ts#
+    args:
+      - name: kind
+        value: そのキー・案の編集が直前の保存で書き込めなかったら blocked、それ以外は pending
+      - name: compact
+        value: 'true'
+    position: 読む表示と編集の表示のキーの名前・案の見出しの後ろ
+    description: 保存待ちの編集があるキー・案に印だけを置く。足した案を採用したときも案の見出しの印は 1 つにする。読む表示は保存待ちの編集を当てた値で描く
+    io: 表示
+    visible_when: そのキー・案に保存待ちの編集があり、差分の表示をしていない
+    source: 保存待ちの編集の読み取り.items
+    status: planned
+    introduced:
+      pr: 325
+  - name: 編集の表示
+    kind: form
+    position: 本文のスクロール領域
+    description: 編集できないキー（ID・作成・更新）を頭に並べ、その種類のキーをキーごとの入力にする（状態・フェーズ・カテゴリー・機能は選ぶ、タグは語彙から選ぶチップ、参照のキーは ID を入れるチップ、取り下げ・納品物はチェック、答え・理由・結果などは何行も書く欄、本文は等幅の何行も書く欄）。入力欄を離れたとき（選ぶ・チェックは選んだとき）にそのキーの編集を 1 件ずつ溜め、溜めたキーの入力欄の枠を印の色の破線にする。元の値に戻すと保存待ちから外れる。届かない・エラーのときは入力を残してキーの下に理由を出す。削除を溜めた項目では入力を読むだけにし、頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。編集の表示の間は下端のコメントの入力を隠す
+    io: 入力
+    visible_when: 「編集する」を押した間、または種類ごとの画面の「項目を追加」で開いた追加の入力
+    target: 保存待ちの編集の追加.op・target・key・value
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    status: planned
+    introduced:
+      pr: 325
+  - name: タイトルの入力
+    kind: input
+    position: 編集の表示 > 状態の下
+    description: 項目のタイトル。空（空白だけを含む）のときは溜めず、入力欄を離れたときに失敗の赤の枠と誤りを出す
+    label: タイトル
+    io: 入力
+    type: 文字列
+    required: true
+    required_label: 「必須」をキーの名前の右に出す
+    error_message: タイトルを書いてください。
+    target: 保存待ちの編集の追加.value（key が title）
+    status: planned
+    introduced:
+      pr: 325
+  - name: 案の入力
+    kind: list
+    position: 編集の表示 > 依存先の下
+    description: 検討事項の案を 1 案 1 枚で並べる。各案に記号・「採用」のラジオ・中身の入力欄・「案 {記号} を削除」を置き、末尾に「案を追加」を置く。中身を離れたときに `option-edit`（足した案は `option-add`）、採用を選んだときに `adopt`、削除で `option-remove` を溜める。削除を溜めた案は中身に取り消し線を引く。「案を追加」は次の記号の空の案を足し、中身を書いて離れたときに溜める
+    io: 入力
+    visible_when: 検討事項の編集の表示
+    target: 保存待ちの編集の追加（op が option-add・option-edit・option-remove・adopt）
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    status: planned
+    introduced:
+      pr: 325
+  - name: 項目を削除
+    kind: button
+    position: 編集の表示 > 末尾（上の区切り線で入力と分ける「項目を削除」の区画）
+    description: その項目の削除を保存待ちに溜める（確認のモーダルは挟まない）。失敗の赤の文字と枠で、取り返しのつかない操作と示す。溜めた後は同じ場所を「削除を取り消す」に替え、押すと削除の編集を取り消す（『保存待ちの編集の取り消し』）。ほかの項目が指しているときは、ボタンの下に警告の印と「{指している項目の ID} が指しているため、保存のときに削除できません。指している項目から外すと削除できます。」を出す（削除は溜められ、保存で書き込めない編集になる）
+    label: 項目を削除（溜めた後は「削除を取り消す」）
+    visible_when: 編集の表示（追加の入力では出さない）
+    target: 保存待ちの編集の追加（op が item-remove）
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    status: planned
+    introduced:
+      pr: 325
+  - name: 書き込めない理由
+    kind: label
+    position: 読む表示と編集の表示の、書き込めなかったキーの下
+    description: 直前の保存で書き込めなかった編集の理由を警告の印と共に出し、入力欄の枠を失敗の赤の実線にする。`changed` は「溜めた後の {MM/DD HH:mm} に AI がこの項目を書き換えたため、書き込めません。取り消してから入れ直してください。」、そのほかは `detail`
+    io: 表示
+    visible_when: 直前の保存が 409 で、その項目の編集が `blocked` にあった
+    source: 保存待ちの編集をまとめて保存.blocked
+    status: planned
+    introduced:
+      pr: 325
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/230/a-on-scroll/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py

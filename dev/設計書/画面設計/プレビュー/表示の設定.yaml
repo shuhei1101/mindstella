@@ -45,6 +45,16 @@ elements:
     io: 表示
     source: 書き換えの知らせ・記録の取得.settings.display
     visible_when: サーバーの配信で、他の人の保存・`update_settings`・設定の再読み込みで既定が変わってから 6 秒の間
+  - name: 設定を編集する
+    kind: button
+    position: 本文 > 下端（見出し「ワークスペースの設定」と「題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙」の下）
+    description: パネルを閉じて『設定の画面』を開く。幅 900px 以下では開いていた保存待ちのパネルも閉じる
+    label: 設定を編集する
+    visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
+    action_ref: dev/設計書/画面設計/プレビュー/設定の画面#
+    status: planned
+    introduced:
+      pr: 325
 lead: 表示する種類と差分のミニマップを、この端末だけの個人の上書きとして変える。ネットワークの見た目はネットワークのドロップダウンで選び、このパネルではこの端末で変えている項目・既定に戻す・ワークスペースの既定にするの対象としてだけ扱う。トップバーの表示の設定のボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧とは片方だけを開き、右の詳細パネルは開いたままにする。
 mock: dev/mock/pages/settings-panel/237/standard/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts

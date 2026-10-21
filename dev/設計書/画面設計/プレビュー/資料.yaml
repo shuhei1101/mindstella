@@ -34,6 +34,14 @@ elements:
         value: 絞り込みのドロワーを開いているか
       - name: comments_unread
         value: 概要と同じ
+      - name: pending
+        value: 概要と同じ
+      - name: pending_count
+        value: 概要と同じ
+      - name: pending_open
+        value: 概要と同じ
+      - name: pending_blocked
+        value: 概要と同じ
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 表示形式の切り替え
@@ -158,6 +166,43 @@ elements:
     status: implemented
     introduced:
       pr: 214
+  - name: 項目を追加
+    kind: button
+    position: 表示形式の切り替えの帯 > 右端
+    description: 資料の項目を追加する入力を、詳細パネルと同じ置き方で開く（開いていた詳細パネルは閉じる）。タイトルを書いて入力欄を離れたときに `item-add` を 1 件溜め、残りのキーは同じ項目への編集として溜める。幅 480px 以下は「＋」の印だけにし、文字を読み上げに残す
+    label: 項目を追加
+    visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
+    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#elements[編集の表示]
+    status: planned
+    introduced:
+      pr: 325
+  - name: 一覧の保存待ちの印
+    kind: label
+    component: dev/設計書/部品設計/プレビュー/保存待ちの印.ts#
+    args:
+      - name: kind
+        value: その項目の削除を溜めていれば remove、直前の保存で書き込めなかった編集を持てば blocked、それ以外は pending
+      - name: compact
+        value: 'false'
+    position: カード・ボードのカード・表の行のタイトルの後ろ（レビュー中のコメントの印の左）
+    description: 保存待ちの編集がある項目に印を付け、行・カードの枠を印の色にする。保存待ちが変わるたびに付け直す
+    io: 表示
+    visible_when: その項目に保存待ちの編集が 1 件以上あり、差分の表示をしていない
+    source: 保存待ちの編集の読み取り.items（target がその項目のもの）
+    status: planned
+    introduced:
+      pr: 325
+  - name: 追加する項目
+    kind: list
+    position: カード・ボード・表の先頭
+    description: 溜めた `item-add` の項目を、カードの一覧の先頭、ボードは状態の列（溜めた状態か、無ければ「下書き」）の先頭、表は先頭の行に破線の枠で出す。ID は保存で決まるため出さず、ID の場所に「ID は保存で決まる」（表は「—」）を置き、タイトルが空なら「（タイトル未入力）」と出す。保存待ちの印（直前の保存で書き込めなかったときは blocked、それ以外は pending）を付け、押すと追加する入力を開き直す
+    io: 表示
+    visible_when: 開いている種類の `item-add` が保存待ちにあり、差分の表示をしていない
+    source: 保存待ちの編集の読み取り.items（op が item-add で key が開いている種類）
+    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#elements[編集の表示]
+    status: planned
+    introduced:
+      pr: 325
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/126/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py
