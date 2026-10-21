@@ -14,6 +14,7 @@ er:
     - name: 送信
     - name: レビュー中のコメント
     - name: 書きかけ
+    - name: 保存待ちの編集
   relations:
     - from: 設定
       to: 検討事項
@@ -75,6 +76,14 @@ er:
       to: 本文
       cardinality: '||--o|'
       label: body
+    - from: 保存待ちの編集
+      to: 検討事項
+      cardinality: '}o--o|'
+      label: target（どの種類の項目も指す。足す項目は仮の ID）
+    - from: 保存待ちの編集
+      to: 設定
+      cardinality: '}o--o|'
+      label: target が settings
 tables:
   - name: config.yaml
     title: 設定
@@ -880,3 +889,68 @@ tables:
         type: boolean
         not_null: true
         description: 利用者がプレビューでそのスレッドを開いたか。AI の書き込みは `false` で足し、利用者の書き込みと移し替えた送信は `true` で足す。画面でスレッドを開いたとき（`POST /api/threads/{id}/seen`）にそのスレッドの全てを `true` にする。セッションを開いたときに戻すのは AI の既読 `read` だけで、このキーは戻さない
+  - name: edits.yaml
+    title: 保存待ちの編集
+    datastore: YAML
+    summary: プレビューで利用者が溜め、まだ保存していない項目と設定の編集
+    primary_key: id
+    scale: ~100
+    growth: 詳細パネル・設定の画面・追加の入力で溜めるたびに 1 件足すか書き換える
+    deletion: 1 件ずつの取り消しと、まとめて保存したときに物理削除する（保存したものは項目・設定・`changes.yaml` へ移る）
+    access: 全件
+    description: 最上位に `seq`（最後に振った編集の連番）・`new_seq`（最後に振った足す項目の仮の ID の連番）と `items:` の配列を持ち、1 要素 = 1 件の編集。どちらの連番も振った番号を使い回さない。初めて溜めたときにサーバーが作り、無ければ 0 件として扱う。書くのはサーバーの保存待ちの編集の受け付け（`/api/edits`）だけで、`add`・`update` の対象にしない。共通のキー（`common.schema.json`）は持たない。並びは連番の小さい順（溜めた順）。保存で書き込めなかった理由はここに書かず、保存の応答だけが返す
+    columns:
+      - name: id
+        title: ID
+        type: string
+        not_null: true
+        primary_key: true
+        auto: 採番
+        description: '`E-` + 連番。連番は `seq` + 1'
+        example: E-3
+      - name: target
+        title: 編集するもの
+        type: string
+        not_null: true
+        description: 編集する項目の ID（どの種類でもよい）、足す項目の仮の ID（`new-` + 連番。連番は `new_seq` + 1）、または設定（`settings`）
+        example: D-17
+      - name: op
+        title: 編集の種類
+        type: string
+        not_null: true
+        description: 編集の種類
+        enum_values: "'set'（項目のキー 1 つか本文を書き換える）/ 'option-add'（案を 1 つ足す）/ 'option-edit'（案 1 つの中身を書き換える）/ 'option-remove'（案を 1 つ消す）/ 'adopt'（採用する案を切り替える）/ 'item-add'（項目を 1 つ足す）/ 'item-remove'（項目を 1 つ消す）/ 'setting'（設定のキー 1 つを書き換える）"
+        example: set
+      - name: key
+        title: キー
+        type: string
+        description: '`set` は項目のキー（本文は `body`）、`option-*`・`adopt` は案の記号、`item-add` は種類（`decisions` などファイル名の頭）、`setting` は設定のキー。`item-remove` はキーを持たない'
+        example: answer
+      - name: value
+        title: 編集した後の値
+        type: string / number / boolean / object / array
+        description: そのキーの型の値。`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト。`option-remove`・`item-remove` は `null`
+        example: ゴールはフェーズごとに 1 つ持つ
+      - name: before
+        title: 元の値
+        type: string / number / boolean / object / array
+        description: 最初に溜めたときの元の値。保存待ちのパネルの「前 → 後」と、設定の編集で保存の前に書き換わったかの確かめに使う。`option-add`・`item-add` は `null`
+        example: '-'
+      - name: base
+        title: 溜めたときの更新日時
+        type: string
+        description: 項目への編集（`item-add`・`setting` を除く）のとき、最初に溜めた時点のその項目の `updated`。保存のときに項目の `updated` と違えば、溜めた後に書き換わった編集として書き込まない
+        example: '2026-10-07T01:18:00+00:00'
+      - name: created
+        title: 溜めた日時
+        type: string
+        not_null: true
+        auto: 作成日時
+        description: 最初に溜めた日時（UTC のタイムゾーン付き ISO 8601）。同じ編集を書き換えても変えない
+        example: '2026-10-21T05:02:00+00:00'
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+      - dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
+    status: planned
+    introduced:
+      pr: 325

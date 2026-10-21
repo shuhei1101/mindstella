@@ -1,0 +1,291 @@
+title: "保存待ちの編集をまとめて保存"
+entry:
+  kind: endpoint
+  value: POST /api/edits/save
+flows:
+  - name: 正常系
+    summary: 検討事項のキー・案・採用の編集を当て、編集した人を利用者にして 1 つのまとまりにする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: タグの語彙に `画面`・`記録の形` を登録し、未決定の検討事項 D-1（案 A・B、タグ `画面`）を持ち、まだまとめていない変更が無いワークスペース
+        notes: 保存待ちの編集は E-1（`answer`）・E-2（`tags` を `[画面, 記録の形]`）・E-3（案 C の追加）・E-4（採用する案を C）
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF-->>WS: 項目・設定・changes.yaml・edits.yaml を読む
+        IF->>IF: 書き込めない編集が無いと確かめ、メモリの上で当てて確かめる
+        IF->>WS: decisions.yaml・changes.yaml を書き、edits.yaml を空にする
+        IF-->>クライアント: 200、JSON（set・at・added・changed・removed・settings）
+    expected:
+      - ステータスが 200 で、`set` が `V-1`、`changed` が `["D-1"]`
+      - D-1 の `answer`・`tags`・案 C が書かれ、採用する案が C で、`updated_by` が `user`
+      - D-1 の変更履歴が 1 回分だけ増え、その `by` が `user`
+      - '`changes.yaml` の先頭のまとまりが `V-1`・説明「画面からの編集」・`changed: [D-1]` で、`pending` が空'
+      - '`edits.yaml` の編集が 0 件'
+    test: test_normal
+  - name: 正常系（追加・削除・設定）
+    summary: 足す項目に ID を振り、消す項目を消し、設定を書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 題名が「話し合い」で、タスク T-1 と、どの項目からも指されていないメモ N-1 を持つワークスペース
+        notes: '保存待ちの編集は E-1（タスクの追加 `new-1`、`depends_on: [T-1]`）・E-2（N-1 の削除）・E-3（題名を「画面の編集」）'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF->>IF: 設定 → 追加 → 削除の順に当てる
+        IF->>WS: config.yaml・tasks.yaml・notes.yaml・changes.yaml を書き、edits.yaml を空にする
+        IF-->>クライアント: 200
+    expected:
+      - 'ステータスが 200 で、`added` が `[{temp: new-1, id: T-2}]`、`removed` が `["N-1"]`、`settings` が `["summary"]`'
+      - '`tasks.yaml` の T-2 が `depends_on: [T-1]`・`updated_by: user` を持つ'
+      - '`notes.yaml` から N-1 が消え、`changes.yaml` の先頭のまとまりの `removed` に N-1 がある'
+      - '`config.yaml` の題名が「画面の編集」'
+    test: test_normal_when_add_remove_settings
+  - name: 正常系（まとめていない AI の書き換えがある）
+    summary: AI のまだまとめていない変更を先にまとめ、利用者の編集を別のまとまりにする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 とタスク T-1 を持ち、MCP の `update` で T-1 を書き換えて `commit` していないワークスペース
+        notes: 保存待ちの編集は E-1（D-1 の `answer`）。E-1 は T-1 を書き換えた後に溜める
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF->>IF: pending の T-1 を「まとめる前の AI の書き換え」にまとめる
+        IF->>IF: D-1 の編集を当て、「画面からの編集」にまとめる
+        IF->>WS: decisions.yaml・changes.yaml・edits.yaml を書く
+        IF-->>クライアント: 200、set は V-2
+    expected:
+      - ステータスが 200 で、`set` が `V-2`
+      - '`changes.yaml` のまとまりが新しい順に V-2（「画面からの編集」・`changed: [D-1]`）・V-1（「まとめる前の AI の書き換え」・`changed: [T-1]`）で、`pending` が空'
+      - T-1 の変更履歴の最後の回の `by` が `ai` のまま
+    test: test_normal_when_ai_pending
+  - name: 異常系（保存待ちが空・400）
+    summary: 保存待ちの編集が 0 件なら何もしない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`edits.yaml` を持たず、MCP の `update` でまだまとめていない変更を持つワークスペース'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+
+        クライアント->>IF: POST
+        IF-->>クライアント: 400
+    expected:
+      - ステータスが 400
+      - '`changes.yaml` のまとまりが増えず、`pending` が前のまま'
+    test: test_error_when_no_edits
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからは保存しない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と保存待ちの編集 E-1（D-1 の `answer`）を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+
+        クライアント->>IF: POST（Origin: attacker.example）
+        IF-->>クライアント: 403
+    expected:
+      - ステータスが 403
+      - D-1 と `edits.yaml` の中身が前と同じ
+    test: test_error_when_origin_mismatch
+  - name: 異常系（AI が同じ項目を書き換えた・409）
+    summary: 溜めた後に書き換わった項目への編集があれば、どの編集も当てない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 とタスク T-1 と、保存待ちの編集 E-1（D-1 の `answer`）・E-2（T-1 の `status` を `完了`）を持つワークスペース
+        notes: 溜めた後に MCP の `update` で D-1 の `title` を書き換える
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF-->>WS: D-1 の updated を読む
+        IF->>IF: E-1 の base と違う
+        IF-->>クライアント: 409、blocked は E-1（changed）
+    expected:
+      - 'ステータスが 409 で、`blocked` が `[{id: E-1, reason: changed, ...}]` の 1 件'
+      - D-1・T-1 と `changes.yaml` が保存する前のままで、D-1 の `title` が MCP で書き換えた値
+      - '`edits.yaml` に E-1・E-2 が残る'
+    test: test_error_when_item_changed
+  - name: 異常系（指されている項目の削除・409）
+    summary: ほかの項目が指している項目の削除があれば、どの編集も当てない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '検討事項 D-1 と、`depends_on: [D-1]` を持つ D-2 と、保存待ちの編集 E-1（D-1 の削除）・E-2（D-2 の `answer`）を持つワークスペース'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+
+        クライアント->>IF: POST
+        IF->>IF: D-2 が D-1 を指している
+        IF-->>クライアント: 409、blocked は E-1（referenced・refs: [D-2]）
+    expected:
+      - 'ステータスが 409 で、`blocked` が `[{id: E-1, reason: referenced, refs: [D-2], ...}]`'
+      - D-1・D-2 が保存する前のままで、`edits.yaml` に E-1・E-2 が残る
+    test: test_error_when_item_referenced
+  - name: 異常系（合わない値・409）
+    summary: 当てた後の項目がタグの語彙や参照の指す先に合わなければ、どの編集も当てない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: タグの語彙に `画面` だけを登録し、検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `tags` を `[保存]`）・E-2（D-1 の `depends_on` を `[D-99]`）を持つワークスペース
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+
+        クライアント->>IF: POST
+        IF->>IF: メモリの上で当てて確かめる
+        IF-->>クライアント: 409、blocked は E-1・E-2（invalid）
+    expected:
+      - ステータスが 409 で、`blocked` が E-1（`detail` に `保存` が語彙に無いこと）・E-2（`detail` に `D-99` が無いこと）の 2 件で、どちらも `reason` が `invalid`
+      - D-1 が保存する前のままで、`edits.yaml` に E-1・E-2 が残る
+    test: test_error_when_invalid_value
+  - name: 異常系（書き込めない・500）
+    summary: 途中で書けなければ、書いたファイルを前の中身に戻す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る。`edits.yaml` の置き換えだけを失敗させる）
+      - name: make_workspace
+        description: 検討事項 D-1 と保存待ちの編集 E-1（D-1 の `answer`）を持つワークスペース
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits/save
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST
+        IF->>WS: decisions.yaml・changes.yaml を書く
+        IF->>WS: edits.yaml を書けない
+        IF->>WS: decisions.yaml・changes.yaml を前の中身に書き戻す
+        IF-->>クライアント: 500
+    expected:
+      - ステータスが 500 で、`detail` が `edits.yaml` のパスを含み、トレースバックを含まない
+      - '`decisions.yaml`・`changes.yaml`・`edits.yaml` の中身が保存する前と同じ'
+    test: test_error_when_write_fails
+lead: 保存待ちのパネルの「まとめて保存する」で、`edits.yaml` の編集を全て 1 回で項目と設定に当て、編集した人を利用者にして 1 つの書き換えのまとまりにする。1 件でも書き込めない編集があれば何も書かず、書き込めない編集と理由を全て返す。
+idempotent: false
+side_effects: 項目の YAML・本文・`config.yaml`・`changes.yaml` を書き換え、`edits.yaml` の編集を空にする。どれも一時ファイルから `os.replace` で置き換え、`edits.yaml` を最後に書く
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの
+response:
+  - name: set
+    type: str
+    description: 利用者の編集をまとめた書き換えのまとまりの ID
+    example: V-4
+  - name: at
+    type: str
+    description: 保存した日時（UTC のタイムゾーン付き ISO 8601、秒まで）
+  - name: added
+    type: list[{temp, id}]
+    description: 足した項目の仮の ID（`new-{連番}`）と振った ID
+    example: '[{"temp": "new-1", "id": "T-18"}]'
+  - name: changed
+    type: list[str]
+    description: 書き換えた項目の ID（足した項目は含めない）
+    example: '["D-17"]'
+  - name: removed
+    type: list[str]
+    description: 消した項目の ID
+    example: '["T-17"]'
+  - name: settings
+    type: list[str]
+    description: 書き換えた設定のキー
+    example: '["summary"]'
+status_codes:
+  - code: '200'
+    condition: 全て当てた
+  - code: '400'
+    condition: 保存待ちの編集が 0 件
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '409'
+    condition: 書き込めない編集が 1 件以上ある（制約「書き込めない編集」）
+    notes: 何も書かない。本文に `blocked[]`（`{id, reason, detail, refs}`）を足し、書き込めない編集を全て返す
+  - code: '422'
+    condition: ワークスペースの YAML（`edits.yaml`・`changes.yaml` を含む）がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: 項目の YAML・本文・`config.yaml`・`changes.yaml`・`edits.yaml` のどれかを書けない（権限が無い など）
+    notes: '`detail` に書けなかったパスと理由。書いたファイルを前の中身に書き戻し（前に無かったファイルは消し）、全て前のままにする'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `blocked` を足す
+constraints:
+  - item: 書き込めない編集
+    constraint: '当てる前に全ての編集を確かめ、当たったものを全て `blocked` に載せる。`reason` は次のどれか。`changed`: 項目の今の `updated` が編集の `base` と違う（溜めた後に AI がその項目を書き換えた）か、設定の今の値が `before` と違う。`missing`: 編集する項目が無くなった。`referenced`: 消す項目をほかの項目が指している（同じ保存で指す側も消すか、参照を外すときは当たらない。`refs` に指している項目の ID。MCP の `remove` と同じ確かめ）。`invalid`: 当てた後の項目・設定がスキーマ・検討事項の案と状態の決まり・タグの語彙・参照の指す先に合わない（`detail` に合わないキーと理由。合わない箇所を引き起こした編集の ID に紐づける）'
+  - item: 当てる順
+    constraint: 設定（`setting`）→ 項目の追加（`item-add`、仮の ID の連番の順）→ キー・案・採用（`set`・`option-*`・`adopt`、溜めた順）→ 項目の削除（`item-remove`）の順に、メモリの上のワークスペースへ当ててから、全ての YAML を 1 回だけ確かめて書く。設定の編集は『設定の更新』の付け替え（フェーズ・対象・カテゴリーの対応）もそのまま当てる。ID・日時・通し番号・変更履歴の付け方は『項目の追加』『項目の更新』『採用する案の切り替え』『案の書き換え』『項目の削除』と同じで、項目ごとに 1 回分の変更履歴にまとめる
+  - item: 参照の置き換え
+    constraint: 参照のキー（`parent`・`depends_on`・`for`・`related`・`sources`）の値が溜めた足す項目の仮の ID（`new-{連番}`）なら、振った ID に置き換える（『まとめての読み書き』の「参照の置き換え」と同じ考え方）
+  - item: 編集した人
+    constraint: 書いた項目の `updated_by` と、積んだ変更履歴の `by` を `user` にする。MCP のツールは今どおり `ai` で書く
+  - item: 書き換えのまとまり
+    constraint: 当てる前に `changes.yaml` のまだまとめていない変更（`pending`）があれば、それを先に説明「まとめる前の AI の書き換え」で 1 つのまとまりにする。その後、利用者の編集で積んだ変更を説明「画面からの編集」で別の 1 つのまとまりにする（まとまりの中身は『書き換えのまとまり』と同じ）。保存の後の `pending` は空
+  - item: 書く順と戻し方
+    constraint: 項目の YAML・本文・`config.yaml` → `changes.yaml` → `edits.yaml`（編集を空にし、`seq`・`new_seq` はそのまま）の順に書く。途中で書けなければ、書いたファイルを前の中身に書き戻して（前に無かったファイルは消して） 500 を返す
+  - item: 書き換えの知らせ
+    constraint: 書いた後、今の書き換えの知らせ（『書き換えの知らせ』）で開いている画面へ知らせる
+  - item: 送り元の確かめ
+    constraint: 『コメントをまとめて送る』と同じ
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスの MCP のツールと重なっても、どちらの書き換えも失わず、ID も重ならない
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/インターフェース定義/サーバー/まとめての読み書き#
+  - dev/設計書/インターフェース定義/サーバー/書き換えのまとまり#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を足す#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を消す#
+  - dev/設計書/シナリオ/単一ユースケース/前回読んだ時点からの変更を読む#

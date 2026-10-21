@@ -1,0 +1,150 @@
+title: "保存待ちの編集の取り消し"
+entry:
+  kind: endpoint
+  value: DELETE /api/edits/{id}
+flows:
+  - name: 正常系
+    summary: 保存待ちの編集 1 件を外し、残りの件数を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 とタスク T-1 と、保存待ちの編集 E-1（D-1 の `answer`）・E-2（T-1 の `status`）を持つワークスペース
+        notes: '`id` は `E-2`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as DELETE /api/edits/{id}
+        participant WS as ワークスペース
+
+        クライアント->>IF: DELETE /api/edits/E-2
+        IF-->>WS: edits.yaml を読む
+        IF->>WS: edits.yaml から E-2 を外す
+        IF-->>クライアント: 200、JSON（removed・count）
+    expected:
+      - ステータスが 200 で、`removed` が `["E-2"]`、`count` が 1
+      - '`edits.yaml` に E-1 だけが残る'
+      - '`tasks.yaml` の T-1 の中身が取り消す前と同じ'
+    test: test_normal
+  - name: 正常系（足した案の取り消し）
+    summary: 足した案の追加を取り消すと、その案を採用する切り替えも一緒に外す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の案 C の追加）・E-2（D-1 の採用する案を C にする）を持つワークスペース
+        notes: '`id` は `E-1`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as DELETE /api/edits/{id}
+        participant WS as ワークスペース
+
+        クライアント->>IF: DELETE /api/edits/E-1
+        IF->>WS: edits.yaml から E-1 と E-2 を外す
+        IF-->>クライアント: 200
+    expected:
+      - ステータスが 200 で、`removed` が `["E-1", "E-2"]`、`count` が 0
+      - '`edits.yaml` の編集が 0 件'
+    test: test_normal_when_option_add
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからは外さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 保存待ちの編集 E-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as DELETE /api/edits/{id}
+
+        クライアント->>IF: DELETE /api/edits/E-1（Origin: attacker.example）
+        IF-->>クライアント: 403
+    expected:
+      - ステータスが 403
+      - '`edits.yaml` に E-1 が残る'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（編集が無い・404）
+    summary: 保存待ちに無い ID は外さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 保存待ちの編集 E-1 を持つワークスペース
+        notes: '`id` は `E-9`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as DELETE /api/edits/{id}
+
+        クライアント->>IF: DELETE /api/edits/E-9
+        IF-->>クライアント: 404
+    expected:
+      - ステータスが 404 で、`detail` に `E-9` がある
+      - '`edits.yaml` の中身が前と同じ'
+    test: test_error_when_edit_not_found
+lead: 保存待ちのパネルの「取り消す」で、保存待ちの編集 1 件を `edits.yaml` から外す。足した案の追加を取り消すときは、その案を採用する切り替えも一緒に外す。
+idempotent: false
+side_effects: '`edits.yaml` から編集を外し、一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: 取り消す保存待ちの編集の ID
+    example: E-3
+response:
+  - name: removed
+    type: list[str]
+    description: 外した編集の ID。足した案の追加を取り消したときは、その案の採用の切り替えの ID も並ぶ
+    example: '["E-3", "E-4"]'
+  - name: count
+    type: int
+    description: 外した後の保存待ちの編集の件数（画面はトップバーの件数に使う）
+    example: '3'
+status_codes:
+  - code: '200'
+    condition: 外した
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`id` の編集が保存待ちに無い'
+    notes: 何も書かない。`detail` に無い ID
+  - code: '422'
+    condition: '`edits.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: '`edits.yaml` を書けない（権限が無い など）'
+    notes: '`detail` に書けなかったパスと理由。`edits.yaml` は前のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 一緒に外す編集
+    constraint: '`op` が `option-add` の編集を外すときは、同じ `target` で `op` が `adopt`・`value` がその案の記号の編集も外す。`item-add` の編集を外すと、その足す項目（`new-{連番}`）は無くなる'
+  - item: 送り元の確かめ
+    constraint: 『コメントをまとめて送る』と同じ
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
