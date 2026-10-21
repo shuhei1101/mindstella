@@ -88,7 +88,7 @@ response:
     example: set
   - name: items[].key
     type: str | None
-    description: 編集するキー（`set` は項目のキー、`option-*`・`adopt` は案の記号、`item-add`・`item-remove` は種類、`setting` は設定のキー）
+    description: 編集するキー（`set` は項目のキー、`option-*`・`adopt` は案の記号、`item-add` は種類、`setting` は設定のキー、`item-remove` は `null`）
     example: answer
   - name: items[].value
     type: Any

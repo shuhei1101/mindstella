@@ -21,7 +21,7 @@ flows:
         IF-->>WS: 項目と edits.yaml を読む
         IF->>IF: answer を編集でき、値が文字列と確かめる
         IF->>WS: edits.yaml に足す
-        IF-->>クライアント: 201、JSON（id・target・dropped・count）
+        IF-->>クライアント: 201、JSON（id・target・count）
     expected:
       - ステータスが 201 で、`id` が `E-1`、`count` が 1
       - '`edits.yaml` の E-1 が `before` に空の `answer`、`base` に D-1 の `updated` を持ち、`seq` が 1'
@@ -96,7 +96,7 @@ flows:
       - '`tasks.yaml` に T-1 だけがある'
     test: test_normal_when_item_add
   - name: 正常系（項目を消す）
-    summary: 削除を溜めると、同じ項目へのほかの編集を外す
+    summary: 削除を溜め、同じ項目へのほかの編集は残す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
@@ -110,11 +110,12 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: POST {op: item-remove, target: N-1}
-        IF->>WS: E-1 を外し、削除の編集を足す
-        IF-->>クライアント: 201、dropped は E-1
+        IF->>WS: 削除の編集を足す（E-1 は残す）
+        IF-->>クライアント: 201
     expected:
-      - ステータスが 201 で、`id` が `E-2`、`dropped` が `["E-1"]`、`count` が 1
-      - '`notes.yaml` に N-1 が残っている（消すのは保存のとき）'
+      - ステータスが 201 で、`id` が `E-2`、`count` が 2
+      - '`edits.yaml` に E-1 と E-2 があり、`notes.yaml` に N-1 が残っている（消すのは保存のとき）'
+      - 続けて『保存待ちの編集の取り消し』で E-2 を外すと、`edits.yaml` に E-1 だけが残る
     test: test_normal_when_item_remove
   - name: 正常系（設定の編集）
     summary: 設定のキーの編集を溜め、`config.yaml` は書き換えない
@@ -235,6 +236,32 @@ flows:
       - ステータスが 415
       - '`edits.yaml` が無い'
     test: test_error_when_not_json
+  - name: 正常系（案を足して採用する）
+    summary: 溜めた案の追加を、そのまま採用する切り替えで指して溜める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 案 A・B を持ち採用していない検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '1 回目は `{op: option-add, target: D-1, key: C, value: ゴールはフェーズごとに 1 つ持つ}`、2 回目は `{op: adopt, target: D-1, key: C, value: C}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: option-add, target: D-1, key: C, value}
+        IF->>WS: edits.yaml に足す
+        IF-->>クライアント: 201
+        クライアント->>IF: POST {op: adopt, target: D-1, key: C, value: C}
+        IF->>IF: 案 C は溜めた案の追加にある
+        IF->>WS: edits.yaml に足す
+        IF-->>クライアント: 201
+    expected:
+      - どちらもステータスが 201 で、2 回目の `count` が 2
+      - '`edits.yaml` に案 C の追加（E-1）と、採用する案を C にする切り替え（E-2）がある'
+      - '`decisions.yaml` の D-1 が案 A・B だけを持ち、採用していないまま'
+    test: test_normal_when_adopt_added_option
 lead: 詳細パネル・詳細の全画面・設定の画面・種類ごとの画面の追加の入力から、項目と設定の編集 1 件を受け、確定せずに保存待ちとして `edits.yaml` に溜める。同じ項目の同じキー・案への編集は、新しい値で書き換える。
 idempotent: false
 side_effects: '`edits.yaml` に編集を 1 件足すか書き換えるか外し（無ければ作る）、一時ファイルから `os.replace` で置き換える。項目の YAML・本文・`config.yaml`・`changes.yaml` は書き換えない'
@@ -308,10 +335,6 @@ response:
     type: str
     description: 編集の `target`。`item-add` で新しく振ったときはその仮の ID
     example: new-1
-  - name: dropped
-    type: list[str]
-    description: この編集で一緒に外した編集の ID（`item-remove` を溜めたときの、同じ項目へのほかの編集）
-    example: '[]'
   - name: count
     type: int
     description: 溜めた後の保存待ちの編集の件数（画面はトップバーの件数に使う）
@@ -328,7 +351,7 @@ status_codes:
     condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
     notes: 何も書かない
   - code: '404'
-    condition: '`target` の項目か仮の ID、または `option-edit`・`option-remove`・`adopt` の案が無い'
+    condition: '`target` の項目か仮の ID、または `option-edit`・`option-remove`・`adopt` の案が、その項目の案にも溜めた案の追加にも無い'
     notes: 何も書かない。`detail` に無い ID か記号
   - code: '409'
     condition: '`option-add` の記号がその項目の案か溜めた案の追加に既にある、または `item-remove` を溜めた項目へ `item-remove` 以外の編集を溜めようとした'
@@ -351,7 +374,7 @@ constraints:
   - item: 元の値に戻したとき
     constraint: '`set`・`option-edit`・`adopt`・`setting` で、`value` が今のワークスペースの値と同じになったら、その編集を外し（無ければ何も溜めず）、`id` を `null` で返す'
   - item: 削除とほかの編集
-    constraint: '`item-remove` を溜めると、同じ項目へのほかの編集を外して `dropped` に返す。削除を取り消しても外した編集は戻らない'
+    constraint: '`item-remove` を溜めても、同じ項目へのほかの編集は残す（保存のときは削除だけを当て、ほかの編集は捨てる。『保存待ちの編集をまとめて保存』の制約「当てる順」）。削除を取り消すと、残した編集はそのまま保存待ちに戻る'
   - item: 編集できるキー
     constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` も `set` と同じキーだけを持つ'
   - item: 値の確かめ
