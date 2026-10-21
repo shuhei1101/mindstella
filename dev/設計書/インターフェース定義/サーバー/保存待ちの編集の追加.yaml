@@ -317,6 +317,15 @@ request:
     description: 編集した後の値。`option-add`・`option-edit` は案の中身、`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト
     constraints: その種類のスキーマのそのキーの型に合う。`title` は前後の空白を除いて 1 文字以上。`item-add` は `title` を持つ
     example: ゴールはフェーズごとに 1 つ持つ
+  - name: map
+    type: dict[str, str | None]
+    required: false
+    default: なし（対応を持たない）
+    location: body
+    description: '`setting` で `key` が `phases`・`targets`・`categories`・`tags` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map`・`tag_map` と同じ'
+    constraints: '`op` が `setting` で `key` が `phases`・`targets`・`categories`・`tags` のときだけ渡せる。値が `null` にできるのは `tags` だけ'
+    example: '{"問い": "目的"}'
+    status: planned
 request_example: |-
   ```json
   {
@@ -345,7 +354,7 @@ status_codes:
   - code: '200'
     condition: 同じ項目の同じキー・案への編集を書き換えた、または元の値に戻したため外した
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・`map` を渡せない `op`・`key` に渡したか値の型が合わない・リクエストの本文が 128KiB を超える
     notes: 何も書かない。`detail` に合わないキーと理由
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
@@ -370,7 +379,7 @@ constraints:
   - item: 書く中身
     constraint: 新しく溜めるときは `id`（`E-{seq + 1}`）・`target`・`op`・`key`・`value`・`before`（溜めたときの元の値）・`base`（項目への編集はその項目の `updated`）・`created` を書き、`seq` を 1 上げる。`item-add` で `target` を省いたときは `new-{new_seq + 1}` を振り、`new_seq` を 1 上げる。ER 図『ワークスペース』の `edits.yaml`
   - item: 同じ編集の書き換え
-    constraint: '`target`・`op`・`key` が同じ編集（`item-add` は `target` が同じ編集）があれば、`value` だけを書き換え、`id`・`before`・`base`・`created` は最初に溜めたときのままにする。足す項目のキーを変えるときは、`item-add` の `value` を書き換える（足す項目 1 つで 1 件。単一ユースケース『画面で項目を編集して保存する』の補足「保存待ちの数え方」）'
+    constraint: '`target`・`op`・`key` が同じ編集（`item-add` は `target` が同じ編集）があれば、`value`（`setting` は `map` も）だけを書き換え、`id`・`before`・`base`・`created` は最初に溜めたときのままにする。足す項目のキーを変えるときは、`item-add` の `value` を書き換える（足す項目 1 つで 1 件。単一ユースケース『画面で項目を編集して保存する』の補足「保存待ちの数え方」）'
   - item: 元の値に戻したとき
     constraint: '`set`・`option-edit`・`adopt`・`setting` で、`value` が今のワークスペースの値と同じになったら、その編集を外し（無ければ何も溜めず）、`id` を `null` で返す'
   - item: 削除とほかの編集
@@ -378,7 +387,7 @@ constraints:
   - item: 編集できるキー
     constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` も `set` と同じキーだけを持つ'
   - item: 値の確かめ
-    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。参照のキーの指す先・タグの語彙・項目全体のスキーマは、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
+    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・タグの語彙・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]

@@ -948,6 +948,11 @@ tables:
         auto: 作成日時
         description: 最初に溜めた日時（UTC のタイムゾーン付き ISO 8601）。同じ編集を書き換えても変えない
         example: '2026-10-21T05:02:00+00:00'
+      - name: map
+        title: 付け替えの対応
+        type: object
+        description: '`setting` で `key` が `phases`・`targets`・`categories`・`tags` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map`・`tag_map` と同じ（`tags` だけ値を `null` にしてタグから外せる）。対応の要らない編集は持たない'
+        example: '{"問い": "目的"}'
     refs:
       - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
       - dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
