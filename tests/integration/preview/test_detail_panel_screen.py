@@ -9,7 +9,16 @@ from typing import Any
 
 import pytest
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
-from playwright.sync_api import APIResponse, Locator, Page, Route
+from playwright.sync_api import APIResponse, Locator, Page, Route, expect
+from preview_edit_helpers import (
+    DETAIL_PANEL as EDIT_PANEL,
+    PENDING_BUTTON as EDIT_PENDING_BUTTON,
+    PENDING_PANEL as EDIT_PENDING_PANEL,
+    SAVE_BUTTON as EDIT_SAVE_BUTTON,
+    open_pending as open_edit_pending,
+    read_edits_file,
+    read_items_file,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_added_mark_helpers import (
@@ -141,7 +150,7 @@ from preview_stack_helpers import (
     open_narrow,
     wait_front,
 )
-from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeEdit, MakeItem, MakeWorkspace
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
@@ -4516,3 +4525,420 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     set_smallest(page)
     # 検証
     assert_fits_smallest(page, ("aside.panel", 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]'), scope="aside.panel")
+
+
+# ===== 編集の表示（保存待ちの編集） =====
+
+# 編集の表示の入力欄を離れた後、編集が溜まるのを待つ上限ミリ秒
+EDIT_SETTLE_MS = 10_000
+
+# 編集の表示のフォーム
+EDIT_FORM = f"{EDIT_PANEL} form.pe-form"
+
+# 編集のトグル
+EDIT_TOGGLE = f"{EDIT_PANEL} button.pe-edit-toggle"
+
+# 見出しの保存待ちの印
+HEAD_MARK = f"{EDIT_PANEL} .panel-head .pm"
+
+# 溜める前の保存待ちの編集（D-1 の決定内容）の更新日時より新しい、AI が書き換えた日時
+AI_UPDATED = "2026-10-05T01:00:00+00:00"
+
+# 溜めたときの更新日時（AI が書き換える前）
+STALE_BASE = "2026-09-01T00:00:00+00:00"
+
+
+def _edit_settings(valid_settings: dict[str, Any]) -> dict[str, Any]:
+    """タグの語彙を持つ設定を返す。"""
+    return {**valid_settings, "tags": [{"name": "画面"}, {"name": "記録の形"}]}
+
+
+def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
+    """案 A・B と答えを持つ検討事項 D-1 と、D-1 を指す D-2 を返す。"""
+    return (
+        make_item(
+            "D-1",
+            title="最初の問い",
+            answer="元の答え",
+            phase="目的",
+            tags=["画面"],
+            options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+        ),
+        make_item("D-2", title="後続の問い", depends_on=["D-1"]),
+    )
+
+
+def _open_edit_view(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    *,
+    edits: tuple[dict[str, Any], ...] = (),
+    items: tuple[dict[str, Any], ...] | None = None,
+) -> tuple[Page, Path]:
+    """D-1 の詳細パネルを開き、「編集する」を押して編集の表示にしたページと、ワークスペースのフォルダを返す。"""
+    url, root = write_edit_preview(
+        *(_edit_items(make_item) if items is None else items),
+        edits=edits,
+        settings=_edit_settings(valid_settings),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    page.click(EDIT_TOGGLE)
+    page.wait_for_selector(EDIT_FORM)
+    return page, root
+
+
+def _blur_and_wait(page: Page, locator: Locator, count: int) -> None:
+    """入力欄を離れ、トップバーの保存待ちの件数が揃うのを待つ。"""
+    locator.blur()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", f"保存待ち（{count} 件）", timeout=EDIT_SETTLE_MS
+    )
+
+
+def test_edit_toggle(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """「編集する」で読む表示と編集の表示を切り替える。編集の表示の間は「編集を終える」にし、別の項目を開くと読む表示に戻る。溜めた編集は残る（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(*_edit_items(make_item), settings=_edit_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    toggle = page.locator(EDIT_TOGGLE)
+    # 検証（読む表示）
+    assert toggle.get_attribute("aria-pressed") == "false"
+    assert toggle.inner_text().strip() == "編集する"
+    assert page.locator(EDIT_FORM).count() == 0
+    assert page.locator(f"{EDIT_PANEL} form.send").first.is_visible()
+    # 実行・検証（編集の表示）
+    toggle.click()
+    page.wait_for_selector(EDIT_FORM)
+    assert toggle.get_attribute("aria-pressed") == "true"
+    assert toggle.inner_text().strip() == "編集を終える"
+    # 溜める
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    # 実行・検証（別の項目を開く）
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-2'")
+    page.wait_for_function(
+        "() => document.querySelector('aside.panel .panel-kind')?.textContent?.includes('D-2')"
+    )
+    assert page.locator(EDIT_FORM).count() == 0
+    assert page.locator(EDIT_TOGGLE).get_attribute("aria-pressed") == "false"
+    assert len(read_edits_file(root)["items"]) == 1
+
+
+def test_edit_toggle_narrow(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """幅 480px 以下は鉛筆の印だけにし、文字を読み上げと title に残す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*_edit_items(make_item), settings=_edit_settings(valid_settings))
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.set_viewport_size({"width": 480, "height": 800})
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    toggle = page.locator(EDIT_TOGGLE)
+    # 文字は見た目から外し（1px 四方に切る）、読み上げには残す
+    label = toggle.locator(".lbl").bounding_box()
+    assert label is not None
+    assert label["width"] <= 1
+    assert toggle.locator("svg.icon").is_visible()
+    assert toggle.get_attribute("title") == "編集する"
+    assert page.get_by_role("button", name="編集する").count() == 1
+
+
+def test_edit_hidden_when_diff(
+    write_history_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示をしている間は「編集する」を出さない（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-1")
+    # 実行
+    diff = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    diff.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    assert diff.locator(".df-chip").count() == 1
+    assert diff.locator(EDIT_TOGGLE).count() == 0
+
+
+def test_head_and_key_marks(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """保存待ちの編集がある項目は、見出しの種類と ID の右と、キー・案の名前の後ろに印だけを置く。読む表示は編集を当てた値で描く。幅 480px 以下は見出しの印を出さない（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        *_edit_items(make_item),
+        edits=(
+            make_edit("E-1", value="編集後の答え", before="元の答え"),
+            make_edit("E-2", op="option-edit", key="A", value={"content": "編集後の案 A"}, before={"content": "案 A"}),
+        ),
+        settings=_edit_settings(valid_settings),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    head = page.locator(HEAD_MARK)
+    assert head.count() == 1
+    assert "pm-compact" in head.get_attribute("class")
+    assert "pm-pending" in head.get_attribute("class")
+    assert head.locator(".sr-only").inner_text() == "保存待ち"
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    kind_box = page.locator(f"{EDIT_PANEL} .panel-kind").bounding_box()
+    mark_box = head.bounding_box()
+    assert kind_box is not None
+    assert mark_box is not None
+    assert mark_box["x"] >= kind_box["x"] + kind_box["width"] - 1
+    # キーの印と、編集を当てた値
+    body_text = page.inner_text(f"{EDIT_PANEL} .panel-body")
+    assert "編集後の答え" in body_text
+    assert "編集後の案 A" in body_text
+    assert "元の答え" not in body_text
+    assert page.locator(f"{EDIT_PANEL} .panel-body .pm.pm-compact").count() == 2
+    # 幅 480px 以下は見出しの印を出さない
+    page.set_viewport_size({"width": 480, "height": 800})
+    assert page.locator(HEAD_MARK).is_hidden()
+    assert page.locator(f"{EDIT_PANEL} .panel-body .pm.pm-compact").count() == 2
+
+
+def test_head_mark_remove(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """削除を溜めた項目の見出しの印は「保存で削除」にする（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        *_edit_items(make_item),
+        edits=(make_edit("E-1", op="item-remove", key=None, value=None, before=None),),
+        settings=_edit_settings(valid_settings),
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    mark = page.locator(HEAD_MARK)
+    assert "pm-remove" in mark.get_attribute("class")
+    assert mark.locator(".sr-only").inner_text() == "保存で削除"
+
+
+def test_edit_view_fields(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """編集の表示は、編集できないキー（ID・作成・更新）を頭に並べ、検討事項のキーをキーごとの入力にする。下端のコメントの入力は隠す（正常系）。"""
+    # 準備・実行
+    page, _ = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    # 検証
+    fixed = page.locator(f"{EDIT_FORM} dl.pe-fixed")
+    assert fixed.locator("dt").all_inner_texts() == ["ID", "作成", "更新"]
+    assert fixed.locator("dd").first.inner_text() == "D-1"
+    keys = page.locator(f"{EDIT_FORM} > .pe-field").evaluate_all("nodes => nodes.map(n => n.dataset.key)")
+    assert keys == [
+        "status",
+        "title",
+        "target",
+        "category",
+        "phase",
+        "tags",
+        "depends_on",
+        "options",
+        "answer",
+        "reason",
+        "body",
+    ]
+    assert page.get_by_label("状態", exact=True).evaluate("e => e.tagName") == "SELECT"
+    assert page.get_by_label("決定内容", exact=True).evaluate("e => e.tagName") == "TEXTAREA"
+    assert page.locator(f"{EDIT_PANEL} textarea.pe-body").count() == 1
+    assert page.get_by_role("group", name="タグ").locator(".pe-chip").all_inner_texts() == ["画面"]
+    # 編集の表示の間は、下端のコメントの入力を隠す
+    comment_form = page.locator(f"{EDIT_PANEL} form.send")
+    assert comment_form.count() == 0 or comment_form.first.is_hidden()
+
+
+def test_edit_commit_and_revert(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """入力欄を離れたときにそのキーの編集を溜め、溜めたキーの枠を印の色の破線にして印を付ける。元の値に戻すと保存待ちから外れる（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    answer = page.get_by_label("決定内容", exact=True)
+    # 実行
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    # 検証
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key='answer']")
+    assert "is-pending" in field.get_attribute("class")
+    assert field.locator(".pm.pm-compact").count() == 1
+    assert field.locator("textarea").evaluate("e => getComputedStyle(e).borderTopStyle") == "dashed"
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"], edit["before"]) == ("answer", "新しい答え", "元の答え")
+    assert read_items_file(root, "decisions.yaml")[0]["answer"] == "元の答え"
+    # 実行（元の値に戻す）
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("元の答え")
+    answer.blur()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_count(0, timeout=EDIT_SETTLE_MS)
+    # 検証（元の値に戻す）
+    assert read_edits_file(root)["items"] == []
+    assert page.locator(f"{EDIT_FORM} .pe-field[data-key='answer'] .pm").count() == 0
+
+
+def test_title_required(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """タイトルが空（空白だけ）のときは溜めず、離れたときに失敗の赤の枠と誤りを出す。「必須」をキーの名前の右に出す（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    title = page.locator(f"{EDIT_FORM} #pe-D1-title")
+    assert page.locator(f"{EDIT_FORM} .pe-field[data-key='title'] .pe-req").inner_text() == "必須"
+    # 実行
+    title.fill("   ")
+    title.blur()
+    # 検証
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key='title']")
+    expect(field.locator(".pe-error")).to_be_visible()
+    assert field.locator(".pe-error").inner_text().strip() == "タイトルを書いてください。"
+    assert title.get_attribute("aria-invalid") == "true"
+    assert "is-invalid" in field.get_attribute("class")
+    page.wait_for_timeout(500)
+    assert not (root / RECORD_DIR / "edits.yaml").exists()
+    # 直すと誤りが消えて溜まる
+    title.fill("新しい題")
+    _blur_and_wait(page, title, 1)
+    assert title.get_attribute("aria-invalid") is None
+
+
+def test_options_edit(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """案は 1 案 1 枚で、中身の書き換え・採用・削除・案の追加を溜める。削除を溜めた案は中身に取り消し線を引く（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    options = page.locator(f"{EDIT_FORM} .pe-opt")
+    assert options.count() == 2
+    assert options.nth(0).get_by_role("radio", name="採用").count() == 1
+    # 実行（中身を書き換える）
+    area = page.get_by_label("案 A の中身")
+    area.fill("書き換えた案 A")
+    _blur_and_wait(page, area, 1)
+    # 実行（採用する）
+    page.get_by_role("radio", name="採用").nth(1).check()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    # 実行（案を足す）
+    page.get_by_role("button", name="案を追加").click()
+    draft = page.get_by_label("案 C の中身")
+    draft.fill("足した案 C")
+    _blur_and_wait(page, draft, 3)
+    # 実行（案 B を削除する）
+    page.get_by_role("button", name="案 B を削除").click()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（4 件）", timeout=EDIT_SETTLE_MS)
+    # 検証
+    saved = {(edit["op"], edit["key"]): edit for edit in read_edits_file(root)["items"]}
+    assert saved[("option-edit", "A")]["value"] == {"content": "書き換えた案 A"}
+    assert saved[("adopt", "B")]["value"] == "B"
+    assert saved[("option-add", "C")]["value"] == {"content": "足した案 C"}
+    assert ("option-remove", "B") in saved
+    removed = page.locator(f"{EDIT_FORM} .pe-opt[data-key='B']")
+    assert "is-removed" in removed.get_attribute("class")
+    assert removed.locator("textarea").evaluate("e => getComputedStyle(e).textDecorationLine") == "line-through"
+    assert removed.get_by_role("button", name="案 B を削除").count() == 0
+
+
+def test_remove_item(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """「項目を削除」で削除を溜め（確認のモーダルは挟まない）、同じ場所を「削除を取り消す」に替える。溜めた間は入力を読むだけにし、ほかの項目が指していれば警告を出す（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    section = page.locator(f"{EDIT_FORM} .pe-remove-sec")
+    assert section.locator("h2").inner_text() == "項目を削除"
+    assert section.locator("p.pe-hint").inner_text().strip() == (
+        "D-2 が指しているため、保存のときに削除できません。指している項目から外すと削除できます。"
+    )
+    assert page.locator("dialog[open]").count() == 0
+    # 実行
+    section.get_by_role("button", name="項目を削除").click()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS)
+    # 検証
+    assert page.locator("dialog[open]").count() == 0
+    assert [edit["op"] for edit in read_edits_file(root)["items"]] == ["item-remove"]
+    assert page.locator(f"{EDIT_FORM} .pe-remove-sec").get_by_role("button", name="削除を取り消す").count() == 1
+    assert page.locator(f"{EDIT_FORM} > p.pe-hint[role='status']").inner_text().strip() == (
+        "削除を溜めています。削除を取り消すと編集できます。"
+    )
+    assert page.get_by_label("決定内容", exact=True).is_disabled()
+    assert read_items_file(root, "decisions.yaml")[0]["id"] == "D-1"
+    # 実行（取り消す）
+    page.get_by_role("button", name="削除を取り消す").click()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_count(0, timeout=EDIT_SETTLE_MS)
+    # 検証（取り消す）
+    assert read_edits_file(root)["items"] == []
+    assert page.get_by_label("決定内容", exact=True).is_enabled()
+
+
+def test_blocked_reason(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """直前の保存で書き込めなかった編集の理由を、そのキーの下に警告の印と共に出し、入力欄の枠を失敗の赤の実線にする。`changed` は AI が書き換えた日時を添える（異常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("D-1", title="最初の問い", answer="元の答え", updated=AI_UPDATED),
+        edits=(make_edit("E-1", value="編集後の答え", before="元の答え", base=STALE_BASE),),
+        settings=_edit_settings(valid_settings),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    open_edit_pending(page)
+    # 実行
+    page.click(EDIT_SAVE_BUTTON)
+    page.wait_for_selector(f"{EDIT_PENDING_PANEL} .pe-alert", timeout=EDIT_SETTLE_MS)
+    page.click(EDIT_TOGGLE)
+    page.wait_for_selector(EDIT_FORM)
+    # 検証
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key='answer']")
+    note = field.locator(".pe-blocked-note")
+    assert note.count() == 1
+    text = note.inner_text()
+    assert text.startswith("溜めた後の ")
+    assert "に AI がこの項目を書き換えたため、書き込めません。取り消してから入れ直してください。" in text
+    assert "10/05" in text
+    assert "is-blocked" in field.get_attribute("class")
+    assert field.locator("textarea").evaluate("e => getComputedStyle(e).borderTopStyle") == "solid"
+    assert field.locator(".pm.pm-blocked").count() == 1

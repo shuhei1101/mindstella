@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
+from preview_edit_helpers import PENDING_BUTTON as FULL_PENDING_BUTTON, read_edits_file
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
@@ -79,7 +80,7 @@ from preview_minimap_helpers import (
     scroll_top,
 )
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
-from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -1160,3 +1161,77 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     set_smallest(page)
     # 検証
     assert_fits_smallest(page, ("dialog.full", 'dialog.full button[data-act="full"]'), scope="dialog.full")
+
+
+# ===== 編集の表示（保存待ちの編集） =====
+
+# 全画面の編集のトグルと編集の表示
+FULL_EDIT_TOGGLE = "dialog.full button.pe-edit-toggle"
+FULL_EDIT_FORM = "dialog.full form.pe-form"
+
+# 編集の表示の入力欄を離れた後、編集が溜まるのを待つ上限ミリ秒
+FULL_EDIT_SETTLE_MS = 10_000
+
+
+def test_edit_in_full(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """全画面の中でも詳細パネルと同じ編集の表示で編集でき、見出しとキーに保存待ちの印を置く。全画面を戻しても溜めた編集は残る（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(
+        make_item("D-1", title="最初の問い", answer="元の答え"),
+        edits=(make_edit("E-1", value="編集後の答え", before="元の答え"),),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    # 検証（読む表示）
+    assert page.locator("dialog.full .panel-head .pm.pm-compact").count() == 1
+    assert "編集後の答え" in page.inner_text("dialog.full .panel-body")
+    assert page.locator(FULL_EDIT_TOGGLE).get_attribute("aria-pressed") == "false"
+    # 実行（編集の表示にして、別のキーを書き換える）
+    page.click(FULL_EDIT_TOGGLE)
+    page.wait_for_selector(FULL_EDIT_FORM)
+    reason = page.locator(f"{FULL_EDIT_FORM} #pe-D1-reason")
+    reason.fill("理由の文")
+    reason.blur()
+    expect(page.locator(FULL_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", "保存待ち（2 件）", timeout=FULL_EDIT_SETTLE_MS
+    )
+    # 検証（編集の表示）
+    assert page.locator(FULL_EDIT_TOGGLE).inner_text().strip() == "編集を終える"
+    assert page.locator(f"{FULL_EDIT_FORM} .pe-field[data-key='reason'] .pm").count() == 1
+    assert page.locator(f"{FULL_EDIT_FORM} .pe-field[data-key='answer'] .pm").count() == 1
+    assert [edit["key"] for edit in read_edits_file(root)["items"]] == ["answer", "reason"]
+    # 実行（元の大きさに戻す）
+    page.click('dialog.full button[data-act="full"]')
+    page.wait_for_selector("aside.panel.open")
+    # 検証（元の大きさに戻す）
+    assert page.locator("dialog.full").count() == 0
+    assert page.get_by_role("button", name="保存待ち（2 件）").count() == 1
+
+
+def test_edit_full_comment_input_hidden(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """編集の表示の間は、全画面の下端のコメントの入力を隠し、読む表示に戻すと出す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1", title="最初の問い"))
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    form = "dialog.full form.send"
+    assert page.locator(form).count() >= 1
+    assert page.locator(form).first.is_visible()
+    # 実行
+    page.click(FULL_EDIT_TOGGLE)
+    page.wait_for_selector(FULL_EDIT_FORM)
+    # 検証
+    assert page.locator(form).count() == 0 or page.locator(form).first.is_hidden()
+    # 戻す
+    page.click(FULL_EDIT_TOGGLE)
+    expect(page.locator(FULL_EDIT_FORM)).to_have_count(0)
+    assert page.locator(form).first.is_visible()
