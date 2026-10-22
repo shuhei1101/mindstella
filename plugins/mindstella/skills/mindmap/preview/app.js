@@ -2413,7 +2413,11 @@ var MindmapPreview;
             const next = MindmapPreview.pendingEditsPanel(pendingProps());
             if (current === null) {
                 document.body.append(next);
-                requestAnimationFrame(() => next.classList.add("open"));
+                // 開いた状態にしてから見出しへフォーカスを移す（閉じている間は隠れていて、フォーカスを受けない）
+                requestAnimationFrame(() => {
+                    next.classList.add("open");
+                    next.querySelector("h2")?.focus();
+                });
             }
             else {
                 current.className = `${next.className} open`;
@@ -2444,7 +2448,6 @@ var MindmapPreview;
             stack.front = "left";
             reopenPending = false;
             redrawKeepingState();
-            document.querySelector(".pending-panel h2")?.focus();
         };
         /** 保存待ちのパネルを閉じ、トップバーの保存待ちのボタンへフォーカスを戻す（保存待ちの編集は残る） */
         const closePending = () => {
