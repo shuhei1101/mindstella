@@ -11,11 +11,13 @@ from workspace_fixtures import RECORD_DIR
 
 __all__ = [
     "ADD_BUTTON",
+    "ADD_PANEL",
     "DETAIL_PANEL",
     "PENDING_BUTTON",
     "PENDING_PANEL",
     "SAVE_BUTTON",
     "SAVE_PATTERN",
+    "added_edit",
     "open_pending",
     "read_edits_file",
     "read_items_file",
@@ -32,6 +34,9 @@ SAVE_BUTTON = f"{PENDING_PANEL} button.pe-save"
 
 # 種類ごとの画面の「項目を追加」
 ADD_BUTTON = "button.pe-add"
+
+# 項目を追加する入力のパネル
+ADD_PANEL = "aside.pe-add-panel"
 
 # 詳細パネル
 DETAIL_PANEL = "aside.panel"
@@ -54,3 +59,12 @@ def read_edits_file(root: Path) -> dict[str, Any]:
 def read_items_file(root: Path, file_name: str) -> list[dict[str, Any]]:
     """種類ごとの YAML の項目の並びを読む。"""
     return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))["items"]
+
+
+def added_edit(
+    make_edit: Any, edit_id: str, temp: str, kind: str, **value: Any
+) -> dict[str, Any]:
+    """項目を足す保存待ちの編集（`item-add`）を作る。`value` は足す項目のキーと値。"""
+    return make_edit(
+        edit_id, target=temp, op="item-add", key=kind, value=value, before=None, base=None
+    )
