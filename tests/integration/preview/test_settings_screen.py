@@ -46,7 +46,7 @@ from preview_stack_helpers import (
     open_narrow,
     wait_front,
 )
-from workspace_fixtures import RECORD_DIR, MakeItem
+from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
 
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -789,3 +789,98 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
         (SETTINGS_PANEL, f"{SETTINGS_PANEL} button[aria-label='表示の設定を閉じる']"),
         scope=SETTINGS_PANEL,
     )
+
+
+# ===== 編集（設定を編集する） =====
+
+# 設定の画面（開いている間は本文の区画を置き換える）
+WORKSPACE_SCREEN = ".pe-ws"
+
+# 表示の設定のパネルの「設定を編集する」
+WORKSPACE_ENTRY = f"{SETTINGS_PANEL} .pe-ws-entry"
+
+
+def test_workspace_entry(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """サーバーの配信では、パネルの本文の下端に見出し「ワークスペースの設定」と、書き換えられる設定の案内と、「設定を編集する」を出す（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    open_settings(page)
+    # 検証
+    entry = page.locator(WORKSPACE_ENTRY)
+    assert entry.locator("h3").inner_text() == "ワークスペースの設定"
+    assert entry.locator(".pe-ws-sum").inner_text() == "題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙"
+    button = entry.get_by_role("button", name="設定を編集する")
+    assert button.count() == 1
+    body = page.locator(f"{SETTINGS_PANEL} .st-wrap").bounding_box()
+    box = button.bounding_box()
+    assert body is not None
+    assert box is not None
+    # 本文のほかの部品より下にある
+    others = page.locator(f"{SETTINGS_PANEL} .st-wrap > :not(.pe-ws-entry)").evaluate_all(
+        "nodes => Math.max(...nodes.map(n => n.getBoundingClientRect().bottom))"
+    )
+    assert box["y"] >= others
+
+
+def test_workspace_entry_hidden_when_diff(
+    write_history_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分の表示をしている間は「設定を編集する」を出さない（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-1")
+    diff = open_preview(url, "#tab=decisions&view=table")
+    diff.wait_for_selector(".df-chip")
+    # 実行
+    open_settings(diff)
+    # 検証
+    assert diff.locator(WORKSPACE_ENTRY).count() == 0
+    assert diff.get_by_role("button", name="設定を編集する").count() == 0
+
+
+def test_workspace_entry_hidden_when_exported(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しでは「設定を編集する」を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    page = open_preview(out.as_uri(), "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid")
+    # 実行
+    open_settings(page)
+    # 検証
+    assert page.locator(WORKSPACE_ENTRY).count() == 0
+    assert page.get_by_role("button", name="設定を編集する").count() == 0
+
+
+def test_workspace_entry_opens_screen(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """押すと、表示の設定のパネルを閉じて設定の画面を開く（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_settings(page)
+    # 実行
+    page.get_by_role("button", name="設定を編集する").click()
+    # 検証
+    page.wait_for_selector(WORKSPACE_SCREEN)
+    assert page.locator(SETTINGS_PANEL_OPEN).count() == 0
+    assert page.locator(f"{WORKSPACE_SCREEN} h1").inner_text() == "設定"
