@@ -2050,12 +2050,18 @@ components:
         condition: 案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。「案を追加」で足した案 C の中身を書いて離れる
         mock: '`on.change`'
         expected: '`on.change` が `{op: set, key: answer}`・`{op: adopt, key: B, value: B}`・`{op: option-add, key: C}` の順で 1 回ずつ'
-      - name: test_detail_edit_form_when_title_blank_or_removing
+      - name: test_detail_edit_form_when_removing_or_referenced
         case: 異常
-        summary: 空のタイトルは溜めず、削除を溜めた項目は読むだけ
-        condition: '`parametrize`: タイトルを空白だけにして離れる / `removing: true` で描く / `referrers: [D-2]` で描く'
+        summary: 削除を溜めた項目は読むだけにし、指されている項目は警告を出す
+        condition: '`parametrize`: `removing: true` で描く / `referrers: [D-2]` で描く'
         mock: '`on.change`'
-        expected: '`on.change` が呼ばれず「タイトルを書いてください。」と `aria-invalid="true"` / 入力が読むだけで「削除を溜めています。削除を取り消すと編集できます。」と「削除を取り消す」/ 「D-2 が指しているため、保存のときに削除できません。指している項目から外すと削除できます。」'
+        expected: '`on.change` が呼ばれない。入力が読むだけで「削除を溜めています。削除を取り消すと編集できます。」と「削除を取り消す」 / 「D-2 が指しているため、保存のときに削除できません。指している項目から外すと削除できます。」'
+      - name: test_detail_edit_form_when_title_blank
+        case: 異常
+        summary: 空のタイトルは溜めない
+        condition: タイトルを空白だけにして離れる
+        mock: '`on.change`'
+        expected: '`on.change` が呼ばれず、「タイトルを書いてください。」と `aria-invalid="true"`'
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -3318,6 +3324,10 @@ test_files:
   - tests/unit/preview/test_diff_minimap.py
   - tests/unit/preview/test_body_diff_layout_switch.py
   - tests/unit/preview/test_side_by_side_body_diff.py
+  - tests/unit/preview/test_pending_mark.py
+  - tests/unit/preview/test_pending_edits.py
+  - tests/unit/preview/test_workspace_settings.py
+  - tests/unit/preview/test_detail_edit.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ

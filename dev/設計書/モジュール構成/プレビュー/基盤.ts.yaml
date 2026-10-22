@@ -1916,3 +1916,4 @@ test_files:
   - tests/unit/preview/test_dom.py
   - tests/unit/preview/test_api.py
   - tests/unit/preview/test_lock.py
+  - tests/unit/preview/test_edits.py
