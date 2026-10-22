@@ -138,7 +138,7 @@ var MindmapPreview;
         const removals = edits.filter((edit) => edit.op === "item-remove").length;
         const saving = status === "saving";
         const blockedBy = new Map(blocked.map((entry) => [entry.id, entry]));
-        const pendingEdits = edits.filter((edit) => blockedBy.has(edit.id));
+        const blockedEdits = edits.filter((edit) => blockedBy.has(edit.id));
         /** 書き込めない編集の行の名前（「{ID か種類} の{何を}」） */
         const nameOf = (edit) => {
             const who = describeTarget({
@@ -149,7 +149,7 @@ var MindmapPreview;
             return `${who.id ?? who.kind} の${editRowText(edit).what}`;
         };
         const list = MindmapPreview.h({ tag: "div", attrs: { class: "comments-body pe-list" } });
-        if (pendingEdits.length > 0) {
+        if (blockedEdits.length > 0) {
             list.append(MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "pe-alert", role: "alert", tabindex: "-1", "data-focus": "alert" },
@@ -157,11 +157,11 @@ var MindmapPreview;
                     MindmapPreview.h({
                         tag: "p",
                         attrs: { class: "pe-alert-title" },
-                        children: [MindmapPreview.icon("alert"), `${pendingEdits.length} 件の編集を書き込めないため、何も保存していません。`],
+                        children: [MindmapPreview.icon("alert"), `${blockedEdits.length} 件の編集を書き込めないため、何も保存していません。`],
                     }),
                     MindmapPreview.h({
                         tag: "ul",
-                        children: pendingEdits.map((edit) => MindmapPreview.h({
+                        children: blockedEdits.map((edit) => MindmapPreview.h({
                             tag: "li",
                             children: [
                                 MindmapPreview.h({
