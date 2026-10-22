@@ -308,7 +308,7 @@ components:
         type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
         required: false
         default: 'null'
-        description: 編集の入口。配る書き出し・差分の表示中は `null`。表示形式の切り替えの帯の右端に「項目を追加」（幅 480px 以下は印だけ。押すと `onAdd`）を置き、ボードのカード・表の行のタイトルの後ろとマップの節（`compact`）に `marks` の `pendingMark` を置く。`adds`（足す項目。`id` は仮の ID）はボードの状態の列の先頭と表の先頭の行に破線の枠で出し、ID の場所に「ID は保存で決まる」（表は「—」）を置く（マップには出さない）。押すと `on.open` に仮の ID を渡す
+        description: 編集の入口。配る書き出し・差分の表示中は `null`。表示形式の切り替えの帯の右端に「項目を追加」（幅 480px 以下は印だけ。押すと `onAdd`）を置き、ボードのカード・表の行のタイトルの後ろとマップの節（`compact`）に `marks` の `pendingEditMark` を置く。`adds`（足す項目。`id` は仮の ID）はボードの状態の列の先頭と表の先頭の行に破線の枠で出し、ID の場所に「ID は保存で決まる」（表は「—」）を置く（マップには出さない）。押すと `on.open` に仮の ID を渡す
     state:
       - name: keyword
         type: string
@@ -517,7 +517,7 @@ components:
         type: '{editing, marks, form, onToggle} | null'
         required: false
         default: 'null'
-        description: 編集の入口。配る書き出し・差分の表示中は `null`（「編集する」を出さない）。見出しの前後の移動の左に「編集する」（`aria-pressed`。`editing` の間は「編集を終える」）を置き、押すと `onToggle`。種類と ID の右とキー・案の見出しの後ろに `marks` の `pendingMark`（`compact`）を置く。`editing` の間は本文のスクロール領域に `detailEditForm`（`form` を渡す）を描き、下端の `sendForm` を隠す
+        description: 編集の入口。配る書き出し・差分の表示中は `null`（「編集する」を出さない）。見出しの前後の移動の左に「編集する」（`aria-pressed`。`editing` の間は「編集を終える」）を置き、押すと `onToggle`。種類と ID の右とキー・案の見出しの後ろに `marks` の `pendingEditMark`（`compact`）を置く。`editing` の間は本文のスクロール領域に `detailEditForm`（`form` を渡す）を描き、下端の `sendForm` を隠す
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -1893,7 +1893,7 @@ components:
         condition: '`## 決め方` と `### 理由` の見出しを持ち、`### 理由` の下の段落だけを書き換えた前後'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 左右の列とも「決め方」が `h4`、「理由」が `h5`
-  - name: pendingMark
+  - name: pendingEditMark
     title: 保存待ちの印
     container: plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts
     usecase: 画面で項目を編集して保存する
@@ -1961,7 +1961,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
     usecase: 画面で項目を編集して保存する
     kind: 画面
-    summary: 画面設計『設定の画面』を描く。入力は保存待ちの編集を当てた設定（`applyEdits`）で描き、溜めたキーの名前の右に `pendingMark`（`compact`）を置く。使われている値を外したときは `usageCount` で件数を数えて「付け替え先」を出し、選ぶまでは `on.change` を呼ばない。対象・カテゴリーの行の名前を書き換えたときは古い名前 → 新しい名前を `map` に付ける
+    summary: 画面設計『設定の画面』を描く。入力は保存待ちの編集を当てた設定（`applyEdits`）で描き、溜めたキーの名前の右に `pendingEditMark`（`compact`）を置く。使われている値を外したときは `usageCount` で件数を数えて「付け替え先」を出し、選ぶまでは `on.change` を呼ばない。対象・カテゴリーの行の名前を書き換えたときは古い名前 → 新しい名前を `map` に付ける
     props:
       - name: settings
         type: object
@@ -3292,7 +3292,7 @@ functions:
       - name: test_editable_keys
         case: 正常
         summary: 検討事項は案を含み、記録の種類は取り下げを含む
-        condition: '`parametrize`: `decision` / `note`'
+        condition: '`parametrize`: `decisions` / `notes`'
         mock: なし
         expected: '`status`・`title`・…・`options`・`answer`・`reason`・`body` を含み `id` を含まない / `title`・`content`・`withdrawn`・`reason` を含む'
 test_files:
