@@ -5,9 +5,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from workspace_fixtures import MakeItem
+from workspace_fixtures import MakeEdit, MakeItem
 
-__all__ = ["LoadLibrary", "LoadPreviewScripts", "LoadPreviewStyles", "MakeData", "MakeItem"]
+__all__ = [
+    "LoadLibrary",
+    "LoadPreviewScripts",
+    "LoadPreviewStyles",
+    "MakeData",
+    "MakeEdit",
+    "MakeItem",
+]
 
 type LoadPreviewScripts = Callable[..., None]
 type LoadPreviewStyles = Callable[[], None]

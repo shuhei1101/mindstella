@@ -20,6 +20,7 @@ import pytest
 import yaml
 
 import builder
+import commands
 import errors
 import serve
 from errors import (
@@ -36,11 +37,13 @@ from errors import (
 from export_helpers import write_preview_dir
 from fixture_types import (
     MakeComment,
+    MakeEdit,
     MakeItem,
     MakePost,
     MakeThread,
     MakeWorkspace,
     WriteComments,
+    WriteEdits,
     WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR, write_yaml
@@ -717,6 +720,20 @@ def test_workspace_signature_with_html_body(
     assert after != before
 
 
+def test_workspace_signature_with_edits(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """保存待ちの編集の書き換えでも印が変わる（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = serve.workspace_signature(root)
+    # 実行
+    (root / RECORD_DIR / "edits.yaml").write_text(
+        "seq: 0\nnew_seq: 0\nitems: []\n", encoding="utf-8"
+    )
+    after = serve.workspace_signature(root)
+    # 検証
+    assert after != before
+
+
 class _ScriptedSignature:
     """決めた印を順に返す、書き換えの印を作る代わりの関数。"""
 
@@ -988,6 +1005,31 @@ def test_write_response_when_after(
     assert (b'"entered": true' in response.body) is expected_entered
     assert after_bodies == expected_after_bodies
     assert lock_free == expected_lock_free
+
+
+def _handle_returning_status(root: Path, data: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    """処理が本文とステータスコードの組を返す。"""
+    return {"id": "E-1"}, 200
+
+
+def test_write_response_when_status_returned(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """処理が返したステータスコードで返す（正常系）。"""
+    # 準備
+    context = _context(make_workspace(make_item("D-1")))
+    # 実行
+    response = serve.write_response(
+        context,
+        content_type="application/json",
+        origin=None,
+        body=_post_body(a=1),
+        handle=_handle_returning_status,
+        status=201,
+    )
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == {"id": "E-1"}
 
 
 THREADS_TEXT = (
@@ -1337,6 +1379,116 @@ def test_delete_response(
     assert [item["id"] for item in saved] == expected_remaining
 
 
+# 保存待ちの編集（E-1: D-1 の answer）を持つ edits.yaml と、壊れた edits.yaml
+EDITS_TEXT = (
+    "seq: 1\nnew_seq: 0\nitems:\n"
+    "  - {id: E-1, target: D-1, op: set, key: answer, value: 案 A, before: null,"
+    " base: '2026-10-01T00:00:00+00:00', created: '2026-10-01T00:00:00+00:00'}\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_status", "expected_count"),
+    [
+        pytest.param(EDITS_TEXT, 200, 1, id="edits"),
+        pytest.param("items: [\n", 422, None, id="broken"),
+    ],
+)
+def test_edits_response(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    text: str,
+    expected_status: int,
+    expected_count: int | None,
+) -> None:
+    """保存待ちの編集を返し、壊れたファイルは 422（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), raw_files={"edits.yaml": text})
+    # 実行
+    response = serve.edits_response(root)
+    # 検証
+    assert response.status == expected_status
+    assert json.loads(response.body).get("count") == expected_count
+
+
+@pytest.mark.parametrize(
+    ("origin", "edit_id", "expected_status", "expected_removed", "expected_remaining"),
+    [
+        pytest.param(None, "E-1", 200, ["E-1"], [], id="removed"),
+        pytest.param("https://attacker.example", "E-1", 403, None, ["E-1"], id="origin_mismatch"),
+        pytest.param(None, "E-9", 404, None, ["E-1"], id="not_found"),
+    ],
+)
+def test_edit_delete_response(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    write_edits: WriteEdits,
+    origin: str | None,
+    edit_id: str,
+    expected_status: int,
+    expected_removed: list[str] | None,
+    expected_remaining: list[str],
+) -> None:
+    """取り消し、送り元の誤り・無い ID は問題の応答（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_edits(root, make_edit("E-1"))
+    # 実行
+    response = serve.edit_delete_response(_context(root), origin=origin, edit_id=edit_id)
+    # 検証
+    assert response.status == expected_status
+    assert json.loads(response.body).get("removed") == expected_removed
+    saved = yaml.safe_load((root / RECORD_DIR / "edits.yaml").read_text(encoding="utf-8"))
+    assert [item["id"] for item in saved["items"]] == expected_remaining
+
+
+def _no_rewrite(root: Path) -> None:
+    """保存待ちを溜めた後に、ワークスペースを書き換えない。"""
+
+
+def _rewrite_title_of_d1(root: Path) -> None:
+    """保存待ちを溜めた後に、MCP のツールの書き込みで D-1 のタイトルを書き換える。"""
+    commands.run_update(root, "D-1", {"title": "AI が書き換えた題"})
+
+
+@pytest.mark.parametrize(
+    ("origin", "rewrite", "expected_status", "expected_changed", "expected_blocked"),
+    [
+        pytest.param(None, _no_rewrite, 200, ["D-1"], [], id="saved"),
+        pytest.param("https://attacker.example", _no_rewrite, 403, None, [], id="origin_mismatch"),
+        pytest.param(
+            None, _rewrite_title_of_d1, 409, None, [("E-1", "changed")], id="item_changed"
+        ),
+    ],
+)
+def test_edits_save_response(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    write_edits: WriteEdits,
+    origin: str | None,
+    rewrite: Callable[[Path], None],
+    expected_status: int,
+    expected_changed: list[str] | None,
+    expected_blocked: list[tuple[str, str]],
+) -> None:
+    """保存し、送り元の誤り・書き込めない編集は問題の応答（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_edits(root, make_edit("E-1"))
+    rewrite(root)
+    # 実行
+    response = serve.edits_save_response(_context(root), origin=origin)
+    # 検証
+    assert response.status == expected_status
+    payload = json.loads(response.body)
+    assert payload.get("changed") == expected_changed
+    assert [(entry["id"], entry["reason"]) for entry in payload.get("blocked", [])] == (
+        expected_blocked
+    )
+
+
 @pytest.mark.parametrize(
     ("build_error", "expected_status", "expected_stale"),
     [
@@ -1402,6 +1554,51 @@ def test_error_response(
     assert response.status == expected_status
     assert error.args[0] in payload["detail"]
     assert payload.get("stale") == expected_stale
+
+
+def _blocked_edit() -> Any:
+    """書き込めない編集（edits モジュールは、まだ無くても他のテストの収集を止めないよう、使うときに読む）。"""
+    import edits
+
+    return edits.BlockedEdit(id="E-1", reason="referenced", detail="理由", refs=["D-2"])
+
+
+@pytest.mark.parametrize(
+    ("build_error", "expected_status", "expected_blocked"),
+    [
+        pytest.param(lambda: errors.EditInvalidError("op: 合いません"), 400, None, id="invalid"),
+        pytest.param(
+            lambda: errors.EditNotFoundError("編集がありません: E-9"), 404, None, id="not_found"
+        ),
+        pytest.param(
+            lambda: errors.EditConflictError("案 A が既にあります"), 409, None, id="conflict"
+        ),
+        pytest.param(
+            lambda: errors.EditsBlockedError(
+                "1 件の編集を書き込めないため、何も保存していません。",
+                blocked=[_blocked_edit()],
+            ),
+            409,
+            [{"id": "E-1", "reason": "referenced", "detail": "理由", "refs": ["D-2"]}],
+            id="blocked",
+        ),
+    ],
+)
+def test_error_response_when_edits(
+    build_error: Callable[[], MindmapError],
+    expected_status: int,
+    expected_blocked: list[dict[str, Any]] | None,
+) -> None:
+    """保存待ちの編集のエラーのステータスコード（正常系）。"""
+    # 準備
+    error = build_error()
+    # 実行
+    response = serve.error_response(error)
+    # 検証
+    payload = json.loads(response.body)
+    assert response.status == expected_status
+    assert error.args[0] in payload["detail"]
+    assert payload.get("blocked") == expected_blocked
 
 
 def test_settings_holder() -> None:
