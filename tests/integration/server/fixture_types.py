@@ -8,6 +8,7 @@ from workspace_fixtures import (
     CallTool,
     MakeComment,
     MakeDraft,
+    MakeEdit,
     MakeItem,
     MakeLegacyWorkspace,
     MakePost,
@@ -21,6 +22,7 @@ from workspace_fixtures import (
     ToolResult,
     WriteComments,
     WriteDrafts,
+    WriteEdits,
     WriteSubmissions,
     WriteThreads,
 )
@@ -31,6 +33,7 @@ __all__ = [
     "LockDirs",
     "MakeComment",
     "MakeDraft",
+    "MakeEdit",
     "MakeItem",
     "MakeLegacyWorkspace",
     "MakePost",
@@ -44,6 +47,7 @@ __all__ = [
     "ToolResult",
     "WriteComments",
     "WriteDrafts",
+    "WriteEdits",
     "WriteSubmissions",
     "WriteThreads",
 ]
