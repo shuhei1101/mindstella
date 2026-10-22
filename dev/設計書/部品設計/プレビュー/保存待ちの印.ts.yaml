@@ -70,3 +70,4 @@ introduced:
   pr: 325
 notes:
   モック: '`dev/mock/components/pending-mark/index.html`（モック作成で合意。確認ログの「モックへの合意」）'
+test_file: tests/integration/storybook/test_pending_mark_stories.py

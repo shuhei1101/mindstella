@@ -109,3 +109,4 @@ elements:
 screen: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
 mock: dev/mock/pages/pending-edits/325/a-count-in-button/index.html
 lead: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめてワークスペースに保存する。トップバーの保存待ちのボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧・表示の設定とは片方だけを開き、行から開いた項目は右の詳細パネルで読む。差分の表示中と配る書き出しでは開かない。
+test_file: tests/integration/preview/test_pending_panel_screen.py

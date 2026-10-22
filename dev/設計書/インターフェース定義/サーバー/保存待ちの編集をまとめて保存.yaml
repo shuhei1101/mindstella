@@ -289,3 +289,4 @@ refs:
   - dev/設計書/シナリオ/単一ユースケース/画面で項目を足す#
   - dev/設計書/シナリオ/単一ユースケース/画面で項目を消す#
   - dev/設計書/シナリオ/単一ユースケース/前回読んだ時点からの変更を読む#
+test_file: tests/integration/server/test_edits_save.py

@@ -122,3 +122,4 @@ constraints:
 refs:
   - dev/設計書/ER図/ワークスペース#
   - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
+test_file: tests/integration/server/test_edits_read.py
