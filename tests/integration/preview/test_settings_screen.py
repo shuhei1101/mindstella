@@ -122,7 +122,7 @@ def test_open_and_close(
     assert opened["history"] == history_length
     assert "ワークスペースの既定のまま表示しています。" in opened["text"]
     assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in opened["text"]
-    assert opened["buttons"] == []
+    assert opened["buttons"] == ["設定を編集する"]
     assert focus_after_esc == "settings"
     assert focus_after_close == "settings"
     assert page.get_attribute(SETTINGS_BUTTON, "aria-expanded") == "false"
