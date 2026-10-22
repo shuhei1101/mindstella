@@ -84,6 +84,7 @@ namespace MindmapPreview {
     marks,
     comments,
     removed = [],
+    edit = null,
   }: {
     index: RecordIndex;
     route: Route;
@@ -104,6 +105,8 @@ namespace MindmapPreview {
     comments?: Record<string, number>;
     /** 選んだ時点で消したこの種類の項目（入口が `removedOf` で引く）。空でなければ表の上に帯を置く。`filters` で絞らない */
     removed?: RemovedItem[];
+    /** 編集の入口。配る書き出し・差分の表示中は渡さない。表の上の帯の「列の表示」の左に「項目を追加」を置き、保存待ちの印と追加する項目を表に出す */
+    edit?: ScreenEdit | null;
   }): HTMLElement {
     const kind = route.tab as RecordKind;
     const columns = recordColumns({ index, kind, open: on.open });
@@ -123,6 +126,7 @@ namespace MindmapPreview {
           open: on.open,
           marks,
           ...(comments === undefined ? {} : { comments }),
+          ...(edit === null ? {} : { edit, addInTable: true }),
         }),
         screenDrawer({
           drawerOpen,

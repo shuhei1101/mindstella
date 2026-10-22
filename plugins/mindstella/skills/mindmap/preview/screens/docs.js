@@ -53,13 +53,13 @@ var MindmapPreview;
     }
     MindmapPreview.docColumns = docColumns;
     /** 資料の画面を返す */
-    function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }) {
+    function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [], edit = null }) {
         const columns = docColumns(index);
         const toolbarElement = MindmapPreview.toolbar([
             { key: "cards", label: "カード" },
             { key: "board", label: "ボード" },
             { key: "table", label: "表" },
-        ], route, on.view);
+        ], route, on.view, edit === null ? null : MindmapPreview.addItemButton({ kind: "docs", onAdd: edit.onAdd }));
         // 絞り込みの条件に合う資料を、カード・ボード・表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.docs, columns, filters });
         const drawer = MindmapPreview.screenDrawer({
@@ -88,6 +88,7 @@ var MindmapPreview;
                         open: on.open,
                         marks,
                         ...(comments === undefined ? {} : { comments }),
+                        ...(edit === null ? {} : { edit }),
                     }),
                     drawer,
                 ],
@@ -109,15 +110,21 @@ var MindmapPreview;
                         statuses: [...MindmapPreview.DOC_STATUSES],
                         statusFilter: filters["status"] ?? [],
                     }).map((column) => ({ ...column, items: orderDocs(column.items) })),
-                    card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments }),
+                    card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments, edit }),
                     emptyText: "資料はありません。",
+                    added: MindmapPreview.addedCards({ edit, statuses: MindmapPreview.DOC_STATUSES, open: on.open, doc: true }),
                 })
             : MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "doc-grid" },
-                children: shown.length > 0
-                    ? orderDocs(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments }))
-                    : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
+                children: [
+                    ...(edit?.adds ?? []).map((item) => MindmapPreview.addedCard({ item, mark: edit?.marks[item.id] ?? "pending", open: on.open, doc: true })),
+                    ...(shown.length > 0
+                        ? orderDocs(shown).map((row) => docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments, edit }))
+                        : (edit?.adds ?? []).length > 0
+                            ? []
+                            : [MindmapPreview.h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })]),
+                ],
             });
         return MindmapPreview.h({
             tag: "div",
@@ -127,11 +134,11 @@ var MindmapPreview;
     }
     MindmapPreview.docsScreen = docsScreen;
     /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
-    function docCard({ index, doc, open, inBoard, mark, comments, }) {
+    function docCard({ index, doc, open, inBoard, mark, comments, edit, }) {
         return MindmapPreview.h({
             tag: "button",
             attrs: {
-                class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === MindmapPreview.currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}`,
+                class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === MindmapPreview.currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}${edit?.marks[doc.id] === "remove" ? " pe-removing" : ""}`,
                 type: "button",
                 "data-id": doc.id,
                 onclick: () => open(doc.id),
@@ -154,6 +161,7 @@ var MindmapPreview;
                         MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
                         inBoard ? null : MindmapPreview.statusBadge(doc.status),
                         MindmapPreview.h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),
+                        MindmapPreview.editMarkOf({ edit, id: doc.id }),
                         comments === undefined ? null : MindmapPreview.commentPlace({ id: doc.id, count: comments[doc.id] }),
                     ],
                 }),

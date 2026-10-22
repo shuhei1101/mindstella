@@ -99,6 +99,10 @@ namespace MindmapPreview {
     marks?: DiffMarks;
     /** 項目の ID → レビュー中のコメントの件数。渡したとき（サーバーにつながって開いたとき）だけ、当たる行のタイトルの右、差分の印の後ろに印を置く場所を置く */
     comments?: Record<string, number>;
+    /** 編集の入口。保存待ちの編集がある行のタイトルの右に保存待ちの印を置き、追加する項目を表の先頭の行に破線の枠で出す */
+    edit?: ScreenEdit | null;
+    /** 「項目を追加」を表の上の帯の「列の表示」の左に置くか（表の上に表示形式の切り替えの帯が無い画面） */
+    addInTable?: boolean;
     on: TableHandlers;
   };
 
@@ -418,7 +422,21 @@ namespace MindmapPreview {
 
   /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
   function buildTable({
-    props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, on },
+    props: {
+      kind,
+      columns,
+      rows,
+      sort = null,
+      filters = {},
+      pinTo = null,
+      hiddenColumns,
+      popover = null,
+      marks,
+      comments,
+      edit = null,
+      addInTable = false,
+      on,
+    },
     previous,
   }: {
     props: TableProps;
@@ -526,6 +544,7 @@ namespace MindmapPreview {
         attrs: { class: "table-toolbar" },
         children: [
           chipsRow,
+          edit !== null && addInTable ? addItemButton({ kind, onAdd: edit.onAdd }) : null,
           h({
             tag: "button",
             attrs: {
@@ -597,58 +616,73 @@ namespace MindmapPreview {
 
     // ===== 行 =====
     /** セルの中身 */
-    const cellContent = (column: Column, row: Row): Node | string => {
+    const cellContent = (column: Column, row: Row, fresh: boolean): Node | string => {
+      // 追加する項目の ID は保存で決まるので、ID の列は「—」にする
+      if (fresh && column.key === "id") return h({ tag: "span", attrs: { class: "pe-noid" }, children: ["—"] });
       const content =
         column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");
       if (column.fixed !== true) return content;
       // タイトルの列は、押すと詳細を開くボタンにし、取り下げの札・差分の印があれば右に置く
       const opener = h({
         tag: "button",
-        attrs: { class: "row-open", type: "button", "data-id": row.id, onclick: () => on.open(row.id) },
-        children: [content],
+        attrs: {
+          class: "row-open",
+          type: "button",
+          ...(fresh ? { "data-new-id": row.id } : { "data-id": row.id }),
+          onclick: () => on.open(row.id),
+        },
+        children: [fresh && row["title"] === "" ? "（タイトル未入力）" : content],
       });
       // 取り下げた行は、差分の表示によらず差分の印より前に札を置く
       const badge = row["withdrawn"] === true ? withdrawnBadge() : null;
       const mark = markFor({ marks, id: row.id });
+      const editMark = fresh ? pendingEditMark({ kind: edit?.marks[row.id] ?? "pending" }) : editMarkOf({ edit, id: row.id });
       const commentPlaceElement = comments === undefined ? null : commentPlace({ id: row.id, count: comments[row.id] });
-      if (badge === null && mark === null && commentPlaceElement === null) return opener;
+      if (badge === null && mark === null && editMark === null && commentPlaceElement === null) return opener;
       const fragment = document.createDocumentFragment();
-      fragment.append(...[opener, badge, mark, commentPlaceElement].filter((node) => node !== null));
+      fragment.append(...[opener, badge, mark, editMark, commentPlaceElement].filter((node) => node !== null));
       return fragment;
     };
-    const body =
-      shownRows.length > 0
-        ? shownRows.map((row) =>
+    /** 表の 1 行（追加する項目の行は破線の枠で、ID を持たない） */
+    const tableRow = (row: Row, fresh: boolean): HTMLElement =>
+      h({
+        tag: "tr",
+        attrs: {
+          ...(fresh ? { "data-new-id": row.id } : { "data-id": row.id }),
+          // 取り下げた行は文字を薄くする。削除を溜めた行は取り消し線を引く
+          class: [
+            !fresh && row.id === currentSelection() ? "selected" : "",
+            row["withdrawn"] === true ? "is-withdrawn" : "",
+            fresh ? "pe-new" : "",
+            edit?.marks[row.id] === "remove" ? "pe-removing" : "",
+          ]
+            .join(" ")
+            .trim(),
+        },
+        children: [
+          ...visible.map((column, position) =>
             h({
-              tag: "tr",
+              tag: "td",
               attrs: {
-                "data-id": row.id,
-                // 取り下げた行は文字を薄くする
-                class: [row.id === currentSelection() ? "selected" : "", row["withdrawn"] === true ? "is-withdrawn" : ""]
+                "data-col": position,
+                "data-pri": column.priority ?? 1,
+                class: [
+                  column.num ? "num" : "",
+                  column.nowrap ? "nowrap" : "",
+                  position < pinned ? "pinned" : "",
+                ]
                   .join(" ")
                   .trim(),
               },
-              children: [
-                ...visible.map((column, position) =>
-                  h({
-                    tag: "td",
-                    attrs: {
-                      "data-col": position,
-                      "data-pri": column.priority ?? 1,
-                      class: [
-                        column.num ? "num" : "",
-                        column.nowrap ? "nowrap" : "",
-                        position < pinned ? "pinned" : "",
-                      ]
-                        .join(" ")
-                        .trim(),
-                    },
-                    children: [cellContent(column, row)],
-                  }),
-                ),
-              ],
+              children: [cellContent(column, row, fresh)],
             }),
-          )
+          ),
+        ],
+      });
+    const addedRows = (edit?.adds ?? []).map((row) => tableRow(row as Row, true));
+    const body =
+      shownRows.length > 0 || addedRows.length > 0
+        ? [...addedRows, ...shownRows.map((row) => tableRow(row, false))]
         : [
             h({
               tag: "tr",
@@ -878,6 +912,8 @@ namespace MindmapPreview {
     open,
     marks,
     comments,
+    edit,
+    addInTable,
   }: {
     kind: Kind;
     columns: Column[];
@@ -891,6 +927,10 @@ namespace MindmapPreview {
     marks?: DiffMarks;
     /** 項目の ID → レビュー中のコメントの件数。描き直すたびに読むので、使う側が中身を更新すれば並べ替えなどの描き直しにも反映される */
     comments?: Record<string, number>;
+    /** 編集の入口（`TableProps.edit`） */
+    edit?: ScreenEdit | null;
+    /** 「項目を追加」を表の上の帯に置くか */
+    addInTable?: boolean;
   }): HTMLElement {
     const state = tableState(kind);
     // 画面を描き直したときは、前のポップオーバーを開いたままにしない
@@ -916,6 +956,8 @@ namespace MindmapPreview {
           popover: state.popover,
           ...(marks === undefined ? {} : { marks }),
           ...(comments === undefined ? {} : { comments }),
+          ...(edit === undefined ? {} : { edit }),
+          ...(addInTable === undefined ? {} : { addInTable }),
           on: {
             sort: (key) => {
               // 昇順 → 降順 → 解除

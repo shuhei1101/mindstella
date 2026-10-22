@@ -325,7 +325,7 @@ dialog.search::backdrop { background: var(--scrim); }
 @media (max-width: 900px) {
   .panel { top: var(--topbar-h); width: 100%; z-index: 35; border-left: 0; }
   /* 詳細パネルを開いたまま左のパネル（コメントの一覧・表示の設定・絞り込みのドロワー）を開いたとき: 後から開いた左のパネルを詳細パネル（35）の前に出す */
-  body.left-front .comments-panel, body.left-front .settings-drawer, body.left-front dialog.drawer.narrow { z-index: 36; }
+  body.left-front .comments-panel, body.left-front .pending-panel, body.left-front .settings-drawer, body.left-front dialog.drawer.narrow { z-index: 36; }
   .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; }
   .search-trigger .label, .search-trigger kbd, .brand-sub { display: none; }
   .table-wrap [data-pri="4"], .table-wrap [data-pri="5"] { display: none; }
@@ -732,11 +732,11 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* トップバーの検索の入口の両側の空き: 同じ伸び方にして、コメントのボタンを右端に置いたとき検索の入口を中央へ寄せる */
 .topbar.has-comments .spacer { flex: 1 1 0; }
 /* コメント・絞り込み・表示の設定のボタン（トップバー）: 検索の入口と同じ高さと枠 */
-.comments-btn, .filter-btn, .settings-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
-.comments-btn:hover, .filter-btn:hover, .settings-btn:hover { background: var(--topbar-hover); }
-.comments-btn:focus-visible, .filter-btn:focus-visible, .settings-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+.comments-btn, .filter-btn, .settings-btn, .pending-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.comments-btn:hover, .filter-btn:hover, .settings-btn:hover, .pending-btn:hover { background: var(--topbar-hover); }
+.comments-btn:focus-visible, .filter-btn:focus-visible, .settings-btn:focus-visible, .pending-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
 /* パネルを開いているときのボタン: 枠と面で選んだ見た目にする */
-.comments-btn.open, .filter-btn.open, .settings-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
+.comments-btn.open, .filter-btn.open, .settings-btn.open, .pending-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
 /* コメントのボタンの件数: 0 件でも出し、数字は等幅で幅を揺らさない */
 .comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 /* 件数が 0 のとき: 塗りを外して目立たせない */
@@ -750,9 +750,9 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* 未読の点（ボタンのホバー・開いているとき）: 縁を地の色に合わせる */
 .comments-btn:is(:hover, .open) .unread-dot { box-shadow: 0 0 0 2px var(--topbar-hover); }
 /* 狭い幅（1100px 以下）: 文字を隠し、印と件数だけにする */
-@media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn { padding: 0 8px; } }
+@media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label, .pending-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn, .pending-btn { padding: 0 8px; } }
 /* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、同じく文字を隠す。詳細度を足さず、480px 以下の余白の指定が効くようにする */
-@media (max-width: 1440px) { :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) .label { display: none; } :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { padding: 0 8px; } }
+@media (max-width: 1440px) { :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) .label { display: none; } :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { padding: 0 8px; } }
 
 /* コメントの入力: 添えた箇所（名前・外す ×・選んだ文）の箱 */
 .send-loc { display: grid; gap: 4px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
@@ -808,9 +808,9 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .loc-hit { background: var(--hit); border-radius: 2px; box-shadow: 0 0 0 2px var(--hit); }
 
 /* コメントの一覧: タブの帯の下から、本文に重ねて左から出すパネル */
-.comments-panel { position: fixed; z-index: 22; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); visibility: hidden; transition: transform .35s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .35s; }
+.comments-panel, .pending-panel { position: fixed; z-index: 22; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); visibility: hidden; transition: transform .35s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .35s; }
 /* 開いたコメントの一覧 */
-.comments-panel.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.22, .8, .24, 1); }
+.comments-panel.open, .pending-panel.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.22, .8, .24, 1); }
 /* 一覧の見出し: 詳細パネルの見出しと同じ帯 */
 .comments-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 48px; padding: 0 10px 0 16px; background: var(--surface); border-bottom: 1px solid var(--border-soft); }
 /* 一覧の見出しの文字と件数 */
@@ -889,7 +889,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 下端の入力の余白: 一覧の幅に合わせる */
 .comments-free .send.send-footer { padding: 12px 16px 14px; border-top: 0; }
 /* 狭い幅（900px 以下）: 詳細パネルと同じく画面の幅いっぱいにする */
-@media (max-width: 900px) { .comments-panel { width: 100%; top: var(--topbar-h); z-index: 34; } }
+@media (max-width: 900px) { .comments-panel, .pending-panel { width: 100%; top: var(--topbar-h); z-index: 34; } }
 /* 狭い幅（720px 以下）: 行の余白を詰め、直す・削除を右上に重ねる */
 @media (max-width: 720px) {
   .comments-list .row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
@@ -1419,14 +1419,14 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
 @media (prefers-reduced-motion: reduce) { .stoast, .stoast.show { transition: none; } }
 
 /* 表示の設定・絞り込み・コメントのボタン: どの幅でも、件数の札を持たない間も幅を --target-min 以上にし、印を中央に置く（狭い幅の詰め方を足しても 24px を割らない） */
-.topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
+.topbar :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { min-width: var(--target-min); justify-content: center; }
 
 /* 狭い幅（480px 以下）: 表示の設定・絞り込み・コメントの 3 つのボタン（絞り込みとコメントは件数の札つき）が並んでも横に溢れないよう、トップバーの間隔と余白、ボタンの余白と印・件数の間隔を詰める */
 @media (max-width: 480px) {
   /* トップバー: 要素の間隔と左右の余白を詰める */
   .topbar { gap: 3px; padding: 0 10px; }
   /* 表示の設定・絞り込み・コメントのボタン: 印と件数の間隔と左右の余白を詰める */
-  .comments-btn, .filter-btn, .settings-btn { gap: 4px; padding: 0 6px; }
+  .comments-btn, .filter-btn, .settings-btn, .pending-btn { gap: 4px; padding: 0 6px; }
   /* つながらない間に差分を出すと札の幅が足りなくなるため、押せない飾りのツール名の印を隠す */
   .topbar:has(.conn):has(.df-chip) .brand { display: none; }
   /* 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・コメントの `99+`）で、差分の札か接続の状態を出している間: 幅 389px 以下と同じ詰め方を、幅 390px 以上のこの範囲でも効かせる。ツール名の文字は隠し、差分の札を出している間は印も隠す */
@@ -1436,7 +1436,7 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   /* 同じ条件の印だけのボタン（検索・ライト / ダーク・変更履歴）: 幅を 28px に揃えて縮ませない */
   .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
   /* 同じ条件の表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える */
-  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { gap: 2px; padding: 0 2px; }
 }
 
 /* 最も狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅 320px までトップバーを収める */
@@ -1448,7 +1448,7 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 高さは保ち、幅を 28px に揃えて縮ませない */
   .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
   /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
-  .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+  .topbar :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
   /* つながらない・差分ありの間: 印だけのボタンを幅 26px にし、下限で広がった分を右の余白から取らない（既存の 28px の規則に勝つようセレクタを重ねる） */
   .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
 }
@@ -2001,3 +2001,300 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
   /* 概要のタイルの見出しと「すべて表示」: それぞれ 1 行に保つ */
   .t-head h2, .t-head .t-link { white-space: nowrap; }
 }
+
+/* ===== 画面からの編集: 保存待ちの印・トップバーの件数・一覧の項目を追加・詳細パネルの編集・保存待ちのパネル・設定の画面 ===== */
+
+/* 保存待ちの印: 破線の枠の札に重ねた紙の印と「保存待ち」を出す（差分の印は記号の塗り、コメントの印は吹き出しの塗りのピルで、形が違う） */
+.pm { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 6px 0 4px; border: 1px dashed var(--accent); border-radius: 3px; background: var(--surface); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: middle; }
+/* 保存待ちの印の印 */
+.pm svg.icon { width: 12px; height: 12px; flex: none; }
+/* 削除の編集の印: 文字色の破線にし、項目のタイトルに取り消し線を引く */
+.pm.pm-remove { border-color: var(--text-2); color: var(--text-2); }
+/* 書き込めなかった編集の印: 失敗の赤の実線の枠と警告の印 */
+.pm.pm-blocked { border-style: solid; border-color: var(--st-review); color: var(--st-review); }
+/* 印だけの保存待ちの印（キー・案の見出し・マップの節・詳細パネルの見出し） */
+.pm.pm-compact { width: 20px; height: 18px; padding: 0; justify-content: center; }
+/* 詳細の見出し・項目名の後ろに置く印の間隔 */
+:is(dt, h3, b, .o-head, .pe-label-row, .panel-head) > .pm { margin-left: 6px; }
+/* カードの補足の行の印: 行の高さに合わせる */
+.c-meta > .pm { align-self: center; }
+/* 表のタイトルの後ろの印 */
+.row-open + .pm, td > .pm { margin-left: 8px; }
+/* マップの節の印: 2 行目の高さに収める */
+button.n-item .r2 > .pm { height: 14px; width: 16px; }
+/* 削除の編集のある項目: タイトルに取り消し線を引き、文字を控えめにする */
+:is(.card, tr, button.n-item).pe-removing :is(.c-ttl, .row-open, .lbl) { text-decoration: line-through; color: var(--text-3); }
+/* 追加する項目の ID の代わり */
+.pe-noid { color: var(--text-3); font-size: var(--fs-xs); }
+/* 追加する項目のカード: 破線の枠で、まだ無い項目だと示す */
+.card.pe-new { border-style: dashed; }
+
+/* ===== トップバーの保存待ちのボタン ===== */
+
+/* 保存待ちのボタンの印 */
+.pending-btn .pb-icon { display: inline-grid; place-items: center; }
+/* 保存待ちの件数: 印の色の塗り（コメントの件数は白の塗り） */
+.pending-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--teal-400); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+/* 書き込めない編集があるとき: 件数をトップバーの上の失敗の赤にし、印を警告にする */
+.pending-btn.blocked .count { background: var(--red-300); }
+/* 書き込めない編集があるときの印 */
+.pending-btn.blocked .pb-icon { color: var(--red-300); }
+/* 幅 480px 以下: 保存待ちのボタンを出している間は、押せない飾りのツール名の文字を隠して幅を回す */
+@media (max-width: 480px) { .topbar:has(.pending-btn) .brand-name { display: none; } }
+
+/* ===== 一覧の「項目を追加」 ===== */
+
+/* 項目を追加するボタン: 表示形式の切り替えと同じ帯の右端に置く */
+.toolbar .pe-add { margin-left: auto; }
+/* 表の上の帯では列の表示のボタンの左に置く */
+.table-toolbar .pe-add { margin-left: auto; }
+/* 表の上の帯の列の表示のボタン: 項目を追加するボタンの隣に寄せる */
+.table-toolbar .pe-add + .cols-btn-table { margin-left: 8px; }
+/* 狭い幅: 文字を読み上げにだけ残して印だけにする */
+@media (max-width: 480px) {
+  /* 項目を追加するボタンの文字 */
+  .pe-add .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 項目を追加するボタン */
+  .pe-add { padding: 0 9px; }
+}
+
+/* ===== 詳細パネルの編集の表示 ===== */
+
+/* 編集するボタン: 見出しの帯で前後の移動の左に置く */
+.panel-head .pe-edit-toggle { flex: none; height: 30px; padding: 0 10px; font-size: var(--fs-small); white-space: nowrap; }
+/* 編集の表示の間の編集するボタン（編集を終える） */
+.panel-head .pe-edit-toggle[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+/* 狭い幅: 編集するボタンを印だけにし、見出しの帯の閉じるボタンまでを 1 行に収める */
+@media (max-width: 480px) {
+  /* 編集するボタンの文字 */
+  .panel-head .pe-edit-toggle .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 編集するボタン */
+  .panel-head .pe-edit-toggle { width: 30px; padding: 0; justify-content: center; }
+  /* 見出しの帯の項目の印: 狭い幅では出さず、キー・案の印に任せる */
+  .panel-head > .pm { display: none; }
+}
+/* 編集の表示の間は、詳細パネル・詳細の全画面の下端のコメントの入力を隠す */
+.pe-editing .send-footer { display: none; }
+/* 編集の表示 */
+.pe-form { display: flex; flex-direction: column; gap: 18px; padding: 4px 0 24px; }
+/* 編集できないキー（ID・作成・更新） */
+.pe-fixed { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); color: var(--text-2); }
+/* 編集できないキーの名前 */
+.pe-fixed dt { color: var(--text-3); }
+/* 編集できないキーの値 */
+.pe-fixed dd { margin: 0; }
+/* キー 1 つの入力 */
+.pe-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
+/* キーの名前の行（名前・必須・印） */
+.pe-label-row { display: flex; align-items: center; gap: 6px; min-height: 20px; }
+/* キーの名前 */
+.pe-label-row label, .pe-label-row .pe-label, .pe-field > legend { font-size: var(--fs-small); font-weight: 600; color: var(--text); padding: 0; }
+/* 必須の印 */
+.pe-req { margin-left: 6px; font-size: var(--fs-xs); font-weight: 400; color: var(--text-3); }
+/* 入力欄: 幅いっぱい */
+.pe-field :is(.input, select, textarea) { width: 100%; min-width: 0; font: inherit; }
+/* 何行も書く入力欄: 書いた分だけ伸ばし、上限で送る */
+.pe-field textarea.input { height: auto; padding: 8px 10px; line-height: 1.6; resize: vertical; field-sizing: content; min-block-size: 3lh; max-block-size: 16lh; }
+/* 本文の入力欄: 長く書く前提で高くする */
+.pe-field textarea.pe-body { min-block-size: 8lh; max-block-size: 28lh; font-family: var(--font-mono); font-size: var(--fs-small); }
+/* 選ぶ入力欄 */
+.pe-field select.input { padding-right: 28px; }
+/* 保存待ちに溜めたキー: 入力欄の枠を印の色の破線にする */
+.pe-field.is-pending :is(.input, .pe-chips) { border-style: dashed; border-color: var(--accent); }
+/* 書き込めなかった編集のキー: 失敗の赤の枠 */
+.pe-field.is-blocked :is(.input, .pe-chips) { border-style: solid; border-color: var(--st-review); }
+/* タイトルが空のとき: 失敗の赤の枠 */
+.pe-field.is-invalid .input { border-color: var(--st-review); }
+/* 入力の誤り（入力を終えるまで出さない） */
+.pe-error { display: none; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-small); color: var(--text); }
+/* 入力の誤り・補足・書き込めない理由の印 */
+.pe-error svg.icon, .pe-blocked-note svg.icon, .pe-hint svg.icon { width: 14px; height: 14px; flex: none; color: var(--st-review); }
+/* タイトルが空のときの入力の誤り */
+.pe-field.is-invalid .pe-error { display: flex; }
+/* 入力の補足 */
+.pe-hint { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--fs-xs); color: var(--text-2); }
+/* 入力の補足の印: 文字の 1 行目に揃える */
+.pe-hint svg.icon { margin-top: 2px; }
+/* チェックボックスのキー（取り下げ・納品物）: 名前と箱を横に並べる */
+.pe-field.pe-check { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 8px; }
+/* チェックボックス */
+.pe-field.pe-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+/* 値を並べるキー（タグ・依存先・関連・別名）: チップと足す入力欄を 1 つの枠に並べる */
+.pe-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: var(--control-h); padding: 3px 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 値を並べるキー（フォーカス中） */
+.pe-chips:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+/* チップ: 外すボタンを中に持つ */
+.pe-chip { display: inline-flex; align-items: center; gap: 2px; margin: 0; padding: 0 0 0 6px; height: 24px; font-size: var(--fs-small); }
+/* チップを外すボタン: 押せる的を 24px にする */
+.pe-chip-x { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; color: var(--text-2); border-radius: 3px; cursor: pointer; }
+.pe-chip-x:hover { background: var(--hover); color: var(--text); }
+.pe-chip-x:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* チップを外すボタンの印 */
+.pe-chip-x svg.icon { width: 12px; height: 12px; }
+/* 値を足す入力欄: 枠を持たず、残りの幅を使う */
+.pe-chips .pe-chip-input { flex: 1 1 8em; width: auto; min-width: 6em; height: 26px; border: 0; padding: 0 4px; background: none; box-shadow: none; }
+/* 値を足す入力欄（フォーカス中）: 枠は外側に出す */
+.pe-chips .pe-chip-input:focus { outline: none; box-shadow: none; }
+/* 案の入力の並び */
+.pe-options { gap: 10px; }
+/* 案 1 つ */
+.pe-opt { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 保存待ちに溜めた案: 印の色の破線の枠 */
+.pe-opt.is-pending { border-style: dashed; border-color: var(--accent); }
+/* 書き込めなかった編集の案: 失敗の赤の実線の枠 */
+.pe-opt.is-blocked { border-style: solid; border-color: var(--st-review); }
+/* 削除の編集を溜めた案: 文字に取り消し線を引く */
+.pe-opt.is-removed textarea { text-decoration: line-through; color: var(--text-3); }
+/* 案の見出しの行（記号・採用・印・削除） */
+.pe-opt-head { display: flex; align-items: center; gap: 10px; }
+/* 案の記号 */
+.pe-opt-head .key { font-family: var(--font-mono); font-weight: 600; }
+/* 採用のラジオ */
+.pe-adopt { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--text-2); }
+/* 採用のラジオの箱 */
+.pe-adopt input { width: 16px; height: 16px; accent-color: var(--accent); }
+/* 案の見出しの右寄せの隙間 */
+.pe-opt-head .spacer { flex: 1; }
+/* 案を追加するボタン・行を追加するボタン: 左に寄せる */
+.pe-opt-add, .pe-row-add { align-self: flex-start; }
+/* 項目を削除する区画: 上の区切り線で入力と分ける */
+.pe-remove-sec { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+/* 項目を削除する区画の見出し */
+.pe-remove-sec h2 { margin: 0; font-size: var(--fs-small); }
+/* 項目を削除するボタン: 失敗の赤の文字と枠で、取り返しのつかない操作と示す */
+.btn.pe-danger { color: var(--st-review); border-color: var(--st-review); }
+.btn.pe-danger:hover { background: var(--hover); }
+/* 溜めた知らせ */
+.pe-form-msg { margin: 0; min-height: 1.4em; font-size: var(--fs-xs); color: var(--text-2); }
+/* 書き込めない理由 */
+.pe-blocked-note { margin: 4px 0 0; font-size: var(--fs-small); line-height: 1.6; color: var(--text); }
+/* 書き込めない理由の印: 文字の行に並べる */
+.pe-blocked-note svg.icon { vertical-align: -2px; margin-right: 4px; }
+/* 書き込めない理由の中の項目の ID */
+.pe-blocked-note .idlink { margin: 0 2px; }
+/* 詳細の全画面の編集の表示: 読みやすい幅に収める */
+dialog.full .pe-form { width: 100%; max-width: 860px; margin-inline: auto; }
+
+/* ===== 保存待ちのパネル: コメントの一覧と同じ、左から出すパネル ===== */
+
+/* 保存待ちのパネルの見出し: フォーカスを移しても輪を出さない */
+.pending-panel .comments-head h2:focus { outline: none; }
+/* 保存待ちの一覧 */
+.pe-list { display: flex; flex-direction: column; gap: 10px; }
+/* 項目ごとのまとまり */
+.pe-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 書き込めない編集を持つまとまり: 失敗の赤の枠 */
+.pe-group.is-blocked { border-color: var(--st-review); }
+/* まとまりの見出し（項目を開くボタン） */
+.pe-group-head { margin: 0; border-bottom: 1px solid var(--border-soft); font-size: var(--fs-small); }
+/* 項目を開くボタン: 見出しの幅いっぱい */
+.pe-open { display: flex; align-items: baseline; gap: 8px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.pe-open:hover { background: var(--hover); }
+.pe-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 項目の種類 */
+.pe-open .pe-kind { flex: none; font-weight: 400; color: var(--text-2); }
+/* 項目の ID */
+.pe-open .mono { flex: none; font-weight: 400; color: var(--text-2); }
+/* 項目のタイトル: 長いときは 1 行で省く */
+.pe-open .pe-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 編集の行の並び */
+.pe-rows { margin: 0; padding: 0; list-style: none; }
+/* 編集の行: 中身と取り消すボタン */
+.pe-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 8px 12px; }
+/* 2 行目からの区切り線 */
+.pe-row + .pe-row { border-top: 1px solid var(--border-soft); }
+/* 書き込めなかった編集の行: 地を薄く変える */
+.pe-row.is-blocked { background: var(--surface-2); }
+/* 編集の行の中身 */
+.pe-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/* 何を変えるか */
+.pe-what { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-small); font-weight: 600; }
+/* 削除の編集の何を変えるか: 失敗の赤の文字 */
+.pe-row.is-remove .pe-what { color: var(--st-review); }
+/* 何を変えるかの印 */
+.pe-what svg.icon { width: 14px; height: 14px; }
+/* 前と後の値: 1 行に収め、収まらない分は省く */
+.pe-change { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: var(--fs-small); color: var(--text-2); }
+/* 前と後の値の文字 */
+.pe-change :is(del, ins) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+/* 前の値: 控えめにする */
+.pe-change del { color: var(--text-3); flex: none; max-width: 40%; text-decoration: line-through; }
+/* 後の値 */
+.pe-change ins { color: var(--text); flex: 1 1 auto; text-decoration: underline; }
+/* 前と後の間の矢印 */
+.pe-arrow { flex: none; color: var(--text-3); }
+/* 取り消すボタン */
+.pe-undo { flex: none; height: 30px; padding: 0 8px; font-size: var(--fs-small); }
+/* 保存の結果の知らせ（書き込めない・つながらない・断られた） */
+.pe-alert { padding: 12px; background: var(--surface); border: 1px solid var(--st-review); border-radius: var(--radius); font-size: var(--fs-small); }
+.pe-alert:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 知らせの見出し */
+.pe-alert-title { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-weight: 600; }
+/* 知らせの見出しの印 */
+.pe-alert-title svg.icon { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--st-review); }
+/* 書き込めない編集へのリンクの並び */
+.pe-alert ul { margin: 6px 0 0; padding-left: 26px; }
+/* 書き込めない編集へのリンク: 押せる的を縦 24px 以上にする */
+.pe-alert li a { display: inline-block; padding: 3px 0; }
+/* 次にすること */
+.pe-alert-next { margin: 6px 0 0 22px; color: var(--text-2); }
+/* パネルの下端（保存の合計とまとめて保存する） */
+.pe-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px; }
+/* 保存の合計 */
+.pe-foot-sum { margin: 0; font-size: var(--fs-small); color: var(--text-2); }
+/* まとめて保存するボタン: 幅いっぱい */
+.pe-save { justify-content: center; width: 100%; }
+/* 保存待ちが 0 件・保存しているとき: 押せない見た目にする */
+.pe-save:disabled { opacity: .45; cursor: default; }
+/* 保存しているときの回る印 */
+.pe-spin { display: inline-grid; place-items: center; animation: pe-spin 1s linear infinite; }
+/* 回る印の動き */
+@keyframes pe-spin { to { transform: rotate(360deg); } }
+/* 動きを減らす設定: 回る印を止める */
+@media (prefers-reduced-motion: reduce) { .pe-spin { animation: none; } }
+/* 保存した知らせ: 画面の下の中央に出す */
+.pe-toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: var(--radius); background: var(--text); color: var(--bg); box-shadow: var(--shadow-pop); font-size: var(--fs-small); white-space: nowrap; }
+
+/* ===== 表示の設定のパネルの入口と、設定の画面 ===== */
+
+/* 設定の画面の入口（表示の設定のパネルの下端） */
+.pe-ws-entry { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+/* 入口の見出し */
+.pe-ws-entry h3 { margin: 0; font-size: var(--fs-small); }
+/* 入口の中身の要約 */
+.pe-ws-sum { margin: 0 0 4px; font-size: var(--fs-xs); color: var(--text-2); }
+/* 設定の画面を開いている間: 元の本文の区画を隠す */
+body:has(.pe-ws) #main { display: none; }
+/* 設定の画面: 本文の区画と同じ送り方で、中身は読みやすい幅に収める */
+.pe-screen > * { width: 100%; max-width: 820px; margin-inline: auto; }
+/* 設定の画面の見出しの帯 */
+.pe-screen-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+/* 設定の画面の見出し */
+.pe-screen-head h1 { margin: 0; min-width: 0; font-size: calc(var(--fs-h2) * 1.4); overflow-wrap: anywhere; }
+.pe-screen-head h1:focus { outline: none; }
+/* 見出しの帯の右寄せの隙間 */
+.pe-screen-head .spacer { flex: 1; }
+/* 見出しの帯のボタン: 文言を折り返さない */
+.pe-screen-head .btn { flex: none; white-space: nowrap; }
+/* 設定のまとまり: 面の色のタイル */
+.pe-ws-group { display: flex; flex-direction: column; gap: 18px; min-width: 0; margin: 0; padding: 16px; background: var(--surface); border: 0; border-radius: var(--radius); }
+/* 設定のまとまりの見出し */
+.pe-ws-group > legend { float: left; width: 100%; margin-bottom: 2px; padding: 0; font-size: var(--fs-body); font-weight: 700; }
+/* 設定のまとまりの中の小見出し */
+.pe-sub { display: flex; flex-direction: column; gap: 4px; }
+/* 小見出しの名前 */
+.pe-sub-label { font-size: var(--fs-xs); color: var(--text-2); }
+/* 納品物の並び */
+.pe-rowsx { margin: 0; padding-left: 18px; font-size: var(--fs-small); }
+/* 1 行ずつの表の入れ物: 狭い幅では表の中で横に送る */
+.pe-mini-wrap { position: relative; overflow-x: auto; }
+/* 1 行ずつの表 */
+.pe-mini { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+/* 1 行ずつの表の見出し */
+.pe-mini th { padding: 4px 6px; text-align: left; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+/* 1 行ずつの表のセル */
+.pe-mini td { padding: 3px 4px; vertical-align: middle; }
+/* 1 行ずつの表の入力欄 */
+.pe-mini .input { min-width: 8em; }
+/* 数の入力欄 */
+.pe-num { max-width: 8em; }

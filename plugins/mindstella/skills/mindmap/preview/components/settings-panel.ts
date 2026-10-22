@@ -46,6 +46,8 @@ namespace MindmapPreview {
     storageOk?: boolean;
     /** 差分のミニマップを表示しているか（チェックボックスの状態。「ワークスペースの既定にする」を出すかの比べには使わない） */
     minimap?: boolean;
+    /** 「設定を編集する」を押したとき。下端に見出し「ワークスペースの設定」と案内、ボタンを置く。`null` か渡さなければ置かない（配る書き出し・差分の表示中） */
+    onWorkspace?: (() => void) | null;
     on: {
       /** 表示する種類を変えたとき（変えた後の並びを渡す） */
       kinds: (kinds: string[]) => void;
@@ -292,9 +294,26 @@ namespace MindmapPreview {
     });
   }
 
+  /** ワークスペースの設定の入口（見出し・何を書き換えられるかの案内・「設定を編集する」） */
+  function workspaceEntry(onWorkspace: () => void): HTMLElement {
+    return h({
+      tag: "div",
+      attrs: { class: "pe-ws-entry" },
+      children: [
+        h({ tag: "h3", children: ["ワークスペースの設定"] }),
+        h({ tag: "p", attrs: { class: "pe-ws-sum" }, children: ["題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙"] }),
+        h({
+          tag: "button",
+          attrs: { class: "btn", type: "button", onclick: () => onWorkspace() },
+          children: [icon("edit"), "設定を編集する"],
+        }),
+      ],
+    });
+  }
+
   /** 表示の設定の中身を返す */
   export function settingsPanel(props: SettingsPanelProps): HTMLElement {
-    const { canSave, message = null, storageOk = true } = props;
+    const { canSave, message = null, storageOk = true, onWorkspace = null } = props;
     return h({
       tag: "div",
       attrs: { class: "st-wrap" },
@@ -305,6 +324,7 @@ namespace MindmapPreview {
         resetBlock(props),
         canSave ? saveBlock(props) : null,
         messageLine(message),
+        onWorkspace === null ? null : workspaceEntry(onWorkspace),
       ],
     });
   }

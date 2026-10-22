@@ -343,7 +343,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
             # 本文を読まずに、保存待ちの編集をまとめて保存する
             self._reply(edits_save_response(self.context, origin=self.headers.get("Origin")))
         elif path == EDITS_PATH:
-            self._write(lambda root, data: add_edit(root, data), HTTPStatus.CREATED)
+            self._write(lambda root, data: _edit_added(*add_edit(root, data)), HTTPStatus.CREATED)
         elif seen_thread_id is not None:
             # 本文を読まずに、そのスレッドを利用者の既読にする
             self._reply(
@@ -1008,6 +1008,11 @@ def error_response(error: MindmapError) -> Response:
     if not isinstance(error, WriteFailedError):
         logger.error("渡された種類のないエラー: %s %s", type(error).__name__, detail)
     return problem_response(HTTPStatus.INTERNAL_SERVER_ERROR, detail)
+
+
+def _edit_added(body: dict[str, Any], created: bool) -> tuple[dict[str, Any], HTTPStatus]:
+    """保存待ちの編集の追加の本文と、新しく溜めたとき 201・同じ編集の書き換えと外したとき 200 のステータスコードの組を返す。"""
+    return body, HTTPStatus.CREATED if created else HTTPStatus.OK
 
 
 def _added_body(comment: ReviewComment, count: int) -> dict[str, Any]:

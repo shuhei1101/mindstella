@@ -12,6 +12,8 @@ var MindmapPreview;
         opened: "api/opened",
         configDisplay: "api/config/display",
         threads: "api/threads",
+        edits: "api/edits",
+        editsSave: "api/edits/save",
     };
     /** 応答の本文から、日本語の理由（`detail`）を取り出す。読めなければ null */
     async function detailOf(response) {
@@ -85,11 +87,13 @@ var MindmapPreview;
         }
         // 断られた: 理由が読めなければ、ステータスの文言を使う
         let stale = [];
+        let blocked = [];
         let detail = null;
         try {
             const problem = (await response.json());
             detail = typeof problem.detail === "string" ? problem.detail : null;
             stale = Array.isArray(problem.stale) ? problem.stale : [];
+            blocked = Array.isArray(problem.blocked) ? problem.blocked : [];
         }
         catch {
             // 本文が JSON でない
@@ -99,6 +103,7 @@ var MindmapPreview;
             status: response.status,
             detail: detail ?? (response.statusText || String(response.status)),
             stale,
+            ...(blocked.length > 0 ? { blocked } : {}),
         };
     }
     MindmapPreview.callApi = callApi;
@@ -114,6 +119,16 @@ var MindmapPreview;
         };
     }
     MindmapPreview.commentApi = commentApi;
+    /** 保存待ちの編集の読み取り・追加・取り消し・まとめて保存を束ねて返す */
+    function editApi(fetchFn = window.fetch.bind(window)) {
+        return {
+            read: () => callApi("GET", MindmapPreview.API_PATHS.edits, null, fetchFn),
+            add: (input) => callApi("POST", MindmapPreview.API_PATHS.edits, input, fetchFn),
+            remove: (id) => callApi("DELETE", `${MindmapPreview.API_PATHS.edits}/${encodeURIComponent(id)}`, null, fetchFn),
+            save: () => callApi("POST", MindmapPreview.API_PATHS.editsSave, null, fetchFn),
+        };
+    }
+    MindmapPreview.editApi = editApi;
     /** スレッドの読み取り・状態の書き換え・利用者の既読を束ねて返す。理由が空白だけなら `null` を送る */
     function threadApi(fetchFn = window.fetch.bind(window)) {
         return {

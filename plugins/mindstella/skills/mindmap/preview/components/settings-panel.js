@@ -238,9 +238,25 @@ var MindmapPreview;
             children: message === null ? [] : [MindmapPreview.icon(message.kind === "ok" ? "check" : "sliders"), MindmapPreview.h({ tag: "span", children: [message.text] })],
         });
     }
+    /** ワークスペースの設定の入口（見出し・何を書き換えられるかの案内・「設定を編集する」） */
+    function workspaceEntry(onWorkspace) {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "pe-ws-entry" },
+            children: [
+                MindmapPreview.h({ tag: "h3", children: ["ワークスペースの設定"] }),
+                MindmapPreview.h({ tag: "p", attrs: { class: "pe-ws-sum" }, children: ["題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙"] }),
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "btn", type: "button", onclick: () => onWorkspace() },
+                    children: [MindmapPreview.icon("edit"), "設定を編集する"],
+                }),
+            ],
+        });
+    }
     /** 表示の設定の中身を返す */
     function settingsPanel(props) {
-        const { canSave, message = null, storageOk = true } = props;
+        const { canSave, message = null, storageOk = true, onWorkspace = null } = props;
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "st-wrap" },
@@ -251,6 +267,7 @@ var MindmapPreview;
                 resetBlock(props),
                 canSave ? saveBlock(props) : null,
                 messageLine(message),
+                onWorkspace === null ? null : workspaceEntry(onWorkspace),
             ],
         });
     }

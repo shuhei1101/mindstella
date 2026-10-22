@@ -489,3 +489,60 @@ export const FitWideOfflineDiffNoFilter: Story = {
   },
   ...fitWideViewport,
 };
+
+/** 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙の印・「保存待ち」・印の色の塗りの件数「5」を出す */
+export const Pending: Story = {
+  args: { pending: true, pendingCount: 5, onPending: fn(), filter: true, onFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 保存待ちのパネルを開いている。保存待ちのボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
+export const PendingOpen: Story = {
+  args: { pending: true, pendingCount: 5, pendingOpen: true, onPending: fn(), comments: true, commentCount: 3 },
+};
+
+/** 直前の保存で書き込めない編集があった。印を警告に替え、件数の塗りを失敗の赤にする */
+export const PendingBlocked: Story = {
+  args: { pending: true, pendingCount: 3, pendingBlocked: true, onPending: fn(), comments: true, commentCount: 3 },
+};
+
+/** 保存待ちが 100 件以上。件数を 99+ にし、読み上げの名前には実際の件数を持つ */
+export const PendingMany: Story = {
+  args: { pending: true, pendingCount: 120, onPending: fn(), comments: true, commentCount: 3 },
+};
+
+/** 幅 390px。保存待ちのボタンの文字を隠して印と件数だけにし、ツール名の文字を隠す（印は残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない */
+export const PendingNarrow: Story = {
+  args: {
+    pending: true,
+    pendingCount: 7,
+    onPending: fn(),
+    filter: true,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onHistory: fn(),
+  },
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 幅 320〜389px で、保存待ち（99+）・絞り込み（バッジ 2 桁）・表示の設定・コメント（99+）・変更履歴のボタンを出す間。`FitNarrowest` の詰め方に保存待ちのボタンも加え（左右の余白 2px・印と件数の間隔 2px・幅の下限 `--target-min`）、トップバーもページも横にはみ出さない */
+export const PendingFitNarrowest: Story = {
+  args: {
+    pending: true,
+    pendingCount: 120,
+    onPending: fn(),
+    filter: true,
+    filterCount: 12,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    onHistory: fn(),
+  },
+  ...fitViewport,
+};
