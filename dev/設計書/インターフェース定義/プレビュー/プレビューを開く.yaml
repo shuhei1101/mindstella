@@ -2,7 +2,7 @@ title: "プレビューを開く"
 entry:
   kind: screen
   value: サーバーの配信の URL（`preview_url` が返す `http://127.0.0.1:{ポート}/mindstella.html`。画面は『プレビューの配信』が返し、雛形は `plugins/mindstella/skills/mindmap/preview/`）。`export` が書き出した配る書き出しも同じ画面を開く
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込み）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`GET /api/threads`（スレッド）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込み）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`GET /api/threads`（スレッド）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）・`GET`/`POST /api/edits`・`DELETE /api/edits/{id}`（保存待ちの編集）・`POST /api/edits/save`（まとめて保存）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
 flows:
   - name: 正常系
     summary: ハッシュが指す画面・表示形式・項目を開く
@@ -989,6 +989,33 @@ flows:
       - 「選んだ時点」の列に前の版、「今」の列に今の版の本文を描いた結果があり、「今」の列の 2 つ目の段落だけに「変わった」の印が付く
       - 「原文の差分」で、左に 2 つ目の段落の消した行、右に足した行が同じ高さで出て、`data-line` を含まない
     test: test_normal_when_html_body_diff_side_by_side
+  - name: 正常系（編集を溜めて保存する）
+    summary: 詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開く）
+      - name: make_workspace
+        description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: ハッシュは `tab=decisions&id=D-1`
+    flow: |-
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: 「編集する」を押し、答えを書いて入力欄を離れる
+        IF-->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}
+        SV-->>IF: 201
+        IF-->>ユーザー: 答えにバッジ、トップバーに件数 1
+        ユーザー->>IF: トップバーの件数を押し、まとめて保存する
+        IF-->>SV: POST /api/edits/save
+        SV-->>IF: 200
+        IF-->>ユーザー: 保存した旨と、D-1 の新しい答え
+    expected:
+      - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちのバッジがあり、トップバーの件数が 1
+      - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、バッジと件数が画面を開き直さずに消える
+      - 「編集する」・入力欄・トップバーの件数・取り消す・まとめて保存するに Tab キーで届く
+    test: test_normal_when_edits_saved
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメント・返信を溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `threads.yaml` にスレッドと返信を足し（『コメントをまとめて送る』）、クローズ・オープンへの戻しで `threads.yaml` の状態を書き換える（『画面からのスレッドの状態の書き換え』）。利用者の未読の書き込みを持つスレッドを開くと、`threads.yaml` のその書き込みを利用者の既読にする（『画面からのスレッドの既読』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
@@ -1125,6 +1152,9 @@ response:
   - name: 既定が変わった知らせ
     type: DOM（`role="status"`）
     description: 書き換えの知らせで受けた新しい既定を上書きを持たない項目に当て直したとき、画面の下に「ワークスペースの既定が変わりました。」を 6 秒出す。同じ知らせを時刻つきで表示の設定のパネルにも残す
+  - name: 保存待ちの編集
+    type: DOM
+    description: 保存待ちの編集がある項目・キー・案のバッジ、トップバーの保存待ちの件数、保存待ちのパネル（編集の行・1 件ずつの取り消し・書き込めない編集の理由・まとめて保存するボタン）。差分の表示中と配る書き出しでは出さない
 response_notes: |-
   > [!NOTE]
   > 開いた後の画面の移動・項目の移動も同じ形のハッシュに書き、同じ URL を開き直すと同じ画面と項目が開く。
@@ -1183,6 +1213,8 @@ constraints:
   - item: 本文の差分の並べ方
     constraint: 切り替えは、詳細パネル・詳細の全画面で本文を選んだ時点から変えた項目にだけ出す（前後を組み立てられない・本文の差分を出せない・計算しきれない・差分のライブラリを読めないときは出さない）。本文の幅が 560px に満たないときは切り替えを出さず、`body_diff_layout` が `side` でもインラインで出す。左右に並べるときは、行の差分の変えていない・消した・足した塊を左右に対応づけ、片側にしか無い塊の向かいに同じ高さの空きを置く。消した印は左、足した印は右だけに付け、図の差分の色付けは右の図にだけ付ける。HTML の本文は、「描いた結果」では前後を描いた結果、「原文の差分」では原文の行を左右に並べる。選んだ箇所のコメントの入口は右の列でだけ出す。左右の列は読み上げの名前（「選んだ時点の本文」「今の本文」）を持ち、列の頭に「選んだ時点」「今」を出す。並べ方を切り替えても URL のハッシュは変えない。「左右に並べる」を押すと個人の上書き `body_diff_layout` に `side` を残し、「インライン」を押すと上書きを外す
     notes: 置く画面・本文の幅の閾値・保つ範囲・HTML の本文での置き方は、モック作成でユーザーが推奨案を選んだ（PR ドキュメントの確認ログ）
+  - item: 編集の読み書き
+    constraint: 開いたときと書き換えの知らせを受けたときに `GET /api/edits` を読み、保存待ちの編集を記録に重ねて描く（足す項目は ID を持たないカード・行として一覧へ差し込む）。編集の表示の入力欄を離れたとき（選ぶ・チェックは選んだとき）にそのキーの編集を `POST /api/edits` へ、取り消しを `DELETE /api/edits/{id}` へ、保存を `POST /api/edits/save` へ送る。空のタイトルは送らずに入力の誤りを出す。保存が 409 のときは `blocked` を行ごとに書き込めない理由として出し、届かないときは保存待ちの編集を残して保存できなかった旨を出す。差分の表示中は編集の操作・バッジ・件数を出さず、保存待ちのパネルを閉じる。配る書き出しはどの API も呼ばず、編集の操作を出さない
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#

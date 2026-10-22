@@ -485,6 +485,38 @@ def test_update_settings(
     assert decisions["items"][0]["updated_by"] == "ai"
 
 
+def test_stage_settings(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_settings: MakeSettings,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """書かずに付け替えを当て、編集した人を渡した人にする（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
+    )
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    # 実行
+    staged = settings_update.stage_settings(
+        workspace,
+        {"phases": ["目的", "発散"]},
+        threads=[],
+        phase_map={"問い": "目的"},
+        editor="user",
+        now=_fixed_now,
+    )
+    # 検証
+    assert staged.changed == ["phases"]
+    assert staged.remapped == [
+        settings_update.PhaseRemap(id="D-1", key="phase", from_value="問い", to_value="目的")
+    ]
+    assert staged.items["decision"][0]["phase"] == "目的"
+    assert staged.items["decision"][0]["updated_by"] == "user"
+    assert snapshot_tree(root) == before
+
+
 def test_update_settings_when_tags_remapped(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,

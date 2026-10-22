@@ -59,6 +59,14 @@ from preview_drawer_helpers import (
     click_value,
     open_drawer,
 )
+from preview_edit_helpers import (
+    DETAIL_PANEL as EDIT_PANEL,
+    PENDING_BUTTON as EDIT_PENDING_BUTTON,
+    SAVE_BUTTON as EDIT_SAVE_BUTTON,
+    open_pending as open_edit_pending,
+    read_items_file,
+    reached_by_tab,
+)
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     OpenPreview,
@@ -1918,3 +1926,48 @@ def test_normal_when_html_body_diff_side_by_side(
     assert removed_box["y"] == added_box["y"]
     assert removed_box["x"] < added_box["x"]
     assert "data-line" not in page.inner_text(f"{full_scope} .df-raw.df-split")
+
+
+def test_normal_when_edits_saved(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1", title="最初の問い"))
+    page = open_preview(url, "#tab=decisions&view=board&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    page.get_by_role("button", name="編集する").click()
+    answer = page.get_by_label("決定内容", exact=True)
+    # 実行（溜める）
+    answer.fill("新しい答え")
+    answer.blur()
+    page.wait_for_selector(f"{EDIT_PENDING_BUTTON} .count")
+    # 検証（溜めた後）
+    assert page.inner_text(f"{EDIT_PENDING_BUTTON} .count") == "1"
+    assert page.locator(".pe-field[data-key='answer'] .pm.pm-pending").count() == 1
+    assert page.locator(".card[data-id='D-1'] .pm.pm-pending").count() == 1
+    assert read_items_file(root, "decisions.yaml")[0].get("answer") is None
+    assert reached_by_tab(
+        page,
+        f"{EDIT_PANEL} button.pe-edit-toggle",
+        ".pe-field[data-key='answer'] textarea",
+        EDIT_PENDING_BUTTON,
+    ) == [
+        f"{EDIT_PANEL} button.pe-edit-toggle",
+        ".pe-field[data-key='answer'] textarea",
+        EDIT_PENDING_BUTTON,
+    ]
+    # 実行（保存する）
+    open_edit_pending(page)
+    assert reached_by_tab(page, "button.pe-undo", EDIT_SAVE_BUTTON) == ["button.pe-undo", EDIT_SAVE_BUTTON]
+    page.click(EDIT_SAVE_BUTTON)
+    page.wait_for_selector(".pe-toast")
+    # 検証（保存した後）
+    decision = read_items_file(root, "decisions.yaml")[0]
+    assert (decision["answer"], decision["updated_by"]) == ("新しい答え", "user")
+    assert page.inner_text(".pe-toast").strip() == "1 件を保存しました。"
+    assert page.locator(EDIT_PENDING_BUTTON).count() == 0
+    assert page.locator(".pm").count() == 0
+    assert "新しい答え" in page.inner_text(f"{EDIT_PANEL} .panel-body")

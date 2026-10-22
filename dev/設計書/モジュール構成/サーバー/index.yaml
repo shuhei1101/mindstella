@@ -43,3 +43,5 @@ items:
     summary: SessionStart のフックが呼ぶ、ワークスペースを探してスレッドの書き込みを未読に戻すスクリプト
   - page: タグの語彙.py.yaml
     summary: タグの語彙の読み取り・語彙にあるかの確かめ・近いタグの候補
+  - page: 保存待ちの編集.py.yaml
+    summary: 保存待ちの編集の読み書き・取り消し・まとめて保存

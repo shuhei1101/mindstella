@@ -180,6 +180,18 @@ data_models:
         type: list[str]
         default: '[]'
         description: 書き換えた後に消す `docs/` の本文のファイル名（`remove` が使う）
+      - name: settings
+        type: dict[str, Any] | None
+        default: None
+        description: 一緒に書く `config.yaml` の新しい中身。変えないときは `None`（まとめて保存が使う）
+      - name: threads
+        type: list[dict[str, Any]] | None
+        default: None
+        description: 一緒に書く `threads.yaml` の `items`。変えないときは `None`（タグを付け替えたとき）
+      - name: edits
+        type: dict[str, Any] | None
+        default: None
+        description: 最後に書く `edits.yaml` の新しい中身。変えないときは `None`（まとめて保存が編集を空にする）
 enums:
   - name: Kind
     title: 種類
@@ -426,6 +438,38 @@ classes:
       - name: unmapped
         type: list[tuple[str, str]]
         description: 残るもの（項目かスレッドの ID、タグ）
+  - name: EditInvalidError
+    title: 編集の形が合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 保存待ちの編集の追加の本文の形・キー・値の型が合わない、または保存待ちが空で保存した。配信は 400 にする。メッセージは合わないキーと理由
+    kind: クラス
+    inherits: MindmapError
+  - name: EditNotFoundError
+    title: 編集・向け先が無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 取り消す編集、または編集する項目・仮の ID・案が無い。配信は 404 にする。メッセージは無い ID か記号
+    kind: クラス
+    inherits: MindmapError
+  - name: EditConflictError
+    title: 編集が溜めた編集と合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 足す案の記号が既にある、または削除を溜めた項目へ削除以外の編集を溜めようとした。配信は 409 にする。メッセージは理由
+    kind: クラス
+    inherits: MindmapError
+  - name: EditsBlockedError
+    title: 書き込めない編集がある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 'まとめて保存で、書き込めない編集が 1 件以上ある。配信は 409 にし、本文に `blocked: [{id, reason, detail, refs}]` を足す。メッセージは「{n} 件の編集を書き込めないため、何も保存していません。」'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: blocked
+        type: list[BlockedEdit]
+        description: 書き込めない編集（モジュール構成『保存待ちの編集』）。溜めた順
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -1376,11 +1420,11 @@ functions:
         description: 書き込む変更
     process: |-
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
-      2. `raw` の `items` の種類のファイルを全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
+      2. `raw` の `items` の種類のファイル（`settings` があれば `config.yaml` も）を全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
          - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
-      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
+      3. 書く全てのファイル（本文・種類の YAML・`config.yaml`・`threads.yaml`・`changes.yaml`・`edits.yaml`。`None` のものは書かない）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
+      4. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
          - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
@@ -1426,6 +1470,12 @@ functions:
         condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.md`。本文を消す関数を `OSError` を送る関数に差し替える
         mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
         expected: '`WriteFailedError`（メッセージに `N-2.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.md` が呼ぶ前と同じ'
+      - name: test_save_batch_with_settings_and_edits
+        case: 正常
+        summary: 設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す
+        condition: '題名を変えた `settings`、タグを付け替えた `threads`、空の `edits`、T-1 を足したタスクの並び。`parametrize`: そのまま / `os.replace` を置き換え先が `edits.yaml` のときだけ `OSError` を送る関数に差し替える'
+        mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
+        expected: '`tasks.yaml`・`config.yaml`・`threads.yaml`・`edits.yaml` が渡した中身 / `WriteFailedError`（メッセージに `edits.yaml`）で、全てのファイルが呼ぶ前と同じ'
   - name: require_workspace
     title: ワークスペースの確かめ
     kind: 関数

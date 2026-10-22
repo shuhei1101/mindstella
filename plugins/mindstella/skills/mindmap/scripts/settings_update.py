@@ -19,6 +19,7 @@ from errors import (
 )
 from kinds import EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root
 from store import (
+    THREADS_FILE,
     WHOLE_PATH,
     Change,
     NowFn,
@@ -37,9 +38,6 @@ from store import (
     write_temp,
 )
 from vocabulary import tag_names
-
-# スレッドのファイル名（無ければスレッド 0 件）
-THREADS_FILE = "threads.yaml"
 
 # `update_settings` の `settings` に渡せるキー
 EDITABLE_KEYS = (
@@ -89,6 +87,22 @@ class PhaseRemap:
     from_value: str
     # 後の名前（タグを外したときは None）
     to_value: str | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SettingsStage:
+    """書き込む前にメモリの上で当てた設定と付け替え。"""
+
+    # 当てた後の設定（付け替えた `goal.phase`・カテゴリーの `target` を含む）
+    settings: dict[str, Any]
+    # 付け替えた後の種類ごとの項目の並び（全ての種類）
+    items: dict[Kind, list[dict[str, Any]]]
+    # タグを付け替えたスレッドの `items`。変わらなければ None
+    threads: list[dict[str, Any]] | None
+    # 変わった設定のキー
+    changed: list[str]
+    # 付け替えた項目・スレッド（`update_settings` の `remapped` の並びの順）
+    remapped: list[PhaseRemap]
 
 
 def validate_settings_input(
@@ -206,6 +220,8 @@ def remap_phases(
     settings: dict[str, Any],
     phase_map: dict[str, str],
     now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[list[Change], list[PhaseRemap], dict[str, Any]]:
     """新しい phases に無いフェーズを持つ項目と goal.phase を、対応で付け替える。"""
     phases = settings.get("phases", [])
@@ -227,7 +243,7 @@ def remap_phases(
             # 対応がある: フェーズと更新日時を置き換える
             item["phase"] = phase_map[phase]
             item["updated"] = now()
-            item["updated_by"] = EDITOR
+            item["updated_by"] = editor
             remapped.append(
                 PhaseRemap(
                     id=item["id"], key="phase", from_value=phase, to_value=phase_map[phase]
@@ -258,6 +274,8 @@ def remap_names(
     target_map: dict[str, str],
     category_map: dict[str, str],
     now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[dict[Kind, list[dict[str, Any]]], list[PhaseRemap], dict[str, Any]]:
     """新しい targets・categories に無い名前を持つ項目とカテゴリーの target を、対応で付け替える。"""
     targets = _names(settings.get("targets"))
@@ -307,7 +325,7 @@ def remap_names(
             # 付け替えた項目だけ更新日時を変える
             if renamed:
                 item["updated"] = now()
-                item["updated_by"] = EDITOR
+                item["updated_by"] = editor
             rows.append(item)
         new_items[kind] = rows
     if unmapped:
@@ -323,6 +341,7 @@ def remap_tags(
     now: NowFn = now_utc,
     *,
     replaced: bool,
+    editor: str = EDITOR,
 ) -> tuple[dict[Kind, list[dict[str, Any]]], list[dict[str, Any]], list[PhaseRemap]]:
     """新しい語彙に無いタグを、対応で項目とスレッドの `tags` から付け替えるか外す。"""
     # 語彙を置き換えないときはタグを確かめない
@@ -345,7 +364,7 @@ def remap_tags(
             # タグを付け替えた項目だけ更新日時と編集した人を書く
             if len(remapped) > before:
                 item["updated"] = now()
-                item["updated_by"] = EDITOR
+                item["updated_by"] = editor
             rows.append(item)
         new_items[kind] = rows
     new_threads: list[dict[str, Any]] = []
@@ -453,23 +472,23 @@ def save_settings(
     ]
 
 
-def update_settings(
-    root: Path,
+def stage_settings(
+    workspace: Workspace,
     settings: dict[str, Any],
-    phase_map: dict[str, str] | None,
-    now: NowFn = now_utc,
     *,
+    threads: list[dict[str, Any]],
+    phase_map: dict[str, str] | None = None,
     target_map: dict[str, str] | None = None,
     category_map: dict[str, str] | None = None,
     tag_map: dict[str, str | None] | None = None,
-) -> dict[str, Any]:
-    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリー・タグを付け替え、まとめて書く。"""
-    workspace = load_workspace(root)
-    current_phases = workspace.settings.get("phases", [])
+    editor: str = EDITOR,
+    now: NowFn = now_utc,
+) -> SettingsStage:
+    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリー・タグを付け替え、書かずに結果を返す。"""
     validate_settings_input(
         settings,
         phase_map,
-        current_phases,
+        workspace.settings.get("phases", []),
         target_map=target_map,
         category_map=category_map,
         tag_map=tag_map,
@@ -478,38 +497,32 @@ def update_settings(
     merged, changed = merge_settings(workspace.settings, settings)
     # 書き換えのたびに確かめるので、phases に無いフェーズが残れば止まる
     phase_changes, phase_remapped, phased_settings = remap_phases(
-        workspace, merged, phase_map or {}, now
+        workspace, merged, phase_map or {}, now, editor=editor
     )
     items = {**workspace.items, **{change.kind: change.items for change in phase_changes}}
     # 書き換えのたびに確かめるので、新しい設定に無い対象・カテゴリーが残れば止まる
     items, name_remapped, remapped_settings = remap_names(
-        items, phased_settings, target_map or {}, category_map or {}, now
+        items, phased_settings, target_map or {}, category_map or {}, now, editor=editor
     )
     # 語彙を置き換える・消すときは、新しい語彙に無いタグが残れば止まる
-    thread_items = _read_thread_items(root)
     items, new_threads, tag_remapped = remap_tags(
         items,
-        thread_items,
+        threads,
         remapped_settings,
         tag_map or {},
         now,
         replaced="tags" in settings,
+        editor=editor,
     )
     # 対応で goal.phase だけが変わったときも goal を変わったキーに入れる
     if phased_settings.get("goal") != merged.get("goal") and "goal" not in changed:
         changed.append("goal")
     # 対応でカテゴリーの target だけが変わったときも categories を変わったキーに入れる
-    if remapped_settings.get("categories") != merged.get("categories") and "categories" not in changed:
+    if (
+        remapped_settings.get("categories") != merged.get("categories")
+        and "categories" not in changed
+    ):
         changed.append("categories")
-    # 付け替えた項目がある種類だけを、種類の順に変更にする
-    changes = [
-        Change(kind=kind, items=items[kind])
-        for kind in KINDS
-        if items[kind] != workspace.items[kind]
-    ]
-    # タグを付け替えたスレッドがあるときだけ、スレッドも一緒に書く
-    threads = new_threads if new_threads != thread_items else None
-    files = save_settings(workspace, remapped_settings, changes, threads=threads)
     # 種類の順（スレッドは最後）・並びの順・同じ項目の中は phase・target・category・tags の順に並べる
     positions = {
         item["id"]: (kind_order, index)
@@ -523,11 +536,50 @@ def update_settings(
         [*phase_remapped, *name_remapped, *tag_remapped],
         key=lambda remap: (*positions[remap.id], REMAP_KEY_ORDER.index(remap.key)),
     )
+    return SettingsStage(
+        settings=remapped_settings,
+        items=items,
+        threads=new_threads if new_threads != threads else None,
+        changed=changed,
+        remapped=ordered,
+    )
+
+
+def update_settings(
+    root: Path,
+    settings: dict[str, Any],
+    phase_map: dict[str, str] | None,
+    now: NowFn = now_utc,
+    *,
+    target_map: dict[str, str] | None = None,
+    category_map: dict[str, str] | None = None,
+    tag_map: dict[str, str | None] | None = None,
+) -> dict[str, Any]:
+    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリー・タグを付け替え、まとめて書く。"""
+    workspace = load_workspace(root)
+    staged = stage_settings(
+        workspace,
+        settings,
+        threads=read_thread_items(root),
+        phase_map=phase_map,
+        target_map=target_map,
+        category_map=category_map,
+        tag_map=tag_map,
+        now=now,
+    )
+    # 付け替えた項目がある種類だけを、種類の順に変更にする
+    changes = [
+        Change(kind=kind, items=staged.items[kind])
+        for kind in KINDS
+        if staged.items[kind] != workspace.items[kind]
+    ]
+    # タグを付け替えたスレッドがあるときだけ、スレッドも一緒に書く
+    files = save_settings(workspace, staged.settings, changes, threads=staged.threads)
     return {
-        "changed": changed,
+        "changed": staged.changed,
         "remapped": [
             {"id": remap.id, "key": remap.key, "from": remap.from_value, "to": remap.to_value}
-            for remap in ordered
+            for remap in staged.remapped
         ],
         "files": files,
     }
@@ -560,7 +612,7 @@ def update_display(root: Path, body: dict[str, Any]) -> dict[str, Any]:
     return {"display": display}
 
 
-def _read_thread_items(root: Path) -> list[dict[str, Any]]:
+def read_thread_items(root: Path) -> list[dict[str, Any]]:
     """`threads.yaml` の `items` を読む（無いか、読めないか、スレッドの並びでなければ空）。"""
     path = records_root(root) / THREADS_FILE
     try:

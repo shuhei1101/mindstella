@@ -1,5 +1,5 @@
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・保存待ちのボタン・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar
 story: Preview/Topbar
 test_file: tests/integration/storybook/test_topbar_stories.py
@@ -117,6 +117,34 @@ args:
     enabled_when: '`comments` が `true` のとき'
     description: オープンのスレッドに利用者の未読の書き込みがあるか。`true` のとき、コメントのボタンの吹き出しの印の右上に点を重ねる（ボタンの幅は変えない。件数は出さない）。点の色は暗い地で読める印の色（`--teal-400`）
     status: implemented
+  - name: pending
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、幅 1100px 以下は「保存待ち」の文字を隠して印と件数だけにする。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
+    status: planned
+  - name: pending_count
+    type: 整数
+    required: false
+    default: '0'
+    choices: 1 以上
+    enabled_when: '`pending` が `true` のとき'
+    description: 保存待ちの編集の件数。重ねた紙の印と「保存待ち」の右に印の色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身の印 `data-wide` を付ける
+    status: planned
+  - name: pending_open
+    type: 真偽値
+    required: false
+    default: 'false'
+    enabled_when: '`pending` が `true` のとき'
+    description: 保存待ちのパネルを開いているか。開いているときはボタンを枠と面で選んだ見た目にする
+    status: planned
+  - name: pending_blocked
+    type: 真偽値
+    required: false
+    default: 'false'
+    enabled_when: '`pending` が `true` のとき'
+    description: 直前の保存で書き込めない編集があったか。真のとき、印を警告に替え、件数の塗りをトップバーの上の失敗の赤（`--red-300`）にする
+    status: planned
 events:
   - name: 画面を移る
     when: タブかネットワークの入口を押したとき
@@ -144,6 +172,9 @@ events:
   - name: 絞り込みを開く
     when: 絞り込みのボタンを押したとき
     description: 使う側が絞り込みのドロワーを開く。開いているときは閉じる。コメントの一覧か表示の設定のパネルを開いていれば閉じてから開く。どちらも履歴に積まない
+  - name: 保存待ちを開く
+    when: 保存待ちのボタンを押したとき
+    description: 使う側が保存待ちのパネルを開く。開いているときは閉じる。コメントの一覧・表示の設定のパネル・絞り込みのドロワーを開いていれば閉じてから開く。どちらも履歴に積まない
 states:
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
@@ -601,6 +632,74 @@ states:
         value: '{"name": "前回開いてから", "sub": "10/04 13:05 より後"}'
     notes:
       見せ方: Storybook の画面幅を 390px・480px にして見せる
+  - name: Pending
+    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙の印・「保存待ち」・印の色の塗りの件数「5」を出す
+    args:
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '5'
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+  - name: PendingOpen
+    description: 保存待ちのパネルを開いている。保存待ちのボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま
+    args:
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '5'
+      - name: pending_open
+        value: 'true'
+      - name: comments
+        value: 'true'
+  - name: PendingBlocked
+    description: 直前の保存で書き込めない編集があった。印を警告に替え、件数の塗りを失敗の赤にする
+    args:
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '3'
+      - name: pending_blocked
+        value: 'true'
+      - name: comments
+        value: 'true'
+  - name: PendingMany
+    description: 保存待ちが 100 件以上。件数を `99+` にし、読み上げの名前には実際の件数を持つ
+    args:
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '120'
+      - name: comments
+        value: 'true'
+  - name: PendingNarrow
+    description: 幅 390px。保存待ちのボタンの文字を隠して印と件数だけにし、ツール名の文字を隠す（印は残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない
+    args:
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '7'
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+  - name: PendingFitNarrowest
+    description: 幅 320〜389px で、保存待ち（`99+`）・絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出す間。`FitNarrowest` の詰め方に保存待ちのボタンも加え（左右の余白 2px・印と件数の間隔 2px・幅の下限 `--target-min`）、トップバーもページも横にはみ出さない
+    args:
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '120'
+      - name: filter
+        value: 'true'
+      - name: filter_count
+        value: '12'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '120'
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける

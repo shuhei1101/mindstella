@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 from playwright.sync_api import Page
+from preview_edit_helpers import (
+    PENDING_BUTTON,
+    assert_topbar_pending,
+    edit_edits,
+    edit_items,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import OpenPreview, WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_history_helpers import assert_topbar_history, preselect_diff
 from preview_layout_helpers import assert_bands_stay, assert_page_does_not_scroll, region_metrics
 from preview_removed_helpers import REMOVED_IN_V2_BY_TAB
-from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeEdit, MakeItem, MakeWorkspace
 
 # 概要のタイルの項目 ID
 TILE_IDS = (
@@ -429,3 +436,55 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     set_smallest(page)
     # 検証
     assert_fits_smallest(page, ("#tile-next .t-link",))
+
+
+# ===== 編集（トップバーの保存待ち） =====
+
+
+def test_topbar_pending(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """トップバーに保存待ちのボタンを出し、溜めた件数・開いているか・書き込めない編集の有無を見せる（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*edit_items(make_item, "D"), edits=edit_edits(make_edit, "D"))
+    # 実行
+    page = open_preview(url)
+    page.wait_for_selector(PENDING_BUTTON)
+    # 検証
+    assert_topbar_pending(page)
+
+
+def test_topbar_pending_hidden_when_nothing(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """保存待ちの編集が 0 件のときは、保存待ちのボタンを出さない（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1"))
+    # 実行
+    page = open_preview(url)
+    page.wait_for_selector("#tile-next")
+    # 検証
+    assert page.locator(PENDING_BUTTON).count() == 0
+
+
+def test_topbar_pending_hidden_when_exported(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しでは、保存待ちのボタンを出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行
+    page = open_preview(out.as_uri())
+    page.wait_for_selector("#tile-next")
+    # 検証
+    assert page.locator(PENDING_BUTTON).count() == 0

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>資料の項目を追加する入口と保存待ちのバッジ | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足す編集・保存待ちのスタイルと、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/325/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+<!-- data-initial: ハッシュが無いときに開く状態（資料の画面）。見本と論点の案はクエリで切り替える（refs/325/assets/edit.js の冒頭） -->
+<body data-initial="tab=docs">
+  <!-- モック専用の操作列: 案・論点の案・見本・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span class="label">表示形式:</span>
+    <a href="#" data-set="" data-hash="tab=docs">カード</a>
+    <a href="#" data-set="" data-hash="tab=docs&amp;view=board">ボード</a>
+    <a href="#" data-set="" data-hash="tab=docs&amp;view=table">表</a>
+    <span class="label">見本:</span>
+    <a href="#" data-set="sample=&amp;diff=&amp;add=">保存待ち 5 件</a>
+    <a href="#" data-set="sample=mixed&amp;diff=&amp;add=">追加・削除・設定を含む</a>
+    <a href="#" data-set="add=docs&amp;diff=">項目を追加する入力で開く</a>
+    <a href="#" data-set="sample=none&amp;diff=&amp;add=">0 件</a>
+    <a href="#" data-set="diff=V-6&amp;add=">差分の表示中</a>
+    <span class="label">トップバーの保存:</span>
+    <a href="#" data-set="save=">A 件数だけ（推奨）</a>
+    <a href="#" data-set="save=b">B 件数と保存のボタン</a>
+    <span class="label">画面:</span>
+    <a href="../../../pending-edits/325/a-count-in-button/index.html" data-keep>保存待ちのパネル</a>
+    <a href="../../../workspace-settings/325/standard/index.html" data-keep>設定の画面</a>
+    <span class="label">操作:</span>
+    <!-- data-mock-act: edit.js が、この端末に残した保存待ちの編集を消して見本の状態から開き直す -->
+    <button type="button" data-mock-act="reset">見本の保存待ちに戻す</button>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">docs</a> / <a href="../index.md">325</a> / standard</nav>
+  </div>
+
+  <!-- #237 の見本の記録を埋め込み先へ入れる → 埋め込み先を空にしてサーバーの代わりを置く → 今のプレビューのスクリプト（build がつなぐ順） → この PR の編集と保存待ちを重ねる仕組み -->
+  <script src="../../../../refs/237/assets/data.js"></script>
+  <script src="../../../../refs/325/assets/mock.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/dom.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/records.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/libs.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/diff.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/router.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/api.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/core/lock.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/view-switch.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/topbar.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/diff-mark.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/removed-band.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/comment-mark.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/history-dialog.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/table.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/filter-drawer.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/send-form.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/reply-form.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/thread-row.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/thread-post.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/selection-comment.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/term-tip.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/settings-panel.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/settings-confirm.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/body-format-badge.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/html-body-frame.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/html-body-diff.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/components/diff-minimap.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/overview.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/decisions.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/tasks.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/docs.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/records.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/detail.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/comments.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/settings.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/search.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/screens/diagram-viewer.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/graph/looks.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/graph/graph.js"></script>
+  <script src="../../../../../../plugins/mindstella/skills/mindmap/preview/app.js"></script>
+  <script src="../../../../refs/325/assets/edit.js"></script>
+</body>
+</html>

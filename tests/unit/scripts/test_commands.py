@@ -543,6 +543,18 @@ def test_stage_add_when_unknown_tag(
     assert raised.value.unknown == [("tags", "通知機能", ["通知"])]
 
 
+def test_stage_add_when_user_editor(make_workspace: MakeWorkspace) -> None:
+    """編集した人を渡すと、足した項目の updated_by にその人を書く（正常系）。"""
+    # 準備
+    staged = _make_staged(make_workspace(), 0)
+    item = {"title": "画面を作る", "status": "未着手"}
+    # 実行
+    new_staged, _ = commands.stage_add(staged, "task", item, now=_fixed_now, editor="user")
+    # 検証
+    assert new_staged.items["task"][0]["id"] == "T-1"
+    assert new_staged.items["task"][0]["updated_by"] == "user"
+
+
 def test_stage_update_when_limit_zero(
     make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
 ) -> None:
@@ -572,6 +584,21 @@ def test_stage_update_sets_editor(make_workspace: MakeWorkspace, make_item: Make
     assert updated["updated_by"] == "ai"
     assert updated["history"][0]["by"] == "ai"
     assert "updated_by" not in updated["history"][0]["before"]
+
+
+def test_stage_update_when_user_editor(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """編集した人を渡すと、項目と変更履歴の回にその人を書く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", updated_by="ai"))
+    staged = _make_staged(root, 3)
+    # 実行
+    new_staged, _ = commands.stage_update(
+        staged, "D-1", {"answer": "a"}, now=_fixed_now, editor="user"
+    )
+    # 検証
+    updated = new_staged.items["decision"][0]
+    assert updated["updated_by"] == "user"
+    assert updated["history"][0]["by"] == "user"
 
 
 def test_stage_update_when_nothing_changed(

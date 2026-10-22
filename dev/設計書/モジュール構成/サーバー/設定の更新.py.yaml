@@ -26,6 +26,28 @@ data_models:
       - name: to_value
         type: str | None
         description: 後の名前（タグを外したときは `None`）
+  - name: SettingsStage
+    title: 当てた設定の更新
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 共通
+    role: DTO
+    summary: 書き込む前にメモリの上で当てた設定と付け替え。`@dataclass(frozen=True, slots=True, kw_only=True)`。`update_settings` とまとめて保存（モジュール構成『保存待ちの編集』）が使う
+    properties:
+      - name: settings
+        type: dict[str, Any]
+        description: 当てた後の設定（付け替えた `goal.phase`・カテゴリーの `target` を含む）
+      - name: items
+        type: dict[Kind, list[dict[str, Any]]]
+        description: 付け替えた後の種類ごとの項目の並び（全ての種類）
+      - name: threads
+        type: list[dict[str, Any]] | None
+        description: タグを付け替えたスレッドの `items`。変わらなければ `None`
+      - name: changed
+        type: list[str]
+        description: 変わった設定のキー
+      - name: remapped
+        type: list[PhaseRemap]
+        description: 付け替えた項目・スレッド（`update_settings` の `remapped` の並びの順）
 constants:
   - name: EDITABLE_KEYS
     title: 書き換えられる設定のキー
@@ -209,12 +231,17 @@ functions:
         default: now_utc
         passing: injected
         description: 今の日時を返す関数
+      - name: editor
+        type: str
+        default: EDITOR
+        passing: keyword
+        description: 付け替えた項目の `updated_by`
     returns:
       type: tuple[list[Change], list[PhaseRemap], dict[str, Any]]
       description: 付け替えた種類ごとの変更（付け替えた項目がある種類だけ）・付け替えた項目・`goal.phase` を付け替えた設定
     process: |-
       1. 種類の順（`KINDS`）に、項目の並びを見る
-         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`updated` を今の日時、`updated_by` を `EDITOR` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
+         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`updated` を今の日時、`updated_by` を `editor` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
          - 付け替えた項目がある種類だけ、並び全体を `Change` にする
       2. 設定が `goal` を持ち `goal.phase` が新しい `phases` に無い場合、`phase_map` に対応があれば置き換え、無ければ残るものに `(goal, {フェーズ})` を足す
       3. 残るものが 1 つ以上あれば `UnmappedPhaseError`（残るものを全て）
@@ -358,7 +385,7 @@ functions:
       type: dict[str, Any]
       description: '`{changed, remapped: [{id, key, from, to}], files}`'
     process: |-
-      1. ワークスペースを読む（`load_workspace`）
+      1. ワークスペースを読む（`load_workspace`）。2.〜6. は `stage_settings` が行う（`editor` は既定）
       2. 引数を確かめる（`validate_settings_input`。今の `phases` と今の設定・`tag_map` を渡す）
       3. 設定を置き換える（`merge_settings`）
       4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
@@ -439,12 +466,17 @@ functions:
         default: now_utc
         passing: injected
         description: 今の日時を返す関数
+      - name: editor
+        type: str
+        default: EDITOR
+        passing: keyword
+        description: 付け替えた項目の `updated_by`
     returns:
       type: tuple[dict[Kind, list[dict[str, Any]]], list[PhaseRemap], dict[str, Any]]
       description: 付け替えた後の種類ごとの項目・付け替えた項目とキー・カテゴリーの `target` を付け替えた設定
     process: |-
       1. 設定の `categories` の `target` が新しい `targets` に無ければ、`target_map` に対応があれば置き換え、無ければ残るものに `(categories[{名前}], target, {名前})` を足す
-      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時、`updated_by` を `EDITOR` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
+      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時、`updated_by` を `editor` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
       3. 残るものが 1 つ以上あれば `UnmappedTargetError`（残るものを全て）
     exceptions:
       - name: UnmappedTargetError
@@ -564,6 +596,11 @@ functions:
         required: true
         passing: keyword
         description: 渡した `settings` が `tags` のキーを持つか（値が `null` で語彙を消すときも真）
+      - name: editor
+        type: str
+        default: EDITOR
+        passing: keyword
+        description: 付け替えた項目の `updated_by`
     returns:
       type: tuple[dict[Kind, list[dict[str, Any]]], list[dict[str, Any]], list[PhaseRemap]]
       description: 付け替えた後の種類ごとの項目・スレッド・付け替えた項目とスレッドのタグ
@@ -574,7 +611,7 @@ functions:
          - 語彙にあるタグはそのまま残す
          - 語彙に無く `tag_map` に対応があれば、値に置き換える（値が `None` なら外す。置き換えた先が既に `tags` にあれば足さない）。付け替えたタグ 1 つごとに `PhaseRemap(key="tags")` を足す
          - 語彙に無く対応も無ければ、残るものに `(ID, タグ)` を足す
-      4. タグを付け替えた項目は `updated` を今の日時、`updated_by` を `EDITOR` にする（変更履歴・通し番号・`pending` は触らない）。スレッドは `tags` だけを変える
+      4. タグを付け替えた項目は `updated` を今の日時、`updated_by` を `editor` にする（変更履歴・通し番号・`pending` は触らない）。スレッドは `tags` だけを変える
       5. 残るものが 1 つ以上あれば `UnmappedTagError`（残るものを全て）
     exceptions:
       - name: UnmappedTagError
@@ -605,5 +642,84 @@ functions:
         condition: '`tags` を消した設定、`replaced=True`、対応なし。D-1: `[保存]`／TH-1: `[起票]`'
         mock: '`now`'
         expected: '`UnmappedTagError` の `unmapped` が `[(D-1, 保存), (TH-1, 起票)]`'
+  - name: stage_settings
+    title: 設定の更新を当てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    usecase: 共通
+    scope: public
+    summary: 引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリー・タグを付け替え、書かずに結果を返す
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 当てる前のワークスペース（まとめて保存は、他の編集を当てる前のもの）
+      - name: settings
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 置き換える設定のキーと値
+      - name: threads
+        type: list[dict[str, Any]]
+        required: true
+        passing: keyword
+        description: 今のスレッドの `items`
+      - name: phase_map
+        type: dict[str, str] | None
+        default: None
+        passing: keyword
+        description: '`phase_map`'
+      - name: target_map
+        type: dict[str, str] | None
+        default: None
+        passing: keyword
+        description: '`target_map`'
+      - name: category_map
+        type: dict[str, str] | None
+        default: None
+        passing: keyword
+        description: '`category_map`'
+      - name: tag_map
+        type: dict[str, str | None] | None
+        default: None
+        passing: keyword
+        description: '`tag_map`'
+      - name: editor
+        type: str
+        default: EDITOR
+        passing: keyword
+        description: 付け替えた項目の `updated_by`
+      - name: now
+        type: Callable[[], str]
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: SettingsStage
+      description: 当てた設定・項目・スレッド・変わったキー・付け替え
+    process: |-
+      1. 引数を確かめる（`validate_settings_input`。今の `phases` と今の設定・`tag_map` を渡す）
+      2. 設定を置き換える（`merge_settings`）
+      3. フェーズ・対象とカテゴリー・タグを付け替える（`remap_phases`・`remap_names`・`remap_tags`。`editor` を渡す。対応が `None` なら空）。`goal`・`categories` の変わったキーの扱いは `update_settings` の 4.・5. と同じ
+      4. 付け替えを `update_settings` の `remapped` と同じ順に並べ、スレッドが変わらなければ `threads` を `None` にして返す
+    exceptions:
+      - name: ArgumentError
+        condition: '`validate_settings_input` から伝わる'
+      - name: SchemaMismatchError
+        condition: '`validate_settings_input` から伝わる'
+      - name: UnmappedPhaseError
+        condition: '`validate_settings_input`・`remap_phases` から伝わる'
+      - name: UnmappedTargetError
+        condition: '`validate_settings_input`・`remap_names` から伝わる'
+      - name: UnmappedTagError
+        condition: '`validate_settings_input`・`remap_tags` から伝わる'
+    unit_tests:
+      - name: test_stage_settings
+        case: 正常
+        summary: 書かずに付け替えを当て、編集した人を渡した人にする
+        condition: 'フェーズ 問い・発散、D-1（問い）。`settings` `{"phases": ["目的", "発散"]}`、`phase_map` `{"問い": "目的"}`、`editor="user"`'
+        mock: '`now`'
+        expected: '`changed` が `[phases]`、`remapped` が D-1 の 1 件、`items` の D-1 の `phase` が目的で `updated_by` が `user`。`config.yaml`・`decisions.yaml` が呼ぶ前と同じ'
 test_files:
   - tests/unit/scripts/test_settings_update.py

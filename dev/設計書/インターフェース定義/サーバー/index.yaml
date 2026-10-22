@@ -151,3 +151,15 @@ items:
   - page: 画面からのスレッドの既読.yaml
     summary: 'POST /api/threads/{id}/seen: 利用者が開いたスレッドの未読の書き込みを利用者の既読にする'
     group: スレッド
+  - page: 保存待ちの編集の読み取り.yaml
+    summary: 'GET /api/edits: 保存待ちの編集をその場で読んで返す'
+    group: 編集
+  - page: 保存待ちの編集の追加.yaml
+    summary: 'POST /api/edits: 項目と設定の編集 1 件を保存待ちに溜める（同じキーは書き換える）'
+    group: 編集
+  - page: 保存待ちの編集の取り消し.yaml
+    summary: 'DELETE /api/edits/{id}: 保存待ちの編集 1 件を外す'
+    group: 編集
+  - page: 保存待ちの編集をまとめて保存.yaml
+    summary: 'POST /api/edits/save: 保存待ちの編集を 1 回で当て、利用者の書き換えのまとまりにする'
+    group: 編集

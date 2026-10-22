@@ -14,11 +14,11 @@ var MindmapPreview;
     }
     MindmapPreview.boardColumns = boardColumns;
     /** ボードのカード（押すと詳細を開く）。`links` が項目を指す ID の並びなら、その題を添える */
-    function boardCard({ index, item, meta, links, open, mark, comments, }) {
+    function boardCard({ index, item, meta, links, open, mark, comments, edit, }) {
         return MindmapPreview.h({
             tag: "button",
             attrs: {
-                class: item.id === MindmapPreview.currentSelection() ? "card selected" : "card",
+                class: `${item.id === MindmapPreview.currentSelection() ? "card selected" : "card"}${edit?.marks[item.id] === "remove" ? " pe-removing" : ""}`,
                 type: "button",
                 "data-id": item.id,
                 onclick: () => open(item.id),
@@ -32,6 +32,7 @@ var MindmapPreview;
                         mark === undefined ? null : MindmapPreview.diffMark({ kind: mark }),
                         MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
                         ...meta.filter(Boolean).map((value) => MindmapPreview.h({ tag: "span", children: [value] })),
+                        MindmapPreview.editMarkOf({ edit, id: item.id }),
                         comments === undefined ? null : MindmapPreview.commentPlace({ id: item.id, count: comments[item.id] }),
                     ],
                 }),
@@ -55,7 +56,7 @@ var MindmapPreview;
     }
     MindmapPreview.boardCard = boardCard;
     /** 状態ごとの列にカードを並べたボード。横に送れ、背景のドラッグで動かせる */
-    function board({ columns, card, emptyText, }) {
+    function board({ columns, card, emptyText, added, }) {
         const element = MindmapPreview.h({
             tag: "div",
             attrs: { class: "board", style: `--cols:${columns.length}` },
@@ -75,9 +76,10 @@ var MindmapPreview;
                         // 状態の条件で外した列は、列を残して外した旨を出す
                         ...(excluded
                             ? [MindmapPreview.emptyNote("状態の条件で外しています。")]
-                            : items.length > 0
-                                ? items.map(card)
-                                : [MindmapPreview.emptyNote(emptyText)]),
+                            : [
+                                ...(added?.(status) ?? []),
+                                ...(items.length > 0 ? items.map(card) : (added?.(status) ?? []).length > 0 ? [] : [MindmapPreview.emptyNote(emptyText)]),
+                            ]),
                     ],
                 })),
             ],
@@ -87,14 +89,25 @@ var MindmapPreview;
     }
     MindmapPreview.board = board;
     /** 表示形式の切り替えを置いた道具の行 */
-    function toolbar(views, route, onView) {
+    function toolbar(views, route, onView, 
+    /** 右端に置く「項目を追加」（編集の入口があるとき） */
+    addButton = null) {
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "toolbar" },
-            children: [MindmapPreview.viewSwitch({ views, current: route.view, onChange: onView })],
+            children: [MindmapPreview.viewSwitch({ views, current: route.view, onChange: onView }), addButton],
         });
     }
     MindmapPreview.toolbar = toolbar;
+    /** 追加する項目が属する状態の列（状態を持たない・並びに無い状態は最初の列）に置く、追加する項目のカード */
+    function addedCards({ edit, statuses, open, doc = false, }) {
+        if (edit === null || edit === undefined || edit.adds.length === 0)
+            return undefined;
+        return (status) => edit.adds
+            .filter((item) => (statuses.includes(item.status ?? "") ? item.status : statuses[0]) === status)
+            .map((item) => MindmapPreview.addedCard({ item, mark: edit.marks[item.id] ?? "pending", open, doc }));
+    }
+    MindmapPreview.addedCards = addedCards;
     /** タスクの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
     function taskColumns({ index, open }) {
         const common = MindmapPreview.commonColumns(index.data.settings);
@@ -118,7 +131,7 @@ var MindmapPreview;
     }
     MindmapPreview.taskColumns = taskColumns;
     /** タスクの画面を返す */
-    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }) {
+    function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [], edit = null }) {
         const columns = taskColumns({ index, open: on.open });
         // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.tasks, columns, filters });
@@ -145,8 +158,10 @@ var MindmapPreview;
                     open: on.open,
                     mark: marks?.[item.id],
                     comments,
+                    edit,
                 }),
                 emptyText: "タスクはありません。",
+                added: addedCards({ edit, statuses: MindmapPreview.TASK_STATUSES, open: on.open }),
             })
             : MindmapPreview.managedTable({
                 kind: "tasks",
@@ -157,6 +172,7 @@ var MindmapPreview;
                 open: on.open,
                 marks,
                 ...(comments === undefined ? {} : { comments }),
+                ...(edit === null ? {} : { edit }),
             });
         return MindmapPreview.h({
             tag: "div",
@@ -165,7 +181,7 @@ var MindmapPreview;
                 toolbar([
                     { key: "board", label: "ボード" },
                     { key: "table", label: "表" },
-                ], route, on.view),
+                ], route, on.view, edit === null ? null : MindmapPreview.addItemButton({ kind: "tasks", onAdd: edit.onAdd })),
                 chips,
                 MindmapPreview.removedBand({ items: removed }),
                 content,

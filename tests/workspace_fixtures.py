@@ -94,6 +94,8 @@ type MakeComment = Callable[..., dict[str, Any]]
 type WriteComments = Callable[..., None]
 type MakeDraft = Callable[..., dict[str, Any]]
 type WriteDrafts = Callable[..., None]
+type MakeEdit = Callable[..., dict[str, Any]]
+type WriteEdits = Callable[..., None]
 type MakeWorkspace = Callable[..., Path]
 type MakeLegacyItem = Callable[[str, bool], dict[str, Any]]
 type MakeLegacyWorkspace = Callable[..., Path]
@@ -443,6 +445,63 @@ def write_drafts() -> WriteDrafts:
     def _write(root: Path, *drafts: dict[str, Any]) -> None:
         """渡した書きかけを並びのまま items に入れて、root の記録のフォルダの drafts.yaml に書く。"""
         write_yaml(root / RECORD_DIR / "drafts.yaml", {"items": list(drafts)})
+
+    return _write
+
+
+@pytest.fixture
+def make_edit() -> MakeEdit:
+    """保存待ちの編集（edits.yaml の 1 件）を作る関数を返す。"""
+
+    def _make(edit_id: str, **overrides: Any) -> dict[str, Any]:
+        """ID・向け先・編集の種類・キー・後の値・元の値・溜めたときの更新日時・溜めた日時に、渡したキーを重ねた編集を返す。
+
+        既定は D-1 の `answer` を書き換える `set`。付け替えの対応 `map` は、渡したときだけ持つ。
+        """
+        edit: dict[str, Any] = {
+            "id": edit_id,
+            "target": "D-1",
+            "op": "set",
+            "key": "answer",
+            "value": "答え",
+            "before": None,
+            "base": DEFAULT_TIMESTAMP,
+            "created": DEFAULT_TIMESTAMP,
+        }
+        edit.update(overrides)
+        return edit
+
+    return _make
+
+
+@pytest.fixture
+def write_edits() -> WriteEdits:
+    """ワークスペースに edits.yaml を書く関数を返す。"""
+
+    def _write(
+        root: Path, *edits: dict[str, Any], seq: int | None = None, new_seq: int | None = None
+    ) -> None:
+        """seq・new_seq と渡した編集を並びのまま書く。
+
+        seq を渡さなければ編集の ID の連番の最大、new_seq を渡さなければ仮の ID の連番の最大にする。
+        """
+        last = max((int(edit["id"].split("-")[1]) for edit in edits), default=0)
+        last_new = max(
+            (
+                int(edit["target"].split("-")[1])
+                for edit in edits
+                if str(edit["target"]).startswith("new-")
+            ),
+            default=0,
+        )
+        write_yaml(
+            root / RECORD_DIR / "edits.yaml",
+            {
+                "seq": last if seq is None else seq,
+                "new_seq": last_new if new_seq is None else new_seq,
+                "items": list(edits),
+            },
+        )
 
     return _write
 

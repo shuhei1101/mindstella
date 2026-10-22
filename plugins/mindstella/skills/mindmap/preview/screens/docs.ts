@@ -60,7 +60,7 @@ namespace MindmapPreview {
   }
 
   /** 資料の画面を返す */
-  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
+  export function docsScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [], edit = null }: ScreenProps): HTMLElement {
     const columns = docColumns(index);
     const toolbarElement = toolbar(
       [
@@ -70,6 +70,7 @@ namespace MindmapPreview {
       ],
       route,
       on.view,
+      edit === null ? null : addItemButton({ kind: "docs", onAdd: edit.onAdd }),
     );
     // 絞り込みの条件に合う資料を、カード・ボード・表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.docs, columns, filters }) as Item[];
@@ -99,6 +100,7 @@ namespace MindmapPreview {
             open: on.open,
             marks,
             ...(comments === undefined ? {} : { comments }),
+            ...(edit === null ? {} : { edit }),
           }),
           drawer,
         ],
@@ -122,18 +124,25 @@ namespace MindmapPreview {
               statuses: [...DOC_STATUSES],
               statusFilter: filters["status"] ?? [],
             }).map((column) => ({ ...column, items: orderDocs(column.items) })),
-            card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments }),
+            card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments, edit }),
             emptyText: "資料はありません。",
+            added: addedCards({ edit, statuses: DOC_STATUSES, open: on.open, doc: true }),
           })
         : h({
             tag: "div",
             attrs: { class: "doc-grid" },
-            children:
-              shown.length > 0
+            children: [
+              ...(edit?.adds ?? []).map((item) =>
+                addedCard({ item, mark: edit?.marks[item.id] ?? "pending", open: on.open, doc: true }),
+              ),
+              ...(shown.length > 0
                 ? orderDocs(shown).map((row) =>
-                    docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments }),
+                    docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments, edit }),
                   )
-                : [h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })],
+                : (edit?.adds ?? []).length > 0
+                  ? []
+                  : [h({ tag: "p", attrs: { class: "no-match" }, children: ["該当する資料はありません。別の条件を試してください。"] })]),
+            ],
           });
     return h({
       tag: "div",
@@ -150,6 +159,7 @@ namespace MindmapPreview {
     inBoard,
     mark,
     comments,
+    edit,
   }: {
     index: RecordIndex;
     doc: Item;
@@ -159,11 +169,13 @@ namespace MindmapPreview {
     mark?: DiffKind | undefined;
     /** 項目の ID → レビュー中のコメントの件数。渡したとき、メタ情報の並びの右端に印を置く場所を置く */
     comments?: Record<string, number> | undefined;
+    /** 編集の入口。保存待ちの編集がある資料に、メタ情報の並びの右端（コメントの印の前）に保存待ちの印を置く */
+    edit?: ScreenEdit | null | undefined;
   }): HTMLElement {
     return h({
       tag: "button",
       attrs: {
-        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}`,
+        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}${edit?.marks[doc.id] === "remove" ? " pe-removing" : ""}`,
         type: "button",
         "data-id": doc.id,
         onclick: () => open(doc.id),
@@ -186,6 +198,7 @@ namespace MindmapPreview {
             h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
             inBoard ? null : statusBadge(doc.status),
             h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),
+            editMarkOf({ edit, id: doc.id }),
             comments === undefined ? null : commentPlace({ id: doc.id, count: comments[doc.id] }),
           ],
         }),

@@ -1,0 +1,112 @@
+title: "保存待ちのパネル"
+elements:
+  - name: パネルの見出し
+    kind: heading
+    position: 見出し
+    description: 「保存待ち」と保存待ちの編集の件数（「{n} 件」）。開いたときにフォーカスを移す
+    label: 保存待ち
+    io: 表示
+    source: 保存待ちの編集の読み取り.items の件数
+    status: planned
+    introduced:
+      pr: 325
+  - name: パネルを閉じる
+    kind: button
+    position: 見出し
+    description: パネルを閉じ、重ねていた画面に戻ってトップバーの保存待ちのボタンへフォーカスを戻す（履歴に積まない）。Esc とトップバーの保存待ちのボタンでも閉じる。保存待ちの編集は残る。読み上げの名前は「保存待ちの編集を閉じる」
+    status: planned
+    introduced:
+      pr: 325
+  - name: 書き込めない編集の知らせ
+    kind: label
+    position: 本文 > 先頭
+    description: '`role="alert"`。「{n} 件の編集を書き込めないため、何も保存していません。」と、書き込めない編集の一覧（「{ID か種類} の{何を}」で、押すとその編集の行の取り消すボタンへフォーカスを移す）と、「書き込めない編集を取り消してから、もう一度保存してください。」を出す。出したときに知らせへフォーカスを移す。自動で消さない'
+    io: 表示
+    visible_when: 直前の保存が 409 で、書き込めない編集が保存待ちに残っている
+    source: 保存待ちの編集をまとめて保存.blocked
+    status: planned
+    introduced:
+      pr: 325
+  - name: つながらない知らせ
+    kind: label
+    position: 本文 > 先頭
+    description: '`role="alert"`。「サーバーにつながらないため、保存できませんでした。」と「保存待ちの編集は残っています。サーバーを立ち上げ直してから、もう一度保存してください。」を出す。自動で消さない'
+    io: 表示
+    visible_when: 直前の保存がサーバーに届かなかった
+    status: planned
+    introduced:
+      pr: 325
+  - name: 項目のまとまり
+    kind: list
+    position: 本文
+    description: 保存待ちの編集を項目（設定は「設定」、追加する項目は「{種類}を追加」）ごとにまとめ、溜めた順に並べる。まとまりの見出しは種類・ID・タイトルを持つボタンで、押すと項目を詳細パネルの編集の表示で開く（設定は『設定の画面』、追加する項目は追加する入力を開く）。幅 900px 以下では開くときにパネルを閉じ、詳細パネルを閉じると戻る。書き込めない編集を持つまとまりは枠を失敗の赤にする
+    io: 表示
+    source: 保存待ちの編集の読み取り.items（target ごと）
+    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#elements[編集の表示]
+    status: planned
+    introduced:
+      pr: 325
+  - name: 編集の行
+    kind: list
+    position: 項目のまとまり > 行
+    description: 1 件の編集の何を（キーの呼び名・「案 {記号}」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名）と、前の値 → 後の値（取り消し線と下線。読み上げに「前:」「後:」を添える。本文・削除は値を出さない）を出す。削除の行はごみ箱の印を付ける。書き込めない編集の行は『詳細パネル』の書き込めない理由と同じ文言を行の下に出し、`referenced` は指している項目の ID を押すとその項目を開く
+    io: 表示
+    source: 保存待ちの編集の読み取り.items
+    status: planned
+    introduced:
+      pr: 325
+  - name: 取り消す
+    kind: button
+    position: 編集の行 > 右端
+    description: その 1 件の編集を保存待ちから外す。外した後は次の行の取り消すボタン（無ければ見出し）へフォーカスを移す。読み上げの名前は「{ID か種類} の{何を}の編集を取り消す」
+    label: 取り消す
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の取り消し#
+    status: planned
+    introduced:
+      pr: 325
+  - name: 空の状態
+    kind: label
+    position: 本文
+    description: 保存待ちの編集が無いことを示す
+    label: 保存待ちの編集はありません。
+    io: 表示
+    visible_when: 保存待ちの編集が 0 件
+    status: planned
+    introduced:
+      pr: 325
+  - name: 保存する件数
+    kind: label
+    position: フッター
+    description: 保存で書く件数と、そのうちの削除の件数（削除が無ければ括弧を出さない）
+    label: '{n} 件（うち削除 {m} 件）をワークスペースに書きます'
+    io: 表示
+    visible_when: 保存待ちの編集が 1 件以上
+    source: 保存待ちの編集の読み取り.items
+    status: planned
+    introduced:
+      pr: 325
+  - name: まとめて保存する
+    kind: button
+    position: フッター > 右端
+    description: 保存待ちの編集を 1 回の送信でワークスペースに書く。削除を含むときは文言に削除の件数を出す。送信中は「保存しています…」にして押せなくし（`aria-busy`）、回る印を出す。全て書けたらパネルを閉じ、詳細パネルを読む表示に戻し、保存した知らせを出す。409 のときはパネルを開いたまま書き込めない編集の知らせを出す
+    label: まとめて保存する（削除を含むときは「まとめて保存する（{m} 件を削除）」）
+    enabled_when: 保存待ちの編集が 1 件以上で、送信中でない
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
+    status: planned
+    introduced:
+      pr: 325
+  - name: 保存した知らせ
+    kind: label
+    position: 画面の下（パネルを閉じた後に出す）
+    description: '`role="status"`。全て書けたときに画面の下に 5 秒出す'
+    label: '{n} 件を保存しました。'
+    io: 表示
+    visible_when: まとめて保存するで全て書けてから 5 秒の間
+    source: 保存する前の保存待ちの編集の読み取り.items の件数
+    status: planned
+    introduced:
+      pr: 325
+screen: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+mock: dev/mock/pages/pending-edits/325/a-count-in-button/index.html
+lead: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめてワークスペースに保存する。トップバーの保存待ちのボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧・表示の設定とは片方だけを開き、行から開いた項目は右の詳細パネルで読む。差分の表示中と配る書き出しでは開かない。
+test_file: tests/integration/preview/test_pending_panel_screen.py

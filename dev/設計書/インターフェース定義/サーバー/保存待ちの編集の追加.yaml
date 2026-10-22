@@ -1,0 +1,408 @@
+title: "保存待ちの編集の追加"
+entry:
+  kind: endpoint
+  value: POST /api/edits
+flows:
+  - name: 正常系
+    summary: 項目のキーの編集を溜め、項目は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`answer` が空の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース'
+        notes: '本文は `{op: set, target: D-1, key: answer, value: ゴールはフェーズごとに 1 つ持つ}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: set, target: D-1, key: answer, value}
+        IF-->>WS: 項目と edits.yaml を読む
+        IF->>IF: answer を編集でき、値が文字列と確かめる
+        IF->>WS: edits.yaml に足す
+        IF-->>クライアント: 201、JSON（id・target・count）
+    expected:
+      - ステータスが 201 で、`id` が `E-1`、`count` が 1
+      - '`edits.yaml` の E-1 が `before` に空の `answer`、`base` に D-1 の `updated` を持ち、`seq` が 1'
+      - '`decisions.yaml` と `changes.yaml` の中身が溜める前と同じ'
+    test: test_normal
+  - name: 正常系（同じキーの書き換え）
+    summary: 同じ項目の同じキーへの編集は、新しい値で書き換えて 1 件のままにする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer` を「案 A」）を持つワークスペース
+        notes: '本文は `{op: set, target: D-1, key: answer, value: 案 B}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: set, target: D-1, key: answer, value: 案 B}
+        IF->>WS: E-1 の value を書き換える
+        IF-->>クライアント: 200
+    expected:
+      - ステータスが 200 で、`id` が `E-1`、`count` が 1
+      - '`edits.yaml` の E-1 の `value` が「案 B」で、`created`・`before`・`base` は書き換える前のまま'
+    test: test_normal_when_same_key
+  - name: 正常系（元の値に戻す）
+    summary: 今の値と同じ値に戻した編集は外す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 状態が `未着手` のタスク T-1 と、保存待ちの編集 E-1（T-1 の `status` を `中止`）を持つワークスペース
+        notes: '本文は `{op: set, target: T-1, key: status, value: 未着手}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: set, target: T-1, key: status, value: 未着手}
+        IF->>IF: 今の T-1 の status と同じ
+        IF->>WS: edits.yaml から E-1 を外す
+        IF-->>クライアント: 200、id は null
+    expected:
+      - ステータスが 200 で、`id` が `null`、`count` が 0
+      - '`edits.yaml` の編集が 0 件'
+    test: test_normal_when_back_to_current
+  - name: 正常系（項目を足す）
+    summary: 足す項目に仮の ID を振って溜め、その後のキーの変更は同じ 1 件を書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: タスク T-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '1 回目は `{op: item-add, key: tasks, value: {title: 画面を作る, status: 未着手}}`、2 回目は返った `target` で `{op: item-add, target: new-1, key: tasks, value: {title: 画面を作る, status: 進行中}}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: item-add, key: tasks, value}
+        IF->>WS: new-1 を振って edits.yaml に足す
+        IF-->>クライアント: 201、target は new-1
+        クライアント->>IF: POST {op: item-add, target: new-1, value}
+        IF->>WS: new-1 の value を書き換える
+        IF-->>クライアント: 200
+    expected:
+      - 1 回目が 201 で `target` が `new-1`、2 回目が 200 で `count` が 1 のまま
+      - '`edits.yaml` の編集が `new-1` の `item-add` の 1 件だけで、`value` の `status` が `進行中`、`new_seq` が 1'
+      - '`tasks.yaml` に T-1 だけがある'
+    test: test_normal_when_item_add
+  - name: 正常系（項目を消す）
+    summary: 削除を溜め、同じ項目へのほかの編集は残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: メモ N-1 と、保存待ちの編集 E-1（N-1 の `title`）を持つワークスペース
+        notes: '本文は `{op: item-remove, target: N-1}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: item-remove, target: N-1}
+        IF->>WS: 削除の編集を足す（E-1 は残す）
+        IF-->>クライアント: 201
+    expected:
+      - ステータスが 201 で、`id` が `E-2`、`count` が 2
+      - '`edits.yaml` に E-1 と E-2 があり、`notes.yaml` に N-1 が残っている（消すのは保存のとき）'
+      - 続けて『保存待ちの編集の取り消し』で E-2 を外すと、`edits.yaml` に E-1 だけが残る
+    test: test_normal_when_item_remove
+  - name: 正常系（設定の編集）
+    summary: 設定のキーの編集を溜め、`config.yaml` は書き換えない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 題名が「話し合い」のワークスペース
+        notes: '本文は `{op: setting, target: settings, key: summary, value: 画面の編集}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: setting, target: settings, key: summary, value}
+        IF->>WS: edits.yaml に足す
+        IF-->>クライアント: 201
+    expected:
+      - ステータスが 201
+      - '`edits.yaml` の編集が `before` に「話し合い」を持ち、`base` を持たない'
+      - '`config.yaml` の題名が「話し合い」のまま'
+    test: test_normal_when_setting
+  - name: 異常系（編集できないキー・400）
+    summary: ID・更新日時など編集できないキーと、空のタイトルは溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`{op: set, target: D-1, key: updated_by, value: user}` と `{op: set, target: D-1, key: title, value: "  "}` を送る'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+
+        クライアント->>IF: POST {key: updated_by}
+        IF-->>クライアント: 400
+        クライアント->>IF: POST {key: title, value: 空白}
+        IF-->>クライアント: 400
+    expected:
+      - どちらもステータスが 400 で、`detail` にそれぞれ `updated_by`・`title` がある
+      - '`edits.yaml` が無い'
+    test: test_error_when_key_not_editable
+  - name: 異常系（送り元が違う・403）
+    summary: 別のサイトのページからは溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`Origin: https://attacker.example` を付ける'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+
+        クライアント->>IF: POST（Origin: attacker.example）
+        IF-->>クライアント: 403
+    expected:
+      - ステータスが 403
+      - '`edits.yaml` が無い'
+    test: test_error_when_origin_mismatch
+  - name: 異常系（項目が無い・404）
+    summary: ワークスペースに無い項目へは溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 だけを持つワークスペース
+        notes: '`target` は `D-99`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+
+        クライアント->>IF: POST {op: set, target: D-99}
+        IF-->>クライアント: 404
+    expected:
+      - ステータスが 404 で、`detail` に `D-99` がある
+      - '`edits.yaml` が無い'
+    test: test_error_when_target_not_found
+  - name: 異常系（削除を溜めた項目への編集・409）
+    summary: 削除を溜めた項目のキーは溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: メモ N-1 と、保存待ちの編集 E-1（N-1 の削除）を持つワークスペース
+        notes: '本文は `{op: set, target: N-1, key: title, value: 画面の形}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+
+        クライアント->>IF: POST {op: set, target: N-1, key: title}
+        IF-->>クライアント: 409
+    expected:
+      - ステータスが 409 で、`detail` に削除を溜めていることがある
+      - '`edits.yaml` が E-1 だけのまま'
+    test: test_error_when_target_removing
+  - name: 異常系（本文が JSON でない・415）
+    summary: フォームの形の本文は溜めない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`Content-Type: application/x-www-form-urlencoded` で送る'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+
+        クライアント->>IF: POST（application/x-www-form-urlencoded）
+        IF-->>クライアント: 415
+    expected:
+      - ステータスが 415
+      - '`edits.yaml` が無い'
+    test: test_error_when_not_json
+  - name: 正常系（案を足して採用する）
+    summary: 溜めた案の追加を、そのまま採用する切り替えで指して溜める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 案 A・B を持ち採用していない検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '1 回目は `{op: option-add, target: D-1, key: C, value: ゴールはフェーズごとに 1 つ持つ}`、2 回目は `{op: adopt, target: D-1, key: C, value: C}`'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: option-add, target: D-1, key: C, value}
+        IF->>WS: edits.yaml に足す
+        IF-->>クライアント: 201
+        クライアント->>IF: POST {op: adopt, target: D-1, key: C, value: C}
+        IF->>IF: 案 C は溜めた案の追加にある
+        IF->>WS: edits.yaml に足す
+        IF-->>クライアント: 201
+    expected:
+      - どちらもステータスが 201 で、2 回目の `count` が 2
+      - '`edits.yaml` に案 C の追加（E-1）と、採用する案を C にする切り替え（E-2）がある'
+      - '`decisions.yaml` の D-1 が案 A・B だけを持ち、採用していないまま'
+    test: test_normal_when_adopt_added_option
+lead: 詳細パネル・詳細の全画面・設定の画面・種類ごとの画面の追加の入力から、項目と設定の編集 1 件を受け、確定せずに保存待ちとして `edits.yaml` に溜める。同じ項目の同じキー・案への編集は、新しい値で書き換える。
+idempotent: false
+side_effects: '`edits.yaml` に編集を 1 件足すか書き換えるか外し（無ければ作る）、一時ファイルから `os.replace` で置き換える。項目の YAML・本文・`config.yaml`・`changes.yaml` は書き換えない'
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの
+  - name: op
+    type: Literal['set', 'option-add', 'option-edit', 'option-remove', 'adopt', 'item-add', 'item-remove', 'setting']
+    required: true
+    location: body
+    description: 編集の種類。意味は ER 図『ワークスペース』の `edits.yaml` の `op`
+    example: set
+  - name: target
+    type: str
+    required: false
+    default: なし（`item-add` で新しく足す項目。仮の ID を振る）
+    location: body
+    description: 編集する項目の ID、溜めた足す項目の仮の ID（`new-{連番}`）、または `settings`
+    constraints: '`setting` は `settings`。`item-add` は省くか溜めた `new-{連番}`。ほかはワークスペースにある項目の ID'
+    example: D-1
+  - name: key
+    type: str
+    required: false
+    default: なし（`item-remove`）
+    location: body
+    description: 編集するキー。`set` は項目のキー（本文は `body`）、`option-*`・`adopt` は案の記号、`item-add` は種類（`decisions`・`tasks`・`research`・`docs`・`terms`・`notes`・`logs`）、`setting` は『設定の更新』が書き換えるキー
+    constraints: 制約「編集できるキー」
+    example: answer
+  - name: value
+    type: Any
+    required: false
+    default: なし（`option-remove`・`item-remove`）
+    location: body
+    description: 編集した後の値。`option-add`・`option-edit` は案の中身、`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト
+    constraints: その種類のスキーマのそのキーの型に合う。`title` は前後の空白を除いて 1 文字以上。`item-add` は `title` を持つ
+    example: ゴールはフェーズごとに 1 つ持つ
+  - name: map
+    type: dict[str, str | None]
+    required: false
+    default: なし（対応を持たない）
+    location: body
+    description: '`setting` で `key` が `phases`・`targets`・`categories`・`tags` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map`・`tag_map` と同じ'
+    constraints: '`op` が `setting` で `key` が `phases`・`targets`・`categories`・`tags` のときだけ渡せる。値が `null` にできるのは `tags` だけ'
+    example: '{"問い": "目的"}'
+    status: planned
+request_example: |-
+  ```json
+  {
+    "op": "set",
+    "target": "D-1",
+    "key": "answer",
+    "value": "ゴールはフェーズごとに 1 つ持つ"
+  }
+  ```
+response:
+  - name: id
+    type: str | None
+    description: 溜めた（書き換えたときはその）編集の ID。元の値に戻して編集を外したときは `null`
+    example: E-3
+  - name: target
+    type: str
+    description: 編集の `target`。`item-add` で新しく振ったときはその仮の ID
+    example: new-1
+  - name: count
+    type: int
+    description: 溜めた後の保存待ちの編集の件数（画面はトップバーの件数に使う）
+    example: '3'
+status_codes:
+  - code: '201'
+    condition: 新しく溜めた
+  - code: '200'
+    condition: 同じ項目の同じキー・案への編集を書き換えた、または元の値に戻したため外した
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・`map` を渡せない `op`・`key` に渡したか値の型が合わない・リクエストの本文が 128KiB を超える
+    notes: 何も書かない。`detail` に合わないキーと理由
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '404'
+    condition: '`target` の項目か仮の ID、または `option-edit`・`option-remove`・`adopt` の案が、その項目の案にも溜めた案の追加にも無い'
+    notes: 何も書かない。`detail` に無い ID か記号
+  - code: '409'
+    condition: '`option-add` の記号がその項目の案か溜めた案の追加に既にある、または `item-remove` を溜めた項目へ `item-remove` 以外の編集を溜めようとした'
+    notes: 何も書かない。`detail` に理由
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: ワークスペースの YAML（`edits.yaml` を含む）がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった
+    notes: 何も書かない。`detail` は『記録の取得』の 422 と同じ形
+  - code: '500'
+    condition: '`edits.yaml` を書けない（権限が無い など）'
+    notes: '`detail` に書けなかったパスと理由。`edits.yaml` は前のまま'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 書く中身
+    constraint: 新しく溜めるときは `id`（`E-{seq + 1}`）・`target`・`op`・`key`・`value`・`before`（溜めたときの元の値）・`base`（項目への編集はその項目の `updated`）・`created` を書き、`seq` を 1 上げる。`item-add` で `target` を省いたときは `new-{new_seq + 1}` を振り、`new_seq` を 1 上げる。ER 図『ワークスペース』の `edits.yaml`
+  - item: 同じ編集の書き換え
+    constraint: '`target`・`op`・`key` が同じ編集（`item-add` は `target` が同じ編集）があれば、`value`（`setting` は `map` も）だけを書き換え、`id`・`before`・`base`・`created` は最初に溜めたときのままにする。足す項目のキーを変えるときは、`item-add` の `value` を書き換える（足す項目 1 つで 1 件。単一ユースケース『画面で項目を編集して保存する』の補足「保存待ちの数え方」）'
+  - item: 元の値に戻したとき
+    constraint: '`set`・`option-edit`・`adopt`・`setting` で、`value` が今のワークスペースの値と同じになったら、その編集を外し（無ければ何も溜めず）、`id` を `null` で返す'
+  - item: 削除とほかの編集
+    constraint: '`item-remove` を溜めても、同じ項目へのほかの編集は残す（保存のときは削除だけを当て、ほかの編集は捨てる。『保存待ちの編集をまとめて保存』の制約「当てる順」）。削除を取り消すと、残した編集はそのまま保存待ちに戻る'
+  - item: 編集できるキー
+    constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` も `set` と同じキーだけを持つ'
+  - item: 値の確かめ
+    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・タグの語彙・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
+  - item: 本文の上限
+    constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+  - item: 件数の上限
+    constraint: 設けない（溜めるのは利用者 1 人が話し合いの合間に直す分で、保存すると 0 件に戻る）
+  - item: 送り元の確かめ
+    constraint: 『コメントをまとめて送る』と同じ
+  - item: 同時の書き込み
+    constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。編集の ID と仮の ID は重ならない
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を足す#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を消す#
+test_file: tests/integration/server/test_edits_add.py

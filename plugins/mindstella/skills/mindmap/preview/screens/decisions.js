@@ -124,7 +124,7 @@ var MindmapPreview;
         return element;
     }
     /** 木の節と枝を、配置された座標で描く。注目の起点（ロックした節、ロックしていなければ詳細を開いている節）の根までの枝と依存の線を強調し、ほかを薄くする */
-    function drawMap({ laid, canvas, selected, lockedId, press, marks, comments, }) {
+    function drawMap({ laid, canvas, selected, lockedId, press, marks, comments, edit, }) {
         const positions = new Map(laid.children.map((node) => [node.id, node]));
         const parentOf = new Map(laid.edges.map((edge) => [edge.targets[0], edge.sources[0]]));
         // 強調の起点はロックした節。ロックしていなければ、詳細を開いている節
@@ -202,7 +202,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "button",
                 attrs: {
-                    class: `map-node n-item${opened === item.id ? " sel" : ""}${lockedHere && lockedId === item.id ? " locked" : ""}${hit ? " hit" : ""}${rel}`,
+                    class: `map-node n-item${opened === item.id ? " sel" : ""}${lockedHere && lockedId === item.id ? " locked" : ""}${hit ? " hit" : ""}${rel}${edit?.marks[item.id] === "remove" ? " pe-removing" : ""}`,
                     type: "button",
                     "data-node": item.id,
                     style,
@@ -232,6 +232,7 @@ var MindmapPreview;
                             MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
                             MindmapPreview.h({ tag: "span", children: [item.status ?? ""] }),
                             item.weight === undefined ? null : MindmapPreview.h({ tag: "span", children: [`影響度 ${item.weight}`] }),
+                            MindmapPreview.editMarkOf({ edit, id: item.id, compact: true }),
                             comments === undefined ? null : MindmapPreview.commentPlace({ id: item.id, count: comments[item.id] }),
                         ],
                     }),
@@ -246,7 +247,7 @@ var MindmapPreview;
         canvas.replaceChildren(edgeSvg, ...nodes);
     }
     /** 狭い幅で使う、字下げした縦の一覧 */
-    function outline({ index, decisions, open, marks, comments, }) {
+    function outline({ index, decisions, open, marks, comments, edit, }) {
         const tree = buildDecisionTree({ index, decisions });
         const nodeOf = new Map(tree.children.map((node) => [node.id, node]));
         const childrenOf = new Map();
@@ -267,6 +268,7 @@ var MindmapPreview;
                         MindmapPreview.statusMark(node.item.status),
                         MindmapPreview.h({ tag: "span", children: [node.label] }),
                         MindmapPreview.markFor({ marks, id: node.id }),
+                        MindmapPreview.editMarkOf({ edit, id: node.id, compact: true }),
                         comments === undefined ? null : MindmapPreview.commentPlace({ id: node.id, count: comments[node.id] }),
                     ],
                 })
@@ -305,7 +307,7 @@ var MindmapPreview;
     }
     MindmapPreview.wheelZoom = wheelZoom;
     /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
-    function mapView({ index, route, on, marks, comments, lockedId, removed = [] }, { shown, chips, makeDrawer, }) {
+    function mapView({ index, route, on, marks, comments, lockedId, removed = [], edit = null }, { shown, chips, makeDrawer, }) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "map-view-root" } });
         const frame = MindmapPreview.h({ tag: "div", attrs: { class: "map-frame" } });
         // 絞り込みの条件に合う検討事項が無いときに、マップの枠の中央に出す文
@@ -327,7 +329,7 @@ var MindmapPreview;
             },
             children: ["全体を表示"],
         });
-        let outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments });
+        let outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments, edit });
         let current = null;
         /** キーワードに当たった検討事項か */
         const isHit = (item) => mapState.keyword !== "" && item.title.toLowerCase().includes(mapState.keyword.toLowerCase());
@@ -383,14 +385,14 @@ var MindmapPreview;
         };
         /** 配置を求めて、マップを描く。注目の起点（ロックした節、ロックしていなければ詳細を開いている節）が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
         const draw = async () => {
-            outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments })));
+            outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments, edit })));
             if (MindmapPreview.missingLibraries(["elkjs"]).length > 0)
                 return;
             const key = shown.map((item) => item.id).join(",");
             const graph = buildDecisionTree({ index, decisions: shown });
             emptyNotice.hidden = graph.children.length > 0;
             current = await layoutOf(graph, key);
-            drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments });
+            drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments, edit });
             applyZoom();
             // 中央へ送る節は、ロックした節。ロックしていなければ詳細を開いている節（ロック中にほかの節を開いても送り直さない）
             const locked = lockedNow();
@@ -436,8 +438,8 @@ var MindmapPreview;
             { key: "board", label: "ボード" },
             { key: "map", label: "マップ" },
             { key: "table", label: "表" },
-        ], route, on.view);
-        toolbarElement.append(keyword);
+        ], route, on.view, edit === null ? null : MindmapPreview.addItemButton({ kind: "decisions", onAdd: edit.onAdd }));
+        toolbarElement.insertBefore(keyword, toolbarElement.querySelector(".pe-add"));
         /** 拡大・縮小・全体を表示のボタン（マップの枠の外に置く） */
         const zoomBar = MindmapPreview.h({
             tag: "div",
@@ -583,7 +585,7 @@ var MindmapPreview;
     MindmapPreview.shownDecisionIds = shownDecisionIds;
     /** 検討事項の画面を返す */
     function decisionsScreen(props) {
-        const { index, route, on, marks, comments, filters, drawerOpen, removed = [] } = props;
+        const { index, route, on, marks, comments, filters, drawerOpen, removed = [], edit = null } = props;
         const columns = decisionColumns({ index, open: on.open });
         // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
         const shown = MindmapPreview.filterRows({ rows: index.data.decisions, columns, filters });
@@ -617,7 +619,7 @@ var MindmapPreview;
             { key: "board", label: "ボード" },
             { key: "map", label: "マップ" },
             { key: "table", label: "表" },
-        ], route, on.view);
+        ], route, on.view, edit === null ? null : MindmapPreview.addItemButton({ kind: "decisions", onAdd: edit.onAdd }));
         if (route.view === "board") {
             return MindmapPreview.h({
                 tag: "div",
@@ -640,8 +642,10 @@ var MindmapPreview;
                             open: on.open,
                             mark: marks?.[item.id],
                             comments,
+                            edit,
                         }),
                         emptyText: "検討事項はありません。",
+                        added: MindmapPreview.addedCards({ edit, statuses: MindmapPreview.DECISION_STATUSES, open: on.open }),
                     }),
                     makeDrawer(),
                 ],
@@ -662,6 +666,7 @@ var MindmapPreview;
                     open: on.open,
                     marks,
                     ...(comments === undefined ? {} : { comments }),
+                    ...(edit === null ? {} : { edit }),
                 }),
                 makeDrawer(),
             ],

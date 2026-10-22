@@ -27,6 +27,7 @@ directory: |
       term-tip.ts           本文の印のツールチップ（部品設計『本文の印のツールチップ』）
       settings-panel.ts     表示の設定の中身（部品設計『表示の設定』）
       settings-confirm.ts   既定の保存の確かめ（部品設計『既定の保存の確かめ』）
+      pending-mark.ts       保存待ちの印（部品設計『保存待ちの印』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（ボード・マップ・表）
@@ -34,6 +35,9 @@ directory: |
       docs.ts             資料（カード・ボード・表）
       records.ts          調査・用語集・メモ・会話ログ（表）
       detail.ts           詳細パネルと詳細の全画面
+      detail-edit.ts      詳細パネル・詳細の全画面の編集の表示と、項目を追加する入力
+      pending-edits.ts    保存待ちのパネル（左から出すパネル）と保存した知らせ
+      workspace-settings.ts  設定の画面（本文の区画を置き換える別の画面）
       comments.ts         コメントの一覧（左から出すパネル。スレッドの一覧・スレッド・レビュー中の書き込みの 3 つの画面）と、詳細パネルと共に使うレビュー中のコメントの行の修正・削除・書き換え・消した行
       settings.ts         表示の設定（左から出すパネル）と既定の保存の確かめ・既定が変わった知らせ
       search.ts           全体の検索
@@ -149,6 +153,11 @@ components:
         required: false
         default: 'false'
         description: オープンのスレッドに利用者の未読があるか（部品設計『トップバー』の `comments_unread`）。`comments` が真のときだけ効き、吹き出しの印の右上に点を重ねて読み上げの名前を「コメント（未読あり・レビュー中 {件数} 件）」にする（点は `aria-hidden`）
+      - name: pending
+        type: boolean
+        required: false
+        default: 'false'
+        description: 保存待ちのボタンを置くか（部品設計『トップバー』の `pending`。配る書き出しと差分の表示中は false）。置くときはコメントのボタンの左。件数は `pendingCount`（0 ならボタンを出さない）、パネルを開いているかは `pendingOpen`、書き込めない編集があるかは `pendingBlocked`、押したときは `onPending`
   - name: table
     title: 表
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -295,6 +304,11 @@ components:
         required: false
         default: '[]'
         description: 選んだ時点で消した検討事項（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、マップの枠（幅 900px 以下は字下げの一覧）・ボード・表の上に `removedBand` を置く。`filters` で絞らず、マップの木（`buildDecisionTree`）にも入れない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: 編集の入口。配る書き出し・差分の表示中は `null`。表示形式の切り替えの帯の右端に「項目を追加」（幅 480px 以下は印だけ。押すと `onAdd`）を置き、ボードのカード・表の行のタイトルの後ろとマップの節（`compact`）に `marks` の `pendingEditMark` を置く。`adds`（足す項目。`id` は仮の ID）はボードの状態の列の先頭と表の先頭の行に破線の枠で出し、ID の場所に「ID は保存で決まる」（表は「—」）を置く（マップには出さない）。押すと `on.open` に仮の ID を渡す
     state:
       - name: keyword
         type: string
@@ -352,6 +366,11 @@ components:
         required: false
         default: '[]'
         description: 選んだ時点で消したタスク（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、ボード・表の上に `removedBand` を置く。`filters` で絞らない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: '`decisionsScreen` の `edit` と同じ（マップは無い）'
   - name: docsScreen
     title: 資料
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
@@ -389,6 +408,11 @@ components:
         required: false
         default: '[]'
         description: 選んだ時点で消した資料（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、カード・ボード・表の上に `removedBand` を置く。`filters` で絞らない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: '`decisionsScreen` の `edit` と同じ。`adds` はカードの一覧の先頭にも出す'
     unit_tests:
       - name: test_docs_screen_when_withdrawn
         case: 正常
@@ -433,6 +457,11 @@ components:
         required: false
         default: '[]'
         description: 選んだ時点で消したその種類の項目（入口が `removedOf` で引く）。空でなければ表の上に `removedBand` を置く。`filters` で絞らない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: 表の上の帯の「列の表示」の左に「項目を追加」を置き（押すと開いているタブの種類で `onAdd`）、表の行に `marks`、表の先頭の行に `adds` を出す。そのほかは `decisionsScreen` の `edit` と同じ
   - name: detailPanel
     title: 詳細パネル
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
@@ -484,6 +513,11 @@ components:
         required: false
         default: "'inline'"
         description: 本文の差分の並べ方（`resolveDisplay` の `bodyLayout`）。`diff` があり本文の差分を描けたとき（前後を組み立てられない・出せない・計算しきれない・ライブラリを読めない旨を出していない）だけ、本文の差分の頭に `bodyDiffLayoutSwitch` を置く（HTML の本文では `htmlBodyDiff` の `layoutSwitch` に渡し、`layout` にもこの値を渡す）。Markdown の本文で `side` のときは `sideBySideBodyDiff` で描いた左右の本文と、今までどおり描いたインラインの本文（`div.sbs-fallback`）の両方を置き、`style.css` の `@container detail-body (width < 560px)`（`.panel-body` を入れ物にする）で、本文の幅が足りないときは切り替えと左右の本文を隠してインラインの方を出す。HTML の本文の左右の表示も同じ入れ物で切り替える。`sideBySideBodyDiff` が `null` を返したら「本文の差分を計算しきれない旨」を出し、切り替えを置かない
+      - name: edit
+        type: '{editing, marks, form, onToggle} | null'
+        required: false
+        default: 'null'
+        description: 編集の入口。配る書き出し・差分の表示中は `null`（「編集する」を出さない）。見出しの前後の移動の左に「編集する」（`aria-pressed`。`editing` の間は「編集を終える」）を置き、押すと `onToggle`。種類と ID の右とキー・案の見出しの後ろに `marks` の `pendingEditMark`（`compact`）を置く。`editing` の間は本文のスクロール領域に `detailEditForm`（`form` を渡す）を描き、下端の `sendForm` を隠す
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -1186,6 +1220,11 @@ components:
         type: SettingsPanelProps
         required: true
         description: '`settingsPanel` の引数（`on.close` を見出しの × にもつなぐ）'
+      - name: onWorkspace
+        type: (() => void) | null
+        required: false
+        default: 'null'
+        description: パネルの下端に見出し「ワークスペースの設定」と「題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙」、「設定を編集する」を置き、押すと呼ぶ。`null`（配る書き出し・差分の表示中）なら置かない
     unit_tests:
       - name: test_settings_drawer
         case: 正常
@@ -1854,6 +1893,175 @@ components:
         condition: '`## 決め方` と `### 理由` の見出しを持ち、`### 理由` の下の段落だけを書き換えた前後'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 左右の列とも「決め方」が `h4`、「理由」が `h5`
+  - name: pendingEditMark
+    title: 保存待ちの印
+    container: plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts
+    usecase: 画面で項目を編集して保存する
+    kind: コンポーネント
+    summary: 部品設計『保存待ちの印』の引数を受け、種類ごとの印と文字（「保存待ち」「保存で削除」「書き込めない」。`compact` のときは印だけで文字を読み上げと `title` に残す）を持つ `span` を返す。差分の印（+ ● −）と形で見分けられるように、破線の枠（書き込めない編集は失敗の赤の実線）にする
+    props:
+      - name: kind
+        type: "'pending' | 'remove' | 'blocked'"
+        required: true
+        description: 印の種類
+      - name: compact
+        type: boolean
+        required: false
+        default: 'false'
+        description: 印だけにするか
+    unit_tests:
+      - name: test_pending_mark
+        case: 正常
+        summary: 種類ごとの文字と、印だけのときの読み上げ
+        condition: '`parametrize`: `pending` / `remove` / `blocked` / `pending`・`compact`'
+        mock: なし
+        expected: 文字が「保存待ち」 / 「保存で削除」 / 「書き込めない」 / 見える文字が無く、読み上げの文字と `title` が「保存待ち」
+  - name: pendingEditsPanel
+    title: 保存待ちのパネル
+    container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    usecase: 画面で項目を編集して保存する
+    kind: 画面
+    summary: 画面設計『保存待ちのパネル』を、コメントの一覧と同じ左から出すパネル（幅 900px 以下は画面の幅いっぱい）に描く。編集を項目ごとにまとめ（`groupEdits`）、行の文言は `editRowText`。保存した知らせ（`role="status"`）もここに置き、使う側が 5 秒で消す
+    props:
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        description: 保存待ちの編集
+      - name: blocked
+        type: BlockedEdit[]
+        required: true
+        description: 直前の保存で書き込めなかった編集（無ければ空）
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 編集を当てる前の記録の索引（項目の種類・タイトルを引く）
+      - name: status
+        type: "'idle' | 'saving' | 'offline'"
+        required: true
+        description: 保存の状態（`offline` は直前の保存が届かなかった）
+      - name: on
+        type: '{close, open, undo, save}'
+        required: true
+        description: パネルを閉じる・まとまりの項目を開く（項目の ID・仮の ID・`settings`）・1 件を取り消す（編集の ID）・まとめて保存する
+    unit_tests:
+      - name: test_pending_edits_panel
+        case: 正常
+        summary: 項目ごとのまとまりと件数、削除の件数を出し、操作を知らせる
+        condition: E-1（D-1 の `answer`）・E-2（N-1 の削除）・E-3（題名）。E-1 の取り消すと「まとめて保存する」を押す
+        mock: '`on.undo`・`on.save`'
+        expected: 見出しが「保存待ち」「3 件」、まとまりが D-1・N-1・設定の 3 つ、合計が「3 件（うち削除 1 件）をワークスペースに書きます」、ボタンが「まとめて保存する（1 件を削除）」。`on.undo` が E-1 で 1 回、`on.save` が 1 回
+      - name: test_pending_edits_panel_when_empty_or_blocked
+        case: 異常
+        summary: 空・書き込めない・届かない・送信中の表示
+        condition: '`parametrize`: 編集 0 件 / `blocked` に E-1（`changed`）/ `status: offline` / `status: saving`'
+        mock: なし
+        expected: 「保存待ちの編集はありません。」で保存のボタンが押せない / 「1 件の編集を書き込めないため、何も保存していません。」が `role="alert"` で E-1 の行に理由 / 「サーバーにつながらないため、保存できませんでした。」/ ボタンが「保存しています…」で `aria-busy` が真
+  - name: workspaceSettings
+    title: 設定の画面
+    container: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
+    usecase: 画面で項目を編集して保存する
+    kind: 画面
+    summary: 画面設計『設定の画面』を描く。入力は保存待ちの編集を当てた設定（`applyEdits`）で描き、溜めたキーの名前の右に `pendingEditMark`（`compact`）を置く。使われている値を外したときは `usageCount` で件数を数えて「付け替え先」を出し、選ぶまでは `on.change` を呼ばない。対象・カテゴリーの行の名前を書き換えたときは古い名前 → 新しい名前を `map` に付ける
+    props:
+      - name: settings
+        type: object
+        required: true
+        description: 保存待ちの編集を当てた設定
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 編集を当てた記録の索引（使われている値の件数を数える）
+      - name: marks
+        type: Record<string, 'pending' | 'blocked'>
+        required: true
+        description: 設定のキー → 印の種類（`pendingMarkOf` の `target` を `settings` にした値）
+      - name: errors
+        type: Record<string, string>
+        required: true
+        description: 設定のキー → 溜められなかった理由（入力を残してキーの下に出す）
+      - name: on
+        type: '{change, close}'
+        required: true
+        description: 設定のキーを溜める（`{key, value, map}`）・画面を閉じる
+    unit_tests:
+      - name: test_workspace_settings
+        case: 正常
+        summary: まとまりごとに並べ、離れたときにキーを溜める
+        condition: 題名 話し合い。題名を「画面の編集」にして入力欄を離れる。保持する回数を 3 にして離れる
+        mock: '`on.change`'
+        expected: '`fieldset` の見出しが「話し合い」「進め方」「タグと関連」「変更履歴」の順。`on.change` が `{key: summary, value: 画面の編集}`・`{key: history_limit, value: 3}` で 1 回ずつ'
+      - name: test_workspace_settings_when_used_value_removed
+        case: 正常
+        summary: 使われている値を外すと付け替え先を選ぶまで溜めない
+        condition: フェーズ 問い・発散、問い を持つ D-1・D-2。問い のチップの × を押し、付け替え先に 発散 を選ぶ
+        mock: '`on.change`'
+        expected: '「問い を使っている 2 件の付け替え先」と「付け替え先を選ぶと保存待ちに入ります。」が出て、選ぶ前は `on.change` が呼ばれない。選んだ後に `{key: phases, value: [発散], map: {問い: 発散}}` で 1 回'
+  - name: detailEditForm
+    title: 編集の表示
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    kind: 画面
+    summary: 画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」を置かない
+    props:
+      - name: kind
+        type: Kind
+        required: true
+        description: 項目の種類
+      - name: item
+        type: object
+        required: true
+        description: 保存待ちの編集を当てた項目（`applyEdits`）
+      - name: settings
+        type: object
+        required: true
+        description: 編集を当てた設定（フェーズ・対象・カテゴリー・タグの選択肢）
+      - name: marks
+        type: Record<string, 'pending' | 'remove' | 'blocked'>
+        required: true
+        description: キーか案の記号 → 印の種類（入力欄の枠と名前の後ろの印）
+      - name: removing
+        type: boolean
+        required: true
+        description: その項目の削除を溜めているか
+      - name: removedOptions
+        type: string[]
+        required: true
+        description: 削除を溜めた案の記号（中身に取り消し線を引く）
+      - name: blocked
+        type: Record<string, BlockedEdit>
+        required: true
+        description: キーか案の記号 → 直前の保存で書き込めなかった編集
+      - name: referrers
+        type: string[]
+        required: true
+        description: その項目を指している項目の ID（「項目を削除」の下の警告）
+      - name: errors
+        type: Record<string, string>
+        required: true
+        description: キー → 溜められなかった理由（入力を残してキーの下に出す）
+      - name: on
+        type: '{change, remove, cancelRemove}'
+        required: true
+        description: キー・案を溜める（`{op, key, value}`）・削除を溜める・削除を取り消す
+    unit_tests:
+      - name: test_detail_edit_form
+        case: 正常
+        summary: 離れたときにキー・案を溜める
+        condition: 案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。「案を追加」で足した案 C の中身を書いて離れる
+        mock: '`on.change`'
+        expected: '`on.change` が `{op: set, key: answer}`・`{op: adopt, key: B, value: B}`・`{op: option-add, key: C}` の順で 1 回ずつ'
+      - name: test_detail_edit_form_when_removing_or_referenced
+        case: 異常
+        summary: 削除を溜めた項目は読むだけにし、指されている項目は警告を出す
+        condition: '`parametrize`: `removing: true` で描く / `referrers: [D-2]` で描く'
+        mock: '`on.change`'
+        expected: '`on.change` が呼ばれない。入力が読むだけで「削除を溜めています。削除を取り消すと編集できます。」と「削除を取り消す」 / 「D-2 が指しているため、保存のときに削除できません。指している項目から外すと削除できます。」'
+      - name: test_detail_edit_form_when_title_blank
+        case: 異常
+        summary: 空のタイトルは溜めない
+        condition: タイトルを空白だけにして離れる
+        mock: '`on.change`'
+        expected: '`on.change` が呼ばれず、「タイトルを書いてください。」と `aria-invalid="true"`'
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -3001,6 +3209,98 @@ functions:
         condition: TH-1 だけの並びで `TH-9`
         mock: なし
         expected: 返り値が渡した並びと同じ中身
+  - name: editRowText
+    title: 編集の行の文言
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちのパネルの 1 件の「何を」と「前 → 後」を返す
+    args:
+      - name: edit
+        type: PendingEdit
+        required: true
+        passing: positional
+        description: 編集
+    returns:
+      type: '{what: string, before: string | null, after: string | null}'
+      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。配列は「、」でつなぐ'
+    unit_tests:
+      - name: test_edit_row_text
+        case: 正常
+        summary: 編集の種類ごとの文言
+        condition: '`parametrize`: `set`（`status` を 未着手 → 中止）/ `set`（`body`）/ `option-add`（C）/ `adopt`（A → C）/ `item-remove` / `setting`（`tags`）'
+        mock: なし
+        expected: '`{what: 状態, before: 未着手, after: 中止}` / `{what: 本文, before: null, after: null}` / `{what: 案 C を追加, before: null, after: 中身}` / `{what: 採用する案, before: A, after: C}` / `{what: 項目を削除, before: null, after: null}` / `{what: タグの語彙, ...}`'
+  - name: groupEdits
+    title: 編集の項目ごとのまとまり
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 編集を `target` ごとに、最初に溜めた順にまとめる
+    args:
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+    returns:
+      type: '{target: string, edits: PendingEdit[]}[]'
+      description: まとまりの並び
+    unit_tests:
+      - name: test_group_edits
+        case: 正常
+        summary: 最初に溜めた順にまとめる
+        condition: E-1（D-1）・E-2（T-1）・E-3（D-1）
+        mock: なし
+        expected: '`[{D-1, [E-1, E-3]}, {T-1, [E-2]}]`'
+  - name: usageCount
+    title: 設定の値を使っている件数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: フェーズ・対象・カテゴリー・タグの 1 つの値を持つ項目（タグはスレッドも）の件数を返す
+    args:
+      - name: args
+        type: "{index: RecordIndex, threads: Thread[], key: 'phases' | 'targets' | 'categories' | 'tags', value: string}"
+        required: true
+        passing: positional
+        description: 記録の索引・スレッド・設定のキー・値
+    returns:
+      type: number
+      description: 件数（`phases` は `phase`、`targets` は項目とカテゴリーの `target`、`categories` は `category`、`tags` は項目とスレッドの `tags` を数える）
+    unit_tests:
+      - name: test_usage_count
+        case: 正常
+        summary: キーごとに使っている件数を数える
+        condition: 'D-1（フェーズ 問い、タグ 画面）・T-1（タグ 画面）・TH-1（タグ 画面）。`parametrize`: `phases` の 問い / `tags` の 画面 / `tags` の 保存'
+        mock: なし
+        expected: 1 / 3 / 0
+  - name: editableKeys
+    title: 編集できるキーの並び
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 種類ごとに編集の表示へ並べるキーと入力の種類を、読む表示と同じ順で返す
+    args:
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: 項目の種類
+    returns:
+      type: "{key: string, input: 'text' | 'textarea' | 'select' | 'tags' | 'refs' | 'check' | 'body' | 'options'}[]"
+      description: キーと入力の種類（`id`・`created`・`updated` は含めず、編集の表示の頭に読むだけで並べる）
+    unit_tests:
+      - name: test_editable_keys
+        case: 正常
+        summary: 検討事項は案を含み、記録の種類は取り下げを含む
+        condition: '`parametrize`: `decisions` / `notes`'
+        mock: なし
+        expected: '`status`・`title`・…・`options`・`answer`・`reason`・`body` を含み `id` を含まない / `title`・`content`・`withdrawn`・`reason` を含む'
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
@@ -3024,6 +3324,10 @@ test_files:
   - tests/unit/preview/test_diff_minimap.py
   - tests/unit/preview/test_body_diff_layout_switch.py
   - tests/unit/preview/test_side_by_side_body_diff.py
+  - tests/unit/preview/test_pending_mark.py
+  - tests/unit/preview/test_pending_edits.py
+  - tests/unit/preview/test_workspace_settings.py
+  - tests/unit/preview/test_detail_edit.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ

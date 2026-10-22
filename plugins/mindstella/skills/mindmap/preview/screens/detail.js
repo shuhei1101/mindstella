@@ -1264,8 +1264,48 @@ var MindmapPreview;
         markKeys(performance.now() + MindmapPreview.LINE_DIFF_TIMEOUT_MS);
         return body;
     }
+    /** 読む表示のキーの名前（メタの行の見出し）。キー → 見出しの文字 */
+    function metaLabelOf({ key, settings }) {
+        const labels = {
+            target: settings.target_label,
+            category: "カテゴリー",
+            phase: "フェーズ",
+            kind: "種類",
+            confidence: "確度",
+            date: "日付",
+            withdrawn: "取り下げ",
+            tags: "タグ",
+        };
+        return labels[key];
+    }
+    /** 読む表示のキー・案の名前の後ろに、保存待ちの印（印だけ）を置く。置き場所は、メタの行の見出し・値の名前（太字）・節の見出し・題・案の見出しの順で探す */
+    function markEditedKeys({ root, marks, settings }) {
+        for (const [key, kind] of Object.entries(marks)) {
+            // 項目の印は見出しに置く
+            if (/^[A-Z]-\d+$/.test(key))
+                continue;
+            const badge = MindmapPreview.pendingEditMark({ kind, compact: true });
+            // 案の記号
+            if (/^[A-Z]$/.test(key)) {
+                const head = root.querySelector(`[${MindmapPreview.VALUE_KEY_ATTR}="options[${key}].content"]`)?.closest(".opt")?.querySelector(".o-head");
+                if (head !== null && head !== undefined && head.querySelector(".pm") === null)
+                    head.append(badge);
+                continue;
+            }
+            const label = metaLabelOf({ key, settings });
+            const dt = label === undefined ? undefined : [...root.querySelectorAll("dt")].find((node) => node.textContent === label);
+            const value = root.querySelector(`[${MindmapPreview.VALUE_KEY_ATTR}="${key}"]`);
+            const named = value?.closest(".d-answer")?.querySelector(":scope > b") ?? null;
+            const heading = [...root.querySelectorAll(".d-sec > h3")].find((node) => node.textContent?.startsWith(MindmapPreview.KEY_LABELS[key] ?? "\u0000") === true || (key === "body" && /^(本文|要約)/.test(node.textContent ?? "")));
+            const target = dt ?? named ?? heading ?? (value?.matches(".d-title") === true ? value : null);
+            if (target !== null && target !== undefined)
+                target.append(badge);
+            else if (value !== null && value !== undefined)
+                value.after(badge);
+        }
+    }
     /** 見出し（前へ・次へ・全画面・閉じる）を作る */
-    function detailHead({ id, index, full, on }) {
+    function detailHead({ id, index, full, on, edit = null }) {
         const entry = index.byId.get(id);
         const trail = history.state;
         const position = trail?.position ?? 0;
@@ -1304,6 +1344,8 @@ var MindmapPreview;
                     ],
                 }),
                 entry?.kind === "docs" ? MindmapPreview.bodyFormatBadgeOf(entry.item.body) : null,
+                // 保存待ちの編集がある項目は、種類と ID の右に印だけを置く（幅 480px 以下は出さず、キー・案の印に任せる）
+                MindmapPreview.editMarkOf({ edit, id, compact: true }),
                 // 本文の先頭のタイトルと二重に読ませないよう読み上げから外す。収まらない分は省略し、乗せると全文が読める
                 entry === undefined
                     ? null
@@ -1313,6 +1355,20 @@ var MindmapPreview;
                         children: [entry.item.title],
                     }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
+                edit === null
+                    ? null
+                    : MindmapPreview.h({
+                        tag: "button",
+                        attrs: {
+                            class: "btn pe-edit-toggle",
+                            type: "button",
+                            "data-act": "edit",
+                            "aria-pressed": String(edit.editing),
+                            title: edit.editing ? "編集を終える" : "編集する",
+                            onclick: () => edit.onToggle(),
+                        },
+                        children: [MindmapPreview.icon("edit"), MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: [edit.editing ? "編集を終える" : "編集する"] })],
+                    }),
                 arrow("前の項目へ戻る", "←", position <= 0, on.back),
                 arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
                 MindmapPreview.h({
@@ -1578,31 +1634,34 @@ var MindmapPreview;
     }
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
-        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline" } = props;
+        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", edit = null } = props;
         const kind = index.byId.get(id)?.kind;
+        const editing = edit?.editing === true;
+        // 編集の表示の間は、読む表示の代わりに編集の入力を並べる
+        const content = editing && edit !== null ? MindmapPreview.detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout });
+        if (!editing && edit !== null)
+            markEditedKeys({ root: content, marks: edit.marks, settings: index.data.settings });
         // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
         const body = MindmapPreview.h({
             tag: "div",
             attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
-            children: [
-                detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout }),
-            ],
+            children: [content],
         });
         const head = detailHead(props);
         bindHeadTitle({ head, body });
-        // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる
-        const footer = comment === null ? null : MindmapPreview.sendForm(comment.form);
+        // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる。編集の表示の間は下端のコメントの入力を隠す
+        const footer = comment === null || editing ? null : MindmapPreview.sendForm(comment.form);
         const scroller = MindmapPreview.diffMinimapFrame({ body, shown: diff !== null && minimap });
         let root;
         if (!full) {
             root = MindmapPreview.h({
                 tag: "aside",
-                attrs: { class: `panel${kind === "docs" ? " wide" : ""}`, "aria-label": "詳細" },
+                attrs: { class: `panel${kind === "docs" ? " wide" : ""}${editing ? " pe-editing" : ""}`, "aria-label": "詳細" },
                 children: [head, scroller, footer],
             });
         }
         else {
-            const dialog = MindmapPreview.h({ tag: "dialog", attrs: { class: "full", "aria-label": "詳細の全画面" }, children: [head, scroller, footer] });
+            const dialog = MindmapPreview.h({ tag: "dialog", attrs: { class: `full${editing ? " pe-editing" : ""}`, "aria-label": "詳細の全画面" }, children: [head, scroller, footer] });
             // Esc は閉じずに元の大きさ（詳細パネル）に戻す。外側（後ろの幕）を押したときも同じ
             dialog.addEventListener("cancel", (event) => {
                 event.preventDefault();

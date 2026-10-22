@@ -10,7 +10,8 @@ directory: |-
       records.ts     記録の索引・関係する項目・検索・箇所の名前（次の候補・ゴールまでの進捗・カテゴリー別の進捗はサーバーが計算した `derived` を使う）
       libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
       router.ts      URL のハッシュの読み書きと履歴
-      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る）
+      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る・保存待ちの編集）
+      edits.ts       保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類
       lock.ts        ロック（注目の起点を 1 つの項目に留める）の押下の判定・2 回押しの読み替えと、鍵の震えの量・要素の鍵の震え（ネットワークと検討事項のマップで共通）
   ```
 
@@ -101,6 +102,9 @@ data_models:
       - name: stale
         type: '{id, reason}[]'
         description: 409 のときの送れない書き込み（箇所が合わない・向けた項目が消えた・返信先がクローズか無い。それ以外は空）
+      - name: blocked
+        type: BlockedEdit[]
+        description: 409 のときの書き込めない編集（まとめて保存だけ。それ以外は空）
   - name: Location
     title: 箇所
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -191,6 +195,51 @@ data_models:
       - name: opened
         type: OpenedPoint
         description: サーバーが書き込んだ今の時点
+  - name: PendingEdit
+    title: 保存待ちの編集
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    summary: 『保存待ちの編集の読み取り』の `items[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: '`E-{連番}`'
+      - name: target
+        type: string
+        description: 項目の ID・足す項目の仮の ID（`new-{連番}`）・`settings`
+      - name: op
+        type: "'set' | 'option-add' | 'option-edit' | 'option-remove' | 'adopt' | 'item-add' | 'item-remove' | 'setting'"
+        description: 編集の種類
+      - name: key
+        type: string | null
+        description: 項目のキー・案の記号・種類・設定のキー
+      - name: value
+        type: unknown
+        description: 編集した後の値
+      - name: before
+        type: unknown
+        description: 溜めたときの元の値
+      - name: created
+        type: string
+        description: 最初に溜めた日時
+  - name: BlockedEdit
+    title: 書き込めない編集
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    summary: まとめて保存の 409 の `blocked[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: 編集の ID
+      - name: reason
+        type: "'changed' | 'missing' | 'referenced' | 'invalid'"
+        description: 書き込めない理由
+      - name: detail
+        type: string
+        description: 日本語の理由
+      - name: refs
+        type: string[]
+        description: '`referenced` のとき、消す項目を指している項目の ID'
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -258,6 +307,10 @@ constants:
         value: '"api/config/display"'
       - key: threads
         value: '"api/threads"'
+      - key: edits
+        value: '"api/edits"'
+      - key: editsSave
+        value: '"api/edits/save"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
@@ -1082,7 +1135,7 @@ functions:
     process: |-
       1. `body` があれば `Content-Type: application/json` で JSON にして送る
          - 例外を送った場合（届かない）、`{ok: false, status: null, detail: null, stale: []}` を返す
-      2. 2xx なら本文の JSON（204 は `null`）を `data` に、それ以外は本文の `detail`（読めなければステータスの文言）と `stale`（無ければ空）を返す
+      2. 2xx なら本文の JSON（204 は `null`）を `data` に、それ以外は本文の `detail`（読めなければステータスの文言）と `stale`・`blocked`（無ければ空）を返す
     unit_tests:
       - name: test_call_api
         case: 正常
@@ -1765,6 +1818,97 @@ functions:
         condition: '`parametrize`: `{at: "2026-10-04T13:05:00+00:00", seq: 3}` / `{at: "...", seq: 0}` / 日時の文字列 / `{at: "..."}` / `{at: "...", seq: -1}` / `{at: "...", seq: 1.5}` / `null`'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 偽 / 偽 / 偽
+  - name: editApi
+    title: 保存待ちの編集の API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちの編集の読み取り・追加・取り消し・まとめて保存を `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, add, remove, save}'
+      description: '`read()` は `GET api/edits`（成功の本文は `{items: PendingEdit[], count}`）、`add(input)` は `POST api/edits`（`input` は `{op, target?, key?, value?, map?}`。成功の本文は `{id, target, count}`）、`remove(id)` は `DELETE api/edits/{id}`（成功の本文は `{removed, count}`）、`save()` は `POST api/edits/save`（本文を送らない。成功の本文は `{set, at, added, changed, removed, settings}`）を呼ぶ。どれも `ApiResult` を返す'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
+    unit_tests:
+      - name: test_edit_api
+        case: 正常
+        summary: 各呼び出しのメソッド・パス・本文
+        condition: "`parametrize`: `read()` / `add({op: 'set', target: 'D-1', key: 'answer', value: 'a'})` / `remove('E-1')` / `save()`"
+        mock: '`fetchFn`'
+        expected: '`GET api/edits` / `POST api/edits`（本文 `{"op":"set","target":"D-1","key":"answer","value":"a"}`）/ `DELETE api/edits/E-1` / `POST api/edits/save`（本文なし）'
+      - name: test_edit_api_when_blocked
+        case: 異常
+        summary: 書き込めない編集を結果に持つ
+        condition: '`save()` に 409・`{"detail": "…", "blocked": [{"id": "E-1", "reason": "changed", "detail": "…", "refs": []}]}` を返す'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 409, blocked: [E-1]}`'
+  - name: applyEdits
+    title: 保存待ちの編集を当てた記録
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 記録の写しに保存待ちの編集を溜めた順に当て、画面に出す値を返す（元の記録は変えない）。一覧・詳細・設定の画面はこの値で描く
+    args:
+      - name: data
+        type: object
+        required: true
+        passing: positional
+        description: 記録（`RecordIndex.data`）
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+    returns:
+      type: object
+      description: 当てた後の記録の写し
+    process: |-
+      1. `set` はその項目の `key` を `value` にする（`body` は `bodies` のその項目の本文を置き換える）
+      2. `option-add` は案を末尾に足し、`option-edit` はその案の中身を置き換える。`option-remove` は案を残したまま（画面が取り消し線で示す）
+      3. `adopt` は `value` の案の `adopted` を真、ほかを偽にする（`null` なら全て偽）
+      4. `item-add` はその種類の並びの末尾に、`id` を仮の ID にした項目を足す。`item-remove` は項目を残したまま（画面が印で示す）
+      5. `setting` は `settings` の `key` を `value` にする（付け替えの対応は保存まで当てない）
+    unit_tests:
+      - name: test_apply_edits
+        case: 正常
+        summary: 編集の種類ごとに当て、元の記録を変えない
+        condition: D-1（案 A・B、A を採用）・T-1・題名 話し合い。編集は D-1 の `answer`・案 C の追加・採用を C・T-1 の削除・タスクの追加 `new-1`・題名を「画面の編集」
+        mock: なし
+        expected: D-1 の `answer` が編集の値で案が A・B・C、C だけが `adopted`。T-1 が残り、`new-1` のタスクが末尾にある。題名が「画面の編集」。渡した `data` は呼ぶ前と同じ
+  - name: pendingMarkOf
+    title: 保存待ちの印の種類
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 項目（`key` を渡せばそのキーか案）に付ける『保存待ちの印』の `kind` を返す
+    args:
+      - name: args
+        type: '{edits: PendingEdit[], blocked: Set<string>, target: string, key?: string}'
+        required: true
+        passing: positional
+        description: 保存待ちの編集、直前の保存で書き込めなかった編集の ID、項目の ID（仮の ID）、キーか案の記号
+    returns:
+      type: "'pending' | 'remove' | 'blocked' | null"
+      description: 印の種類。当たる編集が無ければ `null`
+    process: |-
+      1. `target`（と `key`）に当たる編集を集める（案は `option-*`・`adopt` の `key`・`value`、キーは `set` の `key`。`key` が無ければその項目への編集全て）
+         - 無い場合、`null` を返す
+      2. どれかが `blocked` にあれば `blocked`、`key` を渡さずその項目の `item-remove` があれば `remove`、それ以外は `pending` を返す
+    unit_tests:
+      - name: test_pending_mark_of
+        case: 正常
+        summary: 書き込めない・削除・保存待ちの順に決める
+        condition: 'E-1（D-1 の `answer`）・E-2（N-1 の削除）・E-3（D-1 の案 C の追加）。`parametrize`: D-1 / D-1 の `answer` / D-1 の C / N-1 / T-1 / `blocked` に E-1 を入れて D-1'
+        mock: なし
+        expected: '`pending` / `pending` / `pending` / `remove` / `null` / `blocked`'
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
@@ -1772,3 +1916,4 @@ test_files:
   - tests/unit/preview/test_dom.py
   - tests/unit/preview/test_api.py
   - tests/unit/preview/test_lock.py
+  - tests/unit/preview/test_edits.py

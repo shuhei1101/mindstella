@@ -263,7 +263,7 @@ var MindmapPreview;
     }
     MindmapPreview.filterChips = filterChips;
     /** 表を組み立てる。previous があれば、その表の入れ物（スクロールする要素）を作り直さず、中身だけ差し替える */
-    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, on }, previous, }) {
+    function buildTable({ props: { kind, columns, rows, sort = null, filters = {}, pinTo = null, hiddenColumns, popover = null, marks, comments, edit = null, addInTable = false, on, }, previous, }) {
         const hidden = new Set(hiddenColumns ?? columns.filter((column) => column.hidden).map((column) => column.key));
         const visible = columns.filter((column) => !hidden.has(column.key));
         // 固定する列の数（左端から pinTo の列まで）
@@ -358,6 +358,7 @@ var MindmapPreview;
             attrs: { class: "table-toolbar" },
             children: [
                 chipsRow,
+                edit !== null && addInTable ? MindmapPreview.addItemButton({ kind, onAdd: edit.onAdd }) : null,
                 MindmapPreview.h({
                     tag: "button",
                     attrs: {
@@ -426,54 +427,71 @@ var MindmapPreview;
         });
         // ===== 行 =====
         /** セルの中身 */
-        const cellContent = (column, row) => {
+        const cellContent = (column, row, fresh) => {
+            // 追加する項目の ID は保存で決まるので、ID の列は「—」にする
+            if (fresh && column.key === "id")
+                return MindmapPreview.h({ tag: "span", attrs: { class: "pe-noid" }, children: ["—"] });
             const content = column.cell?.(row) ?? valuesOf(column, row).join(column.num === true ? "" : "、");
             if (column.fixed !== true)
                 return content;
             // タイトルの列は、押すと詳細を開くボタンにし、取り下げの札・差分の印があれば右に置く
             const opener = MindmapPreview.h({
                 tag: "button",
-                attrs: { class: "row-open", type: "button", "data-id": row.id, onclick: () => on.open(row.id) },
-                children: [content],
+                attrs: {
+                    class: "row-open",
+                    type: "button",
+                    ...(fresh ? { "data-new-id": row.id } : { "data-id": row.id }),
+                    onclick: () => on.open(row.id),
+                },
+                children: [fresh && row["title"] === "" ? "（タイトル未入力）" : content],
             });
             // 取り下げた行は、差分の表示によらず差分の印より前に札を置く
             const badge = row["withdrawn"] === true ? MindmapPreview.withdrawnBadge() : null;
             const mark = MindmapPreview.markFor({ marks, id: row.id });
+            const editMark = fresh ? MindmapPreview.pendingEditMark({ kind: edit?.marks[row.id] ?? "pending" }) : MindmapPreview.editMarkOf({ edit, id: row.id });
             const commentPlaceElement = comments === undefined ? null : MindmapPreview.commentPlace({ id: row.id, count: comments[row.id] });
-            if (badge === null && mark === null && commentPlaceElement === null)
+            if (badge === null && mark === null && editMark === null && commentPlaceElement === null)
                 return opener;
             const fragment = document.createDocumentFragment();
-            fragment.append(...[opener, badge, mark, commentPlaceElement].filter((node) => node !== null));
+            fragment.append(...[opener, badge, mark, editMark, commentPlaceElement].filter((node) => node !== null));
             return fragment;
         };
-        const body = shownRows.length > 0
-            ? shownRows.map((row) => MindmapPreview.h({
-                tag: "tr",
-                attrs: {
-                    "data-id": row.id,
-                    // 取り下げた行は文字を薄くする
-                    class: [row.id === MindmapPreview.currentSelection() ? "selected" : "", row["withdrawn"] === true ? "is-withdrawn" : ""]
-                        .join(" ")
-                        .trim(),
-                },
-                children: [
-                    ...visible.map((column, position) => MindmapPreview.h({
-                        tag: "td",
-                        attrs: {
-                            "data-col": position,
-                            "data-pri": column.priority ?? 1,
-                            class: [
-                                column.num ? "num" : "",
-                                column.nowrap ? "nowrap" : "",
-                                position < pinned ? "pinned" : "",
-                            ]
-                                .join(" ")
-                                .trim(),
-                        },
-                        children: [cellContent(column, row)],
-                    })),
-                ],
-            }))
+        /** 表の 1 行（追加する項目の行は破線の枠で、ID を持たない） */
+        const tableRow = (row, fresh) => MindmapPreview.h({
+            tag: "tr",
+            attrs: {
+                ...(fresh ? { "data-new-id": row.id } : { "data-id": row.id }),
+                // 取り下げた行は文字を薄くする。削除を溜めた行は取り消し線を引く
+                class: [
+                    !fresh && row.id === MindmapPreview.currentSelection() ? "selected" : "",
+                    row["withdrawn"] === true ? "is-withdrawn" : "",
+                    fresh ? "pe-new" : "",
+                    edit?.marks[row.id] === "remove" ? "pe-removing" : "",
+                ]
+                    .join(" ")
+                    .trim(),
+            },
+            children: [
+                ...visible.map((column, position) => MindmapPreview.h({
+                    tag: "td",
+                    attrs: {
+                        "data-col": position,
+                        "data-pri": column.priority ?? 1,
+                        class: [
+                            column.num ? "num" : "",
+                            column.nowrap ? "nowrap" : "",
+                            position < pinned ? "pinned" : "",
+                        ]
+                            .join(" ")
+                            .trim(),
+                    },
+                    children: [cellContent(column, row, fresh)],
+                })),
+            ],
+        });
+        const addedRows = (edit?.adds ?? []).map((row) => tableRow(row, true));
+        const body = shownRows.length > 0 || addedRows.length > 0
+            ? [...addedRows, ...shownRows.map((row) => tableRow(row, false))]
             : [
                 MindmapPreview.h({
                     tag: "tr",
@@ -665,7 +683,7 @@ var MindmapPreview;
     }
     MindmapPreview.tableState = tableState;
     /** 状態を持つ表を返す。並べ替え・列・ピン留めの操作は自分で描き直し、表示する列とピン留めは端末に残す。絞り込みの条件は画面から受け、チップで変えたときは `onFilter` に新しい条件を渡す */
-    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, comments, }) {
+    function managedTable({ kind, columns, rows, filters, onFilter, open, marks, comments, edit, addInTable, }) {
         const state = tableState(kind);
         // 画面を描き直したときは、前のポップオーバーを開いたままにしない
         state.popover = null;
@@ -690,6 +708,8 @@ var MindmapPreview;
                     popover: state.popover,
                     ...(marks === undefined ? {} : { marks }),
                     ...(comments === undefined ? {} : { comments }),
+                    ...(edit === undefined ? {} : { edit }),
+                    ...(addInTable === undefined ? {} : { addInTable }),
                     on: {
                         sort: (key) => {
                             // 昇順 → 降順 → 解除

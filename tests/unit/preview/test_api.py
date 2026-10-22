@@ -438,6 +438,75 @@ def test_thread_api_when_rejected(
     assert (result["status"], result["detail"]) == (expected_status, expected_detail)
 
 
+@pytest.mark.parametrize(
+    ("name", "arguments", "expected_method", "expected_path", "expected_body"),
+    [
+        pytest.param("read", [], "GET", "api/edits", None, id="read"),
+        pytest.param(
+            "add",
+            [{"op": "set", "target": "D-1", "key": "answer", "value": "a"}],
+            "POST",
+            "api/edits",
+            '{"op":"set","target":"D-1","key":"answer","value":"a"}',
+            id="add",
+        ),
+        pytest.param("remove", ["E-1"], "DELETE", "api/edits/E-1", None, id="remove"),
+        pytest.param("save", [], "POST", "api/edits/save", None, id="save"),
+    ],
+)
+def test_edit_api(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    name: str,
+    arguments: list[Any],
+    expected_method: str,
+    expected_path: str,
+    expected_body: str | None,
+) -> None:
+    """各呼び出しのメソッド・パス・本文（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    call = preview_page.evaluate(
+        """async ([name, args]) => {
+            const calls = [];
+            const fetchFn = async (url, init) => {
+                calls.push({url: String(url), method: init?.method, body: init?.body ?? null});
+                return new Response("{}", {status: 200});
+            };
+            const api = MindmapPreview.editApi(fetchFn);
+            await api[name](...args);
+            return calls[0];
+        }""",
+        [name, arguments],
+    )
+    # 検証
+    assert call["url"].endswith(expected_path)
+    assert (call["method"], call["body"]) == (expected_method, expected_body)
+
+
+def test_edit_api_when_blocked(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """書き込めない編集を結果に持つ（異常系）。"""
+    # 準備
+    load_preview_scripts()
+    blocked = [{"id": "E-1", "reason": "changed", "detail": "書き換わっています", "refs": []}]
+    # 実行
+    result = preview_page.evaluate(
+        """async (blocked) => {
+            const fetchFn = async () =>
+                new Response(JSON.stringify({detail: "書き込めません", blocked}), {status: 409});
+            return await MindmapPreview.editApi(fetchFn).save();
+        }""",
+        blocked,
+    )
+    # 検証
+    assert result["ok"] is False
+    assert result["status"] == 409
+    assert result["blocked"] == blocked
+
+
 # 保存する表示の既定
 DISPLAY = {"network_look": "glow", "visible_kinds": ["decisions"]}
 

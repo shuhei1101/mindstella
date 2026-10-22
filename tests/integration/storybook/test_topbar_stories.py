@@ -1202,3 +1202,110 @@ def test_fit_target_size_countless_buttons_when_width(open_story: OpenStory, sto
     widths = page.evaluate(COUNTLESS_BUTTON_WIDTHS_SCRIPT)
     # 検証
     assert widths == [24, 24]
+
+
+# 保存待ちのボタン
+PENDING_BUTTON = ".pending-btn"
+
+# 保存待ちのボタンの左右の余白と印と件数の間隔を読む
+PENDING_PADDING_SCRIPT = """() => {
+  const style = getComputedStyle(document.querySelector('.pending-btn'));
+  return [style.paddingLeft, style.paddingRight, style.columnGap];
+}"""
+
+# 保存待ちの状態を幅 320・361・389px で開くための幅の組
+PENDING_FIT_CASES = [
+    pytest.param(width, id=f"w{width}") for width in NARROWEST_WIDTHS
+]
+
+
+def test_pending(open_story: OpenStory) -> None:
+    """絞り込みとコメントのボタンの間に、印・「保存待ち」・印の色の塗りの件数を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--pending")
+    # 検証
+    button = page.get_by_role("button", name="保存待ち（5 件）")
+    assert button.count() == 1
+    assert button.get_attribute("aria-expanded") == "false"
+    assert button.locator(".label").inner_text() == "保存待ち"
+    assert button.locator(".count").inner_text() == "5"
+    assert button.locator("svg.icon").count() == 1
+    assert page.eval_on_selector(f"{PENDING_BUTTON} .count", BACKGROUND_SCRIPT) != TRANSPARENT
+    # 並びは 絞り込み → 保存待ち → コメント
+    order = page.evaluate(
+        "() => [...document.querySelectorAll('.filter-btn, .pending-btn, .comments-btn')]"
+        ".map(b => b.getBoundingClientRect().left)"
+    )
+    assert order == sorted(order)
+
+
+def test_pending_open(open_story: OpenStory) -> None:
+    """保存待ちのパネルを開いている。保存待ちのボタンを選んだ見た目にし、コメントのボタンは選んでいない見た目のまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--pending-open")
+    # 検証
+    assert page.get_attribute(PENDING_BUTTON, "aria-expanded") == "true"
+    assert page.eval_on_selector(PENDING_BUTTON, BACKGROUND_SCRIPT) != TRANSPARENT
+    assert page.eval_on_selector(PENDING_BUTTON, "e => e.classList.contains('open')") is True
+    assert page.get_attribute(".comments-btn", "aria-expanded") == "false"
+    assert page.eval_on_selector(".comments-btn", BACKGROUND_SCRIPT) == TRANSPARENT
+
+
+def test_pending_blocked(open_story: OpenStory) -> None:
+    """書き込めない編集がある。印を警告に替え、件数の塗りを失敗の赤にして、読み上げの名前にも書く（正常系）。"""
+    # 準備
+    normal = open_story("preview-topbar--pending")
+    normal_fill = normal.eval_on_selector(f"{PENDING_BUTTON} .count", BACKGROUND_SCRIPT)
+    normal_icon = normal.eval_on_selector(f"{PENDING_BUTTON} svg.icon", "e => e.innerHTML")
+    # 実行
+    page = open_story("preview-topbar--pending-blocked")
+    # 検証
+    assert page.get_attribute(PENDING_BUTTON, "aria-label") == "保存待ち（3 件・書き込めない編集あり）"
+    assert page.eval_on_selector(PENDING_BUTTON, "e => e.classList.contains('blocked')") is True
+    assert page.eval_on_selector(f"{PENDING_BUTTON} .count", BACKGROUND_SCRIPT) != normal_fill
+    assert page.eval_on_selector(f"{PENDING_BUTTON} svg.icon", "e => e.innerHTML") != normal_icon
+
+
+def test_pending_many(open_story: OpenStory) -> None:
+    """100 件以上。件数を 99+ にし、読み上げの名前には実際の件数を持つ（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--pending-many")
+    # 検証
+    assert page.inner_text(f"{PENDING_BUTTON} .count") == "99+"
+    assert page.get_attribute(PENDING_BUTTON, "aria-label") == "保存待ち（120 件）"
+
+
+def test_pending_narrow(open_story: OpenStory) -> None:
+    """幅 390px。保存待ちのボタンの文字を隠して印と件数だけにし、ツール名の文字を隠す。ほかのボタンを隠さず横にはみ出さない（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--pending-narrow")
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 実行
+    measured = page.evaluate(BUTTONS_FIT_SCRIPT)
+    # 検証
+    assert not page.is_visible(f"{PENDING_BUTTON} .label")
+    assert page.is_visible(f"{PENDING_BUTTON} svg.icon")
+    assert page.inner_text(f"{PENDING_BUTTON} .count") == "7"
+    assert not page.is_visible(".brand-name")
+    assert page.is_visible(".brand")
+    for selector in (".filter-btn", ".settings-btn", ".comments-btn", ".hist-btn"):
+        assert page.is_visible(selector), selector
+    assert measured == {"pageFits": True, "barFits": True, "outside": []}
+
+
+@pytest.mark.parametrize("width", PENDING_FIT_CASES)
+def test_pending_fit_narrowest_when_width(open_story: OpenStory, width: int) -> None:
+    """幅 320・361・389px で、保存待ち・絞り込み・表示の設定・コメント・変更履歴を全て出しても横にはみ出さず、保存待ちのボタンも左右の余白 2px・印と件数の間隔 2px・幅 24px 以上に詰める（正常系）。"""
+    # 準備
+    page = _open_narrow_story_at(open_story, "preview-topbar--pending-fit-narrowest", width)
+    # 実行
+    measured = page.evaluate(BUTTONS_FIT_SCRIPT)
+    padding = page.evaluate(PENDING_PADDING_SCRIPT)
+    button_width = page.locator(PENDING_BUTTON).bounding_box()
+    # 検証
+    assert measured == {"pageFits": True, "barFits": True, "outside": []}
+    assert padding == ["2px", "2px", "2px"]
+    assert button_width is not None
+    assert button_width["width"] >= 24
+    assert page.inner_text(f"{PENDING_BUTTON} .count") == "99+"
