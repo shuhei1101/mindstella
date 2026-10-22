@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>詳細パネル 案 B（見出しの文言を押して畳む） | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足す本文の Markdown の見せ方と、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/327/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+
+<!-- data-initial: ハッシュが無いときに開く状態。data-diff: クエリに無いときに選ぶ時点（none は差分を出さない）。data-fold-toggle: 見出しの開閉の案（icon: 矢印だけを押せる / text: 見出しの文言ごと押せる） -->
+<body data-initial="tab=docs&amp;id=A-18" data-diff="none" data-fold-toggle="text">
+  <!-- モック専用の操作列: 案・見本・列の幅・境目・表示の設定・画面の切り替え・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span class="label">見出しの開閉:</span>
+    <a href="../a-fold-icon/index.html" data-keep="hash">案 A（矢印を押す）</a>
+    <a href="../b-fold-text/index.html" data-keep="hash" aria-current="page">案 B（見出しの文言を押す）</a>
+    <span class="label">見本:</span>
+    <a href="#" data-set="diff=none&amp;scroll=&amp;layout=" data-hash="tab=docs&amp;id=A-18">A-18 列の多い資料</a>
+    <a href="#" data-set="diff=none&amp;scroll=1900&amp;layout=" data-hash="tab=docs&amp;id=A-18">A-18 長い表を送った</a>
+    <a href="#" data-set="diff=V-8&amp;scroll=&amp;layout=inline" data-hash="tab=docs&amp;id=A-18">A-18 本文の差分</a>
+    <a href="#" data-set="diff=V-8&amp;scroll=&amp;layout=side" data-hash="tab=docs&amp;id=A-18">A-18 左右に並べた差分</a>
+    <a href="#" data-set="diff=none&amp;scroll=&amp;layout=" data-hash="tab=docs&amp;id=A-14">A-14 手引き（図と小さな表）</a>
+    <span class="label">列の幅:</span>
+    <a href="#" data-set="cols=">文字数で決める</a>
+    <a href="#" data-set="cols=full">今の表示（本文の幅いっぱい）</a>
+    <span class="label">境目:</span>
+    <a href="#" data-set="bounds=">短い 8 以下・長文 25 以上</a>
+    <a href="#" data-set="bounds=12,40">短い 12 以下・長文 40 以上</a>
+    <span class="label">表示の設定:</span>
+    <a href="#" data-set="md=default">既定</a>
+    <a href="#" data-set="md=stripes-on">しま模様をオン</a>
+    <a href="#" data-set="md=pin-off,head-off,fold-off">固定と折りたたみをオフ</a>
+    <span class="label">画面:</span>
+    <a href="../../../detail-full/327/b-fold-text/index.html" data-keep>詳細の全画面</a>
+    <a href="../../../settings-panel/327/standard/index.html" data-keep>表示の設定</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">detail-panel</a> / <a href="../index.md">327</a> / b-fold-text</nav>
+  </div>
+
+  <!-- 起動の前に時点・案・表示の設定の上書き・ハッシュを整える → 見本の記録を埋め込み先へ入れ、比較表の見本を足す → サーバーの代わり（記録とコメント） → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/327/assets/mock.js"></script>
+  <script src="../../../../refs/237/assets/data.js"></script>
+  <script src="../../../../refs/327/assets/data-extra.js"></script>
+  <script src="../../../../refs/214/assets/mock-server.js"></script>
+  <script src="../../../../refs/327/assets/app.js"></script>
+</body>
+</html>
