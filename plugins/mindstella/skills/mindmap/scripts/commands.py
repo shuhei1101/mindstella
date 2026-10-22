@@ -9,7 +9,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from builder import export_preview, validate_export_out
 from checker import check_workspace, find_referrers
@@ -56,7 +56,6 @@ from query import (
     show_item,
 )
 from readme import README_FILE, write_readme
-from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
     CHANGES_FILE,
@@ -93,6 +92,10 @@ from threads import (
 )
 from versions import Version, parse_release_version, read_plugin_version
 from vocabulary import require_known_tags
+
+if TYPE_CHECKING:
+    # serve が編集の保存で commands を読むため、循環を避けて型の注釈にだけ使う
+    from serve import PreviewRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -316,9 +319,14 @@ def resolve_refs(item: dict[str, Any], added: dict[int, str]) -> dict[str, Any]:
 
 
 def stage_add(
-    staged: Staged, kind: Kind, item: dict[str, Any], now: NowFn = now_utc
+    staged: Staged,
+    kind: Kind,
+    item: dict[str, Any],
+    now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[Staged, dict[str, Any]]:
-    """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
+    """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。editor は足した項目の編集した人。"""
     validate_input_keys(kind, item, index=len(staged.items[kind]))
     # タグを渡したときは語彙にあるものだけ
     if "tags" in item:
@@ -344,7 +352,7 @@ def stage_add(
         {
             "created": timestamp,
             "updated": timestamp,
-            "updated_by": EDITOR,
+            "updated_by": editor,
             "seq": seq,
             "added_seq": seq,
         }
@@ -367,9 +375,14 @@ def stage_add(
 
 
 def stage_update(
-    staged: Staged, item_id: str, item: dict[str, Any], now: NowFn = now_utc
+    staged: Staged,
+    item_id: str,
+    item: dict[str, Any],
+    now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[Staged, dict[str, Any]]:
-    """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。"""
+    """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。editor は項目と変更履歴の回の編集した人。"""
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
     validate_input_keys(ref.kind, item, index=ref.index)
@@ -379,7 +392,7 @@ def stage_update(
     changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
-    merged["updated_by"] = EDITOR
+    merged["updated_by"] = editor
     body = _body_write(item_id, item)
     previous_name = ref.item.get("body")
     bodies = dict(staged.bodies)
@@ -411,6 +424,7 @@ def stage_update(
         after_item=merged,
         before_body=previous_body,
         after_body=body.text if body is not None else previous_body,
+        editor=editor,
     )
     rows = list(staged.items[ref.kind])
     rows[ref.index] = merged
@@ -925,6 +939,7 @@ def _stack_changes(
     after_item: dict[str, Any],
     before_body: str | None,
     after_body: str | None,
+    editor: str = EDITOR,
 ) -> tuple[dict[str, Any], Changes]:
     """変更履歴の 1 回分を作って積み、通し番号を振った項目と、新しい記録を返す。"""
     limit = history_limit(workspace.settings)
@@ -935,7 +950,7 @@ def _stack_changes(
         after_body=after_body,
         seq=record["last_seq"] + 1,
         at=after_item["updated"],
-        by=EDITOR,
+        by=editor,
     )
     read_seq = record.get("read_seq")
     # 変わったものが無い: 通し番号は進めない

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "保存待ちの編集",
+  "description": "edits.yaml。プレビューで利用者が溜め、まだ保存していない項目と設定の編集。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "new_seq",
+    "items"
+  ],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "最後に振った編集の連番（振った番号を使い回さないために持つ）"
+    },
+    "new_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "最後に振った、追加する項目の仮の ID の連番"
+    },
+    "items": {
+      "type": "array",
+      "description": "編集の並び（1 要素 = 1 件。連番の小さい順）",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "target",
+          "op",
+          "created"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^E-[0-9]+$"
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "description": "編集する項目の ID、追加する項目の仮の ID（new-{連番}）、または settings"
+          },
+          "op": {
+            "enum": [
+              "set",
+              "option-add",
+              "option-edit",
+              "option-remove",
+              "adopt",
+              "item-add",
+              "item-remove",
+              "setting"
+            ]
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {},
+          "before": {},
+          "base": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created": {
+            "type": "string",
+            "minLength": 1
+          },
+          "map": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

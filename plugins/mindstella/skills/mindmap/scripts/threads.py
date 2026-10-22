@@ -23,6 +23,7 @@ from errors import (
 from kinds import records_root
 from store import (
     SCHEMA_DIR,
+    THREADS_FILE,
     WHOLE_PATH,
     NowFn,
     Workspace,
@@ -38,9 +39,6 @@ from store import (
 from vocabulary import require_known_tags
 
 logger = logging.getLogger(__name__)
-
-# ワークスペースのスレッドのファイル名（無ければスレッド 0 件）
-THREADS_FILE = "threads.yaml"
 
 # `SCHEMA_DIR` の下のスレッドのスキーマのファイル名
 THREADS_SCHEMA = "threads.schema.json"

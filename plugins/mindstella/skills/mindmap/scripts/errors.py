@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from edits import BlockedEdit
+
 
 class MindmapError(Exception):
     """入口（`call_tool`）が捕まえてツールのエラーにする例外の親。配信は子の種類でステータスコードを決める。"""
@@ -163,3 +168,24 @@ class CommentConflictError(MindmapError):
         """合わない理由と、合わないコメントごとの ID と理由を持つ。"""
         super().__init__(message)
         self.stale: list[tuple[str, str]] = stale if stale is not None else []
+
+
+class EditInvalidError(MindmapError):
+    """保存待ちの編集の追加の本文の形・キー・値の型が合わない、または保存待ちが空のまま保存した。メッセージは合わないキーと理由。"""
+
+
+class EditNotFoundError(MindmapError):
+    """取り消す編集、または編集する項目・仮の ID・案が無い。メッセージは無い ID か記号。"""
+
+
+class EditConflictError(MindmapError):
+    """足す案の記号が既にある、または削除を溜めた項目へ削除以外の編集を溜めようとした。メッセージは理由。"""
+
+
+class EditsBlockedError(MindmapError):
+    """まとめて保存で、書き込めない編集が 1 件以上ある。`blocked` に書き込めない編集を溜めた順に持つ。"""
+
+    def __init__(self, message: str, *, blocked: list[BlockedEdit]) -> None:
+        """メッセージと、書き込めない編集の並びを持つ。"""
+        super().__init__(message)
+        self.blocked: list[BlockedEdit] = blocked
