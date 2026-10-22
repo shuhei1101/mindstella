@@ -77,7 +77,7 @@ def test_pending_edits_panel(
         PANEL_SCRIPT,
         {"data": _data(make_data, make_item), "edits": edits, "blocked": [], "status": "idle"},
     )
-    undo_buttons = preview_page.get_by_role("button", name="取り消す", exact=True)
+    undo_buttons = preview_page.get_by_role("button", name="の編集を取り消す")
     undo_buttons.first.click()
     preview_page.get_by_role("button", name="まとめて保存する（1 件を削除）").click()
     calls = preview_page.evaluate("() => window.calls")
