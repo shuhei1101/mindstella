@@ -31,11 +31,16 @@ from comments import (
     send_comments,
     update_comment,
 )
+from edits import add_edit, delete_edit, list_edits, save_edits
 from errors import (
     ArgumentError,
     CommentConflictError,
     CommentInvalidError,
     CommentNotFoundError,
+    EditConflictError,
+    EditInvalidError,
+    EditNotFoundError,
+    EditsBlockedError,
     ItemNotFoundError,
     MindmapError,
     SchemaMismatchError,
@@ -51,6 +56,7 @@ from locations import location_to_dict
 from settings_update import update_display
 from store import (
     CHANGES_FILE,
+    EDITS_FILE,
     NowFn,
     build_mismatch_error,
     check_settings,
@@ -100,6 +106,12 @@ THREADS_PATH = "/api/threads"
 
 # スレッド 1 件の利用者の既読にする口（`/api/threads/{id}/seen`）の、`{id}` の後ろ
 SEEN_SUFFIX = "/seen"
+
+# 保存待ちの編集の読み取り・追加と、1 件の取り消し（`/api/edits/{id}`）のパス
+EDITS_PATH = "/api/edits"
+
+# 保存待ちの編集をまとめて保存するパス
+EDITS_SAVE_PATH = "/api/edits/save"
 
 # 前回開いた日時のパス
 OPENED_PATH = "/api/opened"
@@ -312,6 +324,8 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(comments_response(context.root))
         elif path == THREADS_PATH:
             self._reply(threads_response(context.root))
+        elif path == EDITS_PATH:
+            self._reply(edits_response(context.root))
         else:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -325,6 +339,11 @@ class PreviewHandler(BaseHTTPRequestHandler):
         elif path == CONFIG_RELOAD_PATH:
             # 本文を読まずに、設定を読み直す
             self._reply(reload_response(self.context, origin=self.headers.get("Origin")))
+        elif path == EDITS_SAVE_PATH:
+            # 本文を読まずに、保存待ちの編集をまとめて保存する
+            self._reply(edits_save_response(self.context, origin=self.headers.get("Origin")))
+        elif path == EDITS_PATH:
+            self._write(lambda root, data: add_edit(root, data), HTTPStatus.CREATED)
         elif seen_thread_id is not None:
             # 本文を読まずに、そのスレッドを利用者の既読にする
             self._reply(
@@ -365,7 +384,9 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
             )
         elif thread_id is not None:
-            self._write(lambda root, data: patch_thread_status(root, thread_id, data), HTTPStatus.OK)
+            self._write(
+                lambda root, data: patch_thread_status(root, thread_id, data), HTTPStatus.OK
+            )
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -373,10 +394,17 @@ class PreviewHandler(BaseHTTPRequestHandler):
         """レビュー中のコメント 1 件を消す要求を受け付けの関数へ渡す。"""
         path = self._checked_path()
         comment_id = _comment_id_of(path)
+        edit_id = _edit_id_of(path)
         if comment_id is not None:
             self._reply(
                 delete_response(
                     self.context, origin=self.headers.get("Origin"), comment_id=comment_id
+                )
+            )
+        elif edit_id is not None:
+            self._reply(
+                edit_delete_response(
+                    self.context, origin=self.headers.get("Origin"), edit_id=edit_id
                 )
             )
         elif path is not None:
@@ -398,7 +426,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
 
     def _write(
         self,
-        handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+        handle: Callable[[Path, dict[str, Any]], Any],
         status: int,
         *,
         after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
@@ -723,7 +751,13 @@ def reload_response(context: ServeContext, *, origin: str | None) -> Response:
 def workspace_signature(root: Path) -> str:
     """見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ、書き換えの印を返す。"""
     # 前回開いた日時（`.mindstella-opened`）は、タブが開くたびに書き換わるので見ない
-    names = [SETTINGS_FILE, *(spec.file for spec in KINDS.values()), THREADS_FILE, CHANGES_FILE]
+    names = [
+        SETTINGS_FILE,
+        *(spec.file for spec in KINDS.values()),
+        THREADS_FILE,
+        CHANGES_FILE,
+        EDITS_FILE,
+    ]
     # 本文の Markdown と HTML（`.mindstella/docs/` の直下）も見る
     records = records_root(root)
     body_dir = records / BODY_DIR
@@ -799,6 +833,53 @@ def threads_response(root: Path) -> Response:
     )
 
 
+def edits_response(root: Path) -> Response:
+    """保存待ちの編集をその場で読んだ JSON を返す。"""
+    try:
+        data = list_edits(root)
+    except MindmapError as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(data, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def edit_delete_response(context: ServeContext, *, origin: str | None, edit_id: str) -> Response:
+    """送り元を確かめ、書き換えの鍵を取って保存待ちの編集 1 件を取り消す。"""
+    # 別のサイトからの書き込み
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    try:
+        with workspace_lock(context.root, context.write_lock):
+            body = delete_edit(context.root, edit_id)
+    except MindmapError as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def edits_save_response(context: ServeContext, *, origin: str | None) -> Response:
+    """送り元を確かめ、書き換えの鍵を取って保存待ちの編集をまとめて保存する。"""
+    # 別のサイトからの書き込み
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    try:
+        with workspace_lock(context.root, context.write_lock):
+            body = save_edits(context.root)
+    except MindmapError as error:
+        return error_response(error)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+    )
+
+
 def patch_thread_status(root: Path, thread_id: str, data: dict[str, Any]) -> dict[str, Any]:
     """画面からのクローズ・オープンへの戻しを、書き手を利用者にして書く。"""
     require_workspace(root)
@@ -815,7 +896,7 @@ def write_response(
     content_type: str | None,
     origin: str | None,
     body: bytes,
-    handle: Callable[[Path, dict[str, Any]], dict[str, Any] | None],
+    handle: Callable[[Path, dict[str, Any]], Any],
     status: int,
     after: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> Response:
@@ -843,6 +924,9 @@ def write_response(
             result = handle(context.root, data)
     except MindmapError as error:
         return error_response(error)
+    # 結果で成功のステータスコードが変わる処理は、本文とステータスコードの組を返す
+    if isinstance(result, tuple):
+        result, status = result
     # 鍵を外した後の処理がある: 結果を渡して、返った値を応答の本文にする
     if after is not None and result is not None:
         result = after(result)
@@ -884,9 +968,13 @@ def delete_response(context: ServeContext, *, origin: str | None, comment_id: st
 def error_response(error: MindmapError) -> Response:
     """ツールのエラーの種類からステータスコードを決めて問題の応答にする。"""
     detail = str(error)
-    if isinstance(error, (CommentInvalidError, SettingsInvalidError, ArgumentError)):
+    if isinstance(
+        error, (CommentInvalidError, SettingsInvalidError, ArgumentError, EditInvalidError)
+    ):
         return problem_response(HTTPStatus.BAD_REQUEST, detail)
-    if isinstance(error, (ItemNotFoundError, CommentNotFoundError, ThreadNotFoundError)):
+    if isinstance(
+        error, (ItemNotFoundError, CommentNotFoundError, ThreadNotFoundError, EditNotFoundError)
+    ):
         return problem_response(HTTPStatus.NOT_FOUND, detail)
     if isinstance(error, CommentConflictError):
         response = problem_response(HTTPStatus.CONFLICT, detail)
@@ -900,6 +988,20 @@ def error_response(error: MindmapError) -> Response:
                 body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
             )
         return response
+    if isinstance(error, EditConflictError):
+        return problem_response(HTTPStatus.CONFLICT, detail)
+    # 書き込めない編集は、全てを返す
+    if isinstance(error, EditsBlockedError):
+        problem = json.loads(problem_response(HTTPStatus.CONFLICT, detail).body)
+        problem["blocked"] = [
+            {"id": entry.id, "reason": entry.reason, "detail": entry.detail, "refs": entry.refs}
+            for entry in error.blocked
+        ]
+        return Response(
+            status=HTTPStatus.CONFLICT,
+            content_type=PROBLEM_TYPE,
+            body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
+        )
     if isinstance(error, (WorkspaceNotFoundError, SchemaMismatchError)):
         return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, "\n".join([detail, *error.lines]))
     # 書き込めなかった・渡された種類のないエラー
@@ -957,6 +1059,16 @@ def _thread_id_of(path: str | None) -> str | None:
         return None
     thread_id = unquote(path.removeprefix(prefix))
     return thread_id if thread_id and "/" not in thread_id else None
+
+
+def _edit_id_of(path: str | None) -> str | None:
+    """`/api/edits/{id}` のパスから編集の ID を取り出す（`id` は `/` を含まない）。"""
+    prefix = f"{EDITS_PATH}/"
+    # 別のパス
+    if path is None or not path.startswith(prefix):
+        return None
+    edit_id = unquote(path.removeprefix(prefix))
+    return edit_id if edit_id and "/" not in edit_id else None
 
 
 def _seen_thread_id_of(path: str | None) -> str | None:
