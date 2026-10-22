@@ -1419,9 +1419,11 @@ var MindmapPreview;
                     continue;
                 const rect = table.getBoundingClientRect();
                 // 表の上端が区画の上端より上にある分だけ下げる（表の下端を越えない）
-                const offset = Math.min(Math.max(top - rect.top, 0), Math.max(rect.height - head.offsetHeight, 0));
+                const max = Math.max(rect.height - head.offsetHeight, 0);
+                const offset = Math.min(Math.max(top - rect.top, 0), max);
                 table.style.setProperty("--head-offset", `${offset}px`);
-                table.classList.toggle("is-stuck", offset > 0);
+                // 見出しの行が本文の行の上に重なっている間だけ影を付ける（表の下端まで送り切った表は付けない）
+                table.classList.toggle("is-stuck", offset > 0 && offset < max);
             }
         };
         scroller.addEventListener("scroll", () => {
