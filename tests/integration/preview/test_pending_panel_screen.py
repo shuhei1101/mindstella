@@ -224,7 +224,7 @@ def test_undo(
     expect(page.locator("#pe-row-E-4")).to_have_count(0)
     # 検証（最後の行）
     assert page.evaluate("document.activeElement.getAttribute('aria-label')") == (
-        f"設定 の題名の編集を取り消す"
+        "設定 の題名の編集を取り消す"
     )
 
 
