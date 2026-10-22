@@ -1300,96 +1300,87 @@ var MindmapPreview;
         const level = element.dataset["mdLevel"] ?? element.tagName.slice(1);
         return Number(level);
     }
-    /** 本文の直下の見出し */
-    function topHeadings(root) {
-        return [...root.children].filter((child) => /^H[1-6]$/.test(child.tagName));
+    /** 見出しの要素か */
+    function isHeading(element) {
+        return /^H[1-6]$/.test(element.tagName);
     }
-    /** 畳んだ見出しの下（次の同じか上の段の見出しまで）を隠す */
-    function applyFold(root) {
-        let hideAbove = null;
-        for (const child of root.children) {
-            const level = /^H[1-6]$/.test(child.tagName) ? headingLevel(child) : null;
-            if (hideAbove !== null && (level === null || level > hideAbove)) {
-                child.classList.add("md-folded-out");
-                continue;
-            }
-            hideAbove = null;
-            child.classList.remove("md-folded-out");
-            if (level !== null && child.dataset["folded"] === "true")
-                hideAbove = level;
-        }
-        // 本文の高さが変わったので、表の見出しの固定の位置を直す
-        root.closest(".panel-body")?.dispatchEvent(new Event("scroll"));
-    }
-    /** 見出しの下に、次の同じか上の段の見出しまでの間で中身があるか */
-    function hasSection(heading) {
-        const level = headingLevel(heading);
-        const next = heading.nextElementSibling;
-        return next !== null && !(/^H[1-6]$/.test(next.tagName) && headingLevel(next) <= level);
-    }
-    /** 見出しを開く・畳む */
-    function setFolded({ root, heading, folded }) {
-        heading.dataset["folded"] = String(folded);
-        heading.querySelector(".md-fold")?.setAttribute("aria-expanded", String(!folded));
-        applyFold(root);
-    }
+    /** 節の中身の入れ物（畳むと `hidden="until-found"` にし、ページ内検索で当たると開く） */
+    const SECTION_BODY_CLASS = "md-section-body";
     /** 開閉で隠す段の数（本文で使っている見出しの段のうち、上から数える） */
     const FOLD_LEVELS = 2;
-    /** 327: 本文の見出しに開閉のボタンを置く（上の 2 段の見出しだけ）。はじめは開いた状態で描き、畳んだ状態は残さない。案 A は見出しの頭の矢印だけを押せるボタン、案 B は見出しの文言ごと押せるボタン（モックの data-fold-toggle） */
+    /** 見出しの節の中身（次の同じか上の段の見出しまで）を入れ物で包み、入れ物を返す。中身が無ければ null */
+    function wrapSection(heading) {
+        const level = headingLevel(heading);
+        const items = [];
+        for (let node = heading.nextElementSibling; node !== null && !(isHeading(node) && headingLevel(node) <= level); node = node.nextElementSibling)
+            items.push(node);
+        if (items.length === 0)
+            return null;
+        const body = MindmapPreview.h({ tag: "div", attrs: { class: SECTION_BODY_CLASS } });
+        heading.after(body);
+        body.append(...items);
+        return body;
+    }
+    /** 見出しを開く・畳む。畳んだ中身は `hidden="until-found"` にし、ページ内検索の対象に残す */
+    function setFolded({ heading, folded }) {
+        const body = heading.nextElementSibling;
+        if (body === null || !body.classList.contains(SECTION_BODY_CLASS))
+            return;
+        heading.dataset["folded"] = String(folded);
+        heading.querySelector(".md-fold")?.setAttribute("aria-expanded", String(!folded));
+        if (folded)
+            body.setAttribute("hidden", "until-found");
+        else
+            body.removeAttribute("hidden");
+        // 本文の高さが変わったので、表の見出しの固定の位置を直す
+        heading.closest(".panel-body")?.dispatchEvent(new Event("scroll"));
+    }
+    /** 327: 本文の見出しに開閉のボタンを置く（上の 2 段の見出しだけ）。節の中身を入れ物で包み、はじめは開いた状態で描く。畳んだ状態は残さない。案 A は見出しの頭の矢印だけを押せるボタン、案 B は見出しの文言ごと押せるボタン（モックの data-fold-toggle） */
     function addFoldButtons(root) {
         const textToggle = document.body?.dataset["foldToggle"] === "text";
-        const headings = topHeadings(root);
-        const levels = [...new Set(headings.map(headingLevel))].sort((a, b) => a - b).slice(0, FOLD_LEVELS);
+        const levels = [...new Set([...root.children].filter(isHeading).map(headingLevel))].sort((a, b) => a - b).slice(0, FOLD_LEVELS);
         root.classList.add("md-foldable");
-        for (const heading of headings) {
-            if (!levels.includes(headingLevel(heading)) || !hasSection(heading))
-                continue;
-            const link = heading.querySelector(":scope > .h-link");
-            const label = [...heading.childNodes].filter((node) => node !== link).map((node) => node.textContent ?? "").join("").trim();
-            const button = MindmapPreview.h({
-                tag: "button",
-                attrs: {
-                    class: textToggle ? "md-fold md-fold-text" : "md-fold",
-                    type: "button",
-                    "aria-expanded": "true",
-                    "aria-label": textToggle ? null : `「${label}」の節を開閉`,
-                    onclick: () => setFolded({ root, heading, folded: heading.dataset["folded"] !== "true" }),
-                },
-                children: [MindmapPreview.icon("chev")],
-            });
-            heading.dataset["folded"] = "false";
-            if (textToggle) {
+        // 上の段から包む（下の段の見出しは、上の段の入れ物の中で包む）
+        for (const level of levels) {
+            for (const heading of root.querySelectorAll("h1, h2, h3, h4, h5, h6")) {
+                // その段の見出しのうち、本文の直下か上の段の入れ物の直下にあるものだけ
+                const parent = heading.parentElement;
+                if (headingLevel(heading) !== level || (parent !== root && !parent?.classList.contains(SECTION_BODY_CLASS)))
+                    continue;
+                const body = wrapSection(heading);
+                if (body === null)
+                    continue;
+                const link = heading.querySelector(":scope > .h-link");
+                const label = [...heading.childNodes].filter((node) => node !== link).map((node) => node.textContent ?? "").join("").trim();
+                const button = MindmapPreview.h({
+                    tag: "button",
+                    attrs: {
+                        class: textToggle ? "md-fold md-fold-text" : "md-fold",
+                        type: "button",
+                        "aria-expanded": "true",
+                        "aria-label": textToggle ? null : `「${label}」の節を開閉`,
+                        onclick: () => setFolded({ heading, folded: heading.dataset["folded"] !== "true" }),
+                    },
+                    children: [MindmapPreview.icon("chev")],
+                });
+                heading.dataset["folded"] = "false";
                 // 案 B: 見出しの文言（# のリンクを除く）をボタンの中へ移し、矢印を文言の右に置く
-                const text = MindmapPreview.h({ tag: "span", attrs: { class: "md-fold-label" }, children: [...heading.childNodes].filter((node) => node !== link) });
-                button.prepend(text);
+                if (textToggle)
+                    button.prepend(MindmapPreview.h({ tag: "span", attrs: { class: "md-fold-label" }, children: [...heading.childNodes].filter((node) => node !== link) }));
                 heading.prepend(button);
-            }
-            else {
-                heading.prepend(button);
+                // ページ内検索で畳んだ中身に当たった: ブラウザが開く前に、見出しの開閉の状態を開いたにそろえる
+                body.addEventListener("beforematch", () => setFolded({ heading, folded: false }));
             }
         }
     }
-    /** 327: 畳んだ節の中の見出しへ移るときは、その見出しを隠している見出しを開く */
+    /** 327: 畳んだ節の中の見出しへ移るときは、その見出しを包む畳んだ入れ物を全て開く */
     function revealHeading({ root, slug }) {
         for (const target of root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)) {
-            const body = target.parentElement;
-            if (body === null || !body.classList.contains("md-foldable"))
-                continue;
-            let need = headingLevel(target);
-            let opened = false;
-            // 前の見出しを遡り、上の段で畳んでいるものを開く
-            for (let node = target.previousElementSibling; node !== null && need > 1; node = node.previousElementSibling) {
-                if (!/^H[1-6]$/.test(node.tagName) || headingLevel(node) >= need)
-                    continue;
-                need = headingLevel(node);
-                if (node.dataset["folded"] === "true") {
-                    node.dataset["folded"] = "false";
-                    node.querySelector(".md-fold")?.setAttribute("aria-expanded", "true");
-                    opened = true;
-                }
+            for (let body = target.closest(`.${SECTION_BODY_CLASS}`); body !== null; body = body.parentElement?.closest(`.${SECTION_BODY_CLASS}`) ?? null) {
+                const heading = body.previousElementSibling;
+                if (heading !== null && heading.dataset["folded"] === "true")
+                    setFolded({ heading, folded: false });
             }
-            if (opened)
-                applyFold(body);
         }
     }
     MindmapPreview.revealHeading = revealHeading;

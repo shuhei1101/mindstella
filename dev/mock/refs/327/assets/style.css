@@ -150,8 +150,6 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .md .md-fold.md-fold-text:hover .icon { color: var(--accent); }
 /* 案 B の矢印 */
 .md .md-fold-text .icon { color: var(--text-3); }
-/* 畳んだ節の中身 */
-.md .md-folded-out { display: none !important; }
 /* 動きを減らす設定: 矢印の向きを動かさずに替える */
 @media (prefers-reduced-motion: reduce) {
   .md .md-fold .icon { transition: none; }
