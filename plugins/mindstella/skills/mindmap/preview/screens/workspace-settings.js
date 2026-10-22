@@ -173,7 +173,9 @@ var MindmapPreview;
             wrap.append(input, MindmapPreview.h({ tag: "p", attrs: { class: "pe-hint" }, children: ["変更履歴に残す書き換えのまとまりの数"] }));
         }
         else if (key === "playbooks" || key === "phases" || key === "tags") {
-            wrap.append(chipsSetting({ props, key, wrap, controlId, name, values: Array.isArray(value) ? value : [], commit }));
+            // タグの語彙は名前と説明のオブジェクトの並びなので、チップには名前を出す
+            const names = key === "tags" ? (settings.tags ?? []).map((tag) => tag.name) : Array.isArray(value) ? value : [];
+            wrap.append(chipsSetting({ props, key, wrap, controlId, name, values: names, commit }));
         }
         else if (key === "goal") {
             wrap.append(...goalInputs({ props, controlId, commit }));
@@ -226,7 +228,9 @@ var MindmapPreview;
             vocabulary: null,
             monospace: false,
             disabled: false,
-            onChange: (next, removed) => {
+            onChange: (names, removed) => {
+                // タグの語彙は、残るタグの説明を保ったまま名前のオブジェクトの並びに戻す
+                const next = key === "tags" ? names.map((tag) => props.settings.tags?.find((entry) => entry.name === tag) ?? { name: tag }) : names;
                 const used = removed !== null && key !== "playbooks"
                     ? usageCount({ index: props.index, threads: props.threads ?? [], key, value: removed })
                     : 0;

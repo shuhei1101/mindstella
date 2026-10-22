@@ -291,7 +291,7 @@ var MindmapPreview;
                 name,
                 hint: CHIP_HINTS[key] ?? `${name}を入れる`,
                 values: Array.isArray(value) ? value : [],
-                vocabulary: key === "tags" ? (settings.tags ?? []) : null,
+                vocabulary: key === "tags" ? (settings.tags ?? []).map((tag) => tag.name) : null,
                 monospace: key !== "tags",
                 disabled: removing,
                 onChange: (next) => commit(next),

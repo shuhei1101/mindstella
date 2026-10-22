@@ -173,8 +173,8 @@ namespace MindmapPreview {
     categories: { name: string; target: string; summary: string }[];
     /** ゴール。ゴールを決めていない話し合いは持たない */
     goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
-    /** タグの語彙。無い設定もある */
-    tags?: string[];
+    /** タグの語彙（名前と、あれば説明）。無い設定もある */
+    tags?: { name: string; summary?: string }[];
     /** 関連する場所（表示名と URL）。無い設定もある */
     links?: { title: string; url: string }[];
     /** 項目ごとに変更履歴を何回分持つか */
