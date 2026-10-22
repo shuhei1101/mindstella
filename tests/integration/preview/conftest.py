@@ -39,6 +39,7 @@ from workspace_fixtures import (
     MakeWorkspace,
     WriteComments,
     WriteDrafts,
+    WriteEdits,
     WriteThreads,
 )
 
@@ -61,6 +62,30 @@ def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePr
         assert result.is_error is False, result.text
         assert result.data is not None
         return str(result.data["url"])
+
+    return _write
+
+
+@pytest.fixture
+def write_edit_preview(
+    make_workspace: MakeWorkspace, write_edits: WriteEdits, call_tool: CallTool
+) -> WriteReviewPreview:
+    """項目と保存待ちの編集を持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
+
+    def _write(
+        *items: dict[str, Any],
+        edits: tuple[dict[str, Any], ...] = (),
+        settings: dict[str, Any] | None = None,
+        bodies: dict[str, str] | None = None,
+    ) -> tuple[str, Path]:
+        """ワークスペースを作って配信を立てる。`preview_url` が失敗したらテストを止める。"""
+        root = make_workspace(*items, settings=settings, bodies=bodies)
+        if edits:
+            write_edits(root, *edits)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
 
     return _write
 
