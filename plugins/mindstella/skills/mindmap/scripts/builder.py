@@ -59,6 +59,7 @@ SCRIPT_FILES = (
     "components/reply-form.js",
     "components/thread-row.js",
     "components/thread-post.js",
+    "components/review-body-fold.js",
     "components/selection-comment.js",
     "components/term-tip.js",
     "components/settings-panel.js",

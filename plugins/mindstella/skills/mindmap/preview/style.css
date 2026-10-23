@@ -967,7 +967,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 向けた項目のタイトル: 1 行で末尾を省く */
 .row-target .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 項目を指さないコメント・消えた項目: 押せない見出しにする */
-.row-target.none, .row-target.gone { color: var(--text-2); cursor: default; }
+.row-target.gone { color: var(--text-2); cursor: default; }
 /* 箇所が合わない理由と、箇所を外すボタン */
 .row-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-small); }
 /* 箇所が合わない印 */
@@ -2005,6 +2005,24 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .row-kind { flex: none; display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 6px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
 /* 新しいスレッドの行の、スレッドを開く入口: 本文の下の左に置き、クローズのスレッドへの返信の行の入口と同じ文字の大きさにする */
 .row-thread-open { display: flex; margin-left: -12px; font-size: var(--fs-small); }
+/* 「続きを読む」と「スレッドを開く」を並べた行: 収まらないときはボタンごと折り返す */
+.row-thread-open { flex-wrap: wrap; }
+/* 開閉のボタンと「スレッドを開く」: ボタンの中では文字を折り返さない */
+.row-thread-open > .btn { flex: none; white-space: nowrap; }
+/* 返信の行の、開閉のボタンだけの行: ボタンの文字の頭を本文の頭に揃える */
+.review-more-row { display: flex; margin-left: -12px; font-size: var(--fs-small); }
+/* 返信の行で、ボタンを出さないとき: 行ごと出さない */
+.review-more-row:has(> .review-more[hidden]) { display: none; }
+/* 畳んだ本文: 折り返した後の見た目の行で --fold-lines 行までを出し、末尾を「…」で省く（畳んだ部分も読み上げは飛ばさない） */
+.review-body.folded { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--fold-lines); line-clamp: var(--fold-lines); overflow: hidden; }
+/* 「続きを読む」「折りたたむ」: 測るまで・畳む行の数を超えないときは出さない（.btn の inline-flex より優先する） */
+.review-more[hidden] { display: none; }
+/* 開閉の矢印: 畳んでいるときは下向き */
+.review-more .icon { width: 14px; height: 14px; transform: rotate(90deg); }
+/* 開閉の矢印: 開いているときは上向き */
+.review-more[aria-expanded="true"] .icon { transform: rotate(-90deg); }
+/* 「続きを読む」「折りたたむ」のフォーカス */
+.review-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 行の頭の向けた先: 残りの幅で省く */
 .row-head .row-target { flex: 0 1 auto; margin-left: 0; min-width: 0; font-weight: 500; }
 /* クローズのスレッドへの返信の行: チェックできないことを面の色でも示す */
