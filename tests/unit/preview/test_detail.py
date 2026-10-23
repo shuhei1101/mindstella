@@ -3059,3 +3059,148 @@ def test_detail_panel_when_diff_key_newlines(
     assert "".join(result["words"]["now"]) == words_text["now"]
     # 読み上げの文字は、語の面の外にある
     assert result["reading"] == READING_OUTSIDE_WORDS
+
+
+# 本文の見せ方の既定（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
+BODY_VIEW_DEFAULT = {"pin": True, "head": True, "stripes": False, "fold": True}
+
+# 見出し「比較」の下に表と段落 12 個を持ち、その後ろに見出し「料金」を持つ本文
+BODY_VIEW_BODY = (
+    "## 比較\n\n| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n\n"
+    + "\n\n".join(f"比較の段落 {number}" for number in range(1, 13))
+    + "\n\n### 料金\n\n料金の段落\n"
+)
+
+# 表の本体の行（5 行目）を書き換えた変えた回
+BODY_VIEW_ENTRY = _body_entry(line=5, now=["| D-1 | 今週 |"], before=["| D-1 | 来週 |"])
+
+# 本文のスクロール領域を 200px に抑えて詳細パネルを開き（畳んでから描き直す指定のときは、「比較」を畳んだパネルを外して開き直し）、
+# 本文の見せ方と、見出し「料金」の置かれ方を調べる
+OPEN_BODY_VIEW_PANEL_SCRIPT = """async ({data, bodyView, point, heading, foldFirst}) => {
+    // 単体テストでは雛形の CSS を読まないので、本文のスクロール領域だけ作る
+    const style = document.createElement("style");
+    style.textContent = ".panel-body { height: 200px; overflow: auto; }";
+    document.head.append(style);
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const open = async (slug) => {
+        const panel = MindmapPreview.detailPanel({
+            id: "A-1",
+            index,
+            full: false,
+            on: {
+                open: noop,
+                close: noop,
+                full: noop,
+                back: noop,
+                forward: noop,
+                diagram: noop,
+                heading: noop,
+                layout: noop,
+            },
+            comment: null,
+            heading: slug,
+            diff: point === null ? null : {...point, added: new Set(), changed: new Set(["A-1"])},
+            bodyLayout: "inline",
+            bodyView,
+        });
+        document.body.append(panel);
+        // 描き直しと見出しへのスクロールは、文書に入った後に置かれる
+        for (let frame = 0; frame < 3; frame += 1) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return panel;
+    };
+    let panel = await open(null);
+    if (foldFirst) {
+        panel.querySelector('[data-heading="比較"] button.md-fold').click();
+        panel.remove();
+        panel = await open(heading);
+    }
+    const table = panel.querySelector("table");
+    const target = panel.querySelector('[data-heading="料金"]');
+    const area = panel.querySelector(".panel-body").getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    return {
+        arrows: [...panel.querySelectorAll("button.md-fold")].map(
+            (button) => button.closest("[data-heading]")?.getAttribute("data-heading") ?? null,
+        ),
+        framed: table.closest(".md-table-frame") !== null,
+        headStick: table.classList.contains("md-head-stick"),
+        stripes: table.classList.contains("md-stripes"),
+        sectionOpen: target.closest(".md-section-body[hidden]") === null,
+        inView: rect.top >= area.top - 1 && rect.bottom <= area.bottom + 1,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("body_view", "with_diff", "fold_first", "expected"),
+    [
+        pytest.param(
+            BODY_VIEW_DEFAULT,
+            False,
+            False,
+            {"arrows": ["比較", "料金"], "framed": True, "headStick": True, "stripes": False},
+            id="default",
+        ),
+        pytest.param(
+            {**BODY_VIEW_DEFAULT, "stripes": True},
+            False,
+            False,
+            {"framed": True, "stripes": True},
+            id="stripes",
+        ),
+        pytest.param(
+            BODY_VIEW_DEFAULT,
+            True,
+            False,
+            {"arrows": [], "framed": True},
+            id="body_diff_has_no_fold",
+        ),
+        pytest.param(
+            BODY_VIEW_DEFAULT,
+            False,
+            True,
+            {"sectionOpen": True, "inView": True},
+            id="reveal_heading_after_fold",
+        ),
+    ],
+)
+def test_detail_panel_when_body_view(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    make_data: MakeData,
+    make_item: MakeItem,
+    body_view: dict[str, bool],
+    with_diff: bool,
+    fold_first: bool,
+    expected: dict[str, Any],
+) -> None:
+    """本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く（正常系）。"""
+    # 準備
+    entries = [BODY_VIEW_ENTRY] if with_diff else []
+    data = make_data(
+        docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+        bodies={"A-1.md": BODY_VIEW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_library("DOMPurify")
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_BODY_VIEW_PANEL_SCRIPT,
+        {
+            "data": data,
+            "bodyView": body_view,
+            "point": DIFF_POINT if with_diff else None,
+            "heading": "料金",
+            "foldFirst": fold_first,
+        },
+    )
+    # 検証
+    assert {key: result[key] for key in expected} == expected
