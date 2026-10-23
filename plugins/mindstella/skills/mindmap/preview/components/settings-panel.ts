@@ -1,4 +1,4 @@
-// 表示の設定の中身。表示する種類と差分のミニマップを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 
 namespace MindmapPreview {
   /** ネットワークの見た目 1 つ（値・画面に出す名前・短い説明） */
@@ -46,6 +46,8 @@ namespace MindmapPreview {
     storageOk?: boolean;
     /** 差分のミニマップを表示しているか（チェックボックスの状態。「ワークスペースの既定にする」を出すかの比べには使わない） */
     minimap?: boolean;
+    /** 当てている本文の表とセクションの見せ方（チェックボックスの状態。「ワークスペースの既定にする」を出すかの比べには使わない） */
+    bodyView?: BodyView;
     /** 「設定を編集する」を押したとき。下端に見出し「ワークスペースの設定」と案内、ボタンを置く。`null` か渡さなければ置かない（配る書き出し・差分の表示中） */
     onWorkspace?: (() => void) | null;
     on: {
@@ -53,6 +55,8 @@ namespace MindmapPreview {
       kinds: (kinds: string[]) => void;
       /** 差分のミニマップを切り替えたとき（切り替えた後の表示する・しない） */
       minimap: (shown: boolean) => void;
+      /** 本文の見せ方を切り替えたとき（項目と、切り替えた後の真偽値） */
+      bodyView: (change: { key: keyof BodyView; value: boolean }) => void;
       /** 「既定に戻す」を押したとき */
       reset: () => void;
       /** 「ワークスペースの既定にする」を押したとき */
@@ -189,8 +193,24 @@ namespace MindmapPreview {
     });
   }
 
-  /** 詳細に表示するものの選び（差分のミニマップのチェック 1 行） */
-  function detailField({ minimap = true, on }: SettingsPanelProps): HTMLElement {
+  /** 詳細に表示するものの 1 行（チェックと名前） */
+  function detailCheck({ checked, focus, label, onChange }: { checked: boolean; focus: string; label: string; onChange: () => void }): HTMLElement {
+    return h({
+      tag: "li",
+      children: [
+        h({
+          tag: "label",
+          children: [
+            h({ tag: "input", attrs: { type: "checkbox", checked, "data-focus": focus, onchange: onChange } }),
+            h({ tag: "span", attrs: { class: "st-k-label" }, children: [label] }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  /** 詳細に表示するものの選び（差分のミニマップと、本文の表とセクションの見せ方の 4 つのチェック） */
+  function detailField({ minimap = true, bodyView = BODY_VIEW_DEFAULT, on }: SettingsPanelProps): HTMLElement {
     return h({
       tag: "fieldset",
       attrs: { class: "st-sec" },
@@ -200,21 +220,15 @@ namespace MindmapPreview {
           tag: "ul",
           attrs: { class: "st-kinds" },
           children: [
-            h({
-              tag: "li",
-              children: [
-                h({
-                  tag: "label",
-                  children: [
-                    h({
-                      tag: "input",
-                      attrs: { type: "checkbox", checked: minimap, "data-focus": "minimap", onchange: () => on.minimap(!minimap) },
-                    }),
-                    h({ tag: "span", attrs: { class: "st-k-label" }, children: [MINIMAP_LABEL] }),
-                  ],
-                }),
-              ],
-            }),
+            detailCheck({ checked: minimap, focus: "minimap", label: MINIMAP_LABEL, onChange: () => on.minimap(!minimap) }),
+            ...BODY_VIEW_KEYS.map((key) =>
+              detailCheck({
+                checked: bodyView[key],
+                focus: `body-view:${key}`,
+                label: BODY_VIEW_LABELS[key],
+                onChange: () => on.bodyView({ key, value: !bodyView[key] }),
+              }),
+            ),
           ],
         }),
       ],

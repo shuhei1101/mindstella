@@ -20,6 +20,10 @@ DEFAULT_PREFS = {
     "filters": {},
     "minimap": None,
     "bodyLayout": None,
+    "tablePin": None,
+    "tableHead": None,
+    "tableStripes": None,
+    "sectionFold": None,
 }
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
@@ -274,6 +278,51 @@ def test_load_prefs_when_body_layout(
     assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
 
 
+@pytest.mark.parametrize(
+    ("stored", "expected_overrides"),
+    [
+        pytest.param(
+            '{"theme": "dark", "tablePin": false, "tableHead": false,'
+            ' "tableStripes": true, "sectionFold": false}',
+            {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+            id="differs_from_default",
+        ),
+        pytest.param(
+            '{"theme": "dark", "tablePin": true, "tableHead": true,'
+            ' "tableStripes": false, "sectionFold": true}',
+            {},
+            id="same_as_default",
+        ),
+        pytest.param(
+            '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+            ' "tableStripes": "no", "sectionFold": "no"}',
+            {},
+            id="not_boolean",
+        ),
+        pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+    ],
+)
+def test_load_prefs_when_body_view(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str,
+    expected_overrides: dict[str, bool],
+) -> None:
+    """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    prefs = preview_page.evaluate(
+        """(stored) => {
+            const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+            return MindmapPreview.loadPrefs(storage);
+        }""",
+        stored,
+    )
+    # 検証（ほかの項目はそのまま読める）
+    assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+
+
 # 保存する設定
 SAVED_PREFS = {
     "theme": "dark",
@@ -284,6 +333,10 @@ SAVED_PREFS = {
     "filters": {"tasks": TASKS_FILTERS},
     "minimap": None,
     "bodyLayout": None,
+    "tablePin": None,
+    "tableHead": None,
+    "tableStripes": None,
+    "sectionFold": None,
 }
 
 
@@ -577,6 +630,56 @@ def test_resolve_display_when_body_layout(
     assert resolved == expected
 
 
+@pytest.mark.parametrize(
+    ("prefs", "expected"),
+    [
+        pytest.param(
+            DEFAULT_PREFS,
+            {
+                "bodyView": {"pin": True, "head": True, "stripes": False, "fold": True},
+                "overrides": [],
+            },
+            id="no_override",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "tableStripes": True, "sectionFold": False},
+            {
+                "bodyView": {"pin": True, "head": True, "stripes": True, "fold": False},
+                "overrides": ["表のしま模様", "セクションの折りたたみ"],
+            },
+            id="stripes_on_fold_off",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "minimap": False, "tablePin": False, "bodyLayout": "side"},
+            {
+                "bodyView": {"pin": False, "head": True, "stripes": False, "fold": True},
+                "overrides": ["差分のミニマップ", "表の列の固定", "本文の差分の並べ方"],
+            },
+            id="between_minimap_and_body_layout",
+        ),
+    ],
+)
+def test_resolve_display_when_body_view(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    prefs: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """本文の見せ方は上書きのある項目だけ既定と逆にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    resolved = preview_page.evaluate(
+        """(prefs) => {
+            const result = MindmapPreview.resolveDisplay(prefs, undefined);
+            return {bodyView: result.bodyView, overrides: result.overrides};
+        }""",
+        prefs,
+    )
+    # 検証
+    assert resolved == expected
+
+
 def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """上書きだけを外し、差分の時点は残す（正常系）。"""
     # 準備
@@ -590,6 +693,10 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "filters": {"tasks": TASKS_FILTERS},
         "minimap": False,
         "bodyLayout": "side",
+        "tablePin": False,
+        "tableHead": False,
+        "tableStripes": True,
+        "sectionFold": False,
     }
     # 実行
     result = preview_page.evaluate(
@@ -605,6 +712,10 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "filters": {},
         "minimap": None,
         "bodyLayout": None,
+        "tablePin": None,
+        "tableHead": None,
+        "tableStripes": None,
+        "sectionFold": None,
     }
     assert result["original"] == prefs
 

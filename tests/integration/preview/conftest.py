@@ -17,6 +17,7 @@ from preview_body_layout_helpers import (
     build_html_body_layout_workspace,
     build_linked_body_layout_workspace,
 )
+from preview_body_view_helpers import build_body_view_workspace
 from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
 from preview_minimap_helpers import build_minimap_workspace
@@ -166,6 +167,23 @@ def write_minimap_preview(
     def _write() -> tuple[str, Path]:
         """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
         root = build_minimap_workspace(make_workspace, make_item, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_body_view_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """8 列の表と見出し「比較」「まとめ」を持つ資料 A-4 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_body_view_workspace(make_workspace, make_item, call_tool)
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

@@ -18,6 +18,9 @@ KINDS_WITHOUT_NOTES = ["decisions", "tasks", "research", "docs", "terms", "logs"
 # 用語集と会話ログを除いた 5 種類
 KINDS_WITHOUT_TERMS_LOGS = ["decisions", "tasks", "research", "docs", "notes"]
 
+# 本文の見せ方の既定（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
+BODY_VIEW_DEFAULT = {"pin": True, "head": True, "stripes": False, "fold": True}
+
 # 種類 → 件数
 COUNTS = {
     "decisions": 12,
@@ -41,11 +44,13 @@ PANEL_SCRIPT = """(args) => {
         overrides: args.overrides,
         canSave: args.canSave,
         minimap: args.minimap,
+        bodyView: args.bodyView,
         message: null,
         storageOk: true,
         on: {
             kinds: (value) => calls.push(["kinds", [...value].sort()]),
             minimap: (value) => calls.push(["minimap", value]),
+            bodyView: (change) => calls.push(["bodyView", change]),
             reset: () => calls.push(["reset"]),
             save: () => calls.push(["save"]),
             close: () => calls.push(["close"]),
@@ -61,18 +66,29 @@ PANEL_SCRIPT = """(args) => {
     const checkboxes = [...panel.querySelectorAll('input[type="checkbox"]')];
     const findCheckbox = (name) => checkboxes.find((box) => rowText(box).includes(name));
     const minimapBox = findCheckbox("差分のミニマップ");
+    const bodyViewNames = ["表の列の固定", "表の見出しの固定", "表のしま模様", "セクションの折りたたみ"];
+    const bodyViewBoxes = bodyViewNames.map(findCheckbox);
+    // 凡例「詳細に表示するもの」の中のチェックボックスを、並びのまま名前と状態にする（押す前の値）
+    const detailNames = ["差分のミニマップ", ...bodyViewNames];
+    const detailChecks = minimapBox === undefined ? [] : [
+        ...minimapBox.closest("fieldset").querySelectorAll('input[type="checkbox"]'),
+    ].map((box) => ({
+        name: detailNames.find((name) => rowText(box).includes(name)) ?? null,
+        checked: box.checked,
+    }));
     const operate = args.operate ?? [];
     const result = {
         text: panel.textContent,
         buttons: [...panel.querySelectorAll("button")].map((button) => button.textContent.trim()),
         radioCount: radios.length,
-        // 表示する種類のチェックボックスの数（差分のミニマップのチェックは数えない）
-        checkboxCount: checkboxes.filter((box) => box !== minimapBox).length,
+        // 表示する種類のチェックボックスの数（詳細に表示するもののチェックは数えない）
+        checkboxCount: checkboxes.filter((box) => box !== minimapBox && !bodyViewBoxes.includes(box)).length,
         // 差分のミニマップのチェックボックスの状態と、それを包む凡例の文字（押す前の値）
         minimapBox: minimapBox === undefined ? null : {
             checked: minimapBox.checked,
             legend: minimapBox.closest("fieldset")?.querySelector("legend")?.textContent ?? null,
         },
+        detailChecks,
         alwaysShownCheckboxes: checkboxes.filter((box) =>
             ["概要", "ネットワーク"].some((name) => rowText(box).includes(name))
         ).length,
@@ -96,6 +112,7 @@ def _observe(preview_page: Page, **overrides: Any) -> dict[str, Any]:
         "overrides": [],
         "canSave": True,
         "minimap": True,
+        "bodyView": BODY_VIEW_DEFAULT,
         "operate": [],
     }
     args.update(overrides)
@@ -231,6 +248,66 @@ def test_settings_panel_when_minimap(
     observed = _observe(preview_page, operate=["差分のミニマップ"], **args)
     # 検証
     assert observed["minimapBox"] == {"checked": expected_checked, "legend": "詳細に表示するもの"}
+    assert observed["calls"] == [expected_call]
+    assert all(label in observed["buttons"] for label in expected_buttons)
+    assert "ワークスペースの既定にする" not in observed["buttons"]
+    assert all(text in observed["text"] for text in expected_texts)
+
+
+@pytest.mark.parametrize(
+    ("args", "expected_checks", "expected_call", "expected_buttons", "expected_texts"),
+    [
+        pytest.param(
+            {"bodyView": BODY_VIEW_DEFAULT, "overrides": [], "operate": ["表のしま模様"]},
+            [
+                ("差分のミニマップ", True),
+                ("表の列の固定", True),
+                ("表の見出しの固定", True),
+                ("表のしま模様", False),
+                ("セクションの折りたたみ", True),
+            ],
+            ["bodyView", {"key": "stripes", "value": True}],
+            [],
+            [],
+            id="default_press_stripes",
+        ),
+        pytest.param(
+            {
+                "bodyView": {"pin": True, "head": True, "stripes": True, "fold": False},
+                "overrides": ["表のしま模様", "セクションの折りたたみ"],
+                "operate": ["セクションの折りたたみ"],
+            },
+            [
+                ("差分のミニマップ", True),
+                ("表の列の固定", True),
+                ("表の見出しの固定", True),
+                ("表のしま模様", True),
+                ("セクションの折りたたみ", False),
+            ],
+            ["bodyView", {"key": "fold", "value": True}],
+            ["既定に戻す"],
+            ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
+            id="overridden_press_fold",
+        ),
+    ],
+)
+def test_settings_panel_when_body_view(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    args: dict[str, Any],
+    expected_checks: list[tuple[str, bool]],
+    expected_call: list[Any],
+    expected_buttons: list[str],
+    expected_texts: list[str],
+) -> None:
+    """本文の見せ方の 4 つのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行（本文の見せ方のチェックを押す）
+    observed = _observe(preview_page, **args)
+    # 検証
+    checks = [(check["name"], check["checked"]) for check in observed["detailChecks"]]
+    assert checks == expected_checks
     assert observed["calls"] == [expected_call]
     assert all(label in observed["buttons"] for label in expected_buttons)
     assert "ワークスペースの既定にする" not in observed["buttons"]

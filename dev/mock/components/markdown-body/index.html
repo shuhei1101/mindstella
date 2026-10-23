@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>本文の Markdown | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと、今のプレビューのスタイルに、この PR の本文の Markdown の見せ方の分を重ねる -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/327/assets/style.css">
+  <style>
+    /* カタログの本文: 画面の高さに縛らず、縦に流す */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文の幅と余白 */
+    main.content { display: block; max-width: var(--content-max); margin: 0 auto; padding: 28px var(--page-pad) 64px; overflow: visible; }
+    /* カタログの見出しの行: 題とライト / ダークの切り替え */
+    .cat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 見本を並べる格子 */
+    .demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; }
+    /* 部品を置く台: 詳細の本文と同じ面 */
+    .stage { min-width: 0; padding: 16px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--surface); }
+    /* 詳細パネルの本文の幅の台 */
+    .stage.w-panel { max-width: 480px; }
+    /* 縦に送る台: 本文の区画と同じく、中だけを縦に送る */
+    .stage.scroll { height: 260px; overflow-y: auto; }
+    /* 見本の名前 */
+    .demo-name { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-xs); }
+    /* 状態を見せるための見本のクラス: ホバー（固定のボタン・コピーのボタンを出す） */
+    .is-hover .md-pin, .is-hover .code-copy { opacity: 1; }
+    /* 状態を見せるための見本のクラス: ホバーの面 */
+    .is-hover-face { color: var(--text) !important; background: var(--hover) !important; }
+    /* 状態を見せるための見本のクラス: キーボードのフォーカス */
+    .is-focus { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1 !important; }
+  </style>
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <!-- 今のプレビューのスクリプトにこの PR の変更を当てたもの（記録の要素が無い文書では起動しない） -->
+  <script src="../../refs/327/assets/app.js" defer></script>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / markdown-body</nav>
+    <!-- 題と、見本をダークで見るボタン -->
+    <div class="cat-head">
+      <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">本文の Markdown</h1>
+      <button class="btn" type="button" id="theme" aria-pressed="false">ダークで見る</button>
+    </div>
+    <!-- 状態ごとの見本: 下のスクリプトが、プレビューと同じ描画（renderMarkdown・decorateMarkdown）で中身を描く -->
+    <div id="catalog"></div>
+  </main>
+  <script>
+    addEventListener("DOMContentLoaded", () => {
+      const P = window.MindmapPreview;
+      const DEFAULT = P.MD_DISPLAY_DEFAULT;
+
+      /** 列の多い表 */
+      const WIDE = [
+        "| ID | 名前 | 状態 | 種類 | 期限 | 要約 | 選んだ理由と懸念 | 参考 |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| C1 | Alpha | 採用 | 文書 | 10/24 | 表と図を同じ画面で扱える | 本文の表をそのまま貼れて、列の多い表も横に送って読める。料金が人数で増えるので、使う人を絞る必要がある | https://example.com/tools/alpha/pricing?plan=team&billing=yearly |",
+        "| C2 | Bravo | 比較中 | 表計算 | 10/31 | 列の多い表に強い | 列の固定と絞り込みが標準で使える。本文と表を別のファイルに分けるため、資料の流れが途切れる | https://example.com/tools/bravo |",
+        "| C3 | Charlie | 見送り | 文書 | - | 書いた文章の差分が細かい | 差分は読みやすいが、表の列が増えると横に送れず折り返されて縦に長くなる | - |",
+        "| C4 | Delta | 比較中 | ボード | 11/07 | カードで状態を並べられる | 状態ごとの列で進み具合は見えるが、表と長い本文は別の画面で開く必要がある | https://example.com/tools/delta/docs/boards |",
+      ].join("\n");
+      /** 列の少ない小さな表 */
+      const SMALL = "| 観点 | 重み |\n| --- | --- |\n| 表の見せ方 | 高 |\n| 料金 | 中 |\n| 版の管理 | 低 |";
+      /** 行の多い表 */
+      const LONG = ["| No | 項目 | 結果 |", "| --- | --- | --- |", ...Array.from({ length: 16 }, (_, i) => `| ${i + 1} | 確かめた項目 ${i + 1} | ${i % 4 === 3 ? "未" : "済"} |`)].join("\n");
+      /** 見出しの段を持つ本文 */
+      const SECTIONS = [
+        "## 候補の一覧", "", "候補を並べた段落。", "",
+        "### 料金", "", "料金の段落。", "",
+        "#### 年払い", "", "3 段目の見出しには開閉を置かない（開閉で隠す段は 2 段まで）。", "",
+        "## 見出しだけの節", "",
+        "## 決め方", "", "決め方の段落。",
+      ].join("\n");
+
+      /** 本文を描き、見出しのリンクと表示の設定の切り替えを当てた要素を返す */
+      const render = (source, { display = DEFAULT, fold = true, cols, bounds, toggle } = {}) => {
+        // モックの案（列の幅・境目・開閉の押し方）は描く間だけ文書に持たせる
+        const keep = { ...document.body.dataset };
+        if (cols) document.body.dataset.cols = cols;
+        if (bounds) document.body.dataset.colBounds = bounds;
+        if (toggle) document.body.dataset.foldToggle = toggle;
+        const root = P.renderMarkdown(source);
+        P.linkHeadings({ root, onHeading: () => {}, onChangeSet: () => {} });
+        P.decorateMarkdown({ root, display, fold });
+        for (const key of Object.keys(document.body.dataset)) if (!(key in keep)) delete document.body.dataset[key];
+        return root;
+      };
+
+      const catalog = document.getElementById("catalog");
+      /** 節を足し、見本の台を返す */
+      const section = (title, note) => {
+        const sec = document.createElement("section");
+        sec.className = "cat-sec";
+        sec.innerHTML = `<h2>${title}</h2><p>${note}</p><div class="demos"></div>`;
+        catalog.append(sec);
+        return sec.querySelector(".demos");
+      };
+      /** 見本を 1 つ足し、描いた本文を返す */
+      const demo = (demos, name, root, stageClass = "") => {
+        const stage = document.createElement("div");
+        stage.className = `stage ${stageClass}`.trim();
+        stage.innerHTML = `<p class="demo-name">${name}</p>`;
+        stage.append(root);
+        demos.append(stage);
+        return { stage, root };
+      };
+
+      // 列の幅と折り返し
+      let d = section("列の幅と折り返し", "列ごとにセルの最大の文字数（全角を 1、半角を 0.5）を数える。短い列は折り返さず、中くらいの列は文節の区切りでだけ 2 行まで、長文の列は一定の幅（24em）で折り返す。表の幅は中身に合わせ、本文より広いときは表の中だけで横に送る。");
+      demo(d, "推奨: 短い 8 以下・長文 25 以上", render(WIDE));
+      demo(d, "境目の別案: 短い 12 以下・長文 40 以上（理由の列も中くらいになり、表が広がる）", render(WIDE, { bounds: "12,40" }));
+      demo(d, "今の表示: 本文の幅いっぱいに広げる（列が多いとセルが 2〜3 文字ごとに折り返される）", render(WIDE, { cols: "full" }), "w-panel");
+      demo(d, "列の少ない表: 本文の幅いっぱいに広げず、中身の幅で描く", render(SMALL));
+
+      // 右端のフェード
+      d = section("右端のフェード", "表を右へまだ送れる間だけ、右端を本文の地の色へ薄れさせる。右の端まで送ると消える。表の枠は送らないので、フェードの位置は動かない。");
+      demo(d, "右へ送れる（はじめ）", render(WIDE), "w-panel");
+      const end = demo(d, "右の端まで送った", render(WIDE), "w-panel");
+      requestAnimationFrame(() => { const wrap = end.root.querySelector(".md-table-wrap"); wrap.scrollLeft = wrap.scrollWidth; });
+
+      // 列の固定
+      d = section("列の固定", "表示の設定の「表の列の固定」がオン（既定）のとき、列の見出し（最後の列を除く）に固定のボタンを置く。押した列より左を固定し、もう一度押すと外す。押すまでは固定しない。ボタンは見出しのホバー・フォーカスと固定中だけ出す（一覧の表と同じ）。幅 720px 以下では固定を外し、ボタンを出さない。");
+      const hover = demo(d, "見出しのホバー（固定のボタンが出る）", render(WIDE), "w-panel");
+      hover.root.querySelector("th:nth-child(2)").classList.add("is-hover");
+      const focus = demo(d, "キーボードのフォーカス", render(WIDE), "w-panel");
+      focus.root.querySelector("th:nth-child(2) .md-pin").classList.add("is-focus");
+      const pinned = demo(d, "「名前」まで固定して右へ送った（固定した列の右端に影）", render(WIDE), "w-panel");
+      requestAnimationFrame(() => {
+        pinned.root.querySelector("th:nth-child(2) .md-pin").click();
+        const wrap = pinned.root.querySelector(".md-table-wrap");
+        wrap.scrollLeft = 260;
+      });
+      demo(d, "表示の設定でオフ: 固定のボタンを置かない", render(WIDE, { display: { ...DEFAULT, pin: false } }), "w-panel");
+
+      // 見出しの固定
+      d = section("見出しの固定", "表示の設定の「表の見出しの固定」がオン（既定）のとき、本文の区画を縦に送っても表の見出しの行を区画の上端に残し、下の境に影を付ける。表の下端を越えては残さない。");
+      const stuck = demo(d, "表の途中まで送った", render(LONG), "scroll w-panel");
+      P.bindTableHeads(stuck.stage);
+      const stuckPinned = demo(d, "列の固定と重ねた（左上のセルが一番上）", render(WIDE + "\n" + Array.from({ length: 8 }, (_, i) => `| C${i + 5} | Echo | 見送り | 文書 | - | 手元のファイルのまま使える | 版の管理は git に任せられる | - |`).join("\n")), "scroll w-panel");
+      P.bindTableHeads(stuckPinned.stage);
+      requestAnimationFrame(() => {
+        stuck.stage.scrollTop = 220;
+        stuckPinned.root.querySelector("th:nth-child(2) .md-pin").click();
+        stuckPinned.root.querySelector(".md-table-wrap").scrollLeft = 200;
+        stuckPinned.stage.scrollTop = 260;
+      });
+      demo(d, "表示の設定でオフ: 見出しの行も本文と一緒に送られる", render(LONG, { display: { ...DEFAULT, head: false } }), "scroll w-panel");
+
+      // しま模様
+      d = section("しま模様", "表示の設定の「表のしま模様」をオンにしたとき（既定はオフ）、本体の行を 1 行おきに塗る。差分の印の行は差分の面のまま。");
+      demo(d, "オフ（既定）", render(SMALL + "\n| 移し替え | 低 |"));
+      demo(d, "オン", render(SMALL + "\n| 移し替え | 低 |", { display: { ...DEFAULT, stripes: true } }));
+      const diffRows = demo(d, "オン・本文の差分（足した行と消した行）", render(SMALL + "\n| 移し替え | 低 |\n| 試用 | 中 |", { display: { ...DEFAULT, stripes: true }, fold: false }));
+      const rows = diffRows.root.querySelectorAll("tbody tr");
+      rows[1].classList.add("df-row", "df-del");
+      rows[1].cells[0].insertAdjacentHTML("afterbegin", '<span class="df-sign" aria-hidden="true">−</span>');
+      rows[3].classList.add("df-row", "df-add");
+      rows[3].cells[0].insertAdjacentHTML("afterbegin", '<span class="df-sign" aria-hidden="true">+</span>');
+
+      // 見出しの開閉
+      d = section("セクションの折りたたみ", "表示の設定の「セクションの折りたたみ」がオン（既定）のとき、本文の上の 2 段の見出しに開閉を置き、次の同じか上の段の見出しまでを畳む。はじめは開いた状態で描き、畳んだ状態は残さない。中身の無い見出しと、本文の差分には置かない。");
+      demo(d, "案 A（推奨）: 見出しの頭の矢印だけを押せる。見出しの文言は選んでコメントできる", render(SECTIONS));
+      const foldedA = demo(d, "案 A: 「料金」を畳んだ（下の段の見出しも一緒に隠す）", render(SECTIONS));
+      foldedA.root.querySelector('[data-heading="料金"] .md-fold').click();
+      const hoverA = demo(d, "案 A: ホバー・キーボードのフォーカス", render(SECTIONS));
+      hoverA.root.querySelector('[data-heading="候補の一覧"] .md-fold').classList.add("is-hover-face");
+      hoverA.root.querySelector('[data-heading="決め方"] .md-fold').classList.add("is-focus");
+      demo(d, "案 B: 見出しの文言ごと押せる（矢印は文言の右）", render(SECTIONS, { toggle: "text" }));
+      const foldedB = demo(d, "案 B: 「候補の一覧」を畳んだ", render(SECTIONS, { toggle: "text" }));
+      foldedB.root.querySelector('[data-heading="候補の一覧"] .md-fold').click();
+      demo(d, "表示の設定でオフ: 開閉を置かない", render(SECTIONS, { display: { ...DEFAULT, fold: false } }));
+
+      // コードブロック
+      d = section("コードブロック", "言語を書いたコードブロックは左上に言語の札を出す。右上のコピーはホバー・フォーカスで出し（ホバーの無い端末は常に出す）、押すとチェックの印に変わる。札とボタンはコードの文字に含めない。");
+      demo(d, "言語を書いた", render("```bash\nmindstella export --out ./export/preview.html\n```"));
+      const copyHover = demo(d, "ホバー（コピーのボタンが出る）", render("```yaml\nexport:\n  format: markdown\n  tables: keep\n```"));
+      copyHover.stage.classList.add("is-hover");
+      const copied = demo(d, "コピーした直後", render("```yaml\nexport:\n  format: markdown\n```"));
+      copied.root.querySelector(".code-copy").replaceChildren(P.icon("check"));
+      copied.root.querySelector(".code-copy").classList.add("is-focus");
+      demo(d, "言語を書かない（札を出さない）", render("```\n書き出したファイルの大きさ: 1.2 MB\n```"));
+      demo(d, "長い行（折り返す）", render("```bash\nmindstella export --out ./export/preview.html --include decisions,tasks,research,docs,terms,notes,logs --since V-6\n```"), "w-panel");
+
+      // コールアウト
+      d = section("コールアウト", "GitHub の Alert（`> [!NOTE]` 等）を書いた引用を、種類の色の薄い面と細い枠で囲み、見出しにアイコンと種類の文言を出す。色だけに頼らず文言でも種類を示す。印の無い引用は今のまま。");
+      demo(d, "5 つの種類", render([
+        "> [!NOTE]\n> 候補の数字は 10 月の時点のもの。",
+        "> [!TIP]\n> 書き出す前にまとまりを作っておくと、差分を追える。",
+        "> [!IMPORTANT]\n> 料金は人数で増える。",
+        "> [!WARNING]\n> 試用が終わると、作った表が読むだけになる。",
+        "> [!CAUTION]\n> 未の項目は、リリースの前に確かめる。",
+      ].join("\n\n")));
+      demo(d, "段落が 2 つ・印の無い引用", render("> [!NOTE]\n> 1 つ目の段落。\n>\n> 2 つ目の段落。\n\n> 印の無い引用は今の見た目のまま。"), "w-panel");
+
+      // ライト / ダークの切り替え（見本だけの操作）
+      const theme = document.getElementById("theme");
+      theme.addEventListener("click", () => {
+        const dark = document.documentElement.dataset.theme !== "dark";
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        theme.setAttribute("aria-pressed", String(dark));
+      });
+    });
+  </script>
+</body>
+</html>

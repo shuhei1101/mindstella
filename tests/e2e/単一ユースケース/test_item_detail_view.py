@@ -5,6 +5,25 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from body_view_helpers import (
+    BODY_HASH,
+    BODY_VIEWPORT_WIDTH,
+    DOCS_HASH,
+    POSITION_TOLERANCE_PX,
+    TABLE_WRAP,
+    WIDE_TABLE_BODY,
+    fold_button,
+    head_offset_from_top,
+    heading_link_href,
+    open_a4_from_cards,
+    pinned_layout,
+    scroll_body_down,
+    scroll_body_to_top,
+    scroll_table_to_end,
+    table_layout,
+    table_scrolled_past_top,
+    wait_head_at_top,
+)
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview
@@ -1198,3 +1217,64 @@ def test_normal_when_html_body_links(
     assert opened_tabs(page) == tabs + 2
     assert page.evaluate("document.scrollingElement.scrollTop") == 0
     assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+
+
+def test_normal_when_table_and_sections(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """列の多い表を持つ資料の詳細パネルで、表を列の文字数で折り返して表の中だけで横に送り、左の列と見出しの行を固定し、見出しの矢印で節を畳める（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("A-4"), settings=valid_settings, bodies={"A-4.md": WIDE_TABLE_BODY}
+    )
+    open_preview(url, DOCS_HASH, width=BODY_VIEWPORT_WIDTH)
+    # 実行（資料の画面で A-4 を押す）
+    open_a4_from_cards(page)
+    layout = table_layout(page)
+    # 検証（短い列は折り返さず、説明の列は一定の幅で折り返す。表の入れ物だけが横に送れて、しま模様は既定でオフ）
+    assert layout["maxLines"]["ID"] == 1
+    assert layout["maxLines"]["状態"] == 1
+    assert layout["maxLines"]["優先度"] == 1
+    assert layout["minLines"]["説明"] > 1
+    assert layout["descriptionWidthCount"] == 1
+    assert layout["wrapScrolls"] is True
+    assert layout["areaScrolls"] is False
+    assert layout["stripeColorCount"] == 1
+    # 実行（名前の列の見出しの固定のボタンを押し、表を右端まで横に送る）
+    page.get_by_role("button", name="名前まで固定").click()
+    scroll_table_to_end(page)
+    pinned = pinned_layout(page)
+    # 検証（押した状態になり、ID・状態・名前の 3 列が表の左端に見えたまま、右端の説明の列が見える）
+    assert page.get_by_role("button", name="名前まで固定").get_attribute("aria-pressed") == "true"
+    assert pinned["scrollLeft"] > 0
+    assert -POSITION_TOLERANCE_PX <= pinned["firstLeft"] <= POSITION_TOLERANCE_PX
+    assert pinned["visible"]["ID"] is True
+    assert pinned["visible"]["状態"] is True
+    assert pinned["visible"]["名前"] is True
+    assert pinned["visible"]["説明"] is True
+    # 実行（本文のスクロール領域を表の途中まで下へ送る）
+    scroll_body_down(page)
+    wait_head_at_top(page)
+    # 検証（表が上へ送られていて、見出しの行が本文のスクロール領域の上端に見えている）
+    assert table_scrolled_past_top(page) is True
+    assert head_offset_from_top(page) <= POSITION_TOLERANCE_PX
+    # 実行（先頭へ戻し、見出し「比較」の矢印を押す）
+    link_before = heading_link_href(page, "比較")
+    scroll_body_to_top(page)
+    fold_button(page, "比較").click()
+    # 検証（「比較」の下を畳んで表が見えなくなり、「補足」の見出しと段落は見えたまま。URL のハッシュと見出しのリンクは変わらない）
+    assert fold_button(page, "比較").get_attribute("aria-expanded") == "false"
+    assert page.locator(TABLE_WRAP).is_visible() is False
+    assert fold_button(page, "補足").get_attribute("aria-expanded") == "true"
+    assert page.get_by_text("補足の段落です。").is_visible() is True
+    assert page.evaluate("location.hash") == BODY_HASH
+    assert heading_link_href(page, "比較") == link_before
+    # 実行（見出し「比較」の矢印をもう一度押す）
+    fold_button(page, "比較").click()
+    # 検証（表が見える）
+    assert fold_button(page, "比較").get_attribute("aria-expanded") == "true"
+    assert page.locator(TABLE_WRAP).is_visible() is True

@@ -157,6 +157,14 @@ namespace MindmapPreview {
     minimap: false | null;
     /** 本文の差分を左右に並べる上書き。null はインライン（ワークスペースの既定は持たない） */
     bodyLayout: "side" | null;
+    /** 表の列の固定をオフにする上書き。null はオン（ワークスペースの既定は持たない） */
+    tablePin: false | null;
+    /** 表の見出しの固定をオフにする上書き。null はオン */
+    tableHead: false | null;
+    /** 表のしま模様をオンにする上書き。null はオフ */
+    tableStripes: true | null;
+    /** セクションの折りたたみをオフにする上書き。null はオン */
+    sectionFold: false | null;
     /** 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う */
     opened?: unknown;
   };
@@ -202,7 +210,20 @@ namespace MindmapPreview {
 
   /** 既定の設定 */
   function defaultPrefs(): Prefs {
-    return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null, bodyLayout: null };
+    return {
+      theme: null,
+      columns: {},
+      look: null,
+      kinds: null,
+      diffSel: null,
+      filters: {},
+      minimap: null,
+      bodyLayout: null,
+      tablePin: null,
+      tableHead: null,
+      tableStripes: null,
+      sectionFold: null,
+    };
   }
 
   /** 端末の保存領域から設定を読む。読めないときは既定を返す */
@@ -222,6 +243,11 @@ namespace MindmapPreview {
       if (parsed.minimap !== false) parsed.minimap = null;
       // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
       if (parsed.bodyLayout !== "side") parsed.bodyLayout = null;
+      // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
+      if (parsed.tablePin !== false) parsed.tablePin = null;
+      if (parsed.tableHead !== false) parsed.tableHead = null;
+      if (parsed.tableStripes !== true) parsed.tableStripes = null;
+      if (parsed.sectionFold !== false) parsed.sectionFold = null;
       return parsed;
     } catch {
       return defaultPrefs();
@@ -279,10 +305,11 @@ namespace MindmapPreview {
     overrides: string[];
     minimap: boolean;
     bodyLayout: BodyLayout;
+    bodyView: BodyView;
   } {
     const defaultLook = display?.network_look ?? BUILTIN_LOOK;
     const defaultKinds = new Set<Kind>(display?.visible_kinds ?? KIND_KEYS);
-    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
+    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
     const overrides = [
       ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
       ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -292,6 +319,10 @@ namespace MindmapPreview {
         (tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], initialFilters(tab, {}, null)),
       ).map((tab) => `絞り込み（${screenName(tab)}）`),
       ...(prefs.minimap === false ? [MINIMAP_LABEL] : []),
+      ...(prefs.tablePin === false ? [BODY_VIEW_LABELS.pin] : []),
+      ...(prefs.tableHead === false ? [BODY_VIEW_LABELS.head] : []),
+      ...(prefs.tableStripes === true ? [BODY_VIEW_LABELS.stripes] : []),
+      ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
       ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
     ];
     return {
@@ -304,13 +335,36 @@ namespace MindmapPreview {
       minimap: prefs.minimap !== false,
       // 上書きが side のときだけ左右に並べる
       bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
+      // 上書きのある項目だけ既定と逆にする
+      bodyView: {
+        pin: prefs.tablePin !== false,
+        head: prefs.tableHead !== false,
+        stripes: prefs.tableStripes === true,
+        fold: prefs.sectionFold !== false,
+      },
     };
   }
 
-  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
   export function clearOverrides(prefs: Prefs): Prefs {
-    return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null, bodyLayout: null };
+    return {
+      ...prefs,
+      theme: null,
+      look: null,
+      kinds: null,
+      columns: {},
+      filters: {},
+      minimap: null,
+      bodyLayout: null,
+      tablePin: null,
+      tableHead: null,
+      tableStripes: null,
+      sectionFold: null,
+    };
   }
+
+  /** 本文の見せ方の項目 → 個人の上書きの項目 */
+  const BODY_VIEW_PREF = { pin: "tablePin", head: "tableHead", stripes: "tableStripes", fold: "sectionFold" } as const;
 
   /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
   function sameDisplay(a: DisplayDefaults | null | undefined, b: DisplayDefaults | null | undefined): boolean {
@@ -939,6 +993,7 @@ namespace MindmapPreview {
         full: route.full,
         minimap: resolved.minimap,
         bodyLayout: resolved.bodyLayout,
+        bodyView: resolved.bodyView,
         edit: detailEdit(),
         on: {
           open: (id) => openItem(id, true),
@@ -2119,6 +2174,7 @@ namespace MindmapPreview {
       overrides: resolved.overrides,
       canSave: serverMode,
       minimap: resolved.minimap,
+      bodyView: resolved.bodyView,
       message: display.message,
       storageOk: display.storageOk,
       onWorkspace: serverMode && point === null ? openWorkspace : null,
@@ -2132,8 +2188,13 @@ namespace MindmapPreview {
           prefs.minimap = shown ? null : false;
           changePrefs({ redrawMain: true });
         },
+        // 既定と違う値だけを上書きとして残し、開いている詳細をその場で描き直す
+        bodyView: ({ key, value }) => {
+          prefs[BODY_VIEW_PREF[key]] = (value === BODY_VIEW_DEFAULT[key] ? null : value) as never;
+          changePrefs({ redrawMain: true });
+        },
         reset: () => {
-          // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
+          // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
           Object.assign(prefs, clearOverrides(prefs));
           clearTablePrefs();
           // 開いている画面は、画面の既定の条件で開き直す

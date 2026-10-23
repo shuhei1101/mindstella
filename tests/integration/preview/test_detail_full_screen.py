@@ -1128,7 +1128,7 @@ def test_body_wrap_when_long_words_and_tables(
     assert wide["scrolls"] is True
     assert wide["overflowX"] in ("auto", "scroll")
     assert narrow["scrolls"] is False
-    assert narrow["tableFillsWrap"] is True
+    assert narrow["tableNarrowerThanWrap"] is True
 
 
 @pytest.mark.parametrize("width", [320, 1280])

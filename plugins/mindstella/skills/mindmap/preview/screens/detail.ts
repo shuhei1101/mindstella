@@ -42,6 +42,8 @@ namespace MindmapPreview {
     minimap?: boolean;
     /** 本文の差分の並べ方（`resolveDisplay` の `bodyLayout`）。本文の差分を描けたときだけ切り替えを置く */
     bodyLayout?: BodyLayout;
+    /** 本文の表とセクションの見せ方（`resolveDisplay` の `bodyView`）。`decorateMarkdown` の `display` に渡す */
+    bodyView?: BodyView;
     /** 編集の入口。配る書き出し・差分の表示中は渡さない（`null` と同じ） */
     edit?: DetailEdit | null;
   };
@@ -1030,6 +1032,7 @@ namespace MindmapPreview {
     review: { items: ReviewState["items"]; edit: ReviewEditProps } | null;
     view: DiffView | null;
     bodyLayout: BodyLayout;
+    bodyView: BodyView;
   };
 
   /** 資料の HTML の本文の枠が持つ属性（コメントの一覧から開いたとき、示す箇所を求める枠を引く） */
@@ -1052,7 +1055,7 @@ namespace MindmapPreview {
   }
 
   /** 項目の中身（種類ごと）。本文は Markdown と図を描く */
-  function detailBody({ id, index, on, review, view, bodyLayout }: BodyProps): HTMLElement {
+  function detailBody({ id, index, on, review, view, bodyLayout, bodyView }: BodyProps): HTMLElement {
     const entry = index.byId.get(id);
     const body = h({ tag: "div", attrs: { class: "detail" } });
     if (entry === undefined) return body;
@@ -1164,6 +1167,8 @@ namespace MindmapPreview {
       });
       linkBody({ root, index, selfId: id, onOpen: on.open });
       drawHtmlBlocks(root);
+      // 表の列の固定・見出しの固定・しま模様と、見出しの開閉を当てる（本文の差分には開閉を置かない）
+      decorateMarkdown({ root, display: bodyView, fold: rendered === null });
       // 左右に並べた本文にも、見出しのリンクと本文の印を付ける（右の列だけが今の本文の行を持つ）
       for (const column of side?.columns ?? []) {
         linkHeadings({
@@ -1176,6 +1181,7 @@ namespace MindmapPreview {
         });
         linkBody({ root: column, index, selfId: id, onOpen: on.open });
         drawHtmlBlocks(column);
+        decorateMarkdown({ root: column, display: bodyView, fold: false });
       }
       // 語の面は、リンクと用語の印を付けた後に付ける（印の要素は分けず、中の文字だけを囲む）。キーの値の語の面を先に付ける
       if (bodyDeadline !== null) markKeys(bodyDeadline);
@@ -1603,6 +1609,8 @@ namespace MindmapPreview {
 
   /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（見えている見出しが本文に無ければ false。左右に並べるときは同じ見出しが 3 か所にあるので、矩形を持つ最初のものへ送る） */
   function scrollToHeading({ root, slug }: { root: ParentNode; slug: string }): boolean {
+    // 畳んだ節の中の見出しは、包む入れ物を開いてから送る
+    revealHeading({ root, slug });
     const target = [...root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)].find(isRendered);
     if (target === undefined) return false;
     target.scrollIntoView({ block: "start" });
@@ -1786,11 +1794,11 @@ namespace MindmapPreview {
 
   /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
   export function detailPanel(props: DetailProps): HTMLElement {
-    const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", edit = null } = props;
+    const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", bodyView = BODY_VIEW_DEFAULT, edit = null } = props;
     const kind = index.byId.get(id)?.kind;
     const editing = edit?.editing === true;
     // 編集の表示の間は、読む表示の代わりに編集の入力を並べる
-    const content = editing && edit !== null ? detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout });
+    const content = editing && edit !== null ? detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout, bodyView });
     if (!editing && edit !== null) markEditedKeys({ root: content, marks: edit.marks, settings: index.data.settings });
     // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
     const body = h({
@@ -1798,6 +1806,8 @@ namespace MindmapPreview {
       attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" },
       children: [content],
     });
+    // 本文を縦に送っても、見出しを固定した表の見出しの行を領域の上端に残す
+    bindTableHeads(body);
     const head = detailHead(props);
     bindHeadTitle({ head, body });
     // 見出しと下端の入力の間の本文だけをスクロールする。差分の表示の間で、表示の設定で外していなければ、本文の右にミニマップを並べる。編集の表示の間は下端のコメントの入力を隠す

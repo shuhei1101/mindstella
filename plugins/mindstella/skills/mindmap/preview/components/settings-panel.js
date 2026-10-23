@@ -1,5 +1,5 @@
 "use strict";
-// 表示の設定の中身。表示する種類と差分のミニマップを選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
+// 表示の設定の中身。表示する種類と差分のミニマップと本文の表とセクションの見せ方を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。見た目はネットワークのドロップダウンで選ぶので、ここでは選ばせない。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 選べるネットワークの見た目 */
@@ -137,8 +137,23 @@ var MindmapPreview;
             ],
         });
     }
-    /** 詳細に表示するものの選び（差分のミニマップのチェック 1 行） */
-    function detailField({ minimap = true, on }) {
+    /** 詳細に表示するものの 1 行（チェックと名前） */
+    function detailCheck({ checked, focus, label, onChange }) {
+        return MindmapPreview.h({
+            tag: "li",
+            children: [
+                MindmapPreview.h({
+                    tag: "label",
+                    children: [
+                        MindmapPreview.h({ tag: "input", attrs: { type: "checkbox", checked, "data-focus": focus, onchange: onChange } }),
+                        MindmapPreview.h({ tag: "span", attrs: { class: "st-k-label" }, children: [label] }),
+                    ],
+                }),
+            ],
+        });
+    }
+    /** 詳細に表示するものの選び（差分のミニマップと、本文の表とセクションの見せ方の 4 つのチェック） */
+    function detailField({ minimap = true, bodyView = MindmapPreview.BODY_VIEW_DEFAULT, on }) {
         return MindmapPreview.h({
             tag: "fieldset",
             attrs: { class: "st-sec" },
@@ -148,21 +163,13 @@ var MindmapPreview;
                     tag: "ul",
                     attrs: { class: "st-kinds" },
                     children: [
-                        MindmapPreview.h({
-                            tag: "li",
-                            children: [
-                                MindmapPreview.h({
-                                    tag: "label",
-                                    children: [
-                                        MindmapPreview.h({
-                                            tag: "input",
-                                            attrs: { type: "checkbox", checked: minimap, "data-focus": "minimap", onchange: () => on.minimap(!minimap) },
-                                        }),
-                                        MindmapPreview.h({ tag: "span", attrs: { class: "st-k-label" }, children: [MindmapPreview.MINIMAP_LABEL] }),
-                                    ],
-                                }),
-                            ],
-                        }),
+                        detailCheck({ checked: minimap, focus: "minimap", label: MindmapPreview.MINIMAP_LABEL, onChange: () => on.minimap(!minimap) }),
+                        ...MindmapPreview.BODY_VIEW_KEYS.map((key) => detailCheck({
+                            checked: bodyView[key],
+                            focus: `body-view:${key}`,
+                            label: MindmapPreview.BODY_VIEW_LABELS[key],
+                            onChange: () => on.bodyView({ key, value: !bodyView[key] }),
+                        })),
                     ],
                 }),
             ],
