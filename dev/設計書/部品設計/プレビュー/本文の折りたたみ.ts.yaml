@@ -1,0 +1,122 @@
+title: "本文の折りたたみ"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts#MindmapPreview.reviewBodyFold"
+story: "Preview/ReviewBodyFold"
+states:
+  - name: Short
+    description: 5 行以下の本文。畳まず、開閉のボタンを出さない（`hidden`）
+    args:
+      - name: id
+        value: C-53
+      - name: label
+        value: TH-1 への返信
+      - name: body
+        value: |-
+          書き直しを読みました。
+          表はこれで分かりやすくなった
+  - name: FoldedLines
+    description: 改行で 8 行の本文。見た目の 5 行目までを出して末尾を「…」で省き、下向きの印と「続きを読む」を出す
+    args:
+      - name: id
+        value: C-51
+      - name: label
+        value: 項目を指さないコメント
+      - name: body
+        value: |-
+          全体を読み返して気になった点をまとめます。
+          1. 概要のタイルの並びが毎回変わる
+          2. 検討事項の表で列の幅が狭い
+          3. タスクのボードで完了の列が長い
+          4. 資料のカードの日付が読みにくい
+          5. ネットワークの玉の色が近い
+          6. 詳細パネルの本文の図が小さい
+          7. 変更履歴の時点の並びが分かりにくい
+  - name: FoldedWrap
+    description: 改行の無い長文。折り返した後の見た目の行で 5 行を超えるので畳まれ、「続きを読む」を出す
+    args:
+      - name: id
+        value: C-52
+      - name: label
+        value: A-14 へのコメント
+      - name: body
+        value: A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、冒頭で「何と何を比べているのか」を一文で言い切ってから、選んだ時点の決め方、足した・変えた・消した項目の印の読み方、本文の差分の並べ方の切り替え、図の差分の見方の順に並べると読みやすい。今は印の説明が先に来ていて、何を比べているかが分かる前に細かい話に入っている。
+  - name: Opened
+    description: 開いた本文。全文を出し、上向きの印と「折りたたむ」を出す（`aria-expanded="true"`）
+    args:
+      - name: id
+        value: C-51
+      - name: label
+        value: 項目を指さないコメント
+      - name: open
+        value: 'true'
+      - name: body
+        value: |-
+          全体を読み返して気になった点をまとめます。
+          1. 概要のタイルの並びが毎回変わる
+          2. 検討事項の表で列の幅が狭い
+          3. タスクのボードで完了の列が長い
+          4. 資料のカードの日付が読みにくい
+          5. ネットワークの玉の色が近い
+          6. 詳細パネルの本文の図が小さい
+          7. 変更履歴の時点の並びが分かりにくい
+  - name: Narrow
+    description: 台の幅 390px。幅が狭くても見た目の 5 行で畳み、「続きを読む」の文字をボタンの中で折り返さない
+    args:
+      - name: id
+        value: C-52
+      - name: label
+        value: A-14 へのコメント
+      - name: body
+        value: A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、冒頭で「何と何を比べているのか」を一文で言い切ってから、選んだ時点の決め方、足した・変えた・消した項目の印の読み方、本文の差分の並べ方の切り替え、図の差分の見方の順に並べると読みやすい。
+lead: レビュー中の書き込みの行の本文を、折り返した後の見た目の行で 5 行までに畳み、超えるときだけ「続きを読む」「折りたたむ」を出す。本文の要素と開閉のボタンを別々に返し、ボタンの置き場所は使う側が決める。
+status: implemented
+args:
+  - name: id
+    type: 文字列
+    required: true
+    description: レビュー中の書き込みの ID。本文の要素の `id` を `review-body-{ID}`、開閉のボタンの `data-focus` を `more:{ID}` にする
+    status: implemented
+  - name: label
+    type: 文字列
+    required: true
+    description: 行の読み上げの名前の頭（「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」）。開閉のボタンの読み上げの名前に使う
+    status: implemented
+  - name: body
+    type: 文字列
+    required: true
+    description: 書き込みの本文。`postBody` で描き（改行を保ち、まとまりのリンクを描く）、描いた要素を畳む
+    status: implemented
+  - name: change_sets
+    type: オブジェクト
+    default: '{}'
+    description: 記録にある書き換えのまとまりの ID からその説明への対応。`postBody` へそのまま渡す
+    status: implemented
+  - name: open
+    type: 真偽値
+    default: 'false'
+    description: 本文を開いているか。使う側が行ごとに覚えて渡し、描き直しと本文の書き換えをまたいで保つ
+    status: implemented
+  - name: lines
+    type: 整数
+    default: '5'
+    description: 畳んだときに出す行の数。折り返した後の見た目の行で数える
+    status: implemented
+events:
+  - name: 開閉
+    when: 「続きを読む」か「折りたたむ」を押したとき
+    value: '`id`・開くか（真偽値）'
+    description: '使う側が行の開閉を覚える。部品は描き直さずにその場で本文とボタンを切り替え、折りたたんだときは行が画面から外れないように寄せる（`scrollIntoView` の `block: "nearest"`）'
+  - name: まとまりを開く
+    when: 本文の中のまとまりのリンクを押したとき
+    value: まとまりの ID
+    description: '`postBody` のまとまりを開くをそのまま使う側へ渡す'
+accessibility:
+  - 開閉のボタンは `aria-expanded` で開いているかを、`aria-controls` で本文の要素を伝える
+  - 読み上げの名前は畳んでいるとき「{label}の続きを読む」、開いているとき「{label}の本文を折りたたむ」にし、行ごとに取り違えない
+  - 畳んだ部分も DOM に残し（見た目だけを `-webkit-line-clamp` で切る）、読み上げでは飛ばさない
+  - 開閉は印の向きだけでなく「続きを読む」「折りたたむ」の文字でも示す
+  - キーボードのフォーカスは `--accent` の 2px の輪郭で示す
+notes:
+  測り方: 本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ開閉のボタンを出す（測るまでは `hidden`）。本文の幅が変わったときは `ResizeObserver` で測り直す
+  置き場所: 開閉のボタンの置き場所は使う側が決める。レビュー中の書き込みの画面では「スレッドを開く」と同じ行の先に置き、返信の行は「続きを読む」だけの行にする。ストーリーは本文の下にボタンを並べて描く
+  モック: '`dev/mock/components/review-body-fold/`（「スレッドを開く」と同じ行に置く案 B を採用。確認ログ: dev/pr/329/確認ログ.md）'
+test_file: tests/integration/storybook/test_review_body_fold_stories.py

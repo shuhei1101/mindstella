@@ -79,6 +79,8 @@ namespace MindmapPreview {
     titleOf: (id: string) => string | null;
     /** まとまりの説明（記録の `changes.sets` に無ければ null。あるまとまりを指す本文の `[文言](#diff=...)` を、まとまりのリンクにする） */
     changeSetOf: (id: string) => string | null;
+    /** 本文を開いているレビュー中の書き込みの ID */
+    expanded: Set<string>;
     on: {
       close: () => void;
       /** レビュー中の書き込みの画面を開く */
@@ -117,6 +119,8 @@ namespace MindmapPreview {
       remove: (id: string) => void;
       restore: (id: string) => void;
       unloc: (id: string) => void;
+      /** 行の本文を開く（真）／畳む（偽）（書き込みの ID と、開くか） */
+      fold: (id: string, open: boolean) => void;
     };
   };
 
@@ -256,10 +260,10 @@ namespace MindmapPreview {
     return item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
   }
 
-  /** 行の向けた項目（押すとその項目を開く。項目を指さない・消えた項目は押せない） */
-  function targetCell(item: ReviewItem, props: CommentsPanelProps): HTMLElement {
+  /** 行の向けた項目（押すとその項目を開く。消えた項目は押せない。項目を指さないときは何も出さない） */
+  function targetCell(item: ReviewItem, props: CommentsPanelProps): HTMLElement | null {
     // 項目を指さない
-    if (item.target === null) return h({ tag: "span", attrs: { class: "row-target none" }, children: ["項目を指さない"] });
+    if (item.target === null) return null;
     const title = props.titleOf(item.target);
     // 項目が消えた: 押せない ID だけを出す
     if (title === null) {
@@ -458,6 +462,17 @@ namespace MindmapPreview {
     const editingInDetail = props.editing === item.id && props.editingIn === "detail";
     const editingInList = props.editing === item.id && !editingInDetail;
     const focused = item.id === props.selected || (props.reviewFocus !== null && item.thread === props.reviewFocus);
+    // 書き換えていない行の本文は、折り返した後の見た目の行で畳む
+    const fold = editingInList
+      ? null
+      : reviewBodyFold({
+        id: item.id,
+        label,
+        body: item.body,
+        changeSets: props.changeSetOf,
+        open: props.expanded.has(item.id),
+        on: { toggle: props.on.fold, changeSet: props.on.changeSet },
+      });
     return h({
       tag: "li",
       attrs: {
@@ -500,13 +515,7 @@ namespace MindmapPreview {
                 focus: "",
                 on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
               })
-              : postBody({
-                body: item.body,
-                titles: () => null,
-                changeSets: props.changeSetOf,
-                className: "review-body",
-                on: { openId: (id) => props.on.openId(id), changeSet: props.on.changeSet },
-              }),
+              : fold?.body ?? null,
             // クローズのスレッドへの返信: 送れない理由と、そのスレッドを開く入口
             blocked && item.thread !== null
               ? h({
@@ -519,14 +528,16 @@ namespace MindmapPreview {
                 ],
               })
               : null,
-            // 新しいスレッド: まだ送っていないそのスレッドを開く入口
+            // 新しいスレッド: 開閉のボタンと、まだ送っていないそのスレッドを開く入口
             item.thread === null
               ? h({
                 tag: "div",
                 attrs: { class: "row-thread-open" },
-                children: [openThreadButton({ item, id: item.id, pending: true, className: "btn ghost" }, props)],
+                children: [fold?.more ?? null, openThreadButton({ item, id: item.id, pending: true, className: "btn ghost" }, props)],
               })
               : null,
+            // 返信: 開閉のボタンだけの行（ボタンを出さないときは行ごと出さない）
+            item.thread !== null && fold !== null ? h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }) : null,
             reason === undefined
               ? null
               : h({

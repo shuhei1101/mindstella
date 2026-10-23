@@ -74,6 +74,8 @@ namespace MindmapPreview {
     reason: ReasonState;
     /** スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID */
     reviewFocus: string | null;
+    /** レビュー中の書き込みの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする） */
+    expanded: Set<string>;
   };
 
   /** 表示の設定の画面の状態（開いている間だけ持つ。描き直し・書き換えの知らせでも保つ） */
@@ -1250,6 +1252,7 @@ namespace MindmapPreview {
       composing: false,
       reason: { open: false, body: "", status: "idle", detail: null },
       reviewFocus: null,
+      expanded: new Set(),
     };
     const threadsApi = threadApi();
     /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
@@ -1632,6 +1635,7 @@ namespace MindmapPreview {
       comment.opened = null;
       comment.highlight = null;
       comment.removed = [];
+      comment.expanded.clear();
       discardListEdit();
       renderTop();
       renderComments();
@@ -1817,6 +1821,7 @@ namespace MindmapPreview {
       reviewFocus: comment.reviewFocus,
       titleOf: (id) => index.byId.get(id)?.item.title ?? null,
       changeSetOf: (id) => data.changes.sets.find((set) => set.id === id)?.summary ?? null,
+      expanded: comment.expanded,
       on: {
         close: closeList,
         review: openReview,
@@ -1870,6 +1875,11 @@ namespace MindmapPreview {
         open: openRow,
         ...reviewRowHandlers(""),
         unloc: (id) => void detachLocation(id),
+        fold: (id, open) => {
+          // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
+          if (open) comment.expanded.add(id);
+          else comment.expanded.delete(id);
+        },
       },
     });
 
@@ -2241,6 +2251,7 @@ namespace MindmapPreview {
         comment.opened = null;
         comment.highlight = null;
         comment.removed = [];
+        comment.expanded.clear();
         renderComments();
         if (discardListEdit()) renderDetail();
       }

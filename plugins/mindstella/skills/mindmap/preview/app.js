@@ -1044,6 +1044,7 @@ var MindmapPreview;
             composing: false,
             reason: { open: false, body: "", status: "idle", detail: null },
             reviewFocus: null,
+            expanded: new Set(),
         };
         const threadsApi = MindmapPreview.threadApi();
         /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
@@ -1416,6 +1417,7 @@ var MindmapPreview;
             comment.opened = null;
             comment.highlight = null;
             comment.removed = [];
+            comment.expanded.clear();
             discardListEdit();
             renderTop();
             renderComments();
@@ -1597,6 +1599,7 @@ var MindmapPreview;
             reviewFocus: comment.reviewFocus,
             titleOf: (id) => index.byId.get(id)?.item.title ?? null,
             changeSetOf: (id) => data.changes.sets.find((set) => set.id === id)?.summary ?? null,
+            expanded: comment.expanded,
             on: {
                 close: closeList,
                 review: openReview,
@@ -1652,6 +1655,13 @@ var MindmapPreview;
                 open: openRow,
                 ...reviewRowHandlers(""),
                 unloc: (id) => void detachLocation(id),
+                fold: (id, open) => {
+                    // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
+                    if (open)
+                        comment.expanded.add(id);
+                    else
+                        comment.expanded.delete(id);
+                },
             },
         });
         /** 読み直して一覧まで描き直す */
@@ -2020,6 +2030,7 @@ var MindmapPreview;
                 comment.opened = null;
                 comment.highlight = null;
                 comment.removed = [];
+                comment.expanded.clear();
                 renderComments();
                 if (discardListEdit())
                     renderDetail();

@@ -116,6 +116,9 @@ data_models:
       - name: reviewFocus
         type: string | null
         description: スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（一覧から開いたときは `null`）
+      - name: expanded
+        type: Set<string>
+        description: レビュー中の書き込みの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする）
   - name: DisplayState
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -682,7 +685,7 @@ notes:
 
     - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）'
   スレッドの画面の操作: |-
-    `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`openedThread`（`opened`）・`composing`・`reason` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
+    `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
     - パネルを開くときは `view` を `list`、`openedThread` を `null`、`composing` を偽にし、スレッドを読み直す
     - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」では `filter`・`tag` を書き換えてパネルを描き直す
     - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送ったスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す

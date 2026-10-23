@@ -29,6 +29,7 @@ directory: |
       settings-panel.ts     表示の設定の中身（部品設計『表示の設定』）
       settings-confirm.ts   既定の保存の確かめ（部品設計『既定の保存の確かめ』）
       pending-mark.ts       保存待ちの印（部品設計『保存待ちの印』）
+      review-body-fold.ts   レビュー中の書き込みの本文の折りたたみ（部品設計『本文の折りたたみ』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（ボード・マップ・表）
@@ -48,7 +49,7 @@ directory: |
       graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
-  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py` に置く。
+  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py`・`test_review_body_fold.py` に置く。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え
@@ -1053,13 +1054,17 @@ components:
         required: true
         description: 項目のタイトル（記録から消えていれば `null`）
       - name: on
-        type: '{close, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc}'
+        type: '{close, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
         required: true
-        description: 閉じる・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す
+        description: 閉じる・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
       - name: changeSetOf
         type: '(id: string) => string | null'
         required: true
         description: まとまりの説明（記録の `changes.sets` に無ければ `null`）
+      - name: expanded
+        type: Set<string>
+        required: true
+        description: 本文を開いているレビュー中の書き込みの ID
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -1733,7 +1738,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: コメントを選んで送る
     kind: 画面
-    summary: 画面設計『レビュー中の書き込み』を描く。見出し（戻る・題と件数）・送る帯・行・削除した行の「元に戻す」・送れない理由・箇所が合わない理由・空の状態を持つ。行の頭は「新しいスレッド」と向けた項目か、「返信」と返信先のスレッド（状態の札と `threadTitle`）。行の本文は `postBody`（クラス `review-body`、`titles` は `() => null`、`changeSets` は `changeSetOf`）で描く。クローズのスレッドへの返信（`isBlockedReply`）はチェックを `disabled` にして送れる件数から除き、送れない理由と「スレッドを開く」を出す。行の「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm`、消した行は `removedReviewRow` で描く（`focus` の接頭辞は空）。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）
+    summary: 画面設計『レビュー中の書き込み』を描く。見出し（戻る・題と件数）・送る帯・行・削除した行の「元に戻す」・送れない理由・箇所が合わない理由・空の状態を持つ。行の頭は「新しいスレッド」と向けた項目（項目を指さないものは札だけ）か、「返信」と返信先のスレッド（状態の札と `threadTitle`）。行の本文は `reviewBodyFold`（`changeSets` は `changeSetOf`、`open` は `expanded` にあるか、`on.toggle` は `on.fold`）で描き、書き換えている行は畳まない。開閉のボタンは、新しいスレッドの行は「スレッドを開く」と同じ行（`row-thread-open`）の先、返信の行はボタンだけの行に置き、ボタンを出さない返信の行はその行ごと出さない。クローズのスレッドへの返信（`isBlockedReply`）はチェックを `disabled` にして送れる件数から除き、送れない理由と「スレッドを開く」を出す。行の「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm`、消した行は `removedReviewRow` で描く（`focus` の接頭辞は空）。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）
     props:
       - name: props
         type: CommentsPanelProps
@@ -1745,7 +1750,7 @@ components:
         summary: 送る帯と、新しいスレッド・返信の行を描く
         condition: C-1（D-1 への新しいスレッド）・C-2（消えた D-9、箇所が合わない）・C-3（項目を指さない新しいスレッド）・C-5（オープンの TH-1 への返信）、C-1・C-3 をチェック、削除した C-4
         mock: '`on.openThread`'
-        expected: 見出し「レビュー中の書き込み」と件数 4、「2 / 4 件」と「まとめて送る（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の向けた項目が「項目を指さない」で「スレッドを開く」がある。C-5 の頭が「返信」と TH-1 の状態の札・題で、押すと `on.openThread` が 1 回。C-4 の場所に「元に戻す」
+        expected: 見出し「レビュー中の書き込み」と件数 4、「2 / 4 件」と「まとめて送る（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の行の頭が「新しいスレッド」の札だけで（`.row-target` が無い）、「スレッドを開く」がある。C-5 の頭が「返信」と TH-1 の状態の札・題で、押すと `on.openThread` が 1 回。C-4 の場所に「元に戻す」
       - name: test_review_view_when_blocked
         case: 正常
         summary: クローズのスレッドへの返信は選べず、送る件数に入らない
@@ -1782,6 +1787,12 @@ components:
         condition: レビュー中に本文 `[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる` の返信 1 件。`titleOf` は T-14、`changeSetOf` は V-6 を引く
         mock: '`on.changeSet`・`on.openId`'
         expected: 行の `p.review-body` に `a.setlink` が 1 つで、T-14 は文字のまま（`button` が無い）。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openThread` は呼ばれない
+      - name: test_review_view_when_folded
+        case: 正常
+        summary: 長い本文を畳み、開閉のボタンを行の種類ごとの場所に置く
+        condition: 'C-51（項目を指さない新しいスレッド、改行で 8 行）・C-52（TH-1 への返信、改行で 8 行）・C-53（TH-1 への 2 行の返信）。`parametrize`: `expanded` が空 / C-51 を `expanded` に入れ `editing` も C-51'
+        mock: '`on.fold`'
+        expected: C-51 の「続きを読む」が `row-thread-open` の中で「スレッドを開く」の前にあり、押すと `on.fold` が `('C-51', true)` で 1 回。C-52 の行には「続きを読む」だけの行がある。C-53 は開閉のボタンもその行も見えない / C-51 は入力欄を出し、本文も開閉のボタンも無い
   - name: diffMinimapFrame
     title: 差分のミニマップ
     container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
@@ -2137,6 +2148,63 @@ components:
         condition: 言語 `bash` のコードブロック・言語の無いコードブロック・`> [!WARNING]` の引用・印の無い引用を持つ本文。`bash` のコピーを押す
         mock: '`navigator.clipboard.writeText`'
         expected: '`bash` だけ言語の札「bash」を持ち、どちらもコピーのボタンを `pre` の外に持つ。クリップボードにはコードの文字だけが入る。`[!WARNING]` の引用が `md-callout` で見出し「警告」を持ち `[!WARNING]` の文字が消える。印の無い引用は変わらない'
+  - name: reviewBodyFold
+    title: 本文の折りたたみ
+    container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    usecase: コメントを選んで送る
+    kind: コンポーネント
+    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles` は `() => null`）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で `-webkit-line-clamp` を当てる。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
+    props:
+      - name: id
+        type: string
+        required: true
+        description: レビュー中の書き込みの ID
+      - name: label
+        type: string
+        required: true
+        description: 行の読み上げの名前の頭（`reviewLabel` の値）
+      - name: body
+        type: string
+        required: true
+        description: 書き込みの本文
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: まとまりの説明（記録に無ければ `null`）。部品設計の `change_sets` の対応を関数で受ける
+      - name: open
+        type: boolean
+        required: false
+        default: 'false'
+        description: 本文を開いているか
+      - name: lines
+        type: number
+        required: false
+        default: REVIEW_FOLD_LINES
+        description: 畳んだときに出す行の数
+      - name: on
+        type: '{toggle, changeSet}'
+        required: true
+        description: 開閉した（`id`・開くか）・まとまりのリンクを押した。`postBody` の `openId` には部品の中で何もしない関数を渡す（項目の ID は文字のまま出す）
+    unit_tests:
+      - name: test_review_body_fold
+        case: 正常
+        summary: 5 行を超える本文だけを畳み、開閉のボタンを出す
+        condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 2 行の本文 / 改行で 8 行の本文（各行は折り返さない短さ）/ 改行の無い、折り返して 8 行になる本文'
+        mock: なし（ブラウザで DOM を作って見る）
+        expected: 開閉のボタンが `hidden` で、本文が全て見える / 本文が `folded` で高さが行の高さ × 5、ボタンが「続きを読む」で `aria-expanded="false"`・`aria-controls` が本文の `id` / 同じく畳まれ、ボタンを出す
+      - name: test_review_body_fold_when_toggle
+        case: 正常
+        summary: 開閉で本文とボタンを切り替え、使う側に知らせる
+        condition: 改行で 8 行の本文、`label` は「項目を指さないコメント」。ボタンを 2 回押す
+        mock: '`on.toggle`'
+        expected: 1 回目で本文が `folded` を外し、ボタンが「折りたたむ」・`aria-expanded="true"`・読み上げの名前「項目を指さないコメントの本文を折りたたむ」で `on.toggle` が `(id, true)`。2 回目で元に戻り、読み上げの名前が「項目を指さないコメントの続きを読む」で `on.toggle` が `(id, false)`
+      - name: test_review_body_fold_when_open
+        case: 正常
+        summary: 開いた状態で描く
+        condition: '改行で 8 行の本文を `open: true` で描く'
+        mock: なし
+        expected: 本文が `folded` を持たず 8 行が見え、ボタンが「折りたたむ」で `aria-expanded="true"`
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -3507,6 +3575,7 @@ test_files:
   - tests/unit/preview/test_workspace_settings.py
   - tests/unit/preview/test_detail_edit.py
   - tests/unit/preview/test_markdown_body.py
+  - tests/unit/preview/test_review_body_fold.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ
@@ -3604,3 +3673,9 @@ constants:
     usecase: 項目の詳細を読む
     summary: GitHub の Alert の印 → 囲みの種類・見出しの文言・アイコン
     value: '{NOTE: {kind: "note", label: "補足", icon: "note"}, TIP: {kind: "tip", label: "ヒント", icon: "star"}, IMPORTANT: {kind: "important", label: "重要", icon: "flag"}, WARNING: {kind: "warning", label: "警告", icon: "alert"}, CAUTION: {kind: "caution", label: "注意", icon: "alert"}}'
+  - name: REVIEW_FOLD_LINES
+    title: 本文を畳む行の数
+    container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    usecase: コメントを選んで送る
+    summary: 畳んだときに出す、折り返した後の見た目の行の数
+    value: '5'
