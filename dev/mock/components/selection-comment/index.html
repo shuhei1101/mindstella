@@ -51,7 +51,7 @@
     /* キーボードのフォーカスの見本 */
     .is-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
     /* ツールチップを出した見本 */
-    .show-tip .sc-tip { visibility: visible; }
+    .show-tip .sc-tip { display: block; }
   </style>
 </head>
 <body>
@@ -140,7 +140,10 @@
           left = last.left - base.left;
         }
         button.style.top = `${top}px`;
-        button.style.left = `${Math.max(EDGE, Math.min(left, base.width - EDGE - width))}px`;
+        const clamped = Math.max(EDGE, Math.min(left, base.width - EDGE - width));
+        button.style.left = `${clamped}px`;
+        // 台の右半分に出した入口は、ツールチップを入口の右端に揃える
+        button.dataset.tip = clamped + width / 2 > base.width / 2 ? "end" : "start";
       }
     };
     document.fonts.ready.then(place);

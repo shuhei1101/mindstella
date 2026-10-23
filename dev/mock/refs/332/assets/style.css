@@ -36,11 +36,13 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 半透明のホバー: 面を塗り直す */
 .selection-comment[data-bg="clear"]:hover { background: color-mix(in oklab, var(--hover) 75%, transparent); }
 
-/* 印だけの案の名前のツールチップ: 乗せたときとフォーカスしたときだけ、選んだ範囲と反対の側に出す */
-.selection-comment .sc-tip { position: absolute; left: 50%; translate: -50% 0; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; pointer-events: none; visibility: hidden; }
+/* 印だけの案の名前のツールチップ: 乗せたときとフォーカスしたときだけ、選んだ範囲と反対の側に出す。横は入口の左端に揃えて右へ伸ばす */
+.selection-comment .sc-tip { position: absolute; left: 0; display: none; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; pointer-events: none; }
+/* 画面の右半分に出した入口: ツールチップは入口の右端に揃えて左へ伸ばす（画面の外へはみ出さない） */
+.selection-comment[data-tip="end"] .sc-tip { left: auto; right: 0; }
 /* 選んだ範囲の上に出した入口・右の余白に出した入口: ツールチップは入口の上 */
 .selection-comment:is([data-side="above"], [data-side="right"]) .sc-tip { bottom: calc(100% + 6px); }
 /* 選んだ範囲の下に出した入口: ツールチップは入口の下 */
 .selection-comment[data-side="below"] .sc-tip { top: calc(100% + 6px); }
 /* 乗せた・キーボードでフォーカスした: ツールチップを出す */
-.selection-comment:is(:hover, :focus-visible) .sc-tip { visibility: visible; }
+.selection-comment:is(:hover, :focus-visible) .sc-tip { display: block; }

@@ -4744,6 +4744,8 @@ var MindmapPreview;
                 "data-label": label,
                 "data-bg": document.body.dataset.bg === "clear" ? "clear" : "solid",
                 "data-side": place.side,
+                // 332: 画面の右半分に出した入口は、ツールチップを入口の右端に揃える
+                "data-tip": left + width / 2 > area.viewport.width / 2 ? "end" : "start",
                 style: `position:fixed;left:${left}px;top:${place.top}px;width:${width}px;height:${BUTTON_HEIGHT}px`,
                 // 押したときに選択が外れないよう、ポインターを押した既定の動き（選択の解除）を止める
                 onpointerdown: (event) => event.preventDefault(),
