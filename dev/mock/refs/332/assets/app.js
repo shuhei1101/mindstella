@@ -14800,7 +14800,11 @@ var MindmapPreview;
                 existing?.classList.remove("open");
                 fullDialog?.remove();
                 document.body.append(panel);
-                panel.showModal();
+                // 332: モックの撮影のときだけ（クエリに shot=1）、全画面をモーダルにせず同じ位置へ重ね、撮影の赤枠を全画面の上に描けるようにする
+                if (new URLSearchParams(location.search).get("shot") === "1")
+                    panel.show();
+                else
+                    panel.showModal();
                 return;
             }
             fullDialog?.close();

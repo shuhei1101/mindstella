@@ -20,6 +20,8 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 @media (max-width: 900px) {
   body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
 }
+/* 撮影のときだけの全画面（クエリに shot=1）: モーダルと同じ位置に重ね、周りを薄い幕の色で覆う */
+dialog.full[open]:not(:modal) { position: fixed; inset: 0; z-index: 40; margin: auto; box-shadow: var(--shadow-pop), 0 0 0 100vmax var(--scrim-soft); }
 /* 撮影用の赤枠（クエリの mark で付ける） */
 .mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
 
