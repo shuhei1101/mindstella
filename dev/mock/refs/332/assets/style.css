@@ -39,12 +39,18 @@ dialog.full[open]:not(:modal) { position: fixed; inset: 0; z-index: 40; margin: 
 .selection-comment[data-bg="clear"]:hover { background: color-mix(in oklab, var(--hover) 75%, transparent); }
 
 /* 印だけの案の名前のツールチップ: 乗せたときとフォーカスしたときだけ、選んだ範囲と反対の側に出す。横は入口の左端に揃えて右へ伸ばす */
-.selection-comment .sc-tip { position: absolute; left: 0; display: none; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; pointer-events: none; }
+.selection-comment .sc-tip { position: absolute; left: 0; display: none; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; }
 /* 画面の右半分に出した入口: ツールチップは入口の右端に揃えて左へ伸ばす（画面の外へはみ出さない） */
 .selection-comment[data-tip="end"] .sc-tip { left: auto; right: 0; }
 /* 選んだ範囲の上に出した入口・右の余白に出した入口: ツールチップは入口の上 */
 .selection-comment:is([data-side="above"], [data-side="right"]) .sc-tip { bottom: calc(100% + 6px); }
 /* 選んだ範囲の下に出した入口: ツールチップは入口の下 */
 .selection-comment[data-side="below"] .sc-tip { top: calc(100% + 6px); }
+/* 入口とツールチップの間の 6px をつなぐ透明な領域: ツールチップへポインターを動かしても入口の :hover を保つ */
+.selection-comment .sc-tip::before { content: ""; position: absolute; left: 0; right: 0; height: 6px; }
+/* 入口の上に出したツールチップ: 透明な領域はツールチップの下 */
+.selection-comment:is([data-side="above"], [data-side="right"]) .sc-tip::before { top: 100%; }
+/* 入口の下に出したツールチップ: 透明な領域はツールチップの上 */
+.selection-comment[data-side="below"] .sc-tip::before { bottom: 100%; }
 /* 乗せた・キーボードでフォーカスした: ツールチップを出す */
 .selection-comment:is(:hover, :focus-visible) .sc-tip { display: block; }
