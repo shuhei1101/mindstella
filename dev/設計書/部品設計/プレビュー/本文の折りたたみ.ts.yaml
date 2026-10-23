@@ -68,38 +68,38 @@ states:
       - name: body
         value: A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、冒頭で「何と何を比べているのか」を一文で言い切ってから、選んだ時点の決め方、足した・変えた・消した項目の印の読み方、本文の差分の並べ方の切り替え、図の差分の見方の順に並べると読みやすい。
 lead: レビュー中の書き込みの行の本文を、折り返した後の見た目の行で 5 行までに畳み、超えるときだけ「続きを読む」「折りたたむ」を出す。本文の要素と開閉のボタンを別々に返し、ボタンの置き場所は使う側が決める。
-status: planned
+status: implemented
 args:
   - name: id
     type: 文字列
     required: true
     description: レビュー中の書き込みの ID。本文の要素の `id` を `review-body-{ID}`、開閉のボタンの `data-focus` を `more:{ID}` にする
-    status: planned
+    status: implemented
   - name: label
     type: 文字列
     required: true
     description: 行の読み上げの名前の頭（「{スレッドの ID} への返信」「{向けた項目の ID} へのコメント」「項目を指さないコメント」）。開閉のボタンの読み上げの名前に使う
-    status: planned
+    status: implemented
   - name: body
     type: 文字列
     required: true
     description: 書き込みの本文。`postBody` で描き（改行を保ち、まとまりのリンクを描く）、描いた要素を畳む
-    status: planned
+    status: implemented
   - name: change_sets
     type: オブジェクト
     default: '{}'
     description: 記録にある書き換えのまとまりの ID からその説明への対応。`postBody` へそのまま渡す
-    status: planned
+    status: implemented
   - name: open
     type: 真偽値
     default: 'false'
     description: 本文を開いているか。使う側が行ごとに覚えて渡し、描き直しと本文の書き換えをまたいで保つ
-    status: planned
+    status: implemented
   - name: lines
     type: 整数
     default: '5'
     description: 畳んだときに出す行の数。折り返した後の見た目の行で数える
-    status: planned
+    status: implemented
 events:
   - name: 開閉
     when: 「続きを読む」か「折りたたむ」を押したとき
