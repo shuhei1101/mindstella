@@ -734,7 +734,7 @@ components:
         summary: 表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む
         condition: 前の版の段落（表の直前）を消し、表は変えていない D-1 を `diff` つきで開く
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: 消した塊（`del.df-blk`）の親が `.md-table-wrap` ではなく、塊の直後の兄弟が表を包む `.md-table-wrap`。入れ物の子は `table` だけ
+        expected: 消した塊（`del.df-blk`）の親が `.md-table-wrap` ではなく、塊の直後の兄弟が表の入れ物を包む枠 `.md-table-frame`。枠の子は `.md-table-wrap` だけ、入れ物の子は `table` だけ
       - name: test_detail_panel_when_value_heading_levels
         case: 正常
         summary: 文字列の値の見出しの最も上の段を、置く場所の直上の見出しの次の段にし、段の差を保って並べる
