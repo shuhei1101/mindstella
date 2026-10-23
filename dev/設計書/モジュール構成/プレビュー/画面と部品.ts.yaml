@@ -2183,9 +2183,9 @@ components:
         default: REVIEW_FOLD_LINES
         description: 畳んだときに出す行の数
       - name: on
-        type: '{toggle, openId, changeSet}'
+        type: '{toggle, changeSet}'
         required: true
-        description: 開閉した（`id`・開くか）・本文の中の項目の ID を押した・まとまりのリンクを押した
+        description: 開閉した（`id`・開くか）・まとまりのリンクを押した。`postBody` の `openId` には部品の中で何もしない関数を渡す（項目の ID は文字のまま出す）
     unit_tests:
       - name: test_review_body_fold
         case: 正常
@@ -3672,3 +3672,9 @@ constants:
     usecase: 項目の詳細を読む
     summary: GitHub の Alert の印 → 囲みの種類・見出しの文言・アイコン
     value: '{NOTE: {kind: "note", label: "補足", icon: "note"}, TIP: {kind: "tip", label: "ヒント", icon: "star"}, IMPORTANT: {kind: "important", label: "重要", icon: "flag"}, WARNING: {kind: "warning", label: "警告", icon: "alert"}, CAUTION: {kind: "caution", label: "注意", icon: "alert"}}'
+  - name: REVIEW_FOLD_LINES
+    title: 本文を畳む行の数
+    container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    usecase: コメントを選んで送る
+    summary: 畳んだときに出す、折り返した後の見た目の行の数
+    value: '5'
