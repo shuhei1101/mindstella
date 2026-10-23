@@ -59,7 +59,20 @@ var MindmapPreview;
     MindmapPreview.readEmbeddedData = readEmbeddedData;
     /** 既定の設定 */
     function defaultPrefs() {
-        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null, bodyLayout: null };
+        return {
+            theme: null,
+            columns: {},
+            look: null,
+            kinds: null,
+            diffSel: null,
+            filters: {},
+            minimap: null,
+            bodyLayout: null,
+            tablePin: null,
+            tableHead: null,
+            tableStripes: null,
+            sectionFold: null,
+        };
     }
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
@@ -84,6 +97,15 @@ var MindmapPreview;
             // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
             if (parsed.bodyLayout !== "side")
                 parsed.bodyLayout = null;
+            // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
+            if (parsed.tablePin !== false)
+                parsed.tablePin = null;
+            if (parsed.tableHead !== false)
+                parsed.tableHead = null;
+            if (parsed.tableStripes !== true)
+                parsed.tableStripes = null;
+            if (parsed.sectionFold !== false)
+                parsed.sectionFold = null;
             return parsed;
         }
         catch {
@@ -127,7 +149,7 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -135,6 +157,10 @@ var MindmapPreview;
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
             ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
             ...(prefs.minimap === false ? [MindmapPreview.MINIMAP_LABEL] : []),
+            ...(prefs.tablePin === false ? [MindmapPreview.BODY_VIEW_LABELS.pin] : []),
+            ...(prefs.tableHead === false ? [MindmapPreview.BODY_VIEW_LABELS.head] : []),
+            ...(prefs.tableStripes === true ? [MindmapPreview.BODY_VIEW_LABELS.stripes] : []),
+            ...(prefs.sectionFold === false ? [MindmapPreview.BODY_VIEW_LABELS.fold] : []),
             ...(prefs.bodyLayout === "side" ? [MindmapPreview.BODY_LAYOUT_LABEL] : []),
         ];
         return {
@@ -147,14 +173,36 @@ var MindmapPreview;
             minimap: prefs.minimap !== false,
             // 上書きが side のときだけ左右に並べる
             bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
+            // 上書きのある項目だけ既定と逆にする
+            bodyView: {
+                pin: prefs.tablePin !== false,
+                head: prefs.tableHead !== false,
+                stripes: prefs.tableStripes === true,
+                fold: prefs.sectionFold !== false,
+            },
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
-        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null, bodyLayout: null };
+        return {
+            ...prefs,
+            theme: null,
+            look: null,
+            kinds: null,
+            columns: {},
+            filters: {},
+            minimap: null,
+            bodyLayout: null,
+            tablePin: null,
+            tableHead: null,
+            tableStripes: null,
+            sectionFold: null,
+        };
     }
     MindmapPreview.clearOverrides = clearOverrides;
+    /** 本文の見せ方の項目 → 個人の上書きの項目 */
+    const BODY_VIEW_PREF = { pin: "tablePin", head: "tableHead", stripes: "tableStripes", fold: "sectionFold" };
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
     function sameDisplay(a, b) {
         const key = (display) => JSON.stringify([display?.network_look ?? null, display?.visible_kinds ?? null]);
@@ -745,6 +793,7 @@ var MindmapPreview;
                 full: route.full,
                 minimap: resolved.minimap,
                 bodyLayout: resolved.bodyLayout,
+                bodyView: resolved.bodyView,
                 edit: detailEdit(),
                 on: {
                     open: (id) => openItem(id, true),
@@ -1903,6 +1952,7 @@ var MindmapPreview;
             overrides: resolved.overrides,
             canSave: serverMode,
             minimap: resolved.minimap,
+            bodyView: resolved.bodyView,
             message: display.message,
             storageOk: display.storageOk,
             onWorkspace: serverMode && point === null ? openWorkspace : null,
@@ -1916,8 +1966,13 @@ var MindmapPreview;
                     prefs.minimap = shown ? null : false;
                     changePrefs({ redrawMain: true });
                 },
+                // 既定と違う値だけを上書きとして残し、開いている詳細をその場で描き直す
+                bodyView: ({ key, value }) => {
+                    prefs[BODY_VIEW_PREF[key]] = (value === MindmapPreview.BODY_VIEW_DEFAULT[key] ? null : value);
+                    changePrefs({ redrawMain: true });
+                },
                 reset: () => {
-                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
+                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
                     Object.assign(prefs, clearOverrides(prefs));
                     MindmapPreview.clearTablePrefs();
                     // 開いている画面は、画面の既定の条件で開き直す

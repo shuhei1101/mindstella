@@ -66,6 +66,7 @@ SCRIPT_FILES = (
     "components/body-format-badge.js",
     "components/html-body-frame.js",
     "components/html-body-diff.js",
+    "components/markdown-body.js",
     "components/body-diff-layout-switch.js",
     "components/side-by-side-body-diff.js",
     "components/diff-minimap.js",

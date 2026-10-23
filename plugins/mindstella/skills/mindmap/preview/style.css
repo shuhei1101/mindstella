@@ -283,7 +283,8 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md [data-md-level="4"] { font-size: 1em; margin: 1.33em 0; }
 .md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
 .md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
-.md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+/* 本文の表: 幅は中身に合わせ、本文より広いときは入れ物の中で横に送る。固定した列の罫が送られても残るよう、罫は表ではなくセルごとに引く */
+.md table { border-collapse: separate; border-spacing: 0; margin: 8px 0; width: auto; }
 /* 本文の表を包む要素: 表の中だけで横に送り、本文の区画ごと横に送らせない */
 .md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
 /* 包まれた表: 幅に収まる表は本文の幅いっぱいに広げ、余白は包む要素が持つ */
@@ -292,12 +293,123 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md .md-table-wrap:focus-visible { outline-offset: -2px; }
 /* 本文の長い URL とインラインコード: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
 .md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
-.md th, .md td { border: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
+/* 本文の表のセル: 右と下の罫 */
+.md th, .md td { border: 0; border-right: 1px solid var(--border-soft); border-bottom: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
+/* 本文の表の左端の列: 左の罫 */
+.md :is(th, td):first-child { border-left: 1px solid var(--border-soft); }
+/* 本文の表の見出しの行: 上の罫 */
+.md thead th { border-top: 1px solid var(--border-soft); }
 .md th { background: var(--surface-2); }
 .md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-mono); font-size: .92em; }
 .md blockquote { margin: 8px 0; padding: 2px 12px; border-left: 2px solid var(--border); color: var(--text-2); }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
+
+/* ===== 本文の表 ===== */
+
+/* 本文の表の枠: 右端のフェードの基準。枠は送らないので、フェードの位置が動かない */
+.md .md-table-frame { position: relative; margin: 8px 0; }
+/* 枠の中の入れ物: 余白は枠が持つ */
+.md .md-table-frame > .md-table-wrap { margin: 0; }
+/* 短い列: 折り返さない */
+.md [data-col-size="short"] { white-space: nowrap; }
+/* 中くらいの列: 最小の幅を持ち、日本語は文節の区切りでだけ折り返す */
+.md [data-col-size="medium"] { min-width: var(--md-col-min); word-break: auto-phrase; }
+/* 長文の列: 一定の幅で折り返す（区切りの無い長い URL も幅の中で折り返す） */
+.md [data-col-size="long"] { width: var(--md-col-long); min-width: var(--md-col-long); overflow-wrap: anywhere; }
+/* 右へまだ送れる表: 右端を本文の地の色へ薄れさせ、続きがあることを示す */
+.md .md-table-frame[data-fade]::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 32px; z-index: 5; pointer-events: none; background: linear-gradient(to right, transparent, var(--surface)); }
+/* しま模様: 本体の行を 1 行おきに塗る（差分のマーカーの行は差分の面のまま）。本文の文字の色を地に薄く混ぜ、明暗どちらでも差分の面・選んだ行の面と見分ける */
+.md table.md-stripes tbody tr:nth-child(even):not(.df-row) > td { background-color: color-mix(in oklab, var(--text) 5%, var(--surface)); }
+/* 見出しを固定した表の見出しの行: スクリプトが入れた送り量だけ縦へずらし、本文の領域の上端に残す */
+.md table.md-head-stick thead th { z-index: 2; transform: translateY(var(--head-offset, 0px)); }
+/* 見出しの行が領域の上端に残っている間: 下の境に影を付け、流れる行の上に浮いていることを示す */
+.md table.md-head-stuck thead th { box-shadow: 0 6px 8px -6px var(--shadow-color); }
+/* 見出しのセル（固定していない列）: 重なりの順と固定のボタンの基準 */
+.md table:is(.md-head-stick, .md-has-pin) thead th:not(.md-pinned) { position: relative; }
+/* 固定のボタンを置く見出しのセル: ボタンの分を右に空ける */
+.md table.md-has-pin thead th { padding-right: 30px; }
+/* 固定のボタン: 見出しのセルの右端に置き、ホバー・フォーカスと固定中だけ出す（一覧の表と同じ） */
+.md .md-pin { position: absolute; top: 50%; right: 4px; width: 24px; height: 24px; transform: translateY(-50%); opacity: 0; }
+/* 固定のボタンを出す場面 */
+.md th:hover .md-pin, .md th:focus-within .md-pin, .md .md-pin[aria-pressed="true"] { opacity: 1; }
+/* 固定した列: 横に送っても左に残る */
+.md .md-pinned { position: sticky; z-index: 1; }
+/* 固定した列の本体のセル: 後ろのセルが透けないよう地の色を持つ */
+.md td.md-pinned { background-color: var(--surface); }
+/* 固定した列の見出しのセル: 流れる見出しのセルより上に重ねる */
+.md table thead th.md-pinned { z-index: 3; }
+/* 固定した列の右端: 影で、送る列の上に浮いていることを示す（一覧の表と同じ） */
+.md .md-pin-edge { box-shadow: 6px 0 8px -6px var(--shadow-color); }
+/* 見出しの行が残っている間の固定した列の右端の見出しのセル: 右と下の両方に影 */
+.md table.md-head-stuck thead th.md-pin-edge { box-shadow: 6px 0 8px -6px var(--shadow-color), 0 6px 8px -6px var(--shadow-color); }
+/* 本文の操作ボタンのフォーカスの枠 */
+.md :is(.md-pin, .md-fold, .code-copy):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* ホバーの無い端末: 固定のボタンを常に出す */
+@media (hover: none) {
+  .md .md-pin { opacity: 1; }
+}
+/* 幅 720px 以下: 列の固定と固定のボタンを外す（一覧の表と同じ。見出しの固定は残す） */
+@media (max-width: 720px) {
+  .md .md-pin { display: none; }
+  .md .md-pinned { position: static; box-shadow: none; }
+  .md table.md-has-pin thead th { padding-right: 8px; }
+}
+
+/* ===== コードブロック ===== */
+
+/* コードブロックの入れ物: 札とボタンの基準 */
+.md .md-code { position: relative; margin: 8px 0; }
+/* 入れ物の中のコードブロック: 余白は入れ物が持ち、ボタンの分だけ右を空ける */
+.md .md-code > pre { margin: 0; padding-right: 40px; }
+/* 言語の札を持つコードブロック: 札の分だけ上を空ける */
+.md .md-code.has-lang > pre { padding-top: 30px; }
+/* 言語の札: 左上に小さく出す */
+.md .code-lang { position: absolute; top: 6px; left: 12px; font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1.5; color: var(--text-3); }
+/* コピーのボタン: 右上に置き、ホバー・フォーカスで出す */
+.md .code-copy { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; opacity: 0; }
+/* コピーのボタンを出す場面 */
+.md .md-code:hover > .code-copy, .md .code-copy:focus-visible { opacity: 1; }
+/* ホバーの無い端末: コピーのボタンを常に出す */
+@media (hover: none) {
+  .md .code-copy { opacity: 1; }
+}
+
+/* ===== Alert の囲み ===== */
+
+/* 囲み: 種類の色の薄い面と細い枠で囲む（種類は見出しの文言でも示す） */
+.md .md-callout { --c: var(--st-open); margin: 10px 0; padding: 8px 12px; border: 1px solid color-mix(in oklab, var(--c) 40%, var(--surface)); border-radius: var(--radius); background: color-mix(in oklab, var(--c) 7%, var(--surface)); color: var(--text); }
+/* ヒント */
+.md .md-callout-tip { --c: var(--st-done); }
+/* 重要 */
+.md .md-callout-important { --c: var(--st-loose); }
+/* 警告 */
+.md .md-callout-warning { --c: var(--st-hold); }
+/* 注意 */
+.md .md-callout-caution { --c: var(--st-review); }
+/* 囲みの見出し: 種類のアイコンと文言 */
+.md .md-callout-title { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-weight: 600; color: var(--c); }
+/* 囲みの見出しのアイコン */
+.md .md-callout-title .icon { width: 14px; height: 14px; }
+/* 囲みの中の段落 */
+.md .md-callout > p { margin: 4px 0; }
+/* 囲みの最後の要素: 下の余白を枠の内側の余白に任せる */
+.md .md-callout > :last-child { margin-bottom: 0; }
+
+/* ===== セクションの折りたたみ ===== */
+
+/* 開閉のボタン: 見出しの頭の矢印だけを押せる。見出しの文言は選べるまま */
+.md .md-fold { display: inline-grid; place-items: center; width: 24px; height: 24px; margin: 0 4px 0 -4px; padding: 0; vertical-align: middle; border: 1px solid transparent; border-radius: 3px; background: none; color: var(--text-3); }
+/* 開閉のボタンのホバー */
+.md .md-fold:hover { color: var(--text); background: var(--hover); }
+/* 開閉の矢印: 開いているときは下、畳むと右を向く */
+.md .md-fold .icon { width: 14px; height: 14px; transform: rotate(90deg); transition: transform .15s ease; }
+/* 畳んだ見出しの矢印 */
+.md .md-fold[aria-expanded="false"] .icon { transform: none; }
+/* 動きを減らす設定: 矢印の向きを動かさずに替える */
+@media (prefers-reduced-motion: reduce) {
+  .md .md-fold .icon { transition: none; }
+}
 
 /* ===== ポップオーバーと検索 ===== */
 .pop { margin: 0; inset: auto; position: fixed; min-width: 220px; max-width: 320px; max-height: min(560px, calc(100dvh - 16px)); overflow: auto; padding: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
@@ -1143,7 +1255,7 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 /* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
 .md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
 /* 塊の中の段落・見出し（元の段が # のもの）・箇条書き: 塊の余白に寄せる */
-.md .df-blk > :is(p, ul, ol, .md-table-wrap, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
+.md .df-blk > :is(p, ul, ol, .md-table-frame, .md-code, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
 /* 足した塊 */
 .md ins.df-blk { background: var(--df-add-bg); }
 /* 消した塊: 取り消し線を引き、文字を控えめにする */
