@@ -119,3 +119,4 @@ notes:
   測り方: 本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ開閉のボタンを出す（測るまでは `hidden`）。本文の幅が変わったときは `ResizeObserver` で測り直す
   置き場所: 開閉のボタンの置き場所は使う側が決める。レビュー中の書き込みの画面では「スレッドを開く」と同じ行の先に置き、返信の行は「続きを読む」だけの行にする。ストーリーは本文の下にボタンを並べて描く
   モック: '`dev/mock/components/review-body-fold/`（「スレッドを開く」と同じ行に置く案 B を採用。確認ログ: dev/pr/329/確認ログ.md）'
+test_file: tests/integration/storybook/test_review_body_fold_stories.py

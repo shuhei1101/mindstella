@@ -443,15 +443,16 @@ def test_row_target(served_review: tuple[str, Path], open_preview: OpenPreview) 
 def test_row_target_when_not_pointing(
     served_review: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """項目を指さないコメントは、押せない「項目を指さない」を出す（正常系）。"""
+    """項目を指さないコメントは、向けた項目を何も出さず、行の頭を「新しいスレッド」の札だけにする（正常系）。"""
     # 準備
     url, _ = served_review
     page = open_preview(url)
     # 実行
     open_review(page)
     # 検証
-    assert page.inner_text(f"{_row('C-3')} .row-target") == "項目を指さない"
-    assert page.locator(f"{_row('C-3')} button.row-target").count() == 0
+    assert page.inner_text(f"{_row('C-3')} .row-head") == "新しいスレッド"
+    assert page.locator(f"{_row('C-3')} .row-target").count() == 0
+    assert "項目を指さない" not in page.inner_text(_row("C-3"))
 
 
 def test_row_target_when_gone(
@@ -1066,3 +1067,254 @@ def test_fit_smallest(served_review: tuple[str, Path], open_preview: OpenPreview
         (COMMENTS_PANEL, f"{COMMENTS_PANEL} button:has-text('まとめて送る')"),
         scope=COMMENTS_PANEL,
     )
+
+
+# 畳む行の数（折り返した後の見た目の行）
+FOLD_LINES = 5
+
+# 改行で 8 行の本文と、2 行の本文
+LONG_BODY = "\n".join(f"{number} 行目の気づき" for number in range(1, 9))
+SHORT_BODY = "1 行目\n2 行目"
+
+# 幅 390px の狭い画面
+PHONE_VIEWPORT = {"width": 390, "height": 844}
+
+# 本文の見た目の行の数（高さ ÷ 行の高さ）を返す
+BODY_LINES_SCRIPT = """(selector) => {
+    const body = document.querySelector(selector);
+    return Math.round(body.getBoundingClientRect().height / parseFloat(getComputedStyle(body).lineHeight));
+}"""
+
+# 開閉のボタンの文字が 1 行に収まっているか（折り返すと文字の外接の四角が複数になる）
+MORE_TEXT_RECTS_SCRIPT = "(selector) => document.querySelector(selector).getClientRects().length"
+
+
+def _more(comment_id: str) -> str:
+    """行の開閉のボタン（「続きを読む」「折りたたむ」）の選択子を返す。"""
+    return f"{_row(comment_id)} button.review-more"
+
+
+def _body_lines(page: Page, comment_id: str) -> int:
+    """行の本文の見た目の行の数を返す。"""
+    return int(page.evaluate(BODY_LINES_SCRIPT, f"{_row(comment_id)} .review-body"))
+
+
+def _wait_more(page: Page, comment_id: str) -> None:
+    """行の開閉のボタンが出る（本文を測り終える）まで待つ。"""
+    page.wait_for_selector(_more(comment_id), state="visible")
+
+
+@pytest.fixture
+def served_long(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """8 行の項目を指さない新しいスレッド C-1・8 行の返信 C-2・2 行の返信 C-3・2 行の D-1 への新しいスレッド C-4 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body="起票してよいですか", created="2026-10-12T01:00:00+00:00"),
+                summary="起票の確認",
+            ),
+        ),
+        comments=(
+            free_comment(make_comment("C-1", body=LONG_BODY)),
+            free_comment(make_comment("C-2", body=LONG_BODY, thread="TH-1")),
+            free_comment(make_comment("C-3", body=SHORT_BODY, thread="TH-1")),
+            make_comment("C-4", target="D-1", body=SHORT_BODY),
+        ),
+    )
+
+
+def test_row_more(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """折り返した後の見た目の行で 5 行を超える本文は 5 行までに畳み、新しいスレッドの行では「スレッドを開く」と同じ行の先に、下向きの印の「続きを読む」を出す（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page = open_preview(url)
+    # 実行
+    open_review(page)
+    _wait_more(page, "C-1")
+    # 検証
+    more = _more("C-1")
+    assert page.inner_text(more) == "続きを読む"
+    assert page.get_attribute(more, "aria-expanded") == "false"
+    assert page.get_attribute(more, "aria-label") == "項目を指さないコメントの続きを読む"
+    assert page.get_attribute(more, "aria-controls") == "review-body-C-1"
+    assert page.eval_on_selector(f"{_row('C-1')} .review-body", "e => e.classList.contains('folded')") is True
+    assert _body_lines(page, "C-1") == FOLD_LINES
+    assert page.eval_on_selector_all(
+        f"{_row('C-1')} .row-thread-open > button", "buttons => buttons.map(b => b.textContent.trim())"
+    ) == ["続きを読む", "スレッドを開く"]
+    assert page.locator(f"{more} svg.icon").count() == 1
+
+
+def test_row_more_when_toggled(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """「続きを読む」で全文を開いて「折りたたむ」（上向きの印）に変え、もう一度押すと 5 行に畳み直す。ハッシュも履歴も変えない（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page = open_preview(url)
+    open_review(page)
+    _wait_more(page, "C-1")
+    hash_before = page.evaluate("location.hash")
+    history_before = page.evaluate("history.length")
+    more = _more("C-1")
+    # 実行（開く）
+    page.click(more)
+    # 検証
+    assert page.inner_text(more) == "折りたたむ"
+    assert page.get_attribute(more, "aria-expanded") == "true"
+    assert page.get_attribute(more, "aria-label") == "項目を指さないコメントの本文を折りたたむ"
+    assert page.eval_on_selector(f"{_row('C-1')} .review-body", "e => e.classList.contains('folded')") is False
+    assert _body_lines(page, "C-1") == len(LONG_BODY.splitlines())
+    # 実行（畳み直す）
+    page.click(more)
+    # 検証
+    assert page.inner_text(more) == "続きを読む"
+    assert page.get_attribute(more, "aria-expanded") == "false"
+    assert _body_lines(page, "C-1") == FOLD_LINES
+    assert page.evaluate("location.hash") == hash_before
+    assert page.evaluate("history.length") == history_before
+
+
+def test_row_more_when_reply(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """返信の行は、開閉のボタンだけの行を本文の下に出し、読み上げの名前を返信先のスレッドで言う（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page = open_preview(url)
+    # 実行
+    open_review(page)
+    _wait_more(page, "C-2")
+    # 検証
+    assert page.inner_text(_more("C-2")) == "続きを読む"
+    assert page.get_attribute(_more("C-2"), "aria-label") == "TH-1 への返信の続きを読む"
+    assert page.eval_on_selector_all(
+        f"{_row('C-2')} .review-more-row > *", "nodes => nodes.map(n => n.textContent.trim())"
+    ) == ["続きを読む"]
+    assert page.locator(f"{_row('C-2')} .row-thread-open").count() == 0
+    assert page.get_by_role("button", name="スレッドを開く").count() == 2
+    assert _body_lines(page, "C-2") == FOLD_LINES
+
+
+def test_row_more_when_short(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """5 行以下の本文は畳まず、開閉のボタンも、返信の行のボタンだけの行も出さない（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page = open_preview(url)
+    open_review(page)
+    _wait_more(page, "C-1")
+    # 検証
+    for comment_id in ("C-3", "C-4"):
+        assert page.is_visible(_more(comment_id)) is False
+        assert page.eval_on_selector(f"{_row(comment_id)} .review-body", "e => e.classList.contains('folded')") is False
+        assert _body_lines(page, comment_id) == len(SHORT_BODY.splitlines())
+    # 返信の行は、ボタンだけの行ごと見えない
+    assert page.is_visible(f"{_row('C-3')} .review-more-row") is False
+    # 新しいスレッドの行は「スレッドを開く」だけを見せる
+    assert page.eval_on_selector_all(
+        f"{_row('C-4')} .row-thread-open > button:not([hidden])", "buttons => buttons.map(b => b.textContent.trim())"
+    ) == ["スレッドを開く"]
+
+
+def test_row_more_when_editing(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """本文を書き換えている行は畳まず、開閉のボタンも出さない（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page = open_preview(url)
+    open_review(page)
+    _wait_more(page, "C-1")
+    # 実行
+    page.get_by_role("button", name="項目を指さないコメントを修正").click()
+    # 検証
+    assert page.input_value(f"{_row('C-1')} form.row-edit textarea") == LONG_BODY
+    assert page.locator(f"{_row('C-1')} .review-body").count() == 0
+    assert page.is_visible(_more("C-1")) is False
+
+
+def test_row_body_when_redrawn(served_long: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """開いた本文は、画面の描き直しと本文の書き換えをまたいで開いたまま保ち、パネルを閉じて開き直すと畳んだ状態に戻る（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page = open_preview(url)
+    open_review(page)
+    _wait_more(page, "C-1")
+    page.click(_more("C-1"))
+    assert page.inner_text(_more("C-1")) == "折りたたむ"
+    # 実行（別の行のチェックで描き直す）
+    page.uncheck(f"{_row('C-4')} input.row-check")
+    # 検証
+    _wait_more(page, "C-1")
+    assert page.inner_text(_more("C-1")) == "折りたたむ"
+    assert _body_lines(page, "C-1") == len(LONG_BODY.splitlines())
+    # 実行（本文を書き換え始めて、やめる）
+    page.get_by_role("button", name="項目を指さないコメントを修正").click()
+    page.get_by_role("button", name="キャンセル").click()
+    # 検証
+    _wait_more(page, "C-1")
+    assert page.inner_text(_more("C-1")) == "折りたたむ"
+    assert _body_lines(page, "C-1") == len(LONG_BODY.splitlines())
+    # 実行（パネルを閉じて開き直す）
+    page.click(COMMENTS_BUTTON)
+    page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
+    open_review(page)
+    _wait_more(page, "C-1")
+    # 検証
+    assert page.inner_text(_more("C-1")) == "続きを読む"
+    assert _body_lines(page, "C-1") == FOLD_LINES
+
+
+def test_row_more_when_narrow(served_long: tuple[str, Path], open_preview: OpenPreview, page: Page) -> None:
+    """幅 390px でも見た目の 5 行で畳み、「続きを読む」の文字をボタンの中で折り返さない（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page.set_viewport_size(PHONE_VIEWPORT)
+    open_preview(url)
+    # 実行
+    open_review(page)
+    _wait_more(page, "C-2")
+    # 検証
+    for comment_id in ("C-1", "C-2"):
+        assert _body_lines(page, comment_id) == FOLD_LINES
+        assert page.evaluate(MORE_TEXT_RECTS_SCRIPT, f"{_more(comment_id)} span") == 1
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+# 行の上端を一覧のスクロール領域の上端より 24px 上へ隠す
+HIDE_ROW_TOP_SCRIPT = """(selector) => {
+    const row = document.querySelector(selector);
+    const scroller = document.querySelector('aside.comments-panel .comments-body');
+    scroller.scrollTop += row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + 24;
+}"""
+
+# 行の上端と下端が、一覧のスクロール領域の上端と下端からどれだけ内側かを返す（負は外へ隠れている）
+ROW_INSIDE_SCRIPT = """(selector) => {
+    const row = document.querySelector(selector).getBoundingClientRect();
+    const scroller = document.querySelector('aside.comments-panel .comments-body').getBoundingClientRect();
+    return { top: row.top - scroller.top, bottom: scroller.bottom - row.bottom };
+}"""
+
+# 画面の高さ（開いた行の全体が一覧のスクロール領域に入る高さ）
+SHORT_VIEWPORT = {"width": 1280, "height": 560}
+
+
+def test_row_more_when_folded_again(served_long: tuple[str, Path], open_preview: OpenPreview, page: Page) -> None:
+    """「折りたたむ」で畳み直すと、上端が一覧から外れかけていた行を一覧の中へ寄せる（正常系）。"""
+    # 準備
+    url, _ = served_long
+    page.set_viewport_size(SHORT_VIEWPORT)
+    open_preview(url)
+    open_review(page)
+    _wait_more(page, "C-2")
+    page.click(_more("C-2"))
+    page.evaluate(HIDE_ROW_TOP_SCRIPT, _row("C-2"))
+    assert page.evaluate(ROW_INSIDE_SCRIPT, _row("C-2"))["top"] < 0
+    # 実行
+    page.click(_more("C-2"))
+    # 検証
+    inside = page.evaluate(ROW_INSIDE_SCRIPT, _row("C-2"))
+    assert inside["top"] >= -1
+    assert inside["bottom"] >= -1
