@@ -3506,6 +3506,7 @@ test_files:
   - tests/unit/preview/test_pending_edits.py
   - tests/unit/preview/test_workspace_settings.py
   - tests/unit/preview/test_detail_edit.py
+  - tests/unit/preview/test_markdown_body.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ
