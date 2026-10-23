@@ -1,0 +1,9 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+2026-10-23T14:19:17+0900
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+終了コード: 0
+2026-10-23T14:19:21+0900
