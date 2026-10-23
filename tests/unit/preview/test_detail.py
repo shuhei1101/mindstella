@@ -1449,7 +1449,7 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
 REMOVED_BEFORE_TABLE_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
 REMOVED_BEFORE_TABLE_ENTRY = _body_entry(line=1, now=[], before=["消した段落", ""])
 
-# 消した塊の親と直後の兄弟、表を包む入れ物の子を調べる
+# 消した塊の親と直後の兄弟、表の枠の子、表を包む入れ物の子を調べる
 REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
     const index = MindmapPreview.buildIndex(data);
     const noop = () => {};
@@ -1468,8 +1468,9 @@ REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
     const next = removed.nextElementSibling;
     return {
         parentIsWrap: removed.parentElement.classList.contains("md-table-wrap"),
-        nextIsWrap: next !== null && next.classList.contains("md-table-wrap"),
-        wrapChildren: next === null ? null : [...next.children].map((child) => child.tagName),
+        nextIsFrame: next !== null && next.classList.contains("md-table-frame"),
+        frameChildren: next === null ? null : [...next.children].map((child) => child.className),
+        wrapChildren: next?.firstElementChild == null ? null : [...next.firstElementChild.children].map((child) => child.tagName),
     };
 }"""
 
@@ -1481,7 +1482,7 @@ def test_detail_panel_when_diff_removed_before_table(
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
-    """表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む（正常系）。"""
+    """表の直前で消した塊を、表を包む入れ物と枠の外（表の前）へ差し込む（正常系）。"""
     # 準備
     data = make_data(
         decisions=[make_item("D-1", body="D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
@@ -1494,7 +1495,12 @@ def test_detail_panel_when_diff_removed_before_table(
     # 実行
     result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
     # 検証
-    assert result == {"parentIsWrap": False, "nextIsWrap": True, "wrapChildren": ["TABLE"]}
+    assert result == {
+        "parentIsWrap": False,
+        "nextIsFrame": True,
+        "frameChildren": ["md-table-wrap"],
+        "wrapChildren": ["TABLE"],
+    }
 
 
 # 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
