@@ -15,7 +15,7 @@ data_models:
     title: 端末に残す設定
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
-    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方は個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
+    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方は個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
     properties:
       - name: theme
         type: "'light' | 'dark' | null"
@@ -44,6 +44,18 @@ data_models:
       - name: opened
         type: unknown
         description: 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`resolveSince` が `isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う。サーバーの配信では読まず書かない
+      - name: tablePin
+        type: false | null
+        description: 表の列の固定をオフにする上書き（インターフェース定義の `table_pin`）。`null` はオン（ワークスペースの既定は持たない）。オンに戻すと `null` にする
+      - name: tableHead
+        type: false | null
+        description: 表の見出しの固定をオフにする上書き（`table_head`）。`null` はオン。オンに戻すと `null` にする
+      - name: tableStripes
+        type: true | null
+        description: 表のしま模様をオンにする上書き（`table_stripes`）。`null` はオフ。オフに戻すと `null` にする
+      - name: sectionFold
+        type: false | null
+        description: セクションの折りたたみをオフにする上書き（`section_fold`）。`null` はオン。オンに戻すと `null` にする
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -264,7 +276,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout` はその項目だけ既定にする'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`tablePin`・`tableHead`・`tableStripes`・`sectionFold` が `null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`false` でない `tablePin`・`tableHead`・`sectionFold`、`true` でない `tableStripes` はその項目だけ既定にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -294,6 +306,12 @@ functions:
         condition: '`parametrize`: `bodyLayout: side` を残した / `bodyLayout: inline` を残した / `bodyLayout: 1` を残した / `bodyLayout` を持たない前の版の値'
         mock: 保存領域（引数で渡す）
         expected: '`bodyLayout` が `side` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
+      - name: test_load_prefs_when_body_view
+        case: 正常
+        summary: 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
+        condition: '`parametrize`: `tablePin`・`tableHead`・`sectionFold` が `false`、`tableStripes` が `true` を残した / 4 つとも反対の値（`true`・`false`）を残した / 4 つとも `"no"` を残した / 4 つを持たない前の版の値'
+        mock: 保存領域（引数で渡す）
+        expected: 残した値のまま / 4 つとも `null` / 4 つとも `null` / 4 つとも `null`（ほかの項目はそのまま読める）
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
@@ -424,6 +442,7 @@ functions:
       幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときと幅 901px 以上の重なり順は変えない
       書き込みのまとまりのリンク: コメントの一覧に `changeSetOf`（記録の `changes.sets` からまとまりの ID で説明を引く。無ければ `null`）を渡す。コメントの一覧の `on.changeSet` は詳細パネルの `on.changeSet` と同じく扱う（`resolveDiffPoint` で引けたときだけ 10 の「時点を選ぶ」と同じにし、履歴に積まずにハッシュを置き換える）。コメントの一覧（`listOpen`）と、その中の画面・開いているスレッドは変えない
       本文の差分の並べ方: 詳細パネルに `resolveDisplay` の `bodyLayout` を渡す。詳細パネルの `on.layout`（押した並べ方）では、`side` なら `Prefs.bodyLayout` を `side`、`inline` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押した並べ方のボタン（`[data-layout]`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
+      本文の表とセクションの見せ方: 詳細パネルと表示の設定に `resolveDisplay` の `bodyView` を渡す。表示の設定の `on.bodyView`（`{key, value}`）では、`value` が `BODY_VIEW_DEFAULT` のその項目と同じなら `Prefs` の対応する項目（`pin` → `tablePin`、`head` → `tableHead`、`stripes` → `tableStripes`、`fold` → `sectionFold`）を `null`、違えば `value` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面と表示の設定だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押したチェックボックスにフォーカスを戻す。履歴に積まず、ハッシュも変えない
   - name: formKey
     title: 入力欄のキー
     kind: 関数
@@ -484,14 +503,14 @@ functions:
         passing: positional
         description: 記録の `settings.display`（配る書き出しは埋め込みの値）
     returns:
-      type: '{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean, bodyLayout: ''inline'' | ''side''}'
-      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」・「本文の差分の並べ方」の順）、差分のミニマップを置くか、本文の差分の並べ方
+      type: "{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean, bodyLayout: 'inline' | 'side', bodyView: {pin: boolean, head: boolean, stripes: boolean, fold: boolean}}"
+      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」・「表の列の固定」・「表の見出しの固定」・「表のしま模様」・「セクションの折りたたみ」・「本文の差分の並べ方」の順）、差分のミニマップを置くか、本文の差分の並べ方、本文の表とセクションの見せ方
     process: |-
       1. 既定を決める（`display.network_look` が無ければ `deep`、`display.visible_kinds` が無ければ 7 つの種類全て）
-      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする。`bodyLayout` は `prefs.bodyLayout` が `side` のときだけ `side`、それ以外は `inline` にする
+      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする。`bodyLayout` は `prefs.bodyLayout` が `side` のときだけ `side`、それ以外は `inline` にする。`bodyView` は `BODY_VIEW_DEFAULT` に、`prefs.tablePin`・`prefs.tableHead`・`prefs.sectionFold` が `false` の項目を偽、`prefs.tableStripes` が `true` なら `stripes` を真にして当てる
       3. `prefs.look`・`prefs.kinds`・`prefs.theme` が `null` でない項目と、`prefs.columns` の種類ごとに「表の列（{種類の名前}）」を `overrides` に並べる
       4. `prefs.filters` の画面ごとに、条件が画面の既定（`initialFilters(画面, {}, null)`）と違えば「絞り込み（{画面の名前}）」を `overrides` に並べる（記録の表は種類の名前）
-      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を、`prefs.bodyLayout` が `side` なら `BODY_LAYOUT_LABEL`（「本文の差分の並べ方」）を、この順に `overrides` の末尾に並べる
+      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を、上書きを持つ `tablePin`・`tableHead`・`tableStripes`・`sectionFold` の `BODY_VIEW_LABELS` の名前をこの順に、`prefs.bodyLayout` が `side` なら `BODY_LAYOUT_LABEL`（「本文の差分の並べ方」）を、この順に `overrides` の末尾に並べる
     unit_tests:
       - name: test_resolve_display
         case: 正常
@@ -511,13 +530,19 @@ functions:
         condition: '既定の無い `display`。`parametrize`: `bodyLayout: null` / `bodyLayout: side` / `bodyLayout: side`・`minimap: false`'
         mock: なし
         expected: '`bodyLayout` が `inline` で `overrides` が空 / `bodyLayout` が `side` で `overrides` が「本文の差分の並べ方」 / `overrides` が「差分のミニマップ」・「本文の差分の並べ方」の順'
+      - name: test_resolve_display_when_body_view
+        case: 正常
+        summary: 本文の見せ方は上書きのある項目だけ既定と逆にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ
+        condition: '既定の無い `display`。`parametrize`: 上書きが無い / `tableStripes: true`・`sectionFold: false` / `minimap: false`・`tablePin: false`・`bodyLayout: side`'
+        mock: なし
+        expected: '`bodyView` が `{pin: true, head: true, stripes: false, fold: true}` で `overrides` が空 / `stripes` が真で `fold` が偽、`overrides` が「表のしま模様」・「セクションの折りたたみ」 / `pin` が偽、`overrides` が「差分のミニマップ」・「表の列の固定」・「本文の差分の並べ方」の順'
   - name: clearOverrides
     title: 個人の上書きを外す
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
     scope: public
-    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した `Prefs` を返す（`diffSel` は残す）
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した `Prefs` を返す（`diffSel` は残す）
     args:
       - name: prefs
         type: Prefs
@@ -526,15 +551,15 @@ functions:
         description: 今の端末の設定
     returns:
       type: Prefs
-      description: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout` を `null`、`columns`・`filters` を空にした写し'
-    process: 1. `prefs` を写し、上の 7 項目を外して返す（渡した `prefs` は変えない）
+      description: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout`・`tablePin`・`tableHead`・`tableStripes`・`sectionFold` を `null`、`columns`・`filters` を空にした写し'
+    process: 1. `prefs` を写し、上の 11 項目を外して返す（渡した `prefs` は変えない）
     unit_tests:
       - name: test_clear_overrides
         case: 正常
         summary: 上書きだけを外し、差分の時点は残す
-        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`bodyLayout: side`・`diffSel: since` の `Prefs`'
+        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`bodyLayout: side`・`tablePin: false`・`tableHead: false`・`tableStripes: true`・`sectionFold: false`・`diffSel: since` の `Prefs`'
         mock: なし
-        expected: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+        expected: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout`・`tablePin`・`tableHead`・`tableStripes`・`sectionFold` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
   - name: commentCounts
     title: 項目ごとのコメントの件数
     container: plugins/mindstella/skills/mindmap/preview/app.ts

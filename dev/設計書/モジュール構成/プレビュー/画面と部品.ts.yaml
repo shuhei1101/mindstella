@@ -12,6 +12,7 @@ directory: |
       body-format-badge.ts  本文の形式の札（部品設計『本文の形式の札』）
       html-body-frame.ts    HTML の本文の枠（部品設計『HTMLの本文の枠』）
       html-body-diff.ts     HTML の本文の差分（部品設計『HTMLの本文の差分』）
+      markdown-body.ts      Markdown の本文の表・セクション・コードブロック・囲みの見せ方（部品設計『Markdownの本文』）
       body-diff-layout-switch.ts  本文の差分の並べ方の切り替え（部品設計『本文の差分の並べ方の切り替え』）
       side-by-side-body-diff.ts   左右に並べた本文の差分（部品設計『左右に並べた本文の差分』）
       diff-minimap.ts       差分のミニマップと、印の集め方・置き方（部品設計『差分のミニマップ』）
@@ -467,7 +468,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）'
     props:
       - name: id
         type: string
@@ -518,6 +519,11 @@ components:
         required: false
         default: 'null'
         description: 編集の入口。配る書き出し・差分の表示中は `null`（「編集する」を出さない）。見出しの前後の移動の左に「編集する」（`aria-pressed`。`editing` の間は「編集を終える」）を置き、押すと `onToggle`。種類と ID の右とキー・案の見出しの後ろに `marks` の `pendingEditMark`（`compact`）を置く。`editing` の間は本文のスクロール領域に `detailEditForm`（`form` を渡す）を描き、下端の `sendForm` を隠す
+      - name: bodyView
+        type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
+        required: false
+        default: BODY_VIEW_DEFAULT
+        description: 表示の設定の本文の表とセクションの見せ方（`resolveDisplay` の `bodyView`）。`decorateMarkdown` の `display` に渡す
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -741,6 +747,12 @@ components:
         condition: '`parametrize`: `lead` を `要件を決める。\n期限は来週。` → `要件を決める。\n期限は今週。` にした D-1 / `lead` を `予定は来週の会議で決める` → `予定は今週\n明日の会議で決める` にした D-1（変わった範囲が改行をまたぐ）を、いずれも `diff` つきで開く'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '1 つ目のケースで、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` の計算後の `white-space` が改行を残す値（`pre-wrap` か `pre-line`）で、どちらも `getClientRects()` の箱の `top` が 2 種類ある。`span.df-word.df-del` は `来週` だけ、`span.df-word.df-add` は `今週` だけ。2 つ目のケースで、`ins.df-now` の `span.df-word.df-add` の文字をつなげると `今週\n明日` になり、その `getClientRects()` のうち幅を持つ箱が、改行の前の行と後の行の両方（`top` が 2 種類）にある。どちらのケースも `span.sr-only` の「前の値: 」「今の値: 」は `span.df-word` の外'
+      - name: test_detail_panel_when_body_view
+        case: 正常
+        summary: 本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く
+        condition: 'h2「比較」の下に表を持つ資料。`parametrize`: `bodyView` が `BODY_VIEW_DEFAULT` / `bodyView` の `stripes` が真 / 本文を変えた時点の `diff` / 「比較」を畳んだ後に `heading` を「比較」の下の h3 にして描き直す'
+        mock: なし（DOM を作って見る）
+        expected: 「比較」に開閉の矢印があり、表が `md-table-frame` に入り `md-head-stick` を持つ / 表が `md-stripes` を持つ / 開閉の矢印が無く、表は `md-table-frame` に入る / h3 を包む入れ物が開き、h3 が本文のスクロール領域の中で画面に入る
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -1105,7 +1117,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
     usecase: 表示の設定を変える
-    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・差分のミニマップを切り替える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目は選ばせず、`look`・`defaultLook` は「ワークスペースの既定にする」を出すかの比較にだけ使う（`minimap` は比べに含めない）。「すべて」は `toggleAllBox` と同じく途中の印を持つ。表示する種類の下に `fieldset`（凡例「詳細に表示するもの」）を置き、`MINIMAP_LABEL` のチェックボックスを 1 行出す。描き直しても操作していた部品にフォーカスを戻す
+    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・差分のミニマップを切り替える・本文の見せ方を切り替える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目は選ばせず、`look`・`defaultLook` は「ワークスペースの既定にする」を出すかの比較にだけ使う（`minimap` は比べに含めない）。「すべて」は `toggleAllBox` と同じく途中の印を持つ。表示する種類の下に `fieldset`（凡例「詳細に表示するもの」）を置き、`MINIMAP_LABEL` のチェックボックスと、`BODY_VIEW_LABELS` の `pin`・`head`・`stripes`・`fold` のチェックボックスをこの順に 1 行ずつ出す（`bodyView` は比べに含めない）。描き直しても操作していた部品にフォーカスを戻す
     props:
       - name: look
         type: string
@@ -1146,14 +1158,19 @@ components:
         default: 'true'
         description: 偽のとき先頭に「この端末に保存できません。…」（`role="alert"`）
       - name: on
-        type: '{kinds, minimap, reset, save, close}'
+        type: '{kinds, minimap, bodyView, reset, save, close}'
         required: true
-        description: 表示する種類を変える（変えた後の並び）・差分のミニマップを切り替える（切り替えた後の表示する・しない）・既定に戻す・ワークスペースの既定にする・閉じる
+        description: 表示する種類を変える（変えた後の並び）・差分のミニマップを切り替える（切り替えた後の表示する・しない）・本文の見せ方を切り替える（`{key, value}`。`key` は `pin`・`head`・`stripes`・`fold`、`value` は切り替えた後の真偽値）・既定に戻す・ワークスペースの既定にする・閉じる
       - name: minimap
         required: false
         default: 'true'
         type: boolean
         description: 差分のミニマップを表示しているか（チェックボックスの状態）
+      - name: bodyView
+        type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
+        required: false
+        default: BODY_VIEW_DEFAULT
+        description: 当てている本文の表とセクションの見せ方（チェックボックスの状態）
     unit_tests:
       - name: test_settings_panel
         case: 正常
@@ -1173,6 +1190,12 @@ components:
         condition: '`look`・`kinds` が既定と同じ。`parametrize`: `minimap: true`・`overrides` が空 / `minimap: false`・`overrides` が「差分のミニマップ」。どちらもチェックボックスを押す'
         expected: 凡例「詳細に表示するもの」の中に「差分のミニマップ」のチェックボックスがあり、付いている・`on.minimap` が `false` で呼ばれる / 外れている・「既定に戻す」がある・「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」・`on.minimap` が `true` で呼ばれる
         mock: '`on.minimap`'
+      - name: test_settings_panel_when_body_view
+        case: 正常
+        summary: 本文の見せ方の 4 つのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない
+        condition: '`look`・`kinds` が既定と同じ。`parametrize`: `bodyView` が `BODY_VIEW_DEFAULT`・`overrides` が空で「表のしま模様」を押す / `bodyView` の `stripes` が真で `fold` が偽・`overrides` が「表のしま模様」「セクションの折りたたみ」で「セクションの折りたたみ」を押す'
+        mock: '`on.bodyView`'
+        expected: '凡例「詳細に表示するもの」の中に「差分のミニマップ」「表の列の固定」「表の見出しの固定」「表のしま模様」「セクションの折りたたみ」の順にチェックボックスがあり、しま模様だけが外れている・`on.bodyView` が `{key: stripes, value: true}` で呼ばれる / しま模様が付き折りたたみが外れている・「既定に戻す」がある・「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」・`on.bodyView` が `{key: fold, value: true}` で呼ばれる'
   - name: settingsConfirm
     title: 既定の保存の確かめ
     kind: コンポーネント
@@ -2062,6 +2085,58 @@ components:
         condition: タイトルを空白だけにして離れる
         mock: '`on.change`'
         expected: '`on.change` が呼ばれず、「タイトルを書いてください。」と `aria-invalid="true"`'
+  - name: decorateMarkdown
+    title: Markdownの本文
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: '部品設計『Markdownの本文』。`renderMarkdown` で描いた本文の要素に、次の順で見せ方を当てる（戻り値は無く、`root` の中を書き換える）。(1) 表ごとに、列の見出しと本体のセルの `textWidth` の最大を `columnSize` にかけ、列のセルに `data-col-size`（`short`・`medium`・`long`）と中くらいの列の `--md-col-min`（em）を付ける。`div.md-table-wrap` を送らない枠 `div.md-table-frame` で包み、右へまだ送れる間だけ枠に `data-fade` を付ける（入れ物の `scroll` と `ResizeObserver` で見直す）。(2) `display.pin` が真なら、最後の列を除く見出しのセルに固定のボタン（`button.md-pin`、`aria-pressed`、読み上げの名前「{列名}まで固定」）を置き、押した列までのセルに `position: sticky` の左の位置と、固定した列の右端の影を付ける（もう一度押すと外す。画面の幅 720px 以下は `style.css` でボタンを隠し固定を外す）。(3) `display.head` が真なら表に `md-head-stick` を付ける（ずらしは `bindTableHeads` が入れる）。(4) `display.stripes` が真なら表に `md-stripes` を付ける（差分の印の行は差分の面のまま）。(5) `fold` と `display.fold` がどちらも真なら、本文で使っている見出しの階層のうち上から `FOLD_LEVELS` の階層の見出しごとに、次の同じか上の階層の見出しまでを `div.md-section-body` で包み（中身の無い見出しは包まず開閉も置かない）、見出しの頭に開閉の矢印（`button.md-fold`、24px、`aria-expanded`・`aria-controls`、読み上げの名前「{見出し}を開閉」）を置く。開いた状態で描き、畳むと入れ物を `hidden="until-found"` にする（`beforematch` で開く）。見出しの文言はボタンに入れず、選んだ箇所の対応づけに使う `data-line-start` を変えない。(6) コードブロック（図と `html` のコードブロックを除く）を `div.md-code` で包み、`pre` の外に言語を書いたものだけ言語の札と、コピーのボタン（読み上げの名前「コードをコピー」）を置く。押すと `code` の文字だけをクリップボードに入れ、`CODE_COPIED_MS` の間チェックの印に変えて `role="status"` で伝える。(7) 先頭の段落が `[!NOTE]` 等（`CALLOUT_KINDS`）で始まる引用を、印を消して `blockquote.md-callout` にし、種類のアイコンと見出しの文言を先頭に置く（行の印は引き継ぐ）。同じ `root` に 2 回当てても包み・ボタンを重ねない'
+    props:
+      - name: root
+        type: HTMLElement
+        required: true
+        description: '`renderMarkdown` で描いた本文の要素'
+      - name: display
+        type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
+        required: false
+        default: BODY_VIEW_DEFAULT
+        description: 表示の設定の本文の見せ方
+      - name: fold
+        type: boolean
+        required: false
+        default: 'true'
+        description: 開閉を置ける本文か（本文の差分では偽）
+    unit_tests:
+      - name: test_decorate_markdown_when_table
+        case: 正常
+        summary: 列の文字数で幅の印を付け、表を送らない枠で包む
+        condition: ID（3 文字）・名前（12 文字）・説明（30 文字）の 3 列の表を持つ本文。幅 400px の親に置く
+        mock: なし（DOM を作って見る）
+        expected: 列のセルが `data-col-size` で `short`・`medium`・`long`、名前の列の `--md-col-min` が `8em`。`div.md-table-wrap` が `div.md-table-frame` に入り、枠に `data-fade` がある。表の行の `data-line-start` が変わらない
+      - name: test_decorate_markdown_when_pin
+        case: 正常
+        summary: 固定のボタンで押した列までを固定し、もう一度押すと外す
+        condition: '4 列の表。`parametrize`: `display.pin` が真で 2 列目のボタンを押す / 同じボタンを 2 回押す / `display.pin` が偽'
+        mock: なし（DOM を作って見る）
+        expected: ボタンは 3 つ（最後の列に無い）、2 列目のボタンが `aria-pressed="true"` で 1・2 列目のセルが固定の印を持つ / どのセルも固定の印を持たず、ボタンが `aria-pressed="false"` / ボタンが無い
+      - name: test_decorate_markdown_when_stripes_and_head
+        case: 正常
+        summary: しま模様と見出しの固定を設定のとおりに付ける
+        condition: '`parametrize`: `BODY_VIEW_DEFAULT` / `stripes` が真で `head` が偽'
+        mock: なし（DOM を作って見る）
+        expected: 表が `md-head-stick` を持ち `md-stripes` を持たない / `md-stripes` を持ち `md-head-stick` を持たない
+      - name: test_decorate_markdown_when_fold
+        case: 正常
+        summary: 上位 2 つの階層の見出しにだけ開閉を置き、畳むと次の同じか上の階層の見出しまでを隠す
+        condition: 'h2「候補」（下に h3「料金」と h4「内訳」）・h2「まとめ」・中身の無い h2「付録」を持つ本文。`parametrize`: 「料金」の矢印を押す / `fold` が偽 / `display.fold` が偽'
+        mock: なし（DOM を作って見る）
+        expected: 矢印は「候補」「料金」「まとめ」の 3 つで「内訳」「付録」には無い。押すと「料金」の矢印が `aria-expanded="false"` で「内訳」を含む入れ物が `hidden="until-found"`、「まとめ」は見えている / 矢印が無い / 矢印が無い
+      - name: test_decorate_markdown_when_code_and_callout
+        case: 正常
+        summary: コードブロックに札とコピーを、Alert の引用に囲みを付ける
+        condition: 言語 `bash` のコードブロック・言語の無いコードブロック・`> [!WARNING]` の引用・印の無い引用を持つ本文。`bash` のコピーを押す
+        mock: '`navigator.clipboard.writeText`'
+        expected: '`bash` だけ言語の札「bash」を持ち、どちらもコピーのボタンを `pre` の外に持つ。クリップボードにはコードの文字だけが入る。`[!WARNING]` の引用が `md-callout` で見出し「警告」を持ち `[!WARNING]` の文字が消える。印の無い引用は変わらない'
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -3301,6 +3376,109 @@ functions:
         condition: '`parametrize`: `decisions` / `notes`'
         mock: なし
         expected: '`status`・`title`・…・`options`・`answer`・`reason`・`body` を含み `id` を含まない / `title`・`content`・`withdrawn`・`reason` を含む'
+  - name: textWidth
+    title: 文字の幅を数える
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 前後の空白を除いた文字列を、符号位置が U+00FF 以下の文字を 0.5、それ以外を 1 として数える
+    args:
+      - name: text
+        type: string
+        required: true
+        passing: positional
+        description: セルの文字
+    returns:
+      type: number
+      description: 文字の幅
+    unit_tests:
+      - name: test_text_width
+        case: 正常
+        summary: 全角を 1、半角を 0.5 と数える
+        condition: '`parametrize`: `名前` / `ID-12` / ` 比較 abc ` / 空文字 / 絵文字 1 つ'
+        mock: なし
+        expected: 2 / 2.5 / 4 / 0 / 1
+  - name: columnSize
+    title: 列の幅の決め方
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 列のセルの最大の文字の幅から、列の種類と最小の幅を決める
+    args:
+      - name: maxWidth
+        type: number
+        required: true
+        passing: positional
+        description: 列の見出しと本体のセルの `textWidth` の最大
+    returns:
+      type: "{kind: 'short' | 'medium' | 'long', minEm: number | null}"
+      description: 列の種類と最小の幅（em。中くらいの列だけ持ち、ほかは `null`）
+    process: |-
+      1. `maxWidth` が `COLUMN_BOUNDS.shortMax` 以下なら `short`（折り返さない）
+      2. `COLUMN_BOUNDS.longMin` 以上なら `long`（`LONG_COLUMN_EM` で折り返す）
+      3. それ以外は `medium` で、`minEm` を `min(ceil(maxWidth / 2) + MEDIUM_MIN_EM_SLACK, MEDIUM_MIN_EM_MAX)` にする（文節の区切りでだけ折り返す。折り返す行の数は約束しない）
+    unit_tests:
+      - name: test_column_size
+        case: 正常
+        summary: 境目の前後で列の種類を分け、中くらいの列の最小の幅に上限を掛ける
+        condition: '`parametrize`: 8 / 8.5 / 12 / 24.5 / 25'
+        mock: なし
+        expected: '`short` / `medium`・`minEm` 7 / `medium`・`minEm` 8 / `medium`・`minEm` 14 / `long`'
+  - name: revealHeading
+    title: 畳んだ見出しを開く
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 本文の中の見出しへ移る前に、その見出しを包む畳んだ入れ物を全て開く（開閉の矢印の `aria-expanded` も合わせる）
+    side_effects: '`root` の中の `div.md-section-body` の `hidden` と開閉の矢印を書き換える'
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        passing: keyword
+        description: '`decorateMarkdown` を当てた本文の要素'
+      - name: slug
+        type: string
+        required: true
+        passing: keyword
+        description: 移る先の見出しの `id`（ハッシュの `h`・本文のリンク）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_reveal_heading
+        case: 正常
+        summary: 畳んだ入れ物の中の見出しへ移るときは外側まで開く
+        condition: 'h2「候補」とその下の h3「料金」をどちらも畳んだ本文。`parametrize`: `slug` が「料金」の下の h4 / 畳んだ入れ物の外の見出し / 存在しない `slug`'
+        mock: なし（DOM を作って見る）
+        expected: 両方の入れ物の `hidden` が外れ、矢印が `aria-expanded="true"` / どちらも畳んだまま / どちらも畳んだままで例外を送らない
+  - name: bindTableHeads
+    title: 表の見出しの行を区画の上端に残す
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 本文のスクロール領域の `scroll`（`requestAnimationFrame` で 1 フレームに 1 回）ごとに、`md-head-stick` を持つ表の上端が領域の上端より上にある分だけ、見出しのセルに `--head-offset`（px。表の下端から見出しの行の高さを引いた位置を越えない）を入れ、`translateY` で下げる。ずらしている間は表に `md-head-stuck` を付け、見出しの行の下の境に影を付ける。表の入れ物が横に送るため CSS の sticky では区画の上端に残せない。描き直すたびに前の見張りを外す関数を返す
+    side_effects: '`scroller` に `scroll` の受け取りを付け、見出しのセルの `--head-offset` を書き換える'
+    args:
+      - name: scroller
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 本文のスクロール領域（`.panel-body`）
+    returns:
+      type: () => void
+      description: 受け取りを外す関数
+    unit_tests:
+      - name: test_bind_table_heads
+        case: 正常
+        summary: 領域を送ると見出しの行を上端に残し、表の下端を越えない
+        condition: '高さ 300px の領域に、20 行の表を前後の段落と一緒に置く。`parametrize`: 表の上端まで送らない / 表の中ほどまで送る / 表を過ぎるまで送る / 表が `md-head-stick` を持たない'
+        mock: なし（ブラウザで配置を測る）
+        expected: '`--head-offset` が 0 / 見出しの行の上端が領域の上端と等しく `md-head-stuck` を持つ / 見出しの行が表の下端より下に出ない / `--head-offset` を持たない。返した関数を呼ぶと送っても変わらない'
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
@@ -3371,3 +3549,57 @@ constants:
     usecase: 表示の設定を変える
     summary: 切り替えの読み上げの名前と、表示の設定の「この端末で変えている項目」に出す名前。`resolveDisplay` もこの名前を並べる
     value: '"本文の差分の並べ方"'
+  - name: BODY_VIEW_LABELS
+    title: 本文の見せ方の呼び名
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 表示の設定を変える
+    summary: 表示の設定のチェックボックスと「この端末で変えている項目」に出す名前。`resolveDisplay` もこの名前を並べる
+    value: '{pin: "表の列の固定", head: "表の見出しの固定", stripes: "表のしま模様", fold: "セクションの折りたたみ"}'
+  - name: BODY_VIEW_DEFAULT
+    title: 本文の見せ方の既定
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 表示の設定を変える
+    summary: 個人の上書きが無いときの本文の見せ方（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
+    value: '{pin: true, head: true, stripes: false, fold: true}'
+  - name: COLUMN_BOUNDS
+    title: 列の幅を分ける境目
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 全角を 1、半角を 0.5 と数えたセルの最大の文字数が `shortMax` 以下の列は短い列、`longMin` 以上の列は長文の列。モック作成でユーザーが選んだ値
+    value: '{shortMax: 8, longMin: 25}'
+  - name: MEDIUM_MIN_EM_MAX
+    title: 中くらいの列の最小の幅の上限
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 中くらいの列の最小の幅（em）の上限
+    value: '14'
+  - name: MEDIUM_MIN_EM_SLACK
+    title: 中くらいの列の最小の幅に足す余り
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 中くらいの列の最小の幅を文字数の半分にこの値（em）を足した幅にする（文節の区切りでだけ折り返す分の余り）
+    value: '2'
+  - name: LONG_COLUMN_EM
+    title: 長文の列の幅
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 長文の列を折り返す幅（em）
+    value: '24'
+  - name: FOLD_LEVELS
+    title: 開閉を置く見出しの階層の数
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 本文で使っている見出しの階層のうち、上からこの数の階層にだけ開閉を置く
+    value: '2'
+  - name: CODE_COPIED_MS
+    title: コピーした印を出しておく時間
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: コードブロックのコピーのボタンを押した後、チェックの印を出しておくミリ秒（図のコピーと同じ）
+    value: '1400'
+  - name: CALLOUT_KINDS
+    title: Alert の種類
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: GitHub の Alert の印 → 囲みの種類・見出しの文言・アイコン
+    value: '{NOTE: {kind: "note", label: "補足", icon: "note"}, TIP: {kind: "tip", label: "ヒント", icon: "star"}, IMPORTANT: {kind: "important", label: "重要", icon: "flag"}, WARNING: {kind: "warning", label: "警告", icon: "alert"}, CAUTION: {kind: "caution", label: "注意", icon: "alert"}}'
