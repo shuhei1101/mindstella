@@ -862,10 +862,11 @@ READ_MORE_SCRIPT = """() => Object.fromEntries(["C-51", "C-52", "C-53"].map((id)
         inThreadOpen: wrapper !== null && wrapper.classList.contains("row-thread-open"),
         beforeOpen: more !== null && open !== null && Boolean(more.compareDocumentPosition(open) & Node.DOCUMENT_POSITION_FOLLOWING),
         hasEditField: row.querySelector("textarea") !== null,
+        hasBody: row.querySelector(".review-body") !== null,
     }];
 }))"""
 
-# ボタンも、ボタンを置く行も見えない行
+# ボタンも、ボタンを置く行も見えない行（本文は描かれている）
 NO_MORE = {
     "visible": False,
     "wrapperVisible": False,
@@ -873,6 +874,7 @@ NO_MORE = {
     "inThreadOpen": False,
     "beforeOpen": False,
     "hasEditField": False,
+    "hasBody": True,
 }
 
 
@@ -901,7 +903,7 @@ NO_MORE = {
             {"expanded": ["C-51"], "editing": "C-51"},
             [],
             {
-                "C-51": {**NO_MORE, "hasEditField": True},
+                "C-51": {**NO_MORE, "hasEditField": True, "hasBody": False},
                 "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを読む"},
                 "C-53": NO_MORE,
             },
