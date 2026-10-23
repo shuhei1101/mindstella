@@ -53,12 +53,16 @@ var MindmapPreview;
             },
         });
         setToggle({ more, open: opened, label });
-        // 描いた直後と本文の幅が変わったとき（折り返しが変わる）に測り、超えるときだけ畳んで開閉のボタンを出す
-        new ResizeObserver(() => {
+        // 超えるときだけ畳んで開閉のボタンを出す
+        const measure = () => {
             const exceeds = exceedsLines({ body: text, lines });
             text.classList.toggle("folded", exceeds && !opened);
             more.hidden = !exceeds;
-        }).observe(text);
+        };
+        // 描いた直後は、描画の前のフレームで測る
+        requestAnimationFrame(measure);
+        // 本文の幅が変わると折り返しが変わる。通知の中で本文の高さを変えると通知を送りきれないので、次のフレームで測り直す
+        new ResizeObserver(() => requestAnimationFrame(measure)).observe(text);
         return { body: text, more };
     }
     MindmapPreview.reviewBodyFold = reviewBodyFold;
