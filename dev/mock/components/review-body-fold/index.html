@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>レビュー中の書き込みの本文の折りたたみ | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/329/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない） -->
+  <script src="../../refs/329/assets/app.js"></script>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / review-body-fold</nav>
+    <h1>レビュー中の書き込みの本文の折りたたみ</h1>
+
+    <!-- 5 行以下 -->
+    <section class="cat-sec">
+      <h2>5 行以下の本文</h2>
+      <p>何も足さない。左は項目を指さない新しいスレッド（行の頭は「新しいスレッド」の札だけ）、右は返信。</p>
+      <div class="stage" id="s-short"></div>
+    </section>
+
+    <!-- 改行で 5 行を超える -->
+    <section class="cat-sec">
+      <h2>改行で 5 行を超える本文（畳んだ）</h2>
+      <p>5 行目までを出し、末尾を「…」で省く。左は案 A（本文のすぐ下）、右は案 B（「スレッドを開く」と同じ行）。</p>
+      <div class="stage" id="s-lines"></div>
+    </section>
+
+    <!-- 改行の無い長文 -->
+    <section class="cat-sec">
+      <h2>改行の無い長文（畳んだ）</h2>
+      <p>折り返した後の見た目の行で数えるので、改行が無くても 5 行で畳む。</p>
+      <div class="stage" id="s-wrap"></div>
+    </section>
+
+    <!-- 開いた -->
+    <section class="cat-sec">
+      <h2>開いた</h2>
+      <p>全文を出し、ボタンは「閉じる」（印は上向き）。押すと 5 行までに畳み直す。</p>
+      <div class="stage" id="s-open"></div>
+    </section>
+
+    <!-- 返信の長い本文 -->
+    <section class="cat-sec">
+      <h2>返信の長い本文</h2>
+      <p>返信の行は「スレッドを開く」を持たない。案 B では「続きを読む」だけの行になる。</p>
+      <div class="stage" id="s-reply"></div>
+    </section>
+
+    <!-- ホバー・フォーカス -->
+    <section class="cat-sec">
+      <h2>ホバー・キーボードのフォーカス</h2>
+      <p>他の文字だけのボタン（「スレッドを開く」）と同じ見た目。</p>
+      <div class="stage" id="s-states"></div>
+    </section>
+
+    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>幅が狭いと折り返しが増え、改行の少ない本文も 5 行で畳む。</p>
+      <div class="stage narrow" id="s-narrow"></div>
+    </section>
+  </main>
+
+  <!-- 台ごとの見本: app.js の本文の折りたたみへ状態ごとの本文を渡して、行の形に置く -->
+  <script>
+    const { h, postBody, reviewBodyFold, reviewRowActions, threadState } = MindmapPreview;
+    /** 見本の本文 */
+    const BODIES = {
+      short: "次に開くときは T-14 から読みたい",
+      reply: "書き直しを読みました。表はこれで分かります。\n図の凡例だけ R-1 の結果に合わせてください。",
+      lines: "全体を読み返して気になった点をまとめます。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. ネットワークの玉の色が近い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい",
+      wrap: "A-14 の手引きは、差分の表示を初めて使う人が最初に読む資料なので、冒頭で「何と何を比べているのか」を一文で言い切ってから、選んだ時点の決め方、足した・変えた・消した項目の印の読み方、本文の差分の並べ方の切り替え、図の差分の見方の順に並べ直したほうが読みやすいと思います。今は印の読み方が最後にあり、表の行の消し方の説明より後に出てくるため、表を読んでいる途中で印の意味が分からずに上へ戻ることになります。",
+      narrow: "表の列の幅が狭くて読みにくい。ID の列は短くしてよいので、タイトルの列を広げてほしい。\n並べ替えの印も小さく、押せる場所が分かりにくい。\n列の表示のボタンも見つけにくい。",
+    };
+    /** 見本の ID の連番 */
+    let seq = 0;
+    const noop = () => {};
+
+    /** 行 1 件（variant: 「続きを読む」の置き場所の案、kind: new は項目を指さない新しいスレッド・reply は返信） */
+    const row = ({ body, variant = "a", kind = "new" }) => {
+      seq += 1;
+      const item = { id: `C-${60 + seq}`, target: null, thread: kind === "reply" ? "TH-1" : null };
+      const label = kind === "reply" ? "TH-1 への返信" : "項目を指さないコメント";
+      const fold = reviewBodyFold({ item, label, body: postBody({ body, titles: () => null, changeSets: () => null, className: "review-body", on: { openId: noop, changeSet: noop } }) });
+      // 行の頭: 返信は返信先のスレッドの状態の札と題、項目を指さない新しいスレッドは札だけ
+      const head = kind === "reply"
+        ? [h({ tag: "span", attrs: { class: "row-kind" }, children: ["返信"] }), h({ tag: "button", attrs: { class: "row-target idlink-like", type: "button" }, children: [threadState("open"), h({ tag: "span", attrs: { class: "t" }, children: ["A-14 の手引きの書き直しの相談"] })] })]
+        : [h({ tag: "span", attrs: { class: "row-kind" }, children: ["新しいスレッド"] })];
+      const openThread = kind === "new" ? h({ tag: "button", attrs: { class: "btn ghost", type: "button" }, children: ["スレッドを開く"] }) : null;
+      return h({
+        tag: "li",
+        attrs: { class: "row" },
+        children: [
+          h({ tag: "input", attrs: { type: "checkbox", class: "row-check", checked: true, "aria-label": `${label}を送る` } }),
+          h({
+            tag: "div",
+            attrs: { class: "row-main" },
+            children: [
+              h({ tag: "div", attrs: { class: "row-head" }, children: head }),
+              fold.body,
+              // 案 A: 本文のすぐ下
+              variant === "a" ? h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }) : null,
+              // 案 B: 「スレッドを開く」と同じ行（返信は「続きを読む」だけの行）
+              variant === "b" || openThread !== null ? h({ tag: "div", attrs: { class: "row-thread-open" }, children: [variant === "b" ? fold.more : null, openThread] }) : null,
+            ],
+          }),
+          reviewRowActions({ item, focus: "", on: { edit: noop, remove: noop } }),
+        ],
+      });
+    };
+    /** 案の見出しを付けた、左のパネルと同じ幅の一覧 */
+    const column = (caption, rows) => h({
+      tag: "div",
+      attrs: { class: "cat-col" },
+      children: [
+        h({ tag: "p", attrs: { class: "cat-col-label" }, children: [caption] }),
+        h({ tag: "div", attrs: { class: "pane" }, children: [h({ tag: "div", attrs: { class: "comments-body" }, children: [h({ tag: "ul", attrs: { class: "comments-list" }, children: rows })] })] }),
+      ],
+    });
+    /** 台に列を置く */
+    const place = (id, columns) => {
+      document.getElementById(id).append(...columns);
+    };
+    /** 測り終えた後（描いた 2 フレーム後）に、台の要素へ手を入れる */
+    const afterMeasure = (callback) => requestAnimationFrame(() => requestAnimationFrame(callback));
+
+    place("s-short", [column("項目を指さない新しいスレッド", [row({ body: BODIES.short })]), column("返信", [row({ body: BODIES.reply, kind: "reply" })])]);
+    place("s-lines", [column("案 A 本文のすぐ下", [row({ body: BODIES.lines })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.lines, variant: "b" })])]);
+    place("s-wrap", [column("案 A 本文のすぐ下", [row({ body: BODIES.wrap })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.wrap, variant: "b" })])]);
+    place("s-open", [column("案 A 本文のすぐ下", [row({ body: BODIES.lines })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.lines, variant: "b" })])]);
+    place("s-reply", [column("案 A 本文のすぐ下", [row({ body: BODIES.lines, kind: "reply" })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.lines, kind: "reply", variant: "b" })])]);
+    place("s-states", [column("ホバー", [row({ body: BODIES.lines })]), column("キーボードのフォーカス", [row({ body: BODIES.lines })])]);
+    place("s-narrow", [column("案 A 本文のすぐ下", [row({ body: BODIES.narrow })]), column("案 B 「スレッドを開く」と同じ行", [row({ body: BODIES.narrow, variant: "b" })])]);
+    afterMeasure(() => {
+      // 開いた: 「続きを読む」を押した状態にする
+      for (const button of document.querySelectorAll("#s-open .review-more")) button.click();
+      // ホバー・フォーカスの見本の状態
+      const [hover, focus] = document.querySelectorAll("#s-states .review-more");
+      hover.classList.add("is-hover");
+      focus.classList.add("is-focus");
+    });
+  </script>
+</body>
+</html>
