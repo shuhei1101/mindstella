@@ -82,3 +82,4 @@ refs:
 notes:
   モック: '`dev/mock/components/markdown-body/`'
   当て方: 列の幅・固定・見出しの固定・開閉の境目の値と振る舞いは、インターフェース定義『プレビューを開く』の制約「本文の表とセクションの見せ方」のとおりにする。列を固定した状態と畳んだ状態は残さず、描き直すと初めの状態に戻る
+test_file: tests/integration/storybook/test_markdown_body_stories.py

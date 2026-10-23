@@ -191,3 +191,24 @@ def test_body_diff_layout_overridden(open_story: OpenStory) -> None:
     assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
     # 検証（表示する種類は既定のまま）
     assert page.inner_text(".st-all .n") == "7/7"
+
+
+def test_body_view_overridden(open_story: OpenStory) -> None:
+    """表のしま模様をオンにし、セクションの折りたたみをオフにした。「詳細に表示するもの」の 2 つのチェックを切り替え、変えている項目に「表のしま模様」「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "body-view-overridden")
+    section = page.locator(f"{PANEL} fieldset", has_text="詳細に表示するもの")
+    names = ["差分のミニマップ", "表の列の固定", "表の見出しの固定", "表のしま模様", "セクションの折りたたみ"]
+    checked = [section.get_by_role("checkbox", name=name).is_checked() for name in names]
+    # 検証（区画の中に 5 つのチェックが並び、しま模様だけがオン、折りたたみだけがオフ）
+    assert section.locator("legend").inner_text() == "詳細に表示するもの"
+    assert section.locator("input[type=checkbox]").count() == 5
+    assert checked == [True, True, True, True, False]
+    # 検証（変えている項目と「既定に戻す」）
+    assert page.inner_text(f"{PANEL} .st-over > span:last-child") == "表のしま模様・セクションの折りたたみ"
+    assert _buttons(page) == ["既定に戻す"]
+    # 検証（保存のボタンの代わりに、既定と同じ旨を出す）
+    assert page.locator(f"{PANEL} .st-save button").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in page.inner_text(f"{PANEL} .st-save")
+    # 検証（表示する種類は既定のまま）
+    assert page.inner_text(".st-all .n") == "7/7"

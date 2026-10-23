@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
 from playwright.sync_api import Page
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_body_layout_helpers import SIDE_NAME, SIDE_VIEWPORT, open_side_by_side
+from preview_body_view_helpers import open_body_view
 from preview_comment_helpers import COMMENTS_BUTTON, COMMENTS_PANEL
 from preview_drawer_helpers import (
     DRAWER_OPEN,
@@ -884,3 +886,134 @@ def test_workspace_entry_opens_screen(
     page.wait_for_selector(WORKSPACE_SCREEN)
     assert page.locator(SETTINGS_PANEL_OPEN).count() == 0
     assert page.locator(f"{WORKSPACE_SCREEN} h1").inner_text() == "設定"
+
+
+# 本文の表とセクションの見せ方の 4 つのチェックの名前と、上書きするときの端末の保存領域のキーと値
+BODY_VIEW_CHECKS = [
+    pytest.param("表の列の固定", "tablePin", False, id="pin"),
+    pytest.param("表の見出しの固定", "tableHead", False, id="head"),
+    pytest.param("表のしま模様", "tableStripes", True, id="stripes"),
+    pytest.param("セクションの折りたたみ", "sectionFold", False, id="fold"),
+]
+
+# 開いている詳細パネルの本文の見せ方が変わるまで待つ上限ミリ秒
+BODY_VIEW_TOGGLE_MS = 5_000
+
+
+def _body_view_checkbox(page: Page, label: str) -> Any:
+    """表示の設定の、区画「詳細に表示するもの」の中の、名前のチェックボックスを返す。"""
+    return page.locator(f"{SETTINGS_PANEL} fieldset", has_text=MINIMAP_LEGEND).get_by_role(
+        "checkbox", name=label
+    )
+
+
+@pytest.mark.parametrize(("label", "key", "value"), BODY_VIEW_CHECKS)
+def test_body_view_override(
+    write_body_view_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+    label: str,
+    key: str,
+    value: bool,
+) -> None:
+    """本文の表とセクションの見せ方のチェックを既定と違う側にすると、個人の上書きとして残り、「この端末で変えている項目」に並び、`config.yaml` は変わらない。既定へ戻すと上書きを外す（正常系）。"""
+    # 準備
+    url, root = write_body_view_preview()
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    open_body_view(page, open_preview, url)
+    open_settings(page)
+    # 検証（開いた直後は上書きを持たない）
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    before = _body_view_checkbox(page, label).is_checked()
+    # 実行（チェックを既定と違う側にする）
+    _body_view_checkbox(page, label).click()
+    page.wait_for_function(
+        "([key, value]) => JSON.parse(localStorage.getItem('mindmap-preview'))[key] === value",
+        arg=[key, value],
+        timeout=BODY_VIEW_TOGGLE_MS,
+    )
+    # 検証
+    assert _body_view_checkbox(page, label).is_checked() is (not before)
+    assert label in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+    # 実行（チェックを戻す）
+    _body_view_checkbox(page, label).click()
+    page.wait_for_function(
+        "(key) => JSON.parse(localStorage.getItem('mindmap-preview'))[key] === null",
+        arg=key,
+        timeout=BODY_VIEW_TOGGLE_MS,
+    )
+    # 検証（既定と同じ側に戻したので、上書きを外す）
+    assert _body_view_checkbox(page, label).is_checked() is before
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+
+
+def test_reset_when_body_view(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """既定と違う側にした 4 つのチェックは、「この端末で変えている項目」に並び、「既定に戻す」で全て外れて本文が既定の見せ方に戻る（正常系）。"""
+    # 準備（4 つとも既定と違う側にする）
+    url, _ = write_body_view_preview()
+    open_body_view(page, open_preview, url)
+    open_settings(page)
+    _body_view_checkbox(page, "表の列の固定").click()
+    _body_view_checkbox(page, "表の見出しの固定").click()
+    _body_view_checkbox(page, "表のしま模様").click()
+    _body_view_checkbox(page, "セクションの折りたたみ").click()
+    page.wait_for_function(
+        "document.querySelector('aside.panel button.md-fold') === null", timeout=BODY_VIEW_TOGGLE_MS
+    )
+    # 検証（本文は上書きどおりで、4 つの名前が並ぶ）
+    over = page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert "表の列の固定・表の見出しの固定・表のしま模様・セクションの折りたたみ" in over
+    assert page.locator(f"{PANEL_SCOPE} button.md-pin").count() == 0
+    assert page.locator(f"{PANEL_SCOPE} table.md-head-stick").count() == 0
+    assert page.locator(f"{PANEL_SCOPE} table.md-stripes").count() == 1
+    # 実行（既定に戻す）
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(f"{PANEL_SCOPE} button.md-fold", timeout=BODY_VIEW_TOGGLE_MS)
+    # 検証（詳細パネルは開いたまま既定の見せ方に戻り、全ての上書きが外れる）
+    assert page.locator(f"{PANEL_SCOPE}.open").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} button.md-pin").count() == 7
+    assert page.locator(f"{PANEL_SCOPE} table.md-head-stick").count() == 1
+    assert page.locator(f"{PANEL_SCOPE} table.md-stripes").count() == 0
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert (prefs["tablePin"], prefs["tableHead"], prefs["tableStripes"], prefs["sectionFold"]) == (
+        None,
+        None,
+        None,
+        None,
+    )
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+
+
+def test_save_default_when_body_view(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """表示する種類も変えて「ワークスペースの既定にする」で保存しても、本文の表とセクションの見せ方は保存する対象に含めず、config.yaml に書かず、個人の上書きに残す（正常系）。"""
+    # 準備
+    url, root = write_body_view_preview()
+    open_body_view(page, open_preview, url)
+    open_settings(page)
+    toggle_kind(page, "用語集")
+    _body_view_checkbox(page, "表のしま模様").click()
+    _body_view_checkbox(page, "セクションの折りたたみ").click()
+    # 検証（変えている項目に、表示する種類の後ろへ並ぶ）
+    assert "表示する種類・表のしま模様・セクションの折りたたみ" in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    # 実行
+    page.click(SAVE_DEFAULT_BUTTON)
+    page.wait_for_selector(CONFIRM_OPEN)
+    # 検証（確かめに並ぶのは見た目と表示する種類の 2 行だけ）
+    assert len(page.locator(f"{CONFIRM} .sc-row").all_inner_texts()) == 2
+    assert "しま模様" not in page.inner_text(CONFIRM)
+    # 実行
+    page.get_by_role("button", name="保存する").click()
+    page.wait_for_selector(CONFIRM, state="detached", timeout=BODY_VIEW_TOGGLE_MS)
+    # 検証
+    display = read_config(root)["display"]
+    assert sorted(display) == ["network_look", "visible_kinds"]
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert (prefs["tableStripes"], prefs["sectionFold"]) == (True, False)

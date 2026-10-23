@@ -62,7 +62,7 @@ WRAP_METRICS_JS = """(scope) => {
         tabindex: wrap.getAttribute('tabindex'),
         scrolls: wrap.scrollWidth > wrap.clientWidth,
         overflowX: getComputedStyle(wrap).overflowX,
-        tableFillsWrap: Math.abs(wrap.querySelector('table').getBoundingClientRect().width - wrap.clientWidth) <= 1,
+        tableNarrowerThanWrap: wrap.querySelector('table').getBoundingClientRect().width < wrap.clientWidth - 1,
         inside: inside(wrap),
     }));
     return {
