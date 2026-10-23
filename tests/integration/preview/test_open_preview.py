@@ -2015,6 +2015,8 @@ def test_normal_when_body_table_and_sections(
     assert state["wrapScrolls"] is True
     assert state["fade"] is True
     assert state["pinned"] == []
+    # 検証（しま模様は既定でオフで、行を塗り分けない）
+    assert len(set(state["rowColors"])) == 1
     # 実行（「名前まで固定」を押して、表を右端まで送る）
     page.get_by_role("button", name="名前まで固定").click()
     page.eval_on_selector(f"{BODY_VIEW_SCOPE} .md-table-wrap", "e => { e.scrollLeft = e.scrollWidth; }")
@@ -2026,6 +2028,7 @@ def test_normal_when_body_table_and_sections(
     assert pinned["scrollLeft"] > 0
     assert abs(pinned["pinnedLefts"][0]) <= STUCK_TOLERANCE_PX
     assert pinned["pinnedLefts"] == sorted(pinned["pinnedLefts"])
+    assert pinned["pinnedRights"][-1] <= pinned["wrapWidth"] + STUCK_TOLERANCE_PX
     assert 0 <= pinned["lastLeft"] < pinned["wrapWidth"]
     assert pinned["fade"] is False
     # 実行（本文を縦に送って、表の途中まで進める）

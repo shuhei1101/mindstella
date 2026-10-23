@@ -79,6 +79,7 @@ _TABLE_STATE_JS = """(scope) => {
         scrollLeft: wrap.scrollLeft,
         pinned: heads.filter((cell) => cell.classList.contains('md-pinned')).map(named),
         pinnedLefts: heads.filter((cell) => cell.classList.contains('md-pinned')).map((cell) => cell.getBoundingClientRect().left - edge),
+        pinnedRights: heads.filter((cell) => cell.classList.contains('md-pinned')).map((cell) => cell.getBoundingClientRect().right - edge),
         lastLeft: heads[heads.length - 1].getBoundingClientRect().left - edge,
         wrapWidth: wrap.clientWidth,
         areaTop: area.getBoundingClientRect().top,
