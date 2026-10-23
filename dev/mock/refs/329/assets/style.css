@@ -39,7 +39,7 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .row-thread-open > .btn { flex: none; white-space: nowrap; }
 /* 案 B: 「続きを読む」だけを持つ返信の行で、ボタンを出さないとき: 行ごと出さない */
 .row-thread-open:not(:has(> :not([hidden]))) { display: none; }
-/* 「続きを読む」「閉じる」: 測るまで・超えないときは出さない（.btn の inline-flex より優先する） */
+/* 「続きを読む」「折りたたむ」: 測るまで・超えないときは出さない（.btn の inline-flex より優先する） */
 .review-more[hidden] { display: none; }
 /* 開閉の印: 畳んでいるときは下向き */
 .review-more .icon { width: 14px; height: 14px; transform: rotate(90deg); }

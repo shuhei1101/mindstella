@@ -10560,10 +10560,10 @@ var MindmapPreview;
     /** 329: 開閉のボタンの文言・印・読み上げの名前を、開いているかに合わせる */
     function setReviewFoldToggle(more, open, label) {
         more.setAttribute("aria-expanded", open ? "true" : "false");
-        more.setAttribute("aria-label", open ? `${label}の本文を閉じる` : `${label}の続きを読む`);
-        more.replaceChildren(MindmapPreview.icon("chev"), MindmapPreview.h({ tag: "span", children: [open ? "閉じる" : "続きを読む"] }));
+        more.setAttribute("aria-label", open ? `${label}の本文を折りたたむ` : `${label}の続きを読む`);
+        more.replaceChildren(MindmapPreview.icon("chev"), MindmapPreview.h({ tag: "span", children: [open ? "折りたたむ" : "続きを読む"] }));
     }
-    /** 329: レビュー中の書き込みの本文を 5 行までで畳み、超えるときだけ「続きを読む」「閉じる」を出す */
+    /** 329: レビュー中の書き込みの本文を 5 行までで畳み、超えるときだけ「続きを読む」「折りたたむ」を出す */
     function reviewBodyFold({ item, label, body }) {
         const id = `review-body-${item.id}`;
         body.id = id;
@@ -10588,7 +10588,7 @@ var MindmapPreview;
                         expandedReview.delete(item.id);
                     body.classList.toggle("folded", !opening);
                     setReviewFoldToggle(more, opening, label);
-                    // 閉じたら、畳んだ行が画面から外れないように寄せる
+                    // 折りたたんだら、畳んだ行が画面から外れないように寄せる
                     if (!opening)
                         body.closest("li")?.scrollIntoView({ block: "nearest" });
                 },
@@ -10667,7 +10667,7 @@ var MindmapPreview;
                                 on: { saveEdit: props.on.saveEdit, cancelEdit: props.on.cancelEdit },
                             })
                             : fold.body,
-                        // 329: 案 A: 本文のすぐ下に「続きを読む」「閉じる」
+                        // 329: 案 A: 本文のすぐ下に「続きを読む」「折りたたむ」
                         fold === null || moreWithOpen ? null : MindmapPreview.h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
                         // クローズのスレッドへの返信: 送れない理由と、そのスレッドを開く入口
                         blocked && item.thread !== null
@@ -10682,7 +10682,7 @@ var MindmapPreview;
                             })
                             : null,
                         // 新しいスレッド: まだ送っていないそのスレッドを開く入口
-                        // 329: 案 B: 「続きを読む」「閉じる」を同じ行の先に置く（返信の行は「続きを読む」だけの行）
+                        // 329: 案 B: 「続きを読む」「折りたたむ」を同じ行の先に置く（返信の行は「続きを読む」だけの行）
                         item.thread === null || (moreWithOpen && fold !== null)
                             ? MindmapPreview.h({
                                 tag: "div",
