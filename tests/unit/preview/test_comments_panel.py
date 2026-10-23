@@ -889,7 +889,7 @@ NO_MORE = {
                     **NO_MORE,
                     "visible": True,
                     "wrapperVisible": True,
-                    "wrapperText": "続きを読む スレッドを開く",
+                    "wrapperText": "折りたたむ スレッドを開く",
                     "inThreadOpen": True,
                     "beforeOpen": True,
                 },
