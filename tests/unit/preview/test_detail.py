@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from .fixture_types import (
     LoadLibrary,
@@ -3210,3 +3210,177 @@ def test_detail_panel_when_body_view(
     )
     # 検証
     assert {key: result[key] for key in expected} == expected
+
+
+@pytest.mark.parametrize(
+    ("viewport", "map_view", "expected"),
+    [
+        pytest.param(1280, False, 880, id="side_1280"),
+        pytest.param(1100, False, 700, id="side_1100"),
+        pytest.param(1099, False, 939, id="overlap_1099"),
+        pytest.param(1000, False, 840, id="overlap_1000"),
+        pytest.param(1000, True, 600, id="map_1000"),
+        pytest.param(901, True, 501, id="map_901"),
+    ],
+)
+def test_panel_width_max(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    viewport: int,
+    map_view: bool,
+    expected: int,
+) -> None:
+    """本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅で上限を決める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        "({viewport, mapView}) => MindmapPreview.panelWidthMax({viewport, mapView})",
+        {"viewport": viewport, "mapView": map_view},
+    )
+    # 検証
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("width", "expected"),
+    [
+        pytest.param(640, 640, id="inside"),
+        pytest.param(300, 480, id="below_min"),
+        pytest.param(1000, 880, id="above_max"),
+        pytest.param(700.6, 701, id="rounded"),
+    ],
+)
+def test_clamp_panel_width(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    width: float,
+    expected: int,
+) -> None:
+    """下限と上限の間に収める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        "({width, max}) => MindmapPreview.clampPanelWidth({width, max})",
+        {"width": width, "max": 880},
+    )
+    # 検証
+    assert result == expected
+
+
+# 幅の区切りを調べるときの表示の幅・高さと、狭めた表示の幅
+RESIZER_VIEWPORT = {"width": 1280, "height": 720}
+NARROW_VIEWPORT = {"width": 1000, "height": 720}
+
+# 区切りを押して左へ 100px 動かす位置（区切りは画面の右寄りに固定して置く）
+DRAG_Y = 200
+DRAG_FROM_X = 1010
+DRAG_TO_X = 910
+
+# 区切りを描いて文書に置き、変えた幅を知らせる値を window に並べる
+MOUNT_RESIZER_SCRIPT = """({stored}) => {
+    window.resizerCalls = [];
+    const resizer = MindmapPreview.panelResizer({
+        stored,
+        mapView: () => false,
+        onChange: (width) => window.resizerCalls.push(width),
+    });
+    // ドラッグで押せるように、画面の右寄りに大きさを持たせて置く
+    Object.assign(resizer.style, {
+        position: "fixed", top: "100px", left: "1000px", width: "24px", height: "300px",
+    });
+    document.body.append(resizer);
+}"""
+
+# 区切りの今の幅と、変えた幅を知らせた値を調べる
+READ_RESIZER_SCRIPT = """() => {
+    const resizer = document.querySelector('[role="separator"]');
+    const root = getComputedStyle(document.documentElement);
+    return {
+        width: parseFloat(root.getPropertyValue("--panel-w")),
+        min: Number(resizer.getAttribute("aria-valuemin")),
+        max: Number(resizer.getAttribute("aria-valuemax")),
+        now: Number(resizer.getAttribute("aria-valuenow")),
+        calls: window.resizerCalls,
+    };
+}"""
+
+# 区切りにフォーカスして、← → Home End を順に押した後の幅を調べる
+PRESS_KEYS_SCRIPT = """() => {
+    const resizer = document.querySelector('[role="separator"]');
+    resizer.focus();
+    const widths = [];
+    for (const key of ["ArrowLeft", "ArrowRight", "Home", "End"]) {
+        resizer.dispatchEvent(new KeyboardEvent("keydown", {key, bubbles: true}));
+        widths.push(Number(resizer.getAttribute("aria-valuenow")));
+    }
+    return {widths, calls: window.resizerCalls};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("stored", "opened", "dragged"),
+    [
+        pytest.param(None, 640, 740, id="default"),
+        pytest.param(768, 768, 868, id="stored"),
+        pytest.param(1000, 880, 880, id="stored_above_max"),
+    ],
+)
+def test_panel_resizer(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: int | None,
+    opened: int,
+    dragged: int,
+) -> None:
+    """残した幅を上限に収めて当て、ドラッグで幅を変えて知らせる（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": stored})
+    # 実行
+    before = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.mouse.move(DRAG_FROM_X, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(DRAG_TO_X, DRAG_Y)
+    preview_page.mouse.up()
+    after = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert before == {"width": opened, "min": 480, "max": 880, "now": opened, "calls": []}
+    assert (after["width"], after["now"]) == (dragged, dragged)
+    assert after["calls"][-1] == dragged
+
+
+def test_panel_resizer_keys(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """矢印キーで刻み、Home・End で下限・上限にする（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    result = preview_page.evaluate(PRESS_KEYS_SCRIPT)
+    # 検証
+    assert result == {"widths": [656, 640, 480, 880], "calls": [656, 640, 480, 880]}
+
+
+def test_panel_resizer_when_window_resized(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """窓の幅が変わると残した幅を収め直し、広げ直すと残した幅に戻す（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 880})
+    resizer = preview_page.locator('[role="separator"]')
+    # 実行
+    preview_page.set_viewport_size(NARROW_VIEWPORT)
+    expect(resizer).to_have_attribute("aria-valuenow", "840")
+    narrowed = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    expect(resizer).to_have_attribute("aria-valuenow", "880")
+    widened = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert (narrowed["width"], narrowed["max"], narrowed["now"]) == (840, 840, 840)
+    assert widened["width"] == 880
+    assert (narrowed["calls"], widened["calls"]) == ([], [])
