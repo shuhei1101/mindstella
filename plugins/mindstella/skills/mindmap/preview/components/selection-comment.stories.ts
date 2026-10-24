@@ -54,7 +54,7 @@ export const Below: Story = {
 
 /** 幅 390px で選んだ範囲が画面の端に寄る。入口を画面の端から 8px の内側に収め、ツールチップを入口の右端に揃える */
 export const Narrow: Story = {
-  args: { anchor: { first: new DOMRect(300, 160, 80, 22), last: new DOMRect(300, 190, 80, 22) } },
+  args: { anchor: { first: new DOMRect(370, 160, 10, 22), last: new DOMRect(370, 190, 10, 22) } },
   parameters: {
     viewport: {
       options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
