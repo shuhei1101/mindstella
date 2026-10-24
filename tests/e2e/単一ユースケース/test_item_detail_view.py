@@ -25,6 +25,12 @@ from body_view_helpers import (
     wait_head_at_top,
 )
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
+from integration.preview.preview_panel_width_helpers import (
+    DEFAULT_WIDTH_PX,
+    drag_resizer,
+    panel_state,
+    read_stored_width,
+)
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
@@ -42,6 +48,10 @@ flowchart LR
 
 # 広い幅の画面（詳細パネルが本文を寄せる幅）
 WIDE_SIZE = (1920, 1080)
+
+# 詳細パネルの左端の区切りを左へドラッグする量（px）と、広げた後の詳細パネルの幅（既定の 640px + 100px）
+PANEL_DRAG_LEFT_PX = -100
+WIDENED_PANEL_WIDTH_PX = 740
 
 # 全画面で本文を送れる長さにするために足す段落の数
 FILLER_PARAGRAPHS = 60
@@ -1278,3 +1288,74 @@ def test_normal_when_table_and_sections(
     # 検証（表が見える）
     assert fold_button(page, "比較").get_attribute("aria-expanded") == "true"
     assert page.locator(TABLE_WRAP).is_visible() is True
+
+
+def test_normal_when_resize_panel(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """資料と検討事項の詳細パネルを同じ既定の幅で開き、左端の区切りを左へドラッグして広げると、本文の寄せも合わせて広がり、閉じて開き直しても読み込み直しても、種類によらず広げた幅で開く（正常系）。"""
+    # 準備（空の保存領域で、資料 A-1 と検討事項 D-1 を配る）
+    url = serve_preview(
+        make_item("A-1"),
+        make_item("D-1", body="D-1.md"),
+        settings=valid_settings,
+        bodies={"A-1.md": "資料の本文です。", "D-1.md": "検討事項の本文です。"},
+    )
+    open_preview(url, DOCS_HASH, width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    # 実行（資料の画面で A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open")
+    doc_default = panel_state(page)
+    # 実行（詳細パネルを閉じ、検討事項の表で D-1 を押す）
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="table"]')
+    page.click('table.grid button.row-open[data-id="D-1"]')
+    page.wait_for_selector("aside.panel.open")
+    decision_default = panel_state(page)
+    # 実行（詳細パネルの左端を左へドラッグする）
+    drag_resizer(page, PANEL_DRAG_LEFT_PX)
+    widened = panel_state(page)
+    # 実行（詳細パネルを閉じ、資料の画面で A-1 を押す）
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.click('nav.tabbar a[data-tab="docs"]')
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open")
+    doc_reopened = panel_state(page)
+    # 実行（詳細パネルを閉じ、同じタブでページを読み込み直して A-1 を開く）
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.reload()
+    page.wait_for_selector('.doc-card[data-id="A-1"]')
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open")
+    doc_reloaded = panel_state(page)
+    # 検証（資料も検討事項も同じ既定の幅で開き、本文の寄せも合っている）
+    assert (doc_default["panelWidth"], doc_default["contentMargin"]) == (
+        DEFAULT_WIDTH_PX,
+        DEFAULT_WIDTH_PX,
+    )
+    assert (decision_default["panelWidth"], decision_default["contentMargin"]) == (
+        DEFAULT_WIDTH_PX,
+        DEFAULT_WIDTH_PX,
+    )
+    # 検証（ドラッグした分だけ広がり、本文の寄せと区切りの今の幅が詳細パネルの幅に合う）
+    assert widened["panelWidth"] == WIDENED_PANEL_WIDTH_PX
+    assert widened["contentMargin"] == WIDENED_PANEL_WIDTH_PX
+    assert widened["separator"]["now"] == str(WIDENED_PANEL_WIDTH_PX)
+    # 検証（閉じて A-1 を開き直しても、読み込み直した後でも、広げた幅で開く）
+    assert (doc_reopened["panelWidth"], doc_reopened["separator"]["now"]) == (
+        WIDENED_PANEL_WIDTH_PX,
+        str(WIDENED_PANEL_WIDTH_PX),
+    )
+    assert (doc_reloaded["panelWidth"], doc_reloaded["separator"]["now"]) == (
+        WIDENED_PANEL_WIDTH_PX,
+        str(WIDENED_PANEL_WIDTH_PX),
+    )
+    assert read_stored_width(page) == str(WIDENED_PANEL_WIDTH_PX)
