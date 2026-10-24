@@ -25,12 +25,12 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 
 /* ===== 詳細パネルの幅を変える区切り（#340） ===== */
 
-/* 区切り: 詳細パネルの左端に重ねる 12px の縦の帯（境目の線の左右 6px ずつ）。ポインターの動きを画面のスクロールに取られない */
-.panel-resizer { position: absolute; z-index: 2; top: 0; bottom: 0; left: -6px; width: 12px; cursor: col-resize; touch-action: none; }
-/* 区切りの線: ふだんは詳細パネルの境目の線に重なって見えない */
-.panel-resizer::before { content: ""; position: absolute; top: 0; bottom: 0; left: 5px; width: 2px; background: transparent; transition: background-color .15s ease; }
-/* つまみ: 縦の中央に置く小さな縦長の丸。ふだんから薄く出し、ここをつかめると分かるようにする */
-.panel-resizer::after { content: ""; position: absolute; top: 50%; left: 4px; width: 4px; height: 32px; margin-top: -16px; border-radius: 2px; background: var(--border); transition: background-color .15s ease; }
+/* 区切り: 詳細パネルの内側の左端に重ねる 24px の縦の帯。本文のスクロールバーに重ならない。ポインターの動きを画面のスクロールに取られない */
+.panel-resizer { position: absolute; z-index: 2; top: 0; bottom: 0; left: 0; width: 24px; cursor: col-resize; touch-action: none; }
+/* 区切りの線: 詳細パネルの左端の境目に描き、ふだんは境目の線に重なって見えない */
+.panel-resizer::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: transparent; transition: background-color .15s ease; }
+/* つまみ: 境目の縦の中央に置く小さな縦長の丸。ふだんから薄く出し、ここをつかめると分かるようにする */
+.panel-resizer::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 32px; margin-top: -16px; border-radius: 2px; background: var(--border); transition: background-color .15s ease; }
 /* 乗せた: 線とつまみを濃くする */
 .panel-resizer:hover::before { background: var(--border); }
 .panel-resizer:hover::after { background: var(--text-3); }
