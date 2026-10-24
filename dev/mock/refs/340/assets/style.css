@@ -34,9 +34,10 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 /* 乗せた: 線とつまみを濃くする */
 .panel-resizer:hover::before { background: var(--border); }
 .panel-resizer:hover::after { background: var(--text-3); }
-/* キーボードでフォーカスした: 線とつまみをアクセントの色にし、帯の全体を枠で囲む */
-.panel-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* キーボードでフォーカスした: 線とつまみをアクセントの色にし、つまみの周りだけを枠で囲む（帯の全体を囲むと本文の左端の文字にかかる） */
+.panel-resizer:focus-visible { outline: none; }
 .panel-resizer:focus-visible::before, .panel-resizer:focus-visible::after { background: var(--accent); }
+.panel-resizer:focus-visible::after { box-shadow: 0 0 0 2px var(--accent); }
 /* ドラッグ中: 線とつまみをアクセントの色にする */
 body.is-panel-resizing .panel-resizer::before, body.is-panel-resizing .panel-resizer::after { background: var(--accent); }
 /* 下限で止まっている: 広げる向き（左）だけのカーソル */
@@ -63,7 +64,7 @@ body.is-panel-resizing:has(.panel-resizer[data-edge="max"]) { cursor: e-resize; 
 body[data-state="hover"] .panel-resizer::before { background: var(--border); }
 body[data-state="hover"] .panel-resizer::after { background: var(--text-3); }
 /* フォーカスした状態の見本 */
-body[data-state="focus"] .panel-resizer { outline: 2px solid var(--accent); outline-offset: -2px; }
 body[data-state="focus"] .panel-resizer::before, body[data-state="focus"] .panel-resizer::after { background: var(--accent); }
+body[data-state="focus"] .panel-resizer::after { box-shadow: 0 0 0 2px var(--accent); }
 /* ドラッグ中の見本 */
 body[data-state="drag"] .panel-resizer::before, body[data-state="drag"] .panel-resizer::after { background: var(--accent); }
